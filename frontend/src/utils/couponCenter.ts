@@ -16,6 +16,9 @@ const toSafeQuantity = (value: unknown) => {
   return Math.max(0, Math.floor(numeric));
 };
 
+export const getCouponPayablePercent = (coupon: Pick<CouponPublic, 'discountPercent'> | Pick<UserCoupon, 'discountPercent'>) =>
+  Math.max(0, Math.min(toFiniteNumber(coupon.discountPercent, 100), 100));
+
 export const getCouponEstimatedValue = (
   coupon:
     Pick<CouponPublic, 'couponType' | 'thresholdAmount' | 'reductionAmount' | 'discountPercent' | 'maxDiscountAmount'>
@@ -25,7 +28,7 @@ export const getCouponEstimatedValue = (
     return Math.max(0, toFiniteNumber(coupon.reductionAmount));
   }
   if (coupon.couponType !== 'DISCOUNT') return 0;
-  const payablePercent = Math.max(0, Math.min(toFiniteNumber(coupon.discountPercent, 100), 100));
+  const payablePercent = getCouponPayablePercent(coupon);
   const maxDiscount = Math.max(0, toFiniteNumber(coupon.maxDiscountAmount));
   const threshold = Math.max(0, toFiniteNumber(coupon.thresholdAmount));
   const estimated = threshold * (100 - payablePercent) / 100;

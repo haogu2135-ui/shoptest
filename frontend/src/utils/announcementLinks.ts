@@ -20,7 +20,7 @@ export const normalizeAnnouncementLink = (value?: string | null) => {
     const hasHost = Boolean(url.hostname.trim());
     const hasCredentials = Boolean(url.username || url.password);
     return isHttps && hasHost && !hasCredentials ? link : '';
-  } catch {
+  } catch (_error) {
     return '';
   }
 };

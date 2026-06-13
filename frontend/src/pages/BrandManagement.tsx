@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  Alert,
   Button,
   Card,
   Divider,
@@ -43,7 +44,9 @@ const statusColors: Record<string, string> = {
 
 const BrandManagement: React.FC = () => {
   const [brands, setBrands] = useState<Brand[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [brandLoadError, setBrandLoadError] = useState<string | null>(null);
+  const [brandSnapshotLoaded, setBrandSnapshotLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [keyword, setKeyword] = useState('');
   const [statusFilter, setStatusFilter] = useState<string | undefined>();
@@ -56,6 +59,8 @@ const BrandManagement: React.FC = () => {
   const { t, language } = useLanguage();
   const canWriteBrands = hasAdminPermission(adminPermissions, currentRole, BRANDS_WRITE_PERMISSION);
   const canDeleteBrands = hasAdminPermission(adminPermissions, currentRole, BRANDS_DELETE_PERMISSION);
+  const brandActionDisabled = loading || Boolean(brandLoadError) || !brandSnapshotLoaded;
+  const brandActionUnavailableMessage = brandLoadError || (loading ? t('common.loading') : t('pages.brandAdmin.fetchFailed'));
   const formatBrandStatus = useCallback((status?: string) => {
     const rawStatus = String(status || '').trim();
     const normalizedStatus = (rawStatus || 'ACTIVE').toUpperCase();
@@ -140,9 +145,13 @@ const BrandManagement: React.FC = () => {
     setLoading(true);
     try {
       const response = await adminApi.getBrands();
+      setBrandLoadError(null);
       setBrands(response.data);
+      setBrandSnapshotLoaded(true);
     } catch (error: unknown) {
-      message.error(getApiErrorMessage(error, t('pages.brandAdmin.fetchFailed'), language));
+      const errorMessage = getApiErrorMessage(error, t('pages.brandAdmin.fetchFailed'), language);
+      setBrandLoadError(errorMessage);
+      message.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -175,6 +184,10 @@ const BrandManagement: React.FC = () => {
       message.error(t('adminLayout.noPermission'));
       return;
     }
+    if (brandActionDisabled) {
+      message.warning(brandActionUnavailableMessage);
+      return;
+    }
     setEditingBrand(brand || null);
     setLogoPreviewUrl(brand?.logoUrl || '');
     form.resetFields();
@@ -192,6 +205,10 @@ const BrandManagement: React.FC = () => {
   const handleSubmit = async () => {
     if (!canWriteBrands) {
       message.error(t('adminLayout.noPermission'));
+      return;
+    }
+    if (brandActionDisabled) {
+      message.warning(brandActionUnavailableMessage);
       return;
     }
     try {
@@ -236,6 +253,10 @@ const BrandManagement: React.FC = () => {
   const handleDelete = async (id: number) => {
     if (!canDeleteBrands) {
       message.error(t('adminLayout.noPermission'));
+      return;
+    }
+    if (brandActionDisabled) {
+      message.warning(brandActionUnavailableMessage);
       return;
     }
     try {
@@ -321,7 +342,7 @@ const BrandManagement: React.FC = () => {
         const deleteActionLabel = `${t('common.delete')}: ${brandName}`;
         return (
           <Space size="small">
-            {canWriteBrands ? <Button icon={<EditOutlined />} size="small" aria-label={editActionLabel} title={editActionLabel} onClick={() => openModal(record)}>
+            {canWriteBrands ? <Button icon={<EditOutlined />} size="small" disabled={brandActionDisabled} aria-label={editActionLabel} title={editActionLabel} onClick={() => openModal(record)}>
               {t('common.edit')}
             </Button> : null}
             {canDeleteBrands ? (
@@ -330,12 +351,13 @@ const BrandManagement: React.FC = () => {
                 title={t('pages.brandAdmin.deleteConfirm')}
                 description={brandName}
                 onConfirm={() => handleDelete(record.id)}
+                disabled={brandActionDisabled}
                 okText={t('common.confirm')}
                 cancelText={t('common.cancel')}
-                okButtonProps={{ danger: true, 'aria-label': deleteActionLabel, title: deleteActionLabel }}
+                okButtonProps={{ danger: true, disabled: brandActionDisabled, 'aria-label': deleteActionLabel, title: deleteActionLabel }}
                 cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${deleteActionLabel}`, title: `${t('common.cancel')}: ${deleteActionLabel}` }}
               >
-                <Button icon={<DeleteOutlined />} danger size="small" aria-label={deleteActionLabel} title={deleteActionLabel}>
+                <Button icon={<DeleteOutlined />} danger size="small" disabled={brandActionDisabled} aria-label={deleteActionLabel} title={deleteActionLabel}>
                   {t('common.delete')}
                 </Button>
               </Popconfirm>
@@ -346,11 +368,36 @@ const BrandManagement: React.FC = () => {
     },
   ];
 
+  const showInitialBrandLoading = loading && !brandSnapshotLoaded;
+  const brandSnapshotUnavailable = Boolean(brandLoadError) && !brandSnapshotLoaded;
+  const canRenderBrandSnapshot = !showInitialBrandLoading && !brandSnapshotUnavailable;
+
   return (
     <div className={`brand-management-page brand-management-page--${language}`}>
       <Title level={3} className="brand-management-page__title">{t('pages.brandAdmin.title')}</Title>
       <Divider />
 
+      {brandLoadError ? (
+        <Alert
+          className="brand-management-page__alert"
+          type="warning"
+          showIcon
+          message={brandLoadError}
+          description={brandSnapshotLoaded ? t('pages.brandAdmin.staleDataWarning') : undefined}
+          action={(
+            <Button size="small" loading={loading} onClick={fetchBrands}>
+              {t('common.retry')}
+            </Button>
+          )}
+        />
+      ) : null}
+
+      {showInitialBrandLoading ? (
+        <Card className="brand-management-page__loadingState" loading />
+      ) : null}
+
+      {canRenderBrandSnapshot ? (
+        <>
       <Card className="brand-management-page__toolbar">
         <Space wrap role="search" aria-label={brandSearchRegionLabel} title={brandSearchRegionLabel}>
           <Text type="secondary">{t('pages.brandAdmin.healthSubtitle')}</Text>
@@ -359,6 +406,7 @@ const BrandManagement: React.FC = () => {
             prefix={<SearchOutlined />}
             value={keyword}
             onChange={(event) => setKeyword(event.target.value)}
+            disabled={brandActionDisabled}
             placeholder={t('common.search')}
             aria-label={brandSearchInputLabel}
             title={brandSearchInputLabel}
@@ -368,6 +416,7 @@ const BrandManagement: React.FC = () => {
             allowClear
             value={statusFilter}
             onChange={setStatusFilter}
+            disabled={brandActionDisabled}
             placeholder={t('common.status')}
             aria-label={brandStatusFilterLabel}
             title={brandStatusFilterLabel}
@@ -380,7 +429,7 @@ const BrandManagement: React.FC = () => {
             ]}
           />
           {canWriteBrands ? (
-            <Button type="primary" icon={<PlusOutlined />} aria-label={addBrandActionLabel} title={addBrandActionLabel} onClick={() => openModal()}>
+            <Button type="primary" icon={<PlusOutlined />} disabled={brandActionDisabled} aria-label={addBrandActionLabel} title={addBrandActionLabel} onClick={() => openModal()}>
               {t('pages.brandAdmin.addBrand')}
             </Button>
           ) : null}
@@ -428,6 +477,8 @@ const BrandManagement: React.FC = () => {
       </section>
 
       <Table columns={columns} dataSource={filteredBrands} rowKey="id" loading={loading} bordered size="middle" scroll={{ x: 860 }} />
+        </>
+      ) : null}
 
       <Modal
         className="profile-mobile-safe-modal brand-management-page__editorModal"
@@ -435,7 +486,7 @@ const BrandManagement: React.FC = () => {
         open={modalVisible}
         onOk={handleSubmit}
         onCancel={closeModal}
-        okButtonProps={{ 'aria-label': saveBrandActionLabel, title: saveBrandActionLabel }}
+        okButtonProps={{ disabled: brandActionDisabled, 'aria-label': saveBrandActionLabel, title: saveBrandActionLabel }}
         cancelButtonProps={{ 'aria-label': cancelBrandActionLabel, title: cancelBrandActionLabel }}
         confirmLoading={saving}
         destroyOnHidden

@@ -2,6 +2,7 @@ import type { CartItem, ProductPublic } from '../types';
 import { createLocalId } from './localIds';
 import { dispatchDomEvent } from './domEvents';
 import { getLocalStorageItem, setLocalStorageItem } from './safeStorage';
+import { reportNonBlockingError } from './nonBlockingError';
 
 const GUEST_CART_KEY = 'shop-guest-cart';
 const MAX_GUEST_CART_QUANTITY = 99;
@@ -28,9 +29,23 @@ const normalizePositiveProductId = (value: unknown) => {
   return id !== null && id > 0 ? id : null;
 };
 
+const hasLocalStorage = () => {
+  try {
+    return typeof window !== 'undefined' && Boolean(window.localStorage);
+  } catch (error) {
+    reportNonBlockingError('guestCart.hasLocalStorage', error);
+    return false;
+  }
+};
+
 const normalizePrice = (value: unknown) => {
   const numeric = Number(value);
   return Number.isFinite(numeric) && numeric > 0 ? numeric : 0;
+};
+
+const normalizeOptionalNonNegativeMoney = (value: unknown) => {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) && numeric >= 0 ? numeric : undefined;
 };
 
 const resolveProductSnapshotImage = (product: Partial<ProductPublic> | any) => {
@@ -42,40 +57,64 @@ const resolveProductSnapshotImage = (product: Partial<ProductPublic> | any) => {
   return String(galleryImage || '').trim();
 };
 
-const normalizeCartItem = (item: Partial<CartItem>): CartItem | null => {
+type StoredGuestCartItem = Partial<CartItem> & {
+  product?: Partial<ProductPublic> & Record<string, unknown>;
+};
+
+export type NormalizedGuestCartItem = CartItem & {
+  readonly product?: never;
+};
+
+const isNormalizedGuestCartItem = (item: NormalizedGuestCartItem | null): item is NormalizedGuestCartItem => Boolean(item);
+
+const normalizeCartItem = (item: StoredGuestCartItem): NormalizedGuestCartItem | null => {
   const id = normalizeSafeId(item.id);
-  const productId = normalizeSafeId(item.productId);
+  const productSnapshot: Partial<ProductPublic> & Record<string, unknown> = item.product || {};
+  const productId = normalizeSafeId(item.productId ?? productSnapshot.id);
   if (id === null || productId === null || productId <= 0) return null;
+  const stock = item.stock === undefined ? productSnapshot.stock : item.stock;
+  const productStatus = item.productStatus || productSnapshot.status;
 
   return {
-    ...item,
     id,
     productId,
-    quantity: normalizeGuestCartQuantity(item.quantity, item.stock),
-    productName: String(item.productName || '').trim(),
-    imageUrl: item.imageUrl ? String(item.imageUrl).trim() : '',
-    price: normalizePrice(item.price),
-    stock: item.stock === undefined ? undefined : normalizeStockLimit(item.stock),
-    productStatus: item.productStatus ? String(item.productStatus).trim().toUpperCase() : 'ACTIVE',
+    quantity: normalizeGuestCartQuantity(item.quantity, stock),
+    productName: String(item.productName || productSnapshot.name || '').trim(),
+    imageUrl: item.imageUrl ? String(item.imageUrl).trim() : resolveProductSnapshotImage(productSnapshot),
+    price: normalizePrice(item.price ?? productSnapshot.effectivePrice ?? productSnapshot.price),
+    stock: stock === undefined ? undefined : normalizeStockLimit(stock),
+    productStatus: productStatus ? String(productStatus).trim().toUpperCase() : 'ACTIVE',
+    freeShipping: Boolean(item.freeShipping ?? productSnapshot.freeShipping),
+    freeShippingThreshold: normalizeOptionalNonNegativeMoney(item.freeShippingThreshold ?? productSnapshot.freeShippingThreshold),
     selectedSpecs: item.selectedSpecs ? String(item.selectedSpecs).trim() : undefined,
   };
 };
 
-const readGuestCart = (): CartItem[] => {
+const readGuestCart = (): NormalizedGuestCartItem[] => {
   try {
     const parsed = JSON.parse(getLocalStorageItem(GUEST_CART_KEY) || '[]');
-    return Array.isArray(parsed) ? parsed.map(normalizeCartItem).filter(Boolean) as CartItem[] : [];
-  } catch {
+    return Array.isArray(parsed) ? parsed.map(normalizeCartItem).filter(isNormalizedGuestCartItem) : [];
+  } catch (error) {
+    reportNonBlockingError('guestCart.readGuestCart parse failed', error);
     return [];
   }
 };
 
 const writeGuestCart = (items: CartItem[]) => {
-  setLocalStorageItem(GUEST_CART_KEY, JSON.stringify(items.map(normalizeCartItem).filter(Boolean)));
+  const normalizedItems = items.map(normalizeCartItem).filter(isNormalizedGuestCartItem);
+  const persisted = setLocalStorageItem(GUEST_CART_KEY, JSON.stringify(normalizedItems));
+  if (!persisted && hasLocalStorage()) {
+    reportNonBlockingError('guestCart.writeGuestCart persistence failed', new Error('Unable to persist guest cart'));
+  }
   dispatchDomEvent('shop:cart-updated');
+  return persisted;
 };
 
-export const getGuestCartItems = () => readGuestCart();
+/**
+ * @invariant Returned rows are flat cart items. Legacy nested product snapshots
+ * are consumed during normalization and never returned or persisted again.
+ */
+export const getGuestCartItems = (): NormalizedGuestCartItem[] => readGuestCart();
 
 export const clearGuestCart = () => writeGuestCart([]);
 
@@ -96,6 +135,8 @@ export const addGuestCartItem = (product: ProductPublic | any, quantity = 1, sel
     existing.quantity = normalizeGuestCartQuantity(existing.quantity + normalizedQuantity, stockLimit);
     existing.price = price ?? product.effectivePrice ?? product.price;
     existing.stock = product.stock;
+    existing.freeShipping = Boolean(product.freeShipping);
+    existing.freeShippingThreshold = normalizeOptionalNonNegativeMoney(product.freeShippingThreshold);
     writeGuestCart(items);
     return existing;
   }
@@ -109,6 +150,8 @@ export const addGuestCartItem = (product: ProductPublic | any, quantity = 1, sel
     price: price ?? product.effectivePrice ?? product.price,
     stock: product.stock,
     productStatus: 'ACTIVE',
+    freeShipping: Boolean(product.freeShipping),
+    freeShippingThreshold: normalizeOptionalNonNegativeMoney(product.freeShippingThreshold),
     selectedSpecs: normalizedSpecs,
   };
   writeGuestCart([...items, item]);

@@ -30,6 +30,9 @@ public class Wishlist implements Serializable {
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+
     @Transient
     @Size(max = 200)
     private String productName;

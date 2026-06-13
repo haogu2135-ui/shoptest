@@ -8,6 +8,18 @@
   box-shadow: 0 8px 20px rgba(18, 71, 52, 0.05);
 }
 
+.audit-log-page__alert,
+.audit-log-page__loadingState {
+  margin-bottom: 16px;
+}
+
+.audit-log-page__loadingState .ant-card-body {
+  min-height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .audit-log-page__insights {
   display: grid;
   grid-template-columns: minmax(240px, 1.2fr) 120px minmax(320px, 1.8fr);
@@ -837,5 +849,30 @@
   .audit-log-page__retention .ant-input-number,
   .audit-log-page__retention .ant-btn {
     min-height: 44px;
+  }
+}
+
+/* F3517: large mobile filter card must not stick under the wrapped admin header. */
+@media (max-width: 720px) {
+  .audit-log-page__toolbar {
+    position: static !important;
+    top: auto !important;
+    z-index: auto !important;
+    scroll-margin-top: calc(var(--shop-admin-header-height, 58px) + 16px);
+  }
+
+  body .audit-log-page__rangePopup.shop-mobile-popup-layer.ant-picker-dropdown {
+    z-index: 1060 !important;
+    max-width: calc(100vw - 16px) !important;
+  }
+
+  body .audit-log-page__rangePopup.shop-mobile-popup-layer .ant-picker-panel-container {
+    max-width: calc(100vw - 16px) !important;
+    max-height: calc(100dvh - 24px) !important;
+    overflow: auto !important;
+  }
+
+  body .audit-log-page__rangePopup.shop-mobile-popup-layer .ant-picker-panels {
+    flex-direction: column;
   }
 }

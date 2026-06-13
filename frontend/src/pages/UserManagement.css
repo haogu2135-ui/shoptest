@@ -12,6 +12,15 @@
   margin-bottom: 16px;
 }
 
+.user-management-page__alert,
+.user-management-page__loadingState {
+  margin-bottom: 16px;
+}
+
+.user-management-page__loadingState .ant-card-body {
+  min-height: 120px;
+}
+
 .user-management-page__filters {
   width: 100%;
 }
@@ -579,5 +588,64 @@
   .user-management-page__profileModal .ant-input,
   .user-management-page__profileModal textarea.ant-input {
     min-height: 44px;
+  }
+}
+
+/* Android UI closure: user management table/filter actions. */
+@media (max-width: 780px) {
+  .user-management-page__filters .ant-input-affix-wrapper,
+  .user-management-page__filters .ant-select-selector,
+  .user-management-page__filters .ant-btn,
+  .user-management-page .ant-table-cell .ant-select-selector,
+  .user-management-page .ant-table-cell .ant-btn,
+  .user-management-page__profileModal .ant-modal-footer .ant-btn {
+    min-height: 44px !important;
+    height: auto !important;
+    max-height: none !important;
+  }
+
+  .user-management-page__healthItem span,
+  .user-management-page__healthItem strong,
+  .user-management-page .ant-table-cell,
+  .user-management-page .ant-btn > span:not(.anticon):not(.ant-btn-icon) {
+    font-size: max(12px, 1em) !important;
+    line-height: 1.25 !important;
+  }
+}
+
+/* F2761: admin summary/status metrics must wrap instead of hiding risk counts in scroll rails. */
+@media (max-width: 900px), (max-height: 640px) {
+  .user-management-page__health {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .user-management-page__healthGrid {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fit, minmax(104px, 1fr)) !important;
+    gap: 8px !important;
+    margin-inline: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    scroll-snap-type: none !important;
+    -webkit-mask-image: none !important;
+    mask-image: none !important;
+    touch-action: manipulation;
+  }
+
+  .user-management-page__healthItem {
+    flex: initial !important;
+    min-width: 0 !important;
+    min-height: 72px !important;
+    padding: 10px !important;
+    overflow: visible !important;
+    scroll-snap-align: initial !important;
+    text-overflow: clip !important;
+    white-space: normal !important;
+  }
+
+  .user-management-page__healthItem span {
+    overflow: visible !important;
+    text-overflow: clip !important;
+    white-space: normal !important;
   }
 }

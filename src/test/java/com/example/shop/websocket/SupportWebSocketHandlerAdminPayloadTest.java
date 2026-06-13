@@ -3,11 +3,12 @@ package com.example.shop.websocket;
 import com.example.shop.entity.SupportMessage;
 import com.example.shop.entity.SupportSession;
 import com.example.shop.repository.UserMapper;
-import com.example.shop.security.JwtService;
 import com.example.shop.service.AdminRoleService;
 import com.example.shop.service.RuntimeConfigService;
 import com.example.shop.service.SecurityAuditLogService;
 import com.example.shop.service.SupportService;
+import com.example.shop.service.SupportWebSocketTicketService;
+import com.example.shop.service.TokenBlacklistService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 
@@ -21,13 +22,14 @@ import static org.mockito.Mockito.mock;
 class SupportWebSocketHandlerAdminPayloadTest {
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final SupportWebSocketHandler handler = new SupportWebSocketHandler(
-            mock(JwtService.class),
+            mock(TokenBlacklistService.class),
             mock(UserMapper.class),
             mock(AdminRoleService.class),
             mock(SupportService.class),
             mock(SecurityAuditLogService.class),
             objectMapper,
-            mock(RuntimeConfigService.class)
+            mock(RuntimeConfigService.class),
+            mock(SupportWebSocketTicketService.class)
     );
 
     @Test

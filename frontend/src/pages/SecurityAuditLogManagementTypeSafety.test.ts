@@ -8,7 +8,7 @@ describe('SecurityAuditLogManagement type-safety guards', () => {
     expect(source).toContain('} catch (error: unknown) {');
     expect(source).toContain("getApiErrorMessage(error, t('pages.auditLogs.loadFailed'), language)");
     expect(source).toContain("getApiErrorMessage(error, t('pages.auditLogs.exportFailed'), language)");
-    expect(source).toContain('getApiErrorMessage(error, localizedAdminCopy.purgeFailed, language)');
+    expect(source).toContain("getApiErrorMessage(error, adminText('purgeFailed'), language)");
     expect(source).not.toContain('catch (error: any)');
     expect(source).not.toContain('catch (err: any)');
     expect(source).not.toContain('as any');

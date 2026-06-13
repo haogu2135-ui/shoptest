@@ -1,3 +1,4 @@
+import { reportNonBlockingError } from './nonBlockingError';
 import { getLocalStorageItem, removeLocalStorageItem, setLocalStorageItem } from './safeStorage';
 
 const GUEST_SUPPORT_CONTEXT_KEY = 'shop-guest-support-context';
@@ -42,7 +43,8 @@ export const loadGuestSupportContext = (): GuestSupportContext | null => {
       return null;
     }
     return normalized;
-  } catch {
+  } catch (error) {
+    reportNonBlockingError('guestSupportContext.loadGuestSupportContext', error);
     removeLocalStorageItem(GUEST_SUPPORT_CONTEXT_KEY);
     return null;
   }

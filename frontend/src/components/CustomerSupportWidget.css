@@ -1450,9 +1450,14 @@
   padding: 6px 10px;
 }
 
-.customer-support-widget__welcomeQuickReplies button:hover {
+.customer-support-widget__welcomeQuickReplies button:hover:not(:disabled) {
   border-color: rgba(238, 77, 45, 0.52);
   background: #fff0e9;
+}
+
+.customer-support-widget__welcomeQuickReplies button:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
 }
 
 .customer-support-widget__messageInput .ant-input {
@@ -1898,7 +1903,7 @@
   }
 
   .customer-support-widget__button:active,
-  .customer-support-widget__welcomeQuickReplies button:active,
+  .customer-support-widget__welcomeQuickReplies button:active:not(:disabled),
   .customer-support-widget__workflowChip:active:not(:disabled),
   .customer-support-widget__quickReplies .ant-btn:active:not(:disabled),
   .customer-support-widget__shareLatest.ant-btn:active,
@@ -1918,7 +1923,7 @@
 @media (hover: none) and (pointer: coarse) {
   .customer-support-widget__button:hover,
   .customer-support-widget__quickReplies .ant-btn:hover,
-  .customer-support-widget__welcomeQuickReplies button:hover {
+  .customer-support-widget__welcomeQuickReplies button:hover:not(:disabled) {
     transform: none;
   }
 }
@@ -2545,5 +2550,458 @@
     width: 46px;
     min-width: 46px;
     height: 46px;
+  }
+}
+
+.customer-support-widget__loading {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  color: #2f4f3a;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.customer-support-widget__loading--messages {
+  min-height: 120px;
+  display: flex;
+  justify-content: center;
+}
+
+.customer-support-widget__sessionError {
+  margin: 8px;
+}
+
+.customer-support-widget__orderAlert {
+  margin: 8px 0;
+}
+
+/* F3540: keep support order overlays above the already-open chat panel. */
+body .support-order-select-popup.shop-mobile-popup-layer,
+body .support-order-select-popup.ant-select-dropdown {
+  z-index: 10021 !important;
+  pointer-events: auto !important;
+}
+
+body .support-order-select-popup.ant-select-dropdown {
+  left: max(8px, env(safe-area-inset-left, 0px)) !important;
+  right: max(8px, env(safe-area-inset-right, 0px)) !important;
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: calc(100vw - 16px) !important;
+  max-height: min(360px, calc(100dvh - 24px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px))) !important;
+  overflow: auto !important;
+}
+
+body .support-order-select-popup .ant-select-item {
+  min-height: 44px;
+  align-items: center;
+}
+
+body .support-order-select-popup .ant-select-item-option-content {
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
+}
+
+body .customer-support-widget__orderModalRoot,
+body .customer-support-widget__orderModalRoot .ant-modal-mask {
+  z-index: 10020 !important;
+}
+
+body .customer-support-widget__orderModalRoot .ant-modal-wrap {
+  z-index: 10021 !important;
+}
+
+body .customer-support-widget__orderModalRoot .customer-support-widget__orderModal.ant-modal {
+  z-index: 10022 !important;
+}
+
+@media (max-width: 780px), (max-height: 640px) {
+  body .customer-support-widget__orderModalRoot .ant-modal-wrap {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: max(8px, env(safe-area-inset-top, 0px)) max(6px, env(safe-area-inset-right, 0px)) max(8px, env(safe-area-inset-bottom, 0px)) max(6px, env(safe-area-inset-left, 0px));
+    overflow: auto !important;
+  }
+
+  body .customer-support-widget__orderModalRoot .customer-support-widget__orderModal.ant-modal {
+    top: 0 !important;
+    max-width: calc(100vw - 12px) !important;
+    padding-bottom: 0;
+  }
+}
+
+/* Android UI closure: compact support controls cannot collapse under 44px. */
+@media (max-width: 780px) {
+  .customer-support-widget__linkButton.ant-btn,
+  .customer-support-widget__quickReplies .ant-btn,
+  .customer-support-widget__workflowChip,
+  .customer-support-widget__actions .ant-btn,
+  .customer-support-widget__shareLatest.ant-btn,
+  .customer-support-widget__headerClose.ant-btn,
+  .customer-support-widget__orderModal .ant-btn {
+    min-height: 44px !important;
+    height: auto !important;
+    max-height: none !important;
+    font-size: max(12px, 1em) !important;
+  }
+
+  .customer-support-widget__headerClose.ant-btn,
+  .customer-support-widget__linkButton.ant-btn {
+    width: 44px !important;
+    min-width: 44px !important;
+  }
+
+  .customer-support-widget__orderSelect .ant-select-selector,
+  .customer-support-widget__messageInput .ant-input,
+  .customer-support-widget__composer .ant-input-textarea textarea {
+    min-height: 44px !important;
+    height: auto !important;
+    font-size: 16px !important;
+  }
+
+  .customer-support-widget__messageMeta,
+  .customer-support-widget__mobileStatus,
+  .customer-support-widget__orderTags .ant-tag,
+  .customer-support-widget__workflowLabel,
+  .customer-support-widget__workflowChip strong,
+  .customer-support-widget__workflowChip span,
+  .customer-support-widget__quickReplies .ant-btn > span:not(.anticon):not(.ant-btn-icon),
+  .customer-support-widget__linkButton.ant-btn > span:not(.anticon):not(.ant-btn-icon) {
+    font-size: max(12px, 1em) !important;
+    line-height: 1.25 !important;
+  }
+}
+
+/* F2859: compact support sheet matches storefront mobile and short-landscape breakpoints. */
+@media (max-width: 780px), (max-width: 900px) and (max-height: 430px) {
+  .customer-support-widget__backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 2580 !important;
+    display: block;
+    background: rgba(9, 28, 21, 0.32);
+    backdrop-filter: blur(3px);
+  }
+
+  .customer-support-widget__button {
+    right: max(14px, calc(env(safe-area-inset-right, 0px) + 14px)) !important;
+    bottom: max(96px, calc(var(--shop-mobile-bottom-nav-height, 72px) + 24px + env(safe-area-inset-bottom, 0px))) !important;
+    left: auto !important;
+    top: auto !important;
+  }
+
+  .customer-support-widget__panel {
+    top: max(6px, env(safe-area-inset-top, 0px)) !important;
+    right: max(6px, env(safe-area-inset-right, 0px)) !important;
+    bottom: max(6px, env(safe-area-inset-bottom, 0px)) !important;
+    left: max(6px, env(safe-area-inset-left, 0px)) !important;
+    width: auto !important;
+    max-width: none !important;
+    height: calc(100vh - 12px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) !important;
+    max-height: calc(100vh - 12px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) !important;
+    display: grid !important;
+    grid-template-rows: auto auto minmax(88px, 1fr) minmax(0, auto) !important;
+    overflow: hidden !important;
+    border-radius: 14px !important;
+  }
+
+  @supports (height: 100dvh) {
+    .customer-support-widget__panel {
+      height: calc(100dvh - 12px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) !important;
+      max-height: calc(100dvh - 12px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) !important;
+    }
+  }
+
+  .customer-support-widget__header {
+    min-height: 48px;
+    padding: 8px 10px !important;
+  }
+
+  .customer-support-widget__header .ant-space {
+    min-width: 0;
+  }
+
+  .customer-support-widget__headerTitle {
+    max-width: min(56vw, 360px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .customer-support-widget__headerSubtitle,
+  .customer-support-widget__presenceText,
+  .customer-support-widget__brief {
+    display: none !important;
+  }
+
+  .customer-support-widget__mobileStatus {
+    min-height: 28px;
+    display: flex !important;
+    gap: 6px;
+    overflow-x: auto;
+    padding: 5px 8px;
+    border-bottom: 1px solid #e4ebe4;
+    background: #fff8f3;
+    scrollbar-width: none;
+  }
+
+  .customer-support-widget__mobileStatus::-webkit-scrollbar {
+    display: none;
+  }
+
+  .customer-support-widget__mobileStatus span {
+    flex: 0 0 auto;
+    max-width: min(210px, 42vw);
+    min-height: 22px;
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 8px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: #ffffff;
+    color: #476153;
+    font-size: 12px;
+    font-weight: 800;
+    line-height: 1.2;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .customer-support-widget__messages {
+    min-height: 88px !important;
+    overflow-y: auto !important;
+    padding: 8px;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .customer-support-widget__composer {
+    position: relative !important;
+    bottom: auto !important;
+    min-height: 0;
+    max-height: min(48vh, 220px);
+    overflow-y: auto !important;
+    padding: 7px 8px 8px;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  @supports (height: 100dvh) {
+    .customer-support-widget__composer {
+      max-height: min(48dvh, 220px);
+    }
+  }
+
+  .customer-support-widget__triage {
+    gap: 6px;
+    margin-bottom: 6px;
+    padding: 7px 8px;
+  }
+
+  .customer-support-widget__triageHelper,
+  .customer-support-widget__workflowLabel,
+  .customer-support-widget__orderPickerHeader {
+    display: none !important;
+  }
+
+  .customer-support-widget__quickReplies,
+  .customer-support-widget__workflowList {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 6px;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .customer-support-widget__quickReplies::-webkit-scrollbar,
+  .customer-support-widget__workflowList::-webkit-scrollbar {
+    display: none;
+  }
+
+  .customer-support-widget__quickReplies .ant-btn {
+    flex: 0 0 auto;
+  }
+
+  .customer-support-widget__orderPicker {
+    margin-bottom: 6px;
+    padding: 6px;
+  }
+
+  .customer-support-widget__orderSelect .ant-select-selector,
+  .customer-support-widget__messageInput .ant-input,
+  .customer-support-widget__composer .ant-input-textarea textarea,
+  .customer-support-widget__actions .ant-btn {
+    min-height: 44px !important;
+  }
+
+  .customer-support-widget__messageInput .ant-input,
+  .customer-support-widget__composer .ant-input-textarea textarea {
+    max-height: 96px;
+    overflow-y: auto;
+  }
+
+  .customer-support-widget__actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 0.9fr);
+    gap: 6px;
+    margin-top: 6px;
+    padding-top: 6px;
+  }
+}
+
+@media (max-width: 900px) and (max-height: 430px) {
+  .customer-support-widget__panel {
+    grid-template-rows: auto auto minmax(76px, 1fr) minmax(0, auto) !important;
+  }
+
+  .customer-support-widget__header {
+    min-height: 44px;
+    padding: 6px 10px !important;
+  }
+
+  .customer-support-widget__headerIcon {
+    width: 30px;
+    height: 30px;
+    font-size: 16px;
+  }
+
+  .customer-support-widget__headerClose.ant-btn {
+    min-width: 40px !important;
+    width: 40px !important;
+    height: 40px;
+  }
+
+  .customer-support-widget__mobileStatus {
+    min-height: 26px;
+    padding: 4px 8px;
+  }
+
+  .customer-support-widget__messages {
+    min-height: 76px !important;
+    padding: 6px 8px;
+  }
+
+  .customer-support-widget__composer {
+    max-height: min(54vh, 184px);
+    padding: 6px 8px 8px;
+  }
+
+  @supports (height: 100dvh) {
+    .customer-support-widget__composer {
+      max-height: min(54dvh, 184px);
+    }
+  }
+
+  .customer-support-widget__triage,
+  .customer-support-widget__workflowActions,
+  .customer-support-widget__quickReplies {
+    display: none !important;
+  }
+
+  .customer-support-widget__orderPicker {
+    margin-bottom: 6px;
+    padding: 4px 6px;
+  }
+
+  .customer-support-widget__messageInput .ant-input,
+  .customer-support-widget__composer .ant-input-textarea textarea {
+    min-height: 44px !important;
+    max-height: 64px;
+  }
+
+  .customer-support-widget__actions .ant-btn {
+    min-height: 40px !important;
+  }
+}
+
+/* A-23: keep support send/login actions reachable inside tall App sheets. */
+@media (max-width: 780px), (max-width: 900px) and (max-height: 430px) {
+  .customer-support-widget__composer {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    align-content: start !important;
+    max-height: min(42vh, 208px);
+  }
+
+  @supports (height: 100dvh) {
+    .customer-support-widget__composer {
+      max-height: min(42dvh, 208px);
+    }
+  }
+
+  .customer-support-widget__actions {
+    position: sticky !important;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 3;
+    margin: 6px -8px -8px !important;
+    padding: 6px 8px max(8px, env(safe-area-inset-bottom, 0px)) !important;
+    border-top: 1px solid #e4ebe4;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), #ffffff 38%);
+    box-shadow: 0 -8px 18px rgba(18, 71, 52, 0.08);
+  }
+}
+
+/* Commercial mobile support pass: order cards and composer actions stay readable at APP widths. */
+@media (max-width: 780px), (max-width: 900px) and (max-height: 430px) {
+  .customer-support-widget__orderCard {
+    display: block !important;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .customer-support-widget__orderCard .ant-card-body,
+  .customer-support-widget__orderCard .ant-space,
+  .customer-support-widget__orderCard .ant-space-item:last-child {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .customer-support-widget__orderTags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .customer-support-widget__orderTags .ant-tag {
+    max-width: 100%;
+    margin-inline-end: 0;
+    overflow-wrap: anywhere;
+    white-space: normal;
+  }
+
+  .customer-support-widget__linkButton.ant-btn {
+    width: auto !important;
+    min-width: 96px !important;
+    max-width: 100% !important;
+    justify-content: flex-start;
+    padding: 0 4px !important;
+  }
+
+  .customer-support-widget__linkButton.ant-btn > span:not(.anticon):not(.ant-btn-icon) {
+    overflow: visible !important;
+    text-overflow: clip !important;
+    white-space: normal !important;
+  }
+
+  .customer-support-widget__composer {
+    padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px)) !important;
+    scroll-padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .customer-support-widget__workflowList,
+  .customer-support-widget__quickReplies {
+    padding-bottom: 6px;
+  }
+
+  .customer-support-widget__workflowChip {
+    max-width: min(280px, 78vw);
   }
 }

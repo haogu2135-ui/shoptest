@@ -1,6 +1,5 @@
 package com.example.shop.service;
 
-import lombok.extern.slf4j.Slf4j;
 import com.example.shop.dto.PetBirthdayCouponConfigRequest;
 import com.example.shop.entity.Coupon;
 import com.example.shop.entity.PetBirthdayCouponConfig;
@@ -26,7 +25,6 @@ import java.util.Locale;
 
 @Service
 @RequiredArgsConstructor
-@Slf4j
 public class PetBirthdayCouponService {
     private static final long DEFAULT_CONFIG_ID = 1L;
     private static final String FULL_REDUCTION = "FULL_REDUCTION";
@@ -39,7 +37,7 @@ public class PetBirthdayCouponService {
     private final PetBirthdayCouponGrantMapper grantMapper;
 
     @Scheduled(cron = "${pet.birthday-coupon.cron:0 10 0 * * *}")
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void grantTodayBirthdayCoupons() {
         grantBirthdayCoupons(LocalDate.now());
     }
@@ -48,7 +46,7 @@ public class PetBirthdayCouponService {
         return configRepository.findById(DEFAULT_CONFIG_ID).orElseGet(this::createDefaultConfig);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public PetBirthdayCouponConfig updateConfig(PetBirthdayCouponConfigRequest request) {
         PetBirthdayCouponConfig config = getConfig();
         if (request.getEnabled() != null) {
@@ -80,7 +78,7 @@ public class PetBirthdayCouponService {
         return configRepository.save(config);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public int grantBirthdayCoupons(LocalDate date) {
         PetBirthdayCouponConfig config = getConfig();
         if (!Boolean.TRUE.equals(config.getEnabled())) {
@@ -115,7 +113,7 @@ public class PetBirthdayCouponService {
         return granted;
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public int reissueBirthdayCoupons(Long userId, LocalDate date) {
         if (userId == null) {
             throw new IllegalArgumentException("User is required");
@@ -133,7 +131,7 @@ public class PetBirthdayCouponService {
         return granted;
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void deleteBirthdayCouponRecords(Long couponId) {
         int deleted = userCouponMapper.deleteUnusedByCouponId(couponId);
         if (deleted > 0) {

@@ -56,6 +56,17 @@ class LogisticsServiceTest {
     }
 
     @Test
+    void unknownCarrierReturnsUnavailableTrackingInsteadOfThrowingOutsideProduction() {
+        LogisticsTrackResponse response = service.track("TN123", "MYSTERY");
+
+        assertEquals("MYSTERY", response.getCarrier());
+        assertEquals("TRACKING_UNAVAILABLE", response.getStatus());
+        assertEquals(
+                "Real-time logistics tracking is not configured yet. Check the carrier site or contact support with this tracking number.",
+                response.getSummary());
+    }
+
+    @Test
     void rejectsMissingTrackingNumber() {
         assertThrows(IllegalArgumentException.class, () -> service.track(" \n\t\u0000 ", "DHL"));
     }

@@ -88,6 +88,27 @@ class LoginControllerRefreshTest {
     }
 
     @Test
+    void refreshTokenRejectsInactiveUserAndDoesNotIssueReplacementTokens() {
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/auth/refresh");
+        User user = user();
+        user.setStatus("BANNED");
+
+        when(tokenBlacklistService.consumeRefreshToken("refresh-old")).thenReturn("mia");
+        when(userService.findByUsernameOrPhoneOrEmail("mia")).thenReturn(user);
+
+        ResponseEntity<?> response = controller.refreshToken(Map.of("refreshToken", "refresh-old"), request);
+
+        assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
+        Map<?, ?> body = (Map<?, ?>) response.getBody();
+        assertEquals("Account is disabled", body.get("error"));
+        assertEquals("ACCOUNT_DISABLED", body.get("code"));
+        verify(tokenBlacklistService).revokeRefreshToken("refresh-old");
+        verify(jwtService, never()).generateToken(any(UserDetailsImpl.class));
+        verify(tokenBlacklistService, never()).generateRefreshToken();
+        verify(tokenBlacklistService, never()).storeRefreshToken(any(), any());
+    }
+
+    @Test
     void refreshTokenRequiresTokenValue() {
         ResponseEntity<?> response = controller.refreshToken(null, new MockHttpServletRequest("POST", "/auth/refresh"));
 

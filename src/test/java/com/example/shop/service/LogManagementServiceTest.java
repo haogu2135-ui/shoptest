@@ -14,12 +14,22 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentCaptor.forClass;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 class LogManagementServiceTest {
     @TempDir
@@ -27,20 +37,24 @@ class LogManagementServiceTest {
 
     private LoggingSystem loggingSystem;
     private MockEnvironment environment;
+    private ScheduledExecutorService scheduler;
+    private ScheduledFuture<?> scheduledFuture;
     private LogManagementService service;
 
     @BeforeEach
     void setUp() throws Exception {
         loggingSystem = mock(LoggingSystem.class);
+        scheduler = mock(ScheduledExecutorService.class);
+        scheduledFuture = mock(ScheduledFuture.class);
+        doReturn(scheduledFuture).when(scheduler).schedule(any(Runnable.class), anyLong(), eq(TimeUnit.MINUTES));
         environment = new MockEnvironment();
         Path logFile = tempDir.resolve("shop-backend.log");
         environment.setProperty("logging.file.name", logFile.toString());
-        environment.setProperty("admin.logs.allowed-logger-prefixes", "com.example.shop,org.mybatis,org.springframework.web,org.springframework.security");
-        environment.setProperty("admin.logs.additional-debug-loggers", "org.mybatis,org.springframework.web,org.springframework.security");
+        environment.setProperty("admin.logs.allowed-logger-prefixes", "com.example.shop");
         environment.setProperty("admin.logs.max-range-hours", "2");
         environment.setProperty("admin.logs.preview-max-lines", "2");
         environment.setProperty("admin.logs.max-download-bytes", "1024");
-        service = new LogManagementService(loggingSystem, environment);
+        service = new LogManagementService(loggingSystem, environment, scheduler);
 
         Files.writeString(logFile,
                 "2026-05-24 10:00:00.000  INFO [requestId:a] first shop event\n"
@@ -55,11 +69,44 @@ class LogManagementServiceTest {
         service.setDebug(true, "com.example.shop.service.PaymentService");
 
         verify(loggingSystem).setLogLevel("com.example.shop.service.PaymentService", LogLevel.DEBUG);
-        verify(loggingSystem).setLogLevel("org.mybatis", LogLevel.DEBUG);
-        verify(loggingSystem).setLogLevel("org.springframework.web", LogLevel.DEBUG);
-        verify(loggingSystem).setLogLevel("org.springframework.security", LogLevel.DEBUG);
+        verify(loggingSystem, never()).setLogLevel("org.mybatis", LogLevel.DEBUG);
+        verify(loggingSystem, never()).setLogLevel("org.springframework.web", LogLevel.DEBUG);
+        verify(loggingSystem, never()).setLogLevel("org.springframework.security", LogLevel.DEBUG);
         assertThrows(ResponseStatusException.class, () -> service.setDebug(true, "org.hibernate.SQL"));
         assertThrows(ResponseStatusException.class, () -> service.setDebug(true, "com.example.shop\nBad"));
+    }
+
+    @Test
+    void optionalAdditionalDebugLoggersRequireExplicitAllowlist() {
+        environment.setProperty("admin.logs.allowed-logger-prefixes", "com.example.shop,org.mybatis");
+        environment.setProperty("admin.logs.additional-debug-loggers", "org.mybatis");
+
+        service.setDebug(true, "com.example.shop");
+
+        verify(loggingSystem).setLogLevel("com.example.shop", LogLevel.DEBUG);
+        verify(loggingSystem).setLogLevel("org.mybatis", LogLevel.DEBUG);
+    }
+
+    @Test
+    void debugToggleSchedulesAutoRestoreToInfo() {
+        org.mockito.ArgumentCaptor<Runnable> restoreTask = forClass(Runnable.class);
+
+        service.setDebug(true, "com.example.shop");
+
+        verify(scheduler).schedule(restoreTask.capture(), eq(15L), eq(TimeUnit.MINUTES));
+        restoreTask.getValue().run();
+
+        verify(loggingSystem).setLogLevel("com.example.shop", LogLevel.DEBUG);
+        verify(loggingSystem).setLogLevel("com.example.shop", LogLevel.INFO);
+    }
+
+    @Test
+    void disablingDebugCancelsPendingAutoRestore() {
+        service.setDebug(true, "com.example.shop");
+        service.setDebug(false, "com.example.shop");
+
+        verify(scheduledFuture).cancel(false);
+        verify(loggingSystem).setLogLevel("com.example.shop", LogLevel.INFO);
     }
 
     @Test
@@ -71,6 +118,7 @@ class LogManagementServiceTest {
         assertEquals(2, status.getMaxPreviewLines());
         assertEquals(1024, status.getMaxDownloadBytes());
         assertTrue(status.getAllowedLoggerPrefixes().contains("com.example.shop"));
+        assertTrue(status.getAllowedLoggerPrefixes().stream().noneMatch(prefix -> prefix.startsWith("org.springframework")));
         assertTrue(status.getAvailableFiles().contains("shop-backend.log"));
     }
 

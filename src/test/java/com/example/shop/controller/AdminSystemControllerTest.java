@@ -48,12 +48,8 @@ class AdminSystemControllerTest {
         assertEquals(true, status.get("healthy"));
         assertEquals(true, ((Map<?, ?>) status.get("database")).get("ready"));
         assertEquals(true, ((Map<?, ?>) status.get("redis")).get("ready"));
-        assertEquals("PONG", ((Map<?, ?>) status.get("redis")).get("ping"));
-        assertTrue(((Number) ((Map<?, ?>) status.get("database")).get("latencyMs")).longValue() >= 0);
-        assertTrue(((Number) ((Map<?, ?>) status.get("redis")).get("latencyMs")).longValue() >= 0);
-        assertEquals(0L, ((Number) ((Map<?, ?>) status.get("nacos")).get("latencyMs")).longValue());
-        assertEquals("jdbc:mysql://******:******@localhost:3306/shop?password=******&token=******&useSSL=false",
-                ((Map<?, ?>) status.get("database")).get("url"));
+        assertEquals("DISABLED", ((Map<?, ?>) status.get("nacos")).get("status"));
+        assertPublicStatusPayloadDoesNotExposeInfrastructure(status);
     }
 
     @Test
@@ -67,7 +63,7 @@ class AdminSystemControllerTest {
         assertEquals("UP", response.getBody().get("status"));
         assertEquals("DISABLED", ((Map<?, ?>) response.getBody().get("redis")).get("status"));
         assertEquals(true, ((Map<?, ?>) response.getBody().get("redis")).get("ready"));
-        assertEquals(0L, ((Number) ((Map<?, ?>) response.getBody().get("redis")).get("latencyMs")).longValue());
+        assertPublicStatusPayloadDoesNotExposeInfrastructure(response.getBody());
     }
 
     @Test
@@ -83,12 +79,9 @@ class AdminSystemControllerTest {
         assertEquals("DEGRADED", response.getBody().get("status"));
         Map<?, ?> database = (Map<?, ?>) response.getBody().get("database");
         assertEquals(false, database.get("ready"));
-        assertTrue(String.valueOf(database.get("error")).contains("SQLException"));
-        assertTrue(String.valueOf(database.get("error")).contains("password=******"));
-        assertTrue(String.valueOf(database.get("error")).contains("token=******"));
-        assertFalse(String.valueOf(database.get("error")).contains("raw-secret"));
-        assertFalse(String.valueOf(database.get("error")).contains("raw-token"));
-        assertFalse(String.valueOf(database.get("error")).contains("\n"));
+        assertEquals("DOWN", database.get("status"));
+        assertFalse(database.containsKey("error"));
+        assertPublicStatusPayloadDoesNotExposeInfrastructure(response.getBody());
     }
 
     @Test
@@ -106,7 +99,7 @@ class AdminSystemControllerTest {
     }
 
     @Test
-    void masksNacosHealthWarningsAndErrorsBeforeReturningSystemStatus() throws Exception {
+    void systemStatusDoesNotExposeNacosInfrastructureDetails() throws Exception {
         Environment environment = environment();
         when(environment.getProperty("spring.cloud.nacos.discovery.enabled", Boolean.class, false)).thenReturn(true);
         when(environment.getProperty("spring.cloud.nacos.config.enabled", Boolean.class, true)).thenReturn(true);
@@ -126,9 +119,13 @@ class AdminSystemControllerTest {
 
         Map<?, ?> nacos = (Map<?, ?>) status.get("nacos");
         assertEquals("DOWN", nacos.get("status"));
-        assertEquals("127.0.0.1:8848?token=******", nacos.get("serverAddr"));
-        assertEquals(List.of("using token=******"), nacos.get("warnings"));
-        assertEquals(List.of("password=******; Authorization: Bearer ******"), nacos.get("errors"));
+        assertFalse(nacos.containsKey("serverAddr"));
+        assertFalse(nacos.containsKey("namespace"));
+        assertFalse(nacos.containsKey("group"));
+        assertFalse(nacos.containsKey("dataId"));
+        assertFalse(nacos.containsKey("warnings"));
+        assertFalse(nacos.containsKey("errors"));
+        assertPublicStatusPayloadDoesNotExposeInfrastructure(status);
     }
 
     @Test
@@ -157,13 +154,10 @@ class AdminSystemControllerTest {
         Map<?, ?> productionConfig = (Map<?, ?>) response.getBody().get("productionConfig");
         assertEquals("BLOCKED", productionConfig.get("status"));
         assertEquals(false, productionConfig.get("ready"));
-        List<?> issues = (List<?>) productionConfig.get("issues");
-        assertTrue(issues.stream().anyMatch((issue) -> String.valueOf(issue).contains("app.jwtSecret")));
-        assertTrue(issues.stream().anyMatch((issue) -> String.valueOf(issue).contains("payment.callback-secret")));
-        assertTrue(issues.stream().anyMatch((issue) -> String.valueOf(issue).contains("app.mail.accounts")));
-        assertTrue(issues.stream().anyMatch((issue) -> String.valueOf(issue).contains("app.cors.allowed-origin-patterns")));
-        assertTrue(issues.stream().anyMatch((issue) -> String.valueOf(issue).contains("payment channel")));
-        assertTrue(issues.stream().anyMatch((issue) -> String.valueOf(issue).contains("production logistics tracking")));
+        assertFalse(productionConfig.containsKey("issues"));
+        assertFalse(productionConfig.containsKey("warnings"));
+        assertFalse(productionConfig.containsKey("checks"));
+        assertPublicStatusPayloadDoesNotExposeInfrastructure(response.getBody());
     }
 
     @Test
@@ -198,14 +192,10 @@ class AdminSystemControllerTest {
         Map<?, ?> productionConfig = (Map<?, ?>) response.getBody().get("productionConfig");
         assertEquals("UP", productionConfig.get("status"));
         assertEquals(true, productionConfig.get("ready"));
-        assertEquals(List.of(), productionConfig.get("issues"));
-        Map<?, ?> checks = (Map<?, ?>) productionConfig.get("checks");
-        assertEquals("PASS", ((Map<?, ?>) checks.get("jwtSecret")).get("status"));
-        assertEquals(1, ((Map<?, ?>) checks.get("mail")).get("configuredAccountCount"));
-        assertEquals("PASS", ((Map<?, ?>) checks.get("adminBootstrap")).get("status"));
-        assertEquals("PASS", ((Map<?, ?>) checks.get("paymentSimulation")).get("status"));
-        assertEquals(1, ((Map<?, ?>) checks.get("paymentChannels")).get("availableCheckoutChannelCount"));
-        assertEquals("PASS", ((Map<?, ?>) checks.get("logistics")).get("status"));
+        assertFalse(productionConfig.containsKey("issues"));
+        assertFalse(productionConfig.containsKey("warnings"));
+        assertFalse(productionConfig.containsKey("checks"));
+        assertPublicStatusPayloadDoesNotExposeInfrastructure(response.getBody());
     }
 
     @Test
@@ -233,10 +223,10 @@ class AdminSystemControllerTest {
 
         assertEquals(HttpStatus.SERVICE_UNAVAILABLE, response.getStatusCode());
         Map<?, ?> productionConfig = (Map<?, ?>) response.getBody().get("productionConfig");
-        List<?> issues = (List<?>) productionConfig.get("issues");
-        Map<?, ?> checks = (Map<?, ?>) productionConfig.get("checks");
-        assertTrue(issues.stream().anyMatch((issue) -> String.valueOf(issue).contains("admin.bootstrap-token")));
-        assertEquals("FAIL", ((Map<?, ?>) checks.get("adminBootstrap")).get("status"));
+        assertEquals("BLOCKED", productionConfig.get("status"));
+        assertEquals(false, productionConfig.get("ready"));
+        assertFalse(productionConfig.containsKey("issues"));
+        assertFalse(productionConfig.containsKey("checks"));
     }
 
     @Test
@@ -265,10 +255,10 @@ class AdminSystemControllerTest {
 
         assertEquals(HttpStatus.SERVICE_UNAVAILABLE, response.getStatusCode());
         Map<?, ?> productionConfig = (Map<?, ?>) response.getBody().get("productionConfig");
-        List<?> issues = (List<?>) productionConfig.get("issues");
-        Map<?, ?> checks = (Map<?, ?>) productionConfig.get("checks");
-        assertTrue(issues.stream().anyMatch((issue) -> String.valueOf(issue).contains("payment simulation")));
-        assertEquals("FAIL", ((Map<?, ?>) checks.get("paymentSimulation")).get("status"));
+        assertEquals("BLOCKED", productionConfig.get("status"));
+        assertEquals(false, productionConfig.get("ready"));
+        assertFalse(productionConfig.containsKey("issues"));
+        assertFalse(productionConfig.containsKey("checks"));
     }
 
     @Test
@@ -295,11 +285,10 @@ class AdminSystemControllerTest {
 
         assertEquals(HttpStatus.SERVICE_UNAVAILABLE, response.getStatusCode());
         Map<?, ?> productionConfig = (Map<?, ?>) response.getBody().get("productionConfig");
-        List<?> issues = (List<?>) productionConfig.get("issues");
-        Map<?, ?> checks = (Map<?, ?>) productionConfig.get("checks");
-        assertTrue(issues.stream().anyMatch((issue) -> String.valueOf(issue).contains("app.mail.accounts")));
-        assertEquals("FAIL", ((Map<?, ?>) checks.get("mail")).get("status"));
-        assertEquals(0, ((Map<?, ?>) checks.get("mail")).get("configuredAccountCount"));
+        assertEquals("BLOCKED", productionConfig.get("status"));
+        assertEquals(false, productionConfig.get("ready"));
+        assertFalse(productionConfig.containsKey("issues"));
+        assertFalse(productionConfig.containsKey("checks"));
     }
 
     @Test
@@ -326,10 +315,10 @@ class AdminSystemControllerTest {
 
         assertEquals(HttpStatus.SERVICE_UNAVAILABLE, response.getStatusCode());
         Map<?, ?> productionConfig = (Map<?, ?>) response.getBody().get("productionConfig");
-        List<?> issues = (List<?>) productionConfig.get("issues");
-        Map<?, ?> checks = (Map<?, ?>) productionConfig.get("checks");
-        assertTrue(issues.stream().anyMatch((issue) -> String.valueOf(issue).contains("production logistics tracking")));
-        assertEquals("FAIL", ((Map<?, ?>) checks.get("logistics")).get("status"));
+        assertEquals("BLOCKED", productionConfig.get("status"));
+        assertEquals(false, productionConfig.get("ready"));
+        assertFalse(productionConfig.containsKey("issues"));
+        assertFalse(productionConfig.containsKey("checks"));
     }
 
     @Test
@@ -355,6 +344,19 @@ class AdminSystemControllerTest {
     }
 
     @Test
+    void statusRequiresSuperAdminEvenWithSystemStatusPermission() throws Exception {
+        AdminSystemController controller = controller(environment(), dataSource(true), redisTemplate("PONG"), true);
+
+        ResponseStatusException error = assertThrows(
+                ResponseStatusException.class,
+                () -> controller.getStatus(nonSuperAdminAuthentication())
+        );
+
+        assertEquals(HttpStatus.FORBIDDEN, error.getStatus());
+        assertTrue(error.getReason().contains("Super admin"));
+    }
+
+    @Test
     void statusRequiresSystemStatusPermission() throws Exception {
         AdminSystemController controller = controller(environment(), dataSource(true), redisTemplate("PONG"), true);
         when(adminRoleService.hasPermission(1L, AdminRoleService.SYSTEM_STATUS_PERMISSION)).thenReturn(false);
@@ -365,6 +367,51 @@ class AdminSystemControllerTest {
         );
 
         assertEquals(HttpStatus.FORBIDDEN, error.getStatus());
+    }
+
+    private void assertPublicStatusPayloadDoesNotExposeInfrastructure(Map<?, ?> status) {
+        assertFalse(status.containsKey("application"));
+        assertFalse(status.containsKey("runtime"));
+        assertFalse(status.containsKey("memory"));
+        assertFalse(status.containsKey("disk"));
+
+        Map<?, ?> database = (Map<?, ?>) status.get("database");
+        assertFalse(database.containsKey("url"));
+        assertFalse(database.containsKey("driver"));
+        assertFalse(database.containsKey("error"));
+        assertFalse(database.containsKey("latencyMs"));
+
+        Map<?, ?> redis = (Map<?, ?>) status.get("redis");
+        assertFalse(redis.containsKey("host"));
+        assertFalse(redis.containsKey("port"));
+        assertFalse(redis.containsKey("database"));
+        assertFalse(redis.containsKey("ping"));
+        assertFalse(redis.containsKey("error"));
+        assertFalse(redis.containsKey("latencyMs"));
+
+        Map<?, ?> nacos = (Map<?, ?>) status.get("nacos");
+        assertFalse(nacos.containsKey("serverAddr"));
+        assertFalse(nacos.containsKey("namespace"));
+        assertFalse(nacos.containsKey("group"));
+        assertFalse(nacos.containsKey("serverStatus"));
+        assertFalse(nacos.containsKey("dataId"));
+        assertFalse(nacos.containsKey("warnings"));
+        assertFalse(nacos.containsKey("errors"));
+        assertFalse(nacos.containsKey("error"));
+        assertFalse(nacos.containsKey("latencyMs"));
+
+        Map<?, ?> productionConfig = (Map<?, ?>) status.get("productionConfig");
+        assertFalse(productionConfig.containsKey("issues"));
+        assertFalse(productionConfig.containsKey("warnings"));
+        assertFalse(productionConfig.containsKey("checks"));
+
+        String serialized = String.valueOf(status);
+        assertFalse(serialized.contains("jdbc:mysql"));
+        assertFalse(serialized.contains("127.0.0.1"));
+        assertFalse(serialized.contains("db.internal"));
+        assertFalse(serialized.contains("redis.internal"));
+        assertFalse(serialized.contains("raw-secret"));
+        assertFalse(serialized.contains("raw-token"));
     }
 
     private Environment environment() {
@@ -521,6 +568,19 @@ class AdminSystemControllerTest {
     }
 
     private Authentication adminAuthentication() {
+        UserDetailsImpl principal = new UserDetailsImpl(
+                1L,
+                "admin",
+                "admin@example.com",
+                "ACTIVE",
+                "encoded-password",
+                List.of(
+                        new SimpleGrantedAuthority("ROLE_ADMIN"),
+                        new SimpleGrantedAuthority("ROLE_SUPER_ADMIN")));
+        return new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities());
+    }
+
+    private Authentication nonSuperAdminAuthentication() {
         UserDetailsImpl principal = new UserDetailsImpl(
                 1L,
                 "admin",

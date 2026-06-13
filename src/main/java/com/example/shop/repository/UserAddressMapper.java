@@ -10,6 +10,8 @@ public interface UserAddressMapper {
 
     List<UserAddress> findByUserId(Long userId);
 
+    int countByUserId(Long userId);
+
     UserAddress findById(Long id);
 
     UserAddress findDefaultByUserId(Long userId);

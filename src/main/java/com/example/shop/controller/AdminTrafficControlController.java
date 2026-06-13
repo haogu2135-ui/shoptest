@@ -9,6 +9,7 @@ import com.example.shop.service.CircuitBreakerService;
 import com.example.shop.service.RateLimitService;
 import com.example.shop.service.SecurityAuditLogService;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -21,6 +22,7 @@ import javax.servlet.http.HttpServletRequest;
 
 @RestController
 @RequestMapping("/admin/traffic-control")
+@PreAuthorize("hasRole('ADMIN')")
 public class AdminTrafficControlController {
     private final RateLimitService rateLimitService;
     private final CircuitBreakerService circuitBreakerService;

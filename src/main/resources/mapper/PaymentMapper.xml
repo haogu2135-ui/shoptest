@@ -95,7 +95,15 @@
     </select>
 
     <select id="findExpiredPending" resultMap="paymentMap">
-        SELECT * FROM payments WHERE status = 'PENDING' AND expires_at IS NOT NULL AND expires_at &lt;= NOW()
+        SELECT * FROM payments
+        WHERE status = 'PENDING'
+          AND expires_at IS NOT NULL
+          AND expires_at &lt;= NOW()
+        <if test="afterId != null">
+          AND id &gt; #{afterId}
+        </if>
+        ORDER BY id ASC
+        LIMIT #{limit}
     </select>
 
     <insert id="insert" parameterType="com.example.shop.entity.Payment" useGeneratedKeys="true" keyProperty="id">

@@ -1346,3 +1346,120 @@
     min-width: 44px;
   }
 }
+
+/* Android UI closure: wishlist pills and delete actions. */
+.wishlist-page__readinessPill--ready {
+  color: #2f4f3a !important;
+}
+
+@media (max-width: 780px) {
+  .wishlist-page__bestPickAction .ant-btn,
+  .wishlist-page__actions .ant-btn,
+  .wishlist-remove-popconfirm .ant-popconfirm-buttons .ant-btn,
+  .wishlist-clear-unavailable-popconfirm .ant-popconfirm-buttons .ant-btn {
+    min-height: 44px !important;
+    height: auto !important;
+    max-height: none !important;
+    font-size: max(12px, 1em) !important;
+  }
+
+  .wishlist-page__removeAction.ant-btn,
+  .wishlist-page__actions .ant-btn-dangerous {
+    width: 44px !important;
+    min-width: 44px !important;
+    height: 44px !important;
+  }
+
+  .wishlist-page__insightStats .ant-tag,
+  .wishlist-page__nextActionMeta .ant-tag,
+  .wishlist-page__bestPickEyebrow,
+  .wishlist-page__bestPickName,
+  .wishlist-page__readinessPill {
+    min-height: 34px !important;
+    font-size: max(12px, 1em) !important;
+    line-height: 1.25 !important;
+  }
+}
+
+/* F3443: keep the Wishlist mobile conversion action clear of the shared bottom nav. */
+@media (max-width: 860px) {
+  .wishlist-page.wishlist-page--withMobileAction {
+    --wishlist-mobile-action-height: 88px;
+    --wishlist-mobile-action-gap: 12px;
+    --wishlist-mobile-action-bottom: calc(var(--shop-mobile-bottom-nav-height, 74px) + var(--wishlist-mobile-action-gap) + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(
+      var(--wishlist-mobile-action-bottom)
+      + var(--wishlist-mobile-action-height)
+      + 24px
+    ) !important;
+    scroll-padding-bottom: calc(
+      var(--wishlist-mobile-action-bottom)
+      + var(--wishlist-mobile-action-height)
+      + 16px
+    );
+  }
+
+  .wishlist-page.wishlist-page--withMobileAction .wishlist-page__mobileAction {
+    position: fixed !important;
+    top: auto !important;
+    right: max(8px, env(safe-area-inset-right, 0px)) !important;
+    bottom: var(--wishlist-mobile-action-bottom) !important;
+    left: max(8px, env(safe-area-inset-left, 0px)) !important;
+    z-index: 1240 !important;
+    width: auto !important;
+    min-height: var(--wishlist-mobile-action-height);
+    max-width: calc(100vw - 16px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)) !important;
+    border: 1px solid #e4ebe4;
+    border-radius: 14px;
+    transform: translateZ(0);
+  }
+
+  body.shop-mobile-app .wishlist-page.wishlist-page--withMobileAction .wishlist-page__mobileAction {
+    z-index: 8998 !important;
+  }
+}
+
+@media (max-width: 860px) and (max-height: 430px) {
+  .wishlist-page.wishlist-page--withMobileAction {
+    padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 24px + env(safe-area-inset-bottom, 0px)) !important;
+    scroll-padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 36px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .wishlist-page.wishlist-page--withMobileAction .wishlist-page__mobileAction {
+    position: static !important;
+    inset: auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 0 10px !important;
+    transform: none !important;
+  }
+}
+
+/* APP account danger actions need WCAG contrast against white card surfaces. */
+@media (max-width: 780px) {
+  .wishlist-page__header .ant-btn-dangerous:not(.ant-btn-primary):not(:disabled):not(.ant-btn-disabled),
+  .wishlist-clear-unavailable-popconfirm .ant-btn-dangerous:not(.ant-btn-primary):not(:disabled):not(.ant-btn-disabled),
+  .wishlist-remove-popconfirm .ant-btn-dangerous:not(.ant-btn-primary):not(:disabled):not(.ant-btn-disabled) {
+    border-color: #9f1c12 !important;
+    color: #9f1c12 !important;
+    -webkit-text-fill-color: #9f1c12 !important;
+  }
+
+  .wishlist-page__header .ant-btn-dangerous:not(.ant-btn-primary):not(:disabled):not(.ant-btn-disabled) .anticon,
+  .wishlist-clear-unavailable-popconfirm .ant-btn-dangerous:not(.ant-btn-primary):not(:disabled):not(.ant-btn-disabled) .anticon,
+  .wishlist-remove-popconfirm .ant-btn-dangerous:not(.ant-btn-primary):not(:disabled):not(.ant-btn-disabled) .anticon {
+    color: #9f1c12 !important;
+  }
+
+  .wishlist-page__header .ant-btn-dangerous:not(.ant-btn-primary):not(:disabled):not(.ant-btn-disabled):hover,
+  .wishlist-page__header .ant-btn-dangerous:not(.ant-btn-primary):not(:disabled):not(.ant-btn-disabled):focus-visible,
+  .wishlist-clear-unavailable-popconfirm .ant-btn-dangerous:not(.ant-btn-primary):not(:disabled):not(.ant-btn-disabled):hover,
+  .wishlist-clear-unavailable-popconfirm .ant-btn-dangerous:not(.ant-btn-primary):not(:disabled):not(.ant-btn-disabled):focus-visible,
+  .wishlist-remove-popconfirm .ant-btn-dangerous:not(.ant-btn-primary):not(:disabled):not(.ant-btn-disabled):hover,
+  .wishlist-remove-popconfirm .ant-btn-dangerous:not(.ant-btn-primary):not(:disabled):not(.ant-btn-disabled):focus-visible {
+    border-color: #7f1d12 !important;
+    background: #fff1ed !important;
+    color: #7f1d12 !important;
+    -webkit-text-fill-color: #7f1d12 !important;
+  }
+}

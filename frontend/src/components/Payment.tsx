@@ -60,16 +60,22 @@ export const Payment: React.FC<PaymentProps> = ({
     const confirmPaymentLabel = `${t('pages.payment.confirm')}: ${paymentContextLabel} · ${selectedPaymentLabel}`;
 
     useEffect(() => {
+        let disposed = false;
         paymentApi.getChannels()
             .then((res) => {
+                if (disposed) return;
                 const channels = res.data;
                 setPaymentChannels(channels);
                 setPaymentMethod(getDefaultPaymentMethod(channels));
             })
             .catch(() => {
+                if (disposed) return;
                 setPaymentChannels([]);
                 setPaymentMethod('');
             });
+        return () => {
+            disposed = true;
+        };
     }, []);
 
     const handlePayment = async () => {

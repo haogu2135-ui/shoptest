@@ -430,3 +430,19 @@
     height: 44px;
   }
 }
+
+/* Android UI fourth-round closure: modal labels stay above the mobile readability floor. */
+@media (max-width: 560px) {
+  .payment-modal__eyebrow,
+  .payment-modal__badges .ant-tag,
+  .payment-modal__method.ant-radio-button-wrapper,
+  .payment-modal__method span,
+  .payment-modal__channelNote .ant-typography {
+    font-size: 12px !important;
+    line-height: 1.35 !important;
+  }
+
+  .payment-modal__summary .ant-typography-secondary {
+    color: #40564a;
+  }
+}

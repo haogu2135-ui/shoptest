@@ -8,6 +8,7 @@ import org.springframework.web.multipart.MultipartFile;
 import com.example.shop.dto.ProductImportResult;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.math.BigDecimal;
 
@@ -22,6 +23,7 @@ public interface ProductService {
     Optional<Product> findPublicById(Long id);
     List<Product> findByIds(List<Long> ids);
     List<Product> findPublicByIds(List<Long> ids);
+    Product mergeProduct(Product existingProduct, Product product);
     Product save(Product product);
     int updateStatusByIds(List<Long> ids, String status);
     void deleteById(Long id);
@@ -39,7 +41,8 @@ public interface ProductService {
     long countActiveProducts();
     long countPendingReviewProducts();
     long countLowStockProducts();
+    Map<String, Long> countDashboardProductSummary();
     List<Product> findLowStockProducts(int limit);
     ProductImportResult previewImportCsv(MultipartFile file);
     ProductImportResult importCsv(MultipartFile file);
-} 
+}

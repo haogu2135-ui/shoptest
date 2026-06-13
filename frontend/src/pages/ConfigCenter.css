@@ -31,6 +31,10 @@
   font-weight: 900;
 }
 
+.config-center__hero > div:first-child {
+  min-width: 0;
+}
+
 .config-center__eyebrow {
   color: #d94b2b;
   font-size: 12px;
@@ -144,6 +148,10 @@
     border-radius: 14px;
   }
 
+  .config-center__hero > div:first-child {
+    width: 100%;
+  }
+
   .config-center__hero h2 {
     font-size: 20px;
     line-height: 1.25;
@@ -177,6 +185,71 @@
   .config-center__editor {
     min-height: 300px !important;
     font-size: 12px;
+  }
+
+  .config-center__meta .ant-descriptions-view {
+    overflow: visible;
+  }
+
+  .config-center__meta .ant-descriptions-view table,
+  .config-center__meta .ant-descriptions-view tbody,
+  .config-center__meta .ant-descriptions-view tr,
+  .config-center__meta .ant-descriptions-item-label,
+  .config-center__meta .ant-descriptions-item-content {
+    display: block;
+    width: 100% !important;
+  }
+
+  .config-center__meta .ant-descriptions-row {
+    border-bottom: 1px solid rgba(28, 85, 91, 0.1);
+  }
+
+  .config-center__meta .ant-descriptions-row:last-child {
+    border-bottom: 0;
+  }
+
+  .config-center__meta .ant-descriptions-item-label {
+    border-right: 0 !important;
+    border-bottom: 0 !important;
+    padding: 10px 12px 2px !important;
+  }
+
+  .config-center__meta .ant-descriptions-item-content {
+    padding: 2px 12px 10px !important;
+  }
+
+  .config-center .ant-table-wrapper {
+    margin-inline: 0;
+    padding-inline: 0;
+    overflow: visible;
+  }
+
+  .config-center .ant-table-content {
+    overflow-x: visible !important;
+  }
+
+  .config-center .ant-table,
+  .config-center .ant-table table {
+    width: 100% !important;
+    min-width: 0 !important;
+    table-layout: fixed;
+  }
+
+  .config-center .ant-table-cell {
+    padding: 10px 8px !important;
+    font-size: 12px;
+    line-height: 1.35;
+    word-break: break-word;
+  }
+
+  .config-center .ant-table-cell .ant-typography,
+  .config-center .ant-table-cell .ant-tag {
+    max-width: 100%;
+    margin-inline-end: 0;
+  }
+
+  .config-center .ant-table-cell .ant-typography-copy {
+    margin-inline-start: 4px;
   }
 
   .config-center .ant-form-item {
@@ -215,11 +288,13 @@
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 8px;
+    width: 100%;
   }
 
   .config-center__actions .ant-space-item,
   .config-center__actions .ant-btn {
     width: 100%;
+    min-width: 0;
   }
 
   .config-center__stats {
@@ -266,9 +341,11 @@
     overflow: visible;
     line-height: 1.2;
     white-space: normal;
+    padding-inline: 10px;
   }
 
   .config-center__actions .ant-btn > span:not(.anticon):not(.ant-btn-icon) {
+    min-width: 0;
     overflow: visible;
     text-overflow: clip;
     white-space: normal;
@@ -302,5 +379,120 @@
 @media (max-width: 380px) {
   .config-center__stats .ant-card {
     flex-basis: 158px;
+  }
+}
+
+/* 2026-06-07 mobile web regression closure: keep the hero and actions inside
+   the admin content viewport outside of native APP mode too. */
+@media (max-width: 720px) {
+  .config-center,
+  .config-center__hero,
+  .config-center__hero > div:first-child,
+  .config-center__actions,
+  .config-center__card,
+  .config-center__card .ant-card-body,
+  .config-center__alert,
+  .config-center__grid,
+  .config-center__form,
+  .config-center .ant-form,
+  .config-center .ant-form-item,
+  .config-center .ant-form-item-control,
+  .config-center .ant-form-item-control-input,
+  .config-center .ant-form-item-control-input-content {
+    width: 100%;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  .config-center {
+    width: min(100%, calc(100vw - 30px)) !important;
+    max-width: calc(100vw - 30px) !important;
+  }
+
+  .config-center__hero {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    width: min(100%, calc(100vw - 30px)) !important;
+    max-width: calc(100vw - 30px) !important;
+    overflow: hidden;
+  }
+
+  .config-center__hero > div:first-child,
+  .config-center__actions {
+    width: min(100%, calc(100vw - 58px)) !important;
+    max-width: calc(100vw - 58px) !important;
+  }
+
+  .config-center__hero .ant-typography,
+  .config-center__alert .ant-alert-message,
+  .config-center__alert .ant-alert-description {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    white-space: normal;
+  }
+
+  .config-center__actions {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    align-items: stretch !important;
+  }
+
+  .config-center__actions .ant-space-item,
+  .config-center__actions .ant-btn {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  .config-center__actions .ant-btn {
+    display: inline-flex;
+    justify-content: center;
+  }
+
+  .config-center .ant-table-wrapper {
+    max-width: 100% !important;
+    overflow-x: auto !important;
+  }
+}
+
+/* F3520: the production properties editor must fit narrow admin viewports. */
+@media (max-width: 720px) {
+  .config-center__grid {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    overflow: visible;
+  }
+
+  .config-center__editorCard,
+  .config-center__editorCard.ant-card,
+  .config-center__editorCard .ant-card-body,
+  .config-center__contentItem,
+  .config-center__contentItem .ant-form-item-row,
+  .config-center__contentItem .ant-form-item-control,
+  .config-center__contentItem .ant-form-item-control-input,
+  .config-center__contentItem .ant-form-item-control-input-content,
+  .config-center__contentItem .ant-input,
+  .config-center__contentItem textarea.config-center__editor {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  .config-center__editorCard.ant-card,
+  .config-center__editorCard .ant-card-body {
+    overflow: visible;
+  }
+
+  .config-center__contentItem textarea.config-center__editor {
+    display: block;
+    box-sizing: border-box;
+    overflow-x: auto;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    word-break: break-word;
   }
 }

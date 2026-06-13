@@ -26,7 +26,7 @@
     #f4f8f5 40%,
     #e7efe8 80%
   );
-  background-size: 1200px 100%;
+  background-size: min(1200px, 220vw) 100%;
   animation: shimmer 1.4s ease-in-out infinite;
 }
 
@@ -352,7 +352,7 @@
 /* 鈹€鈹€ Reduced motion 鈹€鈹€ */
 @media (prefers-reduced-motion: reduce) {
   .shimmer {
-    animation: pulse-fade 1.6s ease-in-out infinite;
+    animation: none;
     background: none;
     background-color: #e7efe8;
   }

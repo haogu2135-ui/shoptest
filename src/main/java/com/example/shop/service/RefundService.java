@@ -1,6 +1,6 @@
 package com.example.shop.service;
 
-import lombok.extern.slf4j.Slf4j;
+import com.example.shop.config.HttpClientConfig;
 import com.example.shop.config.PaymentChannelConfig;
 import com.example.shop.entity.Order;
 import com.example.shop.entity.Payment;
@@ -30,7 +30,6 @@ import java.util.Locale;
 import java.util.Map;
 
 @Service
-@Slf4j
 public class RefundService {
     private static final String STATUS_PAID = "PAID";
     private static final String STATUS_RECONCILE_REQUIRED = "RECONCILE_REQUIRED";
@@ -46,15 +45,22 @@ public class RefundService {
     @Autowired
     private CircuitBreakerService circuitBreakerService;
 
-    private final RestTemplate restTemplate = new RestTemplate();
+    private RestTemplate restTemplate = HttpClientConfig.defaultRestTemplate();
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    @Transactional
+    @Autowired
+    public void setRestTemplate(RestTemplate restTemplate) {
+        if (restTemplate != null) {
+            this.restTemplate = restTemplate;
+        }
+    }
+
+    @Transactional(rollbackFor = Exception.class)
     public Payment refundPaidPayment(Order order, String reason) {
         return refundPaidPayment(order, reason, null);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public Payment refundPaidPayment(Order order, String reason, String manualRefundReference) {
         String normalizedReason = normalizeReason(reason);
         String normalizedManualReference = normalizeManualRefundReference(manualRefundReference);
@@ -157,7 +163,7 @@ public class RefundService {
                     stripeRequestOptions(secretKey, "return-refund-" + order.getId() + "-" + payment.getId()));
             return refund.getId();
         } catch (StripeException e) {
-            throw new IllegalStateException("Stripe refund failed: " + e.getMessage());
+            throw stripeProviderUnavailable("Stripe refund failed", e);
         }
     }
 
@@ -177,7 +183,7 @@ public class RefundService {
             Session session = Session.retrieve(sessionId, stripeRequestOptions(stripeSecretKey()));
             return trimToNull(session.getPaymentIntent());
         } catch (StripeException e) {
-            throw new IllegalStateException("Stripe payment lookup failed: " + e.getMessage());
+            throw stripeProviderUnavailable("Stripe payment lookup failed", e);
         }
     }
 
@@ -366,13 +372,35 @@ public class RefundService {
     }
 
     private RequestOptions stripeRequestOptions(String apiKey) {
-        return RequestOptions.builder().setApiKey(apiKey).build();
+        return stripeRequestOptionsBuilder(apiKey).build();
     }
 
     private RequestOptions stripeRequestOptions(String apiKey, String idempotencyKey) {
-        return RequestOptions.builder()
-                .setApiKey(apiKey)
+        return stripeRequestOptionsBuilder(apiKey)
                 .setIdempotencyKey(idempotencyKey)
                 .build();
+    }
+
+    private RequestOptions.RequestOptionsBuilder stripeRequestOptionsBuilder(String apiKey) {
+        return RequestOptions.builder()
+                .setApiKey(apiKey)
+                .setConnectTimeout(paymentHttpConnectTimeoutMs())
+                .setReadTimeout(paymentHttpReadTimeoutMs());
+    }
+
+    private IllegalStateException stripeProviderUnavailable(String operation, StripeException cause) {
+        return new IllegalStateException(operation + ". Payment provider is temporarily unavailable", cause);
+    }
+
+    private int paymentHttpConnectTimeoutMs() {
+        return HttpClientConfig.normalizeTimeout(
+                runtimeConfig == null ? 0 : runtimeConfig.getInt("payment.http.connect-timeout-ms", HttpClientConfig.DEFAULT_CONNECT_TIMEOUT_MS),
+                HttpClientConfig.DEFAULT_CONNECT_TIMEOUT_MS);
+    }
+
+    private int paymentHttpReadTimeoutMs() {
+        return HttpClientConfig.normalizeTimeout(
+                runtimeConfig == null ? 0 : runtimeConfig.getInt("payment.http.read-timeout-ms", HttpClientConfig.DEFAULT_READ_TIMEOUT_MS),
+                HttpClientConfig.DEFAULT_READ_TIMEOUT_MS);
     }
 }

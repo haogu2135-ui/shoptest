@@ -24,7 +24,7 @@ import {
   UserOutlined,
 } from '@ant-design/icons';
 import { adminApi, announcementApi, cartApi, clearStoredAuthSession, couponApi, notificationApi, productApi, userApi, wishlistApi } from '../api';
-import { Language, useLanguage } from '../i18n';
+import { LANGUAGE_LABELS, type Language, SUPPORTED_LANGUAGES, useLanguage } from '../i18n';
 import type { CartItem, SiteAnnouncementPublic } from '../types';
 import { CurrencyCode, markets } from '../utils/market';
 import { dispatchDomEvent } from '../utils/domEvents';
@@ -54,6 +54,7 @@ import {
   resolveMobileReleaseDownloadUrl,
   type MobileReleaseManifest,
 } from '../utils/mobileUpdate';
+import { reportNonBlockingError } from '../utils/nonBlockingError';
 import './Navbar.css';
 
 const { Search } = Input;
@@ -63,6 +64,7 @@ const NAV_POPUP_Z_INDEX = 2400;
 const ANNOUNCEMENT_PLACEHOLDER_PATTERN = /(^|\b)(test|testing|dummy|placeholder|lorem|asdf|qwer|sadsad|foobar)(\b|$)/i;
 const ANNOUNCEMENT_REPEATED_CHARACTER_PATTERN = /([a-z])\1{4,}/i;
 const ANNOUNCEMENT_LONG_TOKEN_PATTERN = /\b[a-z0-9]{18,}\b/gi;
+const languageOptions = SUPPORTED_LANGUAGES.map((value) => ({ value, label: LANGUAGE_LABELS[value] }));
 
 const normalizeNavKeyword = (value: string) => value.trim().slice(0, NAV_SEARCH_MAX_LENGTH);
 const readNavAuthSnapshot = () => ({
@@ -138,7 +140,6 @@ const Navbar: React.FC = () => {
   const [alertCount, setAlertCount] = useState(0);
   const [announcements, setAnnouncements] = useState<SiteAnnouncementPublic[]>([]);
   const [mobileRelease, setMobileRelease] = useState<MobileReleaseManifest | null>(null);
-  const [androidApkUrl, setAndroidApkUrl] = useState<string>('');
   const [openingAndroidApk, setOpeningAndroidApk] = useState(false);
   const [nativeBottomNav, setNativeBottomNav] = useState(() => isNativeMobileApp());
   const [openDropdowns, setOpenDropdowns] = useState<Record<string, boolean>>({});
@@ -158,12 +159,6 @@ const Navbar: React.FC = () => {
       message.warning(t('nav.badgeLoadFailed'));
     }
   }, [t]);
-  const languageOptions = [
-    { value: 'es', label: 'Español' },
-    { value: 'zh', label: '中文' },
-    { value: 'en', label: 'English' },
-  ];
-
   const syncAuthSnapshot = useCallback(() => {
     const nextSnapshot = readNavAuthSnapshot();
     setAuthSnapshot(nextSnapshot);
@@ -191,8 +186,11 @@ const Navbar: React.FC = () => {
       .then((response) => {
         if (!disposed) setAnnouncements((response.data || []).filter(isCommercialAnnouncement));
       })
-      .catch(() => {
-        if (!disposed) setAnnouncements([]);
+      .catch((error) => {
+        if (!disposed) {
+          reportNonBlockingError('Navbar.fetchAnnouncements', error);
+          setAnnouncements([]);
+        }
       });
     return () => {
       disposed = true;
@@ -202,15 +200,13 @@ const Navbar: React.FC = () => {
   useEffect(() => {
     if (isNativeMobileApp() && !isNativeAndroidApp()) {
       setMobileRelease(null);
-      setAndroidApkUrl('');
-      return undefined;
+      return;
     }
 
     let disposed = false;
     fetchLatestMobileRelease().then((release) => {
       if (!disposed) {
         setMobileRelease(release);
-        setAndroidApkUrl(release ? resolveMobileReleaseDownloadUrl(release) : '');
       }
     });
     return () => {
@@ -241,6 +237,15 @@ const Navbar: React.FC = () => {
   const notificationsBadgeLabel = `${t('nav.ariaNotifications')}: ${safeUnreadCount}`;
   const utilityMenuBadgeLabel = `${t('nav.more')}: ${utilityMenuCount}`;
   const cartBadgeLabel = `${t('nav.ariaCart')}: ${safeCartCount}`;
+  const renderCartBadge = () => (
+    <Badge count={safeCartCount} size="small" overflowCount={99}>
+      <ShoppingCartOutlined />
+    </Badge>
+  );
+  const androidApkUrl = useMemo(
+    () => (mobileRelease ? resolveMobileReleaseDownloadUrl(mobileRelease) : ''),
+    [mobileRelease],
+  );
   const nativeAndroidReleaseAvailable = Boolean(
     nativeBottomNav
     && isNativeAndroidApp()
@@ -285,10 +290,29 @@ const Navbar: React.FC = () => {
       {label}
     </span>
   );
+  const buildLocaleMenuItems = () => [
+    { key: 'language-title', label: t('nav.language'), disabled: true },
+    ...languageOptions.map((item) => ({
+      key: `lang-${item.value}`,
+      label: renderCurrentMenuLabel(language === item.value, item.label),
+      onClick: () => setLanguage(item.value as Language),
+    })),
+    { key: 'locale-divider', type: 'divider' as const },
+    { key: 'currency-title', label: t('nav.currency'), disabled: true },
+    ...currencyOptions.map((item) => ({
+      key: `currency-${item.value}`,
+      label: renderCurrentMenuLabel(currency === item.value, item.label),
+      onClick: () => setCurrency(item.value as CurrencyCode),
+    })),
+  ];
   const setDropdownOpen = useCallback((key: string, open: boolean) => {
-    setOpenDropdowns((current) => ({ ...current, [key]: open }));
+    setOpenDropdowns((current) => (open ? { [key]: true } : { ...current, [key]: false }));
   }, []);
   const isDropdownOpen = useCallback((key: string) => Boolean(openDropdowns[key]), [openDropdowns]);
+
+  useEffect(() => {
+    setOpenDropdowns({});
+  }, [location.hash, location.pathname, location.search]);
 
   const openSupport = () => {
     if (!token) {
@@ -311,7 +335,8 @@ const Navbar: React.FC = () => {
       if (!opened) {
         message.error(t('appUpdate.downloadFailed'));
       }
-    } catch {
+    } catch (error) {
+      reportNonBlockingError('Navbar.openNativeAndroidDownload', error);
       message.error(t('appUpdate.downloadFailed'));
     } finally {
       setOpeningAndroidApk(false);
@@ -376,8 +401,9 @@ const Navbar: React.FC = () => {
           setLocalStorageItem('adminDefaultPath', nextDefault);
           setAdminPath(nextDefault);
         })
-        .catch(() => {
+        .catch((error) => {
           if (disposed) return;
+          reportNonBlockingError('Navbar.refreshAdminAccess', error);
           const localRole = getLocalStorageItem('role') || '';
           setNavRole(localRole);
           setAdminPath(getLocalStorageItem('adminDefaultPath') || '/admin');
@@ -560,18 +586,25 @@ const Navbar: React.FC = () => {
     const loginUrl = buildLoginUrlFromWindow();
     const refreshToken = getLocalStorageItem('refreshToken');
     void userApi.logout(refreshToken).catch((error) => {
-      if (typeof console !== 'undefined' && typeof console.warn === 'function') {
-        console.warn('[shop] Logout token revoke failed', error);
-      }
+      reportNonBlockingError('Navbar.logoutRevoke', error);
       message.warning(t('messages.logoutPartialFailure'));
     });
     clearStoredAuthSession();
     setCartCount(0);
+    setUnreadCount(0);
+    setWishlistCount(0);
+    setCouponCount(0);
+    setOpenDropdowns({});
+    badgeLoadWarningShown.current = false;
     navigate(loginUrl, { replace: true });
   };
 
   const handleSearch = (value: string) => {
-    const keyword = normalizeNavKeyword(value);
+    const trimmedKeyword = value.trim();
+    if (trimmedKeyword.length > NAV_SEARCH_MAX_LENGTH) {
+      message.warning(t('nav.searchLimitWarning', { count: NAV_SEARCH_MAX_LENGTH }));
+    }
+    const keyword = trimmedKeyword.slice(0, NAV_SEARCH_MAX_LENGTH);
     if (keyword) {
       navigate(`/products?keyword=${encodeURIComponent(keyword)}`);
     }
@@ -671,7 +704,15 @@ const Navbar: React.FC = () => {
   return (
     <>
       <header className={`shop-nav shop-nav--${language}`}>
-      <div className="shop-nav__announcement">
+      <div
+        className="shop-nav__announcement"
+        role="region"
+        aria-label={t('nav.announcements')}
+        aria-live="polite"
+        aria-atomic="false"
+        aria-relevant="additions text"
+        aria-roledescription={t('nav.announcementTicker')}
+      >
         <div className="shop-nav__ticker">
           {tickerAnnouncements.length > 0 ? tickerAnnouncements.map((announcement, index) => (
             <React.Fragment key={`${announcement.id || announcement.title}-${index}`}>
@@ -948,21 +989,7 @@ const Navbar: React.FC = () => {
               open={isDropdownOpen('mobile-locale')}
               onOpenChange={(open) => setDropdownOpen('mobile-locale', open)}
               menu={{
-                items: [
-                  { key: 'language-title', label: t('nav.language'), disabled: true },
-                  ...languageOptions.map((item) => ({
-                    key: `lang-${item.value}`,
-                    label: renderCurrentMenuLabel(language === item.value, item.label),
-                    onClick: () => setLanguage(item.value as Language),
-                  })),
-                  { key: 'locale-divider', type: 'divider' },
-                  { key: 'currency-title', label: t('nav.currency'), disabled: true },
-                  ...currencyOptions.map((item) => ({
-                    key: `currency-${item.value}`,
-                    label: renderCurrentMenuLabel(currency === item.value, item.label),
-                    onClick: () => setCurrency(item.value as CurrencyCode),
-                  })),
-                ],
+                items: buildLocaleMenuItems(),
               }}
             >
               <button type="button" aria-label={`${t('nav.language')} / ${t('nav.currency')}`} aria-haspopup="menu" aria-expanded={isDropdownOpen('mobile-locale')}>
@@ -997,6 +1024,17 @@ const Navbar: React.FC = () => {
                   menu={{
                     items: [
                       ...(androidDownloadMenuItem ? [androidDownloadMenuItem] : []),
+                      {
+                        key: 'locale-settings',
+                        icon: <GlobalOutlined />,
+                        label: `${t('nav.language')} / ${t('nav.currency')}`,
+                        children: buildLocaleMenuItems(),
+                      },
+                      { key: 'sell', icon: <ShopOutlined />, label: t('nav.sell'), onClick: () => navigate(canAccessAdmin ? adminPath : '/products') },
+                      { key: 'pet-finder', icon: <SearchOutlined />, label: t('nav.petFinder'), onClick: () => navigate('/pet-finder') },
+                      { key: 'pet-gallery', icon: <ShoppingOutlined />, label: t('nav.petGallery'), onClick: () => navigate('/pet-gallery') },
+                      { key: 'deals', icon: <GiftOutlined />, label: t('nav.followDeals'), onClick: () => navigate('/products?discount=true') },
+                      { key: 'track-order', icon: <ShoppingOutlined />, label: t('nav.trackOrder'), onClick: () => navigate('/track-order') },
                       { key: 'coupons', icon: <GiftOutlined />, label: t('pages.coupons.title'), onClick: () => navigate('/coupons') },
                       { key: 'support', icon: <CustomerServiceOutlined />, label: t('nav.help'), onClick: openSupport },
                       { key: 'compare', icon: <BarChartOutlined />, label: t('nav.ariaCompare'), onClick: () => navigate('/compare') },
@@ -1012,9 +1050,7 @@ const Navbar: React.FC = () => {
                   </button>
                 </Dropdown>
                 <button type="button" className="shop-nav__cart-action" onClick={() => dispatchDomEvent('shop:open-cart')} aria-label={cartBadgeLabel} title={cartBadgeLabel}>
-                  <Badge count={safeCartCount} size="small">
-                    <ShoppingCartOutlined />
-                  </Badge>
+                  {renderCartBadge()}
                 </button>
                 <button type="button" className="shop-nav__mobile-logout" onClick={handleLogout} aria-label={t('nav.logout')}>
                   <LogoutOutlined />
@@ -1045,6 +1081,18 @@ const Navbar: React.FC = () => {
                       { key: 'login', icon: <UserOutlined />, label: t('nav.login'), onClick: () => navigate('/login') },
                       { key: 'register', icon: <UserOutlined />, label: t('nav.register'), onClick: () => navigate('/register') },
                       { key: 'guest-divider', type: 'divider' },
+                      {
+                        key: 'locale-settings',
+                        icon: <GlobalOutlined />,
+                        label: `${t('nav.language')} / ${t('nav.currency')}`,
+                        children: buildLocaleMenuItems(),
+                      },
+                      { key: 'sell', icon: <ShopOutlined />, label: t('nav.sell'), onClick: () => navigate('/products') },
+                      { key: 'pet-finder', icon: <SearchOutlined />, label: t('nav.petFinder'), onClick: () => navigate('/pet-finder') },
+                      { key: 'pet-gallery', icon: <ShoppingOutlined />, label: t('nav.petGallery'), onClick: () => navigate('/pet-gallery') },
+                      { key: 'coupons', icon: <GiftOutlined />, label: t('pages.coupons.title'), onClick: () => navigate('/coupons') },
+                      { key: 'deals', icon: <GiftOutlined />, label: t('nav.followDeals'), onClick: () => navigate('/products?discount=true') },
+                      { key: 'track-order', icon: <ShoppingOutlined />, label: t('nav.trackOrder'), onClick: () => navigate('/track-order') },
                       ...(androidDownloadMenuItem ? [androidDownloadMenuItem] : []),
                       { key: 'support', icon: <CustomerServiceOutlined />, label: t('nav.help'), onClick: openSupport },
                       { key: 'compare', icon: <BarChartOutlined />, label: t('nav.ariaCompare'), onClick: () => navigate('/compare') },
@@ -1060,9 +1108,7 @@ const Navbar: React.FC = () => {
                   </button>
                 </Dropdown>
                 <button type="button" className="shop-nav__cart-action" onClick={() => dispatchDomEvent('shop:open-cart')} aria-label={cartBadgeLabel} title={cartBadgeLabel}>
-                  <Badge count={safeCartCount} size="small">
-                    <ShoppingCartOutlined />
-                  </Badge>
+                  {renderCartBadge()}
                 </button>
               </>
             )}
@@ -1084,9 +1130,7 @@ const Navbar: React.FC = () => {
           <span>{t('nav.coupons')}</span>
         </Link>
         <Link to="/cart" className={isCartActive ? 'shop-nav__bottomItem shop-nav__bottomItem--cart shop-nav__bottomItem--active' : 'shop-nav__bottomItem shop-nav__bottomItem--cart'} aria-label={cartBadgeLabel} title={cartBadgeLabel} aria-current={isCartActive ? 'page' : undefined}>
-          <Badge count={safeCartCount} size="small" overflowCount={99}>
-            <ShoppingCartOutlined />
-          </Badge>
+          {renderCartBadge()}
           <span>{t('pages.cart.title')}</span>
         </Link>
         {!nativeBottomNav && showAndroidDownloadLink ? (

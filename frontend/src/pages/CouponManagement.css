@@ -40,6 +40,15 @@
   overflow-wrap: anywhere;
 }
 
+.coupon-management-page__alert,
+.coupon-management-page__loadingState {
+  margin-bottom: 16px;
+}
+
+.coupon-management-page__loadingState .ant-card-body {
+  min-height: 120px;
+}
+
 .coupon-management-insights {
   display: grid;
   grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.45fr);
@@ -639,5 +648,43 @@
     line-height: 1.2;
     text-overflow: clip;
     white-space: nowrap;
+  }
+}
+
+/* Android UI closure: coupon management table and modal actions. */
+@media (max-width: 780px) {
+  .coupon-management-page__actions .ant-btn,
+  .coupon-management-birthday .ant-card-extra .ant-btn,
+  .coupon-management-page .ant-table-cell .ant-btn,
+  .coupon-management-page__editorModal .ant-modal-footer .ant-btn,
+  .coupon-management-page__grantModal .ant-modal-footer .ant-btn,
+  .coupon-management-page__grantConfirmModal .ant-modal-confirm-btns .ant-btn {
+    min-height: 44px !important;
+    height: auto !important;
+    max-height: none !important;
+  }
+
+  .coupon-management-page .ant-table-cell .ant-tag,
+  .coupon-management-page .ant-table-cell,
+  .coupon-management-page .ant-btn > span:not(.anticon):not(.ant-btn-icon) {
+    font-size: max(12px, 1em) !important;
+    line-height: 1.25 !important;
+  }
+}
+
+/* Android UI fourth-round closure: long grant guidance copy wraps in mobile modal. */
+.coupon-management-page__grantModal .ant-alert-description,
+.coupon-management-page__grantModal .ant-alert-description span,
+.coupon-management-page__grantModal .ant-tag {
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+@media (max-width: 560px) {
+  .coupon-management-page__grantModal .ant-alert-description {
+    font-size: 12px;
+    line-height: 1.4;
   }
 }

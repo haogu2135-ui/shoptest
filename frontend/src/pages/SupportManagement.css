@@ -69,16 +69,35 @@
   display: grid;
   grid-template-columns: 320px minmax(0, 1fr);
   gap: 16px;
-  min-height: 620px;
+  height: clamp(520px, calc(100vh - 320px), 760px);
+  min-height: 520px;
 }
 
 .support-management__queuePane,
 .support-management__conversationPane {
+  min-height: 0;
   background: #fff;
   border: 1px solid rgba(18, 71, 52, 0.1);
   border-radius: 8px;
   overflow: hidden;
   box-shadow: var(--shadow-1);
+}
+
+.support-management__queueAlert,
+.support-management__messagesError {
+  margin: 12px;
+}
+
+.support-management__queueLoading,
+.support-management__messagesLoading {
+  min-height: 160px;
+  display: grid;
+  place-items: center;
+  gap: 10px;
+  padding: 24px;
+  color: #2f4f3a;
+  font-weight: 800;
+  text-align: center;
 }
 
 .support-management__queueSections {
@@ -707,6 +726,7 @@
 
 .support-management__messagesPane {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   padding: 16px;
   background: #f8fcf9;
@@ -1387,6 +1407,7 @@
 
 @media (max-width: 900px) {
   .support-management__layout {
+    height: auto;
     min-height: auto;
   }
 
@@ -1404,6 +1425,15 @@
   .support-management__messagesPane {
     max-height: min(58dvh, 520px);
     overflow-y: auto;
+  }
+
+  .support-management__conversationPane {
+    scroll-margin-top: calc(14px + env(safe-area-inset-top, 0px));
+  }
+
+  .support-management__conversationPane:focus {
+    outline: 2px solid rgba(18, 71, 52, 0.18);
+    outline-offset: 3px;
   }
 
   .support-management__insightStats,
@@ -1827,6 +1857,50 @@
   }
 }
 
+/* F3535: keep long support-session confirmation text readable on phones. */
+@media (max-width: 900px) {
+  body .support-management__popconfirm.shop-mobile-popup-layer {
+    left: max(8px, env(safe-area-inset-left, 0px)) !important;
+    right: max(8px, env(safe-area-inset-right, 0px)) !important;
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: calc(100vw - 16px) !important;
+    overflow: visible !important;
+  }
+
+  body .support-management__popconfirm.shop-mobile-popup-layer .ant-popover-content,
+  body .support-management__popconfirm.shop-mobile-popup-layer .ant-popover-inner,
+  body .support-management__popconfirm.shop-mobile-popup-layer .ant-popconfirm,
+  body .support-management__popconfirm.shop-mobile-popup-layer .ant-popconfirm-message,
+  body .support-management__popconfirm.shop-mobile-popup-layer .ant-popconfirm-message-text {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  body .support-management__popconfirm.shop-mobile-popup-layer .ant-popconfirm-title,
+  body .support-management__popconfirm.shop-mobile-popup-layer .ant-popconfirm-description {
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  body .support-management__popconfirm.shop-mobile-popup-layer .ant-popconfirm-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  body .support-management__popconfirm.shop-mobile-popup-layer .ant-popconfirm-buttons .ant-btn {
+    min-height: 38px;
+    max-width: 100%;
+    margin-inline-start: 0;
+    white-space: normal;
+  }
+}
+
 /* Final mobile/App support admin search guard: AntD compact grouped inputs can
    keep the search addon at 31px wide even when the button is 44px tall. */
 @media (max-width: 900px) {
@@ -1864,5 +1938,39 @@
   .support-management__headerControls .ant-input-search,
   .support-management__headerControls .ant-select {
     width: 100% !important;
+  }
+}
+
+/* F2761: admin summary/status metrics must wrap instead of hiding risk counts in scroll rails. */
+@media (max-width: 900px), (max-height: 640px) {
+  .support-management__insightStats,
+  .support-management__summaryBar {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)) !important;
+    gap: 8px !important;
+    margin-inline: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    scroll-snap-type: none !important;
+    scrollbar-width: auto !important;
+    -webkit-mask-image: none !important;
+    mask-image: none !important;
+    touch-action: manipulation;
+  }
+
+  .support-management__insightStats .ant-tag,
+  .support-management__summaryCard {
+    flex: initial !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    scroll-snap-align: initial !important;
+    text-overflow: clip !important;
+    white-space: normal !important;
+  }
+
+  .support-management__summaryCard {
+    min-height: 62px;
   }
 }

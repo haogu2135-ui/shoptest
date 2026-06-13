@@ -49,7 +49,7 @@ class AuthControllerForgotPasswordTest {
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals("Password reset successfully", ((Map<?, ?>) response.getBody()).get("message"));
-        verify(userService).resetPassword("mia", "MIA@example.com", "new-secret");
+        verify(userService).resetPassword("mia", "MIA@example.com", "NewPass123456");
     }
 
     @Test
@@ -91,7 +91,7 @@ class AuthControllerForgotPasswordTest {
         request.setLogin(login);
         request.setEmail(email);
         request.setCode(code);
-        request.setNewPassword("new-secret");
+        request.setNewPassword("NewPass123456");
         return request;
     }
 

@@ -18,6 +18,7 @@ import { buildLoginUrlFromWindow } from '../utils/authRedirect';
 import type { PetGalleryPhotoPublic, PetGalleryQuota } from '../types';
 import { buildResponsiveImageSrcSet, getOptimizedImageUrl, resolveApiAssetUrl } from '../utils/mediaAssets';
 import { getApiErrorMessage } from '../utils/apiError';
+import { reportNonBlockingError } from '../utils/nonBlockingError';
 import { isSupportedPetGalleryImageFile } from '../utils/petGalleryUpload';
 import { getLocalStorageItem, hasStoredValue, setLocalStorageItem } from '../utils/safeStorage';
 import './PetGallery.css';
@@ -52,7 +53,8 @@ const readLocalLikes = () => {
   try {
     const parsed = JSON.parse(getLocalStorageItem(PET_GALLERY_LOCAL_LIKES_KEY) || '[]');
     return Array.isArray(parsed) ? parsed.map(String) : [];
-  } catch {
+  } catch (error) {
+    reportNonBlockingError('PetGallery.readLocalLikes', error);
     return [];
   }
 };
@@ -95,13 +97,19 @@ const PetGallery: React.FC = () => {
       setLoading(true);
       const [photosRes, quotaRes] = await Promise.all([
         petGalleryApi.getAll(force),
-        isAuthenticated ? petGalleryApi.getQuota(force).catch(() => null) : Promise.resolve(null),
+        isAuthenticated
+          ? petGalleryApi.getQuota(force).catch((error) => {
+            reportNonBlockingError('PetGallery.refreshGalleryQuota', error);
+            return null;
+          })
+          : Promise.resolve(null),
       ]);
       setPhotos(photosRes.data);
       setQuota(quotaRes?.data || null);
       setLastUpdatedAt(new Date());
       setLoadError(false);
-    } catch {
+    } catch (error) {
+      reportNonBlockingError('PetGallery.refreshGallery', error);
       setPhotos([]);
       setQuota(null);
       setLoadError(true);
@@ -299,6 +307,7 @@ const PetGallery: React.FC = () => {
             accept="image/jpeg,image/png,image/gif"
             className="pet-gallery-page__file"
             onChange={handleSelectedPhoto}
+            aria-label={galleryUploadActionLabel}
           />
         </div>
         <div className="pet-gallery-hero__stats" aria-label={t('pages.petGallery.stats')}>

@@ -12,6 +12,7 @@ import com.example.shop.service.AdminRoleService;
 import com.example.shop.service.SecurityAuditLogService;
 import com.example.shop.service.SystemAlertService;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -28,6 +29,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/admin/alerts")
+@PreAuthorize("hasRole('ADMIN')")
 public class AdminAlertController {
     private final SystemAlertService systemAlertService;
     private final SecurityAuditLogService auditLogService;

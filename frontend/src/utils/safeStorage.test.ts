@@ -24,13 +24,13 @@ describe('safeStorage', () => {
   const clearStorage = () => {
     try {
       window.localStorage.clear();
-    } catch {
-      // Individual tests replace storage with throwing mocks.
+    } catch (error) {
+      void error;
     }
     try {
       window.sessionStorage.clear();
-    } catch {
-      // Individual tests replace storage with throwing mocks.
+    } catch (error) {
+      void error;
     }
   };
 

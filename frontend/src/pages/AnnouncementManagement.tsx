@@ -1,12 +1,14 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Button, Card, DatePicker, Form, Input, InputNumber, Modal, Popconfirm, Select, Space, Switch, Table, Tag, Typography, message } from 'antd';
+import { Alert, Button, Card, DatePicker, Form, Input, InputNumber, Modal, Popconfirm, Select, Space, Switch, Table, Tag, Typography, message } from 'antd';
 import { ClockCircleOutlined, LinkOutlined, PlusOutlined, SearchOutlined, SoundOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { adminApi } from '../api';
 import type { SiteAnnouncement, SiteAnnouncementAdminSummary } from '../types';
 import { useLanguage } from '../i18n';
+import { useDebounce } from '../hooks/useDebounce';
 import { isSafeAnnouncementLink } from '../utils/announcementLinks';
 import { getApiErrorMessage } from '../utils/apiError';
+import { reportNonBlockingError } from '../utils/nonBlockingError';
 import { ANNOUNCEMENTS_DELETE_PERMISSION, ANNOUNCEMENTS_WRITE_PERMISSION, getEffectiveRole, hasAdminPermission } from '../utils/roles';
 import './AnnouncementManagement.css';
 
@@ -14,6 +16,7 @@ const { Title, Text } = Typography;
 const { TextArea } = Input;
 const DEFAULT_PAGE_SIZE = 20;
 const mobilePopupClassNames = { popup: { root: 'shop-mobile-popup-layer' } };
+const announcementDatePopupClassNames = { popup: { root: 'shop-mobile-popup-layer announcement-management-page__datePopup' } };
 const mobilePopconfirmClassNames = { root: 'shop-mobile-popup-layer' };
 
 type AnnouncementFormValues = Omit<SiteAnnouncement, 'id' | 'createdAt' | 'updatedAt' | 'startsAt' | 'endsAt'> & {
@@ -41,10 +44,14 @@ const parseDateValue = (value?: string) => {
 const AnnouncementManagement: React.FC = () => {
   const [announcements, setAnnouncements] = useState<SiteAnnouncement[]>([]);
   const [summary, setSummary] = useState<SiteAnnouncementAdminSummary | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [announcementLoadError, setAnnouncementLoadError] = useState<string | null>(null);
+  const [announcementSnapshotLoaded, setAnnouncementSnapshotLoaded] = useState(false);
+  const [summaryLoadError, setSummaryLoadError] = useState<string | null>(null);
+  const [summarySnapshotLoaded, setSummarySnapshotLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [keyword, setKeyword] = useState('');
-  const [debouncedKeyword, setDebouncedKeyword] = useState('');
+  const debouncedKeyword = useDebounce(keyword.trim(), 300);
   const [statusFilter, setStatusFilter] = useState<string | undefined>();
   const [statusUpdatingId, setStatusUpdatingId] = useState<number | null>(null);
   const [pageState, setPageState] = useState({
@@ -65,6 +72,14 @@ const AnnouncementManagement: React.FC = () => {
   const dateLocale = language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US';
   const canWriteAnnouncements = hasAdminPermission(adminPermissions, currentRole, ANNOUNCEMENTS_WRITE_PERMISSION);
   const canDeleteAnnouncements = hasAdminPermission(adminPermissions, currentRole, ANNOUNCEMENTS_DELETE_PERMISSION);
+  const announcementActionDisabled = loading
+    || Boolean(announcementLoadError)
+    || Boolean(summaryLoadError)
+    || !announcementSnapshotLoaded
+    || !summarySnapshotLoaded;
+  const announcementActionUnavailableMessage = announcementLoadError
+    || summaryLoadError
+    || (loading ? t('common.loading') : t('pages.announcementAdmin.fetchFailed'));
 
   const loadAnnouncements = useCallback(async (
     nextPage: number,
@@ -80,6 +95,7 @@ const AnnouncementManagement: React.FC = () => {
         status: nextStatus,
         keyword: nextKeyword || undefined,
       });
+      setAnnouncementLoadError(null);
       setAnnouncements(response.data.items || []);
       const resolvedSize = response.data.size || nextSize;
       pageSizeRef.current = resolvedSize;
@@ -91,8 +107,11 @@ const AnnouncementManagement: React.FC = () => {
         hasNext: Boolean(response.data.hasNext),
         hasPrevious: Boolean(response.data.hasPrevious),
       });
+      setAnnouncementSnapshotLoaded(true);
     } catch (error: unknown) {
-      message.error(getApiErrorMessage(error, t('pages.announcementAdmin.fetchFailed'), language));
+      const errorMessage = getApiErrorMessage(error, t('pages.announcementAdmin.fetchFailed'), language);
+      setAnnouncementLoadError(errorMessage);
+      message.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -107,16 +126,14 @@ const AnnouncementManagement: React.FC = () => {
         status: nextStatus,
         keyword: nextKeyword || undefined,
       });
+      setSummaryLoadError(null);
       setSummary(response.data);
-    } catch {
-      setSummary(null);
+      setSummarySnapshotLoaded(true);
+    } catch (error) {
+      reportNonBlockingError('AnnouncementManagement.loadSummary', error);
+      setSummaryLoadError(getApiErrorMessage(error, t('pages.announcementAdmin.fetchFailed'), language));
     }
-  }, [debouncedKeyword, statusFilter]);
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => setDebouncedKeyword(keyword.trim()), 300);
-    return () => window.clearTimeout(timer);
-  }, [keyword]);
+  }, [debouncedKeyword, language, statusFilter, t]);
 
   useEffect(() => {
     loadAnnouncements(1, pageSizeRef.current, statusFilter, debouncedKeyword);
@@ -124,15 +141,21 @@ const AnnouncementManagement: React.FC = () => {
   }, [debouncedKeyword, loadAnnouncements, loadSummary, statusFilter]);
 
   useEffect(() => {
+    let disposed = false;
     adminApi.getMyPermissions()
       .then((response) => {
+        if (disposed) return;
         setCurrentRole(getEffectiveRole(response.data.role, response.data.roleCode));
         setAdminPermissions(response.data.permissions || []);
       })
       .catch(() => {
+        if (disposed) return;
         setCurrentRole('');
         setAdminPermissions([]);
       });
+    return () => {
+      disposed = true;
+    };
   }, []);
 
   const titleMaxChars = Math.max(1, summary?.titleMaxChars || 120);
@@ -185,6 +208,10 @@ const AnnouncementManagement: React.FC = () => {
       message.error(t('adminLayout.noPermission'));
       return;
     }
+    if (announcementActionDisabled) {
+      message.warning(announcementActionUnavailableMessage);
+      return;
+    }
     setEditing(announcement || null);
     form.resetFields();
     form.setFieldsValue({
@@ -202,6 +229,10 @@ const AnnouncementManagement: React.FC = () => {
   const handleSave = async () => {
     if (!canWriteAnnouncements) {
       message.error(t('adminLayout.noPermission'));
+      return;
+    }
+    if (announcementActionDisabled) {
+      message.warning(announcementActionUnavailableMessage);
       return;
     }
     try {
@@ -234,6 +265,10 @@ const AnnouncementManagement: React.FC = () => {
       message.error(t('adminLayout.noPermission'));
       return;
     }
+    if (announcementActionDisabled) {
+      message.warning(announcementActionUnavailableMessage);
+      return;
+    }
     setStatusUpdatingId(announcement.id);
     try {
       await adminApi.updateAnnouncement(announcement.id, {
@@ -262,6 +297,10 @@ const AnnouncementManagement: React.FC = () => {
       message.error(t('adminLayout.noPermission'));
       return;
     }
+    if (announcementActionDisabled) {
+      message.warning(announcementActionUnavailableMessage);
+      return;
+    }
     try {
       await adminApi.deleteAnnouncement(id);
       message.success(t('pages.announcementAdmin.deleted'));
@@ -271,6 +310,11 @@ const AnnouncementManagement: React.FC = () => {
     }
   };
 
+  const showInitialAnnouncementLoading = loading && !announcementSnapshotLoaded;
+  const announcementSnapshotUnavailable = Boolean(announcementLoadError) && !announcementSnapshotLoaded;
+  const canRenderAnnouncementSnapshot = !showInitialAnnouncementLoading && !announcementSnapshotUnavailable;
+  const canRenderAnnouncementSummary = canRenderAnnouncementSnapshot && summarySnapshotLoaded;
+
   return (
     <div className="announcement-management">
       <div className="announcement-management__hero">
@@ -278,47 +322,87 @@ const AnnouncementManagement: React.FC = () => {
           <Text className="announcement-management__eyebrow">{t('pages.announcementAdmin.eyebrow')}</Text>
           <Title level={2}>{t('pages.announcementAdmin.title')}</Title>
           <Text type="secondary">{t('pages.announcementAdmin.description')}</Text>
-          <Text type="secondary" className="announcement-management__limitHint">
-            {t('pages.announcementAdmin.limitHint', { count: maxActiveRows })}{summaryCheckedAt ? t('pages.announcementAdmin.checkedAt', { time: summaryCheckedAt }) : ''}
-          </Text>
+          {summarySnapshotLoaded ? (
+            <Text type="secondary" className="announcement-management__limitHint">
+              {t('pages.announcementAdmin.limitHint', { count: maxActiveRows })}{summaryCheckedAt ? t('pages.announcementAdmin.checkedAt', { time: summaryCheckedAt }) : ''}
+            </Text>
+          ) : null}
         </div>
         {canWriteAnnouncements ? (
-          <Button type="primary" icon={<PlusOutlined />} aria-label={addAnnouncementActionLabel} title={addAnnouncementActionLabel} onClick={() => openEditor()}>
+          <Button type="primary" icon={<PlusOutlined />} disabled={announcementActionDisabled} aria-label={addAnnouncementActionLabel} title={addAnnouncementActionLabel} onClick={() => openEditor()}>
             {t('pages.announcementAdmin.add')}
           </Button>
         ) : null}
       </div>
 
-      <section className="announcement-management__stats" aria-label={t('pages.announcementAdmin.statsLabel')}>
-        <div>
-          <ThunderboltOutlined />
-          <strong>{announcementStats.active}</strong>
-          <span>{t('pages.announcementAdmin.active')}</span>
-        </div>
-        <div>
-          <ClockCircleOutlined />
-          <strong>{announcementStats.scheduled}</strong>
-          <span>{t('pages.announcementAdmin.scheduled')}</span>
-        </div>
-        <div>
-          <SoundOutlined />
-          <strong>{announcementStats.expired}</strong>
-          <span>{t('pages.announcementAdmin.expired')}</span>
-        </div>
-        <div>
-          <LinkOutlined />
-          <strong>{announcementStats.linked}</strong>
-          <span>{t('pages.announcementAdmin.linked')}</span>
-        </div>
-      </section>
+      {announcementLoadError ? (
+        <Alert
+          className="announcement-management__alert"
+          type="warning"
+          showIcon
+          message={announcementLoadError}
+          description={announcementSnapshotLoaded ? t('pages.announcementAdmin.staleDataWarning') : undefined}
+          action={(
+            <Button size="small" loading={loading} onClick={() => loadAnnouncements(pageState.page, pageState.size)}>
+              {t('common.retry')}
+            </Button>
+          )}
+        />
+      ) : null}
 
-      <Card className="announcement-management__card">
+      {summaryLoadError ? (
+        <Alert
+          className="announcement-management__alert"
+          type="warning"
+          showIcon
+          message={summaryLoadError}
+          description={summarySnapshotLoaded ? t('pages.announcementAdmin.summaryStaleDataWarning') : undefined}
+          action={(
+            <Button size="small" onClick={() => loadSummary()}>
+              {t('common.retry')}
+            </Button>
+          )}
+        />
+      ) : null}
+
+      {showInitialAnnouncementLoading ? (
+        <Card className="announcement-management__loadingState" loading />
+      ) : null}
+
+      {canRenderAnnouncementSummary ? (
+        <section className="announcement-management__stats" aria-label={t('pages.announcementAdmin.statsLabel')}>
+          <div>
+            <ThunderboltOutlined />
+            <strong>{announcementStats.active}</strong>
+            <span>{t('pages.announcementAdmin.active')}</span>
+          </div>
+          <div>
+            <ClockCircleOutlined />
+            <strong>{announcementStats.scheduled}</strong>
+            <span>{t('pages.announcementAdmin.scheduled')}</span>
+          </div>
+          <div>
+            <SoundOutlined />
+            <strong>{announcementStats.expired}</strong>
+            <span>{t('pages.announcementAdmin.expired')}</span>
+          </div>
+          <div>
+            <LinkOutlined />
+            <strong>{announcementStats.linked}</strong>
+            <span>{t('pages.announcementAdmin.linked')}</span>
+          </div>
+        </section>
+      ) : null}
+
+      {canRenderAnnouncementSnapshot ? (
+        <Card className="announcement-management__card">
         <Space className="announcement-management__toolbar" wrap role="search" aria-label={announcementSearchRegionLabel} title={announcementSearchRegionLabel}>
           <Input
             allowClear
             prefix={<SearchOutlined />}
             value={keyword}
             onChange={(event) => setKeyword(event.target.value)}
+            disabled={announcementActionDisabled}
             placeholder={t('common.search')}
             aria-label={announcementSearchInputLabel}
             title={announcementSearchInputLabel}
@@ -328,6 +412,7 @@ const AnnouncementManagement: React.FC = () => {
             allowClear
             value={statusFilter}
             onChange={setStatusFilter}
+            disabled={announcementActionDisabled}
             placeholder={t('common.status')}
             aria-label={announcementStatusFilterLabel}
             title={announcementStatusFilterLabel}
@@ -379,10 +464,10 @@ const AnnouncementManagement: React.FC = () => {
 	                    title={statusActionLabel}
                     description={announcementTitle}
                     onConfirm={() => toggleStatus(record, status !== 'ACTIVE')}
-                    disabled={!canWriteAnnouncements || statusUpdatingId === record.id}
+                    disabled={!canWriteAnnouncements || announcementActionDisabled || statusUpdatingId === record.id}
                     okText={t('common.confirm')}
                     cancelText={t('common.cancel')}
-                    okButtonProps={{ danger: status === 'ACTIVE', 'aria-label': statusActionLabel, title: statusActionLabel }}
+                    okButtonProps={{ danger: status === 'ACTIVE', disabled: announcementActionDisabled, 'aria-label': statusActionLabel, title: statusActionLabel }}
                     cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${statusActionLabel}`, title: `${t('common.cancel')}: ${statusActionLabel}` }}
                   >
                     <Switch
@@ -392,7 +477,7 @@ const AnnouncementManagement: React.FC = () => {
                       aria-label={statusActionLabel}
                       title={statusActionLabel}
                       loading={statusUpdatingId === record.id}
-                      disabled={!canWriteAnnouncements || statusUpdatingId === record.id}
+                      disabled={!canWriteAnnouncements || announcementActionDisabled || statusUpdatingId === record.id}
                     />
                   </Popconfirm>
                 );
@@ -423,19 +508,20 @@ const AnnouncementManagement: React.FC = () => {
                 const deleteActionLabel = `${t('common.delete')}: ${announcementTitle}`;
                 return (
                   <Space>
-                    {canWriteAnnouncements ? <Button size="small" aria-label={editActionLabel} title={editActionLabel} onClick={() => openEditor(record)}>{t('common.edit')}</Button> : null}
+                    {canWriteAnnouncements ? <Button size="small" disabled={announcementActionDisabled} aria-label={editActionLabel} title={editActionLabel} onClick={() => openEditor(record)}>{t('common.edit')}</Button> : null}
                     {canDeleteAnnouncements ? (
 	                      <Popconfirm
 	                        classNames={mobilePopconfirmClassNames}
 	                        title={t('pages.announcementAdmin.deleteConfirm')}
                         description={announcementTitle}
                         onConfirm={() => deleteAnnouncement(record.id)}
+                        disabled={announcementActionDisabled}
                         okText={t('common.confirm')}
                         cancelText={t('common.cancel')}
-                        okButtonProps={{ danger: true, 'aria-label': deleteActionLabel, title: deleteActionLabel }}
+                        okButtonProps={{ danger: true, disabled: announcementActionDisabled, 'aria-label': deleteActionLabel, title: deleteActionLabel }}
                         cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${deleteActionLabel}`, title: `${t('common.cancel')}: ${deleteActionLabel}` }}
                       >
-                        <Button size="small" danger aria-label={deleteActionLabel} title={deleteActionLabel}>{t('common.delete')}</Button>
+                        <Button size="small" danger disabled={announcementActionDisabled} aria-label={deleteActionLabel} title={deleteActionLabel}>{t('common.delete')}</Button>
                       </Popconfirm>
                     ) : null}
                   </Space>
@@ -445,6 +531,7 @@ const AnnouncementManagement: React.FC = () => {
           ]}
         />
       </Card>
+      ) : null}
 
       <Modal
         title={editorTitle}
@@ -453,7 +540,7 @@ const AnnouncementManagement: React.FC = () => {
         onOk={handleSave}
         okText={t('common.save')}
         cancelText={t('common.cancel')}
-        okButtonProps={{ 'aria-label': saveEditorActionLabel, title: saveEditorActionLabel }}
+        okButtonProps={{ disabled: announcementActionDisabled, 'aria-label': saveEditorActionLabel, title: saveEditorActionLabel }}
         cancelButtonProps={{ 'aria-label': cancelEditorActionLabel, title: cancelEditorActionLabel }}
         confirmLoading={saving}
         width={720}
@@ -502,14 +589,15 @@ const AnnouncementManagement: React.FC = () => {
             <Form.Item name="startsAt" label={t('pages.announcementAdmin.startsAt')} extra={t('pages.announcementAdmin.startsAtExtra')}>
               <div role="group" aria-label={startsAtFieldLabel} title={startsAtFieldLabel}>
                 <DatePicker
-                  showTime
-                  format="YYYY-MM-DD HH:mm:ss"
-                  className="announcement-management__datePicker"
-                  classNames={mobilePopupClassNames}
-                  getPopupContainer={() => document.body}
-                  aria-label={startsAtFieldLabel}
-                  title={startsAtFieldLabel}
-                />
+	                  showTime
+	                  format="YYYY-MM-DD HH:mm:ss"
+	                  className="announcement-management__datePicker"
+	                  classNames={announcementDatePopupClassNames}
+	                  getPopupContainer={() => document.body}
+	                  placement="bottomLeft"
+	                  aria-label={startsAtFieldLabel}
+	                  title={startsAtFieldLabel}
+	                />
               </div>
             </Form.Item>
             <Form.Item
@@ -533,14 +621,15 @@ const AnnouncementManagement: React.FC = () => {
             >
               <div role="group" aria-label={endsAtFieldLabel} title={endsAtFieldLabel}>
                 <DatePicker
-                  showTime
-                  format="YYYY-MM-DD HH:mm:ss"
-                  className="announcement-management__datePicker"
-                  classNames={mobilePopupClassNames}
-                  getPopupContainer={() => document.body}
-                  aria-label={endsAtFieldLabel}
-                  title={endsAtFieldLabel}
-                />
+	                  showTime
+	                  format="YYYY-MM-DD HH:mm:ss"
+	                  className="announcement-management__datePicker"
+	                  classNames={announcementDatePopupClassNames}
+	                  getPopupContainer={() => document.body}
+	                  placement="bottomLeft"
+	                  aria-label={endsAtFieldLabel}
+	                  title={endsAtFieldLabel}
+	                />
               </div>
             </Form.Item>
           </Space>

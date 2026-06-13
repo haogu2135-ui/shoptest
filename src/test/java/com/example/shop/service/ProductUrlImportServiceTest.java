@@ -7,11 +7,19 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ProductUrlImportServiceTest {
     private final ProductUrlImportService service = new ProductUrlImportService();
@@ -434,5 +442,97 @@ class ProductUrlImportServiceTest {
                 () -> service.readHtmlBody(new java.io.ByteArrayInputStream(oversized)));
 
         assertEquals(HttpStatus.BAD_REQUEST, ex.getStatus());
+    }
+
+    @Test
+    void productUrlImportExceptionFallbacksRemainObservable() throws Exception {
+        String source = Files.readString(
+                Path.of("src/main/java/com/example/shop/service/ProductUrlImportService.java"),
+                StandardCharsets.UTF_8);
+
+        assertFalse(Pattern.compile("catch\\s*\\([^)]*\\bignored\\b[^)]*\\)").matcher(source).find());
+
+        Matcher matcher = Pattern.compile("catch\\s*\\((?!ResponseStatusException\\b)[^)]*\\)\\s*\\{").matcher(source);
+        List<String> silentCatches = new ArrayList<>();
+        while (matcher.find()) {
+            int bodyEnd = findMatchingBrace(source, matcher.end());
+            if (bodyEnd < 0) {
+                continue;
+            }
+            String body = source.substring(matcher.end(), bodyEnd);
+            if (!body.contains("log.")) {
+                silentCatches.add("line " + lineNumber(source, matcher.start()));
+            }
+            matcher.region(bodyEnd + 1, source.length());
+        }
+
+        assertTrue(silentCatches.isEmpty(),
+                () -> "ProductUrlImportService catch fallbacks must log debug context: " + silentCatches);
+    }
+
+    private static int findMatchingBrace(String source, int bodyStart) {
+        int depth = 1;
+        Character stringQuote = null;
+        boolean escaped = false;
+        boolean lineComment = false;
+        boolean blockComment = false;
+        for (int index = bodyStart; index < source.length(); index++) {
+            char current = source.charAt(index);
+            char next = index + 1 < source.length() ? source.charAt(index + 1) : '\0';
+            if (lineComment) {
+                if (current == '\n') {
+                    lineComment = false;
+                }
+                continue;
+            }
+            if (blockComment) {
+                if (current == '*' && next == '/') {
+                    blockComment = false;
+                    index++;
+                }
+                continue;
+            }
+            if (stringQuote != null) {
+                if (escaped) {
+                    escaped = false;
+                    continue;
+                }
+                if (current == '\\') {
+                    escaped = true;
+                    continue;
+                }
+                if (current == stringQuote) {
+                    stringQuote = null;
+                }
+                continue;
+            }
+            if (current == '/' && next == '/') {
+                lineComment = true;
+                index++;
+                continue;
+            }
+            if (current == '/' && next == '*') {
+                blockComment = true;
+                index++;
+                continue;
+            }
+            if (current == '"' || current == '\'') {
+                stringQuote = current;
+                continue;
+            }
+            if (current == '{') {
+                depth++;
+            } else if (current == '}') {
+                depth--;
+                if (depth == 0) {
+                    return index;
+                }
+            }
+        }
+        return -1;
+    }
+
+    private static long lineNumber(String source, int offset) {
+        return source.substring(0, offset).chars().filter(ch -> ch == '\n').count() + 1;
     }
 }

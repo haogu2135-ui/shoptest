@@ -15,6 +15,7 @@ services:
       SSL_CERTIFICATE_KEY: ${SSL_CERTIFICATE_KEY:-/etc/nginx/ssl/pet.686888666.xyz.key}
       BACKEND_ORIGIN: ${BACKEND_ORIGIN:?BACKEND_ORIGIN is required}
       CLIENT_MAX_BODY_SIZE: ${CLIENT_MAX_BODY_SIZE:-6m}
+      CSP_EXTRA_CONNECT_SRC: ${CSP_EXTRA_CONNECT_SRC:-}
     volumes:
       - ${FRONTEND_STATIC_ROOT:-../frontend/build}:/usr/share/nginx/html:ro
       - ./nginx/shoptest-edge.conf.template:/etc/nginx/templates/default.conf.template:ro

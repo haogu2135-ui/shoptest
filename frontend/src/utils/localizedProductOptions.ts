@@ -43,5 +43,32 @@ const PRODUCT_OPTION_LABELS: Partial<Record<Language, Record<string, string>>> =
   },
 };
 
+const normalizeOptionName = (value: string) =>
+  String(value || '')
+    .trim()
+    .toLocaleLowerCase()
+    .replace(/[_-]+/g, ' ')
+    .replace(/\s+/g, ' ');
+
+const SIZE_OPTION_ALIASES = new Set([
+  'size',
+  'sizes',
+  'pet size',
+  'talla',
+  'tamaño',
+  'taille',
+  'größe',
+  '尺码',
+  '尺寸',
+]);
+
 export const getLocalizedOptionLabel = (value: string, language: Language | string) =>
   PRODUCT_OPTION_LABELS[language as Language]?.[value] || value;
+
+export const isSizeOptionName = (value: string) => {
+  const normalized = normalizeOptionName(value);
+  if (!normalized) return false;
+  if (SIZE_OPTION_ALIASES.has(normalized)) return true;
+  return Object.values(PRODUCT_OPTION_LABELS)
+    .some((labels) => normalizeOptionName(labels?.Size || '') === normalized);
+};

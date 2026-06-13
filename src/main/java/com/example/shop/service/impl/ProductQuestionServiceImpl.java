@@ -1,6 +1,5 @@
 package com.example.shop.service.impl;
 
-import lombok.extern.slf4j.Slf4j;
 import com.example.shop.dto.ProductQuestionAdminSummaryResponse;
 import com.example.shop.dto.ProductQuestionPublicResponse;
 import com.example.shop.entity.Product;
@@ -24,7 +23,6 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
 
 @Service
-@Slf4j
 public class ProductQuestionServiceImpl implements ProductQuestionService {
     private final ProductQuestionRepository questionRepository;
     private final ProductRepository productRepository;
@@ -44,7 +42,7 @@ public class ProductQuestionServiceImpl implements ProductQuestionService {
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional(rollbackFor = Exception.class, readOnly = true)
     public List<ProductQuestionPublicResponse> getPublicByProductId(Long productId) {
         Product product = productRepository.findById(productId).orElse(null);
         if (product == null || (product.getStatus() != null && !"ACTIVE".equalsIgnoreCase(product.getStatus()))) {
@@ -57,13 +55,13 @@ public class ProductQuestionServiceImpl implements ProductQuestionService {
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional(rollbackFor = Exception.class, readOnly = true)
     public List<ProductQuestion> getAdminQueue(String status, int limit) {
         return getAdminQueue(status, null, limit);
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional(rollbackFor = Exception.class, readOnly = true)
     public List<ProductQuestion> getAdminQueue(String status, String search, int limit) {
         return questionRepository.findAdminQueue(
                 normalizedAnsweredFilter(status),
@@ -72,13 +70,13 @@ public class ProductQuestionServiceImpl implements ProductQuestionService {
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional(rollbackFor = Exception.class, readOnly = true)
     public ProductQuestionAdminSummaryResponse adminSummary() {
         return adminSummary(null, null);
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional(rollbackFor = Exception.class, readOnly = true)
     public ProductQuestionAdminSummaryResponse adminSummary(String status, String search) {
         int staleHours = normalizedStaleHours();
         int maxAdminRows = normalizedMaxAdminRows();
@@ -105,7 +103,7 @@ public class ProductQuestionServiceImpl implements ProductQuestionService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public ProductQuestion ask(Long productId, Long userId, String questionText) {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new IllegalArgumentException("Product not found"));
@@ -128,7 +126,7 @@ public class ProductQuestionServiceImpl implements ProductQuestionService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public ProductQuestion answer(Long questionId, Long userId, String answerText) {
         ProductQuestion question = questionRepository.findById(questionId)
                 .orElseThrow(() -> new IllegalArgumentException("Question not found"));
@@ -144,7 +142,7 @@ public class ProductQuestionServiceImpl implements ProductQuestionService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public ProductQuestion delete(Long questionId) {
         ProductQuestion question = questionRepository.findById(questionId)
                 .orElseThrow(() -> new IllegalArgumentException("Question not found"));

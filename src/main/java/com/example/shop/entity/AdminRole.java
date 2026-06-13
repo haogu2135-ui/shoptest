@@ -11,10 +11,10 @@ import java.util.List;
 public class AdminRole {
     private Long id;
     @NotBlank
-    @Size(max = 40)
+    @Size(max = 50)
     private String code;
     @NotBlank
-    @Size(max = 80)
+    @Size(max = 100)
     private String name;
     @Size(max = 500)
     private String description;

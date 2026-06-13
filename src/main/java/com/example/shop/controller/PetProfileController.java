@@ -11,6 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import javax.validation.Valid;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -31,7 +32,7 @@ public class PetProfileController {
     }
 
     @PostMapping
-    public ResponseEntity<?> create(@RequestBody(required = false) PetProfile request, Authentication authentication) {
+    public ResponseEntity<?> create(@Valid @RequestBody(required = false) PetProfile request, Authentication authentication) {
         try {
             UserDetailsImpl userDetails = SecurityUtils.requireUser(authentication);
             PetProfile saved = petProfileService.save(userDetails.getId(), request, null);
@@ -44,7 +45,7 @@ public class PetProfileController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<?> update(@PathVariable Long id, @RequestBody(required = false) PetProfile request, Authentication authentication) {
+    public ResponseEntity<?> update(@PathVariable Long id, @Valid @RequestBody(required = false) PetProfile request, Authentication authentication) {
         try {
             UserDetailsImpl userDetails = SecurityUtils.requireUser(authentication);
             PetProfile saved = petProfileService.save(userDetails.getId(), request, id);

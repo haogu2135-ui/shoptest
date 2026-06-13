@@ -46,6 +46,7 @@ const AlertManagement: React.FC = () => {
   const [selectedAlertIds, setSelectedAlertIds] = useState<number[]>([]);
   const [retentionDays, setRetentionDays] = useState(30);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [acting, setActing] = useState<string | null>(null);
   const [currentRole, setCurrentRole] = useState('');
   const [adminPermissions, setAdminPermissions] = useState<string[]>([]);
@@ -56,6 +57,7 @@ const AlertManagement: React.FC = () => {
   const canRunSelfCheck = hasAdminPermission(adminPermissions, currentRole, ALERTS_SELF_CHECK_PERMISSION);
   const canAcknowledgeAlerts = hasAdminPermission(adminPermissions, currentRole, ALERTS_ACKNOWLEDGE_PERMISSION);
   const canResolveAlerts = hasAdminPermission(adminPermissions, currentRole, ALERTS_RESOLVE_PERMISSION);
+  const alertActionDisabled = loading || Boolean(loadError) || !summary;
   const alertSeverityLabels = useMemo(() => ({
     ALL: t('pages.alertAdmin.severityValues.ALL'),
     CRITICAL: t('pages.alertAdmin.severityValues.CRITICAL'),
@@ -105,12 +107,14 @@ const AlertManagement: React.FC = () => {
     if (!canReadAlerts) {
       setAlerts([]);
       setSummary(null);
+      setLoadError(null);
       setSelectedAlertIds([]);
       setLoading(false);
       return;
     }
     setLoading(true);
     try {
+      setLoadError(null);
       const [alertResponse, summaryResponse] = await Promise.all([
         adminApi.getAlerts({
           status: status === 'ALL' ? undefined : status,
@@ -124,7 +128,9 @@ const AlertManagement: React.FC = () => {
       setSummary(summaryResponse.data);
       setSelectedAlertIds((ids) => ids.filter((id) => alertResponse.data.some((alert) => alert.id === id)));
     } catch (error: unknown) {
-      message.error(getApiErrorMessage(error, t('pages.alertAdmin.loadFailed'), language));
+      const errorMessage = getApiErrorMessage(error, t('pages.alertAdmin.loadFailed'), language);
+      setLoadError(errorMessage);
+      message.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -162,6 +168,10 @@ const AlertManagement: React.FC = () => {
       message.error(t('adminLayout.noPermission'));
       return;
     }
+    if (alertActionDisabled) {
+      message.warning(loadError || t('pages.alertAdmin.loadFailed'));
+      return;
+    }
     setActing('self-check');
     try {
       await adminApi.runAlertSelfCheck();
@@ -179,6 +189,10 @@ const AlertManagement: React.FC = () => {
       message.error(t('adminLayout.noPermission'));
       return;
     }
+    if (alertActionDisabled) {
+      message.warning(loadError || t('pages.alertAdmin.loadFailed'));
+      return;
+    }
     setActing(`ack-${alert.id}`);
     try {
       const response = await adminApi.acknowledgeAlert(alert.id);
@@ -190,11 +204,15 @@ const AlertManagement: React.FC = () => {
     } finally {
       setActing(null);
     }
-  }, [canAcknowledgeAlerts, language, loadData, t]);
+  }, [alertActionDisabled, canAcknowledgeAlerts, language, loadData, loadError, t]);
 
   const resolve = useCallback(async (alert: SystemAlert) => {
     if (!canResolveAlerts) {
       message.error(t('adminLayout.noPermission'));
+      return;
+    }
+    if (alertActionDisabled) {
+      message.warning(loadError || t('pages.alertAdmin.loadFailed'));
       return;
     }
     setActing(`resolve-${alert.id}`);
@@ -208,7 +226,7 @@ const AlertManagement: React.FC = () => {
     } finally {
       setActing(null);
     }
-  }, [canResolveAlerts, language, loadData, t]);
+  }, [alertActionDisabled, canResolveAlerts, language, loadData, loadError, t]);
 
   const selectedAlerts = useMemo(
     () => alerts.filter((alert) => selectedAlertIds.includes(alert.id)),
@@ -226,6 +244,10 @@ const AlertManagement: React.FC = () => {
   const batchAcknowledge = async () => {
     if (!canAcknowledgeAlerts) {
       message.error(t('adminLayout.noPermission'));
+      return;
+    }
+    if (alertActionDisabled) {
+      message.warning(loadError || t('pages.alertAdmin.loadFailed'));
       return;
     }
     if (!selectedOpenIds.length) {
@@ -250,6 +272,10 @@ const AlertManagement: React.FC = () => {
       message.error(t('adminLayout.noPermission'));
       return;
     }
+    if (alertActionDisabled) {
+      message.warning(loadError || t('pages.alertAdmin.loadFailed'));
+      return;
+    }
     if (!selectedUnresolvedIds.length) {
       message.warning(t('pages.alertAdmin.selectUnresolvedFirst'));
       return;
@@ -272,6 +298,10 @@ const AlertManagement: React.FC = () => {
       message.error(t('adminLayout.noPermission'));
       return;
     }
+    if (alertActionDisabled) {
+      message.warning(loadError || t('pages.alertAdmin.loadFailed'));
+      return;
+    }
     setActing('purge-resolved');
     try {
       const response = await adminApi.purgeResolvedAlerts(retentionDays);
@@ -289,6 +319,8 @@ const AlertManagement: React.FC = () => {
       title: t('pages.alertAdmin.alert'),
       dataIndex: 'title',
       key: 'title',
+      width: 320,
+      className: 'alert-management__alertColumn',
       render: (_, record) => (
         <div className="alert-management__titleCell">
           <Text strong>{record.title}</Text>
@@ -341,33 +373,35 @@ const AlertManagement: React.FC = () => {
         return (
           <Space wrap>
 	            {record.status === 'OPEN' && canAcknowledgeAlerts ? (
-		              <Popconfirm
-		                classNames={mobilePopconfirmClassNames}
-		                title={`${t('pages.alertAdmin.ackConfirm')} ${alertLabel}`}
-		                description={record.fingerprint && record.fingerprint !== alertLabel ? record.fingerprint : undefined}
-		                onConfirm={() => acknowledge(record)}
+              <Popconfirm
+                classNames={mobilePopconfirmClassNames}
+                title={`${t('pages.alertAdmin.ackConfirm')} ${alertLabel}`}
+                description={record.fingerprint && record.fingerprint !== alertLabel ? record.fingerprint : undefined}
+                onConfirm={() => acknowledge(record)}
+                disabled={alertActionDisabled}
                 okText={t('common.confirm')}
                 cancelText={t('common.cancel')}
                 okButtonProps={{ 'aria-label': ackActionLabel, title: ackActionLabel }}
                 cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${ackActionLabel}`, title: `${t('common.cancel')}: ${ackActionLabel}` }}
               >
-                <Button size="small" aria-label={ackActionLabel} title={ackActionLabel} loading={acting === `ack-${record.id}`}>
+                <Button size="small" aria-label={ackActionLabel} title={ackActionLabel} loading={acting === `ack-${record.id}`} disabled={alertActionDisabled}>
                   {t('pages.alertAdmin.ack')}
                 </Button>
               </Popconfirm>
             ) : null}
 	            {record.status !== 'RESOLVED' && canResolveAlerts ? (
-		              <Popconfirm
-		                classNames={mobilePopconfirmClassNames}
-		                title={`${t('pages.alertAdmin.resolveConfirm')} ${alertLabel}`}
-		                description={record.fingerprint && record.fingerprint !== alertLabel ? record.fingerprint : undefined}
-		                onConfirm={() => resolve(record)}
+              <Popconfirm
+                classNames={mobilePopconfirmClassNames}
+                title={`${t('pages.alertAdmin.resolveConfirm')} ${alertLabel}`}
+                description={record.fingerprint && record.fingerprint !== alertLabel ? record.fingerprint : undefined}
+                onConfirm={() => resolve(record)}
+                disabled={alertActionDisabled}
                 okText={t('common.confirm')}
                 cancelText={t('common.cancel')}
                 okButtonProps={{ 'aria-label': resolveActionLabel, title: resolveActionLabel }}
                 cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${resolveActionLabel}`, title: `${t('common.cancel')}: ${resolveActionLabel}` }}
               >
-                <Button size="small" type="primary" aria-label={resolveActionLabel} title={resolveActionLabel} loading={acting === `resolve-${record.id}`}>
+                <Button size="small" type="primary" aria-label={resolveActionLabel} title={resolveActionLabel} loading={acting === `resolve-${record.id}`} disabled={alertActionDisabled}>
                   {t('pages.alertAdmin.resolve')}
                 </Button>
               </Popconfirm>
@@ -376,7 +410,7 @@ const AlertManagement: React.FC = () => {
         );
       },
     },
-  ], [acknowledge, acting, alertCategoryLabels, alertDisplayLabel, alertSeverityLabels, alertStatusLabels, canAcknowledgeAlerts, canResolveAlerts, formatTime, resolve, t]);
+  ], [acknowledge, acting, alertActionDisabled, alertCategoryLabels, alertDisplayLabel, alertSeverityLabels, alertStatusLabels, canAcknowledgeAlerts, canResolveAlerts, formatTime, resolve, t]);
 
   const openAlertCount = summary?.openCount || 0;
   const acknowledgedAlertCount = summary?.acknowledgedCount || 0;
@@ -419,7 +453,7 @@ const AlertManagement: React.FC = () => {
             {t('common.refresh')}
           </Button>
           {canRunSelfCheck ? (
-            <Button type="primary" icon={<ToolOutlined />} loading={acting === 'self-check'} aria-label={selfCheckActionLabel} title={selfCheckActionLabel} onClick={runSelfCheck}>
+            <Button type="primary" icon={<ToolOutlined />} loading={acting === 'self-check'} disabled={alertActionDisabled} aria-label={selfCheckActionLabel} title={selfCheckActionLabel} onClick={runSelfCheck}>
               {t('pages.alertAdmin.selfCheck')}
             </Button>
           ) : null}
@@ -436,6 +470,23 @@ const AlertManagement: React.FC = () => {
         />
       ) : (
       <Spin spinning={(!permissionsLoaded || loading) && alerts.length === 0}>
+        {loadError ? (
+          <Alert
+            className="alert-management__alert"
+            type="warning"
+            showIcon
+            message={loadError}
+            description={summary || alerts.length ? t('pages.alertAdmin.staleDataWarning') : undefined}
+            action={(
+              <Button size="small" onClick={loadData} loading={loading}>
+                {t('common.retry')}
+              </Button>
+            )}
+          />
+        ) : null}
+
+        {loadError && !summary && alerts.length === 0 ? null : (
+          <>
         <div className="alert-management__stats">
           <Card
             className={`alert-management__statCard${status === 'OPEN' ? ' is-active' : ''}`}
@@ -543,14 +594,14 @@ const AlertManagement: React.FC = () => {
                   classNames={mobilePopconfirmClassNames}
                   title={t('pages.alertAdmin.batchAckConfirm', { count: selectedOpenIds.length })}
                   onConfirm={batchAcknowledge}
-                  disabled={!selectedOpenIds.length}
+                  disabled={!selectedOpenIds.length || alertActionDisabled}
                   okText={t('common.confirm')}
                   cancelText={t('common.cancel')}
                   okButtonProps={{ 'aria-label': batchAckActionLabel, title: batchAckActionLabel }}
                   cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${batchAckActionLabel}`, title: `${t('common.cancel')}: ${batchAckActionLabel}` }}
                 >
                   <Button
-                    disabled={!selectedOpenIds.length}
+                    disabled={!selectedOpenIds.length || alertActionDisabled}
                     loading={acting === 'batch-ack'}
                     aria-label={batchAckActionLabel}
                     title={batchAckActionLabel}
@@ -564,7 +615,7 @@ const AlertManagement: React.FC = () => {
                   classNames={mobilePopconfirmClassNames}
                   title={t('pages.alertAdmin.batchResolveConfirm', { count: selectedUnresolvedIds.length })}
                   onConfirm={batchResolve}
-                  disabled={!selectedUnresolvedIds.length}
+                  disabled={!selectedUnresolvedIds.length || alertActionDisabled}
                   okText={t('common.confirm')}
                   cancelText={t('common.cancel')}
                   okButtonProps={{ 'aria-label': batchResolveActionLabel, title: batchResolveActionLabel }}
@@ -572,7 +623,7 @@ const AlertManagement: React.FC = () => {
                 >
                   <Button
                     type="primary"
-                    disabled={!selectedUnresolvedIds.length}
+                    disabled={!selectedUnresolvedIds.length || alertActionDisabled}
                     loading={acting === 'batch-resolve'}
                     aria-label={batchResolveActionLabel}
                     title={batchResolveActionLabel}
@@ -600,12 +651,13 @@ const AlertManagement: React.FC = () => {
                   title={t('pages.alertAdmin.purgeConfirm')}
                   description={t('pages.alertAdmin.purgeDescription', { days: retentionDays })}
                   onConfirm={purgeResolved}
+                  disabled={alertActionDisabled}
                   okText={t('common.confirm')}
                   cancelText={t('common.cancel')}
                   okButtonProps={{ danger: true, 'aria-label': purgeResolvedActionLabel, title: purgeResolvedActionLabel }}
                   cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${purgeResolvedActionLabel}`, title: `${t('common.cancel')}: ${purgeResolvedActionLabel}` }}
                 >
-                  <Button icon={<DeleteOutlined />} loading={acting === 'purge-resolved'} aria-label={purgeResolvedActionLabel} title={purgeResolvedActionLabel}>
+                  <Button icon={<DeleteOutlined />} loading={acting === 'purge-resolved'} disabled={alertActionDisabled} aria-label={purgeResolvedActionLabel} title={purgeResolvedActionLabel}>
                     {t('pages.alertAdmin.purge')}
                   </Button>
                 </Popconfirm>
@@ -615,7 +667,7 @@ const AlertManagement: React.FC = () => {
 
           {alerts.length ? (
             <Table<SystemAlert>
-              className="shop-admin-selection-table"
+              className="shop-admin-selection-table alert-management__table"
               rowKey="id"
               columns={columns}
               dataSource={alerts}
@@ -634,7 +686,7 @@ const AlertManagement: React.FC = () => {
                 },
               } : undefined}
               pagination={{ pageSize: 10 }}
-              scroll={{ x: 980 }}
+              scroll={{ x: 1180 }}
               expandable={{
                 expandedRowRender: (record) => (
                   <div className="alert-management__expanded">
@@ -701,6 +753,8 @@ const AlertManagement: React.FC = () => {
             />
           )}
         </Card>
+          </>
+        )}
       </Spin>
       )}
     </div>

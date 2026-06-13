@@ -1,0 +1,47 @@
+{
+  "generatedAt": "2026-06-12T18:05:22.303Z",
+  "baseUrl": "http://127.0.0.1:4200",
+  "viewportCount": 3,
+  "routeStateCount": 69,
+  "issueStateCount": 1,
+  "issueCounts": {
+    "bottom-nav-obscures-control": 1
+  },
+  "consoleMessageCount": 730,
+  "networkFailureCount": 9,
+  "routeErrorCount": 0,
+  "routeErrors": [],
+  "topIssues": [
+    {
+      "viewport": "390x844",
+      "routeName": "home",
+      "stateName": "top",
+      "url": "http://127.0.0.1:4200/",
+      "issues": [
+        {
+          "type": "bottom-nav-obscures-control",
+          "severity": "high",
+          "count": 2,
+          "examples": [
+            {
+              "selector": "a.shopee-product__imageButton",
+              "text": "-28%Mall",
+              "y": 766.75,
+              "height": 172,
+              "bottom": 938.75,
+              "overlapPx": 72
+            },
+            {
+              "selector": "a.shopee-product__imageButton",
+              "text": "-18%Mall",
+              "y": 766.75,
+              "height": 172,
+              "bottom": 938.75,
+              "overlapPx": 72
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

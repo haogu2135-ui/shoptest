@@ -24,6 +24,7 @@ const allowEmptyApkBootstrap = process.env.MOBILE_RELEASE_ALLOW_EMPTY_APK === 't
 const skipGeneration = process.env.MOBILE_RELEASE_SKIP_GENERATION === 'true';
 const releaseSigned = process.env.MOBILE_RELEASE_SIGNED === 'true';
 const forceUnsignedRelease = process.env.MOBILE_RELEASE_FORCE_UNSIGNED === 'true';
+const ignoreExistingApks = process.env.MOBILE_RELEASE_IGNORE_EXISTING_APKS === 'true';
 
 const apkPattern = /^shoptest-(\d+)\.(\d+)\.(\d+)\.apk$/;
 const ANDROID_DEBUG_CERT_SHA256 = 'A59C1DF808784AF870705AC1FB13B0A12E5099AB3D140A26052A885AD66687F1';
@@ -273,7 +274,7 @@ if (explicitApkPath && !explicitApk) {
   throw new Error(`MOBILE_APK_FILE_NAME must match ${apkPattern}: ${explicitApkFileName}`);
 }
 
-const apkFiles = explicitApk ? [explicitApk] : (fs.existsSync(downloadsDir)
+const apkFiles = explicitApk ? [explicitApk] : (!ignoreExistingApks && fs.existsSync(downloadsDir)
   ? fs.readdirSync(downloadsDir)
       .map((fileName) => toApkMetadata(fileName, path.join(downloadsDir, fileName)))
       .filter(Boolean)

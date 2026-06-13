@@ -1,6 +1,5 @@
 package com.example.shop.service;
 
-import lombok.extern.slf4j.Slf4j;
 import com.example.shop.entity.Product;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -17,7 +16,6 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
-@Slf4j
 public class ProductVariantService {
     private static final ObjectMapper mapper = new ObjectMapper();
     private static final String PURCHASE_MODE_BUNDLE = "bundle";

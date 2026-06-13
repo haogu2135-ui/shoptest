@@ -21,11 +21,11 @@ public class SystemAlert {
     @Size(max = 80)
     private String category;
     @NotBlank
-    @Size(max = 160)
+    @Size(max = 200)
     private String title;
     @Size(max = 4000)
     private String message;
-    @Size(max = 160)
+    @Size(max = 180)
     private String fingerprint;
     @Size(max = 4000)
     private String metadata;

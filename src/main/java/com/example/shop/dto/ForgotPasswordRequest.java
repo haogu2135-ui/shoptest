@@ -21,6 +21,6 @@ public class ForgotPasswordRequest {
     private String code;
 
     @NotBlank(message = "New password is required")
-    @Size(min = 8, max = 128, message = "Password must be 8 to 128 characters")
+    @Size(min = 12, max = 128, message = "Password must be 12 to 128 characters")
     private String newPassword;
 }

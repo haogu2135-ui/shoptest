@@ -509,3 +509,18 @@
     min-width: 44px;
   }
 }
+
+/* Android UI fourth-round closure: helper labels stay readable on APP WebView. */
+@media (max-width: 520px) {
+  .add-on-assistant__badges span,
+  .add-on-assistant__fit,
+  .add-on-assistant__target {
+    min-height: 24px;
+    font-size: 12px !important;
+    line-height: 1.25 !important;
+  }
+
+  .add-on-assistant__meta {
+    gap: 7px;
+  }
+}

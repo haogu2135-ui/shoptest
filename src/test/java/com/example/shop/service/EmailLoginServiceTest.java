@@ -9,25 +9,24 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.data.redis.core.StringRedisTemplate;
 
 import java.lang.reflect.Field;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 class EmailLoginServiceTest {
     private UserService userService;
-    private EmailLoginService service;
+    private TestEmailLoginService service;
 
     @BeforeEach
     void setUp() {
         userService = mock(UserService.class);
-        @SuppressWarnings("unchecked")
-        ObjectProvider<StringRedisTemplate> redisTemplateProvider = mock(ObjectProvider.class);
-        when(redisTemplateProvider.getIfAvailable()).thenReturn(null);
-        service = new EmailLoginService(userService, mailProperties(), redisTemplateProvider);
+        service = new TestEmailLoginService(userService, mailProperties(), noRedisProvider());
     }
 
     @Test
@@ -40,6 +39,39 @@ class EmailLoginServiceTest {
 
         assertEquals("RATE_LIMITED", exception.getCode());
         assertEquals(10, exception.getRetryAfterSeconds());
+    }
+
+    @Test
+    void sendLoginCodePadsUnknownAccountResponse() {
+        when(userService.findByUsernameOrPhoneOrEmail("missing@example.com")).thenReturn(null);
+
+        service.sendLoginCode("missing@example.com", "203.0.113.15");
+
+        assertTrue(service.getPaddingCalls() > 0);
+    }
+
+    @Test
+    void sendPasswordResetCodePadsUnknownAccountResponse() {
+        when(userService.findByUsernameOrPhoneOrEmail("missing@example.com")).thenReturn(null);
+
+        service.sendPasswordResetCode("missing@example.com", "203.0.113.16");
+
+        assertTrue(service.getPaddingCalls() > 0);
+    }
+
+    @Test
+    void inMemorySendRateBucketsFailClosedWhenCapacityIsFull() {
+        MailAccountProperties properties = mailProperties();
+        properties.setMaxRateBuckets(2);
+        TestEmailLoginService limitedService = new TestEmailLoginService(userService, properties, noRedisProvider());
+        when(userService.findByUsernameOrPhoneOrEmail("first@example.com")).thenReturn(null);
+
+        limitedService.sendLoginCode("first@example.com", "203.0.113.17");
+        EmailLoginException exception = assertThrows(EmailLoginException.class,
+                () -> limitedService.sendLoginCode("second@example.com", "203.0.113.17"));
+
+        assertEquals("RATE_LIMITED", exception.getCode());
+        assertTrue(exception.getRetryAfterSeconds() > 0);
     }
 
     @Test
@@ -108,6 +140,13 @@ class EmailLoginServiceTest {
     }
 
     @SuppressWarnings("unchecked")
+    private ObjectProvider<StringRedisTemplate> noRedisProvider() {
+        ObjectProvider<StringRedisTemplate> redisTemplateProvider = mock(ObjectProvider.class);
+        when(redisTemplateProvider.getIfAvailable()).thenReturn(null);
+        return redisTemplateProvider;
+    }
+
+    @SuppressWarnings("unchecked")
     private void seedVerificationCode(String storeKey, String hashKey, String code) throws Exception {
         Field codesField = EmailLoginService.class.getDeclaredField("codes");
         codesField.setAccessible(true);
@@ -123,5 +162,24 @@ class EmailLoginServiceTest {
                 java.time.Instant.now().plusSeconds(60),
                 java.time.Instant.now());
         codes.put(storeKey, verificationCode);
+    }
+
+    private static class TestEmailLoginService extends EmailLoginService {
+        private int paddingCalls;
+
+        TestEmailLoginService(UserService userService,
+                              MailAccountProperties mailAccountProperties,
+                              ObjectProvider<StringRedisTemplate> redisTemplateProvider) {
+            super(userService, mailAccountProperties, redisTemplateProvider);
+        }
+
+        @Override
+        protected void sleepForPadding(Duration duration) {
+            paddingCalls++;
+        }
+
+        int getPaddingCalls() {
+            return paddingCalls;
+        }
     }
 }

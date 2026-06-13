@@ -37,7 +37,11 @@ window.__SHOP_RUNTIME_CONFIG__ = {
 };
 ```
 
-Use `apiBaseUrl` for HTTP API calls and `supportWebSocketUrl` for customer-service chat. The Nginx templates intentionally serve `runtime-config.js` with `no-store` headers so backend address changes are picked up on the next page load.
+Use `apiBaseUrl` for HTTP API calls and `supportWebSocketUrl` for customer-service chat. The default production config expects same-origin values such as `/api` and `/ws/support`.
+
+If you set absolute cross-origin values such as `https://api.example.com/api` or `wss://api.example.com/ws/support`, update the Nginx Content Security Policy at the same time. For the Docker edge template, set `CSP_EXTRA_CONNECT_SRC` to the space-separated API and WebSocket origins, for example `https://api.example.com wss://api.example.com`. For the static Nginx file, append those origins to `$shop_csp_connect_src` in `deploy/nginx/shoptest-static.conf`.
+
+The Nginx templates intentionally serve `runtime-config.js` with `no-store` headers so backend address changes are picked up on the next page load.
 
 On Windows you can also build and prepare the static artifact:
 
@@ -179,6 +183,8 @@ Create `/opt/shoptest/deploy/.env`:
 SERVER_NAME=pet.686888666.xyz
 BACKEND_ORIGIN=http://gateway.internal.example:8080
 CLIENT_MAX_BODY_SIZE=6m
+# Only needed when runtime-config.js uses absolute cross-origin API/WS URLs.
+CSP_EXTRA_CONNECT_SRC=https://api.example.com wss://api.example.com
 ```
 
 Start Nginx as the static frontend container:

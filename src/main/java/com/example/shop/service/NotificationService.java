@@ -65,7 +65,7 @@ public class NotificationService {
         return notificationMapper.countUnread(userId);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void createNotification(Long userId, String type, String title, String message) {
         Notification n = new Notification();
         n.setUserId(userId);
@@ -78,7 +78,7 @@ public class NotificationService {
         notificationMapper.insert(n);
     }
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Transactional(rollbackFor = Exception.class, propagation = Propagation.REQUIRES_NEW)
     public boolean tryCreateNotification(Long userId, String type, String title, String message) {
         try {
             createNotification(userId, type, title, message);
@@ -148,17 +148,17 @@ public class NotificationService {
         return notificationMapper.insertBatch(notifications);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void markAsRead(Long id) {
         notificationMapper.markAsRead(id);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void markAllAsRead(Long userId) {
         notificationMapper.markAllAsRead(userId);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void deleteNotification(Long id) {
         notificationMapper.deleteById(id);
     }

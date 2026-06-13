@@ -13,8 +13,7 @@ import java.util.stream.Collectors;
 @Component
 public class CorsOriginProperties {
     private static final String LOCAL_DEVELOPMENT_ORIGINS =
-            "http://localhost:*,http://127.0.0.1:*,"
-                    + "http://10.*:*,http://172.*:*,http://192.168.*:*";
+            "http://localhost:*,http://127.0.0.1:*";
     private static final String PRODUCTION_ORIGINS = "https://pet.686888666.xyz";
 
     private final RuntimeConfigService runtimeConfig;

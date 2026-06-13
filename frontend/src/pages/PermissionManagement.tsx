@@ -20,7 +20,9 @@ const isFormValidationError = (error: unknown): error is { errorFields: unknown[
 
 const PermissionManagement: React.FC = () => {
   const [roles, setRoles] = useState<AdminRole[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [roleLoadError, setRoleLoadError] = useState<string | null>(null);
+  const [roleSnapshotLoaded, setRoleSnapshotLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [keyword, setKeyword] = useState('');
   const [editingRole, setEditingRole] = useState<AdminRole | null>(null);
@@ -29,14 +31,20 @@ const PermissionManagement: React.FC = () => {
   const currentRole = getLocalStorageItem('role') || '';
   const navigate = useNavigate();
   const { t, language } = useLanguage();
+  const roleActionDisabled = loading || Boolean(roleLoadError) || !roleSnapshotLoaded;
+  const roleActionUnavailableMessage = roleLoadError || (loading ? t('common.loading') : t('pages.permissions.fetchFailed'));
 
   const loadRoles = useCallback(async () => {
     try {
       setLoading(true);
       const res = await adminApi.getRoles();
+      setRoleLoadError(null);
       setRoles(res.data || []);
+      setRoleSnapshotLoaded(true);
     } catch (err: unknown) {
-      message.error(getApiErrorMessage(err, t('pages.permissions.fetchFailed'), language));
+      const errorMessage = getApiErrorMessage(err, t('pages.permissions.fetchFailed'), language);
+      setRoleLoadError(errorMessage);
+      message.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -62,6 +70,10 @@ const PermissionManagement: React.FC = () => {
       message.info(t('pages.permissions.reservedRoleReadonly'));
       return;
     }
+    if (roleActionDisabled) {
+      message.warning(roleActionUnavailableMessage);
+      return;
+    }
     setEditingRole(role || null);
     form.resetFields();
     form.setFieldsValue(role || { code: '', name: '', description: '', permissions: ['dashboard', 'support'] });
@@ -76,6 +88,10 @@ const PermissionManagement: React.FC = () => {
   };
 
   const saveRole = async () => {
+    if (roleActionDisabled) {
+      message.warning(roleActionUnavailableMessage);
+      return;
+    }
     try {
       const values = await form.validateFields();
       setSaving(true);
@@ -94,6 +110,10 @@ const PermissionManagement: React.FC = () => {
   };
 
   const exportRoles = () => {
+    if (roleActionDisabled) {
+      message.warning(roleActionUnavailableMessage);
+      return;
+    }
     const header = ['code', 'name', 'description', 'status', 'permissions'];
     const rows = filteredRoles.map((role) => [
       role.code,
@@ -121,12 +141,36 @@ const PermissionManagement: React.FC = () => {
   const exportActionLabel = `${pageLabel}: ${t('pages.permissions.export')}`;
   const saveRoleActionLabel = `${t('common.save')}: ${roleEditorLabel}`;
   const cancelRoleActionLabel = `${t('common.cancel')}: ${roleEditorLabel}`;
+  const showInitialRoleLoading = loading && !roleSnapshotLoaded;
+  const roleSnapshotUnavailable = Boolean(roleLoadError) && !roleSnapshotLoaded;
+  const canRenderRoleSnapshot = !showInitialRoleLoading && !roleSnapshotUnavailable;
 
   return (
     <div className="permission-management-page">
       <Title level={4}>{t('pages.permissions.title')}</Title>
       <Text type="secondary">{t('pages.permissions.subtitle')}</Text>
 
+      {roleLoadError ? (
+        <Alert
+          className="permission-management-page__alert"
+          type="warning"
+          showIcon
+          message={roleLoadError}
+          description={roleSnapshotLoaded ? t('pages.permissions.staleDataWarning') : undefined}
+          action={(
+            <Button size="small" loading={loading} onClick={loadRoles}>
+              {t('common.retry')}
+            </Button>
+          )}
+        />
+      ) : null}
+
+      {showInitialRoleLoading ? (
+        <Card className="permission-management-page__loadingState" loading />
+      ) : null}
+
+      {canRenderRoleSnapshot ? (
+        <>
       <Card className="permission-management-page__toolbar" style={{ margin: '20px 0 16px' }}>
         <Space wrap className="permission-management-page__actions">
           <Input
@@ -134,15 +178,16 @@ const PermissionManagement: React.FC = () => {
             prefix={<SearchOutlined />}
             value={keyword}
             onChange={(event) => setKeyword(event.target.value)}
+            disabled={roleActionDisabled}
             placeholder={t('pages.permissions.searchPlaceholder')}
             aria-label={searchLabel}
             title={searchLabel}
             className="permission-management-page__searchInput"
           />
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => openRoleModal()} aria-label={newRoleActionLabel} title={newRoleActionLabel}>
+          <Button type="primary" icon={<PlusOutlined />} disabled={roleActionDisabled} onClick={() => openRoleModal()} aria-label={newRoleActionLabel} title={newRoleActionLabel}>
             {t('pages.permissions.newRole')}
           </Button>
-          <Button icon={<DownloadOutlined />} onClick={exportRoles} aria-label={exportActionLabel} title={exportActionLabel}>
+          <Button icon={<DownloadOutlined />} disabled={roleActionDisabled} onClick={exportRoles} aria-label={exportActionLabel} title={exportActionLabel}>
             {t('pages.permissions.export')}
           </Button>
         </Space>
@@ -186,7 +231,7 @@ const PermissionManagement: React.FC = () => {
               const roleLabel = role.name || role.code;
               const editActionLabel = `${t('common.edit')}: ${roleLabel}`;
               return (
-                <Button size="small" icon={<SafetyCertificateOutlined />} aria-label={editActionLabel} title={editActionLabel} onClick={() => openRoleModal(role)}>
+                <Button size="small" icon={<SafetyCertificateOutlined />} disabled={roleActionDisabled} aria-label={editActionLabel} title={editActionLabel} onClick={() => openRoleModal(role)}>
                   {t('common.edit')}
                 </Button>
               );
@@ -194,6 +239,8 @@ const PermissionManagement: React.FC = () => {
           },
         ]}
       />
+        </>
+      ) : null}
 
       <Modal
         title={editingRole ? t('pages.permissions.editRole') : t('pages.permissions.newRole')}
@@ -203,7 +250,7 @@ const PermissionManagement: React.FC = () => {
         confirmLoading={saving}
         width={720}
         className="profile-mobile-safe-modal permission-management-page__modal"
-        okButtonProps={{ 'aria-label': saveRoleActionLabel, title: saveRoleActionLabel }}
+        okButtonProps={{ disabled: roleActionDisabled, 'aria-label': saveRoleActionLabel, title: saveRoleActionLabel }}
         cancelButtonProps={{ 'aria-label': cancelRoleActionLabel, title: cancelRoleActionLabel }}
         destroyOnHidden
       >

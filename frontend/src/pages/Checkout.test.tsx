@@ -86,6 +86,7 @@ jest.mock('../i18n', () => {
     'pages.checkout.guestHint': 'Guest checkout',
     'pages.checkout.recipient': 'Recipient',
     'pages.checkout.recipientRequired': 'Enter recipient',
+    'pages.checkout.recipientMin': 'Recipient name must be at least 2 characters',
     'pages.checkout.phoneRequired': 'Enter phone',
     'pages.checkout.phoneInvalid': 'Enter a valid phone',
     'pages.checkout.region': 'Region',
@@ -93,6 +94,7 @@ jest.mock('../i18n', () => {
     'pages.checkout.regionPlaceholder': 'Select region',
     'pages.checkout.detailAddress': 'Detail address',
     'pages.checkout.detailRequired': 'Enter detail address',
+    'pages.checkout.detailMin': 'Enter at least 5 characters for the detailed address',
     'pages.checkout.detailPlaceholder': 'Street address',
     'pages.checkout.postalCode': 'Postal code',
     'pages.checkout.postalCodeRequired': 'Enter postal code',
@@ -109,6 +111,8 @@ jest.mock('../i18n', () => {
     'pages.checkout.shippingFeeCalculatingShort': 'Calculating shipping',
     'pages.checkout.shippingFeeUnavailable': 'Shipping fee is temporarily unavailable',
     'pages.checkout.shippingFeeUnavailableShort': 'Shipping unavailable',
+    'pages.checkout.shippingFeeFallbackApplied': 'Coupon verification is unavailable; checkout will continue with estimated shipping of {fee}.',
+    'pages.checkout.shippingFeeFallbackDescription': 'We removed unavailable coupon pricing for this attempt. You can place the order without a coupon or retry coupons before submitting.',
     'pages.payment.title': 'Payment',
     'pages.cart.browse': 'Browse products',
     'pages.cart.freeShippingUnlocked': 'Free shipping unlocked',
@@ -230,6 +234,9 @@ describe('Checkout payment availability', () => {
         userId: 7,
         recipientName: 'Alex',
         phone: '555-0100',
+        region: ['\u4e2d\u56fd', 'Beijing', 'Beijing', 'Chaoyang'],
+        postalCode: '100000',
+        detailAddress: '100 Pet Commerce St',
         address: '\u4e2d\u56fd Beijing Beijing Chaoyang 100000 100 Pet Commerce St',
         isDefault: true,
       }],
@@ -339,6 +346,68 @@ describe('Checkout payment availability', () => {
       expect(source).toContain('setRegionOptionsLanguage(language)');
       expect(source).toContain('options={regionOptions}');
       expect(source).not.toContain('loadRegionData()');
+    }
+  });
+
+  it('requires saved addresses to carry independent region, postal code, and detail fields', () => {
+    const checkoutSource = readCheckoutPageSource();
+    const profileSource = readProfilePageSource();
+
+    expect(checkoutSource).toContain("import { isValidRegionalPostalCode, normalizeRegionalPostalCode } from '../utils/postalCode';");
+    expect(checkoutSource).toContain('const getSavedAddressRegionPath = (address?: UserAddress | null) =>');
+    expect(checkoutSource).toContain('const getSavedAddressPostalCode = (address?: UserAddress | null) =>');
+    expect(checkoutSource).toContain('const getSavedAddressDetail = (address?: UserAddress | null) =>');
+    expect(checkoutSource).toContain('const isCompleteSavedAddress = (address?: UserAddress | null) =>');
+    expect(checkoutSource).toContain('&& isValidCheckoutPostalCode(postalCode, regionPath)');
+    expect(checkoutSource).toContain(': isCompleteSavedAddress(selectedSavedAddress)');
+    expect(checkoutSource).toContain("throw new Error(t('pages.checkout.addressRequired'));");
+    expect(checkoutSource).not.toContain('&& normalizeCheckoutText(selectedSavedAddress.address, 260)');
+
+    expect(profileSource).toContain("import { isValidRegionalPostalCode, normalizeRegionalPostalCode } from '../utils/postalCode';");
+    expect(profileSource).toContain('const isCompleteProfileAddress = (address?: UserAddress | null) =>');
+    expect(profileSource).toContain('region: regionPath,');
+    expect(profileSource).toContain('postalCode,');
+    expect(profileSource).toContain('detailAddress,');
+    expect(profileSource).toContain("name=\"postalCode\"");
+    expect(profileSource).toContain("addressForm.setFields([{ name: 'postalCode', errors: [t('pages.profile.postalCodeInvalid')] }]);");
+  });
+
+  it('allows checkout to continue with no-coupon fallback pricing when coupon quote fails', () => {
+    const source = readCheckoutPageSource();
+    const localeSources = ['en', 'zh', 'es'].map((locale) => require('fs').readFileSync(require('path').resolve(__dirname, `../locales/${locale}.json`), 'utf8') as string);
+
+    expect(source).toContain("const shippingQuoteFailed = requiresBackendShippingQuote && couponQuoteStatus === 'error';");
+    expect(source).toContain('const shippingQuoteFallbackActive = shippingQuoteFailed && !selectedUserCouponId;');
+    expect(source).toContain('|| shippingQuoteFallbackActive;');
+    expect(source).toContain("t('pages.checkout.shippingFeeFallbackApplied', { fee: formatMoney(shippingFee) })");
+    expect(source).toContain("couponQuoteErrorMessage || t('pages.checkout.shippingFeeFallbackDescription')");
+    expect(source).toContain('shippingQuotePending || shippingQuoteUnavailable || shippingQuoteFallbackActive');
+    expect(source).toContain("type={shippingQuoteUnavailable ? 'error' : shippingQuoteFallbackActive ? 'warning' : 'info'}");
+
+    for (const localeSource of localeSources) {
+      expect(localeSource).toContain('shippingFeeFallbackApplied');
+      expect(localeSource).toContain('shippingFeeFallbackDescription');
+    }
+  });
+
+  it('requires meaningful recipient and detailed address lengths before checkout can submit', () => {
+    const source = readCheckoutPageSource();
+    const localeSources = ['en', 'zh', 'es'].map((locale) => require('fs').readFileSync(require('path').resolve(__dirname, `../locales/${locale}.json`), 'utf8') as string);
+
+    expect(source).toContain('const CHECKOUT_RECIPIENT_MIN_LENGTH = 2;');
+    expect(source).toContain('const CHECKOUT_DETAIL_ADDRESS_MIN_LENGTH = 5;');
+    expect(source).toContain('const hasCompleteCheckoutRecipientName = (value: unknown) =>');
+    expect(source).toContain('const hasCompleteCheckoutDetailAddress = (value: unknown) =>');
+    expect(source).toContain('&& hasCompleteCheckoutRecipientName(address.recipientName)');
+    expect(source).toContain('&& hasCompleteCheckoutDetailAddress(getSavedAddressDetail(address))');
+    expect(source).toContain('hasCompleteCheckoutRecipientName(currentRecipientName)');
+    expect(source).toContain('hasCompleteCheckoutDetailAddress(currentShippingAddress)');
+    expect(source).toContain("Promise.reject(new Error(t('pages.checkout.recipientMin')))");
+    expect(source).toContain("Promise.reject(new Error(t('pages.checkout.detailMin')))");
+
+    for (const localeSource of localeSources) {
+      expect(localeSource).toContain('recipientMin');
+      expect(localeSource).toContain('detailMin');
     }
   });
 

@@ -1,7 +1,9 @@
 package com.example.shop.controller;
 
+import com.example.shop.dto.AdminOrderResponse;
 import com.example.shop.dto.CheckoutRequest;
 import com.example.shop.dto.GuestCheckoutRequest;
+import com.example.shop.dto.GuestOrderAccessRequest;
 import com.example.shop.dto.OrderCustomerResponse;
 import com.example.shop.dto.OrderItemCustomerResponse;
 import com.example.shop.dto.OrderTrackRequest;
@@ -39,6 +41,9 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class OrderController {
     private static final int HARD_LEGACY_ADMIN_ORDER_LIST_LIMIT = 500;
+    private static final int DEFAULT_CUSTOMER_ORDER_PAGE = 0;
+    private static final int DEFAULT_CUSTOMER_ORDER_PAGE_SIZE = 20;
+    private static final int HARD_CUSTOMER_ORDER_PAGE_SIZE_LIMIT = 100;
 
     private final OrderService orderService;
     private final OrderItemService orderItemService;
@@ -50,16 +55,15 @@ public class OrderController {
     private RuntimeConfigService runtimeConfig;
 
     @PostMapping
-    public ResponseEntity<?> createOrder(@Valid @RequestBody(required = false) Order order, Authentication authentication) {
-        if (order == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Order payload is required");
-        }
+    public ResponseEntity<?> createOrder(Authentication authentication) {
         SecurityUtils.requireUser(authentication);
         throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Legacy order creation is disabled; use /orders/checkout/me or /orders/checkout/guest");
     }
 
     @PostMapping("/checkout")
-    public ResponseEntity<?> checkout(@Valid @RequestBody(required = false) CheckoutRequest request, Authentication authentication) {
+    public ResponseEntity<?> checkout(@Valid @RequestBody(required = false) CheckoutRequest request,
+                                      @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
+                                      Authentication authentication) {
         if (request == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Checkout payload is required");
         }
@@ -67,25 +71,28 @@ public class OrderController {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "userId is required");
         }
         SecurityUtils.assertSelf(authentication, request.getUserId());
-        return ResponseEntity.ok(OrderCustomerResponse.from(orderService.checkout(request)));
+        return ResponseEntity.ok(OrderCustomerResponse.from(orderService.checkout(request, idempotencyKey)));
     }
 
     @PostMapping("/checkout/me")
-    public ResponseEntity<?> checkoutMine(@Valid @RequestBody(required = false) CheckoutRequest request, Authentication authentication) {
+    public ResponseEntity<?> checkoutMine(@Valid @RequestBody(required = false) CheckoutRequest request,
+                                          @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
+                                          Authentication authentication) {
         if (request == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Checkout payload is required");
         }
         UserDetailsImpl userDetails = SecurityUtils.requireUser(authentication);
         request.setUserId(userDetails.getId());
-        return ResponseEntity.ok(OrderCustomerResponse.from(orderService.checkout(request)));
+        return ResponseEntity.ok(OrderCustomerResponse.from(orderService.checkout(request, idempotencyKey)));
     }
 
     @PostMapping("/checkout/guest")
-    public ResponseEntity<?> guestCheckout(@Valid @RequestBody(required = false) GuestCheckoutRequest request) {
+    public ResponseEntity<?> guestCheckout(@Valid @RequestBody(required = false) GuestCheckoutRequest request,
+                                           @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey) {
         if (request == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Guest checkout payload is required");
         }
-        return ResponseEntity.ok(OrderCustomerResponse.from(orderService.guestCheckout(request)));
+        return ResponseEntity.ok(OrderCustomerResponse.from(orderService.guestCheckout(request, idempotencyKey)));
     }
 
     @GetMapping("/track")
@@ -109,13 +116,18 @@ public class OrderController {
     }
 
     @GetMapping("/me")
-    public ResponseEntity<List<OrderCustomerResponse>> getMyOrders(Authentication authentication) {
+    public ResponseEntity<List<OrderCustomerResponse>> getMyOrders(@RequestParam(required = false) Integer page,
+                                                                   @RequestParam(required = false) Integer size,
+                                                                   Authentication authentication) {
         UserDetailsImpl userDetails = SecurityUtils.requireUser(authentication);
-        return ResponseEntity.ok(toCustomerOrders(orderService.getOrdersByUserId(userDetails.getId())));
+        return customerOrderPageResponse(userDetails.getId(), safeCustomerOrderPage(page), safeCustomerOrderPageSize(size));
     }
 
     @GetMapping("/user/{userId}")
-    public ResponseEntity<?> getUserOrders(@PathVariable Long userId, Authentication authentication) {
+    public ResponseEntity<?> getUserOrders(@PathVariable Long userId,
+                                           @RequestParam(required = false) Integer page,
+                                           @RequestParam(required = false) Integer size,
+                                           Authentication authentication) {
         UserDetailsImpl userDetails = SecurityUtils.requireUser(authentication);
         if (!isSelf(userDetails, userId)) {
             if (SecurityUtils.isAdmin(userDetails)) {
@@ -124,7 +136,9 @@ public class OrderController {
                 throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Forbidden");
             }
         }
-        List<Order> orders = orderService.getOrdersByUserId(userId);
+        int safePage = safeCustomerOrderPage(page);
+        int safeSize = safeCustomerOrderPageSize(size);
+        List<Order> orders = orderService.getOrdersByUserId(userId, safePage, safeSize);
         return ResponseEntity.ok(canReadOrdersAsAdmin(userDetails) ? orders : toCustomerOrders(orders));
     }
 
@@ -136,19 +150,18 @@ public class OrderController {
         return ResponseEntity.ok(canReadOrdersAsAdmin(userDetails) ? order : OrderCustomerResponse.from(order));
     }
 
-    @GetMapping("/guest/{id}")
+    @PostMapping("/guest/{id}")
     public ResponseEntity<OrderCustomerResponse> getGuestOrder(@PathVariable Long id,
-                                                               @RequestParam String guestEmail,
-                                                               @RequestParam String orderNo,
+                                                               @Valid @RequestBody(required = false) GuestOrderAccessRequest body,
                                                                HttpServletRequest request) {
-        return ResponseEntity.ok(OrderCustomerResponse.from(requireGuestVisibleOrder(id, guestEmail, orderNo, request)));
+        if (body == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Guest order access payload is required");
+        }
+        return ResponseEntity.ok(OrderCustomerResponse.from(requireGuestVisibleOrder(id, body.getGuestEmail(), body.getOrderNo(), request)));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Boolean> updateOrder(@PathVariable Long id, @Valid @RequestBody(required = false) Order order, Authentication authentication) {
-        if (order == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Order payload is required");
-        }
+    public ResponseEntity<Boolean> updateOrder(@PathVariable Long id, Authentication authentication) {
         SecurityUtils.assertAdmin(authentication);
         throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Legacy admin order update is disabled; use /admin/orders/{id}/status");
     }
@@ -160,22 +173,27 @@ public class OrderController {
     }
 
     @GetMapping
-    public ResponseEntity<?> getAllOrders(Authentication authentication) {
+    public ResponseEntity<?> getAllOrders(@RequestParam(required = false) Integer page,
+                                          @RequestParam(required = false) Integer size,
+                                          Authentication authentication) {
         UserDetailsImpl userDetails = SecurityUtils.requireUser(authentication);
         if (canReadOrdersAsAdmin(userDetails)) {
             int limit = legacyAdminOrderListLimit();
             int total = orderService.countAdminOrders(null, null, null);
-            List<Order> orders = orderService.searchAdminOrders(null, null, null, 1, limit);
+            List<AdminOrderResponse> orderResponses = orderService.searchAdminOrders(null, null, null, 1, limit)
+                    .stream()
+                    .map(AdminOrderResponse::from)
+                    .collect(Collectors.toList());
             return ResponseEntity.ok()
                     .header("X-Admin-List-Limit", String.valueOf(limit))
-                    .header("X-Admin-List-Returned", String.valueOf(orders.size()))
+                    .header("X-Admin-List-Returned", String.valueOf(orderResponses.size()))
                     .header("X-Admin-List-Total", String.valueOf(total))
-                    .header("X-Admin-List-Truncated", String.valueOf(total > orders.size()))
+                    .header("X-Admin-List-Truncated", String.valueOf(total > orderResponses.size()))
                     .header(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS,
                             "X-Admin-List-Limit,X-Admin-List-Returned,X-Admin-List-Total,X-Admin-List-Truncated")
-                    .body(orders);
+                    .body(orderResponses);
         }
-        return ResponseEntity.ok(toCustomerOrders(orderService.getOrdersByUserId(userDetails.getId())));
+        return customerOrderPageResponse(userDetails.getId(), safeCustomerOrderPage(page), safeCustomerOrderPageSize(size));
     }
 
     @GetMapping("/{id}/items")
@@ -187,25 +205,24 @@ public class OrderController {
         return ResponseEntity.ok(canReadOrdersAsAdmin(userDetails) ? items : toCustomerOrderItems(items));
     }
 
-    @GetMapping("/guest/{id}/items")
+    @PostMapping("/guest/{id}/items")
     public ResponseEntity<List<OrderItemCustomerResponse>> getGuestOrderItems(@PathVariable Long id,
-                                                                              @RequestParam String guestEmail,
-                                                                              @RequestParam String orderNo,
+                                                                              @Valid @RequestBody(required = false) GuestOrderAccessRequest body,
                                                                               HttpServletRequest request) {
-        requireGuestVisibleOrder(id, guestEmail, orderNo, request);
+        if (body == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Guest order access payload is required");
+        }
+        requireGuestVisibleOrder(id, body.getGuestEmail(), body.getOrderNo(), request);
         return ResponseEntity.ok(toCustomerOrderItems(orderItemService.getOrderItemsByOrderId(id)));
     }
 
     @PostMapping("/{id}/items")
-    public ResponseEntity<OrderItem> addOrderItem(@PathVariable Long id, @RequestBody(required = false) OrderItem item, Authentication authentication) {
-        if (item == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Order item payload is required");
-        }
+    public ResponseEntity<OrderItem> addOrderItem(@PathVariable Long id, Authentication authentication) {
         SecurityUtils.assertAdmin(authentication);
         throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Legacy admin order item mutation is disabled");
     }
 
-    @PutMapping("/{id}/cancel")
+    @PostMapping("/{id}/cancel")
     public ResponseEntity<?> cancelOrder(@PathVariable Long id,
                                          @RequestBody(required = false) Map<String, String> body,
                                          Authentication authentication,
@@ -213,7 +230,7 @@ public class OrderController {
         return cancelOrderInternal(id, body, authentication, request, false);
     }
 
-    @PutMapping("/guest/{id}/cancel")
+    @PostMapping("/guest/{id}/cancel")
     public ResponseEntity<?> cancelGuestOrder(@PathVariable Long id,
                                               @RequestBody(required = false) Map<String, String> body,
                                               HttpServletRequest request) {
@@ -248,7 +265,7 @@ public class OrderController {
         }
     }
 
-    @PutMapping("/{id}/pay")
+    @PostMapping("/{id}/pay")
     public ResponseEntity<?> payOrder(@PathVariable Long id,
                                       @RequestBody(required = false) Map<String, String> body,
                                       Authentication authentication,
@@ -271,7 +288,7 @@ public class OrderController {
         }
     }
 
-    @PutMapping("/{id}/ship")
+    @PostMapping("/{id}/ship")
     public ResponseEntity<?> shipOrder(@PathVariable Long id,
                                        @RequestBody(required = false) Map<String, String> body,
                                        Authentication authentication,
@@ -297,7 +314,7 @@ public class OrderController {
         }
     }
 
-    @PutMapping("/{id}/confirm")
+    @PostMapping("/{id}/confirm")
     public ResponseEntity<?> confirmReceipt(@PathVariable Long id,
                                             @RequestBody(required = false) Map<String, String> body,
                                             Authentication authentication,
@@ -305,7 +322,7 @@ public class OrderController {
         return confirmReceiptInternal(id, body, authentication, false, request);
     }
 
-    @PutMapping("/guest/{id}/confirm")
+    @PostMapping("/guest/{id}/confirm")
     public ResponseEntity<?> confirmGuestReceipt(@PathVariable Long id,
                                                  @RequestBody(required = false) Map<String, String> body,
                                                  HttpServletRequest request) {
@@ -346,7 +363,7 @@ public class OrderController {
         }
     }
 
-    @PutMapping("/{id}/return")
+    @PostMapping("/{id}/return")
     public ResponseEntity<?> returnOrder(@PathVariable Long id,
                                          @RequestBody(required = false) Map<String, String> body,
                                          Authentication authentication,
@@ -354,7 +371,7 @@ public class OrderController {
         return returnOrderInternal(id, body, authentication, request, false);
     }
 
-    @PutMapping("/guest/{id}/return")
+    @PostMapping("/guest/{id}/return")
     public ResponseEntity<?> returnGuestOrder(@PathVariable Long id,
                                               @RequestBody(required = false) Map<String, String> body,
                                               HttpServletRequest request) {
@@ -395,7 +412,7 @@ public class OrderController {
         }
     }
 
-    @PutMapping("/{id}/return-shipment")
+    @PostMapping("/{id}/return-shipment")
     public ResponseEntity<?> submitReturnShipment(@PathVariable Long id,
                                                   @RequestBody(required = false) Map<String, String> body,
                                                   Authentication authentication,
@@ -403,7 +420,7 @@ public class OrderController {
         return submitReturnShipmentInternal(id, body, authentication, request, false);
     }
 
-    @PutMapping("/guest/{id}/return-shipment")
+    @PostMapping("/guest/{id}/return-shipment")
     public ResponseEntity<?> submitGuestReturnShipment(@PathVariable Long id,
                                                        @RequestBody(required = false) Map<String, String> body,
                                                        HttpServletRequest request) {
@@ -526,6 +543,38 @@ public class OrderController {
         return Math.max(1, Math.min(configured, HARD_LEGACY_ADMIN_ORDER_LIST_LIMIT));
     }
 
+    private ResponseEntity<List<OrderCustomerResponse>> customerOrderPageResponse(Long userId, int page, int size) {
+        int total = orderService.countOrdersByUserId(userId);
+        List<OrderCustomerResponse> orders = toCustomerOrders(orderService.getOrdersByUserId(userId, page, size));
+        int totalPages = total <= 0 ? 0 : (int) Math.ceil((double) total / size);
+        return ResponseEntity.ok()
+                .header("X-Order-Page", String.valueOf(page))
+                .header("X-Order-Page-Size", String.valueOf(size))
+                .header("X-Order-Total", String.valueOf(total))
+                .header("X-Order-Total-Pages", String.valueOf(totalPages))
+                .header("X-Order-Has-Next", String.valueOf(page + 1 < totalPages))
+                .header(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS,
+                        "X-Order-Page,X-Order-Page-Size,X-Order-Total,X-Order-Total-Pages,X-Order-Has-Next")
+                .body(orders);
+    }
+
+    private int safeCustomerOrderPage(Integer page) {
+        if (page != null && page < 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "page must be greater than or equal to 0");
+        }
+        return page == null ? DEFAULT_CUSTOMER_ORDER_PAGE : page;
+    }
+
+    private int safeCustomerOrderPageSize(Integer size) {
+        if (size != null && size < 1) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "size must be greater than or equal to 1");
+        }
+        if (size != null && size > HARD_CUSTOMER_ORDER_PAGE_SIZE_LIMIT) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "size must be less than or equal to " + HARD_CUSTOMER_ORDER_PAGE_SIZE_LIMIT);
+        }
+        return size == null ? DEFAULT_CUSTOMER_ORDER_PAGE_SIZE : size;
+    }
+
     private void requireOrdersPagePermission(UserDetailsImpl user) {
         if (canReadOrdersAsAdmin(user)) {
             return;
@@ -574,7 +623,23 @@ public class OrderController {
     }
 
     private String legacyShipmentMetadata(String trackingNumber, String trackingCarrierCode) {
-        return "trackingNumber=" + trackingNumber + ",trackingCarrierCode=" + trackingCarrierCode;
+        return "trackingNumber=" + maskTrackingAuditValue(trackingNumber, 4)
+                + ",trackingCarrierCode=" + maskTrackingAuditValue(trackingCarrierCode, 0);
+    }
+
+    private String maskTrackingAuditValue(String value, int visibleSuffixLength) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        if (trimmed.isEmpty()) {
+            return "";
+        }
+        int suffixLength = Math.min(Math.max(visibleSuffixLength, 0), trimmed.length());
+        if (suffixLength == 0) {
+            return "******";
+        }
+        return "******" + trimmed.substring(trimmed.length() - suffixLength);
     }
 
     private String reasonOf(ResponseStatusException e) {

@@ -1,6 +1,7 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { Button, Result } from 'antd';
 import { HomeOutlined, ReloadOutlined } from '@ant-design/icons';
+import { useNavigate, type NavigateFunction } from 'react-router-dom';
 import { useLanguage } from '../i18n';
 import { reportNonBlockingError } from '../utils/nonBlockingError';
 
@@ -19,6 +20,7 @@ type ErrorBoundaryCopy = {
 
 type InnerProps = Props & {
   copy: ErrorBoundaryCopy;
+  navigate: NavigateFunction;
 };
 
 interface State {
@@ -48,7 +50,8 @@ class ErrorBoundaryInner extends Component<InnerProps, State> {
   };
 
   handleGoHome = () => {
-    window.location.href = this.props.homePath || '/';
+    this.props.navigate(this.props.homePath || '/', { replace: true });
+    this.setState({ hasError: false, error: null });
   };
 
   render() {
@@ -89,13 +92,14 @@ class ErrorBoundaryInner extends Component<InnerProps, State> {
 
 const ErrorBoundary: React.FC<Props> = (props) => {
   const { t } = useLanguage();
+  const navigate = useNavigate();
   const copy = {
     title: t('errorBoundary.title'),
     subtitle: t('errorBoundary.subtitle'),
     retry: t('errorBoundary.retry'),
     backHome: t('errorBoundary.backHome'),
   };
-  return <ErrorBoundaryInner {...props} copy={copy} />;
+  return <ErrorBoundaryInner {...props} copy={copy} navigate={navigate} />;
 };
 
 export default ErrorBoundary;

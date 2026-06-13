@@ -69,7 +69,8 @@ server {
     add_header Referrer-Policy "strict-origin-when-cross-origin" always;
     add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
     add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;
-    add_header Content-Security-Policy "default-src 'self'; script-src 'self' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://cloudflareinsights.com wss://$host; frame-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" always;
+    set $shop_csp_connect_src "'self' https://cloudflareinsights.com wss://$host ${CSP_EXTRA_CONNECT_SRC}";
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src $shop_csp_connect_src; frame-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" always;
 
     location = /healthz {
         access_log off;
@@ -79,7 +80,7 @@ server {
         add_header Referrer-Policy "strict-origin-when-cross-origin" always;
         add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
         add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;
-        add_header Content-Security-Policy "default-src 'self'; script-src 'self' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://cloudflareinsights.com wss://$host; frame-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" always;
+        add_header Content-Security-Policy "default-src 'self'; script-src 'self' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src $shop_csp_connect_src; frame-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" always;
         return 204;
     }
 
@@ -95,7 +96,7 @@ server {
         try_files $uri /index.html;
     }
 
-    location ~ ^/admin(?:/(?:dashboard|products|brands|categories|orders|logistics-carriers|coupons|users|permissions|reviews|questions|notifications|announcements|support|audit-logs|alerts|bugs|ip-blacklist|logs|registry|config-center|traffic-control|system|pet-gallery))?/?$ {
+    location ~ ^/admin(?:/(?:dashboard|products|brands|categories|orders|logistics-carriers|coupons|users|permissions|reviews|questions|notifications|announcements|support|audit-logs|alerts|bugs|ip-blacklist|logs|registry|config-center|traffic-control|system|pet-gallery)(?:/.*)?)?/?$ {
         try_files $uri /index.html;
     }
 
@@ -111,7 +112,7 @@ server {
         add_header Referrer-Policy "strict-origin-when-cross-origin" always;
         add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
         add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;
-        add_header Content-Security-Policy "default-src 'self'; script-src 'self' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://cloudflareinsights.com wss://$host; frame-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" always;
+        add_header Content-Security-Policy "default-src 'self'; script-src 'self' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src $shop_csp_connect_src; frame-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" always;
         error_page 418 =404 /index.html;
         return 418;
     }
@@ -124,7 +125,7 @@ server {
         add_header Referrer-Policy "strict-origin-when-cross-origin" always;
         add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
         add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;
-        add_header Content-Security-Policy "default-src 'self'; script-src 'self' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://cloudflareinsights.com wss://$host; frame-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" always;
+        add_header Content-Security-Policy "default-src 'self'; script-src 'self' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src $shop_csp_connect_src; frame-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" always;
         try_files $uri =404;
     }
 
@@ -139,7 +140,7 @@ server {
         add_header Referrer-Policy "strict-origin-when-cross-origin" always;
         add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
         add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;
-        add_header Content-Security-Policy "default-src 'self'; script-src 'self' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://cloudflareinsights.com wss://$host; frame-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" always;
+        add_header Content-Security-Policy "default-src 'self'; script-src 'self' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src $shop_csp_connect_src; frame-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" always;
         if ($request_method = OPTIONS) {
             return 204;
         }
@@ -153,7 +154,7 @@ server {
         add_header Referrer-Policy "strict-origin-when-cross-origin" always;
         add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
         add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;
-        add_header Content-Security-Policy "default-src 'self'; script-src 'self' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://cloudflareinsights.com wss://$host; frame-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" always;
+        add_header Content-Security-Policy "default-src 'self'; script-src 'self' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src $shop_csp_connect_src; frame-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" always;
         return 404;
     }
 
@@ -165,7 +166,7 @@ server {
         add_header Referrer-Policy "strict-origin-when-cross-origin" always;
         add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
         add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;
-        add_header Content-Security-Policy "default-src 'self'; script-src 'self' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://cloudflareinsights.com wss://$host; frame-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" always;
+        add_header Content-Security-Policy "default-src 'self'; script-src 'self' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src $shop_csp_connect_src; frame-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" always;
         try_files $uri =404;
     }
 
@@ -177,7 +178,7 @@ server {
         add_header Referrer-Policy "strict-origin-when-cross-origin" always;
         add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
         add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;
-        add_header Content-Security-Policy "default-src 'self'; script-src 'self' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://cloudflareinsights.com wss://$host; frame-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" always;
+        add_header Content-Security-Policy "default-src 'self'; script-src 'self' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src $shop_csp_connect_src; frame-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" always;
         try_files $uri =404;
     }
 
@@ -222,6 +223,6 @@ server {
         add_header Referrer-Policy "strict-origin-when-cross-origin" always;
         add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
         add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;
-        add_header Content-Security-Policy "default-src 'self'; script-src 'self' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://cloudflareinsights.com wss://$host; frame-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" always;
+        add_header Content-Security-Policy "default-src 'self'; script-src 'self' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src $shop_csp_connect_src; frame-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" always;
     }
 }

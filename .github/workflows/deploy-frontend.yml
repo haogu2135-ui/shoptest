@@ -71,6 +71,9 @@ jobs:
       - name: Upload frontend build
         if: steps.preflight.outputs.deploy == 'true'
         run: |
-          SSHPASS="$DEPLOY_PASSWORD" sshpass -e rsync -az --delete --delay-updates \
+          SSHPASS="$DEPLOY_PASSWORD" sshpass -e rsync -az --delete --delay-updates --chmod=D755,F644 \
             -e "ssh -p $DEPLOY_PORT -o StrictHostKeyChecking=accept-new" \
             frontend/build/ "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_TARGET"
+          SSHPASS="$DEPLOY_PASSWORD" sshpass -e ssh -p "$DEPLOY_PORT" -o StrictHostKeyChecking=accept-new \
+            "$DEPLOY_USER@$DEPLOY_HOST" \
+            "find '$DEPLOY_TARGET' -type d -exec chmod 0755 {} + && find '$DEPLOY_TARGET' -type f -exec chmod 0644 {} +"

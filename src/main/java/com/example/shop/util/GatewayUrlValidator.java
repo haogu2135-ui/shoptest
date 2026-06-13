@@ -4,8 +4,12 @@ import java.net.InetAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Locale;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public final class GatewayUrlValidator {
+    private static final Logger log = LoggerFactory.getLogger(GatewayUrlValidator.class);
+
     private GatewayUrlValidator() {
     }
 
@@ -64,8 +68,9 @@ public final class GatewayUrlValidator {
                         || address.isSiteLocalAddress()) {
                     return true;
                 }
-            } catch (Exception ignored) {
-                // Fall through to prefix checks below.
+            } catch (Exception ex) {
+                log.debug("Unable to resolve IP literal while checking local gateway host: {}; reason={}",
+                        normalized, ex.getMessage());
             }
         }
         String[] parts = normalized.split("\\.");

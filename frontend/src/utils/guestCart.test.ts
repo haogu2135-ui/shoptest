@@ -38,6 +38,15 @@ describe('guestCart', () => {
     expect(getGuestCartItems()[0].quantity).toBe(99);
   });
 
+  it('persists product free-shipping policy snapshots for guest cart pricing hints', () => {
+    addGuestCartItem({ id: 7, name: 'Free Mat', price: 28, stock: 6, freeShipping: true, freeShippingThreshold: 25 }, 1);
+
+    expect(getGuestCartItems()[0]).toEqual(expect.objectContaining({
+      freeShipping: true,
+      freeShippingThreshold: 25,
+    }));
+  });
+
   it('clears guest cart data', () => {
     addGuestCartItem({ id: 4, name: 'Bowl', price: 10, stock: 2 }, 1);
     clearGuestCart();
@@ -72,6 +81,57 @@ describe('guestCart', () => {
         productName: 'Bowl',
         price: 0,
         stock: 2,
+      }),
+    ]);
+  });
+
+  it('normalizes legacy nested product snapshots', () => {
+    localStorage.setItem('shop-guest-cart', JSON.stringify([
+      {
+        id: 91,
+        quantity: 2,
+        product: {
+          id: 501,
+          name: ' Guest Bowl ',
+          imageUrl: '/guest-bowl.png',
+          price: 25,
+          stock: 10,
+          status: 'active',
+          freeShipping: true,
+          freeShippingThreshold: 20,
+        },
+      },
+      {
+        id: 92,
+        quantity: 1,
+        product: {
+          id: 502,
+          price: 12,
+        },
+      },
+    ]));
+
+    const normalizedItems = getGuestCartItems();
+    expect(normalizedItems.some((item) => Object.prototype.hasOwnProperty.call(item, 'product'))).toBe(false);
+    expect(normalizedItems).toEqual([
+      expect.objectContaining({
+        id: 91,
+        productId: 501,
+        quantity: 2,
+        productName: 'Guest Bowl',
+        imageUrl: '/guest-bowl.png',
+        price: 25,
+        stock: 10,
+        productStatus: 'ACTIVE',
+        freeShipping: true,
+        freeShippingThreshold: 20,
+      }),
+      expect.objectContaining({
+        id: 92,
+        productId: 502,
+        quantity: 1,
+        productName: '',
+        price: 12,
       }),
     ]);
   });

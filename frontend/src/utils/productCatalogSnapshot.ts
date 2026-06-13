@@ -1,5 +1,6 @@
-import type { ProductPublic, ProductVariant } from '../types';
+import type { CategoryPublic, ProductPublic, ProductVariant } from '../types';
 import { normalizePersistentImageUrl } from './mediaAssets';
+import { reportNonBlockingError } from './nonBlockingError';
 import { getLocalStorageItem, setLocalStorageItem } from './safeStorage';
 
 export const PRODUCT_CATALOG_SNAPSHOT_KEY = 'shop-product-catalog-snapshot';
@@ -21,6 +22,34 @@ type ProductCatalogSnapshot = {
   savedAt: number;
   products: ProductCatalogSnapshotProduct[];
 };
+
+const fallbackCategoryNames = [
+  'Feeding & hydration',
+  'Beds & comfort',
+  'Walking gear',
+  'Toys & enrichment',
+  'Grooming care',
+  'Food & treats',
+  'Health & wellness',
+  'Travel essentials',
+  'Smart pet tech',
+  'Everyday accessories',
+];
+
+const fallbackCategoryRules: Array<[RegExp, string]> = [
+  [/\b(feeder|feeders|bowl|water|fountain|hydration|waterer)\b/i, 'Feeding & hydration'],
+  [/\b(food|treat|kibble|salmon|chicken|nutrition)\b/i, 'Food & treats'],
+  [/\b(bed|nap|blanket|furniture|calming|orthopedic)\b/i, 'Beds & comfort'],
+  [/\b(leash|harness|collar|walking|travel|carrier)\b/i, 'Walking gear'],
+  [/\b(toy|chew|puzzle|play|enrichment)\b/i, 'Toys & enrichment'],
+  [/\b(groom|shampoo|brush|hygiene|litter|pad)\b/i, 'Grooming care'],
+  [/\b(health|vitamin|dental|wellness)\b/i, 'Health & wellness'],
+  [/\b(smart|automatic|camera|tracker|sensor|connected)\b/i, 'Smart pet tech'],
+  [/\b(accessory|accessories|supply|supplies|essential|essentials|starter|kit)\b/i, 'Everyday accessories'],
+];
+
+const categoryIdLabelPattern = /^(category|categoria|categor[ií]a)\s*#?\s*\d+$/i;
+const chineseCategoryIdLabelPattern = /^分类\s*#?\s*\d+$/;
 
 const fallbackCatalogProducts: ProductCatalogSnapshotProduct[] = [
   {
@@ -285,8 +314,8 @@ export const saveProductCatalogSnapshot = (products: ProductPublic[], now = Date
       savedAt: now,
       products: normalizedProducts,
     }));
-  } catch {
-    // Catalog continuity is best-effort when storage is unavailable or full.
+  } catch (error) {
+    reportNonBlockingError('productCatalogSnapshot.saveProductCatalogSnapshot', error);
   }
 };
 
@@ -302,7 +331,8 @@ export const loadProductCatalogSnapshot = (now = Date.now()): ProductCatalogSnap
         .slice(0, MAX_SNAPSHOT_PRODUCTS)
       : [];
     return products.length ? { savedAt, products } : null;
-  } catch {
+  } catch (error) {
+    reportNonBlockingError('productCatalogSnapshot.loadProductCatalogSnapshot', error);
     return null;
   }
 };
@@ -311,3 +341,64 @@ export const loadFallbackProductCatalog = (): ProductCatalogSnapshotProduct[] =>
   fallbackCatalogProducts
     .map(normalizeProductForCatalogSnapshot)
     .filter((product): product is ProductCatalogSnapshotProduct => Boolean(product));
+
+const cleanFallbackCategoryName = (value: unknown) => {
+  const cleaned = clampString(value, 80);
+  if (!cleaned) return '';
+  if (categoryIdLabelPattern.test(cleaned) || chineseCategoryIdLabelPattern.test(cleaned)) {
+    return '';
+  }
+  return cleaned;
+};
+
+const inferFallbackCategoryName = (product: ProductCatalogSnapshotProduct, fallbackIndex: number) => {
+  const explicitName = cleanFallbackCategoryName(product.categoryName);
+  if (explicitName) return explicitName;
+
+  const searchText = [
+    product.name,
+    product.description,
+    product.tag,
+    product.brand,
+  ].filter(Boolean).join(' ');
+  const matchedRule = fallbackCategoryRules.find(([pattern]) => pattern.test(searchText));
+  if (matchedRule) return matchedRule[1];
+
+  return fallbackCategoryNames[fallbackIndex % fallbackCategoryNames.length];
+};
+
+const uniqueFallbackCategoryName = (baseName: string, product: ProductCatalogSnapshotProduct, usedNames: Set<string>) => {
+  const cleanedBaseName = cleanFallbackCategoryName(baseName) || 'Pet essentials';
+  const brandName = cleanFallbackCategoryName(product.brand);
+  const tagName = cleanFallbackCategoryName(product.tag);
+  const candidates = [
+    cleanedBaseName,
+    `${cleanedBaseName} collection`,
+    `${cleanedBaseName} picks`,
+    brandName ? `${brandName} picks` : '',
+    tagName,
+  ].filter(Boolean);
+  const candidate = candidates.find((name) => !usedNames.has(name.toLowerCase()));
+  return candidate || cleanedBaseName;
+};
+
+export const buildProductCatalogFallbackCategories = (products: ProductCatalogSnapshotProduct[]): CategoryPublic[] => {
+  const categories = new Map<number, CategoryPublic>();
+  const usedNames = new Set<string>();
+  products.forEach((product) => {
+    const id = Number(product.categoryId);
+    if (!Number.isSafeInteger(id) || id <= 0 || categories.has(id)) return;
+    const name = uniqueFallbackCategoryName(
+      inferFallbackCategoryName(product, categories.size),
+      product,
+      usedNames,
+    );
+    usedNames.add(name.toLowerCase());
+    categories.set(id, {
+      id,
+      name,
+      level: 1,
+    });
+  });
+  return Array.from(categories.values()).sort((left, right) => left.name.localeCompare(right.name));
+};

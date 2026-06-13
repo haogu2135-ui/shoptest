@@ -108,6 +108,22 @@ describe('runtimeConfig', () => {
     expect(apiGatewayPrefix).toBe('/edge');
     expect(resolveApiDispatcherUrl('/payments/channels')).toBe('/edge/payment/payments/channels');
   });
+
+  it('stays wired into API, websocket, gateway, and mobile runtime entry points', () => {
+    const fs = require('fs');
+    const path = require('path');
+    const sourceRoot = path.resolve(__dirname, '..');
+    const apiSource = fs.readFileSync(path.join(sourceRoot, 'api/index.ts'), 'utf8');
+    const apiDispatcherSource = fs.readFileSync(path.join(sourceRoot, 'utils/apiDispatcher.ts'), 'utf8');
+    const mobileUpdateSource = fs.readFileSync(path.join(sourceRoot, 'utils/mobileUpdate.ts'), 'utf8');
+
+    expect(apiSource).toContain("import { resolveApiBaseUrl, resolveSupportWebSocketUrl } from '../utils/runtimeConfig'");
+    expect(apiSource).toContain('baseURL: resolveApiBaseUrl()');
+    expect(apiSource).toContain('resolveSupportWebSocketUrl()');
+    expect(apiDispatcherSource).toContain("import { resolveApiGatewayEnabled, resolveApiGatewayPrefix } from './runtimeConfig'");
+    expect(mobileUpdateSource).toContain("import { resolveApiBaseUrl } from './runtimeConfig'");
+    expect(mobileUpdateSource).toContain('resolveApiBaseUrl()');
+  });
 });
 
 export {};

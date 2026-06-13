@@ -1,11 +1,11 @@
 package com.example.shop.service;
 
-import lombok.extern.slf4j.Slf4j;
 import com.example.shop.entity.Wishlist;
 import com.example.shop.entity.Product;
 import com.example.shop.repository.WishlistMapper;
 import com.example.shop.repository.ProductRepository;
 import com.example.shop.util.ProductStatusUtils;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.DuplicateKeyException;
@@ -44,7 +44,8 @@ public class WishlistService {
     }
 
     public List<Wishlist> getWishlist(Long userId) {
-        List<Wishlist> items = wishlistMapper.findByUserId(userId);
+        requirePositiveId(userId, "User");
+        List<Wishlist> items = wishlistMapper.findByUserId(userId, maxItemsPerUser());
         attachSelectionRequirements(items);
         return items;
     }
@@ -55,7 +56,7 @@ public class WishlistService {
         return wishlistMapper.findByUserAndProduct(userId, productId) != null;
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void addToWishlist(Long userId, Long productId) {
         requirePositiveId(userId, "User");
         requirePositiveId(productId, "Product");
@@ -65,24 +66,27 @@ public class WishlistService {
         Wishlist w = new Wishlist();
         w.setUserId(userId);
         w.setProductId(productId);
-        w.setCreatedAt(LocalDateTime.now());
+        LocalDateTime now = LocalDateTime.now();
+        w.setCreatedAt(now);
+        w.setUpdatedAt(now);
         try {
             wishlistMapper.insert(w);
         } catch (DuplicateKeyException e) {
-            // A concurrent add for the same user/product is equivalent to success.
+            log.debug("Treating duplicate wishlist add as idempotent success for user {} and product {}; reason={}",
+                    userId, productId, e.getMessage());
         } catch (DataIntegrityViolationException e) {
             throw new IllegalArgumentException("Product is no longer available for wishlist", e);
         }
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void removeFromWishlist(Long userId, Long productId) {
         requirePositiveId(userId, "User");
         requirePositiveId(productId, "Product");
         wishlistMapper.deleteByUserAndProduct(userId, productId);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void toggleWishlist(Long userId, Long productId) {
         if (isWishlisted(userId, productId)) {
             removeFromWishlist(userId, productId);

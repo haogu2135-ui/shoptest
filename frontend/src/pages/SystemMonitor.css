@@ -490,3 +490,184 @@
     line-height: 1.25;
   }
 }
+
+/* Mobile/App System Monitor must fit the admin content column. The earlier
+   horizontal stat rail could create a 700px min-content width on 390px views. */
+@media (max-width: 720px) {
+  .system-monitor {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  .system-monitor__hero,
+  .system-monitor__stats,
+  .system-monitor__resourceGrid,
+  .system-monitor__card,
+  .system-monitor__alert,
+  .system-monitor .ant-card,
+  .system-monitor .ant-card-body,
+  .system-monitor .ant-card-head,
+  .system-monitor .ant-statistic,
+  .system-monitor .ant-alert,
+  .system-monitor .ant-descriptions,
+  .system-monitor .ant-descriptions-view {
+    width: 100%;
+    min-width: 0 !important;
+    max-width: 100%;
+  }
+
+  .system-monitor__stats {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+    margin-inline: 0;
+    padding: 0;
+    overflow: visible;
+    scroll-snap-type: none;
+  }
+
+  .system-monitor__stats .ant-card {
+    flex: none;
+    flex-basis: auto;
+    scroll-snap-align: none;
+  }
+
+  .system-monitor__resourceGrid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .system-monitor__hero {
+    position: relative;
+    top: auto;
+  }
+
+  .system-monitor__hero .ant-btn {
+    height: auto;
+    min-height: 44px;
+    padding-block: 7px;
+    overflow: visible;
+    white-space: normal;
+    text-overflow: clip;
+  }
+
+  .system-monitor .ant-descriptions-view {
+    overflow-x: hidden;
+  }
+
+  .system-monitor .ant-descriptions-view > table {
+    width: 100% !important;
+    min-width: 0 !important;
+    table-layout: fixed;
+  }
+
+  .system-monitor .ant-card-head-title,
+  .system-monitor .ant-statistic-title,
+  .system-monitor .ant-statistic-content,
+  .system-monitor .ant-statistic-content-value,
+  .system-monitor .ant-alert-message,
+  .system-monitor .ant-alert-description {
+    min-width: 0;
+    max-width: 100%;
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+}
+
+/* F3533: force diagnostic Descriptions into real stacked mobile rows. */
+@media (max-width: 720px) {
+  .system-monitor .ant-descriptions,
+  .system-monitor .ant-descriptions-view,
+  .system-monitor .ant-descriptions-view > table,
+  .system-monitor .ant-descriptions-view > table > tbody,
+  .system-monitor .ant-descriptions-view > table > tbody > tr,
+  .system-monitor .ant-descriptions-row,
+  .system-monitor .ant-descriptions-item,
+  .system-monitor .ant-descriptions-item-label,
+  .system-monitor .ant-descriptions-item-content {
+    display: block !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  .system-monitor .ant-descriptions-view {
+    overflow: visible !important;
+  }
+
+  .system-monitor .ant-descriptions-view > table {
+    table-layout: auto !important;
+  }
+
+  .system-monitor .ant-descriptions-row {
+    border-bottom: 1px solid rgba(83, 119, 95, 0.12);
+  }
+
+  .system-monitor .ant-descriptions-row:last-child {
+    border-bottom: 0;
+  }
+
+  .system-monitor .ant-descriptions-item {
+    padding: 0 !important;
+  }
+
+  .system-monitor .ant-descriptions-item-label {
+    border-right: 0 !important;
+    border-bottom: 0 !important;
+    padding: 10px 12px 2px !important;
+    color: #6f7f74;
+    font-size: 12px;
+    font-weight: 700;
+    white-space: normal !important;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .system-monitor .ant-descriptions-item-content {
+    padding: 2px 12px 10px !important;
+    white-space: normal !important;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .system-monitor .ant-descriptions-item-content > *,
+  .system-monitor .ant-descriptions-item-content .ant-typography,
+  .system-monitor__messages,
+  .system-monitor__message {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+}
+
+/* F2717: keep readiness/status tags as horizontal pills after mobile
+   Descriptions are converted from Ant table cells into stacked rows. */
+@media (max-width: 720px) {
+  .system-monitor .ant-descriptions-item-content .ant-space {
+    display: flex !important;
+    flex-wrap: wrap;
+    gap: 6px !important;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .system-monitor .ant-descriptions-item-content .ant-tag,
+  .system-monitor__statusTitle .ant-tag {
+    display: inline-flex;
+    align-items: center;
+    flex: 0 0 auto;
+    width: auto;
+    max-width: 100%;
+    white-space: nowrap !important;
+    word-break: normal !important;
+    overflow-wrap: normal !important;
+    line-height: 1.25;
+  }
+}

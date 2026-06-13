@@ -9,6 +9,8 @@ import org.mockito.ArgumentCaptor;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
+import java.util.Arrays;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -49,6 +51,41 @@ class ProductSaveServiceTest {
     }
 
     @Test
+    void mergeProductAppliesSharedUpdateFieldsAndNormalizesStatus() {
+        Product existing = validProduct();
+        existing.setName("Original Bowl");
+        existing.setDescription("Original");
+        existing.setStatus("INACTIVE");
+        existing.setStock(4);
+        existing.setBestSellerRank(12);
+        Product update = new Product();
+        update.setName("Updated Bowl");
+        update.setDescription("Updated");
+        update.setStatus(" active ");
+        update.setBestSellerRank(2);
+
+        Product merged = service.mergeProduct(existing, update);
+
+        assertEquals(existing, merged);
+        assertEquals("Updated Bowl", merged.getName());
+        assertEquals("Updated", merged.getDescription());
+        assertEquals("ACTIVE", merged.getStatus());
+        assertEquals(4, merged.getStock());
+        assertEquals(2, merged.getBestSellerRank());
+    }
+
+    @Test
+    void mergeProductRejectsInvalidStatusBeforePersisting() {
+        Product existing = validProduct();
+        Product update = new Product();
+        update.setStatus("ARCHIVED");
+
+        assertThrows(IllegalArgumentException.class, () -> service.mergeProduct(existing, update));
+
+        verify(productRepository, never()).save(any());
+    }
+
+    @Test
     void saveRejectsNegativeStockBeforePersisting() {
         Product product = validProduct();
         product.setStock(-1);
@@ -72,6 +109,16 @@ class ProductSaveServiceTest {
     void saveRejectsUnsafeImageUrlBeforePersisting() {
         Product product = validProduct();
         product.setImageUrl("http://127.0.0.1/image.jpg");
+
+        assertThrows(IllegalArgumentException.class, () -> service.save(product));
+
+        verify(productRepository, never()).save(any());
+    }
+
+    @Test
+    void saveRejectsImageUrlsPastBackendEntityLimitBeforePersisting() {
+        Product product = validProduct();
+        product.setImageUrl(imageUrlWithLength(2001));
 
         assertThrows(IllegalArgumentException.class, () -> service.save(product));
 
@@ -117,6 +164,24 @@ class ProductSaveServiceTest {
         verify(productRepository, never()).save(any());
     }
 
+    @Test
+    void updateStatusByIdsUsesSingleBulkRepositoryUpdate() {
+        when(productRepository.updateStatusByIdIn(List.of(7L, 8L), "INACTIVE")).thenReturn(2);
+
+        assertEquals(2, service.updateStatusByIds(Arrays.asList(7L, 7L, null, -3L, 8L), " inactive "));
+
+        verify(productRepository).updateStatusByIdIn(List.of(7L, 8L), "INACTIVE");
+        verify(productRepository, never()).findById(any());
+        verify(productRepository, never()).save(any());
+    }
+
+    @Test
+    void updateStatusByIdsRejectsInvalidStatusBeforeRepositoryCall() {
+        assertThrows(IllegalArgumentException.class, () -> service.updateStatusByIds(List.of(7L), "ARCHIVED"));
+
+        verify(productRepository, never()).updateStatusByIdIn(any(), any());
+    }
+
     private Product validProduct() {
         Product product = new Product();
         product.setName("Everyday Bowl");
@@ -126,5 +191,10 @@ class ProductSaveServiceTest {
         product.setImageUrl("https://cdn.example.com/bowl.jpg");
         product.setStatus("ACTIVE");
         return product;
+    }
+
+    private String imageUrlWithLength(int length) {
+        String prefix = "https://cdn.example.com/products/";
+        return prefix + "a".repeat(length - prefix.length());
     }
 }

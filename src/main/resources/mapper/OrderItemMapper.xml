@@ -24,14 +24,6 @@
         WHERE oi.order_id = #{orderId}
     </select>
 
-    <select id="findAll" resultMap="orderItemMap">
-        SELECT oi.*,
-               COALESCE(p.name, oi.product_name_snapshot, CONCAT('#', oi.product_id)) as product_name,
-               COALESCE(NULLIF(p.image_url, ''), NULLIF(oi.image_url_snapshot, '')) as image_url
-        FROM order_items oi
-        LEFT JOIN products p ON oi.product_id = p.id
-    </select>
-
     <select id="findByOrderIds" resultMap="orderItemMap">
         SELECT oi.*,
                COALESCE(p.name, oi.product_name_snapshot, CONCAT('#', oi.product_id)) as product_name,
@@ -78,6 +70,14 @@
     <insert id="insert" parameterType="com.example.shop.entity.OrderItem" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO order_items (order_id, product_id, quantity, price, product_name_snapshot, image_url_snapshot, selected_specs, created_at)
         VALUES (#{orderId}, #{productId}, #{quantity}, #{price}, #{productNameSnapshot}, #{imageUrlSnapshot}, #{selectedSpecs}, #{createdAt})
+    </insert>
+
+    <insert id="insertBatch">
+        INSERT INTO order_items (order_id, product_id, quantity, price, product_name_snapshot, image_url_snapshot, selected_specs, created_at)
+        VALUES
+        <foreach collection="items" item="item" separator=",">
+            (#{item.orderId}, #{item.productId}, #{item.quantity}, #{item.price}, #{item.productNameSnapshot}, #{item.imageUrlSnapshot}, #{item.selectedSpecs}, #{item.createdAt})
+        </foreach>
     </insert>
 
     <delete id="deleteByOrderId">

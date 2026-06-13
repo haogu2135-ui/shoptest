@@ -5,6 +5,7 @@ import com.example.shop.entity.Brand;
 import com.example.shop.security.SecurityUtils;
 import com.example.shop.service.AdminRoleService;
 import com.example.shop.service.BrandService;
+import com.example.shop.service.RuntimeConfigService;
 import com.example.shop.service.SecurityAuditLogService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -22,21 +23,27 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/brands")
 public class BrandController {
+    private static final int DEFAULT_PUBLIC_BRAND_LIMIT = 120;
+    private static final int HARD_PUBLIC_BRAND_LIMIT = 500;
+
     private final BrandService brandService;
     private final SecurityAuditLogService auditLogService;
     private final AdminRoleService adminRoleService;
+    private final RuntimeConfigService runtimeConfig;
 
     public BrandController(BrandService brandService,
                            SecurityAuditLogService auditLogService,
-                           AdminRoleService adminRoleService) {
+                           AdminRoleService adminRoleService,
+                           RuntimeConfigService runtimeConfig) {
         this.brandService = brandService;
         this.auditLogService = auditLogService;
         this.adminRoleService = adminRoleService;
+        this.runtimeConfig = runtimeConfig;
     }
 
     @GetMapping
     public ResponseEntity<List<BrandPublicResponse>> getAll() {
-        return ResponseEntity.ok(brandService.findAll(true).stream()
+        return ResponseEntity.ok(brandService.findAll(true, publicBrandLimit()).stream()
                 .map(BrandPublicResponse::from)
                 .collect(Collectors.toList()));
     }
@@ -141,5 +148,10 @@ public class BrandController {
             return null;
         }
         return "name=" + brand.getName() + ",status=" + brand.getStatus();
+    }
+
+    private int publicBrandLimit() {
+        int configured = runtimeConfig.getInt("brand.public-list-max-rows", DEFAULT_PUBLIC_BRAND_LIMIT);
+        return Math.max(1, Math.min(configured, HARD_PUBLIC_BRAND_LIMIT));
     }
 }

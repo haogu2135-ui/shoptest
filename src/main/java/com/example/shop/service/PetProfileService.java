@@ -1,6 +1,5 @@
 package com.example.shop.service;
 
-import lombok.extern.slf4j.Slf4j;
 import com.example.shop.entity.PetProfile;
 import com.example.shop.repository.PetProfileMapper;
 import com.example.shop.repository.UserMapper;
@@ -14,7 +13,6 @@ import java.util.Locale;
 
 @Service
 @RequiredArgsConstructor
-@Slf4j
 public class PetProfileService {
     private final PetProfileMapper petProfileMapper;
     private final UserMapper userMapper;
@@ -22,10 +20,13 @@ public class PetProfileService {
     private final RuntimeConfigService runtimeConfig;
 
     public List<PetProfile> findByUserId(Long userId) {
-        return petProfileMapper.findByUserId(userId);
+        if (userId == null || userId <= 0) {
+            throw new IllegalArgumentException("User is required");
+        }
+        return petProfileMapper.findByUserId(userId, maxProfilesPerUser());
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public PetProfile save(Long userId, PetProfile request, Long id) {
         if (request == null) {
             throw new IllegalArgumentException("Pet profile is required");
@@ -57,7 +58,7 @@ public class PetProfileService {
         return petProfileMapper.findById(pet.getId());
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void delete(Long userId, Long id) {
         petProfileMapper.deleteByIdAndUserId(id, userId);
         productService.clearPersonalizedRecommendationCache(userId);

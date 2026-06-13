@@ -81,10 +81,6 @@
         LIMIT 1
     </select>
 
-    <select id="findAll" resultMap="userMap">
-        SELECT * FROM users
-    </select>
-
     <select id="countAll" resultType="long">
         SELECT COUNT(*) FROM users
     </select>
@@ -120,12 +116,6 @@
           AND (status IS NULL OR UPPER(status) = 'ACTIVE')
         ORDER BY id ASC
         LIMIT #{limit}
-    </select>
-
-    <select id="search" resultMap="userMap">
-        SELECT * FROM users
-        <include refid="adminUserSearchWhere"/>
-        ORDER BY created_at DESC, id DESC
     </select>
 
     <select id="countSearch" resultType="long">

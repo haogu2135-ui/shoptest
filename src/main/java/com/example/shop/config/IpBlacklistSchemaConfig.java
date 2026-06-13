@@ -8,6 +8,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 @Configuration
 @RequiredArgsConstructor
+@lombok.extern.slf4j.Slf4j
 public class IpBlacklistSchemaConfig {
     private final JdbcTemplate jdbcTemplate;
 
@@ -91,8 +92,8 @@ public class IpBlacklistSchemaConfig {
     private void executeQuietly(String sql) {
         try {
             jdbcTemplate.execute(sql);
-        } catch (Exception ignored) {
-            // Keep startup schema hardening idempotent across old and new databases.
+        } catch (Exception ex) {
+            log.debug("Skipping optional IP blacklist schema hardening SQL: {}; reason={}", sql, ex.getMessage());
         }
     }
 }

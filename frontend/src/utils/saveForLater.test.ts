@@ -22,6 +22,22 @@ describe('saveForLater', () => {
     expect(items[1].savedAt).toBeGreaterThan(0);
   });
 
+  it('returns an empty array for non-array persisted snapshots', () => {
+    localStorage.setItem('shop-save-for-later', JSON.stringify({
+      id: 10,
+      productId: 2,
+      quantity: 1,
+      productName: 'Legacy object',
+      price: 12,
+    }));
+
+    expect(getSavedForLaterItems()).toEqual([]);
+
+    localStorage.setItem('shop-save-for-later', 'null');
+
+    expect(getSavedForLaterItems()).toEqual([]);
+  });
+
   it('caps merged saved item quantities', () => {
     const baseItem = {
       id: 1,

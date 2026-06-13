@@ -1,4 +1,5 @@
 import {
+  buildProductCatalogFallbackCategories,
   loadFallbackProductCatalog,
   loadProductCatalogSnapshot,
   normalizeProductForCatalogSnapshot,
@@ -107,5 +108,31 @@ describe('productCatalogSnapshot', () => {
     expect(fallbackProducts.length).toBeGreaterThan(0);
     expect(fallbackProducts.every((item) => item.stock === undefined || item.stock > 0)).toBe(true);
     expect(fallbackProducts.every((item) => item.name && item.price >= 0 && item.imageUrl)).toBe(true);
+  });
+
+  it('builds human category fallback names without exposing raw category ids', () => {
+    const categories = buildProductCatalogFallbackCategories([
+      product({
+        id: 101,
+        name: 'Quiet water fountain',
+        description: 'Filtered hydration for cats',
+        categoryId: 9002,
+      }),
+      product({
+        id: 102,
+        name: 'Mystery starter kit',
+        description: 'Everyday pet supplies',
+        categoryId: 4,
+        categoryName: 'Category 4',
+      }),
+    ]);
+
+    expect(categories).toHaveLength(2);
+    expect(categories.map((category) => category.name)).toEqual(expect.arrayContaining([
+      'Feeding & hydration',
+      'Everyday accessories',
+    ]));
+    expect(categories.map((category) => category.name).join(' ')).not.toMatch(/Category\s+\d+/i);
+    expect(categories.map((category) => category.name).join(' ')).not.toContain('9002');
   });
 });

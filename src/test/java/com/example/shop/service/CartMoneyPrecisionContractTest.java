@@ -39,7 +39,7 @@ class CartMoneyPrecisionContractTest {
                 cartItem("33.33", 1)));
 
         assertEquals(new BigDecimal("99.99"), service.calculateTotalAmount(7L));
-        assertEquals(99.99d, service.calculateTotal(7L), 0.0d);
+        assertEquals(new BigDecimal("99.99"), service.calculateTotal(7L));
     }
 
     @Test
@@ -55,13 +55,15 @@ class CartMoneyPrecisionContractTest {
     void cartServiceKeepsInternalMoneyMathOnBigDecimal() throws Exception {
         String source = Files.readString(Path.of("src/main/java/com/example/shop/service/CartService.java"), StandardCharsets.UTF_8);
         String totalAmount = methodBlock(source, "public BigDecimal calculateTotalAmount(Long userId)");
-        String legacyTotal = methodBlock(source, "public double calculateTotal(Long userId)");
+        String total = methodBlock(source, "public BigDecimal calculateTotal(Long userId)");
 
+        assertFalse(source.contains("public double calculateTotal("));
         assertTrue(totalAmount.contains(".map(this::calculateLineAmount)"));
         assertTrue(totalAmount.contains(".reduce(BigDecimal.ZERO, BigDecimal::add)"));
         assertFalse(totalAmount.contains("mapToDouble"));
         assertFalse(totalAmount.contains(".doubleValue()"));
-        assertTrue(legacyTotal.contains("return calculateTotalAmount(userId).doubleValue();"));
+        assertTrue(total.contains("return calculateTotalAmount(userId);"));
+        assertFalse(total.contains(".doubleValue()"));
     }
 
     private static CartItem cartItem(String price, Integer quantity) {

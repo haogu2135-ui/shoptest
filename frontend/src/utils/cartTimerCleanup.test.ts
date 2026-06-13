@@ -79,6 +79,7 @@ describe('cart timer cleanup source contracts', () => {
     expect(cartSource).toContain('if (!mountedRef.current) return;');
     expect(cartSource).toContain('if (mountedRef.current) setLoading(false);');
     expect(cartSource).toContain('if (mountedRef.current) setRestoringSaved(false);');
+    expect(cartSource).toMatch(/const fetchCartItems = useCallback\(async \(\) => \{\s+if \(!mountedRef\.current\) return;\s+const authenticated/);
     expect(cartSource).toMatch(/await cartApi\.removeItem\(item\.id\);\s+if \(!mountedRef\.current\) return;\s+setCartItems/);
     expect(cartSource).toMatch(/await cartApi\.removeItems\(normalizedIds\);\s+if \(!mountedRef\.current\) return;\s+setCartItems/);
     expect(cartSource).toMatch(/await cartApi\.getItems\(0\);\s+if \(!mountedRef\.current\) return;\s+const nextItems/);

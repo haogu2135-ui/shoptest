@@ -13,7 +13,9 @@ import java.util.List;
 @Repository
 public interface ProductQuestionRepository extends JpaRepository<ProductQuestion, Long> {
     @Query("select q from ProductQuestion q "
-            + "where q.product.id = :productId "
+            + "join fetch q.product p "
+            + "join fetch q.user u "
+            + "where p.id = :productId "
             + "and q.answer is not null and trim(q.answer) <> '' "
             + "order by q.answeredAt desc, q.createdAt desc, q.id desc")
     List<ProductQuestion> findAnsweredByProductId(@Param("productId") Long productId, Pageable pageable);

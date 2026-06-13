@@ -1,6 +1,7 @@
-const INITIAL_RECONNECT_DELAY_MS = 1000;
+const INITIAL_RECONNECT_DELAY_MS = 2000;
 const MAX_RECONNECT_DELAY_MS = 30000;
 const JITTER_RATIO = 0.35;
+export const MAX_RECONNECT_ATTEMPTS = 10;
 
 export const getReconnectDelayMs = (attempt: number) => {
   const normalizedAttempt = Math.max(0, Math.min(Number.isFinite(attempt) ? Math.floor(attempt) : 0, 12));

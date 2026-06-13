@@ -1,6 +1,5 @@
 package com.example.shop.service;
 
-import lombok.extern.slf4j.Slf4j;
 import com.example.shop.dto.UserAdminSummaryResponse;
 import com.example.shop.entity.User;
 import com.example.shop.repository.UserMapper;
@@ -16,16 +15,31 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 @Service
 @RequiredArgsConstructor
-@Slf4j
 public class UserService {
     private static final int USER_PHONE_MAX_CHARS = 20;
-    private static final int PASSWORD_MIN_CHARS = 8;
+    private static final int PASSWORD_MIN_CHARS = 12;
     private static final int PASSWORD_MAX_CHARS = 128;
     private static final Pattern EMAIL_PATTERN = Pattern.compile("^[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}$", Pattern.CASE_INSENSITIVE);
+    private static final Set<String> COMMON_PASSWORDS = Set.of(
+            "123456789012",
+            "1234567890ab",
+            "admin123456",
+            "admin123456!",
+            "iloveyou123",
+            "letmein12345",
+            "password123",
+            "password123!",
+            "password1234",
+            "qwerty12345",
+            "qwerty123456",
+            "shoptest123",
+            "welcome1234",
+            "welcome123!");
 
     private final UserMapper userMapper;
     private final PasswordEncoder passwordEncoder;
@@ -68,12 +82,12 @@ public class UserService {
         return userMapper.findById(id);
     }
     
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public User register(User user) {
         return register(user, false);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public User register(User user, boolean guestEmailVerified) {
         if (user == null) {
             throw new IllegalArgumentException("Registration payload is required");
@@ -84,11 +98,6 @@ public class UserService {
         if (user.getEmail() == null || user.getEmail().trim().isEmpty()) {
             throw new IllegalArgumentException("Email is required");
         }
-        if (user.getPhone() == null || user.getPhone().trim().isEmpty()) {
-            throw new IllegalArgumentException("Phone number is required");
-        }
-        assertStrongPassword(user.getPassword(), "Password");
-        String normalizedPhone = normalizeRequiredPhoneText(user.getPhone(), "Phone number", USER_PHONE_MAX_CHARS);
         String normalizedEmail = normalizeRequiredStorageText(user.getEmail(), "Email", 100).toLowerCase();
         assertValidEmail(normalizedEmail, "Email");
         String normalizedUsername = normalizeUsernameText(user.getUsername(), "Username", 50);
@@ -98,26 +107,30 @@ public class UserService {
 
         User existingEmail = userMapper.findByUsernameOrPhoneOrEmail(normalizedEmail);
         boolean upgradingGuestAccount = isGuestEmailOwner(existingEmail, normalizedEmail);
-        User existingPhone = userMapper.findByPhone(normalizedPhone);
-        if (existingPhone != null && !isSameUser(existingPhone, existingEmail)) {
-            throw new IllegalArgumentException("Phone number already registered");
-        }
         User existingUsername = userMapper.findByUsername(normalizedUsername);
         if (existingUsername != null && !isSameUser(existingUsername, existingEmail)) {
             throw new IllegalArgumentException("Username already registered");
         }
         if (existingEmail != null) {
-            if (upgradingGuestAccount) {
-                if (!guestEmailVerified) {
-                    throw new IllegalArgumentException("Email verification is required to claim guest checkout history");
-                }
-                String rawPassword = user.getPassword();
-                applyRegisteredUserFields(user, normalizedUsername, normalizedEmail, normalizedPhone, rawPassword);
-                user.setId(existingEmail.getId());
-                userMapper.update(user);
-                return userMapper.findById(existingEmail.getId());
+            if (!upgradingGuestAccount) {
+                throw new IllegalArgumentException("Email already registered");
             }
-            throw new IllegalArgumentException("Email already registered");
+            if (!guestEmailVerified) {
+                throw new IllegalArgumentException("Email verification is required to claim guest checkout history");
+            }
+        }
+        assertStrongPassword(user.getPassword(), "Password");
+        String normalizedPhone = normalizeRequiredPhoneText(user.getPhone(), "Phone number", USER_PHONE_MAX_CHARS);
+        User existingPhone = userMapper.findByPhone(normalizedPhone);
+        if (existingPhone != null && !isSameUser(existingPhone, existingEmail)) {
+            throw new IllegalArgumentException("Phone number already registered");
+        }
+        if (upgradingGuestAccount) {
+            String rawPassword = user.getPassword();
+            applyRegisteredUserFields(user, normalizedUsername, normalizedEmail, normalizedPhone, rawPassword);
+            user.setId(existingEmail.getId());
+            userMapper.update(user);
+            return userMapper.findById(existingEmail.getId());
         }
         applyRegisteredUserFields(user, normalizedUsername, normalizedEmail, normalizedPhone, user.getPassword());
         LocalDateTime now = LocalDateTime.now();
@@ -135,7 +148,7 @@ public class UserService {
         return saved != null ? saved : userMapper.findByUsernameOrPhoneOrEmail(normalizedPhone);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void registerAdmin(User user) {
         assertAdminBootstrapLockAcquired();
         try {
@@ -172,7 +185,7 @@ public class UserService {
         }
     }
     
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void update(User user) {
         if (user == null || user.getId() == null) {
             throw new IllegalArgumentException("User is required");
@@ -225,7 +238,7 @@ public class UserService {
         return normalizedPhone;
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void updateProfileContact(Long userId, String email, String phone) {
         User current = userMapper.findById(userId);
         if (current == null) {
@@ -251,13 +264,14 @@ public class UserService {
         userMapper.updateProfileContact(userId, normalizedEmail, normalizedPhone, LocalDateTime.now());
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void updateRoleAccess(Long userId, String role, String roleCode) {
         userMapper.updateRoleAccess(userId, role, roleCode, LocalDateTime.now());
     }
     
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void updatePassword(Long userId, String oldPassword, String newPassword) {
+        assertPasswordCandidate(oldPassword, "Current password");
         assertStrongPassword(newPassword, "New password");
         User user = userMapper.findById(userId);
         if (user != null && passwordEncoder.matches(oldPassword, user.getPassword())) {
@@ -267,7 +281,7 @@ public class UserService {
         }
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void resetPassword(String login, String email, String newPassword) {
         assertStrongPassword(newPassword, "New password");
         String normalizedLogin = normalizeLookupText(login);
@@ -278,17 +292,6 @@ public class UserService {
             throw new IllegalArgumentException("Account information does not match");
         }
         userMapper.updatePassword(user.getId(), passwordEncoder.encode(newPassword), LocalDateTime.now());
-    }
-
-    public List<User> findAll() {
-        return userMapper.findAll();
-    }
-
-    public List<User> search(String keyword, String role, String status) {
-        return userMapper.search(
-                normalizeText(keyword, 120),
-                normalizeText(role, 40),
-                normalizeText(status, 40));
     }
 
     public long countSearch(String keyword, String role, String status) {
@@ -332,7 +335,7 @@ public class UserService {
         return response;
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void deleteById(Long id) {
         userMapper.deleteById(id);
     }
@@ -404,12 +407,42 @@ public class UserService {
             throw new IllegalArgumentException(normalizedFieldName + " is required");
         }
         if (password.length() < PASSWORD_MIN_CHARS || password.length() > PASSWORD_MAX_CHARS) {
-            throw new IllegalArgumentException(normalizedFieldName + " must be 8 to 128 characters");
+            throw new IllegalArgumentException(normalizedFieldName + " must be 12 to 128 characters");
         }
-        boolean hasLetter = password.chars().anyMatch(Character::isLetter);
-        boolean hasDigit = password.chars().anyMatch(Character::isDigit);
-        if (!hasLetter || !hasDigit) {
-            throw new IllegalArgumentException(normalizedFieldName + " must include letters and numbers");
+        if (COMMON_PASSWORDS.contains(password.trim().toLowerCase(Locale.ROOT))) {
+            throw new IllegalArgumentException(normalizedFieldName + " is too common");
+        }
+        if (passwordCharacterClassCount(password) < 3) {
+            throw new IllegalArgumentException(normalizedFieldName
+                    + " must include at least three of: lowercase letters, uppercase letters, numbers, and symbols");
+        }
+    }
+
+    private int passwordCharacterClassCount(String password) {
+        int classes = 0;
+        if (password.codePoints().anyMatch(Character::isLowerCase)) {
+            classes++;
+        }
+        if (password.codePoints().anyMatch(Character::isUpperCase)) {
+            classes++;
+        }
+        if (password.codePoints().anyMatch(Character::isDigit)) {
+            classes++;
+        }
+        if (password.codePoints().anyMatch(codePoint ->
+                !Character.isLetterOrDigit(codePoint) && !Character.isWhitespace(codePoint))) {
+            classes++;
+        }
+        return classes;
+    }
+
+    private void assertPasswordCandidate(String password, String fieldName) {
+        String normalizedFieldName = fieldName == null || fieldName.isBlank() ? "Password" : fieldName;
+        if (password == null || password.trim().isEmpty()) {
+            throw new IllegalArgumentException(normalizedFieldName + " is required");
+        }
+        if (password.length() > PASSWORD_MAX_CHARS) {
+            throw new IllegalArgumentException(normalizedFieldName + " is too long");
         }
     }
 

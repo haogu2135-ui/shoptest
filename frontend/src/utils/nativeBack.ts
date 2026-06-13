@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 
 export const NATIVE_BACK_EVENT = 'shop:native-back';
 
@@ -10,6 +10,8 @@ type NativeBackHandler = () => boolean | void;
 
 let nextHandlerId = 1;
 const nativeBackHandlers: Array<{ id: number; handler: NativeBackHandler }> = [];
+let lastNativeBackAt = 0;
+const NATIVE_BACK_DEBOUNCE_MS = 280;
 
 export const registerNativeBackHandler = (handler: NativeBackHandler) => {
   const entry = { id: nextHandlerId, handler };
@@ -124,15 +126,9 @@ const dispatchPopupDismissEvents = () => {
     target.dispatchEvent(new KeyboardEvent('keyup', keyboardInit));
   });
 
-  const pointerInit: MouseEventInit = {
-    bubbles: true,
-    cancelable: true,
-    clientX: 0,
-    clientY: 0,
-  };
-  document.body.dispatchEvent(new MouseEvent('mousedown', pointerInit));
-  document.body.dispatchEvent(new MouseEvent('mouseup', pointerInit));
-  document.body.dispatchEvent(new MouseEvent('click', pointerInit));
+  if (document.activeElement instanceof HTMLElement) {
+    document.activeElement.blur();
+  }
 };
 
 const clickPopconfirmCancelButton = (popup: HTMLElement) => {
@@ -160,6 +156,12 @@ const consumeAntDesignPopupBack = () => {
 };
 
 export const consumeNativeBack = () => {
+  const now = Date.now();
+  if (now - lastNativeBackAt < NATIVE_BACK_DEBOUNCE_MS) {
+    return true;
+  }
+  lastNativeBackAt = now;
+
   const handlers = [...nativeBackHandlers];
   for (let index = handlers.length - 1; index >= 0; index -= 1) {
     const entry = handlers[index];
@@ -178,8 +180,16 @@ export const consumeNativeBack = () => {
 };
 
 export const useNativeBackHandler = (enabled: boolean, handler: NativeBackHandler) => {
+  const handlerRef = useRef(handler);
+
   useEffect(() => {
-    if (!enabled) return undefined;
-    return registerNativeBackHandler(handler);
-  }, [enabled, handler]);
+    handlerRef.current = handler;
+  }, [handler]);
+
+  const stableHandler = useCallback(() => handlerRef.current(), []);
+
+  useEffect(() => {
+    if (!enabled) return;
+    return registerNativeBackHandler(stableHandler);
+  }, [enabled, stableHandler]);
 };

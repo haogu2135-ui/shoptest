@@ -53,10 +53,21 @@ describe('locale coverage', () => {
     expect(spanishCopy).not.toMatch(/\b[Mm]etodos\b/);
   });
 
+  it('keeps known Spanish locale values translated instead of English fallbacks', () => {
+    expect(es.pages.productList.materialNylon).toBe('Nailon');
+    expect(es.pages.registryAdmin.host).toBe('Servidor');
+    expect(es.pages.bugAdmin.totalBugs).toBe('{count} errores');
+  });
+
   it('keeps English customer and operator copy free of internal QA labels', () => {
     const englishCopy = flattenStrings(en).join('\n');
 
     expect(englishCopy).not.toMatch(/\bQA\b/i);
     expect(en.pages.checkout.readinessEyebrow).not.toMatch(/\bQA\b/i);
+  });
+
+  it('keeps Chinese phone placeholders localized instead of pure number examples', () => {
+    expect(zh.pages.auth.phonePlaceholder).toContain('手机号示例');
+    expect(zh.pages.auth.phonePlaceholder).toMatch(/[\u3400-\u9fff]/);
   });
 });

@@ -2,12 +2,18 @@ package com.example.shop.service;
 
 import com.example.shop.config.PaymentChannelConfig;
 import com.example.shop.dto.CheckoutRequest;
+import com.example.shop.dto.CouponQuoteRequest;
+import com.example.shop.dto.CouponQuoteResponse;
 import com.example.shop.dto.GuestCheckoutItemRequest;
 import com.example.shop.dto.GuestCheckoutRequest;
 import com.example.shop.dto.PaymentCallbackRequest;
 import com.example.shop.dto.PaymentCreateRequest;
 import com.example.shop.entity.Order;
+import com.example.shop.entity.OrderItem;
 import com.example.shop.entity.Payment;
+import com.example.shop.entity.CartItem;
+import com.example.shop.entity.LogisticsCarrier;
+import com.example.shop.entity.Product;
 import com.example.shop.repository.ProductRepository;
 import com.example.shop.entity.User;
 import com.example.shop.repository.CartItemMapper;
@@ -15,18 +21,26 @@ import com.example.shop.repository.OrderItemRepository;
 import com.example.shop.repository.OrderRepository;
 import com.example.shop.repository.PaymentRepository;
 import com.example.shop.repository.UserRepository;
+import com.stripe.Stripe;
 import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.client.RestTemplate;
+import org.junit.jupiter.api.extension.ExtendWith;
 
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -34,11 +48,14 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.mockito.ArgumentCaptor;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.contains;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.doThrow;
@@ -50,8 +67,10 @@ import static org.springframework.test.web.client.match.MockRestRequestMatchers.
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.jsonPath;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
+@ExtendWith(OutputCaptureExtension.class)
 class PaymentFlowServiceTest {
     @Test
     void productionPaymentSimulationCannotBeEnabledByRuntimeFlags() {
@@ -199,6 +218,128 @@ class PaymentFlowServiceTest {
     }
 
     @Test
+    void genericApiPaymentCreateRetriesTransientGatewayFailureWithSameIdempotencyKey() {
+        PaymentRepository paymentRepository = mock(PaymentRepository.class);
+        OrderService orderService = mock(OrderService.class);
+        RuntimeConfigService runtimeConfig = mock(RuntimeConfigService.class);
+        PaymentChannelConfig channelConfig = new PaymentChannelConfig();
+        PaymentChannelConfig.Channel channel = new PaymentChannelConfig.Channel();
+        channel.setCode("SPEI");
+        channel.setProvider("GENERIC_API");
+        channel.setCreateUrl("https://payments.example.com/create");
+        channel.setEnabled(true);
+        channelConfig.setChannels(List.of(channel));
+
+        Order order = new Order();
+        order.setId(42L);
+        order.setOrderNo("SO202605270001");
+        order.setStatus("PENDING_PAYMENT");
+        order.setTotalAmount(new BigDecimal("88.00"));
+
+        when(orderService.getOrderById(42L)).thenReturn(order);
+        when(runtimeConfig.getString("app.runtime-mode", "production")).thenReturn("dev");
+        when(runtimeConfig.getBoolean("payment.gateway-allow-local", false)).thenReturn(false);
+        when(runtimeConfig.getLong("payment.timeout-minutes", 30)).thenReturn(30L);
+        when(runtimeConfig.getString("payment.success-url", "http://localhost:3000/profile?payment=success")).thenReturn("https://shop.example.com/profile?payment=success");
+        when(runtimeConfig.getString("payment.cancel-url", "http://localhost:3000/cart?payment=cancelled")).thenReturn("https://shop.example.com/cart?payment=cancelled");
+        when(runtimeConfig.getBoolean("traffic.circuit-breaker.enabled", true)).thenReturn(false);
+        when(runtimeConfig.getInt("payment.gateway-http-max-attempts", 3)).thenReturn(2);
+        when(runtimeConfig.getLong("payment.gateway-http-retry-initial-delay-ms", 500L)).thenReturn(0L);
+        when(runtimeConfig.getLong("payment.gateway-http-retry-max-delay-ms", 5000L)).thenReturn(0L);
+
+        PaymentService service = new PaymentService();
+        ReflectionTestUtils.setField(service, "paymentRepository", paymentRepository);
+        ReflectionTestUtils.setField(service, "orderService", orderService);
+        ReflectionTestUtils.setField(service, "paymentChannelConfig", channelConfig);
+        ReflectionTestUtils.setField(service, "paymentChannelAvailabilityService", availabilityService(channelConfig, runtimeConfig));
+        ReflectionTestUtils.setField(service, "runtimeConfig", runtimeConfig);
+        ReflectionTestUtils.setField(service, "circuitBreakerService", new CircuitBreakerService(runtimeConfig));
+        RestTemplate restTemplate = (RestTemplate) ReflectionTestUtils.getField(service, "restTemplate");
+        MockRestServiceServer server = MockRestServiceServer.bindTo(restTemplate).build();
+        server.expect(requestTo("https://payments.example.com/create"))
+                .andExpect(method(HttpMethod.POST))
+                .andExpect(header("Idempotency-Key", "payment-create-42-SPEI"))
+                .andExpect(jsonPath("$.idempotencyKey").value("payment-create-42-SPEI"))
+                .andRespond(withStatus(HttpStatus.INTERNAL_SERVER_ERROR));
+        server.expect(requestTo("https://payments.example.com/create"))
+                .andExpect(method(HttpMethod.POST))
+                .andExpect(header("Idempotency-Key", "payment-create-42-SPEI"))
+                .andExpect(jsonPath("$.idempotencyKey").value("payment-create-42-SPEI"))
+                .andRespond(withSuccess(
+                        "{\"status\":\"CREATED\",\"paymentUrl\":\"https://payments.example.com/pay/retry\",\"transactionId\":\"gw-txn-retry\"}",
+                        MediaType.APPLICATION_JSON));
+
+        PaymentCreateRequest request = new PaymentCreateRequest();
+        request.setOrderId(42L);
+        request.setChannel("SPEI");
+
+        Payment payment = service.createPayment(request);
+
+        assertEquals("gw-txn-retry", payment.getTransactionId());
+        server.verify();
+        verify(paymentRepository).insert(any(Payment.class));
+    }
+
+    @Test
+    void genericApiPaymentCreateDoesNotRetryNonTransientGatewayClientError() {
+        PaymentRepository paymentRepository = mock(PaymentRepository.class);
+        OrderService orderService = mock(OrderService.class);
+        RuntimeConfigService runtimeConfig = mock(RuntimeConfigService.class);
+        PaymentChannelConfig channelConfig = new PaymentChannelConfig();
+        PaymentChannelConfig.Channel channel = new PaymentChannelConfig.Channel();
+        channel.setCode("SPEI");
+        channel.setProvider("GENERIC_API");
+        channel.setCreateUrl("https://payments.example.com/create");
+        channel.setEnabled(true);
+        channelConfig.setChannels(List.of(channel));
+
+        Order order = new Order();
+        order.setId(42L);
+        order.setOrderNo("SO202605270001");
+        order.setStatus("PENDING_PAYMENT");
+        order.setTotalAmount(new BigDecimal("88.00"));
+
+        when(orderService.getOrderById(42L)).thenReturn(order);
+        when(runtimeConfig.getString("app.runtime-mode", "production")).thenReturn("dev");
+        when(runtimeConfig.getBoolean("payment.gateway-allow-local", false)).thenReturn(false);
+        when(runtimeConfig.getLong("payment.timeout-minutes", 30)).thenReturn(30L);
+        when(runtimeConfig.getString("payment.success-url", "http://localhost:3000/profile?payment=success")).thenReturn("https://shop.example.com/profile?payment=success");
+        when(runtimeConfig.getString("payment.cancel-url", "http://localhost:3000/cart?payment=cancelled")).thenReturn("https://shop.example.com/cart?payment=cancelled");
+        when(runtimeConfig.getBoolean("traffic.circuit-breaker.enabled", true)).thenReturn(false);
+        when(runtimeConfig.getInt("payment.gateway-http-max-attempts", 3)).thenReturn(3);
+        when(runtimeConfig.getLong("payment.gateway-http-retry-initial-delay-ms", 500L)).thenReturn(0L);
+        when(runtimeConfig.getLong("payment.gateway-http-retry-max-delay-ms", 5000L)).thenReturn(0L);
+
+        PaymentService service = new PaymentService();
+        ReflectionTestUtils.setField(service, "paymentRepository", paymentRepository);
+        ReflectionTestUtils.setField(service, "orderService", orderService);
+        ReflectionTestUtils.setField(service, "paymentChannelConfig", channelConfig);
+        ReflectionTestUtils.setField(service, "paymentChannelAvailabilityService", availabilityService(channelConfig, runtimeConfig));
+        ReflectionTestUtils.setField(service, "runtimeConfig", runtimeConfig);
+        ReflectionTestUtils.setField(service, "circuitBreakerService", new CircuitBreakerService(runtimeConfig));
+        RestTemplate restTemplate = (RestTemplate) ReflectionTestUtils.getField(service, "restTemplate");
+        MockRestServiceServer server = MockRestServiceServer.bindTo(restTemplate).build();
+        server.expect(requestTo("https://payments.example.com/create"))
+                .andExpect(method(HttpMethod.POST))
+                .andExpect(header("Idempotency-Key", "payment-create-42-SPEI"))
+                .andRespond(withStatus(HttpStatus.BAD_REQUEST)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body("{\"error\":\"invalid merchant secret=raw-provider-detail\"}"));
+
+        PaymentCreateRequest request = new PaymentCreateRequest();
+        request.setOrderId(42L);
+        request.setChannel("SPEI");
+
+        IllegalStateException ex = assertThrows(IllegalStateException.class, () -> service.createPayment(request));
+
+        assertEquals("Gateway create payment request failed: HTTP 400", ex.getMessage());
+        assertFalse(ex.getMessage().contains("payments.example.com"));
+        assertFalse(ex.getMessage().contains("raw-provider-detail"));
+        server.verify();
+        verify(paymentRepository, never()).insert(any(Payment.class));
+    }
+
+    @Test
     void duplicatePaymentCreateRaceReturnsExistingPayment() {
         PaymentRepository paymentRepository = mock(PaymentRepository.class);
         OrderService orderService = mock(OrderService.class);
@@ -272,6 +413,35 @@ class PaymentFlowServiceTest {
     }
 
     @Test
+    void cancellingPendingPaymentOrderReleasesCouponFromPreUpdateStatus() {
+        OrderRepository orderRepository = mock(OrderRepository.class);
+        OrderItemRepository orderItemRepository = mock(OrderItemRepository.class);
+        PaymentRepository paymentRepository = mock(PaymentRepository.class);
+        CouponService couponService = mock(CouponService.class);
+        Order order = new Order();
+        order.setId(42L);
+        order.setStatus("PENDING_PAYMENT");
+        order.setUserCouponId(6L);
+
+        when(orderRepository.findById(42L)).thenReturn(order);
+        org.mockito.Mockito.doAnswer(invocation -> {
+            order.setStatus("CANCELLED");
+            return 1;
+        }).when(orderRepository).updateStatusIfCurrent(42L, "PENDING_PAYMENT", "CANCELLED");
+
+        OrderService service = new OrderService();
+        ReflectionTestUtils.setField(service, "orderRepository", orderRepository);
+        ReflectionTestUtils.setField(service, "orderItemRepository", orderItemRepository);
+        ReflectionTestUtils.setField(service, "paymentRepository", paymentRepository);
+        ReflectionTestUtils.setField(service, "cartItemMapper", mock(CartItemMapper.class));
+        ReflectionTestUtils.setField(service, "couponService", couponService);
+
+        service.cancelOrder(42L);
+
+        verify(couponService).releaseUsedCoupon(6L);
+    }
+
+    @Test
     void expiringOlderPaymentDoesNotCancelOrderWhenAnotherPaymentIsStillActive() {
         PaymentRepository paymentRepository = mock(PaymentRepository.class);
         OrderService orderService = mock(OrderService.class);
@@ -333,6 +503,109 @@ class PaymentFlowServiceTest {
         inOrder.verify(orderRepository).updateStatusIfCurrent(42L, "PENDING_PAYMENT", "CANCELLED");
         inOrder.verify(paymentRepository).markExpired(9L);
         inOrder.verify(paymentRepository).markPendingCancelledByOrderId(42L);
+    }
+
+    @Test
+    void expirePendingPaymentsLogsRowFailuresAndContinues(CapturedOutput output) {
+        PaymentRepository paymentRepository = mock(PaymentRepository.class);
+        OrderService orderService = mock(OrderService.class);
+        Payment failedPayment = new Payment();
+        failedPayment.setId(9L);
+        failedPayment.setOrderId(42L);
+        failedPayment.setOrderNo("SO202605180001");
+        failedPayment.setStatus("PENDING");
+        failedPayment.setExpiresAt(LocalDateTime.now().minusMinutes(2));
+        Payment nextPayment = new Payment();
+        nextPayment.setId(10L);
+        nextPayment.setOrderId(43L);
+        nextPayment.setOrderNo("SO202605180002");
+        nextPayment.setStatus("PENDING");
+        nextPayment.setExpiresAt(LocalDateTime.now().minusMinutes(2));
+
+        when(paymentRepository.findExpiredPending(isNull(), eq(500))).thenReturn(List.of(failedPayment, nextPayment));
+        when(paymentRepository.findById(9L)).thenReturn(failedPayment);
+        when(paymentRepository.findById(10L)).thenReturn(nextPayment);
+        when(paymentRepository.countActivePendingByOrderId(42L)).thenThrow(new IllegalStateException("database unavailable"));
+        when(paymentRepository.countActivePendingByOrderId(43L)).thenReturn(1L);
+        when(paymentRepository.markExpired(10L)).thenReturn(1);
+
+        PaymentService service = new PaymentService();
+        ReflectionTestUtils.setField(service, "paymentRepository", paymentRepository);
+        ReflectionTestUtils.setField(service, "orderService", orderService);
+
+        service.expirePendingPayments();
+
+        verify(paymentRepository).markExpired(10L);
+        String logs = capturedLogs(output);
+        assertTrue(logs.contains("Payment expiry scan skipped payment after failure"));
+        assertTrue(logs.contains("paymentId=9"));
+        assertTrue(logs.contains("orderNo=SO202605180001"));
+    }
+
+    @Test
+    void expirePendingPaymentsPagesByLastSeenPaymentId() {
+        PaymentRepository paymentRepository = mock(PaymentRepository.class);
+        OrderService orderService = mock(OrderService.class);
+        RuntimeConfigService runtimeConfig = mock(RuntimeConfigService.class);
+        Payment firstPayment = expiredPendingPayment(1L, 101L, "SO202605180101");
+        Payment secondPayment = expiredPendingPayment(2L, 102L, "SO202605180102");
+        Payment thirdPayment = expiredPendingPayment(3L, 103L, "SO202605180103");
+
+        when(runtimeConfig.getInt("payment.expiry-scan-batch-size", 500)).thenReturn(2);
+        when(paymentRepository.findExpiredPending(isNull(), eq(2))).thenReturn(List.of(firstPayment, secondPayment));
+        when(paymentRepository.findExpiredPending(eq(2L), eq(2))).thenReturn(List.of(thirdPayment));
+        when(paymentRepository.findById(1L)).thenReturn(firstPayment);
+        when(paymentRepository.findById(2L)).thenReturn(secondPayment);
+        when(paymentRepository.findById(3L)).thenReturn(thirdPayment);
+        when(paymentRepository.countActivePendingByOrderId(101L)).thenReturn(1L);
+        when(paymentRepository.countActivePendingByOrderId(102L)).thenReturn(1L);
+        when(paymentRepository.countActivePendingByOrderId(103L)).thenReturn(1L);
+        when(paymentRepository.markExpired(1L)).thenReturn(1);
+        when(paymentRepository.markExpired(2L)).thenReturn(1);
+        when(paymentRepository.markExpired(3L)).thenReturn(1);
+
+        PaymentService service = new PaymentService();
+        ReflectionTestUtils.setField(service, "paymentRepository", paymentRepository);
+        ReflectionTestUtils.setField(service, "orderService", orderService);
+        ReflectionTestUtils.setField(service, "runtimeConfig", runtimeConfig);
+
+        service.expirePendingPayments();
+
+        verify(paymentRepository).findExpiredPending(isNull(), eq(2));
+        verify(paymentRepository).findExpiredPending(eq(2L), eq(2));
+        verify(paymentRepository, never()).findExpiredPending(eq(3L), eq(2));
+        verify(paymentRepository).markExpired(1L);
+        verify(paymentRepository).markExpired(2L);
+        verify(paymentRepository).markExpired(3L);
+    }
+
+    @Test
+    void expiringPaymentLogsOrderCancellationRace(CapturedOutput output) {
+        PaymentRepository paymentRepository = mock(PaymentRepository.class);
+        OrderService orderService = mock(OrderService.class);
+        Payment payment = new Payment();
+        payment.setId(9L);
+        payment.setOrderId(42L);
+        payment.setOrderNo("SO202605180001");
+        payment.setStatus("PENDING");
+        payment.setExpiresAt(LocalDateTime.now().minusMinutes(2));
+
+        when(paymentRepository.findById(9L)).thenReturn(payment);
+        when(paymentRepository.countActivePendingByOrderId(42L)).thenReturn(0L);
+        doThrow(new IllegalStateException("Order is not pending payment"))
+                .when(orderService).cancelOrderForPaymentExpiry(42L);
+
+        PaymentService service = new PaymentService();
+        ReflectionTestUtils.setField(service, "paymentRepository", paymentRepository);
+        ReflectionTestUtils.setField(service, "orderService", orderService);
+
+        service.expireSinglePendingPayment(9L);
+
+        verify(paymentRepository, never()).markExpired(9L);
+        String logs = capturedLogs(output);
+        assertTrue(logs.contains("Payment expiry skipped order cancellation because order state changed"));
+        assertTrue(logs.contains("paymentId=9"));
+        assertTrue(logs.contains("Order is not pending payment"));
     }
 
     @Test
@@ -441,6 +714,307 @@ class PaymentFlowServiceTest {
         verifyNoInteractions(orderRepository, orderItemRepository, productRepository, userRepository);
     }
 
+    @Test
+    void checkoutPersistsDiscountedTotalBeforeCouponIsMarkedUsed() {
+        OrderRepository orderRepository = mock(OrderRepository.class);
+        OrderItemRepository orderItemRepository = mock(OrderItemRepository.class);
+        CartItemMapper cartItemMapper = mock(CartItemMapper.class);
+        ProductRepository productRepository = mock(ProductRepository.class);
+        UserRepository userRepository = mock(UserRepository.class);
+        CouponService couponService = mock(CouponService.class);
+        RuntimeConfigService runtimeConfig = mock(RuntimeConfigService.class);
+        PaymentChannelAvailabilityService availabilityService = mock(PaymentChannelAvailabilityService.class);
+
+        when(runtimeConfig.getInt("order.max-checkout-lines", 80)).thenReturn(80);
+        when(runtimeConfig.getInt("order.shipping-address-max-chars", 500)).thenReturn(500);
+        when(runtimeConfig.getInt("order.recipient-name-max-chars", 120)).thenReturn(120);
+        when(runtimeConfig.getInt("order.recipient-phone-max-chars", 60)).thenReturn(60);
+        when(runtimeConfig.getInt("order.contact-email-max-chars", 160)).thenReturn(160);
+        when(runtimeConfig.getInt("order.payment-method-max-chars", 40)).thenReturn(40);
+        when(runtimeConfig.getInt("order.max-quantity-per-line", 99)).thenReturn(99);
+        when(runtimeConfig.getBigDecimal("order.free-shipping-threshold", new BigDecimal("899.00"))).thenReturn(new BigDecimal("9999.00"));
+        when(runtimeConfig.getBigDecimal("order.default-shipping-fee", new BigDecimal("30.00"))).thenReturn(new BigDecimal("30.00"));
+
+        CartItem item = new CartItem();
+        item.setId(1L);
+        item.setUserId(7L);
+        item.setProductId(3L);
+        item.setQuantity(2);
+        item.setPrice(new BigDecimal("50.00"));
+        Product product = new Product();
+        product.setId(3L);
+        product.setName("Harness");
+        product.setPrice(new BigDecimal("50.00"));
+        product.setStock(10);
+        product.setStatus("ACTIVE");
+        product.setFreeShipping(false);
+
+        when(cartItemMapper.findByIds(List.of(1L))).thenReturn(List.of(item));
+        when(cartItemMapper.findByIdsForUpdate(List.of(1L))).thenReturn(List.of(item));
+        when(productRepository.findAllByIdForUpdate(List.of(3L))).thenReturn(List.of(product));
+        when(couponService.quote(eq(7L), any(), eq(6L))).thenReturn(
+                new com.example.shop.dto.CouponQuoteResponse(
+                        new BigDecimal("100.00"),
+                        new BigDecimal("20.00"),
+                        new BigDecimal("80.00"),
+                        6L,
+                        List.of()));
+        when(couponService.useCoupon(7L, 6L, new BigDecimal("100.00"), 42L))
+                .thenReturn(new CouponService.AppliedCoupon(6L, 5L, "Spring coupon", new BigDecimal("20.00")));
+        org.mockito.Mockito.doAnswer(invocation -> {
+            Order order = invocation.getArgument(0);
+            order.setId(42L);
+            return null;
+        }).when(orderRepository).insert(any(Order.class));
+
+        CheckoutRequest request = new CheckoutRequest();
+        request.setUserId(7L);
+        request.setCartItemIds(List.of(1L));
+        request.setUserCouponId(6L);
+        request.setShippingAddress("100 Pet Commerce St");
+        request.setPaymentMethod("STRIPE");
+
+        OrderService service = new OrderService();
+        ReflectionTestUtils.setField(service, "orderRepository", orderRepository);
+        ReflectionTestUtils.setField(service, "orderItemRepository", orderItemRepository);
+        ReflectionTestUtils.setField(service, "cartItemMapper", cartItemMapper);
+        ReflectionTestUtils.setField(service, "productRepository", productRepository);
+        ReflectionTestUtils.setField(service, "userRepository", userRepository);
+        ReflectionTestUtils.setField(service, "couponService", couponService);
+        ReflectionTestUtils.setField(service, "runtimeConfig", runtimeConfig);
+        ReflectionTestUtils.setField(service, "paymentChannelAvailabilityService", availabilityService);
+        ReflectionTestUtils.setField(service, "productVariantService", new ProductVariantService());
+
+        service.checkout(request);
+
+        ArgumentCaptor<Order> insertedOrder = ArgumentCaptor.forClass(Order.class);
+        verify(orderRepository).insert(insertedOrder.capture());
+        assertEquals(new BigDecimal("100.00"), insertedOrder.getValue().getOriginalAmount());
+        assertEquals(new BigDecimal("20.00"), insertedOrder.getValue().getDiscountAmount());
+        assertEquals(new BigDecimal("30.00"), insertedOrder.getValue().getShippingFee());
+        assertEquals(new BigDecimal("110.00"), insertedOrder.getValue().getTotalAmount());
+        verify(couponService).useCoupon(7L, 6L, new BigDecimal("100.00"), 42L);
+        verify(orderRepository).update(any(Order.class));
+        verify(productRepository, never()).findAllById(List.of(3L));
+    }
+
+    @Test
+    void checkoutQuoteWaivesShippingForProductFreeShippingBelowGlobalThreshold() {
+        CartItemMapper cartItemMapper = mock(CartItemMapper.class);
+        ProductRepository productRepository = mock(ProductRepository.class);
+        CouponService couponService = mock(CouponService.class);
+        RuntimeConfigService runtimeConfig = mock(RuntimeConfigService.class);
+
+        when(runtimeConfig.getBigDecimal("order.free-shipping-threshold", new BigDecimal("899.00")))
+                .thenReturn(new BigDecimal("899.00"));
+        when(runtimeConfig.getBigDecimal("order.default-shipping-fee", new BigDecimal("30.00")))
+                .thenReturn(new BigDecimal("30.00"));
+
+        CartItem item = new CartItem();
+        item.setId(10L);
+        item.setUserId(7L);
+        item.setProductId(3L);
+        item.setQuantity(1);
+        item.setPrice(new BigDecimal("129.90"));
+
+        Product product = new Product();
+        product.setId(3L);
+        product.setName("PawPilot Smart Pet Feeder 4L");
+        product.setPrice(new BigDecimal("129.90"));
+        product.setStock(10);
+        product.setStatus("ACTIVE");
+        product.setFreeShipping(true);
+        product.setFreeShippingThreshold(new BigDecimal("899.00"));
+
+        when(cartItemMapper.findByIds(List.of(10L))).thenReturn(List.of(item));
+        when(productRepository.findAllById(List.of(3L))).thenReturn(List.of(product));
+        when(couponService.quote(eq(7L), any(), eq(null))).thenReturn(
+                new CouponQuoteResponse(
+                        new BigDecimal("129.90"),
+                        BigDecimal.ZERO,
+                        new BigDecimal("129.90"),
+                        null,
+                        List.of()));
+
+        CouponQuoteRequest request = new CouponQuoteRequest();
+        request.setUserId(7L);
+        request.setCartItemIds(List.of(10L));
+
+        OrderService service = new OrderService();
+        ReflectionTestUtils.setField(service, "cartItemMapper", cartItemMapper);
+        ReflectionTestUtils.setField(service, "productRepository", productRepository);
+        ReflectionTestUtils.setField(service, "couponService", couponService);
+        ReflectionTestUtils.setField(service, "runtimeConfig", runtimeConfig);
+        ReflectionTestUtils.setField(service, "productVariantService", new ProductVariantService());
+
+        CouponQuoteResponse quote = service.quoteCheckout(request);
+
+        assertEquals(0, quote.getShippingFee().compareTo(BigDecimal.ZERO));
+        assertEquals(new BigDecimal("129.90"), quote.getPayableAmount());
+    }
+
+    @Test
+    void checkoutUsesAuthoritativeProductPriceInsteadOfCartSnapshotPrice() {
+        OrderRepository orderRepository = mock(OrderRepository.class);
+        OrderItemRepository orderItemRepository = mock(OrderItemRepository.class);
+        CartItemMapper cartItemMapper = mock(CartItemMapper.class);
+        ProductRepository productRepository = mock(ProductRepository.class);
+        UserRepository userRepository = mock(UserRepository.class);
+        CouponService couponService = mock(CouponService.class);
+        RuntimeConfigService runtimeConfig = mock(RuntimeConfigService.class);
+        PaymentChannelAvailabilityService availabilityService = mock(PaymentChannelAvailabilityService.class);
+
+        when(runtimeConfig.getInt("order.max-checkout-lines", 80)).thenReturn(80);
+        when(runtimeConfig.getInt("order.shipping-address-max-chars", 500)).thenReturn(500);
+        when(runtimeConfig.getInt("order.recipient-name-max-chars", 120)).thenReturn(120);
+        when(runtimeConfig.getInt("order.recipient-phone-max-chars", 60)).thenReturn(60);
+        when(runtimeConfig.getInt("order.contact-email-max-chars", 160)).thenReturn(160);
+        when(runtimeConfig.getInt("order.payment-method-max-chars", 40)).thenReturn(40);
+        when(runtimeConfig.getInt("order.max-quantity-per-line", 99)).thenReturn(99);
+        when(runtimeConfig.getBigDecimal("order.free-shipping-threshold", new BigDecimal("899.00"))).thenReturn(new BigDecimal("9999.00"));
+        when(runtimeConfig.getBigDecimal("order.default-shipping-fee", new BigDecimal("30.00"))).thenReturn(new BigDecimal("30.00"));
+
+        CartItem item = new CartItem();
+        item.setId(1L);
+        item.setUserId(7L);
+        item.setProductId(3L);
+        item.setQuantity(2);
+        item.setPrice(new BigDecimal("0.01"));
+        Product product = new Product();
+        product.setId(3L);
+        product.setName("Harness");
+        product.setPrice(new BigDecimal("50.00"));
+        product.setStock(10);
+        product.setStatus("ACTIVE");
+        product.setFreeShipping(false);
+
+        when(cartItemMapper.findByIds(List.of(1L))).thenReturn(List.of(item));
+        when(cartItemMapper.findByIdsForUpdate(List.of(1L))).thenReturn(List.of(item));
+        when(productRepository.findAllByIdForUpdate(List.of(3L))).thenReturn(List.of(product));
+        when(couponService.quote(eq(7L), any(), eq(null))).thenAnswer(invocation -> {
+            @SuppressWarnings("unchecked")
+            List<CartItem> quotedItems = invocation.getArgument(1, List.class);
+            BigDecimal subtotal = quotedItems.stream()
+                    .map(quotedItem -> quotedItem.getPrice().multiply(BigDecimal.valueOf(quotedItem.getQuantity())))
+                    .reduce(BigDecimal.ZERO, BigDecimal::add)
+                    .setScale(2);
+            return new com.example.shop.dto.CouponQuoteResponse(
+                    subtotal,
+                    BigDecimal.ZERO,
+                    subtotal,
+                    null,
+                    List.of());
+        });
+        org.mockito.Mockito.doAnswer(invocation -> {
+            Order order = invocation.getArgument(0);
+            order.setId(42L);
+            return null;
+        }).when(orderRepository).insert(any(Order.class));
+
+        CheckoutRequest request = new CheckoutRequest();
+        request.setUserId(7L);
+        request.setCartItemIds(List.of(1L));
+        request.setShippingAddress("100 Pet Commerce St");
+        request.setPaymentMethod("STRIPE");
+
+        OrderService service = new OrderService();
+        ReflectionTestUtils.setField(service, "orderRepository", orderRepository);
+        ReflectionTestUtils.setField(service, "orderItemRepository", orderItemRepository);
+        ReflectionTestUtils.setField(service, "cartItemMapper", cartItemMapper);
+        ReflectionTestUtils.setField(service, "productRepository", productRepository);
+        ReflectionTestUtils.setField(service, "userRepository", userRepository);
+        ReflectionTestUtils.setField(service, "couponService", couponService);
+        ReflectionTestUtils.setField(service, "runtimeConfig", runtimeConfig);
+        ReflectionTestUtils.setField(service, "paymentChannelAvailabilityService", availabilityService);
+        ReflectionTestUtils.setField(service, "productVariantService", new ProductVariantService());
+
+        service.checkout(request);
+
+        ArgumentCaptor<Order> insertedOrder = ArgumentCaptor.forClass(Order.class);
+        verify(orderRepository).insert(insertedOrder.capture());
+        assertEquals(new BigDecimal("100.00"), insertedOrder.getValue().getOriginalAmount());
+        assertEquals(new BigDecimal("130.00"), insertedOrder.getValue().getTotalAmount());
+
+        ArgumentCaptor<List<OrderItem>> insertedItems = ArgumentCaptor.forClass(List.class);
+        verify(orderItemRepository).insertBatch(insertedItems.capture());
+        assertEquals(new BigDecimal("50.00"), insertedItems.getValue().get(0).getPrice());
+        verify(cartItemMapper).deleteByIds(List.of(1L));
+    }
+
+    @Test
+    void guestCheckoutReusesLockedProductsForShippingFee() {
+        OrderRepository orderRepository = mock(OrderRepository.class);
+        OrderItemRepository orderItemRepository = mock(OrderItemRepository.class);
+        ProductRepository productRepository = mock(ProductRepository.class);
+        UserRepository userRepository = mock(UserRepository.class);
+        RuntimeConfigService runtimeConfig = mock(RuntimeConfigService.class);
+        PaymentChannelAvailabilityService availabilityService = mock(PaymentChannelAvailabilityService.class);
+        ProductVariantService productVariantService = mock(ProductVariantService.class);
+
+        when(runtimeConfig.getInt("order.max-checkout-lines", 80)).thenReturn(80);
+        when(runtimeConfig.getInt("order.guest-name-max-chars", 80)).thenReturn(80);
+        when(runtimeConfig.getInt("order.guest-phone-max-chars", 40)).thenReturn(40);
+        when(runtimeConfig.getInt("order.shipping-address-max-chars", 500)).thenReturn(500);
+        when(runtimeConfig.getInt("order.payment-method-max-chars", 40)).thenReturn(40);
+        when(runtimeConfig.getInt("order.max-quantity-per-line", 99)).thenReturn(99);
+        when(runtimeConfig.getBigDecimal("order.free-shipping-threshold", new BigDecimal("899.00"))).thenReturn(new BigDecimal("9999.00"));
+        when(runtimeConfig.getBigDecimal("order.default-shipping-fee", new BigDecimal("30.00"))).thenReturn(new BigDecimal("30.00"));
+
+        Product product = new Product();
+        product.setId(3L);
+        product.setName("Harness");
+        product.setPrice(new BigDecimal("50.00"));
+        product.setStock(10);
+        product.setStatus("ACTIVE");
+        product.setFreeShipping(false);
+
+        when(userRepository.findByEmail("buyer@example.com")).thenReturn(Optional.empty());
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> {
+            User user = invocation.getArgument(0);
+            user.setId(77L);
+            return user;
+        });
+        when(productRepository.findAllByIdForUpdate(List.of(3L))).thenReturn(List.of(product));
+        when(productVariantService.normalizeSpecs(null)).thenReturn(null);
+        when(productVariantService.resolveStock(product, null)).thenReturn(10);
+        when(productVariantService.resolvePrice(product, null)).thenReturn(new BigDecimal("50.00"));
+        org.mockito.Mockito.doAnswer(invocation -> {
+            Order order = invocation.getArgument(0);
+            order.setId(42L);
+            return null;
+        }).when(orderRepository).insert(any(Order.class));
+
+        GuestCheckoutItemRequest item = new GuestCheckoutItemRequest();
+        item.setProductId(3L);
+        item.setQuantity(2);
+        GuestCheckoutRequest request = new GuestCheckoutRequest();
+        request.setGuestEmail("buyer@example.com");
+        request.setGuestName("Buyer");
+        request.setGuestPhone("555-0100");
+        request.setShippingAddress("100 Pet Commerce St");
+        request.setPaymentMethod("STRIPE");
+        request.setItems(List.of(item));
+
+        OrderService service = new OrderService();
+        ReflectionTestUtils.setField(service, "orderRepository", orderRepository);
+        ReflectionTestUtils.setField(service, "orderItemRepository", orderItemRepository);
+        ReflectionTestUtils.setField(service, "productRepository", productRepository);
+        ReflectionTestUtils.setField(service, "userRepository", userRepository);
+        ReflectionTestUtils.setField(service, "runtimeConfig", runtimeConfig);
+        ReflectionTestUtils.setField(service, "paymentChannelAvailabilityService", availabilityService);
+        ReflectionTestUtils.setField(service, "productVariantService", productVariantService);
+
+        service.guestCheckout(request);
+
+        ArgumentCaptor<Order> insertedOrder = ArgumentCaptor.forClass(Order.class);
+        verify(orderRepository).insert(insertedOrder.capture());
+        assertEquals(new BigDecimal("100.00"), insertedOrder.getValue().getOriginalAmount());
+        assertEquals(new BigDecimal("30.00"), insertedOrder.getValue().getShippingFee());
+        assertEquals(new BigDecimal("130.00"), insertedOrder.getValue().getTotalAmount());
+        verify(productRepository).findAllByIdForUpdate(List.of(3L));
+        verify(productRepository, never()).findAllById(List.of(3L));
+    }
+
     private PaymentService paymentServiceForChannelAvailability(PaymentChannelConfig channelConfig) {
         RuntimeConfigService runtimeConfig = mock(RuntimeConfigService.class);
         when(runtimeConfig.getString("app.runtime-mode", "production")).thenReturn("production");
@@ -453,6 +1027,52 @@ class PaymentFlowServiceTest {
 
     private PaymentChannelAvailabilityService availabilityService(PaymentChannelConfig channelConfig, RuntimeConfigService runtimeConfig) {
         return new PaymentChannelAvailabilityService(channelConfig, runtimeConfig);
+    }
+
+    private String stripeCheckoutSessionCompletedPayload(String sessionId,
+                                                         String paymentIntentId,
+                                                         long amountTotal,
+                                                         String currency) {
+        return "{"
+                + "\"id\":\"evt_test_checkout_completed\","
+                + "\"object\":\"event\","
+                + "\"api_version\":\"" + Stripe.API_VERSION + "\","
+                + "\"created\":1770000000,"
+                + "\"livemode\":false,"
+                + "\"pending_webhooks\":1,"
+                + "\"type\":\"checkout.session.completed\","
+                + "\"data\":{\"object\":{"
+                + "\"id\":\"" + sessionId + "\","
+                + "\"object\":\"checkout.session\","
+                + "\"amount_total\":" + amountTotal + ","
+                + "\"currency\":\"" + currency + "\","
+                + "\"mode\":\"payment\","
+                + "\"payment_intent\":\"" + paymentIntentId + "\","
+                + "\"payment_status\":\"paid\","
+                + "\"status\":\"complete\""
+                + "}}"
+                + "}";
+    }
+
+    private String stripeSignatureHeader(String payload, String secret) {
+        long timestamp = Instant.now().getEpochSecond();
+        String signedPayload = timestamp + "." + payload;
+        return "t=" + timestamp + ",v1=" + hmacSha256Hex(signedPayload, secret);
+    }
+
+    private String hmacSha256Hex(String value, String secret) {
+        try {
+            Mac mac = Mac.getInstance("HmacSHA256");
+            mac.init(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
+            byte[] hash = mac.doFinal(value.getBytes(StandardCharsets.UTF_8));
+            StringBuilder builder = new StringBuilder();
+            for (byte b : hash) {
+                builder.append(String.format("%02x", b));
+            }
+            return builder.toString();
+        } catch (Exception e) {
+            throw new IllegalStateException("HmacSHA256 is not available", e);
+        }
     }
 
     @Test
@@ -549,6 +1169,48 @@ class PaymentFlowServiceTest {
         assertEquals("RECONCILE_REQUIRED", result.getStatus());
         verify(orderService, never()).updateOrderStatus(42L, "PENDING_SHIPMENT");
         verify(paymentRepository, never()).markPaidDetailed(eq(9L), any(), any(), any());
+    }
+
+    @Test
+    void genericPaymentCallbackRequiresValidHmacSignatureBeforeStateChanges() {
+        PaymentRepository paymentRepository = mock(PaymentRepository.class);
+        OrderService orderService = mock(OrderService.class);
+        PaymentChannelConfig channelConfig = new PaymentChannelConfig();
+        Payment payment = new Payment();
+        payment.setId(9L);
+        payment.setOrderId(42L);
+        payment.setOrderNo("SO202605180001");
+        payment.setChannel("OXXO");
+        payment.setStatus("PENDING");
+        payment.setAmount(new BigDecimal("88.00"));
+
+        PaymentService service = new PaymentService();
+        RuntimeConfigService runtimeConfig = mock(RuntimeConfigService.class);
+        when(runtimeConfig.getString("app.runtime-mode", "production")).thenReturn("dev");
+        when(runtimeConfig.getString("payment.callback-secret", "")).thenReturn("local-callback-secret-1234567890");
+        ReflectionTestUtils.setField(service, "paymentRepository", paymentRepository);
+        ReflectionTestUtils.setField(service, "orderService", orderService);
+        ReflectionTestUtils.setField(service, "paymentChannelConfig", channelConfig);
+        ReflectionTestUtils.setField(service, "runtimeConfig", runtimeConfig);
+
+        PaymentCallbackRequest request = new PaymentCallbackRequest();
+        request.setOrderNo(payment.getOrderNo());
+        request.setChannel(payment.getChannel());
+        request.setTransactionId("provider-txn-1");
+        request.setProviderReference("provider-ref-1");
+        request.setStatus("SUCCESS");
+        request.setAmount(payment.getAmount());
+        request.setCallbackTimestamp(Instant.now().getEpochSecond());
+        request.setSignature("forged-internal-call-signature");
+
+        when(paymentRepository.findByOrderNoAndChannel(payment.getOrderNo(), payment.getChannel())).thenReturn(payment);
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> service.handleCallback(request));
+
+        assertEquals("Invalid payment callback signature", ex.getMessage());
+        verify(paymentRepository, never()).markPaidDetailed(eq(9L), any(), any(), any());
+        verify(paymentRepository, never()).markReconcileRequired(eq(9L), any(), any(), any());
+        verify(orderService, never()).updateOrderStatus(42L, "PENDING_SHIPMENT");
     }
 
     @Test
@@ -777,6 +1439,93 @@ class PaymentFlowServiceTest {
         InOrder inOrder = inOrder(orderRepository, paymentRepository);
         inOrder.verify(orderRepository).updateStatusIfCurrent(42L, "PENDING_PAYMENT", "PENDING_SHIPMENT");
         inOrder.verify(paymentRepository).markPaidDetailed(eq(9L), eq("provider-txn-1"), eq("provider-ref-1"), any());
+    }
+
+    @Test
+    void stripeWebhookCompletedSessionRequiresStripeSignatureNotInternalCallbackSignature() {
+        PaymentRepository paymentRepository = mock(PaymentRepository.class);
+        OrderService orderService = mock(OrderService.class);
+        PaymentChannelConfig channelConfig = new PaymentChannelConfig();
+        RuntimeConfigService runtimeConfig = mock(RuntimeConfigService.class);
+        when(runtimeConfig.getString("app.runtime-mode", "production")).thenReturn("dev");
+        when(runtimeConfig.getString("payment.callback-secret", "")).thenReturn("local-callback-secret-1234567890");
+        when(runtimeConfig.getString("stripe.webhook-secret", "")).thenReturn("whsec_test_stripe_webhook_secret_123");
+
+        PaymentService service = new PaymentService();
+        ReflectionTestUtils.setField(service, "paymentRepository", paymentRepository);
+        ReflectionTestUtils.setField(service, "orderService", orderService);
+        ReflectionTestUtils.setField(service, "paymentChannelConfig", channelConfig);
+        ReflectionTestUtils.setField(service, "runtimeConfig", runtimeConfig);
+
+        PaymentCallbackRequest internalCallback = new PaymentCallbackRequest();
+        internalCallback.setOrderNo("SO202605180001");
+        internalCallback.setChannel("STRIPE");
+        internalCallback.setTransactionId("pi_test_42");
+        internalCallback.setProviderReference("cs_test_42");
+        internalCallback.setStatus("SUCCESS");
+        internalCallback.setAmount(new BigDecimal("88.00"));
+        internalCallback.setCallbackTimestamp(Instant.now().getEpochSecond());
+        String internalCallbackSignature = service.expectedSignature(internalCallback);
+        String payload = stripeCheckoutSessionCompletedPayload("cs_test_42", "pi_test_42", 8800L, "mxn");
+
+        IllegalArgumentException ex = assertThrows(
+                IllegalArgumentException.class,
+                () -> service.handleStripeWebhook(payload, internalCallbackSignature)
+        );
+        assertEquals("Invalid Stripe webhook signature", ex.getMessage());
+        assertNotNull(ex.getCause());
+        verifyNoInteractions(paymentRepository, orderService);
+    }
+
+    @Test
+    void stripeWebhookCompletedSessionClaimsOrderBeforeMarkingPaymentPaid() {
+        PaymentRepository paymentRepository = mock(PaymentRepository.class);
+        OrderService orderService = mock(OrderService.class);
+        PaymentChannelConfig channelConfig = new PaymentChannelConfig();
+        RuntimeConfigService runtimeConfig = mock(RuntimeConfigService.class);
+        String webhookSecret = "whsec_test_stripe_webhook_secret_123";
+        Payment payment = new Payment();
+        payment.setId(9L);
+        payment.setOrderId(42L);
+        payment.setOrderNo("SO202605180001");
+        payment.setChannel("STRIPE");
+        payment.setStatus("PENDING");
+        payment.setAmount(new BigDecimal("88.00"));
+        payment.setTransactionId("cs_test_42");
+        payment.setProviderReference("cs_test_42");
+        Order order = new Order();
+        order.setId(42L);
+        order.setOrderNo(payment.getOrderNo());
+        order.setStatus("PENDING_PAYMENT");
+        order.setTotalAmount(payment.getAmount());
+        Payment paidPayment = new Payment();
+        paidPayment.setId(9L);
+        paidPayment.setOrderId(42L);
+        paidPayment.setOrderNo(payment.getOrderNo());
+        paidPayment.setChannel(payment.getChannel());
+        paidPayment.setStatus("PAID");
+        paidPayment.setAmount(payment.getAmount());
+
+        when(runtimeConfig.getString("stripe.webhook-secret", "")).thenReturn(webhookSecret);
+        when(paymentRepository.findByProviderReference("cs_test_42")).thenReturn(payment);
+        when(orderService.getOrderById(42L)).thenReturn(order);
+        when(orderService.updateOrderStatus(42L, "PENDING_SHIPMENT")).thenReturn(true);
+        when(paymentRepository.markPaidDetailed(eq(9L), eq("pi_test_42"), eq("cs_test_42"), any())).thenReturn(1);
+        when(paymentRepository.findById(9L)).thenReturn(paidPayment);
+
+        PaymentService service = new PaymentService();
+        ReflectionTestUtils.setField(service, "paymentRepository", paymentRepository);
+        ReflectionTestUtils.setField(service, "orderService", orderService);
+        ReflectionTestUtils.setField(service, "paymentChannelConfig", channelConfig);
+        ReflectionTestUtils.setField(service, "runtimeConfig", runtimeConfig);
+        String payload = stripeCheckoutSessionCompletedPayload("cs_test_42", "pi_test_42", 8800L, "mxn");
+
+        Payment result = service.handleStripeWebhook(payload, stripeSignatureHeader(payload, webhookSecret));
+
+        assertEquals("PAID", result.getStatus());
+        InOrder inOrder = inOrder(orderService, paymentRepository);
+        inOrder.verify(orderService).updateOrderStatus(42L, "PENDING_SHIPMENT");
+        inOrder.verify(paymentRepository).markPaidDetailed(eq(9L), eq("pi_test_42"), eq("cs_test_42"), any());
     }
 
     @Test
@@ -1146,6 +1895,94 @@ class PaymentFlowServiceTest {
         InOrder inOrder = inOrder(orderRepository, refundService);
         inOrder.verify(orderRepository).markRefunded(42L, "SHIPPED", "customer return");
         inOrder.verify(refundService).refundPaidPayment(order, "customer return", "BANK-REF-20260518");
+    }
+
+    @Test
+    void completedRefundDefaultsToRestockEvenWhenRequestFlagIsFalse() {
+        OrderRepository orderRepository = mock(OrderRepository.class);
+        OrderItemRepository orderItemRepository = mock(OrderItemRepository.class);
+        ProductRepository productRepository = mock(ProductRepository.class);
+        RefundService refundService = mock(RefundService.class);
+        CouponService couponService = mock(CouponService.class);
+        RuntimeConfigService runtimeConfig = mock(RuntimeConfigService.class);
+        Order order = new Order();
+        order.setId(42L);
+        order.setOrderNo("SO202605180001");
+        order.setStatus("COMPLETED");
+        OrderItem item = new OrderItem();
+        item.setId(11L);
+        item.setProductId(3L);
+        item.setQuantity(2);
+        Payment refundedPayment = new Payment();
+        refundedPayment.setId(9L);
+        refundedPayment.setOrderId(42L);
+        refundedPayment.setOrderNo(order.getOrderNo());
+        refundedPayment.setChannel("STRIPE");
+        refundedPayment.setStatus("REFUNDED");
+
+        when(runtimeConfig.getInt("order.return-reason-max-chars", 500)).thenReturn(500);
+        when(orderRepository.findById(42L)).thenReturn(order);
+        when(orderRepository.markRefunded(42L, "COMPLETED", "customer return")).thenReturn(1);
+        when(refundService.refundPaidPayment(order, "customer return", "BANK-REF-20260518")).thenReturn(refundedPayment);
+        when(orderItemRepository.findByOrderId(42L)).thenReturn(List.of(item));
+        when(productRepository.increaseStock(3L, 2)).thenReturn(1);
+
+        OrderService service = new OrderService();
+        ReflectionTestUtils.setField(service, "orderRepository", orderRepository);
+        ReflectionTestUtils.setField(service, "orderItemRepository", orderItemRepository);
+        ReflectionTestUtils.setField(service, "productRepository", productRepository);
+        ReflectionTestUtils.setField(service, "refundService", refundService);
+        ReflectionTestUtils.setField(service, "couponService", couponService);
+        ReflectionTestUtils.setField(service, "runtimeConfig", runtimeConfig);
+
+        Payment result = service.refundOrder(42L, "customer return", false, "BANK-REF-20260518");
+
+        assertEquals("REFUNDED", result.getStatus());
+        verify(orderItemRepository).findByOrderId(42L);
+        verify(productRepository).increaseStock(3L, 2);
+        verify(productRepository, never()).findByIdForUpdate(any());
+        verify(productRepository, never()).save(any());
+    }
+
+    @Test
+    void shippedRefundWithoutRestockLogsAuditTrail(CapturedOutput output) {
+        OrderRepository orderRepository = mock(OrderRepository.class);
+        OrderItemRepository orderItemRepository = mock(OrderItemRepository.class);
+        RefundService refundService = mock(RefundService.class);
+        CouponService couponService = mock(CouponService.class);
+        RuntimeConfigService runtimeConfig = mock(RuntimeConfigService.class);
+        Order order = new Order();
+        order.setId(42L);
+        order.setOrderNo("SO202605180001");
+        order.setStatus("SHIPPED");
+        Payment refundedPayment = new Payment();
+        refundedPayment.setId(9L);
+        refundedPayment.setOrderId(42L);
+        refundedPayment.setOrderNo(order.getOrderNo());
+        refundedPayment.setChannel("STRIPE");
+        refundedPayment.setStatus("REFUNDED");
+
+        when(runtimeConfig.getInt("order.return-reason-max-chars", 500)).thenReturn(500);
+        when(orderRepository.findById(42L)).thenReturn(order);
+        when(orderRepository.markRefunded(42L, "SHIPPED", "customer return")).thenReturn(1);
+        when(refundService.refundPaidPayment(order, "customer return", "BANK-REF-20260518")).thenReturn(refundedPayment);
+
+        OrderService service = new OrderService();
+        ReflectionTestUtils.setField(service, "orderRepository", orderRepository);
+        ReflectionTestUtils.setField(service, "orderItemRepository", orderItemRepository);
+        ReflectionTestUtils.setField(service, "refundService", refundService);
+        ReflectionTestUtils.setField(service, "couponService", couponService);
+        ReflectionTestUtils.setField(service, "runtimeConfig", runtimeConfig);
+
+        Payment result = service.refundOrder(42L, "customer return", false, "BANK-REF-20260518");
+
+        assertEquals("REFUNDED", result.getStatus());
+        verify(orderItemRepository, never()).findByOrderId(42L);
+        org.assertj.core.api.Assertions.assertThat(output.getOut())
+                .contains("Refund completed without stock restoration")
+                .contains("orderId=42")
+                .contains("orderNo=SO202605180001")
+                .contains("status=SHIPPED");
     }
 
     @Test
@@ -1528,6 +2365,41 @@ class PaymentFlowServiceTest {
     }
 
     @Test
+    void shipOrderLooksUpConfiguredCarrierByTrackingCodeWithoutLoadingAllCarriers() {
+        OrderRepository orderRepository = mock(OrderRepository.class);
+        RuntimeConfigService runtimeConfig = mock(RuntimeConfigService.class);
+        NotificationService notificationService = mock(NotificationService.class);
+        LogisticsCarrierService logisticsCarrierService = mock(LogisticsCarrierService.class);
+        Order order = new Order();
+        order.setId(42L);
+        order.setOrderNo("SO202605260001");
+        order.setUserId(7L);
+        order.setStatus("PENDING_SHIPMENT");
+        LogisticsCarrier carrier = new LogisticsCarrier();
+        carrier.setName("DHL Express");
+        carrier.setTrackingCode("DHL");
+        carrier.setStatus("ACTIVE");
+
+        when(orderRepository.findById(42L)).thenReturn(order);
+        when(runtimeConfig.getInt("order.tracking-number-max-chars", 120)).thenReturn(120);
+        when(logisticsCarrierService.findByTrackingCode("dhl")).thenReturn(Optional.of(carrier));
+        when(orderRepository.updateShipping(42L, "PENDING_SHIPMENT", "SHIPPED", "TRACK123", "DHL", "DHL Express")).thenReturn(1);
+
+        OrderService service = new OrderService();
+        ReflectionTestUtils.setField(service, "orderRepository", orderRepository);
+        ReflectionTestUtils.setField(service, "runtimeConfig", runtimeConfig);
+        ReflectionTestUtils.setField(service, "notificationService", notificationService);
+        ReflectionTestUtils.setField(service, "logisticsCarrierService", logisticsCarrierService);
+
+        assertTrue(service.shipOrder(42L, "TRACK123", " dhl "));
+
+        verify(logisticsCarrierService).findByTrackingCode("dhl");
+        verify(logisticsCarrierService, never()).findAll(false);
+        verify(orderRepository).updateShipping(42L, "PENDING_SHIPMENT", "SHIPPED", "TRACK123", "DHL", "DHL Express");
+        verify(notificationService).tryCreateNotification(eq(7L), eq("ORDER"), eq("Order shipped"), contains("via DHL Express"));
+    }
+
+    @Test
     void customerNotificationRunsAfterCommit() {
         OrderRepository orderRepository = mock(OrderRepository.class);
         RuntimeConfigService runtimeConfig = mock(RuntimeConfigService.class);
@@ -1571,5 +2443,19 @@ class PaymentFlowServiceTest {
 
         verify(notificationService).tryCreateNotification(eq(7L), eq("ORDER"), eq("Order shipped"), contains("TRACK123"));
         verify(orderEmailNotificationService).trySendOrderStatusEmail(eq("mia@example.com"), eq("Order shipped"), contains("TRACK123"));
+    }
+
+    private String capturedLogs(CapturedOutput output) {
+        return output.getOut() + output.getErr();
+    }
+
+    private Payment expiredPendingPayment(Long id, Long orderId, String orderNo) {
+        Payment payment = new Payment();
+        payment.setId(id);
+        payment.setOrderId(orderId);
+        payment.setOrderNo(orderNo);
+        payment.setStatus("PENDING");
+        payment.setExpiresAt(LocalDateTime.now().minusMinutes(2));
+        return payment;
     }
 }

@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import type { ReactElement } from 'react';
 import ProductRichDetail, {
   isDirectVideo,
   isHttpMediaUrl,
@@ -6,6 +7,7 @@ import ProductRichDetail, {
   resolveRichMediaUrl,
   toEmbeddableVideoUrl,
 } from './ProductRichDetail';
+import { LanguageProvider } from '../i18n';
 
 jest.mock('../utils/mediaAssets', () => {
   const actual = jest.requireActual('../utils/mediaAssets');
@@ -15,6 +17,12 @@ jest.mock('../utils/mediaAssets', () => {
     resolveApiAssetUrl: (value: string) => value.startsWith('uploads/') ? `/${value}` : value,
   };
 });
+
+const renderProductRichDetail = (ui: ReactElement) => render(
+  <LanguageProvider>
+    {ui}
+  </LanguageProvider>,
+);
 
 describe('ProductRichDetail helpers', () => {
   it('trims media urls and rejects credentialed urls', () => {
@@ -70,7 +78,7 @@ describe('ProductRichDetail helpers', () => {
   it('renders rich detail images with responsive loading attributes', () => {
     const richImageUrl = 'https://images.unsplash.com/photo-pet-bed?fit=crop&w=1200';
 
-    render(
+    renderProductRichDetail(
       <ProductRichDetail
         detailContent={[
           { type: 'image', url: richImageUrl, caption: 'Pet bed detail' },
@@ -87,5 +95,40 @@ describe('ProductRichDetail helpers', () => {
     expect(image).toHaveAttribute('height', '900');
     expect(image).toHaveAttribute('loading', 'lazy');
     expect(image).toHaveAttribute('decoding', 'async');
+  });
+
+  it('uses localized defaults when rich detail labels are omitted', () => {
+    window.localStorage.setItem('shop-language', 'es');
+
+    const { rerender } = renderProductRichDetail(<ProductRichDetail detailContent={[]} />);
+
+    expect(screen.getByText('Aún no hay detalles del producto')).toBeInTheDocument();
+
+    rerender(
+      <LanguageProvider>
+        <ProductRichDetail
+          detailContent={[
+            { type: 'image', url: 'https://cdn.example.com/detail.jpg' },
+            { type: 'video', url: 'https://cdn.example.com/demo.mp4' },
+          ]}
+        />
+      </LanguageProvider>,
+    );
+
+    expect(screen.getByRole('img', { name: 'Imagen de detalle del producto' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Video del producto 2')).toBeInTheDocument();
+  });
+
+  it('does not hardcode English fallback labels in ProductRichDetail', () => {
+    const source = require('fs').readFileSync(require('path').resolve(__dirname, 'ProductRichDetail.tsx'), 'utf8') as string;
+
+    expect(source).not.toContain("emptyText = 'No details'");
+    expect(source).not.toContain("imageAlt: 'Product detail'");
+    expect(source).not.toContain('Product video ${index}');
+    expect(source).not.toContain("openVideo: 'Open product video'");
+    expect(source).not.toContain("unsupported: 'Unsupported detail content'");
+    expect(source).toContain("t('pages.productDetail.noDetails')");
+    expect(source).toContain("t('pages.productDetail.richImageAlt')");
+    expect(source).toContain("t('pages.productDetail.richVideoTitle', { index })");
   });
 });

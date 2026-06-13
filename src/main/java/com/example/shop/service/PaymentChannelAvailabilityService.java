@@ -1,6 +1,5 @@
 package com.example.shop.service;
 
-import lombok.extern.slf4j.Slf4j;
 import com.example.shop.config.PaymentChannelConfig;
 import com.example.shop.util.GatewayUrlValidator;
 import lombok.RequiredArgsConstructor;
@@ -12,7 +11,6 @@ import java.util.Locale;
 
 @Service
 @RequiredArgsConstructor
-@Slf4j
 public class PaymentChannelAvailabilityService {
     private static final String DEFAULT_STOREFRONT_BASE_URL = "https://pet.686888666.xyz";
     private final PaymentChannelConfig paymentChannelConfig;

@@ -1,0 +1,4100 @@
+{
+  "generatedAt": "2026-06-12T18:11:52.670Z",
+  "baseUrl": "http://127.0.0.1:4200",
+  "viewports": [
+    {
+      "name": "small-320-app",
+      "width": 320,
+      "height": 568
+    },
+    {
+      "name": "phone-390-app",
+      "width": 390,
+      "height": 844
+    }
+  ],
+  "results": [
+    {
+      "viewport": {
+        "name": "small-320-app",
+        "width": 320,
+        "height": 568
+      },
+      "snapshots": [
+        {
+          "viewportName": "small-320-app",
+          "stateName": "checkout-loaded",
+          "url": "http://127.0.0.1:4200/checkout",
+          "bodyClasses": "shop-mobile-app shop-mobile-app--android checkout-page-active",
+          "innerWidth": 320,
+          "innerHeight": 568,
+          "scrollY": 0,
+          "docWidth": 320,
+          "bodyWidth": 320,
+          "horizontalOverflow": false,
+          "rects": {
+            "checkoutPage": {
+              "selector": ".checkout-page",
+              "text": "Checkout readinessConfirm orderFree shipping, gifts and coupons are checked before you pay.Payable$7.15ShippingFree shipping is active for this order.Payment methodStripePayable$7.15You unlocked free shipping100%Payment methodStripe75%Next ",
+              "top": 70,
+              "bottom": 4530.125,
+              "left": 0,
+              "right": 304,
+              "width": 304,
+              "height": 4460.125,
+              "scrollWidth": 304,
+              "clientWidth": 304,
+              "scrollHeight": 4460,
+              "clientHeight": 4460,
+              "position": "static",
+              "zIndex": "auto",
+              "overflowX": "hidden",
+              "overflowY": "auto",
+              "fontSize": "14px",
+              "lineHeight": "normal",
+              "centerHit": {
+                "selector": "span",
+                "text": "Free shipping is active for this order.",
+                "inside": true
+              }
+            },
+            "addressCard": {
+              "selector": "#checkout-address-card",
+              "text": "Shipping addressRecipientPhoneCountry / state / city / municipality / neighborhoodSelect regionDetailed address0 / 260Postal / ZIP code",
+              "top": 1589.734375,
+              "bottom": 2153.15625,
+              "left": 12,
+              "right": 292,
+              "width": 280,
+              "height": 563.421875,
+              "scrollWidth": 278,
+              "clientWidth": 278,
+              "scrollHeight": 561,
+              "clientHeight": 561,
+              "position": "relative",
+              "zIndex": "auto",
+              "overflowX": "visible",
+              "overflowY": "visible",
+              "fontSize": "14px",
+              "lineHeight": "22px",
+              "centerHit": {
+                "selector": "span",
+                "text": "Free shipping is active for this order.",
+                "inside": false
+              }
+            },
+            "paymentCard": {
+              "selector": "#checkout-payment-card",
+              "text": "Select payment methodPayment confidenceStripe will use the configured secure gateway for this market.1 items total$7.15Payment methodStripeCreate order and pay $7.15Payable$7.15Complete address",
+              "top": 2427.34375,
+              "bottom": 2719.40625,
+              "left": 12,
+              "right": 292,
+              "width": 280,
+              "height": 292.0625,
+              "scrollWidth": 278,
+              "clientWidth": 278,
+              "scrollHeight": 290,
+              "clientHeight": 290,
+              "position": "relative",
+              "zIndex": "auto",
+              "overflowX": "visible",
+              "overflowY": "visible",
+              "fontSize": "14px",
+              "lineHeight": "22px",
+              "centerHit": {
+                "selector": "span",
+                "text": "Free shipping is active for this order.",
+                "inside": false
+              }
+            },
+            "paymentMethod": {
+              "selector": ".checkout-page__paymentMethod",
+              "text": "StripeRecommendedInstantCards, Apple Pay and Google Pay through Stripe Checkout.",
+              "top": 1034.390625,
+              "bottom": 1135.765625,
+              "left": 25,
+              "right": 279,
+              "width": 254,
+              "height": 101.375,
+              "scrollWidth": 252,
+              "clientWidth": 252,
+              "scrollHeight": 99,
+              "clientHeight": 99,
+              "position": "relative",
+              "zIndex": "auto",
+              "overflowX": "hidden",
+              "overflowY": "hidden",
+              "fontSize": "13.3333px",
+              "lineHeight": "normal",
+              "centerHit": {
+                "selector": "span",
+                "text": "Free shipping is active for this order.",
+                "inside": false
+              }
+            },
+            "submitReview": {
+              "selector": ".checkout-page__submitReview",
+              "text": "1 items total$7.15Payment methodStripeCreate order and pay $7.15",
+              "top": 2602.90625,
+              "bottom": 2706.40625,
+              "left": 25,
+              "right": 279,
+              "width": 254,
+              "height": 103.5,
+              "scrollWidth": 254,
+              "clientWidth": 254,
+              "scrollHeight": 104,
+              "clientHeight": 104,
+              "position": "static",
+              "zIndex": "auto",
+              "overflowX": "visible",
+              "overflowY": "visible",
+              "fontSize": "14px",
+              "lineHeight": "22px",
+              "centerHit": {
+                "selector": "span",
+                "text": "Free shipping is active for this order.",
+                "inside": false
+              }
+            },
+            "mobilePayBar": {
+              "selector": ".checkout-page__mobilePayBar",
+              "text": "Payable$7.15Complete address",
+              "top": 469,
+              "bottom": 558,
+              "left": 10,
+              "right": 310,
+              "width": 300,
+              "height": 89,
+              "scrollWidth": 300,
+              "clientWidth": 300,
+              "scrollHeight": 88,
+              "clientHeight": 88,
+              "position": "fixed",
+              "zIndex": "7600",
+              "overflowX": "visible",
+              "overflowY": "visible",
+              "fontSize": "14px",
+              "lineHeight": "22px",
+              "centerHit": {
+                "selector": "button.ant-btn.css-dev-only-do-not-override-5uvb3z.ant-btn-primary.ant-btn-color-primary.ant-btn-variant-solid",
+                "text": "Complete address",
+                "inside": true
+              }
+            },
+            "submitButton": {
+              "selector": ".checkout-page__mobilePayBar .ant-btn, .checkout-page__submitButton",
+              "text": "Create order and pay $7.15",
+              "top": 0,
+              "bottom": 0,
+              "left": 0,
+              "right": 0,
+              "width": 0,
+              "height": 0,
+              "scrollWidth": 0,
+              "clientWidth": 0,
+              "scrollHeight": 0,
+              "clientHeight": 0,
+              "position": "relative",
+              "zIndex": "auto",
+              "overflowX": "hidden",
+              "overflowY": "hidden",
+              "fontSize": "15px",
+              "lineHeight": "17.25px",
+              "centerHit": {
+                "selector": "div.shop-nav__main",
+                "text": "ShopMXPet deals for every dayPet essentials up to 50% offFree shipping on orders over $49.45 / Flash deals / Live supportdog toyscat litterp",
+                "inside": false
+              }
+            },
+            "bottomNav": null,
+            "support": {
+              "selector": ".app-support-launcher",
+              "text": "",
+              "top": 0,
+              "bottom": 0,
+              "left": 0,
+              "right": 0,
+              "width": 0,
+              "height": 0,
+              "scrollWidth": 0,
+              "clientWidth": 0,
+              "scrollHeight": 0,
+              "clientHeight": 0,
+              "position": "fixed",
+              "zIndex": "2600",
+              "overflowX": "visible",
+              "overflowY": "visible",
+              "fontSize": "20px",
+              "lineHeight": "normal",
+              "centerHit": {
+                "selector": "div.shop-nav__main",
+                "text": "ShopMXPet deals for every dayPet essentials up to 50% offFree shipping on orders over $49.45 / Flash deals / Live supportdog toyscat litterp",
+                "inside": false
+              }
+            },
+            "cascaderDropdown": null,
+            "cascaderMenus": null
+          },
+          "paymentMethodCount": 2,
+          "paymentUnavailableVisible": false,
+          "overlaps": {
+            "mobilePayBarVsBottomNav": null,
+            "submitButtonVsBottomNav": null,
+            "mobilePayBarVsSupport": {
+              "overlaps": false,
+              "x": 0,
+              "y": 0,
+              "area": 0
+            },
+            "submitButtonVsSupport": {
+              "overlaps": false,
+              "x": 0,
+              "y": 0,
+              "area": 0
+            },
+            "cascaderVsBottomNav": null
+          },
+          "smallTargets": [
+            {
+              "selector": "input#region.ant-select-selection-search-input",
+              "text": "Country / state / city / municipality / neighborhood: Select the full region",
+              "top": 1888.734375,
+              "bottom": 1918.734375,
+              "left": 37,
+              "right": 249,
+              "width": 212,
+              "height": 30,
+              "fontSize": "16px"
+            }
+          ],
+          "bottomObscured": [],
+          "overflowElements": [
+            {
+              "selector": "strong",
+              "text": "ShopMX",
+              "top": 20.546875,
+              "left": 60,
+              "right": 116,
+              "width": 56,
+              "overflowRight": -204,
+              "scrollWidth": 72,
+              "clientWidth": 56,
+              "overflowX": "hidden"
+            },
+            {
+              "selector": "span.ant-badge.css-dev-only-do-not-override-5uvb3z",
+              "text": "1",
+              "top": 23,
+              "left": 279,
+              "right": 293,
+              "width": 14,
+              "overflowRight": -27,
+              "scrollWidth": 22,
+              "clientWidth": 14,
+              "overflowX": "visible"
+            },
+            {
+              "selector": "div.ant-progress.ant-progress-status-normal.ant-progress-circle.ant-progress-show-info.css-dev-only-do-not-override-5uvb3z",
+              "text": "75%",
+              "top": 696.640625,
+              "left": 23,
+              "right": 73,
+              "width": 50,
+              "overflowRight": -247,
+              "scrollWidth": 58,
+              "clientWidth": 50,
+              "overflowX": "visible"
+            }
+          ],
+          "formErrors": [],
+          "visibleMessage": "",
+          "screenshot": "small-320-app-checkout-loaded.png"
+        },
+        {
+          "viewportName": "small-320-app",
+          "stateName": "address-card",
+          "url": "http://127.0.0.1:4200/checkout",
+          "bodyClasses": "shop-mobile-app shop-mobile-app--android checkout-page-active",
+          "innerWidth": 320,
+          "innerHeight": 568,
+          "scrollY": 1665,
+          "docWidth": 320,
+          "bodyWidth": 320,
+          "horizontalOverflow": false,
+          "rects": {
+            "checkoutPage": {
+              "selector": ".checkout-page",
+              "text": "Checkout readinessConfirm orderFree shipping, gifts and coupons are checked before you pay.Payable$7.15ShippingFree shipping is active for this order.Payment methodStripePayable$7.15You unlocked free shipping100%Payment methodStripe75%Next ",
+              "top": -1595,
+              "bottom": 2865.125,
+              "left": 0,
+              "right": 304,
+              "width": 304,
+              "height": 4460.125,
+              "scrollWidth": 304,
+              "clientWidth": 304,
+              "scrollHeight": 4460,
+              "clientHeight": 4460,
+              "position": "static",
+              "zIndex": "auto",
+              "overflowX": "hidden",
+              "overflowY": "auto",
+              "fontSize": "14px",
+              "lineHeight": "normal",
+              "centerHit": {
+                "selector": "div.ant-card-head-title",
+                "text": "Order summary",
+                "inside": true
+              }
+            },
+            "addressCard": {
+              "selector": "#checkout-address-card",
+              "text": "Shipping addressRecipientPhoneCountry / state / city / municipality / neighborhoodSelect regionDetailed address0 / 260Postal / ZIP code",
+              "top": -75.265625,
+              "bottom": 488.15625,
+              "left": 12,
+              "right": 292,
+              "width": 280,
+              "height": 563.421875,
+              "scrollWidth": 278,
+              "clientWidth": 278,
+              "scrollHeight": 561,
+              "clientHeight": 561,
+              "position": "relative",
+              "zIndex": "auto",
+              "overflowX": "visible",
+              "overflowY": "visible",
+              "fontSize": "14px",
+              "lineHeight": "22px",
+              "centerHit": {
+                "selector": "label.ant-form-item-required",
+                "text": "Country / state / city / municipality / neighborhood",
+                "inside": true
+              }
+            },
+            "paymentCard": {
+              "selector": "#checkout-payment-card",
+              "text": "Select payment methodPayment confidenceStripe will use the configured secure gateway for this market.1 items total$7.15Payment methodStripeCreate order and pay $7.15Payable$7.15Complete address",
+              "top": 762.34375,
+              "bottom": 1054.40625,
+              "left": 12,
+              "right": 292,
+              "width": 280,
+              "height": 292.0625,
+              "scrollWidth": 278,
+              "clientWidth": 278,
+              "scrollHeight": 290,
+              "clientHeight": 290,
+              "position": "relative",
+              "zIndex": "auto",
+              "overflowX": "visible",
+              "overflowY": "visible",
+              "fontSize": "14px",
+              "lineHeight": "22px",
+              "centerHit": {
+                "selector": "div.ant-card-head-title",
+                "text": "Order summary",
+                "inside": false
+              }
+            },
+            "paymentMethod": {
+              "selector": ".checkout-page__paymentMethod",
+              "text": "StripeRecommendedInstantCards, Apple Pay and Google Pay through Stripe Checkout.",
+              "top": -630.609375,
+              "bottom": -529.234375,
+              "left": 25,
+              "right": 279,
+              "width": 254,
+              "height": 101.375,
+              "scrollWidth": 252,
+              "clientWidth": 252,
+              "scrollHeight": 99,
+              "clientHeight": 99,
+              "position": "relative",
+              "zIndex": "auto",
+              "overflowX": "hidden",
+              "overflowY": "hidden",
+              "fontSize": "13.3333px",
+              "lineHeight": "normal",
+              "centerHit": {
+                "selector": "div.ant-col.ant-form-item-label.css-dev-only-do-not-override-5uvb3z",
+                "text": "Recipient",
+                "inside": false
+              }
+            },
+            "submitReview": {
+              "selector": ".checkout-page__submitReview",
+              "text": "1 items total$7.15Payment methodStripeCreate order and pay $7.15",
+              "top": 937.90625,
+              "bottom": 1041.40625,
+              "left": 25,
+              "right": 279,
+              "width": 254,
+              "height": 103.5,
+              "scrollWidth": 254,
+              "clientWidth": 254,
+              "scrollHeight": 104,
+              "clientHeight": 104,
+              "position": "static",
+              "zIndex": "auto",
+              "overflowX": "visible",
+              "overflowY": "visible",
+              "fontSize": "14px",
+              "lineHeight": "22px",
+              "centerHit": {
+                "selector": "div.ant-card-head-title",
+                "text": "Order summary",
+                "inside": false
+              }
+            },
+            "mobilePayBar": {
+              "selector": ".checkout-page__mobilePayBar",
+              "text": "Payable$7.15Complete address",
+              "top": 469,
+              "bottom": 558,
+              "left": 10,
+              "right": 310,
+              "width": 300,
+              "height": 89,
+              "scrollWidth": 300,
+              "clientWidth": 300,
+              "scrollHeight": 88,
+              "clientHeight": 88,
+              "position": "fixed",
+              "zIndex": "7600",
+              "overflowX": "visible",
+              "overflowY": "visible",
+              "fontSize": "14px",
+              "lineHeight": "22px",
+              "centerHit": {
+                "selector": "button.ant-btn.css-dev-only-do-not-override-5uvb3z.ant-btn-primary.ant-btn-color-primary.ant-btn-variant-solid",
+                "text": "Complete address",
+                "inside": true
+              }
+            },
+            "submitButton": {
+              "selector": ".checkout-page__mobilePayBar .ant-btn, .checkout-page__submitButton",
+              "text": "Create order and pay $7.15",
+              "top": 0,
+              "bottom": 0,
+              "left": 0,
+              "right": 0,
+              "width": 0,
+              "height": 0,
+              "scrollWidth": 0,
+              "clientWidth": 0,
+              "scrollHeight": 0,
+              "clientHeight": 0,
+              "position": "relative",
+              "zIndex": "auto",
+              "overflowX": "hidden",
+              "overflowY": "hidden",
+              "fontSize": "15px",
+              "lineHeight": "17.25px",
+              "centerHit": {
+                "selector": "div.checkout-page.checkout-page--en",
+                "text": "Checkout readinessConfirm orderFree shipping, gifts and coupons are checked before you pay.Payable$7.15ShippingFree shipping is active for t",
+                "inside": false
+              }
+            },
+            "bottomNav": null,
+            "support": {
+              "selector": ".app-support-launcher",
+              "text": "",
+              "top": 0,
+              "bottom": 0,
+              "left": 0,
+              "right": 0,
+              "width": 0,
+              "height": 0,
+              "scrollWidth": 0,
+              "clientWidth": 0,
+              "scrollHeight": 0,
+              "clientHeight": 0,
+              "position": "fixed",
+              "zIndex": "2600",
+              "overflowX": "visible",
+              "overflowY": "visible",
+              "fontSize": "20px",
+              "lineHeight": "normal",
+              "centerHit": {
+                "selector": "div.checkout-page.checkout-page--en",
+                "text": "Checkout readinessConfirm orderFree shipping, gifts and coupons are checked before you pay.Payable$7.15ShippingFree shipping is active for t",
+                "inside": false
+              }
+            },
+            "cascaderDropdown": null,
+            "cascaderMenus": null
+          },
+          "paymentMethodCount": 2,
+          "paymentUnavailableVisible": false,
+          "overlaps": {
+            "mobilePayBarVsBottomNav": null,
+            "submitButtonVsBottomNav": null,
+            "mobilePayBarVsSupport": {
+              "overlaps": false,
+              "x": 0,
+              "y": 0,
+              "area": 0
+            },
+            "submitButtonVsSupport": {
+              "overlaps": false,
+              "x": 0,
+              "y": 0,
+              "area": 0
+            },
+            "cascaderVsBottomNav": null
+          },
+          "smallTargets": [
+            {
+              "selector": "input#region.ant-select-selection-search-input",
+              "text": "Country / state / city / municipality / neighborhood: Select the full region",
+              "top": 223.734375,
+              "bottom": 253.734375,
+              "left": 37,
+              "right": 249,
+              "width": 212,
+              "height": 30,
+              "fontSize": "16px"
+            }
+          ],
+          "bottomObscured": [],
+          "overflowElements": [
+            {
+              "selector": "strong",
+              "text": "ShopMX",
+              "top": -1644.453125,
+              "left": 60,
+              "right": 116,
+              "width": 56,
+              "overflowRight": -204,
+              "scrollWidth": 72,
+              "clientWidth": 56,
+              "overflowX": "hidden"
+            },
+            {
+              "selector": "span.ant-badge.css-dev-only-do-not-override-5uvb3z",
+              "text": "1",
+              "top": -1642,
+              "left": 279,
+              "right": 293,
+              "width": 14,
+              "overflowRight": -27,
+              "scrollWidth": 22,
+              "clientWidth": 14,
+              "overflowX": "visible"
+            },
+            {
+              "selector": "div.ant-progress.ant-progress-status-normal.ant-progress-circle.ant-progress-show-info.css-dev-only-do-not-override-5uvb3z",
+              "text": "75%",
+              "top": -968.359375,
+              "left": 23,
+              "right": 73,
+              "width": 50,
+              "overflowRight": -247,
+              "scrollWidth": 58,
+              "clientWidth": 50,
+              "overflowX": "visible"
+            }
+          ],
+          "formErrors": [],
+          "visibleMessage": "",
+          "screenshot": "small-320-app-address-card.png"
+        },
+        {
+          "viewportName": "small-320-app",
+          "stateName": "address-cascader-open",
+          "url": "http://127.0.0.1:4200/checkout",
+          "bodyClasses": "shop-mobile-app shop-mobile-app--android checkout-page-active",
+          "innerWidth": 320,
+          "innerHeight": 568,
+          "scrollY": 1638,
+          "docWidth": 320,
+          "bodyWidth": 320,
+          "horizontalOverflow": false,
+          "rects": {
+            "checkoutPage": {
+              "selector": ".checkout-page",
+              "text": "Checkout readinessConfirm orderFree shipping, gifts and coupons are checked before you pay.Payable$7.15ShippingFree shipping is active for this order.Payment methodStripePayable$7.15You unlocked free shipping100%Payment methodStripe75%Next ",
+              "top": -1568,
+              "bottom": 2892.125,
+              "left": 0,
+              "right": 304,
+              "width": 304,
+              "height": 4460.125,
+              "scrollWidth": 304,
+              "clientWidth": 304,
+              "scrollHeight": 4460,
+              "clientHeight": 4460,
+              "position": "static",
+              "zIndex": "auto",
+              "overflowX": "hidden",
+              "overflowY": "auto",
+              "fontSize": "14px",
+              "lineHeight": "normal",
+              "centerHit": {
+                "selector": "div.ant-card-head",
+                "text": "Order summary",
+                "inside": true
+              }
+            },
+            "addressCard": {
+              "selector": "#checkout-address-card",
+              "text": "Shipping addressRecipientPhoneCountry / state / city / municipality / neighborhoodSelect regionDetailed address0 / 260Postal / ZIP code",
+              "top": -48.265625,
+              "bottom": 515.15625,
+              "left": 12,
+              "right": 292,
+              "width": 280,
+              "height": 563.421875,
+              "scrollWidth": 278,
+              "clientWidth": 278,
+              "scrollHeight": 561,
+              "clientHeight": 561,
+              "position": "relative",
+              "zIndex": "auto",
+              "overflowX": "visible",
+              "overflowY": "visible",
+              "fontSize": "14px",
+              "lineHeight": "22px",
+              "centerHit": {
+                "selector": "label.ant-form-item-required",
+                "text": "Country / state / city / municipality / neighborhood",
+                "inside": true
+              }
+            },
+            "paymentCard": {
+              "selector": "#checkout-payment-card",
+              "text": "Select payment methodPayment confidenceStripe will use the configured secure gateway for this market.1 items total$7.15Payment methodStripeCreate order and pay $7.15Payable$7.15Complete address",
+              "top": 789.34375,
+              "bottom": 1081.40625,
+              "left": 12,
+              "right": 292,
+              "width": 280,
+              "height": 292.0625,
+              "scrollWidth": 278,
+              "clientWidth": 278,
+              "scrollHeight": 290,
+              "clientHeight": 290,
+              "position": "relative",
+              "zIndex": "auto",
+              "overflowX": "visible",
+              "overflowY": "visible",
+              "fontSize": "14px",
+              "lineHeight": "22px",
+              "centerHit": {
+                "selector": "div.ant-card-head",
+                "text": "Order summary",
+                "inside": false
+              }
+            },
+            "paymentMethod": {
+              "selector": ".checkout-page__paymentMethod",
+              "text": "StripeRecommendedInstantCards, Apple Pay and Google Pay through Stripe Checkout.",
+              "top": -603.609375,
+              "bottom": -502.234375,
+              "left": 25,
+              "right": 279,
+              "width": 254,
+              "height": 101.375,
+              "scrollWidth": 252,
+              "clientWidth": 252,
+              "scrollHeight": 99,
+              "clientHeight": 99,
+              "position": "relative",
+              "zIndex": "auto",
+              "overflowX": "hidden",
+              "overflowY": "hidden",
+              "fontSize": "13.3333px",
+              "lineHeight": "normal",
+              "centerHit": {
+                "selector": "div.ant-card-head",
+                "text": "Shipping address",
+                "inside": false
+              }
+            },
+            "submitReview": {
+              "selector": ".checkout-page__submitReview",
+              "text": "1 items total$7.15Payment methodStripeCreate order and pay $7.15",
+              "top": 964.90625,
+              "bottom": 1068.40625,
+              "left": 25,
+              "right": 279,
+              "width": 254,
+              "height": 103.5,
+              "scrollWidth": 254,
+              "clientWidth": 254,
+              "scrollHeight": 104,
+              "clientHeight": 104,
+              "position": "static",
+              "zIndex": "auto",
+              "overflowX": "visible",
+              "overflowY": "visible",
+              "fontSize": "14px",
+              "lineHeight": "22px",
+              "centerHit": {
+                "selector": "div.ant-card-head",
+                "text": "Order summary",
+                "inside": false
+              }
+            },
+            "mobilePayBar": {
+              "selector": ".checkout-page__mobilePayBar",
+              "text": "Payable$7.15Complete address",
+              "top": 469,
+              "bottom": 558,
+              "left": 10,
+              "right": 310,
+              "width": 300,
+              "height": 89,
+              "scrollWidth": 300,
+              "clientWidth": 300,
+              "scrollHeight": 88,
+              "clientHeight": 88,
+              "position": "fixed",
+              "zIndex": "7600",
+              "overflowX": "visible",
+              "overflowY": "visible",
+              "fontSize": "14px",
+              "lineHeight": "22px",
+              "centerHit": {
+                "selector": "button.ant-btn.css-dev-only-do-not-override-5uvb3z.ant-btn-primary.ant-btn-color-primary.ant-btn-variant-solid",
+                "text": "Complete address",
+                "inside": true
+              }
+            },
+            "submitButton": {
+              "selector": ".checkout-page__mobilePayBar .ant-btn, .checkout-page__submitButton",
+              "text": "Create order and pay $7.15",
+              "top": 0,
+              "bottom": 0,
+              "left": 0,
+              "right": 0,
+              "width": 0,
+              "height": 0,
+              "scrollWidth": 0,
+              "clientWidth": 0,
+              "scrollHeight": 0,
+              "clientHeight": 0,
+              "position": "relative",
+              "zIndex": "auto",
+              "overflowX": "hidden",
+              "overflowY": "hidden",
+              "fontSize": "15px",
+              "lineHeight": "17.25px",
+              "centerHit": {
+                "selector": "div.checkout-page.checkout-page--en",
+                "text": "Checkout readinessConfirm orderFree shipping, gifts and coupons are checked before you pay.Payable$7.15ShippingFree shipping is active for t",
+                "inside": false
+              }
+            },
+            "bottomNav": null,
+            "support": {
+              "selector": ".app-support-launcher",
+              "text": "",
+              "top": 0,
+              "bottom": 0,
+              "left": 0,
+              "right": 0,
+              "width": 0,
+              "height": 0,
+              "scrollWidth": 0,
+              "clientWidth": 0,
+              "scrollHeight": 0,
+              "clientHeight": 0,
+              "position": "fixed",
+              "zIndex": "2600",
+              "overflowX": "visible",
+              "overflowY": "visible",
+              "fontSize": "20px",
+              "lineHeight": "normal",
+              "centerHit": {
+                "selector": "div.checkout-page.checkout-page--en",
+                "text": "Checkout readinessConfirm orderFree shipping, gifts and coupons are checked before you pay.Payable$7.15ShippingFree shipping is active for t",
+                "inside": false
+              }
+            },
+            "cascaderDropdown": null,
+            "cascaderMenus": null
+          },
+          "paymentMethodCount": 2,
+          "paymentUnavailableVisible": false,
+          "overlaps": {
+            "mobilePayBarVsBottomNav": null,
+            "submitButtonVsBottomNav": null,
+            "mobilePayBarVsSupport": {
+              "overlaps": false,
+              "x": 0,
+              "y": 0,
+              "area": 0
+            },
+            "submitButtonVsSupport": {
+              "overlaps": false,
+              "x": 0,
+              "y": 0,
+              "area": 0
+            },
+            "cascaderVsBottomNav": null
+          },
+          "smallTargets": [
+            {
+              "selector": "input#region.ant-select-selection-search-input",
+              "text": "Country / state / city / municipality / neighborhood: Select the full region",
+              "top": 250.734375,
+              "bottom": 280.734375,
+              "left": 37,
+              "right": 249,
+              "width": 212,
+              "height": 30,
+              "fontSize": "16px"
+            }
+          ],
+          "bottomObscured": [],
+          "overflowElements": [
+            {
+              "selector": "strong",
+              "text": "ShopMX",
+              "top": -1617.453125,
+              "left": 60,
+              "right": 116,
+              "width": 56,
+              "overflowRight": -204,
+              "scrollWidth": 72,
+              "clientWidth": 56,
+              "overflowX": "hidden"
+            },
+            {
+              "selector": "span.ant-badge.css-dev-only-do-not-override-5uvb3z",
+              "text": "1",
+              "top": -1615,
+              "left": 279,
+              "right": 293,
+              "width": 14,
+              "overflowRight": -27,
+              "scrollWidth": 22,
+              "clientWidth": 14,
+              "overflowX": "visible"
+            },
+            {
+              "selector": "div.ant-progress.ant-progress-status-normal.ant-progress-circle.ant-progress-show-info.css-dev-only-do-not-override-5uvb3z",
+              "text": "75%",
+              "top": -941.359375,
+              "left": 23,
+              "right": 73,
+              "width": 50,
+              "overflowRight": -247,
+              "scrollWidth": 58,
+              "clientWidth": 50,
+              "overflowX": "visible"
+            }
+          ],
+          "formErrors": [],
+          "visibleMessage": "",
+          "screenshot": "small-320-app-address-cascader-open.png"
+        },
+        {
+          "viewportName": "small-320-app",
+          "stateName": "payment-section-filled",
+          "url": "http://127.0.0.1:4200/checkout",
+          "bodyClasses": "shop-mobile-app shop-mobile-app--android checkout-page-active",
+          "innerWidth": 320,
+          "innerHeight": 568,
+          "scrollY": 2231,
+          "docWidth": 320,
+          "bodyWidth": 320,
+          "horizontalOverflow": false,
+          "rects": {
+            "checkoutPage": {
+              "selector": ".checkout-page",
+              "text": "Checkout readinessConfirm orderFree shipping, gifts and coupons are checked before you pay.Payable$7.15ShippingFree shipping is active for this order.Payment methodStripePayable$7.15You unlocked free shipping100%Payment methodStripe75%Next ",
+              "top": -2161,
+              "bottom": 2299.125,
+              "left": 0,
+              "right": 304,
+              "width": 304,
+              "height": 4460.125,
+              "scrollWidth": 304,
+              "clientWidth": 304,
+              "scrollHeight": 4460,
+              "clientHeight": 4460,
+              "position": "static",
+              "zIndex": "auto",
+              "overflowX": "hidden",
+              "overflowY": "auto",
+              "fontSize": "14px",
+              "lineHeight": "normal",
+              "centerHit": {
+                "selector": "div",
+                "text": "Shipping: $0.00",
+                "inside": true
+              }
+            },
+            "addressCard": {
+              "selector": "#checkout-address-card",
+              "text": "Shipping addressRecipientPhoneCountry / state / city / municipality / neighborhoodSelect regionDetailed addressAv Reforma 100, Piso 2, Colonia Centro, Ciudad de Mexico, MX 0100066 / 260Postal / ZIP code",
+              "top": -641.265625,
+              "bottom": -77.84375,
+              "left": 12,
+              "right": 292,
+              "width": 280,
+              "height": 563.421875,
+              "scrollWidth": 278,
+              "clientWidth": 278,
+              "scrollHeight": 561,
+              "clientHeight": 561,
+              "position": "relative",
+              "zIndex": "auto",
+              "overflowX": "visible",
+              "overflowY": "visible",
+              "fontSize": "14px",
+              "lineHeight": "22px",
+              "centerHit": {
+                "selector": "div.ant-card-head-title",
+                "text": "Order summary",
+                "inside": false
+              }
+            },
+            "paymentCard": {
+              "selector": "#checkout-payment-card",
+              "text": "Select payment methodPayment confidenceStripe will use the configured secure gateway for this market.1 items total$7.15Payment methodStripeCreate order and pay $7.15Payable$7.15Complete address",
+              "top": 196.34375,
+              "bottom": 488.40625,
+              "left": 12,
+              "right": 292,
+              "width": 280,
+              "height": 292.0625,
+              "scrollWidth": 278,
+              "clientWidth": 278,
+              "scrollHeight": 290,
+              "clientHeight": 290,
+              "position": "relative",
+              "zIndex": "auto",
+              "overflowX": "visible",
+              "overflowY": "visible",
+              "fontSize": "14px",
+              "lineHeight": "22px",
+              "centerHit": {
+                "selector": "span.ant-typography.ant-typography-secondary.css-dev-only-do-not-override-5uvb3z",
+                "text": "Stripe will use the configured secure gateway for this market.",
+                "inside": true
+              }
+            },
+            "paymentMethod": {
+              "selector": ".checkout-page__paymentMethod",
+              "text": "StripeRecommendedInstantCards, Apple Pay and Google Pay through Stripe Checkout.",
+              "top": -1196.609375,
+              "bottom": -1095.234375,
+              "left": 25,
+              "right": 279,
+              "width": 254,
+              "height": 101.375,
+              "scrollWidth": 252,
+              "clientWidth": 252,
+              "scrollHeight": 99,
+              "clientHeight": 99,
+              "position": "relative",
+              "zIndex": "auto",
+              "overflowX": "hidden",
+              "overflowY": "hidden",
+              "fontSize": "13.3333px",
+              "lineHeight": "normal",
+              "centerHit": {
+                "selector": "div.ant-card-head-title",
+                "text": "Order summary",
+                "inside": false
+              }
+            },
+            "submitReview": {
+              "selector": ".checkout-page__submitReview",
+              "text": "1 items total$7.15Payment methodStripeCreate order and pay $7.15",
+              "top": 371.90625,
+              "bottom": 475.40625,
+              "left": 25,
+              "right": 279,
+              "width": 254,
+              "height": 103.5,
+              "scrollWidth": 254,
+              "clientWidth": 254,
+              "scrollHeight": 104,
+              "clientHeight": 104,
+              "position": "static",
+              "zIndex": "auto",
+              "overflowX": "visible",
+              "overflowY": "visible",
+              "fontSize": "14px",
+              "lineHeight": "22px",
+              "centerHit": {
+                "selector": "div.checkout-page__submitMetric.checkout-page__submitMetric--method",
+                "text": "Payment methodStripe",
+                "inside": true
+              }
+            },
+            "mobilePayBar": {
+              "selector": ".checkout-page__mobilePayBar",
+              "text": "Payable$7.15Complete address",
+              "top": 469,
+              "bottom": 558,
+              "left": 10,
+              "right": 310,
+              "width": 300,
+              "height": 89,
+              "scrollWidth": 300,
+              "clientWidth": 300,
+              "scrollHeight": 88,
+              "clientHeight": 88,
+              "position": "fixed",
+              "zIndex": "7600",
+              "overflowX": "visible",
+              "overflowY": "visible",
+              "fontSize": "14px",
+              "lineHeight": "22px",
+              "centerHit": {
+                "selector": "button.ant-btn.css-dev-only-do-not-override-5uvb3z.ant-btn-primary.ant-btn-color-primary.ant-btn-variant-solid",
+                "text": "Complete address",
+                "inside": true
+              }
+            },
+            "submitButton": {
+              "selector": ".checkout-page__mobilePayBar .ant-btn, .checkout-page__submitButton",
+              "text": "Create order and pay $7.15",
+              "top": 0,
+              "bottom": 0,
+              "left": 0,
+              "right": 0,
+              "width": 0,
+              "height": 0,
+              "scrollWidth": 0,
+              "clientWidth": 0,
+              "scrollHeight": 0,
+              "clientHeight": 0,
+              "position": "relative",
+              "zIndex": "auto",
+              "overflowX": "hidden",
+              "overflowY": "hidden",
+              "fontSize": "15px",
+              "lineHeight": "17.25px",
+              "centerHit": {
+                "selector": "div.checkout-page.checkout-page--en",
+                "text": "Checkout readinessConfirm orderFree shipping, gifts and coupons are checked before you pay.Payable$7.15ShippingFree shipping is active for t",
+                "inside": false
+              }
+            },
+            "bottomNav": null,
+            "support": {
+              "selector": ".app-support-launcher",
+              "text": "",
+              "top": 0,
+              "bottom": 0,
+              "left": 0,
+              "right": 0,
+              "width": 0,
+              "height": 0,
+              "scrollWidth": 0,
+              "clientWidth": 0,
+              "scrollHeight": 0,
+              "clientHeight": 0,
+              "position": "fixed",
+              "zIndex": "2600",
+              "overflowX": "visible",
+              "overflowY": "visible",
+              "fontSize": "20px",
+              "lineHeight": "normal",
+              "centerHit": {
+                "selector": "div.checkout-page.checkout-page--en",
+                "text": "Checkout readinessConfirm orderFree shipping, gifts and coupons are checked before you pay.Payable$7.15ShippingFree shipping is active for t",
+                "inside": false
+              }
+            },
+            "cascaderDropdown": null,
+            "cascaderMenus": null
+          },
+          "paymentMethodCount": 2,
+          "paymentUnavailableVisible": false,
+          "overlaps": {
+            "mobilePayBarVsBottomNav": null,
+            "submitButtonVsBottomNav": null,
+            "mobilePayBarVsSupport": {
+              "overlaps": false,
+              "x": 0,
+              "y": 0,
+              "area": 0
+            },
+            "submitButtonVsSupport": {
+              "overlaps": false,
+              "x": 0,
+              "y": 0,
+              "area": 0
+            },
+            "cascaderVsBottomNav": null
+          },
+          "smallTargets": [
+            {
+              "selector": "input#region.ant-select-selection-search-input",
+              "text": "Country / state / city / municipality / neighborhood: Select the full region",
+              "top": -342.265625,
+              "bottom": -312.265625,
+              "left": 37,
+              "right": 249,
+              "width": 212,
+              "height": 30,
+              "fontSize": "16px"
+            }
+          ],
+          "bottomObscured": [],
+          "overflowElements": [
+            {
+              "selector": "strong",
+              "text": "ShopMX",
+              "top": -2210.453125,
+              "left": 60,
+              "right": 116,
+              "width": 56,
+              "overflowRight": -204,
+              "scrollWidth": 72,
+              "clientWidth": 56,
+              "overflowX": "hidden"
+            },
+            {
+              "selector": "span.ant-badge.css-dev-only-do-not-override-5uvb3z",
+              "text": "1",
+              "top": -2208,
+              "left": 279,
+              "right": 293,
+              "width": 14,
+              "overflowRight": -27,
+              "scrollWidth": 22,
+              "clientWidth": 14,
+              "overflowX": "visible"
+            },
+            {
+              "selector": "div.ant-progress.ant-progress-status-normal.ant-progress-circle.ant-progress-show-info.css-dev-only-do-not-override-5uvb3z",
+              "text": "75%",
+              "top": -1534.359375,
+              "left": 23,
+              "right": 73,
+              "width": 50,
+              "overflowRight": -247,
+              "scrollWidth": 58,
+              "clientWidth": 50,
+              "overflowX": "visible"
+            },
+            {
+              "selector": "input#recipientName.ant-input.css-dev-only-do-not-override-5uvb3z.ant-input-outlined.ant-input-status-success",
+              "text": "",
+              "top": -543.265625,
+              "left": 25,
+              "right": 279,
+              "width": 254,
+              "overflowRight": -41,
+              "scrollWidth": 256,
+              "clientWidth": 252,
+              "overflowX": "clip"
+            }
+          ],
+          "formErrors": [],
+          "visibleMessage": "",
+          "screenshot": "small-320-app-payment-section-filled.png"
+        },
+        {
+          "viewportName": "small-320-app",
+          "stateName": "submit-ready-trial",
+          "url": "http://127.0.0.1:4200/checkout",
+          "bodyClasses": "shop-mobile-app shop-mobile-app--android checkout-page-active",
+          "innerWidth": 320,
+          "innerHeight": 568,
+          "scrollY": 0,
+          "docWidth": 320,
+          "bodyWidth": 320,
+          "horizontalOverflow": false,
+          "rects": {
+            "checkoutPage": {
+              "selector": ".checkout-page",
+              "text": "Checkout readinessConfirm orderFree shipping, gifts and coupons are checked before you pay.Payable$7.15ShippingFree shipping is active for this order.Payment methodStripePayable$7.15You unlocked free shipping100%Payment methodStripe75%Next ",
+              "top": 70,
+              "bottom": 4530.125,
+              "left": 0,
+              "right": 304,
+              "width": 304,
+              "height": 4460.125,
+              "scrollWidth": 304,
+              "clientWidth": 304,
+              "scrollHeight": 4460,
+              "clientHeight": 4460,
+              "position": "static",
+              "zIndex": "auto",
+              "overflowX": "hidden",
+              "overflowY": "auto",
+              "fontSize": "14px",
+              "lineHeight": "normal",
+              "centerHit": {
+                "selector": "span",
+                "text": "Free shipping is active for this order.",
+                "inside": true
+              }
+            },
+            "addressCard": {
+              "selector": "#checkout-address-card",
+              "text": "Shipping addressRecipientPhoneCountry / state / city / municipality / neighborhoodSelect regionDetailed address0 / 260Postal / ZIP code",
+              "top": 1589.734375,
+              "bottom": 2153.15625,
+              "left": 12,
+              "right": 292,
+              "width": 280,
+              "height": 563.421875,
+              "scrollWidth": 278,
+              "clientWidth": 278,
+              "scrollHeight": 561,
+              "clientHeight": 561,
+              "position": "relative",
+              "zIndex": "auto",
+              "overflowX": "visible",
+              "overflowY": "visible",
+              "fontSize": "14px",
+              "lineHeight": "22px",
+              "centerHit": {
+                "selector": "span",
+                "text": "Free shipping is active for this order.",
+                "inside": false
+              }
+            },
+            "paymentCard": {
+              "selector": "#checkout-payment-card",
+              "text": "Select payment methodPayment confidenceStripe will use the configured secure gateway for this market.1 items total$7.15Payment methodStripeCreate order and pay $7.15Payable$7.15Complete address",
+              "top": 2427.34375,
+              "bottom": 2719.40625,
+              "left": 12,
+              "right": 292,
+              "width": 280,
+              "height": 292.0625,
+              "scrollWidth": 278,
+              "clientWidth": 278,
+              "scrollHeight": 290,
+              "clientHeight": 290,
+              "position": "relative",
+              "zIndex": "auto",
+              "overflowX": "visible",
+              "overflowY": "visible",
+              "fontSize": "14px",
+              "lineHeight": "22px",
+              "centerHit": {
+                "selector": "span",
+                "text": "Free shipping is active for this order.",
+                "inside": false
+              }
+            },
+            "paymentMethod": {
+              "selector": ".checkout-page__paymentMethod",
+              "text": "StripeRecommendedInstantCards, Apple Pay and Google Pay through Stripe Checkout.",
+              "top": 1034.390625,
+              "bottom": 1135.765625,
+              "left": 25,
+              "right": 279,
+              "width": 254,
+              "height": 101.375,
+              "scrollWidth": 252,
+              "clientWidth": 252,
+              "scrollHeight": 99,
+              "clientHeight": 99,
+              "position": "relative",
+              "zIndex": "auto",
+              "overflowX": "hidden",
+              "overflowY": "hidden",
+              "fontSize": "13.3333px",
+              "lineHeight": "normal",
+              "centerHit": {
+                "selector": "span",
+                "text": "Free shipping is active for this order.",
+                "inside": false
+              }
+            },
+            "submitReview": {
+              "selector": ".checkout-page__submitReview",
+              "text": "1 items total$7.15Payment methodStripeCreate order and pay $7.15",
+              "top": 2602.90625,
+              "bottom": 2706.40625,
+              "left": 25,
+              "right": 279,
+              "width": 254,
+              "height": 103.5,
+              "scrollWidth": 254,
+              "clientWidth": 254,
+              "scrollHeight": 104,
+              "clientHeight": 104,
+              "position": "static",
+              "zIndex": "auto",
+              "overflowX": "visible",
+              "overflowY": "visible",
+              "fontSize": "14px",
+              "lineHeight": "22px",
+              "centerHit": {
+                "selector": "span",
+                "text": "Free shipping is active for this order.",
+                "inside": false
+              }
+            },
+            "mobilePayBar": {
+              "selector": ".checkout-page__mobilePayBar",
+              "text": "Payable$7.15Complete address",
+              "top": 469,
+              "bottom": 558,
+              "left": 10,
+              "right": 310,
+              "width": 300,
+              "height": 89,
+              "scrollWidth": 300,
+              "clientWidth": 300,
+              "scrollHeight": 88,
+              "clientHeight": 88,
+              "position": "fixed",
+              "zIndex": "7600",
+              "overflowX": "visible",
+              "overflowY": "visible",
+              "fontSize": "14px",
+              "lineHeight": "22px",
+              "centerHit": {
+                "selector": "button.ant-btn.css-dev-only-do-not-override-5uvb3z.ant-btn-primary.ant-btn-color-primary.ant-btn-variant-solid",
+                "text": "Complete address",
+                "inside": true
+              }
+            },
+            "submitButton": {
+              "selector": ".checkout-page__mobilePayBar .ant-btn, .checkout-page__submitButton",
+              "text": "Create order and pay $7.15",
+              "top": 0,
+              "bottom": 0,
+              "left": 0,
+              "right": 0,
+              "width": 0,
+              "height": 0,
+              "scrollWidth": 0,
+              "clientWidth": 0,
+              "scrollHeight": 0,
+              "clientHeight": 0,
+              "position": "relative",
+              "zIndex": "auto",
+              "overflowX": "hidden",
+              "overflowY": "hidden",
+              "fontSize": "15px",
+              "lineHeight": "17.25px",
+              "centerHit": {
+                "selector": "div.shop-nav__main",
+                "text": "ShopMXPet deals for every dayPet essentials up to 50% offFree shipping on orders over $49.45 / Flash deals / Live supportdog toyscat litterp",
+                "inside": false
+              }
+            },
+            "bottomNav": null,
+            "support": {
+              "selector": ".app-support-launcher",
+              "text": "",
+              "top": 0,
+              "bottom": 0,
+              "left": 0,
+              "right": 0,
+              "width": 0,
+              "height": 0,
+              "scrollWidth": 0,
+              "clientWidth": 0,
+              "scrollHeight": 0,
+              "clientHeight": 0,
+              "position": "fixed",
+              "zIndex": "2600",
+              "overflowX": "visible",
+              "overflowY": "visible",
+              "fontSize": "20px",
+              "lineHeight": "normal",
+              "centerHit": {
+                "selector": "div.shop-nav__main",
+                "text": "ShopMXPet deals for every dayPet essentials up to 50% offFree shipping on orders over $49.45 / Flash deals / Live supportdog toyscat litterp",
+                "inside": false
+              }
+            },
+            "cascaderDropdown": null,
+            "cascaderMenus": null
+          },
+          "paymentMethodCount": 2,
+          "paymentUnavailableVisible": false,
+          "overlaps": {
+            "mobilePayBarVsBottomNav": null,
+            "submitButtonVsBottomNav": null,
+            "mobilePayBarVsSupport": {
+              "overlaps": false,
+              "x": 0,
+              "y": 0,
+              "area": 0
+            },
+            "submitButtonVsSupport": {
+              "overlaps": false,
+              "x": 0,
+              "y": 0,
+              "area": 0
+            },
+            "cascaderVsBottomNav": null
+          },
+          "smallTargets": [
+            {
+              "selector": "input#region.ant-select-selection-search-input",
+              "text": "Country / state / city / municipality / neighborhood: Select the full region",
+              "top": 1888.734375,
+              "bottom": 1918.734375,
+              "left": 37,
+              "right": 249,
+              "width": 212,
+              "height": 30,
+              "fontSize": "16px"
+            }
+          ],
+          "bottomObscured": [],
+          "overflowElements": [
+            {
+              "selector": "strong",
+              "text": "ShopMX",
+              "top": 20.546875,
+              "left": 60,
+              "right": 116,
+              "width": 56,
+              "overflowRight": -204,
+              "scrollWidth": 72,
+              "clientWidth": 56,
+              "overflowX": "hidden"
+            },
+            {
+              "selector": "span.ant-badge.css-dev-only-do-not-override-5uvb3z",
+              "text": "1",
+              "top": 23,
+              "left": 279,
+              "right": 293,
+              "width": 14,
+              "overflowRight": -27,
+              "scrollWidth": 22,
+              "clientWidth": 14,
+              "overflowX": "visible"
+            },
+            {
+              "selector": "div.ant-progress.ant-progress-status-normal.ant-progress-circle.ant-progress-show-info.css-dev-only-do-not-override-5uvb3z",
+              "text": "75%",
+              "top": 696.640625,
+              "left": 23,
+              "right": 73,
+              "width": 50,
+              "overflowRight": -247,
+              "scrollWidth": 58,
+              "clientWidth": 50,
+              "overflowX": "visible"
+            }
+          ],
+          "formErrors": [],
+          "visibleMessage": "",
+          "screenshot": "small-320-app-submit-ready-trial.png"
+        },
+        {
+          "viewportName": "small-320-app",
+          "stateName": "validation-errors",
+          "url": "http://127.0.0.1:4200/checkout",
+          "bodyClasses": "shop-mobile-app shop-mobile-app--android checkout-page-active",
+          "innerWidth": 320,
+          "innerHeight": 568,
+          "scrollY": 0,
+          "docWidth": 320,
+          "bodyWidth": 320,
+          "horizontalOverflow": false,
+          "rects": {
+            "checkoutPage": {
+              "selector": ".checkout-page",
+              "text": "Checkout readinessConfirm orderFree shipping, gifts and coupons are checked before you pay.Payable$7.15ShippingFree shipping is active for this order.Payment methodStripePayable$7.15You unlocked free shipping100%Payment methodStripe75%Next ",
+              "top": 70,
+              "bottom": 4530.125,
+              "left": 0,
+              "right": 304,
+              "width": 304,
+              "height": 4460.125,
+              "scrollWidth": 304,
+              "clientWidth": 304,
+              "scrollHeight": 4460,
+              "clientHeight": 4460,
+              "position": "static",
+              "zIndex": "auto",
+              "overflowX": "hidden",
+              "overflowY": "auto",
+              "fontSize": "14px",
+              "lineHeight": "normal",
+              "centerHit": {
+                "selector": "span",
+                "text": "Free shipping is active for this order.",
+                "inside": true
+              }
+            },
+            "addressCard": {
+              "selector": "#checkout-address-card",
+              "text": "Shipping addressRecipientPhoneCountry / state / city / municipality / neighborhoodSelect regionDetailed address0 / 260Postal / ZIP code",
+              "top": 1589.734375,
+              "bottom": 2153.15625,
+              "left": 12,
+              "right": 292,
+              "width": 280,
+              "height": 563.421875,
+              "scrollWidth": 278,
+              "clientWidth": 278,
+              "scrollHeight": 561,
+              "clientHeight": 561,
+              "position": "relative",
+              "zIndex": "auto",
+              "overflowX": "visible",
+              "overflowY": "visible",
+              "fontSize": "14px",
+              "lineHeight": "22px",
+              "centerHit": {
+                "selector": "span",
+                "text": "Free shipping is active for this order.",
+                "inside": false
+              }
+            },
+            "paymentCard": {
+              "selector": "#checkout-payment-card",
+              "text": "Select payment methodPayment confidenceStripe will use the configured secure gateway for this market.1 items total$7.15Payment methodStripeCreate order and pay $7.15Payable$7.15Complete address",
+              "top": 2427.34375,
+              "bottom": 2719.40625,
+              "left": 12,
+              "right": 292,
+              "width": 280,
+              "height": 292.0625,
+              "scrollWidth": 278,
+              "clientWidth": 278,
+              "scrollHeight": 290,
+              "clientHeight": 290,
+              "position": "relative",
+              "zIndex": "auto",
+              "overflowX": "visible",
+              "overflowY": "visible",
+              "fontSize": "14px",
+              "lineHeight": "22px",
+              "centerHit": {
+                "selector": "span",
+                "text": "Free shipping is active for this order.",
+                "inside": false
+              }
+            },
+            "paymentMethod": {
+              "selector": ".checkout-page__paymentMethod",
+              "text": "StripeRecommendedInstantCards, Apple Pay and Google Pay through Stripe Checkout.",
+              "top": 1034.390625,
+              "bottom": 1135.765625,
+              "left": 25,
+              "right": 279,
+              "width": 254,
+              "height": 101.375,
+              "scrollWidth": 252,
+              "clientWidth": 252,
+              "scrollHeight": 99,
+              "clientHeight": 99,
+              "position": "relative",
+              "zIndex": "auto",
+              "overflowX": "hidden",
+              "overflowY": "hidden",
+              "fontSize": "13.3333px",
+              "lineHeight": "normal",
+              "centerHit": {
+                "selector": "span",
+                "text": "Free shipping is active for this order.",
+                "inside": false
+              }
+            },
+            "submitReview": {
+              "selector": ".checkout-page__submitReview",
+              "text": "1 items total$7.15Payment methodStripeCreate order and pay $7.15",
+              "top": 2602.90625,
+              "bottom": 2706.40625,
+              "left": 25,
+              "right": 279,
+              "width": 254,
+              "height": 103.5,
+              "scrollWidth": 254,
+              "clientWidth": 254,
+              "scrollHeight": 104,
+              "clientHeight": 104,
+              "position": "static",
+              "zIndex": "auto",
+              "overflowX": "visible",
+              "overflowY": "visible",
+              "fontSize": "14px",
+              "lineHeight": "22px",
+              "centerHit": {
+                "selector": "span",
+                "text": "Free shipping is active for this order.",
+                "inside": false
+              }
+            },
+            "mobilePayBar": {
+              "selector": ".checkout-page__mobilePayBar",
+              "text": "Payable$7.15Complete address",
+              "top": 469,
+              "bottom": 558,
+              "left": 10,
+              "right": 310,
+              "width": 300,
+              "height": 89,
+              "scrollWidth": 300,
+              "clientWidth": 300,
+              "scrollHeight": 88,
+              "clientHeight": 88,
+              "position": "fixed",
+              "zIndex": "7600",
+              "overflowX": "visible",
+              "overflowY": "visible",
+              "fontSize": "14px",
+              "lineHeight": "22px",
+              "centerHit": {
+                "selector": "button.ant-btn.css-dev-only-do-not-override-5uvb3z.ant-btn-primary.ant-btn-color-primary.ant-btn-variant-solid",
+                "text": "Complete address",
+                "inside": true
+              }
+            },
+            "submitButton": {
+              "selector": ".checkout-page__mobilePayBar .ant-btn, .checkout-page__submitButton",
+              "text": "Create order and pay $7.15",
+              "top": 0,
+              "bottom": 0,
+              "left": 0,
+              "right": 0,
+              "width": 0,
+              "height": 0,
+              "scrollWidth": 0,
+              "clientWidth": 0,
+              "scrollHeight": 0,
+              "clientHeight": 0,
+              "position": "relative",
+              "zIndex": "auto",
+              "overflowX": "hidden",
+              "overflowY": "hidden",
+              "fontSize": "15px",
+              "lineHeight": "17.25px",
+              "centerHit": {
+                "selector": "div.shop-nav__main",
+                "text": "ShopMXPet deals for every dayPet essentials up to 50% offFree shipping on orders over $49.45 / Flash deals / Live supportdog toyscat litterp",
+                "inside": false
+              }
+            },
+            "bottomNav": null,
+            "support": {
+              "selector": ".app-support-launcher",
+              "text": "",
+              "top": 0,
+              "bottom": 0,
+              "left": 0,
+              "right": 0,
+              "width": 0,
+              "height": 0,
+              "scrollWidth": 0,
+              "clientWidth": 0,
+              "scrollHeight": 0,
+              "clientHeight": 0,
+              "position": "fixed",
+              "zIndex": "2600",
+              "overflowX": "visible",
+              "overflowY": "visible",
+              "fontSize": "20px",
+              "lineHeight": "normal",
+              "centerHit": {
+                "selector": "div.shop-nav__main",
+                "text": "ShopMXPet deals for every dayPet essentials up to 50% offFree shipping on orders over $49.45 / Flash deals / Live supportdog toyscat litterp",
+                "inside": false
+              }
+            },
+            "cascaderDropdown": null,
+            "cascaderMenus": null
+          },
+          "paymentMethodCount": 2,
+          "paymentUnavailableVisible": false,
+          "overlaps": {
+            "mobilePayBarVsBottomNav": null,
+            "submitButtonVsBottomNav": null,
+            "mobilePayBarVsSupport": {
+              "overlaps": false,
+              "x": 0,
+              "y": 0,
+              "area": 0
+            },
+            "submitButtonVsSupport": {
+              "overlaps": false,
+              "x": 0,
+              "y": 0,
+              "area": 0
+            },
+            "cascaderVsBottomNav": null
+          },
+          "smallTargets": [
+            {
+              "selector": "input#region.ant-select-selection-search-input",
+              "text": "Country / state / city / municipality / neighborhood: Select the full region",
+              "top": 1888.734375,
+              "bottom": 1918.734375,
+              "left": 37,
+              "right": 249,
+              "width": 212,
+              "height": 30,
+              "fontSize": "16px"
+            }
+          ],
+          "bottomObscured": [],
+          "overflowElements": [
+            {
+              "selector": "strong",
+              "text": "ShopMX",
+              "top": 20.546875,
+              "left": 60,
+              "right": 116,
+              "width": 56,
+              "overflowRight": -204,
+              "scrollWidth": 72,
+              "clientWidth": 56,
+              "overflowX": "hidden"
+            },
+            {
+              "selector": "span.ant-badge.css-dev-only-do-not-override-5uvb3z",
+              "text": "1",
+              "top": 23,
+              "left": 279,
+              "right": 293,
+              "width": 14,
+              "overflowRight": -27,
+              "scrollWidth": 22,
+              "clientWidth": 14,
+              "overflowX": "visible"
+            },
+            {
+              "selector": "div.ant-progress.ant-progress-status-normal.ant-progress-circle.ant-progress-show-info.css-dev-only-do-not-override-5uvb3z",
+              "text": "75%",
+              "top": 696.640625,
+              "left": 23,
+              "right": 73,
+              "width": 50,
+              "overflowRight": -247,
+              "scrollWidth": 58,
+              "clientWidth": 50,
+              "overflowX": "visible"
+            }
+          ],
+          "formErrors": [],
+          "visibleMessage": "",
+          "screenshot": "small-320-app-validation-errors.png"
+        }
+      ],
+      "consoleMessages": [
+        {
+          "type": "warning",
+          "text": "⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: Unexpected token 'S', \"Size: Larg\"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156010:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156043:17)\n    at renderItem (http://127.0.0.1:4200/static/js/src_pages_Checkout_tsx-src_utils_productOptions_ts.chunk.js:7486:102)\n    at renderInternalItem (http://127.0.0.1:4200/static/js/bundle.js:33197:8)",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: Unexpected token 'S', \"Size: Larg\"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156010:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156043:17)\n    at renderItem (http://127.0.0.1:4200/static/js/src_pages_Checkout_tsx-src_utils_productOptions_ts.chunk.js:7486:102)\n    at renderInternalItem (http://127.0.0.1:4200/static/js/bundle.js:33197:8)",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: Unexpected token 'S', \"Size: Larg\"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156010:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156043:17)\n    at renderItem (http://127.0.0.1:4200/static/js/src_pages_Checkout_tsx-src_utils_productOptions_ts.chunk.js:7486:102)\n    at renderInternalItem (http://127.0.0.1:4200/static/js/bundle.js:33197:8)",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: Unexpected token 'S', \"Size: Larg\"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156010:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156043:17)\n    at renderItem (http://127.0.0.1:4200/static/js/src_pages_Checkout_tsx-src_utils_productOptions_ts.chunk.js:7486:102)\n    at renderInternalItem (http://127.0.0.1:4200/static/js/bundle.js:33197:8)",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: Unexpected token 'S', \"Size: Larg\"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156010:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156043:17)\n    at renderItem (http://127.0.0.1:4200/static/js/src_pages_Checkout_tsx-src_utils_productOptions_ts.chunk.js:7486:102)\n    at renderInternalItem (http://127.0.0.1:4200/static/js/bundle.js:33197:8)",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: Unexpected token 'S', \"Size: Larg\"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156010:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156043:17)\n    at renderItem (http://127.0.0.1:4200/static/js/src_pages_Checkout_tsx-src_utils_productOptions_ts.chunk.js:7486:102)\n    at renderInternalItem (http://127.0.0.1:4200/static/js/bundle.js:33197:8)",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: Unexpected token 'S', \"Size: Larg\"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156010:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156043:17)\n    at renderItem (http://127.0.0.1:4200/static/js/src_pages_Checkout_tsx-src_utils_productOptions_ts.chunk.js:7486:102)\n    at renderInternalItem (http://127.0.0.1:4200/static/js/bundle.js:33197:8)",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: Unexpected token 'S', \"Size: Larg\"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156010:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156043:17)\n    at renderItem (http://127.0.0.1:4200/static/js/src_pages_Checkout_tsx-src_utils_productOptions_ts.chunk.js:7486:102)\n    at renderInternalItem (http://127.0.0.1:4200/static/js/bundle.js:33197:8)",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: Unexpected token 'S', \"Size: Larg\"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156010:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156043:17)\n    at renderItem (http://127.0.0.1:4200/static/js/src_pages_Checkout_tsx-src_utils_productOptions_ts.chunk.js:7486:102)\n    at renderInternalItem (http://127.0.0.1:4200/static/js/bundle.js:33197:8)",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: Unexpected token 'S', \"Size: Larg\"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156010:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156043:17)\n    at renderItem (http://127.0.0.1:4200/static/js/src_pages_Checkout_tsx-src_utils_productOptions_ts.chunk.js:7486:102)\n    at renderInternalItem (http://127.0.0.1:4200/static/js/bundle.js:33197:8)",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: Unexpected token 'S', \"Size: Larg\"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156010:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156043:17)\n    at renderItem (http://127.0.0.1:4200/static/js/src_pages_Checkout_tsx-src_utils_productOptions_ts.chunk.js:7486:102)\n    at renderInternalItem (http://127.0.0.1:4200/static/js/bundle.js:33197:8)",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: Unexpected token 'S', \"Size: Larg\"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156010:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156043:17)\n    at renderItem (http://127.0.0.1:4200/static/js/src_pages_Checkout_tsx-src_utils_productOptions_ts.chunk.js:7486:102)\n    at renderInternalItem (http://127.0.0.1:4200/static/js/bundle.js:33197:8)",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: Unexpected token 'S', \"Size: Larg\"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156010:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156043:17)\n    at renderItem (http://127.0.0.1:4200/static/js/src_pages_Checkout_tsx-src_utils_productOptions_ts.chunk.js:7486:102)\n    at renderInternalItem (http://127.0.0.1:4200/static/js/bundle.js:33197:8)",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: Unexpected token 'S', \"Size: Larg\"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156010:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156043:17)\n    at renderItem (http://127.0.0.1:4200/static/js/src_pages_Checkout_tsx-src_utils_productOptions_ts.chunk.js:7486:102)\n    at renderInternalItem (http://127.0.0.1:4200/static/js/bundle.js:33197:8)",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: Unexpected token 'S', \"Size: Larg\"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156010:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156043:17)\n    at renderItem (http://127.0.0.1:4200/static/js/src_pages_Checkout_tsx-src_utils_productOptions_ts.chunk.js:7486:102)\n    at renderInternalItem (http://127.0.0.1:4200/static/js/bundle.js:33197:8)",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: Unexpected token 'S', \"Size: Larg\"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156010:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156043:17)\n    at renderItem (http://127.0.0.1:4200/static/js/src_pages_Checkout_tsx-src_utils_productOptions_ts.chunk.js:7486:102)\n    at renderInternalItem (http://127.0.0.1:4200/static/js/bundle.js:33197:8)",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: Unexpected token 'S', \"Size: Larg\"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156010:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156043:17)\n    at renderItem (http://127.0.0.1:4200/static/js/src_pages_Checkout_tsx-src_utils_productOptions_ts.chunk.js:7486:102)\n    at renderInternalItem (http://127.0.0.1:4200/static/js/bundle.js:33197:8)",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: Unexpected token 'S', \"Size: Larg\"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156010:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156043:17)\n    at renderItem (http://127.0.0.1:4200/static/js/src_pages_Checkout_tsx-src_utils_productOptions_ts.chunk.js:7486:102)\n    at renderInternalItem (http://127.0.0.1:4200/static/js/bundle.js:33197:8)",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: Unexpected token 'S', \"Size: Larg\"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156010:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156043:17)\n    at renderItem (http://127.0.0.1:4200/static/js/src_pages_Checkout_tsx-src_utils_productOptions_ts.chunk.js:7486:102)\n    at renderInternalItem (http://127.0.0.1:4200/static/js/bundle.js:33197:8)",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: Unexpected token 'S', \"Size: Larg\"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156010:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156043:17)\n    at renderItem (http://127.0.0.1:4200/static/js/src_pages_Checkout_tsx-src_utils_productOptions_ts.chunk.js:7486:102)\n    at renderInternalItem (http://127.0.0.1:4200/static/js/bundle.js:33197:8)",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: Unexpected token 'S', \"Size: Larg\"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156010:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156043:17)\n    at renderItem (http://127.0.0.1:4200/static/js/src_pages_Checkout_tsx-src_utils_productOptions_ts.chunk.js:7486:102)\n    at renderInternalItem (http://127.0.0.1:4200/static/js/bundle.js:33197:8)",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: Unexpected token 'S', \"Size: Larg\"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156010:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156043:17)\n    at renderItem (http://127.0.0.1:4200/static/js/src_pages_Checkout_tsx-src_utils_productOptions_ts.chunk.js:7486:102)\n    at renderInternalItem (http://127.0.0.1:4200/static/js/bundle.js:33197:8)",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: Unexpected token 'S', \"Size: Larg\"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156010:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156043:17)\n    at renderItem (http://127.0.0.1:4200/static/js/src_pages_Checkout_tsx-src_utils_productOptions_ts.chunk.js:7486:102)\n    at renderInternalItem (http://127.0.0.1:4200/static/js/bundle.js:33197:8)",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: Unexpected token 'S', \"Size: Larg\"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156010:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156043:17)\n    at renderItem (http://127.0.0.1:4200/static/js/src_pages_Checkout_tsx-src_utils_productOptions_ts.chunk.js:7486:102)\n    at renderInternalItem (http://127.0.0.1:4200/static/js/bundle.js:33197:8)",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: Unexpected token 'S', \"Size: Larg\"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156010:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156043:17)\n    at renderItem (http://127.0.0.1:4200/static/js/src_pages_Checkout_tsx-src_utils_productOptions_ts.chunk.js:7486:102)\n    at renderInternalItem (http://127.0.0.1:4200/static/js/bundle.js:33197:8)",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: Unexpected token 'S', \"Size: Larg\"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156010:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156043:17)\n    at renderItem (http://127.0.0.1:4200/static/js/src_pages_Checkout_tsx-src_utils_productOptions_ts.chunk.js:7486:102)\n    at renderInternalItem (http://127.0.0.1:4200/static/js/bundle.js:33197:8)",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: Unexpected token 'S', \"Size: Larg\"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156010:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156043:17)\n    at renderItem (http://127.0.0.1:4200/static/js/src_pages_Checkout_tsx-src_utils_productOptions_ts.chunk.js:7486:102)\n    at renderInternalItem (http://127.0.0.1:4200/static/js/bundle.js:33197:8)",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: Unexpected token 'S', \"Size: Larg\"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156010:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156043:17)\n    at renderItem (http://127.0.0.1:4200/static/js/src_pages_Checkout_tsx-src_utils_productOptions_ts.chunk.js:7486:102)\n    at renderInternalItem (http://127.0.0.1:4200/static/js/bundle.js:33197:8)",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: Unexpected token 'S', \"Size: Larg\"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156010:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156043:17)\n    at renderItem (http://127.0.0.1:4200/static/js/src_pages_Checkout_tsx-src_utils_productOptions_ts.chunk.js:7486:102)\n    at renderInternalItem (http://127.0.0.1:4200/static/js/bundle.js:33197:8)",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: Unexpected token 'S', \"Size: Larg\"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156010:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156043:17)\n    at renderItem (http://127.0.0.1:4200/static/js/src_pages_Checkout_tsx-src_utils_productOptions_ts.chunk.js:7486:102)\n    at renderInternalItem (http://127.0.0.1:4200/static/js/bundle.js:33197:8)",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: Unexpected token 'S', \"Size: Larg\"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156010:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156043:17)\n    at renderItem (http://127.0.0.1:4200/static/js/src_pages_Checkout_tsx-src_utils_productOptions_ts.chunk.js:7486:102)\n    at renderInternalItem (http://127.0.0.1:4200/static/js/bundle.js:33197:8)",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: Unexpected token 'S', \"Size: Larg\"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156010:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156043:17)\n    at renderItem (http://127.0.0.1:4200/static/js/src_pages_Checkout_tsx-src_utils_productOptions_ts.chunk.js:7486:102)\n    at renderInternalItem (http://127.0.0.1:4200/static/js/bundle.js:33197:8)",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: Unexpected token 'S', \"Size: Larg\"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156010:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156043:17)\n    at renderItem (http://127.0.0.1:4200/static/js/src_pages_Checkout_tsx-src_utils_productOptions_ts.chunk.js:7486:102)\n    at renderInternalItem (http://127.0.0.1:4200/static/js/bundle.js:33197:8)",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: Unexpected token 'S', \"Size: Larg\"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156010:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156043:17)\n    at renderItem (http://127.0.0.1:4200/static/js/src_pages_Checkout_tsx-src_utils_productOptions_ts.chunk.js:7486:102)\n    at renderInternalItem (http://127.0.0.1:4200/static/js/bundle.js:33197:8)",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: Unexpected token 'S', \"Size: Larg\"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156010:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156043:17)\n    at renderItem (http://127.0.0.1:4200/static/js/src_pages_Checkout_tsx-src_utils_productOptions_ts.chunk.js:7486:102)\n    at renderInternalItem (http://127.0.0.1:4200/static/js/bundle.js:33197:8)",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: Unexpected token 'S', \"Size: Larg\"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156010:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156043:17)\n    at renderItem (http://127.0.0.1:4200/static/js/src_pages_Checkout_tsx-src_utils_productOptions_ts.chunk.js:7486:102)\n    at renderInternalItem (http://127.0.0.1:4200/static/js/bundle.js:33197:8)",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: Unexpected token 'S', \"Size: Larg\"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156010:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156043:17)\n    at renderItem (http://127.0.0.1:4200/static/js/src_pages_Checkout_tsx-src_utils_productOptions_ts.chunk.js:7486:102)\n    at renderInternalItem (http://127.0.0.1:4200/static/js/bundle.js:33197:8)",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: Unexpected token 'S', \"Size: Larg\"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156010:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156043:17)\n    at renderItem (http://127.0.0.1:4200/static/js/src_pages_Checkout_tsx-src_utils_productOptions_ts.chunk.js:7486:102)\n    at renderInternalItem (http://127.0.0.1:4200/static/js/bundle.js:33197:8)",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: Unexpected token 'S', \"Size: Larg\"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156010:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156043:17)\n    at renderItem (http://127.0.0.1:4200/static/js/src_pages_Checkout_tsx-src_utils_productOptions_ts.chunk.js:7486:102)\n    at renderInternalItem (http://127.0.0.1:4200/static/js/bundle.js:33197:8)",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: Unexpected token 'S', \"Size: Larg\"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156010:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156043:17)\n    at renderItem (http://127.0.0.1:4200/static/js/src_pages_Checkout_tsx-src_utils_productOptions_ts.chunk.js:7486:102)\n    at renderInternalItem (http://127.0.0.1:4200/static/js/bundle.js:33197:8)",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: Unexpected token 'S', \"Size: Larg\"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156010:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156043:17)\n    at renderItem (http://127.0.0.1:4200/static/js/src_pages_Checkout_tsx-src_utils_productOptions_ts.chunk.js:7486:102)\n    at renderInternalItem (http://127.0.0.1:4200/static/js/bundle.js:33197:8)",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: Unexpected token 'S', \"Size: Larg\"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156010:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156043:17)\n    at renderItem (http://127.0.0.1:4200/static/js/src_pages_Checkout_tsx-src_utils_productOptions_ts.chunk.js:7486:102)\n    at renderInternalItem (http://127.0.0.1:4200/static/js/bundle.js:33197:8)",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: Unexpected token 'S', \"Size: Larg\"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156010:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156043:17)\n    at renderItem (http://127.0.0.1:4200/static/js/src_pages_Checkout_tsx-src_utils_productOptions_ts.chunk.js:7486:102)\n    at renderInternalItem (http://127.0.0.1:4200/static/js/bundle.js:33197:8)",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: Unexpected token 'S', \"Size: Larg\"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156010:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156043:17)\n    at renderItem (http://127.0.0.1:4200/static/js/src_pages_Checkout_tsx-src_utils_productOptions_ts.chunk.js:7486:102)\n    at renderInternalItem (http://127.0.0.1:4200/static/js/bundle.js:33197:8)",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: Unexpected token 'S', \"Size: Larg\"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156010:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156043:17)\n    at renderItem (http://127.0.0.1:4200/static/js/src_pages_Checkout_tsx-src_utils_productOptions_ts.chunk.js:7486:102)\n    at renderInternalItem (http://127.0.0.1:4200/static/js/bundle.js:33197:8)",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: Unexpected token 'S', \"Size: Larg\"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156010:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156043:17)\n    at renderItem (http://127.0.0.1:4200/static/js/src_pages_Checkout_tsx-src_utils_productOptions_ts.chunk.js:7486:102)\n    at renderInternalItem (http://127.0.0.1:4200/static/js/bundle.js:33197:8)",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: Unexpected token 'S', \"Size: Larg\"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156010:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156043:17)\n    at renderItem (http://127.0.0.1:4200/static/js/src_pages_Checkout_tsx-src_utils_productOptions_ts.chunk.js:7486:102)\n    at renderInternalItem (http://127.0.0.1:4200/static/js/bundle.js:33197:8)",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: Unexpected token 'S', \"Size: Larg\"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156010:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156043:17)\n    at renderItem (http://127.0.0.1:4200/static/js/src_pages_Checkout_tsx-src_utils_productOptions_ts.chunk.js:7486:102)\n    at renderInternalItem (http://127.0.0.1:4200/static/js/bundle.js:33197:8)",
+          "url": "http://127.0.0.1:4200/checkout"
+        }
+      ],
+      "networkFailures": [],
+      "apiRequests": [
+        {
+          "method": "GET",
+          "pathname": "/api/app/config",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/announcements/active",
+          "search": "?limit=4"
+        },
+        {
+          "method": "POST",
+          "pathname": "/api/errors",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/products/add-on-candidates",
+          "search": "?targetAmount=769.01&limit=4&excludedIds=101"
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/payments/channels",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/products/add-on-candidates",
+          "search": "?targetAmount=1169.01&limit=4&excludedIds=101"
+        },
+        {
+          "method": "POST",
+          "pathname": "/api/errors",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/app/config",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/announcements/active",
+          "search": "?limit=4"
+        },
+        {
+          "method": "POST",
+          "pathname": "/api/errors",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/products/add-on-candidates",
+          "search": "?targetAmount=769.01&limit=4&excludedIds=101"
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/payments/channels",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/products/add-on-candidates",
+          "search": "?targetAmount=1169.01&limit=4&excludedIds=101"
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/app/config",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/announcements/active",
+          "search": "?limit=4"
+        },
+        {
+          "method": "POST",
+          "pathname": "/api/errors",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/products/add-on-candidates",
+          "search": "?targetAmount=769.01&limit=4&excludedIds=101"
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/payments/channels",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/products/add-on-candidates",
+          "search": "?targetAmount=1169.01&limit=4&excludedIds=101"
+        }
+      ],
+      "error": null
+    },
+    {
+      "viewport": {
+        "name": "phone-390-app",
+        "width": 390,
+        "height": 844
+      },
+      "snapshots": [
+        {
+          "viewportName": "phone-390-app",
+          "stateName": "checkout-loaded",
+          "url": "http://127.0.0.1:4200/checkout",
+          "bodyClasses": "shop-mobile-app shop-mobile-app--android checkout-page-active",
+          "innerWidth": 390,
+          "innerHeight": 844,
+          "scrollY": 0,
+          "docWidth": 390,
+          "bodyWidth": 390,
+          "horizontalOverflow": false,
+          "rects": {
+            "checkoutPage": {
+              "selector": ".checkout-page",
+              "text": "Checkout readinessConfirm orderFree shipping, gifts and coupons are checked before you pay.Payable$7.15ShippingFree shipping is active for this order.Payment methodStripePayable$7.15You unlocked free shipping100%Payment methodStripe75%Next ",
+              "top": 70,
+              "bottom": 4349.515625,
+              "left": 0,
+              "right": 374,
+              "width": 374,
+              "height": 4279.515625,
+              "scrollWidth": 374,
+              "clientWidth": 374,
+              "scrollHeight": 4280,
+              "clientHeight": 4280,
+              "position": "static",
+              "zIndex": "auto",
+              "overflowX": "hidden",
+              "overflowY": "auto",
+              "fontSize": "14px",
+              "lineHeight": "normal",
+              "centerHit": {
+                "selector": "span.ant-typography.css-dev-only-do-not-override-5uvb3z",
+                "text": "Stripe",
+                "inside": true
+              }
+            },
+            "addressCard": {
+              "selector": "#checkout-address-card",
+              "text": "Shipping addressRecipientPhoneCountry / state / city / municipality / neighborhoodSelect regionDetailed address0 / 260Postal / ZIP code",
+              "top": 1517.390625,
+              "bottom": 2080.8125,
+              "left": 12,
+              "right": 362,
+              "width": 350,
+              "height": 563.421875,
+              "scrollWidth": 348,
+              "clientWidth": 348,
+              "scrollHeight": 561,
+              "clientHeight": 561,
+              "position": "relative",
+              "zIndex": "auto",
+              "overflowX": "visible",
+              "overflowY": "visible",
+              "fontSize": "14px",
+              "lineHeight": "22px",
+              "centerHit": {
+                "selector": "span.ant-typography.css-dev-only-do-not-override-5uvb3z",
+                "text": "Stripe",
+                "inside": false
+              }
+            },
+            "paymentCard": {
+              "selector": "#checkout-payment-card",
+              "text": "Select payment methodPayment confidenceStripe will use the configured secure gateway for this market.1 items total$7.15Payment methodStripeCreate order and pay $7.15Payable$7.15Complete address",
+              "top": 2355,
+              "bottom": 2611.671875,
+              "left": 12,
+              "right": 362,
+              "width": 350,
+              "height": 256.671875,
+              "scrollWidth": 348,
+              "clientWidth": 348,
+              "scrollHeight": 255,
+              "clientHeight": 255,
+              "position": "relative",
+              "zIndex": "auto",
+              "overflowX": "visible",
+              "overflowY": "visible",
+              "fontSize": "14px",
+              "lineHeight": "22px",
+              "centerHit": {
+                "selector": "span.ant-typography.css-dev-only-do-not-override-5uvb3z",
+                "text": "Stripe",
+                "inside": false
+              }
+            },
+            "paymentMethod": {
+              "selector": ".checkout-page__paymentMethod",
+              "text": "StripeRecommendedInstantCards, Apple Pay and Google Pay through Stripe Checkout.",
+              "top": 1015.640625,
+              "bottom": 1101.609375,
+              "left": 25,
+              "right": 349,
+              "width": 324,
+              "height": 85.96875,
+              "scrollWidth": 322,
+              "clientWidth": 322,
+              "scrollHeight": 84,
+              "clientHeight": 84,
+              "position": "relative",
+              "zIndex": "auto",
+              "overflowX": "hidden",
+              "overflowY": "hidden",
+              "fontSize": "13.3333px",
+              "lineHeight": "normal",
+              "centerHit": {
+                "selector": "span.ant-typography.css-dev-only-do-not-override-5uvb3z",
+                "text": "Stripe",
+                "inside": false
+              }
+            },
+            "submitReview": {
+              "selector": ".checkout-page__submitReview",
+              "text": "1 items total$7.15Payment methodStripeCreate order and pay $7.15",
+              "top": 2511.671875,
+              "bottom": 2598.671875,
+              "left": 25,
+              "right": 349,
+              "width": 324,
+              "height": 87,
+              "scrollWidth": 324,
+              "clientWidth": 324,
+              "scrollHeight": 87,
+              "clientHeight": 87,
+              "position": "static",
+              "zIndex": "auto",
+              "overflowX": "visible",
+              "overflowY": "visible",
+              "fontSize": "14px",
+              "lineHeight": "22px",
+              "centerHit": {
+                "selector": "span.ant-typography.css-dev-only-do-not-override-5uvb3z",
+                "text": "Stripe",
+                "inside": false
+              }
+            },
+            "mobilePayBar": {
+              "selector": ".checkout-page__mobilePayBar",
+              "text": "Payable$7.15Complete address",
+              "top": 746.203125,
+              "bottom": 834,
+              "left": 10,
+              "right": 380,
+              "width": 370,
+              "height": 87.796875,
+              "scrollWidth": 370,
+              "clientWidth": 370,
+              "scrollHeight": 87,
+              "clientHeight": 87,
+              "position": "fixed",
+              "zIndex": "7600",
+              "overflowX": "visible",
+              "overflowY": "visible",
+              "fontSize": "14px",
+              "lineHeight": "22px",
+              "centerHit": {
+                "selector": "button.ant-btn.css-dev-only-do-not-override-5uvb3z.ant-btn-primary.ant-btn-color-primary.ant-btn-variant-solid",
+                "text": "Complete address",
+                "inside": true
+              }
+            },
+            "submitButton": {
+              "selector": ".checkout-page__mobilePayBar .ant-btn, .checkout-page__submitButton",
+              "text": "Create order and pay $7.15",
+              "top": 0,
+              "bottom": 0,
+              "left": 0,
+              "right": 0,
+              "width": 0,
+              "height": 0,
+              "scrollWidth": 0,
+              "clientWidth": 0,
+              "scrollHeight": 0,
+              "clientHeight": 0,
+              "position": "relative",
+              "zIndex": "auto",
+              "overflowX": "hidden",
+              "overflowY": "hidden",
+              "fontSize": "15px",
+              "lineHeight": "17.25px",
+              "centerHit": {
+                "selector": "div.shop-nav__main",
+                "text": "ShopMXPet deals for every dayPet essentials up to 50% offFree shipping on orders over $49.45 / Flash deals / Live supportdog toyscat litterp",
+                "inside": false
+              }
+            },
+            "bottomNav": null,
+            "support": {
+              "selector": ".app-support-launcher",
+              "text": "",
+              "top": 0,
+              "bottom": 0,
+              "left": 0,
+              "right": 0,
+              "width": 0,
+              "height": 0,
+              "scrollWidth": 0,
+              "clientWidth": 0,
+              "scrollHeight": 0,
+              "clientHeight": 0,
+              "position": "fixed",
+              "zIndex": "2600",
+              "overflowX": "visible",
+              "overflowY": "visible",
+              "fontSize": "20px",
+              "lineHeight": "normal",
+              "centerHit": {
+                "selector": "div.shop-nav__main",
+                "text": "ShopMXPet deals for every dayPet essentials up to 50% offFree shipping on orders over $49.45 / Flash deals / Live supportdog toyscat litterp",
+                "inside": false
+              }
+            },
+            "cascaderDropdown": null,
+            "cascaderMenus": null
+          },
+          "paymentMethodCount": 2,
+          "paymentUnavailableVisible": false,
+          "overlaps": {
+            "mobilePayBarVsBottomNav": null,
+            "submitButtonVsBottomNav": null,
+            "mobilePayBarVsSupport": {
+              "overlaps": false,
+              "x": 0,
+              "y": 0,
+              "area": 0
+            },
+            "submitButtonVsSupport": {
+              "overlaps": false,
+              "x": 0,
+              "y": 0,
+              "area": 0
+            },
+            "cascaderVsBottomNav": null
+          },
+          "smallTargets": [
+            {
+              "selector": "input#region.ant-select-selection-search-input",
+              "text": "Country / state / city / municipality / neighborhood: Select the full region",
+              "top": 1816.390625,
+              "bottom": 1846.390625,
+              "left": 37,
+              "right": 319,
+              "width": 282,
+              "height": 30,
+              "fontSize": "16px"
+            }
+          ],
+          "bottomObscured": [],
+          "overflowElements": [
+            {
+              "selector": "span.ant-badge.css-dev-only-do-not-override-5uvb3z",
+              "text": "1",
+              "top": 23,
+              "left": 349,
+              "right": 363,
+              "width": 14,
+              "overflowRight": -27,
+              "scrollWidth": 22,
+              "clientWidth": 14,
+              "overflowX": "visible"
+            },
+            {
+              "selector": "div.ant-progress.ant-progress-status-normal.ant-progress-circle.ant-progress-show-info.css-dev-only-do-not-override-5uvb3z",
+              "text": "75%",
+              "top": 677.890625,
+              "left": 23,
+              "right": 73,
+              "width": 50,
+              "overflowRight": -317,
+              "scrollWidth": 58,
+              "clientWidth": 50,
+              "overflowX": "visible"
+            }
+          ],
+          "formErrors": [],
+          "visibleMessage": "",
+          "screenshot": "phone-390-app-checkout-loaded.png"
+        },
+        {
+          "viewportName": "phone-390-app",
+          "stateName": "address-card",
+          "url": "http://127.0.0.1:4200/checkout",
+          "bodyClasses": "shop-mobile-app shop-mobile-app--android checkout-page-active",
+          "innerWidth": 390,
+          "innerHeight": 844,
+          "scrollY": 1455,
+          "docWidth": 390,
+          "bodyWidth": 390,
+          "horizontalOverflow": false,
+          "rects": {
+            "checkoutPage": {
+              "selector": ".checkout-page",
+              "text": "Checkout readinessConfirm orderFree shipping, gifts and coupons are checked before you pay.Payable$7.15ShippingFree shipping is active for this order.Payment methodStripePayable$7.15You unlocked free shipping100%Payment methodStripe75%Next ",
+              "top": -1385,
+              "bottom": 2894.515625,
+              "left": 0,
+              "right": 374,
+              "width": 374,
+              "height": 4279.515625,
+              "scrollWidth": 374,
+              "clientWidth": 374,
+              "scrollHeight": 4280,
+              "clientHeight": 4280,
+              "position": "static",
+              "zIndex": "auto",
+              "overflowX": "hidden",
+              "overflowY": "auto",
+              "fontSize": "14px",
+              "lineHeight": "normal",
+              "centerHit": {
+                "selector": "div.checkout-page__mobilePayBar",
+                "text": "Payable$7.15Complete address",
+                "inside": true
+              }
+            },
+            "addressCard": {
+              "selector": "#checkout-address-card",
+              "text": "Shipping addressRecipientPhoneCountry / state / city / municipality / neighborhoodSelect regionDetailed address0 / 260Postal / ZIP code",
+              "top": 62.390625,
+              "bottom": 625.8125,
+              "left": 12,
+              "right": 362,
+              "width": 350,
+              "height": 563.421875,
+              "scrollWidth": 348,
+              "clientWidth": 348,
+              "scrollHeight": 561,
+              "clientHeight": 561,
+              "position": "relative",
+              "zIndex": "auto",
+              "overflowX": "visible",
+              "overflowY": "visible",
+              "fontSize": "14px",
+              "lineHeight": "22px",
+              "centerHit": {
+                "selector": "label.ant-form-item-required",
+                "text": "Country / state / city / municipality / neighborhood",
+                "inside": true
+              }
+            },
+            "paymentCard": {
+              "selector": "#checkout-payment-card",
+              "text": "Select payment methodPayment confidenceStripe will use the configured secure gateway for this market.1 items total$7.15Payment methodStripeCreate order and pay $7.15Payable$7.15Complete address",
+              "top": 900,
+              "bottom": 1156.671875,
+              "left": 12,
+              "right": 362,
+              "width": 350,
+              "height": 256.671875,
+              "scrollWidth": 348,
+              "clientWidth": 348,
+              "scrollHeight": 255,
+              "clientHeight": 255,
+              "position": "relative",
+              "zIndex": "auto",
+              "overflowX": "visible",
+              "overflowY": "visible",
+              "fontSize": "14px",
+              "lineHeight": "22px",
+              "centerHit": {
+                "selector": "span.ant-typography.checkout-page__payableTotal.css-dev-only-do-not-override-5uvb3z",
+                "text": "Payable: $7.15",
+                "inside": false
+              }
+            },
+            "paymentMethod": {
+              "selector": ".checkout-page__paymentMethod",
+              "text": "StripeRecommendedInstantCards, Apple Pay and Google Pay through Stripe Checkout.",
+              "top": -439.359375,
+              "bottom": -353.390625,
+              "left": 25,
+              "right": 349,
+              "width": 324,
+              "height": 85.96875,
+              "scrollWidth": 322,
+              "clientWidth": 322,
+              "scrollHeight": 84,
+              "clientHeight": 84,
+              "position": "relative",
+              "zIndex": "auto",
+              "overflowX": "hidden",
+              "overflowY": "hidden",
+              "fontSize": "13.3333px",
+              "lineHeight": "normal",
+              "centerHit": {
+                "selector": "span.ant-typography.ant-typography-secondary.css-dev-only-do-not-override-5uvb3z",
+                "text": "Checking out as guest. You can create an account after payment to track future orders.",
+                "inside": false
+              }
+            },
+            "submitReview": {
+              "selector": ".checkout-page__submitReview",
+              "text": "1 items total$7.15Payment methodStripeCreate order and pay $7.15",
+              "top": 1056.671875,
+              "bottom": 1143.671875,
+              "left": 25,
+              "right": 349,
+              "width": 324,
+              "height": 87,
+              "scrollWidth": 324,
+              "clientWidth": 324,
+              "scrollHeight": 87,
+              "clientHeight": 87,
+              "position": "static",
+              "zIndex": "auto",
+              "overflowX": "visible",
+              "overflowY": "visible",
+              "fontSize": "14px",
+              "lineHeight": "22px",
+              "centerHit": {
+                "selector": "span.ant-typography.checkout-page__payableTotal.css-dev-only-do-not-override-5uvb3z",
+                "text": "Payable: $7.15",
+                "inside": false
+              }
+            },
+            "mobilePayBar": {
+              "selector": ".checkout-page__mobilePayBar",
+              "text": "Payable$7.15Complete address",
+              "top": 746.203125,
+              "bottom": 834,
+              "left": 10,
+              "right": 380,
+              "width": 370,
+              "height": 87.796875,
+              "scrollWidth": 370,
+              "clientWidth": 370,
+              "scrollHeight": 87,
+              "clientHeight": 87,
+              "position": "fixed",
+              "zIndex": "7600",
+              "overflowX": "visible",
+              "overflowY": "visible",
+              "fontSize": "14px",
+              "lineHeight": "22px",
+              "centerHit": {
+                "selector": "button.ant-btn.css-dev-only-do-not-override-5uvb3z.ant-btn-primary.ant-btn-color-primary.ant-btn-variant-solid",
+                "text": "Complete address",
+                "inside": true
+              }
+            },
+            "submitButton": {
+              "selector": ".checkout-page__mobilePayBar .ant-btn, .checkout-page__submitButton",
+              "text": "Create order and pay $7.15",
+              "top": 0,
+              "bottom": 0,
+              "left": 0,
+              "right": 0,
+              "width": 0,
+              "height": 0,
+              "scrollWidth": 0,
+              "clientWidth": 0,
+              "scrollHeight": 0,
+              "clientHeight": 0,
+              "position": "relative",
+              "zIndex": "auto",
+              "overflowX": "hidden",
+              "overflowY": "hidden",
+              "fontSize": "15px",
+              "lineHeight": "17.25px",
+              "centerHit": {
+                "selector": "div.checkout-page.checkout-page--en",
+                "text": "Checkout readinessConfirm orderFree shipping, gifts and coupons are checked before you pay.Payable$7.15ShippingFree shipping is active for t",
+                "inside": false
+              }
+            },
+            "bottomNav": null,
+            "support": {
+              "selector": ".app-support-launcher",
+              "text": "",
+              "top": 0,
+              "bottom": 0,
+              "left": 0,
+              "right": 0,
+              "width": 0,
+              "height": 0,
+              "scrollWidth": 0,
+              "clientWidth": 0,
+              "scrollHeight": 0,
+              "clientHeight": 0,
+              "position": "fixed",
+              "zIndex": "2600",
+              "overflowX": "visible",
+              "overflowY": "visible",
+              "fontSize": "20px",
+              "lineHeight": "normal",
+              "centerHit": {
+                "selector": "div.checkout-page.checkout-page--en",
+                "text": "Checkout readinessConfirm orderFree shipping, gifts and coupons are checked before you pay.Payable$7.15ShippingFree shipping is active for t",
+                "inside": false
+              }
+            },
+            "cascaderDropdown": null,
+            "cascaderMenus": null
+          },
+          "paymentMethodCount": 2,
+          "paymentUnavailableVisible": false,
+          "overlaps": {
+            "mobilePayBarVsBottomNav": null,
+            "submitButtonVsBottomNav": null,
+            "mobilePayBarVsSupport": {
+              "overlaps": false,
+              "x": 0,
+              "y": 0,
+              "area": 0
+            },
+            "submitButtonVsSupport": {
+              "overlaps": false,
+              "x": 0,
+              "y": 0,
+              "area": 0
+            },
+            "cascaderVsBottomNav": null
+          },
+          "smallTargets": [
+            {
+              "selector": "input#region.ant-select-selection-search-input",
+              "text": "Country / state / city / municipality / neighborhood: Select the full region",
+              "top": 361.390625,
+              "bottom": 391.390625,
+              "left": 37,
+              "right": 319,
+              "width": 282,
+              "height": 30,
+              "fontSize": "16px"
+            }
+          ],
+          "bottomObscured": [],
+          "overflowElements": [
+            {
+              "selector": "span.ant-badge.css-dev-only-do-not-override-5uvb3z",
+              "text": "1",
+              "top": -1432,
+              "left": 349,
+              "right": 363,
+              "width": 14,
+              "overflowRight": -27,
+              "scrollWidth": 22,
+              "clientWidth": 14,
+              "overflowX": "visible"
+            },
+            {
+              "selector": "div.ant-progress.ant-progress-status-normal.ant-progress-circle.ant-progress-show-info.css-dev-only-do-not-override-5uvb3z",
+              "text": "75%",
+              "top": -777.109375,
+              "left": 23,
+              "right": 73,
+              "width": 50,
+              "overflowRight": -317,
+              "scrollWidth": 58,
+              "clientWidth": 50,
+              "overflowX": "visible"
+            }
+          ],
+          "formErrors": [],
+          "visibleMessage": "",
+          "screenshot": "phone-390-app-address-card.png"
+        },
+        {
+          "viewportName": "phone-390-app",
+          "stateName": "address-cascader-open",
+          "url": "http://127.0.0.1:4200/checkout",
+          "bodyClasses": "shop-mobile-app shop-mobile-app--android checkout-page-active",
+          "innerWidth": 390,
+          "innerHeight": 844,
+          "scrollY": 1428,
+          "docWidth": 390,
+          "bodyWidth": 390,
+          "horizontalOverflow": false,
+          "rects": {
+            "checkoutPage": {
+              "selector": ".checkout-page",
+              "text": "Checkout readinessConfirm orderFree shipping, gifts and coupons are checked before you pay.Payable$7.15ShippingFree shipping is active for this order.Payment methodStripePayable$7.15You unlocked free shipping100%Payment methodStripe75%Next ",
+              "top": -1358,
+              "bottom": 2921.515625,
+              "left": 0,
+              "right": 374,
+              "width": 374,
+              "height": 4279.515625,
+              "scrollWidth": 374,
+              "clientWidth": 374,
+              "scrollHeight": 4280,
+              "clientHeight": 4280,
+              "position": "static",
+              "zIndex": "auto",
+              "overflowX": "hidden",
+              "overflowY": "auto",
+              "fontSize": "14px",
+              "lineHeight": "normal",
+              "centerHit": {
+                "selector": "button.ant-btn.css-dev-only-do-not-override-5uvb3z.ant-btn-primary.ant-btn-color-primary.ant-btn-variant-solid",
+                "text": "Complete address",
+                "inside": true
+              }
+            },
+            "addressCard": {
+              "selector": "#checkout-address-card",
+              "text": "Shipping addressRecipientPhoneCountry / state / city / municipality / neighborhoodSelect regionDetailed address0 / 260Postal / ZIP code",
+              "top": 89.390625,
+              "bottom": 652.8125,
+              "left": 12,
+              "right": 362,
+              "width": 350,
+              "height": 563.421875,
+              "scrollWidth": 348,
+              "clientWidth": 348,
+              "scrollHeight": 561,
+              "clientHeight": 561,
+              "position": "relative",
+              "zIndex": "auto",
+              "overflowX": "visible",
+              "overflowY": "visible",
+              "fontSize": "14px",
+              "lineHeight": "22px",
+              "centerHit": {
+                "selector": "label.ant-form-item-required",
+                "text": "Country / state / city / municipality / neighborhood",
+                "inside": true
+              }
+            },
+            "paymentCard": {
+              "selector": "#checkout-payment-card",
+              "text": "Select payment methodPayment confidenceStripe will use the configured secure gateway for this market.1 items total$7.15Payment methodStripeCreate order and pay $7.15Payable$7.15Complete address",
+              "top": 927,
+              "bottom": 1183.671875,
+              "left": 12,
+              "right": 362,
+              "width": 350,
+              "height": 256.671875,
+              "scrollWidth": 348,
+              "clientWidth": 348,
+              "scrollHeight": 255,
+              "clientHeight": 255,
+              "position": "relative",
+              "zIndex": "auto",
+              "overflowX": "visible",
+              "overflowY": "visible",
+              "fontSize": "14px",
+              "lineHeight": "22px",
+              "centerHit": {
+                "selector": "span.ant-typography.ant-typography-secondary.checkout-page__shippingPolicy.css-dev-only-do-not-override-5uvb3z",
+                "text": "Free shipping is applied to this order.",
+                "inside": false
+              }
+            },
+            "paymentMethod": {
+              "selector": ".checkout-page__paymentMethod",
+              "text": "StripeRecommendedInstantCards, Apple Pay and Google Pay through Stripe Checkout.",
+              "top": -412.359375,
+              "bottom": -326.390625,
+              "left": 25,
+              "right": 349,
+              "width": 324,
+              "height": 85.96875,
+              "scrollWidth": 322,
+              "clientWidth": 322,
+              "scrollHeight": 84,
+              "clientHeight": 84,
+              "position": "relative",
+              "zIndex": "auto",
+              "overflowX": "hidden",
+              "overflowY": "hidden",
+              "fontSize": "13.3333px",
+              "lineHeight": "normal",
+              "centerHit": {
+                "selector": "span.ant-typography.ant-typography-secondary.css-dev-only-do-not-override-5uvb3z",
+                "text": "Checking out as guest. You can create an account after payment to track future orders.",
+                "inside": false
+              }
+            },
+            "submitReview": {
+              "selector": ".checkout-page__submitReview",
+              "text": "1 items total$7.15Payment methodStripeCreate order and pay $7.15",
+              "top": 1083.671875,
+              "bottom": 1170.671875,
+              "left": 25,
+              "right": 349,
+              "width": 324,
+              "height": 87,
+              "scrollWidth": 324,
+              "clientWidth": 324,
+              "scrollHeight": 87,
+              "clientHeight": 87,
+              "position": "static",
+              "zIndex": "auto",
+              "overflowX": "visible",
+              "overflowY": "visible",
+              "fontSize": "14px",
+              "lineHeight": "22px",
+              "centerHit": {
+                "selector": "span.ant-typography.ant-typography-secondary.checkout-page__shippingPolicy.css-dev-only-do-not-override-5uvb3z",
+                "text": "Free shipping is applied to this order.",
+                "inside": false
+              }
+            },
+            "mobilePayBar": {
+              "selector": ".checkout-page__mobilePayBar",
+              "text": "Payable$7.15Complete address",
+              "top": 746.203125,
+              "bottom": 834,
+              "left": 10,
+              "right": 380,
+              "width": 370,
+              "height": 87.796875,
+              "scrollWidth": 370,
+              "clientWidth": 370,
+              "scrollHeight": 87,
+              "clientHeight": 87,
+              "position": "fixed",
+              "zIndex": "7600",
+              "overflowX": "visible",
+              "overflowY": "visible",
+              "fontSize": "14px",
+              "lineHeight": "22px",
+              "centerHit": {
+                "selector": "button.ant-btn.css-dev-only-do-not-override-5uvb3z.ant-btn-primary.ant-btn-color-primary.ant-btn-variant-solid",
+                "text": "Complete address",
+                "inside": true
+              }
+            },
+            "submitButton": {
+              "selector": ".checkout-page__mobilePayBar .ant-btn, .checkout-page__submitButton",
+              "text": "Create order and pay $7.15",
+              "top": 0,
+              "bottom": 0,
+              "left": 0,
+              "right": 0,
+              "width": 0,
+              "height": 0,
+              "scrollWidth": 0,
+              "clientWidth": 0,
+              "scrollHeight": 0,
+              "clientHeight": 0,
+              "position": "relative",
+              "zIndex": "auto",
+              "overflowX": "hidden",
+              "overflowY": "hidden",
+              "fontSize": "15px",
+              "lineHeight": "17.25px",
+              "centerHit": {
+                "selector": "div.checkout-page.checkout-page--en",
+                "text": "Checkout readinessConfirm orderFree shipping, gifts and coupons are checked before you pay.Payable$7.15ShippingFree shipping is active for t",
+                "inside": false
+              }
+            },
+            "bottomNav": null,
+            "support": {
+              "selector": ".app-support-launcher",
+              "text": "",
+              "top": 0,
+              "bottom": 0,
+              "left": 0,
+              "right": 0,
+              "width": 0,
+              "height": 0,
+              "scrollWidth": 0,
+              "clientWidth": 0,
+              "scrollHeight": 0,
+              "clientHeight": 0,
+              "position": "fixed",
+              "zIndex": "2600",
+              "overflowX": "visible",
+              "overflowY": "visible",
+              "fontSize": "20px",
+              "lineHeight": "normal",
+              "centerHit": {
+                "selector": "div.checkout-page.checkout-page--en",
+                "text": "Checkout readinessConfirm orderFree shipping, gifts and coupons are checked before you pay.Payable$7.15ShippingFree shipping is active for t",
+                "inside": false
+              }
+            },
+            "cascaderDropdown": null,
+            "cascaderMenus": null
+          },
+          "paymentMethodCount": 2,
+          "paymentUnavailableVisible": false,
+          "overlaps": {
+            "mobilePayBarVsBottomNav": null,
+            "submitButtonVsBottomNav": null,
+            "mobilePayBarVsSupport": {
+              "overlaps": false,
+              "x": 0,
+              "y": 0,
+              "area": 0
+            },
+            "submitButtonVsSupport": {
+              "overlaps": false,
+              "x": 0,
+              "y": 0,
+              "area": 0
+            },
+            "cascaderVsBottomNav": null
+          },
+          "smallTargets": [
+            {
+              "selector": "input#region.ant-select-selection-search-input",
+              "text": "Country / state / city / municipality / neighborhood: Select the full region",
+              "top": 388.390625,
+              "bottom": 418.390625,
+              "left": 37,
+              "right": 319,
+              "width": 282,
+              "height": 30,
+              "fontSize": "16px"
+            }
+          ],
+          "bottomObscured": [],
+          "overflowElements": [
+            {
+              "selector": "span.ant-badge.css-dev-only-do-not-override-5uvb3z",
+              "text": "1",
+              "top": -1405,
+              "left": 349,
+              "right": 363,
+              "width": 14,
+              "overflowRight": -27,
+              "scrollWidth": 22,
+              "clientWidth": 14,
+              "overflowX": "visible"
+            },
+            {
+              "selector": "div.ant-progress.ant-progress-status-normal.ant-progress-circle.ant-progress-show-info.css-dev-only-do-not-override-5uvb3z",
+              "text": "75%",
+              "top": -750.109375,
+              "left": 23,
+              "right": 73,
+              "width": 50,
+              "overflowRight": -317,
+              "scrollWidth": 58,
+              "clientWidth": 50,
+              "overflowX": "visible"
+            }
+          ],
+          "formErrors": [],
+          "visibleMessage": "",
+          "screenshot": "phone-390-app-address-cascader-open.png"
+        },
+        {
+          "viewportName": "phone-390-app",
+          "stateName": "payment-section-filled",
+          "url": "http://127.0.0.1:4200/checkout",
+          "bodyClasses": "shop-mobile-app shop-mobile-app--android checkout-page-active",
+          "innerWidth": 390,
+          "innerHeight": 844,
+          "scrollY": 2003,
+          "docWidth": 390,
+          "bodyWidth": 390,
+          "horizontalOverflow": false,
+          "rects": {
+            "checkoutPage": {
+              "selector": ".checkout-page",
+              "text": "Checkout readinessConfirm orderFree shipping, gifts and coupons are checked before you pay.Payable$7.15ShippingFree shipping is active for this order.Payment methodStripePayable$7.15You unlocked free shipping100%Payment methodStripe75%Next ",
+              "top": -1933,
+              "bottom": 2346.515625,
+              "left": 0,
+              "right": 374,
+              "width": 374,
+              "height": 4279.515625,
+              "scrollWidth": 374,
+              "clientWidth": 374,
+              "scrollHeight": 4280,
+              "clientHeight": 4280,
+              "position": "static",
+              "zIndex": "auto",
+              "overflowX": "hidden",
+              "overflowY": "auto",
+              "fontSize": "14px",
+              "lineHeight": "normal",
+              "centerHit": {
+                "selector": "div",
+                "text": "Subtotal: $7.15",
+                "inside": true
+              }
+            },
+            "addressCard": {
+              "selector": "#checkout-address-card",
+              "text": "Shipping addressRecipientPhoneCountry / state / city / municipality / neighborhoodSelect regionDetailed addressAv Reforma 100, Piso 2, Colonia Centro, Ciudad de Mexico, MX 0100066 / 260Postal / ZIP code",
+              "top": -485.609375,
+              "bottom": 77.8125,
+              "left": 12,
+              "right": 362,
+              "width": 350,
+              "height": 563.421875,
+              "scrollWidth": 348,
+              "clientWidth": 348,
+              "scrollHeight": 561,
+              "clientHeight": 561,
+              "position": "relative",
+              "zIndex": "auto",
+              "overflowX": "visible",
+              "overflowY": "visible",
+              "fontSize": "14px",
+              "lineHeight": "22px",
+              "centerHit": {
+                "selector": "div.ant-col.ant-form-item-label.css-dev-only-do-not-override-5uvb3z",
+                "text": "Postal / ZIP code",
+                "inside": true
+              }
+            },
+            "paymentCard": {
+              "selector": "#checkout-payment-card",
+              "text": "Select payment methodPayment confidenceStripe will use the configured secure gateway for this market.1 items total$7.15Payment methodStripeCreate order and pay $7.15Payable$7.15Complete address",
+              "top": 352,
+              "bottom": 608.671875,
+              "left": 12,
+              "right": 362,
+              "width": 350,
+              "height": 256.671875,
+              "scrollWidth": 348,
+              "clientWidth": 348,
+              "scrollHeight": 255,
+              "clientHeight": 255,
+              "position": "relative",
+              "zIndex": "auto",
+              "overflowX": "visible",
+              "overflowY": "visible",
+              "fontSize": "14px",
+              "lineHeight": "22px",
+              "centerHit": {
+                "selector": "span.ant-typography.ant-typography-secondary.css-dev-only-do-not-override-5uvb3z",
+                "text": "Stripe will use the configured secure gateway for this market.",
+                "inside": true
+              }
+            },
+            "paymentMethod": {
+              "selector": ".checkout-page__paymentMethod",
+              "text": "StripeRecommendedInstantCards, Apple Pay and Google Pay through Stripe Checkout.",
+              "top": -987.359375,
+              "bottom": -901.390625,
+              "left": 25,
+              "right": 349,
+              "width": 324,
+              "height": 85.96875,
+              "scrollWidth": 322,
+              "clientWidth": 322,
+              "scrollHeight": 84,
+              "clientHeight": 84,
+              "position": "relative",
+              "zIndex": "auto",
+              "overflowX": "hidden",
+              "overflowY": "hidden",
+              "fontSize": "13.3333px",
+              "lineHeight": "normal",
+              "centerHit": {
+                "selector": "div.ant-col.ant-form-item-label.css-dev-only-do-not-override-5uvb3z",
+                "text": "Postal / ZIP code",
+                "inside": false
+              }
+            },
+            "submitReview": {
+              "selector": ".checkout-page__submitReview",
+              "text": "1 items total$7.15Payment methodStripeCreate order and pay $7.15",
+              "top": 508.671875,
+              "bottom": 595.671875,
+              "left": 25,
+              "right": 349,
+              "width": 324,
+              "height": 87,
+              "scrollWidth": 324,
+              "clientWidth": 324,
+              "scrollHeight": 87,
+              "clientHeight": 87,
+              "position": "static",
+              "zIndex": "auto",
+              "overflowX": "visible",
+              "overflowY": "visible",
+              "fontSize": "14px",
+              "lineHeight": "22px",
+              "centerHit": {
+                "selector": "div.checkout-page__submitReview",
+                "text": "1 items total$7.15Payment methodStripeCreate order and pay $7.15",
+                "inside": true
+              }
+            },
+            "mobilePayBar": {
+              "selector": ".checkout-page__mobilePayBar",
+              "text": "Payable$7.15Complete address",
+              "top": 746.203125,
+              "bottom": 834,
+              "left": 10,
+              "right": 380,
+              "width": 370,
+              "height": 87.796875,
+              "scrollWidth": 370,
+              "clientWidth": 370,
+              "scrollHeight": 87,
+              "clientHeight": 87,
+              "position": "fixed",
+              "zIndex": "7600",
+              "overflowX": "visible",
+              "overflowY": "visible",
+              "fontSize": "14px",
+              "lineHeight": "22px",
+              "centerHit": {
+                "selector": "button.ant-btn.css-dev-only-do-not-override-5uvb3z.ant-btn-primary.ant-btn-color-primary.ant-btn-variant-solid",
+                "text": "Complete address",
+                "inside": true
+              }
+            },
+            "submitButton": {
+              "selector": ".checkout-page__mobilePayBar .ant-btn, .checkout-page__submitButton",
+              "text": "Create order and pay $7.15",
+              "top": 0,
+              "bottom": 0,
+              "left": 0,
+              "right": 0,
+              "width": 0,
+              "height": 0,
+              "scrollWidth": 0,
+              "clientWidth": 0,
+              "scrollHeight": 0,
+              "clientHeight": 0,
+              "position": "relative",
+              "zIndex": "auto",
+              "overflowX": "hidden",
+              "overflowY": "hidden",
+              "fontSize": "15px",
+              "lineHeight": "17.25px",
+              "centerHit": {
+                "selector": "div.checkout-page.checkout-page--en",
+                "text": "Checkout readinessConfirm orderFree shipping, gifts and coupons are checked before you pay.Payable$7.15ShippingFree shipping is active for t",
+                "inside": false
+              }
+            },
+            "bottomNav": null,
+            "support": {
+              "selector": ".app-support-launcher",
+              "text": "",
+              "top": 0,
+              "bottom": 0,
+              "left": 0,
+              "right": 0,
+              "width": 0,
+              "height": 0,
+              "scrollWidth": 0,
+              "clientWidth": 0,
+              "scrollHeight": 0,
+              "clientHeight": 0,
+              "position": "fixed",
+              "zIndex": "2600",
+              "overflowX": "visible",
+              "overflowY": "visible",
+              "fontSize": "20px",
+              "lineHeight": "normal",
+              "centerHit": {
+                "selector": "div.checkout-page.checkout-page--en",
+                "text": "Checkout readinessConfirm orderFree shipping, gifts and coupons are checked before you pay.Payable$7.15ShippingFree shipping is active for t",
+                "inside": false
+              }
+            },
+            "cascaderDropdown": null,
+            "cascaderMenus": null
+          },
+          "paymentMethodCount": 2,
+          "paymentUnavailableVisible": false,
+          "overlaps": {
+            "mobilePayBarVsBottomNav": null,
+            "submitButtonVsBottomNav": null,
+            "mobilePayBarVsSupport": {
+              "overlaps": false,
+              "x": 0,
+              "y": 0,
+              "area": 0
+            },
+            "submitButtonVsSupport": {
+              "overlaps": false,
+              "x": 0,
+              "y": 0,
+              "area": 0
+            },
+            "cascaderVsBottomNav": null
+          },
+          "smallTargets": [
+            {
+              "selector": "input#region.ant-select-selection-search-input",
+              "text": "Country / state / city / municipality / neighborhood: Select the full region",
+              "top": -186.609375,
+              "bottom": -156.609375,
+              "left": 37,
+              "right": 319,
+              "width": 282,
+              "height": 30,
+              "fontSize": "16px"
+            }
+          ],
+          "bottomObscured": [],
+          "overflowElements": [
+            {
+              "selector": "span.ant-badge.css-dev-only-do-not-override-5uvb3z",
+              "text": "1",
+              "top": -1980,
+              "left": 349,
+              "right": 363,
+              "width": 14,
+              "overflowRight": -27,
+              "scrollWidth": 22,
+              "clientWidth": 14,
+              "overflowX": "visible"
+            },
+            {
+              "selector": "div.ant-progress.ant-progress-status-normal.ant-progress-circle.ant-progress-show-info.css-dev-only-do-not-override-5uvb3z",
+              "text": "75%",
+              "top": -1325.109375,
+              "left": 23,
+              "right": 73,
+              "width": 50,
+              "overflowRight": -317,
+              "scrollWidth": 58,
+              "clientWidth": 50,
+              "overflowX": "visible"
+            }
+          ],
+          "formErrors": [],
+          "visibleMessage": "",
+          "screenshot": "phone-390-app-payment-section-filled.png"
+        },
+        {
+          "viewportName": "phone-390-app",
+          "stateName": "submit-ready-trial",
+          "url": "http://127.0.0.1:4200/checkout",
+          "bodyClasses": "shop-mobile-app shop-mobile-app--android checkout-page-active",
+          "innerWidth": 390,
+          "innerHeight": 844,
+          "scrollY": 2003,
+          "docWidth": 390,
+          "bodyWidth": 390,
+          "horizontalOverflow": false,
+          "rects": {
+            "checkoutPage": {
+              "selector": ".checkout-page",
+              "text": "Checkout readinessConfirm orderFree shipping, gifts and coupons are checked before you pay.Payable$7.15ShippingFree shipping is active for this order.Payment methodStripePayable$7.15You unlocked free shipping100%Payment methodStripe75%Next ",
+              "top": -1933,
+              "bottom": 2346.515625,
+              "left": 0,
+              "right": 374,
+              "width": 374,
+              "height": 4279.515625,
+              "scrollWidth": 374,
+              "clientWidth": 374,
+              "scrollHeight": 4280,
+              "clientHeight": 4280,
+              "position": "static",
+              "zIndex": "auto",
+              "overflowX": "hidden",
+              "overflowY": "auto",
+              "fontSize": "14px",
+              "lineHeight": "normal",
+              "centerHit": {
+                "selector": "div",
+                "text": "Subtotal: $7.15",
+                "inside": true
+              }
+            },
+            "addressCard": {
+              "selector": "#checkout-address-card",
+              "text": "Shipping addressRecipientPhoneCountry / state / city / municipality / neighborhoodSelect regionDetailed addressAv Reforma 100, Piso 2, Colonia Centro, Ciudad de Mexico, MX 0100066 / 260Postal / ZIP code",
+              "top": -485.609375,
+              "bottom": 77.8125,
+              "left": 12,
+              "right": 362,
+              "width": 350,
+              "height": 563.421875,
+              "scrollWidth": 348,
+              "clientWidth": 348,
+              "scrollHeight": 561,
+              "clientHeight": 561,
+              "position": "relative",
+              "zIndex": "auto",
+              "overflowX": "visible",
+              "overflowY": "visible",
+              "fontSize": "14px",
+              "lineHeight": "22px",
+              "centerHit": {
+                "selector": "div.ant-col.ant-form-item-label.css-dev-only-do-not-override-5uvb3z",
+                "text": "Postal / ZIP code",
+                "inside": true
+              }
+            },
+            "paymentCard": {
+              "selector": "#checkout-payment-card",
+              "text": "Select payment methodPayment confidenceStripe will use the configured secure gateway for this market.1 items total$7.15Payment methodStripeCreate order and pay $7.15Payable$7.15Complete address",
+              "top": 352,
+              "bottom": 608.671875,
+              "left": 12,
+              "right": 362,
+              "width": 350,
+              "height": 256.671875,
+              "scrollWidth": 348,
+              "clientWidth": 348,
+              "scrollHeight": 255,
+              "clientHeight": 255,
+              "position": "relative",
+              "zIndex": "auto",
+              "overflowX": "visible",
+              "overflowY": "visible",
+              "fontSize": "14px",
+              "lineHeight": "22px",
+              "centerHit": {
+                "selector": "span.ant-typography.ant-typography-secondary.css-dev-only-do-not-override-5uvb3z",
+                "text": "Stripe will use the configured secure gateway for this market.",
+                "inside": true
+              }
+            },
+            "paymentMethod": {
+              "selector": ".checkout-page__paymentMethod",
+              "text": "StripeRecommendedInstantCards, Apple Pay and Google Pay through Stripe Checkout.",
+              "top": -987.359375,
+              "bottom": -901.390625,
+              "left": 25,
+              "right": 349,
+              "width": 324,
+              "height": 85.96875,
+              "scrollWidth": 322,
+              "clientWidth": 322,
+              "scrollHeight": 84,
+              "clientHeight": 84,
+              "position": "relative",
+              "zIndex": "auto",
+              "overflowX": "hidden",
+              "overflowY": "hidden",
+              "fontSize": "13.3333px",
+              "lineHeight": "normal",
+              "centerHit": {
+                "selector": "div.ant-col.ant-form-item-label.css-dev-only-do-not-override-5uvb3z",
+                "text": "Postal / ZIP code",
+                "inside": false
+              }
+            },
+            "submitReview": {
+              "selector": ".checkout-page__submitReview",
+              "text": "1 items total$7.15Payment methodStripeCreate order and pay $7.15",
+              "top": 508.671875,
+              "bottom": 595.671875,
+              "left": 25,
+              "right": 349,
+              "width": 324,
+              "height": 87,
+              "scrollWidth": 324,
+              "clientWidth": 324,
+              "scrollHeight": 87,
+              "clientHeight": 87,
+              "position": "static",
+              "zIndex": "auto",
+              "overflowX": "visible",
+              "overflowY": "visible",
+              "fontSize": "14px",
+              "lineHeight": "22px",
+              "centerHit": {
+                "selector": "div.checkout-page__submitReview",
+                "text": "1 items total$7.15Payment methodStripeCreate order and pay $7.15",
+                "inside": true
+              }
+            },
+            "mobilePayBar": {
+              "selector": ".checkout-page__mobilePayBar",
+              "text": "Payable$7.15Complete address",
+              "top": 746.203125,
+              "bottom": 834,
+              "left": 10,
+              "right": 380,
+              "width": 370,
+              "height": 87.796875,
+              "scrollWidth": 370,
+              "clientWidth": 370,
+              "scrollHeight": 87,
+              "clientHeight": 87,
+              "position": "fixed",
+              "zIndex": "7600",
+              "overflowX": "visible",
+              "overflowY": "visible",
+              "fontSize": "14px",
+              "lineHeight": "22px",
+              "centerHit": {
+                "selector": "button.ant-btn.css-dev-only-do-not-override-5uvb3z.ant-btn-primary.ant-btn-color-primary.ant-btn-variant-solid",
+                "text": "Complete address",
+                "inside": true
+              }
+            },
+            "submitButton": {
+              "selector": ".checkout-page__mobilePayBar .ant-btn, .checkout-page__submitButton",
+              "text": "Create order and pay $7.15",
+              "top": 0,
+              "bottom": 0,
+              "left": 0,
+              "right": 0,
+              "width": 0,
+              "height": 0,
+              "scrollWidth": 0,
+              "clientWidth": 0,
+              "scrollHeight": 0,
+              "clientHeight": 0,
+              "position": "relative",
+              "zIndex": "auto",
+              "overflowX": "hidden",
+              "overflowY": "hidden",
+              "fontSize": "15px",
+              "lineHeight": "17.25px",
+              "centerHit": {
+                "selector": "div.checkout-page.checkout-page--en",
+                "text": "Checkout readinessConfirm orderFree shipping, gifts and coupons are checked before you pay.Payable$7.15ShippingFree shipping is active for t",
+                "inside": false
+              }
+            },
+            "bottomNav": null,
+            "support": {
+              "selector": ".app-support-launcher",
+              "text": "",
+              "top": 0,
+              "bottom": 0,
+              "left": 0,
+              "right": 0,
+              "width": 0,
+              "height": 0,
+              "scrollWidth": 0,
+              "clientWidth": 0,
+              "scrollHeight": 0,
+              "clientHeight": 0,
+              "position": "fixed",
+              "zIndex": "2600",
+              "overflowX": "visible",
+              "overflowY": "visible",
+              "fontSize": "20px",
+              "lineHeight": "normal",
+              "centerHit": {
+                "selector": "div.checkout-page.checkout-page--en",
+                "text": "Checkout readinessConfirm orderFree shipping, gifts and coupons are checked before you pay.Payable$7.15ShippingFree shipping is active for t",
+                "inside": false
+              }
+            },
+            "cascaderDropdown": null,
+            "cascaderMenus": null
+          },
+          "paymentMethodCount": 2,
+          "paymentUnavailableVisible": false,
+          "overlaps": {
+            "mobilePayBarVsBottomNav": null,
+            "submitButtonVsBottomNav": null,
+            "mobilePayBarVsSupport": {
+              "overlaps": false,
+              "x": 0,
+              "y": 0,
+              "area": 0
+            },
+            "submitButtonVsSupport": {
+              "overlaps": false,
+              "x": 0,
+              "y": 0,
+              "area": 0
+            },
+            "cascaderVsBottomNav": null
+          },
+          "smallTargets": [
+            {
+              "selector": "input#region.ant-select-selection-search-input",
+              "text": "Country / state / city / municipality / neighborhood: Select the full region",
+              "top": -186.609375,
+              "bottom": -156.609375,
+              "left": 37,
+              "right": 319,
+              "width": 282,
+              "height": 30,
+              "fontSize": "16px"
+            }
+          ],
+          "bottomObscured": [],
+          "overflowElements": [
+            {
+              "selector": "span.ant-badge.css-dev-only-do-not-override-5uvb3z",
+              "text": "1",
+              "top": -1980,
+              "left": 349,
+              "right": 363,
+              "width": 14,
+              "overflowRight": -27,
+              "scrollWidth": 22,
+              "clientWidth": 14,
+              "overflowX": "visible"
+            },
+            {
+              "selector": "div.ant-progress.ant-progress-status-normal.ant-progress-circle.ant-progress-show-info.css-dev-only-do-not-override-5uvb3z",
+              "text": "75%",
+              "top": -1325.109375,
+              "left": 23,
+              "right": 73,
+              "width": 50,
+              "overflowRight": -317,
+              "scrollWidth": 58,
+              "clientWidth": 50,
+              "overflowX": "visible"
+            }
+          ],
+          "formErrors": [],
+          "visibleMessage": "",
+          "screenshot": "phone-390-app-submit-ready-trial.png"
+        },
+        {
+          "viewportName": "phone-390-app",
+          "stateName": "validation-errors",
+          "url": "http://127.0.0.1:4200/checkout",
+          "bodyClasses": "shop-mobile-app shop-mobile-app--android checkout-page-active",
+          "innerWidth": 390,
+          "innerHeight": 844,
+          "scrollY": 1255,
+          "docWidth": 390,
+          "bodyWidth": 390,
+          "horizontalOverflow": false,
+          "rects": {
+            "checkoutPage": {
+              "selector": ".checkout-page",
+              "text": "Checkout readinessConfirm orderFree shipping, gifts and coupons are checked before you pay.Payable$7.15ShippingFree shipping is active for this order.Payment methodStripePayable$7.15You unlocked free shipping100%Payment methodStripe75%Next ",
+              "top": -1185,
+              "bottom": 3098.109375,
+              "left": 0,
+              "right": 374,
+              "width": 374,
+              "height": 4283.109375,
+              "scrollWidth": 374,
+              "clientWidth": 374,
+              "scrollHeight": 4283,
+              "clientHeight": 4283,
+              "position": "static",
+              "zIndex": "auto",
+              "overflowX": "hidden",
+              "overflowY": "auto",
+              "fontSize": "14px",
+              "lineHeight": "normal",
+              "centerHit": {
+                "selector": "form.ant-form.ant-form-vertical.css-dev-only-do-not-override-5uvb3z",
+                "text": "1 checkout field(s) need attention. Enter a valid emailContactEmailEnter a valid emailChecking out as guest. You can create an account after",
+                "inside": true
+              }
+            },
+            "addressCard": {
+              "selector": "#checkout-address-card",
+              "text": "Shipping addressRecipientPhoneCountry / state / city / municipality / neighborhoodSelect regionDetailed addressAv Reforma 100, Piso 2, Colonia Centro, Ciudad de Mexico, MX 0100066 / 260Postal / ZIP code",
+              "top": 265.984375,
+              "bottom": 829.40625,
+              "left": 12,
+              "right": 362,
+              "width": 350,
+              "height": 563.421875,
+              "scrollWidth": 348,
+              "clientWidth": 348,
+              "scrollHeight": 561,
+              "clientHeight": 561,
+              "position": "relative",
+              "zIndex": "auto",
+              "overflowX": "visible",
+              "overflowY": "visible",
+              "fontSize": "14px",
+              "lineHeight": "22px",
+              "centerHit": {
+                "selector": "label.ant-form-item-required",
+                "text": "Country / state / city / municipality / neighborhood",
+                "inside": true
+              }
+            },
+            "paymentCard": {
+              "selector": "#checkout-payment-card",
+              "text": "Select payment methodPayment confidenceStripe will use the configured secure gateway for this market.1 items total$7.15Payment methodStripeCreate order and pay $7.15Payable$7.15Complete address",
+              "top": 1103.59375,
+              "bottom": 1360.265625,
+              "left": 12,
+              "right": 362,
+              "width": 350,
+              "height": 256.671875,
+              "scrollWidth": 348,
+              "clientWidth": 348,
+              "scrollHeight": 255,
+              "clientHeight": 255,
+              "position": "relative",
+              "zIndex": "auto",
+              "overflowX": "visible",
+              "overflowY": "visible",
+              "fontSize": "14px",
+              "lineHeight": "22px",
+              "centerHit": {
+                "selector": "form.ant-form.ant-form-vertical.css-dev-only-do-not-override-5uvb3z",
+                "text": "1 checkout field(s) need attention. Enter a valid emailContactEmailEnter a valid emailChecking out as guest. You can create an account after",
+                "inside": false
+              }
+            },
+            "paymentMethod": {
+              "selector": ".checkout-page__paymentMethod",
+              "text": "StripeRecommendedInstantCards, Apple Pay and Google Pay through Stripe Checkout.",
+              "top": -239.359375,
+              "bottom": -153.390625,
+              "left": 25,
+              "right": 349,
+              "width": 324,
+              "height": 85.96875,
+              "scrollWidth": 322,
+              "clientWidth": 322,
+              "scrollHeight": 84,
+              "clientHeight": 84,
+              "position": "relative",
+              "zIndex": "auto",
+              "overflowX": "hidden",
+              "overflowY": "hidden",
+              "fontSize": "13.3333px",
+              "lineHeight": "normal",
+              "centerHit": {
+                "selector": "div.checkout-page.checkout-page--en",
+                "text": "Checkout readinessConfirm orderFree shipping, gifts and coupons are checked before you pay.Payable$7.15ShippingFree shipping is active for t",
+                "inside": false
+              }
+            },
+            "submitReview": {
+              "selector": ".checkout-page__submitReview",
+              "text": "1 items total$7.15Payment methodStripeCreate order and pay $7.15",
+              "top": 1260.265625,
+              "bottom": 1347.265625,
+              "left": 25,
+              "right": 349,
+              "width": 324,
+              "height": 87,
+              "scrollWidth": 324,
+              "clientWidth": 324,
+              "scrollHeight": 87,
+              "clientHeight": 87,
+              "position": "static",
+              "zIndex": "auto",
+              "overflowX": "visible",
+              "overflowY": "visible",
+              "fontSize": "14px",
+              "lineHeight": "22px",
+              "centerHit": {
+                "selector": "form.ant-form.ant-form-vertical.css-dev-only-do-not-override-5uvb3z",
+                "text": "1 checkout field(s) need attention. Enter a valid emailContactEmailEnter a valid emailChecking out as guest. You can create an account after",
+                "inside": false
+              }
+            },
+            "mobilePayBar": {
+              "selector": ".checkout-page__mobilePayBar",
+              "text": "Payable$7.15Complete address",
+              "top": 746.203125,
+              "bottom": 834,
+              "left": 10,
+              "right": 380,
+              "width": 370,
+              "height": 87.796875,
+              "scrollWidth": 370,
+              "clientWidth": 370,
+              "scrollHeight": 87,
+              "clientHeight": 87,
+              "position": "fixed",
+              "zIndex": "7600",
+              "overflowX": "visible",
+              "overflowY": "visible",
+              "fontSize": "14px",
+              "lineHeight": "22px",
+              "centerHit": {
+                "selector": "button.ant-btn.css-dev-only-do-not-override-5uvb3z.ant-btn-primary.ant-btn-color-primary.ant-btn-variant-solid",
+                "text": "Complete address",
+                "inside": true
+              }
+            },
+            "submitButton": {
+              "selector": ".checkout-page__mobilePayBar .ant-btn, .checkout-page__submitButton",
+              "text": "Create order and pay $7.15",
+              "top": 0,
+              "bottom": 0,
+              "left": 0,
+              "right": 0,
+              "width": 0,
+              "height": 0,
+              "scrollWidth": 0,
+              "clientWidth": 0,
+              "scrollHeight": 0,
+              "clientHeight": 0,
+              "position": "relative",
+              "zIndex": "auto",
+              "overflowX": "hidden",
+              "overflowY": "hidden",
+              "fontSize": "15px",
+              "lineHeight": "17.25px",
+              "centerHit": {
+                "selector": "div.checkout-page.checkout-page--en",
+                "text": "Checkout readinessConfirm orderFree shipping, gifts and coupons are checked before you pay.Payable$7.15ShippingFree shipping is active for t",
+                "inside": false
+              }
+            },
+            "bottomNav": null,
+            "support": {
+              "selector": ".app-support-launcher",
+              "text": "",
+              "top": 0,
+              "bottom": 0,
+              "left": 0,
+              "right": 0,
+              "width": 0,
+              "height": 0,
+              "scrollWidth": 0,
+              "clientWidth": 0,
+              "scrollHeight": 0,
+              "clientHeight": 0,
+              "position": "fixed",
+              "zIndex": "2600",
+              "overflowX": "visible",
+              "overflowY": "visible",
+              "fontSize": "20px",
+              "lineHeight": "normal",
+              "centerHit": {
+                "selector": "div.checkout-page.checkout-page--en",
+                "text": "Checkout readinessConfirm orderFree shipping, gifts and coupons are checked before you pay.Payable$7.15ShippingFree shipping is active for t",
+                "inside": false
+              }
+            },
+            "cascaderDropdown": null,
+            "cascaderMenus": null
+          },
+          "paymentMethodCount": 2,
+          "paymentUnavailableVisible": false,
+          "overlaps": {
+            "mobilePayBarVsBottomNav": null,
+            "submitButtonVsBottomNav": null,
+            "mobilePayBarVsSupport": {
+              "overlaps": false,
+              "x": 0,
+              "y": 0,
+              "area": 0
+            },
+            "submitButtonVsSupport": {
+              "overlaps": false,
+              "x": 0,
+              "y": 0,
+              "area": 0
+            },
+            "cascaderVsBottomNav": null
+          },
+          "smallTargets": [
+            {
+              "selector": "input#region.ant-select-selection-search-input",
+              "text": "Country / state / city / municipality / neighborhood: Select the full region",
+              "top": 564.984375,
+              "bottom": 594.984375,
+              "left": 37,
+              "right": 319,
+              "width": 282,
+              "height": 30,
+              "fontSize": "16px"
+            }
+          ],
+          "bottomObscured": [],
+          "overflowElements": [
+            {
+              "selector": "span.ant-badge.css-dev-only-do-not-override-5uvb3z",
+              "text": "1",
+              "top": -1232,
+              "left": 349,
+              "right": 363,
+              "width": 14,
+              "overflowRight": -27,
+              "scrollWidth": 22,
+              "clientWidth": 14,
+              "overflowX": "visible"
+            },
+            {
+              "selector": "div.ant-progress.ant-progress-status-normal.ant-progress-circle.ant-progress-show-info.css-dev-only-do-not-override-5uvb3z",
+              "text": "75%",
+              "top": -577.109375,
+              "left": 23,
+              "right": 73,
+              "width": 50,
+              "overflowRight": -317,
+              "scrollWidth": 58,
+              "clientWidth": 50,
+              "overflowX": "visible"
+            },
+            {
+              "selector": "div.checkout-page__validationLiveRegion",
+              "text": "1 checkout field(s) need attention. Enter a valid email",
+              "top": 12.390625,
+              "left": 11,
+              "right": 12,
+              "width": 1,
+              "overflowRight": -378,
+              "scrollWidth": 329,
+              "clientWidth": 1,
+              "overflowX": "hidden"
+            }
+          ],
+          "formErrors": [
+            {
+              "text": "Enter a valid email",
+              "top": 155.390625,
+              "bottom": 170.984375,
+              "width": 324,
+              "height": 15.59375,
+              "fontSize": "12px",
+              "color": "rgb(143, 45, 23)"
+            }
+          ],
+          "visibleMessage": "",
+          "screenshot": "phone-390-app-validation-errors.png"
+        }
+      ],
+      "consoleMessages": [
+        {
+          "type": "warning",
+          "text": "⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: Unexpected token 'S', \"Size: Larg\"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156010:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156043:17)\n    at renderItem (http://127.0.0.1:4200/static/js/src_pages_Checkout_tsx-src_utils_productOptions_ts.chunk.js:7486:102)\n    at renderInternalItem (http://127.0.0.1:4200/static/js/bundle.js:33197:8)",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: Unexpected token 'S', \"Size: Larg\"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156010:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156043:17)\n    at renderItem (http://127.0.0.1:4200/static/js/src_pages_Checkout_tsx-src_utils_productOptions_ts.chunk.js:7486:102)\n    at renderInternalItem (http://127.0.0.1:4200/static/js/bundle.js:33197:8)",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: Unexpected token 'S', \"Size: Larg\"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156010:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156043:17)\n    at renderItem (http://127.0.0.1:4200/static/js/src_pages_Checkout_tsx-src_utils_productOptions_ts.chunk.js:7486:102)\n    at renderInternalItem (http://127.0.0.1:4200/static/js/bundle.js:33197:8)",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: Unexpected token 'S', \"Size: Larg\"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156010:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156043:17)\n    at renderItem (http://127.0.0.1:4200/static/js/src_pages_Checkout_tsx-src_utils_productOptions_ts.chunk.js:7486:102)\n    at renderInternalItem (http://127.0.0.1:4200/static/js/bundle.js:33197:8)",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: Unexpected token 'S', \"Size: Larg\"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156010:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156043:17)\n    at renderItem (http://127.0.0.1:4200/static/js/src_pages_Checkout_tsx-src_utils_productOptions_ts.chunk.js:7486:102)\n    at renderInternalItem (http://127.0.0.1:4200/static/js/bundle.js:33197:8)",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: Unexpected token 'S', \"Size: Larg\"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156010:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156043:17)\n    at renderItem (http://127.0.0.1:4200/static/js/src_pages_Checkout_tsx-src_utils_productOptions_ts.chunk.js:7486:102)\n    at renderInternalItem (http://127.0.0.1:4200/static/js/bundle.js:33197:8)",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: Unexpected token 'S', \"Size: Larg\"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156010:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156043:17)\n    at renderItem (http://127.0.0.1:4200/static/js/src_pages_Checkout_tsx-src_utils_productOptions_ts.chunk.js:7486:102)\n    at renderInternalItem (http://127.0.0.1:4200/static/js/bundle.js:33197:8)",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: Unexpected token 'S', \"Size: Larg\"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156010:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156043:17)\n    at renderItem (http://127.0.0.1:4200/static/js/src_pages_Checkout_tsx-src_utils_productOptions_ts.chunk.js:7486:102)\n    at renderInternalItem (http://127.0.0.1:4200/static/js/bundle.js:33197:8)",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: Unexpected token 'S', \"Size: Larg\"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156010:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156043:17)\n    at renderItem (http://127.0.0.1:4200/static/js/src_pages_Checkout_tsx-src_utils_productOptions_ts.chunk.js:7486:102)\n    at renderInternalItem (http://127.0.0.1:4200/static/js/bundle.js:33197:8)",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: Unexpected token 'S', \"Size: Larg\"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156010:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156043:17)\n    at renderItem (http://127.0.0.1:4200/static/js/src_pages_Checkout_tsx-src_utils_productOptions_ts.chunk.js:7486:102)\n    at renderInternalItem (http://127.0.0.1:4200/static/js/bundle.js:33197:8)",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: Unexpected token 'S', \"Size: Larg\"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156010:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156043:17)\n    at renderItem (http://127.0.0.1:4200/static/js/src_pages_Checkout_tsx-src_utils_productOptions_ts.chunk.js:7486:102)\n    at renderInternalItem (http://127.0.0.1:4200/static/js/bundle.js:33197:8)",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: Unexpected token 'S', \"Size: Larg\"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156010:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156043:17)\n    at renderItem (http://127.0.0.1:4200/static/js/src_pages_Checkout_tsx-src_utils_productOptions_ts.chunk.js:7486:102)\n    at renderInternalItem (http://127.0.0.1:4200/static/js/bundle.js:33197:8)",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: Unexpected token 'S', \"Size: Larg\"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156010:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156043:17)\n    at renderItem (http://127.0.0.1:4200/static/js/src_pages_Checkout_tsx-src_utils_productOptions_ts.chunk.js:7486:102)\n    at renderInternalItem (http://127.0.0.1:4200/static/js/bundle.js:33197:8)",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: Unexpected token 'S', \"Size: Larg\"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156010:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156043:17)\n    at renderItem (http://127.0.0.1:4200/static/js/src_pages_Checkout_tsx-src_utils_productOptions_ts.chunk.js:7486:102)\n    at renderInternalItem (http://127.0.0.1:4200/static/js/bundle.js:33197:8)",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: Unexpected token 'S', \"Size: Larg\"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156010:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156043:17)\n    at renderItem (http://127.0.0.1:4200/static/js/src_pages_Checkout_tsx-src_utils_productOptions_ts.chunk.js:7486:102)\n    at renderInternalItem (http://127.0.0.1:4200/static/js/bundle.js:33197:8)",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: Unexpected token 'S', \"Size: Larg\"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156010:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156043:17)\n    at renderItem (http://127.0.0.1:4200/static/js/src_pages_Checkout_tsx-src_utils_productOptions_ts.chunk.js:7486:102)\n    at renderInternalItem (http://127.0.0.1:4200/static/js/bundle.js:33197:8)",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: Unexpected token 'S', \"Size: Larg\"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156010:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156043:17)\n    at renderItem (http://127.0.0.1:4200/static/js/src_pages_Checkout_tsx-src_utils_productOptions_ts.chunk.js:7486:102)\n    at renderInternalItem (http://127.0.0.1:4200/static/js/bundle.js:33197:8)",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: Unexpected token 'S', \"Size: Larg\"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156010:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156043:17)\n    at renderItem (http://127.0.0.1:4200/static/js/src_pages_Checkout_tsx-src_utils_productOptions_ts.chunk.js:7486:102)\n    at renderInternalItem (http://127.0.0.1:4200/static/js/bundle.js:33197:8)",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: Unexpected token 'S', \"Size: Larg\"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156010:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156043:17)\n    at renderItem (http://127.0.0.1:4200/static/js/src_pages_Checkout_tsx-src_utils_productOptions_ts.chunk.js:7486:102)\n    at renderInternalItem (http://127.0.0.1:4200/static/js/bundle.js:33197:8)",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: Unexpected token 'S', \"Size: Larg\"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156010:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156043:17)\n    at renderItem (http://127.0.0.1:4200/static/js/src_pages_Checkout_tsx-src_utils_productOptions_ts.chunk.js:7486:102)\n    at renderInternalItem (http://127.0.0.1:4200/static/js/bundle.js:33197:8)",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: Unexpected token 'S', \"Size: Larg\"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156010:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156043:17)\n    at renderItem (http://127.0.0.1:4200/static/js/src_pages_Checkout_tsx-src_utils_productOptions_ts.chunk.js:7486:102)\n    at renderInternalItem (http://127.0.0.1:4200/static/js/bundle.js:33197:8)",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: Unexpected token 'S', \"Size: Larg\"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156010:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156043:17)\n    at renderItem (http://127.0.0.1:4200/static/js/src_pages_Checkout_tsx-src_utils_productOptions_ts.chunk.js:7486:102)\n    at renderInternalItem (http://127.0.0.1:4200/static/js/bundle.js:33197:8)",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: Unexpected token 'S', \"Size: Larg\"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156010:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156043:17)\n    at renderItem (http://127.0.0.1:4200/static/js/src_pages_Checkout_tsx-src_utils_productOptions_ts.chunk.js:7486:102)\n    at renderInternalItem (http://127.0.0.1:4200/static/js/bundle.js:33197:8)",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: Unexpected token 'S', \"Size: Larg\"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156010:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156043:17)\n    at renderItem (http://127.0.0.1:4200/static/js/src_pages_Checkout_tsx-src_utils_productOptions_ts.chunk.js:7486:102)\n    at renderInternalItem (http://127.0.0.1:4200/static/js/bundle.js:33197:8)",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: Unexpected token 'S', \"Size: Larg\"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156010:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156043:17)\n    at renderItem (http://127.0.0.1:4200/static/js/src_pages_Checkout_tsx-src_utils_productOptions_ts.chunk.js:7486:102)\n    at renderInternalItem (http://127.0.0.1:4200/static/js/bundle.js:33197:8)",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: Unexpected token 'S', \"Size: Larg\"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156010:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156043:17)\n    at renderItem (http://127.0.0.1:4200/static/js/src_pages_Checkout_tsx-src_utils_productOptions_ts.chunk.js:7486:102)\n    at renderInternalItem (http://127.0.0.1:4200/static/js/bundle.js:33197:8)",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: Unexpected token 'S', \"Size: Larg\"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156010:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156043:17)\n    at renderItem (http://127.0.0.1:4200/static/js/src_pages_Checkout_tsx-src_utils_productOptions_ts.chunk.js:7486:102)\n    at renderInternalItem (http://127.0.0.1:4200/static/js/bundle.js:33197:8)",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: Unexpected token 'S', \"Size: Larg\"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156010:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156043:17)\n    at renderItem (http://127.0.0.1:4200/static/js/src_pages_Checkout_tsx-src_utils_productOptions_ts.chunk.js:7486:102)\n    at renderInternalItem (http://127.0.0.1:4200/static/js/bundle.js:33197:8)",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: Unexpected token 'S', \"Size: Larg\"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156010:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156043:17)\n    at renderItem (http://127.0.0.1:4200/static/js/src_pages_Checkout_tsx-src_utils_productOptions_ts.chunk.js:7486:102)\n    at renderInternalItem (http://127.0.0.1:4200/static/js/bundle.js:33197:8)",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: Unexpected token 'S', \"Size: Larg\"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156010:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156043:17)\n    at renderItem (http://127.0.0.1:4200/static/js/src_pages_Checkout_tsx-src_utils_productOptions_ts.chunk.js:7486:102)\n    at renderInternalItem (http://127.0.0.1:4200/static/js/bundle.js:33197:8)",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: Unexpected token 'S', \"Size: Larg\"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156010:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156043:17)\n    at renderItem (http://127.0.0.1:4200/static/js/src_pages_Checkout_tsx-src_utils_productOptions_ts.chunk.js:7486:102)\n    at renderInternalItem (http://127.0.0.1:4200/static/js/bundle.js:33197:8)",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: Unexpected token 'S', \"Size: Larg\"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156010:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156043:17)\n    at renderItem (http://127.0.0.1:4200/static/js/src_pages_Checkout_tsx-src_utils_productOptions_ts.chunk.js:7486:102)\n    at renderInternalItem (http://127.0.0.1:4200/static/js/bundle.js:33197:8)",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: Unexpected token 'S', \"Size: Larg\"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156010:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156043:17)\n    at renderItem (http://127.0.0.1:4200/static/js/src_pages_Checkout_tsx-src_utils_productOptions_ts.chunk.js:7486:102)\n    at renderInternalItem (http://127.0.0.1:4200/static/js/bundle.js:33197:8)",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: Unexpected token 'S', \"Size: Larg\"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156010:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156043:17)\n    at renderItem (http://127.0.0.1:4200/static/js/src_pages_Checkout_tsx-src_utils_productOptions_ts.chunk.js:7486:102)\n    at renderInternalItem (http://127.0.0.1:4200/static/js/bundle.js:33197:8)",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: Unexpected token 'S', \"Size: Larg\"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156010:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156043:17)\n    at renderItem (http://127.0.0.1:4200/static/js/src_pages_Checkout_tsx-src_utils_productOptions_ts.chunk.js:7486:102)\n    at renderInternalItem (http://127.0.0.1:4200/static/js/bundle.js:33197:8)",
+          "url": "http://127.0.0.1:4200/checkout"
+        },
+        {
+          "type": "warning",
+          "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: Unexpected token 'S', \"Size: Larg\"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156010:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:156043:17)\n    at renderItem (http://127.0.0.1:4200/static/js/src_pages_Checkout_tsx-src_utils_productOptions_ts.chunk.js:7486:102)\n    at renderInternalItem (http://127.0.0.1:4200/static/js/bundle.js:33197:8)",
+          "url": "http://127.0.0.1:4200/checkout"
+        }
+      ],
+      "networkFailures": [],
+      "apiRequests": [
+        {
+          "method": "GET",
+          "pathname": "/api/app/config",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/announcements/active",
+          "search": "?limit=4"
+        },
+        {
+          "method": "POST",
+          "pathname": "/api/errors",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/products/add-on-candidates",
+          "search": "?targetAmount=769.01&limit=4&excludedIds=101"
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/payments/channels",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/products/add-on-candidates",
+          "search": "?targetAmount=1169.01&limit=4&excludedIds=101"
+        },
+        {
+          "method": "POST",
+          "pathname": "/api/errors",
+          "search": ""
+        },
+        {
+          "method": "POST",
+          "pathname": "/api/errors",
+          "search": ""
+        }
+      ],
+      "error": null
+    }
+  ],
+  "issues": [],
+  "consoleMessageCount": 92,
+  "networkFailureCount": 0
+}

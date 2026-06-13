@@ -1,0 +1,10 @@
+[Unit]
+Description=Run ShopTest latest-code activation and APK build every hour
+
+[Timer]
+OnCalendar=*-*-* *:05:00
+Persistent=true
+Unit=shoptest-hourly-release.service
+
+[Install]
+WantedBy=timers.target

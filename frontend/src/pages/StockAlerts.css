@@ -1074,3 +1074,143 @@
     min-width: 44px;
   }
 }
+
+/* F3442: keep the Stock Alerts mobile action clear of the shared bottom nav. */
+@media (max-width: 860px) {
+  .stock-alerts.stock-alerts-page {
+    --stock-alerts-mobile-action-height: 76px;
+    --stock-alerts-mobile-action-gap: 12px;
+    --stock-alerts-mobile-action-bottom: calc(var(--shop-mobile-bottom-nav-height, 74px) + var(--stock-alerts-mobile-action-gap) + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(
+      var(--stock-alerts-mobile-action-bottom)
+      + var(--stock-alerts-mobile-action-height)
+      + 24px
+    ) !important;
+    scroll-padding-bottom: calc(
+      var(--stock-alerts-mobile-action-bottom)
+      + var(--stock-alerts-mobile-action-height)
+      + 16px
+    );
+  }
+
+  .stock-alerts.stock-alerts-page .stock-alerts__mobileAction {
+    position: fixed !important;
+    top: auto !important;
+    right: max(8px, env(safe-area-inset-right, 0px)) !important;
+    bottom: var(--stock-alerts-mobile-action-bottom) !important;
+    left: max(8px, env(safe-area-inset-left, 0px)) !important;
+    z-index: 1240 !important;
+    width: auto !important;
+    min-height: var(--stock-alerts-mobile-action-height);
+    max-width: calc(100vw - 16px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)) !important;
+    border: 1px solid #e4ebe4;
+    border-radius: 14px;
+    transform: translateZ(0);
+  }
+
+  body.shop-mobile-app .stock-alerts.stock-alerts-page .stock-alerts__mobileAction {
+    z-index: 8998 !important;
+  }
+}
+
+@media (max-width: 860px) and (max-height: 430px) {
+  .stock-alerts.stock-alerts-page {
+    padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 24px + env(safe-area-inset-bottom, 0px)) !important;
+    scroll-padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 36px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .stock-alerts.stock-alerts-page .stock-alerts__mobileAction {
+    position: static !important;
+    inset: auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 0 10px !important;
+    transform: none !important;
+  }
+}
+
+/* F3517: App account utility labels must remain at least 12px after compact
+   mobile rail overrides. */
+@media (max-width: 860px) {
+  .stock-alerts.stock-alerts-page .stock-alerts__signal span,
+  .stock-alerts.stock-alerts-page .stock-alerts__mobileActionCopy span,
+  .stock-alerts.stock-alerts-page .stock-alerts__mobileAction .ant-btn > span:not(.anticon):not(.ant-btn-icon),
+  .stock-alerts.stock-alerts-page .stock-alerts__nextActionMeta .ant-tag {
+    font-size: 12px !important;
+    line-height: 1.25 !important;
+  }
+}
+
+/* APP stock-alert card links and timestamps must remain app-native and tappable. */
+.stock-alerts__imageLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.stock-alerts__productLink {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  color: #173f2b;
+  font-weight: 800;
+  line-height: 1.25;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+
+.stock-alerts__productLink:hover,
+.stock-alerts__productLink:focus-visible {
+  color: #ee4d2d;
+  text-decoration: none;
+}
+
+@media (max-width: 860px) {
+  .stock-alerts.stock-alerts-page {
+    scroll-padding-bottom: calc(var(--stock-alerts-mobile-action-bottom, 88px) + var(--stock-alerts-mobile-action-height, 76px) + 24px) !important;
+  }
+
+  .stock-alerts.stock-alerts-page .stock-alerts__item {
+    scroll-margin-bottom: calc(var(--stock-alerts-mobile-action-bottom, 88px) + var(--stock-alerts-mobile-action-height, 76px) + 16px);
+  }
+
+  .stock-alerts.stock-alerts-page .stock-alerts__imageLink {
+    min-width: 56px;
+    min-height: 56px;
+  }
+
+  .stock-alerts.stock-alerts-page .stock-alerts__productLink {
+    min-height: 44px;
+    color: #173f2b !important;
+    -webkit-text-fill-color: #173f2b !important;
+    text-decoration: none !important;
+    white-space: normal;
+    word-break: normal;
+  }
+
+  .stock-alerts.stock-alerts-page .stock-alerts__productLink:hover,
+  .stock-alerts.stock-alerts-page .stock-alerts__productLink:focus-visible {
+    color: #ee4d2d !important;
+    -webkit-text-fill-color: #ee4d2d !important;
+    text-decoration: none !important;
+  }
+
+  .stock-alerts.stock-alerts-page .stock-alerts__watchTime {
+    display: block !important;
+    min-height: 32px;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    white-space: normal !important;
+    overflow-wrap: break-word;
+    word-break: normal;
+    -webkit-box-orient: initial;
+    -webkit-line-clamp: unset !important;
+  }
+
+  .stock-alerts.stock-alerts-page .stock-alerts__itemDetails {
+    gap: 8px;
+  }
+}

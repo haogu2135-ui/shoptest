@@ -15,6 +15,7 @@ import { dispatchDomEvent } from '../utils/domEvents';
 import { getLocalStorageItem } from '../utils/safeStorage';
 import { allSettledWithConcurrency } from '../utils/asyncBatch';
 import { formatProductSpecLabel } from '../utils/productSpecLabels';
+import { reportNonBlockingError } from '../utils/nonBlockingError';
 import './ProductCompare.css';
 
 const { Title, Text } = Typography;
@@ -102,7 +103,8 @@ const ProductCompare: React.FC = () => {
         .filter((id) => !nextProducts.some((product) => product.id === id))
         .forEach((id) => removeCompareProduct(id));
       setProducts(nextProducts);
-    } catch {
+    } catch (error) {
+      reportNonBlockingError('ProductCompare.fetchComparedProducts', error);
       message.error(t('pages.compare.loadFailed'));
     } finally {
       setLoading(false);
@@ -191,7 +193,8 @@ const ProductCompare: React.FC = () => {
       }
       message.success(t('messages.addCartSuccess'));
       dispatchDomEvent('shop:open-cart');
-    } catch {
+    } catch (error) {
+      reportNonBlockingError('ProductCompare.addToCart', error);
       message.error(t('messages.addFailed'));
     }
   };
@@ -222,7 +225,8 @@ const ProductCompare: React.FC = () => {
         message.success(t('pages.wishlist.addedAllToCart', { count: directReadyProducts.length }));
       }
       dispatchDomEvent('shop:open-cart');
-    } catch {
+    } catch (error) {
+      reportNonBlockingError('ProductCompare.addDirectReadyProductsToCart', error);
       message.error(t('messages.addFailed'));
     }
   };
@@ -432,21 +436,28 @@ const ProductCompare: React.FC = () => {
     ...Object.fromEntries(products.map((product) => [`product-${product.id}`, row.render(product)])),
   }));
 
+  const compareAttributeHeader = t('pages.compare.attribute');
+
   const columns = [
     {
-      title: t('pages.compare.attribute'),
+      title: compareAttributeHeader,
       dataIndex: 'attribute',
       key: 'attribute',
       fixed: 'left' as const,
       width: 150,
+      onCell: () => ({ 'data-label': compareAttributeHeader } as React.TdHTMLAttributes<HTMLElement>),
       render: (value: React.ReactNode) => <Text strong className="product-compare__attribute">{value}</Text>,
     },
-    ...products.map((product) => ({
-      title: compareProductName(product),
-      dataIndex: `product-${product.id}`,
-      key: `product-${product.id}`,
-      width: 240,
-    })),
+    ...products.map((product) => {
+      const productName = compareProductName(product);
+      return {
+        title: productName,
+        dataIndex: `product-${product.id}`,
+        key: `product-${product.id}`,
+        width: 240,
+        onCell: () => ({ 'data-label': productName } as React.TdHTMLAttributes<HTMLElement>),
+      };
+    }),
   ];
 
   return (
@@ -653,6 +664,7 @@ const ProductCompare: React.FC = () => {
               </section>
             ) : null}
             <Table
+              className="product-compare__table"
               bordered
               pagination={false}
               columns={columns}

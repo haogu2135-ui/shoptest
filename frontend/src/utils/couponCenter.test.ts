@@ -3,6 +3,7 @@ import {
   getCartItemCount,
   getCartSubtotal,
   getCouponEstimatedValue,
+  getCouponPayablePercent,
   getCouponRemaining,
   sortPublicCoupons,
   toSafeArray,
@@ -47,10 +48,22 @@ describe('coupon center helpers', () => {
       discountPercent: 80,
       maxDiscountAmount: -10,
     } as unknown as CouponPublic)).toBe(20);
+    expect(getCouponPayablePercent({
+      discountPercent: 80,
+    })).toBe(80);
 
     expect(getCouponRemaining({
       remainingQuantity: -3.9,
     })).toBe(0);
+  });
+
+  it('documents discountPercent as payable percent instead of savings percent', () => {
+    const typesSource = require('fs').readFileSync(require('path').join(__dirname, '../types.ts'), 'utf8') as string;
+    const helperSource = require('fs').readFileSync(require('path').join(__dirname, 'couponCenter.ts'), 'utf8') as string;
+
+    expect((typesSource.match(/stores the payable percent/g) || []).length).toBeGreaterThanOrEqual(3);
+    expect(helperSource).toContain('export const getCouponPayablePercent');
+    expect(helperSource).toContain('100 - payablePercent');
   });
 
   it('sorts and filters public coupons without mutating the source list', () => {

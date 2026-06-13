@@ -34,6 +34,12 @@ spring:
     username: ${DB_USERNAME:shop}
     password: ${DB_PASSWORD:}
     driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: ${DB_HIKARI_MAXIMUM_POOL_SIZE:20}
+      minimum-idle: ${DB_HIKARI_MINIMUM_IDLE:5}
+      connection-timeout: ${DB_HIKARI_CONNECTION_TIMEOUT_MS:10000}
+      idle-timeout: ${DB_HIKARI_IDLE_TIMEOUT_MS:300000}
+      max-lifetime: ${DB_HIKARI_MAX_LIFETIME_MS:1800000}
 
   redis:
     host: ${REDIS_HOST:localhost}
@@ -54,9 +60,16 @@ spring:
 app:
   storefront-base-url: ${STOREFRONT_BASE_URL:https://pet.686888666.xyz}
   cors:
-    allowed-origin-patterns: ${CORS_ALLOWED_ORIGIN_PATTERNS:https://pet.686888666.xyz,http://localhost:*,http://127.0.0.1:*,http://10.*:*,http://172.*:*,http://192.168.*:*}
+    allowed-origin-patterns: ${CORS_ALLOWED_ORIGIN_PATTERNS:https://pet.686888666.xyz,http://localhost:*,http://127.0.0.1:*}
   websocket:
     allowed-origin-patterns: ${WEBSOCKET_ALLOWED_ORIGIN_PATTERNS:}
+
+observability:
+  request-latency:
+    enabled: ${OBSERVABILITY_REQUEST_LATENCY_ENABLED:true}
+  slow-request:
+    api-threshold-ms: ${OBSERVABILITY_SLOW_REQUEST_API_THRESHOLD_MS:1000}
+    admin-threshold-ms: ${OBSERVABILITY_SLOW_REQUEST_ADMIN_THRESHOLD_MS:5000}
 
 mybatis:
   mapper-locations: classpath:mapper/*.xml

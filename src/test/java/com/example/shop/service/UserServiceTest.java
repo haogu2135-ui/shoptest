@@ -8,11 +8,15 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
@@ -30,8 +34,8 @@ class UserServiceTest {
         userMapper = mock(UserMapper.class);
         passwordEncoder = mock(PasswordEncoder.class);
         when(userMapper.acquireAdminBootstrapLock()).thenReturn(1L);
-        when(passwordEncoder.encode("secret123")).thenReturn("encoded-secret");
-        when(passwordEncoder.encode("Newpass123")).thenReturn("encoded-newpass");
+        when(passwordEncoder.encode("StrongPass123")).thenReturn("encoded-secret");
+        when(passwordEncoder.encode("NewPass123456")).thenReturn("encoded-newpass");
         service = new UserService(userMapper, passwordEncoder);
     }
 
@@ -42,25 +46,24 @@ class UserServiceTest {
         assertEquals(12L, service.count());
 
         verify(userMapper).countAll();
-        verify(userMapper, never()).findAll();
     }
 
     @Test
-    void searchNormalizesTextFilters() {
-        when(userMapper.search("Jane Doe", "ADMIN", "ACTIVE")).thenReturn(List.of());
+    void countSearchNormalizesTextFilters() {
+        when(userMapper.countSearch("Jane Doe", "ADMIN", "ACTIVE")).thenReturn(12L);
 
-        service.search("  Jane\u0000   Doe  ", " ADMIN ", " ACTIVE ");
+        assertEquals(12L, service.countSearch("  Jane\u0000   Doe  ", " ADMIN ", " ACTIVE "));
 
-        verify(userMapper).search("Jane Doe", "ADMIN", "ACTIVE");
+        verify(userMapper).countSearch("Jane Doe", "ADMIN", "ACTIVE");
     }
 
     @Test
-    void searchConvertsBlankFiltersToNull() {
-        when(userMapper.search(null, null, null)).thenReturn(List.of());
+    void countSearchConvertsBlankFiltersToNull() {
+        when(userMapper.countSearch(null, null, null)).thenReturn(0L);
 
-        service.search(" \u0000 ", " ", null);
+        assertEquals(0L, service.countSearch(" \u0000 ", " ", null));
 
-        verify(userMapper).search(null, null, null);
+        verify(userMapper).countSearch(null, null, null);
     }
 
     @Test
@@ -101,10 +104,31 @@ class UserServiceTest {
     }
 
     @Test
+    void adminSummaryUsesSingleAggregateMapperQueryContract() throws Exception {
+        String userServiceSource = Files.readString(Path.of("src/main/java/com/example/shop/service/UserService.java"));
+        String userMapperSource = Files.readString(Path.of("src/main/java/com/example/shop/repository/UserMapper.java"));
+        String mapperXml = Files.readString(Path.of("src/main/resources/mapper/UserMapper.xml"));
+        int start = mapperXml.indexOf("<select id=\"adminSummary\"");
+        int end = mapperXml.indexOf("</select>", start);
+        assertTrue(start >= 0);
+        assertTrue(end > start);
+        String adminSummaryXml = mapperXml.substring(start, end);
+
+        assertFalse(Files.exists(Path.of("src/main/java/com/example/shop/service/impl/UserServiceImpl.java")));
+        assertFalse(userServiceSource.contains("getReportSummary"));
+        assertFalse(userServiceSource.contains("countUsersByDateRange"));
+        assertTrue(userServiceSource.contains("userMapper.adminSummary("));
+        assertTrue(userMapperSource.contains("Map<String, Object> adminSummary"));
+        assertTrue(adminSummaryXml.contains("COUNT(*) AS totalUsers"));
+        assertTrue(adminSummaryXml.contains("SUM(CASE WHEN"));
+        assertFalse(adminSummaryXml.contains("countUsersByDateRange"));
+    }
+
+    @Test
     void registerNormalizesFieldsAndChecksDuplicatesBeforeInsert() {
         User user = new User();
         user.setUsername("  NewUser  ");
-        user.setPassword("secret123");
+        user.setPassword("StrongPass123");
         user.setEmail("  USER@Example.COM  ");
         user.setPhone("  15551234567  ");
         doAnswer(invocation -> {
@@ -151,7 +175,7 @@ class UserServiceTest {
     void registerRejectsDuplicateUsernameBeforeDatabaseConstraintFailure() {
         User user = new User();
         user.setUsername("duplicate");
-        user.setPassword("secret123");
+        user.setPassword("StrongPass123");
         user.setEmail("new@example.com");
         user.setPhone("15551234567");
         when(userMapper.findByUsername("duplicate")).thenReturn(new User());
@@ -166,7 +190,7 @@ class UserServiceTest {
     void registerRejectsMissingEmailBeforeDatabaseConstraintFailure() {
         User user = new User();
         user.setUsername("newuser");
-        user.setPassword("secret123");
+        user.setPassword("StrongPass123");
         user.setPhone("15551234567");
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> service.register(user));
@@ -176,7 +200,7 @@ class UserServiceTest {
     }
 
     @Test
-    void registerRejectsPasswordWithoutLettersAndNumbers() {
+    void registerRejectsPasswordUnderMinimumLength() {
         User user = new User();
         user.setUsername("newuser");
         user.setPassword("password");
@@ -185,7 +209,36 @@ class UserServiceTest {
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> service.register(user));
 
-        assertEquals("Password must include letters and numbers", exception.getMessage());
+        assertEquals("Password must be 12 to 128 characters", exception.getMessage());
+        verify(userMapper, never()).insert(user);
+    }
+
+    @Test
+    void registerRejectsCommonPassword() {
+        User user = new User();
+        user.setUsername("newuser");
+        user.setPassword("Password1234");
+        user.setEmail("new@example.com");
+        user.setPhone("15551234567");
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> service.register(user));
+
+        assertEquals("Password is too common", exception.getMessage());
+        verify(userMapper, never()).insert(user);
+    }
+
+    @Test
+    void registerRejectsPasswordWithTooFewCharacterClasses() {
+        User user = new User();
+        user.setUsername("newuser");
+        user.setPassword("lowercase1234");
+        user.setEmail("new@example.com");
+        user.setPhone("15551234567");
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> service.register(user));
+
+        assertEquals("Password must include at least three of: lowercase letters, uppercase letters, numbers, and symbols",
+                exception.getMessage());
         verify(userMapper, never()).insert(user);
     }
 
@@ -198,7 +251,7 @@ class UserServiceTest {
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> service.registerAdmin(admin));
 
-        assertEquals("Admin password must include letters and numbers", exception.getMessage());
+        assertEquals("Admin password must be 12 to 128 characters", exception.getMessage());
         verify(userMapper, never()).insert(admin);
     }
 
@@ -206,7 +259,7 @@ class UserServiceTest {
     void registerAdminRejectsBootstrapAfterAdminExists() {
         User admin = new User();
         admin.setUsername("admin");
-        admin.setPassword("secret123");
+        admin.setPassword("StrongPass123");
         admin.setEmail("admin@example.com");
         when(userMapper.countAdminUsers()).thenReturn(1L);
 
@@ -214,7 +267,7 @@ class UserServiceTest {
 
         assertEquals("Admin bootstrap is already completed", exception.getMessage());
         verify(userMapper, never()).insert(admin);
-        verify(passwordEncoder, never()).encode("secret123");
+        verify(passwordEncoder, never()).encode("StrongPass123");
         verify(userMapper).releaseAdminBootstrapLock();
     }
 
@@ -222,7 +275,7 @@ class UserServiceTest {
     void registerAdminRejectsWhenBootstrapLockCannotBeAcquired() {
         User admin = new User();
         admin.setUsername("admin");
-        admin.setPassword("secret123");
+        admin.setPassword("StrongPass123");
         admin.setEmail("admin@example.com");
         when(userMapper.acquireAdminBootstrapLock()).thenReturn(0L);
 
@@ -238,7 +291,7 @@ class UserServiceTest {
     void registerRejectsPhoneLongerThanUsersColumn() {
         User user = new User();
         user.setUsername("newuser");
-        user.setPassword("secret123");
+        user.setPassword("StrongPass123");
         user.setEmail("new@example.com");
         user.setPhone("123456789012345678901");
 
@@ -252,7 +305,7 @@ class UserServiceTest {
     void registerStripsPhoneExtensionTextBeforeDuplicateLookup() {
         User user = new User();
         user.setUsername("newuser");
-        user.setPassword("secret123");
+        user.setPassword("StrongPass123");
         user.setEmail("new@example.com");
         user.setPhone(" +1 (555) 123-4567 ext 99 ");
 
@@ -267,7 +320,7 @@ class UserServiceTest {
     void registerRejectsDuplicateEmailBeforeDatabaseConstraintFailure() {
         User user = new User();
         user.setUsername("newuser");
-        user.setPassword("secret123");
+        user.setPassword("StrongPass123");
         user.setEmail("Taken@Example.COM");
         user.setPhone("15551234567");
         when(userMapper.findByUsernameOrPhoneOrEmail("taken@example.com")).thenReturn(new User());
@@ -279,10 +332,26 @@ class UserServiceTest {
     }
 
     @Test
+    void registerRejectsDuplicateEmailBeforeMissingPhoneValidation() {
+        User user = new User();
+        user.setUsername("newuser");
+        user.setPassword("StrongPass123");
+        user.setEmail("Taken@Example.COM");
+        user.setPhone("   ");
+        when(userMapper.findByUsernameOrPhoneOrEmail("taken@example.com")).thenReturn(new User());
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> service.register(user));
+
+        assertEquals("Email already registered", exception.getMessage());
+        verify(userMapper, never()).findByPhone(any());
+        verify(userMapper, never()).insert(user);
+    }
+
+    @Test
     void registerUpgradesGuestUserWithMatchingEmailInsteadOfBlockingRegistration() {
         User user = new User();
         user.setUsername("  NewUser  ");
-        user.setPassword("secret123");
+        user.setPassword("StrongPass123");
         user.setEmail("  USER@Example.COM  ");
         user.setPhone("  15551234567  ");
 
@@ -313,7 +382,7 @@ class UserServiceTest {
     void registerRejectsGuestEmailClaimWithoutVerification() {
         User user = new User();
         user.setUsername("NewUser");
-        user.setPassword("secret123");
+        user.setPassword("StrongPass123");
         user.setEmail("user@example.com");
         user.setPhone("15551234567");
 
@@ -399,10 +468,27 @@ class UserServiceTest {
     @Test
     void updatePasswordRejectsWeakNewPasswordBeforeCheckingOldPassword() {
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> service.updatePassword(5L, "old-secret", "password"));
+                () -> service.updatePassword(5L, "old-secret", "lowercase1234"));
 
-        assertEquals("New password must include letters and numbers", exception.getMessage());
+        assertEquals("New password must include at least three of: lowercase letters, uppercase letters, numbers, and symbols",
+                exception.getMessage());
         verify(userMapper, never()).findById(5L);
+        verify(userMapper, never()).updatePassword(
+                org.mockito.ArgumentMatchers.anyLong(),
+                org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void updatePasswordRejectsOverlongOldPasswordBeforePasswordMatch() {
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> service.updatePassword(5L, "O".repeat(129), "NewPass123456"));
+
+        assertEquals("Current password is too long", exception.getMessage());
+        verify(userMapper, never()).findById(5L);
+        verify(passwordEncoder, never()).matches(
+                org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.anyString());
         verify(userMapper, never()).updatePassword(
                 org.mockito.ArgumentMatchers.anyLong(),
                 org.mockito.ArgumentMatchers.anyString(),
@@ -417,7 +503,7 @@ class UserServiceTest {
         when(userMapper.findById(5L)).thenReturn(user);
         when(passwordEncoder.matches("old-secret", "encoded-old")).thenReturn(true);
 
-        service.updatePassword(5L, "old-secret", "Newpass123");
+        service.updatePassword(5L, "old-secret", "NewPass123456");
 
         verify(userMapper).updatePassword(
                 org.mockito.ArgumentMatchers.eq(5L),
@@ -434,7 +520,7 @@ class UserServiceTest {
         when(passwordEncoder.matches("wrong-secret", "encoded-old")).thenReturn(false);
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> service.updatePassword(5L, "wrong-secret", "Newpass123"));
+                () -> service.updatePassword(5L, "wrong-secret", "NewPass123456"));
 
         assertEquals("Current password is incorrect", exception.getMessage());
         verify(userMapper, never()).updatePassword(
@@ -446,9 +532,9 @@ class UserServiceTest {
     @Test
     void resetPasswordRejectsWeakNewPasswordBeforeAccountLookup() {
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> service.resetPassword("mia", "mia@example.com", "password"));
+                () -> service.resetPassword("mia", "mia@example.com", "Password1234"));
 
-        assertEquals("New password must include letters and numbers", exception.getMessage());
+        assertEquals("New password is too common", exception.getMessage());
         verify(userMapper, never()).findByUsernameOrPhoneOrEmail("mia");
         verify(userMapper, never()).updatePassword(
                 org.mockito.ArgumentMatchers.anyLong(),

@@ -5,10 +5,11 @@ import javax.validation.constraints.Size;
 
 public class UpdatePasswordRequest {
     @NotBlank
+    @Size(max = 128)
     private String oldPassword;
 
     @NotBlank
-    @Size(min = 8, max = 128)
+    @Size(min = 12, max = 128)
     private String newPassword;
 
     public String getOldPassword() {

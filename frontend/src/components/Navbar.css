@@ -515,6 +515,70 @@
   display: none !important;
 }
 
+/* Mobile task pages should prioritize the active checkout/detail/support task
+   instead of spending the first screen on global discovery controls. */
+@media (max-width: 780px) {
+  .shop-app-shell--product-detail .shop-nav__search,
+  .shop-app-shell--product-detail .shop-nav__mega,
+  .shop-app-shell--cart .shop-nav__search,
+  .shop-app-shell--cart .shop-nav__mega,
+  .shop-app-shell--checkout-flow .shop-nav__search,
+  .shop-app-shell--checkout-flow .shop-nav__mega,
+  .shop-app-shell--order-tracking-flow .shop-nav__search,
+  .shop-app-shell--order-tracking-flow .shop-nav__mega,
+  .shop-app-shell--auth-flow .shop-nav__search,
+  .shop-app-shell--auth-flow .shop-nav__mega {
+    display: none !important;
+  }
+
+  .shop-app-shell--product-detail .shop-nav__main,
+  .shop-app-shell--cart .shop-nav__main,
+  .shop-app-shell--checkout-flow .shop-nav__main,
+  .shop-app-shell--order-tracking-flow .shop-nav__main,
+  .shop-app-shell--auth-flow .shop-nav__main {
+    padding: 8px 0 !important;
+  }
+
+  .shop-app-shell--product-detail .shop-nav__inner--main,
+  .shop-app-shell--cart .shop-nav__inner--main,
+  .shop-app-shell--checkout-flow .shop-nav__inner--main,
+  .shop-app-shell--order-tracking-flow .shop-nav__inner--main,
+  .shop-app-shell--auth-flow .shop-nav__inner--main {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    grid-template-areas: "brand actions" !important;
+    gap: 8px !important;
+    align-items: center !important;
+  }
+
+  .shop-app-shell--product-detail .shop-nav__brand,
+  .shop-app-shell--cart .shop-nav__brand,
+  .shop-app-shell--checkout-flow .shop-nav__brand,
+  .shop-app-shell--order-tracking-flow .shop-nav__brand,
+  .shop-app-shell--auth-flow .shop-nav__brand {
+    grid-area: brand !important;
+    min-width: 0;
+  }
+
+  .shop-app-shell--product-detail .shop-nav__actions,
+  .shop-app-shell--cart .shop-nav__actions,
+  .shop-app-shell--checkout-flow .shop-nav__actions,
+  .shop-app-shell--order-tracking-flow .shop-nav__actions,
+  .shop-app-shell--auth-flow .shop-nav__actions {
+    grid-area: actions !important;
+    min-width: 0;
+    justify-content: flex-end;
+  }
+
+  .shop-app-shell--product-detail .shop-nav__brandCopy small,
+  .shop-app-shell--cart .shop-nav__brandCopy small,
+  .shop-app-shell--checkout-flow .shop-nav__brandCopy small,
+  .shop-app-shell--order-tracking-flow .shop-nav__brandCopy small,
+  .shop-app-shell--auth-flow .shop-nav__brandCopy small {
+    display: none;
+  }
+}
+
 .shop-nav__actions button,
 .shop-nav__admin {
   display: inline-flex;
@@ -599,6 +663,41 @@
 .shop-nav__dropdown-popup .ant-dropdown-menu {
   position: relative;
   z-index: 1;
+}
+
+/* F3357: short landscape More menus stay inside the visible viewport. */
+@media (max-height: 430px) {
+  body .shop-nav__dropdown-popup {
+    position: fixed !important;
+    top: max(8px, env(safe-area-inset-top, 0px)) !important;
+    bottom: auto !important;
+    max-width: calc(100vw - 16px);
+  }
+
+  body .shop-nav__dropdown-popup .ant-dropdown-menu {
+    max-height: calc(100vh - 24px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+  }
+
+  @supports (height: 100dvh) {
+    body .shop-nav__dropdown-popup .ant-dropdown-menu {
+      max-height: calc(100dvh - 24px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+    }
+  }
+}
+
+@media (max-width: 780px) and (max-height: 430px) {
+  body .shop-nav__dropdown-popup .ant-dropdown-menu {
+    max-height: calc(100vh - var(--shop-mobile-bottom-nav-height, 72px) - 24px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  @supports (height: 100dvh) {
+    body .shop-nav__dropdown-popup .ant-dropdown-menu {
+      max-height: calc(100dvh - var(--shop-mobile-bottom-nav-height, 72px) - 24px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) !important;
+    }
+  }
 }
 
 @media (max-width: 780px) {
@@ -1824,7 +1923,9 @@
 /* Mobile bottom commerce navigation */
 @media (max-width: 780px) {
   .shop-app-shell--product-detail .shop-nav__bottomBar,
+  .shop-app-shell--cart .shop-nav__bottomBar,
   .shop-app-shell--checkout-flow .shop-nav__bottomBar,
+  .shop-app-shell--order-tracking-flow .shop-nav__bottomBar,
   .shop-app-shell--auth-flow .shop-nav__bottomBar {
     display: none;
   }
@@ -2628,6 +2729,127 @@ body.shop-mobile-app .shop-nav .shop-nav__actions > .shop-nav__actionSummary {
   display: none !important;
 }
 
+/* A-09/A-12/A-15: native App rail labels and badges must never fall below the
+   Android audit legibility floor after route styles are lazy-loaded. */
+@media (max-width: 780px) {
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-nav__bottomBar .shop-nav__bottomItem,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-nav__bottomBar .shop-nav__bottomItem > span:not(.ant-badge):not(.anticon),
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-nav__bottomBar .shop-nav__bottomItem .ant-badge + span,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-nav__bottomBar .ant-badge-count,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-nav__bottomBar .ant-badge-count bdi,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-nav__bottomBar .ant-scroll-number,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-nav__bottomBar .ant-scroll-number-only,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-nav__bottomBar .ant-scroll-number-only-unit {
+    font-size: 12px !important;
+    line-height: 1.1 !important;
+  }
+}
+
+/* F2855: short mobile landscape keeps first-screen content visible. */
+@media (max-width: 780px) and (max-height: 430px) {
+  .shop-nav__announcement,
+  .shop-nav__top,
+  .shop-nav__mega,
+  .shop-nav__suggestions,
+  .shop-nav__searchIntro,
+  .shop-nav__searchSignals,
+  .shop-nav__mobile-tools,
+  .shop-nav__bottomBar {
+    display: none !important;
+  }
+
+  .shop-nav__main {
+    padding: 4px 0 !important;
+  }
+
+  .shop-nav__inner {
+    width: calc(100% - 12px);
+  }
+
+  .shop-nav__inner--main {
+    grid-template-columns: minmax(104px, auto) minmax(0, 1fr) auto !important;
+    grid-template-areas: "brand search actions";
+    align-items: center;
+    gap: 6px !important;
+  }
+
+  .shop-nav__brand {
+    grid-area: brand;
+    grid-column: auto !important;
+    grid-row: auto !important;
+    max-width: min(180px, 28vw);
+    min-height: 44px;
+  }
+
+  .shop-nav__brandIcon {
+    width: 34px;
+    height: 34px;
+  }
+
+  .shop-nav__brandCopy small,
+  .shop-nav__mobile-authText {
+    display: none !important;
+  }
+
+  .shop-nav__search {
+    grid-area: search;
+    grid-column: auto !important;
+    grid-row: auto !important;
+    width: auto;
+    min-width: 0;
+    margin: 0 !important;
+  }
+
+  .shop-nav__searchShell,
+  .shop-nav__searchBar {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .shop-nav .shop-nav__search .ant-input-group {
+    min-height: 44px !important;
+    height: 44px !important;
+    padding: 0 !important;
+  }
+
+  .shop-nav .shop-nav__search .ant-input-affix-wrapper,
+  .shop-nav .shop-nav__search .ant-input-search-button,
+  .shop-nav .shop-nav__search .ant-btn {
+    min-height: 44px !important;
+    height: 44px !important;
+  }
+
+  .shop-nav .shop-nav__search .ant-btn {
+    min-width: 48px !important;
+  }
+
+  .shop-nav__actions {
+    grid-area: actions;
+    grid-column: auto !important;
+    grid-row: auto !important;
+    max-width: min(260px, 42vw);
+    min-height: 44px;
+    gap: 4px !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .shop-nav__actions::-webkit-scrollbar {
+    display: none;
+  }
+
+  .shop-nav .shop-nav__actions > .shop-nav__mobile-auth {
+    flex: 0 0 44px !important;
+    width: 44px !important;
+    min-width: 44px !important;
+    height: 44px !important;
+    min-height: 44px !important;
+    justify-content: center;
+    padding-inline: 0 !important;
+  }
+}
+
 /* Final mobile category rail hit-area guard: short labels like "Cat" still
    need a stable 44px touch target on mobile web. */
 @media (max-width: 780px) {
@@ -2838,6 +3060,119 @@ body.shop-mobile-app .shop-nav__bottomItem--active .ant-badge + span {
   }
 }
 
+/* F3358: tablet landscape uses the compact utility surface instead of a dense two-line top row. */
+@media (min-width: 781px) and (max-width: 1024px) {
+  .shop-nav__top {
+    display: none;
+  }
+
+  .shop-nav__main {
+    padding: 10px 0 8px;
+  }
+
+  .shop-nav__inner--main {
+    grid-template-columns: minmax(150px, auto) minmax(280px, 1fr) auto;
+    gap: 8px 12px;
+  }
+
+  .shop-nav__brandIcon {
+    width: 42px;
+    height: 42px;
+  }
+
+  .shop-nav__brandCopy strong {
+    font-size: 24px;
+  }
+
+  .shop-nav__brandCopy small,
+  .shop-nav__guestCtas,
+  .shop-nav__actionSummary {
+    display: none !important;
+  }
+
+  .shop-nav__actions {
+    min-height: 44px;
+    align-self: center;
+    gap: 6px;
+    flex-wrap: nowrap;
+    font-size: 18px;
+  }
+
+  .shop-nav__mobile-locale,
+  .shop-nav__secondary-action.shop-nav__more-trigger {
+    display: inline-flex !important;
+  }
+
+  .shop-nav__secondary-action:not(.shop-nav__more-trigger) {
+    display: none !important;
+  }
+
+  .shop-nav__mobile-auth {
+    min-height: 44px;
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 999px;
+    padding: 0 12px;
+    background: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: 800;
+    line-height: 1;
+    white-space: nowrap;
+  }
+
+  .shop-nav__mobile-auth--primary {
+    border-color: transparent;
+    background: #ee4d2d;
+    color: #ffffff !important;
+  }
+
+  .shop-nav__actions button[aria-label],
+  .shop-nav__actions .shop-nav__admin,
+  .shop-nav__mobile-locale,
+  .shop-nav__cart-action,
+  .shop-nav__more-trigger {
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    min-height: 44px;
+    justify-content: center;
+    padding: 0;
+  }
+
+  .shop-nav__mega {
+    flex-wrap: nowrap;
+    gap: 8px;
+    padding-top: 6px;
+    overflow-x: auto;
+    scroll-padding-inline: 8px 32px;
+  }
+
+  .shop-nav__mega button,
+  .shop-nav__megaButton {
+    min-height: 34px;
+    max-width: none;
+    white-space: nowrap !important;
+  }
+}
+
+/* F3393: Spanish "Productos" needs one extra character of room on 360px phones. */
+@media (min-width: 341px) and (max-width: 380px) {
+  .shop-nav__bottomBar--es:not(.shop-nav__bottomBar--native) {
+    grid-template-columns: 0.94fr 1.1fr 1fr 0.98fr 0.88fr 1fr;
+    column-gap: 3px;
+  }
+
+  .shop-nav__bottomBar--es .shop-nav__bottomItem--products span:not(.anticon):not(.ant-badge):not(.ant-scroll-number) {
+    font-size: 9.5px !important;
+    letter-spacing: 0;
+    line-height: 1.05;
+    text-overflow: clip;
+  }
+}
+
 @media (max-width: 340px) {
   .shop-nav__bottomItem,
   body.shop-mobile-app .shop-nav__bottomItem {
@@ -2871,6 +3206,11 @@ body.shop-mobile-app .shop-nav__bottomItem--active .ant-badge + span {
 
   body.shop-mobile-app .shop-nav__bottomItem {
     min-height: 44px !important;
+  }
+
+  body.shop-mobile-app .shop-nav :where(.ant-badge-count, .ant-scroll-number, .ant-scroll-number-only, .ant-scroll-number-only-unit, .ant-badge-count bdi) {
+    font-size: 12px !important;
+    line-height: 1 !important;
   }
 }
 

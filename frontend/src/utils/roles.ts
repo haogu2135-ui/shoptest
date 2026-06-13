@@ -5,12 +5,15 @@ export const SUPER_ADMIN_ROLE = 'SUPER_ADMIN';
 export const normalizeRole = (role?: string | null) => (role || '').trim().toUpperCase();
 
 export const getEffectiveRole = (role?: string | null, roleCode?: string | null) => {
+  const normalizedRole = normalizeRole(role);
   const normalizedRoleCode = normalizeRole(roleCode);
-  return normalizedRoleCode || normalizeRole(role);
+  if (normalizedRoleCode === SUPER_ADMIN_ROLE || normalizedRole === SUPER_ADMIN_ROLE) return SUPER_ADMIN_ROLE;
+  if (normalizedRole === 'ADMIN') return 'ADMIN';
+  return normalizedRole || normalizedRoleCode;
 };
 
 export const isAdminRole = (role?: string | null) =>
-  Boolean(normalizeRole(role)) && normalizeRole(role) !== 'USER';
+  ADMIN_ROLES.includes(normalizeRole(role) as typeof ADMIN_ROLES[number]);
 
 export const isSuperAdminRole = (role?: string | null) =>
   normalizeRole(role) === SUPER_ADMIN_ROLE;
@@ -189,12 +192,30 @@ export const hasAdminPermission = (
 ) => isSuperAdminRole(role) || Boolean(permission && permissions?.includes(permission));
 
 const ADMIN_PERMISSION_LABEL_KEYS: Record<string, string> = {
+  dashboard: 'dashboard',
+  products: 'products',
+  brands: 'brands',
+  categories: 'categories',
+  orders: 'orders',
   'logistics-carriers': 'logisticsCarriers',
+  users: 'users',
+  permissions: 'permissions',
+  reviews: 'reviews',
+  questions: 'questions',
+  coupons: 'coupons',
+  notifications: 'notifications',
+  announcements: 'announcements',
   'audit-logs': 'auditLogs',
+  alerts: 'alerts',
+  [BUGS_PAGE_PERMISSION]: 'bugs',
   'ip-blacklist': 'ipBlacklist',
+  logs: 'logs',
+  support: 'support',
   'pet-gallery': 'petGallery',
+  registry: 'registry',
   'config-center': 'configCenter',
   'traffic-control': 'trafficControl',
+  system: 'system',
   [ORDER_STATUS_PERMISSION]: 'orderStatusActions',
   [ORDER_FULFILLMENT_PERMISSION]: 'orderFulfillmentActions',
   [ORDER_PAYMENT_PERMISSION]: 'orderPaymentActions',
@@ -255,5 +276,7 @@ const ADMIN_PERMISSION_LABEL_KEYS: Record<string, string> = {
   [QUESTIONS_DELETE_PERMISSION]: 'questionDeleteActions',
 };
 
-export const adminPermissionLabelKey = (permission: string) =>
-  `adminLayout.${ADMIN_PERMISSION_LABEL_KEYS[permission] || permission.replace(/-([a-z])/g, (_, c) => c.toUpperCase())}`;
+export const adminPermissionLabelKey = (permission: string) => {
+  const normalizedPermission = String(permission || '').trim();
+  return `adminLayout.${ADMIN_PERMISSION_LABEL_KEYS[normalizedPermission] || 'unknownPermission'}`;
+};

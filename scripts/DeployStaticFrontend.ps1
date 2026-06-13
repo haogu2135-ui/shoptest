@@ -112,6 +112,8 @@ $previousSshPass = $env:SSHPASS
 $env:SSHPASS = $deployPassword
 try {
     & sshpass -e rsync @rsyncArgs
+    $permissionCommand = "find '$deployTarget' -type d -exec chmod 0755 {} + && find '$deployTarget' -type f -exec chmod 0644 {} +"
+    & sshpass -e ssh @sshOptions "${deployUser}@${deployHost}" $permissionCommand
 }
 finally {
     if ($null -ne $previousSshPass) {

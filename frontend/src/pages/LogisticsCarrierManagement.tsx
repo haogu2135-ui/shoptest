@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Button, Card, Form, Input, InputNumber, message, Modal, Popconfirm, Progress, Select, Space, Table, Tag, Typography } from 'antd';
+import { Alert, Button, Card, Form, Input, InputNumber, message, Modal, Popconfirm, Progress, Select, Space, Table, Tag, Typography } from 'antd';
 import { CheckCircleOutlined, PlusOutlined, SearchOutlined, WarningOutlined } from '@ant-design/icons';
 import { adminApi, logisticsCarrierApi } from '../api';
 import type { LogisticsCarrier } from '../types';
@@ -24,7 +24,9 @@ const isFormValidationError = (error: unknown): error is { errorFields: unknown[
 
 const LogisticsCarrierManagement: React.FC = () => {
   const [carriers, setCarriers] = useState<LogisticsCarrier[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [carrierLoadError, setCarrierLoadError] = useState<string | null>(null);
+  const [carrierSnapshotLoaded, setCarrierSnapshotLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [keyword, setKeyword] = useState('');
   const [statusFilter, setStatusFilter] = useState<string | undefined>();
@@ -36,6 +38,8 @@ const LogisticsCarrierManagement: React.FC = () => {
   const { t, language } = useLanguage();
   const canWriteCarriers = hasAdminPermission(adminPermissions, currentRole, LOGISTICS_CARRIERS_WRITE_PERMISSION);
   const canDeleteCarriers = hasAdminPermission(adminPermissions, currentRole, LOGISTICS_CARRIERS_DELETE_PERMISSION);
+  const carrierActionDisabled = loading || Boolean(carrierLoadError) || !carrierSnapshotLoaded;
+  const carrierActionUnavailableMessage = carrierLoadError || (loading ? t('common.loading') : t('pages.logisticsCarriers.fetchFailed'));
   const formatCarrierStatus = useCallback((status?: string) => {
     const rawStatus = String(status || '').trim();
     const normalizedStatus = rawStatus.toUpperCase();
@@ -110,9 +114,13 @@ const LogisticsCarrierManagement: React.FC = () => {
     setLoading(true);
     try {
       const res = await logisticsCarrierApi.getAll(false);
+      setCarrierLoadError(null);
       setCarriers(res.data || []);
+      setCarrierSnapshotLoaded(true);
     } catch (err: unknown) {
-      message.error(getApiErrorMessage(err, t('pages.logisticsCarriers.fetchFailed'), language));
+      const errorMessage = getApiErrorMessage(err, t('pages.logisticsCarriers.fetchFailed'), language);
+      setCarrierLoadError(errorMessage);
+      message.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -123,20 +131,30 @@ const LogisticsCarrierManagement: React.FC = () => {
   }, [fetchCarriers]);
 
   useEffect(() => {
+    let disposed = false;
     adminApi.getMyPermissions()
       .then((response) => {
+        if (disposed) return;
         setCurrentRole(getEffectiveRole(response.data.role, response.data.roleCode));
         setAdminPermissions(response.data.permissions || []);
       })
       .catch(() => {
+        if (disposed) return;
         setCurrentRole('');
         setAdminPermissions([]);
       });
+    return () => {
+      disposed = true;
+    };
   }, []);
 
   const openModal = (carrier?: LogisticsCarrier) => {
     if (!canWriteCarriers) {
       message.error(t('adminLayout.noPermission'));
+      return;
+    }
+    if (carrierActionDisabled) {
+      message.warning(carrierActionUnavailableMessage);
       return;
     }
     setEditingCarrier(carrier || null);
@@ -155,6 +173,10 @@ const LogisticsCarrierManagement: React.FC = () => {
   const handleSave = async () => {
     if (!canWriteCarriers) {
       message.error(t('adminLayout.noPermission'));
+      return;
+    }
+    if (carrierActionDisabled) {
+      message.warning(carrierActionUnavailableMessage);
       return;
     }
     try {
@@ -183,6 +205,10 @@ const LogisticsCarrierManagement: React.FC = () => {
       message.error(t('adminLayout.noPermission'));
       return;
     }
+    if (carrierActionDisabled) {
+      message.warning(carrierActionUnavailableMessage);
+      return;
+    }
     try {
       await logisticsCarrierApi.delete(id);
       message.success(t('pages.logisticsCarriers.deleted'));
@@ -192,41 +218,68 @@ const LogisticsCarrierManagement: React.FC = () => {
     }
   };
 
+  const showInitialCarrierLoading = loading && !carrierSnapshotLoaded;
+  const carrierSnapshotUnavailable = Boolean(carrierLoadError) && !carrierSnapshotLoaded;
+  const canRenderCarrierSnapshot = !showInitialCarrierLoading && !carrierSnapshotUnavailable;
+
   return (
     <div className="logistics-carrier-page">
       <Title level={4}>{t('pages.logisticsCarriers.title')}</Title>
+      {carrierLoadError ? (
+        <Alert
+          className="logistics-carrier-page__alert"
+          type="warning"
+          showIcon
+          message={carrierLoadError}
+          description={carrierSnapshotLoaded ? t('pages.logisticsCarriers.staleDataWarning') : undefined}
+          action={(
+            <Button size="small" loading={loading} onClick={fetchCarriers}>
+              {t('common.retry')}
+            </Button>
+          )}
+        />
+      ) : null}
+
+      {showInitialCarrierLoading ? (
+        <Card className="logistics-carrier-page__loadingState" loading />
+      ) : null}
+
+      {canRenderCarrierSnapshot ? (
+        <>
       <Card className="logistics-carrier-page__intro">
         <Space wrap>
           <Text type="secondary">{t('pages.logisticsCarriers.description')}</Text>
-	          <Input
-	            allowClear
-	            prefix={<SearchOutlined />}
-	            value={keyword}
-	            onChange={(event) => setKeyword(event.target.value)}
-	            placeholder={t('common.search')}
-	            className="logistics-carrier-page__keywordInput"
-	            aria-label={carrierSearchInputLabel}
-	            title={carrierSearchInputLabel}
-	          />
-	          <Select
-	            allowClear
-	            value={statusFilter}
-	            onChange={setStatusFilter}
-	            placeholder={t('common.status')}
-	            className="logistics-carrier-page__statusFilter"
-	            classNames={{ popup: { root: 'shop-mobile-popup-layer' } }}
-	            getPopupContainer={() => document.body}
-	            aria-label={carrierStatusFilterLabel}
-	            title={carrierStatusFilterLabel}
-	            options={[
-	              { value: 'ACTIVE', label: t('pages.logisticsCarriers.active') },
-	              { value: 'INACTIVE', label: t('pages.logisticsCarriers.inactive') },
-	            ]}
-	          />
-	          {canWriteCarriers ? (
-	            <Button type="primary" icon={<PlusOutlined />} aria-label={addCarrierActionLabel} title={addCarrierActionLabel} onClick={() => openModal()}>
-	              {t('pages.logisticsCarriers.addCarrier')}
-	            </Button>
+          <Input
+            allowClear
+            prefix={<SearchOutlined />}
+            value={keyword}
+            onChange={(event) => setKeyword(event.target.value)}
+            disabled={carrierActionDisabled}
+            placeholder={t('common.search')}
+            className="logistics-carrier-page__keywordInput"
+            aria-label={carrierSearchInputLabel}
+            title={carrierSearchInputLabel}
+          />
+          <Select
+            allowClear
+            value={statusFilter}
+            onChange={setStatusFilter}
+            disabled={carrierActionDisabled}
+            placeholder={t('common.status')}
+            className="logistics-carrier-page__statusFilter"
+            classNames={{ popup: { root: 'shop-mobile-popup-layer' } }}
+            getPopupContainer={() => document.body}
+            aria-label={carrierStatusFilterLabel}
+            title={carrierStatusFilterLabel}
+            options={[
+              { value: 'ACTIVE', label: t('pages.logisticsCarriers.active') },
+              { value: 'INACTIVE', label: t('pages.logisticsCarriers.inactive') },
+            ]}
+          />
+          {canWriteCarriers ? (
+            <Button type="primary" icon={<PlusOutlined />} disabled={carrierActionDisabled} aria-label={addCarrierActionLabel} title={addCarrierActionLabel} onClick={() => openModal()}>
+              {t('pages.logisticsCarriers.addCarrier')}
+            </Button>
           ) : null}
         </Space>
       </Card>
@@ -313,19 +366,20 @@ const LogisticsCarrierManagement: React.FC = () => {
               const deleteActionLabel = `${t('common.delete')}: ${carrierName}`;
               return (
                 <Space>
-                  {canWriteCarriers ? <Button size="small" aria-label={editActionLabel} title={editActionLabel} onClick={() => openModal(carrier)}>{t('common.edit')}</Button> : null}
+                  {canWriteCarriers ? <Button size="small" disabled={carrierActionDisabled} aria-label={editActionLabel} title={editActionLabel} onClick={() => openModal(carrier)}>{t('common.edit')}</Button> : null}
                   {canDeleteCarriers ? (
                     <Popconfirm
                       classNames={mobilePopconfirmClassNames}
                       title={t('pages.logisticsCarriers.deleteConfirm')}
                       description={carrierName}
                       onConfirm={() => handleDelete(carrier.id)}
+                      disabled={carrierActionDisabled}
                       okText={t('common.confirm')}
                       cancelText={t('common.cancel')}
-                      okButtonProps={{ danger: true, 'aria-label': deleteActionLabel, title: deleteActionLabel }}
+                      okButtonProps={{ danger: true, disabled: carrierActionDisabled, 'aria-label': deleteActionLabel, title: deleteActionLabel }}
                       cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${deleteActionLabel}`, title: `${t('common.cancel')}: ${deleteActionLabel}` }}
                     >
-                      <Button size="small" danger aria-label={deleteActionLabel} title={deleteActionLabel}>{t('common.delete')}</Button>
+                      <Button size="small" danger disabled={carrierActionDisabled} aria-label={deleteActionLabel} title={deleteActionLabel}>{t('common.delete')}</Button>
                     </Popconfirm>
                   ) : null}
                 </Space>
@@ -334,6 +388,8 @@ const LogisticsCarrierManagement: React.FC = () => {
           },
         ]}
       />
+        </>
+      ) : null}
 
       <Modal
         className="profile-mobile-safe-modal logistics-carrier-page__editorModal"
@@ -344,7 +400,7 @@ const LogisticsCarrierManagement: React.FC = () => {
         onCancel={closeModal}
         okText={t('common.save')}
         cancelText={t('common.cancel')}
-        okButtonProps={{ 'aria-label': saveCarrierActionLabel, title: saveCarrierActionLabel }}
+        okButtonProps={{ disabled: carrierActionDisabled, 'aria-label': saveCarrierActionLabel, title: saveCarrierActionLabel }}
         cancelButtonProps={{ 'aria-label': cancelCarrierActionLabel, title: cancelCarrierActionLabel }}
         destroyOnHidden
       >

@@ -29,7 +29,7 @@ export const roundCartMoney = (value: unknown) => {
 export const getCartQuantityLimit = (stock?: number | null) => {
   if (stock === undefined || stock === null) return DEFAULT_CART_QUANTITY_LIMIT;
   const numeric = Math.floor(Number(stock));
-  return Number.isFinite(numeric) ? Math.max(1, numeric) : DEFAULT_CART_QUANTITY_LIMIT;
+  return Number.isFinite(numeric) ? Math.max(1, Math.min(numeric, DEFAULT_CART_QUANTITY_LIMIT)) : DEFAULT_CART_QUANTITY_LIMIT;
 };
 
 export const getCartLineQuantity = (quantity: unknown) => {

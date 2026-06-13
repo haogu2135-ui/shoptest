@@ -46,7 +46,7 @@ class WishlistServiceTest {
         Wishlist configurable = wishlist(20L);
         Wishlist variant = wishlist(30L);
         Wishlist missingProduct = wishlist(40L);
-        when(wishlistMapper.findByUserId(7L)).thenReturn(List.of(simple, configurable, variant, missingProduct));
+        when(wishlistMapper.findByUserId(7L, 500)).thenReturn(List.of(simple, configurable, variant, missingProduct));
 
         Product simpleProduct = product(10L);
         Product configurableProduct = product(20L);
@@ -65,17 +65,19 @@ class WishlistServiceTest {
         verify(productRepository).findAllById(idsCaptor.capture());
         Set<Long> loadedIds = iterableToSet(idsCaptor.getValue());
         assertEquals(Set.of(10L, 20L, 30L, 40L), loadedIds);
+        verify(wishlistMapper).findByUserId(7L, 500);
         verify(productRepository, never()).findById(any());
     }
 
     @Test
     void getWishlistSkipsProductLookupWhenThereAreNoProductIds() {
         Wishlist item = wishlist(null);
-        when(wishlistMapper.findByUserId(7L)).thenReturn(List.of(item));
+        when(wishlistMapper.findByUserId(7L, 500)).thenReturn(List.of(item));
 
         List<Wishlist> result = service.getWishlist(7L);
 
         assertFalse(result.get(0).getRequiresSelection());
+        verify(wishlistMapper).findByUserId(7L, 500);
         verify(productRepository, never()).findAllById(any());
         verify(productRepository, never()).findById(any());
     }
@@ -117,6 +119,21 @@ class WishlistServiceTest {
     }
 
     @Test
+    void addSetsCreatedAndUpdatedTimestampsBeforeInsert() {
+        when(productRepository.findById(10L)).thenReturn(Optional.of(product(10L)));
+
+        service.addToWishlist(7L, 10L);
+
+        ArgumentCaptor<Wishlist> wishlistCaptor = ArgumentCaptor.forClass(Wishlist.class);
+        verify(wishlistMapper).insert(wishlistCaptor.capture());
+        Wishlist inserted = wishlistCaptor.getValue();
+        assertEquals(7L, inserted.getUserId());
+        assertEquals(10L, inserted.getProductId());
+        assertTrue(inserted.getCreatedAt() != null);
+        assertEquals(inserted.getCreatedAt(), inserted.getUpdatedAt());
+    }
+
+    @Test
     void addSkipsProductLookupWhenAlreadyWishlisted() {
         when(wishlistMapper.findByUserAndProduct(7L, 10L)).thenReturn(wishlist(10L));
 
@@ -124,6 +141,13 @@ class WishlistServiceTest {
 
         verify(productRepository, never()).findById(eq(10L));
         verify(wishlistMapper, never()).insert(any(Wishlist.class));
+    }
+
+    @Test
+    void removeDeletesWishlistRowByUserAndProductForToggleSemantics() {
+        service.removeFromWishlist(7L, 10L);
+
+        verify(wishlistMapper).deleteByUserAndProduct(7L, 10L);
     }
 
     private Wishlist wishlist(Long productId) {

@@ -1,6 +1,5 @@
 package com.example.shop.service;
 
-import lombok.extern.slf4j.Slf4j;
 import com.alibaba.nacos.api.NacosFactory;
 import com.alibaba.nacos.api.PropertyKeyConst;
 import com.alibaba.nacos.api.config.ConfigService;
@@ -9,6 +8,7 @@ import com.example.shop.dto.ConfigCenterHealthResponse;
 import com.example.shop.dto.ConfigCenterPublishRequest;
 import com.example.shop.dto.ConfigCenterSnapshotResponse;
 import com.example.shop.util.SensitiveDataMasker;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
@@ -49,6 +49,7 @@ public class ConfigCenterService {
             "payment.",
             "support.",
             "product.",
+            "brand.",
             "product-question.",
             "review.",
             "logistics.",
@@ -107,9 +108,15 @@ public class ConfigCenterService {
             "product.search-cache-ttl-ms=30000",
             "product.public-default-page-size=24",
             "product.public-max-page-size=100",
+            "product.public-legacy-list-max-rows=100",
+            "product.legacy-list-max-rows=500",
+            "product.discount-list-max-rows=100",
             "product.admin-default-page-size=50",
             "product.admin-max-page-size=500",
             "product.featured-max-limit=36",
+            "product.import.variant-sku-scan-page-size=500",
+            "product.import.variant-sku-scan-max-rows=5000",
+            "brand.public-list-max-rows=120",
             "admin.users.page-max-size=100",
             "admin.users.export-max-rows=10000",
             "admin.products.batch-status-max-size=100",
@@ -128,6 +135,7 @@ public class ConfigCenterService {
             "admin.categories.list-max-rows=500",
             "admin.roles.list-max-rows=200",
             "admin.logistics-carriers.list-max-rows=500",
+            "admin.coupons.page-max-size=100",
             "admin.audit-logs.default-range-hours=24",
             "admin.audit-logs.max-range-hours=168",
             "admin.audit-logs.search-max-rows=1000",
@@ -237,8 +245,8 @@ public class ConfigCenterService {
                 return;
             }
             applyNacosRuntimeContentOnStartup(content);
-        } catch (NacosException | RuntimeException ignored) {
-            // Startup should not fail when Nacos config is unavailable; local properties remain in effect.
+        } catch (NacosException | RuntimeException ex) {
+            log.warn("Unable to apply Nacos runtime config on startup; local properties remain in effect", ex);
         }
     }
 

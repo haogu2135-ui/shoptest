@@ -14,7 +14,7 @@ import { getPaymentRecoveryState } from '../utils/paymentRecovery';
 import { addGuestCartItem } from '../utils/guestCart';
 import { dispatchDomEvent } from '../utils/domEvents';
 import { getLocalStorageItem, hasStoredValue } from '../utils/safeStorage';
-import { loadGuestSupportContext, saveGuestSupportContext } from '../utils/guestSupportContext';
+import { loadGuestSupportContext, normalizeGuestSupportContext, saveGuestSupportContext } from '../utils/guestSupportContext';
 import { getApiErrorMessage } from '../utils/apiError';
 import { buildLoginUrlFromWindow } from '../utils/authRedirect';
 import { isAdminRole } from '../utils/roles';
@@ -70,6 +70,24 @@ const getTrackingStep = (status?: string) => {
   return 0;
 };
 
+export const ORDER_TRACKING_AUTO_REFRESH_MS = 30_000;
+
+const ORDER_TRACKING_TERMINAL_STATUSES = new Set([
+  'CANCELLED',
+  'COMPLETED',
+  'DELIVERED',
+  'REFUNDED',
+  'RETURN_REFUNDING',
+  'RETURNED',
+]);
+
+export const shouldAutoRefreshTrackedOrder = (order?: Pick<OrderCustomer, 'status'> | null) => {
+  if (!order) return false;
+  const normalizedStatus = normalizeStatusCode(order.status);
+  if (!normalizedStatus) return true;
+  return !ORDER_TRACKING_TERMINAL_STATUSES.has(normalizedStatus);
+};
+
 const isGuestTrackedOrder = (order?: OrderCustomer | null) => Boolean(
   order?.guestOrder || String(order?.shippingAddress || '').startsWith('[Guest]'),
 );
@@ -93,7 +111,7 @@ const OrderTracking: React.FC = () => {
   const [order, setOrder] = useState<OrderCustomer | null>(null);
   const [items, setItems] = useState<OrderItemCustomer[]>([]);
   const [detailsRestricted, setDetailsRestricted] = useState(false);
-  const autoTrackKeyRef = useRef('');
+  const [prefillNoticeVisible, setPrefillNoticeVisible] = useState(false);
   const mountedRef = useRef(true);
   const trackRequestSeqRef = useRef(0);
   const trackAbortRef = useRef<AbortController | null>(null);
@@ -221,6 +239,7 @@ const OrderTracking: React.FC = () => {
 
   const trackOrder = useCallback(async (values: { orderNo: string; email: string }, quiet = false) => {
     trackAbortRef.current?.abort();
+    refreshAbortRef.current?.abort();
     const requestSeq = trackRequestSeqRef.current + 1;
     trackRequestSeqRef.current = requestSeq;
     const abortController = createApiAbortController();
@@ -263,10 +282,20 @@ const OrderTracking: React.FC = () => {
     }
   }, [language, t]);
 
-  const onFinish = (values: { orderNo: string; email: string }) => trackOrder(values);
+  const onFinish = (values: { orderNo: string; email: string }) => {
+    setPrefillNoticeVisible(false);
+    void trackOrder(values);
+  };
 
   useEffect(() => {
     const orderNo = cleanTrackingParam(searchParams.get('orderNo') || searchParams.get('order'), 80);
+    const queryContext = normalizeGuestSupportContext({
+      orderNo,
+      email: searchParams.get('guestEmail') || searchParams.get('email'),
+    });
+    if (queryContext) {
+      saveGuestSupportContext(queryContext);
+    }
     if (searchParams.has('email') || searchParams.has('guestEmail')) {
       const sanitized = new URLSearchParams(searchParams);
       sanitized.delete('email');
@@ -275,20 +304,20 @@ const OrderTracking: React.FC = () => {
         setSearchParams(sanitized, { replace: true });
       }
     }
-    const storedContext = loadGuestSupportContext();
+    const storedContext = queryContext || loadGuestSupportContext();
     const storedEmail = storedContext?.orderNo.toUpperCase() === orderNo.toUpperCase() ? storedContext.email : '';
     const email = storedEmail;
-    if (!orderNo) return;
+    if (!orderNo) {
+      setPrefillNoticeVisible(false);
+      return;
+    }
     form.setFieldsValue(email ? { orderNo, email } : { orderNo });
-    if (!email) return;
-    const key = `${orderNo}:${email}`;
-    if (autoTrackKeyRef.current === key) return;
-    autoTrackKeyRef.current = key;
-    void trackOrder({ orderNo, email }, true);
-  }, [form, searchParams, setSearchParams, trackOrder]);
+    setPrefillNoticeVisible(Boolean(email));
+  }, [form, searchParams, setSearchParams]);
 
-  const refreshTrackedOrder = async () => {
+  const refreshTrackedOrder = useCallback(async (quiet = false) => {
     if (!order?.orderNo || !trackedEmail) return false;
+    if (quiet && refreshAbortRef.current) return false;
     refreshAbortRef.current?.abort();
     const abortController = createApiAbortController();
     refreshAbortRef.current = abortController;
@@ -303,14 +332,40 @@ const OrderTracking: React.FC = () => {
       return true;
     } catch (error: unknown) {
       if (!mountedRef.current || abortController.signal.aborted) return false;
-      message.warning(getApiErrorMessage(error, t('pages.orderTracking.trackingFailed'), language));
+      if (!quiet) {
+        message.warning(getApiErrorMessage(error, t('pages.orderTracking.trackingFailed'), language));
+      }
       return false;
     } finally {
       if (refreshAbortRef.current === abortController) {
         refreshAbortRef.current = null;
       }
     }
-  };
+  }, [language, order?.orderNo, t, trackedEmail]);
+
+  const autoRefreshEnabled = Boolean(order?.orderNo && trackedEmail && shouldAutoRefreshTrackedOrder(order));
+
+  useEffect(() => {
+    if (!autoRefreshEnabled) return;
+
+    const runAutoRefresh = () => {
+      if (typeof document !== 'undefined' && document.hidden) return;
+      void refreshTrackedOrder(true);
+    };
+
+    const intervalId = window.setInterval(runAutoRefresh, ORDER_TRACKING_AUTO_REFRESH_MS);
+    const handleVisibilityChange = () => {
+      if (typeof document === 'undefined' || !document.hidden) {
+        runAutoRefresh();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      window.clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [autoRefreshEnabled, refreshTrackedOrder]);
 
   const continuePayment = async () => {
     if (!order || order.status !== 'PENDING_PAYMENT' || !canOperateTrackedOrder) return;
@@ -503,7 +558,15 @@ const OrderTracking: React.FC = () => {
             <Text type="secondary">{t('pages.orderTracking.empty')}</Text>
           </span>
         </div>
-        <Form form={form} className="order-tracking-page__lookupForm" layout="vertical" onFinish={onFinish}>
+        {prefillNoticeVisible ? (
+          <Alert
+            className="order-tracking-page__prefillNotice"
+            type="info"
+            showIcon
+            message={t('pages.orderTracking.prefillNotice')}
+          />
+        ) : null}
+        <Form form={form} className="order-tracking-page__lookupForm" layout="vertical" onFinish={onFinish} onValuesChange={() => setPrefillNoticeVisible(false)}>
           <Form.Item name="orderNo" label={t('pages.orderTracking.orderNo')} rules={[{ required: true, message: t('pages.orderTracking.orderNoRequired') }]}>
             <Input placeholder={t('pages.orderTracking.orderNoPlaceholder')} autoComplete="off" inputMode="text" maxLength={80} />
           </Form.Item>

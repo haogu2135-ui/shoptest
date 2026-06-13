@@ -21,7 +21,7 @@ const parseBundleItems = (value?: string): ProductBundleItem[] => {
         }))
         .filter((item) => item.name)
       : [];
-  } catch {
+  } catch (_error) {
     return value
       .split(/[+,\n,，、]/)
       .map((name) => ({ name: name.trim(), quantity: 1 }))

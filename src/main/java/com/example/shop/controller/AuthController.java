@@ -19,7 +19,6 @@ import org.springframework.web.server.ResponseStatusException;
 import javax.servlet.http.HttpServletRequest;
 import javax.validation.constraints.Email;
 import javax.validation.constraints.NotBlank;
-import javax.validation.constraints.Pattern;
 import javax.validation.constraints.Size;
 import javax.validation.Valid;
 import java.util.ArrayList;
@@ -32,6 +31,9 @@ import java.util.Map;
 @RequestMapping("/auth")
 @RequiredArgsConstructor
 public class AuthController {
+    private static final String PUBLIC_REGISTRATION_UNAVAILABLE_MESSAGE =
+            "Registration could not be completed with the supplied account details";
+
     private final UserService userService;
     private final EmailLoginService emailLoginService;
     private final ClientIpResolver clientIpResolver;
@@ -86,8 +88,12 @@ public class AuthController {
             return ResponseEntity.status(status).body(response);
         } catch (IllegalArgumentException e) {
             Map<String, Object> response = new HashMap<>();
-            response.put("error", e.getMessage());
-            if (e.getMessage() != null && e.getMessage().toLowerCase(Locale.ROOT).contains("email verification")) {
+            String message = e.getMessage();
+            response.put("error", publicRegistrationError(message));
+            if (isDuplicateAccountRegistrationError(message)) {
+                response.put("code", "ACCOUNT_DETAILS_UNAVAILABLE");
+            }
+            if (message != null && message.toLowerCase(Locale.ROOT).contains("email verification")) {
                 response.put("emailCodeRequired", true);
             }
             return ResponseEntity.badRequest().body(response);
@@ -104,9 +110,6 @@ public class AuthController {
         if (isBlank(user.getEmail())) {
             fields.add("email");
         }
-        if (isBlank(user.getPhone())) {
-            fields.add("phone");
-        }
         if (isBlank(user.getPassword())) {
             fields.add("password");
         }
@@ -115,6 +118,17 @@ public class AuthController {
 
     private String registrationMissingFieldsMessage(List<String> fields) {
         return String.join(", ", fields) + (fields.size() == 1 ? " is required" : " are required");
+    }
+
+    private String publicRegistrationError(String message) {
+        if (isDuplicateAccountRegistrationError(message)) {
+            return PUBLIC_REGISTRATION_UNAVAILABLE_MESSAGE;
+        }
+        return message == null || message.isBlank() ? "Registration failed. Please try again." : message;
+    }
+
+    private boolean isDuplicateAccountRegistrationError(String message) {
+        return message != null && message.toLowerCase(Locale.ROOT).contains("already registered");
     }
 
     private boolean isBlank(String value) {
@@ -205,9 +219,7 @@ public class AuthController {
         private String username;
 
         @NotBlank(message = "Password is required")
-        @Size(min = 8, max = 128, message = "Password must be 8 to 128 characters")
-        @Pattern(regexp = ".*\\p{L}.*", message = "Password must include letters and numbers")
-        @Pattern(regexp = ".*\\d.*", message = "Password must include letters and numbers")
+        @Size(min = 12, max = 128, message = "Password must be 12 to 128 characters")
         private String password;
 
         @NotBlank(message = "Email is required")
@@ -215,9 +227,6 @@ public class AuthController {
         @Size(max = 100, message = "Email is too long")
         private String email;
 
-        @NotBlank(message = "Phone number is required")
-        @Size(max = 40, message = "Phone number is too long")
-        @Pattern(regexp = "^\\+?[0-9().\\-\\s]+$", message = "Phone number format is invalid")
         private String phone;
 
         @Size(max = 32, message = "Email verification code is too long")

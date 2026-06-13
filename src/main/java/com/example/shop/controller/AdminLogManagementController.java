@@ -13,6 +13,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -28,6 +29,7 @@ import java.time.LocalDateTime;
 
 @RestController
 @RequestMapping("/admin/logs")
+@PreAuthorize("hasRole('ADMIN')")
 public class AdminLogManagementController {
     private final LogManagementService logManagementService;
     private final SecurityAuditLogService auditLogService;
@@ -57,6 +59,7 @@ public class AdminLogManagementController {
             if (request == null) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Log debug payload is required");
             }
+            requireSuperAdminForSystemLogger(authentication, request.getLoggerName());
             LogManagementStatusResponse response = logManagementService.setDebug(request.isEnabled(), request.getLoggerName());
             auditLogService.record("LOG_DEBUG_TOGGLE", "SUCCESS", authentication, "LOGGING", response.getLoggerName(), httpRequest,
                     request.isEnabled() ? "Debug logging enabled" : "Debug logging disabled",
@@ -77,6 +80,14 @@ public class AdminLogManagementController {
             return;
         }
         throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Missing admin action permission");
+    }
+
+    private void requireSuperAdminForSystemLogger(Authentication authentication, String loggerName) {
+        UserDetailsImpl user = SecurityUtils.requireUser(authentication);
+        if (logManagementService.isApplicationLogger(loggerName) || SecurityUtils.isSuperAdmin(user)) {
+            return;
+        }
+        throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Super admin permission required for system loggers");
     }
 
     @GetMapping("/preview")

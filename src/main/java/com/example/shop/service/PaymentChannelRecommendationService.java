@@ -1,12 +1,12 @@
 package com.example.shop.service;
 
+import com.example.shop.config.HttpClientConfig;
 import com.example.shop.config.PaymentChannelConfig;
 import com.example.shop.dto.PaymentChannelResponse;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
@@ -17,12 +17,15 @@ import java.nio.charset.StandardCharsets;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class PaymentChannelRecommendationService {
+    private static final int MIN_GEO_LOOKUP_TIMEOUT_MS = 200;
     private static final List<String> COUNTRY_JSON_FIELDS = List.of(
             "countryCode",
             "country_code",
@@ -35,6 +38,7 @@ public class PaymentChannelRecommendationService {
     private final CircuitBreakerService circuitBreakerService;
     private final ClientIpResolver clientIpResolver;
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ConcurrentMap<Integer, RestTemplate> geoLookupRestTemplates = new ConcurrentHashMap<>();
 
     public List<PaymentChannelResponse> buildChannelResponses(List<PaymentChannelConfig.Channel> channels, HttpServletRequest request) {
         String clientCountry = resolveClientCountry(request);
@@ -131,10 +135,7 @@ public class PaymentChannelRecommendationService {
             return null;
         }
         String resolvedUrl = lookupUrl.replace("{ip}", URLEncoder.encode(clientIp, StandardCharsets.UTF_8));
-        SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
-        requestFactory.setConnectTimeout(Math.max(200, geoConfig.getLookupTimeoutMs()));
-        requestFactory.setReadTimeout(Math.max(200, geoConfig.getLookupTimeoutMs()));
-        RestTemplate restTemplate = new RestTemplate(requestFactory);
+        RestTemplate restTemplate = geoLookupRestTemplate(geoConfig);
         try {
             String responseBody = circuitBreakerService.execute("payment-geo-lookup", () -> restTemplate.getForObject(resolvedUrl, String.class));
             return parseCountryCode(responseBody);
@@ -142,6 +143,12 @@ public class PaymentChannelRecommendationService {
             log.debug("Payment geo lookup failed for ip {} via {}", clientIp, resolvedUrl, e);
             return null;
         }
+    }
+
+    private RestTemplate geoLookupRestTemplate(PaymentChannelConfig.Geo geoConfig) {
+        int timeoutMs = Math.max(MIN_GEO_LOOKUP_TIMEOUT_MS, geoConfig.getLookupTimeoutMs());
+        return geoLookupRestTemplates.computeIfAbsent(timeoutMs,
+                value -> HttpClientConfig.restTemplateWithTimeouts(value, value));
     }
 
     private String parseCountryCode(String responseBody) {

@@ -1,5 +1,6 @@
 package com.example.shop.controller;
 
+import com.example.shop.dto.UserAddressRequest;
 import com.example.shop.dto.UserAddressResponse;
 import com.example.shop.entity.UserAddress;
 import com.example.shop.security.SecurityUtils;
@@ -20,6 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.http.HttpStatus;
 
+import javax.validation.Valid;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -62,12 +64,12 @@ public class UserAddressController {
     }
 
     @PostMapping
-    public ResponseEntity<?> addAddress(@RequestBody(required = false) UserAddress address, Authentication authentication) {
-        if (address == null) {
+    public ResponseEntity<?> addAddress(@Valid @RequestBody(required = false) UserAddressRequest request, Authentication authentication) {
+        if (request == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Address is required");
         }
         UserDetailsImpl user = SecurityUtils.requireUser(authentication);
-        address.setUserId(user.getId());
+        UserAddress address = request.toEntity(user.getId());
         try {
             userAddressService.addAddress(address);
             UserAddress saved = address.getId() == null ? address : userAddressService.getAddress(address.getId());
@@ -78,8 +80,8 @@ public class UserAddressController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<?> updateAddress(@PathVariable Long id, @RequestBody(required = false) UserAddress address, Authentication authentication) {
-        if (address == null) {
+    public ResponseEntity<?> updateAddress(@PathVariable Long id, @Valid @RequestBody(required = false) UserAddressRequest request, Authentication authentication) {
+        if (request == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Address is required");
         }
         UserAddress existing = userAddressService.getAddress(id);
@@ -87,8 +89,8 @@ public class UserAddressController {
             return ResponseEntity.notFound().build();
         }
         SecurityUtils.assertSelf(authentication, existing.getUserId());
+        UserAddress address = request.toEntity(existing.getUserId());
         address.setId(id);
-        address.setUserId(existing.getUserId());
         address.setIsDefault(existing.getIsDefault());
         try {
             userAddressService.updateAddress(address);

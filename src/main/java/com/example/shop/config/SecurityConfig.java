@@ -47,6 +47,8 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
             .cors().and()
+            // The API authenticates unsafe requests with explicit JWT bearer headers
+            // and does not use browser session cookies.
             .csrf().disable()
             .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             .and()
@@ -56,21 +58,26 @@ public class SecurityConfig {
             .and()
             .headers(headers -> headers
                     .contentTypeOptions(withDefaults())
+                    .frameOptions(frameOptions -> frameOptions.sameOrigin())
                     .httpStrictTransportSecurity(hsts -> hsts
                             .includeSubDomains(true)
                             .preload(true)
                             .maxAgeInSeconds(31536000))
                     .referrerPolicy(referrer -> referrer
-                            .policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN)))
+                            .policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN))
+                    .addHeaderWriter((request, response) -> response.setHeader("Permissions-Policy",
+                            "camera=(), microphone=(), geolocation=(), accelerometer=(), gyroscope=(), magnetometer=(), usb=(), serial=(), bluetooth=(), browsing-topics=()")))
             .authorizeRequests()
             .antMatchers(HttpMethod.OPTIONS, "/**").permitAll()
             .antMatchers(HttpMethod.GET, "/actuator/health", "/actuator/info").permitAll()
             .antMatchers(HttpMethod.GET, "/announcements/active").permitAll()
             .antMatchers(HttpMethod.GET, "/app/config").permitAll()
+            .antMatchers(HttpMethod.POST, "/errors").permitAll()
             .antMatchers(HttpMethod.GET, "/search").permitAll()
+            .antMatchers(HttpMethod.GET, "/home/products", "/home/products/**").permitAll()
             .antMatchers(HttpMethod.GET, "/payment", "/payment/").permitAll()
             .antMatchers(HttpMethod.GET, "/payment/channels", "/payments/channels").permitAll()
-            .antMatchers(HttpMethod.GET, "/payment/guest/order/*", "/payment/guest/order/**", "/payments/guest/order/*", "/payments/guest/order/**").permitAll()
+            .antMatchers(HttpMethod.POST, "/payment/guest/order/*", "/payment/guest/order/**", "/payments/guest/order/*", "/payments/guest/order/**").permitAll()
             .antMatchers("/auth/login", "/auth/register", "/auth/forgot-password", "/auth/password-reset-code", "/auth/email-code", "/auth/email-login", "/auth/refresh").permitAll()
             .antMatchers("/ws/support").permitAll()
             .antMatchers(HttpMethod.GET, "/support", "/support/").permitAll()
@@ -81,12 +88,14 @@ public class SecurityConfig {
             .antMatchers(HttpMethod.GET, "/orders/track").permitAll()
             .antMatchers(HttpMethod.POST, "/orders/track").permitAll()
             .antMatchers(HttpMethod.GET, "/orders/guest/*", "/orders/guest/**").permitAll()
+            .antMatchers(HttpMethod.POST, "/orders/guest/*", "/orders/guest/**").permitAll()
             .antMatchers(HttpMethod.GET, "/logistics/track").permitAll()
+            .antMatchers(HttpMethod.POST, "/logistics/track").permitAll()
             .antMatchers(HttpMethod.POST, "/orders/checkout/guest").permitAll()
-            .antMatchers(HttpMethod.PUT, "/orders/guest/*/cancel", "/orders/guest/**/cancel").permitAll()
-            .antMatchers(HttpMethod.PUT, "/orders/guest/*/confirm", "/orders/guest/**/confirm").permitAll()
-            .antMatchers(HttpMethod.PUT, "/orders/guest/*/return", "/orders/guest/**/return").permitAll()
-            .antMatchers(HttpMethod.PUT, "/orders/guest/*/return-shipment", "/orders/guest/**/return-shipment").permitAll()
+            .antMatchers(HttpMethod.POST, "/orders/guest/*/cancel", "/orders/guest/**/cancel").permitAll()
+            .antMatchers(HttpMethod.POST, "/orders/guest/*/confirm", "/orders/guest/**/confirm").permitAll()
+            .antMatchers(HttpMethod.POST, "/orders/guest/*/return", "/orders/guest/**/return").permitAll()
+            .antMatchers(HttpMethod.POST, "/orders/guest/*/return-shipment", "/orders/guest/**/return-shipment").permitAll()
             .antMatchers(HttpMethod.POST, "/payments").permitAll()
             .antMatchers(HttpMethod.POST, "/payment").permitAll()
             .antMatchers(HttpMethod.POST, "/payment/*/sync", "/payment/**/sync").permitAll()
@@ -109,6 +118,7 @@ public class SecurityConfig {
             .antMatchers(HttpMethod.GET, "/pet-gallery", "/pet-gallery/**").permitAll()
             .antMatchers(HttpMethod.POST, "/pet-gallery/*/like").permitAll()
             .antMatchers(HttpMethod.GET, "/uploads/pet-gallery/**").permitAll()
+            .antMatchers(HttpMethod.GET, "/uploads/reviews/**").permitAll()
             .antMatchers(HttpMethod.POST, "/brands", "/brands/**").hasRole("ADMIN")
             .antMatchers(HttpMethod.PUT, "/brands", "/brands/**").hasRole("ADMIN")
             .antMatchers(HttpMethod.DELETE, "/brands", "/brands/**").hasRole("ADMIN")
@@ -156,9 +166,9 @@ public class SecurityConfig {
                 RateLimitFilter.RESET_HEADER,
                 "Retry-After"));
         configuration.setAllowCredentials(true);
-        
+
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
     }
-} 
+}

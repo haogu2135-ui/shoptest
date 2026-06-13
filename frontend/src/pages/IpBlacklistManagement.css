@@ -70,6 +70,10 @@
   border-radius: 10px;
 }
 
+.ip-blacklist__loadingState .ant-card-body {
+  min-height: 120px;
+}
+
 .ip-blacklist__filters .ant-select {
   min-width: 150px;
 }
@@ -272,5 +276,338 @@
   .ip-blacklist__manualBlockModal textarea.ant-input,
   .ip-blacklist__manualBlockModal .ant-input-number {
     min-height: 44px;
+  }
+}
+
+/* APP/mobile closure: tables must not force the whole operations page to a
+   desktop-width grid. Keep overflow inside the table wrapper only. */
+@media (max-width: 780px) {
+  body.shop-mobile-app .ip-blacklist,
+  body.shop-mobile-app .ip-blacklist__hero,
+  body.shop-mobile-app .ip-blacklist__card,
+  body.shop-mobile-app .ip-blacklist__card .ant-card-body,
+  body.shop-mobile-app .ip-blacklist__filters,
+  body.shop-mobile-app .ip-blacklist__bulkBar {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  body.shop-mobile-app .ip-blacklist {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    overflow-x: clip !important;
+  }
+
+  body.shop-mobile-app .ip-blacklist__hero {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 12px !important;
+  }
+
+  body.shop-mobile-app .ip-blacklist__actions {
+    width: 100% !important;
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+
+  body.shop-mobile-app .ip-blacklist__actions .ant-space-item,
+  body.shop-mobile-app .ip-blacklist__actions .ant-btn {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  body.shop-mobile-app .ip-blacklist__stats {
+    width: 100% !important;
+    max-width: 100% !important;
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    margin-inline: 0 !important;
+    padding-inline: 0 !important;
+    overflow: visible !important;
+    scroll-snap-type: none !important;
+  }
+
+  body.shop-mobile-app .ip-blacklist__stats .ant-card {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    flex: initial !important;
+  }
+
+  body.shop-mobile-app .ip-blacklist__card .ant-table-wrapper {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    margin-inline: 0 !important;
+    padding-inline: 0 !important;
+    overflow-x: auto !important;
+  }
+}
+
+@media (max-width: 380px) {
+  body.shop-mobile-app .ip-blacklist__actions,
+  body.shop-mobile-app .ip-blacklist__stats {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
+
+/* 2026-06-07 mobile web regression closure: the UI audit runs regular mobile
+   web, so mirror the APP width guards for the admin shell at phone sizes. */
+@media (max-width: 720px) {
+  .ip-blacklist,
+  .ip-blacklist__hero,
+  .ip-blacklist__hero > div:first-child,
+  .ip-blacklist__actions,
+  .ip-blacklist__card,
+  .ip-blacklist__card .ant-card-body,
+  .ip-blacklist__filters,
+  .ip-blacklist__bulkBar,
+  .ip-blacklist .ant-table-wrapper {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  .ip-blacklist {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    overflow-x: clip !important;
+  }
+
+  .ip-blacklist__hero {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 12px !important;
+    overflow: hidden;
+  }
+
+  .ip-blacklist__hero .ant-typography,
+  .ip-blacklist__notice .ant-alert-message,
+  .ip-blacklist__notice .ant-alert-description {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    white-space: normal;
+  }
+
+  .ip-blacklist__actions {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+
+  .ip-blacklist__actions .ant-space-item,
+  .ip-blacklist__actions .ant-btn,
+  .ip-blacklist__filters .ant-space-item,
+  .ip-blacklist__filters .ant-select,
+  .ip-blacklist__filters .ant-input,
+  .ip-blacklist__filters .ant-btn,
+  .ip-blacklist__bulkBar .ant-btn {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  .ip-blacklist__stats {
+    width: 100% !important;
+    max-width: 100% !important;
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    margin-inline: 0 !important;
+    padding-inline: 0 !important;
+    overflow: visible !important;
+    scroll-snap-type: none !important;
+  }
+
+  .ip-blacklist__stats .ant-card {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    flex: initial !important;
+  }
+
+  .ip-blacklist__card .ant-table-wrapper {
+    margin-inline: 0 !important;
+    padding-inline: 0 !important;
+    overflow-x: auto !important;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .ip-blacklist .ant-table {
+    min-width: max-content;
+  }
+}
+
+@media (max-width: 380px) {
+  .ip-blacklist__actions,
+  .ip-blacklist__stats {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
+
+/* Phone table card mode for security operations. */
+@media (max-width: 720px) {
+  .ip-blacklist .ant-table-wrapper,
+  .ip-blacklist .ant-spin-container,
+  .ip-blacklist .ant-table,
+  .ip-blacklist .ant-table-container,
+  .ip-blacklist .ant-table-content,
+  .ip-blacklist .ant-table-content table {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    overflow: visible !important;
+  }
+
+  .ip-blacklist .ant-table colgroup,
+  .ip-blacklist .ant-table-thead {
+    display: none !important;
+  }
+
+  .ip-blacklist .ant-table-tbody {
+    display: grid;
+    gap: 10px;
+  }
+
+  .ip-blacklist .ant-table-tbody > tr.ant-table-row {
+    width: 100%;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    border: 1px solid rgba(35, 80, 92, 0.12);
+    border-radius: 14px;
+    background: #fff;
+    box-shadow: 0 8px 18px rgba(38, 67, 85, 0.06);
+    overflow: hidden;
+  }
+
+  .ip-blacklist .ant-table-tbody > tr.ant-table-row > td {
+    width: 100% !important;
+    max-width: 100%;
+    display: grid;
+    grid-template-columns: minmax(86px, 0.38fr) minmax(0, 1fr);
+    gap: 8px;
+    align-items: center;
+    padding: 9px 10px !important;
+    border-bottom: 1px solid rgba(35, 80, 92, 0.08) !important;
+    overflow-wrap: anywhere;
+    white-space: normal;
+  }
+
+  .ip-blacklist .ant-table-tbody > tr.ant-table-row > td:last-child {
+    border-bottom: 0 !important;
+  }
+
+  .ip-blacklist .ant-table-tbody > tr.ant-table-row > td::before {
+    content: attr(data-label);
+    color: #657780;
+    font-size: 12px;
+    font-weight: 800;
+    line-height: 1.2;
+  }
+
+  .ip-blacklist .ant-table-tbody > tr.ant-table-row > td.ant-table-selection-column {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ip-blacklist .ant-table-tbody > tr.ant-table-row > td.ant-table-selection-column::before {
+    content: none;
+  }
+
+  .ip-blacklist .ant-table-tbody > tr.ant-table-row > td .ant-space,
+  .ip-blacklist .ant-table-tbody > tr.ant-table-row > td .ant-btn,
+  .ip-blacklist .ant-table-tbody > tr.ant-table-row > td .ant-tag,
+  .ip-blacklist .ant-table-tbody > tr.ant-table-row > td .ant-typography {
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .ip-blacklist .ant-table-tbody > tr.ant-table-placeholder > td {
+    display: block;
+  }
+
+  .ip-blacklist .ant-pagination {
+    justify-content: center;
+  }
+}
+
+/* F2760: admin infrastructure controls must fit phone, landscape and tablet shells. */
+@media (max-width: 900px), (max-height: 640px) {
+  .ip-blacklist,
+  .ip-blacklist__hero,
+  .ip-blacklist__hero > div:first-child,
+  .ip-blacklist__actions,
+  .ip-blacklist__stats,
+  .ip-blacklist__filters,
+  .ip-blacklist__bulkBar,
+  .ip-blacklist__card,
+  .ip-blacklist__card .ant-card-body,
+  .ip-blacklist .ant-table-wrapper {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  .ip-blacklist {
+    grid-template-columns: minmax(0, 1fr) !important;
+    overflow-x: clip !important;
+  }
+
+  .ip-blacklist__hero {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 12px !important;
+    overflow: hidden;
+  }
+
+  .ip-blacklist__actions {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+    justify-content: stretch !important;
+  }
+
+  .ip-blacklist__actions .ant-space-item,
+  .ip-blacklist__actions .ant-btn,
+  .ip-blacklist__filters .ant-space-item,
+  .ip-blacklist__filters .ant-select,
+  .ip-blacklist__filters .ant-input,
+  .ip-blacklist__filters .ant-btn,
+  .ip-blacklist__bulkBar .ant-btn {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  .ip-blacklist__stats {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    margin-inline: 0 !important;
+    padding-inline: 0 !important;
+    overflow: visible !important;
+    scroll-snap-type: none !important;
+  }
+
+  .ip-blacklist__stats .ant-card {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    flex: initial !important;
+  }
+
+  .ip-blacklist .ant-table-wrapper {
+    margin-inline: 0 !important;
+    padding-inline: 0 !important;
+    overflow-x: auto !important;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+@media (max-width: 430px) {
+  .ip-blacklist__actions,
+  .ip-blacklist__stats {
+    grid-template-columns: minmax(0, 1fr) !important;
   }
 }

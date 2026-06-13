@@ -217,6 +217,19 @@
   white-space: pre-wrap;
 }
 
+.notifications-page__loadMore {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 12px 0 4px;
+}
+
+.notifications-page__loadMore .ant-btn {
+  min-height: 40px;
+  font-weight: 700;
+}
+
 @media (max-width: 560px) {
   .notifications-page {
     width: min(100% - 16px, 800px);
@@ -258,6 +271,16 @@
   .notifications-page__item {
     align-items: flex-start;
     padding: 14px;
+  }
+
+  .notifications-page__loadMore {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .notifications-page__loadMore .ant-btn {
+    width: 100%;
+    min-height: 44px;
   }
 
   .notifications-page__item .ant-list-item-action {
@@ -938,5 +961,160 @@
   .notifications-page__item .ant-list-item-action .ant-btn-dangerous {
     width: 44px;
     min-width: 44px;
+  }
+}
+
+/* Android UI closure: notification actions and assistant grid. */
+@media (max-width: 780px) {
+  .notifications-page__assistant {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .notifications-page__header .ant-btn,
+  .notifications-page__assistant > .ant-btn,
+  .notifications-page__actionPlan > .ant-btn,
+  .notifications-page__item .ant-list-item-action .ant-btn,
+  .notifications-delete-popconfirm .ant-popconfirm-buttons .ant-btn {
+    min-height: 44px !important;
+    height: auto !important;
+    max-height: none !important;
+    font-size: max(12px, 1em) !important;
+  }
+
+  .notifications-page__item .ant-list-item-action .ant-btn-dangerous {
+    width: 44px !important;
+    min-width: 44px !important;
+    height: 44px !important;
+  }
+
+  .notifications-page__signal span,
+  .notifications-page__actionSignals span,
+  .notifications-page__item .ant-list-item-meta-title .ant-tag,
+  .notifications-page__assistantCopy .ant-typography,
+  .notifications-page__actionPlan .ant-typography {
+    color: #2f4f3a !important;
+    font-size: max(12px, 1em) !important;
+    line-height: 1.25 !important;
+  }
+}
+
+/* 2026-06 mobile notification action plan closure: remove decorative overlap and keep signal copy readable. */
+@media (max-width: 640px) {
+  .notifications-page__assistant,
+  .notifications-page__actionPlan {
+    overflow: visible;
+  }
+
+  .notifications-page__assistant::after,
+  .notifications-page__actionPlan::after {
+    display: none;
+  }
+
+  .notifications-page__actionPlan {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .notifications-page__actionSignals {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .notifications-page__actionSignals span {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    min-height: 42px;
+    display: grid;
+    grid-template-columns: 18px minmax(0, 1fr);
+    align-items: center;
+    justify-content: stretch;
+    gap: 6px;
+    padding: 8px 10px;
+    overflow: visible;
+    text-align: left;
+    text-overflow: clip;
+    white-space: normal;
+    overflow-wrap: break-word;
+    word-break: normal;
+  }
+
+  .notifications-page__actionSignals .anticon {
+    width: 18px;
+    min-width: 18px;
+  }
+}
+
+@media (max-width: 380px) {
+  .notifications-page__actionSignals {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* 2026-06-07 mobile notification action closure: Ant List renders actions as
+   li elements, so pin the destructive icon to a stable right-side hit area. */
+@media (max-width: 640px) {
+  .notifications-page__item .ant-list-item-action {
+    width: calc(100% - 4px) !important;
+    grid-template-columns: minmax(0, 1fr) 44px !important;
+    align-items: stretch;
+    justify-self: stretch;
+    column-gap: 8px;
+    padding-inline-end: 4px;
+  }
+
+  .notifications-page__item .ant-list-item-action > li {
+    min-width: 0;
+    max-width: 100%;
+    padding-inline: 0 !important;
+  }
+
+  .notifications-page__item .ant-list-item-action > li:has(.notifications-page__deleteButton) {
+    grid-column: 2;
+    width: 44px !important;
+    justify-self: end;
+  }
+
+  .notifications-page__item .ant-list-item-action > li:not(:has(.notifications-page__deleteButton)) {
+    grid-column: 1;
+  }
+
+  .notifications-page__deleteButton.ant-btn {
+    width: 44px !important;
+    min-width: 44px !important;
+    padding-inline: 0 !important;
+  }
+}
+
+/* F2719: keep the authenticated notification next action and first card clear of
+   the fixed storefront bottom navigation on portrait phones. */
+@media (max-width: 640px) {
+  .notifications-page {
+    padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 76px) + 96px + env(safe-area-inset-bottom, 0px)) !important;
+    scroll-padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 76px) + 112px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .notifications-page__assistant,
+  .notifications-page__actionPlan {
+    padding: 10px !important;
+  }
+
+  .notifications-page__actionPlan {
+    gap: 8px !important;
+    margin-bottom: calc(var(--shop-mobile-bottom-nav-height, 76px) + 16px + env(safe-area-inset-bottom, 0px)) !important;
+    scroll-margin-bottom: calc(var(--shop-mobile-bottom-nav-height, 76px) + 16px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .notifications-page__actionPlan > .ant-btn {
+    min-height: 44px !important;
+    scroll-margin-bottom: calc(var(--shop-mobile-bottom-nav-height, 76px) + 16px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .notifications-page__item:first-child,
+  .notifications-page .ant-list > .ant-spin-nested-loading:first-child {
+    scroll-margin-bottom: calc(var(--shop-mobile-bottom-nav-height, 76px) + 16px + env(safe-area-inset-bottom, 0px)) !important;
   }
 }

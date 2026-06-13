@@ -66,11 +66,15 @@
   transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 
+.alert-management__statCard:focus-visible {
+  outline: 2px solid #173b46;
+  outline-offset: 3px;
+}
+
 .alert-management__statCard:hover,
 .alert-management__statCard:focus-visible {
   border-color: rgba(217, 75, 43, 0.42);
   box-shadow: 0 12px 26px rgba(38, 67, 85, 0.1);
-  outline: none;
   transform: translateY(-1px);
 }
 
@@ -428,5 +432,163 @@
 
   .alert-management .ant-table {
     min-width: 980px;
+  }
+}
+
+/* F2760: admin infrastructure controls must fit phone, landscape and tablet shells. */
+@media (max-width: 900px), (max-height: 640px) {
+  .alert-management,
+  .alert-management__hero,
+  .alert-management__hero > div:first-child,
+  .alert-management__actions,
+  .alert-management__stats,
+  .alert-management__filters,
+  .alert-management__bulkBar,
+  .alert-management__purge,
+  .alert-management__card,
+  .alert-management__card .ant-card-body,
+  .alert-management .ant-table-wrapper {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  .alert-management {
+    grid-template-columns: minmax(0, 1fr) !important;
+    overflow-x: clip !important;
+  }
+
+  .alert-management__hero {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 12px !important;
+    overflow: hidden;
+  }
+
+  .alert-management__actions,
+  .alert-management__actions.ant-space {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+    justify-content: stretch !important;
+  }
+
+  .alert-management__actions .ant-space-item,
+  .alert-management__actions .ant-btn,
+  .alert-management__filters .ant-space-item,
+  .alert-management__filters .ant-select,
+  .alert-management__filters .ant-input-affix-wrapper,
+  .alert-management__filters .ant-btn,
+  .alert-management__bulkBar .ant-btn,
+  .alert-management__purge .ant-input-number-group-wrapper,
+  .alert-management__purge .ant-btn {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  .alert-management__stats {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    margin-inline: 0 !important;
+    padding-inline: 0 !important;
+    overflow: visible !important;
+    scroll-snap-type: none !important;
+    -webkit-mask-image: none !important;
+    mask-image: none !important;
+  }
+
+  .alert-management__stats .ant-card {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    flex: initial !important;
+  }
+
+  .alert-management .ant-table-wrapper {
+    margin-inline: 0 !important;
+    padding-inline: 0 !important;
+    overflow-x: auto !important;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+@media (max-width: 430px) {
+  .alert-management__actions,
+  .alert-management__actions.ant-space,
+  .alert-management__stats {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
+
+/* F2761: admin summary/status metrics must wrap instead of hiding risk counts in scroll rails. */
+@media (max-width: 900px), (max-height: 640px) {
+  .alert-management__stats {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fit, minmax(132px, 1fr)) !important;
+    gap: 8px !important;
+    margin-inline: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    scroll-snap-type: none !important;
+    scrollbar-width: auto !important;
+    -webkit-mask-image: none !important;
+    mask-image: none !important;
+    touch-action: manipulation;
+  }
+
+  .alert-management__stats .ant-card {
+    flex: initial !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    overflow: visible !important;
+    scroll-snap-align: initial !important;
+  }
+}
+
+@media (max-width: 430px) {
+  .alert-management__stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+/* F2762: keep primary alert titles readable inside the mobile/tablet table. */
+.alert-management__alertColumn {
+  min-width: 320px;
+}
+
+.alert-management__titleCell {
+  min-width: 280px;
+  max-width: 360px;
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+
+.alert-management__titleCell .ant-typography {
+  overflow-wrap: break-word !important;
+  word-break: normal !important;
+  white-space: normal !important;
+}
+
+.alert-management__titleCell .ant-typography:first-child {
+  line-height: 1.35;
+}
+
+@media (max-width: 900px), (max-height: 640px) {
+  .alert-management__table .ant-table {
+    min-width: 1180px !important;
+    table-layout: fixed;
+  }
+
+  .alert-management__table .alert-management__alertColumn {
+    width: 320px;
+    min-width: 320px;
+    max-width: 320px;
+  }
+
+  .alert-management__table .alert-management__titleCell {
+    min-width: 280px;
+    max-width: 320px;
   }
 }

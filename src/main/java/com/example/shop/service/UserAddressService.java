@@ -1,6 +1,5 @@
 package com.example.shop.service;
 
-import lombok.extern.slf4j.Slf4j;
 import com.example.shop.entity.UserAddress;
 import com.example.shop.repository.UserAddressMapper;
 import com.example.shop.repository.UserMapper;
@@ -9,10 +8,10 @@ import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Locale;
 
 @Service
 @RequiredArgsConstructor
-@Slf4j
 public class UserAddressService {
     private final UserAddressMapper userAddressMapper;
     private final UserMapper userMapper;
@@ -30,17 +29,17 @@ public class UserAddressService {
         return userAddressMapper.findDefaultByUserId(userId);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void addAddress(UserAddress address) {
         normalizeAddress(address);
         lockAddressOwner(address.getUserId());
-        List<UserAddress> existing = userAddressMapper.findByUserId(address.getUserId());
+        int existingCount = Math.max(0, userAddressMapper.countByUserId(address.getUserId()));
         int maxAddresses = normalizedMaxAddressesPerUser();
-        if (existing.size() >= maxAddresses) {
+        if (existingCount >= maxAddresses) {
             throw new IllegalStateException("Address limit reached");
         }
-        boolean shouldBeDefault = existing.isEmpty() || Boolean.TRUE.equals(address.getIsDefault());
-        if (shouldBeDefault && !existing.isEmpty()) {
+        boolean shouldBeDefault = existingCount == 0 || Boolean.TRUE.equals(address.getIsDefault());
+        if (shouldBeDefault && existingCount > 0) {
             userAddressMapper.clearDefault(address.getUserId());
         }
         address.setIsDefault(shouldBeDefault);
@@ -49,17 +48,20 @@ public class UserAddressService {
         userAddressMapper.insert(address);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void updateAddress(UserAddress address) {
         normalizeAddress(address);
         lockAddressOwner(address.getUserId());
         address.setUpdatedAt(LocalDateTime.now());
+        if (Boolean.TRUE.equals(address.getIsDefault())) {
+            userAddressMapper.clearDefault(address.getUserId());
+        }
         if (userAddressMapper.update(address) == 0) {
             throw new IllegalStateException("Address update failed");
         }
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void deleteAddress(Long id) {
         UserAddress addr = userAddressMapper.findById(id);
         if (addr == null) return;
@@ -77,7 +79,7 @@ public class UserAddressService {
         }
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void setDefault(Long id) {
         UserAddress address = userAddressMapper.findById(id);
         if (address == null) {
@@ -110,7 +112,20 @@ public class UserAddressService {
                 runtimeConfig.getInt("user-address.recipient-name-max-chars", 80)));
         address.setPhone(normalizeRequiredText(address.getPhone(), "Phone number",
                 runtimeConfig.getInt("user-address.phone-max-chars", 30)));
-        address.setAddress(normalizeRequiredText(address.getAddress(), "Address",
+        String region = normalizeRequiredText(address.getRegion(), "Region",
+                runtimeConfig.getInt("user-address.region-max-chars", 1000));
+        String postalCode = normalizeRequiredText(address.getPostalCode(), "Postal code",
+                runtimeConfig.getInt("user-address.postal-code-max-chars", 20)).toUpperCase(Locale.ROOT);
+        String detailAddress = normalizeRequiredText(address.getDetailAddress(), "Detailed address",
+                runtimeConfig.getInt("user-address.detail-address-max-chars", 260));
+        address.setRegion(region);
+        address.setPostalCode(postalCode);
+        address.setDetailAddress(detailAddress);
+        String combinedAddress = address.getAddress();
+        if (combinedAddress == null || combinedAddress.trim().isEmpty()) {
+            combinedAddress = (region.replace('|', ' ') + " " + postalCode + " " + detailAddress).trim();
+        }
+        address.setAddress(normalizeRequiredText(combinedAddress, "Address",
                 runtimeConfig.getInt("user-address.address-max-chars", 500)));
     }
 

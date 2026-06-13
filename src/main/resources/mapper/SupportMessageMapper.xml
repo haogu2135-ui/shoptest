@@ -13,14 +13,6 @@
         <result property="senderName" column="sender_name"/>
     </resultMap>
 
-    <select id="findBySessionId" resultMap="supportMessageMap">
-        SELECT sm.*, u.username AS sender_name
-        FROM support_messages sm
-        LEFT JOIN users u ON sm.sender_id = u.id
-        WHERE sm.session_id = #{sessionId}
-        ORDER BY sm.created_at ASC, sm.id ASC
-    </select>
-
     <select id="findRecentBySessionId" resultMap="supportMessageMap">
         SELECT recent.*
         FROM (

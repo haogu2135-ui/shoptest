@@ -22,6 +22,7 @@
         <result property="recipientName" column="recipient_name"/>
         <result property="recipientPhone" column="recipient_phone"/>
         <result property="contactEmail" column="contact_email"/>
+        <result property="guestOrder" column="guest_order"/>
         <result property="paymentMethod" column="payment_method"/>
         <result property="trackingNumber" column="tracking_number"/>
         <result property="trackingCarrierCode" column="tracking_carrier_code"/>
@@ -40,6 +41,37 @@
         <result property="updatedAt" column="updated_at"/>
     </resultMap>
 
+    <sql id="orderCustomerSelectColumns">
+        orders.*,
+        users.username AS customer_username,
+        users.email AS customer_email,
+        users.phone AS customer_phone,
+        CASE
+            WHEN COALESCE(orders.guest_order, FALSE) = TRUE OR orders.shipping_address LIKE '[Guest]%' OR users.status = 'GUEST' THEN TRUE
+            ELSE FALSE
+        END AS guest_order,
+        CASE
+            WHEN COALESCE(orders.guest_order, FALSE) = TRUE OR orders.shipping_address LIKE '[Guest]%' OR users.status = 'GUEST' THEN 'GUEST'
+            ELSE 'REGISTERED'
+        END AS customer_type,
+        CASE
+            WHEN COALESCE(orders.guest_order, FALSE) = TRUE OR orders.shipping_address LIKE '[Guest]%' OR users.status = 'GUEST' THEN COALESCE(
+                NULLIF(TRIM(orders.recipient_name), ''),
+                CASE
+                    WHEN orders.shipping_address LIKE '[Guest]%' THEN NULLIF(TRIM(SUBSTRING_INDEX(SUBSTRING(orders.shipping_address, 9), ' / ', 1)), '')
+                    ELSE NULL
+                END,
+                NULLIF(TRIM(users.email), ''),
+                CONCAT('Guest #', orders.user_id)
+            )
+            ELSE COALESCE(
+                NULLIF(TRIM(users.username), ''),
+                NULLIF(TRIM(users.email), ''),
+                CONCAT('User #', orders.user_id)
+            )
+        END AS customer_display_name
+    </sql>
+
     <select id="countAll" resultType="long">
         SELECT COUNT(*) FROM orders
     </select>
@@ -49,7 +81,8 @@
     </select>
 
     <select id="sumTotalAmount" resultType="java.math.BigDecimal">
-        SELECT COALESCE(SUM(total_amount), 0) FROM orders
+        SELECT COALESCE(SUM(CASE WHEN status IN ('PENDING_SHIPMENT', 'SHIPPED', 'COMPLETED', 'RETURN_REQUESTED', 'RETURN_APPROVED', 'RETURN_SHIPPED', 'RETURN_REFUNDING') THEN total_amount ELSE 0 END), 0)
+        FROM orders
     </select>
 
     <select id="countByStatusGroup" resultType="java.util.HashMap">
@@ -205,27 +238,7 @@
 
     <select id="searchAdminOrders" resultMap="orderMap">
         SELECT
-            orders.*,
-            users.username AS customer_username,
-            users.email AS customer_email,
-            users.phone AS customer_phone,
-            CASE
-                WHEN orders.shipping_address LIKE '[Guest]%' OR users.status = 'GUEST' THEN 'GUEST'
-                ELSE 'REGISTERED'
-            END AS customer_type,
-            CASE
-                WHEN orders.shipping_address LIKE '[Guest]%' THEN COALESCE(
-                    NULLIF(TRIM(orders.recipient_name), ''),
-                    NULLIF(TRIM(SUBSTRING_INDEX(SUBSTRING(orders.shipping_address, 9), ' / ', 1)), ''),
-                    NULLIF(TRIM(users.email), ''),
-                    CONCAT('Guest #', orders.user_id)
-                )
-                ELSE COALESCE(
-                    NULLIF(TRIM(users.username), ''),
-                    NULLIF(TRIM(users.email), ''),
-                    CONCAT('User #', orders.user_id)
-                )
-            END AS customer_display_name
+            <include refid="orderCustomerSelectColumns"/>
         FROM orders
         LEFT JOIN users ON users.id = orders.user_id
         <include refid="adminOrderFilters"/>
@@ -250,27 +263,7 @@
 
     <select id="findRecentAdminOrders" resultMap="orderMap">
         SELECT
-            orders.*,
-            users.username AS customer_username,
-            users.email AS customer_email,
-            users.phone AS customer_phone,
-            CASE
-                WHEN orders.shipping_address LIKE '[Guest]%' OR users.status = 'GUEST' THEN 'GUEST'
-                ELSE 'REGISTERED'
-            END AS customer_type,
-            CASE
-                WHEN orders.shipping_address LIKE '[Guest]%' THEN COALESCE(
-                    NULLIF(TRIM(orders.recipient_name), ''),
-                    NULLIF(TRIM(SUBSTRING_INDEX(SUBSTRING(orders.shipping_address, 9), ' / ', 1)), ''),
-                    NULLIF(TRIM(users.email), ''),
-                    CONCAT('Guest #', orders.user_id)
-                )
-                ELSE COALESCE(
-                    NULLIF(TRIM(users.username), ''),
-                    NULLIF(TRIM(users.email), ''),
-                    CONCAT('User #', orders.user_id)
-                )
-            END AS customer_display_name
+            <include refid="orderCustomerSelectColumns"/>
         FROM orders
         LEFT JOIN users ON users.id = orders.user_id
         ORDER BY orders.created_at DESC, orders.id DESC
@@ -351,44 +344,88 @@
     </select>
 
     <select id="findById" resultMap="orderMap">
-        SELECT * FROM orders WHERE id = #{id}
+        SELECT
+            <include refid="orderCustomerSelectColumns"/>
+        FROM orders
+        LEFT JOIN users ON users.id = orders.user_id
+        WHERE orders.id = #{id}
     </select>
 
     <select id="findByOrderNo" resultMap="orderMap">
-        SELECT * FROM orders WHERE order_no = #{orderNo}
+        SELECT
+            <include refid="orderCustomerSelectColumns"/>
+        FROM orders
+        LEFT JOIN users ON users.id = orders.user_id
+        WHERE orders.order_no = #{orderNo}
     </select>
 
     <select id="findByOrderNoAndEmail" resultMap="orderMap">
-        SELECT o.*
-        FROM orders o
-        INNER JOIN users u ON u.id = o.user_id
-        WHERE o.order_no = #{orderNo}
+        SELECT
+            <include refid="orderCustomerSelectColumns"/>
+        FROM orders
+        LEFT JOIN users ON users.id = orders.user_id
+        WHERE orders.order_no = #{orderNo}
           AND (
-              LOWER(TRIM(u.email)) = LOWER(TRIM(#{email}))
-              OR LOWER(TRIM(o.contact_email)) = LOWER(TRIM(#{email}))
+              LOWER(TRIM(users.email)) = LOWER(TRIM(#{email}))
+              OR LOWER(TRIM(orders.contact_email)) = LOWER(TRIM(#{email}))
               OR (
-                  o.shipping_address LIKE '[Guest]%'
+                  orders.shipping_address LIKE '[Guest]%'
                   AND #{emailLike} IS NOT NULL
-                  AND LOWER(o.shipping_address) LIKE CONCAT('% / ', LOWER(#{emailLike}), ' /%') ESCAPE '!'
+                  AND LOWER(orders.shipping_address) LIKE CONCAT('% / ', LOWER(#{emailLike}), ' /%') ESCAPE '!'
               )
           )
         LIMIT 1
     </select>
 
-    <select id="findByUserId" resultMap="orderMap">
-        SELECT * FROM orders WHERE user_id = #{userId}
-        ORDER BY created_at DESC, id DESC
+    <select id="findByUserIdPage" resultMap="orderMap">
+        SELECT
+            <include refid="orderCustomerSelectColumns"/>
+        FROM orders
+        LEFT JOIN users ON users.id = orders.user_id
+        WHERE orders.user_id = #{userId}
+        ORDER BY orders.created_at DESC, orders.id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countByUserId" resultType="int">
+        SELECT COUNT(*)
+        FROM orders
+        WHERE user_id = #{userId}
+    </select>
+
+    <select id="findReviewableOrdersByUserAndProduct" resultMap="orderMap">
+        SELECT DISTINCT o.*
+        FROM orders o
+        INNER JOIN order_items oi ON oi.order_id = o.id
+        WHERE o.user_id = #{userId}
+          AND o.status = 'COMPLETED'
+          AND o.created_at &gt;= #{cutoff}
+          AND oi.product_id = #{productId}
+          AND NOT EXISTS (
+              SELECT 1
+              FROM reviews r
+              WHERE r.order_id = o.id
+                AND r.product_id = #{productId}
+                AND r.user_id = #{userId}
+          )
+        ORDER BY o.created_at DESC, o.id DESC
+        LIMIT #{limit}
     </select>
 
     <select id="findPendingPaymentBefore" resultMap="orderMap">
         SELECT * FROM orders
         WHERE status = 'PENDING_PAYMENT'
           AND created_at &lt;= #{cutoff}
+        <if test="afterId != null">
+          AND id &gt; #{afterId}
+        </if>
+        ORDER BY id ASC
+        LIMIT #{limit}
     </select>
 
     <insert id="insert" parameterType="com.example.shop.entity.Order" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO orders (order_no, user_id, original_amount, discount_amount, shipping_fee, total_amount, user_coupon_id, coupon_id, coupon_name, status, shipping_address, recipient_name, recipient_phone, contact_email, payment_method, tracking_number, tracking_carrier_code, tracking_carrier_name, return_tracking_number, return_reason, return_requested_at, return_approved_at, return_rejected_at, return_shipped_at, returned_at, refunded_at, shipped_at, completed_at, created_at, updated_at)
-        VALUES (#{orderNo}, #{userId}, #{originalAmount}, #{discountAmount}, #{shippingFee}, #{totalAmount}, #{userCouponId}, #{couponId}, #{couponName}, #{status}, #{shippingAddress}, #{recipientName}, #{recipientPhone}, #{contactEmail}, #{paymentMethod}, #{trackingNumber}, #{trackingCarrierCode}, #{trackingCarrierName}, #{returnTrackingNumber}, #{returnReason}, #{returnRequestedAt}, #{returnApprovedAt}, #{returnRejectedAt}, #{returnShippedAt}, #{returnedAt}, #{refundedAt}, #{shippedAt}, #{completedAt}, #{createdAt}, #{updatedAt})
+        INSERT INTO orders (order_no, user_id, original_amount, discount_amount, shipping_fee, total_amount, user_coupon_id, coupon_id, coupon_name, status, shipping_address, recipient_name, recipient_phone, contact_email, guest_order, payment_method, tracking_number, tracking_carrier_code, tracking_carrier_name, return_tracking_number, return_reason, return_requested_at, return_approved_at, return_rejected_at, return_shipped_at, returned_at, refunded_at, shipped_at, completed_at, created_at, updated_at)
+        VALUES (#{orderNo}, #{userId}, #{originalAmount}, #{discountAmount}, #{shippingFee}, #{totalAmount}, #{userCouponId}, #{couponId}, #{couponName}, #{status}, #{shippingAddress}, #{recipientName}, #{recipientPhone}, #{contactEmail}, COALESCE(#{guestOrder}, FALSE), #{paymentMethod}, #{trackingNumber}, #{trackingCarrierCode}, #{trackingCarrierName}, #{returnTrackingNumber}, #{returnReason}, #{returnRequestedAt}, #{returnApprovedAt}, #{returnRejectedAt}, #{returnShippedAt}, #{returnedAt}, #{refundedAt}, #{shippedAt}, #{completedAt}, #{createdAt}, #{updatedAt})
     </insert>
 
     <update id="update" parameterType="com.example.shop.entity.Order">
@@ -407,6 +444,7 @@
             recipient_name = #{recipientName},
             recipient_phone = #{recipientPhone},
             contact_email = #{contactEmail},
+            guest_order = COALESCE(#{guestOrder}, FALSE),
             payment_method = #{paymentMethod},
             tracking_number = #{trackingNumber},
             tracking_carrier_code = #{trackingCarrierCode},
@@ -534,4 +572,4 @@
     <delete id="deleteById">
         DELETE FROM orders WHERE id = #{id}
     </delete>
-</mapper> 
+</mapper>

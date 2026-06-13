@@ -23,17 +23,24 @@ import com.example.shop.repository.ProductRepository;
 import com.example.shop.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 
+import javax.persistence.EntityManager;
+import javax.persistence.PersistenceContext;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -47,16 +54,19 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import java.util.function.Function;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Function;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Service
 @Slf4j
 public class OrderService {
     private static final String RETURN_REFUNDING = "RETURN_REFUNDING";
+    private static final String GUEST_ADDRESS_PREFIX = "[Guest]";
+    private static final Pattern CHECKOUT_PHONE_PATTERN = Pattern.compile("^(?=(?:.*\\d){6,20})\\+?[\\d\\s().-]{6,40}$");
     private static final Set<String> RECONCILIATION_REFUNDABLE_STATUSES = Set.of("PENDING_PAYMENT", "CANCELLED");
 
     private static final List<String> DASHBOARD_REVENUE_STATUSES = List.of(
@@ -85,8 +95,16 @@ public class OrderService {
     private static final int GUEST_USERNAME_TOKEN_LENGTH = 32;
     private static final int GUEST_USERNAME_SEED_MAX_LENGTH =
             GUEST_USERNAME_MAX_LENGTH - GUEST_USERNAME_TOKEN_LENGTH - 1;
+    private static final int DEFAULT_CUSTOMER_ORDER_PAGE_SIZE = 20;
+    private static final int HARD_CUSTOMER_ORDER_PAGE_SIZE_LIMIT = 100;
     private static final int HARD_LEGACY_ADMIN_ORDER_LIST_LIMIT = 500;
+    private static final int ORDER_NO_INSERT_MAX_ATTEMPTS = 5;
+    private static final int DEFAULT_EXPIRY_SCAN_BATCH_SIZE = 500;
+    private static final int HARD_EXPIRY_SCAN_BATCH_SIZE_LIMIT = 5000;
+    private static final long DEFAULT_DASHBOARD_ORDER_STATS_CACHE_MS = 5000L;
+    private static final long HARD_DASHBOARD_ORDER_STATS_CACHE_MS = 60000L;
     private final ConcurrentMap<String, ReentrantLock> guestUserCreationLocks = new ConcurrentHashMap<>();
+    private volatile DashboardOrderStatsCacheEntry dashboardOrderStatsCache;
 
     @Autowired
     private OrderRepository orderRepository;
@@ -98,6 +116,8 @@ public class OrderService {
     private CartItemMapper cartItemMapper;
     @Autowired
     private ProductRepository productRepository;
+    @PersistenceContext
+    private EntityManager entityManager;
     @Autowired
     private UserRepository userRepository;
     @Autowired
@@ -113,17 +133,18 @@ public class OrderService {
     @Autowired(required = false)
     private PaymentChannelAvailabilityService paymentChannelAvailabilityService;
     @Autowired(required = false)
+    private CheckoutIdempotencyService checkoutIdempotencyService;
+    @Autowired(required = false)
     private NotificationService notificationService;
     @Autowired(required = false)
     private OrderEmailNotificationService orderEmailNotificationService;
-    @Lazy
-    @Autowired
-    private OrderService self;
+    @Autowired(required = false)
+    private PlatformTransactionManager transactionManager;
 
     /**
      * 创建新订单
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public Order createOrder(Order order) {
         throw new IllegalStateException("Direct order creation is disabled; use checkout flows");
     }
@@ -174,19 +195,46 @@ public class OrderService {
         return normalized.setScale(2, RoundingMode.HALF_UP);
     }
 
-    @Transactional
+    private void requirePositiveCheckoutTotal(BigDecimal totalAmount) {
+        if (totalAmount == null || totalAmount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("totalAmount must be greater than 0");
+        }
+    }
+
+    @Transactional(rollbackFor = Exception.class)
     public Order checkout(CheckoutRequest request) {
         normalizeCheckoutRequest(request);
+        return createCheckoutOrder(request);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public Order checkout(CheckoutRequest request, String idempotencyKey) {
+        normalizeCheckoutRequest(request);
+        CheckoutIdempotencyService.Claim claim = claimCheckoutIdempotency(
+                "USER",
+                String.valueOf(request.getUserId()),
+                idempotencyKey,
+                checkoutFingerprint(request));
+        if (claim != null && claim.hasExistingOrder()) {
+            return requireIdempotentOrder(claim.getExistingOrderId());
+        }
+        Order order = createCheckoutOrder(request);
+        completeCheckoutIdempotency(claim, order.getId());
+        return order;
+    }
+
+    private Order createCheckoutOrder(CheckoutRequest request) {
         requirePaymentChannelAvailable(request.getPaymentMethod());
-        List<CartItem> selectedItems = prepareCheckoutItems(request.getUserId(), request.getCartItemIds(), true);
+        CheckoutItemsSelection selection = prepareCheckoutItems(request.getUserId(), request.getCartItemIds(), true);
+        List<CartItem> selectedItems = selection.items();
         CouponQuoteResponse quote = couponService.quote(request.getUserId(), selectedItems, request.getUserCouponId());
         BigDecimal originalAmount = quote.getSubtotal();
-        Map<Long, Product> productById = loadProductsForCartItems(selectedItems);
-        BigDecimal shippingFee = calculateShippingFee(selectedItems, productById);
+        BigDecimal shippingFee = calculateShippingFee(selectedItems, selection.productById());
         quote.setShippingFee(shippingFee);
         Long effectiveUserCouponId = quote.getSelectedUserCouponId();
-        BigDecimal discountAmount = BigDecimal.ZERO;
-        BigDecimal payableAmount = originalAmount.add(shippingFee);
+        BigDecimal discountAmount = normalizeMoney(quote.getDiscountAmount());
+        BigDecimal payableAmount = originalAmount.subtract(discountAmount).max(BigDecimal.ZERO).add(shippingFee);
+        requirePositiveCheckoutTotal(payableAmount);
 
         Order order = new Order();
         order.setOrderNo(nextOrderNo());
@@ -200,50 +248,65 @@ public class OrderService {
         order.setRecipientName(request.getRecipientName());
         order.setRecipientPhone(request.getRecipientPhone());
         order.setContactEmail(firstNonBlank(request.getContactEmail(), accountEmailForUser(request.getUserId())));
+        order.setGuestOrder(false);
         order.setPaymentMethod(request.getPaymentMethod());
         order.setUserCouponId(effectiveUserCouponId);
         order.setCreatedAt(LocalDateTime.now());
         order.setUpdatedAt(LocalDateTime.now());
-        orderRepository.insert(order);
+        insertOrderWithGeneratedOrderNo(order);
 
         if (effectiveUserCouponId != null && quote.getDiscountAmount().compareTo(BigDecimal.ZERO) > 0) {
             CouponService.AppliedCoupon appliedCoupon = couponService.useCoupon(
                     request.getUserId(), effectiveUserCouponId, originalAmount, order.getId());
             order.setCouponId(appliedCoupon.getCouponId());
             order.setCouponName(appliedCoupon.getCouponName());
-            order.setDiscountAmount(appliedCoupon.getDiscountAmount());
-            order.setTotalAmount(originalAmount.subtract(appliedCoupon.getDiscountAmount()).max(BigDecimal.ZERO).add(shippingFee));
+            BigDecimal appliedDiscountAmount = normalizeMoney(appliedCoupon.getDiscountAmount());
+            order.setDiscountAmount(appliedDiscountAmount);
+            order.setTotalAmount(originalAmount.subtract(appliedDiscountAmount).max(BigDecimal.ZERO).add(shippingFee));
+            requirePositiveCheckoutTotal(order.getTotalAmount());
             orderRepository.update(order);
         }
 
-        for (CartItem item : selectedItems) {
-            OrderItem orderItem = new OrderItem();
-            orderItem.setOrderId(order.getId());
-            orderItem.setProductId(item.getProductId());
-            orderItem.setQuantity(item.getQuantity());
-            orderItem.setPrice(item.getPrice());
-            orderItem.setProductNameSnapshot(item.getProductName());
-            orderItem.setImageUrlSnapshot(item.getImageUrl());
-            orderItem.setSelectedSpecs(item.getSelectedSpecs());
-            orderItem.setCreatedAt(LocalDateTime.now());
-            orderItemRepository.insert(orderItem);
-        }
+        insertCheckoutOrderItems(order.getId(), selectedItems);
 
         cartItemMapper.deleteByIds(request.getCartItemIds());
         return order;
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public Order guestCheckout(GuestCheckoutRequest request) {
         normalizeGuestCheckoutRequest(request);
+        return createGuestCheckoutOrder(request);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public Order guestCheckout(GuestCheckoutRequest request, String idempotencyKey) {
+        normalizeGuestCheckoutRequest(request);
+        CheckoutIdempotencyService.Claim claim = claimCheckoutIdempotency(
+                "GUEST",
+                request.getGuestEmail(),
+                idempotencyKey,
+                guestCheckoutFingerprint(request));
+        if (claim != null && claim.hasExistingOrder()) {
+            return requireIdempotentOrder(claim.getExistingOrderId());
+        }
+        Order order = createGuestCheckoutOrder(request);
+        completeCheckoutIdempotency(claim, order.getId());
+        return order;
+    }
+
+    private Order createGuestCheckoutOrder(GuestCheckoutRequest request) {
         requirePaymentChannelAvailable(request.getPaymentMethod());
         Long guestUserId = getOrCreateGuestUser(request);
-        List<CartItem> selectedItems = prepareGuestCheckoutItems(guestUserId, request.getItems(), true);
+        CheckoutItemsSelection selection = prepareGuestCheckoutItems(guestUserId, request.getItems(), true);
+        List<CartItem> selectedItems = selection.items();
         BigDecimal originalAmount = selectedItems.stream()
-                .map(item -> item.getPrice().multiply(BigDecimal.valueOf(item.getQuantity())))
+                .map(this::requireLineAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add)
                 .setScale(2, RoundingMode.HALF_UP);
-        BigDecimal shippingFee = calculateShippingFee(selectedItems);
+        BigDecimal shippingFee = calculateShippingFee(selectedItems, selection.productById());
+        BigDecimal payableAmount = originalAmount.add(shippingFee);
+        requirePositiveCheckoutTotal(payableAmount);
 
         Order order = new Order();
         order.setOrderNo(nextOrderNo());
@@ -251,44 +314,131 @@ public class OrderService {
         order.setOriginalAmount(originalAmount);
         order.setDiscountAmount(BigDecimal.ZERO);
         order.setShippingFee(shippingFee);
-        order.setTotalAmount(originalAmount.add(shippingFee));
+        order.setTotalAmount(payableAmount);
         order.setStatus("PENDING_PAYMENT");
-        order.setShippingAddress("[Guest] " + request.getGuestName() + " / " + request.getGuestPhone() + " / " + request.getGuestEmail() + " / " + request.getShippingAddress());
+        order.setShippingAddress(request.getShippingAddress());
         order.setRecipientName(request.getGuestName());
         order.setRecipientPhone(request.getGuestPhone());
         order.setContactEmail(request.getGuestEmail());
+        order.setGuestOrder(true);
         order.setPaymentMethod(request.getPaymentMethod());
         order.setCreatedAt(LocalDateTime.now());
         order.setUpdatedAt(LocalDateTime.now());
-        orderRepository.insert(order);
+        insertOrderWithGeneratedOrderNo(order);
 
-        for (CartItem item : selectedItems) {
-            OrderItem orderItem = new OrderItem();
-            orderItem.setOrderId(order.getId());
-            orderItem.setProductId(item.getProductId());
-            orderItem.setQuantity(item.getQuantity());
-            orderItem.setPrice(item.getPrice());
-            orderItem.setProductNameSnapshot(item.getProductName());
-            orderItem.setImageUrlSnapshot(item.getImageUrl());
-            orderItem.setSelectedSpecs(item.getSelectedSpecs());
-            orderItem.setCreatedAt(LocalDateTime.now());
-            orderItemRepository.insert(orderItem);
-        }
+        insertCheckoutOrderItems(order.getId(), selectedItems);
         return order;
+    }
+
+    private void insertCheckoutOrderItems(Long orderId, List<CartItem> selectedItems) {
+        if (orderId == null || selectedItems == null || selectedItems.isEmpty()) {
+            return;
+        }
+        LocalDateTime createdAt = LocalDateTime.now();
+        List<OrderItem> orderItems = selectedItems.stream()
+                .map(item -> {
+                    OrderItem orderItem = new OrderItem();
+                    orderItem.setOrderId(orderId);
+                    orderItem.setProductId(item.getProductId());
+                    orderItem.setQuantity(item.getQuantity());
+                    orderItem.setPrice(normalizeMoney(item.getPrice()));
+                    orderItem.setProductNameSnapshot(item.getProductName());
+                    orderItem.setImageUrlSnapshot(item.getImageUrl());
+                    orderItem.setSelectedSpecs(item.getSelectedSpecs());
+                    orderItem.setCreatedAt(createdAt);
+                    return orderItem;
+                })
+                .collect(Collectors.toList());
+        orderItemRepository.insertBatch(orderItems);
+    }
+
+    private CheckoutIdempotencyService.Claim claimCheckoutIdempotency(String scope,
+                                                                      String principal,
+                                                                      String idempotencyKey,
+                                                                      String requestFingerprint) {
+        if (checkoutIdempotencyService == null) {
+            return null;
+        }
+        return checkoutIdempotencyService.claim(scope, principal, idempotencyKey, requestFingerprint);
+    }
+
+    private void completeCheckoutIdempotency(CheckoutIdempotencyService.Claim claim, Long orderId) {
+        if (checkoutIdempotencyService != null) {
+            checkoutIdempotencyService.complete(claim, orderId);
+        }
+    }
+
+    private Order requireIdempotentOrder(Long orderId) {
+        Order order = orderRepository.findById(orderId);
+        if (order == null) {
+            throw new IllegalStateException("Idempotent checkout order not found");
+        }
+        return enrichReturnInfo(order);
+    }
+
+    private String checkoutFingerprint(CheckoutRequest request) {
+        StringBuilder builder = new StringBuilder();
+        appendFingerprintPart(builder, "checkout");
+        appendFingerprintPart(builder, request.getUserId());
+        appendFingerprintPart(builder, request.getCartItemIds().stream()
+                .map(String::valueOf)
+                .collect(Collectors.joining(",")));
+        appendFingerprintPart(builder, request.getShippingAddress());
+        appendFingerprintPart(builder, request.getRecipientName());
+        appendFingerprintPart(builder, request.getRecipientPhone());
+        appendFingerprintPart(builder, request.getContactEmail());
+        appendFingerprintPart(builder, request.getPaymentMethod());
+        appendFingerprintPart(builder, request.getUserCouponId());
+        return sha256Hex(builder.toString());
+    }
+
+    private String guestCheckoutFingerprint(GuestCheckoutRequest request) {
+        StringBuilder builder = new StringBuilder();
+        appendFingerprintPart(builder, "guest-checkout");
+        appendFingerprintPart(builder, request.getGuestEmail());
+        appendFingerprintPart(builder, request.getGuestName());
+        appendFingerprintPart(builder, request.getGuestPhone());
+        appendFingerprintPart(builder, request.getShippingAddress());
+        appendFingerprintPart(builder, request.getPaymentMethod());
+        for (GuestCheckoutItemRequest item : request.getItems()) {
+            appendFingerprintPart(builder, item.getProductId());
+            appendFingerprintPart(builder, item.getQuantity());
+            appendFingerprintPart(builder, item.getSelectedSpecs());
+        }
+        return sha256Hex(builder.toString());
+    }
+
+    private void appendFingerprintPart(StringBuilder builder, Object value) {
+        String text = value == null ? "" : String.valueOf(value);
+        builder.append(text.length()).append(':').append(text).append('\n');
+    }
+
+    private String sha256Hex(String value) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(value.getBytes(StandardCharsets.UTF_8));
+            StringBuilder hex = new StringBuilder(hash.length * 2);
+            for (byte item : hash) {
+                hex.append(String.format("%02x", item));
+            }
+            return hex.toString();
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 is not available", e);
+        }
     }
 
     public CouponQuoteResponse quoteCheckout(CouponQuoteRequest request) {
         request.setCartItemIds(normalizeCheckoutItemIds(request.getCartItemIds()));
-        List<CartItem> selectedItems = prepareCheckoutItems(request.getUserId(), request.getCartItemIds(), false);
+        CheckoutItemsSelection selection = prepareCheckoutItems(request.getUserId(), request.getCartItemIds(), false);
+        List<CartItem> selectedItems = selection.items();
         CouponQuoteResponse quote = couponService.quote(request.getUserId(), selectedItems, request.getUserCouponId());
-        Map<Long, Product> productById = loadProductsForCartItems(selectedItems);
-        BigDecimal shippingFee = calculateShippingFee(selectedItems, productById);
+        BigDecimal shippingFee = calculateShippingFee(selectedItems, selection.productById());
         quote.setShippingFee(shippingFee);
         quote.setPayableAmount(quote.getSubtotal().subtract(quote.getDiscountAmount()).max(BigDecimal.ZERO).add(shippingFee));
         return quote;
     }
 
-    private List<CartItem> prepareCheckoutItems(Long userId, List<Long> cartItemIds, boolean reserveStock) {
+    private CheckoutItemsSelection prepareCheckoutItems(Long userId, List<Long> cartItemIds, boolean reserveStock) {
         cartItemIds = normalizeCheckoutItemIds(cartItemIds);
         List<CartItem> selectedItems = cartItemMapper.findByIds(cartItemIds);
         assertCheckoutItemOwnership(userId, cartItemIds, selectedItems);
@@ -297,6 +447,7 @@ public class OrderService {
             selectedItems = cartItemMapper.findByIdsForUpdate(cartItemIds);
             assertCheckoutItemOwnership(userId, cartItemIds, selectedItems);
         }
+        Map<Long, Product> reservedProducts = new LinkedHashMap<>();
         for (CartItem item : selectedItems) {
             Product product = productById.get(item.getProductId());
             if (product == null) {
@@ -312,14 +463,17 @@ public class OrderService {
                 throw new IllegalArgumentException("Insufficient stock for product: " + product.getName());
             }
             if (reserveStock) {
-                reserveProductStock(product, item.getSelectedSpecs(), item.getQuantity());
+                if (reserveProductStock(product, item.getSelectedSpecs(), item.getQuantity())) {
+                    reservedProducts.put(product.getId(), product);
+                }
             }
             BigDecimal effectivePrice = productVariantService.resolvePrice(product, item.getSelectedSpecs());
             item.setProductName(product.getName());
             item.setImageUrl(resolveProductImageUrl(product));
             item.setPrice(effectivePrice);
         }
-        return selectedItems;
+        saveReservedProducts(reservedProducts);
+        return new CheckoutItemsSelection(selectedItems, productById);
     }
 
     private void assertCheckoutItemOwnership(Long userId, List<Long> cartItemIds, List<CartItem> selectedItems) {
@@ -331,7 +485,7 @@ public class OrderService {
         }
     }
 
-    private List<CartItem> prepareGuestCheckoutItems(Long userId, List<GuestCheckoutItemRequest> items, boolean reserveStock) {
+    private CheckoutItemsSelection prepareGuestCheckoutItems(Long userId, List<GuestCheckoutItemRequest> items, boolean reserveStock) {
         List<Long> productIds = items.stream()
                 .map(GuestCheckoutItemRequest::getProductId)
                 .filter(id -> id != null && id > 0)
@@ -342,7 +496,8 @@ public class OrderService {
                 ? productRepository.findAllByIdForUpdate(productIds)
                 : productRepository.findAllById(productIds)).stream()
                 .collect(Collectors.toMap(Product::getId, Function.identity()));
-        return items.stream().map(requestItem -> {
+        Map<Long, Product> reservedProducts = new LinkedHashMap<>();
+        List<CartItem> selectedItems = items.stream().map(requestItem -> {
             Product product = productById.get(requestItem.getProductId());
             if (product == null) {
                 throw new IllegalArgumentException("Product not found: " + requestItem.getProductId());
@@ -358,7 +513,9 @@ public class OrderService {
                 throw new IllegalArgumentException("Insufficient stock for product: " + product.getName());
             }
             if (reserveStock) {
-                reserveProductStock(product, normalizedSpecs, normalizedQuantity);
+                if (reserveProductStock(product, normalizedSpecs, normalizedQuantity)) {
+                    reservedProducts.put(product.getId(), product);
+                }
             }
             CartItem item = new CartItem();
             item.setUserId(userId);
@@ -372,6 +529,8 @@ public class OrderService {
             item.setProductStatus(product.getStatus());
             return item;
         }).collect(Collectors.toList());
+        saveReservedProducts(reservedProducts);
+        return new CheckoutItemsSelection(selectedItems, productById);
     }
 
     private String resolveProductImageUrl(Product product) {
@@ -389,18 +548,43 @@ public class OrderService {
         return null;
     }
 
-    private void reserveProductStock(Product product, String selectedSpecs, int quantity) {
+    private boolean reserveProductStock(Product product, String selectedSpecs, int quantity) {
+        boolean reservedScalarStock = false;
         if (product.getStock() != null) {
-            if (product.getStock() < quantity) {
+            int currentStock = product.getStock();
+            if (currentStock < quantity) {
                 throw new IllegalArgumentException("Insufficient stock for product: " + product.getName());
             }
-            product.setStock(product.getStock() - quantity);
+            int updated = productRepository.decreaseStock(product.getId(), quantity);
+            if (updated <= 0) {
+                throw new IllegalArgumentException("Insufficient stock for product: " + product.getName());
+            }
+            product.setStock(currentStock - quantity);
+            reservedScalarStock = true;
         }
         boolean reservedVariantStock = productVariantService.decreaseVariantStock(product, selectedSpecs, quantity);
         if (product.getStock() == null && !reservedVariantStock) {
             throw new IllegalArgumentException("Insufficient stock for product: " + product.getName());
         }
-        productRepository.save(product);
+        if (reservedScalarStock && !reservedVariantStock) {
+            detachSimpleStockReservation(product);
+        }
+        return reservedVariantStock;
+    }
+
+    private void detachSimpleStockReservation(Product product) {
+        if (entityManager != null && product != null && entityManager.contains(product)) {
+            entityManager.detach(product);
+        }
+    }
+
+    private void saveReservedProducts(Map<Long, Product> reservedProducts) {
+        if (reservedProducts == null || reservedProducts.isEmpty()) {
+            return;
+        }
+        for (Product product : reservedProducts.values()) {
+            productRepository.save(product);
+        }
     }
 
     private Long getOrCreateGuestUser(GuestCheckoutRequest request) {
@@ -483,7 +667,7 @@ public class OrderService {
             return BigDecimal.ZERO;
         }
         BigDecimal subtotal = items.stream()
-                .map(item -> item.getPrice().multiply(BigDecimal.valueOf(item.getQuantity())))
+                .map(this::requireLineAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         BigDecimal threshold = runtimeConfig.getBigDecimal("order.free-shipping-threshold", new BigDecimal("899.00"));
         if (threshold != null
@@ -497,7 +681,7 @@ public class OrderService {
             if (product == null) {
                 throw new IllegalArgumentException("Product not found: " + item.getProductId());
             }
-            BigDecimal lineAmount = item.getPrice().multiply(BigDecimal.valueOf(item.getQuantity()));
+            BigDecimal lineAmount = requireLineAmount(item);
             boolean freeBySwitch = Boolean.TRUE.equals(product.getFreeShipping());
             boolean freeByThreshold = product.getFreeShippingThreshold() != null
                     && product.getFreeShippingThreshold().compareTo(BigDecimal.ZERO) > 0
@@ -508,6 +692,21 @@ public class OrderService {
             }
         }
         return allItemsFreeShipping ? BigDecimal.ZERO : runtimeConfig.getBigDecimal("order.default-shipping-fee", new BigDecimal("30.00"));
+    }
+
+    private BigDecimal requireLineAmount(CartItem item) {
+        if (item == null) {
+            throw new IllegalStateException("Checkout item is missing");
+        }
+        if (item.getPrice() == null) {
+            throw new IllegalStateException("Item price not resolved: " + item.getId());
+        }
+        if (item.getQuantity() == null || item.getQuantity() <= 0) {
+            throw new IllegalStateException("Item quantity not resolved: " + item.getId());
+        }
+        return item.getPrice()
+                .multiply(BigDecimal.valueOf(item.getQuantity()))
+                .setScale(2, RoundingMode.HALF_UP);
     }
 
     private Map<Long, Product> loadProductsForCartItems(List<CartItem> items) {
@@ -530,23 +729,42 @@ public class OrderService {
                 .collect(Collectors.toMap(Product::getId, Function.identity()));
     }
 
+    private static class CheckoutItemsSelection {
+        private final List<CartItem> items;
+        private final Map<Long, Product> productById;
+
+        private CheckoutItemsSelection(List<CartItem> items, Map<Long, Product> productById) {
+            this.items = items == null ? List.of() : items;
+            this.productById = productById == null ? Map.of() : productById;
+        }
+
+        private List<CartItem> items() {
+            return items;
+        }
+
+        private Map<Long, Product> productById() {
+            return productById;
+        }
+    }
+
     private void normalizeCheckoutRequest(CheckoutRequest request) {
         request.setCartItemIds(normalizeCheckoutItemIds(request.getCartItemIds()));
         request.setShippingAddress(normalizeRequiredText(request.getShippingAddress(), "Shipping address", runtimeConfig.getInt("order.shipping-address-max-chars", 500)));
         request.setRecipientName(firstNonBlank(
                 normalizeOptionalText(request.getRecipientName(), "Recipient name", runtimeConfig.getInt("order.recipient-name-max-chars", 120)),
                 parsedAddressPart(request.getShippingAddress(), 0)));
-        request.setRecipientPhone(firstNonBlank(
+        String recipientPhone = firstNonBlank(
                 normalizeOptionalText(request.getRecipientPhone(), "Recipient phone", runtimeConfig.getInt("order.recipient-phone-max-chars", 60)),
-                parsedAddressPart(request.getShippingAddress(), 1)));
+                parsedAddressPart(request.getShippingAddress(), 1));
+        request.setRecipientPhone(normalizeOptionalPhone(recipientPhone, "Recipient phone", runtimeConfig.getInt("order.recipient-phone-max-chars", 60)));
         request.setContactEmail(normalizeOptionalEmail(request.getContactEmail(), "Contact email", runtimeConfig.getInt("order.contact-email-max-chars", 160)));
         request.setPaymentMethod(normalizeRequiredText(request.getPaymentMethod(), "Payment method", runtimeConfig.getInt("order.payment-method-max-chars", 40)));
     }
 
     private void normalizeGuestCheckoutRequest(GuestCheckoutRequest request) {
-        request.setGuestEmail(normalizeRequiredText(request.getGuestEmail(), "Guest email", 120).toLowerCase());
+        request.setGuestEmail(normalizeRequiredEmail(request.getGuestEmail(), "Guest email", 120));
         request.setGuestName(normalizeRequiredText(request.getGuestName(), "Guest name", runtimeConfig.getInt("order.guest-name-max-chars", 80)));
-        request.setGuestPhone(normalizeRequiredText(request.getGuestPhone(), "Guest phone", runtimeConfig.getInt("order.guest-phone-max-chars", 40)));
+        request.setGuestPhone(normalizeRequiredPhone(request.getGuestPhone(), "Guest phone", runtimeConfig.getInt("order.guest-phone-max-chars", 40)));
         request.setShippingAddress(normalizeRequiredText(request.getShippingAddress(), "Shipping address", runtimeConfig.getInt("order.shipping-address-max-chars", 500)));
         request.setPaymentMethod(normalizeRequiredText(request.getPaymentMethod(), "Payment method", runtimeConfig.getInt("order.payment-method-max-chars", 40)));
         request.setItems(normalizeGuestItems(request.getItems()));
@@ -640,6 +858,34 @@ public class OrderService {
         return email;
     }
 
+    private String normalizeRequiredEmail(String value, String field, int maxLength) {
+        String normalized = normalizeRequiredText(value, field, maxLength);
+        String email = normalizeEmail(normalized);
+        if (email == null) {
+            throw new IllegalArgumentException(field + " is invalid");
+        }
+        return email;
+    }
+
+    private String normalizeOptionalPhone(String value, String field, int maxLength) {
+        String normalized = normalizeOptionalText(value, field, maxLength);
+        if (normalized.isEmpty()) {
+            return null;
+        }
+        if (!CHECKOUT_PHONE_PATTERN.matcher(normalized).matches()) {
+            throw new IllegalArgumentException(field + " is invalid");
+        }
+        return normalized;
+    }
+
+    private String normalizeRequiredPhone(String value, String field, int maxLength) {
+        String normalized = normalizeRequiredText(value, field, maxLength);
+        if (!CHECKOUT_PHONE_PATTERN.matcher(normalized).matches()) {
+            throw new IllegalArgumentException(field + " is invalid");
+        }
+        return normalized;
+    }
+
     private String parsedAddressPart(String shippingAddress, int index) {
         String[] parts = normalizeText(shippingAddress).split("\\s*/\\s*", 3);
         if (parts.length <= index) {
@@ -658,6 +904,7 @@ public class OrderService {
     /**
      * 获取所有订单
      */
+    @Transactional(rollbackFor = Exception.class, readOnly = true)
     public List<Order> getAllOrders() {
         int legacyListLimit = Math.max(1, Math.min(runtimeConfig.getInt("admin.orders.legacy-list-max-rows", 100), HARD_LEGACY_ADMIN_ORDER_LIST_LIMIT));
         return orderRepository.searchAdminOrders(null, null, null, 0, legacyListLimit).stream()
@@ -665,6 +912,7 @@ public class OrderService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional(rollbackFor = Exception.class, readOnly = true)
     public LocalDateTime currentDatabaseTime() {
         LocalDateTime now = orderRepository.currentDatabaseTime();
         return now != null ? now : LocalDateTime.now();
@@ -674,7 +922,20 @@ public class OrderService {
         return DASHBOARD_REVENUE_STATUSES;
     }
 
+    @Transactional(rollbackFor = Exception.class, readOnly = true)
     public Map<String, Object> getDashboardOrderStats(LocalDateTime now, int trendDays, int recentLimit) {
+        int safeTrendDays = Math.max(1, Math.min(trendDays <= 0 ? 7 : trendDays, 31));
+        int safeRecentLimit = Math.max(1, Math.min(recentLimit <= 0 ? 5 : recentLimit, 20));
+        long cacheTtlMs = dashboardOrderStatsCacheMs();
+        boolean cacheable = now == null && cacheTtlMs > 0;
+        long currentMillis = System.currentTimeMillis();
+        if (cacheable) {
+            DashboardOrderStatsCacheEntry cached = dashboardOrderStatsCache;
+            if (isDashboardOrderStatsCacheHit(cached, LocalDate.now(), safeTrendDays, safeRecentLimit, currentMillis, cacheTtlMs)) {
+                return copyDashboardStats(cached.stats);
+            }
+        }
+
         LocalDateTime basis = now != null ? now : currentDatabaseTime();
         Map<String, Object> row = orderRepository.dashboardOrderStats(basis);
         long totalOrders = mapLong(row, "totalOrders");
@@ -722,10 +983,60 @@ public class OrderService {
                 .mapToLong(Number::longValue)
                 .sum());
         stats.put("orderStatusBreakdown", getStatusBreakdown());
-        stats.put("recentOrders", findRecentAdminOrders(recentLimit));
-        stats.put("salesTrend", dashboardSalesTrend(basis.toLocalDate(), trendDays));
+        stats.put("recentOrders", findRecentAdminOrders(safeRecentLimit));
+        stats.put("salesTrend", dashboardSalesTrend(basis.toLocalDate(), safeTrendDays));
         stats.put("paymentMethodBreakdown", dashboardPaymentMethodBreakdown());
+        if (cacheable) {
+            dashboardOrderStatsCache = new DashboardOrderStatsCacheEntry(
+                    basis.toLocalDate(),
+                    safeTrendDays,
+                    safeRecentLimit,
+                    currentMillis,
+                    copyDashboardStats(stats));
+        }
         return stats;
+    }
+
+    private boolean isDashboardOrderStatsCacheHit(DashboardOrderStatsCacheEntry cached,
+                                                  LocalDate today,
+                                                  int trendDays,
+                                                  int recentLimit,
+                                                  long currentMillis,
+                                                  long cacheTtlMs) {
+        return cached != null
+                && cached.trendStartDay.equals(today.minusDays(trendDays - 1L))
+                && cached.trendDays == trendDays
+                && cached.recentLimit == recentLimit
+                && currentMillis - cached.cachedAtMillis <= cacheTtlMs;
+    }
+
+    private long dashboardOrderStatsCacheMs() {
+        long configured = runtimeConfig == null
+                ? DEFAULT_DASHBOARD_ORDER_STATS_CACHE_MS
+                : runtimeConfig.getLong("order.dashboard-stats-cache-ms", DEFAULT_DASHBOARD_ORDER_STATS_CACHE_MS);
+        return Math.max(0L, Math.min(configured, HARD_DASHBOARD_ORDER_STATS_CACHE_MS));
+    }
+
+    private Map<String, Object> copyDashboardStats(Map<String, Object> stats) {
+        Map<String, Object> copy = new LinkedHashMap<>();
+        if (stats == null) {
+            return copy;
+        }
+        stats.forEach((key, value) -> copy.put(key, copyDashboardValue(value)));
+        return copy;
+    }
+
+    private Object copyDashboardValue(Object value) {
+        if (value instanceof Map<?, ?>) {
+            Map<?, ?> source = (Map<?, ?>) value;
+            Map<Object, Object> copy = new LinkedHashMap<>();
+            source.forEach((key, nestedValue) -> copy.put(key, copyDashboardValue(nestedValue)));
+            return copy;
+        }
+        if (value instanceof List<?>) {
+            return new ArrayList<>((List<?>) value);
+        }
+        return value;
     }
 
     private List<Order> findRecentAdminOrders(int limit) {
@@ -770,6 +1081,7 @@ public class OrderService {
         return breakdown;
     }
 
+    @Transactional(rollbackFor = Exception.class, readOnly = true)
     public List<Order> searchAdminOrders(String status, String search, String quick, int page, int size) {
         int safeSize = Math.max(1, Math.min(size, 5000));
         int safePage = Math.max(1, page);
@@ -780,10 +1092,12 @@ public class OrderService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional(rollbackFor = Exception.class, readOnly = true)
     public int countAdminOrders(String status, String search, String quick) {
         return orderRepository.countAdminOrders(blankToNull(status), searchLikeTerm(search), blankToNull(quick));
     }
 
+    @Transactional(rollbackFor = Exception.class, readOnly = true)
     public Map<String, Long> countAdminOrderSummary(String search) {
         Map<String, Object> row = orderRepository.countAdminOrderSummary(searchLikeTerm(search));
         Map<String, Long> summary = new LinkedHashMap<>();
@@ -884,14 +1198,17 @@ public class OrderService {
     /**
      * 根据ID获取订单
      */
+    @Transactional(rollbackFor = Exception.class, readOnly = true)
     public Order getOrderById(Long id) {
         return enrichReturnInfo(orderRepository.findById(id));
     }
 
+    @Transactional(rollbackFor = Exception.class, readOnly = true)
     public Order getTrackableOrderForInternalUse(String orderNo, String email) {
         return enrichReturnInfo(findTrackableOrder(orderNo, email));
     }
 
+    @Transactional(rollbackFor = Exception.class, readOnly = true)
     public OrderTrackResponse trackOrder(String orderNo, String email) {
         Order order = enrichReturnInfo(findTrackableOrder(orderNo, email));
         if (!isGuestOrder(order)) {
@@ -962,7 +1279,16 @@ public class OrderService {
         if (order == null) {
             return false;
         }
-        return order.getShippingAddress() != null && order.getShippingAddress().startsWith("[Guest]");
+        if (Boolean.TRUE.equals(order.getGuestOrder())) {
+            return true;
+        }
+        if ("GUEST".equalsIgnoreCase(trimToNull(order.getCustomerType()))) {
+            return true;
+        }
+        if (isLegacyGuestShippingAddress(order.getShippingAddress())) {
+            return true;
+        }
+        return isGuestUser(order.getUserId());
     }
 
     public boolean guestOrderEmailMatches(Order order, String email) {
@@ -976,7 +1302,7 @@ public class OrderService {
     /**
      * 更新订单信息
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public boolean updateOrder(Order order) {
         return orderRepository.update(order) > 0;
     }
@@ -984,7 +1310,7 @@ public class OrderService {
     /**
      * 删除订单
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public boolean deleteOrder(Long id) {
         if (id == null || id <= 0) {
             throw new IllegalArgumentException("Order id is required");
@@ -1007,13 +1333,36 @@ public class OrderService {
     /**
      * 根据用户ID获取订单列表
      */
+    @Transactional(rollbackFor = Exception.class, readOnly = true)
     public List<Order> getOrdersByUserId(Long userId) {
-        return orderRepository.findByUserId(userId).stream()
+        return getOrdersByUserId(userId, 0, DEFAULT_CUSTOMER_ORDER_PAGE_SIZE);
+    }
+
+    @Transactional(rollbackFor = Exception.class, readOnly = true)
+    public List<Order> getOrdersByUserId(Long userId, int page, int size) {
+        int safeSize = normalizeCustomerOrderPageSize(size);
+        int safePage = Math.max(0, page);
+        int offset = safePage * safeSize;
+        return orderRepository.findByUserIdPage(userId, offset, safeSize).stream()
                 .map(this::enrichReturnInfo)
                 .collect(Collectors.toList());
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class, readOnly = true)
+    public int countOrdersByUserId(Long userId) {
+        return orderRepository.countByUserId(userId);
+    }
+
+    private int normalizeCustomerOrderPageSize(int size) {
+        int configuredMax = runtimeConfig == null
+                ? HARD_CUSTOMER_ORDER_PAGE_SIZE_LIMIT
+                : runtimeConfig.getInt("order.customer-page-max-size", HARD_CUSTOMER_ORDER_PAGE_SIZE_LIMIT);
+        int maxSize = Math.max(1, Math.min(configuredMax, HARD_CUSTOMER_ORDER_PAGE_SIZE_LIMIT));
+        int normalizedSize = size <= 0 ? DEFAULT_CUSTOMER_ORDER_PAGE_SIZE : size;
+        return Math.max(1, Math.min(normalizedSize, maxSize));
+    }
+
+    @Transactional(rollbackFor = Exception.class)
     public boolean updateOrderStatus(Long id, String status) {
         Order order = getOrderById(id);
         if (order == null) {
@@ -1027,7 +1376,7 @@ public class OrderService {
         return updated;
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public Payment confirmPayment(Long id, String transactionId) {
         Order order = orderRepository.findById(id);
         if (order == null) {
@@ -1097,12 +1446,12 @@ public class OrderService {
         return latest != null ? latest : payment;
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public boolean cancelOrder(Long id) {
         return cancelPendingPaymentOrder(id, true);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public boolean cancelOrderForPaymentExpiry(Long id) {
         return cancelPendingPaymentOrder(id, false);
     }
@@ -1115,19 +1464,18 @@ public class OrderService {
         if (!"PENDING_PAYMENT".equals(order.getStatus())) {
             throw new IllegalStateException("Only pending-payment orders can be cancelled directly. Use refund flow for paid orders.");
         }
-        assertNextStatus(order.getStatus(), "CANCELLED");
-        int updated = orderRepository.updateStatusIfCurrent(id, order.getStatus(), "CANCELLED");
+        String previousStatus = order.getStatus();
+        assertNextStatus(previousStatus, "CANCELLED");
+        int updated = orderRepository.updateStatusIfCurrent(id, previousStatus, "CANCELLED");
         if (updated == 0) {
             return false;
         }
         List<OrderItem> items = orderItemRepository.findByOrderId(id);
-        for (OrderItem item : items) {
-            restoreStock(item);
-        }
+        restoreStock(items);
         if (closePendingPayments) {
             paymentRepository.markPendingCancelledByOrderId(id);
         }
-        if ("PENDING_PAYMENT".equals(order.getStatus())) {
+        if ("PENDING_PAYMENT".equals(previousStatus)) {
             releaseOrderCoupon(order);
         }
         notifyCustomer(
@@ -1140,23 +1488,74 @@ public class OrderService {
 
     @Scheduled(fixedDelayString = "${order.expiry-scan-ms:60000}")
     public void cancelExpiredUnpaidOrders() {
-        LocalDateTime cutoff = LocalDateTime.now().minusMinutes(runtimeConfig.getLong("order.unpaid-timeout-minutes", 30));
-        for (Order order : orderRepository.findPendingPaymentBefore(cutoff)) {
-            try {
-                self.cancelSingleExpiredOrder(order.getId());
-            } catch (RuntimeException ignored) {
-                // Keep scheduler healthy; a raced order status should not break the full scan cycle.
+        LocalDateTime cutoff = LocalDateTime.now().minusMinutes(orderUnpaidTimeoutMinutes());
+        int batchSize = orderExpiryScanBatchSize();
+        Long afterId = null;
+        while (true) {
+            List<Order> expiredOrders = orderRepository.findPendingPaymentBefore(cutoff, afterId, batchSize);
+            if (expiredOrders == null || expiredOrders.isEmpty()) {
+                return;
             }
+            Long nextAfterId = lastOrderId(afterId, expiredOrders);
+            for (Order order : expiredOrders) {
+                if (order == null || order.getId() == null) {
+                    continue;
+                }
+                cancelExpiredUnpaidOrderRow(order);
+            }
+            if (expiredOrders.size() < batchSize || nextAfterId == null || nextAfterId.equals(afterId)) {
+                return;
+            }
+            afterId = nextAfterId;
         }
     }
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    private void cancelExpiredUnpaidOrderRow(Order order) {
+        try {
+            cancelSingleExpiredOrderInNewTransaction(order.getId());
+        } catch (RuntimeException ex) {
+            log.warn("Skipping expired-order cancellation during scan for order {}", order.getId(), ex);
+        }
+    }
+
+    private Long lastOrderId(Long fallback, List<Order> orders) {
+        Long lastId = fallback;
+        for (Order order : orders) {
+            if (order != null && order.getId() != null) {
+                lastId = order.getId();
+            }
+        }
+        return lastId;
+    }
+
+    private int orderExpiryScanBatchSize() {
+        int configured = runtimeConfig == null
+                ? DEFAULT_EXPIRY_SCAN_BATCH_SIZE
+                : runtimeConfig.getInt("order.expiry-scan-batch-size", DEFAULT_EXPIRY_SCAN_BATCH_SIZE);
+        return Math.max(1, Math.min(configured, HARD_EXPIRY_SCAN_BATCH_SIZE_LIMIT));
+    }
+
+    private long orderUnpaidTimeoutMinutes() {
+        return runtimeConfig == null ? 30 : runtimeConfig.getLong("order.unpaid-timeout-minutes", 30);
+    }
+
+    private void cancelSingleExpiredOrderInNewTransaction(Long orderId) {
+        if (transactionManager == null) {
+            cancelSingleExpiredOrder(orderId);
+            return;
+        }
+        TransactionTemplate template = new TransactionTemplate(transactionManager);
+        template.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        template.executeWithoutResult(status -> cancelSingleExpiredOrder(orderId));
+    }
+
+    @Transactional(rollbackFor = Exception.class, propagation = Propagation.REQUIRES_NEW)
     public void cancelSingleExpiredOrder(Long orderId) {
         Order order = orderRepository.findById(orderId);
         if (order == null || !"PENDING_PAYMENT".equals(order.getStatus())) {
             return;
         }
-        LocalDateTime cutoff = LocalDateTime.now().minusMinutes(runtimeConfig.getLong("order.unpaid-timeout-minutes", 30));
+        LocalDateTime cutoff = LocalDateTime.now().minusMinutes(orderUnpaidTimeoutMinutes());
         if (order.getCreatedAt() == null || !order.getCreatedAt().isBefore(cutoff)) {
             return;
         }
@@ -1172,7 +1571,7 @@ public class OrderService {
         cancelOrder(order.getId());
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public boolean requestReturn(Long id, Long userId, String reason) {
         Order order = orderRepository.findById(id);
         if (order == null) {
@@ -1200,7 +1599,7 @@ public class OrderService {
         return updated;
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public boolean approveReturn(Long id) {
         Order order = orderRepository.findById(id);
         if (order == null) {
@@ -1220,7 +1619,7 @@ public class OrderService {
         return updated;
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public boolean rejectReturn(Long id) {
         Order order = orderRepository.findById(id);
         if (order == null) {
@@ -1240,7 +1639,7 @@ public class OrderService {
         return updated;
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public boolean submitReturnShipment(Long id, Long userId, String returnTrackingNumber) {
         Order order = orderRepository.findById(id);
         if (order == null) {
@@ -1264,7 +1663,7 @@ public class OrderService {
         return updated;
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public boolean completeReturn(Long id) {
         Order order = orderRepository.findById(id);
         if (order == null) {
@@ -1301,9 +1700,7 @@ public class OrderService {
             throw new IllegalStateException("Return refund finalization failed");
         }
         List<OrderItem> items = orderItemRepository.findByOrderId(id);
-        for (OrderItem item : items) {
-            restoreStock(item);
-        }
+        restoreStock(items);
         releaseOrderCoupon(order);
         notifyCustomer(
                 order,
@@ -1313,12 +1710,12 @@ public class OrderService {
         return true;
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public Payment refundOrder(Long id, String reason, boolean restock) {
         return refundOrder(id, reason, restock, null);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public Payment refundOrder(Long id, String reason, boolean restock, String manualRefundReference) {
         Order order = orderRepository.findById(id);
         if (order == null) {
@@ -1359,12 +1756,18 @@ public class OrderService {
             throw new IllegalStateException("Order refund finalization failed");
         }
         Payment refundedPayment = refundService.refundPaidPayment(order, cleanedReason, manualRefundReference);
-        boolean shouldRestock = restock || "PENDING_SHIPMENT".equals(order.getStatus());
+        boolean shouldRestock = shouldRestockRefund(order, restock);
         if (shouldRestock) {
             List<OrderItem> items = orderItemRepository.findByOrderId(id);
-            for (OrderItem item : items) {
-                restoreStock(item);
-            }
+            restoreStock(items);
+        } else {
+            log.warn(
+                    "Refund completed without stock restoration: orderId={}, orderNo={}, status={}, requestedRestock={}",
+                    order.getId(),
+                    safeOrderNo(order),
+                    order.getStatus(),
+                    restock
+            );
         }
         releaseOrderCoupon(order);
         notifyCustomer(
@@ -1373,6 +1776,18 @@ public class OrderService {
                 "Refund for order " + safeOrderNo(order) + " has been completed."
         );
         return refundedPayment;
+    }
+
+    public boolean shouldRestockRefund(Order order, boolean requestedRestock) {
+        if (requestedRestock) {
+            return true;
+        }
+        String status = order == null ? null : trimToNull(order.getStatus());
+        return "PENDING_SHIPMENT".equals(status)
+                || "COMPLETED".equals(status)
+                || "RETURN_REQUESTED".equals(status)
+                || "RETURN_APPROVED".equals(status)
+                || "RETURN_SHIPPED".equals(status);
     }
 
     private boolean isReconciliationRefund(Order order) {
@@ -1388,26 +1803,98 @@ public class OrderService {
     }
 
     private void restoreStock(OrderItem item) {
-        Optional<Product> productOpt = productRepository.findById(item.getProductId());
-        if (!productOpt.isPresent()) {
-            return;
-        }
-        Product product = productOpt.get();
-        boolean restoredVariantStock = productVariantService.increaseVariantStock(product, item.getSelectedSpecs(), item.getQuantity());
-        if (product.getStock() != null) {
-            product.setStock(product.getStock() + item.getQuantity());
-        } else if (!restoredVariantStock) {
-            product.setStock(item.getQuantity());
-        }
-        productRepository.save(product);
+        restoreStock(Collections.singletonList(item));
     }
 
-    @Transactional
+    private void restoreStock(List<OrderItem> items) {
+        if (items == null || items.isEmpty()) {
+            return;
+        }
+        Map<Long, List<OrderItem>> simpleItemsByProductId = new LinkedHashMap<>();
+        Map<Long, List<OrderItem>> variantItemsByProductId = new LinkedHashMap<>();
+        for (OrderItem item : items) {
+            if (!isRestorableStockItem(item)) {
+                continue;
+            }
+            Map<Long, List<OrderItem>> target = isBlank(item.getSelectedSpecs())
+                    ? simpleItemsByProductId
+                    : variantItemsByProductId;
+            target.computeIfAbsent(item.getProductId(), ignored -> new ArrayList<>()).add(item);
+        }
+        restoreSimpleProductStock(simpleItemsByProductId);
+        restoreVariantProductStock(variantItemsByProductId);
+    }
+
+    private boolean isRestorableStockItem(OrderItem item) {
+        if (item == null || item.getProductId() == null || item.getQuantity() == null || item.getQuantity() <= 0) {
+            return false;
+        }
+        return true;
+    }
+
+    private void restoreSimpleProductStock(Map<Long, List<OrderItem>> itemsByProductId) {
+        for (Map.Entry<Long, List<OrderItem>> entry : itemsByProductId.entrySet()) {
+            int totalQuantity = entry.getValue().stream()
+                    .map(OrderItem::getQuantity)
+                    .reduce(0, Integer::sum);
+            int updated = productRepository.increaseStock(entry.getKey(), totalQuantity);
+            if (updated <= 0) {
+                logMissingStockRestorationItems(entry.getValue());
+            }
+        }
+    }
+
+    private void restoreVariantProductStock(Map<Long, List<OrderItem>> itemsByProductId) {
+        for (Map.Entry<Long, List<OrderItem>> entry : itemsByProductId.entrySet()) {
+            Product product = findProductForStockRestoration(entry.getKey());
+            if (product == null) {
+                logMissingStockRestorationItems(entry.getValue());
+                continue;
+            }
+            for (OrderItem item : entry.getValue()) {
+                boolean restoredVariantStock = productVariantService.increaseVariantStock(
+                        product,
+                        item.getSelectedSpecs(),
+                        item.getQuantity()
+                );
+                if (product.getStock() != null) {
+                    product.setStock(product.getStock() + item.getQuantity());
+                } else if (!restoredVariantStock) {
+                    product.setStock(item.getQuantity());
+                }
+            }
+            productRepository.save(product);
+        }
+    }
+
+    private Product findProductForStockRestoration(Long productId) {
+        Product product = productRepository.findByIdForUpdate(productId);
+        if (product == null) {
+            Optional<Product> productOpt = productRepository.findById(productId);
+            if (productOpt.isPresent()) {
+                product = productOpt.get();
+            }
+        }
+        return product;
+    }
+
+    private void logMissingStockRestorationItems(List<OrderItem> items) {
+        for (OrderItem item : items) {
+            log.warn(
+                    "Stock restoration skipped because product was not found: productId={}, orderItemId={}, quantity={}",
+                    item.getProductId(),
+                    item.getId(),
+                    item.getQuantity()
+            );
+        }
+    }
+
+    @Transactional(rollbackFor = Exception.class)
     public boolean shipOrder(Long id, String trackingNumber) {
         return shipOrder(id, trackingNumber, null);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public boolean shipOrder(Long id, String trackingNumber, String trackingCarrierCode) {
         Order order = orderRepository.findById(id);
         if (order == null) {
@@ -1417,10 +1904,7 @@ public class OrderService {
         String carrierCode = trackingCarrierCode == null ? null : trackingCarrierCode.trim();
         String carrierName = null;
         if (carrierCode != null && !carrierCode.isEmpty()) {
-            final String requestedCarrierCode = carrierCode;
-            LogisticsCarrier carrier = logisticsCarrierService.findAll(false).stream()
-                    .filter(item -> item.getTrackingCode() != null && item.getTrackingCode().equalsIgnoreCase(requestedCarrierCode))
-                    .findFirst()
+            LogisticsCarrier carrier = logisticsCarrierService.findByTrackingCode(carrierCode)
                     .orElseThrow(() -> new IllegalArgumentException("Carrier is not configured"));
             if (!"ACTIVE".equals(carrier.getStatus())) {
                 throw new IllegalArgumentException("Carrier is disabled");
@@ -1501,7 +1985,7 @@ public class OrderService {
 
     private CustomerContact resolveCustomerContact(Long userId, String shippingAddress, String contactEmail) {
         String email = normalizeEmail(contactEmail);
-        boolean guestUser = shippingAddress != null && shippingAddress.startsWith("[Guest]");
+        boolean guestUser = isLegacyGuestShippingAddress(shippingAddress);
         if (userId != null && userRepository != null) {
             try {
                 Optional<User> user = userRepository.findById(userId);
@@ -1521,7 +2005,7 @@ public class OrderService {
     }
 
     private String extractGuestEmail(String shippingAddress) {
-        if (shippingAddress == null || !shippingAddress.startsWith("[Guest]")) {
+        if (!isLegacyGuestShippingAddress(shippingAddress)) {
             return null;
         }
         String[] parts = shippingAddress.split(" / ");
@@ -1532,6 +2016,26 @@ public class OrderService {
             }
         }
         return null;
+    }
+
+    private boolean isLegacyGuestShippingAddress(String shippingAddress) {
+        return shippingAddress != null && shippingAddress.startsWith(GUEST_ADDRESS_PREFIX);
+    }
+
+    private boolean isGuestUser(Long userId) {
+        if (userId == null || userRepository == null) {
+            return false;
+        }
+        try {
+            return userRepository.findById(userId)
+                    .map(User::getStatus)
+                    .map(this::trimToNull)
+                    .map(status -> "GUEST".equalsIgnoreCase(status))
+                    .orElse(false);
+        } catch (RuntimeException e) {
+            log.warn("Customer lookup failed while resolving guest order flag: userId={}", userId, e);
+            return false;
+        }
     }
 
     private String accountEmailForUser(Long userId) {
@@ -1615,9 +2119,38 @@ public class OrderService {
         }
     }
 
+    private void insertOrderWithGeneratedOrderNo(Order order) {
+        DataIntegrityViolationException lastCollision = null;
+        for (int attempt = 1; attempt <= ORDER_NO_INSERT_MAX_ATTEMPTS; attempt++) {
+            order.setId(null);
+            order.setOrderNo(nextOrderNo());
+            try {
+                orderRepository.insert(order);
+                return;
+            } catch (DataIntegrityViolationException ex) {
+                if (!isOrderNoCollision(ex)) {
+                    throw ex;
+                }
+                lastCollision = ex;
+                log.warn("Order number collision during checkout insert; retrying orderNo={}, attempt={}/{}",
+                        order.getOrderNo(), attempt, ORDER_NO_INSERT_MAX_ATTEMPTS);
+            }
+        }
+        throw new IllegalStateException("Unable to allocate a unique order number", lastCollision);
+    }
+
+    private boolean isOrderNoCollision(DataIntegrityViolationException ex) {
+        String message = String.valueOf(ex.getMostSpecificCause() == null
+                ? ex.getMessage()
+                : ex.getMostSpecificCause().getMessage()).toLowerCase(Locale.ROOT);
+        return message.contains("order_no")
+                || message.contains("uk_orders_order_no")
+                || message.contains("orders.order_no");
+    }
+
     private String nextOrderNo() {
         String date = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
-        return "SO" + date + UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase();
+        return "SO" + date + UUID.randomUUID().toString().replace("-", "").substring(0, 16).toUpperCase(Locale.ROOT);
     }
 
     private String newManualTransactionId(Order order) {
@@ -1706,5 +2239,25 @@ public class OrderService {
             return order.getCompletedAt();
         }
         return order.getUpdatedAt() != null ? order.getUpdatedAt() : order.getCreatedAt();
+    }
+
+    private static class DashboardOrderStatsCacheEntry {
+        private final LocalDate trendStartDay;
+        private final int trendDays;
+        private final int recentLimit;
+        private final long cachedAtMillis;
+        private final Map<String, Object> stats;
+
+        private DashboardOrderStatsCacheEntry(LocalDate today,
+                                              int trendDays,
+                                              int recentLimit,
+                                              long cachedAtMillis,
+                                              Map<String, Object> stats) {
+            this.trendStartDay = today.minusDays(trendDays - 1L);
+            this.trendDays = trendDays;
+            this.recentLimit = recentLimit;
+            this.cachedAtMillis = cachedAtMillis;
+            this.stats = stats;
+        }
     }
 }

@@ -13,11 +13,13 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -43,7 +45,6 @@ class SupportServiceTest {
         session.setUserId(5L);
         session.setStatus("OPEN");
         when(supportSessionMapper.findById(12L)).thenReturn(session);
-        when(supportMessageMapper.findBySessionId(12L)).thenAnswer(invocation -> List.of());
     }
 
     @Test
@@ -52,6 +53,62 @@ class SupportServiceTest {
 
         assertEquals("Need help with delivery.", sent.getContent());
         verify(supportMessageMapper).insert(any(SupportMessage.class));
+    }
+
+    @Test
+    void neutralizesSupportMessageHtmlBeforeSaving() {
+        when(runtimeConfig.getInt("support.message.max-chars", 1000)).thenReturn(200);
+        SupportMessage sent = service.sendMessage(
+                12L,
+                5L,
+                "USER",
+                " <script>alert(1)</script> &lt;img src=x onerror=alert(2)&gt; "
+                        + "&amp;lt;svg onload=alert(3)&amp;gt; A & B ");
+
+        assertEquals(
+                "\uFF1Cscript\uFF1Ealert(1)\uFF1C/script\uFF1E "
+                        + "\uFF1Cimg src=x onerror=alert(2)\uFF1E "
+                        + "\uFF1Csvg onload=alert(3)\uFF1E A & B",
+                sent.getContent());
+        assertFalse(sent.getContent().contains("<"));
+        assertFalse(sent.getContent().contains(">"));
+        verify(supportMessageMapper).insert(any(SupportMessage.class));
+    }
+
+    @Test
+    void neutralizesHtmlAcrossCustomerGuestAndAdminMessageEntrypoints() {
+        when(runtimeConfig.getInt("support.message.max-chars", 1000)).thenReturn(300);
+        SupportSession guestSession = new SupportSession();
+        guestSession.setId(99L);
+        guestSession.setUserId(5L);
+        guestSession.setContextKey("guest-order:so202606080001");
+        guestSession.setStatus("OPEN");
+        when(supportSessionMapper.findOpenByUserIdAndContextKey(5L, "guest-order:so202606080001"))
+                .thenReturn(guestSession);
+        when(supportSessionMapper.findById(99L)).thenReturn(guestSession);
+
+        SupportMessage customerMessage = service.sendUserMessage(
+                5L,
+                12L,
+                " <script>alert(1)</script> ");
+        SupportMessage guestMessage = service.sendUserMessage(
+                5L,
+                null,
+                " &lt;img src=x onerror=alert(2)&gt; ",
+                "guest-order:SO202606080001");
+        SupportMessage adminMessage = service.sendAdminMessage(
+                7L,
+                12L,
+                " &amp;lt;svg onload=alert(3)&amp;gt; ",
+                "ADMIN");
+
+        assertEquals("\uFF1Cscript\uFF1Ealert(1)\uFF1C/script\uFF1E", customerMessage.getContent());
+        assertEquals("\uFF1Cimg src=x onerror=alert(2)\uFF1E", guestMessage.getContent());
+        assertEquals("\uFF1Csvg onload=alert(3)\uFF1E", adminMessage.getContent());
+        assertNoRawAngles(customerMessage.getContent());
+        assertNoRawAngles(guestMessage.getContent());
+        assertNoRawAngles(adminMessage.getContent());
+        verify(supportMessageMapper, times(3)).insert(any(SupportMessage.class));
     }
 
     @Test
@@ -70,6 +127,34 @@ class SupportServiceTest {
 
         verify(supportSessionMapper).findOpenByUserId(5L);
         verify(supportSessionMapper, never()).insert(any(SupportSession.class));
+    }
+
+    @Test
+    void userSessionsClampRequestedLimit() {
+        service.getUserSessions(5L, 999);
+
+        verify(supportSessionMapper).findByUserId(5L, 30);
+    }
+
+    @Test
+    void messagesClampRequestedLimit() {
+        service.getMessages(12L, 999, null);
+
+        verify(supportMessageMapper).findRecentBySessionId(12L, 120);
+    }
+
+    @Test
+    void defaultMessagesUseBoundedRecentWindow() {
+        service.getMessages(12L);
+
+        verify(supportMessageMapper).findRecentBySessionId(12L, 80);
+    }
+
+    @Test
+    void cursorMessagesUseBoundedIncrementalWindow() {
+        service.getMessages(12L, 50, 123L);
+
+        verify(supportMessageMapper).findBySessionIdAfterId(12L, 123L, 50);
     }
 
     @Test
@@ -112,5 +197,10 @@ class SupportServiceTest {
         assertEquals(5, summary.getStaleMinutes());
         assertEquals(36, summary.getResponseScore());
         verify(supportSessionMapper).adminSummary(eq(7L), any(LocalDateTime.class));
+    }
+
+    private static void assertNoRawAngles(String content) {
+        assertFalse(content.contains("<"));
+        assertFalse(content.contains(">"));
     }
 }

@@ -46,7 +46,7 @@ export const formatPaymentUrlLabel = (value?: string | null) => {
     const path = url.pathname === '/' ? '' : url.pathname;
     const label = `${url.hostname}${path}`;
     return label.length > 54 ? `${label.slice(0, 51)}...` : label;
-  } catch {
+  } catch (_error) {
     return '-';
   }
 };

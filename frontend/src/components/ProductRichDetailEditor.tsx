@@ -16,6 +16,7 @@ import './ProductRichDetailEditor.css';
 
 const { Text } = Typography;
 const { TextArea } = Input;
+const richDetailTypePopupClassNames = { popup: { root: 'shop-mobile-popup-layer product-management-page__editorPopup' } };
 
 type ProductRichDetailEditorProps = {
   value?: ProductDetailBlock[];
@@ -58,7 +59,6 @@ const RichVideoPreview: React.FC<{ block: ProductDetailBlock; previewTitle: stri
           sandbox="allow-scripts allow-same-origin allow-presentation"
           referrerPolicy="strict-origin-when-cross-origin"
           allow="fullscreen; picture-in-picture"
-          allowFullScreen
           className="product-rich-detail-editor__videoFrame"
         />
       )}
@@ -144,8 +144,9 @@ const ProductRichDetailEditor: React.FC<ProductRichDetailEditorProps> = ({ value
                       value={block.type}
                       aria-label={typeSelectLabel}
                       title={typeSelectLabel}
-                      classNames={{ popup: { root: 'shop-mobile-popup-layer' } }}
+                      classNames={richDetailTypePopupClassNames}
                       getPopupContainer={() => document.body}
+                      placement="bottomLeft"
                       options={[
                         { value: 'text', label: t('pages.productAdmin.richText') },
                         { value: 'image', label: t('pages.productAdmin.richImage') },

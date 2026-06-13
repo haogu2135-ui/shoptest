@@ -2,18 +2,24 @@ package com.example.shop.config;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.slf4j.MDC;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import javax.servlet.FilterChain;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+@ExtendWith(OutputCaptureExtension.class)
 class RequestCorrelationFilterTest {
 
     private final RequestCorrelationFilter filter = new RequestCorrelationFilter();
@@ -66,6 +72,56 @@ class RequestCorrelationFilterTest {
         assertNotNull(requestId);
         assertTrue(requestId.matches("[A-Za-z0-9._:-]{1,96}"));
         assertEquals(requestId, request.getAttribute(RequestCorrelationFilter.REQUEST_ID_ATTRIBUTE));
+    }
+
+    @Test
+    void logsSlowApiRequestsWithCorrelationContext(CapturedOutput output) throws Exception {
+        ReflectionTestUtils.setField(filter, "slowApiRequestThresholdMs", 0L);
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/products");
+        request.addHeader(RequestCorrelationFilter.REQUEST_ID_HEADER, "slow-req-123");
+        request.setQueryString("token=raw-secret");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        filter.doFilter(request, response, chain((servletRequest, servletResponse) ->
+                ((MockHttpServletResponse) servletResponse).setStatus(201)));
+
+        String logs = output.getOut() + output.getErr();
+        assertTrue(logs.contains("Slow HTTP request"));
+        assertTrue(logs.contains("method=POST"));
+        assertTrue(logs.contains("path=/products"));
+        assertTrue(logs.contains("status=201"));
+        assertTrue(logs.contains("thresholdMs=0"));
+        assertTrue(logs.contains("requestId=slow-req-123"));
+        assertFalse(logs.contains("raw-secret"));
+    }
+
+    @Test
+    void appliesAdminSlowRequestThresholdToAdminPaths(CapturedOutput output) throws Exception {
+        ReflectionTestUtils.setField(filter, "slowApiRequestThresholdMs", 0L);
+        ReflectionTestUtils.setField(filter, "slowAdminRequestThresholdMs", Long.MAX_VALUE);
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/admin/orders");
+        request.addHeader(RequestCorrelationFilter.REQUEST_ID_HEADER, "admin-req-123");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        filter.doFilter(request, response, chain((servletRequest, servletResponse) -> {
+        }));
+
+        String logs = output.getOut() + output.getErr();
+        assertFalse(logs.contains("Slow HTTP request"));
+    }
+
+    @Test
+    void canDisableSlowRequestLogging(CapturedOutput output) throws Exception {
+        ReflectionTestUtils.setField(filter, "requestLatencyLoggingEnabled", false);
+        ReflectionTestUtils.setField(filter, "slowApiRequestThresholdMs", 0L);
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/products");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        filter.doFilter(request, response, chain((servletRequest, servletResponse) -> {
+        }));
+
+        String logs = output.getOut() + output.getErr();
+        assertFalse(logs.contains("Slow HTTP request"));
     }
 
     private FilterChain chain(FilterChain delegate) {

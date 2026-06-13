@@ -1,4 +1,5 @@
 import type { CartItem } from '../types';
+import { reportNonBlockingError } from './nonBlockingError';
 import { getLocalStorageItem, getSessionStorageItem, removeSessionStorageItem, setSessionStorageItem } from './safeStorage';
 
 const CHECKOUT_CART_ITEM_IDS_KEY = 'checkoutCartItemIds';
@@ -41,7 +42,8 @@ export const readCheckoutCartItemIds = () => {
       ? parsed.map(Number).filter((id) => Number.isSafeInteger(id) && id > 0)
       : [];
     return Array.from(new Set(ids));
-  } catch {
+  } catch (error) {
+    reportNonBlockingError('cartSession.readCheckoutCartItemIds', error);
     return [];
   }
 };
@@ -63,8 +65,8 @@ export const syncCheckoutCartItemIds = (items: Pick<CartItem, 'id'>[]) => {
       }
     }
     removeSessionStorageItem(CHECKOUT_CART_ITEM_IDS_KEY);
-  } catch {
-    // Checkout selection storage is best-effort in restricted browser storage modes.
+  } catch (error) {
+    reportNonBlockingError('cartSession.saveCheckoutCartItemIds', error);
   }
 };
 
@@ -80,7 +82,7 @@ export const clearCheckoutCartItemIds = () => {
       }
     }
     removeSessionStorageItem(CHECKOUT_CART_ITEM_IDS_KEY);
-  } catch {
-    // Checkout selection cleanup is best-effort.
+  } catch (error) {
+    reportNonBlockingError('cartSession.clearCheckoutCartItemIds', error);
   }
 };

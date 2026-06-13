@@ -4,12 +4,15 @@ import com.example.shop.dto.AdminReviewResponse;
 import com.example.shop.dto.PublicReviewResponse;
 import com.example.shop.dto.ReviewableOrderResponse;
 import com.example.shop.entity.Review;
+import java.math.BigDecimal;
 import java.util.Map;
 import java.util.List;
 
 public interface ReviewService {
     List<PublicReviewResponse> getPublicReviewsByProductId(Long productId, Long currentUserId);
-    double getAverageRating(Long productId);
+    List<PublicReviewResponse> getPublicReviewsByProductId(Long productId, Long currentUserId, int page, int size);
+    long countPublicReviewsByProductId(Long productId, Long currentUserId);
+    BigDecimal getAverageRating(Long productId);
     Review addReview(Long productId, Long userId, Long orderId, int rating, String comment, List<String> imageUrls);
     Review replyReview(Long id, String reply);
     Review updateReviewStatus(Long id, String status);
@@ -21,4 +24,4 @@ public interface ReviewService {
     AdminReviewResponse replyReviewForAdmin(Long id, String reply);
     AdminReviewResponse updateReviewStatusForAdmin(Long id, String status);
     List<ReviewableOrderResponse> getReviewableOrders(Long productId, Long userId);
-} 
+}

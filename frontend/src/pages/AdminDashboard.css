@@ -3,6 +3,14 @@
   gap: 18px;
 }
 
+.admin-dashboard__actionCard:focus-visible,
+.admin-dashboard__readinessItem:focus-visible,
+.admin-dashboard__paymentOpsCard:focus-visible,
+.admin-dashboard__slaCard:focus-visible {
+  outline: 2px solid #124734;
+  outline-offset: 3px;
+}
+
 .admin-dashboard__loading {
   min-height: 360px;
   display: grid;
@@ -185,7 +193,6 @@
 
 .admin-dashboard__readinessItem:hover,
 .admin-dashboard__readinessItem:focus-visible {
-  outline: none;
   border-color: #124734;
   box-shadow: 0 10px 22px rgba(18, 71, 52, 0.1);
   transform: translateY(-1px);
@@ -317,7 +324,6 @@
 
 .admin-dashboard__actionCard:hover,
 .admin-dashboard__actionCard:focus-visible {
-  outline: none;
   border-color: #124734;
   box-shadow: 0 10px 22px rgba(18, 71, 52, 0.1);
   transform: translateY(-1px);
@@ -430,7 +436,6 @@
 
 .admin-dashboard__paymentOpsCard:hover,
 .admin-dashboard__paymentOpsCard:focus-visible {
-  outline: none;
   border-color: #124734;
   box-shadow: 0 8px 18px rgba(18, 71, 52, 0.14);
   transform: translateY(-1px);
@@ -564,7 +569,6 @@
 
 .admin-dashboard__slaCard:hover,
 .admin-dashboard__slaCard:focus-visible {
-  outline: none;
   border-color: #124734;
   box-shadow: 0 10px 22px rgba(18, 71, 52, 0.1);
   transform: translateY(-1px);
@@ -731,6 +735,30 @@
 
 .admin-dashboard__chartEmpty--compact {
   padding: 32px;
+}
+
+.admin-dashboard__deferredPanelPlaceholder {
+  min-height: 300px;
+  border: 1px solid #edf2ed;
+  border-radius: 8px;
+  background:
+    linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.72) 50%, transparent 100%),
+    linear-gradient(180deg, #f8fcf9 0%, #eef7f1 100%);
+  background-size: 180% 100%, 100% 100%;
+  animation: adminDashboardDeferredPulse 1.4s ease-in-out infinite;
+}
+
+.admin-dashboard__deferredPanelPlaceholder--trend {
+  min-height: 260px;
+}
+
+@keyframes adminDashboardDeferredPulse {
+  0% {
+    background-position: 120% 0, 0 0;
+  }
+  100% {
+    background-position: -120% 0, 0 0;
+  }
 }
 
 .admin-dashboard__trendChartScroll {
@@ -1292,5 +1320,123 @@
 
   .admin-dashboard__chartEmpty {
     padding: 28px 12px;
+  }
+}
+
+/* Android UI closure: admin dashboard controls and readiness grid. */
+@media (max-width: 780px) {
+  .admin-dashboard__readiness {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .admin-dashboard .ant-btn,
+  .admin-dashboard .ant-input,
+  .admin-dashboard .ant-input-affix-wrapper,
+  .admin-dashboard .ant-select-selector,
+  .admin-dashboard .ant-pagination-item,
+  .admin-dashboard .ant-pagination-prev,
+  .admin-dashboard .ant-pagination-next {
+    min-height: 44px !important;
+    height: auto !important;
+    max-height: none !important;
+  }
+
+  .admin-dashboard :where(input, textarea, .ant-input-number-input) {
+    font-size: 16px !important;
+  }
+
+  .admin-dashboard__heroMeta small,
+  .admin-dashboard__scoreText,
+  .admin-dashboard__readinessItem,
+  .admin-dashboard__statusRow span,
+  .admin-dashboard .ant-statistic-title,
+  .admin-dashboard .ant-tag,
+  .admin-dashboard .ant-btn > span:not(.anticon):not(.ant-btn-icon) {
+    font-size: max(12px, 1em) !important;
+    line-height: 1.25 !important;
+  }
+}
+
+/* F2810: mobile dashboard hero must size to content before readiness. */
+@media (max-width: 720px) {
+  .admin-dashboard__hero {
+    position: relative !important;
+    top: auto !important;
+    z-index: auto;
+    align-items: stretch;
+    height: auto !important;
+    min-height: max-content;
+    max-height: none !important;
+    margin-bottom: 4px;
+    overflow: visible !important;
+  }
+
+  .admin-dashboard__hero::after {
+    display: none;
+  }
+
+  .admin-dashboard__readiness {
+    margin-top: 4px;
+    scroll-margin-top: 16px;
+  }
+}
+
+@media (max-width: 430px) {
+  .admin-dashboard__heroMeta {
+    overflow-y: visible;
+  }
+
+  .admin-dashboard__heroMeta span {
+    min-height: 64px;
+  }
+}
+
+/* F2761: admin summary/status metrics must wrap instead of hiding risk counts in scroll rails. */
+@media (max-width: 900px), (max-height: 640px) {
+  .admin-dashboard__readiness {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .admin-dashboard__readinessGrid,
+  .admin-dashboard__actionGrid,
+  .admin-dashboard__paymentOpsGrid,
+  .admin-dashboard__slaGrid {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fit, minmax(112px, 1fr)) !important;
+    gap: 8px !important;
+    margin-inline: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    scroll-snap-type: none !important;
+    -webkit-mask-image: none !important;
+    mask-image: none !important;
+    touch-action: manipulation;
+  }
+
+  .admin-dashboard__actionCard,
+  .admin-dashboard__readinessItem,
+  .admin-dashboard__paymentOpsCard,
+  .admin-dashboard__slaCard,
+  .admin-dashboard--es .admin-dashboard__actionCard,
+  .admin-dashboard--es .admin-dashboard__readinessItem,
+  .admin-dashboard--es .admin-dashboard__paymentOpsCard,
+  .admin-dashboard--es .admin-dashboard__slaCard {
+    flex: initial !important;
+    min-width: 0 !important;
+    min-height: 70px !important;
+    padding: 10px !important;
+    overflow: visible !important;
+    scroll-snap-align: initial !important;
+    text-overflow: clip !important;
+    white-space: normal !important;
+  }
+}
+
+@media (max-width: 430px) {
+  .admin-dashboard__readinessGrid,
+  .admin-dashboard__actionGrid,
+  .admin-dashboard__paymentOpsGrid,
+  .admin-dashboard__slaGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   }
 }

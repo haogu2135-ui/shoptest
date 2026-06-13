@@ -6,6 +6,7 @@
         <result property="userId" column="user_id"/>
         <result property="productId" column="product_id"/>
         <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
         <result property="productName" column="product_name"/>
         <result property="imageUrl" column="image_url"/>
         <result property="productPrice" column="product_price"/>
@@ -14,17 +15,18 @@
     </resultMap>
 
     <select id="findByUserId" resultMap="wishlistMap">
-        SELECT w.id, w.user_id, w.product_id, w.created_at,
+        SELECT w.id, w.user_id, w.product_id, w.created_at, w.updated_at,
                p.name AS product_name, p.image_url, p.price AS product_price,
                p.stock, p.status AS product_status
         FROM wishlist w
         JOIN products p ON w.product_id = p.id
         WHERE w.user_id = #{userId}
         ORDER BY w.created_at DESC
+        LIMIT #{limit}
     </select>
 
     <select id="findByUserAndProduct" resultMap="wishlistMap">
-        SELECT w.id, w.user_id, w.product_id, w.created_at,
+        SELECT w.id, w.user_id, w.product_id, w.created_at, w.updated_at,
                p.name AS product_name, p.image_url, p.price AS product_price,
                p.stock, p.status AS product_status
         FROM wishlist w
@@ -33,8 +35,8 @@
     </select>
 
     <insert id="insert" parameterType="com.example.shop.entity.Wishlist" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO wishlist (user_id, product_id, created_at)
-        VALUES (#{userId}, #{productId}, #{createdAt})
+        INSERT INTO wishlist (user_id, product_id, created_at, updated_at)
+        VALUES (#{userId}, #{productId}, #{createdAt}, #{updatedAt})
     </insert>
 
     <delete id="deleteByUserAndProduct">

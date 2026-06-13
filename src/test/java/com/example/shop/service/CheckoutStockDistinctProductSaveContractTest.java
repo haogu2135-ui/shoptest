@@ -12,7 +12,7 @@ import org.junit.jupiter.api.Test;
 
 class CheckoutStockDistinctProductSaveContractTest {
     @Test
-    void checkoutStockReservationPersistsEachTouchedProductOnceAfterLineValidation() throws IOException {
+    void checkoutStockReservationPersistsOnlyVariantTouchedProductsAfterLineValidation() throws IOException {
         String orderService = read("src/main/java/com/example/shop/service/OrderService.java");
 
         assertFalse(orderService.contains("updateProductStock"),
@@ -25,26 +25,41 @@ class CheckoutStockDistinctProductSaveContractTest {
         String guestCheckout = methodBlock(orderService,
                 "private CheckoutItemsSelection prepareGuestCheckoutItems(Long userId, List<GuestCheckoutItemRequest> items, boolean reserveStock)");
         String reserveProductStock = methodBlock(orderService,
-                "private void reserveProductStock(Product product, String selectedSpecs, int quantity)");
+                "private boolean reserveProductStock(Product product, String selectedSpecs, int quantity)");
+        String detachSimpleStockReservation = methodBlock(orderService,
+                "private void detachSimpleStockReservation(Product product)");
         String saveReservedProducts = methodBlock(orderService,
                 "private void saveReservedProducts(Map<Long, Product> reservedProducts)");
 
+        assertTrue(memberCheckout.contains("if (reserveProductStock(product, item.getSelectedSpecs(), item.getQuantity()))"),
+                "Member checkout should track only products with variant JSON changes for persistence");
         assertTrue(memberCheckout.contains("reservedProducts.put(product.getId(), product);"),
-                "Member checkout should de-duplicate reserved products before persistence");
+                "Member checkout should de-duplicate variant-touched products before persistence");
         assertTrue(memberCheckout.contains("saveReservedProducts(reservedProducts);"),
-                "Member checkout should persist reserved products after item validation");
+                "Member checkout should persist variant-touched products after item validation");
         assertFalse(memberCheckout.contains("productRepository.save(product);"),
                 "Member checkout must not save inside the per-item validation loop");
 
+        assertTrue(guestCheckout.contains("if (reserveProductStock(product, normalizedSpecs, normalizedQuantity))"),
+                "Guest checkout should track only products with variant JSON changes for persistence");
         assertTrue(guestCheckout.contains("reservedProducts.put(product.getId(), product);"),
-                "Guest checkout should de-duplicate reserved products before persistence");
+                "Guest checkout should de-duplicate variant-touched products before persistence");
         assertTrue(guestCheckout.contains("saveReservedProducts(reservedProducts);"),
-                "Guest checkout should persist reserved products after item validation");
+                "Guest checkout should persist variant-touched products after item validation");
         assertFalse(guestCheckout.contains("productRepository.save(product);"),
                 "Guest checkout must not save inside the per-item validation loop");
 
         assertFalse(reserveProductStock.contains("productRepository.save("),
-                "reserveProductStock should mutate the locked entity only; persistence is batched by distinct product");
+                "reserveProductStock should not save inside the per-line helper");
+        assertTrue(reserveProductStock.contains("productRepository.decreaseStock(product.getId(), quantity)"),
+                "reserveProductStock should atomically decrement simple stock");
+        assertTrue(reserveProductStock.contains("if (reservedScalarStock && !reservedVariantStock)"),
+                "simple-stock-only reservations should not leave a managed dirty Product to flush");
+        assertTrue(reserveProductStock.contains("detachSimpleStockReservation(product);"),
+                "simple-stock-only reservations should detach the in-memory stock snapshot");
+        assertTrue(reserveProductStock.contains("return reservedVariantStock;"),
+                "reserveProductStock should tell callers whether variant JSON needs persistence");
+        assertTrue(detachSimpleStockReservation.contains("entityManager.detach(product);"));
         assertTrue(saveReservedProducts.contains("reservedProducts.values()"));
         assertTrue(saveReservedProducts.contains("productRepository.save(product);"));
     }

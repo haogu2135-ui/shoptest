@@ -39,16 +39,19 @@ const ConfigCenter: React.FC = () => {
   const watchedNamespace = Form.useWatch('namespace', form);
   const [snapshot, setSnapshot] = useState<AdminConfigCenterSnapshot | null>(null);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [publishing, setPublishing] = useState(false);
   const [applying, setApplying] = useState(false);
   const [currentRole, setCurrentRole] = useState('');
   const [adminPermissions, setAdminPermissions] = useState<string[]>([]);
   const canApplyConfig = hasAdminPermission(adminPermissions, currentRole, CONFIG_CENTER_APPLY_PERMISSION);
   const canPublishConfig = hasAdminPermission(adminPermissions, currentRole, CONFIG_CENTER_PUBLISH_PERMISSION);
+  const actionDisabled = !snapshot || loading || Boolean(loadError);
 
   const loadSnapshot = useCallback(async (params?: Partial<FormValues>) => {
     setLoading(true);
     try {
+      setLoadError(null);
       const response = await adminApi.getConfigCenter({
         dataId: params?.dataId || form.getFieldValue('dataId'),
         group: params?.group || form.getFieldValue('group'),
@@ -63,7 +66,9 @@ const ConfigCenter: React.FC = () => {
         applyRuntime: true,
       });
     } catch (error: unknown) {
-      message.error(getApiErrorMessage(error, t('pages.configCenter.loadFailed'), language));
+      const errorMessage = getApiErrorMessage(error, t('pages.configCenter.loadFailed'), language);
+      setLoadError(errorMessage);
+      message.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -106,6 +111,7 @@ const ConfigCenter: React.FC = () => {
         content: values.content,
         applyRuntime: canApplyConfig && values.applyRuntime,
       });
+      setLoadError(null);
       setSnapshot(response.data);
       form.setFieldsValue({
         content: response.data.content,
@@ -141,6 +147,7 @@ const ConfigCenter: React.FC = () => {
         content: values.content,
         applyRuntime: true,
       });
+      setLoadError(null);
       setSnapshot(response.data);
       if (response.data.errors?.length) {
         message.warning(t('pages.configCenter.applyWithErrors'));
@@ -198,8 +205,9 @@ const ConfigCenter: React.FC = () => {
               okButtonProps={{ 'aria-label': applyRuntimeActionLabel, title: applyRuntimeActionLabel }}
               cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${applyRuntimeActionLabel}`, title: `${t('common.cancel')}: ${applyRuntimeActionLabel}` }}
               onConfirm={handleApplyRuntime}
+              disabled={actionDisabled}
             >
-              <Button icon={<CheckCircleOutlined />} loading={applying} aria-label={applyRuntimeActionLabel} title={applyRuntimeActionLabel}>
+              <Button icon={<CheckCircleOutlined />} loading={applying} disabled={actionDisabled} aria-label={applyRuntimeActionLabel} title={applyRuntimeActionLabel}>
                 {t('pages.configCenter.applyOnly')}
               </Button>
             </Popconfirm>
@@ -217,8 +225,9 @@ const ConfigCenter: React.FC = () => {
               okButtonProps={{ 'aria-label': publishConfigActionLabel, title: publishConfigActionLabel }}
               cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${publishConfigActionLabel}`, title: `${t('common.cancel')}: ${publishConfigActionLabel}` }}
               onConfirm={handlePublish}
+              disabled={actionDisabled}
             >
-              <Button type="primary" icon={<SendOutlined />} loading={publishing} aria-label={publishConfigActionLabel} title={publishConfigActionLabel}>
+              <Button type="primary" icon={<SendOutlined />} loading={publishing} disabled={actionDisabled} aria-label={publishConfigActionLabel} title={publishConfigActionLabel}>
                 {t('pages.configCenter.publishSync')}
               </Button>
             </Popconfirm>
@@ -226,8 +235,23 @@ const ConfigCenter: React.FC = () => {
         </Space>
       </div>
 
+      {loadError ? (
+        <Alert
+          className="config-center__alert"
+          type="warning"
+          showIcon
+          message={loadError}
+          description={snapshot ? t('pages.configCenter.staleDataWarning') : undefined}
+          action={(
+            <Button size="small" onClick={() => loadSnapshot()} loading={loading}>
+              {t('common.retry')}
+            </Button>
+          )}
+        />
+      ) : null}
+
       <Spin spinning={loading && !snapshot}>
-        {(snapshot?.sensitiveKeys || []).length > 0 ? (
+        {loadError && !snapshot ? null : (snapshot?.sensitiveKeys || []).length > 0 ? (
           <Alert
             className="config-center__alert"
             type="info"
@@ -236,7 +260,7 @@ const ConfigCenter: React.FC = () => {
           />
         ) : null}
 
-        <div className="config-center__stats">
+        {loadError && !snapshot ? null : <div className="config-center__stats">
           <Card>
             <Statistic title={t('pages.configCenter.nacosAddress')} value={snapshot?.nacosServerAddr || '-'} prefix={<CloudSyncOutlined />} />
           </Card>
@@ -251,7 +275,7 @@ const ConfigCenter: React.FC = () => {
               prefix={<CheckCircleOutlined />}
             />
           </Card>
-        </div>
+        </div>}
 
         {(snapshot?.errors || []).map((error) => (
           <Alert key={error} className="config-center__alert" type="error" showIcon message={error} />
@@ -260,7 +284,7 @@ const ConfigCenter: React.FC = () => {
           <Alert key={warning} className="config-center__alert" type="warning" showIcon message={warning} />
         ))}
 
-        <Form<FormValues>
+        {loadError && !snapshot ? null : <Form<FormValues>
           form={form}
           layout="vertical"
           initialValues={{ applyRuntime: true }}
@@ -305,9 +329,9 @@ const ConfigCenter: React.FC = () => {
               <TextArea spellCheck={false} className="config-center__editor" aria-label={configContentEditorLabel} title={configContentEditorLabel} />
             </Form.Item>
           </Card>
-        </Form>
+        </Form>}
 
-        <Card title={t('pages.configCenter.parseResult')} className="config-center__card">
+        {loadError && !snapshot ? null : <Card title={t('pages.configCenter.parseResult')} className="config-center__card">
           {propertyRows.length ? (
             <Table
               rowKey="key"
@@ -322,9 +346,9 @@ const ConfigCenter: React.FC = () => {
           ) : (
             <Empty description={t('pages.configCenter.noParsedConfig')} />
           )}
-        </Card>
+        </Card>}
 
-        <Card title={t('pages.configCenter.effectiveRuntimeValues')} className="config-center__card">
+        {loadError && !snapshot ? null : <Card title={t('pages.configCenter.effectiveRuntimeValues')} className="config-center__card">
           {effectiveRows.length ? (
             <Table
               rowKey="key"
@@ -339,7 +363,7 @@ const ConfigCenter: React.FC = () => {
           ) : (
             <Empty description={t('pages.configCenter.noEffectiveValues')} />
           )}
-        </Card>
+        </Card>}
       </Spin>
     </div>
   );

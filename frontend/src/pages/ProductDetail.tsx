@@ -1,14 +1,14 @@
 import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Row, Col, Card, Button, Tag, Typography, Spin, Radio, Rate, Carousel, Modal, Space, Breadcrumb, Tabs, message, List, Input, Segmented, Empty, Alert } from 'antd';
-import { BarChartOutlined, HomeOutlined, ShoppingCartOutlined, HeartOutlined, HeartFilled, CheckCircleOutlined, TruckOutlined, SafetyCertificateOutlined, ThunderboltOutlined, BellOutlined, MinusOutlined, PlusOutlined } from '@ant-design/icons';
+import { Row, Col, Card, Button, Tag, Typography, Radio, Rate, Carousel, Modal, Space, Breadcrumb, Tabs, message, List, Input, Segmented, Empty, Alert } from 'antd';
+import { BarChartOutlined, HomeOutlined, ShoppingCartOutlined, HeartOutlined, HeartFilled, CheckCircleOutlined, TruckOutlined, SafetyCertificateOutlined, ThunderboltOutlined, BellOutlined, MinusOutlined, PlusOutlined, EllipsisOutlined } from '@ant-design/icons';
 import { productApi, cartApi, reviewApi, wishlistApi, questionApi } from '../api';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../i18n';
 import type { CartItem, ProductPublic as Product, PublicReview, ProductQuestionPublic, ReviewableOrder } from '../types';
 import { useMarket } from '../hooks/useMarket';
 import { localizeProduct } from '../utils/localizedProduct';
-import { getLocalizedOptionLabel } from '../utils/localizedProductOptions';
+import { getLocalizedOptionLabel, isSizeOptionName } from '../utils/localizedProductOptions';
 import { addGuestCartItem } from '../utils/guestCart';
 import { getBundleInfo } from '../utils/bundle';
 import { recordProductView } from '../utils/productViewPreferences';
@@ -17,19 +17,36 @@ import { conversionConfig, estimatePetSize, getDeliveryPromise } from '../utils/
 import { getProductOptionGroups, getProductVariants, needsOptionSelection, optionValueIsCompatible, selectCompatibleProductOption, variantMatchesSelectedOptions } from '../utils/productOptions';
 import { clearCheckoutCartItemIds, syncCheckoutCartItemIds } from '../utils/cartSession';
 import { dispatchDomEvent } from '../utils/domEvents';
-import { buildResponsiveImageSrcSet, getOptimizedImageUrl, resolveApiAssetUrl } from '../utils/mediaAssets';
+import { buildResponsiveImageSrcSet, getOptimizedImageUrl } from '../utils/mediaAssets';
 import { buildLoginUrlFromWindow } from '../utils/authRedirect';
 import { getLocalStorageItem, hasStoredValue, removeSessionStorageItem } from '../utils/safeStorage';
 import { getLimitedTimeEndMs, getLimitedTimeRemainingMs, shouldRunLimitedTimeTicker } from '../utils/limitedTimeCountdown';
 import { getApiErrorMessage } from '../utils/apiError';
-import { loadFallbackProductCatalog, loadProductCatalogSnapshot } from '../utils/productCatalogSnapshot';
 import { addCompareProduct, isProductCompared, MAX_COMPARE_ITEMS } from '../utils/productCompare';
 import { addAppScrollListener } from '../utils/nativeScroll';
 import { useNativeBackHandler } from '../utils/nativeBack';
 import { AUTH_SESSION_CHANGED_EVENT } from '../utils/authEvents';
 import { formatProductSpecLabel } from '../utils/productSpecLabels';
 import { syncHiddenCarouselSlideFocus } from '../utils/carouselAccessibility';
-import { productImageFallback } from '../utils/productMedia';
+import { reportNonBlockingError } from '../utils/nonBlockingError';
+import {
+  applyImageFallback,
+  cacheProductRecommendations,
+  clampZoom,
+  clearProductDetailSessionCaches,
+  fallbackProductImage,
+  findFallbackProductById,
+  getCachedProductRecommendations,
+  getTouchDistance,
+  getTouchPair,
+  handleGalleryZoomLeave,
+  handleGalleryZoomMove,
+  normalizeProductImages,
+  renderTrustIcon,
+  resolveProductPrimaryImage,
+  scoreRelatedRecommendation,
+} from './productDetailHelpers';
+import type { GalleryTouchPoint, ProductRecommendationCandidate } from './productDetailHelpers';
 import './ProductDetail.css';
 import '../styles/mobile-page-contrast.css';
 
@@ -37,111 +54,16 @@ const { Title, Text } = Typography;
 const ProductRichDetail = React.lazy(() => import('../components/ProductRichDetail'));
 const ProductReview = React.lazy(() => import('../components/ProductReview').then((module) => ({ default: module.ProductReview })));
 
-const fallbackProductImage = productImageFallback;
-const resolveDetailImage = (imageUrl?: string | null) => resolveApiAssetUrl(imageUrl, fallbackProductImage);
-const PRODUCT_RECOMMENDATIONS_CACHE_TTL = 2 * 60 * 1000;
-
 interface PendingProductQuestion {
   id: string;
   question: string;
   createdAt: string;
 }
-const productRecommendationsCache = new Map<string, { expiresAt: number; items: Product[] }>();
-let recommendationSessionResetRegistered = false;
 const eagerImagePriorityProps = { fetchpriority: 'high' } as unknown as React.ImgHTMLAttributes<HTMLImageElement>;
 const lazyImagePriorityProps = { fetchpriority: 'auto' } as unknown as React.ImgHTMLAttributes<HTMLImageElement>;
 
-const clearProductDetailSessionCaches = () => {
-  productRecommendationsCache.clear();
-};
-
-const registerProductDetailSessionReset = () => {
-  if (recommendationSessionResetRegistered || typeof window === 'undefined') return;
-  window.addEventListener(AUTH_SESSION_CHANGED_EVENT, clearProductDetailSessionCaches);
-  recommendationSessionResetRegistered = true;
-};
-
-registerProductDetailSessionReset();
-
-const parseImageList = (value: unknown): string[] => {
-  if (Array.isArray(value)) return value;
-  if (typeof value !== 'string') return [];
-  try {
-    const parsed = JSON.parse(value);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-};
-
-const normalizeProductImages = (product: Partial<Product> | null | undefined) => {
-  const rawImages = parseImageList(product?.images);
-  const images = [product?.imageUrl, ...rawImages]
-    .map((image) => String(image || '').trim())
-    .filter(Boolean);
-  const uniqueImages = Array.from(new Set(images.map(resolveDetailImage)));
-  return uniqueImages.length > 0
-    ? uniqueImages.concat(fallbackProductImage)
-    : [fallbackProductImage, fallbackProductImage];
-};
-
-const resolveProductPrimaryImage = (product: Partial<Product> | null | undefined) => {
-  const images = product?.images;
-  const galleryImage = Array.isArray(images) ? images.find((image) => String(image || '').trim()) : '';
-  return resolveDetailImage(product?.imageUrl || galleryImage || fallbackProductImage);
-};
-
-const findFallbackProductById = (id: number) => {
-  const sources = [loadProductCatalogSnapshot()?.products || [], loadFallbackProductCatalog()];
-  for (const products of sources) {
-    const product = products.find((item) => Number(item.id) === id);
-    if (product) return product;
-  }
-  return null;
-};
-
-const handleGalleryZoomMove = (event: React.MouseEvent<HTMLImageElement>) => {
-  const rect = event.currentTarget.getBoundingClientRect();
-  const x = ((event.clientX - rect.left) / rect.width) * 100;
-  const y = ((event.clientY - rect.top) / rect.height) * 100;
-  event.currentTarget.style.transformOrigin = `${x}% ${y}%`;
-};
-
-const handleGalleryZoomLeave = (event: React.MouseEvent<HTMLImageElement>) => {
-  event.currentTarget.style.transformOrigin = 'center center';
-};
-
-const applyImageFallback = (event: React.SyntheticEvent<HTMLImageElement>, fallback: string) => {
-  if (event.currentTarget.src === fallback) return;
-  event.currentTarget.removeAttribute('srcset');
-  event.currentTarget.src = fallback;
-};
-
-const getTouchDistance = (first: React.Touch, second: React.Touch) =>
-  Math.hypot(second.clientX - first.clientX, second.clientY - first.clientY);
-
-const clampZoom = (value: number) => Math.min(3, Math.max(1, value));
-
-const getTouchPair = (touches: React.TouchList) => {
-  const first = touches.item(0);
-  const second = touches.item(1);
-  if (!first || !second) return null;
-  return { first, second };
-};
-
-const renderTrustIcon = (icon: string) => {
-  switch (icon) {
-    case 'truck':
-      return <TruckOutlined />;
-    case 'shield':
-    case 'support':
-      return <SafetyCertificateOutlined />;
-    default:
-      return <CheckCircleOutlined />;
-  }
-};
-
 const PRODUCT_QUESTION_MAX_LENGTH = 500;
+const PRODUCT_SIZE_CALCULATOR_MAX_WEIGHT_KG = 200;
 
 const stripQuestionControlChars = (value: string) =>
   Array.from(value, (char) => {
@@ -151,6 +73,131 @@ const stripQuestionControlChars = (value: string) =>
 
 const normalizeQuestionText = (value: string) => (
   stripQuestionControlChars(value).trim().replace(/\s+/g, ' ').slice(0, PRODUCT_QUESTION_MAX_LENGTH)
+);
+
+const normalizeSizeCalculatorWeight = (value: string) => {
+  if (!value.trim()) return '';
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return '';
+  return String(Math.min(PRODUCT_SIZE_CALCULATOR_MAX_WEIGHT_KG, Math.max(0, numeric)));
+};
+
+const ProductDetailSkeleton: React.FC<{ label: string }> = ({ label }) => (
+  <div className="product-detail-page product-detail-page--loading">
+    <div className="product-detail-shell">
+      <div
+        className="product-detail-skeleton"
+        role="status"
+        aria-live="polite"
+        aria-busy="true"
+        aria-label={label}
+        data-testid="product-detail-skeleton"
+      >
+        <span className="product-detail-skeleton__sr">{label}</span>
+        <div className="product-detail-skeleton__breadcrumb" aria-hidden="true">
+          <span className="product-detail-skeleton__block product-detail-skeleton__block--crumb" />
+          <span className="product-detail-skeleton__block product-detail-skeleton__block--crumb product-detail-skeleton__block--crumbLong" />
+          <span className="product-detail-skeleton__block product-detail-skeleton__block--crumb product-detail-skeleton__block--crumbShort" />
+        </div>
+
+        <div className="product-detail-skeleton__main">
+          <section className="product-detail-skeleton__media" aria-hidden="true" data-testid="product-detail-skeleton-gallery">
+            <div className="product-detail-skeleton__imageFrame">
+              <span className="product-detail-skeleton__block product-detail-skeleton__block--image" />
+            </div>
+            <div className="product-detail-skeleton__thumbs">
+              {Array.from({ length: 4 }).map((_, index) => (
+                <span key={index} className="product-detail-skeleton__block product-detail-skeleton__block--thumb" />
+              ))}
+            </div>
+          </section>
+
+          <section className="product-detail-skeleton__summary" aria-hidden="true" data-testid="product-detail-skeleton-summary">
+            <span className="product-detail-skeleton__block product-detail-skeleton__block--brand" />
+            <span className="product-detail-skeleton__block product-detail-skeleton__block--title" />
+            <span className="product-detail-skeleton__block product-detail-skeleton__block--subtitle" />
+            <span className="product-detail-skeleton__block product-detail-skeleton__block--price" />
+            <div className="product-detail-skeleton__signals">
+              {Array.from({ length: 3 }).map((_, index) => (
+                <span key={index} className="product-detail-skeleton__block product-detail-skeleton__block--signal" />
+              ))}
+            </div>
+            <div className="product-detail-skeleton__options">
+              {Array.from({ length: 2 }).map((_, index) => (
+                <div key={index} className="product-detail-skeleton__optionGroup">
+                  <span className="product-detail-skeleton__block product-detail-skeleton__block--optionLabel" />
+                  <div className="product-detail-skeleton__optionPills">
+                    {Array.from({ length: 3 }).map((__, pillIndex) => (
+                      <span key={pillIndex} className="product-detail-skeleton__block product-detail-skeleton__block--pill" />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="product-detail-skeleton__actions">
+              <span className="product-detail-skeleton__block product-detail-skeleton__block--action" />
+              <span className="product-detail-skeleton__block product-detail-skeleton__block--action product-detail-skeleton__block--actionPrimary" />
+            </div>
+          </section>
+        </div>
+
+        <div className="product-detail-skeleton__afterfold" aria-hidden="true" data-testid="product-detail-skeleton-afterfold">
+          <div className="product-detail-skeleton__tabs">
+            <span className="product-detail-skeleton__block product-detail-skeleton__block--tab" />
+            <span className="product-detail-skeleton__block product-detail-skeleton__block--tab" />
+            <span className="product-detail-skeleton__block product-detail-skeleton__block--tab" />
+          </div>
+          <div className="product-detail-skeleton__detailRows">
+            <span className="product-detail-skeleton__block product-detail-skeleton__block--detail product-detail-skeleton__block--detailLong" />
+            <span className="product-detail-skeleton__block product-detail-skeleton__block--detail" />
+            <span className="product-detail-skeleton__block product-detail-skeleton__block--detail product-detail-skeleton__block--detailShort" />
+          </div>
+          <div className="product-detail-skeleton__recommendations">
+            {Array.from({ length: 3 }).map((_, index) => (
+              <span key={index} className="product-detail-skeleton__block product-detail-skeleton__block--recommendation" />
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
+const ProductDetailLazyFallback: React.FC<{ label: string; variant: 'rich' | 'review' }> = ({ label, variant }) => (
+  <div
+    className={`product-detail-lazy-skeleton product-detail-lazy-skeleton--${variant}`}
+    role="status"
+    aria-live="polite"
+    aria-busy="true"
+    aria-label={label}
+    data-testid={`product-detail-lazy-${variant}-fallback`}
+  >
+    <span className="product-detail-skeleton__sr">{label}</span>
+    {variant === 'rich' ? (
+      <>
+        <span className="product-detail-skeleton__block product-detail-lazy-skeleton__line product-detail-lazy-skeleton__line--wide" />
+        <span className="product-detail-skeleton__block product-detail-lazy-skeleton__line" />
+        <span className="product-detail-skeleton__block product-detail-lazy-skeleton__media" />
+      </>
+    ) : (
+      <>
+        <span className="product-detail-skeleton__block product-detail-lazy-skeleton__title" />
+        <div className="product-detail-lazy-skeleton__composer">
+          <span className="product-detail-skeleton__block product-detail-lazy-skeleton__select" />
+          <span className="product-detail-skeleton__block product-detail-lazy-skeleton__textarea" />
+          <span className="product-detail-skeleton__block product-detail-lazy-skeleton__button" />
+        </div>
+        <div className="product-detail-lazy-skeleton__reviewRows">
+          {Array.from({ length: 2 }).map((_, index) => (
+            <div className="product-detail-lazy-skeleton__reviewRow" key={index}>
+              <span className="product-detail-skeleton__block product-detail-lazy-skeleton__avatar" />
+              <span className="product-detail-skeleton__block product-detail-lazy-skeleton__line" />
+            </div>
+          ))}
+        </div>
+      </>
+    )}
+  </div>
 );
 
 const ProductDetail: React.FC = () => {
@@ -247,8 +294,8 @@ const ProductDetail: React.FC = () => {
         if (!Array.from(document.head.querySelectorAll('link[rel="preconnect"]')).some((link) => link.getAttribute('href') === origin)) {
           addLink({ rel: 'preconnect', href: origin, crossOrigin: 'anonymous' });
         }
-      } catch {
-        // ignore invalid URLs
+      } catch (error) {
+        reportNonBlockingError('ProductDetail.preconnectHeroImage', error);
       }
     };
 
@@ -402,28 +449,25 @@ const ProductDetail: React.FC = () => {
       const res = await reviewApi.getAll(Number(id));
       setReviews(res.data.reviews || []);
       setAverageRating(Number(res.data.averageRating || 0));
-    } catch {
-      // ignore
+    } catch (error) {
+      reportNonBlockingError('ProductDetail.fetchReviews', error);
     }
   }, [id]);
 
   const fetchRecommendations = useCallback(async () => {
     try {
       const cacheKey = `${language}|${id}`;
-      const cached = productRecommendationsCache.get(cacheKey);
-      if (cached && cached.expiresAt > Date.now()) {
-        setRecommendations(cached.items);
+      const cached = getCachedProductRecommendations(cacheKey);
+      if (cached) {
+        setRecommendations(cached);
         return;
       }
       const res = await productApi.getRecommendations(Number(id));
       const items = res.data.map((item: Product) => localizeProduct(item, language));
-      productRecommendationsCache.set(cacheKey, {
-        expiresAt: Date.now() + PRODUCT_RECOMMENDATIONS_CACHE_TTL,
-        items,
-      });
+      cacheProductRecommendations(cacheKey, items);
       setRecommendations(items);
-    } catch {
-      // ignore
+    } catch (error) {
+      reportNonBlockingError('ProductDetail.fetchRecommendations', error);
     }
   }, [id, language]);
 
@@ -435,7 +479,8 @@ const ProductDetail: React.FC = () => {
       setPendingQuestions((current) => current.filter((pendingQuestion) => (
         !answeredQuestions.some((question) => normalizeQuestionText(question.question) === normalizeQuestionText(pendingQuestion.question))
       )));
-    } catch {
+    } catch (error) {
+      reportNonBlockingError('ProductDetail.fetchQuestions', error);
       setQuestions([]);
     }
   }, [id]);
@@ -444,7 +489,8 @@ const ProductDetail: React.FC = () => {
     try {
       const ordersRes = await reviewApi.getReviewableOrders(Number(id));
       setReviewableOrders(ordersRes.data || []);
-    } catch {
+    } catch (error) {
+      reportNonBlockingError('ProductDetail.fetchReviewableOrders', error);
       setReviewableOrders([]);
     }
   }, [id]);
@@ -462,6 +508,7 @@ const ProductDetail: React.FC = () => {
   }, [fetchQuestions, fetchRecommendations, fetchReviewableOrders, fetchReviews]);
 
   useEffect(() => {
+    let disposed = false;
     nonCriticalLoadedRef.current = false;
     setReviews([]);
     setQuestions([]);
@@ -475,28 +522,36 @@ const ProductDetail: React.FC = () => {
       setLoading(true);
       try {
         const res = await productApi.getById(Number(id));
+        if (disposed) return;
         setProduct(localizeProduct(res.data as Product, language));
         setSelectedImage(normalizeProductImages(res.data)[0]);
         setActiveMobileImageIndex(0);
         recordProductView(res.data);
-      } catch {
+      } catch (error) {
+        if (disposed) return;
+        reportNonBlockingError('ProductDetail.fetchProduct', error);
         const fallbackProduct = findFallbackProductById(Number(id));
         if (fallbackProduct) {
-          setProduct(localizeProduct(fallbackProduct, language));
+          setProduct(localizeProduct(fallbackProduct as Product, language));
           setSelectedImage(normalizeProductImages(fallbackProduct)[0]);
           setActiveMobileImageIndex(0);
           return;
         }
         setProduct(null);
       } finally {
+        if (disposed) return;
         setLoading(false);
       }
     };
     fetchProduct();
     if (token) {
       wishlistApi.check(0, Number(id))
-        .then(res => setIsWishlisted(res.data.wishlisted))
-        .catch(() => {});
+        .then(res => {
+          if (!disposed) setIsWishlisted(res.data.wishlisted);
+        })
+        .catch((error) => {
+          if (!disposed) reportNonBlockingError('ProductDetail.checkWishlist', error);
+        });
     }
     setIsAlerted(hasStockAlert(Number(id)));
     setIsCompared(isProductCompared(Number(id)));
@@ -514,23 +569,33 @@ const ProductDetail: React.FC = () => {
       observer.observe(target);
     } else {
       let removeScrollWarmup: () => void = () => undefined;
+      const detachScrollWarmup = () => {
+        removeScrollWarmup();
+        removeScrollWarmup = () => undefined;
+      };
       const scrollWarmup = () => {
         const nextTarget = detailContentRef.current;
-        if (!nextTarget || nextTarget.getBoundingClientRect().top < window.innerHeight + 520) {
+        if (!nextTarget) return;
+        if (nextTarget.getBoundingClientRect().top < window.innerHeight + 520) {
           warmNonCriticalContent();
-          removeScrollWarmup();
+          detachScrollWarmup();
         }
       };
-      removeScrollWarmup = addAppScrollListener(scrollWarmup, { passive: true });
+      const scrollWarmupCleanup = addAppScrollListener(scrollWarmup, { passive: true });
+      removeScrollWarmup = typeof scrollWarmupCleanup === 'function'
+        ? scrollWarmupCleanup
+        : () => undefined;
       scrollWarmup();
       return () => {
+        disposed = true;
         window.clearTimeout(fallbackTimer);
-        removeScrollWarmup();
+        detachScrollWarmup();
         observer?.disconnect();
       }
     }
 
     return () => {
+      disposed = true;
       window.clearTimeout(fallbackTimer);
       observer?.disconnect();
     };
@@ -555,6 +620,52 @@ const ProductDetail: React.FC = () => {
       window.removeEventListener('storage', syncCompareState);
     };
   }, [id]);
+
+  const getPinchOrigin = useCallback((first: GalleryTouchPoint, second: GalleryTouchPoint) => {
+    const gallery = mobileGalleryRef.current;
+    if (!gallery) return { originX: 50, originY: 50 };
+    const rect = gallery.getBoundingClientRect();
+    const centerX = (first.clientX + second.clientX) / 2;
+    const centerY = (first.clientY + second.clientY) / 2;
+    return {
+      originX: Math.min(100, Math.max(0, ((centerX - rect.left) / rect.width) * 100)),
+      originY: Math.min(100, Math.max(0, ((centerY - rect.top) / rect.height) * 100)),
+    };
+  }, []);
+
+  const handleGalleryTouchStart = (event: React.TouchEvent<HTMLDivElement>) => {
+    if (event.touches.length !== 2) return;
+    const pair = getTouchPair(event.touches);
+    if (!pair) return;
+    setImagePaused(true);
+    pinchStartRef.current = { distance: getTouchDistance(pair.first, pair.second), scale: pinchZoom.scale };
+    setPinchZoom({ active: true, scale: 1, ...getPinchOrigin(pair.first, pair.second) });
+  };
+
+  const handleGalleryTouchMove = useCallback((event: TouchEvent) => {
+    if (event.touches.length !== 2 || !pinchStartRef.current) return;
+    const pair = getTouchPair(event.touches);
+    if (!pair) return;
+    event.preventDefault();
+    const nextScale = clampZoom((getTouchDistance(pair.first, pair.second) / pinchStartRef.current.distance) * pinchStartRef.current.scale);
+    setPinchZoom({ active: true, scale: nextScale, ...getPinchOrigin(pair.first, pair.second) });
+  }, [getPinchOrigin]);
+
+  useEffect(() => {
+    const gallery = mobileGalleryRef.current;
+    if (!gallery) return;
+    gallery.addEventListener('touchmove', handleGalleryTouchMove, { passive: false });
+    return () => {
+      gallery.removeEventListener('touchmove', handleGalleryTouchMove);
+    };
+  }, [handleGalleryTouchMove, loading]);
+
+  const resetGalleryPinch = () => {
+    if (!pinchStartRef.current && !pinchZoom.active) return;
+    pinchStartRef.current = null;
+    setPinchZoom((current) => ({ ...current, active: false, scale: 1 }));
+    scheduleImageRotationResume();
+  };
 
   const handleAddToCart = async () => {
     if (purchaseSubmitting || purchaseRequestKeyRef.current) return;
@@ -655,19 +766,27 @@ const ProductDetail: React.FC = () => {
   };
 
   const handleStockAlert = () => {
+    const currentProduct = product;
+    if (!currentProduct) {
+      return;
+    }
     if (isAlerted) {
       removeStockAlert(Number(id));
       setIsAlerted(false);
       message.success(t('pages.stockAlerts.removed'));
       return;
     }
-    const result = addStockAlert(product);
+    const result = addStockAlert(currentProduct);
     setIsAlerted(true);
     message.success(result.status === 'exists' ? t('pages.stockAlerts.exists') : t('pages.stockAlerts.added'));
   };
 
   const handleCompare = () => {
-    const result = addCompareProduct(product);
+    const currentProduct = product;
+    if (!currentProduct) {
+      return;
+    }
+    const result = addCompareProduct(currentProduct);
     if (result.status === 'full') {
       message.warning(t('pages.productList.compareFull', { count: MAX_COMPARE_ITEMS }));
       return;
@@ -677,8 +796,8 @@ const ProductDetail: React.FC = () => {
     navigate('/compare');
   };
 
-  const handleAddReview = async (orderId: number, rating: number, comment: string) => {
-    await reviewApi.create(Number(id), orderId, rating, comment);
+  const handleAddReview = async (orderId: number, rating: number, comment: string, imageUrls: string[] = []) => {
+    await reviewApi.create(Number(id), orderId, rating, comment, imageUrls);
     await fetchReviews();
     const token = getLocalStorageItem('token');
     if (token) {
@@ -719,11 +838,7 @@ const ProductDetail: React.FC = () => {
   };
 
   if (loading) {
-    return (
-      <div className="product-detail-loading">
-        <Spin size="large" />
-      </div>
-    );
+    return <ProductDetailSkeleton label={t('common.loading')} />;
   }
 
   if (!product) {
@@ -739,6 +854,7 @@ const ProductDetail: React.FC = () => {
   const productName = detailProductName(product);
   const addCartActionLabel = `${t('pages.productDetail.addCart')}: ${productName}`;
   const buyNowActionLabel = `${t('pages.productDetail.buyNow')}: ${productName}`;
+  const selectOptionsActionLabel = `${t('pages.wishlist.selectOptions')}: ${productName}`;
   const questionInputLabel = `${t('pages.ask.title')}: ${productName}`;
   const questionSubmitActionLabel = `${t('pages.ask.submit')}: ${productName}`;
   const stockAlertActionLabel = `${isAlerted ? t('pages.stockAlerts.remove') : t('pages.stockAlerts.notifyMe')}: ${productName}`;
@@ -778,17 +894,35 @@ const ProductDetail: React.FC = () => {
       </span>
     );
   };
+  const freeShippingThresholdAmount = formatMoney(market.freeShippingThreshold);
+  const productFreeShippingText = market.freeShippingThreshold > 0
+    ? renderProductDetailAmountText(
+      t('pages.productDetail.freeShippingOver', { amount: freeShippingThresholdAmount }),
+      freeShippingThresholdAmount,
+    )
+    : t('pages.productDetail.freeShipping');
+  const productShippingText = product.freeShipping
+    ? t('pages.productDetail.freeShipping')
+    : product.shipping || productFreeShippingText;
   const purchaseModeLabel = purchaseMode === 'bundle'
       ? t('bundle.bundleDeal')
       : t('pages.productDetail.oneTimePurchase');
   const discountPercent = product.effectiveDiscountPercent || product.discount || 0;
+  const originalReferencePrice = product.originalPrice && product.originalPrice > displayPrice ? product.originalPrice : undefined;
+  const priceSavingsAmount = originalReferencePrice ? Math.max(0, originalReferencePrice - displayPrice) : 0;
+  const priceSavingsPercent = originalReferencePrice
+    ? Math.max(1, Math.round((priceSavingsAmount / originalReferencePrice) * 100))
+    : discountPercent;
   const limitedTimeRemaining = getLimitedTimeRemainingMs(product, now);
+  const limitedTimePromoActive = limitedTimeRemaining > 0;
   const hasCompleteOptions = optionGroups.every((group) => selectedOptions[group.name]);
   const hasUnavailableSelectedVariant = variants.length > 0 && hasCompleteOptions && !selectedVariant;
   const optionsMissing = optionGroups.length > 0 && !hasCompleteOptions;
   const purchaseSelectionBlocked = optionsMissing || hasUnavailableSelectedVariant;
-  const mobilePurchaseBlocked = !isOutOfStock && purchaseSubmitting !== null;
-  const buyNowBlocked = isOutOfStock || purchaseSubmitting !== null;
+  const addToCartActionLabel = purchaseSelectionBlocked ? selectOptionsActionLabel : addCartActionLabel;
+  const addToCartBlocked = isOutOfStock || purchaseSelectionBlocked || purchaseSubmitting !== null;
+  const mobileAddToCartBlocked = !isOutOfStock && (purchaseSelectionBlocked || purchaseSubmitting !== null);
+  const buyNowBlocked = isOutOfStock || purchaseSelectionBlocked || purchaseSubmitting !== null;
   const selectedOptionTags = optionGroups
     .map((group) => ({
       name: group.name,
@@ -797,8 +931,12 @@ const ProductDetail: React.FC = () => {
       valueLabel: getLocalizedOptionLabel(selectedOptions[group.name] || '', language),
     }))
     .filter((item) => item.value);
-  const sizeOptionGroup = optionGroups.find((group) => group.name.toLowerCase().includes('size') || group.name.includes('尺码'));
-  const recommendedSize = estimatePetSize(sizeCalculatorBreed, Number(sizeCalculatorWeight || 0));
+  const sizeOptionGroup = optionGroups.find((group) => isSizeOptionName(group.name));
+  const sizeCalculatorWeightKg = Math.min(
+    PRODUCT_SIZE_CALCULATOR_MAX_WEIGHT_KG,
+    Math.max(0, Number(sizeCalculatorWeight || 0)),
+  );
+  const recommendedSize = estimatePetSize(sizeCalculatorBreed, sizeCalculatorWeightKg);
   const recommendedSizeValue = sizeOptionGroup?.values.find((value) => value.toLowerCase() === String(recommendedSize || '').toLowerCase());
   const recommendedSizeLabel = recommendedSizeValue
     ? getLocalizedOptionLabel(recommendedSizeValue, language)
@@ -866,7 +1004,7 @@ const ProductDetail: React.FC = () => {
       title: t('pages.productDetail.decisionDeliveryTitle'),
       text: deliveryPromise.enabled
         ? t('pages.productDetail.decisionDeliveryText', { window: deliveryPromise.windowText })
-        : t('pages.productDetail.defaultShipping'),
+        : productShippingText,
     },
     {
       key: 'value',
@@ -910,7 +1048,7 @@ const ProductDetail: React.FC = () => {
     imageUrl: selectedVariant?.imageUrl || resolveProductPrimaryImage(product),
   });
 
-  const isRecommendationUnavailable = (item: Product) => {
+  const isRecommendationUnavailable = (item: ProductRecommendationCandidate) => {
     const hasStockValue = item.stock !== undefined && item.stock !== null;
     return Boolean(hasStockValue && Number(item.stock) <= 0);
   };
@@ -951,9 +1089,23 @@ const ProductDetail: React.FC = () => {
     }
   };
 
-  const completeSetItems = recommendations
+  const relatedRecommendations: Product[] = (Array.from(
+    recommendations
+      .filter((item) => Number(item.id) !== Number(product.id))
+      .reduce((itemsById, item) => {
+        const recommendationId = Number(item.id);
+        if (Number.isFinite(recommendationId) && !itemsById.has(recommendationId)) {
+          itemsById.set(recommendationId, item);
+        }
+        return itemsById;
+      }, new Map<number, Product>())
+      .values(),
+  ) as Product[])
+    .map((item, index) => ({ item, index, score: scoreRelatedRecommendation(product, item) }))
+    .sort((left, right) => right.score - left.score || left.index - right.index)
+    .map((entry) => entry.item);
+  const completeSetItems = relatedRecommendations
     .filter((item) => !isRecommendationUnavailable(item))
-    .filter((item) => item.id !== product.id)
     .slice(0, 2);
   const mobilePurchaseStatus = isOutOfStock
     ? t('pages.productDetail.soldOut')
@@ -999,7 +1151,7 @@ const ProductDetail: React.FC = () => {
       title: t('pages.productDetail.trustShippingTitle'),
       text: deliveryPromise.enabled
         ? t('pages.productDetail.deliveryPromise', { window: deliveryPromise.windowText })
-        : t('pages.productDetail.defaultShipping'),
+        : productShippingText,
     },
     {
       key: 'value',
@@ -1009,6 +1161,20 @@ const ProductDetail: React.FC = () => {
       text: purchaseSavings > 0 ? formatMoney(purchaseSavings) : formatMoney(purchaseSubtotal),
     },
   ];
+  const productFaqItems = [
+    {
+      question: t('pages.productDetail.faqQuietQuestion'),
+      answer: t('pages.productDetail.faqQuietAnswer'),
+    },
+    {
+      question: t('pages.productDetail.faqFilterQuestion'),
+      answer: t('pages.productDetail.faqFilterAnswer'),
+    },
+    {
+      question: t('pages.productDetail.faqReplaceQuestion'),
+      answer: t('pages.productDetail.faqReplaceAnswer'),
+    },
+  ];
 
   const selectGalleryImage = (image: string, index: number) => {
     setSelectedImage(image);
@@ -1016,6 +1182,50 @@ const ProductDetail: React.FC = () => {
     const gallery = mobileGalleryRef.current;
     if (gallery) {
       gallery.scrollTo({ left: index * gallery.clientWidth, behavior: 'smooth' });
+    }
+  };
+
+  const getActiveGalleryImageIndex = () => {
+    const selectedIndex = galleryImages.findIndex((image) => image === selectedImage);
+    if (selectedIndex >= 0) return selectedIndex;
+    return Math.min(Math.max(activeMobileImageIndex, 0), Math.max(galleryImages.length - 1, 0));
+  };
+
+  const selectAdjacentGalleryImage = (direction: -1 | 1, fromIndex = getActiveGalleryImageIndex()) => {
+    if (galleryImages.length <= 1) return;
+    const nextIndex = (fromIndex + direction + galleryImages.length) % galleryImages.length;
+    const nextImage = galleryImages[nextIndex];
+    if (!nextImage) return;
+    selectGalleryImage(nextImage, nextIndex);
+    pauseImageRotation();
+    scheduleImageRotationResume(5000);
+  };
+
+  const handleGalleryKeyDown = (event: React.KeyboardEvent<HTMLElement>, fromIndex?: number) => {
+    if (galleryImages.length <= 1) return;
+    if (event.key === 'ArrowLeft') {
+      event.preventDefault();
+      selectAdjacentGalleryImage(-1, fromIndex);
+      return;
+    }
+    if (event.key === 'ArrowRight') {
+      event.preventDefault();
+      selectAdjacentGalleryImage(1, fromIndex);
+      return;
+    }
+    if (event.key === 'Home') {
+      event.preventDefault();
+      selectGalleryImage(galleryImages[0], 0);
+      pauseImageRotation();
+      scheduleImageRotationResume(5000);
+      return;
+    }
+    if (event.key === 'End') {
+      event.preventDefault();
+      const lastIndex = galleryImages.length - 1;
+      selectGalleryImage(galleryImages[lastIndex], lastIndex);
+      pauseImageRotation();
+      scheduleImageRotationResume(5000);
     }
   };
 
@@ -1033,43 +1243,6 @@ const ProductDetail: React.FC = () => {
         setSelectedImage((currentImage) => (image === currentImage ? currentImage : image));
       }
     });
-  };
-
-  const getPinchOrigin = (first: React.Touch, second: React.Touch) => {
-    const gallery = mobileGalleryRef.current;
-    if (!gallery) return { originX: 50, originY: 50 };
-    const rect = gallery.getBoundingClientRect();
-    const centerX = (first.clientX + second.clientX) / 2;
-    const centerY = (first.clientY + second.clientY) / 2;
-    return {
-      originX: Math.min(100, Math.max(0, ((centerX - rect.left) / rect.width) * 100)),
-      originY: Math.min(100, Math.max(0, ((centerY - rect.top) / rect.height) * 100)),
-    };
-  };
-
-  const handleGalleryTouchStart = (event: React.TouchEvent<HTMLDivElement>) => {
-    if (event.touches.length !== 2) return;
-    const pair = getTouchPair(event.touches);
-    if (!pair) return;
-    setImagePaused(true);
-    pinchStartRef.current = { distance: getTouchDistance(pair.first, pair.second), scale: pinchZoom.scale };
-    setPinchZoom({ active: true, scale: 1, ...getPinchOrigin(pair.first, pair.second) });
-  };
-
-  const handleGalleryTouchMove = (event: React.TouchEvent<HTMLDivElement>) => {
-    if (event.touches.length !== 2 || !pinchStartRef.current) return;
-    const pair = getTouchPair(event.touches);
-    if (!pair) return;
-    event.preventDefault();
-    const nextScale = clampZoom((getTouchDistance(pair.first, pair.second) / pinchStartRef.current.distance) * pinchStartRef.current.scale);
-    setPinchZoom({ active: true, scale: nextScale, ...getPinchOrigin(pair.first, pair.second) });
-  };
-
-  const resetGalleryPinch = () => {
-    if (!pinchStartRef.current && !pinchZoom.active) return;
-    pinchStartRef.current = null;
-    setPinchZoom((current) => ({ ...current, active: false, scale: 1 }));
-    scheduleImageRotationResume();
   };
 
   return (
@@ -1108,8 +1281,13 @@ const ProductDetail: React.FC = () => {
             <Card className="product-gallery-card">
               <div
                 className="product-detail-main-image"
+                role="region"
+                aria-roledescription="carousel"
+                aria-label={`${t('pages.productDetail.product')} ${t('common.image')}`}
+                tabIndex={0}
                 onMouseEnter={pauseImageRotation}
                 onMouseLeave={resumeImageRotation}
+                onKeyDown={handleGalleryKeyDown}
               >
                 <div
                   ref={mobileGalleryRef}
@@ -1119,7 +1297,6 @@ const ProductDetail: React.FC = () => {
                   onPointerUp={() => scheduleImageRotationResume()}
                   onPointerCancel={() => scheduleImageRotationResume()}
                   onTouchStart={handleGalleryTouchStart}
-                  onTouchMove={handleGalleryTouchMove}
                   onTouchEnd={resetGalleryPinch}
                   onTouchCancel={resetGalleryPinch}
                 >
@@ -1127,6 +1304,7 @@ const ProductDetail: React.FC = () => {
                     <div
                       key={`${image}-${index}`}
                       className="product-mobile-gallery__slide"
+                      aria-hidden={index === activeMobileImageIndex ? undefined : true}
                     >
                       <img
                         src={getOptimizedImageUrl(image, index === 0 ? 720 : 540)}
@@ -1205,32 +1383,30 @@ const ProductDetail: React.FC = () => {
                       };
                       return (
                         <div key={index} className="product-detail-thumbs__slide">
-                          <img
-                            src={getOptimizedImageUrl(image, 144)}
-                            srcSet={buildResponsiveImageSrcSet(image, [96, 144, 192, 288])}
-                            sizes="120px"
-                            alt={`${productName} - ${index + 1}`}
-                            className={`product-detail-thumbs__img${selectedImage === image ? ' product-detail-thumbs__img--active' : ''}`}
-                            width={160}
-                            height={160}
-                            loading="lazy"
-                            decoding="async"
-                            role="button"
-                            tabIndex={0}
+                          <button
+                            type="button"
+                            className={`product-detail-thumbs__button${selectedImage === image ? ' product-detail-thumbs__button--active' : ''}`}
                             aria-pressed={selectedImage === image}
                             aria-label={thumbLabel}
                             title={thumbLabel}
                             onClick={selectThumb}
-                            onKeyDown={(event) => {
-                              if (event.key === 'Enter' || event.key === ' ') {
-                                event.preventDefault();
-                                selectThumb();
-                              }
-                            }}
-                            onError={(event) => {
-                              applyImageFallback(event, productImages[productImages.length - 1]);
-                            }}
-                          />
+                            onKeyDown={(event) => handleGalleryKeyDown(event, index)}
+                          >
+                            <img
+                              src={getOptimizedImageUrl(image, 144)}
+                              srcSet={buildResponsiveImageSrcSet(image, [96, 144, 192, 288])}
+                              sizes="120px"
+                              alt=""
+                              className="product-detail-thumbs__img"
+                              width={160}
+                              height={160}
+                              loading="lazy"
+                              decoding="async"
+                              onError={(event) => {
+                                applyImageFallback(event, productImages[productImages.length - 1]);
+                              }}
+                            />
+                          </button>
                         </div>
                       );
                     })}
@@ -1288,29 +1464,75 @@ const ProductDetail: React.FC = () => {
                   </div>
                   <div className="product-price-line">
                     <span className="product-price-line__current commerce-money">{formatMoney(displayPrice)}</span>
-                    {product.originalPrice && product.originalPrice > activePrice && (
+                    {originalReferencePrice ? (
                       <Text delete className="product-price-line__original commerce-money">
-                        {formatMoney(product.originalPrice)}
+                        {formatMoney(originalReferencePrice)}
                       </Text>
-                    )}
-                    {discountPercent > 0 && (
-                      <Tag color="gold" className="product-price-line__discount">-{discountPercent}%</Tag>
+                    ) : null}
+                    {priceSavingsPercent > 0 && (
+                      <Tag color="gold" className="product-price-line__discount">
+                        {t('pages.productDetail.savePercent', { defaultValue: 'Save {percent}%', percent: priceSavingsPercent })}
+                      </Tag>
                     )}
                   </div>
-                  <div className="product-mobile-promo">
-                    <span>{limitedTimeRemaining > 0 ? t('pages.productDetail.limitedTimeCountdown') : t('pages.productDetail.freeShipping')}</span>
-                    <strong>{limitedTimeRemaining > 0 ? formatCountdown(limitedTimeRemaining) : t('pages.productDetail.authentic')}</strong>
+                  <div className="product-price-delivery">
+                    <span><TruckOutlined /> {deliveryPromise.enabled ? t('pages.productDetail.deliveryPromise', { window: deliveryPromise.windowText }) : productShippingText}</span>
+                    <span><CheckCircleOutlined /> {productFreeShippingText}</span>
+                  </div>
+                  <div
+                    className="product-mobile-promo"
+                    role={limitedTimePromoActive ? 'status' : undefined}
+                    aria-live={limitedTimePromoActive ? 'polite' : undefined}
+                    aria-atomic={limitedTimePromoActive ? 'true' : undefined}
+                  >
+                    <span>{limitedTimePromoActive ? t('pages.productDetail.limitedTimeCountdown') : productFreeShippingText}</span>
+                    <strong>{limitedTimePromoActive ? formatCountdown(limitedTimeRemaining) : t('pages.productDetail.authentic')}</strong>
                   </div>
 
-                  <div className="product-compact-signals">
-                    <span>{t('pages.productDetail.stock')}: {stockLabel}</span>
-                    {deliveryPromise.enabled ? <span>{t('pages.productDetail.deliveryPromise', { window: deliveryPromise.windowText })}</span> : null}
-                    {purchaseSavings > 0 ? <span>{t('pages.productDetail.purchaseSavings')}: <span className="commerce-money">{formatMoney(purchaseSavings)}</span></span> : null}
+	                  <div className="product-compact-signals">
+	                    <span>{t('pages.productDetail.stock')}: {stockLabel}</span>
+	                    {priceSavingsAmount > 0 ? <span>{t('pages.productDetail.purchaseSavings')}: <span className="commerce-money">{formatMoney(priceSavingsAmount * quantity)}</span></span> : null}
+	                  </div>
+	                </div>
+
+                <div className="product-mobile-buybar">
+                  <div className="product-mobile-buybar__meta" title={`${mobileBuybarPrice} - ${mobileBuybarStatus}`}>
+                    <strong>{mobileBuybarPrice}</strong>
+                    <span className={`product-mobile-buybar__status${purchaseSelectionBlocked || isOutOfStock ? ' product-mobile-buybar__status--attention' : ''}`}>
+                      {purchaseSelectionBlocked || isOutOfStock ? <BellOutlined /> : <CheckCircleOutlined />}
+                      {mobileBuybarStatus}
+                    </span>
                   </div>
+                  <button type="button" className="product-mobile-buybar__tool product-mobile-buybar__tool--home" aria-label={homeActionLabel} title={homeActionLabel} onClick={() => navigate('/')}>
+                    <HomeOutlined />
+                    <span>{t('nav.ariaHome')}</span>
+                  </button>
+                  <button type="button" className="product-mobile-buybar__tool product-mobile-buybar__tool--favorite" aria-label={favoriteActionLabel} title={favoriteActionLabel} onClick={handleFavorite}>
+                    {isWishlisted ? <HeartFilled /> : <HeartOutlined />}
+                    <span>{isWishlisted ? t('pages.productDetail.favorited') : t('pages.productDetail.favorite')}</span>
+                  </button>
+                  <button type="button" className="product-mobile-buybar__tool product-mobile-buybar__tool--compare" aria-label={compareActionLabel} title={compareActionLabel} onClick={handleCompare}>
+                    <BarChartOutlined />
+                    <span>{isCompared ? t('pages.productList.viewCompare') : t('pages.productList.compare')}</span>
+                  </button>
+                  <Button
+                    className="product-mobile-buybar__cart"
+                    icon={isOutOfStock ? <BellOutlined /> : <ShoppingCartOutlined />}
+                    aria-label={isOutOfStock ? stockAlertActionLabel : addToCartActionLabel}
+                    title={isOutOfStock ? stockAlertActionLabel : addToCartActionLabel}
+                    onClick={isOutOfStock ? handleStockAlert : handleAddToCart}
+                    loading={purchaseSubmitting === 'cart'}
+                    disabled={mobileAddToCartBlocked}
+                  >
+                    {isOutOfStock ? (isAlerted ? t('pages.stockAlerts.remove') : t('pages.stockAlerts.notifyMe')) : t('pages.productDetail.addCart')}
+                  </Button>
+                  <Button className="product-mobile-buybar__buy" type="primary" icon={<ThunderboltOutlined />} aria-label={buyNowActionLabel} title={buyNowActionLabel} onClick={handleBuyNow} loading={purchaseSubmitting === 'buy'} disabled={buyNowBlocked}>
+                    {t('pages.productDetail.buyNow')}
+                  </Button>
                 </div>
 
-                <div className="product-purchase-readiness" role="list" aria-label={t('pages.productDetail.decisionTitle')}>
-                  {purchaseReadinessItems.map((item) => (
+	                <div className="product-purchase-readiness" role="list" aria-label={t('pages.productDetail.decisionTitle')}>
+	                  {purchaseReadinessItems.map((item) => (
                     <div
                       key={item.key}
                       role="listitem"
@@ -1335,7 +1557,7 @@ const ProductDetail: React.FC = () => {
                       <div key={group.name} role="group" aria-label={optionGroupLabel} title={optionGroupLabel}>
                         <div className="product-option-header">
                           <Text strong>{getLocalizedOptionLabel(group.name, language)}</Text>
-                          {group.name.toLowerCase().includes('size') ? (
+                          {isSizeOptionName(group.name) ? (
                             <Button
                               size="small"
                               type="link"
@@ -1355,9 +1577,11 @@ const ProductDetail: React.FC = () => {
                         >
                           {group.values.map((value) => {
                             const disabled = !optionValueIsCompatible(variants, selectedOptions, group.name, value);
+                            const selected = selectedOptions[group.name] === value;
                             return (
                               <Radio.Button key={value} value={value} disabled={disabled}>
-                                {getLocalizedOptionLabel(value, language)}
+                                {selected ? <CheckCircleOutlined className="product-option-radio__check" /> : null}
+                                <span>{getLocalizedOptionLabel(value, language)}</span>
                               </Radio.Button>
                             );
                           })}
@@ -1437,7 +1661,8 @@ const ProductDetail: React.FC = () => {
                         value={sizeCalculatorWeight}
                         type="number"
                         min={0}
-                        onChange={(event) => setSizeCalculatorWeight(event.target.value)}
+                        max={PRODUCT_SIZE_CALCULATOR_MAX_WEIGHT_KG}
+                        onChange={(event) => setSizeCalculatorWeight(normalizeSizeCalculatorWeight(event.target.value))}
                         placeholder={t('pages.productDetail.sizeCalculatorWeight')}
                         aria-label={sizeWeightInputLabel}
                         title={sizeWeightInputLabel}
@@ -1685,11 +1910,11 @@ const ProductDetail: React.FC = () => {
                     size="large"
                     icon={<ShoppingCartOutlined />}
                     className={isOutOfStock ? 'product-detail__soldoutButton' : undefined}
-                    aria-label={isOutOfStock ? `${t('pages.productDetail.soldOut')}: ${productName}` : addCartActionLabel}
-                    title={isOutOfStock ? `${t('pages.productDetail.soldOut')}: ${productName}` : addCartActionLabel}
+                    aria-label={isOutOfStock ? `${t('pages.productDetail.soldOut')}: ${productName}` : addToCartActionLabel}
+                    title={isOutOfStock ? `${t('pages.productDetail.soldOut')}: ${productName}` : addToCartActionLabel}
                     onClick={handleAddToCart}
                     loading={purchaseSubmitting === 'cart'}
-                    disabled={isOutOfStock || purchaseSubmitting !== null}
+                    disabled={addToCartBlocked}
                   >
                     {isOutOfStock ? t('pages.productDetail.soldOut') : t('pages.productDetail.addCart')}
                   </Button>
@@ -1702,7 +1927,7 @@ const ProductDetail: React.FC = () => {
                     title={buyNowActionLabel}
                     onClick={handleBuyNow}
                     loading={purchaseSubmitting === 'buy'}
-                    disabled={isOutOfStock || purchaseSubmitting !== null}
+                    disabled={buyNowBlocked}
                     ghost
                   >
                     {t('pages.productDetail.buyNow')}
@@ -1769,13 +1994,24 @@ const ProductDetail: React.FC = () => {
           <Tabs
             className="product-detail-tabs"
             defaultActiveKey="1"
+            tabBarGutter={0}
+            more={{
+              icon: (
+                <span className="product-detail-tabs__moreIcon">
+                  <EllipsisOutlined aria-hidden="true" />
+                  <span className="product-detail-tabs__srText">
+                    {t('pages.productDetail.moreTabs', { defaultValue: `${t('common.more')}: ${t('pages.productDetail.service')}` })}
+                  </span>
+                </span>
+              ),
+            }}
             items={[
               {
                 key: '1',
                 label: t('pages.productDetail.details'),
                 children: (
                   <div className="product-tab-content">
-                    <Suspense fallback={<Spin />}>
+                    <Suspense fallback={<ProductDetailLazyFallback label={t('common.loading')} variant="rich" />}>
                       <ProductRichDetail
                         detailContent={product.detailContent}
                         fallback={product.description}
@@ -1818,7 +2054,7 @@ const ProductDetail: React.FC = () => {
                     </div>
                     <div>
                       <Text strong>{t('pages.productDetail.shipping')}</Text>
-                      <Text>{product.shipping || t('pages.productDetail.defaultShipping')}</Text>
+                      <Text>{productShippingText}</Text>
                     </div>
                   </div>
                 ),
@@ -1829,7 +2065,7 @@ const ProductDetail: React.FC = () => {
 
         {/* Product reviews */}
         <Card className="product-review-card" id="product-reviews-card">
-          <Suspense fallback={<Spin />}>
+          <Suspense fallback={<ProductDetailLazyFallback label={t('common.loading')} variant="review" />}>
             <ProductReview
               productId={Number(id)}
               reviews={reviews}
@@ -1884,30 +2120,43 @@ const ProductDetail: React.FC = () => {
               />
             </div>
           ) : null}
-          <List
-            dataSource={questions}
-            locale={{ emptyText: t('pages.ask.empty') }}
-            renderItem={(q) => (
-              <List.Item key={q.id}>
-                <div className="product-question-item">
-                  <div className="product-question-text">{q.question}</div>
-                  <div className="product-question-meta">
-                    {new Date(q.createdAt).toLocaleString(language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US')}
+          {questions.length === 0 ? (
+            <div className="product-qa-faq" aria-label={t('pages.ask.empty')}>
+              <Text strong>{t('pages.productDetail.faqTitle', { defaultValue: 'Frequently asked questions' })}</Text>
+              <div className="product-qa-faq__list">
+                {productFaqItems.map((item) => (
+                  <div key={item.question} className="product-qa-faq__item">
+                    <strong>{item.question}</strong>
+                    <span>{item.answer}</span>
                   </div>
-                  <div className="product-answer-box">
-                    <Text strong>{t('pages.ask.answerLabel')}: </Text>
-                    <Text>{q.answer}</Text>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <List
+              dataSource={questions}
+              renderItem={(q) => (
+                <List.Item key={q.id}>
+                  <div className="product-question-item">
+                    <div className="product-question-text">{q.question}</div>
+                    <div className="product-question-meta">
+                      {new Date(q.createdAt).toLocaleString(language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US')}
+                    </div>
+                    <div className="product-answer-box">
+                      <Text strong>{t('pages.ask.answerLabel')}: </Text>
+                      <Text>{q.answer}</Text>
+                    </div>
                   </div>
-                </div>
-              </List.Item>
-            )}
-          />
+                </List.Item>
+              )}
+            />
+          )}
         </Card>
 
         {/* Related recommendations */}
-        {recommendations.length > 0 && (
+        {relatedRecommendations.length > 0 && (
           <div className="product-recommendations" ref={recommendationCarouselRef}>
-            <Title level={3}>{t('pages.productDetail.recommendations')}</Title>
+            <Title level={3}>{t('pages.productDetail.boughtTogether', { defaultValue: t('pages.productDetail.recommendations') })}</Title>
             <Carousel
               slidesToShow={4}
               dots={false}
@@ -1919,10 +2168,11 @@ const ProductDetail: React.FC = () => {
                 { breakpoint: 520, settings: { slidesToShow: 1 } },
               ]}
             >
-              {recommendations.map((rec) => {
+              {relatedRecommendations.map((rec) => {
                 const recName = detailProductName(rec);
                 const needsOptions = needsOptionSelection(rec);
                 const isRecommendationSoldOut = isRecommendationUnavailable(rec);
+                const recommendationReviewCount = Number(rec.reviewCount || 0);
                 const recommendationActionLabel = `${isRecommendationSoldOut
                   ? t('pages.productDetail.soldOut')
                   : needsOptions
@@ -1978,9 +2228,9 @@ const ProductDetail: React.FC = () => {
                         <Text strong className="product-recommendations__name">{recName}</Text>
                         <div className="product-recommendations__meta">
                           <span className="product-recommendations__price commerce-money">{formatMoney(rec.effectivePrice ?? rec.price)}</span>
-                          {rec.reviewCount > 0 && (
+                          {recommendationReviewCount > 0 && (
                             <span className="product-recommendations__proof">
-                              {rec.reviewCount} {t('adminLayout.reviews')}
+                              {recommendationReviewCount} {t('adminLayout.reviews')}
                             </span>
                           )}
                         </div>
@@ -2011,55 +2261,19 @@ const ProductDetail: React.FC = () => {
         )}
       </div>
 
-      <div className="product-mobile-buybar">
-        <div className="product-mobile-buybar__meta" title={`${mobileBuybarPrice} - ${mobileBuybarStatus}`}>
-          <strong>{mobileBuybarPrice}</strong>
-          <span className={`product-mobile-buybar__status${purchaseSelectionBlocked || isOutOfStock ? ' product-mobile-buybar__status--attention' : ''}`}>
-            {purchaseSelectionBlocked || isOutOfStock ? <BellOutlined /> : <CheckCircleOutlined />}
-            {mobileBuybarStatus}
-          </span>
-        </div>
-        <button type="button" className="product-mobile-buybar__tool product-mobile-buybar__tool--home" aria-label={homeActionLabel} title={homeActionLabel} onClick={() => navigate('/')}>
-          <HomeOutlined />
-          <span>{t('nav.ariaHome')}</span>
-        </button>
-        <button type="button" className="product-mobile-buybar__tool product-mobile-buybar__tool--favorite" aria-label={favoriteActionLabel} title={favoriteActionLabel} onClick={handleFavorite}>
-          {isWishlisted ? <HeartFilled /> : <HeartOutlined />}
-          <span>{isWishlisted ? t('pages.productDetail.favorited') : t('pages.productDetail.favorite')}</span>
-        </button>
-        <button type="button" className="product-mobile-buybar__tool product-mobile-buybar__tool--compare" aria-label={compareActionLabel} title={compareActionLabel} onClick={handleCompare}>
-          <BarChartOutlined />
-          <span>{isCompared ? t('pages.productList.viewCompare') : t('pages.productList.compare')}</span>
-        </button>
-        <Button
-          className="product-mobile-buybar__cart"
-          icon={isOutOfStock ? <BellOutlined /> : <ShoppingCartOutlined />}
-          aria-label={isOutOfStock ? stockAlertActionLabel : addCartActionLabel}
-          title={isOutOfStock ? stockAlertActionLabel : addCartActionLabel}
-          onClick={isOutOfStock ? handleStockAlert : handleAddToCart}
-          loading={purchaseSubmitting === 'cart'}
-          disabled={mobilePurchaseBlocked}
-        >
-          {isOutOfStock ? (isAlerted ? t('pages.stockAlerts.remove') : t('pages.stockAlerts.notifyMe')) : t('pages.productDetail.addCart')}
-        </Button>
-        <Button className="product-mobile-buybar__buy" type="primary" icon={<ThunderboltOutlined />} aria-label={buyNowActionLabel} title={buyNowActionLabel} onClick={handleBuyNow} loading={purchaseSubmitting === 'buy'} disabled={buyNowBlocked}>
-          {t('pages.productDetail.buyNow')}
-        </Button>
-      </div>
-
-      {/* Image preview modal */}
+	      {/* Image preview modal */}
       <Modal
         open={isModalVisible}
         footer={null}
         onCancel={() => setIsModalVisible(false)}
-        width={800}
+        width="min(800px, calc(100vw - 24px))"
         centered
         className="profile-mobile-safe-modal product-detail__imageModal"
       >
         <img
           src={getOptimizedImageUrl(selectedImage, 1200)}
           srcSet={buildResponsiveImageSrcSet(selectedImage, [480, 720, 960, 1200, 1600])}
-          sizes="min(800px, 100vw)"
+          sizes="min(800px, calc(100vw - 24px))"
           alt={productName}
           width={1200}
           height={1200}

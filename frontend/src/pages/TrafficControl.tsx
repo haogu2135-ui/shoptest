@@ -30,19 +30,24 @@ const TrafficControl: React.FC = () => {
   const dateLocale = language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US';
   const [status, setStatus] = useState<AdminTrafficControlStatus | null>(null);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [acting, setActing] = useState<string | null>(null);
   const [currentRole, setCurrentRole] = useState('');
   const [adminPermissions, setAdminPermissions] = useState<string[]>([]);
   const canClearRateLimit = hasAdminPermission(adminPermissions, currentRole, TRAFFIC_CONTROL_RATE_LIMIT_CLEAR_PERMISSION);
   const canResetCircuit = hasAdminPermission(adminPermissions, currentRole, TRAFFIC_CONTROL_CIRCUIT_RESET_PERMISSION);
+  const actionDisabled = !status || loading || Boolean(loadError);
 
   const loadStatus = useCallback(async () => {
     setLoading(true);
     try {
+      setLoadError(null);
       const response = await adminApi.getTrafficControlStatus();
       setStatus(response.data);
     } catch (error: unknown) {
-      message.error(getApiErrorMessage(error, t('pages.trafficControl.loadFailed'), language));
+      const errorMessage = getApiErrorMessage(error, t('pages.trafficControl.loadFailed'), language);
+      setLoadError(errorMessage);
+      message.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -78,6 +83,7 @@ const TrafficControl: React.FC = () => {
     setActing(name || 'all');
     try {
       const response = await adminApi.resetCircuitBreaker(name);
+      setLoadError(null);
       setStatus(response.data);
       message.success(name ? t('pages.trafficControl.circuitReset') : t('pages.trafficControl.allCircuitsReset'));
     } catch (error: unknown) {
@@ -95,6 +101,7 @@ const TrafficControl: React.FC = () => {
     setActing('rate-limit');
     try {
       const response = await adminApi.clearRateLimitCounters();
+      setLoadError(null);
       setStatus(response.data);
       message.success(t('pages.trafficControl.rateLimitCleared'));
     } catch (error: unknown) {
@@ -167,6 +174,7 @@ const TrafficControl: React.FC = () => {
               okButtonProps={{ 'aria-label': resetActionLabel, title: resetActionLabel }}
               cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${resetActionLabel}`, title: `${t('common.cancel')}: ${resetActionLabel}` }}
               onConfirm={() => resetCircuit(row.name)}
+              disabled={actionDisabled}
             >
               <Button
                 size="small"
@@ -174,6 +182,7 @@ const TrafficControl: React.FC = () => {
                 aria-label={resetActionLabel}
                 title={resetActionLabel}
                 loading={acting === row.name}
+                disabled={actionDisabled}
               >
                 {t('pages.trafficControl.reset')}
               </Button>
@@ -184,7 +193,7 @@ const TrafficControl: React.FC = () => {
     }
 
     return baseColumns;
-  }, [acting, canResetCircuit, circuitStateLabels, dateLocale, resetCircuit, t]);
+  }, [acting, actionDisabled, canResetCircuit, circuitStateLabels, dateLocale, resetCircuit, t]);
 
   const rateLimit = status?.rateLimit;
   const circuitConfig = status?.circuitBreakerConfig;
@@ -214,8 +223,9 @@ const TrafficControl: React.FC = () => {
               okButtonProps={{ danger: true, 'aria-label': clearRateLimitActionLabel, title: clearRateLimitActionLabel }}
               cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${clearRateLimitActionLabel}`, title: `${t('common.cancel')}: ${clearRateLimitActionLabel}` }}
               onConfirm={clearRateLimit}
+              disabled={actionDisabled}
             >
-              <Button icon={<ClearOutlined />} loading={acting === 'rate-limit'} aria-label={clearRateLimitActionLabel} title={clearRateLimitActionLabel}>
+              <Button icon={<ClearOutlined />} loading={acting === 'rate-limit'} disabled={actionDisabled} aria-label={clearRateLimitActionLabel} title={clearRateLimitActionLabel}>
                 {t('pages.trafficControl.clearRateLimit')}
               </Button>
             </Popconfirm>
@@ -230,8 +240,9 @@ const TrafficControl: React.FC = () => {
               okButtonProps={{ 'aria-label': resetAllCircuitsActionLabel, title: resetAllCircuitsActionLabel }}
               cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${resetAllCircuitsActionLabel}`, title: `${t('common.cancel')}: ${resetAllCircuitsActionLabel}` }}
               onConfirm={() => resetCircuit()}
+              disabled={actionDisabled}
             >
-              <Button type="primary" icon={<UndoOutlined />} loading={acting === 'all'} aria-label={resetAllCircuitsActionLabel} title={resetAllCircuitsActionLabel}>
+              <Button type="primary" icon={<UndoOutlined />} loading={acting === 'all'} disabled={actionDisabled} aria-label={resetAllCircuitsActionLabel} title={resetAllCircuitsActionLabel}>
                 {t('pages.trafficControl.resetAllCircuits')}
               </Button>
             </Popconfirm>
@@ -239,8 +250,23 @@ const TrafficControl: React.FC = () => {
         </Space>
       </div>
 
+      {loadError ? (
+        <Alert
+          className="traffic-control__alert"
+          type="warning"
+          showIcon
+          message={loadError}
+          description={status ? t('pages.trafficControl.staleDataWarning') : undefined}
+          action={(
+            <Button size="small" onClick={loadStatus} loading={loading}>
+              {t('common.retry')}
+            </Button>
+          )}
+        />
+      ) : null}
+
       <Spin spinning={loading && !status}>
-        <div className="traffic-control__stats">
+        {loadError && !status ? null : <div className="traffic-control__stats">
           <Card>
             <Statistic title={t('pages.trafficControl.rateLimitStatus')} value={rateLimit?.enabled ? t('pages.trafficControl.enabled') : t('pages.trafficControl.disabled')} prefix={<DashboardOutlined />} />
           </Card>
@@ -253,9 +279,9 @@ const TrafficControl: React.FC = () => {
           <Card>
             <Statistic title={t('pages.trafficControl.activeBuckets')} value={rateLimit?.activeBuckets || 0} />
           </Card>
-        </div>
+        </div>}
 
-        <div className="traffic-control__grid">
+        {loadError && !status ? null : <div className="traffic-control__grid">
           <Card title={t('pages.trafficControl.rateLimitConfig')} className="traffic-control__card">
             <div className="traffic-control__configList">
               <span>{t('pages.trafficControl.publicPerMinute')} <strong>{rateLimit?.publicPerMinute ?? '-'}</strong></span>
@@ -273,16 +299,16 @@ const TrafficControl: React.FC = () => {
               <span>{t('pages.trafficControl.halfOpenSuccessThreshold')} <strong>{circuitConfig?.halfOpenSuccessThreshold ?? '-'}</strong></span>
             </div>
           </Card>
-        </div>
+        </div>}
 
-        <Alert
+        {loadError && !status ? null : <Alert
           className="traffic-control__alert"
           type="info"
           showIcon
           message={t('pages.trafficControl.configHint')}
-        />
+        />}
 
-        <Card title={<span><ThunderboltOutlined /> {t('pages.trafficControl.circuitBreakers')}</span>} className="traffic-control__card">
+        {loadError && !status ? null : <Card title={<span><ThunderboltOutlined /> {t('pages.trafficControl.circuitBreakers')}</span>} className="traffic-control__card">
           {status?.circuits?.length ? (
             <Table
               rowKey="name"
@@ -294,7 +320,7 @@ const TrafficControl: React.FC = () => {
           ) : (
             <Empty description={t('pages.trafficControl.emptyCircuits')} />
           )}
-        </Card>
+        </Card>}
       </Spin>
     </div>
   );

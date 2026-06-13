@@ -5,6 +5,7 @@ import com.example.shop.dto.AdminOrderBatchShipResponse;
 import com.example.shop.dto.AdminOrderResponse;
 import com.example.shop.dto.AdminReviewResponse;
 import com.example.shop.dto.AdminUserResponse;
+import com.example.shop.dto.AdminUserUpdateRequest;
 import com.example.shop.dto.CouponAdminSummaryResponse;
 import com.example.shop.dto.CouponUpsertRequest;
 import com.example.shop.dto.PetBirthdayCouponConfigRequest;
@@ -77,6 +78,7 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 import javax.servlet.http.HttpServletRequest;
+import javax.validation.Valid;
 import java.nio.charset.StandardCharsets;
 import java.math.BigDecimal;
 import java.net.URLDecoder;
@@ -105,6 +107,7 @@ public class AdminController {
     private static final int HARD_ADMIN_EXPORT_LIMIT = 50000;
     private static final int HARD_ADMIN_BATCH_LIMIT = 1000;
     private static final int HARD_ADMIN_PAGE_SIZE_LIMIT = 500;
+    private static final int DEFAULT_ADMIN_COUPON_PAGE_SIZE = 50;
 
     private final UserService userService;
     private final OrderService orderService;
@@ -173,7 +176,7 @@ public class AdminController {
     }
 
     @PostMapping("/products")
-    public ResponseEntity<?> createProduct(@RequestBody(required = false) Product product,
+    public ResponseEntity<?> createProduct(@Valid @RequestBody(required = false) Product product,
                                            Authentication authentication,
                                            HttpServletRequest request) {
         requireAdminActionPermission(authentication, AdminRoleService.PRODUCTS_WRITE_PERMISSION,
@@ -199,7 +202,7 @@ public class AdminController {
 
     @PutMapping("/products/{id}")
     public ResponseEntity<?> updateProduct(@PathVariable Long id,
-                                           @RequestBody(required = false) Product product,
+                                           @Valid @RequestBody(required = false) Product product,
                                            Authentication authentication,
                                            HttpServletRequest request) {
         requireAdminActionPermission(authentication, AdminRoleService.PRODUCTS_WRITE_PERMISSION,
@@ -216,9 +219,14 @@ public class AdminController {
                     "Product not found", productAuditMetadata(product));
             return ResponseEntity.notFound().build();
         }
+        if (isProductVersionConflict(existingProduct, product)) {
+            auditLogService.record("PRODUCT_UPDATE", "FAILURE", authentication, "PRODUCT", id, request,
+                    "Product update conflict", productAuditMetadata(product));
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("error", "Product was updated by another admin. Refresh and try again."));
+        }
         try {
-            mergeProduct(existingProduct, product);
-            Product savedProduct = productService.save(existingProduct);
+            Product savedProduct = productService.save(productService.mergeProduct(existingProduct, product));
             auditLogService.record("PRODUCT_UPDATE", "SUCCESS", authentication, "PRODUCT", id, request,
                     "Product updated", productAuditMetadata(savedProduct));
             return ResponseEntity.ok(savedProduct);
@@ -256,7 +264,7 @@ public class AdminController {
     }
 
     @PostMapping("/brands")
-    public ResponseEntity<?> createBrand(@RequestBody(required = false) Brand brand,
+    public ResponseEntity<?> createBrand(@Valid @RequestBody(required = false) Brand brand,
                                          Authentication authentication,
                                          HttpServletRequest request) {
         requireAdminActionPermission(authentication, AdminRoleService.BRANDS_WRITE_PERMISSION,
@@ -282,7 +290,7 @@ public class AdminController {
 
     @PutMapping("/brands/{id}")
     public ResponseEntity<?> updateBrand(@PathVariable Long id,
-                                         @RequestBody(required = false) Brand brand,
+                                         @Valid @RequestBody(required = false) Brand brand,
                                          Authentication authentication,
                                          HttpServletRequest request) {
         requireAdminActionPermission(authentication, AdminRoleService.BRANDS_WRITE_PERMISSION,
@@ -338,7 +346,7 @@ public class AdminController {
     }
 
     @PostMapping("/categories")
-    public ResponseEntity<?> createCategory(@RequestBody(required = false) Category category,
+    public ResponseEntity<?> createCategory(@Valid @RequestBody(required = false) Category category,
                                             Authentication authentication,
                                             HttpServletRequest request) {
         requireAdminActionPermission(authentication, AdminRoleService.CATEGORIES_WRITE_PERMISSION,
@@ -364,7 +372,7 @@ public class AdminController {
 
     @PutMapping("/categories/{id}")
     public ResponseEntity<?> updateCategory(@PathVariable Long id,
-                                            @RequestBody(required = false) Category category,
+                                            @Valid @RequestBody(required = false) Category category,
                                             Authentication authentication,
                                             HttpServletRequest request) {
         requireAdminActionPermission(authentication, AdminRoleService.CATEGORIES_WRITE_PERMISSION,
@@ -425,30 +433,9 @@ public class AdminController {
         return q;
     }
 
-    private void mergeProduct(Product existingProduct, Product product) {
-        if (product.getName() != null) existingProduct.setName(product.getName());
-        if (product.getDescription() != null) existingProduct.setDescription(product.getDescription());
-        if (product.getPrice() != null) existingProduct.setPrice(product.getPrice());
-        if (product.getImageUrl() != null) existingProduct.setImageUrl(product.getImageUrl());
-        if (product.getStock() != null) existingProduct.setStock(product.getStock());
-        if (product.getCategoryId() != null) existingProduct.setCategoryId(product.getCategoryId());
-        if (product.getIsFeatured() != null) existingProduct.setIsFeatured(product.getIsFeatured());
-        if (product.getBrand() != null) existingProduct.setBrand(product.getBrand());
-        if (product.getOriginalPrice() != null) existingProduct.setOriginalPrice(product.getOriginalPrice());
-        if (product.getDiscount() != null) existingProduct.setDiscount(product.getDiscount());
-        if (product.getLimitedTimePrice() != null) existingProduct.setLimitedTimePrice(product.getLimitedTimePrice());
-        if (product.getLimitedTimeStartAt() != null) existingProduct.setLimitedTimeStartAt(product.getLimitedTimeStartAt());
-        if (product.getLimitedTimeEndAt() != null) existingProduct.setLimitedTimeEndAt(product.getLimitedTimeEndAt());
-        if (product.getTag() != null) existingProduct.setTag(product.getTag());
-        if (product.getStatus() != null) existingProduct.setStatus(product.getStatus());
-        if (product.getImages() != null) existingProduct.setImages(product.getImages());
-        if (product.getSpecifications() != null) existingProduct.setSpecifications(product.getSpecifications());
-        if (product.getDetailContent() != null) existingProduct.setDetailContent(product.getDetailContent());
-        if (product.getVariants() != null) existingProduct.setVariants(product.getVariants());
-        if (product.getWarranty() != null) existingProduct.setWarranty(product.getWarranty());
-        if (product.getShipping() != null) existingProduct.setShipping(product.getShipping());
-        if (product.getFreeShipping() != null) existingProduct.setFreeShipping(product.getFreeShipping());
-        if (product.getFreeShippingThreshold() != null) existingProduct.setFreeShippingThreshold(product.getFreeShippingThreshold());
+    private boolean isProductVersionConflict(Product existingProduct, Product submittedProduct) {
+        return submittedProduct.getUpdatedAt() != null
+                && !Objects.equals(existingProduct.getUpdatedAt(), submittedProduct.getUpdatedAt());
     }
 
     private void mergeBrand(Brand existingBrand, Brand brand) {
@@ -489,15 +476,17 @@ public class AdminController {
 
     @GetMapping("/dashboard")
     public ResponseEntity<Map<String, Object>> getDashboard() {
+        Map<String, Long> productSummary = productService.countDashboardProductSummary();
         Map<String, Object> stats = new LinkedHashMap<>();
-        stats.put("totalProducts", productService.countProducts());
-        stats.putAll(orderService.getDashboardOrderStats(orderService.currentDatabaseTime(), 7, 5));
+        stats.put("totalProducts", productSummary.getOrDefault("totalProducts", 0L));
+        stats.putAll(orderService.getDashboardOrderStats(null, 7, 5));
         stats.put("totalUsers", userService.count());
         Map<String, Long> orderSummary = orderService.countAdminOrderSummary(null);
         stats.put("refundingPayments", orderSummary.getOrDefault("REFUNDING", 0L));
-        stats.put("activeProducts", productService.countActiveProducts());
-        stats.put("pendingProducts", productService.countPendingReviewProducts());
-        stats.put("lowStockProducts", productService.countLowStockProducts());
+        stats.put("activeProducts", productSummary.getOrDefault("activeProducts", 0L));
+        stats.put("inactiveProducts", productSummary.getOrDefault("inactiveProducts", 0L));
+        stats.put("pendingProducts", productSummary.getOrDefault("pendingProducts", 0L));
+        stats.put("lowStockProducts", productSummary.getOrDefault("lowStockProducts", 0L));
         stats.put("topProducts", orderItemService.getTopProductsByPaidStatuses(orderService.dashboardRevenueStatuses(), 8));
         stats.put("lowStockList", productService.findLowStockProducts(8));
 
@@ -516,11 +505,11 @@ public class AdminController {
                                         @RequestParam(required = false) String scope,
                                         @RequestParam(required = false) Integer page,
                                         @RequestParam(required = false) Integer size) {
-        if (keyword == null && status == null && scope == null && page == null && size == null) {
-            return ResponseEntity.ok(couponService.findAll());
-        }
         int safePage = Math.max(1, page == null ? 1 : page);
-        int safeSize = Math.max(1, size == null ? 20 : size);
+        int safeSize = resolveAdminPageSize(
+                "admin.coupons.page-max-size",
+                size == null ? DEFAULT_ADMIN_COUPON_PAGE_SIZE : size,
+                DEFAULT_ADMIN_COUPON_PAGE_SIZE);
         Page<Coupon> result = couponService.searchAdminCoupons(keyword, status, scope, safePage - 1, safeSize);
         if (result.getTotalPages() > 0 && safePage > result.getTotalPages()) {
             safePage = result.getTotalPages();
@@ -544,7 +533,7 @@ public class AdminController {
     }
 
     @PostMapping("/coupons")
-    public ResponseEntity<?> createCoupon(@RequestBody(required = false) CouponUpsertRequest request,
+    public ResponseEntity<?> createCoupon(@Valid @RequestBody(required = false) CouponUpsertRequest request,
                                           Authentication authentication,
                                           HttpServletRequest httpRequest) {
         requireAdminActionPermission(authentication, AdminRoleService.COUPONS_WRITE_PERMISSION,
@@ -567,7 +556,7 @@ public class AdminController {
 
     @PutMapping("/coupons/{id}")
     public ResponseEntity<?> updateCoupon(@PathVariable Long id,
-                                          @RequestBody(required = false) CouponUpsertRequest request,
+                                          @Valid @RequestBody(required = false) CouponUpsertRequest request,
                                           Authentication authentication,
                                           HttpServletRequest httpRequest) {
         requireAdminActionPermission(authentication, AdminRoleService.COUPONS_WRITE_PERMISSION,
@@ -807,7 +796,7 @@ public class AdminController {
     }
 
     @PostMapping("/roles")
-    public ResponseEntity<?> saveRole(@RequestBody(required = false) AdminRole role,
+    public ResponseEntity<?> saveRole(@Valid @RequestBody(required = false) AdminRole role,
                                       Authentication authentication,
                                       HttpServletRequest request) {
         try {
@@ -882,13 +871,18 @@ public class AdminController {
 
     @PutMapping("/users/{id}")
     public ResponseEntity<?> updateUser(@PathVariable Long id,
-                                        @RequestBody(required = false) User user,
+                                        @Valid @RequestBody(required = false) AdminUserUpdateRequest user,
                                         Authentication authentication,
                                         HttpServletRequest request) {
         if (user == null) {
             auditLogService.record("USER_UPDATE", "FAILURE", authentication, "USER", id, request,
                     "User payload is required", null);
             return ResponseEntity.badRequest().body(Map.of("error", "User payload is required"));
+        }
+        if (user.hasUnsupportedFields()) {
+            auditLogService.record("USER_UPDATE", "FAILURE", authentication, "USER", id, request,
+                    "Unsupported user update fields", userUpdateRequestMetadata(user));
+            return ResponseEntity.badRequest().body(Map.of("error", "Unsupported user update fields"));
         }
         User existing = userService.findById(id);
         if (existing == null) {
@@ -897,41 +891,6 @@ public class AdminController {
             return ResponseEntity.notFound().build();
         }
         User before = copyUserForAudit(existing);
-        if (user.getRole() != null) {
-            try {
-                SecurityUtils.assertSuperAdmin(authentication);
-            } catch (RuntimeException e) {
-                auditLogService.record("USER_ROLE_UPDATE", "FAILURE", authentication, "USER", id, request,
-                        e.getMessage(), userUpdateRequestMetadata(user));
-                throw e;
-            }
-            if (SecurityUtils.requireUser(authentication).getId().equals(id)) {
-                auditLogService.record("USER_ROLE_UPDATE", "FAILURE", authentication, "USER", id, request,
-                        "Cannot change current operator role", userUpdateRequestMetadata(user));
-                return ResponseEntity.badRequest().body(Map.of("error", "Cannot change current operator role"));
-            }
-            String role = normalizeRole(user.getRole());
-            if (role == null) {
-                auditLogService.record("USER_ROLE_UPDATE", "FAILURE", authentication, "USER", id, request,
-                        "Invalid role", userUpdateRequestMetadata(user));
-                return ResponseEntity.badRequest().body(Map.of("error", "Invalid role"));
-            }
-            String roleCode = existing.getRoleCode();
-            if ("USER".equals(role)) {
-                roleCode = null;
-            } else if ("SUPER_ADMIN".equals(role)) {
-                roleCode = AdminRoleService.SUPER_ADMIN;
-            } else if ("ADMIN".equals(role)) {
-                roleCode = AdminRoleService.ADMIN;
-            }
-            userService.updateRoleAccess(existing.getId(), role, roleCode);
-            existing = userService.findById(id);
-        }
-        if (existing == null) {
-            auditLogService.record("USER_UPDATE", "FAILURE", authentication, "USER", id, request,
-                    "User not found after role update", userUpdateRequestMetadata(user));
-            return ResponseEntity.notFound().build();
-        }
         boolean selfUpdate = Objects.equals(SecurityUtils.requireUser(authentication).getId(), id);
         if (user.getStatus() != null) {
             requireAdminActionPermission(authentication, AdminRoleService.USERS_STATUS_PERMISSION,
@@ -964,7 +923,7 @@ public class AdminController {
             }
             existing.setStatus(normalizedStatus);
         }
-        if (hasProfileContactUpdate(user) && isPrivilegedOperator(existing) && !selfUpdate) {
+        if (hasAddressUpdate(user) && isPrivilegedOperator(existing) && !selfUpdate) {
             try {
                 SecurityUtils.assertSuperAdmin(authentication);
             } catch (RuntimeException e) {
@@ -973,23 +932,17 @@ public class AdminController {
                 throw e;
             }
         }
-        if (hasProfileContactUpdate(user) && !(isPrivilegedOperator(existing) && !selfUpdate)) {
+        if (hasAddressUpdate(user) && !(isPrivilegedOperator(existing) && !selfUpdate)) {
             requireAdminActionPermission(authentication, AdminRoleService.USERS_WRITE_PERMISSION,
                     "USER_UPDATE", "USER", id, request, userUpdateRequestMetadata(user),
                     "Missing admin action permission");
-        }
-        if (user.getEmail() != null) {
-            existing.setEmail(user.getEmail());
-        }
-        if (user.getPhone() != null) {
-            existing.setPhone(user.getPhone());
         }
         if (user.getAddress() != null) {
             existing.setAddress(user.getAddress());
         }
         userService.update(existing);
         User updated = userService.findById(id);
-        String action = user.getRole() != null ? "USER_ROLE_UPDATE" : user.getStatus() != null ? "USER_STATUS_UPDATE" : "USER_UPDATE";
+        String action = user.getStatus() != null ? "USER_STATUS_UPDATE" : "USER_UPDATE";
         auditLogService.record(action, "SUCCESS", authentication, "USER", id, request,
                 userUpdateMessage(action), userChangeMetadata(before, updated == null ? existing : updated));
         return ResponseEntity.ok(AdminUserResponse.from(updated == null ? existing : updated));
@@ -1214,7 +1167,7 @@ public class AdminController {
         String manualRefundReference = body == null || body.get("manualRefundReference") == null ? null : String.valueOf(body.get("manualRefundReference"));
         try {
             Order order = orderService.getOrderById(id);
-            boolean effectiveRestock = restock || (order != null && "PENDING_SHIPMENT".equals(order.getStatus()));
+            boolean effectiveRestock = orderService.shouldRestockRefund(order, restock);
             Payment payment = orderService.refundOrder(id, reason, effectiveRestock, manualRefundReference);
             String restockAudit = "restock=" + effectiveRestock
                     + (effectiveRestock != restock ? ",requestedRestock=" + restock : "");
@@ -1298,7 +1251,7 @@ public class AdminController {
     }
 
     @PostMapping("/logistics-carriers")
-    public ResponseEntity<?> createLogisticsCarrier(@RequestBody(required = false) LogisticsCarrier carrier,
+    public ResponseEntity<?> createLogisticsCarrier(@Valid @RequestBody(required = false) LogisticsCarrier carrier,
                                                     Authentication authentication,
                                                     HttpServletRequest request) {
         requireAdminActionPermission(authentication, AdminRoleService.LOGISTICS_CARRIERS_WRITE_PERMISSION,
@@ -1324,7 +1277,7 @@ public class AdminController {
 
     @PutMapping("/logistics-carriers/{id}")
     public ResponseEntity<?> updateLogisticsCarrier(@PathVariable Long id,
-                                                    @RequestBody(required = false) LogisticsCarrier carrier,
+                                                    @Valid @RequestBody(required = false) LogisticsCarrier carrier,
                                                     Authentication authentication,
                                                     HttpServletRequest request) {
         requireAdminActionPermission(authentication, AdminRoleService.LOGISTICS_CARRIERS_WRITE_PERMISSION,
@@ -1392,15 +1345,20 @@ public class AdminController {
                     "Invalid product status", "status=" + body.get("status"));
             return ResponseEntity.badRequest().body(Map.of("error", "status must be one of " + ProductStatusUtils.PRODUCT_STATUSES));
         }
-        int updated = productService.updateStatusByIds(List.of(id), status);
-        if (updated == 0) {
-            auditLogService.record("PRODUCT_STATUS_UPDATE", "FAILURE", authentication, "PRODUCT", id, request,
-                    "Product not found", "to=" + status);
-            return ResponseEntity.notFound().build();
-        }
-        auditLogService.record("PRODUCT_STATUS_UPDATE", "SUCCESS", authentication, "PRODUCT", id, request,
-                "Product status updated", "to=" + status);
-        return ResponseEntity.ok(Map.of("message", "status updated", "status", status));
+        return productService.findById(id)
+                .map(product -> {
+                    String previousStatus = product.getStatus();
+                    product.setStatus(status);
+                    productService.save(product);
+                    auditLogService.record("PRODUCT_STATUS_UPDATE", "SUCCESS", authentication, "PRODUCT", id, request,
+                            "Product status updated", "from=" + previousStatus + ",to=" + status);
+                    return ResponseEntity.ok(Map.of("message", "status updated", "status", status));
+                })
+                .orElseGet(() -> {
+                    auditLogService.record("PRODUCT_STATUS_UPDATE", "FAILURE", authentication, "PRODUCT", id, request,
+                            "Product not found", "to=" + status);
+                    return ResponseEntity.notFound().build();
+                });
     }
 
     @PostMapping("/products/batch-status")
@@ -2089,16 +2047,13 @@ public class AdminController {
         return copy;
     }
 
-    private String userUpdateRequestMetadata(User user) {
+    private String userUpdateRequestMetadata(AdminUserUpdateRequest user) {
         if (user == null) {
             return null;
         }
-        return "role=" + normalizeAdminFilter(user.getRole(), 30)
-                + ",roleCode=" + normalizeAdminFilter(user.getRoleCode(), 60)
-                + ",status=" + normalizeAdminFilter(user.getStatus(), 20)
-                + ",emailUpdated=" + (user.getEmail() != null)
-                + ",phoneUpdated=" + (user.getPhone() != null)
-                + ",addressUpdated=" + (user.getAddress() != null);
+        return "status=" + normalizeAdminFilter(user.getStatus(), 20)
+                + ",addressUpdated=" + (user.getAddress() != null)
+                + ",unsupportedFields=" + user.getUnsupportedFields().size();
     }
 
     private String userAuditMetadata(User user) {
@@ -2136,9 +2091,6 @@ public class AdminController {
     }
 
     private String userUpdateMessage(String action) {
-        if ("USER_ROLE_UPDATE".equals(action)) {
-            return "User role updated";
-        }
         if ("USER_STATUS_UPDATE".equals(action)) {
             return "User status updated";
         }
@@ -2289,14 +2241,6 @@ public class AdminController {
         }
     }
 
-    private String normalizeRole(String role) {
-        if (role == null) {
-            return null;
-        }
-        String normalized = role.trim().toUpperCase();
-        return Set.of("USER", "ADMIN", "SUPER_ADMIN").contains(normalized) ? normalized : null;
-    }
-
     private String normalizeUserStatus(String status) {
         if (status == null) {
             return null;
@@ -2309,8 +2253,8 @@ public class AdminController {
         return status != null && "GUEST".equals(status.trim().toUpperCase());
     }
 
-    private boolean hasProfileContactUpdate(User user) {
-        return user != null && (user.getEmail() != null || user.getPhone() != null || user.getAddress() != null);
+    private boolean hasAddressUpdate(AdminUserUpdateRequest user) {
+        return user != null && user.getAddress() != null;
     }
 
     private boolean isPrivilegedOperator(User user) {

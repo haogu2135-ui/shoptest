@@ -38,6 +38,7 @@ class CouponServiceTest {
     private CouponRepository couponRepository;
     private UserCouponMapper userCouponMapper;
     private UserMapper userMapper;
+    private PetBirthdayCouponService petBirthdayCouponService;
     private RuntimeConfigService runtimeConfig;
     private CouponService service;
 
@@ -46,12 +47,13 @@ class CouponServiceTest {
         couponRepository = mock(CouponRepository.class);
         userCouponMapper = mock(UserCouponMapper.class);
         userMapper = mock(UserMapper.class);
+        petBirthdayCouponService = mock(PetBirthdayCouponService.class);
         runtimeConfig = runtimeConfig();
         service = new CouponService(
                 couponRepository,
                 userCouponMapper,
                 userMapper,
-                mock(PetBirthdayCouponService.class),
+                petBirthdayCouponService,
                 runtimeConfig
         );
     }
@@ -142,6 +144,93 @@ class CouponServiceTest {
     }
 
     @Test
+    void quoteSubtotalRoundsEachCartLineBeforeSumming() {
+        when(userCouponMapper.findUnusedByUserIdLimited(eq(3L), eq(100))).thenReturn(Collections.emptyList());
+
+        CartItem first = new CartItem();
+        first.setPrice(new BigDecimal("10.005"));
+        first.setQuantity(1);
+        CartItem second = new CartItem();
+        second.setPrice(new BigDecimal("10.005"));
+        second.setQuantity(1);
+
+        assertEquals(new BigDecimal("20.02"), service.quote(3L, List.of(first, second), null).getSubtotal());
+    }
+
+    @Test
+    void discountPercentRepresentsPayablePercentWhenUsingCoupon() {
+        UserCoupon coupon = new UserCoupon();
+        coupon.setId(6L);
+        coupon.setCouponId(5L);
+        coupon.setCouponName("Pay 80 percent");
+        coupon.setStatus("UNUSED");
+        coupon.setCouponStatus("ACTIVE");
+        coupon.setCouponType("DISCOUNT");
+        coupon.setThresholdAmount(BigDecimal.ZERO);
+        coupon.setDiscountPercent(80);
+        when(userCouponMapper.findByIdAndUserId(6L, 3L)).thenReturn(coupon);
+        when(userCouponMapper.markUsed(6L, 42L)).thenReturn(1);
+        when(couponRepository.incrementUsedCount(5L)).thenReturn(1);
+
+        CouponService.AppliedCoupon applied = service.useCoupon(3L, 6L, new BigDecimal("100.00"), 42L);
+
+        assertEquals(6L, applied.getUserCouponId());
+        assertEquals(5L, applied.getCouponId());
+        assertEquals("Pay 80 percent", applied.getCouponName());
+        assertEquals(new BigDecimal("20.00"), applied.getDiscountAmount());
+        verify(userCouponMapper).markUsed(6L, 42L);
+        verify(couponRepository).incrementUsedCount(5L);
+    }
+
+    @Test
+    void useCouponDoesNotIncrementUsageWhenCouponWasAlreadyUsed() {
+        UserCoupon coupon = new UserCoupon();
+        coupon.setId(6L);
+        coupon.setCouponId(5L);
+        coupon.setStatus("UNUSED");
+        coupon.setCouponStatus("ACTIVE");
+        coupon.setCouponType("FULL_REDUCTION");
+        coupon.setThresholdAmount(BigDecimal.ZERO);
+        coupon.setReductionAmount(new BigDecimal("10.00"));
+        when(userCouponMapper.findByIdAndUserId(6L, 3L)).thenReturn(coupon);
+        when(userCouponMapper.markUsed(6L, 42L)).thenReturn(0);
+
+        assertThrows(IllegalStateException.class,
+                () -> service.useCoupon(3L, 6L, new BigDecimal("100.00"), 42L));
+
+        verify(couponRepository, never()).incrementUsedCount(5L);
+    }
+
+    @Test
+    void releaseUsedCouponDecrementsUsageWhenStatusChangesBackToUnused() {
+        UserCoupon coupon = new UserCoupon();
+        coupon.setId(6L);
+        coupon.setCouponId(5L);
+        coupon.setStatus("USED");
+        when(userCouponMapper.findById(6L)).thenReturn(coupon);
+        when(userCouponMapper.releaseUsed(6L)).thenReturn(1);
+
+        service.releaseUsedCoupon(6L);
+
+        verify(userCouponMapper).releaseUsed(6L);
+        verify(couponRepository).decrementUsedCount(5L);
+    }
+
+    @Test
+    void releaseUsedCouponDoesNotDecrementUsageWhenCouponIsNotUsed() {
+        UserCoupon coupon = new UserCoupon();
+        coupon.setId(6L);
+        coupon.setCouponId(5L);
+        coupon.setStatus("UNUSED");
+        when(userCouponMapper.findById(6L)).thenReturn(coupon);
+
+        service.releaseUsedCoupon(6L);
+
+        verify(userCouponMapper, never()).releaseUsed(6L);
+        verify(couponRepository, never()).decrementUsedCount(5L);
+    }
+
+    @Test
     void saveNormalizesDiscountCouponAndAllowsUnlimitedMaxDiscount() {
         com.example.shop.dto.CouponUpsertRequest request = new com.example.shop.dto.CouponUpsertRequest();
         request.setName("  Spring\nSale  ");
@@ -180,6 +269,29 @@ class CouponServiceTest {
 
         assertThrows(IllegalArgumentException.class, () -> service.save(request, null));
         verify(couponRepository, never()).save(any(Coupon.class));
+    }
+
+    @Test
+    void deleteCleansUnusedAssignmentsBeforeDeletingCoupon() {
+        when(couponRepository.existsById(5L)).thenReturn(true);
+        when(userCouponMapper.countUsedByCouponId(5L)).thenReturn(0);
+
+        service.delete(5L);
+
+        verify(petBirthdayCouponService).deleteBirthdayCouponRecords(5L);
+        verify(couponRepository).deleteById(5L);
+    }
+
+    @Test
+    void deleteRejectsCouponsWithUsedAssignmentsBeforeCleanup() {
+        when(couponRepository.existsById(5L)).thenReturn(true);
+        when(userCouponMapper.countUsedByCouponId(5L)).thenReturn(1);
+
+        IllegalStateException error = assertThrows(IllegalStateException.class, () -> service.delete(5L));
+
+        assertEquals("Cannot delete coupon that has been used in orders", error.getMessage());
+        verify(petBirthdayCouponService, never()).deleteBirthdayCouponRecords(5L);
+        verify(couponRepository, never()).deleteById(5L);
     }
 
     @Test

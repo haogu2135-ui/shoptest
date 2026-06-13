@@ -30,8 +30,9 @@ type ApiErrorMessageOptions = {
 
 const MAX_ERROR_DETAIL_ITEMS = 4;
 const MAX_ERROR_DETAIL_LENGTH = 180;
+const MAX_RETRY_AFTER_SECONDS = 5 * 60;
 
-const hasChineseText = (value: string) => /[\u3400-\u9fff]/.test(value);
+const hasChineseText = (value: string) => /[\u2e80-\u2eff\u2f00-\u2fdf\u3400-\u9fff\uf900-\ufaff\u{20000}-\u{2a6df}]/u.test(value);
 const hasSpanishSignal = (value: string) =>
   /[áéíóúñü¿¡]/i.test(value) || /\b(el|la|los|las|un|una|pedido|pago|usuario|correo|contraseña|direccion|dirección|envio|envío|reembolso)\b/i.test(value);
 
@@ -131,7 +132,8 @@ const normalizeRetryAfterSeconds = (error: ApiErrorLike) => {
     ?? headers?.['Retry-After']
     ?? headers?.['retry-after'];
   const numeric = Number(error.response?.data?.retryAfterSeconds ?? headerValue);
-  return Number.isFinite(numeric) && numeric > 0 ? Math.ceil(numeric) : null;
+  if (!Number.isFinite(numeric) || numeric <= 0) return null;
+  return Math.min(Math.ceil(numeric), MAX_RETRY_AFTER_SECONDS);
 };
 
 export const getApiErrorMessage = (

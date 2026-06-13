@@ -1,5 +1,8 @@
 package com.example.shop.service;
 
+import com.example.shop.dto.ProductPublicListItemResponse;
+import com.example.shop.dto.ProductPublicResponse;
+import com.example.shop.dto.ProductReviewsResponse;
 import com.example.shop.dto.ReviewableOrderResponse;
 import com.example.shop.entity.Order;
 import com.example.shop.entity.OrderItem;
@@ -20,13 +23,19 @@ import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import javax.persistence.Transient;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.mock;
@@ -84,6 +93,7 @@ class ReviewServiceTest {
         Review saved = service.addReview(7L, 3L, 11L, 5, "  Great\tfit\nfor\u0000my dog.  ", List.of());
 
         assertEquals("Great fit for my dog.", saved.getComment());
+        assertEquals("PENDING", saved.getStatus());
         verify(reviewRepository).save(any(Review.class));
     }
 
@@ -115,6 +125,52 @@ class ReviewServiceTest {
         assertNotNull(transactional);
         assertEquals(true, transactional.readOnly());
         assertEquals(Isolation.REPEATABLE_READ, transactional.isolation());
+    }
+
+    @Test
+    void publicReviewRatingSurfacesUseBigDecimal() throws Exception {
+        assertEquals(BigDecimal.class, ReviewService.class.getMethod("getAverageRating", Long.class).getReturnType());
+        assertEquals(BigDecimal.class, Product.class.getDeclaredField("averageRating").getType());
+        assertEquals(BigDecimal.class, Product.class.getDeclaredField("positiveRate").getType());
+        assertEquals(BigDecimal.class, ProductReviewsResponse.class.getDeclaredField("averageRating").getType());
+        assertEquals(BigDecimal.class, ProductPublicResponse.class.getDeclaredField("averageRating").getType());
+        assertEquals(BigDecimal.class, ProductPublicResponse.class.getDeclaredField("positiveRate").getType());
+        assertEquals(BigDecimal.class, ProductPublicListItemResponse.class.getDeclaredField("averageRating").getType());
+        assertEquals(BigDecimal.class, ProductPublicListItemResponse.class.getDeclaredField("positiveRate").getType());
+        ProductReviewsResponse response = new ProductReviewsResponse(List.of(), new BigDecimal("4.26"));
+        assertEquals(new BigDecimal("4.3"), response.getAverageRating());
+    }
+
+    @Test
+    void reviewAggregateStatsRemainReadTimeTransientProductFields() throws Exception {
+        String reviewServiceSource = Files.readString(
+                Path.of("src/main/java/com/example/shop/service/impl/ReviewServiceImpl.java"));
+        String productServiceSource = Files.readString(
+                Path.of("src/main/java/com/example/shop/service/impl/ProductServiceImpl.java"));
+
+        String addReviewBody = sourceSlice(
+                reviewServiceSource,
+                "public Review addReview(",
+                "private boolean isDuplicateReviewConstraintViolation");
+        String updateStatusBody = sourceSlice(
+                reviewServiceSource,
+                "public Review updateReviewStatus(",
+                "public AdminReviewResponse updateReviewStatusForAdmin");
+
+        assertFalse(addReviewBody.contains("findAverageRatingByProductId"));
+        assertFalse(addReviewBody.contains("productRepository.save"));
+        assertFalse(addReviewBody.contains("updateProductReviewStats"));
+        assertFalse(addReviewBody.contains("updateProductScore"));
+        assertFalse(updateStatusBody.contains("findAverageRatingByProductId"));
+        assertFalse(updateStatusBody.contains("productRepository.save"));
+        assertFalse(updateStatusBody.contains("updateProductReviewStats"));
+        assertFalse(updateStatusBody.contains("updateProductScore"));
+        assertTransientReviewStatField("positiveRate");
+        assertTransientReviewStatField("averageRating");
+        assertTransientReviewStatField("reviewCount");
+        assertTrue(productServiceSource.contains("reviewRepository.summarizeApprovedReviewsByProductIds(productIds)"));
+        assertTrue(productServiceSource.contains("product.setAverageRating"));
+        assertTrue(productServiceSource.contains("product.setReviewCount"));
     }
 
     @Test
@@ -176,7 +232,6 @@ class ReviewServiceTest {
         assertEquals(1, result.size());
         assertEquals(eligibleOrder.getId(), result.get(0).getId());
         verify(orderRepository).findReviewableOrdersByUserAndProduct(any(), any(), any(), any(Integer.class));
-        verify(orderRepository, never()).findByUserId(any());
         verify(orderItemRepository, never()).findByOrderIds(any());
         verify(reviewRepository, never()).findByProduct_IdAndUser_IdAndOrderIdIn(any(), any(), any());
         verify(orderItemRepository, never()).findByOrderIdAndProductId(any(), any());
@@ -190,5 +245,17 @@ class ReviewServiceTest {
         order.setStatus("COMPLETED");
         order.setCreatedAt(LocalDateTime.now());
         return order;
+    }
+
+    private static String sourceSlice(String source, String startToken, String endToken) {
+        int start = source.indexOf(startToken);
+        int end = source.indexOf(endToken, start);
+        assertTrue(start >= 0, "Missing source start token: " + startToken);
+        assertTrue(end > start, "Missing source end token: " + endToken);
+        return source.substring(start, end);
+    }
+
+    private static void assertTransientReviewStatField(String fieldName) throws NoSuchFieldException {
+        assertNotNull(Product.class.getDeclaredField(fieldName).getAnnotation(Transient.class));
     }
 }

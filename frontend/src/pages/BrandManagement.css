@@ -14,6 +14,15 @@
   margin-bottom: 16px;
 }
 
+.brand-management-page__alert,
+.brand-management-page__loadingState {
+  margin-bottom: 16px;
+}
+
+.brand-management-page__loadingState .ant-card-body {
+  min-height: 120px;
+}
+
 .brand-management-page__toolbar .ant-space {
   width: 100%;
   justify-content: space-between;
@@ -551,5 +560,52 @@
   .brand-management-page__editorModal .ant-input-number,
   .brand-management-page__editorModal .ant-select-selector {
     min-height: 44px;
+  }
+}
+
+/* F3525: keep brand trust metrics visible at tablet and short-landscape widths */
+@media (max-width: 900px) {
+  .brand-management-page__health {
+    grid-template-columns: minmax(0, 1fr) !important;
+    align-items: stretch;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    overflow: visible;
+  }
+
+  .brand-management-page__score {
+    align-items: flex-start;
+  }
+
+  .brand-management-page__healthGrid,
+  .brand-management-page--es .brand-management-page__healthGrid {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    margin-inline: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    scroll-snap-type: none !important;
+    overscroll-behavior-inline: auto;
+    -webkit-mask-image: none !important;
+    mask-image: none !important;
+    scrollbar-width: auto;
+  }
+
+  .brand-management-page__healthGrid::-webkit-scrollbar {
+    display: initial;
+  }
+
+  .brand-management-page__healthItem,
+  .brand-management-page--es .brand-management-page__healthItem {
+    flex: initial !important;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    scroll-snap-align: none;
   }
 }

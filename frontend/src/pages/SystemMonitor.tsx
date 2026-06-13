@@ -82,14 +82,18 @@ const SystemMonitor: React.FC = () => {
   const { t, language } = useLanguage();
   const [status, setStatus] = useState<AdminSystemStatus | null>(null);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const loadStatus = useCallback(async () => {
     setLoading(true);
     try {
+      setLoadError(null);
       const response = await adminApi.getSystemStatus();
       setStatus(response.data);
     } catch (error: unknown) {
-      message.error(getApiErrorMessage(error, t('pages.systemMonitor.loadFailed'), language));
+      const errorMessage = getApiErrorMessage(error, t('pages.systemMonitor.loadFailed'), language);
+      setLoadError(errorMessage);
+      message.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -205,8 +209,23 @@ const SystemMonitor: React.FC = () => {
         </Button>
       </div>
 
+      {loadError ? (
+        <Alert
+          className="system-monitor__alert"
+          type="warning"
+          showIcon
+          message={loadError}
+          description={status ? t('pages.systemMonitor.staleDataWarning') : undefined}
+          action={(
+            <Button size="small" onClick={loadStatus} loading={loading}>
+              {t('common.retry')}
+            </Button>
+          )}
+        />
+      ) : null}
+
       <Spin spinning={loading && !status}>
-        {status ? (
+        {loadError && !status ? null : status ? (
           <>
             <div className="system-monitor__stats">
               <Card>

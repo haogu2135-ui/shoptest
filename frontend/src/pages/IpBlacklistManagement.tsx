@@ -6,6 +6,7 @@ import { adminApi } from '../api';
 import type { IpBlacklistEntry, IpBlacklistStatus } from '../types';
 import { useLanguage } from '../i18n';
 import { getApiErrorMessage } from '../utils/apiError';
+import { buildPaginationItemRender } from '../utils/paginationLabels';
 import { labelTableSelectionCheckbox } from '../utils/tableSelectionAccessibility';
 import {
   IP_BLACKLIST_BLOCK_PERMISSION,
@@ -36,6 +37,7 @@ const sourceColor = (source: string) => {
 
 const STATUS_OPTIONS = ['ALL', 'BLOCKED', 'MONITORING', 'RELEASED'];
 const SOURCE_OPTIONS = ['ALL', 'LOGIN', 'PAYMENT', 'MANUAL'];
+const tableCellLabel = (label: string) => () => ({ 'data-label': label } as React.TdHTMLAttributes<HTMLElement>);
 type FormValidationError = { errorFields: unknown[] };
 
 const isFormValidationError = (error: unknown): error is FormValidationError => {
@@ -76,7 +78,8 @@ const IpBlacklistManagement: React.FC = () => {
   const [ipAddress, setIpAddress] = useState('');
   const [selectedEntryIds, setSelectedEntryIds] = useState<number[]>([]);
   const [listLoadError, setListLoadError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [listSnapshotLoaded, setListSnapshotLoaded] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState<number | null>(null);
   const [batchActing, setBatchActing] = useState(false);
   const [blocking, setBlocking] = useState(false);
@@ -86,6 +89,8 @@ const IpBlacklistManagement: React.FC = () => {
   const [form] = Form.useForm();
   const canBlockIp = hasAdminPermission(adminPermissions, currentRole, IP_BLACKLIST_BLOCK_PERMISSION);
   const canReleaseIp = hasAdminPermission(adminPermissions, currentRole, IP_BLACKLIST_RELEASE_PERMISSION);
+  const blacklistActionDisabled = loading || Boolean(listLoadError) || !listSnapshotLoaded;
+  const blacklistActionUnavailableMessage = listLoadError || (loading ? t('common.loading') : t('pages.ipBlacklistAdmin.loadFailed'));
   const formatTime = useCallback((value?: string) => {
     if (!value) return '-';
     const parsed = new Date(value);
@@ -151,6 +156,7 @@ const IpBlacklistManagement: React.FC = () => {
           setEntries(nextEntries);
           setSelectedEntryIds((ids) => ids.filter((id) => nextEntries.some((entry) => entry.id === id)));
           setListLoadError(null);
+          setListSnapshotLoaded(true);
           return true;
         }).catch((error: unknown) => {
           listError = error;
@@ -213,6 +219,10 @@ const IpBlacklistManagement: React.FC = () => {
       message.error(t('adminLayout.noPermission'));
       return;
     }
+    if (blacklistActionDisabled) {
+      message.warning(blacklistActionUnavailableMessage);
+      return;
+    }
     try {
       const values = await form.validateFields();
       setBlocking(true);
@@ -235,6 +245,10 @@ const IpBlacklistManagement: React.FC = () => {
   const openBlockModal = () => {
     if (!canBlockIp) {
       message.error(t('adminLayout.noPermission'));
+      return;
+    }
+    if (blacklistActionDisabled) {
+      message.warning(blacklistActionUnavailableMessage);
       return;
     }
     form.resetFields();
@@ -274,6 +288,10 @@ const IpBlacklistManagement: React.FC = () => {
       message.error(t('adminLayout.noPermission'));
       return;
     }
+    if (blacklistActionDisabled) {
+      message.warning(blacklistActionUnavailableMessage);
+      return;
+    }
     setActing(entry.id);
     try {
       await adminApi.releaseIpBlacklistEntry(entry.id);
@@ -284,7 +302,7 @@ const IpBlacklistManagement: React.FC = () => {
     } finally {
       setActing(null);
     }
-  }, [canReleaseIp, language, loadData, t]);
+  }, [blacklistActionDisabled, blacklistActionUnavailableMessage, canReleaseIp, language, loadData, t]);
 
   const selectedEntries = useMemo(
     () => entries.filter((entry) => selectedEntryIds.includes(entry.id)),
@@ -296,10 +314,23 @@ const IpBlacklistManagement: React.FC = () => {
     [selectedEntries]
   );
   const batchReleaseActionLabel = `${t('pages.ipBlacklistAdmin.batchRelease')}: ${t('pages.ipBlacklistAdmin.selectedSummary', { selected: selectedEntryIds.length, releasable: selectedReleasableIds.length })}`;
+  const blacklistPaginationItemRender = useMemo(
+    () => buildPaginationItemRender(
+      `${t('common.previousPage')}: ${t('pages.ipBlacklistAdmin.title')}`,
+      `${t('common.nextPage')}: ${t('pages.ipBlacklistAdmin.title')}`,
+      `${t('common.previousPages')}: ${t('pages.ipBlacklistAdmin.title')}`,
+      `${t('common.nextPages')}: ${t('pages.ipBlacklistAdmin.title')}`
+    ),
+    [t]
+  );
 
   const releaseSelectedEntries = async () => {
     if (!canReleaseIp) {
       message.error(t('adminLayout.noPermission'));
+      return;
+    }
+    if (blacklistActionDisabled) {
+      message.warning(blacklistActionUnavailableMessage);
       return;
     }
     if (!selectedReleasableIds.length) {
@@ -325,6 +356,8 @@ const IpBlacklistManagement: React.FC = () => {
         title: 'IP',
         dataIndex: 'ipAddress',
         key: 'ipAddress',
+        width: 150,
+        onCell: tableCellLabel('IP'),
         render: (value: string) => <Text strong>{value}</Text>,
       },
       {
@@ -332,6 +365,7 @@ const IpBlacklistManagement: React.FC = () => {
         dataIndex: 'status',
         key: 'status',
         width: 130,
+        onCell: tableCellLabel(t('common.status')),
         render: (value: string) => <Tag color={statusColor(value)}>{getStatusLabel(value)}</Tag>,
       },
       {
@@ -339,6 +373,7 @@ const IpBlacklistManagement: React.FC = () => {
         dataIndex: 'source',
         key: 'source',
         width: 110,
+        onCell: tableCellLabel(t('pages.ipBlacklistAdmin.source')),
         render: (value: string, record) => (
           <Space size={4} wrap>
             <Tag color={sourceColor(value)}>{getSourceLabel(value)}</Tag>
@@ -351,11 +386,15 @@ const IpBlacklistManagement: React.FC = () => {
         dataIndex: 'failureCount',
         key: 'failureCount',
         width: 100,
+        onCell: tableCellLabel(t('pages.ipBlacklistAdmin.failureCount')),
+        responsive: ['sm'],
       },
       {
         title: t('pages.ipBlacklistAdmin.reason'),
         dataIndex: 'reason',
         key: 'reason',
+        onCell: tableCellLabel(t('pages.ipBlacklistAdmin.reason')),
+        responsive: ['sm'],
         render: (value?: string) => value || '-',
       },
       {
@@ -363,6 +402,8 @@ const IpBlacklistManagement: React.FC = () => {
         dataIndex: 'blockedUntil',
         key: 'blockedUntil',
         width: 190,
+        onCell: tableCellLabel(t('pages.ipBlacklistAdmin.blockedUntil')),
+        responsive: ['sm'],
         render: formatTime,
       },
       {
@@ -370,6 +411,8 @@ const IpBlacklistManagement: React.FC = () => {
         dataIndex: 'lastSeenAt',
         key: 'lastSeenAt',
         width: 190,
+        onCell: tableCellLabel(t('pages.ipBlacklistAdmin.lastSeen')),
+        responsive: ['sm'],
         render: formatTime,
       },
     ];
@@ -379,6 +422,7 @@ const IpBlacklistManagement: React.FC = () => {
         title: t('common.actions'),
         key: 'actions',
         width: 120,
+        onCell: tableCellLabel(t('common.actions')),
         render: (_, record) => {
           if (record.status === 'RELEASED') return null;
           const entryLabel = record.ipAddress || `#${record.id}`;
@@ -390,11 +434,12 @@ const IpBlacklistManagement: React.FC = () => {
               description={t('pages.ipBlacklistAdmin.releaseDescription', { source: getSourceLabel(record.source) })}
               okText={t('common.confirm')}
               cancelText={t('common.cancel')}
-              okButtonProps={{ 'aria-label': releaseActionLabel, title: releaseActionLabel }}
+              disabled={blacklistActionDisabled}
+              okButtonProps={{ disabled: blacklistActionDisabled, 'aria-label': releaseActionLabel, title: releaseActionLabel }}
               cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${releaseActionLabel}`, title: `${t('common.cancel')}: ${releaseActionLabel}` }}
               onConfirm={() => releaseEntry(record)}
             >
-              <Button size="small" icon={<UnlockOutlined />} aria-label={releaseActionLabel} title={releaseActionLabel} loading={acting === record.id}>
+              <Button size="small" icon={<UnlockOutlined />} disabled={blacklistActionDisabled} aria-label={releaseActionLabel} title={releaseActionLabel} loading={acting === record.id}>
                 {t('pages.ipBlacklistAdmin.release')}
               </Button>
             </Popconfirm>
@@ -404,7 +449,11 @@ const IpBlacklistManagement: React.FC = () => {
     }
 
     return baseColumns;
-  }, [acting, canReleaseIp, formatTime, getSourceLabel, getStatusLabel, releaseEntry, t]);
+  }, [acting, blacklistActionDisabled, canReleaseIp, formatTime, getSourceLabel, getStatusLabel, releaseEntry, t]);
+
+  const showInitialBlacklistLoading = loading && !listSnapshotLoaded;
+  const blacklistSnapshotUnavailable = Boolean(listLoadError) && !listSnapshotLoaded;
+  const canRenderBlacklistSnapshot = !showInitialBlacklistLoading && !blacklistSnapshotUnavailable;
 
   return (
     <div className="ip-blacklist">
@@ -419,14 +468,34 @@ const IpBlacklistManagement: React.FC = () => {
             {t('common.refresh')}
           </Button>
           {canBlockIp ? (
-            <Button type="primary" icon={<PlusOutlined />} aria-label={manualBlockActionLabel} title={manualBlockActionLabel} onClick={openBlockModal}>
+            <Button type="primary" icon={<PlusOutlined />} disabled={blacklistActionDisabled} aria-label={manualBlockActionLabel} title={manualBlockActionLabel} onClick={openBlockModal}>
               {t('pages.ipBlacklistAdmin.manualBlock')}
             </Button>
           ) : null}
         </Space>
       </div>
 
-      <Spin spinning={loading && entries.length === 0}>
+      {listLoadError ? (
+        <Alert
+          type="warning"
+          showIcon
+          className="ip-blacklist__notice"
+          message={listLoadError}
+          description={listSnapshotLoaded ? t('pages.ipBlacklistAdmin.staleDataWarning') : undefined}
+          action={(
+            <Button size="small" loading={loading} onClick={refreshData}>
+              {t('common.retry')}
+            </Button>
+          )}
+        />
+      ) : null}
+
+      {showInitialBlacklistLoading ? (
+        <Card className="ip-blacklist__loadingState" loading />
+      ) : null}
+
+      {canRenderBlacklistSnapshot ? (
+        <Spin spinning={loading && entries.length === 0}>
         <div className="ip-blacklist__stats">
           <Card>
             <Statistic title={t('pages.ipBlacklistAdmin.featureStatus')} value={statusInfo ? (statusInfo.enabled ? t('pages.ipBlacklistAdmin.enabledStatus') : t('pages.ipBlacklistAdmin.disabledStatus')) : t('common.unknown')} prefix={<StopOutlined />} />
@@ -457,20 +526,12 @@ const IpBlacklistManagement: React.FC = () => {
                 })
                 : t('pages.ipBlacklistAdmin.emptyNotice')}
           />
-          {listLoadError ? (
-            <Alert
-              type="error"
-              showIcon
-              className="ip-blacklist__notice"
-              message={t('pages.ipBlacklistAdmin.listUnavailable')}
-              description={listLoadError}
-            />
-          ) : null}
           <Space className="ip-blacklist__filters" wrap>
             <div role="group" aria-label={statusFilterLabel} title={statusFilterLabel}>
               <Select
                 value={status}
                 onChange={applyStatusFilter}
+                disabled={blacklistActionDisabled}
                 classNames={{ popup: { root: 'shop-mobile-popup-layer' } }}
                 getPopupContainer={() => document.body}
                 options={STATUS_OPTIONS.map((value) => ({ value, label: getStatusLabel(value) }))}
@@ -480,6 +541,7 @@ const IpBlacklistManagement: React.FC = () => {
               <Select
                 value={source}
                 onChange={applySourceFilter}
+                disabled={blacklistActionDisabled}
                 classNames={{ popup: { root: 'shop-mobile-popup-layer' } }}
                 getPopupContainer={() => document.body}
                 options={SOURCE_OPTIONS.map((value) => ({ value, label: getSourceLabel(value) }))}
@@ -490,12 +552,13 @@ const IpBlacklistManagement: React.FC = () => {
               value={ipAddress}
               onChange={(event) => setIpAddress(event.target.value)}
               onPressEnter={refreshData}
+              disabled={blacklistActionDisabled}
               placeholder={t('pages.ipBlacklistAdmin.ipAddress')}
               aria-label={ipAddressFilterLabel}
               title={ipAddressFilterLabel}
             />
-            <Button icon={<SearchOutlined />} aria-label={applyFilterActionLabel} title={applyFilterActionLabel} onClick={refreshData}>{t('pages.ipBlacklistAdmin.filter')}</Button>
-            <Button disabled={!hasActiveFilters} aria-label={resetFilterActionLabel} title={resetFilterActionLabel} onClick={resetFilters}>{t('common.reset')}</Button>
+            <Button icon={<SearchOutlined />} disabled={blacklistActionDisabled} aria-label={applyFilterActionLabel} title={applyFilterActionLabel} onClick={refreshData}>{t('pages.ipBlacklistAdmin.filter')}</Button>
+            <Button disabled={blacklistActionDisabled || !hasActiveFilters} aria-label={resetFilterActionLabel} title={resetFilterActionLabel} onClick={resetFilters}>{t('common.reset')}</Button>
           </Space>
 
           {canReleaseIp ? (
@@ -507,17 +570,17 @@ const IpBlacklistManagement: React.FC = () => {
                 classNames={mobilePopconfirmClassNames}
                 title={t('pages.ipBlacklistAdmin.batchReleaseConfirm')}
                 description={t('pages.ipBlacklistAdmin.batchReleaseDescription', { count: selectedReleasableIds.length })}
-                disabled={!selectedReleasableIds.length}
+                disabled={blacklistActionDisabled || !selectedReleasableIds.length}
                 okText={t('common.confirm')}
                 cancelText={t('common.cancel')}
-                okButtonProps={{ 'aria-label': batchReleaseActionLabel, title: batchReleaseActionLabel }}
+                okButtonProps={{ disabled: blacklistActionDisabled, 'aria-label': batchReleaseActionLabel, title: batchReleaseActionLabel }}
                 cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${batchReleaseActionLabel}`, title: `${t('common.cancel')}: ${batchReleaseActionLabel}` }}
                 onConfirm={releaseSelectedEntries}
               >
                 <Button
                   icon={<UnlockOutlined />}
                   loading={batchActing}
-                  disabled={!selectedReleasableIds.length}
+                  disabled={blacklistActionDisabled || !selectedReleasableIds.length}
                   aria-label={batchReleaseActionLabel}
                   title={batchReleaseActionLabel}
                 >
@@ -540,20 +603,20 @@ const IpBlacklistManagement: React.FC = () => {
               getCheckboxProps: (record) => {
                 const selectionLabel = t('pages.ipBlacklistAdmin.selectEntryRow', { entry: blacklistEntryDisplayLabel(record) });
                 return {
-                  disabled: record.status === 'RELEASED',
+                  disabled: blacklistActionDisabled || record.status === 'RELEASED',
                   'aria-label': selectionLabel,
                   title: selectionLabel,
                 };
               },
             } : undefined}
-            pagination={{ pageSize: 10 }}
-            scroll={{ x: 1100 }}
+            pagination={{ pageSize: 10, itemRender: blacklistPaginationItemRender }}
+            scroll={{ x: 'max-content' }}
             locale={{
               emptyText: (
                 <Empty description={hasActiveFilters ? t('pages.ipBlacklistAdmin.noFilteredRecords') : t('pages.ipBlacklistAdmin.noRecords')}>
                   <Space wrap className="ip-blacklist__emptyActions">
                     {canBlockIp ? (
-                      <Button type="primary" icon={<PlusOutlined />} aria-label={manualBlockActionLabel} title={manualBlockActionLabel} onClick={openBlockModal}>
+                      <Button type="primary" icon={<PlusOutlined />} disabled={blacklistActionDisabled} aria-label={manualBlockActionLabel} title={manualBlockActionLabel} onClick={openBlockModal}>
                         {t('pages.ipBlacklistAdmin.manualBlock')}
                       </Button>
                     ) : null}
@@ -565,6 +628,7 @@ const IpBlacklistManagement: React.FC = () => {
           />
         </Card>
       </Spin>
+      ) : null}
 
       <Modal
         title={t('pages.ipBlacklistAdmin.manualBlockTitle')}
@@ -573,7 +637,7 @@ const IpBlacklistManagement: React.FC = () => {
         onCancel={closeBlockModal}
         okText={t('pages.ipBlacklistAdmin.block')}
         cancelText={t('common.cancel')}
-        okButtonProps={{ 'aria-label': manualBlockSubmitActionLabel, title: manualBlockSubmitActionLabel }}
+        okButtonProps={{ disabled: blacklistActionDisabled, 'aria-label': manualBlockSubmitActionLabel, title: manualBlockSubmitActionLabel }}
         cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${manualBlockActionLabel}`, title: `${t('common.cancel')}: ${manualBlockActionLabel}` }}
         confirmLoading={blocking}
         className="profile-mobile-safe-modal ip-blacklist__manualBlockModal"

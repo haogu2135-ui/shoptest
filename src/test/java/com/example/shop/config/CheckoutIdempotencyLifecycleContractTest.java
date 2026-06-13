@@ -24,6 +24,16 @@ class CheckoutIdempotencyLifecycleContractTest {
                 "Checkout idempotency keys must be cleared in submit finally or paired with pending-order payment recovery");
     }
 
+    @Test
+    void checkoutPersistsPendingOrderBeforeClearingCartSelection() throws IOException {
+        String source = Files.readString(CHECKOUT_SOURCE);
+        int persistIndex = source.indexOf("persistCheckoutPendingOrder(orderRes.data, normalizedPaymentMethod, normalizedGuestEmail);");
+        int clearCartIndex = source.indexOf("clearCheckoutCartItemIds();", Math.max(0, persistIndex));
+
+        assertTrue(persistIndex >= 0, "Checkout should persist pending-order recovery after order creation");
+        assertTrue(clearCartIndex > persistIndex, "Checkout should persist pending-order recovery before clearing cart selection");
+    }
+
     private boolean clearsIdempotencyKeyInSubmitFinally(String source) {
         return Pattern.compile(
                 "finally\\s*\\{[\\s\\S]{0,240}clearCheckoutIdempotencyKey\\(\\);[\\s\\S]{0,240}setSubmitting\\(false\\)")

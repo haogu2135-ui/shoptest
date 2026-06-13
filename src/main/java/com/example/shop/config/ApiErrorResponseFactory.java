@@ -11,6 +11,7 @@ import java.util.Map;
 
 @Component
 public class ApiErrorResponseFactory {
+    public static final String FALLBACK_REQUEST_ID = "unavailable";
 
     public ResponseEntity<Map<String, Object>> buildResponse(
             HttpStatus status,
@@ -43,14 +44,18 @@ public class ApiErrorResponseFactory {
 
     public String resolveRequestId(HttpServletRequest request) {
         if (request == null) {
-            return "";
+            return FALLBACK_REQUEST_ID;
         }
         Object attribute = request.getAttribute(RequestCorrelationFilter.REQUEST_ID_ATTRIBUTE);
         if (attribute != null) {
-            return String.valueOf(attribute);
+            String requestId = sanitizeRequestId(String.valueOf(attribute));
+            if (!requestId.isBlank()) {
+                return requestId;
+            }
         }
         String header = request.getHeader(RequestCorrelationFilter.REQUEST_ID_HEADER);
-        return header == null ? "" : sanitizeMessage(header);
+        String requestId = sanitizeRequestId(header);
+        return requestId.isBlank() ? FALLBACK_REQUEST_ID : requestId;
     }
 
     public String sanitizeMessage(String value) {
@@ -59,5 +64,13 @@ public class ApiErrorResponseFactory {
         }
         String normalized = value.replaceAll("[\\r\\n\\t]+", " ").trim();
         return normalized.length() > 240 ? normalized.substring(0, 240) : normalized;
+    }
+
+    private String sanitizeRequestId(String value) {
+        if (value == null || value.isBlank()) {
+            return "";
+        }
+        String normalized = value.replaceAll("[\\r\\n\\t]+", " ").trim();
+        return normalized.length() > 96 ? normalized.substring(0, 96) : normalized;
     }
 }

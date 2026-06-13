@@ -6,6 +6,9 @@
         <result property="userId" column="user_id"/>
         <result property="recipientName" column="recipient_name"/>
         <result property="phone" column="phone"/>
+        <result property="region" column="region"/>
+        <result property="postalCode" column="postal_code"/>
+        <result property="detailAddress" column="detail_address"/>
         <result property="address" column="address"/>
         <result property="isDefault" column="is_default"/>
         <result property="createdAt" column="created_at"/>
@@ -14,6 +17,10 @@
 
     <select id="findByUserId" resultMap="userAddressMap">
         SELECT * FROM user_addresses WHERE user_id = #{userId} ORDER BY is_default DESC, id DESC
+    </select>
+
+    <select id="countByUserId" resultType="int">
+        SELECT COUNT(*) FROM user_addresses WHERE user_id = #{userId}
     </select>
 
     <select id="findById" resultMap="userAddressMap">
@@ -25,14 +32,17 @@
     </select>
 
     <insert id="insert" parameterType="com.example.shop.entity.UserAddress" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO user_addresses (user_id, recipient_name, phone, address, is_default, created_at, updated_at)
-        VALUES (#{userId}, #{recipientName}, #{phone}, #{address}, #{isDefault}, #{createdAt}, #{updatedAt})
+        INSERT INTO user_addresses (user_id, recipient_name, phone, region, postal_code, detail_address, address, is_default, created_at, updated_at)
+        VALUES (#{userId}, #{recipientName}, #{phone}, #{region}, #{postalCode}, #{detailAddress}, #{address}, #{isDefault}, #{createdAt}, #{updatedAt})
     </insert>
 
     <update id="update" parameterType="com.example.shop.entity.UserAddress">
         UPDATE user_addresses
         SET recipient_name = #{recipientName},
             phone = #{phone},
+            region = #{region},
+            postal_code = #{postalCode},
+            detail_address = #{detailAddress},
             address = #{address},
             is_default = #{isDefault},
             updated_at = #{updatedAt}

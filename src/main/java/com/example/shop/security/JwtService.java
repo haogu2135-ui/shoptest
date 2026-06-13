@@ -3,10 +3,13 @@ package com.example.shop.security;
 import com.example.shop.service.RuntimeConfigService;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.security.Keys;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
+import javax.crypto.SecretKey;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Date;
@@ -17,10 +20,15 @@ import java.util.function.Function;
 
 @Service
 public class JwtService {
-    private final RuntimeConfigService runtimeConfig;
+    private static final long JWT_NUMERIC_DATE_PRECISION_MS = 1000L;
 
-    public JwtService(RuntimeConfigService runtimeConfig) {
+    private final RuntimeConfigService runtimeConfig;
+    private final String jwtSecret;
+
+    public JwtService(RuntimeConfigService runtimeConfig,
+                      @Value("${app.jwtSecret:}") String jwtSecret) {
         this.runtimeConfig = runtimeConfig;
+        this.jwtSecret = jwtSecret == null ? "" : jwtSecret.trim();
     }
 
     public String extractUsername(String token) {
@@ -46,12 +54,12 @@ public class JwtService {
         }
         String jti = UUID.randomUUID().toString();
         return Jwts.builder()
-                .setClaims(claims)
-                .setId(jti)
-                .setSubject(userDetails.getUsername())
-                .setIssuedAt(new Date(System.currentTimeMillis()))
-                .setExpiration(new Date(System.currentTimeMillis() + runtimeConfig.getInt("app.jwtExpirationInMs", 7200000)))
-                .signWith(SignatureAlgorithm.HS256, jwtSecret())
+                .claims(claims)
+                .id(jti)
+                .subject(userDetails.getUsername())
+                .issuedAt(new Date(System.currentTimeMillis()))
+                .expiration(new Date(System.currentTimeMillis() + runtimeConfig.getInt("app.jwtExpirationInMs", 7200000)))
+                .signWith(signingKey(), Jwts.SIG.HS256)
                 .compact();
     }
 
@@ -88,7 +96,7 @@ public class JwtService {
             return true;
         }
         long changedAtMillis = passwordChangedAt.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
-        return issuedAt.getTime() < changedAtMillis;
+        return issuedAt.getTime() + JWT_NUMERIC_DATE_PRECISION_MS < changedAtMillis;
     }
 
     private Date extractExpiration(String token) {
@@ -98,9 +106,10 @@ public class JwtService {
     private Claims extractAllClaims(String token) {
         ensureJwtSecretConfigured();
         return Jwts.parser()
-                .setSigningKey(jwtSecret())
-                .parseClaimsJws(token)
-                .getBody();
+                .verifyWith(signingKey())
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
     }
 
     private void ensureJwtSecretConfigured() {
@@ -114,6 +123,10 @@ public class JwtService {
     }
 
     private String jwtSecret() {
-        return runtimeConfig.getString("app.jwtSecret", "");
+        return jwtSecret;
+    }
+
+    private SecretKey signingKey() {
+        return Keys.hmacShaKeyFor(jwtSecret().getBytes(StandardCharsets.UTF_8));
     }
 }

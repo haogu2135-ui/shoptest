@@ -10,28 +10,33 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import javax.validation.Valid;
+import javax.validation.constraints.Min;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
 @RestController
+@RequestMapping("/favorites")
 @RequiredArgsConstructor
+@Deprecated(since = "2026-06-13", forRemoval = false)
 public class FavoritesController {
     private final WishlistService wishlistService;
 
-    @GetMapping("/favorites")
+    @GetMapping
     public List<WishlistItemResponse> getFavorites(Authentication authentication) {
         return toResponses(wishlistService.getWishlist(currentUserId(authentication)));
     }
 
-    @PostMapping("/favorites")
-    public Map<String, Object> addFavorite(@RequestBody(required = false) Map<String, Object> body,
+    @PostMapping
+    public Map<String, Object> addFavorite(@Valid @RequestBody(required = false) FavoriteRequest body,
                                            @RequestParam(required = false) Long productId,
                                            Authentication authentication) {
-        Long effectiveProductId = productId == null ? toLong(body == null ? null : body.get("productId")) : productId;
+        Long effectiveProductId = productId == null ? body == null ? null : body.getProductId() : productId;
         if (effectiveProductId == null || effectiveProductId <= 0) {
             throw new IllegalArgumentException("productId is required");
         }
@@ -40,7 +45,7 @@ public class FavoritesController {
         return Map.of("wishlisted", wishlistService.isWishlisted(userId, effectiveProductId));
     }
 
-    @DeleteMapping("/favorites")
+    @DeleteMapping
     public Map<String, String> removeFavorite(@RequestParam Long productId, Authentication authentication) {
         wishlistService.removeFromWishlist(currentUserId(authentication), productId);
         return Map.of("message", "Removed from favorites");
@@ -50,23 +55,22 @@ public class FavoritesController {
         return SecurityUtils.requireUser(authentication).getId();
     }
 
-    private Long toLong(Object value) {
-        if (value == null) {
-            return null;
-        }
-        if (value instanceof Number) {
-            return ((Number) value).longValue();
-        }
-        try {
-            return Long.valueOf(String.valueOf(value).trim());
-        } catch (NumberFormatException e) {
-            return null;
-        }
-    }
-
     private List<WishlistItemResponse> toResponses(List<Wishlist> items) {
         return items.stream()
                 .map(WishlistItemResponse::from)
                 .collect(Collectors.toList());
+    }
+
+    public static class FavoriteRequest {
+        @Min(1)
+        private Long productId;
+
+        public Long getProductId() {
+            return productId;
+        }
+
+        public void setProductId(Long productId) {
+            this.productId = productId;
+        }
     }
 }

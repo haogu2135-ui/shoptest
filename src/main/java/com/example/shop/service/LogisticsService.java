@@ -1,13 +1,14 @@
 package com.example.shop.service;
 
-import lombok.extern.slf4j.Slf4j;
-import com.example.shop.entity.Order;
+import com.example.shop.config.HttpClientConfig;
 import com.example.shop.dto.LogisticsTrackResponse;
+import com.example.shop.entity.Order;
 import com.example.shop.repository.OrderRepository;
 import com.example.shop.security.SecurityUtils;
 import com.example.shop.security.UserDetailsImpl;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
@@ -44,7 +45,7 @@ import java.util.regex.Pattern;
 public class LogisticsService {
     private static final Pattern TRACKING_NUMBER_PATTERN = Pattern.compile("[A-Za-z0-9][A-Za-z0-9_-]*");
 
-    private final RestTemplate restTemplate = new RestTemplate();
+    private RestTemplate restTemplate = HttpClientConfig.defaultRestTemplate();
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Autowired
@@ -57,6 +58,13 @@ public class LogisticsService {
     private CircuitBreakerService circuitBreakerService;
     @Autowired
     private AdminRoleService adminRoleService;
+
+    @Autowired
+    public void setRestTemplate(RestTemplate restTemplate) {
+        if (restTemplate != null) {
+            this.restTemplate = restTemplate;
+        }
+    }
 
     public LogisticsTrackResponse track(String trackingNumber, String carrier) {
         return track(trackingNumber, carrier, null);
@@ -283,7 +291,9 @@ public class LogisticsService {
         }) {
             try {
                 return LocalDateTime.parse(value, formatter);
-            } catch (DateTimeParseException ignored) {
+            } catch (DateTimeParseException ex) {
+                log.debug("Kuaidi100 timestamp did not match formatter {}: {}; reason={}",
+                        formatter, value, ex.getMessage());
             }
         }
         try {

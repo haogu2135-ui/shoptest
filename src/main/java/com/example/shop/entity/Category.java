@@ -28,6 +28,10 @@ public class Category {
     @Column(name = "parent_id")
     private Long parentId;
 
+    @Column(name = "path", length = 500)
+    @Size(max = 500)
+    private String path;
+
     @Column(name = "level", nullable = false)
     @NotNull
     @Min(1)
@@ -75,4 +79,4 @@ public class Category {
             this.localizedContent = null;
         }
     }
-} 
+}

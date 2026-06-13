@@ -6,11 +6,10 @@ import com.example.shop.dto.SupportAdminSummaryResponse;
 import com.example.shop.dto.SupportAdminSessionPageResponse;
 import com.example.shop.dto.SupportMessageCustomerResponse;
 import com.example.shop.dto.SupportSessionCustomerResponse;
+import com.example.shop.dto.SupportWebSocketTicketResponse;
 import com.example.shop.entity.Order;
 import com.example.shop.entity.SupportMessage;
 import com.example.shop.entity.SupportSession;
-import com.example.shop.entity.User;
-import com.example.shop.repository.UserRepository;
 import com.example.shop.security.SecurityUtils;
 import com.example.shop.security.UserDetailsImpl;
 import com.example.shop.service.AdminRoleService;
@@ -19,6 +18,7 @@ import com.example.shop.service.OrderService;
 import com.example.shop.service.IpBlacklistService;
 import com.example.shop.service.PetBirthdayCouponService;
 import com.example.shop.service.SecurityAuditLogService;
+import com.example.shop.service.SupportWebSocketTicketService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -40,8 +40,8 @@ public class SupportController {
     private final PetBirthdayCouponService petBirthdayCouponService;
     private final OrderService orderService;
     private final IpBlacklistService ipBlacklistService;
-    private final UserRepository userRepository;
     private final SecurityAuditLogService auditLogService;
+    private final SupportWebSocketTicketService supportWebSocketTicketService;
 
     @GetMapping({"/support", "/support/"})
     public Map<String, Object> supportInfo(Authentication authentication) {
@@ -49,6 +49,7 @@ public class SupportController {
         endpoints.put("session", "/support/session");
         endpoints.put("messages", "/support/messages");
         endpoints.put("webSocket", "/ws/support");
+        endpoints.put("webSocketTicket", "/support/websocket-ticket");
         endpoints.put("guestSession", "/support/guest/session");
         boolean authenticated = authentication != null && authentication.isAuthenticated()
                 && !(authentication.getPrincipal() instanceof String
@@ -123,6 +124,14 @@ public class SupportController {
     @GetMapping("/support/unread-count")
     public Map<String, Integer> getMyUnreadCount() {
         return Map.of("count", supportService.countUnreadByUser(currentUserId()));
+    }
+
+    @PostMapping("/support/websocket-ticket")
+    public SupportWebSocketTicketResponse createWebSocketTicket(Authentication authentication,
+                                                               HttpServletRequest request) {
+        UserDetailsImpl user = SecurityUtils.requireUser(authentication);
+        SupportWebSocketTicketService.Ticket ticket = supportWebSocketTicketService.issue(user, request.getHeader("Authorization"));
+        return SupportWebSocketTicketResponse.of(ticket.getValue(), ticket.expiresInMillis(System.currentTimeMillis()));
     }
 
     @GetMapping("/support/guest/session")
@@ -403,14 +412,7 @@ public class SupportController {
         if (order == null || order.getUserId() == null) {
             return false;
         }
-        String shippingAddress = order.getShippingAddress();
-        if (shippingAddress != null && shippingAddress.startsWith("[Guest] ")) {
-            return true;
-        }
-        return userRepository.findById(order.getUserId())
-                .map(User::getStatus)
-                .map(status -> "GUEST".equalsIgnoreCase(status))
-                .orElse(false);
+        return orderService.isGuestOrder(order);
     }
 
     private void assertGuestSessionAccess(Long sessionId, Order order, HttpServletRequest request) {

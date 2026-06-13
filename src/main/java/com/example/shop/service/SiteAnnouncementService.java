@@ -43,7 +43,7 @@ public class SiteAnnouncementService {
     private final RuntimeConfigService runtimeConfig;
 
     @EventListener(ApplicationReadyEvent.class)
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void deactivatePlaceholderActiveAnnouncements() {
         List<SiteAnnouncement> invalidActiveAnnouncements = repository.findByStatusIgnoreCase("ACTIVE").stream()
                 .filter(this::hasPlaceholderOrGibberishCopy)
@@ -57,7 +57,7 @@ public class SiteAnnouncementService {
                 invalidActiveAnnouncements.size());
     }
 
-    @Transactional(readOnly = true)
+    @Transactional(rollbackFor = Exception.class, readOnly = true)
     public SiteAnnouncementAdminPageResponse findAdminPage(int page, int size, String status, String keyword) {
         int safeSize = clamp(size <= 0 ? DEFAULT_ADMIN_PAGE_SIZE : size, 1, adminPageMaxSize());
         int safePage = Math.max(1, page);
@@ -78,7 +78,7 @@ public class SiteAnnouncementService {
         return SiteAnnouncementAdminPageResponse.of(result.getContent(), result.getTotalElements(), safePage, safeSize);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional(rollbackFor = Exception.class, readOnly = true)
     public List<SiteAnnouncementPublicResponse> findActive(int limit) {
         int safeLimit = clamp(limit, 1, activeLimit());
         int fetchLimit = Math.max(safeLimit, Math.min(activeLimit(), safeLimit * 4));
@@ -90,12 +90,12 @@ public class SiteAnnouncementService {
                 .collect(Collectors.toList());
     }
 
-    @Transactional(readOnly = true)
+    @Transactional(rollbackFor = Exception.class, readOnly = true)
     public SiteAnnouncementAdminSummaryResponse adminSummary() {
         return adminSummary(null, null);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional(rollbackFor = Exception.class, readOnly = true)
     public SiteAnnouncementAdminSummaryResponse adminSummary(String status, String keyword) {
         LocalDateTime now = LocalDateTime.now();
         String safeStatus = normalizeStatusFilter(status);
@@ -115,7 +115,7 @@ public class SiteAnnouncementService {
         return response;
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public SiteAnnouncement save(SiteAnnouncement announcement) {
         if (announcement == null) {
             throw new IllegalArgumentException("Announcement is required");
@@ -125,7 +125,7 @@ public class SiteAnnouncementService {
         return repository.save(announcement);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public SiteAnnouncement update(Long id, SiteAnnouncement announcement) {
         if (announcement == null) {
             throw new IllegalArgumentException("Announcement is required");
@@ -144,7 +144,7 @@ public class SiteAnnouncementService {
         return repository.save(existing);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void deleteById(Long id) {
         repository.deleteById(id);
     }

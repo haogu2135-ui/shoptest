@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Avatar, Button, Card, Col, List, Progress, Row, Space, Spin, Statistic, Table, Tag, Typography } from 'antd';
 import {
   ShopOutlined, ShoppingOutlined, TeamOutlined, DollarOutlined, CheckCircleOutlined, ClockCircleOutlined, WarningOutlined, RiseOutlined, TruckOutlined,
@@ -12,6 +12,7 @@ import SeventeenTrackWidget from '../components/SeventeenTrackWidget';
 import { paymentMethodLabel } from '../utils/paymentMethods';
 import { getApiErrorMessage } from '../utils/apiError';
 import { resolveProductImage } from '../utils/productMedia';
+import { cancelIdleTask, scheduleIdleTask, type ScheduledIdleTask } from '../utils/idleScheduler';
 import './AdminDashboard.css';
 
 const { Title } = Typography;
@@ -36,7 +37,7 @@ const normalizeStatusCode = (status?: string) => String(status || '').trim().toU
 
 type TopDashboardProduct = NonNullable<DashboardStats['topProducts']>[number];
 
-const TrendChart: React.FC<{
+type TrendChartProps = {
   data: Array<{ date: string; orders: number; revenue: number }>;
   formatMoney: (value: number) => string;
   labels: {
@@ -46,7 +47,11 @@ const TrendChart: React.FC<{
     revenue: string;
     orderUnit: string;
   };
-}> = ({ data, formatMoney, labels }) => {
+};
+
+const EMPTY_SALES_TREND: TrendChartProps['data'] = [];
+
+const TrendChartComponent: React.FC<TrendChartProps> = ({ data, formatMoney, labels }) => {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
   if (!data.length) {
@@ -172,6 +177,16 @@ const TrendChart: React.FC<{
             role="button"
             aria-label={`${point.item.date}: ${formatMoney(Number(point.item.revenue || 0))}, ${point.item.orders} ${labels.orderUnit}`}
             onMouseEnter={() => setHoveredIndex(index)}
+            onClick={() => setHoveredIndex(index)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                setHoveredIndex(index);
+              }
+              if (event.key === 'Escape') {
+                setHoveredIndex(null);
+              }
+            }}
             onFocus={() => setHoveredIndex(index)}
             onBlur={() => setHoveredIndex(null)}
           />
@@ -185,14 +200,19 @@ const TrendChart: React.FC<{
   );
 };
 
-const DonutChart: React.FC<{
+const TrendChart = React.memo(TrendChartComponent);
+TrendChart.displayName = 'TrendChart';
+
+type DonutChartProps = {
   data: Array<{ label: string; value: number; color: string }>;
   labels: {
     noOrderData: string;
     orderStatusChart: string;
     orderUnit: string;
   };
-}> = ({ data, labels }) => {
+};
+
+const DonutChartComponent: React.FC<DonutChartProps> = ({ data, labels }) => {
   const total = data.reduce((sum, item) => sum + item.value, 0);
   if (!total) {
     return <div className="admin-dashboard__chartEmpty admin-dashboard__chartEmpty--compact">{labels.noOrderData}</div>;
@@ -241,11 +261,15 @@ const DonutChart: React.FC<{
   );
 };
 
+const DonutChart = React.memo(DonutChartComponent);
+DonutChart.displayName = 'DonutChart';
+
 const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
+  const [deferredPanelsReady, setDeferredPanelsReady] = useState(false);
   const { t, language } = useLanguage();
   const { formatMoney } = useMarket();
   const formatOrderStatusLabel = (status?: string) => {
@@ -298,6 +322,32 @@ const AdminDashboard: React.FC = () => {
   const commercialReadinessTitle = t('pages.adminDashboard.commercialReadiness.title');
   const actionCenterLabel = t('pages.adminDashboard.actionCenterTitle');
   const dashboardDrilldownLabel = (section: string, label: string, value: number | string) => `${section}: ${label} (${value})`;
+  const donutChartLabels = useMemo<DonutChartProps['labels']>(() => ({
+    noOrderData: t('pages.adminDashboard.noOrderData'),
+    orderStatusChart: t('pages.adminDashboard.orderStatusChart'),
+    orderUnit: t('pages.adminDashboard.orderUnit'),
+  }), [t]);
+  const trendChartLabels = useMemo<TrendChartProps['labels']>(() => ({
+    noTrendData: t('pages.adminDashboard.noTrendData'),
+    salesTrendChart: t('pages.adminDashboard.salesTrendChart'),
+    orders: t('pages.adminDashboard.orders'),
+    revenue: t('pages.adminDashboard.revenue'),
+    orderUnit: t('pages.adminDashboard.orderUnit'),
+  }), [t]);
+  const statusChartData = useMemo<DonutChartProps['data']>(() => {
+    if (!stats) return [];
+    return [
+      { label: t('status.PENDING_PAYMENT'), value: Number(stats.pendingPaymentOrders || 0), color: '#faad14' },
+      { label: t('status.PENDING_SHIPMENT'), value: Number(stats.pendingShipmentOrders || 0), color: '#1677ff' },
+      { label: t('status.SHIPPED'), value: Number(stats.shippedOrders || 0), color: '#13c2c2' },
+      { label: t('status.COMPLETED'), value: Number(stats.completedOrders || 0), color: '#52c41a' },
+      { label: t('status.CANCELLED'), value: Number(stats.cancelledOrders || 0), color: '#ff4d4f' },
+    ];
+  }, [stats, t]);
+  const salesTrendData = useMemo<TrendChartProps['data']>(
+    () => stats?.salesTrend || EMPTY_SALES_TREND,
+    [stats?.salesTrend],
+  );
 
   useEffect(() => {
     let disposed = false;
@@ -321,6 +371,24 @@ const AdminDashboard: React.FC = () => {
       disposed = true;
     };
   }, [language, t]);
+
+  useEffect(() => {
+    if (!stats) {
+      setDeferredPanelsReady(false);
+      return;
+    }
+
+    let task: ScheduledIdleTask | null = scheduleIdleTask(() => {
+      setDeferredPanelsReady(true);
+    }, 900);
+
+    return () => {
+      if (task) {
+        cancelIdleTask(task);
+        task = null;
+      }
+    };
+  }, [stats]);
 
   if (loading) {
     return <div className="admin-dashboard__loading"><Spin size="large" /></div>;
@@ -548,13 +616,6 @@ const AdminDashboard: React.FC = () => {
       target: '/admin/orders?quick=AFTER_SALES',
       tone: returnRequestedOrders + returnApprovedOrders + returnShippedOrders + refundingPayments > 0 ? 'risk' : 'ready',
     },
-  ];
-  const statusChartData = [
-    { label: t('status.PENDING_PAYMENT'), value: Number(stats.pendingPaymentOrders || 0), color: '#faad14' },
-    { label: t('status.PENDING_SHIPMENT'), value: Number(stats.pendingShipmentOrders || 0), color: '#1677ff' },
-    { label: t('status.SHIPPED'), value: shippedOrders, color: '#13c2c2' },
-    { label: t('status.COMPLETED'), value: Number(stats.completedOrders || 0), color: '#52c41a' },
-    { label: t('status.CANCELLED'), value: Number(stats.cancelledOrders || 0), color: '#ff4d4f' },
   ];
   const dashboardProductName = (item: { id?: number; productId?: number; name?: string; productName?: string }) => (
     (item.productName || item.name || '').trim() || t('pages.profile.productFallback', { id: item.productId || item.id || '-' })
@@ -818,11 +879,7 @@ const AdminDashboard: React.FC = () => {
           <Card className="admin-dashboard__panel" title={t('pages.adminDashboard.orderStatus')}>
             <DonutChart
               data={statusChartData}
-              labels={{
-                noOrderData: t('pages.adminDashboard.noOrderData'),
-                orderStatusChart: t('pages.adminDashboard.orderStatusChart'),
-                orderUnit: t('pages.adminDashboard.orderUnit'),
-              }}
+              labels={donutChartLabels}
             />
           </Card>
         </Col>
@@ -848,7 +905,11 @@ const AdminDashboard: React.FC = () => {
         </Col>
         <Col xs={24} lg={8}>
           <Card className="admin-dashboard__panel admin-dashboard__trackingPanel" title={t('pages.adminDashboard.trackShipment')}>
-            <SeventeenTrackWidget height={420} />
+            {deferredPanelsReady ? (
+              <SeventeenTrackWidget height={420} />
+            ) : (
+              <div className="admin-dashboard__deferredPanelPlaceholder" aria-hidden="true" />
+            )}
           </Card>
         </Col>
       </Row>
@@ -856,17 +917,15 @@ const AdminDashboard: React.FC = () => {
       <Row gutter={[16, 16]} className="admin-dashboard__contentRow">
         <Col xs={24} lg={16}>
           <Card className="admin-dashboard__panel admin-dashboard__trendPanel" title={t('pages.adminDashboard.salesTrend')}>
-            <TrendChart
-              data={stats.salesTrend || []}
-              formatMoney={formatMoney}
-              labels={{
-                noTrendData: t('pages.adminDashboard.noTrendData'),
-                salesTrendChart: t('pages.adminDashboard.salesTrendChart'),
-                orders: t('pages.adminDashboard.orders'),
-                revenue: t('pages.adminDashboard.revenue'),
-                orderUnit: t('pages.adminDashboard.orderUnit'),
-              }}
-            />
+            {deferredPanelsReady ? (
+              <TrendChart
+                data={salesTrendData}
+                formatMoney={formatMoney}
+                labels={trendChartLabels}
+              />
+            ) : (
+              <div className="admin-dashboard__deferredPanelPlaceholder admin-dashboard__deferredPanelPlaceholder--trend" aria-hidden="true" />
+            )}
           </Card>
         </Col>
         <Col xs={24} lg={8}>

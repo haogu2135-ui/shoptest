@@ -27,16 +27,13 @@ import javax.validation.constraints.Size;
 
 @Data
 @Entity
-@Table(name = "products",
-        uniqueConstraints = @UniqueConstraint(
-                name = "uk_products_category_name",
-                columnNames = {"category_id", "name"}))
+@Table(name = "products")
 public class Product {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 200)
     @NotBlank
     @Size(max = 200)
     private String name;
@@ -64,6 +61,12 @@ public class Product {
     @Column(name = "is_featured")
     private Boolean isFeatured = false;
 
+    /**
+     * Denormalized merchant/vendor label used for storefront display, search,
+     * personalization, and external CSV/URL imports. The managed brands table
+     * supplies curated admin/storefront options, but it is not the source of
+     * truth for every imported supplier label.
+     */
     @Size(max = 120)
     private String brand;
 
@@ -129,10 +132,10 @@ public class Product {
     private static final Set<String> SPECIFICATION_METADATA_PREFIXES = Set.of("options.", "i18n.", "bundle.");
 
     @Transient
-    private Double positiveRate;
+    private BigDecimal positiveRate;
 
     @Transient
-    private Double averageRating;
+    private BigDecimal averageRating;
 
     @Transient
     private Long reviewCount;
@@ -475,6 +478,10 @@ public class Product {
     @Column(name = "free_shipping_threshold")
     private BigDecimal freeShippingThreshold;
 
+    @Column(name = "best_seller_rank")
+    @Min(0)
+    private Integer bestSellerRank = 0;
+
     @JsonProperty(value = "activeLimitedTimeDiscount", access = Access.READ_ONLY)
     public boolean isActiveLimitedTimeDiscount() {
         LocalDateTime now = LocalDateTime.now();
@@ -662,4 +669,4 @@ public class Product {
         String normalized = value.trim();
         return normalized.isEmpty() || "null".equalsIgnoreCase(normalized) ? null : normalized;
     }
-} 
+}

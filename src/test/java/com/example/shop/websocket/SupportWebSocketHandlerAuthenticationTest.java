@@ -2,12 +2,11 @@ package com.example.shop.websocket;
 
 import com.example.shop.entity.User;
 import com.example.shop.repository.UserMapper;
-import com.example.shop.security.JwtService;
-import com.example.shop.security.UserDetailsImpl;
 import com.example.shop.service.AdminRoleService;
 import com.example.shop.service.RuntimeConfigService;
 import com.example.shop.service.SecurityAuditLogService;
 import com.example.shop.service.SupportService;
+import com.example.shop.service.SupportWebSocketTicketService;
 import com.example.shop.service.TokenBlacklistService;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -22,10 +21,10 @@ import org.springframework.web.socket.WebSocketSession;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.URI;
-import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.security.Principal;
 import java.util.ArrayList;
-import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -33,29 +32,29 @@ import java.util.concurrent.ConcurrentHashMap;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class SupportWebSocketHandlerAuthenticationTest {
-    private final JwtService jwtService = mock(JwtService.class);
     private final TokenBlacklistService tokenBlacklistService = mock(TokenBlacklistService.class);
     private final UserMapper userMapper = mock(UserMapper.class);
     private final AdminRoleService adminRoleService = mock(AdminRoleService.class);
     private final RuntimeConfigService runtimeConfig = mock(RuntimeConfigService.class);
+    private final SupportWebSocketTicketService ticketService = mock(SupportWebSocketTicketService.class);
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final SupportWebSocketHandler handler = new SupportWebSocketHandler(
-            jwtService,
             tokenBlacklistService,
             userMapper,
             adminRoleService,
             mock(SupportService.class),
             mock(SecurityAuditLogService.class),
             objectMapper,
-            runtimeConfig
+            runtimeConfig,
+            ticketService
     );
 
     @BeforeEach
@@ -64,7 +63,7 @@ class SupportWebSocketHandlerAuthenticationTest {
     }
 
     @Test
-    void closesConnectionWithoutAuthenticatedSubProtocol() throws Exception {
+    void closesConnectionWithoutTicketSubProtocol() throws Exception {
         TestWebSocketSession session = new TestWebSocketSession();
 
         handler.afterConnectionEstablished(session);
@@ -76,15 +75,17 @@ class SupportWebSocketHandlerAuthenticationTest {
     }
 
     @Test
-    void acceptsConnectionOnlyWhenSubProtocolTokenValidates() throws Exception {
+    void acceptsConnectionOnlyWhenSubProtocolTicketValidates() throws Exception {
         TestWebSocketSession session = new TestWebSocketSession();
-        session.getHandshakeHeaders().add("Sec-WebSocket-Protocol", "support.v1, auth." + protocolToken("Bearer jwt-token"));
+        session.getHandshakeHeaders().add("Sec-WebSocket-Protocol", "support.v1, ticket.ws-ticket-1");
         User user = activeCustomer();
-        when(jwtService.extractJti("jwt-token")).thenReturn("jti-1");
+        when(ticketService.consume("ws-ticket-1")).thenReturn(new SupportWebSocketTicketService.Ticket(
+                "ws-ticket-1",
+                12L,
+                "jti-1",
+                System.currentTimeMillis() + 60_000L));
         when(tokenBlacklistService.isAccessTokenBlacklisted("jti-1")).thenReturn(false);
-        when(jwtService.extractUsername("jwt-token")).thenReturn("mia");
-        when(userMapper.findByUsernameOrPhoneOrEmail("mia")).thenReturn(user);
-        when(jwtService.isTokenValid(eq("jwt-token"), any(UserDetailsImpl.class))).thenReturn(true);
+        when(userMapper.findById(12L)).thenReturn(user);
 
         handler.afterConnectionEstablished(session);
 
@@ -96,10 +97,26 @@ class SupportWebSocketHandlerAuthenticationTest {
         assertEquals("USER", connected.get("role"));
     }
 
-    private String protocolToken(String token) {
-        return Base64.getUrlEncoder()
-                .withoutPadding()
-                .encodeToString(token.getBytes(StandardCharsets.UTF_8));
+    @Test
+    void rejectsLegacyJwtAuthSubProtocolWithoutConsumingATicket() throws Exception {
+        TestWebSocketSession session = new TestWebSocketSession();
+        session.getHandshakeHeaders().add("Sec-WebSocket-Protocol", "support.v1, auth.jwt-token");
+
+        handler.afterConnectionEstablished(session);
+
+        assertFalse(session.isOpen());
+        verify(ticketService, never()).consume(anyString());
+    }
+
+    @Test
+    void sourceDoesNotAcceptJwtInWebSocketSubProtocol() throws Exception {
+        String source = Files.readString(Path.of("src/main/java/com/example/shop/websocket/SupportWebSocketHandler.java"));
+
+        assertTrue(source.contains("TICKET_PROTOCOL_PREFIX"));
+        assertFalse(source.contains("AUTH_PROTOCOL_PREFIX"));
+        assertFalse(source.contains("auth."));
+        assertFalse(source.contains("Base64.getUrlDecoder"));
+        assertFalse(source.contains("extractUsername(token)"));
     }
 
     private User activeCustomer() {

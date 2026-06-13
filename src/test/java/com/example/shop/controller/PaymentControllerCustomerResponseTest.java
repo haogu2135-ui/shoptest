@@ -1,6 +1,7 @@
 package com.example.shop.controller;
 
 import com.example.shop.config.PaymentChannelConfig;
+import com.example.shop.dto.GuestOrderAccessRequest;
 import com.example.shop.dto.PaymentCustomerResponse;
 import com.example.shop.dto.PaymentResponse;
 import com.example.shop.entity.Order;
@@ -57,8 +58,6 @@ class PaymentControllerCustomerResponseTest {
 
         ResponseEntity<List<PaymentCustomerResponse>> response = controller.findByOrderId(
                 42L,
-                null,
-                null,
                 authentication);
 
         assertEquals(200, response.getStatusCodeValue());
@@ -80,13 +79,32 @@ class PaymentControllerCustomerResponseTest {
 
         ResponseEntity<PaymentCustomerResponse> response = controller.findLatestGuestByOrderId(
                 42L,
-                "guest@example.com",
-                "SO202606030001",
-                new MockHttpServletRequest("GET", "/payments/guest/order/42/latest"));
+                guestAccessRequest("guest@example.com", "SO202606030001"),
+                new MockHttpServletRequest("POST", "/payments/guest/order/42/latest"));
 
         assertEquals(200, response.getStatusCodeValue());
         assertNotNull(response.getBody());
         assertNoRefundReference(response.getBody());
+    }
+
+    @Test
+    void guestPaymentListUsesBodyCredentials() {
+        Order order = customerOrder();
+        Payment payment = refundedPayment();
+
+        when(orderService.getOrderById(42L)).thenReturn(order);
+        when(orderService.guestOrderAccessMatches(order, "guest@example.com", "SO202606030001")).thenReturn(true);
+        when(paymentService.findStoredByOrderId(42L)).thenReturn(List.of(payment));
+
+        ResponseEntity<List<PaymentCustomerResponse>> response = controller.findGuestByOrderId(
+                42L,
+                guestAccessRequest("guest@example.com", "SO202606030001"),
+                new MockHttpServletRequest("POST", "/payments/guest/order/42"));
+
+        assertEquals(200, response.getStatusCodeValue());
+        assertNotNull(response.getBody());
+        assertEquals(1, response.getBody().size());
+        assertNoRefundReference(response.getBody().get(0));
     }
 
     @Test
@@ -127,6 +145,13 @@ class PaymentControllerCustomerResponseTest {
         payment.setTransactionId("gateway-txn-visible");
         payment.setRefundReference("refund-secret");
         return payment;
+    }
+
+    private GuestOrderAccessRequest guestAccessRequest(String email, String orderNo) {
+        GuestOrderAccessRequest request = new GuestOrderAccessRequest();
+        request.setGuestEmail(email);
+        request.setOrderNo(orderNo);
+        return request;
     }
 
     private Order customerOrder() {

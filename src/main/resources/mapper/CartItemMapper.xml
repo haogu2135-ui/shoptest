@@ -12,13 +12,16 @@
         <result property="imageUrl" column="image_url"/>
         <result property="stock" column="stock"/>
         <result property="productStatus" column="product_status"/>
+        <result property="freeShipping" column="free_shipping"/>
+        <result property="freeShippingThreshold" column="free_shipping_threshold"/>
         <result property="createdAt" column="created_at"/>
         <result property="updatedAt" column="updated_at"/>
     </resultMap>
 
     <sql id="cartItemColumns">
         ci.id, ci.user_id, ci.product_id, ci.quantity, ci.price, ci.selected_specs, ci.created_at, ci.updated_at,
-        p.name AS product_name, p.image_url, p.stock, p.status AS product_status
+        p.name AS product_name, p.image_url, p.stock, p.status AS product_status,
+        p.free_shipping, p.free_shipping_threshold
     </sql>
 
     <select id="findByUserId" resultMap="cartItemMap">

@@ -39,8 +39,8 @@
         ss.id, ss.user_id, ss.assigned_admin_id, ss.context_key, ss.status, ss.last_message, ss.last_message_at, ss.created_at, ss.updated_at,
         u.username,
         admin.username AS assigned_admin_name,
-        (SELECT COUNT(*) FROM support_messages sm_user WHERE sm_user.session_id = ss.id AND sm_user.is_read_by_user = FALSE) AS unread_by_user,
-        (SELECT COUNT(*) FROM support_messages sm_admin WHERE sm_admin.session_id = ss.id AND sm_admin.is_read_by_admin = FALSE) AS unread_by_admin
+        COALESCE(unread.unread_by_user, 0) AS unread_by_user,
+        COALESCE(unread.unread_by_admin, 0) AS unread_by_admin
     </sql>
 
     <sql id="supportSessionAdminPageFilters">
@@ -134,6 +134,7 @@
         FROM support_sessions ss
         JOIN users u ON ss.user_id = u.id
         LEFT JOIN users admin ON ss.assigned_admin_id = admin.id
+        <include refid="supportUnreadJoin"/>
         <include refid="supportSessionAdminPageFilters"/>
         ORDER BY unread_by_admin DESC, ss.updated_at DESC, ss.id DESC
         LIMIT #{limit} OFFSET #{offset}

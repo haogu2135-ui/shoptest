@@ -63,3 +63,15 @@
     font-size: 14px;
   }
 }
+
+/* Android UI fourth-round closure: search input remains tappable and avoids zoom. */
+@media (max-width: 600px) {
+  .shop-search-bar__input.ant-input-affix-wrapper {
+    min-height: 44px;
+  }
+
+  .shop-search-bar__input .ant-input {
+    font-size: 16px;
+    line-height: 1.35;
+  }
+}

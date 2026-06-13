@@ -1,5 +1,6 @@
 import type { ProductPublic } from '../types';
 import { dispatchDomEvent } from './domEvents';
+import { reportNonBlockingError } from './nonBlockingError';
 import { getLocalStorageItem, setLocalStorageItem } from './safeStorage';
 
 export const PRODUCT_VIEW_PREFERENCES_KEY = 'shop-product-view-preferences';
@@ -64,7 +65,8 @@ export const loadProductViewPreferences = (): ProductViewPreferences => {
       recentEntries,
       updatedAt: Number.isFinite(Number(parsed.updatedAt)) ? Number(parsed.updatedAt) : undefined,
     };
-  } catch {
+  } catch (error) {
+    reportNonBlockingError('productViewPreferences.loadProductViewPreferences', error);
     return emptyPreferences();
   }
 };
@@ -97,8 +99,8 @@ export const recordProductView = (product: Pick<ProductPublic, 'id' | 'categoryI
     ].slice(0, 30);
     preferences.updatedAt = now;
     saveProductViewPreferences(preferences);
-  } catch {
-    // View tracking is best-effort only.
+  } catch (error) {
+    reportNonBlockingError('productViewPreferences.rememberProductView', error);
   }
 };
 

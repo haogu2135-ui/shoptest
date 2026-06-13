@@ -772,19 +772,24 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
             <Text>{t('common.subtotal')}</Text>
             <Text strong className="commerce-money">{formatMoney(subtotal)}</Text>
           </div>
-          <Button
-            type="primary"
-            block
-            size="large"
-            className="cart-drawer__checkoutButton"
-            onClick={() => goCheckout()}
-            aria-label={checkoutDrawerActionLabel}
-            title={checkoutDrawerActionLabel}
-            loading={checkoutPaymentSubmitting === 'standard'}
-            disabled={checkoutItems.length === 0 || checkoutSubmitting}
-          >
-            {checkoutSubmitting && hasPendingQuantityUpdates ? t('pages.cart.checkoutSyncing') : t('pages.cart.checkout')}
-          </Button>
+          <div className="cart-drawer__footerActions">
+            <Button
+              type="primary"
+              block
+              size="large"
+              className="cart-drawer__checkoutButton"
+              onClick={() => goCheckout()}
+              aria-label={checkoutDrawerActionLabel}
+              title={checkoutDrawerActionLabel}
+              loading={checkoutPaymentSubmitting === 'standard'}
+              disabled={checkoutItems.length === 0 || checkoutSubmitting}
+            >
+              {checkoutSubmitting && hasPendingQuantityUpdates ? t('pages.cart.checkoutSyncing') : t('pages.cart.checkout')}
+            </Button>
+            <Button block className="cart-drawer__fullCartButton" aria-label={fullCartActionLabel} title={fullCartActionLabel} onClick={() => { setOpen(false); navigate('/cart'); }}>
+              {t('pages.cart.viewFullCart')}
+            </Button>
+          </div>
           <div className="cart-drawer__trustRow" aria-label={t('pages.checkout.trustSecureTitle')}>
             <span><CheckCircleOutlined /> {t('pages.checkout.trustSecureTitle')}</span>
             <span><ShoppingOutlined /> {t('pages.productDetail.trustShippingTitle')}</span>
@@ -793,9 +798,6 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
           <Text type="secondary" className="cart-drawer__footerHint">
             {t('pages.cart.drawerFooterHint')}
           </Text>
-          <Button block aria-label={fullCartActionLabel} title={fullCartActionLabel} onClick={() => { setOpen(false); navigate('/cart'); }}>
-            {t('pages.cart.viewFullCart')}
-          </Button>
         </Space>
       </div>
     </Drawer>

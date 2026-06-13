@@ -1,5 +1,6 @@
 import type { Product } from '../types';
 import { dispatchDomEvent } from './domEvents';
+import { reportNonBlockingError } from './nonBlockingError';
 import { getLocalStorageItem, setLocalStorageItem } from './safeStorage';
 
 const COMPARE_STORAGE_KEY = 'shop-product-compare';
@@ -10,7 +11,8 @@ export const readCompareProductIds = (): number[] => {
     const parsed = JSON.parse(getLocalStorageItem(COMPARE_STORAGE_KEY) || '[]');
     if (!Array.isArray(parsed)) return [];
     return Array.from(new Set(parsed.map(Number).filter((id) => Number.isSafeInteger(id) && id > 0))).slice(0, MAX_COMPARE_ITEMS);
-  } catch {
+  } catch (error) {
+    reportNonBlockingError('productCompare.readCompareProductIds', error);
     return [];
   }
 };

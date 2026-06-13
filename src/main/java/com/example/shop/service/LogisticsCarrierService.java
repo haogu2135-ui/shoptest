@@ -1,6 +1,5 @@
 package com.example.shop.service;
 
-import lombok.extern.slf4j.Slf4j;
 import com.example.shop.entity.LogisticsCarrier;
 import com.example.shop.repository.LogisticsCarrierRepository;
 import org.springframework.data.domain.PageRequest;
@@ -14,7 +13,6 @@ import java.util.Optional;
 import java.util.Set;
 
 @Service
-@Slf4j
 public class LogisticsCarrierService {
     private static final Set<String> ALLOWED_STATUSES = Set.of("ACTIVE", "INACTIVE");
 
@@ -43,7 +41,14 @@ public class LogisticsCarrierService {
         return logisticsCarrierRepository.findById(id);
     }
 
-    @Transactional
+    public Optional<LogisticsCarrier> findByTrackingCode(String trackingCode) {
+        if (trackingCode == null || trackingCode.isBlank()) {
+            return Optional.empty();
+        }
+        return logisticsCarrierRepository.findByTrackingCodeIgnoreCase(trackingCode.trim());
+    }
+
+    @Transactional(rollbackFor = Exception.class)
     public LogisticsCarrier save(LogisticsCarrier carrier) {
         String name = carrier.getName() == null ? "" : carrier.getName().trim();
         String trackingCode = carrier.getTrackingCode() == null ? "" : carrier.getTrackingCode().trim();
@@ -72,7 +77,7 @@ public class LogisticsCarrierService {
         return logisticsCarrierRepository.save(carrier);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void deleteById(Long id) {
         logisticsCarrierRepository.deleteById(id);
     }

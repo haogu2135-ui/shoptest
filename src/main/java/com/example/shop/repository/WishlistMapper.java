@@ -8,7 +8,7 @@ import java.util.List;
 @Mapper
 public interface WishlistMapper {
 
-    List<Wishlist> findByUserId(Long userId);
+    List<Wishlist> findByUserId(@Param("userId") Long userId, @Param("limit") int limit);
 
     Wishlist findByUserAndProduct(@Param("userId") Long userId, @Param("productId") Long productId);
 

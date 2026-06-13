@@ -2,6 +2,7 @@ import { cartApi } from '../api';
 import type { CartItem } from '../types';
 import { dispatchDomEvent } from './domEvents';
 import { getGuestCartItems } from './guestCart';
+import { reportNonBlockingError } from './nonBlockingError';
 import { hasStoredValue } from './safeStorage';
 
 type OpenCartDrawerOptions = {
@@ -25,7 +26,8 @@ export const openCartDrawerWithSnapshot = async (options: OpenCartDrawerOptions 
   try {
     const response = await cartApi.getItems(0);
     return openCartDrawer(response.data);
-  } catch {
+  } catch (error) {
+    reportNonBlockingError('cartDrawer.openCartDrawerWithSnapshot', error);
     return openCartDrawer();
   }
 };

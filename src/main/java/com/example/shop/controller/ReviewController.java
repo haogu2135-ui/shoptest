@@ -1,5 +1,7 @@
 package com.example.shop.controller;
 
+import com.example.shop.dto.ProductReviewsResponse;
+import com.example.shop.dto.ReviewCreateRequest;
 import com.example.shop.dto.ReviewableOrderResponse;
 import com.example.shop.dto.ReviewImageUploadResponse;
 import com.example.shop.dto.PublicReviewResponse;
@@ -8,15 +10,17 @@ import com.example.shop.service.ReviewService;
 import com.example.shop.security.SecurityUtils;
 import com.example.shop.security.UserDetailsImpl;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.bind.annotation.*;
 
+import javax.validation.Valid;
 import javax.validation.constraints.Positive;
-import java.util.Map;
 import java.util.List;
 
 @RestController
@@ -29,41 +33,48 @@ public class ReviewController {
     private final ReviewImageService reviewImageService;
 
     @GetMapping("/product/{productId}")
-    public ResponseEntity<Map<String, Object>> getProductReviews(@Positive @PathVariable Long productId, Authentication authentication) {
+    public ResponseEntity<ProductReviewsResponse> getProductReviews(@Positive @PathVariable Long productId,
+                                                                    @RequestParam(required = false) Integer page,
+                                                                    @RequestParam(required = false) Integer size,
+                                                                    Authentication authentication) {
         Long currentUserId = null;
         if (authentication != null && authentication.getPrincipal() instanceof UserDetailsImpl) {
             currentUserId = ((UserDetailsImpl) authentication.getPrincipal()).getId();
         }
-        return ResponseEntity.ok(Map.of(
-            "reviews", reviewService.getPublicReviewsByProductId(productId, currentUserId),
-            "averageRating", reviewService.getAverageRating(productId)
+        int safePage = safePublicReviewPage(page);
+        int safeSize = safePublicReviewSize(size);
+        return ResponseEntity.ok(new ProductReviewsResponse(
+            reviewService.getPublicReviewsByProductId(productId, currentUserId, safePage, safeSize),
+            reviewService.getAverageRating(productId),
+            reviewService.countPublicReviewsByProductId(productId, currentUserId),
+            safePage,
+            safeSize
         ));
     }
 
     @GetMapping("/product/{productId}/reviewable-orders")
-    public ResponseEntity<?> getReviewableOrders(@Positive @PathVariable Long productId, Authentication authentication) {
+    public ResponseEntity<List<ReviewableOrderResponse>> getReviewableOrders(@Positive @PathVariable Long productId, Authentication authentication) {
         UserDetailsImpl userDetails = SecurityUtils.requireUser(authentication);
         List<ReviewableOrderResponse> orders = reviewService.getReviewableOrders(productId, userDetails.getId());
         return ResponseEntity.ok(orders);
     }
 
     @PostMapping("/product/{productId}")
-    public ResponseEntity<?> addReview(
+    public ResponseEntity<PublicReviewResponse> addReview(
             @Positive @PathVariable Long productId,
-            @RequestBody(required = false) Map<String, Object> request,
+            @Valid @RequestBody(required = false) ReviewCreateRequest request,
             Authentication authentication) {
         UserDetailsImpl userDetails = SecurityUtils.requireUser(authentication);
         if (request == null) {
-            throw new IllegalArgumentException("Review payload is required");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Review payload is required");
         }
-        Long orderId = parseLong(request.get("orderId"), "orderId");
-        Integer rating = parseRating(request.get("rating"));
         return ResponseEntity.ok(PublicReviewResponse.from(reviewService.addReview(
             productId,
             userDetails.getId(),
-            orderId,
-            rating,
-            request.get("comment") == null ? "" : String.valueOf(request.get("comment"))
+            request.getOrderId(),
+            request.getRating(),
+            request.getComment(),
+            request.getImageUrls()
         ), userDetails.getId()));
     }
 
@@ -76,29 +87,20 @@ public class ReviewController {
         return ResponseEntity.ok(new ReviewImageUploadResponse(reviewImageService.upload(file)));
     }
 
-    private Long parseLong(Object value, String field) {
-        if (value == null || String.valueOf(value).trim().isEmpty()) {
-            throw new IllegalArgumentException(field + " is required");
+    private int safePublicReviewPage(Integer page) {
+        if (page != null && page < 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "page must be greater than or equal to 0");
         }
-        try {
-            return Long.parseLong(String.valueOf(value).trim());
-        } catch (NumberFormatException e) {
-            throw new IllegalArgumentException(field + " is invalid");
-        }
+        return page == null ? 0 : page;
     }
 
-    private Integer parseRating(Object value) {
-        if (value == null || String.valueOf(value).trim().isEmpty()) {
-            throw new IllegalArgumentException("rating is required");
+    private int safePublicReviewSize(Integer size) {
+        if (size != null && size < 1) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "size must be greater than or equal to 1");
         }
-        try {
-            int rating = Integer.parseInt(String.valueOf(value).trim());
-            if (rating < 1 || rating > 5) {
-                throw new IllegalArgumentException("rating must be between 1 and 5");
-            }
-            return rating;
-        } catch (NumberFormatException e) {
-            throw new IllegalArgumentException("rating is invalid");
+        if (size != null && size > 100) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "size must be less than or equal to 100");
         }
+        return size == null ? 20 : size;
     }
 }

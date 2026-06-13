@@ -2,9 +2,9 @@ package com.example.shop.controller;
 
 import com.example.shop.dto.SupportAdminSessionPageResponse;
 import com.example.shop.dto.SupportAdminSessionResponse;
+import com.example.shop.dto.SupportWebSocketTicketResponse;
 import com.example.shop.entity.SupportMessage;
 import com.example.shop.entity.SupportSession;
-import com.example.shop.repository.UserRepository;
 import com.example.shop.security.UserDetailsImpl;
 import com.example.shop.service.AdminRoleService;
 import com.example.shop.service.IpBlacklistService;
@@ -12,6 +12,7 @@ import com.example.shop.service.OrderService;
 import com.example.shop.service.PetBirthdayCouponService;
 import com.example.shop.service.SecurityAuditLogService;
 import com.example.shop.service.SupportService;
+import com.example.shop.service.SupportWebSocketTicketService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -38,14 +39,15 @@ class SupportControllerAdminResponseTest {
     private final SupportService supportService = mock(SupportService.class);
     private final AdminRoleService adminRoleService = mock(AdminRoleService.class);
     private final SecurityAuditLogService auditLogService = mock(SecurityAuditLogService.class);
+    private final SupportWebSocketTicketService ticketService = mock(SupportWebSocketTicketService.class);
     private final SupportController controller = new SupportController(
             supportService,
             adminRoleService,
             mock(PetBirthdayCouponService.class),
             mock(OrderService.class),
             mock(IpBlacklistService.class),
-            mock(UserRepository.class),
-            auditLogService
+            auditLogService,
+            ticketService
     );
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -68,6 +70,23 @@ class SupportControllerAdminResponseTest {
         assertNoContextKey((Map<?, ?>) items.get(0));
         assertEquals(session.getUserId(), ((Map<?, ?>) items.get(0)).get("userId"));
         assertEquals(session.getUnreadByAdmin(), ((Map<?, ?>) items.get(0)).get("unreadByAdmin"));
+    }
+
+    @Test
+    void authenticatedUserCanIssueOpaqueWebSocketTicket() {
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/support/websocket-ticket");
+        request.addHeader("Authorization", "Bearer jwt-token");
+        when(ticketService.issue(any(UserDetailsImpl.class), eq("Bearer jwt-token")))
+                .thenReturn(new SupportWebSocketTicketService.Ticket(
+                        "ws-ticket-1",
+                        7L,
+                        "jti-1",
+                        System.currentTimeMillis() + 60_000L));
+
+        SupportWebSocketTicketResponse response = controller.createWebSocketTicket(adminAuthentication(), request);
+
+        assertEquals("ws-ticket-1", response.getTicket());
+        assertTrue(response.getExpiresInMillis() > 0);
     }
 
     @Test

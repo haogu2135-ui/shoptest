@@ -49,7 +49,9 @@ class CouponRepositoryBoundedQueryContractTest {
         assertTrue(service.contains("userCouponMapper.findByUserIdLimited(userId, limit)"));
         assertTrue(service.contains("userCouponMapper.findUnusedByUserIdLimited(userId, limit)"));
         assertTrue(repository.contains("Page<Coupon> searchAdminCoupons("));
-        assertTrue(repository.contains("List<Coupon> findClaimableByScopeAndStatus(String scope, String status, LocalDateTime now, Pageable pageable)"));
+        assertTrue(repository.contains("List<Coupon> findClaimableByScopeAndStatus(@Param(\"scope\") String scope"));
+        assertTrue(repository.contains("@Param(\"status\") String status"));
+        assertTrue(repository.contains("@Param(\"now\") LocalDateTime now"));
     }
 
     @Test

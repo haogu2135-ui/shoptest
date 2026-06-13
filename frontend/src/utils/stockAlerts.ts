@@ -1,5 +1,6 @@
 import type { ProductPublic } from '../types';
 import { dispatchDomEvent } from './domEvents';
+import { reportNonBlockingError } from './nonBlockingError';
 import { getLocalStorageItem, setLocalStorageItem } from './safeStorage';
 
 const STORAGE_KEY = 'shop-stock-alerts';
@@ -41,7 +42,8 @@ const readRaw = (): StockAlertItem[] => {
         seenProductIds.add(item.productId);
         return true;
       }) as StockAlertItem[];
-  } catch {
+  } catch (error) {
+    reportNonBlockingError('stockAlerts.readRaw', error);
     return [];
   }
 };

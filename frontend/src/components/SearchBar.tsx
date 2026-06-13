@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Input, Space } from 'antd';
 import { SearchOutlined } from '@ant-design/icons';
 import { useLanguage } from '../i18n';
@@ -13,8 +13,13 @@ interface SearchBarProps {
 export const SearchBar: React.FC<SearchBarProps> = ({ onSearch, placeholder, debounceMs = 300 }) => {
     const { t } = useLanguage();
     const [value, setValue] = useState('');
+    const didMountRef = useRef(false);
 
     useEffect(() => {
+        if (!didMountRef.current) {
+            didMountRef.current = true;
+            return;
+        }
         const timer = window.setTimeout(() => {
             onSearch(value);
         }, Math.max(0, debounceMs));

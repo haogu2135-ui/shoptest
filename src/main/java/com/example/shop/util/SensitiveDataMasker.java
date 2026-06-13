@@ -4,7 +4,7 @@ import java.util.regex.Pattern;
 
 public final class SensitiveDataMasker {
     private static final String SENSITIVE_KEY_WORDS =
-            "password|passwd|pwd|secret|token|credential|api[_-]?key|access[_-]?key|private[_-]?key|auth[_-]?header|authorization|signature|webhook[_-]?secret|callback[_-]?secret";
+            "password|passwd|pwd|secret|token|access[_-]?token|refresh[_-]?token|credential|api[_-]?key|access[_-]?key|private[_-]?key|auth[_-]?header|authorization|signature|webhook[_-]?secret|callback[_-]?secret|cookie|set[_-]?cookie|session[_-]?id|jsessionid|id[_-]?card|card[_-]?number|cvv|cvc|phone|email";
     private static final Pattern KEY_VALUE_PATTERN = Pattern.compile(
             "(?i)(\\b(?:" + SENSITIVE_KEY_WORDS + ")\\b\\s*[=:]\\s*)((?:Bearer|Basic)\\s+)?([^,\\s;&}]+)");
     private static final Pattern JSON_VALUE_PATTERN = Pattern.compile(
@@ -13,6 +13,8 @@ public final class SensitiveDataMasker {
             "(?i)([?&;](?:" + SENSITIVE_KEY_WORDS + ")=)((?:Bearer|Basic)\\s+)?([^&;\\s]+)");
     private static final Pattern AUTH_HEADER_PATTERN = Pattern.compile(
             "(?i)\\b(Bearer|Basic)\\s+[A-Za-z0-9._~+/=-]{8,}");
+    private static final Pattern COOKIE_HEADER_PATTERN = Pattern.compile(
+            "(?i)\\b(Set-Cookie|Cookie)\\s*:\\s*[^\\r\\n]+");
     private static final Pattern JWT_PATTERN = Pattern.compile(
             "\\beyJ[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\b");
     private static final Pattern STRIPE_KEY_PATTERN = Pattern.compile(
@@ -29,6 +31,7 @@ public final class SensitiveDataMasker {
         masked = JSON_VALUE_PATTERN.matcher(masked).replaceAll("$1$2******$4");
         masked = QUERY_VALUE_PATTERN.matcher(masked).replaceAll("$1$2******");
         masked = AUTH_HEADER_PATTERN.matcher(masked).replaceAll("$1 ******");
+        masked = COOKIE_HEADER_PATTERN.matcher(masked).replaceAll("$1: ******");
         masked = JWT_PATTERN.matcher(masked).replaceAll("jwt.******");
         masked = STRIPE_KEY_PATTERN.matcher(masked).replaceAll("stripe_key_******");
         return masked;

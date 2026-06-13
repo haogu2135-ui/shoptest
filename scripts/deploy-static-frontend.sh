@@ -23,6 +23,7 @@ DEPLOY_PORT="${DEPLOY_PORT:-22}"
 DEPLOY_TARGET="${DEPLOY_TARGET:-/var/www/shoptest/}"
 RSYNC_OPTIONS="${RSYNC_OPTIONS:--av --delete}"
 SSH_EXTRA_OPTIONS="${SSH_EXTRA_OPTIONS:--o StrictHostKeyChecking=accept-new}"
+REMOTE_POST_DEPLOY_COMMAND="${REMOTE_POST_DEPLOY_COMMAND:-find '$DEPLOY_TARGET' -type d -exec chmod 0755 {} + && find '$DEPLOY_TARGET' -type f -exec chmod 0644 {} +}"
 
 if [[ "$DEPLOY_HOST" == "your.server.public.ip" ]]; then
   echo "DEPLOY_HOST still uses the example value. Edit $CONFIG_PATH first." >&2
@@ -48,4 +49,6 @@ SSH_COMMAND="ssh -p ${DEPLOY_PORT} ${SSH_EXTRA_OPTIONS}"
 
 echo "Uploading static frontend to ${DESTINATION}"
 SSHPASS="$DEPLOY_PASSWORD" sshpass -e rsync ${RSYNC_OPTIONS} -e "$SSH_COMMAND" "$SOURCE_PATH" "$DESTINATION"
+echo "Fixing static frontend permissions on ${DEPLOY_HOST}"
+SSHPASS="$DEPLOY_PASSWORD" sshpass -e ssh -p "$DEPLOY_PORT" $SSH_EXTRA_OPTIONS "$DEPLOY_USER@$DEPLOY_HOST" "$REMOTE_POST_DEPLOY_COMMAND"
 echo "Static frontend deployed successfully."

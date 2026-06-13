@@ -1,6 +1,7 @@
 package com.example.shop.service;
 
 import com.example.shop.entity.PetGalleryPhoto;
+import com.example.shop.entity.PetGalleryPhotoLike;
 import com.example.shop.repository.PetGalleryPhotoLikeRepository;
 import com.example.shop.repository.PetGalleryPhotoRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -12,12 +13,15 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.List;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -50,7 +54,8 @@ class PetGalleryServiceTest {
         service = new PetGalleryService(
                 photoRepository,
                 likeRepository,
-                runtimeConfig);
+                runtimeConfig,
+                new LocalImageStorageService());
     }
 
     @Test
@@ -92,13 +97,17 @@ class PetGalleryServiceTest {
         seedPhoto.setStatus("ACTIVE");
         seedPhoto.setSource("SEED");
         seedPhoto.setImageUrl("https://images.example.com/seed.jpg");
-        when(photoRepository.findTop24ByStatusOrderByLikeCountDescCreatedAtDescIdDesc("ACTIVE"))
+        when(photoRepository.findTopPublicPhotos(eq("ACTIVE"), org.mockito.ArgumentMatchers.any(Pageable.class)))
                 .thenReturn(List.of(missingUpload, seedPhoto));
 
         List<PetGalleryPhoto> photos = service.findPublicPhotos(null, "203.0.113.10");
 
         assertEquals(List.of(seedPhoto), photos);
         assertEquals("DELETED", missingUpload.getStatus());
+        ArgumentCaptor<Pageable> pageable = ArgumentCaptor.forClass(Pageable.class);
+        verify(photoRepository).findTopPublicPhotos(eq("ACTIVE"), pageable.capture());
+        assertEquals(0, pageable.getValue().getPageNumber());
+        assertEquals(24, pageable.getValue().getPageSize());
         verify(photoRepository).save(missingUpload);
     }
 
@@ -111,12 +120,13 @@ class PetGalleryServiceTest {
         upload.setStatus("ACTIVE");
         upload.setSource("USER_UPLOAD");
         upload.setImageUrl("/uploads/pet-gallery/existing.webp");
-        when(photoRepository.findTop24ByStatusOrderByLikeCountDescCreatedAtDescIdDesc("ACTIVE"))
+        when(photoRepository.findTopPublicPhotos(eq("ACTIVE"), org.mockito.ArgumentMatchers.any(Pageable.class)))
                 .thenReturn(List.of(upload));
 
         List<PetGalleryPhoto> photos = service.findPublicPhotos(null, "203.0.113.10");
 
         assertEquals(List.of(upload), photos);
+        verify(photoRepository).findTopPublicPhotos(eq("ACTIVE"), org.mockito.ArgumentMatchers.any(Pageable.class));
         verify(photoRepository, never()).save(upload);
     }
 
@@ -143,6 +153,35 @@ class PetGalleryServiceTest {
 
         assertEquals(9L, service.summarizeForAdmin("ACTIVE", "USER_UPLOAD", "203.0.113.10").get("visiblePhotos"));
         assertEquals(8L, service.summarizeForAdmin("ACTIVE", "USER_UPLOAD", "203.0.113.10").get("userUploads"));
+    }
+
+    @Test
+    void likePersistsLikeAndCountInLockedUnitOfWork() throws Exception {
+        PetGalleryPhoto photo = new PetGalleryPhoto();
+        photo.setId(21L);
+        photo.setStatus("ACTIVE");
+        photo.setLikeCount(2);
+        when(photoRepository.findByIdForLikeUpdate(21L)).thenReturn(Optional.of(photo));
+        when(likeRepository.existsByPhotoIdAndViewerKey(21L, "user:7")).thenReturn(false, true);
+        when(likeRepository.save(org.mockito.ArgumentMatchers.any(PetGalleryPhotoLike.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(photoRepository.saveAndFlush(photo)).thenReturn(photo);
+
+        PetGalleryPhoto result = service.like(21L, 7L, "203.0.113.10");
+
+        assertEquals(3, result.getLikeCount());
+        assertTrue(result.getLikedByMe());
+        verify(photoRepository).findByIdForLikeUpdate(21L);
+        verify(likeRepository).save(org.mockito.ArgumentMatchers.any(PetGalleryPhotoLike.class));
+        verify(photoRepository).saveAndFlush(photo);
+
+        String serviceSource = Files.readString(Path.of("src/main/java/com/example/shop/service/PetGalleryService.java"));
+        String repositorySource = Files.readString(Path.of("src/main/java/com/example/shop/repository/PetGalleryPhotoRepository.java"));
+        assertTrue(serviceSource.contains("findByIdForLikeUpdate(photoId)"));
+        assertFalse(serviceSource.contains("likeRepository.saveAndFlush(like)"));
+        assertFalse(serviceSource.contains("incrementLikeCount"));
+        assertTrue(repositorySource.contains("@Lock(LockModeType.PESSIMISTIC_WRITE)"));
+        assertFalse(repositorySource.contains("incrementLikeCount"));
     }
 
     @Test

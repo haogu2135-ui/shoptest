@@ -2,19 +2,19 @@
   "platform": "android",
   "appId": "com.shoptest.mobile",
   "appName": "ShopMX",
-  "versionName": "1.0.24",
-  "versionCode": 10024,
+  "versionName": "1.0.134",
+  "versionCode": 10134,
   "minSupportedVersionCode": 0,
   "mandatory": false,
-  "apkUrl": "/downloads/shoptest-1.0.24.apk",
-  "legacyApkUrl": "/downloads/shoptest.apk?v=1.0.24",
+  "apkUrl": "/downloads/shoptest.apk?v=1.0.134",
+  "legacyApkUrl": "/downloads/shoptest.apk?v=1.0.134",
   "releaseSigned": true,
   "certificateSha256": "9962289890D74A1FE9DA3E4D6471D2C00B21C76FC9C0622FB93348CF825D880A",
-  "fileName": "shoptest-1.0.24.apk",
-  "sizeBytes": 5271338,
-  "sha256": "032adb43d5cb348c07694ecc0bfa50efd1ab1a526e76cae5b85a4a0c71d081c4",
+  "fileName": "shoptest.apk",
+  "sizeBytes": 3189877,
+  "sha256": "bd836026448e430eb596b1995b0cdeaf19bdd77867d28d19a2b0ff177ab0c50a",
   "releaseNotes": [
     "Performance and storefront stability improvements."
   ],
-  "generatedAt": "2026-06-05T02:29:19.287Z"
+  "generatedAt": "2026-06-10T20:08:24.632Z"
 }

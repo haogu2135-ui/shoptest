@@ -1,0 +1,18 @@
+[Unit]
+Description=ShopTest submitted BUG maintenance cycle
+After=network-online.target shoptest-backend.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/guhao/shoptest
+Environment=SHOPTEST_PROJECT_DIR=/home/guhao/shoptest
+Environment=SHOPTEST_ROOT_ISSUE_DIR=/root/shoptest
+Environment=SHOPTEST_BUG_SCAN_INTERVAL_MINUTES=30
+Environment=SHOPTEST_BUG_SCAN_LIMIT=20
+Environment=SHOPTEST_RESTART_FIXED_THRESHOLD=20
+Environment=SHOPTEST_BUG_AUTOFIX=true
+Environment=SHOPTEST_BUG_CODEX_TIMEOUT=25m
+Environment=SHOPTEST_CODEX_BIN=/root/.nvm/versions/node/v20.20.2/bin/codex
+Environment=PATH=/root/.nvm/versions/node/v20.20.2/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+ExecStart=/home/guhao/shoptest/scripts/bug-maintenance-cycle.sh

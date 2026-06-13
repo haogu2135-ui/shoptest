@@ -1,9 +1,10 @@
 package com.example.shop.service;
 
-import lombok.extern.slf4j.Slf4j;
 import com.example.shop.entity.Brand;
 import com.example.shop.repository.BrandRepository;
 import com.example.shop.util.ImageUrlValidator;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -15,7 +16,6 @@ import java.util.Optional;
 import java.util.Set;
 
 @Service
-@Slf4j
 public class BrandService {
     private static final Set<String> ALLOWED_STATUSES = Set.of("ACTIVE", "INACTIVE");
 
@@ -25,6 +25,7 @@ public class BrandService {
         this.brandRepository = brandRepository;
     }
 
+    @Cacheable(cacheNames = "brandReferenceData", key = "'all:active=' + #activeOnly")
     public List<Brand> findAll(boolean activeOnly) {
         if (activeOnly) {
             return brandRepository.findByStatusOrderBySortOrderAscNameAsc("ACTIVE");
@@ -32,6 +33,7 @@ public class BrandService {
         return brandRepository.findAllByOrderBySortOrderAscNameAsc();
     }
 
+    @Cacheable(cacheNames = "brandReferenceData", key = "'all:active=' + #activeOnly + ':max=' + #maxRows")
     public List<Brand> findAll(boolean activeOnly, int maxRows) {
         Pageable page = PageRequest.of(0, Math.max(1, maxRows));
         if (activeOnly) {
@@ -44,7 +46,8 @@ public class BrandService {
         return brandRepository.findById(id);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
+    @CacheEvict(cacheNames = "brandReferenceData", allEntries = true)
     public Brand save(Brand brand) {
         String name = brand.getName() == null ? "" : brand.getName().trim();
         if (name.isEmpty()) {
@@ -64,7 +67,8 @@ public class BrandService {
         return brandRepository.save(brand);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
+    @CacheEvict(cacheNames = "brandReferenceData", allEntries = true)
     public void deleteById(Long id) {
         brandRepository.deleteById(id);
     }

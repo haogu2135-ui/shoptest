@@ -1,6 +1,10 @@
 package com.example.shop.controller;
 
+import com.example.shop.dto.GuestOrderAccessRequest;
+import com.example.shop.dto.OrderCustomerResponse;
+import com.example.shop.dto.OrderItemCustomerResponse;
 import com.example.shop.entity.Order;
+import com.example.shop.entity.OrderItem;
 import com.example.shop.security.UserDetailsImpl;
 import com.example.shop.service.IpBlacklistService;
 import com.example.shop.service.OrderItemService;
@@ -20,17 +24,55 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class OrderControllerGuestAfterSaleAccessTest {
     private final OrderService orderService = mock(OrderService.class);
+    private final OrderItemService orderItemService = mock(OrderItemService.class);
     private final OrderController controller = new OrderController(
             orderService,
-            mock(OrderItemService.class),
+            orderItemService,
             mock(SecurityAuditLogService.class),
             mock(IpBlacklistService.class)
     );
+
+    @Test
+    void guestCanReadOrderWhenBodyCredentialsMatch() {
+        Order order = guestOrder();
+        when(orderService.getOrderById(42L)).thenReturn(order);
+        when(orderService.guestOrderAccessMatches(order, "mia@example.com", "SO202605260001")).thenReturn(true);
+
+        ResponseEntity<OrderCustomerResponse> response = controller.getGuestOrder(
+                42L,
+                guestAccessRequest("mia@example.com", "SO202605260001"),
+                new MockHttpServletRequest("POST", "/orders/guest/42")
+        );
+
+        assertTrue(response.getStatusCode().is2xxSuccessful());
+        verify(orderService).guestOrderAccessMatches(order, "mia@example.com", "SO202605260001");
+    }
+
+    @Test
+    void guestCanReadOrderItemsWhenBodyCredentialsMatch() {
+        Order order = guestOrder();
+        OrderItem item = new OrderItem();
+        item.setId(7L);
+        item.setOrderId(42L);
+        when(orderService.getOrderById(42L)).thenReturn(order);
+        when(orderService.guestOrderAccessMatches(order, "mia@example.com", "SO202605260001")).thenReturn(true);
+        when(orderItemService.getOrderItemsByOrderId(42L)).thenReturn(List.of(item));
+
+        ResponseEntity<List<OrderItemCustomerResponse>> response = controller.getGuestOrderItems(
+                42L,
+                guestAccessRequest("mia@example.com", "SO202605260001"),
+                new MockHttpServletRequest("POST", "/orders/guest/42/items")
+        );
+
+        assertTrue(response.getStatusCode().is2xxSuccessful());
+        verify(orderItemService).getOrderItemsByOrderId(42L);
+    }
 
     @Test
     void guestCanRequestReturnWhenEmailMatchesOrder() {
@@ -42,7 +84,7 @@ class OrderControllerGuestAfterSaleAccessTest {
         ResponseEntity<?> response = controller.returnGuestOrder(
                 42L,
                 Map.of("guestEmail", "MIA@example.com", "orderNo", "SO202605260001", "reason", "Too small"),
-                new MockHttpServletRequest("PUT", "/orders/guest/42/return")
+                new MockHttpServletRequest("POST", "/orders/guest/42/return")
         );
 
         assertTrue(response.getStatusCode().is2xxSuccessful());
@@ -59,7 +101,7 @@ class OrderControllerGuestAfterSaleAccessTest {
         ResponseEntity<?> response = controller.submitGuestReturnShipment(
                 42L,
                 Map.of("guestEmail", "mia@example.com", "orderNo", "SO202605260001", "returnTrackingNumber", "RX123"),
-                new MockHttpServletRequest("PUT", "/orders/guest/42/return-shipment")
+                new MockHttpServletRequest("POST", "/orders/guest/42/return-shipment")
         );
 
         assertTrue(response.getStatusCode().is2xxSuccessful());
@@ -77,7 +119,7 @@ class OrderControllerGuestAfterSaleAccessTest {
         ResponseEntity<?> response = controller.confirmGuestReceipt(
                 42L,
                 Map.of("guestEmail", "MIA@example.com", "orderNo", "SO202605260001"),
-                new MockHttpServletRequest("PUT", "/orders/guest/42/confirm")
+                new MockHttpServletRequest("POST", "/orders/guest/42/confirm")
         );
 
         assertTrue(response.getStatusCode().is2xxSuccessful());
@@ -91,7 +133,7 @@ class OrderControllerGuestAfterSaleAccessTest {
         assertThrows(ResponseStatusException.class, () -> controller.returnGuestOrder(
                 42L,
                 Map.of("guestEmail", "other@example.com", "orderNo", "SO202605260001", "reason", "Too small"),
-                new MockHttpServletRequest("PUT", "/orders/guest/42/return")
+                new MockHttpServletRequest("POST", "/orders/guest/42/return")
         ));
     }
 
@@ -102,8 +144,20 @@ class OrderControllerGuestAfterSaleAccessTest {
         assertThrows(ResponseStatusException.class, () -> controller.returnGuestOrder(
                 42L,
                 Map.of("guestEmail", "mia@example.com", "orderNo", "SO202605260999", "reason", "Too small"),
-                new MockHttpServletRequest("PUT", "/orders/guest/42/return")
+                new MockHttpServletRequest("POST", "/orders/guest/42/return")
         ));
+    }
+
+    @Test
+    void guestCancelRejectsMissingEmailAndOrderNumberBeforeMutation() {
+        when(orderService.getOrderById(42L)).thenReturn(guestOrder());
+
+        assertThrows(ResponseStatusException.class, () -> controller.cancelGuestOrder(
+                42L,
+                Map.of(),
+                new MockHttpServletRequest("POST", "/orders/guest/42/cancel")
+        ));
+        verify(orderService, never()).cancelOrder(42L);
     }
 
     @Test
@@ -121,7 +175,7 @@ class OrderControllerGuestAfterSaleAccessTest {
                 42L,
                 Map.of("reason", "Too small"),
                 customerAuthentication(12L),
-                new MockHttpServletRequest("PUT", "/orders/42/return")
+                new MockHttpServletRequest("POST", "/orders/42/return")
         );
 
         assertTrue(response.getStatusCode().is2xxSuccessful());
@@ -144,7 +198,7 @@ class OrderControllerGuestAfterSaleAccessTest {
                 42L,
                 Map.of(),
                 customerAuthentication(12L),
-                new MockHttpServletRequest("PUT", "/orders/42/confirm")
+                new MockHttpServletRequest("POST", "/orders/42/confirm")
         );
 
         assertTrue(response.getStatusCode().is2xxSuccessful());
@@ -158,6 +212,13 @@ class OrderControllerGuestAfterSaleAccessTest {
         order.setUserId(7001L);
         order.setShippingAddress("[Guest] Mia / 555-0100 / mia@example.com / 1 Main St");
         return order;
+    }
+
+    private GuestOrderAccessRequest guestAccessRequest(String email, String orderNo) {
+        GuestOrderAccessRequest request = new GuestOrderAccessRequest();
+        request.setGuestEmail(email);
+        request.setOrderNo(orderNo);
+        return request;
     }
 
     private Authentication customerAuthentication(Long userId) {

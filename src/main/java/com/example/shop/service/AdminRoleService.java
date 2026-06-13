@@ -1,10 +1,10 @@
 package com.example.shop.service;
 
-import lombok.extern.slf4j.Slf4j;
 import com.example.shop.entity.AdminRole;
 import com.example.shop.entity.User;
 import com.example.shop.repository.UserMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -198,7 +198,7 @@ public class AdminRoleService {
     private final JdbcTemplate jdbcTemplate;
     private final UserMapper userMapper;
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void ensureSchema() {
         if (!columnExists("users", "role_code")) {
             jdbcTemplate.execute("ALTER TABLE users ADD COLUMN role_code VARCHAR(50) NULL");
@@ -211,11 +211,13 @@ public class AdminRoleService {
                 + "id BIGINT PRIMARY KEY AUTO_INCREMENT,"
                 + "code VARCHAR(50) NOT NULL UNIQUE,"
                 + "name VARCHAR(100) NOT NULL,"
-                + "description VARCHAR(255),"
+                + "description VARCHAR(500),"
                 + "status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',"
                 + "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,"
                 + "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"
                 + ") DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+        alignColumnCollation("admin_roles", "code", "VARCHAR(50)");
+        alterColumnQuietly("admin_roles", "description", "VARCHAR(500) NULL");
         jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS admin_role_permissions ("
                 + "role_code VARCHAR(50) NOT NULL,"
                 + "permission_key VARCHAR(80) NOT NULL,"
@@ -223,6 +225,10 @@ public class AdminRoleService {
                 + "INDEX idx_admin_role_permissions_role (role_code)"
                 + ") DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
         alignRoleCollation();
+        removeOrphanRolePermissions();
+        addForeignKeyIfMissing("fk_admin_role_permissions_role_code",
+                "ALTER TABLE admin_role_permissions ADD CONSTRAINT fk_admin_role_permissions_role_code "
+                        + "FOREIGN KEY (role_code) REFERENCES admin_roles(code) ON DELETE CASCADE");
         seedRole(SUPER_ADMIN, "Super admin", "Full backend access", ALL_ADMIN_PERMISSIONS);
         seedRole(ADMIN, "Admin", "Full operator access", ALL_ADMIN_PERMISSIONS);
         seedRole(CUSTOMER_SERVICE, "Customer service", "Full operator access", ALL_ADMIN_PERMISSIONS);
@@ -323,7 +329,7 @@ public class AdminRoleService {
         return permissions.contains(permission);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public AdminRole save(AdminRole role) {
         String code = normalize(role.getCode());
         if (code.isEmpty() || List.of("USER", ADMIN, SUPER_ADMIN).contains(code)) {
@@ -343,15 +349,19 @@ public class AdminRoleService {
         return findByCode(code);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void assignRole(Long userId, String roleCode) {
         String code = normalize(roleCode);
-        if (!activeRoleExists(code)) {
-            throw new IllegalArgumentException("Role does not exist");
-        }
         User user = userMapper.findById(userId);
         if (user == null) {
             throw new IllegalArgumentException("User not found");
+        }
+        if ("USER".equals(code)) {
+            userMapper.updateRoleAccess(userId, "USER", null, LocalDateTime.now());
+            return;
+        }
+        if (!activeRoleExists(code)) {
+            throw new IllegalArgumentException("Role does not exist");
         }
         userMapper.updateRoleAccess(userId, SUPER_ADMIN.equals(code) ? SUPER_ADMIN : ADMIN, code, LocalDateTime.now());
     }
@@ -446,6 +456,36 @@ public class AdminRoleService {
         alignColumnCollation("users", "role_code", "VARCHAR(50)");
         alignColumnCollation("admin_roles", "code", "VARCHAR(50)");
         alignColumnCollation("admin_role_permissions", "role_code", "VARCHAR(50)");
+    }
+
+    private void alterColumnQuietly(String tableName, String columnName, String columnDefinition) {
+        try {
+            jdbcTemplate.execute("ALTER TABLE " + tableName
+                    + " MODIFY COLUMN " + columnName + " " + columnDefinition);
+        } catch (Exception ex) {
+            log.debug("Skipping optional admin role column hardening for {}.{}; reason={}",
+                    tableName, columnName, ex.getMessage());
+        }
+    }
+
+    private void removeOrphanRolePermissions() {
+        jdbcTemplate.update("DELETE p FROM admin_role_permissions p "
+                + "LEFT JOIN admin_roles r ON r.code = p.role_code "
+                + "WHERE r.code IS NULL");
+    }
+
+    private void addForeignKeyIfMissing(String constraintName, String sql) {
+        Integer count = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM information_schema.table_constraints "
+                        + "WHERE constraint_schema = DATABASE() "
+                        + "AND table_name = 'admin_role_permissions' "
+                        + "AND constraint_name = ? "
+                        + "AND constraint_type = 'FOREIGN KEY'",
+                Integer.class,
+                constraintName);
+        if (count == null || count == 0) {
+            jdbcTemplate.execute(sql);
+        }
     }
 
     private void alignColumnCollation(String tableName, String columnName, String columnType) {

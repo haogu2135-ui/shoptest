@@ -1,12 +1,13 @@
 package com.example.shop.service.impl;
 
-import lombok.extern.slf4j.Slf4j;
 import com.example.shop.entity.Category;
 import com.example.shop.repository.CategoryRepository;
 import com.example.shop.repository.ProductRepository;
 import com.example.shop.service.CategoryService;
 import com.example.shop.util.ImageUrlValidator;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,7 +23,6 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
-@Slf4j
 public class CategoryServiceImpl implements CategoryService {
     private static final int MAX_CATEGORY_COUNT_DEPTH = 3;
 
@@ -33,17 +33,20 @@ public class CategoryServiceImpl implements CategoryService {
     private ProductRepository productRepository;
 
     @Override
+    @Cacheable(cacheNames = "categoryReferenceData", key = "'all'")
     public List<Category> findAll() {
         return withProductCounts(categoryRepository.findAll());
     }
 
     @Override
+    @Cacheable(cacheNames = "categoryReferenceData", key = "'all:max=' + #maxRows")
     public List<Category> findAll(int maxRows) {
         return withProductCounts(categoryRepository.findAllByOrderByLevelAscParentIdAscNameAscIdAsc(
                 PageRequest.of(0, Math.max(1, maxRows))));
     }
 
     @Override
+    @Cacheable(cacheNames = "categoryReferenceData", key = "'parent=' + (#parentId == null ? 'root' : #parentId)")
     public List<Category> findByParentId(Long parentId) {
         if (parentId == null) {
             return withProductCounts(categoryRepository.findByParentIdIsNull());
@@ -52,6 +55,7 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     @Override
+    @Cacheable(cacheNames = "categoryReferenceData", key = "'level=' + #level")
     public List<Category> findByLevel(Integer level) {
         if (level == null || level <= 0) {
             return List.of();
@@ -63,6 +67,7 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     @Override
+    @Cacheable(cacheNames = "categoryReferenceData", key = "'top'")
     public List<Category> findTopLevel() {
         return withProductCounts(categoryRepository.findByParentIdIsNull());
     }
@@ -80,6 +85,7 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     @Override
+    @Cacheable(cacheNames = "categoryReferenceData", key = "'id:count=' + #id", unless = "#result == null || #result.isEmpty()")
     public Optional<Category> findByIdWithProductCount(Long id) {
         return categoryRepository.findById(id)
                 .map(category -> {
@@ -89,7 +95,8 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
+    @CacheEvict(cacheNames = "categoryReferenceData", allEntries = true)
     public Category save(Category category) {
         category.setImageUrl(ImageUrlValidator.normalizePersistentImageUrl(category.getImageUrl(), "imageUrl"));
         if (category.getId() != null && category.getParentId() != null && category.getId().equals(category.getParentId())) {
@@ -116,13 +123,22 @@ public class CategoryServiceImpl implements CategoryService {
             throw new IllegalArgumentException("Moving this category would exceed 3 levels");
         }
         category.setLevel(newLevel);
+        category.setPath(buildCategoryPath(category.getParentId(), category.getId()));
         Category saved = categoryRepository.save(category);
-        refreshChildLevels(saved.getId(), saved.getLevel());
+        if (saved.getId() != null) {
+            String savedPath = buildCategoryPath(saved.getParentId(), saved.getId());
+            if (!savedPath.equals(saved.getPath())) {
+                saved.setPath(savedPath);
+                saved = categoryRepository.save(saved);
+            }
+            refreshChildHierarchy(saved.getId(), saved.getLevel(), saved.getPath());
+        }
         return saved;
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
+    @CacheEvict(cacheNames = "categoryReferenceData", allEntries = true)
     public void deleteById(Long id) {
         if (id == null || !categoryRepository.existsById(id)) {
             throw new IllegalArgumentException("Category not found");
@@ -148,12 +164,42 @@ public class CategoryServiceImpl implements CategoryService {
                 .orElse(0);
     }
 
-    private void refreshChildLevels(Long parentId, Integer parentLevel) {
+    private void refreshChildHierarchy(Long parentId, Integer parentLevel, String parentPath) {
         categoryRepository.findByParentId(parentId).forEach(child -> {
             child.setLevel(parentLevel + 1);
+            child.setPath(appendPath(parentPath, child.getId()));
             categoryRepository.save(child);
-            refreshChildLevels(child.getId(), child.getLevel());
+            refreshChildHierarchy(child.getId(), child.getLevel(), child.getPath());
         });
+    }
+
+    private String buildCategoryPath(Long parentId, Long categoryId) {
+        if (categoryId == null) {
+            return null;
+        }
+        if (parentId == null) {
+            return appendPath(null, categoryId);
+        }
+        return categoryRepository.findById(parentId)
+                .map(parent -> appendPath(parent.getPath() != null && !parent.getPath().isBlank()
+                        ? parent.getPath()
+                        : buildCategoryPath(parent.getParentId(), parent.getId()), categoryId))
+                .orElse(appendPath(null, categoryId));
+    }
+
+    private String appendPath(String parentPath, Long categoryId) {
+        if (categoryId == null) {
+            return parentPath;
+        }
+        String normalizedParent = parentPath == null ? "" : parentPath.trim();
+        if (normalizedParent.isEmpty()) {
+            return "/" + categoryId + "/";
+        }
+        String prefix = normalizedParent.startsWith("/") ? normalizedParent : "/" + normalizedParent;
+        if (!prefix.endsWith("/")) {
+            prefix += "/";
+        }
+        return prefix + categoryId + "/";
     }
 
     private List<Category> withProductCounts(List<Category> categories) {

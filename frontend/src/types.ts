@@ -134,14 +134,14 @@ export interface AdminSystemStatus {
     healthy?: boolean;
     ready?: boolean;
     checkedAt?: string;
-    application: {
+    application?: {
         name: string;
         runtimeMode: string;
         serverPort: string;
         profiles: string[];
         time: string;
     };
-    runtime: {
+    runtime?: {
         javaVersion: string;
         javaVendor: string;
         osName: string;
@@ -150,14 +150,14 @@ export interface AdminSystemStatus {
         uptimeMs: number;
         startTimeMs: number;
     };
-    memory: {
+    memory?: {
         maxBytes: number;
         totalBytes: number;
         freeBytes: number;
         usedBytes: number;
         usedPercent: number;
     };
-    disk: {
+    disk?: {
         path: string;
         totalBytes: number;
         freeBytes: number;
@@ -165,8 +165,8 @@ export interface AdminSystemStatus {
         usedPercent: number;
     };
     database: {
-        url: string;
-        driver: string;
+        url?: string;
+        driver?: string;
         status?: string;
         healthy?: boolean;
         ready?: boolean;
@@ -176,9 +176,9 @@ export interface AdminSystemStatus {
         error?: string;
     };
     redis?: {
-        host: string;
-        port: string;
-        database: string;
+        host?: string;
+        port?: string;
+        database?: string;
         status?: string;
         healthy?: boolean;
         ready?: boolean;
@@ -189,7 +189,7 @@ export interface AdminSystemStatus {
         error?: string;
     };
     nacos: {
-        serverAddr: string;
+        serverAddr?: string;
         status?: string;
         healthy?: boolean;
         ready?: boolean;
@@ -517,11 +517,14 @@ export interface Product {
     localizedContent?: Record<string, unknown> | null;
     warranty?: string;
     shipping?: string;
+    createdAt?: string;
+    updatedAt?: string;
 }
 
 export interface AdminProductPage {
     items: Product[];
     total: number;
+    totalElements?: number;
     page: number;
     size: number;
     totalPages: number;
@@ -551,6 +554,7 @@ export interface ProductPublic {
     freeShipping?: boolean;
     freeShippingThreshold?: number;
     tag?: string;
+    status?: string;
     averageRating?: number;
     positiveRate?: number;
     reviewCount?: number;
@@ -569,6 +573,7 @@ export interface ProductPublic {
 export interface ProductPublicPage {
     items: ProductPublic[];
     total: number;
+    totalElements?: number;
     page: number;
     size: number;
     totalPages: number;
@@ -609,6 +614,18 @@ export interface ProductDetailBlock {
     url?: string;
     caption?: string;
 }
+
+export type ProductMutationPayload = Omit<
+    Partial<Product>,
+    'images' | 'specifications' | 'detailContent' | 'variants' | 'limitedTimeStartAt' | 'limitedTimeEndAt'
+> & {
+    images?: Product['images'] | null;
+    specifications?: Product['specifications'] | null;
+    detailContent?: Product['detailContent'] | null;
+    variants?: Product['variants'] | null;
+    limitedTimeStartAt?: Product['limitedTimeStartAt'] | null;
+    limitedTimeEndAt?: Product['limitedTimeEndAt'] | null;
+};
 
 export interface ProductImportRowError {
     rowNumber: number;
@@ -724,6 +741,8 @@ export interface CartItem {
     price: number;
     stock?: number;
     productStatus?: string;
+    freeShipping?: boolean;
+    freeShippingThreshold?: number;
     selectedSpecs?: string;
 }
 
@@ -875,6 +894,7 @@ export interface CouponPublic {
     couponType: 'FULL_REDUCTION' | 'DISCOUNT';
     thresholdAmount?: number;
     reductionAmount?: number;
+    /** For DISCOUNT coupons this stores the payable percent: 90 means pay 90%, i.e. 10% off. */
     discountPercent?: number;
     maxDiscountAmount?: number;
     remainingQuantity?: number | null;
@@ -926,6 +946,7 @@ export interface PetBirthdayCouponConfig {
     couponType: 'FULL_REDUCTION' | 'DISCOUNT';
     thresholdAmount?: number;
     reductionAmount?: number;
+    /** For DISCOUNT coupons this stores the payable percent: 90 means pay 90%, i.e. 10% off. */
     discountPercent?: number;
     maxDiscountAmount?: number;
     validDays: number;
@@ -946,6 +967,7 @@ export interface UserCoupon {
     couponType: 'FULL_REDUCTION' | 'DISCOUNT';
     thresholdAmount?: number;
     reductionAmount?: number;
+    /** For DISCOUNT coupons this stores the payable percent: 90 means pay 90%, i.e. 10% off. */
     discountPercent?: number;
     maxDiscountAmount?: number;
     startAt?: string;
@@ -989,6 +1011,9 @@ export interface UserAddress {
     id: number;
     recipientName: string;
     phone: string;
+    region?: string[];
+    postalCode?: string;
+    detailAddress?: string;
     address: string;
     isDefault: boolean;
     createdAt?: string;
@@ -1070,6 +1095,7 @@ export interface Review {
     productImageUrl?: string;
     rating: number;
     comment: string;
+    imageUrls?: string[];
     status?: string;
     username: string;
     createdAt: string;
@@ -1085,6 +1111,7 @@ export interface PublicReview {
     productId: number;
     rating: number;
     comment: string;
+    imageUrls?: string[];
     username: string;
     createdAt: string;
     adminReply?: string;
@@ -1169,8 +1196,6 @@ export interface PaymentChannel {
 }
 
 export interface AppConfig {
-    runtimeMode: 'production' | 'debug' | 'dev' | 'test' | string;
-    paymentSimulationEnabled: boolean;
     emailCodeEnabled?: boolean;
     defaultShippingFee?: number;
     freeShippingThreshold?: number;
@@ -1229,6 +1254,11 @@ export interface SupportSessionCustomer {
     createdAt?: string;
     updatedAt?: string;
     unreadByUser?: number;
+}
+
+export interface SupportWebSocketTicket {
+    ticket: string;
+    expiresInMillis: number;
 }
 
 export interface SupportSession extends SupportSessionCustomer {

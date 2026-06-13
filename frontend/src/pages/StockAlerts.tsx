@@ -43,6 +43,7 @@ const StockAlerts: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    let disposed = false;
     const loadProducts = async () => {
       if (alerts.length === 0) {
         setProducts({});
@@ -52,6 +53,7 @@ const StockAlerts: React.FC = () => {
         setLoading(true);
         const productIds = Array.from(new Set(alerts.map((alert) => alert.productId)));
         const response = await productApi.getByIds(productIds);
+        if (disposed) return;
         const nextProducts = response.data.reduce<Record<number, Product>>((acc, item) => {
           const product = localizeProduct(item, language);
           acc[product.id] = product;
@@ -59,12 +61,16 @@ const StockAlerts: React.FC = () => {
         }, {});
         setProducts(nextProducts);
       } catch (error: unknown) {
+        if (disposed) return;
         message.error(getApiErrorMessage(error, t('pages.stockAlerts.loadFailed'), language));
       } finally {
-        setLoading(false);
+        if (!disposed) setLoading(false);
       }
     };
     loadProducts();
+    return () => {
+      disposed = true;
+    };
   }, [alerts, language, t]);
 
   const removeAlert = (productId: number) => {
@@ -187,7 +193,7 @@ const StockAlerts: React.FC = () => {
   const clearStockAlertsActionLabel = `${t('pages.stockAlerts.clear')}: ${alerts.length}`;
 
   return (
-    <div className={`stock-alerts stock-alerts--${language}`}>
+    <div className={`stock-alerts stock-alerts-page stock-alerts--${language}`}>
       <Card>
         <div className="stock-alerts__header">
           <div>
@@ -395,7 +401,7 @@ const StockAlerts: React.FC = () => {
                 >
                   <List.Item.Meta
                     avatar={
-                      <Link to={`/products/${item.productId}`} aria-label={productLinkLabel} title={productLinkLabel}>
+                      <Link className="stock-alerts__imageLink" to={`/products/${item.productId}`} aria-label={productLinkLabel} title={productLinkLabel}>
                         <Image
                           src={resolveStockAlertImage(product?.imageUrl || item.imageUrl)}
                           alt={productName}
@@ -407,7 +413,7 @@ const StockAlerts: React.FC = () => {
                         />
                       </Link>
                     }
-                    title={<Link to={`/products/${item.productId}`} aria-label={productLinkLabel} title={productLinkLabel}>{productName}</Link>}
+                    title={<Link className="stock-alerts__productLink" to={`/products/${item.productId}`} aria-label={productLinkLabel} title={productLinkLabel}>{productName}</Link>}
                     description={
                       <div className="stock-alerts__itemDetails">
                         <Text type="secondary" className="stock-alerts__watchTime">

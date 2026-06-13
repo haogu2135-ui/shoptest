@@ -15,7 +15,7 @@
     </resultMap>
 
     <select id="findByUserId" resultMap="petProfileMap">
-        SELECT * FROM pet_profiles WHERE user_id = #{userId} ORDER BY created_at DESC, id DESC
+        SELECT * FROM pet_profiles WHERE user_id = #{userId} ORDER BY created_at DESC, id DESC LIMIT #{limit}
     </select>
 
     <select id="countByUserId" resultType="int">

@@ -126,10 +126,10 @@ export const createSvgPlaceholder = ({
 };
 
 export const imageFallbacks = {
-  product: createSvgPlaceholder({ label: '', width: 900, height: 900, background: '#fff7ed', foreground: '#c2410c' }),
-  brand: createSvgPlaceholder({ label: '', width: 160, height: 160, background: '#eef2ff', foreground: '#3730a3' }),
-  category: createSvgPlaceholder({ label: '', width: 160, height: 160, background: '#ecfdf5', foreground: '#047857' }),
-  media: createSvgPlaceholder({ label: '', width: 320, height: 240, background: '#f8fafc', foreground: '#475569' }),
+  product: '/assets/placeholders/product.svg',
+  brand: '/assets/placeholders/brand.svg',
+  category: '/assets/placeholders/category.svg',
+  media: '/assets/placeholders/media.svg',
 };
 
 const generatedFallbackImageUrls = new Set(Object.values(imageFallbacks));
@@ -150,13 +150,14 @@ export const normalizePersistentImageUrl = (assetUrl?: string | null) => {
         && !isUnsafeImageHost(url.hostname)
         ? url.toString()
         : '';
-    } catch {
+    } catch (_error) {
       return '';
     }
   }
   if (/^[a-z][a-z\d+.-]*:/i.test(value) || value.startsWith('//')) return '';
-  if (value.startsWith('/uploads/')) return value;
+  if (value.startsWith('/uploads/') || value.startsWith('/assets/placeholders/')) return value;
   if (value.startsWith('uploads/')) return `/${value}`;
+  if (value.startsWith('assets/placeholders/')) return `/${value}`;
   return '';
 };
 
@@ -187,7 +188,7 @@ export const buildResponsiveImageSrcSet = (
         return `${nextUrl.toString()} ${width}w`;
       })
       .join(', ');
-  } catch {
+  } catch (_error) {
     return undefined;
   }
 };
@@ -211,7 +212,7 @@ export const getOptimizedImageUrl = (
     url.searchParams.set('w', String(safeWidth));
     url.searchParams.set('q', safeWidth >= 960 ? '80' : '76');
     return url.toString();
-  } catch {
+  } catch (_error) {
     return safeValue;
   }
 };

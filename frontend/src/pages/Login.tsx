@@ -1,17 +1,18 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Form, Input, Button, Typography, message, Tabs } from 'antd';
 import type { InputRef } from 'antd/es/input';
-import { CompassOutlined, CustomerServiceOutlined, LockOutlined, MailOutlined, MobileOutlined, SafetyCertificateOutlined, ShoppingCartOutlined, TruckOutlined, UserOutlined } from '@ant-design/icons';
+import { CompassOutlined, CustomerServiceOutlined, EyeInvisibleOutlined, EyeOutlined, LockOutlined, MailOutlined, MobileOutlined, SafetyCertificateOutlined, ShoppingCartOutlined, TruckOutlined, UserOutlined } from '@ant-design/icons';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { cartApi, persistAuthSession, userApi } from '../api';
+import { cartApi, clearStoredAuthCredentials, persistAuthSession, userApi } from '../api';
 import { useAppConfig } from '../hooks/useAppConfig';
 import { useLanguage } from '../i18n';
 import type { Language } from '../i18n';
 import { getPostLoginRedirectTarget } from '../utils/authRedirect';
 import { getGuestCartItems, replaceGuestCartItems } from '../utils/guestCart';
-import { getLocalStorageItem, getSessionStorageItem, removeSessionStorageItem } from '../utils/safeStorage';
+import { getSessionStorageItem, hasStoredValue, removeSessionStorageItem } from '../utils/safeStorage';
 import { getApiErrorMessage } from '../utils/apiError';
 import { dispatchDomEvent } from '../utils/domEvents';
+import { reportNonBlockingError } from '../utils/nonBlockingError';
 import './Login.css';
 
 const { Text, Title } = Typography;
@@ -73,8 +74,8 @@ const readLoginCandidates = (primary: string) => {
       }
       storedCandidates.forEach((value) => candidates.push(value));
     }
-  } catch {
-    // Ignore malformed session data; the primary login remains authoritative.
+  } catch (error) {
+    reportNonBlockingError('Login.readLoginCandidates', error);
   }
   return Array.from(new Set(candidates.filter(Boolean)));
 };
@@ -92,8 +93,6 @@ const asApiError = (error: unknown): ApiErrorLike => (
 const apiErrorData = (error: unknown): ApiErrorPayload => asApiError(error).response?.data || {};
 
 const apiErrorCode = (error: unknown) => String(apiErrorData(error).code || '').toUpperCase();
-
-const isFormValidationError = (error: unknown) => Boolean(asApiError(error).errorFields);
 
 const resolvePasswordLoginError = (error: unknown, fallback: string, t: TranslationFunction, language: Language) => {
   const apiError = asApiError(error);
@@ -134,6 +133,8 @@ const Login: React.FC = () => {
   const [emailForm] = Form.useForm();
   const watchedEmailCode = Form.useWatch('code', emailForm);
   const codeInputRef = useRef<InputRef | null>(null);
+  const passwordSubmittingRef = useRef(false);
+  const emailSubmittingRef = useRef(false);
   const navigate = useNavigate();
   const location = useLocation();
   const { t, language } = useLanguage();
@@ -151,6 +152,7 @@ const Login: React.FC = () => {
   const emailLoginActionLabel = `${t('pages.auth.emailLogin')}: ${loginPageLabel}`;
   const passwordLoginUsernameInputLabel = `${passwordLoginActionLabel}: ${t('pages.auth.username')}`;
   const passwordLoginPasswordInputLabel = `${passwordLoginActionLabel}: ${t('pages.auth.password')}`;
+  const passwordVisibilityActionLabel = (visible: boolean) => `${passwordLoginPasswordInputLabel}: ${visible ? t('pages.auth.hidePassword') : t('pages.auth.showPassword')}`;
   const emailLoginEmailInputLabel = `${emailLoginActionLabel}: ${t('pages.auth.email')}`;
   const emailLoginCodeInputLabel = `${emailLoginActionLabel}: ${t('pages.auth.verificationCode')}`;
   const sendEmailCodeActionLabel = codeSending
@@ -159,8 +161,8 @@ const Login: React.FC = () => {
     ? `${emailLoginActionLabel}: ${t('pages.auth.resendIn', { seconds: sendCodeCountdown })}`
     : `${emailLoginActionLabel}: ${t('pages.auth.sendCode')}`;
 
-  useEffect(() => {
-    if (getLocalStorageItem('token')) {
+  useLayoutEffect(() => {
+    if (hasStoredValue('token')) {
       navigate(postLoginRedirectTarget, { replace: true });
     }
   }, [navigate, postLoginRedirectTarget]);
@@ -174,7 +176,7 @@ const Login: React.FC = () => {
   }, [passwordForm]);
 
   useEffect(() => {
-    if (sendCodeCountdown <= 0) return undefined;
+    if (sendCodeCountdown <= 0) return;
     const timer = window.setInterval(() => {
       setSendCodeCountdown((value) => Math.max(value - 1, 0));
     }, 1000);
@@ -182,7 +184,7 @@ const Login: React.FC = () => {
   }, [sendCodeCountdown]);
 
   useEffect(() => {
-    if (verifyRetryCountdown <= 0) return undefined;
+    if (verifyRetryCountdown <= 0) return;
     const timer = window.setInterval(() => {
       setVerifyRetryCountdown((value) => Math.max(value - 1, 0));
     }, 1000);
@@ -212,7 +214,8 @@ const Login: React.FC = () => {
       try {
         await cartApi.addItem(userId, item.productId, item.quantity, item.selectedSpecs);
         mergedCount += item.quantity;
-      } catch {
+      } catch (error) {
+        reportNonBlockingError('Login.mergeGuestCartItem', error);
         failedItems.push(item);
       }
     }
@@ -239,6 +242,9 @@ const Login: React.FC = () => {
   };
 
   const onFinish = async (values: PasswordLoginValues) => {
+    if (passwordSubmittingRef.current) return;
+    passwordSubmittingRef.current = true;
+    clearStoredAuthCredentials();
     const normalizedLogin = normalizePasswordLogin(values.username);
     passwordForm.setFieldValue('username', normalizedLogin);
     setLoading(true);
@@ -252,7 +258,7 @@ const Login: React.FC = () => {
       let response: LoginApiResponse | null = null;
       for (const candidate of loginCandidates) {
         try {
-          response = await userApi.login(candidate, String(values.password || ''));
+          response = await userApi.login(candidate, String(values.password || '')) as LoginApiResponse;
           if (candidate !== normalizedLogin) {
             passwordForm.setFieldValue('username', candidate);
           }
@@ -277,11 +283,13 @@ const Login: React.FC = () => {
       ]);
       message.error(loginError);
     } finally {
+      passwordSubmittingRef.current = false;
       setLoading(false);
     }
   };
 
   const sendEmailCode = async () => {
+    clearStoredAuthCredentials();
     if (!emailCodeEnabled) {
       message.warning(t('pages.auth.emailCodeUnavailable'));
       return;
@@ -303,7 +311,7 @@ const Login: React.FC = () => {
       window.setTimeout(() => codeInputRef.current?.focus?.(), 0);
       message.success(t('pages.auth.emailCodeSentTo', { email: maskEmail(normalizedEmail) }));
     } catch (error: unknown) {
-      if (!isFormValidationError(error)) {
+      if (!asApiError(error).errorFields) {
         const errorCode = apiErrorCode(error);
         if (errorCode === 'RATE_LIMITED') {
           setSendCodeCountdown(getRetryAfterSeconds(error, 60));
@@ -318,16 +326,19 @@ const Login: React.FC = () => {
   };
 
   const onEmailLogin = async (values: EmailLoginValues) => {
+    if (emailSubmittingRef.current) return;
+    clearStoredAuthCredentials();
     const normalizedCode = normalizeEmailCode(values.code);
     if (normalizedCode.length !== 6) {
       emailForm.setFields([{ name: 'code', errors: [t('pages.auth.emailCodeLength')] }]);
       return;
     }
+    emailSubmittingRef.current = true;
     setLoading(true);
     try {
       const normalizedEmail = normalizeEmail(values.email);
       emailForm.setFieldsValue({ email: normalizedEmail, code: normalizedCode });
-      const response = await userApi.emailLogin(normalizedEmail, normalizedCode);
+      const response = await userApi.emailLogin(normalizedEmail, normalizedCode) as LoginApiResponse;
       await completeLogin(response.data);
     } catch (error: unknown) {
       const errorCode = apiErrorCode(error);
@@ -345,6 +356,7 @@ const Login: React.FC = () => {
         message.error(getApiErrorMessage(error, t('pages.auth.emailLoginFailed'), language));
       }
     } finally {
+      emailSubmittingRef.current = false;
       setLoading(false);
     }
   };
@@ -380,11 +392,11 @@ const Login: React.FC = () => {
               <span>{t('pages.auth.loginTrustCart')}</span>
             </div>
             <div className="shopee-login-panel__spotlightCard">
-              <strong>24/7</strong>
+              <strong>{t('pages.auth.loginStatTrackingValue')}</strong>
               <span>{t('nav.trackOrder')}</span>
             </div>
             <div className="shopee-login-panel__spotlightCard">
-              <strong>SSL</strong>
+              <strong>{t('pages.auth.loginStatSecureValue')}</strong>
               <span>{t('pages.auth.loginTrustSecure')}</span>
             </div>
           </div>
@@ -424,7 +436,7 @@ const Login: React.FC = () => {
           </div>
           <div className="shopee-login-card__header">
             <div className="shopee-login-brand">
-              <div className="shopee-login-mark">ShopMX</div>
+              <div className="shopee-login-mark">{t('common.brand')}</div>
               <div className="shopee-login-subtitle">{t('pages.auth.loginTitle')}</div>
             </div>
             <Text className="shopee-login-card__intro">
@@ -439,11 +451,11 @@ const Login: React.FC = () => {
               <span>{t('pages.auth.loginTrustCart')}</span>
             </div>
             <div className="shopee-login-card__stat">
-              <strong>24/7</strong>
+              <strong>{t('pages.auth.loginStatTrackingValue')}</strong>
               <span>{t('pages.auth.loginTrustTracking')}</span>
             </div>
             <div className="shopee-login-card__stat">
-              <strong>SSL</strong>
+              <strong>{t('pages.auth.loginStatSecureValue')}</strong>
               <span>{t('pages.auth.loginTrustSecure')}</span>
             </div>
           </div>
@@ -473,7 +485,7 @@ const Login: React.FC = () => {
                 label: t('pages.auth.passwordLogin'),
                 children: (
                   <Form form={passwordForm} name="login" onFinish={onFinish} layout="vertical" className="shopee-login-form">
-                    <Form.Item name="username" rules={[
+                    <Form.Item name="username" label={t('pages.auth.username')} rules={[
                       { required: true, message: t('pages.auth.usernameRequired') },
                       { min: 3, message: t('pages.auth.usernameMinLength') },
                     ]}>
@@ -487,7 +499,7 @@ const Login: React.FC = () => {
                         onBlur={(event) => passwordForm.setFieldValue('username', normalizePasswordLogin(event.target.value))}
                       />
                     </Form.Item>
-                    <Form.Item name="password" rules={[
+                    <Form.Item name="password" label={t('pages.auth.password')} rules={[
                       { required: true, message: t('pages.auth.passwordRequired') },
                       { min: 8, message: t('pages.auth.passwordMinLength') },
                     ]}>
@@ -498,10 +510,21 @@ const Login: React.FC = () => {
                         autoComplete="current-password"
                         aria-label={passwordLoginPasswordInputLabel}
                         title={passwordLoginPasswordInputLabel}
+                        iconRender={(visible) => (
+                          <button
+                            type="button"
+                            aria-label={passwordVisibilityActionLabel(visible)}
+                            aria-pressed={visible}
+                            title={passwordVisibilityActionLabel(visible)}
+                            style={{ border: 0, padding: 0, background: 'transparent', color: 'inherit', lineHeight: 0, cursor: 'pointer' }}
+                          >
+                            {visible ? <EyeOutlined /> : <EyeInvisibleOutlined />}
+                          </button>
+                        )}
                       />
                     </Form.Item>
                     <Form.Item>
-                      <Button type="primary" htmlType="submit" block size="large" loading={loading} aria-label={passwordLoginActionLabel} title={passwordLoginActionLabel}>
+                      <Button type="primary" htmlType="submit" block size="large" loading={loading} disabled={loading} aria-label={passwordLoginActionLabel} title={passwordLoginActionLabel}>
                         {t('pages.auth.login')}
                       </Button>
                     </Form.Item>
@@ -551,6 +574,7 @@ const Login: React.FC = () => {
                     )}
                     <Form.Item
                       name="email"
+                      label={t('pages.auth.email')}
                       className="shopee-login-form__field"
                       rules={[
                         { required: true, message: t('pages.auth.emailRequired') },
@@ -570,6 +594,7 @@ const Login: React.FC = () => {
                     </Form.Item>
                     <Form.Item
                       name="code"
+                      label={t('pages.auth.verificationCode')}
                       className="shopee-login-form__field shopee-login-form__field--code"
                       rules={[
                         { required: true, message: t('pages.auth.emailCodeRequired') },
@@ -582,7 +607,7 @@ const Login: React.FC = () => {
                         prefix={<SafetyCertificateOutlined />}
                         placeholder={t('pages.auth.verificationCode')}
                         size="large"
-                        maxLength={12}
+                        maxLength={6}
                         autoComplete="one-time-code"
                         inputMode="numeric"
                         pattern="[0-9]*"

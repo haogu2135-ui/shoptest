@@ -1,4 +1,5 @@
 import { CURRENT_MOBILE_RELEASE } from '../generated/mobileRelease';
+import { reportNonBlockingError } from './nonBlockingError';
 import { resolveApiBaseUrl } from './runtimeConfig';
 
 declare global {
@@ -49,6 +50,7 @@ const EXPECTED_MOBILE_PLATFORM = 'android';
 const MOBILE_VERSION_FETCH_TIMEOUT_MS = 7000;
 const ANDROID_DEBUG_CERT_SHA256 = 'A59C1DF808784AF870705AC1FB13B0A12E5099AB3D140A26052A885AD66687F1';
 const LOCAL_HTTP_HOSTNAMES = new Set(['localhost', '127.0.0.1', '::1', '[::1]']);
+const SHOPTEST_ANDROID_USER_AGENT_TOKEN = 'ShopTestAndroidApp';
 
 const isBrowser = () => typeof window !== 'undefined';
 
@@ -96,7 +98,7 @@ const parseSafeMobileHttpUrl = (value: unknown, base?: string) => {
     if (parsed.protocol === 'https:') return parsed;
     if (parsed.protocol === 'http:' && isLocalHttpHostname(parsed.hostname)) return parsed;
     return null;
-  } catch {
+  } catch (_error) {
     return null;
   }
 };
@@ -177,6 +179,7 @@ export const currentNativeMobilePlatform = () => {
   if (!isBrowser()) return '';
   const platform = cleanString(window.Capacitor?.getPlatform?.()).toLowerCase();
   if (platform === 'android' || platform === 'ios') return platform;
+  if (cleanString(window.navigator?.userAgent).includes(SHOPTEST_ANDROID_USER_AGENT_TOKEN)) return EXPECTED_MOBILE_PLATFORM;
   if (window.location.protocol === 'capacitor:') return EXPECTED_MOBILE_PLATFORM;
   return '';
 };
@@ -311,7 +314,8 @@ export const fetchLatestMobileRelease = async () => {
     });
     if (!response.ok) return null;
     return normalizeReleaseManifest(await response.json(), manifestUrl);
-  } catch {
+  } catch (error) {
+    reportNonBlockingError('mobileUpdate.fetchLatestMobileRelease', error);
     return null;
   } finally {
     if (timeoutId !== null) {
@@ -325,13 +329,14 @@ const openMobileReleaseDownloadFallback = (url: string) => {
   try {
     const opened = window.open(url, '_system', 'noopener,noreferrer');
     if (opened) return true;
-  } catch {
-    // Continue to the same-window fallback if the external handoff fails.
+  } catch (error) {
+    reportNonBlockingError('mobileUpdate.openExternalDownload', error);
   }
   try {
     window.location.assign(url);
     return true;
-  } catch {
+  } catch (error) {
+    reportNonBlockingError('mobileUpdate.assignDownloadLocation', error);
     return false;
   }
 };
@@ -344,7 +349,8 @@ export const openMobileReleaseDownload = async (release: MobileReleaseManifest) 
     try {
       await browserPlugin.open({ url });
       return true;
-    } catch {
+    } catch (error) {
+      reportNonBlockingError('mobileUpdate.openNativeBrowser', error);
       return openMobileReleaseDownloadFallback(url);
     }
   }

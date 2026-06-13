@@ -75,6 +75,10 @@ public class Coupon implements Serializable {
     @Min(0)
     private Integer claimedQuantity = 0;
 
+    @Column(name = "used_count")
+    @Min(0)
+    private Integer usedCount = 0;
+
     @Column(name = "start_at")
     private LocalDateTime startAt;
 

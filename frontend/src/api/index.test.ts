@@ -49,10 +49,20 @@ const restoreLocalStorage = () => {
 const clearLocalStorage = () => {
   try {
     window.localStorage.clear();
-  } catch {
-    // Some tests intentionally replace storage with throwing mocks.
+  } catch (error) {
+    void error;
   }
 };
+
+const base64UrlEncode = (value: string) => window.btoa(value).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+
+const createJwt = (expiresAtSeconds: number) => [
+  base64UrlEncode(JSON.stringify({ alg: 'none', typ: 'JWT' })),
+  base64UrlEncode(JSON.stringify({ exp: expiresAtSeconds })),
+  'signature',
+].join('.');
+
+const readApiSource = (fileName = 'index.ts') => require('fs').readFileSync(require('path').join(__dirname, fileName), 'utf8') as string;
 
 jest.mock('axios', () => ({
   __esModule: true,
@@ -115,13 +125,16 @@ describe('api parameter normalization', () => {
     restoreLocalStorage();
   });
 
-  it('trims websocket tokens and rejects empty tokens', () => {
-    const { supportWebSocketProtocols, supportWebSocketUrl } = require('./index');
+  it('builds support websocket URLs and ticket subprotocols', () => {
+    const { supportApi, supportWebSocketProtocols, supportWebSocketUrl } = require('./index');
 
-    expect(supportWebSocketUrl('  token  ')).toBe('wss://api.example.com/ws/support');
-    expect(supportWebSocketProtocols('  token  ')).toEqual(['support.v1', 'auth.dG9rZW4']);
-    expect(() => supportWebSocketUrl('   ')).toThrow('Support websocket token is required');
-    expect(() => supportWebSocketProtocols('   ')).toThrow('Support websocket token is required');
+    expect(supportWebSocketUrl()).toBe('wss://api.example.com/ws/support');
+    expect(supportWebSocketProtocols('  ws-ticket-1  ')).toEqual(['support.v1', 'ticket.ws-ticket-1']);
+    expect(() => supportWebSocketProtocols('   ')).toThrow('Support websocket ticket is required');
+    supportApi.createWebSocketTicket();
+    expect(mockPost.mock.calls[0][0]).toBe('/support/websocket-ticket');
+    expect(readApiSource()).toContain('ticket.${normalizedTicket}');
+    expect(readApiSource()).not.toContain('auth.${encodedToken}');
   });
 
   it('keeps support websocket on the same-origin ws proxy when API uses the /api proxy', () => {
@@ -131,7 +144,7 @@ describe('api parameter normalization', () => {
 
     const { supportWebSocketUrl } = require('./index');
 
-    expect(supportWebSocketUrl('token')).toBe('ws://localhost/ws/support');
+    expect(supportWebSocketUrl()).toBe('ws://localhost/ws/support');
   });
 
   it('uses explicit runtime support websocket endpoint when provided', () => {
@@ -143,7 +156,7 @@ describe('api parameter normalization', () => {
 
     const { supportWebSocketUrl } = require('./index');
 
-    expect(supportWebSocketUrl(' token ')).toBe('wss://support.example.com/ws/support');
+    expect(supportWebSocketUrl()).toBe('wss://support.example.com/ws/support');
   });
 
   it('normalizes email login payloads before sending', async () => {
@@ -191,6 +204,65 @@ describe('api parameter normalization', () => {
     ]);
   });
 
+  it('rejects overlong password payloads before sending auth requests', () => {
+    const { userApi } = require('./index');
+    const overlongPassword = 'A'.repeat(129);
+
+    expect(() => userApi.register({ username: 'mia', email: 'mia@example.com', password: overlongPassword })).toThrow('Password is too long');
+    expect(() => userApi.login('mia', overlongPassword)).toThrow('Password is too long');
+    expect(() => userApi.forgotPassword({
+      login: 'mia',
+      email: 'mia@example.com',
+      code: '123456',
+      newPassword: overlongPassword,
+    })).toThrow('New password is too long');
+    expect(() => userApi.updatePassword(overlongPassword, 'StrongPass123')).toThrow('Current password is too long');
+    expect(() => userApi.updatePassword('Oldpass123', overlongPassword)).toThrow('New password is too long');
+
+    expect(mockPost).not.toHaveBeenCalled();
+    expect(mockPut).not.toHaveBeenCalled();
+  });
+
+  it('keeps module-level API caches bounded and TTL-based', () => {
+    const source = readApiSource();
+    const cacheSource = readApiSource('cache.ts');
+
+    expect(cacheSource).toContain('export const MAX_API_CACHE_ENTRIES = 80;');
+    expect(cacheSource).toContain('export const MAX_API_REQUEST_ENTRIES = 80;');
+    expect(cacheSource).toContain('export const setTimedCacheEntry');
+    expect(cacheSource).toContain('entry.expiresAt <= now');
+    expect(cacheSource).toContain('trimMapToSize(map, MAX_API_CACHE_ENTRIES)');
+    expect(cacheSource).toContain('export const setBoundedMapEntry');
+    expect(cacheSource).toContain('trimMapToSize(map, maxEntries)');
+    expect(cacheSource).toContain('.finally(() => requests.delete(cacheKey))');
+    expect(source).toContain('PRODUCT_DETAIL_CACHE_MS = 30_000');
+    expect(source).toContain('PERSONALIZED_RECOMMENDATION_CACHE_MS = 45_000');
+    expect(source).toContain('ADMIN_ORDER_CACHE_MS = 15_000');
+    expect(source).toContain('setTimedCacheEntry(productDetailCache');
+    expect(source).toContain('setTimedCacheEntry(personalizedRecommendationCache');
+    expect(source).toContain('cachedGet(\n            adminOrderCache,\n            adminOrderRequests,');
+    expect(source).toContain('cachedTypedGet(productDetailCache, productDetailRequests');
+    expect(source).toContain('setBoundedMapEntry(orderTrackRequests');
+  });
+
+  it('keeps product API normalization free of broad any casts', () => {
+    const source = readApiSource();
+    const typesSource = readApiSource('../types.ts');
+    const adminProductPageSource = typesSource.slice(
+      typesSource.indexOf('export interface AdminProductPage'),
+      typesSource.indexOf('export interface ProductPublic'),
+    );
+    const publicProductPageSource = typesSource.slice(
+      typesSource.indexOf('export interface ProductPublicPage'),
+      typesSource.indexOf('export interface ProductBundleConfig'),
+    );
+
+    expect(source).toContain('const isRecord = (value: unknown): value is Record<string, unknown>');
+    expect(source).not.toMatch(/\bany\b/);
+    expect(adminProductPageSource).toContain('totalElements?: number;');
+    expect(publicProductPageSource).toContain('totalElements?: number;');
+  });
+
   it('refreshes the auth session and retries the original request after a 401', async () => {
     jest.resetModules();
     window.localStorage.setItem('refreshToken', 'refresh-old');
@@ -200,6 +272,8 @@ describe('api parameter normalization', () => {
         refreshToken: 'refresh-new',
         id: 7,
         username: 'mia',
+        email: '  Mia@Example.COM  ',
+        phone: ' (555) 0100 ',
         role: 'ADMIN',
         roleCode: 'SUPER_ADMIN',
       },
@@ -232,16 +306,73 @@ describe('api parameter normalization', () => {
     expect(window.localStorage.getItem('refreshToken')).toBe('refresh-new');
     expect(window.localStorage.getItem('userId')).toBe('7');
     expect(window.localStorage.getItem('username')).toBe('mia');
+    expect(window.localStorage.getItem('email')).toBe('mia@example.com');
+    expect(window.localStorage.getItem('phone')).toBe('5550100');
     expect(window.localStorage.getItem('role')).toBe('SUPER_ADMIN');
   });
 
-  it('clears auth storage when a 401 cannot be refreshed', async () => {
+  it('retries token refresh once after a transient network failure', async () => {
+    const immediateTimer = window.setTimeout(() => undefined, 0);
+    window.clearTimeout(immediateTimer);
+    const setTimeoutSpy = jest.spyOn(window, 'setTimeout').mockImplementation(((handler: TimerHandler, _timeout?: number, ...args: any[]) => {
+      if (typeof handler === 'function') {
+        handler(...args);
+      }
+      return immediateTimer;
+    }) as any);
+    try {
+      jest.resetModules();
+      window.localStorage.setItem('refreshToken', 'refresh-old');
+      mockPost
+        .mockRejectedValueOnce({ code: 'ERR_NETWORK', message: 'Network Error' })
+        .mockResolvedValueOnce({
+          data: {
+            token: 'access-after-retry',
+            refreshToken: 'refresh-after-retry',
+            id: 7,
+            username: 'mia',
+            role: 'USER',
+          },
+        });
+      mockRequest.mockResolvedValueOnce({ data: { ok: true } });
+
+      require('./index');
+
+      const originalRequest = { url: '/users/profile', headers: {} };
+      const responsePromise = mockResponseInterceptorRejected!({
+        response: { status: 401 },
+        config: originalRequest,
+      });
+
+      await Promise.resolve();
+      expect(mockPost).toHaveBeenCalledTimes(1);
+      await Promise.resolve();
+      await Promise.resolve();
+
+      await expect(responsePromise).resolves.toEqual({ data: { ok: true } });
+      expect(mockPost).toHaveBeenCalledTimes(2);
+      expect(mockPost.mock.calls.map((call) => call[0])).toEqual(['/auth/refresh', '/auth/refresh']);
+      expect(mockRequest).toHaveBeenCalledWith(expect.objectContaining({
+        url: '/users/profile',
+        headers: expect.objectContaining({
+          Authorization: 'Bearer access-after-retry',
+        }),
+      }));
+      expect(window.localStorage.getItem('token')).toBe('access-after-retry');
+      expect(window.localStorage.getItem('refreshToken')).toBe('refresh-after-retry');
+    } finally {
+      setTimeoutSpy.mockRestore();
+    }
+  });
+
+  it('does not retry token refresh when the refresh token is rejected', async () => {
     jest.resetModules();
     window.history.pushState({}, '', '/login');
     window.localStorage.setItem('token', 'access-old');
     window.localStorage.setItem('refreshToken', 'refresh-old');
-    window.localStorage.setItem('userId', '7');
-    mockPost.mockRejectedValueOnce(new Error('refresh expired'));
+    mockPost.mockRejectedValueOnce({
+      response: { status: 401, data: { message: 'refresh expired' } },
+    });
 
     require('./index');
 
@@ -252,15 +383,262 @@ describe('api parameter normalization', () => {
 
     await expect(mockResponseInterceptorRejected!(error)).rejects.toBe(error);
 
-    expect(mockPost).toHaveBeenCalledWith(
-      '/auth/refresh',
-      { refreshToken: 'refresh-old' },
-      expect.objectContaining({ skipAuthRefresh: true }),
-    );
+    expect(mockPost).toHaveBeenCalledTimes(1);
     expect(mockRequest).not.toHaveBeenCalled();
     expect(window.localStorage.getItem('token')).toBeNull();
     expect(window.localStorage.getItem('refreshToken')).toBeNull();
-    expect(window.localStorage.getItem('userId')).toBeNull();
+  });
+
+  it('refreshes an expiring JWT before attaching the authorization header', async () => {
+    jest.resetModules();
+    window.localStorage.setItem('token', createJwt(Math.floor(Date.now() / 1000) + 5));
+    window.localStorage.setItem('refreshToken', 'refresh-before-request');
+    mockPost.mockResolvedValueOnce({
+      data: {
+        token: 'access-refreshed',
+        refreshToken: 'refresh-refreshed',
+        id: 8,
+        username: 'sol',
+        role: 'USER',
+      },
+    });
+
+    require('./index');
+
+    const config = await mockRequestInterceptorFulfilled!({ url: '/cart', headers: {} });
+
+    expect(mockPost).toHaveBeenCalledWith(
+      '/auth/refresh',
+      { refreshToken: 'refresh-before-request' },
+      expect.objectContaining({ skipAuthRefresh: true, skipAuthHeader: true }),
+    );
+    expect(config.headers).toEqual(expect.objectContaining({
+      Authorization: 'Bearer access-refreshed',
+    }));
+    expect(window.localStorage.getItem('token')).toBe('access-refreshed');
+    expect(window.localStorage.getItem('refreshToken')).toBe('refresh-refreshed');
+  });
+
+  it('does not attach an expired JWT when refresh fails before a request', async () => {
+    jest.resetModules();
+    window.localStorage.setItem('token', createJwt(Math.floor(Date.now() / 1000) - 60));
+    window.localStorage.setItem('refreshToken', 'refresh-before-request');
+    mockPost.mockRejectedValueOnce(new Error('refresh unavailable'));
+
+    require('./index');
+
+    const config = await mockRequestInterceptorFulfilled!({ url: '/cart', headers: {} });
+
+    expect(mockPost).toHaveBeenCalledWith(
+      '/auth/refresh',
+      { refreshToken: 'refresh-before-request' },
+      expect.objectContaining({ skipAuthRefresh: true, skipAuthHeader: true }),
+    );
+    expect(config.headers?.Authorization).toBeUndefined();
+  });
+
+  it('clears auth storage when a 401 cannot be refreshed', async () => {
+    jest.resetModules();
+    window.history.pushState({}, '', '/profile?tab=orders#latest');
+    window.localStorage.setItem('token', 'access-old');
+    window.localStorage.setItem('refreshToken', 'refresh-old');
+    window.localStorage.setItem('userId', '7');
+    window.localStorage.setItem('email', 'buyer@example.com');
+    window.localStorage.setItem('phone', '5550100');
+    window.localStorage.setItem('shop-product-view-preferences', JSON.stringify({
+      categories: { food: 2 },
+      brands: { Acme: 1 },
+      tags: { puppy: 1 },
+      recent: [5],
+      recentEntries: [{ productId: 5, viewedAt: 1 }],
+    }));
+    window.localStorage.setItem('shop-product-compare', JSON.stringify([5]));
+    window.localStorage.setItem('shop-stock-alerts', JSON.stringify([
+      { productId: 5, productName: 'Harness', createdAt: '2026-01-01T00:00:00.000Z' },
+    ]));
+    window.localStorage.setItem('shop-save-for-later', JSON.stringify([
+      { id: 10, productId: 5, quantity: 1, productName: 'Harness', price: 12, savedAt: 1 },
+    ]));
+    window.localStorage.setItem('shop-guest-support-context', JSON.stringify({
+      orderNo: 'ORD-1',
+      email: 'buyer@example.com',
+      savedAt: Date.now(),
+    }));
+    window.localStorage.setItem('shop-pet-gallery-local-likes', JSON.stringify([3]));
+    window.localStorage.setItem('shop-guest-cart', JSON.stringify([{ productId: 99, quantity: 1 }]));
+    window.sessionStorage.setItem('checkoutCartItemIds:auth:7', JSON.stringify([22]));
+    window.sessionStorage.setItem('checkoutPaymentMethod', 'OXXO');
+    window.sessionStorage.setItem('checkoutGuestDraft', JSON.stringify({ email: 'buyer@example.com' }));
+    mockPost.mockRejectedValueOnce(new Error('refresh expired'));
+    const popstateListener = jest.fn();
+    const authRedirectListener = jest.fn();
+    window.addEventListener('popstate', popstateListener);
+    window.addEventListener('shop:auth-redirect', authRedirectListener);
+
+    try {
+      require('./index');
+
+      const error = {
+        response: { status: 401 },
+        config: { url: '/users/profile', headers: {} },
+      };
+
+      await expect(mockResponseInterceptorRejected!(error)).rejects.toBe(error);
+
+      expect(mockPost).toHaveBeenCalledWith(
+        '/auth/refresh',
+        { refreshToken: 'refresh-old' },
+        expect.objectContaining({ skipAuthRefresh: true }),
+      );
+      expect(mockRequest).not.toHaveBeenCalled();
+      expect(window.location.pathname).toBe('/login');
+      expect(window.location.search).toBe('?redirect=%2Fprofile%3Ftab%3Dorders%23latest');
+      expect(popstateListener).toHaveBeenCalledTimes(1);
+      expect(authRedirectListener).toHaveBeenCalledTimes(1);
+      expect((authRedirectListener.mock.calls[0][0] as CustomEvent).detail).toEqual({
+        to: '/login?redirect=%2Fprofile%3Ftab%3Dorders%23latest',
+      });
+      expect(window.localStorage.getItem('token')).toBeNull();
+      expect(window.localStorage.getItem('refreshToken')).toBeNull();
+      expect(window.localStorage.getItem('userId')).toBeNull();
+      expect(window.localStorage.getItem('email')).toBeNull();
+      expect(window.localStorage.getItem('phone')).toBeNull();
+      expect(JSON.parse(window.localStorage.getItem('shop-product-view-preferences') || '{}')).toMatchObject({
+        categories: {},
+        brands: {},
+        tags: {},
+        recent: [],
+        recentEntries: [],
+      });
+      expect(window.localStorage.getItem('shop-product-compare')).toBe('[]');
+      expect(window.localStorage.getItem('shop-stock-alerts')).toBe('[]');
+      expect(window.localStorage.getItem('shop-save-for-later')).toBe('[]');
+      expect(window.localStorage.getItem('shop-guest-support-context')).toBeNull();
+      expect(window.localStorage.getItem('shop-pet-gallery-local-likes')).toBeNull();
+      expect(window.localStorage.getItem('shop-guest-cart')).toBe(JSON.stringify([{ productId: 99, quantity: 1 }]));
+      expect(window.sessionStorage.getItem('checkoutCartItemIds:auth:7')).toBeNull();
+      expect(window.sessionStorage.getItem('checkoutPaymentMethod')).toBeNull();
+      expect(window.sessionStorage.getItem('checkoutGuestDraft')).toBeNull();
+    } finally {
+      window.removeEventListener('popstate', popstateListener);
+      window.removeEventListener('shop:auth-redirect', authRedirectListener);
+    }
+  });
+
+  it('clears stale auth credentials without clearing local browsing state', () => {
+    jest.resetModules();
+    window.localStorage.setItem('token', 'access-old');
+    window.localStorage.setItem('refreshToken', 'refresh-old');
+    window.localStorage.setItem('userId', '7');
+    window.localStorage.setItem('email', 'buyer@example.com');
+    window.localStorage.setItem('role', 'USER');
+    window.localStorage.setItem('adminDefaultPath', '/admin/dashboard');
+    const viewPreferences = JSON.stringify({
+      categories: { food: 2 },
+      brands: { Acme: 1 },
+      tags: { puppy: 1 },
+      recent: [5],
+      recentEntries: [{ productId: 5, viewedAt: 1 }],
+    });
+    const compareProducts = JSON.stringify([5]);
+    const stockAlerts = JSON.stringify([
+      { productId: 5, productName: 'Harness', createdAt: '2026-01-01T00:00:00.000Z' },
+    ]);
+    const savedForLater = JSON.stringify([
+      { id: 10, productId: 5, quantity: 1, productName: 'Harness', price: 12, savedAt: 1 },
+    ]);
+    window.localStorage.setItem('shop-product-view-preferences', viewPreferences);
+    window.localStorage.setItem('shop-product-compare', compareProducts);
+    window.localStorage.setItem('shop-stock-alerts', stockAlerts);
+    window.localStorage.setItem('shop-save-for-later', savedForLater);
+    window.sessionStorage.setItem('checkoutGuestDraft', JSON.stringify({ email: 'buyer@example.com' }));
+    const authSessionChangedListener = jest.fn();
+    window.addEventListener('auth-session-changed', authSessionChangedListener);
+
+    try {
+      const { clearStoredAuthCredentials } = require('./index');
+
+      clearStoredAuthCredentials();
+
+      expect(window.localStorage.getItem('token')).toBeNull();
+      expect(window.localStorage.getItem('refreshToken')).toBeNull();
+      expect(window.localStorage.getItem('userId')).toBeNull();
+      expect(window.localStorage.getItem('email')).toBeNull();
+      expect(window.localStorage.getItem('role')).toBeNull();
+      expect(window.localStorage.getItem('adminDefaultPath')).toBeNull();
+      expect(window.localStorage.getItem('shop-product-view-preferences')).toBe(viewPreferences);
+      expect(window.localStorage.getItem('shop-product-compare')).toBe(compareProducts);
+      expect(window.localStorage.getItem('shop-stock-alerts')).toBe(stockAlerts);
+      expect(window.localStorage.getItem('shop-save-for-later')).toBe(savedForLater);
+      expect(window.sessionStorage.getItem('checkoutGuestDraft')).toBe(JSON.stringify({ email: 'buyer@example.com' }));
+      expect(authSessionChangedListener).toHaveBeenCalledTimes(1);
+    } finally {
+      window.removeEventListener('auth-session-changed', authSessionChangedListener);
+    }
+  });
+
+  it('keeps auth interceptor login redirects inside the SPA', () => {
+    const source = readApiSource();
+    const redirectBlock = source.slice(source.indexOf('const redirectToLogin = () => {'), source.indexOf('export const persistAuthSession'));
+
+    expect(redirectBlock).toContain('window.history.replaceState');
+    expect(redirectBlock).toContain("window.dispatchEvent(new PopStateEvent('popstate'");
+    expect(redirectBlock).toContain("dispatchDomEvent('shop:auth-redirect'");
+    expect(redirectBlock).not.toContain('window.location.href');
+  });
+
+  it('deduplicates concurrent profile requests while preserving startup auth options', async () => {
+    jest.resetModules();
+    const profileResponse = { data: { id: 7, username: 'mia' } };
+    let resolveProfile: (value: typeof profileResponse) => void = () => undefined;
+    mockGet.mockReturnValueOnce(new Promise((resolve) => {
+      resolveProfile = resolve;
+    }));
+
+    const { userApi } = require('./index');
+
+    const firstProfile = userApi.getProfile({ skipAuthRedirect: true });
+    const secondProfile = userApi.getProfile({ skipAuthRedirect: true });
+
+    expect(mockGet).toHaveBeenCalledTimes(1);
+    expect(mockGet.mock.calls[0]).toEqual([
+      '/users/profile',
+      expect.objectContaining({ skipAuthRedirect: true }),
+    ]);
+
+    resolveProfile(profileResponse);
+
+    await expect(firstProfile).resolves.toBe(profileResponse);
+    await expect(secondProfile).resolves.toBe(profileResponse);
+
+    mockGet.mockResolvedValueOnce({ data: { id: 8, username: 'sol' } });
+    await userApi.getProfile({ skipAuthRedirect: true });
+
+    expect(mockGet).toHaveBeenCalledTimes(2);
+  });
+
+  it('passes abort signals through uncached admin permission checks', async () => {
+    jest.resetModules();
+    const firstController = new AbortController();
+    const secondController = new AbortController();
+    mockGet
+      .mockResolvedValueOnce({ data: { permissions: ['dashboard'] } })
+      .mockResolvedValueOnce({ data: { permissions: ['orders'] } });
+
+    const { adminApi } = require('./index');
+
+    await adminApi.getMyPermissions({ bypassCache: true, signal: firstController.signal });
+    await adminApi.getMyPermissions({ signal: secondController.signal });
+
+    expect(mockGet).toHaveBeenCalledTimes(2);
+    expect(mockGet.mock.calls[0]).toEqual([
+      '/admin/me/permissions',
+      expect.objectContaining({ signal: firstController.signal }),
+    ]);
+    expect(mockGet.mock.calls[1]).toEqual([
+      '/admin/me/permissions',
+      expect.objectContaining({ signal: secondController.signal }),
+    ]);
   });
 
   it('sends only normalized contact fields when updating a profile', async () => {
@@ -334,17 +712,31 @@ describe('api parameter normalization', () => {
   it('normalizes product list query params before caching and requesting', async () => {
     const { productApi } = require('./index');
 
-    await productApi.getAll('  leash\u0000   kit  ', -2, true);
+    await productApi.getAll('  leash\u0000   kit  ', -2, true, { includeChildren: false });
 
     expect(mockGet.mock.calls[0][0]).toBe('/products');
     const params = mockGet.mock.calls[0][1].params as URLSearchParams;
     expect(params.get('keyword')).toBe('leash kit');
     expect(params.get('discount')).toBe('true');
     expect(params.has('categoryId')).toBe(false);
+    expect(params.get('includeChildren')).toBe('false');
     expect(mockGet.mock.calls[0][1]).toEqual(expect.objectContaining({
       skipAuthHeader: true,
       skipAuthRedirect: true,
     }));
+  });
+
+  it('passes exact product category scope through page requests', async () => {
+    const { productApi } = require('./index');
+
+    await productApi.getPage(undefined, 7, undefined, { includeChildren: false, page: 0, size: 12 });
+
+    expect(mockGet.mock.calls[0][0]).toBe('/products');
+    const params = mockGet.mock.calls[0][1].params as URLSearchParams;
+    expect(params.get('categoryId')).toBe('7');
+    expect(params.get('includeChildren')).toBe('false');
+    expect(params.get('page')).toBe('0');
+    expect(params.get('size')).toBe('12');
   });
 
   it('reuses cached product id list responses for repeated normalized requests', async () => {
@@ -355,6 +747,26 @@ describe('api parameter normalization', () => {
     await productApi.getByIds([21, 22, 21]);
 
     expect(mockGet).toHaveBeenCalledTimes(1);
+  });
+
+  it('scopes personalized recommendation cache to the active auth session', async () => {
+    const { productApi } = require('./index');
+
+    window.localStorage.setItem('userId', '101');
+    window.localStorage.setItem('token', 'token-user-101');
+    mockGet.mockResolvedValueOnce({ data: [{ id: 31, name: 'User 101 pick' }] });
+    await productApi.getPersonalizedRecommendations();
+    await productApi.getPersonalizedRecommendations();
+
+    window.localStorage.setItem('userId', '202');
+    window.localStorage.setItem('token', 'token-user-202');
+    mockGet.mockResolvedValueOnce({ data: [{ id: 42, name: 'User 202 pick' }] });
+    await productApi.getPersonalizedRecommendations();
+
+    expect(mockGet.mock.calls.map((call) => call[0])).toEqual([
+      '/products/personalized-recommendations',
+      '/products/personalized-recommendations',
+    ]);
   });
 
   it('rejects invalid product detail ids before making a request', async () => {
@@ -387,6 +799,46 @@ describe('api parameter normalization', () => {
       selectedSpecs: 'Size=S Color=Blue',
     });
     expect((mockDelete.mock.calls[0][1].params as URLSearchParams).getAll('cartItemIds')).toEqual(['1', '2']);
+  });
+
+  it('coalesces identical in-flight cart mutations from rapid repeated clicks', async () => {
+    const { cartApi } = require('./index');
+    let resolveAdd: (value: unknown) => void = () => undefined;
+    const response = { data: { ok: true } };
+    mockPost.mockReturnValueOnce(new Promise((resolve) => {
+      resolveAdd = resolve;
+    }));
+
+    const first = cartApi.addItem(0, 8, 2, 'Size=S');
+    const second = cartApi.addItem(0, 8, 2, 'Size=S');
+
+    expect(mockPost).toHaveBeenCalledTimes(1);
+    resolveAdd(response);
+    const [firstResponse, secondResponse] = await Promise.all([first, second]);
+    expect(firstResponse).toBe(response);
+    expect(secondResponse).toBe(response);
+
+    mockPost.mockResolvedValueOnce({ data: { ok: true, retry: true } });
+    await cartApi.addItem(0, 8, 2, 'Size=S');
+    expect(mockPost).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps different in-flight mutation payloads independent', async () => {
+    const { cartApi } = require('./index');
+    const resolvers: Array<(value: unknown) => void> = [];
+    mockPost.mockImplementation(() => new Promise((resolve) => {
+      resolvers.push(resolve);
+    }));
+
+    const first = cartApi.addItem(0, 8, 2, 'Size=S');
+    const second = cartApi.addItem(0, 8, 3, 'Size=S');
+
+    expect(mockPost).toHaveBeenCalledTimes(2);
+    resolvers[0]({ data: { quantity: 2 } });
+    resolvers[1]({ data: { quantity: 3 } });
+    const [firstResponse, secondResponse] = await Promise.all([first, second]);
+    expect(firstResponse.data).toEqual({ quantity: 2 });
+    expect(secondResponse.data).toEqual({ quantity: 3 });
   });
 
   it('normalizes coupon quote payloads', async () => {
@@ -427,18 +879,62 @@ describe('api parameter normalization', () => {
     expect(mockPost.mock.calls[0][1]).toEqual({ orderId: 7, channel: 'STRIPE', guestEmail: 'user@example.com', orderNo: 'SO202605260001' });
     expect(mockGet.mock.calls[0][0]).toBe('/payments/order/7');
     expect(mockGet.mock.calls[0][1]).toEqual({ params: undefined });
-    expect(mockGet.mock.calls[1][0]).toBe('/payments/guest/order/7');
-    expect(mockGet.mock.calls[1][1]).toEqual(expect.objectContaining({
-      params: { guestEmail: 'user@example.com', orderNo: 'SO202605260001' },
-      skipAuthHeader: true,
-      skipAuthRedirect: true,
-    }));
-    expect(mockPost.mock.calls[1][0]).toBe('/payments/7/sync');
+    expect(mockPost.mock.calls[1][0]).toBe('/payments/guest/order/7');
     expect(mockPost.mock.calls[1][1]).toEqual({ guestEmail: 'user@example.com', orderNo: 'SO202605260001' });
     expect(mockPost.mock.calls[1][2]).toEqual(expect.objectContaining({
       skipAuthHeader: true,
       skipAuthRedirect: true,
     }));
+    expect(mockPost.mock.calls[2][0]).toBe('/payments/7/sync');
+    expect(mockPost.mock.calls[2][1]).toEqual({ guestEmail: 'user@example.com', orderNo: 'SO202605260001' });
+    expect(mockPost.mock.calls[2][2]).toEqual(expect.objectContaining({
+      skipAuthHeader: true,
+      skipAuthRedirect: true,
+    }));
+  });
+
+  it('covers payment info, latest, simulation, callback, and admin payment routes', async () => {
+    const { paymentApi, adminApi } = require('./index');
+    const callbackPayload = {
+      orderNo: 'SO202605260001',
+      channel: 'STRIPE',
+      transactionId: 'txn-1',
+      status: 'PAID',
+      amount: 25,
+      callbackTimestamp: 1716710400000,
+      signature: 'sig',
+    };
+
+    await paymentApi.getInfo();
+    await paymentApi.getLatestByOrder(7);
+    await paymentApi.getLatestByOrder(7, ' USER@Example.COM ', ' so202605260001 ');
+    await paymentApi.simulatePaid('8' as unknown as number);
+    await paymentApi.simulateCallback('9' as unknown as number);
+    await paymentApi.callback(callbackPayload);
+    await adminApi.getOrderPayments('7' as unknown as number);
+    await adminApi.syncOrderPayment('8' as unknown as number);
+
+    expect(mockGet.mock.calls[0]).toEqual([
+      '/payments',
+      expect.objectContaining({ skipAuthHeader: true, skipAuthRedirect: true }),
+    ]);
+    expect(mockGet.mock.calls[1]).toEqual([
+      '/payments/order/7/latest',
+      { params: undefined },
+    ]);
+    expect(mockPost.mock.calls[0]).toEqual([
+      '/payments/guest/order/7/latest',
+      { guestEmail: 'user@example.com', orderNo: 'SO202605260001' },
+      expect.objectContaining({
+        skipAuthHeader: true,
+        skipAuthRedirect: true,
+      }),
+    ]);
+    expect(mockGet.mock.calls[2][0]).toBe('/admin/orders/7/payments');
+    expect(mockPost.mock.calls[1][0]).toBe('/payments/8/simulate-paid');
+    expect(mockPost.mock.calls[2][0]).toBe('/payments/9/simulate-callback');
+    expect(mockPost.mock.calls[3]).toEqual(['/payments/callback', callbackPayload]);
+    expect(mockPost.mock.calls[4][0]).toBe('/admin/orders/payments/8/sync');
   });
 
   it('uses anonymous configs for public storefront bootstrap endpoints', async () => {
@@ -461,6 +957,26 @@ describe('api parameter normalization', () => {
     ]);
   });
 
+  it('caches active announcements until admin announcement mutations', async () => {
+    const { adminApi, announcementApi } = require('./index');
+
+    await announcementApi.getActive(8);
+    await announcementApi.getActive(8);
+    await adminApi.updateAnnouncement(3, { title: 'Sale', content: 'Details' });
+    await announcementApi.getActive(8);
+
+    expect(mockGet.mock.calls.map((call) => call[0])).toEqual([
+      '/announcements/active',
+      '/announcements/active',
+    ]);
+    expect(mockGet.mock.calls[0][1]).toEqual(expect.objectContaining({
+      params: { limit: 8 },
+      skipAuthHeader: true,
+      skipAuthRedirect: true,
+    }));
+    expect(mockPut.mock.calls[0][0]).toBe('/admin/announcements/3');
+  });
+
   it('caches payment channels for repeated checkout renders', async () => {
     const { paymentApi } = require('./index');
 
@@ -473,6 +989,40 @@ describe('api parameter normalization', () => {
       skipAuthHeader: true,
       skipAuthRedirect: true,
     }));
+  });
+
+  it('unwraps paged payment channel response envelopes before caching', async () => {
+    jest.resetModules();
+    mockGet.mockResolvedValueOnce({
+      data: {
+        data: {
+          items: [{ code: 'STRIPE', displayName: 'Stripe' }],
+        },
+      },
+    });
+    const { paymentApi } = require('./index');
+
+    const response = await paymentApi.getChannels();
+
+    expect(response.data).toEqual([{ code: 'STRIPE', displayName: 'Stripe' }]);
+    expect(mockGet).toHaveBeenCalledWith('/payments/channels', expect.objectContaining({
+      skipAuthHeader: true,
+      skipAuthRedirect: true,
+    }));
+  });
+
+  it('unwraps direct payment channel item envelopes before caching', async () => {
+    jest.resetModules();
+    mockGet.mockResolvedValueOnce({
+      data: {
+        items: [{ code: 'PAYPAL', displayName: 'PayPal' }],
+      },
+    });
+    const { paymentApi } = require('./index');
+
+    const response = await paymentApi.getChannels();
+
+    expect(response.data).toEqual([{ code: 'PAYPAL', displayName: 'PayPal' }]);
   });
 
   it('normalizes support session path params and optional session payloads', async () => {
@@ -545,6 +1095,74 @@ describe('api parameter normalization', () => {
     expect(mockGet).not.toHaveBeenCalled();
   });
 
+  it('does not cache lightweight product list items as detail responses', async () => {
+    const { productApi } = require('./index');
+    mockGet
+      .mockResolvedValueOnce({
+        data: {
+          items: [{ id: 12, name: 'Harness', price: 19.99, detailContent: undefined }],
+          total: 1,
+          page: 0,
+          size: 12,
+          totalPages: 1,
+        },
+      })
+      .mockResolvedValueOnce({
+        data: { id: 12, name: 'Harness', price: 19.99, detailContent: [{ type: 'text', content: 'Fit notes' }] },
+      });
+
+    await productApi.getPage(undefined, undefined, undefined, { page: 0, size: 12 });
+    const detail = await productApi.getById(12);
+
+    expect(mockGet.mock.calls.map((call) => call[0])).toEqual(['/products', '/products/12']);
+    expect(detail.data.detailContent).toEqual([{ type: 'text', content: 'Fit notes' }]);
+  });
+
+  it('normalizes product page totalElements metadata and rich list fields', async () => {
+    const { productApi, adminApi } = require('./index');
+    mockGet
+      .mockResolvedValueOnce({
+        data: {
+          content: [{
+            id: 31,
+            name: 'Travel harness',
+            imageUrl: '',
+            images: '["/uploads/products/harness-1.jpg","/uploads/products/harness-2.jpg"]',
+            specifications: '{"material":"nylon"}',
+            detailContent: '[{"type":"text","content":"Fit notes"}]',
+            variants: '[{"sku":"HARNESS-S"}]',
+            optionGroups: '[{"name":"Size","options":["S","M"]}]',
+          }],
+          totalElements: 42,
+          page: 1,
+          size: 12,
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          items: [{ id: 44, name: 'Admin harness', imageUrl: '/uploads/products/admin-harness.jpg' }],
+          totalElements: 7,
+          page: 0,
+          size: 20,
+        },
+      });
+
+    const publicPage = await productApi.getPage('f962-total-elements', undefined, undefined, { page: 1, size: 12 });
+    const adminPage = await adminApi.getProducts({ keyword: 'f962-total-elements', page: 0, size: 20 });
+
+    expect(publicPage.data.total).toBe(42);
+    expect(publicPage.data.totalElements).toBe(42);
+    expect(publicPage.data.totalPages).toBe(4);
+    expect(publicPage.data.items[0].images).toEqual(['/uploads/products/harness-1.jpg', '/uploads/products/harness-2.jpg']);
+    expect(publicPage.data.items[0].specifications).toEqual({ material: 'nylon' });
+    expect(publicPage.data.items[0].detailContent).toEqual([{ type: 'text', content: 'Fit notes' }]);
+    expect(publicPage.data.items[0].variants).toEqual([{ sku: 'HARNESS-S' }]);
+    expect(publicPage.data.items[0].optionGroups).toEqual([{ name: 'Size', values: ['S', 'M'], options: ['S', 'M'] }]);
+    expect(adminPage.data.total).toBe(7);
+    expect(adminPage.data.totalElements).toBe(7);
+    expect(adminPage.data.totalPages).toBe(1);
+  });
+
   it('normalizes product rich-detail media URLs to the backend media contract', async () => {
     const { adminApi } = require('./index');
 
@@ -575,6 +1193,95 @@ describe('api parameter normalization', () => {
     expect(JSON.stringify(detailContent)).not.toContain('::ffff');
     expect(JSON.stringify(detailContent)).not.toContain(':8443');
     expect(JSON.stringify(detailContent)).not.toContain('/assets/');
+  });
+
+  it('keeps admin product search unified on keyword instead of the legacy q alias', async () => {
+    const { adminApi } = require('./index');
+    const source = readApiSource();
+
+    await adminApi.getProducts({
+      keyword: '  harness\u0000   kit  ',
+      categoryId: 7,
+      status: ' active ',
+      page: 0,
+      size: 20,
+    });
+
+    expect(mockGet.mock.calls[0][0]).toBe('/admin/products');
+    expect(mockGet.mock.calls[0][1]).toEqual({
+      params: {
+        keyword: 'harness kit',
+        categoryId: 7,
+        status: 'ACTIVE',
+        featured: undefined,
+        discount: undefined,
+        minPrice: undefined,
+        maxPrice: undefined,
+        page: 0,
+        size: 20,
+        sort: undefined,
+      },
+    });
+    expect(source).toContain('getProducts: (params?: { keyword?: string; categoryId?: number;');
+    expect(source).not.toContain('q?: string');
+    expect(source).not.toContain('q: normalizeTextParam(params.q');
+  });
+
+  it('keeps admin product descriptions aligned to the backend entity limit', async () => {
+    const { adminApi } = require('./index');
+
+    await adminApi.createProduct({
+      name: 'Harness',
+      description: 'x'.repeat(1200),
+    });
+
+    expect(mockPost.mock.calls[0][0]).toBe('/admin/products');
+    expect(mockPost.mock.calls[0][1].description).toHaveLength(1000);
+  });
+
+  it('keeps admin product names aligned to the backend and schema limit', async () => {
+    const { adminApi } = require('./index');
+    const source = readApiSource();
+
+    await adminApi.createProduct({
+      name: 'x'.repeat(220),
+      description: 'Harness',
+    });
+
+    expect(mockPost.mock.calls[0][0]).toBe('/admin/products');
+    expect(mockPost.mock.calls[0][1].name).toHaveLength(200);
+    expect(source).toContain('const PRODUCT_NAME_MAX_LENGTH = 200;');
+    expect(source).toContain('normalizeTextParam(value, PRODUCT_NAME_MAX_LENGTH)');
+  });
+
+  it('keeps admin product status payloads aligned to the backend entity limit', async () => {
+    const { adminApi } = require('./index');
+
+    await adminApi.createProduct({
+      name: 'Harness',
+      status: 'custom-status-name-that-is-too-long',
+    });
+    await adminApi.updateProductStatus(7, 'custom-status-name-that-is-too-long');
+    await adminApi.batchUpdateProductStatus([7, 8], 'custom-status-name-that-is-too-long');
+
+    expect(mockPost.mock.calls[0][0]).toBe('/admin/products');
+    expect(mockPost.mock.calls[0][1].status).toHaveLength(20);
+    expect(mockPut.mock.calls[0][0]).toBe('/admin/products/7/status');
+    expect(mockPut.mock.calls[0][1].status).toHaveLength(20);
+    expect(mockPost.mock.calls[1][0]).toBe('/admin/products/batch-status');
+    expect(mockPost.mock.calls[1][1].status).toHaveLength(20);
+  });
+
+  it('keeps admin product imageUrl aligned to the backend entity limit', async () => {
+    const { adminApi } = require('./index');
+
+    await adminApi.createProduct({
+      name: 'Harness',
+      imageUrl: `https://cdn.example.com/${'p'.repeat(2100)}`,
+    });
+
+    expect(mockPost.mock.calls[0][0]).toBe('/admin/products');
+    expect(mockPost.mock.calls[0][1].imageUrl).toHaveLength(2000);
   });
 
   it('normalizes persisted image payload fields to public asset URLs', async () => {
@@ -660,15 +1367,113 @@ describe('api parameter normalization', () => {
       paymentMethod: 'card',
       userCouponId: null,
     });
-    expect(mockPut.mock.calls[0][0]).toBe('/orders/guest/8/cancel');
-    expect(mockPut.mock.calls[0][1]).toEqual({ guestEmail: 'user@example.com', orderNo: 'SO202605260001' });
-    expect(mockPut.mock.calls[1][0]).toBe('/orders/guest/9/confirm');
-    expect(mockPut.mock.calls[1][1]).toEqual({ guestEmail: 'user@example.com', orderNo: 'SO202605260001' });
-    expect(mockPut.mock.calls[2][0]).toBe('/orders/guest/9/return');
-    expect(mockPut.mock.calls[2][1]).toEqual({ reason: 'Too small', guestEmail: 'user@example.com', orderNo: 'SO202605260001' });
-    expect(mockPut.mock.calls[3][0]).toBe('/orders/guest/11/return-shipment');
-    expect(mockPut.mock.calls[3][1]).toEqual({ returnTrackingNumber: 'TRACK 123', guestEmail: 'user@example.com', orderNo: 'SO202605260001' });
+    expect(mockPost.mock.calls[1][0]).toBe('/orders/guest/8/cancel');
+    expect(mockPost.mock.calls[1][1]).toEqual({ guestEmail: 'user@example.com', orderNo: 'SO202605260001' });
+    expect(mockPost.mock.calls[2][0]).toBe('/orders/guest/9/confirm');
+    expect(mockPost.mock.calls[2][1]).toEqual({ guestEmail: 'user@example.com', orderNo: 'SO202605260001' });
+    expect(mockPost.mock.calls[3][0]).toBe('/orders/guest/9/return');
+    expect(mockPost.mock.calls[3][1]).toEqual({ reason: 'Too small', guestEmail: 'user@example.com', orderNo: 'SO202605260001' });
+    expect(mockPost.mock.calls[4][0]).toBe('/orders/guest/11/return-shipment');
+    expect(mockPost.mock.calls[4][1]).toEqual({ returnTrackingNumber: 'TRACK 123', guestEmail: 'user@example.com', orderNo: 'SO202605260001' });
     expect(mockGet.mock.calls[0][0]).toBe('/orders/10/items');
+  });
+
+  it('does not expose legacy order mutations disabled by the backend', () => {
+    const { orderApi } = require('./index');
+    const source = readApiSource();
+    const orderApiSource = source.slice(
+      source.indexOf('export const orderApi = {'),
+      source.indexOf('export const couponApi = {'),
+    );
+
+    expect(orderApi.create).toBeUndefined();
+    expect(orderApi.update).toBeUndefined();
+    expect(orderApi.delete).toBeUndefined();
+    expect(orderApi.addItem).toBeUndefined();
+    expect(orderApiSource).toContain("getAll: () => api.get<Order[]>('/orders').then(withArrayData)");
+    expect(orderApiSource).not.toContain("getAll: () => api.get<OrderCustomer[]>('/orders').then(withArrayData)");
+    expect(orderApiSource).toContain("api.post<OrderCustomer>('/orders/checkout/me'");
+    expect(orderApiSource).toContain("api.post<OrderCustomer>('/orders/checkout/guest'");
+    expect(orderApiSource).not.toContain("api.post<OrderCustomer>('/orders', order)");
+    expect(orderApiSource).not.toContain('api.put<Order>(`/orders/${toPathId(id)}`');
+    expect(orderApiSource).not.toContain('api.delete(`/orders/${toPathId(id)}`)');
+    expect(orderApiSource).not.toContain('api.post(`/orders/${normalizedOrderId}/items`');
+  });
+
+  it('uses request bodies for guest order read credentials', async () => {
+    const { orderApi } = require('./index');
+
+    await orderApi.getById(8, ' USER@Example.COM ', ' so202605260001 ');
+    await orderApi.getItems(9, ' USER@Example.COM ', ' so202605260001 ');
+
+    expect(mockPost.mock.calls[0]).toEqual([
+      '/orders/guest/8',
+      { guestEmail: 'user@example.com', orderNo: 'SO202605260001' },
+      expect.objectContaining({ skipAuthHeader: true, skipAuthRedirect: true }),
+    ]);
+    expect(mockPost.mock.calls[1]).toEqual([
+      '/orders/guest/9/items',
+      { guestEmail: 'user@example.com', orderNo: 'SO202605260001' },
+      expect.objectContaining({ skipAuthHeader: true, skipAuthRedirect: true }),
+    ]);
+    expect(mockGet).not.toHaveBeenCalled();
+  });
+
+  it('preserves uppercase idempotency keys for registered and guest checkout headers', async () => {
+    const { orderApi } = require('./index');
+
+    await orderApi.checkout({
+      cartItemIds: [1],
+      shippingAddress: 'addr',
+      paymentMethod: 'card',
+    }, { idempotencyKey: '  idem_MyKey-ABC123:Retry.01 /drop ' });
+
+    await orderApi.guestCheckout({
+      guestEmail: 'guest@example.com',
+      guestName: 'Guest',
+      guestPhone: '5550100',
+      shippingAddress: 'addr',
+      paymentMethod: 'card',
+      items: [{ productId: 2, quantity: 1 }],
+    }, { idempotencyKey: 'ABC-DEF-123' });
+
+    expect(mockPost.mock.calls[0][2]).toEqual({
+      headers: { 'Idempotency-Key': 'idem_MyKey-ABC123:Retry.01drop' },
+    });
+    expect(mockPost.mock.calls[1][2]).toEqual({
+      headers: { 'Idempotency-Key': 'ABC-DEF-123' },
+    });
+  });
+
+  it('coalesces only checkout mutations that share the same idempotency key', async () => {
+    const { orderApi } = require('./index');
+    const resolvers: Array<(value: unknown) => void> = [];
+    mockPost.mockImplementation(() => new Promise((resolve) => {
+      resolvers.push(resolve);
+    }));
+    const payload = {
+      cartItemIds: [1],
+      shippingAddress: 'addr',
+      paymentMethod: 'card',
+    };
+
+    const first = orderApi.checkout(payload, { idempotencyKey: 'checkout-1' });
+    const second = orderApi.checkout(payload, { idempotencyKey: 'checkout-1' });
+    const third = orderApi.checkout(payload, { idempotencyKey: 'checkout-2' });
+
+    expect(mockPost).toHaveBeenCalledTimes(2);
+    expect(mockPost.mock.calls[0][2]).toEqual({
+      headers: { 'Idempotency-Key': 'checkout-1' },
+    });
+    expect(mockPost.mock.calls[1][2]).toEqual({
+      headers: { 'Idempotency-Key': 'checkout-2' },
+    });
+    resolvers[0]({ data: { orderNo: 'A' } });
+    resolvers[1]({ data: { orderNo: 'B' } });
+    const [firstResponse, secondResponse, thirdResponse] = await Promise.all([first, second, third]);
+    expect(firstResponse).toBe(secondResponse);
+    expect(thirdResponse).not.toBe(firstResponse);
+    expect(thirdResponse.data).toEqual({ orderNo: 'B' });
   });
 
   it('caches order item lookups and short-circuits invalid order item ids', async () => {
@@ -717,6 +1522,91 @@ describe('api parameter normalization', () => {
     }));
   });
 
+  it('keeps cart specs, guest checkout items, and review comments within backend limits', async () => {
+    const { cartApi, orderApi, reviewApi } = require('./index');
+    const oversizedSpecs = 's'.repeat(1200);
+    const oversizedComment = 'c'.repeat(1200);
+
+    await cartApi.addItem(0, 5, 1, oversizedSpecs);
+    await orderApi.guestCheckout({
+      guestEmail: 'guest@example.com',
+      guestName: 'Guest',
+      guestPhone: '5550100',
+      shippingAddress: 'Address',
+      paymentMethod: 'stripe',
+      items: Array.from({ length: 90 }, (_, index) => ({
+        productId: index + 1,
+        quantity: 1,
+        selectedSpecs: oversizedSpecs,
+      })),
+    });
+    await reviewApi.create(3, 9, 5, oversizedComment);
+
+    expect(mockPost.mock.calls[0][0]).toBe('/cart/me/add');
+    expect(mockPost.mock.calls[0][2].params.selectedSpecs).toHaveLength(1000);
+    expect(mockPost.mock.calls[1][0]).toBe('/orders/checkout/guest');
+    expect(mockPost.mock.calls[1][1].items).toHaveLength(80);
+    expect(mockPost.mock.calls[1][1].items[0].selectedSpecs).toHaveLength(1000);
+    expect(mockPost.mock.calls[2][0]).toBe('/reviews/product/3');
+    expect(mockPost.mock.calls[2][1].comment).toHaveLength(1000);
+  });
+
+  it('normalizes admin coupon upsert payloads to the backend DTO contract', async () => {
+    const { adminApi } = require('./index');
+
+    await adminApi.createCoupon({
+      id: 99,
+      name: '  Spring\u0000   Deal  ',
+      couponType: ' discount ',
+      scope: ' public ',
+      status: ' active ',
+      thresholdAmount: '100.50',
+      reductionAmount: null,
+      discountPercent: 150,
+      maxDiscountAmount: '25.25',
+      totalQuantity: 200000,
+      startAt: ' 2026-06-09T10:00:00 ',
+      endAt: ' 2026-06-10T10:00:00 ',
+      description: 'd'.repeat(1200),
+      claimedQuantity: 5,
+      remainingQuantity: 10,
+      createdAt: '2026-06-09T00:00:00',
+    } as any);
+    await adminApi.updateCoupon(7, {
+      name: '  Full   cut  ',
+      couponType: ' full_reduction ',
+      reductionAmount: '30',
+      maxDiscountAmount: undefined,
+    } as any);
+
+    expect(mockPost.mock.calls[0][0]).toBe('/admin/coupons');
+    expect(mockPost.mock.calls[0][1]).toEqual({
+      name: 'Spring Deal',
+      couponType: 'DISCOUNT',
+      scope: 'PUBLIC',
+      status: 'ACTIVE',
+      thresholdAmount: 100.5,
+      reductionAmount: null,
+      discountPercent: 99,
+      maxDiscountAmount: 25.25,
+      totalQuantity: 100000,
+      startAt: '2026-06-09T10:00:00',
+      endAt: '2026-06-10T10:00:00',
+      description: 'd'.repeat(1000),
+    });
+    expect(mockPost.mock.calls[0][1]).not.toHaveProperty('id');
+    expect(mockPost.mock.calls[0][1]).not.toHaveProperty('claimedQuantity');
+    expect(mockPost.mock.calls[0][1]).not.toHaveProperty('remainingQuantity');
+    expect(mockPost.mock.calls[0][1]).not.toHaveProperty('createdAt');
+    expect(mockPut.mock.calls[0][0]).toBe('/admin/coupons/7');
+    expect(mockPut.mock.calls[0][1]).toEqual({
+      name: 'Full cut',
+      couponType: 'FULL_REDUCTION',
+      reductionAmount: 30,
+      maxDiscountAmount: null,
+    });
+  });
+
   it('clears order tracking cache when cancelling an order', async () => {
     const { orderApi } = require('./index');
 
@@ -727,7 +1617,7 @@ describe('api parameter normalization', () => {
 
     const trackCalls = mockPost.mock.calls.filter((call) => call[0] === '/orders/track');
     expect(trackCalls).toHaveLength(2);
-    expect(mockPut.mock.calls[0][0]).toBe('/orders/guest/8/cancel');
+    expect(mockPost.mock.calls.some((call) => call[0] === '/orders/guest/8/cancel')).toBe(true);
   });
 
   it('normalizes review and question params and text payloads', async () => {
@@ -881,6 +1771,47 @@ describe('api parameter normalization', () => {
     expect(mockPost.mock.calls[2][1]).toEqual({ userIds: [10, 11] });
     expect(mockPost.mock.calls[3][0]).toBe('/admin/coupons/9/grant');
     expect(mockPost.mock.calls[3][1]).toEqual({ userIds: [1, 2] });
+  });
+
+  it('caps admin coupon page size to the table maximum', async () => {
+    const { adminApi } = require('./index');
+
+    await adminApi.getCoupons({
+      keyword: '  summer\u0000   sale  ',
+      status: ' active ',
+      scope: ' public ',
+      page: 0,
+      size: 5000,
+    });
+
+    expect(mockGet.mock.calls[0]).toEqual([
+      '/admin/coupons',
+      { params: { keyword: 'summer sale', status: 'ACTIVE', scope: 'PUBLIC', page: 1, size: 100 } },
+    ]);
+  });
+
+  it('keeps admin bug list pagination zero-based like public product pages', async () => {
+    const { adminApi } = require('./index');
+
+    await adminApi.getBugs({
+      keyword: '  checkout\u0000   bug  ',
+      status: ' open ',
+      severity: ' high ',
+      module: ' frontend ',
+      page: -4,
+      size: 5000,
+      scanQueueOnly: true,
+    });
+    await adminApi.getBugs({ page: 2, size: 25 });
+
+    expect(mockGet.mock.calls[0]).toEqual([
+      '/admin/bugs',
+      { params: { page: 0, size: 100, status: 'OPEN', severity: 'HIGH', module: 'FRONTEND', keyword: 'checkout bug', scanQueueOnly: true } },
+    ]);
+    expect(mockGet.mock.calls[1]).toEqual([
+      '/admin/bugs',
+      { params: { page: 2, size: 25, status: undefined, severity: undefined, module: undefined, keyword: undefined, scanQueueOnly: false } },
+    ]);
   });
 
   it('normalizes system alert batch action and purge payloads', async () => {
@@ -1094,7 +2025,14 @@ describe('api parameter normalization', () => {
     await adminApi.getUsers({ keyword: 'jane doe', role: 'ADMIN', status: 'ACTIVE' });
     await adminApi.getRoles();
     await adminApi.getRoles();
-    await adminApi.updateUser(9, { status: 'BANNED' });
+    await adminApi.updateUser(9, {
+      status: ' banned ',
+      address: '  Operations   desk  ',
+      email: 'attacker@example.com',
+      phone: '5550100',
+      role: 'SUPER_ADMIN',
+      roleCode: 'OPS',
+    } as any);
     await adminApi.getUsers({ keyword: 'jane doe', role: 'ADMIN', status: 'ACTIVE' });
     await adminApi.saveRole({ code: 'OPS' });
     await adminApi.getRoles();
@@ -1108,6 +2046,29 @@ describe('api parameter normalization', () => {
     expect(mockGet.mock.calls[0][1]).toEqual({
       params: { keyword: 'jane doe', role: 'ADMIN', status: 'ACTIVE', page: 1, size: 100 },
     });
+    expect(mockPut.mock.calls[0]).toEqual([
+      '/admin/users/9',
+      { address: 'Operations desk', status: 'BANNED' },
+    ]);
+  });
+
+  it('keeps role-code cache invalidation on the dedicated role-code endpoint', () => {
+    const source = readApiSource();
+    const updateUserSource = source.slice(
+      source.indexOf('updateUser: (id: number, user: AdminUserUpdatePayload)'),
+      source.indexOf('assignUserRole: (id: number, roleCode: string)'),
+    );
+    const assignUserRoleSource = source.slice(
+      source.indexOf('assignUserRole: (id: number, roleCode: string)'),
+      source.indexOf('getAdminPermissions:', source.indexOf('assignUserRole: (id: number, roleCode: string)')),
+    );
+
+    expect(updateUserSource).not.toContain('user.roleCode');
+    expect(updateUserSource).not.toContain('roleCode');
+    expect(assignUserRoleSource).toContain("api.put<User>(`/admin/users/${toPathId(id)}/role-code`");
+    expect(assignUserRoleSource).toContain('clearAdminPermissionsCache();');
+    expect(assignUserRoleSource).toContain('clearAdminRoleCache();');
+    expect(assignUserRoleSource).toContain("dispatchDomEvent('shop:admin-permissions-updated')");
   });
 
   it('normalizes admin user summary filters for account health panels', async () => {
@@ -1118,6 +2079,17 @@ describe('api parameter normalization', () => {
     expect(mockGet.mock.calls[0]).toEqual([
       '/admin/users/summary',
       { params: { keyword: 'jane doe', role: 'ADMIN', status: 'ACTIVE' } },
+    ]);
+  });
+
+  it('uses the role-code endpoint for user demotion requests', async () => {
+    const { adminApi } = require('./index');
+
+    await adminApi.assignUserRole(9, ' USER ');
+
+    expect(mockPut.mock.calls[0]).toEqual([
+      '/admin/users/9/role-code',
+      { roleCode: 'USER' },
     ]);
   });
 
@@ -1141,6 +2113,23 @@ describe('api parameter normalization', () => {
     expect(mockPost.mock.calls[2][2]).toBeUndefined();
   });
 
+  it('does not coalesce multipart uploads', async () => {
+    const { adminApi } = require('./index');
+    const csvFile = new File(['id,name,description,price,stock,categoryId\n'], 'products.csv', { type: 'text/csv' });
+    const resolvers: Array<(value: unknown) => void> = [];
+    mockPost.mockImplementation(() => new Promise((resolve) => {
+      resolvers.push(resolve);
+    }));
+
+    const first = adminApi.importProducts(csvFile);
+    const second = adminApi.importProducts(csvFile);
+
+    expect(mockPost).toHaveBeenCalledTimes(2);
+    resolvers[0]({ data: { imported: 1 } });
+    resolvers[1]({ data: { imported: 2 } });
+    await Promise.all([first, second]);
+  });
+
   it('requests typed product import history with a bounded limit', async () => {
     const { adminApi } = require('./index');
 
@@ -1160,6 +2149,52 @@ describe('api parameter normalization', () => {
     expect(mockPost.mock.calls[0]).toEqual([
       '/admin/products/import-url',
       { url: 'https://item.taobao.com/item.htm?id=123' },
+    ]);
+  });
+
+  it('covers notification self and explicit user route variants', async () => {
+    const { adminApi, notificationApi } = require('./index');
+    const broadcastPayload = {
+      type: 'SYSTEM',
+      title: 'Maintenance',
+      message: 'Window starts soon',
+      contentFormat: 'TEXT',
+    };
+
+    await notificationApi.getByUser(0, true, -5, 999);
+    await notificationApi.getForUser('7' as unknown as number, -2, 999);
+    await notificationApi.getUnreadCount(0, true);
+    await notificationApi.getUnreadCountForUser('7' as unknown as number);
+    await notificationApi.markAsRead('4' as unknown as number, 7);
+    await notificationApi.markAllAsRead();
+    await notificationApi.markAllAsReadForUser('7' as unknown as number);
+    await notificationApi.delete('4' as unknown as number, 7);
+    await adminApi.broadcastNotification(broadcastPayload);
+
+    expect(mockGet.mock.calls[0]).toEqual([
+      '/notifications/me',
+      { params: { page: 1, size: 100 } },
+    ]);
+    expect(mockGet.mock.calls[1]).toEqual([
+      '/notifications',
+      { params: { userId: 7, page: 1, size: 100 } },
+    ]);
+    expect(mockGet.mock.calls[2][0]).toBe('/notifications/me/unread-count');
+    expect(mockGet.mock.calls[3]).toEqual([
+      '/notifications/unread-count',
+      { params: { userId: 7 } },
+    ]);
+    expect(mockPut.mock.calls[0][0]).toBe('/notifications/4/read');
+    expect(mockPut.mock.calls[1][0]).toBe('/notifications/me/read-all');
+    expect(mockPut.mock.calls[2]).toEqual([
+      '/notifications/read-all',
+      null,
+      { params: { userId: 7 } },
+    ]);
+    expect(mockDelete.mock.calls[0][0]).toBe('/notifications/4');
+    expect(mockPost.mock.calls[0]).toEqual([
+      '/admin/notifications/broadcast',
+      broadcastPayload,
     ]);
   });
 
@@ -1189,6 +2224,25 @@ describe('api parameter normalization', () => {
     expect(mockGet.mock.calls[0][0]).toBe('/logistics/track');
     expect(mockGet.mock.calls[0][1]).toEqual(expect.objectContaining({ allowAnonymousRetry: false }));
     expect(mockGet.mock.calls[0][1]).not.toEqual(expect.objectContaining({ skipAuthHeader: true }));
+  });
+
+  it('uses a request body for guest logistics tracking credentials', async () => {
+    const { logisticsApi } = require('./index');
+
+    await logisticsApi.track('  3Z   999  ', '  UPS  ', 22, ' USER@Example.COM ', ' so202605260001 ');
+
+    expect(mockPost.mock.calls[0]).toEqual([
+      '/logistics/track',
+      {
+        trackingNumber: '3Z 999',
+        carrier: 'UPS',
+        orderId: 22,
+        guestEmail: 'user@example.com',
+        orderNo: 'SO202605260001',
+      },
+      expect.objectContaining({ skipAuthHeader: true, skipAuthRedirect: true }),
+    ]);
+    expect(mockGet).not.toHaveBeenCalled();
   });
 
   it('caches logistics carriers until carrier mutations invalidate them', async () => {

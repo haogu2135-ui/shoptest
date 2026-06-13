@@ -3,6 +3,15 @@
   gap: 18px;
 }
 
+.announcement-management__alert,
+.announcement-management__loadingState {
+  margin-bottom: 0;
+}
+
+.announcement-management__loadingState .ant-card-body {
+  min-height: 120px;
+}
+
 .announcement-management__hero {
   display: flex;
   align-items: center;
@@ -441,5 +450,36 @@
   body .ant-modal-root .announcement-management-page__editorModal .ant-modal-footer {
     flex: 0 0 auto;
     padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+}
+
+/* F3521: keep announcement scheduling pickers inside phone viewports. */
+@media (max-width: 720px) {
+  body .announcement-management-page__datePopup.shop-mobile-popup-layer.ant-picker-dropdown {
+    position: fixed !important;
+    top: max(12px, env(safe-area-inset-top, 0px)) !important;
+    right: max(8px, env(safe-area-inset-right, 0px)) !important;
+    bottom: auto !important;
+    left: max(8px, env(safe-area-inset-left, 0px)) !important;
+    width: auto !important;
+    max-width: calc(100vw - 16px) !important;
+    max-height: calc(100dvh - 24px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) !important;
+    overflow: auto !important;
+    z-index: 2200 !important;
+    transform: none !important;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  body .announcement-management-page__datePopup.shop-mobile-popup-layer .ant-picker-panel-container {
+    max-width: calc(100vw - 16px) !important;
+    max-height: calc(100dvh - 24px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) !important;
+    overflow: auto !important;
+  }
+
+  body .announcement-management-page__datePopup.shop-mobile-popup-layer .ant-picker-panel,
+  body .announcement-management-page__datePopup.shop-mobile-popup-layer .ant-picker-date-panel,
+  body .announcement-management-page__datePopup.shop-mobile-popup-layer .ant-picker-time-panel {
+    max-width: 100%;
   }
 }

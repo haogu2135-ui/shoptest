@@ -1,6 +1,5 @@
 package com.example.shop.service;
 
-import lombok.extern.slf4j.Slf4j;
 import com.example.shop.dto.CouponAdminSummaryResponse;
 import com.example.shop.dto.CouponPublicResponse;
 import com.example.shop.dto.CouponQuoteResponse;
@@ -32,7 +31,6 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-@Slf4j
 public class CouponService {
     private static final String UNUSED = "UNUSED";
     private static final String FULL_REDUCTION = "FULL_REDUCTION";
@@ -148,7 +146,7 @@ public class CouponService {
                 .collect(Collectors.toList());
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public Coupon save(CouponUpsertRequest request, Long id) {
         if (request == null) {
             throw new IllegalArgumentException("Coupon payload is required");
@@ -183,10 +181,13 @@ public class CouponService {
         if (coupon.getClaimedQuantity() == null) {
             coupon.setClaimedQuantity(0);
         }
+        if (coupon.getUsedCount() == null) {
+            coupon.setUsedCount(0);
+        }
         return couponRepository.save(coupon);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void delete(Long id) {
         requirePositiveId(id, "Coupon");
         if (!couponRepository.existsById(id)) {
@@ -199,7 +200,7 @@ public class CouponService {
         couponRepository.deleteById(id);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public UserCoupon claim(Long couponId, Long userId) {
         requirePositiveId(couponId, "Coupon");
         requirePositiveId(userId, "User");
@@ -230,7 +231,7 @@ public class CouponService {
         return userCouponMapper.findById(userCoupon.getId());
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public int grant(Long couponId, List<Long> userIds) {
         requirePositiveId(couponId, "Coupon");
         List<Long> normalizedUserIds = normalizeGrantUserIds(userIds);
@@ -296,7 +297,7 @@ public class CouponService {
         return new CouponQuoteResponse(subtotal, discount, subtotal.subtract(discount).max(BigDecimal.ZERO), selectedUserCouponId, availableResponses);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public AppliedCoupon useCoupon(Long userId, Long userCouponId, BigDecimal subtotal, Long orderId) {
         if (userCouponId == null) {
             return new AppliedCoupon(null, null, null, BigDecimal.ZERO);
@@ -310,13 +311,20 @@ public class CouponService {
         if (userCouponMapper.markUsed(userCouponId, orderId) == 0) {
             throw new IllegalStateException("Coupon has already been used");
         }
+        if (couponRepository.incrementUsedCount(userCoupon.getCouponId()) == 0) {
+            throw new IllegalStateException("Coupon usage counter is unavailable");
+        }
         return new AppliedCoupon(userCoupon.getId(), userCoupon.getCouponId(), userCoupon.getCouponName(), discount);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void releaseUsedCoupon(Long userCouponId) {
         if (userCouponId != null) {
-            userCouponMapper.releaseUsed(userCouponId);
+            UserCoupon userCoupon = userCouponMapper.findById(userCouponId);
+            if (userCoupon != null && "USED".equals(userCoupon.getStatus())
+                    && userCouponMapper.releaseUsed(userCouponId) > 0) {
+                couponRepository.decrementUsedCount(userCoupon.getCouponId());
+            }
         }
     }
 
@@ -536,9 +544,11 @@ public class CouponService {
 
     private BigDecimal calculateLineAmount(CartItem item) {
         if (item == null || item.getPrice() == null || item.getQuantity() == null || item.getQuantity() <= 0) {
-            return BigDecimal.ZERO;
+            return BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
         }
-        return item.getPrice().multiply(BigDecimal.valueOf(item.getQuantity()));
+        return item.getPrice()
+                .multiply(BigDecimal.valueOf(item.getQuantity()))
+                .setScale(2, RoundingMode.HALF_UP);
     }
 
     private BigDecimal nonNegativeMoney(BigDecimal value, String fieldName) {

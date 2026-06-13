@@ -1,6 +1,7 @@
 {
   "short_name": "ShopMX",
   "name": "ShopMX Pet Store",
+  "description": "ShopMX pet supplies, food, toys, beds, walking gear and smart care essentials.",
   "icons": [
     {
       "src": "favicon.ico",
@@ -10,16 +11,21 @@
     {
       "src": "logo192.png",
       "type": "image/png",
-      "sizes": "192x192"
+      "sizes": "192x192",
+      "purpose": "any maskable"
     },
     {
       "src": "logo512.png",
       "type": "image/png",
-      "sizes": "512x512"
+      "sizes": "512x512",
+      "purpose": "any maskable"
     }
   ],
   "start_url": ".",
+  "scope": ".",
   "display": "standalone",
-  "theme_color": "#000000",
+  "orientation": "portrait",
+  "categories": ["shopping", "lifestyle"],
+  "theme_color": "#124734",
   "background_color": "#ffffff"
 }

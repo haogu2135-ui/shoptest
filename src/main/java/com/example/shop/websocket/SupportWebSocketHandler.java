@@ -8,16 +8,19 @@ import com.example.shop.entity.SupportMessage;
 import com.example.shop.entity.SupportSession;
 import com.example.shop.entity.User;
 import com.example.shop.repository.UserMapper;
-import com.example.shop.security.JwtService;
 import com.example.shop.security.UserDetailsImpl;
 import com.example.shop.service.AdminRoleService;
 import com.example.shop.service.RuntimeConfigService;
 import com.example.shop.service.SecurityAuditLogService;
 import com.example.shop.service.SupportService;
+import com.example.shop.service.SupportWebSocketTicketService;
+import com.example.shop.service.TokenBlacklistService;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.web.socket.SubProtocolCapable;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.CloseStatus;
@@ -26,8 +29,6 @@ import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -36,22 +37,28 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class SupportWebSocketHandler extends TextWebSocketHandler implements SubProtocolCapable {
     private static final String SUPPORT_SUB_PROTOCOL = "support.v1";
-    private static final String AUTH_PROTOCOL_PREFIX = "auth.";
+    private static final String TICKET_PROTOCOL_PREFIX = "ticket.";
     private static final String SEC_WEBSOCKET_PROTOCOL_HEADER = "Sec-WebSocket-Protocol";
+    private static final String LAST_ACTIVITY_AT_ATTRIBUTE = "lastActivityAt";
     private static final CloseStatus CONNECTION_LIMIT_EXCEEDED = new CloseStatus(1013, "Connection limit exceeded");
+    private static final CloseStatus IDLE_TIMEOUT = new CloseStatus(1001, "Idle timeout");
+    private static final CloseStatus TOKEN_REVOKED = CloseStatus.POLICY_VIOLATION.withReason("Token revoked");
 
-    private final JwtService jwtService;
+    private final TokenBlacklistService tokenBlacklistService;
     private final UserMapper userMapper;
     private final AdminRoleService adminRoleService;
     private final SupportService supportService;
     private final SecurityAuditLogService auditLogService;
     private final ObjectMapper objectMapper;
     private final RuntimeConfigService runtimeConfig;
+    private final SupportWebSocketTicketService supportWebSocketTicketService;
 
     private final Map<Long, Set<WebSocketSession>> userSessions = new ConcurrentHashMap<>();
     private final Set<WebSocketSession> adminSessions = ConcurrentHashMap.newKeySet();
+    private final Object sessionRegistryLock = new Object();
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
@@ -64,10 +71,11 @@ public class SupportWebSocketHandler extends TextWebSocketHandler implements Sub
         String socketRole = supportAdminRole(user);
         session.getAttributes().put("role", socketRole);
         session.getAttributes().put("username", user.getUsername());
+        markSessionActivity(session);
         configureSessionLimits(session);
 
         boolean adminSocket = isAdminRole(socketRole);
-        synchronized (this) {
+        synchronized (sessionRegistryLock) {
             pruneClosedSessions();
             if (activeConnectionCount() >= maxGlobalConnections()
                     || activeConnectionCountForUser(user.getId()) >= maxConnectionsPerUser()) {
@@ -102,6 +110,10 @@ public class SupportWebSocketHandler extends TextWebSocketHandler implements Sub
 
     @Override
     protected void handleTextMessage(WebSocketSession socket, TextMessage textMessage) throws Exception {
+        if (closeIfTokenRevoked(socket)) {
+            return;
+        }
+        markSessionActivity(socket);
         try {
             handleSupportMessage(socket, textMessage);
         } catch (IllegalArgumentException | IllegalStateException e) {
@@ -114,11 +126,14 @@ public class SupportWebSocketHandler extends TextWebSocketHandler implements Sub
     private void handleSupportMessage(WebSocketSession socket, TextMessage textMessage) throws Exception {
         Map<String, Object> payload = objectMapper.readValue(textMessage.getPayload(), new TypeReference<Map<String, Object>>() {});
         String type = String.valueOf(payload.getOrDefault("type", "SEND"));
-        Long userId = (Long) socket.getAttributes().get("userId");
-        String role = String.valueOf(socket.getAttributes().get("role")).toUpperCase();
+        Long userId = requireAuthenticatedSocketUserId(socket);
+        String role = socketRole(socket);
 
         if ("PING".equalsIgnoreCase(type)) {
             sendJson(socket, Map.of("type", "PONG"));
+            return;
+        }
+        if ("PONG".equalsIgnoreCase(type)) {
             return;
         }
         if ("READ".equalsIgnoreCase(type)) {
@@ -200,6 +215,24 @@ public class SupportWebSocketHandler extends TextWebSocketHandler implements Sub
         return List.of(SUPPORT_SUB_PROTOCOL);
     }
 
+    @Scheduled(
+            fixedDelayString = "${support.websocket.idle-scan-ms:60000}",
+            initialDelayString = "${support.websocket.idle-scan-initial-delay-ms:60000}"
+    )
+    public void closeIdleSessions() {
+        long now = System.currentTimeMillis();
+        long maxIdleMs = maxIdleMs();
+        synchronized (sessionRegistryLock) {
+            adminSessions.removeIf(socket -> shouldRemoveIdleSocket(socket, now, maxIdleMs));
+            userSessions.forEach((userId, sockets) -> {
+                sockets.removeIf(socket -> shouldRemoveIdleSocket(socket, now, maxIdleMs));
+                if (sockets.isEmpty()) {
+                    userSessions.remove(userId, sockets);
+                }
+            });
+        }
+    }
+
     private void auditAdminSocketAction(WebSocketSession socket,
                                         String action,
                                         String result,
@@ -242,17 +275,20 @@ public class SupportWebSocketHandler extends TextWebSocketHandler implements Sub
             return null;
         }
         try {
-            String token = resolveToken(session);
-            if (token == null || token.isBlank()) {
+            SupportWebSocketTicketService.Ticket ticket = resolveTicket(session);
+            if (ticket == null || ticket.getUserId() == null) {
                 return null;
             }
-            if (token.startsWith("Bearer ")) {
-                token = token.substring(7);
-            }
-            String username = jwtService.extractUsername(token);
-            User user = userMapper.findByUsernameOrPhoneOrEmail(username);
-            if (user == null || "BANNED".equalsIgnoreCase(user.getStatus()) || !jwtService.isTokenValid(token, UserDetailsImpl.build(user))) {
+            String tokenJti = ticket.getTokenJti();
+            if (isTokenBlacklisted(tokenJti)) {
                 return null;
+            }
+            User user = userMapper.findById(ticket.getUserId());
+            if (user == null || "BANNED".equalsIgnoreCase(user.getStatus())) {
+                return null;
+            }
+            if (tokenJti != null && !tokenJti.isBlank()) {
+                session.getAttributes().put("tokenJti", tokenJti);
             }
             return user;
         } catch (Exception e) {
@@ -260,15 +296,15 @@ public class SupportWebSocketHandler extends TextWebSocketHandler implements Sub
         }
     }
 
-    private String resolveToken(WebSocketSession session) {
-        String token = tokenFromSubProtocols(session.getHandshakeHeaders());
-        if (token != null && !token.isBlank()) {
-            return token;
+    private SupportWebSocketTicketService.Ticket resolveTicket(WebSocketSession session) {
+        String ticket = ticketFromSubProtocols(session.getHandshakeHeaders());
+        if (ticket != null && !ticket.isBlank()) {
+            return supportWebSocketTicketService.consume(ticket);
         }
         return null;
     }
 
-    private String tokenFromSubProtocols(HttpHeaders headers) {
+    private String ticketFromSubProtocols(HttpHeaders headers) {
         if (headers == null) {
             return null;
         }
@@ -282,23 +318,12 @@ public class SupportWebSocketHandler extends TextWebSocketHandler implements Sub
             }
             for (String protocol : header.split(",")) {
                 String normalized = protocol.trim();
-                if (normalized.startsWith(AUTH_PROTOCOL_PREFIX)) {
-                    return decodeProtocolToken(normalized.substring(AUTH_PROTOCOL_PREFIX.length()));
+                if (normalized.startsWith(TICKET_PROTOCOL_PREFIX)) {
+                    return normalized.substring(TICKET_PROTOCOL_PREFIX.length()).trim();
                 }
             }
         }
         return null;
-    }
-
-    private String decodeProtocolToken(String encodedToken) {
-        if (encodedToken == null || encodedToken.isBlank()) {
-            return null;
-        }
-        try {
-            return new String(Base64.getUrlDecoder().decode(encodedToken), StandardCharsets.UTF_8).trim();
-        } catch (IllegalArgumentException e) {
-            return null;
-        }
     }
 
     private void requireAdminActionPermission(Long userId, String role, String permission) {
@@ -320,7 +345,7 @@ public class SupportWebSocketHandler extends TextWebSocketHandler implements Sub
             throw new IllegalArgumentException("Support session not found");
         }
         if (!isAdminRole(role)) {
-            if (!userId.equals(session.getUserId()) || !supportService.isDefaultUserSession(session)) {
+            if (userId == null || !userId.equals(session.getUserId()) || !supportService.isDefaultUserSession(session)) {
                 throw new IllegalStateException("Forbidden");
             }
         }
@@ -334,16 +359,32 @@ public class SupportWebSocketHandler extends TextWebSocketHandler implements Sub
     }
 
     private void broadcast(String type, SupportMessage message, SupportSession session, Long userId) {
-        Set<WebSocketSession> sockets = userSessions.get(userId);
-        if (sockets != null) {
+        List<WebSocketSession> sockets = snapshotUserSessions(userId);
+        if (!sockets.isEmpty()) {
             Map<String, Object> customerPayload = customerPayload(type, message, session);
             for (WebSocketSession socket : sockets) {
                 sendJsonQuietly(socket, customerPayload);
             }
         }
         Map<String, Object> adminPayload = adminPayload(type, message, session);
-        for (WebSocketSession adminSocket : adminSessions) {
+        for (WebSocketSession adminSocket : snapshotAdminSessions()) {
             sendJsonQuietly(adminSocket, adminPayload);
+        }
+    }
+
+    private List<WebSocketSession> snapshotUserSessions(Long userId) {
+        if (userId == null) {
+            return List.of();
+        }
+        synchronized (sessionRegistryLock) {
+            Set<WebSocketSession> sockets = userSessions.get(userId);
+            return sockets == null || sockets.isEmpty() ? List.of() : List.copyOf(sockets);
+        }
+    }
+
+    private List<WebSocketSession> snapshotAdminSessions() {
+        synchronized (sessionRegistryLock) {
+            return adminSessions.isEmpty() ? List.of() : List.copyOf(adminSessions);
         }
     }
 
@@ -385,6 +426,9 @@ public class SupportWebSocketHandler extends TextWebSocketHandler implements Sub
     }
 
     private void sendJsonQuietly(WebSocketSession socket, Object payload) {
+        if (closeIfTokenRevoked(socket)) {
+            return;
+        }
         try {
             sendJson(socket, payload);
         } catch (IOException e) {
@@ -404,17 +448,19 @@ public class SupportWebSocketHandler extends TextWebSocketHandler implements Sub
         if (session == null) {
             return;
         }
-        Object userIdValue = session.getAttributes().get("userId");
-        Object roleValue = session.getAttributes().get("role");
-        if (roleValue != null && isAdminRole(String.valueOf(roleValue))) {
-            adminSessions.remove(session);
-        }
-        if (userIdValue instanceof Long) {
-            Set<WebSocketSession> sockets = userSessions.get((Long) userIdValue);
-            if (sockets != null) {
-                sockets.remove(session);
-                if (sockets.isEmpty()) {
-                    userSessions.remove((Long) userIdValue);
+        synchronized (sessionRegistryLock) {
+            Object userIdValue = session.getAttributes().get("userId");
+            Object roleValue = session.getAttributes().get("role");
+            if (roleValue != null && isAdminRole(String.valueOf(roleValue))) {
+                adminSessions.remove(session);
+            }
+            if (userIdValue instanceof Long) {
+                Set<WebSocketSession> sockets = userSessions.get((Long) userIdValue);
+                if (sockets != null) {
+                    sockets.remove(session);
+                    if (sockets.isEmpty()) {
+                        userSessions.remove((Long) userIdValue, sockets);
+                    }
                 }
             }
         }
@@ -451,6 +497,83 @@ public class SupportWebSocketHandler extends TextWebSocketHandler implements Sub
         return count;
     }
 
+    private void markSessionActivity(WebSocketSession socket) {
+        if (socket != null) {
+            socket.getAttributes().put(LAST_ACTIVITY_AT_ATTRIBUTE, System.currentTimeMillis());
+        }
+    }
+
+    private boolean shouldRemoveIdleSocket(WebSocketSession socket, long now, long maxIdleMs) {
+        if (socket == null || !socket.isOpen()) {
+            return true;
+        }
+        if (isSessionTokenRevoked(socket)) {
+            closeSocketQuietly(socket, TOKEN_REVOKED);
+            return true;
+        }
+        Long lastActivityAt = toLong(socket.getAttributes().get(LAST_ACTIVITY_AT_ATTRIBUTE));
+        if (lastActivityAt == null) {
+            markSessionActivity(socket);
+            return false;
+        }
+        if (now - lastActivityAt <= maxIdleMs) {
+            return false;
+        }
+        closeSocketQuietly(socket, IDLE_TIMEOUT);
+        return true;
+    }
+
+    private Long requireAuthenticatedSocketUserId(WebSocketSession socket) {
+        Long userId = socket == null ? null : toLong(socket.getAttributes().get("userId"));
+        if (userId == null) {
+            throw new IllegalStateException("Unauthorized");
+        }
+        return userId;
+    }
+
+    private String socketRole(WebSocketSession socket) {
+        if (socket == null) {
+            return "USER";
+        }
+        Object roleValue = socket.getAttributes().get("role");
+        String role = roleValue == null ? "" : String.valueOf(roleValue).trim();
+        return role.isBlank() ? "USER" : role.toUpperCase();
+    }
+
+    private boolean closeIfTokenRevoked(WebSocketSession socket) {
+        if (!isSessionTokenRevoked(socket)) {
+            return false;
+        }
+        removeSession(socket);
+        closeSocketQuietly(socket, TOKEN_REVOKED);
+        return true;
+    }
+
+    private boolean isSessionTokenRevoked(WebSocketSession socket) {
+        if (socket == null) {
+            return false;
+        }
+        Object tokenJti = socket.getAttributes().get("tokenJti");
+        return tokenJti != null && isTokenBlacklisted(String.valueOf(tokenJti));
+    }
+
+    private boolean isTokenBlacklisted(String tokenJti) {
+        return tokenJti != null
+                && !tokenJti.isBlank()
+                && tokenBlacklistService.isAccessTokenBlacklisted(tokenJti);
+    }
+
+    private void closeSocketQuietly(WebSocketSession socket, CloseStatus status) {
+        try {
+            if (socket != null && socket.isOpen()) {
+                socket.close(status);
+            }
+        } catch (IOException ex) {
+            log.debug("Support WebSocket close failed", ex);
+            // The session has already been removed from local registries or the idle scan.
+        }
+    }
+
     private int activeConnectionCountForUser(Long userId) {
         if (userId == null) {
             return 0;
@@ -480,6 +603,10 @@ public class SupportWebSocketHandler extends TextWebSocketHandler implements Sub
 
     private int maxBinaryMessageBytes() {
         return Math.max(1024, runtimeConfig.getInt("support.websocket.max-binary-message-bytes", 8192));
+    }
+
+    private long maxIdleMs() {
+        return Math.max(30000, runtimeConfig.getInt("support.websocket.max-idle-ms", 300000));
     }
 
     private Long toLong(Object value) {

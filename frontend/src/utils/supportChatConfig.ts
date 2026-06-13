@@ -1,3 +1,5 @@
+import { reportNonBlockingError } from './nonBlockingError';
+
 const DEFAULT_SUPPORT_MESSAGE_MAX_CHARS = 1000;
 
 const parsePositiveInt = (value: string | undefined, fallback: number) => {
@@ -20,7 +22,8 @@ export const parseSupportSocketPayload = (data: string) => {
     return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
       ? parsed
       : { type: 'ERROR' };
-  } catch {
+  } catch (error) {
+    reportNonBlockingError('supportChatConfig.parseSupportSocketPayload', error);
     return { type: 'ERROR' };
   }
 };

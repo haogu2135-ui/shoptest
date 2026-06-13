@@ -14,6 +14,8 @@ public class CartItemResponse {
     private String imageUrl;
     private Integer stock;
     private String productStatus;
+    private Boolean freeShipping;
+    private BigDecimal freeShippingThreshold;
 
     public static CartItemResponse from(CartItem item) {
         if (item == null) {
@@ -29,6 +31,8 @@ public class CartItemResponse {
         response.setImageUrl(item.getImageUrl());
         response.setStock(item.getStock());
         response.setProductStatus(item.getProductStatus());
+        response.setFreeShipping(item.getFreeShipping());
+        response.setFreeShippingThreshold(item.getFreeShippingThreshold());
         return response;
     }
 
@@ -102,5 +106,21 @@ public class CartItemResponse {
 
     public void setProductStatus(String productStatus) {
         this.productStatus = productStatus;
+    }
+
+    public Boolean getFreeShipping() {
+        return freeShipping;
+    }
+
+    public void setFreeShipping(Boolean freeShipping) {
+        this.freeShipping = freeShipping;
+    }
+
+    public BigDecimal getFreeShippingThreshold() {
+        return freeShippingThreshold;
+    }
+
+    public void setFreeShippingThreshold(BigDecimal freeShippingThreshold) {
+        this.freeShippingThreshold = freeShippingThreshold;
     }
 }

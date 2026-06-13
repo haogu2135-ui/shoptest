@@ -23,6 +23,7 @@ const LogManagement: React.FC = () => {
   const [keyword, setKeyword] = useState('');
   const [level, setLevel] = useState('ALL');
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [switching, setSwitching] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [currentRole, setCurrentRole] = useState('');
@@ -34,11 +35,14 @@ const LogManagement: React.FC = () => {
     const requestedLogger = nextLogger.trim() || DEFAULT_LOGGER;
     setLoading(true);
     try {
+      setLoadError(null);
       const response = await adminApi.getLogManagementStatus({ loggerName: requestedLogger });
       setStatus(response.data);
       setLoggerName(response.data.loggerName);
     } catch (error: unknown) {
-      message.error(getApiErrorMessage(error, t('pages.logAdmin.loadFailed'), language));
+      const errorMessage = getApiErrorMessage(error, t('pages.logAdmin.loadFailed'), language);
+      setLoadError(errorMessage);
+      message.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -71,9 +75,14 @@ const LogManagement: React.FC = () => {
       message.error(t('adminLayout.noPermission'));
       return;
     }
+    if (loadError || !status) {
+      message.warning(loadError || t('pages.logAdmin.loadFailed'));
+      return;
+    }
     setSwitching(true);
     try {
       const response = await adminApi.setDebugLogging({ loggerName, enabled });
+      setLoadError(null);
       setStatus(response.data);
       message.success(enabled ? t('pages.logAdmin.debugEnabled') : t('pages.logAdmin.debugDisabled'));
     } catch (error: unknown) {
@@ -86,6 +95,10 @@ const LogManagement: React.FC = () => {
   const downloadLogs = async () => {
     if (!canDownloadLogs) {
       message.error(t('adminLayout.noPermission'));
+      return;
+    }
+    if (loadError || !status) {
+      message.warning(loadError || t('pages.logAdmin.loadFailed'));
       return;
     }
     if (!range[0] || !range[1]) {
@@ -127,6 +140,7 @@ const LogManagement: React.FC = () => {
   const logLevelSelectLabel = `${t('pages.logAdmin.currentLevel')}: ${t('pages.logAdmin.rangeDownload')}`;
   const logKeywordInputLabel = `${t('pages.logAdmin.keywordPlaceholder')}: ${t('pages.logAdmin.rangeDownload')}`;
   const downloadSelectedRangeActionLabel = `${t('pages.logAdmin.downloadSelectedRange')}: ${logDownloadContext}`;
+  const logActionDisabled = loading || Boolean(loadError) || !status;
   const nextDebugEnabled = !Boolean(status?.debugEnabled);
   const debugTargetStatusLabel = nextDebugEnabled ? t('pages.logAdmin.debugEnabled') : t('pages.logAdmin.debugDisabled');
   const debugConfirmActionLabel = `${debugTargetStatusLabel}: ${activeLoggerName}`;
@@ -144,148 +158,167 @@ const LogManagement: React.FC = () => {
             {t('common.refresh')}
           </Button>
           {canDownloadLogs ? (
-            <Button type="primary" icon={<DownloadOutlined />} loading={downloading} aria-label={downloadLogsActionLabel} title={downloadLogsActionLabel} onClick={downloadLogs}>
+            <Button type="primary" icon={<DownloadOutlined />} loading={downloading} disabled={logActionDisabled} aria-label={downloadLogsActionLabel} title={downloadLogsActionLabel} onClick={downloadLogs}>
               {t('pages.logAdmin.downloadLogs')}
             </Button>
           ) : null}
         </Space>
       </div>
 
-      <Spin spinning={loading && !status}>
-        <div className="log-management__stats">
-          <Card>
-            <Statistic title={t('pages.logAdmin.loggerMetric')} value={status?.loggerName || loggerName} prefix={<FileTextOutlined />} />
-          </Card>
-          <Card>
-            <Statistic
-              title={t('pages.logAdmin.currentLevel')}
-              value={status?.effectiveLevel || '-'}
-              valueStyle={{ color: status?.debugEnabled ? '#c2410c' : '#1f8a4c' }}
-              prefix={<BugOutlined />}
-            />
-          </Card>
-          <Card>
-            <Statistic title={t('pages.logAdmin.logFileCount')} value={status?.availableFiles?.length || 0} prefix={<ClockCircleOutlined />} />
-          </Card>
-        </div>
-
+      {loadError ? (
         <Alert
           className="log-management__alert"
-          type="info"
+          type="warning"
           showIcon
-          message={t('pages.logAdmin.debugHint')}
-        />
-
-        <div className="log-management__grid">
-          <Card title={t('pages.logAdmin.debugControl')} className="log-management__card">
-            <div className="log-management__control">
-              <label>
-                <span>{t('pages.logAdmin.loggerName')}</span>
-                <Input
-                  value={loggerName}
-                  onChange={(event) => setLoggerName(event.target.value)}
-                  onPressEnter={() => loadStatus(loggerName)}
-                  placeholder={DEFAULT_LOGGER}
-                  aria-label={loggerNameInputLabel}
-                  title={loggerNameInputLabel}
-                />
-              </label>
-              {canToggleDebug ? (
-                <div className="log-management__switchRow" role="group" aria-label={debugSwitchActionLabel} title={debugSwitchActionLabel}>
-                  <div>
-                    <Text strong>{t('pages.logAdmin.debugLogs')}</Text>
-                    <Text type="secondary">{t('pages.logAdmin.runtimeOnly')}</Text>
-                  </div>
-                  <Popconfirm
-                    title={`${debugTargetStatusLabel}?`}
-                    description={t('pages.logAdmin.debugHint')}
-                    disabled={switching}
-                    okText={t('common.confirm')}
-                    cancelText={t('common.cancel')}
-                    classNames={{ root: 'shop-mobile-popup-layer' }}
-                    okButtonProps={{ 'aria-label': debugConfirmActionLabel, title: debugConfirmActionLabel }}
-                    cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${debugConfirmActionLabel}`, title: `${t('common.cancel')}: ${debugConfirmActionLabel}` }}
-                    onConfirm={() => toggleDebug(nextDebugEnabled)}
-                  >
-                    <Switch
-                      checked={Boolean(status?.debugEnabled)}
-                      loading={switching}
-                      disabled={switching}
-                      aria-label={debugConfirmActionLabel}
-                      title={debugConfirmActionLabel}
-                      checkedChildren={t('pages.logAdmin.on')}
-                      unCheckedChildren={t('pages.logAdmin.off')}
-                    />
-                  </Popconfirm>
-                </div>
-              ) : null}
-              <Button onClick={() => loadStatus(loggerName)} icon={<ReloadOutlined />} aria-label={loadLoggerActionLabel} title={loadLoggerActionLabel}>
-                {t('pages.logAdmin.loadLogger')}
-              </Button>
-            </div>
-          </Card>
-
-          <Card title={t('pages.logAdmin.rangeDownload')} className="log-management__card">
-            <div className="log-management__download">
-              <div role="group" aria-label={logRangePickerLabel} title={logRangePickerLabel}>
-                <RangePicker
-                  showTime
-                  allowClear={false}
-                  placement="bottomLeft"
-                  classNames={logRangePickerClassNames}
-                  getPopupContainer={() => document.body}
-                  value={range}
-                  onChange={(values) => {
-                    if (values?.[0] && values?.[1]) {
-                      setRange([values[0], values[1]]);
-                    }
-                  }}
-                />
-              </div>
-              <div role="group" aria-label={logLevelSelectLabel} title={logLevelSelectLabel}>
-                <Space.Compact block>
-                  <Select
-                    value={level}
-                    onChange={setLevel}
-                    classNames={{ popup: { root: 'shop-mobile-popup-layer' } }}
-                    getPopupContainer={() => document.body}
-                    options={['ALL', 'TRACE', 'DEBUG', 'INFO', 'WARN', 'ERROR'].map((value) => ({ value, label: value }))}
-                    style={{ width: 110 }}
-                  />
-                  <Input
-                    value={keyword}
-                    onChange={(event) => setKeyword(event.target.value)}
-                    placeholder={t('pages.logAdmin.keywordPlaceholder')}
-                    aria-label={logKeywordInputLabel}
-                    title={logKeywordInputLabel}
-                  />
-                </Space.Compact>
-              </div>
-              {canDownloadLogs ? (
-                <Button type="primary" icon={<DownloadOutlined />} loading={downloading} aria-label={downloadSelectedRangeActionLabel} title={downloadSelectedRangeActionLabel} onClick={downloadLogs}>
-                  {t('pages.logAdmin.downloadSelectedRange')}
-                </Button>
-              ) : null}
-            </div>
-            <Descriptions column={1} size="small" bordered className="log-management__meta">
-              <Descriptions.Item label={t('pages.logAdmin.logDirectory')}>{status?.logDirectory || '-'}</Descriptions.Item>
-              <Descriptions.Item label={t('pages.logAdmin.currentFile')}>{status?.logFileName || '-'}</Descriptions.Item>
-              <Descriptions.Item label={t('pages.logAdmin.configuredLevel')}>
-                <Tag color={status?.configuredLevel === 'INHERITED' ? 'default' : 'blue'}>{status?.configuredLevel || '-'}</Tag>
-              </Descriptions.Item>
-            </Descriptions>
-          </Card>
-        </div>
-
-        <Card title={t('pages.logAdmin.availableLogFiles')} className="log-management__card">
-          {(status?.availableFiles || []).length ? (
-            <Space wrap size={[8, 8]}>
-              {status?.availableFiles.map((file) => <Tag key={file}>{file}</Tag>)}
-            </Space>
-          ) : (
-            <Empty description={t('pages.logAdmin.noLogFiles')} />
+          message={loadError}
+          description={status ? t('pages.logAdmin.staleDataWarning') : undefined}
+          action={(
+            <Button size="small" onClick={() => loadStatus(loggerName)} loading={loading}>
+              {t('common.retry')}
+            </Button>
           )}
-        </Card>
+        />
+      ) : null}
+
+      <Spin spinning={loading && !status}>
+        {loadError && !status ? null : (
+          <>
+            <div className="log-management__stats">
+              <Card>
+                <Statistic title={t('pages.logAdmin.loggerMetric')} value={status?.loggerName || loggerName} prefix={<FileTextOutlined />} />
+              </Card>
+              <Card>
+                <Statistic
+                  title={t('pages.logAdmin.currentLevel')}
+                  value={status?.effectiveLevel || '-'}
+                  valueStyle={{ color: status?.debugEnabled ? '#c2410c' : '#1f8a4c' }}
+                  prefix={<BugOutlined />}
+                />
+              </Card>
+              <Card>
+                <Statistic title={t('pages.logAdmin.logFileCount')} value={status?.availableFiles?.length || 0} prefix={<ClockCircleOutlined />} />
+              </Card>
+            </div>
+
+            <Alert
+              className="log-management__alert"
+              type="info"
+              showIcon
+              message={t('pages.logAdmin.debugHint')}
+            />
+
+            <div className="log-management__grid">
+              <Card title={t('pages.logAdmin.debugControl')} className="log-management__card">
+                <div className="log-management__control">
+                  <label>
+                    <span>{t('pages.logAdmin.loggerName')}</span>
+                    <Input
+                      value={loggerName}
+                      onChange={(event) => setLoggerName(event.target.value)}
+                      onPressEnter={() => loadStatus(loggerName)}
+                      placeholder={DEFAULT_LOGGER}
+                      aria-label={loggerNameInputLabel}
+                      title={loggerNameInputLabel}
+                    />
+                  </label>
+                  {canToggleDebug ? (
+                    <div className="log-management__switchRow" role="group" aria-label={debugSwitchActionLabel} title={debugSwitchActionLabel}>
+                      <div>
+                        <Text strong>{t('pages.logAdmin.debugLogs')}</Text>
+                        <Text type="secondary">{t('pages.logAdmin.runtimeOnly')}</Text>
+                      </div>
+                      <Popconfirm
+                        title={`${debugTargetStatusLabel}?`}
+                        description={t('pages.logAdmin.debugHint')}
+                        disabled={switching || logActionDisabled}
+                        okText={t('common.confirm')}
+                        cancelText={t('common.cancel')}
+                        classNames={{ root: 'shop-mobile-popup-layer' }}
+                        okButtonProps={{ 'aria-label': debugConfirmActionLabel, title: debugConfirmActionLabel }}
+                        cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${debugConfirmActionLabel}`, title: `${t('common.cancel')}: ${debugConfirmActionLabel}` }}
+                        onConfirm={() => toggleDebug(nextDebugEnabled)}
+                      >
+                        <Switch
+                          checked={Boolean(status?.debugEnabled)}
+                          loading={switching}
+                          disabled={switching || logActionDisabled}
+                          aria-label={debugConfirmActionLabel}
+                          title={debugConfirmActionLabel}
+                          checkedChildren={t('pages.logAdmin.on')}
+                          unCheckedChildren={t('pages.logAdmin.off')}
+                        />
+                      </Popconfirm>
+                    </div>
+                  ) : null}
+                  <Button onClick={() => loadStatus(loggerName)} icon={<ReloadOutlined />} aria-label={loadLoggerActionLabel} title={loadLoggerActionLabel}>
+                    {t('pages.logAdmin.loadLogger')}
+                  </Button>
+                </div>
+              </Card>
+
+              <Card title={t('pages.logAdmin.rangeDownload')} className="log-management__card">
+                <div className="log-management__download">
+                  <div role="group" aria-label={logRangePickerLabel} title={logRangePickerLabel}>
+                    <RangePicker
+                      showTime
+                      allowClear={false}
+                      placement="bottomLeft"
+                      classNames={logRangePickerClassNames}
+                      getPopupContainer={() => document.body}
+                      value={range}
+                      onChange={(values) => {
+                        if (values?.[0] && values?.[1]) {
+                          setRange([values[0], values[1]]);
+                        }
+                      }}
+                    />
+                  </div>
+                  <div role="group" aria-label={logLevelSelectLabel} title={logLevelSelectLabel}>
+                    <Space.Compact block>
+                      <Select
+                        value={level}
+                        onChange={setLevel}
+                        classNames={{ popup: { root: 'shop-mobile-popup-layer' } }}
+                        getPopupContainer={() => document.body}
+                        options={['ALL', 'TRACE', 'DEBUG', 'INFO', 'WARN', 'ERROR'].map((value) => ({ value, label: value }))}
+                        style={{ width: 110 }}
+                      />
+                      <Input
+                        value={keyword}
+                        onChange={(event) => setKeyword(event.target.value)}
+                        placeholder={t('pages.logAdmin.keywordPlaceholder')}
+                        aria-label={logKeywordInputLabel}
+                        title={logKeywordInputLabel}
+                      />
+                    </Space.Compact>
+                  </div>
+                  {canDownloadLogs ? (
+                    <Button type="primary" icon={<DownloadOutlined />} loading={downloading} disabled={logActionDisabled} aria-label={downloadSelectedRangeActionLabel} title={downloadSelectedRangeActionLabel} onClick={downloadLogs}>
+                      {t('pages.logAdmin.downloadSelectedRange')}
+                    </Button>
+                  ) : null}
+                </div>
+                <Descriptions column={1} size="small" bordered className="log-management__meta">
+                  <Descriptions.Item label={t('pages.logAdmin.logDirectory')}>{status?.logDirectory || '-'}</Descriptions.Item>
+                  <Descriptions.Item label={t('pages.logAdmin.currentFile')}>{status?.logFileName || '-'}</Descriptions.Item>
+                  <Descriptions.Item label={t('pages.logAdmin.configuredLevel')}>
+                    <Tag color={status?.configuredLevel === 'INHERITED' ? 'default' : 'blue'}>{status?.configuredLevel || '-'}</Tag>
+                  </Descriptions.Item>
+                </Descriptions>
+              </Card>
+            </div>
+
+            <Card title={t('pages.logAdmin.availableLogFiles')} className="log-management__card">
+              {(status?.availableFiles || []).length ? (
+                <Space wrap size={[8, 8]}>
+                  {status?.availableFiles.map((file) => <Tag key={file}>{file}</Tag>)}
+                </Space>
+              ) : (
+                <Empty description={t('pages.logAdmin.noLogFiles')} />
+              )}
+            </Card>
+          </>
+        )}
       </Spin>
     </div>
   );

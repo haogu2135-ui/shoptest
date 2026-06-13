@@ -13,6 +13,14 @@
   background: linear-gradient(180deg, #ffffff 0%, #f4f7f5 100%);
 }
 
+.admin-layout__loading--recoverable {
+  padding: 24px;
+}
+
+.admin-layout__loading--recoverable .ant-alert {
+  width: min(100%, 560px);
+}
+
 .admin-layout__sider.ant-layout-sider {
   position: sticky;
   top: 0;
@@ -71,7 +79,7 @@
 }
 
 .admin-layout__menu.ant-menu-dark .ant-menu-item-selected {
-  background: #ee4d2d;
+  background: #c2410c;
   color: #ffffff;
   font-weight: 800;
 }
@@ -238,7 +246,7 @@
 .admin-layout__header.ant-layout-header {
   position: sticky;
   top: 0;
-  z-index: 20;
+  z-index: 60;
 }
 
 .admin-layout__content.ant-layout-content::before {
@@ -302,8 +310,8 @@
 }
 
 .admin-layout__menu.ant-menu-dark .ant-menu-item-selected {
-  background: linear-gradient(135deg, #ff7048, #ee4d2d);
-  box-shadow: 0 12px 24px rgba(238, 77, 45, 0.2);
+  background: linear-gradient(135deg, #c2410c, #9a3412);
+  box-shadow: 0 12px 24px rgba(184, 50, 18, 0.2);
 }
 
 .admin-layout__header.ant-layout-header {
@@ -853,5 +861,148 @@ body.shop-mobile-app .admin-layout__content.ant-layout-content {
     font-size: 17px;
     font-weight: 900;
     line-height: 1;
+  }
+}
+
+/* Submitted BUG fix: keep the final sidebar support entry clear of the collapse trigger. */
+.admin-layout__menu.ant-menu-dark {
+  padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+  scroll-padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+}
+
+.admin-layout__menu.ant-menu-dark .ant-menu-item:last-child {
+  margin-bottom: 12px;
+}
+
+.admin-layout__sider .ant-layout-sider-trigger {
+  z-index: 3;
+}
+
+body.shop-mobile-app .admin-layout__menu.ant-menu-dark {
+  padding-bottom: calc(82px + var(--shop-admin-safe-bottom));
+  scroll-padding-bottom: calc(82px + var(--shop-admin-safe-bottom));
+}
+
+/* 2026-06 APP all-route audit: shared admin mobile containment and controls.
+   This lands in the lazy admin shell so route styles inherit a stable baseline. */
+@media (max-width: 780px) {
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .admin-layout {
+    width: 100% !important;
+    max-width: 100vw !important;
+    min-height: 100svh !important;
+    overflow-x: clip !important;
+  }
+
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .admin-layout,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .admin-layout .ant-layout,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .admin-layout__content.ant-layout-content {
+    min-width: 0 !important;
+  }
+
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .admin-layout__content.ant-layout-content {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding-right: max(12px, env(safe-area-inset-right, 0px)) !important;
+    padding-left: max(12px, env(safe-area-inset-left, 0px)) !important;
+    padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 74px) + 116px + env(safe-area-inset-bottom, 0px)) !important;
+    overflow-x: clip !important;
+  }
+
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .admin-layout__mobileDrawer .ant-drawer-content-wrapper,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .admin-layout__mobileDrawer.ant-drawer,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .admin-layout__mobileDrawer .ant-drawer-content {
+    width: min(86vw, 320px) !important;
+    max-width: 86vw !important;
+  }
+
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .admin-layout__content .ant-card,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .admin-layout__content .ant-card-body,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .admin-layout__content .ant-form,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .admin-layout__content .ant-row,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .admin-layout__content .ant-col,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .admin-layout__content .ant-space,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .admin-layout__content .ant-space-item {
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .admin-layout__content .ant-card-body {
+    padding: 12px !important;
+    overflow: visible !important;
+  }
+
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .admin-layout__content .ant-row {
+    row-gap: 10px !important;
+  }
+
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .admin-layout__content .ant-form-inline {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 10px !important;
+  }
+
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .admin-layout__content .ant-form-inline .ant-form-item,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .admin-layout__content .ant-form-item,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .admin-layout__content .ant-form-item-control,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .admin-layout__content .ant-form-item-control-input,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .admin-layout__content .ant-form-item-control-input-content {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .admin-layout__content .ant-input,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .admin-layout__content .ant-input-affix-wrapper,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .admin-layout__content .ant-input-number,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .admin-layout__content .ant-input-number-input,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .admin-layout__content .ant-picker,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .admin-layout__content .ant-select,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .admin-layout__content .ant-select-selector,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .admin-layout__content .ant-btn {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-height: 44px !important;
+    height: auto !important;
+  }
+
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .admin-layout__content .ant-space {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .admin-layout__content .ant-space .ant-btn {
+    flex: 1 1 132px !important;
+  }
+
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .admin-layout__content .ant-table-wrapper,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .admin-layout__content .ant-table,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .admin-layout__content .ant-table-container,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .admin-layout__content .ant-table-content {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .admin-layout__content .ant-table-content {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .admin-layout__content .ant-table-cell {
+    max-width: min(220px, 62vw) !important;
+    white-space: normal !important;
+    overflow-wrap: anywhere !important;
+  }
+}
+
+/* Final APP admin content width guard: margin must be accounted for in the box
+   width so narrow WebViews do not clip the right edge by 8px. */
+@media (max-width: 780px) {
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .admin-layout__content.ant-layout-content {
+    box-sizing: border-box !important;
+    width: calc(100vw - 16px) !important;
+    max-width: calc(100vw - 16px) !important;
+    margin: 8px !important;
+    overflow-x: clip !important;
   }
 }

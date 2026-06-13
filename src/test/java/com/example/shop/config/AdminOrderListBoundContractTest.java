@@ -32,6 +32,17 @@ class AdminOrderListBoundContractTest {
 
         assertTrue(orderController.contains("private static final int HARD_LEGACY_ADMIN_ORDER_LIST_LIMIT = 500;"),
                 "Legacy /orders admin compatibility path should enforce the same hard ceiling");
+        String legacyAdminOrders = sliceBetween(orderController,
+                "public ResponseEntity<?> getAllOrders(@RequestParam(required = false) Integer page,",
+                "@GetMapping(\"/{id}/items\")");
+        assertTrue(legacyAdminOrders.contains("List<AdminOrderResponse> orderResponses = orderService.searchAdminOrders"),
+                "Legacy /orders admin list should map raw Order entities before responding");
+        assertTrue(legacyAdminOrders.contains(".map(AdminOrderResponse::from)"),
+                "Legacy /orders admin list should use the explicit admin response DTO");
+        assertTrue(legacyAdminOrders.contains(".body(orderResponses);"),
+                "Legacy /orders admin list should return DTO rows");
+        assertFalse(legacyAdminOrders.contains(".body(orders);"),
+                "Legacy /orders admin list must not return raw Order entities");
 
         assertTrue(rateLimitService.contains("positiveInt(\"traffic.rate-limit.admin-order-list-per-minute\", 60)"),
                 "Admin order list endpoint limit should be configurable");

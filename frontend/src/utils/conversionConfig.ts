@@ -1,3 +1,5 @@
+import type { CurrencyCode } from './market';
+
 export type SocialProofEvent = {
   verified?: boolean;
   cityKey: string;
@@ -9,7 +11,14 @@ export type SocialProofEvent = {
 export const conversionConfig = {
   giftAtCheckout: {
     enabled: true,
-    thresholdMxn: 1299,
+    // Thresholds use the same base amount unit as cart totals; display formatting converts per market currency.
+    thresholdsByCurrency: {
+      MXN: 1299,
+      USD: 1299,
+      CAD: 1299,
+      EUR: 1299,
+      GBP: 1299,
+    } satisfies Record<CurrencyCode, number>,
     giftNameKey: 'pages.checkout.giftToyName',
   },
   subscription: {

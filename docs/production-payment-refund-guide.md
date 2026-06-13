@@ -85,11 +85,12 @@ The callback must update `/payments/callback` with:
   "status": "SUCCESS",
   "amount": 123.45,
   "callbackTimestamp": 1760000000,
-  "signature": "sha256(orderNo|channel|transactionId|status|amount|callbackTimestamp|PAYMENT_CALLBACK_SECRET)"
+  "signature": "hmac_sha256_hex(PAYMENT_CALLBACK_SECRET, orderNo|channel|transactionId|status|amount|callbackTimestamp)"
 }
 ```
 
 `callbackTimestamp` is required. The backend rejects callbacks whose timestamp is missing or older than `payment.callback-max-skew-seconds`.
+The signature payload is the exact pipe-delimited value shown above, with the backend-normalized channel, uppercase status, normalized decimal amount, and Unix timestamp. Do not append the secret to the payload; use `PAYMENT_CALLBACK_SECRET` as the HMAC-SHA256 key and send the lowercase hex digest.
 
 Set a strong callback secret:
 

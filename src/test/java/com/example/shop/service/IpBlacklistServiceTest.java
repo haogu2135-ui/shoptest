@@ -5,10 +5,14 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
 
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.startsWith;
@@ -143,5 +147,60 @@ class IpBlacklistServiceTest {
                 startsWith("UPDATE ip_blacklist_entries SET status = ?, released_at"),
                 any(),
                 any());
+    }
+
+    @Test
+    void blockingEntryLookupUsesDatabaseAndDoesNotDependOnLegacyRedisSnapshots() {
+        when(clientIpResolver.normalizeIpAddress("203.0.113.44")).thenReturn("203.0.113.44");
+        when(jdbcTemplate.query(
+                startsWith("SELECT * FROM ip_blacklist_entries WHERE ip_address = ?"),
+                any(org.springframework.jdbc.core.RowMapper.class),
+                eq("203.0.113.44"),
+                eq(IpBlacklistService.STATUS_BLOCKED))).thenReturn(List.of());
+        when(tokenBlacklistService.findLoginIpFailures()).thenThrow(new RuntimeException("redis unavailable"));
+
+        assertTrue(service.findBlockingEntry("203.0.113.44").isEmpty());
+
+        verify(tokenBlacklistService, never()).findLoginIpFailures();
+    }
+
+    @Test
+    void adminIpBlacklistControllerDoesNotContainLegacyBrokenReportLogic() throws Exception {
+        String source = Files.readString(
+                Path.of("src/main/java/com/example/shop/controller/AdminIpBlacklistController.java"),
+                StandardCharsets.UTF_8);
+
+        assertEquals(4, countOccurrences(source, "@PostMapping"));
+        assertTrue(source.contains("@PostMapping(\"/batch/release\")"));
+        assertTrue(source.contains("ipBlacklistService.releaseBatch"));
+        assertTrue(source.contains("AdminRoleService.IP_BLACKLIST_RELEASE_PERMISSION"));
+        assertTrue(source.contains("SensitiveDataMasker.mask"));
+        assertTrue(source.contains("response.getReleasedCount()"));
+        assertTrue(source.contains("response.getRequestedCount()"));
+        assertTrue(source.contains("body == null || body.getIds() == null ? 0 : body.getIds().size()"));
+
+        List<String> staleTokens = List.of(
+                "countEntries",
+                "UnsupportedOperationException",
+                ".clear()",
+                "piiEntries",
+                "PII",
+                "yesterday",
+                "twoMonthsAgo",
+                "xor",
+                "XOR");
+        for (String token : staleTokens) {
+            assertTrue(!source.contains(token), () -> "AdminIpBlacklistController still contains stale F3496 token: " + token);
+        }
+    }
+
+    private int countOccurrences(String source, String token) {
+        int count = 0;
+        int index = source.indexOf(token);
+        while (index >= 0) {
+            count++;
+            index = source.indexOf(token, index + token.length());
+        }
+        return count;
     }
 }

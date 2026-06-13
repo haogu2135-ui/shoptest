@@ -1,0 +1,9 @@
+[Unit]
+Description=ShopTest hourly latest-code activation and APK build
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/guhao/shoptest
+ExecStart=/home/guhao/shoptest/scripts/shoptest-hourly-release.sh

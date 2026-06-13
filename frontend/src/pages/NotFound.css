@@ -5,7 +5,26 @@
 
 @media (max-width: 640px) {
   .not-found-page {
-    padding: 48px 12px;
+    min-height: calc(100svh - var(--shop-mobile-bottom-nav-height, 76px));
+    padding: 18px 12px calc(104px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .not-found-page .ant-result {
+    padding: 14px 0 0;
+  }
+
+  .not-found-page .ant-result-icon {
+    margin-bottom: 8px;
+  }
+
+  .not-found-page .ant-result-title {
+    margin-bottom: 8px;
+    font-size: 30px;
+    line-height: 1.1;
+  }
+
+  .not-found-page .ant-result-subtitle {
+    margin-bottom: 14px;
   }
 
   .not-found-page .ant-result-extra {
@@ -19,5 +38,42 @@
     min-height: 44px;
     margin-inline: 0;
     touch-action: manipulation;
+  }
+}
+
+@media (max-width: 640px) and (max-height: 760px) {
+  .not-found-page {
+    padding-top: 10px;
+  }
+
+  .not-found-page .ant-result {
+    padding-top: 8px;
+  }
+
+  .not-found-page .ant-result-icon {
+    width: min(210px, 62vw);
+    margin-right: auto;
+    margin-bottom: 4px;
+    margin-left: auto;
+  }
+
+  .not-found-page .ant-result-icon svg,
+  .not-found-page .ant-result-icon img {
+    width: 100%;
+    height: auto;
+  }
+
+  .not-found-page .ant-result-title {
+    margin-bottom: 6px;
+    font-size: 26px;
+  }
+
+  .not-found-page .ant-result-subtitle {
+    margin-bottom: 10px;
+    line-height: 1.35;
+  }
+
+  .not-found-page .ant-result-extra {
+    margin-top: 14px;
   }
 }

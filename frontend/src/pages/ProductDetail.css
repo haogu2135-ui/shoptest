@@ -4,6 +4,33 @@
   padding: 24px;
 }
 
+/* Mobile Web/App closure: the purchase guidance can be longer than the price
+   lane on 360px screens, so it must wrap instead of ellipsizing. */
+@media (max-width: 780px) {
+  .product-mobile-buybar__meta .product-mobile-buybar__status,
+  .product-mobile-buybar__status,
+  .product-mobile-buybar__status--attention {
+    min-width: 0 !important;
+    max-width: 100% !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    gap: 4px !important;
+    overflow: visible !important;
+    color: #40564a !important;
+    line-height: 1.25 !important;
+    text-align: right !important;
+    text-overflow: clip !important;
+    white-space: normal !important;
+    overflow-wrap: anywhere !important;
+    word-break: normal !important;
+  }
+
+  .product-mobile-buybar__status--attention {
+    color: #9f321b !important;
+  }
+}
+
 /* Spanish product detail refinements */
 .product-detail-page--es {
   overflow-wrap: anywhere;
@@ -423,6 +450,330 @@
   height: 100vh;
 }
 
+@keyframes product-detail-skeleton-shimmer {
+  0% {
+    background-position: -720px 0;
+  }
+
+  100% {
+    background-position: 720px 0;
+  }
+}
+
+.product-detail-page--loading {
+  min-height: 100vh;
+}
+
+.product-detail-skeleton {
+  display: grid;
+  gap: 20px;
+  width: 100%;
+}
+
+.product-detail-skeleton__sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.product-detail-skeleton__block {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  border-radius: 8px;
+  background: linear-gradient(90deg, #e4ece6 0%, #f8faf8 42%, #e4ece6 78%);
+  background-size: 720px 100%;
+  animation: product-detail-skeleton-shimmer 1.35s ease-in-out infinite;
+}
+
+.product-detail-skeleton__breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.product-detail-skeleton__block--crumb {
+  width: 46px;
+  height: 16px;
+}
+
+.product-detail-skeleton__block--crumbLong {
+  width: 86px;
+}
+
+.product-detail-skeleton__block--crumbShort {
+  width: min(220px, 40vw);
+}
+
+.product-detail-skeleton__main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.product-detail-skeleton__media,
+.product-detail-skeleton__summary,
+.product-detail-skeleton__afterfold {
+  min-width: 0;
+  border: 1px solid #e4ebe4;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 10px 24px rgba(18, 71, 52, 0.06);
+}
+
+.product-detail-skeleton__media {
+  padding: 20px;
+}
+
+.product-detail-skeleton__imageFrame {
+  aspect-ratio: 1 / 1;
+  width: 100%;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #f4f7f4;
+}
+
+.product-detail-skeleton__block--image {
+  width: 100%;
+  height: 100%;
+  border-radius: 0;
+}
+
+.product-detail-skeleton__thumbs {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.product-detail-skeleton__block--thumb {
+  aspect-ratio: 1 / 1;
+}
+
+.product-detail-skeleton__summary {
+  display: grid;
+  gap: 16px;
+  padding: 22px;
+}
+
+.product-detail-skeleton__block--brand {
+  width: min(180px, 44%);
+  height: 18px;
+}
+
+.product-detail-skeleton__block--title {
+  width: 88%;
+  height: 36px;
+}
+
+.product-detail-skeleton__block--subtitle {
+  width: 72%;
+  height: 16px;
+}
+
+.product-detail-skeleton__block--price {
+  width: min(260px, 64%);
+  height: 42px;
+  background: linear-gradient(90deg, #f1e3dc 0%, #fff7f2 42%, #f1e3dc 78%);
+  background-size: 720px 100%;
+}
+
+.product-detail-skeleton__signals {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.product-detail-skeleton__block--signal {
+  height: 48px;
+}
+
+.product-detail-skeleton__options {
+  display: grid;
+  gap: 14px;
+}
+
+.product-detail-skeleton__optionGroup {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.product-detail-skeleton__block--optionLabel {
+  width: 130px;
+  height: 15px;
+}
+
+.product-detail-skeleton__optionPills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.product-detail-skeleton__block--pill {
+  width: 86px;
+  height: 34px;
+  border-radius: 999px;
+}
+
+.product-detail-skeleton__actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.product-detail-skeleton__block--action {
+  height: 44px;
+}
+
+.product-detail-skeleton__block--actionPrimary {
+  background: linear-gradient(90deg, #d5e9dc 0%, #edf7f0 42%, #d5e9dc 78%);
+  background-size: 720px 100%;
+}
+
+.product-detail-skeleton__afterfold {
+  display: grid;
+  gap: 18px;
+  padding: 20px;
+}
+
+.product-detail-skeleton__tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.product-detail-skeleton__block--tab {
+  width: 116px;
+  height: 30px;
+}
+
+.product-detail-skeleton__detailRows {
+  display: grid;
+  gap: 12px;
+}
+
+.product-detail-skeleton__block--detail {
+  width: 82%;
+  height: 16px;
+}
+
+.product-detail-skeleton__block--detailLong {
+  width: 94%;
+}
+
+.product-detail-skeleton__block--detailShort {
+  width: 56%;
+}
+
+.product-detail-skeleton__recommendations {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.product-detail-skeleton__block--recommendation {
+  aspect-ratio: 4 / 3;
+}
+
+@media (max-width: 768px) {
+  .product-detail-page--loading {
+    padding: 12px;
+  }
+
+  .product-detail-skeleton {
+    gap: 12px;
+  }
+
+  .product-detail-skeleton__breadcrumb {
+    display: none;
+  }
+
+  .product-detail-skeleton__main,
+  .product-detail-skeleton__recommendations {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .product-detail-skeleton__media,
+  .product-detail-skeleton__summary,
+  .product-detail-skeleton__afterfold {
+    border-radius: 8px;
+    box-shadow: 0 6px 18px rgba(18, 71, 52, 0.05);
+  }
+
+  .product-detail-skeleton__media {
+    padding: 10px;
+  }
+
+  .product-detail-skeleton__summary,
+  .product-detail-skeleton__afterfold {
+    padding: 14px;
+  }
+
+  .product-detail-skeleton__thumbs {
+    grid-template-columns: repeat(4, minmax(44px, 1fr));
+    gap: 8px;
+  }
+
+  .product-detail-skeleton__block--title {
+    width: 96%;
+    height: 30px;
+  }
+
+  .product-detail-skeleton__block--price {
+    width: min(230px, 76%);
+    height: 36px;
+  }
+
+  .product-detail-skeleton__signals {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .product-detail-skeleton__block--signal {
+    height: 40px;
+  }
+
+  .product-detail-skeleton__block--pill {
+    width: min(94px, calc((100vw - 66px) / 3));
+    min-width: 70px;
+  }
+
+  .product-detail-skeleton__actions {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .product-detail-skeleton__tabs {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .product-detail-skeleton__block--tab {
+    width: 100%;
+  }
+
+  .product-detail-skeleton__block--recommendation {
+    aspect-ratio: 16 / 9;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .product-detail-skeleton__block {
+    animation: none;
+    background-position: 0 0;
+  }
+}
+
 .product-detail-breadcrumb {
   margin-bottom: 24px;
 }
@@ -518,6 +869,82 @@
   padding: 24px 0;
 }
 
+.product-detail-lazy-skeleton {
+  display: grid;
+  gap: 14px;
+  width: 100%;
+  min-width: 0;
+}
+
+.product-detail-lazy-skeleton--rich {
+  min-height: 336px;
+}
+
+.product-detail-lazy-skeleton--review {
+  min-height: 292px;
+}
+
+.product-detail-lazy-skeleton__line {
+  width: 72%;
+  height: 16px;
+}
+
+.product-detail-lazy-skeleton__line--wide {
+  width: 92%;
+}
+
+.product-detail-lazy-skeleton__media {
+  width: 100%;
+  min-height: 240px;
+}
+
+.product-detail-lazy-skeleton__title {
+  width: min(220px, 60%);
+  height: 24px;
+}
+
+.product-detail-lazy-skeleton__composer {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid #e4ebe4;
+  border-radius: 8px;
+  background: #fbfdfb;
+}
+
+.product-detail-lazy-skeleton__select {
+  width: min(360px, 100%);
+  height: 36px;
+}
+
+.product-detail-lazy-skeleton__textarea {
+  width: 100%;
+  height: 96px;
+}
+
+.product-detail-lazy-skeleton__button {
+  width: 140px;
+  height: 40px;
+}
+
+.product-detail-lazy-skeleton__reviewRows {
+  display: grid;
+  gap: 12px;
+}
+
+.product-detail-lazy-skeleton__reviewRow {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+}
+
+.product-detail-lazy-skeleton__avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+}
+
 .product-spec-row {
   margin-bottom: 16px;
 }
@@ -608,6 +1035,11 @@
   box-shadow: var(--shadow-1);
 }
 
+.product-detail-main-image:focus-visible {
+  outline: 3px solid rgba(238, 77, 45, 0.72);
+  outline-offset: 3px;
+}
+
 .product-detail-main-image__img {
   width: 100%;
   height: 100%;
@@ -664,18 +1096,25 @@
   padding: 0 4px;
 }
 
-.product-detail-thumbs__img {
+.product-detail-thumbs__button {
   width: 100%;
   aspect-ratio: 1 / 1;
   display: block;
-  object-fit: cover;
   border: 2px solid transparent;
   border-radius: 4px;
   cursor: pointer;
   box-sizing: border-box;
+  background: #ffffff;
 }
 
-.product-detail-thumbs__img--active {
+.product-detail-thumbs__img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.product-detail-thumbs__button--active {
   border-color: #124734;
 }
 
@@ -1586,7 +2025,7 @@
     height: 100%;
     overflow-x: auto;
     overflow-y: hidden;
-    scroll-snap-type: x mandatory;
+    scroll-snap-type: x proximity;
     scrollbar-width: none;
     -webkit-overflow-scrolling: touch;
   }
@@ -2441,22 +2880,27 @@
   background: rgba(255, 255, 255, 0.78);
 }
 
-.product-detail-thumbs__img {
+.product-detail-thumbs__button {
   border-radius: 14px;
-  object-fit: contain;
   padding: 5px;
   background: #ffffff;
   transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
 }
 
-.product-detail-thumbs__img:hover,
-.product-detail-thumbs__img:focus-visible {
+.product-detail-thumbs__img {
+  border-radius: 10px;
+  object-fit: contain;
+}
+
+.product-detail-thumbs__button:hover,
+.product-detail-thumbs__button:focus-visible {
   transform: translateY(-2px);
   border-color: rgba(238, 77, 45, 0.36);
   box-shadow: 0 10px 20px rgba(18, 71, 52, 0.1);
+  outline: none;
 }
 
-.product-detail-thumbs__img--active {
+.product-detail-thumbs__button--active {
   border-color: #ee4d2d;
   box-shadow: 0 0 0 3px rgba(238, 77, 45, 0.14);
 }
@@ -3486,6 +3930,22 @@
   }
 }
 
+.product-detail-tabs__moreIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.product-detail-tabs__srText {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
 @media (max-width: 360px) {
   .product-detail-page {
     padding-inline: 5px;
@@ -4469,6 +4929,1329 @@
     padding-right: 0;
     -webkit-mask-image: none;
     mask-image: none;
+  }
+}
+
+/* Submitted APP BUG fixes: native option chips must be responsive and readable. */
+body.shop-mobile-app .product-detail-page .product-option-radio.ant-radio-group {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+  max-width: 100% !important;
+  overflow: visible !important;
+  overscroll-behavior-inline: auto !important;
+  scroll-snap-type: none !important;
+  scrollbar-width: auto !important;
+  -webkit-overflow-scrolling: auto !important;
+  -webkit-mask-image: none !important;
+  mask-image: none !important;
+  touch-action: manipulation !important;
+}
+
+body.shop-mobile-app .product-detail-page .product-option-radio .ant-radio-button-wrapper {
+  position: relative !important;
+  flex: 1 1 calc(50% - 8px) !important;
+  min-width: min(100%, 112px) !important;
+  max-width: 100% !important;
+  min-height: 44px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-color: rgba(18, 71, 52, 0.18) !important;
+  background: #ffffff !important;
+  color: #173f2b !important;
+  -webkit-text-fill-color: #173f2b !important;
+  pointer-events: auto !important;
+  touch-action: manipulation !important;
+  user-select: none !important;
+}
+
+body.shop-mobile-app .product-detail-page .product-option-radio .ant-radio-button-wrapper-checked:not(.ant-radio-button-wrapper-disabled) {
+  border-color: #124734 !important;
+  background: #eaf4ef !important;
+  color: #124734 !important;
+  -webkit-text-fill-color: #124734 !important;
+  box-shadow: inset 0 0 0 1px rgba(18, 71, 52, 0.2), 0 8px 18px rgba(18, 71, 52, 0.12) !important;
+}
+
+body.shop-mobile-app .product-detail-page .product-option-radio .ant-radio-button-wrapper :where(span, .anticon),
+body.shop-mobile-app .product-detail-page .product-option-radio .ant-radio-button-wrapper-checked :where(span, .anticon) {
+  color: inherit !important;
+  -webkit-text-fill-color: inherit !important;
+}
+
+@media (max-width: 380px) {
+  body.shop-mobile-app .product-detail-page .product-option-radio .ant-radio-button-wrapper {
+    flex-basis: 100% !important;
+  }
+}
+
+/* Mobile/App detail tabs: labels must remain readable while still providing
+   44px tap targets. This overrides older ellipsis caps that clipped Service. */
+@media (max-width: 768px) {
+  .product-detail-tabs .ant-tabs-nav {
+    width: 100%;
+    overflow: hidden;
+    margin-inline: 0;
+    padding-inline: 0;
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+
+  .product-detail-tabs .ant-tabs-nav-wrap {
+    width: 100%;
+    min-width: 0;
+    overflow-x: hidden;
+    overflow-y: hidden;
+  }
+
+  .product-detail-tabs .ant-tabs-nav-wrap::-webkit-scrollbar {
+    display: none;
+  }
+
+  .product-detail-tabs .ant-tabs-nav-list {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0;
+    transform: none !important;
+  }
+
+  .product-detail-tabs .ant-tabs-tab {
+    min-width: 0;
+    width: 100%;
+    min-height: 44px;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .product-detail-tabs .ant-tabs-tab-btn {
+    width: 100%;
+    min-width: 0;
+    max-width: 100% !important;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 4px;
+    overflow: hidden;
+    text-align: center;
+    text-overflow: ellipsis;
+    white-space: normal;
+    line-height: 1.15;
+    overflow-wrap: break-word;
+  }
+
+  .product-detail-tabs .ant-tabs-ink-bar {
+    width: 33.333% !important;
+  }
+}
+
+@media (max-width: 380px) {
+  .product-detail-tabs .ant-tabs-nav {
+    margin-inline: 0;
+    padding-inline: 0;
+  }
+
+  .product-detail-tabs .ant-tabs-tab-btn {
+    padding-inline: 2px;
+  }
+}
+
+/* Product detail App UX closure: stronger price hierarchy, readable options,
+   compact FAQ/review fallbacks and larger media targets. */
+.product-price-delivery {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.product-price-delivery span {
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 9px;
+  border: 1px solid #d6eadc;
+  border-radius: 999px;
+  background: #f8fcf9;
+  color: #173f2b;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.product-price-delivery .anticon {
+  color: #124734;
+}
+
+.product-option-radio__check {
+  margin-right: 5px;
+  color: #124734;
+  font-size: 13px;
+}
+
+.product-qa-faq {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 12px;
+  border: 1px solid #dfe9e2;
+  border-radius: 8px;
+  background: #f8fcf9;
+}
+
+.product-qa-faq__list {
+  display: grid;
+  gap: 8px;
+}
+
+.product-qa-faq__item {
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+  border: 1px solid #e4ebe4;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.product-qa-faq__item strong {
+  color: #173f2b;
+  font-size: 14px;
+}
+
+.product-qa-faq__item span {
+  color: #40564a;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+body.shop-mobile-app .shop-app-shell .product-detail-page {
+  padding: 8px 8px calc(148px + env(safe-area-inset-bottom, 0px)) !important;
+  background: #f6faf7 !important;
+}
+
+body.shop-mobile-app .shop-app-shell .product-detail-page .product-gallery-card {
+  overflow: hidden !important;
+  border-radius: 8px !important;
+  background: #ffffff !important;
+}
+
+body.shop-mobile-app .shop-app-shell .product-detail-page .product-detail-main-image {
+  width: 100% !important;
+  height: clamp(320px, 46dvh, 520px) !important;
+  min-height: clamp(320px, 46dvh, 520px) !important;
+  aspect-ratio: auto !important;
+  border-radius: 8px 8px 0 0 !important;
+  background: #ffffff !important;
+}
+
+body.shop-mobile-app .shop-app-shell .product-detail-page .product-mobile-gallery__slide {
+  padding: 8px !important;
+}
+
+body.shop-mobile-app .shop-app-shell .product-detail-page .product-mobile-gallery__img {
+  object-fit: contain !important;
+}
+
+body.shop-mobile-app .shop-app-shell .product-detail-page .product-mobile-thumbs {
+  gap: 10px !important;
+  padding: 10px 10px 12px !important;
+  background: #ffffff !important;
+}
+
+body.shop-mobile-app .shop-app-shell .product-detail-page .product-mobile-thumbs__button {
+  flex: 0 0 72px !important;
+  width: 72px !important;
+  height: 72px !important;
+  min-width: 72px !important;
+  min-height: 72px !important;
+  border-radius: 8px !important;
+  border-color: #dfe9e2 !important;
+  background: #ffffff !important;
+}
+
+body.shop-mobile-app .shop-app-shell .product-detail-page .product-mobile-thumbs__button--active {
+  border-color: #124734 !important;
+  box-shadow: inset 0 0 0 2px #124734, 0 8px 18px rgba(18, 71, 52, 0.12) !important;
+}
+
+body.shop-mobile-app .shop-app-shell .product-detail-page .product-mobile-thumbs__img {
+  border-radius: 6px !important;
+}
+
+body.shop-mobile-app .shop-app-shell .product-detail-page .product-summary-card {
+  margin-top: 8px !important;
+  border-radius: 8px !important;
+  background: #ffffff !important;
+}
+
+body.shop-mobile-app .shop-app-shell .product-detail-page .product-summary-card .ant-card-body {
+  padding: 14px !important;
+}
+
+body.shop-mobile-app .shop-app-shell .product-detail-page .product-title-block {
+  display: grid !important;
+  gap: 5px !important;
+}
+
+body.shop-mobile-app .shop-app-shell .product-detail-page .product-title-block h2.ant-typography {
+  color: #173f2b !important;
+  -webkit-text-fill-color: #173f2b !important;
+  font-size: 20px !important;
+  line-height: 1.28 !important;
+  font-weight: 900 !important;
+}
+
+body.shop-mobile-app .shop-app-shell .product-detail-page .product-brand-text {
+  color: #40564a !important;
+  -webkit-text-fill-color: #40564a !important;
+  font-size: 13px !important;
+}
+
+body.shop-mobile-app .shop-app-shell .product-detail-page .product-rating-row {
+  order: 1;
+}
+
+body.shop-mobile-app .shop-app-shell .product-detail-page .product-price-line {
+  order: 2;
+  align-items: baseline !important;
+  gap: 8px !important;
+  margin-top: 2px !important;
+}
+
+body.shop-mobile-app .shop-app-shell .product-detail-page .product-price-line__current {
+  color: #8f2d17 !important;
+  -webkit-text-fill-color: #8f2d17 !important;
+  font-size: 30px !important;
+  font-weight: 950 !important;
+  line-height: 1 !important;
+}
+
+body.shop-mobile-app .shop-app-shell .product-detail-page .product-price-line__original {
+  color: #6b7d70 !important;
+  -webkit-text-fill-color: #6b7d70 !important;
+  font-size: 14px !important;
+}
+
+body.shop-mobile-app .shop-app-shell .product-detail-page .product-price-line__discount.ant-tag {
+  border-color: rgba(143, 45, 23, 0.2) !important;
+  background: #fff7f0 !important;
+  color: #8f2d17 !important;
+  -webkit-text-fill-color: #8f2d17 !important;
+  font-weight: 900 !important;
+  box-shadow: none !important;
+}
+
+body.shop-mobile-app .shop-app-shell .product-detail-page .product-price-delivery {
+  order: 3;
+}
+
+body.shop-mobile-app .shop-app-shell .product-detail-page .product-price-delivery span {
+  min-height: 32px !important;
+  border-color: #cfe2d3 !important;
+  background: #f8fcf9 !important;
+  color: #173f2b !important;
+  -webkit-text-fill-color: #173f2b !important;
+}
+
+body.shop-mobile-app .shop-app-shell .product-detail-page .product-mobile-promo {
+  display: none !important;
+}
+
+body.shop-mobile-app .shop-app-shell .product-detail-page .product-compact-signals {
+  order: 4;
+  margin-top: 8px !important;
+}
+
+body.shop-mobile-app .shop-app-shell .product-detail-page .product-compact-signals span {
+  color: #40564a !important;
+  -webkit-text-fill-color: #40564a !important;
+}
+
+body.shop-mobile-app .shop-app-shell .product-detail-page .product-purchase-readiness {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: 0 !important;
+  border-top: 1px solid #e4ebe4 !important;
+  border-bottom: 1px solid #e4ebe4 !important;
+}
+
+body.shop-mobile-app .shop-app-shell .product-detail-page .product-purchase-readiness__item {
+  min-height: 0 !important;
+  padding: 9px 0 !important;
+  background: transparent !important;
+}
+
+body.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio.ant-radio-group {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+}
+
+body.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio .ant-radio-button-wrapper {
+  min-height: 44px !important;
+  height: auto !important;
+  flex: 1 1 calc(50% - 8px) !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border: 1px solid rgba(18, 71, 52, 0.2) !important;
+  border-radius: 8px !important;
+  background: #ffffff !important;
+  color: #173f2b !important;
+  -webkit-text-fill-color: #173f2b !important;
+  font-weight: 800 !important;
+  line-height: 1.18 !important;
+}
+
+body.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio .ant-radio-button-wrapper::before {
+  display: none !important;
+}
+
+body.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio .ant-radio-button-wrapper-checked:not(.ant-radio-button-wrapper-disabled) {
+  border-color: #124734 !important;
+  background: #eaf4ef !important;
+  color: #124734 !important;
+  -webkit-text-fill-color: #124734 !important;
+  box-shadow: inset 0 0 0 1px rgba(18, 71, 52, 0.2), 0 8px 18px rgba(18, 71, 52, 0.12) !important;
+}
+
+body.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio__check,
+body.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio .ant-radio-button-wrapper-checked :where(span, .anticon, svg) {
+  color: #124734 !important;
+  -webkit-text-fill-color: #124734 !important;
+}
+
+body.shop-mobile-app .shop-app-shell .product-detail-page .product-quantity-row {
+  gap: 10px !important;
+}
+
+body.shop-mobile-app .shop-app-shell .product-detail-page .product-quantity-row .ant-btn,
+body.shop-mobile-app .shop-app-shell .product-detail-page .product-quantity__value {
+  width: 44px !important;
+  min-width: 44px !important;
+  height: 44px !important;
+  min-height: 44px !important;
+  border-radius: 8px !important;
+}
+
+body.shop-mobile-app .shop-app-shell .product-detail-page .product-review-card,
+body.shop-mobile-app .shop-app-shell .product-detail-page .product-qa-card,
+body.shop-mobile-app .shop-app-shell .product-detail-page .product-tabs-card {
+  margin-top: 10px !important;
+  border-radius: 8px !important;
+  background: #ffffff !important;
+}
+
+body.shop-mobile-app .shop-app-shell .product-detail-page .product-qa-card textarea.ant-input {
+  min-height: 78px !important;
+}
+
+body.shop-mobile-app .shop-app-shell .product-detail-page .product-qa-faq {
+  margin-top: 10px !important;
+  padding: 10px !important;
+  border-radius: 8px !important;
+  background: #f8fcf9 !important;
+}
+
+body.shop-mobile-app .shop-app-shell .product-detail-page .product-recommendations {
+  margin-top: 12px !important;
+  padding: 12px !important;
+  border-radius: 8px !important;
+  background: #ffffff !important;
+}
+
+body.shop-mobile-app .shop-app-shell .product-detail-page .product-recommendations h3.ant-typography {
+  margin-bottom: 10px !important;
+  color: #173f2b !important;
+  -webkit-text-fill-color: #173f2b !important;
+  font-size: 18px !important;
+  font-weight: 900 !important;
+}
+
+body.shop-mobile-app .shop-app-shell .product-detail-page .product-recommendations__image {
+  aspect-ratio: 1 / 1 !important;
+  height: auto !important;
+  object-fit: cover !important;
+}
+
+body.shop-mobile-app .shop-app-shell .product-detail-page .product-recommendations__name {
+  display: -webkit-box !important;
+  min-height: 38px !important;
+  overflow: hidden !important;
+  line-height: 19px !important;
+  -webkit-box-orient: vertical !important;
+  -webkit-line-clamp: 2 !important;
+}
+
+@media (max-width: 380px) {
+  body.shop-mobile-app .shop-app-shell .product-detail-page .product-detail-main-image {
+    height: clamp(300px, 44dvh, 470px) !important;
+    min-height: clamp(300px, 44dvh, 470px) !important;
+  }
+
+  body.shop-mobile-app .shop-app-shell .product-detail-page .product-mobile-thumbs__button {
+    flex-basis: 64px !important;
+    width: 64px !important;
+    min-width: 64px !important;
+    height: 64px !important;
+    min-height: 64px !important;
+  }
+}
+
+/* Native App SKU final color closure: match the requested green selected state
+   even when the global App stylesheet has higher-specificity option-chip rules. */
+body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio .ant-radio-button-wrapper-checked:not(.ant-radio-button-wrapper-disabled) {
+  border-color: #124734 !important;
+  background: #eaf4ef !important;
+  color: #124734 !important;
+  -webkit-text-fill-color: #124734 !important;
+  box-shadow: inset 0 0 0 1px rgba(18, 71, 52, 0.2), 0 8px 18px rgba(18, 71, 52, 0.12) !important;
+}
+
+body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio__check,
+body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio .ant-radio-button-wrapper-checked :where(span, .anticon, svg) {
+  color: #124734 !important;
+  -webkit-text-fill-color: #124734 !important;
+}
+
+/* Android UI closure: product detail buybar, tabs and compact labels. */
+@media (max-width: 780px) {
+  .product-detail-page {
+    overflow-x: hidden !important;
+  }
+
+  .product-mobile-buybar__tool,
+  .product-mobile-buybar__cart,
+  .product-mobile-buybar__buy,
+  .product-tabs-card .ant-btn,
+  .product-detail-tabs .ant-tabs-tab,
+  .product-detail-tabs .ant-tabs-tab-btn,
+  .product-bundle-box .ant-btn {
+    min-height: 44px !important;
+    height: auto !important;
+    max-height: none !important;
+    font-size: max(12px, 1em) !important;
+  }
+
+  .product-mobile-buybar__tool {
+    min-width: 44px !important;
+  }
+
+  .product-mobile-buybar__tool > span:not(.anticon):not(.ant-btn-icon),
+  .product-mobile-buybar__cart > span:not(.anticon):not(.ant-btn-icon),
+  .product-mobile-buybar__buy > span:not(.anticon):not(.ant-btn-icon),
+  .product-mobile-buybar__meta span,
+  .product-mobile-buybar__status,
+  .product-detail-tabs .ant-tabs-tab-btn,
+  .product-detail-page .ant-tag,
+  .product-mobile-promo {
+    color: #2f4f3a !important;
+    font-size: max(12px, 1em) !important;
+    line-height: 1.25 !important;
+  }
+
+  .product-detail__soldoutButton,
+  .product-detail__soldoutButton:disabled,
+  .product-detail__soldoutButton[disabled],
+  .product-mobile-buybar__cart[disabled],
+  .product-mobile-buybar__buy[disabled] {
+    color: #2f4f3a !important;
+    -webkit-text-fill-color: #2f4f3a !important;
+  }
+}
+
+/* 2026-06 APP all-route audit: keep the native buy bar readable on 360px
+   screens after the lazy product-detail stylesheet loads. */
+@media (max-width: 780px) {
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-detail-page {
+    padding-bottom: calc(158px + env(safe-area-inset-bottom, 0px)) !important;
+    scroll-padding-bottom: calc(172px + env(safe-area-inset-bottom, 0px)) !important;
+    overflow-x: clip !important;
+  }
+
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-mobile-buybar {
+    right: max(8px, env(safe-area-inset-right, 0px)) !important;
+    bottom: max(8px, env(safe-area-inset-bottom, 0px)) !important;
+    left: max(8px, env(safe-area-inset-left, 0px)) !important;
+    width: auto !important;
+    max-width: calc(100vw - 16px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)) !important;
+    height: auto !important;
+    min-height: 108px !important;
+    max-height: none !important;
+    display: grid !important;
+    grid-template-columns: 44px minmax(0, 1fr) minmax(0, 1fr) !important;
+    grid-template-areas:
+      "meta meta meta"
+      "favorite cart buy" !important;
+    grid-template-rows: auto minmax(46px, auto) !important;
+    gap: 8px !important;
+    align-items: stretch !important;
+    padding: 10px !important;
+    overflow: visible !important;
+    border-radius: 8px !important;
+  }
+
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-mobile-buybar__meta {
+    grid-area: meta !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    height: auto !important;
+    min-height: 34px !important;
+    display: grid !important;
+    grid-template-columns: auto minmax(0, 1fr) !important;
+    gap: 8px !important;
+    align-items: center !important;
+    overflow: visible !important;
+  }
+
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-mobile-buybar__tool--home {
+    grid-area: home !important;
+  }
+
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-mobile-buybar__tool--favorite {
+    grid-area: favorite !important;
+  }
+
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-mobile-buybar__tool--compare {
+    display: none !important;
+  }
+
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-mobile-buybar__cart {
+    grid-area: cart !important;
+  }
+
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-mobile-buybar__buy {
+    grid-area: buy !important;
+  }
+
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-mobile-buybar__tool,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-mobile-buybar__cart,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-mobile-buybar__buy {
+    min-width: 0 !important;
+    min-height: 46px !important;
+    height: auto !important;
+    max-height: none !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 8px 10px !important;
+    border-radius: 8px !important;
+    font-size: 12px !important;
+    line-height: 1.15 !important;
+    white-space: normal !important;
+  }
+
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-mobile-buybar__tool {
+    width: 44px !important;
+    min-width: 44px !important;
+    padding: 0 !important;
+  }
+
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-mobile-buybar__cart > span:not(.anticon):not(.ant-btn-icon),
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-mobile-buybar__buy > span:not(.anticon):not(.ant-btn-icon) {
+    display: block !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    overflow: visible !important;
+    text-align: center !important;
+    text-overflow: clip !important;
+    white-space: normal !important;
+    overflow-wrap: anywhere !important;
+  }
+}
+
+/* Final mobile/WebView buybar status guard. Keep this at the end of the route
+   stylesheet because older compact-text rules force buybar metadata to nowrap. */
+@media (max-width: 780px) {
+  .product-detail-page .product-mobile-buybar__meta .product-mobile-buybar__status,
+  .product-detail-page .product-mobile-buybar__status,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-mobile-buybar__status {
+    min-width: 0 !important;
+    max-width: 100% !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    gap: 4px !important;
+    overflow: visible !important;
+    line-height: 1.25 !important;
+    text-align: right !important;
+    text-overflow: clip !important;
+    white-space: normal !important;
+    overflow-wrap: anywhere !important;
+    word-break: normal !important;
+  }
+}
+
+/* F2720: keep the mobile purchase controls near the price context without
+   covering the first viewport summary. This must stay after the older fixed
+   buybar passes, including the app-shell-specific overrides above. */
+@media (max-width: 780px) {
+  .product-detail-page .product-summary-card .product-mobile-buybar,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-summary-card .product-mobile-buybar {
+    position: static !important;
+    inset: auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-height: 0 !important;
+    display: grid !important;
+    grid-template-columns: 44px minmax(0, 1fr) minmax(0, 1fr) !important;
+    grid-template-areas:
+      "meta meta meta"
+      "favorite cart buy" !important;
+    grid-template-rows: auto minmax(46px, auto) !important;
+    gap: 8px !important;
+    margin: 4px 0 0 !important;
+    padding: 10px !important;
+    overflow: visible !important;
+    border: 1px solid rgba(18, 71, 52, 0.12) !important;
+    border-radius: 8px !important;
+    background: #ffffff !important;
+    box-shadow: 0 10px 22px rgba(18, 71, 52, 0.08) !important;
+    transform: none !important;
+    backdrop-filter: none !important;
+  }
+
+  .product-detail-page .product-summary-card .product-mobile-buybar__tool--compare,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-summary-card .product-mobile-buybar__tool--compare {
+    display: none !important;
+  }
+
+  .product-detail-page .product-summary-card .product-mobile-buybar__meta,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-summary-card .product-mobile-buybar__meta {
+    grid-area: meta !important;
+    min-height: 28px !important;
+    display: grid !important;
+    grid-template-columns: auto minmax(0, 1fr) !important;
+  }
+
+  .product-detail-page .product-summary-card .product-mobile-buybar__tool--home {
+    grid-area: home !important;
+  }
+
+  .product-detail-page .product-summary-card .product-mobile-buybar__tool--favorite {
+    grid-area: favorite !important;
+  }
+
+  .product-detail-page .product-summary-card .product-mobile-buybar__cart {
+    grid-area: cart !important;
+  }
+
+  .product-detail-page .product-summary-card .product-mobile-buybar__buy {
+    grid-area: buy !important;
+  }
+}
+
+@media (max-width: 380px) {
+  .product-detail-page .product-summary-card .product-mobile-buybar,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-summary-card .product-mobile-buybar {
+    grid-template-columns: 44px 44px minmax(0, 1fr) !important;
+    grid-template-areas:
+      "meta meta meta"
+      "home favorite cart"
+      "buy buy buy" !important;
+    grid-template-rows: auto minmax(44px, auto) minmax(44px, auto) !important;
+  }
+
+  .product-detail-page .product-summary-card .product-mobile-buybar__buy,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-summary-card .product-mobile-buybar__buy {
+    grid-column: 1 / -1 !important;
+  }
+}
+
+/* APP/WebView product detail closure: route CSS loads after mobile-app.css,
+   so the native app purchase rail must be restored here after F2720's
+   content-flow mobile web rule. */
+@media (max-width: 780px) {
+  body.shop-mobile-app .product-detail-page {
+    padding-bottom: calc(142px + env(safe-area-inset-bottom, 0px)) !important;
+    scroll-padding-bottom: calc(154px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-detail-page {
+    padding-bottom: calc(142px + env(safe-area-inset-bottom, 0px)) !important;
+    scroll-padding-bottom: calc(154px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  body.shop-mobile-app .product-detail-page .product-summary-card .product-mobile-buybar,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-summary-card .product-mobile-buybar {
+    position: fixed !important;
+    top: auto !important;
+    right: max(8px, env(safe-area-inset-right, 0px)) !important;
+    bottom: max(8px, env(safe-area-inset-bottom, 0px)) !important;
+    left: max(8px, env(safe-area-inset-left, 0px)) !important;
+    z-index: 7600 !important;
+    width: auto !important;
+    max-width: calc(100vw - 16px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)) !important;
+    min-height: 104px !important;
+    max-height: none !important;
+    display: grid !important;
+    grid-template-columns: 44px minmax(0, 1fr) minmax(0, 1fr) !important;
+    grid-template-areas:
+      "meta meta meta"
+      "favorite cart buy" !important;
+    grid-template-rows: minmax(30px, auto) minmax(46px, auto) !important;
+    gap: 8px !important;
+    margin: 0 !important;
+    padding: 10px !important;
+    overflow: visible !important;
+    border: 1px solid rgba(18, 71, 52, 0.16) !important;
+    border-radius: 8px !important;
+    background: rgba(255, 255, 255, 0.98) !important;
+    box-shadow: 0 10px 24px rgba(18, 71, 52, 0.18) !important;
+    transform: translateZ(0) !important;
+    backdrop-filter: blur(10px) !important;
+  }
+
+  body.shop-mobile-app .product-detail-page .product-summary-card .product-mobile-buybar__meta,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-summary-card .product-mobile-buybar__meta {
+    grid-area: meta !important;
+    min-width: 0 !important;
+    min-height: 30px !important;
+    display: grid !important;
+    grid-template-columns: auto minmax(0, 1fr) !important;
+    gap: 8px !important;
+    align-items: center !important;
+  }
+
+  body.shop-mobile-app .product-detail-page .product-mobile-buybar__tool--home,
+  body.shop-mobile-app .product-detail-page .product-mobile-buybar__tool--compare,
+  body.shop-mobile-app .product-detail-page .product-summary-card .product-mobile-buybar__tool--home,
+  body.shop-mobile-app .product-detail-page .product-summary-card .product-mobile-buybar__tool--compare,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-summary-card .product-mobile-buybar__tool--compare {
+    display: none !important;
+  }
+
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-mobile-buybar__tool--home,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-mobile-buybar__tool--compare,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-summary-card .product-mobile-buybar__tool--home,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-summary-card .product-mobile-buybar__tool--compare {
+    display: none !important;
+  }
+
+  body.shop-mobile-app .product-detail-page .product-summary-card .product-mobile-buybar__tool--favorite,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-summary-card .product-mobile-buybar__tool--favorite {
+    grid-area: favorite !important;
+  }
+
+  body.shop-mobile-app .product-detail-page .product-summary-card .product-mobile-buybar__cart,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-summary-card .product-mobile-buybar__cart {
+    grid-area: cart !important;
+  }
+
+  body.shop-mobile-app .product-detail-page .product-summary-card .product-mobile-buybar__buy,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-summary-card .product-mobile-buybar__buy {
+    grid-area: buy !important;
+    grid-column: auto !important;
+  }
+
+  body.shop-mobile-app .product-detail-page .product-summary-card .product-mobile-buybar__tool,
+  body.shop-mobile-app .product-detail-page .product-summary-card .product-mobile-buybar__cart,
+  body.shop-mobile-app .product-detail-page .product-summary-card .product-mobile-buybar__buy,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-summary-card .product-mobile-buybar__tool,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-summary-card .product-mobile-buybar__cart,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-summary-card .product-mobile-buybar__buy {
+    min-width: 0 !important;
+    min-height: 46px !important;
+    height: auto !important;
+    max-height: none !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 8px !important;
+    border-radius: 8px !important;
+    font-size: 12px !important;
+    line-height: 1.15 !important;
+    white-space: normal !important;
+  }
+
+  body.shop-mobile-app .product-detail-page .product-summary-card .product-mobile-buybar__tool,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-summary-card .product-mobile-buybar__tool {
+    width: 44px !important;
+    min-width: 44px !important;
+    padding: 0 !important;
+  }
+
+  body.shop-mobile-app .product-detail-page .product-summary-card .product-mobile-buybar__cart > span:not(.anticon):not(.ant-btn-icon),
+  body.shop-mobile-app .product-detail-page .product-summary-card .product-mobile-buybar__buy > span:not(.anticon):not(.ant-btn-icon),
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-summary-card .product-mobile-buybar__cart > span:not(.anticon):not(.ant-btn-icon),
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-summary-card .product-mobile-buybar__buy > span:not(.anticon):not(.ant-btn-icon) {
+    display: block !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    overflow: visible !important;
+    text-align: center !important;
+    text-overflow: clip !important;
+    white-space: normal !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-detail-page .product-summary-card .product-mobile-buybar__tool--home,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-detail-page .product-summary-card .product-mobile-buybar__tool--compare,
+  body.shop-mobile-app .product-detail-page .product-summary-card .product-mobile-buybar__tool.product-mobile-buybar__tool--home,
+  body.shop-mobile-app .product-detail-page .product-summary-card .product-mobile-buybar__tool.product-mobile-buybar__tool--compare {
+    display: none !important;
+  }
+
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-detail-page .product-summary-card .product-mobile-buybar__tool--favorite > .anticon,
+  body.shop-mobile-app .product-detail-page .product-summary-card .product-mobile-buybar__tool--favorite > .anticon {
+    width: 18px !important;
+    min-width: 18px !important;
+    height: 18px !important;
+    min-height: 18px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    color: #143728 !important;
+    -webkit-text-fill-color: #143728 !important;
+    font-size: 18px !important;
+    line-height: 1 !important;
+    opacity: 1 !important;
+  }
+
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-detail-page .product-summary-card .product-mobile-buybar__tool--favorite > .anticon svg,
+  body.shop-mobile-app .product-detail-page .product-summary-card .product-mobile-buybar__tool--favorite > .anticon svg {
+    width: 18px !important;
+    min-width: 18px !important;
+    height: 18px !important;
+    min-height: 18px !important;
+    display: block !important;
+    color: inherit !important;
+    fill: currentColor !important;
+    opacity: 1 !important;
+  }
+
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-detail-page .product-summary-card .product-mobile-buybar__tool--favorite > span:not(.anticon):not(.ant-btn-icon),
+  body.shop-mobile-app .product-detail-page .product-summary-card .product-mobile-buybar__tool--favorite > span:not(.anticon):not(.ant-btn-icon) {
+    display: none !important;
+  }
+
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-detail-page .product-summary-card .product-mobile-buybar__buy,
+  body.shop-mobile-app .product-detail-page .product-summary-card .product-mobile-buybar__buy {
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+  }
+
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-detail-page .product-summary-card .product-mobile-buybar__buy :where(.ant-btn-icon, .anticon, span, svg),
+  body.shop-mobile-app .product-detail-page .product-summary-card .product-mobile-buybar__buy :where(.ant-btn-icon, .anticon, span, svg) {
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+    fill: currentColor !important;
+    opacity: 1 !important;
+  }
+}
+
+/* F3414: short landscape size guide must show all fit instructions above the footer. */
+@media (max-width: 860px) and (max-height: 430px) {
+  body .ant-modal-root .product-detail__sizeGuideModal.ant-modal:not(.ant-modal-confirm) {
+    top: max(6px, calc(env(safe-area-inset-top, 0px) + 6px)) !important;
+    width: min(640px, calc(100vw - 16px)) !important;
+    max-width: calc(100vw - 16px) !important;
+    padding-bottom: max(6px, env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  body .ant-modal-root .product-detail__sizeGuideModal.ant-modal:not(.ant-modal-confirm) .ant-modal-content {
+    max-height: calc(100dvh - 16px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  body .ant-modal-root .product-detail__sizeGuideModal.ant-modal:not(.ant-modal-confirm) .ant-modal-header {
+    padding: 10px 44px 8px 12px !important;
+  }
+
+  body .ant-modal-root .product-detail__sizeGuideModal.ant-modal:not(.ant-modal-confirm) .ant-modal-body {
+    padding: 10px 12px !important;
+    overflow-y: auto !important;
+    scroll-padding-bottom: 16px !important;
+  }
+
+  body .ant-modal-root .product-detail__sizeGuideModal.ant-modal:not(.ant-modal-confirm) .ant-modal-footer {
+    position: static !important;
+    display: flex !important;
+    justify-content: flex-end;
+    padding: 8px 12px 10px !important;
+    background: #ffffff !important;
+  }
+
+  body .ant-modal-root .product-detail__sizeGuideModal.ant-modal:not(.ant-modal-confirm) .ant-modal-footer .ant-btn {
+    width: auto !important;
+    min-width: 120px;
+  }
+
+  .product-detail__sizeGuideModal .pet-size-guide {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .product-detail__sizeGuideModal .pet-size-guide div {
+    min-height: 0;
+    padding: 9px 10px;
+  }
+
+  .product-detail__sizeGuideModal .pet-size-guide div:nth-child(3) {
+    grid-column: 1 / -1;
+  }
+
+  .product-detail__sizeGuideModal .pet-size-guide strong {
+    font-size: 13px;
+    line-height: 1.2;
+  }
+
+  .product-detail__sizeGuideModal .pet-size-guide span {
+    font-size: 12px;
+    line-height: 1.35;
+  }
+}
+
+/* A-14 follow-up: the native App detail buybar and compact purchase facts must
+   stay legible after this lazy route stylesheet is injected. */
+@media (max-width: 780px) {
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-detail-page .product-compact-signals span,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-detail-page .product-compact-signals .commerce-money,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-detail-page .product-mobile-buybar__status,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-detail-page .product-mobile-buybar__status .commerce-money,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-detail-page .product-purchase-readiness__copy .ant-typography:last-child {
+    font-size: 12px !important;
+    line-height: 1.25 !important;
+  }
+}
+
+/* F2720: mobile Web keeps purchase actions in the summary flow so the
+   first-viewport title and price panel are not covered by a fixed buy bar. */
+@media (max-width: 780px) {
+  body:not(.shop-mobile-app) .product-detail-page {
+    padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  body:not(.shop-mobile-app) .product-detail-page .product-summary-card .product-mobile-buybar {
+    position: static !important;
+    inset: auto !important;
+    z-index: auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-height: 0 !important;
+    display: grid !important;
+    grid-template-columns: repeat(3, 44px) minmax(0, 1fr) minmax(0, 1fr) !important;
+    grid-template-rows: minmax(24px, auto) minmax(44px, auto) !important;
+    gap: 6px !important;
+    margin: 14px 0 0 !important;
+    padding: 8px !important;
+    overflow: visible !important;
+    border: 1px solid rgba(18, 71, 52, 0.12) !important;
+    border-radius: 8px !important;
+    box-shadow: 0 8px 18px rgba(18, 71, 52, 0.08) !important;
+    transform: none !important;
+  }
+
+  body:not(.shop-mobile-app) .product-detail-page .product-summary-card .product-mobile-buybar__meta {
+    grid-column: 1 / -1 !important;
+    min-height: 24px !important;
+  }
+}
+
+/* Mobile price-line closure: money tokens stay atomic, while the price, strike
+   price and discount badge may wrap as separate units on narrow screens. */
+@media (max-width: 780px) {
+  .product-detail-page .product-summary-card .product-price-line,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-detail-page .product-summary-card .product-price-line {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    gap: 6px 8px !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    white-space: normal !important;
+  }
+
+  .product-detail-page .product-summary-card .product-price-line__current,
+  .product-detail-page .product-summary-card .product-price-line__original,
+  .product-detail-page .product-summary-card .product-price-line__discount,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-detail-page .product-summary-card .product-price-line__current,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-detail-page .product-summary-card .product-price-line__original,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-detail-page .product-summary-card .product-price-line__discount {
+    flex: 0 0 auto !important;
+    max-width: 100% !important;
+    margin-left: 0 !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    white-space: nowrap !important;
+  }
+
+  .product-detail-page .product-summary-card .product-price-line__discount.ant-tag,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-detail-page .product-summary-card .product-price-line__discount.ant-tag {
+    min-height: 28px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    padding: 3px 8px !important;
+    line-height: 1.15 !important;
+  }
+}
+
+/* Mobile purchase action closure: keep the active purchase rail to two clear
+   commerce actions. Secondary tools remain available elsewhere in the page. */
+@media (max-width: 780px) {
+  .product-detail-page .product-summary-card .product-mobile-buybar,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-detail-page .product-summary-card .product-mobile-buybar {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    grid-template-areas:
+      "meta meta"
+      "cart buy" !important;
+    grid-template-rows: auto minmax(48px, auto) !important;
+    gap: 8px !important;
+  }
+
+  .product-detail-page .product-summary-card .product-mobile-buybar__tool--home,
+  .product-detail-page .product-summary-card .product-mobile-buybar__tool--favorite,
+  .product-detail-page .product-summary-card .product-mobile-buybar__tool--compare,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-detail-page .product-summary-card .product-mobile-buybar__tool--home,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-detail-page .product-summary-card .product-mobile-buybar__tool--favorite,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-detail-page .product-summary-card .product-mobile-buybar__tool--compare {
+    display: none !important;
+  }
+
+  .product-detail-page .product-summary-card .product-mobile-buybar__cart,
+  .product-detail-page .product-summary-card .product-mobile-buybar__buy,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-detail-page .product-summary-card .product-mobile-buybar__cart,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-detail-page .product-summary-card .product-mobile-buybar__buy {
+    min-height: 48px !important;
+    width: 100% !important;
+    padding: 10px 12px !important;
+    font-size: 13px !important;
+    font-weight: 900 !important;
+  }
+}
+
+/* Mobile fixed purchase bar closure: cart and buy must be reachable in the
+   first viewport, while the product page keeps enough bottom padding for it. */
+@media (max-width: 780px) {
+  .product-detail-page,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-detail-page {
+    padding-bottom: calc(128px + env(safe-area-inset-bottom, 0px)) !important;
+    scroll-padding-bottom: calc(148px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .product-detail-page .product-summary-card .product-mobile-buybar,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-detail-page .product-summary-card .product-mobile-buybar {
+    position: fixed !important;
+    top: auto !important;
+    right: max(8px, env(safe-area-inset-right, 0px)) !important;
+    bottom: max(8px, env(safe-area-inset-bottom, 0px)) !important;
+    left: max(8px, env(safe-area-inset-left, 0px)) !important;
+    z-index: 7600 !important;
+    width: auto !important;
+    max-width: calc(100vw - 16px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)) !important;
+    margin: 0 !important;
+    padding: 10px !important;
+    border: 1px solid rgba(18, 71, 52, 0.16) !important;
+    border-radius: 8px !important;
+    background: rgba(255, 255, 255, 0.98) !important;
+    box-shadow: 0 12px 28px rgba(18, 71, 52, 0.2) !important;
+    backdrop-filter: blur(10px) !important;
+    transform: translateZ(0) !important;
+  }
+}
+
+/* UI audit 2026-06-09: final mobile buybar authority. Mobile Web previously
+   lost to the older body:not(.shop-mobile-app) 3-tool grid rule. */
+@media (max-width: 780px) {
+  body:not(.shop-mobile-app) .product-detail-page,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-detail-page {
+    padding-bottom: calc(136px + env(safe-area-inset-bottom, 0px)) !important;
+    scroll-padding-bottom: calc(156px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  body:not(.shop-mobile-app) .product-detail-page .product-summary-card .product-mobile-buybar,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-detail-page .product-summary-card .product-mobile-buybar {
+    position: fixed !important;
+    top: auto !important;
+    right: max(8px, env(safe-area-inset-right, 0px)) !important;
+    bottom: max(8px, env(safe-area-inset-bottom, 0px)) !important;
+    left: max(8px, env(safe-area-inset-left, 0px)) !important;
+    z-index: 7600 !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+    grid-template-areas:
+      "meta meta"
+      "cart buy" !important;
+    grid-template-rows: auto minmax(52px, auto) !important;
+    align-items: stretch !important;
+    width: auto !important;
+    max-width: calc(100vw - 16px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)) !important;
+    min-height: 0 !important;
+    gap: 8px !important;
+    margin: 0 !important;
+    padding: 10px !important;
+    overflow: visible !important;
+    border: 1px solid rgba(18, 71, 52, 0.16) !important;
+    border-radius: 8px !important;
+    background: rgba(255, 255, 255, 0.98) !important;
+    box-shadow: 0 12px 28px rgba(18, 71, 52, 0.2) !important;
+    backdrop-filter: blur(10px) !important;
+    transform: translateZ(0) !important;
+  }
+
+  body:not(.shop-mobile-app) .product-detail-page .product-summary-card .product-mobile-buybar__meta,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-detail-page .product-summary-card .product-mobile-buybar__meta {
+    grid-area: meta !important;
+    grid-column: auto !important;
+    min-width: 0 !important;
+  }
+
+  body:not(.shop-mobile-app) .product-detail-page .product-summary-card .product-mobile-buybar__tool--home,
+  body:not(.shop-mobile-app) .product-detail-page .product-summary-card .product-mobile-buybar__tool--favorite,
+  body:not(.shop-mobile-app) .product-detail-page .product-summary-card .product-mobile-buybar__tool--compare,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-detail-page .product-summary-card .product-mobile-buybar__tool--home,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-detail-page .product-summary-card .product-mobile-buybar__tool--favorite,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-detail-page .product-summary-card .product-mobile-buybar__tool--compare {
+    display: none !important;
+  }
+
+  body:not(.shop-mobile-app) .product-detail-page .product-summary-card .product-mobile-buybar__cart,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-detail-page .product-summary-card .product-mobile-buybar__cart {
+    grid-area: cart !important;
+  }
+
+  body:not(.shop-mobile-app) .product-detail-page .product-summary-card .product-mobile-buybar__buy,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-detail-page .product-summary-card .product-mobile-buybar__buy {
+    grid-area: buy !important;
+  }
+
+  body:not(.shop-mobile-app) .product-detail-page .product-summary-card .product-mobile-buybar__cart,
+  body:not(.shop-mobile-app) .product-detail-page .product-summary-card .product-mobile-buybar__buy,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-detail-page .product-summary-card .product-mobile-buybar__cart,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-detail-page .product-summary-card .product-mobile-buybar__buy {
+    min-width: 0 !important;
+    min-height: 52px !important;
+    width: 100% !important;
+    padding: 10px 12px !important;
+    font-size: 13px !important;
+    font-weight: 900 !important;
+    line-height: 1.15 !important;
+  }
+}
+
+/* A-23: short landscape cannot afford the two-row purchase dock or stacked
+   gallery-first layout. Keep title, price and purchase actions in view. */
+@media (max-width: 900px) and (max-height: 430px) {
+  body:not(.shop-mobile-app) .product-detail-page,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-detail-page {
+    padding: 6px 8px calc(82px + env(safe-area-inset-bottom, 0px)) !important;
+    scroll-padding-bottom: calc(92px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  body:not(.shop-mobile-app) .product-detail-page .product-detail-shell,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-detail-page .product-detail-shell {
+    max-width: 100% !important;
+  }
+
+  body:not(.shop-mobile-app) .product-detail-page .ant-row,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-detail-page .ant-row {
+    display: grid !important;
+    grid-template-columns: minmax(220px, 0.9fr) minmax(0, 1.1fr) !important;
+    gap: 8px !important;
+    align-items: start !important;
+    margin-right: 0 !important;
+    margin-left: 0 !important;
+  }
+
+  body:not(.shop-mobile-app) .product-detail-page .ant-row > .ant-col,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-detail-page .ant-row > .ant-col {
+    flex: none !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    padding-right: 0 !important;
+    padding-left: 0 !important;
+  }
+
+  body:not(.shop-mobile-app) .product-detail-page .product-detail-main-image,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-detail-page .product-detail-main-image {
+    height: clamp(150px, 44dvh, 190px) !important;
+    min-height: clamp(150px, 44dvh, 190px) !important;
+    aspect-ratio: auto !important;
+    border-radius: 8px !important;
+  }
+
+  body:not(.shop-mobile-app) .product-detail-page .product-mobile-thumbs,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-detail-page .product-mobile-thumbs {
+    display: none !important;
+  }
+
+  body:not(.shop-mobile-app) .product-detail-page .product-summary-card,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-detail-page .product-summary-card {
+    max-height: calc(100dvh - 92px - env(safe-area-inset-top, 0px)) !important;
+    margin-top: 0 !important;
+    overflow-y: auto !important;
+  }
+
+  body:not(.shop-mobile-app) .product-detail-page .product-summary-card .ant-card-body,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-detail-page .product-summary-card .ant-card-body {
+    padding: 8px !important;
+  }
+
+  body:not(.shop-mobile-app) .product-detail-page .product-summary-space,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-detail-page .product-summary-space {
+    gap: 7px !important;
+  }
+
+  body:not(.shop-mobile-app) .product-detail-page .product-title-block h2.ant-typography,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-detail-page .product-title-block h2.ant-typography {
+    margin-bottom: 0 !important;
+    display: -webkit-box !important;
+    overflow: hidden !important;
+    font-size: 17px !important;
+    line-height: 1.15 !important;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  body:not(.shop-mobile-app) .product-detail-page .product-price-line__current,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-detail-page .product-price-line__current {
+    font-size: 24px !important;
+  }
+
+  body:not(.shop-mobile-app) .product-detail-page .product-summary-card .product-mobile-buybar,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-detail-page .product-summary-card .product-mobile-buybar {
+    grid-template-columns: minmax(76px, 0.72fr) minmax(0, 1fr) minmax(0, 1fr) !important;
+    grid-template-areas: "meta cart buy" !important;
+    grid-template-rows: minmax(50px, auto) !important;
+    min-height: calc(66px + env(safe-area-inset-bottom, 0px)) !important;
+    height: calc(66px + env(safe-area-inset-bottom, 0px)) !important;
+    max-height: calc(66px + env(safe-area-inset-bottom, 0px)) !important;
+    gap: 6px !important;
+    padding: 8px !important;
+    overflow: hidden !important;
+  }
+
+  body:not(.shop-mobile-app) .product-detail-page .product-summary-card .product-mobile-buybar__meta,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-detail-page .product-summary-card .product-mobile-buybar__meta {
+    min-height: 50px !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 2px !important;
+    align-content: center !important;
+  }
+
+  body:not(.shop-mobile-app) .product-detail-page .product-summary-card .product-mobile-buybar__status,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-detail-page .product-summary-card .product-mobile-buybar__status {
+    display: block !important;
+    overflow: hidden !important;
+    font-size: 10px !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  body:not(.shop-mobile-app) .product-detail-page .product-summary-card .product-mobile-buybar__cart,
+  body:not(.shop-mobile-app) .product-detail-page .product-summary-card .product-mobile-buybar__buy,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-detail-page .product-summary-card .product-mobile-buybar__cart,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-detail-page .product-summary-card .product-mobile-buybar__buy {
+    min-height: 50px !important;
+    height: 50px !important;
+    padding: 8px 10px !important;
+    font-size: 12px !important;
+    white-space: nowrap !important;
   }
 }
 

@@ -40,19 +40,23 @@ class OrderStockReservationRaceContractTest {
                 "authenticated checkout should reserve stock only after locked product loading");
         assertTrue(orderService.contains("reserveProductStock(product, normalizedSpecs, normalizedQuantity)"),
                 "guest checkout should reserve stock only after locked product loading");
-        assertTrue(orderService.contains("product.setStock(product.getStock() - quantity);"),
-                "locked product stock should be decremented in the checkout transaction");
+        assertTrue(orderService.contains("productRepository.decreaseStock(product.getId(), quantity)"),
+                "simple product stock should be decremented with the atomic repository update");
         assertTrue(productRepository.contains("@Lock(LockModeType.PESSIMISTIC_WRITE)"),
                 "product repository should declare pessimistic row locking for checkout reservations");
         assertTrue(productRepository.contains("List<Product> findAllByIdForUpdate(@Param(\"ids\") List<Long> ids)"),
                 "checkout reservation should use a dedicated locked product lookup");
+        assertTrue(productRepository.contains("int decreaseStock(@Param(\"productId\") Long productId, @Param(\"quantity\") Integer quantity);"),
+                "checkout reservation should have an atomic stock decrement repository method");
 
         String memberCheckout = methodBlock(orderService,
                 "private CheckoutItemsSelection prepareCheckoutItems(Long userId, List<Long> cartItemIds, boolean reserveStock)");
         String guestCheckout = methodBlock(orderService,
                 "private CheckoutItemsSelection prepareGuestCheckoutItems(Long userId, List<GuestCheckoutItemRequest> items, boolean reserveStock)");
         String reserveProductStock = methodBlock(orderService,
-                "private void reserveProductStock(Product product, String selectedSpecs, int quantity)");
+                "private boolean reserveProductStock(Product product, String selectedSpecs, int quantity)");
+        String detachSimpleStockReservation = methodBlock(orderService,
+                "private void detachSimpleStockReservation(Product product)");
 
         assertOccursBefore(
                 memberCheckout,
@@ -65,7 +69,11 @@ class OrderStockReservationRaceContractTest {
                 "reserveProductStock(product, normalizedSpecs, normalizedQuantity)",
                 "guest checkout should reject insufficient locked stock before decrementing");
         assertFalse(reserveProductStock.contains("productRepository.save("),
-                "stock deduction helper should mutate only the already-locked entity");
+                "stock deduction helper should not persist products from the per-line helper");
+        assertTrue(reserveProductStock.contains("if (reservedScalarStock && !reservedVariantStock)"),
+                "simple-stock-only reservations should avoid dirty-check flush after the atomic update");
+        assertTrue(detachSimpleStockReservation.contains("entityManager.detach(product);"),
+                "simple-stock-only reservations should detach the in-memory stock snapshot");
         assertTrue(orderService.contains("saveReservedProducts(reservedProducts);"),
                 "touched products should be saved after checkout line validation, not by an unlocked per-line helper");
     }

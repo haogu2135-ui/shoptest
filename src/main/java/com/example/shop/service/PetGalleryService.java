@@ -1,12 +1,12 @@
 package com.example.shop.service;
 
-import lombok.extern.slf4j.Slf4j;
 import com.example.shop.dto.PetGalleryQuota;
 import com.example.shop.entity.PetGalleryPhoto;
 import com.example.shop.entity.PetGalleryPhotoLike;
 import com.example.shop.repository.PetGalleryPhotoLikeRepository;
 import com.example.shop.repository.PetGalleryPhotoRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -18,27 +18,16 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
-import javax.imageio.IIOImage;
-import javax.imageio.ImageIO;
-import javax.imageio.ImageWriteParam;
-import javax.imageio.ImageWriter;
-import javax.imageio.stream.ImageOutputStream;
-import java.awt.Color;
-import java.awt.Graphics2D;
-import java.awt.image.BufferedImage;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
-import java.util.UUID;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -49,15 +38,24 @@ public class PetGalleryService {
     private static final String DELETED_STATUS = "DELETED";
     private static final String USER_UPLOAD_SOURCE = "USER_UPLOAD";
     private static final String SEED_SOURCE = "SEED";
-    private static final Map<String, String> EXTENSIONS_BY_CONTENT_TYPE = Map.of(
-        "image/jpeg", ".jpg",
-        "image/png", ".png",
-        "image/gif", ".gif"
+    private static final Set<String> SUPPORTED_IMAGE_CONTENT_TYPES = Set.of(
+        "image/jpeg",
+        "image/png",
+        "image/gif"
     );
-    private static final Map<String, String> OUTPUT_FORMAT_BY_CONTENT_TYPE = Map.of(
-        "image/jpeg", "jpg",
-        "image/png", "png"
-    );
+    private static final ImageStorageService.ImageUploadMessages PET_GALLERY_IMAGE_MESSAGES =
+            new ImageStorageService.ImageUploadMessages(
+                    "Choose a photo to upload",
+                    "Photo must be 5 MB or smaller",
+                    "Only JPG, PNG or GIF photos are supported",
+                    "Invalid upload path",
+                    "Upload failed",
+                    "Sanitized photo is too large",
+                    "Could not read uploaded photo",
+                    "The uploaded file does not look like a valid image",
+                    "Could not read uploaded photo dimensions",
+                    "Photo dimensions must be %dx%d pixels or smaller",
+                    "Could not process uploaded photo");
     private static final List<SeedPhoto> SEED_PHOTOS = List.of(
         new SeedPhoto("happy_pet_1", "https://images.unsplash.com/photo-1537151672256-6caf2e9f8c95?auto=format&fit=crop&w=700&q=80", 42),
         new SeedPhoto("cozy_paws", "https://images.unsplash.com/photo-1568572933382-74d440642117?auto=format&fit=crop&w=700&q=80", 36),
@@ -70,9 +68,10 @@ public class PetGalleryService {
     private final PetGalleryPhotoRepository photoRepository;
     private final PetGalleryPhotoLikeRepository likeRepository;
     private final RuntimeConfigService runtimeConfig;
+    private final ImageStorageService imageStorageService;
 
     public List<PetGalleryPhoto> findPublicPhotos(Long viewerId, String ipAddress) {
-        return photoRepository.findTop24ByStatusOrderByLikeCountDescCreatedAtDescIdDesc(ACTIVE_STATUS).stream()
+        return photoRepository.findTopPublicPhotos(ACTIVE_STATUS, PageRequest.of(0, 24)).stream()
             .filter(this::isRenderablePublicPhoto)
             .peek((photo) -> decorateViewerState(photo, viewerId, ipAddress))
             .collect(Collectors.toList());
@@ -103,37 +102,21 @@ public class PetGalleryService {
         return new PetGalleryQuota(maxPhotosPerUser, remaining, remaining > 0);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public PetGalleryPhoto upload(Long userId, String username, String ipAddress, MultipartFile file) {
         String lockName = uploadQuotaLockName(userId, ipAddress);
         assertUploadQuotaLockAcquired(lockName);
         try {
             validateQuota(userId, ipAddress);
-            validateFile(file);
-
-            String uploadedContentType = normalizeContentType(file.getContentType());
-            SanitizedPhoto sanitizedPhoto = sanitizeImage(file, uploadedContentType);
-            String filename = UUID.randomUUID() + EXTENSIONS_BY_CONTENT_TYPE.get(sanitizedPhoto.contentType);
-            Path uploadPath = Paths.get(uploadDir()).toAbsolutePath().normalize();
-            Path target = uploadPath.resolve(filename).normalize();
-            if (!target.startsWith(uploadPath)) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid upload path");
-            }
-
-            try {
-                Files.createDirectories(uploadPath);
-                Files.write(target, sanitizedPhoto.bytes);
-            } catch (IOException e) {
-                throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Upload failed");
-            }
+            ImageStorageService.StoredImage storedImage = imageStorageService.store(file, petGalleryImageOptions());
 
             PetGalleryPhoto photo = new PetGalleryPhoto();
             photo.setUserId(userId);
             photo.setUsername(StringUtils.hasText(username) ? username.trim() : "pet_parent");
-            photo.setImageUrl(publicPath().replaceAll("/$", "") + "/" + filename);
+            photo.setImageUrl(storedImage.getPublicUrl());
             photo.setOriginalFilename(cleanFilename(file.getOriginalFilename()));
-            photo.setContentType(sanitizedPhoto.contentType);
-            photo.setFileSize((long) sanitizedPhoto.bytes.length);
+            photo.setContentType(storedImage.getContentType());
+            photo.setFileSize(storedImage.getFileSize());
             photo.setIpAddress(ipAddress);
             photo.setStatus(ACTIVE_STATUS);
             photo.setSource(USER_UPLOAD_SOURCE);
@@ -142,10 +125,7 @@ public class PetGalleryService {
             try {
                 return decorateViewerState(photoRepository.saveAndFlush(photo), userId, ipAddress);
             } catch (RuntimeException e) {
-                try {
-                    Files.deleteIfExists(target);
-                } catch (IOException ignored) {
-                }
+                deleteStoredImageAfterMetadataFailure(storedImage);
                 throw e;
             }
         } finally {
@@ -153,9 +133,9 @@ public class PetGalleryService {
         }
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public PetGalleryPhoto like(Long photoId, Long userId, String ipAddress) {
-        PetGalleryPhoto photo = photoRepository.findById(photoId)
+        PetGalleryPhoto photo = photoRepository.findByIdForLikeUpdate(photoId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Photo not found"));
         if (!ACTIVE_STATUS.equals(photo.getStatus())) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Photo not found");
@@ -164,23 +144,27 @@ public class PetGalleryService {
         String viewerKey = viewerKey(userId, ipAddress);
         boolean alreadyLiked = likeRepository.existsByPhotoIdAndViewerKey(photoId, viewerKey);
         if (!alreadyLiked) {
+            int originalLikeCount = safeLikeCount(photo);
             PetGalleryPhotoLike like = new PetGalleryPhotoLike();
             like.setPhotoId(photoId);
             like.setUserId(userId);
             like.setIpAddress(normalizeIpAddress(ipAddress));
             like.setViewerKey(viewerKey);
             try {
-                likeRepository.saveAndFlush(like);
-                photoRepository.incrementLikeCount(photoId);
+                likeRepository.save(like);
+                photo.setLikeCount(originalLikeCount + 1);
+                photo = photoRepository.saveAndFlush(photo);
             } catch (DataIntegrityViolationException e) {
-                // Database uniqueness makes repeated/concurrent likes idempotent.
+                photo.setLikeCount(originalLikeCount);
+                log.debug("Treating duplicate pet gallery like as idempotent success for photo {} and viewer {}; reason={}",
+                        photoId, viewerKey, e.getMessage());
+                photo = photoRepository.findById(photoId).orElse(photo);
             }
-            photo = photoRepository.findById(photoId).orElse(photo);
         }
         return decorateViewerState(photo, userId, ipAddress);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void deleteOwnUpload(Long photoId, Long userId) {
         PetGalleryPhoto photo = photoRepository.findById(photoId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Photo not found"));
@@ -198,7 +182,7 @@ public class PetGalleryService {
         deleteUploadedFileIfLocal(photo);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void adminDeletePhoto(Long photoId) {
         PetGalleryPhoto photo = photoRepository.findById(photoId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Photo not found"));
@@ -233,7 +217,7 @@ public class PetGalleryService {
         );
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void ensureSeedPhotos(Long seedOwnerId) {
         LocalDateTime baseTime = LocalDateTime.now().minusDays(2);
         for (int i = 0; i < SEED_PHOTOS.size(); i++) {
@@ -271,6 +255,11 @@ public class PetGalleryService {
         photo.setLikedByMe(liked);
         photo.setCanDelete(viewerId != null && isUserUpload(photo) && Objects.equals(photo.getUserId(), viewerId));
         return photo;
+    }
+
+    private int safeLikeCount(PetGalleryPhoto photo) {
+        Integer likeCount = photo == null ? null : photo.getLikeCount();
+        return likeCount == null || likeCount < 0 ? 0 : likeCount;
     }
 
     private String viewerKey(Long userId, String ipAddress) {
@@ -383,6 +372,26 @@ public class PetGalleryService {
         return Math.max(1, runtimeConfig.getInt("pet-gallery.max-photos-per-ip", 3));
     }
 
+    private ImageStorageService.ImageUploadOptions petGalleryImageOptions() {
+        return new ImageStorageService.ImageUploadOptions(
+                uploadDir(),
+                publicPath(),
+                runtimeConfig.getLong("pet-gallery.max-file-size-bytes", 5242880),
+                Math.max(1, runtimeConfig.getInt("pet-gallery.max-image-width", 8000)),
+                Math.max(1, runtimeConfig.getInt("pet-gallery.max-image-height", 8000)),
+                SUPPORTED_IMAGE_CONTENT_TYPES,
+                PET_GALLERY_IMAGE_MESSAGES);
+    }
+
+    private void deleteStoredImageAfterMetadataFailure(ImageStorageService.StoredImage storedImage) {
+        try {
+            Files.deleteIfExists(storedImage.getTarget());
+        } catch (IOException ex) {
+            log.warn("Failed to delete local pet gallery upload {} after metadata save failure",
+                    storedImage.getTarget(), ex);
+        }
+    }
+
     private void deleteUploadedFileIfLocal(PetGalleryPhoto photo) {
         Path target = resolveLocalUploadPath(photo);
         if (target == null) {
@@ -390,7 +399,8 @@ public class PetGalleryService {
         }
         try {
             Files.deleteIfExists(target);
-        } catch (IOException ignored) {
+        } catch (IOException ex) {
+            log.warn("Failed to delete local pet gallery upload {}", target, ex);
         }
     }
 
@@ -409,280 +419,12 @@ public class PetGalleryService {
         return target.startsWith(uploadPath) ? target : null;
     }
 
-    private void validateFile(MultipartFile file) {
-        if (file == null || file.isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Choose a photo to upload");
-        }
-        if (file.getSize() > runtimeConfig.getLong("pet-gallery.max-file-size-bytes", 5242880)) {
-            throw new ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE, "Photo must be 5 MB or smaller");
-        }
-        String contentType = normalizeContentType(file.getContentType());
-        if (!EXTENSIONS_BY_CONTENT_TYPE.containsKey(contentType)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only JPG, PNG or GIF photos are supported");
-        }
-        validateImageSignature(file, contentType);
-        validateImageDimensions(file, contentType);
-    }
-
-    private SanitizedPhoto sanitizeImage(MultipartFile file, String contentType) {
-        BufferedImage decoded = decodeImage(file);
-        String outputContentType = "image/jpeg".equals(contentType) ? "image/jpeg" : "image/png";
-        String outputFormat = OUTPUT_FORMAT_BY_CONTENT_TYPE.get(outputContentType);
-        byte[] bytes = encodeImage(decoded, outputContentType, outputFormat);
-        long maxFileSize = runtimeConfig.getLong("pet-gallery.max-file-size-bytes", 5242880);
-        if (bytes.length > maxFileSize) {
-            throw new ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE, "Sanitized photo is too large");
-        }
-        return new SanitizedPhoto(outputContentType, bytes);
-    }
-
-    private BufferedImage decodeImage(MultipartFile file) {
-        try (InputStream inputStream = file.getInputStream()) {
-            BufferedImage image = ImageIO.read(inputStream);
-            if (image == null) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Could not process uploaded photo");
-            }
-            return image;
-        } catch (IOException e) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Could not process uploaded photo");
-        }
-    }
-
-    private byte[] encodeImage(BufferedImage image, String contentType, String outputFormat) {
-        if ("image/jpeg".equals(contentType)) {
-            return encodeJpeg(image);
-        }
-        return encodeWithImageIo(copyImage(image, BufferedImage.TYPE_INT_ARGB, null), outputFormat);
-    }
-
-    private byte[] encodeJpeg(BufferedImage image) {
-        BufferedImage rgbImage = copyImage(image, BufferedImage.TYPE_INT_RGB, Color.WHITE);
-        Iterator<ImageWriter> writers = ImageIO.getImageWritersByFormatName("jpg");
-        if (!writers.hasNext()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Could not process uploaded photo");
-        }
-        ImageWriter writer = writers.next();
-        try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-             ImageOutputStream imageOutputStream = ImageIO.createImageOutputStream(outputStream)) {
-            if (imageOutputStream == null) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Could not process uploaded photo");
-            }
-            writer.setOutput(imageOutputStream);
-            ImageWriteParam writeParam = writer.getDefaultWriteParam();
-            if (writeParam.canWriteCompressed()) {
-                writeParam.setCompressionMode(ImageWriteParam.MODE_EXPLICIT);
-                writeParam.setCompressionQuality(0.88f);
-            }
-            writer.write(null, new IIOImage(rgbImage, null, null), writeParam);
-            return outputStream.toByteArray();
-        } catch (IOException e) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Could not process uploaded photo");
-        } finally {
-            writer.dispose();
-        }
-    }
-
-    private byte[] encodeWithImageIo(BufferedImage image, String outputFormat) {
-        try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
-            if (!ImageIO.write(image, outputFormat, outputStream)) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Could not process uploaded photo");
-            }
-            return outputStream.toByteArray();
-        } catch (IOException e) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Could not process uploaded photo");
-        }
-    }
-
-    private BufferedImage copyImage(BufferedImage source, int targetType, Color background) {
-        BufferedImage target = new BufferedImage(source.getWidth(), source.getHeight(), targetType);
-        Graphics2D graphics = target.createGraphics();
-        try {
-            if (background != null) {
-                graphics.setColor(background);
-                graphics.fillRect(0, 0, target.getWidth(), target.getHeight());
-            }
-            graphics.drawImage(source, 0, 0, null);
-        } finally {
-            graphics.dispose();
-        }
-        return target;
-    }
-
-    private void validateImageSignature(MultipartFile file, String contentType) {
-        byte[] header = new byte[16];
-        int read;
-        try (InputStream inputStream = file.getInputStream()) {
-            read = inputStream.read(header);
-        } catch (IOException e) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Could not read uploaded photo");
-        }
-
-        boolean valid;
-        switch (contentType) {
-            case "image/jpeg":
-                valid = read >= 3
-                    && (header[0] & 0xff) == 0xff
-                    && (header[1] & 0xff) == 0xd8
-                    && (header[2] & 0xff) == 0xff;
-                break;
-            case "image/png":
-                valid = read >= 8
-                    && (header[0] & 0xff) == 0x89
-                    && header[1] == 0x50
-                    && header[2] == 0x4e
-                    && header[3] == 0x47
-                    && header[4] == 0x0d
-                    && header[5] == 0x0a
-                    && header[6] == 0x1a
-                    && header[7] == 0x0a;
-                break;
-            case "image/gif":
-                valid = read >= 6
-                    && header[0] == 0x47
-                    && header[1] == 0x49
-                    && header[2] == 0x46
-                    && header[3] == 0x38
-                    && (header[4] == 0x37 || header[4] == 0x39)
-                    && header[5] == 0x61;
-                break;
-            default:
-                valid = false;
-                break;
-        }
-
-        if (!valid) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "The uploaded file does not look like a valid image");
-        }
-    }
-
-    private void validateImageDimensions(MultipartFile file, String contentType) {
-        byte[] bytes;
-        try (InputStream inputStream = file.getInputStream()) {
-            bytes = inputStream.readNBytes(65536);
-        } catch (IOException e) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Could not read uploaded photo");
-        }
-        int[] dimensions = imageDimensions(bytes, contentType);
-        if (dimensions == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Could not read uploaded photo dimensions");
-        }
-        int maxWidth = Math.max(1, runtimeConfig.getInt("pet-gallery.max-image-width", 8000));
-        int maxHeight = Math.max(1, runtimeConfig.getInt("pet-gallery.max-image-height", 8000));
-        if (dimensions[0] > maxWidth || dimensions[1] > maxHeight) {
-            throw new ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE,
-                    "Photo dimensions must be " + maxWidth + "x" + maxHeight + " pixels or smaller");
-        }
-    }
-
-    private int[] imageDimensions(byte[] bytes, String contentType) {
-        switch (contentType) {
-            case "image/png":
-                return pngDimensions(bytes);
-            case "image/gif":
-                return gifDimensions(bytes);
-            case "image/jpeg":
-                return jpegDimensions(bytes);
-            default:
-                return null;
-        }
-    }
-
-    private int[] pngDimensions(byte[] bytes) {
-        if (bytes.length < 24) {
-            return null;
-        }
-        return new int[]{readIntBigEndian(bytes, 16), readIntBigEndian(bytes, 20)};
-    }
-
-    private int[] gifDimensions(byte[] bytes) {
-        if (bytes.length < 10) {
-            return null;
-        }
-        return new int[]{readUnsignedShortLittleEndian(bytes, 6), readUnsignedShortLittleEndian(bytes, 8)};
-    }
-
-    private int[] jpegDimensions(byte[] bytes) {
-        if (bytes.length < 4) {
-            return null;
-        }
-        int position = 2;
-        while (position + 3 < bytes.length) {
-            while (position < bytes.length && (bytes[position] & 0xff) != 0xff) {
-                position++;
-            }
-            while (position < bytes.length && (bytes[position] & 0xff) == 0xff) {
-                position++;
-            }
-            if (position >= bytes.length) {
-                return null;
-            }
-            int marker = bytes[position++] & 0xff;
-            if (marker == 0xd9 || marker == 0xda) {
-                return null;
-            }
-            if (marker == 0x01 || (marker >= 0xd0 && marker <= 0xd8)) {
-                continue;
-            }
-            if (position + 1 >= bytes.length) {
-                return null;
-            }
-            int length = readUnsignedShortBigEndian(bytes, position);
-            if (length < 2 || position + length > bytes.length) {
-                return null;
-            }
-            if (isJpegStartOfFrame(marker) && length >= 7) {
-                return new int[]{
-                        readUnsignedShortBigEndian(bytes, position + 5),
-                        readUnsignedShortBigEndian(bytes, position + 3)
-                };
-            }
-            position += length;
-        }
-        return null;
-    }
-
-    private boolean isJpegStartOfFrame(int marker) {
-        return (marker >= 0xc0 && marker <= 0xc3)
-                || (marker >= 0xc5 && marker <= 0xc7)
-                || (marker >= 0xc9 && marker <= 0xcb)
-                || (marker >= 0xcd && marker <= 0xcf);
-    }
-
-    private int readIntBigEndian(byte[] bytes, int offset) {
-        return ((bytes[offset] & 0xff) << 24)
-                | ((bytes[offset + 1] & 0xff) << 16)
-                | ((bytes[offset + 2] & 0xff) << 8)
-                | (bytes[offset + 3] & 0xff);
-    }
-
-    private int readUnsignedShortBigEndian(byte[] bytes, int offset) {
-        return ((bytes[offset] & 0xff) << 8) | (bytes[offset + 1] & 0xff);
-    }
-
-    private int readUnsignedShortLittleEndian(byte[] bytes, int offset) {
-        return (bytes[offset] & 0xff) | ((bytes[offset + 1] & 0xff) << 8);
-    }
-
-    private String normalizeContentType(String contentType) {
-        return contentType == null ? "" : contentType.trim().toLowerCase(Locale.ROOT);
-    }
-
     private String cleanFilename(String originalFilename) {
         String filename = StringUtils.cleanPath(originalFilename == null ? "" : originalFilename);
         if (!StringUtils.hasText(filename) || filename.contains("..")) {
             return null;
         }
         return filename.length() > 255 ? filename.substring(filename.length() - 255) : filename;
-    }
-
-    private static class SanitizedPhoto {
-        private final String contentType;
-        private final byte[] bytes;
-
-        private SanitizedPhoto(String contentType, byte[] bytes) {
-            this.contentType = contentType;
-            this.bytes = bytes;
-        }
     }
 
     private static class SeedPhoto {

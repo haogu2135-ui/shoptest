@@ -1,4 +1,5 @@
 import type { OrderCustomer } from '../types';
+import { reportNonBlockingError } from './nonBlockingError';
 
 export const SUPPORT_ORDER_MESSAGE_PREFIX = '[ORDER]';
 
@@ -43,7 +44,8 @@ export const decodeSupportOrderMessage = (text?: string | null): SupportOrderCon
   if (!text?.startsWith(SUPPORT_ORDER_MESSAGE_PREFIX)) return null;
   try {
     return normalizeSupportOrderContext(JSON.parse(text.slice(SUPPORT_ORDER_MESSAGE_PREFIX.length)));
-  } catch {
+  } catch (error) {
+    reportNonBlockingError('supportOrderMessage.decodeSupportOrderMessage', error);
     return null;
   }
 };

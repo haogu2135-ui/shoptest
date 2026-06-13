@@ -4,7 +4,7 @@ import { DeleteOutlined, EditOutlined, EnvironmentOutlined, HeartOutlined, LockO
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { addressApi, cartApi, orderApi, paymentApi, petProfileApi, userApi } from '../api';
 import type { OrderCustomer, OrderItemCustomer, PaymentCustomer, PaymentChannel, PetProfile, UserAddress, UserProfile } from '../types';
-import { findRegionPath, regionData } from '../regionData';
+import { findRegionPath, loadRegionData, type RegionOption } from '../regionData';
 import { useLanguage } from '../i18n';
 import { buildLoginUrlFromWindow } from '../utils/authRedirect';
 import { createPaymentMethodDetails, createPaymentMethodOptions, paymentMethodLabel } from '../utils/paymentMethods';
@@ -21,10 +21,19 @@ import { allSettledWithConcurrency } from '../utils/asyncBatch';
 import { getLocalStorageItem } from '../utils/safeStorage';
 import { getApiErrorMessage } from '../utils/apiError';
 import { reportNonBlockingError } from '../utils/nonBlockingError';
+import { isLikelyPhoneNumber, normalizeLikelyPhoneNumber, normalizePhoneNumber } from '../utils/phone';
+import { isValidRegionalPostalCode, normalizeRegionalPostalCode } from '../utils/postalCode';
+import {
+  STRONG_PASSWORD_MAX_LENGTH,
+  STRONG_PASSWORD_MIN_LENGTH,
+  hasRequiredPasswordClasses,
+  isCommonPassword,
+} from '../utils/passwordPolicy';
 import SeventeenTrackWidget from '../components/SeventeenTrackWidget';
 import '../styles/mobile-page-contrast.css';
 
 const { Title, Text } = Typography;
+const profileModalPopupClassNames = { popup: { root: 'shop-mobile-popup-layer profile-modal-popup' } };
 const orderImageFallback = productImageFallback;
 const resolveOrderImage = resolveProductImage;
 type FormValidationError = { errorFields: unknown[] };
@@ -47,19 +56,10 @@ const getProfileApiErrorCode = (error: unknown) => {
   return typeof code === 'string' ? code : '';
 };
 
-const hasProfileApiResponse = (error: unknown) => (
-  Boolean(error) && typeof error === 'object' && Boolean((error as { response?: unknown }).response)
-);
-
-const getProfileErrorMessage = (error: unknown, fallback: string, language: ReturnType<typeof useLanguage>['language']) => {
-  if (hasProfileApiResponse(error)) return getApiErrorMessage(error, fallback, language);
-  if (error instanceof Error && error.message) return error.message;
-  return getApiErrorMessage(error, fallback, language);
-};
-
 const getPreferredPaymentChannel = (channels: PaymentChannel[], preferred?: string | null) => {
-  if (preferred && channels.some((channel) => channel.code === preferred)) {
-    return preferred;
+  const normalizedPreferred = String(preferred || '').trim();
+  if (normalizedPreferred && (channels.length === 0 || channels.some((channel) => channel.code === normalizedPreferred))) {
+    return normalizedPreferred;
   }
   return channels.find((channel) => channel.recommended)?.code || channels[0]?.code || '';
 };
@@ -124,18 +124,33 @@ const normalizeProfileTab = (value: string | null) =>
 
 const normalizeProfileOrderNo = (value: unknown) => String(value || '').trim().toUpperCase();
 const normalizeProfileEmail = (value: unknown) => String(value || '').trim().toLowerCase();
-const stripProfileControlChars = (value: unknown) => Array.from(String(value || ''), (char) => {
-  const code = char.charCodeAt(0);
-  return code <= 31 || code === 127 ? ' ' : char;
-}).join('');
-const normalizeProfilePhone = (value: unknown) => {
-  const raw = stripProfileControlChars(value).trim();
-  return raw.startsWith('+') ? `+${raw.slice(1).replace(/\D+/g, '')}` : raw.replace(/\D+/g, '');
-};
-const profilePhonePattern = /^(?=(?:.*\d){6,20})\+?[\d\s().-]{6,32}$/;
-const isLikelyProfilePhone = (value: unknown) => profilePhonePattern.test(stripProfileControlChars(value).trim());
+const profilePhoneOptions = { minDigits: 6, maxDigits: 20, maxInputLength: 40 };
+const normalizeProfilePhone = (value: unknown) => normalizePhoneNumber(value, profilePhoneOptions);
+const isLikelyProfilePhone = (value: unknown) => isLikelyPhoneNumber(value, profilePhoneOptions);
 const normalizeLikelyProfilePhone = (value: unknown) =>
-  isLikelyProfilePhone(value) ? normalizeProfilePhone(value) : stripProfileControlChars(value).trim();
+  normalizeLikelyPhoneNumber(value, profilePhoneOptions);
+const normalizeProfileAddressText = (value: unknown, maxLength: number) =>
+  String(value || '').trim().replace(/\s+/g, ' ').slice(0, maxLength);
+const getProfileSavedAddressRegionPath = (address?: UserAddress | null) =>
+  (Array.isArray(address?.region) ? address.region : [])
+    .map((item) => normalizeProfileAddressText(item, 120))
+    .filter(Boolean);
+const getProfileSavedAddressPostalCode = (address?: UserAddress | null) =>
+  normalizeRegionalPostalCode(address?.postalCode);
+const getProfileSavedAddressDetail = (address?: UserAddress | null) =>
+  normalizeProfileAddressText(address?.detailAddress, 260);
+const isCompleteProfileAddress = (address?: UserAddress | null) => {
+  const regionPath = getProfileSavedAddressRegionPath(address);
+  const postalCode = getProfileSavedAddressPostalCode(address);
+  return Boolean(
+    address
+      && normalizeProfileAddressText(address.recipientName, 80)
+      && isLikelyProfilePhone(address.phone)
+      && regionPath.length > 0
+      && isValidRegionalPostalCode(postalCode, regionPath)
+      && getProfileSavedAddressDetail(address),
+  );
+};
 const normalizeEmailCode = (value: unknown) => String(value || '').replace(/\D+/g, '').slice(0, 6);
 const scrollProfileAddressFieldIntoMobileView = (target: EventTarget | null) => {
   if (typeof window === 'undefined' || window.innerWidth > 780 || !(target instanceof HTMLElement)) return;
@@ -183,6 +198,7 @@ const Profile: React.FC = () => {
   const [selectedPayment, setSelectedPayment] = useState<PaymentCustomer | null>(null);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('');
   const [paymentChannels, setPaymentChannels] = useState<PaymentChannel[]>([]);
+  const [paymentChannelsLoaded, setPaymentChannelsLoaded] = useState(false);
   const [orderPayments, setOrderPayments] = useState<PaymentCustomer[]>([]);
   const [payingOrderId, setPayingOrderId] = useState<number | null>(null);
   const [refreshingPayment, setRefreshingPayment] = useState(false);
@@ -199,6 +215,9 @@ const Profile: React.FC = () => {
   const [profileEmailCodeSentTo, setProfileEmailCodeSentTo] = useState('');
   const [passwordSubmitting, setPasswordSubmitting] = useState(false);
   const [addressSubmitting, setAddressSubmitting] = useState(false);
+  const [regionOptions, setRegionOptions] = useState<RegionOption[]>([]);
+  const [regionOptionsLanguage, setRegionOptionsLanguage] = useState('');
+  const [regionOptionsLoading, setRegionOptionsLoading] = useState(false);
   const [petSubmitting, setPetSubmitting] = useState(false);
   const [trackingVisible, setTrackingVisible] = useState(false);
   const [selectedTrackingNumber, setSelectedTrackingNumber] = useState('');
@@ -211,6 +230,8 @@ const Profile: React.FC = () => {
   const ordersRef = useRef<OrderCustomer[]>([]);
   const mountedRef = useRef(false);
   const ordersRequestSeqRef = useRef(0);
+  const orderDetailRequestSeqRef = useRef(0);
+  const continuingPaymentRef = useRef<number | null>(null);
   const profileOrderItemName = (item: Pick<OrderItemCustomer, 'productId' | 'productName'>) => (
     (item.productName || '').trim() || t('pages.profile.productFallback', { id: item.productId })
   );
@@ -263,7 +284,8 @@ const Profile: React.FC = () => {
       const response = await userApi.getProfile();
       if (!mountedRef.current) return;
       setUser(response.data);
-    } catch {
+    } catch (error) {
+      reportNonBlockingError('Profile.fetchUserInfo', error);
       if (mountedRef.current) {
         message.error(t('pages.profile.fetchUserFailed'));
       }
@@ -301,7 +323,8 @@ const Profile: React.FC = () => {
         .map((result) => result.value);
       if (!mountedRef.current || ordersRequestSeqRef.current !== requestSeq) return;
       setOrderItemsByOrderId(Object.fromEntries(itemEntries));
-    } catch {
+    } catch (error) {
+      reportNonBlockingError('Profile.fetchOrders', error);
       if (mountedRef.current && ordersRequestSeqRef.current === requestSeq) {
         setOrdersInitialLoadComplete(true);
         message.error(t('pages.profile.fetchOrdersFailed'));
@@ -363,9 +386,10 @@ const Profile: React.FC = () => {
       reportNonBlockingError('Profile.fetchPetProfiles', error);
       if (mountedRef.current) {
         setPetProfiles([]);
+        message.error(t('pages.profile.fetchPetProfilesFailed'));
       }
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     const token = getLocalStorageItem('token');
@@ -397,6 +421,7 @@ const Profile: React.FC = () => {
 
   useEffect(() => {
     if (paymentReturnStatus !== 'success') return;
+    if (!paymentChannelsLoaded) return;
     if (!ordersInitialLoadComplete) return;
     const targetOrderId = Number.isFinite(paymentReturnOrderId) && paymentReturnOrderId > 0 ? paymentReturnOrderId : null;
     const targetOrder = ordersRef.current.find((order) => paymentReturnOrderNo && normalizeProfileOrderNo(order.orderNo) === paymentReturnOrderNo)
@@ -419,10 +444,10 @@ const Profile: React.FC = () => {
         fetchOrders();
       }
     });
-  }, [fetchOrders, ordersInitialLoadComplete, paymentReturnOrderId, paymentReturnOrderNo, paymentReturnStatus, searchParams, setSearchParams, syncPaymentReturnState, t]);
+  }, [fetchOrders, ordersInitialLoadComplete, paymentChannelsLoaded, paymentReturnOrderId, paymentReturnOrderNo, paymentReturnStatus, searchParams, setSearchParams, syncPaymentReturnState, t]);
 
   useEffect(() => {
-    if (profileEmailCodeCountdown <= 0) return undefined;
+    if (profileEmailCodeCountdown <= 0) return;
     const timer = window.setInterval(() => {
       setProfileEmailCodeCountdown((value) => Math.max(value - 1, 0));
     }, 1000);
@@ -542,12 +567,17 @@ const Profile: React.FC = () => {
   };
 
   const handleViewOrder = async (order: OrderCustomer) => {
+    const requestSeq = orderDetailRequestSeqRef.current + 1;
+    orderDetailRequestSeqRef.current = requestSeq;
     setSelectedOrder(order);
     setOrderDetailVisible(true);
+    setOrderItems([]);
     try {
       const res = await orderApi.getItems(order.id);
+      if (!mountedRef.current || orderDetailRequestSeqRef.current !== requestSeq) return;
       setOrderItems(res.data);
     } catch (error) {
+      if (!mountedRef.current || orderDetailRequestSeqRef.current !== requestSeq) return;
       reportNonBlockingError('Profile.loadOrderItems', error);
       setOrderItems([]);
     }
@@ -606,6 +636,8 @@ const Profile: React.FC = () => {
   };
 
   const handleContinuePayment = async (order: OrderCustomer) => {
+    if (continuingPaymentRef.current !== null) return;
+    continuingPaymentRef.current = order.id;
     setPayingOrderId(order.id);
     try {
       const paymentListRes = await paymentApi.getByOrder(order.id);
@@ -623,9 +655,12 @@ const Profile: React.FC = () => {
       setSelectedPaymentMethod(latestPayment.channel || preferredMethod);
       setPaymentModalVisible(true);
     } catch (err: unknown) {
-      message.error(getProfileErrorMessage(err, t('pages.profile.continuePayFailed'), language));
+      message.error(getApiErrorMessage(err, t('pages.profile.continuePayFailed'), language, { includeClientMessage: true }));
       fetchOrders();
     } finally {
+      if (continuingPaymentRef.current === order.id) {
+        continuingPaymentRef.current = null;
+      }
       setPayingOrderId(null);
     }
   };
@@ -646,7 +681,7 @@ const Profile: React.FC = () => {
       message.success(t('pages.profile.paymentRefreshed'));
       await fetchOrders();
     } catch (err: unknown) {
-      message.error(getProfileErrorMessage(err, t('pages.profile.continuePayFailed'), language));
+      message.error(getApiErrorMessage(err, t('pages.profile.continuePayFailed'), language, { includeClientMessage: true }));
       await fetchOrders();
     } finally {
       setRefreshingPayment(false);
@@ -655,7 +690,7 @@ const Profile: React.FC = () => {
 
   useEffect(() => {
     const orderId = selectedOrder?.id;
-    if (!paymentModalVisible || !orderId) return undefined;
+    if (!paymentModalVisible || !orderId) return;
     let polling = false;
     let disposed = false;
     const isActive = () => !disposed && mountedRef.current;
@@ -687,10 +722,12 @@ const Profile: React.FC = () => {
       .then((res) => {
         if (disposed || !mountedRef.current) return;
         setPaymentChannels(res.data || []);
+        setPaymentChannelsLoaded(true);
       })
       .catch(() => {
         if (disposed || !mountedRef.current) return;
         setPaymentChannels([]);
+        setPaymentChannelsLoaded(true);
       });
     return () => {
       disposed = true;
@@ -788,9 +825,26 @@ const Profile: React.FC = () => {
     try {
       const values = await addressForm.validateFields();
       setAddressSubmitting(true);
-      const regionStr = values.region ? values.region.join(' ') : '';
-      const fullAddress = `${regionStr} ${values.detail || ''}`.trim();
-      const payload = { recipientName: values.recipientName, phone: normalizeProfilePhone(values.phone), address: fullAddress, isDefault: Boolean(values.isDefault) };
+      const regionPath = Array.isArray(values.region)
+        ? values.region.map((item: unknown) => normalizeProfileAddressText(item, 120)).filter(Boolean)
+        : [];
+      const postalCode = normalizeRegionalPostalCode(values.postalCode);
+      const detailAddress = normalizeProfileAddressText(values.detail, 260);
+      if (!isValidRegionalPostalCode(postalCode, regionPath)) {
+        addressForm.setFields([{ name: 'postalCode', errors: [t('pages.profile.postalCodeInvalid')] }]);
+        return;
+      }
+      const regionStr = regionPath.join(' ');
+      const fullAddress = [regionStr, postalCode, detailAddress].filter(Boolean).join(' ');
+      const payload = {
+        recipientName: values.recipientName,
+        phone: normalizeProfilePhone(values.phone),
+        region: regionPath,
+        postalCode,
+        detailAddress,
+        address: fullAddress,
+        isDefault: Boolean(values.isDefault),
+      };
       if (editingAddress) {
         await addressApi.update(editingAddress.id, payload);
         message.success(t('pages.profile.addressUpdated'));
@@ -830,21 +884,59 @@ const Profile: React.FC = () => {
     }
   };
 
+  const loadProfileRegionOptions = useCallback(async () => {
+    if (regionOptions.length > 0 && regionOptionsLanguage === language) {
+      return regionOptions;
+    }
+    setRegionOptionsLoading(true);
+    try {
+      const options = await loadRegionData(language);
+      if (mountedRef.current) {
+        setRegionOptions(options);
+        setRegionOptionsLanguage(language);
+      }
+      return options;
+    } catch (error) {
+      reportNonBlockingError('Profile.loadRegionData', error);
+      if (mountedRef.current) {
+        message.error(t('pages.profile.regionLoadFailed'));
+      }
+      return [];
+    } finally {
+      if (mountedRef.current) {
+        setRegionOptionsLoading(false);
+      }
+    }
+  }, [language, regionOptions, regionOptionsLanguage, t]);
+
   const openAddressModal = (address?: UserAddress) => {
     addressForm.resetFields();
     if (address) {
-      const { region, detail } = findRegionPath(address.address);
       setEditingAddress(address);
+      const savedRegionPath = getProfileSavedAddressRegionPath(address);
+      const savedDetail = getProfileSavedAddressDetail(address);
+      const savedPostalCode = getProfileSavedAddressPostalCode(address);
       addressForm.setFieldsValue({
         recipientName: address.recipientName,
         phone: address.phone,
-        region,
-        detail,
+        region: savedRegionPath,
+        postalCode: savedPostalCode,
+        detail: savedDetail || address.address,
         isDefault: Boolean(address.isDefault),
       });
+      if (savedRegionPath.length === 0) {
+        void loadProfileRegionOptions().then((options) => {
+          if (!mountedRef.current) return;
+          const { region, detail } = findRegionPath(address.address, options);
+          addressForm.setFieldsValue({ region, detail });
+        });
+      } else {
+        void loadProfileRegionOptions();
+      }
     } else {
       setEditingAddress(null);
       addressForm.resetFields();
+      void loadProfileRegionOptions();
     }
     setAddressModalVisible(true);
   };
@@ -990,9 +1082,9 @@ const Profile: React.FC = () => {
   const petProfileProgress = petProfiles.length > 0 ? Math.round((completedPetProfiles / petProfiles.length) * 100) : 0;
   const petsMissingBirthdayCount = petProfiles.filter((pet) => !pet.birthday).length;
   const petsMissingFitCount = petProfiles.filter((pet) => !pet.weight || !pet.size).length;
-  const completeAddressCount = addresses.filter((address) => address.recipientName && address.phone && address.address).length;
-  const addressesMissingPhoneCount = addresses.filter((address) => !address.phone).length;
-  const addressesMissingDetailCount = addresses.filter((address) => !address.address || address.address.trim().length < 8).length;
+  const completeAddressCount = addresses.filter(isCompleteProfileAddress).length;
+  const addressesMissingPhoneCount = addresses.filter((address) => !isLikelyProfilePhone(address.phone)).length;
+  const addressesMissingDetailCount = addresses.filter((address) => !isCompleteProfileAddress(address)).length;
   const addressReadinessProgress = addresses.length > 0
     ? Math.round(((completeAddressCount + (defaultAddressReady ? 1 : 0)) / (addresses.length + 1)) * 100)
     : 0;
@@ -1197,6 +1289,16 @@ const Profile: React.FC = () => {
   const profileTargetLabel = user.username || user.email || user.phone || t('pages.profile.title');
   const editProfileActionLabel = `${t('common.save')}: ${t('pages.profile.editProfileTitle')}, ${profileTargetLabel}`;
   const changePasswordActionLabel = `${t('pages.profile.changePassword')}: ${profileTargetLabel}`;
+  const validateStrongPassword = (_rule: unknown, value?: string) => {
+    if (!value) return Promise.resolve();
+    if (isCommonPassword(value)) {
+      return Promise.reject(new Error(t('pages.profile.newPasswordCommon')));
+    }
+    if (!hasRequiredPasswordClasses(value)) {
+      return Promise.reject(new Error(t('pages.profile.newPasswordPattern')));
+    }
+    return Promise.resolve();
+  };
   const addressEditorTargetLabel = editingAddress
     ? [editingAddress.recipientName, editingAddress.phone, editingAddress.address].filter(Boolean).join(' / ') || `#${editingAddress.id}`
     : t('pages.profile.addAddressTitle');
@@ -1651,7 +1753,7 @@ const Profile: React.FC = () => {
                               <Text type="secondary">{actionHint.text}</Text>
                             </div>
                             {order.status === 'PENDING_PAYMENT' && (
-                              <Button type="primary" aria-label={continuePayActionLabel} title={continuePayActionLabel} loading={payingOrderId === order.id} onClick={() => handleContinuePayment(order)}>
+                              <Button type="primary" aria-label={continuePayActionLabel} title={continuePayActionLabel} loading={payingOrderId === order.id} disabled={payingOrderId !== null} onClick={() => handleContinuePayment(order)}>
                                 {t('pages.profile.continuePay')}
                               </Button>
                             )}
@@ -1917,7 +2019,7 @@ const Profile: React.FC = () => {
             ]}
           >
             <Input
-              maxLength={32}
+              maxLength={40}
               placeholder={t('pages.auth.phonePlaceholder')}
               autoComplete="tel"
               inputMode="tel"
@@ -1947,10 +2049,10 @@ const Profile: React.FC = () => {
             <Input.Password />
           </Form.Item>
           <Form.Item name="newPassword" label={t('pages.profile.newPassword')} rules={[
-            { required: true, min: 8, max: 128, message: t('pages.profile.newPasswordMin') },
-            { pattern: /^(?=.*[A-Za-z])(?=.*\d).+$/, message: t('pages.profile.newPasswordPattern') }
+            { required: true, min: STRONG_PASSWORD_MIN_LENGTH, max: STRONG_PASSWORD_MAX_LENGTH, message: t('pages.profile.newPasswordMin') },
+            { validator: validateStrongPassword }
           ]}>
-            <Input.Password />
+            <Input.Password maxLength={STRONG_PASSWORD_MAX_LENGTH} />
           </Form.Item>
           <Form.Item
             name="confirmPassword"
@@ -2001,7 +2103,7 @@ const Profile: React.FC = () => {
               placeholder={t('pages.auth.phonePlaceholder')}
               autoComplete="tel"
               inputMode="tel"
-              maxLength={32}
+              maxLength={40}
               aria-label={addressPhoneInputLabel}
               title={addressPhoneInputLabel}
               onBlur={(event) => addressForm.setFieldValue('phone', normalizeLikelyProfilePhone(event.target.value))}
@@ -2009,13 +2111,43 @@ const Profile: React.FC = () => {
           </Form.Item>
           <Form.Item name="region" label={t('pages.profile.region')} rules={[{ required: true, message: t('pages.profile.regionRequired') }]}>
             <Cascader
-              options={regionData}
-              placeholder={t('pages.profile.regionPlaceholder')}
+              options={regionOptions}
+              placeholder={regionOptionsLoading ? t('common.loading') : t('pages.profile.regionPlaceholder')}
               showSearch
               aria-label={addressRegionInputLabel}
               title={addressRegionInputLabel}
-              classNames={{ popup: { root: 'shop-mobile-popup-layer' } }}
+              onClick={() => {
+                void loadProfileRegionOptions();
+              }}
+              onFocus={() => {
+                void loadProfileRegionOptions();
+              }}
+              classNames={profileModalPopupClassNames}
               getPopupContainer={() => document.body}
+              placement="bottomLeft"
+            />
+          </Form.Item>
+          <Form.Item
+            name="postalCode"
+            label={t('pages.profile.postalCode')}
+            dependencies={['region']}
+            rules={[
+              { required: true, message: t('pages.profile.postalCodeRequired') },
+              ({ getFieldValue }) => ({
+                validator: (_, value) => (
+                  !value || isValidRegionalPostalCode(value, getFieldValue('region'))
+                    ? Promise.resolve()
+                    : Promise.reject(new Error(t('pages.profile.postalCodeInvalid')))
+                ),
+              }),
+            ]}
+          >
+            <Input
+              placeholder={t('pages.profile.postalCodePlaceholder')}
+              autoComplete="postal-code"
+              inputMode="text"
+              maxLength={20}
+              onBlur={(event) => addressForm.setFieldValue('postalCode', normalizeRegionalPostalCode(event.target.value))}
             />
           </Form.Item>
           <Form.Item name="detail" label={t('pages.profile.detailAddress')} rules={[{ required: true, message: t('pages.profile.detailRequired') }]}>
@@ -2051,15 +2183,16 @@ const Profile: React.FC = () => {
                 { value: 'CAT', label: t('pages.profile.petCat') },
                 { value: 'SMALL_PET', label: t('pages.profile.petSmall') },
               ]}
-              classNames={{ popup: { root: 'shop-mobile-popup-layer' } }}
+              classNames={profileModalPopupClassNames}
               getPopupContainer={() => document.body}
+              placement="bottomLeft"
             />
           </Form.Item>
           <Form.Item name="breed" label={t('pages.profile.petBreed')}>
             <Input placeholder={t('pages.profile.petBreedPlaceholder')} />
           </Form.Item>
           <Form.Item name="birthday" label={t('pages.profile.petBirthday')}>
-            <DatePicker className="profile-pet-modal__field" classNames={{ popup: { root: 'shop-mobile-popup-layer' } }} getPopupContainer={() => document.body} />
+            <DatePicker className="profile-pet-modal__field" classNames={profileModalPopupClassNames} getPopupContainer={() => document.body} placement="bottomLeft" />
           </Form.Item>
           <Form.Item name="weight" label={t('pages.profile.petWeightKg')}>
             <InputNumber min={0} precision={2} className="profile-pet-modal__field" />
@@ -2072,8 +2205,9 @@ const Profile: React.FC = () => {
                 { value: 'MEDIUM', label: t('pages.profile.petSizeMedium') },
                 { value: 'LARGE', label: t('pages.profile.petSizeLarge') },
               ]}
-              classNames={{ popup: { root: 'shop-mobile-popup-layer' } }}
+              classNames={profileModalPopupClassNames}
               getPopupContainer={() => document.body}
+              placement="bottomLeft"
             />
           </Form.Item>
         </Form>

@@ -3,7 +3,7 @@ package com.example.shop.dto;
 import java.util.List;
 
 public class ProductPublicPageResponse {
-    private List<ProductPublicResponse> items;
+    private List<ProductPublicListItemResponse> items;
     private long total;
     private int page;
     private int size;
@@ -11,7 +11,7 @@ public class ProductPublicPageResponse {
     private boolean hasNext;
     private boolean hasPrevious;
 
-    public static ProductPublicPageResponse of(List<ProductPublicResponse> items, long total, int page, int size) {
+    public static ProductPublicPageResponse of(List<ProductPublicListItemResponse> items, long total, int page, int size) {
         ProductPublicPageResponse response = new ProductPublicPageResponse();
         int safeSize = Math.max(1, size);
         int safePage = Math.max(0, page);
@@ -26,11 +26,11 @@ public class ProductPublicPageResponse {
         return response;
     }
 
-    public List<ProductPublicResponse> getItems() {
+    public List<ProductPublicListItemResponse> getItems() {
         return items;
     }
 
-    public void setItems(List<ProductPublicResponse> items) {
+    public void setItems(List<ProductPublicListItemResponse> items) {
         this.items = items;
     }
 

@@ -49,6 +49,8 @@ public class EmailLoginService {
     private final Map<String, JavaMailSenderImpl> mailSenderCache = new ConcurrentHashMap<>();
     private final byte[] localCodePepper = createCodePepper();
     private static final int MAX_EMAIL_LENGTH = 180;
+    private static final int MAX_ACCOUNT_ENUMERATION_PADDING_MS = 5_000;
+    private static final int MAX_IN_MEMORY_RATE_BUCKETS = 100_000;
     private static final Pattern EMAIL_PATTERN = Pattern.compile("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$");
 
     public void sendLoginCode(String email) {
@@ -149,9 +151,11 @@ public class EmailLoginService {
         if (previousSend != null && Duration.between(previousSend, now).compareTo(resendInterval()) < 0) {
             throw rateLimited("RATE_LIMITED", previousSend.plus(resendInterval()), now);
         }
+        Instant lookupStartedAt = Instant.now(clock);
         User user = userService.findByUsernameOrPhoneOrEmail(normalizedEmail);
         if (user == null || isDisabled(user)) {
             sendCooldowns.put(normalizedEmail, now);
+            padAccountEnumerationResponse(lookupStartedAt);
             return;
         }
 
@@ -184,9 +188,11 @@ public class EmailLoginService {
             throw rateLimited("RATE_LIMITED", now.plusSeconds(cooldownTtl), now);
         }
 
+        Instant lookupStartedAt = Instant.now(clock);
         User user = userService.findByUsernameOrPhoneOrEmail(normalizedEmail);
         if (user == null || isDisabled(user)) {
             redisTemplate.opsForValue().set(cooldownKey, Long.toString(now.toEpochMilli()), resendInterval());
+            padAccountEnumerationResponse(lookupStartedAt);
             return;
         }
 
@@ -224,6 +230,7 @@ public class EmailLoginService {
         }
         if (!deliverCode) {
             sendCooldowns.put(purposeKey, now);
+            padAccountEnumerationResponse(now);
             return;
         }
 
@@ -260,6 +267,7 @@ public class EmailLoginService {
         }
         if (!deliverCode) {
             redisTemplate.opsForValue().set(cooldownKey, Long.toString(now.toEpochMilli()), resendInterval());
+            padAccountEnumerationResponse(now);
             return;
         }
 
@@ -582,6 +590,33 @@ public class EmailLoginService {
         return Math.max(1, mailAccountProperties.getMaxVerifyFailuresPerWindow());
     }
 
+    private Duration accountEnumerationPadding() {
+        int configured = mailAccountProperties.getAccountEnumerationPaddingMs();
+        int bounded = Math.max(0, Math.min(configured, MAX_ACCOUNT_ENUMERATION_PADDING_MS));
+        return Duration.ofMillis(bounded);
+    }
+
+    private void padAccountEnumerationResponse(Instant startedAt) {
+        Duration minimum = accountEnumerationPadding();
+        if (minimum.isZero() || minimum.isNegative()) {
+            return;
+        }
+        Duration elapsed = Duration.between(startedAt, Instant.now(clock));
+        Duration remaining = minimum.minus(elapsed);
+        if (remaining.isZero() || remaining.isNegative()) {
+            return;
+        }
+        sleepForPadding(remaining);
+    }
+
+    protected void sleepForPadding(Duration duration) {
+        try {
+            Thread.sleep(duration.toMillis());
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
     private String accountCacheKey(MailAccountProperties.Account account) {
         return normalizeForKey(account.getHost())
                 + "|" + account.getPort()
@@ -685,7 +720,7 @@ public class EmailLoginService {
     }
 
     private void consumeRate(Map<String, RateBucket> buckets, String key, Duration window, int maxAttempts, Instant now, String errorCode) {
-        RateBucket bucket = buckets.computeIfAbsent(key, ignored -> new RateBucket(now));
+        RateBucket bucket = rateBucket(buckets, key, window, now, errorCode);
         synchronized (bucket) {
             if (Duration.between(bucket.windowStart, now).compareTo(window) >= 0) {
                 bucket.windowStart = now;
@@ -696,6 +731,34 @@ public class EmailLoginService {
                 throw rateLimited(errorCode, bucket.windowStart.plus(window), now);
             }
         }
+    }
+
+    private RateBucket rateBucket(Map<String, RateBucket> buckets, String key, Duration window, Instant now, String errorCode) {
+        RateBucket existing = buckets.get(key);
+        if (existing != null) {
+            return existing;
+        }
+        synchronized (buckets) {
+            existing = buckets.get(key);
+            if (existing != null) {
+                return existing;
+            }
+            int maxBuckets = maxInMemoryRateBuckets();
+            if (buckets.size() >= maxBuckets) {
+                cleanupBuckets(buckets, window, now);
+            }
+            if (buckets.size() >= maxBuckets) {
+                throw rateLimited(errorCode, now.plus(window), now);
+            }
+            RateBucket created = new RateBucket(now);
+            buckets.put(key, created);
+            return created;
+        }
+    }
+
+    private int maxInMemoryRateBuckets() {
+        int configured = mailAccountProperties.getMaxRateBuckets();
+        return Math.max(1, Math.min(configured, MAX_IN_MEMORY_RATE_BUCKETS));
     }
 
     private void clearVerifyBuckets(String email, String clientKey) {

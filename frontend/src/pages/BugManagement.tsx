@@ -1,13 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Button, Form, Input, Modal, Select, Space, Statistic, Switch, Table, Tag, Tooltip, Typography, message } from 'antd';
+import { Alert, Button, Form, Input, Modal, Select, Skeleton, Space, Spin, Statistic, Switch, Table, Tag, Tooltip, Typography, message } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { BugOutlined, CheckCircleOutlined, EditOutlined, PlusOutlined, ReloadOutlined, SearchOutlined, SyncOutlined, ToolOutlined } from '@ant-design/icons';
 import { useSearchParams } from 'react-router-dom';
 import { adminApi } from '../api';
 import type { AdminBugReport, AdminBugReportSummary } from '../types';
 import { useLanguage } from '../i18n';
+import { useDebounce } from '../hooks/useDebounce';
 import { getApiErrorMessage } from '../utils/apiError';
-import { reportNonBlockingError } from '../utils/nonBlockingError';
 import {
   BUGS_ACCESS_PERMISSIONS,
   BUGS_SCAN_PERMISSION,
@@ -16,13 +16,19 @@ import {
   getEffectiveRole,
   hasAdminPermission,
 } from '../utils/roles';
+import { reportNonBlockingError } from '../utils/nonBlockingError';
+import { buildPaginationItemRender } from '../utils/paginationLabels';
 import './BugManagement.css';
 
 const { Paragraph, Text, Title } = Typography;
 const { TextArea } = Input;
+const DEFAULT_PAGE_INDEX = 0;
 const DEFAULT_PAGE_SIZE = 20;
-const SCAN_REFRESH_MS = 10 * 60 * 1000;
+const DEFAULT_SCAN_REFRESH_MS = 10 * 60 * 1000;
 const mobilePopupClassNames = { popup: { root: 'shop-mobile-popup-layer' } };
+
+const toBugApiPage = (tablePage: number) => Math.max(DEFAULT_PAGE_INDEX, tablePage - 1);
+const toBugTablePage = (apiPage: number) => apiPage + 1;
 
 const isFormValidationError = (error: unknown): error is { errorFields: unknown[] } => (
   Boolean(error) && typeof error === 'object' && Array.isArray((error as { errorFields?: unknown }).errorFields)
@@ -88,12 +94,18 @@ const BugManagement: React.FC = () => {
   const { t, language } = useLanguage();
   const [searchParams, setSearchParams] = useSearchParams();
   const [bugs, setBugs] = useState<AdminBugReport[]>([]);
+  const [bugDetails, setBugDetails] = useState<Record<number, AdminBugReport>>({});
+  const [loadingDetailIds, setLoadingDetailIds] = useState<Set<number>>(() => new Set());
   const [summary, setSummary] = useState<AdminBugReportSummary | null>(null);
   const [loading, setLoading] = useState(false);
+  const [bugListLoadError, setBugListLoadError] = useState<string | null>(null);
+  const [bugSnapshotLoaded, setBugSnapshotLoaded] = useState(false);
+  const [summaryLoadError, setSummaryLoadError] = useState<string | null>(null);
+  const [summarySnapshotLoaded, setSummarySnapshotLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [acting, setActing] = useState(false);
   const [keyword, setKeyword] = useState('');
-  const [debouncedKeyword, setDebouncedKeyword] = useState('');
+  const debouncedKeyword = useDebounce(keyword.trim(), 300);
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [severityFilter, setSeverityFilter] = useState('ALL');
   const [moduleFilter, setModuleFilter] = useState('ALL');
@@ -107,13 +119,13 @@ const BugManagement: React.FC = () => {
   const [adminPermissions, setAdminPermissions] = useState<string[]>([]);
   const [permissionsLoaded, setPermissionsLoaded] = useState(false);
   const [pageState, setPageState] = useState({
-    page: 1,
+    page: DEFAULT_PAGE_INDEX,
     size: DEFAULT_PAGE_SIZE,
     total: 0,
     totalPages: 0,
   });
   const pageSizeRef = useRef(DEFAULT_PAGE_SIZE);
-  const currentPageRef = useRef(1);
+  const currentPageRef = useRef(DEFAULT_PAGE_INDEX);
   const handledCreateRequestRef = useRef('');
   const [form] = Form.useForm<Partial<AdminBugReport>>();
   const [statusForm] = Form.useForm<Partial<AdminBugReport> & { note?: string }>();
@@ -122,6 +134,14 @@ const BugManagement: React.FC = () => {
   const canScanBugs = hasAdminPermission(adminPermissions, currentRole, BUGS_SCAN_PERMISSION);
   const canReadBugs = BUGS_ACCESS_PERMISSIONS.some((permission) =>
     hasAdminPermission(adminPermissions, currentRole, permission));
+  const bugMutationDisabled = loading || Boolean(bugListLoadError) || !bugSnapshotLoaded;
+  const scanRefreshMs = useMemo(() => {
+    const intervalMinutes = Number(summary?.scanIntervalMinutes);
+    if (!Number.isFinite(intervalMinutes) || intervalMinutes <= 0) {
+      return DEFAULT_SCAN_REFRESH_MS;
+    }
+    return Math.max(60 * 1000, intervalMinutes * 60 * 1000);
+  }, [summary?.scanIntervalMinutes]);
   const noPermissionLabel = t('adminLayout.noPermission');
   const tx = useCallback((key: string, defaultValue: string, params?: Record<string, string | number>) =>
     t(`pages.bugAdmin.${key}`, { defaultValue, ...(params || {}) }), [t]);
@@ -140,6 +160,15 @@ const BugManagement: React.FC = () => {
     }
     return Promise.reject(new Error(tx('pageUrlInvalid', 'Enter a valid http or https URL')));
   }, [tx]);
+  const bugPageLabel = tx('title', 'Bug management');
+  const bugSearchLabel = `${bugPageLabel}: ${tx('searchPlaceholder', 'Search title, URL, description or notes')}`;
+  const bugActionUnavailableMessage = bugListLoadError || (loading ? t('common.loading') : tx('loadFailed', 'Failed to load bugs'));
+  const bugPaginationItemRender = useMemo(() => buildPaginationItemRender(
+    `${t('common.previousPage')}: ${bugPageLabel}`,
+    `${t('common.nextPage')}: ${bugPageLabel}`,
+    `${t('common.previousPages')}: ${bugPageLabel}`,
+    `${t('common.nextPages')}: ${bugPageLabel}`,
+  ), [bugPageLabel, t]);
   const withPermissionTooltip = useCallback((control: React.ReactElement, allowed: boolean, reason?: string) => (
     allowed && !reason ? control : (
       <Tooltip title={allowed ? reason : noPermissionLabel}>
@@ -181,6 +210,13 @@ const BugManagement: React.FC = () => {
     INFRASTRUCTURE: tx('moduleInfrastructure', 'Infrastructure'),
   }), [tx]);
 
+  const priorityLabels = useMemo<Record<string, string>>(() => ({
+    P0: tx('priorityP0', 'P0 urgent'),
+    P1: tx('priorityP1', 'P1 high'),
+    P2: tx('priorityP2', 'P2 normal'),
+    P3: tx('priorityP3', 'P3 low'),
+  }), [tx]);
+
   const formatTime = useCallback((value?: string) => {
     if (!value) return '-';
     const date = new Date(value);
@@ -189,7 +225,7 @@ const BugManagement: React.FC = () => {
   }, [language]);
 
   const loadBugs = useCallback(async (
-    nextPage = 1,
+    nextPage = DEFAULT_PAGE_INDEX,
     nextSize = pageSizeRef.current,
     options?: { quiet?: boolean },
   ) => {
@@ -204,9 +240,10 @@ const BugManagement: React.FC = () => {
         keyword: debouncedKeyword || undefined,
         scanQueueOnly,
       });
+      setBugListLoadError(null);
       setBugs(response.data.items || []);
       const resolvedSize = response.data.size || nextSize;
-      const resolvedPage = response.data.page || nextPage;
+      const resolvedPage = response.data.page ?? nextPage;
       pageSizeRef.current = resolvedSize;
       currentPageRef.current = resolvedPage;
       setPageState({
@@ -215,26 +252,52 @@ const BugManagement: React.FC = () => {
         total: response.data.total || 0,
         totalPages: response.data.totalPages || 0,
       });
+      setBugSnapshotLoaded(true);
     } catch (error: unknown) {
-      message.error(getApiErrorMessage(error, tx('loadFailed', 'Failed to load bugs'), language));
+      const errorMessage = getApiErrorMessage(error, tx('loadFailed', 'Failed to load bugs'), language);
+      setBugListLoadError(errorMessage);
+      if (!options?.quiet) {
+        message.error(errorMessage);
+      }
     } finally {
       if (!options?.quiet) setLoading(false);
     }
   }, [debouncedKeyword, language, moduleFilter, scanQueueOnly, severityFilter, statusFilter, tx]);
 
+  const loadBugDetail = useCallback(async (bugId: number) => {
+    if (bugDetails[bugId]) return;
+    setLoadingDetailIds((current) => new Set(current).add(bugId));
+    try {
+      const response = await adminApi.getBug(bugId);
+      setBugDetails((current) => ({ ...current, [bugId]: response.data }));
+    } catch (error: unknown) {
+      message.error(getApiErrorMessage(error, tx('loadFailed', 'Failed to load bugs'), language));
+    } finally {
+      setLoadingDetailIds((current) => {
+        const next = new Set(current);
+        next.delete(bugId);
+        return next;
+      });
+    }
+  }, [bugDetails, language, tx]);
+
   const loadSummary = useCallback(async (quiet = false) => {
     try {
       const response = await adminApi.getBugSummary();
+      setSummaryLoadError(null);
       setSummary(response.data);
+      setSummarySnapshotLoaded(true);
     } catch (error: unknown) {
+      const errorMessage = getApiErrorMessage(error, tx('summaryFailed', 'Failed to load bug summary'), language);
+      setSummaryLoadError(errorMessage);
       if (!quiet) {
-        message.error(getApiErrorMessage(error, tx('summaryFailed', 'Failed to load bug summary'), language));
+        message.error(errorMessage);
       }
     }
   }, [language, tx]);
 
   const reload = useCallback(async (quiet = false) => {
-    await Promise.all([loadBugs(quiet ? currentPageRef.current : 1, pageSizeRef.current, { quiet }), loadSummary(quiet)]);
+    await Promise.all([loadBugs(quiet ? currentPageRef.current : DEFAULT_PAGE_INDEX, pageSizeRef.current, { quiet }), loadSummary(quiet)]);
   }, [loadBugs, loadSummary]);
 
   const loadPermissions = useCallback(async () => {
@@ -242,7 +305,8 @@ const BugManagement: React.FC = () => {
       const response = await adminApi.getMyPermissions({ bypassCache: true });
       setCurrentRole(getEffectiveRole(response.data.role, response.data.roleCode));
       setAdminPermissions(response.data.permissions || []);
-    } catch {
+    } catch (error) {
+      reportNonBlockingError('BugManagement.loadPermissions', error);
       setCurrentRole('');
       setAdminPermissions([]);
     } finally {
@@ -251,17 +315,17 @@ const BugManagement: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => setDebouncedKeyword(keyword.trim()), 300);
-    return () => window.clearTimeout(timer);
-  }, [keyword]);
-
-  useEffect(() => {
     if (!permissionsLoaded) return;
     if (!canReadBugs) {
       setBugs([]);
+      setBugDetails({});
       setSummary(null);
+      setBugListLoadError(null);
+      setBugSnapshotLoaded(false);
+      setSummaryLoadError(null);
+      setSummarySnapshotLoaded(false);
       setPageState({
-        page: 1,
+        page: DEFAULT_PAGE_INDEX,
         size: pageSizeRef.current,
         total: 0,
         totalPages: 0,
@@ -302,16 +366,20 @@ const BugManagement: React.FC = () => {
   }, [loadPermissions]);
 
   useEffect(() => {
-    if (!permissionsLoaded || !canReadBugs) return undefined;
+    if (!permissionsLoaded || !canReadBugs) return;
     const timer = window.setInterval(() => {
       void reload(true);
-    }, SCAN_REFRESH_MS);
+    }, scanRefreshMs);
     return () => window.clearInterval(timer);
-  }, [canReadBugs, permissionsLoaded, reload]);
+  }, [canReadBugs, permissionsLoaded, reload, scanRefreshMs]);
 
   const openEditor = useCallback((bug?: AdminBugReport) => {
     if (!canWriteBugs) {
       message.error(t('adminLayout.noPermission'));
+      return;
+    }
+    if (bugMutationDisabled) {
+      message.warning(bugActionUnavailableMessage);
       return;
     }
     setEditingBug(bug || null);
@@ -335,7 +403,7 @@ const BugManagement: React.FC = () => {
       regressionNote: bug?.regressionNote || '',
     });
     setEditorOpen(true);
-  }, [canWriteBugs, form, t]);
+  }, [bugActionUnavailableMessage, bugMutationDisabled, canWriteBugs, form, t]);
 
   useEffect(() => {
     if (!permissionsLoaded) return;
@@ -347,6 +415,7 @@ const BugManagement: React.FC = () => {
     }
     const requestKey = searchParams.toString();
     if (handledCreateRequestRef.current === requestKey) return;
+    if (canWriteBugs && bugMutationDisabled) return;
     handledCreateRequestRef.current = requestKey;
     if (canWriteBugs) {
       openEditor();
@@ -359,18 +428,23 @@ const BugManagement: React.FC = () => {
       nextParams.delete('action');
     }
     setSearchParams(nextParams, { replace: true });
-  }, [canWriteBugs, noPermissionLabel, openEditor, permissionsLoaded, searchParams, setSearchParams]);
+  }, [bugMutationDisabled, canWriteBugs, noPermissionLabel, openEditor, permissionsLoaded, searchParams, setSearchParams]);
 
   const handleSave = async () => {
     if (!canWriteBugs) {
       message.error(t('adminLayout.noPermission'));
       return;
     }
+    if (bugMutationDisabled) {
+      message.warning(bugActionUnavailableMessage);
+      return;
+    }
     try {
       const values = await form.validateFields();
       setSaving(true);
       if (editingBug?.id) {
-        await adminApi.updateBug(editingBug.id, values);
+        const response = await adminApi.updateBug(editingBug.id, values);
+        setBugDetails((current) => ({ ...current, [editingBug.id]: response.data }));
       } else {
         await adminApi.createBug(values);
       }
@@ -394,6 +468,10 @@ const BugManagement: React.FC = () => {
       message.error(t('adminLayout.noPermission'));
       return;
     }
+    if (bugMutationDisabled) {
+      message.warning(bugActionUnavailableMessage);
+      return;
+    }
     setStatusMode(mode);
     setStatusBug(bug);
     statusForm.resetFields();
@@ -410,13 +488,19 @@ const BugManagement: React.FC = () => {
 
   const handleStatusSave = async () => {
     if (!statusBug) return;
+    if (bugMutationDisabled) {
+      message.warning(bugActionUnavailableMessage);
+      return;
+    }
     try {
       const values = await statusForm.validateFields();
       setActing(true);
       if (statusMode === 'scan') {
-        await adminApi.markBugScanned(statusBug.id, values);
+        const response = await adminApi.markBugScanned(statusBug.id, values);
+        setBugDetails((current) => ({ ...current, [statusBug.id]: response.data }));
       } else {
-        await adminApi.updateBugStatus(statusBug.id, values);
+        const response = await adminApi.updateBugStatus(statusBug.id, values);
+        setBugDetails((current) => ({ ...current, [statusBug.id]: response.data }));
       }
       message.success(tx('statusSaved', 'Bug status updated'));
       setStatusOpen(false);
@@ -441,6 +525,7 @@ const BugManagement: React.FC = () => {
       title: tx('bug', 'Bug'),
       dataIndex: 'title',
       key: 'title',
+      onCell: () => ({ 'data-label': tx('bug', 'Bug') } as React.HTMLAttributes<HTMLElement>),
       render: (_, bug) => (
         <div className="bug-management__titleCell">
           <Text strong>{bug.title}</Text>
@@ -457,10 +542,11 @@ const BugManagement: React.FC = () => {
       dataIndex: 'severity',
       key: 'severity',
       width: 130,
+      onCell: () => ({ 'data-label': tx('severity', 'Severity') } as React.HTMLAttributes<HTMLElement>),
       render: (severity: string, bug) => (
         <Space size={4} direction="vertical">
           <Tag color={severityColor(severity)}>{severityLabels[severity] || severity}</Tag>
-          <Text type="secondary">{bug.priority}</Text>
+          <Text type="secondary">{priorityLabels[bug.priority] || bug.priority}</Text>
         </Space>
       ),
     },
@@ -469,6 +555,7 @@ const BugManagement: React.FC = () => {
       dataIndex: 'status',
       key: 'status',
       width: 190,
+      onCell: () => ({ 'data-label': tx('status', 'Status') } as React.HTMLAttributes<HTMLElement>),
       render: (status: string) => <Tag color={statusColor(status)}>{statusLabels[status] || status}</Tag>,
     },
     {
@@ -476,6 +563,7 @@ const BugManagement: React.FC = () => {
       dataIndex: 'assignedTo',
       key: 'assignedTo',
       width: 150,
+      onCell: () => ({ 'data-label': tx('owner', 'Owner') } as React.HTMLAttributes<HTMLElement>),
       render: (value: string, bug) => (
         <Space size={2} direction="vertical">
           <Text>{value || '-'}</Text>
@@ -487,6 +575,7 @@ const BugManagement: React.FC = () => {
       title: tx('scanAndUpdate', 'Scan / update'),
       key: 'scan',
       width: 210,
+      onCell: () => ({ 'data-label': tx('scanAndUpdate', 'Scan / update') } as React.HTMLAttributes<HTMLElement>),
       render: (_, bug) => (
         <Space size={2} direction="vertical">
           <Text>{formatTime(bug.lastScannedAt)}</Text>
@@ -498,34 +587,42 @@ const BugManagement: React.FC = () => {
       title: tx('actions', 'Actions'),
       key: 'actions',
       width: 230,
+      onCell: () => ({ 'data-label': tx('actions', 'Actions') } as React.HTMLAttributes<HTMLElement>),
       render: (_, bug) => {
         const canScanCurrentBug = isScannableStatus(bug.status);
         return (
           <Space wrap>
             {withPermissionTooltip(
-              <Button size="small" icon={<EditOutlined />} onClick={() => openEditor(bug)} disabled={!canWriteBugs}>
+              <Button size="small" icon={<EditOutlined />} onClick={() => openEditor(bug)} disabled={!canWriteBugs || bugMutationDisabled}>
                 {tx('edit', 'Edit')}
               </Button>,
               canWriteBugs,
+              bugMutationDisabled ? bugActionUnavailableMessage : undefined,
             )}
             {withPermissionTooltip(
-              <Button size="small" icon={<SyncOutlined />} onClick={() => openStatusEditor(bug, 'scan')} disabled={!canScanBugs || !canScanCurrentBug}>
+              <Button size="small" icon={<SyncOutlined />} onClick={() => openStatusEditor(bug, 'scan')} disabled={!canScanBugs || !canScanCurrentBug || bugMutationDisabled}>
                 {tx('scan', 'Scan')}
               </Button>,
               canScanBugs,
-              canScanCurrentBug ? undefined : tx('scanUnavailable', 'Scan is available only for open, fixing, or regression-failed bugs'),
+              canScanCurrentBug ? (bugMutationDisabled ? bugActionUnavailableMessage : undefined) : tx('scanUnavailable', 'Scan is available only for open, fixing, or regression-failed bugs'),
             )}
             {withPermissionTooltip(
-              <Button size="small" icon={<CheckCircleOutlined />} onClick={() => openStatusEditor(bug, 'status')} disabled={!canUpdateBugStatus}>
+              <Button size="small" icon={<CheckCircleOutlined />} onClick={() => openStatusEditor(bug, 'status')} disabled={!canUpdateBugStatus || bugMutationDisabled}>
                 {tx('statusAction', 'Status')}
               </Button>,
               canUpdateBugStatus,
+              bugMutationDisabled ? bugActionUnavailableMessage : undefined,
             )}
           </Space>
         );
       },
     },
   ];
+  const showInitialBugLoading = canReadBugs && !bugSnapshotLoaded && !bugListLoadError;
+  const bugSnapshotUnavailable = canReadBugs && Boolean(bugListLoadError) && !bugSnapshotLoaded;
+  const summarySnapshotUnavailable = canReadBugs && Boolean(summaryLoadError) && !summarySnapshotLoaded;
+  const canRenderBugQueue = canReadBugs && !showInitialBugLoading && !bugSnapshotUnavailable;
+  const canRenderBugStats = canRenderBugQueue && summarySnapshotLoaded && !summarySnapshotUnavailable;
 
   return (
     <div className="bug-management">
@@ -542,109 +639,179 @@ const BugManagement: React.FC = () => {
             canReadBugs,
           )}
           {withPermissionTooltip(
-            <Button type="primary" icon={<PlusOutlined />} onClick={() => openEditor()} disabled={!canWriteBugs}>
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => openEditor()} disabled={!canWriteBugs || bugMutationDisabled}>
               {tx('newBug', 'New bug')}
             </Button>,
             canWriteBugs,
+            bugMutationDisabled ? bugActionUnavailableMessage : undefined,
           )}
         </Space>
       </div>
 
-      {permissionsLoaded && !canReadBugs ? (
-        <Alert type="warning" showIcon message={noPermissionLabel} description={tx('readPermissionHint', 'Ask an administrator to grant bug read permission before viewing the bug queue.')} />
-      ) : null}
+      {!permissionsLoaded ? (
+        <div className="bug-management__skeleton" aria-busy="true">
+          <Skeleton active paragraph={{ rows: 8 }} />
+        </div>
+      ) : (
+        <>
+          {!canReadBugs ? (
+            <Alert type="warning" showIcon message={noPermissionLabel} description={tx('readPermissionHint', 'Ask an administrator to grant bug read permission before viewing the bug queue.')} />
+          ) : null}
 
-      <div className="bug-management__stats">
-        {summaryCards.map((item) => (
-          <div className="bug-management__stat" key={item.key}>
-            <span className="bug-management__statIcon">{item.icon}</span>
-            <Statistic title={item.title} value={item.value} />
-          </div>
-        ))}
-      </div>
+          {canReadBugs && bugListLoadError ? (
+            <Alert
+              className="bug-management__alert"
+              type="warning"
+              showIcon
+              message={bugListLoadError}
+              description={bugSnapshotLoaded ? tx('staleDataWarning', 'Showing the last successful bug queue snapshot. Bug create, edit, scan, and status actions are disabled until refresh succeeds.') : undefined}
+              action={(
+                <Button size="small" onClick={() => reload(false)} loading={loading}>
+                  {t('common.retry')}
+                </Button>
+              )}
+            />
+          ) : null}
 
-      <div className="bug-management__toolbar">
-        <Input
-          className="bug-management__search"
-          prefix={<SearchOutlined />}
-          value={keyword}
-          placeholder={tx('searchPlaceholder', 'Search title, URL, description or notes')}
-          onChange={(event) => setKeyword(event.target.value)}
-          allowClear
-        />
-        <Select
-          className="bug-management__filter"
-          value={statusFilter}
-          onChange={setStatusFilter}
-          options={statusOptions.map((status) => ({ value: status, label: statusLabels[status] || status }))}
-          classNames={mobilePopupClassNames}
-        />
-        <Select
-          className="bug-management__filter"
-          value={severityFilter}
-          onChange={setSeverityFilter}
-          options={severityOptions.map((severity) => ({ value: severity, label: severityLabels[severity] || severity }))}
-          classNames={mobilePopupClassNames}
-        />
-        <Select
-          className="bug-management__filter"
-          value={moduleFilter}
-          onChange={setModuleFilter}
-          options={moduleOptions.map((module) => ({ value: module, label: moduleLabels[module] || module }))}
-          classNames={mobilePopupClassNames}
-        />
-        <Space className="bug-management__scanToggle">
-          <Switch checked={scanQueueOnly} onChange={setScanQueueOnly} />
-          <Text>{tx('scanQueueOnly', 'Scan queue')}</Text>
-        </Space>
-      </div>
+          {canReadBugs && summaryLoadError ? (
+            <Alert
+              className="bug-management__alert"
+              type="warning"
+              showIcon
+              message={summaryLoadError}
+              description={summarySnapshotLoaded ? tx('summaryStaleDataWarning', 'Showing the last successful bug summary. Summary counts may be stale until refresh succeeds.') : undefined}
+              action={(
+                <Button size="small" onClick={() => loadSummary(false)}>
+                  {t('common.retry')}
+                </Button>
+              )}
+            />
+          ) : null}
 
-      <Table
-        rowKey="id"
-        className="bug-management__table"
-        dataSource={bugs}
-        columns={columns}
-        loading={loading}
-        scroll={{ x: 1100 }}
-        expandable={{
-          expandedRowRender: (bug) => (
-            <div className="bug-management__details">
-              <div>
-                <Text strong>{tx('description', 'Description')}</Text>
-                <Paragraph>{bug.description || '-'}</Paragraph>
-              </div>
-              <div>
-                <Text strong>{tx('reproductionSteps', 'Reproduction steps')}</Text>
-                <Paragraph>{bug.reproductionSteps || '-'}</Paragraph>
-              </div>
-              <div>
-                <Text strong>{tx('expectedActual', 'Expected / actual')}</Text>
-                <Paragraph>{bug.expectedResult || '-'}</Paragraph>
-                <Paragraph>{bug.actualResult || '-'}</Paragraph>
-              </div>
-              <div>
-                <Text strong>{tx('notes', 'Notes')}</Text>
-                <Paragraph>{bug.scanNote || '-'}</Paragraph>
-                <Paragraph>{bug.fixSummary || '-'}</Paragraph>
-                <Paragraph>{bug.regressionNote || '-'}</Paragraph>
-              </div>
-              <div>
-                <Text strong>{tx('environment', 'Environment')}</Text>
-                <Paragraph>{bug.environment || '-'}</Paragraph>
-                <Paragraph>{bug.attachmentUrls || '-'}</Paragraph>
-              </div>
+          {showInitialBugLoading ? (
+            <div className="bug-management__skeleton bug-management__loadingState" aria-busy="true">
+              <Skeleton active paragraph={{ rows: 8 }} />
             </div>
-          ),
-        }}
-        pagination={{
-          current: pageState.page,
-          pageSize: pageState.size,
-          total: pageState.total,
-          showSizeChanger: true,
-          showTotal: (total) => tx('totalBugs', '{count} bugs', { count: total }),
-          onChange: (page, size) => loadBugs(page, size || pageState.size),
-        }}
-      />
+          ) : null}
+
+          {canRenderBugStats ? (
+            <div className="bug-management__stats">
+              {summaryCards.map((item) => (
+                <div className="bug-management__stat" key={item.key}>
+                  <span className="bug-management__statIcon">{item.icon}</span>
+                  <Statistic title={item.title} value={item.value} />
+                </div>
+              ))}
+            </div>
+          ) : null}
+
+          {canRenderBugQueue ? (
+            <>
+              <div className="bug-management__toolbar">
+                <Input
+                  className="bug-management__search"
+                  prefix={<SearchOutlined />}
+                  value={keyword}
+                  placeholder={tx('searchPlaceholder', 'Search title, URL, description or notes')}
+                  onChange={(event) => setKeyword(event.target.value)}
+                  allowClear
+                  disabled={!canReadBugs}
+                  aria-label={bugSearchLabel}
+                  title={bugSearchLabel}
+                />
+                <Select
+                  className="bug-management__filter"
+                  value={statusFilter}
+                  onChange={setStatusFilter}
+                  options={statusOptions.map((status) => ({ value: status, label: statusLabels[status] || status }))}
+                  classNames={mobilePopupClassNames}
+                  disabled={!canReadBugs}
+                />
+                <Select
+                  className="bug-management__filter"
+                  value={severityFilter}
+                  onChange={setSeverityFilter}
+                  options={severityOptions.map((severity) => ({ value: severity, label: severityLabels[severity] || severity }))}
+                  classNames={mobilePopupClassNames}
+                  disabled={!canReadBugs}
+                />
+                <Select
+                  className="bug-management__filter"
+                  value={moduleFilter}
+                  onChange={setModuleFilter}
+                  options={moduleOptions.map((module) => ({ value: module, label: moduleLabels[module] || module }))}
+                  classNames={mobilePopupClassNames}
+                  disabled={!canReadBugs}
+                />
+                <Space className="bug-management__scanToggle">
+                  <Switch checked={scanQueueOnly} onChange={setScanQueueOnly} aria-label={tx('scanQueueOnly', 'Scan queue')} disabled={!canReadBugs} />
+                  <Text>{tx('scanQueueOnly', 'Scan queue')}</Text>
+                </Space>
+              </div>
+
+              <Table
+                rowKey="id"
+                className="bug-management__table"
+                dataSource={bugs}
+                columns={columns}
+                loading={loading}
+                scroll={{ x: 1100 }}
+                expandable={{
+                  expandedRowRender: (bug) => (
+                    (() => {
+                      const detail = bugDetails[bug.id] || bug;
+                      return (
+                        <Spin spinning={loadingDetailIds.has(bug.id)}>
+                          <div className="bug-management__details">
+                            <div>
+                              <Text strong>{tx('description', 'Description')}</Text>
+                              <Paragraph>{detail.description || '-'}</Paragraph>
+                            </div>
+                            <div>
+                              <Text strong>{tx('reproductionSteps', 'Reproduction steps')}</Text>
+                              <Paragraph>{detail.reproductionSteps || '-'}</Paragraph>
+                            </div>
+                            <div>
+                              <Text strong>{tx('expectedActual', 'Expected / actual')}</Text>
+                              <Paragraph>{detail.expectedResult || '-'}</Paragraph>
+                              <Paragraph>{detail.actualResult || '-'}</Paragraph>
+                            </div>
+                            <div>
+                              <Text strong>{tx('notes', 'Notes')}</Text>
+                              <Paragraph>{detail.scanNote || '-'}</Paragraph>
+                              <Paragraph>{detail.fixSummary || '-'}</Paragraph>
+                              <Paragraph>{detail.regressionNote || '-'}</Paragraph>
+                            </div>
+                            <div>
+                              <Text strong>{tx('environment', 'Environment')}</Text>
+                              <Paragraph>{detail.environment || '-'}</Paragraph>
+                              <Paragraph>{detail.attachmentUrls || '-'}</Paragraph>
+                            </div>
+                          </div>
+                        </Spin>
+                      );
+                    })()
+                  ),
+                  onExpand: (expanded, bug) => {
+                    if (expanded) {
+                      void loadBugDetail(bug.id);
+                    }
+                  },
+                }}
+                pagination={{
+                  current: toBugTablePage(pageState.page),
+                  pageSize: pageState.size,
+                  total: pageState.total,
+                  showSizeChanger: true,
+                  showTotal: (total) => tx('totalBugs', '{count} bugs', { count: total }),
+                  itemRender: bugPaginationItemRender,
+                  onChange: (page, size) => loadBugs(toBugApiPage(page), size || pageState.size),
+                }}
+              />
+            </>
+          ) : null}
+        </>
+      )}
 
       <Modal
         open={editorOpen}
@@ -652,8 +819,9 @@ const BugManagement: React.FC = () => {
         onCancel={() => setEditorOpen(false)}
         onOk={handleSave}
         confirmLoading={saving}
+        okButtonProps={{ disabled: bugMutationDisabled }}
         width={860}
-        className="bug-management__modal"
+        className="profile-mobile-safe-modal bug-management__modal"
       >
         <Form form={form} layout="vertical">
           <Form.Item name="title" label={tx('titleField', 'Title')} rules={[{ required: true, message: tx('titleRequired', 'Title is required') }]}>
@@ -667,7 +835,7 @@ const BugManagement: React.FC = () => {
               <Select options={severityOptions.filter((item) => item !== 'ALL').map((severity) => ({ value: severity, label: severityLabels[severity] || severity }))} classNames={mobilePopupClassNames} />
             </Form.Item>
             <Form.Item name="priority" label={tx('priority', 'Priority')}>
-              <Select options={priorityOptions.map((priority) => ({ value: priority, label: priority }))} classNames={mobilePopupClassNames} />
+              <Select options={priorityOptions.map((priority) => ({ value: priority, label: priorityLabels[priority] || priority }))} classNames={mobilePopupClassNames} />
             </Form.Item>
             <Form.Item name="assignedTo" label={tx('assignedTo', 'Assigned to')}>
               <Input maxLength={120} />
@@ -707,7 +875,9 @@ const BugManagement: React.FC = () => {
         onCancel={() => setStatusOpen(false)}
         onOk={handleStatusSave}
         confirmLoading={acting}
+        okButtonProps={{ disabled: bugMutationDisabled }}
         width={720}
+        className="profile-mobile-safe-modal bug-management__modal bug-management__statusModal"
       >
         <Form form={statusForm} layout="vertical">
           {statusMode === 'status' ? (

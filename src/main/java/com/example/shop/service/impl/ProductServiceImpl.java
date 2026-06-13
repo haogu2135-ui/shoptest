@@ -1,6 +1,5 @@
 package com.example.shop.service.impl;
 
-import lombok.extern.slf4j.Slf4j;
 import com.example.shop.dto.ProductImportResult;
 import com.example.shop.dto.ProductListQuery;
 import com.example.shop.entity.Category;
@@ -19,8 +18,10 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -73,15 +74,15 @@ import java.util.stream.Collectors;
 @Service
 @Slf4j
 public class ProductServiceImpl implements ProductService {
-    private static final int MAX_IMPORT_IMAGE_URL_LENGTH = 2048;
+    private static final int MAX_IMPORT_IMAGE_URL_LENGTH = 2000;
     private static final int MAX_IMPORT_MONEY_SCALE = 2;
     private static final BigDecimal MAX_IMPORT_MONEY_AMOUNT = new BigDecimal("99999999.99");
+    private static final BigDecimal ZERO_REVIEW_STAT = BigDecimal.ZERO.setScale(1);
     private static final int DEFAULT_FEATURED_PRODUCT_LIMIT = 12;
     private static final int MAX_FEATURED_PRODUCT_LIMIT = 36;
     private static final int HARD_PUBLIC_PRODUCT_PAGE_SIZE_LIMIT = 100;
     private static final int HARD_ADMIN_PRODUCT_PAGE_SIZE_LIMIT = 500;
-    private static final int DEFAULT_PRODUCT_IMPORT_VARIANT_SCAN_PAGE_SIZE = 500;
-    private static final int HARD_PRODUCT_IMPORT_VARIANT_SCAN_PAGE_SIZE = 1_000;
+    private static final int HARD_LEGACY_PRODUCT_LIST_LIMIT = 500;
     private static final int MAX_CATEGORY_TREE_DEPTH = 10;
     private static final int HARD_PRODUCT_IMPORT_VARIANT_SCAN_ROWS = 5_000;
     private static final String SMART_DEVICES_COLLECTION = "smart-devices";
@@ -94,18 +95,19 @@ public class ProductServiceImpl implements ProductService {
             "camera", "tracker", "sensor", "device", "connected"
     );
     private static final int LEGACY_IMPORT_COLUMN_COUNT = 24;
+    private static final char LIKE_ESCAPE_CHAR = '!';
     private static final Set<String> REQUIRED_IMPORT_HEADERS = Set.of("name", "price", "stock", "categoryid");
     private static final Set<String> SUPPORTED_IMPORT_HEADERS = Set.of(
             "id", "name", "description", "price", "stock", "categoryid", "categoryname", "imageurl",
             "isfeatured", "brand", "originalprice", "discount", "limitedtimeprice", "limitedtimestartat",
             "limitedtimeendat", "tag", "images", "specifications", "detailcontent", "warranty",
-            "shipping", "status", "freeshipping", "freeshippingthreshold", "variants"
+            "shipping", "status", "freeshipping", "freeshippingthreshold", "bestsellerrank", "variants"
     );
     private static final List<String> FULL_IMPORT_UPDATE_FIELDS = List.of(
             "name", "description", "price", "stock", "categoryId", "imageUrl", "isFeatured",
             "brand", "originalPrice", "discount", "limitedTimePrice", "limitedTimeStartAt",
             "limitedTimeEndAt", "tag", "status", "images", "specifications", "detailContent",
-            "variants", "warranty", "shipping", "freeShipping", "freeShippingThreshold"
+            "variants", "warranty", "shipping", "freeShipping", "freeShippingThreshold", "bestSellerRank"
     );
     private static final Map<String, String> IMPORT_HEADER_UPDATE_FIELDS = Map.ofEntries(
             Map.entry("name", "name"),
@@ -131,7 +133,8 @@ public class ProductServiceImpl implements ProductService {
             Map.entry("warranty", "warranty"),
             Map.entry("shipping", "shipping"),
             Map.entry("freeshipping", "freeShipping"),
-            Map.entry("freeshippingthreshold", "freeShippingThreshold")
+            Map.entry("freeshippingthreshold", "freeShippingThreshold"),
+            Map.entry("bestsellerrank", "bestSellerRank")
     );
     private static final Map<String, String> IMPORT_HEADER_DISPLAY_NAMES = Map.ofEntries(
             Map.entry("categoryid", "categoryId"),
@@ -144,7 +147,8 @@ public class ProductServiceImpl implements ProductService {
             Map.entry("limitedtimeendat", "limitedTimeEndAt"),
             Map.entry("detailcontent", "detailContent"),
             Map.entry("freeshipping", "freeShipping"),
-            Map.entry("freeshippingthreshold", "freeShippingThreshold")
+            Map.entry("freeshippingthreshold", "freeShippingThreshold"),
+            Map.entry("bestsellerrank", "bestSellerRank")
     );
     private static final Map<String, String> IMPORT_HEADER_ALIASES = Map.ofEntries(
             Map.entry("title", "name"),
@@ -178,6 +182,8 @@ public class ProductServiceImpl implements ProductService {
             Map.entry("richdetail", "detailcontent"),
             Map.entry("freeshippingmin", "freeshippingthreshold"),
             Map.entry("shippingthreshold", "freeshippingthreshold"),
+            Map.entry("bestseller", "bestsellerrank"),
+            Map.entry("bestsellerrank", "bestsellerrank"),
             Map.entry("options", "variants")
     );
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
@@ -196,19 +202,30 @@ public class ProductServiceImpl implements ProductService {
     @Autowired
     private RuntimeConfigService runtimeConfig;
 
+    @Autowired(required = false)
+    private CacheManager cacheManager;
+
     private final ConcurrentMap<String, ProductSearchCacheEntry> productSearchCache = new ConcurrentHashMap<>();
+    private final Object productSearchCacheLock = new Object();
 
     @Override
     public List<Product> findAll() {
-        return getCachedProducts("all", () -> enrichReviewStats(productRepository.findAll()));
+        int limit = legacyProductListLimit("product.legacy-list-max-rows", 500, HARD_LEGACY_PRODUCT_LIST_LIMIT);
+        return getCachedProducts("all:limit=" + limit, () -> enrichReviewStats(productRepository
+                .findAll(PageRequest.of(0, limit, Sort.by(Sort.Direction.DESC, "id")))
+                .getContent()));
     }
 
     @Override
     public List<Product> findPublicProducts() {
-        return getCachedProducts("public", () -> enrichReviewStats(productRepository.findAll().stream()
-                .filter(this::isPublicCatalogProduct)
-                .sorted(Comparator.comparing(Product::getId, Comparator.nullsLast(Comparator.naturalOrder())))
-                .collect(Collectors.toList())));
+        ProductListQuery query = new ProductListQuery();
+        query.setPage(0);
+        query.setSize(legacyProductListLimit(
+                "product.public-legacy-list-max-rows",
+                runtimeConfig.getInt("product.public-default-page-size", 20),
+                HARD_PUBLIC_PRODUCT_PAGE_SIZE_LIMIT));
+        query.setSort("id,asc");
+        return findPublicProducts(query);
     }
 
     @Override
@@ -220,11 +237,7 @@ public class ProductServiceImpl implements ProductService {
     }
 
     private List<Product> findPublicProductsUncached(ProductListQuery query, String normalizedKeyword) {
-        if (query.getPage() != null || query.getSize() != null) {
-            return findPublicProductPageUncached(query, normalizedKeyword).getContent();
-        }
-        List<Product> products = findPublicProductsFilteredSorted(query, normalizedKeyword);
-        return applyProductPagination(products, query.getPage(), query.getSize(), true);
+        return findPublicProductPageUncached(query, normalizedKeyword).getContent();
     }
 
     @Override
@@ -242,9 +255,7 @@ public class ProductServiceImpl implements ProductService {
         if (minPrice != null && maxPrice != null && minPrice.compareTo(maxPrice) > 0) {
             return new PageImpl<>(List.of(), PageRequest.of(normalizedPage, normalizedSize), 0);
         }
-        Set<Long> categoryIds = normalizedQuery.getCategoryId() == null
-                ? Set.of()
-                : new LinkedHashSet<>(collectCategoryIds(normalizedQuery.getCategoryId()));
+        Set<Long> categoryIds = selectedCategoryIds(normalizedQuery);
         Set<Long> keywordCategoryIds = findKeywordCategoryIds(normalizedKeyword);
         String normalizedStatus = normalizePublicStatusFilter(normalizedQuery.getStatus());
         String normalizedCollection = normalizePublicCollection(normalizedQuery.getCollection());
@@ -286,7 +297,7 @@ public class ProductServiceImpl implements ProductService {
             predicates.add(criteriaBuilder.isNotNull(root.get("name")));
             predicates.add(criteriaBuilder.notEqual(root.get("name"), ""));
             predicates.add(criteriaBuilder.isNotNull(root.get("price")));
-            predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get("price"), BigDecimal.ZERO));
+            predicates.add(criteriaBuilder.greaterThan(root.get("price"), BigDecimal.ZERO));
             predicates.add(criteriaBuilder.isNotNull(root.get("categoryId")));
             predicates.add(criteriaBuilder.greaterThan(root.get("categoryId"), 0L));
             if (normalizedStatus != null && !"ACTIVE".equals(normalizedStatus)) {
@@ -300,24 +311,14 @@ public class ProductServiceImpl implements ProductService {
                 predicates.add(criteriaBuilder.equal(root.get("isFeatured"), query.getFeatured()));
             }
             if (Boolean.TRUE.equals(query.getDiscount())) {
-                LocalDateTime now = LocalDateTime.now();
-                predicates.add(criteriaBuilder.or(
-                        criteriaBuilder.greaterThan(root.get("discount"), 0),
-                        criteriaBuilder.and(
-                                criteriaBuilder.isNotNull(root.get("limitedTimePrice")),
-                                criteriaBuilder.greaterThan(root.get("limitedTimePrice"), BigDecimal.ZERO),
-                                criteriaBuilder.or(
-                                        criteriaBuilder.isNull(root.get("limitedTimeStartAt")),
-                                        criteriaBuilder.lessThanOrEqualTo(root.get("limitedTimeStartAt"), now)),
-                                criteriaBuilder.or(
-                                        criteriaBuilder.isNull(root.get("limitedTimeEndAt")),
-                                        criteriaBuilder.greaterThanOrEqualTo(root.get("limitedTimeEndAt"), now)))));
+                predicates.add(activeDiscountPredicate(criteriaBuilder, root));
             }
+            Expression<BigDecimal> effectivePrice = effectivePriceExpression(criteriaBuilder, root);
             if (minPrice != null) {
-                predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get("price"), minPrice));
+                predicates.add(criteriaBuilder.greaterThanOrEqualTo(effectivePrice, minPrice));
             }
             if (maxPrice != null) {
-                predicates.add(criteriaBuilder.lessThanOrEqualTo(root.get("price"), maxPrice));
+                predicates.add(criteriaBuilder.lessThanOrEqualTo(effectivePrice, maxPrice));
             }
             addSpecificationRefinementPredicates(predicates, criteriaBuilder, root.get("specifications"), query.getPetSizes());
             addSpecificationRefinementPredicates(predicates, criteriaBuilder, root.get("specifications"), query.getMaterials());
@@ -325,11 +326,11 @@ public class ProductServiceImpl implements ProductService {
             if (normalizedKeyword != null && !normalizedKeyword.isEmpty()) {
                 List<Predicate> keywordPredicates = new ArrayList<>();
                 recommendationSearchTerms(List.of(normalizedKeyword)).forEach(term -> keywordPredicates.add(criteriaBuilder.or(
-                        criteriaBuilder.like(criteriaBuilder.lower(criteriaBuilder.coalesce(root.get("name"), "")), "%" + term + "%"),
-                        criteriaBuilder.like(criteriaBuilder.lower(criteriaBuilder.coalesce(root.get("description"), "")), "%" + term + "%"),
-                        criteriaBuilder.like(criteriaBuilder.lower(criteriaBuilder.coalesce(root.get("brand"), "")), "%" + term + "%"),
-                        criteriaBuilder.like(criteriaBuilder.lower(criteriaBuilder.coalesce(root.get("tag"), "")), "%" + term + "%"),
-                        criteriaBuilder.like(criteriaBuilder.lower(criteriaBuilder.coalesce(root.get("specifications"), "")), "%" + term + "%"))));
+                        containsLike(criteriaBuilder, root.get("name"), term),
+                        containsLike(criteriaBuilder, root.get("description"), term),
+                        containsLike(criteriaBuilder, root.get("brand"), term),
+                        containsLike(criteriaBuilder, root.get("tag"), term),
+                        containsLike(criteriaBuilder, root.get("specifications"), term))));
                 if (keywordCategoryIds != null && !keywordCategoryIds.isEmpty()) {
                     keywordPredicates.add(root.get("categoryId").in(keywordCategoryIds));
                 }
@@ -444,18 +445,32 @@ public class ProductServiceImpl implements ProductService {
     }
 
     private Predicate activeDiscountPredicate(CriteriaBuilder criteriaBuilder, Root<Product> root) {
-        LocalDateTime now = LocalDateTime.now();
         return criteriaBuilder.or(
                 criteriaBuilder.greaterThan(root.<Integer>get("discount"), 0),
                 criteriaBuilder.and(
-                        criteriaBuilder.isNotNull(root.get("limitedTimePrice")),
-                        criteriaBuilder.greaterThan(root.<BigDecimal>get("limitedTimePrice"), BigDecimal.ZERO),
+                        criteriaBuilder.isNotNull(root.get("originalPrice")),
+                        criteriaBuilder.isNotNull(root.get("price")),
+                        criteriaBuilder.greaterThan(root.<BigDecimal>get("originalPrice"), BigDecimal.ZERO),
+                        criteriaBuilder.lessThan(root.<BigDecimal>get("price"), root.<BigDecimal>get("originalPrice"))),
+                activeLimitedTimePricePredicate(criteriaBuilder, root));
+    }
+
+    private Predicate activeLimitedTimePricePredicate(CriteriaBuilder criteriaBuilder, Root<Product> root) {
+        LocalDateTime now = LocalDateTime.now();
+        return criteriaBuilder.and(
+                criteriaBuilder.isNotNull(root.get("limitedTimePrice")),
+                criteriaBuilder.isNotNull(root.get("limitedTimeEndAt")),
+                criteriaBuilder.and(
                         criteriaBuilder.or(
                                 criteriaBuilder.isNull(root.get("limitedTimeStartAt")),
                                 criteriaBuilder.lessThanOrEqualTo(root.<LocalDateTime>get("limitedTimeStartAt"), now)),
-                        criteriaBuilder.or(
-                                criteriaBuilder.isNull(root.get("limitedTimeEndAt")),
-                                criteriaBuilder.greaterThanOrEqualTo(root.<LocalDateTime>get("limitedTimeEndAt"), now))));
+                        criteriaBuilder.greaterThan(root.<LocalDateTime>get("limitedTimeEndAt"), now)));
+    }
+
+    private Expression<BigDecimal> effectivePriceExpression(CriteriaBuilder criteriaBuilder, Root<Product> root) {
+        return criteriaBuilder.<BigDecimal>selectCase()
+                .when(activeLimitedTimePricePredicate(criteriaBuilder, root), root.<BigDecimal>get("limitedTimePrice"))
+                .otherwise(root.<BigDecimal>get("price"));
     }
 
     private Expression<Integer> lowStockRank(CriteriaBuilder criteriaBuilder, Root<Product> root) {
@@ -531,7 +546,7 @@ public class ProductServiceImpl implements ProductService {
         Set<Long> ids = new LinkedHashSet<>();
         recommendationSearchTerms(List.of(normalizedKeyword)).stream()
                 .limit(8)
-                .forEach(term -> categoryRepository.findIdsByKeyword(term, PageRequest.of(0, 40))
+                .forEach(term -> categoryRepository.findIdsByKeyword(escapeLikeTerm(term), PageRequest.of(0, 40))
                         .forEach(id -> {
                             if (id == null || id <= 0 || ids.size() >= 120) {
                                 return;
@@ -585,30 +600,6 @@ public class ProductServiceImpl implements ProductService {
         return "id".equals(property) ? primary : primary.and(Sort.by(Sort.Direction.ASC, "id"));
     }
 
-    private List<Product> findPublicProductsFilteredSorted(ProductListQuery query, String normalizedKeyword) {
-        BigDecimal minPrice = normalizeMinPrice(query.getMinPrice());
-        BigDecimal maxPrice = normalizeMaxPrice(query.getMaxPrice());
-        if (minPrice != null && maxPrice != null && minPrice.compareTo(maxPrice) > 0) {
-            return List.of();
-        }
-
-        Map<Long, Category> categoryLookup = categoryRepository.findAll().stream()
-                .collect(Collectors.toMap(Category::getId, category -> category, (left, right) -> left));
-        Set<Long> categoryIds = query.getCategoryId() == null
-                ? Set.of()
-                : new LinkedHashSet<>(collectCategoryIds(query.getCategoryId()));
-        String normalizedStatus = normalizePublicStatusFilter(query.getStatus());
-        String normalizedCollection = normalizePublicCollection(query.getCollection());
-        Set<Long> collectionCategoryIds = smartDeviceCollectionCategoryIds(normalizedCollection);
-        List<Product> products = enrichReviewStats(productRepository.findAll().stream()
-                .filter(product -> matchesPublicListQuery(product, query, normalizedKeyword, categoryLookup,
-                        categoryIds, normalizedCollection, collectionCategoryIds, minPrice, maxPrice, normalizedStatus))
-                .collect(Collectors.toList()));
-
-        products.sort(productListComparator(query.getSort()));
-        return products;
-    }
-
     @Override
     public List<Product> findAdminProducts(ProductListQuery query) {
         return findAdminProductPage(query).getContent();
@@ -626,9 +617,7 @@ public class ProductServiceImpl implements ProductService {
         if (minPrice != null && maxPrice != null && minPrice.compareTo(maxPrice) > 0) {
             return new PageImpl<>(List.of(), pageRequest, 0);
         }
-        Set<Long> categoryIds = normalizedQuery.getCategoryId() == null
-                ? Set.of()
-                : new LinkedHashSet<>(collectCategoryIds(normalizedQuery.getCategoryId()));
+        Set<Long> categoryIds = selectedCategoryIds(normalizedQuery);
         Set<Long> keywordCategoryIds = findKeywordCategoryIds(normalizedKeyword);
         String normalizedStatus = normalizePublicStatusFilter(normalizedQuery.getStatus());
         Page<Product> page = productRepository.findAll(adminProductSpecification(
@@ -664,11 +653,12 @@ public class ProductServiceImpl implements ProductService {
             if (Boolean.TRUE.equals(query.getDiscount())) {
                 predicates.add(activeDiscountPredicate(criteriaBuilder, root));
             }
+            Expression<BigDecimal> effectivePrice = effectivePriceExpression(criteriaBuilder, root);
             if (minPrice != null) {
-                predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get("price"), minPrice));
+                predicates.add(criteriaBuilder.greaterThanOrEqualTo(effectivePrice, minPrice));
             }
             if (maxPrice != null) {
-                predicates.add(criteriaBuilder.lessThanOrEqualTo(root.get("price"), maxPrice));
+                predicates.add(criteriaBuilder.lessThanOrEqualTo(effectivePrice, maxPrice));
             }
             addSpecificationRefinementPredicates(predicates, criteriaBuilder, root.get("specifications"), query.getPetSizes());
             addSpecificationRefinementPredicates(predicates, criteriaBuilder, root.get("specifications"), query.getMaterials());
@@ -676,11 +666,11 @@ public class ProductServiceImpl implements ProductService {
             if (normalizedKeyword != null && !normalizedKeyword.isEmpty()) {
                 List<Predicate> keywordPredicates = new ArrayList<>();
                 recommendationSearchTerms(List.of(normalizedKeyword)).forEach(term -> keywordPredicates.add(criteriaBuilder.or(
-                        criteriaBuilder.like(criteriaBuilder.lower(criteriaBuilder.coalesce(root.get("name"), "")), "%" + term + "%"),
-                        criteriaBuilder.like(criteriaBuilder.lower(criteriaBuilder.coalesce(root.get("description"), "")), "%" + term + "%"),
-                        criteriaBuilder.like(criteriaBuilder.lower(criteriaBuilder.coalesce(root.get("brand"), "")), "%" + term + "%"),
-                        criteriaBuilder.like(criteriaBuilder.lower(criteriaBuilder.coalesce(root.get("tag"), "")), "%" + term + "%"),
-                        criteriaBuilder.like(criteriaBuilder.lower(criteriaBuilder.coalesce(root.get("specifications"), "")), "%" + term + "%"))));
+                        containsLike(criteriaBuilder, root.get("name"), term),
+                        containsLike(criteriaBuilder, root.get("description"), term),
+                        containsLike(criteriaBuilder, root.get("brand"), term),
+                        containsLike(criteriaBuilder, root.get("tag"), term),
+                        containsLike(criteriaBuilder, root.get("specifications"), term))));
                 if (keywordCategoryIds != null && !keywordCategoryIds.isEmpty()) {
                     keywordPredicates.add(root.get("categoryId").in(keywordCategoryIds));
                 }
@@ -711,6 +701,22 @@ public class ProductServiceImpl implements ProductService {
     @Override
     public long countLowStockProducts() {
         return productRepository.countLowStockProducts();
+    }
+
+    @Override
+    public Map<String, Long> countDashboardProductSummary() {
+        ProductRepository.ProductDashboardCounts counts = productRepository.countDashboardProductCounts();
+        Map<String, Long> summary = new LinkedHashMap<>();
+        summary.put("totalProducts", dashboardCount(counts == null ? null : counts.getTotalProducts()));
+        summary.put("activeProducts", dashboardCount(counts == null ? null : counts.getActiveProducts()));
+        summary.put("inactiveProducts", dashboardCount(counts == null ? null : counts.getInactiveProducts()));
+        summary.put("pendingProducts", dashboardCount(counts == null ? null : counts.getPendingProducts()));
+        summary.put("lowStockProducts", dashboardCount(counts == null ? null : counts.getLowStockProducts()));
+        return summary;
+    }
+
+    private long dashboardCount(Long value) {
+        return value == null ? 0L : value;
     }
 
     @Override
@@ -760,20 +766,48 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
+    public Product mergeProduct(Product existingProduct, Product product) {
+        if (existingProduct == null) {
+            throw new IllegalArgumentException("Existing product is required");
+        }
+        if (product == null) {
+            throw new IllegalArgumentException("Product payload is required");
+        }
+        if (product.getName() != null) existingProduct.setName(product.getName());
+        if (product.getDescription() != null) existingProduct.setDescription(product.getDescription());
+        if (product.getPrice() != null) existingProduct.setPrice(product.getPrice());
+        if (product.getImageUrl() != null) existingProduct.setImageUrl(product.getImageUrl());
+        if (product.getStock() != null) existingProduct.setStock(product.getStock());
+        if (product.getCategoryId() != null) existingProduct.setCategoryId(product.getCategoryId());
+        if (product.getIsFeatured() != null) existingProduct.setIsFeatured(product.getIsFeatured());
+        if (product.getBrand() != null) existingProduct.setBrand(product.getBrand());
+        if (product.getOriginalPrice() != null) existingProduct.setOriginalPrice(product.getOriginalPrice());
+        if (product.getDiscount() != null) existingProduct.setDiscount(product.getDiscount());
+        if (product.getLimitedTimePrice() != null) existingProduct.setLimitedTimePrice(product.getLimitedTimePrice());
+        if (product.getLimitedTimeStartAt() != null) existingProduct.setLimitedTimeStartAt(product.getLimitedTimeStartAt());
+        if (product.getLimitedTimeEndAt() != null) existingProduct.setLimitedTimeEndAt(product.getLimitedTimeEndAt());
+        if (product.getTag() != null) existingProduct.setTag(product.getTag());
+        if (product.getStatus() != null) existingProduct.setStatus(normalizeImportedStatus(product.getStatus()));
+        if (product.getImages() != null) existingProduct.setImages(product.getImages());
+        if (product.getSpecifications() != null) existingProduct.setSpecifications(product.getSpecifications());
+        if (product.getDetailContent() != null) existingProduct.setDetailContent(product.getDetailContent());
+        if (product.getVariants() != null) existingProduct.setVariants(product.getVariants());
+        if (product.getWarranty() != null) existingProduct.setWarranty(product.getWarranty());
+        if (product.getShipping() != null) existingProduct.setShipping(product.getShipping());
+        if (product.getFreeShipping() != null) existingProduct.setFreeShipping(product.getFreeShipping());
+        if (product.getFreeShippingThreshold() != null) existingProduct.setFreeShippingThreshold(product.getFreeShippingThreshold());
+        if (product.getBestSellerRank() != null) existingProduct.setBestSellerRank(product.getBestSellerRank());
+        return existingProduct;
+    }
+
+    @Override
     @Transactional(rollbackFor = Exception.class)
     public Product save(Product product) {
         validateDirectProduct(product);
-        validateDirectProductNameUniqueness(product);
-        try {
-            Product saved = productRepository.save(product);
-            clearProductSearchCache();
-            return saved;
-        } catch (DataIntegrityViolationException e) {
-            if (isProductCategoryNameConstraintViolation(e)) {
-                throw duplicateProductNameException(product, e);
-            }
-            throw e;
-        }
+        Product saved = productRepository.save(product);
+        invalidateProductSearchCacheForProduct(saved);
+        evictCategoryReferenceCache();
+        return saved;
     }
 
     @Override
@@ -793,17 +827,17 @@ public class ProductServiceImpl implements ProductService {
             return 0;
         }
         int updated = productRepository.updateStatusByIdIn(normalizedIds, normalizedStatus);
-        if (updated > 0) {
-            clearProductSearchCache();
-        }
+        clearProductSearchCache();
+        evictCategoryReferenceCache();
         return updated;
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void deleteById(Long id) {
         productRepository.deleteById(id);
-        clearProductSearchCache();
+        invalidateProductSearchCacheForProductId(id);
+        evictCategoryReferenceCache();
     }
 
     @Override
@@ -821,6 +855,7 @@ public class ProductServiceImpl implements ProductService {
         int normalizedLimit = normalizeFeaturedProductLimit(limit);
         return getCachedProducts("featured:public:limit=" + normalizedLimit, () -> enrichReviewStats(productRepository.findPublicFeaturedProducts(PageRequest.of(0, normalizedLimit)).stream()
                 .filter(this::isPublicCatalogProduct)
+                .filter(this::hasSellableStock)
                 .sorted(Comparator.comparing(Product::getId, Comparator.nullsLast(Comparator.naturalOrder())))
                 .limit(normalizedLimit)
                 .collect(Collectors.toList())));
@@ -828,17 +863,13 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     public List<Product> findDiscountProducts() {
-        return getCachedProducts("discount", () -> enrichReviewStats(productRepository.findAll().stream()
-                .filter(ProductStatusUtils::isPublicProduct)
-                .filter(this::isPublicCatalogProduct)
-                .sorted(Comparator.comparing(Product::getId, Comparator.nullsLast(Comparator.naturalOrder())))
-                .filter(product -> {
-                    if (product.getDiscount() != null && product.getDiscount() > 0) {
-                        return true;
-                    }
-                    return product.isActiveLimitedTimeDiscount();
-                })
-                .collect(Collectors.toList())));
+        int limit = legacyProductListLimit("product.discount-list-max-rows", 100, HARD_PUBLIC_PRODUCT_PAGE_SIZE_LIMIT);
+        ProductListQuery query = new ProductListQuery();
+        query.setPage(0);
+        query.setSize(limit);
+        query.setDiscount(true);
+        query.setSort("discount,desc");
+        return getCachedProducts("discount:limit=" + limit, () -> findPublicProductPage(query).getContent());
     }
 
     private boolean matchesPublicListQuery(Product product,
@@ -1057,7 +1088,7 @@ public class ProductServiceImpl implements ProductService {
                 break;
             case "rating":
             case "averagerating":
-                comparator = Comparator.comparing(Product::getAverageRating, Comparator.nullsLast(Double::compareTo));
+                comparator = Comparator.comparing(Product::getAverageRating, Comparator.nullsLast(BigDecimal::compareTo));
                 break;
             case "reviews":
             case "reviewcount":
@@ -1093,9 +1124,9 @@ public class ProductServiceImpl implements ProductService {
         if (savings != null && savings.compareTo(BigDecimal.ZERO) > 0) {
             score += Math.min(36, savings.divide(BigDecimal.valueOf(10), 0, RoundingMode.DOWN).intValue());
         }
-        Double positiveRate = product.getPositiveRate();
-        if (positiveRate != null && positiveRate > 0) {
-            score += Math.min(24, (int) Math.round(positiveRate / 4));
+        BigDecimal positiveRate = product.getPositiveRate();
+        if (positiveRate != null && positiveRate.compareTo(BigDecimal.ZERO) > 0) {
+            score += Math.min(24, positiveRate.divide(BigDecimal.valueOf(4), 0, RoundingMode.HALF_UP).intValue());
         }
         Long reviewCount = product.getReviewCount();
         if (reviewCount != null && reviewCount > 0) {
@@ -1109,9 +1140,9 @@ public class ProductServiceImpl implements ProductService {
             return 0;
         }
         int discount = productDiscountPercent(product);
-        double positiveRate = product.getPositiveRate() == null ? 0 : product.getPositiveRate();
+        BigDecimal positiveRate = product.getPositiveRate() == null ? BigDecimal.ZERO : product.getPositiveRate();
         long reviewCount = product.getReviewCount() == null ? 0 : product.getReviewCount();
-        return discount >= 15 && positiveRate >= 88 && reviewCount >= 3 ? 1 : 0;
+        return discount >= 15 && positiveRate.compareTo(BigDecimal.valueOf(88)) >= 0 && reviewCount >= 3 ? 1 : 0;
     }
 
     private int lowStockUrgencyScore(Product product) {
@@ -1174,23 +1205,6 @@ public class ProductServiceImpl implements ProductService {
         return new SortSpec(field, descending);
     }
 
-    private List<Product> applyProductPagination(List<Product> products, Integer page, Integer size, boolean defaultWhenMissing) {
-        if (!defaultWhenMissing && page == null && size == null) {
-            return products;
-        }
-        int normalizedPage = normalizeProductPage(page);
-        int normalizedSize = normalizeProductPageSize(size);
-        if (normalizedPage < 0 || normalizedSize <= 0) {
-            return List.of();
-        }
-        long fromIndex = (long) normalizedPage * normalizedSize;
-        if (fromIndex >= products.size()) {
-            return List.of();
-        }
-        int toIndex = (int) Math.min(products.size(), fromIndex + normalizedSize);
-        return new ArrayList<>(products.subList((int) fromIndex, toIndex));
-    }
-
     private int normalizeProductPage(Integer page) {
         return page == null ? 0 : Math.max(0, page);
     }
@@ -1222,6 +1236,12 @@ public class ProductServiceImpl implements ProductService {
         int normalizedLimit = limit <= 0 ? DEFAULT_FEATURED_PRODUCT_LIMIT : limit;
         int maxLimit = Math.max(1, runtimeConfig.getInt("product.featured-max-limit", MAX_FEATURED_PRODUCT_LIMIT));
         return Math.max(1, Math.min(normalizedLimit, Math.min(maxLimit, MAX_FEATURED_PRODUCT_LIMIT)));
+    }
+
+    private int legacyProductListLimit(String configKey, int fallback, int hardLimit) {
+        int configured = runtimeConfig.getInt(configKey, fallback);
+        int rawLimit = configured <= 0 ? fallback : configured;
+        return Math.max(1, Math.min(rawLimit, hardLimit));
     }
 
     private BigDecimal normalizeMinPrice(BigDecimal minPrice) {
@@ -1259,6 +1279,7 @@ public class ProductServiceImpl implements ProductService {
         return "public:list:"
                 + "kw=" + normalizedKeyword
                 + ":category=" + stringValue(query.getCategoryId())
+                + ":includeChildren=" + stringValue(query.getIncludeChildren())
                 + ":discount=" + query.getDiscount()
                 + ":featured=" + query.getFeatured()
                 + ":min=" + moneyKey(query.getMinPrice())
@@ -1352,30 +1373,18 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     public List<Product> search(String keyword, Long categoryId) {
-        String normalizedKeyword = normalizeSearchText(keyword);
-        String cacheKey = "search:" + (categoryId == null ? "all" : categoryId) + ":" + normalizedKeyword;
-        return getCachedProducts(cacheKey, () -> searchUncached(normalizedKeyword, categoryId));
-    }
-
-    private List<Product> searchUncached(String normalizedKeyword, Long categoryId) {
-        List<Product> candidates;
-        if (categoryId != null) {
-            candidates = productRepository.findByCategoryIdIn(collectCategoryIds(categoryId));
-        } else {
-            candidates = productRepository.findAll();
-        }
-        if (normalizedKeyword.isEmpty()) {
-            return enrichReviewStats(candidates.stream()
-                    .filter(this::isPublicCatalogProduct)
-                    .collect(Collectors.toList()));
-        }
-        Map<Long, Category> categoryLookup = categoryRepository.findAll().stream()
-                .collect(Collectors.toMap(Category::getId, category -> category, (left, right) -> left));
-        return enrichReviewStats(candidates.stream()
-                .filter(ProductStatusUtils::isPublicProduct)
-                .filter(this::isPublicCatalogProduct)
-                .filter(product -> matchesNormalizedKeyword(product, normalizedKeyword, categoryLookup))
-                .collect(Collectors.toList()));
+        ProductListQuery query = new ProductListQuery();
+        query.setKeyword(keyword);
+        query.setCategoryId(categoryId);
+        query.setPage(0);
+        int legacySearchLimit = normalizeProductPageSize(
+                runtimeConfig.getInt("product.search-legacy-max-results", HARD_PUBLIC_PRODUCT_PAGE_SIZE_LIMIT));
+        query.setSize(legacySearchLimit);
+        String normalizedKeyword = normalizeSearchText(query.getKeyword());
+        String cacheKey = "search:" + (categoryId == null ? "all" : categoryId)
+                + ":limit=" + legacySearchLimit
+                + ":" + normalizedKeyword;
+        return getCachedProducts(cacheKey, () -> findPublicProductPageUncached(query, normalizedKeyword).getContent());
     }
 
     @Override
@@ -1414,7 +1423,7 @@ public class ProductServiceImpl implements ProductService {
         Map<Long, Product> byId = new LinkedHashMap<>();
         List<String> terms = recommendationSearchTerms(normalizedKeywords);
         for (String term : terms) {
-            productRepository.findPublicKeywordCandidateWindow(term, PageRequest.of(0, candidateWindow)).stream()
+            productRepository.findPublicKeywordCandidateWindow(escapeLikeTerm(term), PageRequest.of(0, candidateWindow)).stream()
                     .filter(product -> product.getId() != null)
                     .forEach(product -> byId.putIfAbsent(product.getId(), product));
             if (byId.size() >= candidateWindow) {
@@ -1491,6 +1500,10 @@ public class ProductServiceImpl implements ProductService {
         return terms.stream().limit(12).collect(Collectors.toList());
     }
 
+    private int personalizedPetProfileLimit() {
+        return legacyProductListLimit("pet-profile.max-per-user", 10, 50);
+    }
+
     private Map<Long, Category> loadCategoryLookupForProducts(List<Product> products) {
         Map<Long, Category> lookup = new LinkedHashMap<>();
         Set<Long> pendingIds = products == null
@@ -1550,7 +1563,7 @@ public class ProductServiceImpl implements ProductService {
     }
 
     private List<Product> findPersonalizedRecommendationsUncached(Long userId) {
-        List<PetProfile> pets = petProfileMapper.findByUserId(userId);
+        List<PetProfile> pets = petProfileMapper.findByUserId(userId, personalizedPetProfileLimit());
         if (pets == null || pets.isEmpty()) {
             return List.of();
         }
@@ -1577,7 +1590,7 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public ProductImportResult importCsv(MultipartFile file) {
         return processCsvImport(file, false);
     }
@@ -1693,9 +1706,11 @@ public class ProductServiceImpl implements ProductService {
         result.setReadyToImport(result.getFailed() == 0 && result.getTotalRows() > 0);
         if (!preview && result.isReadyToImport()) {
             try {
-                importRows.forEach(this::saveImportRow);
+                importRows.stream()
+                        .map(this::saveImportRow)
+                        .forEach(this::invalidateProductSearchCacheForProduct);
                 result.setApplied(true);
-                clearProductSearchCache();
+                evictCategoryReferenceCache();
             } catch (RuntimeException ex) {
                 markCurrentTransactionRollbackOnly();
                 result.setApplied(false);
@@ -1753,8 +1768,8 @@ public class ProductServiceImpl implements ProductService {
     private void markCurrentTransactionRollbackOnly() {
         try {
             TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
-        } catch (NoTransactionException ignored) {
-            // Unit tests may exercise the importer without a Spring transaction.
+        } catch (NoTransactionException ex) {
+            log.debug("No active transaction to mark rollback-only during product import; reason={}", ex.getMessage());
         }
     }
 
@@ -1903,14 +1918,13 @@ public class ProductServiceImpl implements ProductService {
         return IMPORT_HEADER_DISPLAY_NAMES.getOrDefault(normalizedHeader, normalizedHeader);
     }
 
-    private void saveImportRow(ProductImportRow row) {
+    private Product saveImportRow(ProductImportRow row) {
         if (row.existingProduct != null) {
             mergeForImport(row.existingProduct, row.importedProduct, row.updateFields);
-            productRepository.save(row.existingProduct);
-            return;
+            return productRepository.save(row.existingProduct);
         }
         row.importedProduct.setId(null);
-        productRepository.save(row.importedProduct);
+        return productRepository.save(row.importedProduct);
     }
 
     private Set<String> importUpdateFields(Map<String, Integer> headerIndex) {
@@ -1999,6 +2013,7 @@ public class ProductServiceImpl implements ProductService {
         product.setShipping(importValue(values, headerIndex, "shipping", hasDetailContentColumn ? 19 : 18));
         product.setFreeShipping(parseBoolean(importValue(values, headerIndex, "freeShipping", hasDetailContentColumn ? 21 : 20), "freeShipping"));
         product.setFreeShippingThreshold(parseDecimal(importValue(values, headerIndex, "freeShippingThreshold", hasDetailContentColumn ? 22 : 21), false, "freeShippingThreshold"));
+        product.setBestSellerRank(parseInteger(importValue(values, headerIndex, "bestSellerRank", -1), false, "bestSellerRank"));
         product.setVariants(importValue(values, headerIndex, "variants", hasDetailContentColumn ? 23 : 22));
         return product;
     }
@@ -2159,6 +2174,9 @@ public class ProductServiceImpl implements ProductService {
         requireNonNegative(product.getOriginalPrice(), "originalPrice");
         requireNonNegative(product.getLimitedTimePrice(), "limitedTimePrice");
         requireNonNegative(product.getFreeShippingThreshold(), "freeShippingThreshold");
+        if (product.getBestSellerRank() != null && product.getBestSellerRank() < 0) {
+            throw new IllegalArgumentException("bestSellerRank must be greater than or equal to 0");
+        }
         if (product.getOriginalPrice() != null && product.getPrice() != null
                 && product.getOriginalPrice().compareTo(product.getPrice()) < 0) {
             throw new IllegalArgumentException("originalPrice must be greater than or equal to price");
@@ -2268,7 +2286,7 @@ public class ProductServiceImpl implements ProductService {
         if (product == null) {
             throw new IllegalArgumentException("Product payload is required");
         }
-        product.setName(normalizeDirectText(product.getName(), "name", 180, true));
+        product.setName(normalizeDirectText(product.getName(), "name", 200, true));
         product.setDescription(normalizeDirectText(product.getDescription(), "description", 1000, false));
         product.setBrand(normalizeDirectText(product.getBrand(), "brand", 120, false));
         product.setTag(normalizeDirectText(product.getTag(), "tag", 80, false));
@@ -2279,11 +2297,14 @@ public class ProductServiceImpl implements ProductService {
         requirePresent(product.getStock(), "stock");
         requirePresent(product.getCategoryId(), "categoryId");
         requirePositive(product.getCategoryId(), "categoryId");
-        requireNonNegative(product.getPrice(), "price");
+        requirePositive(product.getPrice(), "price");
         validateImportMoneyAmount(product.getPrice(), "price");
         validateImportMoneyAmount(product.getOriginalPrice(), "originalPrice");
         validateImportMoneyAmount(product.getLimitedTimePrice(), "limitedTimePrice");
         validateImportMoneyAmount(product.getFreeShippingThreshold(), "freeShippingThreshold");
+        if (product.getBestSellerRank() != null && product.getBestSellerRank() < 0) {
+            throw new IllegalArgumentException("bestSellerRank must be greater than or equal to 0");
+        }
         if (product.getOriginalPrice() != null && product.getOriginalPrice().compareTo(product.getPrice()) < 0) {
             throw new IllegalArgumentException("originalPrice must be greater than or equal to price");
         }
@@ -2299,36 +2320,6 @@ public class ProductServiceImpl implements ProductService {
         validateImportSpecifications(product.getSpecifications());
         product.setDetailContent(normalizeImportDetailContent(product.getDetailContent()));
         product.setVariants(normalizeImportVariants(product.getVariants()));
-    }
-
-    private void validateDirectProductNameUniqueness(Product product) {
-        if (productRepository == null || product.getName() == null || product.getCategoryId() == null) {
-            return;
-        }
-        boolean duplicate = product.getId() == null
-                ? productRepository.existsByCategoryIdAndNameIgnoreCase(product.getCategoryId(), product.getName())
-                : productRepository.existsByCategoryIdAndNameIgnoreCaseAndIdNot(
-                        product.getCategoryId(), product.getName(), product.getId());
-        if (duplicate) {
-            throw duplicateProductNameException(product, null);
-        }
-    }
-
-    private IllegalArgumentException duplicateProductNameException(Product product, Throwable cause) {
-        String message = "name already exists in this category: " + product.getName();
-        return cause == null ? new IllegalArgumentException(message) : new IllegalArgumentException(message, cause);
-    }
-
-    private boolean isProductCategoryNameConstraintViolation(Throwable throwable) {
-        Throwable current = throwable;
-        while (current != null) {
-            String message = current.getMessage();
-            if (message != null && message.toLowerCase(Locale.ROOT).contains("uk_products_category_name")) {
-                return true;
-            }
-            current = current.getCause();
-        }
-        return false;
     }
 
     private String normalizeDirectText(String value, String field, int maxLength, boolean required) {
@@ -2376,6 +2367,12 @@ public class ProductServiceImpl implements ProductService {
 
     private void requirePositive(Long value, String field) {
         if (value != null && value <= 0) {
+            throw new IllegalArgumentException(field + " must be greater than 0");
+        }
+    }
+
+    private void requirePositive(BigDecimal value, String field) {
+        if (value != null && value.compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException(field + " must be greater than 0");
         }
     }
@@ -2628,8 +2625,11 @@ public class ProductServiceImpl implements ProductService {
             return Map.of();
         }
         Map<String, Set<Long>> owners = new LinkedHashMap<>();
-        int pageSize = importVariantSkuScanPageSize();
-        int maxRows = importVariantSkuScanMaxRows();
+        int pageSize = legacyProductListLimit("product.import.variant-sku-scan-page-size", 500, 1_000);
+        int maxRows = legacyProductListLimit(
+                "product.import.variant-sku-scan-max-rows",
+                HARD_PRODUCT_IMPORT_VARIANT_SCAN_ROWS,
+                HARD_PRODUCT_IMPORT_VARIANT_SCAN_ROWS);
         int scannedRows = 0;
         for (int page = 0; scannedRows < maxRows; page++) {
             List<Object[]> rows = productRepository.findVariantSkuOwnerRows(PageRequest.of(page, pageSize));
@@ -2648,20 +2648,6 @@ public class ProductServiceImpl implements ProductService {
             }
         }
         return owners;
-    }
-
-    private int importVariantSkuScanPageSize() {
-        int configured = runtimeConfig == null
-                ? DEFAULT_PRODUCT_IMPORT_VARIANT_SCAN_PAGE_SIZE
-                : runtimeConfig.getInt("product.import.variant-sku-scan-page-size", DEFAULT_PRODUCT_IMPORT_VARIANT_SCAN_PAGE_SIZE);
-        return Math.max(1, Math.min(configured, HARD_PRODUCT_IMPORT_VARIANT_SCAN_PAGE_SIZE));
-    }
-
-    private int importVariantSkuScanMaxRows() {
-        int configured = runtimeConfig == null
-                ? HARD_PRODUCT_IMPORT_VARIANT_SCAN_ROWS
-                : runtimeConfig.getInt("product.import.variant-sku-scan-max-rows", HARD_PRODUCT_IMPORT_VARIANT_SCAN_ROWS);
-        return Math.max(1, Math.min(configured, HARD_PRODUCT_IMPORT_VARIANT_SCAN_ROWS));
     }
 
     private void registerVariantSkuOwnerRow(Object[] row, Map<String, Set<Long>> owners) {
@@ -2690,8 +2676,9 @@ public class ProductServiceImpl implements ProductService {
                 }
                 owners.computeIfAbsent(normalizeImportSkuKey(sku), ignored -> new LinkedHashSet<>()).add(productId);
             }
-        } catch (Exception ignored) {
-            // Existing malformed variant data should not block unrelated imports.
+        } catch (Exception ex) {
+            log.debug("Skipping malformed variant data while collecting SKU owners for product {}; reason={}",
+                    productId, ex.getMessage());
         }
     }
 
@@ -2762,7 +2749,7 @@ public class ProductServiceImpl implements ProductService {
         for (String field : List.of(
                 "id", "name", "description", "price", "stock", "categoryId", "categoryName", "imageUrl",
                 "brand", "originalPrice", "discount", "limitedTimePrice", "limitedTimeStartAt",
-                "limitedTimeEndAt", "tag", "status", "isFeatured", "freeShipping", "freeShippingThreshold", "images",
+                "limitedTimeEndAt", "tag", "status", "isFeatured", "freeShipping", "freeShippingThreshold", "bestSellerRank", "images",
                 "specifications", "detailContent", "variants", "warranty", "shipping")) {
             if (message.startsWith(field + " ") || message.startsWith(field + ":") || message.contains("[" + field + "]")) {
                 return field;
@@ -2840,6 +2827,9 @@ public class ProductServiceImpl implements ProductService {
         }
         if (updateFields.contains("freeShippingThreshold")) {
             existing.setFreeShippingThreshold(imported.getFreeShippingThreshold());
+        }
+        if (updateFields.contains("bestSellerRank")) {
+            existing.setBestSellerRank(imported.getBestSellerRank());
         }
     }
 
@@ -2970,6 +2960,16 @@ public class ProductServiceImpl implements ProductService {
         List<Long> ids = new java.util.ArrayList<>();
         collectCategoryIds(id, ids, 1);
         return ids;
+    }
+
+    private Set<Long> selectedCategoryIds(ProductListQuery query) {
+        if (query == null || query.getCategoryId() == null) {
+            return Set.of();
+        }
+        if (Boolean.FALSE.equals(query.getIncludeChildren())) {
+            return Set.of(query.getCategoryId());
+        }
+        return new LinkedHashSet<>(collectCategoryIds(query.getCategoryId()));
     }
 
     private int scoreForPets(Product product, Map<Long, Category> categories, List<PetProfile> pets) {
@@ -3125,9 +3125,9 @@ public class ProductServiceImpl implements ProductService {
         } else if (product.getDiscount() != null && product.getDiscount() > 0) {
             score += Math.min(12, product.getDiscount() / 2);
         }
-        Double averageRating = product.getAverageRating();
-        if (averageRating != null && averageRating > 0) {
-            score += Math.min(20, (int) Math.round(averageRating * 3));
+        BigDecimal averageRating = product.getAverageRating();
+        if (averageRating != null && averageRating.compareTo(BigDecimal.ZERO) > 0) {
+            score += Math.min(20, averageRating.multiply(BigDecimal.valueOf(3)).setScale(0, RoundingMode.HALF_UP).intValue());
         }
         Long reviewCount = product.getReviewCount();
         if (reviewCount != null && reviewCount > 0) {
@@ -3140,7 +3140,7 @@ public class ProductServiceImpl implements ProductService {
         if (!ProductStatusUtils.isPublicProduct(product)) {
             return false;
         }
-        if (isBlank(product.getName()) || product.getPrice() == null || product.getPrice().compareTo(BigDecimal.ZERO) < 0) {
+        if (isBlank(product.getName()) || product.getPrice() == null || product.getPrice().compareTo(BigDecimal.ZERO) <= 0) {
             return false;
         }
         if (product.getCategoryId() == null || product.getCategoryId() <= 0) {
@@ -3370,25 +3370,117 @@ public class ProductServiceImpl implements ProductService {
                 : value.toLowerCase(Locale.ROOT).replaceAll("[^\\p{L}\\p{N}]+", " ").trim();
     }
 
-    private List<Product> getCachedProducts(String cacheKey, ProductSearchLoader loader) {
-        long now = System.currentTimeMillis();
-        ProductSearchCacheEntry cached = productSearchCache.get(cacheKey);
-        long searchCacheTtlMs = runtimeConfig.getLong("product.search-cache-ttl-ms", 30000);
-        if (cached != null && now - cached.createdAt <= Math.max(0, searchCacheTtlMs)) {
-            return new ArrayList<>(cached.products);
+    private String escapeLikeTerm(String term) {
+        if (term == null || term.isEmpty()) {
+            return "";
         }
-        List<Product> products = loader.load();
-        if (searchCacheTtlMs > 0) {
+        return term
+                .replace(String.valueOf(LIKE_ESCAPE_CHAR), String.valueOf(LIKE_ESCAPE_CHAR) + LIKE_ESCAPE_CHAR)
+                .replace("%", LIKE_ESCAPE_CHAR + "%")
+                .replace("_", LIKE_ESCAPE_CHAR + "_");
+    }
+
+    private String containsLikePattern(String term) {
+        return "%" + escapeLikeTerm(term) + "%";
+    }
+
+    private Predicate containsLike(CriteriaBuilder criteriaBuilder, Expression<String> expression, String term) {
+        return criteriaBuilder.like(
+                criteriaBuilder.lower(criteriaBuilder.coalesce(expression, "")),
+                containsLikePattern(term),
+                LIKE_ESCAPE_CHAR);
+    }
+
+    private List<Product> getCachedProducts(String cacheKey, ProductSearchLoader loader) {
+        long searchCacheTtlMs = runtimeConfig.getLong("product.search-cache-ttl-ms", 30000);
+        long normalizedTtlMs = Math.max(0, searchCacheTtlMs);
+        if (normalizedTtlMs <= 0) {
+            return loader.load();
+        }
+        synchronized (productSearchCacheLock) {
+            long now = System.currentTimeMillis();
+            ProductSearchCacheEntry cached = productSearchCache.get(cacheKey);
+            if (cached != null && now - cached.createdAt <= normalizedTtlMs) {
+                return new ArrayList<>(cached.products);
+            }
+            List<Product> products = loader.load();
             if (productSearchCache.size() >= Math.max(1, runtimeConfig.getInt("product.search-cache-max-entries", 80))) {
-                productSearchCache.clear();
+                evictOldestProductSearchCacheEntry();
             }
             productSearchCache.put(cacheKey, new ProductSearchCacheEntry(now, new ArrayList<>(products)));
+            return products;
         }
-        return products;
+    }
+
+    private void invalidateProductSearchCacheForProduct(Product product) {
+        if (product == null) {
+            return;
+        }
+        invalidateProductSearchCache(product.getId(), product.getCategoryId(),
+                Boolean.TRUE.equals(product.getIsFeatured()), hasActiveDiscount(product), isPublicCatalogProduct(product));
+    }
+
+    private void invalidateProductSearchCacheForProductId(Long productId) {
+        invalidateProductSearchCache(productId, null, false, false, false);
+    }
+
+    private void invalidateProductSearchCache(Long productId,
+                                              Long categoryId,
+                                              boolean featuredCandidate,
+                                              boolean discountCandidate,
+                                              boolean publicCandidate) {
+        if (productId == null && categoryId == null && !featuredCandidate && !discountCandidate && !publicCandidate) {
+            return;
+        }
+        synchronized (productSearchCacheLock) {
+            productSearchCache.entrySet().removeIf(entry -> shouldInvalidateProductSearchCacheEntry(
+                    entry.getKey(), entry.getValue(), productId, categoryId, featuredCandidate, discountCandidate,
+                    publicCandidate));
+        }
+    }
+
+    private boolean shouldInvalidateProductSearchCacheEntry(String cacheKey,
+                                                            ProductSearchCacheEntry entry,
+                                                            Long productId,
+                                                            Long categoryId,
+                                                            boolean featuredCandidate,
+                                                            boolean discountCandidate,
+                                                            boolean publicCandidate) {
+        if (productId != null && (entry.containsProductId(productId) || cacheKey.startsWith("related:" + productId + ":"))) {
+            return true;
+        }
+        if (categoryId != null && cacheKey.startsWith("related:") && cacheKey.endsWith(":" + categoryId)) {
+            return true;
+        }
+        if (featuredCandidate && cacheKey.startsWith("featured:")) {
+            return true;
+        }
+        if (discountCandidate && (cacheKey.startsWith("discount:") || cacheKey.contains(":discount=true"))) {
+            return true;
+        }
+        return publicCandidate && cacheKey.startsWith("add-on:");
     }
 
     private void clearProductSearchCache() {
-        productSearchCache.clear();
+        synchronized (productSearchCacheLock) {
+            productSearchCache.clear();
+        }
+    }
+
+    private void evictOldestProductSearchCacheEntry() {
+        productSearchCache.entrySet().stream()
+                .min(Comparator.comparingLong(entry -> entry.getValue().createdAt))
+                .ifPresent(entry -> productSearchCache.remove(entry.getKey(), entry.getValue()));
+    }
+
+    private void evictCategoryReferenceCache() {
+        if (cacheManager == null) {
+            return;
+        }
+        Cache cache = cacheManager.getCache("categoryReferenceData");
+        if (cache != null) {
+            cache.clear();
+        }
     }
 
     @FunctionalInterface
@@ -3403,6 +3495,10 @@ public class ProductServiceImpl implements ProductService {
         private ProductSearchCacheEntry(long createdAt, List<Product> products) {
             this.createdAt = createdAt;
             this.products = products;
+        }
+
+        private boolean containsProductId(Long productId) {
+            return productId != null && products.stream().anyMatch(product -> productId.equals(product.getId()));
         }
     }
 
@@ -3494,7 +3590,7 @@ public class ProductServiceImpl implements ProductService {
                             row -> new ProductReviewStats(
                                     ((Number) row[1]).longValue(),
                                     row[2] == null ? 0L : ((Number) row[2]).longValue(),
-                                    row[3] == null ? 0.0 : ((Number) row[3]).doubleValue()
+                                    reviewStatDecimal(row[3])
                             )
                     ));
         } catch (RuntimeException ex) {
@@ -3516,7 +3612,7 @@ public class ProductServiceImpl implements ProductService {
                     .map(row -> new ProductReviewStats(
                             ((Number) row[1]).longValue(),
                             row[2] == null ? 0L : ((Number) row[2]).longValue(),
-                            row[3] == null ? 0.0 : ((Number) row[3]).doubleValue()
+                            reviewStatDecimal(row[3])
                     ))
                     .orElse(null);
         } catch (RuntimeException ex) {
@@ -3532,18 +3628,32 @@ public class ProductServiceImpl implements ProductService {
         }
         long reviewCount = stats == null ? 0L : stats.reviewCount;
         long positiveCount = stats == null ? 0L : stats.positiveCount;
-        double positiveRate = reviewCount == 0 ? 0 : positiveCount * 100.0 / reviewCount;
+        BigDecimal positiveRate = reviewCount == 0
+                ? ZERO_REVIEW_STAT
+                : BigDecimal.valueOf(positiveCount)
+                        .multiply(BigDecimal.valueOf(100))
+                        .divide(BigDecimal.valueOf(reviewCount), 1, RoundingMode.HALF_UP);
         product.setReviewCount(reviewCount);
-        product.setPositiveRate(Math.round(positiveRate * 10.0) / 10.0);
-        product.setAverageRating(stats == null ? 0.0 : Math.round(stats.averageRating * 10.0) / 10.0);
+        product.setPositiveRate(positiveRate);
+        product.setAverageRating(stats == null ? ZERO_REVIEW_STAT : stats.averageRating);
+    }
+
+    private BigDecimal reviewStatDecimal(Object value) {
+        if (value == null) {
+            return ZERO_REVIEW_STAT;
+        }
+        if (value instanceof BigDecimal) {
+            return ((BigDecimal) value).setScale(1, RoundingMode.HALF_UP);
+        }
+        return BigDecimal.valueOf(((Number) value).doubleValue()).setScale(1, RoundingMode.HALF_UP);
     }
 
     private static class ProductReviewStats {
         private final long reviewCount;
         private final long positiveCount;
-        private final double averageRating;
+        private final BigDecimal averageRating;
 
-        private ProductReviewStats(long reviewCount, long positiveCount, double averageRating) {
+        private ProductReviewStats(long reviewCount, long positiveCount, BigDecimal averageRating) {
             this.reviewCount = reviewCount;
             this.positiveCount = positiveCount;
             this.averageRating = averageRating;

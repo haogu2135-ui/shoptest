@@ -19,6 +19,7 @@ import {
   getCartSubtotal,
   getCouponEstimatedValue,
   getFallbackPublicCoupons,
+  getCouponPayablePercent,
   getCouponRemaining,
   isCouponInValidWindow,
   getDaysUntilEnd,
@@ -161,12 +162,12 @@ const CouponCenter: React.FC = () => {
     }),
     [ownedCouponIds, publicCoupons],
   );
-  const couponUiText = useMemo(() => getCouponUiText(language), [language]);
+  const couponUiText = useMemo(() => getCouponUiText(t), [t]);
   const formatDaysBadge = useCallback((days: number | null | undefined, fallback?: string) => {
     if (days == null) return fallback || couponUiText.noExpiry;
     if (days < 0) return t('status.EXPIRED');
     if (days === 0) return couponUiText.today;
-    return couponUiText.daysShort.replace('{count}', String(days));
+    return t('pages.coupons.ui.daysShort', { count: days });
   }, [couponUiText, t]);
   const sortedPublicCoupons = useMemo(
     () => sortPublicCoupons(publicCoupons, ownedCouponIds, deferredCouponSearch, couponSort),
@@ -216,7 +217,7 @@ const CouponCenter: React.FC = () => {
       return `${t('pages.adminCoupons.minimumSpend')} ${formatMoney(Math.max(0, toFiniteNumber(coupon.thresholdAmount)))} / ${t('pages.adminCoupons.reductionAmount')} ${formatMoney(Math.max(0, toFiniteNumber(coupon.reductionAmount)))}`;
     }
     const maxDiscount = Math.max(0, toFiniteNumber(coupon.maxDiscountAmount));
-    const payablePercent = Math.max(0, Math.min(toFiniteNumber(coupon.discountPercent, 100), 100));
+    const payablePercent = getCouponPayablePercent(coupon);
     const discountPercent = Math.max(0, 100 - payablePercent);
     const maxText = maxDiscount > 0 ? `, ${t('pages.coupons.maxDiscount', { amount: formatMoney(maxDiscount) })}` : '';
     return t('pages.coupons.discountPayable', { percent: discountPercent }) + maxText;
@@ -897,9 +898,10 @@ const CouponCenter: React.FC = () => {
               <div className="coupon-claim-section__claimResult" role="status">
                 <CheckCircleOutlined />
                 <span>
-                  {couponUiText.claimSummary
-                    .replace('{claimed}', String(claimBatchSummary.claimed))
-                    .replace('{total}', String(claimBatchSummary.total))}
+                  {t('pages.coupons.ui.claimSummary', {
+                    claimed: claimBatchSummary.claimed,
+                    total: claimBatchSummary.total,
+                  })}
                 </span>
               </div>
             ) : null}

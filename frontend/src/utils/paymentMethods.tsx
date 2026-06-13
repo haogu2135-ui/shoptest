@@ -17,6 +17,11 @@ export interface PaymentMethodDetail {
     market?: string;
 }
 
+const normalizePaymentMarket = (market?: string) => {
+    const normalized = String(market || 'GLOBAL').trim().toUpperCase();
+    return ['MX', 'CN', 'GLOBAL'].includes(normalized) ? normalized : 'GLOBAL';
+};
+
 export const paymentMethodOrder: PaymentMethod[] = ['STRIPE', 'MERCADO_PAGO', 'OXXO', 'SPEI', 'CODI', 'MX_LOCAL_CARD', 'ALIPAY', 'WECHAT_PAY', 'UNIONPAY', 'PAYPAL', 'APPLE_PAY', 'GOOGLE_PAY', 'VISA', 'SHOP_PAY'];
 
 const iconForPaymentMethod = (method: string) => {
@@ -50,14 +55,14 @@ export const createPaymentMethodOptions = (t: (key: string) => string, channels:
 
 export const createPaymentMethodDetails = (channels: PaymentChannel[]): PaymentMethodDetail[] =>
     channels
-        .filter((channel) => ['MX', 'CN', 'GLOBAL'].includes(String(channel.market || '').toUpperCase()))
+        .filter((channel) => ['MX', 'CN', 'GLOBAL'].includes(normalizePaymentMarket(channel.market)))
         .sort((a, b) => (a.sortOrder ?? 100) - (b.sortOrder ?? 100))
         .map((channel) => ({
             value: channel.code,
             title: channel.displayName,
             descriptionKey: channel.descriptionKey || 'pages.checkout.paymentGenericDesc',
-            badgeKey: channel.badgeKey || (String(channel.market).toUpperCase() === 'CN' ? 'pages.checkout.paymentChina' : 'pages.checkout.paymentMexico'),
-            market: channel.market,
+            badgeKey: channel.badgeKey || (normalizePaymentMarket(channel.market) === 'CN' ? 'pages.checkout.paymentChina' : 'pages.checkout.paymentMexico'),
+            market: normalizePaymentMarket(channel.market),
         }));
 
 export const paymentMethodLabel = (method: string, t: (key: string) => string) => {

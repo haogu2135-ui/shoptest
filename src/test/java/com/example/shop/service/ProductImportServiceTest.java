@@ -9,6 +9,7 @@ import com.example.shop.service.impl.ProductServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.data.domain.Pageable;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -1223,6 +1224,27 @@ class ProductImportServiceTest {
     }
 
     @Test
+    void rejectsImportedImageUrlsPastBackendEntityLimitBeforeSavingRow() {
+        when(runtimeConfig.getLong("product.import.max-file-size-bytes", 1048576)).thenReturn(4096L);
+        when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(5);
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "products.csv",
+                "text/csv",
+                ("id,name,description,price,stock,categoryId,imageUrl\n"
+                        + ",Harness,Safe,19.99,8,1," + imageUrlWithLength(2001) + "\n")
+                        .getBytes(StandardCharsets.UTF_8)
+        );
+
+        ProductImportResult result = service.importCsv(file);
+
+        assertEquals(1, result.getFailed());
+        assertEquals("imageUrl", result.getRowErrors().get(0).getField());
+        assertTrue(result.getErrors().get(0).contains("imageUrl is too long"));
+        verify(productRepository, never()).save(any());
+    }
+
+    @Test
     void reportsTextMerchandisingFieldWhenImportedTextExceedsLimit() {
         String[][] cases = new String[][] {
                 {"brand", "x".repeat(121)},
@@ -1395,7 +1417,8 @@ class ProductImportServiceTest {
         Product existing = new Product();
         existing.setId(10L);
         existing.setVariants("[{\"sku\":\"SKU-100\",\"options\":{\"Size\":\"S\"},\"price\":19.99,\"stock\":2}]");
-        when(productRepository.findAll()).thenReturn(List.of(existing));
+        when(productRepository.findVariantSkuOwnerRows(any(Pageable.class)))
+                .thenReturn(List.<Object[]>of(new Object[]{existing.getId(), existing.getVariants()}));
         MockMultipartFile file = new MockMultipartFile(
                 "file",
                 "products.csv",
@@ -1414,6 +1437,7 @@ class ProductImportServiceTest {
         assertEquals(ProductImportResult.STATUS_PREVIEW_BLOCKED, result.getStatus());
         assertFalse(result.isReadyToImport());
         verify(productRepository, never()).save(any());
+        verify(productRepository, never()).findAll();
     }
 
     @Test
@@ -1426,7 +1450,8 @@ class ProductImportServiceTest {
         existing.setStock(8);
         existing.setCategoryId(1L);
         existing.setVariants("[{\"sku\":\"SKU-100\",\"options\":{\"Size\":\"S\"},\"price\":19.99,\"stock\":2}]");
-        when(productRepository.findAll()).thenReturn(List.of(existing));
+        when(productRepository.findVariantSkuOwnerRows(any(Pageable.class)))
+                .thenReturn(List.<Object[]>of(new Object[]{existing.getId(), existing.getVariants()}));
         when(productRepository.findById(10L)).thenReturn(java.util.Optional.of(existing));
         MockMultipartFile file = new MockMultipartFile(
                 "file",
@@ -1445,6 +1470,36 @@ class ProductImportServiceTest {
         ArgumentCaptor<Product> captor = ArgumentCaptor.forClass(Product.class);
         verify(productRepository).save(captor.capture());
         assertTrue(captor.getValue().getVariants().contains("sku-100"));
+        verify(productRepository, never()).findAll();
+    }
+
+    @Test
+    void scansExistingVariantSkuOwnersWithBoundedPages() {
+        when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(5);
+        when(runtimeConfig.getInt("product.import.variant-sku-scan-page-size", 500)).thenReturn(1);
+        when(runtimeConfig.getInt("product.import.variant-sku-scan-max-rows", 5000)).thenReturn(2);
+        when(productRepository.findVariantSkuOwnerRows(any(Pageable.class)))
+                .thenReturn(List.<Object[]>of(new Object[]{20L, "[{\"sku\":\"OTHER-SKU\"}]"}))
+                .thenReturn(List.<Object[]>of(new Object[]{21L, "[{\"sku\":\"SKU-200\"}]"}));
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "products.csv",
+                "text/csv",
+                ("name,description,price,stock,categoryId,variants\n"
+                        + "Leash,Strong,9.99,5,1,\"[{\"\"sku\"\":\"\" sku-200 \"\",\"\"options\"\":{\"\"Size\"\":\"\"M\"\"},\"\"price\"\":9.99,\"\"stock\"\":3}]\"\n")
+                        .getBytes(StandardCharsets.UTF_8)
+        );
+
+        ProductImportResult result = service.previewImportCsv(file);
+
+        assertEquals(ProductImportResult.STATUS_PREVIEW_BLOCKED, result.getStatus());
+        assertTrue(result.getErrors().get(0).contains("sku already exists on another product"));
+        ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
+        verify(productRepository, times(2)).findVariantSkuOwnerRows(pageableCaptor.capture());
+        assertEquals(0, pageableCaptor.getAllValues().get(0).getPageNumber());
+        assertEquals(1, pageableCaptor.getAllValues().get(1).getPageNumber());
+        assertEquals(1, pageableCaptor.getAllValues().get(0).getPageSize());
+        verify(productRepository, never()).findAll();
     }
 
     @Test
@@ -1556,5 +1611,10 @@ class ProductImportServiceTest {
         assertTrue(result.getImportId().matches("[0-9a-fA-F-]{36}"));
         assertNotNull(result.getFileSha256());
         assertTrue(result.getFileSha256().matches("[0-9a-f]{64}"));
+    }
+
+    private String imageUrlWithLength(int length) {
+        String prefix = "https://cdn.example.com/products/";
+        return prefix + "a".repeat(length - prefix.length());
     }
 }

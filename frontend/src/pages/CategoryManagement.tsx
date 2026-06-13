@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  Alert,
   Button,
   Card,
   Divider,
@@ -44,7 +45,9 @@ const isFormValidationError = (error: unknown): error is { errorFields: unknown[
 
 const CategoryManagement: React.FC = () => {
   const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [categoryLoadError, setCategoryLoadError] = useState<string | null>(null);
+  const [categorySnapshotLoaded, setCategorySnapshotLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [keyword, setKeyword] = useState('');
   const [modalVisible, setModalVisible] = useState(false);
@@ -56,6 +59,8 @@ const CategoryManagement: React.FC = () => {
   const { t, language } = useLanguage();
   const canWriteCategories = hasAdminPermission(adminPermissions, currentRole, CATEGORIES_WRITE_PERMISSION);
   const canDeleteCategories = hasAdminPermission(adminPermissions, currentRole, CATEGORIES_DELETE_PERMISSION);
+  const categoryActionDisabled = loading || Boolean(categoryLoadError) || !categorySnapshotLoaded;
+  const categoryActionUnavailableMessage = categoryLoadError || (loading ? t('common.loading') : t('pages.categoryAdmin.fetchFailed'));
 
   const categoryTree = useMemo(() => buildCategoryTree(categories), [categories]);
   const flatCategories = useMemo(() => flattenCategoryTree(categoryTree), [categoryTree]);
@@ -148,9 +153,13 @@ const CategoryManagement: React.FC = () => {
     setLoading(true);
     try {
       const res = await adminApi.getCategories();
+      setCategoryLoadError(null);
       setCategories(res.data);
+      setCategorySnapshotLoaded(true);
     } catch (error: unknown) {
-      message.error(getApiErrorMessage(error, t('pages.categoryAdmin.fetchFailed'), language));
+      const errorMessage = getApiErrorMessage(error, t('pages.categoryAdmin.fetchFailed'), language);
+      setCategoryLoadError(errorMessage);
+      message.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -181,6 +190,10 @@ const CategoryManagement: React.FC = () => {
   const openModal = (category?: Category | null, parent?: Category | null) => {
     if (!canWriteCategories) {
       message.error(t('adminLayout.noPermission'));
+      return;
+    }
+    if (categoryActionDisabled) {
+      message.warning(categoryActionUnavailableMessage);
       return;
     }
     setEditingCategory(category || null);
@@ -214,6 +227,10 @@ const CategoryManagement: React.FC = () => {
       message.error(t('adminLayout.noPermission'));
       return;
     }
+    if (categoryActionDisabled) {
+      message.warning(categoryActionUnavailableMessage);
+      return;
+    }
     try {
       await adminApi.deleteCategory(id);
       message.success(t('messages.deleteSuccess'));
@@ -226,6 +243,10 @@ const CategoryManagement: React.FC = () => {
   const handleSubmit = async () => {
     if (!canWriteCategories) {
       message.error(t('adminLayout.noPermission'));
+      return;
+    }
+    if (categoryActionDisabled) {
+      message.warning(categoryActionUnavailableMessage);
       return;
     }
     try {
@@ -368,11 +389,11 @@ const CategoryManagement: React.FC = () => {
         return (
           <Space size="small">
             {canWriteCategories && (record.level || 1) < 3 ? (
-              <Button icon={<PlusOutlined />} size="small" aria-label={childActionLabel} title={childActionLabel} onClick={() => openModal(null, record)}>
+              <Button icon={<PlusOutlined />} size="small" disabled={categoryActionDisabled} aria-label={childActionLabel} title={childActionLabel} onClick={() => openModal(null, record)}>
                 {t('pages.categoryAdmin.child')}
               </Button>
             ) : null}
-            {canWriteCategories ? <Button icon={<EditOutlined />} size="small" aria-label={editActionLabel} title={editActionLabel} onClick={() => openModal(record)}>
+            {canWriteCategories ? <Button icon={<EditOutlined />} size="small" disabled={categoryActionDisabled} aria-label={editActionLabel} title={editActionLabel} onClick={() => openModal(record)}>
               {t('common.edit')}
             </Button> : null}
             {canDeleteCategories ? (
@@ -380,12 +401,13 @@ const CategoryManagement: React.FC = () => {
                 classNames={mobilePopconfirmClassNames}
                 title={t('pages.categoryAdmin.deleteConfirm')}
                 onConfirm={() => handleDelete(record.id)}
+                disabled={categoryActionDisabled}
                 okText={t('common.confirm')}
                 cancelText={t('common.cancel')}
-                okButtonProps={{ 'aria-label': deleteActionLabel, title: deleteActionLabel }}
+                okButtonProps={{ disabled: categoryActionDisabled, 'aria-label': deleteActionLabel, title: deleteActionLabel }}
                 cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${categoryName}`, title: `${t('common.cancel')}: ${categoryName}` }}
               >
-                <Button icon={<DeleteOutlined />} danger size="small" aria-label={deleteActionLabel} title={deleteActionLabel}>
+                <Button icon={<DeleteOutlined />} danger size="small" disabled={categoryActionDisabled} aria-label={deleteActionLabel} title={deleteActionLabel}>
                   {t('common.delete')}
                 </Button>
               </Popconfirm>
@@ -396,6 +418,10 @@ const CategoryManagement: React.FC = () => {
     },
   ];
 
+  const showInitialCategoryLoading = loading && !categorySnapshotLoaded;
+  const categorySnapshotUnavailable = Boolean(categoryLoadError) && !categorySnapshotLoaded;
+  const canRenderCategorySnapshot = !showInitialCategoryLoading && !categorySnapshotUnavailable;
+
   return (
     <div className={`category-management-page category-management-page--${language}`}>
       <Title level={3} className="category-management-page__title">
@@ -403,6 +429,27 @@ const CategoryManagement: React.FC = () => {
       </Title>
       <Divider />
 
+      {categoryLoadError ? (
+        <Alert
+          className="category-management-page__alert"
+          type="warning"
+          showIcon
+          message={categoryLoadError}
+          description={categorySnapshotLoaded ? t('pages.categoryAdmin.staleDataWarning') : undefined}
+          action={(
+            <Button size="small" loading={loading} onClick={fetchCategories}>
+              {t('common.retry')}
+            </Button>
+          )}
+        />
+      ) : null}
+
+      {showInitialCategoryLoading ? (
+        <Card className="category-management-page__loadingState" loading />
+      ) : null}
+
+      {canRenderCategorySnapshot ? (
+        <>
       <Card className="category-management-page__toolbar">
         <Space wrap>
           <Text type="secondary">{t('pages.categoryAdmin.healthSubtitle')}</Text>
@@ -411,13 +458,14 @@ const CategoryManagement: React.FC = () => {
             prefix={<SearchOutlined />}
             value={keyword}
             onChange={(event) => setKeyword(event.target.value)}
+            disabled={categoryActionDisabled}
             placeholder={t('common.search')}
             className="category-management-page__keywordInput"
             aria-label={categorySearchLabel}
             title={categorySearchLabel}
           />
           {canWriteCategories ? (
-            <Button type="primary" icon={<PlusOutlined />} aria-label={addRootCategoryLabel} title={addRootCategoryLabel} onClick={() => openModal()}>
+            <Button type="primary" icon={<PlusOutlined />} disabled={categoryActionDisabled} aria-label={addRootCategoryLabel} title={addRootCategoryLabel} onClick={() => openModal()}>
               {t('pages.categoryAdmin.addRoot')}
             </Button>
           ) : null}
@@ -473,6 +521,8 @@ const CategoryManagement: React.FC = () => {
         size="middle"
         pagination={false}
       />
+        </>
+      ) : null}
 
       <Modal
         className="profile-mobile-safe-modal category-management-page__editorModal"
@@ -484,7 +534,7 @@ const CategoryManagement: React.FC = () => {
         destroyOnHidden
         okText={t('common.save')}
         cancelText={t('common.cancel')}
-        okButtonProps={{ 'aria-label': `${t('common.save')}: ${categoryEditorLabel}`, title: `${t('common.save')}: ${categoryEditorLabel}` }}
+        okButtonProps={{ disabled: categoryActionDisabled, 'aria-label': `${t('common.save')}: ${categoryEditorLabel}`, title: `${t('common.save')}: ${categoryEditorLabel}` }}
         cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${categoryEditorLabel}`, title: `${t('common.cancel')}: ${categoryEditorLabel}` }}
       >
         <Form form={form} layout="vertical">

@@ -1,5 +1,7 @@
 package com.example.shop.service;
 
+import com.example.shop.config.RequestCorrelationFilter;
+import com.example.shop.dto.ClientErrorReportRequest;
 import com.example.shop.dto.SystemAlertSummaryResponse;
 import com.example.shop.dto.SystemAlertBatchActionResponse;
 import com.example.shop.dto.SystemAlertPurgeResponse;
@@ -20,6 +22,8 @@ import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import javax.servlet.http.HttpServletRequest;
 import javax.sql.DataSource;
 import java.io.File;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -69,6 +73,22 @@ public class SystemAlertService {
             return;
         }
         record(severity, "SECURITY", category, title, message, fingerprint, metadata);
+    }
+
+    public void recordClientError(ClientErrorReportRequest report, HttpServletRequest request) {
+        if (!runtimeConfig.getBoolean("alerts.client-error.enabled", true) || report == null) {
+            return;
+        }
+        String context = sanitize(report.getContext(), 120);
+        String name = sanitize(report.getName(), 80);
+        String message = sanitize(firstNonBlank(report.getMessage(), report.getName(), "Client runtime error"), 500);
+        String path = safeClientPath(firstNonBlank(report.getPath(), request == null ? null : request.getHeader("Referer"), "/"));
+        String title = "Client error: " + firstNonBlank(context, name, "unknown");
+        String fingerprint = "client-error:" + firstNonBlank(context, name, "unknown")
+                + " message=" + limit(message, 160)
+                + " path=" + path;
+
+        record("WARNING", "CLIENT", "FRONTEND", title, message, fingerprint, clientErrorMetadata(report, request, path, name));
     }
 
     @Scheduled(fixedDelayString = "${alerts.self-check.interval-ms:60000}", initialDelayString = "${alerts.self-check.initial-delay-ms:30000}")
@@ -217,6 +237,38 @@ public class SystemAlertService {
                 + ", method=" + method
                 + ", path=" + safePath;
         return new AlertDraft(severity, category, title, message, fingerprint, metadata);
+    }
+
+    private String clientErrorMetadata(ClientErrorReportRequest report, HttpServletRequest request, String path, String name) {
+        List<String> parts = new ArrayList<>();
+        addMetadata(parts, "path", path, 240);
+        addMetadata(parts, "name", name, 80);
+        addMetadata(parts, "source", report.getSource(), 40);
+        addMetadata(parts, "appVersion", report.getAppVersion(), 80);
+        addMetadata(parts, "occurredAt", report.getOccurredAt(), 40);
+        addMetadata(parts, "requestId", requestId(request), 80);
+        addMetadata(parts, "userAgent", report.getUserAgent(), 240);
+        addMetadata(parts, "componentStack", report.getComponentStack(), 700);
+        addMetadata(parts, "stack", report.getStack(), 900);
+        return limit(String.join(", ", parts), 2000);
+    }
+
+    private void addMetadata(List<String> parts, String key, String value, int maxLength) {
+        String safe = sanitize(value, maxLength);
+        if (safe != null && !safe.isBlank()) {
+            parts.add(key + "=" + safe);
+        }
+    }
+
+    private String requestId(HttpServletRequest request) {
+        if (request == null) {
+            return "";
+        }
+        Object attribute = request.getAttribute(RequestCorrelationFilter.REQUEST_ID_ATTRIBUTE);
+        if (attribute != null) {
+            return String.valueOf(attribute);
+        }
+        return request.getHeader(RequestCorrelationFilter.REQUEST_ID_HEADER);
     }
 
     private String exceptionCategory(Throwable root, Exception exception) {
@@ -521,6 +573,36 @@ public class SystemAlertService {
         return limit(safe, 240);
     }
 
+    private String safeClientPath(String value) {
+        String normalized = normalizeText(value);
+        if (normalized == null || normalized.isBlank()) {
+            return "/";
+        }
+        String path = normalized;
+        if (path.startsWith("http://") || path.startsWith("https://")) {
+            try {
+                path = new URI(path).getPath();
+            } catch (URISyntaxException ignored) {
+                path = "/";
+            }
+        }
+        if (path == null || path.isBlank()) {
+            path = "/";
+        }
+        int queryStart = path.indexOf('?');
+        if (queryStart >= 0) {
+            path = path.substring(0, queryStart);
+        }
+        int hashStart = path.indexOf('#');
+        if (hashStart >= 0) {
+            path = path.substring(0, hashStart);
+        }
+        if (!path.startsWith("/")) {
+            path = "/" + path;
+        }
+        return safePath(path);
+    }
+
     private String sanitize(String value) {
         return sanitize(value, 240);
     }
@@ -549,6 +631,18 @@ public class SystemAlertService {
 
     private String normalizeText(String value) {
         return value == null ? null : value.replaceAll("[\\r\\n\\t]+", " ").replaceAll("\\s+", " ").trim();
+    }
+
+    private String firstNonBlank(String... values) {
+        if (values == null) {
+            return "";
+        }
+        for (String value : values) {
+            if (value != null && !value.isBlank()) {
+                return value;
+            }
+        }
+        return "";
     }
 
     private String limit(String value, int maxLength) {

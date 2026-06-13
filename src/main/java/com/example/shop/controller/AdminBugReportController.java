@@ -25,6 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
 import javax.servlet.http.HttpServletRequest;
+import javax.validation.Valid;
 
 @RestController
 @RequiredArgsConstructor
@@ -36,7 +37,7 @@ public class AdminBugReportController {
     private final SecurityAuditLogService auditLogService;
 
     @GetMapping
-    public AdminBugReportPageResponse search(@RequestParam(defaultValue = "1") int page,
+    public AdminBugReportPageResponse search(@RequestParam(defaultValue = "0") int page,
                                              @RequestParam(defaultValue = "20") int size,
                                              @RequestParam(required = false) String status,
                                              @RequestParam(required = false) String severity,
@@ -56,8 +57,22 @@ public class AdminBugReportController {
         return bugReportService.summary();
     }
 
+    @GetMapping("/{id}")
+    public AdminBugReport findById(@PathVariable Long id,
+                                   Authentication authentication,
+                                   HttpServletRequest request) {
+        requireReadPermission(authentication, "BUG_DETAIL_READ", id, request);
+        try {
+            return bugReportService.findById(id);
+        } catch (IllegalArgumentException e) {
+            auditLogService.record("BUG_DETAIL_READ", "FAILURE", authentication, "ADMIN_BUG_REPORT", id, request,
+                    e.getMessage(), null);
+            throw badRequest(e);
+        }
+    }
+
     @PostMapping
-    public AdminBugReport create(@RequestBody(required = false) AdminBugReportRequest body,
+    public AdminBugReport create(@Valid @RequestBody AdminBugReportRequest body,
                                  Authentication authentication,
                                  HttpServletRequest request) {
         requirePermission(authentication, AdminRoleService.BUGS_WRITE_PERMISSION, "BUG_CREATE", null, request);
@@ -67,6 +82,10 @@ public class AdminBugReportController {
             auditLogService.record("BUG_CREATE", "SUCCESS", authentication, "ADMIN_BUG_REPORT", bug.getId(), request,
                     "Admin bug report created", metadata(bug));
             return bug;
+        } catch (IllegalArgumentException e) {
+            auditLogService.record("BUG_CREATE", "FAILURE", authentication, "ADMIN_BUG_REPORT", null, request,
+                    e.getMessage(), null);
+            throw badRequest(e);
         } catch (RuntimeException e) {
             auditLogService.record("BUG_CREATE", "FAILURE", authentication, "ADMIN_BUG_REPORT", null, request,
                     e.getMessage(), null);
@@ -76,7 +95,7 @@ public class AdminBugReportController {
 
     @PutMapping("/{id}")
     public AdminBugReport update(@PathVariable Long id,
-                                 @RequestBody(required = false) AdminBugReportRequest body,
+                                 @Valid @RequestBody AdminBugReportRequest body,
                                  Authentication authentication,
                                  HttpServletRequest request) {
         requirePermission(authentication, AdminRoleService.BUGS_WRITE_PERMISSION, "BUG_UPDATE", id, request);
@@ -85,6 +104,10 @@ public class AdminBugReportController {
             auditLogService.record("BUG_UPDATE", "SUCCESS", authentication, "ADMIN_BUG_REPORT", id, request,
                     "Admin bug report updated", metadata(bug));
             return bug;
+        } catch (IllegalArgumentException e) {
+            auditLogService.record("BUG_UPDATE", "FAILURE", authentication, "ADMIN_BUG_REPORT", id, request,
+                    e.getMessage(), null);
+            throw badRequest(e);
         } catch (RuntimeException e) {
             auditLogService.record("BUG_UPDATE", "FAILURE", authentication, "ADMIN_BUG_REPORT", id, request,
                     e.getMessage(), null);
@@ -94,7 +117,7 @@ public class AdminBugReportController {
 
     @PostMapping("/{id}/status")
     public AdminBugReport updateStatus(@PathVariable Long id,
-                                       @RequestBody(required = false) AdminBugReportStatusRequest body,
+                                       @Valid @RequestBody AdminBugReportStatusRequest body,
                                        Authentication authentication,
                                        HttpServletRequest request) {
         requirePermission(authentication, AdminRoleService.BUGS_STATUS_PERMISSION, "BUG_STATUS_UPDATE", id, request);
@@ -103,6 +126,10 @@ public class AdminBugReportController {
             auditLogService.record("BUG_STATUS_UPDATE", "SUCCESS", authentication, "ADMIN_BUG_REPORT", id, request,
                     "Admin bug status updated", metadata(bug));
             return bug;
+        } catch (IllegalArgumentException e) {
+            auditLogService.record("BUG_STATUS_UPDATE", "FAILURE", authentication, "ADMIN_BUG_REPORT", id, request,
+                    e.getMessage(), null);
+            throw badRequest(e);
         } catch (RuntimeException e) {
             auditLogService.record("BUG_STATUS_UPDATE", "FAILURE", authentication, "ADMIN_BUG_REPORT", id, request,
                     e.getMessage(), null);
@@ -121,6 +148,10 @@ public class AdminBugReportController {
             auditLogService.record("BUG_SCAN", "SUCCESS", authentication, "ADMIN_BUG_REPORT", id, request,
                     "Admin bug report scan recorded", metadata(bug));
             return bug;
+        } catch (IllegalArgumentException e) {
+            auditLogService.record("BUG_SCAN", "FAILURE", authentication, "ADMIN_BUG_REPORT", id, request,
+                    e.getMessage(), null);
+            throw badRequest(e);
         } catch (RuntimeException e) {
             auditLogService.record("BUG_SCAN", "FAILURE", authentication, "ADMIN_BUG_REPORT", id, request,
                     e.getMessage(), null);
@@ -157,6 +188,10 @@ public class AdminBugReportController {
 
     private String actor(Authentication authentication) {
         return authentication == null ? null : authentication.getName();
+    }
+
+    private ResponseStatusException badRequest(IllegalArgumentException e) {
+        return new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage(), e);
     }
 
     private String metadata(AdminBugReport bug) {

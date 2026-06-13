@@ -99,6 +99,7 @@ const ProductQuestionManagement: React.FC = () => {
       : t('pages.adminQuestions.statusUnanswered');
   const currentQuestionSearchLabel = keyword.trim() || searchText || t('common.search');
   const questionSearchInputLabel = `${t('pages.adminQuestions.title')} ${t('common.search')}: ${currentQuestionSearchLabel}`;
+  const questionSearchButtonLabel = `${t('common.search')}: ${currentQuestionSearchLabel}`;
   const questionStatusFilterLabel = `${t('pages.adminQuestions.statusFilter')}: ${currentQuestionStatusLabel}`;
   const answerTargetLabel = answerTarget
     ? `${adminQuestionProductName(answerTarget)}: ${String(answerTarget.question || '').trim().replace(/\s+/g, ' ').slice(0, 60) || `#${answerTarget.id}`}`
@@ -164,6 +165,40 @@ const ProductQuestionManagement: React.FC = () => {
 
   const formatTime = (value?: string) => (value ? new Date(value).toLocaleString(locale) : '-');
 
+  const renderQuestionActions = (record: ProductQuestion, variant: 'table' | 'card' = 'table') => {
+    const productName = adminQuestionProductName(record);
+    const questionSnippet = String(record.question || '').trim().replace(/\s+/g, ' ').slice(0, 60) || `#${record.id}`;
+    const questionLabel = `${productName}: ${questionSnippet}`;
+    const answerActionLabel = `${t('pages.adminQuestions.answerAction')}: ${questionLabel}`;
+    const deleteActionLabel = `${t('common.delete')}: ${questionLabel}`;
+    const buttonSize = variant === 'card' ? 'middle' : 'small';
+    const actions = [
+      canAnswerQuestions ? (
+        <Button key="answer" size={buttonSize} icon={<MessageOutlined />} aria-label={answerActionLabel} title={answerActionLabel} onClick={() => openAnswer(record)}>
+          {t('pages.adminQuestions.answerAction')}
+        </Button>
+      ) : null,
+      canDeleteQuestions ? (
+        <Popconfirm
+          classNames={mobilePopconfirmClassNames}
+          key="delete"
+          title={t('pages.adminQuestions.deleteConfirm')}
+          description={t('pages.adminQuestions.deleteConfirmDescription')}
+          okText={t('common.confirm')}
+          cancelText={t('common.cancel')}
+          okButtonProps={{ danger: true, 'aria-label': deleteActionLabel, title: deleteActionLabel }}
+          cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${deleteActionLabel}`, title: `${t('common.cancel')}: ${deleteActionLabel}` }}
+          onConfirm={() => deleteQuestion(record)}
+        >
+          <Button size={buttonSize} danger icon={<DeleteOutlined />} aria-label={deleteActionLabel} title={deleteActionLabel} loading={deletingId === record.id}>
+            {t('common.delete')}
+          </Button>
+        </Popconfirm>
+      ) : null,
+    ].filter(Boolean);
+    return actions.length ? <Space wrap className={variant === 'card' ? 'product-question-card__actions' : undefined}>{actions}</Space> : '-';
+  };
+
   const columns = [
     {
       title: t('pages.adminQuestions.product'),
@@ -216,38 +251,7 @@ const ProductQuestionManagement: React.FC = () => {
       title: t('common.actions'),
       key: 'actions',
       width: 210,
-      render: (_: unknown, record: ProductQuestion) => {
-        const productName = adminQuestionProductName(record);
-        const questionSnippet = String(record.question || '').trim().replace(/\s+/g, ' ').slice(0, 60) || `#${record.id}`;
-        const questionLabel = `${productName}: ${questionSnippet}`;
-        const answerActionLabel = `${t('pages.adminQuestions.answerAction')}: ${questionLabel}`;
-        const deleteActionLabel = `${t('common.delete')}: ${questionLabel}`;
-        const actions = [
-          canAnswerQuestions ? (
-          <Button key="answer" size="small" icon={<MessageOutlined />} aria-label={answerActionLabel} title={answerActionLabel} onClick={() => openAnswer(record)}>
-            {t('pages.adminQuestions.answerAction')}
-          </Button>
-          ) : null,
-          canDeleteQuestions ? (
-	          <Popconfirm
-	            classNames={mobilePopconfirmClassNames}
-	            key="delete"
-            title={t('pages.adminQuestions.deleteConfirm')}
-            description={t('pages.adminQuestions.deleteConfirmDescription')}
-            okText={t('common.confirm')}
-            cancelText={t('common.cancel')}
-            okButtonProps={{ danger: true, 'aria-label': deleteActionLabel, title: deleteActionLabel }}
-            cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${deleteActionLabel}`, title: `${t('common.cancel')}: ${deleteActionLabel}` }}
-            onConfirm={() => deleteQuestion(record)}
-          >
-            <Button size="small" danger icon={<DeleteOutlined />} aria-label={deleteActionLabel} title={deleteActionLabel} loading={deletingId === record.id}>
-              {t('common.delete')}
-            </Button>
-          </Popconfirm>
-          ) : null,
-        ].filter(Boolean);
-        return actions.length ? <Space wrap>{actions}</Space> : '-';
-      },
+      render: (_: unknown, record: ProductQuestion) => renderQuestionActions(record),
     },
   ];
 
@@ -301,6 +305,7 @@ const ProductQuestionManagement: React.FC = () => {
           className="product-question-management-page__keywordInput"
           aria-label={questionSearchInputLabel}
           title={questionSearchInputLabel}
+          enterButton={<Button aria-label={questionSearchButtonLabel} title={questionSearchButtonLabel} icon={<SearchOutlined />} />}
         />
         <Select
           className="product-question-management-page__statusFilter"
@@ -320,7 +325,57 @@ const ProductQuestionManagement: React.FC = () => {
           {t('pages.adminQuestions.answeredQuestions', { count: answeredCount })}
         </Tag>
       </Space>
+      <div className="product-question-mobile-list" aria-label={t('pages.adminQuestions.title')}>
+        {loading ? (
+          <div className="product-question-mobile-list__state">{t('common.loading')}</div>
+        ) : visibleQuestions.length ? visibleQuestions.map((question) => {
+          const hasAnswer = Boolean(String(question.answer || '').trim());
+          return (
+            <article className="product-question-card" key={question.id}>
+              <div className="product-question-card__header">
+                <div>
+                  <strong>{adminQuestionProductName(question)}</strong>
+                  <span>#{question.productId || question.product?.id || '-'}</span>
+                </div>
+                <Tag color={hasAnswer ? 'green' : 'orange'}>
+                  {hasAnswer ? t('pages.adminQuestions.statusAnswered') : t('pages.adminQuestions.statusUnanswered')}
+                </Tag>
+              </div>
+              <dl className="product-question-card__details">
+                <div>
+                  <dt>{t('pages.adminQuestions.user')}</dt>
+                  <dd>{question.username || question.userId || '-'}</dd>
+                </div>
+                <div>
+                  <dt>{t('pages.adminQuestions.question')}</dt>
+                  <dd>{question.question || '-'}</dd>
+                </div>
+                <div>
+                  <dt>{t('pages.adminQuestions.answer')}</dt>
+                  <dd className={!hasAnswer ? 'product-question-card__pending' : undefined}>
+                    {hasAnswer ? question.answer : t('pages.adminQuestions.noAnswer')}
+                  </dd>
+                </div>
+                <div className="product-question-card__timeGrid">
+                  <div>
+                    <dt>{t('pages.adminQuestions.createdAt')}</dt>
+                    <dd>{formatTime(question.createdAt)}</dd>
+                  </div>
+                  <div>
+                    <dt>{t('pages.adminQuestions.answeredAt')}</dt>
+                    <dd>{formatTime(question.answeredAt)}</dd>
+                  </div>
+                </div>
+              </dl>
+              {renderQuestionActions(question, 'card')}
+            </article>
+          );
+        }) : (
+          <div className="product-question-mobile-list__state">{t('pages.adminQuestions.empty', { defaultValue: 'No questions' })}</div>
+        )}
+      </div>
       <Table
+        className="product-question-management-page__table"
         columns={columns}
         dataSource={visibleQuestions}
         rowKey="id"

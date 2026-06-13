@@ -1,6 +1,5 @@
 package com.example.shop.service;
 
-import lombok.extern.slf4j.Slf4j;
 import com.example.shop.dto.SupportAdminSummaryResponse;
 import com.example.shop.dto.SupportAdminSessionPageResponse;
 import com.example.shop.entity.SupportMessage;
@@ -19,10 +18,11 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Service
 @RequiredArgsConstructor
-@Slf4j
 public class SupportService {
     private static final int DEFAULT_MESSAGE_LIMIT = 80;
     private static final int MAX_MESSAGE_LIMIT = 120;
@@ -30,19 +30,23 @@ public class SupportService {
     private static final int MAX_SESSION_LIMIT = 30;
     private static final int DEFAULT_ADMIN_SESSION_PAGE_SIZE = 20;
     private static final int MAX_ADMIN_SESSION_PAGE_SIZE = 50;
+    private static final Pattern HTML_ENTITY_PATTERN = Pattern.compile(
+            "&(#(?:x[0-9a-fA-F]{1,6}|[0-9]{1,7})|lt|gt|amp|quot|apos);?",
+            Pattern.CASE_INSENSITIVE);
 
     private final SupportSessionMapper supportSessionMapper;
     private final SupportMessageMapper supportMessageMapper;
     private final RuntimeConfigService runtimeConfig;
     private final ConcurrentMap<String, RateBucket> messageRateBuckets = new ConcurrentHashMap<>();
+    private final ConcurrentMap<String, Object> sessionCreationLocks = new ConcurrentHashMap<>();
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public SupportSession getOrCreateOpenSession(Long userId) {
         SupportSession session = supportSessionMapper.findOpenByUserId(userId);
         return getOrCreateOpenSession(userId, null, session);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public SupportSession getOrCreateOpenSession(Long userId, String contextKey) {
         String normalizedContextKey = normalizeContextKey(contextKey);
         if (normalizedContextKey == null) {
@@ -69,16 +73,34 @@ public class SupportService {
         if (session != null) {
             return session;
         }
-        session = new SupportSession();
-        session.setUserId(userId);
-        session.setContextKey(contextKey);
-        session.setStatus("OPEN");
-        session.setLastMessage("");
-        session.setLastMessageAt(LocalDateTime.now());
-        session.setCreatedAt(LocalDateTime.now());
-        session.setUpdatedAt(LocalDateTime.now());
-        supportSessionMapper.insert(session);
-        return supportSessionMapper.findById(session.getId());
+        String lockKey = sessionCreationLockKey(userId, contextKey);
+        Object lock = sessionCreationLocks.computeIfAbsent(lockKey, key -> new Object());
+        try {
+            synchronized (lock) {
+                SupportSession current = contextKey == null
+                        ? supportSessionMapper.findOpenByUserId(userId)
+                        : supportSessionMapper.findOpenByUserIdAndContextKey(userId, contextKey);
+                if (current != null) {
+                    return current;
+                }
+                session = new SupportSession();
+                session.setUserId(userId);
+                session.setContextKey(contextKey);
+                session.setStatus("OPEN");
+                session.setLastMessage("");
+                session.setLastMessageAt(LocalDateTime.now());
+                session.setCreatedAt(LocalDateTime.now());
+                session.setUpdatedAt(LocalDateTime.now());
+                supportSessionMapper.insert(session);
+                return supportSessionMapper.findById(session.getId());
+            }
+        } finally {
+            sessionCreationLocks.remove(lockKey, lock);
+        }
+    }
+
+    private String sessionCreationLockKey(Long userId, String contextKey) {
+        return String.valueOf(userId) + ":" + (contextKey == null ? "" : contextKey);
     }
 
     public SupportSession getLatestSession(Long userId) {
@@ -156,12 +178,12 @@ public class SupportService {
         return supportMessageMapper.findRecentBySessionId(sessionId, normalizedLimit);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public SupportMessage sendUserMessage(Long userId, Long sessionId, String content) {
         return sendUserMessage(userId, sessionId, content, null);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public SupportMessage sendUserMessage(Long userId, Long sessionId, String content, String contextKey) {
         String normalizedContextKey = normalizeContextKey(contextKey);
         SupportSession session = null;
@@ -181,13 +203,13 @@ public class SupportService {
         return sendMessage(session.getId(), userId, "USER", content);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public SupportMessage sendAdminMessage(Long adminId, Long sessionId, String content, String senderRole) {
         requireAdminSenderRole(senderRole);
         return sendMessageInternal(sessionId, adminId, "ADMIN", content);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public SupportMessage sendMessage(Long sessionId, Long senderId, String senderRole, String content) {
         String normalizedRole = normalizeSenderRole(senderRole);
         if ("ADMIN".equals(normalizedRole)) {
@@ -301,6 +323,10 @@ public class SupportService {
                 .replaceAll("[\\p{Cntrl}&&[^\r\n\t]]", " ")
                 .trim()
                 .replaceAll("\\s+", " ");
+        normalized = neutralizeHtmlAngles(decodeHtmlEntities(normalized))
+                .replaceAll("[\\p{Cntrl}&&[^\r\n\t]]", " ")
+                .trim()
+                .replaceAll("\\s+", " ");
         int maxChars = runtimeConfig.getInt("support.message.max-chars",
                 runtimeConfig.getInt("support.websocket.max-message-chars", 1000));
         maxChars = maxChars > 0 ? maxChars : 1000;
@@ -308,6 +334,70 @@ public class SupportService {
             throw new IllegalArgumentException("Message is too long");
         }
         return normalized;
+    }
+
+    private String decodeHtmlEntities(String value) {
+        String decoded = value;
+        for (int i = 0; i < 3; i++) {
+            Matcher matcher = HTML_ENTITY_PATTERN.matcher(decoded);
+            StringBuffer buffer = new StringBuffer();
+            boolean changed = false;
+            while (matcher.find()) {
+                String replacement = decodeHtmlEntity(matcher.group(1), matcher.group());
+                if (!matcher.group().equals(replacement)) {
+                    changed = true;
+                }
+                matcher.appendReplacement(buffer, Matcher.quoteReplacement(replacement));
+            }
+            matcher.appendTail(buffer);
+            decoded = buffer.toString();
+            if (!changed) {
+                break;
+            }
+        }
+        return decoded;
+    }
+
+    private String decodeHtmlEntity(String entity, String original) {
+        String normalized = entity == null ? "" : entity.toLowerCase();
+        switch (normalized) {
+            case "lt":
+                return "<";
+            case "gt":
+                return ">";
+            case "amp":
+                return "&";
+            case "quot":
+                return "\"";
+            case "apos":
+                return "'";
+            default:
+                if (normalized.startsWith("#x")) {
+                    return codePointToString(normalized.substring(2), 16, original);
+                }
+                if (normalized.startsWith("#")) {
+                    return codePointToString(normalized.substring(1), 10, original);
+                }
+                return original;
+        }
+    }
+
+    private String codePointToString(String value, int radix, String original) {
+        try {
+            int codePoint = Integer.parseInt(value, radix);
+            if (!Character.isValidCodePoint(codePoint)
+                    || Character.isISOControl(codePoint)
+                    || (codePoint >= Character.MIN_SURROGATE && codePoint <= Character.MAX_SURROGATE)) {
+                return " ";
+            }
+            return new String(Character.toChars(codePoint));
+        } catch (RuntimeException ignored) {
+            return original;
+        }
+    }
+
+    private String neutralizeHtmlAngles(String value) {
+        return value.replace("<", "\uFF1C").replace(">", "\uFF1E");
     }
 
     private String normalizeContextKey(String contextKey) {
@@ -376,7 +466,7 @@ public class SupportService {
         messageRateBuckets.entrySet().removeIf(entry -> entry.getValue().windowStart < windowStart);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public SupportSession closeSession(Long sessionId) {
         SupportSession session = supportSessionMapper.findById(sessionId);
         if (session == null) {
@@ -388,7 +478,7 @@ public class SupportService {
         return supportSessionMapper.findById(sessionId);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public SupportSession assignSession(Long sessionId, Long adminId) {
         SupportSession session = supportSessionMapper.findById(sessionId);
         if (session == null) {
@@ -398,7 +488,7 @@ public class SupportService {
         return supportSessionMapper.findById(sessionId);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public SupportSession reopenSession(Long sessionId, Long adminId) {
         SupportSession session = supportSessionMapper.findById(sessionId);
         if (session == null) {
@@ -411,7 +501,7 @@ public class SupportService {
         return supportSessionMapper.findById(sessionId);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void markRead(Long sessionId, String role) {
         if ("ADMIN".equals(role)) {
             supportMessageMapper.markReadByAdmin(sessionId);

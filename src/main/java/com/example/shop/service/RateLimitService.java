@@ -1,9 +1,12 @@
 package com.example.shop.service;
 
-import lombok.extern.slf4j.Slf4j;
 import com.example.shop.dto.TrafficControlStatusResponse;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.Cursor;
+import org.springframework.data.redis.core.RedisCallback;
+import org.springframework.data.redis.core.ScanOptions;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
@@ -36,7 +39,7 @@ public class RateLimitService {
     private final ConcurrentMap<String, Bucket> buckets = new ConcurrentHashMap<>();
     private final AtomicLong acceptedRequests = new AtomicLong();
     private final AtomicLong rejectedRequests = new AtomicLong();
-    private Clock clock = Clock.systemUTC();
+    private volatile Clock clock = Clock.systemUTC();
 
     public RateLimitService(RuntimeConfigService runtimeConfig, ClientIpResolver clientIpResolver) {
         this(runtimeConfig, clientIpResolver, null);
@@ -129,11 +132,29 @@ public class RateLimitService {
             return;
         }
         try {
-            Set<String> keys = redis.keys(redisPrefix(config.redisKeyPrefix) + ":*");
-            if (keys != null && !keys.isEmpty()) {
-                redis.delete(keys);
-            }
-        } catch (RuntimeException ignored) {
+            int batchSize = config.redisClearScanCount;
+            redis.execute((RedisCallback<Void>) connection -> {
+                ScanOptions options = ScanOptions.scanOptions()
+                        .match(redisPrefix(config.redisKeyPrefix) + ":*")
+                        .count(batchSize)
+                        .build();
+                List<byte[]> batch = new ArrayList<>(batchSize);
+                try (Cursor<byte[]> cursor = connection.scan(options)) {
+                    while (cursor.hasNext()) {
+                        batch.add(cursor.next());
+                        if (batch.size() >= batchSize) {
+                            connection.del(batch.toArray(new byte[0][]));
+                            batch.clear();
+                        }
+                    }
+                    if (!batch.isEmpty()) {
+                        connection.del(batch.toArray(new byte[0][]));
+                    }
+                }
+                return null;
+            });
+        } catch (RuntimeException ex) {
+            log.warn("Redis rate-limit bucket clear failed; local counters were cleared", ex);
             // Local counters are already cleared; Redis errors should not block admin recovery.
         }
     }
@@ -154,10 +175,16 @@ public class RateLimitService {
                 positiveInt("traffic.rate-limit.admin-bootstrap-per-hour", 3),
                 positiveInt("traffic.rate-limit.guest-checkout-per-hour", 10),
                 positiveInt("traffic.rate-limit.search-per-minute", 30),
+                positiveInt("traffic.rate-limit.checkout-payment-per-minute", 20),
+                positiveInt("traffic.rate-limit.payment-sync-per-minute", 30),
+                positiveInt("traffic.rate-limit.payment-callback-per-minute", 60),
+                positiveInt("traffic.rate-limit.guest-order-lookup-per-minute", 20),
+                positiveInt("traffic.rate-limit.guest-order-mutation-per-minute", 10),
                 positiveInt("traffic.rate-limit.admin-order-list-per-minute", 60),
                 positiveInt("traffic.rate-limit.pet-gallery-like-per-minute", 20),
                 runtimeConfig.getBoolean("traffic.rate-limit.redis-enabled", true),
                 runtimeConfig.getString("traffic.rate-limit.redis-key-prefix", "shop:rate-limit"),
+                Math.max(10, Math.min(5000, runtimeConfig.getInt("traffic.rate-limit.redis-clear-scan-count", 500))),
                 parseCsv(runtimeConfig.getString("traffic.rate-limit.skip-path-prefixes", "/actuator/health,/actuator/info,/uploads/,/ws/"))
         );
     }
@@ -222,7 +249,8 @@ public class RateLimitService {
         if (config.redisEnabled && redis != null) {
             try {
                 return consumeRedis(redis, limitKey, now, config);
-            } catch (RuntimeException ignored) {
+            } catch (RuntimeException ex) {
+                log.warn("Redis rate-limit consume failed; local fallback remains active", ex);
                 // Local fallback keeps rate limiting active if Redis is temporarily unavailable.
             }
         }
@@ -292,6 +320,15 @@ public class RateLimitService {
         if ("GET".equals(method) && isAdminOrderListPath(path)) {
             return new EndpointLimit("GET", "admin:orders:list", config.adminOrderListPerMinute, 60);
         }
+        if ("GET".equals(method) && isGuestOrderLookupPath(path)) {
+            return new EndpointLimit("GET", "orders:guest-lookup", config.guestOrderLookupPerMinute, 60);
+        }
+        if ("POST".equals(method) && path.equals("/orders/track")) {
+            return new EndpointLimit("POST", "orders:guest-lookup", config.guestOrderLookupPerMinute, 60);
+        }
+        if ("POST".equals(method) && isGuestOrderMutationPath(path)) {
+            return new EndpointLimit("POST", "orders:guest-mutation", config.guestOrderMutationPerMinute, 60);
+        }
         if (!"POST".equals(method)) {
             return null;
         }
@@ -313,15 +350,51 @@ public class RateLimitService {
         if (path.equals("/orders/checkout/guest")) {
             return new EndpointLimit("POST", "checkout:guest", config.guestCheckoutPerHour, 3600);
         }
+        if (path.equals("/payment") || path.equals("/payments")) {
+            return new EndpointLimit("POST", "payment:create", config.checkoutPaymentPerMinute, 60);
+        }
+        if (isPaymentSyncPath(path)) {
+            return new EndpointLimit("POST", "payment:sync", config.paymentSyncPerMinute, 60);
+        }
+        if (isPaymentCallbackPath(path)) {
+            return new EndpointLimit("POST", "payment:callback", config.paymentCallbackPerMinute, 60);
+        }
         if (path.equals("/pet-gallery/{id}/like")) {
             return new EndpointLimit("POST", "pet-gallery:like", config.petGalleryLikePerMinute, 60);
         }
         return null;
     }
 
+    private boolean isPaymentSyncPath(String path) {
+        return path.equals("/payment/{id}/sync")
+                || path.equals("/payment/{orderNo}/sync")
+                || path.equals("/payments/{id}/sync")
+                || path.equals("/payments/{orderNo}/sync");
+    }
+
+    private boolean isPaymentCallbackPath(String path) {
+        return path.equals("/payment/callback")
+                || path.equals("/payments/callback")
+                || path.equals("/payment/stripe/webhook")
+                || path.equals("/payments/stripe/webhook");
+    }
+
     private boolean isAdminOrderListPath(String path) {
         return path.equals("/admin/orders")
                 || path.equals("/admin/orders/page");
+    }
+
+    private boolean isGuestOrderLookupPath(String path) {
+        return path.equals("/orders/track")
+                || (path.startsWith("/orders/guest/") && !isGuestOrderMutationPath(path));
+    }
+
+    private boolean isGuestOrderMutationPath(String path) {
+        return path.startsWith("/orders/guest/")
+                && (path.endsWith("/cancel")
+                || path.endsWith("/confirm")
+                || path.endsWith("/return")
+                || path.endsWith("/return-shipment"));
     }
 
     private String normalizePath(HttpServletRequest request) {
@@ -483,10 +556,16 @@ public class RateLimitService {
         private final int adminBootstrapPerHour;
         private final int guestCheckoutPerHour;
         private final int searchPerMinute;
+        private final int checkoutPaymentPerMinute;
+        private final int paymentSyncPerMinute;
+        private final int paymentCallbackPerMinute;
+        private final int guestOrderLookupPerMinute;
+        private final int guestOrderMutationPerMinute;
         private final int adminOrderListPerMinute;
         private final int petGalleryLikePerMinute;
         private final boolean redisEnabled;
         private final String redisKeyPrefix;
+        private final int redisClearScanCount;
         private final Set<String> skipPrefixes;
 
         private Config(boolean enabled,
@@ -503,10 +582,16 @@ public class RateLimitService {
                        int adminBootstrapPerHour,
                        int guestCheckoutPerHour,
                        int searchPerMinute,
+                       int checkoutPaymentPerMinute,
+                       int paymentSyncPerMinute,
+                       int paymentCallbackPerMinute,
+                       int guestOrderLookupPerMinute,
+                       int guestOrderMutationPerMinute,
                        int adminOrderListPerMinute,
                        int petGalleryLikePerMinute,
                        boolean redisEnabled,
                        String redisKeyPrefix,
+                       int redisClearScanCount,
                        Set<String> skipPrefixes) {
             this.enabled = enabled;
             this.publicPerMinute = publicPerMinute;
@@ -522,10 +607,16 @@ public class RateLimitService {
             this.adminBootstrapPerHour = adminBootstrapPerHour;
             this.guestCheckoutPerHour = guestCheckoutPerHour;
             this.searchPerMinute = searchPerMinute;
+            this.checkoutPaymentPerMinute = checkoutPaymentPerMinute;
+            this.paymentSyncPerMinute = paymentSyncPerMinute;
+            this.paymentCallbackPerMinute = paymentCallbackPerMinute;
+            this.guestOrderLookupPerMinute = guestOrderLookupPerMinute;
+            this.guestOrderMutationPerMinute = guestOrderMutationPerMinute;
             this.adminOrderListPerMinute = adminOrderListPerMinute;
             this.petGalleryLikePerMinute = petGalleryLikePerMinute;
             this.redisEnabled = redisEnabled;
             this.redisKeyPrefix = redisKeyPrefix;
+            this.redisClearScanCount = redisClearScanCount;
             this.skipPrefixes = skipPrefixes;
         }
 

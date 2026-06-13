@@ -10,14 +10,21 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import lombok.RequiredArgsConstructor;
+import javax.validation.Valid;
+import javax.validation.constraints.Max;
+import javax.validation.constraints.Min;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import org.springframework.validation.annotation.Validated;
 
 @RestController
 @RequestMapping("/cart")
 @RequiredArgsConstructor
+@Validated
 public class CartController {
+    private static final int MAX_CART_REQUEST_QUANTITY = 999;
+
     private final CartService cartService;
 
     @GetMapping
@@ -32,9 +39,9 @@ public class CartController {
     }
 
     @PostMapping("/add")
-    public ResponseEntity<?> addToCart(@RequestParam Long userId,
-                         @RequestParam Long productId,
-                         @RequestParam Integer quantity,
+    public ResponseEntity<?> addToCart(@RequestParam @Min(1) Long userId,
+                         @RequestParam @Min(1) Long productId,
+                         @RequestParam @Min(1) @Max(MAX_CART_REQUEST_QUANTITY) Integer quantity,
                          @RequestParam(required = false) String selectedSpecs,
                          Authentication authentication) {
         try {
@@ -47,7 +54,7 @@ public class CartController {
     }
 
     @PostMapping
-    public ResponseEntity<?> addToCart(@RequestBody(required = false) CartAddRequest request,
+    public ResponseEntity<?> addToCart(@Valid @RequestBody(required = false) CartAddRequest request,
                                        Authentication authentication) {
         if (request == null) {
             return ResponseEntity.badRequest().body(Map.of("error", "Cart item payload is required"));
@@ -62,8 +69,8 @@ public class CartController {
     }
 
     @PostMapping("/me/add")
-    public ResponseEntity<?> addToMyCart(@RequestParam Long productId,
-                         @RequestParam Integer quantity,
+    public ResponseEntity<?> addToMyCart(@RequestParam @Min(1) Long productId,
+                         @RequestParam @Min(1) @Max(MAX_CART_REQUEST_QUANTITY) Integer quantity,
                          @RequestParam(required = false) String selectedSpecs,
                          Authentication authentication) {
         try {
@@ -75,8 +82,8 @@ public class CartController {
     }
 
     @PutMapping("/update")
-    public ResponseEntity<?> updateQuantity(@RequestParam Long cartItemId,
-                             @RequestParam Integer quantity,
+    public ResponseEntity<?> updateQuantity(@RequestParam @Min(1) Long cartItemId,
+                             @RequestParam @Min(1) @Max(MAX_CART_REQUEST_QUANTITY) Integer quantity,
                              Authentication authentication) {
         try {
             CartItem item = cartService.getCartItem(cartItemId);
@@ -121,13 +128,16 @@ public class CartController {
     }
 
     @DeleteMapping("/clear")
-    public void clearCart(@RequestParam(required = false) Long userId, Authentication authentication) {
+    public ResponseEntity<Map<String, String>> clearCart(@RequestParam(required = false) Long userId,
+                                                         Authentication authentication) {
         cartService.clearCart(resolveCartUserId(userId, authentication));
+        return ResponseEntity.ok(Map.of("message", "Cart cleared"));
     }
 
     @DeleteMapping("/me/clear")
-    public void clearMyCart(Authentication authentication) {
+    public ResponseEntity<Map<String, String>> clearMyCart(Authentication authentication) {
         cartService.clearCart(SecurityUtils.requireUser(authentication).getId());
+        return ResponseEntity.ok(Map.of("message", "Cart cleared"));
     }
 
     private Long resolveCartUserId(Long requestedUserId, Authentication authentication) {

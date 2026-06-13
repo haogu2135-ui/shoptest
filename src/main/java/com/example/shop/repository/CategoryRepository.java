@@ -16,8 +16,8 @@ public interface CategoryRepository extends JpaRepository<Category, Long> {
     List<Category> findByParentId(Long parentId);
     List<Category> findByParentIdIn(List<Long> parentIds);
     List<Category> findByLevel(Integer level);
-    @Query("select c.id from Category c where lower(coalesce(c.name, '')) like concat('%', :keyword, '%')"
-            + " or lower(coalesce(c.description, '')) like concat('%', :keyword, '%')")
+    @Query("select c.id from Category c where lower(coalesce(c.name, '')) like concat('%', :keyword, '%') escape '!'"
+            + " or lower(coalesce(c.description, '')) like concat('%', :keyword, '%') escape '!'")
     List<Long> findIdsByKeyword(@Param("keyword") String keyword, Pageable pageable);
     boolean existsByParentId(Long parentId);
 } 

@@ -31,6 +31,15 @@
   overflow-x: clip;
 }
 
+.permission-management-page__alert,
+.permission-management-page__loadingState {
+  margin: 16px 0;
+}
+
+.permission-management-page__loadingState .ant-card-body {
+  min-height: 120px;
+}
+
 .permission-management-page > .ant-typography,
 .permission-management-page__guard,
 .permission-management-page .ant-btn,
@@ -99,6 +108,40 @@
 .permission-management-page__permissionGrid .ant-checkbox-wrapper {
   min-width: 0;
   margin-inline-start: 0;
+}
+
+/* F3518: keep the long role editor bounded on desktop and tablet too. */
+.permission-management-page__modal {
+  top: max(24px, env(safe-area-inset-top, 0px));
+  padding-bottom: max(24px, env(safe-area-inset-bottom, 0px));
+}
+
+.permission-management-page__modal .ant-modal-content {
+  max-height: calc(100vh - 48px);
+  max-height: calc(100dvh - 48px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+  display: flex;
+  flex-direction: column;
+}
+
+.permission-management-page__modal .ant-modal-header,
+.permission-management-page__modal .ant-modal-footer {
+  flex: 0 0 auto;
+}
+
+.permission-management-page__modal .ant-modal-body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.permission-management-page__modal .ant-modal-footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  margin-top: 0;
+  border-top: 1px solid rgba(18, 71, 52, 0.08);
+  background: rgba(255, 255, 255, 0.98);
 }
 
 @media (max-width: 720px) {

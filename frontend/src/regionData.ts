@@ -1,12 +1,10 @@
-import chinaLevelData from 'province-city-china/dist/level.min.json';
-import chinaTownData from 'province-city-china/dist/town.min.json';
-import mexicoMunicipalitiesData from './mexicoMunicipalities.json';
-
 export interface RegionOption {
   value: string;
   label: string;
   children?: RegionOption[];
 }
+
+type RegionLanguage = 'en' | 'zh' | 'es';
 
 type ChinaLevelItem = {
   c: string;
@@ -21,20 +19,37 @@ type ChinaTownItem = {
 
 type MexicoMunicipalities = Record<string, string[]>;
 
+const normalizeRegionLanguage = (language?: string): RegionLanguage => {
+  if (language === 'zh' || language === 'es') return language;
+  return 'en';
+};
+
+const localizedCountryLabels: Record<string, Record<RegionLanguage, string>> = {
+  '\u4e2d\u56fd': {
+    en: 'China',
+    zh: '\u4e2d\u56fd',
+    es: 'China',
+  },
+  '\u58a8\u897f\u54e5': {
+    en: 'Mexico',
+    zh: '\u58a8\u897f\u54e5',
+    es: 'M\u00e9xico',
+  },
+};
+
 const option = (name: string, children?: RegionOption[]): RegionOption => ({
   value: name,
   label: name,
   ...(children && children.length > 0 ? { children } : {}),
 });
 
-const townsByAreaCode = (chinaTownData as ChinaTownItem[]).reduce<Record<string, RegionOption[]>>((acc, town) => {
-  if (!acc[town.c]) acc[town.c] = [];
-  acc[town.c].push(option(town.n));
-  return acc;
-}, {});
-
-const buildChinaRegionData = (): RegionOption => {
-  const provinces = (chinaLevelData as ChinaLevelItem[]).map((province) =>
+const buildChinaRegionData = (chinaLevelData: ChinaLevelItem[], chinaTownData: ChinaTownItem[]): RegionOption => {
+  const townsByAreaCode = chinaTownData.reduce<Record<string, RegionOption[]>>((acc, town) => {
+    if (!acc[town.c]) acc[town.c] = [];
+    acc[town.c].push(option(town.n));
+    return acc;
+  }, {});
+  const provinces = chinaLevelData.map((province) =>
     option(
       province.n,
       (province.d || []).map((cityOrArea) => {
@@ -57,8 +72,8 @@ const streets = (names: string[]): RegionOption[] => names.map((name) => option(
 
 const mexicoLocalityFallback = ['Centro', 'Colonia', 'Fraccionamiento', 'Localidad'];
 
-const buildMexicoRegionData = (): RegionOption => {
-  const states = Object.entries(mexicoMunicipalitiesData as MexicoMunicipalities)
+const buildMexicoRegionData = (mexicoMunicipalitiesData: MexicoMunicipalities): RegionOption => {
+  const states = Object.entries(mexicoMunicipalitiesData)
     .sort(([stateA], [stateB]) => stateA.localeCompare(stateB, 'es-MX'))
     .map(([state, municipalities]) =>
       option(
@@ -73,17 +88,58 @@ const buildMexicoRegionData = (): RegionOption => {
   return option('\u58a8\u897f\u54e5', states);
 };
 
-export const regionData: RegionOption[] = [
-  buildChinaRegionData(),
-  buildMexicoRegionData(),
-];
+let cachedRegionData: RegionOption[] | null = null;
+let regionDataPromise: Promise<RegionOption[]> | null = null;
+let cachedLocalizedRegionData: Partial<Record<RegionLanguage, RegionOption[]>> = {};
 
-export const findRegionPath = (address: string): { region: string[]; detail: string } => {
+const localizeRegionData = (regions: RegionOption[], language?: string): RegionOption[] => {
+  const normalizedLanguage = normalizeRegionLanguage(language);
+  return regions.map((region) => ({
+    ...region,
+    label: localizedCountryLabels[region.value]?.[normalizedLanguage] || region.label,
+  }));
+};
+
+export const loadRegionData = async (language?: string): Promise<RegionOption[]> => {
+  const normalizedLanguage = normalizeRegionLanguage(language);
+  if (cachedLocalizedRegionData[normalizedLanguage]) {
+    return cachedLocalizedRegionData[normalizedLanguage];
+  }
+  if (cachedRegionData) {
+    const localizedData = localizeRegionData(cachedRegionData, normalizedLanguage);
+    cachedLocalizedRegionData[normalizedLanguage] = localizedData;
+    return localizedData;
+  }
+  if (!regionDataPromise) {
+    regionDataPromise = Promise.all([
+      import(/* webpackChunkName: "region-china-level" */ 'province-city-china/dist/level.min.json') as Promise<{ default: ChinaLevelItem[] }>,
+      import(/* webpackChunkName: "region-china-town" */ 'province-city-china/dist/town.min.json') as Promise<{ default: ChinaTownItem[] }>,
+      import(/* webpackChunkName: "region-mexico-municipalities" */ './mexicoMunicipalities.json') as Promise<{ default: MexicoMunicipalities }>,
+    ]).then(([chinaLevelModule, chinaTownModule, mexicoMunicipalitiesModule]) => {
+      const data = [
+        buildChinaRegionData(chinaLevelModule.default, chinaTownModule.default),
+        buildMexicoRegionData(mexicoMunicipalitiesModule.default),
+      ];
+      cachedRegionData = data;
+      cachedLocalizedRegionData = {};
+      return data;
+    }).catch((error) => {
+      regionDataPromise = null;
+      throw error;
+    });
+  }
+  const data = await regionDataPromise;
+  const localizedData = localizeRegionData(data, normalizedLanguage);
+  cachedLocalizedRegionData[normalizedLanguage] = localizedData;
+  return localizedData;
+};
+
+export const findRegionPath = (address: string, regions: RegionOption[] = cachedRegionData || []): { region: string[]; detail: string } => {
   const parts = address.split(' ').filter(Boolean);
 
   for (let end = Math.min(parts.length, 5); end >= 3; end -= 1) {
     const candidate = parts.slice(0, end);
-    let current = regionData;
+    let current = regions;
     let matched = true;
 
     for (const part of candidate) {

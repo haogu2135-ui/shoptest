@@ -42,6 +42,10 @@ public class Review {
     @Size(max = 1000)
     private String comment;
 
+    @Column(name = "image_urls", columnDefinition = "TEXT")
+    @Size(max = 4096)
+    private String imageUrls;
+
     @Column(nullable = false)
     @NotBlank
     @Size(max = 20)
@@ -56,6 +60,10 @@ public class Review {
 
     @Column(name = "replied_at")
     private LocalDateTime repliedAt;
+
+    @Column(name = "reported_count", nullable = false)
+    @Min(0)
+    private int reportedCount;
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
@@ -79,4 +87,4 @@ public class Review {
     protected void onCreate() {
         createdAt = LocalDateTime.now();
     }
-} 
+}

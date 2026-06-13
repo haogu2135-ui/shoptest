@@ -31,8 +31,17 @@ public interface OrderRepository {
     Order findByOrderNoAndEmail(@Param("orderNo") String orderNo,
                                 @Param("email") String email,
                                 @Param("emailLike") String emailLike);
-    List<Order> findByUserId(Long userId);
-    List<Order> findPendingPaymentBefore(@Param("cutoff") LocalDateTime cutoff);
+    List<Order> findByUserIdPage(@Param("userId") Long userId,
+                                 @Param("offset") int offset,
+                                 @Param("limit") int limit);
+    int countByUserId(@Param("userId") Long userId);
+    List<Order> findReviewableOrdersByUserAndProduct(@Param("userId") Long userId,
+                                                     @Param("productId") Long productId,
+                                                     @Param("cutoff") LocalDateTime cutoff,
+                                                     @Param("limit") int limit);
+    List<Order> findPendingPaymentBefore(@Param("cutoff") LocalDateTime cutoff,
+                                         @Param("afterId") Long afterId,
+                                         @Param("limit") int limit);
     int insert(Order order);
     int update(Order order);
     int updateStatus(@Param("id") Long id, @Param("status") String status);

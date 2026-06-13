@@ -10,6 +10,7 @@ import { localizeProduct } from '../utils/localizedProduct';
 import { productImageFallback, resolveProductImage } from '../utils/productMedia';
 import { loadFallbackProductCatalog, loadProductCatalogSnapshot, saveProductCatalogSnapshot } from '../utils/productCatalogSnapshot';
 import { getLocalStorageItem, setLocalStorageItem } from '../utils/safeStorage';
+import { reportNonBlockingError } from '../utils/nonBlockingError';
 import './PetFinder.css';
 import '../styles/mobile-page-contrast.css';
 
@@ -64,8 +65,8 @@ const loadLiveFinderProducts = async (petType: PetType, need: NeedType) => {
     if (res.data.length > 0) {
       return res.data;
     }
-  } catch {
-    // Fall back to the public catalog below when the optimized finder endpoint is unavailable.
+  } catch (error) {
+    reportNonBlockingError('PetFinder.loadOptimizedCandidates', error);
   }
   const res = await productApi.getAll();
   return res.data;
@@ -80,7 +81,8 @@ const readPreferences = () => {
       priority: (parsed.priority || 'best') as Priority,
       budget: normalizeBudget(parsed.budget),
     };
-  } catch {
+  } catch (error) {
+    reportNonBlockingError('PetFinder.readPreferences', error);
     return { petType: 'all' as PetType, need: 'all' as NeedType, priority: 'best' as Priority, budget: DEFAULT_BUDGET };
   }
 };
@@ -138,7 +140,8 @@ const PetFinder: React.FC = () => {
           setUsingCatalogFallback(fallbackProducts.length > 0);
         }
         setLoadError(false);
-      } catch {
+      } catch (error) {
+        reportNonBlockingError('PetFinder.loadProducts', error);
         if (!isCurrent) return;
         const snapshot = loadProductCatalogSnapshot();
         const fallbackProducts = snapshot?.products?.length
@@ -225,7 +228,7 @@ const PetFinder: React.FC = () => {
   return (
     <div className="pet-finder-page">
       <div className="pet-finder-page__layout">
-        <Card>
+        <Card className="pet-finder-page__finderCard">
           <Row gutter={[20, 20]} align="middle">
             <Col xs={24} md={9}>
               <Space direction="vertical" size={6}>
@@ -237,7 +240,7 @@ const PetFinder: React.FC = () => {
             </Col>
             <Col xs={24} md={15}>
               <Row gutter={[12, 12]}>
-                <Col xs={24} sm={12}>
+                <Col xs={24} sm={12} className="pet-finder-page__budgetControl">
                   <Text strong>{t('pages.petFinder.petType')}</Text>
                   <Select
                     value={petType}
@@ -380,7 +383,7 @@ const PetFinder: React.FC = () => {
           ) : matches.length === 0 ? (
             <Empty description={t('pages.petFinder.empty')} />
           ) : (
-            <Row gutter={[16, 16]}>
+            <Row gutter={[16, 16]} className="pet-finder-page__recommendationGrid">
               {matches.map(({ product, score }) => {
                 const productName = finderProductName(product);
                 const viewLabel = `${t('pages.petFinder.view')}: ${productName}`;

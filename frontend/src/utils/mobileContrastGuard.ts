@@ -2350,10 +2350,18 @@ type Rgba = {
   a: number;
 };
 
-let contrastScanTimer = 0;
-let contrastScanFrame = 0;
-let contrastMarkedElements = new Set<HTMLElement>();
-let lastMobileInteractionAt = 0;
+type MobileContrastGuardState = {
+  scanTimer: number;
+  scanFrame: number;
+  markedElements: Set<HTMLElement>;
+  lastInteractionAt: number;
+};
+
+const CONTRAST_GUARD_STATE_PROP = '__shopMobileContrastGuardState__';
+
+type MobileContrastGuardStyleElement = HTMLStyleElement & {
+  [CONTRAST_GUARD_STATE_PROP]?: MobileContrastGuardState;
+};
 
 const DARK_TEXT: Rgba = { r: 16, g: 47, b: 34, a: 1 };
 const LIGHT_TEXT: Rgba = { r: 255, g: 255, b: 255, a: 1 };
@@ -2364,12 +2372,34 @@ const nowMs = () => {
   return window.performance?.now?.() ?? Date.now();
 };
 
-const noteMobileInteraction = () => {
-  lastMobileInteractionAt = nowMs();
+const getMobileContrastGuardState = (style: HTMLStyleElement): MobileContrastGuardState => {
+  const statefulStyle = style as MobileContrastGuardStyleElement;
+  if (!statefulStyle[CONTRAST_GUARD_STATE_PROP]) {
+    statefulStyle[CONTRAST_GUARD_STATE_PROP] = {
+      scanTimer: 0,
+      scanFrame: 0,
+      markedElements: new Set<HTMLElement>(),
+      lastInteractionAt: 0,
+    };
+  }
+  return statefulStyle[CONTRAST_GUARD_STATE_PROP];
 };
 
-const shouldDelayContrastScan = () => (
-  isBrowser() && nowMs() - lastMobileInteractionAt < CONTRAST_SCROLL_QUIET_MS
+const readMobileContrastGuardState = () => {
+  if (!isBrowser()) return null;
+  const style = document.getElementById(STYLE_ID);
+  return style instanceof HTMLStyleElement ? getMobileContrastGuardState(style) : null;
+};
+
+const noteMobileInteraction = () => {
+  const state = readMobileContrastGuardState();
+  if (state) {
+    state.lastInteractionAt = nowMs();
+  }
+};
+
+const shouldDelayContrastScan = (state: MobileContrastGuardState) => (
+  isBrowser() && nowMs() - state.lastInteractionAt < CONTRAST_SCROLL_QUIET_MS
 );
 
 const clampChannel = (value: number) => Math.max(0, Math.min(255, value));
@@ -2607,7 +2637,7 @@ const scanRootForContrast = (
   }
 };
 
-const applyMobileContrastFixes = () => {
+const applyMobileContrastFixes = (state: MobileContrastGuardState) => {
   if (!isBrowser() || !document.body?.classList.contains('shop-mobile-app')) return;
   const roots = Array.from(document.querySelectorAll(MOBILE_SHELL_ROOT_SELECTOR));
   if (!roots.length) return;
@@ -2624,37 +2654,42 @@ const applyMobileContrastFixes = () => {
     }
   });
 
-  contrastMarkedElements.forEach((element) => {
+  state.markedElements.forEach((element) => {
     if (!nextMarkedElements.has(element)) {
       element.removeAttribute(CONTRAST_TEXT_ATTRIBUTE);
     }
   });
-  contrastMarkedElements = nextMarkedElements;
+  state.markedElements = nextMarkedElements;
 };
 
 const cancelMobileContrastScan = () => {
   if (!isBrowser()) return;
-  if (contrastScanTimer) {
-    window.clearTimeout(contrastScanTimer);
-    contrastScanTimer = 0;
+  const state = readMobileContrastGuardState();
+  if (!state) return;
+  if (state.scanTimer) {
+    window.clearTimeout(state.scanTimer);
+    state.scanTimer = 0;
   }
-  if (contrastScanFrame) {
-    window.cancelAnimationFrame(contrastScanFrame);
-    contrastScanFrame = 0;
+  if (state.scanFrame) {
+    window.cancelAnimationFrame(state.scanFrame);
+    state.scanFrame = 0;
   }
 };
 
 const scheduleMobileContrastScan = (delayMs = CONTRAST_SCAN_DELAY_MS) => {
-  if (!isBrowser() || contrastScanTimer || contrastScanFrame) return;
-  contrastScanTimer = window.setTimeout(() => {
-    contrastScanTimer = 0;
-    if (shouldDelayContrastScan()) {
+  const state = readMobileContrastGuardState();
+  if (!isBrowser() || !state || state.scanTimer || state.scanFrame) return;
+  state.scanTimer = window.setTimeout(() => {
+    state.scanTimer = 0;
+    if (readMobileContrastGuardState() !== state) return;
+    if (shouldDelayContrastScan(state)) {
       scheduleMobileContrastScan(CONTRAST_SCROLL_QUIET_MS);
       return;
     }
-    contrastScanFrame = window.requestAnimationFrame(() => {
-      contrastScanFrame = 0;
-      applyMobileContrastFixes();
+    state.scanFrame = window.requestAnimationFrame(() => {
+      state.scanFrame = 0;
+      if (readMobileContrastGuardState() !== state) return;
+      applyMobileContrastFixes(state);
     });
   }, delayMs);
 };
@@ -2667,6 +2702,7 @@ export const refreshMobileContrastGuard = () => {
     style.id = STYLE_ID;
     style.setAttribute('data-shop-mobile-contrast', 'true');
   }
+  getMobileContrastGuardState(style);
   if (style.textContent !== CONTRAST_GUARD_CSS) {
     style.textContent = CONTRAST_GUARD_CSS;
   }

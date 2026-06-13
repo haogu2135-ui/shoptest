@@ -1,3 +1,5 @@
+import { reportNonBlockingError } from './nonBlockingError';
+
 export const dispatchDomEvent = (eventName: string, detail?: unknown) => {
   if (typeof window === 'undefined') return false;
 
@@ -6,7 +8,8 @@ export const dispatchDomEvent = (eventName: string, detail?: unknown) => {
       ? new Event(eventName)
       : new CustomEvent(eventName, { detail });
     return window.dispatchEvent(event);
-  } catch {
+  } catch (error) {
+    reportNonBlockingError('domEvents.dispatchDomEvent.primary', error);
     try {
       if (detail !== undefined) {
         const event = document.createEvent('CustomEvent');
@@ -16,7 +19,8 @@ export const dispatchDomEvent = (eventName: string, detail?: unknown) => {
       const event = document.createEvent('Event');
       event.initEvent(eventName, true, true);
       return window.dispatchEvent(event);
-    } catch {
+    } catch (fallbackError) {
+      reportNonBlockingError('domEvents.dispatchDomEvent.fallback', fallbackError);
       return false;
     }
   }

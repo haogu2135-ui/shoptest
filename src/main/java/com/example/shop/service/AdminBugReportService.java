@@ -1,6 +1,5 @@
 package com.example.shop.service;
 
-import lombok.extern.slf4j.Slf4j;
 import com.example.shop.dto.AdminBugReportPageResponse;
 import com.example.shop.dto.AdminBugReportRequest;
 import com.example.shop.dto.AdminBugReportStatusRequest;
@@ -28,7 +27,6 @@ import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
-@Slf4j
 public class AdminBugReportService {
     public static final String STATUS_OPEN = "OPEN";
     public static final String STATUS_FIXING = "FIXING";
@@ -73,10 +71,17 @@ public class AdminBugReportService {
             STATUS_REGRESSION_FAILED, Set.of(STATUS_REGRESSION_FAILED, STATUS_FIXING, STATUS_NON_ISSUE),
             STATUS_CLOSED, Set.of(STATUS_CLOSED, STATUS_OPEN),
             STATUS_NON_ISSUE, Set.of(STATUS_NON_ISSUE, STATUS_OPEN));
+    private static final String BUG_LIST_COLUMNS = "id, title, module, severity, priority, status, page_url, "
+            + "reporter_name, assigned_to, last_scanned_at, fixed_at, fixed_by, regression_at, regression_by, "
+            + "closed_at, created_at, updated_at";
+    private static final String BUG_DETAIL_COLUMNS = "id, title, description, module, severity, priority, status, "
+            + "page_url, environment, reproduction_steps, expected_result, actual_result, attachment_urls, "
+            + "reporter_id, reporter_name, assigned_to, scan_note, fix_summary, regression_note, last_scanned_at, "
+            + "fixed_at, fixed_by, regression_at, regression_by, closed_at, created_at, updated_at";
 
     private final JdbcTemplate jdbcTemplate;
 
-    @Transactional(readOnly = true)
+    @Transactional(rollbackFor = Exception.class, readOnly = true)
     public AdminBugReportPageResponse search(int page,
                                              int size,
                                              String status,
@@ -85,53 +90,71 @@ public class AdminBugReportService {
                                              String keyword,
                                              boolean scanQueueOnly) {
         int safeSize = clamp(size <= 0 ? DEFAULT_PAGE_SIZE : size, 1, MAX_PAGE_SIZE);
-        int safePage = Math.max(1, page);
+        int safePage = Math.max(0, page);
         Filter filter = buildFilter(status, severity, module, keyword, scanQueueOnly);
         long total = count(filter);
         int totalPages = total <= 0 ? 0 : (int) Math.ceil((double) total / safeSize);
-        if (totalPages > 0 && safePage > totalPages) {
-            safePage = totalPages;
+        if (totalPages > 0 && safePage >= totalPages) {
+            safePage = totalPages - 1;
         }
-        int offset = Math.max(0, (safePage - 1) * safeSize);
+        int offset = safePage * safeSize;
         List<Object> args = new ArrayList<>(filter.args);
         args.add(safeSize);
         args.add(offset);
         List<AdminBugReport> items = jdbcTemplate.query(
-                "SELECT * FROM admin_bug_reports "
+                "SELECT " + BUG_LIST_COLUMNS + " FROM admin_bug_reports "
                         + filter.where
                         + " ORDER BY CASE WHEN status IN ('OPEN','REGRESSION_FAILED') THEN 0 "
                         + "WHEN status = 'FIXING' THEN 1 "
                         + "WHEN status = 'FIXED_PENDING_REGRESSION' THEN 2 ELSE 3 END, "
                         + "updated_at DESC, id DESC LIMIT ? OFFSET ?",
-                mapper(),
+                listMapper(),
                 args.toArray());
         return AdminBugReportPageResponse.of(items, total, safePage, safeSize);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional(rollbackFor = Exception.class, readOnly = true)
     public AdminBugReportSummaryResponse summary() {
         LocalDateTime now = LocalDateTime.now();
+        Map<String, Object> counts = jdbcTemplate.queryForMap(
+                "SELECT "
+                        + "COUNT(*) AS total_bugs, "
+                        + "SUM(CASE WHEN status = 'OPEN' THEN 1 ELSE 0 END) AS open_count, "
+                        + "SUM(CASE WHEN status = 'FIXING' THEN 1 ELSE 0 END) AS fixing_count, "
+                        + "SUM(CASE WHEN status = 'FIXED_PENDING_REGRESSION' THEN 1 ELSE 0 END) AS fixed_pending_regression_count, "
+                        + "SUM(CASE WHEN status = 'REGRESSION_PASSED' THEN 1 ELSE 0 END) AS regression_passed_count, "
+                        + "SUM(CASE WHEN status = 'REGRESSION_FAILED' THEN 1 ELSE 0 END) AS regression_failed_count, "
+                        + "SUM(CASE WHEN status = 'CLOSED' THEN 1 ELSE 0 END) AS closed_count, "
+                        + "SUM(CASE WHEN status = 'NON_ISSUE' THEN 1 ELSE 0 END) AS non_issue_count, "
+                        + "SUM(CASE WHEN status IN ('OPEN','FIXING','REGRESSION_FAILED') "
+                        + "AND (last_scanned_at IS NULL OR last_scanned_at <= ?) THEN 1 ELSE 0 END) AS due_for_scan_count, "
+                        + "SUM(CASE WHEN severity = 'LOW' THEN 1 ELSE 0 END) AS low_count, "
+                        + "SUM(CASE WHEN severity = 'MEDIUM' THEN 1 ELSE 0 END) AS medium_count, "
+                        + "SUM(CASE WHEN severity = 'HIGH' THEN 1 ELSE 0 END) AS high_count, "
+                        + "SUM(CASE WHEN severity = 'CRITICAL' THEN 1 ELSE 0 END) AS critical_count "
+                        + "FROM admin_bug_reports",
+                now.minusMinutes(SCAN_INTERVAL_MINUTES));
         AdminBugReportSummaryResponse response = new AdminBugReportSummaryResponse();
-        response.setTotalBugs(countByStatus(null));
-        response.setOpenCount(countByStatus(STATUS_OPEN));
-        response.setFixingCount(countByStatus(STATUS_FIXING));
-        response.setFixedPendingRegressionCount(countByStatus(STATUS_FIXED_PENDING_REGRESSION));
-        response.setRegressionPassedCount(countByStatus(STATUS_REGRESSION_PASSED));
-        response.setRegressionFailedCount(countByStatus(STATUS_REGRESSION_FAILED));
-        response.setClosedCount(countByStatus(STATUS_CLOSED));
-        response.setDueForScanCount(countDueForScan());
+        response.setTotalBugs(longValue(counts, "total_bugs"));
+        response.setOpenCount(longValue(counts, "open_count"));
+        response.setFixingCount(longValue(counts, "fixing_count"));
+        response.setFixedPendingRegressionCount(longValue(counts, "fixed_pending_regression_count"));
+        response.setRegressionPassedCount(longValue(counts, "regression_passed_count"));
+        response.setRegressionFailedCount(longValue(counts, "regression_failed_count"));
+        response.setClosedCount(longValue(counts, "closed_count"));
+        response.setDueForScanCount(longValue(counts, "due_for_scan_count"));
         response.setScanIntervalMinutes(SCAN_INTERVAL_MINUTES);
         response.setNextScanAt(now.plusMinutes(SCAN_INTERVAL_MINUTES));
         response.setCheckedAt(now);
-        response.setByStatus(groupCount("status"));
-        response.setBySeverity(groupCount("severity"));
+        response.setByStatus(statusCounts(counts));
+        response.setBySeverity(severityCounts(counts));
         return response;
     }
 
-    @Transactional(readOnly = true)
+    @Transactional(rollbackFor = Exception.class, readOnly = true)
     public AdminBugReport findById(Long id) {
         List<AdminBugReport> bugs = jdbcTemplate.query(
-                "SELECT * FROM admin_bug_reports WHERE id = ?",
+                "SELECT " + BUG_DETAIL_COLUMNS + " FROM admin_bug_reports WHERE id = ?",
                 mapper(),
                 id);
         if (bugs.isEmpty()) {
@@ -140,7 +163,7 @@ public class AdminBugReportService {
         return bugs.get(0);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public AdminBugReport create(AdminBugReportRequest request, Long reporterId, String reporterName) {
         if (request == null) {
             throw new IllegalArgumentException("Bug payload is required");
@@ -183,7 +206,7 @@ public class AdminBugReportService {
         return findById(id == null ? 0L : id.longValue());
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public AdminBugReport update(Long id, AdminBugReportRequest request, String actor) {
         if (request == null) {
             throw new IllegalArgumentException("Bug payload is required");
@@ -238,7 +261,7 @@ public class AdminBugReportService {
         return findById(id);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public AdminBugReport updateStatus(Long id, AdminBugReportStatusRequest request, String actor) {
         if (request == null) {
             throw new IllegalArgumentException("Status payload is required");
@@ -286,7 +309,7 @@ public class AdminBugReportService {
         return findById(id);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public AdminBugReport markScanned(Long id, AdminBugReportStatusRequest request, String actor) {
         AdminBugReport existing = findById(id);
         String scanNote = mergeNote(existing.getScanNote(), request == null ? null : request.getScanNote(),
@@ -366,23 +389,6 @@ public class AdminBugReportService {
         return count == null ? 0L : count;
     }
 
-    private long countByStatus(String status) {
-        Long count = status == null
-                ? jdbcTemplate.queryForObject("SELECT COUNT(*) FROM admin_bug_reports", Long.class)
-                : jdbcTemplate.queryForObject("SELECT COUNT(*) FROM admin_bug_reports WHERE status = ?", Long.class, status);
-        return count == null ? 0L : count;
-    }
-
-    private long countDueForScan() {
-        Long count = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM admin_bug_reports "
-                        + "WHERE status IN ('OPEN','FIXING','REGRESSION_FAILED') "
-                        + "AND (last_scanned_at IS NULL OR last_scanned_at <= ?)",
-                Long.class,
-                LocalDateTime.now().minusMinutes(SCAN_INTERVAL_MINUTES));
-        return count == null ? 0L : count;
-    }
-
     private Map<String, Long> groupCount(String column) {
         String safeColumn = GROUP_COUNT_COLUMNS.get(column);
         if (safeColumn == null) {
@@ -393,6 +399,32 @@ public class AdminBugReportService {
                         "SELECT " + safeColumn + " AS k, COUNT(*) AS total FROM admin_bug_reports GROUP BY " + safeColumn + " ORDER BY total DESC")
                 .forEach(row -> result.put(String.valueOf(row.get("k")), ((Number) row.get("total")).longValue()));
         return result;
+    }
+
+    private Map<String, Long> statusCounts(Map<String, Object> counts) {
+        Map<String, Long> result = new LinkedHashMap<>();
+        result.put(STATUS_OPEN, longValue(counts, "open_count"));
+        result.put(STATUS_FIXING, longValue(counts, "fixing_count"));
+        result.put(STATUS_FIXED_PENDING_REGRESSION, longValue(counts, "fixed_pending_regression_count"));
+        result.put(STATUS_REGRESSION_PASSED, longValue(counts, "regression_passed_count"));
+        result.put(STATUS_REGRESSION_FAILED, longValue(counts, "regression_failed_count"));
+        result.put(STATUS_CLOSED, longValue(counts, "closed_count"));
+        result.put(STATUS_NON_ISSUE, longValue(counts, "non_issue_count"));
+        return result;
+    }
+
+    private Map<String, Long> severityCounts(Map<String, Object> counts) {
+        Map<String, Long> result = new LinkedHashMap<>();
+        result.put("LOW", longValue(counts, "low_count"));
+        result.put("MEDIUM", longValue(counts, "medium_count"));
+        result.put("HIGH", longValue(counts, "high_count"));
+        result.put("CRITICAL", longValue(counts, "critical_count"));
+        return result;
+    }
+
+    private long longValue(Map<String, Object> row, String key) {
+        Object value = row.get(key);
+        return value instanceof Number ? ((Number) value).longValue() : 0L;
     }
 
     private NormalizedBug normalizeCreate(AdminBugReportRequest request) {
@@ -497,8 +529,8 @@ public class AdminBugReportService {
                     && ("http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme))) {
                 return;
             }
-        } catch (Exception ignored) {
-            // Fall through to the normalized error below.
+        } catch (Exception ex) {
+            throw new IllegalArgumentException(message, ex);
         }
         throw new IllegalArgumentException(message);
     }
@@ -626,7 +658,15 @@ public class AdminBugReportService {
         if (note == null) {
             return current;
         }
-        return note;
+        String existing = optionalMultilineText(current, max, null);
+        if (existing == null) {
+            return note;
+        }
+        if (existing.equals(note)) {
+            return existing;
+        }
+        String merged = existing + "\n\n" + note;
+        return merged.length() > max ? merged.substring(merged.length() - max).trim() : merged;
     }
 
     private void validateStatusTransition(String previousStatus, String nextStatus) {
@@ -710,6 +750,30 @@ public class AdminBugReportService {
             bug.setScanNote(rs.getString("scan_note"));
             bug.setFixSummary(rs.getString("fix_summary"));
             bug.setRegressionNote(rs.getString("regression_note"));
+            bug.setLastScannedAt(toLocalDateTime(rs.getTimestamp("last_scanned_at")));
+            bug.setFixedAt(toLocalDateTime(rs.getTimestamp("fixed_at")));
+            bug.setFixedBy(rs.getString("fixed_by"));
+            bug.setRegressionAt(toLocalDateTime(rs.getTimestamp("regression_at")));
+            bug.setRegressionBy(rs.getString("regression_by"));
+            bug.setClosedAt(toLocalDateTime(rs.getTimestamp("closed_at")));
+            bug.setCreatedAt(toLocalDateTime(rs.getTimestamp("created_at")));
+            bug.setUpdatedAt(toLocalDateTime(rs.getTimestamp("updated_at")));
+            return bug;
+        };
+    }
+
+    private RowMapper<AdminBugReport> listMapper() {
+        return (rs, rowNum) -> {
+            AdminBugReport bug = new AdminBugReport();
+            bug.setId(rs.getLong("id"));
+            bug.setTitle(rs.getString("title"));
+            bug.setModule(rs.getString("module"));
+            bug.setSeverity(rs.getString("severity"));
+            bug.setPriority(rs.getString("priority"));
+            bug.setStatus(rs.getString("status"));
+            bug.setPageUrl(rs.getString("page_url"));
+            bug.setReporterName(rs.getString("reporter_name"));
+            bug.setAssignedTo(rs.getString("assigned_to"));
             bug.setLastScannedAt(toLocalDateTime(rs.getTimestamp("last_scanned_at")));
             bug.setFixedAt(toLocalDateTime(rs.getTimestamp("fixed_at")));
             bug.setFixedBy(rs.getString("fixed_by"));

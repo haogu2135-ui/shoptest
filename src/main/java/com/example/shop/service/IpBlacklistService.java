@@ -1,11 +1,11 @@
 package com.example.shop.service;
 
-import lombok.extern.slf4j.Slf4j;
 import com.example.shop.dto.IpBlacklistBatchReleaseResponse;
 import com.example.shop.dto.IpBlacklistStatusResponse;
 import com.example.shop.entity.IpBlacklistEntry;
 import com.example.shop.util.SensitiveDataMasker;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
@@ -333,7 +333,8 @@ public class IpBlacklistService {
             }
             try {
                 upsertLoginFailureSnapshot(normalizedIp, snapshot);
-            } catch (RuntimeException ignored) {
+            } catch (RuntimeException ex) {
+                log.debug("Legacy login failure sync skipped for {}", normalizedIp, ex);
                 // Keep the admin list available even if an old table still needs schema hardening.
             }
         }
@@ -392,7 +393,8 @@ public class IpBlacklistService {
                     .stream()
                     .filter(ip -> !isBlank(ip))
                     .collect(Collectors.toSet());
-        } catch (RuntimeException ignored) {
+        } catch (RuntimeException ex) {
+            log.debug("Active login IP lookup failed while merging legacy login failures", ex);
             return Set.of();
         }
     }
@@ -457,7 +459,8 @@ public class IpBlacklistService {
         try {
             List<TokenBlacklistService.LoginIpFailureSnapshot> snapshots = tokenBlacklistService.findLoginIpFailures();
             return snapshots == null ? List.of() : snapshots;
-        } catch (RuntimeException ignored) {
+        } catch (RuntimeException ex) {
+            log.debug("Legacy login failure lookup skipped", ex);
             return List.of();
         }
     }
@@ -532,7 +535,8 @@ public class IpBlacklistService {
                             + "WHERE status = ? AND blocked_until IS NOT NULL AND blocked_until <= NOW()",
                     STATUS_RELEASED,
                     STATUS_BLOCKED);
-        } catch (RuntimeException ignored) {
+        } catch (RuntimeException ex) {
+            log.debug("Expired IP blacklist release skipped", ex);
             // Older deployments may need the startup schema hardening to add these columns first.
         }
     }

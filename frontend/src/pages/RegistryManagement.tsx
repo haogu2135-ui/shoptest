@@ -18,15 +18,19 @@ const RegistryManagement: React.FC = () => {
   const { t, language } = useLanguage();
   const [status, setStatus] = useState<AdminRegistryStatus | null>(null);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [serviceKeyword, setServiceKeyword] = useState('');
 
   const loadStatus = useCallback(async () => {
     setLoading(true);
     try {
+      setLoadError(null);
       const response = await adminApi.getRegistryStatus();
       setStatus(response.data);
     } catch (error: unknown) {
-      message.error(getApiErrorMessage(error, t('pages.registryAdmin.loadFailed'), language));
+      const errorMessage = getApiErrorMessage(error, t('pages.registryAdmin.loadFailed'), language);
+      setLoadError(errorMessage);
+      message.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -71,8 +75,23 @@ const RegistryManagement: React.FC = () => {
         </Button>
       </div>
 
+      {loadError ? (
+        <Alert
+          className="registry-management__alert"
+          type="warning"
+          showIcon
+          message={loadError}
+          description={status ? t('pages.registryAdmin.staleDataWarning') : undefined}
+          action={(
+            <Button size="small" onClick={loadStatus} loading={loading}>
+              {t('common.retry')}
+            </Button>
+          )}
+        />
+      ) : null}
+
       <Spin spinning={loading && !status}>
-        <div className="registry-management__stats">
+        {loadError && !status ? null : <div className="registry-management__stats">
           <Card>
             <Statistic title={t('pages.registryAdmin.serviceName')} value={status?.applicationName || '-'} prefix={<ApiOutlined />} />
           </Card>
@@ -90,7 +109,7 @@ const RegistryManagement: React.FC = () => {
           <Card>
             <Statistic title={t('pages.registryAdmin.currentInstances')} value={status?.instanceCount || status?.instances?.length || 0} prefix={<CloudServerOutlined />} />
           </Card>
-        </div>
+        </div>}
 
         {status ? (
           <>
@@ -231,7 +250,7 @@ const RegistryManagement: React.FC = () => {
               />
             </Card>
           </>
-        ) : (
+        ) : loadError ? null : (
           <Empty description={t('pages.registryAdmin.noStatus')} />
         )}
       </Spin>

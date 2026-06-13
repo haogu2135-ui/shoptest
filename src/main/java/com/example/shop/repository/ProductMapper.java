@@ -7,11 +7,10 @@ import java.util.List;
 
 @Mapper
 public interface ProductMapper {
-    List<Product> findAll();
     Product findById(Long id);
     List<Product> findByCategory(Long categoryId);
     int insert(Product product);
     int update(Product product);
     int deleteById(Long id);
     int decreaseStock(@Param("productId") Long productId, @Param("quantity") int quantity);
-} 
+}

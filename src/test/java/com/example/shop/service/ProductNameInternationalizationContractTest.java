@@ -43,7 +43,7 @@ class ProductNameInternationalizationContractTest {
         assertEquals(INTERNATIONAL_NAME,
                 invokeStringMethod(service, "normalizeDirectText",
                         new Class<?>[] {String.class, String.class, int.class, boolean.class},
-                        input, "name", 180, true));
+                        input, "name", 200, true));
     }
 
     @Test

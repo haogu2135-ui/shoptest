@@ -9,6 +9,7 @@ import com.example.shop.service.AdminRoleService;
 import com.example.shop.service.ConfigCenterService;
 import com.example.shop.service.SecurityAuditLogService;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -22,6 +23,7 @@ import javax.servlet.http.HttpServletRequest;
 
 @RestController
 @RequestMapping("/admin/config-center")
+@PreAuthorize("hasRole('ADMIN')")
 public class AdminConfigCenterController {
     private final ConfigCenterService configCenterService;
     private final SecurityAuditLogService auditLogService;

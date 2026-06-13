@@ -15,14 +15,12 @@ public interface UserMapper {
     User findByPhone(String phone);
     User findByUsernameOrPhone(@Param("login") String login);
     User findByUsernameOrPhoneOrEmail(@Param("login") String login);
-    List<User> findAll();
     long countAll();
     Long acquireAdminBootstrapLock();
     Long releaseAdminBootstrapLock();
     long countAdminUsers();
     List<Long> findExistingIds(@Param("ids") List<Long> ids);
     List<Long> findActiveCustomerIdsAfter(@Param("lastId") long lastId, @Param("limit") int limit);
-    List<User> search(@Param("keyword") String keyword, @Param("role") String role, @Param("status") String status);
     long countSearch(@Param("keyword") String keyword, @Param("role") String role, @Param("status") String status);
     List<User> searchPage(@Param("keyword") String keyword, @Param("role") String role, @Param("status") String status,
                           @Param("limit") int limit, @Param("offset") int offset);

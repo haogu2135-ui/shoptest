@@ -1276,3 +1276,126 @@
     white-space: normal;
   }
 }
+
+/* Android UI closure: product cards and signal chips keep usable tap targets. */
+@media (max-width: 780px) {
+  .pet-finder-page .ant-card-extra .ant-btn,
+  .pet-finder-page__searchAllButton.ant-btn,
+  .pet-finder-page__productCard .ant-card-actions,
+  .pet-finder-page__productCard .ant-card-actions .ant-btn,
+  .pet-finder-page__productCard .ant-btn,
+  .pet-finder-page__nextStepActions .ant-btn,
+  .pet-finder-page__signal {
+    min-height: 44px !important;
+    height: auto !important;
+    max-height: none !important;
+  }
+
+  .pet-finder-page__productCard .ant-card-actions .ant-btn {
+    width: 44px !important;
+    min-width: 44px !important;
+    height: 44px !important;
+  }
+
+  .pet-finder-page__productCard .ant-tag,
+  .pet-finder-page__productCard .ant-typography,
+  .pet-finder-page__signal span,
+  .pet-finder-page__signal strong,
+  .pet-finder-page__nextStepMeta .ant-tag {
+    font-size: max(12px, 1em) !important;
+    line-height: 1.25 !important;
+  }
+}
+
+/* 2026-06 APP all-route audit: product cards need full-width, readable actions
+   in the native WebView after this lazy stylesheet loads. */
+@media (max-width: 780px) {
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .pet-finder-page {
+    overflow-x: clip !important;
+    padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 74px) + 130px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .pet-finder-page__productCard .ant-card-actions {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    min-height: 54px !important;
+    overflow: visible !important;
+  }
+
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .pet-finder-page__productCard .ant-card-actions > li,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .pet-finder-page__productCard .ant-card-actions > li > span {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    min-height: 44px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 4px !important;
+  }
+
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .pet-finder-page__productCard .ant-card-actions .ant-btn,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .pet-finder-page__productCard .ant-btn {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    height: auto !important;
+    min-height: 44px !important;
+    padding: 8px !important;
+    white-space: normal !important;
+  }
+
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .pet-finder-page__productCard .ant-card-actions .ant-btn > span:not(.anticon):not(.ant-btn-icon) {
+    min-width: 0 !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    white-space: normal !important;
+    overflow-wrap: anywhere !important;
+  }
+}
+
+/* F2758: reserve bottom-nav clearance for the first finder budget controls. */
+@media (max-width: 780px), (max-height: 480px) {
+  .pet-finder-page {
+    padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 76px) + 136px + env(safe-area-inset-bottom, 0px)) !important;
+    scroll-padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 76px) + 96px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .pet-finder-page__finderCard {
+    margin-bottom: calc(var(--shop-mobile-bottom-nav-height, 76px) + 18px + env(safe-area-inset-bottom, 0px));
+    scroll-margin-bottom: calc(var(--shop-mobile-bottom-nav-height, 76px) + 24px + env(safe-area-inset-bottom, 0px));
+    overflow: visible !important;
+  }
+
+  .pet-finder-page__finderCard > .ant-card-body {
+    padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .pet-finder-page__budgetControl {
+    padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 76px) + 14px + env(safe-area-inset-bottom, 0px));
+    scroll-margin-bottom: calc(var(--shop-mobile-bottom-nav-height, 76px) + 28px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .pet-finder-page__budgetControl .ant-slider {
+    min-height: 44px;
+    margin-bottom: 18px;
+  }
+
+  .pet-finder-page__budgetControl .commerce-atomic {
+    display: flex;
+    width: fit-content;
+    max-width: 100%;
+    margin-top: 8px;
+  }
+
+  body:has(.pet-finder-page) .shop-nav__bottomBar {
+    position: fixed !important;
+    right: max(8px, env(safe-area-inset-right, 0px));
+    bottom: max(10px, env(safe-area-inset-bottom, 0px));
+    left: max(8px, env(safe-area-inset-left, 0px));
+    z-index: 1250;
+    width: auto;
+    max-width: calc(100vw - 16px);
+    margin: 0;
+  }
+}

@@ -21,14 +21,18 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -47,6 +51,33 @@ class PaymentControllerSimulationAccessTest {
             mock(IpBlacklistService.class),
             adminRoleService
     );
+
+    @Test
+    void genericPaymentCallbackContractDoesNotExposeInternalHeaderOrUnsignedProviderSubroutes() throws Exception {
+        String controllerSource = Files.readString(Path.of("src/main/java/com/example/shop/controller/PaymentController.java"));
+        String securitySource = Files.readString(Path.of("src/main/java/com/example/shop/config/SecurityConfig.java"));
+        String requestSource = Files.readString(Path.of("src/main/java/com/example/shop/dto/PaymentCallbackRequest.java"));
+        String serviceSource = Files.readString(Path.of("src/main/java/com/example/shop/service/PaymentService.java"));
+
+        assertTrue(controllerSource.contains("@PostMapping(\"/callback\")"));
+        assertTrue(controllerSource.contains("paymentService.handleCallback(request)"));
+        assertTrue(requestSource.contains("@NotBlank\n    private String signature;"));
+        assertTrue(serviceSource.contains("assertProductionCallbackSecretConfigured();"));
+        assertTrue(serviceSource.contains("if (!verifySignature(request))"));
+        assertTrue(serviceSource.contains("MessageDigest.isEqual(expected, actual)"));
+        assertTrue(serviceSource.contains("validateCallbackFreshness(callbackAt)"));
+
+        String callbackSurface = controllerSource + "\n" + securitySource + "\n" + serviceSource;
+        assertFalse(callbackSurface.contains("X-Internal-Call"));
+        assertFalse(callbackSurface.contains("@PostMapping(\"/callback/{code}"));
+        assertFalse(callbackSurface.contains("@PostMapping(\"/callback/{channel}"));
+        assertFalse(callbackSurface.contains("/payments/callback/*/success"));
+        assertFalse(callbackSurface.contains("/payments/callback/*/notify"));
+        assertFalse(callbackSurface.contains("/payments/callback/*/cancel"));
+        assertFalse(callbackSurface.contains("/payment/callback/*/success"));
+        assertFalse(callbackSurface.contains("/payment/callback/*/notify"));
+        assertFalse(callbackSurface.contains("/payment/callback/*/cancel"));
+    }
 
     @Test
     void adminCanUseEnabledSimulation() {
@@ -202,6 +233,49 @@ class PaymentControllerSimulationAccessTest {
         ));
     }
 
+    @Test
+    void anonymousGuestOrderCannotCreatePaymentWithoutEmailAndOrderNumber() {
+        Order order = guestOrder();
+        com.example.shop.dto.PaymentCreateRequest request = new com.example.shop.dto.PaymentCreateRequest();
+        request.setOrderId(42L);
+        request.setChannel("STRIPE");
+
+        when(orderService.getOrderById(42L)).thenReturn(order);
+
+        assertThrows(ResponseStatusException.class, () -> controller.createPayment(
+                request,
+                null,
+                new MockHttpServletRequest("POST", "/payments")
+        ));
+        verify(paymentService, never()).createPayment(request);
+    }
+
+    @Test
+    void anonymousGuestOrderCanCreatePaymentWhenEmailAndOrderNumberMatch() {
+        Order order = guestOrder();
+        com.example.shop.dto.PaymentCreateRequest request = new com.example.shop.dto.PaymentCreateRequest();
+        request.setOrderId(42L);
+        request.setOrderNo("SO202605260001");
+        request.setGuestEmail("mia@example.com");
+        request.setChannel("STRIPE");
+        Payment payment = new Payment();
+        payment.setId(9L);
+        payment.setOrderId(42L);
+
+        when(orderService.getOrderById(42L)).thenReturn(order);
+        when(orderService.guestOrderAccessMatches(order, "mia@example.com", "SO202605260001")).thenReturn(true);
+        when(paymentService.createPayment(request)).thenReturn(payment);
+
+        ResponseEntity<?> response = controller.createPayment(
+                request,
+                null,
+                new MockHttpServletRequest("POST", "/payments")
+        );
+
+        assertEquals(200, response.getStatusCodeValue());
+        verify(paymentService).createPayment(request);
+    }
+
     private Authentication adminAuthentication() {
         UserDetailsImpl principal = new UserDetailsImpl(
                 1L,
@@ -227,5 +301,14 @@ class PaymentControllerSimulationAccessTest {
                 "encoded-password",
                 List.of(new SimpleGrantedAuthority("ROLE_USER")));
         return new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities());
+    }
+
+    private Order guestOrder() {
+        Order order = new Order();
+        order.setId(42L);
+        order.setOrderNo("SO202605260001");
+        order.setGuestOrder(true);
+        order.setContactEmail("mia@example.com");
+        return order;
     }
 }

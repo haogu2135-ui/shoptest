@@ -55,6 +55,12 @@ public class CartItem implements Serializable {
     @Size(max = 20)
     private String productStatus;
 
+    @Transient
+    private Boolean freeShipping;
+
+    @Transient
+    private BigDecimal freeShippingThreshold;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 

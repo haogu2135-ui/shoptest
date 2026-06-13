@@ -1,13 +1,11 @@
 package com.example.shop.service;
 
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 
 @Service
-@Slf4j
 public class RuntimeConfigService {
     private final Environment environment;
 

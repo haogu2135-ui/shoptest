@@ -29,8 +29,9 @@ public class ProductPublicResponse {
     private Boolean freeShipping;
     private BigDecimal freeShippingThreshold;
     private String tag;
-    private Double averageRating;
-    private Double positiveRate;
+    private String status;
+    private BigDecimal averageRating;
+    private BigDecimal positiveRate;
     private Long reviewCount;
     private Map<String, String> specifications;
     private Map<String, String> specificationItems;
@@ -69,6 +70,7 @@ public class ProductPublicResponse {
         response.setFreeShipping(product.getFreeShipping());
         response.setFreeShippingThreshold(product.getFreeShippingThreshold());
         response.setTag(product.getTag());
+        response.setStatus(product.getStatus());
         response.setAverageRating(product.getAverageRating());
         response.setPositiveRate(product.getPositiveRate());
         response.setReviewCount(product.getReviewCount());
@@ -253,19 +255,27 @@ public class ProductPublicResponse {
         this.tag = tag;
     }
 
-    public Double getAverageRating() {
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    public BigDecimal getAverageRating() {
         return averageRating;
     }
 
-    public void setAverageRating(Double averageRating) {
+    public void setAverageRating(BigDecimal averageRating) {
         this.averageRating = averageRating;
     }
 
-    public Double getPositiveRate() {
+    public BigDecimal getPositiveRate() {
         return positiveRate;
     }
 
-    public void setPositiveRate(Double positiveRate) {
+    public void setPositiveRate(BigDecimal positiveRate) {
         this.positiveRate = positiveRate;
     }
 

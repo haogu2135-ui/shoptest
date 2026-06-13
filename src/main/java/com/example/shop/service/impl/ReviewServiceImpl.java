@@ -1,6 +1,5 @@
 package com.example.shop.service.impl;
 
-import lombok.extern.slf4j.Slf4j;
 import com.example.shop.dto.AdminReviewResponse;
 import com.example.shop.dto.PublicReviewResponse;
 import com.example.shop.dto.ReviewableOrderResponse;
@@ -24,6 +23,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.LinkedHashSet;
 import java.util.LinkedHashMap;
@@ -35,8 +36,8 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Service
-@Slf4j
 public class ReviewServiceImpl implements ReviewService {
+    private static final BigDecimal ZERO_REVIEW_STAT = BigDecimal.ZERO.setScale(1);
     private static final Pattern HTML_COMMENT_PATTERN = Pattern.compile("(?is)<!--.*?-->");
     private static final Pattern HTML_BLOCK_PATTERN = Pattern.compile("(?is)<(script|style|iframe|object|embed|svg|math)\\b[^>]*>.*?</\\1\\s*>");
     private static final Pattern HTML_TAG_PATTERN = Pattern.compile("(?is)<[^>]+>");
@@ -59,17 +60,24 @@ public class ReviewServiceImpl implements ReviewService {
     private RuntimeConfigService runtimeConfig;
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional(rollbackFor = Exception.class, readOnly = true)
     public List<PublicReviewResponse> getPublicReviewsByProductId(Long productId, Long currentUserId) {
+        return getPublicReviewsByProductId(productId, currentUserId, 0, normalizedPublicMaxRows());
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class, readOnly = true)
+    public List<PublicReviewResponse> getPublicReviewsByProductId(Long productId, Long currentUserId, int page, int size) {
         if (!isPublicProduct(productId)) {
             return List.of();
         }
-        int limit = normalizedPublicMaxRows();
+        int safePage = Math.max(0, page);
+        int limit = normalizedPublicPageSize(size);
         List<Review> reviews;
         if (currentUserId != null) {
-            reviews = reviewRepository.findPublicByProductIdIncludingUserPending(productId, currentUserId, PageRequest.of(0, limit));
+            reviews = reviewRepository.findPublicByProductIdIncludingUserPending(productId, currentUserId, PageRequest.of(safePage, limit));
         } else {
-            reviews = reviewRepository.findApprovedPublicByProductId(productId, PageRequest.of(0, limit));
+            reviews = reviewRepository.findApprovedPublicByProductId(productId, PageRequest.of(safePage, limit));
         }
         return reviews.stream()
                 .map(review -> PublicReviewResponse.from(review, currentUserId))
@@ -77,16 +85,28 @@ public class ReviewServiceImpl implements ReviewService {
     }
 
     @Override
-    @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
-    public double getAverageRating(Long productId) {
+    @Transactional(rollbackFor = Exception.class, readOnly = true)
+    public long countPublicReviewsByProductId(Long productId, Long currentUserId) {
         if (!isPublicProduct(productId)) {
             return 0;
         }
-        return reviewRepository.findAverageRatingByProductId(productId);
+        if (currentUserId != null) {
+            return reviewRepository.countPublicByProductIdIncludingUserPending(productId, currentUserId);
+        }
+        return reviewRepository.countByProduct_IdAndStatus(productId, "APPROVED");
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional(rollbackFor = Exception.class, readOnly = true, isolation = Isolation.REPEATABLE_READ)
+    public BigDecimal getAverageRating(Long productId) {
+        if (!isPublicProduct(productId)) {
+            return ZERO_REVIEW_STAT;
+        }
+        return reviewStatDecimal(reviewRepository.findAverageRatingByProductId(productId));
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class, readOnly = true)
     public List<Review> searchAdminReviews(String status, String search, int page, int size) {
         int safeSize = Math.max(1, Math.min(size <= 0 ? 20 : size, 1000));
         int safePage = Math.max(1, page);
@@ -98,7 +118,7 @@ public class ReviewServiceImpl implements ReviewService {
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional(rollbackFor = Exception.class, readOnly = true)
     public List<AdminReviewResponse> searchAdminReviewResponses(String status, String search, int page, int size) {
         return searchAdminReviews(status, search, page, size).stream()
                 .map(AdminReviewResponse::from)
@@ -106,13 +126,13 @@ public class ReviewServiceImpl implements ReviewService {
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional(rollbackFor = Exception.class, readOnly = true)
     public long countAdminReviews(String status, String search) {
         return reviewRepository.countAdminReviews(normalizeAdminStatus(status), blankToNull(search), parseSearchId(search));
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional(rollbackFor = Exception.class, readOnly = true)
     public Map<String, Number> summarizeAdminReviews(String status, String search) {
         String normalizedStatus = normalizeAdminStatus(status);
         String normalizedSearch = blankToNull(search);
@@ -131,13 +151,13 @@ public class ReviewServiceImpl implements ReviewService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void deleteReview(Long id) {
         reviewRepository.deleteById(id);
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional(rollbackFor = Exception.class, readOnly = true)
     public List<ReviewableOrderResponse> getReviewableOrders(Long productId, Long userId) {
         if (!isPublicProduct(productId)) {
             return List.of();
@@ -151,7 +171,7 @@ public class ReviewServiceImpl implements ReviewService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public Review addReview(Long productId, Long userId, Long orderId, int rating, String comment, List<String> imageUrls) {
         Optional<Product> productOpt = productRepository.findById(productId);
         Optional<User> userOpt = userRepository.findById(userId);
@@ -226,7 +246,7 @@ public class ReviewServiceImpl implements ReviewService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public Review replyReview(Long id, String reply) {
         Review review = reviewRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Review not found"));
@@ -240,13 +260,13 @@ public class ReviewServiceImpl implements ReviewService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public AdminReviewResponse replyReviewForAdmin(Long id, String reply) {
         return AdminReviewResponse.from(replyReview(id, reply));
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public Review updateReviewStatus(Long id, String status) {
         Review review = reviewRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Review not found"));
@@ -259,7 +279,7 @@ public class ReviewServiceImpl implements ReviewService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public AdminReviewResponse updateReviewStatusForAdmin(Long id, String status) {
         return AdminReviewResponse.from(updateReviewStatus(id, status));
     }
@@ -273,6 +293,13 @@ public class ReviewServiceImpl implements ReviewService {
             throw new IllegalArgumentException(label + " is too long");
         }
         return normalized;
+    }
+
+    private static BigDecimal reviewStatDecimal(Number value) {
+        if (value == null) {
+            return ZERO_REVIEW_STAT;
+        }
+        return BigDecimal.valueOf(value.doubleValue()).setScale(1, RoundingMode.HALF_UP);
     }
 
     private List<String> normalizeReviewImageUrls(List<String> imageUrls) {
@@ -379,6 +406,12 @@ public class ReviewServiceImpl implements ReviewService {
         return Math.max(1, Math.min(runtimeConfig.getInt("review.public-max-rows", 20), 100));
     }
 
+    private int normalizedPublicPageSize(int size) {
+        int defaultSize = normalizedPublicMaxRows();
+        int normalizedSize = size <= 0 ? defaultSize : size;
+        return Math.max(1, Math.min(normalizedSize, 100));
+    }
+
     private int normalizedReviewableOrderMaxRows() {
         return Math.max(1, Math.min(runtimeConfig.getInt("review.reviewable-order-max-rows", 50), 100));
     }
@@ -398,4 +431,4 @@ public class ReviewServiceImpl implements ReviewService {
         }
         return normalized.replaceAll("/$", "");
     }
-} 
+}

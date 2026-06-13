@@ -34,6 +34,9 @@ class UserAddressServiceTest {
         when(runtimeConfig.getInt("user-address.max-per-user", 20)).thenReturn(2);
         when(runtimeConfig.getInt("user-address.recipient-name-max-chars", 80)).thenReturn(40);
         when(runtimeConfig.getInt("user-address.phone-max-chars", 30)).thenReturn(20);
+        when(runtimeConfig.getInt("user-address.region-max-chars", 1000)).thenReturn(120);
+        when(runtimeConfig.getInt("user-address.postal-code-max-chars", 20)).thenReturn(20);
+        when(runtimeConfig.getInt("user-address.detail-address-max-chars", 260)).thenReturn(80);
         when(runtimeConfig.getInt("user-address.address-max-chars", 500)).thenReturn(80);
         when(userMapper.findByIdForUpdate(7L)).thenReturn(new User());
         service = new UserAddressService(userAddressMapper, userMapper, runtimeConfig);
@@ -42,17 +45,20 @@ class UserAddressServiceTest {
     @Test
     void addAddressNormalizesFieldsBeforeSaving() {
         UserAddress address = address(7L, "  Mia\tChen  ", "  555\n0101  ", "  1 Main\u0000 Street\tApt 2  ");
-        when(userAddressMapper.findByUserId(7L)).thenReturn(List.of());
+        when(userAddressMapper.countByUserId(7L)).thenReturn(0);
 
         service.addAddress(address);
 
         InOrder inOrder = inOrder(userMapper, userAddressMapper);
         inOrder.verify(userMapper).findByIdForUpdate(7L);
-        inOrder.verify(userAddressMapper).findByUserId(7L);
+        inOrder.verify(userAddressMapper).countByUserId(7L);
         ArgumentCaptor<UserAddress> captor = ArgumentCaptor.forClass(UserAddress.class);
         verify(userAddressMapper).insert(captor.capture());
         assertEquals("Mia Chen", captor.getValue().getRecipientName());
         assertEquals("555 0101", captor.getValue().getPhone());
+        assertEquals("中国 | 北京市 | 朝阳区", captor.getValue().getRegion());
+        assertEquals("100000", captor.getValue().getPostalCode());
+        assertEquals("1 Main Street Apt 2", captor.getValue().getDetailAddress());
         assertEquals("1 Main Street Apt 2", captor.getValue().getAddress());
         assertEquals(Boolean.TRUE, captor.getValue().getIsDefault());
     }
@@ -64,7 +70,7 @@ class UserAddressServiceTest {
         existing.setIsDefault(true);
         UserAddress next = address(7L, "Mia Chen", "5550101", "2 Main Street");
         next.setIsDefault(true);
-        when(userAddressMapper.findByUserId(7L)).thenReturn(List.of(existing));
+        when(userAddressMapper.countByUserId(7L)).thenReturn(1);
 
         service.addAddress(next);
 
@@ -80,7 +86,7 @@ class UserAddressServiceTest {
         existing.setId(11L);
         existing.setIsDefault(true);
         UserAddress next = address(7L, "Mia Chen", "5550101", "2 Main Street");
-        when(userAddressMapper.findByUserId(7L)).thenReturn(List.of(existing));
+        when(userAddressMapper.countByUserId(7L)).thenReturn(1);
 
         service.addAddress(next);
 
@@ -104,7 +110,7 @@ class UserAddressServiceTest {
         UserAddress first = address(7L, "Mia Chen", "5550101", "1 Main Street");
         UserAddress second = address(7L, "Mia Chen", "5550101", "2 Main Street");
         UserAddress third = address(7L, "Mia Chen", "5550101", "3 Main Street");
-        when(userAddressMapper.findByUserId(7L)).thenReturn(List.of(first, second));
+        when(userAddressMapper.countByUserId(7L)).thenReturn(2);
 
         assertThrows(IllegalStateException.class, () -> service.addAddress(third));
 
@@ -140,7 +146,25 @@ class UserAddressServiceTest {
         verify(userAddressMapper).update(captor.capture());
         assertEquals("Mia Chen", captor.getValue().getRecipientName());
         assertEquals("555 0101", captor.getValue().getPhone());
+        assertEquals("中国 | 北京市 | 朝阳区", captor.getValue().getRegion());
+        assertEquals("100000", captor.getValue().getPostalCode());
+        assertEquals("1 Main Street", captor.getValue().getDetailAddress());
         assertEquals("1 Main Street", captor.getValue().getAddress());
+    }
+
+    @Test
+    void updateAddressClearsExistingDefaultWhenAddressBecomesDefault() {
+        UserAddress address = address(7L, "Mia Chen", "5550101", "2 Main Street");
+        address.setId(12L);
+        address.setIsDefault(true);
+        when(userAddressMapper.update(any(UserAddress.class))).thenReturn(1);
+
+        service.updateAddress(address);
+
+        InOrder inOrder = inOrder(userMapper, userAddressMapper);
+        inOrder.verify(userMapper).findByIdForUpdate(7L);
+        inOrder.verify(userAddressMapper).clearDefault(7L);
+        inOrder.verify(userAddressMapper).update(any(UserAddress.class));
     }
 
     private UserAddress address(Long userId, String recipientName, String phone, String addressText) {
@@ -148,6 +172,9 @@ class UserAddressServiceTest {
         address.setUserId(userId);
         address.setRecipientName(recipientName);
         address.setPhone(phone);
+        address.setRegion(" 中国 | 北京市 | 朝阳区 ");
+        address.setPostalCode(" 100000 ");
+        address.setDetailAddress(addressText);
         address.setAddress(addressText);
         return address;
     }

@@ -1,5 +1,38 @@
 ﻿@import './styles/shared-hero.css';
 
+:root {
+  /* Layer scale: local content <100, app chrome 800-1999, overlays 2000-8999, emergency layers 9000+. */
+  --shop-z-base: 1;
+  --shop-z-raised: 2;
+  --shop-z-local-alert: 3;
+  --shop-z-sticky-footer: 4;
+  --shop-z-sticky-toolbar: 50;
+  --shop-z-cart-summary-under-nav: 850;
+  --shop-z-checkout-paybar-under-nav: 955;
+  --shop-z-support-order-popup: 1305;
+  --shop-z-mobile-bottom-nav-base: 1400;
+  --shop-z-app-nav: 1500;
+  --shop-z-cart-summary: 1600;
+  --shop-z-inline-floating: 1800;
+  --shop-z-support-launcher: 1900;
+  --shop-z-floating-panel: 2100;
+  --shop-z-support-over-cart: 2500;
+  --shop-z-mobile-popup: 2600;
+  --shop-z-mobile-nav-guard: 3200;
+  --shop-z-skip-link: 4000;
+  --shop-z-mobile-bottom-nav: 5200;
+  --shop-z-mobile-action: 7600;
+  --shop-z-support-fab: 8700;
+  --shop-z-coupon-quick-nav: 8997;
+  --shop-z-coupon-action: 8998;
+  --shop-z-product-conversion: 8999;
+  --shop-z-critical-mobile-nav: 9000;
+  --shop-z-support-backdrop: 9798;
+  --shop-z-support-panel: 9799;
+  --shop-z-support-open-button: 9800;
+  --shop-mobile-overlay-z: var(--shop-z-support-open-button);
+}
+
 .layout {
   min-height: 100vh;
 }
@@ -8,7 +41,7 @@
   position: fixed;
   top: 12px;
   left: 12px;
-  z-index: 4000;
+  z-index: var(--shop-z-skip-link);
   min-height: 44px;
   display: inline-flex;
   align-items: center;
@@ -34,8 +67,22 @@
   transform: translateY(0);
 }
 
-#shop-main-content:focus {
-  outline: none;
+#shop-main-content:focus-visible {
+  outline: 3px solid #ee4d2d;
+  outline-offset: 4px;
+}
+
+.app-message-live-region {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
 }
 
 /* 鈹€鈹€ Primary button: coral accent 鈹€鈹€ */
@@ -460,7 +507,7 @@
 
 
 .support-order-select-popup {
-  z-index: 1305 !important;
+  z-index: var(--shop-z-support-order-popup) !important;
 }
 
 /* Mobile overlay safety: keep Ant Design popups usable below fixed headers and above bottom bars. */
@@ -581,7 +628,7 @@
   position: fixed;
   right: 24px;
   bottom: 24px;
-  z-index: 1900;
+  z-index: var(--shop-z-support-launcher);
   width: 56px;
   height: 56px;
   min-width: 56px;
@@ -719,8 +766,17 @@ body:has(.ant-modal-root .ant-modal-wrap:not([style*="display: none"])) .app-sup
 .app-route-loading {
   min-height: 60vh;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 10px;
+}
+
+.app-route-loading__text {
+  color: #3f5549;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.35;
 }
 
 .shop-footer {
@@ -933,7 +989,7 @@ body:has(.ant-modal-root .ant-modal-wrap:not([style*="display: none"])) .app-sup
   .ant-modal-header {
     position: sticky;
     top: 0;
-    z-index: 2;
+    z-index: var(--shop-z-raised);
     margin-bottom: 0;
     padding: 12px 14px;
     background: #ffffff;
@@ -961,7 +1017,7 @@ body:has(.ant-modal-root .ant-modal-wrap:not([style*="display: none"])) .app-sup
   .ant-modal-footer {
     position: sticky;
     bottom: 0;
-    z-index: 2;
+    z-index: var(--shop-z-raised);
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 8px;
@@ -1232,7 +1288,7 @@ body:has(.ant-modal-root .ant-modal-wrap:not([style*="display: none"])) .app-sup
 
 .shop-footer__inner {
   position: relative;
-  z-index: 1;
+  z-index: var(--shop-z-base);
   width: min(1240px, calc(100% - 32px));
 }
 
@@ -1786,7 +1842,7 @@ body:has(.ant-modal-root .ant-modal-wrap:not([style*="display: none"])) .app-sup
   opacity: 1 !important;
   visibility: visible !important;
   pointer-events: auto !important;
-  z-index: 1900 !important;
+  z-index: var(--shop-z-support-launcher) !important;
 }
 
 .app-support-launcher {
@@ -1846,6 +1902,13 @@ body:has(.ant-modal-root .ant-modal-wrap:not([style*="display: none"])) .app-sup
     visibility: hidden !important;
     opacity: 0 !important;
     pointer-events: none !important;
+  }
+}
+
+/* Android UI closure: tablet WebView inputs also avoid browser zoom. */
+@media (max-width: 860px) {
+  .shop-app-shell :where(.ant-input, .ant-input-affix-wrapper input, .ant-input-number-input, .ant-select-selection-search-input, .ant-picker-input > input) {
+    font-size: 16px !important;
   }
 }
 
@@ -2278,7 +2341,7 @@ body:has(.ant-modal-root .ant-modal-wrap:not([style*="display: none"])) .app-sup
   }
 
   .ant-modal-root {
-    z-index: 1500 !important;
+    z-index: var(--shop-z-app-nav) !important;
   }
 
   .ant-modal-root .ant-modal-wrap {
@@ -2291,7 +2354,7 @@ body:has(.ant-modal-root .ant-modal-wrap:not([style*="display: none"])) .app-sup
     overflow-y: auto;
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
-    z-index: 1500 !important;
+    z-index: var(--shop-z-app-nav) !important;
   }
 
   .ant-modal-root .ant-modal {
@@ -2337,7 +2400,7 @@ body:has(.ant-modal-root .ant-modal-wrap:not([style*="display: none"])) .app-sup
   .ant-modal-root .ant-modal-header {
     position: sticky;
     top: 0;
-    z-index: 2;
+    z-index: var(--shop-z-raised);
     flex: 0 0 auto;
     margin-bottom: 0;
     padding: 12px 14px;
@@ -2377,7 +2440,7 @@ body:has(.ant-modal-root .ant-modal-wrap:not([style*="display: none"])) .app-sup
   .ant-modal-root .ant-modal-footer {
     position: sticky;
     bottom: 0;
-    z-index: 2;
+    z-index: var(--shop-z-raised);
     flex: 0 0 auto;
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(112px, 1fr));
@@ -2443,7 +2506,7 @@ body:has(.ant-modal-root .ant-modal-wrap:not([style*="display: none"])) .app-sup
   .ant-drawer-header {
     position: sticky;
     top: 0;
-    z-index: 2;
+    z-index: var(--shop-z-raised);
     flex: 0 0 auto;
     background: #ffffff;
   }
@@ -2634,7 +2697,7 @@ body:has(.ant-modal-root .ant-modal-wrap:not([style*="display: none"])) .app-sup
     overflow: auto;
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
-    z-index: 2100;
+    z-index: var(--shop-z-floating-panel) !important;
   }
 
   .shop-mobile-popup-layer.ant-select-dropdown,
@@ -2798,7 +2861,7 @@ body:has(.ant-modal-root .ant-modal-wrap:not([style*="display: none"])) .app-sup
     flex: 0 0 auto;
     position: sticky;
     bottom: 0;
-    z-index: 2;
+    z-index: var(--shop-z-raised);
     background: linear-gradient(180deg, rgba(255, 255, 255, 0.88), #ffffff 38%);
   }
 
@@ -2890,7 +2953,7 @@ body:has(.ant-modal-root .ant-modal-wrap:not([style*="display: none"])) .app-sup
   body .ant-modal-root .ant-modal:not(.ant-modal-confirm) .ant-modal-footer {
     position: sticky !important;
     bottom: 0 !important;
-    z-index: 4 !important;
+    z-index: var(--shop-z-sticky-footer) !important;
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
@@ -3044,11 +3107,11 @@ body :where(.ant-modal, .ant-drawer, .ant-popover, .ant-dropdown) :where(.commer
 
 .app-support-launcher {
   position: fixed !important;
-  z-index: 2600 !important;
+  z-index: var(--shop-z-mobile-popup) !important;
 }
 
 .customer-support-widget__button {
-  z-index: 2600 !important;
+  z-index: var(--shop-z-mobile-popup) !important;
 }
 
 body:has(.customer-support-widget__panel) .app-support-launcher,
@@ -3073,7 +3136,7 @@ body:has(.ant-modal-root .ant-modal-wrap:not([style*="display: none"])) .app-sup
     height: 48px !important;
     min-width: 48px !important;
     min-height: 48px !important;
-    z-index: 2600 !important;
+    z-index: var(--shop-z-mobile-popup) !important;
   }
 
   .shop-app-shell--auth-flow .app-support-launcher,

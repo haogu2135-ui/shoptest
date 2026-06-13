@@ -1613,3 +1613,199 @@
     justify-self: center;
   }
 }
+
+@media (max-width: 620px) {
+  .ant-modal-root .ant-modal-centered .pet-gallery-preview.ant-modal {
+    top: max(8px, env(safe-area-inset-top));
+    vertical-align: top;
+  }
+
+  .pet-gallery-preview .ant-modal-content {
+    max-height: calc(100dvh - 88px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  }
+
+  .pet-gallery-preview .ant-modal-body {
+    max-height: inherit;
+  }
+
+  .pet-gallery-preview__figure img {
+    max-height: min(40dvh, 320px);
+  }
+
+  .pet-gallery-preview__figure figcaption {
+    padding: 10px;
+  }
+
+  body.shop-mobile-app .ant-modal-root .ant-modal-centered .pet-gallery-preview.ant-modal {
+    top: max(8px, env(safe-area-inset-top)) !important;
+    padding-bottom: 0 !important;
+  }
+
+  body.shop-mobile-app .ant-modal-root .ant-modal-centered .pet-gallery-preview.ant-modal .ant-modal-content {
+    max-height: calc(100dvh - var(--shop-mobile-bottom-nav-height, 74px) - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom)) !important;
+  }
+
+  body.shop-mobile-app .ant-modal-root .ant-modal-centered .pet-gallery-preview.ant-modal .ant-modal-body {
+    max-height: inherit !important;
+    overflow-y: auto !important;
+  }
+
+  body.shop-mobile-app .pet-gallery-preview__figure img {
+    max-height: min(34dvh, 260px);
+  }
+}
+
+/* Android UI closure: gallery icon controls remain finger-sized. */
+@media (max-width: 780px) {
+  .pet-gallery-toolbar .ant-btn,
+  .pet-gallery-card__like,
+  .pet-gallery-card__delete,
+  .pet-gallery-card__camera,
+  .pet-gallery-delete-popconfirm .ant-popconfirm-buttons .ant-btn {
+    min-height: 44px !important;
+    height: 44px !important;
+    max-height: none !important;
+    font-size: max(12px, 1em) !important;
+  }
+
+  .pet-gallery-card__delete,
+  .pet-gallery-card__camera {
+    width: 44px !important;
+    min-width: 44px !important;
+  }
+
+  .pet-gallery-toolbar .ant-input,
+  .pet-gallery-toolbar .ant-input-affix-wrapper input {
+    font-size: 16px !important;
+  }
+
+  .pet-gallery-hero__stats .ant-statistic-title,
+  .pet-gallery-card__owner,
+  .pet-gallery-card__meta > .ant-typography,
+  .pet-gallery-card__like > span:not(.anticon):not(.ant-btn-icon) {
+    font-size: max(12px, 1em) !important;
+    line-height: 1.25 !important;
+  }
+}
+
+/* F2858: keep the gallery action toolbar above the fixed mobile bottom nav. */
+@media (max-width: 620px) {
+  .pet-gallery-page {
+    padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 76px) + 36px + env(safe-area-inset-bottom, 0px)) !important;
+    scroll-padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 76px) + 28px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .pet-gallery-toolbar {
+    position: sticky !important;
+    top: auto !important;
+    bottom: calc(var(--shop-mobile-bottom-nav-height, 76px) + 12px + env(safe-area-inset-bottom, 0px)) !important;
+    z-index: 1240;
+    gap: 6px;
+    margin-bottom: 14px;
+    padding: 8px;
+  }
+
+  .pet-gallery-toolbar > div:first-child {
+    gap: 0;
+  }
+
+  .pet-gallery-toolbar .ant-space {
+    width: 100%;
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px !important;
+  }
+
+  .pet-gallery-toolbar .ant-space-item,
+  .pet-gallery-toolbar .ant-btn {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .pet-gallery-insights {
+    scroll-margin-bottom: calc(var(--shop-mobile-bottom-nav-height, 76px) + 24px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+@media (max-width: 360px) {
+  .pet-gallery-toolbar {
+    padding: 6px;
+  }
+}
+
+/* F2757: keep gallery social-proof copy horizontal in phone landscape. */
+@media (max-width: 900px) and (max-height: 480px) {
+  .pet-gallery-insights,
+  .pet-gallery-actions,
+  .pet-gallery-conversion {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .pet-gallery-insights__copy,
+  .pet-gallery-action-card,
+  .pet-gallery-conversion > div:first-child {
+    min-width: min(100%, 280px);
+    max-width: 100%;
+    overflow-wrap: break-word;
+    word-break: normal;
+    writing-mode: horizontal-tb;
+  }
+
+  .pet-gallery-insights__eyebrow,
+  .pet-gallery-insights h4.ant-typography,
+  .pet-gallery-action-card h4.ant-typography,
+  .pet-gallery-conversion h4.ant-typography,
+  .pet-gallery-insights__copy .ant-typography,
+  .pet-gallery-action-card .ant-typography,
+  .pet-gallery-conversion .ant-typography {
+    max-width: 100%;
+    overflow-wrap: break-word;
+    word-break: normal;
+    white-space: normal;
+    writing-mode: horizontal-tb;
+  }
+
+  .pet-gallery-insights__grid,
+  .pet-gallery-conversion__signals {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    max-width: 100%;
+    overflow: visible !important;
+    -webkit-mask-image: none !important;
+    mask-image: none !important;
+    touch-action: manipulation;
+  }
+
+  .pet-gallery-action-card .ant-space,
+  .pet-gallery-conversion__actions {
+    width: 100%;
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px !important;
+    justify-content: stretch;
+  }
+
+  .pet-gallery-action-card .ant-space-item,
+  .pet-gallery-action-card .ant-btn,
+  .pet-gallery-conversion__actions .ant-space-item,
+  .pet-gallery-conversion__actions .ant-btn {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+/* F9349: keep mobile gallery card owner labels readable on image cards. */
+@media (max-width: 620px) {
+  .pet-gallery-card__owner {
+    min-height: 32px;
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 10px;
+    background: rgba(18, 71, 52, 0.92);
+    font-size: 14px !important;
+    line-height: 1.25 !important;
+  }
+}

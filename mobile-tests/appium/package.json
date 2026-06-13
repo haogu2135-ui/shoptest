@@ -1,0 +1,19 @@
+{
+  "name": "shoptest-appium-tests",
+  "version": "1.0.0",
+  "description": "Appium UI tests for ShopMX Android app",
+  "scripts": {
+    "test": "npx wdio run config/wdio.conf.js",
+    "test:local": "APPIUM_AUTOMATION_NAME=UiAutomator2 npx wdio run config/wdio.conf.js"
+  },
+  "devDependencies": {
+    "@wdio/appium-service": "^9.0.0",
+    "@wdio/cli": "^9.0.0",
+    "@wdio/local-runner": "^9.0.0",
+    "@wdio/mocha-framework": "^9.0.0",
+    "@wdio/spec-reporter": "^9.0.0",
+    "appium": "^2.0.0",
+    "appium-uiautomator2-driver": "^3.0.0",
+    "chai": "^4.5.0"
+  }
+}

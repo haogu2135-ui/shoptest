@@ -15,7 +15,7 @@ export const isSafeHttpUrl = (value?: string | null) => {
   try {
     const url = new URL(trimmed);
     return url.protocol === 'https:' && !url.username && !url.password;
-  } catch {
+  } catch (_error) {
     return false;
   }
 };

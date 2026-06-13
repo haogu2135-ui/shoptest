@@ -30,8 +30,7 @@ public class User implements Serializable {
     @Size(max = 255)
     private String password;
 
-    @Column(nullable = false, unique = true)
-    @NotBlank
+    @Column(unique = true)
     @Email
     @Size(max = 100)
     private String email;
@@ -50,7 +49,7 @@ public class User implements Serializable {
     private String role;
 
     @Column(name = "role_code")
-    @Size(max = 40)
+    @Size(max = 50)
     private String roleCode;
 
     @Column(name = "created_at")

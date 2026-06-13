@@ -1,9 +1,9 @@
 package com.example.shop.service;
 
-import lombok.extern.slf4j.Slf4j;
 import com.example.shop.dto.ProductUrlImportPreview;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -199,6 +199,7 @@ public class ProductUrlImportService {
         } catch (ResponseStatusException ex) {
             throw ex;
         } catch (Exception ex) {
+            log.debug("Product URL import fetch failed for host {}", uri.getHost(), ex);
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Failed to fetch product page");
         }
     }
@@ -216,7 +217,8 @@ public class ProductUrlImportService {
             if (!isBlank(body)) {
                 applyTopmGoodsInfoJson(preview, sourceUri, body);
             }
-        } catch (Exception ignored) {
+        } catch (Exception ex) {
+            log.debug("TOPM dynamic product fallback failed for host {}", sourceUri.getHost(), ex);
             // Dynamic storefront APIs are best-effort; static metadata still provides a usable preview when present.
         }
         applyTopmGoodsUrlFallback(sourceUri, preview);
@@ -338,7 +340,8 @@ public class ProductUrlImportService {
     private Charset charsetByName(String value) {
         try {
             return isBlank(value) ? null : Charset.forName(value.trim());
-        } catch (Exception ignored) {
+        } catch (Exception ex) {
+            log.debug("Unsupported product import charset {}", value, ex);
             return null;
         }
     }
@@ -406,7 +409,8 @@ public class ProductUrlImportService {
         try {
             URI nested = URI.create(decodeImageCandidate(goodsUrl).trim());
             return firstNonBlank(queryParam(nested, "id"), queryParam(nested, "goods_id"), queryParam(nested, "goodsId"));
-        } catch (Exception ignored) {
+        } catch (Exception ex) {
+            log.debug("Failed to parse TOPM nested goods_url for host {}", sourceUri.getHost(), ex);
             return null;
         }
     }
@@ -441,7 +445,8 @@ public class ProductUrlImportService {
                         applyTopmGoodsInfoJson(dynamicFallback, goodsUri, body);
                         mergeFallbackPreview(preview, dynamicFallback);
                     }
-                } catch (Exception ignored) {
+                } catch (Exception ex) {
+                    log.debug("TOPM nested dynamic goods fallback failed for host {}", goodsUri.getHost(), ex);
                     // Static nested page parsing below still provides a fallback when TOPM APIs block crawlers.
                 }
             }
@@ -449,7 +454,8 @@ public class ProductUrlImportService {
             ProductUrlImportPreview fallback = parseProductHtml(goodsUri.toString(), goodsHtml);
             mergeFallbackPreview(preview, fallback);
             finalizePreview(preview, sourceUri);
-        } catch (Exception ignored) {
+        } catch (Exception ex) {
+            log.debug("TOPM nested goods URL fallback failed for host {}", sourceUri.getHost(), ex);
             // Nested TOPM goods URLs are optional and may block crawlers; keep the best available preview.
         }
     }
@@ -518,7 +524,8 @@ public class ProductUrlImportService {
                 preview.setImages(images);
             }
             finalizePreview(preview, sourceUri);
-        } catch (Exception ignored) {
+        } catch (Exception ex) {
+            log.debug("Malformed TOPM dynamic JSON ignored for host {}", sourceUri.getHost(), ex);
             // Ignore malformed dynamic JSON and keep the static preview.
         }
         return preview;
@@ -659,7 +666,8 @@ public class ProductUrlImportService {
         if ((trimmed.startsWith("[") && trimmed.endsWith("]")) || (trimmed.startsWith("{") && trimmed.endsWith("}"))) {
             try {
                 collectLikelyImageValues(images, OBJECT_MAPPER.readTree(trimmed), 0);
-            } catch (Exception ignored) {
+            } catch (Exception ex) {
+                log.debug("Malformed TOPM image JSON text ignored", ex);
                 // Keep loose URL extraction for JavaScript-style arrays or malformed JSON strings.
             }
         }
@@ -684,7 +692,8 @@ public class ProductUrlImportService {
             if (inputStream != null) {
                 inputStream.close();
             }
-        } catch (IOException ignored) {
+        } catch (IOException ex) {
+            log.debug("Failed to close product import response body", ex);
         }
     }
 
@@ -717,6 +726,7 @@ public class ProductUrlImportService {
         } catch (ResponseStatusException ex) {
             throw ex;
         } catch (Exception ex) {
+            log.debug("Invalid product import URL rejected", ex);
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid product URL");
         }
     }
@@ -756,6 +766,7 @@ public class ProductUrlImportService {
         } catch (ResponseStatusException ex) {
             throw ex;
         } catch (Exception ex) {
+            log.debug("Product URL host resolution failed for {}", asciiHost, ex);
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Product URL host could not be resolved");
         }
     }
@@ -786,7 +797,8 @@ public class ProductUrlImportService {
                     applyProductNode(preview, product);
                     return;
                 }
-            } catch (Exception ignored) {
+            } catch (Exception ex) {
+                log.debug("Malformed JSON-LD product metadata ignored", ex);
                 // Ignore malformed embedded JSON-LD and fall back to meta tags.
             }
         }
@@ -1085,7 +1097,8 @@ public class ProductUrlImportService {
             try {
                 JsonNode root = OBJECT_MAPPER.readTree(unescapeHtml(candidate));
                 collectLikelyImageValues(preview.getImages(), root, 0);
-            } catch (Exception ignored) {
+            } catch (Exception ex) {
+                log.debug("Malformed embedded JSON object ignored while collecting product images", ex);
                 // Many storefront scripts are JavaScript object literals; skip malformed snippets.
             }
         }
@@ -1213,7 +1226,8 @@ public class ProductUrlImportService {
             if ((trimmed.startsWith("[") && trimmed.endsWith("]")) || (trimmed.startsWith("{") && trimmed.endsWith("}"))) {
                 try {
                     collectLikelyImageValues(images, OBJECT_MAPPER.readTree(trimmed), depth + 1);
-                } catch (Exception ignored) {
+                } catch (Exception ex) {
+                    log.debug("Malformed escaped image JSON ignored", ex);
                     // Text fields often contain escaped JSON; loose URL extraction above still covers malformed values.
                 }
             }
@@ -1321,7 +1335,8 @@ public class ProductUrlImportService {
             if (path != null && !path.isBlank()) {
                 return path.toLowerCase(Locale.ROOT);
             }
-        } catch (Exception ignored) {
+        } catch (Exception ex) {
+            log.debug("Malformed product image URI fragment ignored", ex);
             // Fall back to simple delimiter parsing for malformed script fragments.
         }
         int end = cleaned.length();
@@ -1344,7 +1359,8 @@ public class ProductUrlImportService {
         try {
             URI uri = URI.create(cleaned.startsWith("//") ? "https:" + cleaned : cleaned);
             return uri.getHost() == null ? "" : uri.getHost().toLowerCase(Locale.ROOT);
-        } catch (Exception ignored) {
+        } catch (Exception ex) {
+            log.debug("Malformed product image host ignored", ex);
             return "";
         }
     }
@@ -1459,14 +1475,16 @@ public class ProductUrlImportService {
     private URI safeUriForQueryOnly(String value) {
         try {
             return URI.create(value);
-        } catch (Exception ignored) {
+        } catch (Exception ex) {
+            log.debug("Malformed URI ignored while extracting image query parameters", ex);
             int queryIndex = value.indexOf('?');
             if (queryIndex < 0) {
                 return null;
             }
             try {
                 return URI.create("https://pet.686888666.xyz/import-query" + value.substring(queryIndex).replace(" ", "%20"));
-            } catch (Exception ignoredAgain) {
+            } catch (Exception fallbackEx) {
+                log.debug("Fallback image query URI parsing failed", fallbackEx);
                 return null;
             }
         }
@@ -1573,7 +1591,8 @@ public class ProductUrlImportService {
             try {
                 char decodedChar = (char) Integer.parseInt(matcher.group(1), 16);
                 matcher.appendReplacement(decoded, Matcher.quoteReplacement(String.valueOf(decodedChar)));
-            } catch (Exception ignored) {
+            } catch (Exception ex) {
+                log.debug("Malformed unicode escape ignored: {}", matcher.group(1), ex);
                 matcher.appendReplacement(decoded, Matcher.quoteReplacement(matcher.group(0)));
             }
         }
@@ -1591,7 +1610,8 @@ public class ProductUrlImportService {
             try {
                 char decodedChar = (char) Integer.parseInt(matcher.group(1), 16);
                 matcher.appendReplacement(decoded, Matcher.quoteReplacement(String.valueOf(decodedChar)));
-            } catch (Exception ignored) {
+            } catch (Exception ex) {
+                log.debug("Malformed hex escape ignored: {}", matcher.group(1), ex);
                 matcher.appendReplacement(decoded, Matcher.quoteReplacement(matcher.group(0)));
             }
         }
@@ -1714,6 +1734,7 @@ public class ProductUrlImportService {
             }
             return !hasUnsafeMediaHost(uri.getHost());
         } catch (Exception ex) {
+            log.debug("Malformed product media URL blocked", ex);
             return false;
         }
     }
@@ -1737,6 +1758,7 @@ public class ProductUrlImportService {
             try {
                 return isBlockedAddress(InetAddress.getByName(normalized));
             } catch (Exception ex) {
+                log.debug("Product media host treated as unsafe after resolution failure: {}", normalized, ex);
                 return true;
             }
         }
@@ -1754,6 +1776,7 @@ public class ProductUrlImportService {
             if (parsed.isAbsolute()) return cleaned;
             return baseUri.resolve(parsed).toString();
         } catch (Exception ex) {
+            log.debug("Product import relative URL resolution failed", ex);
             return cleaned;
         }
     }
@@ -1834,6 +1857,7 @@ public class ProductUrlImportService {
         try {
             return Optional.of(new BigDecimal(normalized));
         } catch (Exception ex) {
+            log.debug("Product import price parsing failed for normalized value {}", normalized, ex);
             return Optional.empty();
         }
     }
@@ -1907,6 +1931,7 @@ public class ProductUrlImportService {
         try {
             return URLDecoder.decode(value == null ? "" : value, StandardCharsets.UTF_8);
         } catch (Exception ex) {
+            log.debug("Product import URL decoding failed", ex);
             return value;
         }
     }
@@ -1944,7 +1969,8 @@ public class ProductUrlImportService {
             try {
                 int codePoint = Integer.parseInt(matcher.group(1));
                 matcher.appendReplacement(decoded, Matcher.quoteReplacement(new String(Character.toChars(codePoint))));
-            } catch (Exception ignored) {
+            } catch (Exception ex) {
+                log.debug("Malformed decimal HTML entity ignored: {}", matcher.group(1), ex);
                 matcher.appendReplacement(decoded, Matcher.quoteReplacement(matcher.group(0)));
             }
         }
@@ -1962,7 +1988,8 @@ public class ProductUrlImportService {
             try {
                 int codePoint = Integer.parseInt(matcher.group(1), 16);
                 matcher.appendReplacement(decoded, Matcher.quoteReplacement(new String(Character.toChars(codePoint))));
-            } catch (Exception ignored) {
+            } catch (Exception ex) {
+                log.debug("Malformed hex HTML entity ignored: {}", matcher.group(1), ex);
                 matcher.appendReplacement(decoded, Matcher.quoteReplacement(matcher.group(0)));
             }
         }

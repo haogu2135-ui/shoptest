@@ -145,8 +145,8 @@ public class CartService {
         cartItemMapper.deleteByUserId(userId);
     }
 
-    public double calculateTotal(Long userId) {
-        return calculateTotalAmount(userId).doubleValue();
+    public BigDecimal calculateTotal(Long userId) {
+        return calculateTotalAmount(userId);
     }
 
     public BigDecimal calculateTotalAmount(Long userId) {

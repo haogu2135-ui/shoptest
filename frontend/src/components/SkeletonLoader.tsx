@@ -24,7 +24,7 @@ const SkeletonLoader: React.FC<SkeletonLoaderProps> = ({
   className = '',
 }) => {
   const content = (
-    <div className={`skeleton skeleton--${type} ${className}`}>
+    <div className={`skeleton skeleton--${type} ${className}`} aria-hidden="true">
       {Array.from({ length: rows }).map((_, i) => (
         <div key={i} className="skeleton__row">
           {avatar && <div className="skeleton__avatar shimmer" />}
@@ -57,7 +57,7 @@ const SkeletonLoader: React.FC<SkeletonLoaderProps> = ({
 
 /* ── Hero skeleton ── */
 export const HeroSkeleton: React.FC<{ className?: string }> = ({ className = '' }) => (
-  <div className={`hero-skeleton ${className}`}>
+  <div className={`hero-skeleton ${className}`} aria-hidden="true">
     <div className="hero-skeleton__left">
       <div className="skeleton__line hero-skeleton__eyebrow shimmer" />
       <div className="skeleton__line hero-skeleton__title shimmer" />
@@ -75,7 +75,7 @@ export const HeroSkeleton: React.FC<{ className?: string }> = ({ className = '' 
 
 /* ── Product card skeleton ── */
 export const ProductCardSkeleton: React.FC<{ count?: number }> = ({ count = 8 }) => (
-  <div className="product-skeleton">
+  <div className="product-skeleton" aria-hidden="true">
     {Array.from({ length: count }).map((_, i) => (
       <div key={i} className="product-skeleton__card">
         <div className="shimmer product-skeleton__image" />
@@ -91,7 +91,7 @@ export const ProductCardSkeleton: React.FC<{ count?: number }> = ({ count = 8 })
 
 /* ── Stats strip skeleton ── */
 export const StatsStripSkeleton: React.FC<{ cols?: number }> = ({ cols = 3 }) => (
-  <div className="stats-strip-skeleton">
+  <div className="stats-strip-skeleton" aria-hidden="true">
     {Array.from({ length: cols }).map((_, i) => (
       <div key={i} className="shimmer" style={{ height: 92, borderRadius: 16 }} />
     ))}

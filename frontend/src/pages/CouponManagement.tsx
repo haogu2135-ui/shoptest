@@ -6,7 +6,9 @@ import { adminApi } from '../api';
 import type { Coupon, CouponAdminSummary, PetBirthdayCouponConfig, User } from '../types';
 import { useLanguage } from '../i18n';
 import { useMarket } from '../hooks/useMarket';
+import { useDebounce } from '../hooks/useDebounce';
 import { getApiErrorMessage } from '../utils/apiError';
+import { reportNonBlockingError } from '../utils/nonBlockingError';
 import {
   COUPONS_BIRTHDAY_CONFIG_PERMISSION,
   COUPONS_BIRTHDAY_RUN_PERMISSION,
@@ -17,6 +19,7 @@ import {
   hasAdminPermission,
 } from '../utils/roles';
 import { buildPaginationItemRender } from '../utils/paginationLabels';
+import { getCouponPayablePercent } from '../utils/couponCenter';
 import './CouponManagement.css';
 
 const { Title } = Typography;
@@ -36,9 +39,13 @@ const CouponManagement: React.FC = () => {
   const { t, language } = useLanguage();
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [couponLoadError, setCouponLoadError] = useState<string | null>(null);
+  const [couponSnapshotLoaded, setCouponSnapshotLoaded] = useState(false);
   const [birthdayCouponLoading, setBirthdayCouponLoading] = useState(false);
-  const [birthdayConfigLoading, setBirthdayConfigLoading] = useState(false);
+  const [birthdayConfigLoading, setBirthdayConfigLoading] = useState(true);
+  const [birthdayConfigLoadError, setBirthdayConfigLoadError] = useState<string | null>(null);
+  const [birthdayConfigLoaded, setBirthdayConfigLoaded] = useState(false);
   const [userLookupLoading, setUserLookupLoading] = useState(false);
   const [birthdayConfigSaving, setBirthdayConfigSaving] = useState(false);
   const [birthdayConfig, setBirthdayConfig] = useState<PetBirthdayCouponConfig | null>(null);
@@ -46,7 +53,7 @@ const CouponManagement: React.FC = () => {
   const [couponSubmitting, setCouponSubmitting] = useState(false);
   const [grantSubmitting, setGrantSubmitting] = useState(false);
   const [keyword, setKeyword] = useState('');
-  const [debouncedKeyword, setDebouncedKeyword] = useState('');
+  const debouncedKeyword = useDebounce(keyword.trim(), 300);
   const [statusFilter, setStatusFilter] = useState<string | undefined>();
   const [scopeFilter, setScopeFilter] = useState<string | undefined>();
   const [pageState, setPageState] = useState({ page: 1, size: DEFAULT_COUPON_PAGE_SIZE, total: 0, totalPages: 0 });
@@ -59,12 +66,15 @@ const CouponManagement: React.FC = () => {
   const [form] = Form.useForm();
   const [grantForm] = Form.useForm();
   const [birthdayConfigForm] = Form.useForm();
+  const mountedRef = useRef(true);
   const pageSizeRef = useRef(DEFAULT_COUPON_PAGE_SIZE);
   const userSearchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const couponType = Form.useWatch('couponType', form);
   const couponPaginationItemRender = useMemo(() => buildPaginationItemRender(
     `${t('common.previousPage')}: ${t('adminLayout.coupons')}`,
     `${t('common.nextPage')}: ${t('adminLayout.coupons')}`,
+    `${t('common.previousPages')}: ${t('adminLayout.coupons')}`,
+    `${t('common.nextPages')}: ${t('adminLayout.coupons')}`,
   ), [t]);
   const birthdayCouponType = Form.useWatch('couponType', birthdayConfigForm);
   const birthdayConfigEnabled = Form.useWatch('enabled', birthdayConfigForm);
@@ -84,6 +94,8 @@ const CouponManagement: React.FC = () => {
   const canGrantCoupons = hasAdminPermission(adminPermissions, currentRole, COUPONS_GRANT_PERMISSION);
   const canRunBirthdayCoupons = hasAdminPermission(adminPermissions, currentRole, COUPONS_BIRTHDAY_RUN_PERMISSION);
   const canConfigureBirthdayCoupons = hasAdminPermission(adminPermissions, currentRole, COUPONS_BIRTHDAY_CONFIG_PERMISSION);
+  const couponMutationDisabled = loading || Boolean(couponLoadError) || !couponSnapshotLoaded;
+  const birthdayConfigActionDisabled = birthdayConfigLoading || Boolean(birthdayConfigLoadError) || !birthdayConfigLoaded;
   const localCouponOpsStats = useMemo(() => {
     const now = Date.now();
     const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
@@ -115,7 +127,7 @@ const CouponManagement: React.FC = () => {
   const couponDescriptionMaxChars = Math.max(1, couponSummary?.descriptionMaxChars || 1000);
   const totalQuantityMax = Math.max(1, couponSummary?.totalQuantityMax || 100000);
   const couponDiscountPercent = (coupon: Pick<Coupon, 'discountPercent'>) => {
-    const payablePercent = Math.max(0, Math.min(Number(coupon.discountPercent ?? 100), 100));
+    const payablePercent = getCouponPayablePercent(coupon);
     return Math.max(0, 100 - payablePercent);
   };
   const formatCouponType = useCallback((type?: string) => {
@@ -182,11 +194,19 @@ const CouponManagement: React.FC = () => {
   };
 
   useEffect(() => {
-    const timer = window.setTimeout(() => setDebouncedKeyword(keyword.trim()), 300);
-    return () => window.clearTimeout(timer);
-  }, [keyword]);
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      if (userSearchTimerRef.current) {
+        clearTimeout(userSearchTimerRef.current);
+        userSearchTimerRef.current = null;
+      }
+    };
+  }, []);
 
-  const loadCoupons = useCallback(async (page = 1, size = pageSizeRef.current) => {
+  const loadCoupons = useCallback(async (page = 1, size = pageSizeRef.current, isDisposed?: () => boolean) => {
+    const canUpdate = () => mountedRef.current && !isDisposed?.();
+    if (!canUpdate()) return;
     setLoading(true);
     try {
       const res = await adminApi.getCoupons({
@@ -196,6 +216,8 @@ const CouponManagement: React.FC = () => {
         page,
         size,
       });
+      if (!canUpdate()) return;
+      setCouponLoadError(null);
       setCoupons(res.data.items);
       pageSizeRef.current = res.data.size || size;
       setPageState({
@@ -207,35 +229,55 @@ const CouponManagement: React.FC = () => {
       if (res.data.summary) {
         setCouponSummary(res.data.summary);
       }
+      setCouponSnapshotLoaded(true);
     } catch (error: unknown) {
-      message.error(getApiErrorMessage(error, t('pages.adminCoupons.loadFailed'), language));
+      if (!canUpdate()) return;
+      const errorMessage = getApiErrorMessage(error, t('pages.adminCoupons.loadFailed'), language);
+      setCouponLoadError(errorMessage);
+      message.error(errorMessage);
     } finally {
-      setLoading(false);
+      if (canUpdate()) {
+        setLoading(false);
+      }
     }
   }, [debouncedKeyword, language, scopeFilter, statusFilter, t]);
 
-  const loadCouponSummary = useCallback(async () => {
+  const loadCouponSummary = useCallback(async (isDisposed?: () => boolean) => {
+    const canUpdate = () => mountedRef.current && !isDisposed?.();
+    if (!canUpdate()) return;
     try {
       const res = await adminApi.getCouponSummary({
         keyword: debouncedKeyword || undefined,
         status: statusFilter,
         scope: scopeFilter,
       });
+      if (!canUpdate()) return;
       setCouponSummary(res.data);
-    } catch {
-      setCouponSummary(null);
+    } catch (error) {
+      reportNonBlockingError('CouponManagement.loadCouponSummary', error);
+      if (canUpdate()) {
+        setCouponSummary(null);
+      }
     }
   }, [debouncedKeyword, scopeFilter, statusFilter]);
 
-  const loadUsers = useCallback(async (search?: string) => {
+  const loadUsers = useCallback(async (search?: string, isDisposed?: () => boolean) => {
+    const canUpdate = () => mountedRef.current && !isDisposed?.();
+    if (!canUpdate()) return;
     setUserLookupLoading(true);
     try {
       const res = await adminApi.getUsersPage({ keyword: search?.trim() || undefined, page: 1, size: 20 });
+      if (!canUpdate()) return;
       setUsers(res.data.items || []);
-    } catch {
-      setUsers([]);
+    } catch (error) {
+      reportNonBlockingError('CouponManagement.loadUsers', error);
+      if (canUpdate()) {
+        setUsers([]);
+      }
     } finally {
-      setUserLookupLoading(false);
+      if (canUpdate()) {
+        setUserLookupLoading(false);
+      }
     }
   }, []);
 
@@ -246,50 +288,74 @@ const CouponManagement: React.FC = () => {
     userSearchTimerRef.current = setTimeout(() => loadUsers(value), 300);
   }, [loadUsers]);
 
-  const loadBirthdayConfig = useCallback(async () => {
+  const loadBirthdayConfig = useCallback(async (isDisposed?: () => boolean) => {
+    const canUpdate = () => mountedRef.current && !isDisposed?.();
+    if (!canUpdate()) return;
     setBirthdayConfigLoading(true);
     try {
       const res = await adminApi.getPetBirthdayCouponConfig();
+      if (!canUpdate()) return;
+      setBirthdayConfigLoadError(null);
       setBirthdayConfig(res.data);
       birthdayConfigForm.setFieldsValue(res.data);
+      setBirthdayConfigLoaded(true);
     } catch (error: unknown) {
-      message.error(getApiErrorMessage(error, t('pages.adminCoupons.birthdayConfigLoadFailed'), language));
+      if (!canUpdate()) return;
+      const errorMessage = getApiErrorMessage(error, t('pages.adminCoupons.birthdayConfigLoadFailed'), language);
+      setBirthdayConfigLoadError(errorMessage);
+      message.error(errorMessage);
     } finally {
-      setBirthdayConfigLoading(false);
+      if (canUpdate()) {
+        setBirthdayConfigLoading(false);
+      }
     }
   }, [birthdayConfigForm, language, t]);
 
   useEffect(() => {
-    loadCoupons();
-    loadCouponSummary();
+    let disposed = false;
+    const isDisposed = () => disposed;
+    loadCoupons(1, pageSizeRef.current, isDisposed);
+    loadCouponSummary(isDisposed);
+    return () => {
+      disposed = true;
+    };
   }, [loadCouponSummary, loadCoupons]);
 
   useEffect(() => {
-    loadUsers();
-    loadBirthdayConfig();
+    let disposed = false;
+    const isDisposed = () => disposed;
+    loadUsers(undefined, isDisposed);
+    loadBirthdayConfig(isDisposed);
+    return () => {
+      disposed = true;
+    };
   }, [loadBirthdayConfig, loadUsers]);
 
-  useEffect(() => () => {
-    if (userSearchTimerRef.current) {
-      clearTimeout(userSearchTimerRef.current);
-    }
-  }, []);
-
   useEffect(() => {
+    let disposed = false;
     adminApi.getMyPermissions()
       .then((response) => {
+        if (disposed) return;
         setCurrentRole(getEffectiveRole(response.data.role, response.data.roleCode));
         setAdminPermissions(response.data.permissions || []);
       })
       .catch(() => {
+        if (disposed) return;
         setCurrentRole('');
         setAdminPermissions([]);
       });
+    return () => {
+      disposed = true;
+    };
   }, []);
 
   const openCreate = () => {
     if (!canWriteCoupons) {
       message.error(t('adminLayout.noPermission'));
+      return;
+    }
+    if (couponMutationDisabled) {
+      message.warning(couponLoadError || (loading ? t('common.loading') : t('pages.adminCoupons.loadFailed')));
       return;
     }
     setEditingCoupon(null);
@@ -301,6 +367,10 @@ const CouponManagement: React.FC = () => {
   const openEdit = (coupon: Coupon) => {
     if (!canWriteCoupons) {
       message.error(t('adminLayout.noPermission'));
+      return;
+    }
+    if (couponMutationDisabled) {
+      message.warning(couponLoadError || (loading ? t('common.loading') : t('pages.adminCoupons.loadFailed')));
       return;
     }
     setEditingCoupon(coupon);
@@ -315,6 +385,10 @@ const CouponManagement: React.FC = () => {
   const submitCoupon = async () => {
     if (!canWriteCoupons) {
       message.error(t('adminLayout.noPermission'));
+      return;
+    }
+    if (couponMutationDisabled) {
+      message.warning(couponLoadError || (loading ? t('common.loading') : t('pages.adminCoupons.loadFailed')));
       return;
     }
     try {
@@ -356,6 +430,10 @@ const CouponManagement: React.FC = () => {
       message.error(t('adminLayout.noPermission'));
       return;
     }
+    if (couponMutationDisabled) {
+      message.warning(couponLoadError || (loading ? t('common.loading') : t('pages.adminCoupons.loadFailed')));
+      return;
+    }
     try {
       await adminApi.deleteCoupon(id);
       message.success(t('pages.adminCoupons.deleted'));
@@ -370,6 +448,10 @@ const CouponManagement: React.FC = () => {
       message.error(t('adminLayout.noPermission'));
       return;
     }
+    if (couponMutationDisabled) {
+      message.warning(couponLoadError || (loading ? t('common.loading') : t('pages.adminCoupons.loadFailed')));
+      return;
+    }
     setGrantCoupon(coupon);
     grantForm.resetFields();
     setGrantVisible(true);
@@ -379,6 +461,10 @@ const CouponManagement: React.FC = () => {
     if (!grantCoupon) return;
     if (!canGrantCoupons) {
       message.error(t('adminLayout.noPermission'));
+      return;
+    }
+    if (couponMutationDisabled) {
+      message.warning(couponLoadError || (loading ? t('common.loading') : t('pages.adminCoupons.loadFailed')));
       return;
     }
     try {
@@ -425,6 +511,10 @@ const CouponManagement: React.FC = () => {
       message.error(t('adminLayout.noPermission'));
       return;
     }
+    if (birthdayConfigActionDisabled) {
+      message.warning(birthdayConfigLoadError || (birthdayConfigLoading ? t('common.loading') : t('pages.adminCoupons.birthdayConfigLoadFailed')));
+      return;
+    }
     setBirthdayCouponLoading(true);
     try {
       const res = await adminApi.runPetBirthdayCoupons();
@@ -456,6 +546,10 @@ const CouponManagement: React.FC = () => {
       message.error(t('adminLayout.noPermission'));
       return;
     }
+    if (birthdayConfigActionDisabled) {
+      message.warning(birthdayConfigLoadError || (birthdayConfigLoading ? t('common.loading') : t('pages.adminCoupons.birthdayConfigLoadFailed')));
+      return;
+    }
     try {
       const values = await birthdayConfigForm.validateFields();
       setBirthdayConfigSaving(true);
@@ -472,8 +566,10 @@ const CouponManagement: React.FC = () => {
         payload.reductionAmount = null;
       }
       const res = await adminApi.updatePetBirthdayCouponConfig(payload);
+      setBirthdayConfigLoadError(null);
       setBirthdayConfig(res.data);
       birthdayConfigForm.setFieldsValue(res.data);
+      setBirthdayConfigLoaded(true);
       message.success(t('pages.adminCoupons.birthdayConfigSaved'));
     } catch (error: unknown) {
       if (isFormValidationError(error)) return;
@@ -530,17 +626,18 @@ const CouponManagement: React.FC = () => {
         const deleteActionLabel = `${t('common.delete')}: ${couponName}`;
         return (
           <Space>
-            {canGrantCoupons ? <Button size="small" icon={<SendOutlined />} aria-label={grantActionLabel} title={grantActionLabel} onClick={() => openGrant(record)}>{t('pages.adminCoupons.grant')}</Button> : null}
-            {canWriteCoupons ? <Button size="small" icon={<EditOutlined />} aria-label={editActionLabel} title={editActionLabel} onClick={() => openEdit(record)}>{t('common.edit')}</Button> : null}
+            {canGrantCoupons ? <Button size="small" icon={<SendOutlined />} disabled={couponMutationDisabled} aria-label={grantActionLabel} title={grantActionLabel} onClick={() => openGrant(record)}>{t('pages.adminCoupons.grant')}</Button> : null}
+            {canWriteCoupons ? <Button size="small" icon={<EditOutlined />} disabled={couponMutationDisabled} aria-label={editActionLabel} title={editActionLabel} onClick={() => openEdit(record)}>{t('common.edit')}</Button> : null}
             {canDeleteCoupons ? (
               <Popconfirm
                 classNames={mobilePopconfirmClassNames}
                 title={t('pages.adminCoupons.deleteConfirm')}
                 onConfirm={() => deleteCoupon(record.id)}
+                disabled={couponMutationDisabled}
                 okButtonProps={{ 'aria-label': deleteActionLabel, title: deleteActionLabel }}
                 cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${couponName}`, title: `${t('common.cancel')}: ${couponName}` }}
               >
-                <Button size="small" danger icon={<DeleteOutlined />} aria-label={deleteActionLabel} title={deleteActionLabel}>{t('common.delete')}</Button>
+                <Button size="small" danger icon={<DeleteOutlined />} disabled={couponMutationDisabled} aria-label={deleteActionLabel} title={deleteActionLabel}>{t('common.delete')}</Button>
               </Popconfirm>
             ) : null}
           </Space>
@@ -548,50 +645,80 @@ const CouponManagement: React.FC = () => {
       },
     },
   ];
+  const showInitialCouponLoading = loading && !couponSnapshotLoaded;
+  const couponSnapshotUnavailable = Boolean(couponLoadError) && !couponSnapshotLoaded;
+  const showInitialBirthdayConfigLoading = birthdayConfigLoading && !birthdayConfigLoaded;
+  const birthdayConfigUnavailable = Boolean(birthdayConfigLoadError) && !birthdayConfigLoaded;
+  const birthdayConfigStatusLabel = !birthdayConfigLoaded
+    ? t('common.unknown')
+    : birthdayConfig?.enabled
+      ? t('pages.adminCoupons.birthdayEnabled')
+      : t('pages.adminCoupons.birthdayDisabled');
 
   return (
     <div className="coupon-management-page">
       <div className="coupon-management-page__header">
         <Title level={3} style={{ margin: 0 }}><GiftOutlined /> {t('pages.adminCoupons.title')}</Title>
         <Space wrap className="coupon-management-page__actions">
-          {canWriteCoupons ? <Button type="primary" icon={<PlusOutlined />} aria-label={createCouponLabel} title={createCouponLabel} onClick={openCreate}>{t('pages.adminCoupons.createCoupon')}</Button> : null}
+          {canWriteCoupons ? <Button type="primary" icon={<PlusOutlined />} disabled={couponMutationDisabled} aria-label={createCouponLabel} title={createCouponLabel} onClick={openCreate}>{t('pages.adminCoupons.createCoupon')}</Button> : null}
         </Space>
       </div>
 
-      <section className="coupon-management-insights">
-        <div className="coupon-management-insights__copy">
-          <span>{t('pages.adminCoupons.opsEyebrow')}</span>
-          <h2>{t('pages.adminCoupons.opsTitle')}</h2>
-          <p>{t('pages.adminCoupons.opsSubtitle')}</p>
-          {summaryCheckedAt ? (
-            <small className="coupon-management-insights__updated">
-              {t('pages.adminCoupons.opsCheckedAt', { time: summaryCheckedAt })}
-            </small>
-          ) : null}
-        </div>
-        <div className="coupon-management-insights__cards">
-          <div role="group" aria-label={couponInsightLabels.active} title={couponInsightLabels.active}>
-            <ThunderboltOutlined />
-            <strong>{couponOpsStats.active}</strong>
-            <span>{t('pages.adminCoupons.activeCoupons')}</span>
+      {couponLoadError ? (
+        <Alert
+          className="coupon-management-page__alert"
+          type="warning"
+          showIcon
+          message={couponLoadError}
+          description={couponSnapshotLoaded ? t('pages.adminCoupons.staleDataWarning') : undefined}
+          action={(
+            <Button size="small" onClick={() => loadCoupons(pageState.page, pageState.size)} loading={loading}>
+              {t('common.retry')}
+            </Button>
+          )}
+        />
+      ) : null}
+
+      {showInitialCouponLoading ? (
+        <Card className="coupon-management-page__loadingState" loading />
+      ) : null}
+
+      {!showInitialCouponLoading && !couponSnapshotUnavailable ? (
+        <section className="coupon-management-insights">
+          <div className="coupon-management-insights__copy">
+            <span>{t('pages.adminCoupons.opsEyebrow')}</span>
+            <h2>{t('pages.adminCoupons.opsTitle')}</h2>
+            <p>{t('pages.adminCoupons.opsSubtitle')}</p>
+            {summaryCheckedAt ? (
+              <small className="coupon-management-insights__updated">
+                {t('pages.adminCoupons.opsCheckedAt', { time: summaryCheckedAt })}
+              </small>
+            ) : null}
           </div>
-          <div role="group" aria-label={couponInsightLabels.publicActive} title={couponInsightLabels.publicActive}>
-            <GiftOutlined />
-            <strong>{couponOpsStats.publicActive}</strong>
-            <span>{t('pages.adminCoupons.publicActiveCoupons')}</span>
+          <div className="coupon-management-insights__cards">
+            <div role="group" aria-label={couponInsightLabels.active} title={couponInsightLabels.active}>
+              <ThunderboltOutlined />
+              <strong>{couponOpsStats.active}</strong>
+              <span>{t('pages.adminCoupons.activeCoupons')}</span>
+            </div>
+            <div role="group" aria-label={couponInsightLabels.publicActive} title={couponInsightLabels.publicActive}>
+              <GiftOutlined />
+              <strong>{couponOpsStats.publicActive}</strong>
+              <span>{t('pages.adminCoupons.publicActiveCoupons')}</span>
+            </div>
+            <div role="group" aria-label={couponInsightLabels.expiringSoon} title={couponInsightLabels.expiringSoon}>
+              <ClockCircleOutlined />
+              <strong>{couponOpsStats.expiringSoon}</strong>
+              <span>{t('pages.adminCoupons.expiringSoonCoupons')}</span>
+            </div>
+            <div role="group" aria-label={couponInsightLabels.lowRemaining} title={couponInsightLabels.lowRemaining}>
+              <FireOutlined />
+              <strong>{couponOpsStats.lowRemaining}</strong>
+              <span>{t('pages.adminCoupons.lowRemainingCoupons')}</span>
+            </div>
           </div>
-          <div role="group" aria-label={couponInsightLabels.expiringSoon} title={couponInsightLabels.expiringSoon}>
-            <ClockCircleOutlined />
-            <strong>{couponOpsStats.expiringSoon}</strong>
-            <span>{t('pages.adminCoupons.expiringSoonCoupons')}</span>
-          </div>
-          <div role="group" aria-label={couponInsightLabels.lowRemaining} title={couponInsightLabels.lowRemaining}>
-            <FireOutlined />
-            <strong>{couponOpsStats.lowRemaining}</strong>
-            <span>{t('pages.adminCoupons.lowRemainingCoupons')}</span>
-          </div>
-        </div>
-      </section>
+        </section>
+      ) : null}
 
       <Card
         className="coupon-management-birthday"
@@ -599,8 +726,8 @@ const CouponManagement: React.FC = () => {
           <Space>
             <GiftOutlined />
             <span>{t('pages.adminCoupons.birthdayConfigTitle')}</span>
-            <Tag color={birthdayConfig?.enabled ? 'green' : 'default'}>
-              {birthdayConfig?.enabled ? t('pages.adminCoupons.birthdayEnabled') : t('pages.adminCoupons.birthdayDisabled')}
+            <Tag color={birthdayConfigLoaded && birthdayConfig?.enabled ? 'green' : 'default'}>
+              {birthdayConfigStatusLabel}
             </Tag>
           </Space>
         }
@@ -611,14 +738,14 @@ const CouponManagement: React.FC = () => {
                 classNames={mobilePopconfirmClassNames}
                 title={t('pages.adminCoupons.runPetBirthdayCouponsConfirm')}
                 onConfirm={runPetBirthdayCoupons}
-                disabled={birthdayConfigLoading}
+                disabled={birthdayConfigActionDisabled}
                 okButtonProps={{ 'aria-label': runBirthdayCouponsLabel, title: runBirthdayCouponsLabel }}
                 cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${birthdayConfigLabel}`, title: `${t('common.cancel')}: ${birthdayConfigLabel}` }}
               >
                 <Button
                   icon={<GiftOutlined />}
                   loading={birthdayCouponLoading}
-                  disabled={birthdayConfigLoading}
+                  disabled={birthdayConfigActionDisabled}
                   aria-label={runBirthdayCouponsLabel}
                   title={runBirthdayCouponsLabel}
                 >
@@ -632,7 +759,7 @@ const CouponManagement: React.FC = () => {
                 title={saveBirthdayConfigLabel}
                 description={birthdayConfigConfirmDescription}
                 onConfirm={saveBirthdayConfig}
-                disabled={birthdayConfigLoading || birthdayConfigSaving}
+                disabled={birthdayConfigActionDisabled || birthdayConfigSaving}
                 okText={t('common.confirm')}
                 cancelText={t('common.cancel')}
                 okButtonProps={{ 'aria-label': saveBirthdayConfigLabel, title: saveBirthdayConfigLabel }}
@@ -641,7 +768,7 @@ const CouponManagement: React.FC = () => {
                 <Button
                   type="primary"
                   loading={birthdayConfigSaving}
-                  disabled={birthdayConfigLoading}
+                  disabled={birthdayConfigActionDisabled}
                   aria-label={saveBirthdayConfigLabel}
                   title={saveBirthdayConfigLabel}
                 >
@@ -651,9 +778,24 @@ const CouponManagement: React.FC = () => {
             ) : null}
           </Space>
         }
-        loading={birthdayConfigLoading}
+        loading={showInitialBirthdayConfigLoading}
       >
-        <Form form={birthdayConfigForm} layout="vertical" className="coupon-management-birthday__form">
+        {birthdayConfigLoadError ? (
+          <Alert
+            className="coupon-management-page__alert"
+            type="warning"
+            showIcon
+            message={birthdayConfigLoadError}
+            description={birthdayConfigLoaded ? t('pages.adminCoupons.birthdayConfigStaleWarning') : undefined}
+            action={(
+              <Button size="small" onClick={() => loadBirthdayConfig()} loading={birthdayConfigLoading}>
+                {t('common.retry')}
+              </Button>
+            )}
+          />
+        ) : null}
+
+        {birthdayConfigUnavailable ? null : <Form form={birthdayConfigForm} layout="vertical" className="coupon-management-birthday__form">
           <div className="coupon-management-page__formRow">
             <Form.Item name="enabled" label={t('pages.adminCoupons.birthdayEnabledLabel')} valuePropName="checked">
               <Switch title={`${birthdayConfigLabel}: ${t('pages.adminCoupons.birthdayEnabledLabel')}`} />
@@ -731,10 +873,10 @@ const CouponManagement: React.FC = () => {
           <Typography.Text type="secondary">
             {t('pages.adminCoupons.birthdayConfigHint')}
           </Typography.Text>
-        </Form>
+        </Form>}
       </Card>
 
-      <Card className="coupon-management-page__toolbar">
+      {!showInitialCouponLoading && !couponSnapshotUnavailable ? <Card className="coupon-management-page__toolbar">
         <Space wrap>
           <Input
             allowClear
@@ -777,9 +919,9 @@ const CouponManagement: React.FC = () => {
             ]}
           />
         </Space>
-      </Card>
+      </Card> : null}
 
-      <Table
+      {!showInitialCouponLoading && !couponSnapshotUnavailable ? <Table
         columns={columns}
         dataSource={coupons}
         rowKey="id"
@@ -795,7 +937,7 @@ const CouponManagement: React.FC = () => {
           itemRender: couponPaginationItemRender,
           onChange: (page, size) => loadCoupons(page, size),
         }}
-      />
+      /> : null}
 
       <Modal
         className="profile-mobile-safe-modal coupon-management-page__editorModal"
@@ -808,7 +950,7 @@ const CouponManagement: React.FC = () => {
         destroyOnHidden
         okText={t('common.save')}
         cancelText={t('common.cancel')}
-        okButtonProps={{ 'aria-label': `${t('common.save')}: ${couponEditorLabel}`, title: `${t('common.save')}: ${couponEditorLabel}` }}
+        okButtonProps={{ disabled: couponMutationDisabled, 'aria-label': `${t('common.save')}: ${couponEditorLabel}`, title: `${t('common.save')}: ${couponEditorLabel}` }}
         cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${couponEditorLabel}`, title: `${t('common.cancel')}: ${couponEditorLabel}` }}
       >
         <Form form={form} layout="vertical">
@@ -904,7 +1046,7 @@ const CouponManagement: React.FC = () => {
         destroyOnHidden
         okText={t('pages.adminCoupons.grant')}
         cancelText={t('common.cancel')}
-        okButtonProps={{ 'aria-label': grantCouponLabel, title: grantCouponLabel }}
+        okButtonProps={{ disabled: couponMutationDisabled, 'aria-label': grantCouponLabel, title: grantCouponLabel }}
         cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${grantCouponLabel}`, title: `${t('common.cancel')}: ${grantCouponLabel}` }}
       >
         <Form form={grantForm} layout="vertical">

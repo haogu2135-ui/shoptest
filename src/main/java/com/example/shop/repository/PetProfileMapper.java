@@ -8,7 +8,7 @@ import java.util.List;
 
 @Mapper
 public interface PetProfileMapper {
-    List<PetProfile> findByUserId(Long userId);
+    List<PetProfile> findByUserId(@Param("userId") Long userId, @Param("limit") int limit);
     int countByUserId(Long userId);
     List<PetProfile> findBirthdayPets(@Param("month") int month, @Param("day") int day);
     List<PetProfile> findBirthdayPetsByUserId(@Param("userId") Long userId,

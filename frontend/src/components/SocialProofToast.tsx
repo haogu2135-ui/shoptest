@@ -10,7 +10,7 @@ const SocialProofToast: React.FC = () => {
   const events = useMemo<SocialProofEvent[]>(() => conversionConfig.socialProof.events.filter((event) => event.verified === true), []);
 
   useEffect(() => {
-    if (!conversionConfig.socialProof.enabled || events.length <= 1) return undefined;
+    if (!conversionConfig.socialProof.enabled || events.length <= 1) return;
     const timer = window.setInterval(() => {
       setActiveIndex((current) => (current + 1) % events.length);
     }, conversionConfig.socialProof.rotateMs);

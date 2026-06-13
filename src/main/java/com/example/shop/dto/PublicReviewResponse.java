@@ -1,14 +1,17 @@
 package com.example.shop.dto;
 
 import com.example.shop.entity.Review;
+import com.example.shop.util.ReviewImageUrlCodec;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 public class PublicReviewResponse {
     private Long id;
     private Long productId;
     private int rating;
     private String comment;
+    private List<String> imageUrls;
     private String username;
     private String adminReply;
     private LocalDateTime repliedAt;
@@ -24,6 +27,7 @@ public class PublicReviewResponse {
         response.setProductId(review.getProductId());
         response.setRating(review.getRating());
         response.setComment(review.getComment());
+        response.setImageUrls(ReviewImageUrlCodec.parse(review.getImageUrls()));
         response.setUsername(maskUsername(review.getUsername()));
         response.setAdminReply(review.getAdminReply());
         response.setRepliedAt(review.getRepliedAt());
@@ -73,6 +77,14 @@ public class PublicReviewResponse {
 
     public void setComment(String comment) {
         this.comment = comment;
+    }
+
+    public List<String> getImageUrls() {
+        return imageUrls;
+    }
+
+    public void setImageUrls(List<String> imageUrls) {
+        this.imageUrls = imageUrls;
     }
 
     public String getUsername() {

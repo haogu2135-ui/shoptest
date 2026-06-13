@@ -32,27 +32,54 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import javax.annotation.PreDestroy;
 
 @Service
 public class LogManagementService {
     private static final Logger log = LoggerFactory.getLogger(LogManagementService.class);
     private static final String DEFAULT_LOGGER = "com.example.shop";
-    private static final String DEFAULT_ALLOWED_LOGGERS = "com.example.shop,org.mybatis,org.springframework.web,org.springframework.security";
-    private static final String DEFAULT_ADDITIONAL_DEBUG_LOGGERS = "org.mybatis,org.springframework.web,org.springframework.security";
+    private static final String DEFAULT_ALLOWED_LOGGERS = "com.example.shop";
+    private static final String DEFAULT_ADDITIONAL_DEBUG_LOGGERS = "";
     private static final String DEFAULT_LOG_FILE = "logs/shop-backend.log";
     private static final int DEFAULT_MAX_RANGE_HOURS = 24;
     private static final int DEFAULT_PREVIEW_MAX_LINES = 1000;
     private static final int DEFAULT_MAX_DOWNLOAD_BYTES = 1024 * 1024;
+    private static final int DEFAULT_DEBUG_AUTO_RESTORE_MINUTES = 15;
     private static final DateTimeFormatter LOG_TIMESTAMP = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS");
 
     private final LoggingSystem loggingSystem;
     private final Environment environment;
+    private final ScheduledExecutorService debugRestoreScheduler;
+    private final boolean ownsDebugRestoreScheduler;
+    private final AtomicReference<ScheduledFuture<?>> debugRestoreTask = new AtomicReference<>();
 
     public LogManagementService(LoggingSystem loggingSystem, Environment environment) {
+        this(loggingSystem, environment, Executors.newSingleThreadScheduledExecutor(runnable -> {
+            Thread thread = new Thread(runnable, "shop-log-debug-restore");
+            thread.setDaemon(true);
+            return thread;
+        }), true);
+    }
+
+    LogManagementService(LoggingSystem loggingSystem, Environment environment, ScheduledExecutorService debugRestoreScheduler) {
+        this(loggingSystem, environment, debugRestoreScheduler, false);
+    }
+
+    private LogManagementService(LoggingSystem loggingSystem,
+                                 Environment environment,
+                                 ScheduledExecutorService debugRestoreScheduler,
+                                 boolean ownsDebugRestoreScheduler) {
         this.loggingSystem = loggingSystem;
         this.environment = environment;
+        this.debugRestoreScheduler = debugRestoreScheduler;
+        this.ownsDebugRestoreScheduler = ownsDebugRestoreScheduler;
     }
 
     public LogManagementStatusResponse status(String loggerName) {
@@ -77,12 +104,30 @@ public class LogManagementService {
 
     public LogManagementStatusResponse setDebug(boolean enabled, String loggerName) {
         String resolvedLogger = resolveLoggerName(loggerName);
+        Set<String> additionalLoggers = additionalDebugLoggers(resolvedLogger);
         LogLevel level = enabled ? LogLevel.DEBUG : LogLevel.INFO;
-        loggingSystem.setLogLevel(resolvedLogger, level);
-        additionalDebugLoggers().forEach(name -> loggingSystem.setLogLevel(name, level));
+        setLogLevels(resolvedLogger, additionalLoggers, level);
+        if (enabled) {
+            scheduleDebugRestore(resolvedLogger, additionalLoggers);
+        } else {
+            cancelDebugRestore();
+        }
         log.debug("Runtime debug logging probe: enabled={}, primaryLogger={}, additionalLoggers={}",
-                enabled, resolvedLogger, additionalDebugLoggers());
+                enabled, resolvedLogger, additionalLoggers);
         return status(resolvedLogger);
+    }
+
+    public boolean isApplicationLogger(String loggerName) {
+        String resolvedLogger = resolveLoggerName(loggerName);
+        return DEFAULT_LOGGER.equals(resolvedLogger) || resolvedLogger.startsWith(DEFAULT_LOGGER + ".");
+    }
+
+    @PreDestroy
+    public void shutdownDebugRestoreScheduler() {
+        cancelDebugRestore();
+        if (ownsDebugRestoreScheduler) {
+            debugRestoreScheduler.shutdownNow();
+        }
     }
 
     public byte[] download(LocalDateTime start, LocalDateTime end) {
@@ -327,6 +372,40 @@ public class LogManagementService {
                         : loggerName.equals(prefix) || loggerName.startsWith(prefix + "."));
     }
 
+    private void setLogLevels(String primaryLogger, Set<String> additionalLoggers, LogLevel level) {
+        loggingSystem.setLogLevel(primaryLogger, level);
+        additionalLoggers.forEach(name -> loggingSystem.setLogLevel(name, level));
+    }
+
+    private void scheduleDebugRestore(String primaryLogger, Set<String> additionalLoggers) {
+        AtomicReference<ScheduledFuture<?>> current = new AtomicReference<>();
+        Runnable restore = () -> {
+            try {
+                setLogLevels(primaryLogger, additionalLoggers, LogLevel.INFO);
+                log.debug("Runtime debug logging auto-restored: primaryLogger={}, additionalLoggers={}",
+                        primaryLogger, additionalLoggers);
+            } finally {
+                debugRestoreTask.compareAndSet(current.get(), null);
+            }
+        };
+        ScheduledFuture<?> future = debugRestoreScheduler.schedule(
+                restore,
+                debugAutoRestoreMinutes(),
+                TimeUnit.MINUTES);
+        current.set(future);
+        ScheduledFuture<?> previous = debugRestoreTask.getAndSet(future);
+        if (previous != null) {
+            previous.cancel(false);
+        }
+    }
+
+    private void cancelDebugRestore() {
+        ScheduledFuture<?> previous = debugRestoreTask.getAndSet(null);
+        if (previous != null) {
+            previous.cancel(false);
+        }
+    }
+
     private Set<String> allowedLoggerPrefixes() {
         String configured = stringProperty("admin.logs.allowed-logger-prefixes", DEFAULT_ALLOWED_LOGGERS);
         Set<String> prefixes = Arrays.stream(configured.split(","))
@@ -338,7 +417,7 @@ public class LogManagementService {
         return prefixes.isEmpty() ? Set.of(DEFAULT_LOGGER) : prefixes;
     }
 
-    private Set<String> additionalDebugLoggers() {
+    private Set<String> additionalDebugLoggers(String primaryLogger) {
         String configured = stringProperty("admin.logs.additional-debug-loggers", DEFAULT_ADDITIONAL_DEBUG_LOGGERS);
         return Arrays.stream(configured.split(","))
                 .map(String::trim)
@@ -346,7 +425,7 @@ public class LogManagementService {
                 .map(item -> "root".equalsIgnoreCase(item) ? LoggingSystem.ROOT_LOGGER_NAME : item)
                 .filter(item -> item.matches("[A-Za-z0-9_.\\-$]+"))
                 .filter(this::isAllowedLogger)
-                .filter(item -> !DEFAULT_LOGGER.equals(item))
+                .filter(item -> !item.equals(primaryLogger))
                 .collect(Collectors.toCollection(java.util.LinkedHashSet::new));
     }
 
@@ -360,6 +439,10 @@ public class LogManagementService {
 
     private int maxDownloadBytes() {
         return intProperty("admin.logs.max-download-bytes", DEFAULT_MAX_DOWNLOAD_BYTES, 1024, 20 * 1024 * 1024);
+    }
+
+    private int debugAutoRestoreMinutes() {
+        return intProperty("admin.logs.debug-auto-restore-minutes", DEFAULT_DEBUG_AUTO_RESTORE_MINUTES, 1, 60);
     }
 
     private String stringProperty(String key, String defaultValue) {

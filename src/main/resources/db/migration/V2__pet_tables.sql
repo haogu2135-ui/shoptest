@@ -87,7 +87,7 @@ CREATE TABLE IF NOT EXISTS pet_birthday_coupon_grants (
     birthday_year INT NOT NULL,
     granted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE KEY uk_pet_birthday_year (pet_id, birthday_year),
-    FOREIGN KEY (pet_id) REFERENCES pet_profiles(id),
-    FOREIGN KEY (user_id) REFERENCES users(id),
+    CONSTRAINT fk_pet_birthday_coupon_grants_pet FOREIGN KEY (pet_id) REFERENCES pet_profiles(id) ON DELETE CASCADE,
+    CONSTRAINT fk_pet_birthday_coupon_grants_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (coupon_id) REFERENCES coupons(id) ON DELETE CASCADE
 ) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

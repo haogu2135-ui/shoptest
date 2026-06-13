@@ -4,13 +4,20 @@ import esLocale from './locales/es.json';
 import zhLocale from './locales/zh.json';
 import { getLocalStorageItem, setLocalStorageItem } from './utils/safeStorage';
 
-export type Language = 'es' | 'zh' | 'en';
+export const SUPPORTED_LANGUAGES = ['es', 'zh', 'en'] as const;
+export type Language = (typeof SUPPORTED_LANGUAGES)[number];
+export const LANGUAGE_LABELS: Record<Language, string> = {
+  es: 'Español',
+  zh: '中文',
+  en: 'English',
+};
 
 type TranslationMap = {
   [key: string]: string | TranslationMap;
 };
 
-type TranslationParams = Record<string, string | number>;
+export type TranslationParams = Record<string, string | number>;
+export type TranslateFn = (key: string, params?: TranslationParams) => string;
 
 const STORAGE_KEY = 'shop-language';
 
@@ -36,13 +43,13 @@ const translations: Record<Language, TranslationMap> = {
 type LanguageContextValue = {
   language: Language;
   setLanguage: (language: Language) => void;
-  t: (key: string, params?: TranslationParams) => string;
+  t: TranslateFn;
 };
 
 const LanguageContext = createContext<LanguageContextValue | undefined>(undefined);
 
 const isLanguage = (value: string | null): value is Language =>
-  value === 'es' || value === 'zh' || value === 'en';
+  Boolean(value && (SUPPORTED_LANGUAGES as readonly string[]).includes(value));
 
 const detectBrowserLanguage = (): Language => {
   const browserLanguages = typeof navigator === 'undefined'

@@ -94,46 +94,64 @@ public interface CouponRepository extends JpaRepository<Coupon, Long> {
                                       @Param("threshold") int threshold);
 
     @Query("select c from Coupon c " +
-            "where c.scope = ?1 and c.status = ?2 " +
-            "and (c.startAt is null or c.startAt <= ?3) " +
-            "and (c.endAt is null or c.endAt >= ?3) " +
+            "where c.scope = :scope and c.status = :status " +
+            "and (c.startAt is null or c.startAt <= :now) " +
+            "and (c.endAt is null or c.endAt >= :now) " +
             "and (c.totalQuantity is null or coalesce(c.claimedQuantity, 0) < c.totalQuantity) " +
             "order by c.id desc")
-    List<Coupon> findClaimableByScopeAndStatus(String scope, String status, LocalDateTime now);
+    List<Coupon> findClaimableByScopeAndStatus(@Param("scope") String scope,
+                                               @Param("status") String status,
+                                               @Param("now") LocalDateTime now);
 
     @Query("select c from Coupon c " +
-            "where c.scope = ?1 and c.status = ?2 " +
-            "and (c.startAt is null or c.startAt <= ?3) " +
-            "and (c.endAt is null or c.endAt >= ?3) " +
+            "where c.scope = :scope and c.status = :status " +
+            "and (c.startAt is null or c.startAt <= :now) " +
+            "and (c.endAt is null or c.endAt >= :now) " +
             "and (c.totalQuantity is null or coalesce(c.claimedQuantity, 0) < c.totalQuantity) " +
             "order by c.id desc")
-    List<Coupon> findClaimableByScopeAndStatus(String scope, String status, LocalDateTime now, Pageable pageable);
+    List<Coupon> findClaimableByScopeAndStatus(@Param("scope") String scope,
+                                               @Param("status") String status,
+                                               @Param("now") LocalDateTime now,
+                                               Pageable pageable);
 
     @Query("select count(c) from Coupon c " +
             "where c.status = 'ACTIVE' " +
             "and c.endAt is not null " +
-            "and c.endAt >= ?1 " +
-            "and c.endAt <= ?2")
-    long countActiveExpiringBetween(LocalDateTime startAt, LocalDateTime endAt);
+            "and c.endAt >= :startAt " +
+            "and c.endAt <= :endAt")
+    long countActiveExpiringBetween(@Param("startAt") LocalDateTime startAt,
+                                    @Param("endAt") LocalDateTime endAt);
 
     @Query("select count(c) from Coupon c " +
             "where c.status = 'ACTIVE' " +
             "and c.totalQuantity is not null " +
             "and c.totalQuantity > coalesce(c.claimedQuantity, 0) " +
-            "and c.totalQuantity <= coalesce(c.claimedQuantity, 0) + ?1")
-    long countActiveLowRemaining(int threshold);
+            "and c.totalQuantity <= coalesce(c.claimedQuantity, 0) + :threshold")
+    long countActiveLowRemaining(@Param("threshold") int threshold);
 
     @Modifying
     @Query("update Coupon c set c.claimedQuantity = coalesce(c.claimedQuantity, 0) + 1, " +
             "c.updatedAt = current_timestamp " +
-            "where c.id = ?1 and c.status = 'ACTIVE' " +
+            "where c.id = :couponId and c.status = 'ACTIVE' " +
             "and (c.totalQuantity is null or coalesce(c.claimedQuantity, 0) < c.totalQuantity)")
-    int incrementClaimedQuantity(Long couponId);
+    int incrementClaimedQuantity(@Param("couponId") Long couponId);
 
     @Modifying
     @Query(value = "update coupons set claimed_quantity = case " +
-            "when coalesce(claimed_quantity, 0) > ?2 then coalesce(claimed_quantity, 0) - ?2 " +
-            "else 0 end, updated_at = current_timestamp where id = ?1",
+            "when coalesce(claimed_quantity, 0) > :quantity then coalesce(claimed_quantity, 0) - :quantity " +
+            "else 0 end, updated_at = current_timestamp where id = :couponId",
             nativeQuery = true)
-    int decrementClaimedQuantity(Long couponId, int quantity);
+    int decrementClaimedQuantity(@Param("couponId") Long couponId, @Param("quantity") int quantity);
+
+    @Modifying
+    @Query("update Coupon c set c.usedCount = coalesce(c.usedCount, 0) + 1, " +
+            "c.updatedAt = current_timestamp where c.id = :couponId")
+    int incrementUsedCount(@Param("couponId") Long couponId);
+
+    @Modifying
+    @Query(value = "update coupons set used_count = case " +
+            "when coalesce(used_count, 0) > 0 then coalesce(used_count, 0) - 1 " +
+            "else 0 end, updated_at = current_timestamp where id = :couponId",
+            nativeQuery = true)
+    int decrementUsedCount(@Param("couponId") Long couponId);
 }

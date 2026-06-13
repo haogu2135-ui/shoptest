@@ -14,6 +14,15 @@
   margin-bottom: 16px;
 }
 
+.category-management-page__alert,
+.category-management-page__loadingState {
+  margin-bottom: 16px;
+}
+
+.category-management-page__loadingState .ant-card-body {
+  min-height: 120px;
+}
+
 .category-management-page__toolbar .ant-space {
   width: 100%;
   justify-content: space-between;
@@ -558,5 +567,52 @@
   .category-management-page__healthCard {
     flex: initial;
     min-width: 0;
+  }
+}
+
+/* F3526: keep category readiness metrics visible at tablet and short-landscape widths */
+@media (max-width: 900px) {
+  .category-management-page__health {
+    grid-template-columns: minmax(0, 1fr) !important;
+    align-items: stretch;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    overflow: visible;
+  }
+
+  .category-management-page__score {
+    align-items: flex-start;
+  }
+
+  .category-management-page__healthGrid,
+  .category-management-page--es .category-management-page__healthGrid {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    margin-inline: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    scroll-snap-type: none !important;
+    overscroll-behavior-inline: auto;
+    -webkit-mask-image: none !important;
+    mask-image: none !important;
+    scrollbar-width: auto;
+  }
+
+  .category-management-page__healthGrid::-webkit-scrollbar {
+    display: initial;
+  }
+
+  .category-management-page__healthItem,
+  .category-management-page--es .category-management-page__healthItem {
+    flex: initial !important;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    scroll-snap-align: none;
   }
 }

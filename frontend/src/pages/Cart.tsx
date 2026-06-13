@@ -15,6 +15,7 @@ import {
   removeSavedForLaterItem,
   replaceSavedForLaterItems,
   saveCartItemForLater,
+  SAVE_FOR_LATER_STORAGE_KEY,
   type SavedForLaterItem,
 } from '../utils/saveForLater';
 import { conversionConfig } from '../utils/conversionConfig';
@@ -88,6 +89,10 @@ const setCachedRecentProducts = (cacheKey: string, products: Product[], now = Da
     products,
   });
   pruneRecentProductsCache(now);
+};
+
+const clearRecentProductsCache = () => {
+  recentProductsCache.clear();
 };
 
 const getSavedAgeDays = (savedAt?: number) => {
@@ -171,6 +176,7 @@ const Cart: React.FC = () => {
   const [loadError, setLoadError] = useState(false);
   const [loadErrorMessage, setLoadErrorMessage] = useState<string | null>(null);
   const [restoringSaved, setRestoringSaved] = useState(false);
+  const [restoringSavedItemIds, setRestoringSavedItemIds] = useState<number[]>([]);
   const [addingRecentId, setAddingRecentId] = useState<number | null>(null);
   const [updatingItemIds, setUpdatingItemIds] = useState<number[]>([]);
   const [removingItemIds, setRemovingItemIds] = useState<number[]>([]);
@@ -188,6 +194,7 @@ const Cart: React.FC = () => {
     (product.name || '').trim() || t('pages.profile.productFallback', { id: product.id })
   ), [t]);
   const resetCheckoutStateAfterCartMutation = useCallback(() => {
+    clearRecentProductsCache();
     clearCheckoutCartItemIds();
     removeSessionStorageItem('checkoutPaymentMethod');
   }, []);
@@ -198,6 +205,7 @@ const Cart: React.FC = () => {
   }, [language, t]);
 
   const fetchCartItems = useCallback(async () => {
+    if (!mountedRef.current) return;
     const authenticated = hasAuthenticatedCartSession();
     if (!authenticated) {
       const guestItems = normalizeCartItems(getGuestCartItems());
@@ -332,8 +340,12 @@ const Cart: React.FC = () => {
 
   useEffect(() => {
     const refreshSavedItems = () => setSavedItems(getSavedForLaterItemsSnapshot());
-    const refreshGuestCartFromStorage = (event: StorageEvent) => {
-      if (event.key !== 'shop-guest-cart' || getLocalStorageItem('token')) return;
+    const refreshCartStorage = (event: StorageEvent) => {
+      const allStorageCleared = event.key === null;
+      if (allStorageCleared || event.key === SAVE_FOR_LATER_STORAGE_KEY) {
+        refreshSavedItems();
+      }
+      if ((!allStorageCleared && event.key !== 'shop-guest-cart') || getLocalStorageItem('token')) return;
       const guestItems = normalizeCartItems(getGuestCartItems());
       if (guestItems.length === 0) {
         resetCheckoutStateAfterCartMutation();
@@ -343,10 +355,10 @@ const Cart: React.FC = () => {
       setLoading(false);
     };
     window.addEventListener('shop:save-for-later-updated', refreshSavedItems);
-    window.addEventListener('storage', refreshGuestCartFromStorage);
+    window.addEventListener('storage', refreshCartStorage);
     return () => {
       window.removeEventListener('shop:save-for-later-updated', refreshSavedItems);
-      window.removeEventListener('storage', refreshGuestCartFromStorage);
+      window.removeEventListener('storage', refreshCartStorage);
     };
   }, [resetCheckoutStateAfterCartMutation]);
 
@@ -491,6 +503,8 @@ const Cart: React.FC = () => {
   };
 
   const moveSavedItemToCart = async (item: SavedForLaterItem) => {
+    if (restoringSaved || restoringSavedItemIds.includes(item.id)) return;
+    setRestoringSavedItemIds((ids) => Array.from(new Set([...ids, item.id])));
     try {
       const authenticated = hasAuthenticatedCartSession();
       if (authenticated) {
@@ -499,6 +513,7 @@ const Cart: React.FC = () => {
         if (!mountedRef.current) return;
         const nextItems = normalizeCartItems(response.data);
         setCartItems(nextItems);
+        clearRecentProductsCache();
         setSelectedIds(nextItems.filter(canCheckout).map((cartItem) => cartItem.id));
       } else {
         addGuestCartItem(
@@ -514,6 +529,7 @@ const Cart: React.FC = () => {
         );
         const nextItems = normalizeCartItems(getGuestCartItems());
         setCartItems(nextItems);
+        clearRecentProductsCache();
         setSelectedIds(nextItems.filter(canCheckout).map((cartItem) => cartItem.id));
       }
       removeSavedForLaterProduct(item.productId, item.selectedSpecs);
@@ -523,6 +539,10 @@ const Cart: React.FC = () => {
     } catch (err: unknown) {
       if (!mountedRef.current) return;
       message.error(getApiErrorMessage(err, t('messages.operationFailed'), language));
+    } finally {
+      if (mountedRef.current) {
+        setRestoringSavedItemIds((ids) => ids.filter((id) => id !== item.id));
+      }
     }
   };
 
@@ -549,6 +569,7 @@ const Cart: React.FC = () => {
         if (!mountedRef.current) return;
         const nextItems = normalizeCartItems(response.data);
         setCartItems(nextItems);
+        clearRecentProductsCache();
         setSelectedIds(nextItems.filter(canCheckout).map((cartItem) => cartItem.id));
       } else {
         targetItems.forEach((item) => {
@@ -566,6 +587,7 @@ const Cart: React.FC = () => {
         });
         const nextItems = normalizeCartItems(getGuestCartItems());
         setCartItems(nextItems);
+        clearRecentProductsCache();
         setSelectedIds(nextItems.filter(canCheckout).map((cartItem) => cartItem.id));
       }
       restoredItems.forEach((item) => removeSavedForLaterProduct(item.productId, item.selectedSpecs));
@@ -845,6 +867,7 @@ const Cart: React.FC = () => {
       const response = await cartApi.getItems(0);
       const nextItems = normalizeCartItems(response.data);
       setCartItems(nextItems);
+      clearRecentProductsCache();
       const addedItemIds = nextItems
         .filter((item) => item.productId === productId && canCheckout(item))
         .map((item) => item.id);
@@ -858,6 +881,7 @@ const Cart: React.FC = () => {
     }
     const nextItems = normalizeCartItems(getGuestCartItems());
     setCartItems(nextItems);
+    clearRecentProductsCache();
     const addedItemIds = nextItems
       .filter((item) => item.productId === productId && canCheckout(item))
       .map((item) => item.id);
@@ -1473,6 +1497,7 @@ const Cart: React.FC = () => {
             size="small"
             icon={<ShoppingCartOutlined />}
             loading={restoringSaved}
+            disabled={restoringSavedItemIds.length > 0}
             aria-label={moveAllSavedActionLabel}
             title={moveAllSavedActionLabel}
             onClick={() => moveSavedItemsToCart(savedItems)}
@@ -1502,6 +1527,7 @@ const Cart: React.FC = () => {
                 size="small"
                 type="primary"
                 loading={restoringSaved}
+                disabled={restoringSavedItemIds.length > 0}
                 aria-label={restoreSavedReminderActionLabel}
                 title={restoreSavedReminderActionLabel}
                 onClick={() => moveSavedItemsToCart(savedReminderItems)}
@@ -1514,13 +1540,14 @@ const Cart: React.FC = () => {
         {savedItems.length === 0 ? (
           <Empty description={t('pages.cart.saveForLaterEmpty')} image={Empty.PRESENTED_IMAGE_SIMPLE} />
         ) : (
-          <div className="cart-page__savedGrid">
+          <div className="cart-page__savedGrid" role="list" aria-label={t('pages.cart.saveForLaterTitle')}>
             {savedItems.map((item) => {
               const itemName = getCartItemName(item);
               const moveActionLabel = `${t('pages.cart.moveToCart')}: ${itemName}`;
               const deleteActionLabel = `${t('common.delete')}: ${itemName}`;
+              const restoringSavedItem = restoringSaved || restoringSavedItemIds.includes(item.id);
               return (
-              <div className="cart-page__savedItem" key={item.id}>
+              <div className="cart-page__savedItem" key={item.id} role="listitem">
                 <Link to={`/products/${item.productId}`}>
                   <img
                     src={resolveCartImage(item.imageUrl)}
@@ -1544,7 +1571,7 @@ const Cart: React.FC = () => {
                   <Text strong className="cart-page__savedPrice commerce-money">{formatMoney(item.price)}</Text>
                 </div>
                 <Space className="cart-page__savedActions">
-                  <Button icon={<ShoppingCartOutlined />} aria-label={moveActionLabel} title={moveActionLabel} onClick={() => moveSavedItemToCart(item)}>
+                  <Button icon={<ShoppingCartOutlined />} loading={restoringSavedItem} disabled={restoringSavedItem} aria-label={moveActionLabel} title={moveActionLabel} onClick={() => moveSavedItemToCart(item)}>
                     {t('pages.cart.moveToCart')}
                   </Button>
                   <Popconfirm
@@ -1556,7 +1583,7 @@ const Cart: React.FC = () => {
                     okButtonProps={{ danger: true, 'aria-label': deleteActionLabel, title: deleteActionLabel }}
                     cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${deleteActionLabel}`, title: `${t('common.cancel')}: ${deleteActionLabel}` }}
                   >
-                    <Button danger type="text" icon={<DeleteOutlined />} aria-label={deleteActionLabel} title={deleteActionLabel} />
+                    <Button danger type="text" icon={<DeleteOutlined />} disabled={restoringSavedItem} aria-label={deleteActionLabel} title={deleteActionLabel} />
                   </Popconfirm>
                 </Space>
               </div>

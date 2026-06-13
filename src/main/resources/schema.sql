@@ -2,7 +2,7 @@
 CREATE TABLE IF NOT EXISTS users (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     username VARCHAR(50) NOT NULL UNIQUE,
-    password VARCHAR(100) NOT NULL,
+    password VARCHAR(255) NOT NULL,
     email VARCHAR(100) UNIQUE,
     phone VARCHAR(20) UNIQUE,
     address TEXT,
@@ -20,12 +20,15 @@ CREATE TABLE IF NOT EXISTS categories (
     name VARCHAR(50) NOT NULL,
     description TEXT,
     parent_id BIGINT,
+    path VARCHAR(500),
     level INT NOT NULL DEFAULT 1,
     image_url TEXT,
     localized_content TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (parent_id) REFERENCES categories(id)
+    FOREIGN KEY (parent_id) REFERENCES categories(id),
+    INDEX idx_categories_path (path),
+    INDEX idx_categories_parent_level (parent_id, level, id)
 ) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS brands (
@@ -50,23 +53,26 @@ CREATE TABLE IF NOT EXISTS logistics_carriers (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Product brand is intentionally denormalized vendor/display text for imports,
+-- search, personalization and storefront display. The brands table supplies
+-- curated option lists, not a strict FK source for every supplier label.
 -- 鍟嗗搧琛?
 CREATE TABLE IF NOT EXISTS products (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    name VARCHAR(100) NOT NULL,
+    name VARCHAR(200) NOT NULL,
     description TEXT,
     price DECIMAL(10,2) NOT NULL,
     stock INT NOT NULL DEFAULT 0,
     category_id BIGINT NOT NULL,
     image_url TEXT,
     status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
-    brand VARCHAR(100),
+    brand VARCHAR(120),
     original_price DECIMAL(10,2),
     discount INT DEFAULT 0,
     limited_time_price DECIMAL(10,2),
     limited_time_start_at DATETIME,
     limited_time_end_at DATETIME,
-    tag VARCHAR(20),
+    tag VARCHAR(80),
     images TEXT,
     specifications TEXT,
     detail_content TEXT,
@@ -76,10 +82,13 @@ CREATE TABLE IF NOT EXISTS products (
     free_shipping BOOLEAN DEFAULT FALSE,
     free_shipping_threshold DECIMAL(10,2),
     is_featured BOOLEAN DEFAULT FALSE,
+    best_seller_rank INT NOT NULL DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (category_id) REFERENCES categories(id),
-    UNIQUE KEY uk_products_category_name (category_id, name)
+    CONSTRAINT ck_products_status CHECK (status IN ('ACTIVE', 'INACTIVE', 'PENDING_REVIEW', 'REJECTED')),
+    INDEX idx_products_best_seller_rank (best_seller_rank, id),
+    FULLTEXT INDEX idx_products_search_text (name, description, brand, tag)
 );
 
 -- 璐墿杞﹁〃
@@ -90,10 +99,12 @@ CREATE TABLE IF NOT EXISTS cart_items (
     quantity INT NOT NULL DEFAULT 1,
     price DECIMAL(10,2) NOT NULL DEFAULT 0.00,
     selected_specs TEXT,
+    selected_specs_key VARBINARY(32) GENERATED ALWAYS AS (UNHEX(SHA2(COALESCE(selected_specs, ''), 256))) STORED,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id),
-    FOREIGN KEY (product_id) REFERENCES products(id)
+    FOREIGN KEY (product_id) REFERENCES products(id),
+    UNIQUE KEY uk_cart_user_product_specs (user_id, product_id, selected_specs_key)
 );
 
 -- 璁㈠崟琛?
@@ -131,6 +142,7 @@ CREATE TABLE IF NOT EXISTS orders (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id),
+    CONSTRAINT ck_orders_status CHECK (status IN ('PENDING_PAYMENT', 'PENDING_SHIPMENT', 'SHIPPED', 'COMPLETED', 'CANCELLED', 'RETURN_REQUESTED', 'RETURN_APPROVED', 'RETURN_SHIPPED', 'RETURN_REFUNDING', 'RETURNED', 'REFUNDED')),
     INDEX idx_orders_status_created (status, created_at),
     INDEX idx_orders_user_status (user_id, status),
     INDEX idx_orders_user_status_created (user_id, status, created_at),
@@ -140,7 +152,8 @@ CREATE TABLE IF NOT EXISTS orders (
     INDEX idx_orders_status_return_approved (status, return_approved_at),
     INDEX idx_orders_status_return_shipped (status, return_shipped_at),
     INDEX idx_orders_status_tracking (status, tracking_number),
-    INDEX idx_orders_refunded_at (refunded_at)
+    INDEX idx_orders_refunded_at (refunded_at),
+    INDEX idx_orders_recent_created_status (created_at, status, id)
 );
 
 CREATE TABLE IF NOT EXISTS checkout_idempotency_keys (
@@ -153,6 +166,7 @@ CREATE TABLE IF NOT EXISTS checkout_idempotency_keys (
     status VARCHAR(20) NOT NULL DEFAULT 'PROCESSING',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT ck_checkout_idempotency_status CHECK (status IN ('PROCESSING', 'COMPLETED')),
     UNIQUE KEY uk_checkout_idempotency_key (checkout_scope, principal, idempotency_key),
     INDEX idx_checkout_idempotency_order (order_id),
     INDEX idx_checkout_idempotency_updated (updated_at)
@@ -164,11 +178,17 @@ CREATE TABLE IF NOT EXISTS user_addresses (
     user_id BIGINT NOT NULL,
     recipient_name VARCHAR(50) NOT NULL,
     phone VARCHAR(20) NOT NULL,
+    region VARCHAR(1000) NULL,
+    postal_code VARCHAR(20) NULL,
+    detail_address VARCHAR(260) NULL,
     address TEXT NOT NULL,
     is_default BOOLEAN DEFAULT FALSE,
+    default_user_id BIGINT GENERATED ALWAYS AS (CASE WHEN is_default THEN user_id ELSE NULL END) STORED,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id)
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    UNIQUE KEY uk_user_addresses_one_default (default_user_id),
+    INDEX idx_user_addresses_user (user_id)
 );
 
 -- 鏀惰棌琛?
@@ -177,6 +197,7 @@ CREATE TABLE IF NOT EXISTS wishlist (
     user_id BIGINT NOT NULL,
     product_id BIGINT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id),
     FOREIGN KEY (product_id) REFERENCES products(id),
     UNIQUE KEY uk_user_product (user_id, product_id)
@@ -186,14 +207,16 @@ CREATE TABLE IF NOT EXISTS wishlist (
 CREATE TABLE IF NOT EXISTS notifications (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     user_id BIGINT NOT NULL,
-    type VARCHAR(30) NOT NULL,
-    title VARCHAR(100) NOT NULL,
+    type VARCHAR(40) NOT NULL,
+    title VARCHAR(160) NOT NULL,
     message TEXT,
     content_format VARCHAR(20) NOT NULL DEFAULT 'TEXT',
     is_read BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id),
-    INDEX idx_notifications_user_read (user_id, is_read)
+    INDEX idx_notifications_user_read (user_id, is_read),
+    INDEX idx_notifications_user_created (user_id, created_at),
+    INDEX idx_notifications_created_at (created_at)
 );
 
 -- 璁㈠崟璇︽儏琛?
@@ -209,7 +232,8 @@ CREATE TABLE IF NOT EXISTS order_items (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (order_id) REFERENCES orders(id),
     FOREIGN KEY (product_id) REFERENCES products(id),
-    INDEX idx_order_items_product_order (product_id, order_id)
+    INDEX idx_order_items_product_order (product_id, order_id),
+    INDEX idx_order_items_order_product (order_id, product_id)
 );
 
 CREATE TABLE IF NOT EXISTS reviews (
@@ -223,15 +247,18 @@ CREATE TABLE IF NOT EXISTS reviews (
     order_id BIGINT,
     admin_reply VARCHAR(1000),
     replied_at DATETIME,
+    reported_count INT NOT NULL DEFAULT 0,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id),
     FOREIGN KEY (product_id) REFERENCES products(id),
     FOREIGN KEY (order_id) REFERENCES orders(id),
+    CONSTRAINT ck_reviews_status CHECK (status IN ('PENDING', 'APPROVED', 'HIDDEN')),
     INDEX idx_reviews_product_id (product_id),
     INDEX idx_reviews_user_id (user_id),
     INDEX idx_reviews_order_id (order_id),
     UNIQUE INDEX uk_reviews_product_user_order (product_id, user_id, order_id),
-    INDEX idx_reviews_status_created (status, created_at)
+    INDEX idx_reviews_status_created (status, created_at),
+    INDEX idx_reviews_reported_status (reported_count, status, created_at)
 ) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS pet_profiles (
@@ -303,9 +330,11 @@ CREATE TABLE IF NOT EXISTS payments (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (order_id) REFERENCES orders(id),
+    CONSTRAINT ck_payments_status CHECK (status IN ('PENDING', 'PAID', 'FAILED', 'EXPIRED', 'CANCELLED', 'REFUNDING', 'REFUNDED', 'RECONCILE_REQUIRED')),
     UNIQUE KEY uk_payment_order_channel (order_id, channel),
     INDEX idx_payments_order_no_channel (order_no, channel),
-    INDEX idx_payments_transaction_id (transaction_id)
+    INDEX idx_payments_transaction_id (transaction_id),
+    INDEX idx_payments_status_expires (status, expires_at)
 );
 
 CREATE TABLE IF NOT EXISTS security_audit_logs (
@@ -313,11 +342,11 @@ CREATE TABLE IF NOT EXISTS security_audit_logs (
     action VARCHAR(50) NOT NULL,
     result VARCHAR(20) NOT NULL,
     actor_user_id BIGINT,
-    actor_username VARCHAR(100),
-    actor_role VARCHAR(30),
-    resource_type VARCHAR(50),
-    resource_id VARCHAR(100),
-    ip_address VARCHAR(45),
+    actor_username VARCHAR(120),
+    actor_role VARCHAR(40),
+    resource_type VARCHAR(80),
+    resource_id VARCHAR(120),
+    ip_address VARCHAR(64),
     user_agent VARCHAR(500),
     message VARCHAR(1000),
     metadata TEXT,
@@ -340,11 +369,13 @@ CREATE TABLE IF NOT EXISTS coupons (
     max_discount_amount DECIMAL(10,2),
     total_quantity INT,
     claimed_quantity INT NOT NULL DEFAULT 0,
+    used_count INT NOT NULL DEFAULT 0,
     start_at DATETIME,
     end_at DATETIME,
     description TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT ck_coupons_status CHECK (status IN ('ACTIVE', 'INACTIVE')),
     INDEX idx_coupons_public_active (scope, status, start_at, end_at),
     INDEX idx_coupons_public_claimable (scope, status, start_at, end_at, total_quantity, claimed_quantity, id)
 );
@@ -360,6 +391,7 @@ CREATE TABLE IF NOT EXISTS user_coupons (
     FOREIGN KEY (user_id) REFERENCES users(id),
     FOREIGN KEY (coupon_id) REFERENCES coupons(id),
     FOREIGN KEY (order_id) REFERENCES orders(id),
+    CONSTRAINT ck_user_coupons_status CHECK (status IN ('UNUSED', 'USED')),
     UNIQUE KEY uk_user_coupon (user_id, coupon_id),
     INDEX idx_user_coupons_user_status (user_id, status)
 );
@@ -375,8 +407,8 @@ CREATE TABLE IF NOT EXISTS pet_birthday_coupon_grants (
     birthday_year INT NOT NULL,
     granted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE KEY uk_pet_birthday_year (pet_id, birthday_year),
-    FOREIGN KEY (pet_id) REFERENCES pet_profiles(id),
-    FOREIGN KEY (user_id) REFERENCES users(id),
+    CONSTRAINT fk_pet_birthday_coupon_grants_pet FOREIGN KEY (pet_id) REFERENCES pet_profiles(id) ON DELETE CASCADE,
+    CONSTRAINT fk_pet_birthday_coupon_grants_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (coupon_id) REFERENCES coupons(id) ON DELETE CASCADE
 ) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -416,14 +448,15 @@ CREATE TABLE IF NOT EXISTS product_questions (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (product_id) REFERENCES products(id),
     FOREIGN KEY (user_id) REFERENCES users(id),
-    FOREIGN KEY (answered_by) REFERENCES users(id)
+    FOREIGN KEY (answered_by) REFERENCES users(id),
+    INDEX idx_product_questions_product_answered_created (product_id, answered_at, created_at, id)
 );
 
 CREATE TABLE IF NOT EXISTS support_sessions (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     user_id BIGINT NOT NULL,
     assigned_admin_id BIGINT,
-    context_key VARCHAR(120),
+    context_key VARCHAR(160),
     status VARCHAR(20) NOT NULL DEFAULT 'OPEN',
     last_message VARCHAR(500),
     last_message_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -441,7 +474,7 @@ CREATE TABLE IF NOT EXISTS support_messages (
     session_id BIGINT NOT NULL,
     sender_id BIGINT NOT NULL,
     sender_role VARCHAR(20) NOT NULL,
-    content VARCHAR(1000) NOT NULL,
+    content TEXT NOT NULL,
     is_read_by_user BOOLEAN DEFAULT FALSE,
     is_read_by_admin BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -487,6 +520,84 @@ CREATE TABLE IF NOT EXISTS admin_bug_reports (
     INDEX idx_admin_bug_created (created_at)
 ) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS site_announcements (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    title VARCHAR(120) NOT NULL,
+    content TEXT NOT NULL,
+    link_url VARCHAR(500),
+    status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
+    sort_order INT DEFAULT 0,
+    starts_at DATETIME,
+    ends_at DATETIME,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_site_announcements_status_window (status, starts_at, ends_at, sort_order),
+    INDEX idx_site_announcements_updated (updated_at)
+) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS admin_roles (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    code VARCHAR(50) NOT NULL UNIQUE,
+    name VARCHAR(100) NOT NULL,
+    description VARCHAR(500),
+    status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS admin_role_permissions (
+    role_code VARCHAR(50) NOT NULL,
+    permission_key VARCHAR(80) NOT NULL,
+    PRIMARY KEY (role_code, permission_key),
+    INDEX idx_admin_role_permissions_role (role_code),
+    CONSTRAINT fk_admin_role_permissions_role_code FOREIGN KEY (role_code) REFERENCES admin_roles(code) ON DELETE CASCADE
+) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS ip_blacklist_entries (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    ip_address VARCHAR(45) NOT NULL,
+    status VARCHAR(20) NOT NULL,
+    source VARCHAR(30) NOT NULL DEFAULT 'MANUAL',
+    reason VARCHAR(500),
+    failure_count INT NOT NULL DEFAULT 0,
+    first_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    blocked_at TIMESTAMP NULL,
+    blocked_until TIMESTAMP NULL,
+    released_at TIMESTAMP NULL,
+    released_by VARCHAR(100),
+    created_by VARCHAR(100),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_ip_blacklist_ip_status (ip_address, status),
+    INDEX idx_ip_blacklist_status_until (status, blocked_until),
+    INDEX idx_ip_blacklist_last_seen (last_seen_at),
+    INDEX idx_ip_blacklist_source_status (source, status)
+) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS system_alerts (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    severity VARCHAR(20) NOT NULL,
+    status VARCHAR(20) NOT NULL,
+    source VARCHAR(80) NOT NULL,
+    category VARCHAR(80) NOT NULL,
+    title VARCHAR(200) NOT NULL,
+    message VARCHAR(4000),
+    fingerprint VARCHAR(180) NOT NULL,
+    metadata TEXT,
+    occurrence_count INT NOT NULL DEFAULT 1,
+    first_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    acknowledged_at TIMESTAMP NULL,
+    acknowledged_by VARCHAR(120),
+    resolved_at TIMESTAMP NULL,
+    resolved_by VARCHAR(120),
+    INDEX idx_system_alert_fingerprint_status (fingerprint, status),
+    INDEX idx_system_alert_status_last_seen (status, last_seen_at),
+    INDEX idx_system_alert_severity_status (severity, status),
+    INDEX idx_system_alert_category_last_seen (category, last_seen_at)
+) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- Fix existing columns to TEXT (idempotent with continue-on-error)
 ALTER TABLE products MODIFY COLUMN image_url TEXT;
 ALTER TABLE products MODIFY COLUMN images TEXT;
@@ -498,12 +609,45 @@ ALTER TABLE users MODIFY COLUMN email VARCHAR(100) NULL;
 ALTER TABLE users ADD COLUMN role_code VARCHAR(50);
 ALTER TABLE users ADD COLUMN status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE';
 ALTER TABLE users ADD COLUMN password_changed_at TIMESTAMP(3) NULL;
+ALTER TABLE users MODIFY COLUMN password VARCHAR(255) NOT NULL;
 UPDATE users SET password_changed_at = COALESCE(password_changed_at, updated_at, created_at, NOW(3)) WHERE password_changed_at IS NULL;
 ALTER TABLE users ADD UNIQUE KEY uk_users_phone (phone);
 ALTER TABLE cart_items ADD COLUMN selected_specs TEXT;
+UPDATE cart_items kept
+JOIN (
+    SELECT MIN(id) AS kept_id, user_id, product_id, COALESCE(selected_specs, '') AS specs_key, SUM(quantity) AS merged_quantity
+    FROM cart_items
+    GROUP BY user_id, product_id, COALESCE(selected_specs, '')
+    HAVING COUNT(*) > 1
+) duplicate_group
+  ON kept.id = duplicate_group.kept_id
+SET kept.quantity = duplicate_group.merged_quantity,
+    kept.updated_at = CURRENT_TIMESTAMP;
+DELETE duplicate_item
+FROM cart_items duplicate_item
+JOIN cart_items kept_item
+  ON kept_item.user_id = duplicate_item.user_id
+ AND kept_item.product_id = duplicate_item.product_id
+ AND COALESCE(kept_item.selected_specs, '') = COALESCE(duplicate_item.selected_specs, '')
+ AND kept_item.id < duplicate_item.id;
+ALTER TABLE cart_items ADD COLUMN selected_specs_key VARBINARY(32) GENERATED ALWAYS AS (UNHEX(SHA2(COALESCE(selected_specs, ''), 256))) STORED;
 ALTER TABLE cart_items DROP INDEX uk_cart_user_product;
-ALTER TABLE cart_items ADD INDEX idx_cart_user_product_specs (user_id, product_id);
+ALTER TABLE cart_items ADD UNIQUE KEY uk_cart_user_product_specs (user_id, product_id, selected_specs_key);
 ALTER TABLE categories ADD COLUMN level INT NOT NULL DEFAULT 1;
+ALTER TABLE categories ADD COLUMN path VARCHAR(500);
+UPDATE categories SET path = CONCAT('/', id, '/') WHERE path IS NULL OR TRIM(path) = '';
+UPDATE categories child
+JOIN categories parent ON parent.id = child.parent_id
+SET child.path = CONCAT(COALESCE(NULLIF(parent.path, ''), CONCAT('/', parent.id, '/')), child.id, '/')
+WHERE child.parent_id IS NOT NULL
+  AND (child.path IS NULL OR TRIM(child.path) = '' OR child.path = CONCAT('/', child.id, '/'));
+UPDATE categories grandchild
+JOIN categories child ON child.id = grandchild.parent_id
+SET grandchild.path = CONCAT(COALESCE(NULLIF(child.path, ''), CONCAT('/', child.id, '/')), grandchild.id, '/')
+WHERE grandchild.parent_id IS NOT NULL
+  AND (grandchild.path IS NULL OR TRIM(grandchild.path) = '' OR grandchild.path = CONCAT('/', grandchild.id, '/'));
+ALTER TABLE categories ADD INDEX idx_categories_path (path);
+ALTER TABLE categories ADD INDEX idx_categories_parent_level (parent_id, level, id);
 ALTER TABLE categories ADD COLUMN image_url TEXT;
 ALTER TABLE categories ADD COLUMN localized_content TEXT;
 ALTER TABLE categories CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -517,6 +661,9 @@ ALTER TABLE products ADD COLUMN limited_time_start_at DATETIME;
 ALTER TABLE products ADD COLUMN limited_time_end_at DATETIME;
 ALTER TABLE products ADD COLUMN free_shipping BOOLEAN DEFAULT FALSE;
 ALTER TABLE products ADD COLUMN free_shipping_threshold DECIMAL(10,2);
+ALTER TABLE products MODIFY COLUMN brand VARCHAR(120);
+ALTER TABLE products ADD COLUMN best_seller_rank INT NOT NULL DEFAULT 0;
+ALTER TABLE products ADD INDEX idx_products_best_seller_rank (best_seller_rank, id);
 ALTER TABLE orders ADD COLUMN order_no VARCHAR(32);
 UPDATE orders SET order_no = CONCAT('SO', DATE_FORMAT(COALESCE(created_at, NOW()), '%Y%m%d%H%i%s'), LPAD(id, 8, '0')) WHERE order_no IS NULL OR order_no = '';
 ALTER TABLE orders MODIFY COLUMN order_no VARCHAR(32) NOT NULL;
@@ -545,24 +692,26 @@ ALTER TABLE orders ADD COLUMN recipient_name VARCHAR(120);
 ALTER TABLE orders ADD COLUMN recipient_phone VARCHAR(60);
 ALTER TABLE orders ADD COLUMN contact_email VARCHAR(160);
 ALTER TABLE orders ADD COLUMN guest_order BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE orders ADD INDEX idx_orders_recent_created_status (created_at, status, id);
 ALTER TABLE notifications ADD COLUMN content_format VARCHAR(20) NOT NULL DEFAULT 'TEXT';
+ALTER TABLE notifications MODIFY COLUMN type VARCHAR(40) NOT NULL;
+ALTER TABLE notifications MODIFY COLUMN title VARCHAR(160) NOT NULL;
 ALTER TABLE payments ADD COLUMN expires_at TIMESTAMP NULL;
 ALTER TABLE payments ADD COLUMN provider_reference VARCHAR(128);
 ALTER TABLE payments ADD COLUMN refund_reference VARCHAR(128);
 ALTER TABLE payments ADD COLUMN refunded_at TIMESTAMP NULL;
 ALTER TABLE payments ADD COLUMN callback_at TIMESTAMP NULL;
-ALTER TABLE payments ADD INDEX idx_payments_status_expires (status, expires_at);
 ALTER TABLE payments ADD INDEX idx_payments_provider_reference (provider_reference);
 CREATE TABLE IF NOT EXISTS security_audit_logs (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     action VARCHAR(50) NOT NULL,
     result VARCHAR(20) NOT NULL,
     actor_user_id BIGINT,
-    actor_username VARCHAR(100),
-    actor_role VARCHAR(30),
-    resource_type VARCHAR(50),
-    resource_id VARCHAR(100),
-    ip_address VARCHAR(45),
+    actor_username VARCHAR(120),
+    actor_role VARCHAR(40),
+    resource_type VARCHAR(80),
+    resource_id VARCHAR(120),
+    ip_address VARCHAR(64),
     user_agent VARCHAR(500),
     message VARCHAR(1000),
     metadata TEXT,
@@ -573,6 +722,8 @@ CREATE TABLE IF NOT EXISTS security_audit_logs (
     INDEX idx_audit_resource (resource_type, resource_id)
 ) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ALTER TABLE reviews ADD COLUMN status VARCHAR(20) NOT NULL DEFAULT 'PENDING';
+ALTER TABLE reviews ADD COLUMN reported_count INT NOT NULL DEFAULT 0;
+ALTER TABLE reviews ADD INDEX idx_reviews_reported_status (reported_count, status, created_at);
 UPDATE reviews SET status = 'APPROVED' WHERE status IS NULL OR status = '';
 ALTER TABLE order_items ADD COLUMN product_name_snapshot VARCHAR(100);
 ALTER TABLE order_items ADD COLUMN image_url_snapshot TEXT;

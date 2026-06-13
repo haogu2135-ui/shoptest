@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { Component, useEffect, useMemo, useState } from 'react';
+import type { ErrorInfo, ReactNode } from 'react';
 import { Button, Skeleton, Typography, message } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import { productApi } from '../api';
@@ -11,6 +12,7 @@ import { buildResponsiveImageSrcSet, getOptimizedImageUrl } from '../utils/media
 import { needsOptionSelection } from '../utils/productOptions';
 import { productImageFallback, resolveProductImage } from '../utils/productMedia';
 import { getApiErrorMessage } from '../utils/apiError';
+import { reportNonBlockingError } from '../utils/nonBlockingError';
 import './AddOnAssistant.css';
 import '../styles/mobile-page-contrast.css';
 
@@ -27,7 +29,42 @@ interface AddOnAssistantProps {
   onAdd: (product: Product) => Promise<void>;
 }
 
-const AddOnAssistant: React.FC<AddOnAssistantProps> = ({ cartProductIds, remainingAmount, reason, onAdd }) => {
+interface AddOnAssistantErrorBoundaryProps {
+  children: ReactNode;
+  resetKey: string;
+}
+
+interface AddOnAssistantErrorBoundaryState {
+  hasError: boolean;
+}
+
+class AddOnAssistantErrorBoundary extends Component<AddOnAssistantErrorBoundaryProps, AddOnAssistantErrorBoundaryState> {
+  state: AddOnAssistantErrorBoundaryState = { hasError: false };
+
+  static getDerivedStateFromError(): AddOnAssistantErrorBoundaryState {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    reportNonBlockingError('AddOnAssistant.render', {
+      error,
+      componentStack: errorInfo.componentStack,
+    });
+  }
+
+  componentDidUpdate(prevProps: AddOnAssistantErrorBoundaryProps) {
+    if (this.state.hasError && prevProps.resetKey !== this.props.resetKey) {
+      this.setState({ hasError: false });
+    }
+  }
+
+  render() {
+    if (this.state.hasError) return null;
+    return this.props.children;
+  }
+}
+
+const AddOnAssistantContent: React.FC<AddOnAssistantProps> = ({ cartProductIds, remainingAmount, reason, onAdd }) => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
   const [addingId, setAddingId] = useState<number | null>(null);
@@ -166,6 +203,16 @@ const AddOnAssistant: React.FC<AddOnAssistantProps> = ({ cartProductIds, remaini
         })}
       </div>
     </section>
+  );
+};
+
+const AddOnAssistant: React.FC<AddOnAssistantProps> = (props) => {
+  const cartProductIdKey = Array.isArray(props.cartProductIds) ? props.cartProductIds.join(',') : '';
+  const resetKey = `${props.reason}|${props.remainingAmount}|${cartProductIdKey}`;
+  return (
+    <AddOnAssistantErrorBoundary resetKey={resetKey}>
+      <AddOnAssistantContent {...props} />
+    </AddOnAssistantErrorBoundary>
   );
 };
 

@@ -4,6 +4,7 @@ import { DeleteOutlined, EyeInvisibleOutlined, CheckOutlined, MessageOutlined, S
 import { adminApi } from '../api';
 import type { Review } from '../types';
 import { useLanguage } from '../i18n';
+import { useDebounce } from '../hooks/useDebounce';
 import { getApiErrorMessage } from '../utils/apiError';
 import { productImageFallback, resolveProductImage } from '../utils/productMedia';
 import {
@@ -28,7 +29,7 @@ const ReviewManagement: React.FC = () => {
   const [replying, setReplying] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string | undefined>();
   const [keyword, setKeyword] = useState('');
-  const [debouncedKeyword, setDebouncedKeyword] = useState('');
+  const debouncedKeyword = useDebounce(keyword.trim(), 300);
   const [pageState, setPageState] = useState({ page: 1, size: DEFAULT_PAGE_SIZE, total: 0, totalPages: 0 });
   const [reviewSummary, setReviewSummary] = useState<Record<string, number>>({});
   const [currentRole, setCurrentRole] = useState('');
@@ -73,11 +74,18 @@ const ReviewManagement: React.FC = () => {
   const replyTargetLabel = replyTarget ? adminReviewProductName(replyTarget) : t('pages.adminReviews.title');
   const replyInputLabel = `${t('pages.adminReviews.replyAction')}: ${replyTargetLabel}`;
   const replySubmitActionLabel = `${t('pages.adminReviews.replyAction')}: ${replyTargetLabel}`;
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => setDebouncedKeyword(keyword.trim()), 300);
-    return () => window.clearTimeout(timer);
-  }, [keyword]);
+  const reviewCellLabel = (label: string) => ({ 'data-label': label } as React.TdHTMLAttributes<HTMLElement>);
+  const reviewColumnLabels = {
+    id: 'ID',
+    product: t('pages.adminReviews.productId'),
+    user: t('pages.adminReviews.user'),
+    rating: t('pages.adminReviews.rating'),
+    status: t('pages.adminReviews.statusFilter'),
+    content: t('pages.adminReviews.content'),
+    reply: t('pages.adminReviews.reply'),
+    createdAt: t('pages.adminReviews.createdAt'),
+    actions: t('common.actions'),
+  };
 
   useEffect(() => {
     let disposed = false;
@@ -200,11 +208,12 @@ const ReviewManagement: React.FC = () => {
   };
 
   const columns = [
-    { title: 'ID', dataIndex: 'id', key: 'id', width: 60 },
+    { title: reviewColumnLabels.id, dataIndex: 'id', key: 'id', width: 60, onCell: () => reviewCellLabel(reviewColumnLabels.id) },
     {
-      title: t('pages.adminReviews.productId'),
+      title: reviewColumnLabels.product,
       key: 'productId',
       width: 220,
+      onCell: () => reviewCellLabel(reviewColumnLabels.product),
       render: (_: unknown, record: Review) => {
         const productId = record.productId || record.product?.id;
         const productName = adminReviewProductName(record);
@@ -233,16 +242,18 @@ const ReviewManagement: React.FC = () => {
       },
     },
     {
-      title: t('pages.adminReviews.user'),
+      title: reviewColumnLabels.user,
       key: 'username',
       width: 100,
+      onCell: () => reviewCellLabel(reviewColumnLabels.user),
       render: (_: unknown, record: Review) => record.username || record.user?.username || '-',
     },
     {
-      title: t('pages.adminReviews.rating'),
+      title: reviewColumnLabels.rating,
       dataIndex: 'rating',
       key: 'rating',
       width: 150,
+      onCell: () => reviewCellLabel(reviewColumnLabels.rating),
       render: (rating: number, record: Review) => {
         const reviewLabel = adminReviewProductName(record) || record.username || `#${record.id}`;
         const ratingLabel = `${t('pages.adminReviews.rating')}: ${reviewLabel}, ${rating || 0}`;
@@ -254,42 +265,68 @@ const ReviewManagement: React.FC = () => {
       },
     },
     {
-      title: t('pages.adminReviews.statusFilter'),
+      title: reviewColumnLabels.status,
       dataIndex: 'status',
       key: 'status',
       width: 110,
+      onCell: () => reviewCellLabel(reviewColumnLabels.status),
       render: (status: string) => {
         const value = String(status || 'PENDING').trim().toUpperCase();
         return <Tag color={statusColors[value] || 'default'}>{formatReviewStatus(status)}</Tag>;
       },
     },
     {
-      title: t('pages.adminReviews.content'),
+      title: reviewColumnLabels.content,
       dataIndex: 'comment',
       key: 'comment',
       width: 360,
       ellipsis: true,
-      render: (text: string) => <Paragraph ellipsis={{ rows: 2 }} style={{ margin: 0 }}>{text}</Paragraph>,
+      onCell: () => reviewCellLabel(reviewColumnLabels.content),
+      render: (text: string, record: Review) => (
+        <div className="review-management-page__contentCell">
+          <Paragraph ellipsis={{ rows: 2 }} style={{ margin: 0 }}>{text}</Paragraph>
+          {Array.isArray(record.imageUrls) && record.imageUrls.length > 0 ? (
+            <div className="review-management-page__reviewImages">
+              {record.imageUrls.slice(0, 4).map((imageUrl, index) => (
+                <img
+                  key={`${record.id}-${imageUrl}`}
+                  src={resolveProductImage(imageUrl)}
+                  alt={t('pages.review.imageAlt', { index: index + 1 })}
+                  loading="lazy"
+                  onError={(event) => {
+                    if (event.currentTarget.src !== productImageFallback) {
+                      event.currentTarget.src = productImageFallback;
+                    }
+                  }}
+                />
+              ))}
+            </div>
+          ) : null}
+        </div>
+      ),
     },
     {
-      title: t('pages.adminReviews.reply'),
+      title: reviewColumnLabels.reply,
       dataIndex: 'adminReply',
       key: 'adminReply',
       width: 300,
       ellipsis: true,
+      onCell: () => reviewCellLabel(reviewColumnLabels.reply),
       render: (text: string) => text ? <Paragraph ellipsis={{ rows: 2 }} style={{ margin: 0 }}>{text}</Paragraph> : '-',
     },
     {
-      title: t('pages.adminReviews.createdAt'),
+      title: reviewColumnLabels.createdAt,
       dataIndex: 'createdAt',
       key: 'createdAt',
       width: 170,
+      onCell: () => reviewCellLabel(reviewColumnLabels.createdAt),
       render: (v: string) => v ? new Date(v).toLocaleString(language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US') : '-',
     },
     {
-      title: t('common.actions'),
+      title: reviewColumnLabels.actions,
       key: 'action',
       width: 260,
+      onCell: () => reviewCellLabel(reviewColumnLabels.actions),
       render: (_: unknown, record: Review) => {
         const reviewLabel = adminReviewProductName(record) || record.username || `#${record.id}`;
         const approveActionLabel = `${t('pages.adminReviews.approve')}: ${reviewLabel}`;
@@ -420,6 +457,7 @@ const ReviewManagement: React.FC = () => {
         </Button>
       </Space>
       <Table
+        className="review-management-page__table"
         columns={columns}
         dataSource={reviews}
         rowKey="id"

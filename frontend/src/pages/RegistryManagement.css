@@ -427,3 +427,156 @@
     min-height: 44px;
   }
 }
+
+/* APP/mobile closure: keep registry diagnostics readable within the admin
+   content column instead of letting descriptions/tables set a desktop width. */
+@media (max-width: 780px) {
+  body.shop-mobile-app .registry-management,
+  body.shop-mobile-app .registry-management__hero,
+  body.shop-mobile-app .registry-management__grid,
+  body.shop-mobile-app .registry-management__gateway,
+  body.shop-mobile-app .registry-management__gateway > div,
+  body.shop-mobile-app .registry-management__card,
+  body.shop-mobile-app .registry-management__alert,
+  body.shop-mobile-app .registry-management .ant-card,
+  body.shop-mobile-app .registry-management .ant-card-body,
+  body.shop-mobile-app .registry-management .ant-descriptions,
+  body.shop-mobile-app .registry-management .ant-descriptions-view,
+  body.shop-mobile-app .registry-management .ant-table-wrapper {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  body.shop-mobile-app .registry-management {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    overflow-x: clip !important;
+  }
+
+  body.shop-mobile-app .registry-management__hero,
+  body.shop-mobile-app .registry-management__grid,
+  body.shop-mobile-app .registry-management__gateway {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  body.shop-mobile-app .registry-management__stats {
+    width: 100% !important;
+    max-width: 100% !important;
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    margin-inline: 0 !important;
+    padding-inline: 0 !important;
+    overflow: visible !important;
+    scroll-snap-type: none !important;
+    -webkit-mask-image: none !important;
+    mask-image: none !important;
+  }
+
+  body.shop-mobile-app .registry-management__stats .ant-card {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    flex: initial !important;
+  }
+
+  body.shop-mobile-app .registry-management .ant-descriptions-view,
+  body.shop-mobile-app .registry-management .ant-table-wrapper,
+  body.shop-mobile-app .registry-management .ant-table-content {
+    overflow-x: auto !important;
+    overscroll-behavior-x: contain !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  body.shop-mobile-app .registry-management .ant-descriptions-row,
+  body.shop-mobile-app .registry-management .ant-descriptions-item {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+}
+
+@media (max-width: 380px) {
+  body.shop-mobile-app .registry-management__stats {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
+
+/* F2760: admin infrastructure controls must fit phone, landscape and tablet shells. */
+@media (max-width: 900px), (max-height: 640px) {
+  .registry-management,
+  .registry-management__hero,
+  .registry-management__stats,
+  .registry-management__grid,
+  .registry-management__gateway,
+  .registry-management__gateway > div,
+  .registry-management__card,
+  .registry-management__card .ant-card-body,
+  .registry-management__alert,
+  .registry-management .ant-card,
+  .registry-management .ant-card-body,
+  .registry-management .ant-descriptions,
+  .registry-management .ant-descriptions-view,
+  .registry-management .ant-table-wrapper {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  .registry-management {
+    grid-template-columns: minmax(0, 1fr) !important;
+    overflow-x: clip !important;
+  }
+
+  .registry-management__hero,
+  .registry-management__grid,
+  .registry-management__gateway {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 12px !important;
+  }
+
+  .registry-management__hero {
+    overflow: hidden;
+  }
+
+  .registry-management__hero .ant-btn,
+  .registry-management__hero .ant-space-item {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  .registry-management__stats {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    margin-inline: 0 !important;
+    padding-inline: 0 !important;
+    overflow: visible !important;
+    scroll-snap-type: none !important;
+    -webkit-mask-image: none !important;
+    mask-image: none !important;
+  }
+
+  .registry-management__stats .ant-card {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    flex: initial !important;
+  }
+
+  .registry-management .ant-descriptions-view,
+  .registry-management .ant-table-wrapper,
+  .registry-management .ant-table-content {
+    overflow-x: auto !important;
+    overscroll-behavior-x: contain !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+}
+
+@media (max-width: 380px) {
+  .registry-management__stats {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}

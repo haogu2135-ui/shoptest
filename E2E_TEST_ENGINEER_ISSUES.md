@@ -4,6 +4,25 @@ This file tracks E2E scenarios queued for browser, Android WebView, or device va
 
 ## Current Queue
 
+## 2026-06-12 07:47 UTC QA F961 Payment Callback Signature
+
+Source status:
+- QA F961 FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED / E2E_PENDING.
+
+Local verification already run:
+- Generic `/payments/callback` and `/payment/callback` payloads require `signature` and `callbackTimestamp`.
+- `PaymentService.expectedSignature(...)` now signs the canonical callback payload with `HmacSHA256` and `payment.callback-secret`.
+- Invalid generic callback signatures are rejected before payment/order state mutation; callback timestamps are checked against `payment.callback-max-skew-seconds`.
+- Stripe webhooks remain verified through `Webhook.constructEvent(payload, signatureHeader, webhookSecret)` and `Stripe-Signature`.
+- `./mvnw -q -Dtest=PaymentCallbackSignatureContractTest,PaymentFlowServiceTest#genericPaymentCallbackRequiresValidHmacSignatureBeforeStateChanges,PaymentFlowServiceTest#stripeWebhookCompletedSessionRequiresStripeSignatureNotInternalCallbackSignature test` passed.
+
+| Flow | Current result | Required E2E follow-up |
+|---|---|---|
+| Forged generic callback | SOURCE_FIXED / PAYMENT API E2E PENDING | Create a pending non-Stripe payment, POST `/payments/callback` with missing, random, or legacy SHA-style signature, and verify the response rejects the request while payment/order status remains unchanged. |
+| Valid generic callback | SOURCE_FIXED / PAYMENT API E2E PENDING | POST a callback signed with HMAC-SHA256 over the canonical payload using the configured callback secret and verify exactly one pending payment transitions through the expected paid flow. |
+| Expired callback timestamp | SOURCE_FIXED / PAYMENT API E2E PENDING | Send an otherwise valid HMAC callback with a timestamp outside `payment.callback-max-skew-seconds`; verify rejection and no state mutation. |
+| Stripe webhook signature | SOURCE_FIXED / STRIPE WEBHOOK E2E PENDING | Send a Stripe checkout completed webhook signed with the Stripe webhook secret and verify it is accepted; repeat with a generic callback signature or malformed `Stripe-Signature` and verify rejection/no mutation. |
+
 ## 2026-06-12 06:56 UTC QA F962 Order Search Bound
 
 Source status:

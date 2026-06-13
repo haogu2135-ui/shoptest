@@ -1,6 +1,5 @@
 package com.example.shop.service;
 
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.data.redis.core.Cursor;
 import org.springframework.data.redis.core.RedisCallback;
@@ -9,13 +8,16 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.stereotype.Service;
+import lombok.extern.slf4j.Slf4j;
 
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
-import java.util.UUID;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
 
 @Service
@@ -29,6 +31,8 @@ public class TokenBlacklistService {
     private static final String BLACKLIST_PREFIX = "blacklist:";
     private static final String LOGIN_ATTEMPT_PREFIX = "login:ip:";
     private static final String ACCOUNT_LOCK_PREFIX = "login:account:";
+    private static final String TRUSTED_IPS_KEY = "security.ip-blacklist.trusted-ips";
+    private static final String DEFAULT_TRUSTED_IPS = "127.0.0.1,::1,0:0:0:0:0:0:0:1";
     private static final long REFRESH_TOKEN_EXPIRE_DAYS = 7;
     private static final int MAX_LOGIN_ATTEMPTS_PER_IP = 5;
     private static final int MAX_LOGIN_ATTEMPTS_PER_ACCOUNT = 10;
@@ -36,14 +40,21 @@ public class TokenBlacklistService {
     private static final long IP_LOCKOUT_MINUTES = 15;
     private static final long ACCOUNT_LOCKOUT_MINUTES = 30;
     private static final int DEFAULT_LOGIN_FAILURE_SCAN_COUNT = 500;
+    private static final int MAX_LOCAL_REVOCATION_ENTRIES = 10_000;
     private static final RedisScript<String> CONSUME_REFRESH_TOKEN_SCRIPT = consumeRefreshTokenScript();
     private static final RedisScript<Long> LOGIN_FAILURE_INCREMENT_SCRIPT = loginFailureIncrementScript();
+    private final ConcurrentMap<String, Long> localAccessTokenBlacklist = new ConcurrentHashMap<>();
+    private final ConcurrentMap<String, Long> localRefreshTokenRevocations = new ConcurrentHashMap<>();
 
     public TokenBlacklistService(ObjectProvider<StringRedisTemplate> redisTemplateProvider,
-                                 RuntimeConfigService runtimeConfig) {
+                                 RuntimeConfigService runtimeConfig,
+                                 ClientIpResolver clientIpResolver) {
         this.redisTemplateProvider = redisTemplateProvider;
         this.runtimeConfig = runtimeConfig;
+        this.clientIpResolver = clientIpResolver;
     }
+
+    private final ClientIpResolver clientIpResolver;
 
     public String generateRefreshToken() {
         byte[] bytes = new byte[64];
@@ -63,6 +74,9 @@ public class TokenBlacklistService {
     }
 
     public String consumeRefreshToken(String refreshToken) {
+        if (isLocallyRevokedRefreshToken(refreshToken)) {
+            return null;
+        }
         StringRedisTemplate redis = redisTemplate();
         if (redis == null) return null;
         String key = REFRESH_TOKEN_PREFIX + refreshToken;
@@ -75,30 +89,59 @@ public class TokenBlacklistService {
     }
 
     public void revokeRefreshToken(String refreshToken) {
+        if (refreshToken == null || refreshToken.isBlank()) {
+            return;
+        }
+        rememberLocalRefreshTokenRevocation(refreshToken);
         StringRedisTemplate redis = redisTemplate();
         if (redis == null) return;
-        redis.delete(REFRESH_TOKEN_PREFIX + refreshToken);
+        try {
+            redis.delete(REFRESH_TOKEN_PREFIX + refreshToken);
+        } catch (RuntimeException ex) {
+            log.warn("Redis refresh token revoke failed; local revocation fallback is active", ex);
+            // Local revocation above keeps this instance fail-closed until Redis recovers.
+        }
     }
 
     public void blacklistAccessToken(String tokenJti, long expirationMs) {
-        StringRedisTemplate redis = redisTemplate();
-        if (redis == null) return;
+        if (tokenJti == null || tokenJti.isBlank()) return;
         if (expirationMs <= 0) return;
-        redis.opsForValue().set(
-                BLACKLIST_PREFIX + tokenJti,
-                "1",
-                expirationMs,
-                TimeUnit.MILLISECONDS
-        );
+        long expiresAt = System.currentTimeMillis() + expirationMs;
+        rememberLocalAccessTokenBlacklist(tokenJti, expiresAt);
+        StringRedisTemplate redis = redisTemplate();
+        if (redis != null) {
+            try {
+                redis.opsForValue().set(
+                        BLACKLIST_PREFIX + tokenJti,
+                        "1",
+                        expirationMs,
+                        TimeUnit.MILLISECONDS
+                );
+            } catch (RuntimeException ex) {
+                log.warn("Redis access-token blacklist write failed; local blacklist fallback is active", ex);
+                // Local blacklist above keeps this instance fail-closed until Redis recovers.
+            }
+        }
     }
 
     public boolean isAccessTokenBlacklisted(String tokenJti) {
+        if (isLocallyBlacklistedAccessToken(tokenJti)) {
+            return true;
+        }
         StringRedisTemplate redis = redisTemplate();
         if (redis == null) return false;
-        return Boolean.TRUE.equals(redis.hasKey(BLACKLIST_PREFIX + tokenJti));
+        try {
+            return Boolean.TRUE.equals(redis.hasKey(BLACKLIST_PREFIX + tokenJti));
+        } catch (RuntimeException ex) {
+            log.warn("Redis access-token blacklist lookup failed; local blacklist fallback is active", ex);
+            return isLocallyBlacklistedAccessToken(tokenJti);
+        }
     }
 
     public boolean isLoginRateLimited(String clientIp) {
+        if (isTrustedClientIp(clientIp)) {
+            return false;
+        }
         StringRedisTemplate redis = redisTemplate();
         if (redis == null) return false;
         String key = LOGIN_ATTEMPT_PREFIX + clientIp;
@@ -108,6 +151,9 @@ public class TokenBlacklistService {
     }
 
     public void recordLoginFailure(String clientIp, String username) {
+        if (isTrustedClientIp(clientIp)) {
+            return;
+        }
         StringRedisTemplate redis = redisTemplate();
         if (redis == null) return;
 
@@ -142,6 +188,9 @@ public class TokenBlacklistService {
             String ipAddress = key.substring(LOGIN_ATTEMPT_PREFIX.length());
             int failureCount = parseCounter(redis.opsForValue().get(key));
             if (ipAddress.isBlank() || failureCount <= 0) {
+                continue;
+            }
+            if (isTrustedClientIp(ipAddress)) {
                 continue;
             }
             Long ttlSeconds = redis.getExpire(key, TimeUnit.SECONDS);
@@ -227,8 +276,11 @@ public class TokenBlacklistService {
     }
 
     public long getLoginAttemptsRemaining(String clientIp) {
-        StringRedisTemplate redis = redisTemplate();
         int maxAttempts = maxLoginAttemptsPerIp();
+        if (isTrustedClientIp(clientIp)) {
+            return maxAttempts;
+        }
+        StringRedisTemplate redis = redisTemplate();
         if (redis == null) return maxAttempts;
         String key = LOGIN_ATTEMPT_PREFIX + clientIp;
         String count = redis.opsForValue().get(key);
@@ -261,6 +313,65 @@ public class TokenBlacklistService {
         return script;
     }
 
+    private boolean isTrustedClientIp(String clientIp) {
+        if (clientIpResolver == null) {
+            return false;
+        }
+        String normalizedIp = clientIpResolver.normalizeIpAddress(clientIp);
+        if (normalizedIp == null || normalizedIp.isBlank()) {
+            return false;
+        }
+        String configured = runtimeConfig.getString(TRUSTED_IPS_KEY, DEFAULT_TRUSTED_IPS);
+        return clientIpResolver.matchesAny(normalizedIp, configured);
+    }
+
+    private void rememberLocalAccessTokenBlacklist(String tokenJti, long expiresAt) {
+        localAccessTokenBlacklist.put(tokenJti, expiresAt);
+        pruneLocalExpirations(localAccessTokenBlacklist);
+    }
+
+    private boolean isLocallyBlacklistedAccessToken(String tokenJti) {
+        if (tokenJti == null || tokenJti.isBlank()) {
+            return false;
+        }
+        Long expiresAt = localAccessTokenBlacklist.get(tokenJti);
+        return expiresAt != null && isLocalEntryActive(localAccessTokenBlacklist, tokenJti, expiresAt);
+    }
+
+    private void rememberLocalRefreshTokenRevocation(String refreshToken) {
+        long expiresAt = System.currentTimeMillis() + TimeUnit.DAYS.toMillis(REFRESH_TOKEN_EXPIRE_DAYS);
+        localRefreshTokenRevocations.put(refreshToken, expiresAt);
+        pruneLocalExpirations(localRefreshTokenRevocations);
+    }
+
+    private boolean isLocallyRevokedRefreshToken(String refreshToken) {
+        if (refreshToken == null || refreshToken.isBlank()) {
+            return false;
+        }
+        Long expiresAt = localRefreshTokenRevocations.get(refreshToken);
+        return expiresAt != null && isLocalEntryActive(localRefreshTokenRevocations, refreshToken, expiresAt);
+    }
+
+    private boolean isLocalEntryActive(ConcurrentMap<String, Long> entries, String key, long expiresAt) {
+        if (expiresAt <= System.currentTimeMillis()) {
+            entries.remove(key, expiresAt);
+            return false;
+        }
+        return true;
+    }
+
+    private void pruneLocalExpirations(ConcurrentMap<String, Long> entries) {
+        if (entries.size() <= MAX_LOCAL_REVOCATION_ENTRIES) {
+            return;
+        }
+        long now = System.currentTimeMillis();
+        for (Map.Entry<String, Long> entry : entries.entrySet()) {
+            if (entry.getValue() == null || entry.getValue() <= now) {
+                entries.remove(entry.getKey(), entry.getValue());
+            }
+        }
+    }
+
     private String normalizeAccountKey(String username) {
         if (username == null || username.isBlank()) {
             return null;
@@ -278,7 +389,8 @@ public class TokenBlacklistService {
     private int parseCounter(String value) {
         try {
             return Integer.parseInt(value);
-        } catch (RuntimeException ignored) {
+        } catch (RuntimeException ex) {
+            log.debug("Invalid login failure counter value ignored: {}", value, ex);
             return 0;
         }
     }

@@ -4,9 +4,15 @@ import com.example.shop.entity.User;
 import com.example.shop.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -38,5 +44,22 @@ class CustomUserDetailsServiceTest {
         assertEquals("mia", details.getUsername());
         assertEquals("encoded-password", details.getPassword());
         verify(userService).findByUsernameOrPhoneOrEmail("mia@example.com");
+    }
+
+    @Test
+    void defaultDaoProviderRunsDummyPasswordMatchWhenLoginIsMissing() {
+        PasswordEncoder passwordEncoder = mock(PasswordEncoder.class);
+        when(passwordEncoder.encode("userNotFoundPassword")).thenReturn("dummy-user-not-found-hash");
+        DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
+        provider.setUserDetailsService(username -> {
+            throw new UsernameNotFoundException("missing");
+        });
+        provider.setPasswordEncoder(passwordEncoder);
+
+        assertThrows(BadCredentialsException.class, () -> provider.authenticate(
+                new UsernamePasswordAuthenticationToken("missing@example.com", "candidate-secret")));
+
+        verify(passwordEncoder).encode("userNotFoundPassword");
+        verify(passwordEncoder).matches("candidate-secret", "dummy-user-not-found-hash");
     }
 }

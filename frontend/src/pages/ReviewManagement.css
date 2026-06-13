@@ -589,3 +589,87 @@
     justify-content: center;
   }
 }
+
+.review-management-page__contentCell {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.review-management-page__reviewImages {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+}
+
+.review-management-page__reviewImages img {
+  width: 52px;
+  height: 52px;
+  border: 1px solid #dbe8de;
+  border-radius: 8px;
+  object-fit: cover;
+  background: #eef5ef;
+}
+
+/* Android UI closure: review management table actions. */
+@media (max-width: 780px) {
+  .review-management-page__toolbar .ant-btn,
+  .review-management-page .ant-table-cell .ant-btn,
+  .review-management-page__replyModal .ant-modal-footer .ant-btn {
+    min-height: 44px !important;
+    height: auto !important;
+    max-height: none !important;
+  }
+
+  .review-management-page--es .review-ops-panel__metrics div,
+  .review-management-page .ant-table-cell,
+  .review-management-page .ant-btn > span:not(.anticon):not(.ant-btn-icon) {
+    font-size: max(12px, 1em) !important;
+    line-height: 1.25 !important;
+  }
+
+  .review-management-page__reviewImages img {
+    width: 48px;
+    height: 48px;
+  }
+}
+
+/* F3524: keep all review health metrics visible on portrait phones */
+@media (max-width: 560px) {
+  .review-ops-panel {
+    overflow: visible;
+  }
+
+  .review-ops-panel__metrics {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    margin-inline: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    scroll-snap-type: none !important;
+    overscroll-behavior-inline: auto;
+    -webkit-mask-image: none !important;
+    mask-image: none !important;
+    scrollbar-width: auto;
+  }
+
+  .review-ops-panel__metrics::-webkit-scrollbar {
+    display: initial;
+  }
+
+  .review-ops-panel__metrics div,
+  .review-management-page--es .review-ops-panel__metrics div {
+    flex: initial !important;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    min-height: 88px;
+    scroll-snap-align: none;
+  }
+}

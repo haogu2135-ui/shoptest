@@ -36,4 +36,12 @@ class OrderMapperSlaConsistencyTest {
         assertTrue(mapper.contains("orders.status = 'RETURN_REFUNDING'"));
         assertTrue(mapper.contains(") AS REFUNDING"));
     }
+
+    @Test
+    void guestOrderEmailLookupEscapesLegacyShippingAddressLikeTerm() throws Exception {
+        String mapper = Files.readString(Paths.get("src/main/resources/mapper/OrderMapper.xml"), StandardCharsets.UTF_8);
+
+        assertTrue(mapper.contains("LOWER(orders.shipping_address) LIKE CONCAT('% / ', LOWER(#{emailLike}), ' /%') ESCAPE '!'"));
+        assertTrue(mapper.contains("AND #{emailLike} IS NOT NULL"));
+    }
 }

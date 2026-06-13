@@ -1,4 +1,5 @@
 import { conversionConfig } from './conversionConfig';
+import { isCurrencyCode } from './market';
 
 export type CartBenefitTarget = {
   reason: 'shipping' | 'gift';
@@ -13,9 +14,9 @@ const toNonNegativeFinite = (value: unknown) => {
 
 export const getGiftThreshold = (currency: string) => {
   if (!conversionConfig.giftAtCheckout.enabled) return 0;
-  return String(currency || '').toUpperCase() === 'MXN'
-    ? toNonNegativeFinite(conversionConfig.giftAtCheckout.thresholdMxn)
-    : 0;
+  const currencyCode = String(currency || '').toUpperCase();
+  if (!isCurrencyCode(currencyCode)) return 0;
+  return toNonNegativeFinite(conversionConfig.giftAtCheckout.thresholdsByCurrency[currencyCode]);
 };
 
 export const getNearestCartBenefitTarget = (

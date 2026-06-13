@@ -650,23 +650,22 @@
   }
 
   .product-compare__headerActions {
-    grid-template-columns: 1fr !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
     gap: 7px !important;
   }
 
   .product-compare__headerActions .ant-btn {
-    min-height: 44px;
-    padding-inline: 12px;
-    font-size: 13px;
+    min-height: 36px;
+    padding-inline: 7px;
+    font-size: 12px;
     white-space: normal;
   }
 
   .product-compare__headerActions .ant-btn .anticon + span,
   .product-compare__headerActions .ant-btn > span:not(.anticon) {
     min-width: 0;
-    overflow: visible;
-    text-overflow: clip;
-    white-space: normal;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .product-compare__toolbar,
@@ -746,19 +745,18 @@
   }
 
   .product-compare__decisionGrid {
-    display: flex;
-    gap: 7px;
-    overflow-x: auto;
-    padding-bottom: 2px;
-    scroll-snap-type: x proximity;
-    -webkit-overflow-scrolling: touch;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    overflow: visible;
+    padding-bottom: 0;
+    scroll-snap-type: none;
   }
 
   .product-compare__decisionItem {
-    flex: 0 0 116px;
+    min-width: 0;
     min-height: 72px;
     padding: 9px;
-    scroll-snap-align: start;
   }
 
   .product-compare__decisionItem svg {
@@ -913,7 +911,7 @@
   }
 
   .product-compare__decisionItem {
-    flex-basis: 108px;
+    min-height: 76px;
   }
 
   .product-compare-page .ant-table-cell {
@@ -931,7 +929,6 @@
 
 @media (max-width: 600px) {
   .product-compare__diff-tags,
-  .product-compare__decisionGrid,
   .product-compare__riskGrid,
   .product-compare__checkoutSteps,
   .product-compare-page .ant-table-wrapper {
@@ -940,7 +937,6 @@
   }
 
   .product-compare__diff-tags,
-  .product-compare__decisionGrid,
   .product-compare__checkoutSteps {
     scrollbar-width: none;
     touch-action: pan-x;
@@ -949,7 +945,6 @@
   }
 
   .product-compare__diff-tags::-webkit-scrollbar,
-  .product-compare__decisionGrid::-webkit-scrollbar,
   .product-compare__checkoutSteps::-webkit-scrollbar {
     display: none;
   }
@@ -982,7 +977,6 @@
 
 @media (max-width: 430px) {
   .product-compare__diff-tags,
-  .product-compare__decisionGrid,
   .product-compare__checkoutSteps {
     margin-inline: -12px;
     padding-inline: 12px;
@@ -1056,12 +1050,15 @@
   }
 
   .product-compare__diff-tags,
-  .product-compare__decisionGrid,
   .product-compare__riskGrid,
   .product-compare__checkoutSteps {
     max-width: 100%;
     overflow-x: auto;
     overflow-y: hidden;
+  }
+
+  .product-compare__decisionGrid {
+    max-width: 100%;
   }
 
   .product-compare__diff-tags {
@@ -1163,22 +1160,13 @@
   }
 }
 
-@media (max-width: 430px) {
+@media (max-width: 360px) {
   .product-compare__headerActions {
     grid-template-columns: 1fr !important;
   }
 
   .product-compare__headerActions .ant-btn {
-    min-height: 44px;
-    padding-inline: 12px;
-    overflow: visible;
-    white-space: normal;
-  }
-
-  .product-compare__headerActions .ant-btn > span:not(.anticon):not(.ant-btn-icon) {
-    overflow: visible;
-    text-overflow: clip;
-    white-space: normal;
+    min-height: 38px;
   }
 }
 
@@ -1211,7 +1199,6 @@
   }
 
   .product-compare__diff-tags,
-  .product-compare__decisionGrid,
   .product-compare__riskGrid,
   .product-compare__checkoutSteps {
     scroll-padding-inline: 8px 22px;
@@ -1334,5 +1321,272 @@
 
   .product-compare-page .ant-table-cell .ant-btn {
     max-width: 140px;
+  }
+}
+
+/* Android UI closure: compare table actions and decision grid. */
+.product-compare__spec-value--missing {
+  color: #4f5d52 !important;
+}
+
+@media (max-width: 780px) {
+  .product-compare__decision {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .product-compare__headerActions .ant-btn,
+  .product-compare__recommendationMain .ant-btn,
+  .product-compare__checkoutPath .ant-btn,
+  .product-compare-page .ant-table-cell .ant-btn,
+  .product-compare-page .ant-empty .ant-btn,
+  .product-compare-clear-popconfirm .ant-popconfirm-buttons .ant-btn,
+  .product-compare-page .ant-btn {
+    min-height: 44px !important;
+    height: auto !important;
+    max-height: none !important;
+    font-size: max(12px, 1em) !important;
+  }
+
+  .product-compare-page .ant-table-cell .ant-btn {
+    min-width: 44px !important;
+  }
+
+  .product-compare-page .ant-table-cell,
+  .product-compare-page .ant-table-cell .ant-tag,
+  .product-compare__spec-value,
+  .product-compare__decisionItem span,
+  .product-compare__decisionItem strong {
+    font-size: max(12px, 1em) !important;
+    line-height: 1.25 !important;
+  }
+}
+
+@media (min-width: 361px) and (max-width: 600px) {
+  .product-compare__headerActions {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .product-compare__headerActions .ant-space-item:last-child {
+    grid-column: 1 / -1;
+  }
+
+  .product-compare__headerActions .ant-btn {
+    min-height: 44px;
+    padding-inline: 10px;
+  }
+
+  .product-compare__headerActions .ant-btn > span:not(.anticon):not(.ant-btn-icon) {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+  }
+}
+
+/* APP compare closure: replace narrow horizontal rails with stacked phone cards. */
+@media (max-width: 600px) {
+  body.shop-mobile-app .product-compare-page {
+    width: calc(100% - 16px) !important;
+    padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 76px) + 34px + env(safe-area-inset-bottom, 0px)) !important;
+    overflow: visible !important;
+  }
+
+  body.shop-mobile-app .product-compare__headerActions,
+  body.shop-mobile-app .product-compare__recommendationMain .ant-space {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    width: 100%;
+    gap: 8px !important;
+  }
+
+  body.shop-mobile-app .product-compare__headerActions .ant-space-item,
+  body.shop-mobile-app .product-compare__headerActions .ant-btn,
+  body.shop-mobile-app .product-compare__recommendationMain .ant-space-item,
+  body.shop-mobile-app .product-compare__recommendationMain .ant-btn,
+  body.shop-mobile-app .product-compare__checkoutPath .ant-btn {
+    width: 100% !important;
+    max-width: none !important;
+    min-height: 44px !important;
+    white-space: normal !important;
+  }
+
+  body.shop-mobile-app .product-compare-page .ant-btn > span:not(.anticon):not(.ant-btn-icon) {
+    min-width: 0;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    white-space: normal !important;
+  }
+
+  body.shop-mobile-app .product-compare__diff-tags,
+  body.shop-mobile-app .product-compare__checkoutSteps {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    overflow: visible !important;
+    padding-bottom: 0 !important;
+    scrollbar-width: auto !important;
+    touch-action: manipulation !important;
+    -webkit-mask-image: none !important;
+    mask-image: none !important;
+  }
+
+  body.shop-mobile-app .product-compare__diff-tags .ant-tag,
+  body.shop-mobile-app .product-compare__checkoutSteps span {
+    flex: 1 1 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    white-space: normal !important;
+  }
+
+  body.shop-mobile-app .product-compare__riskGrid {
+    grid-template-columns: minmax(0, 1fr) !important;
+    overflow: visible !important;
+  }
+
+  body.shop-mobile-app .product-compare__riskGrid div {
+    min-height: 64px !important;
+    border-right: 0 !important;
+    border-bottom: 1px solid #eee4d5;
+  }
+
+  body.shop-mobile-app .product-compare__riskGrid div:last-child {
+    border-bottom: 0;
+  }
+
+  body.shop-mobile-app .product-compare__table.ant-table-wrapper,
+  body.shop-mobile-app .product-compare__table .ant-table,
+  body.shop-mobile-app .product-compare__table .ant-table-container,
+  body.shop-mobile-app .product-compare__table .ant-table-content {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    border-radius: 14px !important;
+  }
+
+  body.shop-mobile-app .product-compare__table .ant-table-content > table {
+    width: 100% !important;
+    min-width: 0 !important;
+    table-layout: auto !important;
+  }
+
+  body.shop-mobile-app .product-compare__table colgroup,
+  body.shop-mobile-app .product-compare__table .ant-table-thead {
+    display: none !important;
+  }
+
+  body.shop-mobile-app .product-compare__table .ant-table-tbody {
+    display: grid !important;
+    gap: 10px;
+    width: 100% !important;
+  }
+
+  body.shop-mobile-app .product-compare__table .ant-table-tbody > tr {
+    display: grid !important;
+    gap: 0;
+    padding: 10px;
+    border: 1px solid #e4ebe4;
+    border-radius: 14px;
+    background: #ffffff;
+    box-shadow: 0 8px 18px rgba(18, 71, 52, 0.06);
+  }
+
+  body.shop-mobile-app .product-compare__table .ant-table-tbody > tr.product-compare__row--different {
+    background: #fff9f7;
+  }
+
+  body.shop-mobile-app .product-compare__table .ant-table-tbody > tr > td.ant-table-cell {
+    position: static !important;
+    left: auto !important;
+    right: auto !important;
+    z-index: auto !important;
+    display: grid !important;
+    grid-template-columns: minmax(82px, 0.42fr) minmax(0, 1fr);
+    gap: 8px;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    padding: 9px 0 !important;
+    border: 0 !important;
+    border-bottom: 1px solid #edf2ed !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    font-size: 12px !important;
+    line-height: 1.35 !important;
+    white-space: normal !important;
+  }
+
+  body.shop-mobile-app .product-compare__table .ant-table-tbody > tr > td.ant-table-cell:last-child {
+    border-bottom: 0 !important;
+  }
+
+  body.shop-mobile-app .product-compare__table .ant-table-tbody > tr > td.ant-table-cell::before {
+    content: attr(data-label);
+    min-width: 0;
+    color: #506358;
+    font-size: 11px;
+    font-weight: 900;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+  }
+
+  body.shop-mobile-app .product-compare__table .ant-table-cell .ant-space,
+  body.shop-mobile-app .product-compare__table .ant-table-cell .ant-space-item {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  body.shop-mobile-app .product-compare__table .ant-table-cell .ant-btn {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-height: 44px !important;
+  }
+
+  body.shop-mobile-app .product-compare__table .ant-table-cell .ant-tag {
+    max-width: 100% !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    white-space: normal !important;
+  }
+
+  body.shop-mobile-app .product-compare-page .product-compare__productLink[href] {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    color: #173f2b !important;
+    -webkit-text-fill-color: #173f2b !important;
+    text-decoration: none !important;
+  }
+
+  body.shop-mobile-app .product-compare-page .product-compare__productLink[href]:hover,
+  body.shop-mobile-app .product-compare-page .product-compare__productLink[href]:focus-visible {
+    color: #ee4d2d !important;
+    -webkit-text-fill-color: #ee4d2d !important;
+    text-decoration: none !important;
+  }
+
+  body.shop-mobile-app .product-compare-page .ant-btn-primary:not(:disabled):not(.ant-btn-disabled),
+  body.shop-mobile-app .product-compare-page .ant-btn-primary:not(:disabled):not(.ant-btn-disabled) :where(span, .anticon) {
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+  }
+
+  body.shop-mobile-app .product-compare-page .ant-btn-primary:disabled,
+  body.shop-mobile-app .product-compare-page .ant-btn-primary[disabled],
+  body.shop-mobile-app .product-compare-page .ant-btn-primary.ant-btn-disabled {
+    border: 1px solid rgba(18, 71, 52, 0.18) !important;
+    background: #eef4ef !important;
+    color: #506358 !important;
+    -webkit-text-fill-color: #506358 !important;
+    box-shadow: none !important;
+    opacity: 1 !important;
+  }
+
+  body.shop-mobile-app .product-compare-page .ant-btn-primary:disabled :where(span, .anticon),
+  body.shop-mobile-app .product-compare-page .ant-btn-primary[disabled] :where(span, .anticon),
+  body.shop-mobile-app .product-compare-page .ant-btn-primary.ant-btn-disabled :where(span, .anticon) {
+    color: #506358 !important;
+    -webkit-text-fill-color: #506358 !important;
   }
 }

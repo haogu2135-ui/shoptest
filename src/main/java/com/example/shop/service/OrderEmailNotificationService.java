@@ -29,7 +29,7 @@ public class OrderEmailNotificationService {
     private final MailAccountProperties mailAccountProperties;
     private final Map<String, JavaMailSenderImpl> mailSenderCache = new ConcurrentHashMap<>();
 
-    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    @Transactional(rollbackFor = Exception.class, propagation = Propagation.NOT_SUPPORTED)
     public boolean trySendOrderStatusEmail(String email, String title, String message) {
         String normalizedEmail = normalizeEmail(email);
         if (normalizedEmail == null || isBlank(title) || isBlank(message)) {

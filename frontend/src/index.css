@@ -229,7 +229,7 @@ code {
 }
 
 .ant-btn {
-  min-height: 34px;
+  min-height: 44px;
   max-width: 100%;
   border-radius: 8px;
   font-weight: 700;
@@ -903,5 +903,38 @@ button:focus-visible {
 
   :where(.ant-list-item, .ant-card, .ant-drawer, .ant-modal) :where(.commerce-atomic) {
     width: fit-content;
+  }
+}
+
+/* Android UI global closure for controls not covered by page CSS. */
+@media (max-width: 860px) {
+  html,
+  body,
+  #root {
+    overflow-x: hidden;
+    overflow-x: clip;
+  }
+
+  :where(button, a[role="button"], .ant-btn, .ant-input, .ant-input-affix-wrapper, .ant-select-selector, .ant-picker, .ant-input-number, .ant-radio-button-wrapper, .ant-segmented-item, .ant-pagination-item, .ant-pagination-prev, .ant-pagination-next, .ant-tabs-tab) {
+    min-height: 44px !important;
+    touch-action: manipulation;
+  }
+
+  :where(.ant-btn-icon-only, button[aria-label], .ant-modal-close, .ant-drawer-close, .ant-pagination-prev, .ant-pagination-next) {
+    min-width: 44px !important;
+  }
+
+  :where(input, textarea, .ant-input-number-input, .ant-select-selection-search-input, .ant-picker-input > input) {
+    font-size: 16px !important;
+  }
+}
+
+@supports not (overflow: clip) {
+  @media (max-width: 860px) {
+    html,
+    body,
+    #root {
+      overflow-x: hidden !important;
+    }
   }
 }

@@ -27,11 +27,14 @@ import javax.servlet.http.HttpServletRequest;
 import javax.validation.Valid;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.Callable;
 
 @RestController
 @RequestMapping("/auth")
 @RequiredArgsConstructor
 public class LoginController {
+    private static final String INVALID_LOGIN_MESSAGE = "Invalid username or password";
+
     private final AuthenticationManager authenticationManager;
     private final UserService userService;
     private final JwtService jwtService;
@@ -56,7 +59,7 @@ public class LoginController {
                     request,
                     "User login failed",
                     "missing_credentials=true");
-            return ResponseEntity.badRequest().body(Map.of("error", "Invalid username or password"));
+            return invalidLoginResponse();
         }
         User loginAccount = login == null ? null : userService.findByUsernameOrPhoneOrEmail(login);
         String authenticationLogin = loginAccount != null && loginAccount.getUsername() != null && !loginAccount.getUsername().isBlank()
@@ -73,10 +76,12 @@ public class LoginController {
 
         // Check account lockout
         if (isLoginAccountLocked(login, loginAccount)) {
+            runAuthenticationTimingPadding(authenticationLogin, password);
             auditLogService.record("LOGIN", "BLOCKED", null, login, null,
-                    "USER", null, request, "Account locked", null);
-            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
-                    .body(Map.of("error", "Account temporarily locked due to too many failed attempts. Please try again later."));
+                    "USER", null, request, "Account login blocked", null);
+            ipBlacklistService.recordLoginFailure(request, INVALID_LOGIN_MESSAGE);
+            tokenBlacklistService.recordLoginFailure(clientIp, accountLockKey(login, loginAccount));
+            return invalidLoginResponse();
         }
 
         try {
@@ -122,7 +127,7 @@ public class LoginController {
                     null);
             ipBlacklistService.recordLoginFailure(request, "Invalid username or password");
             tokenBlacklistService.recordLoginFailure(clientIp, accountLockKey(login, loginAccount));
-            return ResponseEntity.badRequest().body(Map.of("error", "Invalid username or password"));
+            return invalidLoginResponse();
         } catch (IllegalStateException e) {
             auditLogService.record("LOGIN", "FAILURE",
                     loginAccount != null ? loginAccount.getId() : null,
@@ -137,7 +142,7 @@ public class LoginController {
                     .body(Map.of(
                             "error", "Login service is temporarily unavailable. Please try again later.",
                             "code", "LOGIN_SERVICE_UNAVAILABLE"));
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             auditLogService.record("LOGIN", "FAILURE",
                     loginAccount != null ? loginAccount.getId() : null,
                     login,
@@ -145,47 +150,52 @@ public class LoginController {
                     "USER",
                     loginAccount != null ? loginAccount.getId() : null,
                     request,
-                    "Login failed after credentials were accepted",
+                    "Unexpected login failure after credentials were accepted",
                     e.getClass().getSimpleName());
-            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
-                    .body(Map.of(
-                            "error", "Login service is temporarily unavailable. Please try again later.",
-                            "code", "LOGIN_SERVICE_UNAVAILABLE"));
+            throw e;
         }
     }
 
     @PostMapping("/email-code")
-    public ResponseEntity<?> sendEmailCode(@Valid @RequestBody(required = false) EmailLoginCodeRequest codeRequest, HttpServletRequest request) {
+    public Callable<ResponseEntity<?>> sendEmailCode(@Valid @RequestBody(required = false) EmailLoginCodeRequest codeRequest,
+                                                     HttpServletRequest request) {
         if (codeRequest == null) {
-            return ResponseEntity.badRequest().body(emailCodeError("INVALID_REQUEST", "Email payload is required"));
+            return () -> ResponseEntity.badRequest().body(emailCodeError("INVALID_REQUEST", "Email payload is required"));
         }
-        try {
-            emailLoginService.sendLoginCode(codeRequest.getEmail(), clientKey(request));
-            return ResponseEntity.ok(emailCodeResponse("Verification code sent"));
-        } catch (EmailLoginException e) {
-            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
-                    .body(emailCodeError(e.getCode(), e.getMessage(), e.getRetryAfterSeconds()));
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
-                    .body(emailCodeError("SEND_FAILED", "Unable to send verification code"));
-        }
+        String email = codeRequest.getEmail();
+        String clientKey = clientKey(request);
+        return emailCodeTask(() -> emailLoginService.sendLoginCode(email, clientKey));
     }
 
     @PostMapping("/password-reset-code")
-    public ResponseEntity<?> sendPasswordResetCode(@Valid @RequestBody(required = false) EmailLoginCodeRequest codeRequest, HttpServletRequest request) {
+    public Callable<ResponseEntity<?>> sendPasswordResetCode(@Valid @RequestBody(required = false) EmailLoginCodeRequest codeRequest,
+                                                             HttpServletRequest request) {
         if (codeRequest == null) {
-            return ResponseEntity.badRequest().body(emailCodeError("INVALID_REQUEST", "Email payload is required"));
+            return () -> ResponseEntity.badRequest().body(emailCodeError("INVALID_REQUEST", "Email payload is required"));
         }
-        try {
-            emailLoginService.sendPasswordResetCode(codeRequest.getEmail(), clientKey(request));
-            return ResponseEntity.ok(emailCodeResponse("Verification code sent"));
-        } catch (EmailLoginException e) {
-            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
-                    .body(emailCodeError(e.getCode(), e.getMessage(), e.getRetryAfterSeconds()));
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
-                    .body(emailCodeError("SEND_FAILED", "Unable to send verification code"));
-        }
+        String email = codeRequest.getEmail();
+        String clientKey = clientKey(request);
+        return emailCodeTask(() -> emailLoginService.sendPasswordResetCode(email, clientKey));
+    }
+
+    private Callable<ResponseEntity<?>> emailCodeTask(EmailCodeSender sender) {
+        return () -> {
+            try {
+                sender.send();
+                return ResponseEntity.ok(emailCodeResponse("Verification code sent"));
+            } catch (EmailLoginException e) {
+                return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                        .body(emailCodeError(e.getCode(), e.getMessage(), e.getRetryAfterSeconds()));
+            } catch (Exception e) {
+                return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                        .body(emailCodeError("SEND_FAILED", "Unable to send verification code"));
+            }
+        };
+    }
+
+    @FunctionalInterface
+    private interface EmailCodeSender {
+        void send();
     }
 
     @PostMapping("/email-login")
@@ -251,13 +261,28 @@ public class LoginController {
                     long remainingMs = jwtService.getExpirationMs(token);
                     tokenBlacklistService.blacklistAccessToken(jti, remainingMs);
                 }
-            } catch (Exception ignored) {
+            } catch (Exception e) {
+                auditLogService.record("LOGOUT", "FAILURE", authentication, "USER", null, request,
+                        "Access token blacklist failed", e.getClass().getSimpleName());
+                return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                        .body(Map.of(
+                                "error", "Logout could not be completed safely. Please try again.",
+                                "code", "LOGOUT_TOKEN_REVOKE_FAILED"));
             }
         }
 
         String refreshToken = body == null ? null : body.get("refreshToken");
         if (refreshToken != null && !refreshToken.isBlank()) {
-            tokenBlacklistService.revokeRefreshToken(refreshToken.trim());
+            try {
+                tokenBlacklistService.revokeRefreshToken(refreshToken.trim());
+            } catch (Exception e) {
+                auditLogService.record("LOGOUT", "FAILURE", authentication, "USER", null, request,
+                        "Refresh token revoke failed", e.getClass().getSimpleName());
+                return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                        .body(Map.of(
+                                "error", "Logout could not be completed safely. Please try again.",
+                                "code", "LOGOUT_REFRESH_REVOKE_FAILED"));
+            }
         }
         auditLogService.record("LOGOUT", "SUCCESS", authentication, "USER", null, request, "User logout", null);
         return ResponseEntity.ok(Map.of("message", "Logged out"));
@@ -278,6 +303,17 @@ public class LoginController {
         if (user == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(Map.of("error", "User not found"));
+        }
+        if (!isActiveUser(user)) {
+            tokenBlacklistService.revokeRefreshToken(refreshToken);
+            auditLogService.record("TOKEN_REFRESH", "BLOCKED",
+                    user.getId(), user.getUsername(), user.getRole(),
+                    "USER", user.getId(), request, "Token refresh blocked for inactive account",
+                    "status=" + safe(user.getStatus()));
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of(
+                            "error", "Account is disabled",
+                            "code", "ACCOUNT_DISABLED"));
         }
         UserDetailsImpl userDetails = UserDetailsImpl.build(user);
         String newAccessToken = jwtService.generateToken(userDetails);
@@ -302,6 +338,23 @@ public class LoginController {
             return null;
         }
         return login.contains("@") ? login.toLowerCase() : login;
+    }
+
+    private boolean isActiveUser(User user) {
+        return user != null && "ACTIVE".equalsIgnoreCase(safe(user.getStatus()));
+    }
+
+    private ResponseEntity<Map<String, String>> invalidLoginResponse() {
+        return ResponseEntity.badRequest().body(Map.of("error", INVALID_LOGIN_MESSAGE));
+    }
+
+    private void runAuthenticationTimingPadding(String authenticationLogin, String password) {
+        try {
+            authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(authenticationLogin, password));
+        } catch (RuntimeException ex) {
+            return;
+        }
     }
 
     private boolean isLoginAccountLocked(String login, User account) {
@@ -373,4 +426,4 @@ public class LoginController {
         response.put("roleCode", user != null ? user.getRoleCode() : null);
         return response;
     }
-} 
+}

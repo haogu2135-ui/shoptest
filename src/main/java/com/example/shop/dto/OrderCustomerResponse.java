@@ -67,7 +67,7 @@ public class OrderCustomerResponse {
         response.setReturnedAt(order.getReturnedAt());
         response.setReturnable(order.getReturnable());
         response.setReturnDeadline(order.getReturnDeadline());
-        response.setGuestOrder(Boolean.TRUE.equals(order.getGuestOrder()) || isGuestShippingAddress(order.getShippingAddress()));
+        response.setGuestOrder(isGuestOrder(order));
         response.setRefundedAt(order.getRefundedAt());
         response.setShippedAt(order.getShippedAt());
         response.setCompletedAt(order.getCompletedAt());
@@ -80,7 +80,7 @@ public class OrderCustomerResponse {
             return null;
         }
         String shippingAddress = order.getShippingAddress();
-        if (!isGuestShippingAddress(shippingAddress)) {
+        if (!isLegacyGuestShippingAddress(shippingAddress)) {
             return shippingAddress;
         }
         String[] parts = shippingAddress.split(" / ", 4);
@@ -109,7 +109,13 @@ public class OrderCustomerResponse {
         return result.length() == 0 ? null : result.toString();
     }
 
-    private static boolean isGuestShippingAddress(String shippingAddress) {
+    private static boolean isGuestOrder(Order order) {
+        return order != null && (Boolean.TRUE.equals(order.getGuestOrder())
+                || "GUEST".equalsIgnoreCase(order.getCustomerType())
+                || isLegacyGuestShippingAddress(order.getShippingAddress()));
+    }
+
+    private static boolean isLegacyGuestShippingAddress(String shippingAddress) {
         return shippingAddress != null && shippingAddress.startsWith("[Guest]");
     }
 

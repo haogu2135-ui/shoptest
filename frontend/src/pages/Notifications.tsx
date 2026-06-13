@@ -8,6 +8,7 @@ import { useLanguage } from '../i18n';
 import { buildLoginUrlFromWindow } from '../utils/authRedirect';
 import { stripUnsafeHtml } from '../utils/sanitizeHtml';
 import { dispatchDomEvent } from '../utils/domEvents';
+import { reportNonBlockingError } from '../utils/nonBlockingError';
 import { hasStoredValue } from '../utils/safeStorage';
 import './Notifications.css';
 import '../styles/mobile-page-contrast.css';
@@ -21,6 +22,7 @@ const typeColors: Record<string, string> = {
   DELIVERY: 'green',
 };
 const NOTIFICATION_TYPE_KEYS = new Set(['ORDER', 'PROMOTION', 'SYSTEM', 'DELIVERY']);
+const NOTIFICATION_PAGE_SIZE = 50;
 
 const notifyNavbarChanged = () => {
   dispatchDomEvent('shop:notifications-updated');
@@ -34,9 +36,19 @@ const sortNotifications = (items: AppNotification[]) =>
     return (Number.isNaN(rightTime) ? 0 : rightTime) - (Number.isNaN(leftTime) ? 0 : leftTime);
   });
 
+const mergeNotificationPages = (current: AppNotification[], next: AppNotification[]) => {
+  const itemsById = new Map<number, AppNotification>();
+  current.forEach((item) => itemsById.set(item.id, item));
+  next.forEach((item) => itemsById.set(item.id, item));
+  return sortNotifications(Array.from(itemsById.values()));
+};
+
 const Notifications: React.FC = () => {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [notificationPage, setNotificationPage] = useState(1);
+  const [hasMoreNotifications, setHasMoreNotifications] = useState(false);
   const [quickFilter, setQuickFilter] = useState<'ALL' | 'UNREAD' | 'PROMOTION' | 'ORDER' | 'DELIVERY'>('ALL');
   const navigate = useNavigate();
   const { t, language } = useLanguage();
@@ -50,14 +62,27 @@ const Notifications: React.FC = () => {
     return rawType || '-';
   }, [t]);
 
-  const fetchNotifications = useCallback(async () => {
+  const fetchNotifications = useCallback(async (nextPage = 1, append = false) => {
+    if (append) {
+      setLoadingMore(true);
+    } else {
+      setLoading(true);
+    }
     try {
-      const res = await notificationApi.getByUser(0, false, 1, 50);
-      setNotifications(sortNotifications(res.data));
-    } catch {
+      const res = await notificationApi.getByUser(0, false, nextPage, NOTIFICATION_PAGE_SIZE);
+      const nextNotifications = sortNotifications(res.data);
+      setNotifications((current) => append ? mergeNotificationPages(current, nextNotifications) : nextNotifications);
+      setNotificationPage(nextPage);
+      setHasMoreNotifications(nextNotifications.length === NOTIFICATION_PAGE_SIZE);
+    } catch (error) {
+      reportNonBlockingError('Notifications.fetchNotifications', error);
       message.error(t('pages.notifications.fetchFailed'));
     } finally {
-      setLoading(false);
+      if (append) {
+        setLoadingMore(false);
+      } else {
+        setLoading(false);
+      }
     }
   }, [t]);
 
@@ -75,7 +100,8 @@ const Notifications: React.FC = () => {
       await notificationApi.markAsRead(id);
       setNotifications((current) => current.map(n => n.id === id ? { ...n, isRead: true } : n));
       notifyNavbarChanged();
-    } catch {
+    } catch (error) {
+      reportNonBlockingError('Notifications.handleMarkAsRead', error);
       message.error(t('messages.operationFailed'));
     }
   };
@@ -86,7 +112,8 @@ const Notifications: React.FC = () => {
       setNotifications((current) => current.map(n => ({ ...n, isRead: true })));
       notifyNavbarChanged();
       message.success(t('pages.notifications.allRead'));
-    } catch {
+    } catch (error) {
+      reportNonBlockingError('Notifications.handleMarkAllAsRead', error);
       message.error(t('messages.operationFailed'));
     }
   };
@@ -97,7 +124,8 @@ const Notifications: React.FC = () => {
       setNotifications((current) => current.filter(n => n.id !== id));
       notifyNavbarChanged();
       message.success(t('messages.deleteSuccess'));
-    } catch {
+    } catch (error) {
+      reportNonBlockingError('Notifications.handleDelete', error);
       message.error(t('messages.deleteFailed'));
     }
   };
@@ -178,6 +206,7 @@ const Notifications: React.FC = () => {
   const markAllActionLabel = `${t('pages.notifications.markAll')}: ${notificationInsights.unread}`;
   const clearFilterActionLabel = `${t('pages.notifications.clearFilter')}: ${notificationQuickFilterLabels[quickFilter]}`;
   const notificationActionPlanLabel = `${actionPlan.label}: ${actionPlan.title}`;
+  const loadMoreActionLabel = `${t('pages.notifications.loadMore')}: ${t('pages.notifications.loadedCount', { count: notifications.length })}`;
 
   if (loading) {
     return <div className="notifications-page notifications-page--loading"><Spin size="large" /></div>;
@@ -277,6 +306,20 @@ const Notifications: React.FC = () => {
         <List
           dataSource={filteredNotifications}
           locale={{ emptyText: t('pages.notifications.noFilterResults') }}
+          footer={hasMoreNotifications ? (
+            <div className="notifications-page__loadMore">
+              <Text type="secondary">{t('pages.notifications.loadedCount', { count: notifications.length })}</Text>
+              <Button
+                onClick={() => fetchNotifications(notificationPage + 1, true)}
+                loading={loadingMore}
+                disabled={loadingMore}
+                aria-label={loadMoreActionLabel}
+                title={loadMoreActionLabel}
+              >
+                {loadingMore ? t('pages.notifications.loadingMore') : t('pages.notifications.loadMore')}
+              </Button>
+            </div>
+          ) : null}
           renderItem={(item) => {
             const notificationName = item.title || formatNotificationType(item.type) || `#${item.id}`;
             const markReadActionLabel = `${t('pages.notifications.markRead')}: ${notificationName}`;
@@ -298,7 +341,7 @@ const Notifications: React.FC = () => {
                   okButtonProps={{ danger: true, 'aria-label': deleteActionLabel, title: deleteActionLabel }}
                   cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${deleteActionLabel}`, title: `${t('common.cancel')}: ${deleteActionLabel}` }}
                 >
-                  <Button size="small" type="link" danger icon={<DeleteOutlined />} aria-label={deleteActionLabel} title={deleteActionLabel} />
+                  <Button className="notifications-page__deleteButton" size="small" type="link" danger icon={<DeleteOutlined />} aria-label={deleteActionLabel} title={deleteActionLabel} />
                 </Popconfirm>,
               ].filter(Boolean)}
             >

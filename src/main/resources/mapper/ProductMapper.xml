@@ -25,26 +25,18 @@
         <result property="shipping" column="shipping"/>
         <result property="freeShipping" column="free_shipping"/>
         <result property="freeShippingThreshold" column="free_shipping_threshold"/>
+        <result property="bestSellerRank" column="best_seller_rank"/>
         <result property="createdAt" column="created_at"/>
         <result property="updatedAt" column="updated_at"/>
         <result property="status" column="status"/>
     </resultMap>
-
-    <select id="findAll" resultMap="productMap">
-        SELECT
-            id, name, description, price, stock, category_id, image_url, is_featured,
-            brand, original_price, discount, limited_time_price, limited_time_start_at,
-            limited_time_end_at, tag, images, specifications, detail_content, variants, warranty,
-            shipping, free_shipping, free_shipping_threshold, status, created_at, updated_at
-        FROM products
-    </select>
 
     <select id="findById" resultMap="productMap">
         SELECT
             id, name, description, price, stock, category_id, image_url, is_featured,
             brand, original_price, discount, limited_time_price, limited_time_start_at,
             limited_time_end_at, tag, images, specifications, detail_content, variants, warranty,
-            shipping, free_shipping, free_shipping_threshold, status, created_at, updated_at
+            shipping, free_shipping, free_shipping_threshold, best_seller_rank, status, created_at, updated_at
         FROM products WHERE id = #{id}
     </select>
 
@@ -53,7 +45,7 @@
             id, name, description, price, stock, category_id, image_url, is_featured,
             brand, original_price, discount, limited_time_price, limited_time_start_at,
             limited_time_end_at, tag, images, specifications, detail_content, variants, warranty,
-            shipping, free_shipping, free_shipping_threshold, status, created_at, updated_at
+            shipping, free_shipping, free_shipping_threshold, best_seller_rank, status, created_at, updated_at
         FROM products WHERE category_id = #{categoryId}
     </select>
 
@@ -61,12 +53,12 @@
         INSERT INTO products (
             name, description, price, stock, category_id, image_url, is_featured, brand, original_price, discount,
             limited_time_price, limited_time_start_at, limited_time_end_at, tag, images, specifications, detail_content, variants,
-            warranty, shipping, free_shipping, free_shipping_threshold, status, created_at, updated_at
+            warranty, shipping, free_shipping, free_shipping_threshold, best_seller_rank, status, created_at, updated_at
         )
         VALUES (
             #{name}, #{description}, #{price}, #{stock}, #{categoryId}, #{imageUrl}, #{isFeatured}, #{brand}, #{originalPrice}, #{discount},
             #{limitedTimePrice}, #{limitedTimeStartAt}, #{limitedTimeEndAt}, #{tag}, #{images}, #{specifications}, #{detailContent}, #{variants},
-            #{warranty}, #{shipping}, #{freeShipping}, #{freeShippingThreshold}, #{status}, #{createdAt}, #{updatedAt}
+            #{warranty}, #{shipping}, #{freeShipping}, #{freeShippingThreshold}, #{bestSellerRank}, #{status}, #{createdAt}, #{updatedAt}
         )
     </insert>
 
@@ -94,6 +86,7 @@
             shipping = #{shipping},
             free_shipping = #{freeShipping},
             free_shipping_threshold = #{freeShippingThreshold},
+            best_seller_rank = #{bestSellerRank},
             updated_at = #{updatedAt},
             status = #{status}
         WHERE id = #{id}
@@ -108,4 +101,4 @@
     <delete id="deleteById">
         DELETE FROM products WHERE id = #{id}
     </delete>
-</mapper> 
+</mapper>

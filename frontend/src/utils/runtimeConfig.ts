@@ -1,6 +1,10 @@
+import { reportNonBlockingError } from './nonBlockingError';
+
 export type ShopRuntimeConfig = {
   apiBaseUrl?: string;
   supportWebSocketUrl?: string;
+  clientErrorReportUrl?: string;
+  clientErrorReportingEnabled?: boolean | string | number;
   apiGatewayEnabled?: boolean | string | number;
   apiGatewayPrefix?: string;
   mobileVersionManifestUrl?: string;
@@ -151,7 +155,7 @@ export const resolveSupportWebSocketUrl = () => {
       return apiUrl.toString().replace(/\/+$/, '');
     }
   } catch (error) {
-    // Fall through to the same-origin websocket endpoint used by the Nginx templates.
+    reportNonBlockingError('runtimeConfig.resolveSupportWebSocketUrl', error);
   }
 
   return '/ws/support';

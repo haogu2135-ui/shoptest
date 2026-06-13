@@ -1,6 +1,7 @@
 package com.example.shop.controller;
 
 import com.example.shop.dto.ProductListQuery;
+import com.example.shop.dto.ProductPublicListItemResponse;
 import com.example.shop.dto.ProductPublicPageResponse;
 import com.example.shop.dto.ProductPublicResponse;
 import com.example.shop.entity.Product;
@@ -10,7 +11,6 @@ import com.example.shop.service.AdminRoleService;
 import com.example.shop.service.ProductService;
 import com.example.shop.service.SecurityAuditLogService;
 import org.springframework.data.domain.Page;
-import com.example.shop.util.ProductStatusUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -20,8 +20,10 @@ import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletRequest;
+import javax.validation.Valid;
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @RestController
@@ -29,6 +31,7 @@ import java.util.stream.Collectors;
 public class ProductController {
     private static final int DEFAULT_PUBLIC_PRODUCT_PAGE = 0;
     private static final int DEFAULT_PUBLIC_PRODUCT_PAGE_SIZE = 24;
+    private static final int MAX_PUBLIC_PRODUCT_PAGE_SIZE = 100;
 
     @Autowired
     private ProductService productService;
@@ -44,6 +47,7 @@ public class ProductController {
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false, name = "q") String q,
             @RequestParam(required = false) Long categoryId,
+            @RequestParam(required = false) Boolean includeChildren,
             @RequestParam(required = false) Boolean discount,
             @RequestParam(required = false) Boolean featured,
             @RequestParam(required = false) BigDecimal minPrice,
@@ -58,9 +62,12 @@ public class ProductController {
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer size,
             @RequestParam(required = false) String sort) {
+        int safePage = validatePublicProductPage(page);
+        int safeSize = validatePublicProductPageSize(size);
         ProductListQuery query = new ProductListQuery();
         query.setKeyword(resolveKeyword(keyword, q));
         query.setCategoryId(categoryId);
+        query.setIncludeChildren(includeChildren);
         query.setDiscount(discount);
         query.setFeatured(featured);
         query.setMinPrice(minPrice == null ? priceMin : minPrice);
@@ -70,15 +77,32 @@ public class ProductController {
         query.setColors(color);
         query.setCollection(collection);
         query.setStatus(status);
-        query.setPage(page == null ? DEFAULT_PUBLIC_PRODUCT_PAGE : page);
-        query.setSize(size == null ? DEFAULT_PUBLIC_PRODUCT_PAGE_SIZE : size);
+        query.setPage(safePage);
+        query.setSize(safeSize);
         query.setSort(sort);
         Page<Product> result = productService.findPublicProductPage(query);
         return ResponseEntity.ok(ProductPublicPageResponse.of(
-                toPublicProducts(result.getContent()),
+                toPublicListItems(result.getContent()),
                 result.getTotalElements(),
                 result.getNumber(),
                 result.getSize()));
+    }
+
+    private int validatePublicProductPage(Integer page) {
+        if (page != null && page < 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "page must be greater than or equal to 0");
+        }
+        return page == null ? DEFAULT_PUBLIC_PRODUCT_PAGE : page;
+    }
+
+    private int validatePublicProductPageSize(Integer size) {
+        if (size != null && size < 1) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "size must be greater than or equal to 1");
+        }
+        if (size != null && size > MAX_PUBLIC_PRODUCT_PAGE_SIZE) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "size must be less than or equal to " + MAX_PUBLIC_PRODUCT_PAGE_SIZE);
+        }
+        return size == null ? DEFAULT_PUBLIC_PRODUCT_PAGE_SIZE : size;
     }
 
     private String resolveKeyword(String keyword, String q) {
@@ -146,9 +170,15 @@ public class ProductController {
                 .collect(Collectors.toList());
     }
 
+    private List<ProductPublicListItemResponse> toPublicListItems(List<Product> products) {
+        return products == null ? List.of() : products.stream()
+                .map(ProductPublicListItemResponse::from)
+                .collect(Collectors.toList());
+    }
+
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Product> createProduct(@RequestBody(required = false) Product product,
+    public ResponseEntity<Product> createProduct(@Valid @RequestBody(required = false) Product product,
                                                  Authentication authentication,
                                                  HttpServletRequest request) {
         requireAdminActionPermission(authentication, AdminRoleService.PRODUCTS_WRITE_PERMISSION,
@@ -159,7 +189,6 @@ public class ProductController {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Product payload is required");
         }
         try {
-            product.setStatus(normalizeProductStatus(product.getStatus()));
             Product savedProduct = productService.save(product);
             auditLogService.record("PRODUCT_CREATE", "SUCCESS", authentication, "PRODUCT", savedProduct.getId(), request,
                     "Product created", "name=" + savedProduct.getName() + ",status=" + savedProduct.getStatus());
@@ -174,7 +203,7 @@ public class ProductController {
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Product> updateProduct(@PathVariable Long id,
-                                                 @RequestBody(required = false) Product product,
+                                                 @Valid @RequestBody(required = false) Product product,
                                                  Authentication authentication,
                                                  HttpServletRequest request) {
         requireAdminActionPermission(authentication, AdminRoleService.PRODUCTS_WRITE_PERMISSION,
@@ -187,8 +216,8 @@ public class ProductController {
         try {
             return productService.findById(id)
                     .map(existingProduct -> {
-                        mergeProduct(existingProduct, product);
-                        Product savedProduct = productService.save(existingProduct);
+                        assertProductVersionCurrent(existingProduct, product);
+                        Product savedProduct = productService.save(productService.mergeProduct(existingProduct, product));
                         auditLogService.record("PRODUCT_UPDATE", "SUCCESS", authentication, "PRODUCT", id, request,
                                 "Product updated", "name=" + savedProduct.getName() + ",status=" + savedProduct.getStatus());
                         return ResponseEntity.ok(savedProduct);
@@ -205,41 +234,14 @@ public class ProductController {
         }
     }
 
-    private void mergeProduct(Product existingProduct, Product product) {
-        if (product.getName() != null) existingProduct.setName(product.getName());
-        if (product.getDescription() != null) existingProduct.setDescription(product.getDescription());
-        if (product.getPrice() != null) existingProduct.setPrice(product.getPrice());
-        if (product.getImageUrl() != null) existingProduct.setImageUrl(product.getImageUrl());
-        if (product.getStock() != null) existingProduct.setStock(product.getStock());
-        if (product.getCategoryId() != null) existingProduct.setCategoryId(product.getCategoryId());
-        if (product.getIsFeatured() != null) existingProduct.setIsFeatured(product.getIsFeatured());
-        if (product.getBrand() != null) existingProduct.setBrand(product.getBrand());
-        if (product.getOriginalPrice() != null) existingProduct.setOriginalPrice(product.getOriginalPrice());
-        if (product.getDiscount() != null) existingProduct.setDiscount(product.getDiscount());
-        if (product.getLimitedTimePrice() != null) existingProduct.setLimitedTimePrice(product.getLimitedTimePrice());
-        if (product.getLimitedTimeStartAt() != null) existingProduct.setLimitedTimeStartAt(product.getLimitedTimeStartAt());
-        if (product.getLimitedTimeEndAt() != null) existingProduct.setLimitedTimeEndAt(product.getLimitedTimeEndAt());
-        if (product.getTag() != null) existingProduct.setTag(product.getTag());
-        if (product.getStatus() != null) existingProduct.setStatus(normalizeProductStatus(product.getStatus()));
-        if (product.getImages() != null) existingProduct.setImages(product.getImages());
-        if (product.getSpecifications() != null) existingProduct.setSpecifications(product.getSpecifications());
-        if (product.getDetailContent() != null) existingProduct.setDetailContent(product.getDetailContent());
-        if (product.getVariants() != null) existingProduct.setVariants(product.getVariants());
-        if (product.getWarranty() != null) existingProduct.setWarranty(product.getWarranty());
-        if (product.getShipping() != null) existingProduct.setShipping(product.getShipping());
-        if (product.getFreeShipping() != null) existingProduct.setFreeShipping(product.getFreeShipping());
-        if (product.getFreeShippingThreshold() != null) existingProduct.setFreeShippingThreshold(product.getFreeShippingThreshold());
-    }
-
-    private String normalizeProductStatus(String status) {
-        if (status == null || status.isBlank()) {
-            return "ACTIVE";
+    private void assertProductVersionCurrent(Product existingProduct, Product submittedProduct) {
+        if (submittedProduct.getUpdatedAt() == null) {
+            return;
         }
-        String normalized = ProductStatusUtils.normalizeProductStatus(status);
-        if (normalized == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "status must be one of " + ProductStatusUtils.PRODUCT_STATUSES);
+        if (!Objects.equals(existingProduct.getUpdatedAt(), submittedProduct.getUpdatedAt())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Product was updated by another admin. Refresh and try again.");
         }
-        return normalized;
     }
 
     @DeleteMapping("/{id}")

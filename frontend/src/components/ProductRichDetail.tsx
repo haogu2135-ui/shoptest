@@ -1,7 +1,9 @@
 import React from 'react';
 import { Empty, Typography } from 'antd';
 import type { ProductDetailBlock } from '../types';
+import { useLanguage } from '../i18n';
 import { buildResponsiveImageSrcSet, normalizePersistentImageUrl, resolveApiAssetUrl } from '../utils/mediaAssets';
+import { reportNonBlockingError } from '../utils/nonBlockingError';
 import './ProductRichDetail.css';
 import '../styles/mobile-page-contrast.css';
 
@@ -11,12 +13,14 @@ type ProductRichDetailProps = {
   detailContent?: ProductDetailBlock[] | string | null;
   fallback?: string;
   emptyText?: string;
-  labels?: {
-    imageAlt: string;
-    videoTitle: (index: number) => string;
-    openVideo: string;
-    unsupported: string;
-  };
+  labels?: Partial<ProductRichDetailLabels>;
+};
+
+type ProductRichDetailLabels = {
+  imageAlt: string;
+  videoTitle: (index: number) => string;
+  openVideo: string;
+  unsupported: string;
 };
 
 export const isHttpMediaUrl = (value?: string): value is string => {
@@ -53,7 +57,8 @@ export const parseDetailContent = (value?: ProductRichDetailProps['detailContent
   try {
     const parsed = JSON.parse(value);
     return Array.isArray(parsed) ? normalizeBlocks(parsed) : [];
-  } catch {
+  } catch (error) {
+    reportNonBlockingError('ProductRichDetail.parseDetailContent', error);
     return [];
   }
 };
@@ -80,7 +85,8 @@ export const toEmbeddableVideoUrl = (value: string) => {
       return videoId ? `https://player.vimeo.com/video/${videoId}` : value;
     }
     return resolvedValue;
-  } catch {
+  } catch (error) {
+    reportNonBlockingError('ProductRichDetail.toEmbeddableVideoUrl', error);
     return value;
   }
 };
@@ -109,21 +115,24 @@ const handleRichImageError = (event: React.SyntheticEvent<HTMLImageElement>) => 
 const ProductRichDetail: React.FC<ProductRichDetailProps> = ({
   detailContent,
   fallback,
-  emptyText = 'No details',
-  labels = {
-    imageAlt: 'Product detail',
-    videoTitle: (index) => `Product video ${index}`,
-    openVideo: 'Open product video',
-    unsupported: 'Unsupported detail content',
-  },
+  emptyText,
+  labels,
 }) => {
+  const { t } = useLanguage();
+  const resolvedEmptyText = emptyText ?? t('pages.productDetail.noDetails');
+  const resolvedLabels: ProductRichDetailLabels = {
+    imageAlt: labels?.imageAlt ?? t('pages.productDetail.richImageAlt'),
+    videoTitle: labels?.videoTitle ?? ((index) => t('pages.productDetail.richVideoTitle', { index })),
+    openVideo: labels?.openVideo ?? t('pages.productDetail.openRichVideo'),
+    unsupported: labels?.unsupported ?? t('pages.productDetail.unsupportedRichContent'),
+  };
   const blocks = parseDetailContent(detailContent).filter((block) => {
     if (block.type === 'text') return !!block.content?.trim();
     return isHttpMediaUrl(block.url);
   });
 
   if (blocks.length === 0) {
-    return fallback ? <Paragraph>{fallback}</Paragraph> : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={emptyText} />;
+    return fallback ? <Paragraph>{fallback}</Paragraph> : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={resolvedEmptyText} />;
   }
 
   return (
@@ -145,7 +154,7 @@ const ProductRichDetail: React.FC<ProductRichDetailProps> = ({
                 src={mediaUrl}
                 srcSet={buildResponsiveImageSrcSet(mediaUrl, [480, 720, 960, 1200, 1600])}
                 sizes="min(860px, 100vw)"
-                alt={block.caption || labels.imageAlt}
+                alt={block.caption || resolvedLabels.imageAlt}
                 width={1200}
                 height={900}
                 loading="lazy"
@@ -166,21 +175,20 @@ const ProductRichDetail: React.FC<ProductRichDetailProps> = ({
               {canEmbedVideoUrl(mediaUrl) ? (
                 <div className="product-rich-detail__video">
                   {isDirectVideo(videoUrl) ? (
-                    <video src={videoUrl} controls preload="metadata" aria-label={block.caption || labels.videoTitle(index + 1)} />
+                    <video src={videoUrl} controls preload="metadata" aria-label={block.caption || resolvedLabels.videoTitle(index + 1)} />
                   ) : (
                     <iframe
                       src={videoUrl}
-                      title={block.caption || labels.videoTitle(index + 1)}
+                      title={block.caption || resolvedLabels.videoTitle(index + 1)}
                       sandbox="allow-scripts allow-same-origin allow-presentation"
                       referrerPolicy="strict-origin-when-cross-origin"
                       allow="fullscreen; picture-in-picture"
-                      allowFullScreen
                     />
                   )}
                 </div>
               ) : (
                 <a className="product-rich-detail__video-link" href={mediaUrl} target="_blank" rel="noopener noreferrer">
-                  {block.caption || labels.openVideo}
+                  {block.caption || resolvedLabels.openVideo}
                 </a>
               )}
               {block.caption ? <figcaption>{block.caption}</figcaption> : null}
@@ -190,7 +198,7 @@ const ProductRichDetail: React.FC<ProductRichDetailProps> = ({
 
         return (
           <Text key={index} type="secondary">
-            {labels.unsupported}
+            {resolvedLabels.unsupported}
           </Text>
         );
       })}

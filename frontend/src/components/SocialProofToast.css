@@ -176,3 +176,16 @@
     bottom: calc(96px + env(safe-area-inset-bottom));
   }
 }
+
+/* Android UI fourth-round closure: toast copy remains readable and high contrast. */
+@media (max-width: 640px) {
+  .social-proof-toast strong,
+  .social-proof-toast span span {
+    font-size: 12px !important;
+    line-height: 1.3 !important;
+  }
+
+  .social-proof-toast span span {
+    color: #40564a;
+  }
+}

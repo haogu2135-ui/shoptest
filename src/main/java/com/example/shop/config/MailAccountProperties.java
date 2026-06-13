@@ -19,6 +19,8 @@ public class MailAccountProperties {
     private int maxSendAttemptsPerWindow = 6;
     private int verifyWindowMinutes = 15;
     private int maxVerifyFailuresPerWindow = 10;
+    private int accountEnumerationPaddingMs = 500;
+    private int maxRateBuckets = 5000;
     private String brandName = "ShopMX";
     private boolean redisEnabled = true;
     private String redisKeyPrefix = "shop:mail-code";

@@ -1,6 +1,7 @@
 package com.example.shop.controller;
 
 import com.example.shop.config.PaymentChannelConfig;
+import com.example.shop.dto.GuestOrderAccessRequest;
 import com.example.shop.dto.PaymentCallbackRequest;
 import com.example.shop.dto.PaymentChannelResponse;
 import com.example.shop.dto.PaymentCreateRequest;
@@ -203,20 +204,18 @@ public class PaymentController {
 
     @GetMapping("/order/{orderId}")
     public ResponseEntity<List<PaymentCustomerResponse>> findByOrderId(@PathVariable Long orderId,
-                                                                       @RequestParam(required = false) String guestEmail,
-                                                                       @RequestParam(required = false) String orderNo,
                                                                        Authentication authentication) {
-        assertCanSeeOrder(orderId, authentication, guestEmail, orderNo);
+        assertCanSeeOrder(orderId, authentication);
         List<Payment> payments = paymentService.findStoredByOrderId(orderId);
         return ResponseEntity.ok(customerPaymentResponses(payments));
     }
 
-    @GetMapping("/guest/order/{orderId}")
+    @PostMapping("/guest/order/{orderId}")
     public ResponseEntity<List<PaymentCustomerResponse>> findGuestByOrderId(@PathVariable Long orderId,
-                                                                            @RequestParam String guestEmail,
-                                                                            @RequestParam String orderNo,
+                                                                            @Valid @RequestBody(required = false) GuestOrderAccessRequest body,
                                                                             HttpServletRequest request) {
-        assertCanSeeGuestOrder(orderId, guestEmail, orderNo, request);
+        GuestOrderAccessRequest access = requireGuestAccessRequest(body);
+        assertCanSeeGuestOrder(orderId, access.getGuestEmail(), access.getOrderNo(), request);
         return ResponseEntity.ok(paymentService.findStoredByOrderId(orderId).stream()
                 .map(PaymentCustomerResponse::from)
                 .collect(Collectors.toList()));
@@ -224,22 +223,27 @@ public class PaymentController {
 
     @GetMapping("/order/{orderId}/latest")
     public ResponseEntity<PaymentCustomerResponse> findLatestByOrderId(@PathVariable Long orderId,
-                                                                       @RequestParam(required = false) String guestEmail,
-                                                                       @RequestParam(required = false) String orderNo,
                                                                        Authentication authentication) {
-        assertCanSeeOrder(orderId, authentication, guestEmail, orderNo);
+        assertCanSeeOrder(orderId, authentication);
         Payment payment = paymentService.findStoredLatestByOrderId(orderId);
         return payment != null ? ResponseEntity.ok(customerPaymentResponse(payment)) : ResponseEntity.notFound().build();
     }
 
-    @GetMapping("/guest/order/{orderId}/latest")
+    @PostMapping("/guest/order/{orderId}/latest")
     public ResponseEntity<PaymentCustomerResponse> findLatestGuestByOrderId(@PathVariable Long orderId,
-                                                                            @RequestParam String guestEmail,
-                                                                            @RequestParam String orderNo,
+                                                                            @Valid @RequestBody(required = false) GuestOrderAccessRequest body,
                                                                             HttpServletRequest request) {
-        assertCanSeeGuestOrder(orderId, guestEmail, orderNo, request);
+        GuestOrderAccessRequest access = requireGuestAccessRequest(body);
+        assertCanSeeGuestOrder(orderId, access.getGuestEmail(), access.getOrderNo(), request);
         Payment payment = paymentService.findStoredLatestByOrderId(orderId);
         return payment != null ? ResponseEntity.ok(PaymentCustomerResponse.from(payment)) : ResponseEntity.notFound().build();
+    }
+
+    private GuestOrderAccessRequest requireGuestAccessRequest(GuestOrderAccessRequest body) {
+        if (body == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Guest payment access payload is required");
+        }
+        return body;
     }
 
     private void assertCanSeeOrder(Long orderId, Authentication authentication) {

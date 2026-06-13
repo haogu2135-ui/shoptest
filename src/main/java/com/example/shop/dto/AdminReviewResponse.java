@@ -3,9 +3,11 @@ package com.example.shop.dto;
 import com.example.shop.entity.Product;
 import com.example.shop.entity.Review;
 import com.example.shop.entity.User;
+import com.example.shop.util.ReviewImageUrlCodec;
 import lombok.Data;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 public class AdminReviewResponse {
@@ -17,6 +19,7 @@ public class AdminReviewResponse {
     private String username;
     private int rating;
     private String comment;
+    private List<String> imageUrls;
     private String status;
     private Long orderId;
     private String adminReply;
@@ -38,6 +41,7 @@ public class AdminReviewResponse {
         response.setUsername(user == null ? review.getUsername() : user.getUsername());
         response.setRating(review.getRating());
         response.setComment(review.getComment());
+        response.setImageUrls(ReviewImageUrlCodec.parse(review.getImageUrls()));
         response.setStatus(review.getStatus());
         response.setOrderId(review.getOrderId());
         response.setAdminReply(review.getAdminReply());

@@ -1,9 +1,10 @@
 import type { CartItem } from '../types';
 import { createLocalId } from './localIds';
 import { dispatchDomEvent } from './domEvents';
+import { reportNonBlockingError } from './nonBlockingError';
 import { getLocalStorageItem, setLocalStorageItem } from './safeStorage';
 
-const SAVE_FOR_LATER_KEY = 'shop-save-for-later';
+export const SAVE_FOR_LATER_STORAGE_KEY = 'shop-save-for-later';
 const MAX_SAVED_ITEM_QUANTITY = 99;
 const MAX_SAVED_ITEMS = 40;
 
@@ -51,21 +52,31 @@ const normalizeSavedItem = (item: Partial<SavedForLaterItem>): SavedForLaterItem
   };
 };
 
+const normalizeSavedItems = (items: unknown): SavedForLaterItem[] => (
+  Array.isArray(items) ? items.map((item) => normalizeSavedItem(item as Partial<SavedForLaterItem>)).filter(Boolean) as SavedForLaterItem[] : []
+);
+
 const readSavedItems = (): SavedForLaterItem[] => {
   try {
-    const parsed = JSON.parse(getLocalStorageItem(SAVE_FOR_LATER_KEY) || '[]');
-    return Array.isArray(parsed) ? parsed.map(normalizeSavedItem).filter(Boolean) as SavedForLaterItem[] : [];
-  } catch {
+    const parsed = JSON.parse(getLocalStorageItem(SAVE_FOR_LATER_STORAGE_KEY) || '[]');
+    return normalizeSavedItems(parsed);
+  } catch (error) {
+    reportNonBlockingError('saveForLater.readSavedItems', error);
     return [];
   }
 };
 
 const writeSavedItems = (items: SavedForLaterItem[]) => {
-  setLocalStorageItem(SAVE_FOR_LATER_KEY, JSON.stringify(items.map(normalizeSavedItem).filter(Boolean)));
-  dispatchDomEvent('shop:save-for-later-updated');
+  const stored = setLocalStorageItem(SAVE_FOR_LATER_STORAGE_KEY, JSON.stringify(normalizeSavedItems(items)));
+  if (stored) {
+    dispatchDomEvent('shop:save-for-later-updated');
+  }
+  return stored;
 };
 
-export const getSavedForLaterItems = () => readSavedItems();
+export const getSavedForLaterItems = (): SavedForLaterItem[] => normalizeSavedItems(readSavedItems());
+
+export const replaceSavedForLaterItems = (items: SavedForLaterItem[]) => writeSavedItems(normalizeSavedItems(items));
 
 export const saveCartItemForLater = (item: CartItem) => {
   const items = readSavedItems();
@@ -86,17 +97,17 @@ export const saveCartItemForLater = (item: CartItem) => {
   };
 
   if (existingIndex >= 0) {
-    items[existingIndex] = {
+    const mergedItem = {
       ...items[existingIndex],
       ...savedItem,
       quantity: normalizeSavedItemQuantity(items[existingIndex].quantity + savedItem.quantity),
     };
-    writeSavedItems(items);
-    return items[existingIndex];
+    const nextItems = [...items];
+    nextItems[existingIndex] = mergedItem;
+    return writeSavedItems(nextItems) ? mergedItem : null;
   }
 
-  writeSavedItems([savedItem, ...items].slice(0, MAX_SAVED_ITEMS));
-  return savedItem;
+  return writeSavedItems([savedItem, ...items].slice(0, MAX_SAVED_ITEMS)) ? savedItem : null;
 };
 
 export const removeSavedForLaterItem = (itemId: number) => {

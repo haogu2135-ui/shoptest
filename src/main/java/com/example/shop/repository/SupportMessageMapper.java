@@ -8,7 +8,6 @@ import java.util.List;
 
 @Mapper
 public interface SupportMessageMapper {
-    List<SupportMessage> findBySessionId(Long sessionId);
     List<SupportMessage> findRecentBySessionId(@Param("sessionId") Long sessionId, @Param("limit") int limit);
     List<SupportMessage> findBySessionIdAfterId(@Param("sessionId") Long sessionId, @Param("afterId") Long afterId, @Param("limit") int limit);
     SupportMessage findById(Long id);

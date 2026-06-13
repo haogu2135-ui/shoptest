@@ -32,6 +32,18 @@ public class UserAddress implements Serializable {
     @Size(max = 20)
     private String phone;
 
+    @Column(name = "region")
+    @Size(max = 1000)
+    private String region;
+
+    @Column(name = "postal_code")
+    @Size(max = 20)
+    private String postalCode;
+
+    @Column(name = "detail_address")
+    @Size(max = 260)
+    private String detailAddress;
+
     @Column(name = "address")
     @NotBlank
     @Size(max = 500)

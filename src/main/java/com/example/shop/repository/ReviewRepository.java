@@ -11,16 +11,34 @@ import java.util.List;
 
 @Repository
 public interface ReviewRepository extends JpaRepository<Review, Long> {
-    List<Review> findByProduct_Id(Long productId);
+    @Query("SELECT r FROM Review r " +
+            "JOIN FETCH r.product p " +
+            "JOIN FETCH r.user u " +
+            "WHERE p.id = :productId")
+    List<Review> findByProduct_Id(@Param("productId") Long productId);
 
-    @Query("SELECT r FROM Review r WHERE r.product.id = :productId AND r.status = 'APPROVED' ORDER BY r.createdAt DESC, r.id DESC")
+    @Query("SELECT r FROM Review r " +
+            "JOIN FETCH r.product p " +
+            "JOIN FETCH r.user u " +
+            "WHERE p.id = :productId AND r.status = 'APPROVED' " +
+            "ORDER BY r.createdAt DESC, r.id DESC")
     List<Review> findApprovedPublicByProductId(@Param("productId") Long productId, Pageable pageable);
 
-    @Query("SELECT r FROM Review r WHERE r.product.id = :productId AND (r.status = 'APPROVED' OR (r.status = 'PENDING' AND r.user.id = :userId)) ORDER BY r.createdAt DESC, r.id DESC")
+    @Query("SELECT r FROM Review r " +
+            "JOIN FETCH r.product p " +
+            "JOIN FETCH r.user u " +
+            "WHERE p.id = :productId " +
+            "AND (r.status = 'APPROVED' OR (r.status = 'PENDING' AND u.id = :userId)) " +
+            "ORDER BY r.createdAt DESC, r.id DESC")
     List<Review> findPublicByProductIdIncludingUserPending(@Param("productId") Long productId, @Param("userId") Long userId, Pageable pageable);
+
+    @Query("SELECT COUNT(r) FROM Review r " +
+            "WHERE r.product.id = :productId " +
+            "AND (r.status = 'APPROVED' OR (r.status = 'PENDING' AND r.user.id = :userId))")
+    long countPublicByProductIdIncludingUserPending(@Param("productId") Long productId, @Param("userId") Long userId);
     boolean existsByProduct_IdAndUser_IdAndOrderId(Long productId, Long userId, Long orderId);
     List<Review> findByProduct_IdAndUser_IdAndOrderIdIn(Long productId, Long userId, List<Long> orderIds);
-    
+
     @Query("SELECT COALESCE(AVG(r.rating), 0) FROM Review r WHERE r.product.id = :productId AND r.status = 'APPROVED'")
     double findAverageRatingByProductId(@Param("productId") Long productId);
 
@@ -86,4 +104,4 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
     long countByProduct_IdAndStatus(Long productId, String status);
 
     long countByProduct_IdAndStatusAndRatingGreaterThanEqual(Long productId, String status, int rating);
-} 
+}

@@ -6,9 +6,14 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -65,6 +70,22 @@ class PaymentChannelRecommendationServiceTest {
         assertEquals("CN", response.get(0).getRecommendedCountry());
     }
 
+    @Test
+    void geoLookupRestTemplateIsCachedInsteadOfAllocatedPerLookup() throws IOException {
+        String source = Files.readString(
+                Path.of("src/main/java/com/example/shop/service/PaymentChannelRecommendationService.java"),
+                StandardCharsets.UTF_8);
+        String lookupBody = methodBody(source, "private String lookupCountryByIp(");
+
+        assertFalse(source.contains("new RestTemplate("),
+                "PaymentChannelRecommendationService must not allocate RestTemplate instances directly");
+        assertFalse(lookupBody.contains("new SimpleClientHttpRequestFactory("),
+                "Geo lookup must not allocate a request factory for every lookup");
+        assertTrue(source.contains("ConcurrentMap<Integer, RestTemplate> geoLookupRestTemplates"));
+        assertTrue(source.contains("geoLookupRestTemplates.computeIfAbsent(timeoutMs"));
+        assertTrue(source.contains("HttpClientConfig.restTemplateWithTimeouts(value, value)"));
+    }
+
     private PaymentChannelConfig.Channel channel(String code, String market, int sortOrder) {
         PaymentChannelConfig.Channel channel = new PaymentChannelConfig.Channel();
         channel.setCode(code);
@@ -81,5 +102,25 @@ class PaymentChannelRecommendationServiceTest {
         MockHttpServletRequest request = new MockHttpServletRequest("GET", "/payments/channels");
         request.setRemoteAddr(remoteAddress);
         return request;
+    }
+
+    private String methodBody(String source, String marker) {
+        int start = source.indexOf(marker);
+        assertTrue(start >= 0, "Missing source marker: " + marker);
+        int braceStart = source.indexOf('{', start);
+        assertTrue(braceStart > start, "Missing method body for marker: " + marker);
+        int depth = 0;
+        for (int index = braceStart; index < source.length(); index++) {
+            char current = source.charAt(index);
+            if (current == '{') {
+                depth++;
+            } else if (current == '}') {
+                depth--;
+                if (depth == 0) {
+                    return source.substring(braceStart, index + 1);
+                }
+            }
+        }
+        throw new IllegalArgumentException("Unclosed method body for marker: " + marker);
     }
 }

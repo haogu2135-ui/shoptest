@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Table, Tag, Button, Popconfirm, Select, message, Typography, Divider, Space, Card, Progress, Input, Modal, Form } from 'antd';
+import { Alert, Table, Tag, Button, Popconfirm, Select, message, Typography, Divider, Space, Card, Progress, Input, Modal, Form } from 'antd';
 import { DeleteOutlined, StopOutlined, CheckCircleOutlined, SafetyCertificateOutlined, TeamOutlined, MailOutlined, PhoneOutlined, DownloadOutlined, SearchOutlined, EditOutlined } from '@ant-design/icons';
 import { adminApi, userApi } from '../api';
 import type { AdminRole, User, UserAdminSummary } from '../types';
@@ -55,7 +55,9 @@ const UserManagement: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [summary, setSummary] = useState<UserAdminSummary | null>(null);
   const [roles, setRoles] = useState<AdminRole[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [userLoadError, setUserLoadError] = useState<string | null>(null);
+  const [userSnapshotLoaded, setUserSnapshotLoaded] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [keyword, setKeyword] = useState('');
   const [roleFilter, setRoleFilter] = useState<string | undefined>();
@@ -73,6 +75,8 @@ const UserManagement: React.FC = () => {
   const canDeleteUsers = hasAdminPermission(adminPermissions, currentRole, USERS_DELETE_PERMISSION);
   const canExportUsers = hasAdminPermission(adminPermissions, currentRole, USERS_EXPORT_PERMISSION);
   const { t, language } = useLanguage();
+  const userActionDisabled = loading || Boolean(userLoadError) || !userSnapshotLoaded;
+  const userActionUnavailableMessage = userLoadError || (loading ? t('common.loading') : t('pages.adminUsers.fetchFailed'));
   const formatRoleLabel = useCallback((roleValue?: string | null, fallbackName?: string | null) => {
     const rawValue = String(roleValue || '').trim();
     if (!rawValue) return fallbackName?.trim() || '-';
@@ -135,6 +139,7 @@ const UserManagement: React.FC = () => {
         adminApi.getUsersPage(params),
         adminApi.getUserSummary({ keyword: params.keyword, role: params.role, status: params.status }),
       ]);
+      setUserLoadError(null);
       setUsers(usersResponse.data.items || []);
       setPageState({
         page: usersResponse.data.page || page,
@@ -142,8 +147,11 @@ const UserManagement: React.FC = () => {
         total: usersResponse.data.total || 0,
       });
       setSummary(summaryResponse.data || null);
+      setUserSnapshotLoaded(true);
     } catch (error: unknown) {
-      message.error(getApiErrorMessage(error, t('pages.adminUsers.fetchFailed'), language));
+      const errorMessage = getApiErrorMessage(error, t('pages.adminUsers.fetchFailed'), language);
+      setUserLoadError(errorMessage);
+      message.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -155,41 +163,61 @@ const UserManagement: React.FC = () => {
 
   useEffect(() => {
     if (!hasStoredValue('token')) return;
+    let disposed = false;
     userApi.getProfile()
       .then((res) => {
+        if (disposed) return;
         setCurrentUserId(Number(res.data.id || 0));
         setCurrentRole(getEffectiveRole(res.data.role, res.data.roleCode));
       })
       .catch(() => {
+        if (disposed) return;
         setCurrentUserId(0);
         setCurrentRole('');
       });
+    return () => {
+      disposed = true;
+    };
   }, []);
 
   useEffect(() => {
+    let disposed = false;
     adminApi.getMyPermissions()
       .then((res) => {
+        if (disposed) return;
         setCurrentRole(getEffectiveRole(res.data.role, res.data.roleCode));
         setAdminPermissions(res.data.permissions || []);
       })
       .catch(() => {
+        if (disposed) return;
         setAdminPermissions([]);
       });
+    return () => {
+      disposed = true;
+    };
   }, []);
 
   useEffect(() => {
+    let disposed = false;
     adminApi.getRoles()
-      .then((res) => setRoles(res.data || []))
-      .catch(() => setRoles([]));
+      .then((res) => {
+        if (!disposed) setRoles(res.data || []);
+      })
+      .catch(() => {
+        if (!disposed) setRoles([]);
+      });
+    return () => {
+      disposed = true;
+    };
   }, []);
 
   const handleRoleCodeChange = async (userId: number, roleCode: string) => {
+    if (userActionDisabled) {
+      message.warning(userActionUnavailableMessage);
+      return;
+    }
     try {
-      if (roleCode === 'USER') {
-        await adminApi.updateUser(userId, { role: 'USER' });
-      } else {
-        await adminApi.assignUserRole(userId, roleCode);
-      }
+      await adminApi.assignUserRole(userId, roleCode);
       message.success(t('pages.adminUsers.roleUpdated'));
       fetchUsers(pageState.page, pageState.size);
     } catch (error: unknown) {
@@ -198,6 +226,10 @@ const UserManagement: React.FC = () => {
   };
 
   const confirmRoleCodeChange = (user: User, nextRoleCode: string) => {
+    if (userActionDisabled) {
+      message.warning(userActionUnavailableMessage);
+      return;
+    }
     const userLabel = user.username || user.email || `#${user.id}`;
     const matchedRole = roles.find((role) => String(role.code || '').trim().toUpperCase() === String(nextRoleCode || '').trim().toUpperCase());
     const nextRoleLabel = formatRoleLabel(nextRoleCode, matchedRole?.name);
@@ -217,6 +249,10 @@ const UserManagement: React.FC = () => {
   const handleExport = async () => {
     if (!canExportUsers) {
       message.error(t('adminLayout.noPermission'));
+      return;
+    }
+    if (userActionDisabled) {
+      message.warning(userActionUnavailableMessage);
       return;
     }
     setExporting(true);
@@ -246,6 +282,10 @@ const UserManagement: React.FC = () => {
       message.error(t('adminLayout.noPermission'));
       return;
     }
+    if (userActionDisabled) {
+      message.warning(userActionUnavailableMessage);
+      return;
+    }
     const newStatus = currentStatus === 'ACTIVE' ? 'BANNED' : 'ACTIVE';
     try {
       await adminApi.updateUser(user.id, { status: newStatus });
@@ -261,11 +301,13 @@ const UserManagement: React.FC = () => {
       message.error(t('adminLayout.noPermission'));
       return;
     }
+    if (userActionDisabled) {
+      message.warning(userActionUnavailableMessage);
+      return;
+    }
     setEditingUser(user);
     profileForm.resetFields();
     profileForm.setFieldsValue({
-      email: user.email || '',
-      phone: user.phone || '',
       address: user.address || '',
     });
   };
@@ -276,12 +318,14 @@ const UserManagement: React.FC = () => {
       message.error(t('adminLayout.noPermission'));
       return;
     }
+    if (userActionDisabled) {
+      message.warning(userActionUnavailableMessage);
+      return;
+    }
     try {
       const values = await profileForm.validateFields();
       setProfileSubmitting(true);
       await adminApi.updateUser(editingUser.id, {
-        email: values.email?.trim() || '',
-        phone: values.phone?.trim() || '',
         address: values.address?.trim() || '',
       });
       message.success(t('pages.adminUsers.profileUpdated'));
@@ -304,6 +348,10 @@ const UserManagement: React.FC = () => {
   const handleDelete = async (id: number) => {
     if (!canDeleteUsers) {
       message.error(t('adminLayout.noPermission'));
+      return;
+    }
+    if (userActionDisabled) {
+      message.warning(userActionUnavailableMessage);
       return;
     }
     try {
@@ -341,6 +389,7 @@ const UserManagement: React.FC = () => {
             className="user-management-page__roleCodeSelect"
             aria-label={roleSelectLabel}
             title={roleSelectLabel}
+            disabled={userActionDisabled}
             classNames={mobilePopupClassNames}
             getPopupContainer={() => document.body}
             onChange={(val) => confirmRoleCodeChange(record, val)}
@@ -409,9 +458,9 @@ const UserManagement: React.FC = () => {
         const targetPrivileged = isAdminRole(targetRole);
         const normalizedStatus = normalizeUserAccountStatus(record.status);
         const isGuest = normalizedStatus === 'GUEST';
-        const profileEditDisabled = !canWriteUsers || (targetPrivileged && !canManageRoles && !isSelf);
-        const statusActionDisabled = !canChangeUserStatus || isSelf || isGuest || (targetPrivileged && !canManageRoles);
-        const deleteDisabled = !canDeleteUsers || isSelf || (targetPrivileged && !canManageRoles);
+        const profileEditDisabled = userActionDisabled || !canWriteUsers || (targetPrivileged && !canManageRoles && !isSelf);
+        const statusActionDisabled = userActionDisabled || !canChangeUserStatus || isSelf || isGuest || (targetPrivileged && !canManageRoles);
+        const deleteDisabled = userActionDisabled || !canDeleteUsers || isSelf || (targetPrivileged && !canManageRoles);
         const statusActionLabel = isGuest
           ? t('status.GUEST')
           : normalizedStatus === 'ACTIVE'
@@ -435,7 +484,7 @@ const UserManagement: React.FC = () => {
               disabled={statusActionDisabled}
               okText={t('common.confirm')}
               cancelText={t('common.cancel')}
-              okButtonProps={{ 'aria-label': accountStatusActionLabel, title: accountStatusActionLabel }}
+              okButtonProps={{ disabled: userActionDisabled, 'aria-label': accountStatusActionLabel, title: accountStatusActionLabel }}
               cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${accountStatusActionLabel}`, title: `${t('common.cancel')}: ${accountStatusActionLabel}` }}
             >
               <Button
@@ -457,7 +506,7 @@ const UserManagement: React.FC = () => {
               disabled={deleteDisabled}
               okText={t('common.confirm')}
               cancelText={t('common.cancel')}
-              okButtonProps={{ danger: true, 'aria-label': deleteActionLabel, title: deleteActionLabel }}
+              okButtonProps={{ danger: true, disabled: userActionDisabled, 'aria-label': deleteActionLabel, title: deleteActionLabel }}
               cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${deleteActionLabel}`, title: `${t('common.cancel')}: ${deleteActionLabel}` }}
             >
               <Button size="small" danger icon={<DeleteOutlined />} aria-label={deleteActionLabel} title={deleteActionLabel} disabled={deleteDisabled}>
@@ -482,12 +531,38 @@ const UserManagement: React.FC = () => {
   const userPaginationItemRender = useMemo(() => buildPaginationItemRender(
     `${t('common.previousPage')}: ${pageLabel}`,
     `${t('common.nextPage')}: ${pageLabel}`,
+    `${t('common.previousPages')}: ${pageLabel}`,
+    `${t('common.nextPages')}: ${pageLabel}`,
   ), [pageLabel, t]);
+  const showInitialUserLoading = loading && !userSnapshotLoaded;
+  const userSnapshotUnavailable = Boolean(userLoadError) && !userSnapshotLoaded;
+  const canRenderUserSnapshot = !showInitialUserLoading && !userSnapshotUnavailable;
 
   return (
     <div className="user-management-page">
       <Title level={4}>{t('pages.adminUsers.title')}</Title>
       <Divider />
+      {userLoadError ? (
+        <Alert
+          className="user-management-page__alert"
+          type="warning"
+          showIcon
+          message={userLoadError}
+          description={userSnapshotLoaded ? t('pages.adminUsers.staleDataWarning') : undefined}
+          action={(
+            <Button size="small" loading={loading} onClick={() => fetchUsers(pageState.page, pageState.size)}>
+              {t('common.retry')}
+            </Button>
+          )}
+        />
+      ) : null}
+
+      {showInitialUserLoading ? (
+        <Card className="user-management-page__loadingState" loading />
+      ) : null}
+
+      {canRenderUserSnapshot ? (
+        <>
       <Card className="user-management-page__toolbar">
         <Space wrap className="user-management-page__filters">
           <Input
@@ -495,6 +570,7 @@ const UserManagement: React.FC = () => {
             prefix={<SearchOutlined />}
             value={keyword}
             onChange={(event) => setKeyword(event.target.value)}
+            disabled={userActionDisabled}
             placeholder={t('pages.adminUsers.searchPlaceholder')}
             aria-label={keywordSearchLabel}
             title={keywordSearchLabel}
@@ -504,6 +580,7 @@ const UserManagement: React.FC = () => {
             allowClear
             value={roleFilter}
             onChange={setRoleFilter}
+            disabled={userActionDisabled}
             placeholder={t('pages.adminUsers.role')}
             className="user-management-page__roleFilter"
             aria-label={roleFilterLabel}
@@ -519,6 +596,7 @@ const UserManagement: React.FC = () => {
             allowClear
             value={statusFilter}
             onChange={setStatusFilter}
+            disabled={userActionDisabled}
             placeholder={t('common.status')}
             className="user-management-page__statusFilter"
             aria-label={statusFilterLabel}
@@ -531,9 +609,9 @@ const UserManagement: React.FC = () => {
               { value: 'GUEST', label: t('status.GUEST') },
             ]}
           />
-          <Button onClick={() => fetchUsers(1, pageState.size)} type="primary" icon={<SearchOutlined />} aria-label={searchActionLabel} title={searchActionLabel}>{t('common.search')}</Button>
+          <Button onClick={() => fetchUsers(1, pageState.size)} type="primary" icon={<SearchOutlined />} disabled={userActionDisabled} aria-label={searchActionLabel} title={searchActionLabel}>{t('common.search')}</Button>
           {canExportUsers ? (
-            <Button onClick={handleExport} icon={<DownloadOutlined />} loading={exporting} aria-label={exportActionLabel} title={exportActionLabel}>{t('pages.adminUsers.export')}</Button>
+            <Button onClick={handleExport} icon={<DownloadOutlined />} loading={exporting} disabled={userActionDisabled} aria-label={exportActionLabel} title={exportActionLabel}>{t('pages.adminUsers.export')}</Button>
           ) : null}
         </Space>
       </Card>
@@ -595,6 +673,8 @@ const UserManagement: React.FC = () => {
         size="middle"
         scroll={{ x: 1200 }}
       />
+        </>
+      ) : null}
       <Modal
         className="profile-mobile-safe-modal user-management-page__profileModal"
         title={t('pages.adminUsers.editProfile')}
@@ -602,7 +682,7 @@ const UserManagement: React.FC = () => {
         onOk={handleProfileSubmit}
         onCancel={closeProfileModal}
         confirmLoading={profileSubmitting}
-        okButtonProps={{ 'aria-label': saveProfileActionLabel, title: saveProfileActionLabel }}
+        okButtonProps={{ disabled: userActionDisabled, 'aria-label': saveProfileActionLabel, title: saveProfileActionLabel }}
         cancelButtonProps={{ 'aria-label': cancelProfileActionLabel, title: cancelProfileActionLabel }}
         destroyOnHidden
       >
@@ -610,22 +690,11 @@ const UserManagement: React.FC = () => {
           <Form.Item label={t('pages.adminUsers.username')}>
             <Input value={editingUser?.username || ''} disabled aria-label={`${editingUserLabel}: ${t('pages.adminUsers.username')}`} title={`${editingUserLabel}: ${t('pages.adminUsers.username')}`} />
           </Form.Item>
-          <Form.Item
-            name="email"
-            label={t('pages.adminUsers.email')}
-            rules={[
-              { type: 'email', message: t('pages.adminUsers.emailInvalid') },
-              { max: 120, message: t('pages.adminUsers.emailTooLong') },
-            ]}
-          >
-            <Input autoComplete="email" maxLength={120} aria-label={`${editingUserLabel}: ${t('pages.adminUsers.email')}`} title={`${editingUserLabel}: ${t('pages.adminUsers.email')}`} />
+          <Form.Item label={t('pages.adminUsers.email')}>
+            <Input value={editingUser?.email || ''} disabled autoComplete="email" aria-label={`${editingUserLabel}: ${t('pages.adminUsers.email')}`} title={`${editingUserLabel}: ${t('pages.adminUsers.email')}`} />
           </Form.Item>
-          <Form.Item
-            name="phone"
-            label={t('pages.adminUsers.phone')}
-            rules={[{ max: 20, message: t('pages.adminUsers.phoneTooLong') }]}
-          >
-            <Input autoComplete="tel" inputMode="tel" maxLength={20} aria-label={`${editingUserLabel}: ${t('pages.adminUsers.phone')}`} title={`${editingUserLabel}: ${t('pages.adminUsers.phone')}`} />
+          <Form.Item label={t('pages.adminUsers.phone')}>
+            <Input value={editingUser?.phone || ''} disabled autoComplete="tel" inputMode="tel" aria-label={`${editingUserLabel}: ${t('pages.adminUsers.phone')}`} title={`${editingUserLabel}: ${t('pages.adminUsers.phone')}`} />
           </Form.Item>
           <Form.Item
             name="address"

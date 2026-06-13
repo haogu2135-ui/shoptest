@@ -691,3 +691,21 @@
     align-items: center;
   }
 }
+
+/* Android UI fourth-round closure: mobile labels and insights meet contrast/readability floor. */
+@media (max-width: 640px) {
+  .pet-personalized-assistant__stats,
+  .pet-personalized-assistant__stats > span,
+  .pet-personalized-assistant__stats .ant-tag,
+  .pet-personalized-assistant__meta,
+  .pet-personalized-assistant__insight .ant-alert-description {
+    color: #3f594b !important;
+    font-size: 12px !important;
+    line-height: 1.35 !important;
+  }
+
+  .pet-personalized-assistant__insight .ant-alert-message {
+    font-size: 13px;
+    line-height: 1.3;
+  }
+}

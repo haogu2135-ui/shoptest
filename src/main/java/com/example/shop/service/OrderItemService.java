@@ -1,6 +1,5 @@
 package com.example.shop.service;
 
-import lombok.extern.slf4j.Slf4j;
 import com.example.shop.entity.OrderItem;
 import com.example.shop.repository.OrderItemRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,15 +12,10 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
-@Slf4j
 public class OrderItemService {
 
     @Autowired
     private OrderItemRepository orderItemRepository;
-
-    public List<OrderItem> getAllOrderItems() {
-        return orderItemRepository.findAll();
-    }
 
     public List<OrderItem> getOrderItemsByOrderId(Long orderId) {
         return orderItemRepository.findByOrderId(orderId);
@@ -59,14 +53,14 @@ public class OrderItemService {
         return orderItemRepository.findTopProductsByOrderStatuses(normalizedStatuses, safeLimit);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public OrderItem addOrderItem(OrderItem orderItem) {
         orderItem.setCreatedAt(LocalDateTime.now());
         orderItemRepository.insert(orderItem);
         return orderItem;
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void deleteByOrderId(Long orderId) {
         orderItemRepository.deleteByOrderId(orderId);
     }

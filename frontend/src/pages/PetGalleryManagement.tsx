@@ -6,6 +6,7 @@ import { CameraOutlined, DeleteOutlined, HeartOutlined, ReloadOutlined, SearchOu
 import { adminApi } from '../api';
 import type { AdminPetGalleryPhoto } from '../types';
 import { useLanguage } from '../i18n';
+import { useDebounce } from '../hooks/useDebounce';
 import { getApiErrorMessage } from '../utils/apiError';
 import { imageFallbacks, resolveApiAssetUrl } from '../utils/mediaAssets';
 import { PET_GALLERY_DELETE_PERMISSION, getEffectiveRole, hasAdminPermission } from '../utils/roles';
@@ -50,10 +51,12 @@ const PetGalleryManagement: React.FC = () => {
   const { t, language } = useLanguage();
   const dateLocale = language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US';
   const [photos, setPhotos] = useState<AdminPetGalleryPhoto[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [galleryLoadError, setGalleryLoadError] = useState<string | null>(null);
+  const [gallerySnapshotLoaded, setGallerySnapshotLoaded] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [keyword, setKeyword] = useState('');
-  const [debouncedKeyword, setDebouncedKeyword] = useState('');
+  const debouncedKeyword = useDebounce(keyword.trim(), 300);
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [sourceFilter, setSourceFilter] = useState('ALL');
   const [lastLoadedAt, setLastLoadedAt] = useState<Date | null>(null);
@@ -63,6 +66,8 @@ const PetGalleryManagement: React.FC = () => {
   const [gallerySummary, setGallerySummary] = useState<Record<string, number>>({});
   const pageSizeRef = useRef(DEFAULT_PAGE_SIZE);
   const canDeletePhotos = hasAdminPermission(adminPermissions, currentRole, PET_GALLERY_DELETE_PERMISSION);
+  const galleryActionDisabled = loading || Boolean(galleryLoadError) || !gallerySnapshotLoaded;
+  const galleryActionUnavailableMessage = galleryLoadError || (loading ? t('common.loading') : t('pages.petGalleryAdmin.fetchFailed'));
 
   const formatTime = useCallback((value?: string) => {
     if (!value) return '-';
@@ -97,12 +102,9 @@ const PetGalleryManagement: React.FC = () => {
   const galleryPaginationItemRender = useMemo(() => buildPaginationItemRender(
     `${t('common.previousPage')}: ${pageLabel}`,
     `${t('common.nextPage')}: ${pageLabel}`,
+    `${t('common.previousPages')}: ${pageLabel}`,
+    `${t('common.nextPages')}: ${pageLabel}`,
   ), [pageLabel, t]);
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => setDebouncedKeyword(keyword.trim()), 300);
-    return () => window.clearTimeout(timer);
-  }, [keyword]);
 
   const fetchPhotos = useCallback(async (
     nextPage: number,
@@ -120,6 +122,7 @@ const PetGalleryManagement: React.FC = () => {
         source: nextSource === 'ALL' ? undefined : nextSource,
         keyword: nextKeyword || undefined,
       });
+      setGalleryLoadError(null);
       setPhotos(response.data.items || []);
       const resolvedSize = response.data.size || nextSize;
       pageSizeRef.current = resolvedSize;
@@ -131,8 +134,11 @@ const PetGalleryManagement: React.FC = () => {
       });
       setGallerySummary(response.data.summary || {});
       setLastLoadedAt(new Date());
+      setGallerySnapshotLoaded(true);
     } catch (error: unknown) {
-      message.error(getApiErrorMessage(error, t('pages.petGalleryAdmin.fetchFailed'), language));
+      const errorMessage = getApiErrorMessage(error, t('pages.petGalleryAdmin.fetchFailed'), language);
+      setGalleryLoadError(errorMessage);
+      message.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -143,15 +149,21 @@ const PetGalleryManagement: React.FC = () => {
   }, [debouncedKeyword, fetchPhotos, sourceFilter, statusFilter]);
 
   useEffect(() => {
+    let disposed = false;
     adminApi.getMyPermissions()
       .then((response) => {
+        if (disposed) return;
         setCurrentRole(getEffectiveRole(response.data.role, response.data.roleCode));
         setAdminPermissions(response.data.permissions || []);
       })
       .catch(() => {
+        if (disposed) return;
         setCurrentRole('');
         setAdminPermissions([]);
       });
+    return () => {
+      disposed = true;
+    };
   }, []);
 
   const galleryStats = useMemo(() => {
@@ -170,6 +182,10 @@ const PetGalleryManagement: React.FC = () => {
   const handleDelete = useCallback(async (photo: AdminPetGalleryPhoto) => {
     if (!canDeletePhotos) {
       message.error(t('adminLayout.noPermission'));
+      return;
+    }
+    if (galleryActionDisabled) {
+      message.warning(galleryActionUnavailableMessage);
       return;
     }
     setDeletingId(photo.id);
@@ -286,12 +302,15 @@ const PetGalleryManagement: React.FC = () => {
               })}
               okText={t('common.delete')}
               cancelText={t('common.cancel')}
-              classNames={{ root: 'shop-mobile-popup-layer' }}
-              okButtonProps={{ danger: true, 'aria-label': removeActionLabel, title: removeActionLabel }}
+              classNames={{ root: 'shop-mobile-popup-layer pet-gallery-management-page__deletePopconfirm' }}
+              placement="left"
+              getPopupContainer={() => document.body}
               cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${removeActionLabel}`, title: `${t('common.cancel')}: ${removeActionLabel}` }}
+              disabled={galleryActionDisabled}
+              okButtonProps={{ danger: true, disabled: galleryActionDisabled, 'aria-label': removeActionLabel, title: removeActionLabel }}
               onConfirm={() => handleDelete(record)}
             >
-              <Button danger size="small" icon={<DeleteOutlined />} aria-label={removeActionLabel} title={removeActionLabel} loading={deletingId === record.id}>
+              <Button danger size="small" icon={<DeleteOutlined />} disabled={galleryActionDisabled} aria-label={removeActionLabel} title={removeActionLabel} loading={deletingId === record.id}>
                 {t('pages.petGalleryAdmin.remove')}
               </Button>
             </Popconfirm>
@@ -301,7 +320,11 @@ const PetGalleryManagement: React.FC = () => {
     }
 
     return baseColumns;
-  }, [canDeletePhotos, deletingId, formatTime, getSourceLabel, getStatusLabel, handleDelete, t]);
+  }, [canDeletePhotos, deletingId, formatTime, galleryActionDisabled, getSourceLabel, getStatusLabel, handleDelete, t]);
+
+  const showInitialGalleryLoading = loading && !gallerySnapshotLoaded;
+  const gallerySnapshotUnavailable = Boolean(galleryLoadError) && !gallerySnapshotLoaded;
+  const canRenderGallerySnapshot = !showInitialGalleryLoading && !gallerySnapshotUnavailable;
 
   return (
     <div className={`pet-gallery-management-page pet-gallery-management-page--${language}`}>
@@ -316,6 +339,27 @@ const PetGalleryManagement: React.FC = () => {
         </Button>
       </div>
 
+      {galleryLoadError ? (
+        <Alert
+          className="pet-gallery-management-page__alert"
+          type="warning"
+          showIcon
+          message={galleryLoadError}
+          description={gallerySnapshotLoaded ? t('pages.petGalleryAdmin.staleDataWarning') : undefined}
+          action={(
+            <Button size="small" loading={loading} onClick={() => fetchPhotos(pageState.page, pageState.size)}>
+              {t('common.retry')}
+            </Button>
+          )}
+        />
+      ) : null}
+
+      {showInitialGalleryLoading ? (
+        <Card className="pet-gallery-management-page__loadingState" loading />
+      ) : null}
+
+      {canRenderGallerySnapshot ? (
+        <>
       <section className="pet-gallery-management-page__stats" aria-label={pageLabel}>
         <Card>
           <Statistic title={t('pages.petGalleryAdmin.visiblePhotos')} value={galleryStats.visiblePhotos} prefix={<CameraOutlined />} />
@@ -347,6 +391,7 @@ const PetGalleryManagement: React.FC = () => {
             prefix={<SearchOutlined />}
             value={keyword}
             onChange={(event) => setKeyword(event.target.value)}
+            disabled={galleryActionDisabled}
             placeholder={t('pages.petGalleryAdmin.keywordPlaceholder')}
             aria-label={keywordSearchLabel}
             title={keywordSearchLabel}
@@ -354,6 +399,7 @@ const PetGalleryManagement: React.FC = () => {
           <Select
             value={statusFilter}
             onChange={setStatusFilter}
+            disabled={galleryActionDisabled}
             options={STATUS_OPTIONS.map((value) => ({ value, label: getStatusLabel(value) }))}
             aria-label={statusFilterLabel}
             title={statusFilterLabel}
@@ -363,13 +409,14 @@ const PetGalleryManagement: React.FC = () => {
           <Select
             value={sourceFilter}
             onChange={setSourceFilter}
+            disabled={galleryActionDisabled}
             options={SOURCE_OPTIONS.map((value) => ({ value, label: getSourceLabel(value) }))}
             aria-label={sourceFilterLabel}
             title={sourceFilterLabel}
             classNames={{ popup: { root: 'shop-mobile-popup-layer' } }}
             getPopupContainer={() => document.body}
           />
-          <Button aria-label={resetFiltersActionLabel} title={resetFiltersActionLabel} onClick={() => { setKeyword(''); setStatusFilter('ALL'); setSourceFilter('ALL'); }}>
+          <Button disabled={galleryActionDisabled} aria-label={resetFiltersActionLabel} title={resetFiltersActionLabel} onClick={() => { setKeyword(''); setStatusFilter('ALL'); setSourceFilter('ALL'); }}>
             {t('common.reset')}
           </Button>
           {lastLoadedAt ? <Text type="secondary">{t('pages.petGalleryAdmin.loadedAt', { time: lastLoadedAt.toLocaleTimeString(dateLocale, { hour: '2-digit', minute: '2-digit' }) })}</Text> : null}
@@ -396,6 +443,8 @@ const PetGalleryManagement: React.FC = () => {
           }}
         />
       </Card>
+        </>
+      ) : null}
     </div>
   );
 };

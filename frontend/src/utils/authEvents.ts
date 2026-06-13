@@ -1,3 +1,5 @@
+import { reportNonBlockingError } from './nonBlockingError';
+
 /** localStorage keys cleared on logout or session expiry. */
 export const AUTH_SESSION_STORAGE_KEYS: string[] = [
   'token',
@@ -5,6 +7,8 @@ export const AUTH_SESSION_STORAGE_KEYS: string[] = [
   'user',
   'userId',
   'username',
+  'email',
+  'phone',
   'role',
   'adminDefaultPath',
 ];
@@ -18,7 +22,7 @@ export const AUTH_SESSION_CHANGED_EVENT = 'auth-session-changed';
 export const dispatchAuthSessionChanged = () => {
   try {
     window.dispatchEvent(new CustomEvent(AUTH_SESSION_CHANGED_EVENT));
-  } catch {
-    // SSR or restricted environment — ignore
+  } catch (error) {
+    reportNonBlockingError('authEvents.dispatchAuthSessionChanged', error);
   }
 };

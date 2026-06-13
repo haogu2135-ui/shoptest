@@ -9,9 +9,13 @@ import org.mockito.ArgumentCaptor;
 import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.LongStream;
+import java.util.regex.Pattern;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -75,7 +79,6 @@ class NotificationServiceTest {
         verify(userMapper).findActiveCustomerIdsAfter(0L, 500);
         verify(userMapper).findActiveCustomerIdsAfter(500L, 500);
         verify(userMapper).findActiveCustomerIdsAfter(501L, 500);
-        verify(userMapper, never()).findAll();
         verify(transactionTemplate, org.mockito.Mockito.times(2))
                 .execute(org.mockito.ArgumentMatchers.<TransactionCallback<Integer>>any());
 
@@ -185,10 +188,38 @@ class NotificationServiceTest {
     }
 
     @Test
+    void broadcastPropagatesBatchInsertFailures() {
+        when(userMapper.findActiveCustomerIdsAfter(0L, 500)).thenReturn(List.of(42L));
+        RuntimeException failure = new RuntimeException("notification store unavailable");
+        doThrow(failure).when(notificationMapper).insertBatch(anyList());
+
+        RuntimeException thrown = assertThrows(RuntimeException.class,
+                () -> service.broadcastToCustomers("system", "Title", "Message", "text"));
+
+        assertEquals(failure, thrown);
+    }
+
+    @Test
     void tryCreateNotificationReturnsFalseWhenInsertFails() {
         doThrow(new RuntimeException("db unavailable")).when(notificationMapper).insert(org.mockito.ArgumentMatchers.any(Notification.class));
 
         assertEquals(false, service.tryCreateNotification(7L, "order", "Order paid", "Message"));
+    }
+
+    @Test
+    void notificationControllerDoesNotOwnSilentSendNotificationEndpoint() throws Exception {
+        String controllerSource = Files.readString(
+                Path.of("src/main/java/com/example/shop/controller/NotificationController.java"),
+                StandardCharsets.UTF_8);
+        String serviceSource = Files.readString(
+                Path.of("src/main/java/com/example/shop/service/NotificationService.java"),
+                StandardCharsets.UTF_8);
+        String notificationSource = controllerSource + "\n" + serviceSource;
+
+        assertFalse(controllerSource.contains("sendNotification("));
+        assertFalse(Pattern.compile("catch\\s*\\([^)]*Exception[^)]*\\)\\s*\\{\\s*log\\.debug\\(\"sendNotification end\"\\);\\s*\\}")
+                .matcher(notificationSource)
+                .find());
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})

@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -101,6 +102,23 @@ class PetProfileServiceTest {
         verify(userMapper, never()).findByIdForUpdate(7L);
         verify(petProfileMapper, never()).countByUserId(7L);
         verify(petProfileMapper).update(any(PetProfile.class));
+    }
+
+    @Test
+    void findByUserIdUsesConfiguredBoundedLimit() {
+        PetProfile profile = validRequest();
+        when(petProfileMapper.findByUserId(7L, 2)).thenReturn(List.of(profile));
+
+        assertEquals(List.of(profile), service.findByUserId(7L));
+
+        verify(petProfileMapper).findByUserId(7L, 2);
+    }
+
+    @Test
+    void findByUserIdRejectsInvalidUserIdBeforeMapperCall() {
+        assertThrows(IllegalArgumentException.class, () -> service.findByUserId(0L));
+
+        verify(petProfileMapper, never()).findByUserId(any(), org.mockito.ArgumentMatchers.anyInt());
     }
 
     private PetProfile validRequest() {

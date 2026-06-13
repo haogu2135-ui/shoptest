@@ -73,26 +73,57 @@ public class AdminSystemController {
 
     @GetMapping("/status")
     public Map<String, Object> getStatus(Authentication authentication) {
-        requireAdminActionPermission(authentication, AdminRoleService.SYSTEM_STATUS_PERMISSION);
-        return buildStatus();
+        requireSuperAdminSystemStatusPermission(authentication);
+        return publicStatusPayload(buildStatus());
     }
 
     @GetMapping("/readiness")
     public ResponseEntity<Map<String, Object>> getReadiness(Authentication authentication) {
-        requireAdminActionPermission(authentication, AdminRoleService.SYSTEM_STATUS_PERMISSION);
-        Map<String, Object> payload = buildStatus();
+        requireSuperAdminSystemStatusPermission(authentication);
+        Map<String, Object> payload = publicStatusPayload(buildStatus());
         boolean ready = Boolean.TRUE.equals(payload.get("ready"));
         return ResponseEntity
                 .status(ready ? HttpStatus.OK : HttpStatus.SERVICE_UNAVAILABLE)
                 .body(payload);
     }
 
-    private void requireAdminActionPermission(Authentication authentication, String permission) {
+    private void requireSuperAdminSystemStatusPermission(Authentication authentication) {
         UserDetailsImpl user = SecurityUtils.requireUser(authentication);
-        if (adminRoleService.hasPermission(user.getId(), permission)) {
+        if (!SecurityUtils.isSuperAdmin(user)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Super admin permission required");
+        }
+        if (adminRoleService.hasPermission(user.getId(), AdminRoleService.SYSTEM_STATUS_PERMISSION)) {
             return;
         }
         throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Missing admin action permission");
+    }
+
+    private Map<String, Object> publicStatusPayload(Map<String, Object> detailed) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("status", detailed.get("status"));
+        payload.put("healthy", detailed.get("healthy"));
+        payload.put("ready", detailed.get("ready"));
+        payload.put("checkedAt", detailed.get("checkedAt"));
+        payload.put("database", componentHealth(detailed.get("database")));
+        payload.put("redis", componentHealth(detailed.get("redis")));
+        payload.put("nacos", componentHealth(detailed.get("nacos")));
+        payload.put("productionConfig", componentHealth(detailed.get("productionConfig")));
+        return payload;
+    }
+
+    private Map<String, Object> componentHealth(Object component) {
+        Map<String, Object> source = component instanceof Map ? (Map<String, Object>) component : Collections.emptyMap();
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("status", source.getOrDefault("status", "UNKNOWN"));
+        payload.put("healthy", source.getOrDefault("healthy", false));
+        payload.put("ready", source.getOrDefault("ready", false));
+        if (source.containsKey("required")) {
+            payload.put("required", source.get("required"));
+        }
+        if (source.containsKey("checkedAt")) {
+            payload.put("checkedAt", source.get("checkedAt"));
+        }
+        return payload;
     }
 
     private Map<String, Object> buildStatus() {

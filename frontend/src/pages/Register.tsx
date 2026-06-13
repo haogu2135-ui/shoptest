@@ -8,6 +8,12 @@ import { useAppConfig } from '../hooks/useAppConfig';
 import { useLanguage } from '../i18n';
 import { setSessionStorageItem } from '../utils/safeStorage';
 import { getApiErrorDiagnosticText, getApiErrorMessage } from '../utils/apiError';
+import {
+  STRONG_PASSWORD_MAX_LENGTH,
+  STRONG_PASSWORD_MIN_LENGTH,
+  hasRequiredPasswordClasses,
+  isCommonPassword,
+} from '../utils/passwordPolicy';
 import './Register.css';
 
 const { Text, Title } = Typography;
@@ -60,7 +66,6 @@ const uniqueLoginCandidates = (...values: unknown[]) => Array.from(new Set(
     .map((value) => String(value || '').trim())
     .filter(Boolean),
 ));
-
 const asRegisterApiError = (error: unknown): RegisterApiErrorLike => (
   error && typeof error === 'object' ? error as RegisterApiErrorLike : {}
 );
@@ -70,6 +75,35 @@ const isRegisterEmailCodeRequired = (value: unknown) => value === true || value 
 const isFormValidationError = (error: unknown): error is { errorFields: unknown[] } => (
   Boolean(error) && typeof error === 'object' && Array.isArray((error as { errorFields?: unknown }).errorFields)
 );
+const REGISTER_VALIDATION_SCROLL_OFFSET = 176;
+
+const scrollFirstRegisterErrorIntoView = () => {
+  const firstInvalidItem = document.querySelector('.register-page__card .ant-form-item-has-error') as HTMLElement | null;
+  if (!firstInvalidItem) return;
+
+  const prefersReducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true;
+  const behavior: ScrollBehavior = prefersReducedMotion ? 'auto' : 'smooth';
+  const card = firstInvalidItem.closest('.register-page__card') as HTMLElement | null;
+
+  if (card && card.scrollHeight > card.clientHeight + 1) {
+    const cardRect = card.getBoundingClientRect();
+    const fieldRect = firstInvalidItem.getBoundingClientRect();
+    card.scrollTo({
+      top: Math.max(0, card.scrollTop + fieldRect.top - cardRect.top - 16),
+      behavior,
+    });
+  }
+
+  const fieldTop = firstInvalidItem.getBoundingClientRect().top + window.scrollY;
+  window.scrollTo({
+    top: Math.max(0, fieldTop - REGISTER_VALIDATION_SCROLL_OFFSET),
+    behavior,
+  });
+
+  const firstControl = firstInvalidItem.querySelector('input, textarea, button, .ant-select-selector') as HTMLElement | null;
+  firstControl?.focus?.({ preventScroll: true });
+};
+
 const Register: React.FC = () => {
   const navigate = useNavigate();
   const { t, language } = useLanguage();
@@ -82,6 +116,7 @@ const Register: React.FC = () => {
   const [sentEmailHint, setSentEmailHint] = useState('');
   const [emailCodeRequired, setEmailCodeRequired] = useState(false);
   const codeInputRef = useRef<InputRef | null>(null);
+  const registeringRef = useRef(false);
   const emailCodeEnabled = appConfig.emailCodeEnabled === true;
   const registerPageLabel = t('pages.auth.registerTitle');
   const registerLoginActionLabel = `${t('pages.auth.loginNow')}: ${registerPageLabel}`;
@@ -99,9 +134,19 @@ const Register: React.FC = () => {
     : t('pages.auth.sendCode');
   const registerSendCodeActionLabel = `${registerPageLabel}: ${registerCodeActionText}`;
   const registerSubmitActionLabel = `${registerPageLabel}: ${t('pages.auth.register')}`;
+  const validateStrongPassword = (_rule: unknown, value?: string) => {
+    if (!value) return Promise.resolve();
+    if (isCommonPassword(value)) {
+      return Promise.reject(new Error(t('pages.auth.passwordCommon')));
+    }
+    if (!hasRequiredPasswordClasses(value)) {
+      return Promise.reject(new Error(t('pages.auth.passwordPattern')));
+    }
+    return Promise.resolve();
+  };
 
   useEffect(() => {
-    if (sendCodeCountdown <= 0) return undefined;
+    if (sendCodeCountdown <= 0) return;
     const timer = window.setInterval(() => {
       setSendCodeCountdown((value) => Math.max(value - 1, 0));
     }, 1000);
@@ -154,7 +199,8 @@ const Register: React.FC = () => {
   };
 
   const onFinish = async (values: RegisterForm) => {
-    if (registering) return;
+    if (registeringRef.current) return;
+    registeringRef.current = true;
     setRegistering(true);
     try {
       const username = normalizeUsername(values.username);
@@ -216,8 +262,15 @@ const Register: React.FC = () => {
       }
       message.error(msg);
     } finally {
+      registeringRef.current = false;
       setRegistering(false);
     }
+  };
+
+  const onFinishFailed = () => {
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(scrollFirstRegisterErrorIntoView);
+    });
   };
 
   return (
@@ -267,7 +320,7 @@ const Register: React.FC = () => {
       </section>
       <Card className="register-page__card">
         <div className="register-page__cardHeader">
-          <div className="register-page__brand">ShopMX</div>
+          <div className="register-page__brand">{t('common.brand')}</div>
           <Text className="register-page__cardHint">{t('pages.auth.registerPrivacyHint')}</Text>
         </div>
         <Title level={2} className="register-page__title">
@@ -277,18 +330,20 @@ const Register: React.FC = () => {
           form={form}
           name="register"
           onFinish={onFinish}
+          onFinishFailed={onFinishFailed}
           size="large"
         >
           <Form.Item
             name="username"
+            label={t('pages.auth.usernameShort')}
             rules={[
               { required: true, message: t('pages.auth.usernameRequired') },
               { min: 3, message: t('pages.auth.usernameMin') }
             ]}
           >
-            <Input 
-              prefix={<UserOutlined />} 
-              placeholder={t('pages.auth.usernameShort')} 
+            <Input
+              prefix={<UserOutlined />}
+              placeholder={t('pages.auth.usernameShort')}
               autoComplete="username"
               inputMode="text"
               maxLength={50}
@@ -300,17 +355,18 @@ const Register: React.FC = () => {
 
           <Form.Item
             name="password"
+            label={t('pages.auth.password')}
             rules={[
               { required: true, message: t('pages.auth.passwordRequired') },
-              { min: 8, max: 128, message: t('pages.auth.passwordMin') },
-              { pattern: /^(?=.*[A-Za-z])(?=.*\d).+$/, message: t('pages.auth.passwordPattern') }
+              { min: STRONG_PASSWORD_MIN_LENGTH, max: STRONG_PASSWORD_MAX_LENGTH, message: t('pages.auth.passwordMin') },
+              { validator: validateStrongPassword }
             ]}
           >
             <Input.Password
               prefix={<LockOutlined />}
               placeholder={t('pages.auth.password')}
               autoComplete="new-password"
-              maxLength={128}
+              maxLength={STRONG_PASSWORD_MAX_LENGTH}
               aria-label={passwordInputLabel}
               title={passwordInputLabel}
             />
@@ -318,6 +374,7 @@ const Register: React.FC = () => {
 
           <Form.Item
             name="confirmPassword"
+            label={t('pages.auth.confirmPassword')}
             dependencies={['password']}
             rules={[
               { required: true, message: t('pages.auth.confirmRequired') },
@@ -343,14 +400,15 @@ const Register: React.FC = () => {
 
           <Form.Item
             name="email"
+            label={t('pages.auth.email')}
             rules={[
               { required: true, message: t('pages.auth.emailRequired') },
               { type: 'email', message: t('pages.auth.emailInvalid') }
             ]}
           >
-            <Input 
-              prefix={<MailOutlined />} 
-              placeholder={t('pages.auth.email')} 
+            <Input
+              prefix={<MailOutlined />}
+              placeholder={t('pages.auth.email')}
               autoComplete="email"
               inputMode="email"
               maxLength={100}
@@ -375,6 +433,8 @@ const Register: React.FC = () => {
               )}
               <Form.Item
                 name="emailCode"
+                className="register-page__codeField"
+                label={t('pages.auth.verificationCode')}
                 rules={emailCodeRequired ? [
                   { required: true, message: t('pages.auth.emailCodeRequired') },
                   { len: 6, message: t('pages.auth.emailCodeLength') },
@@ -415,14 +475,15 @@ const Register: React.FC = () => {
 
           <Form.Item
             name="phone"
+            label={t('pages.auth.phone')}
             rules={[
               { required: true, message: t('pages.auth.phoneRequired') },
               { pattern: phonePattern, message: t('pages.auth.phoneInvalid') }
             ]}
           >
-            <Input 
-              prefix={<PhoneOutlined />} 
-              placeholder={t('pages.auth.phonePlaceholder')} 
+            <Input
+              prefix={<PhoneOutlined />}
+              placeholder={t('pages.auth.phonePlaceholder')}
               autoComplete="tel"
               inputMode="tel"
               maxLength={20}
@@ -450,4 +511,4 @@ const Register: React.FC = () => {
   );
 };
 
-export default Register; 
+export default Register;

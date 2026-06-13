@@ -1,6 +1,6 @@
 package com.example.shop.service;
 
-import lombok.extern.slf4j.Slf4j;
+import com.example.shop.config.HttpClientConfig;
 import com.example.shop.config.PaymentChannelConfig;
 import com.example.shop.dto.PaymentCallbackRequest;
 import com.example.shop.dto.PaymentCreateRequest;
@@ -16,20 +16,25 @@ import com.stripe.model.checkout.Session;
 import com.stripe.net.RequestOptions;
 import com.stripe.net.Webhook;
 import com.stripe.param.checkout.SessionCreateParams;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.net.URI;
@@ -37,7 +42,6 @@ import java.net.URISyntaxException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -51,6 +55,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 @Service
 @Slf4j
@@ -65,6 +70,12 @@ public class PaymentService {
     private static final String REFUNDED = "REFUNDED";
     private static final String RECONCILE_REQUIRED = "RECONCILE_REQUIRED";
     private static final long DEFAULT_CALLBACK_MAX_SKEW_SECONDS = 300L;
+    private static final int DEFAULT_EXPIRY_SCAN_BATCH_SIZE = 500;
+    private static final int HARD_EXPIRY_SCAN_BATCH_SIZE_LIMIT = 5000;
+    private static final int DEFAULT_GATEWAY_HTTP_MAX_ATTEMPTS = 3;
+    private static final int HARD_GATEWAY_HTTP_MAX_ATTEMPTS = 5;
+    private static final long DEFAULT_GATEWAY_HTTP_RETRY_INITIAL_DELAY_MS = 500L;
+    private static final long DEFAULT_GATEWAY_HTTP_RETRY_MAX_DELAY_MS = 5000L;
 
     @Autowired
     private PaymentRepository paymentRepository;
@@ -79,10 +90,17 @@ public class PaymentService {
     @Autowired
     private CircuitBreakerService circuitBreakerService;
 
-    private final RestTemplate restTemplate = new RestTemplate();
+    private RestTemplate restTemplate = HttpClientConfig.defaultRestTemplate();
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    @Transactional
+    @Autowired
+    public void setRestTemplate(RestTemplate restTemplate) {
+        if (restTemplate != null) {
+            this.restTemplate = restTemplate;
+        }
+    }
+
+    @Transactional(rollbackFor = Exception.class)
     public Payment createPayment(PaymentCreateRequest request) {
         if (request == null || request.getOrderId() == null || request.getOrderId() <= 0) {
             throw new IllegalArgumentException("Order id is required");
@@ -135,7 +153,7 @@ public class PaymentService {
         }
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public Payment simulatePaid(Long paymentId) {
         assertPaymentSimulationEnabled();
         Payment payment = paymentRepository.findById(paymentId);
@@ -165,7 +183,7 @@ public class PaymentService {
         return paymentRepository.findById(paymentId);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public Payment simulateCallback(Long paymentId) {
         assertPaymentSimulationEnabled();
         Payment payment = paymentRepository.findById(paymentId);
@@ -188,7 +206,7 @@ public class PaymentService {
         return handleCallback(request);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public Payment handleCallback(PaymentCallbackRequest request) {
         assertProductionCallbackSecretConfigured();
         String channel = normalizeConfiguredChannel(request.getChannel());
@@ -267,7 +285,7 @@ public class PaymentService {
         return paymentRepository.findById(payment.getId());
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public Payment handleStripeWebhook(String payload, String signatureHeader) {
         String webhookSecret = stripeWebhookSecret();
         if (isBlank(webhookSecret)) {
@@ -342,7 +360,7 @@ public class PaymentService {
         return paymentRepository.findById(payment.getId());
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public List<Payment> findByOrderId(Long orderId) {
         List<Payment> payments = paymentRepository.findByOrderId(orderId);
         boolean changedAny = false;
@@ -363,17 +381,17 @@ public class PaymentService {
         return changedAny ? paymentRepository.findByOrderId(orderId) : payments;
     }
 
-    @Transactional(readOnly = true)
+    @Transactional(rollbackFor = Exception.class, readOnly = true)
     public List<Payment> findStoredByOrderId(Long orderId) {
         return paymentRepository.findByOrderId(orderId);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional(rollbackFor = Exception.class, readOnly = true)
     public Payment findStoredLatestByOrderId(Long orderId) {
         return paymentRepository.findLatestByOrderId(orderId);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public Payment syncPayment(Long paymentId) {
         Payment payment = paymentRepository.findById(paymentId);
         if (payment == null) {
@@ -394,7 +412,7 @@ public class PaymentService {
         return paymentRepository.findById(paymentId);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public Payment findLatestByOrderId(Long orderId) {
         Payment payment = paymentRepository.findLatestByOrderId(orderId);
         Payment synced = syncProviderPaymentState(payment);
@@ -414,34 +432,56 @@ public class PaymentService {
 
     @Scheduled(fixedDelayString = "${payment.expiry-scan-ms:60000}")
     public void expirePendingPayments() {
-        for (Payment payment : paymentRepository.findExpiredPending()) {
-            try {
-                expireSinglePendingPayment(payment.getId());
-            } catch (RuntimeException ex) {
-                // Keep scheduler healthy; single-row conflicts should not fail the whole batch.
-                log.warn(
-                        "Payment expiry scan skipped payment after failure: paymentId={}, orderId={}, orderNo={}",
-                        payment.getId(), payment.getOrderId(), payment.getOrderNo(), ex);
+        int batchSize = paymentExpiryScanBatchSize();
+        Long afterId = null;
+        while (true) {
+            List<Payment> expiredPayments = paymentRepository.findExpiredPending(afterId, batchSize);
+            if (expiredPayments == null || expiredPayments.isEmpty()) {
+                return;
+            }
+            Long nextAfterId = lastPaymentId(afterId, expiredPayments);
+            for (Payment payment : expiredPayments) {
+                if (payment == null || payment.getId() == null) {
+                    continue;
+                }
+                expirePendingPaymentRow(payment);
+            }
+            if (expiredPayments.size() < batchSize || nextAfterId == null || nextAfterId.equals(afterId)) {
+                return;
+            }
+            afterId = nextAfterId;
+        }
+    }
+
+    private void expirePendingPaymentRow(Payment payment) {
+        try {
+            expireSinglePendingPayment(payment.getId());
+        } catch (RuntimeException ex) {
+            // Keep scheduler healthy; single-row conflicts should not fail the whole batch.
+            log.warn(
+                    "Payment expiry scan skipped payment after failure: paymentId={}, orderId={}, orderNo={}",
+                    payment.getId(),
+                    payment.getOrderId(),
+                    payment.getOrderNo(),
+                    ex);
+        }
+    }
+
+    private Long lastPaymentId(Long fallback, List<Payment> payments) {
+        Long lastId = fallback;
+        for (Payment payment : payments) {
+            if (payment != null && payment.getId() != null) {
+                lastId = payment.getId();
             }
         }
+        return lastId;
     }
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void expireSinglePendingPayment(Long paymentId) {
-        Payment payment = paymentRepository.findById(paymentId);
-        if (payment == null || !PENDING.equals(payment.getStatus()) || !isExpired(payment)) {
-            return;
-        }
-        expirePayment(payment);
-    }
-
-    public String expectedSignature(PaymentCallbackRequest request) {
-        assertProductionCallbackSecretConfigured();
-        String payload = request.getOrderNo() + "|" + normalizeConfiguredChannel(request.getChannel()) + "|"
-                + request.getTransactionId() + "|" + request.getStatus().toUpperCase(Locale.ROOT) + "|"
-                + request.getAmount().stripTrailingZeros().toPlainString() + "|"
-                + requiredCallbackTimestamp(request.getCallbackTimestamp()) + "|" + callbackSecret();
-        return sha256(payload);
+    private int paymentExpiryScanBatchSize() {
+        int configured = runtimeConfig == null
+                ? DEFAULT_EXPIRY_SCAN_BATCH_SIZE
+                : runtimeConfig.getInt("payment.expiry-scan-batch-size", DEFAULT_EXPIRY_SCAN_BATCH_SIZE);
+        return Math.max(1, Math.min(configured, HARD_EXPIRY_SCAN_BATCH_SIZE_LIMIT));
     }
 
     private void logPaymentLifecycle(String event, Payment payment) {
@@ -464,6 +504,24 @@ public class PaymentService {
                 status);
     }
 
+    @Transactional(rollbackFor = Exception.class, propagation = Propagation.REQUIRES_NEW)
+    public void expireSinglePendingPayment(Long paymentId) {
+        Payment payment = paymentRepository.findById(paymentId);
+        if (payment == null || !PENDING.equals(payment.getStatus()) || !isExpired(payment)) {
+            return;
+        }
+        expirePayment(payment);
+    }
+
+    public String expectedSignature(PaymentCallbackRequest request) {
+        assertProductionCallbackSecretConfigured();
+        String payload = request.getOrderNo() + "|" + normalizeConfiguredChannel(request.getChannel()) + "|"
+                + request.getTransactionId() + "|" + request.getStatus().toUpperCase(Locale.ROOT) + "|"
+                + request.getAmount().stripTrailingZeros().toPlainString() + "|"
+                + requiredCallbackTimestamp(request.getCallbackTimestamp());
+        return hmacSha256Hex(payload, callbackSecret());
+    }
+
     private Payment createRedirectPayment(Order order, LocalDateTime now, PaymentChannelConfig.Channel channelConfig) {
         validateOrderReadyForPayment(order);
         Payment payment = new Payment();
@@ -482,7 +540,11 @@ public class PaymentService {
     }
 
     private void expirePayment(Payment payment) {
-        boolean cancelOrder = paymentRepository.countActivePendingByOrderId(payment.getOrderId()) == 0;
+        long activePendingPayments = paymentRepository.countActivePendingByOrderId(payment.getOrderId());
+        if (PENDING.equals(payment.getStatus()) && !isExpired(payment)) {
+            activePendingPayments = Math.max(0, activePendingPayments - 1);
+        }
+        boolean cancelOrder = activePendingPayments <= 0;
         if (cancelOrder) {
             try {
                 if (!orderService.cancelOrderForPaymentExpiry(payment.getOrderId())) {
@@ -492,7 +554,10 @@ public class PaymentService {
                 // Order may already have moved on due to another idempotent callback.
                 log.info(
                         "Payment expiry skipped order cancellation because order state changed: paymentId={}, orderId={}, orderNo={}, reason={}",
-                        payment.getId(), payment.getOrderId(), payment.getOrderNo(), ex.getMessage());
+                        payment.getId(),
+                        payment.getOrderId(),
+                        payment.getOrderNo(),
+                        ex.getMessage());
                 return;
             }
         }
@@ -562,7 +627,7 @@ public class PaymentService {
             logPaymentLifecycle("Payment created via Stripe", payment);
             return payment;
         } catch (StripeException e) {
-            throw new IllegalStateException("Failed to create Stripe Checkout session: " + e.getMessage());
+            throw stripeProviderUnavailable("Failed to create Stripe Checkout session", e);
         }
     }
 
@@ -592,7 +657,7 @@ public class PaymentService {
             logPaymentLifecycle("Payment refreshed via Stripe", refreshed == null ? payment : refreshed);
             return refreshed;
         } catch (StripeException e) {
-            throw new IllegalStateException("Failed to create Stripe Checkout session: " + e.getMessage());
+            throw stripeProviderUnavailable("Failed to create Stripe Checkout session", e);
         }
     }
 
@@ -677,15 +742,108 @@ public class PaymentService {
         payload.put("returnUrl", contextualPaymentSuccessUrl(order));
         payload.put("cancelUrl", contextualPaymentCancelUrl(order));
         payload.put("idempotencyKey", idempotencyKey);
-        try {
-            return circuitBreakerService.execute("payment-create-" + channelConfig.getCode(), () -> restTemplate.exchange(
-                    createUrl,
-                    HttpMethod.POST,
-                    new HttpEntity<>(payload, buildGatewayHeaders(channelConfig, idempotencyKey)),
-                    String.class));
-        } catch (RestClientException e) {
-            throw new IllegalStateException("Gateway create payment request failed: " + e.getMessage());
+        int maxAttempts = paymentGatewayHttpMaxAttempts();
+        long initialDelayMs = paymentGatewayRetryInitialDelayMs();
+        long maxDelayMs = paymentGatewayRetryMaxDelayMs();
+        String circuitName = "payment-create-" + channelConfig.getCode();
+        for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+            try {
+                ResponseEntity<String> response = circuitBreakerService.execute(circuitName, () -> restTemplate.exchange(
+                        createUrl,
+                        HttpMethod.POST,
+                        new HttpEntity<>(payload, buildGatewayHeaders(channelConfig, idempotencyKey)),
+                        String.class));
+                if (!isRetryableGatewayResponse(response) || attempt >= maxAttempts) {
+                    return response;
+                }
+                long retryDelayMs = gatewayRetryDelayMs(attempt, initialDelayMs, maxDelayMs);
+                log.warn(
+                        "Gateway create payment returned retryable status; retrying: orderId={}, orderNo={}, channel={}, attempt={}, maxAttempts={}, retryDelayMs={}, status={}",
+                        order.getId(), order.getOrderNo(), channelConfig.getCode(), attempt, maxAttempts, retryDelayMs,
+                        response.getStatusCodeValue());
+                sleepBeforeGatewayRetry(retryDelayMs);
+            } catch (RestClientException e) {
+                if (!isRetryableGatewayException(e) || attempt >= maxAttempts) {
+                    throw new IllegalStateException("Gateway create payment request failed: " + gatewayFailureMessage(e), e);
+                }
+                long retryDelayMs = gatewayRetryDelayMs(attempt, initialDelayMs, maxDelayMs);
+                log.warn(
+                        "Gateway create payment request failed transiently; retrying: orderId={}, orderNo={}, channel={}, attempt={}, maxAttempts={}, retryDelayMs={}, failure={}",
+                        order.getId(), order.getOrderNo(), channelConfig.getCode(), attempt, maxAttempts, retryDelayMs,
+                        gatewayFailureMessage(e));
+                sleepBeforeGatewayRetry(retryDelayMs);
+            }
         }
+        throw new IllegalStateException("Gateway create payment request failed: retry attempts exhausted");
+    }
+
+    private boolean isRetryableGatewayResponse(ResponseEntity<String> response) {
+        return response != null && isRetryableGatewayStatus(response.getStatusCode());
+    }
+
+    private boolean isRetryableGatewayException(RestClientException exception) {
+        if (exception instanceof HttpStatusCodeException) {
+            return isRetryableGatewayStatus(((HttpStatusCodeException) exception).getStatusCode());
+        }
+        return true;
+    }
+
+    private boolean isRetryableGatewayStatus(HttpStatus status) {
+        if (status == null) {
+            return false;
+        }
+        int value = status.value();
+        return status.is5xxServerError() || value == 408 || value == 425 || value == 429;
+    }
+
+    private String gatewayFailureMessage(RestClientException exception) {
+        if (exception instanceof HttpStatusCodeException) {
+            return "HTTP " + ((HttpStatusCodeException) exception).getRawStatusCode();
+        }
+        String name = exception == null ? "" : exception.getClass().getSimpleName();
+        return isBlank(name) ? "request failed" : name;
+    }
+
+    private long gatewayRetryDelayMs(int failedAttempt, long initialDelayMs, long maxDelayMs) {
+        if (initialDelayMs <= 0 || maxDelayMs <= 0) {
+            return 0L;
+        }
+        long multiplier = 1L << Math.min(Math.max(0, failedAttempt - 1), 10);
+        long delay = initialDelayMs * multiplier;
+        return Math.min(delay <= 0 ? maxDelayMs : delay, maxDelayMs);
+    }
+
+    private void sleepBeforeGatewayRetry(long retryDelayMs) {
+        if (retryDelayMs <= 0) {
+            return;
+        }
+        try {
+            TimeUnit.MILLISECONDS.sleep(retryDelayMs);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Gateway create payment retry interrupted", e);
+        }
+    }
+
+    private int paymentGatewayHttpMaxAttempts() {
+        int configured = runtimeConfig == null
+                ? DEFAULT_GATEWAY_HTTP_MAX_ATTEMPTS
+                : runtimeConfig.getInt("payment.gateway-http-max-attempts", DEFAULT_GATEWAY_HTTP_MAX_ATTEMPTS);
+        return Math.max(1, Math.min(configured, HARD_GATEWAY_HTTP_MAX_ATTEMPTS));
+    }
+
+    private long paymentGatewayRetryInitialDelayMs() {
+        long configured = runtimeConfig == null
+                ? DEFAULT_GATEWAY_HTTP_RETRY_INITIAL_DELAY_MS
+                : runtimeConfig.getLong("payment.gateway-http-retry-initial-delay-ms", DEFAULT_GATEWAY_HTTP_RETRY_INITIAL_DELAY_MS);
+        return Math.max(0L, Math.min(configured, DEFAULT_GATEWAY_HTTP_RETRY_MAX_DELAY_MS));
+    }
+
+    private long paymentGatewayRetryMaxDelayMs() {
+        long configured = runtimeConfig == null
+                ? DEFAULT_GATEWAY_HTTP_RETRY_MAX_DELAY_MS
+                : runtimeConfig.getLong("payment.gateway-http-retry-max-delay-ms", DEFAULT_GATEWAY_HTTP_RETRY_MAX_DELAY_MS);
+        return Math.max(0L, Math.min(configured, DEFAULT_GATEWAY_HTTP_RETRY_MAX_DELAY_MS));
     }
 
     private GenericApiPaymentResponse parseGenericPaymentResponse(String responseBody,
@@ -736,6 +894,7 @@ public class PaymentService {
         try {
             return LocalDateTime.parse(expiresAtText, DateTimeFormatter.ISO_DATE_TIME);
         } catch (Exception e) {
+            log.debug("Gateway payment expiresAt value is invalid; using fallback: expiresAt={}", expiresAtText, e);
             return fallback;
         }
     }
@@ -1010,14 +1169,24 @@ public class PaymentService {
     }
 
     private RequestOptions stripeRequestOptions(String apiKey) {
-        return RequestOptions.builder().setApiKey(apiKey).build();
+        return stripeRequestOptionsBuilder(apiKey).build();
     }
 
     private RequestOptions stripeRequestOptions(String apiKey, String idempotencyKey) {
-        return RequestOptions.builder()
-                .setApiKey(apiKey)
+        return stripeRequestOptionsBuilder(apiKey)
                 .setIdempotencyKey(idempotencyKey)
                 .build();
+    }
+
+    private RequestOptions.RequestOptionsBuilder stripeRequestOptionsBuilder(String apiKey) {
+        return RequestOptions.builder()
+                .setApiKey(apiKey)
+                .setConnectTimeout(paymentHttpConnectTimeoutMs())
+                .setReadTimeout(paymentHttpReadTimeoutMs());
+    }
+
+    private IllegalStateException stripeProviderUnavailable(String operation, StripeException cause) {
+        return new IllegalStateException(operation + ". Payment provider is temporarily unavailable", cause);
     }
 
     private boolean isProviderPaidAlreadyAcknowledged(Payment payment) {
@@ -1272,17 +1441,18 @@ public class PaymentService {
         return "debug".equals(mode) || "dev".equals(mode) || "test".equals(mode);
     }
 
-    private String sha256(String value) {
+    private String hmacSha256Hex(String value, String secret) {
         try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hash = digest.digest(value.getBytes(StandardCharsets.UTF_8));
+            Mac mac = Mac.getInstance("HmacSHA256");
+            mac.init(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
+            byte[] hash = mac.doFinal(value.getBytes(StandardCharsets.UTF_8));
             StringBuilder builder = new StringBuilder();
             for (byte b : hash) {
                 builder.append(String.format("%02x", b));
             }
             return builder.toString();
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException("SHA-256 is not available", e);
+        } catch (Exception e) {
+            throw new IllegalStateException("HmacSHA256 is not available", e);
         }
     }
 
@@ -1362,6 +1532,18 @@ public class PaymentService {
         return runtimeConfig.getBoolean("payment.gateway-allow-local", false);
     }
 
+    private int paymentHttpConnectTimeoutMs() {
+        return HttpClientConfig.normalizeTimeout(
+                runtimeConfig == null ? 0 : runtimeConfig.getInt("payment.http.connect-timeout-ms", HttpClientConfig.DEFAULT_CONNECT_TIMEOUT_MS),
+                HttpClientConfig.DEFAULT_CONNECT_TIMEOUT_MS);
+    }
+
+    private int paymentHttpReadTimeoutMs() {
+        return HttpClientConfig.normalizeTimeout(
+                runtimeConfig == null ? 0 : runtimeConfig.getInt("payment.http.read-timeout-ms", HttpClientConfig.DEFAULT_READ_TIMEOUT_MS),
+                HttpClientConfig.DEFAULT_READ_TIMEOUT_MS);
+    }
+
     private String stripeSecretKey() {
         return runtimeConfig.getString("stripe.secret-key", "");
     }
@@ -1416,7 +1598,7 @@ public class PaymentService {
     }
 
     private String contextualReturnUrl(String configuredUrl, Order order, String statusKey, String statusValue) {
-        boolean guestOrder = guestEmailForOrder(order) != null;
+        boolean guestOrder = order != null && (Boolean.TRUE.equals(order.getGuestOrder()) || guestEmailForOrder(order) != null);
         String baseUrl = trimToNull(configuredUrl);
         if (guestOrder) {
             baseUrl = storefrontBaseUrl() + "/track-order";

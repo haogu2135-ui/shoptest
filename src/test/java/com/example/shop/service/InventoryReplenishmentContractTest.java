@@ -45,8 +45,8 @@ class InventoryReplenishmentContractTest {
                 "Simple stock restoration should update once per product with the aggregated quantity");
         assertFalse(orderService.contains("for (OrderItem item : items) {\n            restoreStock(item);\n        }"),
                 "Do not restore order stock through a per-item helper loop");
-        assertTrue(productRepository.contains("int increaseStock(Long productId, Integer quantity);"));
-        assertTrue(productRepository.contains("update products set stock = coalesce(stock, 0) + ?2"),
+        assertTrue(productRepository.contains("int increaseStock(@Param(\"productId\") Long productId, @Param(\"quantity\") Integer quantity);"));
+        assertTrue(productRepository.contains("update products set stock = coalesce(stock, 0) + :quantity"),
                 "Simple stock increments should be handled by one database UPDATE statement");
     }
 

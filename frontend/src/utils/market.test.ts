@@ -12,8 +12,8 @@ describe('market currency storage', () => {
   const clearLocalStorage = () => {
     try {
       window.localStorage.clear();
-    } catch {
-      // Individual tests replace storage with throwing mocks.
+    } catch (error) {
+      void error;
     }
   };
 
@@ -77,5 +77,18 @@ describe('market currency storage', () => {
 
     expect(withShippingConfig(market, { freeShippingThreshold: Infinity, defaultShippingFee: Number.NaN })).toEqual(market);
     expect(formatMarketMoney(Infinity, 'USD')).toBe('$0.00');
+  });
+
+  it('formats money with the selected market currency instead of a hardcoded dollar prefix', () => {
+    const mxnMarket = getMarket('MXN');
+    const eurMarket = getMarket('EUR');
+
+    expect(formatMarketMoney(100, 'MXN')).toBe(
+      new Intl.NumberFormat(mxnMarket.locale, { style: 'currency', currency: mxnMarket.currency }).format(100 * mxnMarket.rateFromMxn),
+    );
+    expect(formatMarketMoney(100, 'EUR')).toBe(
+      new Intl.NumberFormat(eurMarket.locale, { style: 'currency', currency: eurMarket.currency }).format(100 * eurMarket.rateFromMxn),
+    );
+    expect(formatMarketMoney(100, 'EUR')).not.toContain('$');
   });
 });

@@ -6,6 +6,12 @@ import { Link, useNavigate } from 'react-router-dom';
 import { userApi } from '../api';
 import { useAppConfig } from '../hooks/useAppConfig';
 import { useLanguage } from '../i18n';
+import {
+  STRONG_PASSWORD_MAX_LENGTH,
+  STRONG_PASSWORD_MIN_LENGTH,
+  hasRequiredPasswordClasses,
+  isCommonPassword,
+} from '../utils/passwordPolicy';
 import './Login.css';
 
 interface ForgotPasswordForm {
@@ -30,13 +36,23 @@ type AuthApiErrorLike = {
 
 const normalizeEmail = (value: unknown) => String(value || '').trim().toLowerCase();
 const normalizeEmailCode = (value: unknown) => String(value || '').replace(/\D+/g, '').slice(0, 6);
+const normalizePasswordLogin = (value: unknown) => {
+  const text = Array.from(String(value || ''))
+    .filter((char) => {
+      const code = char.charCodeAt(0);
+      return code > 31 && code !== 127;
+    })
+    .join('')
+    .trim();
+  if (text.includes('@')) return text.toLowerCase();
+  return text;
+};
 const maskEmail = (value: unknown) => {
   const email = normalizeEmail(value);
   const [name, domain] = email.split('@');
   if (!name || !domain) return email;
   return `${name.charAt(0)}***@${domain}`;
 };
-
 const asAuthApiError = (error: unknown): AuthApiErrorLike => (
   error && typeof error === 'object' ? error as AuthApiErrorLike : {}
 );
@@ -45,6 +61,7 @@ const authApiErrorCode = (error: unknown) => String(authApiErrorData(error).code
 const isFormValidationError = (error: unknown): error is { errorFields: unknown[] } => (
   Boolean(error) && typeof error === 'object' && Array.isArray((error as { errorFields?: unknown }).errorFields)
 );
+
 const ForgotPassword: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [codeSending, setCodeSending] = useState(false);
@@ -65,9 +82,19 @@ const ForgotPassword: React.FC = () => {
   const resetNewPasswordInputLabel = `${resetPageLabel}: ${t('pages.auth.newPassword')}`;
   const resetConfirmPasswordInputLabel = `${resetPageLabel}: ${t('pages.auth.confirmPassword')}`;
   const resetSubmitActionLabel = `${resetPageLabel}: ${t('pages.auth.resetPassword')}`;
+  const validateStrongPassword = (_rule: unknown, value?: string) => {
+    if (!value) return Promise.resolve();
+    if (isCommonPassword(value)) {
+      return Promise.reject(new Error(t('pages.auth.passwordCommon')));
+    }
+    if (!hasRequiredPasswordClasses(value)) {
+      return Promise.reject(new Error(t('pages.auth.passwordPattern')));
+    }
+    return Promise.resolve();
+  };
 
   useEffect(() => {
-    if (sendCodeCountdown <= 0) return undefined;
+    if (sendCodeCountdown <= 0) return;
     const timer = window.setInterval(() => {
       setSendCodeCountdown((value) => Math.max(value - 1, 0));
     }, 1000);
@@ -135,9 +162,10 @@ const ForgotPassword: React.FC = () => {
     setLoading(true);
     try {
       const normalizedEmail = normalizeEmail(values.email);
-      form.setFieldsValue({ email: normalizedEmail, code: normalizedCode });
+      const normalizedLogin = normalizePasswordLogin(values.login);
+      form.setFieldsValue({ login: normalizedLogin, email: normalizedEmail, code: normalizedCode });
       await userApi.forgotPassword({
-        login: values.login,
+        login: normalizedLogin,
         email: normalizedEmail,
         code: normalizedCode,
         newPassword: values.newPassword,
@@ -191,7 +219,15 @@ const ForgotPassword: React.FC = () => {
             </div>
           )}
           <Form.Item name="login" rules={[{ required: true, message: t('pages.auth.usernameRequired') }]}>
-            <Input prefix={<UserOutlined />} placeholder={t('pages.auth.username')} size="large" autoComplete="username" aria-label={resetLoginInputLabel} title={resetLoginInputLabel} />
+            <Input
+              prefix={<UserOutlined />}
+              placeholder={t('pages.auth.username')}
+              size="large"
+              autoComplete="username"
+              aria-label={resetLoginInputLabel}
+              title={resetLoginInputLabel}
+              onBlur={(event) => form.setFieldValue('login', normalizePasswordLogin(event.target.value))}
+            />
           </Form.Item>
           <Form.Item
             name="email"
@@ -215,6 +251,7 @@ const ForgotPassword: React.FC = () => {
           )}
           <Form.Item
             name="code"
+            className="shopee-login-form__field shopee-login-form__field--code"
             rules={[
               { required: true, message: t('pages.auth.emailCodeRequired') },
               { len: 6, message: t('pages.auth.emailCodeLength') },
@@ -226,7 +263,7 @@ const ForgotPassword: React.FC = () => {
               prefix={<SafetyCertificateOutlined />}
               placeholder={t('pages.auth.verificationCode')}
               size="large"
-              maxLength={12}
+              maxLength={6}
               autoComplete="one-time-code"
               inputMode="numeric"
               pattern="[0-9]*"
@@ -263,11 +300,11 @@ const ForgotPassword: React.FC = () => {
             name="newPassword"
             rules={[
               { required: true, message: t('pages.auth.newPasswordRequired') },
-              { min: 8, max: 128, message: t('pages.auth.passwordMin') },
-              { pattern: /^(?=.*[A-Za-z])(?=.*\d).+$/, message: t('pages.auth.passwordPattern') },
+              { min: STRONG_PASSWORD_MIN_LENGTH, max: STRONG_PASSWORD_MAX_LENGTH, message: t('pages.auth.passwordMin') },
+              { validator: validateStrongPassword },
             ]}
           >
-            <Input.Password prefix={<LockOutlined />} placeholder={t('pages.auth.newPassword')} size="large" autoComplete="new-password" aria-label={resetNewPasswordInputLabel} title={resetNewPasswordInputLabel} />
+            <Input.Password prefix={<LockOutlined />} placeholder={t('pages.auth.newPassword')} size="large" autoComplete="new-password" maxLength={STRONG_PASSWORD_MAX_LENGTH} aria-label={resetNewPasswordInputLabel} title={resetNewPasswordInputLabel} />
           </Form.Item>
           <Form.Item
             name="confirmPassword"

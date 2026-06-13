@@ -1,5 +1,6 @@
 import type { Language } from '../i18n';
 import { getLocalizedOptionLabel } from './localizedProductOptions';
+import { reportNonBlockingError } from './nonBlockingError';
 import { formatProductSpecLabel } from './productSpecLabels';
 
 export const parseSelectedSpecs = (value?: string | null): Record<string, string> => {
@@ -15,7 +16,8 @@ export const parseSelectedSpecs = (value?: string | null): Record<string, string
       if (normalizedOption) result[normalizedKey] = normalizedOption;
       return result;
     }, {});
-  } catch {
+  } catch (error) {
+    reportNonBlockingError('selectedSpecs.parseSelectedSpecs', error);
     return {};
   }
 };

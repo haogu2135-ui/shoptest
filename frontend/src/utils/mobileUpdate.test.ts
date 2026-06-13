@@ -1,3 +1,5 @@
+import fs from 'fs';
+import path from 'path';
 import {
   currentMobileRelease,
   currentNativeMobilePlatform,
@@ -10,6 +12,15 @@ import {
   resolveMobileAssetUrl,
   resolveMobileReleaseDownloadUrl,
 } from './mobileUpdate';
+
+const readPublicMobileManifest = () => JSON.parse(
+  fs.readFileSync(path.resolve(__dirname, '../../public/downloads/mobile-version.json'), 'utf8'),
+);
+
+const versionCodeFromName = (versionName: string) => {
+  const [major, minor, patch] = versionName.split('.').map((part) => Number(part));
+  return major * 10000 + minor * 100 + patch;
+};
 
 describe('mobileUpdate release download gate', () => {
   afterEach(() => {
@@ -59,16 +70,35 @@ describe('mobileUpdate release download gate', () => {
       mobileCurrentVersionCode: 10023,
     };
 
-    expect(currentMobileVersionCode()).toBe(currentMobileRelease.versionCode);
-    expect(currentMobileVersionName()).toBe(currentMobileRelease.versionName);
+    expect(currentMobileVersionCode()).toBe(10023);
+    expect(currentMobileVersionName()).toBe('1.0.23');
 
     window.__SHOP_RUNTIME_CONFIG__ = {
       mobileCurrentVersionName: '',
       mobileCurrentVersionCode: -1,
     };
 
-    expect(currentMobileVersionCode()).toBe(10023);
-    expect(currentMobileVersionName()).toBe('1.0.23');
+    expect(currentMobileVersionCode()).toBe(currentMobileRelease.versionCode);
+    expect(currentMobileVersionName()).toBe(currentMobileRelease.versionName);
+  });
+
+  it('keeps generated release metadata aligned with the public signed APK manifest', () => {
+    const publicManifest = readPublicMobileManifest();
+    const apkPath = path.resolve(__dirname, '../../public/downloads', publicManifest.fileName);
+
+    expect(publicManifest).toEqual(currentMobileRelease);
+    expect(publicManifest.platform).toBe('android');
+    expect(publicManifest.appId).toBe('com.shoptest.mobile');
+    expect(publicManifest.versionCode).toBe(versionCodeFromName(publicManifest.versionName));
+    expect(publicManifest.minSupportedVersionCode).toBe(0);
+    expect(publicManifest.releaseSigned).toBe(true);
+    expect(publicManifest.certificateSha256).toMatch(/^[A-F0-9]{64}$/);
+    expect(publicManifest.apkUrl).toBe(`/downloads/${publicManifest.fileName}?v=${publicManifest.versionName}`);
+    expect(publicManifest.legacyApkUrl).toBe(`/downloads/shoptest.apk?v=${publicManifest.versionName}`);
+    expect(publicManifest.fileName).toBe('shoptest.apk');
+    expect(fs.existsSync(apkPath)).toBe(true);
+    expect(fs.statSync(apkPath).size).toBe(publicManifest.sizeBytes);
+    expect(isMobileReleaseDownloadAllowed(publicManifest)).toBe(true);
   });
 
   it('resolves Android native update checks through the configured API origin', () => {

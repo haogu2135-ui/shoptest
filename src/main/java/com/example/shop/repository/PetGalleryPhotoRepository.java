@@ -4,66 +4,93 @@ import com.example.shop.entity.PetGalleryPhoto;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import javax.persistence.LockModeType;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface PetGalleryPhotoRepository extends JpaRepository<PetGalleryPhoto, Long> {
-    String ADMIN_FILTER_CLAUSE = " where (?1 is null or p.status = ?1)"
-            + " and (?2 is null or coalesce(p.source, '') = ?2)"
-            + " and (?3 is null"
-            + " or str(p.id) like ?3"
-            + " or str(p.userId) like ?3"
-            + " or lower(coalesce(p.username, '')) like ?3"
-            + " or lower(coalesce(p.ipAddress, '')) like ?3"
-            + " or lower(coalesce(p.originalFilename, '')) like ?3"
-            + " or lower(coalesce(p.contentType, '')) like ?3"
-            + " or lower(coalesce(p.imageUrl, '')) like ?3"
-            + " or lower(coalesce(p.status, '')) like ?3"
-            + " or lower(coalesce(p.source, '')) like ?3)";
+    String ADMIN_FILTER_CLAUSE = " where (:status is null or p.status = :status)"
+            + " and (:source is null or coalesce(p.source, '') = :source)"
+            + " and (:keyword is null"
+            + " or str(p.id) like :keyword"
+            + " or str(p.userId) like :keyword"
+            + " or lower(coalesce(p.username, '')) like :keyword"
+            + " or lower(coalesce(p.ipAddress, '')) like :keyword"
+            + " or lower(coalesce(p.originalFilename, '')) like :keyword"
+            + " or lower(coalesce(p.contentType, '')) like :keyword"
+            + " or lower(coalesce(p.imageUrl, '')) like :keyword"
+            + " or lower(coalesce(p.status, '')) like :keyword"
+            + " or lower(coalesce(p.source, '')) like :keyword)";
 
-    List<PetGalleryPhoto> findTop24ByStatusOrderByLikeCountDescCreatedAtDescIdDesc(String status);
+    @Query("select p from PetGalleryPhoto p where p.status = :status order by p.likeCount desc, p.createdAt desc, p.id desc")
+    List<PetGalleryPhoto> findTopPublicPhotos(@Param("status") String status, Pageable pageable);
 
     Page<PetGalleryPhoto> findByStatusOrderByLikeCountDescCreatedAtDescIdDesc(String status, Pageable pageable);
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select p from PetGalleryPhoto p where p.id = :photoId")
+    Optional<PetGalleryPhoto> findByIdForLikeUpdate(@Param("photoId") Long photoId);
+
     @Query("select p from PetGalleryPhoto p" + ADMIN_FILTER_CLAUSE + " order by p.createdAt desc, p.id desc")
-    Page<PetGalleryPhoto> searchAdminPhotos(String status, String source, String keyword, Pageable pageable);
+    Page<PetGalleryPhoto> searchAdminPhotos(@Param("status") String status,
+                                            @Param("source") String source,
+                                            @Param("keyword") String keyword,
+                                            Pageable pageable);
 
     @Query("select count(p) from PetGalleryPhoto p" + ADMIN_FILTER_CLAUSE)
-    long countAdminPhotos(String status, String source, String keyword);
+    long countAdminPhotos(@Param("status") String status,
+                          @Param("source") String source,
+                          @Param("keyword") String keyword);
 
     @Query("select count(p) from PetGalleryPhoto p" + ADMIN_FILTER_CLAUSE
-            + " and (p.source is null or p.source = '' or p.source = ?4)")
-    long countAdminPhotosByUserUploadSource(String status, String source, String keyword, String userUploadSource);
+            + " and (p.source is null or p.source = '' or p.source = :userUploadSource)")
+    long countAdminPhotosByUserUploadSource(@Param("status") String status,
+                                            @Param("source") String source,
+                                            @Param("keyword") String keyword,
+                                            @Param("userUploadSource") String userUploadSource);
 
-    @Query("select count(p) from PetGalleryPhoto p" + ADMIN_FILTER_CLAUSE + " and p.source = ?4")
-    long countAdminPhotosBySource(String status, String source, String keyword, String countedSource);
+    @Query("select count(p) from PetGalleryPhoto p" + ADMIN_FILTER_CLAUSE + " and p.source = :countedSource")
+    long countAdminPhotosBySource(@Param("status") String status,
+                                  @Param("source") String source,
+                                  @Param("keyword") String keyword,
+                                  @Param("countedSource") String countedSource);
 
-    @Query("select count(p) from PetGalleryPhoto p" + ADMIN_FILTER_CLAUSE + " and p.createdAt >= ?4")
-    long countAdminRecentPhotos(String status, String source, String keyword, LocalDateTime since);
+    @Query("select count(p) from PetGalleryPhoto p" + ADMIN_FILTER_CLAUSE + " and p.createdAt >= :since")
+    long countAdminRecentPhotos(@Param("status") String status,
+                                @Param("source") String source,
+                                @Param("keyword") String keyword,
+                                @Param("since") LocalDateTime since);
 
-    @Query("select count(p) from PetGalleryPhoto p" + ADMIN_FILTER_CLAUSE + " and p.fileSize > ?4")
-    long countAdminLargePhotos(String status, String source, String keyword, long minFileSize);
+    @Query("select count(p) from PetGalleryPhoto p" + ADMIN_FILTER_CLAUSE + " and p.fileSize > :minFileSize")
+    long countAdminLargePhotos(@Param("status") String status,
+                               @Param("source") String source,
+                               @Param("keyword") String keyword,
+                               @Param("minFileSize") long minFileSize);
 
     boolean existsByImageUrl(String imageUrl);
 
-    @Query("select count(p) from PetGalleryPhoto p where p.userId = ?1 and p.status = ?2 and (p.source is null or p.source = '' or p.source = ?3)")
-    long countUploadsByUserIdAndStatus(Long userId, String status, String source);
+    @Query("select count(p) from PetGalleryPhoto p where p.userId = :userId"
+            + " and p.status = :status and (p.source is null or p.source = '' or p.source = :source)")
+    long countUploadsByUserIdAndStatus(@Param("userId") Long userId,
+                                       @Param("status") String status,
+                                       @Param("source") String source);
 
-    @Query("select count(p) from PetGalleryPhoto p where p.ipAddress = ?1 and p.status = ?2 and (p.source is null or p.source = '' or p.source = ?3)")
-    long countUploadsByIpAddressAndStatus(String ipAddress, String status, String source);
+    @Query("select count(p) from PetGalleryPhoto p where p.ipAddress = :ipAddress"
+            + " and p.status = :status and (p.source is null or p.source = '' or p.source = :source)")
+    long countUploadsByIpAddressAndStatus(@Param("ipAddress") String ipAddress,
+                                          @Param("status") String status,
+                                          @Param("source") String source);
 
-    @Query(value = "SELECT GET_LOCK(?1, 10)", nativeQuery = true)
-    Long acquireUploadQuotaLock(String lockName);
+    @Query(value = "SELECT GET_LOCK(:lockName, 10)", nativeQuery = true)
+    Long acquireUploadQuotaLock(@Param("lockName") String lockName);
 
-    @Query(value = "SELECT RELEASE_LOCK(?1)", nativeQuery = true)
-    Long releaseUploadQuotaLock(String lockName);
-
-    @Modifying
-    @Query("update PetGalleryPhoto p set p.likeCount = p.likeCount + 1 where p.id = ?1")
-    int incrementLikeCount(Long photoId);
+    @Query(value = "SELECT RELEASE_LOCK(:lockName)", nativeQuery = true)
+    Long releaseUploadQuotaLock(@Param("lockName") String lockName);
 }

@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Badge, Button, Card, Empty, Input, List, message, Modal, Popconfirm, Select, Space, Spin, Tag, Typography } from 'antd';
-import { AlertOutlined, CheckCircleOutlined, CustomerServiceOutlined, GiftOutlined, SendOutlined, ShoppingOutlined, ThunderboltOutlined } from '@ant-design/icons';
-import { adminApi, adminSupportApi, supportWebSocketProtocols, supportWebSocketUrl, userApi } from '../api';
+import { Alert, Badge, Button, Card, Empty, Input, List, message, Modal, Popconfirm, Select, Space, Spin, Tag, Typography } from 'antd';
+import { AlertOutlined, CheckCircleOutlined, CustomerServiceOutlined, GiftOutlined, SearchOutlined, SendOutlined, ShoppingOutlined, ThunderboltOutlined } from '@ant-design/icons';
+import { adminApi, adminSupportApi, supportApi, supportWebSocketProtocols, supportWebSocketUrl, userApi } from '../api';
 import type { Order, OrderItem, SupportAdminSummary, SupportMessage, SupportSession } from '../types';
 import { useLanguage } from '../i18n';
 import { useMarket } from '../hooks/useMarket';
@@ -12,8 +12,9 @@ import { getApiErrorMessage } from '../utils/apiError';
 import { decodeSupportOrderMessage, type SupportOrderContext } from '../utils/supportOrderMessage';
 import { formatSafeDateTime, formatSafeTime, getSafeTime } from '../utils/dateFormat';
 import { getLocalStorageItem } from '../utils/safeStorage';
-import { getReconnectDelayMs } from '../utils/reconnectBackoff';
+import { useReconnectingWebSocket } from '../hooks/useReconnectingWebSocket';
 import { buildPaginationItemRender } from '../utils/paginationLabels';
+import { reportNonBlockingError } from '../utils/nonBlockingError';
 import {
   COUPONS_BIRTHDAY_REISSUE_PERMISSION,
   getEffectiveRole,
@@ -27,9 +28,10 @@ import {
 import './SupportManagement.css';
 
 const { Text, Title } = Typography;
-const mobilePopconfirmClassNames = { root: 'shop-mobile-popup-layer' };
+const mobilePopconfirmClassNames = { root: 'shop-mobile-popup-layer support-management__popconfirm' };
 const SUPPORT_MESSAGE_WINDOW = 80;
 const SUPPORT_QUEUE_PAGE_SIZE = 20;
+const SUPPORT_POLL_INTERVAL_MS = 10 * 1000;
 type LegacyAudioWindow = Window & typeof globalThis & { webkitAudioContext?: typeof AudioContext };
 const supportOrderImageFallback = productImageFallback;
 const resolveSupportOrderImage = resolveProductImage;
@@ -109,6 +111,9 @@ const SupportManagement: React.FC = () => {
   const [queuePageSize, setQueuePageSize] = useState(SUPPORT_QUEUE_PAGE_SIZE);
   const [queueTotal, setQueueTotal] = useState(0);
   const [queueLoading, setQueueLoading] = useState(false);
+  const [queueError, setQueueError] = useState<string | null>(null);
+  const [messageLoading, setMessageLoading] = useState(false);
+  const [messageError, setMessageError] = useState<string | null>(null);
   const [content, setContent] = useState('');
   const [connected, setConnected] = useState(false);
   const [sending, setSending] = useState(false);
@@ -120,22 +125,20 @@ const SupportManagement: React.FC = () => {
   const [detailItems, setDetailItems] = useState<OrderItem[]>([]);
   const [detailLoading, setDetailLoading] = useState(false);
   const [currentAdminId, setCurrentAdminId] = useState(0);
-  const [currentRole, setCurrentRole] = useState('');
+  const [currentRole, setCurrentRole] = useState(() => getLocalStorageItem('role') || '');
   const [adminPermissions, setAdminPermissions] = useState<string[]>([]);
-  const socketRef = useRef<WebSocket | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
+  const conversationPaneRef = useRef<HTMLDivElement | null>(null);
   const sessionsRef = useRef<SupportSession[]>([]);
   const queueTotalRef = useRef(0);
   const messagesRef = useRef<SupportMessage[]>([]);
   const selectedSessionRef = useRef<SupportSession | null>(null);
   const queueFilterRef = useRef<string | undefined>(filter);
   const queueSearchRef = useRef(queueSearch);
-  const reconnectTimerRef = useRef<number | null>(null);
-  const reconnectAttemptRef = useRef(0);
   const audioContextRef = useRef<AudioContext | null>(null);
+  const messageRequestSeqRef = useRef(0);
   const { t, language } = useLanguage();
   const { formatMoney } = useMarket();
-  const adminSupportToken = readAdminSupportToken();
   const supportOrderItemName = (item: Pick<OrderItem, 'productId' | 'productName'>) => (
     (item.productName || '').trim() || t('pages.profile.productFallback', { id: item.productId })
   );
@@ -156,17 +159,7 @@ const SupportManagement: React.FC = () => {
   const canUpdateSupportReadState = hasAdminPermission(adminPermissions, currentRole, SUPPORT_READ_STATE_PERMISSION);
   const canReissueBirthdayCoupons = hasAdminPermission(adminPermissions, currentRole, COUPONS_BIRTHDAY_REISSUE_PERMISSION);
   const canViewOrders = hasAdminPermission(adminPermissions, currentRole, 'orders');
-  const canUpdateSupportReadStateRef = useRef(canUpdateSupportReadState);
-  const supportTranslationRef = useRef(t);
-  const mergeSessionIntoCurrentQueueRef = useRef<(session: SupportSession, options?: { countNewMatch?: boolean }) => void>(() => undefined);
-
-  useEffect(() => {
-    canUpdateSupportReadStateRef.current = canUpdateSupportReadState;
-  }, [canUpdateSupportReadState]);
-
-  useEffect(() => {
-    supportTranslationRef.current = t;
-  }, [t]);
+  const adminSupportToken = readAdminSupportToken();
 
   useEffect(() => {
     if (!readAdminSupportToken()) return;
@@ -194,12 +187,12 @@ const SupportManagement: React.FC = () => {
     };
   }, []);
 
-  const playTone = () => {
-    try {
+  const playTone = () => {
+    try {
       const audioWindow = window as LegacyAudioWindow;
       const AudioCtor = audioWindow.AudioContext || audioWindow.webkitAudioContext;
-      if (!AudioCtor) return;
-      const context = audioContextRef.current || new AudioCtor();
+      if (!AudioCtor) return;
+      const context = audioContextRef.current || new AudioCtor();
       audioContextRef.current = context;
       if (context.state === 'suspended') {
         void context.resume();
@@ -215,8 +208,8 @@ const SupportManagement: React.FC = () => {
       gain.gain.exponentialRampToValueAtTime(0.08, context.currentTime + 0.01);
       gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + 0.18);
       oscillator.stop(context.currentTime + 0.2);
-    } catch {
-      // best effort
+    } catch (error) {
+      reportNonBlockingError('SupportManagement.playTone', error);
     }
   };
 
@@ -245,8 +238,13 @@ const SupportManagement: React.FC = () => {
 
   const replyText = content.trim();
   const replyTooLong = replyText.length > supportChatConfig.maxMessageChars;
-  const replyReady = Boolean(canReplySupport && selectedSession && selectedSession.status === 'OPEN' && replyText && !replyTooLong);
-  const replyReadinessText = !canReplySupport
+  const conversationUnavailable = Boolean(messageLoading || messageError);
+  const replyReady = Boolean(canReplySupport && selectedSession && selectedSession.status === 'OPEN' && replyText && !replyTooLong && !conversationUnavailable);
+  const replyReadinessText = messageLoading
+    ? t('common.loading')
+    : messageError
+    ? messageError
+    : !canReplySupport
     ? t('adminLayout.noPermission')
     : !selectedSession
     ? t('pages.adminSupport.replySelectSession')
@@ -315,15 +313,12 @@ const SupportManagement: React.FC = () => {
       setQueueTotal(nextTotal);
     }
   }, []);
-
-  useEffect(() => {
-    mergeSessionIntoCurrentQueueRef.current = mergeSessionIntoCurrentQueue;
-  }, [mergeSessionIntoCurrentQueue]);
 
   const loadSessions = useCallback(async (options?: { status?: string; page?: number; pageSize?: number; search?: string; isActive?: () => boolean }) => {
     const shouldApply = () => options?.isActive?.() !== false;
     try {
       setQueueLoading(true);
+      setQueueError(null);
       const effectiveStatus = options?.status === undefined ? filter : options.status;
       const effectivePage = options?.page || queuePage;
       const effectivePageSize = options?.pageSize || queuePageSize;
@@ -356,7 +351,9 @@ const SupportManagement: React.FC = () => {
       }
     } catch (err: unknown) {
       if (shouldApply()) {
-        message.error(getApiErrorMessage(err, t('pages.adminSupport.loadFailed'), language));
+        const errorMessage = getApiErrorMessage(err, t('pages.adminSupport.loadFailed'), language);
+        setQueueError(errorMessage);
+        message.error(errorMessage);
       }
     } finally {
       if (shouldApply()) {
@@ -364,18 +361,46 @@ const SupportManagement: React.FC = () => {
       }
     }
   }, [filter, language, queuePage, queuePageSize, queueSearch, t]);
-
+
+  const handoffConversationOnMobile = useCallback(() => {
+    const isStackedLayout = window.matchMedia?.('(max-width: 900px)').matches ?? window.innerWidth <= 900;
+    if (!isStackedLayout) return;
+
+    window.requestAnimationFrame(() => {
+      const pane = conversationPaneRef.current;
+      if (!pane) return;
+      pane.scrollIntoView?.({ block: 'start', behavior: 'smooth' });
+      pane.focus({ preventScroll: true });
+    });
+  }, []);
+
   const loadMessages = async (session: SupportSession) => {
+    const requestSeq = messageRequestSeqRef.current + 1;
+    messageRequestSeqRef.current = requestSeq;
     setSelectedSession(session);
+    selectedSessionRef.current = session;
+    setMessageLoading(true);
+    setMessageError(null);
+    setMessages([]);
+    setContent('');
+    handoffConversationOnMobile();
     try {
       const res = await adminSupportApi.getMessages(session.id, { limit: SUPPORT_MESSAGE_WINDOW });
+      if (messageRequestSeqRef.current !== requestSeq || selectedSessionRef.current?.id !== session.id) return;
       setMessages(mergeSupportMessages([], res.data));
       if (canUpdateSupportReadState) {
         await adminSupportApi.markRead(session.id).catch(() => undefined);
       }
       await loadSessions();
     } catch (err: unknown) {
-      message.error(getApiErrorMessage(err, t('pages.adminSupport.loadFailed'), language));
+      if (messageRequestSeqRef.current !== requestSeq || selectedSessionRef.current?.id !== session.id) return;
+      const errorMessage = getApiErrorMessage(err, t('pages.adminSupport.loadFailed'), language);
+      setMessageError(errorMessage);
+      message.error(errorMessage);
+    } finally {
+      if (messageRequestSeqRef.current === requestSeq && selectedSessionRef.current?.id === session.id) {
+        setMessageLoading(false);
+      }
     }
   };
 
@@ -383,87 +408,55 @@ const SupportManagement: React.FC = () => {
     loadSessions();
   }, [loadSessions]);
 
-  useEffect(() => {
-    if (!adminSupportToken) return;
-    let shouldReconnect = true;
-    const scheduleReconnect = () => {
-      if (!shouldReconnect) return;
-      if (reconnectTimerRef.current) {
-        window.clearTimeout(reconnectTimerRef.current);
-      }
-      const delay = getReconnectDelayMs(reconnectAttemptRef.current);
-      reconnectAttemptRef.current += 1;
-      reconnectTimerRef.current = window.setTimeout(() => {
-        reconnectTimerRef.current = null;
-        connect();
-      }, delay);
-    };
-    function connect() {
-      if (!shouldReconnect) return;
-      let socket: WebSocket;
-      try {
-        socket = new WebSocket(supportWebSocketUrl(adminSupportToken), supportWebSocketProtocols(adminSupportToken));
-      } catch {
-        setConnected(false);
-        scheduleReconnect();
+  const socketRef = useReconnectingWebSocket({
+    enabled: Boolean(adminSupportToken),
+    connectionKey: adminSupportToken,
+    createSocket: async () => {
+      const ticketResponse = await supportApi.createWebSocketTicket();
+      return new WebSocket(supportWebSocketUrl(), supportWebSocketProtocols(ticketResponse.data.ticket));
+    },
+    onConnectError: () => setConnected(false),
+    onOpen: () => setConnected(true),
+    onClose: () => setConnected(false),
+    onError: () => setConnected(false),
+    onReconnectExhausted: (attempts) => {
+      message.warning(t('pages.support.connectFailed'));
+      reportNonBlockingError('SupportManagement.websocketReconnectExhausted', { attempts });
+    },
+    onMessage: (event) => {
+      const payload = parseSupportSocketPayload(event.data);
+      if (payload.type === 'ERROR') {
+        message.warning(payload.message || t('pages.support.messageRejected'));
         return;
       }
-      socketRef.current = socket;
-      socket.onopen = () => {
-        reconnectAttemptRef.current = 0;
-        setConnected(true);
-      };
-      socket.onclose = () => {
-        setConnected(false);
-        scheduleReconnect();
-      };
-      socket.onerror = () => setConnected(false);
-      socket.onmessage = (event) => {
-        const payload = parseSupportSocketPayload(event.data);
-        if (payload.type === 'ERROR') {
-          message.warning(payload.message || supportTranslationRef.current('pages.support.messageRejected'));
-          return;
-        }
-        if (payload.type === 'MESSAGE') {
-          mergeSessionIntoCurrentQueueRef.current(payload.session, { countNewMatch: true });
-          if (selectedSessionRef.current?.id === payload.message.sessionId) {
-            setMessages((items) => {
-              if (items.some((item) => item.id === payload.message.id)) {
-                return items;
-              }
-              if (payload.message.senderRole === 'USER') {
-                playTone();
-              }
-              return mergeSupportMessages(items, [payload.message]);
-            });
-            if (canUpdateSupportReadStateRef.current) {
-              adminSupportApi.markRead(payload.message.sessionId).catch(() => undefined);
+      if (payload.type === 'MESSAGE') {
+        mergeSessionIntoCurrentQueue(payload.session, { countNewMatch: true });
+        if (selectedSessionRef.current?.id === payload.message.sessionId) {
+          setMessages((items) => {
+            if (items.some((item) => item.id === payload.message.id)) {
+              return items;
             }
-          } else if (payload.message.senderRole === 'USER') {
-            playTone();
+            if (payload.message.senderRole === 'USER') {
+              playTone();
+            }
+            return mergeSupportMessages(items, [payload.message]);
+          });
+          if (canUpdateSupportReadState) {
+            adminSupportApi.markRead(payload.message.sessionId).catch(() => undefined);
           }
-        }
-        if (payload.type === 'SESSION_CLOSED' || payload.type === 'SESSION_UPDATED') {
-          mergeSessionIntoCurrentQueueRef.current(payload.session);
+        } else if (payload.message.senderRole === 'USER') {
+          playTone();
         }
-      };
-    }
-    connect();
-    return () => {
-      shouldReconnect = false;
-      if (reconnectTimerRef.current) {
-        window.clearTimeout(reconnectTimerRef.current);
-        reconnectTimerRef.current = null;
       }
-      reconnectAttemptRef.current = 0;
-      socketRef.current?.close();
-      socketRef.current = null;
-    };
-  }, [adminSupportToken]);
+      if (payload.type === 'SESSION_CLOSED' || payload.type === 'SESSION_UPDATED') {
+        mergeSessionIntoCurrentQueue(payload.session);
+      }
+    },
+  });
 
-  useEffect(() => {
-    let polling = false;
+  useEffect(() => {
     let disposed = false;
+    let polling = false;
 
     const timer = window.setInterval(async () => {
 
@@ -482,12 +475,14 @@ const SupportManagement: React.FC = () => {
             await adminSupportApi.markRead(activeSession.id).catch(() => undefined);
           }
         }
-      } catch {
-        // Polling is a backup path for missed socket events.
+      } catch (error) {
+        if (!disposed) {
+          reportNonBlockingError('SupportManagement.pollMessages', error);
+        }
       } finally {
         polling = false;
       }
-    }, 10000);
+    }, SUPPORT_POLL_INTERVAL_MS);
     return () => {
       disposed = true;
       polling = false;
@@ -496,7 +491,7 @@ const SupportManagement: React.FC = () => {
   }, [canUpdateSupportReadState, loadSessions]);
 
   useEffect(() => {
-    listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: 'smooth' });
+    listRef.current?.scrollTo?.({ top: listRef.current.scrollHeight, behavior: 'smooth' });
   }, [messages, selectedSession]);
 
   const send = async () => {
@@ -621,6 +616,8 @@ const SupportManagement: React.FC = () => {
   const queuePaginationItemRender = useMemo(() => buildPaginationItemRender(
     `${t('common.previousPage')}: ${t('pages.adminSupport.title')}`,
     `${t('common.nextPage')}: ${t('pages.adminSupport.title')}`,
+    `${t('common.previousPages')}: ${t('pages.adminSupport.title')}`,
+    `${t('common.nextPages')}: ${t('pages.adminSupport.title')}`,
   ), [t]);
   const selectedSessionLabel = selectedSession
     ? `${selectedSession.username || `${t('pages.adminSupport.user')} #${selectedSession.userId}`} #${selectedSession.id}`
@@ -644,6 +641,8 @@ const SupportManagement: React.FC = () => {
     queueTotalRef.current = 0;
     setSessions([]);
     setQueueTotal(0);
+    setQueueError(null);
+    setQueueLoading(true);
   };
 
   const assignToMe = async () => {
@@ -730,6 +729,7 @@ const SupportManagement: React.FC = () => {
               if (!event.target.value) submitQueueSearch('');
             }}
             style={{ width: 240 }}
+            enterButton={<Button icon={<SearchOutlined />} aria-label={queueSearchInputLabel} title={queueSearchInputLabel} />}
             aria-label={queueSearchInputLabel}
             title={queueSearchInputLabel}
           />
@@ -818,7 +818,25 @@ const SupportManagement: React.FC = () => {
 
       <div className="support-management__layout">
         <div className="support-management__queuePane">
-          {queueSessions.length === 0 ? (
+          {queueError ? (
+            <Alert
+              className="support-management__queueAlert"
+              type="warning"
+              showIcon
+              message={queueError}
+              action={(
+                <Button size="small" onClick={() => loadSessions()}>
+                  {t('common.retry')}
+                </Button>
+              )}
+            />
+          ) : null}
+          {queueLoading && queueSessions.length === 0 ? (
+            <div className="support-management__queueLoading" role="status" aria-live="polite">
+              <Spin size="small" />
+              <Text>{t('common.loading')}</Text>
+            </div>
+          ) : queueSessions.length === 0 ? (
             <Empty style={{ marginTop: 80 }} description={t('pages.adminSupport.noSessions')}>
               <Space wrap>
                 {filter !== 'OPEN' ? (
@@ -916,7 +934,7 @@ const SupportManagement: React.FC = () => {
           )}
         </div>
 
-        <div className="support-management__conversationPane">
+        <div ref={conversationPaneRef} className="support-management__conversationPane" tabIndex={-1}>
           {!selectedSession ? (
             <Empty style={{ marginTop: 180 }} description={t('pages.adminSupport.selectSession')} />
           ) : (
@@ -995,8 +1013,25 @@ const SupportManagement: React.FC = () => {
                 </Space>
               </div>
               <div ref={listRef} className="support-management__messagesPane">
-                {messages.length === 0 ? (
-                  <Empty description={t('pages.support.noMessages')} />
+                {messageLoading ? (
+                  <div className="support-management__messagesLoading" role="status" aria-live="polite">
+                    <Spin size="small" />
+                    <Text>{t('common.loading')}</Text>
+                  </div>
+                ) : messageError ? (
+                  <Alert
+                    className="support-management__messagesError"
+                    type="warning"
+                    showIcon
+                    message={messageError}
+                    action={(
+                      <Button size="small" onClick={() => loadMessages(selectedSession)}>
+                        {t('common.retry')}
+                      </Button>
+                    )}
+                  />
+                ) : messages.length === 0 ? (
+                  <Empty description={t('pages.support.noMessages')} />
                 ) : (
                   <List
                     dataSource={messages}
@@ -1062,7 +1097,7 @@ const SupportManagement: React.FC = () => {
                         key={action.key}
                         type="button"
                         className="support-management__orderWorkflowCard"
-                        disabled={!canReplySupport || selectedSession.status !== 'OPEN'}
+                        disabled={!canReplySupport || selectedSession.status !== 'OPEN' || conversationUnavailable}
                         aria-label={`${action.label}: ${latestOrderLabel}`}
                         title={`${action.label}: ${latestOrderLabel}`}
                         onClick={() => applyQuickReply(action.adminReply)}
@@ -1074,50 +1109,51 @@ const SupportManagement: React.FC = () => {
                   </div>
                 </div>
               ) : null}
-              {canReplySupport ? (
-                <div className="support-management__composer">
-                  <div className="support-management__replyReadiness">
-                    <div>
-                      <span>{t('pages.adminSupport.replyReadiness')}</span>
-                      <strong>{replyReadinessText}</strong>
-                    </div>
-                    <div className="support-management__replyReadinessChips">
-                      <span className={`support-management__replyReadinessChip ${selectedSession.status === 'OPEN' ? 'is-ready' : 'is-pending'}`}>
-                        {formatStatusLabel(selectedSession.status)}
-                      </span>
-                      <span className={`support-management__replyReadinessChip ${latestOrderContext ? 'is-ready' : 'is-pending'}`}>
-                        {latestOrderContext ? t('pages.support.orderContextReady') : t('pages.support.orderContextMissing')}
-                      </span>
-                      <span className={`support-management__replyReadinessChip ${replyText && !replyTooLong ? 'is-ready' : 'is-pending'}`}>
-                        {replyText ? t('pages.adminSupport.draftReady') : t('pages.adminSupport.draftMissing')}
-                      </span>
-                    </div>
+              <div className="support-management__composer">
+                <div className="support-management__replyReadiness">
+                  <div>
+                    <span>{t('pages.adminSupport.replyReadiness')}</span>
+                    <strong>{replyReadinessText}</strong>
                   </div>
-                  <Input.TextArea
-                    value={content}
-                    disabled={selectedSession.status !== 'OPEN' || sending}
-                    maxLength={supportChatConfig.maxMessageChars}
-                    showCount
-                    onChange={(event) => setContent(event.target.value)}
-                    onPressEnter={(event) => {
-                      if (!event.shiftKey) {
-                        event.preventDefault();
-                        send();
-                      }
-                    }}
-                    placeholder={t('pages.adminSupport.messagePlaceholder')}
-                    autoSize={{ minRows: 2, maxRows: 4 }}
-                    aria-label={composerInputLabel}
-                    title={composerInputLabel}
-                  />
-                  <div className="support-management__composerActions">
-                    <span className={`support-management__sendReadiness ${replyReady ? 'is-ready' : 'is-pending'}`}>
-                      {replyReady ? t('pages.adminSupport.replyReady') : replyReadinessText}
+                  <div className="support-management__replyReadinessChips">
+                    <span className={`support-management__replyReadinessChip ${canReplySupport ? 'is-ready' : 'is-pending'}`}>
+                      {canReplySupport ? t('adminLayout.supportReplyActions') : t('adminLayout.noPermission')}
                     </span>
-                    <Button type="primary" icon={<SendOutlined />} aria-label={sendReplyLabel} title={sendReplyLabel} onClick={send} loading={sending} disabled={!replyReady}>{t('common.send')}</Button>
+                    <span className={`support-management__replyReadinessChip ${selectedSession.status === 'OPEN' ? 'is-ready' : 'is-pending'}`}>
+                      {formatStatusLabel(selectedSession.status)}
+                    </span>
+                    <span className={`support-management__replyReadinessChip ${latestOrderContext ? 'is-ready' : 'is-pending'}`}>
+                      {latestOrderContext ? t('pages.support.orderContextReady') : t('pages.support.orderContextMissing')}
+                    </span>
+                    <span className={`support-management__replyReadinessChip ${replyText && !replyTooLong && !conversationUnavailable ? 'is-ready' : 'is-pending'}`}>
+                      {replyText ? t('pages.adminSupport.draftReady') : t('pages.adminSupport.draftMissing')}
+                    </span>
                   </div>
                 </div>
-              ) : null}
+                <Input.TextArea
+                  value={content}
+                  disabled={!canReplySupport || selectedSession.status !== 'OPEN' || sending || conversationUnavailable}
+                  maxLength={supportChatConfig.maxMessageChars}
+                  showCount
+                  onChange={(event) => setContent(event.target.value)}
+                  onPressEnter={(event) => {
+                    if (!event.shiftKey) {
+                      event.preventDefault();
+                      send();
+                    }
+                  }}
+                  placeholder={t('pages.adminSupport.messagePlaceholder')}
+                  autoSize={{ minRows: 2, maxRows: 4 }}
+                  aria-label={composerInputLabel}
+                  title={composerInputLabel}
+                />
+                <div className="support-management__composerActions">
+                  <span className={`support-management__sendReadiness ${replyReady ? 'is-ready' : 'is-pending'}`}>
+                    {replyReady ? t('pages.adminSupport.replyReady') : replyReadinessText}
+                  </span>
+                  <Button type="primary" icon={<SendOutlined />} aria-label={sendReplyLabel} title={sendReplyLabel} onClick={send} loading={sending} disabled={!replyReady}>{t('common.send')}</Button>
+                </div>
+              </div>
             </>
           )}
         </div>
