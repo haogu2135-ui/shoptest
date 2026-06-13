@@ -121,8 +121,11 @@ public class OrderService {
     private static final int HARD_EXPIRY_SCAN_BATCH_SIZE_LIMIT = 5000;
     private static final long DEFAULT_DASHBOARD_ORDER_STATS_CACHE_MS = 5000L;
     private static final long HARD_DASHBOARD_ORDER_STATS_CACHE_MS = 60000L;
+    private static final long DEFAULT_ADMIN_ORDER_SUMMARY_CACHE_MS = 5000L;
+    private static final long HARD_ADMIN_ORDER_SUMMARY_CACHE_MS = 60000L;
     private final ConcurrentMap<String, ReentrantLock> guestUserCreationLocks = new ConcurrentHashMap<>();
     private volatile DashboardOrderStatsCacheEntry dashboardOrderStatsCache;
+    private volatile AdminOrderSummaryCacheEntry adminOrderSummaryCache;
 
     @Autowired
     private OrderRepository orderRepository;
@@ -1068,8 +1071,10 @@ public class OrderService {
         int safeDays = Math.max(1, Math.min(days <= 0 ? 7 : days, 31));
         LocalDate end = today != null ? today : LocalDate.now();
         LocalDate start = end.minusDays(safeDays - 1L);
+        LocalDateTime startInclusive = start.atStartOfDay();
+        LocalDateTime endExclusive = end.plusDays(1L).atStartOfDay();
         Map<String, Map<String, Object>> rowsByDate = new LinkedHashMap<>();
-        for (Map<String, Object> row : orderRepository.dashboardSalesTrend(start.atStartOfDay())) {
+        for (Map<String, Object> row : orderRepository.dashboardSalesTrend(startInclusive, endExclusive)) {
             String date = mapDateString(mapValue(row, "trendDate"));
             if (date != null) {
                 rowsByDate.put(date, row);
@@ -1117,12 +1122,43 @@ public class OrderService {
 
     @Transactional(rollbackFor = Exception.class, readOnly = true)
     public Map<String, Long> countAdminOrderSummary(String search) {
-        Map<String, Object> row = orderRepository.countAdminOrderSummary(searchLikeTerm(search));
+        String searchTerm = searchLikeTerm(search);
+        if (searchTerm != null) {
+            return loadAdminOrderSummary(searchTerm);
+        }
+
+        long cacheTtlMs = adminOrderSummaryCacheMs();
+        long currentMillis = System.currentTimeMillis();
+        if (cacheTtlMs > 0) {
+            AdminOrderSummaryCacheEntry cached = adminOrderSummaryCache;
+            if (cached != null && currentMillis - cached.cachedAtMillis <= cacheTtlMs) {
+                return new LinkedHashMap<>(cached.summary);
+            }
+        }
+
+        Map<String, Long> summary = loadAdminOrderSummary(null);
+        if (cacheTtlMs > 0) {
+            adminOrderSummaryCache = new AdminOrderSummaryCacheEntry(
+                    currentMillis,
+                    new LinkedHashMap<>(summary));
+        }
+        return summary;
+    }
+
+    private Map<String, Long> loadAdminOrderSummary(String searchTerm) {
+        Map<String, Object> row = orderRepository.countAdminOrderSummary(searchTerm);
         Map<String, Long> summary = new LinkedHashMap<>();
         for (String key : ADMIN_ORDER_SUMMARY_KEYS) {
             summary.put(key, mapLong(row, key));
         }
         return summary;
+    }
+
+    private long adminOrderSummaryCacheMs() {
+        long configured = runtimeConfig == null
+                ? DEFAULT_ADMIN_ORDER_SUMMARY_CACHE_MS
+                : runtimeConfig.getLong("order.admin-summary-cache-ms", DEFAULT_ADMIN_ORDER_SUMMARY_CACHE_MS);
+        return Math.max(0L, Math.min(configured, HARD_ADMIN_ORDER_SUMMARY_CACHE_MS));
     }
 
     private long mapLong(Map<String, Object> row, String key) {
@@ -2266,6 +2302,16 @@ public class OrderService {
             this.recentLimit = recentLimit;
             this.cachedAtMillis = cachedAtMillis;
             this.stats = stats;
+        }
+    }
+
+    private static class AdminOrderSummaryCacheEntry {
+        private final long cachedAtMillis;
+        private final Map<String, Long> summary;
+
+        private AdminOrderSummaryCacheEntry(long cachedAtMillis, Map<String, Long> summary) {
+            this.cachedAtMillis = cachedAtMillis;
+            this.summary = summary;
         }
     }
 }

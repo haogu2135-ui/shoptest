@@ -4,42 +4,6 @@
   padding: 24px 0 36px;
 }
 
-.cart-page .cart-page__summaryStripCard,
-.cart-page .cart-page__readiness,
-.cart-page .cart-page__confidencePanel,
-.cart-page .cart-page__nextAction,
-.cart-page .cart-page__summary,
-.cart-page .cart-page__recentItem,
-.cart-page .cart-page__savedItem {
-  border-color: #e4ebe4;
-  background: #ffffff;
-}
-
-.cart-page .cart-page__nextAction--warning,
-.cart-page .cart-page__readiness--warning {
-  border-color: #ffd8bf;
-  background: #fff7f0;
-}
-
-.cart-page .cart-page__nextAction--warm,
-.cart-page .cart-page__nextAction--ready {
-  border-color: #d9eadf;
-  background: #f8fcf9;
-}
-
-.cart-page .cart-page__confidencePanel > summary::after {
-  background: #eaf4ef;
-}
-
-.cart-page .cart-page__confidencePanel[open] > summary,
-.cart-page .cart-page__total {
-  border-color: #e4ebe4;
-}
-
-.cart-page .cart-page__checkoutPathStep p {
-  color: #627064;
-}
-
 .cart-page--es {
   overflow-wrap: anywhere;
 }

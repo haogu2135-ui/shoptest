@@ -5369,7 +5369,7 @@ Notes:
 - Environment: `src/main/java/com/example/shop/service/OrderStatsService.java:49`
 - Severity: MEDIUM
 - Description: The query uses a correlated subquery `AND DATE_ADD(o.created_at, INTERVAL 7 DAY) > NOW()` in the main WHERE, which the optimizer may not push down to each UNION branch. If admin order counts are cached separately, this is fine; otherwise it could be a bottleneck.
-- Status: OPEN
+- Status: SOURCE_FIXED (2026-06-13 17:11 UTC) / REGRESSION_GUARD_ADDED / REGRESSION_PENDING — The stale `OrderStatsService.java` path is absent; active order summary aggregation lives in `OrderService.countAdminOrderSummary(...)` and `OrderMapper.xml`. Added a blank-search-only short TTL cache controlled by `order.admin-summary-cache-ms` (default `5000`, clamped to `0..60000`, `0` disables) so repeated admin summary refreshes do not rerun the aggregate query. Search-specific summaries bypass the cache to avoid unbounded keyword cardinality and stale filtered results. `OrderMapper.xml` no longer contains the reported old `DATE_ADD(o.created_at, INTERVAL 7 DAY) > NOW()` pattern and now skips the `users` join unless search is present. `OrderStatsServiceTest` adds cache/search-bypass/mapper-shape guards. No Maven/JUnit/backend/API/frontend/browser/APP/deploy/service/Nginx commands were run.
 - Expected fix direction: Cache the result or add database index on `orders.created_at`.
 
 ### F2334: `assertNextStatus` creates new `HashMap` on every call
@@ -13750,7 +13750,7 @@ All previously reported pagination/sorting/filtering bugs have been **verified F
 - **Reproduction**: Run `EXPLAIN SELECT ... FROM orders LEFT JOIN users ... WHERE search IS NULL` on a large orders table — observe full join scan.
 - **Why MEDIUM**: Performance issue on admin dashboard load, scales linearly with order count.
 - **Suggested fix**: Use MyBatis dynamic SQL: `<if test="search == null or search == ''">FROM orders</if><if test="search != null and search != ''">FROM orders LEFT JOIN users ON users.id = orders.user_id</if>`.
-- **Status**: OPEN
+- **Status**: SOURCE_FIXED (2026-06-13 17:11 UTC) / REGRESSION_GUARD_ADDED / REGRESSION_PENDING — `countAdminOrderSummary` now keeps `FROM orders` as the default path and wraps `LEFT JOIN users ON users.id = orders.user_id` in `<if test="search != null and search != ''">`, so the common unfiltered admin summary does not join every user row. The same pass added a blank-search-only service cache for repeated refreshes and `OrderStatsServiceTest.adminOrderSummaryMapperSkipsUserJoinUntilSearchIsPresent()` as a source guard. No runtime SQL EXPLAIN or backend tests were run under the current no-test restriction.
 
 ### F2396: [MEDIUM] Cycle #528 — `dashboardSalesTrend` query has no upper-bound date guard
 - **Files**: `src/main/resources/mapper/OrderMapper.xml` (lines 117-126)
@@ -13758,7 +13758,7 @@ All previously reported pagination/sorting/filtering bugs have been **verified F
 - **Reproduction**: Call `OrderMapper.dashboardSalesTrend` with `start` set to 10 years ago — observe full table scan in EXPLAIN.
 - **Why MEDIUM**: Defense-in-depth; currently safe but unguarded SQL is a latent risk.
 - **Suggested fix**: Add `AND created_at <= DATE_ADD(#{start}, INTERVAL 32 DAY)` as a safety upper bound in the SQL, or add a `#{end}` parameter.
-- **Status**: OPEN
+- **Status**: SOURCE_FIXED (2026-06-13 17:31 UTC) / REGRESSION_GUARD_ADDED / REGRESSION_PENDING — `OrderRepository.dashboardSalesTrend(...)` now requires both `start` and `endExclusive` parameters. `OrderService.dashboardSalesTrend(...)` computes the exact displayed window as `[start.atStartOfDay(), end.plusDays(1).atStartOfDay())`, still clamped to at most 31 days, and `OrderMapper.xml` applies both `created_at >= #{start}` and `created_at < #{endExclusive}`. `OrderStatsServiceTest` now verifies the service passes the expected bounded window and source-guards the mapper upper bound. No Maven/JUnit/backend/API/frontend/browser/APP/deploy/service/Nginx commands were run.
 
 ### F2397: [MEDIUM] Cycle #528 — `OrderStatsServiceTest` does not test `dashboardOrderStats` or SLA risk calculations
 - **Files**: `src/test/java/com/example/shop/service/OrderStatsServiceTest.java`
@@ -13774,7 +13774,7 @@ All previously reported pagination/sorting/filtering bugs have been **verified F
 - **Reproduction**: Diff lines 7-41 against lines 1377-1411 — identical selectors and properties.
 - **Why LOW**: No functional impact (cascade ensures correct rendering), but code quality/maintainability issue.
 - **Suggested fix**: Remove the first set of rules (lines 7-41) since the second set (lines 1377-1411) always overrides them anyway.
-- **Status**: OPEN
+- **Status**: SOURCE_FIXED (2026-06-13 17:39 UTC) / REGRESSION_GUARD_ADDED / REGRESSION_PENDING — Removed the first duplicate Cart surface color block from `frontend/src/pages/Cart.css`, leaving the later "Cart polish" block as the single authoritative definition. Added `CartCheckoutFlow.test.tsx` static guard to require the affected surface selectors to appear exactly once. No Jest/frontend build/browser/APP/backend/API/deploy/service/Nginx commands were run.
 
 ### F2399 (escalation of F2374): [INFO] Cycle #528 — mobile-app.css has grown to 9,986 lines (nearly double the F2374 threshold)
 - **Files**: `frontend/src/mobile-app.css` (9,986 lines)
@@ -13787,7 +13787,7 @@ All previously reported pagination/sorting/filtering bugs have been **verified F
 - **Reproduction**: Add item to cart → click quantity input → select all → delete → observe field snaps to "1" before user can type new value.
 - **Why MEDIUM**: Mobile UX friction on a high-traffic page; affects all users editing quantity on touch devices.
 - **Suggested fix**: On empty input, set a local `pendingValue` state to `""` and only apply `Math.max(1, ...)` on blur or Enter key. Keep the input controlled but allow transient empty state.
-- **Status**: OPEN (new finding)
+- **Status**: SOURCE_FIXED (2026-06-13 17:57 UTC) / REGRESSION_GUARD_ADDED / REGRESSION_PENDING — `Cart.tsx` now keeps per-item `quantityDrafts` for transient empty quantity input values. Clearing the input stores an empty draft and does not call `updateQuantity(...)`; blur applies the `1` fallback, and Enter blurs an empty field so the same fallback path runs. Valid numeric edits still use the existing `updateQuantity(...)` path and debounced sync. Added `CartCheckoutFlow.test.tsx` coverage for clearing a quantity input, verifying it remains empty without an API call until blur applies/syncs the fallback. No Jest/frontend build/browser/APP/backend/API/deploy/service/Nginx commands were run.
 
 ### F2431: [MEDIUM] Cycle #533 — Cart.tsx computed values (total, shipping, savings) not memoized — re-render on every interaction
 - **Files**: `frontend/src/pages/Cart.tsx` (getCartTotal, getCartSavings, getShippingEstimate functions)
@@ -13795,7 +13795,7 @@ All previously reported pagination/sorting/filtering bugs have been **verified F
 - **Reproduction**: Add 50+ items to cart → open React DevTools Profiler → type in quantity input → observe every component in the tree re-renders, with `Cart` showing ~15ms committed time.
 - **Why MEDIUM**: Performance regression on cart page; affects all users with >10 items.
 - **Suggested fix**: Wrap each in `useMemo(() => ..., [items, selectedItemIds, freeShippingThreshold, shippingRate])`.
-- **Status**: OPEN (new finding)
+- **Status**: SOURCE_FIXED (2026-06-13 18:07 UTC) / CURRENT_SOURCE_PARTIALLY_STALE / REGRESSION_GUARD_ADDED / REGRESSION_PENDING — Current `Cart.tsx` no longer has the reported `getCartTotal()`, `getCartSavings()`, or `getShippingEstimate()` plain render-path functions; checkout metrics were already memoized through `useMemo(() => deriveCartCheckoutMetrics(cartItems, selectedIds), [cartItems, selectedIds])`. The remaining render-path derived values are now memoized: shipping summary/free-shipping/benefit/gift values are grouped in a `useMemo(...)` keyed by `currency`, `freeShippingThreshold`, `selectedItems`, and `selectedTotal`, and saved-for-later total is memoized by `savedItems`. `CartCheckoutFlow.test.tsx` now source-guards the memoized shipping/saved-total contract and rejects the old direct `const shippingSummary = deriveCartShippingSummary(...)` pattern. No Jest/frontend build/browser/APP/backend/API/deploy/service/Nginx commands were run.
 
 ### F2469: [LOW-MEDIUM] Cycle #546 — SSRF targetHost validation has TOCTOU gap (double-fetch race)
 - **Files**: `src/main/java/com/example/shop/service/MediaStorageServiceImpl.java` (lines 117, 138-140, 229)
@@ -13811,7 +13811,7 @@ All previously reported pagination/sorting/filtering bugs have been **verified F
 - **Reproduction**: Trigger any error path in Checkout.tsx address phone normalization → observe telemetry event shows `message: "[object Object]"` instead of the descriptive string.
 - **Why LOW**: Error telemetry is degraded but not user-facing. The errors still get reported (just with wrong message), but the context object containing diagnostic data is lost.
 - **Suggested fix**: Swap arguments at all 9 call sites: `reportNonBlockingError('Checkout address phone number normalization failed', { source: 'checkout-address-phone', rawValue: ... })`.
-- **Status**: OPEN (new finding)
+- **Status**: CURRENT_SOURCE_NON_ISSUE (2026-06-13 18:23 UTC) / REGRESSION_GUARD_ADDED / REGRESSION_PENDING — The reported current-source call sites are stale. `frontend/src/pages/Checkout.tsx` now calls `reportNonBlockingError(...)` with string context first for its diagnostic paths, and `frontend/src/utils/paymentRecovery.ts` contains no `reportNonBlockingError(...)` calls. Added `sourceQuality.test.ts` source guard that scans production frontend sources and rejects `reportNonBlockingError({ ... })` object-first calls, while specifically confirming Checkout has no object-first reporter call and PaymentRecovery has no reporter calls. No Jest/frontend build/browser/APP/backend/API/deploy/service/Nginx commands were run.
 
 ### F2471: [MEDIUM] Cycle #547 — Cart `updateQuantity` stale closure prevents rapid quantity changes from registering
 - **Files**: `frontend/src/pages/Cart.tsx` (lines 41-59, `updateQuantity` function)
@@ -13819,7 +13819,7 @@ All previously reported pagination/sorting/filtering bugs have been **verified F
 - **Reproduction**: Add item with qty 1 → click + twice rapidly → quantity may jump to 3 (correct) or stay at 2 (stale closure). More reliably: change qty from 1 to 5, then immediately to 10 — the API may send qty=6 (5+1 from stale closure).
 - **Why MEDIUM**: Quantity mismatches between UI and backend cause cart inconsistency and user confusion. The stale closure is masked by optimistic UI updates but becomes visible under rapid interaction or slow networks.
 - **Suggested fix**: Add `cart` and `items` to the `useCallback` dependency array, or use a ref to track the latest cart state: `const cartRef = useRef(cart); cartRef.current = cart;` and read from `cartRef.current` inside the callback.
-- **Status**: OPEN (new finding)
+- **Status**: CURRENT_SOURCE_NON_ISSUE (2026-06-13 18:39 UTC) / REGRESSION_GUARD_ADDED / REGRESSION_PENDING — The reported stale-closure shape is absent from current `Cart.tsx`: `updateQuantity` is a render-scoped function, not `useCallback([], [])`, and authenticated optimistic updates use functional `setCartItems((items) => ...)` before scheduling `scheduleQuantitySync(item.id, normalizedQuantity)`. Existing rapid quantity edit coverage still asserts only the final visible quantity is synced, and `CartCheckoutFlow.test.tsx` now adds a source guard rejecting a `useCallback(` wrapper inside `updateQuantity` while requiring the functional state update and final normalized sync call. No Jest/frontend build/browser/APP/backend/API/deploy/service/Nginx commands were run.
 
 ### F2472: [MEDIUM] Cycle #547 — Checkout error handler re-throws after calling `handleApiError`, causing redundant error processing
 - **Files**: `frontend/src/pages/Checkout.tsx` (lines 776-789, error handling in checkout submit)
@@ -13835,7 +13835,7 @@ All previously reported pagination/sorting/filtering bugs have been **verified F
 - **Reproduction**: Type a quantity in the cart input → select all text → delete → click outside the field → observe API call with `quantity: NaN` or `quantity: 0`.
 - **Why MEDIUM**: Invalid API calls to the backend (NaN/0 quantity) can cause 400 errors or unexpected cart state. Users who clear the field to type a new number may trigger an error before they finish typing.
 - **Suggested fix**: Add an `onBlur` handler: `onBlur={(e) => { const v = parseInt(e.target.value, 10); if (!v || v < 1) updateQuantity(item.productId, 1, item.sku); }}`. Also consider changing `type="text"` to `type="number"` with `min="1"` for native browser validation.
-- **Status**: OPEN (new finding)
+- **Status**: SOURCE_FIXED (2026-06-13 18:39 UTC) / CURRENT_SOURCE_PARTIALLY_STALE / REGRESSION_GUARD_ADDED / REGRESSION_PENDING — The reported `type="text"` and `parseInt('', 10)` path is stale. Current `Cart.tsx` renders quantity inputs as `type="number"` with `min={1}` and `step={1}`. The F2430 quantity draft fix lets an empty value remain transiently visible, returns before `updateQuantity(...)`, and commits the safe fallback through `updateQuantity(item, 1)` on blur or Enter. `CartCheckoutFlow.test.tsx` now covers the clear-then-blur behavior and source-guards the numeric input/empty-draft contract while rejecting `parseInt('', 10)`. No Jest/frontend build/browser/APP/backend/API/deploy/service/Nginx commands were run.
 
 ### F2474: [MEDIUM] Cycle #547 — Cart has no `AbortController` for API calls — stale responses can overwrite fresh state
 - **Files**: `frontend/src/pages/Cart.tsx` (lines 24-39, useEffect fetch; lines 41-59, `updateQuantity`; lines 125-155, `removeItem`/`saveForLater`)

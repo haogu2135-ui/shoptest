@@ -14,7 +14,8 @@ public interface OrderRepository {
     java.math.BigDecimal sumTotalAmount();
     List<Map<String, Object>> countByStatusGroup();
     Map<String, Object> dashboardOrderStats(@Param("now") LocalDateTime now);
-    List<Map<String, Object>> dashboardSalesTrend(@Param("start") LocalDateTime start);
+    List<Map<String, Object>> dashboardSalesTrend(@Param("start") LocalDateTime start,
+                                                  @Param("endExclusive") LocalDateTime endExclusive);
     List<Map<String, Object>> dashboardPaymentMethodBreakdown();
     List<Order> findRecentAdminOrders(@Param("limit") int limit);
     List<Order> searchAdminOrders(@Param("status") String status,
@@ -65,4 +66,4 @@ public interface OrderRepository {
     int completeReturnAndRefundIfCurrent(@Param("id") Long id, @Param("currentStatus") String currentStatus);
     int markRefunded(@Param("id") Long id, @Param("currentStatus") String currentStatus, @Param("reason") String reason);
     int deleteById(Long id);
-} 
+}

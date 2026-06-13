@@ -789,6 +789,16 @@ describe('cart to checkout flows', () => {
     expect(css).toMatch(/\.cart-page__quantityInput[\s\S]*?height:\s*48px\s*!important/);
   });
 
+  it('keeps cart surface color rules defined once', () => {
+    const css = fs.readFileSync(path.resolve(__dirname, 'Cart.css'), 'utf8');
+
+    expect(css.match(/\.cart-page \.cart-page__summaryStripCard,/g) ?? []).toHaveLength(1);
+    expect(css.match(/\.cart-page \.cart-page__nextAction--warning,/g) ?? []).toHaveLength(1);
+    expect(css.match(/\.cart-page \.cart-page__nextAction--warm,/g) ?? []).toHaveLength(1);
+    expect(css.match(/\.cart-page \.cart-page__confidencePanel > summary::after/g) ?? []).toHaveLength(1);
+    expect(css.match(/\.cart-page \.cart-page__checkoutPathStep p/g) ?? []).toHaveLength(1);
+  });
+
   it('keeps mobile cart hero stats inside the viewport instead of a clipped rail', () => {
     const css = fs.readFileSync(path.resolve(__dirname, 'Cart.css'), 'utf8');
     const f2709Start = css.lastIndexOf('F2709: mobile cart hero stats must fit the viewport without clipping.');
@@ -826,6 +836,9 @@ describe('cart to checkout flows', () => {
     expect(highlightEnd).toBeGreaterThan(highlightStart);
     expect(source).toContain('deriveCartShippingSummary(selectedItems, freeShippingThreshold, selectedTotal)');
     expect(source).toContain('freeShippingUnlocked ? 0 : freeShippingThreshold');
+    expect(source).toContain('} = useMemo(() => {');
+    expect(source).toContain('const savedItemsTotal = useMemo(');
+    expect(source).not.toContain('const shippingSummary = deriveCartShippingSummary');
     expect(highlightSource).toContain("key: 'shipping'");
     expect(highlightSource).toContain('title: freeShippingStatusTitle');
     expect(highlightSource).toContain('text: freeShippingProgressText');
@@ -869,6 +882,53 @@ describe('cart to checkout flows', () => {
 
     expect(cartApi.updateQuantity).toHaveBeenCalledTimes(1);
     expect(cartApi.updateQuantity).toHaveBeenCalledWith(item.id, 12);
+  });
+
+  it('allows quantity input to stay empty until blur applies the fallback', async () => {
+    const item = { ...memberCartItem, quantity: 2, stock: 20 };
+    mockLocalStorage = { token: 'member-token', userId: '7' };
+    (cartApi.getItems as jest.Mock).mockResolvedValue({ data: [item] });
+
+    renderWithRouter(<Cart />, '/cart');
+
+    await screen.findAllByText('Member Kibble');
+
+    useQuantityFakeTimers();
+    const quantityInput = getQuantityInput('Member Kibble');
+
+    fireEvent.change(quantityInput, { target: { value: '' } });
+
+    expect(quantityInput.value).toBe('');
+    expect(cartApi.updateQuantity).not.toHaveBeenCalled();
+
+    fireEvent.blur(quantityInput);
+
+    expect(quantityInput).toHaveValue(1);
+
+    await advanceQuantityDebounce();
+
+    expect(cartApi.updateQuantity).toHaveBeenCalledTimes(1);
+    expect(cartApi.updateQuantity).toHaveBeenCalledWith(item.id, 1);
+  });
+
+  it('keeps cart quantity source free of stale callbacks and invalid empty syncs', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, 'Cart.tsx'), 'utf8');
+    const updateStart = source.indexOf('const updateQuantity = (item: CartItem, quantity: number) => {');
+    const updateEnd = source.indexOf('const renderQuantityControl', updateStart);
+    const updateSource = source.slice(updateStart, updateEnd);
+
+    expect(updateStart).toBeGreaterThan(-1);
+    expect(updateEnd).toBeGreaterThan(updateStart);
+    expect(updateSource).not.toContain('useCallback(');
+    expect(updateSource).toContain('setCartItems((items) =>');
+    expect(updateSource).toContain('scheduleQuantitySync(item.id, normalizedQuantity)');
+    expect(source).toContain('type="number"');
+    expect(source).toContain("if (nextValue === '')");
+    expect(source).toContain("setQuantityDrafts((drafts) => ({ ...drafts, [item.id]: '' }))");
+    expect(source).toContain('return;');
+    expect(source).toContain('onBlur={() => {');
+    expect(source).toContain('updateQuantity(item, 1);');
+    expect(source).not.toContain("parseInt('', 10)");
   });
 
   it('persists only the final visible quantity after rapid authenticated plus/minus edits', async () => {

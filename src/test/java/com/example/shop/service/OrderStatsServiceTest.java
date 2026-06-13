@@ -25,6 +25,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
@@ -94,7 +95,9 @@ class OrderStatsServiceTest {
         ));
         when(orderRepository.countByStatusGroup()).thenReturn(List.of(Map.of("status", "PENDING_PAYMENT", "count", 2L)));
         when(orderRepository.findRecentAdminOrders(5)).thenReturn(List.of());
-        when(orderRepository.dashboardSalesTrend(any(LocalDateTime.class))).thenReturn(List.of());
+        LocalDateTime trendStart = databaseNow.toLocalDate().minusDays(6).atStartOfDay();
+        LocalDateTime trendEndExclusive = databaseNow.toLocalDate().plusDays(1).atStartOfDay();
+        when(orderRepository.dashboardSalesTrend(trendStart, trendEndExclusive)).thenReturn(List.of());
         when(orderRepository.dashboardPaymentMethodBreakdown()).thenReturn(List.of());
 
         Map<String, Object> first = service.getDashboardOrderStats(null, 7, 5);
@@ -106,8 +109,55 @@ class OrderStatsServiceTest {
         verify(orderRepository).dashboardOrderStats(any(LocalDateTime.class));
         verify(orderRepository).countByStatusGroup();
         verify(orderRepository).findRecentAdminOrders(5);
-        verify(orderRepository).dashboardSalesTrend(any(LocalDateTime.class));
+        verify(orderRepository).dashboardSalesTrend(trendStart, trendEndExclusive);
         verify(orderRepository).dashboardPaymentMethodBreakdown();
+        verifyNoMoreInteractions(orderRepository);
+    }
+
+    @Test
+    void dashboardSalesTrendMapperUsesBoundedDateWindow() throws Exception {
+        String mapper = Files.readString(Path.of("src/main/resources/mapper/OrderMapper.xml"));
+        int trendStart = mapper.indexOf("<select id=\"dashboardSalesTrend\"");
+        int trendEnd = mapper.indexOf("</select>", trendStart);
+        String trendQuery = mapper.substring(trendStart, trendEnd);
+
+        assertTrue(trendQuery.contains("WHERE created_at &gt;= #{start}"));
+        assertTrue(trendQuery.contains("AND created_at &lt; #{endExclusive}"));
+        assertFalse(trendQuery.contains("WHERE created_at &gt;= #{start}\n        GROUP BY"),
+                "dashboard sales trend must keep an upper date bound");
+    }
+
+    @Test
+    void adminOrderSummaryUsesShortLivedCacheForBlankSearch() {
+        when(runtimeConfig.getLong("order.admin-summary-cache-ms", 5000L)).thenReturn(5000L);
+        when(orderRepository.countAdminOrderSummary(null)).thenReturn(Map.of(
+                "NEEDS_ACTION", 4L,
+                "SLA_OVERDUE", 1L
+        ));
+
+        Map<String, Long> first = service.countAdminOrderSummary(null);
+        first.put("NEEDS_ACTION", 99L);
+        Map<String, Long> second = service.countAdminOrderSummary(" ");
+
+        assertEquals(99L, first.get("NEEDS_ACTION"));
+        assertEquals(4L, second.get("NEEDS_ACTION"));
+        assertEquals(1L, second.get("SLA_OVERDUE"));
+        assertEquals(0L, second.get("REFUNDING"));
+        verify(orderRepository).countAdminOrderSummary(null);
+        verifyNoMoreInteractions(orderRepository);
+    }
+
+    @Test
+    void adminOrderSummaryDoesNotCacheSearchRequests() {
+        String escapedSearch = "return!_queue";
+        when(orderRepository.countAdminOrderSummary(escapedSearch)).thenReturn(Map.of(
+                "NEEDS_ACTION", 2L
+        ));
+
+        assertEquals(2L, service.countAdminOrderSummary("return_queue").get("NEEDS_ACTION"));
+        assertEquals(2L, service.countAdminOrderSummary("return_queue").get("NEEDS_ACTION"));
+
+        verify(orderRepository, times(2)).countAdminOrderSummary(escapedSearch);
         verifyNoMoreInteractions(orderRepository);
     }
 
@@ -154,6 +204,19 @@ class OrderStatsServiceTest {
         verify(orderRepository).countAdminOrders(null, escapedSearch, null);
         verify(orderRepository).countAdminOrderSummary(escapedSearch);
         verifyNoMoreInteractions(orderRepository);
+    }
+
+    @Test
+    void adminOrderSummaryMapperSkipsUserJoinUntilSearchIsPresent() throws Exception {
+        String mapper = Files.readString(Path.of("src/main/resources/mapper/OrderMapper.xml"));
+        int summaryStart = mapper.indexOf("<select id=\"countAdminOrderSummary\"");
+        int filterStart = mapper.indexOf("<where>", summaryStart);
+        String summaryFromClause = mapper.substring(summaryStart, filterStart);
+
+        assertTrue(summaryFromClause.contains("<if test=\"search != null and search != ''\">"));
+        assertTrue(summaryFromClause.contains("LEFT JOIN users ON users.id = orders.user_id"));
+        assertFalse(summaryFromClause.contains("FROM orders\n        LEFT JOIN users"),
+                "unfiltered admin order summary should not join every user row");
     }
 
     @Test

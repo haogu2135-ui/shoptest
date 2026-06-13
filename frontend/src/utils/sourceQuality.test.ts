@@ -397,6 +397,23 @@ describe('source quality contracts', () => {
     });
   });
 
+  it('keeps reportNonBlockingError calls using a string context first', () => {
+    const frontendRoot = path.resolve(__dirname, '..');
+    const frontendProjectRoot = path.resolve(__dirname, '../..');
+    const files = collectFilesByExtension(frontendRoot, scriptExtensions)
+      .filter((file) => !/\.(test|spec)\.[tj]sx?$/.test(file));
+    const offenders = files
+      .filter((file) => /reportNonBlockingError\s*\(\s*\{/.test(fs.readFileSync(file, 'utf8')))
+      .map((file) => path.relative(frontendProjectRoot, file))
+      .sort();
+    const checkoutSource = fs.readFileSync(path.join(frontendRoot, 'pages/Checkout.tsx'), 'utf8');
+    const paymentRecoverySource = fs.readFileSync(path.join(frontendRoot, 'utils/paymentRecovery.ts'), 'utf8');
+
+    expect(offenders).toEqual([]);
+    expect(checkoutSource).not.toMatch(/reportNonBlockingError\s*\(\s*\{/);
+    expect(paymentRecoverySource).not.toContain('reportNonBlockingError(');
+  });
+
   it('keeps critical navigation/auth/support fallbacks observable instead of silent promise catches', () => {
     const frontendRoot = path.resolve(__dirname, '..');
     const targets = [

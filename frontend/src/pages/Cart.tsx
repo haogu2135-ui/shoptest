@@ -180,6 +180,7 @@ const Cart: React.FC = () => {
   const [addingRecentId, setAddingRecentId] = useState<number | null>(null);
   const [updatingItemIds, setUpdatingItemIds] = useState<number[]>([]);
   const [removingItemIds, setRemovingItemIds] = useState<number[]>([]);
+  const [quantityDrafts, setQuantityDrafts] = useState<Record<number, string>>({});
   const [checkoutSubmitting, setCheckoutSubmitting] = useState(false);
   const mountedRef = useRef(true);
   const navigate = useNavigate();
@@ -290,6 +291,23 @@ const Cart: React.FC = () => {
   }, [fetchCartItems]);
 
   useEffect(() => {
+    setQuantityDrafts((drafts) => {
+      const visibleItemIds = new Set(cartItems.map((item) => item.id));
+      let changed = false;
+      const nextDrafts: Record<number, string> = {};
+      Object.entries(drafts).forEach(([itemId, value]) => {
+        const numericItemId = Number(itemId);
+        if (visibleItemIds.has(numericItemId)) {
+          nextDrafts[numericItemId] = value;
+        } else {
+          changed = true;
+        }
+      });
+      return changed ? nextDrafts : drafts;
+    });
+  }, [cartItems]);
+
+  useEffect(() => {
     return () => {
       mountedRef.current = false;
     };
@@ -365,6 +383,12 @@ const Cart: React.FC = () => {
   const updateQuantity = (item: CartItem, quantity: number) => {
     const normalizedQuantity = normalizeCartQuantity(item, quantity);
     const authenticated = hasAuthenticatedCartSession();
+    setQuantityDrafts((drafts) => {
+      if (!(item.id in drafts)) return drafts;
+      const nextDrafts = { ...drafts };
+      delete nextDrafts[item.id];
+      return nextDrafts;
+    });
     if (getCartLineQuantity(item.quantity) === normalizedQuantity && !hasPendingQuantityTimer(item.id)) return;
     if (!authenticated) {
       setCartItems(normalizeCartItems(updateGuestCartQuantity(item.id, normalizedQuantity)));
@@ -384,6 +408,8 @@ const Cart: React.FC = () => {
     const syncing = updatingItemIds.includes(item.id);
     const disabled = !isAvailable(item) || removingItemIds.includes(item.id) || checkoutSubmitting;
     const quantity = getCartLineQuantity(item.quantity);
+    const quantityDraft = quantityDrafts[item.id];
+    const quantityValue = quantityDraft ?? quantity;
     if (!isAvailable(item)) {
       const unavailableLabel = isCartItemStockOut(item.stock) ? t('pages.cart.outOfStock') : t('pages.cart.quantityUnavailable');
       return (
@@ -415,11 +441,28 @@ const Cart: React.FC = () => {
           max={limit}
           step={1}
           inputMode="numeric"
-          value={quantity}
           disabled={disabled}
           aria-label={quantityLabel}
           title={quantityLabel}
-          onChange={(event) => updateQuantity(item, Math.floor(Number(event.currentTarget.value) || 1))}
+          value={quantityValue}
+          onChange={(event) => {
+            const nextValue = event.currentTarget.value;
+            if (nextValue === '') {
+              setQuantityDrafts((drafts) => ({ ...drafts, [item.id]: '' }));
+              return;
+            }
+            updateQuantity(item, Math.floor(Number(nextValue) || 1));
+          }}
+          onBlur={() => {
+            if (quantityDraft === '') {
+              updateQuantity(item, 1);
+            }
+          }}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' && quantityDraft === '') {
+              event.currentTarget.blur();
+            }
+          }}
         />
         <Button
           size="small"
@@ -657,14 +700,34 @@ const Cart: React.FC = () => {
   const showRecentlyViewedRecovery = recentProducts.length > 0 && (cartItems.length === 0 || purchasableItems.length === 0);
 
   const freeShippingThreshold = market.freeShippingThreshold;
-  const shippingSummary = deriveCartShippingSummary(selectedItems, freeShippingThreshold, selectedTotal);
-  const freeShippingRemaining = shippingSummary.remainingAmount;
-  const freeShippingUnlocked = shippingSummary.freeShippingUnlocked;
-  const benefitTarget = getNearestCartBenefitTarget(selectedTotal, freeShippingUnlocked ? 0 : freeShippingThreshold, currency);
-  const giftUnlocked = isGiftUnlocked(selectedTotal, currency);
-  const freeShippingPercent = shippingSummary.progressPercent;
+  const {
+    shippingSummary,
+    freeShippingRemaining,
+    freeShippingUnlocked,
+    benefitTarget,
+    giftUnlocked,
+    freeShippingPercent,
+  } = useMemo(() => {
+    const nextShippingSummary = deriveCartShippingSummary(selectedItems, freeShippingThreshold, selectedTotal);
+    const freeShippingUnlocked = nextShippingSummary.freeShippingUnlocked;
+    return {
+      shippingSummary: nextShippingSummary,
+      freeShippingRemaining: nextShippingSummary.remainingAmount,
+      freeShippingUnlocked,
+      benefitTarget: getNearestCartBenefitTarget(
+        selectedTotal,
+        freeShippingUnlocked ? 0 : freeShippingThreshold,
+        currency,
+      ),
+      giftUnlocked: isGiftUnlocked(selectedTotal, currency),
+      freeShippingPercent: nextShippingSummary.progressPercent,
+    };
+  }, [currency, freeShippingThreshold, selectedItems, selectedTotal]);
   const allSelected = purchasableItems.length > 0 && selectedPurchasableCount === purchasableItems.length;
-  const savedItemsTotal = roundCartMoney(savedItems.reduce((sum, item) => sum + getLineTotal(item), 0));
+  const savedItemsTotal = useMemo(
+    () => roundCartMoney(savedItems.reduce((sum, item) => sum + getLineTotal(item), 0)),
+    [savedItems],
+  );
   const toggleAll = (checked: boolean) => {
     setSelectedIds(checked ? purchasableItems.map((item) => item.id) : []);
   };
