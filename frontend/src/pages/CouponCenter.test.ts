@@ -48,6 +48,20 @@ describe('CouponCenter mobile coupon rail contract', () => {
     expect(afterF2721Guard).not.toMatch(/\.coupon-center-page__mobileActionBar\s*\{[^}]*bottom:\s*calc/);
   });
 
+  it('keeps claim filters and mobile claim actions readable after final mobile overrides', () => {
+    const css = readCouponCenterCss();
+    const finalGuardStart = css.indexOf('UI-20260613-01');
+    const finalGuard = css.slice(finalGuardStart);
+
+    expect(finalGuardStart).toBeGreaterThan(-1);
+    expect(finalGuard).toMatch(/\.coupon-claim-section__filterButton--active,[\s\S]*?\.coupon-claim-section__filterButton--active \.anticon\s*\{[\s\S]*?background:\s*#124734\s*!important;[\s\S]*?color:\s*#ffffff\s*!important;[\s\S]*?-webkit-text-fill-color:\s*#ffffff\s*!important;/);
+    expect(finalGuard).toMatch(/\.coupon-claim-section__filterButton--active strong\s*\{[\s\S]*?background:\s*rgba\(255,\s*255,\s*255,\s*0\.16\)\s*!important;[\s\S]*?color:\s*#ffffff\s*!important;/);
+    expect(finalGuard).toMatch(/\.coupon-claim-section__filterButton--empty:not\(\.coupon-claim-section__filterButton--active\)\s*\{[\s\S]*?background:\s*#ffffff\s*!important;[\s\S]*?color:\s*#3f4d43\s*!important;/);
+    expect(finalGuard).toMatch(/\.coupon-center-page \.ant-btn-primary:not\(:disabled\),[\s\S]*?\.coupon-claim-section__filterEmpty \.ant-btn-primary:not\(:disabled\) > span:not\(\.ant-btn-icon\):not\(\.anticon\)\s*\{[\s\S]*?background:\s*#c43a1d\s*!important;[\s\S]*?color:\s*#ffffff\s*!important;/);
+    expect(finalGuard).toMatch(/@media \(max-width:\s*560px\)\s*\{[\s\S]*?\.coupon-center-page__mobileActionBar\s*\{[\s\S]*?position:\s*static\s*!important;[\s\S]*?bottom:\s*auto\s*!important;[\s\S]*?width:\s*100%\s*!important;/);
+    expect(finalGuard).toMatch(/\.coupon-claim-section__filterButtons\s*\{[\s\S]*?display:\s*grid\s*!important;[\s\S]*?grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)\s*!important;[\s\S]*?overflow:\s*visible\s*!important;/);
+  });
+
   it('keeps guest coupon claim actions routed through login feedback', () => {
     const source = readCouponCenterSource();
     const singleClaimStart = source.indexOf('const claimCoupon = async');

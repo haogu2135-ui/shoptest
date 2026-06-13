@@ -10,6 +10,8 @@ const readCheckoutTestSource = () => require('fs').readFileSync(__filename, 'utf
 const readCheckoutPageSource = () => require('fs').readFileSync(require('path').resolve(__dirname, 'Checkout.tsx'), 'utf8') as string;
 const readCheckoutCssSource = () => require('fs').readFileSync(require('path').resolve(__dirname, 'Checkout.css'), 'utf8') as string;
 const readMobileAppCssSource = () => require('fs').readFileSync(require('path').resolve(__dirname, '../mobile-app.css'), 'utf8') as string;
+const readProfilePageSource = () => require('fs').readFileSync(require('path').resolve(__dirname, 'Profile.tsx'), 'utf8') as string;
+const readRegionDataSource = () => require('fs').readFileSync(require('path').resolve(__dirname, '../regionData.ts'), 'utf8') as string;
 
 const expectDescribedByText = (field: HTMLElement, expectedText: string) => {
   const describedBy = field.getAttribute('aria-describedby') || '';
@@ -296,6 +298,9 @@ describe('Checkout payment availability', () => {
     expect(source).toContain('checkoutRegionCascaderOpen');
     expect(source).toContain('loadCheckoutRegionOptions');
     expect(source).toContain('loadRegionData');
+    expect(source).toContain('regionOptionsLanguage === language');
+    expect(source).toContain('loadRegionData(language)');
+    expect(source).toContain('setRegionOptionsLanguage(language)');
     expect(source).not.toContain('regionData }');
     expect(source).toContain('open={checkoutRegionCascaderOpen}');
     expect(source).toContain('onOpenChange={setCheckoutRegionCascaderVisibility}');
@@ -315,6 +320,26 @@ describe('Checkout payment availability', () => {
     expect(source).toContain("document.addEventListener('scroll', closeOnViewportMove, true)");
     expect(source).toContain("document.addEventListener('keydown', closeOnEscape, true)");
     expect(source).toContain('closeCheckoutRegionCascader();');
+  });
+
+  it('keeps address region country labels localized for checkout and profile cascaders', () => {
+    const checkoutSource = readCheckoutPageSource();
+    const profileSource = readProfilePageSource();
+    const regionDataSource = readRegionDataSource();
+
+    expect(regionDataSource).toContain("en: 'China'");
+    expect(regionDataSource).toContain("en: 'Mexico'");
+    expect(regionDataSource).toContain("es: 'M\\u00e9xico'");
+    expect(regionDataSource).toContain('label: localizedCountryLabels[region.value]?.[normalizedLanguage] || region.label');
+    expect(regionDataSource).toContain('cachedLocalizedRegionData: Partial<Record<RegionLanguage, RegionOption[]>>');
+
+    for (const source of [checkoutSource, profileSource]) {
+      expect(source).toContain('regionOptionsLanguage === language');
+      expect(source).toContain('loadRegionData(language)');
+      expect(source).toContain('setRegionOptionsLanguage(language)');
+      expect(source).toContain('options={regionOptions}');
+      expect(source).not.toContain('loadRegionData()');
+    }
   });
 
   it('resets the mounted guard on effect mount so StrictMode does not drop payment channels', () => {

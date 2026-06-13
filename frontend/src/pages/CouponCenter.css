@@ -5178,6 +5178,110 @@
   }
 }
 
+/* A-10 final App coupon-center legibility floor after compact toolbar rules. */
+@media (max-width: 780px) {
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--coupon-center .coupon-next-action__progressLabel > span,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--coupon-center .coupon-next-action__progressLabel .ant-typography,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--coupon-center .coupon-claim-section__toolbar span,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--coupon-center .coupon-claim-section__toolbar .ant-btn,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--coupon-center .coupon-claim-section__toolbar .ant-btn > span:not(.anticon):not(.ant-btn-icon),
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--coupon-center .coupon-center-page__couponTags .ant-tag,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--coupon-center .coupon-center-page__couponTags .ant-tag span,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--coupon-center .coupon-center-page__couponAction.ant-btn,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--coupon-center .coupon-center-page__couponAction.ant-btn > span:not(.anticon):not(.ant-btn-icon) {
+    font-size: 12px !important;
+    line-height: 1.2 !important;
+  }
+}
+
+/* A-10 follow-up: coupon action facts and card tags are actionable shopping
+   signals in App, so they need the same 12px minimum as controls. */
+@media (max-width: 780px) {
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--coupon-center .coupon-next-action__metaItem,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--coupon-center .coupon-next-action__metaItem .ant-typography,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--coupon-center .coupon-center-page__couponMicroFacts span,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--coupon-center .coupon-center-page__couponTags .ant-tag,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--coupon-center .coupon-center-page__couponTags .ant-tag span {
+    font-size: 12px !important;
+    line-height: 1.2 !important;
+  }
+}
+
+/* F2721: mobile coupon controls should stack in the document instead of
+   competing as sticky layers over each other and over the global bottom nav. */
+@media (max-width: 560px) {
+  .coupon-center-page {
+    padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 76px) + 24px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .coupon-center-page__quickNav,
+  .coupon-center-page__mobileActionBar {
+    position: static !important;
+    inset: auto !important;
+    z-index: auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 0 10px !important;
+    transform: none !important;
+  }
+
+  .coupon-center-page__quickNav {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    padding: 0 !important;
+  }
+
+  .coupon-center-page__quickNav button {
+    min-height: 46px !important;
+  }
+
+  .coupon-center-page__mobileActionBar {
+    display: grid !important;
+    border-radius: 8px !important;
+    box-shadow: 0 8px 18px rgba(18, 71, 52, 0.08) !important;
+  }
+}
+
+/* Android UI closure: coupon hero, quick nav and savings path controls. */
+.coupon-center-page__heroBadge--muted,
+.coupon-center-page__quickNavItem--muted,
+.coupon-wallet__expiryPill--muted {
+  color: #4f5d52 !important;
+}
+
+.coupon-center-page__heroBadge--muted .anticon,
+.coupon-center-page__quickNavItem--muted .anticon {
+  color: #3f6b4d !important;
+}
+
+@media (max-width: 780px) {
+  .coupon-center-page__heroActions .ant-btn,
+  .coupon-center-page__heroPlan .ant-btn,
+  .coupon-center-page__quickNav button,
+  .coupon-savings-path > .ant-btn,
+  .coupon-savings-path .ant-btn,
+  .coupon-claim-section__activeContext button,
+  .coupon-center-page .ant-btn {
+    min-height: 44px !important;
+    height: auto !important;
+    max-height: none !important;
+    font-size: max(12px, 1em) !important;
+  }
+
+  .coupon-center-page__heroBadges span,
+  .coupon-center-page__heroStats span,
+  .coupon-savings-path__steps span,
+  .coupon-center-page__quickNav button span,
+  .coupon-center-page__heroPlan > span:not(.ant-typography),
+  .coupon-center-page__heroText,
+  .coupon-center-page .ant-tag {
+    min-height: 34px !important;
+    color: #2f4f3a !important;
+    font-size: max(12px, 1em) !important;
+    line-height: 1.25 !important;
+  }
+}
+
 /* Final narrow mobile coupon layout guard: remove hidden overflow from guidance and card headers. */
 @media (max-width: 560px) {
   .coupon-guidance-grid {
@@ -5370,5 +5474,112 @@
 @media (min-width: 341px) and (max-width: 380px) {
   .coupon-center-page__quickNav {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* UI-20260613-01: claim-list filters and mobile claim actions must keep
+   independent contrast/readability after App and narrow-web density overrides. */
+.coupon-claim-section__filterButton--active,
+.coupon-claim-section__filterButton--active span,
+.coupon-claim-section__filterButton--active .anticon {
+  border-color: #124734 !important;
+  background: #124734 !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
+
+.coupon-claim-section__filterButton--active strong {
+  border: 1px solid rgba(255, 255, 255, 0.34) !important;
+  background: rgba(255, 255, 255, 0.16) !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
+
+.coupon-claim-section__filterButton--empty:not(.coupon-claim-section__filterButton--active) {
+  border-color: #cbd8cf !important;
+  background: #ffffff !important;
+  color: #3f4d43 !important;
+  -webkit-text-fill-color: #3f4d43 !important;
+}
+
+.coupon-claim-section__filterButton--empty:not(.coupon-claim-section__filterButton--active) span,
+.coupon-claim-section__filterButton--empty:not(.coupon-claim-section__filterButton--active) .anticon {
+  color: #3f4d43 !important;
+  -webkit-text-fill-color: #3f4d43 !important;
+}
+
+.coupon-claim-section__filterButton--empty:not(.coupon-claim-section__filterButton--active) strong {
+  background: #eef4f0 !important;
+  color: #2f3d32 !important;
+  -webkit-text-fill-color: #2f3d32 !important;
+}
+
+.coupon-center-page .ant-btn-primary:not(:disabled),
+.coupon-center-page .ant-btn-primary:not(:disabled) > span:not(.ant-btn-icon):not(.anticon),
+.coupon-center-page__mobileActionBar .ant-btn-primary:not(:disabled),
+.coupon-center-page__mobileActionBar .ant-btn-primary:not(:disabled) > span:not(.ant-btn-icon):not(.anticon),
+.coupon-claim-section__filterEmpty .ant-btn-primary:not(:disabled),
+.coupon-claim-section__filterEmpty .ant-btn-primary:not(:disabled) > span:not(.ant-btn-icon):not(.anticon) {
+  border-color: #c43a1d !important;
+  background: #c43a1d !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
+
+@media (max-width: 560px) {
+  .coupon-center-page {
+    padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 76px) + 152px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .coupon-center-page__mobileActionBar {
+    position: static !important;
+    inset: auto !important;
+    top: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    left: auto !important;
+    z-index: auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 0 14px !important;
+    transform: none !important;
+  }
+
+  .coupon-claim-section {
+    scroll-margin-top: 16px;
+    margin-bottom: 16px;
+  }
+
+  .coupon-claim-section__filters {
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+
+  .coupon-claim-section__filterButtons {
+    width: 100% !important;
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  .coupon-claim-section__filterButton {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-height: 44px !important;
+    justify-content: center !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    white-space: normal !important;
+    overflow-wrap: anywhere !important;
+    line-height: 1.15 !important;
+  }
+}
+
+@media (max-width: 340px) {
+  .coupon-claim-section__filterButtons {
+    grid-template-columns: minmax(0, 1fr) !important;
   }
 }
