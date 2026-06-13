@@ -5583,3 +5583,126 @@
     grid-template-columns: minmax(0, 1fr) !important;
   }
 }
+
+/* F2713: mobile coupon cards and tags must wrap inside the card width. */
+@media (max-width: 560px) {
+  .coupon-center-page__coupon {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .coupon-center-page__coupon .ant-card-head {
+    min-width: 0 !important;
+    padding-inline: 12px !important;
+  }
+
+  .coupon-center-page__coupon .ant-card-head-wrapper {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 8px !important;
+    align-items: start !important;
+  }
+
+  .coupon-center-page__coupon .ant-card-head-title,
+  .coupon-center-page__coupon .ant-card-extra {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  .coupon-center-page__coupon .ant-card-extra {
+    margin-inline-start: 0 !important;
+  }
+
+  .coupon-center-page__couponTitle,
+  .coupon-center-page__couponTags {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+    align-items: flex-start !important;
+    overflow: visible !important;
+    white-space: normal !important;
+  }
+
+  .coupon-center-page__couponTitle > span:first-child {
+    flex: 1 1 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    white-space: normal !important;
+    overflow-wrap: anywhere !important;
+    line-height: 1.2 !important;
+  }
+
+  .coupon-center-page__couponTags .ant-space-item {
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .coupon-center-page__couponTags .ant-tag,
+  .coupon-center-page__couponTitle .ant-tag {
+    max-width: 100% !important;
+    min-height: 28px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    margin-inline-end: 0 !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    white-space: normal !important;
+    overflow-wrap: anywhere !important;
+    line-height: 1.15 !important;
+  }
+
+  .coupon-center-page__couponValueRow {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 6px !important;
+    overflow: visible !important;
+  }
+
+  .coupon-center-page__couponValue,
+  .coupon-center-page__couponEstimate {
+    max-width: 100% !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    white-space: normal !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  .coupon-center-page__couponEstimate {
+    width: fit-content !important;
+  }
+
+  .coupon-center-page__couponDetails,
+  .coupon-center-page__couponMicroFacts {
+    width: 100% !important;
+    max-width: 100% !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 6px !important;
+    overflow: visible !important;
+  }
+
+  .coupon-center-page__couponDetails span,
+  .coupon-center-page__couponDetails small,
+  .coupon-center-page__couponDetails strong,
+  .coupon-center-page__couponMicroFacts span {
+    max-width: 100% !important;
+    min-width: 0 !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    white-space: normal !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  .coupon-center-page__couponMicroFacts span {
+    width: 100% !important;
+    justify-content: flex-start !important;
+    border-radius: 8px !important;
+  }
+}

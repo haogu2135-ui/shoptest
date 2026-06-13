@@ -5146,9 +5146,14 @@ Notes:
 - Environment: `http://127.0.0.1:4187/compare`, viewport `390x844`
 - Severity: MEDIUM
 - Description: The product comparison empty state renders three primary header actions in one tight row. At 390px width, `Add all to cart`, `Add more products`, and `Clear comparison` are clipped into labels like `Add all to...`, `Add more p...`, and `Clear comp...`. These are the main actions on the page, so the empty-state workflow loses clarity before a user adds products to compare.
-- Status: OPEN
+- Status: SOURCE_FIXED / REGRESSION_PENDING
 - Evidence: `app-ui-audit-20260607T1611-codex/compare-mobile.png`; `app-ui-audit-20260607T1611-codex/report.json` records the three clipped action spans (`93/79`, `129/95`, `118/95`). Source evidence: `frontend/src/pages/ProductCompare.css` mobile rules force `.product-compare__headerActions` into `repeat(3, minmax(0, 1fr))` and apply `overflow: hidden; text-overflow: ellipsis` to button text.
 - Expected fix direction: On mobile, stack the three actions vertically or use two rows with full labels. If the inactive actions must remain visible, use concise icon+tooltip buttons and keep the primary `Add more products` action readable.
+- Fixed: 2026-06-13
+- Files: frontend/src/pages/ProductCompare.css; frontend/src/pages/ProductCompare.test.ts
+- Fix evidence: `ProductCompare.css` now ends with an explicit F2714 mobile override. At `max-width: 600px`, the header actions use a two-column grid with the clear action spanning a full row; buttons keep 46px touch targets and allow normal wrapping. At `max-width: 360px`, the actions become a single-column stack. The final action-label rule forces button text to `overflow: visible`, `text-overflow: clip`, and `white-space: normal`, overriding older three-column/ellipsis rules.
+- Verification: Source-only inspection confirmed the F2714 closure is after the older `Final mobile compare action stability pass`, contains no `repeat(3, minmax(0, 1fr))`, and contains no `text-overflow: ellipsis`. `ProductCompare.test.ts` now statically guards the two-column/full-row and <=360px single-column contracts. No frontend build, Jest, browser/Playwright, APP/device run, backend Maven, API probe, deploy, service restart, Nginx command, curl probe, git commit, or revert was performed.
+- Regression request: When checks are allowed, run `ProductCompare.test.ts` and visual regression for `/compare` at mobile `390x844`, narrow mobile `360x800`, and APP/WebView. Expected: `Add all to cart`, `Add more products`, and `Clear comparison` are fully readable or wrap cleanly, the clear action has a full-width row, disabled states remain clear, and comparison content below the header remains reachable.
 
 ### F2715: MEDIUM — Mobile browsing-history fixed action bar truncates the recommended action and CTA
 
@@ -5156,9 +5161,14 @@ Notes:
 - Environment: `http://127.0.0.1:4187/history`, viewport `390x844`
 - Severity: MEDIUM
 - Description: The fixed mobile action bar at the bottom of the Browsing History page truncates both the recommendation title and CTA. The visible copy reads like `Refresh personalized disc...` and `Browse perso...`, so the user cannot confidently understand or act on the recommended next step.
-- Status: OPEN
+- Status: CURRENT_SOURCE_COVERED / REGRESSION_PENDING
 - Evidence: `app-ui-audit-20260607T1611-codex/history-mobile.png`; `app-ui-audit-20260607T1611-codex/report.json` records `Refresh personalized discovery` clipped at `196/182` and `Browse personal picks` clipped at `153/108`. Source evidence: `frontend/src/pages/BrowsingHistory.css` defines a fixed `.browsing-history__mobileAction` grid and later applies nowrap/ellipsis rules to the strong text and button label.
 - Expected fix direction: Give the mobile action bar a single-column or two-row layout, reserve a full-width CTA row, and allow the recommendation title to wrap to at least two readable lines without ellipsis.
+- Triaged: 2026-06-13
+- Files: frontend/src/pages/BrowsingHistory.css; frontend/src/pages/BrowsingHistory.test.ts
+- Current-source evidence: The reported clipping evidence is stale against current source. `BrowsingHistory.css` already contains a final `F2715` closure after the atomic nowrap pass. At `max-width: 640px`, `.browsing-history__mobileAction` uses a one-column layout, reserves extra bottom padding above the fixed bottom nav, allows the title to wrap to two lines, makes the CTA full width, and overrides CTA text to `overflow: visible`, `text-overflow: clip`, and `white-space: normal`. `BrowsingHistory.test.ts` already guards this exact contract and confirms the F2715 closure comes after the atomic nowrap rules.
+- Verification: Source-only inspection confirmed the F2715 CSS closure and static guard are present in current source. No source edit was needed for F2715. No frontend build, Jest, browser/Playwright, APP/device run, backend Maven, API probe, deploy, service restart, Nginx command, curl probe, git commit, or revert was performed.
+- Regression request: When checks are allowed, run `BrowsingHistory.test.ts` and visual regression for `/history` at mobile `390x844`, narrow mobile `360x800`, short landscape, and APP/WebView. Expected: `Refresh personalized discovery` and `Browse personal picks` wrap/read clearly, the CTA has its own full-width row, and the fixed panel can scroll above the bottom navigation without hiding product history content.
 
 ### F2716: HIGH — Payment instructions step text is rendered as tiny circular badges
 
@@ -5206,9 +5216,14 @@ Notes:
 - Environment: `http://127.0.0.1:4187/products/1`, desktop `1366x900` and mobile `390x844`
 - Severity: MEDIUM
 - Description: Product detail tab headers render as a visually concatenated string: `Product detailsSpecificationsAfter-sales service`. The tab labels lack enough spacing or separator treatment, making the tab control look broken and reducing scanability.
-- Status: OPEN
+- Status: SOURCE_FIXED / REGRESSION_PENDING
 - Evidence: `app-ui-audit-20260607T1602-codex/product-detail-desktop.png`; `app-ui-audit-20260607T1602-codex/product-detail-mobile.png`; report entry for `.ant-tabs-nav-wrap` with `scrollWidth: 965` and `clientWidth: 322` on mobile.
 - Expected fix direction: Restore explicit tab spacing, active-state affordance, and overflow behavior. On mobile, use a scrollable tab rail with visible end padding or stack the sections behind a segmented control.
+- Fixed: 2026-06-13
+- Files: frontend/src/pages/ProductDetail.tsx; frontend/src/pages/ProductDetail.css; frontend/src/pages/ProductDetail.test.tsx
+- Fix evidence: `ProductDetail.tsx` no longer sets the product detail `Tabs` gutter to zero. `ProductDetail.css` now gives the product detail tabs explicit pill-like button borders, background, active-state outline, and a final mobile/APP segmented-control override with a 3-column grid and visible gaps. The old ink-bar is hidden for this tab group so active state is communicated by the bordered tab button instead of an underline that can misalign with the grid.
+- Verification: Source-only inspection confirmed the final F2712 CSS closure appears after older Android/App tab overrides and contains the mobile `repeat(3, minmax(0, 1fr))` grid, `gap`, bordered `.ant-tabs-tab-btn`, active tab outline, and `white-space: normal`. `ProductDetail.test.tsx` now includes a static guard preventing `tabBarGutter={0}` and the unseparated mobile tab styling from returning. No frontend build, Jest, browser/Playwright, APP/device run, backend Maven, API probe, deploy, service restart, Nginx command, curl probe, git commit, or revert was performed.
+- Regression request: When checks are allowed, run `ProductDetail.test.tsx` and visual regression for `/products/1` at desktop `1366x900`, mobile `390x844`, narrow mobile `360x800`, and APP/WebView. Expected: `Product details`, `Specifications`, and `After-sales service` read as three distinct tabs with clear active state and no horizontal clipping or concatenation.
 
 ### F2713: MEDIUM — Mobile coupon cards and tags clip text/content at 390px
 
@@ -5216,9 +5231,14 @@ Notes:
 - Environment: `http://127.0.0.1:4187/coupons`, viewport `390x844`
 - Severity: MEDIUM
 - Description: Coupon cards and metadata tags clip within the mobile card width. The `Best pick` tag is cut off, and the coupon-card content line exceeds its container. The audit reports the coupon card at `scrollWidth: 325` / `clientWidth: 316`, and `Best pick` at `scrollWidth: 83` / `clientWidth: 76`.
-- Status: OPEN
+- Status: SOURCE_FIXED / REGRESSION_PENDING
 - Evidence: `app-ui-audit-20260607T1602-codex/coupons-mobile.png`; `app-ui-audit-20260607T1602-codex/report.json` coupon clipping entries.
 - Expected fix direction: Let coupon tags wrap or shrink with readable text, move dense metadata/actions to separate rows, and remove fixed-width constraints that leave card content wider than the mobile container.
+- Fixed: 2026-06-13
+- Files: frontend/src/pages/CouponCenter.css; frontend/src/pages/CouponCenter.test.ts
+- Fix evidence: `CouponCenter.css` now ends with an explicit F2713 mobile override for `max-width: 560px`. Coupon card headers are forced into a one-column grid, title and extra areas take full width, coupon title/tags wrap instead of clipping, tag text uses `overflow: visible`, `text-overflow: clip`, and `white-space: normal`, and dense value/details/micro-fact rows collapse to one-column card-contained rows on narrow mobile.
+- Verification: Source-only inspection confirmed the final F2713 CSS closure appears after the older `UI-20260613-01` mobile overrides, so it is the final authority for coupon card wrapping. `CouponCenter.test.ts` now statically guards the mobile coupon card title/tag/value/details/micro-fact wrapping contract and rejects reintroducing tag ellipsis in the F2713 closure. No frontend build, Jest, browser/Playwright, APP/device run, backend Maven, API probe, deploy, service restart, Nginx command, curl probe, git commit, or revert was performed.
+- Regression request: When checks are allowed, run `CouponCenter.test.ts` and visual regression for `/coupons` at mobile `390x844`, narrow mobile `360x800`, Spanish locale, and APP/WebView. Expected: coupon card headers and `Best pick`/status/type tags wrap within the card, no horizontal card overflow, coupon value/details/micro-facts remain readable, and claim buttons stay tappable.
 
 ### F2608: `Checkout.test.tsx` coupon-opportunity banner test is flaky under suite load
 

@@ -1994,7 +1994,7 @@ const ProductDetail: React.FC = () => {
           <Tabs
             className="product-detail-tabs"
             defaultActiveKey="1"
-            tabBarGutter={0}
+            tabBarGutter={10}
             more={{
               icon: (
                 <span className="product-detail-tabs__moreIcon">

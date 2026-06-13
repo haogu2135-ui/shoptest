@@ -267,6 +267,22 @@ describe('ProductDetail mobile buybar layout contract', () => {
     });
   });
 
+  it('keeps product detail tabs separated instead of rendering as one concatenated label string', () => {
+    const source = readProductDetailSource();
+    const css = readProductDetailCss();
+    const fixStart = css.lastIndexOf('F2712: keep product detail tabs visually separated');
+    const fixCss = css.slice(fixStart);
+
+    expect(source).toContain('className="product-detail-tabs"');
+    expect(source).toContain('tabBarGutter={10}');
+    expect(source).not.toContain('tabBarGutter={0}');
+    expect(fixStart).toBeGreaterThan(css.lastIndexOf('Android UI closure: product detail buybar, tabs and compact labels.'));
+    expect(fixCss).toMatch(/\.product-detail-tabs \.ant-tabs-ink-bar[\s\S]*?display:\s*none;/);
+    expect(fixCss).toMatch(/\.product-detail-tabs \.ant-tabs-nav-list[\s\S]*?grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)\s*!important;[\s\S]*?gap:\s*6px\s*!important;/);
+    expect(fixCss).toMatch(/\.product-detail-tabs \.ant-tabs-tab-btn[\s\S]*?border:\s*1px solid #d8e5dc\s*!important;[\s\S]*?border-radius:\s*8px\s*!important;[\s\S]*?white-space:\s*normal\s*!important;/);
+    expect(fixCss).toMatch(/\.product-detail-tabs \.ant-tabs-tab-active \.ant-tabs-tab-btn[\s\S]*?border-color:\s*#124734\s*!important;[\s\S]*?box-shadow:\s*0 0 0 2px rgba\(18,\s*71,\s*52,\s*0\.14\)\s*!important;/);
+  });
+
   it('keeps non-critical content scroll warmup fallback cleanup-bound', () => {
     const source = readProductDetailSource();
     const nativeScrollSource = readNativeScrollSource();

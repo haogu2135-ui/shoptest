@@ -1590,3 +1590,55 @@
     -webkit-text-fill-color: #506358 !important;
   }
 }
+
+/* F2714: mobile comparison primary actions must keep full readable labels. */
+@media (max-width: 600px) {
+  .product-compare__headerActions {
+    width: 100% !important;
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+    align-items: stretch !important;
+  }
+
+  .product-compare__headerActions .ant-space-item {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .product-compare__headerActions .ant-space-item:last-child {
+    grid-column: 1 / -1 !important;
+  }
+
+  .product-compare__headerActions .ant-btn {
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 46px !important;
+    height: auto !important;
+    max-height: none !important;
+    padding: 9px 10px !important;
+    overflow: visible !important;
+    line-height: 1.18 !important;
+    white-space: normal !important;
+  }
+
+  .product-compare__headerActions .ant-btn > span:not(.anticon):not(.ant-btn-icon) {
+    min-width: 0 !important;
+    max-width: 100% !important;
+    display: inline !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    white-space: normal !important;
+    overflow-wrap: anywhere !important;
+  }
+}
+
+@media (max-width: 360px) {
+  .product-compare__headerActions {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .product-compare__headerActions .ant-space-item {
+    grid-column: auto !important;
+  }
+}

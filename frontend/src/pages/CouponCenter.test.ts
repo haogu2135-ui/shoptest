@@ -62,6 +62,25 @@ describe('CouponCenter mobile coupon rail contract', () => {
     expect(finalGuard).toMatch(/\.coupon-claim-section__filterButtons\s*\{[\s\S]*?display:\s*grid\s*!important;[\s\S]*?grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)\s*!important;[\s\S]*?overflow:\s*visible\s*!important;/);
   });
 
+  it('keeps mobile coupon card tags and metadata from clipping at narrow widths', () => {
+    const source = readCouponCenterSource();
+    const css = readCouponCenterCss();
+    const f2713Start = css.lastIndexOf('F2713: mobile coupon cards and tags must wrap inside the card width.');
+    const f2713Css = css.slice(f2713Start);
+
+    expect(source).toContain('className="coupon-center-page__couponTitle"');
+    expect(source).toContain('className="coupon-center-page__couponTags"');
+    expect(source).toContain('className="coupon-center-page__couponValueRow"');
+    expect(f2713Start).toBeGreaterThan(css.indexOf('UI-20260613-01'));
+    expect(f2713Css).toMatch(/@media \(max-width:\s*560px\)\s*\{/);
+    expect(f2713Css).toMatch(/\.coupon-center-page__coupon \.ant-card-head-wrapper\s*\{[\s\S]*?display:\s*grid\s*!important;[\s\S]*?grid-template-columns:\s*minmax\(0,\s*1fr\)\s*!important;/);
+    expect(f2713Css).toMatch(/\.coupon-center-page__couponTitle,[\s\S]*?\.coupon-center-page__couponTags\s*\{[\s\S]*?flex-wrap:\s*wrap\s*!important;[\s\S]*?overflow:\s*visible\s*!important;[\s\S]*?white-space:\s*normal\s*!important;/);
+    expect(f2713Css).toMatch(/\.coupon-center-page__couponTags \.ant-tag,[\s\S]*?\.coupon-center-page__couponTitle \.ant-tag\s*\{[\s\S]*?overflow:\s*visible\s*!important;[\s\S]*?text-overflow:\s*clip\s*!important;[\s\S]*?white-space:\s*normal\s*!important;/);
+    expect(f2713Css).toMatch(/\.coupon-center-page__couponValueRow\s*\{[\s\S]*?grid-template-columns:\s*minmax\(0,\s*1fr\)\s*!important;/);
+    expect(f2713Css).toMatch(/\.coupon-center-page__couponDetails,[\s\S]*?\.coupon-center-page__couponMicroFacts\s*\{[\s\S]*?grid-template-columns:\s*minmax\(0,\s*1fr\)\s*!important;[\s\S]*?overflow:\s*visible\s*!important;/);
+    expect(f2713Css).not.toMatch(/\.coupon-center-page__couponTags \.ant-tag[\s\S]*?text-overflow:\s*ellipsis/);
+  });
+
   it('keeps guest coupon claim actions routed through login feedback', () => {
     const source = readCouponCenterSource();
     const singleClaimStart = source.indexOf('const claimCoupon = async');
