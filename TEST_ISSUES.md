@@ -5285,8 +5285,10 @@ Notes:
 - Environment: `src/main/java/com/example/shop/service/OrderStatsService.java`
 - Severity: LOW
 - Description: `getAdminOrderCountStats()` calls `countByAgeBucket(...)` with hard-coded `7`, `14`, `30` day thresholds. These should be read from `OrderMapper.AGE_BUCKET_DAYS` or `OrderSearchCriteria` to avoid silent drift.
-- Status: OPEN
-- Expected fix direction: Extract thresholds to constants or configuration.
+- Status: CURRENT_SOURCE_COVERED (2026-06-13) / REGRESSION_GUARD_ADDED / REGRESSION_PENDING
+- Maintainer note: The original `OrderStatsService.java` / `countByAgeBucket(...)` path is stale in current source. Dashboard order stats now live in `OrderService.getDashboardOrderStats(...)`, and the service consumes the single aggregated `OrderRepository.dashboardOrderStats(...)` mapper row instead of duplicating SLA day buckets in Java. Added `OrderMapperSlaConsistencyTest.dashboardSlaThresholdsStayMapperOwnedAndConsistent()` to guard that dashboard SLA buckets are not reintroduced in `OrderService` and that mapper-owned overdue/due-soon thresholds stay consistent for pending payment, pending shipment, return requested, return approved, and return shipped admin filters. No backend Maven/JUnit execution, frontend build, Jest, browser/Playwright, APP/device run, API probe, deploy, service restart, Nginx command, curl probe, or revert was performed before this source-only ledger update.
+- Regression request: When backend checks are allowed, run `OrderMapperSlaConsistencyTest` and admin dashboard/order quick-filter smoke coverage. Expected: dashboard SLA cards, `SLA_OVERDUE`, `SLA_DUE_SOON`, and per-status quick filters use the same mapper-owned thresholds without Java-side bucket drift.
+- Source-only regression confirmations: UI `UI-20260613-151`, E2E `E2E-20260613-164`, Smoke `SMOKE-STATIC-20260613-164`, APP `APP-AUDIT-167`. All four confirmed the stale Java bucket report is current-source covered and the new mapper SLA consistency contract is adequate by static review only; runtime/admin dashboard regression remains pending under the current no-test restriction.
 
 ### F2343: Bottom bar navigation missing role-based tab hiding
 
@@ -5305,8 +5307,10 @@ Notes:
 - Environment: `domain/GuestUsername.java`
 - Severity: LOW
 - Description: Two threads calling `generate(random)` at the same nanosecond get the same hex suffix, producing a duplicate slug before either INSERT hits the DB unique constraint. The collision is detected but the error path is a generic `GuestUsernameGenerationFailed` with no automatic retry.
-- Status: OPEN
-- Expected fix direction: Add retry loop with new random suffix on collision.
+- Status: SOURCE_FIXED (2026-06-14) / REGRESSION_GUARD_ADDED / REGRESSION_PENDING
+- Maintainer note: The original `domain/GuestUsername.java` path is stale in current source; guest checkout usernames are generated inside `OrderService`. Current source already serializes guest creation by normalized email until checkout transaction completion, but a cross-email username unique-key collision could still fail after the first generated UUID token. `OrderService.getOrCreateGuestUserLocked(...)` now retries guest user insertion up to `GUEST_USER_INSERT_MAX_ATTEMPTS = 3`, rebuilding the guest user each attempt so a fresh generated username is used. Email unique-key races still resolve by re-reading `userRepository.findByEmail(email)` and requiring the row to remain `GUEST`; exhausted username collisions fail with `Unable to allocate a unique guest username` while preserving the original database cause. The retry warning intentionally logs only the attempt count, not the shopper email. `OrderGuestUserCreationRaceContractTest` now guards the per-email transaction lock, flushed insert, email reread recovery, username retry loop, exhausted-collision failure, and no-email retry logging. No backend Maven/JUnit execution, frontend build, Jest, browser/Playwright, APP/device run, API probe, deploy, service restart, Nginx command, curl probe, or revert was performed before this source-only ledger update.
+- Regression request: When backend checks are allowed, run `OrderGuestUserCreationRaceContractTest` and guest checkout create-account concurrency coverage. Expected: same-email guest checkout calls serialize to one guest user, registered-email collisions still reject, duplicate generated guest usernames retry with a fresh token, and logs do not expose guest emails.
+- Source-only regression confirmations: UI `UI-20260614-001`, E2E `E2E-20260614-01`, Smoke `SMOKE-STATIC-20260614-165`, APP `APP-AUDIT-168`. All four confirmed the guest username retry loop, email unique race reread, registered-email rejection path, and no-email retry logging by static review only; backend/runtime guest checkout concurrency regression remains pending under the current no-test restriction.
 
 ### F2341: `normalizeEmail` validation too permissive
 
@@ -5314,8 +5318,10 @@ Notes:
 - Environment: `domain/CustomerProfileNormalize.java`
 - Severity: LOW
 - Description: `normalizeEmail("abc")` returns `"abc"` without throwing — the regex only checks for `@` and a non-empty local/domain part, so bare strings without `@` pass. The generated `GUEST_EMAIL_PLACEHOLDER` (`noreply@guest.local`) also violates the `requireValidEmail` check because `requireValidEmail` rejects anything that doesn't match the regex, creating a circular dependency.
-- Status: OPEN
-- Expected fix direction: Strengthen regex to require `@` for all emails.
+- Status: CURRENT_SOURCE_COVERED (2026-06-14) / REGRESSION_GUARD_ADDED / REGRESSION_PENDING
+- Maintainer note: The original `domain/CustomerProfileNormalize.java` path is stale in current source. Active registration/profile email validation is in `UserService`, whose `EMAIL_PATTERN` requires an `@` and a dotted domain suffix, while order contact matching uses `OrderService.normalizeEmail(...)`, which returns `null` for malformed addresses instead of accepting bare strings. Added `UserServiceTest.registerRejectsMalformedEmailBeforeDatabaseConstraintFailure()` to guard that `abc` and `buyer@example` are rejected before `userMapper.insert(...)`. No backend Maven/JUnit execution, frontend build, Jest, browser/Playwright, APP/device run, API probe, deploy, service restart, Nginx command, curl probe, or revert was performed before this source-only ledger update.
+- Regression request: When backend checks are allowed, run `UserServiceTest` registration/profile email coverage and guest checkout contact validation. Expected: bare strings and missing-suffix domains are rejected before persistence, valid shopper emails continue to register/update normally, and guest checkout contact matching treats malformed email input as invalid/no-match.
+- Source-only regression confirmations: UI `UI-20260614-001`, E2E `E2E-20260614-01`, Smoke `SMOKE-STATIC-20260614-165`, APP `APP-AUDIT-168`. All four confirmed the stale domain path and active malformed-email guards by static review only; runtime registration/contact validation regression remains pending under the current no-test restriction.
 
 ### F2340: Cart CSS specificity war — `!important` on quantity input `:disabled`
 
@@ -12045,7 +12051,8 @@ All previously reported pagination/sorting/filtering bugs have been **verified F
 **Description:** The `useEffect` captures `onSearch` and `value` in its closure and runs a debounced timeout. If `onSearch` changes identity between renders, the stale closure will call the old `onSearch`. The cleanup correctly clears the timeout, so this is mitigated.
 **Impact:** Search could call stale callback if parent doesn't memoize `onSearch`.
 **Fix:** Use `useCallback` for `onSearch` in the parent, or use a ref to store the latest callback.
-**Severity:** LOW | **Status:** OPEN | **Date:** 2026-06-20
+**Severity:** LOW | **Status:** SOURCE_FIXED (2026-06-14) / REGRESSION_GUARD_ADDED / REGRESSION_PENDING | **Date:** 2026-06-20
+**Maintainer note:** Covered with F2432. `SearchBar.tsx` now stores the latest callback in `onSearchRef` and removes `onSearch` from the debounce effect dependency list, so callback identity changes do not trigger or stale-fire searches. `SearchBar.test.tsx` guards callback replacement during a pending debounced query.
 
 ### F2113: LOW — No Development-Mode Warning for Missing i18n Keys
 **File:** `frontend/src/i18n.tsx`
@@ -13877,7 +13884,8 @@ All previously reported pagination/sorting/filtering bugs have been **verified F
 - **Reproduction**: Run `apiError.test.ts` — all pass. Manually test `parseApiError` with `{ response: { status: 429, data: { retryAfter: "60" } } }` — `retryAfter` becomes `null` because `normalizeRetryAfterSeconds` expects a number.
 - **Why MEDIUM**: Uncovered edge cases in rate-limiting error parsing could cause retry logic to silently fail, leading to unnecessary user-facing errors on 429 responses.
 - **Suggested fix**: Add test cases for string, float, Infinity, negative, and missing-message variants of `retryAfter`. Also test that `parseApiError` handles the case where `response.data` is `undefined` (network errors without a response body).
-- **Status**: OPEN (new finding)
+- **Status**: SOURCE_FIXED (2026-06-13) / REGRESSION_GUARD_ADDED / REGRESSION_PENDING
+- **Maintainer note:** Current source uses the shared `getApiErrorMessage(...)` helper rather than the stale `parseApiError` name in the report. `normalizeRetryAfterSeconds(...)` now accepts both backend `retryAfterSeconds` and gateway-style `retryAfter` response body fields, still falls back to `Retry-After` headers, rejects non-finite/negative/zero values, rounds fractional positive values up, caps retry guidance at 300 seconds, and only applies retry guidance when the response is actually rate-limited by status `429` or `RATE_LIMITED` code. The localized rate-limit copy now also has a one-second singular form in en/es/zh so fractional retry-after values rounded to 1 do not render awkward English or Spanish plural text. `apiError.test.ts` now covers retryAfter alias strings, fractional values, over-cap values, Infinity, negative values, missing response data, header parsing, non-429 header ignore behavior, and the one-second locale key. No frontend build, Jest, TypeScript compile, browser/Playwright, APP/device run, backend Maven/JUnit execution, API probe, deploy, service restart, Nginx command, curl probe, git commit, or revert was performed.
 
 ### F2479: [LOW] Cycle #547 — Cart quantity input allows values above 9999 without clamping
 - **Files**: `frontend/src/pages/Cart.tsx` (lines 41-59, `updateQuantity`; lines 1415-1431, input rendering)
@@ -14013,12 +14021,16 @@ All previously reported pagination/sorting/filtering bugs have been **verified F
 - **Why LOW**: The cart UI re-renders from the API response on the next fetch, so the order corrects itself. The discrepancy is only visible during the optimistic update window.
 - **Suggested fix**: After the sequential API calls complete, re-fetch the cart from the server to get the canonical order, rather than relying on the optimistic concatenation.
 - **Status**: OPEN (new finding)
+
+### F2432: [MEDIUM] Cycle #533 — SearchBar onSearch re-trigger on prop change
 - **Files**: `frontend/src/components/SearchBar.tsx` (useEffect watching `onSearch` reference)
 - **Detail**: The SearchBar component has a `useEffect` that depends on the `onSearch` callback reference. If the parent component re-renders and creates a new `onSearch` function (common with inline arrow functions), the effect fires and re-triggers the last search. This causes unexpected search API calls on unrelated parent state changes (e.g. language switch, cart update, notification count change). The SearchBar should only fire searches in response to user input (typing + Enter/button click), not prop changes.
 - **Reproduction**: Mount SearchBar with `onSearch={(q) => doSearch(q)}` → type "shoes" and search → change language in Navbar → observe duplicate search API call for "shoes".
 - **Why MEDIUM**: Wasted API calls and confusing UX (search results flash/reload on language change).
 - **Suggested fix**: Remove the `useEffect` dependency on `onSearch`; store the last-searched query in a ref and only fire on explicit user action.
-- **Status**: OPEN (new finding)
+- **Status**: SOURCE_FIXED (2026-06-14) / REGRESSION_GUARD_ADDED / REGRESSION_PENDING
+- **Maintainer note:** `SearchBar.tsx` now stores the latest `onSearch` callback in `onSearchRef`; the debounce effect depends only on `debounceMs` and `value`, so parent callback identity changes no longer restart the timer or re-trigger the last query. Debounced searches and Enter submissions both call `onSearchRef.current(...)`, preserving the newest callback without making callback identity a search trigger. `SearchBar.test.tsx` now guards that rerendering with a new `onSearch` prop during a pending search calls only the latest callback once and does not re-fire on later callback-reference churn. No frontend build, Jest, TypeScript compile, browser/Playwright, APP/device run, backend Maven/JUnit execution, API probe, deploy, service restart, Nginx command, curl probe, or revert was performed before this source-only ledger update.
+- **Source-only regression confirmations**: UI `UI-20260614-002`, E2E `E2E-20260614-02`, Smoke `SMOKE-STATIC-20260614-166`, APP `APP-AUDIT-169`. All four confirmed callback identity changes no longer re-trigger searches, pending debounce uses the latest callback, Enter uses the latest callback, and F2112 is covered by F2432; runtime/browser/API/APP regression remains pending under the current no-test restriction.
 
 ### F2433: [MEDIUM] Cycle #533 — Navbar.tsx announcement ticker lacks pause on hover and prefers-reduced-motion support
 - **Files**: `frontend/src/components/Navbar.tsx` (announcement ticker marquee), `frontend/src/components/Navbar.css`
@@ -16898,6 +16910,15 @@ Backend Maven ✅ **467/467 passed**. Frontend Build ✅ **SUCCESS**. Frontend J
 - **Triage evidence**: The report is stale against current source. `handleLogout(...)` no longer checks pending orders/unsaved work and no longer calls a `toast.warn(..., { autoClose: 8000 })` warning before navigation. Current logout only captures the login redirect, attempts refresh-token revocation through `userApi.logout(...)`, clears stored auth session state, resets the cart badge, and navigates to the login URL with `replace: true`. Static source search found no `toast.warn`, `toast.*`, pending-work, unsaved-work, or auto-close logout warning implementation in `Navbar.tsx`.
 - **Verification**: Source-only inspection plus whitespace check produced no diagnostics: `git diff --check -- frontend/src/components/Navbar.tsx`. No TypeScript compile, Jest, frontend build, browser/Playwright, APP/device run, backend Maven, deploy, service restart, Nginx command, curl probe, git commit, or revert was performed.
 - **Regression request**: When UI checks are allowed, recheck logout from desktop/mobile/APP Navbar while authenticated and with pending account activity. Expected: logout still revokes best-effort, clears auth, lands on the login route, and does not depend on a transient warning toast for required user decisions.
+
+### F2478 (Cycle #547): API retry-after edge parsing
+- **Status**: SOURCE_FIXED / REGRESSION_PENDING
+- **Fixed**: 2026-06-13 23:55 UTC
+- **Files**: frontend/src/utils/apiError.ts; frontend/src/utils/apiError.test.ts; frontend/src/locales/en.json; frontend/src/locales/es.json; frontend/src/locales/zh.json
+- **Fix evidence**: `ApiErrorData` now includes a `retryAfter` alias and `normalizeRetryAfterSeconds(...)` reads `retryAfterSeconds`, then `retryAfter`, then `Retry-After` headers. The normalizer keeps the existing positive finite-number requirement, rounds fractional values up, caps displayed retry guidance at 300 seconds, and leaves invalid retry values on the generic rate-limited localized copy. `getApiErrorMessage(...)` now uses a one-second singular localization key when the normalized retry delay is exactly 1, with en/es/zh locale resources kept in sync. `apiError.test.ts` now guards alias string parsing, fractional retry-after rounding, maximum cap behavior, Infinity/negative rejection, missing response data, Retry-After header parsing, non-rate-limited responses ignoring retry headers, and the one-second locale key.
+- **Verification**: Source-only edit. No TypeScript compile, Jest, frontend build, browser/Playwright, APP/device run, backend Maven, API call, deploy, service restart, Nginx command, curl probe, or revert was performed before this source-only verification update.
+- **Regression request**: When frontend checks are allowed, run the apiError helper tests and exercise a 429 response with body `retryAfterSeconds`, body `retryAfter`, and `Retry-After` header. Expected: localized retry guidance appears only for rate-limited responses, invalid retry values fall back to generic rate-limit copy, and non-429 errors keep their server/fallback message.
+- **Source-only regression confirmations**: UI `UI-20260613-150-FU1`, E2E `E2E-20260613-163-F1`, Smoke `SMOKE-STATIC-20260613-163`, APP `APP-AUDIT-166`. All four confirmed the retry-after alias/header handling and en/es/zh one-second locale key by static review only; runtime/browser/API/APP regression remains pending under the current no-test restriction.
 
 ### F2479 (Cycle #547): Cart high-stock quantity UI cap
 - **Status**: SOURCE_FIXED / REGRESSION_PENDING

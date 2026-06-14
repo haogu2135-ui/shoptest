@@ -120,6 +120,7 @@
     "timeout": "La solicitud agotó el tiempo. Inténtalo de nuevo.",
     "serviceUnavailable": "El servicio no está disponible temporalmente. Inténtalo más tarde.",
     "rateLimited": "Demasiadas solicitudes. Espera e inténtalo de nuevo.",
+    "rateLimitedWithOneSecond": "Demasiadas solicitudes. Inténtalo de nuevo en 1 segundo.",
     "rateLimitedWithSeconds": "Demasiadas solicitudes. Inténtalo de nuevo en {seconds} segundos."
   },
   "appUpdate": {

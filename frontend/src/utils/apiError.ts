@@ -5,6 +5,7 @@ type ApiErrorData = {
   code?: string;
   error?: string;
   message?: string;
+  retryAfter?: number | string;
   retryAfterSeconds?: number | string;
   details?: unknown;
   detail?: unknown;
@@ -132,7 +133,10 @@ const normalizeRetryAfterSeconds = (error: ApiErrorLike) => {
     ?? headers?.get?.('retry-after')
     ?? headers?.['Retry-After']
     ?? headers?.['retry-after'];
-  const numeric = Number(error.response?.data?.retryAfterSeconds ?? headerValue);
+  const retryAfterValue = error.response?.data?.retryAfterSeconds
+    ?? error.response?.data?.retryAfter
+    ?? headerValue;
+  const numeric = Number(retryAfterValue);
   if (!Number.isFinite(numeric) || numeric <= 0) return null;
   return Math.min(Math.ceil(numeric), MAX_RETRY_AFTER_SECONDS);
 };
@@ -173,7 +177,12 @@ export const getApiErrorMessage = (
   if (responseCode === 'RATE_LIMITED' || status === 429) {
     const retryAfterSeconds = normalizeRetryAfterSeconds(errorLike);
     return retryAfterSeconds
-      ? apiErrorMessage(language, 'rateLimitedWithSeconds', fallback, { seconds: retryAfterSeconds })
+      ? apiErrorMessage(
+        language,
+        retryAfterSeconds === 1 ? 'rateLimitedWithOneSecond' : 'rateLimitedWithSeconds',
+        fallback,
+        { seconds: retryAfterSeconds },
+      )
       : apiErrorMessage(language, 'rateLimited', fallback);
   }
   const serverMessage = getApiErrorDiagnosticText(errorLike);

@@ -113,6 +113,7 @@ public class OrderService {
     private static final int GUEST_USERNAME_TOKEN_LENGTH = 32;
     private static final int GUEST_USERNAME_SEED_MAX_LENGTH =
             GUEST_USERNAME_MAX_LENGTH - GUEST_USERNAME_TOKEN_LENGTH - 1;
+    private static final int GUEST_USER_INSERT_MAX_ATTEMPTS = 3;
     private static final int DEFAULT_CUSTOMER_ORDER_PAGE_SIZE = 20;
     private static final int HARD_CUSTOMER_ORDER_PAGE_SIZE_LIMIT = 100;
     private static final int HARD_LEGACY_ADMIN_ORDER_LIST_LIMIT = 500;
@@ -637,6 +638,26 @@ public class OrderService {
         if (existing.isPresent()) {
             return requireGuestUser(existing.get());
         }
+        DataIntegrityViolationException lastCollision = null;
+        for (int attempt = 1; attempt <= GUEST_USER_INSERT_MAX_ATTEMPTS; attempt++) {
+            try {
+                return userRepository.saveAndFlush(buildGuestUser(request, email)).getId();
+            } catch (DataIntegrityViolationException ex) {
+                Optional<User> insertedByEmail = userRepository.findByEmail(email);
+                if (insertedByEmail.isPresent()) {
+                    return requireGuestUser(insertedByEmail.get());
+                }
+                lastCollision = ex;
+                if (attempt < GUEST_USER_INSERT_MAX_ATTEMPTS) {
+                    log.warn("Guest username collision during checkout guest-user insert; retrying attempt={}/{}",
+                            attempt, GUEST_USER_INSERT_MAX_ATTEMPTS);
+                }
+            }
+        }
+        throw new IllegalStateException("Unable to allocate a unique guest username", lastCollision);
+    }
+
+    private User buildGuestUser(GuestCheckoutRequest request, String email) {
         User user = new User();
         user.setUsername(generateGuestUsername(email));
         user.setEmail(email);
@@ -647,12 +668,7 @@ public class OrderService {
         user.setAddress(request.getShippingAddress());
         user.setCreatedAt(LocalDateTime.now());
         user.setUpdatedAt(LocalDateTime.now());
-        try {
-            return userRepository.saveAndFlush(user).getId();
-        } catch (DataIntegrityViolationException ex) {
-            return requireGuestUser(userRepository.findByEmail(email)
-                    .orElseThrow(() -> ex));
-        }
+        return user;
     }
 
     private Long requireGuestUser(User user) {

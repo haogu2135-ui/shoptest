@@ -15,6 +15,12 @@ const responseCodeError = (code: string, retryAfterSeconds?: number | string) =>
     data: { code, error: 'Request failed', retryAfterSeconds },
   },
 });
+const retryAfterAliasError = (retryAfter?: number | string) => ({
+  response: {
+    status: 429,
+    data: { error: 'Too many requests', retryAfter },
+  },
+});
 
 describe('getApiErrorMessage', () => {
   it('uses server detail for English pages', () => {
@@ -75,6 +81,32 @@ describe('getApiErrorMessage', () => {
       .toBe('Demasiadas solicitudes. Espera e inténtalo de nuevo.');
   });
 
+  it('normalizes retry-after edge cases for rate-limited responses', () => {
+    expect(getApiErrorMessage(retryAfterAliasError('60'), 'Payment failed', 'en'))
+      .toBe('Too many requests. Please try again in 60 seconds.');
+    expect(getApiErrorMessage(rateLimitedError(0.5), 'Payment failed', 'en'))
+      .toBe('Too many requests. Please try again in 1 second.');
+    expect(getApiErrorMessage(rateLimitedError(999), 'Payment failed', 'en'))
+      .toBe('Too many requests. Please try again in 300 seconds.');
+    expect(getApiErrorMessage(rateLimitedError(Number.POSITIVE_INFINITY), 'Payment failed', 'en'))
+      .toBe('Too many requests. Please try again later.');
+    expect(getApiErrorMessage(rateLimitedError(-5), 'Payment failed', 'en'))
+      .toBe('Too many requests. Please try again later.');
+    expect(getApiErrorMessage({ response: { status: 429 } }, 'Payment failed', 'en'))
+      .toBe('Too many requests. Please try again later.');
+  });
+
+  it('uses Retry-After headers only for rate-limited responses', () => {
+    const headers = {
+      get: (name: string) => (name.toLowerCase() === 'retry-after' ? '15' : undefined),
+    };
+
+    expect(getApiErrorMessage({ response: { status: 429, headers } }, 'Payment failed', 'en'))
+      .toBe('Too many requests. Please try again in 15 seconds.');
+    expect(getApiErrorMessage({ response: { status: 400, headers, data: { error: 'Bad request' } } }, 'Payment failed', 'en'))
+      .toBe('Bad request');
+  });
+
   it('uses backend service-unavailable codes even when status is unavailable', () => {
     expect(getApiErrorMessage(responseCodeError('SERVICE_UNAVAILABLE'), 'Payment failed', 'en'))
       .toBe('The service is temporarily unavailable. Please try again later.');
@@ -129,6 +161,7 @@ describe('getApiErrorMessage', () => {
       expect(localeSource).toContain('"timeout"');
       expect(localeSource).toContain('"serviceUnavailable"');
       expect(localeSource).toContain('"rateLimited"');
+      expect(localeSource).toContain('"rateLimitedWithOneSecond"');
       expect(localeSource).toContain('"rateLimitedWithSeconds"');
     });
   });

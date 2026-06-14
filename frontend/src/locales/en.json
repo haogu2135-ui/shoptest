@@ -120,6 +120,7 @@
     "timeout": "The request timed out. Please try again.",
     "serviceUnavailable": "The service is temporarily unavailable. Please try again later.",
     "rateLimited": "Too many requests. Please wait and try again.",
+    "rateLimitedWithOneSecond": "Too many requests. Please try again in 1 second.",
     "rateLimitedWithSeconds": "Too many requests. Please try again in {seconds} seconds."
   },
   "appUpdate": {

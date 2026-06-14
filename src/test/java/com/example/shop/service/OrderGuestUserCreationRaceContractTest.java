@@ -24,13 +24,25 @@ class OrderGuestUserCreationRaceContractTest {
                 "Guest user creation lock should be held until the checkout transaction completes");
         assertTrue(source.contains("releaseGuestUserCreationLock(email, lock);"),
                 "Guest user creation lock should always be released");
-        assertTrue(source.contains("saveAndFlush(user)"),
+        assertTrue(source.contains("GUEST_USER_INSERT_MAX_ATTEMPTS = 3"),
+                "Guest username allocation should retry transient unique-key collisions");
+        assertTrue(source.contains("for (int attempt = 1; attempt <= GUEST_USER_INSERT_MAX_ATTEMPTS; attempt++)"),
+                "Guest user insert should retry with a fresh username after an insert collision");
+        assertTrue(source.contains("saveAndFlush(buildGuestUser(request, email))"),
                 "Guest user insert should be flushed while the per-email lock is held");
         assertTrue(source.contains("catch (DataIntegrityViolationException ex)"),
                 "Guest user creation should recover from database unique-key races by re-reading the email");
+        assertTrue(source.contains("Optional<User> insertedByEmail = userRepository.findByEmail(email);"),
+                "Email unique-key races should still resolve by re-reading the inserted guest user");
+        assertTrue(source.contains("throw new IllegalStateException(\"Unable to allocate a unique guest username\", lastCollision);"),
+                "Exhausted guest username collisions should fail with the original database cause");
         assertTrue(Pattern.compile("private Long requireGuestUser\\(User user\\)[\\s\\S]*?\"GUEST\"\\.equals\\(user\\.getStatus\\(\\)\\)")
                         .matcher(source)
                         .find(),
                 "Existing email rows must still reject registered users before returning a guest user id");
+        assertTrue(Pattern.compile("log\\.warn\\(\"Guest username collision[^\\n]+attempt=\\{\\}/\\{}\",\\s*\\n\\s*attempt, GUEST_USER_INSERT_MAX_ATTEMPTS\\);")
+                        .matcher(source)
+                        .find(),
+                "Guest username collision retries should not log the shopper email address");
     }
 }

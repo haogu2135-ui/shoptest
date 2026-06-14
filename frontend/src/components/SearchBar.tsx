@@ -14,6 +14,11 @@ export const SearchBar: React.FC<SearchBarProps> = ({ onSearch, placeholder, deb
     const { t } = useLanguage();
     const [value, setValue] = useState('');
     const didMountRef = useRef(false);
+    const onSearchRef = useRef(onSearch);
+
+    useEffect(() => {
+        onSearchRef.current = onSearch;
+    }, [onSearch]);
 
     useEffect(() => {
         if (!didMountRef.current) {
@@ -21,10 +26,10 @@ export const SearchBar: React.FC<SearchBarProps> = ({ onSearch, placeholder, deb
             return;
         }
         const timer = window.setTimeout(() => {
-            onSearch(value);
+            onSearchRef.current(value);
         }, Math.max(0, debounceMs));
         return () => window.clearTimeout(timer);
-    }, [debounceMs, onSearch, value]);
+    }, [debounceMs, value]);
 
     return (
         <Space className="shop-search-bar">
@@ -34,7 +39,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({ onSearch, placeholder, deb
                 placeholder={placeholder || t('pages.productList.searchPlaceholder')}
                 prefix={<SearchOutlined />}
                 onChange={(e) => setValue(e.target.value)}
-                onPressEnter={() => onSearch(value)}
+                onPressEnter={() => onSearchRef.current(value)}
                 allowClear
             />
         </Space>

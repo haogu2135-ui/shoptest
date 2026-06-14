@@ -120,6 +120,7 @@
     "timeout": "请求超时，请稍后重试。",
     "serviceUnavailable": "服务暂不可用，请稍后重试。",
     "rateLimited": "请求过于频繁，请稍后重试。",
+    "rateLimitedWithOneSecond": "请求过于频繁，请在 1 秒后重试。",
     "rateLimitedWithSeconds": "请求过于频繁，请在 {seconds} 秒后重试。"
   },
   "appUpdate": {

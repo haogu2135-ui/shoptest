@@ -44,4 +44,26 @@ describe('SearchBar', () => {
 
     expect(onSearch).toHaveBeenCalledWith('cat tree');
   });
+
+  it('does not re-trigger the last search when the parent callback reference changes', () => {
+    const firstSearch = jest.fn();
+    const secondSearch = jest.fn();
+    const { rerender } = renderSearchBar(firstSearch, 200);
+
+    fireEvent.change(screen.getByPlaceholderText('Search products'), {
+      target: { value: 'dog bed' },
+    });
+
+    rerender(
+      <LanguageProvider>
+        <SearchBar onSearch={secondSearch} debounceMs={200} />
+      </LanguageProvider>,
+    );
+    jest.advanceTimersByTime(200);
+    jest.advanceTimersByTime(400);
+
+    expect(firstSearch).not.toHaveBeenCalled();
+    expect(secondSearch).toHaveBeenCalledTimes(1);
+    expect(secondSearch).toHaveBeenCalledWith('dog bed');
+  });
 });

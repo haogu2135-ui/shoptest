@@ -200,6 +200,22 @@ class UserServiceTest {
     }
 
     @Test
+    void registerRejectsMalformedEmailBeforeDatabaseConstraintFailure() {
+        User missingAt = validRegistrationUser();
+        missingAt.setEmail("abc");
+        User missingPublicSuffix = validRegistrationUser();
+        missingPublicSuffix.setEmail("buyer@example");
+
+        IllegalArgumentException missingAtException = assertThrows(IllegalArgumentException.class, () -> service.register(missingAt));
+        IllegalArgumentException missingSuffixException = assertThrows(IllegalArgumentException.class, () -> service.register(missingPublicSuffix));
+
+        assertEquals("Email format is invalid", missingAtException.getMessage());
+        assertEquals("Email format is invalid", missingSuffixException.getMessage());
+        verify(userMapper, never()).insert(missingAt);
+        verify(userMapper, never()).insert(missingPublicSuffix);
+    }
+
+    @Test
     void registerRejectsPasswordUnderMinimumLength() {
         User user = new User();
         user.setUsername("newuser");
@@ -540,5 +556,14 @@ class UserServiceTest {
                 org.mockito.ArgumentMatchers.anyLong(),
                 org.mockito.ArgumentMatchers.anyString(),
                 org.mockito.ArgumentMatchers.any());
+    }
+
+    private User validRegistrationUser() {
+        User user = new User();
+        user.setUsername("newuser");
+        user.setPassword("StrongPass123");
+        user.setEmail("new@example.com");
+        user.setPhone("15551234567");
+        return user;
     }
 }
