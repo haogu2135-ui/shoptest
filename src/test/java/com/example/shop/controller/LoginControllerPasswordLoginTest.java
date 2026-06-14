@@ -23,12 +23,17 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
@@ -151,6 +156,24 @@ class LoginControllerPasswordLoginTest {
         ArgumentCaptor<Authentication> authenticationRequest = ArgumentCaptor.forClass(Authentication.class);
         verify(authenticationManager).authenticate(authenticationRequest.capture());
         assertEquals("mia", authenticationRequest.getValue().getPrincipal());
+    }
+
+    @Test
+    void loginResponseContractStaysUnifiedAcrossSupportedAuthFlows() throws Exception {
+        String source = Files.readString(Path.of("src/main/java/com/example/shop/controller/LoginController.java"), StandardCharsets.UTF_8);
+        int responseBuilderIndex = source.indexOf("private Map<String, Object> buildLoginResponse");
+
+        assertTrue(responseBuilderIndex >= 0, "LoginController should keep a shared auth-session response builder");
+        String responseBuilder = source.substring(responseBuilderIndex);
+        assertTrue(responseBuilder.contains("response.put(\"token\", jwt);"));
+        assertTrue(responseBuilder.contains("response.put(\"refreshToken\", refreshToken);"));
+        assertFalse(source.contains("errorJson("), "Auth errors should not fork into a second JSON shape");
+        assertFalse(source.contains("\"accessToken\""), "Auth success payload should keep the frontend token field name");
+        assertFalse(source.contains("\"refresh_token\""), "Auth success payload should keep camelCase refreshToken");
+        assertFalse(source.contains("@PostMapping(\"/demo"), "Demo-login response forks should not return");
+        assertFalse(source.contains("@GetMapping(\"/oauth"), "OAuth response forks should not return");
+        assertTrue(source.contains("return ResponseEntity.ok(buildLoginResponse(jwt, refreshToken, userDetails, user));"));
+        assertTrue(source.contains("return ResponseEntity.ok(buildLoginResponse(newAccessToken, newRefreshToken, userDetails, user));"));
     }
 
     @Test
