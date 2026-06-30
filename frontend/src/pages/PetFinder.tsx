@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Alert, Button, Card, Col, Empty, Image, Row, Select, Slider, Space, Spin, Tag, Typography } from 'antd';
-import { FireOutlined, GiftOutlined, SearchOutlined, StarOutlined, ThunderboltOutlined } from '@ant-design/icons';
+import { FireOutlined, GiftOutlined, ReloadOutlined, SearchOutlined, StarOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { productApi } from '../api';
 import { useLanguage } from '../i18n';
@@ -107,6 +107,7 @@ const PetFinder: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const [usingCatalogFallback, setUsingCatalogFallback] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
   const [petType, setPetType] = useState<PetType>(stored.petType);
   const [need, setNeed] = useState<NeedType>(stored.need);
   const [budget, setBudget] = useState<[number, number]>(stored.budget);
@@ -118,6 +119,10 @@ const PetFinder: React.FC = () => {
   const finderProductName = (product: Pick<Product, 'id' | 'name'>) => (
     (product.name || '').trim() || t('pages.profile.productFallback', { id: product.id })
   );
+
+  const retryFinderProducts = () => {
+    setReloadKey((value) => value + 1);
+  };
 
   useEffect(() => {
     let isCurrent = true;
@@ -160,7 +165,7 @@ const PetFinder: React.FC = () => {
     return () => {
       isCurrent = false;
     };
-  }, [language, need, petType]);
+  }, [language, need, petType, reloadKey]);
 
   useEffect(() => {
     setLocalStorageItem(FINDER_STORAGE_KEY, JSON.stringify({ petType, need, budget, priority }));
@@ -309,6 +314,17 @@ const PetFinder: React.FC = () => {
               type={loadError ? 'warning' : 'info'}
               showIcon
               message={loadError ? t('pages.petFinder.loadFailed') : t('pages.petFinder.catalogFallback')}
+              description={loadError ? t('pages.petFinder.loadFailedDescription') : t('pages.petFinder.catalogFallbackDescription')}
+              action={(
+                <Space wrap>
+                  <Button size="small" icon={<ReloadOutlined />} onClick={retryFinderProducts}>
+                    {t('messages.retry')}
+                  </Button>
+                  <Button size="small" type="link" icon={<SearchOutlined />} onClick={() => navigate('/products')}>
+                    {t('pages.petFinder.browseAll')}
+                  </Button>
+                </Space>
+              )}
               className="pet-finder-page__loadAlert"
             />
           ) : null}
@@ -379,9 +395,31 @@ const PetFinder: React.FC = () => {
             </section>
           ) : null}
           {loading ? (
-            <div className="pet-finder-page__loading"><Spin size="large" /></div>
+            <div
+              className="pet-finder-page__loading"
+              role="status"
+              aria-live="polite"
+              aria-busy="true"
+              aria-label={t('common.loading')}
+            >
+              <Spin size="large" />
+            </div>
           ) : matches.length === 0 ? (
-            <Empty description={t('pages.petFinder.empty')} />
+            <Empty
+              className={loadError ? 'pet-finder-page__empty pet-finder-page__empty--loadFailed' : 'pet-finder-page__empty'}
+              description={loadError ? t('pages.petFinder.emptyAfterLoadFailure') : t('pages.petFinder.empty')}
+            >
+              <Space wrap>
+                {loadError ? (
+                  <Button icon={<ReloadOutlined />} onClick={retryFinderProducts}>
+                    {t('messages.retry')}
+                  </Button>
+                ) : null}
+                <Button type="primary" icon={<SearchOutlined />} onClick={() => navigate('/products')}>
+                  {t('pages.petFinder.browseAll')}
+                </Button>
+              </Space>
+            </Empty>
           ) : (
             <Row gutter={[16, 16]} className="pet-finder-page__recommendationGrid">
               {matches.map(({ product, score }) => {

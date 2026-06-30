@@ -60,7 +60,7 @@ public class Coupon implements Serializable {
 
     @Column(name = "discount_percent")
     @Min(1)
-    @Max(100)
+    @Max(99)
     private Integer discountPercent;
 
     @Column(name = "max_discount_amount")

@@ -19,6 +19,7 @@ public class OrderCustomerResponse {
     private String recipientPhone;
     private String contactEmail;
     private String paymentMethod;
+    private String currency;
     private String trackingNumber;
     private String trackingCarrierCode;
     private String trackingCarrierName;
@@ -38,6 +39,10 @@ public class OrderCustomerResponse {
     private LocalDateTime createdAt;
 
     public static OrderCustomerResponse from(Order order) {
+        return from(order, null);
+    }
+
+    public static OrderCustomerResponse from(Order order, String currency) {
         if (order == null) {
             return null;
         }
@@ -55,6 +60,7 @@ public class OrderCustomerResponse {
         response.setRecipientPhone(order.getRecipientPhone());
         response.setContactEmail(order.getContactEmail());
         response.setPaymentMethod(order.getPaymentMethod());
+        response.setCurrency(currency);
         response.setTrackingNumber(order.getTrackingNumber());
         response.setTrackingCarrierCode(order.getTrackingCarrierCode());
         response.setTrackingCarrierName(order.getTrackingCarrierName());
@@ -221,6 +227,14 @@ public class OrderCustomerResponse {
 
     public void setPaymentMethod(String paymentMethod) {
         this.paymentMethod = paymentMethod;
+    }
+
+    public String getCurrency() {
+        return currency;
+    }
+
+    public void setCurrency(String currency) {
+        this.currency = currency;
     }
 
     public String getTrackingNumber() {

@@ -19,6 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 @DataJpaTest(showSql = false)
 @Import(SiteAnnouncementRepositoryTest.TestApplication.class)
 @TestPropertySource(properties = {
+        "app.runtime-mode=test",
         "spring.jpa.hibernate.ddl-auto=create-drop",
         "spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.H2Dialect",
         "spring.sql.init.mode=never"

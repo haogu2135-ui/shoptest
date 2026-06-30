@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import Checkout, { getCheckoutCouponErrorMessage, isValidCheckoutPostalCode } from './Checkout';
+import Checkout, { formatCheckoutDateTime, getCheckoutCouponErrorMessage, isValidCheckoutPostalCode } from './Checkout';
 import { addressApi, appConfigApi, cartApi, couponApi, orderApi, paymentApi } from '../api';
 import { getLocalStorageItem } from '../utils/safeStorage';
 import { hasAuthenticatedCartSession, readCheckoutCartItemIds } from '../utils/cartSession';
@@ -56,6 +56,7 @@ jest.mock('../i18n', () => {
     'pages.checkout.savingsCoachSubtitle': 'Keep your order ready.',
     'pages.checkout.paymentUnavailable': 'Payment methods are temporarily unavailable',
     'pages.checkout.paymentUnavailableDescription': 'Checkout is paused until a configured payment channel is available. Please try again later or contact support.',
+    'messages.retry': 'Retry',
     'pages.checkout.submitWithAmount': 'Submit {amount}',
     'pages.checkout.paymentConfidenceTitle': 'Payment confidence',
     'pages.checkout.paymentConfidenceDefault': 'Choose a payment method',
@@ -135,13 +136,7 @@ jest.mock('../i18n', () => {
 });
 
 jest.mock('../utils/paymentMethods', () => ({
-  createPaymentMethodDetails: (channels: Array<{
-    code: string;
-    displayName?: string;
-    descriptionKey?: string;
-    badgeKey?: string;
-    market?: string;
-  }> = []) => (Array.isArray(channels) ? channels : []).map((channel) => ({
+  createPaymentMethodDetails: (channels: Array<Record<'code' | 'displayName' | 'descriptionKey' | 'badgeKey' | 'market', string | undefined>> = []) => (Array.isArray(channels) ? channels : []).map((channel) => ({
     value: channel.code,
     title: channel.displayName || channel.code,
     descriptionKey: channel.descriptionKey || 'pages.checkout.paymentGenericDesc',
@@ -299,6 +294,37 @@ describe('Checkout payment availability', () => {
     expect(screen.queryByText('Payment methods are temporarily unavailable')).not.toBeInTheDocument();
   });
 
+  it('surfaces checkout payment channel load errors and retries the channel request', async () => {
+    (paymentApi.getChannels as jest.Mock)
+      .mockRejectedValueOnce({ response: { data: { error: 'Gateway configuration unavailable' } } })
+      .mockResolvedValueOnce({
+        data: [{
+          code: 'STRIPE',
+          displayName: 'Stripe',
+          descriptionKey: 'pages.checkout.paymentStripeDesc',
+          badgeKey: 'pages.checkout.paymentInstant',
+          market: 'GLOBAL',
+          enabled: true,
+        }],
+      });
+
+    render(
+      <MemoryRouter initialEntries={['/checkout']}>
+        <Checkout />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText('Gateway configuration unavailable')).toBeInTheDocument();
+    expect(paymentApi.getChannels).toHaveBeenCalledTimes(1);
+
+    const retryButtons = await screen.findAllByRole('button', { name: 'Retry' });
+    fireEvent.click(retryButtons[0]);
+
+    expect(await screen.findByRole('radio', { name: /Stripe/ }, { timeout: 5000 })).toHaveClass('checkout-page__paymentMethod');
+    expect(paymentApi.getChannels).toHaveBeenCalledTimes(2);
+    expect(screen.queryByText('Gateway configuration unavailable')).not.toBeInTheDocument();
+  });
+
   it('keeps the checkout region Cascader controlled and closes it during scroll-sensitive actions', () => {
     const source = readCheckoutPageSource();
 
@@ -358,9 +384,12 @@ describe('Checkout payment availability', () => {
     expect(checkoutSource).toContain('const getSavedAddressPostalCode = (address?: UserAddress | null) =>');
     expect(checkoutSource).toContain('const getSavedAddressDetail = (address?: UserAddress | null) =>');
     expect(checkoutSource).toContain('const isCompleteSavedAddress = (address?: UserAddress | null) =>');
+    expect(checkoutSource).toContain('const savedPostalCode = getSavedAddressPostalCode(address);');
+    expect(checkoutSource).toContain('postalCode: savedPostalCode || undefined,');
     expect(checkoutSource).toContain('&& isValidCheckoutPostalCode(postalCode, regionPath)');
     expect(checkoutSource).toContain(': isCompleteSavedAddress(selectedSavedAddress)');
     expect(checkoutSource).toContain("throw new Error(t('pages.checkout.addressRequired'));");
+    expect(checkoutSource).not.toContain('setPostalCode(address.postalCode || "")');
     expect(checkoutSource).not.toContain('&& normalizeCheckoutText(selectedSavedAddress.address, 260)');
 
     expect(profileSource).toContain("import { isValidRegionalPostalCode, normalizeRegionalPostalCode } from '../utils/postalCode';");
@@ -421,9 +450,9 @@ describe('Checkout payment availability', () => {
 
   it('loads payment channels from a guarded effect instead of during render', () => {
     const source = readCheckoutPageSource();
-    const componentStart = source.indexOf('const Checkout: React.FC = () => {');
+    const componentStart = source.indexOf('const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {');
     const channelsEffectStart = source.indexOf('useEffect(() => {\n    if (!hasCheckoutItems) {', componentStart);
-    const channelsEffectEnd = source.indexOf('}, [currency, form, hasCheckoutItems]);', channelsEffectStart);
+    const channelsEffectEnd = source.indexOf('}, [currency, form, hasCheckoutItems, paymentChannelsReloadKey]);', channelsEffectStart);
     const renderBeforeChannelsEffect = source.slice(componentStart, channelsEffectStart);
     const channelsEffect = source.slice(channelsEffectStart, channelsEffectEnd);
 
@@ -433,8 +462,17 @@ describe('Checkout payment availability', () => {
     expect(renderBeforeChannelsEffect).not.toContain('paymentApi.getChannels()');
     expect(channelsEffect).toContain('paymentApi.getChannels()');
     expect(channelsEffect).toContain('let disposed = false;');
+    expect(channelsEffect).toContain('setPaymentChannelsLoading(true);');
+    expect(channelsEffect).toContain('setPaymentChannelsError(null);');
     expect(channelsEffect).toContain('if (disposed || !mountedRef.current) return;');
+    expect(channelsEffect).toContain('setPaymentChannelsError(getApiErrorMessage(');
+    expect(channelsEffect).toContain('setPaymentChannelsLoading(false);');
     expect(channelsEffect).toContain('disposed = true;');
+    expect(source).toContain('const [paymentChannelsError, setPaymentChannelsError] = useState<string | null>(null);');
+    expect(source).toContain('const [paymentChannelsReloadKey, setPaymentChannelsReloadKey] = useState(0);');
+    expect(source).toContain('description={paymentChannelsError || t(\'pages.checkout.paymentUnavailableDescription\')}');
+    expect(source).toContain('onClick={() => setPaymentChannelsReloadKey((key) => key + 1)}');
+    expect(channelsEffect).not.toContain('.catch(() => {');
   });
 
   it('keeps payment timers lifecycle-bound without delayed location redirects', () => {
@@ -447,22 +485,105 @@ describe('Checkout payment availability', () => {
 
     expect(source).not.toContain('window.location.href');
     expect(source).not.toMatch(/setTimeout\s*\([\s\S]{0,400}window\.location/);
+    expect(source).toContain("import { addressApi, cartApi, clearStoredAuthSession, couponApi, createApiAbortController, orderApi, paymentApi, productApi } from '../api';");
     expect(refreshEffectStart).toBeGreaterThan(-1);
     expect(pollingEffectStart).toBeGreaterThan(refreshEffectStart);
     expect(postCheckoutBranchStart).toBeGreaterThan(pollingEffectStart);
     expect(refreshEffect).toContain('let disposed = false;');
+    expect(refreshEffect).toContain('const abortController = createApiAbortController();');
     expect(refreshEffect).toContain('const timer = window.setTimeout(async () => {');
-    expect(refreshEffect).toContain('if (!disposed) {');
+    expect(refreshEffect).toContain('if (disposed || abortController.signal.aborted) return;');
+    expect(refreshEffect).toContain('{ signal: abortController.signal },');
+    expect(refreshEffect).toContain('if (!disposed && !abortController.signal.aborted) {');
     expect(refreshEffect).toContain('window.clearTimeout(timer);');
+    expect(refreshEffect).toContain('abortController.abort();');
+    expect(pollingEffect).toContain('let pollAbortController: AbortController | null = null;');
+    expect(pollingEffect).toContain('const abortActivePollRequest = () => {');
+    expect(pollingEffect).toContain('pollAbortController?.abort();');
     expect(pollingEffect).toContain('const timer = window.setInterval(async () => {');
     expect(pollingEffect).toContain('if (disposed) {');
     expect(pollingEffect).toContain('if (disposed || !ownsThisPoll) return;');
+    expect(pollingEffect).toContain('const abortController = createApiAbortController();');
+    expect(pollingEffect).toContain('pollAbortController = abortController;');
+    expect(pollingEffect).toContain('{ signal: abortController.signal },');
+    expect(pollingEffect).toContain('if (disposed || abortController.signal.aborted) return;');
     expect(pollingEffect).toContain('if (disposed) return;');
     expect(pollingEffect).toContain('window.clearInterval(timer);');
     expect(pollingEffect).toContain("window.removeEventListener('storage', handlePaymentPollStorage);");
+    expect(pollingEffect).toContain('abortActivePollRequest();');
     expect(source).toContain('const paymentStatus = payment?.status;');
     expect(source).toContain('}, [createdOrderId, createdOrderNo, guestPaymentEmail, paymentStatus, showCheckoutMessage, t]);');
     expect(pollingEffect).not.toMatch(/}, \[[^\]]*\bpayment\b[^\]]*\]\);/);
+  });
+
+  it('ignores stale retry payment responses after a newer retry starts', () => {
+    const source = readCheckoutPageSource();
+    const retryStart = source.indexOf('const retryCreatePayment = async () => {');
+    const retryEnd = source.indexOf('const openPaymentUrl = () => {', retryStart);
+    const retrySource = source.slice(retryStart, retryEnd);
+
+    expect(source).toContain('const paymentCreateRequestSeqRef = React.useRef(0);');
+    expect(retrySource).toContain('const requestSeq = paymentCreateRequestSeqRef.current + 1;');
+    expect(retrySource).toContain('paymentCreateRequestSeqRef.current = requestSeq;');
+    expect(retrySource).toContain('if (paymentCreateRequestSeqRef.current !== requestSeq) return;');
+    expect(retrySource).toContain('if (paymentCreateRequestSeqRef.current === requestSeq) {');
+    expect(retrySource).toContain('setPaying(false);');
+    expect(retrySource.indexOf('if (paymentCreateRequestSeqRef.current !== requestSeq) return;')).toBeLessThan(retrySource.indexOf('setPayment(paymentRes.data);'));
+    expect(retrySource.lastIndexOf('if (paymentCreateRequestSeqRef.current !== requestSeq) return;')).toBeLessThan(retrySource.indexOf('setPaymentCreateError(localizedError);'));
+  });
+
+  it('keeps checkout order submission guarded by a synchronous in-flight latch', () => {
+    const source = readCheckoutPageSource();
+    const handleStart = source.indexOf('const handleSubmit = async (values: CheckoutFormValues) => {');
+    const handleEnd = source.indexOf('const retryCreatePayment = async () => {', handleStart);
+    const handleSubmitSource = source.slice(handleStart, handleEnd);
+
+    expect(handleStart).toBeGreaterThan(-1);
+    expect(handleEnd).toBeGreaterThan(handleStart);
+    expect(source).toContain('const submittingRef = React.useRef(false);');
+    expect(handleSubmitSource).toContain('if (submittingRef.current) {\n      return;\n    }\n    submittingRef.current = true;');
+    expect(handleSubmitSource).toContain('} finally {\n      submittingRef.current = false;\n    }');
+    expect(handleSubmitSource.indexOf('submittingRef.current = true;')).toBeLessThan(handleSubmitSource.indexOf('setSubmitting(true);'));
+    expect(handleSubmitSource.lastIndexOf('setSubmitting(false);')).toBeLessThan(handleSubmitSource.lastIndexOf('submittingRef.current = false;'));
+  });
+
+  it('keeps checkout payment actions guarded by synchronous in-flight latches', () => {
+    const source = readCheckoutPageSource();
+    const retryStart = source.indexOf('const retryCreatePayment = async () => {');
+    const retryEnd = source.indexOf('const openPaymentUrl = () => {', retryStart);
+    const simulateStart = source.indexOf('const simulatePayment = async () => {');
+    const simulateEnd = source.indexOf('const restoreSubmittedCartItems = async () => {', simulateStart);
+    const retrySource = source.slice(retryStart, retryEnd);
+    const simulateSource = source.slice(simulateStart, simulateEnd);
+
+    expect(retryStart).toBeGreaterThan(-1);
+    expect(retryEnd).toBeGreaterThan(retryStart);
+    expect(simulateStart).toBeGreaterThan(-1);
+    expect(simulateEnd).toBeGreaterThan(simulateStart);
+    expect(source).toContain('const paymentRetryingRef = React.useRef(false);');
+    expect(source).toContain('const paymentSimulatingRef = React.useRef(false);');
+    expect(retrySource).toContain('if (!createdOrder || paymentRetryingRef.current) return;\n    paymentRetryingRef.current = true;');
+    expect(retrySource).toContain('paymentRetryingRef.current = false;');
+    expect(retrySource.indexOf('paymentRetryingRef.current = true;')).toBeLessThan(retrySource.indexOf('setPaying(true);'));
+    expect(retrySource.lastIndexOf('setPaying(false);')).toBeLessThan(retrySource.lastIndexOf('paymentRetryingRef.current = false;'));
+    expect(simulateSource).toContain('if (!payment || paymentSimulatingRef.current) return;\n    paymentSimulatingRef.current = true;');
+    expect(simulateSource).toContain('paymentSimulatingRef.current = false;');
+    expect(simulateSource.indexOf('paymentSimulatingRef.current = true;')).toBeLessThan(simulateSource.indexOf('setSimulatingPayment(true);'));
+    expect(simulateSource.lastIndexOf('setSimulatingPayment(false);')).toBeLessThan(simulateSource.lastIndexOf('paymentSimulatingRef.current = false;'));
+  });
+
+  it('keeps guest checkout drafts until guest payment is confirmed paid', () => {
+    const source = readCheckoutPageSource();
+    const submitStart = source.indexOf('const handleSubmit = async (values: CheckoutFormValues) => {');
+    const submitEnd = source.indexOf('const retryCreatePayment = async () => {', submitStart);
+    const submitSource = source.slice(submitStart, submitEnd);
+    const paidCleanup = "if (guestPaymentEmail && normalizeStatusCode(paymentStatus) === 'PAID') {\n      removeSessionStorageItem(CHECKOUT_GUEST_DRAFT_KEY);\n    }";
+
+    expect(submitStart).toBeGreaterThan(-1);
+    expect(submitEnd).toBeGreaterThan(submitStart);
+    expect(submitSource).not.toContain('removeSessionStorageItem(CHECKOUT_GUEST_DRAFT_KEY);');
+    expect(source).toContain(paidCleanup);
+    expect(source.indexOf(paidCleanup)).toBeGreaterThan(source.indexOf('const paymentStatus = payment?.status;'));
   });
 
   it('keeps checkout bootstrap independent of address and payment field state changes', () => {
@@ -473,12 +594,24 @@ describe('Checkout payment availability', () => {
 
     expect(loadEffectStart).toBeGreaterThan(-1);
     expect(nextAddressEffectStart).toBeGreaterThan(loadEffectStart);
+    expect(source).not.toContain('useMemo(() => readCheckoutCartItemIds(), [])');
+    expect(loadEffect).toContain('const selectedCartItemIds = readCheckoutCartItemIds();');
     expect(loadEffect).toContain('cartApi.getItems(0)');
     expect(loadEffect).toContain('addressApi.getByUser(0)');
     expect(loadEffect).toContain('}, [checkoutReloadKey, form, mergeCheckoutFormSnapshot, navigate, showCheckoutMessage, t]);');
     expect(loadEffect).not.toContain('selectedAddressId');
     expect(loadEffect).not.toContain('watchedPaymentMethod');
     expect(loadEffect).not.toContain('pendingPaymentMethod');
+  });
+
+  it('memoizes cart total and item count from cart items', () => {
+    const source = readCheckoutPageSource();
+
+    expect(source).toContain('const cartTotal = useMemo(() => roundCartMoney(cartItems.reduce((sum, item) => {');
+    expect(source).toContain('}, 0)), [cartItems]);');
+    expect(source).toContain('const checkoutItemCount = useMemo(\n    () => cartItems.reduce((sum, item) => sum + item.quantity, 0),\n    [cartItems],\n  );');
+    expect(source).not.toContain('const cartTotal = roundCartMoney(cartItems.reduce');
+    expect(source).not.toContain('const checkoutItemCount = cartItems.reduce');
   });
 
   it('keeps checkout form submit values typed without broad any escape hatches', () => {
@@ -502,7 +635,10 @@ describe('Checkout payment availability', () => {
   });
 
   it('keeps hoisted mock factories free of optional-parameter syntax', () => {
-    expect(readCheckoutTestSource()).not.toMatch(/\w+\?:/);
+    const source = readCheckoutTestSource();
+    const hoistedMocksSource = source.slice(0, source.indexOf('describe('));
+
+    expect(hoistedMocksSource).not.toMatch(/\w+\?:/);
   });
 
   it('hides the gift incentive when the current currency has no configured threshold', () => {
@@ -528,6 +664,69 @@ describe('Checkout payment availability', () => {
     expect(quoteEffect).toContain('couponAutoSelectedQuoteRef.current = { cartKey: couponQuoteCartKey, couponId: nextCouponId };');
   });
 
+  it('keeps coupon quote status updates cleanup-bound', () => {
+    const source = readCheckoutPageSource();
+    const quoteEffectStart = source.indexOf('const couponQuoteCartKey =');
+    const quoteEffect = source.slice(quoteEffectStart, source.indexOf('const estimatedShippingSummary', quoteEffectStart));
+
+    const firstAsyncGuard = quoteEffect.indexOf('if (disposed || !mountedRef.current || couponQuoteSeqRef.current !== requestSeq) return;');
+    const readyStatus = quoteEffect.indexOf("setCouponQuoteStatus('ready');");
+    const firstErrorStatus = quoteEffect.indexOf("setCouponQuoteStatus('error');");
+    const catchGuard = quoteEffect.lastIndexOf('if (disposed || !mountedRef.current || couponQuoteSeqRef.current !== requestSeq) return;');
+    const catchErrorStatus = quoteEffect.lastIndexOf("setCouponQuoteStatus('error');");
+
+    expect(quoteEffect).toContain('let disposed = false;');
+    expect(firstAsyncGuard).toBeGreaterThan(-1);
+    expect(firstErrorStatus).toBeGreaterThan(firstAsyncGuard);
+    expect(readyStatus).toBeGreaterThan(firstAsyncGuard);
+    expect(catchGuard).toBeGreaterThan(firstAsyncGuard);
+    expect(catchErrorStatus).toBeGreaterThan(catchGuard);
+    expect(quoteEffect).toContain('return () => {\n      disposed = true;\n    };');
+  });
+
+  it('does not refetch coupon quotes for language-only changes', () => {
+    const source = readCheckoutPageSource();
+    const quoteEffectStart = source.indexOf('const couponQuoteCartKey =');
+    const quoteEffect = source.slice(quoteEffectStart, source.indexOf('const estimatedShippingSummary', quoteEffectStart));
+
+    expect(source).toContain('const checkoutLocalizationRef = React.useRef({ t, language });');
+    expect(source).toContain('checkoutLocalizationRef.current = { t, language };');
+    expect(quoteEffect).toContain('const { t: latestT } = checkoutLocalizationRef.current;');
+    expect(quoteEffect).toContain('const { t: latestT, language: latestLanguage } = checkoutLocalizationRef.current;');
+    expect(quoteEffect).toContain("getCheckoutCouponErrorMessage(error, latestT('pages.checkout.couponUnavailable'), latestT, latestLanguage)");
+    expect(quoteEffect).toContain('}, [cartItems, cartTotal, couponManuallyChanged, selectedUserCouponId, showCheckoutMessage]);');
+    expect(quoteEffect).not.toMatch(/\}, \[[^\]]*\blanguage\b[^\]]*\]\);/);
+    expect(quoteEffect).not.toMatch(/\}, \[[^\]]*\bt\b[^\]]*\]\);/);
+  });
+
+  it('debounces guest checkout draft persistence while typing', () => {
+    const source = readCheckoutPageSource();
+    const effectStart = source.indexOf('if (!hasCheckoutItems || !isGuestCheckout) return;');
+    const effectSource = source.slice(effectStart, source.indexOf('}, [hasCheckoutItems, isGuestCheckout', effectStart));
+
+    expect(source).toContain('const CHECKOUT_GUEST_DRAFT_SAVE_DELAY_MS = 500;');
+    expect(effectStart).toBeGreaterThan(-1);
+    expect(effectSource).toContain('const timer = window.setTimeout(() => {');
+    expect(effectSource).toContain('setSessionStorageItem(CHECKOUT_GUEST_DRAFT_KEY, JSON.stringify(draft));');
+    expect(effectSource).toContain('removeSessionStorageItem(CHECKOUT_GUEST_DRAFT_KEY);');
+    expect(effectSource).toContain('}, CHECKOUT_GUEST_DRAFT_SAVE_DELAY_MS);');
+    expect(effectSource).toContain('window.clearTimeout(timer);');
+    expect(effectSource.indexOf('setSessionStorageItem(CHECKOUT_GUEST_DRAFT_KEY')).toBeGreaterThan(effectSource.indexOf('window.setTimeout'));
+  });
+
+  it('keeps malformed payment expiry timestamps out of the checkout result UI', () => {
+    const source = readCheckoutPageSource();
+
+    expect(formatCheckoutDateTime('not-a-date', 'en-US')).toBeNull();
+    expect(formatCheckoutDateTime('', 'en-US')).toBeNull();
+    expect(formatCheckoutDateTime('2026-06-14T00:00:00Z', 'en-US')).not.toBeNull();
+    expect(source).toContain('export const formatCheckoutDateTime = (value: unknown, dateLocale: string) => {');
+    expect(source).toContain('Number.isFinite(date.getTime()) ? date.toLocaleString(dateLocale) : null;');
+    expect(source).toContain('const paymentExpiresAtText = formatCheckoutDateTime(payment.expiresAt, dateLocale);');
+    expect(source).toContain("{paymentExpiresAtText ? <Text>{t('pages.checkout.paymentExpiresAt')}: {paymentExpiresAtText}</Text> : null}");
+    expect(source).not.toContain('new Date(payment.expiresAt).toLocaleString(dateLocale)');
+  });
+
   it('refreshes current product prices before restoring submitted guest cart items', () => {
     const source = readCheckoutPageSource();
     const restoreStart = source.indexOf('const restoreSubmittedCartItems = async () => {');
@@ -541,6 +740,26 @@ describe('Checkout payment availability', () => {
     expect(restoreSource).toContain('addGuestCartItem({');
     expect(restoreSource).toContain('price: restorePrice');
     expect(restoreSource).toContain('}, item.quantity, item.selectedSpecs, restorePrice);');
+  });
+
+  it('persists submitted checkout cart lines for rollback after payment-create recovery', () => {
+    const source = readCheckoutPageSource();
+    const submitStart = source.indexOf('const handleSubmit = async (values: CheckoutFormValues) => {');
+    const submitSource = source.slice(submitStart, source.indexOf('const retryCreatePayment = async () => {', submitStart));
+    const restoreStart = source.indexOf('const restoreSubmittedCartItems = async () => {');
+    const restoreSource = source.slice(restoreStart, source.indexOf('const rollbackPendingPayment = () => {', restoreStart));
+
+    expect(submitStart).toBeGreaterThan(-1);
+    expect(restoreStart).toBeGreaterThan(-1);
+    expect(source).toContain('cartItems: CartItem[];');
+    expect(source).toContain("const submittedCartItemsRef = React.useRef<CartItem[]>(initialPendingOrder?.cartItems || []);");
+    expect(submitSource).toContain('const submittedCartItems = cartItems.map((item) => ({ ...item }));');
+    expect(submitSource).toContain('submittedCartItemsRef.current = submittedCartItems;');
+    expect(submitSource).toContain('persistCheckoutPendingOrder(orderRes.data, normalizedPaymentMethod, normalizedGuestEmail, submittedCartItems);');
+    expect(restoreSource).toContain('const submittedCartItems = submittedCartItemsRef.current.length > 0 ? submittedCartItemsRef.current : cartItems;');
+    expect(restoreSource).toContain('submittedCartItems,');
+    expect(restoreSource).toContain('submittedCartItems.map((item) => item.productId)');
+    expect(restoreSource).toContain('submittedCartItems.forEach((item) => {');
   });
 
   it('keys checkout item rows by the current cart item id', () => {

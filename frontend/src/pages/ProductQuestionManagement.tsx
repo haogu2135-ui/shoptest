@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Button, Divider, Input, message, Modal, Popconfirm, Select, Space, Table, Tag, Typography } from 'antd';
+import { Alert, Button, Divider, Input, message, Modal, Popconfirm, Select, Space, Table, Tag, Typography } from 'antd';
 import { CheckCircleOutlined, ClockCircleOutlined, DeleteOutlined, MessageOutlined, QuestionCircleOutlined, SearchOutlined, WarningOutlined } from '@ant-design/icons';
 import { adminApi } from '../api';
 import type { ProductQuestion, ProductQuestionAdminSummary } from '../types';
@@ -25,6 +25,7 @@ const ProductQuestionManagement: React.FC = () => {
   const [keyword, setKeyword] = useState('');
   const [searchText, setSearchText] = useState('');
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [answerTarget, setAnswerTarget] = useState<ProductQuestion | null>(null);
   const [answerText, setAnswerText] = useState('');
   const [answering, setAnswering] = useState(false);
@@ -34,6 +35,7 @@ const ProductQuestionManagement: React.FC = () => {
   const { t, language } = useLanguage();
   const canAnswerQuestions = hasAdminPermission(adminPermissions, currentRole, QUESTIONS_ANSWER_PERMISSION);
   const canDeleteQuestions = hasAdminPermission(adminPermissions, currentRole, QUESTIONS_DELETE_PERMISSION);
+  const actionsDisabledByStaleData = Boolean(loadError);
 
   const locale = language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US';
   const adminQuestionProductName = (record: ProductQuestion) => (
@@ -56,8 +58,11 @@ const ProductQuestionManagement: React.FC = () => {
       const questionsRes = await adminApi.getQuestions({ status: normalizedStatus, search: normalizedSearch, limit });
       setSummary(summaryRes.data);
       setQuestions(questionsRes.data);
+      setLoadError(null);
     } catch (err: unknown) {
-      message.error(getApiErrorMessage(err, t('pages.adminQuestions.fetchFailed'), language));
+      const errorMessage = getApiErrorMessage(err, t('pages.adminQuestions.fetchFailed'), language);
+      setLoadError(errorMessage);
+      message.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -87,6 +92,7 @@ const ProductQuestionManagement: React.FC = () => {
 
   const visibleQuestions = questions;
 
+  const hasQuestionSnapshot = summary !== null;
   const answeredCount = summary?.answeredQuestions ?? visibleQuestions.filter((item) => String(item.answer || '').trim()).length;
   const unansweredCount = summary?.unansweredQuestions ?? visibleQuestions.filter((item) => !String(item.answer || '').trim()).length;
   const responseScore = summary?.responseScore ?? Math.max(0, 100 - unansweredCount * 8);
@@ -108,6 +114,10 @@ const ProductQuestionManagement: React.FC = () => {
   const answerSubmitActionLabel = `${t('pages.adminQuestions.answerAction')}: ${answerTargetLabel}`;
 
   const openAnswer = (question: ProductQuestion) => {
+    if (actionsDisabledByStaleData) {
+      message.warning(t('pages.adminQuestions.staleActionBlocked'));
+      return;
+    }
     if (!canAnswerQuestions) {
       message.error(t('adminLayout.noPermission'));
       return;
@@ -117,6 +127,10 @@ const ProductQuestionManagement: React.FC = () => {
   };
 
   const handleAnswer = async () => {
+    if (actionsDisabledByStaleData) {
+      message.warning(t('pages.adminQuestions.staleActionBlocked'));
+      return;
+    }
     if (!canAnswerQuestions) {
       message.error(t('adminLayout.noPermission'));
       return;
@@ -147,6 +161,10 @@ const ProductQuestionManagement: React.FC = () => {
   };
 
   const deleteQuestion = async (question: ProductQuestion) => {
+    if (actionsDisabledByStaleData) {
+      message.warning(t('pages.adminQuestions.staleActionBlocked'));
+      return;
+    }
     if (!canDeleteQuestions) {
       message.error(t('adminLayout.noPermission'));
       return;
@@ -174,7 +192,7 @@ const ProductQuestionManagement: React.FC = () => {
     const buttonSize = variant === 'card' ? 'middle' : 'small';
     const actions = [
       canAnswerQuestions ? (
-        <Button key="answer" size={buttonSize} icon={<MessageOutlined />} aria-label={answerActionLabel} title={answerActionLabel} onClick={() => openAnswer(record)}>
+        <Button key="answer" size={buttonSize} icon={<MessageOutlined />} aria-label={answerActionLabel} title={answerActionLabel} onClick={() => openAnswer(record)} disabled={actionsDisabledByStaleData}>
           {t('pages.adminQuestions.answerAction')}
         </Button>
       ) : null,
@@ -186,11 +204,11 @@ const ProductQuestionManagement: React.FC = () => {
           description={t('pages.adminQuestions.deleteConfirmDescription')}
           okText={t('common.confirm')}
           cancelText={t('common.cancel')}
-          okButtonProps={{ danger: true, 'aria-label': deleteActionLabel, title: deleteActionLabel }}
+          okButtonProps={{ danger: true, disabled: actionsDisabledByStaleData, 'aria-label': deleteActionLabel, title: deleteActionLabel }}
           cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${deleteActionLabel}`, title: `${t('common.cancel')}: ${deleteActionLabel}` }}
           onConfirm={() => deleteQuestion(record)}
         >
-          <Button size={buttonSize} danger icon={<DeleteOutlined />} aria-label={deleteActionLabel} title={deleteActionLabel} loading={deletingId === record.id}>
+          <Button size={buttonSize} danger icon={<DeleteOutlined />} aria-label={deleteActionLabel} title={deleteActionLabel} loading={deletingId === record.id} disabled={actionsDisabledByStaleData}>
             {t('common.delete')}
           </Button>
         </Popconfirm>
@@ -268,22 +286,22 @@ const ProductQuestionManagement: React.FC = () => {
         <div className="product-question-ops-panel__metrics">
           <div>
             <QuestionCircleOutlined />
-            <strong>{summary?.totalQuestions ?? visibleQuestions.length}</strong>
+            <strong>{hasQuestionSnapshot ? summary?.totalQuestions ?? visibleQuestions.length : '-'}</strong>
             <span>{t('pages.adminQuestions.totalQuestions')}</span>
           </div>
           <div>
             <MessageOutlined />
-            <strong>{unansweredCount}</strong>
+            <strong>{hasQuestionSnapshot ? unansweredCount : '-'}</strong>
             <span>{t('pages.adminQuestions.unansweredQuestions')}</span>
           </div>
           <div>
             <WarningOutlined />
-            <strong>{staleCount}</strong>
+            <strong>{hasQuestionSnapshot ? staleCount : '-'}</strong>
             <span>{t('pages.adminQuestions.staleQuestions', { hours: staleHours })}</span>
           </div>
           <div>
             <CheckCircleOutlined />
-            <strong>{responseScore}</strong>
+            <strong>{hasQuestionSnapshot ? responseScore : '-'}</strong>
             <span>{t('pages.adminQuestions.responseScore')}</span>
           </div>
         </div>
@@ -322,9 +340,23 @@ const ProductQuestionManagement: React.FC = () => {
           ]}
         />
         <Tag color={answeredCount > unansweredCount ? 'green' : 'orange'}>
-          {t('pages.adminQuestions.answeredQuestions', { count: answeredCount })}
+          {t('pages.adminQuestions.answeredQuestions', { count: hasQuestionSnapshot ? answeredCount : '-' })}
         </Tag>
       </Space>
+      {loadError ? (
+        <Alert
+          className="product-question-management-page__loadAlert"
+          type={visibleQuestions.length ? 'warning' : 'error'}
+          showIcon
+          message={t('pages.adminQuestions.loadErrorTitle')}
+          description={visibleQuestions.length ? t('pages.adminQuestions.staleDataWarning') : loadError}
+          action={(
+            <Button size="small" onClick={loadQuestions} loading={loading}>
+              {t('common.retry')}
+            </Button>
+          )}
+        />
+      ) : null}
       <div className="product-question-mobile-list" aria-label={t('pages.adminQuestions.title')}>
         {loading ? (
           <div className="product-question-mobile-list__state">{t('common.loading')}</div>
@@ -370,7 +402,15 @@ const ProductQuestionManagement: React.FC = () => {
               {renderQuestionActions(question, 'card')}
             </article>
           );
-        }) : (
+        }) : loadError ? (
+          <div className="product-question-mobile-list__state">
+            <strong>{t('pages.adminQuestions.loadErrorTitle')}</strong>
+            <span>{loadError}</span>
+            <Button size="small" onClick={loadQuestions} loading={loading}>
+              {t('common.retry')}
+            </Button>
+          </div>
+        ) : (
           <div className="product-question-mobile-list__state">{t('pages.adminQuestions.empty', { defaultValue: 'No questions' })}</div>
         )}
       </div>
@@ -392,7 +432,7 @@ const ProductQuestionManagement: React.FC = () => {
         onOk={handleAnswer}
         okText={t('pages.adminQuestions.answerAction')}
         cancelText={t('common.cancel')}
-        okButtonProps={{ disabled: !canAnswerQuestions, 'aria-label': answerSubmitActionLabel, title: answerSubmitActionLabel }}
+        okButtonProps={{ disabled: !canAnswerQuestions || actionsDisabledByStaleData, 'aria-label': answerSubmitActionLabel, title: answerSubmitActionLabel }}
         cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${answerSubmitActionLabel}`, title: `${t('common.cancel')}: ${answerSubmitActionLabel}` }}
         confirmLoading={answering}
         title={t('pages.adminQuestions.answerAction')}

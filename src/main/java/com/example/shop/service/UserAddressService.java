@@ -50,11 +50,24 @@ public class UserAddressService {
 
     @Transactional(rollbackFor = Exception.class)
     public void updateAddress(UserAddress address) {
+        if (address == null || address.getId() == null) {
+            throw new IllegalArgumentException("Address not found");
+        }
         normalizeAddress(address);
-        lockAddressOwner(address.getUserId());
+        UserAddress existing = userAddressMapper.findById(address.getId());
+        if (existing == null) {
+            throw new IllegalArgumentException("Address not found");
+        }
+        address.setUserId(existing.getUserId());
+        lockAddressOwner(existing.getUserId());
+        existing = userAddressMapper.findById(address.getId());
+        if (existing == null) {
+            throw new IllegalArgumentException("Address not found");
+        }
+        address.setUserId(existing.getUserId());
         address.setUpdatedAt(LocalDateTime.now());
         if (Boolean.TRUE.equals(address.getIsDefault())) {
-            userAddressMapper.clearDefault(address.getUserId());
+            userAddressMapper.clearDefault(existing.getUserId());
         }
         if (userAddressMapper.update(address) == 0) {
             throw new IllegalStateException("Address update failed");

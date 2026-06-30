@@ -752,6 +752,7 @@ class PaymentFlowServiceTest {
         when(cartItemMapper.findByIds(List.of(1L))).thenReturn(List.of(item));
         when(cartItemMapper.findByIdsForUpdate(List.of(1L))).thenReturn(List.of(item));
         when(productRepository.findAllByIdForUpdate(List.of(3L))).thenReturn(List.of(product));
+        when(productRepository.decreaseStock(3L, 2)).thenReturn(1);
         when(couponService.quote(eq(7L), any(), eq(6L))).thenReturn(
                 new com.example.shop.dto.CouponQuoteResponse(
                         new BigDecimal("100.00"),
@@ -891,6 +892,7 @@ class PaymentFlowServiceTest {
         when(cartItemMapper.findByIds(List.of(1L))).thenReturn(List.of(item));
         when(cartItemMapper.findByIdsForUpdate(List.of(1L))).thenReturn(List.of(item));
         when(productRepository.findAllByIdForUpdate(List.of(3L))).thenReturn(List.of(product));
+        when(productRepository.decreaseStock(3L, 2)).thenReturn(1);
         when(couponService.quote(eq(7L), any(), eq(null))).thenAnswer(invocation -> {
             @SuppressWarnings("unchecked")
             List<CartItem> quotedItems = invocation.getArgument(1, List.class);
@@ -969,12 +971,13 @@ class PaymentFlowServiceTest {
         product.setFreeShipping(false);
 
         when(userRepository.findByEmail("buyer@example.com")).thenReturn(Optional.empty());
-        when(userRepository.save(any(User.class))).thenAnswer(invocation -> {
+        when(userRepository.saveAndFlush(any(User.class))).thenAnswer(invocation -> {
             User user = invocation.getArgument(0);
             user.setId(77L);
             return user;
         });
         when(productRepository.findAllByIdForUpdate(List.of(3L))).thenReturn(List.of(product));
+        when(productRepository.decreaseStock(3L, 2)).thenReturn(1);
         when(productVariantService.normalizeSpecs(null)).thenReturn(null);
         when(productVariantService.resolveStock(product, null)).thenReturn(10);
         when(productVariantService.resolvePrice(product, null)).thenReturn(new BigDecimal("50.00"));
@@ -1055,7 +1058,10 @@ class PaymentFlowServiceTest {
     }
 
     private String stripeSignatureHeader(String payload, String secret) {
-        long timestamp = Instant.now().getEpochSecond();
+        return stripeSignatureHeader(payload, secret, Instant.now().getEpochSecond());
+    }
+
+    private String stripeSignatureHeader(String payload, String secret, long timestamp) {
         String signedPayload = timestamp + "." + payload;
         return "t=" + timestamp + ",v1=" + hmacSha256Hex(signedPayload, secret);
     }
@@ -1471,6 +1477,32 @@ class PaymentFlowServiceTest {
         IllegalArgumentException ex = assertThrows(
                 IllegalArgumentException.class,
                 () -> service.handleStripeWebhook(payload, internalCallbackSignature)
+        );
+        assertEquals("Invalid Stripe webhook signature", ex.getMessage());
+        assertNotNull(ex.getCause());
+        verifyNoInteractions(paymentRepository, orderService);
+    }
+
+    @Test
+    void stripeWebhookRejectsExpiredTimestampEvenWhenSignatureMatches() {
+        PaymentRepository paymentRepository = mock(PaymentRepository.class);
+        OrderService orderService = mock(OrderService.class);
+        RuntimeConfigService runtimeConfig = mock(RuntimeConfigService.class);
+        String webhookSecret = "whsec_test_stripe_webhook_secret_123";
+
+        when(runtimeConfig.getString("stripe.webhook-secret", "")).thenReturn(webhookSecret);
+
+        PaymentService service = new PaymentService();
+        ReflectionTestUtils.setField(service, "paymentRepository", paymentRepository);
+        ReflectionTestUtils.setField(service, "orderService", orderService);
+        ReflectionTestUtils.setField(service, "runtimeConfig", runtimeConfig);
+
+        String payload = stripeCheckoutSessionCompletedPayload("cs_test_42", "pi_test_42", 8800L, "mxn");
+        long expiredTimestamp = Instant.now().minusSeconds(600).getEpochSecond();
+
+        IllegalArgumentException ex = assertThrows(
+                IllegalArgumentException.class,
+                () -> service.handleStripeWebhook(payload, stripeSignatureHeader(payload, webhookSecret, expiredTimestamp))
         );
         assertEquals("Invalid Stripe webhook signature", ex.getMessage());
         assertNotNull(ex.getCause());
@@ -1895,6 +1927,43 @@ class PaymentFlowServiceTest {
         InOrder inOrder = inOrder(orderRepository, refundService);
         inOrder.verify(orderRepository).markRefunded(42L, "SHIPPED", "customer return");
         inOrder.verify(refundService).refundPaidPayment(order, "customer return", "BANK-REF-20260518");
+    }
+
+    @Test
+    void returnedOrderRefundReturnsExistingRefundWithoutCallingProviderAgain() {
+        OrderRepository orderRepository = mock(OrderRepository.class);
+        PaymentRepository paymentRepository = mock(PaymentRepository.class);
+        RefundService refundService = mock(RefundService.class);
+        CouponService couponService = mock(CouponService.class);
+        Order order = new Order();
+        order.setId(42L);
+        order.setOrderNo("SO202605180001");
+        order.setStatus("RETURNED");
+        order.setUserCouponId(6L);
+        Payment refundedPayment = new Payment();
+        refundedPayment.setId(9L);
+        refundedPayment.setOrderId(42L);
+        refundedPayment.setOrderNo(order.getOrderNo());
+        refundedPayment.setChannel("STRIPE");
+        refundedPayment.setStatus("REFUNDED");
+        refundedPayment.setAmount(new BigDecimal("88.00"));
+
+        when(orderRepository.findById(42L)).thenReturn(order);
+        when(paymentRepository.findLatestRefundedByOrderId(42L)).thenReturn(refundedPayment);
+
+        OrderService service = new OrderService();
+        ReflectionTestUtils.setField(service, "orderRepository", orderRepository);
+        ReflectionTestUtils.setField(service, "paymentRepository", paymentRepository);
+        ReflectionTestUtils.setField(service, "refundService", refundService);
+        ReflectionTestUtils.setField(service, "couponService", couponService);
+
+        Payment result = service.refundOrder(42L, "customer return", false, "BANK-REF-20260518");
+
+        assertEquals("REFUNDED", result.getStatus());
+        assertEquals(9L, result.getId());
+        verify(orderRepository, never()).markRefunded(eq(42L), any(), any());
+        verifyNoInteractions(refundService);
+        verify(couponService).releaseUsedCoupon(6L);
     }
 
     @Test

@@ -15,11 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class ControllerCoverageInventoryTest {
     private static final Path CONTROLLER_SOURCE_DIR = Path.of("src/main/java/com/example/shop/controller");
     private static final Path CONTROLLER_TEST_DIR = Path.of("src/test/java/com/example/shop/controller");
-    private static final Set<String> DEFERRED_CONTROLLER_CONTRACTS = Set.of(
-            "AdminConfigCenterController",
-            "AdminIpBlacklistController",
-            "AdminTrafficControlController"
-    );
+    private static final Set<String> DEFERRED_CONTROLLER_CONTRACTS = Set.of();
 
     @Test
     void everyNonDeferredControllerHasAMatchingControllerTestContract() throws IOException {

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Button, Card, Checkbox, Empty, message, Popconfirm, Progress, Space, Table, Tag, Typography } from 'antd';
-import { CheckCircleOutlined, ClockCircleOutlined, DeleteOutlined, ExclamationCircleOutlined, MinusOutlined, PlusOutlined, ShoppingCartOutlined, ShoppingOutlined } from '@ant-design/icons';
+import { CheckCircleOutlined, ClockCircleOutlined, DeleteOutlined, ExclamationCircleOutlined, MinusOutlined, PlusOutlined, ReloadOutlined, ShoppingCartOutlined, ShoppingOutlined } from '@ant-design/icons';
 import { Link, useNavigate } from 'react-router-dom';
 import { cartApi, productApi } from '../api';
 import type { CartItem, ProductPublic as Product } from '../types';
@@ -182,6 +182,7 @@ const Cart: React.FC = () => {
   const [removingItemIds, setRemovingItemIds] = useState<number[]>([]);
   const [quantityDrafts, setQuantityDrafts] = useState<Record<number, string>>({});
   const [checkoutSubmitting, setCheckoutSubmitting] = useState(false);
+  const checkoutSubmittingRef = useRef(false);
   const mountedRef = useRef(true);
   const cartSnapshotRequestRef = useRef(0);
   const navigate = useNavigate();
@@ -271,6 +272,7 @@ const Cart: React.FC = () => {
   }, [beginCartSnapshotRequest, isCurrentCartSnapshotRequest, resetCheckoutStateAfterCartMutation]);
 
   const isCartMounted = useCallback(() => mountedRef.current, []);
+  const hasStaleCartData = loadError && cartItems.length > 0;
 
   const clearQuantityPendingState = useCallback((itemIds: number[]) => {
     if (!mountedRef.current || itemIds.length === 0) return;
@@ -288,7 +290,11 @@ const Cart: React.FC = () => {
 
   const handleQuantitySyncError = useCallback(async (err: unknown) => {
     message.error(getApiErrorMessage(err, t('pages.cart.quantityFailed'), language));
-    await fetchCartItems();
+    try {
+      await fetchCartItems();
+    } catch (refreshError) {
+      reportNonBlockingError('Cart.handleQuantitySyncError.fetchCartItems', refreshError);
+    }
   }, [fetchCartItems, language, t]);
 
   const {
@@ -321,6 +327,27 @@ const Cart: React.FC = () => {
         }
       });
       return changed ? nextDrafts : drafts;
+    });
+  }, [cartItems]);
+
+  useEffect(() => {
+    setSelectedIds((ids) => {
+      if (ids.length === 0) return ids;
+      const checkoutableItemIds = new Set(cartItems.filter(canCheckout).map((item) => item.id));
+      let changed = false;
+      const nextIds: number[] = [];
+      ids.forEach((id) => {
+        if (!checkoutableItemIds.has(id)) {
+          changed = true;
+          return;
+        }
+        if (nextIds.includes(id)) {
+          changed = true;
+          return;
+        }
+        nextIds.push(id);
+      });
+      return changed ? nextIds : ids;
     });
   }, [cartItems]);
 
@@ -398,6 +425,7 @@ const Cart: React.FC = () => {
   }, [resetCheckoutStateAfterCartMutation]);
 
   const updateQuantity = (item: CartItem, quantity: number) => {
+    if (hasStaleCartData) return;
     const normalizedQuantity = normalizeCartQuantity(item, quantity);
     const authenticated = hasAuthenticatedCartSession();
     invalidateCartSnapshotRequests();
@@ -424,7 +452,7 @@ const Cart: React.FC = () => {
     const increaseLabel = `${t('pages.cart.increaseQuantity')}: ${itemName}`;
     const limit = getCartQuantityLimit(item.stock);
     const syncing = updatingItemIds.includes(item.id);
-    const disabled = !isAvailable(item) || removingItemIds.includes(item.id) || checkoutSubmitting;
+    const disabled = hasStaleCartData || !isAvailable(item) || removingItemIds.includes(item.id) || checkoutSubmitting;
     const quantity = getCartLineQuantity(item.quantity);
     const quantityDraft = quantityDrafts[item.id];
     const quantityValue = quantityDraft ?? quantity;
@@ -501,6 +529,7 @@ const Cart: React.FC = () => {
   );
 
   const removeItem = async (itemId: number) => {
+    if (hasStaleCartData) return;
     if (removingItemIds.includes(itemId)) return;
     invalidateCartSnapshotRequests();
     cancelPendingQuantitySync([itemId]);
@@ -529,6 +558,7 @@ const Cart: React.FC = () => {
   };
 
   const saveForLater = async (item: CartItem) => {
+    if (hasStaleCartData) return;
     if (removingItemIds.includes(item.id)) return;
     invalidateCartSnapshotRequests();
     cancelPendingQuantitySync([item.id]);
@@ -566,6 +596,7 @@ const Cart: React.FC = () => {
   };
 
   const moveSavedItemToCart = async (item: SavedForLaterItem) => {
+    if (hasStaleCartData) return;
     if (restoringSaved || restoringSavedItemIds.includes(item.id)) return;
     const cartSnapshotRequestId = invalidateCartSnapshotRequests();
     setRestoringSavedItemIds((ids) => Array.from(new Set([...ids, item.id])));
@@ -613,6 +644,7 @@ const Cart: React.FC = () => {
   };
 
   const moveSavedItemsToCart = async (items: SavedForLaterItem[]) => {
+    if (hasStaleCartData) return;
     if (items.length === 0) return;
     const targetItems = items.slice(0, conversionConfig.saveForLater.maxBulkRestoreItems);
     const cartSnapshotRequestId = invalidateCartSnapshotRequests();
@@ -681,6 +713,7 @@ const Cart: React.FC = () => {
   };
 
   const removeItems = async (itemIds: number[], successMessage: string) => {
+    if (hasStaleCartData) return;
     if (itemIds.length === 0) return;
     const normalizedIds = Array.from(new Set(itemIds));
     invalidateCartSnapshotRequests();
@@ -756,20 +789,27 @@ const Cart: React.FC = () => {
     [savedItems],
   );
   const toggleAll = (checked: boolean) => {
+    if (hasStaleCartData) return;
     setSelectedIds(checked ? purchasableItems.map((item) => item.id) : []);
   };
 
   const toggleOne = (itemId: number, checked: boolean) => {
+    if (hasStaleCartData) return;
     setSelectedIds((ids) => (checked ? Array.from(new Set([...ids, itemId])) : ids.filter((id) => id !== itemId)));
   };
 
-  const goCheckout = async () => {
-    if (checkoutSubmitting) return;
+  const goCheckout = useCallback(async () => {
+    if (hasStaleCartData) {
+      message.warning(t('pages.cart.staleDataWarning'));
+      return;
+    }
+    if (checkoutSubmittingRef.current) return;
     const checkoutItems = selectedItems.filter(canCheckout);
     if (checkoutItems.length === 0) {
       message.warning(t('pages.cart.chooseItems'));
       return;
     }
+    checkoutSubmittingRef.current = true;
     setCheckoutSubmitting(true);
     try {
       await flushPendingQuantityUpdates(checkoutItems);
@@ -781,17 +821,25 @@ const Cart: React.FC = () => {
       message.warning(t('pages.cart.checkoutSyncFailed'));
       return;
     } finally {
+      checkoutSubmittingRef.current = false;
       if (mountedRef.current) setCheckoutSubmitting(false);
     }
-  };
+  }, [flushPendingQuantityUpdates, hasStaleCartData, navigate, selectedItems, t]);
 
   const removeSelectedItems = () => {
+    if (hasStaleCartData) return;
     removeItems(selectedIds, t('pages.cart.removedSelected', { count: selectedIds.length }));
   };
 
   const clearUnavailableItems = () => {
+    if (hasStaleCartData) return;
     removeItems(unavailableItems.map((item) => item.id), t('pages.cart.clearedUnavailable', { count: unavailableItems.length }));
   };
+
+  const refreshCartItems = useCallback(() => {
+    setLoading(true);
+    fetchCartItems();
+  }, [fetchCartItems]);
 
   const renderCartAmountText = (label: string, amount: string) => {
     const parts = label.split(amount);
@@ -831,6 +879,16 @@ const Cart: React.FC = () => {
     : `${freeShippingPercent}%`;
 
   const cartNextAction = (() => {
+    if (hasStaleCartData) {
+      return {
+        key: 'refresh',
+        tone: 'warning',
+        title: t('pages.cart.nextActionRefreshTitle'),
+        text: t('pages.cart.nextActionRefreshText'),
+        label: t('messages.retry'),
+        action: refreshCartItems,
+      };
+    }
     if (unavailableItems.length > 0) {
       return {
         key: 'clear',
@@ -936,6 +994,7 @@ const Cart: React.FC = () => {
   const emptyPetFinderActionLabel = `${t('nav.petFinder')}: ${t('pages.cart.empty')}`;
   const emptyHistoryActionLabel = `${t('nav.history')}: ${t('pages.cart.recentRecoveryTitle')}`;
   const cartNextActionLabel = `${cartNextAction.label}: ${cartNextAction.title}`;
+  const cartTopNextActionLabel = `${t('pages.cart.nextActionEyebrow')}: ${cartNextActionLabel}`;
   const browseAllProductsActionLabel = `${t('pages.cart.browse')}: ${t('pages.productList.allCategories')}`;
   const recentRecoveryBrowseActionLabel = `${t('pages.cart.browse')}: ${t('pages.cart.recentRecoveryTitle')}`;
   const deleteSelectedActionLabel = `${t('pages.cart.deleteSelected')}: ${t('pages.cart.selectedSummary', { count: selectedIds.length })}`;
@@ -946,6 +1005,9 @@ const Cart: React.FC = () => {
   const restoreSavedReminderActionLabel = `${t('pages.cart.restoreReminder')}: ${t('pages.cart.savedReminderTitle', { count: savedReminderItems.length })}`;
 
   const addSuggestedProduct = async (product: Product) => {
+    if (hasStaleCartData) {
+      throw new Error(t('pages.cart.staleDataWarning'));
+    }
     const productId = normalizePositiveProductId(product.id);
     if (productId === null) {
       throw new Error(t('messages.addFailed'));
@@ -1005,6 +1067,7 @@ const Cart: React.FC = () => {
         <Checkbox
           checked={allSelected}
           indeterminate={selectedPurchasableCount > 0 && !allSelected}
+          disabled={hasStaleCartData}
           aria-label={t('pages.cart.selectAll')}
           title={t('pages.cart.selectAll')}
           onChange={(e) => toggleAll(e.target.checked)}
@@ -1019,7 +1082,7 @@ const Cart: React.FC = () => {
         const selectItemLabel = `${t('pages.cart.selectAll')}: ${itemName}`;
         return (
           <Checkbox
-            disabled={!canCheckout(record)}
+            disabled={hasStaleCartData || !canCheckout(record)}
             checked={selectedIds.includes(record.id)}
             aria-label={selectItemLabel}
             title={selectItemLabel}
@@ -1094,19 +1157,20 @@ const Cart: React.FC = () => {
         const deleteActionLabel = `${t('common.delete')}: ${itemName}`;
         return (
           <Space direction="vertical" size={2}>
-            <Button type="text" icon={<ClockCircleOutlined />} size="small" aria-label={saveActionLabel} title={saveActionLabel} onClick={() => saveForLater(record)} disabled={removingItemIds.includes(record.id)}>
+            <Button type="text" icon={<ClockCircleOutlined />} size="small" aria-label={saveActionLabel} title={saveActionLabel} onClick={() => saveForLater(record)} disabled={hasStaleCartData || removingItemIds.includes(record.id)}>
               {t('pages.cart.saveForLater')}
             </Button>
             <Popconfirm
               classNames={{ root: 'shop-mobile-popup-layer cart-page-popconfirm' }}
               title={t('pages.cart.deleteConfirm')}
+              disabled={hasStaleCartData}
               onConfirm={() => removeItem(record.id)}
               okText={t('common.confirm')}
               cancelText={t('common.cancel')}
               okButtonProps={{ danger: true, 'aria-label': deleteActionLabel, title: deleteActionLabel }}
               cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${deleteActionLabel}`, title: `${t('common.cancel')}: ${deleteActionLabel}` }}
             >
-              <Button type="text" danger icon={<DeleteOutlined />} size="small" loading={removingItemIds.includes(record.id)} aria-label={deleteActionLabel} title={deleteActionLabel}>{t('common.delete')}</Button>
+              <Button type="text" danger icon={<DeleteOutlined />} size="small" loading={removingItemIds.includes(record.id)} disabled={hasStaleCartData} aria-label={deleteActionLabel} title={deleteActionLabel}>{t('common.delete')}</Button>
             </Popconfirm>
           </Space>
         );
@@ -1241,8 +1305,9 @@ const Cart: React.FC = () => {
             ) : (
               <Button
                 type={cartItems.length > 0 ? 'primary' : 'default'}
-                aria-label={cartItems.length > 0 ? `${cartNextActionLabel} (top action)` : emptyBrowseActionLabel}
-                title={cartItems.length > 0 ? `${cartNextActionLabel} (top action)` : emptyBrowseActionLabel}
+                icon={cartNextAction.key === 'refresh' ? <ReloadOutlined /> : undefined}
+                aria-label={cartItems.length > 0 ? cartTopNextActionLabel : emptyBrowseActionLabel}
+                title={cartItems.length > 0 ? cartTopNextActionLabel : emptyBrowseActionLabel}
                 onClick={cartItems.length > 0 ? cartNextAction.action : () => navigate('/products')}
               >
                 {cartItems.length > 0 ? cartNextAction.label : t('pages.cart.browse')}
@@ -1274,6 +1339,20 @@ const Cart: React.FC = () => {
           </article>
         ))}
       </section>
+      {hasStaleCartData ? (
+        <Alert
+          className="cart-page__loadErrorAlert"
+          type="warning"
+          showIcon
+          message={t('pages.cart.staleDataTitle')}
+          description={loadErrorMessage || t('pages.cart.staleDataWarning')}
+          action={
+            <Button type="primary" icon={<ReloadOutlined />} aria-label={retryCartLoadActionLabel} title={retryCartLoadActionLabel} onClick={refreshCartItems}>
+              {t('messages.retry')}
+            </Button>
+          }
+        />
+      ) : null}
       {showRecentlyViewedRecovery ? (
         <Card className="cart-page__recentRecovery">
           <div className="cart-page__recentRecoveryHeader">
@@ -1316,6 +1395,7 @@ const Cart: React.FC = () => {
                     type={needsOptionSelection(product) ? 'default' : 'primary'}
                     icon={<ShoppingCartOutlined />}
                     loading={addingRecentId === product.id}
+                    disabled={hasStaleCartData}
                     aria-label={recentActionLabel}
                     title={recentActionLabel}
                     onClick={() => addRecentProduct(product)}
@@ -1335,7 +1415,7 @@ const Cart: React.FC = () => {
               <Popconfirm
                 classNames={{ root: 'shop-mobile-popup-layer cart-page-popconfirm' }}
                 title={t('pages.cart.deleteSelectedConfirm', { count: selectedIds.length })}
-                disabled={selectedIds.length === 0}
+                disabled={hasStaleCartData || selectedIds.length === 0}
                 onConfirm={removeSelectedItems}
                 okText={t('common.confirm')}
                 cancelText={t('common.cancel')}
@@ -1345,7 +1425,7 @@ const Cart: React.FC = () => {
                 <Button
                   danger
                   icon={<DeleteOutlined />}
-                  disabled={selectedIds.length === 0}
+                  disabled={hasStaleCartData || selectedIds.length === 0}
                   loading={selectedIds.some((id) => removingItemIds.includes(id))}
                   aria-label={deleteSelectedActionLabel}
                   title={deleteSelectedActionLabel}
@@ -1356,7 +1436,7 @@ const Cart: React.FC = () => {
               <Popconfirm
                 classNames={{ root: 'shop-mobile-popup-layer cart-page-popconfirm' }}
                 title={t('pages.cart.clearUnavailableConfirm', { count: unavailableItems.length })}
-                disabled={unavailableItems.length === 0}
+                disabled={hasStaleCartData || unavailableItems.length === 0}
                 onConfirm={clearUnavailableItems}
                 okText={t('common.confirm')}
                 cancelText={t('common.cancel')}
@@ -1364,7 +1444,7 @@ const Cart: React.FC = () => {
                 cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${clearUnavailableActionLabel}`, title: `${t('common.cancel')}: ${clearUnavailableActionLabel}` }}
               >
                 <Button
-                  disabled={unavailableItems.length === 0}
+                  disabled={hasStaleCartData || unavailableItems.length === 0}
                   loading={unavailableItems.some((item) => removingItemIds.includes(item.id))}
                   aria-label={clearUnavailableActionLabel}
                   title={clearUnavailableActionLabel}
@@ -1404,7 +1484,7 @@ const Cart: React.FC = () => {
                 aria-label={selectReadyActionLabel}
                 title={selectReadyActionLabel}
                 onClick={() => toggleAll(true)}
-                disabled={purchasableItems.length === 0 || allSelected}
+                disabled={hasStaleCartData || purchasableItems.length === 0 || allSelected}
               >
                 {t('pages.cart.selectCheckoutReady')}
               </Button>
@@ -1412,6 +1492,7 @@ const Cart: React.FC = () => {
                 <Popconfirm
                   classNames={{ root: 'shop-mobile-popup-layer cart-page-popconfirm' }}
                   title={t('pages.cart.clearUnavailableConfirm', { count: unavailableItems.length })}
+                  disabled={hasStaleCartData}
                   onConfirm={clearUnavailableItems}
                   okText={t('common.confirm')}
                   cancelText={t('common.cancel')}
@@ -1420,6 +1501,7 @@ const Cart: React.FC = () => {
                 >
                   <Button
                     size="small"
+                    disabled={hasStaleCartData}
                     loading={unavailableItems.some((item) => removingItemIds.includes(item.id))}
                     aria-label={clearUnavailableActionLabel}
                     title={clearUnavailableActionLabel}
@@ -1454,6 +1536,7 @@ const Cart: React.FC = () => {
               ) : (
                 <Button
                   type="default"
+                  icon={cartNextAction.key === 'refresh' ? <ReloadOutlined /> : undefined}
                   aria-label={cartNextActionLabel}
                   title={cartNextActionLabel}
                   onClick={cartNextAction.action}
@@ -1476,7 +1559,7 @@ const Cart: React.FC = () => {
               <Card key={item.id} size="small" className="cart-page__mobileItem" role="listitem">
                 <div className="cart-page__mobileItemTop">
                   <Checkbox
-                    disabled={!canCheckout(item)}
+                    disabled={hasStaleCartData || !canCheckout(item)}
                     checked={selectedIds.includes(item.id)}
                     aria-label={`${t('pages.cart.chooseItems')}: ${itemName}`}
                     onChange={(e) => toggleOne(item.id, e.target.checked)}
@@ -1516,12 +1599,13 @@ const Cart: React.FC = () => {
                     {renderLineTotal(item)}
                   </div>
                   <div className="cart-page__mobileItemActions">
-                    <Button type="text" icon={<ClockCircleOutlined />} size="small" aria-label={saveActionLabel} title={saveActionLabel} onClick={() => saveForLater(item)} disabled={removingItemIds.includes(item.id)}>
+                    <Button type="text" icon={<ClockCircleOutlined />} size="small" aria-label={saveActionLabel} title={saveActionLabel} onClick={() => saveForLater(item)} disabled={hasStaleCartData || removingItemIds.includes(item.id)}>
                       {t('pages.cart.saveForLaterShort')}
                     </Button>
                     <Popconfirm
                       classNames={{ root: 'shop-mobile-popup-layer cart-page-popconfirm' }}
                       title={t('pages.cart.deleteConfirm')}
+                      disabled={hasStaleCartData}
                       onConfirm={() => removeItem(item.id)}
                       okText={t('common.confirm')}
                       cancelText={t('common.cancel')}
@@ -1534,6 +1618,7 @@ const Cart: React.FC = () => {
                         icon={<DeleteOutlined />}
                         size="small"
                         loading={removingItemIds.includes(item.id)}
+                        disabled={hasStaleCartData}
                         aria-label={deleteActionLabel}
                         title={deleteActionLabel}
                       />
@@ -1558,12 +1643,12 @@ const Cart: React.FC = () => {
                   {t('common.total')}: <Text strong className="cart-page__totalAmount commerce-money">{formatMoney(selectedTotal)}</Text>
                 </Text>
               </div>
-              <Button type="primary" size="large" aria-label={checkoutActionLabel} title={checkoutActionLabel} onClick={goCheckout} disabled={checkoutBlocked || checkoutSubmitting} loading={checkoutSubmitting}>
+              <Button type="primary" size="large" aria-label={checkoutActionLabel} title={checkoutActionLabel} onClick={goCheckout} disabled={hasStaleCartData || checkoutBlocked || checkoutSubmitting} loading={checkoutSubmitting}>
                 {checkoutSubmitting ? t('pages.cart.checkoutSyncing') : t('pages.cart.checkout')}
               </Button>
             </div>
           </Card>
-          {selectedItems.length > 0 ? (
+          {selectedItems.length > 0 && !hasStaleCartData ? (
             <div className="cart-page__addOn" id="cart-add-on-assistant">
               {benefitTarget ? (
                 <AddOnAssistant
@@ -1591,7 +1676,7 @@ const Cart: React.FC = () => {
             size="small"
             icon={<ShoppingCartOutlined />}
             loading={restoringSaved}
-            disabled={restoringSavedItemIds.length > 0}
+            disabled={hasStaleCartData || restoringSavedItemIds.length > 0}
             aria-label={moveAllSavedActionLabel}
             title={moveAllSavedActionLabel}
             onClick={() => moveSavedItemsToCart(savedItems)}
@@ -1621,7 +1706,7 @@ const Cart: React.FC = () => {
                 size="small"
                 type="primary"
                 loading={restoringSaved}
-                disabled={restoringSavedItemIds.length > 0}
+                disabled={hasStaleCartData || restoringSavedItemIds.length > 0}
                 aria-label={restoreSavedReminderActionLabel}
                 title={restoreSavedReminderActionLabel}
                 onClick={() => moveSavedItemsToCart(savedReminderItems)}
@@ -1665,7 +1750,7 @@ const Cart: React.FC = () => {
                   <Text strong className="cart-page__savedPrice commerce-money">{formatMoney(item.price)}</Text>
                 </div>
                 <Space className="cart-page__savedActions">
-                  <Button icon={<ShoppingCartOutlined />} loading={restoringSavedItem} disabled={restoringSavedItem} aria-label={moveActionLabel} title={moveActionLabel} onClick={() => moveSavedItemToCart(item)}>
+                  <Button icon={<ShoppingCartOutlined />} loading={restoringSavedItem} disabled={hasStaleCartData || restoringSavedItem} aria-label={moveActionLabel} title={moveActionLabel} onClick={() => moveSavedItemToCart(item)}>
                     {t('pages.cart.moveToCart')}
                   </Button>
                   <Popconfirm

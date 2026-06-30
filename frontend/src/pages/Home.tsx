@@ -58,6 +58,14 @@ const PET_GALLERY_LOCAL_LIKES_KEY = 'shop-pet-gallery-local-likes';
 
 const categoryImageFallback = imageFallbacks.category;
 const petGalleryImageFallback = imageFallbacks.media;
+const publicAssetUrl = (path: string) => `${process.env.PUBLIC_URL || ''}${path}`;
+const homeImageVariables = {
+  '--shop-home-hero-dog': `url("${publicAssetUrl('/assets/home/hero-dog.jpg')}")`,
+  '--shop-home-hero-cat-dog': `url("${publicAssetUrl('/assets/home/hero-cat-dog.jpg')}")`,
+  '--shop-home-hero-dogs': `url("${publicAssetUrl('/assets/home/hero-dogs.jpg')}")`,
+  '--shop-home-hero-mobile-pet': `url("${publicAssetUrl('/assets/home/hero-mobile-pet.jpg')}")`,
+  '--shop-home-hero-pet-care': `url("${publicAssetUrl('/assets/home/hero-pet-care.jpg')}")`,
+} as React.CSSProperties;
 
 const mergeProductsById = (...groups: Product[][]) => {
   const productsById = new Map<number, Product>();
@@ -70,12 +78,12 @@ const mergeProductsById = (...groups: Product[][]) => {
 };
 
 const ugcImages = [
-  { key: 'happy_pet_1', image: 'https://images.unsplash.com/photo-1537151672256-6caf2e9f8c95?auto=format&fit=crop&w=700&q=80', label: '@happy_pet_1', likeCount: 42 },
-  { key: 'cozy_paws', image: 'https://images.unsplash.com/photo-1568572933382-74d440642117?auto=format&fit=crop&w=700&q=80', label: '@cozy_paws', likeCount: 36 },
-  { key: 'cat_window_club', image: 'https://images.unsplash.com/photo-1518791841217-8f162f1e1131?auto=format&fit=crop&w=700&q=80', label: '@cat_window_club', likeCount: 31 },
-  { key: 'weekend_walks', image: 'https://images.unsplash.com/photo-1583512603805-3cc6b41f3edb?auto=format&fit=crop&w=700&q=80', label: '@weekend_walks', likeCount: 27 },
-  { key: 'tailwag_home', image: 'https://images.unsplash.com/photo-1517849845537-4d257902454a?auto=format&fit=crop&w=700&q=80', label: '@tailwag_home', likeCount: 22 },
-  { key: 'softnap_cat', image: 'https://images.unsplash.com/photo-1596854407944-bf87f6fdd49e?auto=format&fit=crop&w=700&q=80', label: '@softnap_cat', likeCount: 19 },
+  { key: 'happy_pet_1', image: publicAssetUrl('/assets/home/hero-dog.jpg'), label: '@happy_pet_1', likeCount: 42 },
+  { key: 'cozy_paws', image: publicAssetUrl('/assets/home/hero-cat-dog.jpg'), label: '@cozy_paws', likeCount: 36 },
+  { key: 'cat_window_club', image: publicAssetUrl('/assets/home/hero-mobile-pet.jpg'), label: '@cat_window_club', likeCount: 31 },
+  { key: 'weekend_walks', image: publicAssetUrl('/assets/home/hero-dogs.jpg'), label: '@weekend_walks', likeCount: 27 },
+  { key: 'tailwag_home', image: publicAssetUrl('/assets/home/hero-pet-care.jpg'), label: '@tailwag_home', likeCount: 22 },
+  { key: 'softnap_cat', image: publicAssetUrl('/assets/home/hero-cat-dog.jpg'), label: '@softnap_cat', likeCount: 19 },
 ];
 
 const readLocalPetGalleryLikes = () => {
@@ -846,7 +854,7 @@ const Home: React.FC = () => {
 
   if (loadError) {
     return (
-      <main className={homeLanguageClass}>
+      <main className={homeLanguageClass} style={homeImageVariables}>
         <div className="shopee-container" style={{ padding: '80px 24px', textAlign: 'center' }}>
           <Alert
             type="error"
@@ -882,7 +890,7 @@ const Home: React.FC = () => {
   const petGalleryActionLabel = homeSectionActionLabel(t('home.petUgcTitle'), t('nav.petGallery'), petGalleryItems.length);
 
   return (
-    <main className={homeLanguageClass}>
+    <main className={homeLanguageClass} style={homeImageVariables}>
       <section className="shopee-hero">
         <div className="shopee-container shopee-hero__grid">
           <div className="shopee-hero__main">

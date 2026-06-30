@@ -34,10 +34,10 @@ describe('ProductManagement editor popup guards', () => {
     expect(pageSource).toMatch(/icon=\{record\.isFeatured \? <StarFilled \/> : <StarOutlined \/>\}[\s\S]*?aria-pressed=\{Boolean\(record\.isFeatured\)\}[\s\S]*?aria-label=\{featureActionLabel\}[\s\S]*?title=\{featureActionLabel\}/);
     expect(pageSource).toMatch(/<Button type="primary" icon=\{<EditOutlined \/>\} aria-label=\{editActionLabel\} title=\{editActionLabel\}[\s\S]*?>\{t\('common\.edit'\)\}<\/Button>/);
     expect(pageSource).toMatch(/icon=\{<CopyOutlined \/>}[\s\S]*?aria-label=\{duplicateActionLabel\}[\s\S]*?title=\{duplicateActionLabel\}/);
-    expect(pageSource).toContain("<Button size=\"small\" aria-label={approveActionLabel} title={approveActionLabel}>{t('pages.productAdmin.approve')}</Button>");
-    expect(pageSource).toContain("<Button size=\"small\" danger aria-label={rejectActionLabel} title={rejectActionLabel}>{t('pages.productAdmin.reject')}</Button>");
-    expect(pageSource).toContain("<Button size=\"small\" aria-label={reviewActionLabel} title={reviewActionLabel}>{t('pages.productAdmin.review')}</Button>");
-    expect(pageSource).toMatch(/<Button danger icon=\{<DeleteOutlined \/>} size="small" aria-label=\{deleteActionLabel\} title=\{deleteActionLabel\}>/);
+    expect(pageSource).toMatch(/<Button size="small"[\s\S]*?aria-label=\{approveActionLabel\}[\s\S]*?title=\{approveActionLabel\}[\s\S]*?>\{t\('pages\.productAdmin\.approve'\)\}<\/Button>/);
+    expect(pageSource).toMatch(/<Button size="small"[\s\S]*?danger[\s\S]*?aria-label=\{rejectActionLabel\}[\s\S]*?title=\{rejectActionLabel\}[\s\S]*?>\{t\('pages\.productAdmin\.reject'\)\}<\/Button>/);
+    expect(pageSource).toMatch(/<Button size="small"[\s\S]*?aria-label=\{reviewActionLabel\}[\s\S]*?title=\{reviewActionLabel\}[\s\S]*?>\{t\('pages\.productAdmin\.review'\)\}<\/Button>/);
+    expect(pageSource).toMatch(/<Button danger icon=\{<DeleteOutlined \/>} size="small"[\s\S]*?aria-label=\{deleteActionLabel\}[\s\S]*?title=\{deleteActionLabel\}[\s\S]*?>\{t\('common\.delete'\)\}<\/Button>/);
   });
 
   it('uses scoped product-editor popup layers for modal editor controls', () => {
@@ -60,6 +60,15 @@ describe('ProductManagement editor popup guards', () => {
     expect(pageSource).not.toContain('const payload: any = {');
   });
 
+  it('keeps product image fallbacks and import template examples on local assets', () => {
+    expect(pageSource).toContain('const productAdminImageFallback = productImageFallback;');
+    expect(pageSource).toContain('const primaryImage = productAdminImageFallback;');
+    expect(pageSource).toContain('const galleryImage = productAdminImageFallback;');
+    expect(pageSource).toContain('const detailImage = productAdminImageFallback;');
+    expect(pageSource).not.toContain('images.unsplash.com');
+    expect(pageSource).not.toContain('unsplash.com');
+  });
+
   it('uses the same modal-safe popup layer for rich detail block type Selects', () => {
     expect(richEditorSource).toContain("const richDetailTypePopupClassNames = { popup: { root: 'shop-mobile-popup-layer product-management-page__editorPopup' } };");
     expect(richEditorSource).toContain('className="product-rich-detail-editor__typeSelect"');
@@ -74,8 +83,11 @@ describe('ProductManagement editor popup guards', () => {
 
     expect(pageSource).toContain('<Upload className="product-management-page__uploadAction"');
     expect(uploadCssStart).toBeGreaterThanOrEqual(0);
+    expect(uploadCss).toContain('.product-management-page__actions > .ant-space-item > .ant-upload-wrapper.product-management-page__uploadAction');
+    expect(uploadCss).toMatch(/\.product-management-page__actions \.product-management-page__uploadAction\s*\{[\s\S]*?display:\s*block\s*!important;[\s\S]*?max-width:\s*100%\s*!important;/);
     expect(uploadCss).toMatch(/\.product-management-page__actions \.ant-upload-wrapper\.product-management-page__uploadAction,[\s\S]*?\.product-management-page__actions \.product-management-page__uploadAction \.ant-upload-select > span,[\s\S]*?\.product-management-page__actions \.product-management-page__uploadAction \.ant-upload-select \.ant-tooltip-disabled-compatible-wrapper > span,[\s\S]*?\.product-management-page__actions \.product-management-page__uploadAction \.ant-upload-select \.ant-tooltip-disabled-compatible-wrapper > button\s*\{[\s\S]*?display:\s*block\s*!important;[\s\S]*?width:\s*100%\s*!important;[\s\S]*?min-width:\s*0\s*!important;/);
-    expect(uploadCss).toMatch(/\.product-management-page__actions \.product-management-page__uploadAction \.ant-upload-select \.ant-btn\s*\{[\s\S]*?justify-content:\s*center;[\s\S]*?min-height:\s*44px;[\s\S]*?white-space:\s*normal;/);
+    expect(uploadCss).toMatch(/\.product-management-page__actions \.product-management-page__uploadAction \.ant-upload-select \.ant-btn\s*\{[\s\S]*?justify-content:\s*center;[\s\S]*?min-height:\s*44px;[\s\S]*?line-height:\s*1\.25;[\s\S]*?white-space:\s*normal;/);
+    expect(uploadCss).toMatch(/\.product-management-page__actions \.product-management-page__uploadAction \.ant-upload-select \.ant-btn > span\s*\{[\s\S]*?min-width:\s*0;[\s\S]*?overflow-wrap:\s*anywhere;[\s\S]*?text-align:\s*center;/);
   });
 
   it('keeps localized product names out of editor tab labels', () => {

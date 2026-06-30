@@ -1,10 +1,14 @@
 import React from 'react';
+import fs from 'fs';
+import path from 'path';
 import { act, render, waitFor } from '@testing-library/react';
 import { AuthProvider, useAuth } from './useAuth';
 import { clearStoredAuthSession, persistAuthSession, userApi } from '../api';
 import { AUTH_SESSION_CHANGED_EVENT } from '../utils/authEvents';
 import { getLocalStorageItem, setLocalStorageItem } from '../utils/safeStorage';
 import { reportNonBlockingError } from '../utils/nonBlockingError';
+
+const useAuthSource = fs.readFileSync(path.resolve(__dirname, 'useAuth.ts'), 'utf8');
 
 jest.mock('../api', () => ({
   clearStoredAuthSession: jest.fn(),
@@ -83,6 +87,19 @@ const AutoLoginProbe = () => {
     void login('jane', 'secret').catch(() => undefined);
   }, [login]);
   return <div>login probe</div>;
+};
+
+const LoginStateProbe = () => {
+  const { login, user } = useAuth();
+  React.useEffect(() => {
+    void login('jane', 'secret').catch(() => undefined);
+  }, [login]);
+  return (
+    <div>
+      <span data-testid="login-username">{user?.username || 'guest'}</span>
+      <span data-testid="login-phone">{user?.phone || 'no-phone'}</span>
+    </div>
+  );
 };
 
 describe('AuthProvider initial profile cleanup', () => {
@@ -225,5 +242,49 @@ describe('AuthProvider initial profile cleanup', () => {
 
     expect(persistAuthSession).not.toHaveBeenCalled();
     expect(setLocalStorageItem).not.toHaveBeenCalled();
+  });
+
+  it('guards concurrent login calls with a shared in-flight request ref', () => {
+    const loginStart = useAuthSource.indexOf('const login = useCallback((username: string, password: string) => {');
+    const loginSource = useAuthSource.slice(loginStart, useAuthSource.indexOf('const logout = useCallback', loginStart));
+
+    expect(useAuthSource).toContain('const loginRequestRef = React.useRef<Promise<void> | null>(null);');
+    expect(loginStart).toBeGreaterThan(-1);
+    expect(loginSource).toContain('if (loginRequestRef.current) return loginRequestRef.current;');
+    expect(loginSource.indexOf('if (loginRequestRef.current) return loginRequestRef.current;')).toBeLessThan(loginSource.indexOf('const response = await userApi.login(username, password);'));
+    expect(loginSource).toContain('loginRequestRef.current = loginRequest;');
+    expect(loginSource).toContain('if (loginRequest && loginRequestRef.current === loginRequest) {');
+    expect(loginSource).toContain('loginRequestRef.current = null;');
+  });
+
+  it('exposes the canonical session token through the auth context', () => {
+    expect(useAuthSource).toContain('token: string;');
+    expect(useAuthSource).toContain("const [token, setToken] = useState(() => getLocalStorageItem('token') || '');");
+    expect(useAuthSource).toContain("setToken('');");
+    expect(useAuthSource).toContain('setToken(token);');
+    expect(useAuthSource).toContain('setToken(persistedToken);');
+    expect(useAuthSource).toContain('() => ({ user, token, login, logout, loading })');
+  });
+
+  it('logs in without relying on phone being present in the auth session response', async () => {
+    (getLocalStorageItem as jest.Mock).mockReturnValue(null);
+    (userApi.login as jest.Mock).mockResolvedValue({
+      data: {
+        id: 7,
+        username: 'jane',
+        role: 'ADMIN',
+        roleCode: 'SUPER_ADMIN',
+      },
+    });
+    (persistAuthSession as jest.Mock).mockReturnValue('token-1');
+
+    const { getByTestId } = render(<AuthProvider><LoginStateProbe /></AuthProvider>);
+
+    await waitFor(() => expect(userApi.login).toHaveBeenCalledTimes(1));
+
+    expect(persistAuthSession).toHaveBeenCalledWith(expect.not.objectContaining({ email: expect.anything(), phone: expect.anything() }));
+    await waitFor(() => expect(getByTestId('login-username').textContent).toBe('jane'));
+    expect(getByTestId('login-phone').textContent).toBe('no-phone');
+    expect(setLocalStorageItem).not.toHaveBeenCalledWith('phone', expect.anything());
   });
 });

@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { List, Typography, Tag, Button, Empty, Spin, message, Popconfirm, Space } from 'antd';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Alert, List, Typography, Tag, Button, Empty, Spin, message, Popconfirm, Space } from 'antd';
 import { BellOutlined, CheckOutlined, DeleteOutlined, CheckCircleOutlined, GiftOutlined, ShoppingOutlined, TruckOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { notificationApi } from '../api';
@@ -47,9 +47,12 @@ const Notifications: React.FC = () => {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [fetchError, setFetchError] = useState('');
   const [notificationPage, setNotificationPage] = useState(1);
   const [hasMoreNotifications, setHasMoreNotifications] = useState(false);
   const [quickFilter, setQuickFilter] = useState<'ALL' | 'UNREAD' | 'PROMOTION' | 'ORDER' | 'DELIVERY'>('ALL');
+  const mountedRef = useRef(true);
+  const notificationFetchSeqRef = useRef(0);
   const navigate = useNavigate();
   const { t, language } = useLanguage();
 
@@ -63,21 +66,33 @@ const Notifications: React.FC = () => {
   }, [t]);
 
   const fetchNotifications = useCallback(async (nextPage = 1, append = false) => {
+    const requestSeq = notificationFetchSeqRef.current + 1;
+    notificationFetchSeqRef.current = requestSeq;
+    const isCurrentRequest = () => mountedRef.current && notificationFetchSeqRef.current === requestSeq;
     if (append) {
       setLoadingMore(true);
     } else {
       setLoading(true);
+      setFetchError('');
     }
     try {
       const res = await notificationApi.getByUser(0, false, nextPage, NOTIFICATION_PAGE_SIZE);
+      if (!isCurrentRequest()) return;
       const nextNotifications = sortNotifications(res.data);
       setNotifications((current) => append ? mergeNotificationPages(current, nextNotifications) : nextNotifications);
       setNotificationPage(nextPage);
       setHasMoreNotifications(nextNotifications.length === NOTIFICATION_PAGE_SIZE);
+      setFetchError('');
     } catch (error) {
+      if (!isCurrentRequest()) return;
       reportNonBlockingError('Notifications.fetchNotifications', error);
+      if (!append) {
+        setFetchError(t('pages.notifications.fetchFailed'));
+        setHasMoreNotifications(false);
+      }
       message.error(t('pages.notifications.fetchFailed'));
     } finally {
+      if (!isCurrentRequest()) return;
       if (append) {
         setLoadingMore(false);
       } else {
@@ -85,6 +100,14 @@ const Notifications: React.FC = () => {
       }
     }
   }, [t]);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      notificationFetchSeqRef.current += 1;
+    };
+  }, []);
 
   useEffect(() => {
     if (!hasStoredValue('token')) {
@@ -207,9 +230,20 @@ const Notifications: React.FC = () => {
   const clearFilterActionLabel = `${t('pages.notifications.clearFilter')}: ${notificationQuickFilterLabels[quickFilter]}`;
   const notificationActionPlanLabel = `${actionPlan.label}: ${actionPlan.title}`;
   const loadMoreActionLabel = `${t('pages.notifications.loadMore')}: ${t('pages.notifications.loadedCount', { count: notifications.length })}`;
+  const notificationActionsDisabled = Boolean(fetchError);
 
   if (loading) {
-    return <div className="notifications-page notifications-page--loading"><Spin size="large" /></div>;
+    return (
+      <div
+        className="notifications-page notifications-page--loading"
+        role="status"
+        aria-live="polite"
+        aria-busy="true"
+        aria-label={t('common.loading')}
+      >
+        <Spin size="large" />
+      </div>
+    );
   }
 
   return (
@@ -220,7 +254,15 @@ const Notifications: React.FC = () => {
           <Title level={3}>{t('pages.notifications.title')}</Title>
         </div>
         {notifications.some(n => !n.isRead) && (
-          <Button icon={<CheckOutlined />} aria-label={markAllActionLabel} title={markAllActionLabel} onClick={handleMarkAllAsRead}>{t('pages.notifications.markAll')}</Button>
+          <Button
+            icon={<CheckOutlined />}
+            aria-label={markAllActionLabel}
+            title={markAllActionLabel}
+            onClick={handleMarkAllAsRead}
+            disabled={notificationActionsDisabled}
+          >
+            {t('pages.notifications.markAll')}
+          </Button>
         )}
       </div>
       {notifications.length > 0 ? (
@@ -300,74 +342,114 @@ const Notifications: React.FC = () => {
           <Button type="primary" aria-label={notificationActionPlanLabel} title={notificationActionPlanLabel} onClick={actionPlan.onClick}>{actionPlan.label}</Button>
         </section>
       ) : null}
-      {notifications.length === 0 ? (
+      {fetchError && notifications.length === 0 ? (
+        <Alert
+          type="error"
+          showIcon
+          message={t('common.loadFailed')}
+          description={t('common.loadFailedRetry')}
+          action={<Button size="small" onClick={() => fetchNotifications()}>{t('common.retry')}</Button>}
+        />
+      ) : notifications.length === 0 ? (
         <Empty description={t('pages.notifications.empty')} />
       ) : (
-        <List
-          dataSource={filteredNotifications}
-          locale={{ emptyText: t('pages.notifications.noFilterResults') }}
-          footer={hasMoreNotifications ? (
-            <div className="notifications-page__loadMore">
-              <Text type="secondary">{t('pages.notifications.loadedCount', { count: notifications.length })}</Text>
-              <Button
-                onClick={() => fetchNotifications(notificationPage + 1, true)}
-                loading={loadingMore}
-                disabled={loadingMore}
-                aria-label={loadMoreActionLabel}
-                title={loadMoreActionLabel}
-              >
-                {loadingMore ? t('pages.notifications.loadingMore') : t('pages.notifications.loadMore')}
-              </Button>
-            </div>
+        <>
+          {fetchError ? (
+            <Alert
+              className="notifications-page__staleAlert"
+              type="warning"
+              showIcon
+              message={t('pages.notifications.fetchFailed')}
+              description={t('pages.notifications.staleDataWarning')}
+              action={<Button size="small" onClick={() => fetchNotifications()}>{t('common.retry')}</Button>}
+            />
           ) : null}
-          renderItem={(item) => {
-            const notificationName = item.title || formatNotificationType(item.type) || `#${item.id}`;
-            const markReadActionLabel = `${t('pages.notifications.markRead')}: ${notificationName}`;
-            const deleteActionLabel = `${t('common.delete')}: ${notificationName}`;
-            return (
-            <List.Item
-              className={item.isRead ? 'notifications-page__item' : 'notifications-page__item notifications-page__item--unread'}
-              actions={[
-                !item.isRead && (
-                  <Button key="mark-read" size="small" type="link" aria-label={markReadActionLabel} title={markReadActionLabel} onClick={() => handleMarkAsRead(item.id)}>{t('pages.notifications.markRead')}</Button>
-                ),
-                <Popconfirm
-                  key="delete"
-                  classNames={{ root: 'shop-mobile-popup-layer notifications-delete-popconfirm' }}
-                  title={t('pages.notifications.deleteConfirm')}
-                  onConfirm={() => handleDelete(item.id)}
-                  okText={t('common.confirm')}
-                  cancelText={t('common.cancel')}
-                  okButtonProps={{ danger: true, 'aria-label': deleteActionLabel, title: deleteActionLabel }}
-                  cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${deleteActionLabel}`, title: `${t('common.cancel')}: ${deleteActionLabel}` }}
+          <List
+            dataSource={filteredNotifications}
+            locale={{ emptyText: t('pages.notifications.noFilterResults') }}
+            footer={hasMoreNotifications ? (
+              <div className="notifications-page__loadMore">
+                <Text type="secondary">{t('pages.notifications.loadedCount', { count: notifications.length })}</Text>
+                <Button
+                  onClick={() => fetchNotifications(notificationPage + 1, true)}
+                  loading={loadingMore}
+                  disabled={loadingMore}
+                  aria-label={loadMoreActionLabel}
+                  title={loadMoreActionLabel}
                 >
-                  <Button className="notifications-page__deleteButton" size="small" type="link" danger icon={<DeleteOutlined />} aria-label={deleteActionLabel} title={deleteActionLabel} />
-                </Popconfirm>,
-              ].filter(Boolean)}
-            >
-              <List.Item.Meta
-                title={
-                  <Space>
-                    <Tag color={typeColors[String(item.type || '').trim().toUpperCase()] || 'default'}>
-                      {formatNotificationType(item.type)}
-                    </Tag>
-                    <Text strong={!item.isRead}>{item.title}</Text>
-                    {item.isRead && <CheckCircleOutlined style={{ color: '#52c41a' }} />}
-                  </Space>
-                }
-                description={
-                  <div>
-                    {renderMessage(item)}
-                    <Text type="secondary" style={{ fontSize: 12 }}>
-                      {item.createdAt ? new Date(item.createdAt).toLocaleString(language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US') : ''}
-                    </Text>
-                  </div>
-                }
-              />
-            </List.Item>
-            );
-          }}
-        />
+                  {loadingMore ? t('pages.notifications.loadingMore') : t('pages.notifications.loadMore')}
+                </Button>
+              </div>
+            ) : null}
+            renderItem={(item) => {
+              const notificationName = item.title || formatNotificationType(item.type) || `#${item.id}`;
+              const markReadActionLabel = `${t('pages.notifications.markRead')}: ${notificationName}`;
+              const deleteActionLabel = `${t('common.delete')}: ${notificationName}`;
+              return (
+              <List.Item
+                className={item.isRead ? 'notifications-page__item' : 'notifications-page__item notifications-page__item--unread'}
+                actions={[
+                  !item.isRead && (
+                    <Button
+                      key="mark-read"
+                      size="small"
+                      type="link"
+                      aria-label={markReadActionLabel}
+                      title={markReadActionLabel}
+                      onClick={() => handleMarkAsRead(item.id)}
+                      disabled={notificationActionsDisabled}
+                    >
+                      {t('pages.notifications.markRead')}
+                    </Button>
+                  ),
+                  <Popconfirm
+                    key="delete"
+                    classNames={{ root: 'shop-mobile-popup-layer notifications-delete-popconfirm' }}
+                    title={t('pages.notifications.deleteConfirm')}
+                    onConfirm={() => handleDelete(item.id)}
+                    okText={t('common.confirm')}
+                    cancelText={t('common.cancel')}
+                    okButtonProps={{ danger: true, 'aria-label': deleteActionLabel, title: deleteActionLabel }}
+                    cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${deleteActionLabel}`, title: `${t('common.cancel')}: ${deleteActionLabel}` }}
+                    disabled={notificationActionsDisabled}
+                  >
+                    <Button
+                      className="notifications-page__deleteButton"
+                      size="small"
+                      type="link"
+                      danger
+                      icon={<DeleteOutlined />}
+                      aria-label={deleteActionLabel}
+                      title={deleteActionLabel}
+                      disabled={notificationActionsDisabled}
+                    />
+                  </Popconfirm>,
+                ].filter(Boolean)}
+              >
+                <List.Item.Meta
+                  title={
+                    <Space>
+                      <Tag color={typeColors[String(item.type || '').trim().toUpperCase()] || 'default'}>
+                        {formatNotificationType(item.type)}
+                      </Tag>
+                      <Text strong={!item.isRead}>{item.title}</Text>
+                      {item.isRead && <CheckCircleOutlined style={{ color: '#52c41a' }} />}
+                    </Space>
+                  }
+                  description={
+                    <div>
+                      {renderMessage(item)}
+                      <Text type="secondary" style={{ fontSize: 12 }}>
+                        {item.createdAt ? new Date(item.createdAt).toLocaleString(language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US') : ''}
+                      </Text>
+                    </div>
+                  }
+                />
+              </List.Item>
+              );
+            }}
+          />
+        </>
       )}
     </div>
   );

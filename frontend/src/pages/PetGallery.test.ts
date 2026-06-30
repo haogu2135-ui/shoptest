@@ -53,4 +53,29 @@ describe('PetGallery mobile layout source contracts', () => {
     expect(f9349Css).toMatch(/\.pet-gallery-card__owner\s*\{[\s\S]*?min-height:\s*32px;[\s\S]*?display:\s*inline-flex;[\s\S]*?align-items:\s*center;/);
     expect(f9349Css).toMatch(/\.pet-gallery-card__owner\s*\{[\s\S]*?background:\s*rgba\(18,\s*71,\s*52,\s*0\.92\);[\s\S]*?font-size:\s*14px\s*!important;[\s\S]*?line-height:\s*1\.25\s*!important;/);
   });
+
+  it('keeps fallback gallery photos on local placeholder assets', () => {
+    const source = readPetGallerySource();
+
+    expect(source).toContain("import { buildResponsiveImageSrcSet, getOptimizedImageUrl, imageFallbacks, resolveApiAssetUrl } from '../utils/mediaAssets';");
+    expect(source).toContain('const petGalleryImageFallback = imageFallbacks.media;');
+    expect(source).toContain('image: petGalleryImageFallback');
+    expect(source).not.toContain('images.unsplash.com');
+    expect(source).not.toContain('unsplash.com');
+  });
+
+  it('keeps failed community loads distinct from live gallery content', () => {
+    const source = readPetGallerySource();
+
+    expect(source).toContain('setLoadError(true);');
+    expect(source).not.toContain('setPhotos([]);');
+    expect(source).toContain('if (loadError) {');
+    expect(source).toContain('return apiItems.sort(');
+    expect(source).toContain('const canUseLiveInteractions = hasLiveGalleryData && !isSampleOnlyGallery;');
+    expect(source).toContain("message.warning(t('pages.petGallery.staleActionBlocked'))");
+    expect(source).toContain("message={items.length > 0 ? t('pages.petGallery.staleDataWarning') : t('pages.petGallery.loadFailed')}");
+    expect(source).toContain("description={t('pages.petGallery.sampleFallbackDescription')}");
+    expect(source).toContain("onClick={() => refreshGallery(true)}");
+    expect(source).toContain("navigate('/products?keyword=pet')");
+  });
 });

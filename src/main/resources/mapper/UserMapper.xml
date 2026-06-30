@@ -134,9 +134,9 @@
         <where>
             <if test="keyword != null and keyword != ''">
                 AND (
-                    LOWER(username) LIKE CONCAT('%', LOWER(#{keyword}), '%')
-                    OR LOWER(email) LIKE CONCAT('%', LOWER(#{keyword}), '%')
-                    OR LOWER(phone) LIKE CONCAT('%', LOWER(#{keyword}), '%')
+                    LOWER(username) LIKE CONCAT('%', LOWER(#{keyword}), '%') ESCAPE '!'
+                    OR LOWER(email) LIKE CONCAT('%', LOWER(#{keyword}), '%') ESCAPE '!'
+                    OR LOWER(phone) LIKE CONCAT('%', LOWER(#{keyword}), '%') ESCAPE '!'
                 )
             </if>
             <if test="role != null and role != ''">
@@ -166,9 +166,9 @@
         <where>
             <if test="keyword != null and keyword != ''">
                 AND (
-                    LOWER(username) LIKE CONCAT('%', LOWER(#{keyword}), '%')
-                    OR LOWER(email) LIKE CONCAT('%', LOWER(#{keyword}), '%')
-                    OR LOWER(phone) LIKE CONCAT('%', LOWER(#{keyword}), '%')
+                    LOWER(username) LIKE CONCAT('%', LOWER(#{keyword}), '%') ESCAPE '!'
+                    OR LOWER(email) LIKE CONCAT('%', LOWER(#{keyword}), '%') ESCAPE '!'
+                    OR LOWER(phone) LIKE CONCAT('%', LOWER(#{keyword}), '%') ESCAPE '!'
                 )
             </if>
             <if test="role != null and role != ''">
@@ -223,4 +223,4 @@
     <delete id="deleteById">
         DELETE FROM users WHERE id = #{id}
     </delete>
-</mapper> 
+</mapper>

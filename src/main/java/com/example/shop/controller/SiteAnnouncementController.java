@@ -26,6 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
 import javax.servlet.http.HttpServletRequest;
+import javax.validation.Valid;
 import java.util.List;
 import java.util.Map;
 
@@ -59,7 +60,7 @@ public class SiteAnnouncementController {
 
     @PostMapping("/admin/announcements")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<?> create(@RequestBody(required = false) SiteAnnouncement announcement,
+    public ResponseEntity<?> create(@Valid @RequestBody(required = false) SiteAnnouncement announcement,
                                     Authentication authentication,
                                     HttpServletRequest request) {
         requireAdminActionPermission(authentication, AdminRoleService.ANNOUNCEMENTS_WRITE_PERMISSION,
@@ -85,7 +86,7 @@ public class SiteAnnouncementController {
     @PutMapping("/admin/announcements/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> update(@PathVariable Long id,
-                                    @RequestBody(required = false) SiteAnnouncement announcement,
+                                    @Valid @RequestBody(required = false) SiteAnnouncement announcement,
                                     Authentication authentication,
                                     HttpServletRequest request) {
         requireAdminActionPermission(authentication, AdminRoleService.ANNOUNCEMENTS_WRITE_PERMISSION,

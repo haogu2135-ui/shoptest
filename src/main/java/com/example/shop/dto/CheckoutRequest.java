@@ -17,6 +17,7 @@ public class CheckoutRequest {
     private List<Long> cartItemIds;
 
     @NotEmpty
+    @Size(max = 2000)
     private String shippingAddress;
 
     @NotBlank
@@ -33,6 +34,7 @@ public class CheckoutRequest {
     private String contactEmail;
 
     @NotEmpty
+    @Size(max = 50)
     private String paymentMethod;
 
     private Long userCouponId;

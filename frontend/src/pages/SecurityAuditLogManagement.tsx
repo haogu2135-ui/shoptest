@@ -653,7 +653,13 @@ const SecurityAuditLogManagement: React.FC = () => {
       ) : null}
 
       {showInitialAuditLoading ? (
-        <Card className="audit-log-page__loadingState">
+        <Card
+          className="audit-log-page__loadingState"
+          role="status"
+          aria-live="polite"
+          aria-busy="true"
+          aria-label={t('common.loading')}
+        >
           <Spin spinning>
             <Text type="secondary">{t('common.loading')}</Text>
           </Spin>

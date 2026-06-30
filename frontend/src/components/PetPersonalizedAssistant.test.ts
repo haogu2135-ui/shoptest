@@ -11,4 +11,18 @@ describe('PetPersonalizedAssistant type-safety guards', () => {
     expect(source).not.toContain('catch (error: any)');
     expect(source).not.toContain('catch (err: any)');
   });
+
+  it('keeps the loading skeleton announced as a busy status region', () => {
+    const loadingStart = source.indexOf('if (loading) {');
+    const loadingEnd = source.indexOf('if (petProfiles.length === 0) {', loadingStart);
+    const loadingSource = source.slice(loadingStart, loadingEnd);
+
+    expect(loadingStart).toBeGreaterThan(-1);
+    expect(loadingEnd).toBeGreaterThan(loadingStart);
+    expect(loadingSource).toContain('role="status"');
+    expect(loadingSource).toContain('aria-live="polite"');
+    expect(loadingSource).toContain('aria-busy="true"');
+    expect(loadingSource).toContain("aria-label={`${t('home.petRecommendations')}: ${t('common.loading')}`}");
+    expect(loadingSource).toContain("<Skeleton active paragraph={{ rows: variant === 'compact' ? 3 : 4 }} />");
+  });
 });

@@ -11,6 +11,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -44,6 +45,23 @@ class SecurityConfigCorsTest {
     }
 
     @Test
+    void mvcCorsRequestHeadersUseAllowlist() throws Exception {
+        String source = java.nio.file.Files.readString(
+                java.nio.file.Paths.get("src/main/java/com/example/shop/config/WebConfig.java"));
+
+        assertTrue(source.contains(".allowedHeaders(Arrays.asList("));
+        assertFalse(source.contains(".allowedHeaders(\"*\")"));
+        assertFalse(source.contains("allowedHeaders(Arrays.asList(\"*\""));
+        assertTrue(source.contains("\"Authorization\""));
+        assertTrue(source.contains("\"Content-Type\""));
+        assertTrue(source.contains("RequestCorrelationFilter.REQUEST_ID_HEADER"));
+        assertTrue(source.contains("RequestCorrelationFilter.CORRELATION_ID_HEADER"));
+        assertTrue(source.contains("\"X-Bootstrap-Token\""));
+        assertTrue(source.contains("\"Idempotency-Key\""));
+        assertTrue(source.contains(".allowCredentials(true)"));
+    }
+
+    @Test
     void productionCorsFiltersUnsafeDefaultOrigins() {
         RuntimeConfigService runtimeConfig = mock(RuntimeConfigService.class);
         when(runtimeConfig.getString("app.runtime-mode", "production")).thenReturn("production");
@@ -68,6 +86,26 @@ class SecurityConfigCorsTest {
         assertFalse(origins.stream().anyMatch(origin -> origin.contains("10.*")));
         assertFalse(origins.stream().anyMatch(origin -> origin.contains("172.*")));
         assertFalse(origins.stream().anyMatch(origin -> origin.contains("192.168")));
+    }
+
+    @Test
+    void emptyNonProductionCorsConfigDoesNotReflectArbitraryOrigins() {
+        RuntimeConfigService runtimeConfig = mock(RuntimeConfigService.class);
+        when(runtimeConfig.getString("app.runtime-mode", "production")).thenReturn("dev");
+        when(runtimeConfig.getString("app.cors.allowed-origin-patterns", "http://localhost:*,http://127.0.0.1:*"))
+                .thenReturn("");
+
+        SecurityConfig config = new SecurityConfig();
+        ReflectionTestUtils.setField(config, "corsOriginProperties", new CorsOriginProperties(runtimeConfig));
+
+        CorsConfiguration configuration = config.corsConfigurationSource()
+                .getCorsConfiguration(new MockHttpServletRequest("OPTIONS", "/admin/orders"));
+
+        assertEquals(List.of("http://localhost:*", "http://127.0.0.1:*"), configuration.getAllowedOriginPatterns());
+        assertEquals("http://localhost:3000", configuration.checkOrigin("http://localhost:3000"));
+        assertEquals("http://127.0.0.1:5173", configuration.checkOrigin("http://127.0.0.1:5173"));
+        assertNull(configuration.checkOrigin("https://evil.example"));
+        assertNull(configuration.checkOrigin("http://192.168.1.55:3000"));
     }
 
     @Test
@@ -123,12 +161,33 @@ class SecurityConfigCorsTest {
     }
 
     @Test
+    void jwtFilterRechecksAccessTokenBlacklistBeforeDelegatingToProtectedChain() throws Exception {
+        String jwtFilter = java.nio.file.Files.readString(
+                java.nio.file.Paths.get("src/main/java/com/example/shop/security/JwtAuthenticationFilter.java"));
+
+        int firstBlacklistCheck = jwtFilter.indexOf("tokenBlacklistService.isAccessTokenBlacklisted(tokenJti)");
+        int authenticationSet = jwtFilter.indexOf("SecurityContextHolder.getContext().setAuthentication(authToken);");
+        int secondBlacklistCheck = jwtFilter.indexOf(
+                "tokenBlacklistService.isAccessTokenBlacklisted(tokenJti)",
+                firstBlacklistCheck + 1);
+        int clearContext = jwtFilter.indexOf("SecurityContextHolder.clearContext();", secondBlacklistCheck);
+        int finalDoFilter = jwtFilter.lastIndexOf("filterChain.doFilter(request, response);");
+
+        assertTrue(firstBlacklistCheck >= 0);
+        assertTrue(authenticationSet > firstBlacklistCheck);
+        assertTrue(secondBlacklistCheck > authenticationSet);
+        assertTrue(clearContext > secondBlacklistCheck);
+        assertTrue(finalDoFilter > clearContext);
+    }
+
+    @Test
     void publicGuestOperationsAreExplicitlyPermitted() throws Exception {
         String source = java.nio.file.Files.readString(
                 java.nio.file.Paths.get("src/main/java/com/example/shop/config/SecurityConfig.java"));
 
         assertTrue(source.contains(".antMatchers(HttpMethod.POST, \"/orders/track\").permitAll()"));
-        assertTrue(source.contains(".antMatchers(HttpMethod.POST, \"/support/guest/session\").permitAll()"));
+        assertTrue(source.contains(".antMatchers(HttpMethod.POST, \"/support/guest/session\", \"/support/guest/session/lookup\","));
+        assertTrue(source.contains("\"/support/guest/sessions/*/messages\", \"/support/guest/sessions/**/messages\").permitAll()"));
         assertTrue(source.contains(".antMatchers(HttpMethod.POST, \"/errors\").permitAll()"));
         assertTrue(source.contains(".antMatchers(HttpMethod.GET, \"/home/products\", \"/home/products/**\").permitAll()"));
     }
@@ -159,8 +218,9 @@ class SecurityConfigCorsTest {
         assertTrue(userController.contains("@RequestHeader(value = \"X-Bootstrap-Token\""));
         assertTrue(userController.contains("runtimeConfig.getString(\"admin.bootstrap-token\", \"\")"));
         assertTrue(userController.contains("if (isBlank(adminBootstrapToken))"));
+        assertTrue(userController.contains("AdminBootstrapTokenPolicy.isStrongConfiguredToken(normalizedConfiguredToken)"));
         assertTrue(userController.contains("assertAdminBootstrapToken(bootstrapToken)"));
-        assertTrue(userController.contains("constantTimeEquals(adminBootstrapToken, bootstrapToken.trim())"));
+        assertTrue(userController.contains("constantTimeEquals(normalizedConfiguredToken, AdminBootstrapTokenPolicy.normalize(bootstrapToken))"));
     }
 
     @Test
@@ -181,5 +241,21 @@ class SecurityConfigCorsTest {
         assertTrue(source.contains("microphone=()"));
         assertTrue(source.contains("geolocation=()"));
         assertTrue(source.contains("browsing-topics=()"));
+    }
+
+    @Test
+    void securityHeadersIncludeContentSecurityPolicy() throws Exception {
+        String source = java.nio.file.Files.readString(
+                java.nio.file.Paths.get("src/main/java/com/example/shop/config/SecurityConfig.java"));
+
+        assertTrue(source.contains("\"Content-Security-Policy\""));
+        assertTrue(source.contains("default-src 'self'"));
+        assertTrue(source.contains("img-src 'self' https: http: data: blob:"));
+        assertTrue(source.contains("connect-src 'self' https: http: wss: ws:"));
+        assertTrue(source.contains("object-src 'none'"));
+        assertTrue(source.contains("base-uri 'self'"));
+        assertTrue(source.contains("frame-ancestors 'self'"));
+        assertFalse(source.contains("script-src 'self' 'unsafe-inline'"));
+        assertFalse(source.contains("unsafe-eval"));
     }
 }

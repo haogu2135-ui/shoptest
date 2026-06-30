@@ -53,9 +53,31 @@ class PaymentCallbackSignatureContractTest {
 
         String handleStripeWebhook = methodBlock(service, "public Payment handleStripeWebhook(String payload, String signatureHeader)");
         assertTrue(handleStripeWebhook.contains("String webhookSecret = stripeWebhookSecret();"));
-        assertOrder(handleStripeWebhook, "String webhookSecret = stripeWebhookSecret();", "Webhook.constructEvent(payload, signatureHeader, webhookSecret)");
+        assertTrue(service.contains("STRIPE_WEBHOOK_TOLERANCE_SECONDS = 300L"));
+        assertOrder(handleStripeWebhook, "String webhookSecret = stripeWebhookSecret();", "Webhook.constructEvent(payload, signatureHeader, webhookSecret, STRIPE_WEBHOOK_TOLERANCE_SECONDS)");
         assertTrue(handleStripeWebhook.contains("throw new IllegalArgumentException(\"Invalid Stripe webhook signature\", e)"));
         assertFalse(handleStripeWebhook.contains("expectedSignature("));
+    }
+
+    @Test
+    void paymentCallbacksDoNotUseLegacyHandlerCouponOrHardcodedOrderStatusPaths() throws Exception {
+        String service = read("src/main/java/com/example/shop/service/PaymentService.java");
+        String handleCallback = methodBlock(service, "public Payment handleCallback(PaymentCallbackRequest request)");
+
+        assertFalse(Files.exists(Path.of("src/main/java/com/example/shop/handler/PayCallbackHandler.java")));
+        assertFalse(Files.exists(Path.of("src/main/java/com/example/shop/service/PayCallbackHandler.java")));
+        assertFalse(service.contains("checkAndUpdateOrderStatus"));
+        assertFalse(service.contains("sendReplenishReminderToCustomer"));
+        assertFalse(service.contains("notificationRequest.setOrderStatus(1)"));
+        assertFalse(handleCallback.contains("couponService"));
+        assertFalse(handleCallback.contains("setOrderStatus(1)"));
+        assertFalse(handleCallback.contains("updateStock"));
+        assertFalse(handleCallback.contains("releaseReservation"));
+        assertFalse(handleCallback.contains("reserveProductStock"));
+        assertFalse(handleCallback.contains("productRepository"));
+        assertFalse(handleCallback.contains("transfer"));
+        assertTrue(handleCallback.contains("claimOrderForProviderPaidSuccessOrReconcile("));
+        assertTrue(handleCallback.contains("paymentRepository.markPaidDetailed("));
     }
 
     @Test

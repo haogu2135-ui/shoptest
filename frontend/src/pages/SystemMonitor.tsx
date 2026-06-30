@@ -224,7 +224,13 @@ const SystemMonitor: React.FC = () => {
         />
       ) : null}
 
-      <Spin spinning={loading && !status}>
+      <Spin
+        spinning={loading && !status}
+        role="status"
+        aria-live="polite"
+        aria-busy={loading && !status}
+        aria-label={t('common.loading')}
+      >
         {loadError && !status ? null : status ? (
           <>
             <div className="system-monitor__stats">

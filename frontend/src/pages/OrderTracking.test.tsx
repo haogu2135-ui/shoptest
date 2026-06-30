@@ -140,6 +140,13 @@ jest.mock('../utils/safeStorage', () => ({
 
 jest.mock('../utils/guestSupportContext', () => ({
   loadGuestSupportContext: jest.fn(() => null),
+  normalizeGuestSupportContext: jest.fn((value: unknown) => {
+    if (!value || typeof value !== 'object') return null;
+    const detail = value as { orderNo?: unknown; email?: unknown; guestOrderNo?: unknown; guestEmail?: unknown };
+    const orderNo = String(detail.guestOrderNo || detail.orderNo || '').trim();
+    const email = String(detail.guestEmail || detail.email || '').trim().toLowerCase();
+    return orderNo && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? { orderNo, email } : null;
+  }),
   saveGuestSupportContext: jest.fn(),
 }));
 
@@ -297,6 +304,38 @@ describe('OrderTracking auto refresh', () => {
     expect(shouldAutoRefreshTrackedOrder(makeTrackedOrder({ status: 'CANCELLED' }) as any)).toBe(false);
     expect(shouldAutoRefreshTrackedOrder(makeTrackedOrder({ status: 'RETURN_REFUNDING' }) as any)).toBe(false);
     expect(shouldAutoRefreshTrackedOrder(makeTrackedOrder({ status: 'REFUNDED' }) as any)).toBe(false);
+  });
+
+  it('does not poll or render lifecycle fields for account-restricted tracking responses', () => {
+    const source = readOrderTrackingSource();
+    const summaryStart = source.indexOf("<Card title={t('pages.orderTracking.summary')}>");
+    const summaryEnd = source.indexOf('{returnRequestOpen ? (', summaryStart);
+    const summarySource = source.slice(summaryStart, summaryEnd);
+
+    expect(source).toContain('const autoRefreshEnabled = Boolean(order?.orderNo && trackedEmail && !detailsRestricted && shouldAutoRefreshTrackedOrder(order));');
+    expect(summaryStart).toBeGreaterThan(-1);
+    expect(summaryEnd).toBeGreaterThan(summaryStart);
+    expect(summarySource).toContain("{canShowFullTrackingDetails ? (");
+    expect(summarySource).toContain("<Descriptions.Item label={t('common.status')}>");
+    expect(summarySource.indexOf("{canShowFullTrackingDetails ? (")).toBeLessThan(summarySource.indexOf("<Descriptions.Item label={t('common.status')}>"));
+    expect(summarySource).toContain("<Descriptions.Item label={t('pages.orderTracking.createdAt')}>");
+    expect(summarySource.lastIndexOf("{canShowFullTrackingDetails ? (")).toBeLessThan(summarySource.indexOf("<Descriptions.Item label={t('pages.orderTracking.createdAt')}>"));
+  });
+
+  it('prefills URL tracking parameters without auto-submitting an order lookup', () => {
+    const source = readOrderTrackingSource();
+    const prefillStart = source.indexOf("useEffect(() => {\n    const orderNo = cleanTrackingParam(searchParams.get('orderNo') || searchParams.get('order'), 80);");
+    const prefillEnd = source.indexOf('const refreshTrackedOrder = useCallback', prefillStart);
+    const prefillSource = source.slice(prefillStart, prefillEnd);
+
+    expect(prefillStart).toBeGreaterThan(-1);
+    expect(prefillEnd).toBeGreaterThan(prefillStart);
+    expect(prefillSource).toContain('form.setFieldsValue(email ? { orderNo, email } : { orderNo });');
+    expect(prefillSource).toContain('setPrefillNoticeVisible(Boolean(email));');
+    expect(prefillSource).toContain('if (sanitized.toString() !== searchParams.toString()) {');
+    expect(prefillSource).toContain('setSearchParams(sanitized, { replace: true });');
+    expect(prefillSource).not.toContain('trackOrder(');
+    expect(prefillSource).not.toContain('void trackOrder');
   });
 
   it('exposes the public order status journey as a semantic step list', () => {

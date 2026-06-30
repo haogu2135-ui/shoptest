@@ -1245,7 +1245,14 @@ const OrderManagement: React.FC = () => {
       ) : null}
 
       {showInitialOrderLoading ? (
-        <Card className="order-management-page__loadingState" loading />
+        <Card
+          className="order-management-page__loadingState"
+          loading
+          role="status"
+          aria-live="polite"
+          aria-busy="true"
+          aria-label={t('common.loading')}
+        />
       ) : null}
 
       {canRenderOrderSnapshot ? (

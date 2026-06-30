@@ -17,6 +17,19 @@ describe('ErrorBoundary i18n fallback guards', () => {
     expect(componentSource).not.toContain('data-testid="error-fallback"');
     expect(componentSource).not.toContain('title="Error"');
     expect(componentSource).not.toContain('>Error<');
+    expect(componentSource).toContain('retryKey: number;');
+    expect(componentSource).toContain('retryKey: 0');
+    expect(componentSource).toContain('retryKey: prevState.retryKey + 1');
+    expect(componentSource).toContain('React.Fragment key={this.state.retryKey}');
+    expect(componentSource).toContain("reportNonBlockingError(context, this.state.error || 'ErrorBoundary recovery action');");
+    expect(componentSource).toContain("this.reportRecoveryAction('ErrorBoundary retry');");
+    expect(componentSource).toContain("this.reportRecoveryAction('ErrorBoundary go home');");
+    expect(componentSource.indexOf("this.reportRecoveryAction('ErrorBoundary retry');")).toBeLessThan(
+      componentSource.indexOf('this.setState((prevState) => ({'),
+    );
+    expect(componentSource.indexOf("this.reportRecoveryAction('ErrorBoundary go home');")).toBeLessThan(
+      componentSource.indexOf('this.props.navigate(this.props.homePath || \'/\', { replace: true });'),
+    );
 
     for (const { messages } of localeData) {
       expect(messages.errorBoundary.title).toBeTruthy();

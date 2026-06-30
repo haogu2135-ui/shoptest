@@ -241,7 +241,14 @@ const LogisticsCarrierManagement: React.FC = () => {
       ) : null}
 
       {showInitialCarrierLoading ? (
-        <Card className="logistics-carrier-page__loadingState" loading />
+        <Card
+          className="logistics-carrier-page__loadingState"
+          loading
+          role="status"
+          aria-live="polite"
+          aria-busy="true"
+          aria-label={t('common.loading')}
+        />
       ) : null}
 
       {canRenderCarrierSnapshot ? (

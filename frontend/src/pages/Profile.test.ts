@@ -98,6 +98,87 @@ describe('Profile mobile control visibility', () => {
     expect(fixCss).not.toMatch(/F3516:[\s\S]*?scrollbar-width:\s*none/);
   });
 
+  it('names the order item preview fetch limit instead of slicing with a raw page size', () => {
+    const source = readProfileSource();
+    const fetchOrdersStart = source.indexOf('const fetchOrders = useCallback(async () => {');
+    const fetchOrdersSource = source.slice(fetchOrdersStart, source.indexOf('const syncPaymentReturnState', fetchOrdersStart));
+
+    expect(source).toContain('const PROFILE_ORDER_ITEM_PREVIEW_LIMIT = 30;');
+    expect(fetchOrdersSource).toContain('sortedOrders.slice(0, PROFILE_ORDER_ITEM_PREVIEW_LIMIT)');
+    expect(fetchOrdersSource).not.toContain('sortedOrders.slice(0, 20)');
+    expect(fetchOrdersSource).not.toContain('sortedOrders.slice(0, 30)');
+  });
+
+  it('shows retryable order item preview failures instead of empty order items', () => {
+    const source = readProfileSource();
+    const fetchOrdersStart = source.indexOf('const fetchOrders = useCallback(async () => {');
+    const fetchOrdersSource = source.slice(fetchOrdersStart, source.indexOf('const syncPaymentReturnState', fetchOrdersStart));
+
+    expect(source).toContain('const [orderItemPreviewFailedByOrderId, setOrderItemPreviewFailedByOrderId]');
+    expect(fetchOrdersSource).toContain('failed: false');
+    expect(fetchOrdersSource).toContain('failed: true');
+    expect(fetchOrdersSource).toContain('setOrderItemPreviewFailedByOrderId(Object.fromEntries(');
+    expect(fetchOrdersSource).not.toContain('return [order.id, []] as const;');
+    expect(source).toContain("t('pages.profile.orderItemsPreviewFailed')");
+    expect(source).toContain('const retryOrderItemsActionLabel');
+    expect(source).toContain('icon={<ReloadOutlined />}');
+  });
+
+  it('keeps stale order snapshots visible but blocks order state changes until refresh succeeds', () => {
+    const source = readProfileSource();
+
+    expect(source).toContain('const ordersStale = ordersLoadFailed && orders.length > 0;');
+    expect(source).toContain("t('pages.profile.ordersStaleAfterSaleText')");
+    expect(source).toContain("t('pages.profile.nextOrderStaleTitle')");
+    expect(source).toContain("t('pages.profile.nextOrderStaleText')");
+    expect(source).toContain("message={t('pages.profile.ordersStaleWarning')}");
+    expect(source).toContain('disabled={ordersStale || payingOrderId !== null}');
+    expect(source).toContain('disabled={ordersStale} onClick={() => confirmReceiptOrder(order)}');
+    expect(source).toContain('disabled={ordersStale} onClick={() => openReturnModal(order)}');
+    expect(source).toContain('disabled={ordersStale} onClick={() => { setReturnShipmentOrder(order); setReturnTrackingNumber(order.returnTrackingNumber || \'\'); }}');
+    expect(source).toContain('disabled={ordersStale}');
+
+    for (const locale of ['en', 'zh', 'es']) {
+      const messages = readLocale(locale);
+      expect(messages.pages.profile.ordersStaleAfterSaleText).toBeTruthy();
+      expect(messages.pages.profile.ordersStaleWarning).toBeTruthy();
+      expect(messages.pages.profile.nextOrderStaleTitle).toBeTruthy();
+      expect(messages.pages.profile.nextOrderStaleText).toBeTruthy();
+    }
+  });
+
+  it('keeps stale address snapshots visible but blocks address mutations until refresh succeeds', () => {
+    const source = readProfileSource();
+
+    expect(source).toContain('const addressesStale = addressesLoadFailed && addresses.length > 0;');
+    expect(source).toContain("t('pages.profile.addressesStaleTitle')");
+    expect(source).toContain("description={t('pages.profile.addressesStaleWarning')}");
+    expect(source).toContain("message.warning(t('pages.profile.addressesStaleWarning'))");
+    expect(source).toContain('title={addressesStale ? t(\'pages.profile.addressesStaleWarning\') : undefined}');
+    expect(source).toContain('disabled={addressesStale} onClick={() => handleSetDefault(address.id)}');
+    expect(source).toContain('disabled={addressesStale} onClick={() => openAddressModal(address)}');
+    expect(source).toContain('disabled={addressesStale}>{t(\'common.delete\')}</Button>');
+
+    for (const locale of ['en', 'zh', 'es']) {
+      const messages = readLocale(locale);
+      expect(messages.pages.profile.addressesStaleTitle).toBeTruthy();
+      expect(messages.pages.profile.addressesStaleWarning).toBeTruthy();
+    }
+  });
+
+  it('localizes pet weight display instead of hardcoding a kilogram suffix', () => {
+    const source = readProfileSource();
+    const en = readLocale('en');
+    const zh = readLocale('zh');
+    const es = readLocale('es');
+
+    expect(source).toContain("t('pages.profile.petWeightValue', { weight: pet.weight })");
+    expect(source).not.toContain('${pet.weight} kg');
+    expect(en.pages.profile.petWeightValue).toContain('{weight}');
+    expect(zh.pages.profile.petWeightValue).toContain('{weight}');
+    expect(es.pages.profile.petWeightValue).toContain('{weight}');
+  });
+
   it('keeps payment polling lifecycle-bound without delayed location redirects', () => {
     const source = readProfileSource();
     const refreshStateStart = source.indexOf('const refreshPaymentState = useCallback(async (orderId: number, isActive: () => boolean = () => true) => {');
@@ -129,7 +210,7 @@ describe('Profile mobile control visibility', () => {
     const source = readProfileSource();
     const preferredChannelStart = source.indexOf('const getPreferredPaymentChannel = (channels: PaymentChannel[], preferred?: string | null) => {');
     const paymentReturnEffectStart = source.indexOf("if (paymentReturnStatus !== 'success') return;");
-    const channelEffectStart = source.indexOf('paymentApi.getChannels()');
+    const channelEffectStart = source.indexOf('const loadPaymentChannels = useCallback');
     const paymentReturnEffectSource = source.slice(paymentReturnEffectStart, channelEffectStart);
     const channelEffectSource = source.slice(channelEffectStart, source.indexOf('const handleConfirmReceipt', channelEffectStart));
     const preferredChannelSource = source.slice(preferredChannelStart, source.indexOf('const useImageFallback', preferredChannelStart));
@@ -142,9 +223,51 @@ describe('Profile mobile control visibility', () => {
     expect(paymentReturnEffectSource).toContain('handledPaymentReturnRef.current = returnKey;');
     expect(paymentReturnEffectSource.indexOf('if (!paymentChannelsLoaded) return;')).toBeLessThan(paymentReturnEffectSource.indexOf('handledPaymentReturnRef.current = returnKey;'));
     expect(paymentReturnEffectSource).toMatch(/\}, \[[^\]]*paymentChannelsLoaded[^\]]*\]\);/);
+    expect(channelEffectSource).toContain('const res = await paymentApi.getChannels();');
     expect(channelEffectSource.match(/setPaymentChannelsLoaded\(true\);/g)?.length).toBe(2);
+    expect(channelEffectSource).toContain("setPaymentChannelsError(getApiErrorMessage(error, t('pages.checkout.paymentUnavailableDescription'), language));");
+    expect(channelEffectSource).toContain('void loadPaymentChannels(() => !disposed && mountedRef.current);');
     expect(preferredChannelSource).toContain("const normalizedPreferred = String(preferred || '').trim();");
     expect(preferredChannelSource).toContain("channels.length === 0 || channels.some((channel) => channel.code === normalizedPreferred)");
+  });
+
+  it('keeps profile payment channel failures recoverable from the payment modal', () => {
+    const source = readProfileSource();
+    const channelLoadStart = source.indexOf('const loadPaymentChannels = useCallback');
+    const modalStart = source.indexOf('title={t(\'pages.profile.continuePay\')}');
+    const modalSource = source.slice(modalStart, source.indexOf('</Modal>', modalStart));
+
+    expect(source).toContain('const [paymentChannelsLoading, setPaymentChannelsLoading] = useState(false);');
+    expect(source).toContain("const [paymentChannelsError, setPaymentChannelsError] = useState('');");
+    expect(channelLoadStart).toBeGreaterThan(-1);
+    expect(source.slice(channelLoadStart, source.indexOf('const handleConfirmReceipt', channelLoadStart))).toContain('setPaymentChannelsLoading(true);');
+    expect(source.slice(channelLoadStart, source.indexOf('const handleConfirmReceipt', channelLoadStart))).toContain('setPaymentChannelsError(\'\');');
+    expect(source.slice(channelLoadStart, source.indexOf('const handleConfirmReceipt', channelLoadStart))).toContain('setPaymentChannelsLoading(false);');
+    expect(source).toContain("const retryPaymentChannelsActionLabel = `${t('common.retry')}: ${paymentOrderLabel} ${t('pages.checkout.paymentMethod')}`;");
+    expect(modalSource).toContain('disabled={paymentChannelsLoading || paymentOptions.length === 0}');
+    expect(modalSource).toContain('disabled={selectedPaymentPaid || selectedPaymentReconcileRequired || paymentChannelsLoading || paymentOptions.length === 0}');
+    expect(modalSource).toContain("description={paymentChannelsError || t('pages.checkout.paymentUnavailableDescription')}");
+    expect(modalSource).toContain('aria-label={retryPaymentChannelsActionLabel}');
+    expect(modalSource).toContain('onClick={() => void loadPaymentChannels()}');
+  });
+
+  it('uses the shared date locale mapping for profile timestamps', () => {
+    const source = readProfileSource();
+
+    expect(source).toContain("const dateLocale = language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US';");
+    expect(source).not.toContain("const dateLocale = language === 'zh' ? 'zh-CN' : language === 'en' ? 'en-US' : 'es-MX';");
+  });
+
+  it('announces the initial profile loading state as a busy status region', () => {
+    const source = readProfileSource();
+    const loadingStart = source.indexOf('<div className="profile-loading"');
+    const loadingSource = source.slice(loadingStart, source.indexOf('</div>', loadingStart));
+
+    expect(loadingStart).toBeGreaterThan(-1);
+    expect(loadingSource).toContain('role="status"');
+    expect(loadingSource).toContain('aria-live="polite"');
+    expect(loadingSource).toContain('aria-busy="true"');
+    expect(loadingSource).toContain("aria-label={t('common.loading')}");
   });
 
   it('guards continue-payment actions against duplicate in-flight requests', () => {

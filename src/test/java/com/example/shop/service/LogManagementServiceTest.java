@@ -22,6 +22,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentCaptor.forClass;
@@ -119,7 +121,19 @@ class LogManagementServiceTest {
         assertEquals(1024, status.getMaxDownloadBytes());
         assertTrue(status.getAllowedLoggerPrefixes().contains("com.example.shop"));
         assertTrue(status.getAllowedLoggerPrefixes().stream().noneMatch(prefix -> prefix.startsWith("org.springframework")));
+        assertNull(status.getLogDirectory());
         assertTrue(status.getAvailableFiles().contains("shop-backend.log"));
+        assertTrue(status.getAvailableFiles().stream().noneMatch(file ->
+                Path.of(file).isAbsolute() || file.contains("/") || file.contains("\\")));
+    }
+
+    @Test
+    void statusContractDoesNotExposeAbsoluteLogDirectory() throws Exception {
+        String serviceSource = Files.readString(Path.of("src/main/java/com/example/shop/service/LogManagementService.java"), StandardCharsets.UTF_8);
+        String responseSource = Files.readString(Path.of("src/main/java/com/example/shop/dto/LogManagementStatusResponse.java"), StandardCharsets.UTF_8);
+
+        assertFalse(serviceSource.contains("setLogDirectory(logFile.getParent().toAbsolutePath()"));
+        assertTrue(responseSource.contains("@JsonInclude(JsonInclude.Include.NON_NULL)\n    private String logDirectory;"));
     }
 
     @Test

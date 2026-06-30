@@ -10,6 +10,7 @@ import ProductList from './ProductList';
 const readProductListSource = () => fs.readFileSync(path.resolve(__dirname, 'ProductList.tsx'), 'utf8');
 const readProductListCss = () => fs.readFileSync(path.resolve(__dirname, 'ProductList.css'), 'utf8');
 const readMobileAppCss = () => fs.readFileSync(path.resolve(__dirname, '../mobile-app.css'), 'utf8');
+const readMobilePageContrastCss = () => fs.readFileSync(path.resolve(__dirname, '../styles/mobile-page-contrast.css'), 'utf8');
 
 const mockStorage = new Map<string, string>();
 let mockScrollMetrics = { scrollTop: 0, scrollHeight: 900, viewportHeight: 800 };
@@ -107,6 +108,14 @@ describe('ProductList quick-add mobile overlay contracts', () => {
     expect(css).toMatch(/body\.shop-mobile-app \.product-list__titleLink\s*\{[\s\S]*?min-height:\s*44px\s*!important;[\s\S]*?padding-block:\s*5px\s*!important;/);
   });
 
+  it('keeps App product card links from inheriting browser hyperlink decoration', () => {
+    const css = readMobilePageContrastCss();
+
+    expect(css).toMatch(/body\.shop-mobile-app\.shop-mobile-app \.shop-app-shell a\.product-list__imageButton\[href\][\s\S]*?text-decoration:\s*none\s*!important;[\s\S]*?text-underline-offset:\s*initial\s*!important;/);
+    expect(css).toMatch(/body\.shop-mobile-app\.shop-mobile-app \.shop-app-shell a\.product-list__imageButton\[href\],[\s\S]*?a\.product-list__imageButton\[href\]:focus-visible\s*\{[\s\S]*?width:\s*100%\s*!important;[\s\S]*?height:\s*100%\s*!important;[\s\S]*?display:\s*block\s*!important;[\s\S]*?text-decoration:\s*none\s*!important;/);
+    expect(css).toMatch(/body\.shop-mobile-app\.shop-mobile-app \.shop-app-shell a\.product-list__titleLink\[href\]\s*\{[\s\S]*?min-height:\s*44px\s*!important;[\s\S]*?white-space:\s*normal\s*!important;[\s\S]*?-webkit-line-clamp:\s*2\s*!important;/);
+  });
+
   it('keeps native product-list badges above the Android readable type floor', () => {
     const css = readMobileAppCss();
     const fixCss = css.slice(css.indexOf('A-01: native product-list badges'));
@@ -190,6 +199,14 @@ describe('ProductList card render performance contracts', () => {
     expect(source).toContain('const renderSavingsText = useCallback');
     expect(source).toContain('const handleWishlistToggle = useCallback');
     expect(source).toContain('const openProductPreview = useCallback');
+    expect(source).toContain('const PRODUCT_LIST_PAGE_SIZE = 12;');
+    expect(source).toContain('const PRODUCT_LIST_FETCH_SIZE = PRODUCT_LIST_PAGE_SIZE * 8;');
+    expect(source).toContain('const pageSize = PRODUCT_LIST_PAGE_SIZE;');
+    expect(source).toContain('size: pageSize,');
+    expect(source).toContain('const paginatedProducts = usingServerPagination');
+    expect(source).toContain(': sortedProducts.slice((currentPage - 1) * pageSize, currentPage * pageSize);');
+    expect(source).toContain('<Pagination');
+    expect(source).toContain('pageSize={pageSize}');
     expect(source).not.toContain('paginatedProducts.map((product, index) => {');
     expect(source).not.toContain('const renderPrimaryAction = (product: Product)');
   });

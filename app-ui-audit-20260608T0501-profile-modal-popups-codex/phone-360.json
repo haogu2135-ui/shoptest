@@ -1,0 +1,2708 @@
+{
+  "viewport": {
+    "name": "phone-360",
+    "width": 360,
+    "height": 740
+  },
+  "url": "http://127.0.0.1:4200/profile?tab=pets",
+  "consoleMessages": [
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition."
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath."
+    },
+    {
+      "type": "warning",
+      "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: \"[object Object]\" is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157490:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157523:17)\n    at http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6367:109\n    at Array.map (<anonymous>)\n    at Profile (http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6233:42)\n    at renderWithHooks (http://127.0.0.1:4200/static/js/bundle.js:116907:22)\n    at updateFunctionComponent (http://127.0.0.1:4200/static/js/bundle.js:120475:24)\n    at beginWork (http://127.0.0.1:4200/static/js/bundle.js:122194:20)\n    at beginWork$1 (http://127.0.0.1:4200/static/js/bundle.js:127141:18)"
+    },
+    {
+      "type": "warning",
+      "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: \"[object Object]\" is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157490:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157523:17)\n    at http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6367:109\n    at Array.map (<anonymous>)\n    at Profile (http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6233:42)\n    at renderWithHooks (http://127.0.0.1:4200/static/js/bundle.js:116907:22)\n    at updateFunctionComponent (http://127.0.0.1:4200/static/js/bundle.js:120475:24)\n    at beginWork (http://127.0.0.1:4200/static/js/bundle.js:122194:20)\n    at beginWork$1 (http://127.0.0.1:4200/static/js/bundle.js:127141:18)"
+    },
+    {
+      "type": "warning",
+      "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: \"[object Object]\" is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157490:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157523:17)\n    at http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6367:109\n    at Array.map (<anonymous>)\n    at Profile (http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6233:42)\n    at renderWithHooks (http://127.0.0.1:4200/static/js/bundle.js:116907:22)\n    at updateFunctionComponent (http://127.0.0.1:4200/static/js/bundle.js:120480:28)\n    at beginWork (http://127.0.0.1:4200/static/js/bundle.js:122194:20)\n    at beginWork$1 (http://127.0.0.1:4200/static/js/bundle.js:127141:18)"
+    },
+    {
+      "type": "warning",
+      "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: \"[object Object]\" is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157490:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157523:17)\n    at http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6367:109\n    at Array.map (<anonymous>)\n    at Profile (http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6233:42)\n    at renderWithHooks (http://127.0.0.1:4200/static/js/bundle.js:116907:22)\n    at updateFunctionComponent (http://127.0.0.1:4200/static/js/bundle.js:120480:28)\n    at beginWork (http://127.0.0.1:4200/static/js/bundle.js:122194:20)\n    at beginWork$1 (http://127.0.0.1:4200/static/js/bundle.js:127141:18)"
+    },
+    {
+      "type": "warning",
+      "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: \"[object Object]\" is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157490:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157523:17)\n    at http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6367:109\n    at Array.map (<anonymous>)\n    at Profile (http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6233:42)\n    at renderWithHooks (http://127.0.0.1:4200/static/js/bundle.js:116907:22)\n    at updateFunctionComponent (http://127.0.0.1:4200/static/js/bundle.js:120475:24)\n    at beginWork (http://127.0.0.1:4200/static/js/bundle.js:122194:20)\n    at beginWork$1 (http://127.0.0.1:4200/static/js/bundle.js:127141:18)"
+    },
+    {
+      "type": "warning",
+      "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: \"[object Object]\" is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157490:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157523:17)\n    at http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6367:109\n    at Array.map (<anonymous>)\n    at Profile (http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6233:42)\n    at renderWithHooks (http://127.0.0.1:4200/static/js/bundle.js:116907:22)\n    at updateFunctionComponent (http://127.0.0.1:4200/static/js/bundle.js:120475:24)\n    at beginWork (http://127.0.0.1:4200/static/js/bundle.js:122194:20)\n    at beginWork$1 (http://127.0.0.1:4200/static/js/bundle.js:127141:18)"
+    },
+    {
+      "type": "warning",
+      "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: \"[object Object]\" is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157490:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157523:17)\n    at http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6367:109\n    at Array.map (<anonymous>)\n    at Profile (http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6233:42)\n    at renderWithHooks (http://127.0.0.1:4200/static/js/bundle.js:116907:22)\n    at updateFunctionComponent (http://127.0.0.1:4200/static/js/bundle.js:120480:28)\n    at beginWork (http://127.0.0.1:4200/static/js/bundle.js:122194:20)\n    at beginWork$1 (http://127.0.0.1:4200/static/js/bundle.js:127141:18)"
+    },
+    {
+      "type": "warning",
+      "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: \"[object Object]\" is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157490:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157523:17)\n    at http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6367:109\n    at Array.map (<anonymous>)\n    at Profile (http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6233:42)\n    at renderWithHooks (http://127.0.0.1:4200/static/js/bundle.js:116907:22)\n    at updateFunctionComponent (http://127.0.0.1:4200/static/js/bundle.js:120480:28)\n    at beginWork (http://127.0.0.1:4200/static/js/bundle.js:122194:20)\n    at beginWork$1 (http://127.0.0.1:4200/static/js/bundle.js:127141:18)"
+    },
+    {
+      "type": "error",
+      "text": "Warning: Instance created by `useForm` is not connected to any Form element. Forget to pass `form` prop?"
+    },
+    {
+      "type": "warning",
+      "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: \"[object Object]\" is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157490:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157523:17)\n    at http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6367:109\n    at Array.map (<anonymous>)\n    at Profile (http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6233:42)\n    at renderWithHooks (http://127.0.0.1:4200/static/js/bundle.js:116907:22)\n    at updateFunctionComponent (http://127.0.0.1:4200/static/js/bundle.js:120475:24)\n    at beginWork (http://127.0.0.1:4200/static/js/bundle.js:122194:20)\n    at beginWork$1 (http://127.0.0.1:4200/static/js/bundle.js:127141:18)"
+    },
+    {
+      "type": "warning",
+      "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: \"[object Object]\" is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157490:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157523:17)\n    at http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6367:109\n    at Array.map (<anonymous>)\n    at Profile (http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6233:42)\n    at renderWithHooks (http://127.0.0.1:4200/static/js/bundle.js:116907:22)\n    at updateFunctionComponent (http://127.0.0.1:4200/static/js/bundle.js:120475:24)\n    at beginWork (http://127.0.0.1:4200/static/js/bundle.js:122194:20)\n    at beginWork$1 (http://127.0.0.1:4200/static/js/bundle.js:127141:18)"
+    },
+    {
+      "type": "warning",
+      "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: \"[object Object]\" is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157490:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157523:17)\n    at http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6367:109\n    at Array.map (<anonymous>)\n    at Profile (http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6233:42)\n    at renderWithHooks (http://127.0.0.1:4200/static/js/bundle.js:116907:22)\n    at updateFunctionComponent (http://127.0.0.1:4200/static/js/bundle.js:120480:28)\n    at beginWork (http://127.0.0.1:4200/static/js/bundle.js:122194:20)\n    at beginWork$1 (http://127.0.0.1:4200/static/js/bundle.js:127141:18)"
+    },
+    {
+      "type": "warning",
+      "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: \"[object Object]\" is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157490:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157523:17)\n    at http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6367:109\n    at Array.map (<anonymous>)\n    at Profile (http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6233:42)\n    at renderWithHooks (http://127.0.0.1:4200/static/js/bundle.js:116907:22)\n    at updateFunctionComponent (http://127.0.0.1:4200/static/js/bundle.js:120480:28)\n    at beginWork (http://127.0.0.1:4200/static/js/bundle.js:122194:20)\n    at beginWork$1 (http://127.0.0.1:4200/static/js/bundle.js:127141:18)"
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition."
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath."
+    },
+    {
+      "type": "warning",
+      "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: \"[object Object]\" is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157490:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157523:17)\n    at http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6367:109\n    at Array.map (<anonymous>)\n    at Profile (http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6233:42)\n    at renderWithHooks (http://127.0.0.1:4200/static/js/bundle.js:116907:22)\n    at updateFunctionComponent (http://127.0.0.1:4200/static/js/bundle.js:120475:24)\n    at beginWork (http://127.0.0.1:4200/static/js/bundle.js:122194:20)\n    at beginWork$1 (http://127.0.0.1:4200/static/js/bundle.js:127141:18)"
+    },
+    {
+      "type": "warning",
+      "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: \"[object Object]\" is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157490:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157523:17)\n    at http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6367:109\n    at Array.map (<anonymous>)\n    at Profile (http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6233:42)\n    at renderWithHooks (http://127.0.0.1:4200/static/js/bundle.js:116907:22)\n    at updateFunctionComponent (http://127.0.0.1:4200/static/js/bundle.js:120475:24)\n    at beginWork (http://127.0.0.1:4200/static/js/bundle.js:122194:20)\n    at beginWork$1 (http://127.0.0.1:4200/static/js/bundle.js:127141:18)"
+    },
+    {
+      "type": "warning",
+      "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: \"[object Object]\" is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157490:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157523:17)\n    at http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6367:109\n    at Array.map (<anonymous>)\n    at Profile (http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6233:42)\n    at renderWithHooks (http://127.0.0.1:4200/static/js/bundle.js:116907:22)\n    at updateFunctionComponent (http://127.0.0.1:4200/static/js/bundle.js:120480:28)\n    at beginWork (http://127.0.0.1:4200/static/js/bundle.js:122194:20)\n    at beginWork$1 (http://127.0.0.1:4200/static/js/bundle.js:127141:18)"
+    },
+    {
+      "type": "warning",
+      "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: \"[object Object]\" is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157490:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157523:17)\n    at http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6367:109\n    at Array.map (<anonymous>)\n    at Profile (http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6233:42)\n    at renderWithHooks (http://127.0.0.1:4200/static/js/bundle.js:116907:22)\n    at updateFunctionComponent (http://127.0.0.1:4200/static/js/bundle.js:120480:28)\n    at beginWork (http://127.0.0.1:4200/static/js/bundle.js:122194:20)\n    at beginWork$1 (http://127.0.0.1:4200/static/js/bundle.js:127141:18)"
+    },
+    {
+      "type": "warning",
+      "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: \"[object Object]\" is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157490:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157523:17)\n    at http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6367:109\n    at Array.map (<anonymous>)\n    at Profile (http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6233:42)\n    at renderWithHooks (http://127.0.0.1:4200/static/js/bundle.js:116907:22)\n    at updateFunctionComponent (http://127.0.0.1:4200/static/js/bundle.js:120475:24)\n    at beginWork (http://127.0.0.1:4200/static/js/bundle.js:122194:20)\n    at beginWork$1 (http://127.0.0.1:4200/static/js/bundle.js:127141:18)"
+    },
+    {
+      "type": "warning",
+      "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: \"[object Object]\" is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157490:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157523:17)\n    at http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6367:109\n    at Array.map (<anonymous>)\n    at Profile (http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6233:42)\n    at renderWithHooks (http://127.0.0.1:4200/static/js/bundle.js:116907:22)\n    at updateFunctionComponent (http://127.0.0.1:4200/static/js/bundle.js:120475:24)\n    at beginWork (http://127.0.0.1:4200/static/js/bundle.js:122194:20)\n    at beginWork$1 (http://127.0.0.1:4200/static/js/bundle.js:127141:18)"
+    },
+    {
+      "type": "warning",
+      "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: \"[object Object]\" is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157490:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157523:17)\n    at http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6367:109\n    at Array.map (<anonymous>)\n    at Profile (http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6233:42)\n    at renderWithHooks (http://127.0.0.1:4200/static/js/bundle.js:116907:22)\n    at updateFunctionComponent (http://127.0.0.1:4200/static/js/bundle.js:120480:28)\n    at beginWork (http://127.0.0.1:4200/static/js/bundle.js:122194:20)\n    at beginWork$1 (http://127.0.0.1:4200/static/js/bundle.js:127141:18)"
+    },
+    {
+      "type": "warning",
+      "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: \"[object Object]\" is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157490:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157523:17)\n    at http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6367:109\n    at Array.map (<anonymous>)\n    at Profile (http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6233:42)\n    at renderWithHooks (http://127.0.0.1:4200/static/js/bundle.js:116907:22)\n    at updateFunctionComponent (http://127.0.0.1:4200/static/js/bundle.js:120480:28)\n    at beginWork (http://127.0.0.1:4200/static/js/bundle.js:122194:20)\n    at beginWork$1 (http://127.0.0.1:4200/static/js/bundle.js:127141:18)"
+    },
+    {
+      "type": "error",
+      "text": "Warning: Instance created by `useForm` is not connected to any Form element. Forget to pass `form` prop?"
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition."
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath."
+    },
+    {
+      "type": "warning",
+      "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: \"[object Object]\" is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157490:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157523:17)\n    at http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6367:109\n    at Array.map (<anonymous>)\n    at Profile (http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6233:42)\n    at renderWithHooks (http://127.0.0.1:4200/static/js/bundle.js:116907:22)\n    at updateFunctionComponent (http://127.0.0.1:4200/static/js/bundle.js:120475:24)\n    at beginWork (http://127.0.0.1:4200/static/js/bundle.js:122194:20)\n    at beginWork$1 (http://127.0.0.1:4200/static/js/bundle.js:127141:18)"
+    },
+    {
+      "type": "warning",
+      "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: \"[object Object]\" is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157490:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157523:17)\n    at http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6367:109\n    at Array.map (<anonymous>)\n    at Profile (http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6233:42)\n    at renderWithHooks (http://127.0.0.1:4200/static/js/bundle.js:116907:22)\n    at updateFunctionComponent (http://127.0.0.1:4200/static/js/bundle.js:120475:24)\n    at beginWork (http://127.0.0.1:4200/static/js/bundle.js:122194:20)\n    at beginWork$1 (http://127.0.0.1:4200/static/js/bundle.js:127141:18)"
+    },
+    {
+      "type": "warning",
+      "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: \"[object Object]\" is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157490:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157523:17)\n    at http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6367:109\n    at Array.map (<anonymous>)\n    at Profile (http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6233:42)\n    at renderWithHooks (http://127.0.0.1:4200/static/js/bundle.js:116907:22)\n    at updateFunctionComponent (http://127.0.0.1:4200/static/js/bundle.js:120480:28)\n    at beginWork (http://127.0.0.1:4200/static/js/bundle.js:122194:20)\n    at beginWork$1 (http://127.0.0.1:4200/static/js/bundle.js:127141:18)"
+    },
+    {
+      "type": "warning",
+      "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: \"[object Object]\" is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157490:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157523:17)\n    at http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6367:109\n    at Array.map (<anonymous>)\n    at Profile (http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6233:42)\n    at renderWithHooks (http://127.0.0.1:4200/static/js/bundle.js:116907:22)\n    at updateFunctionComponent (http://127.0.0.1:4200/static/js/bundle.js:120480:28)\n    at beginWork (http://127.0.0.1:4200/static/js/bundle.js:122194:20)\n    at beginWork$1 (http://127.0.0.1:4200/static/js/bundle.js:127141:18)"
+    },
+    {
+      "type": "warning",
+      "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: \"[object Object]\" is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157490:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157523:17)\n    at http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6367:109\n    at Array.map (<anonymous>)\n    at Profile (http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6233:42)\n    at renderWithHooks (http://127.0.0.1:4200/static/js/bundle.js:116907:22)\n    at updateFunctionComponent (http://127.0.0.1:4200/static/js/bundle.js:120475:24)\n    at beginWork (http://127.0.0.1:4200/static/js/bundle.js:122194:20)\n    at beginWork$1 (http://127.0.0.1:4200/static/js/bundle.js:127141:18)"
+    },
+    {
+      "type": "warning",
+      "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: \"[object Object]\" is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157490:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157523:17)\n    at http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6367:109\n    at Array.map (<anonymous>)\n    at Profile (http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6233:42)\n    at renderWithHooks (http://127.0.0.1:4200/static/js/bundle.js:116907:22)\n    at updateFunctionComponent (http://127.0.0.1:4200/static/js/bundle.js:120475:24)\n    at beginWork (http://127.0.0.1:4200/static/js/bundle.js:122194:20)\n    at beginWork$1 (http://127.0.0.1:4200/static/js/bundle.js:127141:18)"
+    },
+    {
+      "type": "warning",
+      "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: \"[object Object]\" is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157490:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157523:17)\n    at http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6367:109\n    at Array.map (<anonymous>)\n    at Profile (http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6233:42)\n    at renderWithHooks (http://127.0.0.1:4200/static/js/bundle.js:116907:22)\n    at updateFunctionComponent (http://127.0.0.1:4200/static/js/bundle.js:120480:28)\n    at beginWork (http://127.0.0.1:4200/static/js/bundle.js:122194:20)\n    at beginWork$1 (http://127.0.0.1:4200/static/js/bundle.js:127141:18)"
+    },
+    {
+      "type": "warning",
+      "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: \"[object Object]\" is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157490:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157523:17)\n    at http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6367:109\n    at Array.map (<anonymous>)\n    at Profile (http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6233:42)\n    at renderWithHooks (http://127.0.0.1:4200/static/js/bundle.js:116907:22)\n    at updateFunctionComponent (http://127.0.0.1:4200/static/js/bundle.js:120480:28)\n    at beginWork (http://127.0.0.1:4200/static/js/bundle.js:122194:20)\n    at beginWork$1 (http://127.0.0.1:4200/static/js/bundle.js:127141:18)"
+    },
+    {
+      "type": "error",
+      "text": "Warning: Instance created by `useForm` is not connected to any Form element. Forget to pass `form` prop?"
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition."
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath."
+    },
+    {
+      "type": "warning",
+      "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: \"[object Object]\" is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157490:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157523:17)\n    at http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6367:109\n    at Array.map (<anonymous>)\n    at Profile (http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6233:42)\n    at renderWithHooks (http://127.0.0.1:4200/static/js/bundle.js:116907:22)\n    at updateFunctionComponent (http://127.0.0.1:4200/static/js/bundle.js:120475:24)\n    at beginWork (http://127.0.0.1:4200/static/js/bundle.js:122194:20)\n    at beginWork$1 (http://127.0.0.1:4200/static/js/bundle.js:127141:18)"
+    },
+    {
+      "type": "warning",
+      "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: \"[object Object]\" is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157490:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157523:17)\n    at http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6367:109\n    at Array.map (<anonymous>)\n    at Profile (http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6233:42)\n    at renderWithHooks (http://127.0.0.1:4200/static/js/bundle.js:116907:22)\n    at updateFunctionComponent (http://127.0.0.1:4200/static/js/bundle.js:120475:24)\n    at beginWork (http://127.0.0.1:4200/static/js/bundle.js:122194:20)\n    at beginWork$1 (http://127.0.0.1:4200/static/js/bundle.js:127141:18)"
+    },
+    {
+      "type": "warning",
+      "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: \"[object Object]\" is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157490:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157523:17)\n    at http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6367:109\n    at Array.map (<anonymous>)\n    at Profile (http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6233:42)\n    at renderWithHooks (http://127.0.0.1:4200/static/js/bundle.js:116907:22)\n    at updateFunctionComponent (http://127.0.0.1:4200/static/js/bundle.js:120480:28)\n    at beginWork (http://127.0.0.1:4200/static/js/bundle.js:122194:20)\n    at beginWork$1 (http://127.0.0.1:4200/static/js/bundle.js:127141:18)"
+    },
+    {
+      "type": "warning",
+      "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: \"[object Object]\" is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157490:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157523:17)\n    at http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6367:109\n    at Array.map (<anonymous>)\n    at Profile (http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6233:42)\n    at renderWithHooks (http://127.0.0.1:4200/static/js/bundle.js:116907:22)\n    at updateFunctionComponent (http://127.0.0.1:4200/static/js/bundle.js:120480:28)\n    at beginWork (http://127.0.0.1:4200/static/js/bundle.js:122194:20)\n    at beginWork$1 (http://127.0.0.1:4200/static/js/bundle.js:127141:18)"
+    },
+    {
+      "type": "warning",
+      "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: \"[object Object]\" is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157490:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157523:17)\n    at http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6367:109\n    at Array.map (<anonymous>)\n    at Profile (http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6233:42)\n    at renderWithHooks (http://127.0.0.1:4200/static/js/bundle.js:116907:22)\n    at updateFunctionComponent (http://127.0.0.1:4200/static/js/bundle.js:120475:24)\n    at beginWork (http://127.0.0.1:4200/static/js/bundle.js:122194:20)\n    at beginWork$1 (http://127.0.0.1:4200/static/js/bundle.js:127141:18)"
+    },
+    {
+      "type": "warning",
+      "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: \"[object Object]\" is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157490:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157523:17)\n    at http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6367:109\n    at Array.map (<anonymous>)\n    at Profile (http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6233:42)\n    at renderWithHooks (http://127.0.0.1:4200/static/js/bundle.js:116907:22)\n    at updateFunctionComponent (http://127.0.0.1:4200/static/js/bundle.js:120475:24)\n    at beginWork (http://127.0.0.1:4200/static/js/bundle.js:122194:20)\n    at beginWork$1 (http://127.0.0.1:4200/static/js/bundle.js:127141:18)"
+    },
+    {
+      "type": "warning",
+      "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: \"[object Object]\" is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157490:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157523:17)\n    at http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6367:109\n    at Array.map (<anonymous>)\n    at Profile (http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6233:42)\n    at renderWithHooks (http://127.0.0.1:4200/static/js/bundle.js:116907:22)\n    at updateFunctionComponent (http://127.0.0.1:4200/static/js/bundle.js:120480:28)\n    at beginWork (http://127.0.0.1:4200/static/js/bundle.js:122194:20)\n    at beginWork$1 (http://127.0.0.1:4200/static/js/bundle.js:127141:18)"
+    },
+    {
+      "type": "warning",
+      "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: \"[object Object]\" is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157490:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157523:17)\n    at http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6367:109\n    at Array.map (<anonymous>)\n    at Profile (http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6233:42)\n    at renderWithHooks (http://127.0.0.1:4200/static/js/bundle.js:116907:22)\n    at updateFunctionComponent (http://127.0.0.1:4200/static/js/bundle.js:120480:28)\n    at beginWork (http://127.0.0.1:4200/static/js/bundle.js:122194:20)\n    at beginWork$1 (http://127.0.0.1:4200/static/js/bundle.js:127141:18)"
+    },
+    {
+      "type": "error",
+      "text": "Warning: Instance created by `useForm` is not connected to any Form element. Forget to pass `form` prop?"
+    }
+  ],
+  "states": [
+    {
+      "state": "addresses-top",
+      "viewport": {
+        "width": 360,
+        "height": 740
+      },
+      "body": {
+        "scrollWidth": 360,
+        "clientWidth": 360,
+        "scrollHeight": 2800,
+        "clientHeight": 740,
+        "scrollY": 0
+      },
+      "rects": {
+        "page": {
+          "selector": ".profile-page",
+          "text": "Profileprofile.ui.auditComplete Birthday for Nube so recommendations can work harder.My orders (2)Complete profile2All orders2Addresses (2)2Pets (2)100%Account readinessAccount action centerPick up payments, deliveries and pet care tasks quickly.1Pending payme",
+          "x": 5,
+          "y": 157,
+          "width": 350,
+          "height": 1466.40625,
+          "right": 355,
+          "bottom": 1623.40625,
+          "scrollWidth": 350,
+          "clientWidth": 350,
+          "scrollHeight": 1466,
+          "clientHeight": 1466,
+          "overflowX": "hidden",
+          "overflowY": "auto",
+          "zIndex": "auto"
+        },
+        "tabs": {
+          "selector": ".profile-tabs > .ant-tabs-nav",
+          "text": "Personal informationAddresses (2)My orders (2)Pets (2)",
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "right": 0,
+          "bottom": 0,
+          "scrollWidth": 0,
+          "clientWidth": 0,
+          "scrollHeight": 0,
+          "clientHeight": 0,
+          "overflowX": "hidden",
+          "overflowY": "hidden",
+          "zIndex": "8"
+        },
+        "addressReadiness": {
+          "selector": ".profile-address-readiness",
+          "text": "Delivery readinessReview missing phone numbers, short details, and default address selection before checkout.33%1Default ready0Missing phone2Incomplete delivery",
+          "x": 12,
+          "y": 907.5625,
+          "width": 336,
+          "height": 237.84375,
+          "right": 348,
+          "bottom": 1145.40625,
+          "scrollWidth": 334,
+          "clientWidth": 334,
+          "scrollHeight": 236,
+          "clientHeight": 236,
+          "overflowX": "hidden",
+          "overflowY": "hidden",
+          "zIndex": "auto"
+        },
+        "petInsights": null,
+        "modal": null,
+        "addressModal": null,
+        "modalBody": null,
+        "addressModalBody": null,
+        "modalFooter": null,
+        "addressModalFooter": null,
+        "addressCascader": null,
+        "petTypeSelect": null,
+        "petDatePicker": null,
+        "petSizeSelect": null,
+        "selectDropdown": null,
+        "cascaderDropdown": null,
+        "pickerDropdown": null,
+        "popup": null
+      },
+      "visibleRatios": {
+        "modal": null,
+        "modalBody": null,
+        "modalFooter": null,
+        "addressCascader": null,
+        "petDatePicker": null,
+        "selectDropdown": null,
+        "cascaderDropdown": null,
+        "pickerDropdown": null,
+        "popup": null
+      },
+      "optionRows": [],
+      "overflowEls": [
+        {
+          "selector": "button.shop-nav__megaButton",
+          "text": "Smart Devices",
+          "x": 345.953125,
+          "y": 107,
+          "width": 104.71875,
+          "height": 38,
+          "right": 450.671875,
+          "bottom": 145,
+          "overflowRight": 90.671875,
+          "overflowLeft": -345.953125
+        },
+        {
+          "selector": "button.shop-nav__megaButton",
+          "text": "Pet finder",
+          "x": 456.671875,
+          "y": 107,
+          "width": 77.34375,
+          "height": 38,
+          "right": 534.015625,
+          "bottom": 145,
+          "overflowRight": 174.015625,
+          "overflowLeft": -456.671875
+        },
+        {
+          "selector": "button.shop-nav__megaButton",
+          "text": "Pet gallery",
+          "x": 540.015625,
+          "y": 107,
+          "width": 82.703125,
+          "height": 38,
+          "right": 622.71875,
+          "bottom": 145,
+          "overflowRight": 262.71875,
+          "overflowLeft": -540.015625
+        },
+        {
+          "selector": "span",
+          "text": "2Incomplete delivery",
+          "x": 261.765625,
+          "y": 1031.40625,
+          "width": 139.390625,
+          "height": 101,
+          "right": 401.15625,
+          "bottom": 1132.40625,
+          "overflowRight": 41.15625,
+          "overflowLeft": -261.765625
+        },
+        {
+          "selector": "span.ant-typography.ant-typography-secondary.css-dev-only-do-not-override-5uvb3z",
+          "text": "Incomplete delivery",
+          "x": 270.765625,
+          "y": 1065.40625,
+          "width": 121.390625,
+          "height": 58,
+          "right": 392.15625,
+          "bottom": 1123.40625,
+          "overflowRight": 32.15625,
+          "overflowLeft": -270.765625
+        }
+      ],
+      "hits": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ]
+    },
+    {
+      "state": "address-modal-open",
+      "viewport": {
+        "width": 360,
+        "height": 740
+      },
+      "body": {
+        "scrollWidth": 360,
+        "clientWidth": 360,
+        "scrollHeight": 2800,
+        "clientHeight": 740,
+        "scrollY": 0
+      },
+      "rects": {
+        "page": {
+          "selector": ".profile-page",
+          "text": "Profileprofile.ui.auditComplete Birthday for Nube so recommendations can work harder.My orders (2)Complete profile2All orders2Addresses (2)2Pets (2)100%Account readinessAccount action centerPick up payments, deliveries and pet care tasks quickly.1Pending payme",
+          "x": 5,
+          "y": 157,
+          "width": 350,
+          "height": 1466.40625,
+          "right": 355,
+          "bottom": 1623.40625,
+          "scrollWidth": 350,
+          "clientWidth": 350,
+          "scrollHeight": 1466,
+          "clientHeight": 1466,
+          "overflowX": "hidden",
+          "overflowY": "auto",
+          "zIndex": "auto"
+        },
+        "tabs": {
+          "selector": ".profile-tabs > .ant-tabs-nav",
+          "text": "Personal informationAddresses (2)My orders (2)Pets (2)",
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "right": 0,
+          "bottom": 0,
+          "scrollWidth": 0,
+          "clientWidth": 0,
+          "scrollHeight": 0,
+          "clientHeight": 0,
+          "overflowX": "hidden",
+          "overflowY": "hidden",
+          "zIndex": "8"
+        },
+        "addressReadiness": {
+          "selector": ".profile-address-readiness",
+          "text": "Delivery readinessReview missing phone numbers, short details, and default address selection before checkout.33%1Default ready0Missing phone2Incomplete delivery",
+          "x": 12,
+          "y": 907.5625,
+          "width": 336,
+          "height": 237.84375,
+          "right": 348,
+          "bottom": 1145.40625,
+          "scrollWidth": 334,
+          "clientWidth": 334,
+          "scrollHeight": 236,
+          "clientHeight": 236,
+          "overflowX": "hidden",
+          "overflowY": "hidden",
+          "zIndex": "auto"
+        },
+        "petInsights": null,
+        "modal": {
+          "selector": ".profile-mobile-safe-modal .ant-modal-content",
+          "text": "Add addressRecipientPhoneRegionSelect regionPostal / ZIP codeDetailed address0 / 260Use as default addressCancelSave",
+          "x": 10,
+          "y": 30,
+          "width": 340,
+          "height": 676,
+          "right": 350,
+          "bottom": 706,
+          "scrollWidth": 340,
+          "clientWidth": 340,
+          "scrollHeight": 676,
+          "clientHeight": 676,
+          "overflowX": "hidden",
+          "overflowY": "hidden",
+          "zIndex": "auto"
+        },
+        "addressModal": {
+          "selector": ".profile-address-modal .ant-modal-content",
+          "text": "Add addressRecipientPhoneRegionSelect regionPostal / ZIP codeDetailed address0 / 260Use as default addressCancelSave",
+          "x": 10,
+          "y": 30,
+          "width": 340,
+          "height": 676,
+          "right": 350,
+          "bottom": 706,
+          "scrollWidth": 340,
+          "clientWidth": 340,
+          "scrollHeight": 676,
+          "clientHeight": 676,
+          "overflowX": "hidden",
+          "overflowY": "hidden",
+          "zIndex": "auto"
+        },
+        "modalBody": {
+          "selector": ".profile-mobile-safe-modal .ant-modal-body",
+          "text": "RecipientPhoneRegionSelect regionPostal / ZIP codeDetailed address0 / 260Use as default address",
+          "x": 34,
+          "y": 98,
+          "width": 292,
+          "height": 524,
+          "right": 326,
+          "bottom": 622,
+          "scrollWidth": 292,
+          "clientWidth": 292,
+          "scrollHeight": 579,
+          "clientHeight": 524,
+          "overflowX": "auto",
+          "overflowY": "auto",
+          "zIndex": "auto"
+        },
+        "addressModalBody": {
+          "selector": ".profile-address-modal .ant-modal-body",
+          "text": "RecipientPhoneRegionSelect regionPostal / ZIP codeDetailed address0 / 260Use as default address",
+          "x": 34,
+          "y": 98,
+          "width": 292,
+          "height": 524,
+          "right": 326,
+          "bottom": 622,
+          "scrollWidth": 292,
+          "clientWidth": 292,
+          "scrollHeight": 579,
+          "clientHeight": 524,
+          "overflowX": "auto",
+          "overflowY": "auto",
+          "zIndex": "auto"
+        },
+        "modalFooter": {
+          "selector": ".profile-mobile-safe-modal .ant-modal-footer",
+          "text": "CancelSave",
+          "x": 34,
+          "y": 622,
+          "width": 292,
+          "height": 64,
+          "right": 326,
+          "bottom": 686,
+          "scrollWidth": 292,
+          "clientWidth": 292,
+          "scrollHeight": 64,
+          "clientHeight": 64,
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "zIndex": "4"
+        },
+        "addressModalFooter": {
+          "selector": ".profile-address-modal .ant-modal-footer",
+          "text": "CancelSave",
+          "x": 34,
+          "y": 622,
+          "width": 292,
+          "height": 64,
+          "right": 326,
+          "bottom": 686,
+          "scrollWidth": 292,
+          "clientWidth": 292,
+          "scrollHeight": 64,
+          "clientHeight": 64,
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "zIndex": "4"
+        },
+        "addressCascader": {
+          "selector": ".profile-address-modal .ant-cascader",
+          "text": "Select region",
+          "x": 34,
+          "y": 320,
+          "width": 292,
+          "height": 44,
+          "right": 326,
+          "bottom": 364,
+          "scrollWidth": 292,
+          "clientWidth": 292,
+          "scrollHeight": 44,
+          "clientHeight": 44,
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "zIndex": "auto"
+        },
+        "petTypeSelect": {
+          "selector": ".profile-mobile-safe-modal .ant-select",
+          "text": "Select region",
+          "x": 34,
+          "y": 320,
+          "width": 292,
+          "height": 44,
+          "right": 326,
+          "bottom": 364,
+          "scrollWidth": 292,
+          "clientWidth": 292,
+          "scrollHeight": 44,
+          "clientHeight": 44,
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "zIndex": "auto"
+        },
+        "petDatePicker": null,
+        "petSizeSelect": null,
+        "selectDropdown": null,
+        "cascaderDropdown": null,
+        "pickerDropdown": null,
+        "popup": null
+      },
+      "visibleRatios": {
+        "modal": 1,
+        "modalBody": 1,
+        "modalFooter": 1,
+        "addressCascader": 1,
+        "petDatePicker": null,
+        "selectDropdown": null,
+        "cascaderDropdown": null,
+        "pickerDropdown": null,
+        "popup": null
+      },
+      "optionRows": [],
+      "overflowEls": [
+        {
+          "selector": "button.shop-nav__megaButton",
+          "text": "Smart Devices",
+          "x": 345.953125,
+          "y": 107,
+          "width": 104.71875,
+          "height": 38,
+          "right": 450.671875,
+          "bottom": 145,
+          "overflowRight": 90.671875,
+          "overflowLeft": -345.953125
+        },
+        {
+          "selector": "button.shop-nav__megaButton",
+          "text": "Pet finder",
+          "x": 456.671875,
+          "y": 107,
+          "width": 77.34375,
+          "height": 38,
+          "right": 534.015625,
+          "bottom": 145,
+          "overflowRight": 174.015625,
+          "overflowLeft": -456.671875
+        },
+        {
+          "selector": "button.shop-nav__megaButton",
+          "text": "Pet gallery",
+          "x": 540.015625,
+          "y": 107,
+          "width": 82.703125,
+          "height": 38,
+          "right": 622.71875,
+          "bottom": 145,
+          "overflowRight": 262.71875,
+          "overflowLeft": -540.015625
+        },
+        {
+          "selector": "span",
+          "text": "2Incomplete delivery",
+          "x": 261.765625,
+          "y": 1031.40625,
+          "width": 139.390625,
+          "height": 101,
+          "right": 401.15625,
+          "bottom": 1132.40625,
+          "overflowRight": 41.15625,
+          "overflowLeft": -261.765625
+        },
+        {
+          "selector": "span.ant-typography.ant-typography-secondary.css-dev-only-do-not-override-5uvb3z",
+          "text": "Incomplete delivery",
+          "x": 270.765625,
+          "y": 1065.40625,
+          "width": 121.390625,
+          "height": 58,
+          "right": 392.15625,
+          "bottom": 1123.40625,
+          "overflowRight": 32.15625,
+          "overflowLeft": -270.765625
+        }
+      ],
+      "hits": [
+        null,
+        null,
+        null,
+        {
+          "selector": ".profile-address-modal .ant-cascader",
+          "point": {
+            "x": 180,
+            "y": 342
+          },
+          "hitTag": "INPUT",
+          "hitClass": "ant-select-selection-search-input",
+          "hitText": ""
+        },
+        null,
+        {
+          "selector": ".profile-mobile-safe-modal .ant-modal-footer .ant-btn-primary",
+          "point": {
+            "x": 248,
+            "y": 654
+          },
+          "hitTag": "SPAN",
+          "hitClass": "",
+          "hitText": "Save"
+        }
+      ]
+    },
+    {
+      "state": "address-region-cascader",
+      "viewport": {
+        "width": 360,
+        "height": 740
+      },
+      "body": {
+        "scrollWidth": 360,
+        "clientWidth": 360,
+        "scrollHeight": 2800,
+        "clientHeight": 740,
+        "scrollY": 0
+      },
+      "rects": {
+        "page": {
+          "selector": ".profile-page",
+          "text": "Profileprofile.ui.auditComplete Birthday for Nube so recommendations can work harder.My orders (2)Complete profile2All orders2Addresses (2)2Pets (2)100%Account readinessAccount action centerPick up payments, deliveries and pet care tasks quickly.1Pending payme",
+          "x": 5,
+          "y": 157,
+          "width": 350,
+          "height": 1466.40625,
+          "right": 355,
+          "bottom": 1623.40625,
+          "scrollWidth": 350,
+          "clientWidth": 350,
+          "scrollHeight": 1466,
+          "clientHeight": 1466,
+          "overflowX": "hidden",
+          "overflowY": "auto",
+          "zIndex": "auto"
+        },
+        "tabs": {
+          "selector": ".profile-tabs > .ant-tabs-nav",
+          "text": "Personal informationAddresses (2)My orders (2)Pets (2)",
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "right": 0,
+          "bottom": 0,
+          "scrollWidth": 0,
+          "clientWidth": 0,
+          "scrollHeight": 0,
+          "clientHeight": 0,
+          "overflowX": "hidden",
+          "overflowY": "hidden",
+          "zIndex": "8"
+        },
+        "addressReadiness": {
+          "selector": ".profile-address-readiness",
+          "text": "Delivery readinessReview missing phone numbers, short details, and default address selection before checkout.33%1Default ready0Missing phone2Incomplete delivery",
+          "x": 12,
+          "y": 907.5625,
+          "width": 336,
+          "height": 237.84375,
+          "right": 348,
+          "bottom": 1145.40625,
+          "scrollWidth": 334,
+          "clientWidth": 334,
+          "scrollHeight": 236,
+          "clientHeight": 236,
+          "overflowX": "hidden",
+          "overflowY": "hidden",
+          "zIndex": "auto"
+        },
+        "petInsights": null,
+        "modal": {
+          "selector": ".profile-mobile-safe-modal .ant-modal-content",
+          "text": "Add addressRecipientPhoneRegionSelect regionPostal / ZIP codeDetailed address0 / 260Use as default addressCancelSave",
+          "x": 10,
+          "y": 30,
+          "width": 340,
+          "height": 676,
+          "right": 350,
+          "bottom": 706,
+          "scrollWidth": 340,
+          "clientWidth": 340,
+          "scrollHeight": 676,
+          "clientHeight": 676,
+          "overflowX": "hidden",
+          "overflowY": "hidden",
+          "zIndex": "auto"
+        },
+        "addressModal": {
+          "selector": ".profile-address-modal .ant-modal-content",
+          "text": "Add addressRecipientPhoneRegionSelect regionPostal / ZIP codeDetailed address0 / 260Use as default addressCancelSave",
+          "x": 10,
+          "y": 30,
+          "width": 340,
+          "height": 676,
+          "right": 350,
+          "bottom": 706,
+          "scrollWidth": 340,
+          "clientWidth": 340,
+          "scrollHeight": 676,
+          "clientHeight": 676,
+          "overflowX": "hidden",
+          "overflowY": "hidden",
+          "zIndex": "auto"
+        },
+        "modalBody": {
+          "selector": ".profile-mobile-safe-modal .ant-modal-body",
+          "text": "RecipientPhoneRegionSelect regionPostal / ZIP codeDetailed address0 / 260Use as default address",
+          "x": 34,
+          "y": 98,
+          "width": 292,
+          "height": 524,
+          "right": 326,
+          "bottom": 622,
+          "scrollWidth": 292,
+          "clientWidth": 292,
+          "scrollHeight": 579,
+          "clientHeight": 524,
+          "overflowX": "auto",
+          "overflowY": "auto",
+          "zIndex": "auto"
+        },
+        "addressModalBody": {
+          "selector": ".profile-address-modal .ant-modal-body",
+          "text": "RecipientPhoneRegionSelect regionPostal / ZIP codeDetailed address0 / 260Use as default address",
+          "x": 34,
+          "y": 98,
+          "width": 292,
+          "height": 524,
+          "right": 326,
+          "bottom": 622,
+          "scrollWidth": 292,
+          "clientWidth": 292,
+          "scrollHeight": 579,
+          "clientHeight": 524,
+          "overflowX": "auto",
+          "overflowY": "auto",
+          "zIndex": "auto"
+        },
+        "modalFooter": {
+          "selector": ".profile-mobile-safe-modal .ant-modal-footer",
+          "text": "CancelSave",
+          "x": 34,
+          "y": 622,
+          "width": 292,
+          "height": 64,
+          "right": 326,
+          "bottom": 686,
+          "scrollWidth": 292,
+          "clientWidth": 292,
+          "scrollHeight": 64,
+          "clientHeight": 64,
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "zIndex": "4"
+        },
+        "addressModalFooter": {
+          "selector": ".profile-address-modal .ant-modal-footer",
+          "text": "CancelSave",
+          "x": 34,
+          "y": 622,
+          "width": 292,
+          "height": 64,
+          "right": 326,
+          "bottom": 686,
+          "scrollWidth": 292,
+          "clientWidth": 292,
+          "scrollHeight": 64,
+          "clientHeight": 64,
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "zIndex": "4"
+        },
+        "addressCascader": {
+          "selector": ".profile-address-modal .ant-cascader",
+          "text": "Select region",
+          "x": 34,
+          "y": 265,
+          "width": 292,
+          "height": 44,
+          "right": 326,
+          "bottom": 309,
+          "scrollWidth": 292,
+          "clientWidth": 292,
+          "scrollHeight": 44,
+          "clientHeight": 44,
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "zIndex": "auto"
+        },
+        "petTypeSelect": {
+          "selector": ".profile-mobile-safe-modal .ant-select",
+          "text": "Select region",
+          "x": 34,
+          "y": 265,
+          "width": 292,
+          "height": 44,
+          "right": 326,
+          "bottom": 309,
+          "scrollWidth": 292,
+          "clientWidth": 292,
+          "scrollHeight": 44,
+          "clientHeight": 44,
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "zIndex": "auto"
+        },
+        "petDatePicker": null,
+        "petSizeSelect": null,
+        "selectDropdown": {
+          "selector": ".ant-select-dropdown:not(.ant-select-dropdown-hidden)",
+          "text": "ChinaMexico",
+          "x": 8,
+          "y": 313,
+          "width": 344,
+          "height": 180,
+          "right": 352,
+          "bottom": 493,
+          "scrollWidth": 344,
+          "clientWidth": 344,
+          "scrollHeight": 180,
+          "clientHeight": 180,
+          "overflowX": "auto",
+          "overflowY": "auto",
+          "zIndex": "12050"
+        },
+        "cascaderDropdown": {
+          "selector": ".ant-cascader-dropdown",
+          "text": "ChinaMexico",
+          "x": 8,
+          "y": 313,
+          "width": 344,
+          "height": 180,
+          "right": 352,
+          "bottom": 493,
+          "scrollWidth": 344,
+          "clientWidth": 344,
+          "scrollHeight": 180,
+          "clientHeight": 180,
+          "overflowX": "auto",
+          "overflowY": "auto",
+          "zIndex": "12050"
+        },
+        "pickerDropdown": null,
+        "popup": {
+          "selector": ".ant-select-dropdown:not(.ant-select-dropdown-hidden), .ant-cascader-dropdown, .ant-picker-dropdown",
+          "text": "ChinaMexico",
+          "x": 8,
+          "y": 313,
+          "width": 344,
+          "height": 180,
+          "right": 352,
+          "bottom": 493,
+          "scrollWidth": 344,
+          "clientWidth": 344,
+          "scrollHeight": 180,
+          "clientHeight": 180,
+          "overflowX": "auto",
+          "overflowY": "auto",
+          "zIndex": "12050"
+        }
+      },
+      "visibleRatios": {
+        "modal": 1,
+        "modalBody": 1,
+        "modalFooter": 1,
+        "addressCascader": 1,
+        "petDatePicker": null,
+        "selectDropdown": 1,
+        "cascaderDropdown": 1,
+        "pickerDropdown": null,
+        "popup": 1
+      },
+      "optionRows": [
+        {
+          "text": "China",
+          "x": 12,
+          "y": 317,
+          "width": 336,
+          "height": 44,
+          "right": 348,
+          "bottom": 361,
+          "visibleRatio": 1
+        },
+        {
+          "text": "Mexico",
+          "x": 12,
+          "y": 361,
+          "width": 336,
+          "height": 44,
+          "right": 348,
+          "bottom": 405,
+          "visibleRatio": 1
+        }
+      ],
+      "overflowEls": [
+        {
+          "selector": "button.shop-nav__megaButton",
+          "text": "Smart Devices",
+          "x": 345.953125,
+          "y": 107,
+          "width": 104.71875,
+          "height": 38,
+          "right": 450.671875,
+          "bottom": 145,
+          "overflowRight": 90.671875,
+          "overflowLeft": -345.953125
+        },
+        {
+          "selector": "button.shop-nav__megaButton",
+          "text": "Pet finder",
+          "x": 456.671875,
+          "y": 107,
+          "width": 77.34375,
+          "height": 38,
+          "right": 534.015625,
+          "bottom": 145,
+          "overflowRight": 174.015625,
+          "overflowLeft": -456.671875
+        },
+        {
+          "selector": "button.shop-nav__megaButton",
+          "text": "Pet gallery",
+          "x": 540.015625,
+          "y": 107,
+          "width": 82.703125,
+          "height": 38,
+          "right": 622.71875,
+          "bottom": 145,
+          "overflowRight": 262.71875,
+          "overflowLeft": -540.015625
+        },
+        {
+          "selector": "span",
+          "text": "2Incomplete delivery",
+          "x": 261.765625,
+          "y": 1031.40625,
+          "width": 139.390625,
+          "height": 101,
+          "right": 401.15625,
+          "bottom": 1132.40625,
+          "overflowRight": 41.15625,
+          "overflowLeft": -261.765625
+        },
+        {
+          "selector": "span.ant-typography.ant-typography-secondary.css-dev-only-do-not-override-5uvb3z",
+          "text": "Incomplete delivery",
+          "x": 270.765625,
+          "y": 1065.40625,
+          "width": 121.390625,
+          "height": 58,
+          "right": 392.15625,
+          "bottom": 1123.40625,
+          "overflowRight": 32.15625,
+          "overflowLeft": -270.765625
+        }
+      ],
+      "hits": [
+        {
+          "selector": ".ant-cascader-dropdown .ant-cascader-menu-item",
+          "point": {
+            "x": 180,
+            "y": 339
+          },
+          "hitTag": "DIV",
+          "hitClass": "ant-cascader-menu-item-content",
+          "hitText": "China"
+        },
+        null,
+        null,
+        {
+          "selector": ".profile-address-modal .ant-cascader",
+          "point": {
+            "x": 180,
+            "y": 287
+          },
+          "hitTag": "INPUT",
+          "hitClass": "ant-select-selection-search-input",
+          "hitText": ""
+        },
+        null,
+        {
+          "selector": ".profile-mobile-safe-modal .ant-modal-footer .ant-btn-primary",
+          "point": {
+            "x": 248,
+            "y": 654
+          },
+          "hitTag": "SPAN",
+          "hitClass": "",
+          "hitText": "Save"
+        }
+      ]
+    },
+    {
+      "state": "pets-top",
+      "viewport": {
+        "width": 360,
+        "height": 740
+      },
+      "body": {
+        "scrollWidth": 360,
+        "clientWidth": 360,
+        "scrollHeight": 3545,
+        "clientHeight": 740,
+        "scrollY": 0
+      },
+      "rects": {
+        "page": {
+          "selector": ".profile-page",
+          "text": "Profileprofile.ui.auditComplete Birthday for Nube so recommendations can work harder.My orders (2)Complete profile2All orders2Addresses (2)2Pets (2)100%Account readinessAccount action centerPick up payments, deliveries and pet care tasks quickly.1Pending payme",
+          "x": 5,
+          "y": 157,
+          "width": 350,
+          "height": 2210.796875,
+          "right": 355,
+          "bottom": 2367.796875,
+          "scrollWidth": 350,
+          "clientWidth": 350,
+          "scrollHeight": 2211,
+          "clientHeight": 2211,
+          "overflowX": "hidden",
+          "overflowY": "auto",
+          "zIndex": "auto"
+        },
+        "tabs": {
+          "selector": ".profile-tabs > .ant-tabs-nav",
+          "text": "Personal informationAddresses (2)My orders (2)Pets (2)",
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "right": 0,
+          "bottom": 0,
+          "scrollWidth": 0,
+          "clientWidth": 0,
+          "scrollHeight": 0,
+          "clientHeight": 0,
+          "overflowX": "hidden",
+          "overflowY": "hidden",
+          "zIndex": "8"
+        },
+        "addressReadiness": null,
+        "petInsights": {
+          "selector": ".profile-pet-insights",
+          "text": "Profile recommendation readiness2 pet profile(s) still need details before recommendations feel truly personal.0%Birthday coupon enabledAdd your pets' birthdays and we will automatically send special coupons on those dates, up to the configured benefit limit.1",
+          "x": 12,
+          "y": 907.5625,
+          "width": 336,
+          "height": 308,
+          "right": 348,
+          "bottom": 1215.5625,
+          "scrollWidth": 336,
+          "clientWidth": 336,
+          "scrollHeight": 308,
+          "clientHeight": 308,
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "zIndex": "auto"
+        },
+        "modal": null,
+        "addressModal": null,
+        "modalBody": null,
+        "addressModalBody": null,
+        "modalFooter": null,
+        "addressModalFooter": null,
+        "addressCascader": null,
+        "petTypeSelect": null,
+        "petDatePicker": null,
+        "petSizeSelect": null,
+        "selectDropdown": null,
+        "cascaderDropdown": null,
+        "pickerDropdown": null,
+        "popup": null
+      },
+      "visibleRatios": {
+        "modal": null,
+        "modalBody": null,
+        "modalFooter": null,
+        "addressCascader": null,
+        "petDatePicker": null,
+        "selectDropdown": null,
+        "cascaderDropdown": null,
+        "pickerDropdown": null,
+        "popup": null
+      },
+      "optionRows": [],
+      "overflowEls": [
+        {
+          "selector": "button.shop-nav__megaButton",
+          "text": "Smart Devices",
+          "x": 345.953125,
+          "y": 107,
+          "width": 104.71875,
+          "height": 38,
+          "right": 450.671875,
+          "bottom": 145,
+          "overflowRight": 90.671875,
+          "overflowLeft": -345.953125
+        },
+        {
+          "selector": "button.shop-nav__megaButton",
+          "text": "Pet finder",
+          "x": 456.671875,
+          "y": 107,
+          "width": 77.34375,
+          "height": 38,
+          "right": 534.015625,
+          "bottom": 145,
+          "overflowRight": 174.015625,
+          "overflowLeft": -456.671875
+        },
+        {
+          "selector": "button.shop-nav__megaButton",
+          "text": "Pet gallery",
+          "x": 540.015625,
+          "y": 107,
+          "width": 82.703125,
+          "height": 38,
+          "right": 622.71875,
+          "bottom": 145,
+          "overflowRight": 262.71875,
+          "overflowLeft": -540.015625
+        }
+      ],
+      "hits": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ]
+    },
+    {
+      "state": "pet-modal-open",
+      "viewport": {
+        "width": 360,
+        "height": 740
+      },
+      "body": {
+        "scrollWidth": 360,
+        "clientWidth": 360,
+        "scrollHeight": 3545,
+        "clientHeight": 740,
+        "scrollY": 0
+      },
+      "rects": {
+        "page": {
+          "selector": ".profile-page",
+          "text": "Profileprofile.ui.auditComplete Birthday for Nube so recommendations can work harder.My orders (2)Complete profile2All orders2Addresses (2)2Pets (2)100%Account readinessAccount action centerPick up payments, deliveries and pet care tasks quickly.1Pending payme",
+          "x": 5,
+          "y": 157,
+          "width": 350,
+          "height": 2210.796875,
+          "right": 355,
+          "bottom": 2367.796875,
+          "scrollWidth": 350,
+          "clientWidth": 350,
+          "scrollHeight": 2211,
+          "clientHeight": 2211,
+          "overflowX": "hidden",
+          "overflowY": "auto",
+          "zIndex": "auto"
+        },
+        "tabs": {
+          "selector": ".profile-tabs > .ant-tabs-nav",
+          "text": "Personal informationAddresses (2)My orders (2)Pets (2)",
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "right": 0,
+          "bottom": 0,
+          "scrollWidth": 0,
+          "clientWidth": 0,
+          "scrollHeight": 0,
+          "clientHeight": 0,
+          "overflowX": "hidden",
+          "overflowY": "hidden",
+          "zIndex": "8"
+        },
+        "addressReadiness": null,
+        "petInsights": {
+          "selector": ".profile-pet-insights",
+          "text": "Profile recommendation readiness2 pet profile(s) still need details before recommendations feel truly personal.0%Birthday coupon enabledAdd your pets' birthdays and we will automatically send special coupons on those dates, up to the configured benefit limit.1",
+          "x": 12,
+          "y": 907.5625,
+          "width": 336,
+          "height": 308,
+          "right": 348,
+          "bottom": 1215.5625,
+          "scrollWidth": 336,
+          "clientWidth": 336,
+          "scrollHeight": 308,
+          "clientHeight": 308,
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "zIndex": "auto"
+        },
+        "modal": {
+          "selector": ".profile-mobile-safe-modal .ant-modal-content",
+          "text": "Add pet profilePet namePet typeDogBreedBirthdayWeight (kg)SizeMediumCancelSave",
+          "x": 10,
+          "y": 30,
+          "width": 340,
+          "height": 676,
+          "right": 350,
+          "bottom": 706,
+          "scrollWidth": 340,
+          "clientWidth": 340,
+          "scrollHeight": 676,
+          "clientHeight": 676,
+          "overflowX": "hidden",
+          "overflowY": "hidden",
+          "zIndex": "auto"
+        },
+        "addressModal": null,
+        "modalBody": {
+          "selector": ".profile-mobile-safe-modal .ant-modal-body",
+          "text": "Pet namePet typeDogBreedBirthdayWeight (kg)SizeMedium",
+          "x": 34,
+          "y": 98,
+          "width": 292,
+          "height": 512,
+          "right": 326,
+          "bottom": 610,
+          "scrollWidth": 292,
+          "clientWidth": 292,
+          "scrollHeight": 574,
+          "clientHeight": 512,
+          "overflowX": "auto",
+          "overflowY": "auto",
+          "zIndex": "auto"
+        },
+        "addressModalBody": null,
+        "modalFooter": {
+          "selector": ".profile-mobile-safe-modal .ant-modal-footer",
+          "text": "CancelSave",
+          "x": 34,
+          "y": 622,
+          "width": 292,
+          "height": 64,
+          "right": 326,
+          "bottom": 686,
+          "scrollWidth": 292,
+          "clientWidth": 292,
+          "scrollHeight": 64,
+          "clientHeight": 64,
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "zIndex": "4"
+        },
+        "addressModalFooter": null,
+        "addressCascader": null,
+        "petTypeSelect": {
+          "selector": ".profile-mobile-safe-modal .ant-select",
+          "text": "Dog",
+          "x": 34,
+          "y": 234,
+          "width": 292,
+          "height": 32,
+          "right": 326,
+          "bottom": 266,
+          "scrollWidth": 292,
+          "clientWidth": 292,
+          "scrollHeight": 44,
+          "clientHeight": 32,
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "zIndex": "auto"
+        },
+        "petDatePicker": {
+          "selector": ".profile-pet-modal__field.ant-picker",
+          "text": "",
+          "x": 34,
+          "y": 407,
+          "width": 292,
+          "height": 54,
+          "right": 326,
+          "bottom": 461,
+          "scrollWidth": 290,
+          "clientWidth": 290,
+          "scrollHeight": 52,
+          "clientHeight": 52,
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "zIndex": "auto"
+        },
+        "petSizeSelect": {
+          "selector": ".profile-mobile-safe-modal .ant-form-item:last-child .ant-select",
+          "text": "Medium",
+          "x": 34,
+          "y": 603,
+          "width": 292,
+          "height": 32,
+          "right": 326,
+          "bottom": 635,
+          "scrollWidth": 292,
+          "clientWidth": 292,
+          "scrollHeight": 44,
+          "clientHeight": 32,
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "zIndex": "auto"
+        },
+        "selectDropdown": null,
+        "cascaderDropdown": null,
+        "pickerDropdown": null,
+        "popup": null
+      },
+      "visibleRatios": {
+        "modal": 1,
+        "modalBody": 1,
+        "modalFooter": 1,
+        "addressCascader": null,
+        "petDatePicker": 1,
+        "selectDropdown": null,
+        "cascaderDropdown": null,
+        "pickerDropdown": null,
+        "popup": null
+      },
+      "optionRows": [],
+      "overflowEls": [
+        {
+          "selector": "button.shop-nav__megaButton",
+          "text": "Smart Devices",
+          "x": 345.953125,
+          "y": 107,
+          "width": 104.71875,
+          "height": 38,
+          "right": 450.671875,
+          "bottom": 145,
+          "overflowRight": 90.671875,
+          "overflowLeft": -345.953125
+        },
+        {
+          "selector": "button.shop-nav__megaButton",
+          "text": "Pet finder",
+          "x": 456.671875,
+          "y": 107,
+          "width": 77.34375,
+          "height": 38,
+          "right": 534.015625,
+          "bottom": 145,
+          "overflowRight": 174.015625,
+          "overflowLeft": -456.671875
+        },
+        {
+          "selector": "button.shop-nav__megaButton",
+          "text": "Pet gallery",
+          "x": 540.015625,
+          "y": 107,
+          "width": 82.703125,
+          "height": 38,
+          "right": 622.71875,
+          "bottom": 145,
+          "overflowRight": 262.71875,
+          "overflowLeft": -540.015625
+        }
+      ],
+      "hits": [
+        null,
+        null,
+        null,
+        null,
+        {
+          "selector": ".profile-pet-modal__field.ant-picker",
+          "point": {
+            "x": 180,
+            "y": 434
+          },
+          "hitTag": "INPUT",
+          "hitClass": "",
+          "hitText": ""
+        },
+        {
+          "selector": ".profile-mobile-safe-modal .ant-modal-footer .ant-btn-primary",
+          "point": {
+            "x": 248,
+            "y": 654
+          },
+          "hitTag": "SPAN",
+          "hitClass": "",
+          "hitText": "Save"
+        }
+      ]
+    },
+    {
+      "state": "pet-type-select",
+      "viewport": {
+        "width": 360,
+        "height": 740
+      },
+      "body": {
+        "scrollWidth": 360,
+        "clientWidth": 360,
+        "scrollHeight": 3545,
+        "clientHeight": 740,
+        "scrollY": 0
+      },
+      "rects": {
+        "page": {
+          "selector": ".profile-page",
+          "text": "Profileprofile.ui.auditComplete Birthday for Nube so recommendations can work harder.My orders (2)Complete profile2All orders2Addresses (2)2Pets (2)100%Account readinessAccount action centerPick up payments, deliveries and pet care tasks quickly.1Pending payme",
+          "x": 5,
+          "y": 157,
+          "width": 350,
+          "height": 2210.796875,
+          "right": 355,
+          "bottom": 2367.796875,
+          "scrollWidth": 350,
+          "clientWidth": 350,
+          "scrollHeight": 2211,
+          "clientHeight": 2211,
+          "overflowX": "hidden",
+          "overflowY": "auto",
+          "zIndex": "auto"
+        },
+        "tabs": {
+          "selector": ".profile-tabs > .ant-tabs-nav",
+          "text": "Personal informationAddresses (2)My orders (2)Pets (2)",
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "right": 0,
+          "bottom": 0,
+          "scrollWidth": 0,
+          "clientWidth": 0,
+          "scrollHeight": 0,
+          "clientHeight": 0,
+          "overflowX": "hidden",
+          "overflowY": "hidden",
+          "zIndex": "8"
+        },
+        "addressReadiness": null,
+        "petInsights": {
+          "selector": ".profile-pet-insights",
+          "text": "Profile recommendation readiness2 pet profile(s) still need details before recommendations feel truly personal.0%Birthday coupon enabledAdd your pets' birthdays and we will automatically send special coupons on those dates, up to the configured benefit limit.1",
+          "x": 12,
+          "y": 907.5625,
+          "width": 336,
+          "height": 308,
+          "right": 348,
+          "bottom": 1215.5625,
+          "scrollWidth": 336,
+          "clientWidth": 336,
+          "scrollHeight": 308,
+          "clientHeight": 308,
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "zIndex": "auto"
+        },
+        "modal": {
+          "selector": ".profile-mobile-safe-modal .ant-modal-content",
+          "text": "Add pet profilePet namePet typeDogBreedBirthdayWeight (kg)SizeMediumCancelSave",
+          "x": 10,
+          "y": 30,
+          "width": 340,
+          "height": 676,
+          "right": 350,
+          "bottom": 706,
+          "scrollWidth": 340,
+          "clientWidth": 340,
+          "scrollHeight": 676,
+          "clientHeight": 676,
+          "overflowX": "hidden",
+          "overflowY": "hidden",
+          "zIndex": "auto"
+        },
+        "addressModal": null,
+        "modalBody": {
+          "selector": ".profile-mobile-safe-modal .ant-modal-body",
+          "text": "Pet namePet typeDogBreedBirthdayWeight (kg)SizeMedium",
+          "x": 34,
+          "y": 98,
+          "width": 292,
+          "height": 512,
+          "right": 326,
+          "bottom": 610,
+          "scrollWidth": 292,
+          "clientWidth": 292,
+          "scrollHeight": 574,
+          "clientHeight": 512,
+          "overflowX": "auto",
+          "overflowY": "auto",
+          "zIndex": "auto"
+        },
+        "addressModalBody": null,
+        "modalFooter": {
+          "selector": ".profile-mobile-safe-modal .ant-modal-footer",
+          "text": "CancelSave",
+          "x": 34,
+          "y": 622,
+          "width": 292,
+          "height": 64,
+          "right": 326,
+          "bottom": 686,
+          "scrollWidth": 292,
+          "clientWidth": 292,
+          "scrollHeight": 64,
+          "clientHeight": 64,
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "zIndex": "4"
+        },
+        "addressModalFooter": null,
+        "addressCascader": null,
+        "petTypeSelect": {
+          "selector": ".profile-mobile-safe-modal .ant-select",
+          "text": "Dog",
+          "x": 34,
+          "y": 234,
+          "width": 292,
+          "height": 32,
+          "right": 326,
+          "bottom": 266,
+          "scrollWidth": 292,
+          "clientWidth": 292,
+          "scrollHeight": 44,
+          "clientHeight": 32,
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "zIndex": "auto"
+        },
+        "petDatePicker": {
+          "selector": ".profile-pet-modal__field.ant-picker",
+          "text": "",
+          "x": 34,
+          "y": 407,
+          "width": 292,
+          "height": 54,
+          "right": 326,
+          "bottom": 461,
+          "scrollWidth": 290,
+          "clientWidth": 290,
+          "scrollHeight": 52,
+          "clientHeight": 52,
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "zIndex": "auto"
+        },
+        "petSizeSelect": {
+          "selector": ".profile-mobile-safe-modal .ant-form-item:last-child .ant-select",
+          "text": "Medium",
+          "x": 34,
+          "y": 603,
+          "width": 292,
+          "height": 32,
+          "right": 326,
+          "bottom": 635,
+          "scrollWidth": 292,
+          "clientWidth": 292,
+          "scrollHeight": 44,
+          "clientHeight": 32,
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "zIndex": "auto"
+        },
+        "selectDropdown": {
+          "selector": ".ant-select-dropdown:not(.ant-select-dropdown-hidden)",
+          "text": "DOGCATDogCatSmall pet",
+          "x": 8,
+          "y": 282,
+          "width": 344,
+          "height": 140,
+          "right": 352,
+          "bottom": 422,
+          "scrollWidth": 344,
+          "clientWidth": 344,
+          "scrollHeight": 140,
+          "clientHeight": 140,
+          "overflowX": "auto",
+          "overflowY": "auto",
+          "zIndex": "12050"
+        },
+        "cascaderDropdown": null,
+        "pickerDropdown": null,
+        "popup": {
+          "selector": ".ant-select-dropdown:not(.ant-select-dropdown-hidden), .ant-cascader-dropdown, .ant-picker-dropdown",
+          "text": "DOGCATDogCatSmall pet",
+          "x": 8,
+          "y": 282,
+          "width": 344,
+          "height": 140,
+          "right": 352,
+          "bottom": 422,
+          "scrollWidth": 344,
+          "clientWidth": 344,
+          "scrollHeight": 140,
+          "clientHeight": 140,
+          "overflowX": "auto",
+          "overflowY": "auto",
+          "zIndex": "12050"
+        }
+      },
+      "visibleRatios": {
+        "modal": 1,
+        "modalBody": 1,
+        "modalFooter": 1,
+        "addressCascader": null,
+        "petDatePicker": 1,
+        "selectDropdown": 1,
+        "cascaderDropdown": null,
+        "pickerDropdown": null,
+        "popup": 1
+      },
+      "optionRows": [
+        {
+          "text": "Dog",
+          "x": 12,
+          "y": 286,
+          "width": 336,
+          "height": 44,
+          "right": 348,
+          "bottom": 330,
+          "visibleRatio": 1
+        },
+        {
+          "text": "Cat",
+          "x": 12,
+          "y": 330,
+          "width": 336,
+          "height": 44,
+          "right": 348,
+          "bottom": 374,
+          "visibleRatio": 1
+        },
+        {
+          "text": "Small pet",
+          "x": 12,
+          "y": 374,
+          "width": 336,
+          "height": 44,
+          "right": 348,
+          "bottom": 418,
+          "visibleRatio": 1
+        }
+      ],
+      "overflowEls": [
+        {
+          "selector": "button.shop-nav__megaButton",
+          "text": "Smart Devices",
+          "x": 345.953125,
+          "y": 107,
+          "width": 104.71875,
+          "height": 38,
+          "right": 450.671875,
+          "bottom": 145,
+          "overflowRight": 90.671875,
+          "overflowLeft": -345.953125
+        },
+        {
+          "selector": "button.shop-nav__megaButton",
+          "text": "Pet finder",
+          "x": 456.671875,
+          "y": 107,
+          "width": 77.34375,
+          "height": 38,
+          "right": 534.015625,
+          "bottom": 145,
+          "overflowRight": 174.015625,
+          "overflowLeft": -456.671875
+        },
+        {
+          "selector": "button.shop-nav__megaButton",
+          "text": "Pet gallery",
+          "x": 540.015625,
+          "y": 107,
+          "width": 82.703125,
+          "height": 38,
+          "right": 622.71875,
+          "bottom": 145,
+          "overflowRight": 262.71875,
+          "overflowLeft": -540.015625
+        }
+      ],
+      "hits": [
+        null,
+        {
+          "selector": ".ant-select-dropdown:not(.ant-select-dropdown-hidden) .ant-select-item-option",
+          "point": {
+            "x": 180,
+            "y": 308
+          },
+          "hitTag": "DIV",
+          "hitClass": "ant-select-item-option-content",
+          "hitText": "Dog"
+        },
+        null,
+        null,
+        {
+          "selector": ".profile-pet-modal__field.ant-picker",
+          "point": {
+            "x": 180,
+            "y": 434
+          },
+          "hitTag": "INPUT",
+          "hitClass": "",
+          "hitText": ""
+        },
+        {
+          "selector": ".profile-mobile-safe-modal .ant-modal-footer .ant-btn-primary",
+          "point": {
+            "x": 248,
+            "y": 654
+          },
+          "hitTag": "SPAN",
+          "hitClass": "",
+          "hitText": "Save"
+        }
+      ]
+    },
+    {
+      "state": "pet-birthday-picker",
+      "viewport": {
+        "width": 360,
+        "height": 740
+      },
+      "body": {
+        "scrollWidth": 360,
+        "clientWidth": 360,
+        "scrollHeight": 3545,
+        "clientHeight": 740,
+        "scrollY": 0
+      },
+      "rects": {
+        "page": {
+          "selector": ".profile-page",
+          "text": "Profileprofile.ui.auditComplete Birthday for Nube so recommendations can work harder.My orders (2)Complete profile2All orders2Addresses (2)2Pets (2)100%Account readinessAccount action centerPick up payments, deliveries and pet care tasks quickly.1Pending payme",
+          "x": 5,
+          "y": 157,
+          "width": 350,
+          "height": 2210.796875,
+          "right": 355,
+          "bottom": 2367.796875,
+          "scrollWidth": 350,
+          "clientWidth": 350,
+          "scrollHeight": 2211,
+          "clientHeight": 2211,
+          "overflowX": "hidden",
+          "overflowY": "auto",
+          "zIndex": "auto"
+        },
+        "tabs": {
+          "selector": ".profile-tabs > .ant-tabs-nav",
+          "text": "Personal informationAddresses (2)My orders (2)Pets (2)",
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "right": 0,
+          "bottom": 0,
+          "scrollWidth": 0,
+          "clientWidth": 0,
+          "scrollHeight": 0,
+          "clientHeight": 0,
+          "overflowX": "hidden",
+          "overflowY": "hidden",
+          "zIndex": "8"
+        },
+        "addressReadiness": null,
+        "petInsights": {
+          "selector": ".profile-pet-insights",
+          "text": "Profile recommendation readiness2 pet profile(s) still need details before recommendations feel truly personal.0%Birthday coupon enabledAdd your pets' birthdays and we will automatically send special coupons on those dates, up to the configured benefit limit.1",
+          "x": 12,
+          "y": 907.5625,
+          "width": 336,
+          "height": 308,
+          "right": 348,
+          "bottom": 1215.5625,
+          "scrollWidth": 336,
+          "clientWidth": 336,
+          "scrollHeight": 308,
+          "clientHeight": 308,
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "zIndex": "auto"
+        },
+        "modal": {
+          "selector": ".profile-mobile-safe-modal .ant-modal-content",
+          "text": "Add pet profilePet namePet typeDogBreedBirthdayWeight (kg)SizeMediumCancelSave",
+          "x": 10,
+          "y": 30,
+          "width": 340,
+          "height": 676,
+          "right": 350,
+          "bottom": 706,
+          "scrollWidth": 340,
+          "clientWidth": 340,
+          "scrollHeight": 676,
+          "clientHeight": 676,
+          "overflowX": "hidden",
+          "overflowY": "hidden",
+          "zIndex": "auto"
+        },
+        "addressModal": null,
+        "modalBody": {
+          "selector": ".profile-mobile-safe-modal .ant-modal-body",
+          "text": "Pet namePet typeDogBreedBirthdayWeight (kg)SizeMedium",
+          "x": 34,
+          "y": 98,
+          "width": 292,
+          "height": 512,
+          "right": 326,
+          "bottom": 610,
+          "scrollWidth": 292,
+          "clientWidth": 292,
+          "scrollHeight": 574,
+          "clientHeight": 512,
+          "overflowX": "auto",
+          "overflowY": "auto",
+          "zIndex": "auto"
+        },
+        "addressModalBody": null,
+        "modalFooter": {
+          "selector": ".profile-mobile-safe-modal .ant-modal-footer",
+          "text": "CancelSave",
+          "x": 34,
+          "y": 622,
+          "width": 292,
+          "height": 64,
+          "right": 326,
+          "bottom": 686,
+          "scrollWidth": 292,
+          "clientWidth": 292,
+          "scrollHeight": 64,
+          "clientHeight": 64,
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "zIndex": "4"
+        },
+        "addressModalFooter": null,
+        "addressCascader": null,
+        "petTypeSelect": {
+          "selector": ".profile-mobile-safe-modal .ant-select",
+          "text": "Dog",
+          "x": 34,
+          "y": 172,
+          "width": 292,
+          "height": 32,
+          "right": 326,
+          "bottom": 204,
+          "scrollWidth": 292,
+          "clientWidth": 292,
+          "scrollHeight": 44,
+          "clientHeight": 32,
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "zIndex": "auto"
+        },
+        "petDatePicker": {
+          "selector": ".profile-pet-modal__field.ant-picker",
+          "text": "",
+          "x": 34,
+          "y": 345,
+          "width": 292,
+          "height": 54,
+          "right": 326,
+          "bottom": 399,
+          "scrollWidth": 290,
+          "clientWidth": 290,
+          "scrollHeight": 52,
+          "clientHeight": 52,
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "zIndex": "auto"
+        },
+        "petSizeSelect": {
+          "selector": ".profile-mobile-safe-modal .ant-form-item:last-child .ant-select",
+          "text": "Medium",
+          "x": 34,
+          "y": 541,
+          "width": 292,
+          "height": 32,
+          "right": 326,
+          "bottom": 573,
+          "scrollWidth": 292,
+          "clientWidth": 292,
+          "scrollHeight": 44,
+          "clientHeight": 32,
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "zIndex": "auto"
+        },
+        "selectDropdown": null,
+        "cascaderDropdown": null,
+        "pickerDropdown": {
+          "selector": ".ant-picker-dropdown",
+          "text": "Jun2026SuMoTuWeThFrSa311234567891011121314151617181920212223242526272829301234567891011Today",
+          "x": 8,
+          "y": 12,
+          "width": 344,
+          "height": 384.796875,
+          "right": 352,
+          "bottom": 396.796875,
+          "scrollWidth": 344,
+          "clientWidth": 344,
+          "scrollHeight": 385,
+          "clientHeight": 385,
+          "overflowX": "auto",
+          "overflowY": "auto",
+          "zIndex": "12050"
+        },
+        "popup": {
+          "selector": ".ant-select-dropdown:not(.ant-select-dropdown-hidden), .ant-cascader-dropdown, .ant-picker-dropdown",
+          "text": "Jun2026SuMoTuWeThFrSa311234567891011121314151617181920212223242526272829301234567891011Today",
+          "x": 8,
+          "y": 12,
+          "width": 344,
+          "height": 384.796875,
+          "right": 352,
+          "bottom": 396.796875,
+          "scrollWidth": 344,
+          "clientWidth": 344,
+          "scrollHeight": 385,
+          "clientHeight": 385,
+          "overflowX": "auto",
+          "overflowY": "auto",
+          "zIndex": "12050"
+        }
+      },
+      "visibleRatios": {
+        "modal": 1,
+        "modalBody": 1,
+        "modalFooter": 1,
+        "addressCascader": null,
+        "petDatePicker": 1,
+        "selectDropdown": null,
+        "cascaderDropdown": null,
+        "pickerDropdown": 1,
+        "popup": 1
+      },
+      "optionRows": [
+        {
+          "text": "1",
+          "x": 62,
+          "y": 101,
+          "width": 36,
+          "height": 48,
+          "right": 98,
+          "bottom": 149,
+          "visibleRatio": 1
+        },
+        {
+          "text": "2",
+          "x": 98,
+          "y": 101,
+          "width": 36,
+          "height": 48,
+          "right": 134,
+          "bottom": 149,
+          "visibleRatio": 1
+        },
+        {
+          "text": "3",
+          "x": 134,
+          "y": 101,
+          "width": 36,
+          "height": 48,
+          "right": 170,
+          "bottom": 149,
+          "visibleRatio": 1
+        },
+        {
+          "text": "4",
+          "x": 170,
+          "y": 101,
+          "width": 36,
+          "height": 48,
+          "right": 206,
+          "bottom": 149,
+          "visibleRatio": 1
+        },
+        {
+          "text": "5",
+          "x": 206,
+          "y": 101,
+          "width": 36,
+          "height": 48,
+          "right": 242,
+          "bottom": 149,
+          "visibleRatio": 1
+        },
+        {
+          "text": "6",
+          "x": 242,
+          "y": 101,
+          "width": 36,
+          "height": 48,
+          "right": 278,
+          "bottom": 149,
+          "visibleRatio": 1
+        },
+        {
+          "text": "7",
+          "x": 26,
+          "y": 149,
+          "width": 36,
+          "height": 48,
+          "right": 62,
+          "bottom": 197,
+          "visibleRatio": 1
+        },
+        {
+          "text": "8",
+          "x": 62,
+          "y": 149,
+          "width": 36,
+          "height": 48,
+          "right": 98,
+          "bottom": 197,
+          "visibleRatio": 1
+        },
+        {
+          "text": "9",
+          "x": 98,
+          "y": 149,
+          "width": 36,
+          "height": 48,
+          "right": 134,
+          "bottom": 197,
+          "visibleRatio": 1
+        },
+        {
+          "text": "10",
+          "x": 134,
+          "y": 149,
+          "width": 36,
+          "height": 48,
+          "right": 170,
+          "bottom": 197,
+          "visibleRatio": 1
+        },
+        {
+          "text": "11",
+          "x": 170,
+          "y": 149,
+          "width": 36,
+          "height": 48,
+          "right": 206,
+          "bottom": 197,
+          "visibleRatio": 1
+        },
+        {
+          "text": "12",
+          "x": 206,
+          "y": 149,
+          "width": 36,
+          "height": 48,
+          "right": 242,
+          "bottom": 197,
+          "visibleRatio": 1
+        },
+        {
+          "text": "13",
+          "x": 242,
+          "y": 149,
+          "width": 36,
+          "height": 48,
+          "right": 278,
+          "bottom": 197,
+          "visibleRatio": 1
+        },
+        {
+          "text": "14",
+          "x": 26,
+          "y": 197,
+          "width": 36,
+          "height": 48,
+          "right": 62,
+          "bottom": 245,
+          "visibleRatio": 1
+        },
+        {
+          "text": "15",
+          "x": 62,
+          "y": 197,
+          "width": 36,
+          "height": 48,
+          "right": 98,
+          "bottom": 245,
+          "visibleRatio": 1
+        },
+        {
+          "text": "16",
+          "x": 98,
+          "y": 197,
+          "width": 36,
+          "height": 48,
+          "right": 134,
+          "bottom": 245,
+          "visibleRatio": 1
+        },
+        {
+          "text": "17",
+          "x": 134,
+          "y": 197,
+          "width": 36,
+          "height": 48,
+          "right": 170,
+          "bottom": 245,
+          "visibleRatio": 1
+        },
+        {
+          "text": "18",
+          "x": 170,
+          "y": 197,
+          "width": 36,
+          "height": 48,
+          "right": 206,
+          "bottom": 245,
+          "visibleRatio": 1
+        },
+        {
+          "text": "19",
+          "x": 206,
+          "y": 197,
+          "width": 36,
+          "height": 48,
+          "right": 242,
+          "bottom": 245,
+          "visibleRatio": 1
+        },
+        {
+          "text": "20",
+          "x": 242,
+          "y": 197,
+          "width": 36,
+          "height": 48,
+          "right": 278,
+          "bottom": 245,
+          "visibleRatio": 1
+        },
+        {
+          "text": "21",
+          "x": 26,
+          "y": 245,
+          "width": 36,
+          "height": 48,
+          "right": 62,
+          "bottom": 293,
+          "visibleRatio": 1
+        },
+        {
+          "text": "22",
+          "x": 62,
+          "y": 245,
+          "width": 36,
+          "height": 48,
+          "right": 98,
+          "bottom": 293,
+          "visibleRatio": 1
+        },
+        {
+          "text": "23",
+          "x": 98,
+          "y": 245,
+          "width": 36,
+          "height": 48,
+          "right": 134,
+          "bottom": 293,
+          "visibleRatio": 1
+        },
+        {
+          "text": "24",
+          "x": 134,
+          "y": 245,
+          "width": 36,
+          "height": 48,
+          "right": 170,
+          "bottom": 293,
+          "visibleRatio": 1
+        },
+        {
+          "text": "25",
+          "x": 170,
+          "y": 245,
+          "width": 36,
+          "height": 48,
+          "right": 206,
+          "bottom": 293,
+          "visibleRatio": 1
+        },
+        {
+          "text": "26",
+          "x": 206,
+          "y": 245,
+          "width": 36,
+          "height": 48,
+          "right": 242,
+          "bottom": 293,
+          "visibleRatio": 1
+        },
+        {
+          "text": "27",
+          "x": 242,
+          "y": 245,
+          "width": 36,
+          "height": 48,
+          "right": 278,
+          "bottom": 293,
+          "visibleRatio": 1
+        },
+        {
+          "text": "28",
+          "x": 26,
+          "y": 293,
+          "width": 36,
+          "height": 48,
+          "right": 62,
+          "bottom": 341,
+          "visibleRatio": 1
+        },
+        {
+          "text": "29",
+          "x": 62,
+          "y": 293,
+          "width": 36,
+          "height": 48,
+          "right": 98,
+          "bottom": 341,
+          "visibleRatio": 1
+        },
+        {
+          "text": "30",
+          "x": 98,
+          "y": 293,
+          "width": 36,
+          "height": 48,
+          "right": 134,
+          "bottom": 341,
+          "visibleRatio": 1
+        }
+      ],
+      "overflowEls": [
+        {
+          "selector": "button.shop-nav__megaButton",
+          "text": "Smart Devices",
+          "x": 345.953125,
+          "y": 107,
+          "width": 104.71875,
+          "height": 38,
+          "right": 450.671875,
+          "bottom": 145,
+          "overflowRight": 90.671875,
+          "overflowLeft": -345.953125
+        },
+        {
+          "selector": "button.shop-nav__megaButton",
+          "text": "Pet finder",
+          "x": 456.671875,
+          "y": 107,
+          "width": 77.34375,
+          "height": 38,
+          "right": 534.015625,
+          "bottom": 145,
+          "overflowRight": 174.015625,
+          "overflowLeft": -456.671875
+        },
+        {
+          "selector": "button.shop-nav__megaButton",
+          "text": "Pet gallery",
+          "x": 540.015625,
+          "y": 107,
+          "width": 82.703125,
+          "height": 38,
+          "right": 622.71875,
+          "bottom": 145,
+          "overflowRight": 262.71875,
+          "overflowLeft": -540.015625
+        }
+      ],
+      "hits": [
+        null,
+        null,
+        {
+          "selector": ".ant-picker-dropdown .ant-picker-cell-in-view",
+          "point": {
+            "x": 80,
+            "y": 125
+          },
+          "hitTag": "DIV",
+          "hitClass": "ant-picker-cell-inner",
+          "hitText": "1"
+        },
+        null,
+        {
+          "selector": ".profile-pet-modal__field.ant-picker",
+          "point": {
+            "x": 180,
+            "y": 372
+          },
+          "hitTag": "DIV",
+          "hitClass": "ant-picker-cell-inner",
+          "hitText": "9"
+        },
+        {
+          "selector": ".profile-mobile-safe-modal .ant-modal-footer .ant-btn-primary",
+          "point": {
+            "x": 248,
+            "y": 654
+          },
+          "hitTag": "SPAN",
+          "hitClass": "",
+          "hitText": "Save"
+        }
+      ]
+    },
+    {
+      "state": "pet-size-select",
+      "viewport": {
+        "width": 360,
+        "height": 740
+      },
+      "body": {
+        "scrollWidth": 360,
+        "clientWidth": 360,
+        "scrollHeight": 3545,
+        "clientHeight": 740,
+        "scrollY": 0
+      },
+      "rects": {
+        "page": {
+          "selector": ".profile-page",
+          "text": "Profileprofile.ui.auditComplete Birthday for Nube so recommendations can work harder.My orders (2)Complete profile2All orders2Addresses (2)2Pets (2)100%Account readinessAccount action centerPick up payments, deliveries and pet care tasks quickly.1Pending payme",
+          "x": 5,
+          "y": 157,
+          "width": 350,
+          "height": 2210.796875,
+          "right": 355,
+          "bottom": 2367.796875,
+          "scrollWidth": 350,
+          "clientWidth": 350,
+          "scrollHeight": 2211,
+          "clientHeight": 2211,
+          "overflowX": "hidden",
+          "overflowY": "auto",
+          "zIndex": "auto"
+        },
+        "tabs": {
+          "selector": ".profile-tabs > .ant-tabs-nav",
+          "text": "Personal informationAddresses (2)My orders (2)Pets (2)",
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "right": 0,
+          "bottom": 0,
+          "scrollWidth": 0,
+          "clientWidth": 0,
+          "scrollHeight": 0,
+          "clientHeight": 0,
+          "overflowX": "hidden",
+          "overflowY": "hidden",
+          "zIndex": "8"
+        },
+        "addressReadiness": null,
+        "petInsights": {
+          "selector": ".profile-pet-insights",
+          "text": "Profile recommendation readiness2 pet profile(s) still need details before recommendations feel truly personal.0%Birthday coupon enabledAdd your pets' birthdays and we will automatically send special coupons on those dates, up to the configured benefit limit.1",
+          "x": 12,
+          "y": 907.5625,
+          "width": 336,
+          "height": 308,
+          "right": 348,
+          "bottom": 1215.5625,
+          "scrollWidth": 336,
+          "clientWidth": 336,
+          "scrollHeight": 308,
+          "clientHeight": 308,
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "zIndex": "auto"
+        },
+        "modal": {
+          "selector": ".profile-mobile-safe-modal .ant-modal-content",
+          "text": "Add pet profilePet namePet typeDogBreedBirthdayWeight (kg)SizeMediumCancelSave",
+          "x": 10,
+          "y": 30,
+          "width": 340,
+          "height": 676,
+          "right": 350,
+          "bottom": 706,
+          "scrollWidth": 340,
+          "clientWidth": 340,
+          "scrollHeight": 676,
+          "clientHeight": 676,
+          "overflowX": "hidden",
+          "overflowY": "hidden",
+          "zIndex": "auto"
+        },
+        "addressModal": null,
+        "modalBody": {
+          "selector": ".profile-mobile-safe-modal .ant-modal-body",
+          "text": "Pet namePet typeDogBreedBirthdayWeight (kg)SizeMedium",
+          "x": 34,
+          "y": 98,
+          "width": 292,
+          "height": 512,
+          "right": 326,
+          "bottom": 610,
+          "scrollWidth": 292,
+          "clientWidth": 292,
+          "scrollHeight": 574,
+          "clientHeight": 512,
+          "overflowX": "auto",
+          "overflowY": "auto",
+          "zIndex": "auto"
+        },
+        "addressModalBody": null,
+        "modalFooter": {
+          "selector": ".profile-mobile-safe-modal .ant-modal-footer",
+          "text": "CancelSave",
+          "x": 34,
+          "y": 622,
+          "width": 292,
+          "height": 64,
+          "right": 326,
+          "bottom": 686,
+          "scrollWidth": 292,
+          "clientWidth": 292,
+          "scrollHeight": 64,
+          "clientHeight": 64,
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "zIndex": "4"
+        },
+        "addressModalFooter": null,
+        "addressCascader": null,
+        "petTypeSelect": {
+          "selector": ".profile-mobile-safe-modal .ant-select",
+          "text": "Dog",
+          "x": 34,
+          "y": 172,
+          "width": 292,
+          "height": 32,
+          "right": 326,
+          "bottom": 204,
+          "scrollWidth": 292,
+          "clientWidth": 292,
+          "scrollHeight": 44,
+          "clientHeight": 32,
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "zIndex": "auto"
+        },
+        "petDatePicker": {
+          "selector": ".profile-pet-modal__field.ant-picker",
+          "text": "",
+          "x": 34,
+          "y": 345,
+          "width": 292,
+          "height": 54,
+          "right": 326,
+          "bottom": 399,
+          "scrollWidth": 290,
+          "clientWidth": 290,
+          "scrollHeight": 52,
+          "clientHeight": 52,
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "zIndex": "auto"
+        },
+        "petSizeSelect": {
+          "selector": ".profile-mobile-safe-modal .ant-form-item:last-child .ant-select",
+          "text": "Medium",
+          "x": 34,
+          "y": 541,
+          "width": 292,
+          "height": 32,
+          "right": 326,
+          "bottom": 573,
+          "scrollWidth": 292,
+          "clientWidth": 292,
+          "scrollHeight": 44,
+          "clientHeight": 32,
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "zIndex": "auto"
+        },
+        "selectDropdown": {
+          "selector": ".ant-select-dropdown:not(.ant-select-dropdown-hidden)",
+          "text": "SMALLMEDIUMLARGESmallMediumLarge",
+          "x": 8,
+          "y": 589,
+          "width": 344,
+          "height": 140,
+          "right": 352,
+          "bottom": 729,
+          "scrollWidth": 344,
+          "clientWidth": 344,
+          "scrollHeight": 140,
+          "clientHeight": 140,
+          "overflowX": "auto",
+          "overflowY": "auto",
+          "zIndex": "12050"
+        },
+        "cascaderDropdown": null,
+        "pickerDropdown": null,
+        "popup": {
+          "selector": ".ant-select-dropdown:not(.ant-select-dropdown-hidden), .ant-cascader-dropdown, .ant-picker-dropdown",
+          "text": "SMALLMEDIUMLARGESmallMediumLarge",
+          "x": 8,
+          "y": 589,
+          "width": 344,
+          "height": 140,
+          "right": 352,
+          "bottom": 729,
+          "scrollWidth": 344,
+          "clientWidth": 344,
+          "scrollHeight": 140,
+          "clientHeight": 140,
+          "overflowX": "auto",
+          "overflowY": "auto",
+          "zIndex": "12050"
+        }
+      },
+      "visibleRatios": {
+        "modal": 1,
+        "modalBody": 1,
+        "modalFooter": 1,
+        "addressCascader": null,
+        "petDatePicker": 1,
+        "selectDropdown": 1,
+        "cascaderDropdown": null,
+        "pickerDropdown": null,
+        "popup": 1
+      },
+      "optionRows": [
+        {
+          "text": "Small",
+          "x": 12,
+          "y": 593,
+          "width": 336,
+          "height": 44,
+          "right": 348,
+          "bottom": 637,
+          "visibleRatio": 1
+        },
+        {
+          "text": "Medium",
+          "x": 12,
+          "y": 637,
+          "width": 336,
+          "height": 44,
+          "right": 348,
+          "bottom": 681,
+          "visibleRatio": 1
+        },
+        {
+          "text": "Large",
+          "x": 12,
+          "y": 681,
+          "width": 336,
+          "height": 44,
+          "right": 348,
+          "bottom": 725,
+          "visibleRatio": 1
+        }
+      ],
+      "overflowEls": [
+        {
+          "selector": "button.shop-nav__megaButton",
+          "text": "Smart Devices",
+          "x": 345.953125,
+          "y": 107,
+          "width": 104.71875,
+          "height": 38,
+          "right": 450.671875,
+          "bottom": 145,
+          "overflowRight": 90.671875,
+          "overflowLeft": -345.953125
+        },
+        {
+          "selector": "button.shop-nav__megaButton",
+          "text": "Pet finder",
+          "x": 456.671875,
+          "y": 107,
+          "width": 77.34375,
+          "height": 38,
+          "right": 534.015625,
+          "bottom": 145,
+          "overflowRight": 174.015625,
+          "overflowLeft": -456.671875
+        },
+        {
+          "selector": "button.shop-nav__megaButton",
+          "text": "Pet gallery",
+          "x": 540.015625,
+          "y": 107,
+          "width": 82.703125,
+          "height": 38,
+          "right": 622.71875,
+          "bottom": 145,
+          "overflowRight": 262.71875,
+          "overflowLeft": -540.015625
+        }
+      ],
+      "hits": [
+        null,
+        {
+          "selector": ".ant-select-dropdown:not(.ant-select-dropdown-hidden) .ant-select-item-option",
+          "point": {
+            "x": 180,
+            "y": 615
+          },
+          "hitTag": "DIV",
+          "hitClass": "ant-select-item-option-content",
+          "hitText": "Small"
+        },
+        null,
+        null,
+        {
+          "selector": ".profile-pet-modal__field.ant-picker",
+          "point": {
+            "x": 180,
+            "y": 372
+          },
+          "hitTag": "INPUT",
+          "hitClass": "",
+          "hitText": ""
+        },
+        {
+          "selector": ".profile-mobile-safe-modal .ant-modal-footer .ant-btn-primary",
+          "point": {
+            "x": 248,
+            "y": 654
+          },
+          "hitTag": "DIV",
+          "hitClass": "ant-select-item-option-content",
+          "hitText": "Medium"
+        }
+      ]
+    }
+  ]
+}

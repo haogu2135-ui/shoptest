@@ -31,6 +31,7 @@ public class SearchController {
     public ResponseEntity<ProductPublicPageResponse> searchProducts(
             @RequestParam(required = false, name = "q") String q,
             @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String search,
             @RequestParam(required = false) Long categoryId,
             @RequestParam(required = false) Boolean includeChildren,
             @RequestParam(required = false) Boolean discount,
@@ -45,10 +46,10 @@ public class SearchController {
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer size,
             @RequestParam(required = false) String sort) {
-        String resolvedKeyword = resolveKeyword(keyword, q);
+        String resolvedKeyword = resolveKeyword(keyword, q, search);
         int safePage = validateSearchPage(page);
         int safeSize = validateSearchPageSize(size);
-        validateExplicitBlankSearch(q, keyword, resolvedKeyword, categoryId, discount, featured,
+        validateExplicitBlankSearch(q, keyword, search, resolvedKeyword, categoryId, discount, featured,
                 minPrice, priceMin, maxPrice, priceMax, petSize, material, color);
 
         ProductListQuery query = new ProductListQuery();
@@ -73,12 +74,15 @@ public class SearchController {
                 result.getSize()));
     }
 
-    private String resolveKeyword(String keyword, String q) {
+    private String resolveKeyword(String keyword, String q, String search) {
         if (keyword != null && !keyword.isBlank()) {
             return keyword;
         }
         if (q != null && !q.isBlank()) {
             return q;
+        }
+        if (search != null && !search.isBlank()) {
+            return search;
         }
         return null;
     }
@@ -108,6 +112,7 @@ public class SearchController {
 
     private void validateExplicitBlankSearch(String q,
                                              String keyword,
+                                             String search,
                                              String resolvedKeyword,
                                              Long categoryId,
                                              Boolean discount,
@@ -119,7 +124,7 @@ public class SearchController {
                                              List<String> petSize,
                                              List<String> material,
                                              List<String> color) {
-        if (resolvedKeyword != null || (!isExplicitBlank(q) && !isExplicitBlank(keyword))) {
+        if (resolvedKeyword != null || (!isExplicitBlank(q) && !isExplicitBlank(keyword) && !isExplicitBlank(search))) {
             return;
         }
         if (hasSearchFilter(categoryId, discount, featured, minPrice, priceMin, maxPrice, priceMax,

@@ -1361,7 +1361,7 @@
 }
 
 .product-management-page__urlImportModal .ant-modal-footer .ant-btn {
-  white-space: nowrap;
+  white-space: normal;
 }
 
 .product-url-import-preview__warnings {
@@ -1759,6 +1759,7 @@
   }
 
   .product-management-page__actions > .ant-space-item,
+  .product-management-page__actions > .ant-space-item > .ant-upload-wrapper.product-management-page__uploadAction,
   .product-management-page__actions .product-management-page__uploadAction,
   .product-management-page__actions .product-management-page__uploadAction .ant-upload,
   .product-management-page__actions .product-management-page__uploadAction .ant-upload-select,
@@ -1774,6 +1775,7 @@
 
   .product-management-page__actions .product-management-page__uploadAction {
     display: block !important;
+    max-width: 100% !important;
   }
 
   .product-management-page__actions .product-management-page__uploadAction .ant-upload,
@@ -1794,7 +1796,14 @@
   .product-management-page__actions .product-management-page__uploadAction .ant-upload-select .ant-btn {
     justify-content: center;
     min-height: 44px;
+    line-height: 1.25;
     white-space: normal;
+  }
+
+  .product-management-page__actions .product-management-page__uploadAction .ant-upload-select .ant-btn > span {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    text-align: center;
   }
 
   .product-management-page__urlImportModal.ant-modal {

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Button, Card, Cascader, Checkbox, DatePicker, Descriptions, Empty, Form, Input, InputNumber, List, message, Modal, Popconfirm, Progress, Select, Space, Spin, Tabs, Tag, Typography } from 'antd';
-import { DeleteOutlined, EditOutlined, EnvironmentOutlined, HeartOutlined, LockOutlined, MailOutlined, PlusOutlined, SafetyCertificateOutlined, ShoppingCartOutlined, StarFilled, StarOutlined, UserOutlined } from '@ant-design/icons';
+import { DeleteOutlined, EditOutlined, EnvironmentOutlined, HeartOutlined, LockOutlined, MailOutlined, PlusOutlined, ReloadOutlined, SafetyCertificateOutlined, ShoppingCartOutlined, StarFilled, StarOutlined, UserOutlined } from '@ant-design/icons';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { addressApi, cartApi, orderApi, paymentApi, petProfileApi, userApi } from '../api';
 import type { OrderCustomer, OrderItemCustomer, PaymentCustomer, PaymentChannel, PetProfile, UserAddress, UserProfile } from '../types';
@@ -36,7 +36,9 @@ const { Title, Text } = Typography;
 const profileModalPopupClassNames = { popup: { root: 'shop-mobile-popup-layer profile-modal-popup' } };
 const orderImageFallback = productImageFallback;
 const resolveOrderImage = resolveProductImage;
+const PROFILE_ORDER_ITEM_PREVIEW_LIMIT = 30;
 type FormValidationError = { errorFields: unknown[] };
+type OrderItemsPreviewResult = { orderId: number; items: OrderItemCustomer[]; failed: boolean };
 
 const isFormValidationError = (error: unknown): error is FormValidationError => {
   if (!error || typeof error !== 'object') return false;
@@ -131,10 +133,12 @@ const normalizeLikelyProfilePhone = (value: unknown) =>
   normalizeLikelyPhoneNumber(value, profilePhoneOptions);
 const normalizeProfileAddressText = (value: unknown, maxLength: number) =>
   String(value || '').trim().replace(/\s+/g, ' ').slice(0, maxLength);
-const getProfileSavedAddressRegionPath = (address?: UserAddress | null) =>
-  (Array.isArray(address?.region) ? address.region : [])
+const getProfileSavedAddressRegionPath = (address?: UserAddress | null) => {
+  const region = address?.region;
+  return (Array.isArray(region) ? region : [])
     .map((item) => normalizeProfileAddressText(item, 120))
     .filter(Boolean);
+};
 const getProfileSavedAddressPostalCode = (address?: UserAddress | null) =>
   normalizeRegionalPostalCode(address?.postalCode);
 const getProfileSavedAddressDetail = (address?: UserAddress | null) =>
@@ -180,7 +184,10 @@ const Profile: React.FC = () => {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [orders, setOrders] = useState<OrderCustomer[]>([]);
   const [ordersInitialLoadComplete, setOrdersInitialLoadComplete] = useState(false);
+  const [ordersLoadFailed, setOrdersLoadFailed] = useState(false);
   const [addresses, setAddresses] = useState<UserAddress[]>([]);
+  const [addressesLoadFailed, setAddressesLoadFailed] = useState(false);
+  const addressesStale = addressesLoadFailed && addresses.length > 0;
   const [petProfiles, setPetProfiles] = useState<PetProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [editModalVisible, setEditModalVisible] = useState(false);
@@ -193,12 +200,15 @@ const Profile: React.FC = () => {
   const [selectedOrder, setSelectedOrder] = useState<OrderCustomer | null>(null);
   const [orderItems, setOrderItems] = useState<OrderItemCustomer[]>([]);
   const [orderItemsByOrderId, setOrderItemsByOrderId] = useState<Record<number, OrderItemCustomer[]>>({});
+  const [orderItemPreviewFailedByOrderId, setOrderItemPreviewFailedByOrderId] = useState<Record<number, boolean>>({});
   const [reordering, setReordering] = useState(false);
   const [paymentModalVisible, setPaymentModalVisible] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<PaymentCustomer | null>(null);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('');
   const [paymentChannels, setPaymentChannels] = useState<PaymentChannel[]>([]);
   const [paymentChannelsLoaded, setPaymentChannelsLoaded] = useState(false);
+  const [paymentChannelsLoading, setPaymentChannelsLoading] = useState(false);
+  const [paymentChannelsError, setPaymentChannelsError] = useState('');
   const [orderPayments, setOrderPayments] = useState<PaymentCustomer[]>([]);
   const [payingOrderId, setPayingOrderId] = useState<number | null>(null);
   const [refreshingPayment, setRefreshingPayment] = useState(false);
@@ -307,27 +317,34 @@ const Profile: React.FC = () => {
       if (!mountedRef.current || ordersRequestSeqRef.current !== requestSeq) return;
       ordersRef.current = sortedOrders;
       setOrders(sortedOrders);
+      setOrdersLoadFailed(false);
       setOrdersInitialLoadComplete(true);
       const itemResults = await allSettledWithConcurrency(
-        sortedOrders.slice(0, 30),
+        sortedOrders.slice(0, PROFILE_ORDER_ITEM_PREVIEW_LIMIT),
         async (order) => {
           try {
             const res = await orderApi.getItems(order.id);
-            return [order.id, res.data || []] as const;
+            return { orderId: order.id, items: res.data || [], failed: false } as OrderItemsPreviewResult;
           } catch (error) {
             reportNonBlockingError('Profile.fetchOrderItemsPreview', error);
-            return [order.id, []] as const;
+            return { orderId: order.id, items: [], failed: true } as OrderItemsPreviewResult;
           }
         },
       );
-      const itemEntries = itemResults
-        .filter((result): result is PromiseFulfilledResult<readonly [number, OrderItemCustomer[]]> => result.status === 'fulfilled')
+      const previewResults = itemResults
+        .filter((result): result is PromiseFulfilledResult<OrderItemsPreviewResult> => result.status === 'fulfilled')
         .map((result) => result.value);
       if (!mountedRef.current || ordersRequestSeqRef.current !== requestSeq) return;
-      setOrderItemsByOrderId(Object.fromEntries(itemEntries));
+      setOrderItemsByOrderId(Object.fromEntries(previewResults.map((result) => [result.orderId, result.items] as const)));
+      setOrderItemPreviewFailedByOrderId(Object.fromEntries(
+        previewResults
+          .filter((result) => result.failed)
+          .map((result) => [result.orderId, true] as const),
+      ));
     } catch (error) {
       reportNonBlockingError('Profile.fetchOrders', error);
       if (mountedRef.current && ordersRequestSeqRef.current === requestSeq) {
+        setOrdersLoadFailed(true);
         setOrdersInitialLoadComplete(true);
         message.error(t('pages.profile.fetchOrdersFailed'));
       }
@@ -338,21 +355,9 @@ const Profile: React.FC = () => {
     const syncSeq = paymentReturnSyncSeqRef.current + 1;
     paymentReturnSyncSeqRef.current = syncSeq;
     const isCurrentPaymentReturnSync = () => mountedRef.current && paymentReturnSyncSeqRef.current === syncSeq;
-    const paymentListRes = await paymentApi.getByOrder(order.id);
+    const paymentListRes = await paymentApi.syncByOrder(order.id);
     if (!isCurrentPaymentReturnSync()) return;
-    const paymentList = paymentListRes.data || [];
-    const syncedById = new Map<number, PaymentCustomer>();
-    await Promise.all(paymentList.map(async (payment) => {
-      if (!isCurrentPaymentReturnSync()) return;
-      try {
-        const synced = await paymentApi.sync(payment.id);
-        syncedById.set(payment.id, synced.data);
-      } catch (error) {
-        reportNonBlockingError('Profile.syncPaymentReturnState', error);
-      }
-    }));
-    if (!isCurrentPaymentReturnSync()) return;
-    const mergedPayments = paymentList.map((payment) => syncedById.get(payment.id) || payment);
+    const mergedPayments = paymentListRes.data || [];
     const latestPayment = mergedPayments[0] || null;
     setOrderPayments(mergedPayments);
     if (latestPayment) {
@@ -375,10 +380,11 @@ const Profile: React.FC = () => {
       const response = await addressApi.getByUser(0);
       if (!mountedRef.current) return;
       setAddresses(response.data);
+      setAddressesLoadFailed(false);
     } catch (error) {
       reportNonBlockingError('Profile.fetchAddresses', error);
       if (mountedRef.current) {
-        setAddresses([]);
+        setAddressesLoadFailed(true);
       }
     }
   }, []);
@@ -722,23 +728,33 @@ const Profile: React.FC = () => {
     };
   }, [paymentModalVisible, refreshPaymentState, selectedOrder?.id]);
 
+  const loadPaymentChannels = useCallback(async (isActive: () => boolean = () => mountedRef.current) => {
+    setPaymentChannelsLoading(true);
+    setPaymentChannelsError('');
+    try {
+      const res = await paymentApi.getChannels();
+      if (!isActive()) return;
+      setPaymentChannels(res.data || []);
+      setPaymentChannelsLoaded(true);
+    } catch (error: unknown) {
+      if (!isActive()) return;
+      setPaymentChannels([]);
+      setPaymentChannelsLoaded(true);
+      setPaymentChannelsError(getApiErrorMessage(error, t('pages.checkout.paymentUnavailableDescription'), language));
+    } finally {
+      if (isActive()) {
+        setPaymentChannelsLoading(false);
+      }
+    }
+  }, [language, t]);
+
   useEffect(() => {
     let disposed = false;
-    paymentApi.getChannels()
-      .then((res) => {
-        if (disposed || !mountedRef.current) return;
-        setPaymentChannels(res.data || []);
-        setPaymentChannelsLoaded(true);
-      })
-      .catch(() => {
-        if (disposed || !mountedRef.current) return;
-        setPaymentChannels([]);
-        setPaymentChannelsLoaded(true);
-      });
+    void loadPaymentChannels(() => !disposed && mountedRef.current);
     return () => {
       disposed = true;
     };
-  }, []);
+  }, [loadPaymentChannels]);
 
   const handleConfirmReceipt = async (orderId: number) => {
     try {
@@ -871,6 +887,10 @@ const Profile: React.FC = () => {
   };
 
   const handleDeleteAddress = async (id: number) => {
+    if (addressesStale) {
+      message.warning(t('pages.profile.addressesStaleWarning'));
+      return;
+    }
     try {
       await addressApi.delete(id);
       message.success(t('pages.profile.addressDeleted'));
@@ -881,6 +901,10 @@ const Profile: React.FC = () => {
   };
 
   const handleSetDefault = async (id: number) => {
+    if (addressesStale) {
+      message.warning(t('pages.profile.addressesStaleWarning'));
+      return;
+    }
     try {
       await addressApi.setDefault(id);
       message.success(t('pages.profile.defaultSet'));
@@ -916,6 +940,10 @@ const Profile: React.FC = () => {
   }, [language, regionOptions, regionOptionsLanguage, t]);
 
   const openAddressModal = (address?: UserAddress) => {
+    if (addressesStale) {
+      message.warning(t('pages.profile.addressesStaleWarning'));
+      return;
+    }
     addressForm.resetFields();
     if (address) {
       setEditingAddress(address);
@@ -1067,7 +1095,7 @@ const Profile: React.FC = () => {
         ...items.map((item) => profileOrderItemName(item)),
       ].some((value) => String(value || '').toLowerCase().includes(normalizedSearchText));
     });
-  const dateLocale = language === 'zh' ? 'zh-CN' : language === 'en' ? 'en-US' : 'es-MX';
+  const dateLocale = language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US';
   const { formatMoney } = useMarket();
   const paymentOptions = createPaymentMethodOptions(t, paymentChannels);
   const paymentMethodDetails = createPaymentMethodDetails(paymentChannels);
@@ -1083,6 +1111,7 @@ const Profile: React.FC = () => {
   const returnApprovedCount = orders.filter((order) => order.status === 'RETURN_APPROVED').length;
   const returnShippedCount = orders.filter((order) => order.status === 'RETURN_SHIPPED').length;
   const returnRefundingCount = orders.filter((order) => order.status === 'RETURN_REFUNDING').length;
+  const ordersStale = ordersLoadFailed && orders.length > 0;
   const defaultAddressReady = addresses.some((address) => address.isDefault);
   const completedPetProfiles = petProfiles.filter((pet) => pet.name && pet.petType && pet.size && pet.weight && pet.birthday).length;
   const petProfileProgress = petProfiles.length > 0 ? Math.round((completedPetProfiles / petProfiles.length) * 100) : 0;
@@ -1109,17 +1138,19 @@ const Profile: React.FC = () => {
       .sort((left, right) => left.getTime() - right.getTime());
     return deadlines[0] ? deadlines[0].toLocaleDateString(dateLocale) : '';
   }, [dateLocale, orders]);
-  const afterSaleFocusText = returnApprovedCount > 0
-    ? t('pages.profile.afterSaleFocusShipment', { count: returnApprovedCount })
-    : returnShippedCount > 0
-      ? t('pages.profile.afterSaleFocusRefund', { count: returnShippedCount })
-      : returnRefundingCount > 0
-        ? t('pages.profile.afterSaleFocusRefunding', { count: returnRefundingCount })
-        : returnableOrdersCount > 0
-          ? nextReturnDeadline
-            ? t('pages.profile.afterSaleFocusWindowWithDate', { count: returnableOrdersCount, date: nextReturnDeadline })
-            : t('pages.profile.afterSaleFocusWindow', { count: returnableOrdersCount })
-          : t('pages.profile.afterSaleFocusHealthy');
+  const afterSaleFocusText = ordersStale
+    ? t('pages.profile.ordersStaleAfterSaleText')
+    : returnApprovedCount > 0
+      ? t('pages.profile.afterSaleFocusShipment', { count: returnApprovedCount })
+      : returnShippedCount > 0
+        ? t('pages.profile.afterSaleFocusRefund', { count: returnShippedCount })
+        : returnRefundingCount > 0
+          ? t('pages.profile.afterSaleFocusRefunding', { count: returnRefundingCount })
+          : returnableOrdersCount > 0
+            ? nextReturnDeadline
+              ? t('pages.profile.afterSaleFocusWindowWithDate', { count: returnableOrdersCount, date: nextReturnDeadline })
+              : t('pages.profile.afterSaleFocusWindow', { count: returnableOrdersCount })
+            : t('pages.profile.afterSaleFocusHealthy');
   const petCompletenessText = petProfiles.length === 0
     ? t('pages.profile.petCompletenessEmpty')
     : petProfileProgress === 100
@@ -1182,6 +1213,13 @@ const Profile: React.FC = () => {
   };
   const getOrderActionHint = (order: OrderCustomer): OrderActionHint => {
     const returnDeadline = order.returnDeadline ? new Date(order.returnDeadline).toLocaleDateString(dateLocale) : '';
+    if (ordersStale) {
+      return {
+        tone: 'neutral',
+        title: t('pages.profile.nextOrderStaleTitle'),
+        text: t('pages.profile.nextOrderStaleText'),
+      };
+    }
     if (order.status === 'PENDING_PAYMENT') {
       return {
         tone: 'pay',
@@ -1281,7 +1319,7 @@ const Profile: React.FC = () => {
 
   if (loading || !user) {
     return (
-      <div className="profile-loading" role="status" aria-live="polite">
+      <div className="profile-loading" role="status" aria-live="polite" aria-busy="true" aria-label={t('common.loading')}>
         <Spin />
         <span>{t('common.loading')}</span>
       </div>
@@ -1321,6 +1359,7 @@ const Profile: React.FC = () => {
   const paymentOrderLabel = selectedOrder ? profileOrderLabel(selectedOrder) : t('pages.profile.continuePay');
   const openPaymentActionLabel = `${t('pages.checkout.openPayment')}: ${paymentOrderLabel}`;
   const refreshPaymentActionLabel = `${t('pages.profile.refreshPayment')}: ${paymentOrderLabel}`;
+  const retryPaymentChannelsActionLabel = `${t('common.retry')}: ${paymentOrderLabel} ${t('pages.checkout.paymentMethod')}`;
   const closePaymentActionLabel = `${t('common.cancel')}: ${t('pages.profile.continuePay')}, ${paymentOrderLabel}`;
   const profilePendingPayActionLabel = `${t('pages.profile.actionPendingPay')}: ${pendingPaymentCount}`;
   const profileInTransitActionLabel = `${t('pages.profile.actionInTransit')}: ${inTransitCount}`;
@@ -1527,10 +1566,35 @@ const Profile: React.FC = () => {
                     </span>
                   </div>
                 </div>
-                <Button className="profile-block-button profile-section-action" type="dashed" icon={<PlusOutlined />} block onClick={() => openAddressModal()}>
+                <Button
+                  className="profile-block-button profile-section-action"
+                  type="dashed"
+                  icon={<PlusOutlined />}
+                  block
+                  disabled={addressesStale}
+                  title={addressesStale ? t('pages.profile.addressesStaleWarning') : undefined}
+                  onClick={() => openAddressModal()}
+                >
                   {t('pages.profile.addAddress')}
                 </Button>
-                {addresses.length === 0 ? (
+                {addressesStale && (
+                  <Alert
+                    type="warning"
+                    showIcon
+                    message={t('pages.profile.addressesStaleTitle')}
+                    description={t('pages.profile.addressesStaleWarning')}
+                    action={<Button size="small" onClick={() => fetchAddresses()}>{t('common.retry')}</Button>}
+                  />
+                )}
+                {addressesLoadFailed && addresses.length === 0 ? (
+                  <Alert
+                    type="error"
+                    showIcon
+                    message={t('common.loadFailed')}
+                    description={t('common.loadFailedRetry')}
+                    action={<Button size="small" onClick={() => fetchAddresses()}>{t('common.retry')}</Button>}
+                  />
+                ) : addresses.length === 0 ? (
                   <Empty description={t('pages.profile.noAddresses')} />
                 ) : (
                   <List
@@ -1551,13 +1615,13 @@ const Profile: React.FC = () => {
                             </Space>
                             <div className="profile-address-card__address"><Text>{address.address}</Text></div>
                           </div>
-                          <Space wrap>
-                            {!address.isDefault ? (
-                              <Button size="small" icon={<StarOutlined />} aria-label={defaultActionLabel} title={defaultActionLabel} onClick={() => handleSetDefault(address.id)}>{t('pages.profile.setDefault')}</Button>
+                            <Space wrap>
+                              {!address.isDefault ? (
+                              <Button size="small" icon={<StarOutlined />} aria-label={defaultActionLabel} title={defaultActionLabel} disabled={addressesStale} onClick={() => handleSetDefault(address.id)}>{t('pages.profile.setDefault')}</Button>
                             ) : (
                               <Button size="small" icon={<StarFilled />} disabled type="primary">{t('pages.profile.defaultAddressButton')}</Button>
                             )}
-                            <Button size="small" icon={<EditOutlined />} aria-label={editActionLabel} title={editActionLabel} onClick={() => openAddressModal(address)}>{t('common.edit')}</Button>
+                            <Button size="small" icon={<EditOutlined />} aria-label={editActionLabel} title={editActionLabel} disabled={addressesStale} onClick={() => openAddressModal(address)}>{t('common.edit')}</Button>
                             <Popconfirm
                               classNames={{ root: 'shop-mobile-popup-layer profile-popconfirm' }}
                               title={t('pages.profile.deleteAddressConfirm')}
@@ -1567,7 +1631,7 @@ const Profile: React.FC = () => {
                               okButtonProps={{ danger: true, 'aria-label': deleteActionLabel, title: deleteActionLabel }}
                               cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${deleteActionLabel}`, title: `${t('common.cancel')}: ${deleteActionLabel}` }}
                             >
-                              <Button size="small" danger icon={<DeleteOutlined />} aria-label={deleteActionLabel} title={deleteActionLabel}>{t('common.delete')}</Button>
+                              <Button size="small" danger icon={<DeleteOutlined />} aria-label={deleteActionLabel} title={deleteActionLabel} disabled={addressesStale}>{t('common.delete')}</Button>
                             </Popconfirm>
                           </Space>
                         </div>
@@ -1582,7 +1646,15 @@ const Profile: React.FC = () => {
           {
             key: 'orders',
             label: t('pages.profile.orders', { count: orders.length }),
-            children: orders.length === 0 ? (
+            children: ordersLoadFailed && orders.length === 0 ? (
+              <Alert
+                type="error"
+                showIcon
+                message={t('pages.profile.fetchOrdersFailed')}
+                description={t('common.loadFailedRetry')}
+                action={<Button size="small" onClick={() => fetchOrders()}>{t('common.retry')}</Button>}
+              />
+            ) : orders.length === 0 ? (
               <Empty description={t('pages.profile.noOrders')}>
                 <Button type="primary" onClick={() => navigate('/products')}>{t('pages.profile.goShopping')}</Button>
               </Empty>
@@ -1626,6 +1698,14 @@ const Profile: React.FC = () => {
                     </button>
                   </div>
                 </div>
+                {ordersStale ? (
+                  <Alert
+                    type="warning"
+                    showIcon
+                    message={t('pages.profile.ordersStaleWarning')}
+                    action={<Button size="small" onClick={() => fetchOrders()}>{t('common.retry')}</Button>}
+                  />
+                ) : null}
                 <div className="profile-orders__tabs">
                   {orderStatusTabs.map((tab) => {
                     const count = tab.key === 'all'
@@ -1645,19 +1725,19 @@ const Profile: React.FC = () => {
                       </button>
                     );
                   })}
-	                </div>
-	                <div className="profile-orders__toolbar">
-	                  <Input.Search
-	                    className="profile-orders__searchInput"
-	                    allowClear
-	                    value={orderSearchText}
-	                    onChange={(event) => setOrderSearchText(event.target.value)}
-	                    placeholder={t('pages.profile.orderSearchPlaceholder')}
-	                    aria-label={orderSearchInputLabel}
-	                    title={orderSearchInputLabel}
-	                  />
-	                  <Button aria-label={refreshOrdersActionLabel} title={refreshOrdersActionLabel} onClick={() => fetchOrders()}>{t('common.refresh')}</Button>
-	                </div>
+                </div>
+                <div className="profile-orders__toolbar">
+                  <Input.Search
+                    className="profile-orders__searchInput"
+                    allowClear
+                    value={orderSearchText}
+                    onChange={(event) => setOrderSearchText(event.target.value)}
+                    placeholder={t('pages.profile.orderSearchPlaceholder')}
+                    aria-label={orderSearchInputLabel}
+                    title={orderSearchInputLabel}
+                  />
+                  <Button aria-label={refreshOrdersActionLabel} title={refreshOrdersActionLabel} onClick={() => fetchOrders()}>{t('common.refresh')}</Button>
+                </div>
                 <div className="profile-orders__header">
                   <span>{t('pages.profile.orderInfo')}</span>
                   <span>{t('pages.profile.goodsAmount')}</span>
@@ -1669,11 +1749,13 @@ const Profile: React.FC = () => {
                 ) : (
                   filteredOrders.map((order) => {
                     const items = orderItemsByOrderId[order.id] || [];
+                    const itemPreviewFailed = Boolean(orderItemPreviewFailedByOrderId[order.id]);
                     const primaryItem = items[0];
                     const primaryItemName = primaryItem ? profileOrderItemName(primaryItem) : '';
                     const primaryItemActionLabel = primaryItem ? `${t('pages.productList.viewDetails')}: ${primaryItemName}` : '';
                     const actionHint = getOrderActionHint(order);
                     const orderLabel = profileOrderLabel(order);
+                    const retryOrderItemsActionLabel = `${t('common.retry')}: ${t('pages.profile.orderItems')} ${orderLabel}`;
                     const detailActionLabel = `${t('pages.profile.detail')}: ${orderLabel}`;
                     const continuePayActionLabel = `${t('pages.profile.continuePay')}: ${orderLabel}`;
                     const confirmReceiptActionLabel = `${t('pages.profile.confirmReceipt')}: ${orderLabel}`;
@@ -1734,6 +1816,20 @@ const Profile: React.FC = () => {
                                   {order.shippingAddress ? <Text type="secondary" ellipsis>{order.shippingAddress}</Text> : null}
                                 </div>
                               </div>
+                            ) : itemPreviewFailed ? (
+                              <Space direction="vertical" size={4} className="profile-order-item__previewError">
+                                <Text type="warning">{t('pages.profile.orderItemsPreviewFailed')}</Text>
+                                <Button
+                                  type="link"
+                                  size="small"
+                                  icon={<ReloadOutlined />}
+                                  aria-label={retryOrderItemsActionLabel}
+                                  title={retryOrderItemsActionLabel}
+                                  onClick={() => fetchOrders()}
+                                >
+                                  {t('common.retry')}
+                                </Button>
+                              </Space>
                             ) : (
                               <Text type="secondary">{t('pages.profile.noOrderItems')}</Text>
                             )}
@@ -1759,21 +1855,21 @@ const Profile: React.FC = () => {
                               <Text type="secondary">{actionHint.text}</Text>
                             </div>
                             {order.status === 'PENDING_PAYMENT' && (
-                              <Button type="primary" aria-label={continuePayActionLabel} title={continuePayActionLabel} loading={payingOrderId === order.id} disabled={payingOrderId !== null} onClick={() => handleContinuePayment(order)}>
+                              <Button type="primary" aria-label={continuePayActionLabel} title={continuePayActionLabel} loading={payingOrderId === order.id} disabled={ordersStale || payingOrderId !== null} onClick={() => handleContinuePayment(order)}>
                                 {t('pages.profile.continuePay')}
                               </Button>
                             )}
                             {order.status === 'SHIPPED' && (
-                              <Button type="primary" aria-label={confirmReceiptActionLabel} title={confirmReceiptActionLabel} onClick={() => confirmReceiptOrder(order)}>{t('pages.profile.confirmReceipt')}</Button>
+                              <Button type="primary" aria-label={confirmReceiptActionLabel} title={confirmReceiptActionLabel} disabled={ordersStale} onClick={() => confirmReceiptOrder(order)}>{t('pages.profile.confirmReceipt')}</Button>
                             )}
                             {isReturnableOrder(order) && (
-                              <Button danger aria-label={returnActionLabel} title={returnActionLabel} onClick={() => openReturnModal(order)}>{t('pages.profile.returnOrder')}</Button>
+                              <Button danger aria-label={returnActionLabel} title={returnActionLabel} disabled={ordersStale} onClick={() => openReturnModal(order)}>{t('pages.profile.returnOrder')}</Button>
                             )}
                             {order.status === 'RETURN_REQUESTED' && (
                               <Tag color="gold">{t('status.RETURN_REQUESTED')}</Tag>
                             )}
                             {order.status === 'RETURN_APPROVED' && (
-                              <Button type="link" aria-label={submitReturnShipmentActionLabel} title={submitReturnShipmentActionLabel} onClick={() => { setReturnShipmentOrder(order); setReturnTrackingNumber(order.returnTrackingNumber || ''); }}>
+                              <Button type="link" aria-label={submitReturnShipmentActionLabel} title={submitReturnShipmentActionLabel} disabled={ordersStale} onClick={() => { setReturnShipmentOrder(order); setReturnTrackingNumber(order.returnTrackingNumber || ''); }}>
                                 {t('pages.profile.submitReturnShipment')}
                               </Button>
                             )}
@@ -1789,13 +1885,14 @@ const Profile: React.FC = () => {
                               <Popconfirm
                                 classNames={{ root: 'shop-mobile-popup-layer profile-popconfirm' }}
                                 title={t('pages.profile.cancelOrderConfirm')}
+                                disabled={ordersStale}
                                 onConfirm={() => handleCancelOrder(order.id)}
                                 okText={t('common.confirm')}
                                 cancelText={t('common.cancel')}
                                 okButtonProps={{ danger: true, 'aria-label': cancelOrderActionLabel, title: cancelOrderActionLabel }}
                                 cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${cancelOrderActionLabel}`, title: `${t('common.cancel')}: ${cancelOrderActionLabel}` }}
                               >
-                                <Button type="link" danger aria-label={cancelOrderActionLabel} title={cancelOrderActionLabel}>{t('pages.profile.cancelOrder')}</Button>
+                                <Button type="link" danger aria-label={cancelOrderActionLabel} title={cancelOrderActionLabel} disabled={ordersStale}>{t('pages.profile.cancelOrder')}</Button>
                               </Popconfirm>
                             )}
                           </div>
@@ -2269,7 +2366,7 @@ const Profile: React.FC = () => {
             </Descriptions>
             <div className="profile-order-detail__itemsHeader">
               <Title level={5} className="profile-order-detail__itemsTitle">{t('pages.profile.orderItems')}</Title>
-	              <Button icon={<ShoppingCartOutlined />} loading={reordering} disabled={orderItems.length === 0} aria-label={reorderSelectedOrderActionLabel} title={reorderSelectedOrderActionLabel} onClick={handleReorder}>
+              <Button icon={<ShoppingCartOutlined />} loading={reordering} disabled={orderItems.length === 0} aria-label={reorderSelectedOrderActionLabel} title={reorderSelectedOrderActionLabel} onClick={handleReorder}>
                 {t('pages.profile.reorder')}
               </Button>
             </div>
@@ -2342,19 +2439,19 @@ const Profile: React.FC = () => {
         okButtonProps={{ 'aria-label': submitReturnShipmentActionLabel, title: submitReturnShipmentActionLabel }}
         cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${submitReturnShipmentActionLabel}`, title: `${t('common.cancel')}: ${submitReturnShipmentActionLabel}` }}
         onOk={handleSubmitReturnShipment}
-	        onCancel={() => { setReturnShipmentOrder(null); setReturnTrackingNumber(''); }}
-	        className="profile-mobile-safe-modal"
-	      >
-	        <Input
-	          value={returnTrackingNumber}
-	          onChange={(e) => setReturnTrackingNumber(e.target.value)}
-	          placeholder={t('pages.profile.returnTrackingPlaceholder')}
-	          autoComplete="off"
-	          inputMode="text"
-	          maxLength={100}
-	          aria-label={returnTrackingInputLabel}
-	          title={returnTrackingInputLabel}
-	        />
+        onCancel={() => { setReturnShipmentOrder(null); setReturnTrackingNumber(''); }}
+        className="profile-mobile-safe-modal"
+      >
+        <Input
+          value={returnTrackingNumber}
+          onChange={(e) => setReturnTrackingNumber(e.target.value)}
+          placeholder={t('pages.profile.returnTrackingPlaceholder')}
+          autoComplete="off"
+          inputMode="text"
+          maxLength={100}
+          aria-label={returnTrackingInputLabel}
+          title={returnTrackingInputLabel}
+        />
       </Modal>
 
       <Modal
@@ -2374,18 +2471,18 @@ const Profile: React.FC = () => {
           {returnRequestOrder?.returnDeadline ? (
             <Text type="secondary">
               {t('pages.profile.returnAvailableUntil', { time: new Date(returnRequestOrder.returnDeadline).toLocaleString(dateLocale) })}
-	            </Text>
-	          ) : null}
-	          <Input.TextArea
-	            rows={4}
-	            maxLength={500}
-	            showCount
-	            value={returnReason}
-	            onChange={(event) => setReturnReason(event.target.value)}
-	            placeholder={t('pages.profile.returnReasonPlaceholder')}
-	            aria-label={returnReasonInputLabel}
-	            title={returnReasonInputLabel}
-	          />
+            </Text>
+          ) : null}
+          <Input.TextArea
+            rows={4}
+            maxLength={500}
+            showCount
+            value={returnReason}
+            onChange={(event) => setReturnReason(event.target.value)}
+            placeholder={t('pages.profile.returnReasonPlaceholder')}
+            aria-label={returnReasonInputLabel}
+            title={returnReasonInputLabel}
+          />
         </Space>
       </Modal>
 
@@ -2422,7 +2519,7 @@ const Profile: React.FC = () => {
             </Button>
           ),
           selectedPayment && !selectedPaymentPaid && !selectedPaymentReconcileRequired && (
-            <Button key="refresh" loading={refreshingPayment} disabled={paymentOptions.length === 0} aria-label={refreshPaymentActionLabel} title={refreshPaymentActionLabel} onClick={handleRefreshPayment}>
+            <Button key="refresh" loading={refreshingPayment} disabled={paymentChannelsLoading || paymentOptions.length === 0} aria-label={refreshPaymentActionLabel} title={refreshPaymentActionLabel} onClick={handleRefreshPayment}>
               {t('pages.profile.refreshPayment')}
             </Button>
           ),
@@ -2471,21 +2568,37 @@ const Profile: React.FC = () => {
               <Descriptions.Item label={t('pages.profile.orderNo')}>{selectedOrder.orderNo || selectedOrder.id}</Descriptions.Item>
               <Descriptions.Item label={t('common.amount')}>
                 <Text strong className="profile-price-text commerce-money">{formatMoney(selectedOrder.totalAmount)}</Text>
-	              </Descriptions.Item>
-	              <Descriptions.Item label={t('pages.checkout.paymentMethod')}>
-	                <Select
-	                  className="profile-payment-modal__methodSelect"
-	                  value={selectedPaymentMethod}
-	                  options={paymentOptions}
-	                  onChange={setSelectedPaymentMethod}
-	                  classNames={{ popup: { root: 'shop-mobile-popup-layer' } }}
-	                  getPopupContainer={() => document.body}
-		                  disabled={selectedPaymentPaid || selectedPaymentReconcileRequired || paymentOptions.length === 0}
-	                  aria-label={paymentMethodSelectLabel}
-	                  title={paymentMethodSelectLabel}
-	                />
+              </Descriptions.Item>
+              <Descriptions.Item label={t('pages.checkout.paymentMethod')}>
+                <Select
+                  className="profile-payment-modal__methodSelect"
+                  value={selectedPaymentMethod}
+                  options={paymentOptions}
+                  onChange={setSelectedPaymentMethod}
+                  classNames={{ popup: { root: 'shop-mobile-popup-layer' } }}
+                  getPopupContainer={() => document.body}
+                  disabled={selectedPaymentPaid || selectedPaymentReconcileRequired || paymentChannelsLoading || paymentOptions.length === 0}
+                  aria-label={paymentMethodSelectLabel}
+                  title={paymentMethodSelectLabel}
+                />
                 {paymentOptions.length === 0 ? (
-                  <Alert type="warning" showIcon message={t('pages.checkout.paymentUnavailable')} description={t('pages.checkout.paymentUnavailableDescription')} />
+                  <Alert
+                    type="warning"
+                    showIcon
+                    message={t('pages.checkout.paymentUnavailable')}
+                    description={paymentChannelsError || t('pages.checkout.paymentUnavailableDescription')}
+                    action={(
+                      <Button
+                        size="small"
+                        loading={paymentChannelsLoading}
+                        aria-label={retryPaymentChannelsActionLabel}
+                        title={retryPaymentChannelsActionLabel}
+                        onClick={() => void loadPaymentChannels()}
+                      >
+                        {t('common.retry')}
+                      </Button>
+                    )}
+                  />
                 ) : null}
                 {selectedPaymentMethodDetail ? (
                   <div className="profile-payment-method-hint">
@@ -2501,14 +2614,14 @@ const Profile: React.FC = () => {
                   {formatPaymentStatusLabel(selectedPayment.status)}
                 </Tag>
               </Descriptions.Item>
-	              <Descriptions.Item label={t('pages.checkout.paymentLink')}>
-	                {selectedPayment.paymentUrl ? (
-	                  <Button
-	                    type="link"
-	                    className="profile-payment-link"
-	                    aria-label={paymentLinkActionLabel}
-	                    title={paymentLinkActionLabel}
-	                    onClick={() => {
+              <Descriptions.Item label={t('pages.checkout.paymentLink')}>
+                {selectedPayment.paymentUrl ? (
+                  <Button
+                    type="link"
+                    className="profile-payment-link"
+                    aria-label={paymentLinkActionLabel}
+                    title={paymentLinkActionLabel}
+                    onClick={() => {
                       if (!navigateToSafeUrl(selectedPayment.paymentUrl)) {
                         message.error(t('pages.payment.failed'));
                       }

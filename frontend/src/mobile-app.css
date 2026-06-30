@@ -295,7 +295,7 @@ body.shop-mobile-app .shopee-hero__main {
   border-radius: 8px;
   background:
     linear-gradient(90deg, rgba(18, 71, 52, 0.94), rgba(18, 71, 52, 0.45)),
-    url('https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&w=900&q=80');
+    url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27320%27 height=%27240%27 viewBox=%270 0 320 240%27%3E%3Crect width=%27320%27 height=%27240%27 fill=%27%23f8fafc%27/%3E%3Cpath d=%27M0 190 90 110 145 155 210 80 320 190v50H0z%27 fill=%27%23e2e8f0%27/%3E%3Ccircle cx=%27104%27 cy=%2784%27 r=%2726%27 fill=%27%2394a3b8%27/%3E%3C/svg%3E");
   background-position: center right;
   background-size: cover;
   box-shadow: 0 12px 26px rgba(18, 71, 52, 0.14);
@@ -628,7 +628,7 @@ body.shop-mobile-app .shopee-login-card__header {
   border-radius: 8px;
   background:
     linear-gradient(135deg, rgba(18, 71, 52, 0.95), rgba(18, 71, 52, 0.72)),
-    url('https://images.unsplash.com/photo-1558788353-f76d92427f16?auto=format&fit=crop&w=900&q=80');
+    url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27320%27 height=%27240%27 viewBox=%270 0 320 240%27%3E%3Crect width=%27320%27 height=%27240%27 fill=%27%23f8fafc%27/%3E%3Cpath d=%27M0 190 90 110 145 155 210 80 320 190v50H0z%27 fill=%27%23e2e8f0%27/%3E%3Ccircle cx=%27104%27 cy=%2784%27 r=%2726%27 fill=%27%2394a3b8%27/%3E%3C/svg%3E");
   background-position: center right;
   background-size: cover;
   color: #ffffff;
@@ -1057,7 +1057,7 @@ body.shop-mobile-app .shopee-hero__main {
   border-radius: 8px;
   background:
     linear-gradient(180deg, rgba(21, 40, 30, 0.04), rgba(21, 40, 30, 0.68)),
-    url('https://images.unsplash.com/photo-1548199973-03cce0bbc87b?auto=format&fit=crop&w=1000&q=82');
+    url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27320%27 height=%27240%27 viewBox=%270 0 320 240%27%3E%3Crect width=%27320%27 height=%27240%27 fill=%27%23f8fafc%27/%3E%3Cpath d=%27M0 190 90 110 145 155 210 80 320 190v50H0z%27 fill=%27%23e2e8f0%27/%3E%3Ccircle cx=%27104%27 cy=%2784%27 r=%2726%27 fill=%27%2394a3b8%27/%3E%3C/svg%3E");
   background-position: center 42%;
   background-size: cover;
   box-shadow: 0 14px 30px rgba(21, 40, 30, 0.14);
@@ -2075,7 +2075,7 @@ body.shop-mobile-app .shop-nav__bottomItem--active {
 body.shop-mobile-app .shopee-hero__main {
   background:
     linear-gradient(90deg, rgba(18, 71, 52, 0.98) 0%, rgba(18, 71, 52, 0.9) 46%, rgba(18, 71, 52, 0.42) 74%, rgba(18, 71, 52, 0.16) 100%),
-    url('https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&w=1200&q=80') !important;
+    url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27320%27 height=%27240%27 viewBox=%270 0 320 240%27%3E%3Crect width=%27320%27 height=%27240%27 fill=%27%23f8fafc%27/%3E%3Cpath d=%27M0 190 90 110 145 155 210 80 320 190v50H0z%27 fill=%27%23e2e8f0%27/%3E%3Ccircle cx=%27104%27 cy=%2784%27 r=%2726%27 fill=%27%2394a3b8%27/%3E%3C/svg%3E") !important;
   background-position: center right !important;
   background-size: cover !important;
 }
@@ -6916,6 +6916,21 @@ body.shop-mobile-app .shop-nav__bottomItem .ant-badge + span {
   line-height: 1.08 !important;
 }
 
+@media (min-width: 341px) and (max-width: 380px) {
+  body.shop-mobile-app .shop-nav__bottomBar:not(.shop-nav__bottomBar--native) .shop-nav__bottomItem > span:not(.ant-badge):not(.anticon),
+  body.shop-mobile-app .shop-nav__bottomBar:not(.shop-nav__bottomBar--native) .shop-nav__bottomItem .ant-badge + span {
+    display: -webkit-box !important;
+    overflow: hidden !important;
+    font-size: 9px !important;
+    line-height: 1.08 !important;
+    text-overflow: clip !important;
+    white-space: normal !important;
+    overflow-wrap: anywhere !important;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+}
+
 /* Final App/WebView fixed-rail guard: late page CSS must leave the native
    bottom navigation anchored and keep page-specific action bars above it. */
 body.shop-mobile-app .shop-app-shell--pet-finder .shop-nav__bottomBar,
@@ -11316,5 +11331,108 @@ body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-nav .shop-nav__brandC
   body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--payment-instructions .payment-instructions-page__actions,
   body.shop-mobile-app.shop-mobile-app.shop-mobile-app:has(.payment-instructions-page) .payment-instructions-page__actions {
     grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
+
+/* F3592 APP closure: localized login tabs and auth links keep usable tap
+   width inside the native auth WebView. */
+@media (max-width: 640px) {
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--auth-flow .shopee-login-tabs {
+    min-width: 0 !important;
+    max-width: 100% !important;
+    overflow: visible !important;
+  }
+
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--auth-flow .shopee-login-tabs .ant-tabs-nav {
+    width: 100% !important;
+    overflow: visible !important;
+  }
+
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--auth-flow .shopee-login-tabs .ant-tabs-nav-list {
+    width: 100% !important;
+    min-width: 0 !important;
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    align-items: stretch !important;
+  }
+
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--auth-flow .shopee-login-tabs .ant-tabs-tab {
+    min-width: 0 !important;
+    min-height: 44px !important;
+    height: auto !important;
+    justify-content: center !important;
+    padding: 8px !important;
+  }
+
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--auth-flow .shopee-login-tabs .ant-tabs-tab-btn {
+    min-width: 0 !important;
+    max-width: 100% !important;
+    min-height: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    overflow: visible !important;
+    overflow-wrap: anywhere !important;
+    text-align: center !important;
+    text-overflow: clip !important;
+    white-space: normal !important;
+    line-height: 1.18 !important;
+  }
+
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--auth-flow .shopee-login-links {
+    width: 100% !important;
+    display: flex !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px 12px !important;
+  }
+
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--auth-flow .shopee-login-links a,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--auth-flow .shopee-login-links button {
+    min-width: 44px !important;
+    min-height: 44px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 0 6px !important;
+    line-height: 1.25 !important;
+    white-space: normal !important;
+    overflow-wrap: anywhere !important;
+  }
+}
+
+/* F3593 APP closure: localized bottom-rail labels stay readable until the
+   icon-only fallback takes over on very narrow screens. */
+@media (min-width: 341px) and (max-width: 380px) {
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-nav__bottomBar .shop-nav__bottomItem {
+    min-width: 0 !important;
+  }
+
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-nav__bottomBar .shop-nav__bottomItem > span:not(.anticon):not(.ant-badge):not(.ant-scroll-number),
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-nav__bottomBar .shop-nav__bottomItem .ant-badge + span {
+    display: -webkit-box !important;
+    max-width: 100% !important;
+    max-height: calc(2 * 12px * 1.08) !important;
+    overflow: hidden !important;
+    text-overflow: clip !important;
+    white-space: normal !important;
+    overflow-wrap: anywhere !important;
+    word-break: normal !important;
+    -webkit-box-orient: vertical !important;
+    -webkit-line-clamp: 2 !important;
+  }
+}
+
+@media (max-width: 340px) {
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-nav__bottomBar .shop-nav__bottomItem > span:not(.anticon):not(.ant-badge):not(.ant-scroll-number),
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-nav__bottomBar .shop-nav__bottomItem .ant-badge + span {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    clip: rect(0 0 0 0) !important;
+    white-space: nowrap !important;
   }
 }

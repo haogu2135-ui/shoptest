@@ -245,6 +245,36 @@ describe('api parameter normalization', () => {
     expect(source).toContain('setBoundedMapEntry(orderTrackRequests');
   });
 
+  it('reuses typed cache requests when callers pass abort signals', async () => {
+    const { cachedTypedGet, setTimedCacheEntry } = require('./cache');
+    const cache = new Map<string, { expiresAt: number; response: { data: { ok: boolean } } }>();
+    const requests = new Map<string, Promise<{ data: { ok: boolean } }>>();
+    const response = { data: { ok: true } };
+    let resolveLoader: ((value: { data: { ok: boolean } }) => void) | undefined;
+    const loader = jest.fn(() => new Promise<{ data: { ok: boolean } }>((resolve) => {
+      resolveLoader = resolve;
+    }).then((loadedResponse) => {
+      setTimedCacheEntry(cache, 'product:42', {
+        response: loadedResponse,
+        expiresAt: Date.now() + 1_000,
+      });
+      return loadedResponse;
+    }));
+    const firstController = new AbortController();
+    const secondController = new AbortController();
+
+    const first = cachedTypedGet(cache, requests, 'product:42', loader, { signal: firstController.signal });
+    const second = cachedTypedGet(cache, requests, 'product:42', loader, { signal: secondController.signal });
+
+    expect(loader).toHaveBeenCalledTimes(1);
+    resolveLoader!(response);
+    await expect(Promise.all([first, second])).resolves.toEqual([response, response]);
+    await expect(cachedTypedGet(cache, requests, 'product:42', loader, {
+      signal: new AbortController().signal,
+    })).resolves.toBe(response);
+    expect(loader).toHaveBeenCalledTimes(1);
+  });
+
   it('keeps product API normalization free of broad any casts', () => {
     const source = readApiSource();
     const typesSource = readApiSource('../types.ts');
@@ -258,6 +288,10 @@ describe('api parameter normalization', () => {
     );
 
     expect(source).toContain('const isRecord = (value: unknown): value is Record<string, unknown>');
+    expect(source).toContain('const productDetailResponseFromList = (');
+    expect(source).toContain('): AxiosResponse<ProductPublic> => ({');
+    expect(source).toContain('response: productDetailResponseFromList(response, product),');
+    expect(source).not.toContain('as unknown as AxiosResponse<ProductPublic>');
     expect(source).not.toMatch(/\bany\b/);
     expect(adminProductPageSource).toContain('totalElements?: number;');
     expect(publicProductPageSource).toContain('totalElements?: number;');
@@ -272,8 +306,6 @@ describe('api parameter normalization', () => {
         refreshToken: 'refresh-new',
         id: 7,
         username: 'mia',
-        email: '  Mia@Example.COM  ',
-        phone: ' (555) 0100 ',
         role: 'ADMIN',
         roleCode: 'SUPER_ADMIN',
       },
@@ -306,9 +338,28 @@ describe('api parameter normalization', () => {
     expect(window.localStorage.getItem('refreshToken')).toBe('refresh-new');
     expect(window.localStorage.getItem('userId')).toBe('7');
     expect(window.localStorage.getItem('username')).toBe('mia');
-    expect(window.localStorage.getItem('email')).toBe('mia@example.com');
-    expect(window.localStorage.getItem('phone')).toBe('5550100');
+    expect(window.localStorage.getItem('email')).toBeNull();
+    expect(window.localStorage.getItem('phone')).toBeNull();
     expect(window.localStorage.getItem('role')).toBe('SUPER_ADMIN');
+  });
+
+  it('does not treat contact details as part of the auth session response contract', () => {
+    const source = readApiSource();
+    const authSessionType = source.slice(
+      source.indexOf('type AuthSessionResponse = {'),
+      source.indexOf('type AuthRetryConfig ='),
+    );
+    const persistSession = source.slice(
+      source.indexOf('export const persistAuthSession = (data: AuthSessionResponse) => {'),
+      source.indexOf('const refreshAuthToken = () =>'),
+    );
+
+    expect(authSessionType).not.toContain('email?:');
+    expect(authSessionType).not.toContain('phone?:');
+    expect(persistSession).not.toContain('data.email');
+    expect(persistSession).not.toContain('data.phone');
+    expect(persistSession).not.toContain("setStoredItem('email'");
+    expect(persistSession).not.toContain("setStoredItem('phone'");
   });
 
   it('retries token refresh once after a transient network failure', async () => {
@@ -875,6 +926,7 @@ describe('api parameter normalization', () => {
     await paymentApi.getByOrder(7, 'bad-email', ' so202605260001 ');
     await paymentApi.getByOrder(7, ' USER@Example.COM ', ' so202605260001 ');
     await paymentApi.sync(7, ' USER@Example.COM ', ' so202605260001 ');
+    await paymentApi.syncByOrder(7);
 
     expect(mockPost.mock.calls[0][1]).toEqual({ orderId: 7, channel: 'STRIPE', guestEmail: 'user@example.com', orderNo: 'SO202605260001' });
     expect(mockGet.mock.calls[0][0]).toBe('/payments/order/7');
@@ -891,6 +943,8 @@ describe('api parameter normalization', () => {
       skipAuthHeader: true,
       skipAuthRedirect: true,
     }));
+    expect(mockPost.mock.calls[3][0]).toBe('/payments/order/7/sync');
+    expect(mockPost.mock.calls[3][1]).toEqual({});
   });
 
   it('covers payment info, latest, simulation, callback, and admin payment routes', async () => {
@@ -1042,6 +1096,37 @@ describe('api parameter normalization', () => {
     expect(mockPost.mock.calls[1][1]).toEqual({ content: 'hello', sessionId: undefined });
     expect(mockPut.mock.calls[1][0]).toBe('/admin/support/sessions/12/reopen');
     expect(mockPost.mock.calls[2][0]).toBe('/admin/support/sessions/8/messages');
+  });
+
+  it('normalizes support message content before REST sends', async () => {
+    const { supportApi, adminSupportApi } = require('./index');
+
+    await supportApi.sendMessage('  hello\u0000   there\r\nline\t two  ', 12);
+    await supportApi.sendGuestMessage('  guest\u0007   text\r\nnext\t line  ', ' so-42 ', ' GUEST@Example.COM ', 15);
+    await adminSupportApi.sendMessage(8, '  admin\u0000   reply  ');
+
+    expect(mockPost.mock.calls[0]).toEqual([
+      '/support/messages',
+      { content: 'hello there\nline two', sessionId: 12 },
+    ]);
+    expect(mockPost.mock.calls[1]).toEqual([
+      '/support/guest/messages',
+      {
+        content: 'guest text\nnext line',
+        sessionId: 15,
+        orderNo: 'SO-42',
+        guestEmail: 'guest@example.com',
+      },
+      expect.objectContaining({ skipAuthHeader: true, skipAuthRedirect: true }),
+    ]);
+    expect(mockPost.mock.calls[2]).toEqual([
+      '/admin/support/sessions/8/messages',
+      { content: 'admin reply' },
+    ]);
+    const source = readApiSource();
+    expect(source).toContain('const normalizeSupportMessageContent = (value: unknown)');
+    expect(source).toContain('content: normalizeSupportMessageContent(content)');
+    expect(source).not.toContain("content: String(content || '').slice(0, 4000)");
   });
 
   it('requests admin support summary for queue health panels', async () => {
@@ -1405,6 +1490,42 @@ describe('api parameter normalization', () => {
     expect(orderApiSource).not.toContain('api.put<Order>(`/orders/${toPathId(id)}`');
     expect(orderApiSource).not.toContain('api.delete(`/orders/${toPathId(id)}`)');
     expect(orderApiSource).not.toContain('api.post(`/orders/${normalizedOrderId}/items`');
+  });
+
+  it('normalizes paged order list envelopes to arrays for existing storefront callers', async () => {
+    const { orderApi } = require('./index');
+    mockGet
+      .mockResolvedValueOnce({
+        data: {
+          items: [{ id: 31, orderNo: 'SO31' }],
+          content: [{ id: 31, orderNo: 'SO31' }],
+          totalElements: 1,
+          page: 1,
+          number: 0,
+          size: 20,
+          totalPages: 1,
+          hasNext: false,
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          content: [{ id: 32, orderNo: 'SO32' }],
+          totalElements: 1,
+          page: 1,
+          number: 0,
+          size: 500,
+          totalPages: 1,
+          hasNext: false,
+        },
+      });
+
+    const mine = await orderApi.getMine();
+    const all = await orderApi.getAll();
+
+    expect(mockGet.mock.calls[0][0]).toBe('/orders/me');
+    expect(mockGet.mock.calls[1][0]).toBe('/orders');
+    expect(mine.data).toEqual([{ id: 31, orderNo: 'SO31' }]);
+    expect(all.data).toEqual([{ id: 32, orderNo: 'SO32' }]);
   });
 
   it('uses request bodies for guest order read credentials', async () => {
@@ -2116,10 +2237,12 @@ describe('api parameter normalization', () => {
     const { adminApi, petGalleryApi } = require('./index');
     const csvFile = new File(['id,name,description,price,stock,categoryId\n'], 'products.csv', { type: 'text/csv' });
     const imageFile = new File(['image'], 'pet.jpg', { type: 'image/jpeg' });
+    const bugAttachment = new File(['screenshot'], 'bug.png', { type: 'image/png' });
 
     await adminApi.importProducts(csvFile);
     await adminApi.previewImportProducts(csvFile);
     await petGalleryApi.upload(imageFile);
+    await adminApi.uploadBugAttachment(bugAttachment);
 
     expect(mockPost.mock.calls[0][0]).toBe('/admin/products/import');
     expect(mockPost.mock.calls[0][1]).toBeInstanceOf(FormData);
@@ -2130,6 +2253,9 @@ describe('api parameter normalization', () => {
     expect(mockPost.mock.calls[2][0]).toBe('/pet-gallery');
     expect(mockPost.mock.calls[2][1]).toBeInstanceOf(FormData);
     expect(mockPost.mock.calls[2][2]).toBeUndefined();
+    expect(mockPost.mock.calls[3][0]).toBe('/admin/bugs/attachments');
+    expect(mockPost.mock.calls[3][1]).toBeInstanceOf(FormData);
+    expect(mockPost.mock.calls[3][2]).toBeUndefined();
   });
 
   it('does not coalesce multipart uploads', async () => {

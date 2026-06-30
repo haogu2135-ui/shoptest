@@ -18,4 +18,14 @@ describe('ProductDetail size guide modal layout', () => {
     expect(fixCss).toMatch(/\.product-detail__sizeGuideModal \.pet-size-guide div:nth-child\(3\)\s*\{[^}]*grid-column:\s*1 \/ -1;/);
     expect(fixCss).toMatch(/\.product-detail__sizeGuideModal\.ant-modal:not\(\.ant-modal-confirm\) \.ant-modal-body\s*\{[^}]*overflow-y:\s*auto\s*!important;[^}]*scroll-padding-bottom:\s*16px\s*!important;/);
   });
+
+  it('bounds size calculator weight input and estimate value', () => {
+    const source = readProductDetailSource();
+
+    expect(source).toContain('const PRODUCT_SIZE_CALCULATOR_MAX_WEIGHT_KG = 200;');
+    expect(source).toContain('Math.min(PRODUCT_SIZE_CALCULATOR_MAX_WEIGHT_KG, Math.max(0, numeric))');
+    expect(source).toContain('const sizeCalculatorWeightKg = Math.min(\n    PRODUCT_SIZE_CALCULATOR_MAX_WEIGHT_KG,');
+    expect(source).toContain('max={PRODUCT_SIZE_CALCULATOR_MAX_WEIGHT_KG}');
+    expect(source).not.toContain('type="number"\n                        min={0}\n                        onChange=');
+  });
 });

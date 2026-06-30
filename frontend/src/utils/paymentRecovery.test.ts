@@ -15,6 +15,24 @@ describe('paymentRecovery', () => {
     expect(state.minutesLeft).toBe(0);
   });
 
+  it('does not calculate recovery windows for malformed expiry dates', () => {
+    const dateNowSpy = jest.spyOn(Date, 'now');
+
+    try {
+      const state = getPaymentRecoveryState({ status: 'PENDING', expiresAt: 'not-a-date' });
+
+      expect(state).toEqual({
+        isPaid: false,
+        isExpired: false,
+        isExpiringSoon: false,
+        minutesLeft: null,
+      });
+      expect(dateNowSpy).not.toHaveBeenCalled();
+    } finally {
+      dateNowSpy.mockRestore();
+    }
+  });
+
   it('shortens payment links for safer display', () => {
     const label = formatPaymentUrlLabel('https://pay.example.com/checkout/session/123?token=secret');
 

@@ -187,6 +187,17 @@ const SupportManagement: React.FC = () => {
     };
   }, []);
 
+  useEffect(() => {
+    return () => {
+      const context = audioContextRef.current;
+      audioContextRef.current = null;
+      if (context && context.state !== 'closed') {
+        void context.close()
+          .catch((error) => reportNonBlockingError('SupportManagement.closeAudioContext', error));
+      }
+    };
+  }, []);
+
   const playTone = () => {
     try {
       const audioWindow = window as LegacyAudioWindow;
@@ -832,7 +843,13 @@ const SupportManagement: React.FC = () => {
             />
           ) : null}
           {queueLoading && queueSessions.length === 0 ? (
-            <div className="support-management__queueLoading" role="status" aria-live="polite">
+            <div
+              className="support-management__queueLoading"
+              role="status"
+              aria-live="polite"
+              aria-busy="true"
+              aria-label={t('common.loading')}
+            >
               <Spin size="small" />
               <Text>{t('common.loading')}</Text>
             </div>
@@ -1014,7 +1031,13 @@ const SupportManagement: React.FC = () => {
               </div>
               <div ref={listRef} className="support-management__messagesPane">
                 {messageLoading ? (
-                  <div className="support-management__messagesLoading" role="status" aria-live="polite">
+                  <div
+                    className="support-management__messagesLoading"
+                    role="status"
+                    aria-live="polite"
+                    aria-busy="true"
+                    aria-label={t('common.loading')}
+                  >
                     <Spin size="small" />
                     <Text>{t('common.loading')}</Text>
                   </div>
@@ -1168,9 +1191,18 @@ const SupportManagement: React.FC = () => {
         footer={null}
         className="profile-mobile-safe-modal support-management__orderModal"
       >
-        {detailLoading ? (
-          <div style={{ padding: 32, textAlign: 'center' }}><Spin /></div>
-        ) : detailOrder ? (
+        {detailLoading ? (
+          <div
+            className="support-management__orderLoading"
+            style={{ padding: 32, textAlign: 'center' }}
+            role="status"
+            aria-live="polite"
+            aria-busy="true"
+            aria-label={t('common.loading')}
+          >
+            <Spin />
+          </div>
+        ) : detailOrder ? (
           <Space direction="vertical" style={{ width: '100%' }} size="middle">
             <Space wrap>
               <Tag color="blue">{formatOrderStatus(detailOrder.status)}</Tag>

@@ -98,6 +98,19 @@ class SearchControllerTest {
     }
 
     @Test
+    void acceptsSearchAliasForProductsApiCompatibility() throws Exception {
+        when(productService.findPublicProductPage(any(ProductListQuery.class)))
+                .thenReturn(new PageImpl<>(List.of(), PageRequest.of(0, 24), 0));
+
+        mockMvc.perform(get("/search").param("search", "feeder"))
+                .andExpect(status().isOk());
+
+        ArgumentCaptor<ProductListQuery> queryCaptor = ArgumentCaptor.forClass(ProductListQuery.class);
+        verify(productService).findPublicProductPage(queryCaptor.capture());
+        assertThat(queryCaptor.getValue().getKeyword()).isEqualTo("feeder");
+    }
+
+    @Test
     void returnsPaginatedSearchResponse() throws Exception {
         Product product = new Product();
         product.setId(99L);
@@ -133,7 +146,9 @@ class SearchControllerTest {
         Product product = new Product();
         product.setId(99L);
         product.setName("Travel bowl");
-        product.setPrice(new BigDecimal("12.50"));
+        product.setPrice(new BigDecimal("75.00"));
+        product.setOriginalPrice(new BigDecimal("100.00"));
+        product.setDiscount(47);
         product.setStock(6);
         product.setCategoryId(3L);
         product.setSpecificationsMap(Map.of(
@@ -158,6 +173,8 @@ class SearchControllerTest {
                         .param("size", "12"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[0].id").value(99))
+                .andExpect(jsonPath("$.items[0].discount").value(25))
+                .andExpect(jsonPath("$.items[0].effectiveDiscountPercent").value(25))
                 .andExpect(jsonPath("$.items[0].specifications.Material").value("Steel"))
                 .andExpect(jsonPath("$.items[0].optionGroups[0].name").value("Size"))
                 .andExpect(jsonPath("$.items[0].optionGroups[0].values[0]").value("Small"))

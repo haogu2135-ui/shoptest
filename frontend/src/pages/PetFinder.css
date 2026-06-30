@@ -37,6 +37,23 @@
   border-radius: 8px;
 }
 
+.pet-finder-page__loadAlert .ant-alert-action {
+  align-self: center;
+}
+
+.pet-finder-page__empty {
+  margin: 24px 0;
+  padding: 28px 16px;
+  border: 1px solid #e4ebe4;
+  border-radius: 8px;
+  background: #fbfdfb;
+}
+
+.pet-finder-page__empty--loadFailed {
+  border-color: #f5c26b;
+  background: #fffaf0;
+}
+
 .pet-finder-page__insights {
   display: grid;
   grid-template-columns: minmax(240px, 1.25fr) minmax(280px, 1fr);

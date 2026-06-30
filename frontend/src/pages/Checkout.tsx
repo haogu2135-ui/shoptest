@@ -3,7 +3,7 @@ import { Alert, Button, Card, Cascader, Divider, Form, Input, List, message, Mod
 import type { FormInstance } from 'antd/es/form';
 import { CheckCircleOutlined, CustomerServiceOutlined, GiftOutlined, HistoryOutlined, RollbackOutlined, SafetyCertificateOutlined, ShoppingCartOutlined, ShoppingOutlined, SwapOutlined, TruckOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import { addressApi, cartApi, clearStoredAuthSession, couponApi, orderApi, paymentApi, productApi } from '../api';
+import { addressApi, cartApi, clearStoredAuthSession, couponApi, createApiAbortController, orderApi, paymentApi, productApi } from '../api';
 import type { CartItem, CouponQuote, OrderCustomer, PaymentCustomer, PaymentChannel, ProductPublic as Product, UserAddress, UserCoupon } from '../types';
 import { loadRegionData, type RegionOption } from '../regionData';
 import { useLanguage, type Language } from '../i18n';
@@ -52,6 +52,7 @@ const CHECKOUT_PENDING_ORDER_KEY = 'checkoutPendingOrder';
 const CHECKOUT_PAYMENT_POLL_MAX_MS = 30 * 60 * 1000;
 const CHECKOUT_PAYMENT_POLL_RESULT_MAX_MS = CHECKOUT_PAYMENT_POLL_MAX_MS + CHECKOUT_PAYMENT_POLL_LOCK_TTL_MS;
 const SUPPORT_PANEL_DISMISS_SUPPRESS_MS = 30 * 1000;
+const CHECKOUT_GUEST_DRAFT_SAVE_DELAY_MS = 500;
 
 type CheckoutPaymentPollResult = {
   ownerId: string;
@@ -66,6 +67,7 @@ type CheckoutPendingOrderSnapshot = {
   order: OrderCustomer;
   paymentMethod: string;
   guestPaymentEmail?: string;
+  cartItems: CartItem[];
   savedAt: number;
 };
 
@@ -118,6 +120,14 @@ const scrollCheckoutFieldIntoMobileView = (target: EventTarget | null, fallbackE
 const toSafeMoney = (value: unknown) => {
   const numeric = Number(value);
   return Number.isFinite(numeric) && numeric > 0 ? numeric : 0;
+};
+export const formatCheckoutDateTime = (value: unknown, dateLocale: string) => {
+  if (value === null || value === undefined || value === '') return null;
+  const date = value instanceof Date || typeof value === 'number' || typeof value === 'string'
+    ? new Date(value)
+    : null;
+  if (!date) return null;
+  return Number.isFinite(date.getTime()) ? date.toLocaleString(dateLocale) : null;
 };
 
 const parseCartItemSelectedSpecs = (value?: string | null): Record<string, string> => {
@@ -314,7 +324,11 @@ const getCheckoutErrorResponse = (error: unknown) => (
     : undefined
 );
 
-const hasCheckoutErrorResponse = (error: unknown) => Boolean(getCheckoutErrorResponse(error));
+const checkoutOrderFinalErrorStatuses = new Set([400, 404, 409, 422]);
+const isFinalCheckoutOrderError = (error: unknown) => {
+  const status = getCheckoutErrorResponse(error)?.status;
+  return typeof status === 'number' && checkoutOrderFinalErrorStatuses.has(status);
+};
 
 const clearExpiredCheckoutSession = () => {
   clearStoredAuthSession();
@@ -357,6 +371,9 @@ const parseCheckoutPendingOrderSnapshot = (raw: string | null): CheckoutPendingO
     const orderId = Number(order?.id);
     const paymentMethod = normalizeCheckoutText(parsed?.paymentMethod, 40);
     const guestPaymentEmail = normalizeCheckoutEmail(parsed?.guestPaymentEmail);
+    const cartItems = Array.isArray(parsed?.cartItems)
+      ? (parsed.cartItems as CartItem[]).filter((item) => Number(item?.productId) > 0 && Number(item?.quantity) > 0)
+      : [];
     const savedAt = Number(parsed?.savedAt);
     if (!order || !Number.isSafeInteger(orderId) || orderId <= 0 || !paymentMethod || !Number.isFinite(savedAt)) {
       return null;
@@ -368,6 +385,7 @@ const parseCheckoutPendingOrderSnapshot = (raw: string | null): CheckoutPendingO
       order,
       paymentMethod,
       guestPaymentEmail: guestPaymentEmail || undefined,
+      cartItems,
       savedAt,
     };
   } catch (error) {
@@ -384,11 +402,12 @@ const readCheckoutPendingOrder = () => {
   return snapshot;
 };
 
-const persistCheckoutPendingOrder = (order: OrderCustomer, paymentMethod: string, guestPaymentEmail?: string) => {
+const persistCheckoutPendingOrder = (order: OrderCustomer, paymentMethod: string, guestPaymentEmail: string | undefined, cartItems: CartItem[]) => {
   setSessionStorageItem(CHECKOUT_PENDING_ORDER_KEY, JSON.stringify({
     order,
     paymentMethod,
     guestPaymentEmail,
+    cartItems,
     savedAt: Date.now(),
   }));
 };
@@ -511,10 +530,12 @@ const hasHydratableCheckoutValue = (value: unknown) => (
   Array.isArray(value) ? value.length > 0 : Boolean(normalizeCheckoutText(value, 500))
 );
 
-const getSavedAddressRegionPath = (address?: UserAddress | null) =>
-  (Array.isArray(address?.region) ? address.region : [])
+const getSavedAddressRegionPath = (address?: UserAddress | null) => {
+  const region = address?.region;
+  return (Array.isArray(region) ? region : [])
     .map((item) => normalizeCheckoutText(item, 120))
     .filter(Boolean);
+};
 
 const getSavedAddressPostalCode = (address?: UserAddress | null) =>
   normalizeCheckoutPostalCode(address?.postalCode);
@@ -609,11 +630,16 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
   const [payment, setPayment] = useState<PaymentCustomer | null>(null);
   const [guestPaymentEmail, setGuestPaymentEmail] = useState<string | undefined>(() => initialPendingOrder?.guestPaymentEmail);
   const [pendingPaymentMethod, setPendingPaymentMethod] = useState<string>(() => initialPendingOrder?.paymentMethod || 'STRIPE');
+  const submittedCartItemsRef = React.useRef<CartItem[]>(initialPendingOrder?.cartItems || []);
   const [paymentCreateError, setPaymentCreateError] = useState<string | null>(null);
+  const paymentCreateRequestSeqRef = React.useRef(0);
   const paymentSimulationEnabled = false;
   const [simulatingPayment, setSimulatingPayment] = useState(false);
   const [cancelingPayment, setCancelingPayment] = useState(false);
   const [paymentChannels, setPaymentChannels] = useState<PaymentChannel[]>([]);
+  const [paymentChannelsLoading, setPaymentChannelsLoading] = useState(false);
+  const [paymentChannelsError, setPaymentChannelsError] = useState<string | null>(null);
+  const [paymentChannelsReloadKey, setPaymentChannelsReloadKey] = useState(0);
   const [, setPaymentChannelsAvailable] = useState(false);
   const [checkoutRegionCascaderOpen, setCheckoutRegionCascaderOpen] = useState(false);
   const [regionOptions, setRegionOptions] = useState<RegionOption[]>([]);
@@ -638,6 +664,8 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
   const checkoutFormSnapshotRef = React.useRef<CheckoutFormSnapshot>(initialCheckoutDraftRef.current || {});
   const [, setFormHydrationRevision] = useState(0);
   const submittingRef = React.useRef(false);
+  const paymentRetryingRef = React.useRef(false);
+  const paymentSimulatingRef = React.useRef(false);
   const paymentPollStartedAtRef = React.useRef<number | null>(null);
   const paymentPollOwnerIdRef = React.useRef<string | null>(null);
   if (!paymentPollOwnerIdRef.current) {
@@ -650,6 +678,7 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
   const checkoutStatusAnnouncementIdRef = React.useRef(0);
   const mountedRef = React.useRef(true);
   const { t, language } = useLanguage();
+  const checkoutLocalizationRef = React.useRef({ t, language });
   const announceCheckoutStatus = useCallback((messageText: string) => {
     const text = normalizeCheckoutText(messageText, 500);
     if (!text || !mountedRef.current) return;
@@ -667,6 +696,9 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
     (item.productName || '').trim() || t('pages.profile.productFallback', { id: item.productId })
   );
   const dateLocale = language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US';
+  useEffect(() => {
+    checkoutLocalizationRef.current = { t, language };
+  }, [language, t]);
   const formatPaymentStatusLabel = useCallback((status?: string) => {
     const rawStatus = String(status || '').trim();
     const normalizedStatus = normalizeStatusCode(rawStatus);
@@ -881,15 +913,20 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
   useEffect(() => {
     if (!hasCheckoutItems) {
       setPaymentChannels([]);
+      setPaymentChannelsLoading(false);
+      setPaymentChannelsError(null);
       setPaymentChannelsAvailable(false);
       return;
     }
     let disposed = false;
+    setPaymentChannelsLoading(true);
+    setPaymentChannelsError(null);
     paymentApi.getChannels()
       .then((res) => {
         if (disposed || !mountedRef.current) return;
         const channels = res.data;
         setPaymentChannels(channels);
+        setPaymentChannelsError(null);
         setPaymentChannelsAvailable(createPaymentMethodDetails(channels).length > 0);
         const current = form.getFieldValue('paymentMethod');
         const rememberedMethod = getSessionStorageItem('checkoutPaymentMethod');
@@ -901,16 +938,26 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
           form.setFieldsValue({ paymentMethod: undefined });
         }
       })
-      .catch(() => {
+      .catch((error: unknown) => {
         if (disposed || !mountedRef.current) return;
+        const { t: latestT, language: latestLanguage } = checkoutLocalizationRef.current;
         setPaymentChannels([]);
+        setPaymentChannelsError(getApiErrorMessage(
+          error,
+          latestT('pages.checkout.paymentUnavailableDescription'),
+          latestLanguage,
+        ));
         setPaymentChannelsAvailable(false);
         form.setFieldsValue({ paymentMethod: undefined });
+      })
+      .finally(() => {
+        if (disposed || !mountedRef.current) return;
+        setPaymentChannelsLoading(false);
       });
     return () => {
       disposed = true;
     };
-  }, [currency, form, hasCheckoutItems]);
+  }, [currency, form, hasCheckoutItems, paymentChannelsReloadKey]);
 
   useEffect(() => {
     if (!checkoutRegionCascaderOpen) return;
@@ -1092,26 +1139,31 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
 
   useEffect(() => {
     if (!hasCheckoutItems || !isGuestCheckout) return;
-    const watchedDraft = {
-      guestEmail: normalizeCheckoutText(watchedGuestEmail, 120),
-      recipientName: normalizeCheckoutText(watchedRecipientName, 80),
-      phone: normalizeLikelyCheckoutPhone(watchedPhone),
-      region: Array.isArray(watchedRegion) ? watchedRegion : undefined,
-      shippingAddress: normalizeCheckoutText(watchedShippingAddress, 260),
-      postalCode: normalizeCheckoutPostalCode(watchedPostalCode),
+    const timer = window.setTimeout(() => {
+      const watchedDraft = {
+        guestEmail: normalizeCheckoutText(watchedGuestEmail, 120),
+        recipientName: normalizeCheckoutText(watchedRecipientName, 80),
+        phone: normalizeLikelyCheckoutPhone(watchedPhone),
+        region: Array.isArray(watchedRegion) ? watchedRegion : undefined,
+        shippingAddress: normalizeCheckoutText(watchedShippingAddress, 260),
+        postalCode: normalizeCheckoutPostalCode(watchedPostalCode),
+      };
+      const existingDraft = readCheckoutGuestDraftFields();
+      const draft = mergeHydratableCheckoutFields(
+        existingDraft || checkoutFormSnapshotRef.current || initialCheckoutDraftRef.current || {},
+        watchedDraft,
+      );
+      const hasDraft = Object.values(draft).some(hasHydratableCheckoutValue);
+      if (hasDraft) {
+        setSessionStorageItem(CHECKOUT_GUEST_DRAFT_KEY, JSON.stringify(draft));
+        mergeCheckoutFormSnapshot(draft, true);
+      } else {
+        removeSessionStorageItem(CHECKOUT_GUEST_DRAFT_KEY);
+      }
+    }, CHECKOUT_GUEST_DRAFT_SAVE_DELAY_MS);
+    return () => {
+      window.clearTimeout(timer);
     };
-    const existingDraft = readCheckoutGuestDraftFields();
-    const draft = mergeHydratableCheckoutFields(
-      existingDraft || checkoutFormSnapshotRef.current || initialCheckoutDraftRef.current || {},
-      watchedDraft,
-    );
-    const hasDraft = Object.values(draft).some(hasHydratableCheckoutValue);
-    if (hasDraft) {
-      setSessionStorageItem(CHECKOUT_GUEST_DRAFT_KEY, JSON.stringify(draft));
-      mergeCheckoutFormSnapshot(draft, true);
-    } else {
-      removeSessionStorageItem(CHECKOUT_GUEST_DRAFT_KEY);
-    }
   }, [hasCheckoutItems, isGuestCheckout, mergeCheckoutFormSnapshot, watchedGuestEmail, watchedPhone, watchedPostalCode, watchedRecipientName, watchedRegion, watchedShippingAddress]);
 
   const cartTotal = useMemo(() => roundCartMoney(cartItems.reduce((sum, item) => {
@@ -1160,9 +1212,10 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
         if (disposed || !mountedRef.current || couponQuoteSeqRef.current !== requestSeq) return;
         const nextCouponQuote = normalizeCouponQuote(res.data);
         if (!nextCouponQuote) {
+          const { t: latestT } = checkoutLocalizationRef.current;
           setCouponQuote(null);
           setCouponQuoteStatus('error');
-          setCouponQuoteErrorMessage(t('pages.checkout.couponUnavailable'));
+          setCouponQuoteErrorMessage(latestT('pages.checkout.couponUnavailable'));
           return;
         }
         const nextAvailableCoupons = nextCouponQuote?.availableCoupons || [];
@@ -1189,7 +1242,8 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
         if (disposed || !mountedRef.current || couponQuoteSeqRef.current !== requestSeq) return;
         setCouponQuote(null);
         setCouponQuoteStatus('error');
-        const couponErrorMessage = getCheckoutCouponErrorMessage(error, t('pages.checkout.couponUnavailable'), t, language);
+        const { t: latestT, language: latestLanguage } = checkoutLocalizationRef.current;
+        const couponErrorMessage = getCheckoutCouponErrorMessage(error, latestT('pages.checkout.couponUnavailable'), latestT, latestLanguage);
         setCouponQuoteErrorMessage(couponErrorMessage);
         if (selectedUserCouponId) {
           setCouponSelectionErrorMessage(couponErrorMessage);
@@ -1201,7 +1255,7 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
     return () => {
       disposed = true;
     };
-  }, [cartItems, cartTotal, couponManuallyChanged, language, selectedUserCouponId, showCheckoutMessage, t]);
+  }, [cartItems, cartTotal, couponManuallyChanged, selectedUserCouponId, showCheckoutMessage]);
 
   const estimatedShippingSummary = useMemo(
     () => deriveCartShippingSummary(cartItems, market.freeShippingThreshold, cartTotal),
@@ -1714,135 +1768,143 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
     if (submittingRef.current) {
       return;
     }
-    setCheckoutValidationAnnouncement('');
-    const hasToken = hasAuthenticatedCartSession();
-    if (cartItems.length === 0) {
-      showCheckoutMessage('error', t('pages.checkout.emptyCart'));
-      return;
-    }
-    if (cartItems.some((item) => !isPurchasable(item))) {
-      showCheckoutMessage('error', t('pages.checkout.unavailableSelected'));
-      return;
-    }
-    if (!paymentMethodsAvailable) {
-      showCheckoutMessage('error', t('pages.checkout.paymentUnavailable'));
-      return;
-    }
-    const normalizedPaymentMethod = normalizeCheckoutText(values.paymentMethod, 40);
-    const normalizedGuestEmail = hasToken ? undefined : normalizeCheckoutEmail(values.guestEmail);
-    if (!normalizedPaymentMethod) {
-      showCheckoutMessage('error', t('pages.checkout.paymentRequired'));
-      return;
-    }
-    if (!hasToken && !isLikelyCheckoutEmail(normalizedGuestEmail)) {
-      showCheckoutMessage('error', t('pages.checkout.emailInvalid'));
-      return;
-    }
-    if (requiresBackendShippingQuote && !shippingQuoteReady) {
-      showCheckoutMessage('error', shippingQuoteUnavailable ? t('pages.checkout.shippingFeeUnavailable') : t('pages.checkout.shippingFeeCalculating'));
-      return;
-    }
-
-    const checkoutIdempotencyKey = getOrCreateCheckoutIdempotencyKey();
     submittingRef.current = true;
-    setSubmitting(true);
     try {
-      const shippingAddress = buildAddress(values);
-      const recipientPayload = buildRecipientPayload(values);
-      const orderRes = hasToken
-        ? await orderApi.checkout({
-            cartItemIds: cartItems.map((item) => item.id),
-            shippingAddress,
-            recipientName: recipientPayload.recipientName,
-            recipientPhone: recipientPayload.recipientPhone,
-            paymentMethod: normalizedPaymentMethod,
-            userCouponId: selectedUserCouponId,
-          }, { idempotencyKey: checkoutIdempotencyKey })
-        : await orderApi.guestCheckout({
-            guestEmail: normalizedGuestEmail as string,
-            guestName: normalizeCheckoutText(values.recipientName, 80),
-            guestPhone: normalizeCheckoutPhone(values.phone),
-            shippingAddress,
-            paymentMethod: normalizedPaymentMethod,
-            items: cartItems.map((item) => ({
-              productId: item.productId,
-              quantity: item.quantity,
-              selectedSpecs: item.selectedSpecs,
-            })),
-          }, { idempotencyKey: checkoutIdempotencyKey });
-      persistCheckoutPendingOrder(orderRes.data, normalizedPaymentMethod, normalizedGuestEmail);
-      setCreatedOrder(orderRes.data);
-      setPendingPaymentMethod(normalizedPaymentMethod);
-      setGuestPaymentEmail(normalizedGuestEmail);
-      if (!hasToken && normalizedGuestEmail && orderRes.data.orderNo) {
-        saveGuestSupportContext({ orderNo: orderRes.data.orderNo, email: normalizedGuestEmail });
+      setCheckoutValidationAnnouncement('');
+      const hasToken = hasAuthenticatedCartSession();
+      if (cartItems.length === 0) {
+        showCheckoutMessage('error', t('pages.checkout.emptyCart'));
+        return;
       }
-      clearCheckoutCartItemIds();
-      removeSessionStorageItem('checkoutPaymentMethod');
-      removeSessionStorageItem(CHECKOUT_GUEST_DRAFT_KEY);
-      if (!hasToken) {
-        removeGuestCartItems(cartItems.map((item) => item.id));
-      } else {
-        dispatchDomEvent('shop:cart-updated');
+      if (cartItems.some((item) => !isPurchasable(item))) {
+        showCheckoutMessage('error', t('pages.checkout.unavailableSelected'));
+        return;
       }
-      dispatchDomEvent('shop:coupons-updated');
-      setPaymentCreateError(null);
-      let paymentRes;
+      if (!paymentMethodsAvailable) {
+        showCheckoutMessage('error', t('pages.checkout.paymentUnavailable'));
+        return;
+      }
+      const normalizedPaymentMethod = normalizeCheckoutText(values.paymentMethod, 40);
+      const normalizedGuestEmail = hasToken ? undefined : normalizeCheckoutEmail(values.guestEmail);
+      if (!normalizedPaymentMethod) {
+        showCheckoutMessage('error', t('pages.checkout.paymentRequired'));
+        return;
+      }
+      if (!hasToken && !isLikelyCheckoutEmail(normalizedGuestEmail)) {
+        showCheckoutMessage('error', t('pages.checkout.emailInvalid'));
+        return;
+      }
+      if (requiresBackendShippingQuote && !shippingQuoteReady) {
+        showCheckoutMessage('error', shippingQuoteUnavailable ? t('pages.checkout.shippingFeeUnavailable') : t('pages.checkout.shippingFeeCalculating'));
+        return;
+      }
+
+      const checkoutIdempotencyKey = getOrCreateCheckoutIdempotencyKey();
+      setSubmitting(true);
       try {
-        paymentRes = await paymentApi.create(
-          orderRes.data.id,
-          normalizedPaymentMethod,
-          normalizedGuestEmail,
-          hasToken ? undefined : orderRes.data.orderNo,
-        );
-      } catch (paymentError: unknown) {
-        setPayment(null);
-        setPaymentCreateError(getApiErrorMessage(paymentError, t('pages.payment.createFailed'), language));
-        showCheckoutMessage('warning', t('pages.checkout.orderCreatedPaymentPending'));
-        return;
-      }
-      setPayment(paymentRes.data);
-      clearCheckoutIdempotencyKey();
-      clearCheckoutPendingOrder();
-      showCheckoutMessage('success', t('pages.checkout.orderCreated'));
-      if (paymentRes.data.paymentUrl) {
-        if (!navigateToSafeUrl(paymentRes.data.paymentUrl)) {
-          showCheckoutMessage('error', t('pages.payment.failed'));
+        const shippingAddress = buildAddress(values);
+        const recipientPayload = buildRecipientPayload(values);
+        const orderRes = hasToken
+          ? await orderApi.checkout({
+              cartItemIds: cartItems.map((item) => item.id),
+              shippingAddress,
+              recipientName: recipientPayload.recipientName,
+              recipientPhone: recipientPayload.recipientPhone,
+              paymentMethod: normalizedPaymentMethod,
+              userCouponId: selectedUserCouponId,
+            }, { idempotencyKey: checkoutIdempotencyKey })
+          : await orderApi.guestCheckout({
+              guestEmail: normalizedGuestEmail as string,
+              guestName: normalizeCheckoutText(values.recipientName, 80),
+              guestPhone: normalizeCheckoutPhone(values.phone),
+              shippingAddress,
+              paymentMethod: normalizedPaymentMethod,
+              items: cartItems.map((item) => ({
+                productId: item.productId,
+                quantity: item.quantity,
+                selectedSpecs: item.selectedSpecs,
+              })),
+            }, { idempotencyKey: checkoutIdempotencyKey });
+        const submittedCartItems = cartItems.map((item) => ({ ...item }));
+        submittedCartItemsRef.current = submittedCartItems;
+        persistCheckoutPendingOrder(orderRes.data, normalizedPaymentMethod, normalizedGuestEmail, submittedCartItems);
+        setCreatedOrder(orderRes.data);
+        setPendingPaymentMethod(normalizedPaymentMethod);
+        setGuestPaymentEmail(normalizedGuestEmail);
+        if (!hasToken && normalizedGuestEmail && orderRes.data.orderNo) {
+          saveGuestSupportContext({ orderNo: orderRes.data.orderNo, email: normalizedGuestEmail });
         }
-      }
-    } catch (error: unknown) {
-      if (hasToken && isAuthExpiredError(error)) {
-        clearExpiredCheckoutSession();
+        clearCheckoutCartItemIds();
+        removeSessionStorageItem('checkoutPaymentMethod');
+        if (!hasToken) {
+          removeGuestCartItems(cartItems.map((item) => item.id));
+        } else {
+          dispatchDomEvent('shop:cart-updated');
+        }
+        dispatchDomEvent('shop:coupons-updated');
+        setPaymentCreateError(null);
+        let paymentRes;
+        try {
+          paymentRes = await paymentApi.create(
+            orderRes.data.id,
+            normalizedPaymentMethod,
+            normalizedGuestEmail,
+            hasToken ? undefined : orderRes.data.orderNo,
+          );
+        } catch (paymentError: unknown) {
+          setPayment(null);
+          setPaymentCreateError(getApiErrorMessage(paymentError, t('pages.payment.createFailed'), language));
+          showCheckoutMessage('warning', t('pages.checkout.orderCreatedPaymentPending'));
+          return;
+        }
+        setPayment(paymentRes.data);
         clearCheckoutIdempotencyKey();
         clearCheckoutPendingOrder();
-        setAddresses([]);
-        setSelectedAddressId('new');
-        setSelectedUserCouponId(null);
-        setCouponQuote(null);
-        setGuestPaymentEmail(undefined);
-        syncCheckoutCartItemIds([]);
-        setCartItems([]);
-        showCheckoutMessage('warning', t('pages.checkout.authExpired'));
-        navigate(buildLoginUrlFromWindow(), { replace: true });
-        return;
+        showCheckoutMessage('success', t('pages.checkout.orderCreated'));
+        if (paymentRes.data.paymentUrl) {
+          if (!navigateToSafeUrl(paymentRes.data.paymentUrl)) {
+            showCheckoutMessage('error', t('pages.payment.failed'));
+          }
+        }
+      } catch (error: unknown) {
+        if (hasToken && isAuthExpiredError(error)) {
+          clearExpiredCheckoutSession();
+          clearCheckoutIdempotencyKey();
+          clearCheckoutPendingOrder();
+          setAddresses([]);
+          setSelectedAddressId('new');
+          setSelectedUserCouponId(null);
+          setCouponQuote(null);
+          setGuestPaymentEmail(undefined);
+          syncCheckoutCartItemIds([]);
+          setCartItems([]);
+          showCheckoutMessage('warning', t('pages.checkout.authExpired'));
+          navigate(buildLoginUrlFromWindow(), { replace: true });
+          return;
+        }
+        if (isFinalCheckoutOrderError(error)) {
+          clearCheckoutIdempotencyKey();
+          clearCheckoutPendingOrder();
+        }
+        showCheckoutMessage('error', getApiErrorMessage(error, t('pages.checkout.orderCreateFailed'), language));
+      } finally {
+        setSubmitting(false);
       }
-      if (hasCheckoutErrorResponse(error)) {
-        clearCheckoutIdempotencyKey();
-        clearCheckoutPendingOrder();
-      }
-      showCheckoutMessage('error', getApiErrorMessage(error, t('pages.checkout.orderCreateFailed'), language));
     } finally {
       submittingRef.current = false;
-      setSubmitting(false);
     }
   };
 
   const retryCreatePayment = async () => {
-    if (!createdOrder) return;
+    if (!createdOrder || paymentRetryingRef.current) return;
+    paymentRetryingRef.current = true;
+    const requestSeq = paymentCreateRequestSeqRef.current + 1;
+    paymentCreateRequestSeqRef.current = requestSeq;
     setPaying(true);
     try {
       const guestOrderNo = guestPaymentEmail ? createdOrder.orderNo : undefined;
       const paymentRes = await paymentApi.create(createdOrder.id, pendingPaymentMethod, guestPaymentEmail, guestOrderNo);
+      if (paymentCreateRequestSeqRef.current !== requestSeq) return;
       setPayment(paymentRes.data);
       clearCheckoutIdempotencyKey();
       clearCheckoutPendingOrder();
@@ -1852,11 +1914,15 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
         showCheckoutMessage('error', t('pages.payment.failed'));
       }
     } catch (error: unknown) {
+      if (paymentCreateRequestSeqRef.current !== requestSeq) return;
       const localizedError = getApiErrorMessage(error, t('pages.payment.createFailed'), language);
       setPaymentCreateError(localizedError);
       showCheckoutMessage('error', localizedError);
     } finally {
-      setPaying(false);
+      if (paymentCreateRequestSeqRef.current === requestSeq) {
+        setPaying(false);
+      }
+      paymentRetryingRef.current = false;
     }
   };
 
@@ -1877,7 +1943,8 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
   };
 
   const simulatePayment = async () => {
-    if (!payment) return;
+    if (!payment || paymentSimulatingRef.current) return;
+    paymentSimulatingRef.current = true;
     setSimulatingPayment(true);
     try {
       const paymentRes = await paymentApi.simulateCallback(payment.id);
@@ -1892,14 +1959,16 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
       showCheckoutMessage('error', getApiErrorMessage(error, t('pages.checkout.simulatePaymentFailed'), language));
     } finally {
       setSimulatingPayment(false);
+      paymentSimulatingRef.current = false;
     }
   };
 
   const restoreSubmittedCartItems = async () => {
     const hasToken = hasAuthenticatedCartSession();
+    const submittedCartItems = submittedCartItemsRef.current.length > 0 ? submittedCartItemsRef.current : cartItems;
     if (hasToken) {
       const results = await allSettledWithConcurrency(
-        cartItems,
+        submittedCartItems,
         (item) => cartApi.addItem(0, item.productId, item.quantity, item.selectedSpecs),
       );
       const failed = results.find((result) => result.status === 'rejected') as PromiseRejectedResult | undefined;
@@ -1909,7 +1978,7 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
       dispatchDomEvent('shop:cart-updated');
       return;
     }
-    const productIds = Array.from(new Set(cartItems.map((item) => item.productId).filter((id) => Number.isFinite(Number(id)) && Number(id) > 0)));
+    const productIds = Array.from(new Set(submittedCartItems.map((item) => item.productId).filter((id) => Number.isFinite(Number(id)) && Number(id) > 0)));
     let latestProducts = new Map<number, Product>();
     if (productIds.length > 0) {
       try {
@@ -1919,7 +1988,7 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
         reportNonBlockingError('checkout.restoreSubmittedCartItems product refresh failed', error);
       }
     }
-    cartItems.forEach((item) => {
+    submittedCartItems.forEach((item) => {
       const latestProduct = latestProducts.get(item.productId);
       const restorePrice = resolveGuestRestorePrice(item, latestProduct);
       addGuestCartItem({
@@ -1980,6 +2049,12 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
   }, [payment?.id]);
 
   useEffect(() => {
+    if (guestPaymentEmail && normalizeStatusCode(paymentStatus) === 'PAID') {
+      removeSessionStorageItem(CHECKOUT_GUEST_DRAFT_KEY);
+    }
+  }, [guestPaymentEmail, paymentStatus]);
+
+  useEffect(() => {
     if (!createdOrderId || paymentStatus !== 'PENDING') {
       paymentPollStartedAtRef.current = null;
     }
@@ -1988,22 +2063,31 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
   useEffect(() => {
     if (!createdOrderId || payment || !pendingPaymentMethod) return;
     let disposed = false;
+    const abortController = createApiAbortController();
     const timer = window.setTimeout(async () => {
+      if (disposed || abortController.signal.aborted) return;
       try {
         const hasToken = hasAuthenticatedCartSession();
         const guestOrderNo = !hasToken && guestPaymentEmail ? createdOrderNo : undefined;
-        const paymentRes = await paymentApi.getLatestByOrder(createdOrderId, hasToken ? undefined : guestPaymentEmail, guestOrderNo);
-        if (!disposed) {
+        const paymentRes = await paymentApi.getLatestByOrder(
+          createdOrderId,
+          hasToken ? undefined : guestPaymentEmail,
+          guestOrderNo,
+          { signal: abortController.signal },
+        );
+        if (!disposed && !abortController.signal.aborted) {
           setPayment(paymentRes.data);
           setPaymentCreateError(null);
         }
       } catch (error) {
+        if (disposed || abortController.signal.aborted) return;
         reportNonBlockingError('Checkout.refreshSubmittedPayment', error);
       }
     }, 1500);
     return () => {
       disposed = true;
       window.clearTimeout(timer);
+      abortController.abort();
     };
   }, [createdOrderId, createdOrderNo, guestPaymentEmail, payment, pendingPaymentMethod]);
 
@@ -2017,6 +2101,7 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
     paymentPollStartedAtRef.current = pollStartedAt;
     let disposed = false;
     let polling = false;
+    let pollAbortController: AbortController | null = null;
     let ownsLock = false;
     let webLockUnavailable = false;
     let webLockSession: CheckoutPaymentPollWebLockSession | null = null;
@@ -2024,6 +2109,10 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
     const releaseWebLockSession = () => {
       webLockSession?.release();
       webLockSession = null;
+    };
+    const abortActivePollRequest = () => {
+      pollAbortController?.abort();
+      pollAbortController = null;
     };
     const getWebLockSession = async () => {
       if (webLockUnavailable) return null;
@@ -2101,8 +2190,18 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
           ownsLock = ownsLock || ownsThisPoll;
         }
         if (disposed || !ownsThisPoll) return;
-        const paymentRes = await paymentApi.getLatestByOrder(createdOrderId, shouldRefreshOrder ? undefined : guestPaymentEmail, guestOrderNo);
-        if (disposed) return;
+        const abortController = createApiAbortController();
+        pollAbortController = abortController;
+        const paymentRes = await paymentApi.getLatestByOrder(
+          createdOrderId,
+          shouldRefreshOrder ? undefined : guestPaymentEmail,
+          guestOrderNo,
+          { signal: abortController.signal },
+        );
+        if (pollAbortController === abortController) {
+          pollAbortController = null;
+        }
+        if (disposed || abortController.signal.aborted) return;
         const latestPayment = paymentRes.data;
         setPayment(latestPayment);
         writeCheckoutPaymentPollResult(createdOrderId, ownerId, latestPayment);
@@ -2118,8 +2217,10 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
           writeCheckoutPaymentPollResult(createdOrderId, ownerId, latestPayment, orderRes.data);
         }
       } catch (error) {
+        if (disposed || pollAbortController?.signal.aborted) return;
         reportNonBlockingError('Checkout.pollPendingPayment', error);
       } finally {
+        pollAbortController = null;
         polling = false;
         if (disposed && ownsStorageLockForPoll && ownsThisPoll) {
           releaseCheckoutPaymentPollLock(createdOrderId, ownerId);
@@ -2136,6 +2237,7 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
       disposed = true;
       window.clearInterval(timer);
       window.removeEventListener('storage', handlePaymentPollStorage);
+      abortActivePollRequest();
       if (shouldReleaseLock) {
         releaseCheckoutPaymentPollLock(createdOrderId, ownerId);
       }
@@ -2167,7 +2269,13 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
   if (loading) {
     return (
       <Form form={form} component={false}>
-        <div className={`checkout-page checkout-page--loading checkout-page--${language}`}>
+        <div
+          className={`checkout-page checkout-page--loading checkout-page--${language}`}
+          role="status"
+          aria-live="polite"
+          aria-busy="true"
+          aria-label={t('common.loading')}
+        >
           {renderCheckoutStatusLiveRegion()}
           <Spin size="large" />
         </div>
@@ -2217,6 +2325,7 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
     const backHomeActionLabel = `${t('pages.checkout.backHome')}: ${orderPaymentContext}`;
     const supportActionLabel = `${t('pages.checkout.nextActionSupport')}: ${orderPaymentContext}`;
     const simulatePaymentActionLabel = `${t('pages.checkout.simulatePay')}: ${orderPaymentContext}`;
+    const paymentExpiresAtText = formatCheckoutDateTime(payment.expiresAt, dateLocale);
     const paymentRecovery = getPaymentRecoveryState(payment);
     const paymentRecoveryTone = paid
       ? 'success'
@@ -2305,7 +2414,7 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
             <Text>{t('pages.checkout.shippingFee')}: <span className="commerce-money">{formatMoney(createdOrder.shippingFee)}</span></Text>
             <Text>{t('pages.checkout.paymentStatus')}: <Tag color={getPaymentStatusColor(payment.status)}>{formatPaymentStatusLabel(payment.status)}</Tag></Text>
             <Text className="checkout-page__paymentUrl">{t('pages.checkout.paymentLink')}: {formatPaymentUrlLabel(payment.paymentUrl)}</Text>
-            {payment.expiresAt && <Text>{t('pages.checkout.paymentExpiresAt')}: {new Date(payment.expiresAt).toLocaleString(dateLocale)}</Text>}
+            {paymentExpiresAtText ? <Text>{t('pages.checkout.paymentExpiresAt')}: {paymentExpiresAtText}</Text> : null}
             {payment.transactionId && <Text>{t('pages.checkout.transactionId')}: {payment.transactionId}</Text>}
           </Space>
         </Card>
@@ -2468,7 +2577,21 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
       <Card title={t('pages.checkout.expressCheckout')} className="checkout-page__expressCard">
         <div className="checkout-page__paymentGrid" role="radiogroup" aria-label={t('pages.payment.title')} aria-required="true">
           {!paymentMethodsAvailable ? (
-            <Alert type="warning" showIcon message={t('pages.checkout.paymentUnavailable')} description={t('pages.checkout.paymentUnavailableDescription')} />
+            <Alert
+              type="warning"
+              showIcon
+              message={t('pages.checkout.paymentUnavailable')}
+              description={paymentChannelsError || t('pages.checkout.paymentUnavailableDescription')}
+              action={(
+                <Button
+                  size="small"
+                  onClick={() => setPaymentChannelsReloadKey((key) => key + 1)}
+                  loading={paymentChannelsLoading}
+                >
+                  {t('messages.retry')}
+                </Button>
+              )}
+            />
           ) : null}
           {paymentMethodDetails.map((method, index) => {
             const checked = watchedPaymentMethod === method.value;
@@ -3030,7 +3153,21 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
             </span>
           </div>
           {!paymentMethodsAvailable ? (
-            <Alert type="warning" showIcon message={t('pages.checkout.paymentUnavailable')} description={t('pages.checkout.paymentUnavailableDescription')} />
+            <Alert
+              type="warning"
+              showIcon
+              message={t('pages.checkout.paymentUnavailable')}
+              description={paymentChannelsError || t('pages.checkout.paymentUnavailableDescription')}
+              action={(
+                <Button
+                  size="small"
+                  onClick={() => setPaymentChannelsReloadKey((key) => key + 1)}
+                  loading={paymentChannelsLoading}
+                >
+                  {t('messages.retry')}
+                </Button>
+              )}
+            />
           ) : null}
           <Form.Item name="paymentMethod" rules={[{ required: true, message: t('pages.checkout.paymentRequired') }]} hidden>
             <Input />

@@ -21,6 +21,7 @@ import java.util.function.Function;
 @Service
 public class JwtService {
     private static final long JWT_NUMERIC_DATE_PRECISION_MS = 1000L;
+    private static final String PASSWORD_CHANGED_AT_CLAIM = "pwdChangedAt";
 
     private final RuntimeConfigService runtimeConfig;
     private final String jwtSecret;
@@ -51,6 +52,9 @@ public class JwtService {
             UserDetailsImpl user = (UserDetailsImpl) userDetails;
             claims.putIfAbsent("userId", user.getId());
             claims.putIfAbsent("email", user.getEmail());
+            if (user.getPasswordChangedAt() != null) {
+                claims.putIfAbsent(PASSWORD_CHANGED_AT_CLAIM, toEpochMillis(user.getPasswordChangedAt()));
+            }
         }
         String jti = UUID.randomUUID().toString();
         return Jwts.builder()
@@ -95,8 +99,31 @@ public class JwtService {
         if (issuedAt == null) {
             return true;
         }
-        long changedAtMillis = passwordChangedAt.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
+        long changedAtMillis = toEpochMillis(passwordChangedAt);
+        Long tokenPasswordChangedAt = extractPasswordChangedAt(token);
+        if (tokenPasswordChangedAt != null) {
+            return tokenPasswordChangedAt < changedAtMillis;
+        }
         return issuedAt.getTime() + JWT_NUMERIC_DATE_PRECISION_MS < changedAtMillis;
+    }
+
+    private Long extractPasswordChangedAt(String token) {
+        Object value = extractClaim(token, claims -> claims.get(PASSWORD_CHANGED_AT_CLAIM));
+        if (value instanceof Number) {
+            return ((Number) value).longValue();
+        }
+        if (value instanceof String) {
+            try {
+                return Long.parseLong((String) value);
+            } catch (NumberFormatException ex) {
+                return null;
+            }
+        }
+        return null;
+    }
+
+    private long toEpochMillis(LocalDateTime dateTime) {
+        return dateTime.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
     }
 
     private Date extractExpiration(String token) {

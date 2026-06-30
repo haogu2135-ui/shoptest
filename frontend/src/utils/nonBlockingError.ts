@@ -224,6 +224,7 @@ const remoteReportingEnabled = () => normalizeBoolean(
     : process.env.REACT_APP_CLIENT_ERROR_REPORTING,
   process.env.NODE_ENV !== 'test',
 );
+const shouldLogClientErrorsToConsole = () => process.env.NODE_ENV !== 'production';
 
 const currentPath = () => {
   if (typeof window === 'undefined' || !window.location) return '';
@@ -306,14 +307,14 @@ const sendRemoteReport = (payload: ClientErrorReportPayload) => {
       }).catch(() => undefined);
     }
   } catch (_error) {
-    if (typeof console !== 'undefined' && typeof console.debug === 'function') {
+    if (shouldLogClientErrorsToConsole() && typeof console !== 'undefined' && typeof console.debug === 'function') {
       console.debug('[shop] client error report dispatch skipped', _error);
     }
   }
 };
 
 export const reportNonBlockingError = (context: string, error: unknown) => {
-  if (typeof console !== 'undefined' && typeof console.warn === 'function') {
+  if (shouldLogClientErrorsToConsole() && typeof console !== 'undefined' && typeof console.warn === 'function') {
     console.warn(`[shop] ${context}`, error);
   }
   sendRemoteReport(buildNonBlockingErrorReport(context, error));

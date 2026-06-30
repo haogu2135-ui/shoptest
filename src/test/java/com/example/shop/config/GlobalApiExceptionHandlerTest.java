@@ -9,6 +9,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.NoHandlerFoundException;
@@ -17,6 +19,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import javax.validation.ConstraintViolation;
 import javax.validation.ConstraintViolationException;
 import javax.validation.Path;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.time.Instant;
 import java.util.Map;
 import java.util.Set;
@@ -37,6 +41,15 @@ class GlobalApiExceptionHandlerTest {
     private final GlobalApiExceptionHandler handler = new GlobalApiExceptionHandler(
             new ApiErrorResponseFactory(),
             mock(SystemAlertService.class));
+
+    @Test
+    void duplicateKeyExceptionsAreNotCollapsedIntoBadRequestHandler() throws Exception {
+        String source = Files.readString(Paths.get("src/main/java/com/example/shop/config/GlobalApiExceptionHandler.java"));
+
+        assertFalse(source.contains("DuplicateKeyException"));
+        assertFalse(source.contains("DataIntegrityViolationException.class"));
+        assertTrue(source.contains("@ExceptionHandler(Exception.class)"));
+    }
 
     @Test
     void responseStatusExceptionUsesUniformPayloadWithRequestId() {
@@ -168,6 +181,28 @@ class GlobalApiExceptionHandlerTest {
         assertNotNull(body);
         assertEquals("Bad request", body.get("error"));
         assertFalse(String.valueOf(body).contains("RedisTemplate"));
+    }
+
+    @Test
+    void badRequestFiltersExternalIllegalArgumentMessages() throws Exception {
+        MockHttpServletRequest request = request("/orders/track");
+        IllegalArgumentException exception = new IllegalArgumentException("Inventory lookup failed");
+        exception.setStackTrace(new StackTraceElement[]{
+                new StackTraceElement("org.hibernate.engine.jdbc.spi.SqlExceptionHelper", "convert", "SqlExceptionHelper.java", 120)
+        });
+
+        ResponseEntity<Map<String, Object>> response = handler.handleBadRequest(exception, request);
+
+        Map<String, Object> body = response.getBody();
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertNotNull(body);
+        assertEquals("Bad request", body.get("error"));
+        assertFalse(String.valueOf(body).contains("Inventory lookup failed"));
+        String source = java.nio.file.Files.readString(
+                java.nio.file.Paths.get("src/main/java/com/example/shop/config/GlobalApiExceptionHandler.java"));
+        assertTrue(source.contains("safeBusinessExceptionMessage(exception)"));
+        assertTrue(source.contains("className.startsWith(\"com.example.shop.\")"));
+        assertTrue(source.contains("(?:[a-z_$][\\\\w$]*\\\\.){2,}[a-z_$][\\\\w$]*"));
     }
 
     @Test
@@ -310,6 +345,7 @@ class GlobalApiExceptionHandlerTest {
         assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
         assertNotNull(response.getBody());
         assertEquals("Forbidden", response.getBody().get("error"));
+        verify(systemAlertService).recordException(eq(exception), eq(HttpStatus.FORBIDDEN), eq(request));
         verify(systemAlertService).recordSecurityEvent(
                 eq("WARNING"),
                 eq("ACCESS_DENIED"),
@@ -322,6 +358,29 @@ class GlobalApiExceptionHandlerTest {
         assertTrue(logs.contains("/admin/orders/42"));
         assertTrue(logs.contains("req-denied-403"));
         assertTrue(logs.contains("missing orders:payment permission"));
+    }
+
+    @Test
+    void methodAndMediaTypeErrorsRecordAlerts() {
+        SystemAlertService systemAlertService = mock(SystemAlertService.class);
+        GlobalApiExceptionHandler handler = new GlobalApiExceptionHandler(
+                new ApiErrorResponseFactory(),
+                systemAlertService);
+        MockHttpServletRequest request = request("/orders/me");
+        HttpRequestMethodNotSupportedException methodException =
+                new HttpRequestMethodNotSupportedException("PATCH", new String[]{"GET"});
+        HttpMediaTypeNotSupportedException mediaTypeException =
+                new HttpMediaTypeNotSupportedException("application/xml");
+
+        ResponseEntity<Map<String, Object>> methodResponse = handler.handleMethodNotAllowed(methodException, request);
+        ResponseEntity<Map<String, Object>> mediaTypeResponse = handler.handleUnsupportedMediaType(mediaTypeException, request);
+
+        assertEquals(HttpStatus.METHOD_NOT_ALLOWED, methodResponse.getStatusCode());
+        assertEquals("Method not allowed", methodResponse.getBody().get("error"));
+        assertEquals(HttpStatus.UNSUPPORTED_MEDIA_TYPE, mediaTypeResponse.getStatusCode());
+        assertEquals("Unsupported media type", mediaTypeResponse.getBody().get("error"));
+        verify(systemAlertService).recordException(eq(methodException), eq(HttpStatus.METHOD_NOT_ALLOWED), eq(request));
+        verify(systemAlertService).recordException(eq(mediaTypeException), eq(HttpStatus.UNSUPPORTED_MEDIA_TYPE), eq(request));
     }
 
     @Test

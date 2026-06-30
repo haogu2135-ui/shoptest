@@ -259,7 +259,7 @@ export interface AdminLogManagementStatus {
     configuredLevel: string;
     effectiveLevel: string;
     debugEnabled: boolean;
-    logDirectory: string;
+    logDirectory?: string | null;
     logFileName: string;
     availableFiles: string[];
     totalLogBytes: number;
@@ -339,21 +339,24 @@ export interface SystemAlertPurgeResponse {
     purgedBefore: string;
 }
 
+export type AdminBugReportSeverity = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+export type AdminBugReportPriority = 'P0' | 'P1' | 'P2' | 'P3';
+export type AdminBugReportStatus = 'OPEN' | 'FIXING' | 'FIXED_PENDING_REGRESSION' | 'REGRESSION_PASSED' | 'REGRESSION_FAILED' | 'CLOSED' | 'NON_ISSUE';
+
 export interface AdminBugReport {
     id: number;
     title: string;
     description: string;
     module: string;
-    severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' | string;
-    priority: 'P0' | 'P1' | 'P2' | 'P3' | string;
-    status: 'OPEN' | 'FIXING' | 'FIXED_PENDING_REGRESSION' | 'REGRESSION_PASSED' | 'REGRESSION_FAILED' | 'CLOSED' | 'NON_ISSUE' | string;
+    severity: AdminBugReportSeverity;
+    priority: AdminBugReportPriority;
+    status: AdminBugReportStatus;
     pageUrl?: string;
     environment?: string;
     reproductionSteps?: string;
     expectedResult?: string;
     actualResult?: string;
     attachmentUrls?: string;
-    reporterId?: number;
     reporterName?: string;
     assignedTo?: string;
     scanNote?: string;
@@ -361,12 +364,14 @@ export interface AdminBugReport {
     regressionNote?: string;
     lastScannedAt?: string;
     fixedAt?: string;
-    fixedBy?: string;
     regressionAt?: string;
-    regressionBy?: string;
     closedAt?: string;
     createdAt?: string;
     updatedAt?: string;
+}
+
+export interface AdminBugAttachmentUploadResponse {
+    attachmentUrl: string;
 }
 
 export interface AdminBugReportPage {
@@ -768,6 +773,7 @@ export interface Order {
     recipientPhone?: string;
     contactEmail?: string;
     paymentMethod?: string;
+    currency?: string;
     trackingNumber?: string;
     trackingCarrierCode?: string;
     trackingCarrierName?: string;
@@ -804,6 +810,7 @@ export interface OrderCustomer {
     recipientPhone?: string;
     contactEmail?: string;
     paymentMethod?: string;
+    currency?: string;
     trackingNumber?: string;
     trackingCarrierCode?: string;
     trackingCarrierName?: string;
@@ -1166,6 +1173,7 @@ export interface PaymentCustomer {
     orderNo: string;
     amount: number;
     channel: string;
+    currency?: string;
     status: string;
     paymentUrl?: string;
     transactionId?: string;

@@ -10,7 +10,9 @@
 }
 
 .shop-nav__announcement {
+  position: relative;
   overflow: hidden;
+  padding-inline-end: 44px;
   background: linear-gradient(90deg, #fff7f0, #f8fcf9 52%, #e6f1e9);
   color: #124734;
   font-size: 13px;
@@ -38,8 +40,36 @@
   box-shadow: 0 8px 18px rgba(238, 77, 45, 0.22);
 }
 
-.shop-nav__announcement:hover .shop-nav__ticker {
+.shop-nav__announcement:hover .shop-nav__ticker,
+.shop-nav__announcement:focus-within .shop-nav__ticker,
+.shop-nav__announcement--paused .shop-nav__ticker {
   animation-play-state: paused;
+}
+
+.shop-nav__announcementToggle {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  z-index: 2;
+  width: 28px;
+  height: 28px;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid rgba(18, 71, 52, 0.24);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.92);
+  color: #124734 !important;
+  box-shadow: 0 4px 10px rgba(18, 71, 52, 0.14);
+  transform: translateY(-50%);
+}
+
+.shop-nav__announcementToggle:hover {
+  background: #ffffff;
+  color: #ee4d2d !important;
+}
+
+.shop-nav__announcementToggle .anticon {
+  font-size: 15px;
 }
 
 @keyframes shopTicker {
@@ -3158,18 +3188,29 @@ body.shop-mobile-app .shop-nav__bottomItem--active .ant-badge + span {
   }
 }
 
-/* F3393: Spanish "Productos" needs one extra character of room on 360px phones. */
+/* F3393: 360px phones need two-line bottom labels before the icon-only fallback. */
 @media (min-width: 341px) and (max-width: 380px) {
-  .shop-nav__bottomBar--es:not(.shop-nav__bottomBar--native) {
-    grid-template-columns: 0.94fr 1.1fr 1fr 0.98fr 0.88fr 1fr;
+  .shop-nav__bottomBar {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
     column-gap: 3px;
   }
 
-  .shop-nav__bottomBar--es .shop-nav__bottomItem--products span:not(.anticon):not(.ant-badge):not(.ant-scroll-number) {
-    font-size: 9.5px !important;
+  .shop-nav__bottomBar--native {
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+  }
+
+  .shop-nav__bottomBar .shop-nav__bottomItem span:not(.anticon):not(.ant-badge):not(.ant-scroll-number) {
+    display: -webkit-box;
+    overflow: hidden;
+    max-width: 100%;
+    font-size: 9px !important;
     letter-spacing: 0;
-    line-height: 1.05;
+    line-height: 1.08;
     text-overflow: clip;
+    white-space: normal !important;
+    overflow-wrap: anywhere;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
   }
 }
 

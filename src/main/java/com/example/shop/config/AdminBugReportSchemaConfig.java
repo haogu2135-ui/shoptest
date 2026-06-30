@@ -17,6 +17,7 @@ public class AdminBugReportSchemaConfig {
             jdbcTemplate.execute(
                     "CREATE TABLE IF NOT EXISTS admin_bug_reports ("
                             + "id BIGINT PRIMARY KEY AUTO_INCREMENT,"
+                            + "version BIGINT NOT NULL DEFAULT 0,"
                             + "title VARCHAR(160) NOT NULL,"
                             + "description TEXT NOT NULL,"
                             + "module VARCHAR(40) NOT NULL DEFAULT 'GENERAL',"
@@ -56,6 +57,7 @@ public class AdminBugReportSchemaConfig {
 
     private void ensureColumns() {
         ensureColumn("title", "VARCHAR(160) NOT NULL DEFAULT ''");
+        ensureColumn("version", "BIGINT NOT NULL DEFAULT 0");
         ensureColumn("description", "TEXT");
         ensureColumn("module", "VARCHAR(40) NOT NULL DEFAULT 'GENERAL'");
         ensureColumn("severity", "VARCHAR(20) NOT NULL DEFAULT 'MEDIUM'");

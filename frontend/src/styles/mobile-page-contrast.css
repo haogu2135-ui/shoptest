@@ -125,11 +125,11 @@ body.shop-mobile-app.shop-mobile-app .shop-app-shell--auth-flow :where(
   .register-page__card .ant-btn-primary:not(:disabled):not(.ant-btn-disabled),
   .register-page__actions .ant-btn-primary:not(:disabled):not(.ant-btn-disabled)
 ) {
-  background: #a8321f !important;
-  border-color: #a8321f !important;
-  color: #ffffff !important;
-  -webkit-text-fill-color: #ffffff !important;
-  box-shadow: 0 8px 20px rgba(168, 50, 31, 0.22) !important;
+  background: var(--login-accent-hover, #a8321f) !important;
+  border-color: var(--login-accent-hover, #a8321f) !important;
+  color: var(--login-surface, #ffffff) !important;
+  -webkit-text-fill-color: var(--login-surface, #ffffff) !important;
+  box-shadow: 0 8px 20px rgba(var(--login-accent-hover-rgb, 168, 50, 31), 0.22) !important;
 }
 
 body.shop-mobile-app.shop-mobile-app .shop-app-shell--auth-flow :where(
@@ -152,8 +152,8 @@ body.shop-mobile-app.shop-mobile-app .shop-app-shell--auth-flow :where(
   .register-page__actions .ant-btn-primary:not(:disabled):not(.ant-btn-disabled):hover,
   .register-page__actions .ant-btn-primary:not(:disabled):not(.ant-btn-disabled):focus-visible
 ) {
-  background: #8f2d17 !important;
-  border-color: #8f2d17 !important;
+  background: var(--login-link-active, #8f2d17) !important;
+  border-color: var(--login-link-active, #8f2d17) !important;
 }
 
 body.shop-mobile-app :where(.ant-form-item-explain-error, .ant-typography-danger) {
@@ -201,6 +201,19 @@ body.shop-mobile-app.shop-mobile-app .shop-app-shell .cart-page__savedItem > a[h
   color: inherit !important;
   -webkit-text-fill-color: currentColor !important;
   text-decoration: none !important;
+  text-underline-offset: initial !important;
+}
+
+body.shop-mobile-app.shop-mobile-app .shop-app-shell a.product-list__imageButton[href],
+body.shop-mobile-app.shop-mobile-app .shop-app-shell a.product-list__imageButton[href]:hover,
+body.shop-mobile-app.shop-mobile-app .shop-app-shell a.product-list__imageButton[href]:focus-visible {
+  width: 100% !important;
+  height: 100% !important;
+  display: block !important;
+  color: inherit !important;
+  -webkit-text-fill-color: currentColor !important;
+  text-decoration: none !important;
+  outline-offset: -3px !important;
 }
 
 body.shop-mobile-app.shop-mobile-app .shop-app-shell a.product-list__titleLink[href],
@@ -212,6 +225,18 @@ body.shop-mobile-app.shop-mobile-app .shop-app-shell .cart-page__savedInfo > a[h
   color: #173f2b !important;
   -webkit-text-fill-color: #173f2b !important;
   text-decoration: none !important;
+  text-underline-offset: initial !important;
+}
+
+body.shop-mobile-app.shop-mobile-app .shop-app-shell a.product-list__titleLink[href] {
+  display: -webkit-box !important;
+  min-height: 44px !important;
+  align-items: flex-start !important;
+  overflow: hidden !important;
+  line-height: 18px !important;
+  white-space: normal !important;
+  -webkit-box-orient: vertical !important;
+  -webkit-line-clamp: 2 !important;
 }
 
 body.shop-mobile-app.shop-mobile-app .shop-app-shell a.product-list__titleLink[href]:hover,
@@ -249,7 +274,7 @@ body.shop-mobile-app.shop-mobile-app .shop-app-shell--auth-flow :where(
   .shopee-login-quickLinks a[href]:hover,
   .shopee-login-quickLinks a[href]:focus-visible
 ) {
-  color: #a8321f !important;
-  -webkit-text-fill-color: #a8321f !important;
+  color: var(--login-accent-hover, #a8321f) !important;
+  -webkit-text-fill-color: var(--login-accent-hover, #a8321f) !important;
   text-decoration: none !important;
 }

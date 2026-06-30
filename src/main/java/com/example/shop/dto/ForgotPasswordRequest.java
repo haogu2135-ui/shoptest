@@ -10,13 +10,16 @@ import lombok.Data;
 @Data
 public class ForgotPasswordRequest {
     @NotBlank(message = "Login is required")
+    @Size(max = 120, message = "Login identifier is too long")
     private String login;
 
     @NotBlank(message = "Email is required")
+    @Size(max = 100, message = "Email is too long")
     @Email(message = "Email is invalid")
     private String email;
 
     @NotBlank(message = "Verification code is required")
+    @Size(min = 6, max = 6, message = "Verification code must be 6 digits")
     @Pattern(regexp = "\\d{6}", message = "Verification code must be 6 digits")
     private String code;
 

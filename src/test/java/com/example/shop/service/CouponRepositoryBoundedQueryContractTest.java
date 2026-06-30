@@ -68,6 +68,22 @@ class CouponRepositoryBoundedQueryContractTest {
                 + String.join("\n", offenders));
     }
 
+    @Test
+    void staleCouponAdminExpirationBatchPathIsAbsent() throws IOException {
+        String service = read("src/main/java/com/example/shop/service/CouponService.java");
+        String repository = read("src/main/java/com/example/shop/repository/CouponRepository.java");
+
+        assertTrue(Files.notExists(Path.of("src/main/java/com/example/shop/service/CouponAdminService.java")));
+        assertFalse(service.contains("expireCoupons("));
+        assertFalse(service.contains("couponRepository.findExpiring"));
+        assertFalse(service.contains("couponRepository.saveAll"));
+        assertFalse(repository.contains("findExpiring("));
+        assertTrue(service.contains("searchAdminCoupons("));
+        assertTrue(service.contains("PageRequest.of(safePage, safeSize, Sort.by(Sort.Direction.DESC, \"id\"))"));
+        assertTrue(service.contains("countAdminActiveExpiringBetween("));
+        assertTrue(repository.contains("long countAdminActiveExpiringBetween("));
+    }
+
     private static void collectNoArgCouponFindAll(Path path, List<String> offenders) {
         collectMatches(path, "couponRepository.findAll()", offenders);
     }

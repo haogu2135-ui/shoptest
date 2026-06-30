@@ -90,6 +90,15 @@
   margin-bottom: 16px;
 }
 
+.review-management-page__loadAlert {
+  margin-bottom: 16px;
+}
+
+.review-management-page__loadAlert .ant-alert-message,
+.review-management-page__loadAlert .ant-alert-description {
+  overflow-wrap: anywhere;
+}
+
 .review-management-page .ant-table-cell {
   overflow-wrap: anywhere;
 }

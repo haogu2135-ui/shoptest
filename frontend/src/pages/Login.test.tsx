@@ -1,7 +1,8 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, useLocation } from 'react-router-dom';
-import { clearStoredAuthCredentials, clearStoredAuthSession, userApi } from '../api';
-import { hasStoredValue } from '../utils/safeStorage';
+import { cartApi, clearStoredAuthCredentials, persistAuthSession, userApi } from '../api';
+import type { CartItem } from '../types';
+import { getGuestCartItems, replaceGuestCartItems } from '../utils/guestCart';
 import Login from './Login';
 
 let mockLanguage = 'en';
@@ -14,7 +15,6 @@ const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\
 jest.mock('../api', () => ({
   cartApi: { addItem: jest.fn() },
   clearStoredAuthCredentials: jest.fn(),
-  clearStoredAuthSession: jest.fn(),
   persistAuthSession: jest.fn(),
   userApi: {
     emailLogin: jest.fn(),
@@ -46,8 +46,11 @@ jest.mock('../i18n', () => ({
           'pages.auth.emailLoginFailed': 'Email code login failed',
           'pages.auth.emailLoginHint': 'Use a one-time email code.',
           'pages.auth.emailLoginTrust': 'Email login trust signals',
+          'pages.auth.cartMerged': (value) => `Merged ${value?.count} guest cart items`,
+          'pages.auth.cartMergePartial': (value) => `Merged ${value?.count} guest cart items; some remain`,
           'pages.auth.loginFailed': 'Incorrect username or password',
           'pages.auth.loginHeroSubtitle': 'Keep checkout ready.',
+          'pages.auth.loginSuccess': 'Logged in',
           'pages.auth.loginTitle': 'Log in',
           'pages.auth.loginTrustCart': 'Recover guest cart',
           'pages.auth.loginTrustSecure': 'Secure account',
@@ -137,14 +140,13 @@ jest.mock('../utils/authRedirect', () => ({
 }));
 
 jest.mock('../utils/guestCart', () => ({
-  getGuestCartItems: () => [],
+  getGuestCartItems: jest.fn(() => []),
   replaceGuestCartItems: jest.fn(),
 }));
 
 jest.mock('../utils/safeStorage', () => ({
   getLocalStorageItem: jest.fn(() => null),
   getSessionStorageItem: jest.fn(() => null),
-  hasStoredValue: jest.fn(() => false),
   removeSessionStorageItem: jest.fn(),
 }));
 
@@ -158,6 +160,16 @@ const LocationProbe = () => {
   const location = useLocation();
   return <span data-testid="location">{location.pathname}{location.search}</span>;
 };
+
+const makeGuestCartItem = (overrides: Partial<CartItem> = {}): CartItem => ({
+  id: 1001,
+  productId: 501,
+  quantity: 1,
+  productName: 'Harness kibble',
+  imageUrl: '/products/harness-kibble.png',
+  price: 12.5,
+  ...overrides,
+});
 
 describe('Login CSS contracts', () => {
   it('keeps the login page responsive across desktop, tablet, and narrow mobile rails', () => {
@@ -201,7 +213,14 @@ describe('Login accessibility labels', () => {
   beforeEach(() => {
     mockLanguage = 'en';
     jest.clearAllMocks();
-    (hasStoredValue as jest.Mock).mockReturnValue(false);
+    (userApi.login as jest.Mock).mockReset();
+    (userApi.emailLogin as jest.Mock).mockReset();
+    (userApi.sendEmailLoginCode as jest.Mock).mockReset();
+    (cartApi.addItem as jest.Mock).mockReset();
+    (persistAuthSession as jest.Mock).mockReset();
+    (getGuestCartItems as jest.Mock).mockReset();
+    (replaceGuestCartItems as jest.Mock).mockReset();
+    (getGuestCartItems as jest.Mock).mockReturnValue([]);
   });
 
   it('gives password and email login fields durable contextual names', () => {
@@ -260,13 +279,15 @@ describe('Login accessibility labels', () => {
     expect(contrastStart).toBeGreaterThanOrEqual(0);
     expect(contrastCss).toContain('.shopee-login-card .ant-btn-primary:not(:disabled):not(.ant-btn-disabled)');
     expect(contrastCss).toContain('.register-page__card .ant-btn-primary:not(:disabled):not(.ant-btn-disabled)');
-    expect(contrastCss).toMatch(/background:\s*#a8321f\s*!important;/);
-    expect(contrastCss).toMatch(/border-color:\s*#a8321f\s*!important;/);
-    expect(contrastCss).toMatch(/color:\s*#ffffff\s*!important;/);
-    expect(contrastCss).toMatch(/-webkit-text-fill-color:\s*#ffffff\s*!important;/);
-    expect(contrastCss).toMatch(/:focus-visible[\s\S]*?background:\s*#8f2d17\s*!important;[\s\S]*?border-color:\s*#8f2d17\s*!important;/);
+    expect(contrastCss).toMatch(/background:\s*var\(--login-accent-hover,\s*#a8321f\)\s*!important;/);
+    expect(contrastCss).toMatch(/border-color:\s*var\(--login-accent-hover,\s*#a8321f\)\s*!important;/);
+    expect(contrastCss).toMatch(/color:\s*var\(--login-surface,\s*#ffffff\)\s*!important;/);
+    expect(contrastCss).toMatch(/-webkit-text-fill-color:\s*var\(--login-surface,\s*#ffffff\)\s*!important;/);
+    expect(contrastCss).toMatch(/box-shadow:\s*0 8px 20px rgba\(var\(--login-accent-hover-rgb,\s*168,\s*50,\s*31\),\s*0\.22\)\s*!important;/);
+    expect(contrastCss).toMatch(/:focus-visible[\s\S]*?background:\s*var\(--login-link-active,\s*#8f2d17\)\s*!important;[\s\S]*?border-color:\s*var\(--login-link-active,\s*#8f2d17\)\s*!important;/);
     expect(linkStart).toBeGreaterThanOrEqual(0);
     expect(linkCss).toContain('.shopee-login-links a[href]');
+    expect(linkCss).toMatch(/color:\s*var\(--login-accent-hover,\s*#a8321f\)\s*!important;/);
     expect(linkCss).toMatch(/text-decoration:\s*none\s*!important;/);
   });
 
@@ -281,6 +302,20 @@ describe('Login accessibility labels', () => {
     expect(guardCss).toMatch(/\.shop-app-shell--auth-flow \.shopee-login-appHeader__copy strong,[\s\S]*?\.shop-app-shell--auth-flow \.shopee-login-appHeader__copy span\s*\{[\s\S]*?color:\s*#ffffff\s*!important;[\s\S]*?white-space:\s*normal\s*!important;/);
     expect(guardCss).toMatch(/\.shop-app-shell--auth-flow \.shopee-login-appHeader__copy span\s*\{[\s\S]*?color:\s*#d8f1e3\s*!important;/);
     expect(guardCss).toMatch(/\.shop-app-shell--auth-flow \.shopee-login-appHeader__status\s*\{[\s\S]*?background:\s*rgba\(255,\s*255,\s*255,\s*0\.12\)\s*!important;[\s\S]*?color:\s*#ffffff\s*!important;/);
+  });
+
+  it('keeps localized APP login tabs and auth links tappable on narrow WebViews', () => {
+    const css = readMobileAppCss();
+    const guardStart = css.indexOf('F3592 APP closure');
+    const guardCss = css.slice(guardStart);
+
+    expect(guardStart).toBeGreaterThanOrEqual(0);
+    expect(guardCss).toContain('@media (max-width: 640px)');
+    expect(guardCss).toMatch(/\.shop-app-shell--auth-flow \.shopee-login-tabs \.ant-tabs-nav-list\s*\{[\s\S]*?grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)\s*!important;/);
+    expect(guardCss).toMatch(/\.shop-app-shell--auth-flow \.shopee-login-tabs \.ant-tabs-tab\s*\{[\s\S]*?min-height:\s*44px\s*!important;[\s\S]*?padding:\s*8px\s*!important;/);
+    expect(guardCss).toMatch(/\.shop-app-shell--auth-flow \.shopee-login-tabs \.ant-tabs-tab-btn\s*\{[\s\S]*?overflow-wrap:\s*anywhere\s*!important;[\s\S]*?white-space:\s*normal\s*!important;/);
+    expect(guardCss).toMatch(/\.shop-app-shell--auth-flow \.shopee-login-links\s*\{[\s\S]*?flex-wrap:\s*wrap\s*!important;[\s\S]*?gap:\s*8px 12px\s*!important;/);
+    expect(guardCss).toMatch(/\.shop-app-shell--auth-flow \.shopee-login-links a,[\s\S]*?\.shop-app-shell--auth-flow \.shopee-login-links button\s*\{[\s\S]*?min-width:\s*44px\s*!important;[\s\S]*?min-height:\s*44px\s*!important;[\s\S]*?overflow-wrap:\s*anywhere\s*!important;/);
   });
 
   it('keeps Login primary CTAs and validation errors contrast-safe outside APP', () => {
@@ -320,20 +355,17 @@ describe('Login accessibility labels', () => {
     });
   });
 
-  it('does not clear stored auth data when the login page mounts', () => {
+  it('clears stale auth credentials when the login page mounts without clearing browsing state', () => {
     render(
       <MemoryRouter initialEntries={['/login']}>
         <Login />
       </MemoryRouter>,
     );
 
-    expect(clearStoredAuthSession).not.toHaveBeenCalled();
-    expect(clearStoredAuthCredentials).not.toHaveBeenCalled();
+    expect(clearStoredAuthCredentials).toHaveBeenCalledTimes(1);
   });
 
-  it('redirects already authenticated users away from the login page without clearing their session', async () => {
-    (hasStoredValue as jest.Mock).mockImplementation((key: string) => key === 'token');
-
+  it('keeps explicit login visits on the login page so users can switch accounts', async () => {
     render(
       <MemoryRouter initialEntries={['/login?redirect=%2Fprofile']}>
         <Login />
@@ -341,9 +373,8 @@ describe('Login accessibility labels', () => {
       </MemoryRouter>,
     );
 
-    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/'));
-    expect(clearStoredAuthSession).not.toHaveBeenCalled();
-    expect(clearStoredAuthCredentials).not.toHaveBeenCalled();
+    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/login?redirect=%2Fprofile'));
+    expect(clearStoredAuthCredentials).toHaveBeenCalledTimes(1);
   });
 
   it('lets password-login users show and hide the typed password', () => {
@@ -368,12 +399,16 @@ describe('Login accessibility labels', () => {
 
     expect(source).toContain('const passwordSubmittingRef = useRef(false);');
     expect(source).toContain('const emailSubmittingRef = useRef(false);');
+    expect(source).toContain('const emailCodeSendingRef = useRef(false);');
     expect(source).toContain('if (passwordSubmittingRef.current) return;');
     expect(source).toContain('passwordSubmittingRef.current = true;');
     expect(source).toContain('passwordSubmittingRef.current = false;');
     expect(source).toContain('if (emailSubmittingRef.current) return;');
     expect(source).toContain('emailSubmittingRef.current = true;');
     expect(source).toContain('emailSubmittingRef.current = false;');
+    expect(source).toContain('if (emailCodeSendingRef.current) return;');
+    expect(source).toContain('emailCodeSendingRef.current = true;');
+    expect(source).toContain('emailCodeSendingRef.current = false;');
     expect(source).toMatch(/<Button type="primary" htmlType="submit"[\s\S]{0,180}loading={loading} disabled={loading}/);
   });
 
@@ -427,6 +462,28 @@ describe('Login accessibility labels', () => {
     await waitFor(() => expect(submitButton).toBeDisabled());
   });
 
+  it('does not send the email login code twice during the same pending request', async () => {
+    (userApi.sendEmailLoginCode as jest.Mock).mockReturnValue(new Promise(() => {}));
+
+    render(
+      <MemoryRouter initialEntries={['/login']}>
+        <Login />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Email code login' }));
+    fireEvent.change(screen.getByLabelText('Email code login: Log in: Email'), {
+      target: { value: 'customer@example.com' },
+    });
+    const sendButton = screen.getByRole('button', { name: 'Email code login: Log in: Send code' });
+
+    fireEvent.click(sendButton);
+    fireEvent.click(sendButton);
+
+    await waitFor(() => expect(userApi.sendEmailLoginCode).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(sendButton).toBeDisabled());
+  });
+
   it('keeps completeLogin constrained to the typed login session response', () => {
     const source = readLoginPageSource();
 
@@ -441,6 +498,72 @@ describe('Login accessibility labels', () => {
     expect(source).not.toContain('const completeLogin = async (responseData: any)');
   });
 
+  it('reads the guest cart once instead of rereading local storage on every login render', () => {
+    (getGuestCartItems as jest.Mock).mockReturnValue([makeGuestCartItem({ quantity: 2 })]);
+
+    render(
+      <MemoryRouter initialEntries={['/login']}>
+        <Login />
+      </MemoryRouter>,
+    );
+
+    expect(getGuestCartItems).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Email code login' }));
+    fireEvent.change(screen.getByLabelText('Email code login: Log in: Verification code'), {
+      target: { value: '123' },
+    });
+    fireEvent.click(screen.getByRole('tab', { name: 'Password login' }));
+
+    expect(getGuestCartItems).toHaveBeenCalledTimes(1);
+  });
+
+  it('sends guest cart merge requests in parallel and preserves failed items after login', async () => {
+    const firstItem = makeGuestCartItem({ id: 1001, productId: 501, quantity: 2, selectedSpecs: 'size=m' });
+    const failedItem = makeGuestCartItem({ id: 1002, productId: 502, quantity: 1, selectedSpecs: 'color=red' });
+    const thirdItem = makeGuestCartItem({ id: 1003, productId: 503, quantity: 3 });
+    let resolveFirst: (value?: unknown) => void = () => {};
+    let rejectSecond: (error?: unknown) => void = () => {};
+    let resolveThird: (value?: unknown) => void = () => {};
+
+    (getGuestCartItems as jest.Mock).mockReturnValue([firstItem, failedItem, thirdItem]);
+    (persistAuthSession as jest.Mock).mockReturnValue('session-token');
+    (userApi.login as jest.Mock).mockResolvedValue({
+      data: { id: 42, token: 'session-token', username: 'customer@example.com' },
+    });
+    (cartApi.addItem as jest.Mock)
+      .mockImplementationOnce(() => new Promise((resolve) => { resolveFirst = resolve; }))
+      .mockImplementationOnce(() => new Promise((_resolve, reject) => { rejectSecond = reject; }))
+      .mockImplementationOnce(() => new Promise((resolve) => { resolveThird = resolve; }));
+
+    render(
+      <MemoryRouter initialEntries={['/login']}>
+        <Login />
+      </MemoryRouter>,
+    );
+
+    fireEvent.change(screen.getByLabelText('Password login: Log in: Username'), {
+      target: { value: 'customer@example.com' },
+    });
+    fireEvent.change(screen.getByLabelText('Password login: Log in: Password'), {
+      target: { value: 'correct-password' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Password login: Log in' }));
+
+    await waitFor(() => expect(cartApi.addItem).toHaveBeenCalledTimes(3));
+    expect(cartApi.addItem).toHaveBeenNthCalledWith(1, 42, 501, 2, 'size=m');
+    expect(cartApi.addItem).toHaveBeenNthCalledWith(2, 42, 502, 1, 'color=red');
+    expect(cartApi.addItem).toHaveBeenNthCalledWith(3, 42, 503, 3, undefined);
+    expect(replaceGuestCartItems).not.toHaveBeenCalled();
+
+    resolveFirst({});
+    rejectSecond(new Error('stock unavailable'));
+    resolveThird({});
+
+    await waitFor(() => expect(replaceGuestCartItems).toHaveBeenCalledWith([failedItem]));
+    expect(getGuestCartItems).toHaveBeenCalledTimes(1);
+  });
+
   it('clears stale auth credentials before a failed password login attempt without clearing browsing state', async () => {
     (userApi.login as jest.Mock).mockRejectedValueOnce({
       response: { status: 401, data: { message: 'invalid credentials' } },
@@ -452,7 +575,6 @@ describe('Login accessibility labels', () => {
       </MemoryRouter>,
     );
 
-    (clearStoredAuthSession as jest.Mock).mockClear();
     (clearStoredAuthCredentials as jest.Mock).mockClear();
 
     fireEvent.change(screen.getByLabelText('Password login: Log in: Username'), {
@@ -465,7 +587,6 @@ describe('Login accessibility labels', () => {
 
     await waitFor(() => expect(userApi.login).toHaveBeenCalledWith('previous@example.com', 'wrong-password'));
     expect(clearStoredAuthCredentials).toHaveBeenCalledTimes(1);
-    expect(clearStoredAuthSession).not.toHaveBeenCalled();
   });
 
   it('keeps login cleanup scoped to credentials instead of full client browsing state', () => {

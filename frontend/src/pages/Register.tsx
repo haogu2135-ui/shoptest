@@ -117,6 +117,7 @@ const Register: React.FC = () => {
   const [emailCodeRequired, setEmailCodeRequired] = useState(false);
   const codeInputRef = useRef<InputRef | null>(null);
   const registeringRef = useRef(false);
+  const registerCodeSendingRef = useRef(false);
   const emailCodeEnabled = appConfig.emailCodeEnabled === true;
   const registerPageLabel = t('pages.auth.registerTitle');
   const registerLoginActionLabel = `${t('pages.auth.loginNow')}: ${registerPageLabel}`;
@@ -163,11 +164,13 @@ const Register: React.FC = () => {
   };
 
   const sendRegisterCode = async () => {
-    if (!emailCodeEnabled) {
-      message.warning(t('pages.auth.emailCodeUnavailable'));
-      return;
-    }
+    if (registerCodeSendingRef.current) return;
+    registerCodeSendingRef.current = true;
     try {
+      if (!emailCodeEnabled) {
+        message.warning(t('pages.auth.emailCodeUnavailable'));
+        return;
+      }
       const { email } = await form.validateFields(['email']);
       const normalizedEmail = normalizeEmail(email);
       form.setFieldValue('email', normalizedEmail);
@@ -194,6 +197,7 @@ const Register: React.FC = () => {
           : t('pages.auth.emailCodeSendFailed'));
       }
     } finally {
+      registerCodeSendingRef.current = false;
       setCodeSending(false);
     }
   };

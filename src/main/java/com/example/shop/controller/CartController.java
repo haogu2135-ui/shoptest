@@ -13,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
+import javax.validation.constraints.Size;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -24,6 +25,7 @@ import org.springframework.validation.annotation.Validated;
 @Validated
 public class CartController {
     private static final int MAX_CART_REQUEST_QUANTITY = 999;
+    private static final int MAX_SELECTED_SPECS_LENGTH = 1000;
 
     private final CartService cartService;
 
@@ -42,7 +44,7 @@ public class CartController {
     public ResponseEntity<?> addToCart(@RequestParam @Min(1) Long userId,
                          @RequestParam @Min(1) Long productId,
                          @RequestParam @Min(1) @Max(MAX_CART_REQUEST_QUANTITY) Integer quantity,
-                         @RequestParam(required = false) String selectedSpecs,
+                         @RequestParam(required = false) @Size(max = MAX_SELECTED_SPECS_LENGTH) String selectedSpecs,
                          Authentication authentication) {
         try {
             SecurityUtils.assertSelf(authentication, userId);
@@ -71,7 +73,7 @@ public class CartController {
     @PostMapping("/me/add")
     public ResponseEntity<?> addToMyCart(@RequestParam @Min(1) Long productId,
                          @RequestParam @Min(1) @Max(MAX_CART_REQUEST_QUANTITY) Integer quantity,
-                         @RequestParam(required = false) String selectedSpecs,
+                         @RequestParam(required = false) @Size(max = MAX_SELECTED_SPECS_LENGTH) String selectedSpecs,
                          Authentication authentication) {
         try {
             cartService.addToCart(SecurityUtils.requireUser(authentication).getId(), productId, quantity, selectedSpecs);

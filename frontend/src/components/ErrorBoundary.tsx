@@ -26,15 +26,16 @@ type InnerProps = Props & {
 interface State {
   hasError: boolean;
   error: Error | null;
+  retryKey: number;
 }
 
 class ErrorBoundaryInner extends Component<InnerProps, State> {
   constructor(props: InnerProps) {
     super(props);
-    this.state = { hasError: false, error: null };
+    this.state = { hasError: false, error: null, retryKey: 0 };
   }
 
-  static getDerivedStateFromError(error: Error): State {
+  static getDerivedStateFromError(error: Error): Partial<State> {
     return { hasError: true, error };
   }
 
@@ -45,13 +46,27 @@ class ErrorBoundaryInner extends Component<InnerProps, State> {
     });
   }
 
+  reportRecoveryAction = (context: string) => {
+    reportNonBlockingError(context, this.state.error || 'ErrorBoundary recovery action');
+  };
+
   handleRetry = () => {
-    this.setState({ hasError: false, error: null });
+    this.reportRecoveryAction('ErrorBoundary retry');
+    this.setState((prevState) => ({
+      hasError: false,
+      error: null,
+      retryKey: prevState.retryKey + 1,
+    }));
   };
 
   handleGoHome = () => {
+    this.reportRecoveryAction('ErrorBoundary go home');
     this.props.navigate(this.props.homePath || '/', { replace: true });
-    this.setState({ hasError: false, error: null });
+    this.setState((prevState) => ({
+      hasError: false,
+      error: null,
+      retryKey: prevState.retryKey + 1,
+    }));
   };
 
   render() {
@@ -86,7 +101,7 @@ class ErrorBoundaryInner extends Component<InnerProps, State> {
       );
     }
 
-    return this.props.children;
+    return <React.Fragment key={this.state.retryKey}>{this.props.children}</React.Fragment>;
   }
 }
 

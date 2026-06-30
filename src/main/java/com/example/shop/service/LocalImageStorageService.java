@@ -7,8 +7,10 @@ import org.springframework.web.server.ResponseStatusException;
 
 import javax.imageio.IIOImage;
 import javax.imageio.ImageIO;
+import javax.imageio.ImageReader;
 import javax.imageio.ImageWriteParam;
 import javax.imageio.ImageWriter;
+import javax.imageio.stream.ImageInputStream;
 import javax.imageio.stream.ImageOutputStream;
 import java.awt.Color;
 import java.awt.Graphics2D;
@@ -85,8 +87,25 @@ public class LocalImageStorageService implements ImageStorageService {
     }
 
     private BufferedImage decodeImage(MultipartFile file, ImageUploadOptions options) {
-        try (InputStream inputStream = file.getInputStream()) {
-            BufferedImage image = ImageIO.read(inputStream);
+        try (InputStream inputStream = file.getInputStream();
+             ImageInputStream imageInputStream = ImageIO.createImageInputStream(inputStream)) {
+            if (imageInputStream == null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        options.getMessages().getProcessFailedMessage());
+            }
+            Iterator<ImageReader> readers = ImageIO.getImageReaders(imageInputStream);
+            if (!readers.hasNext()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        options.getMessages().getProcessFailedMessage());
+            }
+            ImageReader reader = readers.next();
+            BufferedImage image;
+            try {
+                reader.setInput(imageInputStream, true, true);
+                image = reader.read(0);
+            } finally {
+                reader.dispose();
+            }
             if (image == null) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                         options.getMessages().getProcessFailedMessage());

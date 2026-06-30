@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.Locale;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.core.io.ClassPathResource;
@@ -40,6 +41,8 @@ class CommerceSchemaContractTest {
         assertFalse(productsTable.contains("FOREIGN KEY (brand"),
                 "products.brand should not be wired to a stale strict brands FK");
         assertTrue(schema.contains("idx_products_best_seller_rank"), "best_seller_rank should be indexed");
+        assertTrue(schema.contains("INDEX idx_products_limited_time_window (limited_time_start_at, limited_time_end_at, status, id)"),
+                "limited-time product windows should have a supporting index");
         assertTrue(schema.contains("FULLTEXT INDEX idx_products_search_text (name, description, brand, tag)"),
                 "product keyword search fields should have a MySQL fulltext index");
         assertFalse(schema.contains("brandidx"), "product schema should not use stale non-descriptive brand index names");
@@ -48,6 +51,10 @@ class CommerceSchemaContractTest {
                 "products.status should be constrained to product visibility states");
         assertTrue(schema.contains("CONSTRAINT ck_coupons_status CHECK (status IN ('ACTIVE', 'INACTIVE'))"),
                 "coupons.status should be constrained to coupon availability states");
+        assertTrue(schema.contains("CONSTRAINT ck_coupons_claimed_quantity_lte_total CHECK (claimed_quantity >= 0 AND (total_quantity IS NULL OR (total_quantity >= 0 AND claimed_quantity <= total_quantity)))"),
+                "coupon claimed quantity should not exceed total quantity");
+        assertTrue(schema.contains("CONSTRAINT ck_coupons_discount_percent CHECK (discount_percent IS NULL OR discount_percent BETWEEN 1 AND 99)"),
+                "discount coupon percentages should match the service-level 1-99 contract");
         assertTrue(schema.contains("used_count INT NOT NULL DEFAULT 0"),
                 "coupons should track successful redemptions as a durable aggregate");
         assertTrue(schema.contains("CONSTRAINT ck_orders_status CHECK (status IN ('PENDING_PAYMENT', 'PENDING_SHIPMENT', 'SHIPPED', 'COMPLETED', 'CANCELLED', 'RETURN_REQUESTED', 'RETURN_APPROVED', 'RETURN_SHIPPED', 'RETURN_REFUNDING', 'RETURNED', 'REFUNDED'))"),
@@ -55,6 +62,8 @@ class CommerceSchemaContractTest {
         assertTrue(ordersTable.contains("user_id BIGINT NOT NULL"), "orders should require an owning user_id");
         assertTrue(ordersTable.contains("FOREIGN KEY (user_id) REFERENCES users(id)"),
                 "orders.user_id should keep its users FK");
+        assertTrue(ordersTable.contains("CONSTRAINT fk_orders_tracking_carrier_code FOREIGN KEY (tracking_carrier_code) REFERENCES logistics_carriers(tracking_code)"),
+                "orders should keep tracking carrier codes tied to configured carriers");
         assertTrue(schema.contains("total_amount DECIMAL(10,2) NOT NULL"), "order totals should use exact decimal storage");
         assertFalse(schema.contains("total_price"), "current order schema should not reintroduce stale total_price storage");
         assertFalse(schema.contains("total_amount FLOAT"), "order totals must not use floating-point storage");
@@ -66,10 +75,13 @@ class CommerceSchemaContractTest {
                 "reviews should default to the pending moderation state");
         assertTrue(schema.contains("CONSTRAINT ck_reviews_status CHECK (status IN ('PENDING', 'APPROVED', 'HIDDEN'))"),
                 "reviews.status should be constrained to moderation states");
+        assertTrue(schema.contains("CONSTRAINT ck_reviews_rating CHECK (rating BETWEEN 1 AND 5)"),
+                "review ratings should be constrained at the database layer");
         assertTrue(schema.contains("CONSTRAINT ck_user_coupons_status CHECK (status IN ('UNUSED', 'USED'))"),
                 "user_coupons.status should be constrained to coupon assignment states");
         assertTrue(schema.contains("idx_orders_status_created"), "admin status queues should have a status/created_at index");
         assertTrue(schema.contains("idx_orders_recent_created_status"), "recent order reporting should have a created_at/status index");
+        assertTrue(schema.contains("idx_orders_tracking_carrier_code"), "carrier tracking lookups should have a carrier-code index");
         assertTrue(schema.contains("idx_notifications_created_at"), "notification cleanup/recent queries should have a created_at index");
         assertTrue(schema.contains("idx_notifications_user_created"), "notification user listing should have a user_id/created_at index");
         assertTrue(schema.contains("idx_payments_status_expires"), "expired pending payment sweeps should have a status/expires_at index");
@@ -112,6 +124,8 @@ class CommerceSchemaContractTest {
         assertTrue(schema.contains("password VARCHAR(255) NOT NULL"), "users.password should match User entity @Size(max = 255)");
         assertTrue(schema.contains("email VARCHAR(100) UNIQUE"), "users.email should remain nullable for guest/legacy account rows");
         assertTrue(schema.contains("role_code VARCHAR(50)"), "users.role_code should match User entity @Size(max = 50)");
+        assertTrue(schema.contains("INDEX idx_users_status (status)"), "user status filters should have an explicit index");
+        assertTrue(schema.contains("INDEX idx_users_role_code (role_code)"), "admin role-code filters should have an explicit index");
         assertTrue(schema.contains("type VARCHAR(40) NOT NULL"), "notifications.type should match Notification entity @Size(max = 40)");
         assertTrue(schema.contains("title VARCHAR(160) NOT NULL"), "notifications.title should match Notification entity @Size(max = 160)");
         assertTrue(schema.contains("content TEXT NOT NULL"), "support message content should not truncate the 4000-char entity contract");
@@ -138,6 +152,15 @@ class CommerceSchemaContractTest {
                 "pet birthday grants should not block deleting a pet profile");
         assertTrue(schema.contains("CONSTRAINT fk_pet_birthday_coupon_grants_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"),
                 "pet birthday grants should not block deleting the owning user");
+        assertTrue(countOccurrences(schema, "CREATE TABLE IF NOT EXISTS security_audit_logs") == 1,
+                "security_audit_logs should be defined exactly once");
+        String upperSchema = schema.toUpperCase(Locale.ROOT);
+        assertFalse(upperSchema.contains("ADD COLUMN"), "fresh schema.sql should not carry stale ADD COLUMN patch DDL");
+        assertFalse(upperSchema.contains("ADD INDEX"), "fresh schema.sql should not carry stale ADD INDEX patch DDL");
+        assertFalse(upperSchema.contains("ADD UNIQUE"), "fresh schema.sql should not carry stale ADD UNIQUE patch DDL");
+        assertFalse(upperSchema.contains("DROP INDEX"), "fresh schema.sql should not drop indexes during fresh initialization");
+        assertFalse(upperSchema.contains("CONVERT TO CHARACTER SET"), "fresh schema.sql should not rebuild tables for charset conversion");
+        assertFalse(schema.contains("Fix existing columns to TEXT"), "fresh schema.sql should not restore the stale compatibility patch block");
         assertFalse(schema.contains("idx_cart_user_product_specs"), "cart unique key already covers user/product/specs lookups without a redundant same-column index");
         assertFalse(schema.contains("product_snapshot"), "current order item model uses snapshot scalar columns, not product_snapshot JSON");
         assertFalse(schema.contains("CREATE TABLE IF NOT EXISTS product_tags"), "current product model does not use a product_tags table");
@@ -191,14 +214,20 @@ class CommerceSchemaContractTest {
         assertTrue(source.contains("context_key VARCHAR(160)"), "startup hardening should create support session context_key at entity width");
         assertTrue(source.contains("MODIFY COLUMN context_key VARCHAR(160)"), "startup hardening should widen existing support session context_key columns");
         assertTrue(source.contains("ensureCriticalStatusConstraints"), "startup hardening should repair and constrain critical commerce statuses");
+        assertTrue(source.contains("ensureCommercialValueConstraints"), "startup hardening should repair and constrain commerce value ranges");
         assertTrue(source.contains("ORDER_STATUS_CHECK_VALUES"), "startup hardening should centralize the allowed order status values");
         assertTrue(source.contains("PAYMENT_STATUS_CHECK_VALUES"), "startup hardening should centralize the allowed payment status values");
         assertTrue(source.contains("ck_products_status"), "startup hardening should add the product status check constraint");
         assertTrue(source.contains("ck_coupons_status"), "startup hardening should add the coupon status check constraint");
+        assertTrue(source.contains("ck_coupons_claimed_quantity_lte_total"),
+                "startup hardening should add the coupon claimed/total quantity check");
+        assertTrue(source.contains("ck_coupons_discount_percent"),
+                "startup hardening should add the coupon discount-percent check");
         assertTrue(source.contains("ck_orders_status"), "startup hardening should add the order status check constraint");
         assertTrue(source.contains("ck_checkout_idempotency_status"), "startup hardening should add the checkout idempotency status check constraint");
         assertTrue(source.contains("ck_payments_status"), "startup hardening should add the payment status check constraint");
         assertTrue(source.contains("ck_reviews_status"), "startup hardening should add the review status check constraint");
+        assertTrue(source.contains("ck_reviews_rating"), "startup hardening should add the review rating check constraint");
         assertTrue(source.contains("ck_user_coupons_status"), "startup hardening should add the user coupon status check constraint");
         assertTrue(source.contains("ensureCouponUsageCounters"), "startup hardening should backfill coupon usage counters");
         assertTrue(source.contains("SET c.used_count = COALESCE(usage_count.used_total, 0)"),
@@ -212,6 +241,10 @@ class CommerceSchemaContractTest {
         assertTrue(source.contains("idx_orders_recent_created_status"), "startup hardening should cover recent order index");
         assertTrue(source.contains("idx_notifications_created_at"), "startup hardening should cover notification created_at index");
         assertTrue(source.contains("idx_notifications_user_created"), "startup hardening should cover notification user listing index");
+        assertTrue(source.contains("addLeadingColumnIndexIfMissing(\"users\", \"status\", \"idx_users_status\""),
+                "startup hardening should cover user status filters");
+        assertTrue(source.contains("addLeadingColumnIndexIfMissing(\"users\", \"role_code\", \"idx_users_role_code\""),
+                "startup hardening should cover user role-code filters");
         assertTrue(source.contains("idx_payments_status_expires"), "startup hardening should cover expired pending payment sweeps");
         assertTrue(source.contains("addLeadingColumnIndexIfMissing(\"user_addresses\", \"user_id\", \"idx_user_addresses_user\""),
                 "startup hardening should avoid duplicating an existing FK-created user address index");
@@ -221,7 +254,11 @@ class CommerceSchemaContractTest {
         assertTrue(source.contains("HAVING COUNT(*) > 1"),
                 "startup hardening should normalize duplicate default addresses before adding the unique key");
         assertTrue(source.contains("idx_products_best_seller_rank"), "startup hardening should cover best-seller rank index");
+        assertTrue(source.contains("idx_products_limited_time_window"), "startup hardening should cover limited-time product windows");
         assertTrue(source.contains("idx_products_search_text"), "startup hardening should cover product keyword fulltext index");
+        assertTrue(source.contains("fk_orders_tracking_carrier_code"), "startup hardening should add the order carrier FK");
+        assertTrue(source.contains("LEFT JOIN logistics_carriers"), "startup hardening should clean orphan carrier codes before adding the FK");
+        assertTrue(source.contains("idx_orders_tracking_carrier_code"), "startup hardening should cover carrier tracking lookups");
         assertTrue(source.contains("idx_order_items_product_order"), "startup hardening should cover top-product order item index");
         assertTrue(source.contains("idx_order_items_order_product"), "startup hardening should cover order detail item index");
         assertTrue(source.contains("uk_cart_user_product_specs"), "startup hardening should cover cart unique key");
@@ -260,6 +297,8 @@ class CommerceSchemaContractTest {
         assertTrue(migration.contains("CREATE TABLE IF NOT EXISTS users"), "Flyway baseline should create current users table");
         assertTrue(migration.contains("password VARCHAR(255) NOT NULL"), "Flyway baseline should match User password width");
         assertTrue(migration.contains("email VARCHAR(100) UNIQUE"), "Flyway baseline should keep users.email nullable");
+        assertTrue(migration.contains("INDEX idx_users_status (status)"), "Flyway baseline should include user status index");
+        assertTrue(migration.contains("INDEX idx_users_role_code (role_code)"), "Flyway baseline should include user role-code index");
         assertTrue(migration.contains("CREATE TABLE IF NOT EXISTS products"), "Flyway baseline should create current products table");
         assertTrue(migration.contains("category_id BIGINT NOT NULL"), "Flyway product baseline should use category_id, not stale category text");
         assertTrue(migration.contains("name VARCHAR(200) NOT NULL"), "Flyway product baseline should match Product entity name width");
@@ -297,10 +336,16 @@ class CommerceSchemaContractTest {
                 "Flyway baseline should constrain product statuses");
         assertTrue(migration.contains("FULLTEXT INDEX idx_products_search_text (name, description, brand, tag)"),
                 "Flyway baseline should include product keyword fulltext index");
+        assertTrue(migration.contains("INDEX idx_products_limited_time_window (limited_time_start_at, limited_time_end_at, status, id)"),
+                "Flyway baseline should include limited-time product window index");
         assertFalse(migration.contains("brandidx"), "Flyway baseline should not use stale non-descriptive brand index names");
         assertFalse(migration.contains("categoryidx"), "Flyway baseline should not use stale non-descriptive category index names");
         assertTrue(migration.contains("CONSTRAINT ck_coupons_status CHECK (status IN ('ACTIVE', 'INACTIVE'))"),
                 "Flyway baseline should constrain coupon statuses");
+        assertTrue(migration.contains("CONSTRAINT ck_coupons_claimed_quantity_lte_total CHECK (claimed_quantity >= 0 AND (total_quantity IS NULL OR (total_quantity >= 0 AND claimed_quantity <= total_quantity)))"),
+                "Flyway baseline should constrain coupon claimed quantity against total quantity");
+        assertTrue(migration.contains("CONSTRAINT ck_coupons_discount_percent CHECK (discount_percent IS NULL OR discount_percent BETWEEN 1 AND 99)"),
+                "Flyway baseline should constrain coupon discount percent to the service contract");
         assertTrue(migration.contains("used_count INT NOT NULL DEFAULT 0"),
                 "Flyway baseline should track successful coupon redemptions");
         assertTrue(migration.contains("CONSTRAINT ck_orders_status CHECK (status IN ('PENDING_PAYMENT', 'PENDING_SHIPMENT', 'SHIPPED', 'COMPLETED', 'CANCELLED', 'RETURN_REQUESTED', 'RETURN_APPROVED', 'RETURN_SHIPPED', 'RETURN_REFUNDING', 'RETURNED', 'REFUNDED'))"),
@@ -308,6 +353,8 @@ class CommerceSchemaContractTest {
         assertTrue(ordersTable.contains("user_id BIGINT NOT NULL"), "Flyway baseline should require order ownership");
         assertTrue(ordersTable.contains("FOREIGN KEY (user_id) REFERENCES users(id)"),
                 "Flyway baseline should keep the orders.user_id FK");
+        assertTrue(ordersTable.contains("CONSTRAINT fk_orders_tracking_carrier_code FOREIGN KEY (tracking_carrier_code) REFERENCES logistics_carriers(tracking_code)"),
+                "Flyway baseline should tie order carrier codes to configured carriers");
         assertTrue(migration.contains("total_amount DECIMAL(10,2) NOT NULL"), "Flyway baseline should store order totals as DECIMAL");
         assertFalse(migration.contains("total_price"), "Flyway baseline should not create stale total_price storage");
         assertFalse(migration.contains("total_amount FLOAT"), "Flyway baseline must not store order totals as FLOAT");
@@ -319,10 +366,13 @@ class CommerceSchemaContractTest {
                 "Flyway baseline should default reviews to pending moderation");
         assertTrue(migration.contains("CONSTRAINT ck_reviews_status CHECK (status IN ('PENDING', 'APPROVED', 'HIDDEN'))"),
                 "Flyway baseline should constrain review statuses");
+        assertTrue(migration.contains("CONSTRAINT ck_reviews_rating CHECK (rating BETWEEN 1 AND 5)"),
+                "Flyway baseline should constrain review ratings");
         assertTrue(migration.contains("CONSTRAINT ck_user_coupons_status CHECK (status IN ('UNUSED', 'USED'))"),
                 "Flyway baseline should constrain user coupon statuses");
         assertTrue(migration.contains("idx_orders_status_created"), "Flyway baseline should include admin order status queue index");
         assertTrue(migration.contains("idx_orders_recent_created_status"), "Flyway baseline should include recent-order index");
+        assertTrue(migration.contains("idx_orders_tracking_carrier_code"), "Flyway baseline should include carrier-code lookup index");
         assertTrue(migration.contains("idx_notifications_created_at"), "Flyway baseline should include notification created_at index");
         assertTrue(migration.contains("idx_notifications_user_created"), "Flyway baseline should include notification user listing index");
         assertTrue(migration.contains("idx_payments_status_expires"), "Flyway baseline should include expired pending payment index");
@@ -462,5 +512,15 @@ class CommerceSchemaContractTest {
         int end = source.indexOf("\n)", start);
         assertTrue(end > start, "expected table definition to close for " + tableName);
         return source.substring(start, end);
+    }
+
+    private static int countOccurrences(String source, String needle) {
+        int count = 0;
+        int index = source.indexOf(needle);
+        while (index >= 0) {
+            count++;
+            index = source.indexOf(needle, index + needle.length());
+        }
+        return count;
     }
 }

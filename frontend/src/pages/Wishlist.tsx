@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Card, Row, Col, Button, Empty, Spin, Typography, message, Popconfirm, Tag, Space } from 'antd';
+import { Alert, Card, Row, Col, Button, Empty, Spin, Typography, message, Popconfirm, Tag, Space } from 'antd';
 import { ShoppingCartOutlined, DeleteOutlined, HeartFilled, SettingOutlined, ThunderboltOutlined, CheckCircleOutlined, FireOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { wishlistApi, cartApi } from '../api';
@@ -30,14 +30,17 @@ const getLowStockCount = (item: WishlistItem) =>
 const Wishlist: React.FC = () => {
   const [items, setItems] = useState<WishlistItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [removingProductIds, setRemovingProductIds] = useState<number[]>([]);
   const [addingAllToCart, setAddingAllToCart] = useState(false);
   const mountedRef = useRef(true);
+  const wishlistFetchSeqRef = useRef(0);
   const removingProductIdsRef = useRef(new Set<number>());
   const addingAllToCartRef = useRef(false);
   const navigate = useNavigate();
   const { t, language } = useLanguage();
   const { formatMoney } = useMarket();
+  const actionsDisabledByStaleData = Boolean(loadError);
   const wishlistProductName = useCallback((item: WishlistItem) =>
     (item.productName || '').trim() || t('pages.profile.productFallback', { id: item.productId }), [t]);
   const wishlistGroups = useMemo(() => {
@@ -93,26 +96,31 @@ const Wishlist: React.FC = () => {
         : t('pages.wishlist.recoveryBrowseText');
 
   const fetchWishlist = useCallback(async () => {
+    const requestSeq = wishlistFetchSeqRef.current + 1;
+    wishlistFetchSeqRef.current = requestSeq;
+    const isCurrentRequest = () => mountedRef.current && wishlistFetchSeqRef.current === requestSeq;
     try {
       const res = await wishlistApi.getByUser(0);
-      if (!mountedRef.current) return;
+      if (!isCurrentRequest()) return;
       setItems(res.data);
+      setLoadError(null);
     } catch (error) {
+      if (!isCurrentRequest()) return;
+      const errorMessage = getApiErrorMessage(error, t('pages.wishlist.fetchFailed'), language);
+      setLoadError(errorMessage);
       reportNonBlockingError('Wishlist.fetchWishlist', error);
-      if (mountedRef.current) {
-        message.error(t('pages.wishlist.fetchFailed'));
-      }
+      message.error(errorMessage);
     } finally {
-      if (mountedRef.current) {
-        setLoading(false);
-      }
+      if (!isCurrentRequest()) return;
+      setLoading(false);
     }
-  }, [t]);
+  }, [language, t]);
 
   useEffect(() => {
     mountedRef.current = true;
     return () => {
       mountedRef.current = false;
+      wishlistFetchSeqRef.current += 1;
     };
   }, []);
 
@@ -130,6 +138,10 @@ const Wishlist: React.FC = () => {
   }, [fetchWishlist, navigate, t]);
 
   const handleRemove = async (productId: number) => {
+    if (actionsDisabledByStaleData) {
+      message.warning(t('pages.wishlist.staleActionBlocked'));
+      return;
+    }
     if (removingProductIdsRef.current.has(productId)) return;
     removingProductIdsRef.current.add(productId);
     setRemovingProductIds((current) => current.includes(productId) ? current : [...current, productId]);
@@ -153,6 +165,10 @@ const Wishlist: React.FC = () => {
   };
 
   const handleAddToCart = async (productId: number) => {
+    if (actionsDisabledByStaleData) {
+      message.warning(t('pages.wishlist.staleActionBlocked'));
+      return;
+    }
     try {
       await cartApi.addItem(0, productId, 1);
       if (!mountedRef.current) return;
@@ -167,6 +183,10 @@ const Wishlist: React.FC = () => {
   };
 
   const handleAddAllToCart = async () => {
+    if (actionsDisabledByStaleData) {
+      message.warning(t('pages.wishlist.staleActionBlocked'));
+      return;
+    }
     if (addingAllToCartRef.current) return;
     if (directAddItems.length === 0) {
       message.info(t('pages.wishlist.noDirectAdd'));
@@ -197,6 +217,10 @@ const Wishlist: React.FC = () => {
   };
 
   const clearUnavailableItems = async () => {
+    if (actionsDisabledByStaleData) {
+      message.warning(t('pages.wishlist.staleActionBlocked'));
+      return;
+    }
     if (wishlistGroups.unavailableItems.length === 0) return;
     const results = await allSettledWithConcurrency(
       wishlistGroups.unavailableItems,
@@ -218,7 +242,7 @@ const Wishlist: React.FC = () => {
   };
 
   const recoveryAction = directAddItems.length > 0
-    ? { label: t('pages.wishlist.addAllToCart'), action: handleAddAllToCart, disabled: addingAllToCart }
+    ? { label: t('pages.wishlist.addAllToCart'), action: handleAddAllToCart, disabled: addingAllToCart || actionsDisabledByStaleData }
     : wishlistStats.optionCount > 0
       ? { label: t('pages.wishlist.resolveOptions'), action: () => {
         const nextItem = items.find((item) => item.requiresSelection && isPurchasable(item));
@@ -237,7 +261,7 @@ const Wishlist: React.FC = () => {
         }),
         label: t('pages.wishlist.addAllToCart'),
         action: handleAddAllToCart,
-        disabled: addingAllToCart,
+        disabled: addingAllToCart || actionsDisabledByStaleData,
       };
     }
     if (wishlistStats.optionCount > 0) {
@@ -296,7 +320,7 @@ const Wishlist: React.FC = () => {
           icon={<SettingOutlined />}
           className="wishlist-page__primaryAction"
           block
-          disabled={!isPurchasable(item)}
+          disabled={!isPurchasable(item) || actionsDisabledByStaleData}
           aria-label={selectActionLabel}
           title={selectActionLabel}
           onClick={() => navigate(`/products/${item.productId}`)}
@@ -312,7 +336,7 @@ const Wishlist: React.FC = () => {
         icon={<ShoppingCartOutlined />}
         className="wishlist-page__primaryAction"
         block
-        disabled={!isPurchasable(item)}
+        disabled={!isPurchasable(item) || actionsDisabledByStaleData}
         aria-label={addActionLabel}
         title={addActionLabel}
         onClick={() => handleAddToCart(item.productId)}
@@ -342,7 +366,44 @@ const Wishlist: React.FC = () => {
   };
 
   if (loading) {
-    return <div className="wishlist-page__loading"><Spin size="large" /></div>;
+    return (
+      <div
+        className="wishlist-page__loading"
+        role="status"
+        aria-live="polite"
+        aria-busy="true"
+        aria-label={t('common.loading')}
+      >
+        <Spin size="large" />
+      </div>
+    );
+  }
+
+  if (items.length === 0 && loadError) {
+    return (
+      <div className={`wishlist-page wishlist-page--${language} wishlist-page--empty`}>
+        <Alert
+          className="wishlist-page__loadAlert"
+          type="error"
+          showIcon
+          message={t('pages.wishlist.loadErrorTitle')}
+          description={loadError}
+          action={(
+            <Button size="small" onClick={fetchWishlist} loading={loading}>
+              {t('common.retry')}
+            </Button>
+          )}
+        />
+        <Button
+          className="wishlist-page__emptyBrowse"
+          aria-label={wishlistBrowseActionLabel}
+          title={wishlistBrowseActionLabel}
+          onClick={() => navigate('/products')}
+        >
+          {t('pages.wishlist.browse')}
+        </Button>
+      </div>
+    );
   }
 
   if (items.length === 0) {
@@ -364,6 +425,20 @@ const Wishlist: React.FC = () => {
 
   return (
     <div className={`wishlist-page wishlist-page--${language} wishlist-page--withMobileAction`}>
+      {loadError ? (
+        <Alert
+          className="wishlist-page__loadAlert"
+          type="warning"
+          showIcon
+          message={t('pages.wishlist.loadErrorTitle')}
+          description={t('pages.wishlist.staleDataWarning')}
+          action={(
+            <Button size="small" onClick={fetchWishlist} loading={loading}>
+              {t('common.retry')}
+            </Button>
+          )}
+        />
+      ) : null}
       <div className="wishlist-page__header">
         <Space align="center">
           <HeartFilled style={{ color: '#ee4d2d', fontSize: 24 }} />
@@ -373,7 +448,7 @@ const Wishlist: React.FC = () => {
           type="primary"
           icon={<ShoppingCartOutlined />}
           loading={addingAllToCart}
-          disabled={addingAllToCart || directAddItems.length === 0}
+          disabled={addingAllToCart || directAddItems.length === 0 || actionsDisabledByStaleData}
           aria-label={addAllToCartActionLabel}
           title={addAllToCartActionLabel}
           onClick={handleAddAllToCart}
@@ -387,10 +462,10 @@ const Wishlist: React.FC = () => {
             onConfirm={clearUnavailableItems}
             okText={t('common.confirm')}
             cancelText={t('common.cancel')}
-            okButtonProps={{ danger: true, 'aria-label': clearUnavailableActionLabel, title: clearUnavailableActionLabel }}
+            okButtonProps={{ danger: true, disabled: actionsDisabledByStaleData, 'aria-label': clearUnavailableActionLabel, title: clearUnavailableActionLabel }}
             cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${clearUnavailableActionLabel}`, title: `${t('common.cancel')}: ${clearUnavailableActionLabel}` }}
           >
-            <Button danger icon={<DeleteOutlined />} aria-label={clearUnavailableActionLabel} title={clearUnavailableActionLabel}>
+            <Button danger icon={<DeleteOutlined />} aria-label={clearUnavailableActionLabel} title={clearUnavailableActionLabel} disabled={actionsDisabledByStaleData}>
               {t('pages.cart.clearUnavailable')}
             </Button>
           </Popconfirm>
@@ -503,7 +578,7 @@ const Wishlist: React.FC = () => {
                     {t('pages.wishlist.selectOptions')}
                   </Button>
                 ) : (
-                  <Button type="primary" icon={<ShoppingCartOutlined />} aria-label={addActionLabel} title={addActionLabel} onClick={() => handleAddToCart(featuredWishlistItem.productId)}>
+                  <Button type="primary" icon={<ShoppingCartOutlined />} aria-label={addActionLabel} title={addActionLabel} onClick={() => handleAddToCart(featuredWishlistItem.productId)} disabled={actionsDisabledByStaleData}>
                     {t('pages.productList.addToCart')}
                   </Button>
                 )}
@@ -572,7 +647,7 @@ const Wishlist: React.FC = () => {
                   onConfirm={() => handleRemove(item.productId)}
                   okText={t('common.confirm')}
                   cancelText={t('common.cancel')}
-                  okButtonProps={{ danger: true, 'aria-label': removeActionLabel, title: removeActionLabel }}
+                  okButtonProps={{ danger: true, disabled: actionsDisabledByStaleData, 'aria-label': removeActionLabel, title: removeActionLabel }}
                   cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${removeActionLabel}`, title: `${t('common.cancel')}: ${removeActionLabel}` }}
                 >
                   <Button
@@ -581,7 +656,7 @@ const Wishlist: React.FC = () => {
                     className="wishlist-page__removeAction"
                     block
                     loading={removing}
-                    disabled={removing}
+                    disabled={removing || actionsDisabledByStaleData}
                     aria-label={removeActionLabel}
                     title={removeActionLabel}
                   >

@@ -5,6 +5,11 @@ const pageSource = fs.readFileSync(path.join(__dirname, 'AnnouncementManagement.
 const cssSource = fs.readFileSync(path.join(__dirname, 'AnnouncementManagement.css'), 'utf8');
 
 describe('AnnouncementManagement scheduling popup guards', () => {
+  it('formats summary status timestamps with the active app locale', () => {
+    expect(pageSource).toContain('checkedAt.toLocaleString(dateLocale)');
+    expect(pageSource).not.toContain('checkedAt.toLocaleString()');
+  });
+
   it('uses a scoped body-mounted popup for both editor date pickers', () => {
     expect(pageSource).toContain("root: 'shop-mobile-popup-layer announcement-management-page__datePopup'");
     expect(pageSource).toContain('className="profile-mobile-safe-modal announcement-management-page__editorModal"');

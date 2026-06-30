@@ -347,7 +347,7 @@ const OrderTracking: React.FC = () => {
     }
   }, [language, order?.orderNo, t, trackedEmail]);
 
-  const autoRefreshEnabled = Boolean(order?.orderNo && trackedEmail && shouldAutoRefreshTrackedOrder(order));
+  const autoRefreshEnabled = Boolean(order?.orderNo && trackedEmail && !detailsRestricted && shouldAutoRefreshTrackedOrder(order));
 
   useEffect(() => {
     if (!autoRefreshEnabled) return;
@@ -754,11 +754,11 @@ const OrderTracking: React.FC = () => {
           <Card title={t('pages.orderTracking.summary')}>
             <Descriptions column={1} bordered size="small">
               <Descriptions.Item label={t('pages.orderTracking.orderNo')}>{order.orderNo || order.id}</Descriptions.Item>
-              <Descriptions.Item label={t('common.status')}>
-                <Tag color={getOrderStatusColor(order.status)}>{formatOrderStatusLabel(order.status)}</Tag>
-              </Descriptions.Item>
               {canShowFullTrackingDetails ? (
                 <>
+                  <Descriptions.Item label={t('common.status')}>
+                    <Tag color={getOrderStatusColor(order.status)}>{formatOrderStatusLabel(order.status)}</Tag>
+                  </Descriptions.Item>
                   <Descriptions.Item label={t('common.amount')}>
                     <Text strong className="order-tracking-page__amount commerce-money">{formatMoney(order.totalAmount)}</Text>
                   </Descriptions.Item>
@@ -768,13 +768,15 @@ const OrderTracking: React.FC = () => {
                   <Descriptions.Item label={t('pages.checkout.address')}>{order.shippingAddress || '-'}</Descriptions.Item>
                 </>
               ) : null}
-              <Descriptions.Item label={t('pages.orderTracking.createdAt')}>
-                {order.createdAt ? new Date(order.createdAt).toLocaleString(dateLocale) : '-'}
-              </Descriptions.Item>
               {canShowFullTrackingDetails ? (
-                <Descriptions.Item label={t('pages.orderTracking.trackingNumber')}>
-                  {order.trackingNumber || t('pages.orderTracking.notShipped')}
-                </Descriptions.Item>
+                <>
+                  <Descriptions.Item label={t('pages.orderTracking.createdAt')}>
+                    {order.createdAt ? new Date(order.createdAt).toLocaleString(dateLocale) : '-'}
+                  </Descriptions.Item>
+                  <Descriptions.Item label={t('pages.orderTracking.trackingNumber')}>
+                    {order.trackingNumber || t('pages.orderTracking.notShipped')}
+                  </Descriptions.Item>
+                </>
               ) : null}
               {canShowFullTrackingDetails && order.trackingCarrierName ? (
                 <Descriptions.Item label={t('pages.orderTracking.carrier')}>

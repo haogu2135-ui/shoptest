@@ -3,6 +3,7 @@ import path from 'path';
 
 const pageSource = fs.readFileSync(path.join(__dirname, 'BrowsingHistory.tsx'), 'utf8');
 const cssSource = fs.readFileSync(path.join(__dirname, 'BrowsingHistory.css'), 'utf8');
+const preferencesSource = fs.readFileSync(path.join(__dirname, '../utils/productViewPreferences.ts'), 'utf8');
 
 describe('BrowsingHistory mobile action readability guards', () => {
   it('keeps add-to-cart API error handling typed without broad any usage', () => {
@@ -31,13 +32,35 @@ describe('BrowsingHistory mobile action readability guards', () => {
   it('keeps history product load failures visible with a retry action', () => {
     expect(pageSource).toContain('const [loadError, setLoadError] = useState(false);');
     expect(pageSource).toContain('const [reloadToken, setReloadToken] = useState(0);');
+    expect(pageSource).toContain('const hasStaleHistoryData = Boolean(loadError && hasHistory);');
+    expect(pageSource).toContain('const historyDisplayCount = loadError ? preferences.recent.length : historyProducts.length;');
     expect(pageSource).toContain('setLoadError(true);');
     expect(pageSource).toContain('{loadError ? (');
     expect(pageSource).toContain('<section className="browsing-history__loadError" aria-live="polite">');
     expect(pageSource).toContain('message={t(\'messages.loadFailed\')}');
-    expect(pageSource).toContain('description={t(\'messages.loadFailedRetry\')}');
+    expect(pageSource).toContain("description={hasStaleHistoryData ? t('pages.browsingHistory.staleDataWarning') : t('messages.loadFailedRetry')}");
+    expect(pageSource).toContain("title: t('pages.browsingHistory.nextActionStaleTitle'),");
+    expect(pageSource).toContain('disabled={hasStaleHistoryData}');
+    expect(pageSource).toContain('icon={hasStaleHistoryData ? <ReloadOutlined /> : historyNextAction.tone === \'ready\' ? <ShoppingCartOutlined /> : <ShoppingOutlined />}');
     expect(pageSource).toContain('<Button size="small" onClick={() => setReloadToken((current) => current + 1)}>');
     expect(pageSource).toContain('reloadToken]');
+  });
+
+  it('keeps cross-tab preference sync scoped to product-view preference storage events', () => {
+    expect(pageSource).toContain('PRODUCT_VIEW_PREFERENCES_KEY');
+    expect(pageSource).toContain(
+      'if (event instanceof StorageEvent && event.key && event.key !== PRODUCT_VIEW_PREFERENCES_KEY) return;',
+    );
+    expect(pageSource).toContain("window.addEventListener('shop:product-view-preferences-updated', syncPreferences);");
+    expect(pageSource).toContain("window.addEventListener('storage', syncPreferences);");
+    expect(pageSource).not.toContain("window.addEventListener('storage', () => setPreferences(loadProductViewPreferences()))");
+  });
+
+  it('keeps the browsing history cap named in the preferences utility', () => {
+    expect(pageSource).toContain('loadProductViewPreferences');
+    expect(pageSource).not.toContain('slice(0, 50)');
+    expect(preferencesSource).toContain('export const MAX_PRODUCT_VIEW_HISTORY_ITEMS = 30;');
+    expect(preferencesSource).toContain('slice(0, MAX_PRODUCT_VIEW_HISTORY_ITEMS)');
   });
 
   it('renders the fixed mobile recommendation with title and CTA copy', () => {

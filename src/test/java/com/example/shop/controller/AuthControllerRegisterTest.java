@@ -68,7 +68,7 @@ class AuthControllerRegisterTest {
     @Test
     void registerMasksDuplicateUsernameAsUnavailableAccountDetails() throws Exception {
         when(userService.register(any(User.class), eq(false)))
-                .thenThrow(new IllegalArgumentException("Username already registered"));
+                .thenThrow(new IllegalArgumentException(UserService.REGISTRATION_ACCOUNT_DETAILS_UNAVAILABLE_MESSAGE));
 
         mockMvc.perform(post("/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)

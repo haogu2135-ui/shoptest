@@ -34,6 +34,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     ) throws ServletException, IOException {
         final String authHeader = request.getHeader("Authorization");
         final String jwt;
+        final String tokenJti;
         final String username;
 
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
@@ -44,8 +45,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         jwt = authHeader.substring(7);
         try {
             // Check if token is blacklisted (logged out)
-            String jti = jwtService.extractJti(jwt);
-            if (jti != null && tokenBlacklistService.isAccessTokenBlacklisted(jti)) {
+            tokenJti = jwtService.extractJti(jwt);
+            if (tokenJti != null && tokenBlacklistService.isAccessTokenBlacklisted(tokenJti)) {
                 filterChain.doFilter(request, response);
                 return;
             }
@@ -77,6 +78,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 );
                 SecurityContextHolder.getContext().setAuthentication(authToken);
             }
+        }
+        if (tokenJti != null && tokenBlacklistService.isAccessTokenBlacklisted(tokenJti)) {
+            SecurityContextHolder.clearContext();
         }
         filterChain.doFilter(request, response);
     }

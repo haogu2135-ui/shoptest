@@ -15,6 +15,19 @@ describe('stripUnsafeHtml', () => {
     expect(html).toBe('<p>Hi</p>');
   });
 
+  it('removes event handlers split across newlines', () => {
+    const html = stripUnsafeHtml(
+      '<div\nonclick\n=\n"alert(1)">Hi</div><img src="/images/pet.png"\nonerror\n=\n"alert(2)">'
+    );
+
+    expect(html).toContain('<div>Hi</div>');
+    expect(html).toContain('<img src="/images/pet.png">');
+    expect(html).not.toContain('onclick');
+    expect(html).not.toContain('onerror');
+    expect(html).not.toContain('alert(1)');
+    expect(html).not.toContain('alert(2)');
+  });
+
   it('removes unsafe and protocol-relative urls', () => {
     const html = stripUnsafeHtml(
       '<a href="javascript:alert(1)">bad</a><img src="//tracker.example/pixel.png"><a href="/orders">ok</a>'
@@ -81,5 +94,17 @@ describe('stripUnsafeHtml', () => {
     expect(html).not.toContain('mailto:');
     expect(html).not.toContain('height=');
     expect(html).not.toContain('onerror');
+  });
+
+  it('removes data urls from rich text links and images', () => {
+    const html = stripUnsafeHtml(
+      '<a href="data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg==">bad</a>'
+        + '<img src="data:image/svg+xml;base64,PHN2ZyBvbmxvYWQ9YWxlcnQoMSk+" alt="Pet">'
+    );
+
+    expect(html).toContain('<a>bad</a>');
+    expect(html).toContain('<img alt="Pet">');
+    expect(html).not.toContain('data:');
+    expect(html).not.toContain('onload');
   });
 });

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Button, Modal, Radio, Space, Tag, Typography, message } from 'antd';
 import { SafetyCertificateOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import { paymentApi } from '../api';
@@ -34,9 +34,15 @@ export const Payment: React.FC<PaymentProps> = ({
 }) => {
     const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('');
     const [paymentChannels, setPaymentChannels] = useState<PaymentChannel[]>([]);
+    const [paymentChannelsLoading, setPaymentChannelsLoading] = useState(false);
+    const [paymentChannelsError, setPaymentChannelsError] = useState('');
     const [loading, setLoading] = useState(false);
     const { t, language } = useLanguage();
     const { formatMoney } = useMarket();
+    const languageRef = useRef(language);
+    const translateRef = useRef(t);
+    languageRef.current = language;
+    translateRef.current = t;
     const paymentOptions = useMemo(() => createPaymentMethodOptions(t, paymentChannels), [paymentChannels, t]);
     const selectedChannel = useMemo(
         () => paymentChannels.find((channel) => channel.code === paymentMethod),
@@ -59,24 +65,36 @@ export const Payment: React.FC<PaymentProps> = ({
     const selectedPaymentLabel = paymentMethod ? paymentOptionLabel(paymentMethod) : t('pages.checkout.paymentRequired');
     const confirmPaymentLabel = `${t('pages.payment.confirm')}: ${paymentContextLabel} · ${selectedPaymentLabel}`;
 
+    const loadPaymentChannels = useCallback(async (isActive: () => boolean = () => true) => {
+        setPaymentChannelsLoading(true);
+        setPaymentChannelsError('');
+        try {
+            const res = await paymentApi.getChannels();
+            if (!isActive()) return;
+            const channels = res.data || [];
+            setPaymentChannels(channels);
+            setPaymentMethod(getDefaultPaymentMethod(channels));
+        } catch (error: unknown) {
+            if (!isActive()) return;
+            setPaymentChannels([]);
+            setPaymentMethod('');
+            setPaymentChannelsError(getApiErrorMessage(
+                error,
+                translateRef.current('pages.checkout.paymentUnavailableDescription'),
+                languageRef.current
+            ));
+        } finally {
+            if (isActive()) setPaymentChannelsLoading(false);
+        }
+    }, []);
+
     useEffect(() => {
         let disposed = false;
-        paymentApi.getChannels()
-            .then((res) => {
-                if (disposed) return;
-                const channels = res.data;
-                setPaymentChannels(channels);
-                setPaymentMethod(getDefaultPaymentMethod(channels));
-            })
-            .catch(() => {
-                if (disposed) return;
-                setPaymentChannels([]);
-                setPaymentMethod('');
-            });
+        void loadPaymentChannels(() => !disposed);
         return () => {
             disposed = true;
         };
-    }, []);
+    }, [loadPaymentChannels]);
 
     const handlePayment = async () => {
         setLoading(true);
@@ -138,7 +156,21 @@ export const Payment: React.FC<PaymentProps> = ({
                 >
                     <Space direction="vertical" className="payment-modal__methodList">
                         {paymentOptions.length === 0 ? (
-                            <Alert type="warning" showIcon message={t('pages.checkout.paymentUnavailable')} description={t('pages.checkout.paymentUnavailableDescription')} />
+                            <Alert
+                                type="warning"
+                                showIcon
+                                message={t('pages.checkout.paymentUnavailable')}
+                                description={paymentChannelsError || t('pages.checkout.paymentUnavailableDescription')}
+                                action={(
+                                    <Button
+                                        size="small"
+                                        onClick={() => void loadPaymentChannels()}
+                                        loading={paymentChannelsLoading}
+                                    >
+                                        {t('common.retry')}
+                                    </Button>
+                                )}
+                            />
                         ) : null}
                         {paymentOptions.map((option) => {
                             const optionLabel = paymentOptionLabel(option.value);
@@ -170,7 +202,7 @@ export const Payment: React.FC<PaymentProps> = ({
                     block
                     onClick={handlePayment}
                     loading={loading}
-                    disabled={paymentOptions.length === 0}
+                    disabled={paymentChannelsLoading || paymentOptions.length === 0}
                     className="payment-modal__confirm"
                     aria-label={confirmPaymentLabel}
                     title={confirmPaymentLabel}

@@ -1,5 +1,8 @@
 const { expect } = require('chai');
 
+const WEBVIEW_BASE_URL = process.env.APPIUM_WEBVIEW_BASE_URL || 'https://pet.686888666.xyz';
+const appUrl = (pathname) => new URL(pathname, WEBVIEW_BASE_URL).toString();
+
 describe('ShopMX Mobile Navigation', () => {
   before(async () => {
     // Ensure we're in WebView context
@@ -27,7 +30,7 @@ describe('ShopMX Mobile Navigation', () => {
   });
 
   it('should navigate to products page', async () => {
-    await browser.url('http://localhost/products');
+    await browser.url(appUrl('/products'));
     await browser.pause(2000);
 
     const url = await browser.getUrl();
@@ -35,7 +38,7 @@ describe('ShopMX Mobile Navigation', () => {
   });
 
   it('should navigate to login page', async () => {
-    await browser.url('http://localhost/login');
+    await browser.url(appUrl('/login'));
     await browser.pause(2000);
 
     const url = await browser.getUrl();
@@ -43,7 +46,7 @@ describe('ShopMX Mobile Navigation', () => {
   });
 
   it('should navigate to cart page', async () => {
-    await browser.url('http://localhost/cart');
+    await browser.url(appUrl('/cart'));
     await browser.pause(2000);
 
     const url = await browser.getUrl();
@@ -51,7 +54,7 @@ describe('ShopMX Mobile Navigation', () => {
   });
 
   it('should navigate to pet-finder page', async () => {
-    await browser.url('http://localhost/pet-finder');
+    await browser.url(appUrl('/pet-finder'));
     await browser.pause(2000);
 
     const url = await browser.getUrl();

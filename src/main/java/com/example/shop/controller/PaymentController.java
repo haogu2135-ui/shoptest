@@ -59,7 +59,8 @@ public class PaymentController {
                 "endpoints", Map.of(
                         "create", "/payments",
                         "channels", "/payments/channels",
-                        "order", "/payments/order/{orderId}"));
+                        "order", "/payments/order/{orderId}",
+                        "syncOrder", "/payments/order/{orderId}/sync"));
     }
 
     @PostMapping
@@ -159,6 +160,29 @@ public class PaymentController {
         }
     }
 
+    @PostMapping("/order/{orderId}/sync")
+    public ResponseEntity<List<PaymentCustomerResponse>> syncOrderPayments(@PathVariable Long orderId,
+                                                                           Authentication authentication,
+                                                                           HttpServletRequest request) {
+        try {
+            assertCanSeeOrder(orderId, authentication);
+            List<Payment> payments = paymentService.syncPaymentsByOrderId(orderId);
+            auditLogService.record("PAYMENT_SYNC_ORDER", "SUCCESS", authentication, "ORDER", orderId, request,
+                    "Order payment states synced", "count=" + payments.size());
+            return ResponseEntity.ok(customerPaymentResponses(payments));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            auditLogService.record("PAYMENT_SYNC_ORDER", "FAILURE", authentication, "ORDER", orderId, request,
+                    e.getMessage(), null);
+            recordPaymentBlacklistFailureIfSuspicious(request, e);
+            throw e;
+        } catch (ResponseStatusException e) {
+            auditLogService.record("PAYMENT_SYNC_ORDER", "FAILURE", authentication, "ORDER", orderId, request,
+                    reasonOf(e), null);
+            recordPaymentBlacklistFailureIfSuspicious(request, e);
+            throw e;
+        }
+    }
+
     @PostMapping("/callback")
     public ResponseEntity<?> callback(@Valid @RequestBody(required = false) PaymentCallbackRequest request, HttpServletRequest httpRequest) {
         if (request == null) {
@@ -217,7 +241,7 @@ public class PaymentController {
         GuestOrderAccessRequest access = requireGuestAccessRequest(body);
         assertCanSeeGuestOrder(orderId, access.getGuestEmail(), access.getOrderNo(), request);
         return ResponseEntity.ok(paymentService.findStoredByOrderId(orderId).stream()
-                .map(PaymentCustomerResponse::from)
+                .map(this::customerPaymentResponse)
                 .collect(Collectors.toList()));
     }
 
@@ -236,7 +260,7 @@ public class PaymentController {
         GuestOrderAccessRequest access = requireGuestAccessRequest(body);
         assertCanSeeGuestOrder(orderId, access.getGuestEmail(), access.getOrderNo(), request);
         Payment payment = paymentService.findStoredLatestByOrderId(orderId);
-        return payment != null ? ResponseEntity.ok(PaymentCustomerResponse.from(payment)) : ResponseEntity.notFound().build();
+        return payment != null ? ResponseEntity.ok(customerPaymentResponse(payment)) : ResponseEntity.notFound().build();
     }
 
     private GuestOrderAccessRequest requireGuestAccessRequest(GuestOrderAccessRequest body) {
@@ -333,15 +357,26 @@ public class PaymentController {
     }
 
     private PaymentResponse paymentResponse(Payment payment) {
-        return PaymentResponse.from(payment);
+        return PaymentResponse.from(payment, resolvePaymentCurrency(payment));
     }
 
     private PaymentCustomerResponse customerPaymentResponse(Payment payment) {
-        return PaymentCustomerResponse.from(payment);
+        return PaymentCustomerResponse.from(payment, resolvePaymentCurrency(payment));
     }
 
     private List<PaymentCustomerResponse> customerPaymentResponses(List<Payment> payments) {
-        return payments.stream().map(PaymentCustomerResponse::from).collect(Collectors.toList());
+        return payments.stream().map(this::customerPaymentResponse).collect(Collectors.toList());
+    }
+
+    private String resolvePaymentCurrency(Payment payment) {
+        if (payment == null) {
+            return paymentChannelConfig.getDefaultCurrency();
+        }
+        return paymentChannelConfig.findConfigured(payment.getChannel())
+                .map(PaymentChannelConfig.Channel::getCurrency)
+                .filter(Objects::nonNull)
+                .filter(currency -> !currency.trim().isEmpty())
+                .orElse(paymentChannelConfig.getDefaultCurrency());
     }
 
     private String reasonOf(ResponseStatusException e) {

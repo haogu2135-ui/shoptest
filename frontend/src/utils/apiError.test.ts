@@ -21,8 +21,41 @@ const retryAfterAliasError = (retryAfter?: number | string) => ({
     data: { error: 'Too many requests', retryAfter },
   },
 });
+const apiErrorSource = fs.readFileSync(path.resolve(__dirname, 'apiError.ts'), 'utf8');
 
 describe('getApiErrorMessage', () => {
+  it('keeps retry-after normalization capped and string-alias aware in source', () => {
+    const normalizeStart = apiErrorSource.indexOf('const normalizeRetryAfterSeconds = (error: ApiErrorLike) => {');
+    const normalizeEnd = apiErrorSource.indexOf('const apiErrorMessage = (', normalizeStart);
+    const normalizeSource = apiErrorSource.slice(normalizeStart, normalizeEnd);
+
+    expect(apiErrorSource).toContain('const MAX_RETRY_AFTER_SECONDS = 5 * 60;');
+    expect(normalizeStart).toBeGreaterThan(-1);
+    expect(normalizeEnd).toBeGreaterThan(normalizeStart);
+    expect(normalizeSource).toContain("headers?.get?.('Retry-After')");
+    expect(normalizeSource).toContain('error.response?.data?.retryAfterSeconds');
+    expect(normalizeSource).toContain('?? error.response?.data?.retryAfter');
+    expect(normalizeSource).toContain('const numeric = Number(retryAfterValue);');
+    expect(normalizeSource).toContain('if (!Number.isFinite(numeric) || numeric <= 0) return null;');
+    expect(normalizeSource).toContain('return Math.min(Math.ceil(numeric), MAX_RETRY_AFTER_SECONDS);');
+  });
+
+  it('keeps localized API error source free of stale broad-any parsing paths', () => {
+    expect(apiErrorSource).toContain('type ApiErrorLike = {');
+    expect(apiErrorSource).toContain('export const getApiErrorStatus = (error: unknown) => {');
+    expect(apiErrorSource).toContain('const errorLike = error as ApiErrorLike;');
+    expect(apiErrorSource).not.toContain('parseApiError');
+    expect(apiErrorSource).not.toContain('as any');
+    expect(apiErrorSource).not.toContain('catch (error: any)');
+    expect(apiErrorSource).not.toContain('catch (err: any)');
+  });
+
+  it('keeps Chinese server-message detection broad enough for rare CJK ranges', () => {
+    expect(apiErrorSource).toContain("const hasChineseText = (value: string) => /[\\u2e80-\\u2eff\\u2f00-\\u2fdf\\u3400-\\u9fff\\uf900-\\ufaff\\u{20000}-\\u{2a6df}]/u.test(value);");
+    expect(getApiErrorMessage(apiError('豈库存不足'), '支付失败', 'zh')).toBe('豈库存不足');
+    expect(getApiErrorMessage(apiError('𠀀库存不足'), '支付失败', 'zh')).toBe('𠀀库存不足');
+  });
+
   it('uses server detail for English pages', () => {
     expect(getApiErrorMessage(apiError('Payment link expired'), 'Payment failed', 'en')).toBe('Payment link expired');
   });

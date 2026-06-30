@@ -28,6 +28,7 @@ import java.util.Set;
 @Service
 @RequiredArgsConstructor
 public class AdminBugReportService {
+    private static final String DEFAULT_STOREFRONT_BASE_URL = "https://pet.686888666.xyz";
     public static final String STATUS_OPEN = "OPEN";
     public static final String STATUS_FIXING = "FIXING";
     public static final String STATUS_FIXED_PENDING_REGRESSION = "FIXED_PENDING_REGRESSION";
@@ -39,6 +40,7 @@ public class AdminBugReportService {
 
     private static final int DEFAULT_PAGE_SIZE = 20;
     private static final int MAX_PAGE_SIZE = 100;
+    private static final int MAX_ATTACHMENT_URL_COUNT = 20;
     private static final Set<String> STATUSES = Set.of(
             STATUS_OPEN,
             STATUS_FIXING,
@@ -74,12 +76,13 @@ public class AdminBugReportService {
     private static final String BUG_LIST_COLUMNS = "id, title, module, severity, priority, status, page_url, "
             + "reporter_name, assigned_to, last_scanned_at, fixed_at, fixed_by, regression_at, regression_by, "
             + "closed_at, created_at, updated_at";
-    private static final String BUG_DETAIL_COLUMNS = "id, title, description, module, severity, priority, status, "
+    private static final String BUG_DETAIL_COLUMNS = "id, version, title, description, module, severity, priority, status, "
             + "page_url, environment, reproduction_steps, expected_result, actual_result, attachment_urls, "
             + "reporter_id, reporter_name, assigned_to, scan_note, fix_summary, regression_note, last_scanned_at, "
             + "fixed_at, fixed_by, regression_at, regression_by, closed_at, created_at, updated_at";
 
     private final JdbcTemplate jdbcTemplate;
+    private final RuntimeConfigService runtimeConfig;
 
     @Transactional(rollbackFor = Exception.class, readOnly = true)
     public AdminBugReportPageResponse search(int page,
@@ -228,7 +231,7 @@ public class AdminBugReportService {
                         + "regression_at = CASE WHEN ? THEN NOW() ELSE regression_at END, "
                         + "regression_by = CASE WHEN ? THEN ? ELSE regression_by END, "
                         + "closed_at = CASE WHEN ? THEN NOW() WHEN ? THEN NULL ELSE closed_at END, "
-                        + "updated_at = NOW() WHERE id = ?",
+                        + "version = version + 1, updated_at = NOW() WHERE id = ? AND version = ?",
                 normalized.title,
                 normalized.description,
                 normalized.module,
@@ -254,9 +257,10 @@ public class AdminBugReportService {
                 actor,
                 Boolean.valueOf(stampClosed),
                 Boolean.valueOf(clearClosed),
-                id);
+                id,
+                existing.getVersion());
         if (updated == 0) {
-            throw new IllegalArgumentException("Bug report not found");
+            throw new IllegalArgumentException("Bug report changed, reload and try again");
         }
         return findById(id);
     }
@@ -285,8 +289,8 @@ public class AdminBugReportService {
                         + "fixed_by = CASE WHEN ? THEN ? ELSE fixed_by END, "
                         + "regression_at = CASE WHEN ? THEN NOW() ELSE regression_at END, "
                         + "regression_by = CASE WHEN ? THEN ? ELSE regression_by END, "
-                        + "closed_at = CASE WHEN ? THEN NOW() WHEN ? THEN NULL ELSE closed_at END, updated_at = NOW() "
-                        + "WHERE id = ? AND status = ?",
+                        + "closed_at = CASE WHEN ? THEN NOW() WHEN ? THEN NULL ELSE closed_at END, "
+                        + "version = version + 1, updated_at = NOW() WHERE id = ? AND version = ?",
                 status,
                 assignedTo,
                 scanNote,
@@ -302,7 +306,7 @@ public class AdminBugReportService {
                 Boolean.valueOf(stampClosed),
                 Boolean.valueOf(clearClosed),
                 id,
-                existing.getStatus());
+                existing.getVersion());
         if (updated == 0) {
             throw new IllegalArgumentException("Bug status changed, reload and try again");
         }
@@ -329,14 +333,15 @@ public class AdminBugReportService {
                 : existing.getStatus();
         int updated = jdbcTemplate.update(
                 "UPDATE admin_bug_reports SET status = ?, assigned_to = ?, scan_note = ?, fix_summary = ?, "
-                        + "regression_note = ?, last_scanned_at = NOW(), updated_at = NOW() WHERE id = ? AND status = ?",
+                        + "regression_note = ?, last_scanned_at = NOW(), version = version + 1, updated_at = NOW() "
+                        + "WHERE id = ? AND version = ?",
                 status,
                 assignedTo == null || assignedTo.isBlank() ? actor : assignedTo,
                 scanNote,
                 fixSummary,
                 regressionNote,
                 id,
-                existing.getStatus());
+                existing.getVersion());
         if (updated == 0) {
             throw new IllegalArgumentException("Bug status changed, reload and try again");
         }
@@ -428,6 +433,7 @@ public class AdminBugReportService {
     }
 
     private NormalizedBug normalizeCreate(AdminBugReportRequest request) {
+        rejectStatusOnBugMutation(request.getStatus());
         NormalizedBug normalized = normalizeFields(request);
         normalized.status = STATUS_OPEN;
         normalized.scanNote = null;
@@ -437,6 +443,7 @@ public class AdminBugReportService {
     }
 
     private NormalizedBug normalizeUpdate(AdminBugReportRequest request, AdminBugReport existing) {
+        rejectStatusOnBugMutation(request.getStatus());
         NormalizedBug normalized = normalizeFields(request);
         normalized.status = existing.getStatus();
         normalized.scanNote = existing.getScanNote();
@@ -507,9 +514,14 @@ public class AdminBugReportService {
         if (normalized == null || normalized.equals(fallback)) {
             return normalized;
         }
+        int itemCount = 0;
         for (String line : normalized.split("\\n")) {
             String item = line == null ? "" : line.trim();
             if (!item.isEmpty()) {
+                itemCount++;
+                if (itemCount > MAX_ATTACHMENT_URL_COUNT) {
+                    throw new IllegalArgumentException("Too many bug attachment URLs");
+                }
                 validateAllowedReferenceUrl(item, "Unsupported bug attachment URL");
             }
         }
@@ -523,16 +535,49 @@ public class AdminBugReportService {
         }
         try {
             URI uri = new URI(normalized);
-            String scheme = uri.getScheme();
-            if (scheme != null
-                    && uri.getHost() != null
-                    && ("http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme))) {
+            if (matchesStorefrontOrigin(uri)) {
                 return;
             }
         } catch (Exception ex) {
             throw new IllegalArgumentException(message, ex);
         }
         throw new IllegalArgumentException(message);
+    }
+
+    private boolean matchesStorefrontOrigin(URI candidate) {
+        String scheme = candidate.getScheme();
+        if (scheme == null || candidate.getHost() == null
+                || (!"http".equalsIgnoreCase(scheme) && !"https".equalsIgnoreCase(scheme))) {
+            return false;
+        }
+        try {
+            URI storefront = new URI(storefrontBaseUrl());
+            return scheme.equalsIgnoreCase(storefront.getScheme())
+                    && candidate.getHost().equalsIgnoreCase(storefront.getHost())
+                    && effectivePort(candidate) == effectivePort(storefront);
+        } catch (Exception ex) {
+            return false;
+        }
+    }
+
+    private String storefrontBaseUrl() {
+        String configured = runtimeConfig == null
+                ? DEFAULT_STOREFRONT_BASE_URL
+                : runtimeConfig.getString("app.storefront-base-url", DEFAULT_STOREFRONT_BASE_URL);
+        return configured == null || configured.isBlank() ? DEFAULT_STOREFRONT_BASE_URL : configured.trim();
+    }
+
+    private int effectivePort(URI uri) {
+        if (uri.getPort() >= 0) {
+            return uri.getPort();
+        }
+        return "http".equalsIgnoreCase(uri.getScheme()) ? 80 : 443;
+    }
+
+    private void rejectStatusOnBugMutation(String status) {
+        if (!normalizeToken(status).isEmpty()) {
+            throw new IllegalArgumentException("Use the bug status endpoint to change status");
+        }
     }
 
     private String sanitize(String value, int max) {
@@ -731,6 +776,7 @@ public class AdminBugReportService {
         return (rs, rowNum) -> {
             AdminBugReport bug = new AdminBugReport();
             bug.setId(rs.getLong("id"));
+            bug.setVersion(rs.getLong("version"));
             bug.setTitle(rs.getString("title"));
             bug.setDescription(rs.getString("description"));
             bug.setModule(rs.getString("module"));

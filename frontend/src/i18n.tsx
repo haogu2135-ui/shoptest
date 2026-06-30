@@ -85,6 +85,9 @@ const humanizeKey = (key: string) => {
     .replace(/^./, (char) => char.toUpperCase());
 };
 
+const escapeTranslationParamKey = (key: string) =>
+  key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 export const translateForLanguage = (language: Language, key: string, params?: TranslationParams) => {
   const translated = getNestedValue(translations[language], key);
   const fallback = getNestedValue(translations.en, key);
@@ -99,7 +102,10 @@ export const translateForLanguage = (language: Language, key: string, params?: T
         : humanizeKey(key);
   if (!params) return template;
   return Object.entries(params).filter(([paramKey]) => paramKey !== 'defaultValue').reduce(
-    (result, [paramKey, value]) => result.replace(new RegExp(`\\{${paramKey}\\}`, 'g'), String(value)),
+    (result, [paramKey, value]) => result.replace(
+      new RegExp(`\\{${escapeTranslationParamKey(paramKey)}\\}`, 'g'),
+      () => String(value),
+    ),
     template,
   );
 };

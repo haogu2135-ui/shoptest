@@ -1,4 +1,5 @@
 const readProductManagementSource = () => require('fs').readFileSync(require('path').resolve(__dirname, 'ProductManagement.tsx'), 'utf8') as string;
+const readProductManagementStyles = () => require('fs').readFileSync(require('path').resolve(__dirname, 'ProductManagement.css'), 'utf8') as string;
 
 describe('ProductManagement source contracts', () => {
   it('keeps admin import translations and variant merges free of broad assertions', () => {
@@ -34,5 +35,19 @@ describe('ProductManagement source contracts', () => {
     expect(nameField).toContain('maxLength={PRODUCT_NAME_MAX_LENGTH}');
     expect(nameField).toContain('showCount');
     expect(nameField).toContain("t('pages.productAdmin.nameMaxLength', { count: PRODUCT_NAME_MAX_LENGTH })");
+  });
+
+  it('keeps mobile import controls explicit and recoverable', () => {
+    const source = readProductManagementSource();
+    const styles = readProductManagementStyles();
+
+    expect(source).toContain("const urlImportActionLabel = `${pageLabel}: ${t('pages.productAdmin.importFromUrl')}`;");
+    expect(source).toContain('aria-label={urlImportActionLabel}');
+    expect(source).toContain('title={urlImportActionLabel}');
+    expect(source).toContain('overlayClassName="product-management-page__importTooltip"');
+    expect(styles).toContain('.product-management-page__urlImportModal .ant-modal-footer .ant-btn');
+    expect(styles).toContain('white-space: normal;');
+    expect(styles).toContain('.product-management-page__importTooltip');
+    expect(styles).toContain('max-width: min(360px, calc(100vw - 24px));');
   });
 });

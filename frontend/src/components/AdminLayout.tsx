@@ -41,12 +41,13 @@ type AdminMenuItem = {
 
 const isAdminMenuItem = (item: AdminMenuItem | null): item is AdminMenuItem => item !== null;
 const adminDocumentIsVisible = () => document.visibilityState !== 'hidden';
+const ADMIN_SIDER_COLLAPSED_KEY = 'shop-admin-sider-collapsed';
 
 const AdminLayout: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [checking, setChecking] = useState(true);
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(() => getLocalStorageItem(ADMIN_SIDER_COLLAPSED_KEY) === 'true');
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [supportUnread, setSupportUnread] = useState(0);
   const [currentRole, setCurrentRole] = useState<string>('');
@@ -116,6 +117,12 @@ const AdminLayout: React.FC = () => {
   const currentAdminRouteAllowed = location.pathname === '/admin' || Boolean(selectedAdminPath);
   const canSeeSupport = canSee('support');
   const supportRouteActive = isAdminMenuRouteMatch(location.pathname, '/admin/support');
+  const handleSiderCollapse = useCallback((nextCollapsed: boolean, collapseType?: 'clickTrigger' | 'responsive') => {
+    setCollapsed(nextCollapsed);
+    if (collapseType !== 'responsive') {
+      setLocalStorageItem(ADMIN_SIDER_COLLAPSED_KEY, nextCollapsed ? 'true' : 'false');
+    }
+  }, []);
 
   const checkAdmin = useCallback(async (initial = false) => {
     const requestId = adminCheckRequestRef.current + 1;
@@ -271,7 +278,13 @@ const AdminLayout: React.FC = () => {
 
   if (checking) {
     return (
-      <div className="admin-layout__loading">
+      <div
+        className="admin-layout__loading"
+        role="status"
+        aria-live="polite"
+        aria-busy="true"
+        aria-label={t('adminLayout.checking')}
+      >
         <Spin size="large" tip={t('adminLayout.checking')} />
       </div>
     );
@@ -304,7 +317,13 @@ const AdminLayout: React.FC = () => {
 
   if (!defaultAdminPath || !currentAdminRouteAllowed) {
     return (
-      <div className="admin-layout__loading">
+      <div
+        className="admin-layout__loading"
+        role="status"
+        aria-live="polite"
+        aria-busy="true"
+        aria-label={t('adminLayout.checking')}
+      >
         <Spin size="large" tip={t('adminLayout.checking')} />
       </div>
     );
@@ -316,7 +335,7 @@ const AdminLayout: React.FC = () => {
       <Sider
         collapsible
         collapsed={collapsed}
-        onCollapse={setCollapsed}
+        onCollapse={handleSiderCollapse}
         breakpoint="lg"
         collapsedWidth={72}
         theme="dark"

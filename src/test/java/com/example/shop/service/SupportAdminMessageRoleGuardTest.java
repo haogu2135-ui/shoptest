@@ -53,11 +53,22 @@ class SupportAdminMessageRoleGuardTest {
     }
 
     @Test
-    void adminMessageEntrypointAssignsOnlyAfterAdminRoleCheck() {
+    void adminMessageEntrypointRejectsUnassignedSessionWithoutExplicitAssignmentApproval() {
         SupportSession session = openUnassignedSession();
         when(supportSessionMapper.findById(55L)).thenReturn(session);
 
-        SupportMessage message = service.sendAdminMessage(7L, 55L, "hello", "ADMIN");
+        assertThrows(IllegalStateException.class, () -> service.sendAdminMessage(7L, 55L, "hello", "ADMIN"));
+
+        verify(supportSessionMapper, never()).assignAdmin(55L, 7L);
+        verify(supportMessageMapper, never()).insert(any(SupportMessage.class));
+    }
+
+    @Test
+    void adminMessageEntrypointAssignsOnlyWhenCallerApprovesAssignment() {
+        SupportSession session = openUnassignedSession();
+        when(supportSessionMapper.findById(55L)).thenReturn(session);
+
+        SupportMessage message = service.sendAdminMessage(7L, 55L, "hello", "ADMIN", true);
 
         assertEquals("ADMIN", message.getSenderRole());
         verify(supportSessionMapper).assignAdmin(55L, 7L);
@@ -69,7 +80,7 @@ class SupportAdminMessageRoleGuardTest {
         SupportSession session = openUnassignedSession();
         when(supportSessionMapper.findById(55L)).thenReturn(session);
 
-        SupportMessage message = service.sendAdminMessage(7L, 55L, "hello", "SUPER_ADMIN");
+        SupportMessage message = service.sendAdminMessage(7L, 55L, "hello", "SUPER_ADMIN", true);
 
         assertEquals("ADMIN", message.getSenderRole());
         verify(supportSessionMapper).assignAdmin(55L, 7L);

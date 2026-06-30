@@ -90,7 +90,7 @@ export const claimCheckoutPaymentPollLock = async (orderId: number, orderNo: str
     expiresAt: now + CHECKOUT_PAYMENT_POLL_LOCK_TTL_MS,
   };
   if (!setLocalStorageItem(key, JSON.stringify(nextLock))) {
-    return true;
+    return false;
   }
   await waitCheckoutPaymentPollLockSettle();
   const confirmed = parseCheckoutPaymentPollLock(getLocalStorageItem(key));

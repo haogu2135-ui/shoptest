@@ -131,6 +131,7 @@ class LoginControllerPasswordLoginTest {
         user.setEmail("mia@example.com");
         user.setPhone("5550100");
         user.setRole("USER");
+        user.setRoleCode("SUPER_ADMIN");
         user.setStatus("ACTIVE");
 
         when(clientIpResolver.resolve(servletRequest)).thenReturn("203.0.113.30");
@@ -147,9 +148,10 @@ class LoginControllerPasswordLoginTest {
         assertEquals("access-token", body.get("token"));
         assertEquals("refresh-token", body.get("refreshToken"));
         assertEquals("mia", body.get("username"));
-        assertEquals("mia@example.com", body.get("email"));
-        assertEquals("5550100", body.get("phone"));
+        assertFalse(body.containsKey("email"));
+        assertFalse(body.containsKey("phone"));
         assertEquals("USER", body.get("role"));
+        assertFalse(body.containsKey("roleCode"));
         verify(userService).findByUsernameOrPhoneOrEmail("mia@example.com");
         verify(userService).findById(7L);
         verify(tokenBlacklistService).storeRefreshToken("refresh-token", "mia");
@@ -159,19 +161,75 @@ class LoginControllerPasswordLoginTest {
     }
 
     @Test
+    void passwordLoginRejectsAcceptedInactiveAccountBeforeIssuingTokens() {
+        MockHttpServletRequest servletRequest = new MockHttpServletRequest("POST", "/auth/login");
+        LoginRequest loginRequest = new LoginRequest();
+        loginRequest.setUsername("mia@example.com");
+        loginRequest.setPassword("secret123");
+        UserDetailsImpl principal = new UserDetailsImpl(
+                7L,
+                "mia",
+                "mia@example.com",
+                "ACTIVE",
+                "encoded-password",
+                List.of(new SimpleGrantedAuthority("ROLE_USER")));
+        UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+                principal,
+                null,
+                principal.getAuthorities());
+        User user = new User();
+        user.setId(7L);
+        user.setUsername("mia");
+        user.setEmail("mia@example.com");
+        user.setRole("USER");
+        user.setStatus(null);
+
+        when(clientIpResolver.resolve(servletRequest)).thenReturn("203.0.113.30");
+        when(authenticationManager.authenticate(any())).thenReturn(authentication);
+        when(userService.findByUsernameOrPhoneOrEmail("mia@example.com")).thenReturn(user);
+        when(userService.findById(7L)).thenReturn(user);
+
+        ResponseEntity<?> response = controller.login(loginRequest, servletRequest);
+
+        assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
+        Map<?, ?> body = (Map<?, ?>) response.getBody();
+        assertEquals("Account is disabled", body.get("error"));
+        assertEquals("ACCOUNT_DISABLED", body.get("code"));
+        verify(jwtService, never()).generateToken(any(UserDetailsImpl.class));
+        verify(tokenBlacklistService, never()).generateRefreshToken();
+        verify(tokenBlacklistService, never()).storeRefreshToken(any(), any());
+    }
+
+    @Test
     void loginResponseContractStaysUnifiedAcrossSupportedAuthFlows() throws Exception {
         String source = Files.readString(Path.of("src/main/java/com/example/shop/controller/LoginController.java"), StandardCharsets.UTF_8);
+        String userDetails = Files.readString(Path.of("src/main/java/com/example/shop/security/UserDetailsImpl.java"), StandardCharsets.UTF_8);
+        String emailLoginService = Files.readString(Path.of("src/main/java/com/example/shop/service/EmailLoginService.java"), StandardCharsets.UTF_8);
+        String statusPolicy = Files.readString(Path.of("src/main/java/com/example/shop/security/UserAccountStatusPolicy.java"), StandardCharsets.UTF_8);
         int responseBuilderIndex = source.indexOf("private Map<String, Object> buildLoginResponse");
 
         assertTrue(responseBuilderIndex >= 0, "LoginController should keep a shared auth-session response builder");
         String responseBuilder = source.substring(responseBuilderIndex);
         assertTrue(responseBuilder.contains("response.put(\"token\", jwt);"));
         assertTrue(responseBuilder.contains("response.put(\"refreshToken\", refreshToken);"));
+        assertFalse(responseBuilder.contains("response.put(\"email\""),
+                "Auth success payload should not expose email addresses; profile hydration owns contact details");
+        assertFalse(responseBuilder.contains("response.put(\"phone\""),
+                "Auth success payload should not expose phone numbers; profile hydration owns contact details");
+        assertTrue(responseBuilder.contains("if (shouldExposeRoleCode(user)) {"));
+        assertTrue(responseBuilder.contains("response.put(\"roleCode\", user.getRoleCode());"));
+        assertFalse(responseBuilder.contains("response.put(\"roleCode\", user != null ? user.getRoleCode() : null);"));
         assertFalse(source.contains("errorJson("), "Auth errors should not fork into a second JSON shape");
         assertFalse(source.contains("\"accessToken\""), "Auth success payload should keep the frontend token field name");
         assertFalse(source.contains("\"refresh_token\""), "Auth success payload should keep camelCase refreshToken");
         assertFalse(source.contains("@PostMapping(\"/demo"), "Demo-login response forks should not return");
         assertFalse(source.contains("@GetMapping(\"/oauth"), "OAuth response forks should not return");
+        assertTrue(source.contains("UserAccountStatusPolicy.canIssueUserSession(user)"));
+        assertTrue(source.contains("disabledAccountResponse()"));
+        assertTrue(userDetails.contains("UserAccountStatusPolicy.isActiveStatus(status)"));
+        assertTrue(emailLoginService.contains("!UserAccountStatusPolicy.canIssueUserSession(user)"));
+        assertTrue(statusPolicy.contains("status != null && ACTIVE_STATUS.equalsIgnoreCase(status.trim())"));
+        assertFalse(userDetails.contains("status == null || !\"BANNED\".equalsIgnoreCase(status)"));
         assertTrue(source.contains("return ResponseEntity.ok(buildLoginResponse(jwt, refreshToken, userDetails, user));"));
         assertTrue(source.contains("return ResponseEntity.ok(buildLoginResponse(newAccessToken, newRefreshToken, userDetails, user));"));
     }

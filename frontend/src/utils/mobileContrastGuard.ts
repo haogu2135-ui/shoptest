@@ -341,7 +341,6 @@ body.shop-mobile-app :is(
 }
 
 body.shop-mobile-app .shop-app-shell :is(
-  .shopee-hero__main,
   .product-list__heroBand,
   .cart-page__hero,
   .checkout-page__hero,
@@ -389,6 +388,10 @@ body.shop-mobile-app .shop-app-shell :is(
   .anticon,
   span:not(.ant-badge-count):not(.ant-scroll-number)
 ) {
+  color: var(--app-contrast-on-dark) !important;
+}
+
+body.shop-mobile-app .shop-app-shell .shopee-hero__main {
   color: var(--app-contrast-on-dark) !important;
 }
 
@@ -918,7 +921,6 @@ body.shop-mobile-app :where(
 }
 
 body.shop-mobile-app .shop-app-shell :is(
-  .shopee-hero__main,
   .product-list__heroBand,
   .cart-page__hero,
   .checkout-page__hero,

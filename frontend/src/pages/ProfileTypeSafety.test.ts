@@ -43,7 +43,12 @@ describe('Profile type-safety guard', () => {
     expect(syncSource).toContain('const syncSeq = paymentReturnSyncSeqRef.current + 1;');
     expect(syncSource).toContain('paymentReturnSyncSeqRef.current = syncSeq;');
     expect(syncSource).toContain('const isCurrentPaymentReturnSync = () => mountedRef.current && paymentReturnSyncSeqRef.current === syncSeq;');
-    expect(syncSource.match(/if \(!isCurrentPaymentReturnSync\(\)\) return;/g)?.length).toBeGreaterThanOrEqual(3);
+    expect(syncSource).toContain('const paymentListRes = await paymentApi.syncByOrder(order.id);');
+    expect(syncSource).toContain('const mergedPayments = paymentListRes.data || [];');
+    expect(syncSource).not.toContain('paymentApi.getByOrder(order.id)');
+    expect(syncSource).not.toContain('paymentApi.sync(payment.id)');
+    expect(syncSource).not.toContain('Promise.all(paymentList.map');
+    expect(syncSource.match(/if \(!isCurrentPaymentReturnSync\(\)\) return;/g)?.length).toBeGreaterThanOrEqual(2);
     expect(syncSource).toContain('await fetchOrders();');
     expect(paymentReturnEffectSource).toContain('syncPaymentReturnState(targetOrder).catch(() => {');
     expect(paymentReturnEffectSource).toContain('if (mountedRef.current && handledPaymentReturnRef.current === returnKey) {');

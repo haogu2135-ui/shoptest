@@ -4,6 +4,15 @@ import path from 'path';
 const pageSource = fs.readFileSync(path.join(__dirname, 'ProductQuestionManagement.tsx'), 'utf8');
 
 describe('ProductQuestionManagement source guards', () => {
+  it('blocks answer/delete mutations while showing stale cached rows after a reload failure', () => {
+    expect(pageSource).toContain('const hasQuestionSnapshot = questions.length > 0 || summary !== null;');
+    expect(pageSource).toContain('const actionsDisabledByStaleData = Boolean(loadError);');
+    expect(pageSource).toContain("message={t('pages.adminQuestions.loadErrorTitle')}");
+    expect(pageSource).toContain("description={visibleQuestions.length ? t('pages.adminQuestions.staleDataWarning') : loadError}");
+    expect(pageSource).toContain('onClick={loadQuestions}');
+    expect(pageSource).toContain('disabled={actionsDisabledByStaleData}');
+  });
+
   it('keeps admin question API error handling typed without broad any usage', () => {
     expect(pageSource).toContain('} catch (err: unknown) {');
     expect(pageSource).toContain("getApiErrorMessage(err, t('pages.adminQuestions.fetchFailed'), language)");

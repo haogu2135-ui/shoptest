@@ -13,9 +13,15 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
 
+import javax.validation.ConstraintViolation;
+import javax.validation.Validation;
+import javax.validation.Validator;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -26,6 +32,7 @@ class AuthControllerForgotPasswordTest {
     private EmailLoginService emailLoginService;
     private ClientIpResolver clientIpResolver;
     private AuthController controller;
+    private final Validator validator = Validation.buildDefaultValidatorFactory().getValidator();
 
     @BeforeEach
     void setUp() {
@@ -84,6 +91,23 @@ class AuthControllerForgotPasswordTest {
         assertEquals("Password reset failed. Please verify the account information and code.", ((Map<?, ?>) response.getBody()).get("error"));
         assertEquals("RESET_FAILED", ((Map<?, ?>) response.getBody()).get("code"));
         verifyNoInteractions(userService);
+    }
+
+    @Test
+    void forgotPasswordRequestRejectsOversizedLookupFieldsBeforeControllerWork() {
+        ForgotPasswordRequest request = resetRequest(
+                "u".repeat(121),
+                "a".repeat(89) + "@example.com",
+                "1234567");
+
+        Set<String> invalidFields = validator.validate(request).stream()
+                .map(ConstraintViolation::getPropertyPath)
+                .map(Object::toString)
+                .collect(Collectors.toSet());
+
+        assertTrue(invalidFields.contains("login"));
+        assertTrue(invalidFields.contains("email"));
+        assertTrue(invalidFields.contains("code"));
     }
 
     private ForgotPasswordRequest resetRequest(String login, String email, String code) {

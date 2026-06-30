@@ -70,8 +70,11 @@ class CartControllerClearResponseTest {
 
         assertTrue(controllerSource.contains("@Validated"));
         assertTrue(controllerSource.contains("private static final int MAX_CART_REQUEST_QUANTITY = 999;"));
+        assertTrue(controllerSource.contains("private static final int MAX_SELECTED_SPECS_LENGTH = 1000;"));
         assertTrue(controllerSource.contains("@RequestParam @Min(1) @Max(MAX_CART_REQUEST_QUANTITY) Integer quantity"));
+        assertTrue(controllerSource.contains("@RequestParam(required = false) @Size(max = MAX_SELECTED_SPECS_LENGTH) String selectedSpecs"));
         assertTrue(requestSource.contains("@Max(MAX_CART_REQUEST_QUANTITY)"));
+        assertTrue(requestSource.contains("@Size(max = 1000)"));
     }
 
     private static Authentication authentication(Long userId) {

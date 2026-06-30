@@ -15,6 +15,8 @@ import {
   HistoryOutlined,
   HomeOutlined,
   LogoutOutlined,
+  PauseCircleOutlined,
+  PlayCircleOutlined,
   SearchOutlined,
   SettingOutlined,
   ShoppingOutlined,
@@ -23,7 +25,8 @@ import {
   UserAddOutlined,
   UserOutlined,
 } from '@ant-design/icons';
-import { adminApi, announcementApi, cartApi, clearStoredAuthSession, couponApi, notificationApi, productApi, userApi, wishlistApi } from '../api';
+import { adminApi, announcementApi, cartApi, couponApi, notificationApi, productApi, userApi, wishlistApi } from '../api';
+import { useAuth } from '../hooks/useAuth';
 import { LANGUAGE_LABELS, type Language, SUPPORTED_LANGUAGES, useLanguage } from '../i18n';
 import type { CartItem, SiteAnnouncementPublic } from '../types';
 import { CurrencyCode, markets } from '../utils/market';
@@ -65,6 +68,14 @@ const ANNOUNCEMENT_PLACEHOLDER_PATTERN = /(^|\b)(test|testing|dummy|placeholder|
 const ANNOUNCEMENT_REPEATED_CHARACTER_PATTERN = /([a-z])\1{4,}/i;
 const ANNOUNCEMENT_LONG_TOKEN_PATTERN = /\b[a-z0-9]{18,}\b/gi;
 const languageOptions = SUPPORTED_LANGUAGES.map((value) => ({ value, label: LANGUAGE_LABELS[value] }));
+const NAV_BADGE_REPORT_CONTEXTS = {
+  'stock alert': 'Navbar.refreshStockAlertBadge',
+  cart: 'Navbar.refreshCartBadge',
+  notification: 'Navbar.refreshNotificationBadge',
+  wishlist: 'Navbar.refreshWishlistBadge',
+  coupon: 'Navbar.refreshCouponBadge',
+} as const;
+type NavBadgeSource = keyof typeof NAV_BADGE_REPORT_CONTEXTS;
 
 const normalizeNavKeyword = (value: string) => value.trim().slice(0, NAV_SEARCH_MAX_LENGTH);
 const readNavAuthSnapshot = () => ({
@@ -127,8 +138,8 @@ const Navbar: React.FC = () => {
     [activeProductKeyword, isProductsActive],
   );
   const [authSnapshot, setAuthSnapshot] = useState(readNavAuthSnapshot);
-  const token = authSnapshot.token;
-  const username = authSnapshot.username;
+  const { user: authUser, token, logout: logoutAuthSession } = useAuth();
+  const username = authUser?.username || authSnapshot.username;
   const [navRole, setNavRole] = useState(authSnapshot.role);
   const [adminPath, setAdminPath] = useState(authSnapshot.adminDefaultPath);
   const canAccessAdmin = isAdminRole(navRole);
@@ -139,6 +150,7 @@ const Navbar: React.FC = () => {
   const [compareCount, setCompareCount] = useState(0);
   const [alertCount, setAlertCount] = useState(0);
   const [announcements, setAnnouncements] = useState<SiteAnnouncementPublic[]>([]);
+  const [announcementPaused, setAnnouncementPaused] = useState(false);
   const [mobileRelease, setMobileRelease] = useState<MobileReleaseManifest | null>(null);
   const [openingAndroidApk, setOpeningAndroidApk] = useState(false);
   const [nativeBottomNav, setNativeBottomNav] = useState(() => isNativeMobileApp());
@@ -147,10 +159,8 @@ const Navbar: React.FC = () => {
   const { currency, setCurrency, market, formatMoney } = useMarket();
   const navSearchActionLabel = `${t('common.search')}: ${t('nav.searchPlaceholder')}`;
   const badgeLoadWarningShown = useRef(false);
-  const showBadgeLoadWarning = useCallback((source: string, error: unknown) => {
-    if (typeof console !== 'undefined' && typeof console.warn === 'function') {
-      console.warn(`[shop] Failed to refresh ${source} navigation badge`, error);
-    }
+  const showBadgeLoadWarning = useCallback((source: NavBadgeSource, error: unknown) => {
+    reportNonBlockingError(NAV_BADGE_REPORT_CONTEXTS[source], error);
     if (isNativeMobileApp() || document.body?.classList.contains('shop-mobile-app')) {
       return;
     }
@@ -165,6 +175,16 @@ const Navbar: React.FC = () => {
     setNavRole(nextSnapshot.role);
     setAdminPath(nextSnapshot.adminDefaultPath);
   }, []);
+
+  useEffect(() => {
+    const effectiveRole = authUser ? getEffectiveRole(authUser.role, authUser.roleCode) : '';
+    if (effectiveRole) {
+      setNavRole(effectiveRole);
+    } else if (!token) {
+      setNavRole('');
+      setAdminPath('/admin');
+    }
+  }, [authUser, token]);
 
   useEffect(() => {
     const handleAuthStorageChange = (event: StorageEvent) => {
@@ -422,22 +442,22 @@ const Navbar: React.FC = () => {
     let disposed = false;
     const idleTasks: ScheduledIdleTask[] = [];
     const refreshTimers: Record<string, number | undefined> = {};
-    const queueIdleRefresh = (callback: () => void, timeout?: number) => {
+    const queueIdleRefresh = (callback: () => void | Promise<void>, timeout?: number) => {
       idleTasks.push(scheduleIdleTask(() => {
-        if (!disposed) callback();
+        if (!disposed) void callback();
       }, timeout));
     };
-    const queueMergedRefresh = (key: string, callback: () => void) => {
+    const queueMergedRefresh = (key: string, callback: () => void | Promise<void>) => {
       const existingTimer = refreshTimers[key];
       if (existingTimer !== undefined) {
         window.clearTimeout(existingTimer);
       }
       refreshTimers[key] = window.setTimeout(() => {
         delete refreshTimers[key];
-        if (!disposed) callback();
+        if (!disposed) void callback();
       }, NAV_BADGE_REFRESH_DEBOUNCE_MS);
     };
-    const refreshAlertCount = () => {
+    const refreshAlertCount = async () => {
       if (!token) {
         setAlertCount(0);
         return;
@@ -448,91 +468,97 @@ const Navbar: React.FC = () => {
         return;
       }
       const productIds = Array.from(new Set(alerts.map((alert) => alert.productId)));
-      productApi.getByIds(productIds)
-        .then((response) => {
-          if (disposed) return;
-          const readyCount = response.data.filter((product) => {
-            const stock = product.stock;
-            return stock === undefined || stock > 0;
-          }).length;
-          setAlertCount(readyCount);
-        })
-        .catch((error) => {
-          if (!disposed) {
-            setAlertCount(0);
-            showBadgeLoadWarning('stock alert', error);
-          }
-        });
+      try {
+        const response = await productApi.getByIds(productIds);
+        if (disposed) return;
+        const readyCount = response.data.filter((product) => {
+          const stock = product.stock;
+          return stock === undefined || stock > 0;
+        }).length;
+        setAlertCount(readyCount);
+      } catch (error) {
+        if (!disposed) {
+          setAlertCount(0);
+          showBadgeLoadWarning('stock alert', error);
+        }
+      }
     };
     const refreshGuestCartCount = () => {
       const count = getGuestCartItems().reduce((sum, item) => sum + normalizeBadgeCount(item.quantity), 0);
       setCartCount(count);
     };
-    const refreshCartCount = () => {
+    const refreshCartCount = async () => {
       if (token) {
-        cartApi.getItems(0)
-          .then((res) => {
-            if (disposed) return;
-            const count = res.data.reduce((sum: number, item: CartItem) => sum + normalizeBadgeCount(item.quantity), 0);
-            setCartCount(count);
-          })
-          .catch((error) => {
-            if (!disposed) {
-              setCartCount(0);
-              showBadgeLoadWarning('cart', error);
-            }
-          });
+        try {
+          const res = await cartApi.getItems(0);
+          if (disposed) return;
+          const count = res.data.reduce((sum: number, item: CartItem) => sum + normalizeBadgeCount(item.quantity), 0);
+          setCartCount(count);
+        } catch (error) {
+          if (!disposed) {
+            setCartCount(0);
+            showBadgeLoadWarning('cart', error);
+          }
+        }
       } else {
         refreshGuestCartCount();
       }
     };
-    const refreshUnreadCount = () => {
+    const refreshUnreadCount = async () => {
       if (!token) {
         setUnreadCount(0);
         return;
       }
-      notificationApi.getUnreadCount()
-        .then((res) => {
-          if (!disposed) setUnreadCount(normalizeBadgeCount(res.data.count));
-        })
-        .catch((error) => {
-          if (!disposed) {
-            setUnreadCount(0);
-            showBadgeLoadWarning('notification', error);
-          }
-        });
+      try {
+        const res = await notificationApi.getUnreadCount();
+        if (!disposed) setUnreadCount(normalizeBadgeCount(res.data.count));
+      } catch (error) {
+        if (!disposed) {
+          setUnreadCount(0);
+          showBadgeLoadWarning('notification', error);
+        }
+      }
     };
-    const refreshWishlistCount = () => {
+    const refreshWishlistCount = async () => {
       if (!token) {
         setWishlistCount(0);
         return;
       }
-      wishlistApi.getCount(0)
-        .then((res) => {
-          if (!disposed) setWishlistCount(normalizeBadgeCount(res.data.count));
-        })
-        .catch((error) => {
-          if (!disposed) {
-            setWishlistCount(0);
-            showBadgeLoadWarning('wishlist', error);
-          }
-        });
+      try {
+        const res = await wishlistApi.getCount(0);
+        if (!disposed) setWishlistCount(normalizeBadgeCount(res.data.count));
+      } catch (error) {
+        if (!disposed) {
+          setWishlistCount(0);
+          showBadgeLoadWarning('wishlist', error);
+        }
+      }
     };
-    const refreshCouponCount = () => {
+    const refreshCouponCount = async () => {
       if (!token) {
         setCouponCount(0);
         return;
       }
-      couponApi.getAvailableByUser(0)
-        .then((res) => {
-          if (!disposed) setCouponCount(normalizeBadgeCount(res.data.length));
-        })
-        .catch((error) => {
-          if (!disposed) {
-            setCouponCount(0);
-            showBadgeLoadWarning('coupon', error);
-          }
-        });
+      try {
+        const res = await couponApi.getAvailableByUser(0);
+        if (!disposed) setCouponCount(normalizeBadgeCount(res.data.length));
+      } catch (error) {
+        if (!disposed) {
+          setCouponCount(0);
+          showBadgeLoadWarning('coupon', error);
+        }
+      }
+    };
+    const refreshAccountBadgeCounts = async () => {
+      await refreshCartCount();
+      if (disposed) return;
+      await refreshUnreadCount();
+      if (disposed) return;
+      await refreshWishlistCount();
+      if (disposed) return;
+      await refreshCouponCount();
+      if (disposed) return;
+      await refreshAlertCount();
     };
     const refreshLocalCountsFromStorage = (event: StorageEvent) => {
       if (event.key === 'shop-product-compare') refreshCompareCount();
@@ -551,13 +577,10 @@ const Navbar: React.FC = () => {
       setUnreadCount(0);
       setWishlistCount(0);
       setCouponCount(0);
+      queueIdleRefresh(refreshAlertCount, 900);
     } else {
-      queueIdleRefresh(refreshCartCount, 650);
-      queueIdleRefresh(refreshUnreadCount, 1100);
-      queueIdleRefresh(refreshWishlistCount, 1400);
-      queueIdleRefresh(refreshCouponCount, 1700);
+      queueIdleRefresh(refreshAccountBadgeCounts, 650);
     }
-    queueIdleRefresh(refreshAlertCount, token ? 1900 : 900);
 
     window.addEventListener('shop:cart-updated', refreshCartCountFromEvent);
     window.addEventListener('shop:compare-updated', refreshCompareCount);
@@ -584,12 +607,7 @@ const Navbar: React.FC = () => {
 
   const handleLogout = () => {
     const loginUrl = buildLoginUrlFromWindow();
-    const refreshToken = getLocalStorageItem('refreshToken');
-    void userApi.logout(refreshToken).catch((error) => {
-      reportNonBlockingError('Navbar.logoutRevoke', error);
-      message.warning(t('messages.logoutPartialFailure'));
-    });
-    clearStoredAuthSession();
+    logoutAuthSession();
     setCartCount(0);
     setUnreadCount(0);
     setWishlistCount(0);
@@ -700,12 +718,14 @@ const Navbar: React.FC = () => {
   const tickerAnnouncements = announcements.length > 0 && announcements.length < 3
     ? Array.from({ length: Math.ceil(4 / announcements.length) }).flatMap(() => announcements)
     : announcements;
+  const announcementClassName = `shop-nav__announcement${announcementPaused ? ' shop-nav__announcement--paused' : ''}`;
+  const announcementToggleLabel = announcementPaused ? t('nav.resumeAnnouncements') : t('nav.pauseAnnouncements');
 
   return (
     <>
       <header className={`shop-nav shop-nav--${language}`}>
       <div
-        className="shop-nav__announcement"
+        className={announcementClassName}
         role="status"
         aria-label={t('nav.announcements')}
         aria-live="polite"
@@ -713,6 +733,16 @@ const Navbar: React.FC = () => {
         aria-relevant="additions text"
         aria-roledescription={t('nav.announcementTicker')}
       >
+        <button
+          type="button"
+          className="shop-nav__announcementToggle"
+          aria-label={announcementToggleLabel}
+          title={announcementToggleLabel}
+          aria-pressed={announcementPaused}
+          onClick={() => setAnnouncementPaused((current) => !current)}
+        >
+          {announcementPaused ? <PlayCircleOutlined /> : <PauseCircleOutlined />}
+        </button>
         <div className="shop-nav__ticker">
           {tickerAnnouncements.length > 0 ? tickerAnnouncements.map((announcement, index) => (
             <React.Fragment key={`${announcement.id || announcement.title}-${index}`}>

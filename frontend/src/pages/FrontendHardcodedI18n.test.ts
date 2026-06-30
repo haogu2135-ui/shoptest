@@ -2,7 +2,10 @@ import fs from 'fs';
 import path from 'path';
 
 const productionSourceFiles = [
+  ['Cart.tsx', 'Cart.tsx'],
   ['Profile.tsx', 'Profile.tsx'],
+  ['BugManagement.tsx', 'BugManagement.tsx'],
+  ['Home.tsx', 'Home.tsx'],
   ['ProductList.tsx', 'ProductList.tsx'],
   ['BrowsingHistory.tsx', 'BrowsingHistory.tsx'],
   ['ProductManagement.tsx', 'ProductManagement.tsx'],
@@ -103,6 +106,38 @@ describe('frontend page i18n hardcoded string guards', () => {
       expect(locale.common.itemsCount).toContain('{count}');
       expect(locale.pages.browsingHistory.empty).toEqual(expect.any(String));
       expect(locale.pages.browsingHistory.subtitle).toContain('{count}');
+    });
+  });
+
+  it('keeps auth brand and trust statistics in locale data', () => {
+    const loginSource = readSource('Login.tsx');
+    const registerSource = readSource('Register.tsx');
+    const locales = [
+      readJson('../locales/en.json'),
+      readJson('../locales/es.json'),
+      readJson('../locales/zh.json'),
+    ];
+
+    expect(loginSource).toContain("{t('common.brand')}");
+    expect(registerSource).toContain("{t('common.brand')}");
+    expect(loginSource).toContain("t('pages.auth.loginStatTrackingValue')");
+    expect(loginSource).toContain("t('pages.auth.loginStatSecureValue')");
+    expect(registerSource).toContain("t('pages.auth.registerTrustSecure')");
+    expect(registerSource).toContain("t('pages.auth.registerTrustPerks')");
+    expect(registerSource).toContain("t('pages.auth.registerTrustTracking')");
+    ['ShopMX', '24/7', 'SSL'].forEach((literal) => {
+      expect(loginSource).not.toContain(`>${literal}<`);
+      expect(registerSource).not.toContain(`>${literal}<`);
+      expect(loginSource).not.toContain(`'${literal}'`);
+      expect(registerSource).not.toContain(`'${literal}'`);
+    });
+    locales.forEach((locale) => {
+      expect(locale.common.brand).toEqual(expect.any(String));
+      expect(locale.pages.auth.loginStatTrackingValue).toEqual(expect.any(String));
+      expect(locale.pages.auth.loginStatSecureValue).toEqual(expect.any(String));
+      expect(locale.pages.auth.registerTrustSecure).toEqual(expect.any(String));
+      expect(locale.pages.auth.registerTrustPerks).toEqual(expect.any(String));
+      expect(locale.pages.auth.registerTrustTracking).toEqual(expect.any(String));
     });
   });
 });

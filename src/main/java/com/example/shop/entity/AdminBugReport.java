@@ -9,6 +9,7 @@ import java.time.LocalDateTime;
 @Data
 public class AdminBugReport {
     private Long id;
+    private Long version;
     @NotBlank
     @Size(max = 160)
     private String title;

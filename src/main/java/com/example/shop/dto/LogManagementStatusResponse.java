@@ -1,5 +1,7 @@
 package com.example.shop.dto;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+
 import java.util.List;
 
 public class LogManagementStatusResponse {
@@ -7,6 +9,7 @@ public class LogManagementStatusResponse {
     private String configuredLevel;
     private String effectiveLevel;
     private boolean debugEnabled;
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     private String logDirectory;
     private String logFileName;
     private List<String> availableFiles;

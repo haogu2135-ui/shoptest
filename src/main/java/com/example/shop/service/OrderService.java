@@ -1316,13 +1316,8 @@ public class OrderService {
 
     private Order buildRestrictedAccountOrderTrackingSummary(Order order) {
         Order summary = new Order();
-        summary.setId(order.getId());
         summary.setOrderNo(order.getOrderNo());
-        summary.setStatus(order.getStatus());
         summary.setGuestOrder(false);
-        summary.setCreatedAt(order.getCreatedAt());
-        summary.setShippedAt(order.getShippedAt());
-        summary.setCompletedAt(order.getCompletedAt());
         return summary;
     }
 
@@ -1557,35 +1552,44 @@ public class OrderService {
     }
 
     @Scheduled(fixedDelayString = "${order.expiry-scan-ms:60000}")
-    public void cancelExpiredUnpaidOrders() {
+    public ExpiredOrderCancellationResult cancelExpiredUnpaidOrders() {
         LocalDateTime cutoff = LocalDateTime.now().minusMinutes(orderUnpaidTimeoutMinutes());
         int batchSize = orderExpiryScanBatchSize();
         Long afterId = null;
+        ExpiredOrderCancellationAccumulator result = new ExpiredOrderCancellationAccumulator();
         while (true) {
             List<Order> expiredOrders = orderRepository.findPendingPaymentBefore(cutoff, afterId, batchSize);
             if (expiredOrders == null || expiredOrders.isEmpty()) {
-                return;
+                return result.toResult();
             }
             Long nextAfterId = lastOrderId(afterId, expiredOrders);
             for (Order order : expiredOrders) {
                 if (order == null || order.getId() == null) {
+                    result.recordSkipped(null);
                     continue;
                 }
-                cancelExpiredUnpaidOrderRow(order);
+                result.recordScanned();
+                try {
+                    ExpiredOrderCancellationStatus status = cancelExpiredUnpaidOrderRow(order);
+                    if (status == ExpiredOrderCancellationStatus.CANCELLED) {
+                        result.recordCancelled(order.getId());
+                    } else {
+                        result.recordSkipped(order.getId());
+                    }
+                } catch (RuntimeException ex) {
+                    result.recordFailure(order.getId(), ex);
+                    log.warn("Skipping expired-order cancellation during scan for order {}", order.getId(), ex);
+                }
             }
             if (expiredOrders.size() < batchSize || nextAfterId == null || nextAfterId.equals(afterId)) {
-                return;
+                return result.toResult();
             }
             afterId = nextAfterId;
         }
     }
 
-    private void cancelExpiredUnpaidOrderRow(Order order) {
-        try {
-            cancelSingleExpiredOrderInNewTransaction(order.getId());
-        } catch (RuntimeException ex) {
-            log.warn("Skipping expired-order cancellation during scan for order {}", order.getId(), ex);
-        }
+    private ExpiredOrderCancellationStatus cancelExpiredUnpaidOrderRow(Order order) {
+        return cancelSingleExpiredOrderInNewTransaction(order.getId());
     }
 
     private Long lastOrderId(Long fallback, List<Order> orders) {
@@ -1609,36 +1613,147 @@ public class OrderService {
         return runtimeConfig == null ? 30 : runtimeConfig.getLong("order.unpaid-timeout-minutes", 30);
     }
 
-    private void cancelSingleExpiredOrderInNewTransaction(Long orderId) {
+    private ExpiredOrderCancellationStatus cancelSingleExpiredOrderInNewTransaction(Long orderId) {
         if (transactionManager == null) {
-            cancelSingleExpiredOrder(orderId);
-            return;
+            return cancelSingleExpiredOrder(orderId);
         }
         TransactionTemplate template = new TransactionTemplate(transactionManager);
         template.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
-        template.executeWithoutResult(status -> cancelSingleExpiredOrder(orderId));
+        ExpiredOrderCancellationStatus[] result = {ExpiredOrderCancellationStatus.SKIPPED};
+        template.executeWithoutResult(status -> result[0] = cancelSingleExpiredOrder(orderId));
+        return result[0];
     }
 
     @Transactional(rollbackFor = Exception.class, propagation = Propagation.REQUIRES_NEW)
-    public void cancelSingleExpiredOrder(Long orderId) {
+    public ExpiredOrderCancellationStatus cancelSingleExpiredOrder(Long orderId) {
         Order order = orderRepository.findById(orderId);
         if (order == null || !"PENDING_PAYMENT".equals(order.getStatus())) {
-            return;
+            return ExpiredOrderCancellationStatus.SKIPPED;
         }
         LocalDateTime cutoff = LocalDateTime.now().minusMinutes(orderUnpaidTimeoutMinutes());
         if (order.getCreatedAt() == null || !order.getCreatedAt().isBefore(cutoff)) {
-            return;
+            return ExpiredOrderCancellationStatus.SKIPPED;
         }
         if (paymentRepository.countActivePendingByOrderId(order.getId()) > 0) {
-            return;
+            return ExpiredOrderCancellationStatus.SKIPPED;
         }
         Payment pendingPayment = paymentRepository.findPendingByOrderId(order.getId());
         if (pendingPayment != null
                 && pendingPayment.getExpiresAt() != null
                 && pendingPayment.getExpiresAt().isAfter(LocalDateTime.now())) {
-            return;
+            return ExpiredOrderCancellationStatus.SKIPPED;
         }
-        cancelOrder(order.getId());
+        return cancelOrder(order.getId())
+                ? ExpiredOrderCancellationStatus.CANCELLED
+                : ExpiredOrderCancellationStatus.SKIPPED;
+    }
+
+    public enum ExpiredOrderCancellationStatus {
+        CANCELLED,
+        SKIPPED
+    }
+
+    private static class ExpiredOrderCancellationAccumulator {
+        private int scannedCount;
+        private int skippedCount;
+        private final List<Long> cancelledOrderIds = new ArrayList<>();
+        private final List<Long> failedOrderIds = new ArrayList<>();
+        private final Map<Long, String> failureMessages = new LinkedHashMap<>();
+
+        private void recordScanned() {
+            scannedCount++;
+        }
+
+        private void recordCancelled(Long orderId) {
+            cancelledOrderIds.add(orderId);
+        }
+
+        private void recordSkipped(Long orderId) {
+            skippedCount++;
+        }
+
+        private void recordFailure(Long orderId, RuntimeException ex) {
+            failedOrderIds.add(orderId);
+            failureMessages.put(orderId, failureMessage(ex));
+        }
+
+        private ExpiredOrderCancellationResult toResult() {
+            return new ExpiredOrderCancellationResult(
+                    scannedCount,
+                    cancelledOrderIds.size(),
+                    skippedCount,
+                    failedOrderIds.size(),
+                    cancelledOrderIds,
+                    failedOrderIds,
+                    failureMessages
+            );
+        }
+
+        private String failureMessage(RuntimeException ex) {
+            String message = ex == null ? null : ex.getMessage();
+            if (message == null || message.isBlank()) {
+                message = ex == null ? "Unknown failure" : ex.getClass().getSimpleName();
+            }
+            return message.length() > 240 ? message.substring(0, 240) : message;
+        }
+    }
+
+    public static class ExpiredOrderCancellationResult {
+        private final int scannedCount;
+        private final int cancelledCount;
+        private final int skippedCount;
+        private final int failedCount;
+        private final List<Long> cancelledOrderIds;
+        private final List<Long> failedOrderIds;
+        private final Map<Long, String> failureMessages;
+
+        private ExpiredOrderCancellationResult(int scannedCount,
+                                               int cancelledCount,
+                                               int skippedCount,
+                                               int failedCount,
+                                               List<Long> cancelledOrderIds,
+                                               List<Long> failedOrderIds,
+                                               Map<Long, String> failureMessages) {
+            this.scannedCount = scannedCount;
+            this.cancelledCount = cancelledCount;
+            this.skippedCount = skippedCount;
+            this.failedCount = failedCount;
+            this.cancelledOrderIds = Collections.unmodifiableList(new ArrayList<>(cancelledOrderIds));
+            this.failedOrderIds = Collections.unmodifiableList(new ArrayList<>(failedOrderIds));
+            this.failureMessages = Collections.unmodifiableMap(new LinkedHashMap<>(failureMessages));
+        }
+
+        public int getScannedCount() {
+            return scannedCount;
+        }
+
+        public int getCancelledCount() {
+            return cancelledCount;
+        }
+
+        public int getSkippedCount() {
+            return skippedCount;
+        }
+
+        public int getFailedCount() {
+            return failedCount;
+        }
+
+        public List<Long> getCancelledOrderIds() {
+            return cancelledOrderIds;
+        }
+
+        public List<Long> getFailedOrderIds() {
+            return failedOrderIds;
+        }
+
+        public Map<Long, String> getFailureMessages() {
+            return failureMessages;
+        }
+
+        public boolean hasFailures() {
+            return failedCount > 0;
+        }
     }
 
     @Transactional(rollbackFor = Exception.class)

@@ -1,4 +1,5 @@
 import { act, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { Payment } from './Payment';
 import { paymentApi } from '../api';
 
@@ -14,6 +15,7 @@ jest.mock('../hooks/useMarket', () => ({
 
 jest.mock('../i18n', () => {
   const labels: Record<string, string> = {
+    'common.retry': 'Retry',
     'pages.adminOrders.orderLabel': 'Order',
     'pages.checkout.paymentConfidenceTitle': 'Payment confidence',
     'pages.checkout.paymentMethod': 'Payment method',
@@ -65,7 +67,8 @@ const channel = {
 
 describe('Payment channel loading', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    (paymentApi.getChannels as jest.Mock).mockReset();
+    (paymentApi.create as jest.Mock).mockReset();
   });
 
   it('loads configured channels and selects the recommended method', async () => {
@@ -98,5 +101,27 @@ describe('Payment channel loading', () => {
     await waitFor(() => {
       expect(paymentApi.getChannels).toHaveBeenCalledTimes(1);
     });
+  });
+
+  it('shows a channel loading failure and retries the current payment channel request', async () => {
+    (paymentApi.getChannels as jest.Mock)
+      .mockRejectedValueOnce({ response: { data: { error: 'Gateway unavailable' } } })
+      .mockResolvedValueOnce({ data: [channel] });
+
+    render(
+      <Payment amount={12.5} orderId={9} onSuccess={jest.fn()} onCancel={jest.fn()} />,
+    );
+
+    expect(await screen.findByText('Payment methods are temporarily unavailable')).toBeInTheDocument();
+    expect(await screen.findByText('Gateway unavailable')).toBeInTheDocument();
+    expect(paymentApi.getChannels).toHaveBeenCalledTimes(1);
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Retry/ })).not.toHaveClass('ant-btn-loading');
+    });
+    await userEvent.click(screen.getByRole('button', { name: /Retry/ }));
+
+    expect(await screen.findByRole('radio', { name: /Stripe/ })).toBeChecked();
+    expect(paymentApi.getChannels).toHaveBeenCalledTimes(2);
   });
 });

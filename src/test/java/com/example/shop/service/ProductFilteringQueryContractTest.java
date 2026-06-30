@@ -24,9 +24,12 @@ class ProductFilteringQueryContractTest {
         assertTrue(pageQuery.contains(", pageRequest)"));
         assertTrue(pageQuery.contains("page.getContent()"),
                 "Any defensive Java filtering must operate only on the current database page");
+        assertTrue(pageQuery.contains("new PageImpl<>(visibleProducts, page.getPageable(), visibleProducts.size())"),
+                "Post-query visibility filters must not reuse the unfiltered database total");
 
-        assertTrue(specification.contains("criteriaBuilder.greaterThanOrEqualTo(root.get(\"price\"), minPrice)"));
-        assertTrue(specification.contains("criteriaBuilder.lessThanOrEqualTo(root.get(\"price\"), maxPrice)"));
+        assertTrue(specification.contains("Expression<BigDecimal> effectivePrice = effectivePriceExpression(criteriaBuilder, root)"));
+        assertTrue(specification.contains("criteriaBuilder.greaterThanOrEqualTo(effectivePrice, minPrice)"));
+        assertTrue(specification.contains("criteriaBuilder.lessThanOrEqualTo(effectivePrice, maxPrice)"));
         assertTrue(specification.contains("addSpecificationRefinementPredicates(predicates, criteriaBuilder, root.get(\"specifications\"), query.getPetSizes())"));
         assertTrue(specification.contains("addSpecificationRefinementPredicates(predicates, criteriaBuilder, root.get(\"specifications\"), query.getMaterials())"));
         assertTrue(specification.contains("addColorPredicates(predicates, criteriaBuilder, root.get(\"name\"), root.get(\"specifications\"), query.getColors())"));
@@ -50,8 +53,9 @@ class ProductFilteringQueryContractTest {
         assertFalse(pageQuery.contains("productRepository.findAll()"),
                 "Admin product filters must not start from an unbounded product load");
 
-        assertTrue(specification.contains("criteriaBuilder.greaterThanOrEqualTo(root.get(\"price\"), minPrice)"));
-        assertTrue(specification.contains("criteriaBuilder.lessThanOrEqualTo(root.get(\"price\"), maxPrice)"));
+        assertTrue(specification.contains("Expression<BigDecimal> effectivePrice = effectivePriceExpression(criteriaBuilder, root)"));
+        assertTrue(specification.contains("criteriaBuilder.greaterThanOrEqualTo(effectivePrice, minPrice)"));
+        assertTrue(specification.contains("criteriaBuilder.lessThanOrEqualTo(effectivePrice, maxPrice)"));
         assertTrue(specification.contains("addSpecificationRefinementPredicates(predicates, criteriaBuilder, root.get(\"specifications\"), query.getPetSizes())"));
         assertTrue(specification.contains("addSpecificationRefinementPredicates(predicates, criteriaBuilder, root.get(\"specifications\"), query.getMaterials())"));
         assertTrue(specification.contains("addColorPredicates(predicates, criteriaBuilder, root.get(\"name\"), root.get(\"specifications\"), query.getColors())"));
@@ -59,18 +63,18 @@ class ProductFilteringQueryContractTest {
     }
 
     @Test
-    void refinementPredicateHelpersGenerateSqlLikePredicates() throws IOException {
+    void refinementPredicateHelpersUseEscapedSqlLikePredicates() throws IOException {
         String source = read("src/main/java/com/example/shop/service/impl/ProductServiceImpl.java");
         String refinementPredicates = methodBlock(source,
                 "private void addSpecificationRefinementPredicates(List<Predicate> predicates,");
         String colorPredicates = methodBlock(source,
                 "private void addColorPredicates(List<Predicate> predicates,");
 
-        assertTrue(refinementPredicates.contains("criteriaBuilder.like("));
-        assertTrue(refinementPredicates.contains("criteriaBuilder.lower(criteriaBuilder.coalesce(specificationsPath, \"\"))"));
-        assertTrue(colorPredicates.contains("criteriaBuilder.like("));
-        assertTrue(colorPredicates.contains("criteriaBuilder.lower(criteriaBuilder.coalesce(namePath, \"\"))"));
-        assertTrue(colorPredicates.contains("criteriaBuilder.lower(criteriaBuilder.coalesce(specificationsPath, \"\"))"));
+        assertTrue(refinementPredicates.contains("containsLike(criteriaBuilder, specificationsPath, value)"));
+        assertTrue(colorPredicates.contains("containsLike(criteriaBuilder, namePath, value)"));
+        assertTrue(colorPredicates.contains("containsLike(criteriaBuilder, specificationsPath, value)"));
+        assertFalse(refinementPredicates.contains("\"%\" + value + \"%\""));
+        assertFalse(colorPredicates.contains("\"%\" + value + \"%\""));
     }
 
     private static String read(String path) throws IOException {

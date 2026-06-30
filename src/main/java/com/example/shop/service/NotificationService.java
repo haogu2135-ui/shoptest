@@ -43,6 +43,7 @@ public class NotificationService {
     private static final Pattern BLOCKED_ELEMENT_PATTERN = Pattern.compile("(?is)<\\s*(script|iframe|object|embed|link|meta|style|form|input|button|svg|math|frame|frameset|base)\\b[^>]*>.*?<\\s*/\\s*\\1\\s*>");
     private static final Pattern BLOCKED_TAG_PATTERN = Pattern.compile("(?is)<\\s*/?\\s*(script|iframe|object|embed|link|meta|style|form|input|button|svg|math|frame|frameset|base)\\b[^>]*>");
     private static final Pattern START_TAG_PATTERN = Pattern.compile("(?is)<([a-z][a-z0-9:-]*)([\\s/]+[^<>]*?)?>");
+    private static final Pattern HTML_TAG_PATTERN = Pattern.compile("(?is)<[^>]+>");
     private static final Pattern ATTRIBUTE_PATTERN = Pattern.compile("(?is)([a-z_:][a-z0-9_:\\-]*)(?:\\s*=\\s*(\"[^\"]*\"|'[^']*'|[^\\s\"'=<>`]+))?");
 
     public List<Notification> getNotifications(Long userId) {
@@ -70,8 +71,8 @@ public class NotificationService {
         Notification n = new Notification();
         n.setUserId(userId);
         n.setType(normalizeType(type));
-        n.setTitle(title);
-        n.setMessage(message);
+        n.setTitle(normalizeTextNotificationValue(title));
+        n.setMessage(normalizeTextNotificationValue(message));
         n.setContentFormat("TEXT");
         n.setIsRead(false);
         n.setCreatedAt(LocalDateTime.now());
@@ -185,6 +186,11 @@ public class NotificationService {
             return trimmed;
         }
         return sanitizeHtml(trimmed).trim();
+    }
+
+    private String normalizeTextNotificationValue(String value) {
+        String sanitizedHtml = sanitizeHtml(value == null ? "" : value);
+        return HTML_TAG_PATTERN.matcher(sanitizedHtml).replaceAll("").trim();
     }
 
     private String sanitizeHtml(String html) {

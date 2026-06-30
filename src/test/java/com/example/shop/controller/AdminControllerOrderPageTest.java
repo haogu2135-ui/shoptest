@@ -59,7 +59,7 @@ class AdminControllerOrderPageTest {
 
     @Test
     void orderPageSummaryIncludesMissingTrackingQuickFilter() {
-        when(runtimeConfig.getInt("admin.orders.page-max-size", 100)).thenReturn(100);
+        when(runtimeConfig.getInt("admin.orders.page-max-size", 20)).thenReturn(100);
         when(orderService.countAdminOrders(null, null, null)).thenReturn(2);
         when(orderService.searchAdminOrders(null, null, null, 1, 20)).thenReturn(List.of(new Order()));
         when(orderService.countAdminOrders(null, null, "MISSING_TRACKING")).thenReturn(3);
@@ -68,6 +68,14 @@ class AdminControllerOrderPageTest {
 
         assertEquals(200, response.getStatusCodeValue());
         Map<String, Object> body = assertInstanceOf(Map.class, response.getBody());
+        assertEquals(body.get("items"), body.get("content"));
+        assertEquals(2, body.get("total"));
+        assertEquals(2, body.get("totalElements"));
+        assertEquals(1, body.get("page"));
+        assertEquals(0, body.get("number"));
+        assertEquals(20, body.get("size"));
+        assertEquals(1, body.get("totalPages"));
+        assertEquals(false, body.get("hasNext"));
         Map<?, ?> summary = assertInstanceOf(Map.class, body.get("summary"));
         assertEquals(3L, summary.get("MISSING_TRACKING"));
         verify(orderService).countAdminOrders(null, null, "MISSING_TRACKING");

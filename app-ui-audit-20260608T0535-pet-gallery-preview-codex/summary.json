@@ -1,0 +1,614 @@
+[
+  {
+    "viewport": "small-320",
+    "state": "top",
+    "horizontalOverflow": false,
+    "overflowCount": 30,
+    "preview": null,
+    "previewCaption": null,
+    "popconfirm": null,
+    "popButtons": null,
+    "bottomNav": {
+      "display": "grid",
+      "y": 496,
+      "bottom": 558,
+      "height": 62,
+      "zIndex": "1250"
+    }
+  },
+  {
+    "viewport": "small-320",
+    "state": "grid-focused",
+    "horizontalOverflow": false,
+    "overflowCount": 30,
+    "preview": null,
+    "previewCaption": null,
+    "popconfirm": null,
+    "popButtons": null,
+    "bottomNav": {
+      "display": "grid",
+      "y": 496,
+      "bottom": 558,
+      "height": 62,
+      "zIndex": "1250"
+    }
+  },
+  {
+    "viewport": "small-320",
+    "state": "preview-modal",
+    "horizontalOverflow": false,
+    "overflowCount": 30,
+    "preview": {
+      "y": 34,
+      "bottom": 463.1875,
+      "height": 429.1875,
+      "visibleRatio": 1,
+      "overflowY": "hidden",
+      "scrollHeight": 429,
+      "clientHeight": 429,
+      "centerHitClass": null
+    },
+    "previewCaption": {
+      "y": 275.1875,
+      "bottom": 445.1875,
+      "height": 170,
+      "visibleRatio": 1,
+      "centerHitText": "Shop the feed"
+    },
+    "popconfirm": null,
+    "popButtons": null,
+    "bottomNav": {
+      "display": "grid",
+      "y": 496,
+      "bottom": 558,
+      "height": 62,
+      "zIndex": "1250"
+    }
+  },
+  {
+    "viewport": "small-320",
+    "state": "delete-popconfirm",
+    "horizontalOverflow": false,
+    "overflowCount": 30,
+    "preview": null,
+    "previewCaption": null,
+    "popconfirm": {
+      "x": 0,
+      "y": 124,
+      "width": 249.171875,
+      "height": 98,
+      "right": 249.171875,
+      "bottom": 222,
+      "visibleRatio": 1,
+      "centerHitClass": "ant-popconfirm-buttons",
+      "centerHitText": "CancelConfirm"
+    },
+    "popButtons": {
+      "x": 12,
+      "y": 166,
+      "width": 225.171875,
+      "right": 237.171875,
+      "bottom": 210,
+      "visibleRatio": 1,
+      "centerHitClass": "ant-popconfirm-buttons",
+      "centerHitText": "CancelConfirm"
+    },
+    "bottomNav": {
+      "display": "grid",
+      "y": 496,
+      "bottom": 558,
+      "height": 62,
+      "zIndex": "1250"
+    }
+  },
+  {
+    "viewport": "phone-360",
+    "state": "top",
+    "horizontalOverflow": false,
+    "overflowCount": 17,
+    "preview": null,
+    "previewCaption": null,
+    "popconfirm": null,
+    "popButtons": null,
+    "bottomNav": {
+      "display": "grid",
+      "y": 668,
+      "bottom": 730,
+      "height": 62,
+      "zIndex": "1250"
+    }
+  },
+  {
+    "viewport": "phone-360",
+    "state": "grid-focused",
+    "horizontalOverflow": false,
+    "overflowCount": 17,
+    "preview": null,
+    "previewCaption": null,
+    "popconfirm": null,
+    "popButtons": null,
+    "bottomNav": {
+      "display": "grid",
+      "y": 668,
+      "bottom": 730,
+      "height": 62,
+      "zIndex": "1250"
+    }
+  },
+  {
+    "viewport": "phone-360",
+    "state": "preview-modal",
+    "horizontalOverflow": false,
+    "overflowCount": 17,
+    "preview": {
+      "y": 34,
+      "bottom": 532,
+      "height": 498,
+      "visibleRatio": 1,
+      "overflowY": "hidden",
+      "scrollHeight": 498,
+      "clientHeight": 498,
+      "centerHitClass": null
+    },
+    "previewCaption": {
+      "y": 344,
+      "bottom": 514,
+      "height": 170,
+      "visibleRatio": 1,
+      "centerHitText": "Shop the feed"
+    },
+    "popconfirm": null,
+    "popButtons": null,
+    "bottomNav": {
+      "display": "grid",
+      "y": 668,
+      "bottom": 730,
+      "height": 62,
+      "zIndex": "1250"
+    }
+  },
+  {
+    "viewport": "phone-360",
+    "state": "delete-popconfirm",
+    "horizontalOverflow": false,
+    "overflowCount": 17,
+    "preview": null,
+    "previewCaption": null,
+    "popconfirm": {
+      "x": 0,
+      "y": 201,
+      "width": 249.171875,
+      "height": 98,
+      "right": 249.171875,
+      "bottom": 299,
+      "visibleRatio": 1,
+      "centerHitClass": "ant-popconfirm-buttons",
+      "centerHitText": "CancelConfirm"
+    },
+    "popButtons": {
+      "x": 12,
+      "y": 243,
+      "width": 225.171875,
+      "right": 237.171875,
+      "bottom": 287,
+      "visibleRatio": 1,
+      "centerHitClass": "ant-popconfirm-buttons",
+      "centerHitText": "CancelConfirm"
+    },
+    "bottomNav": {
+      "display": "grid",
+      "y": 668,
+      "bottom": 730,
+      "height": 62,
+      "zIndex": "1250"
+    }
+  },
+  {
+    "viewport": "phone-390",
+    "state": "top",
+    "horizontalOverflow": false,
+    "overflowCount": 16,
+    "preview": null,
+    "previewCaption": null,
+    "popconfirm": null,
+    "popButtons": null,
+    "bottomNav": {
+      "display": "grid",
+      "y": 772,
+      "bottom": 834,
+      "height": 62,
+      "zIndex": "1250"
+    }
+  },
+  {
+    "viewport": "phone-390",
+    "state": "grid-focused",
+    "horizontalOverflow": false,
+    "overflowCount": 16,
+    "preview": null,
+    "previewCaption": null,
+    "popconfirm": null,
+    "popButtons": null,
+    "bottomNav": {
+      "display": "grid",
+      "y": 772,
+      "bottom": 834,
+      "height": 62,
+      "zIndex": "1250"
+    }
+  },
+  {
+    "viewport": "phone-390",
+    "state": "preview-modal",
+    "horizontalOverflow": false,
+    "overflowCount": 16,
+    "preview": {
+      "y": 34,
+      "bottom": 504,
+      "height": 470,
+      "visibleRatio": 1,
+      "overflowY": "hidden",
+      "scrollHeight": 470,
+      "clientHeight": 470,
+      "centerHitClass": null
+    },
+    "previewCaption": {
+      "y": 368,
+      "bottom": 486,
+      "height": 118,
+      "visibleRatio": 1,
+      "centerHitText": "@maria.with.a.very.long.pet.gallery.username.for.preview.auditShop the feed128 likes"
+    },
+    "popconfirm": null,
+    "popButtons": null,
+    "bottomNav": {
+      "display": "grid",
+      "y": 772,
+      "bottom": 834,
+      "height": 62,
+      "zIndex": "1250"
+    }
+  },
+  {
+    "viewport": "phone-390",
+    "state": "delete-popconfirm",
+    "horizontalOverflow": false,
+    "overflowCount": 16,
+    "preview": null,
+    "previewCaption": null,
+    "popconfirm": {
+      "x": 36,
+      "y": 248,
+      "width": 249.171875,
+      "height": 98,
+      "right": 285.171875,
+      "bottom": 346,
+      "visibleRatio": 1,
+      "centerHitClass": "ant-popconfirm-buttons",
+      "centerHitText": "CancelConfirm"
+    },
+    "popButtons": {
+      "x": 48,
+      "y": 290,
+      "width": 225.171875,
+      "right": 273.171875,
+      "bottom": 334,
+      "visibleRatio": 1,
+      "centerHitClass": "ant-popconfirm-buttons",
+      "centerHitText": "CancelConfirm"
+    },
+    "bottomNav": {
+      "display": "grid",
+      "y": 772,
+      "bottom": 834,
+      "height": 62,
+      "zIndex": "1250"
+    }
+  },
+  {
+    "viewport": "landscape-740",
+    "state": "top",
+    "horizontalOverflow": false,
+    "overflowCount": 6,
+    "preview": null,
+    "previewCaption": null,
+    "popconfirm": null,
+    "popButtons": null,
+    "bottomNav": {
+      "display": "none",
+      "y": 0,
+      "bottom": 0,
+      "height": 0,
+      "zIndex": "1250"
+    }
+  },
+  {
+    "viewport": "landscape-740",
+    "state": "grid-focused",
+    "horizontalOverflow": false,
+    "overflowCount": 6,
+    "preview": null,
+    "previewCaption": null,
+    "popconfirm": null,
+    "popButtons": null,
+    "bottomNav": {
+      "display": "none",
+      "y": 0,
+      "bottom": 0,
+      "height": 0,
+      "zIndex": "1250"
+    }
+  },
+  {
+    "viewport": "landscape-740",
+    "state": "preview-modal",
+    "horizontalOverflow": false,
+    "overflowCount": 6,
+    "preview": {
+      "y": 34,
+      "bottom": 366,
+      "height": 332,
+      "visibleRatio": 0.9819277108433735,
+      "overflowY": "hidden",
+      "scrollHeight": 332,
+      "clientHeight": 332,
+      "centerHitClass": null
+    },
+    "previewCaption": {
+      "y": 328.796875,
+      "bottom": 396.796875,
+      "height": 68,
+      "visibleRatio": 0.45886948529411764,
+      "centerHitText": "@maria.with.a.very.long.pet.gallery.username.for.preview.audit"
+    },
+    "popconfirm": null,
+    "popButtons": null,
+    "bottomNav": {
+      "display": "none",
+      "y": 0,
+      "bottom": 0,
+      "height": 0,
+      "zIndex": "1250"
+    }
+  },
+  {
+    "viewport": "landscape-740",
+    "state": "delete-popconfirm",
+    "horizontalOverflow": false,
+    "overflowCount": 6,
+    "preview": null,
+    "previewCaption": null,
+    "popconfirm": {
+      "x": 84,
+      "y": 29,
+      "width": 249.171875,
+      "height": 98,
+      "right": 333.171875,
+      "bottom": 127,
+      "visibleRatio": 1,
+      "centerHitClass": "ant-btn css-dev-only-do-not-override-5uvb3z ant-btn-default ant-btn-color-default ant-btn-variant-outlined ant-btn-sm",
+      "centerHitText": "Cancel"
+    },
+    "popButtons": {
+      "x": 96,
+      "y": 71,
+      "width": 225.171875,
+      "right": 321.171875,
+      "bottom": 115,
+      "visibleRatio": 1,
+      "centerHitClass": null,
+      "centerHitText": "Cancel"
+    },
+    "bottomNav": {
+      "display": "none",
+      "y": 0,
+      "bottom": 0,
+      "height": 0,
+      "zIndex": "1250"
+    }
+  },
+  {
+    "viewport": "tablet-768",
+    "state": "top",
+    "horizontalOverflow": false,
+    "overflowCount": 8,
+    "preview": null,
+    "previewCaption": null,
+    "popconfirm": null,
+    "popButtons": null,
+    "bottomNav": {
+      "display": "grid",
+      "y": 952,
+      "bottom": 1014,
+      "height": 62,
+      "zIndex": "1250"
+    }
+  },
+  {
+    "viewport": "tablet-768",
+    "state": "grid-focused",
+    "horizontalOverflow": false,
+    "overflowCount": 8,
+    "preview": null,
+    "previewCaption": null,
+    "popconfirm": null,
+    "popButtons": null,
+    "bottomNav": {
+      "display": "grid",
+      "y": 952,
+      "bottom": 1014,
+      "height": 62,
+      "zIndex": "1250"
+    }
+  },
+  {
+    "viewport": "tablet-768",
+    "state": "preview-modal",
+    "horizontalOverflow": false,
+    "overflowCount": 9,
+    "preview": {
+      "y": 34,
+      "bottom": 946,
+      "height": 912,
+      "visibleRatio": 1,
+      "overflowY": "hidden",
+      "scrollHeight": 912,
+      "clientHeight": 912,
+      "centerHitClass": null
+    },
+    "previewCaption": {
+      "y": 808,
+      "bottom": 928,
+      "height": 120,
+      "visibleRatio": 1,
+      "centerHitText": "@maria.with.a.very.long.pet.gallery.username.for.preview.audit"
+    },
+    "popconfirm": null,
+    "popButtons": null,
+    "bottomNav": {
+      "display": "grid",
+      "y": 952,
+      "bottom": 1014,
+      "height": 62,
+      "zIndex": "1250"
+    }
+  },
+  {
+    "viewport": "tablet-768",
+    "state": "delete-popconfirm",
+    "horizontalOverflow": false,
+    "overflowCount": 8,
+    "preview": null,
+    "previewCaption": null,
+    "popconfirm": {
+      "x": 93,
+      "y": 329,
+      "width": 249.171875,
+      "height": 98,
+      "right": 342.171875,
+      "bottom": 427,
+      "visibleRatio": 1,
+      "centerHitClass": "ant-btn css-dev-only-do-not-override-5uvb3z ant-btn-default ant-btn-color-default ant-btn-variant-outlined ant-btn-sm",
+      "centerHitText": "Cancel"
+    },
+    "popButtons": {
+      "x": 105,
+      "y": 371,
+      "width": 225.171875,
+      "right": 330.171875,
+      "bottom": 415,
+      "visibleRatio": 1,
+      "centerHitClass": null,
+      "centerHitText": "Cancel"
+    },
+    "bottomNav": {
+      "display": "grid",
+      "y": 952,
+      "bottom": 1014,
+      "height": 62,
+      "zIndex": "1250"
+    }
+  },
+  {
+    "viewport": "desktop-1366",
+    "state": "top",
+    "horizontalOverflow": false,
+    "overflowCount": 18,
+    "preview": null,
+    "previewCaption": null,
+    "popconfirm": null,
+    "popButtons": null,
+    "bottomNav": {
+      "display": "none",
+      "y": 0,
+      "bottom": 0,
+      "height": 0,
+      "zIndex": "auto"
+    }
+  },
+  {
+    "viewport": "desktop-1366",
+    "state": "grid-focused",
+    "horizontalOverflow": false,
+    "overflowCount": 15,
+    "preview": null,
+    "previewCaption": null,
+    "popconfirm": null,
+    "popButtons": null,
+    "bottomNav": {
+      "display": "none",
+      "y": 0,
+      "bottom": 0,
+      "height": 0,
+      "zIndex": "auto"
+    }
+  },
+  {
+    "viewport": "desktop-1366",
+    "state": "preview-modal",
+    "horizontalOverflow": false,
+    "overflowCount": 15,
+    "preview": {
+      "y": 65,
+      "bottom": 835,
+      "height": 770,
+      "visibleRatio": 1,
+      "overflowY": "hidden",
+      "scrollHeight": 770,
+      "clientHeight": 770,
+      "centerHitClass": null
+    },
+    "previewCaption": {
+      "y": 767,
+      "bottom": 835,
+      "height": 68,
+      "visibleRatio": 1,
+      "centerHitText": "@maria.with.a.very.long.pet.gallery.username.for.preview.audit"
+    },
+    "popconfirm": null,
+    "popButtons": null,
+    "bottomNav": {
+      "display": "none",
+      "y": 0,
+      "bottom": 0,
+      "height": 0,
+      "zIndex": "auto"
+    }
+  },
+  {
+    "viewport": "desktop-1366",
+    "state": "delete-popconfirm",
+    "horizontalOverflow": false,
+    "overflowCount": 16,
+    "preview": null,
+    "previewCaption": null,
+    "popconfirm": {
+      "x": 222,
+      "y": 277,
+      "width": 249.171875,
+      "height": 98,
+      "right": 471.171875,
+      "bottom": 375,
+      "visibleRatio": 1,
+      "centerHitClass": "ant-btn css-dev-only-do-not-override-5uvb3z ant-btn-default ant-btn-color-default ant-btn-variant-outlined ant-btn-sm",
+      "centerHitText": "Cancel"
+    },
+    "popButtons": {
+      "x": 234,
+      "y": 319,
+      "width": 225.171875,
+      "right": 459.171875,
+      "bottom": 363,
+      "visibleRatio": 1,
+      "centerHitClass": null,
+      "centerHitText": "Cancel"
+    },
+    "bottomNav": {
+      "display": "none",
+      "y": 0,
+      "bottom": 0,
+      "height": 0,
+      "zIndex": "auto"
+    }
+  }
+]

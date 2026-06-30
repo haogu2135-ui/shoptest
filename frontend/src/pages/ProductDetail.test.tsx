@@ -211,6 +211,8 @@ describe('ProductDetail mobile buybar layout contract', () => {
     const source = readProductDetailSource();
 
     expect(source).toContain('const limitedTimePromoActive = limitedTimeRemaining > 0;');
+    expect(source).toContain("t('pages.productDetail.limitedTimeDays', { count: days })");
+    expect(source).not.toContain('`${days}d ${time}`');
     expect(source).toMatch(/className="product-mobile-promo"[\s\S]*?role=\{limitedTimePromoActive \? 'status' : undefined\}[\s\S]*?aria-live=\{limitedTimePromoActive \? 'polite' : undefined\}[\s\S]*?aria-atomic=\{limitedTimePromoActive \? 'true' : undefined\}/);
     expect(source).toMatch(/<span>\{limitedTimePromoActive \? t\('pages\.productDetail\.limitedTimeCountdown'\) : productFreeShippingText\}<\/span>/);
     expect(source).toMatch(/<strong>\{limitedTimePromoActive \? formatCountdown\(limitedTimeRemaining\) : t\('pages\.productDetail\.authentic'\)\}<\/strong>/);
@@ -242,6 +244,17 @@ describe('ProductDetail mobile buybar layout contract', () => {
     expect(finalCss).toMatch(/product-mobile-buybar__cart[\s\S]*?grid-area:\s*cart\s*!important;/);
     expect(finalCss).toMatch(/product-mobile-buybar__buy[\s\S]*?grid-area:\s*buy\s*!important;/);
     expect(finalCss).toMatch(/product-mobile-buybar__cart,[\s\S]*?product-mobile-buybar__buy[\s\S]*?min-height:\s*52px\s*!important;/);
+  });
+
+  it('keeps short landscape purchase actions compact and free of secondary dock meta', () => {
+    const css = readProductDetailCss();
+    const landscapeStart = css.lastIndexOf('A-23: short landscape cannot afford');
+    const landscapeCss = css.slice(landscapeStart);
+
+    expect(landscapeStart).toBeGreaterThan(css.lastIndexOf('UI audit 2026-06-09: final mobile buybar authority'));
+    expect(landscapeCss).toContain('@media (max-width: 900px) and (max-height: 430px)');
+    expect(landscapeCss).toMatch(/\.product-detail-page \.product-summary-card \.product-mobile-buybar,[\s\S]*?grid-template-columns:\s*minmax\(0,\s*1fr\) minmax\(0,\s*1fr\)\s*!important;[\s\S]*?grid-template-areas:\s*"cart buy"\s*!important;[\s\S]*?height:\s*calc\(62px \+ env\(safe-area-inset-bottom,\s*0px\)\)\s*!important;/);
+    expect(landscapeCss).toMatch(/\.product-detail-page \.product-summary-card \.product-mobile-buybar__meta,[\s\S]*?display:\s*none\s*!important;/);
   });
 
   it('disables purchase actions while required options are missing or unavailable', () => {
@@ -286,7 +299,7 @@ describe('ProductDetail mobile buybar layout contract', () => {
   it('keeps non-critical content scroll warmup fallback cleanup-bound', () => {
     const source = readProductDetailSource();
     const nativeScrollSource = readNativeScrollSource();
-    const warmupStart = source.indexOf('const fallbackTimer = window.setTimeout(warmNonCriticalContent, 1800);');
+    const warmupStart = source.indexOf('const fallbackTimer = window.setTimeout(() => warmNonCriticalContent(nonCriticalRequestSeq), 1800);');
     const warmupEffect = source.slice(warmupStart, source.indexOf('}, [authSessionVersion, id, language, warmNonCriticalContent]);', warmupStart));
 
     expect(nativeScrollSource).toContain("window.addEventListener('scroll', listener, options);");
@@ -295,7 +308,50 @@ describe('ProductDetail mobile buybar layout contract', () => {
     expect(warmupEffect).toContain('const scrollWarmupCleanup = addAppScrollListener(scrollWarmup, { passive: true });');
     expect(warmupEffect).toContain("removeScrollWarmup = typeof scrollWarmupCleanup === 'function'");
     expect(warmupEffect).toContain('detachScrollWarmup();');
-    expect(warmupEffect).toMatch(/return \(\) => \{\s*disposed = true;\s*window\.clearTimeout\(fallbackTimer\);\s*detachScrollWarmup\(\);\s*observer\?\.disconnect\(\);/);
+    expect(warmupEffect).toMatch(/return \(\) => \{\s*disposed = true;\s*nonCriticalRequestSeqRef\.current \+= 1;\s*window\.clearTimeout\(fallbackTimer\);\s*detachScrollWarmup\(\);\s*observer\?\.disconnect\(\);/);
+  });
+
+  it('keeps main product fetch cleanup-bound', () => {
+    const source = readProductDetailSource();
+    const effectStart = source.indexOf('useEffect(() => {\n    let disposed = false;\n    const nonCriticalRequestSeq');
+    const fetchStart = source.indexOf('const fetchProduct = async () => {', effectStart);
+    const fetchSource = source.slice(fetchStart, source.indexOf('fetchProduct();', fetchStart));
+    const effectSource = source.slice(effectStart, source.indexOf('}, [authSessionVersion, id, language, warmNonCriticalContent]);', effectStart));
+
+    expect(effectStart).toBeGreaterThan(-1);
+    expect(fetchStart).toBeGreaterThan(effectStart);
+    expect(fetchSource).toMatch(/const res = await productApi\.getById\(Number\(id\)\);\s*if \(disposed\) return;\s*setProduct/);
+    expect(fetchSource).toMatch(/catch \(error\) \{\s*if \(disposed\) return;\s*reportNonBlockingError\('ProductDetail\.fetchProduct', error\);/);
+    expect(fetchSource).toMatch(/finally \{\s*if \(disposed\) return;\s*setLoading\(false\);/);
+    expect(effectSource).toContain('disposed = true;');
+  });
+
+  it('guards non-critical product detail requests against stale responses', () => {
+    const source = readProductDetailSource();
+    const reviewsStart = source.indexOf('const fetchReviews = useCallback(async (requestSeq: number) => {');
+    const warmupStart = source.indexOf('const warmNonCriticalContent = useCallback((requestSeq: number) => {');
+    const effectStart = source.indexOf('const nonCriticalRequestSeq = nonCriticalRequestSeqRef.current + 1;');
+    const nonCriticalSource = source.slice(reviewsStart, warmupStart);
+    const warmupSource = source.slice(warmupStart, effectStart);
+    const effectSource = source.slice(effectStart, source.indexOf('useEffect(() => {', effectStart + 1));
+
+    expect(source).toContain('const nonCriticalRequestSeqRef = useRef(0);');
+    expect(source).toContain('const isCurrentNonCriticalRequest = useCallback((requestSeq: number) => (');
+    expect(reviewsStart).toBeGreaterThan(-1);
+    expect(warmupStart).toBeGreaterThan(reviewsStart);
+    expect(effectStart).toBeGreaterThan(warmupStart);
+    expect(nonCriticalSource).toContain('if (!isCurrentNonCriticalRequest(requestSeq)) return;');
+    expect(nonCriticalSource).toContain('setReviews(res.data.reviews || []);');
+    expect(nonCriticalSource).toContain('setRecommendations(cached);');
+    expect(nonCriticalSource).toContain('setQuestions(answeredQuestions);');
+    expect(nonCriticalSource).toContain('setReviewableOrders(ordersRes.data || []);');
+    expect(warmupSource).toContain('fetchReviews(requestSeq);');
+    expect(warmupSource).toContain('fetchQuestions(requestSeq);');
+    expect(warmupSource).toContain('fetchRecommendations(requestSeq);');
+    expect(warmupSource).toContain('fetchReviewableOrders(requestSeq);');
+    expect(effectSource).toContain('nonCriticalRequestSeqRef.current = nonCriticalRequestSeq;');
+    expect(effectSource).toContain('warmNonCriticalContent(nonCriticalRequestSeq)');
+    expect(effectSource).toContain('nonCriticalRequestSeqRef.current += 1;');
   });
 });
 
@@ -548,6 +604,18 @@ describe('ProductDetail recommendation cache', () => {
     expect(helpersSource).not.toContain('const recentProductsCache =');
     expect(productDetailSource).toContain("import { recordProductView } from '../utils/productViewPreferences';");
     expect(productDetailSource).toContain('recordProductView(res.data);');
+  });
+
+  it('keeps product image fallback selection centralized in the detail helper', () => {
+    const productDetailSource = readProductDetailSource();
+    const helpersSource = readProductDetailHelpersSource();
+
+    expect(productDetailSource).toContain('normalizeProductImages');
+    expect(productDetailSource).toContain('setSelectedImage(normalizeProductImages(res.data)[0]);');
+    expect(productDetailSource).not.toContain('[product.mainImage, product.images?.[0]');
+    expect(helpersSource).toContain('export const normalizeProductImages =');
+    expect(helpersSource).toContain('uniqueImages.concat(fallbackProductImage)');
+    expect(helpersSource).toContain('[fallbackProductImage, fallbackProductImage]');
   });
 
   it('keeps recommendation helpers and state typed without broad any usage', () => {

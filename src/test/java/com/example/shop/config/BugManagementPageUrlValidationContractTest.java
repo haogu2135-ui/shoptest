@@ -12,7 +12,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class BugManagementPageUrlValidationContractTest {
 
     @Test
-    void bugManagementPageUrlOnlyAcceptsHttpUrls() throws Exception {
+    void bugManagementPageUrlOnlyAcceptsSameOriginOrRelativeUrls() throws Exception {
         String source = Files.readString(Path.of("frontend/src/pages/BugManagement.tsx"), StandardCharsets.UTF_8);
         String validator = sliceBetween(source,
                 "const validatePageUrl = useCallback",
@@ -20,9 +20,11 @@ class BugManagementPageUrlValidationContractTest {
 
         assertTrue(validator.contains("new URL(normalized)"),
                 "Page URL validation should parse URLs with the platform URL parser");
-        assertTrue(validator.contains("parsed.protocol === 'http:' || parsed.protocol === 'https:'"),
-                "Page URL validation should allow only http and https protocols");
-        assertTrue(validator.contains("tx('pageUrlInvalid', 'Enter a valid http or https URL')"),
+        assertTrue(validator.contains("normalized.startsWith('/') && !normalized.startsWith('//') && !normalized.includes('\\\\')"),
+                "Page URL validation should allow site-relative paths");
+        assertTrue(validator.contains("(parsed.protocol === 'http:' || parsed.protocol === 'https:') && parsed.origin === browserOrigin"),
+                "Page URL validation should allow only same-origin http and https URLs");
+        assertTrue(validator.contains("tx('pageUrlInvalid', 'Enter a same-origin http or https URL, or a site-relative path')"),
                 "Page URL validation should surface a clear localized error message");
         assertTrue(source.contains("name=\"pageUrl\" label={tx('pageUrl', 'Page URL')} rules={[{ validator: validatePageUrl }]}"),
                 "Page URL form field should attach the URL validator");

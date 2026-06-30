@@ -102,8 +102,9 @@ const localizeRegionData = (regions: RegionOption[], language?: string): RegionO
 
 export const loadRegionData = async (language?: string): Promise<RegionOption[]> => {
   const normalizedLanguage = normalizeRegionLanguage(language);
-  if (cachedLocalizedRegionData[normalizedLanguage]) {
-    return cachedLocalizedRegionData[normalizedLanguage];
+  const cachedLocalizedData = cachedLocalizedRegionData[normalizedLanguage];
+  if (cachedLocalizedData) {
+    return cachedLocalizedData;
   }
   if (cachedRegionData) {
     const localizedData = localizeRegionData(cachedRegionData, normalizedLanguage);

@@ -131,6 +131,110 @@
   }
 }
 
+/* Chinese cart pass: CJK copy needs explicit break opportunities on dense mobile surfaces. */
+.cart-page--zh {
+  line-break: strict;
+  overflow-wrap: anywhere;
+}
+
+.cart-page--zh .cart-page__heroContent h2.ant-typography {
+  max-width: 640px;
+  font-size: clamp(28px, 4vw, 44px);
+  line-height: 1.08;
+}
+
+.cart-page--zh .cart-page__heroStat,
+.cart-page--zh .cart-page__summaryStripCard,
+.cart-page--zh .cart-page__readiness,
+.cart-page--zh .cart-page__confidencePanel,
+.cart-page--zh .cart-page__nextAction {
+  line-height: 1.32;
+}
+
+.cart-page--zh .cart-page__confidencePanel > summary,
+.cart-page--zh .cart-page__nextAction {
+  gap: 10px;
+}
+
+.cart-page--zh .cart-page__confidencePanel .ant-tag,
+.cart-page--zh .cart-page__readiness .ant-tag {
+  max-width: 100%;
+  white-space: normal;
+}
+
+.cart-page--zh .cart-page__heroEyebrow,
+.cart-page--zh .cart-page__heroStat strong,
+.cart-page--zh .cart-page__summaryStripCard strong,
+.cart-page--zh .cart-page__checkoutPathStep strong,
+.cart-page--zh .cart-page__checkoutPathStep p,
+.cart-page--zh .cart-page__summaryFooter,
+.cart-page--zh .cart-page__recentLink .ant-typography,
+.cart-page--zh .cart-page__savedActions .ant-btn,
+.cart-page--zh .cart-page__mobileItemTitle,
+.cart-page--zh .cart-page__savedTitle,
+.cart-page--zh .cart-page__summaryLine,
+.cart-page--zh .cart-page__summary .ant-typography,
+.cart-page--zh .ant-list-item-meta-title {
+  overflow-wrap: anywhere;
+  word-break: break-all;
+}
+
+.cart-page--zh .cart-page__mobileItemTitle,
+.cart-page--zh .ant-list-item-meta-title {
+  line-height: 1.25;
+}
+
+.cart-page--zh .cart-page__heroActions .ant-btn,
+.cart-page--zh .cart-page__readinessActions .ant-btn,
+.cart-page--zh .cart-page__nextAction .ant-btn,
+.cart-page--zh .cart-page__savedActions .ant-btn,
+.cart-page--zh .cart-page__summary .ant-btn-primary {
+  min-height: 42px;
+  height: auto;
+  line-height: 1.15;
+  white-space: normal;
+}
+
+.cart-page--zh .cart-page__checkoutPathSteps {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.cart-page--zh .cart-page__checkoutPathSteps::before {
+  display: none;
+}
+
+.cart-page--zh .cart-page__summary,
+.cart-page--zh .cart-page__mobileItem,
+.cart-page--zh .cart-page__savedItem,
+.cart-page--zh .cart-page__checkoutPathStep {
+  min-width: 0;
+}
+
+@media (max-width: 560px) {
+  .cart-page--zh .cart-page__heroContent h2.ant-typography {
+    font-size: 24px;
+  }
+
+  .cart-page--zh .cart-page__heroActions,
+  .cart-page--zh .cart-page__readinessActions,
+  .cart-page--zh .cart-page__summaryFooter {
+    display: grid;
+    grid-template-columns: 1fr;
+    justify-items: stretch;
+  }
+
+  .cart-page--zh .cart-page__heroActions .ant-btn,
+  .cart-page--zh .cart-page__readinessActions .ant-btn,
+  .cart-page--zh .cart-page__summary .ant-btn-primary {
+    width: 100%;
+  }
+
+  .cart-page--zh .cart-page__checkoutPathSteps,
+  .cart-page--zh .cart-page__confidenceGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .cart-page .ant-card {
   border-color: #e4ebe4;
   box-shadow: 0 10px 24px rgba(18, 71, 52, 0.06);

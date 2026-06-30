@@ -564,7 +564,14 @@ const UserManagement: React.FC = () => {
       ) : null}
 
       {showInitialUserLoading ? (
-        <Card className="user-management-page__loadingState" loading />
+        <Card
+          className="user-management-page__loadingState"
+          loading
+          role="status"
+          aria-live="polite"
+          aria-busy="true"
+          aria-label={t('common.loading')}
+        />
       ) : null}
 
       {canRenderUserSnapshot ? (

@@ -115,8 +115,12 @@ describe('productCatalogSnapshot', () => {
 
     expect(source).not.toContain('new Image(');
     expect(source).not.toContain('getProductImages');
+    expect(source).toContain('const fallbackProductImage = imageFallbacks.product;');
+    expect(source).not.toContain('images.unsplash.com');
+    expect(source).not.toContain('unsplash.com');
     expect(source).not.toMatch(/['"`]\/images\/product-\d+\.jpg['"`]/);
     expect(loadFallbackProductCatalog().every((item) => !String(item.imageUrl || '').startsWith('/images/product-'))).toBe(true);
+    expect(loadFallbackProductCatalog().every((item) => item.imageUrl === '/assets/placeholders/product.svg')).toBe(true);
   });
 
   it('builds human category fallback names without exposing raw category ids', () => {

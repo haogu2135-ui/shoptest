@@ -66,6 +66,30 @@ class NotificationServiceTest {
     }
 
     @Test
+    void createNotificationStoresSanitizedPlainTextContent() {
+        service.createNotification(
+                7L,
+                "promotion",
+                " <b onclick=\"alert(1)\">Sale</b><script>alert(2)</script> ",
+                "Hello <a href=\"javascript:alert(1)\">bad</a><img src=\"/pixel.png\" onerror=\"alert(2)\">"
+        );
+
+        ArgumentCaptor<Notification> captor = ArgumentCaptor.forClass(Notification.class);
+        verify(notificationMapper).insert(captor.capture());
+        Notification notification = captor.getValue();
+
+        assertEquals(7L, notification.getUserId());
+        assertEquals("PROMOTION", notification.getType());
+        assertEquals("Sale", notification.getTitle());
+        assertEquals("Hello bad", notification.getMessage());
+        assertEquals("TEXT", notification.getContentFormat());
+        assertFalse(notification.getTitle().contains("<"));
+        assertFalse(notification.getMessage().contains("<"));
+        assertFalse(notification.getMessage().contains("javascript:"));
+        assertFalse(notification.getMessage().contains("onerror"));
+    }
+
+    @Test
     void broadcastUsesActiveCustomerIdsAndBatchesInserts() {
         List<Long> userIds = LongStream.rangeClosed(1, 501).boxed().collect(Collectors.toList());
         when(userMapper.findActiveCustomerIdsAfter(0L, 500)).thenReturn(userIds.subList(0, 500));
@@ -111,9 +135,11 @@ class NotificationServiceTest {
                 " Seasonal sale ",
                 "<p onclick=\"alert(1)\" style=\"color:red\">Hi <a href=\"javascript:alert(1)\">bad</a></p>"
                         + "<script>alert(2)</script>"
+                        + "<div\nonclick\n=\n\"alert(3)\">Split</div>"
                         + "<a href=\"/orders\" target=\"_BLANK\">Order</a>"
                         + "<a href=\"data:text/html,<svg>\">data</a>"
                         + "<a href=\"https://user:pass@example.com/path\">cred</a>"
+                        + "<img alt=\"logo\" src=\"data:image/png;base64,abc\">"
                         + "<img src=\"//tracker.example/pixel.png\">",
                 "html");
 
@@ -123,14 +149,18 @@ class NotificationServiceTest {
         assertEquals("Seasonal sale", notification.getTitle());
         assertEquals("HTML", notification.getContentFormat());
         assertTrue(savedMessage.contains("<p>Hi <a>bad</a></p>"));
+        assertTrue(savedMessage.contains("<div>Split</div>"));
         assertTrue(savedMessage.contains("<a href=\"/orders\" target=\"_blank\" rel=\"noopener noreferrer\">Order</a>"));
         assertTrue(savedMessage.contains("<a>data</a>"));
         assertTrue(savedMessage.contains("<a>cred</a>"));
+        assertTrue(savedMessage.contains("<img alt=\"logo\">"));
         assertTrue(savedMessage.contains("<img>"));
         assertFalse(savedMessage.contains("onclick"));
         assertFalse(savedMessage.contains("style="));
+        assertFalse(savedMessage.contains("alert(3)"));
         assertFalse(savedMessage.contains("javascript:"));
         assertFalse(savedMessage.contains("data:text/html"));
+        assertFalse(savedMessage.contains("data:image"));
         assertFalse(savedMessage.contains("user:pass"));
         assertFalse(savedMessage.contains("<script"));
         assertFalse(savedMessage.contains("//tracker.example"));
@@ -151,6 +181,21 @@ class NotificationServiceTest {
         assertEquals(1, sent);
         String savedMessage = captureOnlyInsertedNotification().getMessage();
         assertEquals("<a>bad</a><img src=\"/assets/pixel.png\">", savedMessage);
+    }
+
+    @Test
+    void htmlSanitizerHandlesMultilineAttributesWithoutLegacyXssService() throws Exception {
+        String serviceSource = Files.readString(
+                Path.of("src/main/java/com/example/shop/service/NotificationService.java"),
+                StandardCharsets.UTF_8);
+
+        assertTrue(Files.notExists(Path.of("src/main/java/com/example/shop/service/XssSanitizeService.java")));
+        assertTrue(serviceSource.contains(
+                "private static final Pattern START_TAG_PATTERN = Pattern.compile(\"(?is)"));
+        assertTrue(serviceSource.contains(
+                "private static final Pattern ATTRIBUTE_PATTERN = Pattern.compile(\"(?is)"));
+        assertTrue(serviceSource.contains("return name.startsWith(\"on\")"));
+        assertFalse(serviceSource.contains("stripXssEventHandlers"));
     }
 
     @Test

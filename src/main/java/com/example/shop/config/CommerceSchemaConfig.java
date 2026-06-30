@@ -42,6 +42,7 @@ public class CommerceSchemaConfig {
             ensureSupportTables();
             ensureSupportColumns();
             ensureCriticalStatusConstraints();
+            ensureCommercialValueConstraints();
             ensureCouponUsageCounters();
             ensureForeignKeys();
             ensureUserAddressDeliveryFields();
@@ -70,7 +71,7 @@ public class CommerceSchemaConfig {
         addColumnIfMissing("orders", "contact_email", "VARCHAR(160) NULL");
         addColumnIfMissing("orders", "guest_order", "BOOLEAN NOT NULL DEFAULT FALSE");
         addColumnIfMissing("orders", "tracking_number", "VARCHAR(120) NULL");
-        addColumnIfMissing("orders", "tracking_carrier_code", "VARCHAR(50) NULL");
+        addColumnIfMissing("orders", "tracking_carrier_code", "VARCHAR(80) NULL");
         addColumnIfMissing("orders", "tracking_carrier_name", "VARCHAR(100) NULL");
         addColumnIfMissing("orders", "return_tracking_number", "VARCHAR(120) NULL");
         addColumnIfMissing("orders", "return_reason", "VARCHAR(500) NULL");
@@ -87,6 +88,7 @@ public class CommerceSchemaConfig {
         executeQuietly("UPDATE orders SET shipping_fee = COALESCE(shipping_fee, 0) WHERE shipping_fee IS NULL");
         executeQuietly("UPDATE orders SET order_no = CONCAT('ORD', LPAD(id, 12, '0')) WHERE (order_no IS NULL OR TRIM(order_no) = '') AND id IS NOT NULL");
         executeQuietly("UPDATE orders o LEFT JOIN users u ON u.id = o.user_id SET o.guest_order = TRUE WHERE (o.guest_order IS NULL OR o.guest_order = FALSE) AND (o.shipping_address LIKE '[Guest]%' OR u.status = 'GUEST')");
+        executeQuietly("ALTER TABLE orders MODIFY COLUMN tracking_carrier_code VARCHAR(80) NULL");
     }
 
     private void ensureCheckoutIdempotencyTable() {
@@ -186,10 +188,22 @@ public class CommerceSchemaConfig {
     }
 
     private void ensureForeignKeys() {
+        executeQuietly("UPDATE orders o LEFT JOIN coupons c ON c.id = o.coupon_id "
+                + "SET o.coupon_id = NULL, o.coupon_name = NULL "
+                + "WHERE o.coupon_id IS NOT NULL AND c.id IS NULL");
+        executeQuietly("UPDATE orders o LEFT JOIN user_coupons uc ON uc.id = o.user_coupon_id "
+                + "SET o.user_coupon_id = NULL "
+                + "WHERE o.user_coupon_id IS NOT NULL AND uc.id IS NULL");
+        executeQuietly("UPDATE orders o LEFT JOIN logistics_carriers c ON c.tracking_code = o.tracking_carrier_code "
+                + "SET o.tracking_carrier_code = NULL, o.tracking_carrier_name = NULL "
+                + "WHERE o.tracking_carrier_code IS NOT NULL "
+                + "AND (TRIM(o.tracking_carrier_code) = '' OR c.id IS NULL)");
         addForeignKeyIfMissing("orders", "fk_orders_coupon_id",
                 "ALTER TABLE orders ADD CONSTRAINT fk_orders_coupon_id FOREIGN KEY (coupon_id) REFERENCES coupons(id)");
         addForeignKeyIfMissing("orders", "fk_orders_user_coupon_id",
                 "ALTER TABLE orders ADD CONSTRAINT fk_orders_user_coupon_id FOREIGN KEY (user_coupon_id) REFERENCES user_coupons(id)");
+        addForeignKeyIfMissing("orders", "fk_orders_tracking_carrier_code",
+                "ALTER TABLE orders ADD CONSTRAINT fk_orders_tracking_carrier_code FOREIGN KEY (tracking_carrier_code) REFERENCES logistics_carriers(tracking_code)");
         addForeignKeyIfMissing("reviews", "fk_reviews_order_id",
                 "ALTER TABLE reviews ADD CONSTRAINT fk_reviews_order_id FOREIGN KEY (order_id) REFERENCES orders(id)");
         ensurePetBirthdayCouponGrantForeignKey("pet_id", "pet_profiles", "fk_pet_birthday_coupon_grants_pet");
@@ -265,6 +279,8 @@ public class CommerceSchemaConfig {
     }
 
     private void ensureIndexes() {
+        addLeadingColumnIndexIfMissing("users", "status", "idx_users_status", "ALTER TABLE users ADD INDEX idx_users_status (status)");
+        addLeadingColumnIndexIfMissing("users", "role_code", "idx_users_role_code", "ALTER TABLE users ADD INDEX idx_users_role_code (role_code)");
         addIndexIfMissing("orders", "idx_orders_order_no", "ALTER TABLE orders ADD INDEX idx_orders_order_no (order_no)");
         addIndexIfMissing("orders", "idx_orders_user_created", "ALTER TABLE orders ADD INDEX idx_orders_user_created (user_id, created_at)");
         addIndexIfMissing("orders", "idx_orders_status_created", "ALTER TABLE orders ADD INDEX idx_orders_status_created (status, created_at)");
@@ -276,6 +292,7 @@ public class CommerceSchemaConfig {
         addIndexIfMissing("orders", "idx_orders_status_return_approved", "ALTER TABLE orders ADD INDEX idx_orders_status_return_approved (status, return_approved_at)");
         addIndexIfMissing("orders", "idx_orders_status_return_shipped", "ALTER TABLE orders ADD INDEX idx_orders_status_return_shipped (status, return_shipped_at)");
         addIndexIfMissing("orders", "idx_orders_status_tracking", "ALTER TABLE orders ADD INDEX idx_orders_status_tracking (status, tracking_number)");
+        addLeadingColumnIndexIfMissing("orders", "tracking_carrier_code", "idx_orders_tracking_carrier_code", "ALTER TABLE orders ADD INDEX idx_orders_tracking_carrier_code (tracking_carrier_code)");
         addIndexIfMissing("orders", "idx_orders_refunded_at", "ALTER TABLE orders ADD INDEX idx_orders_refunded_at (refunded_at)");
         addIndexIfMissing("orders", "idx_orders_contact_email", "ALTER TABLE orders ADD INDEX idx_orders_contact_email (contact_email)");
         addIndexIfMissing("orders", "idx_orders_recent_created_status", "ALTER TABLE orders ADD INDEX idx_orders_recent_created_status (created_at, status, id)");
@@ -284,6 +301,7 @@ public class CommerceSchemaConfig {
         addIndexIfMissing("categories", "idx_categories_path", "ALTER TABLE categories ADD INDEX idx_categories_path (path)");
         addIndexIfMissing("categories", "idx_categories_parent_level", "ALTER TABLE categories ADD INDEX idx_categories_parent_level (parent_id, level, id)");
         addIndexIfMissing("products", "idx_products_best_seller_rank", "ALTER TABLE products ADD INDEX idx_products_best_seller_rank (best_seller_rank, id)");
+        addIndexIfMissing("products", "idx_products_limited_time_window", "ALTER TABLE products ADD INDEX idx_products_limited_time_window (limited_time_start_at, limited_time_end_at, status, id)");
         addIndexIfMissing("products", "idx_products_search_text", "ALTER TABLE products ADD FULLTEXT INDEX idx_products_search_text (name, description, brand, tag)");
         addIndexIfMissing("reviews", "idx_reviews_product_id", "ALTER TABLE reviews ADD INDEX idx_reviews_product_id (product_id)");
         addIndexIfMissing("reviews", "idx_reviews_user_id", "ALTER TABLE reviews ADD INDEX idx_reviews_user_id (user_id)");
@@ -355,6 +373,26 @@ public class CommerceSchemaConfig {
         ensureStatusConstraint("payments", "ck_payments_status", PAYMENT_STATUS_CHECK_VALUES, "FAILED");
         ensureStatusConstraint("reviews", "ck_reviews_status", REVIEW_STATUS_CHECK_VALUES, "HIDDEN");
         ensureStatusConstraint("user_coupons", "ck_user_coupons_status", USER_COUPON_STATUS_CHECK_VALUES, "USED");
+    }
+
+    private void ensureCommercialValueConstraints() {
+        executeQuietly("UPDATE reviews SET rating = 1 WHERE rating < 1");
+        executeQuietly("UPDATE reviews SET rating = 5 WHERE rating > 5");
+        addCheckConstraintIfMissing("reviews", "ck_reviews_rating",
+                "ALTER TABLE reviews ADD CONSTRAINT ck_reviews_rating CHECK (rating BETWEEN 1 AND 5)");
+
+        executeQuietly("UPDATE coupons SET claimed_quantity = 0 WHERE claimed_quantity IS NULL OR claimed_quantity < 0");
+        executeQuietly("UPDATE coupons SET total_quantity = 0 WHERE total_quantity IS NOT NULL AND total_quantity < 0");
+        executeQuietly("UPDATE coupons SET total_quantity = claimed_quantity "
+                + "WHERE total_quantity IS NOT NULL AND total_quantity < claimed_quantity");
+        executeQuietly("UPDATE coupons SET status = 'INACTIVE', discount_percent = NULL "
+                + "WHERE discount_percent IS NOT NULL AND (discount_percent < 1 OR discount_percent > 99)");
+        addCheckConstraintIfMissing("coupons", "ck_coupons_claimed_quantity_lte_total",
+                "ALTER TABLE coupons ADD CONSTRAINT ck_coupons_claimed_quantity_lte_total "
+                        + "CHECK (claimed_quantity >= 0 AND (total_quantity IS NULL OR (total_quantity >= 0 AND claimed_quantity <= total_quantity)))");
+        addCheckConstraintIfMissing("coupons", "ck_coupons_discount_percent",
+                "ALTER TABLE coupons ADD CONSTRAINT ck_coupons_discount_percent "
+                        + "CHECK (discount_percent IS NULL OR discount_percent BETWEEN 1 AND 99)");
     }
 
     private void ensureStatusConstraint(String tableName, String constraintName, String allowedValues, String fallbackStatus) {

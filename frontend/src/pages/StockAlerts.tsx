@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Button, Card, Empty, Image, List, Popconfirm, Space, Tag, Typography, message } from 'antd';
-import { BellOutlined, CheckCircleOutlined, DeleteOutlined, FireOutlined, ShoppingCartOutlined } from '@ant-design/icons';
+import { Alert, Button, Card, Empty, Image, List, Popconfirm, Space, Tag, Typography, message } from 'antd';
+import { BellOutlined, CheckCircleOutlined, DeleteOutlined, FireOutlined, ReloadOutlined, ShoppingCartOutlined } from '@ant-design/icons';
 import { Link, useNavigate } from 'react-router-dom';
 import { cartApi, productApi } from '../api';
 import { useLanguage } from '../i18n';
@@ -32,6 +32,8 @@ const StockAlerts: React.FC = () => {
   const [alerts, setAlerts] = useState<StockAlertItem[]>(() => readStockAlerts());
   const [products, setProducts] = useState<Record<number, Product>>({});
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState('');
+  const [reloadKey, setReloadKey] = useState(0);
   const stockAlertProductName = (item: { productId: number; productName?: string; product?: Pick<Product, 'id' | 'name'> }) => (
     (item.product?.name || item.productName || '').trim() || t('pages.profile.productFallback', { id: item.product?.id || item.productId })
   );
@@ -47,6 +49,7 @@ const StockAlerts: React.FC = () => {
     const loadProducts = async () => {
       if (alerts.length === 0) {
         setProducts({});
+        setLoadError('');
         return;
       }
       try {
@@ -60,9 +63,12 @@ const StockAlerts: React.FC = () => {
           return acc;
         }, {});
         setProducts(nextProducts);
+        setLoadError('');
       } catch (error: unknown) {
         if (disposed) return;
-        message.error(getApiErrorMessage(error, t('pages.stockAlerts.loadFailed'), language));
+        const localizedError = getApiErrorMessage(error, t('pages.stockAlerts.loadFailed'), language);
+        setLoadError(localizedError);
+        message.error(localizedError);
       } finally {
         if (!disposed) setLoading(false);
       }
@@ -71,7 +77,7 @@ const StockAlerts: React.FC = () => {
     return () => {
       disposed = true;
     };
-  }, [alerts, language, t]);
+  }, [alerts, language, reloadKey, t]);
 
   const removeAlert = (productId: number) => {
     removeStockAlert(productId);
@@ -130,9 +136,30 @@ const StockAlerts: React.FC = () => {
       .sort((a, b) => (a.product?.effectivePrice ?? a.product?.price ?? 0) - (b.product?.effectivePrice ?? b.product?.price ?? 0))[0];
     return { items, backInStockItems, directAddItems, optionItems, waitingItems, urgentItems, bestReadyItem };
   }, [alerts, products]);
+  const hasStaleProductData = Boolean(loadError && alerts.length > 0);
+  const visibleStockAlertInsights = hasStaleProductData
+    ? {
+      ...stockAlertInsights,
+      backInStockItems: [],
+      directAddItems: [],
+      optionItems: [],
+      urgentItems: [],
+      waitingItems: stockAlertInsights.items.length,
+      bestReadyItem: undefined,
+    }
+    : stockAlertInsights;
+  const assistantSubtitle = hasStaleProductData
+    ? t('pages.stockAlerts.staleDataWarning')
+    : visibleStockAlertInsights.bestReadyItem?.product
+      ? t('pages.stockAlerts.assistantSubtitleBest', { name: stockAlertProductName(visibleStockAlertInsights.bestReadyItem) })
+      : t('pages.stockAlerts.assistantSubtitle');
 
   const addReadyItemsToCart = async () => {
-    const readyProducts = stockAlertInsights.directAddItems
+    if (hasStaleProductData) {
+      setReloadKey((value) => value + 1);
+      return;
+    }
+    const readyProducts = visibleStockAlertInsights.directAddItems
       .map((item) => item.product)
       .filter(Boolean) as Product[];
     if (readyProducts.length === 0) {
@@ -151,17 +178,26 @@ const StockAlerts: React.FC = () => {
   };
 
   const restockNextAction = (() => {
-    if (stockAlertInsights.directAddItems.length > 0) {
+    if (hasStaleProductData) {
+      return {
+        tone: 'stale',
+        title: t('pages.stockAlerts.nextActionStaleTitle'),
+        text: t('pages.stockAlerts.nextActionStaleText'),
+        label: t('common.retry'),
+        action: () => setReloadKey((value) => value + 1),
+      };
+    }
+    if (visibleStockAlertInsights.directAddItems.length > 0) {
       return {
         tone: 'ready',
         title: t('pages.stockAlerts.nextActionReadyTitle'),
-        text: t('pages.stockAlerts.nextActionReadyText', { count: stockAlertInsights.directAddItems.length }),
+        text: t('pages.stockAlerts.nextActionReadyText', { count: visibleStockAlertInsights.directAddItems.length }),
         label: t('pages.stockAlerts.addReadyToCart'),
         action: addReadyItemsToCart,
       };
     }
-    if (stockAlertInsights.optionItems.length > 0) {
-      const nextItem = stockAlertInsights.optionItems[0];
+    if (visibleStockAlertInsights.optionItems.length > 0) {
+      const nextItem = visibleStockAlertInsights.optionItems[0];
       return {
         tone: 'options',
         title: t('pages.stockAlerts.nextActionOptionsTitle'),
@@ -170,11 +206,11 @@ const StockAlerts: React.FC = () => {
         action: () => navigate(`/products/${nextItem.productId}`),
       };
     }
-    if (stockAlertInsights.waitingItems > 0) {
+    if (visibleStockAlertInsights.waitingItems > 0) {
       return {
         tone: 'waiting',
         title: t('pages.stockAlerts.nextActionWaitingTitle'),
-        text: t('pages.stockAlerts.nextActionWaitingText', { count: stockAlertInsights.waitingItems }),
+        text: t('pages.stockAlerts.nextActionWaitingText', { count: visibleStockAlertInsights.waitingItems }),
         label: t('pages.stockAlerts.browsePersonalized'),
         action: () => navigate('/products?sort=personalized-desc'),
       };
@@ -187,8 +223,16 @@ const StockAlerts: React.FC = () => {
       action: () => navigate('/products?sort=personalized-desc'),
     };
   })();
-  const addReadyActionLabel = `${t('pages.stockAlerts.addReadyToCart')}: ${t('pages.stockAlerts.directReady', { count: stockAlertInsights.directAddItems.length })}`;
+  const addReadyActionLabel = `${t('pages.stockAlerts.addReadyToCart')}: ${t('pages.stockAlerts.directReady', { count: visibleStockAlertInsights.directAddItems.length })}`;
   const restockNextActionLabel = `${restockNextAction.label}: ${restockNextAction.title}`;
+  const restockNextActionIcon = restockNextAction.tone === 'stale' ? <ReloadOutlined /> : <ShoppingCartOutlined />;
+  const mobileNextActionStatus = restockNextAction.tone === 'ready'
+    ? t('pages.stockAlerts.directReady', { count: visibleStockAlertInsights.directAddItems.length })
+    : restockNextAction.tone === 'options'
+      ? t('pages.stockAlerts.optionReady', { count: visibleStockAlertInsights.optionItems.length })
+      : restockNextAction.tone === 'stale'
+        ? t('pages.stockAlerts.loadFailed')
+        : t('pages.stockAlerts.stillWatchingCount', { count: visibleStockAlertInsights.waitingItems });
   const browseStockAlertsActionLabel = `${t('pages.stockAlerts.browse')}: ${t('pages.stockAlerts.title')}`;
   const clearStockAlertsActionLabel = `${t('pages.stockAlerts.clear')}: ${alerts.length}`;
 
@@ -201,7 +245,7 @@ const StockAlerts: React.FC = () => {
               <BellOutlined /> {t('pages.stockAlerts.title')}
             </Title>
             <Text type="secondary">
-              {t('pages.stockAlerts.subtitle', { count: loading ? 0 : stockAlertInsights.backInStockItems.length, saved: alerts.length })}
+              {t('pages.stockAlerts.subtitle', { count: loading || hasStaleProductData ? 0 : visibleStockAlertInsights.backInStockItems.length, saved: alerts.length })}
             </Text>
           </div>
           <Space wrap>
@@ -225,52 +269,48 @@ const StockAlerts: React.FC = () => {
             <div className="stock-alerts__assistantCopy">
               <Text className="stock-alerts__eyebrow">{t('pages.stockAlerts.assistantEyebrow')}</Text>
               <Title level={4}>{t('pages.stockAlerts.assistantTitle')}</Title>
-              <Text type="secondary">
-                {stockAlertInsights.bestReadyItem?.product
-                  ? t('pages.stockAlerts.assistantSubtitleBest', { name: stockAlertProductName(stockAlertInsights.bestReadyItem) })
-                  : t('pages.stockAlerts.assistantSubtitle')}
-              </Text>
+              <Text type="secondary">{assistantSubtitle}</Text>
             </div>
             <div className="stock-alerts__signalGrid">
               <div className="stock-alerts__signal is-ok">
                 <CheckCircleOutlined />
-                <strong>{stockAlertInsights.backInStockItems.length}</strong>
+                <strong>{visibleStockAlertInsights.backInStockItems.length}</strong>
                 <span>{t('pages.stockAlerts.readyNow')}</span>
               </div>
-              <div className={`stock-alerts__signal ${stockAlertInsights.urgentItems.length ? 'is-risk' : 'is-ok'}`}>
+              <div className={`stock-alerts__signal ${visibleStockAlertInsights.urgentItems.length ? 'is-risk' : 'is-ok'}`}>
                 <FireOutlined />
-                <strong>{stockAlertInsights.urgentItems.length}</strong>
+                <strong>{visibleStockAlertInsights.urgentItems.length}</strong>
                 <span>{t('pages.stockAlerts.lowStockReady')}</span>
               </div>
-              <div className={`stock-alerts__signal ${stockAlertInsights.waitingItems ? '' : 'is-ok'}`}>
+              <div className={`stock-alerts__signal ${visibleStockAlertInsights.waitingItems ? '' : 'is-ok'}`}>
                 <BellOutlined />
-                <strong>{stockAlertInsights.waitingItems}</strong>
+                <strong>{visibleStockAlertInsights.waitingItems}</strong>
                 <span>{t('pages.stockAlerts.stillWatching')}</span>
               </div>
             </div>
           </section>
         ) : null}
 
-        {stockAlertInsights.backInStockItems.length > 0 ? (
+        {visibleStockAlertInsights.backInStockItems.length > 0 ? (
           <section className="stock-alerts__recovery" aria-label={t('pages.stockAlerts.recoveryTitle')}>
             <div>
               <Text className="stock-alerts__eyebrow">{t('pages.stockAlerts.recoveryEyebrow')}</Text>
               <Title level={4}>{t('pages.stockAlerts.recoveryTitle')}</Title>
               <Text type="secondary">
-                {stockAlertInsights.bestReadyItem?.product
+                {visibleStockAlertInsights.bestReadyItem?.product
                   ? t('pages.stockAlerts.recoverySubtitleBest', {
-                    name: stockAlertProductName(stockAlertInsights.bestReadyItem),
-                    price: formatMoney(stockAlertInsights.bestReadyItem.product.effectivePrice ?? stockAlertInsights.bestReadyItem.product.price),
+                    name: stockAlertProductName(visibleStockAlertInsights.bestReadyItem),
+                    price: formatMoney(visibleStockAlertInsights.bestReadyItem.product.effectivePrice ?? visibleStockAlertInsights.bestReadyItem.product.price),
                   })
-                  : t('pages.stockAlerts.recoverySubtitle', { count: stockAlertInsights.backInStockItems.length })}
+                  : t('pages.stockAlerts.recoverySubtitle', { count: visibleStockAlertInsights.backInStockItems.length })}
               </Text>
             </div>
             <Space wrap className="stock-alerts__recoveryActions">
-              {stockAlertInsights.bestReadyItem?.product ? (
+              {visibleStockAlertInsights.bestReadyItem?.product ? (
                 <Button
-                  onClick={() => navigate(`/products/${stockAlertInsights.bestReadyItem!.productId}`)}
-                  aria-label={`${t('pages.stockAlerts.viewBestReady')}: ${stockAlertProductName(stockAlertInsights.bestReadyItem)}`}
-                  title={`${t('pages.stockAlerts.viewBestReady')}: ${stockAlertProductName(stockAlertInsights.bestReadyItem)}`}
+                  onClick={() => navigate(`/products/${visibleStockAlertInsights.bestReadyItem!.productId}`)}
+                  aria-label={`${t('pages.stockAlerts.viewBestReady')}: ${stockAlertProductName(visibleStockAlertInsights.bestReadyItem)}`}
+                  title={`${t('pages.stockAlerts.viewBestReady')}: ${stockAlertProductName(visibleStockAlertInsights.bestReadyItem)}`}
                 >
                   {t('pages.stockAlerts.viewBestReady')}
                 </Button>
@@ -296,17 +336,17 @@ const StockAlerts: React.FC = () => {
               <Text type="secondary">{restockNextAction.text}</Text>
             </div>
             <Space wrap className="stock-alerts__nextActionMeta">
-              <Tag color="green">{t('pages.stockAlerts.directReady', { count: stockAlertInsights.directAddItems.length })}</Tag>
-              <Tag color={stockAlertInsights.optionItems.length > 0 ? 'gold' : 'default'}>
-                {t('pages.stockAlerts.optionReady', { count: stockAlertInsights.optionItems.length })}
+              <Tag color="green">{t('pages.stockAlerts.directReady', { count: visibleStockAlertInsights.directAddItems.length })}</Tag>
+              <Tag color={visibleStockAlertInsights.optionItems.length > 0 ? 'gold' : 'default'}>
+                {t('pages.stockAlerts.optionReady', { count: visibleStockAlertInsights.optionItems.length })}
               </Tag>
-              <Tag color={stockAlertInsights.waitingItems > 0 ? 'blue' : 'default'}>
-                {t('pages.stockAlerts.stillWatchingCount', { count: stockAlertInsights.waitingItems })}
+              <Tag color={visibleStockAlertInsights.waitingItems > 0 ? 'blue' : 'default'}>
+                {t('pages.stockAlerts.stillWatchingCount', { count: visibleStockAlertInsights.waitingItems })}
               </Tag>
             </Space>
             <Button
               type={restockNextAction.tone === 'ready' ? 'primary' : 'default'}
-              icon={<ShoppingCartOutlined />}
+              icon={restockNextActionIcon}
               aria-label={restockNextActionLabel}
               title={restockNextActionLabel}
               onClick={restockNextAction.action}
@@ -320,17 +360,11 @@ const StockAlerts: React.FC = () => {
           <div className={`stock-alerts__mobileAction stock-alerts__mobileAction--${restockNextAction.tone}`}>
             <div className="stock-alerts__mobileActionCopy">
               <span>{restockNextAction.title}</span>
-              <strong>
-                {restockNextAction.tone === 'ready'
-                  ? t('pages.stockAlerts.directReady', { count: stockAlertInsights.directAddItems.length })
-                  : restockNextAction.tone === 'options'
-                    ? t('pages.stockAlerts.optionReady', { count: stockAlertInsights.optionItems.length })
-                    : t('pages.stockAlerts.stillWatchingCount', { count: stockAlertInsights.waitingItems })}
-              </strong>
+              <strong>{mobileNextActionStatus}</strong>
             </div>
             <Button
               type={restockNextAction.tone === 'ready' ? 'primary' : 'default'}
-              icon={<ShoppingCartOutlined />}
+              icon={restockNextActionIcon}
               aria-label={restockNextActionLabel}
               title={restockNextActionLabel}
               onClick={restockNextAction.action}
@@ -338,6 +372,16 @@ const StockAlerts: React.FC = () => {
               {restockNextAction.label}
             </Button>
           </div>
+        ) : null}
+
+        {loadError ? (
+          <Alert
+            type="error"
+            showIcon
+            message={t('pages.stockAlerts.loadFailed')}
+            description={hasStaleProductData ? t('pages.stockAlerts.staleDataWarning') : t('common.loadFailedRetry')}
+            action={<Button size="small" onClick={() => setReloadKey((value) => value + 1)}>{t('common.retry')}</Button>}
+          />
         ) : null}
 
         {alerts.length === 0 ? (
@@ -349,7 +393,7 @@ const StockAlerts: React.FC = () => {
         ) : (
           <List
             loading={loading}
-            dataSource={stockAlertInsights.items}
+            dataSource={visibleStockAlertInsights.items}
             renderItem={(item) => {
               const product = item.product;
               const productName = stockAlertProductName(item);
@@ -381,7 +425,7 @@ const StockAlerts: React.FC = () => {
                       aria-label={addActionLabel}
                       title={addActionLabel}
                       onClick={() => product && addToCart(product)}
-                      disabled={!ready}
+                      disabled={hasStaleProductData || !ready}
                     >
                       {addActionText}
                     </Button>,

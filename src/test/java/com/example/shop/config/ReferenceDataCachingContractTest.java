@@ -23,6 +23,8 @@ class ReferenceDataCachingContractTest {
         String categoryService = readSource("src/main/java/com/example/shop/service/impl/CategoryServiceImpl.java");
         String brandService = readSource("src/main/java/com/example/shop/service/BrandService.java");
         String productService = readSource("src/main/java/com/example/shop/service/impl/ProductServiceImpl.java");
+        String categoryEntity = readSource("src/main/java/com/example/shop/entity/Category.java");
+        String brandEntity = readSource("src/main/java/com/example/shop/entity/Brand.java");
 
         assertTrue(categoryService.contains("@Cacheable(cacheNames = \"categoryReferenceData\""),
                 "category reference reads should be cacheable");
@@ -34,6 +36,10 @@ class ReferenceDataCachingContractTest {
                 "brand writes should evict brand reference cache");
         assertTrue(productService.contains("evictCategoryReferenceCache()"),
                 "product writes should evict category reference cache because category responses include product counts");
+        assertTrue(categoryEntity.contains("class Category implements Serializable"),
+                "category reference cache values must be serializable for Redis-backed cache deployments");
+        assertTrue(brandEntity.contains("class Brand implements Serializable"),
+                "brand reference cache values must be serializable for Redis-backed cache deployments");
     }
 
     private String readSource(String path) throws IOException {

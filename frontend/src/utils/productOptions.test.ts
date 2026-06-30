@@ -7,6 +7,7 @@ describe('productOptions', () => {
 
     expect(source).not.toMatch(/\bany\b/);
     expect(source).not.toMatch(/localStorage|sessionStorage|product-options|expiresAt|ttl/i);
+    expect(source).not.toMatch(/specAttributes|spec_attributes|skuData|ColorSelector/);
     expect(source).toContain('const normalizeVariantOptions = (variant: unknown)');
     expect(source).toContain('const normalizeVariants = (items: unknown[])');
   });

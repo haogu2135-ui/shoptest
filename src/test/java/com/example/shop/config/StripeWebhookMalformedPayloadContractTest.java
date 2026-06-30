@@ -16,7 +16,9 @@ class StripeWebhookMalformedPayloadContractTest {
         String source = Files.readString(Path.of("src/main/java/com/example/shop/service/PaymentService.java"), StandardCharsets.UTF_8);
         String method = sliceMethod(source, "public Payment handleStripeWebhook(String payload, String signatureHeader)");
 
-        assertTrue(method.contains("Webhook.constructEvent(payload, signatureHeader, webhookSecret)"),
+        assertTrue(source.contains("STRIPE_WEBHOOK_TOLERANCE_SECONDS = 300L"),
+                "Stripe webhook replay tolerance should be explicit");
+        assertTrue(method.contains("Webhook.constructEvent(payload, signatureHeader, webhookSecret, STRIPE_WEBHOOK_TOLERANCE_SECONDS)"),
                 "Stripe webhook signatures should still be verified before payload handling");
         assertTrue(method.contains("event.getDataObjectDeserializer().getObject().orElse(null)"),
                 "Webhook data object should be read without throwing on absent deserialization");

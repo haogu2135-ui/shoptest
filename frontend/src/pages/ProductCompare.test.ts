@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 
 const readProductCompareCss = () => fs.readFileSync(path.resolve(__dirname, 'ProductCompare.css'), 'utf8');
+const readProductCompareSource = () => fs.readFileSync(path.resolve(__dirname, 'ProductCompare.tsx'), 'utf8');
 
 const extractCssRulesFor = (css: string, selectorPart: string) => (
   Array.from(css.matchAll(/([^{}]+)\{([^{}]*)\}/g))
@@ -40,5 +41,17 @@ describe('ProductCompare responsive CSS', () => {
     expect(f2714Css).toMatch(/@media \(max-width:\s*360px\)\s*\{[\s\S]*?\.product-compare__headerActions\s*\{[\s\S]*?grid-template-columns:\s*minmax\(0,\s*1fr\)\s*!important;/);
     expect(f2714Css).not.toMatch(/grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/);
     expect(f2714Css).not.toMatch(/text-overflow:\s*ellipsis/);
+  });
+});
+
+describe('ProductCompare stale data guards', () => {
+  it('blocks stock-dependent cart and selection actions after compare hydration fails', () => {
+    const source = readProductCompareSource();
+
+    expect(source).toContain('const compareActionsDisabled = compareLoadError;');
+    expect(source).toContain("message.warning(t('pages.compare.staleDataWarning'))");
+    expect(source).toContain('disabled={isSoldOut || compareActionsDisabled}');
+    expect(source).toContain('disabled={directReadyProducts.length === 0 || compareActionsDisabled}');
+    expect(source.match(/disabled=\{compareActionsDisabled\}/g)?.length ?? 0).toBeGreaterThanOrEqual(4);
   });
 });

@@ -234,6 +234,8 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
       ? t('pages.support.connectedHint')
       : t('pages.support.reconnectingHint');
   const activeSessionId = session?.id;
+  const supportMessageCount = messages.length;
+  const latestSupportMessageId = useMemo(() => newestSupportMessageId(messages), [messages]);
   const orderDetailOpen = Boolean(detailOrder || detailLoading);
   orderSelectOpenRef.current = orderSelectOpen;
   orderDetailOpenRef.current = orderDetailOpen;
@@ -663,8 +665,9 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
   }, [activeGuestContext, connected, open, activeSessionId, sortSupportSessions]);
 
   useEffect(() => {
+    if (!open) return;
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: 'smooth' });
-  }, [messages, open]);
+  }, [activeSessionId, latestSupportMessageId, open, supportMessageCount]);
 
   const openPanel = useCallback((source?: SupportOpenRequest | Event | null) => {
     const nextGuestContext = getGuestContextFromOpenSource(source);
@@ -1167,7 +1170,13 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
           </div>
 
           {sessionLoading || sessionSwitching ? (
-            <div className="customer-support-widget__loading" role="status" aria-live="polite">
+            <div
+              className="customer-support-widget__loading"
+              role="status"
+              aria-live="polite"
+              aria-busy="true"
+              aria-label={t('common.loading')}
+            >
               <Spin size="small" />
               <Text>{t('common.loading')}</Text>
             </div>
@@ -1175,7 +1184,13 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
 
           <div ref={listRef} className="customer-support-widget__messages">
             {sessionSwitching ? (
-              <div className="customer-support-widget__loading customer-support-widget__loading--messages" role="status" aria-live="polite">
+              <div
+                className="customer-support-widget__loading customer-support-widget__loading--messages"
+                role="status"
+                aria-live="polite"
+                aria-busy="true"
+                aria-label={t('common.loading')}
+              >
                 <Spin size="small" />
                 <Text>{t('common.loading')}</Text>
               </div>
@@ -1385,7 +1400,24 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
                 styles={supportOrderSelectPopupStyles}
                 getPopupContainer={() => document.body}
                 placement="topLeft"
-                notFoundContent={ordersLoading ? <Spin size="small" /> : ordersLoadFailed ? t('messages.operationFailed') : t('pages.support.noOrderItems')}
+                notFoundContent={
+                  ordersLoading ? (
+                    <span
+                      className="customer-support-widget__orderSelectLoading"
+                      role="status"
+                      aria-live="polite"
+                      aria-busy="true"
+                      aria-label={t('common.loading')}
+                    >
+                      <Spin size="small" />
+                      <Text>{t('common.loading')}</Text>
+                    </span>
+                  ) : ordersLoadFailed ? (
+                    t('messages.operationFailed')
+                  ) : (
+                    t('pages.support.noOrderItems')
+                  )
+                }
                 loading={ordersLoading || sendingOrderId !== null}
                 disabled={conversationUnavailable || sendingOrderId !== null}
               />
@@ -1426,7 +1458,15 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
         footer={null}
       >
         {detailLoading ? (
-          <div className="customer-support-widget__orderLoading"><Spin /></div>
+          <div
+            className="customer-support-widget__orderLoading"
+            role="status"
+            aria-live="polite"
+            aria-busy="true"
+            aria-label={t('common.loading')}
+          >
+            <Spin />
+          </div>
         ) : detailOrder ? (
           <Space direction="vertical" className="customer-support-widget__orderDetail" size="middle">
             <Space wrap>

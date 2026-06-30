@@ -16,6 +16,7 @@ public class PaymentCustomerResponse {
     private String orderNo;
     private BigDecimal amount;
     private String channel;
+    private String currency;
     private String status;
     private String paymentUrl;
     private String transactionId;
@@ -26,12 +27,20 @@ public class PaymentCustomerResponse {
     private LocalDateTime updatedAt;
 
     public static PaymentCustomerResponse from(Payment payment) {
+        return from(payment, null);
+    }
+
+    public static PaymentCustomerResponse from(Payment payment, String currency) {
         PaymentCustomerResponse response = new PaymentCustomerResponse();
-        populateCustomerFields(payment, response);
+        populateCustomerFields(payment, response, currency);
         return response;
     }
 
     protected static void populateCustomerFields(Payment payment, PaymentCustomerResponse response) {
+        populateCustomerFields(payment, response, null);
+    }
+
+    protected static void populateCustomerFields(Payment payment, PaymentCustomerResponse response, String currency) {
         if (payment == null || response == null) {
             return;
         }
@@ -40,6 +49,7 @@ public class PaymentCustomerResponse {
         response.setOrderNo(payment.getOrderNo());
         response.setAmount(payment.getAmount());
         response.setChannel(payment.getChannel());
+        response.setCurrency(currency);
         response.setStatus(payment.getStatus());
         response.setPaymentUrl(isPending(payment) ? payment.getPaymentUrl() : null);
         response.setTransactionId(isDisplayableTransaction(payment) ? payment.getTransactionId() : null);

@@ -6,12 +6,14 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { adminApi } from '../api';
 import type { DashboardStats } from '../types';
+import { useAuth } from '../hooks/useAuth';
 import { useLanguage } from '../i18n';
 import { useMarket } from '../hooks/useMarket';
 import SeventeenTrackWidget from '../components/SeventeenTrackWidget';
 import { paymentMethodLabel } from '../utils/paymentMethods';
 import { getApiErrorMessage } from '../utils/apiError';
 import { resolveProductImage } from '../utils/productMedia';
+import { isAdminRole } from '../utils/roles';
 import { cancelIdleTask, scheduleIdleTask, type ScheduledIdleTask } from '../utils/idleScheduler';
 import './AdminDashboard.css';
 
@@ -266,6 +268,7 @@ DonutChart.displayName = 'DonutChart';
 
 const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
+  const { user, token, loading: authLoading } = useAuth();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
@@ -352,6 +355,14 @@ const AdminDashboard: React.FC = () => {
   useEffect(() => {
     let disposed = false;
     const fetchStats = async () => {
+      if (authLoading) return;
+      if (!token || !isAdminRole(user?.role)) {
+        setStats(null);
+        setLoadError(t('adminLayout.noPermission'));
+        setLoading(false);
+        navigate('/', { replace: true });
+        return;
+      }
       try {
         const res = await adminApi.getDashboard();
         if (disposed) return;
@@ -370,7 +381,7 @@ const AdminDashboard: React.FC = () => {
     return () => {
       disposed = true;
     };
-  }, [language, t]);
+  }, [authLoading, language, navigate, t, token, user?.role]);
 
   useEffect(() => {
     if (!stats) {
@@ -391,7 +402,17 @@ const AdminDashboard: React.FC = () => {
   }, [stats]);
 
   if (loading) {
-    return <div className="admin-dashboard__loading"><Spin size="large" /></div>;
+    return (
+      <div
+        className="admin-dashboard__loading"
+        role="status"
+        aria-live="polite"
+        aria-busy="true"
+        aria-label={`${t('pages.adminDashboard.title')}: ${t('common.loading')}`}
+      >
+        <Spin size="large" />
+      </div>
+    );
   }
 
   if (!stats) {

@@ -119,6 +119,50 @@ class SupportWebSocketHandlerAuthenticationTest {
         assertFalse(source.contains("extractUsername(token)"));
     }
 
+    @Test
+    void webSocketMessageWritesStayBehindSupportServiceRateLimit() throws Exception {
+        String handlerSource = Files.readString(Path.of("src/main/java/com/example/shop/websocket/SupportWebSocketHandler.java"));
+        String supportServiceSource = Files.readString(Path.of("src/main/java/com/example/shop/service/SupportService.java"));
+        String applicationProperties = Files.readString(Path.of("src/main/resources/application.properties"));
+
+        assertTrue(handlerSource.contains("supportService.sendUserMessage(userId, session == null ? null : session.getId(), content);"));
+        assertTrue(handlerSource.contains("requireAdminActionPermission(userId, role, AdminRoleService.SUPPORT_ASSIGN_PERMISSION);"));
+        assertTrue(handlerSource.contains("supportService.sendAdminMessage(userId, session.getId(), content, role, assignIfUnassigned);"));
+        assertFalse(handlerSource.contains("supportMessageMapper"));
+        assertFalse(handlerSource.contains(".insert(message)"));
+        assertTrue(supportServiceSource.contains("consumeMessageRate(senderId, senderRole);"));
+        assertTrue(supportServiceSource.indexOf("consumeMessageRate(senderId, senderRole);")
+                < supportServiceSource.indexOf("supportMessageMapper.insert(message);"));
+        assertTrue(applicationProperties.contains("support.message.rate-limit-enabled=${SUPPORT_MESSAGE_RATE_LIMIT_ENABLED:true}"));
+    }
+
+    @Test
+    void webSocketContentNormalizationDelegatesHtmlNeutralizationToSupportService() throws Exception {
+        String handlerSource = Files.readString(Path.of("src/main/java/com/example/shop/websocket/SupportWebSocketHandler.java"));
+        String supportServiceSource = Files.readString(Path.of("src/main/java/com/example/shop/service/SupportService.java"));
+        String handlerNormalizeContent = sourceBlock(
+                handlerSource,
+                "private String normalizeContent(String content)",
+                "private void sendError");
+
+        assertTrue(handlerNormalizeContent.contains("content == null ? \"\" : content.trim()"));
+        assertTrue(handlerNormalizeContent.contains("support.websocket.max-message-chars"));
+        assertFalse(handlerNormalizeContent.contains("Jsoup"));
+        assertFalse(handlerNormalizeContent.contains("Safelist"));
+        assertFalse(handlerNormalizeContent.contains("clean("));
+        assertFalse(handlerSource.contains("org.jsoup"));
+        assertTrue(handlerSource.contains(
+                "supportService.sendUserMessage(userId, session == null ? null : session.getId(), content);"));
+        assertTrue(handlerSource.contains(
+                "supportService.sendAdminMessage(userId, session.getId(), content, role, assignIfUnassigned);"));
+
+        assertTrue(supportServiceSource.contains("String normalizedContent = normalizeContent(content);"));
+        assertTrue(supportServiceSource.contains("neutralizeHtmlAngles(decodeHtmlEntities(normalized))"));
+        assertTrue(supportServiceSource.contains("supportMessageMapper.insert(message);"));
+        assertTrue(supportServiceSource.indexOf("String normalizedContent = normalizeContent(content);")
+                < supportServiceSource.indexOf("supportMessageMapper.insert(message);"));
+    }
+
     private User activeCustomer() {
         User user = new User();
         user.setId(12L);
@@ -128,6 +172,14 @@ class SupportWebSocketHandlerAuthenticationTest {
         user.setRole("USER");
         user.setStatus("ACTIVE");
         return user;
+    }
+
+    private String sourceBlock(String source, String startMarker, String endMarker) {
+        int start = source.indexOf(startMarker);
+        int end = source.indexOf(endMarker, start);
+        assertTrue(start >= 0, "start marker missing: " + startMarker);
+        assertTrue(end > start, "end marker missing: " + endMarker);
+        return source.substring(start, end);
     }
 
     private static final class TestWebSocketSession implements WebSocketSession {

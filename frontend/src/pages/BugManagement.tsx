@@ -1,10 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Button, Form, Input, Modal, Select, Skeleton, Space, Spin, Statistic, Switch, Table, Tag, Tooltip, Typography, message } from 'antd';
+import { Alert, Button, Form, Input, Modal, Select, Skeleton, Space, Spin, Statistic, Switch, Table, Tag, Tooltip, Typography, Upload, message } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { BugOutlined, CheckCircleOutlined, EditOutlined, PlusOutlined, ReloadOutlined, SearchOutlined, SyncOutlined, ToolOutlined } from '@ant-design/icons';
+import { BugOutlined, CheckCircleOutlined, EditOutlined, PlusOutlined, ReloadOutlined, SearchOutlined, SyncOutlined, ToolOutlined, UploadOutlined } from '@ant-design/icons';
 import { useSearchParams } from 'react-router-dom';
 import { adminApi } from '../api';
-import type { AdminBugReport, AdminBugReportSummary } from '../types';
+import type { AdminBugReport, AdminBugReportPriority, AdminBugReportSeverity, AdminBugReportStatus, AdminBugReportSummary } from '../types';
 import { useLanguage } from '../i18n';
 import { useDebounce } from '../hooks/useDebounce';
 import { getApiErrorMessage } from '../utils/apiError';
@@ -20,11 +20,14 @@ import { reportNonBlockingError } from '../utils/nonBlockingError';
 import { buildPaginationItemRender } from '../utils/paginationLabels';
 import './BugManagement.css';
 
-const { Paragraph, Text, Title } = Typography;
+const { Link: TextLink, Paragraph, Text, Title } = Typography;
 const { TextArea } = Input;
 const DEFAULT_PAGE_INDEX = 0;
 const DEFAULT_PAGE_SIZE = 20;
 const DEFAULT_SCAN_REFRESH_MS = 10 * 60 * 1000;
+const MAX_BUG_ATTACHMENT_SIZE_BYTES = 8 * 1024 * 1024;
+const MAX_BUG_ATTACHMENT_URL_COUNT = 20;
+const BUG_ATTACHMENT_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif'];
 const mobilePopupClassNames = { popup: { root: 'shop-mobile-popup-layer' } };
 
 const toBugApiPage = (tablePage: number) => Math.max(DEFAULT_PAGE_INDEX, tablePage - 1);
@@ -46,10 +49,10 @@ const statusOptions = [
   'REGRESSION_FAILED',
   'NON_ISSUE',
   'CLOSED',
-];
+] as const;
 
-const statusUpdateOptions = statusOptions.filter((status) => status !== 'ALL');
-const statusTransitionOptions: Record<string, string[]> = {
+const statusUpdateOptions = statusOptions.filter((status): status is AdminBugReportStatus => status !== 'ALL');
+const statusTransitionOptions: Record<AdminBugReportStatus, AdminBugReportStatus[]> = {
   OPEN: ['OPEN', 'FIXING', 'NON_ISSUE'],
   FIXING: ['FIXING', 'FIXED_PENDING_REGRESSION', 'NON_ISSUE'],
   FIXED_PENDING_REGRESSION: ['FIXED_PENDING_REGRESSION', 'REGRESSION_PASSED', 'REGRESSION_FAILED', 'NON_ISSUE'],
@@ -58,8 +61,8 @@ const statusTransitionOptions: Record<string, string[]> = {
   CLOSED: ['CLOSED', 'OPEN'],
   NON_ISSUE: ['NON_ISSUE', 'OPEN'],
 };
-const severityOptions = ['ALL', 'LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
-const priorityOptions = ['P0', 'P1', 'P2', 'P3'];
+const severityOptions: readonly ('ALL' | AdminBugReportSeverity)[] = ['ALL', 'LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
+const priorityOptions: AdminBugReportPriority[] = ['P0', 'P1', 'P2', 'P3'];
 const moduleOptions = [
   'ALL',
   'GENERAL',
@@ -90,8 +93,86 @@ const severityColor = (severity?: string) => {
   return 'blue';
 };
 
-const getStatusUpdateOptions = (status?: string) => statusTransitionOptions[status || ''] || statusUpdateOptions;
+const isBugStatus = (status?: string): status is AdminBugReportStatus => (
+  Boolean(status) && statusUpdateOptions.includes(status as AdminBugReportStatus)
+);
+const getStatusUpdateOptions = (status?: string) => (isBugStatus(status) ? statusTransitionOptions[status] : statusUpdateOptions);
 const isScannableStatus = (status?: string) => status === 'OPEN' || status === 'FIXING' || status === 'REGRESSION_FAILED';
+
+const resolveBugReferenceHref = (value?: string) => {
+  const normalized = String(value || '').trim();
+  if (!normalized) return null;
+  if (normalized.startsWith('/') && !normalized.startsWith('//') && !normalized.includes('\\')) {
+    return normalized;
+  }
+  try {
+    const parsed = new URL(normalized);
+    const browserOrigin = typeof window === 'undefined' ? '' : window.location.origin;
+    if ((parsed.protocol === 'http:' || parsed.protocol === 'https:') && parsed.origin === browserOrigin) {
+      return parsed.toString();
+    }
+  } catch (error) {
+    reportNonBlockingError('BugManagement.resolveBugReferenceHref', error);
+  }
+  return null;
+};
+
+const renderBugReferenceLink = (value?: string, className?: string) => {
+  const normalized = String(value || '').trim();
+  if (!normalized) return null;
+  const href = resolveBugReferenceHref(normalized);
+  if (!href) {
+    return <Text type="secondary" className={className}>{normalized}</Text>;
+  }
+  return (
+    <TextLink href={href} target="_blank" rel="noopener noreferrer" className={className}>
+      {normalized}
+    </TextLink>
+  );
+};
+
+const isBugAttachmentHref = (value?: string) => {
+  const normalized = String(value || '').trim();
+  if (!normalized || normalized.includes('\\') || normalized.includes('..')) return false;
+  const path = (() => {
+    if (normalized.startsWith('/') && !normalized.startsWith('//')) return normalized;
+    try {
+      const parsed = new URL(normalized);
+      const browserOrigin = typeof window === 'undefined' ? '' : window.location.origin;
+      return parsed.origin === browserOrigin ? parsed.pathname : '';
+    } catch (error) {
+      reportNonBlockingError('BugManagement.isBugAttachmentHref', error);
+      return '';
+    }
+  })();
+  return /^\/(?:api\/)?admin\/bugs\/attachments\/[0-9a-f-]{36}\.(?:jpg|png)$/i.test(path);
+};
+
+const renderBugAttachmentLink = (value: string, onOpen: (value: string) => void) => {
+  const normalized = String(value || '').trim();
+  const href = resolveBugReferenceHref(normalized);
+  if (!href || !isBugAttachmentHref(href)) {
+    return renderBugReferenceLink(value);
+  }
+  return (
+    <TextLink
+      href={href}
+      onClick={(event) => {
+        event.preventDefault();
+        onOpen(normalized);
+      }}
+    >
+      {normalized}
+    </TextLink>
+  );
+};
+
+const parseBugReferenceLines = (value?: string) => (
+  String(value || '')
+    .split('\n')
+    .map((item) => item.trim())
+    .filter(Boolean)
+);
 
 const BugManagement: React.FC = () => {
   const { t, language } = useLanguage();
@@ -106,6 +187,7 @@ const BugManagement: React.FC = () => {
   const [summaryLoadError, setSummaryLoadError] = useState<string | null>(null);
   const [summarySnapshotLoaded, setSummarySnapshotLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [uploadingAttachment, setUploadingAttachment] = useState(false);
   const [acting, setActing] = useState(false);
   const [keyword, setKeyword] = useState('');
   const debouncedKeyword = useDebounce(keyword.trim(), 300);
@@ -129,6 +211,7 @@ const BugManagement: React.FC = () => {
   });
   const pageSizeRef = useRef(DEFAULT_PAGE_SIZE);
   const currentPageRef = useRef(DEFAULT_PAGE_INDEX);
+  const bugListAbortRef = useRef<AbortController | null>(null);
   const handledCreateRequestRef = useRef('');
   const [form] = Form.useForm<Partial<AdminBugReport>>();
   const [statusForm] = Form.useForm<Partial<AdminBugReport> & { note?: string }>();
@@ -138,6 +221,7 @@ const BugManagement: React.FC = () => {
   const canReadBugs = BUGS_ACCESS_PERMISSIONS.some((permission) =>
     hasAdminPermission(adminPermissions, currentRole, permission));
   const bugMutationDisabled = loading || Boolean(bugListLoadError) || !bugSnapshotLoaded;
+  const bugModalOpen = editorOpen || statusOpen;
   const scanRefreshMs = useMemo(() => {
     const intervalMinutes = Number(summary?.scanIntervalMinutes);
     if (!Number.isFinite(intervalMinutes) || intervalMinutes <= 0) {
@@ -153,16 +237,42 @@ const BugManagement: React.FC = () => {
     if (!normalized) {
       return Promise.resolve();
     }
+    if (normalized.startsWith('/') && !normalized.startsWith('//') && !normalized.includes('\\')) {
+      return Promise.resolve();
+    }
     try {
       const parsed = new URL(normalized);
-      if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+      const browserOrigin = typeof window === 'undefined' ? '' : window.location.origin;
+      if ((parsed.protocol === 'http:' || parsed.protocol === 'https:') && parsed.origin === browserOrigin) {
         return Promise.resolve();
       }
     } catch (error) {
       reportNonBlockingError('BugManagement.validatePageUrl', error);
     }
-    return Promise.reject(new Error(tx('pageUrlInvalid', 'Enter a valid http or https URL')));
+    return Promise.reject(new Error(tx('pageUrlInvalid', 'Enter a same-origin http or https URL, or a site-relative path')));
   }, [tx]);
+  const validateAttachmentUrls = useCallback((_: unknown, value?: string) => {
+    const normalized = String(value || '').trim();
+    if (!normalized) {
+      return Promise.resolve();
+    }
+    const itemCount = normalized.split('\n').map((item) => item.trim()).filter(Boolean).length;
+    if (itemCount <= MAX_BUG_ATTACHMENT_URL_COUNT) {
+      return Promise.resolve();
+    }
+    return Promise.reject(new Error(tx('attachmentUrlCountExceeded', 'Too many attachment URLs')));
+  }, [tx]);
+  const openBugAttachment = useCallback(async (value: string) => {
+    try {
+      const response = await adminApi.downloadBugAttachment(value);
+      const blob = response.data instanceof Blob ? response.data : new Blob([response.data]);
+      const objectUrl = URL.createObjectURL(blob);
+      window.open(objectUrl, '_blank', 'noopener,noreferrer');
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
+    } catch (error: unknown) {
+      message.error(getApiErrorMessage(error, tx('attachmentOpenFailed', 'Failed to open attachment'), language));
+    }
+  }, [language, tx]);
   const bugPageLabel = tx('title', 'Bug management');
   const bugSearchLabel = `${bugPageLabel}: ${tx('searchPlaceholder', 'Search title, URL, description or notes')}`;
   const bugStatusFilterLabel = `${bugPageLabel}: ${tx('status', 'Status')}`;
@@ -176,6 +286,7 @@ const BugManagement: React.FC = () => {
   const statusBugLabel = statusBug ? bugDisplayLabel(statusBug) : tx('updateStatus', 'Update status');
   const saveBugActionLabel = `${t('common.save')}: ${editingBugLabel}`;
   const cancelBugActionLabel = `${t('common.cancel')}: ${editingBugLabel}`;
+  const attachmentUploadActionLabel = `${tx('uploadAttachment', 'Upload screenshot')}: ${editingBugLabel}`;
   const saveBugStatusActionLabel = `${t('common.save')}: ${statusBugLabel}`;
   const cancelBugStatusActionLabel = `${t('common.cancel')}: ${statusBugLabel}`;
   const bugActionUnavailableMessage = bugListLoadError || (loading ? t('common.loading') : tx('loadFailed', 'Failed to load bugs'));
@@ -245,6 +356,9 @@ const BugManagement: React.FC = () => {
     nextSize = pageSizeRef.current,
     options?: { quiet?: boolean },
   ) => {
+    bugListAbortRef.current?.abort();
+    const controller = new AbortController();
+    bugListAbortRef.current = controller;
     if (!options?.quiet) setLoading(true);
     try {
       const response = await adminApi.getBugs({
@@ -255,7 +369,8 @@ const BugManagement: React.FC = () => {
         module: moduleFilter === 'ALL' ? undefined : moduleFilter,
         keyword: debouncedKeyword || undefined,
         scanQueueOnly,
-      });
+      }, controller.signal);
+      if (controller.signal.aborted) return;
       setBugListLoadError(null);
       setBugs(response.data.items || []);
       const resolvedSize = response.data.size || nextSize;
@@ -270,15 +385,23 @@ const BugManagement: React.FC = () => {
       });
       setBugSnapshotLoaded(true);
     } catch (error: unknown) {
+      if (controller.signal.aborted) return;
       const errorMessage = getApiErrorMessage(error, tx('loadFailed', 'Failed to load bugs'), language);
       setBugListLoadError(errorMessage);
       if (!options?.quiet) {
         message.error(errorMessage);
       }
     } finally {
-      if (!options?.quiet) setLoading(false);
+      if (bugListAbortRef.current === controller) {
+        bugListAbortRef.current = null;
+      }
+      if (!controller.signal.aborted && !options?.quiet) setLoading(false);
     }
   }, [debouncedKeyword, language, moduleFilter, scanQueueOnly, severityFilter, statusFilter, tx]);
+
+  useEffect(() => () => {
+    bugListAbortRef.current?.abort();
+  }, []);
 
   const loadBugDetail = useCallback(async (bugId: number) => {
     if (bugDetails[bugId]) return;
@@ -382,12 +505,12 @@ const BugManagement: React.FC = () => {
   }, [loadPermissions]);
 
   useEffect(() => {
-    if (!permissionsLoaded || !canReadBugs) return;
+    if (!permissionsLoaded || !canReadBugs || bugModalOpen || loading) return;
     const timer = window.setInterval(() => {
       void reload(true);
     }, scanRefreshMs);
     return () => window.clearInterval(timer);
-  }, [canReadBugs, permissionsLoaded, reload, scanRefreshMs]);
+  }, [bugModalOpen, canReadBugs, loading, permissionsLoaded, reload, scanRefreshMs]);
 
   const openEditor = useCallback((bug?: AdminBugReport) => {
     if (!canWriteBugs) {
@@ -475,7 +598,53 @@ const BugManagement: React.FC = () => {
     }
   };
 
-  const openStatusEditor = (bug: AdminBugReport, mode: 'scan' | 'status', nextStatus?: string) => {
+  const handleAttachmentUpload = async (file: File) => {
+    if (!canWriteBugs) {
+      message.error(t('adminLayout.noPermission'));
+      return Upload.LIST_IGNORE;
+    }
+    if (bugMutationDisabled) {
+      message.warning(bugActionUnavailableMessage);
+      return Upload.LIST_IGNORE;
+    }
+    const fileType = String(file.type || '').toLowerCase();
+    if (!BUG_ATTACHMENT_IMAGE_TYPES.includes(fileType)) {
+      message.warning(tx('attachmentInvalidType', 'Only JPG, PNG or GIF screenshots are supported'));
+      return Upload.LIST_IGNORE;
+    }
+    if (file.size > MAX_BUG_ATTACHMENT_SIZE_BYTES) {
+      message.warning(tx('attachmentTooLarge', 'Screenshot must be 8 MB or smaller'));
+      return Upload.LIST_IGNORE;
+    }
+    setUploadingAttachment(true);
+    try {
+      const response = await adminApi.uploadBugAttachment(file);
+      const attachmentUrl = String(response.data.attachmentUrl || '').trim();
+      if (!attachmentUrl) {
+        throw new Error('Empty bug attachment URL');
+      }
+      const currentValue = String(form.getFieldValue('attachmentUrls') || '').trim();
+      const nextValue = currentValue ? `${currentValue}\n${attachmentUrl}` : attachmentUrl;
+      const nextCount = nextValue.split('\n').map((item) => item.trim()).filter(Boolean).length;
+      if (nextCount > MAX_BUG_ATTACHMENT_URL_COUNT) {
+        message.warning(tx('attachmentUrlCountExceeded', 'Too many attachment URLs'));
+        return Upload.LIST_IGNORE;
+      }
+      if (nextValue.length > 2000) {
+        message.warning(tx('attachmentUrlsTooLong', 'Attachment URL list is full'));
+        return Upload.LIST_IGNORE;
+      }
+      form.setFieldsValue({ attachmentUrls: nextValue });
+      message.success(tx('attachmentUploaded', 'Screenshot uploaded'));
+    } catch (error: unknown) {
+      message.error(getApiErrorMessage(error, tx('attachmentUploadFailed', 'Failed to upload screenshot'), language));
+    } finally {
+      setUploadingAttachment(false);
+    }
+    return Upload.LIST_IGNORE;
+  };
+
+  const openStatusEditor = useCallback((bug: AdminBugReport, mode: 'scan' | 'status', nextStatus?: AdminBugReportStatus) => {
     if (mode === 'scan' && !canScanBugs) {
       message.error(t('adminLayout.noPermission'));
       return;
@@ -500,10 +669,15 @@ const BugManagement: React.FC = () => {
       note: '',
     });
     setStatusOpen(true);
-  };
+  }, [bugActionUnavailableMessage, bugMutationDisabled, canScanBugs, canUpdateBugStatus, statusForm, t]);
 
   const handleStatusSave = async () => {
     if (!statusBug) return;
+    const canSaveCurrentStatusMode = statusMode === 'scan' ? canScanBugs : canUpdateBugStatus;
+    if (!canSaveCurrentStatusMode) {
+      message.error(t('adminLayout.noPermission'));
+      return;
+    }
     if (bugMutationDisabled) {
       message.warning(bugActionUnavailableMessage);
       return;
@@ -536,7 +710,7 @@ const BugManagement: React.FC = () => {
     { key: 'regression', title: tx('pendingRegression', 'Pending regression'), value: summary?.fixedPendingRegressionCount || 0, icon: <CheckCircleOutlined /> },
   ];
 
-  const columns: ColumnsType<AdminBugReport> = [
+  const columns = useMemo<ColumnsType<AdminBugReport>>(() => [
     {
       title: tx('bug', 'Bug'),
       dataIndex: 'title',
@@ -548,7 +722,7 @@ const BugManagement: React.FC = () => {
           <Space size={6} wrap>
             <Text type="secondary">#{bug.id}</Text>
             <Tag>{moduleLabels[bug.module] || bug.module}</Tag>
-            {bug.pageUrl ? <Text type="secondary" className="bug-management__pageUrl">{bug.pageUrl}</Text> : null}
+            {renderBugReferenceLink(bug.pageUrl, 'bug-management__pageUrl')}
           </Space>
         </div>
       ),
@@ -637,7 +811,22 @@ const BugManagement: React.FC = () => {
         );
       },
     },
-  ];
+  ], [
+    bugActionUnavailableMessage,
+    bugMutationDisabled,
+    canScanBugs,
+    canUpdateBugStatus,
+    canWriteBugs,
+    formatTime,
+    moduleLabels,
+    openEditor,
+    openStatusEditor,
+    priorityLabels,
+    severityLabels,
+    statusLabels,
+    tx,
+    withPermissionTooltip,
+  ]);
   const showInitialBugLoading = canReadBugs && !bugSnapshotLoaded && !bugListLoadError;
   const bugSnapshotUnavailable = canReadBugs && Boolean(bugListLoadError) && !bugSnapshotLoaded;
   const summarySnapshotUnavailable = canReadBugs && Boolean(summaryLoadError) && !summarySnapshotLoaded;
@@ -669,7 +858,13 @@ const BugManagement: React.FC = () => {
       </div>
 
       {!permissionsLoaded ? (
-        <div className="bug-management__skeleton" aria-busy="true">
+        <div
+          className="bug-management__skeleton"
+          role="status"
+          aria-live="polite"
+          aria-busy="true"
+          aria-label={`${bugPageLabel}: ${t('common.loading')}`}
+        >
           <Skeleton active paragraph={{ rows: 8 }} />
         </div>
       ) : (
@@ -709,7 +904,13 @@ const BugManagement: React.FC = () => {
           ) : null}
 
           {showInitialBugLoading ? (
-            <div className="bug-management__skeleton bug-management__loadingState" aria-busy="true">
+            <div
+              className="bug-management__skeleton bug-management__loadingState"
+              role="status"
+              aria-live="polite"
+              aria-busy="true"
+              aria-label={`${bugPageLabel}: ${t('common.loading')}`}
+            >
               <Skeleton active paragraph={{ rows: 8 }} />
             </div>
           ) : null}
@@ -786,8 +987,17 @@ const BugManagement: React.FC = () => {
                   expandedRowRender: (bug) => (
                     (() => {
                       const detail = bugDetails[bug.id] || bug;
+                      const detailLoading = loadingDetailIds.has(bug.id);
+                      const detailLoadingLabel = `${tx('bug', 'Bug')}: ${bugDisplayLabel(bug)} ${t('common.loading')}`;
+                      const attachmentUrls = parseBugReferenceLines(detail.attachmentUrls);
                       return (
-                        <Spin spinning={loadingDetailIds.has(bug.id)}>
+                        <Spin
+                          spinning={detailLoading}
+                          role="status"
+                          aria-live="polite"
+                          aria-busy={detailLoading}
+                          aria-label={detailLoading ? detailLoadingLabel : undefined}
+                        >
                           <div className="bug-management__details">
                             <div>
                               <Text strong>{tx('description', 'Description')}</Text>
@@ -811,7 +1021,17 @@ const BugManagement: React.FC = () => {
                             <div>
                               <Text strong>{tx('environment', 'Environment')}</Text>
                               <Paragraph>{detail.environment || '-'}</Paragraph>
-                              <Paragraph>{detail.attachmentUrls || '-'}</Paragraph>
+                              {attachmentUrls.length > 0 ? (
+                                <Space size={2} direction="vertical">
+                                  {attachmentUrls.map((url, index) => (
+                                    <React.Fragment key={`${url}-${index}`}>
+                                      {renderBugAttachmentLink(url, openBugAttachment)}
+                                    </React.Fragment>
+                                  ))}
+                                </Space>
+                              ) : (
+                                <Paragraph>-</Paragraph>
+                              )}
                             </div>
                           </div>
                         </Spin>
@@ -890,9 +1110,25 @@ const BugManagement: React.FC = () => {
               <TextArea rows={3} maxLength={4000} />
             </Form.Item>
           </div>
-          <Form.Item name="attachmentUrls" label={tx('attachmentUrls', 'Attachment URLs')}>
+          <Form.Item name="attachmentUrls" label={tx('attachmentUrls', 'Attachment URLs')} rules={[{ validator: validateAttachmentUrls }]}>
             <TextArea rows={2} maxLength={2000} />
           </Form.Item>
+          <Upload
+            accept="image/jpeg,image/png,image/gif"
+            showUploadList={false}
+            beforeUpload={handleAttachmentUpload}
+            disabled={!canWriteBugs || bugMutationDisabled || uploadingAttachment}
+          >
+            <Button
+              icon={<UploadOutlined />}
+              loading={uploadingAttachment}
+              disabled={!canWriteBugs || bugMutationDisabled || uploadingAttachment}
+              aria-label={attachmentUploadActionLabel}
+              title={attachmentUploadActionLabel}
+            >
+              {tx('uploadAttachment', 'Upload screenshot')}
+            </Button>
+          </Upload>
         </Form>
       </Modal>
 

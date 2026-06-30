@@ -18,6 +18,13 @@ class AdminAuthenticationSourceContractTest {
         assertTrue(securityConfig.contains("addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)"));
         assertTrue(jwtFilter.contains("request.getHeader(\"Authorization\")"));
         assertTrue(jwtFilter.contains("authHeader.startsWith(\"Bearer \")"));
+        assertTrue(securityConfig.indexOf(".antMatchers(\"/admin/**\").hasRole(\"ADMIN\")")
+                        < securityConfig.indexOf(".anyRequest().authenticated()"),
+                "admin role matcher must run before the catch-all authenticated rule");
+        assertFalse(securityConfig.contains("\"/admin/**\").permitAll()"));
+        assertFalse(securityConfig.contains("\"/admin\").permitAll()"));
+        assertFalse(securityConfig.matches("(?s).*\\.antMatchers\\(\"/admin/\\*\\*\"\\)\\.hasRole\\(\"SUPPORT\"\\).*"));
+        assertFalse(securityConfig.matches("(?s).*\\.antMatchers\\(\"/admin/\\*\\*\"\\)\\.hasAnyRole\\([^)]*SUPPORT[^)]*\\).*"));
 
         assertFalse(securityConfig.contains("adminJwtFilter"));
         assertFalse(jwtFilter.contains("adminJwtFilter"));

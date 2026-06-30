@@ -3,6 +3,7 @@ package com.example.shop.service;
 import com.example.shop.dto.CheckoutRequest;
 import com.example.shop.dto.GuestCheckoutItemRequest;
 import com.example.shop.dto.GuestCheckoutRequest;
+import com.example.shop.dto.OrderTrackResponse;
 import com.example.shop.entity.CartItem;
 import com.example.shop.entity.Order;
 import com.example.shop.entity.OrderItem;
@@ -24,6 +25,8 @@ import javax.validation.Validation;
 import javax.validation.Validator;
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -32,6 +35,7 @@ import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -124,6 +128,37 @@ class OrderInputNormalizationServiceTest {
     }
 
     @Test
+    void publicTrackingForRegisteredOrderDoesNotExposeOrderStatusOrTimeline() {
+        Order order = order(9L, 3L, "SHIPPED");
+        order.setOrderNo("SO202605260001");
+        order.setContactEmail("mia@example.com");
+        order.setCustomerType("REGISTERED");
+        order.setGuestOrder(false);
+        order.setShippingAddress("Mia / 555-0100 / 1 Main St");
+        order.setShippedAt(LocalDateTime.now());
+        order.setCompletedAt(LocalDateTime.now().plusDays(1));
+        when(orderRepository.findByOrderNoAndEmail(
+                "SO202605260001",
+                "mia@example.com",
+                "mia@example.com"))
+                .thenReturn(order);
+
+        OrderTrackResponse response = service.trackOrder("SO202605260001", "mia@example.com");
+
+        assertTrue(response.isDetailsRestricted());
+        assertEquals("ACCOUNT_LOGIN_REQUIRED", response.getRestrictionReason());
+        assertTrue(response.getItems().isEmpty());
+        assertEquals("SO202605260001", response.getOrder().getOrderNo());
+        assertFalse(Boolean.TRUE.equals(response.getOrder().getGuestOrder()));
+        assertNull(response.getOrder().getId());
+        assertNull(response.getOrder().getStatus());
+        assertNull(response.getOrder().getCreatedAt());
+        assertNull(response.getOrder().getShippedAt());
+        assertNull(response.getOrder().getCompletedAt());
+        verify(orderItemRepository, never()).findByOrderId(9L);
+    }
+
+    @Test
     void orderEmailMatchEscapesLikeWildcardsForLegacyGuestFallback() {
         Order order = order(9L, 3L, "SHIPPED");
         order.setOrderNo("SO202605260001");
@@ -164,18 +199,47 @@ class OrderInputNormalizationServiceTest {
     }
 
     @Test
-    void checkoutRequestRejectsOverlongRecipientFieldsBeforeServiceLogic() {
+    void guestCheckoutItemAllowsMaxSelectedSpecsBeforeServiceLogic() {
+        Validator validator = Validation.buildDefaultValidatorFactory().getValidator();
+        GuestCheckoutRequest request = guestCheckoutRequest(1);
+        request.getItems().get(0).setSelectedSpecs("x".repeat(2000));
+
+        Set<ConstraintViolation<GuestCheckoutRequest>> violations = validator.validate(request);
+
+        assertTrue(violations.isEmpty());
+    }
+
+    @Test
+    void guestCheckoutItemRejectsOverlongSelectedSpecsBeforeServiceLogic() {
+        Validator validator = Validation.buildDefaultValidatorFactory().getValidator();
+        GuestCheckoutRequest request = guestCheckoutRequest(1);
+        request.getItems().get(0).setSelectedSpecs("x".repeat(2001));
+
+        Set<ConstraintViolation<GuestCheckoutRequest>> violations = validator.validate(request);
+
+        assertTrue(violations.stream()
+                .anyMatch(violation -> violation.getPropertyPath().toString().contains("selectedSpecs")));
+    }
+
+    @Test
+    void checkoutRequestRejectsOverlongTextFieldsBeforeServiceLogic() {
         Validator validator = Validation.buildDefaultValidatorFactory().getValidator();
         CheckoutRequest request = checkoutRequest();
+        request.setShippingAddress("A".repeat(2001));
         request.setRecipientName("N".repeat(121));
         request.setRecipientPhone("5".repeat(41));
+        request.setPaymentMethod("P".repeat(51));
 
         Set<ConstraintViolation<CheckoutRequest>> violations = validator.validate(request);
 
         assertTrue(violations.stream()
+                .anyMatch(violation -> "shippingAddress".contentEquals(violation.getPropertyPath().toString())));
+        assertTrue(violations.stream()
                 .anyMatch(violation -> "recipientName".contentEquals(violation.getPropertyPath().toString())));
         assertTrue(violations.stream()
                 .anyMatch(violation -> "recipientPhone".contentEquals(violation.getPropertyPath().toString())));
+        assertTrue(violations.stream()
+                .anyMatch(violation -> "paymentMethod".contentEquals(violation.getPropertyPath().toString())));
     }
 
     @Test
@@ -200,9 +264,11 @@ class OrderInputNormalizationServiceTest {
     void checkoutRequestAllowsValidRecipientAndOptionalContactEmail() {
         Validator validator = Validation.buildDefaultValidatorFactory().getValidator();
         CheckoutRequest request = checkoutRequest();
+        request.setShippingAddress("A".repeat(2000));
         request.setRecipientName("N".repeat(120));
         request.setRecipientPhone("+1 (555) 010-0000");
         request.setContactEmail(null);
+        request.setPaymentMethod("P".repeat(50));
 
         Set<ConstraintViolation<CheckoutRequest>> violations = validator.validate(request);
 
@@ -248,6 +314,16 @@ class OrderInputNormalizationServiceTest {
         verify(orderRepository, never()).insert(any(Order.class));
         verify(orderItemRepository, never()).insert(any(OrderItem.class));
         verify(orderItemRepository, never()).insertBatch(anyList());
+    }
+
+    @Test
+    void guestCheckoutMissingProductUsesMeaningfulErrorPath() throws Exception {
+        String orderService = Files.readString(Path.of("src/main/java/com/example/shop/service/OrderService.java"));
+
+        assertFalse(orderService.contains("ProductFetchResult"));
+        assertFalse(orderService.contains("createGuestOrder("));
+        assertFalse(orderService.contains("Objects.requireNonNull(product"));
+        assertTrue(orderService.contains("throw new IllegalArgumentException(\"Product not found: \" + requestItem.getProductId());"));
     }
 
     @Test

@@ -41,4 +41,19 @@ class PaymentServiceObservabilityContractTest {
         assertFalse(source.contains("webhookSecret={}"), "Webhook secrets must not be emitted in logs");
         assertFalse(source.contains("secretKey={}"), "Gateway secret keys must not be emitted in logs");
     }
+
+    @Test
+    void paymentRetriesAvoidLegacyFixedSleepConsumerLoop() throws Exception {
+        String source = Files.readString(
+                Path.of("src/main/java/com/example/shop/service/PaymentService.java"),
+                StandardCharsets.UTF_8);
+
+        assertFalse(Files.exists(Path.of("src/main/java/com/example/shop/mq/PayMessageConsumers.java")));
+        assertFalse(source.contains("Thread.sleep(200)"));
+        assertTrue(source.contains("private long gatewayRetryDelayMs(int failedAttempt, long initialDelayMs, long maxDelayMs)"));
+        assertTrue(source.contains("long multiplier = 1L << Math.min(Math.max(0, failedAttempt - 1), 10);"));
+        assertTrue(source.contains("TimeUnit.MILLISECONDS.sleep(retryDelayMs);"));
+        assertTrue(source.contains("payment.gateway-http-retry-initial-delay-ms"));
+        assertTrue(source.contains("payment.gateway-http-retry-max-delay-ms"));
+    }
 }

@@ -445,7 +445,14 @@ const CategoryManagement: React.FC = () => {
       ) : null}
 
       {showInitialCategoryLoading ? (
-        <Card className="category-management-page__loadingState" loading />
+        <Card
+          className="category-management-page__loadingState"
+          loading
+          role="status"
+          aria-live="polite"
+          aria-busy="true"
+          aria-label={t('common.loading')}
+        />
       ) : null}
 
       {canRenderCategorySnapshot ? (

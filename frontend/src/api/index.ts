@@ -1,6 +1,6 @@
 import axios, { AxiosHeaders } from 'axios';
 import type { AxiosError, AxiosRequestConfig, AxiosResponse } from 'axios';
-import { User, UserProfile, UserAdminSummary, AdminUserPage, Product, AdminProductPage, ProductPublic, ProductPublicPage, Category, CategoryPublic, Brand, BrandPublic, CartItem, Order, OrderCustomer, OrderItem, OrderItemCustomer, OrderTrackResult, Review, PublicReview, ReviewableOrder, DashboardStats, UserAddress, WishlistItem, AppNotification, PaymentCustomer, AdminPayment, PaymentChannel, ProductImportResult, ProductImportHistoryEntry, ProductUrlImportPreview, ProductQuestion, ProductQuestionPublic, ProductQuestionAdminSummary, SupportSession, SupportSessionCustomer, SupportWebSocketTicket, SupportAdminSummary, SupportAdminSessionPage, SupportMessage, SupportMessageCustomer, Coupon, CouponPublic, AdminCouponPage, CouponAdminSummary, UserCoupon, CouponQuote, LogisticsTrackResponse, PetProfile, LogisticsCarrier, PetGalleryPhotoPublic, AdminPetGalleryPhoto, AdminPetGalleryPage, PetGalleryQuota, AppConfig, SecurityAuditLog, SecurityAuditPurgeResponse, SecurityAuditSummary, AdminRole, PetBirthdayCouponConfig, AdminOrderPage, AdminReviewPage, AdminOrderBatchShipResponse, AdminRegistryStatus, AdminSystemStatus, AdminConfigCenterPublishRequest, AdminConfigCenterSnapshot, AdminLogDebugRequest, AdminLogManagementStatus, AdminTrafficControlStatus, SystemAlert, SystemAlertBatchActionResponse, SystemAlertPurgeResponse, SystemAlertSummary, AdminBugReport, AdminBugReportPage, AdminBugReportSummary, IpBlacklistEntry, IpBlacklistBatchReleaseResponse, IpBlacklistStatus, SiteAnnouncement, SiteAnnouncementPublic, SiteAnnouncementAdminPage, SiteAnnouncementAdminSummary, ProductMutationPayload } from '../types';
+import { User, UserProfile, UserAdminSummary, AdminUserPage, Product, AdminProductPage, ProductPublic, ProductPublicPage, Category, CategoryPublic, Brand, BrandPublic, CartItem, Order, OrderCustomer, OrderItem, OrderItemCustomer, OrderTrackResult, Review, PublicReview, ReviewableOrder, DashboardStats, UserAddress, WishlistItem, AppNotification, PaymentCustomer, AdminPayment, PaymentChannel, ProductImportResult, ProductImportHistoryEntry, ProductUrlImportPreview, ProductQuestion, ProductQuestionPublic, ProductQuestionAdminSummary, SupportSession, SupportSessionCustomer, SupportWebSocketTicket, SupportAdminSummary, SupportAdminSessionPage, SupportMessage, SupportMessageCustomer, Coupon, CouponPublic, AdminCouponPage, CouponAdminSummary, UserCoupon, CouponQuote, LogisticsTrackResponse, PetProfile, LogisticsCarrier, PetGalleryPhotoPublic, AdminPetGalleryPhoto, AdminPetGalleryPage, PetGalleryQuota, AppConfig, SecurityAuditLog, SecurityAuditPurgeResponse, SecurityAuditSummary, AdminRole, PetBirthdayCouponConfig, AdminOrderPage, AdminReviewPage, AdminOrderBatchShipResponse, AdminRegistryStatus, AdminSystemStatus, AdminConfigCenterPublishRequest, AdminConfigCenterSnapshot, AdminLogDebugRequest, AdminLogManagementStatus, AdminTrafficControlStatus, SystemAlert, SystemAlertBatchActionResponse, SystemAlertPurgeResponse, SystemAlertSummary, AdminBugReport, AdminBugAttachmentUploadResponse, AdminBugReportPage, AdminBugReportSummary, IpBlacklistEntry, IpBlacklistBatchReleaseResponse, IpBlacklistStatus, SiteAnnouncement, SiteAnnouncementPublic, SiteAnnouncementAdminPage, SiteAnnouncementAdminSummary, ProductMutationPayload } from '../types';
 import { buildLoginUrl, getCurrentRelativeUrl } from '../utils/authRedirect';
 import { AUTH_SESSION_STORAGE_KEYS, dispatchAuthSessionChanged } from '../utils/authEvents';
 import { clearAuthClientState } from '../utils/authClientStateCleanup';
@@ -27,6 +27,7 @@ const MAX_REVIEW_COMMENT_LENGTH = 1000;
 const MAX_PRODUCT_QUESTION_LENGTH = 500;
 const MAX_PASSWORD_LENGTH = 128;
 const MAX_PRODUCT_IMAGE_URL_LENGTH = 2000;
+const MAX_SUPPORT_MESSAGE_LENGTH = 4000;
 
 const normalizePositiveInt = (value: unknown) => {
     const numeric = Number(value);
@@ -93,6 +94,9 @@ const normalizeMultilineTextParam = (value: unknown, maxLength = 120) => {
         .trim()
         .slice(0, maxLength);
 };
+
+const normalizeSupportMessageContent = (value: unknown) =>
+    normalizeMultilineTextParam(value, MAX_SUPPORT_MESSAGE_LENGTH);
 
 const normalizeImageUrlParam = (value: unknown, maxLength = 2048) => {
     const url = normalizeTextParam(value, maxLength);
@@ -241,6 +245,30 @@ const normalizeBugStatusPayload = (payload: Partial<AdminBugReport> & { note?: s
     fixSummary: payload.fixSummary === undefined || payload.fixSummary === null ? undefined : normalizeMultilineTextParam(payload.fixSummary, 2000),
     regressionNote: payload.regressionNote === undefined || payload.regressionNote === null ? undefined : normalizeMultilineTextParam(payload.regressionNote, 2000),
 });
+
+const normalizeBugAttachmentApiPath = (value: unknown) => {
+    const raw = normalizeTextParam(value, 500);
+    if (!raw || raw.includes('\\') || raw.includes('..')) {
+        throw new TypeError('Invalid bug attachment URL');
+    }
+    const pathFromUrl = (() => {
+        if (raw.startsWith('/') && !raw.startsWith('//')) return raw;
+        try {
+            const parsed = new URL(raw);
+            const browserOrigin = typeof window === 'undefined' ? '' : window.location.origin;
+            return parsed.origin === browserOrigin ? parsed.pathname : '';
+        } catch (_error) {
+            return '';
+        }
+    })();
+    const normalizedPath = pathFromUrl.startsWith('/api/admin/bugs/attachments/')
+        ? pathFromUrl.slice('/api'.length)
+        : pathFromUrl;
+    if (!/^\/admin\/bugs\/attachments\/[0-9a-f-]{36}\.(?:jpg|png)$/i.test(normalizedPath)) {
+        throw new TypeError('Invalid bug attachment URL');
+    }
+    return normalizedPath;
+};
 
 const normalizeAdminRolePayload = (role: Partial<AdminRole>) => ({
     code: normalizeTextParam(role.code, 50).toUpperCase(),
@@ -417,8 +445,6 @@ type AuthSessionResponse = {
     refreshToken?: string;
     id?: number | string;
     username?: string;
-    email?: string | null;
-    phone?: string | null;
     role?: string | null;
     roleCode?: string | null;
 };
@@ -1518,14 +1544,6 @@ export const persistAuthSession = (data: AuthSessionResponse) => {
     if (username) {
         setStoredItem('username', username);
     }
-    const email = normalizeEmailParam(data.email);
-    if (email) {
-        setStoredItem('email', email);
-    }
-    const phone = normalizePhoneParam(data.phone, 20);
-    if (phone) {
-        setStoredItem('phone', phone);
-    }
     if (nextRole) {
         setStoredItem('role', nextRole);
     }
@@ -2126,6 +2144,7 @@ export const paymentApi = {
     simulatePaid: (paymentId: number) => api.post<AdminPayment>(`/payments/${toPathId(paymentId)}/simulate-paid`),
     simulateCallback: (paymentId: number) => api.post<AdminPayment>(`/payments/${toPathId(paymentId)}/simulate-callback`),
     sync: (paymentId: number, guestEmail?: string, orderNo?: string) => api.post<PaymentCustomer>(`/payments/${toPathId(paymentId)}/sync`, guestParams(guestEmail, orderNo), guestRequestConfig(guestEmail, orderNo)),
+    syncByOrder: (orderId: number) => api.post<PaymentCustomer[]>(`/payments/order/${toPathId(orderId)}/sync`, {}).then(withArrayData),
     callback: (payload: {
         orderNo: string;
         channel: string;
@@ -2142,12 +2161,12 @@ export const paymentApi = {
             ? api.post<PaymentCustomer[]>(`/payments/guest/order/${normalizedId}`, credentials, anonymousRequestConfig()).then(withArrayData)
             : api.get<PaymentCustomer[]>(`/payments/order/${normalizedId}`, { params: undefined }).then(withArrayData);
     },
-    getLatestByOrder: (orderId: number, guestEmail?: string, orderNo?: string) => {
+    getLatestByOrder: (orderId: number, guestEmail?: string, orderNo?: string, options?: ApiRequestOptions) => {
         const normalizedId = toPathId(orderId);
         const credentials = guestParams(guestEmail, orderNo);
         return credentials
-            ? api.post<PaymentCustomer>(`/payments/guest/order/${normalizedId}/latest`, credentials, anonymousRequestConfig())
-            : api.get<PaymentCustomer>(`/payments/order/${normalizedId}/latest`, { params: undefined });
+            ? api.post<PaymentCustomer>(`/payments/guest/order/${normalizedId}/latest`, credentials, anonymousRequestConfig({}, options))
+            : api.get<PaymentCustomer>(`/payments/order/${normalizedId}/latest`, withRequestOptions({ params: undefined }, options));
     },
 };
 
@@ -2319,8 +2338,9 @@ export const adminApi = {
         api.post<SystemAlertPurgeResponse>('/admin/alerts/purge-resolved', null, {
             params: { retentionDays: normalizeBoundedPositiveInt(retentionDays, 30, 3650) },
         }),
-    getBugs: (params?: { page?: number; size?: number; status?: string; severity?: string; module?: string; keyword?: string; scanQueueOnly?: boolean }) =>
+    getBugs: (params?: { page?: number; size?: number; status?: string; severity?: string; module?: string; keyword?: string; scanQueueOnly?: boolean }, signal?: AbortSignal) =>
         api.get<AdminBugReportPage>('/admin/bugs', {
+            ...(signal ? { signal } : {}),
             params: {
                 page: normalizeNonNegativeIntParam(params?.page, 0, 1_000_000),
                 size: normalizeBoundedPositiveInt(params?.size, 20, 100),
@@ -2333,6 +2353,14 @@ export const adminApi = {
         }),
     getBug: (id: number) => api.get<AdminBugReport>(`/admin/bugs/${toPathId(id)}`),
     getBugSummary: () => api.get<AdminBugReportSummary>('/admin/bugs/summary'),
+    uploadBugAttachment: (file: File) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        return api.post<AdminBugAttachmentUploadResponse>('/admin/bugs/attachments', formData);
+    },
+    downloadBugAttachment: (attachmentUrl: string) => api.get<Blob>(normalizeBugAttachmentApiPath(attachmentUrl), {
+        responseType: 'blob',
+    }),
     createBug: (bug: Partial<AdminBugReport>) => api.post<AdminBugReport>('/admin/bugs', normalizeBugReportPayload(bug)),
     updateBug: (id: number, bug: Partial<AdminBugReport>) =>
         api.put<AdminBugReport>(`/admin/bugs/${toPathId(id)}`, normalizeBugReportPayload(bug)),
@@ -2986,34 +3014,37 @@ export const supportApi = {
     getMessages: (sessionId: number, options?: SupportMessageQuery) =>
         api.get<SupportMessageCustomer[]>(`/support/sessions/${toPathId(sessionId)}/messages`, { params: normalizeSupportMessageParams(options) }),
     sendMessage: (content: string, sessionId?: number) =>
-        api.post<{ message: SupportMessageCustomer; session: SupportSessionCustomer }>('/support/messages', { content, sessionId: normalizePositiveInt(sessionId) || undefined }),
+        api.post<{ message: SupportMessageCustomer; session: SupportSessionCustomer }>('/support/messages', {
+            content: normalizeSupportMessageContent(content),
+            sessionId: normalizePositiveInt(sessionId) || undefined,
+        }),
     markRead: (sessionId: number) => api.put(`/support/sessions/${toPathId(sessionId)}/read`),
     closeSession: (sessionId: number) => api.put<SupportSessionCustomer>(`/support/sessions/${toPathId(sessionId)}/close`),
     getUnreadCount: () => api.get<{ count: number }>('/support/unread-count'),
-    getGuestSession: (orderNo: string, email: string) => api.get<SupportSessionCustomer>('/support/guest/session', anonymousGetConfig({
-        params: { orderNo: normalizeOrderTrackingNumber(orderNo), email: normalizeEmailParam(email) || '' },
-    })),
+    getGuestSession: (orderNo: string, email: string) => api.post<SupportSessionCustomer>('/support/guest/session/lookup', {
+        orderNo: normalizeOrderTrackingNumber(orderNo),
+        guestEmail: normalizeEmailParam(email) || '',
+    }, anonymousRequestConfig()),
     createGuestSession: (orderNo: string, email: string) => api.post<SupportSessionCustomer>('/support/guest/session', {
         orderNo: normalizeOrderTrackingNumber(orderNo),
-        email: normalizeEmailParam(email) || '',
+        guestEmail: normalizeEmailParam(email) || '',
     }, anonymousRequestConfig()),
-    getGuestMessages: (sessionId: number, orderNo: string, email: string, options?: SupportMessageQuery) => api.get<SupportMessageCustomer[]>(`/support/guest/sessions/${toPathId(sessionId)}/messages`, anonymousGetConfig({
-        params: {
+    getGuestMessages: (sessionId: number, orderNo: string, email: string, options?: SupportMessageQuery) =>
+        api.post<SupportMessageCustomer[]>(`/support/guest/sessions/${toPathId(sessionId)}/messages`, {
             orderNo: normalizeOrderTrackingNumber(orderNo),
-            email: normalizeEmailParam(email) || '',
+            guestEmail: normalizeEmailParam(email) || '',
             ...normalizeSupportMessageParams(options),
-        },
-    })),
+        }, anonymousRequestConfig()),
     sendGuestMessage: (content: string, orderNo: string, email: string, sessionId?: number) =>
         api.post<{ message: SupportMessageCustomer; session: SupportSessionCustomer }>('/support/guest/messages', {
-            content: String(content || '').slice(0, 4000),
+            content: normalizeSupportMessageContent(content),
             sessionId: normalizePositiveInt(sessionId) || undefined,
             orderNo: normalizeOrderTrackingNumber(orderNo),
-            email: normalizeEmailParam(email) || '',
+            guestEmail: normalizeEmailParam(email) || '',
         }, anonymousRequestConfig()),
     markGuestRead: (sessionId: number, orderNo: string, email: string) => api.put(`/support/guest/sessions/${toPathId(sessionId)}/read`, {
         orderNo: normalizeOrderTrackingNumber(orderNo),
-        email: normalizeEmailParam(email) || '',
+        guestEmail: normalizeEmailParam(email) || '',
     }, anonymousRequestConfig()),
 };
 
@@ -3026,7 +3057,9 @@ export const adminSupportApi = {
     getMessages: (sessionId: number, options?: SupportMessageQuery) =>
         api.get<SupportMessage[]>(`/admin/support/sessions/${toPathId(sessionId)}/messages`, { params: normalizeSupportMessageParams(options) }),
     sendMessage: (sessionId: number, content: string) =>
-        api.post<{ message: SupportMessage; session: SupportSession }>(`/admin/support/sessions/${toPathId(sessionId)}/messages`, { content }),
+        api.post<{ message: SupportMessage; session: SupportSession }>(`/admin/support/sessions/${toPathId(sessionId)}/messages`, {
+            content: normalizeSupportMessageContent(content),
+        }),
     markRead: (sessionId: number) => api.put(`/admin/support/sessions/${toPathId(sessionId)}/read`),
     closeSession: (sessionId: number) => api.put<SupportSession>(`/admin/support/sessions/${toPathId(sessionId)}/close`),
     assignSession: (sessionId: number) => api.put<SupportSession>(`/admin/support/sessions/${toPathId(sessionId)}/assign`),

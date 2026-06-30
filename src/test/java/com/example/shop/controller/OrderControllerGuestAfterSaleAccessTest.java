@@ -3,6 +3,7 @@ package com.example.shop.controller;
 import com.example.shop.dto.GuestOrderAccessRequest;
 import com.example.shop.dto.OrderCustomerResponse;
 import com.example.shop.dto.OrderItemCustomerResponse;
+import com.example.shop.dto.OrderTrackRequest;
 import com.example.shop.entity.Order;
 import com.example.shop.entity.OrderItem;
 import com.example.shop.security.UserDetailsImpl;
@@ -31,11 +32,12 @@ import static org.mockito.Mockito.when;
 class OrderControllerGuestAfterSaleAccessTest {
     private final OrderService orderService = mock(OrderService.class);
     private final OrderItemService orderItemService = mock(OrderItemService.class);
+    private final IpBlacklistService ipBlacklistService = mock(IpBlacklistService.class);
     private final OrderController controller = new OrderController(
             orderService,
             orderItemService,
             mock(SecurityAuditLogService.class),
-            mock(IpBlacklistService.class)
+            ipBlacklistService
     );
 
     @Test
@@ -158,6 +160,20 @@ class OrderControllerGuestAfterSaleAccessTest {
                 new MockHttpServletRequest("POST", "/orders/guest/42/cancel")
         ));
         verify(orderService, never()).cancelOrder(42L);
+    }
+
+    @Test
+    void guestTrackingCredentialFailureDoesNotRecordLoginFailure() {
+        OrderTrackRequest body = new OrderTrackRequest();
+        body.setOrderNo("SO202605260001");
+        body.setEmail("wrong@example.com");
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/orders/track");
+        when(orderService.trackOrder("SO202605260001", "wrong@example.com"))
+                .thenThrow(new IllegalArgumentException("Order not found or email mismatch"));
+
+        assertThrows(IllegalArgumentException.class, () -> controller.trackOrder(body, request));
+
+        verify(ipBlacklistService, never()).recordLoginFailure(request, "guest-order-track failed");
     }
 
     @Test

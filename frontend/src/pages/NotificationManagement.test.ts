@@ -24,6 +24,18 @@ describe('NotificationManagement readiness checklist guards', () => {
     expect(pageSource).toContain('readinessSignals.readyCount}/4');
   });
 
+  it('blocks broadcast controls until permissions are verified', () => {
+    expect(pageSource).toContain("type PermissionStatus = 'loading' | 'ready' | 'error';");
+    expect(pageSource).toContain("const [permissionStatus, setPermissionStatus] = useState<PermissionStatus>('loading');");
+    expect(pageSource).toContain("const canBroadcastNotifications = permissionStatus === 'ready'");
+    expect(pageSource).toContain('const permissionGateActive = permissionStatus !== \'ready\' || !canBroadcastNotifications;');
+    expect(pageSource).toContain('disabled={permissionGateActive}');
+    expect(pageSource).toContain("t('pages.notificationAdmin.permissionLoadFailed')");
+    expect(pageSource).toContain("t('pages.notificationAdmin.permissionRetry')");
+    expect(pageSource).toContain('disabled');
+    expect(pageSource).not.toContain("const canBroadcastNotifications = hasAdminPermission(adminPermissions, currentRole, NOTIFICATIONS_BROADCAST_PERMISSION);");
+  });
+
   it('keeps readiness checks visible instead of a hidden mobile rail', () => {
     const f3519Start = cssSource.indexOf('/* F3519');
     const f3519Css = cssSource.slice(f3519Start);

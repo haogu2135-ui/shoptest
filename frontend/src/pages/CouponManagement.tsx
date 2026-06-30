@@ -680,7 +680,14 @@ const CouponManagement: React.FC = () => {
       ) : null}
 
       {showInitialCouponLoading ? (
-        <Card className="coupon-management-page__loadingState" loading />
+        <Card
+          className="coupon-management-page__loadingState"
+          loading
+          role="status"
+          aria-live="polite"
+          aria-busy="true"
+          aria-label={t('common.loading')}
+        />
       ) : null}
 
       {!showInitialCouponLoading && !couponSnapshotUnavailable ? (

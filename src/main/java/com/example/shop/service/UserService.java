@@ -3,6 +3,7 @@ package com.example.shop.service;
 import com.example.shop.dto.UserAdminSummaryResponse;
 import com.example.shop.entity.User;
 import com.example.shop.repository.UserMapper;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,6 +22,9 @@ import java.util.regex.Pattern;
 @Service
 @RequiredArgsConstructor
 public class UserService {
+    public static final String REGISTRATION_ACCOUNT_DETAILS_UNAVAILABLE_MESSAGE =
+            "Registration could not be completed with the supplied account details";
+
     private static final int USER_PHONE_MAX_CHARS = 20;
     private static final int PASSWORD_MIN_CHARS = 12;
     private static final int PASSWORD_MAX_CHARS = 128;
@@ -43,7 +47,13 @@ public class UserService {
 
     private final UserMapper userMapper;
     private final PasswordEncoder passwordEncoder;
-    
+
+    @Value("${user.dashboard-count-cache-ms:5000}")
+    private long dashboardCountCacheMs = 5000L;
+
+    private volatile long cachedCount = -1L;
+    private volatile long cachedCountExpiresAtMs = 0L;
+
     public User findByUsername(String username) {
         String login = normalizeLookupText(username);
         return login == null ? null : userMapper.findByUsername(login);
@@ -77,11 +87,11 @@ public class UserService {
         }
         return user;
     }
-    
+
     public User findById(Long id) {
         return userMapper.findById(id);
     }
-    
+
     @Transactional(rollbackFor = Exception.class)
     public User register(User user) {
         return register(user, false);
@@ -109,11 +119,11 @@ public class UserService {
         boolean upgradingGuestAccount = isGuestEmailOwner(existingEmail, normalizedEmail);
         User existingUsername = userMapper.findByUsername(normalizedUsername);
         if (existingUsername != null && !isSameUser(existingUsername, existingEmail)) {
-            throw new IllegalArgumentException("Username already registered");
+            throw duplicatePublicRegistrationDetails();
         }
         if (existingEmail != null) {
             if (!upgradingGuestAccount) {
-                throw new IllegalArgumentException("Email already registered");
+                throw duplicatePublicRegistrationDetails();
             }
             if (!guestEmailVerified) {
                 throw new IllegalArgumentException("Email verification is required to claim guest checkout history");
@@ -123,7 +133,7 @@ public class UserService {
         String normalizedPhone = normalizeRequiredPhoneText(user.getPhone(), "Phone number", USER_PHONE_MAX_CHARS);
         User existingPhone = userMapper.findByPhone(normalizedPhone);
         if (existingPhone != null && !isSameUser(existingPhone, existingEmail)) {
-            throw new IllegalArgumentException("Phone number already registered");
+            throw duplicatePublicRegistrationDetails();
         }
         if (upgradingGuestAccount) {
             String rawPassword = user.getPassword();
@@ -138,6 +148,7 @@ public class UserService {
         user.setUpdatedAt(now);
         user.setPasswordChangedAt(now);
         userMapper.insert(user);
+        invalidateCountCache();
         if (user.getId() != null) {
             User saved = userMapper.findById(user.getId());
             if (saved != null) {
@@ -146,6 +157,10 @@ public class UserService {
         }
         User saved = userMapper.findByUsernameOrPhoneOrEmail(normalizedEmail);
         return saved != null ? saved : userMapper.findByUsernameOrPhoneOrEmail(normalizedPhone);
+    }
+
+    private IllegalArgumentException duplicatePublicRegistrationDetails() {
+        return new IllegalArgumentException(REGISTRATION_ACCOUNT_DETAILS_UNAVAILABLE_MESSAGE);
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -180,11 +195,12 @@ public class UserService {
             user.setUpdatedAt(LocalDateTime.now());
             user.setPasswordChangedAt(user.getUpdatedAt());
             userMapper.insert(user);
+            invalidateCountCache();
         } finally {
             userMapper.releaseAdminBootstrapLock();
         }
     }
-    
+
     @Transactional(rollbackFor = Exception.class)
     public void update(User user) {
         if (user == null || user.getId() == null) {
@@ -268,7 +284,7 @@ public class UserService {
     public void updateRoleAccess(Long userId, String role, String roleCode) {
         userMapper.updateRoleAccess(userId, role, roleCode, LocalDateTime.now());
     }
-    
+
     @Transactional(rollbackFor = Exception.class)
     public void updatePassword(Long userId, String oldPassword, String newPassword) {
         assertPasswordCandidate(oldPassword, "Current password");
@@ -296,7 +312,7 @@ public class UserService {
 
     public long countSearch(String keyword, String role, String status) {
         return userMapper.countSearch(
-                normalizeText(keyword, 120),
+                searchLikeTerm(keyword),
                 normalizeText(role, 40),
                 normalizeText(status, 40));
     }
@@ -306,7 +322,7 @@ public class UserService {
         int safePage = Math.max(1, page);
         int offset = Math.max(0, (safePage - 1) * safeSize);
         return userMapper.searchPage(
-                normalizeText(keyword, 120),
+                searchLikeTerm(keyword),
                 normalizeText(role, 40),
                 normalizeText(status, 40),
                 safeSize,
@@ -315,7 +331,7 @@ public class UserService {
 
     public UserAdminSummaryResponse adminSummary(String keyword, String role, String status) {
         Map<String, Object> row = userMapper.adminSummary(
-                normalizeText(keyword, 120),
+                searchLikeTerm(keyword),
                 normalizeText(role, 40),
                 normalizeText(status, 40));
         UserAdminSummaryResponse response = new UserAdminSummaryResponse();
@@ -338,10 +354,34 @@ public class UserService {
     @Transactional(rollbackFor = Exception.class)
     public void deleteById(Long id) {
         userMapper.deleteById(id);
+        invalidateCountCache();
     }
 
     public long count() {
-        return userMapper.countAll();
+        long ttlMs = Math.max(0L, dashboardCountCacheMs);
+        if (ttlMs == 0L) {
+            return userMapper.countAll();
+        }
+        long now = System.currentTimeMillis();
+        long currentCount = cachedCount;
+        if (currentCount >= 0L && now < cachedCountExpiresAtMs) {
+            return currentCount;
+        }
+        synchronized (this) {
+            now = System.currentTimeMillis();
+            if (cachedCount >= 0L && now < cachedCountExpiresAtMs) {
+                return cachedCount;
+            }
+            long freshCount = userMapper.countAll();
+            cachedCount = freshCount;
+            cachedCountExpiresAtMs = now + ttlMs;
+            return freshCount;
+        }
+    }
+
+    private void invalidateCountCache() {
+        cachedCount = -1L;
+        cachedCountExpiresAtMs = 0L;
     }
 
     private int calculateUserHealthScore(UserAdminSummaryResponse summary) {
@@ -483,6 +523,17 @@ public class UserService {
         return normalized.length() <= maxLength ? normalized : normalized.substring(0, maxLength);
     }
 
+    private String searchLikeTerm(String value) {
+        String normalized = normalizeText(value, 120);
+        return normalized == null ? null : escapeLikeLiteral(normalized);
+    }
+
+    private String escapeLikeLiteral(String value) {
+        return value.replace("!", "!!")
+                .replace("%", "!%")
+                .replace("_", "!_");
+    }
+
     private String normalizeRequiredStorageText(String value, String field, int maxLength) {
         String normalized = normalizeStorageText(value, field, maxLength);
         if (normalized == null) {
@@ -622,4 +673,4 @@ public class UserService {
     private boolean looksLikeEmail(String value) {
         return value != null && value.indexOf('@') > 0;
     }
-} 
+}

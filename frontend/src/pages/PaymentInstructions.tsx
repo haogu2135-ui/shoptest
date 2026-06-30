@@ -4,8 +4,7 @@ import { CreditCardOutlined, CustomerServiceOutlined, FileSearchOutlined, LockOu
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { orderApi, paymentApi } from '../api';
 import { useLanguage } from '../i18n';
-import type { OrderCustomer, PaymentCustomer } from '../types';
-import { markets } from '../utils/market';
+import type { OrderCustomer, PaymentChannel, PaymentCustomer } from '../types';
 import { dispatchDomEvent } from '../utils/domEvents';
 import { loadGuestSupportContext, normalizeGuestSupportContext, saveGuestSupportContext } from '../utils/guestSupportContext';
 import { reportNonBlockingError } from '../utils/nonBlockingError';
@@ -20,12 +19,31 @@ const cleanParam = (value: string | null, maxLength = 120) =>
     return code <= 31 || code === 127 ? ' ' : char;
   }).join('').trim().slice(0, maxLength);
 
-const formatPaymentAmount = (amount: number, currency: keyof typeof markets) => {
-  const market = markets[currency] || markets.MXN;
-  return new Intl.NumberFormat(market.locale, {
-    style: 'currency',
-    currency: market.currency,
-  }).format(amount);
+const normalizeCurrencyCode = (value?: string | null) => {
+  const currency = String(value || '').trim().toUpperCase();
+  return /^[A-Z]{3}$/.test(currency) ? currency : 'MXN';
+};
+
+const currencyLocale = (currency: string, language: string) => {
+  if (currency === 'CNY') return 'zh-CN';
+  if (currency === 'MXN') return 'es-MX';
+  return language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US';
+};
+
+const formatPaymentAmount = (amount: number, currency: string, language: string) => {
+  const normalizedCurrency = normalizeCurrencyCode(currency);
+  try {
+    return new Intl.NumberFormat(currencyLocale(normalizedCurrency, language), {
+      style: 'currency',
+      currency: normalizedCurrency,
+    }).format(amount);
+  } catch (error) {
+    reportNonBlockingError('PaymentInstructions.formatPaymentAmount', error);
+    return new Intl.NumberFormat(currencyLocale('MXN', language), {
+      style: 'currency',
+      currency: 'MXN',
+    }).format(amount);
+  }
 };
 
 const PaymentInstructions: React.FC = () => {
@@ -36,6 +54,7 @@ const PaymentInstructions: React.FC = () => {
   const { t, language } = useLanguage();
   const [order, setOrder] = useState<OrderCustomer | null>(null);
   const [payment, setPayment] = useState<PaymentCustomer | null>(null);
+  const [paymentChannels, setPaymentChannels] = useState<PaymentChannel[]>([]);
   const [verifying, setVerifying] = useState(false);
   const [verifyError, setVerifyError] = useState('');
   const normalizedOrderNo = cleanParam(orderNo, 80);
@@ -93,6 +112,20 @@ const PaymentInstructions: React.FC = () => {
   }, [location.pathname, navigate, normalizedOrderNo, searchQuery]);
 
   useEffect(() => {
+    let disposed = false;
+    paymentApi.getChannels()
+      .then((response) => {
+        if (!disposed) setPaymentChannels(response.data || []);
+      })
+      .catch((error) => {
+        reportNonBlockingError('PaymentInstructions.loadChannels', error);
+      });
+    return () => {
+      disposed = true;
+    };
+  }, []);
+
+  useEffect(() => {
     if (!normalizedOrderNo || (!guestEmail && !isAuthenticated)) {
       setOrder(null);
       setPayment(null);
@@ -146,9 +179,11 @@ const PaymentInstructions: React.FC = () => {
   }, [guestEmail, isAuthenticated, normalizedOrderNo, t]);
 
   const channel = payment?.channel || order?.paymentMethod || t('pages.paymentInstructions.manualChannel');
-  const currency: keyof typeof markets = 'MXN';
+  const normalizedChannel = String(payment?.channel || order?.paymentMethod || '').trim().toUpperCase();
+  const channelCurrency = paymentChannels.find((item) => item.code === normalizedChannel)?.currency;
+  const currency = normalizeCurrencyCode(payment?.currency || order?.currency || channelCurrency);
   const verifiedAmount = Number(payment?.amount ?? order?.totalAmount);
-  const amountText = order && Number.isFinite(verifiedAmount) ? formatPaymentAmount(verifiedAmount, currency) : '-';
+  const amountText = order && Number.isFinite(verifiedAmount) ? formatPaymentAmount(verifiedAmount, currency, language) : '-';
   const expiresAt = payment?.expiresAt || '';
   const paymentContextLabel = `${t('pages.paymentInstructions.orderNo')}: ${normalizedOrderNo || '-'} · ${t('pages.paymentInstructions.amount')}: ${amountText}`;
   const trackOrderActionLabel = `${t('nav.trackOrder')}: ${paymentContextLabel}`;
@@ -175,7 +210,13 @@ const PaymentInstructions: React.FC = () => {
 
       <div className="payment-instructions-page__grid">
         <Card className="payment-instructions-page__card">
-          <Spin spinning={verifying}>
+          <Spin
+            spinning={verifying}
+            role="status"
+            aria-live="polite"
+            aria-busy={verifying}
+            aria-label={verifying ? t('common.loading') : undefined}
+          >
             <Space direction="vertical" size="middle" className="payment-instructions-page__stack">
             {verifyError ? (
               <Alert type="warning" showIcon message={verifyError} />

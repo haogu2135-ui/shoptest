@@ -155,9 +155,10 @@ class ProductSearchServiceTest {
         when(categoryRepository.findAllById(List.of(childCategoryProduct.getCategoryId()))).thenReturn(List.of());
         stubPublicProductPage(List.of(childCategoryProduct));
 
-        List<Product> results = service.findPublicProductPage(query).getContent();
+        Page<Product> page = service.findPublicProductPage(query);
 
-        assertEquals(List.of(), results);
+        assertEquals(List.of(), page.getContent());
+        assertEquals(1, page.getTotalElements());
         verify(categoryRepository, never()).findByParentId(10L);
         verify(productRepository, never()).findAll();
     }

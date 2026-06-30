@@ -6,6 +6,7 @@ import Navbar from './components/Navbar';
 import ErrorBoundary from './components/ErrorBoundary';
 import CustomerSupportWidget from './components/CustomerSupportWidget';
 import SkipToContentLink, { MAIN_CONTENT_ID } from './components/SkipToContentLink';
+import { AuthProvider } from './hooks/useAuth';
 import { useLanguage } from './i18n';
 import type { CartItem, UserProfile } from './types';
 import { dispatchDomEvent } from './utils/domEvents';
@@ -220,31 +221,32 @@ const adminRouteElement = (boundaryKey: string, element: React.ReactElement) => 
   </AdminRouteBoundary>
 );
 
-type SupportWidgetBoundaryProps = {
+type FloatingOverlayBoundaryProps = {
   fallback: React.ReactNode;
+  reportContext: string;
   resetKey?: number;
   children: React.ReactNode;
 };
 
-type SupportWidgetBoundaryState = {
+type FloatingOverlayBoundaryState = {
   hasError: boolean;
 };
 
-class SupportWidgetBoundary extends React.Component<SupportWidgetBoundaryProps, SupportWidgetBoundaryState> {
-  state: SupportWidgetBoundaryState = { hasError: false };
+class FloatingOverlayBoundary extends React.Component<FloatingOverlayBoundaryProps, FloatingOverlayBoundaryState> {
+  state: FloatingOverlayBoundaryState = { hasError: false };
 
-  static getDerivedStateFromError(): SupportWidgetBoundaryState {
+  static getDerivedStateFromError(): FloatingOverlayBoundaryState {
     return { hasError: true };
   }
 
-  componentDidUpdate(previousProps: SupportWidgetBoundaryProps) {
+  componentDidUpdate(previousProps: FloatingOverlayBoundaryProps) {
     if (this.state.hasError && previousProps.resetKey !== this.props.resetKey) {
       this.setState({ hasError: false });
     }
   }
 
   componentDidCatch(error: Error) {
-    console.error('Support widget failed to load:', error);
+    reportNonBlockingError(this.props.reportContext, error);
   }
 
   render() {
@@ -849,12 +851,18 @@ const LazyCartDrawerHost: React.FC = () => {
   if (!loaded) return null;
 
   return (
-    <Suspense fallback={null}>
-      <LazyCartDrawer
-        initialOpenRequest={openRequest}
-        onReady={handleDrawerReady}
-      />
-    </Suspense>
+    <FloatingOverlayBoundary
+      resetKey={openRequest?.id}
+      fallback={null}
+      reportContext="FloatingOverlayBoundary.cartDrawer.componentDidCatch"
+    >
+      <Suspense fallback={null}>
+        <LazyCartDrawer
+          initialOpenRequest={openRequest}
+          onReady={handleDrawerReady}
+        />
+      </Suspense>
+    </FloatingOverlayBoundary>
   );
 };
 
@@ -914,15 +922,16 @@ const LazySupportWidgetHost: React.FC = () => {
   return (
     <>
       {!widgetReady ? <SupportLauncherButton loading onOpen={openSupport} onPreload={preloadSupport} /> : null}
-      <SupportWidgetBoundary
+      <FloatingOverlayBoundary
         resetKey={openRequest?.id}
         fallback={<SupportLauncherButton onOpen={openSupport} onPreload={preloadSupport} />}
+        reportContext="FloatingOverlayBoundary.supportWidget.componentDidCatch"
       >
         <CustomerSupportWidget
           initialOpenRequest={openRequest}
           onReady={handleWidgetReady}
         />
-      </SupportWidgetBoundary>
+      </FloatingOverlayBoundary>
     </>
   );
 };
@@ -1097,11 +1106,12 @@ const App: React.FC = () => {
       <AndroidUiFinalGuard />
       <NativeMobileContrastGuard />
       <NativeBackNavigation />
-      <AuthStartupGate>
-        <RouteScrollReset />
-        <ErrorBoundary>
-          <Suspense fallback={<LoadingFallback />}>
-            <Routes>
+      <AuthProvider>
+        <AuthStartupGate>
+          <RouteScrollReset />
+          <ErrorBoundary>
+            <Suspense fallback={<LoadingFallback />}>
+              <Routes>
               <Route path="/" element={<StorefrontLayout />}>
                 <Route index element={<Home />} />
                 <Route path="products" element={<ProductList />} />
@@ -1157,10 +1167,11 @@ const App: React.FC = () => {
               <Route path="/product-management" element={<Navigate to="/admin/products" replace />} />
               <Route path="/category-management" element={<Navigate to="/admin/categories" replace />} />
               <Route path="*" element={<NotFound />} />
-            </Routes>
-          </Suspense>
-        </ErrorBoundary>
-      </AuthStartupGate>
+              </Routes>
+            </Suspense>
+          </ErrorBoundary>
+        </AuthStartupGate>
+      </AuthProvider>
     </Router>
   );
 };

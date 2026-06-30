@@ -1439,9 +1439,9 @@ const ProductManagement: React.FC = () => {
       'brand', 'originalPrice', 'discount', 'limitedTimePrice', 'limitedTimeStartAt',
       'limitedTimeEndAt', 'tag', 'images', 'specifications', 'detailContent', 'warranty', 'shipping', 'status', 'freeShipping', 'freeShippingThreshold', 'variants',
     ];
-    const primaryImage = 'https://images.unsplash.com/photo-1589924691995-400dc9ecc119?auto=format&fit=crop&w=900&q=80';
-    const galleryImage = 'https://images.unsplash.com/photo-1595433707802-6b2626ef1c91?auto=format&fit=crop&w=900&q=80';
-    const detailImage = 'https://images.unsplash.com/photo-1595433707802-6b2626ef1c91?auto=format&fit=crop&w=900&q=80';
+    const primaryImage = productAdminImageFallback;
+    const galleryImage = productAdminImageFallback;
+    const detailImage = productAdminImageFallback;
     const templateRow = [
       '', 'Smart pet feeder with stainless bowl', 'Programmable feeder for cats and small dogs with sealed dry-food storage.', '99.90', '100', '', templateCategoryName,
       primaryImage, 'false', 'PawPilot', '129.90', '20', '', '', '',
@@ -2174,7 +2174,14 @@ const ProductManagement: React.FC = () => {
       ) : null}
 
       {showInitialProductLoading ? (
-        <Card className="product-management-page__loadingState" loading />
+        <Card
+          className="product-management-page__loadingState"
+          loading
+          role="status"
+          aria-live="polite"
+          aria-busy="true"
+          aria-label={t('common.loading')}
+        />
       ) : null}
 
       {canRenderProductSnapshot ? (

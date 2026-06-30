@@ -519,7 +519,7 @@ public class ProductServiceImpl implements ProductService {
             return;
         }
         predicates.add(criteriaBuilder.or(normalizedValues.stream()
-                .map(value -> criteriaBuilder.like(criteriaBuilder.lower(criteriaBuilder.coalesce(specificationsPath, "")), "%" + value + "%"))
+                .map(value -> containsLike(criteriaBuilder, specificationsPath, value))
                 .toArray(Predicate[]::new)));
     }
 
@@ -534,8 +534,8 @@ public class ProductServiceImpl implements ProductService {
         }
         predicates.add(criteriaBuilder.or(normalizedValues.stream()
                 .map(value -> criteriaBuilder.or(
-                        criteriaBuilder.like(criteriaBuilder.lower(criteriaBuilder.coalesce(namePath, "")), "%" + value + "%"),
-                        criteriaBuilder.like(criteriaBuilder.lower(criteriaBuilder.coalesce(specificationsPath, "")), "%" + value + "%")))
+                        containsLike(criteriaBuilder, namePath, value),
+                        containsLike(criteriaBuilder, specificationsPath, value)))
                 .toArray(Predicate[]::new)));
     }
 
@@ -2957,9 +2957,9 @@ public class ProductServiceImpl implements ProductService {
     }
 
     private List<Long> collectCategoryIds(Long id) {
-        List<Long> ids = new java.util.ArrayList<>();
+        LinkedHashSet<Long> ids = new LinkedHashSet<>();
         collectCategoryIds(id, ids, 1);
-        return ids;
+        return new ArrayList<>(ids);
     }
 
     private Set<Long> selectedCategoryIds(ProductListQuery query) {
@@ -3272,11 +3272,10 @@ public class ProductServiceImpl implements ProductService {
         }
     }
 
-    private void collectCategoryIds(Long id, List<Long> ids, int depth) {
-        if (id == null || depth > MAX_CATEGORY_TREE_DEPTH) {
+    private void collectCategoryIds(Long id, Set<Long> ids, int depth) {
+        if (id == null || depth > MAX_CATEGORY_TREE_DEPTH || !ids.add(id)) {
             return;
         }
-        ids.add(id);
         if (depth == MAX_CATEGORY_TREE_DEPTH) {
             return;
         }

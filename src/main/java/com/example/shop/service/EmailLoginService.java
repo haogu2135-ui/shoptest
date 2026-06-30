@@ -2,6 +2,7 @@ package com.example.shop.service;
 
 import com.example.shop.config.MailAccountProperties;
 import com.example.shop.entity.User;
+import com.example.shop.security.UserAccountStatusPolicy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;
@@ -337,9 +338,7 @@ public class EmailLoginService {
             codes.remove(normalizedEmail);
             throw invalidCode();
         }
-        if (!MessageDigest.isEqual(
-                verificationCode.codeHash.getBytes(StandardCharsets.UTF_8),
-                hashCode(normalizedEmail, normalizedCode).getBytes(StandardCharsets.UTF_8))) {
+        if (!matchesCodeHash(verificationCode.codeHash, normalizedEmail, normalizedCode)) {
             verificationCode.failedAttempts++;
             if (verificationCode.failedAttempts >= maxCodeAttempts()) {
                 codes.remove(normalizedEmail);
@@ -372,9 +371,7 @@ public class EmailLoginService {
             redisTemplate.delete(codeKey);
             throw invalidCode();
         }
-        if (!MessageDigest.isEqual(
-                storedHash.toString().getBytes(StandardCharsets.UTF_8),
-                hashCode(normalizedEmail, normalizedCode).getBytes(StandardCharsets.UTF_8))) {
+        if (!matchesCodeHash(storedHash.toString(), normalizedEmail, normalizedCode)) {
             Long failedAttempts = redisTemplate.opsForHash().increment(codeKey, "failedAttempts", 1);
             if (failedAttempts != null && failedAttempts >= maxCodeAttempts()) {
                 redisTemplate.delete(codeKey);
@@ -406,9 +403,7 @@ public class EmailLoginService {
             codes.remove(purposeKey);
             throw invalidCode();
         }
-        if (!MessageDigest.isEqual(
-                verificationCode.codeHash.getBytes(StandardCharsets.UTF_8),
-                hashCode(purposeKey, normalizedCode).getBytes(StandardCharsets.UTF_8))) {
+        if (!matchesCodeHash(verificationCode.codeHash, purposeKey, normalizedCode)) {
             verificationCode.failedAttempts++;
             if (verificationCode.failedAttempts >= maxCodeAttempts()) {
                 codes.remove(purposeKey);
@@ -436,9 +431,7 @@ public class EmailLoginService {
             redisTemplate.delete(codeKey);
             throw invalidCode();
         }
-        if (!MessageDigest.isEqual(
-                storedHash.toString().getBytes(StandardCharsets.UTF_8),
-                hashCode(purposeKey, normalizedCode).getBytes(StandardCharsets.UTF_8))) {
+        if (!matchesCodeHash(storedHash.toString(), purposeKey, normalizedCode)) {
             Long failedAttempts = redisTemplate.opsForHash().increment(codeKey, "failedAttempts", 1);
             if (failedAttempts != null && failedAttempts >= maxCodeAttempts()) {
                 redisTemplate.delete(codeKey);
@@ -628,7 +621,7 @@ public class EmailLoginService {
     }
 
     private boolean isDisabled(User user) {
-        return "BANNED".equalsIgnoreCase(user.getStatus());
+        return !UserAccountStatusPolicy.canIssueUserSession(user);
     }
 
     private String normalizeEmail(String email) {
@@ -864,8 +857,23 @@ public class EmailLoginService {
     }
 
     private String hashCode(String email, String code) {
+        return digestCode("SHA-512", email, code);
+    }
+
+    private boolean matchesCodeHash(String storedHash, String email, String code) {
+        if (storedHash == null || storedHash.isBlank()) {
+            return false;
+        }
+        String normalizedStoredHash = storedHash.trim();
+        String algorithm = normalizedStoredHash.length() == 64 ? "SHA-256" : "SHA-512";
+        return MessageDigest.isEqual(
+                normalizedStoredHash.getBytes(StandardCharsets.UTF_8),
+                digestCode(algorithm, email, code).getBytes(StandardCharsets.UTF_8));
+    }
+
+    private String digestCode(String algorithm, String email, String code) {
         try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            MessageDigest digest = MessageDigest.getInstance(algorithm);
             digest.update(codePepper());
             byte[] hashed = digest.digest((email + ":" + code).getBytes(StandardCharsets.UTF_8));
             StringBuilder builder = new StringBuilder(hashed.length * 2);
@@ -874,7 +882,7 @@ public class EmailLoginService {
             }
             return builder.toString();
         } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException("SHA-256 is not available", e);
+            throw new IllegalStateException(algorithm + " is not available", e);
         }
     }
 

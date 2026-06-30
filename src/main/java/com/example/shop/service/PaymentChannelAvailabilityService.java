@@ -44,6 +44,10 @@ public class PaymentChannelAvailabilityService {
             return !"GENERIC_API".equals(channelConfig.getRefundMode())
                     || isProductionGatewayUrl(channelConfig.getRefundUrl());
         }
+        if (channelConfig.isGenericRedirectProvider()) {
+            String providerCheckoutUrl = channelConfig.getCheckoutUrl();
+            return !containsPlaceholderGatewayHost(providerCheckoutUrl) && isProductionGatewayUrl(providerCheckoutUrl);
+        }
         String configuredUrl = firstNonBlank(channelConfig.getCheckoutUrl(), paymentChannelConfig.getCheckoutBaseUrl());
         return !containsPlaceholderGatewayHost(configuredUrl) && isProductionGatewayUrl(configuredUrl);
     }

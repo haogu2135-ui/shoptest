@@ -47,6 +47,19 @@
   min-width: 0;
 }
 
+.product-compare__loadError {
+  margin-bottom: 16px;
+}
+
+.product-compare__loadError .ant-alert-message,
+.product-compare__loadError .ant-alert-description {
+  overflow-wrap: anywhere;
+}
+
+.product-compare__loadError .ant-alert-action .ant-space {
+  max-width: 100%;
+}
+
 .product-compare__row--different > td {
   background: #fff8f6;
 }

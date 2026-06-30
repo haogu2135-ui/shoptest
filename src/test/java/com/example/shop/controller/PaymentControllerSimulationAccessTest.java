@@ -1,6 +1,7 @@
 package com.example.shop.controller;
 
 import com.example.shop.config.PaymentChannelConfig;
+import com.example.shop.dto.PaymentCreateRequest;
 import com.example.shop.dto.PaymentResponse;
 import com.example.shop.dto.PaymentCustomerResponse;
 import com.example.shop.entity.Order;
@@ -20,11 +21,16 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.web.server.ResponseStatusException;
 
+import javax.validation.ConstraintViolation;
+import javax.validation.Validation;
+import javax.validation.Validator;
 import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -51,6 +57,7 @@ class PaymentControllerSimulationAccessTest {
             mock(IpBlacklistService.class),
             adminRoleService
     );
+    private final Validator validator = Validation.buildDefaultValidatorFactory().getValidator();
 
     @Test
     void genericPaymentCallbackContractDoesNotExposeInternalHeaderOrUnsignedProviderSubroutes() throws Exception {
@@ -77,6 +84,25 @@ class PaymentControllerSimulationAccessTest {
         assertFalse(callbackSurface.contains("/payment/callback/*/success"));
         assertFalse(callbackSurface.contains("/payment/callback/*/notify"));
         assertFalse(callbackSurface.contains("/payment/callback/*/cancel"));
+    }
+
+    @Test
+    void paymentCreateRequestValidatesIdentifiersBeforeControllerWork() {
+        PaymentCreateRequest request = new PaymentCreateRequest();
+        request.setOrderId(0L);
+        request.setChannel("C".repeat(41));
+        request.setOrderNo("O".repeat(65));
+        request.setGuestEmail("not-an-email");
+
+        Set<String> invalidFields = validator.validate(request).stream()
+                .map(ConstraintViolation::getPropertyPath)
+                .map(Object::toString)
+                .collect(Collectors.toSet());
+
+        assertTrue(invalidFields.contains("orderId"));
+        assertTrue(invalidFields.contains("channel"));
+        assertTrue(invalidFields.contains("orderNo"));
+        assertTrue(invalidFields.contains("guestEmail"));
     }
 
     @Test

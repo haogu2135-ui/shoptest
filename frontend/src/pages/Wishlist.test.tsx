@@ -109,6 +109,63 @@ describe('Wishlist async lifecycle', () => {
     (hasStoredValue as jest.Mock).mockReturnValue(true);
   });
 
+  it('guards wishlist fetches against stale responses and unmount updates', () => {
+    const source = readWishlistSource();
+    const fetchStart = source.indexOf('const fetchWishlist = useCallback');
+    const fetchSource = source.slice(fetchStart, source.indexOf('useEffect(() => {', fetchStart));
+
+    expect(source).toContain('const mountedRef = useRef(true);');
+    expect(source).toContain('const wishlistFetchSeqRef = useRef(0);');
+    expect(source).toContain('wishlistFetchSeqRef.current += 1;');
+    expect(fetchSource).toContain('const requestSeq = wishlistFetchSeqRef.current + 1;');
+    expect(fetchSource).toContain('wishlistFetchSeqRef.current = requestSeq;');
+    expect(fetchSource).toContain('const isCurrentRequest = () => mountedRef.current && wishlistFetchSeqRef.current === requestSeq;');
+    expect(fetchSource).toContain('if (!isCurrentRequest()) return;');
+    expect(fetchSource).toContain('setItems(res.data);');
+    expect(fetchSource).toContain("const errorMessage = getApiErrorMessage(error, t('pages.wishlist.fetchFailed'), language);");
+    expect(fetchSource).toContain('setLoadError(errorMessage);');
+    expect(fetchSource).toContain('message.error(errorMessage);');
+    expect(fetchSource).toContain('setLoading(false);');
+  });
+
+  it('guards wishlist removal against duplicate in-flight requests', () => {
+    const source = readWishlistSource();
+    const removeStart = source.indexOf('const handleRemove = async (productId: number) => {');
+    const removeSource = source.slice(removeStart, source.indexOf('const handleAddToCart = async', removeStart));
+
+    expect(source).toContain('const [removingProductIds, setRemovingProductIds] = useState<number[]>([]);');
+    expect(source).toContain('const removingProductIdsRef = useRef(new Set<number>());');
+    expect(removeSource).toContain('if (removingProductIdsRef.current.has(productId)) return;');
+    expect(removeSource).toContain('removingProductIdsRef.current.add(productId);');
+    expect(removeSource).toContain('setRemovingProductIds((current) => current.includes(productId) ? current : [...current, productId]);');
+    expect(removeSource).toContain('removingProductIdsRef.current.delete(productId);');
+    expect(removeSource).toContain('setRemovingProductIds((current) => current.filter((id) => id !== productId));');
+    expect(source).toContain('const removing = removingProductIds.includes(item.productId);');
+    expect(source).toContain('loading={removing}');
+    expect(source).toContain('disabled={removing || actionsDisabledByStaleData}');
+  });
+
+  it('marks stale wishlist snapshots and blocks wishlist/cart mutations until refresh succeeds', () => {
+    const source = readWishlistSource();
+    const addStart = source.indexOf('const handleAddToCart = async (productId: number) => {');
+    const addSource = source.slice(addStart, source.indexOf('const handleAddAllToCart = async', addStart));
+    const addAllStart = source.indexOf('const handleAddAllToCart = async () => {');
+    const addAllSource = source.slice(addAllStart, source.indexOf('const clearUnavailableItems = async', addAllStart));
+    const clearStart = source.indexOf('const clearUnavailableItems = async () => {');
+    const clearSource = source.slice(clearStart, source.indexOf('const wishlistNextActionLabel', clearStart));
+
+    expect(source).toContain('const actionsDisabledByStaleData = Boolean(loadError);');
+    expect(source).toContain("message={t('pages.wishlist.loadErrorTitle')}");
+    expect(source).toContain("description={t('pages.wishlist.staleDataWarning')}");
+    expect(source).toContain('<Button size="small" onClick={fetchWishlist} loading={loading}>');
+    expect(source).toContain("message.warning(t('pages.wishlist.staleActionBlocked'))");
+    expect(addSource).toContain('if (actionsDisabledByStaleData) {');
+    expect(addAllSource).toContain('if (actionsDisabledByStaleData) {');
+    expect(clearSource).toContain('if (actionsDisabledByStaleData) {');
+    expect(source).toContain('disabled={addingAllToCart || directAddItems.length === 0 || actionsDisabledByStaleData}');
+    expect(source).toContain('disabled={removing || actionsDisabledByStaleData}');
+  });
+
   it('does not report an initial load failure after the page unmounts', async () => {
     const wishlistRequest = createDeferred<{ data: [] }>();
     const noopMessage = (() => undefined) as ReturnType<typeof message.error>;

@@ -70,6 +70,7 @@ public class PaymentService {
     private static final String REFUNDED = "REFUNDED";
     private static final String RECONCILE_REQUIRED = "RECONCILE_REQUIRED";
     private static final long DEFAULT_CALLBACK_MAX_SKEW_SECONDS = 300L;
+    private static final long STRIPE_WEBHOOK_TOLERANCE_SECONDS = 300L;
     private static final int DEFAULT_EXPIRY_SCAN_BATCH_SIZE = 500;
     private static final int HARD_EXPIRY_SCAN_BATCH_SIZE_LIMIT = 5000;
     private static final int DEFAULT_GATEWAY_HTTP_MAX_ATTEMPTS = 3;
@@ -293,7 +294,7 @@ public class PaymentService {
         }
         Event event;
         try {
-            event = Webhook.constructEvent(payload, signatureHeader, webhookSecret);
+            event = Webhook.constructEvent(payload, signatureHeader, webhookSecret, STRIPE_WEBHOOK_TOLERANCE_SECONDS);
         } catch (Exception e) {
             log.warn("Stripe webhook rejected invalid signature");
             throw new IllegalArgumentException("Invalid Stripe webhook signature", e);
@@ -384,6 +385,32 @@ public class PaymentService {
     @Transactional(rollbackFor = Exception.class, readOnly = true)
     public List<Payment> findStoredByOrderId(Long orderId) {
         return paymentRepository.findByOrderId(orderId);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public List<Payment> syncPaymentsByOrderId(Long orderId) {
+        List<Payment> payments = paymentRepository.findByOrderId(orderId);
+        boolean changedAny = false;
+        for (Payment payment : payments) {
+            if (payment == null) {
+                continue;
+            }
+            try {
+                Payment synced = syncProviderPaymentState(payment);
+                if (synced != null) {
+                    changedAny = true;
+                    continue;
+                }
+                if (isExpired(payment)) {
+                    expirePayment(payment);
+                    changedAny = true;
+                }
+            } catch (RuntimeException ex) {
+                log.warn("Order payment batch sync skipped failed payment: orderId={}, paymentId={}",
+                        orderId, payment.getId(), ex);
+            }
+        }
+        return changedAny ? paymentRepository.findByOrderId(orderId) : payments;
     }
 
     @Transactional(rollbackFor = Exception.class, readOnly = true)

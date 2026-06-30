@@ -65,6 +65,10 @@ public class SecurityConfig {
                             .maxAgeInSeconds(31536000))
                     .referrerPolicy(referrer -> referrer
                             .policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN))
+                    .addHeaderWriter((request, response) -> response.setHeader("Content-Security-Policy",
+                            "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' https: http: data: blob:; "
+                                    + "font-src 'self' data:; connect-src 'self' https: http: wss: ws:; "
+                                    + "object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'"))
                     .addHeaderWriter((request, response) -> response.setHeader("Permissions-Policy",
                             "camera=(), microphone=(), geolocation=(), accelerometer=(), gyroscope=(), magnetometer=(), usb=(), serial=(), bluetooth=(), browsing-topics=()")))
             .authorizeRequests()
@@ -81,13 +85,12 @@ public class SecurityConfig {
             .antMatchers("/auth/login", "/auth/register", "/auth/forgot-password", "/auth/password-reset-code", "/auth/email-code", "/auth/email-login", "/auth/refresh").permitAll()
             .antMatchers("/ws/support").permitAll()
             .antMatchers(HttpMethod.GET, "/support", "/support/").permitAll()
-            .antMatchers(HttpMethod.GET, "/support/guest/session", "/support/guest/sessions/*/messages", "/support/guest/sessions/**/messages").permitAll()
-            .antMatchers(HttpMethod.POST, "/support/guest/session").permitAll()
+            .antMatchers(HttpMethod.POST, "/support/guest/session", "/support/guest/session/lookup",
+                    "/support/guest/sessions/*/messages", "/support/guest/sessions/**/messages").permitAll()
             .antMatchers(HttpMethod.POST, "/support/guest/messages").permitAll()
             .antMatchers(HttpMethod.PUT, "/support/guest/sessions/*/read", "/support/guest/sessions/**/read").permitAll()
             .antMatchers(HttpMethod.GET, "/orders/track").permitAll()
             .antMatchers(HttpMethod.POST, "/orders/track").permitAll()
-            .antMatchers(HttpMethod.GET, "/orders/guest/*", "/orders/guest/**").permitAll()
             .antMatchers(HttpMethod.POST, "/orders/guest/*", "/orders/guest/**").permitAll()
             .antMatchers(HttpMethod.GET, "/logistics/track").permitAll()
             .antMatchers(HttpMethod.POST, "/logistics/track").permitAll()

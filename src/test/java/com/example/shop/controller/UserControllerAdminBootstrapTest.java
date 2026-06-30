@@ -9,6 +9,7 @@ import com.example.shop.service.SecurityAuditLogService;
 import com.example.shop.service.UserService;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -22,6 +23,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class UserControllerAdminBootstrapTest {
+    private static final String STRONG_BOOTSTRAP_TOKEN = "admin-bootstrap-token-2026-06-17-strong";
+
     private final UserService userService = mock(UserService.class);
     private final RuntimeConfigService runtimeConfig = mock(RuntimeConfigService.class);
     private final IpBlacklistService ipBlacklistService = mock(IpBlacklistService.class);
@@ -37,14 +40,15 @@ class UserControllerAdminBootstrapTest {
     void createAdminWithConfiguredTokenStillRejectsWhenAdminAlreadyExists() {
         UserController.AdminBootstrapRequest request = validBootstrapRequest();
         MockHttpServletRequest servletRequest = new MockHttpServletRequest("POST", "/users/create-admin");
-        when(runtimeConfig.getString("admin.bootstrap-token", "")).thenReturn("temporary-token");
+        when(runtimeConfig.getString("admin.bootstrap-token", "")).thenReturn(STRONG_BOOTSTRAP_TOKEN);
         doThrow(new IllegalArgumentException("Admin bootstrap is already completed"))
                 .when(userService).registerAdmin(any(User.class));
 
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> controller.createAdmin(request, "temporary-token", servletRequest));
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+                () -> controller.createAdmin(request, STRONG_BOOTSTRAP_TOKEN, servletRequest));
 
-        assertEquals("Admin bootstrap is already completed", exception.getMessage());
+        assertEquals(HttpStatus.FORBIDDEN, exception.getStatus());
+        assertEquals("Admin bootstrap failed", exception.getReason());
         verify(userService).registerAdmin(argThat(admin ->
                 "admin".equals(admin.getUsername())
                         && "admin@example.com".equals(admin.getEmail())
@@ -56,12 +60,13 @@ class UserControllerAdminBootstrapTest {
     void createAdminRejectsMissingBootstrapTokenBeforeRegisteringAdmin() {
         UserController.AdminBootstrapRequest request = validBootstrapRequest();
         MockHttpServletRequest servletRequest = new MockHttpServletRequest("POST", "/users/create-admin");
-        when(runtimeConfig.getString("admin.bootstrap-token", "")).thenReturn("temporary-token");
+        when(runtimeConfig.getString("admin.bootstrap-token", "")).thenReturn(STRONG_BOOTSTRAP_TOKEN);
 
         ResponseStatusException exception = assertThrows(ResponseStatusException.class,
                 () -> controller.createAdmin(request, null, servletRequest));
 
-        assertEquals("Invalid admin bootstrap token", exception.getReason());
+        assertEquals(HttpStatus.FORBIDDEN, exception.getStatus());
+        assertEquals("Admin bootstrap failed", exception.getReason());
         verify(userService, never()).registerAdmin(any(User.class));
         verify(ipBlacklistService).recordLoginFailure(servletRequest, "admin-bootstrap failed");
     }
@@ -73,9 +78,25 @@ class UserControllerAdminBootstrapTest {
         when(runtimeConfig.getString("admin.bootstrap-token", "")).thenReturn("");
 
         ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+                () -> controller.createAdmin(request, STRONG_BOOTSTRAP_TOKEN, servletRequest));
+
+        assertEquals(HttpStatus.FORBIDDEN, exception.getStatus());
+        assertEquals("Admin bootstrap failed", exception.getReason());
+        verify(userService, never()).registerAdmin(any(User.class));
+        verify(ipBlacklistService).recordLoginFailure(servletRequest, "admin-bootstrap failed");
+    }
+
+    @Test
+    void createAdminRejectsWeakConfiguredBootstrapTokenBeforeRegisteringAdmin() {
+        UserController.AdminBootstrapRequest request = validBootstrapRequest();
+        MockHttpServletRequest servletRequest = new MockHttpServletRequest("POST", "/users/create-admin");
+        when(runtimeConfig.getString("admin.bootstrap-token", "")).thenReturn("temporary-token");
+
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
                 () -> controller.createAdmin(request, "temporary-token", servletRequest));
 
-        assertEquals("Admin bootstrap is not configured", exception.getReason());
+        assertEquals(HttpStatus.FORBIDDEN, exception.getStatus());
+        assertEquals("Admin bootstrap failed", exception.getReason());
         verify(userService, never()).registerAdmin(any(User.class));
         verify(ipBlacklistService).recordLoginFailure(servletRequest, "admin-bootstrap failed");
     }

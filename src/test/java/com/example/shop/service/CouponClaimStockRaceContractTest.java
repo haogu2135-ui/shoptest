@@ -125,13 +125,17 @@ class CouponClaimStockRaceContractTest {
         String repositorySource = read("src/main/java/com/example/shop/repository/CouponRepository.java");
         String claim = methodBlock(serviceSource, "public UserCoupon claim(Long couponId, Long userId)");
         String grant = methodBlock(serviceSource, "public int grant(Long couponId, List<Long> userIds)");
+        String grantBatch = methodBlock(serviceSource, "private GrantBatchResult grantBatch(Long couponId, List<Long> userIds)");
 
         assertFalse(serviceSource.contains("getCouponStock"));
         assertFalse(serviceSource.contains("decrementCouponStock"));
         assertFalse(claim.contains("setClaimedQuantity("));
         assertFalse(grant.contains("setClaimedQuantity("));
+        assertFalse(grantBatch.contains("setClaimedQuantity("));
         assertTrue(claim.contains("couponRepository.incrementClaimedQuantity(couponId) == 0"));
-        assertTrue(grant.contains("couponRepository.incrementClaimedQuantity(couponId) == 0"));
+        assertTrue(grant.contains("executeGrantBatchInTransaction(couponId, batch)"));
+        assertTrue(grantBatch.contains("couponRepository.incrementClaimedQuantity(couponId) == 0"));
+        assertTrue(serviceSource.contains("transactionTemplate.execute(status -> grantBatch(couponId, userIds))"));
         assertTrue(repositorySource.contains("update Coupon c set c.claimedQuantity = coalesce(c.claimedQuantity, 0) + 1"));
         assertTrue(repositorySource.contains("and (c.totalQuantity is null or coalesce(c.claimedQuantity, 0) < c.totalQuantity)"));
     }

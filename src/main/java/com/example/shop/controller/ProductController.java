@@ -46,6 +46,7 @@ public class ProductController {
     public ResponseEntity<?> getAllProducts(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false, name = "q") String q,
+            @RequestParam(required = false) String search,
             @RequestParam(required = false) Long categoryId,
             @RequestParam(required = false) Boolean includeChildren,
             @RequestParam(required = false) Boolean discount,
@@ -65,7 +66,7 @@ public class ProductController {
         int safePage = validatePublicProductPage(page);
         int safeSize = validatePublicProductPageSize(size);
         ProductListQuery query = new ProductListQuery();
-        query.setKeyword(resolveKeyword(keyword, q));
+        query.setKeyword(resolveKeyword(keyword, q, search));
         query.setCategoryId(categoryId);
         query.setIncludeChildren(includeChildren);
         query.setDiscount(discount);
@@ -105,11 +106,14 @@ public class ProductController {
         return size == null ? DEFAULT_PUBLIC_PRODUCT_PAGE_SIZE : size;
     }
 
-    private String resolveKeyword(String keyword, String q) {
+    private String resolveKeyword(String keyword, String q, String search) {
         if (keyword != null && !keyword.isBlank()) {
             return keyword;
         }
-        return q;
+        if (q != null && !q.isBlank()) {
+            return q;
+        }
+        return search;
     }
 
     @GetMapping("/featured")

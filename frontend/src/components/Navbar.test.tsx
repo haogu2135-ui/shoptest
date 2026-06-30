@@ -4,6 +4,10 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { message } from 'antd';
 import { Link, MemoryRouter } from 'react-router-dom';
 
+const mockLogoutAuthSession = jest.fn();
+const mockLoginAuthSession = jest.fn();
+const mockUseAuth = jest.fn();
+
 jest.mock('../api', () => ({
   adminApi: { getMyPermissions: jest.fn() },
   announcementApi: { getActive: jest.fn(() => Promise.resolve({ data: [] })) },
@@ -16,6 +20,10 @@ jest.mock('../api', () => ({
   wishlistApi: { getCount: jest.fn() },
 }));
 
+jest.mock('../hooks/useAuth', () => ({
+  useAuth: () => mockUseAuth(),
+}));
+
 jest.mock('../hooks/useMarket', () => ({
   useMarket: () => ({
     currency: 'USD',
@@ -26,6 +34,8 @@ jest.mock('../hooks/useMarket', () => ({
 }));
 
 jest.mock('../i18n', () => ({
+  LANGUAGE_LABELS: { en: 'English' },
+  SUPPORTED_LANGUAGES: ['en'],
   useLanguage: () => ({
     language: 'en',
     setLanguage: jest.fn(),
@@ -202,6 +212,15 @@ describe('Navbar Android app download entry', () => {
     (userApi.logout as jest.Mock).mockResolvedValue({ data: {} });
     (wishlistApi.getCount as jest.Mock).mockResolvedValue({ data: { count: 0 } });
     (clearStoredAuthSession as jest.Mock).mockImplementation(jest.fn());
+    mockLoginAuthSession.mockReset();
+    mockLogoutAuthSession.mockReset();
+    mockUseAuth.mockReturnValue({
+      user: null,
+      token: '',
+      login: mockLoginAuthSession,
+      logout: mockLogoutAuthSession,
+      loading: false,
+    });
     (getLocalStorageItem as jest.Mock).mockReturnValue(null);
     (getGuestCartItems as jest.Mock).mockReturnValue([]);
     (readCompareProductIds as jest.Mock).mockReturnValue([]);
@@ -253,18 +272,61 @@ describe('Navbar Android app download entry', () => {
     expect(css).not.toMatch(/\.shop-nav__bottomItem[^{]*\{[^}]*outline:\s*none/);
   });
 
+  it('keeps language selector options tied to the supported locale registry', () => {
+    const source = readNavbarSource();
+
+    expect(source).toContain("const languageOptions = SUPPORTED_LANGUAGES.map((value) => ({ value, label: LANGUAGE_LABELS[value] }));");
+    expect(source).not.toMatch(/const\s+languageOptions\s*=\s*useMemo\s*\(\s*\(\)\s*=>[\s\S]*?,\s*\[\s*\]\s*\)/);
+    expect(source).toContain('...languageOptions.map((item) => ({');
+  });
+
+  it('warns before normalizing over-limit Navbar search submissions', () => {
+    const source = readNavbarSource();
+    const enLocale = fs.readFileSync(path.resolve(__dirname, '../locales/en.json'), 'utf8');
+    const esLocale = fs.readFileSync(path.resolve(__dirname, '../locales/es.json'), 'utf8');
+    const zhLocale = fs.readFileSync(path.resolve(__dirname, '../locales/zh.json'), 'utf8');
+    const searchStart = source.indexOf('const handleSearch = (value: string) => {');
+    const searchEnd = source.indexOf('const searchBySuggestion = (key: string) => {', searchStart);
+    const searchSource = source.slice(searchStart, searchEnd);
+
+    expect(source).toContain('const NAV_SEARCH_MAX_LENGTH = 80;');
+    expect(source).toContain('const normalizeNavKeyword = (value: string) => value.trim().slice(0, NAV_SEARCH_MAX_LENGTH);');
+    expect(searchStart).toBeGreaterThan(-1);
+    expect(searchEnd).toBeGreaterThan(searchStart);
+    expect(searchSource).toContain('const trimmedKeyword = value.trim();');
+    expect(searchSource).toContain('if (trimmedKeyword.length > NAV_SEARCH_MAX_LENGTH) {');
+    expect(searchSource).toContain("message.warning(t('nav.searchLimitWarning', { count: NAV_SEARCH_MAX_LENGTH }));");
+    expect(searchSource).toContain('const keyword = trimmedKeyword.slice(0, NAV_SEARCH_MAX_LENGTH);');
+    expect(searchSource).toContain("navigate(`/products?keyword=${encodeURIComponent(keyword)}`);");
+    expect(source).not.toContain('maxLength={NAV_SEARCH_MAX_LENGTH}');
+    expect(enLocale).toContain('"searchLimitWarning"');
+    expect(esLocale).toContain('"searchLimitWarning"');
+    expect(zhLocale).toContain('"searchLimitWarning"');
+  });
+
   it('announces storefront announcement ticker updates accessibly', () => {
     const source = readNavbarSource();
-    const announcementStart = source.indexOf('className="shop-nav__announcement"');
+    const css = readNavbarCss();
+    const announcementStart = source.indexOf('className={announcementClassName}');
     const announcementSource = source.slice(announcementStart, source.indexOf('<div className="shop-nav__ticker">', announcementStart));
 
     expect(announcementStart).toBeGreaterThanOrEqual(0);
+    expect(source).toContain('const [announcementPaused, setAnnouncementPaused] = useState(false);');
+    expect(source).toContain("const announcementClassName = `shop-nav__announcement${announcementPaused ? ' shop-nav__announcement--paused' : ''}`;");
+    expect(source).toContain("const announcementToggleLabel = announcementPaused ? t('nav.resumeAnnouncements') : t('nav.pauseAnnouncements');");
     expect(announcementSource).toContain('role="status"');
     expect(announcementSource).toContain("aria-label={t('nav.announcements')}");
     expect(announcementSource).toContain('aria-live="polite"');
     expect(announcementSource).toContain('aria-atomic="false"');
     expect(announcementSource).toContain('aria-relevant="additions text"');
     expect(announcementSource).toContain("aria-roledescription={t('nav.announcementTicker')}");
+    expect(announcementSource).toContain('className="shop-nav__announcementToggle"');
+    expect(announcementSource).toContain('aria-label={announcementToggleLabel}');
+    expect(announcementSource).toContain('aria-pressed={announcementPaused}');
+    expect(announcementSource).toContain('onClick={() => setAnnouncementPaused((current) => !current)}');
+    expect(announcementSource).toContain('announcementPaused ? <PlayCircleOutlined /> : <PauseCircleOutlined />');
+    expect(css).toMatch(/\.shop-nav__announcement:hover \.shop-nav__ticker,[\s\S]*?\.shop-nav__announcement:focus-within \.shop-nav__ticker,[\s\S]*?\.shop-nav__announcement--paused \.shop-nav__ticker\s*\{[\s\S]*?animation-play-state:\s*paused;/);
+    expect(css).toMatch(/@media \(prefers-reduced-motion:\s*reduce\)\s*\{[\s\S]*?\.shop-nav__ticker\s*\{[\s\S]*?animation:\s*none;/);
   });
 
   it('keeps the mobile bottom bar storefront-only for non-admin roles', () => {
@@ -293,6 +355,15 @@ describe('Navbar Android app download entry', () => {
     expect(mobileCss).not.toMatch(/shop-app-shell--scrolled \.shop-nav__bottomBar[\s\S]*?display:\s*none\s*!important;/);
     expect(css).not.toMatch(/shop-app-shell--scrolled \.shop-nav__bottomBar[\s\S]*?visibility:\s*hidden\s*!important;/);
     expect(mobileCss).toMatch(/\.shop-nav__bottomBar :where\([\s\S]*?\.shop-nav__bottomItem,[\s\S]*?\.ant-scroll-number-only-unit[\s\S]*?\)\s*\{[\s\S]*?font-size:\s*12px\s*!important;/);
+  });
+
+  it('keeps localized App bottom-nav labels readable before icon-only fallback', () => {
+    const mobileCss = readMobileAppCss();
+    const localizedLabelCss = mobileCss.slice(mobileCss.indexOf('/* F3593 APP closure: localized bottom-rail labels stay readable'));
+
+    expect(localizedLabelCss).toMatch(/@media \(min-width:\s*341px\) and \(max-width:\s*380px\)\s*\{/);
+    expect(localizedLabelCss).toMatch(/\.shop-nav__bottomItem\s*\{[\s\S]*?min-width:\s*0\s*!important;/);
+    expect(localizedLabelCss).toMatch(/\.shop-nav__bottomItem > span:not\(\.anticon\):not\(\.ant-badge\):not\(\.ant-scroll-number\),[\s\S]*?\.shop-nav__bottomItem \.ant-badge \+ span\s*\{[\s\S]*?display:\s*-webkit-box\s*!important;[\s\S]*?max-height:\s*calc\(2 \* 12px \* 1\.08\)\s*!important;[\s\S]*?white-space:\s*normal\s*!important;[\s\S]*?overflow-wrap:\s*anywhere\s*!important;[\s\S]*?-webkit-line-clamp:\s*2\s*!important;/);
   });
 
   it('uses compact non-wrapping utility navigation in tablet landscape widths', () => {
@@ -416,8 +487,76 @@ describe('Navbar Android app download entry', () => {
 
     expect(source).toContain('const [openDropdowns, setOpenDropdowns] = useState<Record<string, boolean>>({});');
     expect(source).toContain('const setDropdownOpen = useCallback((key: string, open: boolean) => {');
-    expect(source).toContain('setOpenDropdowns((current) => ({ ...current, [key]: open }));');
+    expect(source).toContain('setOpenDropdowns((current) => (open ? { [key]: true } : { ...current, [key]: false }));');
     expect(source).toContain('useEffect(() => {\n    setOpenDropdowns({});\n  }, [location.hash, location.pathname, location.search]);');
+  });
+
+  it('keeps logout cleanup scoped to auth badge and menu state', () => {
+    const source = readNavbarSource();
+    const logoutStart = source.indexOf('const handleLogout = () => {');
+    const logoutEnd = source.indexOf('const handleSearch = (value: string) => {', logoutStart);
+    const logoutSource = source.slice(logoutStart, logoutEnd);
+
+    expect(logoutStart).toBeGreaterThan(-1);
+    expect(logoutEnd).toBeGreaterThan(logoutStart);
+    expect(source).toContain("import { useAuth } from '../hooks/useAuth';");
+    expect(source).toContain('const { user: authUser, token, logout: logoutAuthSession } = useAuth();');
+    expect(logoutSource).toContain('const loginUrl = buildLoginUrlFromWindow();');
+    expect(logoutSource).toContain('logoutAuthSession();');
+    expect(logoutSource).not.toContain('userApi.logout');
+    expect(logoutSource).not.toContain('clearStoredAuthSession');
+    expect(logoutSource).toContain('setCartCount(0);');
+    expect(logoutSource).toContain('setUnreadCount(0);');
+    expect(logoutSource).toContain('setWishlistCount(0);');
+    expect(logoutSource).toContain('setCouponCount(0);');
+    expect(logoutSource).toContain('setOpenDropdowns({});');
+    expect(logoutSource).toContain('badgeLoadWarningShown.current = false;');
+    expect(logoutSource).toContain('navigate(loginUrl, { replace: true });');
+    expect(source).not.toContain('adminUnseenCount');
+    expect(source).not.toContain('privacyRequested');
+    expect(source).not.toContain('announcementIndex');
+  });
+
+  it('coalesces authenticated badge refreshes into one initial idle task', () => {
+    const source = readNavbarSource();
+    const refreshStart = source.indexOf('const refreshAccountBadgeCounts = async () => {');
+    const refreshEnd = source.indexOf('const refreshLocalCountsFromStorage = (event: StorageEvent) => {', refreshStart);
+    const initialStart = source.indexOf('refreshCompareCount();', refreshEnd);
+    const initialEnd = source.indexOf("window.addEventListener('shop:cart-updated'", initialStart);
+    const refreshSource = source.slice(refreshStart, refreshEnd);
+    const initialSource = source.slice(initialStart, initialEnd);
+
+    expect(refreshStart).toBeGreaterThan(-1);
+    expect(refreshEnd).toBeGreaterThan(refreshStart);
+    expect(refreshSource).toContain('await refreshCartCount();');
+    expect(refreshSource).toContain('await refreshUnreadCount();');
+    expect(refreshSource).toContain('await refreshWishlistCount();');
+    expect(refreshSource).toContain('await refreshCouponCount();');
+    expect(refreshSource).toContain('await refreshAlertCount();');
+    expect(initialStart).toBeGreaterThan(-1);
+    expect(initialEnd).toBeGreaterThan(initialStart);
+    expect(initialSource).toContain('queueIdleRefresh(refreshAccountBadgeCounts, 650);');
+    expect(initialSource).not.toContain('queueIdleRefresh(refreshCartCount');
+    expect(initialSource).not.toContain('queueIdleRefresh(refreshUnreadCount');
+    expect(initialSource).not.toContain('queueIdleRefresh(refreshWishlistCount');
+    expect(initialSource).not.toContain('queueIdleRefresh(refreshCouponCount');
+    expect(initialSource).not.toContain('queueIdleRefresh(refreshAlertCount, token ? 1900 : 900)');
+  });
+
+  it('keeps cart badge rendering shared across Navbar cart entry points', () => {
+    const source = readNavbarSource();
+    const badgeStart = source.indexOf('const renderCartBadge = () => (');
+    const badgeEnd = source.indexOf('const androidApkUrl = useMemo', badgeStart);
+    const badgeSource = source.slice(badgeStart, badgeEnd);
+
+    expect(badgeStart).toBeGreaterThan(-1);
+    expect(badgeEnd).toBeGreaterThan(badgeStart);
+    expect(source).toContain('const safeCartCount = normalizeBadgeCount(cartCount);');
+    expect(source).toContain("const cartBadgeLabel = `${t('nav.ariaCart')}: ${safeCartCount}`;");
+    expect(badgeSource).toContain('<Badge count={safeCartCount} size="small" overflowCount={99}>');
+    expect(badgeSource).toContain('<ShoppingCartOutlined />');
+    expect(source.match(/\{renderCartBadge\(\)\}/g) ?? []).toHaveLength(3);
+    expect(source).not.toContain('<Badge count={cartCount}');
   });
 
   it('uses compact mobile navigation on task-focused storefront routes', () => {
@@ -443,16 +582,40 @@ describe('Navbar Android app download entry', () => {
     expect(bottomNavCss).toMatch(/\.shop-app-shell--product-detail \.shop-nav__bottomBar,[\s\S]*?\.shop-app-shell--cart \.shop-nav__bottomBar,[\s\S]*?\.shop-app-shell--checkout-flow \.shop-nav__bottomBar[\s\S]*?display:\s*none;/);
   });
 
+  it('keeps localized bottom navigation labels readable before the icon-only fallback', () => {
+    const navbarCss = readNavbarCss();
+    const mobileAppCss = readMobileAppCss();
+    const navbarFallback = navbarCss.slice(navbarCss.indexOf('/* F3393: 360px phones need two-line bottom labels before the icon-only fallback. */'));
+    const appFallback = mobileAppCss.slice(mobileAppCss.indexOf('/* F3593 APP closure: localized bottom-rail labels stay readable'));
+
+    expect(navbarFallback).toMatch(/@media \(min-width:\s*341px\) and \(max-width:\s*380px\)/);
+    expect(navbarFallback).toMatch(/\.shop-nav__bottomBar--native[\s\S]*?grid-template-columns:\s*repeat\(5,\s*minmax\(0,\s*1fr\)\)\s*!important;/);
+    expect(navbarFallback).toContain('white-space: normal !important;');
+    expect(navbarFallback).toContain('overflow-wrap: anywhere;');
+    expect(navbarFallback).toContain('-webkit-line-clamp: 2;');
+    expect(appFallback).toMatch(/@media \(min-width:\s*341px\) and \(max-width:\s*380px\)/);
+    expect(appFallback).toContain('white-space: normal !important;');
+    expect(appFallback).toContain('overflow-wrap: anywhere !important;');
+    expect(appFallback).toContain('-webkit-line-clamp: 2 !important;');
+  });
+
   it('shows one visible warning when account badge refreshes fail', async () => {
     const warningSpy = jest.spyOn(message, 'warning').mockImplementation(jest.fn());
-    const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(jest.fn());
+    mockUseAuth.mockReturnValue({
+      user: { id: 12, username: 'Mia', role: 'USER' },
+      token: 'member-token',
+      login: mockLoginAuthSession,
+      logout: mockLogoutAuthSession,
+      loading: false,
+    });
     (getLocalStorageItem as jest.Mock).mockImplementation((key: string) => {
-      if (key === 'token') return 'member-token';
       if (key === 'username') return 'Mia';
       return null;
     });
-    (cartApi.getItems as jest.Mock).mockRejectedValue(new Error('cart badge unavailable'));
-    (notificationApi.getUnreadCount as jest.Mock).mockRejectedValue(new Error('notification badge unavailable'));
+    const cartError = new Error('cart badge unavailable');
+    const notificationError = new Error('notification badge unavailable');
+    (cartApi.getItems as jest.Mock).mockRejectedValue(cartError);
+    (notificationApi.getUnreadCount as jest.Mock).mockRejectedValue(notificationError);
 
     renderNavbar();
 
@@ -467,17 +630,10 @@ describe('Navbar Android app download entry', () => {
     });
 
     expect(warningSpy).toHaveBeenCalledTimes(1);
-    expect(consoleWarnSpy).toHaveBeenCalledWith(
-      expect.stringContaining('cart navigation badge'),
-      expect.any(Error),
-    );
-    expect(consoleWarnSpy).toHaveBeenCalledWith(
-      expect.stringContaining('notification navigation badge'),
-      expect.any(Error),
-    );
+    expect(reportNonBlockingError).toHaveBeenCalledWith('Navbar.refreshCartBadge', cartError);
+    expect(reportNonBlockingError).toHaveBeenCalledWith('Navbar.refreshNotificationBadge', notificationError);
 
     warningSpy.mockRestore();
-    consoleWarnSpy.mockRestore();
   });
 
   it('reports announcement load failures without breaking navigation render', async () => {
@@ -492,30 +648,26 @@ describe('Navbar Android app download entry', () => {
     });
   });
 
-  it('warns the user when logout token revoke fails', async () => {
-    const warningSpy = jest.spyOn(message, 'warning').mockImplementation(jest.fn());
-    const revokeError = new Error('revoke failed');
+  it('delegates logout revocation and session cleanup to the auth context', async () => {
+    mockUseAuth.mockReturnValue({
+      user: { id: 12, username: 'Mia', role: 'USER' },
+      token: 'member-token',
+      login: mockLoginAuthSession,
+      logout: mockLogoutAuthSession,
+      loading: false,
+    });
     (getLocalStorageItem as jest.Mock).mockImplementation((key: string) => {
-      if (key === 'token') return 'member-token';
       if (key === 'username') return 'Mia';
-      if (key === 'refreshToken') return 'refresh-token';
       return null;
     });
-    (userApi.logout as jest.Mock).mockRejectedValue(revokeError);
 
     renderNavbar();
 
     const logoutButtons = await screen.findAllByRole('button', { name: 'Log out' });
     fireEvent.click(logoutButtons[0]);
 
-    await waitFor(() => {
-      expect(warningSpy).toHaveBeenCalledWith('Logout could not revoke the current session completely.');
-    });
-
-    expect(userApi.logout).toHaveBeenCalledWith('refresh-token');
-    expect(clearStoredAuthSession).toHaveBeenCalled();
-    expect(reportNonBlockingError).toHaveBeenCalledWith('Navbar.logoutRevoke', revokeError);
-
-    warningSpy.mockRestore();
+    expect(mockLogoutAuthSession).toHaveBeenCalledTimes(1);
+    expect(userApi.logout).not.toHaveBeenCalled();
+    expect(clearStoredAuthSession).not.toHaveBeenCalled();
   });
 });

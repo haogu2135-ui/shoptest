@@ -93,9 +93,9 @@ describe('mobileUpdate release download gate', () => {
     expect(publicManifest.minSupportedVersionCode).toBe(0);
     expect(publicManifest.releaseSigned).toBe(true);
     expect(publicManifest.certificateSha256).toMatch(/^[A-F0-9]{64}$/);
-    expect(publicManifest.apkUrl).toBe(`/downloads/${publicManifest.fileName}?v=${publicManifest.versionName}`);
+    expect(publicManifest.apkUrl).toBe(`/downloads/${publicManifest.fileName}`);
     expect(publicManifest.legacyApkUrl).toBe(`/downloads/shoptest.apk?v=${publicManifest.versionName}`);
-    expect(publicManifest.fileName).toBe('shoptest.apk');
+    expect(publicManifest.fileName).toBe(`shoptest-${publicManifest.versionName}.apk`);
     expect(fs.existsSync(apkPath)).toBe(true);
     expect(fs.statSync(apkPath).size).toBe(publicManifest.sizeBytes);
     expect(isMobileReleaseDownloadAllowed(publicManifest)).toBe(true);

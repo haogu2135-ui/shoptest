@@ -24,6 +24,12 @@ class OrderStockReservationRaceContractTest {
                 "legacy check-then-deduct InventoryService should not be active production code");
         assertFalse(productionSource.contains("checkAndDeductStock"),
                 "legacy stock check/deduct method should not be active production code");
+        assertFalse(productionSource.contains("createOrderForUser("),
+                "legacy UserService.createOrderForUser path should not be active production code");
+        assertTrue(orderService.contains("@Transactional(rollbackFor = Exception.class)\n    public Order createOrder(Order order)"),
+                "direct order API should retain a transaction boundary even though it rejects direct creation");
+        assertTrue(orderService.contains("throw new IllegalStateException(\"Direct order creation is disabled; use checkout flows\");"),
+                "direct order creation should remain disabled in favor of checkout flows");
         assertTrue(orderService.contains("prepareCheckoutItems(request.getUserId(), request.getCartItemIds(), true)"),
                 "authenticated checkout should enter the stock-reserving path");
         assertTrue(orderService.contains("prepareGuestCheckoutItems(guestUserId, request.getItems(), true)"),
@@ -32,6 +38,12 @@ class OrderStockReservationRaceContractTest {
                 "authenticated checkout stock reservation should run inside a rollback-aware transaction");
         assertTrue(orderService.contains("@Transactional(rollbackFor = Exception.class)\n    public Order guestCheckout(GuestCheckoutRequest request)"),
                 "guest checkout stock reservation should run inside a rollback-aware transaction");
+        assertTrue(orderService.contains("@Transactional(rollbackFor = Exception.class)\n    public Order guestCheckout(GuestCheckoutRequest request, String idempotencyKey)"),
+                "idempotent guest checkout should run inside a rollback-aware transaction");
+        assertFalse(orderService.contains("guestCheckoutStockCheck("),
+                "legacy guestCheckoutStockCheck path should not reappear outside the transactional guest checkout flow");
+        assertFalse(orderService.contains("processGuestCheckout("),
+                "legacy processGuestCheckout path should not reappear outside the transactional guest checkout flow");
         assertTrue(orderService.contains("loadProductsForCartItems(selectedItems, reserveStock)"),
                 "cart checkout reservation should load products through the reserve-aware loader");
         assertTrue(orderService.contains("productRepository.findAllByIdForUpdate(productIds)"),

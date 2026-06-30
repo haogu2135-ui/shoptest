@@ -3,6 +3,7 @@ import path from 'path';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { adminApi } from '../api';
+import { useAuth } from '../hooks/useAuth';
 import AdminDashboard from './AdminDashboard';
 
 const readAdminDashboardCss = () => fs.readFileSync(path.resolve(__dirname, 'AdminDashboard.css'), 'utf8');
@@ -13,6 +14,10 @@ jest.mock('../api', () => ({
   adminApi: {
     getDashboard: jest.fn(),
   },
+}));
+
+jest.mock('../hooks/useAuth', () => ({
+  useAuth: jest.fn(),
 }));
 
 jest.mock('../hooks/useMarket', () => ({
@@ -142,6 +147,13 @@ describe('AdminDashboard chart accessibility', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockIdleCallbacks.length = 0;
+    (useAuth as jest.Mock).mockReturnValue({
+      user: { id: 1, username: 'admin', email: 'admin@example.com', role: 'ADMIN' },
+      token: 'admin-token',
+      loading: false,
+      login: jest.fn(),
+      logout: jest.fn(),
+    });
     (window as any).requestIdleCallback = jest.fn((callback: () => void) => {
       mockIdleCallbacks.push(callback);
       return mockIdleCallbacks.length;
@@ -217,6 +229,25 @@ describe('AdminDashboard chart accessibility', () => {
     expect(await screen.findByTestId('tracking-widget')).toBeInTheDocument();
     expect(screen.getByRole('img', { name: 'Sales trend chart' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '2026-06-01: $123.45, 3 orders' })).toBeInTheDocument();
+  });
+
+  it('does not request dashboard data when the page is mounted without an admin session', async () => {
+    (useAuth as jest.Mock).mockReturnValue({
+      user: { id: 2, username: 'customer', email: 'customer@example.com', role: 'USER' },
+      token: 'customer-token',
+      loading: false,
+      login: jest.fn(),
+      logout: jest.fn(),
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/admin/dashboard']}>
+        <AdminDashboard />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText('adminLayout.noPermission')).toBeInTheDocument();
+    expect(adminApi.getDashboard).not.toHaveBeenCalled();
   });
 });
 

@@ -1,4 +1,6 @@
 import { addGuestCartItem, clearGuestCart, getGuestCartItems, removeGuestCartItems, updateGuestCartQuantity } from './guestCart';
+import { readFileSync } from 'fs';
+import { join } from 'path';
 
 describe('guestCart', () => {
   const originalSetItem = Storage.prototype.setItem;
@@ -17,6 +19,57 @@ describe('guestCart', () => {
     addGuestCartItem({ id: 1, name: 'Harness', price: 20, stock: 3 }, 5);
 
     expect(getGuestCartItems()[0].quantity).toBe(3);
+  });
+
+  it('updates existing guest cart rows by replacing rather than mutating them in place', () => {
+    const source = readFileSync(join(__dirname, 'guestCart.ts'), 'utf8');
+
+    expect(source).toContain('const updatedExisting: CartItem = {');
+    expect(source).not.toContain('existing.quantity =');
+    expect(source).not.toContain('existing.price =');
+    expect(source).not.toContain('existing.stock =');
+  });
+
+  it('keeps guest cart product inputs typed without broad any escapes', () => {
+    const source = readFileSync(join(__dirname, 'guestCart.ts'), 'utf8');
+
+    expect(source).toContain('type GuestCartProductInput =');
+    expect(source).toContain('const isRecord = (value: unknown)');
+    expect(source).not.toContain('ProductPublic | any');
+    expect(source).not.toContain('Partial<ProductPublic> | any');
+    expect(source).not.toContain(': any');
+    expect(source).not.toContain('as any');
+  });
+
+  it('does not mutate the source product when creating guest cart rows', () => {
+    const sourceProduct = Object.freeze({
+      id: 8,
+      name: 'Stable Bowl',
+      price: 16,
+      effectivePrice: 14,
+      stock: 5,
+      freeShipping: true,
+      freeShippingThreshold: 20,
+    });
+
+    const addedItem = addGuestCartItem(sourceProduct, 2);
+
+    expect(addedItem).toEqual(expect.objectContaining({
+      productId: 8,
+      quantity: 2,
+      price: 14,
+      freeShipping: true,
+      freeShippingThreshold: 20,
+    }));
+    expect(sourceProduct).toStrictEqual({
+      id: 8,
+      name: 'Stable Bowl',
+      price: 16,
+      effectivePrice: 14,
+      stock: 5,
+      freeShipping: true,
+      freeShippingThreshold: 20,
+    });
   });
 
   it('normalizes invalid quantity updates', () => {

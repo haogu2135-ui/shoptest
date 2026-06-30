@@ -454,6 +454,7 @@ const IpBlacklistManagement: React.FC = () => {
   const showInitialBlacklistLoading = loading && !listSnapshotLoaded;
   const blacklistSnapshotUnavailable = Boolean(listLoadError) && !listSnapshotLoaded;
   const canRenderBlacklistSnapshot = !showInitialBlacklistLoading && !blacklistSnapshotUnavailable;
+  const blacklistSnapshotLoading = loading && entries.length === 0;
 
   return (
     <div className="ip-blacklist">
@@ -491,11 +492,24 @@ const IpBlacklistManagement: React.FC = () => {
       ) : null}
 
       {showInitialBlacklistLoading ? (
-        <Card className="ip-blacklist__loadingState" loading />
+        <Card
+          className="ip-blacklist__loadingState"
+          loading
+          role="status"
+          aria-live="polite"
+          aria-busy="true"
+          aria-label={t('common.loading')}
+        />
       ) : null}
 
       {canRenderBlacklistSnapshot ? (
-        <Spin spinning={loading && entries.length === 0}>
+        <Spin
+          spinning={blacklistSnapshotLoading}
+          role="status"
+          aria-live="polite"
+          aria-busy={blacklistSnapshotLoading}
+          aria-label={blacklistSnapshotLoading ? t('common.loading') : undefined}
+        >
         <div className="ip-blacklist__stats">
           <Card>
             <Statistic title={t('pages.ipBlacklistAdmin.featureStatus')} value={statusInfo ? (statusInfo.enabled ? t('pages.ipBlacklistAdmin.enabledStatus') : t('pages.ipBlacklistAdmin.disabledStatus')) : t('common.unknown')} prefix={<StopOutlined />} />

@@ -7,6 +7,8 @@ import com.example.shop.dto.SupportAdminSessionPageResponse;
 import com.example.shop.dto.SupportMessageCustomerResponse;
 import com.example.shop.dto.SupportSessionCustomerResponse;
 import com.example.shop.dto.SupportWebSocketTicketResponse;
+import com.example.shop.dto.GuestOrderAccessRequest;
+import com.example.shop.dto.GuestSupportMessagesRequest;
 import com.example.shop.entity.Order;
 import com.example.shop.entity.SupportMessage;
 import com.example.shop.entity.SupportSession;
@@ -22,12 +24,14 @@ import com.example.shop.service.SupportWebSocketTicketService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 import javax.servlet.http.HttpServletRequest;
+import javax.validation.Valid;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -35,6 +39,8 @@ import java.util.stream.Collectors;
 @RestController
 @RequiredArgsConstructor
 public class SupportController {
+    private static final String ADMIN_SUPPORT_PATH = "/admin/support";
+
     private final SupportService supportService;
     private final AdminRoleService adminRoleService;
     private final PetBirthdayCouponService petBirthdayCouponService;
@@ -134,10 +140,11 @@ public class SupportController {
         return SupportWebSocketTicketResponse.of(ticket.getValue(), ticket.expiresInMillis(System.currentTimeMillis()));
     }
 
-    @GetMapping("/support/guest/session")
-    public ResponseEntity<SupportSessionCustomerResponse> getGuestSession(@RequestParam String orderNo, @RequestParam String email,
+    @PostMapping("/support/guest/session/lookup")
+    public ResponseEntity<SupportSessionCustomerResponse> getGuestSession(@Valid @RequestBody(required = false) GuestOrderAccessRequest body,
                                                                           HttpServletRequest request) {
-        Order order = requireGuestOrder(orderNo, email, request);
+        GuestOrderAccessRequest access = requireGuestAccessRequest(body);
+        Order order = requireGuestOrder(access.getOrderNo(), access.getGuestEmail(), request);
         SupportSession session = supportService.findOpenSession(order.getUserId(), guestSupportContextKey(order));
         if (session == null) {
             return ResponseEntity.noContent().build();
@@ -149,28 +156,26 @@ public class SupportController {
     public SupportSessionCustomerResponse createGuestSession(@RequestBody(required = false) Map<String, Object> body,
                                                              HttpServletRequest request) {
         String orderNo = body == null ? null : String.valueOf(body.get("orderNo"));
-        String email = body == null ? null : String.valueOf(body.get("email"));
+        String email = guestEmailFromBody(body);
         Order order = requireGuestOrder(orderNo, email, request);
         return SupportSessionCustomerResponse.from(supportService.getOrCreateOpenSession(order.getUserId(), guestSupportContextKey(order)));
     }
 
-    @GetMapping("/support/guest/sessions/{sessionId}/messages")
+    @PostMapping("/support/guest/sessions/{sessionId}/messages")
     public ResponseEntity<?> getGuestMessages(@PathVariable Long sessionId,
-                                              @RequestParam String orderNo,
-                                              @RequestParam String email,
-                                              @RequestParam(required = false) Integer limit,
-                                              @RequestParam(required = false) Long afterId,
+                                              @Valid @RequestBody(required = false) GuestSupportMessagesRequest body,
                                               HttpServletRequest request) {
-        Order order = requireGuestOrder(orderNo, email, request);
+        GuestSupportMessagesRequest access = requireGuestMessagesRequest(body);
+        Order order = requireGuestOrder(access.getOrderNo(), access.getGuestEmail(), request);
         assertGuestSessionAccess(sessionId, order, request);
-        return ResponseEntity.ok(toCustomerMessages(supportService.getMessages(sessionId, limit, afterId)));
+        return ResponseEntity.ok(toCustomerMessages(supportService.getMessages(sessionId, access.getLimit(), access.getAfterId())));
     }
 
     @PostMapping("/support/guest/messages")
     public ResponseEntity<?> sendGuestMessage(@RequestBody(required = false) Map<String, Object> body,
                                               HttpServletRequest request) {
         String orderNo = body == null ? null : String.valueOf(body.get("orderNo"));
-        String email = body == null ? null : String.valueOf(body.get("email"));
+        String email = guestEmailFromBody(body);
         Order order = requireGuestOrder(orderNo, email, request);
         Long sessionId = toLong(body == null ? null : body.get("sessionId"));
         if (sessionId != null) {
@@ -189,7 +194,7 @@ public class SupportController {
                                                    @RequestBody(required = false) Map<String, Object> body,
                                                    HttpServletRequest request) {
         String orderNo = body == null ? null : String.valueOf(body.get("orderNo"));
-        String email = body == null ? null : String.valueOf(body.get("email"));
+        String email = guestEmailFromBody(body);
         Order order = requireGuestOrder(orderNo, email, request);
         assertGuestSessionAccess(sessionId, order, request);
         supportService.markRead(sessionId, "USER");
@@ -197,28 +202,70 @@ public class SupportController {
     }
 
     @GetMapping("/admin/support/sessions")
+    @PreAuthorize("hasRole('ADMIN')")
     public SupportAdminSessionPageResponse getSupportSessions(@RequestParam(required = false) String status,
                                                               @RequestParam(required = false) Boolean needsReply,
                                                               @RequestParam(required = false) Long assignedAdminId,
                                                               @RequestParam(required = false) String search,
                                                               @RequestParam(required = false, defaultValue = "1") Integer page,
-                                                              @RequestParam(required = false, defaultValue = "20") Integer size) {
-        return supportService.getAdminSessionPage(status, needsReply, assignedAdminId, search, page, size);
+                                                              @RequestParam(required = false, defaultValue = "20") Integer size,
+                                                              Authentication authentication,
+                                                              HttpServletRequest request) {
+        requireSupportReadPermission(authentication, "SUPPORT_SESSION_LIST", null, request);
+        String metadata = supportSessionListReadMetadata(status, needsReply, assignedAdminId, search, page, size);
+        try {
+            SupportAdminSessionPageResponse response = supportService.getAdminSessionPage(
+                    status, needsReply, assignedAdminId, search, page, size);
+            recordSupportReadAudit("SUPPORT_SESSION_LIST", "SUCCESS", null, authentication, request,
+                    "Support sessions read", metadata);
+            return response;
+        } catch (RuntimeException ex) {
+            recordSupportReadAudit("SUPPORT_SESSION_LIST", "FAILURE", null, authentication, request,
+                    ex.getMessage(), metadata);
+            throw ex;
+        }
     }
 
     @GetMapping("/admin/support/summary")
-    public SupportAdminSummaryResponse getSupportSummary() {
-        return supportService.adminSummary(currentUserId());
+    @PreAuthorize("hasRole('ADMIN')")
+    public SupportAdminSummaryResponse getSupportSummary(Authentication authentication,
+                                                         HttpServletRequest request) {
+        requireSupportReadPermission(authentication, "SUPPORT_SUMMARY_READ", null, request);
+        try {
+            SupportAdminSummaryResponse response = supportService.adminSummary(currentUserId());
+            recordSupportReadAudit("SUPPORT_SUMMARY_READ", "SUCCESS", null, authentication, request,
+                    "Support summary read", "scope=summary");
+            return response;
+        } catch (RuntimeException ex) {
+            recordSupportReadAudit("SUPPORT_SUMMARY_READ", "FAILURE", null, authentication, request,
+                    ex.getMessage(), "scope=summary");
+            throw ex;
+        }
     }
 
     @GetMapping("/admin/support/sessions/{sessionId}/messages")
+    @PreAuthorize("hasRole('ADMIN')")
     public List<SupportMessageAdminResponse> getSupportMessages(@PathVariable Long sessionId,
                                                                 @RequestParam(required = false) Integer limit,
-                                                                @RequestParam(required = false) Long afterId) {
-        return toAdminMessages(supportService.getMessages(sessionId, limit, afterId));
+                                                                @RequestParam(required = false) Long afterId,
+                                                                Authentication authentication,
+                                                                HttpServletRequest request) {
+        requireSupportReadPermission(authentication, "SUPPORT_MESSAGE_READ", sessionId, request);
+        String metadata = supportMessageReadMetadata(limit, afterId);
+        try {
+            List<SupportMessageAdminResponse> response = toAdminMessages(supportService.getMessages(sessionId, limit, afterId));
+            recordSupportReadAudit("SUPPORT_MESSAGE_READ", "SUCCESS", sessionId, authentication, request,
+                    "Support messages read", metadata);
+            return response;
+        } catch (RuntimeException ex) {
+            recordSupportReadAudit("SUPPORT_MESSAGE_READ", "FAILURE", sessionId, authentication, request,
+                    ex.getMessage(), metadata);
+            throw ex;
+        }
     }
 
     @PutMapping("/admin/support/sessions/{sessionId}/read")
+    @PreAuthorize("hasRole('ADMIN')")
     public Map<String, String> markSupportMessagesRead(@PathVariable Long sessionId,
                                                        Authentication authentication,
                                                        HttpServletRequest request) {
@@ -229,6 +276,7 @@ public class SupportController {
     }
 
     @PostMapping("/admin/support/sessions/{sessionId}/messages")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> sendSupportMessage(@PathVariable Long sessionId,
                                                 @RequestBody(required = false) Map<String, Object> body,
                                                 Authentication authentication,
@@ -237,8 +285,18 @@ public class SupportController {
                 "SUPPORT_MESSAGE_SEND", sessionId, request);
         try {
             String content = body == null || body.get("content") == null ? "" : String.valueOf(body.get("content"));
+            SupportSession session = supportService.getSession(sessionId);
+            if (session == null) {
+                throw new IllegalArgumentException("Support session not found");
+            }
+            boolean assignIfUnassigned = false;
+            if (session.getAssignedAdminId() == null) {
+                requireSupportActionPermission(authentication, AdminRoleService.SUPPORT_ASSIGN_PERMISSION,
+                        "SUPPORT_SESSION_ASSIGN", sessionId, request);
+                assignIfUnassigned = true;
+            }
             SupportMessage sent = supportService.sendAdminMessage(currentUserId(), sessionId, content,
-                    currentAdminSupportRole(authentication));
+                    currentAdminSupportRole(authentication), assignIfUnassigned);
             auditLogService.record("SUPPORT_MESSAGE_SEND", "SUCCESS", authentication, "SUPPORT_SESSION", sessionId, request,
                     "Support message sent", supportMessageAuditMetadata(sent));
             return ResponseEntity.ok(Map.of(
@@ -253,6 +311,7 @@ public class SupportController {
     }
 
     @PutMapping("/admin/support/sessions/{sessionId}/close")
+    @PreAuthorize("hasRole('ADMIN')")
     public SupportAdminSessionResponse closeSupportSession(@PathVariable Long sessionId,
                                                            Authentication authentication,
                                                            HttpServletRequest request) {
@@ -271,6 +330,7 @@ public class SupportController {
     }
 
     @PutMapping("/admin/support/sessions/{sessionId}/assign")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> assignSupportSession(@PathVariable Long sessionId,
                                                   Authentication authentication,
                                                   HttpServletRequest request) {
@@ -289,6 +349,7 @@ public class SupportController {
     }
 
     @PutMapping("/admin/support/sessions/{sessionId}/reopen")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> reopenSupportSession(@PathVariable Long sessionId,
                                                   Authentication authentication,
                                                   HttpServletRequest request) {
@@ -307,11 +368,24 @@ public class SupportController {
     }
 
     @GetMapping("/admin/support/unread-count")
-    public Map<String, Integer> getSupportUnreadCount() {
-        return Map.of("count", supportService.countUnreadByAdmin());
+    @PreAuthorize("hasRole('ADMIN')")
+    public Map<String, Integer> getSupportUnreadCount(Authentication authentication,
+                                                      HttpServletRequest request) {
+        requireSupportReadPermission(authentication, "SUPPORT_UNREAD_COUNT_READ", null, request);
+        try {
+            Map<String, Integer> response = Map.of("count", supportService.countUnreadByAdmin());
+            recordSupportReadAudit("SUPPORT_UNREAD_COUNT_READ", "SUCCESS", null, authentication, request,
+                    "Support unread count read", "scope=unread-count");
+            return response;
+        } catch (RuntimeException ex) {
+            recordSupportReadAudit("SUPPORT_UNREAD_COUNT_READ", "FAILURE", null, authentication, request,
+                    ex.getMessage(), "scope=unread-count");
+            throw ex;
+        }
     }
 
     @PostMapping("/admin/support/sessions/{sessionId}/birthday-coupons/reissue")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> reissueBirthdayCoupon(@PathVariable Long sessionId,
                                                    Authentication authentication,
                                                    HttpServletRequest request) {
@@ -354,6 +428,39 @@ public class SupportController {
                 + ",contentLength=" + content.length();
     }
 
+    private void recordSupportReadAudit(String auditAction,
+                                        String result,
+                                        Long sessionId,
+                                        Authentication authentication,
+                                        HttpServletRequest request,
+                                        String message,
+                                        String metadata) {
+        auditLogService.record(auditAction, result, authentication, "SUPPORT_SESSION", sessionId, request, message, metadata);
+    }
+
+    private String supportSessionListReadMetadata(String status,
+                                                  Boolean needsReply,
+                                                  Long assignedAdminId,
+                                                  String search,
+                                                  Integer page,
+                                                  Integer size) {
+        return "statusPresent=" + hasText(status)
+                + ",needsReply=" + (needsReply == null ? "" : needsReply)
+                + ",assignedAdminIdPresent=" + (assignedAdminId != null)
+                + ",searchPresent=" + hasText(search)
+                + ",page=" + page
+                + ",size=" + size;
+    }
+
+    private String supportMessageReadMetadata(Integer limit, Long afterId) {
+        return "limit=" + (limit == null ? "" : limit)
+                + ",afterIdPresent=" + (afterId != null);
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.trim().isEmpty();
+    }
+
     private void requireSupportActionPermission(Authentication authentication,
                                                 String permission,
                                                 String auditAction,
@@ -366,6 +473,19 @@ public class SupportController {
         auditLogService.record(auditAction, "FAILURE", authentication, "SUPPORT_SESSION", sessionId, request,
                 "Missing admin action permission", "permission=" + permission);
         throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Missing admin action permission");
+    }
+
+    private void requireSupportReadPermission(Authentication authentication,
+                                              String auditAction,
+                                              Long sessionId,
+                                              HttpServletRequest request) {
+        UserDetailsImpl user = SecurityUtils.requireUser(authentication);
+        if (adminRoleService.canAccess(user.getId(), ADMIN_SUPPORT_PATH)) {
+            return;
+        }
+        auditLogService.record(auditAction, "FAILURE", authentication, "SUPPORT_SESSION", sessionId, request,
+                "Missing admin support page permission", "permission=support");
+        throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Missing admin support permission");
     }
 
     private List<SupportSessionCustomerResponse> toCustomerSessions(List<SupportSession> sessions) {
@@ -389,9 +509,24 @@ public class SupportController {
     private boolean canAccessSession(Long sessionId) {
         UserDetailsImpl user = currentUser();
         SupportSession session = supportService.getSession(sessionId);
+        // Authenticated support endpoints expose only default account sessions; guest-order sessions stay credential scoped.
         return session != null
                 && user.getId().equals(session.getUserId())
                 && supportService.isDefaultUserSession(session);
+    }
+
+    private GuestOrderAccessRequest requireGuestAccessRequest(GuestOrderAccessRequest body) {
+        if (body == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Guest support access payload is required");
+        }
+        return body;
+    }
+
+    private GuestSupportMessagesRequest requireGuestMessagesRequest(GuestSupportMessagesRequest body) {
+        if (body == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Guest support messages payload is required");
+        }
+        return body;
     }
 
     private Order requireGuestOrder(String orderNo, String email, HttpServletRequest request) {
@@ -406,6 +541,17 @@ public class SupportController {
             ipBlacklistService.recordLoginFailure(request, "guest-support credentials failed");
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Support is not available for this order");
         }
+    }
+
+    private String guestEmailFromBody(Map<String, Object> body) {
+        if (body == null) {
+            return null;
+        }
+        Object value = body.get("guestEmail");
+        if (value == null) {
+            value = body.get("email");
+        }
+        return value == null ? null : String.valueOf(value);
     }
 
     private boolean isGuestSupportOrder(Order order) {

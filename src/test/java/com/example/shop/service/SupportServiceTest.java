@@ -8,6 +8,8 @@ import com.example.shop.repository.SupportSessionMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -15,6 +17,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -44,6 +47,7 @@ class SupportServiceTest {
         session.setId(12L);
         session.setUserId(5L);
         session.setStatus("OPEN");
+        session.setAssignedAdminId(7L);
         when(supportSessionMapper.findById(12L)).thenReturn(session);
     }
 
@@ -130,6 +134,38 @@ class SupportServiceTest {
     }
 
     @Test
+    void guestSupportSessionCreationUsesOrderScopedLockInsteadOfAnonymousSequencing() throws Exception {
+        String controllerSource = Files.readString(Path.of("src/main/java/com/example/shop/controller/SupportController.java"));
+        String serviceSource = Files.readString(Path.of("src/main/java/com/example/shop/service/SupportService.java"));
+
+        assertTrue(Files.notExists(Path.of("src/main/java/com/example/shop/service/AnonymousUserService.java")));
+        assertTrue(controllerSource.contains("Order order = requireGuestOrder(orderNo, email, request);"));
+        assertTrue(controllerSource.contains(
+                "supportService.getOrCreateOpenSession(order.getUserId(), guestSupportContextKey(order))"));
+        assertTrue(controllerSource.contains(
+                "supportService.sendUserMessage(order.getUserId(), sessionId, content, guestSupportContextKey(order))"));
+        assertTrue(controllerSource.contains(
+                "return \"guest-order:\" + order.getOrderNo().trim().toLowerCase(java.util.Locale.ROOT);"));
+        assertTrue(serviceSource.contains(
+                "private final ConcurrentMap<String, Object> sessionCreationLocks = new ConcurrentHashMap<>();"));
+        assertTrue(serviceSource.contains("String lockKey = sessionCreationLockKey(userId, contextKey);"));
+        assertTrue(serviceSource.contains("sessionCreationLocks.computeIfAbsent(lockKey"));
+        assertTrue(serviceSource.contains("synchronized (lock)"));
+
+        int lockStart = serviceSource.indexOf("synchronized (lock)");
+        int recheck = serviceSource.indexOf("supportSessionMapper.findOpenByUserIdAndContextKey(userId, contextKey);",
+                lockStart);
+        int insert = serviceSource.indexOf("supportSessionMapper.insert(session);", lockStart);
+        assertTrue(lockStart >= 0);
+        assertTrue(recheck > lockStart);
+        assertTrue(insert > recheck);
+        assertFalse(controllerSource.contains("count + 1"));
+        assertFalse(controllerSource.contains("putIfAbsent"));
+        assertFalse(serviceSource.contains("count + 1"));
+        assertFalse(serviceSource.contains("putIfAbsent"));
+    }
+
+    @Test
     void userSessionsClampRequestedLimit() {
         service.getUserSessions(5L, 999);
 
@@ -155,6 +191,36 @@ class SupportServiceTest {
         service.getMessages(12L, 50, 123L);
 
         verify(supportMessageMapper).findBySessionIdAfterId(12L, 123L, 50);
+    }
+
+    @Test
+    void adminSessionPageEscapesSearchWildcardsBeforeMapper() {
+        String escapedSearch = "vip!% pet!_!!";
+        when(runtimeConfig.getInt("support.admin.sessions.max-page-size", 50)).thenReturn(50);
+        when(supportSessionMapper.countAdminPage("OPEN", Boolean.TRUE, 7L, escapedSearch)).thenReturn(0L);
+        when(supportSessionMapper.findAdminPage("OPEN", Boolean.TRUE, 7L, escapedSearch, 20, 0))
+                .thenReturn(List.of());
+
+        service.getAdminSessionPage(" open ", true, 7L, " vip%  pet_! ", 1, 20);
+
+        verify(supportSessionMapper).countAdminPage("OPEN", Boolean.TRUE, 7L, escapedSearch);
+        verify(supportSessionMapper).findAdminPage("OPEN", Boolean.TRUE, 7L, escapedSearch, 20, 0);
+    }
+
+    @Test
+    void adminSessionSearchLikeContractEscapesWildcardInput() throws Exception {
+        String serviceSource = Files.readString(Path.of("src/main/java/com/example/shop/service/SupportService.java"));
+        String mapperXml = Files.readString(Path.of("src/main/resources/mapper/SupportSessionMapper.xml"));
+        String adminPageFilters = block(mapperXml, "<sql id=\"supportSessionAdminPageFilters\">", "</sql>");
+
+        assertTrue(serviceSource.contains("String safeSearch = searchLikeTerm(search);"));
+        assertTrue(serviceSource.contains("private String searchLikeTerm(String value)"));
+        assertTrue(serviceSource.contains("String normalized = normalizeAdminSearch(value);"));
+        assertTrue(serviceSource.contains("return value.replace(\"!\", \"!!\")\n"
+                + "                .replace(\"%\", \"!%\")\n"
+                + "                .replace(\"_\", \"!_\");"));
+        assertEquals(4, countOccurrences(adminPageFilters, "LIKE CONCAT('%', LOWER(#{search}), '%') ESCAPE '!'"));
+        assertFalse(adminPageFilters.contains("LIKE CONCAT('%', LOWER(#{search}), '%')\n"));
     }
 
     @Test
@@ -202,5 +268,23 @@ class SupportServiceTest {
     private static void assertNoRawAngles(String content) {
         assertFalse(content.contains("<"));
         assertFalse(content.contains(">"));
+    }
+
+    private String block(String source, String startToken, String endToken) {
+        int start = source.indexOf(startToken);
+        assertTrue(start >= 0, () -> "Missing source block: " + startToken);
+        int end = source.indexOf(endToken, start);
+        assertTrue(end > start, () -> "Missing source block terminator: " + endToken);
+        return source.substring(start, end);
+    }
+
+    private int countOccurrences(String source, String needle) {
+        int count = 0;
+        int index = source.indexOf(needle);
+        while (index >= 0) {
+            count++;
+            index = source.indexOf(needle, index + needle.length());
+        }
+        return count;
     }
 }

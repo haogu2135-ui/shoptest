@@ -27,11 +27,48 @@ class LegacyRaceConditionControllerContractTest {
         assertFalse(Files.exists(Path.of("src/main/java/com/example/shop/controller/AdminPromotionController.java")));
         assertFalse(Files.exists(Path.of("src/main/java/com/example/shop/controller/PromotionController.java")));
         assertFalse(Files.exists(Path.of("src/main/java/com/example/shop/service/UserPointsService.java")));
+        assertFalse(Files.exists(Path.of("src/main/java/com/example/shop/entity/UserPoints.java")));
+        assertFalse(Files.exists(Path.of("src/main/java/com/example/shop/entity/PointTransaction.java")));
 
         String productionSource = readProductionJavaSource();
         assertFalse(productionSource.contains("class AdminPromotionController"));
         assertFalse(productionSource.contains("class PromotionController"));
         assertFalse(productionSource.contains("class UserPointsService"));
+        assertFalse(productionSource.contains("class UserPoints"));
+        assertFalse(productionSource.contains("class PointTransaction"));
+        assertFalse(productionSource.contains("CascadeType.PERSIST"));
+    }
+
+    @Test
+    void legacyAdminIdentityParamControllersAreAbsent() throws Exception {
+        assertFalse(Files.exists(Path.of("src/main/java/com/example/shop/controller/ReturnRequestController.java")));
+        assertFalse(Files.exists(Path.of("src/main/java/com/example/shop/controller/AdminAuditController.java")));
+        assertFalse(Files.exists(Path.of("src/main/java/com/example/shop/controller/UserBehaviorAdminController.java")));
+        assertFalse(Files.exists(Path.of("src/main/java/com/example/shop/controller/PromotionAdminController.java")));
+        assertFalse(Files.exists(Path.of("src/main/java/com/example/shop/controller/AdminDashboardController.java")));
+
+        String productionSource = readProductionJavaSource();
+        assertFalse(productionSource.contains("class ReturnRequestController"));
+        assertFalse(productionSource.contains("class AdminAuditController"));
+        assertFalse(productionSource.contains("class UserBehaviorAdminController"));
+        assertFalse(productionSource.contains("class PromotionAdminController"));
+        assertFalse(productionSource.contains("class AdminDashboardController"));
+        assertFalse(productionSource.contains("adminUserId"));
+    }
+
+    @Test
+    void legacyHomeMarketingEntitiesAreAbsent() throws Exception {
+        assertFalse(Files.exists(Path.of("src/main/java/com/example/shop/entity/HomeBanner.java")));
+        assertFalse(Files.exists(Path.of("src/main/java/com/example/shop/entity/HomeActivity.java")));
+        assertFalse(Files.exists(Path.of("src/main/java/com/example/shop/config/AutoRegisterAspect.java")));
+
+        String productionSource = readProductionJavaSource();
+        assertFalse(productionSource.contains("class HomeBanner"));
+        assertFalse(productionSource.contains("class HomeActivity"));
+        assertFalse(productionSource.contains("class AutoRegisterAspect"));
+        assertFalse(productionSource.contains("getMinRatio()"));
+        assertFalse(productionSource.contains("getTimingState()"));
+        assertFalse(productionSource.contains("throw new RuntimeException(e)"));
     }
 
     @Test
@@ -41,7 +78,10 @@ class LegacyRaceConditionControllerContractTest {
         String couponRepository = Files.readString(Path.of("src/main/java/com/example/shop/repository/CouponRepository.java"));
 
         assertTrue(couponService.contains("@Transactional(rollbackFor = Exception.class)\n    public UserCoupon claim("));
-        assertTrue(couponService.contains("@Transactional(rollbackFor = Exception.class)\n    public int grant("));
+        assertFalse(couponService.contains("@Transactional(rollbackFor = Exception.class)\n    public int grant("));
+        assertTrue(couponService.contains("private GrantBatchResult executeGrantBatchInTransaction(Long couponId, List<Long> userIds)"));
+        assertTrue(couponService.contains("transactionTemplate.execute(status -> grantBatch(couponId, userIds))"));
+        assertTrue(couponService.contains("private GrantBatchResult grantBatch(Long couponId, List<Long> userIds)"));
         assertTrue(couponService.contains("couponRepository.incrementClaimedQuantity(couponId) == 0"));
         assertTrue(couponService.contains("couponRepository.decrementClaimedQuantity(couponId, 1)"));
         assertTrue(birthdayCouponService.contains("couponRepository.incrementClaimedQuantity(coupon.getId())"));

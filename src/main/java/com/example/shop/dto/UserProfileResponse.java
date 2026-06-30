@@ -1,6 +1,7 @@
 package com.example.shop.dto;
 
 import com.example.shop.entity.User;
+import com.fasterxml.jackson.annotation.JsonInclude;
 
 public class UserProfileResponse {
     private Long id;
@@ -8,6 +9,7 @@ public class UserProfileResponse {
     private String email;
     private String phone;
     private String role;
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     private String roleCode;
 
     public static UserProfileResponse from(User user) {
@@ -20,8 +22,18 @@ public class UserProfileResponse {
         response.setEmail(user.getEmail());
         response.setPhone(user.getPhone());
         response.setRole(user.getRole());
-        response.setRoleCode(user.getRoleCode());
+        if (shouldExposeRoleCode(user)) {
+            response.setRoleCode(user.getRoleCode());
+        }
         return response;
+    }
+
+    private static boolean shouldExposeRoleCode(User user) {
+        if (user == null || user.getRole() == null) {
+            return false;
+        }
+        String role = user.getRole().trim();
+        return "ADMIN".equalsIgnoreCase(role) || "SUPER_ADMIN".equalsIgnoreCase(role);
     }
 
     public Long getId() {

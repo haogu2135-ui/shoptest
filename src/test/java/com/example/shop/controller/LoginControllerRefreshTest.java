@@ -16,9 +16,13 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.security.authentication.AuthenticationManager;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -49,6 +53,18 @@ class LoginControllerRefreshTest {
     }
 
     @Test
+    void refreshTestsAndClientUseCurrentRefreshEndpoint() throws Exception {
+        String controllerSource = Files.readString(Path.of("src/main/java/com/example/shop/controller/LoginController.java"));
+        String frontendApi = Files.readString(Path.of("frontend/src/api/index.ts"));
+
+        assertFalse(Files.exists(Path.of("src/test/java/com/example/shop/controller/AuthControllerTest.java")));
+        assertFalse(controllerSource.contains("/api/auth/refresh-token"));
+        assertFalse(frontendApi.contains("/api/auth/refresh-token"));
+        assertTrue(controllerSource.contains("@PostMapping(\"/refresh\")"));
+        assertTrue(frontendApi.contains("api.post<AuthSessionResponse>('/auth/refresh'"));
+    }
+
+    @Test
     void refreshTokenConsumesOldTokenAndIssuesRotatedSession() {
         MockHttpServletRequest request = new MockHttpServletRequest("POST", "/auth/refresh");
         User user = user();
@@ -67,10 +83,31 @@ class LoginControllerRefreshTest {
         assertEquals(7L, body.get("id"));
         assertEquals("mia", body.get("username"));
         assertEquals("mia@example.com", body.get("email"));
-        assertEquals("5550100", body.get("phone"));
+        assertFalse(body.containsKey("phone"));
         assertEquals("ADMIN", body.get("role"));
         assertEquals("SUPER_ADMIN", body.get("roleCode"));
         verify(tokenBlacklistService).consumeRefreshToken("refresh-old");
+        verify(tokenBlacklistService).storeRefreshToken("refresh-new", "mia");
+    }
+
+    @Test
+    void refreshTokenOmitsRoleCodeForNonAdminUser() {
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/auth/refresh");
+        User user = user();
+        user.setRole("USER");
+        user.setRoleCode("SUPER_ADMIN");
+
+        when(tokenBlacklistService.consumeRefreshToken("refresh-old")).thenReturn("mia");
+        when(userService.findByUsernameOrPhoneOrEmail("mia")).thenReturn(user);
+        when(jwtService.generateToken(any(UserDetailsImpl.class))).thenReturn("access-new");
+        when(tokenBlacklistService.generateRefreshToken()).thenReturn("refresh-new");
+
+        ResponseEntity<?> response = controller.refreshToken(Map.of("refreshToken", "refresh-old"), request);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        Map<?, ?> body = (Map<?, ?>) response.getBody();
+        assertEquals("USER", body.get("role"));
+        assertFalse(body.containsKey("roleCode"));
         verify(tokenBlacklistService).storeRefreshToken("refresh-new", "mia");
     }
 
@@ -92,6 +129,27 @@ class LoginControllerRefreshTest {
         MockHttpServletRequest request = new MockHttpServletRequest("POST", "/auth/refresh");
         User user = user();
         user.setStatus("BANNED");
+
+        when(tokenBlacklistService.consumeRefreshToken("refresh-old")).thenReturn("mia");
+        when(userService.findByUsernameOrPhoneOrEmail("mia")).thenReturn(user);
+
+        ResponseEntity<?> response = controller.refreshToken(Map.of("refreshToken", "refresh-old"), request);
+
+        assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
+        Map<?, ?> body = (Map<?, ?>) response.getBody();
+        assertEquals("Account is disabled", body.get("error"));
+        assertEquals("ACCOUNT_DISABLED", body.get("code"));
+        verify(tokenBlacklistService).revokeRefreshToken("refresh-old");
+        verify(jwtService, never()).generateToken(any(UserDetailsImpl.class));
+        verify(tokenBlacklistService, never()).generateRefreshToken();
+        verify(tokenBlacklistService, never()).storeRefreshToken(any(), any());
+    }
+
+    @Test
+    void refreshTokenRejectsLegacyNullStatusUserAndDoesNotIssueReplacementTokens() {
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/auth/refresh");
+        User user = user();
+        user.setStatus(null);
 
         when(tokenBlacklistService.consumeRefreshToken("refresh-old")).thenReturn("mia");
         when(userService.findByUsernameOrPhoneOrEmail("mia")).thenReturn(user);

@@ -9,6 +9,8 @@ import org.mockito.ArgumentCaptor;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockHttpServletRequest;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -26,6 +28,20 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class SecurityAuditLogServiceTest {
+    @Test
+    void currentAuditLogMappingUsesSecurityAuditLogsTableInsteadOfLegacyAdminAuditEntity() throws Exception {
+        String entity = Files.readString(Path.of("src/main/java/com/example/shop/entity/SecurityAuditLog.java"));
+        String mapper = Files.readString(Path.of("src/main/resources/mapper/SecurityAuditLogMapper.xml"));
+
+        assertFalse(Files.exists(Path.of("src/main/java/com/example/shop/entity/AdminAuditLog.java")));
+        assertTrue(entity.contains("public class SecurityAuditLog"));
+        assertFalse(entity.contains("@Entity"));
+        assertFalse(entity.contains("@Table(name = \"admin_audit_log\")"));
+        assertTrue(mapper.contains("type=\"com.example.shop.entity.SecurityAuditLog\""));
+        assertTrue(mapper.contains("INSERT INTO security_audit_logs"));
+        assertTrue(mapper.contains("FROM security_audit_logs"));
+    }
+
     @Test
     void normalizesControlCharactersBeforeWritingAuditLog() {
         SecurityAuditLogMapper mapper = mock(SecurityAuditLogMapper.class);
@@ -59,6 +75,17 @@ class SecurityAuditLogServiceTest {
         assertEquals("Exported orders with token=******", log.getMessage());
         assertEquals("status=PENDING quick=SLA password=******", log.getMetadata());
         assertFalse(log.getResourceId().contains("\n"));
+    }
+
+    @Test
+    void auditPersistenceFailuresRemainErrorVisibleWithStackTrace() throws Exception {
+        String source = Files.readString(Path.of("src/main/java/com/example/shop/service/SecurityAuditLogService.java"));
+
+        assertTrue(source.contains("catch (RuntimeException e)"));
+        assertTrue(source.contains("log.error(\"Security audit log write failed."));
+        assertTrue(source.contains("resourceId={}\","));
+        assertTrue(source.contains("resourceId, e);"));
+        assertFalse(source.contains("log.warn(\"Security audit log write failed."));
     }
 
     @Test

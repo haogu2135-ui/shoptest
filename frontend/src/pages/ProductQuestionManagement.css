@@ -113,6 +113,15 @@
   width: 260px;
 }
 
+.product-question-management-page__loadAlert {
+  margin-bottom: 16px;
+}
+
+.product-question-management-page__loadAlert .ant-alert-message,
+.product-question-management-page__loadAlert .ant-alert-description {
+  overflow-wrap: anywhere;
+}
+
 .product-question-mobile-list {
   display: none;
 }

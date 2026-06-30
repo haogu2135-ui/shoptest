@@ -8,8 +8,12 @@ public class PaymentResponse extends PaymentCustomerResponse {
     private String refundReference;
 
     public static PaymentResponse from(Payment payment) {
+        return from(payment, null);
+    }
+
+    public static PaymentResponse from(Payment payment, String currency) {
         PaymentResponse response = new PaymentResponse();
-        populateCustomerFields(payment, response);
+        populateCustomerFields(payment, response, currency);
         response.setRefundReference(isRefunded(payment) ? payment.getRefundReference() : null);
         return response;
     }

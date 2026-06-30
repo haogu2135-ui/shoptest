@@ -70,6 +70,8 @@ const ForgotPassword: React.FC = () => {
   const [sentEmailHint, setSentEmailHint] = useState('');
   const [form] = Form.useForm<ForgotPasswordForm>();
   const codeInputRef = useRef<InputRef | null>(null);
+  const resetCodeSendingRef = useRef(false);
+  const resetSubmittingRef = useRef(false);
   const navigate = useNavigate();
   const { t } = useLanguage();
   const { config: appConfig, loading: appConfigLoading } = useAppConfig();
@@ -78,7 +80,12 @@ const ForgotPassword: React.FC = () => {
   const resetLoginInputLabel = `${resetPageLabel}: ${t('pages.auth.username')}`;
   const resetEmailInputLabel = `${resetPageLabel}: ${t('pages.auth.email')}`;
   const resetCodeInputLabel = `${resetPageLabel}: ${t('pages.auth.verificationCode')}`;
-  const resetSendCodeActionLabel = `${resetPageLabel}: ${t('pages.auth.sendCode')}`;
+  const resetCodeActionText = codeSending
+    ? t('pages.auth.emailCodeSending')
+    : sendCodeCountdown > 0
+    ? t('pages.auth.resendIn', { seconds: sendCodeCountdown })
+    : t('pages.auth.sendCode');
+  const resetSendCodeActionLabel = `${resetPageLabel}: ${resetCodeActionText}`;
   const resetNewPasswordInputLabel = `${resetPageLabel}: ${t('pages.auth.newPassword')}`;
   const resetConfirmPasswordInputLabel = `${resetPageLabel}: ${t('pages.auth.confirmPassword')}`;
   const resetSubmitActionLabel = `${resetPageLabel}: ${t('pages.auth.resetPassword')}`;
@@ -115,11 +122,13 @@ const ForgotPassword: React.FC = () => {
   };
 
   const sendResetCode = async () => {
-    if (!emailCodeEnabled) {
-      message.warning(t('pages.auth.emailCodeUnavailable'));
-      return;
-    }
+    if (resetCodeSendingRef.current) return;
+    resetCodeSendingRef.current = true;
     try {
+      if (!emailCodeEnabled) {
+        message.warning(t('pages.auth.emailCodeUnavailable'));
+        return;
+      }
       const { email } = await form.validateFields(['email']);
       const normalizedEmail = normalizeEmail(email);
       form.setFieldValue('email', normalizedEmail);
@@ -145,22 +154,25 @@ const ForgotPassword: React.FC = () => {
           : t('pages.auth.emailCodeSendFailed'));
       }
     } finally {
+      resetCodeSendingRef.current = false;
       setCodeSending(false);
     }
   };
 
   const onFinish = async (values: ForgotPasswordForm) => {
-    if (!emailCodeEnabled) {
-      message.warning(t('pages.auth.emailCodeUnavailable'));
-      return;
-    }
-    const normalizedCode = normalizeEmailCode(values.code);
-    if (normalizedCode.length !== 6) {
-      form.setFields([{ name: 'code', errors: [t('pages.auth.emailCodeLength')] }]);
-      return;
-    }
-    setLoading(true);
+    if (resetSubmittingRef.current) return;
+    resetSubmittingRef.current = true;
     try {
+      if (!emailCodeEnabled) {
+        message.warning(t('pages.auth.emailCodeUnavailable'));
+        return;
+      }
+      const normalizedCode = normalizeEmailCode(values.code);
+      if (normalizedCode.length !== 6) {
+        form.setFields([{ name: 'code', errors: [t('pages.auth.emailCodeLength')] }]);
+        return;
+      }
+      setLoading(true);
       const normalizedEmail = normalizeEmail(values.email);
       const normalizedLogin = normalizePasswordLogin(values.login);
       form.setFieldsValue({ login: normalizedLogin, email: normalizedEmail, code: normalizedCode });
@@ -185,6 +197,7 @@ const ForgotPassword: React.FC = () => {
         message.error(msg);
       }
     } finally {
+      resetSubmittingRef.current = false;
       setLoading(false);
     }
   };
@@ -287,11 +300,7 @@ const ForgotPassword: React.FC = () => {
                   title={resetSendCodeActionLabel}
                   onClick={sendResetCode}
                 >
-                  {codeSending
-                    ? t('pages.auth.emailCodeSending')
-                    : sendCodeCountdown > 0
-                    ? t('pages.auth.resendIn', { seconds: sendCodeCountdown })
-                    : t('pages.auth.sendCode')}
+                  {resetCodeActionText}
                 </Button>
               }
             />
@@ -324,7 +333,7 @@ const ForgotPassword: React.FC = () => {
             <Input.Password prefix={<LockOutlined />} placeholder={t('pages.auth.confirmPassword')} size="large" autoComplete="new-password" aria-label={resetConfirmPasswordInputLabel} title={resetConfirmPasswordInputLabel} />
           </Form.Item>
           <Form.Item>
-            <Button type="primary" htmlType="submit" block size="large" loading={loading} disabled={codeSending || !emailCodeEnabled} aria-label={resetSubmitActionLabel} title={resetSubmitActionLabel}>
+            <Button type="primary" htmlType="submit" block size="large" loading={loading} disabled={loading || codeSending || !emailCodeEnabled} aria-label={resetSubmitActionLabel} title={resetSubmitActionLabel}>
               {t('pages.auth.resetPassword')}
             </Button>
           </Form.Item>

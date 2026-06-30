@@ -217,6 +217,10 @@
   white-space: pre-wrap;
 }
 
+.notifications-page__staleAlert {
+  margin-bottom: 16px;
+}
+
 .notifications-page__loadMore {
   display: flex;
   align-items: center;

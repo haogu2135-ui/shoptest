@@ -97,11 +97,25 @@ class ProductControllerPaginationTest {
     }
 
     @Test
+    void publicProductListAcceptsSearchAliasForLiveApiCompatibility() throws Exception {
+        when(productService.findPublicProductPage(any())).thenReturn(new PageImpl<>(List.of()));
+
+        mockMvc.perform(get("/products").param("search", "feeder"))
+                .andExpect(status().isOk());
+
+        ArgumentCaptor<ProductListQuery> captor = ArgumentCaptor.forClass(ProductListQuery.class);
+        verify(productService).findPublicProductPage(captor.capture());
+        assertEquals("feeder", captor.getValue().getKeyword());
+    }
+
+    @Test
     void publicProductListUsesLightweightItemsInsteadOfDetailPayload() throws Exception {
         com.example.shop.entity.Product product = new com.example.shop.entity.Product();
         product.setId(9L);
         product.setName("Harness");
-        product.setPrice(new java.math.BigDecimal("19.99"));
+        product.setPrice(new java.math.BigDecimal("75.00"));
+        product.setOriginalPrice(new java.math.BigDecimal("100.00"));
+        product.setDiscount(47);
         product.setStock(8);
         product.setCategoryId(3L);
         product.setDescription("Everyday harness");
@@ -126,6 +140,8 @@ class ProductControllerPaginationTest {
         mockMvc.perform(get("/products").param("page", "0").param("size", "24"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[0].id").value(9))
+                .andExpect(jsonPath("$.items[0].discount").value(25))
+                .andExpect(jsonPath("$.items[0].effectiveDiscountPercent").value(25))
                 .andExpect(jsonPath("$.items[0].specifications.Material").value("Nylon"))
                 .andExpect(jsonPath("$.items[0].optionGroups[0].name").value("Size"))
                 .andExpect(jsonPath("$.items[0].optionGroups[0].values[0]").value("Small"))

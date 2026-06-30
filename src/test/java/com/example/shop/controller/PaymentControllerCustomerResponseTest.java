@@ -30,6 +30,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class PaymentControllerCustomerResponseTest {
@@ -127,6 +128,27 @@ class PaymentControllerCustomerResponseTest {
         PaymentCustomerResponse body = assertInstanceOf(PaymentCustomerResponse.class, response.getBody());
         assertFalse(body instanceof PaymentResponse);
         assertNoRefundReference(body);
+    }
+
+    @Test
+    void customerSyncOrderPaymentsUsesBatchServiceAndDoesNotExposeRefundReference() {
+        Order order = customerOrder();
+        Payment payment = refundedPayment();
+        Authentication authentication = customerAuthentication();
+
+        when(orderService.getOrderById(42L)).thenReturn(order);
+        when(paymentService.syncPaymentsByOrderId(42L)).thenReturn(List.of(payment));
+
+        ResponseEntity<List<PaymentCustomerResponse>> response = controller.syncOrderPayments(
+                42L,
+                authentication,
+                new MockHttpServletRequest("POST", "/payments/order/42/sync"));
+
+        assertEquals(200, response.getStatusCodeValue());
+        assertNotNull(response.getBody());
+        assertEquals(1, response.getBody().size());
+        assertNoRefundReference(response.getBody().get(0));
+        verify(paymentService).syncPaymentsByOrderId(42L);
     }
 
     private void assertNoRefundReference(PaymentCustomerResponse body) {

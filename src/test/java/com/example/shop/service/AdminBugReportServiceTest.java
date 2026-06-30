@@ -9,11 +9,18 @@ import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
@@ -25,7 +32,8 @@ import static org.mockito.Mockito.when;
 
 class AdminBugReportServiceTest {
     private final JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
-    private final AdminBugReportService service = new AdminBugReportService(jdbcTemplate);
+    private final RuntimeConfigService runtimeConfig = mock(RuntimeConfigService.class);
+    private final AdminBugReportService service = new AdminBugReportService(jdbcTemplate, runtimeConfig);
 
     @Test
     void summaryUsesSingleAggregateQueryForStatusSeverityAndScanCounts() {
@@ -90,12 +98,32 @@ class AdminBugReportServiceTest {
         service.findById(42L);
 
         verify(jdbcTemplate).query(
-                argThat(sql -> sql.startsWith("SELECT id, title, description")
+                argThat(sql -> sql.startsWith("SELECT id, version, title, description")
                         && sql.contains("reproduction_steps")
                         && sql.contains("scan_note")
                         && !sql.contains("SELECT *")),
                 any(RowMapper.class),
                 eq(42L));
+    }
+
+    @Test
+    void optimisticLockingUsesVersionColumnForBugMutations() throws Exception {
+        String serviceSource = Files.readString(
+                Path.of("src/main/java/com/example/shop/service/AdminBugReportService.java"),
+                StandardCharsets.UTF_8);
+        String schemaConfigSource = Files.readString(
+                Path.of("src/main/java/com/example/shop/config/AdminBugReportSchemaConfig.java"),
+                StandardCharsets.UTF_8);
+        String schemaSource = Files.readString(Path.of("src/main/resources/schema.sql"), StandardCharsets.UTF_8);
+        String migrationSource = Files.readString(Path.of("src/main/resources/db/migration/V1__init.sql"), StandardCharsets.UTF_8);
+
+        assertTrue(serviceSource.contains("private static final String BUG_DETAIL_COLUMNS = \"id, version,"));
+        assertTrue(serviceSource.contains("version = version + 1, updated_at = NOW() WHERE id = ? AND version = ?"));
+        assertFalse(serviceSource.contains("WHERE id = ? AND status = ?"));
+        assertTrue(schemaConfigSource.contains("+ \"version BIGINT NOT NULL DEFAULT 0,\""));
+        assertTrue(schemaConfigSource.contains("ensureColumn(\"version\", \"BIGINT NOT NULL DEFAULT 0\")"));
+        assertTrue(schemaSource.contains("version BIGINT NOT NULL DEFAULT 0"));
+        assertTrue(migrationSource.contains("version BIGINT NOT NULL DEFAULT 0"));
     }
 
     @Test
@@ -105,7 +133,7 @@ class AdminBugReportServiceTest {
         AdminBugReport updated = existingBug(42L);
         updated.setScanNote("First note\n\nSecond note");
         when(jdbcTemplate.query(
-                eq("SELECT id, title, description, module, severity, priority, status, page_url, environment, reproduction_steps, expected_result, actual_result, attachment_urls, reporter_id, reporter_name, assigned_to, scan_note, fix_summary, regression_note, last_scanned_at, fixed_at, fixed_by, regression_at, regression_by, closed_at, created_at, updated_at FROM admin_bug_reports WHERE id = ?"),
+                eq("SELECT id, version, title, description, module, severity, priority, status, page_url, environment, reproduction_steps, expected_result, actual_result, attachment_urls, reporter_id, reporter_name, assigned_to, scan_note, fix_summary, regression_note, last_scanned_at, fixed_at, fixed_by, regression_at, regression_by, closed_at, created_at, updated_at FROM admin_bug_reports WHERE id = ?"),
                 any(RowMapper.class),
                 eq(42L))).thenReturn(List.of(existing), List.of(updated));
         when(jdbcTemplate.update(
@@ -135,7 +163,7 @@ class AdminBugReportServiceTest {
                 any(),
                 any(),
                 eq(42L),
-                eq(AdminBugReportService.STATUS_OPEN));
+                eq(existing.getVersion()));
     }
 
     @Test
@@ -147,7 +175,7 @@ class AdminBugReportServiceTest {
         updated.setScanNote("Existing scan note\n\nLegacy note");
         updated.setFixSummary("Explicit fix note");
         when(jdbcTemplate.query(
-                startsWith("SELECT id, title, description"),
+                startsWith("SELECT id, version, title, description"),
                 any(RowMapper.class),
                 eq(42L))).thenReturn(List.of(existing), List.of(updated));
         when(jdbcTemplate.update(
@@ -178,7 +206,7 @@ class AdminBugReportServiceTest {
                 any(),
                 any(),
                 eq(42L),
-                eq(AdminBugReportService.STATUS_OPEN));
+                eq(existing.getVersion()));
     }
 
     @Test
@@ -186,7 +214,7 @@ class AdminBugReportServiceTest {
         AdminBugReport existing = existingBug(42L);
         AdminBugReportRequest request = updateRequest();
         when(jdbcTemplate.query(
-                startsWith("SELECT id, title, description"),
+                startsWith("SELECT id, version, title, description"),
                 any(RowMapper.class),
                 eq(42L))).thenReturn(List.of(existing));
         when(jdbcTemplate.update(startsWith("UPDATE admin_bug_reports SET"), any(Object[].class))).thenReturn(0);
@@ -194,12 +222,58 @@ class AdminBugReportServiceTest {
         IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
                 () -> service.update(42L, request, "codex"));
 
-        assertEquals("Bug report not found", error.getMessage());
+        assertEquals("Bug report changed, reload and try again", error.getMessage());
+    }
+
+    @Test
+    void bugMutationsRejectStatusFieldInsteadOfSilentlyIgnoringIt() {
+        AdminBugReportRequest createRequest = updateRequest();
+        createRequest.setStatus(AdminBugReportService.STATUS_CLOSED);
+
+        IllegalArgumentException createError = assertThrows(IllegalArgumentException.class,
+                () -> service.create(createRequest, 7L, "codex"));
+
+        assertEquals("Use the bug status endpoint to change status", createError.getMessage());
+
+        AdminBugReport existing = existingBug(42L);
+        AdminBugReportRequest updateRequest = updateRequest();
+        updateRequest.setStatus(AdminBugReportService.STATUS_CLOSED);
+        when(jdbcTemplate.query(
+                startsWith("SELECT id, version, title, description"),
+                any(RowMapper.class),
+                eq(42L))).thenReturn(List.of(existing));
+
+        IllegalArgumentException updateError = assertThrows(IllegalArgumentException.class,
+                () -> service.update(42L, updateRequest, "codex"));
+
+        assertEquals("Use the bug status endpoint to change status", updateError.getMessage());
+    }
+
+    @Test
+    void bugReferenceUrlsRejectExternalOriginsAndAttachmentOverflow() {
+        AdminBugReportRequest externalUrl = updateRequest();
+        externalUrl.setPageUrl("https://evil.example/admin/bugs");
+
+        IllegalArgumentException externalError = assertThrows(IllegalArgumentException.class,
+                () -> service.create(externalUrl, 7L, "codex"));
+
+        assertEquals("Unsupported bug page URL", externalError.getMessage());
+
+        AdminBugReportRequest tooManyAttachments = updateRequest();
+        tooManyAttachments.setAttachmentUrls(IntStream.range(0, 21)
+                .mapToObj(index -> "/admin/bugs/attachments/" + index + ".png")
+                .collect(Collectors.joining("\n")));
+
+        IllegalArgumentException attachmentError = assertThrows(IllegalArgumentException.class,
+                () -> service.create(tooManyAttachments, 7L, "codex"));
+
+        assertEquals("Too many bug attachment URLs", attachmentError.getMessage());
     }
 
     private AdminBugReport existingBug(Long id) {
         AdminBugReport bug = new AdminBugReport();
         bug.setId(id);
+        bug.setVersion(3L);
         bug.setTitle("Old title");
         bug.setDescription("Old description");
         bug.setModule("GENERAL");

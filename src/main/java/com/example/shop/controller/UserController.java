@@ -4,6 +4,7 @@ import com.example.shop.dto.UpdateProfileRequest;
 import com.example.shop.dto.UpdatePasswordRequest;
 import com.example.shop.dto.UserProfileResponse;
 import com.example.shop.entity.User;
+import com.example.shop.config.AdminBootstrapTokenPolicy;
 import com.example.shop.service.ClientIpResolver;
 import com.example.shop.service.EmailLoginService;
 import com.example.shop.service.EmailLoginService.EmailLoginException;
@@ -34,6 +35,8 @@ import java.util.Map;
 @RequestMapping("/users")
 @RequiredArgsConstructor
 public class UserController {
+    private static final String ADMIN_BOOTSTRAP_FAILURE_MESSAGE = "Admin bootstrap failed";
+
     private final UserService userService;
     private final RuntimeConfigService runtimeConfig;
     private final SecurityAuditLogService auditLogService;
@@ -154,12 +157,26 @@ public class UserController {
             auditLogService.record("ADMIN_BOOTSTRAP", "SUCCESS", null, request.getUsername().trim(),
                     "ADMIN", "USER", null, httpRequest, "Admin account created",
                     "username=" + request.getUsername().trim());
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             auditLogService.record("ADMIN_BOOTSTRAP", "FAILURE", null, safeBootstrapUsername(request),
                     null, "USER", null, httpRequest, "Admin bootstrap failed: " + e.getMessage(), null);
             ipBlacklistService.recordLoginFailure(httpRequest, "admin-bootstrap failed");
-            throw e;
+            throw sanitizeAdminBootstrapFailure(e);
         }
+    }
+
+    private RuntimeException sanitizeAdminBootstrapFailure(RuntimeException exception) {
+        if (exception instanceof ResponseStatusException) {
+            ResponseStatusException responseStatusException = (ResponseStatusException) exception;
+            if (responseStatusException.getStatus().is4xxClientError()) {
+                return new ResponseStatusException(HttpStatus.FORBIDDEN, ADMIN_BOOTSTRAP_FAILURE_MESSAGE);
+            }
+            return exception;
+        }
+        if (exception instanceof IllegalArgumentException || exception instanceof IllegalStateException) {
+            return new ResponseStatusException(HttpStatus.FORBIDDEN, ADMIN_BOOTSTRAP_FAILURE_MESSAGE);
+        }
+        return exception;
     }
 
     private String safeBootstrapUsername(AdminBootstrapRequest request) {
@@ -175,7 +192,12 @@ public class UserController {
         if (isBlank(adminBootstrapToken)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Admin bootstrap is not configured");
         }
-        if (isBlank(bootstrapToken) || !constantTimeEquals(adminBootstrapToken, bootstrapToken.trim())) {
+        String normalizedConfiguredToken = AdminBootstrapTokenPolicy.normalize(adminBootstrapToken);
+        if (!AdminBootstrapTokenPolicy.isStrongConfiguredToken(normalizedConfiguredToken)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Admin bootstrap token is not strong enough");
+        }
+        if (isBlank(bootstrapToken)
+                || !constantTimeEquals(normalizedConfiguredToken, AdminBootstrapTokenPolicy.normalize(bootstrapToken))) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Invalid admin bootstrap token");
         }
     }

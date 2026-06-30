@@ -33,14 +33,38 @@ export const roleColor = (role?: string | null) => {
   const normalized = normalizeRole(role);
   if (normalized === SUPER_ADMIN_ROLE) return 'gold';
   if (normalized === 'ADMIN') return 'volcano';
-  return 'blue';
+  if (normalized === 'USER') return 'blue';
+  return 'default';
 };
 
 export const ALERTS_PURGE_PERMISSION = 'alerts:purge';
 export const ALERTS_SELF_CHECK_PERMISSION = 'alerts:self-check';
 export const ALERTS_ACKNOWLEDGE_PERMISSION = 'alerts:acknowledge';
 export const ALERTS_RESOLVE_PERMISSION = 'alerts:resolve';
+export const DASHBOARD_PAGE_PERMISSION = 'dashboard';
+export const PRODUCTS_PAGE_PERMISSION = 'products';
+export const BRANDS_PAGE_PERMISSION = 'brands';
+export const CATEGORIES_PAGE_PERMISSION = 'categories';
+export const ORDERS_PAGE_PERMISSION = 'orders';
+export const LOGISTICS_CARRIERS_PAGE_PERMISSION = 'logistics-carriers';
+export const USERS_PAGE_PERMISSION = 'users';
+export const PERMISSIONS_PAGE_PERMISSION = 'permissions';
+export const REVIEWS_PAGE_PERMISSION = 'reviews';
+export const QUESTIONS_PAGE_PERMISSION = 'questions';
+export const COUPONS_PAGE_PERMISSION = 'coupons';
+export const NOTIFICATIONS_PAGE_PERMISSION = 'notifications';
+export const ANNOUNCEMENTS_PAGE_PERMISSION = 'announcements';
+export const AUDIT_LOGS_PAGE_PERMISSION = 'audit-logs';
+export const ALERTS_PAGE_PERMISSION = 'alerts';
 export const BUGS_PAGE_PERMISSION = 'bugs';
+export const IP_BLACKLIST_PAGE_PERMISSION = 'ip-blacklist';
+export const LOGS_PAGE_PERMISSION = 'logs';
+export const SUPPORT_PAGE_PERMISSION = 'support';
+export const PET_GALLERY_PAGE_PERMISSION = 'pet-gallery';
+export const REGISTRY_PAGE_PERMISSION = 'registry';
+export const CONFIG_CENTER_PAGE_PERMISSION = 'config-center';
+export const TRAFFIC_CONTROL_PAGE_PERMISSION = 'traffic-control';
+export const SYSTEM_PAGE_PERMISSION = 'system';
 export const BUGS_READ_PERMISSION = 'bugs:read';
 export const BUGS_WRITE_PERMISSION = 'bugs:write';
 export const BUGS_STATUS_PERMISSION = 'bugs:status';
@@ -165,30 +189,30 @@ export const ADMIN_ACTION_PERMISSIONS = [
 ];
 
 export const ADMIN_NAV_PAGE_PERMISSIONS = [
-  'dashboard',
-  'products',
-  'brands',
-  'categories',
-  'orders',
-  'logistics-carriers',
-  'users',
-  'permissions',
-  'reviews',
-  'questions',
-  'coupons',
-  'notifications',
-  'announcements',
-  'audit-logs',
-  'alerts',
+  DASHBOARD_PAGE_PERMISSION,
+  PRODUCTS_PAGE_PERMISSION,
+  BRANDS_PAGE_PERMISSION,
+  CATEGORIES_PAGE_PERMISSION,
+  ORDERS_PAGE_PERMISSION,
+  LOGISTICS_CARRIERS_PAGE_PERMISSION,
+  USERS_PAGE_PERMISSION,
+  PERMISSIONS_PAGE_PERMISSION,
+  REVIEWS_PAGE_PERMISSION,
+  QUESTIONS_PAGE_PERMISSION,
+  COUPONS_PAGE_PERMISSION,
+  NOTIFICATIONS_PAGE_PERMISSION,
+  ANNOUNCEMENTS_PAGE_PERMISSION,
+  AUDIT_LOGS_PAGE_PERMISSION,
+  ALERTS_PAGE_PERMISSION,
   BUGS_PAGE_PERMISSION,
-  'ip-blacklist',
-  'logs',
-  'support',
-  'pet-gallery',
-  'registry',
-  'config-center',
-  'traffic-control',
-  'system',
+  IP_BLACKLIST_PAGE_PERMISSION,
+  LOGS_PAGE_PERMISSION,
+  SUPPORT_PAGE_PERMISSION,
+  PET_GALLERY_PAGE_PERMISSION,
+  REGISTRY_PAGE_PERMISSION,
+  CONFIG_CENTER_PAGE_PERMISSION,
+  TRAFFIC_CONTROL_PAGE_PERMISSION,
+  SYSTEM_PAGE_PERMISSION,
 ];
 
 export const ADMIN_PAGE_PERMISSIONS = [

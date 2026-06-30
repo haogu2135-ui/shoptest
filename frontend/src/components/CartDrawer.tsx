@@ -1,6 +1,6 @@
 import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Button, Drawer, Empty, InputNumber, List, message, Popconfirm, Progress, Space, Tag, Typography } from 'antd';
-import { AppleOutlined, CheckCircleOutlined, ClockCircleOutlined, CreditCardOutlined, DeleteOutlined, GoogleOutlined, ShoppingOutlined, WalletOutlined } from '@ant-design/icons';
+import { Alert, Button, Drawer, Empty, InputNumber, List, message, Popconfirm, Progress, Space, Tag, Typography } from 'antd';
+import { AppleOutlined, CheckCircleOutlined, ClockCircleOutlined, CreditCardOutlined, DeleteOutlined, GoogleOutlined, ReloadOutlined, ShoppingOutlined, WalletOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { cartApi } from '../api';
 import type { CartItem, ProductPublic as Product } from '../types';
@@ -73,6 +73,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState('');
   const [checkoutSubmitting, setCheckoutSubmitting] = useState(false);
   const [checkoutPaymentSubmitting, setCheckoutPaymentSubmitting] = useState<string | null>(null);
   const [updatingQuantityIds, setUpdatingQuantityIds] = useState<Record<number, boolean>>({});
@@ -99,7 +100,10 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
     loadCartRequestRef.current = requestId;
     const authenticated = hasAuthenticatedCartSession();
     if (!authenticated) {
-      if (mountedRef.current) setItems(getGuestCartItems());
+      if (mountedRef.current) {
+        setItems(getGuestCartItems());
+        setLoadError('');
+      }
       return;
     }
     if (mountedRef.current) setLoading(true);
@@ -107,12 +111,16 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
       const res = await cartApi.getItems(0);
       if (!mountedRef.current || loadCartRequestRef.current !== requestId) return;
       setItems(res.data);
+      setLoadError('');
     } catch (error: unknown) {
       if (mountedRef.current && loadCartRequestRef.current === requestId) {
         if (isAuthExpiredError(error)) {
           setItems(getGuestCartItems());
+          setLoadError('');
         } else {
-          message.error(getApiErrorMessage(error, t('pages.cart.fetchFailed'), language));
+          const localizedError = getApiErrorMessage(error, t('pages.cart.fetchFailed'), language);
+          setLoadError(localizedError);
+          message.error(localizedError);
         }
       }
     } finally {
@@ -230,6 +238,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
 
   const checkoutItems = useMemo(() => items.filter(canCheckout), [items]);
   const blockedItems = useMemo(() => items.filter((item) => !canCheckout(item)), [items]);
+  const hasStaleCartData = Boolean(loadError && items.length > 0);
   const subtotal = useMemo(() => roundCartMoney(
     checkoutItems.reduce((sum, item) => sum + getCartLineAmount(item), 0),
   ), [checkoutItems]);
@@ -268,13 +277,15 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
     : remaining > 0
       ? freeShippingRemainingText(remaining)
       : t('pages.cart.shippingCalculatedAtCheckout');
-  const drawerReady = checkoutItems.length > 0 && blockedCount === 0;
+  const drawerReady = checkoutItems.length > 0 && blockedCount === 0 && !hasStaleCartData;
   const shippingStatusText = [
-    drawerReady ? t('pages.cart.drawerReadyTitle') : t('pages.cart.drawerReviewTitle'),
+    hasStaleCartData ? t('pages.cart.staleDataTitle') : drawerReady ? t('pages.cart.drawerReadyTitle') : t('pages.cart.drawerReviewTitle'),
     t('pages.cart.drawerReadyText', { count: checkoutUnitCount, blocked: blockedCount, low: lowStockCount }),
     ...(hasPendingQuantityUpdates ? [t('pages.cart.drawerSyncingQuantity', { count: pendingQuantityCount })] : []),
   ].join(' · ');
-  const expressHint = checkoutItems.length === 0
+  const expressHint = hasStaleCartData
+    ? t('pages.cart.staleDataWarning')
+    : checkoutItems.length === 0
     ? t('pages.cart.drawerExpressEmpty')
     : blockedCount > 0
       ? t('pages.cart.drawerExpressBlocked', { count: blockedCount })
@@ -303,6 +314,10 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
   ];
 
   const updateQuantity = (item: CartItem, quantity: number) => {
+    if (hasStaleCartData) {
+      message.warning(t('pages.cart.staleDataWarning'));
+      return;
+    }
     const normalizedQuantity = normalizeCartQuantity(item, quantity);
     const authenticated = hasAuthenticatedCartSession();
     if (!authenticated) {
@@ -315,6 +330,10 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
   };
 
   const removeItem = async (item: CartItem) => {
+    if (hasStaleCartData) {
+      message.warning(t('pages.cart.staleDataWarning'));
+      return;
+    }
     cancelQuantitySync([item.id]);
     try {
       const authenticated = hasAuthenticatedCartSession();
@@ -333,6 +352,10 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
   };
 
   const saveForLater = async (item: CartItem) => {
+    if (hasStaleCartData) {
+      message.warning(t('pages.cart.staleDataWarning'));
+      return;
+    }
     if (savingForLaterIds[item.id]) return;
     cancelQuantitySync([item.id]);
     const previousSavedItems = getSavedForLaterItems();
@@ -370,6 +393,10 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
 
   const goCheckout = async (paymentMethod?: string) => {
     if (checkoutSubmitting) return;
+    if (hasStaleCartData) {
+      message.warning(t('pages.cart.staleDataWarning'));
+      return;
+    }
     if (checkoutItems.length === 0) {
       message.warning(t('pages.cart.chooseItems'));
       return;
@@ -403,6 +430,10 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
 
   const clearBlockedItems = async () => {
     if (blockedItems.length === 0) return;
+    if (hasStaleCartData) {
+      message.warning(t('pages.cart.staleDataWarning'));
+      return;
+    }
     try {
       const authenticated = hasAuthenticatedCartSession();
       if (authenticated) {
@@ -435,6 +466,10 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
   };
 
   const addSuggestedProduct = async (product: Product) => {
+    if (hasStaleCartData) {
+      message.warning(t('pages.cart.staleDataWarning'));
+      return;
+    }
     const authenticated = hasAuthenticatedCartSession();
     if (authenticated) {
       await cartApi.addItem(0, product.id, 1);
@@ -453,6 +488,17 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
   const drawerNextAction = (() => {
     if (items.length === 0) {
       return null;
+    }
+
+    if (hasStaleCartData) {
+      return {
+        tone: 'refresh',
+        icon: <ReloadOutlined />,
+        title: t('pages.cart.nextActionRefreshTitle'),
+        text: t('pages.cart.nextActionRefreshText'),
+        label: t('common.retry'),
+        onClick: () => loadCart(),
+      };
     }
 
     if (blockedCount > 0) {
@@ -499,7 +545,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
     <Drawer
       title={t('pages.cart.yourCart')}
       placement="right"
-      width="min(420px, 100vw)"
+      width="min(420px, 100%)"
       open={open}
       onClose={closeDrawer}
       rootClassName="cart-drawer__root"
@@ -564,7 +610,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
                   size="small"
                   aria-label={clearBlockedActionLabel}
                   title={clearBlockedActionLabel}
-                  disabled={checkoutSubmitting}
+                  disabled={checkoutSubmitting || hasStaleCartData}
                 >
                   {drawerNextAction.label}
                 </Button>
@@ -596,12 +642,12 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
               okButtonProps={{ danger: true, 'aria-label': clearBlockedActionLabel, title: clearBlockedActionLabel }}
               cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${clearBlockedActionLabel}`, title: `${t('common.cancel')}: ${clearBlockedActionLabel}` }}
             >
-              <Button size="small" aria-label={clearBlockedActionLabel} title={clearBlockedActionLabel}>{t('pages.cart.drawerClearBlocked')}</Button>
+              <Button size="small" aria-label={clearBlockedActionLabel} title={clearBlockedActionLabel} disabled={hasStaleCartData}>{t('pages.cart.drawerClearBlocked')}</Button>
             </Popconfirm>
           </div>
         ) : null}
 
-        {checkoutItems.length > 0 && benefitTarget ? (
+        {checkoutItems.length > 0 && benefitTarget && !hasStaleCartData ? (
           <Suspense fallback={null}>
             <AddOnAssistant
               cartProductIds={checkoutItems.map((item) => item.productId)}
@@ -647,13 +693,23 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
           </details>
         ) : null}
 
-        {items.length === 0 ? (
+        {loadError ? (
+          <Alert
+            type="error"
+            showIcon
+            message={t('pages.cart.fetchFailed')}
+            description={t('common.loadFailedRetry')}
+            action={<Button size="small" onClick={() => loadCart()}>{t('common.retry')}</Button>}
+          />
+        ) : null}
+
+        {items.length === 0 && !loadError ? (
           <Empty image={<ShoppingOutlined style={{ fontSize: 54, color: '#ccc' }} />} description={t('pages.cart.empty')}>
             <Button type="primary" aria-label={emptyDrawerBrowseActionLabel} title={emptyDrawerBrowseActionLabel} onClick={() => { setOpen(false); navigate('/products'); }}>
               {t('pages.cart.browse')}
             </Button>
           </Empty>
-        ) : (
+        ) : items.length > 0 ? (
           <List
             loading={loading}
             dataSource={items}
@@ -673,7 +729,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
                     className="cart-drawer__itemAction cart-drawer__itemAction--save"
                     icon={<ClockCircleOutlined />}
                     loading={savingForLaterIds[item.id]}
-                    disabled={savingForLaterIds[item.id]}
+                    disabled={savingForLaterIds[item.id] || hasStaleCartData}
                     aria-label={saveActionLabel}
                     title={saveActionLabel}
                     onClick={() => saveForLater(item)}
@@ -690,7 +746,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
                     okButtonProps={{ danger: true, 'aria-label': deleteActionLabel, title: deleteActionLabel }}
                     cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${deleteActionLabel}`, title: `${t('common.cancel')}: ${deleteActionLabel}` }}
                   >
-                    <Button type="link" danger className="cart-drawer__itemAction cart-drawer__itemAction--delete" icon={<DeleteOutlined />} aria-label={deleteActionLabel} title={deleteActionLabel}>
+                    <Button type="link" danger className="cart-drawer__itemAction cart-drawer__itemAction--delete" icon={<DeleteOutlined />} aria-label={deleteActionLabel} title={deleteActionLabel} disabled={hasStaleCartData}>
                       {t('common.delete')}
                     </Button>
                   </Popconfirm>,
@@ -734,7 +790,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
                           max={getCartQuantityLimit(item.stock)}
                           size="small"
                           value={item.quantity}
-                          disabled={!isAvailable(item)}
+                          disabled={!isAvailable(item) || hasStaleCartData}
                           status={updatingQuantityIds[item.id] ? 'warning' : undefined}
                           aria-label={`${t('common.quantity')}: ${itemName}`}
                           title={`${t('common.quantity')}: ${itemName}`}
@@ -753,9 +809,9 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
               );
             }}
           />
-        )}
+        ) : null}
 
-        {open && items.length > 0 ? (
+        {open && items.length > 0 && !hasStaleCartData ? (
           <Suspense fallback={null}>
             <PetPersonalizedAssistant
               variant="compact"
@@ -782,7 +838,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
               aria-label={checkoutDrawerActionLabel}
               title={checkoutDrawerActionLabel}
               loading={checkoutPaymentSubmitting === 'standard'}
-              disabled={checkoutItems.length === 0 || checkoutSubmitting}
+              disabled={checkoutItems.length === 0 || checkoutSubmitting || hasStaleCartData}
             >
               {checkoutSubmitting && hasPendingQuantityUpdates ? t('pages.cart.checkoutSyncing') : t('pages.cart.checkout')}
             </Button>

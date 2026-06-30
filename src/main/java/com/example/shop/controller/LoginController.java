@@ -12,6 +12,7 @@ import com.example.shop.service.TokenBlacklistService;
 import com.example.shop.service.UserService;
 import com.example.shop.service.SecurityAuditLogService;
 import com.example.shop.security.JwtService;
+import com.example.shop.security.UserAccountStatusPolicy;
 import com.example.shop.security.UserDetailsImpl;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -92,18 +93,30 @@ public class LoginController {
                 )
             );
 
-            SecurityContextHolder.getContext().setAuthentication(authentication);
             UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
-            String jwt = jwtService.generateToken(userDetails);
-            String refreshToken = tokenBlacklistService.generateRefreshToken();
-            String accountKey = normalizeLogin(userDetails.getUsername());
-            tokenBlacklistService.storeRefreshToken(refreshToken, accountKey);
+            User user = userService.findById(userDetails.getId());
+            if (!isActiveUser(user)) {
+                auditLogService.record("LOGIN", "BLOCKED",
+                        userDetails.getId(),
+                        userDetails.getUsername(),
+                        user != null ? user.getRole() : null,
+                        "USER",
+                        userDetails.getId(),
+                        request,
+                        "User login blocked for inactive account",
+                        "status=" + safe(user != null ? user.getStatus() : null));
+                return disabledAccountResponse();
+            }
 
             // Clear login failures on successful login
             tokenBlacklistService.clearLoginFailures(clientIp);
             clearAccountFailureKeys(login, loginAccount);
 
-            User user = userService.findById(userDetails.getId());
+            SecurityContextHolder.getContext().setAuthentication(authentication);
+            String jwt = jwtService.generateToken(userDetails);
+            String refreshToken = tokenBlacklistService.generateRefreshToken();
+            String accountKey = normalizeLogin(userDetails.getUsername());
+            tokenBlacklistService.storeRefreshToken(refreshToken, accountKey);
 
             auditLogService.record("LOGIN", "SUCCESS",
                     userDetails.getId(),
@@ -205,6 +218,18 @@ public class LoginController {
         }
         try {
             User user = emailLoginService.verifyLoginCode(loginRequest.getEmail(), loginRequest.getCode(), clientKey(request));
+            if (!isActiveUser(user)) {
+                auditLogService.record("EMAIL_LOGIN", "BLOCKED",
+                        user != null ? user.getId() : null,
+                        user != null ? user.getUsername() : safe(loginRequest.getEmail()),
+                        user != null ? user.getRole() : null,
+                        "USER",
+                        user != null ? user.getId() : null,
+                        request,
+                        "Email login blocked for inactive account",
+                        "status=" + safe(user != null ? user.getStatus() : null));
+                return disabledAccountResponse();
+            }
             UserDetailsImpl userDetails = UserDetailsImpl.build(user);
             String jwt = jwtService.generateToken(userDetails);
             String refreshToken = tokenBlacklistService.generateRefreshToken();
@@ -310,10 +335,7 @@ public class LoginController {
                     user.getId(), user.getUsername(), user.getRole(),
                     "USER", user.getId(), request, "Token refresh blocked for inactive account",
                     "status=" + safe(user.getStatus()));
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(Map.of(
-                            "error", "Account is disabled",
-                            "code", "ACCOUNT_DISABLED"));
+            return disabledAccountResponse();
         }
         UserDetailsImpl userDetails = UserDetailsImpl.build(user);
         String newAccessToken = jwtService.generateToken(userDetails);
@@ -341,11 +363,18 @@ public class LoginController {
     }
 
     private boolean isActiveUser(User user) {
-        return user != null && "ACTIVE".equalsIgnoreCase(safe(user.getStatus()));
+        return UserAccountStatusPolicy.canIssueUserSession(user);
     }
 
     private ResponseEntity<Map<String, String>> invalidLoginResponse() {
         return ResponseEntity.badRequest().body(Map.of("error", INVALID_LOGIN_MESSAGE));
+    }
+
+    private ResponseEntity<Map<String, String>> disabledAccountResponse() {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(Map.of(
+                        "error", "Account is disabled",
+                        "code", "ACCOUNT_DISABLED"));
     }
 
     private void runAuthenticationTimingPadding(String authenticationLogin, String password) {
@@ -420,10 +449,18 @@ public class LoginController {
         response.put("refreshToken", refreshToken);
         response.put("id", userDetails.getId());
         response.put("username", userDetails.getUsername());
-        response.put("email", userDetails.getEmail());
-        response.put("phone", user != null ? user.getPhone() : null);
         response.put("role", user != null ? user.getRole() : null);
-        response.put("roleCode", user != null ? user.getRoleCode() : null);
+        if (shouldExposeRoleCode(user)) {
+            response.put("roleCode", user.getRoleCode());
+        }
         return response;
+    }
+
+    private static boolean shouldExposeRoleCode(User user) {
+        if (user == null || user.getRole() == null) {
+            return false;
+        }
+        String role = user.getRole().trim();
+        return "ADMIN".equalsIgnoreCase(role) || "SUPER_ADMIN".equalsIgnoreCase(role);
     }
 }

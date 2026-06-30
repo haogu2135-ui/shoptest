@@ -17,14 +17,6 @@ import { reportNonBlockingError } from '../utils/nonBlockingError';
 
 const productTileImageSizes = '(max-width: 575px) 50vw, (max-width: 991px) 33vw, 17vw';
 const discoveryTileImageSizes = '(max-width: 575px) 50vw, (max-width: 991px) 33vw, 25vw';
-const fallbackImages = [
-  'https://images.unsplash.com/photo-1601758125946-6ec2ef64daf8?auto=format&fit=crop&w=900&q=80',
-  'https://images.unsplash.com/photo-1583337130417-3346a1be7dee?auto=format&fit=crop&w=900&q=80',
-  'https://images.unsplash.com/photo-1548199973-03cce0bbc87b?auto=format&fit=crop&w=900&q=80',
-  'https://images.unsplash.com/photo-1592194996308-7b43878e84a6?auto=format&fit=crop&w=900&q=80',
-  'https://images.unsplash.com/photo-1601758177266-bc599de87707?auto=format&fit=crop&w=900&q=80',
-  'https://images.unsplash.com/photo-1544568100-847a948585b9?auto=format&fit=crop&w=900&q=80',
-];
 const productImageFallback = imageFallbacks.product;
 
 const parseImageList = (value: unknown): unknown[] => {
@@ -41,15 +33,14 @@ const parseImageList = (value: unknown): unknown[] => {
 
 const resolveProductAssetImage = (imageUrl: string, fallback = '') => resolveApiAssetUrl(imageUrl, fallback);
 
-const normalizeProductImages = (product: Product, index: number) => {
+const normalizeProductImages = (product: Product, _index: number) => {
   const rawImages = parseImageList(product.images);
   const images = [product.imageUrl, ...rawImages]
     .map((image) => String(image || '').trim())
     .filter(Boolean)
     .map((image) => resolveProductAssetImage(image))
     .filter(Boolean);
-  const remoteFallback = resolveProductAssetImage(fallbackImages[index % fallbackImages.length]);
-  return Array.from(new Set([...images, remoteFallback, productImageFallback].filter(Boolean))).slice(0, 6);
+  return Array.from(new Set([...images, productImageFallback].filter(Boolean))).slice(0, 6);
 };
 
 const applyProductImageFallback = (event: React.SyntheticEvent<HTMLImageElement>, fallback: string) => {
@@ -301,4 +292,7 @@ const HomeProductCard: React.FC<HomeProductCardProps> = ({
   );
 };
 
-export default HomeProductCard;
+const MemoizedHomeProductCard = React.memo(HomeProductCard);
+MemoizedHomeProductCard.displayName = 'HomeProductCard';
+
+export default MemoizedHomeProductCard;

@@ -138,6 +138,9 @@ class UserAddressServiceTest {
     void updateAddressNormalizesFieldsBeforeSaving() {
         UserAddress address = address(7L, "  Mia\tChen  ", "  555\n0101  ", "  1 Main\u0000 Street  ");
         address.setId(12L);
+        UserAddress existing = address(7L, "Mia Chen", "5550101", "1 Main Street");
+        existing.setId(12L);
+        when(userAddressMapper.findById(12L)).thenReturn(existing);
         when(userAddressMapper.update(any(UserAddress.class))).thenReturn(1);
 
         service.updateAddress(address);
@@ -153,18 +156,66 @@ class UserAddressServiceTest {
     }
 
     @Test
+    void updateAddressRejectsMissingIdBeforeSaving() {
+        UserAddress address = address(7L, "Mia Chen", "5550101", "1 Main Street");
+
+        assertThrows(IllegalArgumentException.class, () -> service.updateAddress(address));
+
+        verify(userAddressMapper, never()).update(any(UserAddress.class));
+    }
+
+    @Test
     void updateAddressClearsExistingDefaultWhenAddressBecomesDefault() {
         UserAddress address = address(7L, "Mia Chen", "5550101", "2 Main Street");
         address.setId(12L);
         address.setIsDefault(true);
+        UserAddress existing = address(7L, "Mia Chen", "5550101", "1 Main Street");
+        existing.setId(12L);
+        when(userAddressMapper.findById(12L)).thenReturn(existing);
         when(userAddressMapper.update(any(UserAddress.class))).thenReturn(1);
 
         service.updateAddress(address);
 
-        InOrder inOrder = inOrder(userMapper, userAddressMapper);
+        InOrder inOrder = inOrder(userAddressMapper, userMapper);
+        inOrder.verify(userAddressMapper).findById(12L);
         inOrder.verify(userMapper).findByIdForUpdate(7L);
+        inOrder.verify(userAddressMapper).findById(12L);
         inOrder.verify(userAddressMapper).clearDefault(7L);
         inOrder.verify(userAddressMapper).update(any(UserAddress.class));
+    }
+
+    @Test
+    void updateAddressRejectsAddressDeletedAfterUserLock() {
+        UserAddress address = address(7L, "Mia Chen", "5550101", "2 Main Street");
+        address.setId(12L);
+        UserAddress existing = address(7L, "Mia Chen", "5550101", "1 Main Street");
+        existing.setId(12L);
+        when(userAddressMapper.findById(12L)).thenReturn(existing, null);
+
+        assertThrows(IllegalArgumentException.class, () -> service.updateAddress(address));
+
+        verify(userMapper).findByIdForUpdate(7L);
+        verify(userAddressMapper, never()).update(any(UserAddress.class));
+    }
+
+    @Test
+    void updateAddressUsesExistingOwnerInsteadOfSubmittedUserId() {
+        UserAddress address = address(99L, "Mia Chen", "5550101", "2 Main Street");
+        address.setId(12L);
+        address.setIsDefault(true);
+        UserAddress existing = address(7L, "Mia Chen", "5550101", "1 Main Street");
+        existing.setId(12L);
+        when(userAddressMapper.findById(12L)).thenReturn(existing);
+        when(userAddressMapper.update(any(UserAddress.class))).thenReturn(1);
+
+        service.updateAddress(address);
+
+        verify(userMapper).findByIdForUpdate(7L);
+        verify(userMapper, never()).findByIdForUpdate(99L);
+        verify(userAddressMapper).clearDefault(7L);
+        ArgumentCaptor<UserAddress> captor = ArgumentCaptor.forClass(UserAddress.class);
+        verify(userAddressMapper).update(captor.capture());
+        assertEquals(7L, captor.getValue().getUserId());
     }
 
     private UserAddress address(Long userId, String recipientName, String phone, String addressText) {

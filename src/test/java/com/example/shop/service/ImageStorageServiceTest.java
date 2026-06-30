@@ -94,6 +94,18 @@ class ImageStorageServiceTest {
         }
     }
 
+    @Test
+    void localImageStorageDecodesWithDisposableImageReader() throws Exception {
+        String source = Files.readString(
+                Path.of("src/main/java/com/example/shop/service/LocalImageStorageService.java"),
+                StandardCharsets.UTF_8);
+
+        assertFalse(source.contains("ImageIO.read("));
+        assertTrue(source.contains("ImageIO.createImageInputStream"));
+        assertTrue(source.contains("ImageIO.getImageReaders(imageInputStream)"));
+        assertTrue(source.contains("reader.dispose()"));
+    }
+
     private ImageStorageService.ImageUploadOptions options(long maxFileSizeBytes, int maxWidth, int maxHeight) {
         return new ImageStorageService.ImageUploadOptions(
                 tempDir.toString(),

@@ -16,6 +16,48 @@ describe('Notifications mobile bottom-nav clearance contract', () => {
     expect(source.indexOf('<List')).toBeGreaterThan(source.indexOf('className="notifications-page__actionPlan"'));
   });
 
+  it('guards notification fetches against stale responses and unmount updates', () => {
+    const source = readNotificationsSource();
+    const fetchStart = source.indexOf('const fetchNotifications = useCallback');
+    const fetchSource = source.slice(fetchStart, source.indexOf('useEffect(() => {', fetchStart));
+
+    expect(source).toContain('const mountedRef = useRef(true);');
+    expect(source).toContain('const notificationFetchSeqRef = useRef(0);');
+    expect(source).toContain('notificationFetchSeqRef.current += 1;');
+    expect(fetchSource).toContain('const requestSeq = notificationFetchSeqRef.current + 1;');
+    expect(fetchSource).toContain('notificationFetchSeqRef.current = requestSeq;');
+    expect(fetchSource).toContain('const isCurrentRequest = () => mountedRef.current && notificationFetchSeqRef.current === requestSeq;');
+    expect(fetchSource).toContain('if (!isCurrentRequest()) return;');
+    expect(fetchSource).toContain('setNotifications((current) => append ? mergeNotificationPages(current, nextNotifications) : nextNotifications);');
+    expect(fetchSource).toContain('setLoadingMore(false);');
+    expect(fetchSource).toContain('setLoading(false);');
+  });
+
+  it('keeps paged notification loading available beyond the first page', () => {
+    const source = readNotificationsSource();
+    const fetchStart = source.indexOf('const fetchNotifications = useCallback');
+    const fetchSource = source.slice(fetchStart, source.indexOf('useEffect(() => {', fetchStart));
+
+    expect(source).toContain('const NOTIFICATION_PAGE_SIZE = 50;');
+    expect(fetchSource).toContain('notificationApi.getByUser(0, false, nextPage, NOTIFICATION_PAGE_SIZE)');
+    expect(fetchSource).toContain('setHasMoreNotifications(nextNotifications.length === NOTIFICATION_PAGE_SIZE);');
+    expect(source).toContain('const [notificationPage, setNotificationPage] = useState(1);');
+    expect(source).toContain('const [hasMoreNotifications, setHasMoreNotifications] = useState(false);');
+    expect(source).toContain('footer={hasMoreNotifications ? (');
+    expect(source).toContain('onClick={() => fetchNotifications(notificationPage + 1, true)}');
+    expect(source).toContain("t('pages.notifications.loadMore')");
+    expect(source).not.toContain('notificationApi.getNotifications(1, 100)');
+  });
+
+  it('keeps stale notification snapshots read-only after refresh failures', () => {
+    const source = readNotificationsSource();
+
+    expect(source).toContain('const notificationActionsDisabled = Boolean(fetchError);');
+    expect(source).toContain("description={t('pages.notifications.staleDataWarning')}");
+    expect(source).toContain("action={<Button size=\"small\" onClick={() => fetchNotifications()}>{t('common.retry')}</Button>}");
+    expect(source).toContain('disabled={notificationActionsDisabled}');
+  });
+
   it('reserves bottom-navigation clearance for the mobile action plan and first card', () => {
     const css = readNotificationsCss();
     const f2719Start = css.indexOf('F2719:');

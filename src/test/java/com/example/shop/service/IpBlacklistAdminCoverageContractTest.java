@@ -35,6 +35,9 @@ class IpBlacklistAdminCoverageContractTest {
         int jwtFilter = security.indexOf("addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)");
 
         assertTrue(security.contains(".antMatchers(\"/admin/**\").hasRole(\"ADMIN\")"));
+        assertFalse(security.contains("buildAdminAccessExpression"));
+        assertFalse(security.contains("USER_AGENT"));
+        assertFalse(security.contains("hasRole('USER_AGENT')"));
         assertTrue(ipBlacklistFilter >= 0);
         assertTrue(jwtFilter >= 0);
         assertTrue(ipBlacklistFilter < jwtFilter, "IP blacklist must run before JWT authentication for admin paths");

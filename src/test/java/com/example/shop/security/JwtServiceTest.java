@@ -89,6 +89,30 @@ class JwtServiceTest {
     }
 
     @Test
+    void acceptsTokensWithMatchingPasswordChangedAtClaimEvenWhenJwtIssuedAtIsRounded() {
+        JwtService service = jwtService("production", "0123456789abcdef0123456789abcdef");
+        LocalDateTime passwordChangedAt = LocalDateTime.now();
+        UserDetailsImpl currentUser = userWithPasswordChangedAt(passwordChangedAt);
+
+        String token = service.generateToken(currentUser);
+
+        assertEquals("buyer@example.com", service.extractUsername(token));
+        assertTrue(service.isTokenValid(token, currentUser));
+    }
+
+    @Test
+    void rejectsSameSecondTokenWhenPasswordChangedAtClaimIsOlderThanCurrentUser() {
+        JwtService service = jwtService("production", "0123456789abcdef0123456789abcdef");
+        UserDetailsImpl userBeforePasswordChange = userWithPasswordChangedAt(LocalDateTime.now().minusMinutes(5));
+        String token = service.generateToken(userBeforePasswordChange);
+        Date issuedAt = service.extractClaim(token, claims -> claims.getIssuedAt());
+        UserDetailsImpl userAfterPasswordChange = userWithPasswordChangedAt(
+                LocalDateTime.ofInstant(issuedAt.toInstant().plusMillis(500), ZoneId.systemDefault()));
+
+        assertFalse(service.isTokenValid(token, userAfterPasswordChange));
+    }
+
+    @Test
     void rejectsDefaultSecretOutsideProduction() {
         JwtService service = jwtService("dev", "your-secret-key-here");
 
@@ -118,6 +142,8 @@ class JwtServiceTest {
         assertTrue(source.contains("Keys.hmacShaKeyFor"));
         assertTrue(source.contains(".verifyWith(signingKey())"));
         assertTrue(source.contains(".parseSignedClaims(token)"));
+        assertTrue(source.contains("PASSWORD_CHANGED_AT_CLAIM"));
+        assertTrue(source.contains("toEpochMillis(user.getPasswordChangedAt())"));
         assertFalse(source.contains("runtimeConfig.getString(\"app.jwtSecret\""));
         assertFalse(source.contains("security.jwt.secret"));
         assertFalse(source.contains("admin123456"));
@@ -132,5 +158,16 @@ class JwtServiceTest {
         when(runtimeConfig.getString("app.runtime-mode", "production")).thenReturn(runtimeMode);
         when(runtimeConfig.getInt("app.jwtExpirationInMs", 7200000)).thenReturn(86400000);
         return new JwtService(runtimeConfig, secret);
+    }
+
+    private UserDetailsImpl userWithPasswordChangedAt(LocalDateTime passwordChangedAt) {
+        return new UserDetailsImpl(
+                7L,
+                "buyer@example.com",
+                "buyer@example.com",
+                "ACTIVE",
+                "encoded-password",
+                passwordChangedAt,
+                List.of(new SimpleGrantedAuthority("ROLE_USER")));
     }
 }

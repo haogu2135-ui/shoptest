@@ -1,6 +1,6 @@
 import React, { Component, useEffect, useMemo, useState } from 'react';
 import type { ErrorInfo, ReactNode } from 'react';
-import { Button, Skeleton, Typography, message } from 'antd';
+import { Alert, Button, Skeleton, Typography, message } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import { productApi } from '../api';
 import type { ProductPublic as Product } from '../types';
@@ -67,6 +67,8 @@ class AddOnAssistantErrorBoundary extends Component<AddOnAssistantErrorBoundaryP
 const AddOnAssistantContent: React.FC<AddOnAssistantProps> = ({ cartProductIds, remainingAmount, reason, onAdd }) => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState('');
+  const [reloadToken, setReloadToken] = useState(0);
   const [addingId, setAddingId] = useState<number | null>(null);
   const { t, language } = useLanguage();
   const { formatMoney } = useMarket();
@@ -81,14 +83,19 @@ const AddOnAssistantContent: React.FC<AddOnAssistantProps> = ({ cartProductIds, 
   );
 
   useEffect(() => {
-    if (!shouldLoadProducts) return;
+    if (!shouldLoadProducts) {
+      setLoadError('');
+      return;
+    }
     const cacheKey = `${language}|${remainingAmount}|${excludedKey}`;
     const cached = addOnCandidateCache.get(cacheKey);
     if (cached && cached.expiresAt > Date.now()) {
       setProducts(cached.products);
+      setLoadError('');
       return;
     }
     setLoading(true);
+    setLoadError('');
     productApi.getAddOnCandidates(
       remainingAmount,
       excludedProductIds,
@@ -105,9 +112,12 @@ const AddOnAssistantContent: React.FC<AddOnAssistantProps> = ({ cartProductIds, 
         });
         setProducts(localizedProducts);
       })
-      .catch(() => setProducts([]))
+      .catch((error: unknown) => {
+        setProducts([]);
+        setLoadError(getApiErrorMessage(error, t('pages.addOnAssistant.loadFailed'), language));
+      })
       .finally(() => setLoading(false));
-  }, [excludedKey, excludedProductIds, language, remainingAmount, shouldLoadProducts]);
+  }, [excludedKey, excludedProductIds, language, remainingAmount, reloadToken, shouldLoadProducts, t]);
 
   const suggestions = useMemo(() => {
     if (!conversionConfig.addOnAssistant.enabled || remainingAmount <= 0) return [];
@@ -134,8 +144,31 @@ const AddOnAssistantContent: React.FC<AddOnAssistantProps> = ({ cartProductIds, 
   if (!conversionConfig.addOnAssistant.enabled || remainingAmount <= 0) return null;
   if (loading) {
     return (
-      <section className="add-on-assistant">
+      <section
+        className="add-on-assistant"
+        role="status"
+        aria-live="polite"
+        aria-busy="true"
+        aria-label={`${t('pages.addOnAssistant.title')}: ${t('common.loading')}`}
+      >
         <Skeleton active paragraph={{ rows: 2 }} />
+      </section>
+    );
+  }
+  if (loadError) {
+    return (
+      <section className="add-on-assistant add-on-assistant--error">
+        <Alert
+          type="warning"
+          showIcon
+          message={t('pages.addOnAssistant.loadErrorTitle')}
+          description={loadError}
+          action={(
+            <Button size="small" onClick={() => setReloadToken((current) => current + 1)}>
+              {t('common.retry')}
+            </Button>
+          )}
+        />
       </section>
     );
   }

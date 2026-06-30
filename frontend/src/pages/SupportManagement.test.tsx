@@ -147,6 +147,23 @@ describe('SupportManagement', () => {
     expect(pollingEffect).toContain("reportNonBlockingError('SupportManagement.pollMessages', error);");
   });
 
+  it('routes websocket payloads through the guarded support parser', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, 'SupportManagement.tsx'), 'utf8');
+    const socketStart = source.indexOf('const socketRef = useReconnectingWebSocket({');
+    const messageHandlerStart = source.indexOf('onMessage: (event) => {', socketStart);
+    const messageHandlerEnd = source.indexOf('    },', messageHandlerStart);
+    const messageHandler = source.slice(messageHandlerStart, messageHandlerEnd);
+
+    expect(source).toContain("import { parseSupportSocketPayload, supportChatConfig } from '../utils/supportChatConfig';");
+    expect(messageHandlerStart).toBeGreaterThan(socketStart);
+    expect(messageHandler).toContain('const payload = parseSupportSocketPayload(event.data);');
+    expect(messageHandler).toContain("if (payload.type === 'ERROR') {");
+    expect(messageHandler).toContain("message.warning(payload.message || t('pages.support.messageRejected'));");
+    expect(messageHandler).toContain("if (payload.type === 'MESSAGE') {");
+    expect(source).not.toContain('JSON.parse(event.data)');
+    expect(source).not.toContain('ws.onmessage');
+  });
+
   it('keeps support admin error handling typed without broad any usage', () => {
     const source = fs.readFileSync(path.resolve(__dirname, 'SupportManagement.tsx'), 'utf8');
 
@@ -156,6 +173,33 @@ describe('SupportManagement', () => {
     expect(source).not.toMatch(/\bany\b/);
     expect(source).not.toContain('window as any');
     expect(source).not.toContain('catch (err: any)');
+  });
+
+  it('gates reply actions while the selected conversation is loading or failed', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, 'SupportManagement.tsx'), 'utf8');
+
+    expect(source).toContain('const conversationUnavailable = Boolean(messageLoading || messageError);');
+    expect(source).toContain("messageLoading\n    ? t('common.loading')");
+    expect(source).toContain('const replyReady = Boolean(canReplySupport && selectedSession && selectedSession.status === \'OPEN\' && replyText && !replyTooLong && !conversationUnavailable);');
+    expect(source).toContain('disabled={!canReplySupport || selectedSession.status !== \'OPEN\' || conversationUnavailable}');
+    expect(source).toContain('disabled={!canReplySupport || selectedSession.status !== \'OPEN\' || sending || conversationUnavailable}');
+    expect(source).toContain('disabled={!replyReady}');
+    expect(source).toContain('replyText && !replyTooLong && !conversationUnavailable');
+  });
+
+  it('closes the notification audio context on unmount', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, 'SupportManagement.tsx'), 'utf8').replace(/\r\n?/g, '\n');
+    const cleanupStart = source.indexOf('useEffect(() => {\n    return () => {\n      const context = audioContextRef.current;');
+    const cleanupEnd = source.indexOf('  const playTone = () => {', cleanupStart);
+    const cleanupSource = source.slice(cleanupStart, cleanupEnd);
+
+    expect(cleanupStart).toBeGreaterThan(-1);
+    expect(cleanupEnd).toBeGreaterThan(cleanupStart);
+    expect(cleanupSource).toContain('audioContextRef.current = null;');
+    expect(cleanupSource).toContain("if (context && context.state !== 'closed') {");
+    expect(cleanupSource).toContain('void context.close()');
+    expect(cleanupSource).toContain("reportNonBlockingError('SupportManagement.closeAudioContext', error)");
+    expect(cleanupSource).toContain('  }, []);');
   });
 
   it('keeps queue merge callbacks on current refs without stale memoizedRef dependencies', () => {

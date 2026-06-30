@@ -5,6 +5,16 @@ const pageSource = fs.readFileSync(path.join(__dirname, 'ReviewManagement.tsx'),
 const cssSource = fs.readFileSync(path.join(__dirname, 'ReviewManagement.css'), 'utf8');
 
 describe('ReviewManagement health metric guards', () => {
+  it('blocks review mutations while showing stale cached rows after a reload failure', () => {
+    expect(pageSource).toContain('const [loadError, setLoadError] = useState<string | null>(null);');
+    expect(pageSource).toContain('const [reviewSnapshotLoaded, setReviewSnapshotLoaded] = useState(false);');
+    expect(pageSource).toContain('const actionsDisabledByStaleData = Boolean(loadError);');
+    expect(pageSource).toContain("message={t('pages.adminReviews.loadErrorTitle')}");
+    expect(pageSource).toContain("description={reviewSnapshotLoaded ? t('pages.adminReviews.staleDataWarning') : loadError}");
+    expect(pageSource).toContain("onClick={() => fetchReviews(pageState.page || 1, pageState.size || pageSizeRef.current)}");
+    expect(pageSource).toContain('disabled={actionsDisabledByStaleData}');
+  });
+
   it('uses typed nested review product and user fields without broad assertions', () => {
     expect(pageSource).not.toMatch(/\bas any\b|\bany\b/);
     expect(pageSource).toContain('record.product?.id');

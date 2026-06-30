@@ -4,6 +4,7 @@ import { reportNonBlockingError } from './nonBlockingError';
 import { getLocalStorageItem, setLocalStorageItem } from './safeStorage';
 
 export const PRODUCT_VIEW_PREFERENCES_KEY = 'shop-product-view-preferences';
+export const MAX_PRODUCT_VIEW_HISTORY_ITEMS = 30;
 
 export type ProductViewPreferences = {
   categories: Record<string, number>;
@@ -47,7 +48,7 @@ const normalizeRecentEntries = (value: unknown, recent: number[]) => {
       seen.add(entry.productId);
       return true;
     })
-    .slice(0, 30);
+    .slice(0, MAX_PRODUCT_VIEW_HISTORY_ITEMS);
 };
 
 export const loadProductViewPreferences = (): ProductViewPreferences => {
@@ -61,7 +62,7 @@ export const loadProductViewPreferences = (): ProductViewPreferences => {
       categories: normalizeScoreBucket(parsed.categories),
       brands: normalizeScoreBucket(parsed.brands),
       tags: normalizeScoreBucket(parsed.tags),
-      recent: Array.from(new Set(recent)).slice(0, 30),
+      recent: Array.from(new Set(recent)).slice(0, MAX_PRODUCT_VIEW_HISTORY_ITEMS),
       recentEntries,
       updatedAt: Number.isFinite(Number(parsed.updatedAt)) ? Number(parsed.updatedAt) : undefined,
     };
@@ -92,11 +93,11 @@ export const recordProductView = (product: Pick<ProductPublic, 'id' | 'categoryI
     bump(preferences.categories, product.categoryId);
     bump(preferences.brands, product.brand);
     bump(preferences.tags, product.tag);
-    preferences.recent = [productId, ...preferences.recent.filter((id) => id !== productId)].slice(0, 30);
+    preferences.recent = [productId, ...preferences.recent.filter((id) => id !== productId)].slice(0, MAX_PRODUCT_VIEW_HISTORY_ITEMS);
     preferences.recentEntries = [
       { productId, viewedAt: now },
       ...preferences.recentEntries.filter((entry) => entry.productId !== productId),
-    ].slice(0, 30);
+    ].slice(0, MAX_PRODUCT_VIEW_HISTORY_ITEMS);
     preferences.updatedAt = now;
     saveProductViewPreferences(preferences);
   } catch (error) {

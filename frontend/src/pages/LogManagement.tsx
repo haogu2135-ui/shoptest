@@ -180,7 +180,13 @@ const LogManagement: React.FC = () => {
         />
       ) : null}
 
-      <Spin spinning={loading && !status}>
+      <Spin
+        spinning={loading && !status}
+        role="status"
+        aria-live="polite"
+        aria-busy={loading && !status}
+        aria-label={t('common.loading')}
+      >
         {loadError && !status ? null : (
           <>
             <div className="log-management__stats">

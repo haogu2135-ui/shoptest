@@ -129,7 +129,13 @@ const PetPersonalizedAssistant: React.FC<PetPersonalizedAssistantProps> = ({
 
   if (loading) {
     return (
-      <section className={`pet-personalized-assistant pet-personalized-assistant--${variant}`} aria-label={t('home.petRecommendations')}>
+      <section
+        className={`pet-personalized-assistant pet-personalized-assistant--${variant}`}
+        role="status"
+        aria-live="polite"
+        aria-busy="true"
+        aria-label={`${t('home.petRecommendations')}: ${t('common.loading')}`}
+      >
         <Skeleton active paragraph={{ rows: variant === 'compact' ? 3 : 4 }} />
       </section>
     );

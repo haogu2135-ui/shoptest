@@ -1,0 +1,3044 @@
+{
+  "viewport": {
+    "name": "desktop-1366",
+    "width": 1366,
+    "height": 900
+  },
+  "url": "http://127.0.0.1:4200/profile?tab=pets",
+  "consoleMessages": [
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition."
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath."
+    },
+    {
+      "type": "warning",
+      "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: \"[object Object]\" is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157490:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157523:17)\n    at http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6367:109\n    at Array.map (<anonymous>)\n    at Profile (http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6233:42)\n    at renderWithHooks (http://127.0.0.1:4200/static/js/bundle.js:116907:22)\n    at updateFunctionComponent (http://127.0.0.1:4200/static/js/bundle.js:120475:24)\n    at beginWork (http://127.0.0.1:4200/static/js/bundle.js:122194:20)\n    at beginWork$1 (http://127.0.0.1:4200/static/js/bundle.js:127141:18)"
+    },
+    {
+      "type": "warning",
+      "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: \"[object Object]\" is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157490:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157523:17)\n    at http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6367:109\n    at Array.map (<anonymous>)\n    at Profile (http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6233:42)\n    at renderWithHooks (http://127.0.0.1:4200/static/js/bundle.js:116907:22)\n    at updateFunctionComponent (http://127.0.0.1:4200/static/js/bundle.js:120475:24)\n    at beginWork (http://127.0.0.1:4200/static/js/bundle.js:122194:20)\n    at beginWork$1 (http://127.0.0.1:4200/static/js/bundle.js:127141:18)"
+    },
+    {
+      "type": "warning",
+      "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: \"[object Object]\" is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157490:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157523:17)\n    at http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6367:109\n    at Array.map (<anonymous>)\n    at Profile (http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6233:42)\n    at renderWithHooks (http://127.0.0.1:4200/static/js/bundle.js:116907:22)\n    at updateFunctionComponent (http://127.0.0.1:4200/static/js/bundle.js:120480:28)\n    at beginWork (http://127.0.0.1:4200/static/js/bundle.js:122194:20)\n    at beginWork$1 (http://127.0.0.1:4200/static/js/bundle.js:127141:18)"
+    },
+    {
+      "type": "warning",
+      "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: \"[object Object]\" is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157490:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157523:17)\n    at http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6367:109\n    at Array.map (<anonymous>)\n    at Profile (http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6233:42)\n    at renderWithHooks (http://127.0.0.1:4200/static/js/bundle.js:116907:22)\n    at updateFunctionComponent (http://127.0.0.1:4200/static/js/bundle.js:120480:28)\n    at beginWork (http://127.0.0.1:4200/static/js/bundle.js:122194:20)\n    at beginWork$1 (http://127.0.0.1:4200/static/js/bundle.js:127141:18)"
+    },
+    {
+      "type": "warning",
+      "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: \"[object Object]\" is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157490:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157523:17)\n    at http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6367:109\n    at Array.map (<anonymous>)\n    at Profile (http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6233:42)\n    at renderWithHooks (http://127.0.0.1:4200/static/js/bundle.js:116907:22)\n    at updateFunctionComponent (http://127.0.0.1:4200/static/js/bundle.js:120475:24)\n    at beginWork (http://127.0.0.1:4200/static/js/bundle.js:122194:20)\n    at beginWork$1 (http://127.0.0.1:4200/static/js/bundle.js:127141:18)"
+    },
+    {
+      "type": "warning",
+      "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: \"[object Object]\" is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157490:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157523:17)\n    at http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6367:109\n    at Array.map (<anonymous>)\n    at Profile (http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6233:42)\n    at renderWithHooks (http://127.0.0.1:4200/static/js/bundle.js:116907:22)\n    at updateFunctionComponent (http://127.0.0.1:4200/static/js/bundle.js:120475:24)\n    at beginWork (http://127.0.0.1:4200/static/js/bundle.js:122194:20)\n    at beginWork$1 (http://127.0.0.1:4200/static/js/bundle.js:127141:18)"
+    },
+    {
+      "type": "warning",
+      "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: \"[object Object]\" is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157490:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157523:17)\n    at http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6367:109\n    at Array.map (<anonymous>)\n    at Profile (http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6233:42)\n    at renderWithHooks (http://127.0.0.1:4200/static/js/bundle.js:116907:22)\n    at updateFunctionComponent (http://127.0.0.1:4200/static/js/bundle.js:120480:28)\n    at beginWork (http://127.0.0.1:4200/static/js/bundle.js:122194:20)\n    at beginWork$1 (http://127.0.0.1:4200/static/js/bundle.js:127141:18)"
+    },
+    {
+      "type": "warning",
+      "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: \"[object Object]\" is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157490:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157523:17)\n    at http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6367:109\n    at Array.map (<anonymous>)\n    at Profile (http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6233:42)\n    at renderWithHooks (http://127.0.0.1:4200/static/js/bundle.js:116907:22)\n    at updateFunctionComponent (http://127.0.0.1:4200/static/js/bundle.js:120480:28)\n    at beginWork (http://127.0.0.1:4200/static/js/bundle.js:122194:20)\n    at beginWork$1 (http://127.0.0.1:4200/static/js/bundle.js:127141:18)"
+    },
+    {
+      "type": "error",
+      "text": "Warning: Instance created by `useForm` is not connected to any Form element. Forget to pass `form` prop?"
+    },
+    {
+      "type": "warning",
+      "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: \"[object Object]\" is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157490:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157523:17)\n    at http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6367:109\n    at Array.map (<anonymous>)\n    at Profile (http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6233:42)\n    at renderWithHooks (http://127.0.0.1:4200/static/js/bundle.js:116907:22)\n    at updateFunctionComponent (http://127.0.0.1:4200/static/js/bundle.js:120475:24)\n    at beginWork (http://127.0.0.1:4200/static/js/bundle.js:122194:20)\n    at beginWork$1 (http://127.0.0.1:4200/static/js/bundle.js:127141:18)"
+    },
+    {
+      "type": "warning",
+      "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: \"[object Object]\" is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157490:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157523:17)\n    at http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6367:109\n    at Array.map (<anonymous>)\n    at Profile (http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6233:42)\n    at renderWithHooks (http://127.0.0.1:4200/static/js/bundle.js:116907:22)\n    at updateFunctionComponent (http://127.0.0.1:4200/static/js/bundle.js:120475:24)\n    at beginWork (http://127.0.0.1:4200/static/js/bundle.js:122194:20)\n    at beginWork$1 (http://127.0.0.1:4200/static/js/bundle.js:127141:18)"
+    },
+    {
+      "type": "warning",
+      "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: \"[object Object]\" is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157490:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157523:17)\n    at http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6367:109\n    at Array.map (<anonymous>)\n    at Profile (http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6233:42)\n    at renderWithHooks (http://127.0.0.1:4200/static/js/bundle.js:116907:22)\n    at updateFunctionComponent (http://127.0.0.1:4200/static/js/bundle.js:120480:28)\n    at beginWork (http://127.0.0.1:4200/static/js/bundle.js:122194:20)\n    at beginWork$1 (http://127.0.0.1:4200/static/js/bundle.js:127141:18)"
+    },
+    {
+      "type": "warning",
+      "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: \"[object Object]\" is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157490:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157523:17)\n    at http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6367:109\n    at Array.map (<anonymous>)\n    at Profile (http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6233:42)\n    at renderWithHooks (http://127.0.0.1:4200/static/js/bundle.js:116907:22)\n    at updateFunctionComponent (http://127.0.0.1:4200/static/js/bundle.js:120480:28)\n    at beginWork (http://127.0.0.1:4200/static/js/bundle.js:122194:20)\n    at beginWork$1 (http://127.0.0.1:4200/static/js/bundle.js:127141:18)"
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition."
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath."
+    },
+    {
+      "type": "warning",
+      "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: \"[object Object]\" is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157490:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157523:17)\n    at http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6367:109\n    at Array.map (<anonymous>)\n    at Profile (http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6233:42)\n    at renderWithHooks (http://127.0.0.1:4200/static/js/bundle.js:116907:22)\n    at updateFunctionComponent (http://127.0.0.1:4200/static/js/bundle.js:120475:24)\n    at beginWork (http://127.0.0.1:4200/static/js/bundle.js:122194:20)\n    at beginWork$1 (http://127.0.0.1:4200/static/js/bundle.js:127141:18)"
+    },
+    {
+      "type": "warning",
+      "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: \"[object Object]\" is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157490:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157523:17)\n    at http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6367:109\n    at Array.map (<anonymous>)\n    at Profile (http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6233:42)\n    at renderWithHooks (http://127.0.0.1:4200/static/js/bundle.js:116907:22)\n    at updateFunctionComponent (http://127.0.0.1:4200/static/js/bundle.js:120475:24)\n    at beginWork (http://127.0.0.1:4200/static/js/bundle.js:122194:20)\n    at beginWork$1 (http://127.0.0.1:4200/static/js/bundle.js:127141:18)"
+    },
+    {
+      "type": "warning",
+      "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: \"[object Object]\" is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157490:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157523:17)\n    at http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6367:109\n    at Array.map (<anonymous>)\n    at Profile (http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6233:42)\n    at renderWithHooks (http://127.0.0.1:4200/static/js/bundle.js:116907:22)\n    at updateFunctionComponent (http://127.0.0.1:4200/static/js/bundle.js:120480:28)\n    at beginWork (http://127.0.0.1:4200/static/js/bundle.js:122194:20)\n    at beginWork$1 (http://127.0.0.1:4200/static/js/bundle.js:127141:18)"
+    },
+    {
+      "type": "warning",
+      "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: \"[object Object]\" is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157490:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157523:17)\n    at http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6367:109\n    at Array.map (<anonymous>)\n    at Profile (http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6233:42)\n    at renderWithHooks (http://127.0.0.1:4200/static/js/bundle.js:116907:22)\n    at updateFunctionComponent (http://127.0.0.1:4200/static/js/bundle.js:120480:28)\n    at beginWork (http://127.0.0.1:4200/static/js/bundle.js:122194:20)\n    at beginWork$1 (http://127.0.0.1:4200/static/js/bundle.js:127141:18)"
+    },
+    {
+      "type": "warning",
+      "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: \"[object Object]\" is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157490:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157523:17)\n    at http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6367:109\n    at Array.map (<anonymous>)\n    at Profile (http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6233:42)\n    at renderWithHooks (http://127.0.0.1:4200/static/js/bundle.js:116907:22)\n    at updateFunctionComponent (http://127.0.0.1:4200/static/js/bundle.js:120475:24)\n    at beginWork (http://127.0.0.1:4200/static/js/bundle.js:122194:20)\n    at beginWork$1 (http://127.0.0.1:4200/static/js/bundle.js:127141:18)"
+    },
+    {
+      "type": "warning",
+      "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: \"[object Object]\" is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157490:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157523:17)\n    at http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6367:109\n    at Array.map (<anonymous>)\n    at Profile (http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6233:42)\n    at renderWithHooks (http://127.0.0.1:4200/static/js/bundle.js:116907:22)\n    at updateFunctionComponent (http://127.0.0.1:4200/static/js/bundle.js:120475:24)\n    at beginWork (http://127.0.0.1:4200/static/js/bundle.js:122194:20)\n    at beginWork$1 (http://127.0.0.1:4200/static/js/bundle.js:127141:18)"
+    },
+    {
+      "type": "warning",
+      "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: \"[object Object]\" is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157490:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157523:17)\n    at http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6367:109\n    at Array.map (<anonymous>)\n    at Profile (http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6233:42)\n    at renderWithHooks (http://127.0.0.1:4200/static/js/bundle.js:116907:22)\n    at updateFunctionComponent (http://127.0.0.1:4200/static/js/bundle.js:120480:28)\n    at beginWork (http://127.0.0.1:4200/static/js/bundle.js:122194:20)\n    at beginWork$1 (http://127.0.0.1:4200/static/js/bundle.js:127141:18)"
+    },
+    {
+      "type": "warning",
+      "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: \"[object Object]\" is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157490:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157523:17)\n    at http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6367:109\n    at Array.map (<anonymous>)\n    at Profile (http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6233:42)\n    at renderWithHooks (http://127.0.0.1:4200/static/js/bundle.js:116907:22)\n    at updateFunctionComponent (http://127.0.0.1:4200/static/js/bundle.js:120480:28)\n    at beginWork (http://127.0.0.1:4200/static/js/bundle.js:122194:20)\n    at beginWork$1 (http://127.0.0.1:4200/static/js/bundle.js:127141:18)"
+    },
+    {
+      "type": "error",
+      "text": "Warning: Instance created by `useForm` is not connected to any Form element. Forget to pass `form` prop?"
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition."
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath."
+    },
+    {
+      "type": "warning",
+      "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: \"[object Object]\" is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157490:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157523:17)\n    at http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6367:109\n    at Array.map (<anonymous>)\n    at Profile (http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6233:42)\n    at renderWithHooks (http://127.0.0.1:4200/static/js/bundle.js:116907:22)\n    at updateFunctionComponent (http://127.0.0.1:4200/static/js/bundle.js:120475:24)\n    at beginWork (http://127.0.0.1:4200/static/js/bundle.js:122194:20)\n    at beginWork$1 (http://127.0.0.1:4200/static/js/bundle.js:127141:18)"
+    },
+    {
+      "type": "warning",
+      "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: \"[object Object]\" is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157490:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157523:17)\n    at http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6367:109\n    at Array.map (<anonymous>)\n    at Profile (http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6233:42)\n    at renderWithHooks (http://127.0.0.1:4200/static/js/bundle.js:116907:22)\n    at updateFunctionComponent (http://127.0.0.1:4200/static/js/bundle.js:120475:24)\n    at beginWork (http://127.0.0.1:4200/static/js/bundle.js:122194:20)\n    at beginWork$1 (http://127.0.0.1:4200/static/js/bundle.js:127141:18)"
+    },
+    {
+      "type": "warning",
+      "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: \"[object Object]\" is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157490:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157523:17)\n    at http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6367:109\n    at Array.map (<anonymous>)\n    at Profile (http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6233:42)\n    at renderWithHooks (http://127.0.0.1:4200/static/js/bundle.js:116907:22)\n    at updateFunctionComponent (http://127.0.0.1:4200/static/js/bundle.js:120480:28)\n    at beginWork (http://127.0.0.1:4200/static/js/bundle.js:122194:20)\n    at beginWork$1 (http://127.0.0.1:4200/static/js/bundle.js:127141:18)"
+    },
+    {
+      "type": "warning",
+      "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: \"[object Object]\" is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157490:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157523:17)\n    at http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6367:109\n    at Array.map (<anonymous>)\n    at Profile (http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6233:42)\n    at renderWithHooks (http://127.0.0.1:4200/static/js/bundle.js:116907:22)\n    at updateFunctionComponent (http://127.0.0.1:4200/static/js/bundle.js:120480:28)\n    at beginWork (http://127.0.0.1:4200/static/js/bundle.js:122194:20)\n    at beginWork$1 (http://127.0.0.1:4200/static/js/bundle.js:127141:18)"
+    },
+    {
+      "type": "warning",
+      "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: \"[object Object]\" is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157490:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157523:17)\n    at http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6367:109\n    at Array.map (<anonymous>)\n    at Profile (http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6233:42)\n    at renderWithHooks (http://127.0.0.1:4200/static/js/bundle.js:116907:22)\n    at updateFunctionComponent (http://127.0.0.1:4200/static/js/bundle.js:120475:24)\n    at beginWork (http://127.0.0.1:4200/static/js/bundle.js:122194:20)\n    at beginWork$1 (http://127.0.0.1:4200/static/js/bundle.js:127141:18)"
+    },
+    {
+      "type": "warning",
+      "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: \"[object Object]\" is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157490:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157523:17)\n    at http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6367:109\n    at Array.map (<anonymous>)\n    at Profile (http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6233:42)\n    at renderWithHooks (http://127.0.0.1:4200/static/js/bundle.js:116907:22)\n    at updateFunctionComponent (http://127.0.0.1:4200/static/js/bundle.js:120475:24)\n    at beginWork (http://127.0.0.1:4200/static/js/bundle.js:122194:20)\n    at beginWork$1 (http://127.0.0.1:4200/static/js/bundle.js:127141:18)"
+    },
+    {
+      "type": "warning",
+      "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: \"[object Object]\" is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157490:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157523:17)\n    at http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6367:109\n    at Array.map (<anonymous>)\n    at Profile (http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6233:42)\n    at renderWithHooks (http://127.0.0.1:4200/static/js/bundle.js:116907:22)\n    at updateFunctionComponent (http://127.0.0.1:4200/static/js/bundle.js:120480:28)\n    at beginWork (http://127.0.0.1:4200/static/js/bundle.js:122194:20)\n    at beginWork$1 (http://127.0.0.1:4200/static/js/bundle.js:127141:18)"
+    },
+    {
+      "type": "warning",
+      "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: \"[object Object]\" is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157490:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157523:17)\n    at http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6367:109\n    at Array.map (<anonymous>)\n    at Profile (http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6233:42)\n    at renderWithHooks (http://127.0.0.1:4200/static/js/bundle.js:116907:22)\n    at updateFunctionComponent (http://127.0.0.1:4200/static/js/bundle.js:120480:28)\n    at beginWork (http://127.0.0.1:4200/static/js/bundle.js:122194:20)\n    at beginWork$1 (http://127.0.0.1:4200/static/js/bundle.js:127141:18)"
+    },
+    {
+      "type": "error",
+      "text": "Warning: Instance created by `useForm` is not connected to any Form element. Forget to pass `form` prop?"
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition."
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath."
+    },
+    {
+      "type": "warning",
+      "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: \"[object Object]\" is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157490:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157523:17)\n    at http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6367:109\n    at Array.map (<anonymous>)\n    at Profile (http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6233:42)\n    at renderWithHooks (http://127.0.0.1:4200/static/js/bundle.js:116907:22)\n    at updateFunctionComponent (http://127.0.0.1:4200/static/js/bundle.js:120475:24)\n    at beginWork (http://127.0.0.1:4200/static/js/bundle.js:122194:20)\n    at beginWork$1 (http://127.0.0.1:4200/static/js/bundle.js:127141:18)"
+    },
+    {
+      "type": "warning",
+      "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: \"[object Object]\" is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157490:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157523:17)\n    at http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6367:109\n    at Array.map (<anonymous>)\n    at Profile (http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6233:42)\n    at renderWithHooks (http://127.0.0.1:4200/static/js/bundle.js:116907:22)\n    at updateFunctionComponent (http://127.0.0.1:4200/static/js/bundle.js:120475:24)\n    at beginWork (http://127.0.0.1:4200/static/js/bundle.js:122194:20)\n    at beginWork$1 (http://127.0.0.1:4200/static/js/bundle.js:127141:18)"
+    },
+    {
+      "type": "warning",
+      "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: \"[object Object]\" is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157490:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157523:17)\n    at http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6367:109\n    at Array.map (<anonymous>)\n    at Profile (http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6233:42)\n    at renderWithHooks (http://127.0.0.1:4200/static/js/bundle.js:116907:22)\n    at updateFunctionComponent (http://127.0.0.1:4200/static/js/bundle.js:120480:28)\n    at beginWork (http://127.0.0.1:4200/static/js/bundle.js:122194:20)\n    at beginWork$1 (http://127.0.0.1:4200/static/js/bundle.js:127141:18)"
+    },
+    {
+      "type": "warning",
+      "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: \"[object Object]\" is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157490:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157523:17)\n    at http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6367:109\n    at Array.map (<anonymous>)\n    at Profile (http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6233:42)\n    at renderWithHooks (http://127.0.0.1:4200/static/js/bundle.js:116907:22)\n    at updateFunctionComponent (http://127.0.0.1:4200/static/js/bundle.js:120480:28)\n    at beginWork (http://127.0.0.1:4200/static/js/bundle.js:122194:20)\n    at beginWork$1 (http://127.0.0.1:4200/static/js/bundle.js:127141:18)"
+    },
+    {
+      "type": "warning",
+      "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: \"[object Object]\" is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157490:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157523:17)\n    at http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6367:109\n    at Array.map (<anonymous>)\n    at Profile (http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6233:42)\n    at renderWithHooks (http://127.0.0.1:4200/static/js/bundle.js:116907:22)\n    at updateFunctionComponent (http://127.0.0.1:4200/static/js/bundle.js:120475:24)\n    at beginWork (http://127.0.0.1:4200/static/js/bundle.js:122194:20)\n    at beginWork$1 (http://127.0.0.1:4200/static/js/bundle.js:127141:18)"
+    },
+    {
+      "type": "warning",
+      "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: \"[object Object]\" is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157490:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157523:17)\n    at http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6367:109\n    at Array.map (<anonymous>)\n    at Profile (http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6233:42)\n    at renderWithHooks (http://127.0.0.1:4200/static/js/bundle.js:116907:22)\n    at updateFunctionComponent (http://127.0.0.1:4200/static/js/bundle.js:120475:24)\n    at beginWork (http://127.0.0.1:4200/static/js/bundle.js:122194:20)\n    at beginWork$1 (http://127.0.0.1:4200/static/js/bundle.js:127141:18)"
+    },
+    {
+      "type": "warning",
+      "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: \"[object Object]\" is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157490:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157523:17)\n    at http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6367:109\n    at Array.map (<anonymous>)\n    at Profile (http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6233:42)\n    at renderWithHooks (http://127.0.0.1:4200/static/js/bundle.js:116907:22)\n    at updateFunctionComponent (http://127.0.0.1:4200/static/js/bundle.js:120480:28)\n    at beginWork (http://127.0.0.1:4200/static/js/bundle.js:122194:20)\n    at beginWork$1 (http://127.0.0.1:4200/static/js/bundle.js:127141:18)"
+    },
+    {
+      "type": "warning",
+      "text": "[shop] selectedSpecs.parseSelectedSpecs SyntaxError: \"[object Object]\" is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157490:25)\n    at formatSelectedSpecs (http://127.0.0.1:4200/static/js/bundle.js:157523:17)\n    at http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6367:109\n    at Array.map (<anonymous>)\n    at Profile (http://127.0.0.1:4200/static/js/src_pages_Profile_tsx.chunk.js:6233:42)\n    at renderWithHooks (http://127.0.0.1:4200/static/js/bundle.js:116907:22)\n    at updateFunctionComponent (http://127.0.0.1:4200/static/js/bundle.js:120480:28)\n    at beginWork (http://127.0.0.1:4200/static/js/bundle.js:122194:20)\n    at beginWork$1 (http://127.0.0.1:4200/static/js/bundle.js:127141:18)"
+    },
+    {
+      "type": "error",
+      "text": "Warning: Instance created by `useForm` is not connected to any Form element. Forget to pass `form` prop?"
+    }
+  ],
+  "states": [
+    {
+      "state": "addresses-top",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "body": {
+        "scrollWidth": 1366,
+        "clientWidth": 1366,
+        "scrollHeight": 1711,
+        "clientHeight": 900,
+        "scrollY": 0
+      },
+      "rects": {
+        "page": {
+          "selector": ".profile-page",
+          "text": "Profileprofile.ui.auditComplete Birthday for Nube so recommendations can work harder.My orders (2)Complete profile2All orders2Addresses (2)2Pets (2)100%Account readinessAccount action centerPick up payments, deliveries and pet care tasks quickly.1Pending payme",
+          "x": 143,
+          "y": 216,
+          "width": 1080,
+          "height": 1018,
+          "right": 1223,
+          "bottom": 1234,
+          "scrollWidth": 1080,
+          "clientWidth": 1080,
+          "scrollHeight": 1018,
+          "clientHeight": 1018,
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "zIndex": "auto"
+        },
+        "tabs": {
+          "selector": ".profile-tabs > .ant-tabs-nav",
+          "text": "Personal informationAddresses (2)My orders (2)Pets (2)",
+          "x": 167,
+          "y": 685,
+          "width": 1032,
+          "height": 60,
+          "right": 1199,
+          "bottom": 745,
+          "scrollWidth": 1030,
+          "clientWidth": 1030,
+          "scrollHeight": 58,
+          "clientHeight": 58,
+          "overflowX": "hidden",
+          "overflowY": "hidden",
+          "zIndex": "auto"
+        },
+        "addressReadiness": {
+          "selector": ".profile-address-readiness",
+          "text": "Delivery readinessReview missing phone numbers, short details, and default address selection before checkout.33%1Default ready0Missing phone2Incomplete delivery",
+          "x": 167,
+          "y": 761,
+          "width": 1032,
+          "height": 143,
+          "right": 1199,
+          "bottom": 904,
+          "scrollWidth": 1030,
+          "clientWidth": 1030,
+          "scrollHeight": 141,
+          "clientHeight": 141,
+          "overflowX": "hidden",
+          "overflowY": "hidden",
+          "zIndex": "auto"
+        },
+        "petInsights": null,
+        "modal": null,
+        "addressModal": null,
+        "modalBody": null,
+        "addressModalBody": null,
+        "modalFooter": null,
+        "addressModalFooter": null,
+        "addressCascader": null,
+        "petTypeSelect": null,
+        "petDatePicker": null,
+        "petSizeSelect": null,
+        "selectDropdown": null,
+        "cascaderDropdown": null,
+        "pickerDropdown": null,
+        "popup": null
+      },
+      "visibleRatios": {
+        "modal": null,
+        "modalBody": null,
+        "modalFooter": null,
+        "addressCascader": null,
+        "petDatePicker": null,
+        "selectDropdown": null,
+        "cascaderDropdown": null,
+        "pickerDropdown": null,
+        "popup": null
+      },
+      "optionRows": [],
+      "overflowEls": [
+        {
+          "selector": "div.shop-nav__ticker",
+          "text": "Free shipping on orders over $49.45Featured deal: PAWS20 today on favoritesSpring Pet Sale: Use code PAWS20 for 20% off30-day easy returns on collars, beds, toy",
+          "x": 1246.0037841796875,
+          "y": 0,
+          "width": 1252.0001220703125,
+          "height": 35,
+          "right": 2498.00390625,
+          "bottom": 35,
+          "overflowRight": 1132.00390625,
+          "overflowLeft": -1246.0037841796875
+        },
+        {
+          "selector": "span",
+          "text": "Free shipping on orders over $49.45",
+          "x": 1246.0037841796875,
+          "y": 7,
+          "width": 223.640625,
+          "height": 21,
+          "right": 1469.6444091796875,
+          "bottom": 28,
+          "overflowRight": 103.6444091796875,
+          "overflowLeft": -1246.0037841796875
+        },
+        {
+          "selector": "span.shop-nav__amountPhrase.commerce-atomic",
+          "text": "Free shipping on orders over $49.45",
+          "x": 1246.0037841796875,
+          "y": 7,
+          "width": 223.640625,
+          "height": 15,
+          "right": 1469.6444091796875,
+          "bottom": 22,
+          "overflowRight": 103.6444091796875,
+          "overflowLeft": -1246.0037841796875
+        },
+        {
+          "selector": "span.commerce-money",
+          "text": "$49.45",
+          "x": 1429.8787841796875,
+          "y": 7,
+          "width": 39.765625,
+          "height": 15,
+          "right": 1469.6444091796875,
+          "bottom": 22,
+          "overflowRight": 103.6444091796875,
+          "overflowLeft": -1429.8787841796875
+        },
+        {
+          "selector": "span.shop-nav__tickerAd",
+          "text": "Featured deal: PAWS20 today on favorites",
+          "x": 1509.6444091796875,
+          "y": 7,
+          "width": 285.828125,
+          "height": 21,
+          "right": 1795.4725341796875,
+          "bottom": 28,
+          "overflowRight": 429.4725341796875,
+          "overflowLeft": -1509.6444091796875
+        },
+        {
+          "selector": "span",
+          "text": "Spring Pet Sale: Use code PAWS20 for 20% off",
+          "x": 1835.4725341796875,
+          "y": 7,
+          "width": 287.2813720703125,
+          "height": 21,
+          "right": 2122.75390625,
+          "bottom": 28,
+          "overflowRight": 756.75390625,
+          "overflowLeft": -1835.4725341796875
+        },
+        {
+          "selector": "span",
+          "text": "30-day easy returns on collars, beds, toys and apparel",
+          "x": 2162.75390625,
+          "y": 7,
+          "width": 335.25,
+          "height": 21,
+          "right": 2498.00390625,
+          "bottom": 28,
+          "overflowRight": 1132.00390625,
+          "overflowLeft": -2162.75390625
+        }
+      ],
+      "hits": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ]
+    },
+    {
+      "state": "address-modal-open",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "body": {
+        "scrollWidth": 1366,
+        "clientWidth": 1366,
+        "scrollHeight": 1711,
+        "clientHeight": 900,
+        "scrollY": 0
+      },
+      "rects": {
+        "page": {
+          "selector": ".profile-page",
+          "text": "Profileprofile.ui.auditComplete Birthday for Nube so recommendations can work harder.My orders (2)Complete profile2All orders2Addresses (2)2Pets (2)100%Account readinessAccount action centerPick up payments, deliveries and pet care tasks quickly.1Pending payme",
+          "x": 143,
+          "y": 216,
+          "width": 1080,
+          "height": 1018,
+          "right": 1223,
+          "bottom": 1234,
+          "scrollWidth": 1080,
+          "clientWidth": 1080,
+          "scrollHeight": 1018,
+          "clientHeight": 1018,
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "zIndex": "auto"
+        },
+        "tabs": {
+          "selector": ".profile-tabs > .ant-tabs-nav",
+          "text": "Personal informationAddresses (2)My orders (2)Pets (2)",
+          "x": 167,
+          "y": 685,
+          "width": 1032,
+          "height": 60,
+          "right": 1199,
+          "bottom": 745,
+          "scrollWidth": 1030,
+          "clientWidth": 1030,
+          "scrollHeight": 58,
+          "clientHeight": 58,
+          "overflowX": "hidden",
+          "overflowY": "hidden",
+          "zIndex": "auto"
+        },
+        "addressReadiness": {
+          "selector": ".profile-address-readiness",
+          "text": "Delivery readinessReview missing phone numbers, short details, and default address selection before checkout.33%1Default ready0Missing phone2Incomplete delivery",
+          "x": 167,
+          "y": 761,
+          "width": 1032,
+          "height": 143,
+          "right": 1199,
+          "bottom": 904,
+          "scrollWidth": 1030,
+          "clientWidth": 1030,
+          "scrollHeight": 141,
+          "clientHeight": 141,
+          "overflowX": "hidden",
+          "overflowY": "hidden",
+          "zIndex": "auto"
+        },
+        "petInsights": null,
+        "modal": {
+          "selector": ".profile-mobile-safe-modal .ant-modal-content",
+          "text": "Add addressRecipientPhoneRegionSelect regionPostal / ZIP codeDetailed address0 / 260Use as default addressCancelSave",
+          "x": 403.0635986328125,
+          "y": 100.072021484375,
+          "width": 559.872802734375,
+          "height": 609.8614501953125,
+          "right": 962.9364013671875,
+          "bottom": 709.9334716796875,
+          "scrollWidth": 560,
+          "clientWidth": 560,
+          "scrollHeight": 610,
+          "clientHeight": 610,
+          "overflowX": "hidden",
+          "overflowY": "hidden",
+          "zIndex": "auto"
+        },
+        "addressModal": {
+          "selector": ".profile-address-modal .ant-modal-content",
+          "text": "Add addressRecipientPhoneRegionSelect regionPostal / ZIP codeDetailed address0 / 260Use as default addressCancelSave",
+          "x": 403.0635986328125,
+          "y": 100.072021484375,
+          "width": 559.872802734375,
+          "height": 609.8614501953125,
+          "right": 962.9364013671875,
+          "bottom": 709.9334716796875,
+          "scrollWidth": 560,
+          "clientWidth": 560,
+          "scrollHeight": 610,
+          "clientHeight": 610,
+          "overflowX": "hidden",
+          "overflowY": "hidden",
+          "zIndex": "auto"
+        },
+        "modalBody": {
+          "selector": ".profile-mobile-safe-modal .ant-modal-body",
+          "text": "RecipientPhoneRegionSelect regionPostal / ZIP codeDetailed address0 / 260Use as default address",
+          "x": 427.0581359863281,
+          "y": 152.06021118164062,
+          "width": 511.8836975097656,
+          "height": 475.8918762207031,
+          "right": 938.9418334960938,
+          "bottom": 627.9520874023438,
+          "scrollWidth": 512,
+          "clientWidth": 512,
+          "scrollHeight": 476,
+          "clientHeight": 476,
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "zIndex": "auto"
+        },
+        "addressModalBody": {
+          "selector": ".profile-address-modal .ant-modal-body",
+          "text": "RecipientPhoneRegionSelect regionPostal / ZIP codeDetailed address0 / 260Use as default address",
+          "x": 427.0581359863281,
+          "y": 152.06021118164062,
+          "width": 511.8836975097656,
+          "height": 475.8918762207031,
+          "right": 938.9418334960938,
+          "bottom": 627.9520874023438,
+          "scrollWidth": 512,
+          "clientWidth": 512,
+          "scrollHeight": 476,
+          "clientHeight": 476,
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "zIndex": "auto"
+        },
+        "modalFooter": {
+          "selector": ".profile-mobile-safe-modal .ant-modal-footer",
+          "text": "CancelSave",
+          "x": 427.0581359863281,
+          "y": 645.947998046875,
+          "width": 511.8836975097656,
+          "height": 43.989990234375,
+          "right": 938.9418334960938,
+          "bottom": 689.93798828125,
+          "scrollWidth": 512,
+          "clientWidth": 512,
+          "scrollHeight": 44,
+          "clientHeight": 44,
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "zIndex": "auto"
+        },
+        "addressModalFooter": {
+          "selector": ".profile-address-modal .ant-modal-footer",
+          "text": "CancelSave",
+          "x": 427.0581359863281,
+          "y": 645.947998046875,
+          "width": 511.8836975097656,
+          "height": 43.989990234375,
+          "right": 938.9418334960938,
+          "bottom": 689.93798828125,
+          "scrollWidth": 512,
+          "clientWidth": 512,
+          "scrollHeight": 44,
+          "clientHeight": 44,
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "zIndex": "auto"
+        },
+        "addressCascader": {
+          "selector": ".profile-address-modal .ant-cascader",
+          "text": "Select region",
+          "x": 427.0581359863281,
+          "y": 342.01702880859375,
+          "width": 511.8836975097656,
+          "height": 31.992767333984375,
+          "right": 938.9418334960938,
+          "bottom": 374.0097961425781,
+          "scrollWidth": 512,
+          "clientWidth": 512,
+          "scrollHeight": 32,
+          "clientHeight": 32,
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "zIndex": "auto"
+        },
+        "petTypeSelect": {
+          "selector": ".profile-mobile-safe-modal .ant-select",
+          "text": "Select region",
+          "x": 427.0581359863281,
+          "y": 342.01702880859375,
+          "width": 511.8836975097656,
+          "height": 31.992767333984375,
+          "right": 938.9418334960938,
+          "bottom": 374.0097961425781,
+          "scrollWidth": 512,
+          "clientWidth": 512,
+          "scrollHeight": 32,
+          "clientHeight": 32,
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "zIndex": "auto"
+        },
+        "petDatePicker": null,
+        "petSizeSelect": null,
+        "selectDropdown": null,
+        "cascaderDropdown": null,
+        "pickerDropdown": null,
+        "popup": null
+      },
+      "visibleRatios": {
+        "modal": 1,
+        "modalBody": 1,
+        "modalFooter": 1,
+        "addressCascader": 1,
+        "petDatePicker": null,
+        "selectDropdown": null,
+        "cascaderDropdown": null,
+        "pickerDropdown": null,
+        "popup": null
+      },
+      "optionRows": [],
+      "overflowEls": [
+        {
+          "selector": "div.shop-nav__ticker",
+          "text": "Free shipping on orders over $49.45Featured deal: PAWS20 today on favoritesSpring Pet Sale: Use code PAWS20 for 20% off30-day easy returns on collars, beds, toy",
+          "x": 1187.8319091796875,
+          "y": 0,
+          "width": 1252.0001220703125,
+          "height": 35,
+          "right": 2439.83203125,
+          "bottom": 35,
+          "overflowRight": 1073.83203125,
+          "overflowLeft": -1187.8319091796875
+        },
+        {
+          "selector": "span",
+          "text": "Free shipping on orders over $49.45",
+          "x": 1187.8319091796875,
+          "y": 7,
+          "width": 223.640625,
+          "height": 21,
+          "right": 1411.4725341796875,
+          "bottom": 28,
+          "overflowRight": 45.4725341796875,
+          "overflowLeft": -1187.8319091796875
+        },
+        {
+          "selector": "span.shop-nav__amountPhrase.commerce-atomic",
+          "text": "Free shipping on orders over $49.45",
+          "x": 1187.8319091796875,
+          "y": 7,
+          "width": 223.640625,
+          "height": 15,
+          "right": 1411.4725341796875,
+          "bottom": 22,
+          "overflowRight": 45.4725341796875,
+          "overflowLeft": -1187.8319091796875
+        },
+        {
+          "selector": "span.commerce-money",
+          "text": "$49.45",
+          "x": 1371.7069091796875,
+          "y": 7,
+          "width": 39.765625,
+          "height": 15,
+          "right": 1411.4725341796875,
+          "bottom": 22,
+          "overflowRight": 45.4725341796875,
+          "overflowLeft": -1371.7069091796875
+        },
+        {
+          "selector": "span.shop-nav__tickerAd",
+          "text": "Featured deal: PAWS20 today on favorites",
+          "x": 1451.4725341796875,
+          "y": 7,
+          "width": 285.828125,
+          "height": 21,
+          "right": 1737.3006591796875,
+          "bottom": 28,
+          "overflowRight": 371.3006591796875,
+          "overflowLeft": -1451.4725341796875
+        },
+        {
+          "selector": "span",
+          "text": "Spring Pet Sale: Use code PAWS20 for 20% off",
+          "x": 1777.3006591796875,
+          "y": 7,
+          "width": 287.2813720703125,
+          "height": 21,
+          "right": 2064.58203125,
+          "bottom": 28,
+          "overflowRight": 698.58203125,
+          "overflowLeft": -1777.3006591796875
+        },
+        {
+          "selector": "span",
+          "text": "30-day easy returns on collars, beds, toys and apparel",
+          "x": 2104.58203125,
+          "y": 7,
+          "width": 335.25,
+          "height": 21,
+          "right": 2439.83203125,
+          "bottom": 28,
+          "overflowRight": 1073.83203125,
+          "overflowLeft": -2104.58203125
+        }
+      ],
+      "hits": [
+        null,
+        null,
+        null,
+        {
+          "selector": ".profile-address-modal .ant-cascader",
+          "point": {
+            "x": 682.9999847412109,
+            "y": 358.01341247558594
+          },
+          "hitTag": "INPUT",
+          "hitClass": "ant-select-selection-search-input",
+          "hitText": ""
+        },
+        null,
+        {
+          "selector": ".profile-mobile-safe-modal .ant-modal-footer .ant-btn-primary",
+          "point": {
+            "x": 906.5976257324219,
+            "y": 667.9429931640625
+          },
+          "hitTag": "SPAN",
+          "hitClass": "",
+          "hitText": "Save"
+        }
+      ]
+    },
+    {
+      "state": "address-region-cascader",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "body": {
+        "scrollWidth": 1366,
+        "clientWidth": 1366,
+        "scrollHeight": 1711,
+        "clientHeight": 900,
+        "scrollY": 0
+      },
+      "rects": {
+        "page": {
+          "selector": ".profile-page",
+          "text": "Profileprofile.ui.auditComplete Birthday for Nube so recommendations can work harder.My orders (2)Complete profile2All orders2Addresses (2)2Pets (2)100%Account readinessAccount action centerPick up payments, deliveries and pet care tasks quickly.1Pending payme",
+          "x": 143,
+          "y": 216,
+          "width": 1080,
+          "height": 1018,
+          "right": 1223,
+          "bottom": 1234,
+          "scrollWidth": 1080,
+          "clientWidth": 1080,
+          "scrollHeight": 1018,
+          "clientHeight": 1018,
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "zIndex": "auto"
+        },
+        "tabs": {
+          "selector": ".profile-tabs > .ant-tabs-nav",
+          "text": "Personal informationAddresses (2)My orders (2)Pets (2)",
+          "x": 167,
+          "y": 685,
+          "width": 1032,
+          "height": 60,
+          "right": 1199,
+          "bottom": 745,
+          "scrollWidth": 1030,
+          "clientWidth": 1030,
+          "scrollHeight": 58,
+          "clientHeight": 58,
+          "overflowX": "hidden",
+          "overflowY": "hidden",
+          "zIndex": "auto"
+        },
+        "addressReadiness": {
+          "selector": ".profile-address-readiness",
+          "text": "Delivery readinessReview missing phone numbers, short details, and default address selection before checkout.33%1Default ready0Missing phone2Incomplete delivery",
+          "x": 167,
+          "y": 761,
+          "width": 1032,
+          "height": 143,
+          "right": 1199,
+          "bottom": 904,
+          "scrollWidth": 1030,
+          "clientWidth": 1030,
+          "scrollHeight": 141,
+          "clientHeight": 141,
+          "overflowX": "hidden",
+          "overflowY": "hidden",
+          "zIndex": "auto"
+        },
+        "petInsights": null,
+        "modal": {
+          "selector": ".profile-mobile-safe-modal .ant-modal-content",
+          "text": "Add addressRecipientPhoneRegionSelect regionPostal / ZIP codeDetailed address0 / 260Use as default addressCancelSave",
+          "x": 403,
+          "y": 100,
+          "width": 560,
+          "height": 610,
+          "right": 963,
+          "bottom": 710,
+          "scrollWidth": 560,
+          "clientWidth": 560,
+          "scrollHeight": 610,
+          "clientHeight": 610,
+          "overflowX": "hidden",
+          "overflowY": "hidden",
+          "zIndex": "auto"
+        },
+        "addressModal": {
+          "selector": ".profile-address-modal .ant-modal-content",
+          "text": "Add addressRecipientPhoneRegionSelect regionPostal / ZIP codeDetailed address0 / 260Use as default addressCancelSave",
+          "x": 403,
+          "y": 100,
+          "width": 560,
+          "height": 610,
+          "right": 963,
+          "bottom": 710,
+          "scrollWidth": 560,
+          "clientWidth": 560,
+          "scrollHeight": 610,
+          "clientHeight": 610,
+          "overflowX": "hidden",
+          "overflowY": "hidden",
+          "zIndex": "auto"
+        },
+        "modalBody": {
+          "selector": ".profile-mobile-safe-modal .ant-modal-body",
+          "text": "RecipientPhoneRegionSelect regionPostal / ZIP codeDetailed address0 / 260Use as default address",
+          "x": 427,
+          "y": 152,
+          "width": 512,
+          "height": 476,
+          "right": 939,
+          "bottom": 628,
+          "scrollWidth": 512,
+          "clientWidth": 512,
+          "scrollHeight": 476,
+          "clientHeight": 476,
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "zIndex": "auto"
+        },
+        "addressModalBody": {
+          "selector": ".profile-address-modal .ant-modal-body",
+          "text": "RecipientPhoneRegionSelect regionPostal / ZIP codeDetailed address0 / 260Use as default address",
+          "x": 427,
+          "y": 152,
+          "width": 512,
+          "height": 476,
+          "right": 939,
+          "bottom": 628,
+          "scrollWidth": 512,
+          "clientWidth": 512,
+          "scrollHeight": 476,
+          "clientHeight": 476,
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "zIndex": "auto"
+        },
+        "modalFooter": {
+          "selector": ".profile-mobile-safe-modal .ant-modal-footer",
+          "text": "CancelSave",
+          "x": 427,
+          "y": 646,
+          "width": 512,
+          "height": 44,
+          "right": 939,
+          "bottom": 690,
+          "scrollWidth": 512,
+          "clientWidth": 512,
+          "scrollHeight": 44,
+          "clientHeight": 44,
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "zIndex": "auto"
+        },
+        "addressModalFooter": {
+          "selector": ".profile-address-modal .ant-modal-footer",
+          "text": "CancelSave",
+          "x": 427,
+          "y": 646,
+          "width": 512,
+          "height": 44,
+          "right": 939,
+          "bottom": 690,
+          "scrollWidth": 512,
+          "clientWidth": 512,
+          "scrollHeight": 44,
+          "clientHeight": 44,
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "zIndex": "auto"
+        },
+        "addressCascader": {
+          "selector": ".profile-address-modal .ant-cascader",
+          "text": "Select region",
+          "x": 427,
+          "y": 342,
+          "width": 512,
+          "height": 32,
+          "right": 939,
+          "bottom": 374,
+          "scrollWidth": 512,
+          "clientWidth": 512,
+          "scrollHeight": 32,
+          "clientHeight": 32,
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "zIndex": "auto"
+        },
+        "petTypeSelect": {
+          "selector": ".profile-mobile-safe-modal .ant-select",
+          "text": "Select region",
+          "x": 427,
+          "y": 342,
+          "width": 512,
+          "height": 32,
+          "right": 939,
+          "bottom": 374,
+          "scrollWidth": 512,
+          "clientWidth": 512,
+          "scrollHeight": 32,
+          "clientHeight": 32,
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "zIndex": "auto"
+        },
+        "petDatePicker": null,
+        "petSizeSelect": null,
+        "selectDropdown": {
+          "selector": ".ant-select-dropdown:not(.ant-select-dropdown-hidden)",
+          "text": "ChinaMexico",
+          "x": 427,
+          "y": 378,
+          "width": 111,
+          "height": 180,
+          "right": 538,
+          "bottom": 558,
+          "scrollWidth": 111,
+          "clientWidth": 111,
+          "scrollHeight": 180,
+          "clientHeight": 180,
+          "overflowX": "hidden",
+          "overflowY": "hidden",
+          "zIndex": "1150"
+        },
+        "cascaderDropdown": {
+          "selector": ".ant-cascader-dropdown",
+          "text": "ChinaMexico",
+          "x": 427,
+          "y": 378,
+          "width": 111,
+          "height": 180,
+          "right": 538,
+          "bottom": 558,
+          "scrollWidth": 111,
+          "clientWidth": 111,
+          "scrollHeight": 180,
+          "clientHeight": 180,
+          "overflowX": "hidden",
+          "overflowY": "hidden",
+          "zIndex": "1150"
+        },
+        "pickerDropdown": null,
+        "popup": {
+          "selector": ".ant-select-dropdown:not(.ant-select-dropdown-hidden), .ant-cascader-dropdown, .ant-picker-dropdown",
+          "text": "ChinaMexico",
+          "x": 427,
+          "y": 378,
+          "width": 111,
+          "height": 180,
+          "right": 538,
+          "bottom": 558,
+          "scrollWidth": 111,
+          "clientWidth": 111,
+          "scrollHeight": 180,
+          "clientHeight": 180,
+          "overflowX": "hidden",
+          "overflowY": "hidden",
+          "zIndex": "1150"
+        }
+      },
+      "visibleRatios": {
+        "modal": 1,
+        "modalBody": 1,
+        "modalFooter": 1,
+        "addressCascader": 1,
+        "petDatePicker": null,
+        "selectDropdown": 1,
+        "cascaderDropdown": 1,
+        "pickerDropdown": null,
+        "popup": 1
+      },
+      "optionRows": [
+        {
+          "text": "China",
+          "x": 431,
+          "y": 382,
+          "width": 103,
+          "height": 32,
+          "right": 534,
+          "bottom": 414,
+          "visibleRatio": 1
+        },
+        {
+          "text": "Mexico",
+          "x": 431,
+          "y": 414,
+          "width": 103,
+          "height": 32,
+          "right": 534,
+          "bottom": 446,
+          "visibleRatio": 1
+        }
+      ],
+      "overflowEls": [
+        {
+          "selector": "div.shop-nav__ticker",
+          "text": "Free shipping on orders over $49.45Featured deal: PAWS20 today on favoritesSpring Pet Sale: Use code PAWS20 for 20% off30-day easy returns on collars, beds, toy",
+          "x": 1233.28515625,
+          "y": 0,
+          "width": 1252,
+          "height": 35,
+          "right": 2485.28515625,
+          "bottom": 35,
+          "overflowRight": 1119.28515625,
+          "overflowLeft": -1233.28515625
+        },
+        {
+          "selector": "span",
+          "text": "Free shipping on orders over $49.45",
+          "x": 1233.28515625,
+          "y": 7,
+          "width": 223.640625,
+          "height": 21,
+          "right": 1456.92578125,
+          "bottom": 28,
+          "overflowRight": 90.92578125,
+          "overflowLeft": -1233.28515625
+        },
+        {
+          "selector": "span.shop-nav__amountPhrase.commerce-atomic",
+          "text": "Free shipping on orders over $49.45",
+          "x": 1233.28515625,
+          "y": 7,
+          "width": 223.640625,
+          "height": 15,
+          "right": 1456.92578125,
+          "bottom": 22,
+          "overflowRight": 90.92578125,
+          "overflowLeft": -1233.28515625
+        },
+        {
+          "selector": "span.commerce-money",
+          "text": "$49.45",
+          "x": 1417.16015625,
+          "y": 7,
+          "width": 39.765625,
+          "height": 15,
+          "right": 1456.92578125,
+          "bottom": 22,
+          "overflowRight": 90.92578125,
+          "overflowLeft": -1417.16015625
+        },
+        {
+          "selector": "span.shop-nav__tickerAd",
+          "text": "Featured deal: PAWS20 today on favorites",
+          "x": 1496.92578125,
+          "y": 7,
+          "width": 285.828125,
+          "height": 21,
+          "right": 1782.75390625,
+          "bottom": 28,
+          "overflowRight": 416.75390625,
+          "overflowLeft": -1496.92578125
+        },
+        {
+          "selector": "span",
+          "text": "Spring Pet Sale: Use code PAWS20 for 20% off",
+          "x": 1822.75390625,
+          "y": 7,
+          "width": 287.28125,
+          "height": 21,
+          "right": 2110.03515625,
+          "bottom": 28,
+          "overflowRight": 744.03515625,
+          "overflowLeft": -1822.75390625
+        },
+        {
+          "selector": "span",
+          "text": "30-day easy returns on collars, beds, toys and apparel",
+          "x": 2150.03515625,
+          "y": 7,
+          "width": 335.25,
+          "height": 21,
+          "right": 2485.28515625,
+          "bottom": 28,
+          "overflowRight": 1119.28515625,
+          "overflowLeft": -2150.03515625
+        }
+      ],
+      "hits": [
+        {
+          "selector": ".ant-cascader-dropdown .ant-cascader-menu-item",
+          "point": {
+            "x": 482.5,
+            "y": 398
+          },
+          "hitTag": "DIV",
+          "hitClass": "ant-cascader-menu-item-content",
+          "hitText": "China"
+        },
+        null,
+        null,
+        {
+          "selector": ".profile-address-modal .ant-cascader",
+          "point": {
+            "x": 683,
+            "y": 358
+          },
+          "hitTag": "INPUT",
+          "hitClass": "ant-select-selection-search-input",
+          "hitText": ""
+        },
+        null,
+        {
+          "selector": ".profile-mobile-safe-modal .ant-modal-footer .ant-btn-primary",
+          "point": {
+            "x": 906.6484375,
+            "y": 668
+          },
+          "hitTag": "SPAN",
+          "hitClass": "",
+          "hitText": "Save"
+        }
+      ]
+    },
+    {
+      "state": "pets-top",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "body": {
+        "scrollWidth": 1366,
+        "clientWidth": 1366,
+        "scrollHeight": 2094,
+        "clientHeight": 900,
+        "scrollY": 0
+      },
+      "rects": {
+        "page": {
+          "selector": ".profile-page",
+          "text": "Profileprofile.ui.auditComplete Birthday for Nube so recommendations can work harder.My orders (2)Complete profile2All orders2Addresses (2)2Pets (2)100%Account readinessAccount action centerPick up payments, deliveries and pet care tasks quickly.1Pending payme",
+          "x": 143,
+          "y": 216,
+          "width": 1080,
+          "height": 1401,
+          "right": 1223,
+          "bottom": 1617,
+          "scrollWidth": 1080,
+          "clientWidth": 1080,
+          "scrollHeight": 1401,
+          "clientHeight": 1401,
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "zIndex": "auto"
+        },
+        "tabs": {
+          "selector": ".profile-tabs > .ant-tabs-nav",
+          "text": "Personal informationAddresses (2)My orders (2)Pets (2)",
+          "x": 167,
+          "y": 685,
+          "width": 1032,
+          "height": 60,
+          "right": 1199,
+          "bottom": 745,
+          "scrollWidth": 1030,
+          "clientWidth": 1030,
+          "scrollHeight": 58,
+          "clientHeight": 58,
+          "overflowX": "hidden",
+          "overflowY": "hidden",
+          "zIndex": "auto"
+        },
+        "addressReadiness": null,
+        "petInsights": {
+          "selector": ".profile-pet-insights",
+          "text": "Profile recommendation readiness2 pet profile(s) still need details before recommendations feel truly personal.0%Birthday coupon enabledAdd your pets' birthdays and we will automatically send special coupons on those dates, up to the configured benefit limit.1",
+          "x": 167,
+          "y": 761,
+          "width": 1032,
+          "height": 160,
+          "right": 1199,
+          "bottom": 921,
+          "scrollWidth": 1032,
+          "clientWidth": 1032,
+          "scrollHeight": 160,
+          "clientHeight": 160,
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "zIndex": "auto"
+        },
+        "modal": null,
+        "addressModal": null,
+        "modalBody": null,
+        "addressModalBody": null,
+        "modalFooter": null,
+        "addressModalFooter": null,
+        "addressCascader": null,
+        "petTypeSelect": null,
+        "petDatePicker": null,
+        "petSizeSelect": null,
+        "selectDropdown": null,
+        "cascaderDropdown": null,
+        "pickerDropdown": null,
+        "popup": null
+      },
+      "visibleRatios": {
+        "modal": null,
+        "modalBody": null,
+        "modalFooter": null,
+        "addressCascader": null,
+        "petDatePicker": null,
+        "selectDropdown": null,
+        "cascaderDropdown": null,
+        "pickerDropdown": null,
+        "popup": null
+      },
+      "optionRows": [],
+      "overflowEls": [
+        {
+          "selector": "div.shop-nav__ticker",
+          "text": "Free shipping on orders over $49.45Featured deal: PAWS20 today on favoritesSpring Pet Sale: Use code PAWS20 for 20% off30-day easy returns on collars, beds, toy",
+          "x": 1249.6417236328125,
+          "y": 0,
+          "width": 1251.9998779296875,
+          "height": 35,
+          "right": 2501.6416015625,
+          "bottom": 35,
+          "overflowRight": 1135.6416015625,
+          "overflowLeft": -1249.6417236328125
+        },
+        {
+          "selector": "span",
+          "text": "Free shipping on orders over $49.45",
+          "x": 1249.6417236328125,
+          "y": 7,
+          "width": 223.640625,
+          "height": 21,
+          "right": 1473.2823486328125,
+          "bottom": 28,
+          "overflowRight": 107.2823486328125,
+          "overflowLeft": -1249.6417236328125
+        },
+        {
+          "selector": "span.shop-nav__amountPhrase.commerce-atomic",
+          "text": "Free shipping on orders over $49.45",
+          "x": 1249.6417236328125,
+          "y": 7,
+          "width": 223.640625,
+          "height": 15,
+          "right": 1473.2823486328125,
+          "bottom": 22,
+          "overflowRight": 107.2823486328125,
+          "overflowLeft": -1249.6417236328125
+        },
+        {
+          "selector": "span.commerce-money",
+          "text": "$49.45",
+          "x": 1433.5167236328125,
+          "y": 7,
+          "width": 39.765625,
+          "height": 15,
+          "right": 1473.2823486328125,
+          "bottom": 22,
+          "overflowRight": 107.2823486328125,
+          "overflowLeft": -1433.5167236328125
+        },
+        {
+          "selector": "span.shop-nav__tickerAd",
+          "text": "Featured deal: PAWS20 today on favorites",
+          "x": 1513.2823486328125,
+          "y": 7,
+          "width": 285.828125,
+          "height": 21,
+          "right": 1799.1104736328125,
+          "bottom": 28,
+          "overflowRight": 433.1104736328125,
+          "overflowLeft": -1513.2823486328125
+        },
+        {
+          "selector": "span",
+          "text": "Spring Pet Sale: Use code PAWS20 for 20% off",
+          "x": 1839.1104736328125,
+          "y": 7,
+          "width": 287.2811279296875,
+          "height": 21,
+          "right": 2126.3916015625,
+          "bottom": 28,
+          "overflowRight": 760.3916015625,
+          "overflowLeft": -1839.1104736328125
+        },
+        {
+          "selector": "span",
+          "text": "30-day easy returns on collars, beds, toys and apparel",
+          "x": 2166.3916015625,
+          "y": 7,
+          "width": 335.25,
+          "height": 21,
+          "right": 2501.6416015625,
+          "bottom": 28,
+          "overflowRight": 1135.6416015625,
+          "overflowLeft": -2166.3916015625
+        }
+      ],
+      "hits": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ]
+    },
+    {
+      "state": "pet-modal-open",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "body": {
+        "scrollWidth": 1366,
+        "clientWidth": 1366,
+        "scrollHeight": 2094,
+        "clientHeight": 900,
+        "scrollY": 0
+      },
+      "rects": {
+        "page": {
+          "selector": ".profile-page",
+          "text": "Profileprofile.ui.auditComplete Birthday for Nube so recommendations can work harder.My orders (2)Complete profile2All orders2Addresses (2)2Pets (2)100%Account readinessAccount action centerPick up payments, deliveries and pet care tasks quickly.1Pending payme",
+          "x": 143,
+          "y": 216,
+          "width": 1080,
+          "height": 1401,
+          "right": 1223,
+          "bottom": 1617,
+          "scrollWidth": 1080,
+          "clientWidth": 1080,
+          "scrollHeight": 1401,
+          "clientHeight": 1401,
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "zIndex": "auto"
+        },
+        "tabs": {
+          "selector": ".profile-tabs > .ant-tabs-nav",
+          "text": "Personal informationAddresses (2)My orders (2)Pets (2)",
+          "x": 167,
+          "y": 685,
+          "width": 1032,
+          "height": 60,
+          "right": 1199,
+          "bottom": 745,
+          "scrollWidth": 1030,
+          "clientWidth": 1030,
+          "scrollHeight": 58,
+          "clientHeight": 58,
+          "overflowX": "hidden",
+          "overflowY": "hidden",
+          "zIndex": "auto"
+        },
+        "addressReadiness": null,
+        "petInsights": {
+          "selector": ".profile-pet-insights",
+          "text": "Profile recommendation readiness2 pet profile(s) still need details before recommendations feel truly personal.0%Birthday coupon enabledAdd your pets' birthdays and we will automatically send special coupons on those dates, up to the configured benefit limit.1",
+          "x": 167,
+          "y": 761,
+          "width": 1032,
+          "height": 160,
+          "right": 1199,
+          "bottom": 921,
+          "scrollWidth": 1032,
+          "clientWidth": 1032,
+          "scrollHeight": 160,
+          "clientHeight": 160,
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "zIndex": "auto"
+        },
+        "modal": {
+          "selector": ".profile-mobile-safe-modal .ant-modal-content",
+          "text": "Add pet profilePet namePet typeDogBreedBirthdayWeight (kg)SizeMediumCancelSave",
+          "x": 423,
+          "y": 100,
+          "width": 520,
+          "height": 596,
+          "right": 943,
+          "bottom": 696,
+          "scrollWidth": 520,
+          "clientWidth": 520,
+          "scrollHeight": 596,
+          "clientHeight": 596,
+          "overflowX": "hidden",
+          "overflowY": "hidden",
+          "zIndex": "auto"
+        },
+        "addressModal": null,
+        "modalBody": {
+          "selector": ".profile-mobile-safe-modal .ant-modal-body",
+          "text": "Pet namePet typeDogBreedBirthdayWeight (kg)SizeMedium",
+          "x": 447,
+          "y": 152,
+          "width": 472,
+          "height": 462,
+          "right": 919,
+          "bottom": 614,
+          "scrollWidth": 472,
+          "clientWidth": 472,
+          "scrollHeight": 462,
+          "clientHeight": 462,
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "zIndex": "auto"
+        },
+        "addressModalBody": null,
+        "modalFooter": {
+          "selector": ".profile-mobile-safe-modal .ant-modal-footer",
+          "text": "CancelSave",
+          "x": 447,
+          "y": 632,
+          "width": 472,
+          "height": 44,
+          "right": 919,
+          "bottom": 676,
+          "scrollWidth": 472,
+          "clientWidth": 472,
+          "scrollHeight": 44,
+          "clientHeight": 44,
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "zIndex": "auto"
+        },
+        "addressModalFooter": null,
+        "addressCascader": null,
+        "petTypeSelect": {
+          "selector": ".profile-mobile-safe-modal .ant-select",
+          "text": "Dog",
+          "x": 447,
+          "y": 262,
+          "width": 472,
+          "height": 32,
+          "right": 919,
+          "bottom": 294,
+          "scrollWidth": 472,
+          "clientWidth": 472,
+          "scrollHeight": 32,
+          "clientHeight": 32,
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "zIndex": "auto"
+        },
+        "petDatePicker": {
+          "selector": ".profile-pet-modal__field.ant-picker",
+          "text": "",
+          "x": 447,
+          "y": 422,
+          "width": 472,
+          "height": 32,
+          "right": 919,
+          "bottom": 454,
+          "scrollWidth": 470,
+          "clientWidth": 470,
+          "scrollHeight": 30,
+          "clientHeight": 30,
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "zIndex": "auto"
+        },
+        "petSizeSelect": {
+          "selector": ".profile-mobile-safe-modal .ant-form-item:last-child .ant-select",
+          "text": "Medium",
+          "x": 447,
+          "y": 582,
+          "width": 472,
+          "height": 32,
+          "right": 919,
+          "bottom": 614,
+          "scrollWidth": 472,
+          "clientWidth": 472,
+          "scrollHeight": 32,
+          "clientHeight": 32,
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "zIndex": "auto"
+        },
+        "selectDropdown": null,
+        "cascaderDropdown": null,
+        "pickerDropdown": null,
+        "popup": null
+      },
+      "visibleRatios": {
+        "modal": 1,
+        "modalBody": 1,
+        "modalFooter": 1,
+        "addressCascader": null,
+        "petDatePicker": 1,
+        "selectDropdown": null,
+        "cascaderDropdown": null,
+        "pickerDropdown": null,
+        "popup": null
+      },
+      "optionRows": [],
+      "overflowEls": [
+        {
+          "selector": "div.shop-nav__ticker",
+          "text": "Free shipping on orders over $49.45Featured deal: PAWS20 today on favoritesSpring Pet Sale: Use code PAWS20 for 20% off30-day easy returns on collars, beds, toy",
+          "x": 1247.8326416015625,
+          "y": 0,
+          "width": 1251.9998779296875,
+          "height": 35,
+          "right": 2499.83251953125,
+          "bottom": 35,
+          "overflowRight": 1133.83251953125,
+          "overflowLeft": -1247.8326416015625
+        },
+        {
+          "selector": "span",
+          "text": "Free shipping on orders over $49.45",
+          "x": 1247.8326416015625,
+          "y": 7,
+          "width": 223.640625,
+          "height": 21,
+          "right": 1471.4732666015625,
+          "bottom": 28,
+          "overflowRight": 105.4732666015625,
+          "overflowLeft": -1247.8326416015625
+        },
+        {
+          "selector": "span.shop-nav__amountPhrase.commerce-atomic",
+          "text": "Free shipping on orders over $49.45",
+          "x": 1247.8326416015625,
+          "y": 7,
+          "width": 223.640625,
+          "height": 15,
+          "right": 1471.4732666015625,
+          "bottom": 22,
+          "overflowRight": 105.4732666015625,
+          "overflowLeft": -1247.8326416015625
+        },
+        {
+          "selector": "span.commerce-money",
+          "text": "$49.45",
+          "x": 1431.7076416015625,
+          "y": 7,
+          "width": 39.765625,
+          "height": 15,
+          "right": 1471.4732666015625,
+          "bottom": 22,
+          "overflowRight": 105.4732666015625,
+          "overflowLeft": -1431.7076416015625
+        },
+        {
+          "selector": "span.shop-nav__tickerAd",
+          "text": "Featured deal: PAWS20 today on favorites",
+          "x": 1511.4732666015625,
+          "y": 7,
+          "width": 285.828125,
+          "height": 21,
+          "right": 1797.3013916015625,
+          "bottom": 28,
+          "overflowRight": 431.3013916015625,
+          "overflowLeft": -1511.4732666015625
+        },
+        {
+          "selector": "span",
+          "text": "Spring Pet Sale: Use code PAWS20 for 20% off",
+          "x": 1837.3013916015625,
+          "y": 7,
+          "width": 287.2811279296875,
+          "height": 21,
+          "right": 2124.58251953125,
+          "bottom": 28,
+          "overflowRight": 758.58251953125,
+          "overflowLeft": -1837.3013916015625
+        },
+        {
+          "selector": "span",
+          "text": "30-day easy returns on collars, beds, toys and apparel",
+          "x": 2164.58251953125,
+          "y": 7,
+          "width": 335.25,
+          "height": 21,
+          "right": 2499.83251953125,
+          "bottom": 28,
+          "overflowRight": 1133.83251953125,
+          "overflowLeft": -2164.58251953125
+        },
+        {
+          "selector": "path.[object.SVGAnimatedString]",
+          "text": "",
+          "x": 1050.9737548828125,
+          "y": 763,
+          "width": 760.0389404296875,
+          "height": 512,
+          "right": 1811.0126953125,
+          "bottom": 1275,
+          "overflowRight": 445.0126953125,
+          "overflowLeft": -1050.9737548828125
+        },
+        {
+          "selector": "path.[object.SVGAnimatedString]",
+          "text": "",
+          "x": 1050.9873046875,
+          "y": 778.5,
+          "width": 759.987548828125,
+          "height": 512,
+          "right": 1810.974853515625,
+          "bottom": 1290.5,
+          "overflowRight": 444.974853515625,
+          "overflowLeft": -1050.9873046875
+        }
+      ],
+      "hits": [
+        null,
+        null,
+        null,
+        null,
+        {
+          "selector": ".profile-pet-modal__field.ant-picker",
+          "point": {
+            "x": 683,
+            "y": 438
+          },
+          "hitTag": "INPUT",
+          "hitClass": "",
+          "hitText": ""
+        },
+        {
+          "selector": ".profile-mobile-safe-modal .ant-modal-footer .ant-btn-primary",
+          "point": {
+            "x": 886.6484375,
+            "y": 654
+          },
+          "hitTag": "SPAN",
+          "hitClass": "",
+          "hitText": "Save"
+        }
+      ]
+    },
+    {
+      "state": "pet-type-select",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "body": {
+        "scrollWidth": 1366,
+        "clientWidth": 1366,
+        "scrollHeight": 2094,
+        "clientHeight": 900,
+        "scrollY": 0
+      },
+      "rects": {
+        "page": {
+          "selector": ".profile-page",
+          "text": "Profileprofile.ui.auditComplete Birthday for Nube so recommendations can work harder.My orders (2)Complete profile2All orders2Addresses (2)2Pets (2)100%Account readinessAccount action centerPick up payments, deliveries and pet care tasks quickly.1Pending payme",
+          "x": 143,
+          "y": 216,
+          "width": 1080,
+          "height": 1401,
+          "right": 1223,
+          "bottom": 1617,
+          "scrollWidth": 1080,
+          "clientWidth": 1080,
+          "scrollHeight": 1401,
+          "clientHeight": 1401,
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "zIndex": "auto"
+        },
+        "tabs": {
+          "selector": ".profile-tabs > .ant-tabs-nav",
+          "text": "Personal informationAddresses (2)My orders (2)Pets (2)",
+          "x": 167,
+          "y": 685,
+          "width": 1032,
+          "height": 60,
+          "right": 1199,
+          "bottom": 745,
+          "scrollWidth": 1030,
+          "clientWidth": 1030,
+          "scrollHeight": 58,
+          "clientHeight": 58,
+          "overflowX": "hidden",
+          "overflowY": "hidden",
+          "zIndex": "auto"
+        },
+        "addressReadiness": null,
+        "petInsights": {
+          "selector": ".profile-pet-insights",
+          "text": "Profile recommendation readiness2 pet profile(s) still need details before recommendations feel truly personal.0%Birthday coupon enabledAdd your pets' birthdays and we will automatically send special coupons on those dates, up to the configured benefit limit.1",
+          "x": 167,
+          "y": 761,
+          "width": 1032,
+          "height": 160,
+          "right": 1199,
+          "bottom": 921,
+          "scrollWidth": 1032,
+          "clientWidth": 1032,
+          "scrollHeight": 160,
+          "clientHeight": 160,
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "zIndex": "auto"
+        },
+        "modal": {
+          "selector": ".profile-mobile-safe-modal .ant-modal-content",
+          "text": "Add pet profilePet namePet typeDogBreedBirthdayWeight (kg)SizeMediumCancelSave",
+          "x": 423,
+          "y": 100,
+          "width": 520,
+          "height": 596,
+          "right": 943,
+          "bottom": 696,
+          "scrollWidth": 520,
+          "clientWidth": 520,
+          "scrollHeight": 596,
+          "clientHeight": 596,
+          "overflowX": "hidden",
+          "overflowY": "hidden",
+          "zIndex": "auto"
+        },
+        "addressModal": null,
+        "modalBody": {
+          "selector": ".profile-mobile-safe-modal .ant-modal-body",
+          "text": "Pet namePet typeDogBreedBirthdayWeight (kg)SizeMedium",
+          "x": 447,
+          "y": 152,
+          "width": 472,
+          "height": 462,
+          "right": 919,
+          "bottom": 614,
+          "scrollWidth": 472,
+          "clientWidth": 472,
+          "scrollHeight": 462,
+          "clientHeight": 462,
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "zIndex": "auto"
+        },
+        "addressModalBody": null,
+        "modalFooter": {
+          "selector": ".profile-mobile-safe-modal .ant-modal-footer",
+          "text": "CancelSave",
+          "x": 447,
+          "y": 632,
+          "width": 472,
+          "height": 44,
+          "right": 919,
+          "bottom": 676,
+          "scrollWidth": 472,
+          "clientWidth": 472,
+          "scrollHeight": 44,
+          "clientHeight": 44,
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "zIndex": "auto"
+        },
+        "addressModalFooter": null,
+        "addressCascader": null,
+        "petTypeSelect": {
+          "selector": ".profile-mobile-safe-modal .ant-select",
+          "text": "Dog",
+          "x": 447,
+          "y": 262,
+          "width": 472,
+          "height": 32,
+          "right": 919,
+          "bottom": 294,
+          "scrollWidth": 472,
+          "clientWidth": 472,
+          "scrollHeight": 32,
+          "clientHeight": 32,
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "zIndex": "auto"
+        },
+        "petDatePicker": {
+          "selector": ".profile-pet-modal__field.ant-picker",
+          "text": "",
+          "x": 447,
+          "y": 422,
+          "width": 472,
+          "height": 32,
+          "right": 919,
+          "bottom": 454,
+          "scrollWidth": 470,
+          "clientWidth": 470,
+          "scrollHeight": 30,
+          "clientHeight": 30,
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "zIndex": "auto"
+        },
+        "petSizeSelect": {
+          "selector": ".profile-mobile-safe-modal .ant-form-item:last-child .ant-select",
+          "text": "Medium",
+          "x": 447,
+          "y": 582,
+          "width": 472,
+          "height": 32,
+          "right": 919,
+          "bottom": 614,
+          "scrollWidth": 472,
+          "clientWidth": 472,
+          "scrollHeight": 32,
+          "clientHeight": 32,
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "zIndex": "auto"
+        },
+        "selectDropdown": {
+          "selector": ".ant-select-dropdown:not(.ant-select-dropdown-hidden)",
+          "text": "DOGCATDogCatSmall pet",
+          "x": 447,
+          "y": 298,
+          "width": 472,
+          "height": 104,
+          "right": 919,
+          "bottom": 402,
+          "scrollWidth": 472,
+          "clientWidth": 472,
+          "scrollHeight": 104,
+          "clientHeight": 104,
+          "overflowX": "hidden",
+          "overflowY": "hidden",
+          "zIndex": "1150"
+        },
+        "cascaderDropdown": null,
+        "pickerDropdown": null,
+        "popup": {
+          "selector": ".ant-select-dropdown:not(.ant-select-dropdown-hidden), .ant-cascader-dropdown, .ant-picker-dropdown",
+          "text": "DOGCATDogCatSmall pet",
+          "x": 447,
+          "y": 298,
+          "width": 472,
+          "height": 104,
+          "right": 919,
+          "bottom": 402,
+          "scrollWidth": 472,
+          "clientWidth": 472,
+          "scrollHeight": 104,
+          "clientHeight": 104,
+          "overflowX": "hidden",
+          "overflowY": "hidden",
+          "zIndex": "1150"
+        }
+      },
+      "visibleRatios": {
+        "modal": 1,
+        "modalBody": 1,
+        "modalFooter": 1,
+        "addressCascader": null,
+        "petDatePicker": 1,
+        "selectDropdown": 1,
+        "cascaderDropdown": null,
+        "pickerDropdown": null,
+        "popup": 1
+      },
+      "optionRows": [
+        {
+          "text": "Dog",
+          "x": 451,
+          "y": 302,
+          "width": 464,
+          "height": 32,
+          "right": 915,
+          "bottom": 334,
+          "visibleRatio": 1
+        },
+        {
+          "text": "Cat",
+          "x": 451,
+          "y": 334,
+          "width": 464,
+          "height": 32,
+          "right": 915,
+          "bottom": 366,
+          "visibleRatio": 1
+        },
+        {
+          "text": "Small pet",
+          "x": 451,
+          "y": 366,
+          "width": 464,
+          "height": 32,
+          "right": 915,
+          "bottom": 398,
+          "visibleRatio": 1
+        }
+      ],
+      "overflowEls": [
+        {
+          "selector": "div.shop-nav__ticker",
+          "text": "Free shipping on orders over $49.45Featured deal: PAWS20 today on favoritesSpring Pet Sale: Use code PAWS20 for 20% off30-day easy returns on collars, beds, toy",
+          "x": 1266.0028076171875,
+          "y": 0,
+          "width": 1252.0001220703125,
+          "height": 35,
+          "right": 2518.0029296875,
+          "bottom": 35,
+          "overflowRight": 1152.0029296875,
+          "overflowLeft": -1266.0028076171875
+        },
+        {
+          "selector": "span",
+          "text": "Free shipping on orders over $49.45",
+          "x": 1266.0028076171875,
+          "y": 7,
+          "width": 223.640625,
+          "height": 21,
+          "right": 1489.6434326171875,
+          "bottom": 28,
+          "overflowRight": 123.6434326171875,
+          "overflowLeft": -1266.0028076171875
+        },
+        {
+          "selector": "span.shop-nav__amountPhrase.commerce-atomic",
+          "text": "Free shipping on orders over $49.45",
+          "x": 1266.0028076171875,
+          "y": 7,
+          "width": 223.640625,
+          "height": 15,
+          "right": 1489.6434326171875,
+          "bottom": 22,
+          "overflowRight": 123.6434326171875,
+          "overflowLeft": -1266.0028076171875
+        },
+        {
+          "selector": "span.commerce-money",
+          "text": "$49.45",
+          "x": 1449.8778076171875,
+          "y": 7,
+          "width": 39.765625,
+          "height": 15,
+          "right": 1489.6434326171875,
+          "bottom": 22,
+          "overflowRight": 123.6434326171875,
+          "overflowLeft": -1449.8778076171875
+        },
+        {
+          "selector": "span.shop-nav__tickerAd",
+          "text": "Featured deal: PAWS20 today on favorites",
+          "x": 1529.6434326171875,
+          "y": 7,
+          "width": 285.828125,
+          "height": 21,
+          "right": 1815.4715576171875,
+          "bottom": 28,
+          "overflowRight": 449.4715576171875,
+          "overflowLeft": -1529.6434326171875
+        },
+        {
+          "selector": "span",
+          "text": "Spring Pet Sale: Use code PAWS20 for 20% off",
+          "x": 1855.4715576171875,
+          "y": 7,
+          "width": 287.2813720703125,
+          "height": 21,
+          "right": 2142.7529296875,
+          "bottom": 28,
+          "overflowRight": 776.7529296875,
+          "overflowLeft": -1855.4715576171875
+        },
+        {
+          "selector": "span",
+          "text": "30-day easy returns on collars, beds, toys and apparel",
+          "x": 2182.7529296875,
+          "y": 7,
+          "width": 335.25,
+          "height": 21,
+          "right": 2518.0029296875,
+          "bottom": 28,
+          "overflowRight": 1152.0029296875,
+          "overflowLeft": -2182.7529296875
+        },
+        {
+          "selector": "path.[object.SVGAnimatedString]",
+          "text": "",
+          "x": 1050.9737548828125,
+          "y": 763,
+          "width": 760.0389404296875,
+          "height": 512,
+          "right": 1811.0126953125,
+          "bottom": 1275,
+          "overflowRight": 445.0126953125,
+          "overflowLeft": -1050.9737548828125
+        },
+        {
+          "selector": "path.[object.SVGAnimatedString]",
+          "text": "",
+          "x": 1050.9873046875,
+          "y": 778.5,
+          "width": 759.987548828125,
+          "height": 512,
+          "right": 1810.974853515625,
+          "bottom": 1290.5,
+          "overflowRight": 444.974853515625,
+          "overflowLeft": -1050.9873046875
+        }
+      ],
+      "hits": [
+        null,
+        {
+          "selector": ".ant-select-dropdown:not(.ant-select-dropdown-hidden) .ant-select-item-option",
+          "point": {
+            "x": 683,
+            "y": 318
+          },
+          "hitTag": "DIV",
+          "hitClass": "ant-select-item-option-content",
+          "hitText": "Dog"
+        },
+        null,
+        null,
+        {
+          "selector": ".profile-pet-modal__field.ant-picker",
+          "point": {
+            "x": 683,
+            "y": 438
+          },
+          "hitTag": "INPUT",
+          "hitClass": "",
+          "hitText": ""
+        },
+        {
+          "selector": ".profile-mobile-safe-modal .ant-modal-footer .ant-btn-primary",
+          "point": {
+            "x": 886.6484375,
+            "y": 654
+          },
+          "hitTag": "SPAN",
+          "hitClass": "",
+          "hitText": "Save"
+        }
+      ]
+    },
+    {
+      "state": "pet-birthday-picker",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "body": {
+        "scrollWidth": 1366,
+        "clientWidth": 1366,
+        "scrollHeight": 2094,
+        "clientHeight": 900,
+        "scrollY": 0
+      },
+      "rects": {
+        "page": {
+          "selector": ".profile-page",
+          "text": "Profileprofile.ui.auditComplete Birthday for Nube so recommendations can work harder.My orders (2)Complete profile2All orders2Addresses (2)2Pets (2)100%Account readinessAccount action centerPick up payments, deliveries and pet care tasks quickly.1Pending payme",
+          "x": 143,
+          "y": 216,
+          "width": 1080,
+          "height": 1401,
+          "right": 1223,
+          "bottom": 1617,
+          "scrollWidth": 1080,
+          "clientWidth": 1080,
+          "scrollHeight": 1401,
+          "clientHeight": 1401,
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "zIndex": "auto"
+        },
+        "tabs": {
+          "selector": ".profile-tabs > .ant-tabs-nav",
+          "text": "Personal informationAddresses (2)My orders (2)Pets (2)",
+          "x": 167,
+          "y": 685,
+          "width": 1032,
+          "height": 60,
+          "right": 1199,
+          "bottom": 745,
+          "scrollWidth": 1030,
+          "clientWidth": 1030,
+          "scrollHeight": 58,
+          "clientHeight": 58,
+          "overflowX": "hidden",
+          "overflowY": "hidden",
+          "zIndex": "auto"
+        },
+        "addressReadiness": null,
+        "petInsights": {
+          "selector": ".profile-pet-insights",
+          "text": "Profile recommendation readiness2 pet profile(s) still need details before recommendations feel truly personal.0%Birthday coupon enabledAdd your pets' birthdays and we will automatically send special coupons on those dates, up to the configured benefit limit.1",
+          "x": 167,
+          "y": 761,
+          "width": 1032,
+          "height": 160,
+          "right": 1199,
+          "bottom": 921,
+          "scrollWidth": 1032,
+          "clientWidth": 1032,
+          "scrollHeight": 160,
+          "clientHeight": 160,
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "zIndex": "auto"
+        },
+        "modal": {
+          "selector": ".profile-mobile-safe-modal .ant-modal-content",
+          "text": "Add pet profilePet namePet typeDogBreedBirthdayWeight (kg)SizeMediumCancelSave",
+          "x": 423,
+          "y": 100,
+          "width": 520,
+          "height": 596,
+          "right": 943,
+          "bottom": 696,
+          "scrollWidth": 520,
+          "clientWidth": 520,
+          "scrollHeight": 596,
+          "clientHeight": 596,
+          "overflowX": "hidden",
+          "overflowY": "hidden",
+          "zIndex": "auto"
+        },
+        "addressModal": null,
+        "modalBody": {
+          "selector": ".profile-mobile-safe-modal .ant-modal-body",
+          "text": "Pet namePet typeDogBreedBirthdayWeight (kg)SizeMedium",
+          "x": 447,
+          "y": 152,
+          "width": 472,
+          "height": 462,
+          "right": 919,
+          "bottom": 614,
+          "scrollWidth": 472,
+          "clientWidth": 472,
+          "scrollHeight": 462,
+          "clientHeight": 462,
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "zIndex": "auto"
+        },
+        "addressModalBody": null,
+        "modalFooter": {
+          "selector": ".profile-mobile-safe-modal .ant-modal-footer",
+          "text": "CancelSave",
+          "x": 447,
+          "y": 632,
+          "width": 472,
+          "height": 44,
+          "right": 919,
+          "bottom": 676,
+          "scrollWidth": 472,
+          "clientWidth": 472,
+          "scrollHeight": 44,
+          "clientHeight": 44,
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "zIndex": "auto"
+        },
+        "addressModalFooter": null,
+        "addressCascader": null,
+        "petTypeSelect": {
+          "selector": ".profile-mobile-safe-modal .ant-select",
+          "text": "Dog",
+          "x": 447,
+          "y": 262,
+          "width": 472,
+          "height": 32,
+          "right": 919,
+          "bottom": 294,
+          "scrollWidth": 472,
+          "clientWidth": 472,
+          "scrollHeight": 32,
+          "clientHeight": 32,
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "zIndex": "auto"
+        },
+        "petDatePicker": {
+          "selector": ".profile-pet-modal__field.ant-picker",
+          "text": "",
+          "x": 447,
+          "y": 422,
+          "width": 472,
+          "height": 32,
+          "right": 919,
+          "bottom": 454,
+          "scrollWidth": 470,
+          "clientWidth": 470,
+          "scrollHeight": 30,
+          "clientHeight": 30,
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "zIndex": "auto"
+        },
+        "petSizeSelect": {
+          "selector": ".profile-mobile-safe-modal .ant-form-item:last-child .ant-select",
+          "text": "Medium",
+          "x": 447,
+          "y": 582,
+          "width": 472,
+          "height": 32,
+          "right": 919,
+          "bottom": 614,
+          "scrollWidth": 472,
+          "clientWidth": 472,
+          "scrollHeight": 32,
+          "clientHeight": 32,
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "zIndex": "auto"
+        },
+        "selectDropdown": null,
+        "cascaderDropdown": null,
+        "pickerDropdown": {
+          "selector": ".ant-picker-dropdown",
+          "text": "Jun2026SuMoTuWeThFrSa311234567891011121314151617181920212223242526272829301234567891011Today",
+          "x": 447,
+          "y": 458,
+          "width": 472,
+          "height": 348,
+          "right": 919,
+          "bottom": 806,
+          "scrollWidth": 472,
+          "clientWidth": 472,
+          "scrollHeight": 348,
+          "clientHeight": 348,
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "zIndex": "1150"
+        },
+        "popup": {
+          "selector": ".ant-select-dropdown:not(.ant-select-dropdown-hidden), .ant-cascader-dropdown, .ant-picker-dropdown",
+          "text": "Jun2026SuMoTuWeThFrSa311234567891011121314151617181920212223242526272829301234567891011Today",
+          "x": 447,
+          "y": 458,
+          "width": 472,
+          "height": 348,
+          "right": 919,
+          "bottom": 806,
+          "scrollWidth": 472,
+          "clientWidth": 472,
+          "scrollHeight": 348,
+          "clientHeight": 348,
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "zIndex": "1150"
+        }
+      },
+      "visibleRatios": {
+        "modal": 1,
+        "modalBody": 1,
+        "modalFooter": 1,
+        "addressCascader": null,
+        "petDatePicker": 1,
+        "selectDropdown": null,
+        "cascaderDropdown": null,
+        "pickerDropdown": 1,
+        "popup": 1
+      },
+      "optionRows": [
+        {
+          "text": "1",
+          "x": 501,
+          "y": 543,
+          "width": 36,
+          "height": 36,
+          "right": 537,
+          "bottom": 579,
+          "visibleRatio": 1
+        },
+        {
+          "text": "2",
+          "x": 537,
+          "y": 543,
+          "width": 36,
+          "height": 36,
+          "right": 573,
+          "bottom": 579,
+          "visibleRatio": 1
+        },
+        {
+          "text": "3",
+          "x": 573,
+          "y": 543,
+          "width": 36,
+          "height": 36,
+          "right": 609,
+          "bottom": 579,
+          "visibleRatio": 1
+        },
+        {
+          "text": "4",
+          "x": 609,
+          "y": 543,
+          "width": 36,
+          "height": 36,
+          "right": 645,
+          "bottom": 579,
+          "visibleRatio": 1
+        },
+        {
+          "text": "5",
+          "x": 645,
+          "y": 543,
+          "width": 36,
+          "height": 36,
+          "right": 681,
+          "bottom": 579,
+          "visibleRatio": 1
+        },
+        {
+          "text": "6",
+          "x": 681,
+          "y": 543,
+          "width": 36,
+          "height": 36,
+          "right": 717,
+          "bottom": 579,
+          "visibleRatio": 1
+        },
+        {
+          "text": "7",
+          "x": 465,
+          "y": 579,
+          "width": 36,
+          "height": 36,
+          "right": 501,
+          "bottom": 615,
+          "visibleRatio": 1
+        },
+        {
+          "text": "8",
+          "x": 501,
+          "y": 579,
+          "width": 36,
+          "height": 36,
+          "right": 537,
+          "bottom": 615,
+          "visibleRatio": 1
+        },
+        {
+          "text": "9",
+          "x": 537,
+          "y": 579,
+          "width": 36,
+          "height": 36,
+          "right": 573,
+          "bottom": 615,
+          "visibleRatio": 1
+        },
+        {
+          "text": "10",
+          "x": 573,
+          "y": 579,
+          "width": 36,
+          "height": 36,
+          "right": 609,
+          "bottom": 615,
+          "visibleRatio": 1
+        },
+        {
+          "text": "11",
+          "x": 609,
+          "y": 579,
+          "width": 36,
+          "height": 36,
+          "right": 645,
+          "bottom": 615,
+          "visibleRatio": 1
+        },
+        {
+          "text": "12",
+          "x": 645,
+          "y": 579,
+          "width": 36,
+          "height": 36,
+          "right": 681,
+          "bottom": 615,
+          "visibleRatio": 1
+        },
+        {
+          "text": "13",
+          "x": 681,
+          "y": 579,
+          "width": 36,
+          "height": 36,
+          "right": 717,
+          "bottom": 615,
+          "visibleRatio": 1
+        },
+        {
+          "text": "14",
+          "x": 465,
+          "y": 615,
+          "width": 36,
+          "height": 36,
+          "right": 501,
+          "bottom": 651,
+          "visibleRatio": 1
+        },
+        {
+          "text": "15",
+          "x": 501,
+          "y": 615,
+          "width": 36,
+          "height": 36,
+          "right": 537,
+          "bottom": 651,
+          "visibleRatio": 1
+        },
+        {
+          "text": "16",
+          "x": 537,
+          "y": 615,
+          "width": 36,
+          "height": 36,
+          "right": 573,
+          "bottom": 651,
+          "visibleRatio": 1
+        },
+        {
+          "text": "17",
+          "x": 573,
+          "y": 615,
+          "width": 36,
+          "height": 36,
+          "right": 609,
+          "bottom": 651,
+          "visibleRatio": 1
+        },
+        {
+          "text": "18",
+          "x": 609,
+          "y": 615,
+          "width": 36,
+          "height": 36,
+          "right": 645,
+          "bottom": 651,
+          "visibleRatio": 1
+        },
+        {
+          "text": "19",
+          "x": 645,
+          "y": 615,
+          "width": 36,
+          "height": 36,
+          "right": 681,
+          "bottom": 651,
+          "visibleRatio": 1
+        },
+        {
+          "text": "20",
+          "x": 681,
+          "y": 615,
+          "width": 36,
+          "height": 36,
+          "right": 717,
+          "bottom": 651,
+          "visibleRatio": 1
+        },
+        {
+          "text": "21",
+          "x": 465,
+          "y": 651,
+          "width": 36,
+          "height": 36,
+          "right": 501,
+          "bottom": 687,
+          "visibleRatio": 1
+        },
+        {
+          "text": "22",
+          "x": 501,
+          "y": 651,
+          "width": 36,
+          "height": 36,
+          "right": 537,
+          "bottom": 687,
+          "visibleRatio": 1
+        },
+        {
+          "text": "23",
+          "x": 537,
+          "y": 651,
+          "width": 36,
+          "height": 36,
+          "right": 573,
+          "bottom": 687,
+          "visibleRatio": 1
+        },
+        {
+          "text": "24",
+          "x": 573,
+          "y": 651,
+          "width": 36,
+          "height": 36,
+          "right": 609,
+          "bottom": 687,
+          "visibleRatio": 1
+        },
+        {
+          "text": "25",
+          "x": 609,
+          "y": 651,
+          "width": 36,
+          "height": 36,
+          "right": 645,
+          "bottom": 687,
+          "visibleRatio": 1
+        },
+        {
+          "text": "26",
+          "x": 645,
+          "y": 651,
+          "width": 36,
+          "height": 36,
+          "right": 681,
+          "bottom": 687,
+          "visibleRatio": 1
+        },
+        {
+          "text": "27",
+          "x": 681,
+          "y": 651,
+          "width": 36,
+          "height": 36,
+          "right": 717,
+          "bottom": 687,
+          "visibleRatio": 1
+        },
+        {
+          "text": "28",
+          "x": 465,
+          "y": 687,
+          "width": 36,
+          "height": 36,
+          "right": 501,
+          "bottom": 723,
+          "visibleRatio": 1
+        },
+        {
+          "text": "29",
+          "x": 501,
+          "y": 687,
+          "width": 36,
+          "height": 36,
+          "right": 537,
+          "bottom": 723,
+          "visibleRatio": 1
+        },
+        {
+          "text": "30",
+          "x": 537,
+          "y": 687,
+          "width": 36,
+          "height": 36,
+          "right": 573,
+          "bottom": 723,
+          "visibleRatio": 1
+        }
+      ],
+      "overflowEls": [
+        {
+          "selector": "div.shop-nav__ticker",
+          "text": "Free shipping on orders over $49.45Featured deal: PAWS20 today on favoritesSpring Pet Sale: Use code PAWS20 for 20% off30-day easy returns on collars, beds, toy",
+          "x": 1082.388671875,
+          "y": 0,
+          "width": 1252,
+          "height": 35,
+          "right": 2334.388671875,
+          "bottom": 35,
+          "overflowRight": 968.388671875,
+          "overflowLeft": -1082.388671875
+        },
+        {
+          "selector": "span.shop-nav__tickerAd",
+          "text": "Featured deal: PAWS20 today on favorites",
+          "x": 1346.029296875,
+          "y": 7,
+          "width": 285.828125,
+          "height": 21,
+          "right": 1631.857421875,
+          "bottom": 28,
+          "overflowRight": 265.857421875,
+          "overflowLeft": -1346.029296875
+        },
+        {
+          "selector": "span",
+          "text": "Spring Pet Sale: Use code PAWS20 for 20% off",
+          "x": 1671.857421875,
+          "y": 7,
+          "width": 287.28125,
+          "height": 21,
+          "right": 1959.138671875,
+          "bottom": 28,
+          "overflowRight": 593.138671875,
+          "overflowLeft": -1671.857421875
+        },
+        {
+          "selector": "span",
+          "text": "30-day easy returns on collars, beds, toys and apparel",
+          "x": 1999.138671875,
+          "y": 7,
+          "width": 335.25,
+          "height": 21,
+          "right": 2334.388671875,
+          "bottom": 28,
+          "overflowRight": 968.388671875,
+          "overflowLeft": -1999.138671875
+        },
+        {
+          "selector": "path.[object.SVGAnimatedString]",
+          "text": "",
+          "x": 1050.9737548828125,
+          "y": 763,
+          "width": 760.0389404296875,
+          "height": 512,
+          "right": 1811.0126953125,
+          "bottom": 1275,
+          "overflowRight": 445.0126953125,
+          "overflowLeft": -1050.9737548828125
+        },
+        {
+          "selector": "path.[object.SVGAnimatedString]",
+          "text": "",
+          "x": 1050.9873046875,
+          "y": 778.5,
+          "width": 759.987548828125,
+          "height": 512,
+          "right": 1810.974853515625,
+          "bottom": 1290.5,
+          "overflowRight": 444.974853515625,
+          "overflowLeft": -1050.9873046875
+        }
+      ],
+      "hits": [
+        null,
+        null,
+        {
+          "selector": ".ant-picker-dropdown .ant-picker-cell-in-view",
+          "point": {
+            "x": 519,
+            "y": 561
+          },
+          "hitTag": "DIV",
+          "hitClass": "ant-picker-cell-inner",
+          "hitText": "1"
+        },
+        null,
+        {
+          "selector": ".profile-pet-modal__field.ant-picker",
+          "point": {
+            "x": 683,
+            "y": 438
+          },
+          "hitTag": "INPUT",
+          "hitClass": "",
+          "hitText": ""
+        },
+        {
+          "selector": ".profile-mobile-safe-modal .ant-modal-footer .ant-btn-primary",
+          "point": {
+            "x": 886.6484375,
+            "y": 654
+          },
+          "hitTag": "SPAN",
+          "hitClass": "",
+          "hitText": "Save"
+        }
+      ]
+    },
+    {
+      "state": "pet-size-select",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "body": {
+        "scrollWidth": 1366,
+        "clientWidth": 1366,
+        "scrollHeight": 2094,
+        "clientHeight": 900,
+        "scrollY": 0
+      },
+      "rects": {
+        "page": {
+          "selector": ".profile-page",
+          "text": "Profileprofile.ui.auditComplete Birthday for Nube so recommendations can work harder.My orders (2)Complete profile2All orders2Addresses (2)2Pets (2)100%Account readinessAccount action centerPick up payments, deliveries and pet care tasks quickly.1Pending payme",
+          "x": 143,
+          "y": 216,
+          "width": 1080,
+          "height": 1401,
+          "right": 1223,
+          "bottom": 1617,
+          "scrollWidth": 1080,
+          "clientWidth": 1080,
+          "scrollHeight": 1401,
+          "clientHeight": 1401,
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "zIndex": "auto"
+        },
+        "tabs": {
+          "selector": ".profile-tabs > .ant-tabs-nav",
+          "text": "Personal informationAddresses (2)My orders (2)Pets (2)",
+          "x": 167,
+          "y": 685,
+          "width": 1032,
+          "height": 60,
+          "right": 1199,
+          "bottom": 745,
+          "scrollWidth": 1030,
+          "clientWidth": 1030,
+          "scrollHeight": 58,
+          "clientHeight": 58,
+          "overflowX": "hidden",
+          "overflowY": "hidden",
+          "zIndex": "auto"
+        },
+        "addressReadiness": null,
+        "petInsights": {
+          "selector": ".profile-pet-insights",
+          "text": "Profile recommendation readiness2 pet profile(s) still need details before recommendations feel truly personal.0%Birthday coupon enabledAdd your pets' birthdays and we will automatically send special coupons on those dates, up to the configured benefit limit.1",
+          "x": 167,
+          "y": 761,
+          "width": 1032,
+          "height": 160,
+          "right": 1199,
+          "bottom": 921,
+          "scrollWidth": 1032,
+          "clientWidth": 1032,
+          "scrollHeight": 160,
+          "clientHeight": 160,
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "zIndex": "auto"
+        },
+        "modal": {
+          "selector": ".profile-mobile-safe-modal .ant-modal-content",
+          "text": "Add pet profilePet namePet typeDogBreedBirthdayWeight (kg)SizeMediumCancelSave",
+          "x": 423,
+          "y": 100,
+          "width": 520,
+          "height": 596,
+          "right": 943,
+          "bottom": 696,
+          "scrollWidth": 520,
+          "clientWidth": 520,
+          "scrollHeight": 596,
+          "clientHeight": 596,
+          "overflowX": "hidden",
+          "overflowY": "hidden",
+          "zIndex": "auto"
+        },
+        "addressModal": null,
+        "modalBody": {
+          "selector": ".profile-mobile-safe-modal .ant-modal-body",
+          "text": "Pet namePet typeDogBreedBirthdayWeight (kg)SizeMedium",
+          "x": 447,
+          "y": 152,
+          "width": 472,
+          "height": 462,
+          "right": 919,
+          "bottom": 614,
+          "scrollWidth": 472,
+          "clientWidth": 472,
+          "scrollHeight": 462,
+          "clientHeight": 462,
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "zIndex": "auto"
+        },
+        "addressModalBody": null,
+        "modalFooter": {
+          "selector": ".profile-mobile-safe-modal .ant-modal-footer",
+          "text": "CancelSave",
+          "x": 447,
+          "y": 632,
+          "width": 472,
+          "height": 44,
+          "right": 919,
+          "bottom": 676,
+          "scrollWidth": 472,
+          "clientWidth": 472,
+          "scrollHeight": 44,
+          "clientHeight": 44,
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "zIndex": "auto"
+        },
+        "addressModalFooter": null,
+        "addressCascader": null,
+        "petTypeSelect": {
+          "selector": ".profile-mobile-safe-modal .ant-select",
+          "text": "Dog",
+          "x": 447,
+          "y": 262,
+          "width": 472,
+          "height": 32,
+          "right": 919,
+          "bottom": 294,
+          "scrollWidth": 472,
+          "clientWidth": 472,
+          "scrollHeight": 32,
+          "clientHeight": 32,
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "zIndex": "auto"
+        },
+        "petDatePicker": {
+          "selector": ".profile-pet-modal__field.ant-picker",
+          "text": "",
+          "x": 447,
+          "y": 422,
+          "width": 472,
+          "height": 32,
+          "right": 919,
+          "bottom": 454,
+          "scrollWidth": 470,
+          "clientWidth": 470,
+          "scrollHeight": 30,
+          "clientHeight": 30,
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "zIndex": "auto"
+        },
+        "petSizeSelect": {
+          "selector": ".profile-mobile-safe-modal .ant-form-item:last-child .ant-select",
+          "text": "Medium",
+          "x": 447,
+          "y": 582,
+          "width": 472,
+          "height": 32,
+          "right": 919,
+          "bottom": 614,
+          "scrollWidth": 472,
+          "clientWidth": 472,
+          "scrollHeight": 32,
+          "clientHeight": 32,
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "zIndex": "auto"
+        },
+        "selectDropdown": {
+          "selector": ".ant-select-dropdown:not(.ant-select-dropdown-hidden)",
+          "text": "SMALLMEDIUMLARGESmallMediumLarge",
+          "x": 447,
+          "y": 618,
+          "width": 472,
+          "height": 104,
+          "right": 919,
+          "bottom": 722,
+          "scrollWidth": 472,
+          "clientWidth": 472,
+          "scrollHeight": 104,
+          "clientHeight": 104,
+          "overflowX": "hidden",
+          "overflowY": "hidden",
+          "zIndex": "1150"
+        },
+        "cascaderDropdown": null,
+        "pickerDropdown": null,
+        "popup": {
+          "selector": ".ant-select-dropdown:not(.ant-select-dropdown-hidden), .ant-cascader-dropdown, .ant-picker-dropdown",
+          "text": "SMALLMEDIUMLARGESmallMediumLarge",
+          "x": 447,
+          "y": 618,
+          "width": 472,
+          "height": 104,
+          "right": 919,
+          "bottom": 722,
+          "scrollWidth": 472,
+          "clientWidth": 472,
+          "scrollHeight": 104,
+          "clientHeight": 104,
+          "overflowX": "hidden",
+          "overflowY": "hidden",
+          "zIndex": "1150"
+        }
+      },
+      "visibleRatios": {
+        "modal": 1,
+        "modalBody": 1,
+        "modalFooter": 1,
+        "addressCascader": null,
+        "petDatePicker": 1,
+        "selectDropdown": 1,
+        "cascaderDropdown": null,
+        "pickerDropdown": null,
+        "popup": 1
+      },
+      "optionRows": [
+        {
+          "text": "Small",
+          "x": 451,
+          "y": 622,
+          "width": 464,
+          "height": 32,
+          "right": 915,
+          "bottom": 654,
+          "visibleRatio": 1
+        },
+        {
+          "text": "Medium",
+          "x": 451,
+          "y": 654,
+          "width": 464,
+          "height": 32,
+          "right": 915,
+          "bottom": 686,
+          "visibleRatio": 1
+        },
+        {
+          "text": "Large",
+          "x": 451,
+          "y": 686,
+          "width": 464,
+          "height": 32,
+          "right": 915,
+          "bottom": 718,
+          "visibleRatio": 1
+        }
+      ],
+      "overflowEls": [
+        {
+          "selector": "div.shop-nav__ticker",
+          "text": "Free shipping on orders over $49.45Featured deal: PAWS20 today on favoritesSpring Pet Sale: Use code PAWS20 for 20% off30-day easy returns on collars, beds, toy",
+          "x": 1086.0274658203125,
+          "y": 0,
+          "width": 1251.9998779296875,
+          "height": 35,
+          "right": 2338.02734375,
+          "bottom": 35,
+          "overflowRight": 972.02734375,
+          "overflowLeft": -1086.0274658203125
+        },
+        {
+          "selector": "span.shop-nav__tickerAd",
+          "text": "Featured deal: PAWS20 today on favorites",
+          "x": 1349.6680908203125,
+          "y": 7,
+          "width": 285.828125,
+          "height": 21,
+          "right": 1635.4962158203125,
+          "bottom": 28,
+          "overflowRight": 269.4962158203125,
+          "overflowLeft": -1349.6680908203125
+        },
+        {
+          "selector": "span",
+          "text": "Spring Pet Sale: Use code PAWS20 for 20% off",
+          "x": 1675.4962158203125,
+          "y": 7,
+          "width": 287.28125,
+          "height": 21,
+          "right": 1962.7774658203125,
+          "bottom": 28,
+          "overflowRight": 596.7774658203125,
+          "overflowLeft": -1675.4962158203125
+        },
+        {
+          "selector": "span",
+          "text": "30-day easy returns on collars, beds, toys and apparel",
+          "x": 2002.7774658203125,
+          "y": 7,
+          "width": 335.2498779296875,
+          "height": 21,
+          "right": 2338.02734375,
+          "bottom": 28,
+          "overflowRight": 972.02734375,
+          "overflowLeft": -2002.7774658203125
+        },
+        {
+          "selector": "path.[object.SVGAnimatedString]",
+          "text": "",
+          "x": 1050.9737548828125,
+          "y": 763,
+          "width": 760.0389404296875,
+          "height": 512,
+          "right": 1811.0126953125,
+          "bottom": 1275,
+          "overflowRight": 445.0126953125,
+          "overflowLeft": -1050.9737548828125
+        },
+        {
+          "selector": "path.[object.SVGAnimatedString]",
+          "text": "",
+          "x": 1050.9873046875,
+          "y": 778.5,
+          "width": 759.987548828125,
+          "height": 512,
+          "right": 1810.974853515625,
+          "bottom": 1290.5,
+          "overflowRight": 444.974853515625,
+          "overflowLeft": -1050.9873046875
+        }
+      ],
+      "hits": [
+        null,
+        {
+          "selector": ".ant-select-dropdown:not(.ant-select-dropdown-hidden) .ant-select-item-option",
+          "point": {
+            "x": 683,
+            "y": 638
+          },
+          "hitTag": "DIV",
+          "hitClass": "ant-select-item-option-content",
+          "hitText": "Small"
+        },
+        null,
+        null,
+        {
+          "selector": ".profile-pet-modal__field.ant-picker",
+          "point": {
+            "x": 683,
+            "y": 438
+          },
+          "hitTag": "INPUT",
+          "hitClass": "",
+          "hitText": ""
+        },
+        {
+          "selector": ".profile-mobile-safe-modal .ant-modal-footer .ant-btn-primary",
+          "point": {
+            "x": 886.6484375,
+            "y": 654
+          },
+          "hitTag": "DIV",
+          "hitClass": "ant-select-item ant-select-item-option ant-select-item-option-active ant-select-item-option-selected",
+          "hitText": "Medium"
+        }
+      ]
+    }
+  ]
+}

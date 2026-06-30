@@ -1,0 +1,1046 @@
+[
+  {
+    "viewport": "small-320",
+    "state": "review-composer",
+    "horizontalOverflow": false,
+    "docWidth": 320,
+    "innerWidth": 320,
+    "qCard": {
+      "y": 1289.0625,
+      "height": 843.390625,
+      "bottom": 2132.453125,
+      "scrollWidth": 320,
+      "clientWidth": 320
+    },
+    "qButton": {
+      "y": 1465.078125,
+      "bottom": 1509.078125,
+      "width": 57.6875,
+      "fullyVisible": false,
+      "centerHitClass": "ant-btn css-dev-only-do-not-override-5uvb3z ant-btn-default ant-btn-color-default ant-btn-variant-outlined",
+      "centerHitText": "Add photo"
+    },
+    "pending": null,
+    "dropdown": null,
+    "buybar": {
+      "y": 453.5,
+      "bottom": 560,
+      "height": 106.5,
+      "position": "fixed",
+      "fullyVisible": true
+    },
+    "overflowCount": 24
+  },
+  {
+    "viewport": "small-320",
+    "state": "review-order-select-open",
+    "horizontalOverflow": false,
+    "docWidth": 320,
+    "innerWidth": 320,
+    "qCard": {
+      "y": 1289.0625,
+      "height": 843.390625,
+      "bottom": 2132.453125,
+      "scrollWidth": 320,
+      "clientWidth": 320
+    },
+    "qButton": {
+      "y": 1465.078125,
+      "bottom": 1509.078125,
+      "width": 57.6875,
+      "fullyVisible": false,
+      "centerHitClass": "ant-btn css-dev-only-do-not-override-5uvb3z ant-btn-default ant-btn-color-default ant-btn-variant-outlined",
+      "centerHitText": "Add photo"
+    },
+    "pending": null,
+    "dropdown": {
+      "x": 8,
+      "y": 287,
+      "width": 304,
+      "height": 96,
+      "fullyVisible": true,
+      "zIndex": "2100",
+      "centerHitClass": "ant-select-item ant-select-item-option"
+    },
+    "buybar": {
+      "y": 453.5,
+      "bottom": 560,
+      "height": 106.5,
+      "position": "fixed",
+      "fullyVisible": true
+    },
+    "overflowCount": 26
+  },
+  {
+    "viewport": "small-320",
+    "state": "qa-answered",
+    "horizontalOverflow": false,
+    "docWidth": 320,
+    "innerWidth": 320,
+    "qCard": {
+      "y": -165.9375,
+      "height": 843.390625,
+      "bottom": 677.453125,
+      "scrollWidth": 320,
+      "clientWidth": 320
+    },
+    "qButton": {
+      "y": 10.078125,
+      "bottom": 54.078125,
+      "width": 57.6875,
+      "fullyVisible": true,
+      "centerHitClass": null,
+      "centerHitText": "ShopMX"
+    },
+    "pending": null,
+    "dropdown": null,
+    "buybar": {
+      "y": 453.5,
+      "bottom": 560,
+      "height": 106.5,
+      "position": "fixed",
+      "fullyVisible": true
+    },
+    "overflowCount": 24
+  },
+  {
+    "viewport": "small-320",
+    "state": "qa-form-filled",
+    "horizontalOverflow": false,
+    "docWidth": 320,
+    "innerWidth": 320,
+    "qCard": {
+      "y": 184.0625,
+      "height": 843.390625,
+      "bottom": 1027.453125,
+      "scrollWidth": 320,
+      "clientWidth": 320
+    },
+    "qButton": {
+      "y": 360.078125,
+      "bottom": 404.078125,
+      "width": 57.6875,
+      "fullyVisible": true,
+      "centerHitClass": null,
+      "centerHitText": "Ask"
+    },
+    "pending": null,
+    "dropdown": null,
+    "buybar": {
+      "y": 453.5,
+      "bottom": 560,
+      "height": 106.5,
+      "position": "fixed",
+      "fullyVisible": true
+    },
+    "overflowCount": 24
+  },
+  {
+    "viewport": "small-320",
+    "state": "qa-pending-after-submit",
+    "horizontalOverflow": false,
+    "docWidth": 320,
+    "innerWidth": 320,
+    "qCard": {
+      "y": -172.9375,
+      "height": 1301.859375,
+      "bottom": 1128.921875,
+      "scrollWidth": 320,
+      "clientWidth": 320
+    },
+    "qButton": {
+      "y": 3.078125,
+      "bottom": 47.078125,
+      "width": 57.6875,
+      "fullyVisible": true,
+      "centerHitClass": "ant-message-notice-content",
+      "centerHitText": "Question submitted, awaiting merchant reply"
+    },
+    "pending": {
+      "y": 63.078125,
+      "bottom": 505.546875,
+      "height": 442.46875,
+      "scrollWidth": 292,
+      "clientWidth": 292
+    },
+    "dropdown": null,
+    "buybar": {
+      "y": 453.5,
+      "bottom": 560,
+      "height": 106.5,
+      "position": "fixed",
+      "fullyVisible": true
+    },
+    "overflowCount": 25
+  },
+  {
+    "viewport": "phone-360",
+    "state": "review-composer",
+    "horizontalOverflow": false,
+    "docWidth": 360,
+    "innerWidth": 360,
+    "qCard": {
+      "y": 1305.171875,
+      "height": 777.390625,
+      "bottom": 2082.5625,
+      "scrollWidth": 360,
+      "clientWidth": 360
+    },
+    "qButton": {
+      "y": 1481.1875,
+      "bottom": 1525.1875,
+      "width": 57.6875,
+      "fullyVisible": false,
+      "centerHitClass": "product-review",
+      "centerHitText": "Product reviewsSO-REVIEW-20260608-00008801-LONG - 6/8/20260 / 1000Purchase photosJPG, PNG or GIF, up to 4 photosAdd phot"
+    },
+    "pending": null,
+    "dropdown": null,
+    "buybar": {
+      "y": 625.5,
+      "bottom": 732,
+      "height": 106.5,
+      "position": "fixed",
+      "fullyVisible": true
+    },
+    "overflowCount": 23
+  },
+  {
+    "viewport": "phone-360",
+    "state": "review-order-select-open",
+    "horizontalOverflow": false,
+    "docWidth": 360,
+    "innerWidth": 360,
+    "qCard": {
+      "y": 1305.171875,
+      "height": 777.390625,
+      "bottom": 2082.5625,
+      "scrollWidth": 360,
+      "clientWidth": 360
+    },
+    "qButton": {
+      "y": 1481.1875,
+      "bottom": 1525.1875,
+      "width": 57.6875,
+      "fullyVisible": false,
+      "centerHitClass": "product-review",
+      "centerHitText": "Product reviewsSO-REVIEW-20260608-00008801-LONG - 6/8/20260 / 1000Purchase photosJPG, PNG or GIF, up to 4 photosAdd phot"
+    },
+    "pending": null,
+    "dropdown": {
+      "x": 8,
+      "y": 365,
+      "width": 344,
+      "height": 96,
+      "fullyVisible": true,
+      "zIndex": "2100",
+      "centerHitClass": "ant-select-item ant-select-item-option"
+    },
+    "buybar": {
+      "y": 625.5,
+      "bottom": 732,
+      "height": 106.5,
+      "position": "fixed",
+      "fullyVisible": true
+    },
+    "overflowCount": 25
+  },
+  {
+    "viewport": "phone-360",
+    "state": "qa-answered",
+    "horizontalOverflow": false,
+    "docWidth": 360,
+    "innerWidth": 360,
+    "qCard": {
+      "y": -55.828125,
+      "height": 777.390625,
+      "bottom": 721.5625,
+      "scrollWidth": 360,
+      "clientWidth": 360
+    },
+    "qButton": {
+      "y": 120.1875,
+      "bottom": 164.1875,
+      "width": 57.6875,
+      "fullyVisible": true,
+      "centerHitClass": null,
+      "centerHitText": "Ask"
+    },
+    "pending": null,
+    "dropdown": null,
+    "buybar": {
+      "y": 625.5,
+      "bottom": 732,
+      "height": 106.5,
+      "position": "fixed",
+      "fullyVisible": true
+    },
+    "overflowCount": 23
+  },
+  {
+    "viewport": "phone-360",
+    "state": "qa-form-filled",
+    "horizontalOverflow": false,
+    "docWidth": 360,
+    "innerWidth": 360,
+    "qCard": {
+      "y": -55.828125,
+      "height": 777.390625,
+      "bottom": 721.5625,
+      "scrollWidth": 360,
+      "clientWidth": 360
+    },
+    "qButton": {
+      "y": 120.1875,
+      "bottom": 164.1875,
+      "width": 57.6875,
+      "fullyVisible": true,
+      "centerHitClass": null,
+      "centerHitText": "Ask"
+    },
+    "pending": null,
+    "dropdown": null,
+    "buybar": {
+      "y": 625.5,
+      "bottom": 732,
+      "height": 106.5,
+      "position": "fixed",
+      "fullyVisible": true
+    },
+    "overflowCount": 23
+  },
+  {
+    "viewport": "phone-360",
+    "state": "qa-pending-after-submit",
+    "horizontalOverflow": false,
+    "docWidth": 360,
+    "innerWidth": 360,
+    "qCard": {
+      "y": -75.828125,
+      "height": 1213.859375,
+      "bottom": 1138.03125,
+      "scrollWidth": 360,
+      "clientWidth": 360
+    },
+    "qButton": {
+      "y": 100.1875,
+      "bottom": 144.1875,
+      "width": 57.6875,
+      "fullyVisible": true,
+      "centerHitClass": "shop-nav__main",
+      "centerHitText": "ShopMXPet deals for every dayPet essentials up to 50% offFree shipping on orders over $49.45 / Flash deals / Live suppor"
+    },
+    "pending": {
+      "y": 160.1875,
+      "bottom": 580.65625,
+      "height": 420.46875,
+      "scrollWidth": 332,
+      "clientWidth": 332
+    },
+    "dropdown": null,
+    "buybar": {
+      "y": 625.5,
+      "bottom": 732,
+      "height": 106.5,
+      "position": "fixed",
+      "fullyVisible": true
+    },
+    "overflowCount": 24
+  },
+  {
+    "viewport": "phone-390",
+    "state": "review-composer",
+    "horizontalOverflow": false,
+    "docWidth": 390,
+    "innerWidth": 390,
+    "qCard": {
+      "y": 1352.40625,
+      "height": 755.390625,
+      "bottom": 2107.796875,
+      "scrollWidth": 390,
+      "clientWidth": 390
+    },
+    "qButton": {
+      "y": 1528.421875,
+      "bottom": 1572.421875,
+      "width": 57.6875,
+      "fullyVisible": false,
+      "centerHitClass": "ant-list-item-meta",
+      "centerHitText": "maria.customer.with.a.very.long.nameThe cover is easy to remove, but the delivery box was large. I am leaving a delibera"
+    },
+    "pending": null,
+    "dropdown": null,
+    "buybar": {
+      "y": 729.5,
+      "bottom": 836,
+      "height": 106.5,
+      "position": "fixed",
+      "fullyVisible": true
+    },
+    "overflowCount": 19
+  },
+  {
+    "viewport": "phone-390",
+    "state": "review-order-select-open",
+    "horizontalOverflow": false,
+    "docWidth": 390,
+    "innerWidth": 390,
+    "qCard": {
+      "y": 1352.40625,
+      "height": 755.390625,
+      "bottom": 2107.796875,
+      "scrollWidth": 390,
+      "clientWidth": 390
+    },
+    "qButton": {
+      "y": 1528.421875,
+      "bottom": 1572.421875,
+      "width": 57.6875,
+      "fullyVisible": false,
+      "centerHitClass": "ant-list-item-meta",
+      "centerHitText": "maria.customer.with.a.very.long.nameThe cover is easy to remove, but the delivery box was large. I am leaving a delibera"
+    },
+    "pending": null,
+    "dropdown": {
+      "x": 8,
+      "y": 412,
+      "width": 374,
+      "height": 96,
+      "fullyVisible": true,
+      "zIndex": "2100",
+      "centerHitClass": "ant-select-item ant-select-item-option"
+    },
+    "buybar": {
+      "y": 729.5,
+      "bottom": 836,
+      "height": 106.5,
+      "position": "fixed",
+      "fullyVisible": true
+    },
+    "overflowCount": 20
+  },
+  {
+    "viewport": "phone-390",
+    "state": "qa-answered",
+    "horizontalOverflow": false,
+    "docWidth": 390,
+    "innerWidth": 390,
+    "qCard": {
+      "y": 2.40625,
+      "height": 755.390625,
+      "bottom": 757.796875,
+      "scrollWidth": 390,
+      "clientWidth": 390
+    },
+    "qButton": {
+      "y": 178.421875,
+      "bottom": 222.421875,
+      "width": 57.6875,
+      "fullyVisible": true,
+      "centerHitClass": null,
+      "centerHitText": "Ask"
+    },
+    "pending": null,
+    "dropdown": null,
+    "buybar": {
+      "y": 729.5,
+      "bottom": 836,
+      "height": 106.5,
+      "position": "fixed",
+      "fullyVisible": true
+    },
+    "overflowCount": 19
+  },
+  {
+    "viewport": "phone-390",
+    "state": "qa-form-filled",
+    "horizontalOverflow": false,
+    "docWidth": 390,
+    "innerWidth": 390,
+    "qCard": {
+      "y": 2.40625,
+      "height": 755.390625,
+      "bottom": 757.796875,
+      "scrollWidth": 390,
+      "clientWidth": 390
+    },
+    "qButton": {
+      "y": 178.421875,
+      "bottom": 222.421875,
+      "width": 57.6875,
+      "fullyVisible": true,
+      "centerHitClass": null,
+      "centerHitText": "Ask"
+    },
+    "pending": null,
+    "dropdown": null,
+    "buybar": {
+      "y": 729.5,
+      "bottom": 836,
+      "height": 106.5,
+      "position": "fixed",
+      "fullyVisible": true
+    },
+    "overflowCount": 19
+  },
+  {
+    "viewport": "phone-390",
+    "state": "qa-pending-after-submit",
+    "horizontalOverflow": false,
+    "docWidth": 390,
+    "innerWidth": 390,
+    "qCard": {
+      "y": -13.59375,
+      "height": 1169.859375,
+      "bottom": 1156.265625,
+      "scrollWidth": 390,
+      "clientWidth": 390
+    },
+    "qButton": {
+      "y": 162.421875,
+      "bottom": 206.421875,
+      "width": 57.6875,
+      "fullyVisible": true,
+      "centerHitClass": null,
+      "centerHitText": "Ask"
+    },
+    "pending": {
+      "y": 222.421875,
+      "bottom": 620.890625,
+      "height": 398.46875,
+      "scrollWidth": 362,
+      "clientWidth": 362
+    },
+    "dropdown": null,
+    "buybar": {
+      "y": 729.5,
+      "bottom": 836,
+      "height": 106.5,
+      "position": "fixed",
+      "fullyVisible": true
+    },
+    "overflowCount": 20
+  },
+  {
+    "viewport": "landscape-740",
+    "state": "review-composer",
+    "horizontalOverflow": false,
+    "docWidth": 740,
+    "innerWidth": 740,
+    "qCard": {
+      "y": 974,
+      "height": 667.390625,
+      "bottom": 1641.390625,
+      "scrollWidth": 724,
+      "clientWidth": 724
+    },
+    "qButton": {
+      "y": 1150.015625,
+      "bottom": 1194.015625,
+      "width": 57.6875,
+      "fullyVisible": false,
+      "centerHitClass": null,
+      "centerHitText": "Purchase photos"
+    },
+    "pending": null,
+    "dropdown": null,
+    "buybar": {
+      "y": 286,
+      "bottom": 352,
+      "height": 66,
+      "position": "fixed",
+      "fullyVisible": true
+    },
+    "overflowCount": 11
+  },
+  {
+    "viewport": "landscape-740",
+    "state": "review-order-select-open",
+    "horizontalOverflow": false,
+    "docWidth": 740,
+    "innerWidth": 740,
+    "qCard": {
+      "y": 974,
+      "height": 667.390625,
+      "bottom": 1641.390625,
+      "scrollWidth": 724,
+      "clientWidth": 724
+    },
+    "qButton": {
+      "y": 1150.015625,
+      "bottom": 1194.015625,
+      "width": 57.6875,
+      "fullyVisible": false,
+      "centerHitClass": null,
+      "centerHitText": "Purchase photos"
+    },
+    "pending": null,
+    "dropdown": {
+      "x": 8,
+      "y": 194,
+      "width": 724,
+      "height": 96,
+      "fullyVisible": true,
+      "zIndex": "2100",
+      "centerHitClass": "ant-select-item ant-select-item-option"
+    },
+    "buybar": {
+      "y": 286,
+      "bottom": 352,
+      "height": 66,
+      "position": "fixed",
+      "fullyVisible": true
+    },
+    "overflowCount": 11
+  },
+  {
+    "viewport": "landscape-740",
+    "state": "qa-answered",
+    "horizontalOverflow": false,
+    "docWidth": 740,
+    "innerWidth": 740,
+    "qCard": {
+      "y": -172,
+      "height": 667.390625,
+      "bottom": 495.390625,
+      "scrollWidth": 724,
+      "clientWidth": 724
+    },
+    "qButton": {
+      "y": 4.015625,
+      "bottom": 48.015625,
+      "width": 57.6875,
+      "fullyVisible": true,
+      "centerHitClass": "shop-nav__brand",
+      "centerHitText": "ShopMXPet deals for every day"
+    },
+    "pending": null,
+    "dropdown": null,
+    "buybar": {
+      "y": 286,
+      "bottom": 352,
+      "height": 66,
+      "position": "fixed",
+      "fullyVisible": true
+    },
+    "overflowCount": 11
+  },
+  {
+    "viewport": "landscape-740",
+    "state": "qa-form-filled",
+    "horizontalOverflow": false,
+    "docWidth": 740,
+    "innerWidth": 740,
+    "qCard": {
+      "y": 80,
+      "height": 667.390625,
+      "bottom": 747.390625,
+      "scrollWidth": 724,
+      "clientWidth": 724
+    },
+    "qButton": {
+      "y": 256.015625,
+      "bottom": 300.015625,
+      "width": 57.6875,
+      "fullyVisible": true,
+      "centerHitClass": null,
+      "centerHitText": "Ask"
+    },
+    "pending": null,
+    "dropdown": null,
+    "buybar": {
+      "y": 286,
+      "bottom": 352,
+      "height": 66,
+      "position": "fixed",
+      "fullyVisible": true
+    },
+    "overflowCount": 11
+  },
+  {
+    "viewport": "landscape-740",
+    "state": "qa-pending-after-submit",
+    "horizontalOverflow": false,
+    "docWidth": 740,
+    "innerWidth": 740,
+    "qCard": {
+      "y": -221,
+      "height": 1012.71875,
+      "bottom": 791.71875,
+      "scrollWidth": 724,
+      "clientWidth": 724
+    },
+    "qButton": {
+      "y": -44.984375,
+      "bottom": -0.984375,
+      "width": 57.6875,
+      "fullyVisible": false,
+      "centerHitClass": "shop-nav__main",
+      "centerHitText": "ShopMXPet deals for every dayPet essentials up to 50% offFree shipping on orders over $49.45 / Flash deals / Live suppor"
+    },
+    "pending": {
+      "y": 15.015625,
+      "bottom": 344.34375,
+      "height": 329.328125,
+      "scrollWidth": 696,
+      "clientWidth": 696
+    },
+    "dropdown": null,
+    "buybar": {
+      "y": 286,
+      "bottom": 352,
+      "height": 66,
+      "position": "fixed",
+      "fullyVisible": true
+    },
+    "overflowCount": 12
+  },
+  {
+    "viewport": "tablet-768",
+    "state": "review-composer",
+    "horizontalOverflow": false,
+    "docWidth": 768,
+    "innerWidth": 768,
+    "qCard": {
+      "y": 1272.6875,
+      "height": 667.390625,
+      "bottom": 1940.078125,
+      "scrollWidth": 744,
+      "clientWidth": 744
+    },
+    "qButton": {
+      "y": 1448.703125,
+      "bottom": 1492.703125,
+      "width": 57.6875,
+      "fullyVisible": false,
+      "centerHitClass": "ant-list-item-meta",
+      "centerHitText": "maria.customer.with.a.very.long.nameThe cover is easy to remove, but the delivery box was large. I am leaving a delibera"
+    },
+    "pending": null,
+    "dropdown": null,
+    "buybar": {
+      "y": -666.265625,
+      "bottom": -569.765625,
+      "height": 96.5,
+      "position": "static",
+      "fullyVisible": false
+    },
+    "overflowCount": 11
+  },
+  {
+    "viewport": "tablet-768",
+    "state": "review-order-select-open",
+    "horizontalOverflow": false,
+    "docWidth": 768,
+    "innerWidth": 768,
+    "qCard": {
+      "y": 1272.6875,
+      "height": 667.390625,
+      "bottom": 1940.078125,
+      "scrollWidth": 744,
+      "clientWidth": 744
+    },
+    "qButton": {
+      "y": 1448.703125,
+      "bottom": 1492.703125,
+      "width": 57.6875,
+      "fullyVisible": false,
+      "centerHitClass": "ant-list-item-meta",
+      "centerHitText": "maria.customer.with.a.very.long.nameThe cover is easy to remove, but the delivery box was large. I am leaving a delibera"
+    },
+    "pending": null,
+    "dropdown": {
+      "x": 8,
+      "y": 493,
+      "width": 752,
+      "height": 96,
+      "fullyVisible": true,
+      "zIndex": "2100",
+      "centerHitClass": "ant-select-item ant-select-item-option"
+    },
+    "buybar": {
+      "y": -666.265625,
+      "bottom": -569.765625,
+      "height": 96.5,
+      "position": "static",
+      "fullyVisible": false
+    },
+    "overflowCount": 11
+  },
+  {
+    "viewport": "tablet-768",
+    "state": "qa-answered",
+    "horizontalOverflow": false,
+    "docWidth": 768,
+    "innerWidth": 768,
+    "qCard": {
+      "y": 126.6875,
+      "height": 667.390625,
+      "bottom": 794.078125,
+      "scrollWidth": 744,
+      "clientWidth": 744
+    },
+    "qButton": {
+      "y": 302.703125,
+      "bottom": 346.703125,
+      "width": 57.6875,
+      "fullyVisible": true,
+      "centerHitClass": null,
+      "centerHitText": "Ask"
+    },
+    "pending": null,
+    "dropdown": null,
+    "buybar": {
+      "y": -1812.265625,
+      "bottom": -1715.765625,
+      "height": 96.5,
+      "position": "static",
+      "fullyVisible": false
+    },
+    "overflowCount": 11
+  },
+  {
+    "viewport": "tablet-768",
+    "state": "qa-form-filled",
+    "horizontalOverflow": false,
+    "docWidth": 768,
+    "innerWidth": 768,
+    "qCard": {
+      "y": 126.6875,
+      "height": 667.390625,
+      "bottom": 794.078125,
+      "scrollWidth": 744,
+      "clientWidth": 744
+    },
+    "qButton": {
+      "y": 302.703125,
+      "bottom": 346.703125,
+      "width": 57.6875,
+      "fullyVisible": true,
+      "centerHitClass": null,
+      "centerHitText": "Ask"
+    },
+    "pending": null,
+    "dropdown": null,
+    "buybar": {
+      "y": -1812.265625,
+      "bottom": -1715.765625,
+      "height": 96.5,
+      "position": "static",
+      "fullyVisible": false
+    },
+    "overflowCount": 11
+  },
+  {
+    "viewport": "tablet-768",
+    "state": "qa-pending-after-submit",
+    "horizontalOverflow": false,
+    "docWidth": 768,
+    "innerWidth": 768,
+    "qCard": {
+      "y": 111.6875,
+      "height": 1012.71875,
+      "bottom": 1124.40625,
+      "scrollWidth": 744,
+      "clientWidth": 744
+    },
+    "qButton": {
+      "y": 287.703125,
+      "bottom": 331.703125,
+      "width": 57.6875,
+      "fullyVisible": true,
+      "centerHitClass": null,
+      "centerHitText": "Ask"
+    },
+    "pending": {
+      "y": 347.703125,
+      "bottom": 677.03125,
+      "height": 329.328125,
+      "scrollWidth": 716,
+      "clientWidth": 716
+    },
+    "dropdown": null,
+    "buybar": {
+      "y": -1827.265625,
+      "bottom": -1730.765625,
+      "height": 96.5,
+      "position": "static",
+      "fullyVisible": false
+    },
+    "overflowCount": 12
+  },
+  {
+    "viewport": "desktop-1366",
+    "state": "review-composer",
+    "horizontalOverflow": false,
+    "docWidth": 1366,
+    "innerWidth": 1366,
+    "qCard": {
+      "y": 1179.75,
+      "height": 571.28125,
+      "bottom": 1751.03125,
+      "scrollWidth": 1238,
+      "clientWidth": 1238
+    },
+    "qButton": {
+      "y": 1359.34375,
+      "bottom": 1403.34375,
+      "width": 57.6875,
+      "fullyVisible": false,
+      "centerHitClass": "ant-list-item-meta",
+      "centerHitText": "maria.customer.with.a.very.long.nameThe cover is easy to remove, but the delivery box was large. I am leaving a delibera"
+    },
+    "pending": null,
+    "dropdown": null,
+    "buybar": {
+      "y": 0,
+      "bottom": 0,
+      "height": 0,
+      "position": "static",
+      "fullyVisible": true
+    },
+    "overflowCount": 29
+  },
+  {
+    "viewport": "desktop-1366",
+    "state": "review-order-select-open",
+    "horizontalOverflow": false,
+    "docWidth": 1366,
+    "innerWidth": 1366,
+    "qCard": {
+      "y": 1179.75,
+      "height": 571.28125,
+      "bottom": 1751.03125,
+      "scrollWidth": 1238,
+      "clientWidth": 1238
+    },
+    "qButton": {
+      "y": 1359.34375,
+      "bottom": 1403.34375,
+      "width": 57.6875,
+      "fullyVisible": false,
+      "centerHitClass": "ant-list-item-meta",
+      "centerHitText": "maria.customer.with.a.very.long.nameThe cover is easy to remove, but the delivery box was large. I am leaving a delibera"
+    },
+    "pending": null,
+    "dropdown": {
+      "x": 103,
+      "y": 425,
+      "width": 360,
+      "height": 72,
+      "fullyVisible": true,
+      "zIndex": "1050",
+      "centerHitClass": "ant-select-item ant-select-item-option"
+    },
+    "buybar": {
+      "y": 0,
+      "bottom": 0,
+      "height": 0,
+      "position": "static",
+      "fullyVisible": true
+    },
+    "overflowCount": 29
+  },
+  {
+    "viewport": "desktop-1366",
+    "state": "qa-answered",
+    "horizontalOverflow": false,
+    "docWidth": 1366,
+    "innerWidth": 1366,
+    "qCard": {
+      "y": 119.75,
+      "height": 571.28125,
+      "bottom": 691.03125,
+      "scrollWidth": 1238,
+      "clientWidth": 1238
+    },
+    "qButton": {
+      "y": 299.34375,
+      "bottom": 343.34375,
+      "width": 57.6875,
+      "fullyVisible": true,
+      "centerHitClass": null,
+      "centerHitText": "Ask"
+    },
+    "pending": null,
+    "dropdown": null,
+    "buybar": {
+      "y": 0,
+      "bottom": 0,
+      "height": 0,
+      "position": "static",
+      "fullyVisible": true
+    },
+    "overflowCount": 28
+  },
+  {
+    "viewport": "desktop-1366",
+    "state": "qa-form-filled",
+    "horizontalOverflow": false,
+    "docWidth": 1366,
+    "innerWidth": 1366,
+    "qCard": {
+      "y": 119.75,
+      "height": 571.28125,
+      "bottom": 691.03125,
+      "scrollWidth": 1238,
+      "clientWidth": 1238
+    },
+    "qButton": {
+      "y": 299.34375,
+      "bottom": 343.34375,
+      "width": 57.6875,
+      "fullyVisible": true,
+      "centerHitClass": null,
+      "centerHitText": "Ask"
+    },
+    "pending": null,
+    "dropdown": null,
+    "buybar": {
+      "y": 0,
+      "bottom": 0,
+      "height": 0,
+      "position": "static",
+      "fullyVisible": true
+    },
+    "overflowCount": 28
+  },
+  {
+    "viewport": "desktop-1366",
+    "state": "qa-pending-after-submit",
+    "horizontalOverflow": false,
+    "docWidth": 1366,
+    "innerWidth": 1366,
+    "qCard": {
+      "y": 79.75,
+      "height": 849.265625,
+      "bottom": 929.015625,
+      "scrollWidth": 1238,
+      "clientWidth": 1238
+    },
+    "qButton": {
+      "y": 259.34375,
+      "bottom": 303.34375,
+      "width": 57.6875,
+      "fullyVisible": true,
+      "centerHitClass": null,
+      "centerHitText": "Ask"
+    },
+    "pending": {
+      "y": 319.34375,
+      "bottom": 581.328125,
+      "height": 261.984375,
+      "scrollWidth": 1190,
+      "clientWidth": 1190
+    },
+    "dropdown": null,
+    "buybar": {
+      "y": 0,
+      "bottom": 0,
+      "height": 0,
+      "position": "static",
+      "fullyVisible": true
+    },
+    "overflowCount": 28
+  }
+]

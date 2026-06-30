@@ -1,5 +1,6 @@
 import type { ProductPublic, ProductVariant } from '../types';
 import { normalizePersistentImageUrl } from './mediaAssets';
+import { reportNonBlockingError } from './nonBlockingError';
 
 export type ProductOptionGroup = {
   name: string;
@@ -114,7 +115,8 @@ export const getProductVariants = (product?: ProductOptionInput | null): Product
   try {
     const parsed = JSON.parse(rawVariants);
     return Array.isArray(parsed) ? normalizeVariants(parsed) : [];
-  } catch {
+  } catch (error) {
+    reportNonBlockingError('productOptions.getProductVariants', error);
     return [];
   }
 };

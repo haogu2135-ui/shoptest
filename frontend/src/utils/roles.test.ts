@@ -7,6 +7,7 @@ import {
   isAdminRole,
   isSuperAdminRole,
   normalizeRole,
+  roleColor,
   roleLabelKey,
 } from './roles';
 
@@ -27,6 +28,20 @@ describe('role utilities', () => {
     expect(getEffectiveRole('USER', 'manager')).toBe('USER');
     expect(isAdminRole(getEffectiveRole('USER', 'manager'))).toBe(false);
     expect(isAdminRole('manager')).toBe(false);
+    expect(isAdminRole('ANONYMOUS')).toBe(false);
+    expect(isAdminRole('MODERATOR')).toBe(false);
+  });
+
+  it('keeps admin role detection on the explicit whitelist without redundant normalization', () => {
+    const start = rolesSource.indexOf('export const isAdminRole =');
+    const end = rolesSource.indexOf('export const isSuperAdminRole =', start);
+    const implementation = rolesSource.slice(start, end);
+
+    expect(start).toBeGreaterThan(-1);
+    expect(end).toBeGreaterThan(start);
+    expect(implementation).toContain('ADMIN_ROLES.includes(normalizeRole(role) as typeof ADMIN_ROLES[number])');
+    expect(implementation).not.toContain("!== 'USER'");
+    expect(implementation.match(/normalizeRole/g) || []).toHaveLength(1);
   });
 
   it('preserves super admin from either role source', () => {
@@ -49,6 +64,27 @@ describe('role utilities', () => {
     expect(roleLabelKey(' super_admin ')).toBe('pages.adminUsers.roleValues.SUPER_ADMIN');
     expect(roleLabelKey('ROLE_SUPPORT')).toBe('pages.adminUsers.roleValues.UNKNOWN');
     expect(roleLabelKey(null)).toBe('pages.adminUsers.roleValues.UNKNOWN');
+  });
+
+  it('uses neutral color for unknown roles', () => {
+    expect(roleColor('SUPER_ADMIN')).toBe('gold');
+    expect(roleColor('ADMIN')).toBe('volcano');
+    expect(roleColor('USER')).toBe('blue');
+    expect(roleColor('MODERATOR')).toBe('default');
+    expect(roleColor(null)).toBe('default');
+  });
+
+  it('keeps admin navigation page permissions backed by named constants', () => {
+    const start = rolesSource.indexOf('export const ADMIN_NAV_PAGE_PERMISSIONS = [');
+    const end = rolesSource.indexOf('];', start);
+    const navPermissions = rolesSource.slice(start, end);
+
+    expect(start).toBeGreaterThan(-1);
+    expect(end).toBeGreaterThan(start);
+    expect(navPermissions).toContain('DASHBOARD_PAGE_PERMISSION');
+    expect(navPermissions).toContain('BUGS_PAGE_PERMISSION');
+    expect(navPermissions).toContain('SYSTEM_PAGE_PERMISSION');
+    expect(navPermissions).not.toMatch(/'[^']+'/);
   });
 
   it('keeps role utilities free of unsafe dynamic role display fallback maps', () => {

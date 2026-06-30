@@ -153,9 +153,13 @@ describe('Register submit guard', () => {
     const source = readRegisterSource();
 
     expect(source).toContain('const registeringRef = useRef(false);');
+    expect(source).toContain('const registerCodeSendingRef = useRef(false);');
     expect(source).toContain('if (registeringRef.current) return;');
     expect(source).toContain('registeringRef.current = true;');
     expect(source).toContain('registeringRef.current = false;');
+    expect(source).toContain('if (registerCodeSendingRef.current) return;');
+    expect(source).toContain('registerCodeSendingRef.current = true;');
+    expect(source).toContain('registerCodeSendingRef.current = false;');
   });
 
   it('does not submit the register form twice during the same pending request', async () => {
@@ -189,5 +193,75 @@ describe('Register submit guard', () => {
 
     await waitFor(() => expect(userApi.register).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(submitButton).toBeDisabled());
+  });
+
+  it('does not send the registration email code twice during the same pending request', async () => {
+    (userApi.register as jest.Mock).mockRejectedValue({
+      response: { data: { emailCodeRequired: true } },
+    });
+    (userApi.sendEmailLoginCode as jest.Mock).mockReturnValue(new Promise(() => {}));
+
+    render(
+      <MemoryRouter initialEntries={['/register']}>
+        <Register />
+      </MemoryRouter>,
+    );
+
+    fireEvent.change(screen.getByLabelText('Create account: Email'), {
+      target: { value: 'newbuyer@example.com' },
+    });
+    fireEvent.change(screen.getByLabelText('Create account: Username'), {
+      target: { value: 'newbuyer' },
+    });
+    fireEvent.change(screen.getByLabelText('Create account: Password'), {
+      target: { value: 'StrongPass123' },
+    });
+    fireEvent.change(screen.getByLabelText('Create account: Confirm password'), {
+      target: { value: 'StrongPass123' },
+    });
+    fireEvent.change(screen.getByLabelText('Create account: Phone'), {
+      target: { value: '5551234567' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Create account: Register' }));
+
+    const sendButton = await screen.findByRole('button', { name: 'Create account: Send code' });
+    fireEvent.click(sendButton);
+    fireEvent.click(sendButton);
+
+    await waitFor(() => expect(userApi.sendEmailLoginCode).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(sendButton).toBeDisabled());
+  });
+
+  it('submits password text exactly as entered, including surrounding spaces', async () => {
+    (userApi.register as jest.Mock).mockResolvedValue({ data: { username: 'newbuyer' } });
+    const passwordWithSpaces = ' StrongPass123 ';
+
+    render(
+      <MemoryRouter initialEntries={['/register']}>
+        <Register />
+      </MemoryRouter>,
+    );
+
+    fireEvent.change(screen.getByLabelText('Create account: Username'), {
+      target: { value: 'newbuyer' },
+    });
+    fireEvent.change(screen.getByLabelText('Create account: Password'), {
+      target: { value: passwordWithSpaces },
+    });
+    fireEvent.change(screen.getByLabelText('Create account: Confirm password'), {
+      target: { value: passwordWithSpaces },
+    });
+    fireEvent.change(screen.getByLabelText('Create account: Email'), {
+      target: { value: 'newbuyer@example.com' },
+    });
+    fireEvent.change(screen.getByLabelText('Create account: Phone'), {
+      target: { value: '5551234567' },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Create account: Register' }));
+
+    await waitFor(() => expect(userApi.register).toHaveBeenCalledWith(expect.objectContaining({
+      password: passwordWithSpaces,
+    })));
   });
 });

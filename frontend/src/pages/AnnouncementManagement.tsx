@@ -172,8 +172,8 @@ const AnnouncementManagement: React.FC = () => {
   const summaryCheckedAt = useMemo(() => {
     if (!summary?.checkedAt) return '';
     const checkedAt = new Date(summary.checkedAt);
-    return Number.isFinite(checkedAt.getTime()) ? checkedAt.toLocaleString() : summary.checkedAt;
-  }, [summary]);
+    return Number.isFinite(checkedAt.getTime()) ? checkedAt.toLocaleString(dateLocale) : summary.checkedAt;
+  }, [dateLocale, summary]);
   const getAnnouncementLabel = (announcement?: Pick<SiteAnnouncement, 'id' | 'title'> | null) => {
     const title = String(announcement?.title || '').trim();
     if (title) return title;
@@ -366,7 +366,14 @@ const AnnouncementManagement: React.FC = () => {
       ) : null}
 
       {showInitialAnnouncementLoading ? (
-        <Card className="announcement-management__loadingState" loading />
+        <Card
+          className="announcement-management__loadingState"
+          loading
+          role="status"
+          aria-live="polite"
+          aria-busy="true"
+          aria-label={t('common.loading')}
+        />
       ) : null}
 
       {canRenderAnnouncementSummary ? (

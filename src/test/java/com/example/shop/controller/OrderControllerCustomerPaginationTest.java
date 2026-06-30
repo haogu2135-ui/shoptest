@@ -15,8 +15,10 @@ import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -51,6 +53,15 @@ class OrderControllerCustomerPaginationTest {
         assertEquals("45", response.getHeaders().getFirst("X-Order-Total"));
         assertEquals("3", response.getHeaders().getFirst("X-Order-Total-Pages"));
         assertEquals("true", response.getHeaders().getFirst("X-Order-Has-Next"));
+        Map<?, ?> body = assertInstanceOf(Map.class, response.getBody());
+        assertEquals(45, body.get("totalElements"));
+        assertEquals(45, body.get("total"));
+        assertEquals(1, body.get("page"));
+        assertEquals(0, body.get("number"));
+        assertEquals(20, body.get("size"));
+        assertEquals(3, body.get("totalPages"));
+        assertEquals(true, body.get("hasNext"));
+        assertEquals(body.get("items"), body.get("content"));
         verify(orderService).getOrdersByUserId(7L, 0, 20);
     }
 
@@ -65,6 +76,12 @@ class OrderControllerCustomerPaginationTest {
         assertEquals("0", response.getHeaders().getFirst("X-Order-Page"));
         assertEquals("20", response.getHeaders().getFirst("X-Order-Page-Size"));
         assertEquals("false", response.getHeaders().getFirst("X-Order-Has-Next"));
+        Map<?, ?> body = assertInstanceOf(Map.class, response.getBody());
+        assertEquals(List.of(), body.get("items"));
+        assertEquals(List.of(), body.get("content"));
+        assertEquals(0, body.get("totalElements"));
+        assertEquals(0, body.get("totalPages"));
+        assertEquals(false, body.get("hasNext"));
         verify(orderService).getOrdersByUserId(7L, 0, 20);
     }
 

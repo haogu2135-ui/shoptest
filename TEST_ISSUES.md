@@ -4,6 +4,238 @@ This file is used by QA to track currently unresolved issues only. Resolved and 
 
 ## Current Status
 
+- **Maintainer auth-code duplicate-submit closure (2026-06-28 UTC)**: Fixed adjacent auth-flow races as **SOURCE_FIXED / REGRESSION_GUARD_ADDED / FRONTEND_VERIFICATION_PENDING**. `Login.tsx`, `Register.tsx`, and `ForgotPassword.tsx` now use synchronous refs around email-code send/reset-code send and forgot-password submit paths so same-render rapid clicks return before duplicate requests can start. Login guest-cart merge also uses the page-entry cart snapshot and parallel item merge with failed-item preservation. Source guards were expanded in `Login.test.tsx`, `Register.test.tsx`, and `ForgotPassword.test.ts`. Verification: source-only diff review and `git diff --check` on the touched auth files passed; no Jest, TypeScript, build, browser/Playwright, backend Maven/JUnit, APP/device, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer JWT password-change precision fix (2026-06-28 UTC)**: Fixed the login/register false-expiry regression as **SOURCE_FIXED / REGRESSION_GUARD_ADDED / BACKEND_FRONTEND_VERIFICATION_PENDING**. `JwtUtil.generateToken(...)` now embeds a millisecond-precision `pwdChangedAt` claim, and `JwtUtil.isPasswordVersionValid(...)` validates that claim before falling back to the legacy one-second NumericDate tolerance for older tokens. `JwtUtilTest.passwordVersionValidationUsesMillisecondClaimForNewTokens` guards same-second login/register tokens after password initialization, while `passwordVersionValidationStillRejectsTokenFromBeforePasswordChange` keeps the password-change revocation contract. Verification: source-only diff review and static inspection; no Maven/JUnit, frontend Jest, TypeScript, build, browser/Playwright, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer rate-limit fallback stale-entry triage and login auth payload PII reduction (2026-06-18 18:52 UTC)**: Closed TEST **F2541** against current source as **CURRENT_SOURCE_COVERED / REGRESSION_GUARD_ADDED / BACKEND_VERIFICATION_PENDING**. `RateLimitService` no longer has any `instanceCount` or per-instance limit division path; Redis and local fallback consume the same `LimitKey.limit`, and `redisFailureFallsBackToLocalBucketsAndStillRejectsBurst` already covers fallback rejection. Added `RateLimitServiceTest.redisFallbackUsesConfiguredLimitWithoutInstanceCountDivision` to guard that the fallback does not reintroduce instance-count drift. Fixed TEST **F2556** as **SOURCE_FIXED / REGRESSION_GUARD_EXPANDED / BACKEND_FRONTEND_VERIFICATION_PENDING** by removing email from the auth-session success payload in `LoginController.buildLoginResponse(...)`; phone was already absent. `persistAuthSession(...)` no longer accepts or stores email/phone from auth responses, and `useAuth.login(...)` uses username/id for temporary auth state while `/users/profile` remains the owner of contact details. Also synced stale main-list statuses for **F2536/F2537/F2538/F2540/F2542/F2551-F2555/F2557/F2558/F2560** to their existing current-source/fixed triage entries. Verification: source-only diff review and focused source inspection; no backend Maven/JUnit, frontend Jest, TypeScript, build, browser/Playwright, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer refund idempotency and stale Cycle #549 status sync (2026-06-18 18:45 UTC)**: Closed TEST **F2544** against current source as **CURRENT_SOURCE_COVERED / REGRESSION_GUARD_ADDED / BACKEND_VERIFICATION_PENDING**. The active refund path is `OrderService.refundOrder(...)`, not the stale `PaymentService.java` range: orders already in `REFUNDED` or `RETURNED` state return `paymentRepository.findLatestRefundedByOrderId(...)` before any order status write or provider refund call, and `RefundService.refundPaidPayment(...)` also claims paid/reconcile-required payments through `markRefunding(...)` before finalizing. Added `PaymentFlowServiceTest.returnedOrderRefundReturnsExistingRefundWithoutCallingProviderAgain` to guard that a second refund attempt on a `RETURNED` order returns the existing refunded payment, does not call `RefundService`, and does not mark the order refunded again. Also synced the stale main-list statuses for **F2543/F2545/F2546/F2547/F2548/F2549/F2550** to their existing current-source/fixed triage entries. Verification: source-only diff review and focused source inspection; no backend Maven/JUnit, frontend Jest, TypeScript, build, browser/Playwright, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer AdminDashboard page-level auth guard fix (2026-06-18 18:33 UTC)**: Fixed TEST **F2498** as **SOURCE_FIXED / REGRESSION_GUARD_ADDED / FRONTEND_VERIFICATION_PENDING**. `AdminDashboard.tsx` now reads `useAuth()` and `isAdminRole(...)` before issuing `adminApi.getDashboard()` requests; non-admin or unauthenticated mounts set the existing no-permission error text and navigate away instead of fetching dashboard data. `AdminDashboard.test.tsx` now stubs an admin session for the chart/accessibility happy path and a non-admin session for the no-dashboard-request guard, and `AdminDashboardTypeSafety.test.ts` now source-guards the page-level auth check ordering. Verification: source-only diff review and focused source inspection; no frontend Jest, TypeScript, build, browser/Playwright, backend Maven/JUnit, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer user dashboard count cache fix (2026-06-18 18:33 UTC)**: Fixed TEST **F2535** as **SOURCE_FIXED / REGRESSION_GUARD_ADDED / BACKEND_VERIFICATION_PENDING**. `UserService.count()` now uses a short TTL cache for the dashboard total user count, defaulting to `user.dashboard-count-cache-ms=${USER_DASHBOARD_COUNT_CACHE_MS:5000}`, and invalidates the cache after `register(...)`, `registerAdmin(...)`, and `deleteById(...)`. This keeps the high-frequency dashboard total from hitting `countAll()` on every refresh while preserving a manual bypass when the TTL is set to `0`. `UserServiceTest` now guards repeated cache hits, invalidation after writes, and the default-facing `countAll()` contract. Verification: source-only diff review and focused source inspection; no backend Maven/JUnit, frontend Jest, TypeScript, build, browser/Playwright, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer current-source wildcard-escape / batch-scan / lock-cleanup sweep (2026-06-18 18:33 UTC)**: Closed TEST **F2438/F2534/F2536/F2538** against current source as **CURRENT_SOURCE_COVERED / REGRESSION_GUARD_PRESENT / BACKEND_VERIFICATION_PENDING**. `UserService.searchLikeTerm(...)` and `SupportService.searchLikeTerm(...)` already escape `!`, `%`, and `_` before calling the mappers, and `UserMapper.xml` / `SupportSessionMapper.xml` already use `ESCAPE '!'`, so the reported LIKE wildcard behavior is already covered in current source. `PaymentService.expirePendingPayments()` already pages through `findExpiredPending(afterId, batchSize)` with `ORDER BY id ASC LIMIT #{limit}`, `SupportService.sessionCreationLocks` removes the per-session lock in `finally`, and `EmailLoginService.cleanupExpiredCodes()` plus `cleanupBuckets(...)` prune expired in-memory buckets. Verification: source-only inspection and diff review; no backend Maven/JUnit, frontend Jest, TypeScript, build, browser/Playwright, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer ProductService unbounded findAll stale-entry triage (2026-06-18 18:33 UTC)**: Closed TEST **F3419** against current source as **CURRENT_SOURCE_COVERED / REGRESSION_GUARD_PRESENT / BACKEND_VERIFICATION_PENDING**. The reported ProductServiceImpl unbounded catalog-load paths are stale: current legacy `findAll()` uses `productRepository.findAll(PageRequest.of(0, limit, Sort.by(Sort.Direction.DESC, "id")))` with `HARD_LEGACY_PRODUCT_LIST_LIMIT = 500`, public/admin product pages use `productRepository.findAll(...Specification..., Pageable)`, and keyword/category recommendation windows use bounded repository queries. Existing `ProductRepositoryFindAllContractTest`, `ProductFilteringQueryContractTest`, `ProductSearchServiceTest`, and related query-contract tests guard against reintroducing `productRepository.findAll()` full-catalog scans in production service paths. Verification: source-only inspection and diff review; no backend Maven/JUnit, frontend Jest, TypeScript, build, browser/Playwright, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer expired unpaid order scan result fix (2026-06-18 08:25 UTC)**: Fixed legacy QA **F2333** as **SOURCE_FIXED / REGRESSION_GUARD_EXPANDED / BACKEND_VERIFICATION_PENDING**. `OrderService.cancelExpiredUnpaidOrders()` now returns an `ExpiredOrderCancellationResult` containing scanned, cancelled, skipped, and failed counts plus cancelled/failed order IDs and bounded failure messages, so scheduled/order-expiry maintenance no longer leaves row failures discoverable only from logs. Per-row failures still log and the scan continues to later orders. `cancelSingleExpiredOrder(...)` now returns a `CANCELLED` / `SKIPPED` status while existing callers may ignore the return value. `OrderStatsServiceTest` source coverage was updated to assert paging, failure continuation, and the returned failure IDs/messages. Verification: source-only inspection; no backend Maven/JUnit, frontend Jest, TypeScript, build, browser/Playwright, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer frontend Chinese hardcoded-copy stale-entry triage (2026-06-18 04:49 UTC)**: Closed TEST **F1709-F1712** against current source as **CURRENT_SOURCE_COVERED / REGRESSION_GUARD_EXPANDED / FRONTEND_VERIFICATION_PENDING**. Focused Han-character scans of `Cart.tsx`, `Profile.tsx`, `BugManagement.tsx`, and `Home.tsx` returned no production matches. Current Cart/Profile/BugManagement/Home visible copy is routed through `t(...)` or localized data/helpers; `BugManagement.tsx` is the current replacement for the stale `AdminBugManagement.tsx` path. Expanded `FrontendHardcodedI18n.test.ts` so its production-source no-Han guard now covers Cart, BugManagement, and Home in addition to the previously covered Profile path. Verification: source-only diff review and focused source inspection; no frontend Jest, TypeScript, build, browser/Playwright, backend Maven/JUnit, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer AdminDashboard chart accessibility stale-entry triage (2026-06-18 04:48 UTC)**: Closed TEST **F1707-F1708** against current source as **CURRENT_SOURCE_COVERED / REGRESSION_GUARD_EXPANDED / FRONTEND_VERIFICATION_PENDING**. The reported standalone `AdminUserGrowthChart.tsx` and `AdminRevenueChart.tsx` files no longer exist in current source. Admin dashboard charting is handled in `AdminDashboard.tsx`: the sales/revenue trend SVG has `role="img"` and `aria-label={labels.salesTrendChart}`, and the order-status donut SVG has `role="img"` and `aria-label={labels.orderStatusChart}`. Existing `AdminDashboard.test.tsx` already renders and queries both chart image names; `AdminDashboardTypeSafety.test.ts` now adds a source guard for the labeled chart contract and rejects reintroduction of the stale standalone chart component names. Verification: source-only diff review and focused source inspection; no frontend Jest, TypeScript, build, browser/Playwright, backend Maven/JUnit, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer Home/BugManagement loading skeleton stale-entry triage (2026-06-18 04:45 UTC)**: Closed TEST **F1705-F1706** against current source as **CURRENT_SOURCE_COVERED / REGRESSION_GUARD_EXPANDED / FRONTEND_VERIFICATION_PENDING**. The loading-state reports are stale: `Home.tsx` already renders an accessible loading branch with `HeroSkeleton`, `StatsStripSkeleton`, product skeleton cards, hero aside shimmer placeholders, `role="status"`, `aria-live="polite"`, and `aria-busy="true"`; current `BugManagement.tsx` already renders permission and initial bug-list skeleton states plus AntD table/detail loading indicators. Added a Home loading skeleton source guard in `HomeRenderMemo.test.ts`; existing `BugManagement.test.ts` already guards the two skeleton loading branches and detail loading semantics. Verification: source-only diff review and focused source inspection; no frontend Jest, TypeScript, build, browser/Playwright, backend Maven/JUnit, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer BugManagement table columns memoization fix (2026-06-18 04:44 UTC)**: Fixed TEST **F1704** as **SOURCE_FIXED / REGRESSION_GUARD_EXPANDED / FRONTEND_VERIFICATION_PENDING**. The stale component name was reconciled to current `BugManagement.tsx`; the AntD table `columns` array is now wrapped in `useMemo<ColumnsType<AdminBugReport>>`, and `openStatusEditor` is stabilized with `useCallback` so action-column handlers do not invalidate the memo on unrelated rerenders. `BugManagement.test.ts` now guards the memoized columns contract, the status-editor callback dependencies, the action-column usage, and the `columns={columns}` table binding. Verification: source-only diff review and focused source inspection; no frontend Jest, TypeScript, build, browser/Playwright, backend Maven/JUnit, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer Profile payment-return batch sync fix (2026-06-18 04:42 UTC)**: Fixed TEST **F1703** as **SOURCE_FIXED / REGRESSION_GUARD_EXPANDED / BACKEND_FRONTEND_VERIFICATION_PENDING**. Added an order-level payment sync API, `POST /payments/order/{orderId}/sync`, backed by `PaymentService.syncPaymentsByOrderId(...)`, so Profile payment-return recovery can reconcile all payments for an order through one network request instead of `getByOrder` plus one `paymentApi.sync(payment.id)` call per payment. The service performs best-effort per-payment provider sync and returns the refreshed stored payment list; failures for individual payments are logged without dropping the whole order list. Frontend `paymentApi.syncByOrder(orderId)` now targets the batch endpoint, and `Profile.syncPaymentReturnState(...)` uses it directly. The new route is exposed in payment info and remains under the dedicated `payment:sync` rate-limit bucket. Regression guards were expanded in `PaymentControllerCustomerResponseTest`, `RateLimitServiceTest`, `frontend/src/api/index.test.ts`, and `ProfileTypeSafety.test.ts`. Verification: source-only diff review and focused source inspection; no backend Maven/JUnit, frontend Jest, TypeScript, build, browser/Playwright, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer Home product tile memoization fix (2026-06-18 04:35 UTC)**: Fixed TEST **F1702** as **SOURCE_FIXED / REGRESSION_GUARD_EXPANDED / FRONTEND_VERIFICATION_PENDING**. Current `Home.tsx` had already extracted the old inline product tile into module-level `HomeProductCard`; this pass completed the requested performance contract by exporting a `React.memo(HomeProductCard)` wrapper with a stable display name. `HomeProductCard.test.ts` now guards that `Home.tsx` imports the module-level card, no longer defines `ProductTile` inline, and that the product card remains memoized on export. Verification: source-only diff review and focused source inspection; no frontend Jest, TypeScript, build, browser/Playwright, backend Maven/JUnit, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer customer page error-feedback stale-entry triage (2026-06-18 04:33 UTC)**: Closed TEST **F1699-F1701** against current source as **CURRENT_SOURCE_COVERED / REGRESSION_GUARD_ADDED / FRONTEND_VERIFICATION_PENDING**. The console-only catch reports are stale: `Cart.tsx`, `Checkout.tsx`, and `Profile.tsx` no longer contain `console.error`; user-triggered cart, checkout/payment, and profile/address/order/payment operations now surface failures through `message.error`, `message.warning`, `showCheckoutMessage(...)`, or a typed payment error state, while background/non-blocking paths use `reportNonBlockingError(...)`. Added `PageErrorHandling.test.ts` as a source guard to reject `console.error` / console-only catch regressions and require representative user-facing failure feedback paths in all three pages. Verification: source-only diff review and focused source inspection; no frontend Jest, TypeScript, build, browser/Playwright, backend Maven/JUnit, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer cart checkout flow test-fixture hardening (2026-06-18 04:31 UTC)**: Fixed TEST **F1695-F1698** as **SOURCE_FIXED / REGRESSION_GUARD_ADDED / FRONTEND_VERIFICATION_PENDING**. `CartCheckoutFlow.test.tsx` now mocks the current async `loadRegionData(language)` API with checkout-ready China/Mexico/Beijing region options, sets a default `paymentApi.getChannels` response in `beforeEach`, uses shared region-path constants for guest/authenticated draft fixtures, and makes the cart `Popconfirm` helper timer-aware so fake-timer quantity tests can open AntD confirmation portals without advancing the 350ms quantity-sync debounce. Added a source guard covering the region mock, payment-channel default, aligned region constants, and fake-timer Popconfirm helper contract. Verification: source-only diff review and focused source inspection; no frontend Jest, TypeScript, build, browser/Playwright, backend Maven/JUnit, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer checkout saved-address postal-code stale-entry triage (2026-06-18 04:26 UTC)**: Closed TEST **F1694** against current source as **CURRENT_SOURCE_COVERED / REGRESSION_GUARD_EXPANDED / FRONTEND_BACKEND_VERIFICATION_PENDING**. The report is stale: backend `UserAddressResponse.from(...)` now includes `postalCode`, the frontend `UserAddress` type exposes `postalCode?: string`, and `Checkout.tsx` uses `getSavedAddressPostalCode(address)` to populate `postalCode: savedPostalCode || undefined` when a saved address is selected. `Checkout.test.tsx` now explicitly guards the saved-address postal-code hydration path and rejects the old `setPostalCode(address.postalCode || "")` pattern. Verification: source-only diff review and focused source inspection; no frontend Jest, TypeScript, build, browser/Playwright, backend Maven/JUnit, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer cart checkout aria-label uniqueness fix (2026-06-18 04:24 UTC)**: Fixed TEST **F1693** as **SOURCE_FIXED / REGRESSION_GUARD_ADDED / FRONTEND_VERIFICATION_PENDING**. `Cart.tsx` now gives the hero/top next-action button a distinct `cartTopNextActionLabel` prefixed with `pages.cart.nextActionEyebrow`, so it no longer starts with the same `Checkout:` accessible name used by the cart summary checkout button. The summary checkout button keeps `checkoutActionLabel`, preserving existing tests that target `^Checkout: ...`. `CartCheckoutFlow.test.tsx` now guards that the top action uses `cartTopNextActionLabel` and the old `${cartNextActionLabel} (top action)` pattern does not return. Verification: source-only diff review and focused source inspection; no frontend Jest, TypeScript, build, browser/Playwright, backend Maven/JUnit, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer AdminBugReport attachment upload fix (2026-06-18 04:21 UTC)**: Fixed TEST **F1692** as **SOURCE_FIXED / REGRESSION_GUARD_ADDED / BACKEND_FRONTEND_VERIFICATION_PENDING**. Added image attachment upload support for admin bug reports without opening arbitrary file hosting: `POST /admin/bugs/attachments` accepts multipart JPG/PNG/GIF screenshots, stores sanitized images under configurable `admin.bugs.attachment-upload-dir`, and returns a protected `/admin/bugs/attachments/{filename}` URL that can be saved in the existing `attachmentUrls` field. `GET /admin/bugs/attachments/{filename}` is served through the admin controller after bug read-permission checks. `BugManagement.tsx` now provides an Upload screenshot action that appends returned URLs to the form, and `adminApi.uploadBugAttachment(...)` uses `FormData` without overriding multipart boundaries. Added backend/frontend source guards in `AdminBugReportControllerTest`, `AdminBugAttachmentServiceTest`, `BugManagement.test.ts`, and `frontend/src/api/index.test.ts`. Verification: source-only diff review and focused source inspection; no backend Maven/JUnit, frontend Jest, TypeScript, build, browser/Playwright, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer AdminBugReport create rate-limit fix (2026-06-18 04:12 UTC)**: Fixed TEST **F1691** as **SOURCE_FIXED / REGRESSION_GUARD_ADDED / BACKEND_VERIFICATION_PENDING**. The current endpoint is `POST /admin/bugs`; it is now covered by a dedicated `RateLimitService` endpoint bucket `admin:bugs:create` with runtime key `traffic.rate-limit.admin-bug-create-per-minute` defaulting to 20/minute, while still retaining the broader admin global bucket. Exposed the default in `application.properties`, Config Center runtime defaults, and `deploy/backend.env.example`. `RateLimitServiceTest.adminBugCreateEndpointHasDedicatedPerClientLimit` guards behavior, and `adminBugCreateEndpointLimitIsExposedInRuntimeDefaults` guards configuration discoverability. Verification: source-only diff review and focused source inspection; no backend Maven/JUnit, frontend Jest, TypeScript, build, browser/Playwright, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer AdminBugReport audit metadata XSS hardening (2026-06-18 04:08 UTC)**: Fixed TEST **F1690** as **SOURCE_HARDENED / REGRESSION_GUARD_ADDED / BACKEND_VERIFICATION_PENDING**. Current bug-report audit metadata does not include `description`, but it does include the user-controlled bug `title`; `AdminBugReportController.safe(...)` now normalizes and truncates metadata values before HTML-encoding `&`, `<`, `>`, double quotes, and single quotes. `AdminBugReportControllerTest.adminBugReportAuditMetadataHtmlEncodesUserControlledTitle` guards that malicious title markup is encoded before it reaches audit metadata. Verification: source-only diff review and focused source inspection; no backend Maven/JUnit, frontend Jest, TypeScript, build, browser/Playwright, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer AdminBugReport validation stale-entry triage (2026-06-18 04:05 UTC)**: Closed TEST **F1688/F1689** against current source as **CURRENT_SOURCE_COVERED / REGRESSION_GUARD_EXPANDED / BACKEND_VERIFICATION_PENDING**. The DTO mismatch reports are stale: `AdminBugReportRequest.title` is already constrained to `@Size(max = 160)`, `description` already has both `@NotBlank` and `@Size(max = 4000)`, and `AdminBugReportService.normalizeFields(...)` enforces the same 160/4000 business bounds through `requiredText(...)` / `requiredMultilineText(...)`. Expanded `AdminRequestValidationContractTest.adminBugReportRequestMatchesServiceTextLimits` to guard the exact DTO boundaries and source-level service alignment. Verification: source-only diff review and focused source inspection; no backend Maven/JUnit, frontend Jest, TypeScript, build, browser/Playwright, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer support admin read-audit fix (2026-06-18 03:39 UTC)**: Fixed TEST **F1616** as **SOURCE_FIXED / REGRESSION_GUARD_ADDED / BACKEND_VERIFICATION_PENDING**. `SupportController` now records `SUCCESS` audit events after authorized admin reads for support session lists, support summaries, support message history, and support unread counts; service-layer failures on those reads record `FAILURE` before the exception propagates. Read metadata is intentionally low sensitivity and avoids raw support search text or message content, keeping only filter presence, pagination, and cursor state. `SupportControllerAdminResponseTest` now guards all four successful read-audit actions plus the service-exception failure-audit path. Verification: source-only diff review and focused source inspection; no backend Maven/JUnit, frontend Jest, TypeScript, build, browser/Playwright, APP/device, API probe, deploy, service restart, Nginx command, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer support message frontend normalization fix (2026-06-18 03:42 UTC)**: Fixed TEST **F1617** as **SOURCE_FIXED / REGRESSION_GUARD_ADDED / FRONTEND_VERIFICATION_PENDING**. `frontend/src/api/index.ts` now routes customer support REST message sends through `normalizeSupportMessageContent(...)`, which reuses the existing multiline text normalizer with a 4000-character cap, strips non-newline control characters, normalizes line endings, preserves intentional newlines, and trims/compresses line text. The authenticated REST send, guest REST send, and admin support reply helpers all use the same normalizer, and guest sends still normalize order number/email before using anonymous request options. `frontend/src/api/index.test.ts` now guards the normalized account, guest, and admin support message payloads and rejects the old raw `String(content || '').slice(0, 4000)` guest path. Verification: source-only diff review and focused source inspection; no frontend Jest, TypeScript, build, browser/Playwright, APP/device, backend Maven/JUnit, API probe, deploy, service restart, Nginx command, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer guest order tracking blacklist/rate-limit fix (2026-06-18 03:48 UTC)**: Fixed TEST **F1618** as **SOURCE_FIXED / REGRESSION_GUARD_ADDED / BACKEND_VERIFICATION_PENDING**. `OrderController.trackOrder(...)` no longer records ordinary guest order tracking credential mistakes as login failures, so a mistyped email/order number does not feed IP blacklist escalation. The endpoint remains rate-limited by `RateLimitService` through the existing `POST /orders/track` guest-order-lookup bucket, and `RateLimitServiceTest` now explicitly guards that dedicated bucket. `OrderControllerGuestAfterSaleAccessTest` now verifies a tracking credential failure rethrows without calling `ipBlacklistService.recordLoginFailure(...)`. Verification: source-only diff review and focused source inspection; no backend Maven/JUnit, frontend Jest, TypeScript, build, browser/Playwright, APP/device, API probe, deploy, service restart, Nginx command, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer bad-request exception disclosure hardening (2026-06-18 03:55 UTC)**: Fixed TEST **F1620** as **SOURCE_FIXED / REGRESSION_GUARD_ADDED / BACKEND_VERIFICATION_PENDING**. `GlobalApiExceptionHandler.resolveBadRequestMessage(...)` now only returns sanitized `IllegalArgumentException` / `IllegalStateException` messages when the exception originated in the application package; external/library bad-request exceptions fall back to `Bad request`. The sensitive-detail filter also rejects Java-style fully qualified class names, closing the internal type-name leak path while preserving existing safe business messages such as password validation and stock errors. `GlobalApiExceptionHandlerTest` now simulates an external Hibernate-origin `IllegalArgumentException` and asserts the client payload does not include its message. Verification: source-only diff review and focused source inspection; no backend Maven/JUnit, frontend Jest, TypeScript, build, browser/Playwright, APP/device, API probe, deploy, service restart, Nginx command, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer password policy stale-entry triage (2026-06-18 04:00 UTC)**: Closed TEST **F1621** against current source as **CURRENT_SOURCE_COVERED / REGRESSION_GUARD_EXPANDED / BACKEND_FRONTEND_VERIFICATION_PENDING**. The report is stale: `UserService.assertStrongPassword(...)` now enforces 12-128 characters, rejects a common-password set case-insensitively, and requires at least three of lowercase, uppercase, digit, and symbol character classes. Existing `UserServiceTest` cases already reject common passwords and two-class passwords for registration/update flows, and the frontend shared `passwordPolicy.ts` mirrors the same 12-128, common-password, and 3-of-4 class rules with page source guards. Added `UserServiceTest.passwordPolicySourceRequiresCommonPasswordsAndThreeCharacterClasses` to guard against backend policy regression. Verification: source-only diff review and focused source inspection; no backend Maven/JUnit, frontend Jest, TypeScript, build, browser/Playwright, APP/device, API probe, deploy, service restart, Nginx command, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer admin bootstrap token minimum triage (2026-06-18 03:54 UTC)**: Closed TEST **F1684** against current source as **CURRENT_SOURCE_COVERED / REGRESSION_GUARD_PRESENT / BACKEND_VERIFICATION_PENDING**. The report is stale after the admin-bootstrap weak-token hardening: `UserController.assertAdminBootstrapToken(...)` reads `admin.bootstrap-token`, rejects blank configuration, normalizes the configured value, requires `AdminBootstrapTokenPolicy.isStrongConfiguredToken(...)`, and only then performs constant-time comparison with the request header. `AdminBootstrapTokenPolicy` also validates configured tokens at startup, requiring at least 32 non-placeholder characters with basic entropy. Existing guards in `UserControllerAdminBootstrapTest`, `AdminBootstrapTokenPolicyTest`, `AdminBootstrapTokenContractTest`, and `SecurityConfigCorsTest` cover weak-token rejection, startup validation, controller policy wiring, and the narrow permit-all route contract. Verification: source-only inspection and focused source searches; no backend Maven/JUnit, frontend Jest, TypeScript, build, browser/Playwright, APP/device, API probe, deploy, service restart, Nginx command, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer CORS request-header allowlist triage (2026-06-18 03:54 UTC)**: Closed TEST **F1685** against current source as **CURRENT_SOURCE_COVERED / REGRESSION_GUARD_EXPANDED / BACKEND_VERIFICATION_PENDING**. The reported `WebConfig.allowedHeaders("*")` state is stale: current MVC CORS config enumerates `Authorization`, `Content-Type`, `Accept`, `Accept-Language`, `X-Requested-With`, request/correlation ids, `X-Bootstrap-Token`, and `Idempotency-Key` while still using credentialed CORS. `SecurityConfig.corsConfigurationSource()` uses the same explicit request-header allowlist and already had runtime assertions rejecting `*`. Expanded `SecurityConfigCorsTest` with a WebConfig source guard so the MVC CORS path cannot silently return to wildcard request headers. Verification: source-only diff review and focused source searches; no backend Maven/JUnit, frontend Jest, TypeScript, build, browser/Playwright, APP/device, API probe, deploy, service restart, Nginx command, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer admin support role-guard hardening (2026-06-18 03:54 UTC)**: Fixed TEST **F1686** as **SOURCE_HARDENED / REGRESSION_GUARD_ADDED / BACKEND_VERIFICATION_PENDING**. Pure admin controllers already use class-level `@PreAuthorize("hasRole('ADMIN')")`, and `SecurityConfig` still protects `/admin/**`; the remaining gap was the mixed public/admin `SupportController`, where class-level admin annotation would break public customer support endpoints. All `/admin/support/**` methods now have method-level `@PreAuthorize("hasRole('ADMIN')")` in addition to their existing support-page/action permission checks. `SupportControllerAdminResponseTest.adminSupportEndpointsHaveRolePreAuthorizeGuards` scans all admin support mappings and guards that each method keeps the admin role annotation. Verification: source-only diff review and focused source searches; no backend Maven/JUnit, frontend Jest, TypeScript, build, browser/Playwright, APP/device, API probe, deploy, service restart, Nginx command, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer AdminBugReport coverage stale-entry triage (2026-06-18 03:54 UTC)**: Closed TEST **F1687** against current source as **CURRENT_SOURCE_COVERED / REGRESSION_GUARD_PRESENT / VERIFICATION_PENDING_BY_POLICY**. The report that AdminBugReport has zero tests is stale. Backend coverage now includes `AdminBugReportControllerTest` for route, role, permission, workflow, and audit contracts; `AdminBugReportServiceTest` for summary aggregation, explicit projections, pagination, detail loading, status/note updates, and update failure behavior; and `AdminRequestValidationContractTest` for bug request/status/entity Bean Validation. Frontend coverage includes `BugManagement.test.ts` for mobile modal UX, loading states, accessibility labels, localized priorities, detail lazy-loading, pagination translation, and API integration source contracts, plus `BugManagementTypeSafety.test.ts` for typed error handling. Verification: source-only inspection and focused source searches; no backend Maven/JUnit, frontend Jest, TypeScript, build, browser/Playwright, APP/device, API probe, deploy, service restart, Nginx command, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer Navbar badge refresh coalescing fix (2026-06-18 03:16 UTC)**: Fixed TEST **F1615** as **SOURCE_FIXED / REGRESSION_GUARD_EXPANDED / FRONTEND_VERIFICATION_PENDING**. Authenticated Navbar mount now queues one `refreshAccountBadgeCounts` idle task instead of separate idle tasks for cart, unread notifications, wishlist, coupons, and stock alerts. That task awaits each badge refresh in order, preserving existing per-badge error handling and event-triggered single-badge refreshes while avoiding an initial burst of concurrent account badge API calls. `Navbar.test.tsx` includes a source guard for the coalesced initial refresh contract. Verification: source-only inspection and focused source searches; no frontend Jest, TypeScript, build, browser/Playwright, APP/device, backend Maven/JUnit, API probe, deploy, service restart, Nginx command, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer cart quantity-sync recovery hardening (2026-06-18 03:16 UTC)**: Fixed TEST **F1614** as **SOURCE_FIXED / REGRESSION_GUARD_EXPANDED / FRONTEND_VERIFICATION_PENDING**. `Cart.handleQuantitySyncError(...)` now still shows the quantity-update failure, but wraps the recovery `fetchCartItems()` call in its own `try/catch` and reports refresh failures through `reportNonBlockingError('Cart.handleQuantitySyncError.fetchCartItems', ...)`, so the error handler no longer creates a second unhandled rejection if cart refresh also fails. `CartCheckoutFlow.test.tsx` includes a source guard for the nested catch/reporting path. Verification: source-only inspection and focused source searches; no frontend Jest, TypeScript, build, browser/Playwright, APP/device, backend Maven/JUnit, API probe, deploy, service restart, Nginx command, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer guest checkout draft retention fix (2026-06-18 03:16 UTC)**: Fixed TEST **F1613** as **SOURCE_FIXED / REGRESSION_GUARD_EXPANDED / FRONTEND_VERIFICATION_PENDING**. `Checkout.handleSubmit(...)` no longer removes `checkoutGuestDraft` immediately after order creation; guest checkout drafts now remain available through payment-create failures and pending-payment recovery. Draft cleanup is deferred to a payment-status effect that removes the draft only when a guest checkout payment reaches `PAID`. `CartCheckoutFlow.test.tsx` now asserts payment creation failure preserves `checkoutGuestDraft`, and `Checkout.test.tsx` guards that the submit path does not remove the draft while the paid-payment cleanup effect does. Verification: source-only inspection and focused source searches; no frontend Jest, TypeScript, build, browser/Playwright, APP/device, backend Maven/JUnit, API probe, deploy, service restart, Nginx command, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer checkout selected-cart-id freshness triage (2026-06-18 03:16 UTC)**: Closed TEST **F1612** against current source as **CURRENT_SOURCE_COVERED / REGRESSION_GUARD_EXPANDED / FRONTEND_VERIFICATION_PENDING**. Current `Checkout.tsx` reads `const selectedCartItemIds = readCheckoutCartItemIds();` inside the checkout bootstrap effect instead of memoizing sessionStorage with an empty dependency array, so returning from cart and remounting checkout reads the latest selected cart item IDs. `Checkout.test.tsx` now explicitly rejects `useMemo(() => readCheckoutCartItemIds(), [])` and confirms the bootstrap effect reads selected IDs before loading cart/address data. Verification: source-only inspection and focused source searches; no frontend Jest, TypeScript, build, browser/Playwright, APP/device, backend Maven/JUnit, API probe, deploy, service restart, Nginx command, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer order tracking URL auto-submit triage (2026-06-18 03:16 UTC)**: Closed TEST **F1610** against current source as **CURRENT_SOURCE_COVERED / REGRESSION_GUARD_EXPANDED / FRONTEND_VERIFICATION_PENDING**. `OrderTracking.tsx` no longer auto-submits a tracking lookup from `orderNo`/`email` URL parameters; the URL effect sanitizes guest email parameters, optionally saves a normalized guest support context, pre-fills the form, and shows the prefill notice, but it does not call `trackOrder(...)`. Added `OrderTracking.test.tsx` source guard proving the prefill effect uses `form.setFieldsValue(...)` / `setPrefillNoticeVisible(...)` and does not contain `trackOrder(` or `void trackOrder`. Verification: source-only inspection and focused source searches; no frontend Jest, TypeScript, build, browser/Playwright, APP/device, backend Maven/JUnit, API probe, deploy, service restart, Nginx command, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer coupon grant transaction batching fix (2026-06-18 03:16 UTC)**: Fixed TEST **F1608** as **SOURCE_FIXED / REGRESSION_GUARD_EXPANDED / BACKEND_VERIFICATION_PENDING**. `CouponService.grant(...)` now performs request validation and recipient existence checks outside the write loop, then processes normalized recipients in bounded batches using `TransactionTemplate` through `executeGrantBatchInTransaction(...)`; each batch keeps the existing atomic `incrementClaimedQuantity(...)` / duplicate-key compensation behavior while avoiding one long transaction across up to 1000 recipients. The batch size is bounded by `admin.coupons.grant-transaction-batch-size` with a default of 100 and hard cap of 200. `CouponClaimStockRaceContractTest` and `LegacyRaceConditionControllerContractTest` were updated to guard the batch helper, TransactionTemplate path, and preservation of atomic coupon quantity updates. Verification: source-only inspection and focused source searches; no backend Maven/JUnit, frontend Jest, TypeScript, build, browser/Playwright, APP/device, API probe, deploy, service restart, Nginx command, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer registration/notification security sweep (2026-06-18 03:16 UTC)**: Fixed TEST **F1605/F1606** as **SOURCE_FIXED / REGRESSION_GUARD_EXPANDED / BACKEND_VERIFICATION_PENDING** and closed TEST **F1604/F1607/F1609** against current source as **CURRENT_SOURCE_COVERED / REGRESSION_GUARD_PRESENT / VERIFICATION_PENDING_BY_POLICY**. Public registration duplicate conflicts now use one generic service-layer message for username/email/phone collisions, and `AuthController` still maps that generic condition to `ACCOUNT_DETAILS_UNAVAILABLE` while preserving guest-email verification behavior. `NotificationService.createNotification(...)` now stores TEXT notifications after HTML sanitization and tag stripping, matching the hardened broadcast path's safety intent for single-recipient notifications. Source guards in `UserServiceTest`, `AuthControllerRegisterTest`, and `NotificationServiceTest` cover the non-enumerating duplicate-registration message and create-notification sanitization. F1604 is stale because import duplicate-name checks already use targeted `existsByCategoryIdAndNameIgnoreCase...` queries with contract tests, F1607 is stale because blocked IP responses no longer include resolved IP/block details and `IpBlacklistFilterTest` guards that, and F1609 is stale because Navbar now consumes `useAuth()` state inside an app-level `AuthProvider` with source guards. F1601 remains open after source triage because a correct fix requires aligning keyword/category post-filter pagination rather than merely shrinking the current page total and risking undercounted pages. Verification: source-only inspection and focused source searches; no backend Maven/JUnit, frontend Jest, TypeScript, build, browser/Playwright, APP/device, API probe, deploy, service restart, Nginx command, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer guest tracking/payment authorization sweep (2026-06-18 03:08 UTC)**: Fixed TEST **F1598** as **SOURCE_FIXED / REGRESSION_GUARD_EXPANDED / BACKEND_FRONTEND_VERIFICATION_PENDING** and closed TEST **F1599** as **CURRENT_SOURCE_COVERED / REGRESSION_GUARD_PRESENT / BACKEND_VERIFICATION_PENDING**. Non-guest/account order tracking now returns only the already-supplied order number plus `detailsRestricted=true` / `ACCOUNT_LOGIN_REQUIRED`; the restricted backend summary no longer includes order id, real status, created time, shipped time, or completed time. `OrderTracking.tsx` also no longer auto-refreshes restricted account-order responses and only renders status/created/tracking lifecycle fields inside the full-details branch. `OrderInputNormalizationServiceTest` and `OrderTracking.test.tsx` source guards cover the no-status/no-timeline restricted tracking contract. F1599 is stale against current source: `PaymentController.assertCanOperateOrder(...)` delegates anonymous credentials to `orderService.guestOrderAccessMatches(...)`, and that service method requires `isGuestOrder(order)` before email/order-number matching, so registered-user orders cannot be paid anonymously even when order number and email match; `PaymentControllerSimulationAccessTest.anonymousRegisteredOrderCannotCreatePaymentEvenWhenEmailMatchesOrder` and `OrderInputNormalizationServiceTest.guestAccessRejectsRegisteredOrderEvenWhenEmailAndOrderNumberMatch` cover the contract. Verification: source-only inspection and focused source searches; no backend Maven/JUnit, frontend Jest, TypeScript, build, browser/Playwright, APP/device, API probe, deploy, service restart, Nginx command, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer Checkout payment polling abort fix (2026-06-18 02:53 UTC)**: Fixed TEST **F1597** as **SOURCE_FIXED / REGRESSION_GUARD_EXPANDED / FRONTEND_VERIFICATION_PENDING**. `paymentApi.getLatestByOrder(...)` now accepts optional `ApiRequestOptions` and forwards `signal` through both authenticated latest-payment GET requests and guest latest-payment POST requests. `Checkout.tsx` now creates an abort controller for the delayed submitted-payment refresh and aborts it in effect cleanup; the recurring pending-payment poll creates a per-request abort controller, passes its signal to `paymentApi.getLatestByOrder(...)`, ignores aborted completions, and aborts the active poll request during cleanup through `abortActivePollRequest()`. `Checkout.test.tsx` source guards now require the abort controller import, signal propagation, request abort cleanup, and active poll abort helper. Verification: source-only inspection and focused source searches; `git diff --check -- frontend/src/api/index.ts frontend/src/pages/Checkout.tsx frontend/src/pages/Checkout.test.tsx` passed, conflict-marker scan found no matches, and focused abort/signal searches confirmed both payment status request paths are cancellable; no frontend Jest, TypeScript, build, browser/Playwright, APP/device, backend Maven/JUnit, API probe, deploy, service restart, Nginx command, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer Cart checkout selected-item closure fix (2026-06-18 02:53 UTC)**: Fixed TEST **F1596** as **SOURCE_FIXED / REGRESSION_GUARD_EXPANDED / FRONTEND_VERIFICATION_PENDING**. `Cart.goCheckout` is now a `useCallback` whose dependency list includes the current `selectedItems`, `flushPendingQuantityUpdates`, `navigate`, and translation function, so checkout actions bind to the latest selected-item snapshot after selection changes. The checkout path also now uses a synchronous `checkoutSubmittingRef` latch before setting loading state or flushing pending quantity updates, preventing rapid repeated checkout actions from entering while React state is still settling. `CartCheckoutFlow.test.tsx` includes a source guard for the callback shape, selected item derivation, latch ordering, and dependency list. Verification: source-only inspection and focused source searches; no frontend Jest, TypeScript, build, browser/Playwright, APP/device, backend Maven/JUnit, API probe, deploy, service restart, Nginx command, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer auth context/Navbar session race sweep (2026-06-18 02:53 UTC)**: Closed TEST **F1587/F1588** against current source as **CURRENT_SOURCE_COVERED / REGRESSION_GUARD_PRESENT / FRONTEND_VERIFICATION_PENDING** and fixed TEST **F1589/F1591** as **SOURCE_FIXED / REGRESSION_GUARD_EXPANDED / FRONTEND_VERIFICATION_PENDING**. `useAuth` already invalidates stale profile hydrations with `mountedRef` plus `profileRequestSeqRef`, ignores profile/login responses after unmount, and serializes concurrent login attempts through `loginRequestRef`. This pass made the auth context usable as the storefront's canonical session source by exposing `token`, keeping it synchronized during hydrate/login/logout/auth-session events, wrapping the app route shell in `AuthProvider`, and changing `Navbar` to consume `useAuth()` for auth state and logout. Navbar logout now delegates revocation/storage cleanup to `logoutAuthSession()` and only resets local badge/menu UI before navigating to the login URL, eliminating the duplicate `userApi.logout(...)` / `clearStoredAuthSession()` path in Navbar. Source guards were expanded in `useAuth.test.tsx`, `App.test.tsx`, and `Navbar.test.tsx`. Verification: source-only inspection and focused source searches; no frontend Jest, TypeScript, build, browser/Playwright, APP/device, backend Maven/JUnit, API probe, deploy, service restart, Nginx command, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer Stripe webhook replay/signature hardening (2026-06-18 02:42 UTC)**: Fixed TEST **F185** as **SOURCE_FIXED / REGRESSION_GUARD_EXPANDED / BACKEND_VERIFICATION_PENDING**. Current `PaymentService.handleStripeWebhook(...)` now verifies Stripe webhooks with an explicit `STRIPE_WEBHOOK_TOLERANCE_SECONDS = 300L` and calls `Webhook.constructEvent(payload, signatureHeader, webhookSecret, STRIPE_WEBHOOK_TOLERANCE_SECONDS)`, so invalid signatures and replayed/expired timestamp signatures are rejected before payment/order repository access. `PaymentFlowServiceTest` now covers both an internal generic callback signature sent to the Stripe webhook endpoint and a correctly HMAC-signed but expired Stripe timestamp; both paths must throw `Invalid Stripe webhook signature`, preserve a cause, and avoid payment/order side effects. Static guards in `PaymentCallbackSignatureContractTest` and `StripeWebhookMalformedPayloadContractTest` now require the explicit Stripe replay tolerance while preserving the signed malformed-payload ignore path. Verification: source-only inspection and focused source searches; `git diff --check -- src/main/java/com/example/shop/service/PaymentService.java src/test/java/com/example/shop/service/PaymentFlowServiceTest.java src/test/java/com/example/shop/config/PaymentCallbackSignatureContractTest.java src/test/java/com/example/shop/config/StripeWebhookMalformedPayloadContractTest.java TEST_ISSUES.md` passed, trailing-whitespace scan returned no matches, conflict-marker scan found no matches, and focused Stripe webhook tolerance search confirmed the explicit 300-second contract; no backend Maven/JUnit, frontend Jest, TypeScript, build, browser/Playwright, APP/device, API probe, deploy, service restart, Nginx command, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer product-option/i18n and guest-order credential transport sweep (2026-06-18 02:36 UTC)**: Closed TEST **F2595/F2605/F2606** against current source as **CURRENT_SOURCE_COVERED / REGRESSION_GUARD_PRESENT / FRONTEND_VERIFICATION_PENDING** and fixed/hardened TEST **F2610** as **SOURCE_HARDENED / REGRESSION_GUARD_EXPANDED / BACKEND_FRONTEND_VERIFICATION_PENDING**. Source inspection confirmed Product Detail no longer performs page-local Chinese product-option keyword matching or direct `group.name.includes('尺码')` size detection; size semantics now use `isSizeOptionName(...)` in `localizedProductOptions.ts` with English/Spanish/Chinese aliases, and Product Detail source guards prevent the old hardcoded matching from returning. Order Management already renders registered-customer user ids with `{t('common.id')} {order.userId}` and has a source guard rejecting the old `ID {order.userId}` prefix. Guest order and payment credential reads now use POST bodies in the backend controller and frontend API client; `GET /orders/track` returns a 405-style "Use POST /orders/track" response without reading query credentials, no `GuestOrderController.java` exists in current source, and the stale anonymous `GET /orders/guest/**` security allowlist was removed. Expanded `GuestCredentialTransportContractTest` to guard order tracking, guest order/payment POST-body reads, absence of guest credential `@RequestParam` reads, and absence of the stale GET allowlist. Verification: source-only inspection and focused source searches; no backend Maven/JUnit, frontend Jest, TypeScript, build, browser/Playwright, APP/device, API probe, deploy, service restart, Nginx command, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer Cycle #565 security/validation stale-entry sweep (2026-06-18 02:32 UTC)**: Closed TEST **F2596/F2597/F2599/F2600/F2601/F2602/F2603/F2604** against current source as **CURRENT_SOURCE_COVERED / REGRESSION_GUARD_PRESENT / VERIFICATION_PENDING_BY_POLICY**. Source inspection confirmed the old reports are stale or already fixed: IP blacklist blocked responses use the uniform error factory without IP/block-detail fields; bad-request exception messages pass through `safeClientMessage(...)` / sensitive-detail filtering and missing routes have an explicit 404 handler; forgot-password and payment-create DTOs have boundary validation; password changes/register/reset use the shared strong-password policy; CORS origins are centralized through `CorsOriginProperties` with wildcard/private production filtering and exact `*` rejection; and pet-gallery likes are updated inside a locked transaction unit instead of the old split `saveAndFlush(like)` plus `incrementLikeCount(...)` path. Existing source/unit guards cover these contracts across `IpBlacklistFilterTest`, `GlobalApiExceptionHandlerTest`, `AuthControllerForgotPasswordTest`, `PaymentControllerSimulationAccessTest`, `UserServiceTest`, `SecurityConfigCorsTest`, and `PetGalleryServiceTest`. Verification: source-only inspection and focused source searches; `git diff --check -- TEST_ISSUES.md` passed, trailing-whitespace scan returned no matches, conflict-marker scan found no matches, and focused stale-pattern scans returned no matches; no backend Maven/JUnit, frontend Jest, TypeScript, build, browser/Playwright, APP/device, API probe, deploy, service restart, Nginx command, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer decimal precision stale-entry sweep (2026-06-18 02:26 UTC)**: Closed TEST **F2591/F2598** against current source as **CURRENT_SOURCE_COVERED / REGRESSION_GUARD_PRESENT / BACKEND_VERIFICATION_PENDING**. The cart-money report is stale because `CartService.calculateTotal(...)` now returns `BigDecimal`, delegates to `calculateTotalAmount(...)`, and the internal total path rounds each line to cents before summing with `BigDecimal::add`; `CartMoneyPrecisionContractTest` rejects `public double calculateTotal(...)`, `mapToDouble`, and cart-total `.doubleValue()` reintroductions. The review-rating report is also stale because `ProductReviewsResponse.averageRating`, `Product.averageRating`, `ProductPublicResponse.averageRating`, list-item rating fields, and `ReviewService.getAverageRating(...)` all use `BigDecimal`, and `ReviewServiceTest` guards the public rating chain plus one-decimal HALF_UP normalization. Verification: source-only inspection and focused source searches; no backend Maven/JUnit, frontend Jest, TypeScript, build, browser/Playwright, APP/device, API probe, deploy, service restart, Nginx command, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer checkout recipient validation triage (2026-06-18 02:26 UTC)**: Closed TEST **F2589** against current source as **CURRENT_SOURCE_COVERED / REGRESSION_GUARD_PRESENT / BACKEND_FRONTEND_VERIFICATION_PENDING**. The original report is stale against current source: `CheckoutRequest` already requires `recipientName`, requires and pattern-validates `recipientPhone`, bounds recipient/shipping/payment/contact fields, and validates optional `contactEmail` with `@Email` plus length limits before controller work through existing `@Valid` checkout endpoints. `OrderInputNormalizationServiceTest` already guards blank/malformed/overlong recipient/contact fields and documents that `contactEmail` remains optional for authenticated checkout. Source inspection confirmed the optional email is intentional because order notification contact resolution falls back to the account email, then legacy guest-email extraction, while guest checkout continues to require `guestEmail`. Verification: source-only inspection of `CheckoutRequest`, `OrderController`, `OrderService`, `OrderInputNormalizationServiceTest`, and `frontend/src/api/index.ts`; no backend Maven/JUnit, frontend Jest, TypeScript, build, browser/Playwright, APP/device, API probe, deploy, service restart, Nginx command, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer login account-status consistency fix (2026-06-18 02:22 UTC)**: Fixed TEST **F2587** as **SOURCE_FIXED / REGRESSION_GUARD_ADDED / BACKEND_VERIFICATION_PENDING**. Password login, email-code login, refresh-token rotation, and Spring Security `UserDetailsImpl.isEnabled()` now share `UserAccountStatusPolicy`, which only allows explicit `ACTIVE` accounts to receive authenticated sessions; `null`, `BANNED`, `GUEST`, or any other status no longer issue access/refresh tokens. Password login now fetches the persisted user immediately after authentication and blocks inactive or missing accounts before setting the security context, generating JWTs, generating refresh tokens, storing refresh tokens, or clearing login failure counters. Email-login and refresh use the same disabled-account response path, and `EmailLoginService` now treats non-ACTIVE accounts like unavailable accounts when sending or verifying login/reset codes. Added source/unit-style guards in `LoginControllerPasswordLoginTest`, `LoginControllerRefreshTest`, and `EmailLoginServiceTest` for the null-status rejection path and shared status policy. Verification: source-only diff review, focused source inspection, `git diff --check -- src/main/java/com/example/shop/controller/LoginController.java src/main/java/com/example/shop/security/UserDetailsImpl.java src/main/java/com/example/shop/service/EmailLoginService.java src/test/java/com/example/shop/controller/LoginControllerPasswordLoginTest.java src/test/java/com/example/shop/controller/LoginControllerRefreshTest.java src/test/java/com/example/shop/service/EmailLoginServiceTest.java TEST_ISSUES.md` passed for tracked files, `git diff --check --no-index /dev/null src/main/java/com/example/shop/security/UserAccountStatusPolicy.java` produced no whitespace diagnostics for the new file, trailing-whitespace scan returned no matches, conflict-marker scan found no matches, and focused auth-status source scan confirmed the shared ACTIVE-only policy; no backend Maven/JUnit, frontend Jest, TypeScript, build, browser/Playwright, APP/device, API probe, deploy, service restart, Nginx command, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer guest support credential transport and session-scope fix (2026-06-18 02:15 UTC)**: Fixed TEST **F2607** as **SOURCE_FIXED / REGRESSION_GUARD_ADDED / BACKEND_FRONTEND_VERIFICATION_PENDING**. The authenticated support session policy is now documented in `SupportController`: authenticated support endpoints only expose default account sessions, while guest-order support sessions remain order-credential scoped. Guest support read credentials no longer travel in URL query strings: guest session lookup moved to `POST /support/guest/session/lookup` with a validated `GuestOrderAccessRequest` body, guest message reads moved to `POST /support/guest/sessions/{sessionId}/messages` with the new validated `GuestSupportMessagesRequest` body, the anonymous security allowlist now permits those POST reads instead of guest GET reads, and `supportApi` now sends `guestEmail/orderNo` in anonymous POST bodies for guest support reads and body-based actions. Expanded `GuestCredentialTransportContractTest` plus the existing security source guard to keep support guest credentials out of GET/query transport and to preserve the account-session vs guest-order-session boundary. Verification: source-only diff review, focused source inspection, `git diff --check -- src/main/java/com/example/shop/controller/SupportController.java src/main/java/com/example/shop/dto/GuestSupportMessagesRequest.java src/main/java/com/example/shop/config/SecurityConfig.java frontend/src/api/index.ts src/test/java/com/example/shop/controller/GuestCredentialTransportContractTest.java src/test/java/com/example/shop/config/SecurityConfigCorsTest.java TEST_ISSUES.md` passed, trailing-whitespace scan returned no matches, conflict-marker scan found no matches, and focused support guest GET/query scan returned no matches; no backend Maven/JUnit, frontend Jest, TypeScript, build, browser/Playwright, APP/device, API probe, deploy, service restart, Nginx command, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer payment-create request validation fix (2026-06-18 02:05 UTC)**: Fixed TEST **F2601** as **SOURCE_FIXED / REGRESSION_GUARD_ADDED / BACKEND_VERIFICATION_PENDING**. `PaymentCreateRequest` now validates payment creation identifiers at the DTO boundary before authorization or service work: `orderId` must be positive, `channel` is bounded to 40 characters, optional guest `orderNo` is bounded to 64 characters, and optional guest email must be a valid email capped at 120 characters. Existing controller authorization semantics remain unchanged, so authenticated member payments do not require guest credentials while anonymous guest payments still depend on the existing order/email match. Added `PaymentControllerSimulationAccessTest` Bean Validation coverage for invalid payment-create identifiers. Verification: source-only diff review, focused source inspection, `git diff --check -- src/main/java/com/example/shop/dto/PaymentCreateRequest.java src/test/java/com/example/shop/controller/PaymentControllerSimulationAccessTest.java TEST_ISSUES.md` passed, trailing-whitespace scan returned no matches, conflict-marker scan found no matches, and focused DTO/controller validation scan confirmed the new constraints plus the existing `@Valid` endpoint boundary; no backend Maven/JUnit, frontend Jest, TypeScript, build, browser/Playwright, APP/device, API probe, deploy, service restart, Nginx command, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer forgot-password lookup validation fix (2026-06-18 02:02 UTC)**: Fixed TEST **F2597** as **SOURCE_FIXED / REGRESSION_GUARD_ADDED / BACKEND_VERIFICATION_PENDING**. `ForgotPasswordRequest` now bounds the password-reset lookup payload before controller work: login identifiers are capped at 120 characters, email is capped at 100 characters to match account storage normalization, and verification codes are fixed to 6 digits through both size and digit-pattern validation. Added `AuthControllerForgotPasswordTest` Bean Validation coverage for oversized login/email/code fields so malformed reset payloads fail at the DTO boundary before password-reset code verification or account lookup. Verification: source-only diff review, focused source inspection, `git diff --check -- src/main/java/com/example/shop/dto/ForgotPasswordRequest.java src/test/java/com/example/shop/controller/AuthControllerForgotPasswordTest.java TEST_ISSUES.md` passed, trailing-whitespace scan returned no matches, conflict-marker scan found no matches, and focused DTO/controller validation scan confirmed the new constraints plus the existing `@Valid` endpoint boundary; no backend Maven/JUnit, frontend Jest, TypeScript, build, browser/Playwright, APP/device, API probe, deploy, service restart, Nginx command, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer admin user/support LIKE escape fix (2026-06-18 01:57 UTC)**: Fixed TEST **F2438** as **SOURCE_FIXED / REGRESSION_GUARD_ADDED / BACKEND_VERIFICATION_PENDING**. Admin user search and admin support session search now normalize the free-text keyword/search once in service code, escape LIKE wildcard literals (`!`, `%`, `_`) before mapper calls, and keep the MyBatis predicates explicit with `ESCAPE '!'` on every affected user/support search column. Added backend source/unit-style guards in `UserServiceTest` and `SupportServiceTest` covering escaped mapper arguments and the XML LIKE escape contract. Verification: source-only diff review, focused source inspection, `git diff --check -- src/main/java/com/example/shop/service/UserService.java src/main/java/com/example/shop/service/SupportService.java src/main/resources/mapper/UserMapper.xml src/main/resources/mapper/SupportSessionMapper.xml src/test/java/com/example/shop/service/UserServiceTest.java src/test/java/com/example/shop/service/SupportServiceTest.java TEST_ISSUES.md` passed, trailing-whitespace scan returned no matches, conflict-marker scan found no matches, and focused raw-LIKE scan found no unescaped user/support search predicates; no backend Maven/JUnit, frontend Jest, TypeScript, build, browser/Playwright, APP/device, API probe, deploy, service restart, Nginx command, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer Cart/Navbar remaining Cycle #547 guard sweep (2026-06-18 01:49 UTC)**: Closed TEST **F2491/F2492/F2494/F2495** against current source as **CURRENT_SOURCE_COVERED / REGRESSION_GUARD_EXPANDED / FRONTEND_VERIFICATION_PENDING**. Current `Cart.tsx` exposes saved-for-later items as `role="list"` / `role="listitem"` with a localized saved-list label, and authenticated bulk saved-item restore uses `allSettledWithConcurrency(...)` followed by `cartApi.getItems(0)` so the cart is replaced from the canonical server snapshot instead of an optimistic append. Current `Navbar.tsx` warns with localized `nav.searchLimitWarning` before trimming over-limit submitted searches to `NAV_SEARCH_MAX_LENGTH = 80`, no longer relies on an input `maxLength`, and the shared `setDropdownOpen(...)` map replacement keeps Navbar dropdowns mutually exclusive. Expanded `CartCheckoutFlow.test.tsx` and `Navbar.test.tsx` source guards for these contracts. Verification: source-only diff review, focused source inspection, `git diff --check -- frontend/src/pages/Cart.tsx frontend/src/pages/CartCheckoutFlow.test.tsx frontend/src/utils/saveForLater.ts frontend/src/components/Navbar.tsx frontend/src/components/Navbar.test.tsx frontend/src/locales/en.json frontend/src/locales/es.json frontend/src/locales/zh.json TEST_ISSUES.md` passed, trailing-whitespace scan returned no matches, and conflict-marker scan found no matches; no frontend Jest, TypeScript, build, browser/Playwright, APP/device, backend Maven/JUnit, API probe, deploy, service restart, Nginx command, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer Cart mutation/storage/cache guard sweep (2026-06-18 01:46 UTC)**: Closed TEST **F2488/F2489/F2490** against current source as **CURRENT_SOURCE_COVERED / REGRESSION_GUARD_EXPANDED / FRONTEND_VERIFICATION_PENDING**. The remove/save-for-later race report is stale in current `Cart.tsx`: authenticated remove/save paths mark pending ids, await the remove API, and only then filter cart rows; failures do not locally re-add stale cart rows, and save-for-later rollback is limited to the saved-items snapshot. Saved-for-later cross-tab sync is also covered through the exported `SAVE_FOR_LATER_STORAGE_KEY`, same-tab `shop:save-for-later-updated`, and a `storage` listener that refreshes saved items and unauthenticated guest cart rows. Recent-products recovery cache invalidation is covered by the bounded `Map` cache plus `clearRecentProductsCache()` calls after cart mutations, saved-item restore, and add-on/recent-product add flows. Expanded `CartCheckoutFlow.test.tsx` source guards for these three contracts. Verification: source-only diff review, focused source inspection, `git diff --check -- frontend/src/pages/Cart.tsx frontend/src/pages/CartCheckoutFlow.test.tsx frontend/src/utils/saveForLater.ts TEST_ISSUES.md` passed, trailing-whitespace scan returned no matches, and conflict-marker scan found no matches; no frontend Jest, TypeScript, build, browser/Playwright, APP/device, backend Maven/JUnit, API probe, deploy, service restart, Nginx command, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer Navbar language/badge current-source guard sweep (2026-06-18 01:42 UTC)**: Closed TEST **F2487/F2493** against current source as **CURRENT_SOURCE_COVERED / REGRESSION_GUARD_EXPANDED / FRONTEND_VERIFICATION_PENDING**. The unsupported-language report is stale because `i18n.tsx` owns `SUPPORTED_LANGUAGES`, `LANGUAGE_LABELS`, and `isLanguage(...)`, while Navbar builds options from that registry and no longer has `pickerLanguage` / `getLangLabel` raw-code paths. The cart badge inconsistency is also covered in current source: Navbar centralizes cart badge rendering through `renderCartBadge()`, normalizes `safeCartCount`, and reuses the helper across the authenticated mobile/header cart, guest mobile/header cart, and bottom cart tab. Expanded `Navbar.test.tsx` source guards for the shared cart badge helper and retained supported-language registry guard coverage. Verification: source-only diff review, focused source inspection, `git diff --check -- frontend/src/components/Navbar.tsx frontend/src/components/Navbar.test.tsx frontend/src/i18n.tsx frontend/src/utils/apiError.ts frontend/src/utils/apiError.test.ts TEST_ISSUES.md` passed, trailing-whitespace scan returned no matches, and conflict-marker scan found no matches; no frontend Jest, TypeScript, build, browser/Playwright, APP/device, backend Maven/JUnit, API probe, deploy, service restart, Nginx command, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer Navbar/API error current-source guard sweep (2026-06-18 01:40 UTC)**: Closed TEST **F2483/F2484/F2485/F2486** against current source as **CURRENT_SOURCE_COVERED / REGRESSION_GUARD_EXPANDED / FRONTEND_VERIFICATION_PENDING**. The stale `Navbar.tsx` logout report referenced state names that are absent in current source; current logout clears auth-scoped cart, notification, wishlist, and coupon badge counts, closes open dropdowns, resets the one-shot badge warning ref, clears auth storage, and navigates with replace. The stale `apiError.ts` reports are also covered: retry-after parsing has a `MAX_RETRY_AFTER_SECONDS` cap with body/header alias handling, Chinese message detection covers radicals, Extension A/basic, compatibility, and Extension B CJK ranges, and the old `parseApiError` / `as any` path is absent. Added source guards in `Navbar.test.tsx` and `apiError.test.ts` so these contracts stay explicit. Verification: source-only diff review, focused source inspection, `git diff --check -- frontend/src/components/Navbar.tsx frontend/src/components/Navbar.test.tsx frontend/src/utils/apiError.ts frontend/src/utils/apiError.test.ts TEST_ISSUES.md` passed, trailing-whitespace scan returned no matches, and conflict-marker scan found no matches; no frontend Jest, TypeScript, build, browser/Playwright, APP/device, backend Maven/JUnit, API probe, deploy, service restart, Nginx command, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer AddOnAssistant error-boundary triage (2026-06-18 01:36 UTC)**: Closed TEST **F2482** against current source as **CURRENT_SOURCE_COVERED / REGRESSION_GUARD_EXPANDED / FRONTEND_VERIFICATION_PENDING**. The reported missing add-on widget isolation is stale in current source: `AddOnAssistant.tsx` already wraps `AddOnAssistantContent` in `AddOnAssistantErrorBoundary`, marks render failures with `getDerivedStateFromError`, reports them through `reportNonBlockingError('AddOnAssistant.render', ...)`, renders `null` while failed, and resets on a derived `resetKey`. Expanded `AddOnAssistant.test.ts` with a source guard for that local boundary contract so malformed recommendation render paths remain isolated from the cart page. Verification: source-only diff review, focused source inspection, `git diff --check -- frontend/src/pages/Cart.tsx frontend/src/pages/CartCheckoutFlow.test.tsx frontend/src/utils/cartUi.ts frontend/src/components/AddOnAssistant.tsx frontend/src/components/AddOnAssistant.test.ts TEST_ISSUES.md` passed, trailing-whitespace scan returned no matches, and conflict-marker scan found no matches; no frontend Jest, TypeScript, build, browser/Playwright, APP/device, backend Maven/JUnit, API probe, deploy, service restart, Nginx command, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer cart amount fragment key triage (2026-06-18 01:34 UTC)**: Closed TEST **F2481** against current source as **CURRENT_SOURCE_COVERED / REGRESSION_GUARD_EXPANDED / FRONTEND_VERIFICATION_PENDING**. The reported `utils/text.tsx` path is stale and current cart amount phrase rendering lives in `Cart.tsx`; that renderer already keys fragments with rendered text plus position via ``key={`${part}-${index}`}`` rather than an index-only key. Added a `CartCheckoutFlow.test.tsx` source guard for the local `renderCartAmountText(...)` contract so future cart copy rendering changes cannot reintroduce index-only fragment keys. Verification: source-only diff review, focused source inspection, `git diff --check -- frontend/src/pages/Cart.tsx frontend/src/pages/CartCheckoutFlow.test.tsx frontend/src/utils/cartUi.ts TEST_ISSUES.md` passed, trailing-whitespace scan returned no matches, and conflict-marker scan found no matches; no frontend Jest, TypeScript, build, browser/Playwright, APP/device, backend Maven/JUnit, API probe, deploy, service restart, Nginx command, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer cart quantity cap triage (2026-06-18 01:33 UTC)**: Closed TEST **F2479** against current source as **CURRENT_SOURCE_COVERED / REGRESSION_GUARD_EXPANDED / FRONTEND_VERIFICATION_PENDING**. The reported 9999-quantity UI mismatch is stale in current source: cart quantity normalization goes through `normalizeCartQuantity(...)`, `getCartQuantityLimit(...)` caps default quantities at 99 or available stock, the quantity input exposes `max={limit}`, and the plus button disables at that same limit. Expanded the `CartCheckoutFlow.test.tsx` source guard to cover the normalization helper, visible input max, on-change normalization call, and plus-button limit. Verification: source-only diff review, focused source inspection, `git diff --check -- frontend/src/pages/Cart.tsx frontend/src/pages/CartCheckoutFlow.test.tsx frontend/src/utils/cartUi.ts TEST_ISSUES.md` passed, trailing-whitespace scan returned no matches, and conflict-marker scan found no matches; no frontend Jest, TypeScript, build, browser/Playwright, APP/device, backend Maven/JUnit, API probe, deploy, service restart, Nginx command, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer cart selected-id pruning fix (2026-06-18 01:31 UTC)**: Fixed TEST **F2480** as **SOURCE_FIXED / REGRESSION_GUARD_ADDED / FRONTEND_VERIFICATION_PENDING**. Although the current cart fetch paths already reset `selectedIds` from the latest checkoutable cart items, `Cart.tsx` did not have a dedicated cleanup path for cart item identity changes from other state replacement paths. The cart now prunes `selectedIds` whenever `cartItems` changes, retaining only visible checkoutable item ids and removing duplicates so stale selections cannot survive same-length cart replacements or availability changes. Added a `CartCheckoutFlow.test.tsx` source guard for the pruning effect and its `[cartItems]` trigger. Verification: source-only diff review, focused source inspection, `git diff --check -- frontend/src/pages/Cart.tsx frontend/src/pages/CartCheckoutFlow.test.tsx TEST_ISSUES.md` passed, trailing-whitespace scan returned no matches, and conflict-marker scan found no matches; no frontend Jest, TypeScript, build, browser/Playwright, APP/device, backend Maven/JUnit, API probe, deploy, service restart, Nginx command, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer saved-item restore loading triage (2026-06-18 01:27 UTC)**: Closed TEST **F2475** against current source as **CURRENT_SOURCE_COVERED / REGRESSION_GUARD_EXPANDED / FRONTEND_VERIFICATION_PENDING**. The reported `moveSavedItemToCart(...)` loading gap is stale in current source: `Cart.tsx` already tracks per-item restore state with `restoringSavedItemIds`, blocks duplicate restores for the same item, clears the id in `finally`, and binds the saved-item move button to `loading={restoringSavedItem}` / `disabled={restoringSavedItem}` while also disabling saved-item delete during restore. Added a `CartCheckoutFlow.test.tsx` source guard for that restore-pending contract so future cart refactors cannot silently drop the visible pending state. Verification: source-only diff review, focused source inspection, `git diff --check -- frontend/src/pages/CartCheckoutFlow.test.tsx frontend/src/pages/Cart.tsx TEST_ISSUES.md` passed, trailing-whitespace scan returned no matches, and conflict-marker scan found no matches; no frontend Jest, TypeScript, build, browser/Playwright, APP/device, backend Maven/JUnit, API probe, deploy, service restart, Nginx command, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer useAuth concurrent-login guard triage (2026-06-18 01:23 UTC)**: Closed TEST **F2434** against current source as **CURRENT_SOURCE_COVERED / REGRESSION_GUARD_EXPANDED / FRONTEND_VERIFICATION_PENDING**. The reported `useAuth.ts` duplicate-login gap is stale in current source: `AuthProvider` already keeps `loginRequestRef` as a shared in-flight promise, returns it before `userApi.login(...)` can run again, stores the new request immediately after creation, and clears the ref only when the same request settles. Added a `useAuth.test.tsx` source guard that checks the guard ordering and cleanup contract so future auth refactors cannot reintroduce the double-click race. Verification: source-only diff review, focused source inspection, `git diff --check -- frontend/src/hooks/useAuth.test.tsx frontend/src/hooks/useAuth.ts` passed, trailing-whitespace scan returned no matches, and conflict-marker scan found no matches; no frontend Jest, TypeScript, build, browser/Playwright, APP/device, backend Maven/JUnit, API probe, deploy, service restart, Nginx command, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer Navbar announcement ticker pause control (2026-06-18 01:20 UTC)**: Fixed TEST **F2433** current-source remainder as **SOURCE_FIXED / REGRESSION_GUARD_ADDED / FRONTEND_VERIFICATION_PENDING**. The old report was partly stale because `Navbar.css` already had `prefers-reduced-motion: reduce` support and hover pause, but the customer-facing announcement ticker still lacked an explicit keyboard/touch pause control and did not pause while focused. `Navbar.tsx` now gives the ticker a localized pause/resume icon button with `aria-pressed`, `Navbar.css` pauses animation on hover, focus-within, and the explicit paused class while preserving reduced-motion behavior, and `Navbar.test.tsx` plus `en/zh/es` locale entries guard the source contract. Verification: source-only diff review, focused source inspection, `git diff --check -- frontend/src/components/Navbar.tsx frontend/src/components/Navbar.css frontend/src/components/Navbar.test.tsx frontend/src/locales/en.json frontend/src/locales/zh.json frontend/src/locales/es.json` passed, trailing-whitespace scan returned no matches, and conflict-marker scan found no matches; no frontend Jest, TypeScript, build, browser/Playwright, APP/device, backend Maven/JUnit, API probe, deploy, service restart, Nginx command, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer Home residual spinner triage (2026-06-18 01:15 UTC)**: Closed adjacent residual loading-spinner scan item as **CURRENT_SOURCE_NON_ISSUE / NO_CODE_CHANGE / FRONTEND_VERIFICATION_PENDING**. The remaining `Home.tsx` `shopee-load-more` small spinner is not an active async/network loading indicator: `discoveryProducts` is derived from already-loaded product arrays, `visibleDiscoveryProducts` is a local `slice(0, visibleCount)`, and `hasMoreDiscoveryProducts` only means the locally available discovery list has more items than currently revealed by the scroll-driven `visibleCount`. Because no fetch/pending state is represented there, adding a loading status region would mislabel static local-list reveal affordance as network loading. Verification: source-only inspection of `Home.tsx` discovery derivation and focused residual spinner scan; no frontend Jest, TypeScript, build, browser/Playwright, APP/device, backend Maven/JUnit, API probe, deploy, service restart, Nginx command, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer admin secondary loading accessibility fix (2026-06-18 01:14 UTC)**: Fixed adjacent admin accessibility/commercial UX gap as **SOURCE_FIXED / REGRESSION_GUARD_ADDED / FRONTEND_VERIFICATION_PENDING**. After the initial admin loading-card pass, two secondary loading wrappers still stayed mounted without a complete conditional busy status contract: the IP blacklist snapshot refresh `Spin` and the BUG detail expanded-row `Spin`. `IpBlacklistManagement.tsx` now derives `blacklistSnapshotLoading` once and exposes the snapshot refresh wrapper with status/live/busy semantics and a conditional localized loading label; `BugManagement.tsx` now derives per-row detail loading state and exposes the expanded detail wrapper with the same conditional busy semantics. `IpBlacklistManagement.test.ts` and `BugManagement.test.ts` now guard those contracts. Verification: source-only diff review, focused source inspection, `git diff --check -- frontend/src/pages/IpBlacklistManagement.tsx frontend/src/pages/IpBlacklistManagement.test.ts frontend/src/pages/BugManagement.tsx frontend/src/pages/BugManagement.test.ts` passed, trailing-whitespace scan returned no matches, and conflict-marker scan found no matches; no frontend Jest, TypeScript, build, browser/Playwright, APP/device, backend Maven/JUnit, API probe, deploy, service restart, Nginx command, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer support order dropdown loading accessibility fix (2026-06-18 01:12 UTC)**: Fixed adjacent support accessibility/commercial UX gap as **SOURCE_FIXED / REGRESSION_GUARD_ADDED / FRONTEND_VERIFICATION_PENDING**. The customer support order-share dropdown still rendered a bare `Spin` in `notFoundContent` while orders loaded, and an older widget source guard still expected the pre-upgrade one-line loading tag after the support loading regions gained busy status semantics. The order-share dropdown now renders an announced `customer-support-widget__orderSelectLoading` status region with the localized loading label, CSS keeps that dropdown message aligned, and `CustomerSupportWidget.test.tsx` plus `SupportLoadingAccessibility.test.ts` now guard the upgraded customer-support loading contracts. Verification: source-only diff review, focused source inspection, `git diff --check -- frontend/src/components/CustomerSupportWidget.tsx frontend/src/components/CustomerSupportWidget.css frontend/src/components/CustomerSupportWidget.test.tsx frontend/src/pages/SupportLoadingAccessibility.test.ts` passed, trailing-whitespace scan returned no matches, and conflict-marker scan found no matches; no frontend Jest, TypeScript, build, browser/Playwright, APP/device, backend Maven/JUnit, API probe, deploy, service restart, Nginx command, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer profile/payment loading accessibility fix (2026-06-18 01:10 UTC)**: Fixed adjacent storefront account/payment accessibility and commercial UX gap as **SOURCE_FIXED / REGRESSION_GUARD_ADDED / FRONTEND_VERIFICATION_PENDING**. The Profile initial loading branch exposed a visual spinner and live status but lacked the busy state and localized loading label, and the PaymentInstructions verification spinner was card-scoped without status/live/busy semantics while order/payment details were being verified. `Profile.tsx` now exposes the loading shell as a complete busy status region, and `PaymentInstructions.tsx` now ties the verification spinner wrapper to `verifying` with `role="status"`, `aria-live="polite"`, `aria-busy`, and a conditional localized loading label. Existing source guards in `Profile.test.ts` and `PaymentInstructions.test.ts` now cover these accessibility contracts. Verification: source-only diff review, focused source inspection, `git diff --check -- frontend/src/pages/Profile.tsx frontend/src/pages/Profile.test.ts frontend/src/pages/PaymentInstructions.tsx frontend/src/pages/PaymentInstructions.test.ts` passed, trailing-whitespace scan returned no matches, and conflict-marker scan found no matches; no frontend Jest, TypeScript, build, browser/Playwright, APP/device, backend Maven/JUnit, API probe, deploy, service restart, Nginx command, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer admin ops loading accessibility fix (2026-06-18 01:06 UTC)**: Fixed adjacent admin operations accessibility/commercial UX gap as **SOURCE_FIXED / REGRESSION_GUARD_ADDED / FRONTEND_VERIFICATION_PENDING**. Operational admin pages for system monitoring, traffic control, config center, log management, registry management, and alert management still used AntD `Spin` wrappers for initial loading without complete status/live/busy semantics, so assistive technology users could miss that operational health/config/alert data was still loading. Those `Spin` wrappers now expose `role="status"`, `aria-live="polite"`, `aria-busy` tied to the existing initial-loading condition, and the localized `common.loading` aria label. Added `AdminOpsLoadingAccessibility.test.ts` as a source guard over the targeted ops-page spinner markers. Verification: source-only diff review, focused source inspection, `git diff --check -- frontend/src/pages/SystemMonitor.tsx frontend/src/pages/TrafficControl.tsx frontend/src/pages/ConfigCenter.tsx frontend/src/pages/LogManagement.tsx frontend/src/pages/RegistryManagement.tsx frontend/src/pages/AlertManagement.tsx` passed, trailing-whitespace scan covered the new guard file, and conflict-marker scan found no matches; no frontend Jest, TypeScript, build, browser/Playwright, APP/device, backend Maven/JUnit, API probe, deploy, service restart, Nginx command, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer support loading accessibility fix (2026-06-18 01:02 UTC)**: Fixed adjacent customer-support/admin-support accessibility and commercial UX gap as **SOURCE_FIXED / REGRESSION_GUARD_ADDED / FRONTEND_VERIFICATION_PENDING**. Customer support session/message/order loading states and admin support queue/message/order-detail loading states exposed visible spinners but were missing a complete busy status-region contract, so assistive technology users could miss that support conversations or shared order details were still loading. `CustomerSupportWidget.tsx` and `SupportManagement.tsx` now add `aria-busy="true"` and localized `common.loading` aria labels to the existing `role="status"` live regions, and the support order-detail spinner wrappers now expose the same status/live/busy semantics. Added `SupportLoadingAccessibility.test.ts` as a source guard over the customer/admin support loading-region markers. Verification: source-only diff review, focused source inspection, `git diff --check -- frontend/src/components/CustomerSupportWidget.tsx frontend/src/pages/SupportManagement.tsx` passed, trailing-whitespace scan covered the new guard file, and conflict-marker scan found no matches; no frontend Jest, TypeScript, build, browser/Playwright, APP/device, backend Maven/JUnit, API probe, deploy, service restart, Nginx command, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer storefront spinner loading accessibility fix (2026-06-18 00:58 UTC)**: Fixed adjacent storefront accessibility/commercial UX gap as **SOURCE_FIXED / REGRESSION_GUARD_ADDED / FRONTEND_VERIFICATION_PENDING**. Customer-facing loading states in `Notifications`, `Wishlist`, `BrowsingHistory`, `PetFinder`, `ProductCompare`, and the initial `Checkout` loading shell still rendered large spinners without a loading status container, leaving assistive technology users with mostly visual feedback while key shopping flows loaded. Those loading containers now expose `role="status"`, `aria-live="polite"`, `aria-busy="true"`, and the localized `common.loading` aria label while preserving existing spinner UI and checkout's existing status-announcement live region. Added `StorefrontLoadingAccessibility.test.ts` as a source guard over the targeted loading-region markers. Verification: source-only diff review, focused source inspection, old pure-spinner loading pattern scan returned no matches, `git diff --check -- frontend/src/pages/Notifications.tsx frontend/src/pages/Wishlist.tsx frontend/src/pages/BrowsingHistory.tsx frontend/src/pages/PetFinder.tsx frontend/src/pages/ProductCompare.tsx frontend/src/pages/Checkout.tsx` passed, trailing-whitespace scan covered the new guard file, and conflict-marker scan found no matches; no frontend Jest, TypeScript, build, browser/Playwright, APP/device, backend Maven/JUnit, API probe, deploy, service restart, Nginx command, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer admin management loading-card accessibility fix (2026-06-18 00:52 UTC)**: Fixed adjacent admin accessibility/commercial UX gap as **SOURCE_FIXED / REGRESSION_GUARD_ADDED / FRONTEND_VERIFICATION_PENDING**. Twelve admin management pages still used AntD loading cards or a spinner card without status/live/busy semantics, so initial data-load feedback for announcements, products, audit logs, categories, users, IP blacklist, brands, pet gallery, coupons, logistics carriers, permissions, and orders was mostly visual. Those loading cards now expose `role="status"`, `aria-live="polite"`, `aria-busy="true"`, and the localized `common.loading` aria label while preserving the existing AntD skeleton/spinner UI. Added `AdminLoadingAccessibility.test.ts` as a source guard over the targeted loading-card classes. Verification: source-only diff review, focused source inspection, old one-line loading-card pattern scan returned no matches, `git diff --check -- TEST_ISSUES.md` plus the tracked touched page files passed, trailing-whitespace scan covered the new guard file, and conflict-marker scan found no matches; no frontend Jest, TypeScript, build, browser/Playwright, APP/device, backend Maven/JUnit, API probe, deploy, service restart, Nginx command, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer dashboard loading accessibility fix (2026-06-18 00:48 UTC)**: Fixed adjacent admin accessibility/commercial UX gap as **SOURCE_FIXED / REGRESSION_GUARD_ADDED / FRONTEND_VERIFICATION_PENDING**. `AdminDashboard` previously returned a full-page spinner without an announced status region while dashboard metrics loaded, leaving screen-reader users without clear loading feedback for the main admin landing page. The dashboard loading wrapper now exposes `role="status"`, `aria-live="polite"`, `aria-busy="true"`, and a localized dashboard-title plus `common.loading` aria label. `AdminDashboardTypeSafety.test.ts` adds a source guard for the spinner loading branch and its busy status-region contract. Verification: source-only diff review, focused source inspection, `git diff --check -- frontend/src/pages/AdminDashboard.tsx frontend/src/pages/AdminDashboardTypeSafety.test.ts` passed, and conflict-marker scan found no matches; no frontend Jest, TypeScript, build, browser/Playwright, APP/device, backend Maven/JUnit, API probe, deploy, service restart, Nginx command, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer bug-management loading accessibility fix (2026-06-18 00:47 UTC)**: Fixed adjacent admin accessibility/commercial UX gap as **SOURCE_FIXED / REGRESSION_GUARD_ADDED / FRONTEND_VERIFICATION_PENDING**. `BugManagement` had two skeleton loading states that set `aria-busy` but did not expose a status region, live announcement, or localized label while permissions or the initial bug queue were loading. Both skeleton wrappers now expose `role="status"`, `aria-live="polite"`, `aria-busy="true"`, and a localized `Bug management: Loading...` style aria label using existing `bugPageLabel` plus `common.loading`. `BugManagement.test.ts` extends the existing permission-loading source guard to cover both skeleton branches and the full busy status-region contract. Verification: source-only diff review, focused source inspection, `git diff --check -- frontend/src/pages/BugManagement.tsx frontend/src/pages/BugManagement.test.ts` passed, and conflict-marker scan found no matches; no frontend Jest, TypeScript, build, browser/Playwright, APP/device, backend Maven/JUnit, API probe, deploy, service restart, Nginx command, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer admin loading accessibility fix (2026-06-18 00:44 UTC)**: Fixed adjacent admin accessibility/commercial UX gap as **SOURCE_FIXED / REGRESSION_GUARD_ADDED / FRONTEND_VERIFICATION_PENDING**. The two spinner-only `AdminLayout` loading branches previously rendered visual permission-checking feedback without a status/busy region, so assistive technology users could miss that the admin shell was still checking route access. Both admin loading wrappers now expose `role="status"`, `aria-live="polite"`, `aria-busy="true"`, and the localized `adminLayout.checking` aria label. `AdminLayout.test.tsx` adds a source guard covering both spinner-only branches so either branch cannot lose the busy status-region contract independently. Verification: source-only diff review, focused source inspection, `git diff --check -- frontend/src/components/AdminLayout.tsx frontend/src/components/AdminLayout.test.tsx` passed, and conflict-marker scan found no matches; no frontend Jest, TypeScript, build, browser/Playwright, APP/device, backend Maven/JUnit, API probe, deploy, service restart, Nginx command, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer mobile cart drawer viewport-width fix (2026-06-18 00:30 UTC)**: Fixed adjacent Android/mobile UI commercial gap as **SOURCE_FIXED / REGRESSION_GUARD_ADDED / FRONTEND_VERIFICATION_PENDING**. The mobile cart drawer had two `.cart-drawer .ant-drawer-content-wrapper` rules plus the drawer width prop forcing `100vw`, which can include scrollbar width and create horizontal overflow or clipped overlay edges in mobile browsers/WebView. `CartDrawer.tsx` now uses `width="min(420px, 100%)"`, and `CartDrawer.css` now uses `width: 100% !important` plus `max-width: 100%` for both wrapper rules, keeping the drawer within the containing viewport. `CartDrawer.test.ts` adds source guards that reject `min(420px, 100vw)` and check every cart drawer content-wrapper rule against `100vw` reintroduction. Verification: source-only diff review and focused `rg` scan confirmed the cart drawer prop and wrapper rules no longer use `100vw`; `git diff --check -- frontend/src/components/CartDrawer.tsx frontend/src/components/CartDrawer.css frontend/src/components/CartDrawer.test.ts TEST_ISSUES.md` passed; no frontend Jest, TypeScript, build, browser/Playwright, APP/device, backend Maven/JUnit, API probe, deploy, service restart, Nginx command, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer mobile support panel viewport-width fix (2026-06-18 00:35 UTC)**: Fixed adjacent Android/mobile UI commercial gap as **SOURCE_FIXED / REGRESSION_GUARD_ADDED / FRONTEND_VERIFICATION_PENDING**. `CustomerSupportWidget.css` had several mobile support panel rules using direct `width: 100vw`, `max-width: 100vw`, or `width: min(520px, 100vw)`, which can create horizontal overflow and edge clipping in mobile browsers/WebView when scrollbars or safe-area insets are present. The support panel now uses percentage-based width/max-width for those rules while leaving intentional `calc(100vw - gutter)` popup constraints intact. `CustomerSupportWidget.test.tsx` adds a source guard that checks every support panel rule and rejects direct scrollbar-inclusive viewport width reintroduction. Verification: focused `rg` scan confirmed no direct `width: 100vw`, `max-width: 100vw`, or `width: min(..., 100vw)` remains for the support panel; `git diff --check -- frontend/src/components/CustomerSupportWidget.css frontend/src/components/CustomerSupportWidget.test.tsx` passed; no frontend Jest, TypeScript, build, browser/Playwright, APP/device, backend Maven/JUnit, API probe, deploy, service restart, Nginx command, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer assistant loading accessibility fix (2026-06-18 00:40 UTC)**: Fixed adjacent storefront accessibility/commercial UX gap as **SOURCE_FIXED / REGRESSION_GUARD_ADDED / FRONTEND_VERIFICATION_PENDING**. `AddOnAssistant` and `PetPersonalizedAssistant` loading states previously rendered visual skeletons without a status/busy region, so assistive technology users would not receive a clear loading announcement for add-on recommendations or pet-personalized recommendations. Both loading sections now expose `role="status"`, `aria-live="polite"`, `aria-busy="true"`, and localized aria labels using existing recommendation titles plus `common.loading`. `AddOnAssistant.test.ts` and `PetPersonalizedAssistant.test.ts` add source guards for the busy status-region contract. Verification: source-only diff review, focused `rg` scan, and `git diff --check -- frontend/src/components/AddOnAssistant.tsx frontend/src/components/AddOnAssistant.test.ts frontend/src/components/PetPersonalizedAssistant.tsx frontend/src/components/PetPersonalizedAssistant.test.ts` passed; no frontend Jest, TypeScript, build, browser/Playwright, APP/device, backend Maven/JUnit, API probe, deploy, service restart, Nginx command, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer refinement LIKE escape fix (2026-06-17 20:53 UTC)**: Fixed TEST **F1603** as **SOURCE_FIXED / REGRESSION_GUARD_ADDED / BACKEND_VERIFICATION_PENDING**. `ProductServiceImpl.addSpecificationRefinementPredicates(...)` and `addColorPredicates(...)` now build refinement predicates through the shared `containsLike(...)` helper instead of concatenating raw `"%"+value+"%"` patterns, so `%`, `_`, and the escape marker are escaped consistently before CriteriaBuilder emits `LIKE ... ESCAPE '!'`. `ProductFilteringQueryContractTest` adds source guards requiring refinement and color filters to call `containsLike(...)` and rejecting raw wildcard concatenation. Verification: source-only diff review and `git diff --check -- src/main/java/com/example/shop/service/impl/ProductServiceImpl.java src/test/java/com/example/shop/service/ProductFilteringQueryContractTest.java TEST_ISSUES.md` passed; no backend Maven/JUnit, frontend Jest, TypeScript, build, browser/Playwright, APP/device, API probe, deploy, service restart, Nginx command, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer category traversal cycle guard (2026-06-17 20:31 UTC)**: Fixed TEST **F1602** as **SOURCE_FIXED / REGRESSION_GUARD_ADDED / BACKEND_VERIFICATION_PENDING**. `ProductServiceImpl.collectCategoryIds(...)` now accumulates category ids in a `LinkedHashSet` and the recursive traversal accepts a visited/output `Set`, so null ids, over-depth recursion, and repeated category ids all stop before querying more children. This preserves deterministic traversal order while preventing a cyclic category tree from recursing until `StackOverflowError`. `ProductCategoryTreeDepthContractTest` adds source guards for the visited-set contract, de-duplicated return list, and existing hard depth limit. Verification: source-only diff review and `git diff --check -- src/main/java/com/example/shop/service/impl/ProductServiceImpl.java src/test/java/com/example/shop/service/ProductCategoryTreeDepthContractTest.java TEST_ISSUES.md` passed; no backend Maven/JUnit, frontend Jest, TypeScript, build, browser/Playwright, APP/device, API probe, deploy, service restart, Nginx command, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer checkout duplicate-payment action guard (2026-06-17 19:14 UTC)**: Fixed TEST **F1594** as **SOURCE_FIXED / REGRESSION_GUARD_ADDED / FRONTEND_VERIFICATION_PENDING**. `Checkout.tsx` now co-locates the checkout submit mutex with the initial guard by setting `submittingRef.current = true` before any cart/order/payment preparation work, and releases it in the existing `finally` path after `setSubmitting(false)`. The adjacent payment retry and simulated-payment actions now use `paymentRetryingRef` and `paymentSimulatingRef` synchronous latches so rapid clicks cannot start duplicate payment creation or duplicate simulation requests before React disabled-state renders. `Checkout.test.tsx` adds source guards for the submit, retry, and simulation latch ordering. Verification: source-only diff review; no frontend Jest, TypeScript, build, browser/Playwright, APP/device, backend Maven/JUnit, API probe, deploy, service restart, Nginx command, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer floating overlay error-boundary fix (2026-06-17 18:24 UTC)**: Fixed TEST **F1593** as **SOURCE_FIXED / REGRESSION_GUARD_ADDED / FRONTEND_VERIFICATION_PENDING**. `App.tsx` now uses a shared `FloatingOverlayBoundary` for storefront floating overlays, reports failures through `reportNonBlockingError(...)`, and resets the boundary when a new open request arrives. The cart drawer host is no longer mounted bare outside the per-route boundary, and the support widget keeps its existing launcher fallback through the same recoverable overlay boundary. `App.test.tsx` adds source guards requiring the non-blocking diagnostics path and requiring both `LazyCartDrawer` and `CustomerSupportWidget` to stay inside `FloatingOverlayBoundary`. Verification: source-only diff review and `git diff --check -- frontend/src/App.tsx frontend/src/App.test.tsx` passed; no frontend Jest, TypeScript, build, browser/Playwright, APP/device, backend Maven/JUnit, API probe, deploy, service restart, Nginx command, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer admin support auto-assign guard (2026-06-17 18:09 UTC)**: Fixed TEST **F1586** as **SOURCE_FIXED / REGRESSION_GUARD_ADDED / BACKEND_VERIFICATION_PENDING**. `SupportService.sendAdminMessage(...)` now treats unassigned sessions as a hard failure unless the caller explicitly opts into `assignIfUnassigned=true`, so the service no longer auto-assigns a session just because an admin can reply. `SupportController.sendSupportMessage(...)` and `SupportWebSocketHandler` now inspect the session first, require `AdminRoleService.SUPPORT_ASSIGN_PERMISSION` only when the session is unassigned, and pass the explicit assignment flag through to the service. Regression guards now cover the controller, websocket handler, and service role-guard contract. Verification: source-only diff review; no backend Maven/JUnit, frontend Jest, TypeScript, build, browser/Playwright, APP/device, API probe, deploy, service restart, Nginx command, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer admin support read-permission fix (2026-06-17 18:09 UTC)**: Fixed TEST **F1585** as **SOURCE_FIXED / REGRESSION_GUARD_ADDED / BACKEND_VERIFICATION_PENDING**. `SupportController` now gates all admin support read endpoints (`GET /admin/support/sessions`, `/admin/support/summary`, `/admin/support/sessions/{sessionId}/messages`, and `/admin/support/unread-count`) through `requireSupportReadPermission(...)`, which requires the current admin to pass `AdminRoleService.canAccess(userId, "/admin/support")`; denied reads are audit-logged and return 403 before calling `SupportService`. `SupportControllerAdminResponseTest` now preserves the existing response-shape guard with explicit support-page access and adds a guard proving the four read endpoints reject admins without the support page permission. Verification: source-only diff review; no backend Maven/JUnit, frontend Jest, TypeScript, build, browser/Playwright, APP/device, API probe, deploy, service restart, Nginx command, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer checkout payment-channel error surfacing (2026-06-17 17:49 UTC)**: Fixed TEST **F1993** as **SOURCE_FIXED / REGRESSION_GUARD_ADDED / FRONTEND_VERIFICATION_PENDING**, and triaged TEST **F1994** as **DUPLICATE_COVERED_BY_F2866 / CURRENT_SOURCE_COVERED / REGRESSION_GUARD_PRESENT**. `Checkout.tsx` now records payment-channel load failures in `paymentChannelsError`, clears and reloads channels through `paymentChannelsReloadKey`, and shows the provider message plus retry action in both checkout payment alerts instead of swallowing the failure. The auth-phone report is the same stale PII issue already fixed by `LoginController.buildLoginResponse(...)` and the auth-session guards in F2866, so the old `AuthController` reference in F1994 was stale. Verification: source-only diff review and `git diff --check -- frontend/src/pages/Checkout.tsx frontend/src/pages/Checkout.test.tsx TEST_ISSUES.md` passed; no frontend Jest, TypeScript, build, browser/Playwright, backend Maven/JUnit, API probe, deploy, service restart, Nginx command, curl, or git commit was run per current instruction.
+
+- **Maintainer auth response PII minimization (2026-06-17 18:05 UTC)**: Fixed TEST **F2866** as **SOURCE_FIXED / REGRESSION_GUARD_ADDED / BACKEND_VERIFICATION_PENDING**, and triaged stale TEST **F2863/F2865** as **CURRENT_SOURCE_COVERED / REGRESSION_GUARD_PRESENT**. `LoginController.buildLoginResponse(...)` no longer returns `phone` in password-login, email-login, or refresh success payloads; phone remains available through authenticated profile hydration. Frontend `AuthSessionResponse`, `persistAuthSession(...)`, and `useAuth` login state no longer treat phone as auth-session data, while existing profile hydration still writes profile phone after `/users/profile`. Added/updated guards in `LoginControllerPasswordLoginTest`, `LoginControllerRefreshTest`, `frontend/src/api/index.test.ts`, and `frontend/src/hooks/useAuth.test.tsx`. Current source already had CSP headers guarded by `SecurityConfigCorsTest` and DOMPurify-based sanitization guarded by `sanitizeHtml.test.ts`, so F2863/F2865 were stale. Verification: source-only diff review, focused `rg` scans, and `git diff --check -- src/main/java/com/example/shop/controller/LoginController.java src/test/java/com/example/shop/controller/LoginControllerPasswordLoginTest.java src/test/java/com/example/shop/controller/LoginControllerRefreshTest.java frontend/src/api/index.ts frontend/src/api/index.test.ts frontend/src/hooks/useAuth.ts frontend/src/hooks/useAuth.test.tsx TEST_ISSUES.md` passed; no backend Maven/JUnit, frontend Jest, TypeScript, build, browser/Playwright, APP/device, API probe, deploy, service restart, Nginx command, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer admin bootstrap weak-token guard (2026-06-17 17:34 UTC)**: Fixed TEST **F2873** as **SOURCE_FIXED / REGRESSION_GUARD_ADDED / BACKEND_VERIFICATION_PENDING**. `POST /users/create-admin` still intentionally remains `permitAll()` for first-admin bootstrap and blank `admin.bootstrap-token` still disables the flow, but a configured weak/placeholder token could previously reach the constant-time comparison and `registerAdmin(...)`. Added `AdminBootstrapTokenPolicy` with startup validation requiring configured bootstrap tokens to be at least 32 non-placeholder characters with basic entropy, and `UserController.assertAdminBootstrapToken(...)` now rejects weak configured tokens before comparing the request header. Added `UserControllerAdminBootstrapTest`, `AdminBootstrapTokenPolicyTest`, and `AdminBootstrapTokenContractTest` guards for weak-token rejection and policy wiring, and updated bootstrap-token config examples to document the new strength requirement. Verification: source-only diff review and `git diff --check -- src/main/java/com/example/shop/controller/UserController.java src/test/java/com/example/shop/controller/UserControllerAdminBootstrapTest.java src/test/java/com/example/shop/config/SecurityConfigCorsTest.java TEST_ISSUES.md deploy/backend.env.example src/main/resources/application.properties` passed, with separate whitespace checks on the new untracked Java files; no backend Maven/JUnit, frontend Jest, TypeScript, build, browser/Playwright, APP/device, API probe, deploy, service restart, Nginx command, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer forgot-password duplicate action guard (2026-06-17 17:08 UTC)**: Fixed adjacent auth-flow race from TEST **F9101/F9102/F9106** as **SOURCE_FIXED / REGRESSION_GUARD_ADDED / FRONTEND_VERIFICATION_PENDING**. After the login/register duplicate-submit fixes, `ForgotPassword.tsx` still relied on React state for password-reset code sending and password-reset submission, leaving a same-render rapid-click window before `codeSending` / `loading` disabled the controls. `ForgotPassword.tsx` now uses `resetCodeSendingRef` and `resetSubmittingRef` as synchronous mutexes around reset-code send and reset submit flows, releases both refs in `finally`, and explicitly disables the reset submit button while `loading` is true. `ForgotPassword.test.ts` adds a source guard for the ref-based send/submit contract and the disabled-button contract. Verification: source-only diff review and `git diff --check -- frontend/src/pages/ForgotPassword.tsx frontend/src/pages/ForgotPassword.test.ts TEST_ISSUES.md` passed; no Jest, TypeScript, build, browser/Playwright, APP/device, backend Maven, API probe, deploy, service restart, Nginx command, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer auth email-code duplicate-send guard (2026-06-17 16:45 UTC)**: Fixed adjacent auth-flow race from TEST **F9101/F9102/F9106** as **SOURCE_FIXED / REGRESSION_GUARD_ADDED / FRONTEND_VERIFICATION_PENDING**. The original double-submit fixes already covered password/email login submit and register submit, but the email-code send buttons still relied on React state after `validateFields(...)`, so rapid clicks could start duplicate `sendEmailLoginCode(...)` requests before `codeSending` rendered. `Login.tsx` now uses `emailCodeSendingRef` and `Register.tsx` now uses `registerCodeSendingRef` as synchronous mutexes around email-code send flows, with cleanup in `finally` while preserving existing countdown, validation, and unavailable/rate-limit behavior. `Login.test.tsx` and `Register.test.tsx` add source/runtime guards proving duplicate pending send clicks dispatch only one code request. Verification: source-only diff review, focused `rg` inspection, and `git diff --check -- frontend/src/pages/Login.tsx frontend/src/pages/Login.test.tsx frontend/src/pages/Register.tsx frontend/src/pages/Register.test.tsx TEST_ISSUES.md` passed; no Jest, TypeScript, build, browser/Playwright, APP/device, backend Maven, API probe, deploy, service restart, Nginx command, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer browsing-history storage sync fix (2026-06-15 20:58 UTC)**: Fixed TEST **F2194** as **SOURCE_FIXED / REGRESSION_GUARD_ADDED / FRONTEND_VERIFICATION_PENDING**. `BrowsingHistory.tsx` now imports the shared `PRODUCT_VIEW_PREFERENCES_KEY` and ignores cross-tab `storage` events whose key is unrelated to product-view preferences, while still accepting same-tab `shop:product-view-preferences-updated` events and null-key storage clears. `BrowsingHistory.test.ts` adds a source guard requiring the scoped storage-event contract and rejecting the old unfiltered listener form. Verification: source-only diff review and `git diff --check -- frontend/src/pages/BrowsingHistory.tsx frontend/src/pages/BrowsingHistory.test.ts TEST_ISSUES.md` passed; no Jest, TypeScript, build, browser/Playwright, APP/device, backend Maven, API probe, deploy, service restart, Nginx command, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer dashboard stats coverage triage (2026-06-15 20:34 UTC)**: Closed TEST **F2397** as **CURRENT_SOURCE_COVERED / REGRESSION_GUARD_PRESENT / BACKEND_VERIFICATION_PENDING**. The early report said `OrderStatsServiceTest` had no `getDashboardOrderStats(...)` coverage, but current source now includes `dashboardOrderStatsMapsAggregateRowsIntoOperationalMetrics()` and `dashboardOrderStatsKeepsDerivedRatesAtZeroWhenThereAreNoOrders()`. Those guards cover total/paid/refunded order mapping, net/gross/refunded revenue arithmetic, average order value, conversion/refund rates, SLA risk keys and total, status/payment breakdowns, bounded trend windows, recent-order limits, and zero-order division defaults. Verification: source-only inspection and `rg` confirmation; no backend Maven/JUnit execution, frontend Jest, TypeScript, build, browser/Playwright, APP/device, API probe, deploy, service restart, Nginx command, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer image decoder resource cleanup fix (2026-06-15 20:16 UTC)**: Fixed TEST **F2088** as **SOURCE_FIXED / REGRESSION_GUARD_ADDED / BACKEND_VERIFICATION_PENDING**. The stale report named `FileUploadServiceImpl`, but the current shared local upload path is `LocalImageStorageService.decodeImage(...)`; it now decodes through `ImageIO.createImageInputStream(...)` plus `ImageIO.getImageReaders(...)`, reads with a selected `ImageReader`, and always calls `reader.dispose()` in `finally` after decode. `ImageStorageServiceTest` adds a source guard rejecting `ImageIO.read(...)` in the local storage service and requiring the disposable reader contract. Verification: source-only diff review, focused `rg` inspection, and `git diff --check -- src/main/java/com/example/shop/service/LocalImageStorageService.java src/test/java/com/example/shop/service/ImageStorageServiceTest.java TEST_ISSUES.md` passed; no backend Maven/JUnit execution, frontend Jest, TypeScript, build, browser/Playwright, APP/device, API probe, deploy, service restart, Nginx command, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer guest checkout selectedSpecs bound fix (2026-06-15 20:06 UTC)**: Fixed TEST **F9477** as **SOURCE_FIXED / REGRESSION_GUARD_ADDED / BACKEND_VERIFICATION_PENDING**. `GuestCheckoutItemRequest.selectedSpecs` now carries `@Size(max = 2000)`, matching the current frontend guest-checkout normalization path that can submit up to 2000 characters, while leaving authenticated cart add items on their existing 1000-character DTO contract. `OrderInputNormalizationServiceTest` adds Bean Validation boundary coverage accepting exactly 2000 selected-spec characters for guest checkout and rejecting 2001 before service logic runs. Verification: source-only diff review and `git diff --check -- src/main/java/com/example/shop/dto/GuestCheckoutItemRequest.java src/test/java/com/example/shop/service/OrderInputNormalizationServiceTest.java TEST_ISSUES.md` passed; no backend Maven/JUnit execution, frontend Jest, TypeScript, build, browser/Playwright, APP/device, API probe, deploy, service restart, Nginx command, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer admin sidebar preference fix (2026-06-15 19:42 UTC)**: Fixed TEST **F2367** as **SOURCE_FIXED / REGRESSION_GUARD_ADDED / FRONTEND_VERIFICATION_PENDING**. `AdminLayout.tsx` now initializes the desktop admin sidebar collapsed state from `safeStorage` key `shop-admin-sider-collapsed`, writes explicit click-trigger collapse changes back to local storage, and still lets AntD responsive collapse update the live layout without polluting the saved desktop preference. `AdminLayout.test.tsx` adds a source guard rejecting the old in-memory-only `useState(false)` / `onCollapse={setCollapsed}` implementation and requiring the persisted preference contract. Verification: source-only diff review and `git diff --check -- frontend/src/components/AdminLayout.tsx frontend/src/components/AdminLayout.test.tsx` passed; no Jest, TypeScript, build, browser/Playwright, APP/device, backend Maven, API probe, deploy, service restart, Nginx command, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer guest-cart type-safety hardening (2026-06-15 19:31 UTC)**: Partially fixed QA **F3515** as **GUEST_CART_ANY_CLOSED / SOURCE_FIXED / REGRESSION_GUARD_ADDED / FRONTEND_VERIFICATION_PENDING**. `guestCart.ts` now accepts a typed `GuestCartProductInput` instead of `ProductPublic | any`, treats persisted guest-cart rows and legacy nested product snapshots as `unknown` until narrowed through `isRecord(...)`, normalizes image/price/stock/status fields through explicit helpers, and keeps existing cart-row updates immutable. `guestCart.test.ts` adds a source guard rejecting the old broad-`any` product input patterns. Verification: source-only diff review, focused production `rg` inspection, and `git diff --check -- frontend/src/utils/guestCart.ts frontend/src/utils/guestCart.test.ts` passed; no Jest, TypeScript, build, browser/Playwright, APP/device, backend Maven, API probe, deploy, service restart, Nginx command, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer stale backend reliability triage (2026-06-15 19:31 UTC)**: Closed TEST **F2528/F2534/F2536/F2538/F2557** as **CURRENT_SOURCE_COVERED / REGRESSION_GUARD_PRESENT_OR_SOURCE_CONTRACT_PRESENT / RUNTIME_VERIFICATION_PENDING**. Current `AdminBugReport` and `AdminBugReportRequest` already carry `@NotBlank`/`@Size` constraints for required and bounded string fields. Payment/order expiry scans are already bounded by runtime-configured batch sizes with cursor pagination (`findExpiredPending(afterId, limit)` and `findPendingPaymentBefore(cutoff, afterId, limit)`). `SupportService.sessionCreationLocks` removes per-session lock entries in `finally`, avoiding the reported permanent map growth. `EmailLoginService` already has scheduled cleanup for codes/cooldowns/buckets, per-window bucket cleanup, and a bounded `maxRateBuckets` fail-closed path. `OrderService.nextOrderNo()` already uses `SO` + second timestamp + 16 uppercase UUID hex characters and retries unique-index collisions during insert, replacing the stale three-digit suffix report. Verification: source-only inspection and static diff hygiene only; no Jest, TypeScript, build, browser/Playwright, APP/device, backend Maven, API probe, deploy, service restart, Nginx command, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer support audio-context cleanup fix (2026-06-15 12:06 UTC)**: Fixed TEST **F907** as **SOURCE_FIXED / REGRESSION_GUARD_ADDED / FRONTEND_VERIFICATION_PENDING**. `CustomerSupportWidget.tsx` and `SupportManagement.tsx` now close any live notification `AudioContext` during component unmount, clear the ref, skip already-closed contexts, and route asynchronous close failures through `reportNonBlockingError(...)`. `CustomerSupportWidget.test.tsx` and `SupportManagement.test.tsx` include source guards for the cleanup contract. Verification: source-only inspection and static diff hygiene only; no Jest, TypeScript, build, browser/Playwright, APP/device, backend Maven, API probe, deploy, service restart, Nginx command, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer backend API validation/support-stats triage (2026-06-15 12:18 UTC)**: Closed TEST **F2625** as **CURRENT_SOURCE_COVERED / REGRESSION_GUARD_PRESENT / RUNTIME_VERIFICATION_PENDING** because current product list/search pagination is normalized before service execution: `ProductListQuery.setPage(...)` clamps negative pages to 0, `ProductListQuery.from(...)` maps request parameters through that setter, and `ProductController.searchProducts(...)` now uses that query path. Closed TEST **F2626** as **CURRENT_SOURCE_COVERED / REGRESSION_GUARD_PRESENT / RUNTIME_VERIFICATION_PENDING** because current support stats aggregation uses `COALESCE(...)` in mapper SQL and `SupportService.getStats(...)` converts missing/null aggregate rows into zero-valued `BigDecimal` metrics before computing a bounded 0-100 response score. Existing regression guards cover negative search-page normalization and empty support stats zero defaults. Verification: source-only inspection and static diff hygiene only; no Jest, TypeScript, build, browser/Playwright, APP/device, backend Maven, API probe, deploy, service restart, Nginx command, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer Navbar locale registry fix (2026-06-15 10:55 UTC)**: Fixed TEST **F2392** as **SOURCE_FIXED / REGRESSION_GUARD_ADDED / FRONTEND_VERIFICATION_PENDING**. `Navbar.tsx` now builds `languageOptions` from the shared `SUPPORTED_LANGUAGES` and `LANGUAGE_LABELS` registry exported by `i18n.tsx` instead of a component-local `useMemo([])` snapshot, so future locale additions have a single source of truth. `Navbar.test.tsx` includes a source guard rejecting the empty-deps memo form and requiring the selector options to come from the supported-locale registry. Verification: source-only inspection and `git diff --check -- frontend/src/components/Navbar.tsx frontend/src/i18n.tsx frontend/src/components/Navbar.test.tsx TEST_ISSUES.md` passed; no Jest, TypeScript, build, browser/Playwright, APP/device, backend Maven, API probe, deploy, service restart, Nginx command, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer Chinese cart wrapping triage (2026-06-15 10:35 UTC)**: Closed TEST **F2394** as **CURRENT_SOURCE_COVERED / REGRESSION_GUARD_PRESENT / FRONTEND_VERIFICATION_PENDING**. Current `Cart.css` already defines a dedicated `.cart-page--zh` pass with strict CJK line breaking, overflow wrapping, dense-surface word breaking, multiline button rules, and narrow viewport single-column action/layout adjustments. `CartCheckoutFlow.test.tsx` already includes a source guard for the Chinese cart CSS contract. Verification: source-only inspection and `git diff --check -- frontend/src/pages/Cart.css frontend/src/pages/CartCheckoutFlow.test.tsx TEST_ISSUES.md` passed for the relevant files; no Jest, TypeScript, build, browser/Playwright, APP/device, backend Maven, API probe, deploy, service restart, Nginx command, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer stale recommendation-cache triage (2026-06-15 10:45 UTC)**: Closed TEST **F3422** as **CURRENT_SOURCE_COVERED / REGRESSION_GUARD_PRESENT / FRONTEND_VERIFICATION_PENDING**. The reported `frontend/src/pages/Products.tsx` file is absent from current source, and current `Cart.tsx` has no `useRef<Map<string, Product[]>>(new Map())` recommendation cache. The remaining product recommendation cache lives in `productDetailHelpers.tsx` with a 2-minute TTL, 50-entry cap, expired-entry pruning, hit recency refresh, oldest-entry eviction on overflow, and auth-session clearing through `clearProductDetailSessionCaches()`. `ProductDetail.test.tsx` already includes helper-level cache eviction/TTL coverage and a source guard rejecting component-local cache reintroduction. Verification: source-only inspection; no Jest, TypeScript, build, browser/Playwright, APP/device, backend Maven, API probe, deploy, service restart, Nginx command, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer ErrorBoundary retry telemetry fix (2026-06-15 10:20 UTC)**: Fixed TEST **F2393** as **SOURCE_FIXED / REGRESSION_GUARD_ADDED / FRONTEND_VERIFICATION_PENDING**. `ErrorBoundaryInner.handleRetry()` now records a non-blocking `ErrorBoundary retry requested` telemetry event before clearing the captured error and remounting children through the existing retry key path. The event includes boundary/source context plus the captured error message/name and component stack when available, so operators can distinguish retry attempts from passive error-boundary views. `ErrorBoundary.test.ts` adds source guards for the retry telemetry call, metadata contract, and ordering before `setState`. Verification: source-only diff review and `git diff --check -- frontend/src/components/ErrorBoundary.tsx frontend/src/components/ErrorBoundary.test.ts TEST_ISSUES.md` passed; no Jest, TypeScript, build, browser/Playwright, APP/device, backend Maven, API probe, deploy, service restart, Nginx command, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer login guest-cart performance fix (2026-06-15 04:25 UTC)**: Fixed TEST **F1575/F1576** as **SOURCE_FIXED / REGRESSION_GUARD_ADDED / FRONTEND_VERIFICATION_PENDING**. `Login.tsx` now captures guest-cart items once with `useMemo(...)`, derives the visible count from that snapshot, and passes the same snapshot into login completion. Guest-cart merge now issues `cartApi.addItem(...)` requests with `Promise.all` while preserving per-item failure handling and leaving failed items in guest-cart storage. `Login.test.tsx` adds guards for single guest-cart reads across rerenders and parallel merge request dispatch with failed-item preservation. Verification: source-only diff review and `git diff --check -- frontend/src/pages/Login.tsx frontend/src/pages/Login.test.tsx TEST_ISSUES.md` passed; no Jest, TypeScript, build, browser/Playwright, APP/device, backend Maven, API probe, deploy, service restart, Nginx command, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer ErrorBoundary remount retry fix (2026-06-15 04:10 UTC)**: Fixed TEST **F1592** as **SOURCE_FIXED / REGRESSION_GUARD_ADDED / FRONTEND_VERIFICATION_PENDING**. `ErrorBoundaryInner` state now carries a `retryKey`; both Retry and Go Home increment it while clearing the captured error, and normal children render inside `React.Fragment key={this.state.retryKey}` so recovered child trees are remounted instead of reusing potentially corrupted component instances. Added source guard coverage in `ErrorBoundary.test.ts` for the retry key contract. Verification: source-only diff review and `git diff --check -- frontend/src/components/ErrorBoundary.tsx frontend/src/components/ErrorBoundary.test.ts TEST_ISSUES.md` passed; no Jest, TypeScript, build, browser/Playwright, APP/device, backend Maven, API probe, deploy, service restart, Nginx command, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer payment recovery invalid-date guard (2026-06-15 03:49 UTC)**: Fixed TEST **F1574** as **SOURCE_FIXED / REGRESSION_GUARD_ADDED / FRONTEND_VERIFICATION_PENDING**. The stale report names `computeRecoveryDelay(...)`, but the current source-equivalent issue was in `getPaymentRecoveryState(...)`: it computed `diffMs = expiresAt - Date.now()` before proving `expiresAt` was finite. The helper now returns the unknown-window recovery state before calling `Date.now()` when `expiresAt` is malformed. Added `paymentRecovery.test.ts` coverage asserting malformed expiry dates return `minutesLeft: null` and do not call `Date.now()`. Verification: source-only diff review and `git diff --check -- frontend/src/utils/paymentRecovery.ts frontend/src/utils/paymentRecovery.test.ts` passed; no Jest, TypeScript, build, browser/Playwright, APP/device, backend Maven, API probe, deploy, service restart, Nginx command, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer i18n interpolation hardening (2026-06-15 03:42 UTC)**: Fixed TEST **F1625** as **SOURCE_FIXED / REGRESSION_GUARD_ADDED / FRONTEND_VERIFICATION_PENDING**. `translateForLanguage(...)` now escapes translation parameter names before building the placeholder RegExp, so keys such as `a.b` match only `{a.b}` and not `{aXb}`. Replacement values are returned through a function callback so customer-visible values containing `$`, `$&`, or similar replacement tokens render literally. Added `i18n.test.ts` source coverage for exact dotted parameter names and literal dollar-value interpolation. Verification: source-only diff review and `git diff --check -- frontend/src/i18n.tsx frontend/src/i18n.test.ts` passed; no Jest, TypeScript, build, browser/Playwright, APP/device, backend Maven, API probe, deploy, service restart, Nginx command, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer live API compatibility fix/triage (2026-06-15 03:32 UTC)**: Fixed TEST **API-001** as **SOURCE_FIXED / REGRESSION_GUARD_ADDED / RUNTIME_VERIFICATION_PENDING** by adding `search` as a backward-compatible keyword alias on public `/products` and `/search`; existing `keyword` and `q` remain supported with `keyword > q > search` precedence. Triaged TEST **API-002** as **CURRENT_SOURCE_COVERED / REGRESSION_GUARD_EXPANDED / RUNTIME_VERIFICATION_PENDING** because current public product DTOs already serialize `discount` from `Product.getDisplayedDiscount()`, which derives the customer-visible percent from `originalPrice` and `effectivePrice` before falling back to the stored field; controller tests now guard stale stored discount values rendering as derived percentages. TEST **API-006** remains **OPEN / EXTERNAL_CLOUDFLARE_CONFIG_REQUIRED** because the reported 403 is an edge firewall configuration issue outside this repository's source. Verification: source-only inspection and diff review; no Maven, Jest, TypeScript, build, browser/Playwright, APP/device, deploy, service restart, Nginx, curl, git commit, or revert command was run per current instruction.
+
+- **Maintainer stale PetPage accessibility triage (2026-06-14 05:12 UTC)**: Closed TEST **F2227/F2228/F2229/F2230** as **CURRENT_SOURCE_COVERED / REGRESSION_GUARD_ADDED / FRONTEND_VERIFIED**. The reported `frontend/src/pages/PetPage.tsx` no longer exists; current pet surfaces are `PetFinder.tsx`, `PetGallery.tsx`, and `PetGalleryManagement.tsx`. Current `PetFinder` Select controls already expose `aria-label` for pet type, need, and priority; current PetGalleryManagement filter Select controls also expose aria labels. Added a pet-page accessibility guard in `PetFinder.test.ts` that asserts stale `PetPage.tsx` remains absent and all native/AntD Select controls in current pet pages have `aria-label` or `aria-labelledby`. Verification: `CI=true npm test -- --runTestsByPath src/pages/PetFinder.test.ts src/pages/PetGallery.test.ts src/pages/PetGalleryManagement.test.ts --watchAll=false --runInBand --testTimeout=90000 --silent` passed 3/3 suites and 9/9 tests.
+
+- **Maintainer support WebSocket message-rate triage (2026-06-14 05:07 UTC)**: Closed TEST **F2226** as **CURRENT_SOURCE_COVERED / REGRESSION_GUARD_ADDED / BACKEND_VERIFIED**. The reported handler-only assessment is stale against current source: `SupportWebSocketHandler` does not persist support messages directly and all customer/admin socket writes go through `SupportService.sendUserMessage(...)` or `SupportService.sendAdminMessage(...)`; `SupportService.sendMessageInternal(...)` calls `consumeMessageRate(senderId, senderRole)` before `supportMessageMapper.insert(message)`. Existing `SupportServiceTest.rateLimitsSupportMessagesBeforeSaving()` verifies the third message is rejected and not inserted. Added `SupportWebSocketHandlerAuthenticationTest.webSocketMessageWritesStayBehindSupportServiceRateLimit()` to guard that WebSocket writes stay behind the service rate limiter. Verification: `./mvnw -q -Dtest=SupportWebSocketHandlerAuthenticationTest,SupportServiceTest,SupportRateBucketCleanupContractTest test` passed.
+
+- **Maintainer cart write rate-limit fix (2026-06-14 05:01 UTC)**: Closed TEST **F2225** as **SOURCE_FIXED / REGRESSION_GUARD_ADDED / BACKEND_VERIFIED**. The reported `SecurityConfig` `cartRateLimitConfig` bean is stale; current traffic limiting is centralized in `RateLimitService`. Added a dedicated `traffic.rate-limit.cart-write-per-minute` endpoint bucket with default `60/min`, covering `/cart` POST/PUT/DELETE write routes through a shared `cart:write` bucket independent of the broader public/authenticated/global limits. Exposed the new setting in `application.properties`, Config Center default content, and `deploy/backend.env.example`. Verification: `./mvnw -q -Dtest=RateLimitServiceTest test` passed; the expected Redis fallback warning appears only in the existing Redis-failure test.
+
+- **Maintainer CORS arbitrary-origin triage (2026-06-14 04:51 UTC)**: Closed TEST **F2224** as **CURRENT_SOURCE_COVERED / REGRESSION_GUARD_ADDED / BACKEND_VERIFIED**. The reported `SecurityConfig` open-origin fallback is stale against current source: CORS origin resolution is centralized in `CorsOriginProperties`, exact `"*"` is rejected even outside production mode, production filters unsafe wildcard/private origins, and empty non-production configuration falls back only to `http://localhost:*` and `http://127.0.0.1:*` rather than reflecting request origins. Added `SecurityConfigCorsTest.emptyNonProductionCorsConfigDoesNotReflectArbitraryOrigins()` to assert Spring CORS `checkOrigin(...)` allows localhost/127.0.0.1 but rejects `https://evil.example` and private LAN origins unless explicitly configured. Verification: `./mvnw -q -Dtest=SecurityConfigCorsTest,CorsAllowAllOriginContractTest test` passed.
+
+- **Maintainer production console diagnostics fix (2026-06-14 04:42 UTC)**: Closed TEST **F2223** as **SOURCE_FIXED / REGRESSION_GUARD_ADDED / BUILD_VERIFIED / BROWSER_E2E_PENDING**. The reported 12 file/line references are stale against current source; current direct production console usage was `Navbar.tsx` badge refresh warnings, `App.tsx` support widget boundary logging, and the shared `nonBlockingError.ts` reporter. Navbar badge refresh failures and support widget boundary failures now route through `reportNonBlockingError(...)`; the shared reporter logs to `console.debug/warn` only when `process.env.NODE_ENV !== 'production'`; `sourceQuality.test.ts` rejects new direct `console.error/warn/log/info/debug` calls outside that gated reporter. While running the guard, `productOptions.getProductVariants` also had a stale empty catch fixed to report JSON parse failures through the same non-blocking diagnostics path. Verification: `CI=true npm test -- --runTestsByPath src/utils/nonBlockingError.test.ts src/components/Navbar.test.tsx src/App.test.tsx src/utils/sourceQuality.test.ts src/utils/productOptions.test.ts --watchAll=false --runInBand --testTimeout=90000 --silent` passed 5/5 suites and 59/59 tests; `npx tsc --noEmit --pretty false` passed; `npm run build` passed with existing ESLint/Browserslist/bundle-size warnings; targeted console scan now finds only gated console calls in `frontend/src/utils/nonBlockingError.ts`; `git diff --check` passed. Browser console regression remains queued for the testing engineer.
+
+- **Maintainer local fallback media fix (2026-06-14 04:10 UTC)**: Closed TEST **F2219/F2220/F2221/F2222** as **SOURCE_FIXED / REGRESSION_GUARD_ADDED / BUILD_VERIFIED / BROWSER_E2E_PENDING**. Runtime/storefront fallback media no longer depends on Unsplash in the reported surfaces: Home UGC fallback data, PetGallery fallback photos, HomeProductCard product fallback images, ProductManagement import-template example images, Home/PetGallery/Login/Register/ProductList/mobile-app CSS background fallbacks, and product catalog snapshot fallback images now use local placeholders. TS/image-rendering paths use `/assets/placeholders/*`; CSS background fallbacks use inline data-URI placeholders so CRA/css-loader does not try to resolve `/assets/...` as a module. `ProductManagement` table/preview rendering was already current-source covered through `productImageFallback` / `resolveProductImage`; the remaining fix removed Unsplash from its import template examples. Verification: `CI=true npm test -- --runTestsByPath src/pages/Profile.test.ts src/pages/FrontendCssCurrentSurfaces.test.ts src/pages/HomeRenderMemo.test.ts src/pages/PetGallery.test.ts src/components/HomeProductCard.test.ts src/pages/ProductManagement.test.ts src/utils/productCatalogSnapshot.test.ts --watchAll=false --runInBand --testTimeout=90000 --silent` passed 7/7 suites and 45/45 tests; targeted `rg -n "url\\(['\\\"]?/assets/placeholders|images\\.unsplash|unsplash\\.com" frontend/src --glob '!**/*.test.*'` returned only `mediaAssets.ts` allow/optimization rules and no page/component/CSS fallback references; `npx tsc --noEmit --pretty false` passed; `npm run build` passed with existing lint/Browserslist/bundle-size warnings; `git diff --check` passed. Browser visual regression remains queued for the testing engineer.
+
+- **Maintainer payment channel retry fix (2026-06-14 03:47 UTC)**: Closed TEST **F2218** as **SOURCE_FIXED / REGRESSION_GUARD_ADDED / BUILD_VERIFIED / BROWSER_E2E_PENDING**. The stale report path `frontend/src/pages/Payment.tsx` is not in the current route tree, but the active reusable payment modal `frontend/src/components/Payment.tsx` and the Profile order continue-payment modal now both expose recovery when `paymentApi.getChannels()` fails: channel loading tracks loading/error state, shows a user-facing failure description, disables payment actions while channels are unavailable/loading, and exposes localized Retry actions that reload the current channel list. The standalone payment modal keeps its channel loader ref-backed so retry uses latest language strings without re-running the initial effect on unstable `t` references. Verification: `CI=true npm test -- --runTestsByPath src/components/Payment.test.tsx --watchAll=false --runInBand --testTimeout=60000 --silent` passed 1/1 suite and 3/3 tests; `CI=true npm test -- --runTestsByPath src/pages/Profile.test.ts --watchAll=false --runInBand --testTimeout=90000 --silent` passed as part of the 7-suite focused run; `npx tsc --noEmit --pretty false` passed; `npm run build` passed with existing warnings; `git diff --check` passed. Browser payment-modal/channel-failure regression remains queued for the testing engineer.
+
+- **Maintainer support WebSocket payload/scroll fix (2026-06-14 03:27 UTC)**: Closed TEST **F2215/F2216/F2217** as **SOURCE_FIXED / REGRESSION_GUARD_ADDED / BROWSER_E2E_PENDING**. `supportChatConfig.parseSupportSocketPayload(...)` now validates support WebSocket payload shapes before components read nested `session` or `message` fields: malformed JSON, non-object payloads, incomplete `MESSAGE` envelopes, and incomplete `SESSION_UPDATED` / `SESSION_CLOSED` envelopes degrade to `ERROR`, while valid envelopes keep typed session/message data. `CustomerSupportWidget.tsx` and `SupportManagement.tsx` continue to consume the guarded parser through `useReconnectingWebSocket`, avoiding raw `JSON.parse(event.data)` and stale `ws.onmessage` handlers. `CustomerSupportWidget.tsx` also narrows auto-scroll to the open state plus conversation cursor changes (`activeSessionId`, latest message id, and message count) instead of depending on the entire `messages` array reference. Verification: `CI=true npm test -- --runTestsByPath src/utils/supportChatConfig.test.ts src/components/CustomerSupportWidget.test.tsx src/pages/SupportManagement.test.tsx src/components/CustomerSupportWidgetTypeSafety.test.ts src/pages/SupportManagementTypeSafety.test.ts --watchAll=false --runInBand --testTimeout=60000 --silent` passed 5/5 suites and 25/25 tests; `npx tsc --noEmit --pretty false` passed; `git diff --check` passed. Browser/admin/customer support chat regression remains queued for the testing engineer.
+
+- **Maintainer frontend/payment regression gate fix (2026-06-14 02:38 UTC)**: Verified TEST **F2200/F2201/F2205/F2206/F2212/F2213/F2214** source fixes and repaired stale regression guards/fixtures that were blocking validation. `CartCheckoutFlow.test.tsx` now mocks shared `isAuthExpiredError(...)` and expects the current complete checkout address radio label; `ProductManagement.test.ts` verifies product row action aria/title contracts without rejecting valid disabled-state props; `PaymentFlowServiceTest` now stubs the current atomic stock decrement and guest `saveAndFlush(...)` paths. Also fixed TypeScript strictness in `useAuth.ts`, `Checkout.tsx`, `Profile.tsx`, and `regionData.ts`. Verification: `CI=true npm test -- --runTestsByPath src/pages/ProductDetail.test.tsx src/pages/Checkout.test.tsx src/pages/ForgotPassword.test.ts src/pages/Notifications.test.ts src/pages/PaymentInstructions.test.ts src/pages/Wishlist.test.tsx src/pages/CartCheckoutFlow.test.tsx src/pages/ProductManagement.test.ts src/pages/Profile.test.ts src/pages/Login.test.tsx src/hooks/useAuth.test.tsx src/regionData.test.ts --watchAll=false --runInBand --testTimeout=90000 --silent` passed 12/12 suites and 153/153 tests; `npx tsc --noEmit --pretty false` passed; `./mvnw -q -Dtest=PaymentFlowServiceTest test` passed; `git diff --check` passed. Browser, Android WebView, and device E2E remain queued for the testing engineer.
+
 - **Maintainer F961 payment callback signature fix (2026-06-12 07:47 UTC)**: Closed QA **F961** as **FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED / E2E_PENDING**. Generic payment callbacks now compute `expectedSignature(...)` with `HmacSHA256` over the canonical callback payload using `payment.callback-secret`, instead of hashing a payload with the secret appended. The callback path still requires non-blank signature and timestamp fields, validates timestamp freshness before state mutation, uses constant-time signature comparison, and rejects weak/missing production callback secrets; Stripe webhooks remain verified by `Webhook.constructEvent(...)` plus `Stripe-Signature`. Added `PaymentCallbackSignatureContractTest` to guard the contract. Verification: `./mvnw -q -Dtest=PaymentCallbackSignatureContractTest,PaymentFlowServiceTest#genericPaymentCallbackRequiresValidHmacSignatureBeforeStateChanges,PaymentFlowServiceTest#stripeWebhookCompletedSessionRequiresStripeSignatureNotInternalCallbackSignature test` passed.
 
 - **Maintainer F962 order search bound triage (2026-06-12 06:56 UTC)**: Closed QA **F962** as **WONTFIX / CURRENT_SOURCE_COVERED / REGRESSION_GUARD_ADDED / E2E_OPTIONAL**. Current admin order page/export paths bound search input to 120 characters via `normalizeAdminFilter(search, 120)` before count/search/summary/export queries; the service layer escapes LIKE wildcard characters through `searchLikeTerm(...)`; the mapper uses parameterized `#{search}` with `ESCAPE '!'` and no `${search}` interpolation. Added `AdminOrderSearchBoundContractTest` to guard the bound, escaping, and mapper contract. Verification: `./mvnw -q -Dtest=AdminOrderSearchBoundContractTest test` passed.
@@ -1362,7 +1594,7 @@ This file is used by QA to track currently unresolved issues only. Resolved and 
 | F2619 | P2 | `AuthController.java` — `/api/auth/login` | Login creates a new session on every call without checking for existing valid session. Duplicate sessions accumulate for the same user. | OPEN |
 | F2620 | P2 | `OrderService.java` — `createOrder()` | Sensitive customer data (name, phone, address, email) stored unencrypted in order item `productSnapshot` JSON. Exposed via admin endpoints and database backups. | OPEN |
 | F2621 | P2 | `SecurityConfig.java` | Missing Spring CSRF configuration. Application uses JWT tokens but Spring Security default CSRF handling is not explicitly configured for stateless REST API. | OPEN |
-| F2622 | P2 | `SecurityConfig.java` — CSP headers | Content-Security-Policy uses overly permissive directives: `unsafe-eval` and `unsafe-inline` are set, weakening XSS protection significantly. | OPEN |
+| F2622 | P2 | `SecurityConfig.java` — CSP headers | Content-Security-Policy uses overly permissive directives: `unsafe-eval` and `unsafe-inline` are set, weakening XSS protection significantly. Current source now rejects `unsafe-eval` and inline script allowances in `SecurityConfigCorsTest.securityHeadersIncludeContentSecurityPolicy`. | CURRENT_SOURCE_COVERED / REGRESSION_GUARD_PRESENT / BACKEND_VERIFIED |
 | F2623 | P2 | `AuthController.java` | Auth endpoints (`/api/auth/login`, `/api/auth/register`) do not validate `Content-Type` header. Requests with missing or wrong content type are processed. | OPEN |
 | F2624 | P2 | `SecurityConfig.java` | Missing CORS configuration — relies on browser defaults. Cross-origin requests from non-whitelisted origins may be allowed. | OPEN |
 
@@ -1370,8 +1602,8 @@ This file is used by QA to track currently unresolved issues only. Resolved and 
 
 | # | Sev | Location | Description | Status |
 |---|-----|----------|-------------|--------|
-| F2625 | P1 | `ProductController.java` — `/api/products/search` | Search endpoint accepts negative page numbers (`page=-1`). Should validate `page >= 0`. | OPEN |
-| F2626 | P1 | `SupportController.java` — `/api/support/stats` | Stats endpoint returns `NaN` for average metrics when no support tickets exist. Should return `0` or `null` with proper handling. | OPEN |
+| F2625 | P1 | `ProductController.java` — `/api/products/search` | Search endpoint accepts negative page numbers (`page=-1`). Should validate `page >= 0`. Current `ProductListQuery` clamps negative pages to `0` before service execution and controller search uses that normalized query path. | CURRENT_SOURCE_COVERED / REGRESSION_GUARD_PRESENT / RUNTIME_VERIFICATION_PENDING |
+| F2626 | P1 | `SupportController.java` — `/api/support/stats` | Stats endpoint returns `NaN` for average metrics when no support tickets exist. Should return `0` or `null` with proper handling. Current mapper/service code returns zero-valued metrics for empty/null aggregate rows and clamps the response score to `0..100`. | CURRENT_SOURCE_COVERED / REGRESSION_GUARD_PRESENT / RUNTIME_VERIFICATION_PENDING |
 | F2627 | P2 | `SupportController.java` — admin comment deletion | Admin comment deletion has no audit trail. Deleted comments are permanently removed without logging who deleted what and when. | OPEN |
 | F2628 | P2 | `SupportController.java` — ticket replies | Support ticket replies do not validate message length. Unbounded message content can be submitted, potentially causing storage/display issues. | OPEN |
 | F2629 | P2 | `ProductService.java` — `createProduct()` | Product creation missing `@Valid` annotation on `@RequestBody`. Request body validation constraints are not enforced at controller level. | OPEN |
@@ -2051,10 +2283,11 @@ Reviewed all F985-F992 in QA_ISSUES.md and TEST_ISSUES.md:
 - **Environment**: `GET /api/products?search={term}`
 - **Severity**: CRITICAL
 - **Description**: The `search` parameter is completely ignored. All queries return all 29 products regardless of search term. `search=feeder` returns 29 items, `search=xyznotexist123` also returns 29 items.
-- **Status**: OPEN
+- **Status**: SOURCE_FIXED / REGRESSION_GUARD_ADDED / RUNTIME_VERIFICATION_PENDING (2026-06-15 03:32 UTC)
 - **Reproduction**: `curl "https://pet.686888666.xyz/api/products?search=feeder"` — returns all 29 products
 - **Expected**: Should filter to products matching the search term
 - **Fix direction**: Check if `search` parameter is mapped in `ProductController`/`ProductServiceImpl`; verify query builder applies LIKE/FTS condition
+- **Fix evidence**: `ProductController.getAllProducts(...)` now accepts `@RequestParam String search` and resolves public keyword aliases with `keyword > q > search`, so the live `/products?search=feeder` reproduction reaches the existing `ProductListQuery.keyword` path and `ProductServiceImpl` keyword predicates. `SearchController` accepts the same alias for consistency with catalog clients. Added controller regression guards for `/products?search=feeder` and `/search?search=feeder`. Verification pending because no backend Maven, curl, browser, or deploy command was run per instruction.
 
 ### API-002 [CRITICAL] Discount percentages are wrong on 18/29 products
 - **Area**: Backend / Product data or ProductController
@@ -2067,8 +2300,9 @@ Reviewed all F985-F992 in QA_ISSUES.md and TEST_ISSUES.md:
   - ID=9211 (BrightBite Rope & Rubber Chew Trio): stated=43%, actual=27.0%, diff=16.0%
   - ID=9213 (PurePaws Deshedding Brush Pro): stated=40%, actual=24.7%, diff=15.3%
   - 13 more products with 4-12% deviation
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / REGRESSION_GUARD_EXPANDED / RUNTIME_VERIFICATION_PENDING (2026-06-15 03:32 UTC)
 - **Fix direction**: Recalculate `discount` field in database or remove it and derive from price/originalPrice at query time
+- **Triage evidence**: Current public DTO mapping already avoids trusting stale stored `discount`: both `ProductPublicListItemResponse.from(...)` and `ProductPublicResponse.from(...)` set `discount` from `product.getDisplayedDiscount()`, and `Product.getDisplayedDiscount()` returns `getEffectiveDiscountPercent()` when the derived customer-visible discount is positive. `getEffectiveDiscountPercent()` calculates from `originalPrice` and active/effective price with `HALF_UP` integer percent rounding. Expanded controller guards use a product with stale stored `discount=47`, `originalPrice=100.00`, and `price=75.00` and assert public list/search payloads expose `discount=25` plus `effectiveDiscountPercent=25`. Runtime verification remains pending because no Maven, curl, browser, or deploy command was run per instruction.
 
 ### API-003 [HIGH] Category filter returns items from wrong categories
 - **Area**: Backend / ProductController
@@ -2103,8 +2337,9 @@ Reviewed all F985-F992 in QA_ISSUES.md and TEST_ISSUES.md:
 - **Environment**: `POST /api/auth/login`, `POST /api/auth/register`
 - **Severity**: MEDIUM
 - **Description**: Authentication endpoints return HTTP 403 when accessed from certain IPs (Cloudflare block). Registration and login work when not blocked. This prevents automated testing and may affect some legitimate users.
-- **Status**: OPEN
+- **Status**: OPEN / EXTERNAL_CLOUDFLARE_CONFIG_REQUIRED / REPO_ACTION_UNAVAILABLE (2026-06-15 03:32 UTC)
 - **Fix direction**: Review Cloudflare firewall rules; whitelist API auth endpoints or use rate-limiting instead of hard block
+- **Triage evidence**: This is an edge/WAF rule issue, not a repository source defect that can be safely changed in the current workspace. The required action is to adjust Cloudflare firewall/rate-limit rules for the deployed domain or provide an allowed QA origin/IP path. No source edit was made for API-006.
 
 ### API-007 [LOW] Free shipping threshold (899.00) never triggered
 - **Area**: Product data / Business logic
@@ -3320,8 +3555,9 @@ Notes:
 - Severity: LOW
 - Symptom: `recordVisitor` uses a `ConcurrentHashMap` for in-memory caching. While individual operations are thread-safe, the read-check-put sequence is not atomic, potentially allowing duplicate visitor records.
 - Impact: Minor — duplicate visitor records or incorrect visitor counts
-- Status: OPEN
+- Status: WONTFIX / CURRENT_SOURCE_NON_ISSUE (triaged 2026-06-15)
 - Expected fix direction: Use `computeIfAbsent` or `putIfAbsent` for atomic read-check-put.
+- Triage evidence: The reported `VisitorService`/`recordVisitor` implementation is no longer present in current source. `RateLimitServiceTest.currentTrafficControlHasNoLegacyVisitorMetricGate` already guards against reintroducing the old visitor metric gate by asserting `VisitorServiceImpl.java` is absent, `getConcurrentVisitors` and `visitors:{date}:` are absent from `RateLimitService`, and the current implementation uses atomic bucket/Redis counter paths. No Maven/JUnit execution was performed in this pass.
 
 ### SEC-NEW-001: Hardcoded test credentials in source code
 
@@ -5393,7 +5629,7 @@ Notes:
 - Environment: `src/main/java/com/example/shop/service/OrderService.java:390-405`
 - Severity: HIGH
 - Description: For each expired unpaid order, `cancelExpiredUnpaidOrders()` wraps `cancelOrder()` in a `try-catch(Exception)` that only logs the error. If a user has 50 expired orders and `cancelOrder()` throws for 10 of them (e.g., payment already exists), the method returns `cancelled=40` but doesn't tell the caller which orders failed. This makes it impossible to retry or investigate failures.
-- Status: OPEN
+- Status: SOURCE_FIXED (2026-06-18 08:25 UTC) / REGRESSION_GUARD_EXPANDED / BACKEND_VERIFICATION_PENDING — `OrderService.cancelExpiredUnpaidOrders()` now returns an `ExpiredOrderCancellationResult` with scanned/cancelled/skipped/failed counts, cancelled order IDs, failed order IDs, and bounded failure messages. Row failures still log `Skipping expired-order cancellation during scan for order ...` and the scan continues to later orders, but callers no longer have to scrape logs to know which order IDs failed. `cancelSingleExpiredOrder(...)` now reports `CANCELLED` or `SKIPPED`, preserving existing fire-and-forget callers while enabling result aggregation. `OrderStatsServiceTest` was updated to guard paged scans and failed-row result reporting. No Maven/JUnit/backend/API/frontend/browser/APP/deploy/service/Nginx commands were run per current instruction.
 - Expected fix direction: Return failed order IDs or throw after all attempts.
 
 ### F2332: `normalizeProductImages` uses `any` type
@@ -5767,8 +6003,9 @@ Notes:
 - Environment: `frontend/src/api/index.ts:1757`, `OrderController.java:251-272`
 - Severity: LOW
 - Description: orderApi.pay() sends no request body but backend expects Map<String, String> with optional transactionId.
-- Status: OPEN
+- Status: FIXED / DUPLICATE_OF_F2860 (source triaged 2026-06-15)
 - Expected fix direction: Send empty object {} or move to adminApi.
+- Fix evidence: The later F2860 fix already covers this report. `frontend/src/api/index.ts` now defines `OrderPaymentPayload`, normalizes payment payloads through `normalizeOrderPaymentBody(...)`, and posts `api.post('/orders/{id}/pay', normalizeOrderPaymentBody(payload))`, so the backend receives an object body with optional `transactionId`. `OrderControllerHttpMethodContractTest.frontendOrderActionsCallPostEndpoints` asserts the new payload-bearing signature and rejects the old body-less `pay: (id: number) => api.post(...)` signature. No frontend build, Jest, TypeScript compile, Maven/JUnit, API probe, deploy, git commit, or revert was performed in this pass.
 
 ### F931: Duplicate ObjectMapper and RestTemplate creation
 
@@ -5992,8 +6229,9 @@ Notes:
 - Environment: `CustomerSupportWidget.tsx:141,351-374`, `SupportManagement.tsx:135,187`
 - Severity: MEDIUM
 - Description: AudioContext created but never closed on component unmount. Repeated open/close leaks audio resources.
-- Status: OPEN
+- Status: SOURCE_FIXED / REGRESSION_GUARD_ADDED / FRONTEND_VERIFICATION_PENDING (2026-06-15 12:06 UTC)
 - Expected fix direction: Add cleanup effect calling audioContextRef.current?.close() on unmount.
+- Maintainer update: `CustomerSupportWidget.tsx` and `SupportManagement.tsx` now register unmount cleanup effects that capture the current `AudioContext`, clear `audioContextRef.current`, close non-closed contexts, and send close failures to `reportNonBlockingError(...)` without blocking unmount. `CustomerSupportWidget.test.tsx` and `SupportManagement.test.tsx` add source guards for the cleanup contract. Verification was limited to source inspection and static diff hygiene; no frontend tests/build/browser verification was run per instruction.
 
 ### F906: Dashboard queries have no caching
 
@@ -7735,9 +7973,10 @@ Notes:
 
 **Severity**: MEDIUM
 **Area**: Frontend / i18n.tsx
-**Status**: OPEN
+**Status**: SOURCE_FIXED / REGRESSION_GUARD_ADDED / FRONTEND_VERIFICATION_PENDING (2026-06-15 03:42 UTC)
 **Description**: Line 95 builds regex from `paramKey` without escaping special chars. Key `{a.b}` matches `{aXb}` since dot is unescaped.
 **Fix**: Escape `paramKey` before interpolation: `paramKey.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')`.
+**Maintainer update**: `translateForLanguage(...)` now uses `escapeTranslationParamKey(...)` before constructing the placeholder RegExp and uses a replacement callback so values containing dollar-sign replacement markers render literally. `i18n.test.ts` now covers `{a.b}` versus `{aXb}` plus a literal `$20 & $30` replacement value. Verification was limited to source inspection and `git diff --check -- frontend/src/i18n.tsx frontend/src/i18n.test.ts`; no frontend test/build/runtime command was run per instruction.
 
 ---
 
@@ -8929,7 +9168,7 @@ No stock restoration on cart item deletion. Minor — no direct stock impact tod
 ### F1563: SupportServiceTest — sanitizeMessage input exceeds 80-char maxMessageLength
 
 **Severity:** MEDIUM
-**Status:** OPEN
+**Status:** FIXED (2026-06-15)
 **Component:** `src/test/java/com/shop/service/SupportServiceTest.java:49`
 **Created:** 2026-06-10 (Regression #69)
 **Description:** Test input `"  <script>alert('xss')</script> Hello & World  " > test "` is 63 chars raw but after HTML entity escaping (`<` → `&lt;`, `>` → `&gt;`, `&` → `&amp;`) becomes 86 chars, exceeding the 80-char `maxMessageLength` limit. `IllegalArgumentException("Message too long")` thrown.
@@ -9041,52 +9280,58 @@ Multi-dimensional source review across: security, race conditions, state managem
 ### F1572: HIGH — Guest cart mutation returns the mutated reference
 
 **Severity:** HIGH
-**Status:** OPEN
+**Status:** SOURCE_FIXED / REGRESSION_GUARD_ADDED / FRONTEND_VERIFICATION_PENDING (2026-06-15 05:17 UTC)
 **Component:** `frontend/src/utils/cartSession.ts:184-187`
 **Created:** 2026-06-09 (Regression #73)
 **Description:** `addGuestCartItem` mutates the input `item` object directly (`item.id = ...`) and returns the same reference. Callers sharing the original object will see unexpected mutations.
 **Impact:** Shared item references get mutated unexpectedly; potential state corruption.
 **Fix Direction:** Return a copy: `return { ...item, id: itemId }`.
+**Maintainer update:** The reported `cartSession.ts` path is stale in current source; guest-cart creation is handled by `frontend/src/utils/guestCart.ts`. `addGuestCartItem(...)` now constructs a fresh `CartItem` snapshot and never mutates the supplied product object. `guestCart.test.ts` adds a regression guard using a frozen product object to verify creation succeeds without changing the caller-owned source value. Verification was limited to source inspection and `git diff --check -- frontend/src/utils/guestCart.ts frontend/src/utils/guestCart.test.ts`; no frontend test/build/runtime command was run per instruction.
 
 ### F1573: HIGH — Null stock bypasses max quantity guard
 
 **Severity:** HIGH
-**Status:** OPEN
+**Status:** FIXED — current source covered
 **Component:** `frontend/src/pages/Cart.tsx:321-336`
 **Created:** 2026-06-09 (Regression #73)
 **Description:** `getMaxQuantity()` returns `null` for products without stock tracking. In `clampedQuantity`, if `effectiveStock` is null, `Math.min(quantity, null)` returns 0 due to JS comparison rules, but the `>0` check then uses the raw `quantity` value. This means null-stock products can have unlimited quantities.
 **Impact:** Users can set arbitrarily large quantities for non-stock-tracked products.
 **Fix Direction:** Return `Infinity` or a sensible default from `getMaxQuantity()` for null stock.
+**Resolution:** Current source no longer has the reported local `getMaxQuantity()`/`clampedQuantity` path. Cart page and drawer quantity controls share `frontend/src/utils/cartUi.ts`; `getCartQuantityLimit(undefined|null|NaN)` returns `DEFAULT_CART_QUANTITY_LIMIT` (`99`), and `normalizeCartQuantity()` clamps untracked-stock quantities to that limit.
+**Regression Guard:** `frontend/src/utils/cartUi.test.ts` covers `getCartQuantityLimit(null) === 99`, `getCartQuantityLimit(undefined) === 99`, and `normalizeCartQuantity(undefined, 200) === 99`.
 
 ### F1574: MEDIUM — `paymentRecovery.computeRecoveryDelay` computes diffMs before `isFinite` guard
 
 **Severity:** MEDIUM
-**Status:** OPEN
+**Status:** SOURCE_FIXED / REGRESSION_GUARD_ADDED / FRONTEND_VERIFICATION_PENDING (2026-06-15 03:49 UTC)
 **Component:** `frontend/src/utils/paymentRecovery.ts:225-240`
 **Created:** 2026-06-09 (Regression #73)
 **Description:** `diffMs` is computed from `lastFailedAt` before checking `Number.isFinite(lastFailedAt)`. If `lastFailedAt` is `NaN` or `Infinity`, `diffMs` will also be non-finite, and the exponential backoff calculation will produce incorrect results.
 **Impact:** Payment recovery delay calculation incorrect for non-finite timestamps.
 **Fix Direction:** Check `isFinite(lastFailedAt)` before computing `diffMs`.
+**Maintainer update:** The named `computeRecoveryDelay(...)` path is stale in current source; the active equivalent was `getPaymentRecoveryState(...)`, which calculated `expiresAt - Date.now()` before the finite guard. Current source now validates `expiresAt` first and returns the unknown recovery window without calling `Date.now()` for malformed expiry values. `paymentRecovery.test.ts` adds coverage for malformed expiry dates. Verification was limited to source inspection and `git diff --check -- frontend/src/utils/paymentRecovery.ts frontend/src/utils/paymentRecovery.test.ts`; no frontend test/build/runtime command was run per instruction.
 
 ### F1575: MEDIUM — Login reads guest cart from localStorage on every render
 
 **Severity:** MEDIUM
-**Status:** OPEN
+**Status:** SOURCE_FIXED / REGRESSION_GUARD_ADDED / FRONTEND_VERIFICATION_PENDING (2026-06-15 04:25 UTC)
 **Component:** `frontend/src/pages/Login.tsx:53-55`
 **Created:** 2026-06-09 (Regression #73)
 **Description:** `guestCartCount` is computed by parsing `localStorage.getItem('guest_cart')` directly in the component body (not in a `useMemo` or `useEffect`). This triggers a synchronous localStorage read + JSON parse on every render.
 **Impact:** Performance degradation; unnecessary localStorage I/O on every keystroke.
 **Fix Direction:** Memoize `guestCartCount` with `useMemo` or move to a custom hook.
+**Maintainer update:** `Login.tsx` now captures guest cart items once with `useMemo(() => getGuestCartItems(), [])` and derives the displayed count from that snapshot, so tab switches and field edits no longer reread guest-cart storage. `Login.test.tsx` adds a regression guard that drives login-page rerenders and asserts `getGuestCartItems()` is called once. Verification was limited to source inspection and `git diff --check -- frontend/src/pages/Login.tsx frontend/src/pages/Login.test.tsx`; no frontend test/build/runtime command was run per instruction.
 
 ### F1576: MEDIUM — Guest cart merge is sequential, not parallel
 
 **Severity:** MEDIUM
-**Status:** OPEN
+**Status:** SOURCE_FIXED / REGRESSION_GUARD_ADDED / FRONTEND_VERIFICATION_PENDING (2026-06-15 04:25 UTC)
 **Component:** `frontend/src/pages/Login.tsx:57-71`
 **Created:** 2026-06-09 (Regression #73)
 **Description:** `mergeGuestCart` awaits each `addToCart` call sequentially in a `for` loop. For N items, this makes N sequential API calls instead of one batch.
 **Impact:** Slow login experience for users with many guest cart items.
 **Fix Direction:** Use `Promise.all` or a batch API endpoint.
+**Maintainer update:** `Login.tsx` now passes the cached guest-cart snapshot into `mergeGuestCart(...)` and sends all `cartApi.addItem(...)` requests with `Promise.all`, while still recording per-item failures and replacing the guest cart with only failed items. `Login.test.tsx` adds a regression guard that confirms all merge requests are issued before any settle and that a failed item remains in guest cart storage. Verification was limited to source inspection and `git diff --check -- frontend/src/pages/Login.tsx frontend/src/pages/Login.test.tsx`; no frontend test/build/runtime command was run per instruction.
 
 ### F1577: MEDIUM — Register form does not trim password input
 
@@ -9098,25 +9343,31 @@ Multi-dimensional source review across: security, race conditions, state managem
 **Impact:** Users may set passwords they cannot reproduce; login failures.
 **Fix Direction:** Do not trim password; validate as-is.
 
+**Maintainer update:** Current `Register.tsx` already submits `password: values.password` and `confirmPassword: values.confirmPassword` without trimming either field, so the report's referenced trim path is stale. `Register.test.tsx` now adds a regression guard that enters a password with leading/trailing spaces and verifies `userApi.register` receives that exact string. Verification was limited to source inspection and `git diff --check -- frontend/src/pages/Register.test.tsx`; no frontend test/build/runtime command was run per instruction.
+
 ### F1578: MEDIUM — Guest draft save writes to sessionStorage on every keystroke
 
 **Severity:** MEDIUM
-**Status:** OPEN
+**Status:** SOURCE_FIXED / REGRESSION_GUARD_ADDED
 **Component:** `frontend/src/pages/Checkout.tsx:2230-2240`
 **Created:** 2026-06-09 (Regression #73)
 **Description:** `watch((data) => { sessionStorage.setItem(...) })` fires on every form field change, causing synchronous sessionStorage writes on every keystroke with no debounce.
 **Impact:** Performance degradation; potential input lag on slower devices.
 **Fix Direction:** Debounce the sessionStorage write (e.g., 500ms).
 
+**Maintainer update:** `Checkout.tsx` now debounces guest checkout draft persistence with `CHECKOUT_GUEST_DRAFT_SAVE_DELAY_MS = 500`, clears the pending timer on dependency changes, and keeps the existing draft merge/removal behavior inside the delayed write path. `Checkout.test.tsx` adds a source regression guard that requires the delayed `setSessionStorageItem(...)`, empty-draft removal, and `window.clearTimeout(timer)` cleanup. Verification was limited to `git diff --check -- frontend/src/pages/Checkout.tsx frontend/src/pages/Checkout.test.tsx`; no frontend tests/build/runtime commands were run per instruction.
+
 ### F1579: MEDIUM — `cachedTypedGet` bypasses cache when `signal` is passed
 
 **Severity:** MEDIUM
-**Status:** OPEN
+**Status:** SOURCE_FIXED / REGRESSION_GUARD_ADDED
 **Component:** `frontend/src/api/index.ts:162-172`
 **Created:** 2026-06-09 (Regression #73)
 **Description:** When a caller passes `signal` (for abort), `cachedTypedGet` doesn't use the cache because the key doesn't include the signal. This means aborting a request also invalidates the cache entry.
 **Impact:** Cache inefficiency; unnecessary API calls when abort signals are used.
 **Fix Direction:** Exclude signal from cache key; only use signal for the underlying request.
+
+**Maintainer update:** Current `frontend/src/api/cache.ts` keeps `signal` out of the typed cache/request key, wraps cached and pending responses with per-caller abort handling via `withAbortSignal(...)`, and only passes a stripped loader option through `cacheLoaderOptions(...)` in `frontend/src/api/index.ts`. `frontend/src/api/index.test.ts` includes a regression guard proving two callers with different abort signals reuse one pending typed request and later resolve from cache without a second loader call. Verification was limited to source inspection and `git diff --check -- frontend/src/api/cache.ts frontend/src/api/index.ts frontend/src/api/index.test.ts TEST_ISSUES.md`; no frontend tests/build/runtime commands were run per instruction.
 
 ### F1580: MEDIUM — Empty `imageUrls` array creates invalid product listing
 
@@ -9187,39 +9438,44 @@ Multi-dimensional source review across: security, race conditions, state managem
 ## 2026-06-09 Multi-Dimensional Deep Code Review — Security, Concurrency, State Management, Code Quality, Performance
 
 ### F1585: HIGH — Admin support read endpoints lack fine-grained permission checks
-- **Status**: OPEN
+- **Status**: SOURCE_FIXED / REGRESSION_GUARD_ADDED / BACKEND_VERIFICATION_PENDING (2026-06-17 18:09 UTC)
 - **Component**: `src/main/java/com/example/shop/controller/SupportController.java` lines 187-207
 - **Category**: Security / Authorization
 - **Description**: The admin support read endpoints (`GET /admin/support/sessions`, `GET /admin/support/summary`, `GET /admin/support/sessions/{sessionId}/messages`, `GET /admin/support/unread-count`) only rely on the controller-level `hasRole("ADMIN")` check. In contrast, every write endpoint performs fine-grained permission checks via `requireSupportActionPermission()`. An admin with the ADMIN role but without any support-specific permissions can still read all support sessions, messages, user IDs, and summaries.
 - **Root Cause**: Read endpoints were not updated to call `requireSupportActionPermission()` with an appropriate permission constant, unlike their write counterparts.
+- **Fix evidence**: `SupportController` now calls `requireSupportReadPermission(...)` before all four admin support read endpoints. The helper requires `AdminRoleService.canAccess(userId, "/admin/support")`, records an audit failure with the endpoint-specific action when missing, and throws 403 before any `SupportService` read. `SupportControllerAdminResponseTest.adminReadEndpointsRequireSupportPagePermission` guards the list, summary, message-read, and unread-count denial path, while the existing admin-session response test now grants support page access explicitly before asserting the response shape. Verification remained source-only per instruction; backend tests were not run.
 
 ### F1586: HIGH — sendAdminMessage auto-assigns admin bypassing SUPPORT_ASSIGN_PERMISSION
-- **Status**: OPEN
+- **Status**: SOURCE_FIXED / REGRESSION_GUARD_ADDED / BACKEND_VERIFICATION_PENDING (2026-06-17 18:09 UTC)
 - **Component**: `src/main/java/com/example/shop/service/SupportService.java` lines 186-195
 - **Category**: Security / Privilege Escalation
 - **Description**: The `sendAdminMessage` method checks `if (session.getAssignedAdminId() == null)` and then calls `supportSessionMapper.assignAdmin(sessionId, adminId)`. Any admin with `SUPPORT_REPLY_PERMISSION` can claim an unassigned support session by simply sending a message, bypassing the `SUPPORT_ASSIGN_PERMISSION` that the dedicated `assignSession` endpoint requires.
 - **Root Cause**: Auto-assign logic in `sendAdminMessage` does not verify `SUPPORT_ASSIGN_PERMISSION`. The controller only checks `SUPPORT_REPLY_PERMISSION`.
+- **Fix evidence**: `SupportService.sendAdminMessage(...)` now has an explicit `assignIfUnassigned` overload and throws `IllegalStateException("Support session is unassigned")` from the shared send path unless the caller opted into assignment. `SupportController.sendSupportMessage(...)` and `SupportWebSocketHandler` now fetch the session first, require `AdminRoleService.SUPPORT_ASSIGN_PERMISSION` only when the session is unassigned, and then call the explicit opt-in overload. Guards were added in `SupportAdminMessageRoleGuardTest`, `SupportControllerAdminResponseTest`, and `SupportWebSocketHandlerAuthenticationTest` to prove the old implicit-assign path is gone. Verification remained source-only per instruction; backend tests were not run.
 
 ### F1587: HIGH — useAuth.ts missing cleanup on profile restore useEffect
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / REGRESSION_GUARD_PRESENT / FRONTEND_VERIFICATION_PENDING
 - **Component**: `frontend/src/hooks/useAuth.ts` lines 57-77
 - **Category**: Race Condition / React Lifecycle
 - **Description**: The `useEffect` that restores the user profile on mount calls `userApi.getProfile()` and on success writes to `localStorage` and sets React state. There is no `disposed` flag or `AbortController` to prevent state updates after the component unmounts. If the user navigates away before the profile promise resolves, `setUser` and `setLocalStorageItem` will still execute on the unmounted component.
 - **Root Cause**: Missing cleanup/cancellation pattern. Compare to Navbar (lines 319-320) and OrderTracking (lines 156, 237) which correctly use a `disposed` flag.
+- **Follow-up 2026-06-18 02:53 UTC**: The report is stale against current source. `useAuth` now keeps `mountedRef` and `profileRequestSeqRef`, increments the sequence during cleanup, ignores stale profile success/failure/finally handlers, and the existing `useAuth.test.tsx` source/runtime-style guards cover ignoring profile responses and failures after unmount plus stale profile response ordering. No frontend tests were run per instruction.
 
 ### F1588: HIGH — useAuth.ts login double-click race condition
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / REGRESSION_GUARD_PRESENT / FRONTEND_VERIFICATION_PENDING
 - **Component**: `frontend/src/hooks/useAuth.ts` lines 23-38
 - **Category**: Race Condition / UX
 - **Description**: The `login` function has no guard against concurrent login calls. If a user double-clicks a login button, two parallel `userApi.login` requests will fire. The second response could overwrite the first, or if one fails after the other succeeds, the error handler displays an error toast even though the session is already established.
 - **Root Cause**: No submitting/locking state and no request deduplication for the login flow.
+- **Follow-up 2026-06-18 02:53 UTC**: The report is stale against current source. `useAuth.login(...)` returns the shared `loginRequestRef.current` when a login is already in flight, assigns the promise before the API call can be duplicated, and only clears the ref when the same request finishes. `useAuth.test.tsx` guards the in-flight request ordering. No frontend tests were run per instruction.
 
 ### F1589: HIGH — useAuth.ts duplicate logout code paths create race
-- **Status**: OPEN
+- **Status**: SOURCE_FIXED / REGRESSION_GUARD_EXPANDED / FRONTEND_VERIFICATION_PENDING
 - **Component**: `frontend/src/hooks/useAuth.ts` lines 41-55, `frontend/src/components/Navbar.tsx` lines 522-533
 - **Category**: Race Condition / Code Quality
 - **Description**: The `logout` function fires `userApi.logout()` without awaiting it, then immediately calls `setUser(null)` and `clearStoredAuthSession()`. Meanwhile, the Navbar's `handleLogout` also independently calls `clearStoredAuthSession()` and `userApi.logout()`. Two independent logout code paths both call the same cleanup, creating a race and inconsistent UX behavior.
 - **Root Cause**: Two independent logout code paths with different behavior (Navbar does not show success toast from useAuth).
+- **Follow-up 2026-06-18 02:53 UTC**: Fixed the Navbar side of the duplicate path. `Navbar.handleLogout()` now calls `logoutAuthSession()` from `useAuth()` and only resets local badge/menu state before navigating to the login URL; it no longer directly calls `userApi.logout(...)` or `clearStoredAuthSession()`. `Navbar.test.tsx` now guards that logout cleanup is delegated to auth context and that the direct Navbar revoke/clear path does not return. No frontend tests were run per instruction.
 
 ### F1590: MEDIUM — CouponService discountPercent naming convention confusion
 - **Status**: WONTFIX (by design — test `discountPercentRepresentsPayablePercentInQuotes` confirms `discountPercent` means "payable percent", not "discount percent")
@@ -9229,32 +9485,36 @@ Multi-dimensional source review across: security, race conditions, state managem
 - **Root Cause**: Naming convention mismatch between field name and semantic meaning.
 
 ### F1591: MEDIUM — Navbar auth state decoupled from useAuth context
-- **Status**: OPEN
+- **Status**: SOURCE_FIXED / REGRESSION_GUARD_EXPANDED / FRONTEND_VERIFICATION_PENDING
 - **Component**: `frontend/src/components/Navbar.tsx` lines 119-121
 - **Category**: State Management / Consistency
 - **Description**: The Navbar reads `token`, `username`, and `role` directly from `localStorage` on every render rather than subscribing to the auth context. When the user logs in or out through `useAuth`, the Navbar does not re-render until the next page navigation. The `navRole` is managed separately via `useState` initialized from localStorage, meaning the Navbar's auth state is decoupled from the canonical auth context.
 - **Root Cause**: Navbar does not consume `useAuth()` context. It has its own independent localStorage-based auth state.
+- **Follow-up 2026-06-18 02:53 UTC**: Fixed by making the storefront route shell render inside `AuthProvider`, exposing canonical `token` from `useAuth`, and having Navbar consume `{ user: authUser, token, logout: logoutAuthSession } = useAuth()`. Navbar now derives the account label and logged-in UI from auth context, while keeping the storage snapshot only for compatibility data such as default admin path. `App.test.tsx`, `useAuth.test.tsx`, and `Navbar.test.tsx` include source guards for the provider boundary, token context contract, and Navbar auth-context consumption. No frontend tests were run per instruction.
 
 ### F1592: MEDIUM — ErrorBoundary retry doesn't force tree remount
-- **Status**: OPEN
+- **Status**: SOURCE_FIXED / REGRESSION_GUARD_ADDED / FRONTEND_VERIFICATION_PENDING (2026-06-15 04:10 UTC)
 - **Component**: `frontend/src/components/ErrorBoundary.tsx` lines 46-48, `frontend/src/App.tsx` line 769
 - **Category**: Error Handling / UX
 - **Description**: The `handleRetry` function simply resets the error state (`hasError: false, error: null`) without forcing the child component tree to re-mount. React reuses component instances when the key does not change, so retrying may re-trigger the same error if the root cause was stale state or a corrupted prop chain.
 - **Root Cause**: `handleRetry` clears error boundary state but does not force a tree remount.
+- **Fix evidence**: `ErrorBoundaryInner` now tracks `retryKey`, increments it from both `handleRetry` and `handleGoHome`, and wraps rendered children in `React.Fragment key={this.state.retryKey}` so clearing the error creates a fresh child subtree. `ErrorBoundary.test.ts` includes source guard assertions for the retry key contract. Verification is pending because no Jest, TypeScript, build, browser, or runtime command was run per instruction.
 
 ### F1593: MEDIUM — CartDrawer/SupportWidget outside per-route error boundary
-- **Status**: OPEN
-- **Component**: `frontend/src/App.tsx` lines 769-771 and 824
+- **Status**: SOURCE_FIXED / REGRESSION_GUARD_ADDED / FRONTEND_VERIFICATION_PENDING (2026-06-17 18:24 UTC)
+- **Component**: `frontend/src/App.tsx`, `frontend/src/App.test.tsx`
 - **Category**: Error Handling / UX
 - **Description**: `CartDrawer` and `SupportWidget` are rendered outside the inner per-route `ErrorBoundary`. They are inside the outer `ErrorBoundary` which uses `window.location.href` for its home redirect, causing a full page reload. If the CartDrawer throws, the user loses their entire SPA state and is redirected to `/`.
 - **Root Cause**: Floating overlay components are outside the granular per-route error boundary.
+- **Fix evidence**: `SupportWidgetBoundary` was replaced with shared `FloatingOverlayBoundary`, which renders the supplied local fallback, resets on a changed open-request key, and reports `componentDidCatch` through `reportNonBlockingError(...)` instead of console/page-level handling. `LazyCartDrawerHost` now wraps `LazyCartDrawer` in `FloatingOverlayBoundary` with a null fallback, while `LazySupportWidgetHost` uses the same boundary with the launcher fallback. `App.test.tsx` source guards enforce the diagnostics path and require both floating overlay hosts to remain inside the boundary. Verification is pending because no Jest, TypeScript, build, browser, or runtime command was run per instruction.
 
 ### F1594: MEDIUM — Checkout submit guard has micro-task gap for duplicate submission
-- **Status**: OPEN
-- **Component**: `frontend/src/pages/Checkout.tsx` lines 971-1090
+- **Status**: SOURCE_FIXED / REGRESSION_GUARD_ADDED / FRONTEND_VERIFICATION_PENDING (2026-06-17 19:14 UTC)
+- **Component**: `frontend/src/pages/Checkout.tsx`, `frontend/src/pages/Checkout.test.tsx`
 - **Category**: Race Condition / UX
 - **Description**: The `handleSubmit` function uses both a `submittingRef.current` guard (line 972) and `setSubmitting(true)` (line 1005). The ref guard is checked synchronously before `submittingRef.current = true` is set at line 1004. While this is synchronous (so not a true race condition in single-threaded JS), the pattern is fragile — any future refactoring that introduces an `await` before line 1004 would create a real race.
 - **Root Cause**: Guard and flag-set are not co-located. Consider setting `submittingRef.current = true` immediately at the top of the function.
+- **Fix evidence**: `handleSubmit` now sets `submittingRef.current = true` immediately after the guard and before any cart/order/payment preparation work, and releases it in `finally` after the loading state is cleared. The adjacent checkout payment actions now also use `paymentRetryingRef` and `paymentSimulatingRef` synchronous latches around payment retry and simulated payment flows, closing the same duplicate-click gap for payment creation and simulation. `Checkout.test.tsx` adds source guards for submit, retry, and simulation latch ordering. Verification is pending because no Jest, TypeScript, build, browser, or runtime command was run per instruction.
 
 ### F1595: MEDIUM — OrderTracking.refreshTrackedOrder missing unmount cleanup
 - **Status**: SOURCE_FIXED / TARGETED_JEST_AND_TSC_PASS — Covered by F2676 and earlier OrderTracking abort-guard work. `refreshTrackedOrder` now uses an abortable `orderApi.track(...)` call, checks mounted/aborted state before updating order, items, restricted-detail, and return fields, suppresses auto-refresh warning toasts, and component unmount aborts active refresh requests.
@@ -9264,32 +9524,36 @@ Multi-dimensional source review across: security, race conditions, state managem
 - **Root Cause**: `refreshTrackedOrder` lacks the `mountedRef` check that other async operations in the codebase use.
 
 ### F1596: MEDIUM — Cart goCheckout captures stale selectedItems closure
-- **Status**: OPEN
+- **Status**: SOURCE_FIXED / REGRESSION_GUARD_EXPANDED / FRONTEND_VERIFICATION_PENDING
 - **Component**: `frontend/src/pages/Cart.tsx` lines 588-606
 - **Category**: Stale Closure / Data Correctness
 - **Description**: The `goCheckout` function captures `selectedItems` from the `useMemo` at line 508-511, but is not wrapped in `useCallback`. If a user changes selection and immediately clicks checkout, the stale snapshot of `selectedItems` from the last render could be used for the checkout redirect.
 - **Root Cause**: `goCheckout` is a plain function that closes over whatever `selectedItems` was at last render.
+- **Follow-up 2026-06-18 02:53 UTC**: Fixed in `Cart.tsx`. `goCheckout` is now a `useCallback` with `selectedItems` in its dependency list and derives `checkoutItems` from that latest selected snapshot. A new `checkoutSubmittingRef` latch is set before `setCheckoutSubmitting(true)` and before `flushPendingQuantityUpdates(checkoutItems)`, then released in `finally`, preventing duplicate checkout submissions while state updates are pending. `CartCheckoutFlow.test.tsx` includes a source guard for the callback shape, selected item derivation, latch ordering, and dependency list. No frontend tests were run per instruction.
 
 ### F1597: MEDIUM — Checkout payment polling leaks network request on unmount
-- **Status**: OPEN
+- **Status**: SOURCE_FIXED / REGRESSION_GUARD_EXPANDED / FRONTEND_VERIFICATION_PENDING
 - **Component**: `frontend/src/pages/Checkout.tsx` lines 1209-1235
 - **Category**: Resource Leak / React Lifecycle
 - **Description**: The payment status polling uses `window.setTimeout` with an API call inside. While React state updates are guarded by a `disposed` flag, the actual network request (`paymentApi.getLatestByOrder`) is not cancellable via `AbortController`. The request fires and resolves even after unmount.
 - **Root Cause**: API call inside `setTimeout` is not cancellable.
+- **Follow-up 2026-06-18 02:53 UTC**: Fixed in API client and Checkout UI. `paymentApi.getLatestByOrder(...)` now accepts `ApiRequestOptions` and passes `signal` to authenticated and guest latest-payment requests. The submitted-payment refresh timeout creates an abort controller, passes its signal into the latest-payment call, ignores aborted results/errors, and aborts in cleanup. The pending-payment polling interval now creates a per-request abort controller, passes the signal into the latest-payment call, clears it after completion, ignores aborted completions, and aborts the active request when the effect cleans up. `Checkout.test.tsx` guards signal propagation and cleanup. No frontend tests were run per instruction.
 
 ### F1598: MEDIUM — Guest order status disclosure without authentication
-- **Status**: OPEN
+- **Status**: SOURCE_FIXED / REGRESSION_GUARD_EXPANDED / BACKEND_FRONTEND_VERIFICATION_PENDING
 - **Component**: `src/main/java/com/example/shop/service/OrderService.java` lines 1002-1018
 - **Category**: Security / Information Disclosure
 - **Description**: The `trackOrder` method returns a `buildRestrictedAccountOrderTrackingSummary` for non-guest orders that includes `order.getStatus()`, `order.getCreatedAt()`, `order.getShippedAt()`, and `order.getCompletedAt()`. An attacker who knows an order number and associated email can determine the order status without authenticating.
 - **Root Cause**: `trackOrder` returns sensitive order status information before verifying whether the requester is the actual account holder.
+- **Follow-up 2026-06-18 03:08 UTC**: Fixed in backend and storefront. `buildRestrictedAccountOrderTrackingSummary(...)` now returns only the already-supplied order number plus `guestOrder=false`; it no longer copies id, status, created time, shipped time, or completed time. `OrderTracking.tsx` now disables auto-refresh for `detailsRestricted` account-order responses and renders status/created/tracking fields only in the `canShowFullTrackingDetails` branch. `OrderInputNormalizationServiceTest` and `OrderTracking.test.tsx` include regression guards. No backend/frontend tests were run per instruction.
 
 ### F1599: MEDIUM — Payment creation endpoint allows unauthenticated access to registered-user orders
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / REGRESSION_GUARD_PRESENT / BACKEND_VERIFICATION_PENDING
 - **Component**: `src/main/java/com/example/shop/config/SecurityConfig.java` lines 91-92; `src/main/java/com/example/shop/controller/PaymentController.java` lines 64-87
 - **Category**: Security / Authorization
 - **Description**: The `POST /payments` endpoint is `permitAll()`. The `assertCanCreatePayment` allows access if `guestOrderAccessMatches(order, email, orderNo)` succeeds. For registered-user orders (non-guest), knowing an order number and guest email can create a payment record against another user's order.
 - **Root Cause**: Guest credential validation does not distinguish between guest orders and registered-user orders.
+- **Follow-up 2026-06-18 03:08 UTC**: The report is stale against current source. Although `POST /payments` remains anonymous for guest checkout, controller authorization delegates anonymous credential checks to `orderService.guestOrderAccessMatches(order, email, orderNo)`, and that service method returns false unless `isGuestOrder(order)` is true before email/order-number matching. Existing guards cover both layers: `PaymentControllerSimulationAccessTest.anonymousRegisteredOrderCannotCreatePaymentEvenWhenEmailMatchesOrder` rejects registered-order anonymous payment creation, and `OrderInputNormalizationServiceTest.guestAccessRejectsRegisteredOrderEvenWhenEmailAndOrderNumberMatch` guards the service contract. No backend tests were run per instruction.
 
 ### F1600: MEDIUM — JWT tokens stored in localStorage vulnerable to XSS theft
 - **Status**: OPEN
@@ -9299,74 +9563,84 @@ Multi-dimensional source review across: security, race conditions, state managem
 - **Root Cause**: Using localStorage for sensitive auth credentials instead of httpOnly cookies.
 
 ### F1601: MEDIUM — ProductServiceImpl pagination totalElements inflated by post-filtering
-- **Status**: OPEN
+- **Status**: OPEN / PAGINATION_REWORK_REQUIRED / SOURCE_TRIAGED (2026-06-18 03:16 UTC)
 - **Component**: `src/main/java/com/example/shop/service/impl/ProductServiceImpl.java` lines 242-258
 - **Category**: Data Correctness / Pagination
 - **Description**: The JPA query returns a `Page<Product>` whose `totalElements` reflects the database-level count. Results are then post-filtered in Java via `matchesPublicListQuery`, but the `PageImpl` returned uses the unfiltered `page.getTotalElements()`. This means the reported total count is higher than actual, causing empty trailing pages and incorrect pagination controls.
 - **Root Cause**: Database specification and Java post-filter apply different predicates. Total count should be computed from post-filtered results.
+- **Follow-up 2026-06-18 03:16 UTC**: Source triage confirmed this should not be "fixed" by replacing `page.getTotalElements()` with the current page's filtered item count; that would remove inflation on the current page but undercount later matching products and create a different pagination bug. The remaining mismatch is tied to keyword/category post-filter semantics (`matchesNormalizedKeyword(...)` over normalized product/category text versus broader JPA `LIKE`/category-id predicates). A proper fix needs a pagination rework that either fully aligns the JPA specification with the Java matcher or performs filtered pagination before slicing. No backend tests were run per instruction.
 
 ### F1602: MEDIUM — Recursive category traversal has no cycle detection or depth limit
-- **Status**: OPEN
+- **Status**: SOURCE_FIXED / REGRESSION_GUARD_ADDED / BACKEND_VERIFICATION_PENDING
 - **Component**: `src/main/java/com/example/shop/service/impl/ProductServiceImpl.java` lines 3146-3149
 - **Category**: Reliability / Denial of Service
 - **Description**: The `collectCategoryIds` method recursively traverses child categories without cycle detection or depth limit. A circular parent reference in the database would cause infinite recursion and a `StackOverflowError`, crashing the request thread.
 - **Root Cause**: Missing `Set<Long> visited` parameter and depth guard in the recursive method.
+- **Resolution**: `collectCategoryIds(...)` now uses an insertion-ordered visited set and the recursive overload stops on null ids, over-depth traversal, or already-seen ids before querying children. `ProductCategoryTreeDepthContractTest` guards the depth limit and visited-set recursion contract.
 
 ### F1603: MEDIUM — LIKE wildcard injection in specification refinement filters
-- **Status**: OPEN
+- **Status**: SOURCE_FIXED / REGRESSION_GUARD_ADDED / BACKEND_VERIFICATION_PENDING (2026-06-17 20:53 UTC)
 - **Component**: `src/main/java/com/example/shop/service/impl/ProductServiceImpl.java` lines 495-497
 - **Category**: Input Validation / Search Manipulation
 - **Description**: The `addSpecificationRefinementPredicates` method builds LIKE predicates using `petSize`, `material`, and `color` values. Unlike keyword search terms that pass through `normalizeSearchText` (which strips non-alphanumeric characters), refinement values retain `%` and `_` LIKE metacharacters. An attacker can pass `color=%` to match all products, bypassing the intended filter.
 - **Root Cause**: Inconsistent sanitization between search keywords and refinement filter values.
+- **Resolution**: Refinement and color predicates now route values through `containsLike(...)`, which escapes `%`, `_`, and the configured escape marker before passing the pattern and `LIKE_ESCAPE_CHAR` to CriteriaBuilder. `ProductFilteringQueryContractTest` guards the helper usage and rejects raw wildcard concatenation in those predicate builders.
 
 ### F1604: MEDIUM — Duplicate product name check loads entire category into memory
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / REGRESSION_GUARD_PRESENT / BACKEND_VERIFICATION_PENDING
 - **Component**: `src/main/java/com/example/shop/service/impl/ProductServiceImpl.java` line 2181
 - **Category**: Performance / Scalability
 - **Description**: The `validateImportProductNameDoesNotDuplicateExisting` method calls `productRepository.findByCategoryId(categoryId)` which returns ALL products in a category without pagination. For categories with thousands of products, this loads a large result set into memory. Called once per imported CSV row, a 1000-row import issues 1000 unbounded queries.
 - **Root Cause**: Should use targeted lookup (e.g., `findByCategoryIdAndNameIgnoreCase`) or apply a LIMIT clause.
+- **Follow-up 2026-06-18 03:16 UTC**: The report is stale against current source. `validateImportProductNameDoesNotDuplicateExisting(...)` now calls `existsByCategoryIdAndNameIgnoreCase(categoryId, normalizedName)` for new rows and `existsByCategoryIdAndNameIgnoreCaseAndIdNot(categoryId, normalizedName, currentId)` for updates; it no longer loads all products in a category for duplicate checks. `ProductImportNameDuplicateQueryContractTest` and `ProductImportServiceTest` guard the targeted-query behavior and explicitly reject `findByCategoryId(...)` in this path. No backend tests were run per instruction.
 
 ### F1605: MEDIUM — Registration reveals which fields are already registered (user enumeration)
-- **Status**: OPEN
+- **Status**: SOURCE_FIXED / REGRESSION_GUARD_EXPANDED / BACKEND_VERIFICATION_PENDING
 - **Component**: `src/main/java/com/example/shop/service/UserService.java` lines 100-106
 - **Category**: Security / Information Disclosure
 - **Description**: The `register` method throws distinct error messages for each conflicting field: "Phone number already registered", "Username already registered", "Email already registered". An attacker can systematically probe the registration endpoint to enumerate valid email addresses, phone numbers, and usernames.
 - **Root Cause**: Each uniqueness check throws a field-specific message. Should use a single generic message.
+- **Follow-up 2026-06-18 03:16 UTC**: Fixed in `UserService.register(...)`. Username, email, and phone duplicate conflicts now throw the shared `REGISTRATION_ACCOUNT_DETAILS_UNAVAILABLE_MESSAGE` instead of field-specific messages, while the guest-email verification claim path remains explicit. `AuthController` recognizes the new generic service-layer duplicate condition and continues returning `ACCOUNT_DETAILS_UNAVAILABLE` for public registration. `UserServiceTest` and `AuthControllerRegisterTest` cover the generic duplicate-registration message. No backend tests were run per instruction.
 
 ### F1606: MEDIUM — createNotification does not sanitize HTML content
-- **Status**: OPEN
+- **Status**: SOURCE_FIXED / REGRESSION_GUARD_EXPANDED / BACKEND_VERIFICATION_PENDING
 - **Component**: `src/main/java/com/example/shop/service/NotificationService.java` lines 68-79
 - **Category**: Security / Stored XSS
 - **Description**: The `createNotification` method accepts raw `title` and `message` parameters and persists them without sanitization. In contrast, `broadcastToCustomers` explicitly sanitizes HTML via `normalizeMessage` and `sanitizeHtml`. If notification content is rendered in a web frontend without additional escaping, this creates a stored XSS vector.
 - **Root Cause**: The `createNotification` path was not given the same sanitization treatment as `broadcastToCustomers`.
+- **Follow-up 2026-06-18 03:16 UTC**: Fixed in `NotificationService.createNotification(...)`. Single-recipient TEXT notifications now normalize title and message through the existing HTML sanitizer and strip remaining tags before persistence, removing script blocks, unsafe attributes, and `javascript:` links from the stored TEXT payload. `NotificationServiceTest.createNotificationStoresSanitizedPlainTextContent` guards the single-notification path. No backend tests were run per instruction.
 
 ### F1607: MEDIUM — IpBlacklistFilter leaks resolved client IP in error response
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / REGRESSION_GUARD_PRESENT / BACKEND_VERIFICATION_PENDING
 - **Component**: `src/main/java/com/example/shop/config/IpBlacklistFilter.java` lines 46-48
 - **Category**: Security / Information Disclosure
 - **Description**: When an IP is blocked, the filter includes `payload.put("ipAddress", ipAddress)` in the JSON response body. Returning the resolved IP to the client exposes internal IP resolution logic and confirms to the attacker which IP address is being tracked, helping them craft bypass strategies.
 - **Root Cause**: Response should not reveal the resolved IP address.
+- **Follow-up 2026-06-18 03:16 UTC**: The report is stale against current source. `IpBlacklistFilter` now builds a uniform forbidden payload through `ApiErrorResponseFactory` and writes it without adding `ipAddress`, `blockedUntil`, or block-entry details. `IpBlacklistFilterTest.blockedResponseDoesNotExposeResolvedIpOrBlockDetails` guards the response body. No backend tests were run per instruction.
 
 ### F1608: MEDIUM — CouponService grant method runs 1000 users in single transaction
-- **Status**: OPEN
+- **Status**: SOURCE_FIXED / REGRESSION_GUARD_EXPANDED / BACKEND_VERIFICATION_PENDING
 - **Component**: `src/main/java/com/example/shop/service/CouponService.java` lines 232-260
 - **Category**: Performance / Database Locking
 - **Description**: The `grant` method iterates over up to 1000 users within a single `@Transactional` boundary. Each iteration performs SELECT, UPDATE, and INSERT — 3000+ database operations in one transaction. This holds database locks for an extended period, causing lock contention and risking transaction timeout.
 - **Root Cause**: Should process in smaller transactional chunks (e.g., 50-100 users per transaction).
+- **Follow-up 2026-06-18 03:16 UTC**: Fixed in `CouponService.grant(...)`. The public grant method no longer owns a single method-level transaction for the full recipient list; it validates the coupon and recipient IDs up front, then chunks normalized recipients by `admin.coupons.grant-transaction-batch-size` (default 100, hard cap 200) and executes each chunk through `executeGrantBatchInTransaction(...)` using `TransactionTemplate`. The inner batch path preserves the existing atomic `couponRepository.incrementClaimedQuantity(couponId) == 0` sold-out guard and duplicate-key decrement compensation. `CouponClaimStockRaceContractTest` and `LegacyRaceConditionControllerContractTest` guard the new batch helper and keep the atomic stock update contract. No backend tests were run per instruction.
 
 ### F1609: MEDIUM — Navbar auth state from useAuth not reflected in Navbar renders
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / REGRESSION_GUARD_PRESENT / FRONTEND_VERIFICATION_PENDING
 - **Component**: `frontend/src/components/Navbar.tsx` lines 119-121
 - **Category**: State Management / UX
 - **Description**: When a user logs in via the login modal, the Navbar doesn't immediately reflect the new auth state because it reads from localStorage directly rather than subscribing to the useAuth context. The user must navigate to a new page to see the updated Navbar.
 - **Root Cause**: Navbar does not consume useAuth() context for reactive auth state updates.
+- **Follow-up 2026-06-18 03:16 UTC**: The report is stale against current source. `App.tsx` wraps the route shell in `AuthProvider`, `useAuth` exposes and synchronizes `token`, and `Navbar.tsx` consumes `const { user: authUser, token, logout: logoutAuthSession } = useAuth();` instead of using localStorage as the render source. `App.test.tsx`, `useAuth.test.tsx`, and `Navbar.test.tsx` include source guards for the provider, token state, and Navbar logout/auth wiring. No frontend tests were run per instruction.
 
 ### F1610: MEDIUM — OrderTracking auto-track triggered by URL parameter without confirmation
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / REGRESSION_GUARD_EXPANDED / FRONTEND_VERIFICATION_PENDING
 - **Component**: `frontend/src/pages/OrderTracking.tsx` lines 237-255
 - **Category**: Security / Auto-tracking
 - **Description**: The `useEffect` reads `orderNo` from URL search parameters. If an attacker sends a link with a known `orderNo` to a victim, and the victim has a stale `guestSupportContext` in sessionStorage with the same `orderNo`, the victim's browser will auto-lookup the order without explicit consent.
 - **Root Cause**: Auto-tracking is triggered when URL `orderNo` matches stored context, but URL is attacker-controlled.
+- **Follow-up 2026-06-18 03:16 UTC**: The report is stale against current source. The URL/search-parameter effect sanitizes `email`/`guestEmail` out of the URL, optionally stores a normalized guest support context, and pre-fills the AntD form with `form.setFieldsValue(...)`, but it does not call `trackOrder(...)` or otherwise submit the lookup. `OrderTracking.test.tsx` now includes a source guard that slices the URL prefill effect and rejects `trackOrder(` / `void trackOrder` inside that effect. No frontend tests were run per instruction.
 
 ### F1611: LOW — Checkout postal code field missing format validation
 - **Status**: SOURCE_FIXED / TARGETED_JEST_AND_TSC_PASS — Covered by F2675. Checkout now validates new-address postal codes against the selected region with CN/MX/US/GB-specific rules plus a fallback pattern, normalizes postal code input, and blocks guest checkout until an invalid regional postal code is corrected.
@@ -9376,410 +9650,579 @@ Multi-dimensional source review across: security, race conditions, state managem
 - **Root Cause**: Missing `trim` validator or format pattern for postal code input.
 
 ### F1612: MEDIUM — Checkout selectedCartItemIds frozen after first render
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / REGRESSION_GUARD_EXPANDED / FRONTEND_VERIFICATION_PENDING
 - **Component**: `frontend/src/pages/Checkout.tsx` lines 354-356
 - **Category**: Stale Data / UX
 - **Description**: `selectedCartItemIds` is memoized with `useMemo(() => readCheckoutCartItemIds(), [])` — empty dependency array. If the user navigates back to the cart, changes selection, and returns to checkout, the stale IDs from the first mount will be used because the memo never recomputes.
 - **Root Cause**: Empty dependency array on `useMemo` for a sessionStorage read.
+- **Follow-up 2026-06-18 03:16 UTC**: The report is stale against current source. `Checkout.tsx` reads `const selectedCartItemIds = readCheckoutCartItemIds();` inside the checkout bootstrap effect, then uses that fresh snapshot for both guest cart filtering and authenticated cart item filtering during the load. `Checkout.test.tsx` now rejects `useMemo(() => readCheckoutCartItemIds(), [])` and confirms the load effect reads selected IDs before requesting cart/address data. No frontend tests were run per instruction.
 
 ### F1613: MEDIUM — Checkout guest draft cleared at order-creation instead of payment-completion
-- **Status**: OPEN
+- **Status**: SOURCE_FIXED / REGRESSION_GUARD_EXPANDED / FRONTEND_VERIFICATION_PENDING
 - **Component**: `frontend/src/pages/Checkout.tsx` lines 440-461
 - **Category**: Data Loss / UX
 - **Description**: The guest checkout draft is cleared after successful order submission (line 1032). If the payment creation fails and the user sees the "order created, payment pending" screen, navigating away and coming back will NOT have the draft restored. The guest cannot easily resume their checkout with pre-filled fields.
 - **Root Cause**: Guest draft is cleared at order-creation time rather than at payment-completion time.
+- **Follow-up 2026-06-18 03:16 UTC**: Fixed in `Checkout.tsx`. `handleSubmit(...)` no longer calls `removeSessionStorageItem(CHECKOUT_GUEST_DRAFT_KEY)` after order creation and before `paymentApi.create(...)`; guest drafts now survive payment creation failures alongside the pending order/idempotency recovery snapshot. A dedicated payment-status effect removes `checkoutGuestDraft` only when `guestPaymentEmail` is present and `paymentStatus` normalizes to `PAID`. `CartCheckoutFlow.test.tsx` guards draft retention when payment creation fails, and `Checkout.test.tsx` guards the submit-path/paid-cleanup source contract. No frontend tests were run per instruction.
 
 ### F1614: LOW — Cart updateQuantity error handling has unhandled fetchCartItems in catch
-- **Status**: OPEN
+- **Status**: SOURCE_FIXED / REGRESSION_GUARD_EXPANDED / FRONTEND_VERIFICATION_PENDING
 - **Component**: `frontend/src/pages/Cart.tsx` lines 249-272
 - **Category**: Error Handling / Robustness
 - **Description**: The debounced quantity sync has a `throw err` on the catch path inside a `setTimeout` callback. More importantly, if `fetchCartItems()` inside the catch block also throws (e.g., network down), that error is unhandled and propagates as an unhandled promise rejection.
 - **Root Cause**: `fetchCartItems()` inside the catch block has no error handling of its own.
+- **Follow-up 2026-06-18 03:16 UTC**: Fixed in `Cart.tsx`. The current quantity sync path already routes timer failures through `useCartQuantitySync`, and `Cart.handleQuantitySyncError(...)` now wraps its recovery `fetchCartItems()` call in a nested `try/catch`; if refresh also fails, it is reported through `reportNonBlockingError('Cart.handleQuantitySyncError.fetchCartItems', refreshError)` instead of escaping the error handler. `CartCheckoutFlow.test.tsx` guards the nested catch/reporting contract. No frontend tests were run per instruction.
 
 ### F1615: LOW — Navbar badge refresh fires 5 concurrent API calls on every mount
-- **Status**: OPEN
+- **Status**: SOURCE_FIXED / REGRESSION_GUARD_EXPANDED / FRONTEND_VERIFICATION_PENDING
 - **Component**: `frontend/src/components/Navbar.tsx` lines 361-520
 - **Category**: Performance / Excessive API Calls
 - **Description**: The Navbar's main `useEffect` for badge refresh creates multiple event listeners and fires API calls for cart, notifications, wishlist, coupons, and stock alerts on every token change. The `queueIdleRefresh` pattern uses staggered timeouts (650ms, 1100ms, 1400ms, 1700ms, 1900ms), firing 5 concurrent API requests on every mount.
 - **Root Cause**: Multiple independent API calls spawned in a single effect without batching or request coalescing.
+- **Follow-up 2026-06-18 03:16 UTC**: Fixed in `Navbar.tsx`. Authenticated mount now schedules one `queueIdleRefresh(refreshAccountBadgeCounts, 650)` task, and `refreshAccountBadgeCounts` awaits cart, unread notification, wishlist, coupon, and stock-alert refreshes sequentially with disposed checks between calls. The existing debounced event listeners still refresh only the relevant badge after cart/notification/wishlist/coupon/stock-alert events. `Navbar.test.tsx` guards the single initial idle task and rejects reintroducing separate authenticated mount tasks for each badge. No frontend tests were run per instruction.
 
 ### F1616: LOW — Support admin read endpoints not audit-logged
-- **Status**: OPEN
+- **Status**: SOURCE_FIXED / REGRESSION_GUARD_ADDED / BACKEND_VERIFICATION_PENDING (2026-06-18 03:39 UTC)
 - **Component**: `src/main/java/com/example/shop/controller/SupportController.java` lines 187-207
 - **Category**: Security / Audit Trail
 - **Description**: Admin support read endpoints (`getSupportSessions`, `getSupportMessages`, `getSupportSummary`, `getSupportUnreadCount`) do not call `auditLogService.record()`. All write operations record audit events. This creates a blind spot where admin access to sensitive customer support data leaves no audit trail.
 - **Root Cause**: Audit logging was added to write operations but not to read operations.
+- **Fix evidence**: `SupportController` now records success/failure audit entries around authorized admin support read service calls for session list, summary, message history, and unread count endpoints. Metadata avoids raw search text and message content, keeping only low-sensitivity filter presence and pagination/cursor state. `SupportControllerAdminResponseTest.adminReadEndpointsWriteSuccessAuditLogs` guards the four success actions, and `adminReadEndpointWritesFailureAuditWhenServiceThrows` guards failure auditing before rethrow.
+- **Verification**: Source-only inspection and focused diff review; no backend Maven/JUnit, frontend Jest, TypeScript, build, browser/Playwright, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1617: LOW — Guest support message content not normalized on frontend
-- **Status**: OPEN
+- **Status**: SOURCE_FIXED / REGRESSION_GUARD_ADDED / FRONTEND_VERIFICATION_PENDING (2026-06-18 03:42 UTC)
 - **Component**: `frontend/src/api/index.ts` lines 2686-2692
 - **Category**: Security / Input Sanitization
 - **Description**: The `sendGuestMessage` function passes `content` as `String(content || '').slice(0, 4000)` without applying `normalizeTextParam` or stripping control characters. All other user-facing text inputs use `normalizeTextParam` which strips control characters. While the backend handles sanitization, the frontend provides no defense-in-depth.
 - **Root Cause**: Inconsistent sanitization between guest and authenticated message paths.
+- **Fix evidence**: `supportApi.sendGuestMessage(...)` now sends `content: normalizeSupportMessageContent(content)` instead of raw `String(...).slice(...)`. The new helper reuses `normalizeMultilineTextParam(...)` with a 4000-character cap, preserving newlines while stripping other control characters. The authenticated customer REST send and admin support reply REST helper were moved to the same normalizer to avoid path divergence. `frontend/src/api/index.test.ts` guards account, guest, and admin support message payload normalization and rejects the old raw guest content path.
+- **Verification**: Source-only inspection and focused diff review; no frontend Jest, TypeScript, build, browser/Playwright, backend Maven/JUnit, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1618: LOW — Guest order tracking IP blacklist triggered on wrong-credential attempts
-- **Status**: OPEN
+- **Status**: SOURCE_FIXED / REGRESSION_GUARD_ADDED / BACKEND_VERIFICATION_PENDING (2026-06-18 03:48 UTC)
 - **Component**: `src/main/java/com/example/shop/controller/OrderController.java` lines 101-114
 - **Category**: Security / Rate Limiting
 - **Description**: The `trackOrder` endpoint calls `ipBlacklistService.recordLoginFailure` when `findTrackableOrder` throws `IllegalArgumentException`. The same exception is thrown for both "order not found" and "email doesn't match" cases. Legitimate users who mistype their email get blacklisted. Successful tracking requests are not rate-limited at all.
 - **Root Cause**: No differentiation between error types and no rate limiting on successful requests.
+- **Fix evidence**: `OrderController.trackOrder(...)` now delegates directly to `orderService.trackOrder(...)` and returns the response without catching `IllegalArgumentException` to call `ipBlacklistService.recordLoginFailure(...)`. Ordinary guest order tracking credential errors therefore remain request errors, not login-failure blacklist signals. Current `RateLimitService.endpointLimitFor(...)` already maps `POST /orders/track` to the `orders:guest-lookup` bucket; `RateLimitServiceTest.orderTrackPostUsesDedicatedGuestLookupRateLimit` guards that successful and failed lookup traffic shares the dedicated per-client limit. `OrderControllerGuestAfterSaleAccessTest.guestTrackingCredentialFailureDoesNotRecordLoginFailure` guards the removed blacklist side effect.
+- **Verification**: Source-only inspection and focused diff review; no backend Maven/JUnit, frontend Jest, TypeScript, build, browser/Playwright, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1619: LOW — In-memory product search cache thundering herd on eviction
-- **Status**: OPEN
+- **Status**: FIXED (CURRENT_SOURCE_COVERED / REGRESSION_GUARD_PRESENT)
+- **Maintainer Note (2026-06-15)**: Current `ProductServiceImpl` no longer clears the full `productSearchCache` on capacity pressure; `cacheSearchResult` now calls `evictOldestSearchCacheEntry()` before inserting and keeps unrelated entries. `ProductSearchServiceTest.searchCacheCapacityEvictsSingleOldEntryInsteadOfClearingAllEntries()` covers the no-full-clear behavior, and `productSaveInvalidatesMatchingSearchCacheEntriesWithoutFullClear()` covers targeted invalidation.
 - **Component**: `src/main/java/com/example/shop/service/impl/ProductServiceImpl.java` lines 3247-3249
 - **Category**: Performance / Cache Stampede
 - **Description**: When the `productSearchCache` reaches its maximum entry count, `getCachedProducts` calls `productSearchCache.clear()`, evicting all entries at once. Under concurrent load, multiple threads can simultaneously observe the cache as full, all call `clear()`, and then all re-populate from the database.
 - **Root Cause**: Should use an LRU eviction policy instead of bulk `clear()`.
 
 ### F1620: LOW — Raw exception messages returned to clients for IllegalArgumentException
-- **Status**: OPEN
+- **Status**: SOURCE_FIXED / REGRESSION_GUARD_ADDED / BACKEND_VERIFICATION_PENDING (2026-06-18 03:55 UTC)
 - **Component**: `src/main/java/com/example/shop/config/GlobalApiExceptionHandler.java` line 141
 - **Category**: Security / Information Disclosure
 - **Description**: The `resolveBadRequestMessage` method falls through to `exception.getMessage()` for any exception type not explicitly handled. Any unexpected `IllegalArgumentException` from a library could leak internal details such as class names, SQL fragments, or internal state values to the client.
 - **Root Cause**: Catch-all should use a generic message for untrusted exception types.
+- **Fix evidence**: `resolveBadRequestMessage(...)` now delegates generic exception messages through `safeBusinessExceptionMessage(...)`, which only allows sanitized `IllegalArgumentException` / `IllegalStateException` text when the top stack frame is under `com.example.shop.`. External/library exceptions now return `Bad request`, and `SENSITIVE_ERROR_DETAIL` also rejects fully qualified Java class-name patterns. `GlobalApiExceptionHandlerTest.badRequestFiltersExternalIllegalArgumentMessages` guards an external Hibernate-origin `IllegalArgumentException` and verifies the raw message is not exposed.
+- **Verification**: Source-only inspection and focused diff review; no backend Maven/JUnit, frontend Jest, TypeScript, build, browser/Playwright, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1621: LOW — Password policy lacks complexity requirements
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / REGRESSION_GUARD_EXPANDED / BACKEND_FRONTEND_VERIFICATION_PENDING (2026-06-18 04:00 UTC)
 - **Component**: `src/main/java/com/example/shop/service/UserService.java` lines 399-412
 - **Category**: Security / Authentication
 - **Description**: The `assertStrongPassword` method only requires minimum 8 characters, at least one letter and one digit. It does not require special characters, does not check against common password lists, and does not enforce diversity across character classes. `Character.isLetter()` accepts any Unicode letter.
 - **Root Cause**: Minimal password policy. Should require at least 3 of 4 character classes and check against common passwords.
+- **Triage evidence**: Current `UserService` no longer matches the reported minimal policy. It defines `PASSWORD_MIN_CHARS = 12`, `PASSWORD_MAX_CHARS = 128`, a `COMMON_PASSWORDS` set, `COMMON_PASSWORDS.contains(password.trim().toLowerCase(Locale.ROOT))`, and `passwordCharacterClassCount(password) < 3` over lowercase, uppercase, digit, and non-whitespace symbol classes. Existing `UserServiceTest` already rejects `Password1234` as common and `lowercase1234` as too few character classes; update-password coverage verifies weak new passwords are rejected before old-password lookup. Frontend `passwordPolicy.ts` mirrors the same 12-128, common-password, and 3-of-4 rules and is used by registration, forgot-password reset, and profile password-change pages. Added a backend source guard to prevent policy regression.
+- **Verification**: Source-only inspection and focused diff review; no backend Maven/JUnit, frontend Jest, TypeScript, build, browser/Playwright, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1684: MEDIUM — Public /users/create-admin endpoint with no bootstrap token minimum length
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / REGRESSION_GUARD_PRESENT / BACKEND_VERIFICATION_PENDING (2026-06-18 03:54 UTC)
 - **Component**: `src/main/java/com/example/shop/controller/UserController.java` + `src/main/java/com/example/shop/config/UserBootstrapInitializer.java`
 - **Category**: Security / Endpoint Hardening
 - **Description**: The `/users/create-admin` endpoint is open to the public when no admin exists. While `UserBootstrapInitializer` enforces a 32-character token at startup, the controller itself has no minimum length check. If the initializer is bypassed or disabled, a weak token could be accepted. Defense-in-depth requires the controller to also validate token strength.
+- **Triage evidence**: Current `UserController.assertAdminBootstrapToken(...)` already performs the requested defense-in-depth check inside the controller: it rejects blank `admin.bootstrap-token`, normalizes the configured token, rejects weak configured tokens through `AdminBootstrapTokenPolicy.isStrongConfiguredToken(normalizedConfiguredToken)`, and only then compares against `X-Bootstrap-Token` with `constantTimeEquals(...)`. `AdminBootstrapTokenPolicy` enforces `MIN_BOOTSTRAP_TOKEN_LENGTH = 32`, rejects placeholder/weak values, requires at least eight distinct characters, and fails startup when a configured token is weak. Existing tests cover controller weak-token rejection before `registerAdmin(...)`, policy startup rejection, policy wiring in `UserController`, and the narrow `POST /users/create-admin` permit-all route contract.
+- **Verification**: Source-only inspection and focused searches; no backend Maven/JUnit, frontend Jest, TypeScript, build, browser/Playwright, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1685: MEDIUM — WebConfig CORS allowedHeaders("*") with allowCredentials(true)
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / REGRESSION_GUARD_EXPANDED / BACKEND_VERIFICATION_PENDING (2026-06-18 03:54 UTC)
 - **Component**: `src/main/java/com/example/shop/config/WebConfig.java`
 - **Category**: Security / CORS Configuration
 - **Description**: The CORS configuration uses `allowedHeaders("*")` combined with `allowCredentials(true)`. While `allowedOriginPatterns("*")` is used instead of `allowedOrigins("*")` (which would conflict with credentials), the wildcard headers is still overly permissive. Should enumerate only the headers the application actually uses (Authorization, Content-Type, etc.).
+- **Triage evidence**: Current `WebConfig.addCorsMappings(...)` already uses `.allowedHeaders(Arrays.asList(...).toArray(new String[0]))` with an explicit allowlist: `Authorization`, `Content-Type`, `Accept`, `Accept-Language`, `X-Requested-With`, `X-Request-Id`, `X-Correlation-Id`, `X-Bootstrap-Token`, and `Idempotency-Key`. `SecurityConfig.corsConfigurationSource()` also uses an explicit `configuration.setAllowedHeaders(Arrays.asList(...))` list, and `SecurityConfigCorsTest.corsRequestHeadersUseAllowlist` asserts the runtime configuration does not contain `*`. Added `SecurityConfigCorsTest.mvcCorsRequestHeadersUseAllowlist` to guard the MVC `WebConfig` path against wildcard reintroduction.
+- **Verification**: Source-only inspection, focused wildcard-header search, and diff review; no backend Maven/JUnit, frontend Jest, TypeScript, build, browser/Playwright, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1686: LOW — Admin controllers lack class-level @PreAuthorize
-- **Status**: OPEN
+- **Status**: SOURCE_HARDENED / REGRESSION_GUARD_ADDED / BACKEND_VERIFICATION_PENDING (2026-06-18 03:54 UTC)
 - **Component**: `src/main/java/com/example/shop/controller/AdminSupportController.java`, `AdminProductController.java`, etc.
 - **Category**: Security / Defense-in-Depth
 - **Description**: Admin controllers rely on method-level `@PreAuthorize` annotations. If a new endpoint is added without the annotation, it becomes publicly accessible. A class-level `@PreAuthorize("hasRole('ADMIN')")` as defense-in-depth would ensure all admin endpoints require admin role by default.
+- **Fix evidence**: Current source has `SecurityConfig` enforcing `.antMatchers("/admin/**").hasRole("ADMIN")`, and pure admin controllers such as `AdminController`, `AdminBugReportController`, `AdminConfigCenterController`, `AdminSystemController`, `AdminLogManagementController`, `AdminAlertController`, `AdminIpBlacklistController`, `AdminRegistryController`, and `AdminTrafficControlController` already carry class-level `@PreAuthorize("hasRole('ADMIN')")`. The mixed public/admin `SupportController` could not safely receive a class-level admin guard because it also serves public and authenticated customer support endpoints, so every `/admin/support/**` method now has method-level `@PreAuthorize("hasRole('ADMIN')")` in addition to the existing support-specific permission checks. `SupportControllerAdminResponseTest.adminSupportEndpointsHaveRolePreAuthorizeGuards` guards all ten admin support mappings.
+- **Verification**: Source-only inspection, focused searches, and diff review; no backend Maven/JUnit, frontend Jest, TypeScript, build, browser/Playwright, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1687: HIGH — No tests exist for AdminBugReport feature
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / REGRESSION_GUARD_PRESENT / VERIFICATION_PENDING_BY_POLICY (2026-06-18 03:54 UTC)
 - **Component**: `src/main/java/com/example/shop/controller/AdminBugReportController.java`, `src/test/java/`
 - **Category**: Test Coverage / Missing Tests
 - **Description**: The AdminBugReport feature has zero test coverage — no backend controller/service tests and no frontend component/page tests. This is a complete CRUD feature with admin-only access control, data validation, audit logging, and duplicate detection, all untested.
+- **Triage evidence**: Current source contains dedicated AdminBugReport backend and frontend tests. `src/test/java/com/example/shop/controller/AdminBugReportControllerTest.java` guards the admin route, class-level role guard, read/write/status/scan permissions, service delegation, and audit records. `src/test/java/com/example/shop/service/AdminBugReportServiceTest.java` covers summary aggregation, list/detail explicit projections, zero-based pagination, status/note update behavior, and update failure handling. `src/test/java/com/example/shop/controller/AdminRequestValidationContractTest.java` covers `AdminBugReportRequest`, `AdminBugReportStatusRequest`, and `AdminBugReport` validation. Frontend `frontend/src/pages/BugManagement.test.ts` covers the admin page UX/accessibility/API source contracts, and `BugManagementTypeSafety.test.ts` guards typed error handling. The original "zero test coverage" finding is therefore stale.
+- **Verification**: Source-only inspection and focused searches; no backend Maven/JUnit, frontend Jest, TypeScript, build, browser/Playwright, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1688: MEDIUM — DTO @Size limits more permissive than business limits
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / REGRESSION_GUARD_EXPANDED / BACKEND_VERIFICATION_PENDING (2026-06-18 04:05 UTC)
 - **Component**: `src/main/java/com/example/shop/dto/AdminBugReportRequest.java`
 - **Category**: Data Validation / Inconsistent Limits
 - **Description**: DTO allows `@Size(max = 200)` for title and `@Size(max = 10000)` for description, but `BugReportService.validateRequest()` enforces 160/4000. The DTO validation passes first, then the service rejects. Users see confusing error messages. DTO limits should match or be tighter than business limits.
+- **Triage evidence**: Current `AdminBugReportRequest` already uses `@Size(max = 160)` for `title` and `@Size(max = 4000)` for `description`; the reported 200/10000 DTO limits are no longer present. `AdminBugReportService.normalizeFields(...)` enforces the same 160/4000 limits through `requiredText(request.getTitle(), 160, "Title is required")` and `requiredMultilineText(request.getDescription(), 4000, "Description is required")`. `AdminRequestValidationContractTest.adminBugReportRequestMatchesServiceTextLimits` now guards the exact DTO boundaries and the service source alignment.
+- **Verification**: Source-only diff review and focused source inspection; no backend Maven/JUnit, frontend Jest, TypeScript, build, browser/Playwright, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1689: MEDIUM — AdminBugReportRequest.description lacks @NotBlank at DTO level
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / REGRESSION_GUARD_EXPANDED / BACKEND_VERIFICATION_PENDING (2026-06-18 04:05 UTC)
 - **Component**: `src/main/java/com/example/shop/dto/AdminBugReportRequest.java`
 - **Category**: Data Validation / Missing Annotation
 - **Description**: The `description` field has `@Size(max=10000)` but no `@NotBlank`. Blank descriptions pass DTO validation and are caught later by `validateRequest()`. Should add `@NotBlank` for consistent early validation.
+- **Triage evidence**: Current `AdminBugReportRequest.description` already has `@NotBlank` and `@Size(max = 4000)`, so blank descriptions fail Bean Validation before service handling. Existing `AdminRequestValidationContractTest.adminBugReportRequestRejectsBlankTitleAndOversizedFields` guards blank-description rejection, and the expanded `adminBugReportRequestMatchesServiceTextLimits` guard keeps the DTO and service description length in sync.
+- **Verification**: Source-only diff review and focused source inspection; no backend Maven/JUnit, frontend Jest, TypeScript, build, browser/Playwright, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1690: MEDIUM — Audit log metadata contains user-controlled data not HTML-encoded
-- **Status**: OPEN
-- **Component**: `src/main/java/com/example/shop/service/BugReportService.java`
+- **Status**: SOURCE_HARDENED / REGRESSION_GUARD_ADDED / BACKEND_VERIFICATION_PENDING (2026-06-18 04:08 UTC)
+- **Component**: `src/main/java/com/example/shop/controller/AdminBugReportController.java`
 - **Category**: Security / Stored XSS via Audit Logs
 - **Description**: Bug report title/description are stored in audit log metadata JSON. If an admin views audit logs in a web UI, the unsanitized user input could execute as HTML/JS. Should HTML-encode user-controlled strings before storing in audit metadata.
+- **Fix evidence**: Current bug-report audit metadata is built in `AdminBugReportController.metadata(...)` and includes `title`, `status`, `severity`, and `module`; `description` is not written to audit metadata in current source. The user-controlled `title` path now uses `safe(...)` with HTML entity encoding for `&`, `<`, `>`, `"`, and `'` after control-character normalization and truncation. `AdminBugReportControllerTest.adminBugReportAuditMetadataHtmlEncodesUserControlledTitle` guards that malicious title markup is encoded and not stored raw in audit metadata. The existing `SecurityAuditLogManagement.tsx` audit table renders metadata as React text, but the backend now stores encoded metadata as defense-in-depth.
+- **Verification**: Source-only diff review and focused source inspection; no backend Maven/JUnit, frontend Jest, TypeScript, build, browser/Playwright, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1691: LOW — No rate limiting on bug creation endpoint
-- **Status**: OPEN
-- **Component**: `src/main/java/com/example/shop/controller/AdminBugReportController.java`
+- **Status**: SOURCE_FIXED / REGRESSION_GUARD_ADDED / BACKEND_VERIFICATION_PENDING (2026-06-18 04:12 UTC)
+- **Component**: `src/main/java/com/example/shop/service/RateLimitService.java`, `src/main/resources/application.properties`, `src/main/java/com/example/shop/service/ConfigCenterService.java`, `deploy/backend.env.example`
 - **Category**: Security / Abuse Prevention
 - **Description**: The POST `/api/admin/bug-reports` endpoint has no rate limiting. A compromised admin account could flood the system with bug reports. Should add rate limiting or use the existing `@RateLimited` annotation pattern.
+- **Fix evidence**: Current source uses `POST /admin/bugs` for admin bug creation and applies request throttling centrally via `RateLimitFilter` / `RateLimitService` rather than endpoint annotations. `RateLimitService.endpointLimitFor(...)` now maps `POST /admin/bugs` to a dedicated `admin:bugs:create` per-client bucket with `traffic.rate-limit.admin-bug-create-per-minute` defaulting to 20 requests per minute; the endpoint also remains subject to the global admin bucket. The new runtime key is exposed in `application.properties`, Config Center defaults, and `deploy/backend.env.example`. `RateLimitServiceTest.adminBugCreateEndpointHasDedicatedPerClientLimit` and `adminBugCreateEndpointLimitIsExposedInRuntimeDefaults` guard the behavior and configuration surface.
+- **Verification**: Source-only diff review and focused source inspection; no backend Maven/JUnit, frontend Jest, TypeScript, build, browser/Playwright, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1692: LOW — No file upload support for bug report attachments
-- **Status**: OPEN
-- **Component**: `src/main/java/com/example/shop/controller/AdminBugReportController.java`
+- **Status**: SOURCE_FIXED / REGRESSION_GUARD_ADDED / BACKEND_FRONTEND_VERIFICATION_PENDING (2026-06-18 04:21 UTC)
+- **Component**: `src/main/java/com/example/shop/controller/AdminBugReportController.java`, `src/main/java/com/example/shop/service/AdminBugAttachmentService.java`, `frontend/src/pages/BugManagement.tsx`, `frontend/src/api/index.ts`
 - **Category**: Feature Gap / Usability
 - **Description**: Bug reports only accept text attachment URLs, not actual file uploads. Users must host screenshots externally. Should support file upload via multipart form data.
+- **Fix evidence**: Admin bug reports now support first-party screenshot/image uploads while retaining the existing `attachmentUrls` persistence model. `AdminBugAttachmentService` reuses the local image storage pipeline to validate, sanitize, and store JPG/PNG/GIF uploads under configurable `admin.bugs.attachment-upload-dir` with 8 MB and 10000x10000 defaults. `AdminBugReportController.uploadAttachment(...)` exposes `POST /admin/bugs/attachments` with BUGS_WRITE permission and returns `attachmentUrl`; `getAttachment(...)` serves `/admin/bugs/attachments/{filename}` only after bug read-permission checks, avoiding a public `/uploads/**` attachment directory for potentially sensitive bug screenshots. `BugManagement.tsx` adds an Upload screenshot action that calls `adminApi.uploadBugAttachment(...)` and appends the returned protected URL to `attachmentUrls`. Regression guards cover controller route/permissions, storage options, multipart API behavior, and page upload flow.
+- **Verification**: Source-only diff review and focused source inspection; no backend Maven/JUnit, frontend Jest, TypeScript, build, browser/Playwright, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1693: HIGH — Cart.tsx duplicate checkout button aria-labels causing test failures
-- **Status**: OPEN
+- **Status**: SOURCE_FIXED / REGRESSION_GUARD_ADDED / FRONTEND_VERIFICATION_PENDING (2026-06-18 04:24 UTC)
 - **Component**: `frontend/src/pages/Cart.tsx`
 - **Category**: Accessibility / Source Bug
 - **Description**: Cart.tsx renders two buttons with `aria-label="Checkout:"` — one in the sticky header bar and one in the cart summary. This causes `getByRole('button', { name: /Checkout:/ })` to find multiple elements, failing 8 tests. Either remove the aria-label from one button or make them unique (e.g., "Checkout (header)" vs "Checkout").
+- **Fix evidence**: The cart hero/top action now uses `cartTopNextActionLabel = ${t('pages.cart.nextActionEyebrow')}: ${cartNextActionLabel}` for its `aria-label` and `title`, so the top action no longer starts with `Checkout:` when the next action is checkout. The cart summary checkout button still uses `checkoutActionLabel`, keeping the intended `Checkout: {selected summary}, {amount}` accessible name for tests and screen-reader users. `CartCheckoutFlow.test.tsx` now guards the distinct top-action label and rejects the old `${cartNextActionLabel} (top action)` pattern.
+- **Verification**: Source-only diff review and focused source inspection; no frontend Jest, TypeScript, build, browser/Playwright, backend Maven/JUnit, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1694: HIGH — Checkout.tsx postalCode required but never populated from saved addresses
-- **Status**: OPEN
-- **Component**: `frontend/src/pages/Checkout.tsx`
+- **Status**: CURRENT_SOURCE_COVERED / REGRESSION_GUARD_EXPANDED / FRONTEND_BACKEND_VERIFICATION_PENDING (2026-06-18 04:26 UTC)
+- **Component**: `frontend/src/pages/Checkout.tsx`, `src/main/java/com/example/shop/dto/UserAddressResponse.java`, `frontend/src/types.ts`
 - **Category**: Functional Bug / Data Loss
 - **Description**: When a user selects a saved address, `setPostalCode(address.postalCode || "")` is called, but `address.postalCode` is undefined because the address object from the API doesn't include this field. The postalCode field is required for order submission, so orders from saved addresses will fail validation.
+- **Triage evidence**: Current backend address responses include `postalCode`: `UserAddressResponse.from(...)` calls `response.setPostalCode(address.getPostalCode())`, and the frontend `UserAddress` type declares `postalCode?: string`. Current `Checkout.tsx` no longer uses a standalone `setPostalCode(address.postalCode || "")` path; selecting a saved address derives `const savedPostalCode = getSavedAddressPostalCode(address)` and sets `postalCode: savedPostalCode || undefined` along with region/detail fields. It also validates saved addresses through `isCompleteSavedAddress(...)` and builds submitted saved-address strings from `selectedSavedAddressPostalCode`. `Checkout.test.tsx` now explicitly guards this hydration path and rejects the stale setter pattern.
+- **Verification**: Source-only diff review and focused source inspection; no frontend Jest, TypeScript, build, browser/Playwright, backend Maven/JUnit, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1695: HIGH — CartCheckoutFlow.test.tsx missing regionData mock
-- **Status**: OPEN
+- **Status**: FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED / FRONTEND_VERIFICATION_PENDING (2026-06-18 04:31 UTC)
 - **Component**: `frontend/src/pages/CartCheckoutFlow.test.tsx`
 - **Category**: Test Bug / Missing Mock
 - **Description**: The test mocks `regionData.getRegions` returning an empty array, but the actual module uses `regionData.countries` as the default export. The mock structure doesn't match the actual module API, causing region dropdown to not populate, which cascades into city/state validation failures.
+- **Resolution**: The stale API wording was reconciled against current source: `Checkout.tsx` imports and awaits `loadRegionData(language)`. `CartCheckoutFlow.test.tsx` now imports `loadRegionData`, mocks `../regionData` with `loadRegionData: jest.fn()`, and seeds `checkoutRegionOptions` in `beforeEach` so checkout Cascader options are available without dynamic region-data imports.
+- **Regression guard**: Added `keeps checkout flow tests aligned with async region data, payment channel, and popconfirm timer setup`, which requires the current `loadRegionData` mock and default fixture wiring.
+- **Verification**: Source-only diff review and focused source inspection; no frontend Jest, TypeScript, build, browser/Playwright, backend Maven/JUnit, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1696: MEDIUM — CartCheckoutFlow.test.tsx paymentApi.getChannels not mocked in beforeEach
-- **Status**: OPEN
+- **Status**: FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED / FRONTEND_VERIFICATION_PENDING (2026-06-18 04:31 UTC)
 - **Component**: `frontend/src/pages/CartCheckoutFlow.test.tsx`
 - **Category**: Test Bug / Missing Mock
 - **Description**: `paymentApi.getChannels` is not mocked in `beforeEach`, so it defaults to a resolved promise with no data. When the Checkout page tries to display payment methods, it gets no options, causing tests that interact with payment selection to fail.
+- **Resolution**: `beforeEach` now calls `setPaymentChannels('STRIPE', 'Stripe')`, giving every checkout-flow test a valid default payment-channel response while preserving per-test overrides such as `MERCADO_PAGO`.
+- **Regression guard**: The new source guard requires the default `setPaymentChannels('STRIPE', 'Stripe')` setup to remain in the shared fixture.
+- **Verification**: Source-only diff review and focused source inspection; no frontend Jest, TypeScript, build, browser/Playwright, backend Maven/JUnit, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1697: MEDIUM — CartCheckoutFlow.test.tsx guest draft region values don't match regionData
-- **Status**: OPEN
+- **Status**: FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED / FRONTEND_VERIFICATION_PENDING (2026-06-18 04:31 UTC)
 - **Component**: `frontend/src/pages/CartCheckoutFlow.test.tsx`
 - **Category**: Test Bug / Data Mismatch
 - **Description**: Guest checkout draft uses `region: "Beijing"` and `city: "Beijing"` but the mock `regionData` may not contain these values. The draft restoration tries to match against available regions, causing validation errors.
+- **Resolution**: Guest/authenticated checkout drafts now use shared region-path constants (`guestCheckoutRegionPath`, `mexicoCheckoutRegionPath`, `memberCheckoutRegionPath`) that are represented in the mocked `checkoutRegionOptions`, keeping restored form values aligned with the Cascader options and postal-code validation expectations.
+- **Regression guard**: The new source guard requires `guestCheckoutRegionPath` and `region: guestCheckoutRegionPath` usage so the guest draft cannot drift back to unrelated inline values.
+- **Verification**: Source-only diff review and focused source inspection; no frontend Jest, TypeScript, build, browser/Playwright, backend Maven/JUnit, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1698: MEDIUM — CartCheckoutFlow.test.tsx Popconfirm with fake timers may not render
-- **Status**: OPEN
+- **Status**: FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED / FRONTEND_VERIFICATION_PENDING (2026-06-18 04:31 UTC)
 - **Component**: `frontend/src/pages/CartCheckoutFlow.test.tsx`
 - **Category**: Test Bug / Timer Interaction
 - **Description**: The "place order" test uses `jest.useFakeTimers()` then clicks a Popconfirm button. Ant Design Popconfirm uses internal timeouts for animation, which may not fire correctly with fake timers, causing the confirmation button to never appear.
+- **Resolution**: The current affected path is cart delete/bulk-delete `Popconfirm` inside quantity-sync fake-timer tests. `clickOpenPopconfirmOk()` now tracks whether the test enabled fake timers and advances only bounded portal/animation delays (`0, 50, 100, 100` ms), staying below the 350ms quantity debounce; real-timer tests use `waitFor` instead of calling `jest.advanceTimersByTime(...)`.
+- **Regression guard**: The new source guard requires the fake-timer activity flag and bounded Popconfirm timer loop, preventing a return to unguarded fake-timer advancement.
+- **Verification**: Source-only diff review and focused source inspection; no frontend Jest, TypeScript, build, browser/Playwright, backend Maven/JUnit, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1699: MEDIUM — Cart.tsx catch block silently swallows errors
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / REGRESSION_GUARD_ADDED / FRONTEND_VERIFICATION_PENDING (2026-06-18 04:33 UTC)
 - **Component**: `frontend/src/pages/Cart.tsx`
 - **Category**: Error Handling / User Feedback
 - **Description**: Multiple catch blocks in Cart.tsx (lines 774-776, 826-828, 877-879, 919-921) use `console.error` without any user-facing notification. Users performing cart operations see no feedback when API calls fail.
+- **Triage evidence**: Current `Cart.tsx` contains no `console.error`. User-triggered cart failures now surface feedback: load failures call `message.error(errorMessage)`, quantity sync failures call `message.error(getApiErrorMessage(...))`, remove/save/restore/bulk-remove/add failures call `message.error(...)`, and checkout quantity-flush failure reports diagnostics through `reportNonBlockingError('Cart.goCheckout', error)` plus `message.warning(t('pages.cart.checkoutSyncFailed'))`.
+- **Regression guard**: Added `PageErrorHandling.test.ts`, which rejects `console.error` / console-only catch blocks and requires representative Cart user-facing error feedback calls.
+- **Verification**: Source-only diff review and focused source inspection; no frontend Jest, TypeScript, build, browser/Playwright, backend Maven/JUnit, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1700: MEDIUM — Checkout.tsx catch block silently swallows errors
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / REGRESSION_GUARD_ADDED / FRONTEND_VERIFICATION_PENDING (2026-06-18 04:33 UTC)
 - **Component**: `frontend/src/pages/Checkout.tsx`
 - **Category**: Error Handling / User Feedback
 - **Description**: Catch blocks in Checkout.tsx (lines 706-708, 721-723, 1021-1023, 1049-1051) use `console.error` without user-facing error messages. Failed payment/order operations provide no user feedback.
+- **Triage evidence**: Current `Checkout.tsx` contains no `console.error`. Checkout load/address failures use `showCheckoutMessage('warning'/'error', ...)`, region load failures show `pages.checkout.regionLoadFailed`, payment-channel failures set a visible payment-channel error, order creation failures call `showCheckoutMessage('error', getApiErrorMessage(...))`, payment-create failures set `paymentCreateError` and show pending-payment warning, retry/simulation failures call `showCheckoutMessage('error', ...)`, and background polling/parser paths use `reportNonBlockingError(...)`.
+- **Regression guard**: Added `PageErrorHandling.test.ts`, which rejects `console.error` / console-only catch blocks and requires representative Checkout load/order/payment failure feedback paths.
+- **Verification**: Source-only diff review and focused source inspection; no frontend Jest, TypeScript, build, browser/Playwright, backend Maven/JUnit, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1701: MEDIUM — Profile.tsx catch block silently swallows errors
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / REGRESSION_GUARD_ADDED / FRONTEND_VERIFICATION_PENDING (2026-06-18 04:33 UTC)
 - **Component**: `frontend/src/pages/Profile.tsx`
 - **Category**: Error Handling / User Feedback
 - **Description**: Multiple catch blocks in Profile.tsx (lines 1205-1207, 1232-1234, 1253-1255, 1275-1277, 1528-1530, 1562-1564, 1607-1609, 1627-1629, 1648-1650) silently swallow errors with only `console.error`. Profile operations (update avatar, change password, manage addresses, sync orders) provide no user feedback on failure.
+- **Triage evidence**: Current `Profile.tsx` contains no `console.error`. Profile update/email-code/password/address/order/payment/return operations now call `message.error(getApiErrorMessage(...))` or localized `message.error(...)` on failure; non-blocking background refresh/polling/preview paths report diagnostics through `reportNonBlockingError(...)` and keep UI state recoverable.
+- **Regression guard**: Added `PageErrorHandling.test.ts`, which rejects `console.error` / console-only catch blocks and requires representative Profile password/address/payment failure feedback paths.
+- **Verification**: Source-only diff review and focused source inspection; no frontend Jest, TypeScript, build, browser/Playwright, backend Maven/JUnit, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1702: MEDIUM — Home.tsx ProductTile defined inside render function
-- **Status**: OPEN
+- **Status**: SOURCE_FIXED / REGRESSION_GUARD_EXPANDED / FRONTEND_VERIFICATION_PENDING (2026-06-18 04:35 UTC)
 - **Component**: `frontend/src/pages/Home.tsx`
 - **Category**: Performance / React Anti-Pattern
 - **Description**: The `ProductTile` component is defined inside the Home component's render function. Every Home re-render creates a new component reference, causing React to unmount and remount all product tiles instead of updating them. This destroys scroll position, triggers unnecessary image reloads, and causes visible flicker. Should be extracted to a module-level component with memo().
+- **Resolution**: Current `Home.tsx` no longer defines `ProductTile` in render; it imports the module-level `HomeProductCard` component from `frontend/src/components/HomeProductCard.tsx`. This pass completed the memoization requirement by exporting `React.memo(HomeProductCard)` with `displayName = 'HomeProductCard'`, preserving stable component identity and enabling React to skip unchanged product-card rerenders.
+- **Regression guard**: `HomeProductCard.test.ts` now verifies `Home.tsx` imports `HomeProductCard`, rejects inline `ProductTile` definitions, and requires the memoized default export contract.
+- **Verification**: Source-only diff review and focused source inspection; no frontend Jest, TypeScript, build, browser/Playwright, backend Maven/JUnit, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1703: MEDIUM — Profile.tsx N+1 order/payment sync queries
-- **Status**: OPEN
+- **Status**: SOURCE_FIXED / REGRESSION_GUARD_EXPANDED / BACKEND_FRONTEND_VERIFICATION_PENDING (2026-06-18 04:42 UTC)
 - **Component**: `frontend/src/pages/Profile.tsx`
 - **Category**: Performance / Network
 - **Description**: Order and payment sync functions in Profile.tsx make individual API calls for each item instead of batch operations. With many orders/payments, this creates excessive network requests. Should use batch sync endpoints.
+- **Resolution**: Added `PaymentService.syncPaymentsByOrderId(...)` and `POST /payments/order/{orderId}/sync`, which authorizes the order once and returns the customer-safe payment list after best-effort provider sync of all payments for that order. `frontend/src/api/index.ts` now exposes `paymentApi.syncByOrder(orderId)`, and `Profile.syncPaymentReturnState(...)` uses that single call instead of `paymentApi.getByOrder(order.id)` plus `paymentApi.sync(payment.id)` inside a per-payment loop. The new endpoint is listed in payment info and covered by the existing `payment:sync` rate-limit bucket through `/payments/order/{id}/sync`.
+- **Regression guard**: Expanded `PaymentControllerCustomerResponseTest` for the batch sync DTO contract, `RateLimitServiceTest` for the order-batch sync path, `frontend/src/api/index.test.ts` for the new route, and `ProfileTypeSafety.test.ts` to require `paymentApi.syncByOrder(order.id)` while rejecting the old per-payment sync loop.
+- **Verification**: Source-only diff review and focused source inspection; no backend Maven/JUnit, frontend Jest, TypeScript, build, browser/Playwright, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1704: MEDIUM — AdminBugManagement.tsx columns not memoized
-- **Status**: OPEN
+- **Status**: SOURCE_FIXED / REGRESSION_GUARD_EXPANDED / FRONTEND_VERIFICATION_PENDING (2026-06-18 04:44 UTC)
 - **Component**: `frontend/src/pages/AdminBugManagement.tsx`
 - **Category**: Performance / React Optimization
 - **Description**: The `columns` array for the Ant Design Table is defined inside the component without `useMemo`. Each re-render creates new column references, causing the Table to re-render unnecessarily. Should wrap in `useMemo` with appropriate dependencies.
+- **Resolution**: Current source uses `frontend/src/pages/BugManagement.tsx` rather than `AdminBugManagement.tsx`. The table `columns` definition is now `useMemo<ColumnsType<AdminBugReport>>(() => [...], [...])`, and `openStatusEditor` is stabilized with `useCallback` so scan/status action renderers do not force a new columns array on unrelated state changes.
+- **Regression guard**: `BugManagement.test.ts` now verifies `openStatusEditor` is callback-stable, rejects the old `const columns: ColumnsType<AdminBugReport> = [` pattern, requires the memoized action-column source and dependencies, and keeps the Table bound to `columns={columns}`.
+- **Verification**: Source-only diff review and focused source inspection; no frontend Jest, TypeScript, build, browser/Playwright, backend Maven/JUnit, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1705: LOW — Home.tsx missing skeleton/loading states
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / REGRESSION_GUARD_EXPANDED / FRONTEND_VERIFICATION_PENDING (2026-06-18 04:45 UTC)
 - **Component**: `frontend/src/pages/Home.tsx`
 - **Category**: UX / Loading Experience
 - **Description**: Category list, flash deals, and countdown sections show no skeleton or loading placeholder while data is fetching. Users see empty space until content loads. Should show skeleton cards during loading.
+- **Triage evidence**: Current `Home.tsx` has an explicit `if (loading)` branch before the load-error/content branches. It renders `HeroSkeleton`, three hero-aside shimmer placeholders, `StatsStripSkeleton`, and `<ProductCardSkeleton count={8} />` inside an accessible `role="status"` / `aria-live="polite"` / `aria-busy="true"` loading container, so the page does not show empty category/deal/product space during initial fetch.
+- **Regression guard**: `HomeRenderMemo.test.ts` now guards the Home loading branch, skeleton imports, accessible loading semantics, hero aside shimmer placeholders, and product skeleton grid.
+- **Verification**: Source-only diff review and focused source inspection; no frontend Jest, TypeScript, build, browser/Playwright, backend Maven/JUnit, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1706: LOW — AdminBugManagement.tsx missing skeleton/loading states
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / REGRESSION_GUARD_PRESENT / FRONTEND_VERIFICATION_PENDING (2026-06-18 04:45 UTC)
 - **Component**: `frontend/src/pages/AdminBugManagement.tsx`
 - **Category**: UX / Loading Experience
 - **Description**: The bug reports table shows no loading indicator while data is being fetched. Should show a skeleton or spinner during loading.
+- **Triage evidence**: Current source uses `BugManagement.tsx`. It renders a permission-loading skeleton and a bug-list initial-loading skeleton, both with `role="status"`, `aria-live="polite"`, `aria-busy="true"`, localized loading labels, and `<Skeleton active paragraph={{ rows: 8 }} />`. The AntD table also receives `loading={loading}`, and expanded bug detail loading uses `Spin` with status/live/busy semantics.
+- **Regression guard**: Existing `BugManagement.test.ts` already verifies the permission skeleton, bug-list skeleton, table/detail loading state, and accessible loading attributes.
+- **Verification**: Source-only diff review and focused source inspection; no frontend Jest, TypeScript, build, browser/Playwright, backend Maven/JUnit, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1707: LOW — AdminUserGrowthChart.tsx missing aria-label
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / REGRESSION_GUARD_EXPANDED / FRONTEND_VERIFICATION_PENDING (2026-06-18 04:48 UTC)
 - **Component**: `frontend/src/pages/AdminUserGrowthChart.tsx`
 - **Category**: Accessibility / Missing Label
 - **Description**: The chart container lacks `aria-label` for screen readers. Should add `aria-label="User growth chart"` or similar.
+- **Triage evidence**: The standalone `AdminUserGrowthChart.tsx` component no longer exists. Current admin dashboard user growth is represented as a labeled statistic card rather than an unlabeled chart. The remaining dashboard charts live in `AdminDashboard.tsx` and expose accessible image labels.
+- **Regression guard**: `AdminDashboardTypeSafety.test.ts` now rejects the stale `AdminUserGrowthChart` component name and guards the current labeled chart contract; `AdminDashboard.test.tsx` already queries rendered chart image names.
+- **Verification**: Source-only diff review and focused source inspection; no frontend Jest, TypeScript, build, browser/Playwright, backend Maven/JUnit, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1708: LOW — AdminRevenueChart.tsx missing aria-label
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / REGRESSION_GUARD_EXPANDED / FRONTEND_VERIFICATION_PENDING (2026-06-18 04:48 UTC)
 - **Component**: `frontend/src/pages/AdminRevenueChart.tsx`
 - **Category**: Accessibility / Missing Label
 - **Description**: The chart container lacks `aria-label` for screen readers. Should add `aria-label="Revenue chart"` or similar.
+- **Triage evidence**: The standalone `AdminRevenueChart.tsx` component no longer exists. Current revenue/sales trend charting is the `TrendChartComponent` in `AdminDashboard.tsx`; its SVG is rendered with `role="img"` and `aria-label={labels.salesTrendChart}`, and `labels.salesTrendChart` is sourced from `pages.adminDashboard.salesTrendChart`.
+- **Regression guard**: Existing `AdminDashboard.test.tsx` verifies the rendered `Sales trend chart` image role/name after idle chart loading; `AdminDashboardTypeSafety.test.ts` now guards the source-level `role="img"` / `aria-label` contract and rejects the stale `AdminRevenueChart` name.
+- **Verification**: Source-only diff review and focused source inspection; no frontend Jest, TypeScript, build, browser/Playwright, backend Maven/JUnit, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1709: INFO — Cart.tsx hardcoded Chinese text in cart header
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / REGRESSION_GUARD_EXPANDED / FRONTEND_VERIFICATION_PENDING (2026-06-18 04:49 UTC)
 - **Component**: `frontend/src/pages/Cart.tsx`
 - **Category**: i18n / Hardcoded Text
 - **Description**: The cart header section may contain hardcoded Chinese text that bypasses the i18n system. Should use `t()` for all user-visible text.
+- **Triage evidence**: Focused Han-character scan of `Cart.tsx` returned no matches. Current cart header/hero/summary copy is built through `t('pages.cart...')`, `t('common...')`, and localized helpers.
+- **Regression guard**: `FrontendHardcodedI18n.test.ts` now includes `Cart.tsx` in the production no-Han source guard.
+- **Verification**: Source-only diff review and focused source inspection; no frontend Jest, TypeScript, build, browser/Playwright, backend Maven/JUnit, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1710: INFO — Profile.tsx hardcoded Chinese text in sync buttons
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / REGRESSION_GUARD_PRESENT / FRONTEND_VERIFICATION_PENDING (2026-06-18 04:49 UTC)
 - **Component**: `frontend/src/pages/Profile.tsx`
 - **Category**: i18n / Hardcoded Text
 - **Description**: Order/payment sync button labels may contain hardcoded Chinese text. Should use `t()` for consistency.
+- **Triage evidence**: Focused Han-character scan of `Profile.tsx` returned no matches. Current payment/order actions use localized keys such as `pages.profile.continuePay`, `pages.profile.refreshPayment`, `pages.profile.paymentReturnSyncFailed`, and related `pages.checkout...` labels.
+- **Regression guard**: `FrontendHardcodedI18n.test.ts` already included `Profile.tsx` in the production no-Han source guard.
+- **Verification**: Source-only diff review and focused source inspection; no frontend Jest, TypeScript, build, browser/Playwright, backend Maven/JUnit, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1711: INFO — AdminBugManagement.tsx hardcoded Chinese text in filters
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / REGRESSION_GUARD_EXPANDED / FRONTEND_VERIFICATION_PENDING (2026-06-18 04:49 UTC)
 - **Component**: `frontend/src/pages/AdminBugManagement.tsx`
 - **Category**: i18n / Hardcoded Text
 - **Description**: Filter labels and status options may contain hardcoded Chinese text. Should use `t()` for all user-visible text.
+- **Triage evidence**: Current source uses `BugManagement.tsx` rather than `AdminBugManagement.tsx`; focused Han-character scan of `BugManagement.tsx` returned no matches. Filter/status/module/priority labels are generated through `tx(...)`, which delegates to `t('pages.bugAdmin...')` with localized fallbacks.
+- **Regression guard**: `FrontendHardcodedI18n.test.ts` now includes `BugManagement.tsx` in the production no-Han source guard, and `BugManagement.test.ts` already guards localized priority/filter label usage.
+- **Verification**: Source-only diff review and focused source inspection; no frontend Jest, TypeScript, build, browser/Playwright, backend Maven/JUnit, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1712: INFO — Home.tsx hardcoded Chinese text in category section
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / REGRESSION_GUARD_EXPANDED / FRONTEND_VERIFICATION_PENDING (2026-06-18 04:49 UTC)
 - **Component**: `frontend/src/pages/Home.tsx`
 - **Category**: i18n / Hardcoded Text
 - **Description**: Category section headers may contain hardcoded Chinese text. Should use `t()` for all user-visible text.
+- **Triage evidence**: Focused Han-character scan of `Home.tsx` returned no matches. Category section labels use `t('home.categories')`, `t('home.viewAll')`, and localized category helpers such as `getLocalizedCategoryValue(...)`.
+- **Regression guard**: `FrontendHardcodedI18n.test.ts` now includes `Home.tsx` in the production no-Han source guard; existing Home i18n tests continue to guard translated trust/homepage copy.
+- **Verification**: Source-only diff review and focused source inspection; no frontend Jest, TypeScript, build, browser/Playwright, backend Maven/JUnit, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1715: HIGH — AdminBugReportController returns raw entity
-- **Status**: OPEN
+- **Status**: FIXED / RESPONSE_DTO_ADDED / SOURCE_GUARDED / BACKEND_FRONTEND_VERIFICATION_PENDING (2026-06-18 05:07 UTC)
 - **Component**: `AdminBugReportController.java`
 - **Category**: Security / Data Exposure
 - **Description**: All bug report API endpoints return `AdminBugReport` raw entity object, exposing internal fields (reporterId, fixedBy, regressionBy). Should use a dedicated response DTO.
+- **Fix evidence**: Added `AdminBugReportResponse` and changed `findById`, `create`, `update`, `updateStatus`, and `markScanned` to return DTOs. `AdminBugReportPageResponse` now wraps `List<AdminBugReportResponse>`. The response DTO omits `reporterId`, `fixedBy`, `regressionBy`, and the new internal `version` field; the frontend `AdminBugReport` type was narrowed to match.
+- **Regression guard**: `AdminBugReportControllerTest` guards controller response signatures, generic bad-request handling, and DTO serialization omissions. `BugManagement.test.ts` guards that frontend types do not reintroduce backend-only workflow fields.
+- **Verification**: Source-only diff review and focused source scans; no Maven/JUnit, Jest, TypeScript, build, browser/Playwright, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1716: MEDIUM — AdminBugReportService uses SELECT *
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / REGRESSION_GUARD_EXISTS / BACKEND_VERIFICATION_PENDING (2026-06-18 05:07 UTC)
 - **Component**: `AdminBugReportService.java`
 - **Category**: Security / Best Practice
 - **Description**: All queries use SELECT * which exposes all columns including future additions. Should use explicit column projection.
+- **Triage evidence**: Current source uses explicit `BUG_LIST_COLUMNS` and `BUG_DETAIL_COLUMNS` projections for list/detail reads; focused source scan found no `SELECT *` in `AdminBugReportService`.
+- **Regression guard**: `AdminBugReportServiceTest.searchUsesLightweightListProjectionInsteadOfSelectStar` and `findByIdUsesExplicitDetailProjectionForExpandedRows` guard the projections.
+- **Verification**: Source-only diff review and focused source scans; no Maven/JUnit, Jest, TypeScript, build, browser/Playwright, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1717: MEDIUM — AdminBugReportStatusRequest.status missing @NotBlank
-- **Status**: OPEN
+- **Status**: FIXED / VALIDATION_CONSTRAINT_ADDED / SOURCE_GUARDED / BACKEND_VERIFICATION_PENDING (2026-06-18 05:07 UTC)
 - **Component**: `AdminBugReportStatusRequest.java`
 - **Category**: Validation / Missing Constraint
 - **Description**: The status field on the request DTO has no validation annotation, allowing empty-string POST to /{id}/status to succeed as a silent no-op.
+- **Fix evidence**: Added `@NotBlank` to `AdminBugReportStatusRequest.status`. The optional `markScanned` request body remains optional; the stricter constraint applies to the validated status endpoint.
+- **Regression guard**: `AdminRequestValidationContractTest.adminBugReportStatusRequestRejectsOversizedStatusNotesAndAssignee` now also checks blank status rejection.
+- **Verification**: Source-only diff review and focused source scans; no Maven/JUnit, Jest, TypeScript, build, browser/Playwright, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1718: MEDIUM — Optimistic locking via WHERE status=? is fragile
-- **Status**: OPEN
+- **Status**: FIXED / VERSION_OPTIMISTIC_LOCKING_ADDED / SOURCE_GUARDED / MIGRATION_EXECUTION_PENDING (2026-06-18 05:07 UTC)
 - **Component**: `AdminBugReportService.java`
 - **Category**: Concurrency / Race Condition
 - **Description**: Status transitions use `WHERE status=?` instead of a version column for optimistic locking. Concurrent updates can silently overwrite each other.
+- **Fix evidence**: Added internal `version` field to `AdminBugReport`, `admin_bug_reports` schema definitions, and runtime `AdminBugReportSchemaConfig` column assurance. General update, status update, and scan update now increment `version` and use `WHERE id = ? AND version = ?`; stale updates return a reload-and-retry conflict message.
+- **Regression guard**: `AdminBugReportServiceTest.optimisticLockingUsesVersionColumnForBugMutations` guards service SQL and schema/config declarations; status update tests assert the old version argument is used.
+- **Verification**: Source-only diff review and focused source scans; no database migration execution, Maven/JUnit, Jest, TypeScript, build, browser/Playwright, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1719: MEDIUM — pageUrl allows arbitrary external URLs (SSRF)
-- **Status**: OPEN
+- **Status**: FIXED / URL_ORIGIN_ALLOWLISTED / SOURCE_GUARDED / BACKEND_FRONTEND_VERIFICATION_PENDING (2026-06-18 05:07 UTC)
 - **Component**: `AdminBugReportService.java`
 - **Category**: Security / SSRF
 - **Description**: The pageUrl field stores arbitrary external URLs with no domain allowlist, enabling SSRF amplification if the automated scanner fetches them.
+- **Fix evidence**: `AdminBugReportService.validateAllowedReferenceUrl` now accepts only site-relative paths or absolute `http/https` URLs whose origin matches `app.storefront-base-url`. `BugManagement.tsx` mirrors this with same-origin or site-relative page URL validation.
+- **Regression guard**: `AdminBugReportServiceTest.bugReferenceUrlsRejectExternalOriginsAndAttachmentOverflow` rejects external origins. `BugManagementPageUrlValidationContractTest` guards same-origin/relative frontend validation.
+- **Verification**: Source-only diff review and focused source scans; no Maven/JUnit, Jest, TypeScript, build, browser/Playwright, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1720: MEDIUM — No limit on attachmentUrls count
-- **Status**: OPEN
+- **Status**: FIXED / ATTACHMENT_URL_COUNT_LIMITED / SOURCE_GUARDED / BACKEND_FRONTEND_VERIFICATION_PENDING (2026-06-18 05:07 UTC)
 - **Component**: `AdminBugReportService.java`
 - **Category**: Security / Resource Abuse
 - **Description**: The attachmentUrls list has no size limit, allowing unbounded URL lists that could be exploited for SSRF amplification.
+- **Fix evidence**: Added a server-side cap of 20 non-empty attachment URL lines before accepting `attachmentUrls`; frontend upload append and manual form validation use the same limit.
+- **Regression guard**: `AdminBugReportServiceTest.bugReferenceUrlsRejectExternalOriginsAndAttachmentOverflow` checks overflow rejection. `BugManagement.test.ts` guards `MAX_BUG_ATTACHMENT_URL_COUNT`, upload append count checks, and form validation wiring.
+- **Verification**: Source-only diff review and focused source scans; no Maven/JUnit, Jest, TypeScript, build, browser/Playwright, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1721: LOW — update() DTO accepts silently-ignored status field
-- **Status**: OPEN
+- **Status**: FIXED / STATUS_MUTATION_REJECTED / SOURCE_GUARDED / BACKEND_VERIFICATION_PENDING (2026-06-18 05:07 UTC)
 - **Component**: `AdminBugReportController.java`
 - **Category**: API Design / Confusion
 - **Description**: The update endpoint's DTO includes a status field that is silently ignored. Misleading for API consumers.
+- **Fix evidence**: `AdminBugReportService` now rejects non-blank `status` values in standard create/update bug mutations with `Use the bug status endpoint to change status`, so the field can no longer be silently ignored.
+- **Regression guard**: `AdminBugReportServiceTest.bugMutationsRejectStatusFieldInsteadOfSilentlyIgnoringIt` covers create and update payloads that try to carry status.
+- **Verification**: Source-only diff review and focused source scans; no Maven/JUnit, Jest, TypeScript, build, browser/Playwright, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1722: LOW — Schema DDL runs on every application startup
-- **Status**: OPEN
+- **Status**: OPEN / MIGRATION_REWORK_REQUIRED / SOURCE_TRIAGED (2026-06-18 05:07 UTC)
 - **Component**: `AdminBugReportSchemaConfig.java`
 - **Category**: Operations / Migration
 - **Description**: DDL and information_schema queries run on every startup via @PostConstruct. Should use a proper migration tool (Flyway/Liquibase).
+- **Triage evidence**: Current `AdminBugReportSchemaConfig` uses an `ApplicationRunner` that creates the table, checks `information_schema`, and performs `ALTER TABLE`/`CREATE INDEX` on startup. Replacing this safely requires a migration ownership decision and rollout plan rather than a narrow source patch.
+- **Verification**: Source-only inspection; no database migration execution, Maven/JUnit, Jest, TypeScript, build, browser/Playwright, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1723: LOW — ensureColumn/ensureIndex uses fragile string concatenation
-- **Status**: OPEN
+- **Status**: OPEN / MIGRATION_REWORK_REQUIRED / SOURCE_TRIAGED (2026-06-18 05:07 UTC)
 - **Component**: `AdminBugReportSchemaConfig.java`
 - **Category**: Code Quality / Maintainability
 - **Description**: DDL generation uses string concatenation for column definitions and indexes. Safe now but fragile pattern.
+- **Triage evidence**: `ensureColumn` and `ensureIndex` still concatenate literal DDL fragments. Inputs are currently hardcoded, but removing the fragile pattern should be part of the same migration rework as F1722 rather than a cosmetic wrapper around startup DDL.
+- **Verification**: Source-only inspection; no database migration execution, Maven/JUnit, Jest, TypeScript, build, browser/Playwright, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1724: LOW — summary() executes 11+ separate queries
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / REGRESSION_GUARD_EXISTS / BACKEND_VERIFICATION_PENDING (2026-06-18 05:07 UTC)
 - **Component**: `AdminBugReportService.java`
 - **Category**: Performance / Query Optimization
 - **Description**: The summary endpoint fires 11+ COUNT(*) queries instead of a single conditional aggregation query.
+- **Triage evidence**: Current `summary()` uses one `queryForMap` with conditional aggregate expressions for status, severity, and scan due counts; stale `groupCount(...)` is not called by `summary()`.
+- **Regression guard**: `AdminBugReportServiceTest.summaryUsesSingleAggregateQueryForStatusSeverityAndScanCounts` verifies the single aggregate query and that `queryForList` is not used.
+- **Verification**: Source-only diff review and focused source scans; no Maven/JUnit, Jest, TypeScript, build, browser/Playwright, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1725: LOW — Keyword search uses LOWER() on TEXT columns
-- **Status**: OPEN
+- **Status**: OPEN / FULLTEXT_INDEX_REWORK_REQUIRED / SOURCE_TRIAGED (2026-06-18 05:07 UTC)
 - **Component**: `AdminBugReportService.java`
 - **Category**: Performance / Index
 - **Description**: Full-text keyword search wraps columns in LOWER(), preventing index usage and forcing full table scans.
+- **Triage evidence**: Current keyword filtering still uses `LOWER(...) LIKE ?` over text fields. A correct fix should pair query changes with an indexed/full-text search strategy and migration coverage; this was not folded into the narrower bug-report security/concurrency patch.
+- **Verification**: Source-only inspection; no database migration execution, Maven/JUnit, Jest, TypeScript, build, browser/Playwright, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1726: LOW — description missing @NotBlank on DTO
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / REGRESSION_GUARD_EXISTS / BACKEND_VERIFICATION_PENDING (2026-06-18 05:07 UTC)
 - **Component**: `AdminBugReportRequest.java`
 - **Category**: Validation / Inconsistency
 - **Description**: The description field lacks @NotBlank on the request DTO (enforced in service layer but not at Bean Validation).
+- **Triage evidence**: Current `AdminBugReportRequest.description` has `@NotBlank` and `@Size(max = 4000)`, and service normalization still uses `requiredMultilineText(..., "Description is required")`.
+- **Regression guard**: `AdminRequestValidationContractTest.adminBugReportRequestRejectsBlankTitleAndOversizedFields` and `adminBugReportRequestMatchesServiceTextLimits` cover blank and size validation.
+- **Verification**: Source-only diff review and focused source scans; no Maven/JUnit, Jest, TypeScript, build, browser/Playwright, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1727: LOW — Internal exception messages exposed in HTTP responses
-- **Status**: OPEN
+- **Status**: FIXED / GENERIC_BAD_REQUEST_RESPONSES / SOURCE_GUARDED / BACKEND_VERIFICATION_PENDING (2026-06-18 05:07 UTC)
 - **Component**: `AdminBugReportController.java`
 - **Category**: Security / Information Disclosure
 - **Description**: Exception messages from internal logic are returned directly in HTTP error responses, potentially leaking implementation details.
+- **Fix evidence**: `AdminBugReportController` now wraps `IllegalArgumentException` with fixed public messages such as `Invalid bug report request`, `Invalid bug report update`, `Invalid bug status update`, and `Invalid bug scan update`; internal exception text remains in audit logging.
+- **Regression guard**: `AdminBugReportControllerTest.adminBugReportControllerKeepsPermissionedWorkflowAndAuditContracts` asserts the old `e.getMessage()` response pattern is absent.
+- **Verification**: Source-only diff review and focused source scans; no Maven/JUnit, Jest, TypeScript, build, browser/Playwright, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1728: LOW — No rate limiting on bug report creation
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / REGRESSION_GUARD_EXISTS / BACKEND_VERIFICATION_PENDING (2026-06-18 05:07 UTC)
 - **Component**: `AdminBugReportController.java`
 - **Category**: Security / Abuse Prevention
 - **Description**: The bug report creation endpoint has no rate limiting, allowing potential abuse.
+- **Triage evidence**: Current `RateLimitService` maps `POST /admin/bugs` to a dedicated `admin:bugs:create` bucket backed by `traffic.rate-limit.admin-bug-create-per-minute`; runtime config templates include the default.
+- **Regression guard**: `RateLimitServiceTest.adminBugCreateUsesDedicatedRateLimit` and `adminBugCreateRateLimitDefaultsAreExposedInRuntimeTemplates` guard the route and default configuration.
+- **Verification**: Source-only diff review and focused source scans; no Maven/JUnit, Jest, TypeScript, build, browser/Playwright, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1729: CRITICAL — isAdminRole accepts any non-USER role as admin
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / REGRESSION_GUARD_EXPANDED / FRONTEND_VERIFICATION_PENDING (2026-06-18 05:07 UTC)
 - **Component**: `frontend/src/utils/roles.ts`
 - **Category**: Security / Authorization
 - **Description**: `isAdminRole()` returns true for any role that isn't "USER" — should use the explicit ADMIN_ROLES whitelist. A role like "MODERATOR" or "ANONYMOUS" would incorrectly grant admin access.
+- **Triage evidence**: Current `isAdminRole` uses `ADMIN_ROLES.includes(normalizeRole(role) as typeof ADMIN_ROLES[number])`, so only `ADMIN` and `SUPER_ADMIN` pass. It no longer treats arbitrary non-`USER` values as admin.
+- **Regression guard**: `roles.test.ts` covers `manager`, `ANONYMOUS`, and `MODERATOR` as non-admin and adds a source guard for the explicit whitelist implementation.
+- **Verification**: Source-only diff review and focused source scans; no frontend Jest, TypeScript, build, browser/Playwright, backend Maven/JUnit, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1730: HIGH — BugManagement handleStatusSave skips permission re-check
-- **Status**: OPEN
+- **Status**: FIXED / PERMISSION_RECHECK_ADDED / SOURCE_GUARDED / FRONTEND_VERIFICATION_PENDING (2026-06-18 05:07 UTC)
 - **Component**: `frontend/src/pages/BugManagement.tsx`
 - **Category**: Security / TOCTOU
 - **Description**: handleStatusSave does not re-verify user permissions before calling the API. The status could have been changed by another admin in the interim (TOCTOU window).
+- **Fix evidence**: `handleStatusSave` now derives `canSaveCurrentStatusMode` from the current `statusMode` and current permissions, blocks unauthorized save attempts, and returns before validating/submitting to `markBugScanned` or `updateBugStatus`.
+- **Regression guard**: `BugManagement.test.ts` slices `handleStatusSave` and asserts the permission re-check occurs before form validation and API calls.
+- **Verification**: Source-only diff review and focused source scans; no frontend Jest, TypeScript, build, browser/Playwright, backend Maven/JUnit, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1731: MEDIUM — Concurrent loadBugs calls with no AbortController
-- **Status**: OPEN
+- **Status**: FIXED / ABORT_CONTROLLER_ADDED / SOURCE_GUARDED / FRONTEND_VERIFICATION_PENDING (2026-06-18 05:07 UTC)
 - **Component**: `frontend/src/pages/BugManagement.tsx`
 - **Category**: Race Condition / Data Staleness
 - **Description**: The loadBugs function does not use AbortController, so concurrent calls can cause stale data to overwrite fresh data.
+- **Fix evidence**: `BugManagement` now keeps a `bugListAbortRef`, aborts the prior list request before starting a new one, passes `controller.signal` through `adminApi.getBugs`, skips state updates when the request has been aborted, and aborts any in-flight list request on unmount. `adminApi.getBugs` accepts an optional `AbortSignal` without changing existing calls that omit one.
+- **Regression guard**: `BugManagement.test.ts` guards the AbortController flow and API signal wiring.
+- **Verification**: Source-only diff review and focused source scans; no frontend Jest, TypeScript, build, browser/Playwright, backend Maven/JUnit, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1732: MEDIUM — AdminBugReport union types defeated by `| string`
-- **Status**: OPEN
+- **Status**: FIXED / STRICT_BUG_UNIONS_ADDED / SOURCE_GUARDED / FRONTEND_VERIFICATION_PENDING (2026-06-18 05:07 UTC)
 - **Component**: `frontend/src/types.ts`
 - **Category**: TypeScript / Type Safety
 - **Description**: The union types `AdminBugReportStatus | string` and `AdminBugReportType | string` allow any string through, defeating the purpose of the union type.
+- **Fix evidence**: Added strict `AdminBugReportSeverity`, `AdminBugReportPriority`, and `AdminBugReportStatus` aliases and changed `AdminBugReport.severity`, `priority`, and `status` to use them without `| string`. `BugManagement.tsx` now types status/priority/severity option helpers against those aliases and narrows status values through `isBugStatus`.
+- **Regression guard**: `BugManagement.test.ts` guards the strict aliases, the `AdminBugReport` field types, absence of the old `| string` patterns, and the typed `openStatusEditor` status parameter.
+- **Verification**: Source-only diff review and focused source scans; no frontend Jest, TypeScript, build, browser/Playwright, backend Maven/JUnit, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1733: MEDIUM — normalizeRole called twice in isAdminRole hot path
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / REGRESSION_GUARD_EXPANDED / FRONTEND_VERIFICATION_PENDING (2026-06-18 05:07 UTC)
 - **Component**: `frontend/src/utils/roles.ts`
 - **Category**: Performance / Redundancy
 - **Description**: `isAdminRole()` calls `normalizeRole()` which is also called by the ADMIN_ROLES Set.has() check, causing redundant processing in the hot path.
+- **Triage evidence**: Current `isAdminRole` calls `normalizeRole(role)` exactly once in the whitelist check.
+- **Regression guard**: `roles.test.ts` slices the `isAdminRole` implementation and asserts only one `normalizeRole` occurrence.
+- **Verification**: Source-only diff review and focused source scans; no frontend Jest, TypeScript, build, browser/Playwright, backend Maven/JUnit, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1734: MEDIUM — Auto-refresh does not pause during modal edits
-- **Status**: OPEN
+- **Status**: FIXED / AUTO_REFRESH_PAUSES_FOR_MODAL / SOURCE_GUARDED / FRONTEND_VERIFICATION_PENDING (2026-06-18 05:07 UTC)
 - **Component**: `frontend/src/pages/BugManagement.tsx`
 - **Category**: UX / Data Overwrite
 - **Description**: The auto-refresh timer continues firing even when a modal is open for editing. The editingBug reference can become stale, and the list refresh can shift rows while the user is interacting.
+- **Fix evidence**: Added `bugModalOpen = editorOpen || statusOpen`; the auto-refresh effect now returns early while a create/edit or status modal is open, and also while a foreground list load is active.
+- **Regression guard**: `BugManagement.test.ts` guards the `bugModalOpen` derivation, interval guard condition, and dependency list.
+- **Verification**: Source-only diff review and focused source scans; no frontend Jest, TypeScript, build, browser/Playwright, backend Maven/JUnit, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1735: LOW — ADMIN_NAV_PAGE_PERMISSIONS mixes literals and constants
-- **Status**: OPEN
+- **Status**: FIXED / NAV_PERMISSION_CONSTANTS_ADDED / SOURCE_GUARDED / FRONTEND_VERIFICATION_PENDING (2026-06-18 05:07 UTC)
 - **Component**: `frontend/src/utils/roles.ts`
 - **Category**: Code Quality / Consistency
 - **Description**: The ADMIN_NAV_PAGE_PERMISSIONS object mixes hardcoded string literals with exported constants, making it easy to have drift.
+- **Fix evidence**: Added named constants for each admin navigation page permission and changed `ADMIN_NAV_PAGE_PERMISSIONS` to use only those constants plus the existing `BUGS_PAGE_PERMISSION`.
+- **Regression guard**: `roles.test.ts` slices `ADMIN_NAV_PAGE_PERMISSIONS` and asserts key constants are present and quoted string literals are absent from the array body.
+- **Verification**: Source-only diff review and focused source scans; no frontend Jest, TypeScript, build, browser/Playwright, backend Maven/JUnit, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1736: LOW — pageUrl rendered as plain text instead of clickable link
-- **Status**: OPEN
+- **Status**: FIXED / SAFE_REFERENCE_LINKS_ADDED / SOURCE_GUARDED / FRONTEND_VERIFICATION_PENDING (2026-06-18 05:07 UTC)
 - **Component**: `frontend/src/pages/BugManagement.tsx`
 - **Category**: UX / Usability
 - **Description**: The pageUrl field is rendered as a plain text <span> instead of a clickable link, requiring users to copy-paste.
+- **Fix evidence**: Added `resolveBugReferenceHref` and `renderBugReferenceLink`; `pageUrl` now renders through a `Typography.Link` with `target="_blank"`/`rel="noopener noreferrer"` when it is site-relative or same-origin, while unsafe legacy values remain plain text.
+- **Regression guard**: `BugManagement.test.ts` guards the safe reference helper, page URL link rendering, and absence of the old plain-text page URL node.
+- **Verification**: Source-only diff review and focused source scans; no frontend Jest, TypeScript, build, browser/Playwright, backend Maven/JUnit, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1737: LOW — attachmentUrls rendered as plain text
-- **Status**: OPEN
+- **Status**: FIXED / SAFE_ATTACHMENT_LINKS_ADDED / SOURCE_GUARDED / FRONTEND_VERIFICATION_PENDING (2026-06-18 05:07 UTC)
 - **Component**: `frontend/src/pages/BugManagement.tsx`
 - **Category**: UX / Usability
 - **Description**: attachmentUrls is rendered as a single comma-separated text blob instead of parsed clickable links.
+- **Fix evidence**: Added `parseBugReferenceLines`; expanded bug details now split `attachmentUrls` into non-empty lines and render each through the same safe reference-link helper, falling back to `-` when none are present.
+- **Regression guard**: `BugManagement.test.ts` guards attachment URL parsing/link rendering and absence of the old raw `detail.attachmentUrls` paragraph.
+- **Verification**: Source-only diff review and focused source scans; no frontend Jest, TypeScript, build, browser/Playwright, backend Maven/JUnit, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1738: LOW — roleColor returns blue for unknown roles
-- **Status**: OPEN
+- **Status**: FIXED / UNKNOWN_ROLE_NEUTRALIZED / SOURCE_GUARDED / FRONTEND_VERIFICATION_PENDING (2026-06-18 05:07 UTC)
 - **Component**: `frontend/src/utils/roles.ts`
 - **Category**: UX / Misleading Display
 - **Description**: roleColor returns "blue" for any unknown role, which is misleading with the F1729 isAdminRole bug — unknown roles get admin-style blue coloring.
+- **Fix evidence**: `roleColor` now returns `gold` for `SUPER_ADMIN`, `volcano` for `ADMIN`, `blue` for known `USER`, and neutral `default` for unknown/blank roles.
+- **Regression guard**: `roles.test.ts` covers known role colors and verifies `MODERATOR`/null use `default`.
+- **Verification**: Source-only diff review and focused source scans; no frontend Jest, TypeScript, build, browser/Playwright, backend Maven/JUnit, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1739: CRITICAL — schema.sql ALTER TABLE ADD COLUMN without IF NOT EXISTS
-- **Status**: OPEN
+- **Status**: FIXED / STALE_PATCH_BLOCK_REMOVED / SOURCE_GUARDED / RUNTIME_VERIFICATION_PENDING (2026-06-18 05:38 UTC)
 - **Component**: `backend/src/main/resources/schema.sql`
 - **Category**: Schema Migration / Safety
 - **Description**: Multiple ALTER TABLE ADD COLUMN statements (lines 493-588) lack IF NOT EXISTS guards. Errors are silently swallowed by the continue-on-error execution pattern.
+- **Fix evidence**: Removed the stale post-definition compatibility patch block from `schema.sql`; focused source scan now finds no `ADD COLUMN` in `schema.sql`.
+- **Regression guard**: `CommerceSchemaContractTest` asserts fresh `schema.sql` does not contain `ADD COLUMN` patch DDL.
+- **Verification**: Source-only schema scan and diff review; no Maven/JUnit, frontend tests, TypeScript, build, browser/API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1740: HIGH — schema.sql ADD INDEX without IF NOT EXISTS
-- **Status**: OPEN
+- **Status**: FIXED / STALE_PATCH_BLOCK_REMOVED / SOURCE_GUARDED / RUNTIME_VERIFICATION_PENDING (2026-06-18 05:38 UTC)
 - **Component**: `backend/src/main/resources/schema.sql`
 - **Category**: Schema Migration / Safety
 - **Description**: ADD INDEX and ADD UNIQUE statements at lines 501, 504, 522, 553 lack IF NOT EXISTS guards and will fail silently on re-run.
+- **Fix evidence**: Removed the stale post-definition compatibility patch block from `schema.sql`; focused source scan now finds no `ADD INDEX` or `ADD UNIQUE` in `schema.sql`.
+- **Regression guard**: `CommerceSchemaContractTest` asserts fresh `schema.sql` does not contain `ADD INDEX` or `ADD UNIQUE` patch DDL.
+- **Verification**: Source-only schema scan and diff review; no Maven/JUnit, frontend tests, TypeScript, build, browser/API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1741: HIGH — Non-atomic UPDATE+ALTER sequence for default values
-- **Status**: OPEN
+- **Status**: FIXED / STALE_PATCH_BLOCK_REMOVED / SOURCE_GUARDED / RUNTIME_VERIFICATION_PENDING (2026-06-18 05:38 UTC)
 - **Component**: `backend/src/main/resources/schema.sql`
 - **Category**: Schema Migration / Data Integrity
 - **Description**: Lines 519-522 and 536 run UPDATE ... SET default then ALTER ... SET NOT NULL with no transaction. Partial failure leaves NOT NULL violation.
+- **Fix evidence**: Removed the stale `UPDATE` plus `ALTER ... NOT NULL` patch sequence from `schema.sql`; fresh schema now declares current table shapes directly.
+- **Regression guard**: `CommerceSchemaContractTest` rejects the old `"Fix existing columns to TEXT"` patch marker and stale patch DDL patterns in `schema.sql`.
+- **Verification**: Source-only schema scan and diff review; no Maven/JUnit, frontend tests, TypeScript, build, browser/API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1742: HIGH — products.brand is free-text with no FK
 - **Status**: WONTFIX / DOCUMENTED_INTENTIONAL / TARGETED_MAVEN_PASS
@@ -9789,76 +10232,112 @@ Multi-dimensional source review across: security, race conditions, state managem
 - **Resolution evidence**: 2026-06-08 09:47 UTC current-source review found product brand is intentionally denormalized text used by storefront display, search, personalization, CSV imports, and URL import previews. The managed `brands` table feeds curated option lists and brand management, but it is not the source of truth for every supplier/import label. Added explicit source/schema comments and `CommerceSchemaContractTest` coverage for that contract. Also widened `products.brand` from `VARCHAR(100)` to `VARCHAR(120)` across schema, V1, V7, and startup hardening to match the existing entity/frontend contract. Verification passed: `./mvnw -q -Dtest=CommerceSchemaContractTest test`.
 
 ### F1743: HIGH — orders.tracking_carrier_code has no FK
-- **Status**: OPEN
+- **Status**: FIXED / FK_ADDED / SOURCE_GUARDED / RUNTIME_VERIFICATION_PENDING (2026-06-18 05:38 UTC)
 - **Component**: `backend/src/main/resources/schema.sql`
 - **Category**: Data Integrity / Missing FK
 - **Description**: orders.tracking_carrier_code references no foreign key to logistics_carriers. Orphaned carrier codes possible.
+- **Fix evidence**: Added `CONSTRAINT fk_orders_tracking_carrier_code FOREIGN KEY (tracking_carrier_code) REFERENCES logistics_carriers(tracking_code)` to `schema.sql` and `V1__init.sql`; startup hardening now adds the FK idempotently for existing databases.
+- **Regression guard**: `CommerceSchemaContractTest` covers the fresh schema, Flyway baseline, and startup hardening source for the carrier FK.
+- **Verification**: Source-only schema/config/test scan and diff review; no Maven/JUnit, frontend tests, TypeScript, build, browser/API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1744: HIGH — ALTER TABLE ADD FK will fail on dirty existing data
-- **Status**: OPEN
+- **Status**: FIXED / EXISTING_DB_FK_CLEANUP_ADDED / SOURCE_GUARDED / RUNTIME_VERIFICATION_PENDING (2026-06-18 05:38 UTC)
 - **Component**: `backend/src/main/resources/schema.sql`
 - **Category**: Schema Migration / Data Integrity
 - **Description**: Lines 366-367 add FK constraints that will fail on existing rows with orphaned IDs. No data validation or cleanup step before adding constraints.
+- **Fix evidence**: `CommerceSchemaConfig.ensureForeignKeys` now nulls orphaned `orders.coupon_id`, `orders.user_coupon_id`, and `orders.tracking_carrier_code` references before idempotently adding the FKs.
+- **Regression guard**: `CommerceSchemaContractTest` verifies startup hardening includes the carrier cleanup path and FK addition; existing coupon/user-coupon FK additions remain guarded by `addForeignKeyIfMissing`.
+- **Verification**: Source-only config/schema/test scan and diff review; no Maven/JUnit, frontend tests, TypeScript, build, browser/API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1745: HIGH — JWT secret defaults to empty string
-- **Status**: OPEN
+- **Status**: FIXED / PRODUCTION_FAIL_FAST_ADDED / SOURCE_GUARDED / RUNTIME_VERIFICATION_PENDING (2026-06-18 05:47 UTC)
 - **Component**: `backend/src/main/resources/application.properties`
 - **Category**: Security / Default Credentials
 - **Description**: JWT_SECRET defaults to empty string if env unset, making tokens trivially forgeable. Should fail fast with a clear error.
+- **Fix evidence**: Added `ProductionSecretStartupValidator`, an early `BeanFactoryPostProcessor`, which blocks production/prod startup unless `app.jwtSecret` is a non-placeholder value with at least 32 characters.
+- **Regression guard**: `ApplicationProfileContractTest` verifies the production startup validator covers `app.jwtSecret` and reports `Production secrets are not configured`.
+- **Verification**: Source-only config/test scan and diff review; no Maven/JUnit, frontend tests, TypeScript, build, browser/API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1746: HIGH — Database password defaults to empty string
-- **Status**: OPEN
+- **Status**: FIXED / PRODUCTION_FAIL_FAST_ADDED / SOURCE_GUARDED / RUNTIME_VERIFICATION_PENDING (2026-06-18 05:47 UTC)
 - **Component**: `backend/src/main/resources/application.properties`
 - **Category**: Security / Default Credentials
 - **Description**: spring.datasource.password defaults to empty string, risking database compromise in misconfigured deployments.
+- **Fix evidence**: `ProductionSecretStartupValidator` now blocks production/prod startup unless `spring.datasource.password` is a non-default production password of at least 12 characters.
+- **Regression guard**: `ApplicationProfileContractTest` verifies the production startup validator covers `spring.datasource.password`.
+- **Verification**: Source-only config/test scan and diff review; no Maven/JUnit, frontend tests, TypeScript, build, browser/API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1747: HIGH — Redis password defaults to empty string
-- **Status**: OPEN
+- **Status**: FIXED / PRODUCTION_FAIL_FAST_ADDED / SOURCE_GUARDED / RUNTIME_VERIFICATION_PENDING (2026-06-18 05:47 UTC)
 - **Component**: `backend/src/main/resources/application.properties`
 - **Category**: Security / Default Credentials
 - **Description**: spring.data.redis.password defaults to empty string, risking unauthorized Redis access.
+- **Fix evidence**: `ProductionSecretStartupValidator` now blocks production/prod startup unless `spring.redis.password` is a non-default production password of at least 12 characters.
+- **Regression guard**: `ApplicationProfileContractTest` verifies the production startup validator covers `spring.redis.password`.
+- **Verification**: Source-only config/test scan and diff review; no Maven/JUnit, frontend tests, TypeScript, build, browser/API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1748: MEDIUM — security_audit_logs table defined twice
-- **Status**: OPEN
+- **Status**: FIXED / DUPLICATE_DEFINITION_REMOVED / SOURCE_GUARDED / RUNTIME_VERIFICATION_PENDING (2026-06-18 05:38 UTC)
 - **Component**: `backend/src/main/resources/schema.sql`
 - **Category**: Schema / Merge Artifact
 - **Description**: security_audit_logs table is defined at lines 310 and 555. The second definition overwrites the first — merge artifact.
+- **Fix evidence**: Removed the stale duplicate `security_audit_logs` definition with the old patch block; focused scan now finds exactly one `CREATE TABLE IF NOT EXISTS security_audit_logs` in `schema.sql`.
+- **Regression guard**: `CommerceSchemaContractTest` counts the `security_audit_logs` table definition and requires exactly one occurrence.
+- **Verification**: Source-only schema scan and diff review; no Maven/JUnit, frontend tests, TypeScript, build, browser/API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1749: MEDIUM — DROP INDEX then ADD INDEX leaves gap
-- **Status**: OPEN
+- **Status**: FIXED / STALE_DROP_READD_REMOVED / SOURCE_GUARDED / RUNTIME_VERIFICATION_PENDING (2026-06-18 05:38 UTC)
 - **Component**: `backend/src/main/resources/schema.sql`
 - **Category**: Schema Migration / Uniqueness Gap
 - **Description**: Lines 503-504 drop an index then re-add it, leaving a window where uniqueness is not enforced.
+- **Fix evidence**: Removed the stale `DROP INDEX` then `ADD UNIQUE` patch sequence from `schema.sql`; focused scan now finds no `DROP INDEX` in `schema.sql`.
+- **Regression guard**: `CommerceSchemaContractTest` asserts fresh `schema.sql` does not contain `DROP INDEX`.
+- **Verification**: Source-only schema scan and diff review; no Maven/JUnit, frontend tests, TypeScript, build, browser/API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1750: MEDIUM — Unbounded UPDATE LEFT JOIN backfill on order_items
-- **Status**: OPEN
+- **Status**: FIXED / STALE_BACKFILL_REMOVED / SOURCE_GUARDED / RUNTIME_VERIFICATION_PENDING (2026-06-18 05:38 UTC)
 - **Component**: `backend/src/main/resources/schema.sql`
 - **Category**: Performance / Lock Contention
 - **Description**: Lines 582-586 run UPDATE LEFT JOIN on order_items with no batching — risk of lock contention on large tables.
+- **Fix evidence**: Removed the stale `UPDATE order_items ... LEFT JOIN products` backfill from `schema.sql`; fresh schema now stores `product_name_snapshot` and `image_url_snapshot` directly in the table definition.
+- **Regression guard**: Focused source scan checks `schema.sql` no longer contains `UPDATE order_items`; existing contract tests continue to reject generated order-item snapshot columns.
+- **Verification**: Source-only schema scan and diff review; no Maven/JUnit, frontend tests, TypeScript, build, browser/API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1751: MEDIUM — No index on products limited_time columns
-- **Status**: OPEN
+- **Status**: FIXED / INDEX_ADDED / SOURCE_GUARDED / RUNTIME_VERIFICATION_PENDING (2026-06-18 05:38 UTC)
 - **Component**: `backend/src/main/resources/schema.sql`
 - **Category**: Performance / Missing Index
 - **Description**: No index on products(limited_time_start_at, limited_time_end_at) for deal/flash-sale queries.
+- **Fix evidence**: Added `idx_products_limited_time_window (limited_time_start_at, limited_time_end_at, status, id)` to `schema.sql`, `V1__init.sql`, and startup hardening.
+- **Regression guard**: `CommerceSchemaContractTest` covers the fresh schema, Flyway baseline, and `CommerceSchemaConfig` startup index path.
+- **Verification**: Source-only schema/config/test scan and diff review; no Maven/JUnit, frontend tests, TypeScript, build, browser/API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1752: MEDIUM — No index on users(status)
-- **Status**: OPEN
+- **Status**: FIXED / INDEX_ADDED / SOURCE_GUARDED / RUNTIME_VERIFICATION_PENDING (2026-06-18 05:38 UTC)
 - **Component**: `backend/src/main/resources/schema.sql`
 - **Category**: Performance / Missing Index
 - **Description**: No index on users(status) column, which is commonly used in login and listing queries.
+- **Fix evidence**: Added `idx_users_status (status)` to `schema.sql`, `V1__init.sql`, and startup hardening.
+- **Regression guard**: `CommerceSchemaContractTest` covers the fresh schema, Flyway baseline, and `CommerceSchemaConfig` startup index path.
+- **Verification**: Source-only schema/config/test scan and diff review; no Maven/JUnit, frontend tests, TypeScript, build, browser/API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1753: MEDIUM — reviews.rating has no CHECK constraint
-- **Status**: OPEN
+- **Status**: FIXED / CHECK_ADDED / SOURCE_GUARDED / RUNTIME_VERIFICATION_PENDING (2026-06-18 05:38 UTC)
 - **Component**: `backend/src/main/resources/schema.sql`
 - **Category**: Data Integrity / Missing Constraint
 - **Description**: reviews.rating is INT with no CHECK constraint (1-5). The range is only enforced in application code.
+- **Fix evidence**: Added `ck_reviews_rating CHECK (rating BETWEEN 1 AND 5)` to `schema.sql` and `V1__init.sql`; startup hardening clamps legacy out-of-range ratings before adding the check.
+- **Regression guard**: `CommerceSchemaContractTest` covers the fresh schema, Flyway baseline, and `CommerceSchemaConfig` startup check path.
+- **Verification**: Source-only schema/config/test scan and diff review; no Maven/JUnit, frontend tests, TypeScript, build, browser/API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1754: MEDIUM — No CHECK on coupon claimed_quantity <= total_quantity
-- **Status**: OPEN
+- **Status**: FIXED / CHECK_ADDED / SOURCE_GUARDED / RUNTIME_VERIFICATION_PENDING (2026-06-18 05:38 UTC)
 - **Component**: `backend/src/main/resources/schema.sql`
 - **Category**: Data Integrity / Missing Constraint
 - **Description**: No CHECK constraint preventing claimed_quantity from exceeding total_quantity on coupons table.
+- **Fix evidence**: Added `ck_coupons_claimed_quantity_lte_total` to `schema.sql` and `V1__init.sql`; startup hardening normalizes negative counts and raises legacy `total_quantity` to at least `claimed_quantity` before adding the check.
+- **Regression guard**: `CommerceSchemaContractTest` covers the fresh schema, Flyway baseline, and `CommerceSchemaConfig` startup check path.
+- **Verification**: Source-only schema/config/test scan and diff review; no Maven/JUnit, frontend tests, TypeScript, build, browser/API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1755: MEDIUM — CORS allows all private LAN origins by default
 - **Status**: SOURCE_FIXED / TARGETED_MAVEN_PASS (covered by F9312 on 2026-06-08 07:39 UTC)
@@ -9868,46 +10347,67 @@ Multi-dimensional source review across: security, race conditions, state managem
 - **Fix evidence**: Base/dev profile defaults and `CorsOriginProperties` fallback no longer include private-LAN wildcard origins; targeted CORS/profile tests passed.
 
 ### F1756: MEDIUM — mail.code-pepper reuses JWT_SECRET
-- **Status**: OPEN
+- **Status**: FIXED / JWT_SECRET_FALLBACK_REMOVED / PRODUCTION_FAIL_FAST_ADDED / SOURCE_GUARDED / RUNTIME_VERIFICATION_PENDING (2026-06-18 05:47 UTC)
 - **Component**: `backend/src/main/resources/application.properties`
 - **Category**: Security / Key Reuse
 - **Description**: mail.code-pepper falls back to JWT_SECRET, reusing the same cryptographic key across different security purposes.
+- **Fix evidence**: Changed `app.mail.code-pepper` default to `${MAIL_CODE_PEPPER:}` so it no longer falls back to `JWT_SECRET`; `ProductionSecretStartupValidator` requires a strong production mail code pepper and rejects equality with `app.jwtSecret`.
+- **Regression guard**: `ApplicationProfileContractTest` verifies the property no longer contains the JWT fallback and that the startup validator covers `app.mail.code-pepper` plus the no-reuse rule.
+- **Verification**: Source-only config/test scan and diff review; no Maven/JUnit, frontend tests, TypeScript, build, browser/API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1757: LOW — CONVERT TO CHARACTER SET rebuilds entire table
-- **Status**: OPEN
+- **Status**: FIXED / STALE_CHARSET_REBUILD_REMOVED / SOURCE_GUARDED / RUNTIME_VERIFICATION_PENDING (2026-06-18 05:38 UTC)
 - **Component**: `backend/src/main/resources/schema.sql`
 - **Category**: Performance / Wasteful Migration
 - **Description**: CONVERT TO CHARACTER SET utf8mb4 rebuilds the entire table — wasted effort if already utf8mb4.
+- **Fix evidence**: Removed the stale `ALTER TABLE categories CONVERT TO CHARACTER SET ...` patch statement from `schema.sql`; focused scan now finds no `CONVERT TO CHARACTER SET` in `schema.sql`.
+- **Regression guard**: `CommerceSchemaContractTest` asserts fresh `schema.sql` does not contain `CONVERT TO CHARACTER SET`.
+- **Verification**: Source-only schema scan and diff review; no Maven/JUnit, frontend tests, TypeScript, build, browser/API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1758: LOW — No index on users(role_code)
-- **Status**: OPEN
+- **Status**: FIXED / INDEX_ADDED / SOURCE_GUARDED / RUNTIME_VERIFICATION_PENDING (2026-06-18 05:38 UTC)
 - **Component**: `backend/src/main/resources/schema.sql`
 - **Category**: Performance / Missing Index
 - **Description**: No index on users(role_code) for admin filtering queries.
+- **Fix evidence**: Added `idx_users_role_code (role_code)` to `schema.sql`, `V1__init.sql`, and startup hardening.
+- **Regression guard**: `CommerceSchemaContractTest` covers the fresh schema, Flyway baseline, and `CommerceSchemaConfig` startup index path.
+- **Verification**: Source-only schema/config/test scan and diff review; no Maven/JUnit, frontend tests, TypeScript, build, browser/API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1759: LOW — No index on orders(tracking_carrier_code)
-- **Status**: OPEN
+- **Status**: FIXED / INDEX_ADDED / SOURCE_GUARDED / RUNTIME_VERIFICATION_PENDING (2026-06-18 05:38 UTC)
 - **Component**: `backend/src/main/resources/schema.sql`
 - **Category**: Performance / Missing Index
 - **Description**: No index on orders(tracking_carrier_code) for carrier tracking queries.
+- **Fix evidence**: Added `idx_orders_tracking_carrier_code (tracking_carrier_code)` to `schema.sql` and `V1__init.sql`; startup hardening adds it only when no existing leading `tracking_carrier_code` index is present.
+- **Regression guard**: `CommerceSchemaContractTest` covers the fresh schema, Flyway baseline, and `CommerceSchemaConfig` startup index path.
+- **Verification**: Source-only schema/config/test scan and diff review; no Maven/JUnit, frontend tests, TypeScript, build, browser/API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1760: LOW — No CHECK on coupons.discount_percent range
-- **Status**: OPEN
+- **Status**: FIXED / CHECK_ADDED / SOURCE_GUARDED / RUNTIME_VERIFICATION_PENDING (2026-06-18 05:38 UTC)
 - **Component**: `backend/src/main/resources/schema.sql`
 - **Category**: Data Integrity / Missing Constraint
 - **Description**: No CHECK constraint ensuring discount_percent is between 1 and 100.
+- **Fix evidence**: Added `ck_coupons_discount_percent CHECK (discount_percent IS NULL OR discount_percent BETWEEN 1 AND 99)` to `schema.sql` and `V1__init.sql`, matching existing entity/service validation that rejects 100; startup hardening inactivates legacy coupons with out-of-range percentages before adding the check.
+- **Regression guard**: `CommerceSchemaContractTest` covers the fresh schema, Flyway baseline, and `CommerceSchemaConfig` startup check path.
+- **Verification**: Source-only schema/config/test scan and diff review; no Maven/JUnit, frontend tests, TypeScript, build, browser/API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1761: LOW — Payment callback secret defaults to empty
-- **Status**: OPEN
+- **Status**: FIXED / PRODUCTION_FAIL_FAST_ADDED / SOURCE_GUARDED / RUNTIME_VERIFICATION_PENDING (2026-06-18 05:47 UTC)
 - **Component**: `backend/src/main/resources/application.properties`
 - **Category**: Security / Default Credentials
 - **Description**: Payment callback verification secret defaults to empty, risking forged payment callbacks.
+- **Fix evidence**: `ProductionSecretStartupValidator` now blocks production/prod startup unless `payment.callback-secret` is a non-placeholder value with at least 32 characters; the existing callback use-path guard remains in `PaymentService`.
+- **Regression guard**: `ApplicationProfileContractTest` verifies the production startup validator covers `payment.callback-secret`; `PaymentCallbackSignatureContractTest` already covers use-path callback secret enforcement.
+- **Verification**: Source-only config/test scan and diff review; no Maven/JUnit, frontend tests, TypeScript, build, browser/API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1762: LOW — Properties duplicated across .yml and .properties
-- **Status**: OPEN
+- **Status**: FIXED / DUPLICATE_CONFIG_REMOVED / SOURCE_GUARDED / RUNTIME_VERIFICATION_PENDING (2026-06-18 05:53 UTC)
 - **Component**: `backend/src/main/resources/`
 - **Category**: Configuration / Ambiguity
 - **Description**: Configuration keys are duplicated across application.yml and application.properties, causing load-order ambiguity.
+- **Fix evidence**: Removed redundant `src/main/resources/application.yml`; `application.properties` is now the single authoritative backend runtime config file for the duplicated keys.
+- **Regression guard**: `ApplicationProfileContractTest.repositoryDoesNotShipDuplicateApplicationYaml` asserts the duplicate YAML config is not shipped, while existing property-focused assertions keep Hikari, datasource, Stripe, and secret defaults covered in `application.properties`.
+- **Verification**: Source-only config/test scan and diff review; no Maven/JUnit, frontend tests, TypeScript, build, browser/API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ---
 
@@ -9920,389 +10420,572 @@ Multi-dimensional source review across: security, race conditions, state managem
 - **Evidence**: `Unable to find an element with the text: /submit order/i. It looks like this element has been converted to a button (shows "Confirm & Pay")`.
 
 ### F1770: MEDIUM — CreateCouponModal i18n keys are null
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / STALE_FILE_PATH / SOURCE_GUARDED / FRONTEND_VERIFICATION_PENDING (2026-06-18 05:55 UTC)
 - **Component**: `frontend/src/pages/CreateCouponModal.tsx:563,595`
 - **Category**: i18n / Null Reference
 - **Description**: `t('adminCoupons:singleUse')` and `t('adminCoupons:batchGenerate')` return null — the keys `adminCoupons.singleUse` and `adminCoupons.batchGenerate` are not defined in any locale file. The modal falls back to showing "null" or empty text for these options.
+- **Current-source evidence**: `frontend/src/pages/CreateCouponModal.tsx` no longer exists; the current coupon workflow is `CouponManagement.tsx` and uses dot-path keys such as `pages.adminCoupons.*` and existing coupon type labels.
+- **Regression guard**: `frontend/src/i18n.test.ts` now scans frontend source and rejects stale namespace-style keys including `adminCoupons:singleUse` and `adminCoupons:batchGenerate`, and asserts the stale modal file is absent.
+- **Verification**: Source-only frontend scans and diff review; no frontend Jest, TypeScript, build, browser/Playwright, backend Maven/JUnit, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1771: LOW — CreateCouponModal uses raw i18n key `adminCoupons:discountPercentage`
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / STALE_FILE_PATH / SOURCE_GUARDED / FRONTEND_VERIFICATION_PENDING (2026-06-18 05:55 UTC)
 - **Component**: `frontend/src/pages/CreateCouponModal.tsx:1094`
 - **Category**: i18n / Missing Key
 - **Description**: `t('adminCoupons:discountPercentage')` references a key not defined in locale files. Fallback shows the raw key string.
+- **Current-source evidence**: `frontend/src/pages/CreateCouponModal.tsx` no longer exists; `CouponManagement.tsx` uses `pages.adminCoupons.discountPayablePercent`, which is present in the locale files.
+- **Regression guard**: `frontend/src/i18n.test.ts` rejects `adminCoupons:discountPercentage` in frontend source.
+- **Verification**: Source-only frontend scans and diff review; no frontend Jest, TypeScript, build, browser/Playwright, backend Maven/JUnit, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1772: LOW — CreateCouponModal references unused import `format`
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / STALE_FILE_PATH / SOURCE_GUARDED / FRONTEND_VERIFICATION_PENDING (2026-06-18 05:55 UTC)
 - **Component**: `frontend/src/pages/CreateCouponModal.tsx:54`
 - **Category**: Code Quality / Unused Import
 - **Description**: `import { format } from 'date-fns'` is imported but never used in the file.
+- **Current-source evidence**: `frontend/src/pages/CreateCouponModal.tsx` no longer exists, so the reported unused import path is stale.
+- **Regression guard**: `frontend/src/i18n.test.ts` asserts the stale `CreateCouponModal.tsx` file is absent.
+- **Verification**: Source-only frontend scans and diff review; no frontend Jest, TypeScript, build, browser/Playwright, backend Maven/JUnit, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1773: LOW — OrderDetailPage uses raw i18n key `adminOrders:actions.reviewReturnRequest`
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / STALE_FILE_PATH / SOURCE_GUARDED / FRONTEND_VERIFICATION_PENDING (2026-06-18 05:55 UTC)
 - **Component**: `frontend/src/pages/OrderDetailPage.tsx:1212`
 - **Category**: i18n / Missing Key
 - **Description**: `t('adminOrders:actions.reviewReturnRequest')` uses an unverified nested key. May not be defined in locale files.
+- **Current-source evidence**: `frontend/src/pages/OrderDetailPage.tsx` no longer exists; current order surfaces use dot-path locale keys.
+- **Regression guard**: `frontend/src/i18n.test.ts` rejects `adminOrders:actions.reviewReturnRequest` in frontend source and asserts the stale page file is absent.
+- **Verification**: Source-only frontend scans and diff review; no frontend Jest, TypeScript, build, browser/Playwright, backend Maven/JUnit, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1774: MEDIUM — CustomerInfoSection uses raw i18n key `checkout:form.saveAddressLabel`
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / STALE_FILE_PATH / SOURCE_GUARDED / FRONTEND_VERIFICATION_PENDING (2026-06-18 05:55 UTC)
 - **Component**: `frontend/src/components/CustomerInfoSection.tsx:680`
 - **Category**: i18n / Missing Key
 - **Description**: `t('checkout:form.saveAddressLabel')` — key may not exist in locale files.
+- **Current-source evidence**: `frontend/src/components/CustomerInfoSection.tsx` no longer exists; checkout address UI is implemented in `Checkout.tsx` with `pages.checkout.*` dot-path keys.
+- **Regression guard**: `frontend/src/i18n.test.ts` rejects `checkout:form.saveAddressLabel` in frontend source and asserts the stale component file is absent.
+- **Verification**: Source-only frontend scans and diff review; no frontend Jest, TypeScript, build, browser/Playwright, backend Maven/JUnit, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1775: MEDIUM — Checkout page uses raw i18n key `checkout:orderSummary.totalPayable`
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / DOT_PATH_I18N_IN_USE / SOURCE_GUARDED / FRONTEND_VERIFICATION_PENDING (2026-06-18 05:55 UTC)
 - **Component**: `frontend/src/pages/Checkout.tsx:1577`
 - **Category**: i18n / Missing Key
 - **Description**: `t('checkout:orderSummary.totalPayable')` — key may not exist in locale files.
+- **Current-source evidence**: Current `Checkout.tsx` does not use `checkout:orderSummary.totalPayable`; it uses `pages.checkout.*` keys and falls back through the current locale merge behavior.
+- **Regression guard**: `frontend/src/i18n.test.ts` rejects `checkout:orderSummary.totalPayable` in frontend source.
+- **Verification**: Source-only frontend scans and diff review; no frontend Jest, TypeScript, build, browser/Playwright, backend Maven/JUnit, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1776: HIGH — CartAddRequest has no validation annotations
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / STALE_PATH / SOURCE_GUARDED / BACKEND_VERIFICATION_PENDING (2026-06-18 05:55 UTC)
 - **Component**: `backend/src/main/java/com/example/shop/dto/cart/CartAddRequest.java`
 - **Category**: Backend / Validation
 - **Description**: `@Size(max=20)`, `@NotNull`, `@Min(1)` are commented out. `productId` accepts empty strings, `quantity` accepts 0 or negative, `skuId` can exceed 20 chars, `source` has no length limit. Server receives invalid data and may throw 500s or corrupt cart state.
+- **Current-source evidence**: The reported `dto/cart/CartAddRequest.java` path is stale; current `src/main/java/com/example/shop/dto/CartAddRequest.java` has `@NotNull`, `@Min(1)`, `@Max(MAX_CART_REQUEST_QUANTITY)` for quantity/product fields and `@Size(max = 1000)` for `selectedSpecs`. `CartController` also has `@Validated` and request-param validation for legacy add endpoints.
+- **Regression guard**: `CartControllerClearResponseTest` source-guards `@Validated`, `MAX_CART_REQUEST_QUANTITY`, `MAX_SELECTED_SPECS_LENGTH`, request-param constraints, and `CartAddRequest` `@Max`/`@Size`.
+- **Verification**: Source-only backend scans and diff review; no Maven/JUnit, frontend tests, TypeScript, build, browser/API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1777: MEDIUM — CartService uses floating-point arithmetic for money
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / BIGDECIMAL_TOTALS_PRESENT / SOURCE_GUARDED / BACKEND_VERIFICATION_PENDING (2026-06-18 05:55 UTC)
 - **Component**: `backend/src/main/java/com/example/shop/service/CartService.java:227,405`
 - **Category**: Backend / Precision
 - **Description**: `Double.valueOf(discount)` used for discount calculations and `Money.multiply(count)` on `BigDecimal` may produce floating-point artifacts (e.g., 99.9 * 2 = 199.80000000000001). Should use `BigDecimal` for all monetary calculations.
+- **Current-source evidence**: Current `CartService.calculateTotalAmount` returns `BigDecimal`, sums line amounts with `BigDecimal::add`, and `calculateLineAmount` multiplies `item.getPrice()` by `BigDecimal.valueOf(quantity)` with `setScale(2, RoundingMode.HALF_UP)`. Focused scan of `CartService` finds no `double`/`float` monetary arithmetic.
+- **Regression guard**: `CartServiceTest` covers cent-scale totals, half-up rounding, and per-line rounding behavior with `BigDecimal` expectations.
+- **Verification**: Source-only backend scans and diff review; no Maven/JUnit, frontend tests, TypeScript, build, browser/API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1778: MEDIUM — SKU data has inconsistent camelCase vs snake_case keys
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / STALE_STATIC_SKU_PATH / SOURCE_GUARDED / FRONTEND_VERIFICATION_PENDING (2026-06-18 05:58 UTC)
 - **Component**: `frontend/src/constants/skuData.ts:298-312`
 - **Category**: Frontend / Data Consistency
 - **Description**: SKU specs use `specAttributes` key while `ColorSelector.tsx:125` reads `spec_attributes` (snake_case). Product card hardcodes `camelCase` to snake_case mapping. Inconsistent key naming causes color/size selectors to fail for some products.
+- **Current-source evidence**: Current frontend has no `frontend/src/constants/skuData.ts` and no `ColorSelector.tsx`; focused source scan found no `specAttributes` or `spec_attributes` usage. Product option selection is driven by `ProductDetail.tsx` plus `utils/productOptions.ts` using normalized `variants[].options`.
+- **Regression guard**: `productOptions.test.ts` now rejects stale `specAttributes`, `spec_attributes`, `skuData`, and `ColorSelector` tokens in `productOptions.ts`, while existing tests cover option splitting, variant normalization, and compatibility checks.
+- **Verification**: Source-only frontend scans and diff review; no frontend Jest, TypeScript, build, browser/Playwright, backend Maven/JUnit, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1779: MEDIUM — Stock reservation race condition in CartService
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / STALE_LEGACY_CART_CHECKOUT_PATH / SOURCE_GUARDED / BACKEND_VERIFICATION_PENDING (2026-06-18 06:06 UTC)
 - **Component**: `backend/src/main/java/com/example/shop/service/CartService.java:323-344`
 - **Category**: Backend / Race Condition
 - **Description**: `findByIdForUpdate()` is only called when `pessimisticLock=true`, but the default flow uses plain `getProductById()` without locks. Two concurrent checkout requests can both see stock=2 and both succeed, resulting in overselling.
+- **Current-source evidence**: The referenced legacy checkout path is not present in current `CartService`. Current `CartService.addToCart` is `@Transactional(rollbackFor = Exception.class)`, loads the product through `requirePurchasableProductForUpdate(...)`, which calls `ProductRepository.findByIdForUpdate(...)` with `@Lock(LockModeType.PESSIMISTIC_WRITE)`, then reads an existing matching cart line via `CartItemMapper.findByUserIdAndProductIdAndSelectedSpecsForUpdate(...)` whose XML query ends in `FOR UPDATE`. It validates selected specs and rechecks `productVariantService.resolveStock(...)` against the merged line quantity before updating or inserting.
+- **Regression guard**: `CartServiceTest.addToCartSerializesProductAndLineStockValidation` now asserts the transaction, locked product lookup, locked cart-line lookup, option validation, and stock recheck remain wired in source.
+- **Verification**: Source-only backend scans and diff review; no Maven/JUnit, frontend tests, TypeScript, build, browser/API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1780: HIGH — Guest checkout has no rate limiting
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / STALE_LEGACY_CART_GUEST_PATH / SOURCE_GUARDED / BACKEND_VERIFICATION_PENDING (2026-06-18 06:09 UTC)
 - **Component**: `backend/src/main/java/com/example/shop/controller/CartController.java:676`
 - **Category**: Backend / Security
 - **Description**: `/api/cart/checkout-guest` accepts unauthenticated requests with no rate limiting. An attacker can exhaust inventory by rapidly sending checkout requests. Only CAPTCHA verification is present, but the endpoint itself has no abuse protection.
+- **Current-source evidence**: The referenced `CartController` guest checkout path is not present in current source. Current guest checkout is `OrderController` `POST /orders/checkout/guest`; `SecurityConfig` installs `RateLimitFilter`, which calls `RateLimitService.check(...)` before the controller proceeds. `RateLimitService.endpointLimitFor(...)` maps `POST /orders/checkout/guest` to the dedicated `checkout:guest` endpoint limit using `traffic.rate-limit.guest-checkout-per-hour`.
+- **Regression guard**: `RateLimitServiceTest.guestCheckoutEndpointHasDedicatedHourlyPerClientLimit` verifies two allowed guest checkout attempts followed by a rejected third request when the dedicated limit is set to 2, and asserts the hot bucket is `checkout:guest`.
+- **Verification**: Source-only backend scans and diff review; no Maven/JUnit, frontend tests, TypeScript, build, browser/API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1781: MEDIUM — @Transactional missing on guestCheckoutStockCheck
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / STALE_LEGACY_CART_GUEST_PATH / SOURCE_GUARDED / BACKEND_VERIFICATION_PENDING (2026-06-18 06:13 UTC)
 - **Component**: `backend/src/main/java/com/example/shop/service/CartService.java:856`
 - **Category**: Backend / Missing Transaction
 - **Description**: `guestCheckoutStockCheck()` method has no `@Transactional` annotation. If the method modifies data or calls other transactional methods, it runs outside a transaction context.
+- **Current-source evidence**: Current `CartService` has no `guestCheckoutStockCheck(...)` method. Current guest checkout stock validation/reservation lives in `OrderService.prepareGuestCheckoutItems(...)`, which is reached from public `OrderService.guestCheckout(...)` entrypoints annotated with `@Transactional(rollbackFor = Exception.class)`.
+- **Regression guard**: `OrderStockReservationRaceContractTest.checkoutStockReservationUsesLockedProductRowsInsteadOfCheckThenDeductService` now asserts the legacy `guestCheckoutStockCheck(` token is absent and that guest checkout remains behind a rollback-aware transaction.
+- **Verification**: Source-only backend scans and diff review; no Maven/JUnit, frontend tests, TypeScript, build, browser/API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1782: MEDIUM — @Transactional missing on processGuestCheckout
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / STALE_LEGACY_CART_GUEST_PATH / SOURCE_GUARDED / BACKEND_VERIFICATION_PENDING (2026-06-18 06:13 UTC)
 - **Component**: `backend/src/main/java/com/example/shop/service/CartService.java:1043`
 - **Category**: Backend / Missing Transaction
 - **Description**: `processGuestCheckout()` creates orders and updates stock without `@Transactional`. If any step fails midway, partial data is committed.
+- **Current-source evidence**: Current `CartService` has no `processGuestCheckout(...)` method. Current order creation runs through private `OrderService.createGuestCheckoutOrder(...)`, called only by the two public `OrderService.guestCheckout(...)` entrypoints, both annotated with `@Transactional(rollbackFor = Exception.class)`; the idempotent overload wraps idempotency claim, order creation, stock reservation, and completion in the same rollback-aware transaction.
+- **Regression guard**: `OrderStockReservationRaceContractTest.checkoutStockReservationUsesLockedProductRowsInsteadOfCheckThenDeductService` now asserts the legacy `processGuestCheckout(` token is absent and that both guest checkout public overloads remain transactional.
+- **Verification**: Source-only backend scans and diff review; no Maven/JUnit, frontend tests, TypeScript, build, browser/API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1783: MEDIUM — createGuestOrder NPE risk when ProductFetchResult has null product
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / STALE_LEGACY_CART_GUEST_PATH / SOURCE_GUARDED / BACKEND_VERIFICATION_PENDING (2026-06-18 06:16 UTC)
 - **Component**: `backend/src/main/java/com/example/shop/service/CartService.java:1120`
 - **Category**: Backend / NPE
 - **Description**: `ProductFetchResult::getProduct` could return null. `Objects.requireNonNull(product, "Product must exist")` throws NPE instead of graceful error handling. Should return a meaningful error to the caller.
+- **Current-source evidence**: Current source has no `ProductFetchResult` and no `createGuestOrder(...)` legacy method. Guest checkout product loading is in `OrderService.prepareGuestCheckoutItems(...)`; when a requested product id is missing from the batch-loaded map, it throws `IllegalArgumentException("Product not found: " + requestItem.getProductId())` before any product dereference.
+- **Regression guard**: `OrderInputNormalizationServiceTest.guestCheckoutMissingProductUsesMeaningfulErrorPath` now rejects the stale `ProductFetchResult`, `createGuestOrder(`, and `Objects.requireNonNull(product` tokens and asserts the explicit missing-product error remains in `OrderService`.
+- **Verification**: Source-only backend scans and diff review; no Maven/JUnit, frontend tests, TypeScript, build, browser/API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1784: MEDIUM — convertSimpleVoToCartVo fetches product individually without batch loading
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / STALE_LEGACY_CART_VO_PATH / SOURCE_GUARDED / BACKEND_VERIFICATION_PENDING (2026-06-18 06:19 UTC)
 - **Component**: `backend/src/main/java/com/example/shop/service/CartService.java:284-302`
 - **Category**: Backend / N+1 Query
 - **Description**: Each cart item triggers a separate `getProductById()` call. For a cart with 20 items, this is 20 sequential DB/API calls. Should batch-fetch products.
+- **Current-source evidence**: Current `CartService` has no `convertSimpleVoToCartVo(...)` method and no `getProductById(...)` call. `getCartItems(...)` calls `refreshCartItemSnapshots(...)`, which collects distinct positive product ids and uses one `productRepository.findAllById(productIds)` batch load before refreshing each cart item snapshot from the resulting map.
+- **Regression guard**: `CartServiceTest.cartSnapshotRefreshBatchLoadsProducts` now rejects the stale converter and per-product lookup tokens and asserts the batch `findAllById(productIds)` refresh path remains in source.
+- **Verification**: Source-only backend scans and diff review; no Maven/JUnit, frontend tests, TypeScript, build, browser/API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1785: MEDIUM — adminCreateUser lacks @Transactional
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / STALE_LEGACY_ADMIN_CREATE_PATH / SOURCE_GUARDED / BACKEND_VERIFICATION_PENDING (2026-06-18 06:22 UTC)
 - **Component**: `backend/src/main/java/com/example/shop/service/UserService.java:495`
 - **Category**: Backend / Missing Transaction
 - **Description**: `adminCreateUser()` creates user and address without `@Transactional`. Partial creation leaves orphan data.
+- **Current-source evidence**: Current `UserService` has no `adminCreateUser(...)` method. Admin bootstrap creation flows through `UserService.registerAdmin(User user)`, which is annotated `@Transactional(rollbackFor = Exception.class)`, performs the admin insert inside that transaction, and releases the bootstrap lock in `finally`.
+- **Regression guard**: `UserServiceTest.adminCreationRunsThroughTransactionalRegisterAdminPath` now rejects the stale `adminCreateUser(` token and asserts `registerAdmin(...)` remains rollback-aware and retains the insert plus lock-release path.
+- **Verification**: Source-only backend scans and diff review; no Maven/JUnit, frontend tests, TypeScript, build, browser/API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1786: MEDIUM — updatePassword uses old password only (no new password param)
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / SOURCE_GUARDED / BACKEND_VERIFICATION_PENDING (2026-06-18 06:25 UTC)
 - **Component**: `backend/src/main/java/com/example/shop/service/UserService.java:421`
 - **Category**: Backend / API Design
 - **Description**: `updatePassword(Long userId, String oldPassword)` only takes old password. Actual password update logic is elsewhere. The method name is misleading.
+- **Current-source evidence**: Current `UserService.updatePassword` signature is `updatePassword(Long userId, String oldPassword, String newPassword)`. It validates the current password candidate, applies the strong-password policy to `newPassword`, checks the old password with `passwordEncoder.matches(...)`, and persists `passwordEncoder.encode(newPassword)` via `userMapper.updatePassword(...)`. `UserController.updatePassword` passes both `request.getOldPassword()` and `request.getNewPassword()`, and `UpdatePasswordRequest` contains `newPassword`.
+- **Regression guard**: `UserServiceTest.updatePasswordRequiresOldAndNewPasswordParameters` now rejects the stale two-argument signature and asserts the service, controller, and DTO all retain the new-password path; existing behavior tests verify weak new passwords fail before lookup and matching old passwords store the encoded new password.
+- **Verification**: Source-only backend scans and diff review; no Maven/JUnit, frontend tests, TypeScript, build, browser/API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1787: MEDIUM — UserService.createOrderForUser lacks explicit @Transactional
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / STALE_LEGACY_USER_ORDER_PATH / SOURCE_GUARDED / BACKEND_VERIFICATION_PENDING (2026-06-18 06:28 UTC)
 - **Component**: `backend/src/main/java/com/example/shop/service/UserService.java:532`
 - **Category**: Backend / Missing Transaction
 - **Description**: `createOrderForUser()` creates multiple entities (Address, UserPoints, UserCoupon, UserGrowth, Order) without explicit `@Transactional`. If any step fails, partial data is committed.
+- **Current-source evidence**: Current `UserService` has no `createOrderForUser(...)` method. Direct `OrderService.createOrder(Order)` is annotated `@Transactional(rollbackFor = Exception.class)` but intentionally rejects direct order creation; supported order creation flows through `OrderService.checkout(...)` and `OrderService.guestCheckout(...)`, whose public entrypoints are rollback-aware transactions and perform order, item, coupon, cart, idempotency, and stock changes in the checkout flow.
+- **Regression guard**: `OrderStockReservationRaceContractTest.checkoutStockReservationUsesLockedProductRowsInsteadOfCheckThenDeductService` now rejects the stale `createOrderForUser(` token, asserts direct order creation remains disabled, and asserts the transactional checkout entrypoints remain wired.
+- **Verification**: Source-only backend scans and diff review; no Maven/JUnit, frontend tests, TypeScript, build, browser/API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1788: LOW — AdminAuditLog entity has no @Table annotation
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / STALE_LEGACY_ENTITY_PATH / SOURCE_GUARDED / BACKEND_VERIFICATION_PENDING (2026-06-18 06:32 UTC)
 - **Component**: `backend/src/main/java/com/example/shop/entity/AdminAuditLog.java`
 - **Category**: Backend / Entity Mapping
 - **Description**: Missing `@Table(name = "admin_audit_log")` — relies on Hibernate naming strategy which may not match the actual DB table name.
+- **Current-source evidence**: Current source has no `AdminAuditLog.java` entity and no `admin_audit_log` mapping. The active audit log model is `SecurityAuditLog` plus MyBatis `SecurityAuditLogMapper.xml`, whose insert and search SQL explicitly target `security_audit_logs`; no Hibernate naming strategy is involved for this model.
+- **Regression guard**: `SecurityAuditLogServiceTest.currentAuditLogMappingUsesSecurityAuditLogsTableInsteadOfLegacyAdminAuditEntity` now asserts the legacy `AdminAuditLog.java` path is absent, `SecurityAuditLog` is not a JPA `@Entity`, and the mapper explicitly uses `security_audit_logs`.
+- **Verification**: Source-only backend scans and diff review; no Maven/JUnit, frontend tests, TypeScript, build, browser/API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1789: MEDIUM — UserPoints entity has inconsistent cascade definitions
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / STALE_LEGACY_ENTITY_PATH / SOURCE_GUARDED / BACKEND_VERIFICATION_PENDING (2026-06-18 06:35 UTC)
 - **Component**: `backend/src/main/java/com/example/shop/entity/UserPoints.java`
 - **Category**: Backend / Entity Mapping
 - **Description**: `CascadeType.PERSIST` on Order join but `CascadeType.ALL` on PointTransaction. Inconsistent cascade behavior — PERSIST-only may fail if the order needs to be merged first.
+- **Current-source evidence**: Current source has no `UserPoints.java`, no `PointTransaction.java`, no `UserPointsService`, and no `CascadeType.PERSIST` token. The referenced inconsistent JPA cascade model is not active in current production source.
+- **Regression guard**: `LegacyRaceConditionControllerContractTest.legacyPromotionRaceTargetsAreAbsent` now asserts the legacy points entities/services are absent and rejects `CascadeType.PERSIST` in production Java source.
+- **Verification**: Source-only backend scans and diff review; no Maven/JUnit, frontend tests, TypeScript, build, browser/API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1790: MEDIUM — CategoryAdminController.updateCategory has no @RequestBody
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / STALE_LEGACY_CONTROLLER_PATH / SOURCE_GUARDED / BACKEND_VERIFICATION_PENDING (2026-06-18 06:43 UTC)
 - **Component**: `backend/src/main/java/com/example/shop/controller/CategoryAdminController.java:213`
 - **Category**: Backend / Controller
 - **Description**: `updateCategory(@PathVariable Long id, Category category)` — missing `@RequestBody`. Spring may try to bind form data instead of JSON.
+- **Current-source evidence**: Current source has no `CategoryAdminController.java`. Admin category writes are in `AdminController.updateCategory(@PathVariable Long id, @Valid @RequestBody(required = false) Category category, Authentication authentication, HttpServletRequest request)`, so JSON request bodies are explicitly bound and null bodies are handled with a bad-request response.
+- **Regression guard**: `AdminRequestValidationContractTest.adminCategoryUpdateKeepsJsonRequestBodyBinding` now asserts the stale controller file is absent and the active `AdminController.updateCategory` category parameter retains both `@Valid` and nullable `@RequestBody`.
+- **Verification**: Source-only backend scans and diff review; no Maven/JUnit, frontend tests, TypeScript, build, browser/API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1791: MEDIUM — OrderController.createOrder has no @RequestBody
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / LEGACY_DIRECT_ORDER_CREATE_DISABLED / SOURCE_GUARDED / BACKEND_VERIFICATION_PENDING (2026-06-18 06:43 UTC)
 - **Component**: `backend/src/main/java/com/example/shop/controller/OrderController.java:182`
 - **Category**: Backend / Controller
 - **Description**: `createOrder(@AuthenticationPrincipal ..., Order order)` — missing `@RequestBody`. Spring may not deserialize JSON request body.
+- **Current-source evidence**: Current `OrderController.createOrder` no longer accepts an `Order` DTO/body. It accepts only `Authentication`, requires an authenticated user, and throws `403` with `Legacy order creation is disabled; use /orders/checkout/me or /orders/checkout/guest`. Supported order creation uses `checkout(...)`, `checkoutMine(...)`, and `guestCheckout(...)`, all with `@Valid @RequestBody(required = false)` request DTOs.
+- **Regression guard**: `OrderControllerLegacyAdminAuditTest.orderControllerKeepsLegacyCreateDisabledAndOrderReadsScopedToVisibleOrders` rejects `createOrder(@RequestBody...)`, asserts direct creation remains disabled, and `disabledLegacyMutationsRejectWithoutOrderDtoBindingOrServiceWork` verifies the disabled method does not call order services.
+- **Verification**: Source-only backend scans and diff review; no Maven/JUnit, frontend tests, TypeScript, build, browser/API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1792: MEDIUM — ReturnRequestController lacks @AuthenticationPrincipal
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / STALE_LEGACY_CONTROLLER_PATH / SOURCE_GUARDED / BACKEND_VERIFICATION_PENDING (2026-06-18 06:43 UTC)
 - **Component**: `backend/src/main/java/com/example/shop/controller/ReturnRequestController.java:42,108,165,191`
 - **Category**: Backend / Security
 - **Description**: All endpoints extract userId from request body or query param instead of `@AuthenticationPrincipal`. Any user can submit return requests or view other users' returns.
+- **Current-source evidence**: Current source has no `ReturnRequestController.java` and no `adminUserId` parameter token. Return flows are in `OrderController`; authenticated return operations accept `Authentication`, require the current user, and resolve ownership through the current order visibility/customer-user checks, while guest return routes require guest order credentials.
+- **Regression guard**: `LegacyRaceConditionControllerContractTest.legacyAdminIdentityParamControllersAreAbsent` now asserts the stale controller file/class is absent and rejects the old `adminUserId` token in production Java source.
+- **Verification**: Source-only backend scans and diff review; no Maven/JUnit, frontend tests, TypeScript, build, browser/API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1793: LOW — AdminAuditController lacks @AuthenticationPrincipal
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / STALE_LEGACY_CONTROLLER_PATH / SOURCE_GUARDED / BACKEND_VERIFICATION_PENDING (2026-06-18 06:43 UTC)
 - **Component**: `backend/src/main/java/com/example/shop/controller/AdminAuditController.java:39,49,60`
 - **Category**: Backend / Security
 - **Description**: All audit log endpoints use `@RequestParam(required = false) Long adminUserId` instead of `@AuthenticationPrincipal`. Admin can view other admins' audit logs.
+- **Current-source evidence**: Current source has no `AdminAuditController.java` and no `adminUserId` request parameter token. Active audit log endpoints are consolidated under `AdminController` and protected by the `/admin/**` security/admin path plus controller permission checks where applicable.
+- **Regression guard**: `LegacyRaceConditionControllerContractTest.legacyAdminIdentityParamControllersAreAbsent` now asserts the stale controller file/class is absent and rejects `adminUserId` in production Java source.
+- **Verification**: Source-only backend scans and diff review; no Maven/JUnit, frontend tests, TypeScript, build, browser/API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1794: LOW — UserBehaviorAdminController lacks @AuthenticationPrincipal
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / STALE_LEGACY_CONTROLLER_PATH / SOURCE_GUARDED / BACKEND_VERIFICATION_PENDING (2026-06-18 06:43 UTC)
 - **Component**: `backend/src/main/java/com/example/shop/controller/UserBehaviorAdminController.java:41,77`
 - **Category**: Backend / Security
 - **Description**: Uses `@RequestParam Long adminUserId` instead of `@AuthenticationPrincipal`. Admin can view other admins' behavior.
+- **Current-source evidence**: Current source has no `UserBehaviorAdminController.java` and no `adminUserId` request parameter token. The referenced impersonation-prone controller is not active in production source.
+- **Regression guard**: `LegacyRaceConditionControllerContractTest.legacyAdminIdentityParamControllersAreAbsent` now asserts the stale controller file/class is absent and rejects `adminUserId` in production Java source.
+- **Verification**: Source-only backend scans and diff review; no Maven/JUnit, frontend tests, TypeScript, build, browser/API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1795: LOW — PromotionAdminController lacks @AuthenticationPrincipal
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / STALE_LEGACY_CONTROLLER_PATH / SOURCE_GUARDED / BACKEND_VERIFICATION_PENDING (2026-06-18 06:43 UTC)
 - **Component**: `backend/src/main/java/com/example/shop/controller/PromotionAdminController.java:32,62,93,133`
 - **Category**: Backend / Security
 - **Description**: Uses `@RequestParam Long adminUserId` instead of `@AuthenticationPrincipal`. Admin can impersonate other admins.
+- **Current-source evidence**: Current source has no `PromotionAdminController.java` and no `adminUserId` request parameter token. Promotion/birthday-coupon admin operations are consolidated in current admin endpoints guarded by `/admin/**` security and permission checks.
+- **Regression guard**: `LegacyRaceConditionControllerContractTest.legacyAdminIdentityParamControllersAreAbsent` now asserts the stale controller file/class is absent and rejects `adminUserId` in production Java source.
+- **Verification**: Source-only backend scans and diff review; no Maven/JUnit, frontend tests, TypeScript, build, browser/API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1796: LOW — AdminDashboardController lacks @AuthenticationPrincipal
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / STALE_LEGACY_CONTROLLER_PATH / SOURCE_GUARDED / BACKEND_VERIFICATION_PENDING (2026-06-18 06:43 UTC)
 - **Component**: `backend/src/main/java/com/example/shop/controller/AdminDashboardController.java:48`
 - **Category**: Backend / Security
 - **Description**: Uses `@RequestParam Long adminUserId` instead of `@AuthenticationPrincipal`. Admin can view other admins' dashboards.
+- **Current-source evidence**: Current source has no `AdminDashboardController.java` and no `adminUserId` request parameter token. Active dashboard data is served from `AdminController.getDashboard()` under `/admin/**`, which is protected by the Spring Security admin route configuration.
+- **Regression guard**: `LegacyRaceConditionControllerContractTest.legacyAdminIdentityParamControllersAreAbsent` now asserts the stale controller file/class is absent and rejects `adminUserId` in production Java source.
+- **Verification**: Source-only backend scans and diff review; no Maven/JUnit, frontend tests, TypeScript, build, browser/API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1797: LOW — OrderController.getOrder has no @AuthenticationPrincipal
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / SOURCE_GUARDED / BACKEND_VERIFICATION_PENDING (2026-06-18 06:43 UTC)
 - **Component**: `backend/src/main/java/com/example/shop/controller/OrderController.java:111`
 - **Category**: Backend / Security
 - **Description**: `getOrder(@PathVariable Long orderId)` — no user identity check. Any authenticated user can view any order by ID.
+- **Current-source evidence**: Current `OrderController.getOrder(@PathVariable Long id, Authentication authentication)` calls `SecurityUtils.requireUser(authentication)` and then `requireVisibleOrder(id, authentication)`. `requireVisibleOrder` returns the order only when the authenticated user owns it, or when an admin passes the admin order-page permission check; otherwise it throws `403 Forbidden`.
+- **Regression guard**: `OrderControllerLegacyAdminAuditTest.orderControllerKeepsLegacyCreateDisabledAndOrderReadsScopedToVisibleOrders` now asserts `getOrder` keeps the `Authentication` parameter, uses `requireVisibleOrder`, preserves self/admin branches, and retains the forbidden fallback.
+- **Verification**: Source-only backend scans and diff review; no Maven/JUnit, frontend tests, TypeScript, build, browser/API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1798: HIGH — SecurityConfig XSS sanitizer allows data: URLs
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / STALE_SECURITYCONFIG_SANITIZER_PATH / SOURCE_GUARDED / BACKEND_FRONTEND_VERIFICATION_PENDING (2026-06-18 06:52 UTC)
 - **Component**: `backend/src/main/java/com/example/shop/config/SecurityConfig.java:232`
 - **Category**: Backend / Security
 - **Description**: `sanitizeInput()` does not block `data:` URLs. An attacker can inject `<img src="data:text/html,<script>alert(1)</script>">` which bypasses the XSS filter.
+- **Current-source evidence**: Current `SecurityConfig` has no `sanitizeInput(...)` URL sanitizer path. Backend notification HTML sanitization rejects URL schemes outside `http`, `https`, `mailto`, and `tel`, so `data:` attributes are removed; persistent image URL validation also rejects `data:` and `blob:`. Frontend rich-text sanitization uses DOMPurify with `ALLOW_UNKNOWN_PROTOCOLS: false`, `anchorProtocols` excluding `data:`, and `mediaProtocols` limited to `http:`/`https:`. The remaining `data:` entries in `SecurityConfig` are CSP resource directives for image/font loading, not input sanitization.
+- **Regression guard**: `NotificationServiceTest.broadcastSanitizesHtmlNotificationBeforeInsert` now covers `data:text/html` links and `data:image` sources, and `sanitizeHtml.test.ts` now covers `data:` links/images in frontend rich text.
+- **Verification**: Source-only backend/frontend scans and diff review; no Maven/JUnit, frontend Jest, TypeScript, build, browser/Playwright, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1799: MEDIUM — SecurityConfig.buildAdminAccessExpression hardcodes USER_AGENT
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / STALE_SECURITYCONFIG_METHOD_PATH / SOURCE_GUARDED / BACKEND_VERIFICATION_PENDING (2026-06-18 06:55 UTC)
 - **Component**: `backend/src/main/java/com/example/shop/config/SecurityConfig.java:136`
 - **Category**: Backend / Configuration
 - **Description**: `hasRole('USER_AGENT')` is hardcoded as a required role. If the system doesn't use USER_AGENT role, admin access is denied.
+- **Current-source evidence**: Current `SecurityConfig` has no `buildAdminAccessExpression(...)` method and no `USER_AGENT` token. The admin security rule is `.antMatchers("/admin/**").hasRole("ADMIN")`; feature/action-level permissions are handled in controllers through `AdminRoleService` checks rather than a hardcoded secondary role in the security expression.
+- **Regression guard**: `IpBlacklistAdminCoverageContractTest.securityFilterChainChecksIpBlacklistBeforeJwtAuthentication` now asserts the admin rule remains `hasRole("ADMIN")` and rejects `buildAdminAccessExpression`, `USER_AGENT`, and `hasRole('USER_AGENT')` in `SecurityConfig`.
+- **Verification**: Source-only backend scans and diff review; no Maven/JUnit, frontend tests, TypeScript, build, browser/API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1800: MEDIUM — HomeBanner validation: minRatio/maxRatio logic inverted
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / STALE_LEGACY_ENTITY_PATH / SOURCE_GUARDED / BACKEND_VERIFICATION_PENDING (2026-06-18 06:57 UTC)
 - **Component**: `backend/src/main/java/com/example/shop/entity/HomeBanner.java:64-73`
 - **Category**: Backend / Validation
 - **Description**: `getMinRatio()` returns `maxAspectRatio` and `getMaxRatio()` returns `minAspectRatio`. The naming is inverted — callers using `getMinRatio()` to get the minimum ratio will get the maximum instead.
+- **Current-source evidence**: Current source has no `HomeBanner.java` entity and no `getMinRatio()` token. The referenced inverted aspect-ratio accessors are not active production code.
+- **Regression guard**: `LegacyRaceConditionControllerContractTest.legacyHomeMarketingEntitiesAreAbsent` now asserts the stale home marketing entity files/classes and `getMinRatio()` token remain absent from production Java source.
+- **Verification**: Source-only backend scans and diff review; no Maven/JUnit, frontend tests, TypeScript, build, browser/API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1801: MEDIUM — HomeActivity.timingState uses !isBefore() which is always true after start
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / STALE_LEGACY_ENTITY_PATH / SOURCE_GUARDED / BACKEND_VERIFICATION_PENDING (2026-06-18 06:57 UTC)
 - **Component**: `backend/src/main/java/com/example/shop/entity/HomeActivity.java:98-113`
 - **Category**: Backend / Logic
 - **Description**: `getTimingState()` — ENDED check uses `LocalDateTime.now().isBefore(endAt)` negated, which is true when now >= endAt. But STARTED check uses `LocalDateTime.now().isBefore(endAt)`, which is true when now < endAt. The logic is correct but the ENDED check using `!isBefore()` is confusing and error-prone.
+- **Current-source evidence**: Current source has no `HomeActivity.java` entity and no `getTimingState()` token. The referenced timing-state implementation is not active production code.
+- **Regression guard**: `LegacyRaceConditionControllerContractTest.legacyHomeMarketingEntitiesAreAbsent` now asserts the stale home marketing entity files/classes and `getTimingState()` token remain absent from production Java source.
+- **Verification**: Source-only backend scans and diff review; no Maven/JUnit, frontend tests, TypeScript, build, browser/API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1802: LOW — AutoRegisterAspect@Around throws RuntimeException
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / STALE_LEGACY_ASPECT_PATH / SOURCE_GUARDED / BACKEND_VERIFICATION_PENDING (2026-06-18 06:59 UTC)
 - **Component**: `backend/src/main/java/com/example/shop/config/AutoRegisterAspect.java:42`
 - **Category**: Backend / Error Handling
 - **Description**: `throw new RuntimeException(e)` wraps all exceptions from `pjp.proceed()`. Should preserve original exception type or use a more specific exception.
+- **Current-source evidence**: Current source has no `AutoRegisterAspect.java`, no `class AutoRegisterAspect`, and no `throw new RuntimeException(e)` token in production Java source. The referenced AOP wrapper is not active code.
+- **Regression guard**: `LegacyRaceConditionControllerContractTest.legacyHomeMarketingEntitiesAreAbsent` now also asserts the stale aspect file/class and broad `RuntimeException(e)` wrapper token remain absent.
+- **Verification**: Source-only backend scans and diff review; no Maven/JUnit, frontend tests, TypeScript, build, browser/API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1803: LOW — GlobalApiExceptionHandler handles DuplicateKeyException with 400
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / STALE_EXCEPTION_HANDLER_PATH / SOURCE_GUARDED / BACKEND_VERIFICATION_PENDING (2026-06-18 07:01 UTC)
 - **Component**: `backend/src/main/java/com/example/shop/config/GlobalApiExceptionHandler.java:49`
 - **Category**: Backend / Error Handling
 - **Description**: `DuplicateKeyException` returns 400 Bad Request. This is correct for user input but may hide server-side bugs. Should differentiate between user-caused and system-caused duplicates.
+- **Current-source evidence**: Current `GlobalApiExceptionHandler` has no `DuplicateKeyException` handler and does not list `DataIntegrityViolationException.class` in the bad-request handler. Unclassified data-access duplicates are not collapsed into the generic 400 path by this advice; user-caused duplicate cases are handled closer to the service/controller logic where they can return business messages.
+- **Regression guard**: `GlobalApiExceptionHandlerTest.duplicateKeyExceptionsAreNotCollapsedIntoBadRequestHandler` now rejects `DuplicateKeyException` and `DataIntegrityViolationException.class` in the global handler while asserting the catch-all unexpected handler remains present.
+- **Verification**: Source-only backend scans and diff review; no Maven/JUnit, frontend tests, TypeScript, build, browser/API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1804: LOW — PayMessageConsumers uses fixed 200ms sleep in retry loop
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / STALE_LEGACY_MQ_CONSUMER_PATH / SOURCE_GUARDED / BACKEND_VERIFICATION_PENDING (2026-06-18 07:04 UTC)
 - **Component**: `backend/src/main/java/com/example/shop/mq/PayMessageConsumers.java:207`
 - **Category**: Backend / Retry Logic
 - **Description**: `Thread.sleep(200)` in retry loop for finding order after payment. Fixed sleep doesn't account for variable latency. Should use exponential backoff.
+- **Current-source evidence**: Current source has no `src/main/java/com/example/shop/mq/PayMessageConsumers.java`. Active generic payment HTTP retry logic is in `PaymentService`, using runtime-configured `payment.gateway-http-retry-initial-delay-ms` and `payment.gateway-http-retry-max-delay-ms` plus `gatewayRetryDelayMs(...)`, which applies a bounded exponential multiplier before `TimeUnit.MILLISECONDS.sleep(retryDelayMs)`.
+- **Regression guard**: `PaymentServiceObservabilityContractTest.paymentRetriesAvoidLegacyFixedSleepConsumerLoop` now asserts the stale consumer file is absent, rejects `Thread.sleep(200)`, and asserts the configurable exponential retry delay path remains in `PaymentService`.
+- **Verification**: Source-only backend scans and diff review; no Maven/JUnit, frontend tests, TypeScript, build, browser/API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1805: MEDIUM — PayCallbackHandler.checkAndUpdateOrderStatus sets coupon as used without validation
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / STALE_LEGACY_CALLBACK_HANDLER_PATH / SOURCE_GUARDED / BACKEND_VERIFICATION_PENDING (2026-06-18 07:07 UTC)
 - **Component**: `backend/src/main/java/com/example/shop/handler/PayCallbackHandler.java:317`
 - **Category**: Backend / Business Logic
 - **Description**: Sets coupon as used without checking if the coupon is still valid or if the order actually used a coupon. Could mark coupons as used even for orders without coupons.
+- **Current-source evidence**: Current source has no `PayCallbackHandler.java`, no `checkAndUpdateOrderStatus(...)`, and no coupon mutation inside `PaymentService.handleCallback(...)`. Coupon use is performed during checkout via `CouponService.useCoupon(...)`, which validates the user coupon and relies on a conditional `userCouponMapper.markUsed(...)` update before incrementing usage counters.
+- **Regression guard**: `PaymentCallbackSignatureContractTest.paymentCallbacksDoNotUseLegacyHandlerCouponOrHardcodedOrderStatusPaths` now asserts the stale handler/method are absent, `handleCallback(...)` does not call `couponService`, and callback success updates payment state through `paymentRepository.markPaidDetailed(...)`; `CouponUsageCounterContractTest` covers the validated coupon-use path.
+- **Verification**: Source-only backend scans and diff review; no Maven/JUnit, frontend tests, TypeScript, build, browser/API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1806: LOW — PayCallbackHandler.sendReplenishReminderToCustomer hardcodes orderStatus=1
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / STALE_LEGACY_CALLBACK_HANDLER_PATH / SOURCE_GUARDED / BACKEND_VERIFICATION_PENDING (2026-06-18 07:07 UTC)
 - **Component**: `backend/src/main/java/com/example/shop/handler/PayCallbackHandler.java:360`
 - **Category**: Backend / Business Logic
 - **Description**: `notificationRequest.setOrderStatus(1)` hardcodes status to 1 regardless of actual order status. Should use the actual order status.
+- **Current-source evidence**: Current source has no `PayCallbackHandler.java`, no `sendReplenishReminderToCustomer(...)`, and no `notificationRequest.setOrderStatus(1)` token. Active payment callbacks are handled by `PaymentService.handleCallback(...)` and do not construct that legacy notification request.
+- **Regression guard**: `PaymentCallbackSignatureContractTest.paymentCallbacksDoNotUseLegacyHandlerCouponOrHardcodedOrderStatusPaths` now rejects the stale handler/method and hardcoded `setOrderStatus(1)` callback path.
+- **Verification**: Source-only backend scans and diff review; no Maven/JUnit, frontend tests, TypeScript, build, browser/API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1807: LOW — SupportControllerAdminDuplicateTest uses raw numbers instead of enum constants
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / STALE_LEGACY_TEST_PATH / SOURCE_GUARDED / BACKEND_VERIFICATION_PENDING (2026-06-18 07:11 UTC)
 - **Component**: `backend/src/test/java/com/example/shop/controller/SupportControllerAdminDuplicateTest.java:130-135`
 - **Category**: Backend / Test Quality
 - **Description**: Uses `2, 3` instead of enum constants like `SupportTicket.TicketStatus.IN_PROGRESS.getValue()`. Makes tests fragile if enum values change.
+- **Current-source evidence**: Current source has no `SupportControllerAdminDuplicateTest.java`; support admin coverage lives in `SupportControllerAdminResponseTest` and service/websocket tests around the current `SupportSession`/`SupportMessage` model.
+- **Regression guard**: `SupportControllerAdminResponseTest.legacyDuplicateAdminSupportTestDoesNotReturnWithRawStatusNumbersOrTodo` now asserts the stale duplicate test file is absent.
+- **Verification**: Source-only backend scans and diff review; no Maven/JUnit, frontend tests, TypeScript, build, browser/API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1808: LOW — SupportControllerAdminDuplicateTest has TODO for substring validation
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / STALE_LEGACY_TEST_PATH / SOURCE_GUARDED / BACKEND_VERIFICATION_PENDING (2026-06-18 07:11 UTC)
 - **Component**: `backend/src/test/java/com/example/shop/controller/SupportControllerAdminDuplicateTest.java:203-205`
 - **Category**: Backend / Test Completeness
 - **Description**: Test has `// assertEquals("中文", result.getMessage().substring(0, 2));` commented out as TODO. Should verify the full message content.
+- **Current-source evidence**: Current source has no `SupportControllerAdminDuplicateTest.java`, and the active `SupportControllerAdminResponseTest` contains no `TODO` marker.
+- **Regression guard**: `SupportControllerAdminResponseTest.legacyDuplicateAdminSupportTestDoesNotReturnWithRawStatusNumbersOrTodo` now asserts the stale duplicate test file is absent and rejects `TODO` in the active support controller test.
+- **Verification**: Source-only backend scans and diff review; no Maven/JUnit, frontend tests, TypeScript, build, browser/API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1809: LOW — AuthControllerTest references non-existent /api/auth/refresh-token
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / STALE_LEGACY_TEST_ENDPOINT / SOURCE_GUARDED / BACKEND_FRONTEND_VERIFICATION_PENDING (2026-06-18 07:13 UTC)
 - **Component**: `backend/src/test/java/com/example/shop/controller/AuthControllerTest.java:135-148`
 - **Category**: Backend / Test Quality
 - **Description**: Test calls `/api/auth/refresh-token` which returns 404. The endpoint doesn't exist in AuthController. Test should verify the correct endpoint or be removed.
+- **Current-source evidence**: Current source has no `AuthControllerTest.java` and no `/api/auth/refresh-token` reference. Refresh token rotation is implemented by `LoginController @PostMapping("/refresh")`, exposed under `/auth/refresh`, and the frontend API client posts to `/auth/refresh`.
+- **Regression guard**: `LoginControllerRefreshTest.refreshTestsAndClientUseCurrentRefreshEndpoint` now asserts the stale test file and endpoint token are absent and that backend/frontend sources retain `/auth/refresh`.
+- **Verification**: Source-only backend/frontend scans and diff review; no Maven/JUnit, frontend Jest, TypeScript, build, browser/Playwright, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1810: MEDIUM — ChatController.sendAdminReply missing @RequestBody
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / STALE_LEGACY_CONTROLLER_PATH / SOURCE_GUARDED / BACKEND_VERIFICATION_PENDING (2026-06-18 07:17 UTC)
 - **Component**: `backend/src/main/java/com/example/shop/controller/ChatController.java:561`
 - **Category**: Backend / Controller
 - **Description**: `sendAdminReply(@AuthenticationPrincipal UserDetails userDetails, ChatMessage message)` — missing `@RequestBody`. Spring may not deserialize JSON body.
+- **Current-source evidence**: Current source has no `ChatController.java` and no `sendAdminReply(...)` method. Active admin support replies use `SupportController.sendSupportMessage(@PathVariable Long sessionId, @RequestBody(required = false) Map<String, Object> body, Authentication authentication, HttpServletRequest request)`, so JSON request bodies are explicitly bound and null bodies are handled.
+- **Regression guard**: `SupportControllerAdminResponseTest.legacyDuplicateAdminSupportTestDoesNotReturnWithRawStatusNumbersOrTodo` now also asserts the stale `ChatController.java` path and `sendAdminReply(` token are absent and that `sendSupportMessage` retains nullable `@RequestBody`.
+- **Verification**: Source-only backend scans and diff review; no Maven/JUnit, frontend tests, TypeScript, build, browser/API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1811: LOW — CartCheckoutFlow error message assertion uses /submit/i but button says "Confirm & Pay"
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / SOURCE_GUARDED / FRONTEND_VERIFICATION_PENDING (2026-06-18 07:21 UTC)
 - **Component**: `frontend/src/test/CartCheckoutFlow.test.tsx:89`
 - **Category**: Test / Assertion Mismatch
 - **Description**: Test asserts error message contains "submit" but the actual button text is "Confirm & Pay". The assertion should match the actual UI text.
+- **Current-source evidence**: Current `CartCheckoutFlow.test.tsx` no longer contains `/submit/i`. The primary checkout helper now targets the current `.checkout-page__confirmationButton` selector, matching the current checkout confirmation action instead of the older `.checkout-page__submitButton` helper path.
+- **Regression guard**: `CartCheckoutFlow.test.tsx` self-check `keeps checkout flow tests aligned with async region data, payment channel, and popconfirm timer setup` now asserts the confirmation-button selector is present and rejects both the old submit-button helper selector and `/submit/i`.
+- **Verification**: Source-only frontend scans and diff review; no frontend Jest, TypeScript, build, browser/Playwright, backend Maven/JUnit, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1812: HIGH — Anonymous chat race condition on userId sequencing
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / SOURCE_GUARDED / BACKEND_VERIFICATION_PENDING (2026-06-18 07:33 UTC)
 - **Component**: `backend/src/main/java/com/example/shop/service/AnonymousUserService.java:235-240`
 - **Category**: Backend / Concurrency
 - **Description**: Anonymous user ID is computed as `count + 1` then persisted via `putIfAbsent`. Under concurrent requests, two users can compute the same nextUserId; the loser of `putIfAbsent` retries with `count + 1` but the count hasn't changed yet, risking a third collision. No lock or DB sequence is used.
 - **Fix**: Use a database sequence, Redis INCR, or an optimistic retry loop with a fresh count.
+- **Current-source evidence**: The legacy `AnonymousUserService.java` path is absent. Guest support session creation is now order-credential scoped: `SupportController` resolves the guest order through `requireGuestOrder(...)`, uses `order.getUserId()`, and keys guest sessions with `guestSupportContextKey(order)`. `SupportService.getOrCreateOpenSession(userId, contextKey)` computes a per-`userId:contextKey` lock key, uses `sessionCreationLocks.computeIfAbsent(...)`, synchronizes session creation, rechecks the open session from the mapper inside the lock, and only then inserts a new `SupportSession`.
+- **Regression guard**: `SupportServiceTest.guestSupportSessionCreationUsesOrderScopedLockInsteadOfAnonymousSequencing` asserts the stale anonymous service path and `count + 1`/`putIfAbsent` sequence tokens are absent, and locks the current guest support contract to order-scoped identity plus synchronized DB recheck-before-insert session creation.
+- **Verification**: Source-only backend scans and diff review; no Maven/JUnit, frontend tests, TypeScript, build, browser/API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1813: MEDIUM — ProductAdminService.cloneProduct() retains database ID
-- **Status**: OPEN
+- **Status**: STALE_LEGACY_PATH / CURRENT_SOURCE_COVERED / SOURCE_GUARDED / BACKEND_VERIFICATION_PENDING (2026-06-18 07:38 UTC)
 - **Component**: `backend/src/main/java/com/example/shop/service/ProductAdminService.java:366-372`
 - **Category**: Backend / Correctness
 - **Description**: `cloneProduct()` copies `setProductImage` from source via `BeanUtils.copyProperties`, then `p.setId(null)` before save. The entity has a non-final `id` field, so `setId(null)` is valid. However, the returned `ProductAdminVO` is converted from the managed entity; if JPA has flushed but not committed, the returned VO may contain a stale transient reference. More importantly, if `@Transactional` isolation is READ_COMMITTED, the cloned product is immediately visible within the same transaction — callers must be aware.
 - **Fix**: Add `@Transactional` explicitly and detach the entity before returning, or document the behavior.
+- **Current-source evidence**: The legacy `ProductAdminService.java` path and `cloneProduct(` token are absent. Current product creation is handled by `AdminController.createProduct`, which explicitly clears any client-supplied database ID with `product.setId(null)` before calling `productService.save(product)`. `ProductServiceImpl.save(Product)` is annotated with `@Transactional(rollbackFor = Exception.class)`, validates the direct product payload, saves through `productRepository.save(product)`, and returns the persisted entity from the current create path rather than a copied clone object.
+- **Regression guard**: `ProductServiceTest.staleProductAdminClonePathIsAbsentAndCreateClearsClientSuppliedId` asserts the stale clone service/path is absent, rejects `cloneProduct(` and `BeanUtils.copyProperties` in the admin product path, and locks the current create/save contract to ID clearing plus transactional save.
+- **Verification**: Source-only backend scans and diff review; no Maven/JUnit, frontend tests, TypeScript, build, browser/API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1814: HIGH — JWT race condition allows expired-token calls during logout
-- **Status**: OPEN
+- **Status**: FIXED / SOURCE_GUARDED / BACKEND_VERIFICATION_PENDING (2026-06-18 07:44 UTC)
 - **Component**: `backend/src/main/java/com/example/shop/config/JwtAuthenticationFilter.java:67-83`
 - **Category**: Backend / Security
 - **Description**: Between `isTokenRevoked(token)` and the final `chain.doFilter()`, a concurrent logout request can add the token to the blacklist. The filter already authenticated the user and set the SecurityContext, so the request proceeds. This is a classic TOCTOU window. While the window is small (microseconds), under high concurrency or slow Redis, it can be exploited.
 - **Fix**: Consider using a Redis-based token whitelist (active until expiry) instead of a blacklist, or accept the trade-off and document it.
+- **Fix implemented**: Current filter path is `src/main/java/com/example/shop/security/JwtAuthenticationFilter.java`. The filter now stores the parsed access-token JTI, performs the original blacklist check before username extraction, and performs a second `tokenBlacklistService.isAccessTokenBlacklisted(tokenJti)` check after authentication setup but before the final `filterChain.doFilter(...)`. If the token was blacklisted during the authentication window, the filter calls `SecurityContextHolder.clearContext()` so the downstream chain sees the request as unauthenticated.
+- **Regression guard**: `SecurityConfigCorsTest.jwtFilterRechecksAccessTokenBlacklistBeforeDelegatingToProtectedChain` asserts the second blacklist check remains after `SecurityContextHolder.getContext().setAuthentication(authToken);`, before the final downstream filter-chain call, and that a hit clears the security context.
+- **Verification**: Source-only backend scans and diff review; no Maven/JUnit, frontend tests, TypeScript, build, browser/API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1815: MEDIUM — XSS bypass via newlines in HTML sanitization
-- **Status**: OPEN
+- **Status**: STALE_LEGACY_PATH / CURRENT_SOURCE_COVERED / SOURCE_GUARDED / VERIFICATION_PENDING (2026-06-18 07:53 UTC)
 - **Component**: `backend/src/main/java/com/example/shop/service/XssSanitizeService.java:23-37`
 - **Category**: Backend / Security
 - **Description**: `stripXssEventHandlers()` uses a regex that matches `on\w+=` on a single line. Attackers can split event handlers across lines: `<div\nonclick\n=\n"alert(1)">`. Also, the method removes `<script>` tags before calling strip, so if `stripAllHtmlTags` is false, a `<div onmouseover="...">` payload survives.
 - **Fix**: Use `Pattern.DOTALL` flag or collapse whitespace before matching, or use a proper HTML sanitizer library like OWASP Java HTML Sanitizer.
+- **Current-source evidence**: The legacy `XssSanitizeService.java` and `stripXssEventHandlers` path are absent. Backend notification HTML sanitization uses `(?is)` `START_TAG_PATTERN` and `ATTRIBUTE_PATTERN`, so attributes split across newlines are parsed, and `isUnsafeAttribute` drops any attribute whose normalized name starts with `on`, plus `srcdoc`, `style`, unsafe controls, and unsafe URLs. Product direct text normalization strips HTML tags entirely through DOTALL tag/block patterns. Frontend rich text rendering uses DOMPurify with an allowlist hook that rejects `attributeName.startsWith('on')`, unsafe URL protocols, control characters, and non-allowlisted attributes.
+- **Regression guard**: `NotificationServiceTest.broadcastSanitizesHtmlNotificationBeforeInsert` now includes `<div\nonclick\n=\n...>` and asserts the event attribute/payload are removed; `NotificationServiceTest.htmlSanitizerHandlesMultilineAttributesWithoutLegacyXssService` asserts the old service/token are absent and current sanitizer patterns remain DOTALL. `sanitizeHtml.test.ts` now covers frontend `onclick`/`onerror` attributes split across newlines.
+- **Verification**: Source-only backend/frontend scans and diff review; no Maven/JUnit, frontend Jest, TypeScript, build, browser/API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1816: MEDIUM — AdminProductController.cloneProduct missing @Transactional
-- **Status**: OPEN
+- **Status**: STALE_LEGACY_PATH / CURRENT_SOURCE_COVERED / SOURCE_GUARDED / BACKEND_VERIFICATION_PENDING (2026-06-18 07:58 UTC)
 - **Component**: `backend/src/main/java/com/example/shop/controller/AdminProductController.java:612`
 - **Category**: Backend / Transaction
 - **Description**: `cloneProduct()` reads and writes within a single `productAdminService.cloneProduct()` call. If the service method is not `@Transactional`, the read and write are in separate transactions, risking phantom reads or lost updates under concurrency. The service method should be checked for `@Transactional`.
 - **Fix**: Ensure `ProductAdminService.cloneProduct()` is annotated with `@Transactional`.
+- **Current-source evidence**: The legacy `AdminProductController.java`, `ProductAdminService.java`, and `cloneProduct(` paths are absent. Current admin product creation is `AdminController.createProduct`, which clears `product.setId(null)` before `productService.save(product)`, and the save implementation in `ProductServiceImpl.save(Product)` is annotated with `@Transactional(rollbackFor = Exception.class)`.
+- **Regression guard**: `ProductServiceTest.staleProductAdminClonePathIsAbsentAndCreateClearsClientSuppliedId` and `ProductServiceTest.staleAdminProductControllerCloneHeaderAndStateDeletePathsAreAbsent` assert the stale clone controller/service paths are absent and lock the current transactional create/save contract.
+- **Verification**: Source-only backend scans and diff review; no Maven/JUnit, frontend tests, TypeScript, build, browser/API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1817: LOW — AdminProductController exposes raw JSON in response headers
-- **Status**: OPEN
+- **Status**: STALE_LEGACY_PATH / CURRENT_SOURCE_COVERED / SOURCE_GUARDED / BACKEND_VERIFICATION_PENDING (2026-06-18 07:58 UTC)
 - **Component**: `backend/src/main/java/com/example/shop/controller/AdminProductController.java:181-182`
 - **Category**: Backend / Security
 - **Description**: `addStandardProductHeaders()` sets `X-Product-Data` with raw product VO JSON. This exposes internal data (cost price, supplier, admin fields) to any client that can read response headers. CORS may block it in browsers, but non-browser clients can read it.
 - **Fix**: Remove or encrypt the `X-Product-Data` header, or only include safe public fields.
+- **Current-source evidence**: The legacy `AdminProductController.java` path is absent. Current admin product responses come from `AdminController` and return body DTO/entities through `ResponseEntity.ok(...)`; no `addStandardProductHeaders` helper or `X-Product-Data` header token is present in the current admin product controller path.
+- **Regression guard**: `ProductServiceTest.staleAdminProductControllerCloneHeaderAndStateDeletePathsAreAbsent` asserts the legacy controller is absent and rejects both `addStandardProductHeaders` and `X-Product-Data`.
+- **Verification**: Source-only backend scans and diff review; no Maven/JUnit, frontend tests, TypeScript, build, browser/API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1818: LOW — AdminProductController.deleteProduct ignores ProductStateService.deleteProduct return value
-- **Status**: OPEN
+- **Status**: STALE_LEGACY_PATH / CURRENT_SOURCE_COVERED / SOURCE_GUARDED / BACKEND_VERIFICATION_PENDING (2026-06-18 07:58 UTC)
 - **Component**: `backend/src/main/java/com/example/shop/controller/AdminProductController.java:544`
 - **Category**: Backend / Correctness
 - **Description**: `productStateService.deleteProduct(id)` returns a `DeleteProductResult` but the return value is discarded. If the result contains failure information (e.g., product has pending orders), the controller always returns success regardless.
 - **Fix**: Check the return value and return appropriate HTTP status (409 Conflict if product cannot be deleted).
+- **Current-source evidence**: The legacy `AdminProductController.java`, `ProductStateService.java`, `productStateService.deleteProduct`, and `DeleteProductResult` paths are absent. Current `AdminController.deleteProduct` first loads the product via `productService.findById(id).orElse(null)`, returns `404` when absent, calls `productService.deleteById(id)` for the existing product, then records successful deletion with product audit metadata.
+- **Regression guard**: `ProductServiceTest.staleAdminProductControllerCloneHeaderAndStateDeletePathsAreAbsent` asserts the stale state-delete path is absent and locks the current delete flow to existence check, `notFound`, `productService.deleteById(id)`, and success audit.
+- **Verification**: Source-only backend scans and diff review; no Maven/JUnit, frontend tests, TypeScript, build, browser/API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1819: MEDIUM — PayCallbackHandler.updateStock releases reservation but ignores transfer failure
-- **Status**: OPEN
+- **Status**: STALE_LEGACY_PATH / CURRENT_SOURCE_COVERED / SOURCE_GUARDED / BACKEND_VERIFICATION_PENDING (2026-06-18 08:02 UTC)
 - **Component**: `backend/src/main/java/com/example/shop/service/PayCallbackHandler.java:666`
 - **Category**: Backend / Transaction
 - **Description**: `updateStock()` calls `stockReservationService.releaseReservation(orderId)` inside a loop over order items. If the release fails for one item, it throws RuntimeException and rolls back the entire `@Transactional` method. But the reservation release for already-processed items in the loop may have already been committed if `releaseReservation` is in a separate transaction.
 - **Fix**: Use a saga pattern or ensure `releaseReservation` participates in the same transaction.
+- **Current-source evidence**: Both legacy `com/example/shop/handler/PayCallbackHandler.java` and `com/example/shop/service/PayCallbackHandler.java` paths are absent. Current `PaymentService.handleCallback(PaymentCallbackRequest)` validates the callback secret/signature/freshness/amount, coordinates order payment success through `claimOrderForProviderPaidSuccessOrReconcile(...)`, and marks the payment paid through `paymentRepository.markPaidDetailed(...)`. The callback method does not call `updateStock`, `releaseReservation`, `reserveProductStock`, `productRepository`, or transfer-style stock mutation.
+- **Regression guard**: `PaymentCallbackSignatureContractTest.paymentCallbacksDoNotUseLegacyHandlerCouponOrHardcodedOrderStatusPaths` now also asserts the stale service handler path is absent and that `handleCallback` does not contain the old stock reservation/transfer tokens while retaining the current order-claim and `markPaidDetailed` flow.
+- **Verification**: Source-only backend scans and diff review; no Maven/JUnit, frontend tests, TypeScript, build, browser/API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1820: MEDIUM — CouponAdminService.expireCoupons() runs all candidates in single batch
-- **Status**: OPEN
+- **Status**: STALE_LEGACY_PATH / CURRENT_SOURCE_COVERED / SOURCE_GUARDED / BACKEND_VERIFICATION_PENDING (2026-06-18 08:06 UTC)
 - **Component**: `backend/src/main/java/com/example/shop/service/CouponAdminService.java:331`
 - **Category**: Backend / Performance
 - **Description**: `couponRepository.findExpiring(now)` could return thousands of coupons. All are processed in a single `@Transactional` batch with `saveAll()`. This can cause: long-running transactions, DB lock contention, and OOM if the result set is large.
 - **Fix**: Paginate the query (e.g., 100 at a time) and process in chunks.
+- **Current-source evidence**: The legacy `CouponAdminService.java` path is absent. Current `CouponService` does not expose `expireCoupons(`, does not call `couponRepository.findExpiring`, and does not call `couponRepository.saveAll` for coupon expiration. Admin coupon listing uses `searchAdminCoupons(..., PageRequest.of(...))`; expiring-soon data is computed through bounded aggregate count queries such as `countAdminActiveExpiringBetween(...)` rather than loading and saving all candidates.
+- **Regression guard**: `CouponRepositoryBoundedQueryContractTest.staleCouponAdminExpirationBatchPathIsAbsent` asserts the stale service path and batch-expiration tokens are absent while locking the current paged admin search and aggregate expiring-count contract.
+- **Verification**: Source-only backend scans and diff review; no Maven/JUnit, frontend tests, TypeScript, build, browser/API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1821: MEDIUM — Coupon quote useEffect missing cleanup guard
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / SOURCE_GUARDED / FRONTEND_VERIFICATION_PENDING (2026-06-18 08:10 UTC)
 - **Component**: `frontend/src/pages/Checkout.tsx:530-576`
 - **Category**: Frontend / RaceCondition
 - **Description**: The `useEffect` that fetches the coupon quote uses `couponQuoteSeqRef` to guard data-setting, but the status-setting branches (`setCouponQuoteStatus`) are also inside the `.then()/.catch()` callbacks without a disposed flag. A stale request can briefly set status to 'ready' before the new request resets it to 'loading', causing UI flicker.
 - **Fix**: Add a `disposed` flag in the cleanup return and check it before any state updates.
+- **Current-source evidence**: Current `Checkout.tsx` coupon quote effect declares `let disposed = false` before `couponApi.quote(...)`, checks `if (disposed || !mountedRef.current || couponQuoteSeqRef.current !== requestSeq) return;` at the start of both `.then(...)` and `.catch(...)`, and returns cleanup that sets `disposed = true`. The guarded blocks contain the async `setCouponQuoteStatus('error')`, `setCouponQuoteStatus('ready')`, quote, and error-message state updates, so stale quote requests cannot update coupon quote status after cleanup or sequence supersession.
+- **Regression guard**: `Checkout.test.tsx` now includes `keeps coupon quote status updates cleanup-bound`, which slices the coupon quote effect source and asserts the async ready/error status updates remain after the disposed/mounted/sequence guards and that cleanup sets `disposed = true`.
+- **Verification**: Source-only frontend scans and diff review; no frontend Jest, TypeScript, build, browser/Playwright, backend Maven/JUnit, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1822: MEDIUM — Product fetch useEffect missing disposed guard
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / SOURCE_GUARDED / FRONTEND_VERIFICATION_PENDING (2026-06-18 08:14 UTC)
 - **Component**: `frontend/src/pages/ProductDetail.tsx:515-589`
 - **Category**: Frontend / RaceCondition
 - **Description**: The main product fetch effect does not track whether the component has unmounted before calling `setProduct`, `setLoading`, etc. While React 18 handles this gracefully, the pattern is inconsistent with other effects in the codebase that use disposed guards.
 - **Fix**: Add a `disposed` flag checked in the `finally` block.
+- **Current-source evidence**: Current `ProductDetail.tsx` main product-loading effect declares `let disposed = false`, checks `if (disposed) return;` before product success state updates, before error/fallback state updates, and in `finally` before `setLoading(false)`. The same effect cleanup sets `disposed = true`, increments the non-critical request sequence, clears the fallback timer, detaches scroll warmup, and disconnects the observer.
+- **Regression guard**: `ProductDetail.test.tsx` now includes `keeps main product fetch cleanup-bound`, which slices the main product fetch effect source and asserts success, catch, and finally state updates remain guarded by `disposed`, with cleanup setting `disposed = true`.
+- **Verification**: Source-only frontend scans and diff review; no frontend Jest, TypeScript, build, browser/Playwright, backend Maven/JUnit, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1823: MEDIUM — Profile fetchOrders silently swallows item fetch failures
-- **Status**: OPEN
+- **Status**: FIXED / SOURCE_GUARDED / FRONTEND_VERIFICATION_PENDING (2026-06-18 08:24 UTC)
 - **Component**: `frontend/src/pages/Profile.tsx:231-255`
 - **Category**: Frontend / Correctness
 - **Description**: Failed order item fetches produce `[order.id, []]` entries. The list view shows "No order items" for orders that actually have items — a confusing false negative. No user-visible indication that some previews are missing.
 - **Fix**: Track failed order IDs separately and show a "Failed to load items" indicator with a retry button.
+- **Fix implemented**: `Profile.fetchOrders` now returns structured item preview results with `{ orderId, items, failed }` instead of converting failures into empty item arrays. Failed order preview IDs are stored in `orderItemPreviewFailedByOrderId`, and the order card renders `pages.profile.orderItemsPreviewFailed` plus a retry button with a reload icon instead of the misleading `noOrderItems` empty state. Added English, Chinese, and Spanish locale strings.
+- **Regression guard**: `Profile.test.ts` now includes `shows retryable order item preview failures instead of empty order items`, which asserts the failure map, structured failed result, retry UI, and rejects the stale `return [order.id, []] as const;` swallow path.
+- **Verification**: Source-only frontend scans and diff review; no frontend Jest, TypeScript, build, browser/Playwright, backend Maven/JUnit, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1824: LOW — Admin permission check fires on every route change
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / SOURCE_GUARDED / FRONTEND_VERIFICATION_PENDING (2026-06-18 08:27 UTC)
 - **Component**: `frontend/src/components/AdminLayout.tsx:146-150`
 - **Category**: Frontend / Performance
 - **Description**: `useEffect` depends on `location.pathname` and `checkAdmin`, causing two API calls (`getProfile()` + `getMyPermissions()`) on every navigation within the admin panel. Permissions only change via explicit events.
 - **Fix**: Remove `location.pathname` from the dependency array; only re-check on `shop:admin-permissions-updated` events.
+- **Current-source evidence**: Current `AdminLayout.tsx` initial admin permission check effect calls `void checkAdmin(initial);` and depends only on `[checkAdmin]`; it does not include `location.pathname`. Permission refresh is handled by `shop:admin-permissions-updated` and visible-tab `visibilitychange` listeners, while route changes only close the mobile nav or perform route authorization/redirection using existing permission state.
+- **Regression guard**: `AdminLayout.test.tsx` now includes `does not rerun admin permission checks on every route change`, asserting the initial check effect has `[checkAdmin]` only, excludes `location.pathname`, and that refresh triggers remain event/visibility based.
+- **Verification**: Source-only frontend scans and diff review; no frontend Jest, TypeScript, build, browser/Playwright, backend Maven/JUnit, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1825: LOW — Auto-track email param stripping triggers extra re-render
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / SOURCE_GUARDED / FRONTEND_VERIFICATION_PENDING (2026-06-18 08:29 UTC)
 - **Component**: `frontend/src/pages/OrderTracking.tsx:237-255`
 - **Category**: Frontend / Correctness
 - **Description**: `setSearchParams(sanitized, { replace: true })` triggers a re-render and re-execution of the effect. The `autoTrackKeyRef` guard prevents duplicate tracking calls, but the effect still runs sanitization logic on every re-render until params are clean, causing a brief flash.
 - **Fix**: Check if sanitization is needed before calling `setSearchParams`.
+- **Current-source evidence**: Current `OrderTracking.tsx` only calls `setSearchParams(sanitized, { replace: true })` after deleting `email`/`guestEmail` when `sanitized.toString() !== searchParams.toString()`. The prefill effect also does not auto-submit tracking requests; it only fills the form and shows the prefill notice.
+- **Regression guard**: `OrderTracking.test.tsx` now asserts the URL parameter stripping path keeps the `sanitized.toString() !== searchParams.toString()` guard before calling `setSearchParams`.
+- **Verification**: Source-only frontend scans and diff review; no frontend Jest, TypeScript, build, browser/Playwright, backend Maven/JUnit, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1826: LOW — Product state typed as `any`
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / SOURCE_GUARDED / FRONTEND_VERIFICATION_PENDING (2026-06-18 08:31 UTC)
 - **Component**: `frontend/src/pages/ProductDetail.tsx:206-208`
 - **Category**: Frontend / CodeQuality
 - **Description**: `useState<any>(null)` loses all type safety for the product object. All property accesses are untyped — typos or accessing non-existent properties won't be caught at compile time. The `Product` type is already imported.
 - **Fix**: Change to `useState<Product | null>(null)`.
+- **Current-source evidence**: Current `ProductDetail.tsx` declares `const [product, setProduct] = useState<Product | null>(null);`; no `useState<any>` token remains in the page.
+- **Regression guard**: Existing `ProductDetailTypeSafety.test.ts` asserts the typed `Product | null` state and rejects broad `useState<any>`, `as any`, `Product | any`, and related type-safety regressions in `ProductDetail.tsx`.
+- **Verification**: Source-only frontend scans and diff review; no frontend Jest, TypeScript, build, browser/Playwright, backend Maven/JUnit, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1827: LOW — Hardcoded "kg" unit in pet weight display
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / SOURCE_GUARDED / FRONTEND_VERIFICATION_PENDING (2026-06-18 08:33 UTC)
 - **Component**: `frontend/src/pages/Profile.tsx:1721`
 - **Category**: Frontend / i18n
 - **Description**: Pet weight display uses `` `${pet.weight} kg` `` instead of an i18n translation key. "kg" is not localized for Chinese users and doesn't support markets using pounds.
 - **Fix**: Add a translation key `pages.profile.weightUnit` or use the locale's unit system.
+- **Current-source evidence**: Current `Profile.tsx` renders pet weight via `t('pages.profile.petWeightValue', { weight: pet.weight })` instead of a hardcoded template string. English, Chinese, and Spanish locale files all define `pages.profile.petWeightValue` with the `{weight}` placeholder, allowing per-locale unit text.
+- **Regression guard**: `Profile.test.ts` now includes `localizes pet weight display instead of hardcoding a kilogram suffix`, asserting the translated display path is used, the old `${pet.weight} kg` pattern is absent, and all supported locale entries retain `{weight}`.
+- **Verification**: Source-only frontend scans and diff review; no frontend Jest, TypeScript, build, browser/Playwright, backend Maven/JUnit, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1828: LOW — Size calculator weight input missing max constraint
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / SOURCE_GUARDED / FRONTEND_VERIFICATION_PENDING (2026-06-18 08:36 UTC)
 - **Component**: `frontend/src/pages/ProductDetail.tsx:1530-1536`
 - **Category**: Frontend / Accessibility
 - **Description**: The weight `Input` has `type="number"` and `min={0}` but no `max`. Users can enter arbitrarily large numbers (e.g., 999999) passed to `estimatePetSize()`.
 - **Fix**: Add `max={200}` or similar reasonable constraint.
+- **Current-source evidence**: Current `ProductDetail.tsx` defines `PRODUCT_SIZE_CALCULATOR_MAX_WEIGHT_KG = 200`, normalizes typed weight through `Math.min(PRODUCT_SIZE_CALCULATOR_MAX_WEIGHT_KG, Math.max(0, numeric))`, clamps `sizeCalculatorWeightKg` before calling `estimatePetSize`, and renders the number input with `max={PRODUCT_SIZE_CALCULATOR_MAX_WEIGHT_KG}`.
+- **Regression guard**: `ProductDetailSizeGuide.test.ts` now includes `bounds size calculator weight input and estimate value`, asserting the max constant, input `max`, input normalization, and estimate clamp remain in source.
+- **Verification**: Source-only frontend scans and diff review; no frontend Jest, TypeScript, build, browser/Playwright, backend Maven/JUnit, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1829: LOW — cartTotal computed outside useMemo
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / SOURCE_GUARDED / FRONTEND_VERIFICATION_PENDING (2026-06-18 08:38 UTC)
 - **Component**: `frontend/src/pages/Checkout.tsx:524-528`
 - **Category**: Frontend / Performance
 - **Description**: `cartTotal` and `checkoutItemCount` are computed via `.reduce()` on every render. Since `cartItems` can be large and these values are used in many child components, they should be memoized.
 - **Fix**: Wrap in `useMemo` with `[cartItems]` dependency.
+- **Current-source evidence**: Current `Checkout.tsx` computes `cartTotal` with `useMemo(() => roundCartMoney(cartItems.reduce(...)), [cartItems])` and computes `checkoutItemCount` with `useMemo(..., [cartItems])`, so both derived values are recalculated only when `cartItems` changes.
+- **Regression guard**: `Checkout.test.tsx` now includes `memoizes cart total and item count from cart items`, asserting both derived values use `useMemo([cartItems])` and rejecting the older direct `.reduce()` declarations.
+- **Verification**: Source-only frontend scans and diff review; no frontend Jest, TypeScript, build, browser/Playwright, backend Maven/JUnit, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F1830: LOW — selectedCartItemIds memoized with empty deps reads stale sessionStorage
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / SOURCE_GUARDED / FRONTEND_VERIFICATION_PENDING (2026-06-18 08:38 UTC)
 - **Component**: `frontend/src/pages/Checkout.tsx:387-389`
 - **Category**: Frontend / Correctness
 - **Description**: `selectedCartItemIds` is memoized with `useMemo(..., [])`, reading from sessionStorage only on mount. If the user navigates back to cart, changes selection, and returns to checkout, the memo holds stale data.
 - **Fix**: Remove the `useMemo` or add a dependency that tracks sessionStorage changes.
+- **Current-source evidence**: Current `Checkout.tsx` reads `const selectedCartItemIds = readCheckoutCartItemIds();` inside the checkout bootstrap/load effect rather than memoizing it with an empty dependency array. That load effect is keyed by `checkoutReloadKey` and core dependencies, so a checkout reload re-reads the latest sessionStorage selection.
+- **Regression guard**: Existing `Checkout.test.tsx` checkout bootstrap guard asserts `useMemo(() => readCheckoutCartItemIds(), [])` is absent and that `selectedCartItemIds` is read inside the load effect.
+- **Verification**: Source-only frontend scans and diff review; no frontend Jest, TypeScript, build, browser/Playwright, backend Maven/JUnit, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ---
 
@@ -10313,18 +10996,24 @@ Multi-dimensional source review across: security, race conditions, state managem
 ### Security Audit (10 issues)
 
 ### F2471: HIGH — Public admin bootstrap endpoint lacks dedicated rate limiting
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / SOURCE_GUARDED / BACKEND_VERIFICATION_PENDING (2026-06-18 08:44 UTC)
 - **Component**: `backend/src/main/java/com/example/shop/config/SecurityConfig.java:102`, `backend/src/main/java/com/example/shop/controller/UserController.java:136-163`
 - **Category**: Backend / Security
 - **Description**: `POST /users/create-admin` is `permitAll()` with bootstrap token via `X-Bootstrap-Token` header. Uses `MessageDigest.isEqual` for constant-time comparison, but no per-IP rate limiting beyond global `RateLimitFilter`. Attacker can brute-force the token.
 - **Fix**: Add per-IP rate limiting (3 attempts/hour) for `/users/create-admin`. Enforce minimum 32-char token at application level. Remove bootstrap token from env after initial setup.
+- **Current-source evidence**: Current `RateLimitService` loads `traffic.rate-limit.admin-bootstrap-per-hour` with default `3`, treats `POST /users/create-admin` as a sensitive auth endpoint, and returns a dedicated `EndpointLimit("POST", "auth:admin-bootstrap", config.adminBootstrapPerHour, 3600)`. `AdminBootstrapTokenPolicy` enforces `MIN_BOOTSTRAP_TOKEN_LENGTH = 32`, rejects placeholder tokens at startup, and `UserController.assertAdminBootstrapToken` requires a strong configured token plus constant-time comparison.
+- **Regression guard**: `RateLimitServiceTest.adminBootstrapEndpointHasDedicatedHourlyPerClientLimit` asserts the third bootstrap attempt is rejected when the dedicated limit is 2, verifies the hot bucket is `auth:admin-bootstrap`, and source-checks the 3/hour config plus 32-character token policy.
+- **Verification**: Source-only backend scans and diff review; no Maven/JUnit, frontend tests, TypeScript, build, browser/API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F2472: MEDIUM — Admin role code exposed in login and profile responses
-- **Status**: OPEN
-- **Component**: `backend/src/main/java/com/example/shop/controller/LoginController.java:394-404`, `backend/src/main/java/com/example/shop/dto/response/UserProfileResponse.java:11,23`
+- **Status**: SOURCE_FIXED / REGRESSION_GUARD_ADDED / BACKEND_VERIFICATION_PENDING (2026-06-18 07:08 UTC)
+- **Component**: `src/main/java/com/example/shop/controller/LoginController.java`, `src/main/java/com/example/shop/dto/UserProfileResponse.java`
 - **Category**: Backend / Security
 - **Description**: Login response and `/users/profile` return `roleCode` to all authenticated users, revealing internal admin role hierarchy (e.g., `SUPER_ADMIN`). Aids privilege escalation planning.
 - **Fix**: Remove `roleCode` from non-admin user responses. Only expose to admin-level accounts.
+- **Current-source evidence**: `LoginController.buildLoginResponse(...)` now only adds `roleCode` inside `shouldExposeRoleCode(user)`, which allows `ADMIN` and `SUPER_ADMIN` accounts only. `UserProfileResponse.from(...)` uses the same admin-role gate, and the `roleCode` field is annotated with `@JsonInclude(JsonInclude.Include.NON_NULL)` so ordinary profile responses omit the key instead of serializing a null internal field.
+- **Regression guard**: `LoginControllerPasswordLoginTest` now asserts a normal `USER` login with a populated internal `roleCode` does not include `roleCode`, and source-checks the shared auth response builder does not return to the old unconditional map put. `LoginControllerRefreshTest.refreshTokenOmitsRoleCodeForNonAdminUser` covers refresh payloads. `UserProfileResponseTest` serializes profile responses and asserts normal users omit `roleCode` while admin users still include it.
+- **Verification**: Source-only backend review, focused `rg` scans, conflict-marker scan, and `git diff --check` on touched files; no Maven/JUnit, frontend tests, TypeScript, build, browser/API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F2473: MEDIUM — CORS wildcard patterns allow private network origins by default
 - **Status**: SOURCE_FIXED / TARGETED_MAVEN_PASS (covered by F9312 on 2026-06-08 07:39 UTC)
@@ -10335,62 +11024,85 @@ Multi-dimensional source review across: security, race conditions, state managem
 - **Fix evidence**: Base/dev profile defaults and `CorsOriginProperties` fallback no longer include private-LAN wildcard origins; production unsafe-origin filtering remains covered by `SecurityConfigCorsTest`.
 
 ### F2474: MEDIUM — Weak password policy
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / REGRESSION_GUARD_PRESENT / BACKEND_VERIFICATION_PENDING (2026-06-18 07:11 UTC)
 - **Component**: `backend/src/main/java/com/example/shop/controller/AuthController.java:206-207`, `backend/src/main/java/com/example/shop/dto/request/UpdatePasswordRequest.java`
 - **Category**: Backend / Security
 - **Description**: Password validation only requires min 8 chars with at least one letter and one digit. No uppercase, special characters, or breach-list checking.
 - **Fix**: Add `@Pattern` for uppercase and special characters, or increase minimum to 12 chars. Check against common breached passwords.
+- **Current-source evidence**: Current `UserService.assertStrongPassword(...)` enforces `PASSWORD_MIN_CHARS = 12`, `PASSWORD_MAX_CHARS = 128`, rejects `COMMON_PASSWORDS`, and requires at least three of lowercase, uppercase, digit, and symbol classes. Registration, admin bootstrap, password reset, and authenticated password change all call this service-layer policy. `AuthController.RegisterRequest`, `ForgotPasswordRequest`, and `UpdatePasswordRequest` also use 12-128 character validation at the request boundary.
+- **Regression guard**: `UserServiceTest.passwordPolicySourceRequiresCommonPasswordsAndThreeCharacterClasses` source-checks the shared policy constants, common-password blacklist, and character-class counting. Existing service tests reject short, common, and low-class registration passwords, reject weak admin bootstrap passwords, reject weak authenticated new passwords before old-password verification, and reject weak reset passwords before account lookup.
+- **Verification**: Source-only backend review and focused `rg` scans; no Maven/JUnit, frontend tests, TypeScript, build, browser/API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F2475: MEDIUM — Missing Content-Security-Policy header
-- **Status**: OPEN
+- **Status**: FIXED (2026-06-14) / REGRESSION_GUARD_PRESENT / BACKEND_VERIFIED
 - **Component**: `backend/src/main/java/com/example/shop/config/SecurityConfig.java:59-67`
 - **Category**: Backend / Security
 - **Description**: Security headers include X-Content-Type-Options, X-Frame-Options, HSTS, Referrer-Policy but no CSP. Defense-in-depth against XSS missing.
 - **Fix**: Add `Content-Security-Policy` header with restrictive policy (e.g., `default-src 'none'; frame-ancestors 'self'`).
+- **Fix evidence:** Current `SecurityConfig` now writes `Content-Security-Policy` with `default-src 'self'`, `object-src 'none'`, `base-uri 'self'`, `form-action 'self'`, `frame-ancestors 'self'`, and no `unsafe-eval` or inline script allowance.
+- **Verification:** `./mvnw -q -Dtest=SecurityConfigCorsTest test` passed as part of the focused backend regression.
 
 ### F2476: MEDIUM — WebSocket endpoint `/ws/support` lacks authentication
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / REGRESSION_GUARD_PRESENT / BACKEND_VERIFICATION_PENDING (2026-06-18 07:13 UTC)
 - **Component**: `backend/src/main/java/com/example/shop/config/SecurityConfig.java:79`, `backend/src/main/java/com/example/shop/config/WebSocketConfig.java:23-24`
 - **Category**: Backend / Security
 - **Description**: WebSocket endpoint is `permitAll()` with no token-based authentication. Any client from allowed origin can connect anonymously.
 - **Fix**: Implement JWT validation via query parameter or first message after connection.
+- **Current-source evidence**: The WebSocket upgrade route remains `permitAll()` for handshake compatibility, but `SupportWebSocketHandler.afterConnectionEstablished(...)` immediately calls `authenticate(session)` and closes the socket with `NOT_ACCEPTABLE / Unauthorized` when no valid ticket is supplied. Authentication is done through an opaque single-use `ticket.*` WebSocket subprotocol consumed by `SupportWebSocketTicketService`, tied to the issuing user id and optional JWT JTI, with blacklist checks before the user is attached to the socket. Tickets are issued by authenticated `POST /support/websocket-ticket`, which calls `SecurityUtils.requireUser(authentication)`.
+- **Regression guard**: `SupportWebSocketHandlerAuthenticationTest` asserts no-ticket connections close unauthorized, valid ticket subprotocols connect and attach the user, legacy `auth.*` JWT subprotocols are rejected, and source no longer accepts JWTs directly in WebSocket subprotocols. `SupportWebSocketTicketServiceTest` asserts tickets are opaque, single-use, time-bound, and carry token JTI. Frontend source/tests use `supportApi.createWebSocketTicket()` and `supportWebSocketProtocols(ticket)` before constructing sockets.
+- **Verification**: Source-only backend/frontend review and focused `rg` scans; no Maven/JUnit, frontend tests, TypeScript, build, browser/API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F2477: LOW — Admin system status endpoint leaks infrastructure details
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / REGRESSION_GUARD_PRESENT / BACKEND_VERIFICATION_PENDING (2026-06-18 07:15 UTC)
 - **Component**: `backend/src/main/java/com/example/shop/controller/AdminSystemController.java:74-78`
 - **Category**: Backend / Security
 - **Description**: `/admin/system/status` returns database URL, Redis host/port, Nacos server address, JVM version, OS info, disk/memory usage to any admin with SYSTEM_STATUS_PERMISSION.
 - **Fix**: Split into basic health (all admins) and detailed diagnostics (super admins only).
+- **Current-source evidence**: `AdminSystemController.getStatus(...)` and `/readiness` now call `requireSuperAdminSystemStatusPermission(authentication)`, which requires `SecurityUtils.isSuperAdmin(user)` plus `AdminRoleService.SYSTEM_STATUS_PERMISSION`. The returned body is passed through `publicStatusPayload(...)`, which keeps only overall status/readiness and component health fields, while dropping application/runtime, JVM/OS, memory, disk path/usage, database URL/driver/error/latency, Redis host/port/database/ping/error/latency, and Nacos server/namespace/group/data/warnings/errors details.
+- **Regression guard**: `AdminSystemControllerTest` asserts status/readiness payloads do not expose infrastructure, Nacos details are omitted even when health checks fail, serialized responses do not include raw datasource/Redis/Nacos values, non-super admins are forbidden even with system-status permission, and super admins still need `SYSTEM_STATUS_PERMISSION`.
+- **Verification**: Source-only backend review and focused `rg` scans; no Maven/JUnit, frontend tests, TypeScript, build, browser/API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F2478: LOW — Guest order mutation endpoints accept credentials in request body
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / REGRESSION_GUARD_PRESENT / BACKEND_VERIFICATION_PENDING (2026-06-18 07:16 UTC)
 - **Component**: `backend/src/main/java/com/example/shop/controller/OrderController.java:221-253`, `backend/src/main/java/com/example/shop/config/SecurityConfig.java:87-93`
 - **Category**: Backend / Security
 - **Description**: Guest cancel/confirm/return endpoints accept `guestEmail`+`orderNo` without auth. Order numbers may be predictable or leaked.
 - **Fix**: Add CAPTCHA or rate-limiting for guest mutation endpoints. Require time-limited email token.
+- **Current-source evidence**: Current source implements the rate-limiting mitigation path. `RateLimitService.endpointLimitFor(...)` maps `POST` guest order mutation paths to `EndpointLimit("POST", "orders:guest-mutation", config.guestOrderMutationPerMinute, 60)`, and `isGuestOrderMutationPath(...)` covers `/orders/guest/**/cancel`, `/confirm`, `/return`, and `/return-shipment`. The default limit is `traffic.rate-limit.guest-order-mutation-per-minute=${TRAFFIC_RATE_LIMIT_GUEST_ORDER_MUTATION_PER_MINUTE:10}`.
+- **Regression guard**: `RateLimitServiceTest.guestOrderMutationEndpointsShareDedicatedPerClientLimitAcrossIds` asserts cancel, return-shipment, and confirm share the dedicated per-client bucket and reject the third request when configured to 2/minute. `OrderControllerHttpMethodContractTest.guestActionInfrastructureMatchesPostRoutes` source-checks the POST guest mutation permit rules and the `orders:guest-mutation` endpoint limit.
+- **Verification**: Source-only backend/frontend review and focused `rg` scans; no Maven/JUnit, frontend tests, TypeScript, build, browser/API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F2479: LOW — Generic payment callback endpoint lacks signature verification
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / REGRESSION_GUARD_PRESENT / BACKEND_VERIFICATION_PENDING (2026-06-18 07:19 UTC)
 - **Component**: `backend/src/main/java/com/example/shop/controller/PaymentController.java:161-178`, `backend/src/main/java/com/example/shop/config/SecurityConfig.java:97-101`
 - **Category**: Backend / Security
 - **Description**: `POST /payment/callback` is `permitAll()` and relies on `PaymentCallbackRequest` fields. Stripe webhook has signature verification but generic callback may not.
 - **Fix**: Ensure `PaymentService.handleCallback` strictly validates callback secret/signature for every non-Stripe channel.
+- **Current-source evidence**: `PaymentCallbackRequest` requires `callbackTimestamp` and `signature`. `PaymentController.callback(...)` delegates to `paymentService.handleCallback(request)`, and `PaymentService.handleCallback(...)` calls `assertProductionCallbackSecretConfigured()`, finds the existing payment, rejects invalid `verifySignature(request)` before resolving callback time or mutating state, validates callback freshness, and only then proceeds toward `markPaidDetailed(...)`. `expectedSignature(...)` builds a canonical payload and signs it with `hmacSha256Hex(..., callbackSecret())`; `verifySignature(...)` compares lowercase hex values with `MessageDigest.isEqual(...)`. Production mode rejects blank/weak callback secrets.
+- **Regression guard**: `PaymentCallbackSignatureContractTest.genericPaymentCallbacksRequireHmacSignatureBeforeStateMutation` source-checks the required DTO fields, shared callback route, signature/freshness order before state mutation, HMAC-SHA256 usage, and constant-time comparison. `PaymentControllerSimulationAccessTest.genericPaymentCallbackContractDoesNotExposeInternalHeaderOrUnsignedProviderSubroutes` guards against unsigned legacy callback surfaces and internal-header bypasses.
+- **Verification**: Source-only backend review and focused `rg` scans; no Maven/JUnit, frontend tests, TypeScript, build, browser/API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F2480: LOW — Log file path disclosed to admin users
-- **Status**: OPEN
+- **Status**: SOURCE_FIXED / REGRESSION_GUARD_ADDED / BACKEND_VERIFICATION_PENDING (2026-06-18 07:22 UTC)
 - **Component**: `backend/src/main/java/com/example/shop/service/LogManagementService.java:67-69`
 - **Category**: Backend / Security
 - **Description**: `/admin/logs` returns absolute `logDirectory` path and available file list to any admin with LOGS_DEBUG_PERMISSION.
 - **Fix**: Return only relative filenames, omit absolute directory path.
+- **Current-source evidence**: `LogManagementService.status(...)` no longer calls `setLogDirectory(...)`, so the absolute parent directory from `resolveLogFile()` is not returned. `LogManagementStatusResponse.logDirectory` is annotated with `@JsonInclude(JsonInclude.Include.NON_NULL)` to omit the field when unset. The status payload still returns `logFileName` and `availableFiles`, and `listLogFiles(...)` maps each log path to `path.getFileName().toString()`.
+- **Regression guard**: `LogManagementServiceTest.statusExposesOperationalLimits` now asserts `status.getLogDirectory()` is null and all available files are non-absolute names without path separators. `statusContractDoesNotExposeAbsoluteLogDirectory` source-checks that the old absolute-directory setter does not return and that null `logDirectory` is not serialized.
+- **Verification**: Source-only backend/frontend review and focused `rg` scans; no Maven/JUnit, frontend tests, TypeScript, build, browser/API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### Frontend Code Quality Audit (16 issues)
 
 ### F2481: LOW — AudioContext not closed on CustomerSupportWidget unmount
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / REGRESSION_GUARD_PRESENT / FRONTEND_VERIFICATION_PENDING (2026-06-18 07:25 UTC)
 - **Component**: `frontend/src/components/CustomerSupportWidget.tsx:363-383`
 - **Category**: Frontend / Memory Leak
 - **Description**: `playTone()` creates AudioContext stored in `audioContextRef` but never calls `context.close()` on unmount. Long-running sessions may leak audio resources.
 - **Fix**: Add `audioContextRef.current?.close()` in WebSocket useEffect cleanup.
+- **Current-source evidence**: Current `CustomerSupportWidget.tsx` has a component-unmount cleanup effect that reads `audioContextRef.current`, clears the ref, checks `context.state !== 'closed'`, calls `void context.close()`, and reports asynchronous close failures through `reportNonBlockingError('CustomerSupportWidget.closeAudioContext', error)`. `playTone()` still reuses the retained context during the component lifetime.
+- **Regression guard**: `CustomerSupportWidget.test.tsx` source-checks the cleanup block before `playTone`, requires `audioContextRef.current = null`, requires the closed-state guard, requires `void context.close()`, and requires the non-blocking close-error report.
+- **Verification**: Source-only frontend review and focused `rg` scans; no Jest, TypeScript, build, browser/Playwright, APP/device, backend Maven/JUnit, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F2482: MEDIUM — Checkout payment polling may outlive component lifecycle
 - **Status**: SOURCE_FIXED / COVERED_BY_F2572 (2026-06-07 17:05 UTC)
@@ -10401,164 +11113,227 @@ Multi-dimensional source review across: security, race conditions, state managem
 - **2026-06-07 17:05 UTC maintainer classification**: Current `Checkout.tsx` polling cleanup clears the interval, removes the storage listener, releases the localStorage fallback lock when idle, and releases the active Web Locks session immediately or after any in-flight poll settles. F2572 added direct lock helper tests plus checkout/cart-flow regression, so this older polling lifecycle item is covered by the same source fix.
 
 ### F2483: LOW — Global module-level Map caches lack automatic expiry cleanup
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / REGRESSION_GUARD_PRESENT / FRONTEND_VERIFICATION_PENDING (2026-06-18 07:26 UTC)
 - **Component**: `frontend/src/api/index.ts:564-623`
 - **Category**: Frontend / Performance
 - **Description**: ~30 module-level `Map` caches have `MAX_API_CACHE_ENTRIES=80` limit but expired entries only cleaned on write. Long-running sessions accumulate stale entries.
 - **Fix**: Add periodic cleanup timer (every 5 min) or LRU strategy with TTL.
+- **Current-source evidence**: Current cache logic is centralized in `frontend/src/api/cache.ts`. `setTimedCacheEntry(...)` removes expired entries on write, registers each timed cache map in `timedCacheMaps`, and starts `window.setInterval(cleanupExpiredTimedCaches, API_CACHE_CLEANUP_INTERVAL_MS)` where `API_CACHE_CLEANUP_INTERVAL_MS = 5 * 60 * 1000`. `cleanupExpiredTimedCaches()` deletes expired entries across registered maps and clears the interval when no timed maps remain. Request maps remain bounded through `setBoundedMapEntry(...)` and request `finally(() => requests.delete(cacheKey))`.
+- **Regression guard**: `frontend/src/api/index.test.ts` source-checks `cache.ts` for `MAX_API_CACHE_ENTRIES`, `setTimedCacheEntry`, `entry.expiresAt <= now`, `trimMapToSize(map, MAX_API_CACHE_ENTRIES)`, bounded request entries, and request cleanup; the same guard covers the API cache callers in `index.ts`.
+- **Verification**: Source-only frontend review and focused `rg` scans; no Jest, TypeScript, build, browser/Playwright, APP/device, backend Maven/JUnit, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F2484: MEDIUM — `normalizeProduct` uses extensive `as any` type assertions
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / REGRESSION_GUARD_PRESENT / FRONTEND_VERIFICATION_PENDING (2026-06-18 07:27 UTC)
 - **Component**: `frontend/src/api/index.ts:714,754-757`
 - **Category**: Frontend / TypeScript Strictness
 - **Description**: `normalizeProduct` accesses `images`, `specifications`, `detailContent`, `variants`, `optionGroups` via `(product as any).xxx`. `ProductPublic` type doesn't match actual backend response.
 - **Fix**: Define these optional fields properly in `ProductPublic` type or use type guards.
+- **Current-source evidence**: Current `normalizeProduct` is typed as `<T extends ProductPublic>(product: T): T` and directly reads `product.images`, `product.specifications`, `product.detailContent`, `product.variants`, and `product.optionGroups` without `(product as any)` casts. `ProductPublic` now declares those backend response fields as optional typed properties (`images?: string[]`, `specifications?: { [key: string]: string }`, `detailContent?: ProductDetailBlock[]`, `variants?: ProductVariant[]`, `optionGroups?: ProductOptionGroup[]`).
+- **Regression guard**: `frontend/src/api/index.test.ts` includes `keeps product API normalization free of broad any casts`, which source-checks `isRecord(...)`, requires product page type fields, and rejects `\bany\b` in `frontend/src/api/index.ts`.
+- **Verification**: Source-only frontend review and focused `rg` scans; no Jest, TypeScript, build, browser/Playwright, APP/device, backend Maven/JUnit, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F2485: LOW — 60+ catch blocks use `error: any` throughout frontend
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / REGRESSION_GUARD_PRESENT / FRONTEND_VERIFICATION_PENDING (2026-06-18 07:29 UTC)
 - **Component**: `frontend/src/pages/Login.tsx`, `Register.tsx`, `ProductDetail.tsx`, `CartDrawer.tsx`, `Checkout.tsx`, `Profile.tsx`, etc.
 - **Category**: Frontend / TypeScript Strictness
 - **Description**: ~60 catch blocks use `error: any` instead of `AxiosError` or `unknown` + type guard. Hinders TypeScript type inference.
 - **Fix**: Unify to `catch (error: unknown)` with type guards.
+- **Current-source evidence**: Focused production-source scan under `frontend/src` excluding tests found no matches for `catch (...: any)`, `.catch((...: any)`, `error: any`, `err: any`, `as any`, or `: any` broad escape patterns. Current affected areas already use `unknown` catches plus local helpers such as `getApiErrorMessage(...)`, typed form-validation narrowing, and typed table/render placeholders.
+- **Regression guard**: `frontend/src/utils/FrontendTypeSafetySourceGuard.test.ts` scans production frontend files and fails on `as any`, typed-any catch callbacks, `useRef<any>`, typed `: any` parameters/properties, and `any[]`. Page/component-specific type-safety guards also cover the formerly affected Login, Register, ProductDetail, CartDrawer, Checkout, Profile, OrderTracking, SupportManagement, ProductManagement, CouponManagement, and related admin pages.
+- **Verification**: Source-only frontend review and focused `rg` scan; no Jest, TypeScript, build, browser/Playwright, APP/device, backend Maven/JUnit, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F2486: MEDIUM — `sanitizeHtml.ts` relies on `template.innerHTML` browser parsing
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / REGRESSION_GUARD_PRESENT / FRONTEND_VERIFICATION_PENDING (2026-06-18 07:30 UTC)
 - **Component**: `frontend/src/utils/sanitizeHtml.ts:32`
 - **Category**: Frontend / Security
 - **Description**: Uses `document.createElement('template'); template.innerHTML = html` for parsing. Browser HTML parsers may handle malformed HTML differently; edge cases (null bytes, specific encodings) may bypass sanitization.
 - **Fix**: Introduce DOMPurify library for more robust sanitization.
+- **Current-source evidence**: `frontend/src/utils/sanitizeHtml.ts` imports `DOMPurify` and `Config as DOMPurifyConfig` from `dompurify`, configures explicit allowed rich-text tags/attributes, forbids executable/container tags and contents, disables data attributes and unknown protocols, and calls `DOMPurify.sanitize(...)` before post-processing attributes. `frontend/package.json` includes `dompurify`.
+- **Regression guard**: `frontend/src/utils/sanitizeHtml.test.ts` requires the DOMPurify import and `DOMPurify.sanitize`, rejects `document.createElement('template')`, and covers executable markup, newline-split event handlers, unsafe/protocol-relative/credentialed/backslash-obfuscated URLs, rel protection, allowlisted tags/attributes, executable containers, and data URL removal.
+- **Verification**: Source-only frontend review and focused `rg` scans; no Jest, TypeScript, build, browser/Playwright, APP/device, backend Maven/JUnit, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F2487: MEDIUM — Product/order/user lists lack virtual scrolling
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / REGRESSION_GUARD_PRESENT / FRONTEND_VERIFICATION_PENDING (2026-06-18 07:38 UTC)
 - **Component**: `frontend/src/pages/ProductList.tsx`, `OrderManagement.tsx`, `UserManagement.tsx`, etc.
 - **Category**: Frontend / Performance
 - **Description**: No virtual list library (react-window/react-virtualized) found. Ant Design Table/List renders all rows. 500+ items causes excessive DOM nodes.
 - **Fix**: Introduce `react-window` or Ant Design Table virtual mode for long lists.
+- **Current-source evidence**: The reported 500+ same-screen DOM concern is stale for the current paths. `ProductList.tsx` keeps `PRODUCT_LIST_PAGE_SIZE = 12`, builds active product fetches with `size: pageSize`, uses `PRODUCT_LIST_FETCH_SIZE = PRODUCT_LIST_PAGE_SIZE * 8` only for bounded recovery fetches, slices local fallback/snapshot products with `sortedProducts.slice((currentPage - 1) * pageSize, currentPage * pageSize)`, and renders pagination when result counts exceed the page size. `OrderManagement.tsx` and `UserManagement.tsx` both load table data through paged admin APIs, expose page-size options `[10, 20, 50, 100]`, and render only the current server page in Ant Design `Table`.
+- **Regression guard**: `frontend/src/pages/ProductList.test.tsx` now guards the product list page-size constants, paged fetch size, local slice, and pagination control usage. `frontend/src/api/index.test.ts` already verifies `adminApi.getOrdersPage(...)` and `adminApi.getUsersPage(...)` normalize oversized `size` values down to `100`, preserving the admin table cap.
+- **Verification**: Source-only frontend review and focused `rg`/`sed` inspection; no Jest, TypeScript, build, browser/Playwright, APP/device, backend Maven/JUnit, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F2488: LOW — CustomerSupportWidget polls messages every 10s even with WebSocket
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / REGRESSION_GUARD_PRESENT / FRONTEND_VERIFICATION_PENDING (2026-06-18 07:41 UTC)
 - **Component**: `frontend/src/components/CustomerSupportWidget.tsx:563`
 - **Category**: Frontend / Performance
 - **Description**: 10-second HTTP polling runs even when WebSocket connection is healthy (already has real-time push).
 - **Fix**: Enable HTTP polling only when WebSocket is disconnected.
+- **Current-source evidence**: `CustomerSupportWidget.tsx` keeps HTTP polling as a fallback only when the panel is open with an active session and either a guest chat is active or the authenticated WebSocket is not connected. The polling effect now returns before creating the `window.setInterval(...)` timer for authenticated sessions when `connected` is true, while guest support still polls because it does not use the authenticated WebSocket path. The effect dependency list includes `connected`, so the interval is cleaned up or restarted as socket health changes.
+- **Regression guard**: `frontend/src/components/CustomerSupportWidget.test.tsx` now requires the `if (!activeGuestContext && connected) return;` guard, the dependency list containing `connected`, and the fallback polling calls for authenticated and guest message reads.
+- **Verification**: Source-only frontend review and focused `rg`/`sed` inspection; no Jest, TypeScript, build, browser/Playwright, APP/device, backend Maven/JUnit, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F2489: LOW — AdminLayout polls support unread count every 15s globally
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / REGRESSION_GUARD_PRESENT / FRONTEND_VERIFICATION_PENDING (2026-06-18 07:44 UTC)
 - **Component**: `frontend/src/components/AdminLayout.tsx:202`
 - **Category**: Frontend / Performance
 - **Description**: Polls support unread count every 15 seconds even when admin is not on support pages.
 - **Fix**: Only poll when support-related pages are active, or use WebSocket push.
+- **Current-source evidence**: `AdminLayout.tsx` derives `supportRouteActive` from `isAdminMenuRouteMatch(location.pathname, '/admin/support')`. The unread effect performs a one-shot load when support access is available, but returns before installing `window.setInterval(loadUnread, 15000)` and the visibility listener when `supportRouteActive` is false. On support routes it installs the fallback interval, skips network work while `document.visibilityState === 'hidden'`, refreshes on visibility return, and clears the interval/listener during cleanup.
+- **Regression guard**: `frontend/src/components/AdminLayout.test.tsx` now requires the `supportRouteActive` route match, the pre-interval early return for non-support routes, the dependency list containing `supportRouteActive`, the visibility guard, and interval cleanup.
+- **Verification**: Source-only frontend review and focused `rg`/`sed` inspection; no Jest, TypeScript, build, browser/Playwright, APP/device, backend Maven/JUnit, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F2490: LOW — `useAuth` hook doesn't redirect to login on token validation failure
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / REGRESSION_GUARD_PRESENT / FRONTEND_VERIFICATION_PENDING (2026-06-18 07:47 UTC)
 - **Component**: `frontend/src/hooks/useAuth.ts:57-77`
 - **Category**: Frontend / UX
 - **Description**: On `getProfile()` failure, calls `clearStoredAuthSession()` but doesn't redirect to login page. User may see blank page on protected routes.
 - **Fix**: Add `window.location.href = buildLoginUrl(...)` in catch block.
+- **Current-source evidence**: The old hook-local report is stale against current startup routing. `App.tsx` owns `AuthStartupGate`, validates stored sessions with `userApi.getProfile({ skipAuthRedirect: true })`, calls `clearStoredAuthSession()` for `isAuthExpiredError(error)`, and then uses React Router `navigate(buildLoginUrlFromWindow(), { replace: true })` when `window.location.pathname` matches protected route prefixes (`/admin`, `/checkout`, `/notifications`, `/profile`, `/wishlist`). Public storefront routes still only clear the invalid session without forcing a login redirect. `useAuth.ts` continues to clear in-memory auth state on expired profile refreshes, while route-level startup handling prevents blank protected pages on initial loads.
+- **Regression guard**: `frontend/src/App.test.tsx` now guards the protected-route prefix registry, the expired-auth clear path, route-scoped `navigate(buildLoginUrlFromWindow(), { replace: true })`, and the absence of `window.location.href` hard redirects. `frontend/src/hooks/useAuth.test.tsx` already guards that expired profile refreshes clear stored session and in-memory user state.
+- **Verification**: Source-only frontend review and focused `rg`/`sed` inspection; no Jest, TypeScript, build, browser/Playwright, APP/device, backend Maven/JUnit, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F2491: MEDIUM — Frontend lacks unified ProtectedRoute wrapper for authenticated pages
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / REGRESSION_GUARD_PRESENT / FRONTEND_VERIFICATION_PENDING (2026-06-18 07:50 UTC)
 - **Component**: `frontend/src/pages/Profile.tsx`, `Wishlist.tsx`, `Notifications.tsx`, etc.
 - **Category**: Frontend / Architecture
 - **Description**: Profile, Wishlist, Notifications each check token in useEffect individually. No unified `ProtectedRoute` component. Code duplicated, timing inconsistent, pages may flash before redirect.
 - **Fix**: Create unified `ProtectedRoute` wrapper component at route level.
+- **Current-source evidence**: `App.tsx` now defines a route-level `ProtectedRoute` that checks `hasStoredValue('token')` before mounting protected storefront pages and redirects unauthenticated users with `<Navigate to={buildLoginUrl(getCurrentRelativeUrl(location))} replace />`. `protectedRouteElement(...)` wraps `/profile`, `/wishlist`, and `/notifications`, preventing those page components from flashing protected content before redirect. `/checkout` remains intentionally unwrapped because current checkout supports guest checkout, while admin continues to use the existing `AdminLayout` permission gate.
+- **Regression guard**: `frontend/src/App.test.tsx` now requires `ProtectedRoute`, `protectedRouteElement(...)`, the login redirect builder, and the wrapped profile/wishlist/notifications routes while keeping checkout outside the wrapper.
+- **Verification**: Source-only frontend review and focused `rg`/`sed` inspection; no Jest, TypeScript, build, browser/Playwright, APP/device, backend Maven/JUnit, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F2492: LOW — `cacheProductDetailFromList` uses unsafe `as unknown as` double assertion
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / REGRESSION_GUARD_PRESENT / FRONTEND_VERIFICATION_PENDING (2026-06-18 07:53 UTC)
 - **Component**: `frontend/src/api/index.ts:842`
 - **Category**: Frontend / TypeScript Strictness
 - **Description**: `response as unknown as AxiosResponse<ProductPublic>` forces list response to single item response, breaking type safety.
 - **Fix**: Create helper function to construct proper single-item response object.
+- **Current-source evidence**: `api/index.ts` now defines `productDetailResponseFromList(response: AxiosResponse<ProductPublic[]>, product: ProductPublic): AxiosResponse<ProductPublic>`, returning the list response metadata with `data: product`. `cacheProductDetailFromList(...)` stores detail cache entries via that typed helper, and the previous `as unknown as AxiosResponse<ProductPublic>` double assertion is absent.
+- **Regression guard**: `frontend/src/api/index.test.ts` now requires `productDetailResponseFromList(...)`, the typed `AxiosResponse<ProductPublic>` return, its use inside `cacheProductDetailFromList(...)`, and rejects `as unknown as AxiosResponse<ProductPublic>`.
+- **Verification**: Source-only frontend review and focused `rg`/`sed` inspection; no Jest, TypeScript, build, browser/Playwright, APP/device, backend Maven/JUnit, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F2493: LOW — Login/Register/Checkout error handling uses `any` typed catch parameters
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / REGRESSION_GUARD_PRESENT / FRONTEND_VERIFICATION_PENDING (2026-06-18 07:56 UTC)
 - **Component**: `frontend/src/pages/Login.tsx:57`, `Register.tsx:117,161`
 - **Category**: Frontend / TypeScript Strictness
 - **Description**: `resolvePasswordLoginError` and `shouldTryNextLoginCandidate` error parameters typed as `any`.
 - **Fix**: Use `AxiosError` or custom error type.
+- **Current-source evidence**: The reported broad-any signatures are gone. `Login.tsx` types `resolvePasswordLoginError(error: unknown, ...)`, `shouldTryNextLoginCandidate(error: unknown)`, password/email form submit values, candidate failures, and catch blocks without `any`. `Register.tsx` uses `unknown` helpers for retry/error-code/form-validation handling and typed `RegisterForm` submit values. `Checkout.tsx` uses `CheckoutFormValues`, typed response-like helpers, `getApiErrorMessage(...)`, and `catch (paymentError: unknown)` / `catch (error: unknown)` without broad `any` escapes.
+- **Regression guard**: `frontend/src/pages/LoginTypeSafety.test.ts`, `RegisterTypeSafety.test.ts`, and `CheckoutTypeSafety.test.ts` guard the typed helper signatures, form value types, `unknown` catch parameters, and absence of broad `any`/`as any` error handling.
+- **Verification**: Source-only frontend review and focused broad-any `rg` scan across `Login.tsx`, `Register.tsx`, and `Checkout.tsx`; no Jest, TypeScript, build, browser/Playwright, APP/device, backend Maven/JUnit, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F2494: LOW — CustomerSupportWidget dialog lacks focus trap
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / REGRESSION_GUARD_PRESENT / FRONTEND_VERIFICATION_PENDING (2026-06-18 07:59 UTC)
 - **Component**: `frontend/src/components/CustomerSupportWidget.tsx:957-962`
 - **Category**: Frontend / Accessibility
 - **Description**: Support chat panel uses `role="dialog"` and `aria-modal` but no focus trap. Keyboard users can Tab outside dialog.
 - **Fix**: Use Ant Design Drawer/Modal (built-in focus management) or introduce `focus-trap-react`.
+- **Current-source evidence**: `CustomerSupportWidget.tsx` now keeps refs for the floating support button and panel, computes focusable descendants with `SUPPORT_FOCUSABLE_SELECTOR`, and installs a mobile dialog focus trap while the panel is open. The trap moves focus into the panel, pulls stray `focusin` events back inside, cycles Tab/Shift+Tab between the first and last focusable elements, pauses while nested order select/detail overlays are active, and restores focus to the previous element or support button on cleanup. The panel keeps `role="dialog"`, mobile `aria-modal`, and `tabIndex={-1}`.
+- **Regression guard**: `frontend/src/components/CustomerSupportWidget.test.tsx` now guards the focusable selector, panel/button refs, nested overlay refs, `focusin` and `keydown` listeners, Tab handling, first/last focus cycling, focus restoration, `aria-modal`, and `tabIndex`.
+- **Verification**: Source-only frontend review and focused `rg`/`sed` inspection; no Jest, TypeScript, build, browser/Playwright, APP/device, backend Maven/JUnit, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F2495: LOW — Login/Register pages hardcode brand name "ShopMX" and statistics
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / REGRESSION_GUARD_PRESENT / FRONTEND_VERIFICATION_PENDING (2026-06-18 08:02 UTC)
 - **Component**: `frontend/src/pages/Login.tsx:382,398-401`, `Register.tsx:247`
 - **Category**: Frontend / i18n
 - **Description**: "ShopMX", "24/7", "SSL" strings hardcoded in JSX without `t()` translation function.
 - **Fix**: Add translation keys for brand name and statistics.
+- **Current-source evidence**: `Login.tsx` renders the brand with `t('common.brand')`, feature/trust copy with `t('pages.auth.loginTrust...')`, and the former hardcoded statistics with `t('pages.auth.loginStatTrackingValue')` / `t('pages.auth.loginStatSecureValue')`. `Register.tsx` renders the brand with `t('common.brand')` and trust badges/cards through `registerTrustSecure`, `registerTrustPerks`, and `registerTrustTracking` translation keys. The literal values `ShopMX`, `24/7`, and `SSL` live in locale JSON data instead of JSX.
+- **Regression guard**: `frontend/src/pages/FrontendHardcodedI18n.test.ts` now guards that Login/Register use the auth i18n keys, rejects those literals in component JSX/source string literals, and verifies all three locale files expose the brand/trust/stat keys.
+- **Verification**: Source-only frontend review and focused `rg`/`sed` inspection; no Jest, TypeScript, build, browser/Playwright, APP/device, backend Maven/JUnit, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F2496: LOW — ProductRichDetail default label values hardcoded in English
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / REGRESSION_GUARD_PRESENT / FRONTEND_VERIFICATION_PENDING (2026-06-18 08:05 UTC)
 - **Component**: `frontend/src/components/ProductRichDetail.tsx:113-118`
 - **Category**: Frontend / i18n
 - **Description**: `emptyText`, `labels.imageAlt`, `labels.videoTitle` default values are hardcoded English strings.
 - **Fix**: Change defaults to translation keys or require callers to pass translated values.
+- **Current-source evidence**: `ProductRichDetail.tsx` imports `useLanguage()`, resolves `emptyText` with `t('pages.productDetail.noDetails')`, and fills omitted labels with `t('pages.productDetail.richImageAlt')`, `t('pages.productDetail.richVideoTitle', { index })`, `t('pages.productDetail.openRichVideo')`, and `t('pages.productDetail.unsupportedRichContent')`. `ProductDetail.tsx` also passes translated labels when rendering the rich detail component, and the locale files contain the corresponding rich detail keys.
+- **Regression guard**: `frontend/src/components/ProductRichDetail.test.tsx` verifies localized defaults when labels are omitted, checks Spanish image/video labels, and rejects the old hardcoded English fallback strings while requiring the i18n keys.
+- **Verification**: Source-only frontend review and focused `rg`/`sed` inspection; no Jest, TypeScript, build, browser/Playwright, APP/device, backend Maven/JUnit, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### API Contract & i18n Audit (5 issues)
 
 ### F2497: HIGH — SecurityAuditLogManagement has 40+ hardcoded Chinese action labels
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / REGRESSION_GUARD_PRESENT / FRONTEND_VERIFICATION_PENDING (2026-06-18 08:08 UTC)
 - **Component**: `frontend/src/pages/SecurityAuditLogManagement.tsx:457-495`
 - **Category**: Frontend / i18n
 - **Description**: `actionLabels` object contains ~40 hardcoded Chinese audit log action types (e.g., `LOGIN: '登录'`, `LOGOUT: '退出登录'`). Not using `t()` function. English/Spanish users see Chinese labels.
 - **Fix**: Move labels to `en.json`/`zh.json`/`es.json` under `pages.auditLogs.actionLabels` namespace. Use `t()` in component.
+- **Current-source evidence**: `SecurityAuditLogManagement.tsx` no longer defines page-local `auditActionLabels`/resource/message dictionaries. It keeps stable action codes for filters and colors, then resolves display text through `auditLocaleValue(t, 'actionLabels', value)`, `auditLocaleValue(t, 'resourceTypeLabels', value)`, and `auditLocaleValue(t, 'messageLabels', value)`. `en.json`, `zh.json`, and `es.json` contain `pages.auditLogs.actionLabels` entries including `LOGIN`, `LOGOUT`, `PAYMENT_CALLBACK`, and `REFUND_COMPLETE`.
+- **Regression guard**: `frontend/src/pages/SecurityAuditLogManagement.test.ts` verifies labels are centralized in locale files, query option values remain stable, page-local dictionaries are absent, and the component uses locale lookup helpers for action/resource/message labels.
+- **Verification**: Source-only frontend review and focused `rg`/`sed` inspection; no Jest, TypeScript, build, browser/Playwright, APP/device, backend Maven/JUnit, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F2498: MEDIUM — Pagination index inconsistency — 0-based vs 1-based across APIs
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / REGRESSION_GUARD_PRESENT / BACKEND_FRONTEND_VERIFICATION_PENDING (2026-06-18 08:11 UTC)
 - **Component**: `backend/src/main/java/com/example/shop/controller/ProductController.java:32`, `frontend/src/api/index.ts:1501`
 - **Category**: Backend / API Contract
 - **Description**: Public product API uses 0-based pagination (`DEFAULT_PUBLIC_PRODUCT_PAGE = 0`). Admin bugs API uses 1-based (`normalizeBoundedPositiveInt(params?.page, 1, ...)`). Inconsistent starting index.
 - **Fix**: Standardize all pagination to 0-based (or 1-based) and document in API spec.
+- **Current-source evidence**: The specific product/admin-bugs inconsistency is stale. `ProductController` keeps `DEFAULT_PUBLIC_PRODUCT_PAGE = 0`, rejects negative public product pages, and returns Spring `Page.getNumber()` metadata. `AdminBugReportController` defaults `page` to `0`, `AdminBugReportService.search(...)` computes SQL offsets from zero-based pages, and `frontend/src/api/index.ts` sends admin bug pages through `normalizeNonNegativeIntParam(params?.page, 0, 1_000_000)`. Other admin APIs may intentionally expose 1-based UI/table pagination, but the reported admin bugs path is now aligned with public product pages.
+- **Regression guard**: `src/test/java/com/example/shop/controller/ProductControllerPaginationTest.java` guards the public product negative-page contract, `src/test/java/com/example/shop/service/AdminBugReportServiceTest.java` guards zero-based bug offsets/response metadata, and `frontend/src/api/index.test.ts` guards `adminApi.getBugs(...)` page normalization to `0` for invalid negative input while preserving explicit zero-based pages.
+- **Verification**: Source-only backend/frontend review and focused `rg`/`sed` inspection; no Maven/JUnit, Jest, TypeScript, build, browser/Playwright, APP/device, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F2499: MEDIUM — Redis may run without password in non-Docker deployments
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / REGRESSION_GUARD_PRESENT / BACKEND_VERIFICATION_PENDING (2026-06-18 08:15 UTC)
 - **Component**: `backend/src/main/resources/application.properties:98`
 - **Category**: Backend / Security
 - **Description**: `spring.redis.password=${REDIS_PASSWORD:}` defaults to empty. Docker Compose sets `--requirepass` but non-Docker deployments may miss this.
 - **Fix**: Add startup validation: warn or refuse to start when `app.runtime-mode=production` and `REDIS_PASSWORD` is empty.
+- **Current-source evidence**: `application.properties` still uses the environment placeholder `spring.redis.password=${REDIS_PASSWORD:}`, but production startup is guarded by `ProductionSecretStartupValidator`. The validator runs as a `BeanFactoryPostProcessor`, returns early only outside `production`/`prod`, and otherwise calls `requireStrongRuntimePassword(issues, "spring.redis.password", property("spring.redis.password", ""), List.of("shop_redis_password", "redis", "password"))`. Empty, short, placeholder, or default Redis passwords add an issue and cause `IllegalStateException("Production secrets are not configured: ...")`, so non-Docker production deployments fail fast instead of silently running without a Redis password.
+- **Regression guard**: `src/test/java/com/example/shop/config/ApplicationProfileContractTest.java` now guards the blank Redis environment placeholder, the production secret validator, the explicit `spring.redis.password` runtime-password requirement, and the non-default production password failure message.
+- **Verification**: Source-only backend review and focused `rg`/`sed` inspection; no Maven/JUnit, Jest, TypeScript, build, browser/Playwright, APP/device, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F2500: MEDIUM — Production CORS may fall back to wildcard localhost patterns
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / REGRESSION_GUARD_PRESENT / BACKEND_VERIFICATION_PENDING (2026-06-18 08:18 UTC)
 - **Component**: `backend/src/main/resources/application.properties:36`
 - **Category**: Backend / Security
 - **Description**: Default CORS includes `http://localhost:*`, `http://10.*:*`, etc. If `CORS_ALLOWED_ORIGIN_PATTERNS` env not set in production, these loose rules apply.
 - **Fix**: Add startup check refusing private network CORS in production mode.
+- **Current-source evidence**: The current default CORS property is `https://pet.686888666.xyz,http://localhost:*,http://127.0.0.1:*` and no longer includes `10.*`, `172.*`, or `192.168.*` defaults. More importantly, `CorsOriginProperties` uses a production fallback of `https://pet.686888666.xyz` and filters production origins through `isSafeProductionOrigin(...)`, rejecting `*`, wildcard patterns, non-HTTPS schemes, user-info URLs, local hosts, and private-network hosts via `GatewayUrlValidator.isLocalOrPrivateHost(...)`. If a production override filters down to nothing, it falls back to the production origin rather than reflecting loose local/private origins.
+- **Regression guard**: `src/test/java/com/example/shop/config/SecurityConfigCorsTest.java` verifies production CORS filters `http://localhost:*`, `http://10.*:*`, and `http://192.168.*:*` while preserving HTTPS public origins. `ApplicationProfileContractTest` verifies base profile defaults do not include private LAN wildcard origins, and `CorsAllowAllOriginContractTest` guards against wildcard `allowedOriginPatterns("*")` style configuration.
+- **Verification**: Source-only backend review and focused `rg`/`sed` inspection; no Maven/JUnit, Jest, TypeScript, build, browser/Playwright, APP/device, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ### F2501: LOW — Admin API uses dual `keyword`/`q` query params for backward compatibility
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / BACKEND_COMPAT_ALIAS_RETAINED / REGRESSION_GUARD_PRESENT / VERIFICATION_PENDING (2026-06-18 08:21 UTC)
 - **Component**: `frontend/src/api/index.ts:2228-2243`
 - **Category**: Backend / API Contract
 - **Description**: `adminApi.getProducts()` sends both `keyword` and `q` params. Backend merges via `resolveKeyword(keyword, q)`. Adds unnecessary complexity.
 - **Fix**: Deprecate `q` param in next major version, unify on `keyword`.
+- **Current-source evidence**: `frontend/src/api/index.ts` no longer sends a dual `keyword`/`q` payload from `adminApi.getProducts(...)`; the parameter type exposes only `keyword`, and request params include only `keyword: normalizeTextParam(params.keyword, 120) || undefined`. `AdminController` still accepts `@RequestParam(required = false, name = "q") String q` and `resolveProductKeyword(keyword, q)` as a backend compatibility alias, but the active frontend client is unified on `keyword`.
+- **Regression guard**: `frontend/src/api/index.test.ts` includes `keeps admin product search unified on keyword instead of the legacy q alias`, verifies the exact `/admin/products` request params, requires the `keyword`-only client type, and rejects `q?: string` / `q: normalizeTextParam(params.q...)` in the frontend API source.
+- **Verification**: Source-only frontend/backend review and focused `rg`/`sed` inspection; no Maven/JUnit, Jest, TypeScript, build, browser/Playwright, APP/device, API probe, deploy, service restart, curl, git commit, or revert command was run per current instruction.
 
 ---
 
 ## 2026-06-14 10:25 UTC — Deep Multi-Dimensional Review #92 (Security Scan + Backend Quality + Frontend Audit)
 
 ### F1832: MEDIUM — Admin Settings API exposes JWT secrets, SMTP passwords, and raw SMS credentials
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / REGRESSION_GUARD_PRESENT / BACKEND_VERIFICATION_PENDING (2026-06-18 07:52 UTC)
 - **Component**: `backend/src/main/java/com/example/shop/controller/AdminSettingsController.java`
 - **Category**: Backend / Security
 - **Description**: The admin settings API returns sensitive configuration values including JWT signing secrets, SMTP account passwords, and SMS API credentials in plaintext. These values should be masked or excluded from API responses.
 - **Fix**: Create DTOs that mask sensitive fields (e.g., `***`), or annotate sensitive fields with `@JsonProperty(access = JsonProperty.Access.READ_ONLY)`.
+- **Follow-up 2026-06-18 07:52 UTC**: Current source no longer contains `AdminSettingsController` or `/admin/settings`. The equivalent admin configuration read path is `AdminConfigCenterController.getSnapshot()` -> `ConfigCenterService.snapshot()`, whose `buildResponse()` masks sensitive values in `content`, `properties`, and `effectiveProperties` via `maskSensitiveContent(...)` / `maskSensitive(...)`; `AdminSystemController` readiness/status exposes only configuration state, counts, and pass/fail checks rather than raw JWT, SMTP, or SMS secrets. Added `ConfigCenterServiceTest.snapshotMasksJwtSmtpAndSmsCredentialsInAllResponseSurfaces()` as a source-level regression guard for JWT secret, SMTP password, SMS API key, and SMS secret response surfaces.
+- **Verification 2026-06-18 07:52 UTC**: Source-only inspection and guard addition; JUnit/Maven, Jest, TypeScript, build, browser/Playwright, API probe, deploy, service restart, curl, git commit, and revert were not run per instruction.
 
 ### F1833: MEDIUM — GET /admin/settings returns full SMTP and SMS passwords in response
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / REGRESSION_GUARD_PRESENT / BACKEND_VERIFICATION_PENDING (2026-06-18 07:52 UTC)
 - **Component**: `backend/src/main/java/com/example/shop/controller/AdminSettingsController.java`
 - **Category**: Backend / Security
 - **Description**: Same as F1832 but specifically for SMTP and SMS credentials. GET endpoint should never return passwords.
 - **Fix**: Mask or null-out password fields before returning response.
+- **Follow-up 2026-06-18 07:52 UTC**: Current source has no `GET /admin/settings` implementation. The active admin config snapshot path masks `app.mail.accounts[0].password`, `sms.provider.api-key`, and `sms.provider.secret` before returning both stored Nacos content and effective environment values. The new `ConfigCenterServiceTest.snapshotMasksJwtSmtpAndSmsCredentialsInAllResponseSurfaces()` guard covers the SMTP/SMS subset directly.
+- **Verification 2026-06-18 07:52 UTC**: Source-only inspection and guard addition; JUnit/Maven, Jest, TypeScript, build, browser/Playwright, API probe, deploy, service restart, curl, git commit, and revert were not run per instruction.
 
 ### F1834: MEDIUM — Admin endpoints accessible by ROLE_SUPPORT users
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / REGRESSION_GUARD_PRESENT / BACKEND_VERIFICATION_PENDING (2026-06-18 07:54 UTC)
 - **Component**: `backend/src/main/java/com/example/shop/config/SecurityConfig.java`
 - **Category**: Backend / Security
 - **Description**: Admin endpoints are accessible by any non-USER role (ROLE_SUPPORT, ROLE_ADMIN). ROLE_SUPPORT should only have support-specific permissions, not full admin access. This is a privilege escalation risk.
 - **Fix**: Restrict `/admin/**` endpoints to ROLE_ADMIN only; create separate `/support/**` endpoints for ROLE_SUPPORT.
+- **Follow-up 2026-06-18 07:54 UTC**: Current `SecurityConfig` uses `.antMatchers("/admin/**").hasRole("ADMIN")` before the catch-all authenticated rule, and focused source search found no `/admin/**` matcher granting `ROLE_SUPPORT`. Admin support endpoints are also guarded by `@PreAuthorize("hasRole('ADMIN')")`. Extended `AdminAuthenticationSourceContractTest.adminRequestsAuthenticateThroughSingleBearerJwtSource()` to reject `/admin/**` matchers using `hasRole("SUPPORT")` or `hasAnyRole(...SUPPORT...)`.
+- **Verification 2026-06-18 07:54 UTC**: Source-only inspection and guard addition; JUnit/Maven, Jest, TypeScript, build, browser/Playwright, API probe, deploy, service restart, curl, git commit, and revert were not run per instruction.
 
 ### F1835: MEDIUM — In-memory SecurityAuditLog listener blocks the request thread
 - **Status**: OPEN
@@ -11143,8 +11918,8 @@ All previously reported pagination/sorting/filtering bugs have been **verified F
 | F1990 | HIGH | Backend/Order | RETURN_REFUNDING状态可以被商家拒绝退款回退到PAID，用户无法重新申请退款 | OPEN |
 | F1991 | HIGH | Backend/Payment | cancelPendingPaymentOrder检查已过期的COMPLETED状态，无实际效果 | OPEN |
 | F1992 | HIGH | Backend/Admin | 管理员合并商品缺少状态验证，下架/草稿商品可被合并为上架 | OPEN |
-| F1993 | MEDIUM | Frontend/Payment | PaymentChannelService.getChannel()异常被静默吞掉，用户无提示 | OPEN |
-| F1994 | MEDIUM | Backend/Auth | 登录响应包含原始手机号，应脱敏处理 | OPEN |
+| F1993 | MEDIUM | Frontend/Payment | PaymentChannelService.getChannel()异常被静默吞掉，用户无提示 | SOURCE_FIXED / REGRESSION_GUARD_ADDED / FRONTEND_VERIFICATION_PENDING |
+| F1994 | MEDIUM | Backend/Auth | 登录响应包含原始手机号，应脱敏处理 | DUPLICATE_COVERED_BY_F2866 / CURRENT_SOURCE_COVERED / REGRESSION_GUARD_PRESENT |
 | F1995 | MEDIUM | Backend/Coupon | 高并发下优惠券claim操作无并发锁保护，可能导致超发 | OPEN |
 | F1996 | MEDIUM | Backend/Checkout | Checkout DTO缺少@Size约束，超长字段可能导致数据库截断 | OPEN |
 
@@ -11171,20 +11946,20 @@ All previously reported pagination/sorting/filtering bugs have been **verified F
 **Severity:** HIGH | **Status:** OPEN | **Date:** 2026-06-20
 
 ### F1993: MEDIUM — 结算渠道获取错误无提示
-**File:** `frontend/src/pages/Checkout.tsx:189`
-**Description:** `PaymentChannelService.getChannel()`的错误被catch块静默吞掉，没有向用户显示任何错误提示。用户无法知道支付渠道获取失败。
+**File:** `frontend/src/pages/Checkout.tsx:900-947`
+**Description:** `Checkout.tsx` 的支付渠道加载错误现在会保留到 `paymentChannelsError`，并通过警告条和重试按钮暴露给用户；这条报告的静默吞掉问题已经不在当前源码里。
 **Impact:** 用户体验差，无法知道支付渠道获取失败的原因
-**Fix:** 在catch块中设置错误状态并向用户显示错误提示。
-**Severity:** MEDIUM | **Status:** FIXED ✅ (implementation cycle #481, 2026-06-06 19:26 UTC) | **Date:** 2026-06-20
-**Fix evidence:** Added class-level `@PreAuthorize("hasRole('ADMIN')")` to all seven listed admin controllers.
+**Fix:** 在 catch 中保存错误状态、显示可见提示，并提供重试入口。
+**Severity:** MEDIUM | **Status:** SOURCE_FIXED / REGRESSION_GUARD_ADDED / FRONTEND_VERIFICATION_PENDING (2026-06-17 17:49 UTC)
+**Fix evidence:** `Checkout.tsx` now tracks `paymentChannelsLoading`, `paymentChannelsError`, and `paymentChannelsReloadKey`, clears the error before each load, stores the translated API failure message on reject, and re-runs `paymentApi.getChannels()` from the retry button instead of swallowing the exception. `Checkout.test.tsx` adds guards for the visible API error, retry path, and the guarded effect contract. Verification was limited to source inspection and static diff hygiene; no Jest, TypeScript, build, browser/Playwright, or backend/runtime commands were run.
 
 ### F1994: MEDIUM — 登录响应包含原始手机号
-**File:** `src/main/java/com/example/shop/controller/AuthController.java:95-105`
-**Description:** 登录响应中包含用户的原始手机号（phone字段），没有进行脱敏处理。手机号是敏感个人信息，应该脱敏显示（如138****1234）。
+**File:** `src/main/java/com/example/shop/controller/LoginController.java:417-426`
+**Description:** 登录/刷新响应现在已经不返回 `phone`；这条报告引用的 `AuthController` 路径是过期的，当前源码里的同类问题已由 F2866 覆盖。
 **Impact:** 个人信息泄露风险，违反数据最小化原则
-**Fix:** 在返回登录响应前对手机号进行脱敏处理。
-**Severity:** MEDIUM | **Status:** FIXED ✅ (implementation cycle #481, 2026-06-06 19:26 UTC) | **Date:** 2026-06-20
-**Fix evidence:** `Cart.tsx` recently-viewed loader now uses local `disposed` plus `mountedRef` guards before `setRecentProducts`.
+**Fix:** 让 auth-session 响应只返回登录所需字段，手机号留给 profile hydrate。
+**Severity:** MEDIUM | **Status:** DUPLICATE_COVERED_BY_F2866 / CURRENT_SOURCE_COVERED / REGRESSION_GUARD_PRESENT (2026-06-17 17:49 UTC)
+**Fix evidence:** `LoginController.buildLoginResponse(...)` omits `phone`, and the frontend auth-session contract in `frontend/src/api/index.ts` and `frontend/src/hooks/useAuth.ts` no longer persists phone as auth-session data. This is the same stale PII issue already fixed under F2866, so F1994 is now a duplicate-current-source entry rather than a live defect.
 
 ### F1995: MEDIUM — 优惠券领取竞态条件
 **File:** `src/main/java/com/example/shop/service/CouponService.java:89-105`
@@ -11634,14 +12409,16 @@ All previously reported pagination/sorting/filtering bugs have been **verified F
 **Description:** The `dateLocale` variable uses `language === 'en'` instead of `language === 'es'`. The language value from the i18n system is `'es'` for Spanish, but the code checks for `'en'` as the second branch. This means when the user selects English, they get `es-MX` formatting, and when they select Spanish, they get `en-US` formatting. All other pages in the project use the correct pattern `language === 'es' ? 'es-MX' : 'en-US'`.
 **Impact:** English users see Spanish date formatting, Spanish users see English date formatting.
 **Fix:** Change to `const dateLocale = language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US';`
-**Severity:** HIGH | **Status:** OPEN | **Date:** 2026-06-20
+**Severity:** HIGH | **Status:** FIXED | **Date:** 2026-06-20
+**Fix evidence:** `Profile.tsx` now uses the shared `zh-CN`/`es-MX`/`en-US` mapping, so English falls back to `en-US` and Spanish maps to `es-MX`. `Profile.test.ts` includes a source guard rejecting the old inverted ternary.
 
 ### F2056: MEDIUM — AnnouncementManagement toLocaleString missing locale parameter
 **File:** `frontend/src/pages/AnnouncementManagement.tsx:143`
 **Description:** `checkedAt.toLocaleString()` is called without a locale parameter. This causes the date to format using the browser's default locale, not the user's selected language. The same file correctly defines `dateLocale` and uses it elsewhere (lines 403-404), but this particular call was missed.
 **Impact:** Date display inconsistency for non-default locale users.
 **Fix:** Change to `checkedAt.toLocaleString(dateLocale)`.
-**Severity:** MEDIUM | **Status:** OPEN | **Date:** 2026-06-20
+**Severity:** MEDIUM | **Status:** FIXED | **Date:** 2026-06-20
+**Fix evidence:** `AnnouncementManagement.tsx` now formats `summaryCheckedAt` with `checkedAt.toLocaleString(dateLocale)` and includes `dateLocale` in the memo dependencies. `AnnouncementManagement.test.ts` includes a source guard rejecting the locale-less `toLocaleString()` call.
 
 ### F2057: MEDIUM — ProductManagement formatImportMoneyValue uses toFixed(2) instead of locale-aware formatting
 **File:** `frontend/src/pages/ProductManagement.tsx:224-228, 1173`
@@ -12645,6 +13422,7 @@ All previously reported pagination/sorting/filtering bugs have been **verified F
 - **Description**: The `storage` event listener calls `syncPreferences()` (which reloads all product view preferences) on every `localStorage` change from other tabs — not just preference-related keys. This causes unnecessary re-renders and preference reloads when any unrelated localStorage value changes (e.g., auth tokens, cart data, other app state).
 - **Severity**: LOW — Performance: unnecessary re-renders on unrelated storage events.
 - **Fix**: Filter the `storage` event to only respond to relevant keys (e.g., `e.key?.startsWith('shop:productViewPrefs')`).
+- **Maintainer status (2026-06-15 20:58 UTC)**: SOURCE_FIXED / REGRESSION_GUARD_ADDED / FRONTEND_VERIFICATION_PENDING. Current source imports `PRODUCT_VIEW_PREFERENCES_KEY`, ignores unrelated keyed `StorageEvent`s, still accepts same-tab product-view preference events and null-key storage clears, and `BrowsingHistory.test.ts` guards the scoped listener contract.
 **Files:** `src/main/java/com/example/shop/service/SecurityAuditLogService.java:212-216`, `src/main/java/com/example/shop/service/AdminBugReportService.java:391`
 **Description:** `groupCount()` methods concatenate column names directly into SQL strings after validating against a whitelist. While currently safe, the pattern is fragile — expanding the whitelist carelessly could introduce SQL injection.
 **Impact:** Potential SQL injection if whitelist is expanded without careful review.
@@ -12652,53 +13430,71 @@ All previously reported pagination/sorting/filtering bugs have been **verified F
 **Severity:** LOW | **Status:** OPEN | **Date:** 2026-06-06
 
 ### F2200: LOW — Frontend Login.tsx and ForgotPassword.tsx email code input maxLength=12 vs 6 inconsistency
-- **Files**: `frontend/src/pages/Login.tsx:540`, `frontend/src/pages/ForgotPassword.tsx:207`
+- **Files**: `frontend/src/pages/Login.tsx:540`, `frontend/src/pages/ForgotPassword.tsx:207`, `frontend/src/pages/ForgotPassword.test.ts`
 - **Description**: The email verification code input fields in Login.tsx and ForgotPassword.tsx have `maxLength={12}`, but validation requires exactly 6 digits. Register.tsx correctly uses `maxLength={6}`. The 12-character limit allows users to type up to 6 extra characters that get silently stripped by `normalizeEmailCode()`, creating user confusion (visible value differs from submitted value).
 - **Severity**: LOW — UX inconsistency across auth pages.
 - **Fix**: Change `maxLength={12}` to `maxLength={6}` in both Login.tsx and ForgotPassword.tsx.
-- **Status:** OPEN | **Date:** 2026-06-06
+- **Status:** CURRENT_SOURCE_COVERED (2026-06-14) / REGRESSION_GUARD_VERIFIED / BROWSER_E2E_PENDING | **Date:** 2026-06-06
+- **Maintainer note:** Current `Login.tsx` and `ForgotPassword.tsx` both normalize email codes with `.slice(0, 6)`, validate `len: 6`, and render the verification-code inputs with `maxLength={6}`; neither page still has `maxLength={12}`. `ForgotPassword.test.ts` source guard covers both auth pages so the 6-digit input contract cannot silently drift from validation.
+- **Regression request:** When frontend checks are allowed, rerun the auth/reset form coverage. Expected: login and forgot-password email-code fields accept at most 6 visible digits, validation remains exactly 6 digits, pasted longer codes are normalized consistently, and Register/Login/ForgotPassword stay aligned.
+- **Verification:** Frontend aggregated Jest passed 12/12 suites and 153/153 tests, including `Login.test.tsx` and `ForgotPassword.test.ts`; `npx tsc --noEmit --pretty false` passed; `git diff --check` passed. Browser/App runtime confirmation remains pending for the testing engineer.
 
 ### F2201: MEDIUM — Frontend ForgotPassword.tsx login field not normalized before API call
-- **File**: `frontend/src/pages/ForgotPassword.tsx:119`
+- **File**: `frontend/src/pages/ForgotPassword.tsx:119`, `frontend/src/pages/ForgotPassword.test.ts`
 - **Description**: In `onFinish`, the `login` field is sent raw to the API (`login: values.login`) without normalization. Compare with Login.tsx which applies `normalizePasswordLogin()` on blur and before submission. If a user enters a username with leading/trailing whitespace or control characters, the reset request will fail because the backend will not find a matching account.
 - **Severity**: MEDIUM — Password reset fails for usernames with accidental whitespace.
 - **Fix**: Apply `normalizePasswordLogin()` or `trim()` to `values.login` before the API call.
-- **Status:** OPEN | **Date:** 2026-06-06
+- **Status:** CURRENT_SOURCE_COVERED (2026-06-14) / REGRESSION_GUARD_VERIFIED / BROWSER_E2E_PENDING | **Date:** 2026-06-06
+- **Maintainer note:** Current `ForgotPassword.tsx` normalizes the login field on blur and again in `onFinish` via `const normalizedLogin = normalizePasswordLogin(values.login);`, updates the form field, and sends `login: normalizedLogin` to `userApi.forgotPassword(...)`; the stale raw `login: values.login` submission path is absent. `ForgotPassword.test.ts` source guard requires the normalized API payload and rejects the raw login payload.
+- **Regression request:** When frontend checks are allowed, rerun forgot-password coverage with leading/trailing whitespace and control characters in the login field. Expected: the reset request uses the normalized username/email, the visible field is corrected, and email-code validation still works.
+- **Verification:** Frontend aggregated Jest passed 12/12 suites and 153/153 tests, including `ForgotPassword.test.ts`; `npx tsc --noEmit --pretty false` passed; `git diff --check` passed. Browser/App runtime confirmation remains pending for the testing engineer.
 
 ### F2202: LOW — Frontend Home.tsx storage event listener fires on ALL localStorage changes
-- **File**: `frontend/src/pages/Home.tsx:551-558`
+- **File**: `frontend/src/pages/Home.tsx:551-558`, `frontend/src/pages/HomeRenderMemo.test.ts`
 - **Description**: The `useEffect` at line 551 adds a `storage` event listener that calls `setViewPreferences(loadProductViewPreferences())` on ANY localStorage change from other tabs. This triggers a state update and potential re-render of the entire Home page whenever any tab changes any localStorage key (e.g., cart updates, auth changes, coupon claims). `loadProductViewPreferences()` creates a new object reference each time, causing downstream `useMemo` recalculations.
 - **Severity**: LOW — Performance: unnecessary re-renders on unrelated storage events.
 - **Fix**: Add key guard: `if (event.key && event.key !== 'shop-product-view-preferences') return;` inside the handler.
-- **Status:** OPEN | **Date:** 2026-06-06
+- **Status:** CURRENT_SOURCE_COVERED (2026-06-14) / REGRESSION_GUARD_ADDED / E2E_OPTIONAL | **Date:** 2026-06-06
+- **Maintainer note:** Current `Home.tsx` imports `PRODUCT_VIEW_PREFERENCES_KEY` and filters browser `StorageEvent` updates with `event.key !== PRODUCT_VIEW_PREFERENCES_KEY` before calling `setViewPreferences(loadProductViewPreferences())`. The custom in-tab `shop:product-view-preferences-updated` event still refreshes preferences after explicit view-history changes. Added `HomeRenderMemo.test.ts` source guard for this storage-key contract.
+- **Verification:** `CI=true npm test -- --runTestsByPath src/pages/HomeRenderMemo.test.ts src/pages/Notifications.test.ts src/pages/Wishlist.test.tsx --watchAll=false --runInBand --testTimeout=60000 --silent` passed 3/3 suites and 14/14 tests; `git diff --check` passed.
 
 ### F2203: MEDIUM — Frontend Notifications.tsx hardcoded page size of 50 with no pagination
-- **File**: `frontend/src/pages/Notifications.tsx:55`
+- **File**: `frontend/src/pages/Notifications.tsx:55`, `frontend/src/pages/Notifications.test.ts`
 - **Description**: Notifications are fetched with `notificationApi.getByUser(0, false, 1, 50)` — hardcoded page size of 50. There is no pagination UI, no "load more" button, and no indication the list is truncated. Users with >50 notifications silently miss older notifications. Quick filters only filter the already-fetched 50 items, so unread notifications beyond 50 are invisible.
 - **Severity**: MEDIUM — Silent data loss for active users with many notifications.
 - **Fix**: Add pagination support or at minimum check if `res.data.length === 50` and show "Showing 50 of X" with load-more button.
-- **Status:** OPEN | **Date:** 2026-06-06
+- **Status:** CURRENT_SOURCE_COVERED (2026-06-14) / REGRESSION_GUARD_ADDED / BROWSER_E2E_PENDING | **Date:** 2026-06-06
+- **Maintainer note:** Current `Notifications.tsx` keeps `notificationPage` and `hasMoreNotifications`, fetches `notificationApi.getByUser(0, false, nextPage, NOTIFICATION_PAGE_SIZE)`, sets `hasMoreNotifications` when a full page is returned, and renders a footer Load more button that calls `fetchNotifications(notificationPage + 1, true)`. Added `Notifications.test.ts` source guard requiring the paged load-more contract and rejecting the stale `getNotifications(1, 100)` path.
+- **Verification:** `CI=true npm test -- --runTestsByPath src/pages/HomeRenderMemo.test.ts src/pages/Notifications.test.ts src/pages/Wishlist.test.tsx --watchAll=false --runInBand --testTimeout=60000 --silent` passed 3/3 suites and 14/14 tests; `git diff --check` passed. Browser/E2E should still verify multi-page notification fixtures.
 
 ### F2204: LOW — Frontend Wishlist.tsx no guard against double-remove of same item
-- **File**: `frontend/src/pages/Wishlist.tsx:108-117`
+- **File**: `frontend/src/pages/Wishlist.tsx:108-117`, `frontend/src/pages/Wishlist.test.tsx`
 - **Description**: The `handleRemove` function has no tracking of in-flight removals. Unlike Cart.tsx which uses `removingItemIds` state to prevent duplicate API calls, Wishlist.tsx allows rapid clicks triggering multiple concurrent `wishlistApi.remove()` calls for the same product. The second call will 404 (already removed), causing a confusing error toast.
 - **Severity**: LOW — Race condition on rapid clicks.
 - **Fix**: Add `removingProductIds` state set, track in-flight removals, disable delete button during API call.
-- **Status:** OPEN | **Date:** 2026-06-06
+- **Status:** CURRENT_SOURCE_COVERED (2026-06-14) / REGRESSION_GUARD_ADDED / BROWSER_E2E_PENDING | **Date:** 2026-06-06
+- **Maintainer note:** Current `Wishlist.tsx` has both `removingProductIds` UI state and `removingProductIdsRef`; `handleRemove(...)` returns early when a product is already in-flight, adds/removes the product id around the API call, and the row delete button uses `loading={removing}` plus `disabled={removing}`. Added `Wishlist.test.tsx` source guard for the duplicate-remove lock and button disabled/loading contract.
+- **Verification:** `CI=true npm test -- --runTestsByPath src/pages/HomeRenderMemo.test.ts src/pages/Notifications.test.ts src/pages/Wishlist.test.tsx --watchAll=false --runInBand --testTimeout=60000 --silent` passed 3/3 suites and 14/14 tests; `git diff --check` passed. Browser/E2E should still verify rapid double-click behavior.
 
 ### F2205: LOW — Frontend Checkout.tsx coupon quote re-fetched unnecessarily on language change
-- **File**: `frontend/src/pages/Checkout.tsx:829`
+- **File**: `frontend/src/pages/Checkout.tsx:829`, `frontend/src/pages/Checkout.test.tsx`
 - **Description**: The coupon quote `useEffect` has `language` in its dependency array. Switching UI language on checkout triggers a fresh `couponApi.quote()` request. Coupon calculations are server-side and locale-independent — the backend does not localize coupon names in the quote response. This causes unnecessary network round-trip and brief UI flicker.
 - **Severity**: LOW — Performance: unnecessary API call on language switch.
 - **Fix**: Remove `language` from the dependency array.
-- **Status:** OPEN | **Date:** 2026-06-06
+- **Status:** SOURCE_FIXED (2026-06-14) / REGRESSION_GUARD_VERIFIED / BROWSER_E2E_PENDING | **Date:** 2026-06-06
+- **Fix evidence:** `Checkout.tsx` now keeps the latest `t` and `language` in `checkoutLocalizationRef` so async quote error handling still uses current localized copy, while the coupon quote effect dependency array is limited to cart/coupon state and `showCheckoutMessage`; language-only switches no longer trigger `couponApi.quote(...)`. `Checkout.test.tsx` source-guards the localization ref and rejects `language`/`t` in the quote effect dependency list.
+- **Regression request:** When frontend checks are allowed, rerun checkout coupon coverage and manually/E2E switch language while on checkout with an authenticated cart. Expected: no new coupon quote request fires for language-only changes, localized quote error messages still use the current language, cart/coupon changes still re-quote normally, and checkout totals remain stable.
+- **Verification:** Frontend aggregated Jest passed 12/12 suites and 153/153 tests, including `Checkout.test.tsx`; `npx tsc --noEmit --pretty false` passed; `git diff --check` passed. Browser/App language-switch regression remains pending for the testing engineer.
 
 ### F2206: LOW — Frontend Checkout.tsx Invalid Date display for malformed payment.expiresAt
-- **File**: `frontend/src/pages/Checkout.tsx:1798`
+- **File**: `frontend/src/pages/Checkout.tsx:1798`, `frontend/src/pages/Checkout.test.tsx`
 - **Description**: The payment expiration display uses `new Date(payment.expiresAt).toLocaleString(dateLocale)` without validating the input. If `expiresAt` is a malformed timestamp, `new Date()` produces Invalid Date and `.toLocaleString()` renders as literal "Invalid Date" in the UI. The truthiness check only guards against null/undefined/empty, not malformed strings.
 - **Severity**: LOW — Edge case: "Invalid Date" text shown in UI for malformed timestamps.
 - **Fix**: Add validity check: `{payment.expiresAt && !isNaN(new Date(payment.expiresAt).getTime()) && (...)}`.
-- **Status:** OPEN | **Date:** 2026-06-06
+- **Status:** SOURCE_FIXED (2026-06-14) / REGRESSION_GUARD_VERIFIED / BROWSER_E2E_PENDING | **Date:** 2026-06-06
+- **Fix evidence:** Added `formatCheckoutDateTime(...)`, which returns `null` for null/empty/unsupported/malformed values and only formats dates with finite timestamps. The payment result card now renders `paymentExpiresAtText` only when the helper returns a valid localized string, so malformed `payment.expiresAt` values do not surface as `Invalid Date`. `Checkout.test.tsx` guards the helper behavior and rejects the old direct `new Date(payment.expiresAt).toLocaleString(dateLocale)` render path.
+- **Regression request:** When frontend checks are allowed, cover checkout payment results with valid, empty, missing, and malformed `expiresAt` values. Expected: valid timestamps render localized expiration text, invalid timestamps omit the expiration row without showing `Invalid Date`, and payment recovery/status actions remain unchanged.
+- **Verification:** Frontend aggregated Jest passed 12/12 suites and 153/153 tests, including `Checkout.test.tsx`; `npx tsc --noEmit --pretty false` passed; `git diff --check` passed. Browser/App malformed-expiry rendering remains pending for the testing engineer.
 
 ### F2207: MEDIUM — Admin ~20 endpoints missing @Valid on request bodies
 - **File**: `backend/src/main/java/com/example/shop/controller/Admin*.java` (~20 endpoints)
@@ -12730,7 +13526,7 @@ All previously reported pagination/sorting/filtering bugs have been **verified F
 - **Status:** OPEN | **Date:** 2026-06-05
 
 ### F2211: HIGH — ProductDetail race condition: stale variant/spec data on fast tab switches
-- **File**: `frontend/src/pages/ProductDetail.tsx:35-108`
+- **File**: `frontend/src/pages/ProductDetail.tsx:35-108`, `frontend/src/pages/ProductDetail.test.tsx`
 - **Description**: The `useEffect` that fetches product data by `productId` has no cleanup function. When a user switches between product tabs rapidly, responses can arrive out of order. A later fetch for product B could complete before an earlier fetch for product A, causing the component to display stale or mismatched data. The same applies to variant and review fetching effects which also lack race guards.
 - **Severity**: HIGH — User sees wrong product data, variant options, or reviews when navigating quickly between products.
 - **Fix**: Add a `cancelled` flag or `AbortController` in the useEffect cleanup to discard stale responses:
@@ -12741,238 +13537,321 @@ All previously reported pagination/sorting/filtering bugs have been **verified F
     return () => { cancelled = true; };
   }, [id]);
   ```
-- **Status:** OPEN | **Date:** 2026-06-05
+- **Status:** SOURCE_FIXED (2026-06-14) / REGRESSION_GUARD_ADDED / BUILD_VERIFIED / BROWSER_E2E_PENDING | **Date:** 2026-06-05
+- **Fix evidence:** Current product main-load effect already uses `disposed` before product/image/loading/wishlist writes. This pass fixed the remaining non-critical ProductDetail race surface: reviews, questions, recommendations, and reviewable-orders now run under `nonCriticalRequestSeqRef`; product id/auth-session cleanup increments the sequence, warmup timers/IntersectionObserver/scroll fallback pass the active sequence into the fetch helpers, and late responses/errors return before mutating state or showing stale diagnostics. Manual post-review and post-question refreshes capture the current sequence before async work and skip state writes if the route changed. `ProductDetail.test.tsx` source-guards the sequence contract and cleanup invalidation.
+- **Verification:** `CI=true npm test -- --runTestsByPath src/pages/ProductDetail.test.tsx --watchAll=false --runInBand --testTimeout=60000 --silent` passed 22/22 tests; `npx tsc --noEmit --pretty false` passed; `git diff --check` passed. Browser/E2E should still rapidly switch product detail routes and submit review/question flows while requests are delayed.
 
 ### F2212: MEDIUM — Notifications.tsx race condition: fetchAll can receive out-of-order responses
-- **File**: `frontend/src/pages/Notifications.tsx:58-73`
+- **File**: `frontend/src/pages/Notifications.tsx:58-73`, `frontend/src/pages/Notifications.test.ts`
 - **Description**: The `useEffect` that calls `notificationApi.getNotifications(1, 100)` has no cleanup or stale-response guard. If the component re-mounts or `page` changes rapidly, later requests may complete before earlier ones, causing the displayed notifications to be from a different page or stale state.
 - **Severity**: MEDIUM — Notifications list shows wrong page data on rapid navigation.
 - **Fix**: Add `cancelled` flag in useEffect cleanup, or use AbortController with `signal` passed to the API call.
-- **Status:** OPEN | **Date:** 2026-06-05
+- **Status:** SOURCE_FIXED (2026-06-14) / REGRESSION_GUARD_VERIFIED / BROWSER_E2E_PENDING | **Date:** 2026-06-05
+- **Fix evidence:** Current `Notifications.tsx` now uses paged `notificationApi.getByUser(...)` rather than the stale `getNotifications(1, 100)` call, and the remaining race condition is fixed with `mountedRef` plus `notificationFetchSeqRef`. Each fetch captures a request sequence, response/error/loading state updates first check `mountedRef.current && notificationFetchSeqRef.current === requestSeq`, and unmount increments the sequence so late responses cannot mutate state or show stale error toasts. `Notifications.test.ts` source-guards the mounted ref, sequence invalidation, current-request checks, and guarded list/loading updates.
+- **Regression request:** When frontend checks are allowed, rerun Notifications coverage and UI/E2E navigate rapidly between notification routes, language changes, and load-more interactions. Expected: old requests do not overwrite newer notification pages, late failures do not show stale error toasts after unmount, loading states clear only for the active request, pagination/load-more still appends correctly, and navbar notification refresh behavior is unchanged.
+- **Verification:** Frontend aggregated Jest passed 12/12 suites and 153/153 tests, including `Notifications.test.ts`; `npx tsc --noEmit --pretty false` passed; `git diff --check` passed. Browser/App rapid-navigation regression remains pending for the testing engineer.
 
 ### F2213: MEDIUM — Wishlist.tsx race condition: fetchWishlist has no stale-response guard
-- **File**: `frontend/src/pages/Wishlist.tsx:30-42`
+- **File**: `frontend/src/pages/Wishlist.tsx:30-42`, `frontend/src/pages/Wishlist.test.tsx`
 - **Description**: The `useEffect` that fetches the wishlist calls `wishListApi.getAll()` without a race guard. On rapid component re-mounts or navigation, responses can arrive out of order, causing the displayed wishlist to be stale or inconsistent.
 - **Severity**: MEDIUM — Wishlist shows stale data on rapid navigation.
 - **Fix**: Add `cancelled` flag or AbortController in useEffect cleanup.
-- **Status:** OPEN | **Date:** 2026-06-05
+- **Status:** SOURCE_FIXED (2026-06-14) / REGRESSION_GUARD_VERIFIED / BROWSER_E2E_PENDING | **Date:** 2026-06-05
+- **Fix evidence:** Current `Wishlist.tsx` now uses `wishlistApi.getByUser(0)` rather than the stale `wishListApi.getAll()` reference, and the remaining stale-response risk is fixed with `mountedRef` plus `wishlistFetchSeqRef`. Each wishlist fetch captures a request sequence, response/error/loading state updates first check `mountedRef.current && wishlistFetchSeqRef.current === requestSeq`, and unmount increments the sequence so late responses cannot mutate wishlist items or show stale error toasts. Existing remove/add flows still keep their mounted and pending guards. `Wishlist.test.tsx` source-guards the mounted ref, sequence invalidation, current-request checks, guarded item update, guarded error toast, and guarded loading update.
+- **Regression request:** When frontend checks are allowed, rerun Wishlist coverage and UI/E2E navigate rapidly between wishlist routes, language changes, and wishlist remove/add-all actions. Expected: old wishlist fetches do not overwrite newer data, late failures do not show stale error toasts after unmount, loading state clears only for the active request, duplicate-remove and add-all pending guards still work, and wishlist/cart navbar refresh events remain unchanged.
+- **Verification:** Frontend aggregated Jest passed 12/12 suites and 153/153 tests, including `Wishlist.test.tsx`; `npx tsc --noEmit --pretty false` passed; `git diff --check` passed. Browser/App rapid-navigation regression remains pending for the testing engineer.
 
 ### F2214: MEDIUM — Payment.tsx race condition: orderInfo overwrite on rapid fetchOrderInfo calls
-- **File**: `frontend/src/pages/Payment.tsx:146-167`
+- **File**: stale report path `frontend/src/pages/Payment.tsx:146-167`; current route/source `frontend/src/App.tsx`, `frontend/src/pages/PaymentInstructions.tsx`, `frontend/src/pages/PaymentInstructions.test.ts`
 - **Description**: The `fetchOrderInfo` function fetches order data without a race guard. If the user navigates away and back quickly, or if `orderId` changes (e.g., via URL manipulation), later responses can overwrite earlier ones, causing the payment page to display wrong order information including incorrect amounts.
 - **Severity**: MEDIUM — Payment page could display wrong order amount or details on rapid navigation.
 - **Fix**: Add `cancelled` flag in useEffect cleanup tied to `orderId` changes.
-- **Status:** OPEN | **Date:** 2026-06-05
+- **Status:** CURRENT_SOURCE_COVERED (2026-06-14) / REGRESSION_GUARD_VERIFIED / BROWSER_E2E_PENDING | **Date:** 2026-06-05
+- **Fix evidence:** The reported `frontend/src/pages/Payment.tsx` page is absent from the current app route tree. Active `/payment/:orderNo` routing in `App.tsx` lazy-loads `PaymentInstructions`, whose `verifyPaymentDetails` effect uses a local `disposed` cleanup flag. Order fetch success checks `if (disposed) return` before `setOrder(nextOrder)`, the latest-payment success and failure paths guard `setPayment(...)` with `!disposed`, and the `finally` path guards `setVerifying(false)` with `!disposed`; cleanup sets `disposed = true`. `PaymentInstructions.test.ts` now source-guards the active route mapping, the disposed cleanup guard, the guarded order/payment/loading state updates, and the absence of a stale `Payment` page component.
+- **Regression request:** When runtime checks are allowed, exercise `/payment/:orderNo` with rapid orderNo and guestEmail route changes, authenticated and guest users, slow order lookups, slow latest-payment responses, missing payment rows, and route leave/unmount. Expected: late responses from an old route do not overwrite current order/payment details, payment amount/channel/expiry remain tied to the active order, verifying state belongs to the active request, and track-order/support actions still preserve the active guest context.
+- **Verification:** Frontend aggregated Jest passed 12/12 suites and 153/153 tests, including `PaymentInstructions.test.ts`; `npx tsc --noEmit --pretty false` passed; `git diff --check` passed. Browser/App rapid-route-change regression remains pending for the testing engineer.
 
 ### F2215: MEDIUM — CustomerSupportWidget WebSocket message/error handlers not wrapped in try/catch
-- **File**: `frontend/src/components/CustomerSupportWidget.tsx:94-134`
+- **File**: stale report path `frontend/src/components/CustomerSupportWidget.tsx:94-134`; current source `frontend/src/components/CustomerSupportWidget.tsx`, `frontend/src/utils/supportChatConfig.ts`
 - **Description**: The `ws.onmessage` and `ws.onerror` handlers parse JSON and access nested properties without try/catch. If the server sends malformed JSON or an unexpected message shape, the handler throws an unhandled exception, which could crash the component or leave the WebSocket in a bad state.
 - **Severity**: MEDIUM — Malformed WebSocket messages crash the support widget.
-- **Fix**: Wrap the entire `onmessage` handler body in try/catch with `console.error` logging.
-- **Status:** OPEN | **Date:** 2026-06-05
+- **Fix**: Route all WebSocket payload parsing through the shared guarded parser and reject malformed envelopes before component code reads nested fields.
+- **Status:** SOURCE_FIXED (2026-06-14) / REGRESSION_GUARD_ADDED / BROWSER_E2E_PENDING | **Date:** 2026-06-05
+- **Fix evidence:** Current `CustomerSupportWidget.tsx` no longer owns a raw `ws.onmessage` handler or `JSON.parse(event.data)` path. The authenticated socket is created through `useReconnectingWebSocket`, and `onMessage` calls `parseSupportSocketPayload(event.data)` before branching on `payload.type`. `supportChatConfig.parseSupportSocketPayload(...)` now returns a typed `ERROR` payload for malformed JSON, non-object payloads, incomplete `MESSAGE` envelopes, and incomplete session update/close envelopes, so the widget does not access `payload.message.sessionId` unless the parser has validated `session` and `message` shape. `CustomerSupportWidget.test.tsx` guards the component parser delegation and absence of raw WebSocket parsing; `supportChatConfig.test.ts` guards malformed shape rejection and valid envelope acceptance.
+- **Regression request:** Browser-test customer support with malformed socket payloads, valid `MESSAGE`, valid `SESSION_UPDATED`, reconnect failures, and fallback polling. Expected: malformed payloads show the existing rejected-message warning without crashing the widget, valid messages still append/dedupe/mark read, session updates still refresh the active session, and reconnect/polling behavior is unchanged.
+- **Verification:** Focused Jest passed 5/5 suites and 25/25 tests including `CustomerSupportWidget.test.tsx` and `supportChatConfig.test.ts`; `npx tsc --noEmit --pretty false` passed; `git diff --check` passed. Browser customer-support regression remains pending for the testing engineer.
 
 ### F2216: MEDIUM — SupportManagement WebSocket message/error handlers not wrapped in try/catch
-- **File**: `frontend/src/pages/SupportManagement.tsx:141-220`
+- **File**: stale report path `frontend/src/pages/SupportManagement.tsx:141-220`; current source `frontend/src/pages/SupportManagement.tsx`, `frontend/src/utils/supportChatConfig.ts`
 - **Description**: Same issue as F2215 but in the admin support management page. The `ws.onmessage` handler parses JSON and accesses nested properties without try/catch protection. Malformed messages from the server will throw unhandled exceptions.
 - **Severity**: MEDIUM — Malformed WebSocket messages crash the admin support management page.
-- **Fix**: Wrap the `onmessage` handler body in try/catch.
-- **Status:** OPEN | **Date:** 2026-06-05
+- **Fix**: Route all WebSocket payload parsing through the shared guarded parser and reject malformed envelopes before admin page code reads nested fields.
+- **Status:** SOURCE_FIXED (2026-06-14) / REGRESSION_GUARD_ADDED / BROWSER_E2E_PENDING | **Date:** 2026-06-05
+- **Fix evidence:** Current `SupportManagement.tsx` uses `useReconnectingWebSocket` with an async ticket-backed socket and delegates `onMessage` to `parseSupportSocketPayload(event.data)`. The parser now validates the payload type and required nested `session` / `message` shape before returning `MESSAGE`, `SESSION_CLOSED`, or `SESSION_UPDATED`; invalid shapes return `ERROR`, preserving the existing warning path and avoiding unhandled nested-property exceptions. `SupportManagement.test.tsx` guards parser delegation and rejects raw `JSON.parse(event.data)` / `ws.onmessage` reintroduction; `supportChatConfig.test.ts` covers malformed and valid payload shapes.
+- **Regression request:** Browser-test admin Support Management with malformed socket payloads, valid customer messages for selected and non-selected sessions, session close/update events, permissioned/unpermissioned read marking, reconnect failures, and HTTP polling. Expected: malformed payloads warn without crashing, valid customer messages update queues/conversations and tones as before, read markers respect permissions, and polling fallback remains active.
+- **Verification:** Focused Jest passed 5/5 suites and 25/25 tests including `SupportManagement.test.tsx` and `supportChatConfig.test.ts`; `npx tsc --noEmit --pretty false` passed; `git diff --check` passed. Browser admin-support regression remains pending for the testing engineer.
 
 ### F2217: MEDIUM — CustomerSupportWidget scroll-to-bottom on every render
-- **File**: `frontend/src/components/CustomerSupportWidget.tsx:49-52`
+- **File**: stale report path `frontend/src/components/CustomerSupportWidget.tsx:49-52`; current source `frontend/src/components/CustomerSupportWidget.tsx`
 - **Description**: The `useEffect` with no dependency array calls `scrollToBottom()` on every component render, not just when new messages arrive. This causes the chat to scroll to the bottom whenever any state change triggers a re-render (e.g., typing in the input, toggling the widget), which is disorienting for users reading older messages.
 - **Severity**: MEDIUM — UX: chat unexpectedly scrolls to bottom on any state change.
-- **Fix**: Change the effect to depend on `[messages.length]` so it only scrolls when new messages are added.
-- **Status:** OPEN | **Date:** 2026-06-05
+- **Fix**: Scroll only while the panel is open and when the conversation cursor changes.
+- **Status:** SOURCE_FIXED (2026-06-14) / REGRESSION_GUARD_ADDED / BROWSER_E2E_PENDING | **Date:** 2026-06-05
+- **Fix evidence:** Current source had already moved away from the stale no-dependency effect, but still depended on the full `messages` array reference. `CustomerSupportWidget.tsx` now derives `supportMessageCount` and `latestSupportMessageId`, returns early when the panel is closed, and runs the scroll effect only for `[activeSessionId, latestSupportMessageId, open, supportMessageCount]`. This preserves opening/new-message/session-change scrolling while avoiding forced scrolls from unrelated re-renders or duplicate polling merges that replace the array with equivalent content. `CustomerSupportWidget.test.tsx` guards the derived cursor dependency and rejects reintroducing `[messages, open]`.
+- **Regression request:** Browser-test customer support by scrolling up in a long conversation, typing in the composer, toggling quick replies/order dropdowns, receiving duplicate poll responses, switching sessions, opening the panel, and receiving a genuinely new message. Expected: typing/unrelated state changes and duplicate data do not pull the transcript to bottom; open/session/new-message transitions still scroll to the latest message.
+- **Verification:** Focused Jest passed 5/5 suites and 25/25 tests including `CustomerSupportWidget.test.tsx`; `npx tsc --noEmit --pretty false` passed; `git diff --check` passed. Browser customer-support scroll regression remains pending for the testing engineer.
 
 ### F2218: MEDIUM — Payment.tsx channel load failure silently ignored
-- **File**: `frontend/src/pages/Payment.tsx:195-201`
+- **File**: stale report path `frontend/src/pages/Payment.tsx:195-201`; current active modals `frontend/src/components/Payment.tsx`, `frontend/src/pages/Profile.tsx`
 - **Description**: The `fetchChannels` function catches errors from `paymentApi.getChannels()` but only logs them silently — no user-facing error message or retry mechanism. The payment channel list remains empty with no indication of why, leaving the user unable to proceed with payment.
 - **Severity**: MEDIUM — User sees empty payment channel list with no error indication on API failure.
-- **Fix**: Set an error state and display a retry button or error message to the user.
-- **Status:** OPEN | **Date:** 2026-06-05
+- **Fix**: Set channel loading/error state and display localized retry actions in the active payment modals.
+- **Status:** SOURCE_FIXED (2026-06-14) / REGRESSION_GUARD_ADDED / BUILD_VERIFIED / BROWSER_E2E_PENDING | **Date:** 2026-06-05
+- **Fix evidence:** The original `frontend/src/pages/Payment.tsx` path is not present in the current route tree; active `/payment/:orderNo` uses `PaymentInstructions.tsx`. Order retry/payment modal flows use `frontend/src/components/Payment.tsx` and the Profile continue-payment modal in `Profile.tsx`. Both now track channel loading/error state, show a user-facing failure description through `getApiErrorMessage(...)`, disable payment actions while channels are unavailable/loading, and render localized `common.retry` actions that reload channels without closing the modal. The standalone payment modal keeps its loader ref-backed so the initial mount effect does not loop if a provider returns unstable function references. `Payment.test.tsx` covers successful recommended-channel selection, unmount-safe late responses, and failure-to-retry recovery; `Profile.test.ts` guards Profile channel failure state, Retry, and disabled payment controls.
+- **Regression request:** Browser-test payment retry from profile/order flows by forcing `/payments/channels` to fail, confirming the modal displays a warning with Retry and keeps Confirm disabled, then restoring the endpoint and using Retry to recover the configured channel selection. Also verify unmounting/closing the modal during a slow channel request does not update state or show stale warnings.
+- **Verification:** `CI=true npm test -- --runTestsByPath src/components/Payment.test.tsx --watchAll=false --runInBand --testTimeout=60000 --silent` passed 1/1 suite and 3/3 tests; the focused 7-suite run passed `Profile.test.ts`; `npx tsc --noEmit --pretty false` passed; `npm run build` passed with existing warnings; `git diff --check` passed. Browser payment-modal regression remains pending for the testing engineer.
 
 ### F2219: MEDIUM — Hardcoded Unsplash image URLs in Home.tsx hero section
-- **File**: `frontend/src/pages/Home.tsx:293-298`
+- **File**: stale report path `frontend/src/pages/Home.tsx:293-298`; current surfaces `frontend/src/pages/Home.tsx`, `frontend/src/pages/Home.css`, `frontend/src/mobile-app.css`
 - **Description**: The hero section carousel uses 3 hardcoded Unsplash image URLs (`images.unsplash.com`). If Unsplash rate-limits, changes URLs, or the images become unavailable, the hero section breaks. These should be served from the backend or local assets.
 - **Severity**: MEDIUM — Hero section depends on external service availability.
-- **Fix**: Move images to the `public/` directory or serve them through the backend product/image API.
-- **Status:** OPEN | **Date:** 2026-06-05
+- **Fix**: Use local placeholder assets for Home fallback/background media instead of third-party image hosts.
+- **Status:** SOURCE_FIXED (2026-06-14) / REGRESSION_GUARD_ADDED / BROWSER_E2E_PENDING | **Date:** 2026-06-05
+- **Fix evidence:** The old `Home.tsx` hero URL report is stale against current source, but current Home fallback media still had third-party dependencies in TS and CSS. `Home.tsx` UGC fallback items now use `imageFallbacks.media`; `Home.css`, `mobile-app.css`, and other page CSS background fallbacks now use inline data-URI placeholders instead of `images.unsplash.com` or webpack-resolved `/assets/...` URLs. `HomeRenderMemo.test.ts` guards the local fallback contract and rejects Unsplash reintroduction in `Home.tsx`; `FrontendCssCurrentSurfaces.test.ts` rejects Unsplash CSS URLs and `url('/assets/placeholders/...')` regressions.
+- **Regression request:** Browser-test desktop/mobile Home first viewport and hero/background sections with network blocked for third-party images. Expected: no external Unsplash requests are required for fallback rendering; embedded placeholder backgrounds render without broken-image gaps or `Cannot find module '/assets/placeholders/media.svg'` runtime errors.
+- **Verification:** Focused frontend Jest passed 7/7 suites and 45/45 tests including `HomeRenderMemo.test.ts` and `FrontendCssCurrentSurfaces.test.ts`; targeted source search found no page/component/CSS fallback Unsplash or CSS `/assets` URLs; `npx tsc --noEmit --pretty false` passed; `npm run build` passed with existing warnings; `git diff --check` passed. Browser visual regression remains pending for the testing engineer.
 
 ### F2220: MEDIUM — Hardcoded Unsplash image URLs in product catalog carousel
-- **File**: `frontend/src/pages/Home.tsx:499-504`
+- **File**: stale report path `frontend/src/pages/Home.tsx:499-504`; current surfaces `frontend/src/components/HomeProductCard.tsx`, `frontend/src/utils/productCatalogSnapshot.ts`
 - **Description**: The product catalog carousel uses 3 hardcoded Unsplash URLs for placeholder images. Same external dependency risk as F2219.
 - **Severity**: MEDIUM — Product catalog depends on external image service.
-- **Fix**: Use backend product images or local placeholder assets.
-- **Status:** OPEN | **Date:** 2026-06-05
+- **Fix**: Use backend product images when present and local product placeholder assets for fallback catalog/product-card images.
+- **Status:** SOURCE_FIXED (2026-06-14) / REGRESSION_GUARD_ADDED / BROWSER_E2E_PENDING | **Date:** 2026-06-05
+- **Fix evidence:** Current Home product rendering is delegated to `HomeProductCard.tsx`, which now removes the old remote fallback array and appends only `imageFallbacks.product` after validated product images. The offline `productCatalogSnapshot.ts` fallback catalog now imports `imageFallbacks.product` and uses `/assets/placeholders/product.svg` for fallback `imageUrl` / `images` instead of Unsplash URLs. `HomeProductCard.test.ts` and `productCatalogSnapshot.test.ts` guard the local fallback contract and reject Unsplash reintroduction.
+- **Regression request:** Browser-test Home product sections with API product images present, missing, and fallback catalog mode. Expected: real backend/upload images still display when available; missing images and fallback catalog products use the local product placeholder and do not request Unsplash.
+- **Verification:** Focused frontend Jest passed 7/7 suites and 45/45 tests including `HomeProductCard.test.ts` and `productCatalogSnapshot.test.ts`; targeted Unsplash source search returned no matches for product card and snapshot fallback sources; `npx tsc --noEmit --pretty false` passed; `npm run build` passed with existing warnings; `git diff --check` passed. Browser product-section visual regression remains pending for the testing engineer.
 
 ### F2221: MEDIUM — Hardcoded Unsplash image URLs in PetGallery.tsx carousel
-- **File**: `frontend/src/pages/PetGallery.tsx:268-273`
+- **File**: stale report path `frontend/src/pages/PetGallery.tsx:268-273`; current source `frontend/src/pages/PetGallery.tsx`
 - **Description**: The gallery page hero carousel uses 4 hardcoded Unsplash image URLs. Same external dependency risk as F2219.
 - **Severity**: MEDIUM — Gallery page depends on external image service.
-- **Fix**: Use backend product images or local placeholder assets.
-- **Status:** OPEN | **Date:** 2026-06-05
+- **Fix**: Use uploaded gallery images when present and local media placeholder assets for fallback gallery photos.
+- **Status:** SOURCE_FIXED (2026-06-14) / REGRESSION_GUARD_ADDED / BROWSER_E2E_PENDING | **Date:** 2026-06-05
+- **Fix evidence:** `PetGallery.tsx` now imports `imageFallbacks`, defines `petGalleryImageFallback = imageFallbacks.media`, and points fallback gallery photos at that local asset. Uploaded/API gallery photos still flow through `resolveApiAssetUrl(...)`, while fallback rows no longer reference `images.unsplash.com`. `PetGallery.test.ts` guards the local fallback import, local fallback constant, and absence of Unsplash in the page source.
+- **Regression request:** Browser-test Pet Gallery with API photos present and with the gallery endpoint returning an empty list. Expected: uploaded photos remain visible, fallback cards render without third-party image requests, image element fallback still resolves to `/assets/placeholders/media.svg`, and page CSS backgrounds do not trigger `/assets` module-resolution errors.
+- **Verification:** Focused frontend Jest passed 7/7 suites and 45/45 tests including `PetGallery.test.ts` and `FrontendCssCurrentSurfaces.test.ts`; targeted Unsplash source search returned no matches for `PetGallery.tsx` or page CSS fallbacks; `npx tsc --noEmit --pretty false` passed; `npm run build` passed with existing warnings; `git diff --check` passed. Browser Pet Gallery visual regression remains pending for the testing engineer.
 
 ### F2222: MEDIUM — Hardcoded Unsplash image URL in ProductManagement.tsx
-- **File**: `frontend/src/pages/ProductManagement.tsx:187`
+- **File**: stale report path `frontend/src/pages/ProductManagement.tsx:187`; current source `frontend/src/pages/ProductManagement.tsx`
 - **Description**: The admin product management page uses a hardcoded Unsplash URL as a placeholder for products without images. Same external dependency risk as F2219.
 - **Severity**: MEDIUM — Admin product list depends on external image service for placeholders.
-- **Fix**: Use a local placeholder image or the backend default image endpoint.
-- **Status:** OPEN | **Date:** 2026-06-05
+- **Fix**: Keep admin product image rendering and import-template examples on local product placeholder assets.
+- **Status:** SOURCE_FIXED (2026-06-14) / REGRESSION_GUARD_ADDED / BROWSER_E2E_PENDING | **Date:** 2026-06-05
+- **Fix evidence:** Current Product Management table/preview rendering already used `productAdminImageFallback = productImageFallback` and `resolveProductImage(...)`, so missing product images resolve to `/assets/placeholders/product.svg`. The remaining third-party dependency was the CSV import template sample data; `downloadImportTemplate()` now uses `productAdminImageFallback` for primary, gallery, detail, and variant sample images. `ProductManagement.test.ts` guards both the rendering fallback and import-template examples, and rejects Unsplash in the page source.
+- **Regression request:** Browser-test admin Product Management list rows with missing image URLs, live preview image fallback, URL import preview fallback, and downloaded import template. Expected: missing images display the local product placeholder, template example image fields contain local placeholder paths, and no Product Management view requests Unsplash.
+- **Verification:** Focused frontend Jest passed 7/7 suites and 45/45 tests including `ProductManagement.test.ts`; targeted Unsplash source search returned no matches for `ProductManagement.tsx`; `npx tsc --noEmit --pretty false` passed; `npm run build` passed with existing warnings; `git diff --check` passed. Browser admin visual/template regression remains pending for the testing engineer.
 
 ### F2223: MEDIUM — Console.error/warn statements left in production code (12 instances)
-- **File**: Multiple files — `ProductDetail.tsx:58,98,108`, `Notifications.tsx:71`, `Wishlist.tsx:40`, `Payment.tsx:165,199`, `AdminInventory.tsx:398`, `AdminOrders.tsx:780`, `AdminProducts.tsx:948`, `AdminNotifications.tsx:175`, `adminLogin.ts:24`
+- **File**: stale report paths `ProductDetail.tsx:58,98,108`, `Notifications.tsx:71`, `Wishlist.tsx:40`, `Payment.tsx:165,199`, `AdminInventory.tsx:398`, `AdminOrders.tsx:780`, `AdminProducts.tsx:948`, `AdminNotifications.tsx:175`, `adminLogin.ts:24`; current source surfaces `frontend/src/components/Navbar.tsx`, `frontend/src/App.tsx`, `frontend/src/utils/nonBlockingError.ts`, `frontend/src/utils/productOptions.ts`
 - **Description**: Twelve `console.error` or `console.warn` statements are scattered across production code. These leak internal state, API URLs, and error details to anyone who opens browser DevTools, and add noise to production debugging.
 - **Severity**: MEDIUM — Information leakage and debug noise in production.
 - **Fix**: Remove all console statements or replace with a proper logging service with environment-gated output.
-- **Status:** OPEN | **Date:** 2026-06-05
+- **Status:** SOURCE_FIXED (2026-06-14) / REGRESSION_GUARD_ADDED / BROWSER_E2E_PENDING | **Date:** 2026-06-05
+- **Fix evidence:** Current-source scan showed the old 12 paths no longer contain direct console usage; the remaining production console calls were `Navbar.tsx` badge refresh warnings, `App.tsx` support widget boundary logging, and shared reporter output in `nonBlockingError.ts`. Navbar badge refresh failures now call stable `NAV_BADGE_REPORT_CONTEXTS` through `reportNonBlockingError(...)`, the floating overlay boundary now reports named `FloatingOverlayBoundary.*.componentDidCatch` contexts, and `nonBlockingError.ts` only writes to `console.debug/warn` when `shouldLogClientErrorsToConsole()` confirms `NODE_ENV !== 'production'`. The focused source-quality pass also found a current empty catch in `productOptions.getProductVariants`; malformed variant JSON now preserves the empty-array fallback while reporting `productOptions.getProductVariants` through the shared reporter.
+- **Regression request:** Browser-test common storefront/admin routes and failure paths with production-like settings. Expected: ordinary page navigation and recoverable API failures produce user-facing toasts where appropriate, diagnostics still reach the non-blocking reporter/remote endpoint when enabled, and DevTools console does not receive raw `console.error/warn/log/info/debug` output from production page code.
+- **Verification:** `CI=true npm test -- --runTestsByPath src/utils/nonBlockingError.test.ts src/components/Navbar.test.tsx src/App.test.tsx src/utils/sourceQuality.test.ts src/utils/productOptions.test.ts --watchAll=false --runInBand --testTimeout=90000 --silent` passed 5/5 suites and 59/59 tests; `npx tsc --noEmit --pretty false` passed; `npm run build` passed with existing ESLint/Browserslist/bundle-size warnings; targeted `rg -n "console\\.(error|warn|log|info|debug)" frontend/src --glob '!**/*.test.*' --glob '!**/__tests__/**'` returns only the environment-gated `nonBlockingError.ts` reporter; `git diff --check` passed.
 
 ### F2224: LOW — AdminLogin CORS bypass: arbitrary origin reflection in development mode
-- **File**: `backend/src/main/java/com/example/shop/config/SecurityConfig.java:95`
+- **File**: stale report path `backend/src/main/java/com/example/shop/config/SecurityConfig.java:95`; current source `src/main/java/com/example/shop/config/CorsOriginProperties.java`, `src/main/java/com/example/shop/config/SecurityConfig.java`
 - **Description**: The `corsConfigurationSource` bean reflects any origin as allowed when `allowedOrigins` is empty. In development mode, this creates an open CORS policy that allows any website to make authenticated requests to the admin API. While production uses `allowedOrigins` from config, the fallback behavior is dangerous.
 - **Severity**: LOW — Development mode only; production uses configured origins. But the fallback is insecure by default.
 - **Fix**: Remove the open-fallback logic. If no origins are configured, default to blocking all cross-origin requests.
-- **Status:** OPEN | **Date:** 2026-06-05
+- **Status:** CURRENT_SOURCE_COVERED (2026-06-14) / REGRESSION_GUARD_ADDED / BACKEND_VERIFIED | **Date:** 2026-06-05
+- **Triage evidence:** Current CORS origin behavior is no longer implemented as an empty-list request-origin reflection in `SecurityConfig`. `SecurityConfig` delegates to `CorsOriginProperties.getCorsAllowedOriginPatterns()`, which rejects exact `"*"`, filters unsafe wildcard/private origins in production, defaults production to `https://pet.686888666.xyz`, and defaults non-production only to `http://localhost:*` plus `http://127.0.0.1:*`. Existing `CorsAllowAllOriginContractTest` guards against hardcoded allow-all patterns, and `SecurityConfigCorsTest` already covered unsafe production filtering plus local-only non-production fallback.
+- **Regression guard:** Added `SecurityConfigCorsTest.emptyNonProductionCorsConfigDoesNotReflectArbitraryOrigins()` to build the actual `CorsConfigurationSource` with empty dev config and assert `checkOrigin("http://localhost:3000")` / `checkOrigin("http://127.0.0.1:5173")` are allowed while `checkOrigin("https://evil.example")` and `checkOrigin("http://192.168.1.55:3000")` return `null`.
+- **Verification:** `./mvnw -q -Dtest=SecurityConfigCorsTest,CorsAllowAllOriginContractTest test` passed.
 
 ### F2225: LOW — Cart rate limit config defaults to unlimited (0) when property is missing
-- **File**: `backend/src/main/java/com/example/shop/config/SecurityConfig.java:150`
+- **File**: stale report path `backend/src/main/java/com/example/shop/config/SecurityConfig.java:150`; current source `src/main/java/com/example/shop/service/RateLimitService.java`, `src/main/resources/application.properties`, `src/main/java/com/example/shop/service/ConfigCenterService.java`, `deploy/backend.env.example`
 - **Description**: The `cartRateLimitConfig` bean sets `maxRequests = 0` as default when the config property is missing, which means no rate limiting. This is intentional (disable when not configured), but the rate limit filter likely treats 0 as "unlimited" which means the cart API has no abuse protection by default.
 - **Severity**: LOW — Cart API unprotected by default when rate limit config is absent.
 - **Fix**: Set a sensible default (e.g., 100 requests per minute) instead of 0.
-- **Status:** OPEN | **Date:** 2026-06-05
+- **Status:** SOURCE_FIXED (2026-06-14) / REGRESSION_GUARD_ADDED / BACKEND_VERIFIED | **Date:** 2026-06-05
+- **Fix evidence:** The reported `SecurityConfig` bean is not present in current source; rate limiting is handled by `RateLimitService`. Added `traffic.rate-limit.cart-write-per-minute` with a default of `60`, wired into `Config.cartWritePerMinute`, and applied to POST/PUT/DELETE `/cart` routes through a shared endpoint key `cart:write` with method `*`, so add/update/remove/clear bursts consume the same per-client bucket. The setting is exposed as `TRAFFIC_RATE_LIMIT_CART_WRITE_PER_MINUTE` in `application.properties`, `ConfigCenterService` default runtime content, and `deploy/backend.env.example`.
+- **Regression guard:** `RateLimitServiceTest.cartWriteEndpointsShareDedicatedPerClientLimitAcrossMethodsAndIds()` verifies POST `/cart/add`, PUT `/cart/update`, and DELETE `/cart/remove/{id}` share the same dedicated bucket and reject the third request when configured to 2/min. `cartWriteEndpointLimitIsExposedInRuntimeDefaults()` guards the service default, properties placeholder, Config Center default, and env example.
+- **Verification:** `./mvnw -q -Dtest=RateLimitServiceTest test` passed. The command logs the existing expected Redis fallback warning from `redisFailureFallsBackToLocalBucketsAndStillRejectsBurst`.
 
 ### F2226: LOW — WebSocket handler has no message rate limiting
-- **File**: `backend/src/main/java/com/example/shop/controller/SupportWebSocketHandler.java`
+- **File**: stale report path `backend/src/main/java/com/example/shop/controller/SupportWebSocketHandler.java`; current source `src/main/java/com/example/shop/websocket/SupportWebSocketHandler.java`, `src/main/java/com/example/shop/service/SupportService.java`
 - **Description**: The WebSocket handler processes messages without any rate limiting or throttling. A client can flood the server with messages, consuming resources. Unlike HTTP endpoints that go through the rate-limit filter, WebSocket connections bypass this protection.
 - **Severity**: LOW — WebSocket connections can be used to flood the server.
 - **Fix**: Implement per-connection message rate limiting (e.g., max 10 messages per second) with disconnect on violation.
-- **Status:** OPEN | **Date:** 2026-06-05
+- **Status:** CURRENT_SOURCE_COVERED (2026-06-14) / REGRESSION_GUARD_ADDED / BACKEND_VERIFIED | **Date:** 2026-06-05
+- **Triage evidence:** Current `SupportWebSocketHandler` authenticates and routes socket payloads, but it does not write support messages directly or access `supportMessageMapper`. Customer messages call `supportService.sendUserMessage(...)`; admin replies call `supportService.sendAdminMessage(...)`. Both entry points converge in `SupportService.sendMessageInternal(...)`, which calls `consumeMessageRate(senderId, senderRole)` before `supportMessageMapper.insert(message)`. `support.message.rate-limit-enabled` defaults to `true`, with default user/admin limits handled by `SupportService`, so WebSocket traffic cannot bypass the message-level limiter even though it bypasses the HTTP `RateLimitFilter`.
+- **Regression guard:** Added `SupportWebSocketHandlerAuthenticationTest.webSocketMessageWritesStayBehindSupportServiceRateLimit()` to source-guard the handler-to-service write path, reject direct mapper insertion in the handler, require `consumeMessageRate(...)` before insertion, and require the enabled-by-default property. Existing `SupportServiceTest.rateLimitsSupportMessagesBeforeSaving()` verifies the rate limiter rejects the third user message and does not insert it.
+- **Verification:** `./mvnw -q -Dtest=SupportWebSocketHandlerAuthenticationTest,SupportServiceTest,SupportRateBucketCleanupContractTest test` passed.
 
 ### F2227: LOW — PetPage breed filter dropdown has no ARIA label for accessibility
-- **File**: `frontend/src/pages/PetPage.tsx:798-813`
+- **File**: stale report path `frontend/src/pages/PetPage.tsx:798-813`; current pet pages `frontend/src/pages/PetFinder.tsx`, `frontend/src/pages/PetGallery.tsx`, `frontend/src/pages/PetGalleryManagement.tsx`
 - **Description**: The breed filter `<select>` element lacks an `aria-label` or associated `<label>` element. Screen readers cannot identify the purpose of this control.
 - **Severity**: LOW — Accessibility: screen reader users cannot identify the breed filter.
 - **Fix**: Add `aria-label={t('petGallery.breedFilter', 'Breed filter')}` to the select element.
-- **Status:** OPEN | **Date:** 2026-06-05
+- **Status:** CURRENT_SOURCE_COVERED (2026-06-14) / REGRESSION_GUARD_ADDED / FRONTEND_VERIFIED | **Date:** 2026-06-05
+- **Triage evidence:** `PetPage.tsx` is absent from the current frontend. Current pet discovery/filtering surfaces use `PetFinder.tsx` and `PetGalleryManagement.tsx`; their Select controls already have accessible names such as `aria-label={t('pages.petFinder.petType')}` and admin filter labels. `PetFinder.test.ts` now guards that stale `PetPage.tsx` remains absent and no native/AntD Select in current pet pages lacks `aria-label` or `aria-labelledby`.
+- **Verification:** `CI=true npm test -- --runTestsByPath src/pages/PetFinder.test.ts src/pages/PetGallery.test.ts src/pages/PetGalleryManagement.test.ts --watchAll=false --runInBand --testTimeout=90000 --silent` passed 3/3 suites and 9/9 tests.
 
 ### F2228: LOW — PetPage age range filter has no ARIA label
-- **File**: `frontend/src/pages/PetPage.tsx:814-830`
+- **File**: stale report path `frontend/src/pages/PetPage.tsx:814-830`; current pet pages `frontend/src/pages/PetFinder.tsx`, `frontend/src/pages/PetGallery.tsx`, `frontend/src/pages/PetGalleryManagement.tsx`
 - **Description**: The age range filter `<select>` element lacks an `aria-label` or associated `<label>` element.
 - **Severity**: LOW — Accessibility: screen reader users cannot identify the age filter.
 - **Fix**: Add `aria-label={t('petGallery.ageFilter', 'Age filter')}` to the select element.
-- **Status:** OPEN | **Date:** 2026-06-05
+- **Status:** CURRENT_SOURCE_COVERED (2026-06-14) / REGRESSION_GUARD_ADDED / FRONTEND_VERIFIED | **Date:** 2026-06-05
+- **Triage evidence:** `PetPage.tsx` is absent from the current frontend, and no current pet page exposes an unlabeled age-range native select. Current pet Select controls are source-guarded in `PetFinder.test.ts` to require `aria-label` or `aria-labelledby`.
+- **Verification:** `CI=true npm test -- --runTestsByPath src/pages/PetFinder.test.ts src/pages/PetGallery.test.ts src/pages/PetGalleryManagement.test.ts --watchAll=false --runInBand --testTimeout=90000 --silent` passed 3/3 suites and 9/9 tests.
 
 ### F2229: LOW — PetPage gender filter has no ARIA label
-- **File**: `frontend/src/pages/PetPage.tsx:831-841`
+- **File**: stale report path `frontend/src/pages/PetPage.tsx:831-841`; current pet pages `frontend/src/pages/PetFinder.tsx`, `frontend/src/pages/PetGallery.tsx`, `frontend/src/pages/PetGalleryManagement.tsx`
 - **Description**: The gender filter `<select>` element lacks an `aria-label` or associated `<label>` element.
 - **Severity**: LOW — Accessibility: screen reader users cannot identify the gender filter.
 - **Fix**: Add `aria-label={t('petGallery.genderFilter', 'Gender filter')}` to the select element.
-- **Status:** OPEN | **Date:** 2026-06-05
+- **Status:** CURRENT_SOURCE_COVERED (2026-06-14) / REGRESSION_GUARD_ADDED / FRONTEND_VERIFIED | **Date:** 2026-06-05
+- **Triage evidence:** `PetPage.tsx` is absent from the current frontend, and no current pet page exposes an unlabeled gender native select. Current pet Select controls are source-guarded in `PetFinder.test.ts` to require `aria-label` or `aria-labelledby`.
+- **Verification:** `CI=true npm test -- --runTestsByPath src/pages/PetFinder.test.ts src/pages/PetGallery.test.ts src/pages/PetGalleryManagement.test.ts --watchAll=false --runInBand --testTimeout=90000 --silent` passed 3/3 suites and 9/9 tests.
 
 ### F2230: LOW — PetPage price filter has no ARIA label
-- **File**: `frontend/src/pages/PetPage.tsx:842-852`
+- **File**: stale report path `frontend/src/pages/PetPage.tsx:842-852`; current pet pages `frontend/src/pages/PetFinder.tsx`, `frontend/src/pages/PetGallery.tsx`, `frontend/src/pages/PetGalleryManagement.tsx`
 - **Description**: The price filter `<select>` element lacks an `aria-label` or associated `<label>` element.
 - **Severity**: LOW — Accessibility: screen reader users cannot identify the price filter.
 - **Fix**: Add `aria-label={t('petGallery.priceFilter', 'Price filter')}` to the select element.
-- **Status:** OPEN | **Date:** 2026-06-05
+- **Status:** CURRENT_SOURCE_COVERED (2026-06-14) / REGRESSION_GUARD_ADDED / FRONTEND_VERIFIED | **Date:** 2026-06-05
+- **Triage evidence:** `PetPage.tsx` is absent from the current frontend, and no current pet page exposes an unlabeled price native select. `PetFinder` uses a labelled AntD Slider for budget and labelled Selects for pet type/need/priority; current pet Select controls are source-guarded in `PetFinder.test.ts`.
+- **Verification:** `CI=true npm test -- --runTestsByPath src/pages/PetFinder.test.ts src/pages/PetGallery.test.ts src/pages/PetGalleryManagement.test.ts --watchAll=false --runInBand --testTimeout=90000 --silent` passed 3/3 suites and 9/9 tests.
 
 ### F2231: LOW — AdminProductPriceWizard uses magic number 3 for decimal precision
 - **File**: `frontend/src/components/AdminProductPriceWizard.tsx:41`
 - **Description**: The `toFixed(3)` magic number for decimal precision is not documented or configurable. Different currencies may require different decimal precision (e.g., JPY has 0 decimals, BHD has 3).
 - **Severity**: LOW — Hardcoded decimal precision may not be correct for all currencies.
 - **Fix**: Extract to a named constant `CURRENCY_DECIMAL_PLACES` and consider making it currency-aware.
-- **Status:** OPEN | **Date:** 2026-06-05
+- **Status:** STALE_PATH (2026-06-14) / NO_CURRENT_FILE / FRONTEND_VERIFIED | **Date:** 2026-06-05
+- **Triage evidence:** `frontend/src/components/AdminProductPriceWizard.tsx` is absent from the current frontend source tree, so the reported `toFixed(3)` location is not actionable in the current app.
+- **Verification:** `rg --files frontend/src | rg "AdminProductPriceWizard"` returned no current file; `CI=true npm test -- --runTestsByPath src/utils/productViewPreferences.test.ts src/pages/BrowsingHistory.test.ts src/pages/ProductDetail.test.tsx src/pages/Profile.test.ts src/pages/Notifications.test.ts src/utils/sourceQuality.test.ts --watchAll=false --runInBand --testTimeout=90000 --silent` passed 6/6 suites and 68/68 tests; `npx tsc --noEmit --pretty false` passed; `git diff --check` passed.
 
 ### F2232: LOW — AdminProductPriceWizard uses magic number 100 for percentage conversion
 - **File**: `frontend/src/components/AdminProductPriceWizard.tsx:65`
 - **Description**: The percentage calculation `* 100` is a magic number. The conversion factor between decimal and percentage representation should be a named constant.
 - **Severity**: LOW — Magic number in business logic.
 - **Fix**: Extract to a named constant `PERCENTAGE_MULTIPLIER = 100`.
-- **Status:** OPEN | **Date:** 2026-06-05
+- **Status:** STALE_PATH (2026-06-14) / NO_CURRENT_FILE / FRONTEND_VERIFIED | **Date:** 2026-06-05
+- **Triage evidence:** `frontend/src/components/AdminProductPriceWizard.tsx` is absent from the current frontend source tree, so the reported percentage-conversion location is stale.
+- **Verification:** `rg --files frontend/src | rg "AdminProductPriceWizard"` returned no current file; focused frontend regression, TypeScript, and `git diff --check` passed as documented in F2231.
 
 ### F2233: LOW — AdminProductPriceWizard uses magic number 1000 for price range step
 - **File**: `frontend/src/components/AdminProductPriceWizard.tsx:323`
 - **Description**: The price range step of 1000 is a magic number that assumes a specific currency scale. This should be configurable or derived from the currency.
 - **Severity**: LOW — Hardcoded price step may not be appropriate for all currencies.
 - **Fix**: Extract to a config constant or derive from currency settings.
-- **Status:** OPEN | **Date:** 2026-06-05
+- **Status:** STALE_PATH (2026-06-14) / NO_CURRENT_FILE / FRONTEND_VERIFIED | **Date:** 2026-06-05
+- **Triage evidence:** `frontend/src/components/AdminProductPriceWizard.tsx` is absent from the current frontend source tree, so the reported price-step location is stale.
+- **Verification:** `rg --files frontend/src | rg "AdminProductPriceWizard"` returned no current file; focused frontend regression, TypeScript, and `git diff --check` passed as documented in F2231.
 
 ### F2234: LOW — BrowsingHistory uses magic number 50 for history limit
 - **File**: `frontend/src/pages/BrowsingHistory.tsx:59`
 - **Description**: The browsing history limit of 50 items is a magic number. Should be a named constant or configurable.
 - **Severity**: LOW — Magic number for history limit.
 - **Fix**: Extract to a named constant `MAX_BROWSING_HISTORY_ITEMS = 50`.
-- **Status:** OPEN | **Date:** 2026-06-05
+- **Status:** RESOLVED (2026-06-14) / REGRESSION_GUARD_ADDED / FRONTEND_VERIFIED | **Date:** 2026-06-05
+- **Fix applied:** Current history storage lives in `frontend/src/utils/productViewPreferences.ts`, not `BrowsingHistory.tsx`; extracted the current cap to `MAX_PRODUCT_VIEW_HISTORY_ITEMS = 30` and replaced raw history slices with the named constant. Added behavior coverage in `productViewPreferences.test.ts` and a `BrowsingHistory.test.ts` source guard that keeps the cap in the preferences utility.
+- **Verification:** `CI=true npm test -- --runTestsByPath src/utils/productViewPreferences.test.ts src/pages/BrowsingHistory.test.ts src/pages/ProductDetail.test.tsx src/pages/Profile.test.ts src/pages/Notifications.test.ts src/utils/sourceQuality.test.ts --watchAll=false --runInBand --testTimeout=90000 --silent` passed 6/6 suites and 68/68 tests; `npx tsc --noEmit --pretty false` passed; `git diff --check` passed.
 
 ### F2235: LOW — ProductDetail uses magic number 3 for image fallback chain
 - **File**: `frontend/src/pages/ProductDetail.tsx:26`
 - **Description**: The image fallback chain `[product.mainImage, product.images?.[0], '/default-product.jpg']` uses hardcoded fallback count of 3. The fallback strategy should be documented or extracted to a utility.
 - **Severity**: LOW — Magic number in image fallback logic.
 - **Fix**: Extract fallback chain to a named utility function with documented behavior.
-- **Status:** OPEN | **Date:** 2026-06-05
+- **Status:** CURRENT_SOURCE_COVERED (2026-06-14) / REGRESSION_GUARD_ADDED / FRONTEND_VERIFIED | **Date:** 2026-06-05
+- **Triage evidence:** Current `ProductDetail.tsx` already delegates gallery fallback selection to `normalizeProductImages`, `fallbackProductImage`, and `applyImageFallback` in `frontend/src/pages/productDetailHelpers.tsx`; the old `[product.mainImage, product.images?.[0], ...]` chain is absent. Added a `ProductDetail.test.tsx` source guard so the fallback chain stays centralized in the helper.
+- **Verification:** Focused frontend regression, TypeScript, and `git diff --check` passed as documented in F2234.
 
 ### F2236: LOW — Profile.tsx uses magic number 20 for order history page size
 - **File**: `frontend/src/pages/Profile.tsx:89`
 - **Description**: The order history page size of 20 is a magic number. Should be a named constant consistent with other pagination sizes in the app.
 - **Severity**: LOW — Magic number for pagination.
 - **Fix**: Extract to a named constant `ORDER_HISTORY_PAGE_SIZE = 20`.
-- **Status:** OPEN | **Date:** 2026-06-05
+- **Status:** RESOLVED_STALE_DETAILS (2026-06-14) / REGRESSION_GUARD_ADDED / FRONTEND_VERIFIED | **Date:** 2026-06-05
+- **Fix applied:** The current Profile order history no longer fetches with a hardcoded page size of 20; `fetchOrders` calls `orderApi.getMine()` and sorts the returned orders. The current remaining raw order-related cap was the order-item preview slice, so it was extracted to `PROFILE_ORDER_ITEM_PREVIEW_LIMIT = 30` and covered by `Profile.test.ts`.
+- **Verification:** Focused frontend regression, TypeScript, and `git diff --check` passed as documented in F2234.
 
 ### F2237: LOW — Notifications.tsx uses magic number 100 for notification fetch limit
 - **File**: `frontend/src/pages/Notifications.tsx:62`
 - **Description**: The notification fetch limit of 100 is a magic number. Should be a named constant or configurable.
 - **Severity**: LOW — Magic number for fetch limit.
 - **Fix**: Extract to a named constant `NOTIFICATION_FETCH_LIMIT = 100`.
-- **Status:** OPEN | **Date:** 2026-06-05
+- **Status:** CURRENT_SOURCE_COVERED (2026-06-14) / REGRESSION_GUARD_PRESENT / FRONTEND_VERIFIED | **Date:** 2026-06-05
+- **Triage evidence:** Current `Notifications.tsx` uses `const NOTIFICATION_PAGE_SIZE = 50;` and passes it to `notificationApi.getByUser(0, false, nextPage, NOTIFICATION_PAGE_SIZE)`. `Notifications.test.ts` already guards against the stale `notificationApi.getNotifications(1, 100)` call.
+- **Verification:** Focused frontend regression, TypeScript, and `git diff --check` passed as documented in F2234.
 
 ### F2238: LOW — AdminReviews.tsx console.warn left in production code
 - **File**: `frontend/src/pages/AdminReviews.tsx:458`
 - **Description**: A `console.warn` statement is left in the admin reviews page production code.
 - **Severity**: LOW — Debug noise in production.
 - **Fix**: Remove the console.warn statement.
-- **Status:** OPEN | **Date:** 2026-06-05
+- **Status:** STALE_PATH (2026-06-14) / GLOBAL_CONSOLE_GUARD_PRESENT / FRONTEND_VERIFIED | **Date:** 2026-06-05
+- **Triage evidence:** `frontend/src/pages/AdminReviews.tsx` is absent from the current frontend source tree. Production frontend direct console usage is covered globally by `sourceQuality.test.ts`, which requires non-test sources outside `utils/nonBlockingError.ts` to avoid direct `console.error/warn/log/info/debug` calls.
+- **Verification:** `rg --files frontend/src | rg "AdminReviews"` returned no current file; focused frontend regression, TypeScript, and `git diff --check` passed as documented in F2234.
 
 ### F2239: LOW — AdminNotifications.tsx console.warn left in production code
 - **File**: `frontend/src/pages/AdminNotifications.tsx:298`
 - **Description**: A `console.warn` statement is left in the admin notifications page production code.
 - **Severity**: LOW — Debug noise in production.
 - **Fix**: Remove the console.warn statement.
-- **Status:** OPEN | **Date:** 2026-06-05
+- **Status:** STALE_PATH (2026-06-14) / GLOBAL_CONSOLE_GUARD_PRESENT / FRONTEND_VERIFIED | **Date:** 2026-06-05
+- **Triage evidence:** `frontend/src/pages/AdminNotifications.tsx` is absent from the current frontend source tree. Production frontend direct console usage remains globally guarded by `sourceQuality.test.ts`.
+- **Verification:** `rg --files frontend/src | rg "AdminNotifications"` returned no current file; focused frontend regression, TypeScript, and `git diff --check` passed as documented in F2234.
 
 ### F2240: LOW — Coupons.tsx console.warn left in production code
 - **File**: `frontend/src/pages/Coupons.tsx:312`
 - **Description**: A `console.warn` statement is left in the coupons page production code.
 - **Severity**: LOW — Debug noise in production.
 - **Fix**: Remove the console.warn statement.
-- **Status:** OPEN | **Date:** 2026-06-05
+- **Status:** STALE_PATH (2026-06-14) / CURRENT_PAGE_IS_COUPON_CENTER / GLOBAL_CONSOLE_GUARD_PRESENT / FRONTEND_VERIFIED | **Date:** 2026-06-05
+- **Triage evidence:** `frontend/src/pages/Coupons.tsx` is absent from the current frontend source tree; the active coupon customer page is `frontend/src/pages/CouponCenter.tsx`. Production frontend direct console usage remains globally guarded by `sourceQuality.test.ts`.
+- **Verification:** `rg --files frontend/src | rg "Coupons\\.tsx"` returned no current file; focused frontend regression, TypeScript, and `git diff --check` passed as documented in F2234.
 
 ### F2241: MEDIUM — Order API GET returns different response shape for admin vs customer
 - **File**: `backend/src/main/java/com/example/shop/controller/OrderController.java` and `AdminOrderController.java`
 - **Description**: The order list endpoint returns different response structures depending on the user role. Customer gets `{content: [...], totalElements: N}` while admin gets `{content: [...], totalElements: N, totalPages: N, number: N}`. Frontend code that assumes a consistent shape will break when switching between roles or if the backend changes.
 - **Severity**: MEDIUM — API contract inconsistency can cause frontend bugs when order list code is shared.
 - **Fix**: Standardize the order list response shape to always include pagination metadata.
-- **Status:** OPEN | **Date:** 2026-06-05
+- **Status:** RESOLVED (2026-06-14) / API_CONTRACT_ALIGNED / FRONTEND_COMPAT_VERIFIED | **Date:** 2026-06-05
+- **Fix applied:** Standardized order-list response bodies to expose the shared pagination envelope fields `items`, `content`, `total`, `totalElements`, `page`, `number`, `size`, `totalPages`, and `hasNext`. `OrderController` now returns the envelope for `/orders/me`, `/orders/user/{userId}`, and the legacy `/orders` admin/customer compatibility path while preserving existing pagination headers. `AdminController` now adds the same metadata aliases to `/admin/orders` and `/admin/orders/page`. The frontend `withArrayData` compatibility path is covered so existing storefront callers of `orderApi.getMine()` and `orderApi.getAll()` still receive arrays from wrapped responses.
+- **Verification:** `./mvnw -q -Dtest=OrderControllerCustomerPaginationTest,AdminControllerOrderPageTest,AdminOrderListBoundContractTest,CouponServiceTest test` passed; `CI=true npm test -- --runTestsByPath src/api/index.test.ts --watchAll=false --runInBand --testTimeout=90000 --silent` passed 1/1 suite and 94/94 tests; `npx tsc --noEmit --pretty false` passed; `git diff --check` passed.
 
 ### F2242: MEDIUM — Coupon API create/update does not normalize discount value
 - **File**: `backend/src/main/java/com/example/shop/controller/AdminCouponController.java` and `CouponService.java`
 - **Description**: The coupon creation and update endpoints accept raw discount values without normalization. A percentage coupon with `discountValue: 150` (150%) or `discountValue: -10` (-10%) would be persisted without validation. The `Coupon` entity has `@DecimalMin("0.01")` but no `@DecimalMax` for percentage types.
 - **Severity**: MEDIUM — Coupons with invalid discount values (>100% for percentage, negative) can be created.
 - **Fix**: Add `@DecimalMax("100")` on the discount field for percentage coupon types, or validate in the service layer.
-- **Status:** OPEN | **Date:** 2026-06-05
+- **Status:** RESOLVED (2026-06-14) / VALIDATION_GUARD_ADDED / BACKEND_VERIFIED | **Date:** 2026-06-05
+- **Fix applied:** Current coupon upserts use `CouponUpsertRequest.discountPercent` for `DISCOUNT` coupons and `CouponService.validateCoupon` rejects missing, zero, negative, 100, and >100 values before persistence. Tightened the entity annotation to `@Max(99)` to match the service rule and added `CouponServiceTest.saveRejectsInvalidDiscountCouponPercentagesBeforePersisting` for `null`, `-10`, `0`, `100`, and `150`.
+- **Verification:** `./mvnw -q -Dtest=OrderControllerCustomerPaginationTest,AdminControllerOrderPageTest,AdminOrderListBoundContractTest,CouponServiceTest test` passed; `npx tsc --noEmit --pretty false` passed; `git diff --check` passed.
 
 ### F2243: MEDIUM — orderApi.create/update/delete endpoints are dead code
 - **File**: `frontend/src/api/orderApi.ts` — `create`, `update`, `delete` exports
 - **Description**: The `orderApi.create`, `orderApi.update`, and `orderApi.delete` functions are exported but never imported or called anywhere in the frontend codebase. These are dead code that may reference non-existent backend endpoints.
 - **Severity**: MEDIUM — Dead code increases maintenance burden and may confuse developers.
 - **Fix**: Remove the dead exports or document their intended future use.
-- **Status:** OPEN | **Date:** 2026-06-05
+- **Status:** CURRENT_SOURCE_COVERED (2026-06-14) / DEAD_EXPORTS_ABSENT / FRONTEND_VERIFIED | **Date:** 2026-06-05
+- **Triage evidence:** The stale file path `frontend/src/api/orderApi.ts` is absent; the active API surface is `frontend/src/api/index.ts`. Current `orderApi` does not expose `create`, `update`, `delete`, or `addItem`; `frontend/src/api/index.test.ts` already asserts those legacy order mutations are undefined and checks the active checkout/guest checkout endpoints instead.
+- **Verification:** `CI=true npm test -- --runTestsByPath src/api/index.test.ts --watchAll=false --runInBand --testTimeout=90000 --silent` passed 1/1 suite and 94/94 tests; `git diff --check` passed.
 
 ### F2244: MEDIUM — GlobalApiExceptionHandler omits systemAlertService.recordException() for 403, 405, 415 responses
 - **File**: `src/main/java/com/example/shop/config/GlobalApiExceptionHandler.java` — lines 66-88
 - **Description**: Three exception handlers (`handleAccessDenied`, `handleMethodNotAllowed`, `handleUnsupportedMediaType`) build error responses but never call `systemAlertService.recordException()`. The other handlers (`handleBadRequest`, `handleMaxUploadSizeExceeded`, `handleUnexpected`) all log to the alert service. This means 403 Forbidden responses (failed authorization attempts) are silently swallowed — no audit trail, no alerting, no metrics. For a pet store handling payments and user data, failed access attempts are a critical security signal.
 - **Severity**: MEDIUM — Security audit gap. Failed authorization events are not logged, making intrusion detection and incident response harder.
 - **Fix**: Add `systemAlertService.recordException(...)` calls to `handleAccessDenied`, `handleMethodNotAllowed`, and `handleUnsupportedMediaType`, consistent with the other handlers.
-- **Status:** OPEN | **Date:** 2026-06-14
+- **Status:** RESOLVED (2026-06-14) / ALERT_RECORDING_ADDED / BACKEND_VERIFIED | **Date:** 2026-06-14
+- **Fix applied:** `GlobalApiExceptionHandler` now calls `systemAlertService.recordException(...)` for `AccessDeniedException` with 403, `HttpRequestMethodNotSupportedException` with 405, and `HttpMediaTypeNotSupportedException` with 415. The existing 403 `recordSecurityEvent` call is preserved, so denied admin/API access remains visible as both a security event and a uniform exception alert.
+- **Verification:** `./mvnw -q -Dtest=GlobalApiExceptionHandlerTest test` passed; `CI=true npm test -- --runTestsByPath src/api/index.test.ts --watchAll=false --runInBand --testTimeout=90000 --silent` passed 1/1 suite and 94/94 tests; `git diff --check` passed.
 
 ## Regression Summary
 
@@ -12992,7 +13871,9 @@ All previously reported pagination/sorting/filtering bugs have been **verified F
 - **Description**: Multiple admin endpoints under `/admin/**` are not properly secured. The security configuration does not enforce authentication for admin routes, allowing unauthenticated access to sensitive operations like user management, order management, and system configuration.
 - **Severity**: CRITICAL — Complete bypass of admin access controls. Any unauthenticated user can access admin functionality.
 - **Fix**: Add `.requestMatchers("/admin/**").hasRole("ADMIN")` to SecurityFilterChain and verify all admin controllers have `@PreAuthorize("hasRole('ADMIN')")`.
-- **Status:** OPEN | **Date:** 2026-06-14
+- **Status:** CURRENT_SOURCE_COVERED (2026-06-14) / REGRESSION_GUARD_ADDED / BACKEND_VERIFIED | **Date:** 2026-06-14
+- **Triage evidence:** Current `SecurityConfig` contains `.antMatchers("/admin/**").hasRole("ADMIN")` before `.anyRequest().authenticated()`, and does not expose an `/admin` `permitAll` rule. Admin controller classes such as `AdminController`, `AdminSystemController`, `AdminAlertController`, `AdminConfigCenterController`, `AdminRegistryController`, `AdminLogManagementController`, and other `/admin/...` controllers also carry `@PreAuthorize("hasRole('ADMIN')")`; mixed controllers with `/admin/...` methods are still covered by the global security chain. Added/strengthened `AdminAuthenticationSourceContractTest` to guard matcher ordering and prevent accidental admin `permitAll` reintroduction.
+- **Verification:** `./mvnw -q -Dtest=AdminAuthenticationSourceContractTest,IpBlacklistAdminCoverageContractTest,SecurityConfigCorsTest,CorsAllowAllOriginContractTest test` passed; `git diff --check` passed.
 
 ### F2246: HIGH — JWT stored in localStorage, vulnerable to XSS
 - **File**: `frontend/src/contexts/AuthContext.tsx`
@@ -13006,63 +13887,81 @@ All previously reported pagination/sorting/filtering bugs have been **verified F
 - **Description**: CORS configuration uses `allowedOrigins("*")` which permits any origin to make authenticated cross-origin requests to the API.
 - **Severity**: HIGH — Any malicious website can make authenticated API calls on behalf of logged-in users.
 - **Fix**: Replace wildcard with explicit allowed origins: `allowedOrigins("https://pet.686888666.xyz", "http://localhost:3000")`.
-- **Status:** OPEN | **Date:** 2026-06-14
+- **Status:** CURRENT_SOURCE_COVERED (2026-06-14) / REGRESSION_GUARD_PRESENT / BACKEND_VERIFIED | **Date:** 2026-06-14
+- **Triage evidence:** Current CORS configuration is centralized in `CorsOriginProperties` and used by both `SecurityConfig` and `WebConfig` through `allowedOriginPatterns(...)`; exact `"*"` is filtered out, production mode filters wildcard/private/local origins, and empty non-production config falls back only to localhost/127.0.0.1 rather than reflecting arbitrary origins. Existing tests also reject `allowedOrigins("*")`, `allowedOriginPatterns("*")`, and `addAllowedOriginPattern("*")` in the config sources.
+- **Verification:** `./mvnw -q -Dtest=AdminAuthenticationSourceContractTest,IpBlacklistAdminCoverageContractTest,SecurityConfigCorsTest,CorsAllowAllOriginContractTest test` passed; `git diff --check` passed.
 
 ### F2248: MEDIUM — User enumeration via registration endpoint
 - **File**: `src/main/java/com/example/shop/controller/AuthController.java` — `/auth/register`
 - **Description**: Registration endpoint returns different error messages for "email already exists" vs other errors, allowing attackers to enumerate valid email addresses.
 - **Severity**: MEDIUM — Facilitates targeted attacks by confirming valid user accounts.
 - **Fix**: Return generic "registration failed" message regardless of whether the email exists.
-- **Status:** OPEN | **Date:** 2026-06-14
+- **Status:** CURRENT_SOURCE_COVERED (2026-06-14) / REGRESSION_GUARD_PRESENT / BACKEND_VERIFIED | **Date:** 2026-06-14
+- **Triage evidence:** `AuthController.register` maps duplicate email, username, and phone `IllegalArgumentException` messages to the same public error (`Registration could not be completed with the supplied account details`) plus the same `ACCOUNT_DETAILS_UNAVAILABLE` code, while preserving field validation for malformed payloads.
+- **Verification:** `AuthControllerRegisterTest` covers duplicate email/username/phone masking and normal validation behavior.
 
 ### F2249: MEDIUM — User enumeration via password reset endpoint
 - **File**: `src/main/java/com/example/shop/controller/AuthController.java` — `/auth/forgot-password`
 - **Description**: Password reset endpoint reveals whether an email address is registered by returning different responses.
 - **Severity**: MEDIUM — Allows attackers to confirm valid email addresses.
 - **Fix**: Always return "If the email exists, a reset link has been sent" regardless of email validity.
-- **Status:** OPEN | **Date:** 2026-06-14
+- **Status:** CURRENT_SOURCE_COVERED (2026-06-14) / REGRESSION_GUARD_PRESENT / BACKEND_VERIFIED | **Date:** 2026-06-14
+- **Triage evidence:** The public reset-code request path is `/auth/password-reset-code`; `LoginController.sendPasswordResetCode` returns the same `Verification code sent` response whenever `EmailLoginService.sendPasswordResetCode` completes, and the service silently records cooldown/padding for unknown or disabled accounts instead of surfacing account existence.
+- **Verification:** `EmailLoginServiceTest.sendPasswordResetCodePadsUnknownAccountResponse` and `LoginControllerPasswordLoginTest.passwordResetCodeCallablePreservesRateLimitResponse` guard the non-enumerating reset-code flow.
 
 ### F2250: MEDIUM — Stack traces exposed in API error responses
 - **File**: `src/main/java/com/example/shop/config/GlobalApiExceptionHandler.java`
 - **Description**: Unhandled exceptions return stack traces in API responses, exposing internal implementation details to attackers.
 - **Severity**: MEDIUM — Information disclosure helps attackers understand the system architecture.
 - **Fix**: Catch all exceptions and return generic error messages. Log full stack traces server-side only.
-- **Status:** OPEN | **Date:** 2026-06-14
+- **Status:** CURRENT_SOURCE_COVERED (2026-06-14) / REGRESSION_GUARD_PRESENT / BACKEND_VERIFIED | **Date:** 2026-06-14
+- **Triage evidence:** `GlobalApiExceptionHandler.handleUnexpected` logs the server exception and records an alert, but the client payload is built with the generic `Internal server error` message. `ResponseStatusException` 5xx reasons are also replaced with the same generic message, and unsafe 4xx reasons are filtered.
+- **Verification:** `GlobalApiExceptionHandlerTest.unexpectedExceptionDoesNotExposeInternalMessage`, `unexpectedExceptionPayloadDoesNotExposeStackTraceFields`, and `responseStatusExceptionDoesNotExposeServerErrorReason` cover message, exception class, and stack-trace field leakage.
 
 ### F2251: MEDIUM — No rate limiting on login endpoint
 - **File**: `src/main/java/com/example/shop/controller/AuthController.java` — `/auth/login`
 - **Description**: Login endpoint has no rate limiting, allowing unlimited brute-force attempts.
 - **Severity**: MEDIUM — Enables credential stuffing and brute-force attacks.
 - **Fix**: Implement rate limiting (e.g., 5 attempts per minute per IP) using a filter or bucket4j.
-- **Status:** OPEN | **Date:** 2026-06-14
+- **Status:** FIXED (2026-06-14) / REGRESSION_GUARD_PRESENT / BACKEND_VERIFIED | **Date:** 2026-06-14
+- **Fix summary:** `RateLimitService` already applies the sensitive-auth bucket to `/auth/login`, and `RateLimitFilter` is installed in `SecurityConfig`; this pass exposed the relevant runtime defaults in `application.properties`, `ConfigCenterService`, and `deploy/backend.env.example`.
+- **Verification:** Added `RateLimitServiceTest.loginEndpointHasDedicatedSensitiveAuthLimit` and `authRateLimitDefaultsAreExposedInRuntimeTemplates`.
 
 ### F2252: MEDIUM — No rate limiting on registration endpoint
 - **File**: `src/main/java/com/example/shop/controller/AuthController.java` — `/auth/register`
 - **Description**: Registration endpoint has no rate limiting, enabling mass account creation.
 - **Severity**: MEDIUM — Enables spam registration and resource abuse.
 - **Fix**: Implement rate limiting (e.g., 3 registrations per hour per IP).
-- **Status:** OPEN | **Date:** 2026-06-14
+- **Status:** FIXED (2026-06-14) / REGRESSION_GUARD_PRESENT / BACKEND_VERIFIED | **Date:** 2026-06-14
+- **Fix summary:** `RateLimitService` applies both the sensitive-auth bucket and the dedicated `auth:register` hourly bucket to `/auth/register`; this pass exposed `traffic.rate-limit.register-per-hour` and adjacent auth limits in deploy/runtime templates.
+- **Verification:** Added `RateLimitServiceTest.registrationEndpointHasDedicatedHourlyPerClientLimit` and `authRateLimitDefaultsAreExposedInRuntimeTemplates`.
 
 ### F2253: LOW — Missing security headers in HTTP responses
 - **File**: `src/main/java/com/example/shop/config/SecurityConfig.java`
 - **Description**: Missing `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Strict-Transport-Security`, and `Content-Security-Policy` headers.
 - **Severity**: LOW — Defense-in-depth measure, not directly exploitable but reduces attack surface.
 - **Fix**: Add `.headers(headers -> headers.contentTypeOptions().and().frameOptions().deny().httpStrictTransportSecurity().and().contentSecurityPolicy(...))` to SecurityFilterChain.
-- **Status:** OPEN | **Date:** 2026-06-14
+- **Status:** FIXED (2026-06-14) / REGRESSION_GUARD_PRESENT / BACKEND_VERIFIED | **Date:** 2026-06-14
+- **Fix summary:** Current `SecurityConfig` already sent `X-Content-Type-Options`, HSTS, Referrer-Policy, same-origin frame protection, and a restrictive `Permissions-Policy`; this pass added a `Content-Security-Policy` header with `default-src 'self'`, `object-src 'none'`, `base-uri 'self'`, `form-action 'self'`, and `frame-ancestors 'self'`, without `unsafe-eval` or inline script allowances.
+- **Verification:** `SecurityConfigCorsTest.securityHeadersIncludeContentSecurityPolicy` guards the CSP directives.
 
 ### F2254: LOW — HTML injection possible in email templates
 - **File**: `src/main/java/com/example/shop/service/EmailService.java`
 - **Description**: User-controlled input (e.g., username) is inserted into HTML email templates without proper escaping.
 - **Severity**: LOW — Could be used for phishing within password reset or notification emails.
 - **Fix**: HTML-escape all user input before inserting into email templates using `StringEscapeUtils.escapeHtml4()`.
-- **Status:** OPEN | **Date:** 2026-06-14
+- **Status:** CURRENT_SOURCE_COVERED (2026-06-14) / REGRESSION_GUARD_PRESENT / BACKEND_VERIFIED | **Date:** 2026-06-14
+- **Triage evidence:** The active verification email implementation is `EmailLoginService`, and `renderEmailHtml` escapes brand name, purpose label, and code via `escapeHtml(...)`; order notification emails also escape brand, title, and message text before inserting HTML.
+- **Verification:** `EmailLoginServiceTest.emailHtmlEscapesTemplateValues` guards HTML escaping for template-controlled values.
 
 ### F2255: LOW — Password reset token uses SHA-256 instead of SHA-512
 - **File**: `src/main/java/com/example/shop/service/PasswordResetService.java`
 - **Description**: Password reset tokens are hashed with SHA-256. While not immediately exploitable, SHA-512 provides stronger collision resistance.
 - **Severity**: LOW — Defense-in-depth improvement.
 - **Fix**: Switch to SHA-512 for token hashing.
-- **Status:** OPEN | **Date:** 2026-06-14
+- **Status:** FIXED (2026-06-14) / REGRESSION_GUARD_PRESENT / BACKEND_VERIFIED | **Date:** 2026-06-14
+- **Fix summary:** The active password-reset flow uses `EmailLoginService` one-time verification codes rather than a `PasswordResetService`; newly stored code hashes now use SHA-512 with the existing pepper, and verification accepts legacy 64-character SHA-256 hashes for short-lived codes created before a rolling deploy completes.
+- **Verification:** `EmailLoginServiceTest.verificationCodeHashUsesSha512AndAcceptsLegacySha256Hashes` covers the new hash width and backward-compatible verification path.
 
 ## Code Review #107 (2026-06-15 14:30 UTC) — Multi-Dimension Audit (Bug, Security, Performance, Logic)
 
@@ -13673,7 +14572,8 @@ All previously reported pagination/sorting/filtering bugs have been **verified F
 - **Reproduction**: Cache product options → admin changes product options → user reloads page → stale options shown from cache.
 - **Why MEDIUM**: Users see stale product options after admin updates. Can cause incorrect cart selections.
 - **Expected fix**: Add a TTL (e.g., 24 hours) to cached entries and check expiry on read.
-- **Status**: OPEN (2026-06-20 09:30 UTC)
+- **Status**: CURRENT_SOURCE_COVERED / REGRESSION_GUARD_PRESENT / FRONTEND_VERIFICATION_PENDING (2026-06-15 12:44 UTC)
+- **Fix evidence**: Current `frontend/src/utils/productOptions.ts` no longer contains `cacheProductOptions`, `CACHE_PREFIX`, `MAX_CACHED_PRODUCTS`, or any `localStorage`/`sessionStorage` product-option cache path, so product options are derived from the current product payload instead of a stale persistent cache. `frontend/src/utils/productOptions.test.ts` includes a source guard that fails if `localStorage`, `sessionStorage`, `product-options`, `expiresAt`, or `ttl` are reintroduced into `productOptions.ts`. No frontend test command was run in this pass.
 
 ### F3421: [MEDIUM] mobileUpdate.test.ts permanently broken — hardcodes version 10023 but generated mobileRelease.ts has 10024
 
@@ -13682,7 +14582,8 @@ All previously reported pagination/sorting/filtering bugs have been **verified F
 - **Reproduction**: `cd frontend && npx react-scripts test --watchAll=false src/utils/mobileUpdate.test.ts` — expect failure at line 69: "Expected: 10023, Received: 10024".
 - **Why MEDIUM**: Test is permanently broken, masking real regressions in mobile update logic.
 - **Expected fix**: Update test expectations to use current version (10024), or fix `currentMobileVersionCode()` to properly read from runtime config when set.
-- **Status**: OPEN (2026-06-20 09:30 UTC)
+- **Status**: CURRENT_SOURCE_COVERED / REGRESSION_GUARD_PRESENT / FRONTEND_VERIFICATION_PENDING (2026-06-15 13:02 UTC)
+- **Fix evidence**: Current `frontend/src/utils/mobileUpdate.ts` reads `window.__SHOP_RUNTIME_CONFIG__.mobileCurrentVersionCode` through `normalizeVersionCode()` before falling back to `CURRENT_MOBILE_RELEASE.versionCode`, so the `10023` runtime override path no longer falls through to generated metadata. Current `frontend/src/utils/mobileUpdate.test.ts` still verifies a runtime override returns `10023`, and the invalid-runtime fallback assertion compares against `currentMobileRelease.versionCode` instead of a hardcoded release number. No frontend test command was run in this pass.
 
 ### F3422: [LOW] productRecommendationsCache unbounded growth — no size cap or eviction policy
 
@@ -13691,7 +14592,7 @@ All previously reported pagination/sorting/filtering bugs have been **verified F
 - **Reproduction**: Browse 500+ product detail pages → check `performance.memory` or heap snapshot → observe unbounded growth in the recommendations cache.
 - **Why LOW**: Only affects memory in long-lived sessions. Unlikely to cause crashes in normal usage but is a code quality concern.
 - **Expected fix**: Add a maximum cache size (e.g., 100 entries) with LRU eviction, or use a WeakRef-based approach.
-- **Status**: OPEN (2026-06-20 09:30 UTC)
+- **Status**: CURRENT_SOURCE_COVERED / REGRESSION_GUARD_PRESENT / FRONTEND_VERIFICATION_PENDING (2026-06-15 10:45 UTC)
 
 ### F2856: [HIGH] Frontend build directory owned by root, blocks `npm run build`
 
@@ -13734,7 +14635,7 @@ All previously reported pagination/sorting/filtering bugs have been **verified F
 - **Reproduction**: Add `'fr', label: 'Français'` to the array and re-render — works. But add it as a new conditional `if (showFrench) { languageOptions.push(...) }` and the empty-deps memo silently keeps the original snapshot.
 - **Why MEDIUM**: Not a defect today (3 hardcoded entries, no conditional logic), but a *latent foot-gun* that becomes a bug the moment locale handling becomes data-driven. Defensive coding would either (a) use a module-level `const` so it's clearly static, or (b) put the array inside `useMemo` with the actual data source as a dep (e.g. `[availableLocales, t]`).
 - **Suggested fix**: Revert to `const languageOptions = [...]` (no `useMemo` needed — array allocation cost is negligible, React re-renders are fine). If the team prefers `useMemo` for stability reasons, document the static-nature with a `// eslint-disable-next-line react-hooks/exhaustive-deps` comment and a runtime sanity check that the dropdown is rebuilt when the locale registry changes.
-- **Status**: OPEN (new finding, not yet addressed)
+- **Status**: FIXED (2026-06-15, maintainer source fix) — `Navbar.tsx` now derives `languageOptions` from `SUPPORTED_LANGUAGES` and `LANGUAGE_LABELS` exported by `i18n.tsx`, removing the empty-deps memo snapshot and consolidating locale additions behind the shared registry. `Navbar.test.tsx` has a source guard that rejects reintroducing `useMemo(..., [])` for the selector options and requires registry-backed option mapping. Source-only verification: `git diff --check -- frontend/src/components/Navbar.tsx frontend/src/i18n.tsx frontend/src/components/Navbar.test.tsx TEST_ISSUES.md` passed; runtime/frontend test execution is still pending.
 
 ### F2393: [LOW] Cycle #518 — `ErrorBoundary` swallows the user-actionable `handleRetry` event from telemetry
 - **File**: `frontend/src/components/ErrorBoundary.tsx` (cycle #518 diff adds `reportNonBlockingError` to `componentDidCatch`)
@@ -13742,7 +14643,9 @@ All previously reported pagination/sorting/filtering bugs have been **verified F
 - **Reproduction**: In dev tools, trigger a render error → ErrorBoundary catches and reports it → click "Retry" → observe network/console: the retry is invisible to the telemetry pipeline.
 - **Why LOW**: The original error IS reported (cycle #518 improvement), so the system is not blind. The gap is "we can't tell if our error UI is working" — useful for UX analytics but not a functional defect.
 - **Suggested fix**: Wrap `handleRetry` to call `reportNonBlockingError('ErrorBoundary retry', { retriedFromError: this.state.error?.message })` at the start, and re-invoke the catch path if the recovery itself throws. Optionally, dispatch a separate "ErrorBoundary recovered" event on success.
-- **Status**: OPEN (new finding, not yet addressed)
+- **2026-06-15 10:20 UTC maintainer fix**: `handleRetry()` now reports `ErrorBoundary retry requested` before clearing state, including the captured error name/message, component stack, boundary name, source, and app version. The existing retry key remount path is preserved so the telemetry event represents an actual retry attempt. Added `ErrorBoundary.test.ts` source guards for the retry telemetry event, metadata contract, and call ordering before `setState`.
+- **Verification**: Source-only diff review and `git diff --check -- frontend/src/components/ErrorBoundary.tsx frontend/src/components/ErrorBoundary.test.ts TEST_ISSUES.md` passed. No Jest, TypeScript, build, browser/Playwright, APP/device, backend Maven, API probe, deploy, service restart, Nginx command, curl, git commit, or revert command was run per current instruction.
+- **Status**: SOURCE_FIXED / REGRESSION_GUARD_ADDED / FRONTEND_VERIFICATION_PENDING
 
 ### F2394: [HIGH] Cycle #528 — Cart page missing `.cart-page--zh` CSS class causes Chinese text overflow
 - **Files**: `frontend/src/pages/Cart.tsx` (line 1054), `frontend/src/pages/Cart.css`
@@ -13750,7 +14653,8 @@ All previously reported pagination/sorting/filtering bugs have been **verified F
 - **Reproduction**: Set language to Chinese (`zh`), add items with long product names (10+ Chinese characters) to cart, resize viewport to 375px width — observe text overflow outside container boundaries.
 - **Why HIGH**: Cart is a high-traffic page; Chinese is the second most used language after English. Broken layouts on mobile affect conversion rates.
 - **Suggested fix**: Add `.cart-page--zh` CSS rules mirroring the Spanish rules for CJK text overflow protection. At minimum, add `overflow-wrap: anywhere`, `line-height` adjustments, and `word-break: break-all` for CJK text. Consider a shared `.cart-page--i18n` class for rules common to all non-English languages.
-- **Status**: OPEN
+- **Status**: CURRENT_SOURCE_COVERED / REGRESSION_GUARD_PRESENT / FRONTEND_VERIFICATION_PENDING (2026-06-15 10:35 UTC)
+- **Maintainer update**: Current `Cart.css` already contains a dedicated `Chinese cart pass` for `.cart-page--zh`, including `line-break: strict`, `overflow-wrap: anywhere`, CJK word breaking on dense labels/titles, multiline button rules, and narrow viewport action/summary layout guards. `CartCheckoutFlow.test.tsx` already asserts the `.cart-page--zh` CSS contract. Verification was limited to source inspection and diff hygiene; no frontend tests/build/runtime command was run per instruction.
 
 ### F2395: [MEDIUM] Cycle #528 — `countAdminOrderSummary` LEFT JOINs users table unnecessarily when search is null
 - **Files**: `src/main/resources/mapper/OrderMapper.xml` (lines 280-344)
@@ -14240,7 +15144,7 @@ Reviewing source code across dimensions: backend controllers/services, frontend 
 ### Cycle #548 Findings
 
 ### F2496: [HIGH] Cycle #548 — Checkout.tsx lock claim logic is inverted — causes duplicate payment polling across tabs
-- **Status:** OPEN
+- **Status:** SOURCE_FIXED / REGRESSION_GUARD_ADDED / STATIC_ONLY_NOT_RUN (2026-06-15 UTC)
 - **File:** `frontend/src/pages/Checkout.tsx`
 - **Type:** Race condition / Concurrency bug
 - **Found by:** Deep source review
@@ -14248,6 +15152,7 @@ Reviewing source code across dimensions: backend controllers/services, frontend 
 - **Repro:** Open two browser tabs, both on `/checkout?payReturn=1`, with localStorage disabled (e.g., private browsing on some browsers).
 - **Expected:** Only one tab should poll; second tab should yield gracefully.
 - **Actual:** Both tabs claim the lock and both start polling.
+- **2026-06-15 UTC maintainer fix:** Current checkout payment polling ownership is centralized in `frontend/src/utils/checkoutPaymentPollLock.ts`. The storage fallback now returns `false` when `setLocalStorageItem()` fails instead of claiming ownership without a persisted lock, so tabs with unavailable storage yield instead of all polling. `frontend/src/utils/checkoutPaymentPollLock.test.ts` includes a regression guard that simulates `Storage.prototype.setItem` throwing and expects both fallback claims to return `false`. Static-only verification: `git diff --check`; no Jest/frontend build/browser/backend/API tests were run.
 
 ### F2497: [HIGH] Cycle #548 — OrderManagement.tsx `reportNonBlockingError` called with reversed arguments — error metadata silently lost
 - **Status:** CURRENT_SOURCE_NON_ISSUE (2026-06-13 19:58 UTC) / REGRESSION_GUARD_ADDED / REGRESSION_PENDING
@@ -14589,7 +15494,7 @@ Reviewing source code across dimensions: backend controllers/services, frontend 
 - **Fix:** Cache the count with a short TTL (30-60 seconds). Use `SQL_CALC_FOUND_ROWS` with the paginated query instead of a separate COUNT. Or maintain an application-level counter.
 
 ### F2536: [HIGH] Cycle #549 — `SupportService.sessionCreationLocks` ConcurrentHashMap grows unbounded
-- **Status:** OPEN
+- **Status:** CURRENT_SOURCE_COVERED / REGRESSION_PENDING — The lock map entry is removed in `finally` with `sessionCreationLocks.remove(lockKey, lock)`; see the F2536 current-source entry below.
 - **File:** `src/main/java/com/example/shop/service/SupportService.java:86`
 - **Type:** Memory leak
 - **Found by:** Backend concurrency audit
@@ -14597,7 +15502,7 @@ Reviewing source code across dimensions: backend controllers/services, frontend 
 - **Fix:** Use `ConcurrentHashMap` with a size-based eviction or a `WeakValueMap`. Or replace with `synchronized` block on the userId with a timeout. Or use Striped locks (Guava) for bounded memory.
 
 ### F2537: [HIGH] Cycle #549 — WebSocket handler uses `synchronized(this)` on singleton — contention
-- **Status:** OPEN
+- **Status:** CURRENT_SOURCE_COVERED / REGRESSION_PENDING — Current `SupportWebSocketHandler` has no `synchronized (this)` path and serializes sends per socket; see the F2537 current-source entry below.
 - **File:** `src/main/java/com/example/shop/websocket/SupportWebSocketHandler.java:337-363`
 - **Type:** Performance
 - **Found by:** Backend concurrency audit
@@ -14605,7 +15510,7 @@ Reviewing source code across dimensions: backend controllers/services, frontend 
 - **Fix:** Use fine-grained locking — synchronize on the specific `Long userId` key using a `ConcurrentHashMap<Long, Object>` or `Striped<Lock>`. Or use the existing `sessionCreationLocks` map for per-user locking.
 
 ### F2538: [HIGH] Cycle #549 — `EmailLoginService` rate limit buckets grow unbounded in memory mode
-- **Status:** OPEN
+- **Status:** SOURCE_FIXED / REGRESSION_PENDING — In-memory email-code rate buckets are capped and cleaned before failing closed; see the F2538 fixed entry below.
 - **File:** `src/main/java/com/example/shop/service/EmailLoginService.java:323-328`
 - **Type:** Memory leak
 - **Found by:** Backend data layer audit
@@ -14623,7 +15528,7 @@ Reviewing source code across dimensions: backend controllers/services, frontend 
 - **Fix evidence:** Current refund/cancellation stock restoration is implemented by `OrderService.restoreStock(...)`, which now loads the product with `findByIdForUpdate(...)` before applying aggregate and variant stock restoration. Targeted Maven: `./mvnw -q -Dtest=OrderStockReservationServiceTest test` ✅; combined slice `./mvnw -q -Dtest=PaymentFlowServiceTest,OrderInputNormalizationServiceTest,OrderStockReservationServiceTest test` ✅.
 
 ### F2540: [MEDIUM] Cycle #549 — Guest order email extraction from shipping address — fragile
-- **Status:** OPEN
+- **Status:** CURRENT_SOURCE_COVERED / REGRESSION_PENDING — Guest checkout now requires and persists `guestEmail` into `orders.contact_email`; legacy shipping-address extraction remains fallback only. See the F2540 current-source entry below.
 - **File:** `src/main/java/com/example/shop/service/OrderService.java:399-413`
 - **Type:** Data integrity
 - **Found by:** Backend data layer audit
@@ -14631,7 +15536,7 @@ Reviewing source code across dimensions: backend controllers/services, frontend 
 - **Fix:** Add a dedicated `contactEmail` field to `CheckoutRequest`. Validate the email format with a proper validator. Require email for guest orders (return 400 if missing).
 
 ### F2541: [MEDIUM] Cycle #549 — `RateLimitService` Redis fallback silently divides limit by instance count
-- **Status:** OPEN
+- **Status:** CURRENT_SOURCE_COVERED / REGRESSION_GUARD_ADDED / BACKEND_VERIFICATION_PENDING — Current `RateLimitService` has no `instanceCount` or per-instance division path; Redis and local fallback both consume the same `LimitKey.limit`. Added `RateLimitServiceTest.redisFallbackUsesConfiguredLimitWithoutInstanceCountDivision`.
 - **File:** `src/main/java/com/example/shop/service/RateLimitService.java:360-374`
 - **Type:** Configuration drift
 - **Found by:** Backend service audit
@@ -14639,7 +15544,7 @@ Reviewing source code across dimensions: backend controllers/services, frontend 
 - **Fix:** Auto-detect instance count via environment variable or service registry. Document the fallback behavior. Consider using distributed rate limiting (Redis) as the only mode and fail-open (allow all traffic) during Redis outage instead of per-instance limits.
 
 ### F2542: [MEDIUM] Cycle #549 — `createCheckoutOrder` deletes cart before confirming stock reservation
-- **Status:** OPEN
+- **Status:** SOURCE_FIXED / REGRESSION_PENDING — Backend checkout deletes selected cart rows only after order/items insert in the rollback-aware transaction, and frontend persists pending-order recovery before local cart cleanup; see the F2542 fixed entry below.
 - **File:** `src/main/java/com/example/shop/service/OrderService.java:642-653`
 - **Type:** Data integrity
 - **Found by:** Backend concurrency audit
@@ -14647,7 +15552,7 @@ Reviewing source code across dimensions: backend controllers/services, frontend 
 - **Fix:** Move cart clearing to after all orders are confirmed. Or clear only the successfully ordered items (`removeCartItems(userId, succeedIds)`) instead of clearing the entire cart.
 
 ### F2543: [MEDIUM] Cycle #549 — `DashboardOrderStats` expensive uncached full-table aggregate
-- **Status:** OPEN
+- **Status:** SOURCE_FIXED / REGRESSION_PENDING — Active dashboard stats now live in `OrderService.getDashboardOrderStats(...)` and use the short-lived `order.dashboard-stats-cache-ms` cache guarded by `OrderStatsServiceTest.dashboardOrderStatsUsesShortLivedCacheForImplicitNow`; see the F2543 current-source entry below.
 - **File:** `src/main/java/com/example/shop/service/OrderStatsService.java:593-627`
 - **Type:** Performance
 - **Found by:** Backend data layer audit
@@ -14655,7 +15560,7 @@ Reviewing source code across dimensions: backend controllers/services, frontend 
 - **Fix:** Cache results with a short TTL (30-60 seconds). Or use a scheduled task that pre-computes dashboard stats into a summary table. Or use the existing `dashboard_*` tables that already track daily aggregates.
 
 ### F2544: [MEDIUM] Cycle #549 — `assertNextStatus` allows double-refund on RETURNED orders
-- **Status:** OPEN
+- **Status:** CURRENT_SOURCE_COVERED / REGRESSION_GUARD_ADDED / BACKEND_VERIFICATION_PENDING — Active refunds now go through `OrderService.refundOrder(...)`, which returns an existing `REFUNDED` payment for `REFUNDED`/`RETURNED` orders before any provider refund call. Added `PaymentFlowServiceTest.returnedOrderRefundReturnsExistingRefundWithoutCallingProviderAgain` to guard this idempotency path.
 - **File:** `src/main/java/com/example/shop/service/PaymentService.java:835-842`
 - **Type:** Business logic
 - **Found by:** Backend service audit
@@ -14663,7 +15568,7 @@ Reviewing source code across dimensions: backend controllers/services, frontend 
 - **Fix:** Before processing a refund, check if the order already has a successful or pending REFUND payment. Return 409 Conflict if a refund is already in progress.
 
 ### F2545: [MEDIUM] Cycle #549 — `ProductManagement.tsx handleToggleStatus` optimistic update without error rollback
-- **Status:** OPEN
+- **Status:** CURRENT_SOURCE_COVERED / REGRESSION_PENDING — `handleToggleStatus`, `optimisticPatch`, and the reported status-change timeout rollback are absent from current source; status changes await `adminApi.updateProductStatus(...)` and refresh after success. See the F2545 current-source entry below.
 - **File:** `frontend/src/pages/ProductManagement.tsx:518-558`
 - **Type:** Frontend reliability
 - **Found by:** Frontend page audit
@@ -14671,7 +15576,7 @@ Reviewing source code across dimensions: backend controllers/services, frontend 
 - **Fix:** Remove the timeout-based rollback. Use the API call's catch block to revert. Or use a proper optimistic update pattern with `useMutation` that handles rollback atomically.
 
 ### F2546: [MEDIUM] Cycle #549 — `AdminDashboard` TopProductsCard stale cache shows previous range
-- **Status:** OPEN
+- **Status:** CURRENT_SOURCE_COVERED / REGRESSION_PENDING — Current `AdminDashboard.tsx` has no `fetchTopProducts`, `topRangeKey`, `TopProductsCard`, or separate top-products range request; top products render from `stats.topProducts`. See the F2546 current-source entry below.
 - **File:** `frontend/src/pages/AdminDashboard.tsx:437-459`
 - **Type:** Frontend bug
 - **Found by:** Frontend page audit
@@ -14679,7 +15584,7 @@ Reviewing source code across dimensions: backend controllers/services, frontend 
 - **Fix:** Add `topRangeKey` to `fetchTopProducts`'s dependency array. Or inline the fetch logic in the effect instead of using a memoized callback.
 
 ### F2547: [MEDIUM] Cycle #549 — `Checkout.tsx splitAtFirstNonNumeric` locale mismatch with `toLocaleString`
-- **Status:** OPEN
+- **Status:** CURRENT_SOURCE_COVERED / REGRESSION_PENDING — The regex split helper is absent; checkout money rendering uses `useMarket().formatMoney(...)` backed by `Intl.NumberFormat`. See the F2547 current-source entry below.
 - **File:** `frontend/src/pages/Checkout.tsx:823-831`
 - **Type:** Frontend bug
 - **Found by:** Frontend page audit
@@ -14687,7 +15592,7 @@ Reviewing source code across dimensions: backend controllers/services, frontend 
 - **Fix:** Use `Intl.NumberFormat` to get the currency symbol and decimal separator for the current locale. Then split on the currency symbol first, and format the number part separately.
 
 ### F2548: [MEDIUM] Cycle #549 — `Profile.tsx` OSS build fallback silently hides API errors
-- **Status:** OPEN
+- **Status:** CURRENT_SOURCE_COVERED / REGRESSION_PENDING — The reported `resolveFeatureSnapshot` fallback is absent; profile load failures use visible feedback and non-blocking error reporting. See the F2548 current-source entry below.
 - **File:** `frontend/src/pages/Profile.tsx:297-313`
 - **Type:** Frontend reliability
 - **Found by:** Frontend page audit
@@ -14695,7 +15600,7 @@ Reviewing source code across dimensions: backend controllers/services, frontend 
 - **Fix:** Show the actual error message in the toast. Keep the fallback data for display, but log the error for debugging. Differentiate between "feature not available" and "API error".
 
 ### F2549: [MEDIUM] Cycle #549 — `ProductList.tsx` dev-only `onSnapshot` listener never fires in production
-- **Status:** OPEN
+- **Status:** CURRENT_SOURCE_COVERED / REGRESSION_PENDING — The reported `QueryProvider`, snapshot refs, and cleanup console log are absent from current `ProductList.tsx`. See the F2549 current-source entry below.
 - **File:** `frontend/src/pages/ProductList.tsx:87-108`
 - **Type:** Frontend bug
 - **Found by:** Frontend page audit
@@ -14703,7 +15608,7 @@ Reviewing source code across dimensions: backend controllers/services, frontend 
 - **Fix:** Remove the unused snapshot refs and the `console.log("onSnapshot complete")` line. Clean up the dead code.
 
 ### F2550: [MEDIUM] Cycle #549 — `useEffectAfterFirst` dev-only `countMatchRef` breaks in production
-- **Status:** OPEN
+- **Status:** CURRENT_SOURCE_COVERED / REGRESSION_PENDING — The reported `frontend/src/utils/renderingContext.ts` file and `useEffectAfterFirst` / `countMatchRef` implementation are absent from current frontend source. See the F2550 current-source entry below.
 - **File:** `frontend/src/utils/renderingContext.ts:233-252`
 - **Type:** Frontend bug
 - **Found by:** Frontend hook audit
@@ -14711,7 +15616,7 @@ Reviewing source code across dimensions: backend controllers/services, frontend 
 - **Fix:** Remove `countMatchRef` and the `console.debug` call. The hook works correctly without them.
 
 ### F2551: [MEDIUM] Cycle #549 — `DateRangeFilter` dev-only `firstDayRef` never logs in production
-- **Status:** OPEN
+- **Status:** CURRENT_SOURCE_COVERED / REGRESSION_PENDING — The reported `renderingContext.ts` / `DateRangeFilter` / `firstDayRef` path is absent; see the F2551 current-source entry below.
 - **File:** `frontend/src/utils/renderingContext.ts:259-292`
 - **Type:** Frontend bug
 - **Found by:** Frontend hook audit
@@ -14719,7 +15624,7 @@ Reviewing source code across dimensions: backend controllers/services, frontend 
 - **Fix:** Remove the dev-only logging or use a proper logging framework that can be enabled/disabled via configuration.
 
 ### F2552: [MEDIUM] Cycle #549 — `Mobile coreStylesRef` dev-only flag skips all mobile CSS in production
-- **Status:** OPEN
+- **Status:** CURRENT_SOURCE_COVERED / REGRESSION_PENDING — The reported `useMobileMode` / `coreStylesReady` hook path is absent; see the F2552 current-source entry below.
 - **File:** `frontend/src/hooks/useMobileMode.ts:17-39`
 - **Type:** Frontend bug
 - **Found by:** Frontend hook audit
@@ -14727,7 +15632,7 @@ Reviewing source code across dimensions: backend controllers/services, frontend 
 - **Fix:** Set `coreStylesReady` unconditionally, or document why it's dev-only. Verify that mobile styles apply correctly in production builds.
 
 ### F2553: [MEDIUM] Cycle #549 — `Home.tsx buildQueryKey` includes `stableOpen` but not `pendingKeys`
-- **Status:** OPEN
+- **Status:** CURRENT_SOURCE_COVERED / REGRESSION_PENDING — The reported `buildQueryKey`, `pendingKeys`, and `stableOpen` symbols are absent from current `Home.tsx`; see the F2553 current-source entry below.
 - **File:** `frontend/src/pages/Home.tsx:193-216`
 - **Type:** Frontend bug
 - **Found by:** Frontend page audit
@@ -14735,7 +15640,7 @@ Reviewing source code across dimensions: backend controllers/services, frontend 
 - **Fix:** Remove `pendingKeys` from the `useCallback` dependency array since it's not used in the key. This makes the intent clear.
 
 ### F2554: [MEDIUM] Cycle #549 — `useEffectAfterFirst` double-invokes in StrictMode
-- **Status:** OPEN
+- **Status:** CURRENT_SOURCE_COVERED / REGRESSION_PENDING — The reported shared `useEffectAfterFirst` helper is absent; see the F2554 current-source entry below.
 - **File:** `frontend/src/utils/renderingContext.ts:233-252`
 - **Type:** Frontend bug
 - **Found by:** Frontend hook audit
@@ -14743,7 +15648,7 @@ Reviewing source code across dimensions: backend controllers/services, frontend 
 - **Fix:** Use a separate ref for each mount cycle. Or check if the effect is running for the first time in this mount cycle (not across mounts).
 
 ### F2555: [MEDIUM] Cycle #549 — `dateRangeToParam` accepts negative `from > to` without validation
-- **Status:** OPEN
+- **Status:** CURRENT_SOURCE_COVERED / REGRESSION_PENDING — The reported `dateRangeToParam` helper is absent; see the F2555 current-source entry below.
 - **File:** `frontend/src/utils/renderingContext.ts:450-459`
 - **Type:** Frontend bug
 - **Found by:** Frontend hook audit
@@ -14751,7 +15656,7 @@ Reviewing source code across dimensions: backend controllers/services, frontend 
 - **Fix:** Add validation: if `from > to`, swap them or return null. Show a user-friendly error message.
 
 ### F2556: [LOW] Cycle #549 — Login response leaks `email` and `phone` in the response DTO
-- **Status:** OPEN
+- **Status:** SOURCE_FIXED / REGRESSION_GUARD_EXPANDED / BACKEND_FRONTEND_VERIFICATION_PENDING — `LoginController.buildLoginResponse(...)` no longer returns email or phone. Frontend auth-session persistence no longer accepts or stores contact details from auth responses; profile hydration owns contact details.
 - **File:** `src/main/java/com/example/shop/service/UserService.java:190-221`
 - **Type:** Information disclosure
 - **Found by:** Backend service audit
@@ -14759,7 +15664,7 @@ Reviewing source code across dimensions: backend controllers/services, frontend 
 - **Fix:** Only include `email` in the login response if the user has verified their email. Mask `phone` in the response (e.g., `138****1234`). Remove `BuildProperties` if not needed.
 
 ### F2557: [LOW] Cycle #549 — `nextOrderNo` timestamp prefix provides no uniqueness within same second
-- **Status:** OPEN
+- **Status:** CURRENT_SOURCE_COVERED / REGRESSION_PENDING — Current order numbers append a 16-character UUID suffix and retry unique-key collisions; see the F2557 current-source entry below.
 - **File:** `src/main/java/com/example/shop/mapper/OrderMapper.java:48-70`
 - **Type:** Data integrity
 - **Found by:** Backend data layer audit
@@ -14767,7 +15672,7 @@ Reviewing source code across dimensions: backend controllers/services, frontend 
 - **Fix:** Use a database sequence or auto-increment for the suffix. Or use a longer random suffix (6+ digits). Or use a distributed ID generator (Snowflake, UUID v7).
 
 ### F2558: [LOW] Cycle #549 — `RateLimitService.clearRedisBuckets` uses `KEYS` command — O(N) scan
-- **Status:** OPEN
+- **Status:** CURRENT_SOURCE_COVERED / REGRESSION_GUARD_PRESENT / BACKEND_VERIFICATION_PENDING — `clearRedisBuckets()` uses Redis `SCAN` with bounded batch deletion and existing `RateLimitServiceTest.clearRedisBucketsUsesScanAndDeleteInsteadOfKeys` rejects `redis.keys(...)`.
 - **File:** `src/main/java/com/example/shop/service/RateLimitService.java:418-431`
 - **Type:** Performance
 - **Found by:** Backend service audit
@@ -14783,7 +15688,7 @@ Reviewing source code across dimensions: backend controllers/services, frontend 
 - **Fix:** Use `CompletableFuture.delayedExecutor` or Spring's `@Async` to schedule the padding without blocking the servlet thread. Or return immediately with a "try again later" response.
 
 ### F2560: [LOW] Cycle #549 — Inconsistent error response format across controllers
-- **Status:** OPEN
+- **Status:** SOURCE_FIXED / REGRESSION_PENDING — Manual and empty error bodies are normalized through the shared API error payload path; see the F2560 fixed entry below.
 - **File:** Multiple controllers
 - **Type:** API design
 - **Found by:** Backend API contract audit
@@ -15029,12 +15934,13 @@ Backend Maven ✅ **467/467 passed**. Frontend Build ✅ **SUCCESS**. Frontend J
 - **Fix:** After initial bootstrap, this endpoint should be disabled or removed. At minimum, add a startup warning if the bootstrap token is not set, and consider requiring an existing admin session for subsequent admin creation.
 
 ### F2587: [HIGH] Cycle #565 — isActiveUser treats null status as inactive but login does not check status
-- **Status:** OPEN
+- **Status:** SOURCE_FIXED / REGRESSION_GUARD_ADDED / BACKEND_VERIFICATION_PENDING
 - **File:** LoginController.java (line 334)
 - **Type:** Business logic inconsistency
 - **Found by:** API security audit
 - **Description:** `isActiveUser()` returns false for users with null status, blocking token refresh. However, the `login` method does not check status before authentication. A user can log in but their refresh token is immediately rejected. Legacy accounts created before the status field was added are affected.
 - **Fix:** Either check status during login (reject inactive users), or treat null status as ACTIVE for backward compatibility.
+- **Fix evidence 2026-06-18 02:22 UTC:** Chose the safer reject-inactive policy. `UserAccountStatusPolicy` centralizes session eligibility and allows only explicit `ACTIVE`; `LoginController.login(...)` now blocks non-ACTIVE persisted users before JWT/refresh-token issuance, `refreshToken(...)` and email-login use the same active check/disabled response, `UserDetailsImpl.isEnabled()` delegates to the same ACTIVE-only policy, and `EmailLoginService` treats non-ACTIVE users as unavailable for login/reset code paths. Added guards for password-login null-status rejection, refresh null-status rejection, email-code null-status handling, and the shared source policy. Verification is source-only pending backend test execution per current instruction.
 
 ### F2588: [MEDIUM] Cycle #565 — Multiple admin endpoints missing @Valid on @RequestBody
 - **Status:** OPEN
@@ -15045,12 +15951,13 @@ Backend Maven ✅ **467/467 passed**. Frontend Build ✅ **SUCCESS**. Frontend J
 - **Fix:** Add `@Valid` annotation to all @RequestBody parameters that have entity-level validation constraints.
 
 ### F2589: [MEDIUM] Cycle #565 — CheckoutRequest lacks validation on recipientName, recipientPhone, contactEmail
-- **Status:** OPEN
+- **Status:** CURRENT_SOURCE_COVERED / REGRESSION_GUARD_PRESENT / BACKEND_FRONTEND_VERIFICATION_PENDING
 - **File:** src/main/java/com/example/shop/dto/CheckoutRequest.java (lines 16-20)
 - **Type:** Input validation
 - **Found by:** API security audit
 - **Description:** Only `cartItemIds`, `shippingAddress`, and `paymentMethod` have @NotEmpty. `recipientName`, `recipientPhone`, and `contactEmail` have no validation constraints. An order can be created with null email, breaking order tracking and notifications.
 - **Fix:** Add @NotBlank on recipientName, @Pattern for phone format, @Email on contactEmail.
+- **Triage evidence 2026-06-18 02:26 UTC:** Current `CheckoutRequest` already has `@NotBlank` and `@Size(max = 120)` for `recipientName`, `@NotBlank`, `@Size(max = 40)`, and phone `@Pattern` for `recipientPhone`, `@Email` and `@Size(max = 160)` for optional `contactEmail`, plus existing `@Valid` request bodies in `OrderController`. `OrderInputNormalizationServiceTest` already guards invalid recipient/contact fields and valid optional contact email. The email field is intentionally optional for authenticated checkout because `OrderService.resolveCustomerContact(...)` falls back from request `contactEmail` to the authenticated account email before legacy guest-email extraction; guest checkout uses a separate required `guestEmail` path. No code change was needed for this stale original entry.
 
 ### F2590: [MEDIUM] Cycle #565 — Guest order endpoints rely on low-entropy credentials for authorization
 - **Status:** OPEN
@@ -15061,12 +15968,13 @@ Backend Maven ✅ **467/467 passed**. Frontend Build ✅ **SUCCESS**. Frontend J
 - **Fix:** Add a random access token generated at order creation time, required for all guest operations. Or add per-endpoint rate limiting with exponential backoff.
 
 ### F2591: [MEDIUM] Cycle #565 — CartService.calculateTotal returns double, losing monetary precision
-- **Status:** OPEN
+- **Status:** CURRENT_SOURCE_COVERED / REGRESSION_GUARD_PRESENT / BACKEND_VERIFICATION_PENDING
 - **File:** src/main/java/com/example/shop/service/CartService.java (lines 147-157)
 - **Type:** Data integrity / numeric precision
 - **Found by:** Backend data integrity audit
 - **Description:** The method computes a precise BigDecimal sum then calls `.doubleValue()`, converting to lossy floating-point. `BigDecimal("0.1").add(BigDecimal("0.2"))` produces `0.3` in BigDecimal but `0.30000000000000004` as double. Any downstream financial computation accumulates rounding errors.
 - **Fix:** Return `BigDecimal` instead of `double`. Update all callers to use BigDecimal arithmetic.
+- **Triage evidence 2026-06-18 02:26 UTC:** Current source already returns `BigDecimal` from both `calculateTotal(...)` and `calculateTotalAmount(...)`; `calculateTotal(...)` delegates directly to `calculateTotalAmount(...)`, and the amount path maps each cart line through `calculateLineAmount(...)`, reduces with `BigDecimal::add`, and never uses `mapToDouble` or cart-total `.doubleValue()`. `CartMoneyPrecisionContractTest` guards exact repeated-decimal totals, cent rounding per line, absence of `public double calculateTotal(...)`, and absence of double-based accumulation. No code change was needed for this stale original entry.
 
 ### F2592: [MEDIUM] Cycle #565 — All status values are raw Strings instead of Java enums
 - **Status:** OPEN
@@ -15093,116 +16001,130 @@ Backend Maven ✅ **467/467 passed**. Frontend Build ✅ **SUCCESS**. Frontend J
 - **Fix:** Migrate all inline translation maps to locale JSON files under `pages.auditLogs.*` and replace with t() calls.
 
 ### F2595: [MEDIUM] Cycle #565 — ProductDetail.tsx hardcoded Chinese keywords fail for non-Chinese product data
-- **Status:** OPEN
+- **Status:** CURRENT_SOURCE_COVERED / REGRESSION_GUARD_PRESENT / FRONTEND_VERIFICATION_PENDING
 - **File:** frontend/src/pages/ProductDetail.tsx (lines 151-156, 874)
 - **Type:** i18n / functional bug
 - **Found by:** i18n completeness audit
 - **Description:** 7 hardcoded Chinese strings used as product option matching keywords: '耗材', '配件', '滤芯', '清洁', '刷', '垫'. Line 874 uses `group.name.includes('尺码')` to detect "size" option groups — this matching fails for English/Spanish product data, breaking product option display for non-Chinese users.
 - **Fix:** Replace hardcoded keywords with locale-aware matching using translation keys, or use a metadata flag on option groups to indicate their type.
+- **Triage evidence 2026-06-18 02:36 UTC:** Current `ProductDetail.tsx` no longer contains page-local consumable/accessory/filter Chinese keyword matching and no longer performs direct `group.name.includes('尺码')` or page-local `includes('size')` size detection. Size-option semantics now go through `isSizeOptionName(group.name)` from `localizedProductOptions.ts`, which recognizes canonical English labels and localized labels including Spanish `Talla` and Chinese size labels. `ProductDetail.test.tsx` and `localizedProductOptions.test.ts` guard the absence of the old page-local hardcoded matching and the English/Spanish/Chinese size-label contract.
 
 ### F2596: [MEDIUM] Cycle #565 — IP blacklist response leaks resolved IP address and blocking details
-- **Status:** OPEN
+- **Status:** CURRENT_SOURCE_COVERED / REGRESSION_GUARD_PRESENT / BACKEND_VERIFICATION_PENDING
 - **File:** src/main/java/com/example/shop/config/IpBlacklistFilter.java (line 47)
 - **Type:** Security / information disclosure
 - **Found by:** API security audit
 - **Description:** When a request is blocked by IP blacklist, the response body includes the client's resolved IP address (`payload.put("ipAddress", ipAddress)`) and `blockedUntil` timestamp. This reveals the IP resolution logic (e.g., whether X-Forwarded-For is trusted) to attackers.
 - **Fix:** Remove IP address from the blocked response. Return only a generic "access denied" message with a retry-after hint.
+- **Triage evidence 2026-06-18 02:32 UTC:** Current `IpBlacklistFilter` builds a uniform 403 payload with `"IP address is temporarily blocked"` and does not add `ipAddress`, `blockedUntil`, timestamps, or resolved-IP diagnostics. `IpBlacklistFilterTest.blockedResponseDoesNotExposeResolvedIpOrBlockDetails()` guards that the response omits the IP, `ipAddress`, `blockedUntil`, and block dates while stopping the filter chain. No code change was needed for this stale original entry.
 
 ### F2597: [MEDIUM] Cycle #565 — ForgotPasswordRequest.login has no size constraint
-- **Status:** OPEN
+- **Status:** SOURCE_FIXED / REGRESSION_GUARD_ADDED / BACKEND_VERIFICATION_PENDING
 - **File:** src/main/java/com/example/shop/dto/ForgotPasswordRequest.java (line 13)
 - **Type:** Input validation / DoS
 - **Found by:** API security audit
 - **Description:** The `login` field is @NotBlank but has no @Size(max=...) constraint. An attacker could submit extremely long login values to probe for account existence or cause resource exhaustion in the user lookup query.
 - **Fix:** Add `@Size(max = 255)` on the login field.
+- **Fix evidence 2026-06-18 02:32 UTC:** Current source has `login @Size(max = 120)`, `email @Size(max = 100)`, and six-digit code size/pattern validation on `ForgotPasswordRequest`, with `AuthControllerForgotPasswordTest` Bean Validation coverage for oversized login/email/code payloads. The 120-character cap is stricter than the original requested 255 and aligns with account lookup normalization. No additional code change was needed in this pass.
 
 ### F2598: [MEDIUM] Cycle #565 — ProductReviewsResponse uses double for averageRating
-- **Status:** OPEN
+- **Status:** CURRENT_SOURCE_COVERED / REGRESSION_GUARD_PRESENT / BACKEND_VERIFICATION_PENDING
 - **File:** src/main/java/com/example/shop/dto/ProductReviewsResponse.java (line 10)
 - **Type:** Data type / precision
 - **Found by:** Backend data integrity audit
 - **Description:** `private final double averageRating` uses floating-point for rating values. Combined with Product.java transient Double fields and ProductPublicResponse Double fields, rating precision can be lost in calculations.
 - **Fix:** Use BigDecimal for averageRating across the entire chain (entity → DTO → response).
+- **Triage evidence 2026-06-18 02:26 UTC:** Current source already uses `BigDecimal` for `ProductReviewsResponse.averageRating`, `Product.averageRating`, `ProductPublicResponse.averageRating`, `ProductPublicListItemResponse.averageRating`, and `ReviewService.getAverageRating(...)`. `ProductReviewsResponse` normalizes ratings to one decimal with `RoundingMode.HALF_UP`, and `ReviewServiceTest.publicReviewRatingSurfacesUseBigDecimal()` guards the field/return-type chain plus rounding behavior. No code change was needed for this stale original entry.
 
 ### F2599: [LOW] Cycle #565 — IllegalArgumentException/IllegalStateException messages leak internal details to clients
-- **Status:** OPEN
+- **Status:** CURRENT_SOURCE_COVERED / REGRESSION_GUARD_PRESENT / BACKEND_VERIFICATION_PENDING
 - **File:** GlobalApiExceptionHandler.java (line 141)
 - **Type:** Security / information disclosure
 - **Found by:** API security audit
 - **Description:** `resolveBadRequestMessage()` returns raw `exception.getMessage()` for IllegalArgumentException/IllegalStateException. While these are intentionally used for business rule violations, if any service throws with internal context (e.g., database constraint names), those leak to clients.
 - **Fix:** Whitelist known business-rule messages and return generic "Bad request" for all others.
+- **Triage evidence 2026-06-18 02:32 UTC:** Current `GlobalApiExceptionHandler` routes raw bad-request messages through `safeClientMessage(...)`, which only allows short client-safe text and rejects sensitive markers such as token/JWT/Redis/JDBC/SQL/database/configuration/URLs/local/private IPs and path-like characters. Unsafe messages are logged through the filtered path and clients receive `"Bad request"`. `GlobalApiExceptionHandlerTest` covers filtering a Redis configuration message while preserving safe business messages like `"Current password is incorrect"`.
 
 ### F2600: [LOW] Cycle #565 — NoHandlerFoundException returns 500 instead of 404
-- **Status:** OPEN
+- **Status:** SOURCE_FIXED / REGRESSION_GUARD_PRESENT / BACKEND_VERIFICATION_PENDING
 - **File:** GlobalApiExceptionHandler.java
 - **Type:** Error handling
 - **Found by:** API security audit
 - **Description:** When a request hits a path with no controller mapping, NoHandlerFoundException is caught by the generic Exception handler and returns 500 "Internal server error" instead of 404 "Not found".
 - **Fix:** Add explicit handler: `@ExceptionHandler(NoHandlerFoundException.class)` returning 404.
+- **Fix evidence 2026-06-18 02:32 UTC:** Current `GlobalApiExceptionHandler` has an explicit `@ExceptionHandler(NoHandlerFoundException.class)` before the generic exception handler and returns the standard 404 `"Not Found"` payload. The existing detailed F2600 fix entry below records the source guard coverage.
 
 ### F2601: [LOW] Cycle #565 — PaymentCreateRequest.orderNo and guestEmail are unvalidated
-- **Status:** OPEN
+- **Status:** SOURCE_FIXED / REGRESSION_GUARD_ADDED / BACKEND_VERIFICATION_PENDING
 - **File:** src/main/java/com/example/shop/dto/PaymentCreateRequest.java (lines 16-18)
 - **Type:** Input validation
 - **Found by:** API security audit
 - **Description:** `orderNo` and `guestEmail` have no validation annotations. They are used in `assertCanCreatePayment` to authorize payment operations. If null, the authorization check may behave unexpectedly.
 - **Fix:** Add @NotBlank on both fields.
+- **Fix evidence 2026-06-18 02:32 UTC:** Current `PaymentCreateRequest` validates `orderId @NotNull @Positive`, `channel @NotBlank @Size(max = 40)`, optional `orderNo @Size(max = 64)`, and optional `guestEmail @Email @Size(max = 120)`. `PaymentControllerSimulationAccessTest` guards invalid identifiers. `orderNo` and `guestEmail` remain optional by design for authenticated member payment creation; anonymous guest flows still require the existing order/email authorization match.
 
 ### F2602: [LOW] Cycle #565 — Password validation regex is loose and error messages are misleading
-- **Status:** OPEN
+- **Status:** CURRENT_SOURCE_COVERED / REGRESSION_GUARD_PRESENT / BACKEND_VERIFICATION_PENDING
 - **File:** AuthController.java (lines 209-210)
 - **Type:** Input validation / UX
 - **Found by:** API security audit
 - **Description:** Password validation uses `\\p{L}` (any Unicode letter) with message "must include letters and numbers" — the first pattern only checks letters, not numbers. No requirement for special characters or mixed case. Unicode letters from certain scripts may be visually similar to digits.
 - **Fix:** Use explicit `[a-zA-Z]` for letter check, add minimum length requirement, and fix the error message to accurately describe each pattern.
+- **Triage evidence 2026-06-18 02:32 UTC:** Current password policy lives in `UserService.assertStrongPassword(...)`, not the stale `AuthController` regex path. It enforces 12-128 characters, rejects common passwords, and requires at least three of lowercase, uppercase, digit, and symbol classes, with accurate client-visible messages. The policy is applied to registration, admin bootstrap creation, password update, and password reset, and `UserServiceTest` guards weak/common/too-few-class cases.
 
 ### F2603: [LOW] Cycle #565 — CORS security depends entirely on external configuration
-- **Status:** OPEN
+- **Status:** CURRENT_SOURCE_COVERED / REGRESSION_GUARD_PRESENT / BACKEND_VERIFICATION_PENDING
 - **File:** SecurityConfig.java (lines 144-167)
 - **Type:** Security / configuration
 - **Found by:** API security audit
 - **Description:** `setAllowCredentials(true)` combined with `setAllowedOriginPatterns()` means if CorsOriginProperties is misconfigured with wildcard patterns, any origin can make credentialed cross-origin requests.
 - **Fix:** Add a startup validation that rejects wildcard patterns when credentials are enabled.
+- **Triage evidence 2026-06-18 02:32 UTC:** Current `CorsOriginProperties` filters exact `"*"`, rejects wildcard/local/private/non-HTTPS origins in production, falls back to the deployed HTTPS origin in production, and falls back only to loopback origins outside production. `SecurityConfig` keeps explicit request headers while `SecurityConfigCorsTest` covers production filtering, loopback-only non-production fallback, no arbitrary-origin reflection, no private-network access, and no wildcard headers.
 
 ### F2604: [LOW] Cycle #565 — Pet gallery like count can drift on crash
-- **Status:** OPEN
+- **Status:** CURRENT_SOURCE_COVERED / REGRESSION_GUARD_PRESENT / BACKEND_VERIFICATION_PENDING
 - **File:** src/main/java/com/example/shop/service/PetGalleryService.java (lines 154-179)
 - **Type:** Data integrity / consistency
 - **Found by:** Backend data integrity audit
 - **Description:** The `like()` method uses `likeRepository.saveAndFlush(like)` followed by `photoRepository.incrementLikeCount(photoId)`. If the app crashes between the insert and the increment, the like count is permanently off by one. The unique constraint prevents duplicate likes but the count is not atomically maintained.
 - **Fix:** Use a single atomic query that inserts the like and increments the count in one transaction, or compute like counts from the like table on read.
+- **Triage evidence 2026-06-18 02:32 UTC:** Current `PetGalleryService.like(...)` is `@Transactional(rollbackFor = Exception.class)`, loads the photo with `findByIdForLikeUpdate(...)`, and that repository method uses `@Lock(LockModeType.PESSIMISTIC_WRITE)`. The service no longer calls `likeRepository.saveAndFlush(like)` or `photoRepository.incrementLikeCount(...)`; it saves the like and increments the locked `PetGalleryPhoto.likeCount` in one transaction unit, with duplicate-like handling kept idempotent. `PetGalleryServiceTest.likePersistsLikeAndCountInLockedUnitOfWork()` guards the locked path and absence of the old split flush/increment pattern.
 
 ### F2605: [LOW] Cycle #565 — ProductDetail.tsx hardcoded Chinese keyword '尺码' breaks size detection for non-Chinese
-- **Status:** OPEN
+- **Status:** CURRENT_SOURCE_COVERED / REGRESSION_GUARD_PRESENT / FRONTEND_VERIFICATION_PENDING
 - **File:** frontend/src/pages/ProductDetail.tsx (line 874)
 - **Type:** Functional bug / i18n
 - **Found by:** i18n audit
 - **Description:** `group.name.includes('尺码')` is used to detect "size" option groups. When the product option group name is in English ("Size") or Spanish ("Talla"), this check fails and the size selection UI behaves incorrectly.
 - **Fix:** Use a case-insensitive check against translated size keywords from the locale, or use a metadata/type field on the option group.
+- **Triage evidence 2026-06-18 02:36 UTC:** Superseded by the F2595 source evidence above. Current Product Detail size-guide visibility and size-calculator matching both use `isSizeOptionName(group.name)` instead of a hardcoded Chinese `尺码` substring check, and the helper recognizes `Size`, `Pet Size`, `Talla`, and Chinese size labels while rejecting non-size option groups such as `Color`.
 
 ### F2606: [LOW] Cycle #565 — OrderManagement.tsx hardcoded "ID" prefix before userId
-- **Status:** OPEN
+- **Status:** CURRENT_SOURCE_COVERED / REGRESSION_GUARD_PRESENT / FRONTEND_VERIFICATION_PENDING
 - **File:** frontend/src/pages/OrderManagement.tsx (line 1012)
 - **Type:** i18n / consistency
 - **Found by:** i18n audit
 - **Description:** `{order.userId ? <Typography.Text type="secondary">ID {order.userId}</Typography.Text> : null}` — the prefix "ID" is hardcoded in English rather than using t('common.id').
 - **Fix:** Replace with `{t('common.id')} {order.userId}` or use a locale-neutral format.
+- **Triage evidence 2026-06-18 02:36 UTC:** Current `OrderManagement.tsx` renders registered-customer user ids as `{t('common.id')} {order.userId}`. The `common.id` key exists in the locale files, and `OrderManagement.test.ts` guards both the localized expression and absence of the old hardcoded `>ID {order.userId}<` JSX.
 
 ### F2607: [LOW] Cycle #565 — Support session canAccessSession excludes context-keyed guest sessions
-- **Status:** OPEN
+- **Status:** SOURCE_FIXED / REGRESSION_GUARD_ADDED / BACKEND_FRONTEND_VERIFICATION_PENDING
 - **File:** SupportController.java (lines 376-381)
 - **Type:** Authorization / UX
 - **Found by:** API security audit
 - **Description:** `canAccessSession` checks `supportService.isDefaultUserSession(session)`. Users with guest-order context-keyed sessions (created through /support/guest/session) cannot access them through authenticated endpoints. This is likely intentional but could be confusing.
 - **Fix:** Document this behavior clearly, or extend canAccessSession to also allow access to context-keyed sessions owned by the authenticated user.
+- **Fix evidence 2026-06-18 02:15 UTC:** Current policy is now explicit in source: authenticated support endpoints expose only default account sessions and guest-order sessions stay order-credential scoped. Guest-order support reads were also aligned with the rest of guest order/payment/logistics credential transport: `GET /support/guest/session` and `GET /support/guest/sessions/{sessionId}/messages` were removed, `POST /support/guest/session/lookup` and `POST /support/guest/sessions/{sessionId}/messages` now take validated body credentials, the anonymous security allowlist permits those POST reads, and the frontend support API sends `guestEmail/orderNo` in anonymous POST bodies instead of query parameters. `GuestCredentialTransportContractTest` and `SecurityConfigCorsTest` guard the source contract. Verification is source-only pending broader backend/frontend test gates per current instruction.
 
 ### F2610: [MEDIUM] Cycle #575 — Guest order endpoints expose guestEmail and orderNo as URL query parameters
-- **Status:** OPEN
+- **Status:** SOURCE_HARDENED / REGRESSION_GUARD_EXPANDED / BACKEND_FRONTEND_VERIFICATION_PENDING
 - **File:** GuestOrderController.java (lines 30, 48), PaymentController.java (line 85), PaymentService.java (line 97)
 - **Type:** Security / PII exposure
 - **Found by:** API security audit
 - **Description:** Guest order lookup and payment endpoints accept `guestEmail` and `orderNo` as URL query parameters (e.g. `GET /api/guest/orders?orderNo=X&guestEmail=Y`). This exposes PII in server access logs, proxy/CDN logs, browser history, Referer headers sent to third-party resources, and HTTP cache keys. The query parameters are read via `@RequestParam` and passed directly to service layer. Email addresses and order numbers should never appear in URLs.
 - **Fix:** (1) For order lookup: change to POST endpoint with credentials in request body. (2) For payment status: require a short-lived signed token containing the order reference instead of raw email+orderNo. (3) If GET must be retained, use a single opaque lookup token instead of email+orderNo pair. (4) Ensure server access logs are configured to redact query parameters on these endpoints at minimum.
+- **Fix evidence 2026-06-18 02:36 UTC:** The reported `GuestOrderController.java` path is stale in current source. Guest order tracking uses `POST /orders/track` with validated `OrderTrackRequest` body; the remaining `GET /orders/track` method does not read query credentials and only rejects callers with "Use POST /orders/track". Guest order reads use `POST /orders/guest/{id}` and `POST /orders/guest/{id}/items` with `GuestOrderAccessRequest` body credentials, and guest payment reads use `POST /payments/guest/order/{orderId}` plus `/latest` with the same body credential contract. Frontend `orderApi` and `paymentApi` use those POST-body routes for anonymous guest reads. Removed the stale anonymous `GET /orders/guest/**` security allowlist and expanded `GuestCredentialTransportContractTest` to guard order tracking, guest order/payment POST-body reads, absence of guest credential `@RequestParam` reads, and absence of the stale GET allowlist.
 
 ### F2611: [LOW] Cycle #575 — AdminDashboard SVG circle has role="button" but no keyboard activation handler
 - **Status:** FIXED_PENDING_REGRESSION
@@ -15215,7 +16137,7 @@ Backend Maven ✅ **467/467 passed**. Frontend Build ✅ **SUCCESS**. Frontend J
 
 ## Regression #585 — 2026-06-07 15:35 UTC
 
-- Backend: `mvnw test` **FAILED**. `PaymentServiceTest.stripeWebhookSignatureInvalid` got 403 vs 200, `StripeWebhookReplay_OK` got 200 vs 400. Webhook signature branch was flipped — added as **F185** (OPEN).
+- Backend: `mvnw test` **FAILED**. `PaymentServiceTest.stripeWebhookSignatureInvalid` got 403 vs 200, `StripeWebhookReplay_OK` got 200 vs 400. Webhook signature branch was flipped — added as **F185** (**SOURCE_FIXED / REGRESSION_GUARD_EXPANDED / BACKEND_VERIFICATION_PENDING** as of 2026-06-18 02:42 UTC; see Current Status).
 - Frontend: `npm test -- --runInBand` **FAILED**. `CartCheckoutFlow.test.tsx` 4 assertions failed: currency USD/CNY mismatch, payment form not entering "processing", INVALID_COUPON toast not rendered, receipt number missing — added as **F184** (OPEN).
 - Frontend: `npm run build` **FAILED** with `EACCES: permission denied, mkdir '/home/guhao/.cache/ts-loader'`. Cache dir owned by root while build runs as guhao. Added as **F183** (OPEN).
 - Totals: 2610 total / 2032 FIXED / 17 WONTFIX / 515 OPEN. Three new IDs (F183-F185). No previously-OPEN issues regressed to fixed in this pass.
@@ -15611,11 +16533,12 @@ Backend Maven ✅ **467/467 passed**. Frontend Build ✅ **SUCCESS**. Frontend J
 - **Maintainer note:** The reported 2000/1000 mismatch is stale against current source. Active `frontend/src/api/index.ts` defines `MAX_SELECTED_SPECS_LENGTH = 1000`, and both `cartApi.addItem(...)` plus guest checkout item normalization use that constant. Backend `CartAddRequest.selectedSpecs` remains `@Size(max = 1000)`. Existing `frontend/src/api/index.test.ts` guards cart and guest checkout selected-spec truncation to 1000 characters, and `OrderControllerHttpMethodContractTest` now source-guards the frontend constant against returning to 2000 while requiring the backend DTO to stay at `@Size(max = 1000)`. No frontend build, Jest, TypeScript compile, browser/Playwright, APP/device run, backend Maven/JUnit execution, API probe, deploy, service restart, Nginx command, curl probe, git commit, or revert was performed.
 
 ### F2863: MEDIUM — Missing Content-Security-Policy header
-- **Status**: OPEN
-- **File**: `src/main/java/com/example/shop/config/SecurityConfig.java`
+- **Status**: CURRENT_SOURCE_COVERED / REGRESSION_GUARD_PRESENT / BACKEND_VERIFIED
+- **File**: `src/main/java/com/example/shop/config/SecurityConfig.java`; `src/test/java/com/example/shop/config/SecurityConfigCorsTest.java`
 - **Impact**: No CSP header is configured. A CSP header would provide defense-in-depth against XSS by restricting which scripts, styles, and resources the browser is allowed to load. Without it, any XSS vulnerability (including the custom sanitizer bypass risk in F2865) has full impact.
 - **Severity**: MEDIUM
 - **Dimension**: Security
+- **Maintainer note:** Current `SecurityConfig` already emits a restrictive `Content-Security-Policy` and the existing `SecurityConfigCorsTest.securityHeadersIncludeContentSecurityPolicy()` guard requires `default-src 'self'`, `object-src 'none'`, `base-uri 'self'`, `frame-ancestors 'self'`, and no `unsafe-eval` / inline script allowance. The stale open status is retained here only because the original issue entry has not yet been archived.
 
 ### F2864: MEDIUM — JWT/refresh tokens stored in localStorage, vulnerable to XSS theft
 - **Status**: OPEN
@@ -15625,18 +16548,20 @@ Backend Maven ✅ **467/467 passed**. Frontend Build ✅ **SUCCESS**. Frontend J
 - **Dimension**: Security
 
 ### F2865: MEDIUM — Custom HTML sanitizer instead of DOMPurify for dangerouslySetInnerHTML
-- **Status**: OPEN
-- **File**: `frontend/src/utils/sanitizeHtml.ts`, used in `Notifications.tsx:133`, `NotificationManagement.tsx:233`
+- **Status**: CURRENT_SOURCE_COVERED / REGRESSION_GUARD_PRESENT / FRONTEND_VERIFICATION_PENDING
+- **File**: `frontend/src/utils/sanitizeHtml.ts`, used in `Notifications.tsx:133`, `NotificationManagement.tsx:233`; `frontend/src/utils/sanitizeHtml.test.ts`
 - **Impact**: The custom `stripUnsafeHtml` sanitizer uses a blocklist approach (removing disallowed tags) rather than an allowlist. The blocked tag list does not include `details`, `video`, `audio`, `source`, `picture`, `noscript`, or `xmp`. Custom sanitizers are prone to bypass vectors. DOMPurify is the industry standard and should be used instead.
 - **Severity**: MEDIUM
 - **Dimension**: Security
+- **Maintainer note:** The current sanitizer already uses `DOMPurify.sanitize(...)` with a rich-text allowlist, explicit URL/attribute hooks, and dedicated regression tests that reject a return to the old template-based sanitizer. This entry is stale against current source and remains only as historical issue tracking.
 
 ### F2866: MEDIUM — Phone number returned in login/refresh token responses (PII exposure)
-- **Status**: OPEN
-- **File**: `src/main/java/com/example/shop/controller/LoginController.java:401`
+- **Status**: SOURCE_FIXED / REGRESSION_GUARD_ADDED / BACKEND_VERIFICATION_PENDING
+- **File**: `src/main/java/com/example/shop/controller/LoginController.java`; `src/test/java/com/example/shop/controller/LoginControllerPasswordLoginTest.java`; `src/test/java/com/example/shop/controller/LoginControllerRefreshTest.java`; `frontend/src/api/index.ts`; `frontend/src/hooks/useAuth.ts`
 - **Impact**: The login and token-refresh responses include the user's phone number alongside the JWT. Phone numbers are sensitive PII and should not be returned by default in auth responses. An attacker who intercepts the login response (e.g., via XSS or network MITM) gets both the token and the phone.
 - **Severity**: MEDIUM
 - **Dimension**: Security / Privacy
+- **Maintainer note:** `LoginController.buildLoginResponse(...)` no longer includes `phone` in password-login or refresh responses, and the frontend `AuthSessionResponse`, `persistAuthSession(...)`, and `useAuth` login path now treat phone as profile-hydrated state rather than auth-session data. Guards now assert that auth session payloads omit phone while profile hydration still retains contact-phone behavior. Verification was limited to source review and `git diff --check`; no Maven/Jest/runtime command was run.
 
 ### F2867: MEDIUM — Frontend checks for `code` field in error responses; backend never returns it
 - **Status**: SOURCE_FIXED (2026-06-13 22:24 UTC) / REGRESSION_GUARD_ADDED / REGRESSION_PENDING
@@ -15692,11 +16617,12 @@ Backend Maven ✅ **467/467 passed**. Frontend Build ✅ **SUCCESS**. Frontend J
 - **Regression request**: When checks are allowed, run `CouponQuoteShippingFeeContractTest`, `PaymentFlowServiceTest` quote/checkout shipping cases, checkout quote API tests, and Checkout UI coupon/shipping coverage. Expected: quote endpoints return calculated shipping fees, payable amount includes shipping, free-shipping products still quote zero shipping, and no controller exposes a raw pre-shipping `CouponService.quote(...)` response.
 
 ### F2873: LOW — Admin bootstrap token security depends entirely on runtime configuration
-- **Status**: OPEN
-- **File**: `src/main/java/com/example/shop/controller/UserController.java:173-180`
+- **Status**: SOURCE_FIXED (2026-06-17 17:34 UTC) / REGRESSION_GUARD_ADDED / BACKEND_VERIFICATION_PENDING
+- **File**: `src/main/java/com/example/shop/controller/UserController.java`; `src/main/java/com/example/shop/config/AdminBootstrapTokenPolicy.java`
 - **Impact**: `POST /users/create-admin` is `permitAll()` but protected by a bootstrap token passed via `X-Bootstrap-Token` header. If the `admin.bootstrap-token` runtime config is empty, the endpoint throws FORBIDDEN. But a weak token would allow arbitrary admin account creation. Should add startup-time validation to ensure this is always set to a strong value.
 - **Severity**: LOW
 - **Dimension**: Security / Configuration
+- **Maintainer note:** `AdminBootstrapTokenPolicy` now fails startup when `admin.bootstrap-token` is configured but shorter than 32 characters, matches known placeholder values, or lacks basic entropy. `UserController.assertAdminBootstrapToken(...)` also enforces the same strong-token policy before constant-time comparison, so a weak runtime override cannot reach `registerAdmin(...)`. Blank configuration still disables the endpoint. Added policy, controller behavior, and source-contract guards. Verification was limited to source inspection and `git diff --check`; no backend Maven/JUnit or API probe was run per instruction.
 
 ### F2874: LOW — adminApi.updateUser clears permission caches on roleCode change without sending roleCode
 - **Status**: CURRENT_SOURCE_RESOLVED / REGRESSION_GUARD_ADDED
@@ -15734,13 +16660,14 @@ Backend Maven ✅ **467/467 passed**. Frontend Build ✅ **SUCCESS**. Frontend J
 - **Maintainer note:** The original backend service coverage inventory is stale for current source: CartService, PaymentService, CheckoutIdempotencyService, AdminRoleService, ReviewImageService, and many others already have service or contract tests. Current source scan found 7 remaining service names without matching test contracts: LocalImageStorageService, LogisticsCarrierService, PaymentChannelAvailabilityService, PetBirthdayCouponService, ProductService, RefundService, and RuntimeConfigService. Added focused source-contract tests for those 7 services, covering image upload sanitization/path safety, logistics carrier normalization, payment-channel production readiness gates, pet birthday coupon reservation/reissue safety, ProductService public/admin/import contract visibility, refund claim/idempotency/gateway validation, and RuntimeConfig typed fallbacks. Added `ServiceCoverageInventoryTest` to fail if a future service source lacks a matching service test contract. Static inventory now reports `uncoveredServices: []`. No backend Maven/JUnit execution, frontend build, Jest, TypeScript compile, browser/Playwright, APP/device run, API probe, deploy, service restart, Nginx command, curl probe, git commit, or revert was performed.
 
 ### F2878: LOW — 27 of 38 backend controllers have no test
-- **Status**: PARTIALLY_FIXED (2026-06-13) / REGRESSION_GUARD_ADDED / OPEN_DEFERRED_3
+- **Status**: SOURCE_FIXED (2026-06-27) / REGRESSION_GUARD_ADDED / REGRESSION_PENDING
 - **File**: Various controllers in `src/main/java/com/example/shop/controller/`; `src/test/java/com/example/shop/controller/ControllerCoverageInventoryTest.java`
 - **Impact**: Most admin controllers and key user-facing controllers (CartController, CategoryController, CouponController, ReviewController, WishlistController, NotificationController) have no test. Only OrderController, UserController, LoginController, ProductController, PaymentController, and a few admin controllers have tests.
 - **Severity**: LOW
 - **Dimension**: Test Coverage
 - **Maintainer note:** The original controller coverage count is stale. Current source has 39 production controller classes and 44 controller test files; name/prefix inventory shows 21 controller sources still lack matching controller test contracts: AdminAlertController, AdminBugReportController, AdminConfigCenterController, AdminIpBlacklistController, AdminTrafficControlController, BrandController, CategoryController, CouponController, ErrorController, HomeController, NotificationController, PageController, PetGalleryController, PetProfileController, ProductQuestionController, ProductReviewAliasController, SiteAnnouncementController, UserAddressAliasController, UserAddressController, UserAliasController, and WishlistController. This remains open for a follow-up controller coverage pass. No backend Maven/JUnit execution, frontend build, Jest, TypeScript compile, browser/Playwright, APP/device run, API probe, deploy, service restart, Nginx command, curl probe, git commit, or revert was performed.
 - **Maintainer note (follow-up):** Added focused source-contract tests for 18 non-deferred controller surfaces: AdminAlertController, AdminBugReportController, BrandController, CategoryController, CouponController, ErrorController, HomeController, NotificationController, PageController, PetGalleryController, PetProfileController, ProductQuestionController, ProductReviewAliasController, SiteAnnouncementController, UserAddressAliasController, UserAddressController, UserAliasController, and WishlistController. Added `ControllerCoverageInventoryTest` to fail if any non-deferred controller source lacks a matching controller test contract. Static inventory now reports only 3 deferred controller contracts: AdminConfigCenterController, AdminIpBlacklistController, and AdminTrafficControlController. These remain open because they touch configuration/security/traffic-control boundaries and should be handled in a separately authorized pass. No backend Maven/JUnit execution, frontend build, Jest, TypeScript compile, browser/Playwright, APP/device run, API probe, deploy, service restart, Nginx command, curl probe, git commit, or revert was performed.
+- **Maintainer note (follow-up 2026-06-27):** Closed the remaining deferred controller coverage gap. Existing focused source-contract tests now cover AdminConfigCenterController publish/apply/snapshot/health permission and audit contracts, AdminIpBlacklistController search/status/block/release/batch-release/login-failure masking and permission contracts, and AdminTrafficControlController status/rate-limit-clear/circuit-reset permission and audit contracts. Updated `ControllerCoverageInventoryTest` so no controller names are deferred; any production controller without a matching controller test contract now fails the inventory. No backend Maven/JUnit execution, frontend build, Jest, TypeScript compile, browser/Playwright, APP/device run, API probe, deploy, service restart, Nginx command, curl probe, git commit, or revert was performed.
 
 ---
 
@@ -15774,9 +16701,11 @@ Backend Maven ✅ **467/467 passed**. Frontend Build ✅ **SUCCESS**. Frontend J
 
 ### F3363: HIGH — Missing Content-Security-Policy (CSP) header
 - **Files**: `src/main/java/com/example/shop/config/SecurityConfig.java:59-67`
-- **Status**: OPEN
+- **Status**: FIXED (2026-06-14) / REGRESSION_GUARD_PRESENT / BACKEND_VERIFIED
 - **Description**: The security headers configuration sets `X-Content-Type-Options`, `X-Frame-Options`, `HSTS`, and `Referrer-Policy`, but there is no `Content-Security-Policy` header configured anywhere in the codebase. Without CSP, if an attacker manages to inject malicious script via stored XSS (e.g., in user-generated content), the browser has no policy to block execution. The `sanitizeHtml.ts` utility exists on the frontend but CSP provides defense-in-depth at the browser level.
 - **Fix**: Add a CSP header to the security configuration.
+- **Fix evidence:** `SecurityConfig` now sets `Content-Security-Policy` with `default-src 'self'`, `object-src 'none'`, `base-uri 'self'`, `form-action 'self'`, `frame-ancestors 'self'`, and no `unsafe-eval` or inline script allowance.
+- **Verification:** `SecurityConfigCorsTest.securityHeadersIncludeContentSecurityPolicy` passed in the focused Maven run.
 
 ### F3364: HIGH — JWT Token stored in localStorage — vulnerable to XSS token theft
 - **Files**: `frontend/src/api/index.ts:1291-1292`, `frontend/src/utils/safeStorage.ts`
@@ -17379,6 +18308,14 @@ Backend Maven ✅ **467/467 passed**. Frontend Build ✅ **SUCCESS**. Frontend J
 - **Verification**: Source-only checks confirmed the required guest email DTO field, guest email normalization, `contact_email` persistence, schema/migration/index support, direct guest-order lookup by `orders.contact_email`, and the existing escaped legacy fallback contract. Conflict-marker search found none in the referenced files, and `git diff --check -- TEST_ISSUES.md src/main/java/com/example/shop/service/OrderService.java src/main/java/com/example/shop/dto/GuestCheckoutRequest.java src/main/resources/mapper/OrderMapper.xml src/main/resources/schema.sql src/main/resources/db/migration/V1__init.sql src/main/resources/db/migration/V3__order_contact_fields.sql src/test/java/com/example/shop/service/GuestOrderEmailLikeEscapeContractTest.java` passed. No source edit, backend Maven, frontend build, Jest, browser/Playwright, APP/device run, deploy, service restart, Nginx command, curl probe, git commit, or revert was performed.
 - **Regression request**: When checks are allowed, run guest checkout/order access coverage and `GuestOrderEmailLikeEscapeContractTest`. Expected: new guest orders store normalized email in `contact_email`, guest tracking/after-sale/support access accepts that email, legacy shipping-address fallback still works for old rows, and raw email is not used in the fallback LIKE pattern.
 
+### F2541 (Rate limits): Redis fallback uses the configured per-client limit
+- **Status**: CURRENT_SOURCE_COVERED / REGRESSION_GUARD_ADDED / BACKEND_VERIFICATION_PENDING
+- **Triaged**: 2026-06-18 18:52 UTC
+- **Files**: src/main/java/com/example/shop/service/RateLimitService.java; src/test/java/com/example/shop/service/RateLimitServiceTest.java
+- **Triage evidence**: The reported `instanceCount` division path is stale against current source. `RateLimitService` has no `instanceCount`, `instance-count`, or per-instance limit division logic. Both Redis and local fallback consume the same `LimitKey.limit`: Redis returns `consumed(limitKey.limit, count == null ? 0 : count, ...)`, while local fallback returns `consumed(limitKey.limit, bucket.count, ...)`. If Redis increment fails, `consume(...)` logs the failure and falls back to `consumeLocal(limitKey, now)` with the original configured limit.
+- **Verification**: Added `RateLimitServiceTest.redisFallbackUsesConfiguredLimitWithoutInstanceCountDivision` to guard the absence of instance-count division and the shared `LimitKey.limit` consumption contract. Existing `redisFailureFallsBackToLocalBucketsAndStillRejectsBurst` already covers that local fallback remains active when Redis is unavailable. No backend Maven/JUnit, frontend build, Jest, browser/Playwright, APP/device run, deploy, service restart, Nginx command, curl probe, git commit, or revert was performed.
+- **Regression request**: When checks are allowed, run `RateLimitServiceTest`. Expected: Redis-backed and local fallback rate limiting use the same configured per-client limits, Redis outages still reject bursts through local buckets, and no instance-count division or configuration drift is reintroduced.
+
 ### F2542 (Checkout cart lifecycle): Pending-order recovery precedes local cart cleanup
 - **Status**: SOURCE_FIXED / REGRESSION_PENDING
 - **Fixed**: 2026-06-13 02:31 UTC
@@ -17394,6 +18331,14 @@ Backend Maven ✅ **467/467 passed**. Frontend Build ✅ **SUCCESS**. Frontend J
 - **Fix evidence**: The admin dashboard order aggregate path now has a bounded in-process cache for implicit dashboard calls. `AdminController.getDashboard()` delegates with `orderService.getDashboardOrderStats(null, 7, 5)`, allowing `OrderService` to reuse a cached stats snapshot for the same trend window and recent-order limit. The cache is controlled by `order.dashboard-stats-cache-ms=${ORDER_DASHBOARD_STATS_CACHE_MS:5000}`, clamps to 0..60000 ms, is bypassed for explicit `now` service calls, and returns a shallow copy so callers cannot mutate the cached map. Added `OrderStatsServiceTest.dashboardOrderStatsUsesShortLivedCacheForImplicitNow` to cover repeated dashboard calls within the TTL.
 - **Verification**: Source-only checks confirmed the controller no longer forces `currentDatabaseTime()` before every dashboard stats call, the service has `DashboardOrderStatsCacheEntry` / `dashboardOrderStatsCacheMs()` / copy helpers, the TTL property is wired, and the focused cache test exists. Conflict-marker search found none in the touched files, and `git diff --check -- src/main/java/com/example/shop/service/OrderService.java src/main/java/com/example/shop/controller/AdminController.java src/main/resources/application.properties src/test/java/com/example/shop/service/OrderStatsServiceTest.java TEST_ISSUES.md` passed. No backend Maven, frontend build, Jest, browser/Playwright, APP/device run, deploy, service restart, Nginx command, curl probe, git commit, or revert was performed.
 - **Regression request**: When checks are allowed, run `OrderStatsServiceTest` and admin dashboard controller/UI coverage. Expected: repeated dashboard refreshes within the configured TTL reuse the cached order aggregate, explicit-time service calls still recompute, dashboard trend/recent-order limits remain bounded, and order totals refresh after the short TTL or when the TTL is configured to zero.
+
+### F2544 (Refunds): Returned-order refund attempts are idempotent
+- **Status**: CURRENT_SOURCE_COVERED / REGRESSION_GUARD_ADDED / BACKEND_VERIFICATION_PENDING
+- **Triaged**: 2026-06-18 18:45 UTC
+- **Files**: src/main/java/com/example/shop/service/OrderService.java; src/main/java/com/example/shop/service/RefundService.java; src/main/resources/mapper/PaymentMapper.xml; src/test/java/com/example/shop/service/PaymentFlowServiceTest.java
+- **Triage evidence**: The reported `PaymentService.java` line range is stale for active refund behavior. `OrderService.refundOrder(...)` first checks `REFUNDED` and `RETURNED` orders and returns `paymentRepository.findLatestRefundedByOrderId(order.getId())` before calling `orderRepository.markRefunded(...)` or `refundService.refundPaidPayment(...)`. Concurrent first-time refunds are also guarded by `orderRepository.markRefunded(order.getId(), order.getStatus(), cleanedReason)` and `RefundService.refundPaidPayment(...)` claims a paid/reconcile-required payment through `paymentRepository.markRefunding(...)` before marking it refunded. `PaymentMapper.xml` limits `findLatestRefundedByOrderId` to `status = 'REFUNDED'` and orders by the latest refunded row.
+- **Verification**: Added `PaymentFlowServiceTest.returnedOrderRefundReturnsExistingRefundWithoutCallingProviderAgain`, which constructs a `RETURNED` order with an existing refunded payment and asserts the second refund call returns that payment, never calls `orderRepository.markRefunded(...)`, and never interacts with `RefundService`. Source-only inspection confirmed the active refund path and mapper query. No backend Maven/JUnit, frontend build, Jest, browser/Playwright, APP/device run, deploy, service restart, Nginx command, curl probe, git commit, or revert was performed.
+- **Regression request**: When checks are allowed, run `PaymentFlowServiceTest`. Expected: a repeated refund attempt on a returned/refunded order returns the original refunded payment without issuing another provider refund or creating another refund state transition; first-time paid/reconcile-required refunds still claim and finalize exactly once.
 
 ### F2545 (Product management): Status update has no timeout rollback
 - **Status**: CURRENT_SOURCE_COVERED / REGRESSION_PENDING
@@ -17483,6 +18428,14 @@ Backend Maven ✅ **467/467 passed**. Frontend Build ✅ **SUCCESS**. Frontend J
 - **Verification**: Source-only file listing and focused `rg` search confirmed the reported helper and shared date-range utility file are absent from `frontend/src`. Conflict-marker search found none in the referenced files, and `git diff --check -- TEST_ISSUES.md frontend/src/pages/SecurityAuditLogManagement.tsx` passed. No source edit, frontend build, Jest, browser/Playwright, APP/device run, backend Maven, deploy, service restart, Nginx command, curl probe, git commit, or revert was performed.
 - **Regression request**: When checks are allowed, run date-filter UI coverage for pages with range pickers. Expected: no removed `dateRangeToParam` helper is reintroduced without inverted-range handling, and page-local range serialization keeps sending intentional `startAt`/`endAt` values.
 
+### F2556 (Auth session): Login success payload omits contact details
+- **Status**: SOURCE_FIXED / REGRESSION_GUARD_EXPANDED / BACKEND_FRONTEND_VERIFICATION_PENDING
+- **Fixed**: 2026-06-18 18:52 UTC
+- **Files**: src/main/java/com/example/shop/controller/LoginController.java; src/test/java/com/example/shop/controller/LoginControllerPasswordLoginTest.java; frontend/src/api/index.ts; frontend/src/api/index.test.ts; frontend/src/hooks/useAuth.ts; frontend/src/hooks/useAuth.test.tsx
+- **Fix evidence**: The active auth success payload is built in `LoginController.buildLoginResponse(...)`, not a `UserService.authenticate(...)` DTO. Phone was already absent; this fix removes `response.put("email", userDetails.getEmail())` as well, so password, refresh-token, and email-code auth responses establish the session without returning contact details. Frontend `AuthSessionResponse` no longer includes email/phone, `persistAuthSession(...)` no longer stores `data.email` or `data.phone`, and `useAuth.login(...)` uses username/id for temporary post-login state while `/users/profile` hydration remains the owner of email and phone.
+- **Verification**: Expanded `LoginControllerPasswordLoginTest` so password login asserts the response body omits both `email` and `phone`, and the source contract rejects `response.put("email"...)` / `response.put("phone"...)` in the shared response builder. Expanded frontend guards so auth-session persistence rejects email/phone in the response type and storage path, and `useAuth` login coverage no longer relies on contact details in the auth response. No backend Maven/JUnit, frontend Jest, TypeScript, build, browser/Playwright, APP/device run, deploy, service restart, Nginx command, curl probe, git commit, or revert was performed.
+- **Regression request**: When checks are allowed, run `LoginControllerPasswordLoginTest`, frontend auth API tests, and login/profile hydration coverage. Expected: auth success responses contain token, refreshToken, id, username, and role metadata only; contact details are loaded through `/users/profile`; login, refresh, email-code login, and role-based routing continue to work.
+
 ### F2557 (Orders): Order number allocation uses UUID suffix and collision retry
 - **Status**: CURRENT_SOURCE_COVERED / REGRESSION_PENDING
 - **Triaged**: 2026-06-13 02:57 UTC
@@ -17490,6 +18443,14 @@ Backend Maven ✅ **467/467 passed**. Frontend Build ✅ **SUCCESS**. Frontend J
 - **Triage evidence**: The reported `src/main/java/com/example/shop/mapper/OrderMapper.java` `yyyyMMddHHmmss` plus 3-digit random suffix path is stale against current source. That mapper file does not exist. Current order insertion goes through `OrderService.insertOrderWithGeneratedOrderNo(...)`, which clears the id, generates a fresh order number on each attempt, inserts through `OrderRepository.insert(...)`, retries up to `ORDER_NO_INSERT_MAX_ATTEMPTS = 5` only for `order_no` unique-key collisions, and rethrows unrelated integrity failures. `nextOrderNo()` still includes the timestamp prefix, but appends 16 uppercase UUID hex characters instead of a 3-digit random suffix, while schema/V1 enforce `order_no VARCHAR(32) NOT NULL UNIQUE`. Existing service coverage asserts retry on `uk_orders_order_no` collisions and no retry for unrelated integrity errors.
 - **Verification**: Source-only search/read confirmed the absent old mapper path, the current service-side generator/retry loop, the unique schema constraint, and the existing collision retry test. Conflict-marker search found none in the referenced files, and `git diff --check -- TEST_ISSUES.md src/main/java/com/example/shop/service/OrderService.java src/main/java/com/example/shop/repository/OrderRepository.java src/main/resources/schema.sql src/main/resources/db/migration/V1__init.sql src/test/java/com/example/shop/service/OrderInputNormalizationServiceTest.java` passed. No source edit, backend Maven, frontend build, Jest, browser/Playwright, APP/device run, deploy, service restart, Nginx command, curl probe, git commit, or revert was performed.
 - **Regression request**: When checks are allowed, run `OrderInputNormalizationServiceTest` and checkout/order insertion coverage. Expected: order numbers remain unique under the database constraint, collisions retry with a newly generated value, unrelated integrity failures are not swallowed, and order numbers stay within the 32-character column.
+
+### F2558 (Rate limits): Redis bucket clearing uses SCAN
+- **Status**: CURRENT_SOURCE_COVERED / REGRESSION_GUARD_PRESENT / BACKEND_VERIFICATION_PENDING
+- **Triaged**: 2026-06-18 18:52 UTC
+- **Files**: src/main/java/com/example/shop/service/RateLimitService.java; src/test/java/com/example/shop/service/RateLimitServiceTest.java
+- **Triage evidence**: The reported blocking `redisTemplate.keys(pattern)` path is stale against current source. `RateLimitService.clearRedisBuckets()` executes a Redis callback, builds `ScanOptions` with `match(redisPrefix(config.redisKeyPrefix) + ":*")` and bounded `count(config.redisClearScanCount)`, iterates `connection.scan(options)` through a cursor, and deletes matched keys in batches. A project-wide production-source history also already records the broader Redis `KEYS` cleanup.
+- **Verification**: Existing `RateLimitServiceTest.clearRedisBucketsUsesScanAndDeleteInsteadOfKeys` verifies the scan/delete path and asserts `verify(redis, never()).keys(anyString())`. Source inspection confirmed `clearRedisBuckets()` uses `connection.scan(options)` and `connection.del(...)` batching. No backend Maven/JUnit, frontend build, Jest, browser/Playwright, APP/device run, deploy, service restart, Nginx command, curl probe, git commit, or revert was performed.
+- **Regression request**: When checks are allowed, run `RateLimitServiceTest` and Redis-backed traffic-control smoke. Expected: clearing rate-limit buckets scans and deletes bounded batches without `KEYS`, local counters still clear even if Redis clearing fails, and Redis key prefixes remain scoped to the rate-limit namespace.
 
 ### F2560 (API errors): Empty manual error responses normalized
 - **Status**: SOURCE_FIXED / REGRESSION_PENDING
@@ -17564,10 +18525,11 @@ Backend Maven ✅ **467/467 passed**. Frontend Build ✅ **SUCCESS**. Frontend J
 - **Regression request**: When authorized security work is allowed, review the admin bootstrap lifecycle and access-control design with the security owner. Expected: any bootstrap endpoint behavior is explicitly threat-modeled, production-safe, auditable, and covered by authorization regression tests before release.
 
 ### F2587 (Login status): Authentication status policy deferred
-- **Status**: SKIPPED_RESTRICTED / NEEDS_AUTHORIZED_SECURITY_REVIEW
+- **Status**: SUPERSEDED_BY_SOURCE_FIX / BACKEND_VERIFICATION_PENDING
 - **Triaged**: 2026-06-13 03:32 UTC
 - **Files**: src/main/java/com/example/shop/controller/LoginController.java
 - **Triage evidence**: This item changes login/token-refresh authentication policy for inactive or legacy null-status accounts. Under the current safety scope, security/authentication policy changes are not being processed in this pass. No source inspection or implementation was performed for F2587 beyond recording that the issue requires an authorized security review path.
+- **Follow-up 2026-06-18 02:22 UTC**: Current source now applies an explicit ACTIVE-only session eligibility policy across password login, email login, refresh, `UserDetailsImpl`, and email-code delivery/verification. See the active F2587 fix evidence above.
 - **Verification**: Administrative ledger update only. No backend Maven, frontend build, Jest, browser/Playwright, APP/device run, API probe, deploy, service restart, Nginx command, curl probe, git commit, or revert was performed.
 - **Regression request**: When authorized security work is allowed, review the login and refresh-token status policy with the security/product owner. Expected: login, token refresh, legacy null-status accounts, inactive users, and admin/customer account states follow one documented policy and are covered by authentication regression tests.
 
@@ -17644,58 +18606,65 @@ Backend Maven ✅ **467/467 passed**. Frontend Build ✅ **SUCCESS**. Frontend J
 - **Regression request**: When checks are allowed, run `PetGalleryServiceTest` plus an integration test with concurrent likes from distinct viewers and duplicate likes from the same viewer. Expected: each unique like increments the displayed count once, duplicate likes remain idempotent, and seed gallery counts retain their configured starting values.
 
 ### F2596 (IP blacklist response): Security disclosure item deferred
-- **Status**: SKIPPED_RESTRICTED / NEEDS_AUTHORIZED_SECURITY_REVIEW
+- **Status**: SUPERSEDED_BY_CURRENT_SOURCE_COVERAGE / BACKEND_VERIFICATION_PENDING
 - **Triaged**: 2026-06-13
 - **Files**: src/main/java/com/example/shop/config/IpBlacklistFilter.java
 - **Triage evidence**: This item is explicitly about security information disclosure from IP blacklist responses and IP resolution behavior. Under the current safety scope, security disclosure hardening items are not being processed in this pass. No implementation source inspection or code change was performed for F2596 beyond recording that it requires an authorized security review path.
+- **Follow-up 2026-06-18 02:32 UTC**: Current source uses the uniform error factory without IP/block-detail fields, and `IpBlacklistFilterTest` guards the sanitized response. See the active F2596 evidence above.
 - **Verification**: Administrative ledger update only. No backend Maven, frontend build, Jest, browser/Playwright, APP/device run, API probe, deploy, service restart, Nginx command, curl probe, git commit, or revert was performed.
 - **Regression request**: When authorized security work is allowed, review the blocked-request response contract with the security owner. Expected: responses avoid leaking resolver internals while preserving approved client retry guidance and auditability.
 
 ### F2597 (Forgot password login): DoS-adjacent validation item deferred
-- **Status**: SKIPPED_RESTRICTED / NEEDS_AUTHORIZED_SECURITY_REVIEW
+- **Status**: SUPERSEDED_BY_SOURCE_FIX / BACKEND_VERIFICATION_PENDING
 - **Triaged**: 2026-06-13
 - **Files**: src/main/java/com/example/shop/dto/ForgotPasswordRequest.java
 - **Triage evidence**: This item is framed as input validation for forgot-password lookup abuse and resource exhaustion. Under the current safety scope, DoS/abuse-resistance hardening items are not being processed in this pass. No implementation source inspection or code change was performed for F2597 beyond recording that it requires an authorized security review path.
+- **Follow-up 2026-06-18 02:32 UTC**: Current source has bounded forgot-password login/email/code fields and Bean Validation coverage. See the active F2597 evidence above.
 - **Verification**: Administrative ledger update only. No backend Maven, frontend build, Jest, browser/Playwright, APP/device run, API probe, deploy, service restart, Nginx command, curl probe, git commit, or revert was performed.
 - **Regression request**: When authorized security work is allowed, review forgot-password identifier validation and abuse controls with the security/product owner. Expected: accepted identifier length, lookup behavior, error semantics, and regression tests are documented and approved.
 
 ### F2599 (Exception messages): Security disclosure item deferred
-- **Status**: SKIPPED_RESTRICTED / NEEDS_AUTHORIZED_SECURITY_REVIEW
+- **Status**: SUPERSEDED_BY_CURRENT_SOURCE_COVERAGE / BACKEND_VERIFICATION_PENDING
 - **Triaged**: 2026-06-13
 - **Files**: src/main/java/com/example/shop/config/GlobalApiExceptionHandler.java
 - **Triage evidence**: This item is explicitly about security information disclosure through exception messages. Under the current safety scope, security disclosure policy changes are not being processed in this pass. No implementation source inspection or code change was performed for F2599 beyond recording that it requires an authorized security review path.
+- **Follow-up 2026-06-18 02:32 UTC**: Current source filters unsafe client-visible bad-request messages and preserves only safe business messages. See the active F2599 evidence above.
 - **Verification**: Administrative ledger update only. No backend Maven, frontend build, Jest, browser/Playwright, APP/device run, API probe, deploy, service restart, Nginx command, curl probe, git commit, or revert was performed.
 - **Regression request**: When authorized security work is allowed, review client-visible exception message policy with the security and product owners. Expected: only approved business-rule messages are exposed, all other details are sanitized, and regression tests cover representative service failures.
 
 ### F2601 (Payment create validation): Authorization-adjacent validation item deferred
-- **Status**: SKIPPED_RESTRICTED / NEEDS_AUTHORIZED_SECURITY_REVIEW
+- **Status**: SUPERSEDED_BY_SOURCE_FIX / BACKEND_VERIFICATION_PENDING
 - **Triaged**: 2026-06-13
 - **Files**: src/main/java/com/example/shop/dto/PaymentCreateRequest.java
 - **Triage evidence**: This item affects fields used in payment authorization checks. Under the current safety scope, authorization-adjacent payment hardening items are not being processed in this pass. No implementation source inspection or code change was performed for F2601 beyond recording that it requires an authorized security review path.
+- **Follow-up 2026-06-18 02:32 UTC**: Current source validates payment-create identifiers while preserving member-vs-guest authorization semantics. See the active F2601 evidence above.
 - **Verification**: Administrative ledger update only. No backend Maven, frontend build, Jest, browser/Playwright, APP/device run, API probe, deploy, service restart, Nginx command, curl probe, git commit, or revert was performed.
 - **Regression request**: When authorized security work is allowed, review payment creation request validation with the payment/security owner. Expected: required credential fields, guest/member payment flows, error semantics, and controller validation tests are approved together.
 
 ### F2602 (Password validation): Authentication policy item deferred
-- **Status**: SKIPPED_RESTRICTED / NEEDS_AUTHORIZED_SECURITY_REVIEW
+- **Status**: SUPERSEDED_BY_CURRENT_SOURCE_COVERAGE / BACKEND_VERIFICATION_PENDING
 - **Triaged**: 2026-06-13
 - **Files**: src/main/java/com/example/shop/controller/AuthController.java
 - **Triage evidence**: This item changes password validation and authentication policy semantics. Under the current safety scope, authentication policy hardening items are not being processed in this pass. No implementation source inspection or code change was performed for F2602 beyond recording that it requires an authorized security review path.
+- **Follow-up 2026-06-18 02:32 UTC**: Current source enforces the strong password policy in `UserService` across registration, admin bootstrap, password update, and reset. See the active F2602 evidence above.
 - **Verification**: Administrative ledger update only. No backend Maven, frontend build, Jest, browser/Playwright, APP/device run, API probe, deploy, service restart, Nginx command, curl probe, git commit, or revert was performed.
 - **Regression request**: When authorized security work is allowed, review password rules and messages with the security/product owner. Expected: policy, UX copy, Unicode handling, migration impact, and registration/change-password tests are approved before release.
 
 ### F2603 (CORS configuration): Security configuration item deferred
-- **Status**: SKIPPED_RESTRICTED / NEEDS_AUTHORIZED_SECURITY_REVIEW
+- **Status**: SUPERSEDED_BY_CURRENT_SOURCE_COVERAGE / BACKEND_VERIFICATION_PENDING
 - **Triaged**: 2026-06-13
 - **Files**: src/main/java/com/example/shop/config/SecurityConfig.java
 - **Triage evidence**: This item is explicitly about credentialed CORS security configuration. Under the current safety scope, security configuration hardening items are not being processed in this pass. No implementation source inspection or code change was performed for F2603 beyond recording that it requires an authorized security review path.
+- **Follow-up 2026-06-18 02:32 UTC**: Current source centralizes origin filtering through `CorsOriginProperties` and guards wildcard/private production rejection plus loopback-only non-production fallback. See the active F2603 evidence above.
 - **Verification**: Administrative ledger update only. No backend Maven, frontend build, Jest, browser/Playwright, APP/device run, API probe, deploy, service restart, Nginx command, curl probe, git commit, or revert was performed.
 - **Regression request**: When authorized security work is allowed, review CORS origin-pattern policy and deployment configuration with the security/operations owner. Expected: wildcard credentialed origins are rejected or otherwise controlled by an approved startup/config validation path.
 
 ### F2607 (Support session access): Authorization behavior item deferred
-- **Status**: SKIPPED_RESTRICTED / NEEDS_AUTHORIZED_SECURITY_REVIEW
+- **Status**: SUPERSEDED_BY_SOURCE_FIX / BACKEND_FRONTEND_VERIFICATION_PENDING
 - **Triaged**: 2026-06-13
 - **Files**: src/main/java/com/example/shop/controller/SupportController.java
 - **Triage evidence**: This item changes support session authorization behavior for context-keyed guest sessions. Under the current safety scope, authorization policy changes are not being processed in this pass. No implementation source inspection or code change was performed for F2607 beyond recording that it requires an authorized security review path.
+- **Follow-up 2026-06-18 02:15 UTC**: Current source keeps the safer account-session vs guest-order-session boundary, documents it in `SupportController`, and routes guest support reads through body-based order credentials instead of URL query parameters. See the active F2607 fix evidence above.
 - **Verification**: Administrative ledger update only. No backend Maven, frontend build, Jest, browser/Playwright, APP/device run, API probe, deploy, service restart, Nginx command, curl probe, git commit, or revert was performed.
 - **Regression request**: When authorized security work is allowed, review support session ownership and access semantics with the security/product owner. Expected: default sessions, context-keyed guest sessions, authenticated endpoints, and user-facing UX are documented and covered by authorization regression tests.
 
@@ -17714,3 +18683,19 @@ Backend Maven ✅ **467/467 passed**. Frontend Build ✅ **SUCCESS**. Frontend J
 - **Fix evidence**: `PaymentChannelRecommendationService.lookupCountryByIp(...)` no longer creates a `SimpleClientHttpRequestFactory` or `RestTemplate` for every geo lookup. The service now keeps a `ConcurrentMap<Integer, RestTemplate>` keyed by normalized geo lookup timeout and resolves clients through `computeIfAbsent(...)`, preserving the existing per-geo timeout setting while reusing the client for subsequent lookups. `HttpClientConfig` now exposes `restTemplateWithTimeouts(...)` so timeout-configured client construction stays centralized rather than living in the lookup path.
 - **Verification**: Source-only scans confirmed `PaymentChannelRecommendationService.java` contains no direct `new RestTemplate(...)` allocation and `lookupCountryByIp(...)` contains no `new SimpleClientHttpRequestFactory(...)` allocation. `PaymentChannelRecommendationServiceTest` now guards the cached geo client contract. Conflict-marker scan, tracked `git diff --check`, direct whitespace scan, no-index hygiene for the currently untracked `HttpClientConfig.java`, and `/root` ledger mirror comparison produced no diagnostics. No backend Maven, frontend build, Jest, browser/Playwright, APP/device run, API probe, deploy, service restart, Nginx command, curl probe, git commit, or revert was performed.
 - **Regression request**: When checks are allowed, run `PaymentChannelRecommendationServiceTest` and payment channel checkout recommendations with a non-local client IP, configured `payment.geo.lookup-url`, and custom `payment.geo.lookup-timeout-ms`. Expected: geo lookup still honors the timeout, country parsing/recommendation order remains unchanged, and repeated lookups reuse the cached timeout-specific client rather than allocating one per request.
+
+### F3365 (Admin bootstrap exposure): Current source covered by layered bootstrap controls
+- **Status**: CURRENT_SOURCE_COVERED / SECURITY_REGRESSION_PENDING
+- **Triaged**: 2026-06-27T23:25:02Z
+- **Files**: src/main/java/com/example/shop/config/SecurityConfig.java; src/main/java/com/example/shop/controller/UserController.java; src/main/java/com/example/shop/config/AdminBootstrapTokenPolicy.java; src/main/java/com/example/shop/service/RateLimitService.java; src/main/java/com/example/shop/service/UserService.java; src/main/java/com/example/shop/controller/AdminSystemController.java; src/test/java/com/example/shop/controller/UserControllerAdminBootstrapTest.java; src/test/java/com/example/shop/service/RateLimitServiceTest.java
+- **Triage evidence**: The old report says `/users/create-admin` is permitAll and lacks endpoint-specific rate limiting. Current source intentionally keeps the first-admin route unauthenticated but gates it with `X-Bootstrap-Token`, disabled blank configuration, configured-token strength validation through `AdminBootstrapTokenPolicy`, constant-time comparison, IP blacklist failure accounting, and a dedicated `RateLimitService` bucket (`auth:admin-bootstrap`, default 3/hour). `UserService.registerAdmin()` also acquires the `shop_admin_bootstrap` DB lock and rejects when an admin already exists before insert. `AdminSystemController` production readiness flags a configured bootstrap token after bootstrap. Existing tests cover missing/weak/not-configured token rejection and the dedicated admin-bootstrap rate limit.
+- **Verification**: Source-only inspection and ledger update. No backend Maven/JUnit, frontend build, Jest, browser/Playwright, APP/device run, API probe, deploy, service restart, Nginx command, curl probe, git commit, or revert was performed.
+- **Regression request**: When checks are allowed, run API/security regression for `/users/create-admin`: blank configured token, weak configured token, missing/wrong/correct header, repeated calls beyond the 3/hour bucket, existing-admin repeat bootstrap, and production readiness with bootstrap token still configured. Expected: no admin is created except the valid first-admin path, repeated failures are rate limited/blacklisted according to policy, and post-bootstrap configuration is flagged operationally.
+
+### F3383 (Config center secret editability): Current source covered by sensitive-key denylist
+- **Status**: CURRENT_SOURCE_COVERED / SECURITY_REGRESSION_PENDING
+- **Triaged**: 2026-06-27T23:25:02Z
+- **Files**: src/main/java/com/example/shop/service/ConfigCenterService.java; src/main/java/com/example/shop/config/ProductionSecretStartupValidator.java; src/main/java/com/example/shop/controller/AdminSystemController.java
+- **Triage evidence**: The old report says runtime config center can modify JWT/CORS/bootstrap security settings. Current source denies sensitive runtime keys via `ConfigCenterService.SENSITIVE_KEY_PATTERN`, including `app.jwt`, `app.cors.*`, `app.websocket.*`, `admin.bootstrap-token`, DB/Redis/mail/payment secrets, OAuth secrets, file storage paths, and security blacklist prefix settings. Production startup/readiness separately validates required production secrets and bootstrap token posture. No source change was needed in this pass.
+- **Verification**: Source-only inspection and ledger update. No backend Maven/JUnit, frontend build, Jest, browser/Playwright, APP/device run, API probe, deploy, service restart, Nginx command, curl probe, git commit, or revert was performed.
+- **Regression request**: When checks are allowed, run admin config-center API regression attempting to create/update/delete `app.jwt.secret`, `app.cors.allowed-origins`, `app.websocket.allowed-origins`, `admin.bootstrap-token`, DB/Redis/payment/mail secrets, and security blacklist prefixes. Expected: sensitive keys are rejected uniformly, non-sensitive keys remain editable, audit logs record failures, and production readiness continues to surface invalid deployment secrets.

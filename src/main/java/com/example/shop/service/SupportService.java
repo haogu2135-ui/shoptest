@@ -133,7 +133,7 @@ public class SupportService {
         int safeSize = normalizeAdminSessionPageSize(size);
         int safePage = normalizeAdminSessionPage(page);
         String safeStatus = normalizeAdminStatus(status);
-        String safeSearch = normalizeAdminSearch(search);
+        String safeSearch = searchLikeTerm(search);
         Long safeAssignedAdminId = assignedAdminId != null && assignedAdminId > 0 ? assignedAdminId : null;
         Boolean safeNeedsReply = Boolean.TRUE.equals(needsReply) ? Boolean.TRUE : null;
         long total = supportSessionMapper.countAdminPage(safeStatus, safeNeedsReply, safeAssignedAdminId, safeSearch);
@@ -205,8 +205,17 @@ public class SupportService {
 
     @Transactional(rollbackFor = Exception.class)
     public SupportMessage sendAdminMessage(Long adminId, Long sessionId, String content, String senderRole) {
+        return sendAdminMessage(adminId, sessionId, content, senderRole, false);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public SupportMessage sendAdminMessage(Long adminId,
+                                           Long sessionId,
+                                           String content,
+                                           String senderRole,
+                                           boolean assignIfUnassigned) {
         requireAdminSenderRole(senderRole);
-        return sendMessageInternal(sessionId, adminId, "ADMIN", content);
+        return sendMessageInternal(sessionId, adminId, "ADMIN", content, assignIfUnassigned);
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -215,10 +224,14 @@ public class SupportService {
         if ("ADMIN".equals(normalizedRole)) {
             throw new IllegalStateException("Admin support messages must use the admin message entrypoint");
         }
-        return sendMessageInternal(sessionId, senderId, normalizedRole, content);
+        return sendMessageInternal(sessionId, senderId, normalizedRole, content, false);
     }
 
-    private SupportMessage sendMessageInternal(Long sessionId, Long senderId, String senderRole, String content) {
+    private SupportMessage sendMessageInternal(Long sessionId,
+                                               Long senderId,
+                                               String senderRole,
+                                               String content,
+                                               boolean assignIfUnassigned) {
         String normalizedContent = normalizeContent(content);
         if (normalizedContent.isEmpty()) {
             throw new IllegalArgumentException("Message content is required");
@@ -231,6 +244,9 @@ public class SupportService {
             throw new IllegalStateException("Support session is closed");
         }
         if ("ADMIN".equals(senderRole) && session.getAssignedAdminId() == null) {
+            if (!assignIfUnassigned) {
+                throw new IllegalStateException("Support session is unassigned");
+            }
             supportSessionMapper.assignAdmin(sessionId, senderId);
         }
         consumeMessageRate(senderId, senderRole);
@@ -316,6 +332,17 @@ public class SupportService {
             return null;
         }
         return normalized.length() <= 120 ? normalized : normalized.substring(0, 120);
+    }
+
+    private String searchLikeTerm(String value) {
+        String normalized = normalizeAdminSearch(value);
+        return normalized == null ? null : escapeLikeLiteral(normalized);
+    }
+
+    private String escapeLikeLiteral(String value) {
+        return value.replace("!", "!!")
+                .replace("%", "!%")
+                .replace("_", "!_");
     }
 
     private String normalizeContent(String content) {

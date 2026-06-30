@@ -181,6 +181,8 @@ public class RateLimitService {
                 positiveInt("traffic.rate-limit.guest-order-lookup-per-minute", 20),
                 positiveInt("traffic.rate-limit.guest-order-mutation-per-minute", 10),
                 positiveInt("traffic.rate-limit.admin-order-list-per-minute", 60),
+                positiveInt("traffic.rate-limit.admin-bug-create-per-minute", 20),
+                positiveInt("traffic.rate-limit.cart-write-per-minute", 60),
                 positiveInt("traffic.rate-limit.pet-gallery-like-per-minute", 20),
                 runtimeConfig.getBoolean("traffic.rate-limit.redis-enabled", true),
                 runtimeConfig.getString("traffic.rate-limit.redis-key-prefix", "shop:rate-limit"),
@@ -329,6 +331,9 @@ public class RateLimitService {
         if ("POST".equals(method) && isGuestOrderMutationPath(path)) {
             return new EndpointLimit("POST", "orders:guest-mutation", config.guestOrderMutationPerMinute, 60);
         }
+        if (isCartWritePath(method, path)) {
+            return new EndpointLimit("*", "cart:write", config.cartWritePerMinute, 60);
+        }
         if (!"POST".equals(method)) {
             return null;
         }
@@ -346,6 +351,9 @@ public class RateLimitService {
         }
         if (path.equals("/users/create-admin")) {
             return new EndpointLimit("POST", "auth:admin-bootstrap", config.adminBootstrapPerHour, 3600);
+        }
+        if (path.equals("/admin/bugs")) {
+            return new EndpointLimit("POST", "admin:bugs:create", config.adminBugCreatePerMinute, 60);
         }
         if (path.equals("/orders/checkout/guest")) {
             return new EndpointLimit("POST", "checkout:guest", config.guestCheckoutPerHour, 3600);
@@ -368,8 +376,10 @@ public class RateLimitService {
     private boolean isPaymentSyncPath(String path) {
         return path.equals("/payment/{id}/sync")
                 || path.equals("/payment/{orderNo}/sync")
+                || path.equals("/payment/order/{id}/sync")
                 || path.equals("/payments/{id}/sync")
-                || path.equals("/payments/{orderNo}/sync");
+                || path.equals("/payments/{orderNo}/sync")
+                || path.equals("/payments/order/{id}/sync");
     }
 
     private boolean isPaymentCallbackPath(String path) {
@@ -395,6 +405,13 @@ public class RateLimitService {
                 || path.endsWith("/confirm")
                 || path.endsWith("/return")
                 || path.endsWith("/return-shipment"));
+    }
+
+    private boolean isCartWritePath(String method, String path) {
+        if (!("POST".equals(method) || "PUT".equals(method) || "DELETE".equals(method))) {
+            return false;
+        }
+        return path.equals("/cart") || path.startsWith("/cart/");
     }
 
     private String normalizePath(HttpServletRequest request) {
@@ -562,6 +579,8 @@ public class RateLimitService {
         private final int guestOrderLookupPerMinute;
         private final int guestOrderMutationPerMinute;
         private final int adminOrderListPerMinute;
+        private final int adminBugCreatePerMinute;
+        private final int cartWritePerMinute;
         private final int petGalleryLikePerMinute;
         private final boolean redisEnabled;
         private final String redisKeyPrefix;
@@ -588,6 +607,8 @@ public class RateLimitService {
                        int guestOrderLookupPerMinute,
                        int guestOrderMutationPerMinute,
                        int adminOrderListPerMinute,
+                       int adminBugCreatePerMinute,
+                       int cartWritePerMinute,
                        int petGalleryLikePerMinute,
                        boolean redisEnabled,
                        String redisKeyPrefix,
@@ -613,6 +634,8 @@ public class RateLimitService {
             this.guestOrderLookupPerMinute = guestOrderLookupPerMinute;
             this.guestOrderMutationPerMinute = guestOrderMutationPerMinute;
             this.adminOrderListPerMinute = adminOrderListPerMinute;
+            this.adminBugCreatePerMinute = adminBugCreatePerMinute;
+            this.cartWritePerMinute = cartWritePerMinute;
             this.petGalleryLikePerMinute = petGalleryLikePerMinute;
             this.redisEnabled = redisEnabled;
             this.redisKeyPrefix = redisKeyPrefix;

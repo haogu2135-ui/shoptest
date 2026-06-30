@@ -20,6 +20,8 @@ import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 
@@ -50,6 +52,23 @@ class OrderControllerLegacyAdminAuditTest {
 
     OrderControllerLegacyAdminAuditTest() {
         ReflectionTestUtils.setField(controller, "adminRoleService", adminRoleService);
+    }
+
+    @Test
+    void orderControllerKeepsLegacyCreateDisabledAndOrderReadsScopedToVisibleOrders() throws Exception {
+        String source = Files.readString(Path.of("src/main/java/com/example/shop/controller/OrderController.java"));
+
+        assertFalse(source.contains("createOrder(@RequestBody"));
+        assertFalse(source.contains("createOrder(@Valid @RequestBody"));
+        assertTrue(source.contains("public ResponseEntity<?> createOrder(Authentication authentication)"));
+        assertTrue(source.contains("SecurityUtils.requireUser(authentication);"));
+        assertTrue(source.contains("Legacy order creation is disabled; use /orders/checkout/me or /orders/checkout/guest"));
+        assertTrue(source.contains("public ResponseEntity<?> getOrder(@PathVariable Long id,\n"
+                + "                                      Authentication authentication)"));
+        assertTrue(source.contains("Order order = requireVisibleOrder(id, authentication);"));
+        assertTrue(source.contains("if (isSelf(user, order.getUserId()))"));
+        assertTrue(source.contains("if (SecurityUtils.isAdmin(user))"));
+        assertTrue(source.contains("throw new ResponseStatusException(HttpStatus.FORBIDDEN, \"Forbidden\");"));
     }
 
     @Test

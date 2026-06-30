@@ -25,6 +25,17 @@
   margin-top: 16px;
 }
 
+.wishlist-page__loadAlert {
+  width: min(720px, 100%);
+  margin: 0 auto 18px;
+  text-align: left;
+}
+
+.wishlist-page__loadAlert .ant-alert-message,
+.wishlist-page__loadAlert .ant-alert-description {
+  overflow-wrap: anywhere;
+}
+
 .wishlist-page__header {
   display: flex;
   align-items: center;
@@ -437,6 +448,11 @@
     flex-direction: column;
     margin-bottom: 14px;
     padding: 16px;
+  }
+
+  .wishlist-page__loadAlert .ant-alert-action,
+  .wishlist-page__loadAlert .ant-alert-action .ant-btn {
+    width: 100%;
   }
 
   .wishlist-page__insightBar {

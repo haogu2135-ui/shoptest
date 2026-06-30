@@ -243,6 +243,7 @@ const ProductDetail: React.FC = () => {
   const detailContentRef = useRef<HTMLDivElement | null>(null);
   const optionsSectionRef = useRef<HTMLDivElement | null>(null);
   const nonCriticalLoadedRef = useRef(false);
+  const nonCriticalRequestSeqRef = useRef(0);
   const pinchStartRef = useRef<{ distance: number; scale: number } | null>(null);
   const imageResumeTimerRef = useRef<number | null>(null);
   const purchaseRequestKeyRef = useRef<string | null>(null);
@@ -430,6 +431,7 @@ const ProductDetail: React.FC = () => {
 
   useEffect(() => {
     const handleAuthSessionChanged = () => {
+      nonCriticalRequestSeqRef.current += 1;
       clearProductDetailSessionCaches();
       nonCriticalLoadedRef.current = false;
       setIsWishlisted(false);
@@ -444,71 +446,87 @@ const ProductDetail: React.FC = () => {
     };
   }, []);
 
-  const fetchReviews = useCallback(async () => {
+  const isCurrentNonCriticalRequest = useCallback((requestSeq: number) => (
+    nonCriticalRequestSeqRef.current === requestSeq
+  ), []);
+
+  const fetchReviews = useCallback(async (requestSeq: number) => {
     try {
       const res = await reviewApi.getAll(Number(id));
+      if (!isCurrentNonCriticalRequest(requestSeq)) return;
       setReviews(res.data.reviews || []);
       setAverageRating(Number(res.data.averageRating || 0));
     } catch (error) {
+      if (!isCurrentNonCriticalRequest(requestSeq)) return;
       reportNonBlockingError('ProductDetail.fetchReviews', error);
     }
-  }, [id]);
+  }, [id, isCurrentNonCriticalRequest]);
 
-  const fetchRecommendations = useCallback(async () => {
+  const fetchRecommendations = useCallback(async (requestSeq: number) => {
     try {
       const cacheKey = `${language}|${id}`;
       const cached = getCachedProductRecommendations(cacheKey);
       if (cached) {
+        if (!isCurrentNonCriticalRequest(requestSeq)) return;
         setRecommendations(cached);
         return;
       }
       const res = await productApi.getRecommendations(Number(id));
       const items = res.data.map((item: Product) => localizeProduct(item, language));
+      if (!isCurrentNonCriticalRequest(requestSeq)) return;
       cacheProductRecommendations(cacheKey, items);
       setRecommendations(items);
     } catch (error) {
+      if (!isCurrentNonCriticalRequest(requestSeq)) return;
       reportNonBlockingError('ProductDetail.fetchRecommendations', error);
     }
-  }, [id, language]);
+  }, [id, isCurrentNonCriticalRequest, language]);
 
-  const fetchQuestions = useCallback(async () => {
+  const fetchQuestions = useCallback(async (requestSeq: number) => {
     try {
       const res = await questionApi.getByProduct(Number(id));
+      if (!isCurrentNonCriticalRequest(requestSeq)) return;
       const answeredQuestions = res.data || [];
       setQuestions(answeredQuestions);
       setPendingQuestions((current) => current.filter((pendingQuestion) => (
         !answeredQuestions.some((question) => normalizeQuestionText(question.question) === normalizeQuestionText(pendingQuestion.question))
       )));
     } catch (error) {
+      if (!isCurrentNonCriticalRequest(requestSeq)) return;
       reportNonBlockingError('ProductDetail.fetchQuestions', error);
       setQuestions([]);
     }
-  }, [id]);
+  }, [id, isCurrentNonCriticalRequest]);
 
-  const fetchReviewableOrders = useCallback(async () => {
+  const fetchReviewableOrders = useCallback(async (requestSeq: number) => {
     try {
       const ordersRes = await reviewApi.getReviewableOrders(Number(id));
+      if (!isCurrentNonCriticalRequest(requestSeq)) return;
       setReviewableOrders(ordersRes.data || []);
     } catch (error) {
+      if (!isCurrentNonCriticalRequest(requestSeq)) return;
       reportNonBlockingError('ProductDetail.fetchReviewableOrders', error);
       setReviewableOrders([]);
     }
-  }, [id]);
+  }, [id, isCurrentNonCriticalRequest]);
 
-  const warmNonCriticalContent = useCallback(() => {
+  const warmNonCriticalContent = useCallback((requestSeq: number) => {
+    if (!isCurrentNonCriticalRequest(requestSeq)) return;
     if (nonCriticalLoadedRef.current) return;
     nonCriticalLoadedRef.current = true;
     const token = getLocalStorageItem('token');
-    fetchReviews();
-    fetchQuestions();
-    fetchRecommendations();
+    fetchReviews(requestSeq);
+    fetchQuestions(requestSeq);
+    fetchRecommendations(requestSeq);
     if (token) {
-      fetchReviewableOrders();
+      fetchReviewableOrders(requestSeq);
     }
-  }, [fetchQuestions, fetchRecommendations, fetchReviewableOrders, fetchReviews]);
+  }, [fetchQuestions, fetchRecommendations, fetchReviewableOrders, fetchReviews, isCurrentNonCriticalRequest]);
 
   useEffect(() => {
     let disposed = false;
+    const nonCriticalRequestSeq = nonCriticalRequestSeqRef.current + 1;
+    nonCriticalRequestSeqRef.current = nonCriticalRequestSeq;
     nonCriticalLoadedRef.current = false;
     setReviews([]);
     setQuestions([]);
@@ -517,6 +535,7 @@ const ProductDetail: React.FC = () => {
     setRecommendations([]);
     setReviewableOrders([]);
     setAverageRating(0);
+    setQuestionSubmitting(false);
     const token = getLocalStorageItem('token');
     const fetchProduct = async () => {
       setLoading(true);
@@ -556,13 +575,13 @@ const ProductDetail: React.FC = () => {
     setIsAlerted(hasStockAlert(Number(id)));
     setIsCompared(isProductCompared(Number(id)));
 
-    const fallbackTimer = window.setTimeout(warmNonCriticalContent, 1800);
+    const fallbackTimer = window.setTimeout(() => warmNonCriticalContent(nonCriticalRequestSeq), 1800);
     const target = detailContentRef.current;
     let observer: IntersectionObserver | null = null;
     if (target && 'IntersectionObserver' in window) {
       observer = new IntersectionObserver((entries) => {
         if (entries.some((entry) => entry.isIntersecting)) {
-          warmNonCriticalContent();
+          warmNonCriticalContent(nonCriticalRequestSeq);
           observer?.disconnect();
         }
       }, { rootMargin: '520px 0px' });
@@ -577,7 +596,7 @@ const ProductDetail: React.FC = () => {
         const nextTarget = detailContentRef.current;
         if (!nextTarget) return;
         if (nextTarget.getBoundingClientRect().top < window.innerHeight + 520) {
-          warmNonCriticalContent();
+          warmNonCriticalContent(nonCriticalRequestSeq);
           detachScrollWarmup();
         }
       };
@@ -588,6 +607,7 @@ const ProductDetail: React.FC = () => {
       scrollWarmup();
       return () => {
         disposed = true;
+        nonCriticalRequestSeqRef.current += 1;
         window.clearTimeout(fallbackTimer);
         detachScrollWarmup();
         observer?.disconnect();
@@ -596,6 +616,7 @@ const ProductDetail: React.FC = () => {
 
     return () => {
       disposed = true;
+      nonCriticalRequestSeqRef.current += 1;
       window.clearTimeout(fallbackTimer);
       observer?.disconnect();
     };
@@ -797,11 +818,13 @@ const ProductDetail: React.FC = () => {
   };
 
   const handleAddReview = async (orderId: number, rating: number, comment: string, imageUrls: string[] = []) => {
+    const requestSeq = nonCriticalRequestSeqRef.current;
     await reviewApi.create(Number(id), orderId, rating, comment, imageUrls);
-    await fetchReviews();
+    if (!isCurrentNonCriticalRequest(requestSeq)) return;
+    await fetchReviews(requestSeq);
     const token = getLocalStorageItem('token');
     if (token) {
-      await fetchReviewableOrders();
+      await fetchReviewableOrders(requestSeq);
     }
   };
 
@@ -815,10 +838,12 @@ const ProductDetail: React.FC = () => {
       message.warning(t('pages.ask.emptyQuestion'));
       return;
     }
+    const requestSeq = nonCriticalRequestSeqRef.current;
     try {
       setQuestionSubmitting(true);
       const submittedQuestion = normalizeQuestionText(questionText);
       await questionApi.ask(Number(id), submittedQuestion);
+      if (!isCurrentNonCriticalRequest(requestSeq)) return;
       setPendingQuestions((current) => [
         {
           id: `${Date.now()}`,
@@ -828,12 +853,15 @@ const ProductDetail: React.FC = () => {
         ...current.filter((pendingQuestion) => normalizeQuestionText(pendingQuestion.question) !== submittedQuestion).slice(0, 4),
       ]);
       setQuestionText('');
-      await fetchQuestions();
+      await fetchQuestions(requestSeq);
       message.success(t('pages.ask.pendingTitle'));
     } catch (err: unknown) {
+      if (!isCurrentNonCriticalRequest(requestSeq)) return;
       message.error(getApiErrorMessage(err, t('pages.ask.askFailed'), language));
     } finally {
-      setQuestionSubmitting(false);
+      if (isCurrentNonCriticalRequest(requestSeq)) {
+        setQuestionSubmitting(false);
+      }
     }
   };
 
@@ -972,7 +1000,7 @@ const ProductDetail: React.FC = () => {
     const minutes = Math.floor((totalSeconds % 3600) / 60);
     const seconds = totalSeconds % 60;
     const time = [hours, minutes, seconds].map((value) => String(value).padStart(2, '0')).join(':');
-    return days > 0 ? `${days}d ${time}` : time;
+    return days > 0 ? `${t('pages.productDetail.limitedTimeDays', { count: days })} ${time}` : time;
   };
   const decisionChecklist = [
     {

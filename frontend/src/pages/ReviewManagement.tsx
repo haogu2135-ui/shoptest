@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Table, Button, Popconfirm, Rate, message, Typography, Divider, Input, Modal, Select, Space, Tag } from 'antd';
+import { Alert, Table, Button, Popconfirm, Rate, message, Typography, Divider, Input, Modal, Select, Space, Tag } from 'antd';
 import { DeleteOutlined, EyeInvisibleOutlined, CheckOutlined, MessageOutlined, SearchOutlined, StarOutlined, WarningOutlined } from '@ant-design/icons';
 import { adminApi } from '../api';
 import type { Review } from '../types';
@@ -24,6 +24,8 @@ const mobilePopconfirmClassNames = { root: 'shop-mobile-popup-layer' };
 const ReviewManagement: React.FC = () => {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [reviewSnapshotLoaded, setReviewSnapshotLoaded] = useState(false);
   const [replyTarget, setReplyTarget] = useState<Review | null>(null);
   const [replyText, setReplyText] = useState('');
   const [replying, setReplying] = useState(false);
@@ -39,6 +41,7 @@ const ReviewManagement: React.FC = () => {
   const canModerateReviews = hasAdminPermission(adminPermissions, currentRole, REVIEWS_MODERATE_PERMISSION);
   const canReplyReviews = hasAdminPermission(adminPermissions, currentRole, REVIEWS_REPLY_PERMISSION);
   const canDeleteReviews = hasAdminPermission(adminPermissions, currentRole, REVIEWS_DELETE_PERMISSION);
+  const actionsDisabledByStaleData = Boolean(loadError);
   const adminReviewProductName = (record: Review) => (
     (record.productName || record.product?.name || '').trim()
       || t('pages.profile.productFallback', { id: record.productId || record.product?.id || record.id })
@@ -129,8 +132,12 @@ const ReviewManagement: React.FC = () => {
         totalPages: res.data.totalPages || 0,
       });
       setReviewSummary(res.data.summary || {});
+      setReviewSnapshotLoaded(true);
+      setLoadError(null);
     } catch (err: unknown) {
-      message.error(getApiErrorMessage(err, t('pages.adminReviews.fetchFailed'), language));
+      const errorMessage = getApiErrorMessage(err, t('pages.adminReviews.fetchFailed'), language);
+      setLoadError(errorMessage);
+      message.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -141,6 +148,10 @@ const ReviewManagement: React.FC = () => {
   }, [debouncedKeyword, fetchReviews, statusFilter]);
 
   const handleDelete = async (id: number) => {
+    if (actionsDisabledByStaleData) {
+      message.warning(t('pages.adminReviews.staleActionBlocked'));
+      return;
+    }
     if (!canDeleteReviews) {
       message.error(t('adminLayout.noPermission'));
       return;
@@ -155,6 +166,10 @@ const ReviewManagement: React.FC = () => {
   };
 
   const openReply = (review: Review) => {
+    if (actionsDisabledByStaleData) {
+      message.warning(t('pages.adminReviews.staleActionBlocked'));
+      return;
+    }
     if (!canReplyReviews) {
       message.error(t('adminLayout.noPermission'));
       return;
@@ -164,6 +179,10 @@ const ReviewManagement: React.FC = () => {
   };
 
   const handleReply = async () => {
+    if (actionsDisabledByStaleData) {
+      message.warning(t('pages.adminReviews.staleActionBlocked'));
+      return;
+    }
     if (!canReplyReviews) {
       message.error(t('adminLayout.noPermission'));
       return;
@@ -194,6 +213,10 @@ const ReviewManagement: React.FC = () => {
   };
 
   const handleStatus = async (review: Review, status: string) => {
+    if (actionsDisabledByStaleData) {
+      message.warning(t('pages.adminReviews.staleActionBlocked'));
+      return;
+    }
     if (!canModerateReviews) {
       message.error(t('adminLayout.noPermission'));
       return;
@@ -342,10 +365,10 @@ const ReviewManagement: React.FC = () => {
               onConfirm={() => handleStatus(record, 'APPROVED')}
               okText={t('common.confirm')}
               cancelText={t('common.cancel')}
-              okButtonProps={{ 'aria-label': approveActionLabel, title: approveActionLabel }}
+              okButtonProps={{ disabled: actionsDisabledByStaleData, 'aria-label': approveActionLabel, title: approveActionLabel }}
               cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${approveActionLabel}`, title: `${t('common.cancel')}: ${approveActionLabel}` }}
             >
-              <Button size="small" icon={<CheckOutlined />} aria-label={approveActionLabel} title={approveActionLabel}>
+              <Button size="small" icon={<CheckOutlined />} aria-label={approveActionLabel} title={approveActionLabel} disabled={actionsDisabledByStaleData}>
                 {t('pages.adminReviews.approve')}
               </Button>
             </Popconfirm>
@@ -358,33 +381,33 @@ const ReviewManagement: React.FC = () => {
               onConfirm={() => handleStatus(record, 'HIDDEN')}
               okText={t('common.confirm')}
               cancelText={t('common.cancel')}
-              okButtonProps={{ danger: true, 'aria-label': hideActionLabel, title: hideActionLabel }}
+              okButtonProps={{ danger: true, disabled: actionsDisabledByStaleData, 'aria-label': hideActionLabel, title: hideActionLabel }}
               cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${hideActionLabel}`, title: `${t('common.cancel')}: ${hideActionLabel}` }}
             >
-              <Button size="small" icon={<EyeInvisibleOutlined />} aria-label={hideActionLabel} title={hideActionLabel}>
+              <Button size="small" icon={<EyeInvisibleOutlined />} aria-label={hideActionLabel} title={hideActionLabel} disabled={actionsDisabledByStaleData}>
                 {t('pages.adminReviews.hide')}
               </Button>
             </Popconfirm>
           ) : null,
           canReplyReviews ? (
-          <Button key="reply" size="small" style={{ marginRight: 8 }} aria-label={replyActionLabel} title={replyActionLabel} onClick={() => openReply(record)}>
-            {t('pages.adminReviews.replyAction')}
-          </Button>
+            <Button key="reply" size="small" style={{ marginRight: 8 }} aria-label={replyActionLabel} title={replyActionLabel} onClick={() => openReply(record)} disabled={actionsDisabledByStaleData}>
+              {t('pages.adminReviews.replyAction')}
+            </Button>
           ) : null,
           canDeleteReviews ? (
-	          <Popconfirm
-	            classNames={mobilePopconfirmClassNames}
-	            key="delete"
-            title={t('pages.adminReviews.deleteConfirm')}
-            description={reviewLabel}
-            onConfirm={() => handleDelete(record.id)}
-            okText={t('common.confirm')}
-            cancelText={t('common.cancel')}
-            okButtonProps={{ danger: true, 'aria-label': deleteActionLabel, title: deleteActionLabel }}
-            cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${deleteActionLabel}`, title: `${t('common.cancel')}: ${deleteActionLabel}` }}
-          >
-            <Button size="small" danger icon={<DeleteOutlined />} aria-label={deleteActionLabel} title={deleteActionLabel}>{t('common.delete')}</Button>
-          </Popconfirm>
+            <Popconfirm
+              classNames={mobilePopconfirmClassNames}
+              key="delete"
+              title={t('pages.adminReviews.deleteConfirm')}
+              description={reviewLabel}
+              onConfirm={() => handleDelete(record.id)}
+              okText={t('common.confirm')}
+              cancelText={t('common.cancel')}
+              okButtonProps={{ danger: true, disabled: actionsDisabledByStaleData, 'aria-label': deleteActionLabel, title: deleteActionLabel }}
+              cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${deleteActionLabel}`, title: `${t('common.cancel')}: ${deleteActionLabel}` }}
+            >
+              <Button size="small" danger icon={<DeleteOutlined />} aria-label={deleteActionLabel} title={deleteActionLabel} disabled={actionsDisabledByStaleData}>{t('common.delete')}</Button>
+            </Popconfirm>
           ) : null,
         ].filter(Boolean);
         return actions.length ? <Space size="small" wrap>{actions}</Space> : '-';
@@ -405,22 +428,22 @@ const ReviewManagement: React.FC = () => {
         <div className="review-ops-panel__metrics">
           <div>
             <StarOutlined />
-            <strong>{reviewStats.averageRating.toFixed(1)}</strong>
+            <strong>{reviewSnapshotLoaded ? reviewStats.averageRating.toFixed(1) : '-'}</strong>
             <span>{t('pages.adminReviews.averageRating')}</span>
           </div>
           <div>
             <WarningOutlined />
-            <strong>{reviewStats.lowRating}</strong>
+            <strong>{reviewSnapshotLoaded ? reviewStats.lowRating : '-'}</strong>
             <span>{t('pages.adminReviews.lowRating')}</span>
           </div>
           <div>
             <MessageOutlined />
-            <strong>{reviewStats.needsReply}</strong>
+            <strong>{reviewSnapshotLoaded ? reviewStats.needsReply : '-'}</strong>
             <span>{t('pages.adminReviews.needsReply')}</span>
           </div>
           <div>
             <CheckOutlined />
-            <strong>{reviewStats.approved}</strong>
+            <strong>{reviewSnapshotLoaded ? reviewStats.approved : '-'}</strong>
             <span>{t('pages.adminReviews.approvedReviews')}</span>
           </div>
         </div>
@@ -456,6 +479,20 @@ const ReviewManagement: React.FC = () => {
           {t('common.search')}
         </Button>
       </Space>
+      {loadError ? (
+        <Alert
+          className="review-management-page__loadAlert"
+          type={reviewSnapshotLoaded ? 'warning' : 'error'}
+          showIcon
+          message={t('pages.adminReviews.loadErrorTitle')}
+          description={reviewSnapshotLoaded ? t('pages.adminReviews.staleDataWarning') : loadError}
+          action={(
+            <Button size="small" onClick={() => fetchReviews(pageState.page || 1, pageState.size || pageSizeRef.current)} loading={loading}>
+              {t('common.retry')}
+            </Button>
+          )}
+        />
+      ) : null}
       <Table
         className="review-management-page__table"
         columns={columns}
@@ -470,6 +507,7 @@ const ReviewManagement: React.FC = () => {
           showTotal: (total) => `${t('pages.adminReviews.total', { count: total })} | ${pageState.totalPages ? `${pageState.page}/${pageState.totalPages}` : '0/0'}`,
           onChange: (page, pageSize) => fetchReviews(page, pageSize),
         }}
+        locale={{ emptyText: loadError && !reviewSnapshotLoaded ? t('pages.adminReviews.loadErrorTitle') : undefined }}
         bordered
         size="middle"
         scroll={{ x: 1730 }}
@@ -481,7 +519,7 @@ const ReviewManagement: React.FC = () => {
         onOk={handleReply}
         okText={t('pages.adminReviews.replyAction')}
         cancelText={t('common.cancel')}
-        okButtonProps={{ disabled: !canReplyReviews, 'aria-label': replySubmitActionLabel, title: replySubmitActionLabel }}
+        okButtonProps={{ disabled: !canReplyReviews || actionsDisabledByStaleData, 'aria-label': replySubmitActionLabel, title: replySubmitActionLabel }}
         cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${replySubmitActionLabel}`, title: `${t('common.cancel')}: ${replySubmitActionLabel}` }}
         confirmLoading={replying}
         title={t('pages.adminReviews.replyAction')}

@@ -1,6 +1,5 @@
 package com.example.shop.config;
 
-import com.example.shop.entity.IpBlacklistEntry;
 import com.example.shop.service.IpBlacklistService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.http.HttpStatus;
@@ -13,7 +12,6 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.Map;
-import java.util.Optional;
 
 @Component
 public class IpBlacklistFilter extends OncePerRequestFilter {
@@ -36,16 +34,13 @@ public class IpBlacklistFilter extends OncePerRequestFilter {
             return;
         }
         String ipAddress = ipBlacklistService.resolveClientIp(request);
-        Optional<IpBlacklistEntry> blocked = ipBlacklistService.findBlockingEntry(ipAddress);
-        if (blocked.isEmpty()) {
+        if (ipBlacklistService.findBlockingEntry(ipAddress).isEmpty()) {
             filterChain.doFilter(request, response);
             return;
         }
         response.setStatus(HttpStatus.FORBIDDEN.value());
         response.setContentType("application/json;charset=UTF-8");
         Map<String, Object> payload = errorResponseFactory.buildPayload(HttpStatus.FORBIDDEN, "IP address is temporarily blocked", request);
-        payload.put("ipAddress", ipAddress);
-        payload.put("blockedUntil", blocked.get().getBlockedUntil() == null ? null : blocked.get().getBlockedUntil().toString());
         objectMapper.writeValue(response.getWriter(), payload);
     }
 }

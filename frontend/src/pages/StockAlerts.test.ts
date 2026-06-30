@@ -28,4 +28,17 @@ describe('StockAlerts mobile action layout', () => {
     expect(fixCss).toMatch(/\.stock-alerts\.stock-alerts-page \.stock-alerts__mobileAction \.ant-btn > span:not\(\.anticon\):not\(\.ant-btn-icon\)/);
     expect(fixCss).toMatch(/font-size:\s*12px\s*!important;/);
   });
+
+  it('keeps stale product data from masquerading as a live stock snapshot', () => {
+    const source = readStockAlertsSource();
+
+    expect(source).toContain('const hasStaleProductData = Boolean(loadError && alerts.length > 0);');
+    expect(source).toContain("description={hasStaleProductData ? t('pages.stockAlerts.staleDataWarning') : t('common.loadFailedRetry')}");
+    expect(source).toContain("title: t('pages.stockAlerts.nextActionStaleTitle')");
+    expect(source).toContain("text: t('pages.stockAlerts.nextActionStaleText')");
+    expect(source).toContain("const restockNextActionIcon = restockNextAction.tone === 'stale' ? <ReloadOutlined /> : <ShoppingCartOutlined />;");
+    expect(source).toContain('disabled={hasStaleProductData || !ready}');
+    expect(source).toMatch(/setLoading\(true\);[\s\S]*?const productIds = Array\.from/);
+    expect(source).not.toMatch(/setLoading\(true\);\s*setLoadError\(''\);/);
+  });
 });

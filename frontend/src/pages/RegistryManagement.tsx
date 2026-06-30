@@ -90,7 +90,13 @@ const RegistryManagement: React.FC = () => {
         />
       ) : null}
 
-      <Spin spinning={loading && !status}>
+      <Spin
+        spinning={loading && !status}
+        role="status"
+        aria-live="polite"
+        aria-busy={loading && !status}
+        aria-label={t('common.loading')}
+      >
         {loadError && !status ? null : <div className="registry-management__stats">
           <Card>
             <Statistic title={t('pages.registryAdmin.serviceName')} value={status?.applicationName || '-'} prefix={<ApiOutlined />} />

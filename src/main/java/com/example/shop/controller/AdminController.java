@@ -1018,10 +1018,14 @@ public class AdminController {
                 .collect(Collectors.toList());
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("items", orders);
+        response.put("content", orders);
         response.put("total", total);
+        response.put("totalElements", total);
         response.put("page", safePage);
+        response.put("number", safePage - 1);
         response.put("size", safeSize);
         response.put("totalPages", totalPages);
+        response.put("hasNext", safePage < totalPages);
         response.put("summary", buildAdminOrdersSummary(safeSearch));
         return response;
     }

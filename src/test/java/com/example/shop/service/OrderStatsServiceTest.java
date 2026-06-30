@@ -115,6 +115,104 @@ class OrderStatsServiceTest {
     }
 
     @Test
+    void dashboardOrderStatsMapsAggregateRowsIntoOperationalMetrics() {
+        LocalDateTime basis = LocalDateTime.of(2026, 6, 15, 10, 0);
+        when(runtimeConfig.getLong("order.dashboard-stats-cache-ms", 5000L)).thenReturn(5000L);
+        when(orderRepository.dashboardOrderStats(basis)).thenReturn(Map.of(
+                "totalOrders", 10L,
+                "paidOrders", 4L,
+                "netRevenue", new BigDecimal("300.00"),
+                "refundedOrders", 2L,
+                "refundedAmount", new BigDecimal("100.00"),
+                "grossOrderAmount", new BigDecimal("700.00"),
+                "cancelledOrders", 1L,
+                "pendingPaymentOrders", 3L,
+                "pendingShipmentOrders", 4L,
+                "shippedOrders", 5L,
+                "ordersWithTracking", 3L,
+                "ordersWithoutTracking", 2L,
+                "completedOrders", 6L,
+                "stalePendingPayment", 1L,
+                "delayedShipment", 2L,
+                "returnAwaitingShipment", 3L,
+                "refundDue", 4L
+        ));
+        when(orderRepository.countByStatusGroup()).thenReturn(List.of(Map.of("status", "COMPLETED", "count", 6L)));
+        when(orderRepository.findRecentAdminOrders(3)).thenReturn(List.of());
+        LocalDateTime trendStart = LocalDateTime.of(2026, 6, 14, 0, 0);
+        LocalDateTime trendEndExclusive = LocalDateTime.of(2026, 6, 16, 0, 0);
+        when(orderRepository.dashboardSalesTrend(trendStart, trendEndExclusive)).thenReturn(List.of(Map.of(
+                "trendDate", "2026-06-15",
+                "orderCount", 2L,
+                "revenue", new BigDecimal("33.50")
+        )));
+        when(orderRepository.dashboardPaymentMethodBreakdown()).thenReturn(List.of(Map.of(
+                "paymentMethod", "card",
+                "orderCount", 3L
+        )));
+
+        Map<String, Object> stats = service.getDashboardOrderStats(basis, 2, 3);
+
+        assertEquals(10L, stats.get("totalOrders"));
+        assertEquals(new BigDecimal("400.00"), stats.get("totalRevenue"));
+        assertEquals(new BigDecimal("400.00"), stats.get("grossPaidRevenue"));
+        assertEquals(new BigDecimal("300.00"), stats.get("netRevenue"));
+        assertEquals(new BigDecimal("100.00"), stats.get("refundedAmount"));
+        assertEquals(new BigDecimal("75.00"), stats.get("averageOrderValue"));
+        assertEquals(new BigDecimal("40.00"), stats.get("conversionRate"));
+        assertEquals(new BigDecimal("25.00"), stats.get("refundRate"));
+        assertEquals(10L, stats.get("operationsSlaRiskTotal"));
+        assertEquals(Map.of(
+                "stalePendingPayment", 1L,
+                "delayedShipment", 2L,
+                "returnAwaitingShipment", 3L,
+                "refundDue", 4L
+        ), stats.get("operationsSlaRisks"));
+        assertEquals(Map.of("COMPLETED", 6L), stats.get("orderStatusBreakdown"));
+        assertEquals(Map.of("card", 3L), stats.get("paymentMethodBreakdown"));
+
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> salesTrend = (List<Map<String, Object>>) stats.get("salesTrend");
+        assertEquals(2, salesTrend.size());
+        assertEquals(Map.of("date", "2026-06-14", "orders", 0L, "revenue", BigDecimal.ZERO), salesTrend.get(0));
+        assertEquals(Map.of("date", "2026-06-15", "orders", 2L, "revenue", new BigDecimal("33.50")), salesTrend.get(1));
+
+        verify(orderRepository).dashboardOrderStats(basis);
+        verify(orderRepository).countByStatusGroup();
+        verify(orderRepository).findRecentAdminOrders(3);
+        verify(orderRepository).dashboardSalesTrend(trendStart, trendEndExclusive);
+        verify(orderRepository).dashboardPaymentMethodBreakdown();
+        verifyNoMoreInteractions(orderRepository);
+    }
+
+    @Test
+    void dashboardOrderStatsKeepsDerivedRatesAtZeroWhenThereAreNoOrders() {
+        LocalDateTime basis = LocalDateTime.of(2026, 6, 15, 10, 0);
+        when(runtimeConfig.getLong("order.dashboard-stats-cache-ms", 5000L)).thenReturn(5000L);
+        when(orderRepository.dashboardOrderStats(basis)).thenReturn(Map.of());
+        when(orderRepository.countByStatusGroup()).thenReturn(List.of());
+        when(orderRepository.findRecentAdminOrders(1)).thenReturn(List.of());
+        when(orderRepository.dashboardSalesTrend(LocalDateTime.of(2026, 6, 15, 0, 0),
+                LocalDateTime.of(2026, 6, 16, 0, 0))).thenReturn(List.of());
+        when(orderRepository.dashboardPaymentMethodBreakdown()).thenReturn(List.of());
+
+        Map<String, Object> stats = service.getDashboardOrderStats(basis, 1, 1);
+
+        assertEquals(BigDecimal.ZERO, stats.get("averageOrderValue"));
+        assertEquals(BigDecimal.ZERO, stats.get("conversionRate"));
+        assertEquals(BigDecimal.ZERO, stats.get("refundRate"));
+        assertEquals(0L, stats.get("operationsSlaRiskTotal"));
+
+        verify(orderRepository).dashboardOrderStats(basis);
+        verify(orderRepository).countByStatusGroup();
+        verify(orderRepository).findRecentAdminOrders(1);
+        verify(orderRepository).dashboardSalesTrend(LocalDateTime.of(2026, 6, 15, 0, 0),
+                LocalDateTime.of(2026, 6, 16, 0, 0));
+        verify(orderRepository).dashboardPaymentMethodBreakdown();
+        verifyNoMoreInteractions(orderRepository);
+    }
+
+    @Test
     void dashboardSalesTrendMapperUsesBoundedDateWindow() throws Exception {
         String mapper = Files.readString(Path.of("src/main/resources/mapper/OrderMapper.xml"));
         int trendStart = mapper.indexOf("<select id=\"dashboardSalesTrend\"");
@@ -274,7 +372,7 @@ class OrderStatsServiceTest {
         when(paymentRepository.countActivePendingByOrderId(2L)).thenReturn(1L);
         when(paymentRepository.countActivePendingByOrderId(3L)).thenReturn(1L);
 
-        service.cancelExpiredUnpaidOrders();
+        OrderService.ExpiredOrderCancellationResult result = service.cancelExpiredUnpaidOrders();
 
         verify(orderRepository).findPendingPaymentBefore(any(LocalDateTime.class), isNull(), eq(2));
         verify(orderRepository).findPendingPaymentBefore(any(LocalDateTime.class), eq(2L), eq(2));
@@ -282,6 +380,11 @@ class OrderStatsServiceTest {
         verify(paymentRepository).countActivePendingByOrderId(1L);
         verify(paymentRepository).countActivePendingByOrderId(2L);
         verify(paymentRepository).countActivePendingByOrderId(3L);
+        assertEquals(3, result.getScannedCount());
+        assertEquals(0, result.getCancelledCount());
+        assertEquals(3, result.getSkippedCount());
+        assertEquals(0, result.getFailedCount());
+        assertEquals(List.of(), result.getFailedOrderIds());
     }
 
     @Test
@@ -300,11 +403,17 @@ class OrderStatsServiceTest {
         when(paymentRepository.countActivePendingByOrderId(1L)).thenThrow(new IllegalStateException("database unavailable"));
         when(paymentRepository.countActivePendingByOrderId(2L)).thenReturn(1L);
 
-        service.cancelExpiredUnpaidOrders();
+        OrderService.ExpiredOrderCancellationResult result = service.cancelExpiredUnpaidOrders();
 
         verify(paymentRepository).countActivePendingByOrderId(2L);
         String logs = output.getOut() + output.getErr();
         assertTrue(logs.contains("Skipping expired-order cancellation during scan for order 1"));
+        assertEquals(2, result.getScannedCount());
+        assertEquals(0, result.getCancelledCount());
+        assertEquals(1, result.getSkippedCount());
+        assertEquals(1, result.getFailedCount());
+        assertEquals(List.of(1L), result.getFailedOrderIds());
+        assertEquals("database unavailable", result.getFailureMessages().get(1L));
     }
 
     private Order pendingPaymentOrder(Long id) {

@@ -7,6 +7,7 @@ import org.mockito.ArgumentCaptor;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -21,6 +22,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -42,10 +44,40 @@ class UserServiceTest {
     @Test
     void countUsesDedicatedCountQuery() {
         when(userMapper.countAll()).thenReturn(12L);
+        ReflectionTestUtils.setField(service, "dashboardCountCacheMs", 0L);
 
         assertEquals(12L, service.count());
 
         verify(userMapper).countAll();
+    }
+
+    @Test
+    void dashboardCountUsesShortTtlCacheAndInvalidatesOnWrites() {
+        when(userMapper.countAll()).thenReturn(12L, 13L, 14L);
+        ReflectionTestUtils.setField(service, "dashboardCountCacheMs", 5000L);
+
+        assertEquals(12L, service.count());
+        assertEquals(12L, service.count());
+
+        service.deleteById(7L);
+        assertEquals(13L, service.count());
+
+        User user = new User();
+        user.setUsername("newuser");
+        user.setPassword("StrongPass123");
+        user.setEmail("new@example.com");
+        user.setPhone("15551234567");
+        doAnswer(invocation -> {
+            User inserted = invocation.getArgument(0);
+            inserted.setId(99L);
+            return 1;
+        }).when(userMapper).insert(user);
+        when(userMapper.findById(99L)).thenReturn(user);
+
+        service.register(user);
+        assertEquals(14L, service.count());
+
+        verify(userMapper, times(3)).countAll();
     }
 
     @Test
@@ -73,6 +105,22 @@ class UserServiceTest {
         service.searchPage("  Jane\u0000   Doe  ", " ADMIN ", " ACTIVE ", 3, 20);
 
         verify(userMapper).searchPage("Jane Doe", "ADMIN", "ACTIVE", 20, 40);
+    }
+
+    @Test
+    void adminKeywordSearchEscapesLikeWildcardsBeforeMapper() {
+        String escapedKeyword = "50!% off!_!!";
+        when(userMapper.countSearch(escapedKeyword, null, null)).thenReturn(3L);
+        when(userMapper.searchPage(escapedKeyword, null, null, 10, 0)).thenReturn(List.of());
+        when(userMapper.adminSummary(escapedKeyword, null, null)).thenReturn(Map.of());
+
+        assertEquals(3L, service.countSearch(" 50%  off_! ", null, null));
+        service.searchPage(" 50%  off_! ", null, null, 1, 10);
+        service.adminSummary(" 50%  off_! ", null, null);
+
+        verify(userMapper).countSearch(escapedKeyword, null, null);
+        verify(userMapper).searchPage(escapedKeyword, null, null, 10, 0);
+        verify(userMapper).adminSummary(escapedKeyword, null, null);
     }
 
     @Test
@@ -122,6 +170,26 @@ class UserServiceTest {
         assertTrue(adminSummaryXml.contains("COUNT(*) AS totalUsers"));
         assertTrue(adminSummaryXml.contains("SUM(CASE WHEN"));
         assertFalse(adminSummaryXml.contains("countUsersByDateRange"));
+    }
+
+    @Test
+    void adminUserSearchLikeContractEscapesWildcardInput() throws Exception {
+        String userServiceSource = Files.readString(Path.of("src/main/java/com/example/shop/service/UserService.java"));
+        String mapperXml = Files.readString(Path.of("src/main/resources/mapper/UserMapper.xml"));
+        String searchWhere = block(mapperXml, "<sql id=\"adminUserSearchWhere\">", "</sql>");
+        String adminSummary = block(mapperXml, "<select id=\"adminSummary\"", "</select>");
+
+        assertTrue(userServiceSource.contains("userMapper.countSearch(\n                searchLikeTerm(keyword),"));
+        assertTrue(userServiceSource.contains("userMapper.searchPage(\n                searchLikeTerm(keyword),"));
+        assertTrue(userServiceSource.contains("userMapper.adminSummary(\n                searchLikeTerm(keyword),"));
+        assertTrue(userServiceSource.contains("private String searchLikeTerm(String value)"));
+        assertTrue(userServiceSource.contains("return value.replace(\"!\", \"!!\")\n"
+                + "                .replace(\"%\", \"!%\")\n"
+                + "                .replace(\"_\", \"!_\");"));
+        assertEquals(3, countOccurrences(searchWhere, "LIKE CONCAT('%', LOWER(#{keyword}), '%') ESCAPE '!'"));
+        assertEquals(3, countOccurrences(adminSummary, "LIKE CONCAT('%', LOWER(#{keyword}), '%') ESCAPE '!'"));
+        assertFalse(searchWhere.contains("LIKE CONCAT('%', LOWER(#{keyword}), '%')\n"));
+        assertFalse(adminSummary.contains("LIKE CONCAT('%', LOWER(#{keyword}), '%')\n"));
     }
 
     @Test
@@ -182,7 +250,7 @@ class UserServiceTest {
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> service.register(user));
 
-        assertEquals("Username already registered", exception.getMessage());
+        assertEquals(UserService.REGISTRATION_ACCOUNT_DETAILS_UNAVAILABLE_MESSAGE, exception.getMessage());
         verify(userMapper, never()).insert(user);
     }
 
@@ -259,6 +327,32 @@ class UserServiceTest {
     }
 
     @Test
+    void passwordPolicySourceRequiresCommonPasswordsAndThreeCharacterClasses() throws Exception {
+        String source = Files.readString(Path.of("src/main/java/com/example/shop/service/UserService.java"));
+
+        assertTrue(source.contains("PASSWORD_MIN_CHARS = 12"));
+        assertTrue(source.contains("PASSWORD_MAX_CHARS = 128"));
+        assertTrue(source.contains("COMMON_PASSWORDS.contains(password.trim().toLowerCase(Locale.ROOT))"));
+        assertTrue(source.contains("passwordCharacterClassCount(password) < 3"));
+        assertTrue(source.contains("Character::isLowerCase"));
+        assertTrue(source.contains("Character::isUpperCase"));
+        assertTrue(source.contains("Character::isDigit"));
+        assertTrue(source.contains("!Character.isLetterOrDigit(codePoint)"));
+        assertTrue(source.contains("!Character.isWhitespace(codePoint)"));
+    }
+
+    @Test
+    void adminCreationRunsThroughTransactionalRegisterAdminPath() throws Exception {
+        String source = Files.readString(Path.of("src/main/java/com/example/shop/service/UserService.java"));
+
+        assertFalse(source.contains("adminCreateUser("));
+        assertTrue(source.contains("@Transactional(rollbackFor = Exception.class)\n"
+                + "    public void registerAdmin(User user)"));
+        assertTrue(source.contains("userMapper.insert(user);"));
+        assertTrue(source.contains("userMapper.releaseAdminBootstrapLock();"));
+    }
+
+    @Test
     void registerAdminRejectsWeakPassword() {
         User admin = new User();
         admin.setUsername("admin");
@@ -282,6 +376,43 @@ class UserServiceTest {
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> service.registerAdmin(admin));
 
         assertEquals("Admin bootstrap is already completed", exception.getMessage());
+        verify(userMapper, never()).insert(admin);
+        verify(passwordEncoder, never()).encode("StrongPass123");
+        verify(userMapper).releaseAdminBootstrapLock();
+    }
+
+    @Test
+    void registerAdminRejectsExistingUsernameBeforeInsert() {
+        User admin = new User();
+        admin.setUsername("admin");
+        admin.setPassword("StrongPass123");
+        admin.setEmail("admin@example.com");
+        User existing = new User();
+        existing.setId(7L);
+        when(userMapper.findByUsername("admin")).thenReturn(existing);
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> service.registerAdmin(admin));
+
+        assertEquals("Username already registered", exception.getMessage());
+        verify(userMapper, never()).insert(admin);
+        verify(passwordEncoder, never()).encode("StrongPass123");
+        verify(userMapper).releaseAdminBootstrapLock();
+    }
+
+    @Test
+    void registerAdminRejectsExistingEmailBeforeInsert() {
+        User admin = new User();
+        admin.setUsername("admin");
+        admin.setPassword("StrongPass123");
+        admin.setEmail("admin@example.com");
+        User existing = new User();
+        existing.setId(7L);
+        when(userMapper.findByUsername("admin")).thenReturn(null);
+        when(userMapper.findByUsernameOrPhoneOrEmail("admin@example.com")).thenReturn(existing);
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> service.registerAdmin(admin));
+
+        assertEquals("Email already registered", exception.getMessage());
         verify(userMapper, never()).insert(admin);
         verify(passwordEncoder, never()).encode("StrongPass123");
         verify(userMapper).releaseAdminBootstrapLock();
@@ -343,7 +474,7 @@ class UserServiceTest {
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> service.register(user));
 
-        assertEquals("Email already registered", exception.getMessage());
+        assertEquals(UserService.REGISTRATION_ACCOUNT_DETAILS_UNAVAILABLE_MESSAGE, exception.getMessage());
         verify(userMapper, never()).insert(user);
     }
 
@@ -358,8 +489,23 @@ class UserServiceTest {
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> service.register(user));
 
-        assertEquals("Email already registered", exception.getMessage());
+        assertEquals(UserService.REGISTRATION_ACCOUNT_DETAILS_UNAVAILABLE_MESSAGE, exception.getMessage());
         verify(userMapper, never()).findByPhone(any());
+        verify(userMapper, never()).insert(user);
+    }
+
+    @Test
+    void registerRejectsDuplicatePhoneWithGenericPublicRegistrationMessage() {
+        User user = new User();
+        user.setUsername("newuser");
+        user.setPassword("StrongPass123");
+        user.setEmail("new@example.com");
+        user.setPhone("15551234567");
+        when(userMapper.findByPhone("15551234567")).thenReturn(new User());
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> service.register(user));
+
+        assertEquals(UserService.REGISTRATION_ACCOUNT_DETAILS_UNAVAILABLE_MESSAGE, exception.getMessage());
         verify(userMapper, never()).insert(user);
     }
 
@@ -482,6 +628,20 @@ class UserServiceTest {
     }
 
     @Test
+    void updatePasswordRequiresOldAndNewPasswordParameters() throws Exception {
+        String source = Files.readString(Path.of("src/main/java/com/example/shop/service/UserService.java"));
+        String controller = Files.readString(Path.of("src/main/java/com/example/shop/controller/UserController.java"));
+        String request = Files.readString(Path.of("src/main/java/com/example/shop/dto/UpdatePasswordRequest.java"));
+
+        assertFalse(source.contains("updatePassword(Long userId, String oldPassword)"));
+        assertTrue(source.contains("public void updatePassword(Long userId, String oldPassword, String newPassword)"));
+        assertTrue(source.contains("assertStrongPassword(newPassword, \"New password\");"));
+        assertTrue(source.contains("passwordEncoder.encode(newPassword)"));
+        assertTrue(controller.contains("userService.updatePassword(userDetails.getId(), request.getOldPassword(), request.getNewPassword())"));
+        assertTrue(request.contains("private String newPassword;"));
+    }
+
+    @Test
     void updatePasswordRejectsWeakNewPasswordBeforeCheckingOldPassword() {
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
                 () -> service.updatePassword(5L, "old-secret", "lowercase1234"));
@@ -565,5 +725,23 @@ class UserServiceTest {
         user.setEmail("new@example.com");
         user.setPhone("15551234567");
         return user;
+    }
+
+    private String block(String source, String startToken, String endToken) {
+        int start = source.indexOf(startToken);
+        assertTrue(start >= 0, () -> "Missing source block: " + startToken);
+        int end = source.indexOf(endToken, start);
+        assertTrue(end > start, () -> "Missing source block terminator: " + endToken);
+        return source.substring(start, end);
+    }
+
+    private int countOccurrences(String source, String needle) {
+        int count = 0;
+        int index = source.indexOf(needle);
+        while (index >= 0) {
+            count++;
+            index = source.indexOf(needle, index + needle.length());
+        }
+        return count;
     }
 }

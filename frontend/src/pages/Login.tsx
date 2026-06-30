@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Form, Input, Button, Typography, message, Tabs } from 'antd';
 import type { InputRef } from 'antd/es/input';
 import { CompassOutlined, CustomerServiceOutlined, EyeInvisibleOutlined, EyeOutlined, LockOutlined, MailOutlined, MobileOutlined, SafetyCertificateOutlined, ShoppingCartOutlined, TruckOutlined, UserOutlined } from '@ant-design/icons';
@@ -9,10 +9,11 @@ import { useLanguage } from '../i18n';
 import type { Language } from '../i18n';
 import { getPostLoginRedirectTarget } from '../utils/authRedirect';
 import { getGuestCartItems, replaceGuestCartItems } from '../utils/guestCart';
-import { getSessionStorageItem, hasStoredValue, removeSessionStorageItem } from '../utils/safeStorage';
+import { getSessionStorageItem, removeSessionStorageItem } from '../utils/safeStorage';
 import { getApiErrorMessage } from '../utils/apiError';
 import { dispatchDomEvent } from '../utils/domEvents';
 import { reportNonBlockingError } from '../utils/nonBlockingError';
+import type { CartItem } from '../types';
 import './Login.css';
 
 const { Text, Title } = Typography;
@@ -135,11 +136,13 @@ const Login: React.FC = () => {
   const codeInputRef = useRef<InputRef | null>(null);
   const passwordSubmittingRef = useRef(false);
   const emailSubmittingRef = useRef(false);
+  const emailCodeSendingRef = useRef(false);
   const navigate = useNavigate();
   const location = useLocation();
   const { t, language } = useLanguage();
   const { config: appConfig, loading: appConfigLoading } = useAppConfig();
-  const guestCartCount = getGuestCartItems().reduce((sum, item) => sum + item.quantity, 0);
+  const guestCartItemsSnapshot = useMemo(() => getGuestCartItems(), []);
+  const guestCartCount = guestCartItemsSnapshot.reduce((sum, item) => sum + item.quantity, 0);
   const emailCodeLength = normalizeEmailCode(watchedEmailCode).length;
   const emailCodeEnabled = appConfig.emailCodeEnabled === true;
   const canSubmitEmailCode = emailCodeEnabled && emailCodeLength === 6 && verifyRetryCountdown <= 0;
@@ -161,11 +164,9 @@ const Login: React.FC = () => {
     ? `${emailLoginActionLabel}: ${t('pages.auth.resendIn', { seconds: sendCodeCountdown })}`
     : `${emailLoginActionLabel}: ${t('pages.auth.sendCode')}`;
 
-  useLayoutEffect(() => {
-    if (hasStoredValue('token')) {
-      navigate(postLoginRedirectTarget, { replace: true });
-    }
-  }, [navigate, postLoginRedirectTarget]);
+  useEffect(() => {
+    clearStoredAuthCredentials();
+  }, []);
 
   useEffect(() => {
     const prefill = normalizePasswordLogin(getSessionStorageItem('loginPrefill'));
@@ -204,21 +205,20 @@ const Login: React.FC = () => {
     return fallback;
   };
 
-  const mergeGuestCart = async (userId: number) => {
-    const guestItems = getGuestCartItems();
+  const mergeGuestCart = async (userId: number, guestItems: CartItem[]) => {
     if (guestItems.length === 0) return;
 
-    const failedItems = [];
-    let mergedCount = 0;
-    for (const item of guestItems) {
+    const mergeResults = await Promise.all(guestItems.map(async (item) => {
       try {
         await cartApi.addItem(userId, item.productId, item.quantity, item.selectedSpecs);
-        mergedCount += item.quantity;
+        return { item, mergedQuantity: item.quantity, failed: false };
       } catch (error) {
         reportNonBlockingError('Login.mergeGuestCartItem', error);
-        failedItems.push(item);
+        return { item, mergedQuantity: 0, failed: true };
       }
-    }
+    }));
+    const failedItems = mergeResults.filter(({ failed }) => failed).map(({ item }) => item);
+    const mergedCount = mergeResults.reduce((sum, result) => sum + result.mergedQuantity, 0);
     replaceGuestCartItems(failedItems);
     if (mergedCount > 0 && failedItems.length === 0) {
       message.success(t('pages.auth.cartMerged', { count: mergedCount }));
@@ -236,7 +236,7 @@ const Login: React.FC = () => {
     if (!token) {
       throw new Error(t('pages.auth.loginFailed'));
     }
-    await mergeGuestCart(Number(id));
+    await mergeGuestCart(Number(id), guestCartItemsSnapshot);
     message.success(t('pages.auth.loginSuccess'));
     navigate(postLoginRedirectTarget, { replace: true });
   };
@@ -289,12 +289,14 @@ const Login: React.FC = () => {
   };
 
   const sendEmailCode = async () => {
+    if (emailCodeSendingRef.current) return;
+    emailCodeSendingRef.current = true;
     clearStoredAuthCredentials();
-    if (!emailCodeEnabled) {
-      message.warning(t('pages.auth.emailCodeUnavailable'));
-      return;
-    }
     try {
+      if (!emailCodeEnabled) {
+        message.warning(t('pages.auth.emailCodeUnavailable'));
+        return;
+      }
       const { email } = await emailForm.validateFields(['email']);
       const normalizedEmail = normalizeEmail(email);
       emailForm.setFieldValue('email', normalizedEmail);
@@ -321,6 +323,7 @@ const Login: React.FC = () => {
           : t('pages.auth.emailCodeSendFailed'));
       }
     } finally {
+      emailCodeSendingRef.current = false;
       setCodeSending(false);
     }
   };

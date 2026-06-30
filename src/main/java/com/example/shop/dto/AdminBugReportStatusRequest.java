@@ -2,10 +2,12 @@ package com.example.shop.dto;
 
 import lombok.Data;
 
+import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.Size;
 
 @Data
 public class AdminBugReportStatusRequest {
+    @NotBlank
     @Size(max = 40)
     private String status;
 

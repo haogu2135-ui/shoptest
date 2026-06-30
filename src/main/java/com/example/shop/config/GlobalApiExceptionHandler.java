@@ -34,6 +34,7 @@ public class GlobalApiExceptionHandler {
     private static final Pattern SENSITIVE_ERROR_DETAIL = Pattern.compile(
             "(?i)(secret|jwt|token|redis|jdbc|sql|database|nacos|hikari|classpath|stack trace|"
                     + "exception|circuit breaker|not configured|configuration|sha-?\\d+|[a-z]+://|"
+                    + "\\b(?:[a-z_$][\\w$]*\\.){2,}[a-z_$][\\w$]*\\b|"
                     + "localhost|127\\.0\\.0\\.1|\\b10\\.\\d+\\.\\d+\\.\\d+\\b|\\b172\\.(1[6-9]|2\\d|3[0-1])\\.\\d+\\.\\d+\\b|"
                     + "\\b192\\.168\\.\\d+\\.\\d+\\b|[/\\\\{}\\[\\]_;=@])");
 
@@ -84,6 +85,7 @@ public class GlobalApiExceptionHandler {
     ) {
         log.warn("API access denied: path={} requestId={} reason={}",
                 resolvePath(request), resolveRequestId(request), safeLogReason(exception));
+        systemAlertService.recordException(exception, HttpStatus.FORBIDDEN, request);
         recordAccessDeniedSecurityEvent(exception, request);
         return buildResponse(HttpStatus.FORBIDDEN, "Forbidden", request);
     }
@@ -93,6 +95,7 @@ public class GlobalApiExceptionHandler {
             HttpRequestMethodNotSupportedException exception,
             HttpServletRequest request
     ) {
+        systemAlertService.recordException(exception, HttpStatus.METHOD_NOT_ALLOWED, request);
         return buildResponse(HttpStatus.METHOD_NOT_ALLOWED, "Method not allowed", request);
     }
 
@@ -101,6 +104,7 @@ public class GlobalApiExceptionHandler {
             HttpMediaTypeNotSupportedException exception,
             HttpServletRequest request
     ) {
+        systemAlertService.recordException(exception, HttpStatus.UNSUPPORTED_MEDIA_TYPE, request);
         return buildResponse(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "Unsupported media type", request);
     }
 
@@ -169,7 +173,7 @@ public class GlobalApiExceptionHandler {
         if (exception instanceof HttpMessageNotReadableException) {
             return "Request body is invalid";
         }
-        String safeMessage = safeClientMessage(exception.getMessage());
+        String safeMessage = safeBusinessExceptionMessage(exception);
         if (safeMessage != null) {
             return safeMessage;
         }
@@ -245,6 +249,25 @@ public class GlobalApiExceptionHandler {
             return null;
         }
         return CLIENT_SAFE_ERROR_MESSAGE.matcher(message).matches() ? message : null;
+    }
+
+    private String safeBusinessExceptionMessage(Exception exception) {
+        if (!isApplicationThrownBadRequest(exception)) {
+            return null;
+        }
+        return safeClientMessage(exception.getMessage());
+    }
+
+    private boolean isApplicationThrownBadRequest(Exception exception) {
+        if (!(exception instanceof IllegalArgumentException || exception instanceof IllegalStateException)) {
+            return false;
+        }
+        StackTraceElement[] stackTrace = exception.getStackTrace();
+        if (stackTrace == null || stackTrace.length == 0) {
+            return false;
+        }
+        String className = stackTrace[0].getClassName();
+        return className != null && className.startsWith("com.example.shop.");
     }
 
     private void logFilteredClientError(HttpStatus status, Exception exception, HttpServletRequest request) {

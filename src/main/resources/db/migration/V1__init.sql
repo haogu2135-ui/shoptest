@@ -11,7 +11,9 @@ CREATE TABLE IF NOT EXISTS users (
     status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    password_changed_at TIMESTAMP(3) NULL
+    password_changed_at TIMESTAMP(3) NULL,
+    INDEX idx_users_status (status),
+    INDEX idx_users_role_code (role_code)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS categories (
@@ -86,6 +88,7 @@ CREATE TABLE IF NOT EXISTS products (
     FOREIGN KEY (category_id) REFERENCES categories(id),
     CONSTRAINT ck_products_status CHECK (status IN ('ACTIVE', 'INACTIVE', 'PENDING_REVIEW', 'REJECTED')),
     INDEX idx_products_best_seller_rank (best_seller_rank, id),
+    INDEX idx_products_limited_time_window (limited_time_start_at, limited_time_end_at, status, id),
     FULLTEXT INDEX idx_products_search_text (name, description, brand, tag)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -123,6 +126,8 @@ CREATE TABLE IF NOT EXISTS coupons (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT ck_coupons_status CHECK (status IN ('ACTIVE', 'INACTIVE')),
+    CONSTRAINT ck_coupons_claimed_quantity_lte_total CHECK (claimed_quantity >= 0 AND (total_quantity IS NULL OR (total_quantity >= 0 AND claimed_quantity <= total_quantity))),
+    CONSTRAINT ck_coupons_discount_percent CHECK (discount_percent IS NULL OR discount_percent BETWEEN 1 AND 99),
     INDEX idx_coupons_public_active (scope, status, start_at, end_at),
     INDEX idx_coupons_public_claimable (scope, status, start_at, end_at, total_quantity, claimed_quantity, id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -162,6 +167,7 @@ CREATE TABLE IF NOT EXISTS orders (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id),
     FOREIGN KEY (coupon_id) REFERENCES coupons(id),
+    CONSTRAINT fk_orders_tracking_carrier_code FOREIGN KEY (tracking_carrier_code) REFERENCES logistics_carriers(tracking_code),
     CONSTRAINT ck_orders_status CHECK (status IN ('PENDING_PAYMENT', 'PENDING_SHIPMENT', 'SHIPPED', 'COMPLETED', 'CANCELLED', 'RETURN_REQUESTED', 'RETURN_APPROVED', 'RETURN_SHIPPED', 'RETURN_REFUNDING', 'RETURNED', 'REFUNDED')),
     INDEX idx_orders_status_created (status, created_at),
     INDEX idx_orders_user_created (user_id, created_at),
@@ -173,6 +179,7 @@ CREATE TABLE IF NOT EXISTS orders (
     INDEX idx_orders_status_return_approved (status, return_approved_at),
     INDEX idx_orders_status_return_shipped (status, return_shipped_at),
     INDEX idx_orders_status_tracking (status, tracking_number),
+    INDEX idx_orders_tracking_carrier_code (tracking_carrier_code),
     INDEX idx_orders_refunded_at (refunded_at),
     INDEX idx_orders_contact_email (contact_email),
     INDEX idx_orders_recent_created_status (created_at, status, id)
@@ -270,6 +277,7 @@ CREATE TABLE IF NOT EXISTS reviews (
     FOREIGN KEY (user_id) REFERENCES users(id),
     FOREIGN KEY (product_id) REFERENCES products(id),
     FOREIGN KEY (order_id) REFERENCES orders(id),
+    CONSTRAINT ck_reviews_rating CHECK (rating BETWEEN 1 AND 5),
     CONSTRAINT ck_reviews_status CHECK (status IN ('PENDING', 'APPROVED', 'HIDDEN')),
     INDEX idx_reviews_product_id (product_id),
     INDEX idx_reviews_user_id (user_id),
@@ -392,6 +400,7 @@ CREATE TABLE IF NOT EXISTS support_messages (
 
 CREATE TABLE IF NOT EXISTS admin_bug_reports (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    version BIGINT NOT NULL DEFAULT 0,
     title VARCHAR(160) NOT NULL,
     description TEXT NOT NULL,
     module VARCHAR(40) NOT NULL DEFAULT 'GENERAL',

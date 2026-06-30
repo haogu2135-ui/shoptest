@@ -39,8 +39,12 @@ class AdminOrderListBoundContractTest {
                 "Legacy /orders admin list should map raw Order entities before responding");
         assertTrue(legacyAdminOrders.contains(".map(AdminOrderResponse::from)"),
                 "Legacy /orders admin list should use the explicit admin response DTO");
-        assertTrue(legacyAdminOrders.contains(".body(orderResponses);"),
-                "Legacy /orders admin list should return DTO rows");
+        assertTrue(legacyAdminOrders.contains(".body(orderPageBody(orderResponses, 0, limit, total));"),
+                "Legacy /orders admin list should return DTO rows inside the shared page envelope");
+        assertTrue(orderController.contains("body.put(\"content\", orders);"),
+                "Legacy and customer order list bodies should expose content as a standard page alias");
+        assertTrue(orderController.contains("body.put(\"totalElements\", total);"),
+                "Legacy and customer order list bodies should expose totalElements metadata");
         assertFalse(legacyAdminOrders.contains(".body(orders);"),
                 "Legacy /orders admin list must not return raw Order entities");
 

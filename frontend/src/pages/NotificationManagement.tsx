@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Button, Card, Divider, Form, Input, message, Popconfirm, Radio, Select, Space, Tag, Typography } from 'antd';
-import { CheckCircleOutlined, LinkOutlined, NotificationOutlined, SendOutlined, ThunderboltOutlined } from '@ant-design/icons';
+import { CheckCircleOutlined, LinkOutlined, NotificationOutlined, ReloadOutlined, SendOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import { adminApi } from '../api';
 import { useLanguage } from '../i18n';
 import { stripUnsafeHtml } from '../utils/sanitizeHtml';
@@ -17,31 +17,51 @@ const conversionHookPattern = /(coupon|discount|offer|shipping|birthday|limited|
 const isFormValidationError = (error: unknown): error is { errorFields: unknown[] } => (
   Boolean(error) && typeof error === 'object' && Array.isArray((error as { errorFields?: unknown }).errorFields)
 );
+type PermissionStatus = 'loading' | 'ready' | 'error';
 
 const NotificationManagement: React.FC = () => {
   const [form] = Form.useForm();
   const [sending, setSending] = useState(false);
   const [currentRole, setCurrentRole] = useState('');
   const [adminPermissions, setAdminPermissions] = useState<string[]>([]);
+  const [permissionStatus, setPermissionStatus] = useState<PermissionStatus>('loading');
   const { t, language } = useLanguage();
   const notificationType = Form.useWatch('type', form) || 'PROMOTION';
   const contentFormat = Form.useWatch('contentFormat', form) || 'HTML';
   const notificationTitle = Form.useWatch('title', form) || '';
   const messageContent = Form.useWatch('message', form) || '';
-  const canBroadcastNotifications = hasAdminPermission(adminPermissions, currentRole, NOTIFICATIONS_BROADCAST_PERMISSION);
+  const canBroadcastNotifications = permissionStatus === 'ready'
+    && hasAdminPermission(adminPermissions, currentRole, NOTIFICATIONS_BROADCAST_PERMISSION);
+
+  const loadPermissions = useCallback(async () => {
+    setPermissionStatus('loading');
+    try {
+      const response = await adminApi.getMyPermissions();
+      setCurrentRole(getEffectiveRole(response.data.role, response.data.roleCode));
+      setAdminPermissions(response.data.permissions || []);
+      setPermissionStatus('ready');
+    } catch {
+      setCurrentRole('');
+      setAdminPermissions([]);
+      setPermissionStatus('error');
+    }
+  }, []);
 
   useEffect(() => {
     let disposed = false;
+    setPermissionStatus('loading');
     adminApi.getMyPermissions()
       .then((response) => {
         if (disposed) return;
         setCurrentRole(getEffectiveRole(response.data.role, response.data.roleCode));
         setAdminPermissions(response.data.permissions || []);
+        setPermissionStatus('ready');
       })
       .catch(() => {
         if (disposed) return;
         setCurrentRole('');
         setAdminPermissions([]);
+        setPermissionStatus('error');
       });
     return () => {
       disposed = true;
@@ -62,6 +82,12 @@ const NotificationManagement: React.FC = () => {
   const notificationTitleInputLabel = `${t('pages.notificationAdmin.notificationTitle')}: ${notificationTargetLabel}`;
   const notificationContentFormatLabel = `${t('pages.notificationAdmin.contentFormat')}: ${contentFormat}`;
   const notificationContentInputLabel = `${t('pages.notificationAdmin.content')}: ${notificationTargetLabel}`;
+  const permissionGateActive = permissionStatus !== 'ready' || !canBroadcastNotifications;
+  const permissionGateReason = permissionStatus === 'loading'
+    ? t('pages.notificationAdmin.permissionLoading')
+    : permissionStatus === 'error'
+      ? t('pages.notificationAdmin.permissionLoadFailed')
+      : t('pages.notificationAdmin.noBroadcastPermission');
   const readinessSignals = useMemo(() => {
     const normalized = `${notificationTitle} ${plainContent}`.toLowerCase();
     const hasTitle = notificationTitle.trim().length >= 6 && notificationTitle.trim().length <= 80;
@@ -142,6 +168,35 @@ const NotificationManagement: React.FC = () => {
 
       <div className="notification-management-page__grid">
         <Card title={t('pages.notificationAdmin.compose')}>
+          {permissionStatus === 'loading' ? (
+            <Alert
+              type="info"
+              showIcon
+              style={{ marginBottom: 16 }}
+              message={t('pages.notificationAdmin.permissionLoading')}
+            />
+          ) : null}
+          {permissionStatus === 'error' ? (
+            <Alert
+              type="error"
+              showIcon
+              style={{ marginBottom: 16 }}
+              message={t('pages.notificationAdmin.permissionLoadFailed')}
+              action={(
+                <Button size="small" icon={<ReloadOutlined />} onClick={loadPermissions}>
+                  {t('pages.notificationAdmin.permissionRetry')}
+                </Button>
+              )}
+            />
+          ) : null}
+          {permissionStatus === 'ready' && !canBroadcastNotifications ? (
+            <Alert
+              type="warning"
+              showIcon
+              style={{ marginBottom: 16 }}
+              message={t('pages.notificationAdmin.noBroadcastPermission')}
+            />
+          ) : null}
           <Alert
             type="info"
             showIcon
@@ -151,15 +206,16 @@ const NotificationManagement: React.FC = () => {
           <Form
             form={form}
             layout="vertical"
+            disabled={permissionGateActive}
             initialValues={{ type: 'PROMOTION', contentFormat: 'HTML' }}
           >
             <Form.Item name="type" label={t('pages.notificationAdmin.type')} rules={[{ required: true }]}>
-	              <Select
-	                classNames={{ popup: { root: 'shop-mobile-popup-layer' } }}
-	                getPopupContainer={() => document.body}
-	                aria-label={notificationTypeLabel}
-	                title={notificationTypeLabel}
-	                options={[
+              <Select
+                classNames={{ popup: { root: 'shop-mobile-popup-layer' } }}
+                getPopupContainer={() => document.body}
+                aria-label={notificationTypeLabel}
+                title={notificationTypeLabel}
+                options={[
                   { value: 'PROMOTION', label: t('status.PROMOTION') },
                   { value: 'SYSTEM', label: t('status.SYSTEM') },
                   { value: 'DELIVERY', label: t('status.DELIVERY') },
@@ -175,16 +231,16 @@ const NotificationManagement: React.FC = () => {
                 { max: 100, message: t('pages.notificationAdmin.titleRequired') },
               ]}
             >
-	              <Input maxLength={100} showCount placeholder={t('pages.notificationAdmin.titlePlaceholder')} aria-label={notificationTitleInputLabel} title={notificationTitleInputLabel} />
-	            </Form.Item>
-	            <Form.Item name="contentFormat" label={t('pages.notificationAdmin.contentFormat')}>
-	              <div role="group" aria-label={notificationContentFormatLabel} title={notificationContentFormatLabel}>
-	                <Radio.Group aria-label={notificationContentFormatLabel}>
-	                  <Radio.Button value="HTML">{t('pages.notificationAdmin.richText')}</Radio.Button>
-	                  <Radio.Button value="TEXT">{t('pages.notificationAdmin.plainText')}</Radio.Button>
-	                </Radio.Group>
-	              </div>
-	            </Form.Item>
+              <Input maxLength={100} showCount placeholder={t('pages.notificationAdmin.titlePlaceholder')} aria-label={notificationTitleInputLabel} title={notificationTitleInputLabel} />
+            </Form.Item>
+            <Form.Item name="contentFormat" label={t('pages.notificationAdmin.contentFormat')}>
+              <div role="group" aria-label={notificationContentFormatLabel} title={notificationContentFormatLabel}>
+                <Radio.Group aria-label={notificationContentFormatLabel}>
+                  <Radio.Button value="HTML">{t('pages.notificationAdmin.richText')}</Radio.Button>
+                  <Radio.Button value="TEXT">{t('pages.notificationAdmin.plainText')}</Radio.Button>
+                </Radio.Group>
+              </div>
+            </Form.Item>
             <Form.Item
               name="message"
               label={t('pages.notificationAdmin.content')}
@@ -196,25 +252,25 @@ const NotificationManagement: React.FC = () => {
               <TextArea
                 rows={10}
                 maxLength={5000}
-	                showCount
-	                placeholder={contentFormat === 'HTML' ? t('pages.notificationAdmin.htmlPlaceholder') : t('pages.notificationAdmin.textPlaceholder')}
-	                aria-label={notificationContentInputLabel}
-	                title={notificationContentInputLabel}
-	              />
+                showCount
+                placeholder={contentFormat === 'HTML' ? t('pages.notificationAdmin.htmlPlaceholder') : t('pages.notificationAdmin.textPlaceholder')}
+                aria-label={notificationContentInputLabel}
+                title={notificationContentInputLabel}
+              />
             </Form.Item>
             <Space wrap>
-              <Button aria-label={templateActionLabel} title={templateActionLabel} onClick={insertPromotionTemplate} disabled={sending}>{t('pages.notificationAdmin.useTemplate')}</Button>
-		              {canBroadcastNotifications ? (
-		                <Popconfirm
-		                  classNames={mobilePopconfirmClassNames}
-		                  title={broadcastActionLabel}
-	                  description={(
-	                    <Space direction="vertical" size={2}>
-	                      <Text>{notificationBroadcastSummary}</Text>
-	                      <Text type="secondary">{t('pages.notificationAdmin.sendAllConfirmDescription')}</Text>
-	                    </Space>
-	                  )}
-	                  okText={t('common.confirm')}
+              <Button aria-label={templateActionLabel} title={templateActionLabel} onClick={insertPromotionTemplate} disabled={permissionGateActive || sending}>{t('pages.notificationAdmin.useTemplate')}</Button>
+              {canBroadcastNotifications ? (
+                <Popconfirm
+                  classNames={mobilePopconfirmClassNames}
+                  title={broadcastActionLabel}
+                  description={(
+                    <Space direction="vertical" size={2}>
+                      <Text>{notificationBroadcastSummary}</Text>
+                      <Text type="secondary">{t('pages.notificationAdmin.sendAllConfirmDescription')}</Text>
+                    </Space>
+                  )}
+                  okText={t('common.confirm')}
                   cancelText={t('common.cancel')}
                   okButtonProps={{ danger: true, 'aria-label': broadcastActionLabel, title: broadcastActionLabel }}
                   cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${broadcastActionLabel}`, title: `${t('common.cancel')}: ${broadcastActionLabel}` }}
@@ -224,7 +280,17 @@ const NotificationManagement: React.FC = () => {
                     {t('pages.notificationAdmin.sendAll')}
                   </Button>
                 </Popconfirm>
-              ) : null}
+              ) : (
+                <Button
+                  type="primary"
+                  icon={<SendOutlined />}
+                  aria-label={broadcastActionLabel}
+                  title={permissionGateReason}
+                  disabled
+                >
+                  {t('pages.notificationAdmin.sendAll')}
+                </Button>
+              )}
             </Space>
           </Form>
         </Card>

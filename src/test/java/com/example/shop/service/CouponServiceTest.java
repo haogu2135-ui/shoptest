@@ -272,6 +272,23 @@ class CouponServiceTest {
     }
 
     @Test
+    void saveRejectsInvalidDiscountCouponPercentagesBeforePersisting() {
+        for (Integer discountPercent : Arrays.asList(null, -10, 0, 100, 150)) {
+            com.example.shop.dto.CouponUpsertRequest request = new com.example.shop.dto.CouponUpsertRequest();
+            request.setName("Invalid discount " + discountPercent);
+            request.setCouponType("DISCOUNT");
+            request.setDiscountPercent(discountPercent);
+
+            IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                    () -> service.save(request, null),
+                    "discountPercent=" + discountPercent);
+
+            assertEquals("Discount percent must be between 1 and 99", error.getMessage());
+        }
+        verify(couponRepository, never()).save(any(Coupon.class));
+    }
+
+    @Test
     void deleteCleansUnusedAssignmentsBeforeDeletingCoupon() {
         when(couponRepository.existsById(5L)).thenReturn(true);
         when(userCouponMapper.countUsedByCouponId(5L)).thenReturn(0);

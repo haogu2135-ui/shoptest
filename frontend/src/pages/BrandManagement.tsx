@@ -403,7 +403,14 @@ const BrandManagement: React.FC = () => {
       ) : null}
 
       {showInitialBrandLoading ? (
-        <Card className="brand-management-page__loadingState" loading />
+        <Card
+          className="brand-management-page__loadingState"
+          loading
+          role="status"
+          aria-live="polite"
+          aria-busy="true"
+          aria-label={t('common.loading')}
+        />
       ) : null}
 
       {canRenderBrandSnapshot ? (

@@ -84,27 +84,18 @@ class ApplicationProfileContractTest {
     @Test
     void baseDatasourceDeclaresProductionHikariDefaults() throws Exception {
         Properties base = load("application.properties");
-        String yaml = loadText("application.yml");
 
         assertEquals("${DB_HIKARI_MAXIMUM_POOL_SIZE:20}", base.getProperty("spring.datasource.hikari.maximum-pool-size"));
         assertEquals("${DB_HIKARI_MINIMUM_IDLE:5}", base.getProperty("spring.datasource.hikari.minimum-idle"));
         assertEquals("${DB_HIKARI_CONNECTION_TIMEOUT_MS:10000}", base.getProperty("spring.datasource.hikari.connection-timeout"));
         assertEquals("${DB_HIKARI_IDLE_TIMEOUT_MS:300000}", base.getProperty("spring.datasource.hikari.idle-timeout"));
         assertEquals("${DB_HIKARI_MAX_LIFETIME_MS:1800000}", base.getProperty("spring.datasource.hikari.max-lifetime"));
-
-        assertContains(yaml, "maximum-pool-size: ${DB_HIKARI_MAXIMUM_POOL_SIZE:20}");
-        assertContains(yaml, "minimum-idle: ${DB_HIKARI_MINIMUM_IDLE:5}");
-        assertContains(yaml, "connection-timeout: ${DB_HIKARI_CONNECTION_TIMEOUT_MS:10000}");
-        assertContains(yaml, "idle-timeout: ${DB_HIKARI_IDLE_TIMEOUT_MS:300000}");
-        assertContains(yaml, "max-lifetime: ${DB_HIKARI_MAX_LIFETIME_MS:1800000}");
-        assertNoPrivateLanCorsDefaults(yaml);
     }
 
     @Test
     void datasourceDefaultsDoNotUseRootOrDockerBridgeCredentials() throws Exception {
         Properties base = load("application.properties");
         Properties prod = load("application-prod.properties");
-        String yaml = loadText("application.yml");
         String backendEnvExample = Files.readString(Path.of("deploy/backend.env.example"), StandardCharsets.UTF_8);
         String backendCompose = Files.readString(Path.of("deploy/docker-compose.backend.yml"), StandardCharsets.UTF_8);
 
@@ -113,9 +104,6 @@ class ApplicationProfileContractTest {
         assertEquals("${DB_PASSWORD:}", base.getProperty("spring.datasource.password"));
         assertEquals("${DB_URL:}", prod.getProperty("spring.datasource.url"));
         assertEquals("${DB_PASSWORD:}", prod.getProperty("spring.datasource.password"));
-        assertContains(yaml, "url: ${DB_URL:}");
-        assertContains(yaml, "username: ${DB_USERNAME:shop}");
-        assertContains(yaml, "password: ${DB_PASSWORD:}");
 
         assertContains(backendEnvExample, "DB_USERNAME=shop");
         assertFalse(backendEnvExample.contains("DB_USERNAME=root"));
@@ -128,17 +116,49 @@ class ApplicationProfileContractTest {
     }
 
     @Test
+    void repositoryDoesNotShipDuplicateApplicationYaml() {
+        assertFalse(Files.exists(Path.of("src/main/resources/application.yml")),
+                "application.properties is the single authoritative backend runtime config");
+    }
+
+    @Test
+    void productionSecretsFailFastAndDoNotReuseJwtSecret() throws Exception {
+        Properties base = load("application.properties");
+        String properties = loadText("application.properties");
+        String validator = Files.readString(
+                Path.of("src/main/java/com/example/shop/config/ProductionSecretStartupValidator.java"),
+                StandardCharsets.UTF_8);
+
+        assertEquals("${JWT_SECRET:}", base.getProperty("app.jwtSecret"));
+        assertEquals("${DB_PASSWORD:}", base.getProperty("spring.datasource.password"));
+        assertEquals("${REDIS_PASSWORD:}", base.getProperty("spring.redis.password"));
+        assertEquals("${PAYMENT_CALLBACK_SECRET:}", base.getProperty("payment.callback-secret"));
+        assertEquals("${MAIL_CODE_PEPPER:}", base.getProperty("app.mail.code-pepper"));
+        assertFalse(properties.contains("MAIL_CODE_PEPPER:${JWT_SECRET"),
+                "mail code pepper must not fall back to the JWT signing secret");
+
+        assertContains(validator, "implements BeanFactoryPostProcessor");
+        assertContains(validator, "isProductionMode(property(\"app.runtime-mode\", \"production\"))");
+        assertContains(validator, "app.jwtSecret");
+        assertContains(validator, "spring.datasource.password");
+        assertContains(validator, "spring.redis.password");
+        assertContains(validator, "requireStrongRuntimePassword(issues, \"spring.redis.password\"");
+        assertContains(validator, "propertyName + \" must be set to a non-default production password");
+        assertContains(validator, "payment.callback-secret");
+        assertContains(validator, "app.mail.code-pepper");
+        assertContains(validator, "app.mail.code-pepper must not reuse app.jwtSecret");
+        assertContains(validator, "Production secrets are not configured");
+    }
+
+    @Test
     void stripeSecretsUseEnvironmentPlaceholdersOnly() throws Exception {
         Properties base = load("application.properties");
         String properties = loadText("application.properties");
-        String yaml = loadText("application.yml");
         String backendEnvExample = Files.readString(Path.of("deploy/backend.env.example"), StandardCharsets.UTF_8);
 
         assertEquals("${STRIPE_SECRET_KEY:}", base.getProperty("stripe.secret-key"));
         assertEquals("${STRIPE_WEBHOOK_SECRET:}", base.getProperty("stripe.webhook-secret"));
-        assertFalse(yaml.contains("stripe.key"), "application.yml should not contain a stale hardcoded stripe.key");
         assertNoHardcodedStripeSecret(properties);
-        assertNoHardcodedStripeSecret(yaml);
         assertFalse(backendEnvExample.contains("STRIPE_SECRET_KEY=sk_"),
                 "deployment examples should not ship real-looking Stripe secret keys");
         assertFalse(backendEnvExample.contains("STRIPE_WEBHOOK_SECRET=whsec_"),

@@ -5,6 +5,7 @@ import com.example.shop.dto.LogPreviewResponse;
 import com.example.shop.util.SensitiveDataMasker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.logging.LogLevel;
 import org.springframework.boot.logging.LoggerConfiguration;
 import org.springframework.boot.logging.LoggingSystem;
@@ -60,6 +61,7 @@ public class LogManagementService {
     private final boolean ownsDebugRestoreScheduler;
     private final AtomicReference<ScheduledFuture<?>> debugRestoreTask = new AtomicReference<>();
 
+    @Autowired
     public LogManagementService(LoggingSystem loggingSystem, Environment environment) {
         this(loggingSystem, environment, Executors.newSingleThreadScheduledExecutor(runnable -> {
             Thread thread = new Thread(runnable, "shop-log-debug-restore");
@@ -91,7 +93,6 @@ public class LogManagementService {
         response.setConfiguredLevel(configuration == null || configuration.getConfiguredLevel() == null ? "INHERITED" : configuration.getConfiguredLevel().name());
         response.setEffectiveLevel(configuration == null || configuration.getEffectiveLevel() == null ? "UNKNOWN" : configuration.getEffectiveLevel().name());
         response.setDebugEnabled(configuration != null && LogLevel.DEBUG.equals(configuration.getEffectiveLevel()));
-        response.setLogDirectory(logFile.getParent().toAbsolutePath().normalize().toString());
         response.setLogFileName(logFile.getFileName().toString());
         response.setAvailableFiles(listLogFiles(logFile.getParent()));
         response.setTotalLogBytes(listLogFilePaths(logFile.getParent()).stream().mapToLong(this::fileSize).sum());

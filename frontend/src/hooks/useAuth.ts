@@ -11,6 +11,7 @@ import { isAuthExpiredError } from '../utils/apiError';
 
 interface AuthContextType {
     user: UserProfile | null;
+    token: string;
     login: (username: string, password: string) => Promise<void>;
     logout: () => void;
     loading: boolean;
@@ -20,6 +21,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }): JSX.Element => {
     const [user, setUser] = useState<UserProfile | null>(null);
+    const [token, setToken] = useState(() => getLocalStorageItem('token') || '');
     const [loading, setLoading] = useState(true);
     const { t } = useLanguage();
     // Monotonic sequence invalidates stale profile hydrations from auth/storage events and unmount cleanup.
@@ -47,10 +49,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }): JSX.Element
         const token = getLocalStorageItem('token');
         if (!token) {
             if (mountedRef.current) {
+                setToken('');
                 setUser(null);
                 setLoading(false);
             }
             return;
+        }
+        if (mountedRef.current) {
+            setToken(token);
         }
         if (setBusy && mountedRef.current) {
             setLoading(true);
@@ -64,6 +70,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }): JSX.Element
                 if (!mountedRef.current || profileRequestSeqRef.current !== requestSeq) return;
                 reportNonBlockingError('useAuth.hydrateStoredProfile', error);
                 if (isAuthExpiredError(error)) {
+                    setToken('');
                     setUser(null);
                     clearStoredAuthSession();
                 }
@@ -77,19 +84,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }): JSX.Element
 
     const login = useCallback((username: string, password: string) => {
         if (loginRequestRef.current) return loginRequestRef.current;
-        let loginRequest: Promise<void>;
+        let loginRequest: Promise<void> | null = null;
         loginRequest = (async () => {
             try {
                 const response = await userApi.login(username, password);
                 if (!mountedRef.current) return;
-                const { id, username: name, email, phone, role, roleCode } = response.data;
+                const { id, username: name, role, roleCode } = response.data;
                 const effectiveRole = getEffectiveRole(role, roleCode);
-                const displayName = String(name || email || phone || id || '');
-                if (!persistAuthSession(response.data)) {
+                const displayName = String(name || id || '');
+                const persistedToken = persistAuthSession(response.data);
+                if (!persistedToken) {
                     throw new Error('Invalid auth session');
                 }
+                setToken(persistedToken);
                 setLocalStorageItem('role', effectiveRole);
-                setUser({ id, username: displayName, role: effectiveRole, roleCode, email: email || '', phone });
+                setUser({ id, username: displayName, role: effectiveRole, roleCode, email: '' });
                 message.success(t('pages.auth.loginSuccess'));
             } catch (error) {
                 if (mountedRef.current) {
@@ -97,7 +106,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }): JSX.Element
                 }
                 throw error;
             } finally {
-                if (loginRequestRef.current === loginRequest) {
+                if (loginRequest && loginRequestRef.current === loginRequest) {
                     loginRequestRef.current = null;
                 }
             }
@@ -121,6 +130,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }): JSX.Element
                 }
             });
         if (mountedRef.current) {
+            setToken('');
             setUser(null);
         }
         clearStoredAuthSession();
@@ -147,8 +157,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }): JSX.Element
     }, [hydrateStoredProfile]);
 
     const authContextValue = useMemo(
-        () => ({ user, login, logout, loading }),
-        [loading, login, logout, user],
+        () => ({ user, token, login, logout, loading }),
+        [loading, login, logout, token, user],
     );
 
     return React.createElement(

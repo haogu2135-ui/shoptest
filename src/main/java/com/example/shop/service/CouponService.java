@@ -12,12 +12,14 @@ import com.example.shop.repository.CouponRepository;
 import com.example.shop.repository.UserCouponMapper;
 import com.example.shop.repository.UserMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -41,6 +43,8 @@ public class CouponService {
     private static final int HARD_MAX_COUPON_ROWS = 5_000;
     private static final int HARD_MAX_PUBLIC_COUPON_ROWS = 1_000;
     private static final int HARD_MAX_GRANT_USERS = 1_000;
+    private static final int DEFAULT_GRANT_TRANSACTION_BATCH_SIZE = 100;
+    private static final int HARD_MAX_GRANT_TRANSACTION_BATCH_SIZE = 200;
     private static final int HARD_MAX_TEXT_LENGTH = 4_000;
     private static final int HARD_MAX_TOTAL_QUANTITY = 1_000_000;
     private static final int HARD_MAX_SUMMARY_DAYS = 90;
@@ -52,6 +56,9 @@ public class CouponService {
     private final UserMapper userMapper;
     private final PetBirthdayCouponService petBirthdayCouponService;
     private final RuntimeConfigService runtimeConfig;
+
+    @Autowired(required = false)
+    private TransactionTemplate transactionTemplate;
 
     public List<Coupon> findAll() {
         int limit = resolveLimit("admin.coupons.search-max-rows", 500, HARD_MAX_COUPON_ROWS);
@@ -231,7 +238,6 @@ public class CouponService {
         return userCouponMapper.findById(userCoupon.getId());
     }
 
-    @Transactional(rollbackFor = Exception.class)
     public int grant(Long couponId, List<Long> userIds) {
         requirePositiveId(couponId, "Coupon");
         List<Long> normalizedUserIds = normalizeGrantUserIds(userIds);
@@ -239,13 +245,35 @@ public class CouponService {
                 .orElseThrow(() -> new IllegalArgumentException("Coupon not found"));
         ensureClaimable(coupon);
         validateGrantRecipientsExist(normalizedUserIds);
+        int batchSize = grantTransactionBatchSize();
         int granted = 0;
-        for (Long userId : normalizedUserIds) {
+        for (int start = 0; start < normalizedUserIds.size(); start += batchSize) {
+            List<Long> batch = normalizedUserIds.subList(start, Math.min(start + batchSize, normalizedUserIds.size()));
+            GrantBatchResult result = executeGrantBatchInTransaction(couponId, batch);
+            granted += result.granted;
+            if (result.soldOut) {
+                break;
+            }
+        }
+        return granted;
+    }
+
+    private GrantBatchResult executeGrantBatchInTransaction(Long couponId, List<Long> userIds) {
+        if (transactionTemplate == null) {
+            return grantBatch(couponId, userIds);
+        }
+        GrantBatchResult result = transactionTemplate.execute(status -> grantBatch(couponId, userIds));
+        return result == null ? new GrantBatchResult(0, false) : result;
+    }
+
+    private GrantBatchResult grantBatch(Long couponId, List<Long> userIds) {
+        int granted = 0;
+        for (Long userId : userIds) {
             if (userCouponMapper.findByCouponIdAndUserId(couponId, userId) != null) {
                 continue;
             }
             if (couponRepository.incrementClaimedQuantity(couponId) == 0) {
-                break;
+                return new GrantBatchResult(granted, true);
             }
             UserCoupon userCoupon = new UserCoupon();
             userCoupon.setUserId(userId);
@@ -259,7 +287,7 @@ public class CouponService {
                 couponRepository.decrementClaimedQuantity(couponId, 1);
             }
         }
-        return granted;
+        return new GrantBatchResult(granted, false);
     }
 
     public CouponQuoteResponse quote(Long userId, List<CartItem> cartItems, Long userCouponId) {
@@ -536,6 +564,13 @@ public class CouponService {
         throw new IllegalArgumentException("Unknown coupon recipient user IDs: " + invalidSummary);
     }
 
+    private int grantTransactionBatchSize() {
+        return resolveLimit(
+                "admin.coupons.grant-transaction-batch-size",
+                DEFAULT_GRANT_TRANSACTION_BATCH_SIZE,
+                HARD_MAX_GRANT_TRANSACTION_BATCH_SIZE);
+    }
+
     private void requirePositiveId(Long id, String name) {
         if (id == null || id <= 0) {
             throw new IllegalArgumentException(name + " is required");
@@ -584,5 +619,11 @@ public class CouponService {
         Long couponId;
         String couponName;
         BigDecimal discountAmount;
+    }
+
+    @lombok.Value
+    private static class GrantBatchResult {
+        int granted;
+        boolean soldOut;
     }
 }

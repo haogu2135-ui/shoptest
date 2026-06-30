@@ -293,7 +293,9 @@ describe('source quality contracts', () => {
     expect(homeSource).toContain('const HOME_PRODUCT_PAGE_SIZE = 48;');
     expect(homeSource).toContain('const [visibleCount, setVisibleCount] = useState(DISCOVERY_BATCH_SIZE);');
     expect(homeSource).toContain('setVisibleCount(DISCOVERY_BATCH_SIZE);');
-    expect(homeSource).toContain('const visibleDiscoveryProducts = discoveryProducts.slice(0, visibleCount);');
+    expect(homeSource).toContain('const visibleDiscoveryProducts = useMemo(');
+    expect(homeSource).toContain('() => discoveryProducts.slice(0, visibleCount),');
+    expect(homeSource).toContain('[discoveryProducts, visibleCount],');
     expect(homeSource).toContain('const hasMoreDiscoveryProducts = visibleCount < discoveryProducts.length;');
     expect(homeSource).toContain('const { scrollHeight, viewportHeight, scrollTop } = getAppScrollMetrics();');
     expect(homeSource).toContain('setVisibleCount((count) => Math.min(count + DISCOVERY_BATCH_SIZE, discoveryProducts.length));');
@@ -414,6 +416,25 @@ describe('source quality contracts', () => {
     expect(paymentRecoverySource).not.toContain('reportNonBlockingError(');
   });
 
+  it('keeps production frontend console calls behind the client error reporter', () => {
+    const frontendRoot = path.resolve(__dirname, '..');
+    const frontendProjectRoot = path.resolve(__dirname, '../..');
+    const files = collectFilesByExtension(frontendRoot, scriptExtensions)
+      .filter((file) => !/\.(test|spec)\.[tj]sx?$/.test(file));
+    const reporterPath = path.join(frontendRoot, 'utils/nonBlockingError.ts');
+    const directConsoleOffenders = files
+      .filter((file) => file !== reporterPath)
+      .filter((file) => /\bconsole\.(error|warn|log|info|debug)\b/.test(fs.readFileSync(file, 'utf8')))
+      .map((file) => path.relative(frontendProjectRoot, file))
+      .sort();
+    const reporterSource = fs.readFileSync(reporterPath, 'utf8');
+
+    expect(directConsoleOffenders).toEqual([]);
+    expect(reporterSource).toContain('const shouldLogClientErrorsToConsole = () => process.env.NODE_ENV !== \'production\';');
+    expect(reporterSource).toContain('if (shouldLogClientErrorsToConsole() && typeof console !== \'undefined\' && typeof console.debug === \'function\')');
+    expect(reporterSource).toContain('if (shouldLogClientErrorsToConsole() && typeof console !== \'undefined\' && typeof console.warn === \'function\')');
+  });
+
   it('keeps critical navigation/auth/support fallbacks observable instead of silent promise catches', () => {
     const frontendRoot = path.resolve(__dirname, '..');
     const targets = [
@@ -450,6 +471,8 @@ describe('source quality contracts', () => {
 
     expect(combinedSource).not.toMatch(/\.catch\(\s*\(\)\s*=>/);
     expect(combinedSource).not.toMatch(/\bcatch\s*\{/);
+    expect(combinedSource).toContain("cart: 'Navbar.refreshCartBadge'");
+    expect(combinedSource).toContain("notification: 'Navbar.refreshNotificationBadge'");
     expectedContexts.forEach((context) => {
       expect(combinedSource).toContain(`reportNonBlockingError('${context}'`);
     });

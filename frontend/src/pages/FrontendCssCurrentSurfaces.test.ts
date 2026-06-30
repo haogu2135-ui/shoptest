@@ -100,4 +100,18 @@ describe('frontend current page CSS surface contracts', () => {
 
     expect(homeCss).not.toMatch(/(^|})\s*body\s*\{[^}]*background:\s*var\(--background\)\s*!important/);
   });
+
+  it('keeps page and mobile CSS fallback backgrounds off third-party image hosts', () => {
+    const cssFiles = [
+      ...fs.readdirSync(pageDir)
+        .filter((filename) => filename.endsWith('.css'))
+        .map((filename) => path.resolve(pageDir, filename)),
+      path.resolve(srcDir, 'mobile-app.css'),
+    ];
+    const combinedCss = cssFiles.map((filename) => fs.readFileSync(filename, 'utf8')).join('\n');
+
+    expect(combinedCss).not.toMatch(/url\(['"]?https:\/\/images\.unsplash\.com/i);
+    expect(combinedCss).not.toMatch(/url\(['"]?\/assets\/placeholders\//i);
+    expect(combinedCss).not.toContain('unsplash.com');
+  });
 });

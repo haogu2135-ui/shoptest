@@ -166,7 +166,14 @@ const PermissionManagement: React.FC = () => {
       ) : null}
 
       {showInitialRoleLoading ? (
-        <Card className="permission-management-page__loadingState" loading />
+        <Card
+          className="permission-management-page__loadingState"
+          loading
+          role="status"
+          aria-live="polite"
+          aria-busy="true"
+          aria-label={t('common.loading')}
+        />
       ) : null}
 
       {canRenderRoleSnapshot ? (

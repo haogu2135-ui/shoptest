@@ -32,7 +32,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class AuthController {
     private static final String PUBLIC_REGISTRATION_UNAVAILABLE_MESSAGE =
-            "Registration could not be completed with the supplied account details";
+            UserService.REGISTRATION_ACCOUNT_DETAILS_UNAVAILABLE_MESSAGE;
 
     private final UserService userService;
     private final EmailLoginService emailLoginService;
@@ -128,7 +128,8 @@ public class AuthController {
     }
 
     private boolean isDuplicateAccountRegistrationError(String message) {
-        return message != null && message.toLowerCase(Locale.ROOT).contains("already registered");
+        return message != null && (PUBLIC_REGISTRATION_UNAVAILABLE_MESSAGE.equals(message)
+                || message.toLowerCase(Locale.ROOT).contains("already registered"));
     }
 
     private boolean isBlank(String value) {

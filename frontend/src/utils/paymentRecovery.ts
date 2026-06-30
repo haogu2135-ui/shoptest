@@ -18,7 +18,6 @@ export const getPaymentRecoveryState = (payment?: Pick<PaymentCustomer, 'status'
     };
   }
   const expiresAt = new Date(payment.expiresAt).getTime();
-  const diffMs = expiresAt - Date.now();
   if (!Number.isFinite(expiresAt)) {
     return {
       isPaid,
@@ -27,6 +26,7 @@ export const getPaymentRecoveryState = (payment?: Pick<PaymentCustomer, 'status'
       minutesLeft: null,
     };
   }
+  const diffMs = expiresAt - Date.now();
   const minutesLeft = Math.max(0, Math.ceil(diffMs / 60000));
   return {
     isPaid,

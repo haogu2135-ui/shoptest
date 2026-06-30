@@ -38,4 +38,28 @@ describe('PetFinder responsive controls', () => {
     expect(f2711Css).toMatch(/body:not\(\.shop-mobile-app\) \.pet-finder-page__productCard \.ant-card-actions \.ant-btn > span:not\(\.anticon\):not\(\.ant-btn-icon\)\s*\{[\s\S]*?overflow:\s*visible\s*!important;[\s\S]*?text-overflow:\s*clip\s*!important;[\s\S]*?white-space:\s*normal\s*!important;/);
     expect(f2711Css).not.toMatch(/text-overflow:\s*ellipsis/);
   });
+
+  it('keeps current pet filter controls labelled and the stale PetPage absent', () => {
+    const pagesDir = __dirname;
+    const petPageFiles = ['PetFinder.tsx', 'PetGallery.tsx', 'PetGalleryManagement.tsx'];
+    const unlabeledNativeSelects = petPageFiles.flatMap((file) => {
+      const pageSource = fs.readFileSync(path.join(pagesDir, file), 'utf8');
+      return Array.from(pageSource.matchAll(/<select\b[^>]*>/g))
+        .filter(([tag]) => !/\baria-label=|\baria-labelledby=/.test(tag))
+        .map(() => file);
+    });
+    const unlabeledAntdSelects = petPageFiles.flatMap((file) => {
+      const pageSource = fs.readFileSync(path.join(pagesDir, file), 'utf8');
+      return Array.from(pageSource.matchAll(/<Select\b[\s\S]*?\/>/g))
+        .filter(([tag]) => !/\baria-label=|\baria-labelledby=/.test(tag))
+        .map(() => file);
+    });
+
+    expect(fs.existsSync(path.join(pagesDir, 'PetPage.tsx'))).toBe(false);
+    expect(source).toContain("aria-label={t('pages.petFinder.petType')}");
+    expect(source).toContain("aria-label={t('pages.petFinder.need')}");
+    expect(source).toContain("aria-label={t('pages.petFinder.priority')}");
+    expect(unlabeledNativeSelects).toEqual([]);
+    expect(unlabeledAntdSelects).toEqual([]);
+  });
 });

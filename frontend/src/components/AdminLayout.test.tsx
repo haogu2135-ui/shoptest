@@ -23,6 +23,28 @@ describe('AdminLayout visibility-aware polling', () => {
     expect(source.indexOf('className="admin-layout__mobileNavigation"')).toBeLessThan(source.indexOf('className="admin-layout__drawerMenu"'));
   });
 
+  it('announces admin loading spinner states as busy status regions', () => {
+    const source = readAdminLayoutSource();
+    const checkingStart = source.indexOf('if (checking) {');
+    const verifyUnavailableStart = source.indexOf('if (verifyUnavailable) {');
+    const fallbackStart = source.indexOf('if (!defaultAdminPath || !currentAdminRouteAllowed) {');
+    const layoutStart = source.indexOf('<Layout className="admin-layout">', fallbackStart);
+
+    expect(checkingStart).toBeGreaterThan(-1);
+    expect(verifyUnavailableStart).toBeGreaterThan(checkingStart);
+    expect(fallbackStart).toBeGreaterThan(verifyUnavailableStart);
+    expect(layoutStart).toBeGreaterThan(fallbackStart);
+
+    [source.slice(checkingStart, verifyUnavailableStart), source.slice(fallbackStart, layoutStart)].forEach((loadingSource) => {
+      expect(loadingSource).toContain('className="admin-layout__loading"');
+      expect(loadingSource).toContain('role="status"');
+      expect(loadingSource).toContain('aria-live="polite"');
+      expect(loadingSource).toContain('aria-busy="true"');
+      expect(loadingSource).toContain("aria-label={t('adminLayout.checking')}");
+      expect(loadingSource).toContain('<Spin size="large" tip={t(\'adminLayout.checking\')} />');
+    });
+  });
+
   it('keeps nested admin routes selected without strict equality-only matching', () => {
     const source = readAdminLayoutSource();
 
@@ -30,6 +52,19 @@ describe('AdminLayout visibility-aware polling', () => {
     expect(source).toContain('pathname === menuKey || pathname.startsWith(`${menuKey}/`)');
     expect(source).toContain('const currentAdminRouteAllowed = location.pathname === \'/admin\' || Boolean(selectedAdminPath);');
     expect(source).not.toContain('item.key === location.pathname');
+  });
+
+  it('persists explicit desktop sidebar collapse preference', () => {
+    const source = readAdminLayoutSource();
+
+    expect(source).toContain("const ADMIN_SIDER_COLLAPSED_KEY = 'shop-admin-sider-collapsed';");
+    expect(source).toContain("const [collapsed, setCollapsed] = useState(() => getLocalStorageItem(ADMIN_SIDER_COLLAPSED_KEY) === 'true');");
+    expect(source).toContain("const handleSiderCollapse = useCallback((nextCollapsed: boolean, collapseType?: 'clickTrigger' | 'responsive') => {");
+    expect(source).toContain("if (collapseType !== 'responsive') {");
+    expect(source).toContain("setLocalStorageItem(ADMIN_SIDER_COLLAPSED_KEY, nextCollapsed ? 'true' : 'false');");
+    expect(source).toContain('onCollapse={handleSiderCollapse}');
+    expect(source).not.toContain('onCollapse={setCollapsed}');
+    expect(source).not.toContain('const [collapsed, setCollapsed] = useState(false);');
   });
 
   it('guards admin auth checks against stale responses and aborted navigation', () => {
@@ -47,6 +82,22 @@ describe('AdminLayout visibility-aware polling', () => {
     expect(checkAdminSource).toContain('if (controller.signal.aborted || requestId !== adminCheckRequestRef.current) return;');
     expect(checkAdminSource).toContain('setChecking(false);');
     expect(source).toContain('adminCheckRequestRef.current += 1;');
+  });
+
+  it('does not rerun admin permission checks on every route change', () => {
+    const source = readAdminLayoutSource();
+    const initialCheckEffectStart = source.indexOf('useEffect(() => {\n    const initial = !hasStartedAdminCheckRef.current;');
+    const initialCheckEffect = source.slice(initialCheckEffectStart, source.indexOf('useEffect(() => () => {', initialCheckEffectStart));
+    const refreshEffectStart = source.indexOf('const refreshPermissions = () => {');
+    const refreshEffect = source.slice(refreshEffectStart, source.indexOf('useEffect(() => {\n    setMobileNavOpen(false);', refreshEffectStart));
+
+    expect(initialCheckEffectStart).toBeGreaterThan(-1);
+    expect(initialCheckEffect).toContain('void checkAdmin(initial);');
+    expect(initialCheckEffect).toContain('}, [checkAdmin]);');
+    expect(initialCheckEffect).not.toContain('location.pathname');
+    expect(refreshEffect).toContain("window.addEventListener('shop:admin-permissions-updated', refreshPermissions);");
+    expect(refreshEffect).toContain("document.addEventListener('visibilitychange', refreshVisiblePermissions);");
+    expect(refreshEffect).not.toContain('location.pathname');
   });
 
   it('uses the same login redirect builder for admin logout and failed auth checks', () => {
@@ -91,6 +142,9 @@ describe('AdminLayout visibility-aware polling', () => {
     expect(source).toContain("document.addEventListener('visibilitychange', refreshUnreadWhenVisible);");
     expect(source).toContain("document.removeEventListener('visibilitychange', refreshUnreadWhenVisible);");
     expect(source).toContain('const timer = window.setInterval(loadUnread, 15000);');
+    expect(source).toContain("const supportRouteActive = isAdminMenuRouteMatch(location.pathname, '/admin/support');");
+    expect(source).toContain('if (!supportRouteActive) {\n      return () => {\n        disposed = true;\n      };\n    }\n    const timer = window.setInterval(loadUnread, 15000);');
+    expect(source).toContain('}, [checking, canSeeSupport, supportRouteActive]);');
   });
 
   it('guards in-flight support unread responses after cleanup', () => {

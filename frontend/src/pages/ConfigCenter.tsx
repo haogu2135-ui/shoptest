@@ -250,7 +250,13 @@ const ConfigCenter: React.FC = () => {
         />
       ) : null}
 
-      <Spin spinning={loading && !snapshot}>
+      <Spin
+        spinning={loading && !snapshot}
+        role="status"
+        aria-live="polite"
+        aria-busy={loading && !snapshot}
+        aria-label={t('common.loading')}
+      >
         {loadError && !snapshot ? null : (snapshot?.sensitiveKeys || []).length > 0 ? (
           <Alert
             className="config-center__alert"

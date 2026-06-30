@@ -61,10 +61,10 @@
             </if>
             <if test="search != null and search != ''">
                 AND (
-                    LOWER(COALESCE(u.username, '')) LIKE CONCAT('%', LOWER(#{search}), '%')
-                    OR LOWER(COALESCE(admin.username, '')) LIKE CONCAT('%', LOWER(#{search}), '%')
-                    OR LOWER(COALESCE(ss.last_message, '')) LIKE CONCAT('%', LOWER(#{search}), '%')
-                    OR LOWER(COALESCE(ss.context_key, '')) LIKE CONCAT('%', LOWER(#{search}), '%')
+                    LOWER(COALESCE(u.username, '')) LIKE CONCAT('%', LOWER(#{search}), '%') ESCAPE '!'
+                    OR LOWER(COALESCE(admin.username, '')) LIKE CONCAT('%', LOWER(#{search}), '%') ESCAPE '!'
+                    OR LOWER(COALESCE(ss.last_message, '')) LIKE CONCAT('%', LOWER(#{search}), '%') ESCAPE '!'
+                    OR LOWER(COALESCE(ss.context_key, '')) LIKE CONCAT('%', LOWER(#{search}), '%') ESCAPE '!'
                 )
             </if>
         </where>

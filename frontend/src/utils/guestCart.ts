@@ -1,4 +1,4 @@
-import type { CartItem, ProductPublic } from '../types';
+import type { CartItem } from '../types';
 import { createLocalId } from './localIds';
 import { dispatchDomEvent } from './domEvents';
 import { getLocalStorageItem, setLocalStorageItem } from './safeStorage';
@@ -48,17 +48,40 @@ const normalizeOptionalNonNegativeMoney = (value: unknown) => {
   return Number.isFinite(numeric) && numeric >= 0 ? numeric : undefined;
 };
 
-const resolveProductSnapshotImage = (product: Partial<ProductPublic> | any) => {
-  const primary = String(product?.imageUrl || '').trim();
-  if (primary) return primary;
-  const galleryImage = Array.isArray(product?.images)
-    ? product.images.find((image: unknown) => String(image || '').trim())
-    : '';
-  return String(galleryImage || '').trim();
+type GuestCartProductInput = {
+  id?: unknown;
+  name?: unknown;
+  imageUrl?: unknown;
+  images?: unknown;
+  price?: unknown;
+  effectivePrice?: unknown;
+  stock?: unknown;
+  status?: unknown;
+  freeShipping?: unknown;
+  freeShippingThreshold?: unknown;
+  [key: string]: unknown;
 };
 
-type StoredGuestCartItem = Partial<CartItem> & {
-  product?: Partial<ProductPublic> & Record<string, unknown>;
+const EMPTY_PRODUCT_SNAPSHOT: GuestCartProductInput = {};
+
+const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null;
+
+const toProductInput = (value: unknown): GuestCartProductInput => (isRecord(value) ? value : EMPTY_PRODUCT_SNAPSHOT);
+
+const normalizeOptionalStock = (stock: unknown) => (stock === undefined ? undefined : normalizeStockLimit(stock));
+
+const normalizeProductStatus = (status: unknown) => {
+  const normalized = String(status || '').trim().toUpperCase();
+  return normalized || 'ACTIVE';
+};
+
+const resolveProductSnapshotImage = (product: GuestCartProductInput) => {
+  const primary = String(product.imageUrl || '').trim();
+  if (primary) return primary;
+  const galleryImage = Array.isArray(product.images)
+    ? product.images.find((image) => String(image || '').trim())
+    : '';
+  return String(galleryImage || '').trim();
 };
 
 export type NormalizedGuestCartItem = CartItem & {
@@ -67,26 +90,27 @@ export type NormalizedGuestCartItem = CartItem & {
 
 const isNormalizedGuestCartItem = (item: NormalizedGuestCartItem | null): item is NormalizedGuestCartItem => Boolean(item);
 
-const normalizeCartItem = (item: StoredGuestCartItem): NormalizedGuestCartItem | null => {
-  const id = normalizeSafeId(item.id);
-  const productSnapshot: Partial<ProductPublic> & Record<string, unknown> = item.product || {};
-  const productId = normalizeSafeId(item.productId ?? productSnapshot.id);
+const normalizeCartItem = (item: unknown): NormalizedGuestCartItem | null => {
+  const row = isRecord(item) ? item : {};
+  const productSnapshot = toProductInput(row.product);
+  const id = normalizeSafeId(row.id);
+  const productId = normalizeSafeId(row.productId ?? productSnapshot.id);
   if (id === null || productId === null || productId <= 0) return null;
-  const stock = item.stock === undefined ? productSnapshot.stock : item.stock;
-  const productStatus = item.productStatus || productSnapshot.status;
+  const stock = row.stock === undefined ? productSnapshot.stock : row.stock;
+  const productStatus = row.productStatus || productSnapshot.status;
 
   return {
     id,
     productId,
-    quantity: normalizeGuestCartQuantity(item.quantity, stock),
-    productName: String(item.productName || productSnapshot.name || '').trim(),
-    imageUrl: item.imageUrl ? String(item.imageUrl).trim() : resolveProductSnapshotImage(productSnapshot),
-    price: normalizePrice(item.price ?? productSnapshot.effectivePrice ?? productSnapshot.price),
-    stock: stock === undefined ? undefined : normalizeStockLimit(stock),
-    productStatus: productStatus ? String(productStatus).trim().toUpperCase() : 'ACTIVE',
-    freeShipping: Boolean(item.freeShipping ?? productSnapshot.freeShipping),
-    freeShippingThreshold: normalizeOptionalNonNegativeMoney(item.freeShippingThreshold ?? productSnapshot.freeShippingThreshold),
-    selectedSpecs: item.selectedSpecs ? String(item.selectedSpecs).trim() : undefined,
+    quantity: normalizeGuestCartQuantity(row.quantity, stock),
+    productName: String(row.productName || productSnapshot.name || '').trim(),
+    imageUrl: row.imageUrl ? String(row.imageUrl).trim() : resolveProductSnapshotImage(productSnapshot),
+    price: normalizePrice(row.price ?? productSnapshot.effectivePrice ?? productSnapshot.price),
+    stock: normalizeOptionalStock(stock),
+    productStatus: normalizeProductStatus(productStatus),
+    freeShipping: Boolean(row.freeShipping ?? productSnapshot.freeShipping),
+    freeShippingThreshold: normalizeOptionalNonNegativeMoney(row.freeShippingThreshold ?? productSnapshot.freeShippingThreshold),
+    selectedSpecs: row.selectedSpecs ? String(row.selectedSpecs).trim() : undefined,
   };
 };
 
@@ -120,25 +144,32 @@ export const clearGuestCart = () => writeGuestCart([]);
 
 export const replaceGuestCartItems = (items: CartItem[]) => writeGuestCart(items);
 
-export const addGuestCartItem = (product: ProductPublic | any, quantity = 1, selectedSpecs?: string, price?: number): CartItem | null => {
+export const addGuestCartItem = (product: GuestCartProductInput | null | undefined, quantity = 1, selectedSpecs?: string, price?: number): CartItem | null => {
+  const productInput = toProductInput(product);
   const items = readGuestCart();
-  const productId = normalizePositiveProductId(product.id);
-  const productName = String(product.name || '').trim();
+  const productId = normalizePositiveProductId(productInput.id);
+  const productName = String(productInput.name || '').trim();
   if (productId === null || !productName) {
     return null;
   }
   const normalizedSpecs = selectedSpecs ? String(selectedSpecs).trim().slice(0, 600) : undefined;
-  const stockLimit = normalizeStockLimit(product.stock);
+  const stockLimit = normalizeStockLimit(productInput.stock);
+  const productStock = normalizeOptionalStock(productInput.stock);
+  const productPrice = normalizePrice(price ?? productInput.effectivePrice ?? productInput.price);
   const normalizedQuantity = normalizeGuestCartQuantity(quantity, stockLimit);
   const existing = items.find((item) => item.productId === productId && (item.selectedSpecs || '') === (normalizedSpecs || ''));
   if (existing) {
-    existing.quantity = normalizeGuestCartQuantity(existing.quantity + normalizedQuantity, stockLimit);
-    existing.price = price ?? product.effectivePrice ?? product.price;
-    existing.stock = product.stock;
-    existing.freeShipping = Boolean(product.freeShipping);
-    existing.freeShippingThreshold = normalizeOptionalNonNegativeMoney(product.freeShippingThreshold);
-    writeGuestCart(items);
-    return existing;
+    const updatedExisting: CartItem = {
+      ...existing,
+      quantity: normalizeGuestCartQuantity(existing.quantity + normalizedQuantity, stockLimit),
+      price: productPrice,
+      stock: productStock,
+      productStatus: normalizeProductStatus(productInput.status),
+      freeShipping: Boolean(productInput.freeShipping),
+      freeShippingThreshold: normalizeOptionalNonNegativeMoney(productInput.freeShippingThreshold),
+    };
+    writeGuestCart(items.map((item) => (item.id === existing.id ? updatedExisting : item)));
+    return updatedExisting;
   }
 
   const item: CartItem = {
@@ -146,12 +177,12 @@ export const addGuestCartItem = (product: ProductPublic | any, quantity = 1, sel
     productId,
     quantity: normalizedQuantity,
     productName,
-    imageUrl: resolveProductSnapshotImage(product),
-    price: price ?? product.effectivePrice ?? product.price,
-    stock: product.stock,
-    productStatus: 'ACTIVE',
-    freeShipping: Boolean(product.freeShipping),
-    freeShippingThreshold: normalizeOptionalNonNegativeMoney(product.freeShippingThreshold),
+    imageUrl: resolveProductSnapshotImage(productInput),
+    price: productPrice,
+    stock: productStock,
+    productStatus: normalizeProductStatus(productInput.status),
+    freeShipping: Boolean(productInput.freeShipping),
+    freeShippingThreshold: normalizeOptionalNonNegativeMoney(productInput.freeShippingThreshold),
     selectedSpecs: normalizedSpecs,
   };
   writeGuestCart([...items, item]);

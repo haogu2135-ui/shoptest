@@ -1,5 +1,5 @@
 import type { CategoryPublic, ProductPublic, ProductVariant } from '../types';
-import { normalizePersistentImageUrl } from './mediaAssets';
+import { imageFallbacks, normalizePersistentImageUrl } from './mediaAssets';
 import { reportNonBlockingError } from './nonBlockingError';
 import { getLocalStorageItem, setLocalStorageItem } from './safeStorage';
 
@@ -10,6 +10,7 @@ const MAX_SNAPSHOT_IMAGES = 6;
 const MAX_SNAPSHOT_OPTIONS = 16;
 const MAX_SNAPSHOT_VARIANTS = 20;
 const MAX_SNAPSHOT_SPEC_KEYS = 32;
+const fallbackProductImage = imageFallbacks.product;
 
 export type ProductCatalogSnapshotProduct = ProductPublic & {
   categoryName?: string;
@@ -64,11 +65,8 @@ const fallbackCatalogProducts: ProductCatalogSnapshotProduct[] = [
     stock: 42,
     categoryId: 10,
     categoryName: 'Automatic Feeders',
-    imageUrl: 'https://images.unsplash.com/photo-1589924691995-400dc9ecc119?auto=format&fit=crop&w=900&q=80',
-    images: [
-      'https://images.unsplash.com/photo-1589924691995-400dc9ecc119?auto=format&fit=crop&w=900&q=80',
-      'https://images.unsplash.com/photo-1595433707802-6b2626ef1c91?auto=format&fit=crop&w=900&q=80',
-    ],
+    imageUrl: fallbackProductImage,
+    images: [fallbackProductImage],
     brand: 'PawPilot',
     tag: 'Smart feeder',
     rating: 4.8,
@@ -100,8 +98,8 @@ const fallbackCatalogProducts: ProductCatalogSnapshotProduct[] = [
     stock: 75,
     categoryId: 11,
     categoryName: 'Water Fountains',
-    imageUrl: 'https://images.unsplash.com/photo-1533743983669-94fa5c4338ec?auto=format&fit=crop&w=900&q=80',
-    images: ['https://images.unsplash.com/photo-1573865526739-10659fec78a5?auto=format&fit=crop&w=900&q=80'],
+    imageUrl: fallbackProductImage,
+    images: [fallbackProductImage],
     brand: 'HydraWhisk',
     tag: 'Quiet fountain',
     rating: 4.7,
@@ -130,8 +128,8 @@ const fallbackCatalogProducts: ProductCatalogSnapshotProduct[] = [
     stock: 120,
     categoryId: 13,
     categoryName: 'Harnesses & Leashes',
-    imageUrl: 'https://images.unsplash.com/photo-1507146426996-ef05306b995a?auto=format&fit=crop&w=900&q=80',
-    images: ['https://images.unsplash.com/photo-1517423440428-a5a00ad493e8?auto=format&fit=crop&w=900&q=80'],
+    imageUrl: fallbackProductImage,
+    images: [fallbackProductImage],
     brand: 'TrailTails',
     tag: 'Walking bundle',
     rating: 4.6,
@@ -166,8 +164,8 @@ const fallbackCatalogProducts: ProductCatalogSnapshotProduct[] = [
     stock: 36,
     categoryId: 4,
     categoryName: 'Beds & Furniture',
-    imageUrl: 'https://images.unsplash.com/photo-1601758124510-52d02ddb7cbd?auto=format&fit=crop&w=900&q=80',
-    images: ['https://images.unsplash.com/photo-1548199973-03cce0bbc87b?auto=format&fit=crop&w=900&q=80'],
+    imageUrl: fallbackProductImage,
+    images: [fallbackProductImage],
     brand: 'CloudNap',
     tag: 'Calming bed',
     rating: 4.9,

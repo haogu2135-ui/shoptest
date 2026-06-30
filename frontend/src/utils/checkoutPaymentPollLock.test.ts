@@ -16,6 +16,7 @@ const setNavigatorLocks = (locks: unknown) => {
 
 describe('checkoutPaymentPollLock', () => {
   afterEach(() => {
+    jest.restoreAllMocks();
     window.localStorage.clear();
     setNavigatorLocks(undefined);
     jest.useRealTimers();
@@ -84,6 +85,19 @@ describe('checkoutPaymentPollLock', () => {
 
     expect(winners).toHaveLength(1);
     expect(lock?.ownerId).toBe(results[0] ? 'owner-a' : 'owner-b');
+  });
+
+  it('does not claim storage fallback ownership when lock persistence fails', async () => {
+    jest.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('storage unavailable');
+    });
+
+    await expect(Promise.all([
+      claimCheckoutPaymentPollLock(47, 'ORD-47', 'owner-a'),
+      claimCheckoutPaymentPollLock(47, 'ORD-47', 'owner-b'),
+    ])).resolves.toEqual([false, false]);
+
+    expect(window.localStorage.getItem(checkoutPaymentPollLockKey(47))).toBeNull();
   });
 
   it('does not let another owner release an active storage fallback lock', async () => {

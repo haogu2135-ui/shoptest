@@ -167,6 +167,37 @@ class ConfigCenterServiceTest {
     }
 
     @Test
+    void snapshotMasksJwtSmtpAndSmsCredentialsInAllResponseSurfaces() throws Exception {
+        environment.setProperty("admin.config-center.max-properties", "10");
+        environment.setProperty("app.jwtSecret", "jwt-secret-current-value-1234567890");
+        environment.setProperty("app.mail.accounts[0].password", "smtp-password-current-value");
+        environment.setProperty("sms.provider.api-key", "sms-api-key-current-value");
+        when(configService.getConfig("shop-backend.properties", "DEFAULT_GROUP", 3000))
+                .thenReturn("app.jwtSecret=jwt-secret-nacos-value-1234567890\n"
+                        + "app.mail.accounts[0].password=smtp-password-nacos-value\n"
+                        + "sms.provider.api-key=sms-api-key-nacos-value\n"
+                        + "sms.provider.secret=sms-secret-nacos-value\n");
+
+        ConfigCenterSnapshotResponse response = service.snapshot(null, null, null);
+
+        assertFalse(response.getContent().contains("jwt-secret-nacos-value-1234567890"));
+        assertFalse(response.getContent().contains("smtp-password-nacos-value"));
+        assertFalse(response.getContent().contains("sms-api-key-nacos-value"));
+        assertFalse(response.getContent().contains("sms-secret-nacos-value"));
+        assertFalse(response.getProperties().get("app.jwtSecret").contains("jwt-secret-nacos-value-1234567890"));
+        assertFalse(response.getProperties().get("app.mail.accounts[0].password").contains("smtp-password-nacos-value"));
+        assertFalse(response.getProperties().get("sms.provider.api-key").contains("sms-api-key-nacos-value"));
+        assertFalse(response.getProperties().get("sms.provider.secret").contains("sms-secret-nacos-value"));
+        assertFalse(response.getEffectiveProperties().get("app.jwtSecret").contains("jwt-secret-current-value-1234567890"));
+        assertFalse(response.getEffectiveProperties().get("app.mail.accounts[0].password").contains("smtp-password-current-value"));
+        assertFalse(response.getEffectiveProperties().get("sms.provider.api-key").contains("sms-api-key-current-value"));
+        assertTrue(response.getSensitiveKeys().contains("app.jwtSecret"));
+        assertTrue(response.getSensitiveKeys().contains("app.mail.accounts[0].password"));
+        assertTrue(response.getSensitiveKeys().contains("sms.provider.api-key"));
+        assertTrue(response.getSensitiveKeys().contains("sms.provider.secret"));
+    }
+
+    @Test
     void rejectsOversizedContentAndTooManyProperties() {
         String content = IntStream.range(0, 4)
                 .mapToObj(index -> "order.test-" + index + "=" + "x".repeat(700))

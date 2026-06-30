@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { act, render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { clearStoredAuthSession, userApi } from './api';
 import { AccessibleMessageLiveRegion, AuthStartupGate } from './App';
 import { LanguageProvider } from './i18n';
@@ -75,11 +76,13 @@ const createDeferred = <T,>(): Deferred<T> => {
 const readAppSource = () => fs.readFileSync(path.resolve(__dirname, 'App.tsx'), 'utf8');
 
 const renderGate = () => render(
-  <LanguageProvider>
-    <AuthStartupGate>
-      <div>storefront shell</div>
-    </AuthStartupGate>
-  </LanguageProvider>,
+  <MemoryRouter>
+    <LanguageProvider>
+      <AuthStartupGate>
+        <div>storefront shell</div>
+      </AuthStartupGate>
+    </LanguageProvider>
+  </MemoryRouter>,
 );
 
 describe('AuthStartupGate', () => {
@@ -170,12 +173,69 @@ describe('AuthStartupGate', () => {
     expect(authGateSource).toContain('userApi.getProfile({ skipAuthRedirect: true })');
     expect(authGateSource).toContain('if (isAuthExpiredError(error))');
     expect(authGateSource).toContain('clearStoredAuthSession();');
+    expect(source).toContain("const AUTH_REQUIRED_ROUTE_PREFIXES = ['/admin', '/checkout', '/notifications', '/profile', '/wishlist'];");
+    expect(authGateSource).toContain('if (isAuthRequiredRoutePath(window.location.pathname)) {');
+    expect(authGateSource).toContain('navigate(buildLoginUrlFromWindow(), { replace: true });');
     expect(authGateSource).toContain("reportNonBlockingError('AuthStartupGate.validateStoredSession', error);");
     expect(authGateSource.indexOf('clearStoredAuthSession();')).toBeLessThan(
       authGateSource.indexOf("reportNonBlockingError('AuthStartupGate.validateStoredSession', error);"),
     );
+    expect(authGateSource).not.toContain('window.location.href');
     expect(authGateSource).not.toMatch(/\bmessage\./);
     expect(authGateSource).not.toMatch(/\bModal\./);
+  });
+
+  it('keeps storefront routes inside the shared auth provider', () => {
+    const source = readAppSource();
+    const appSource = source.slice(source.indexOf('const App: React.FC'));
+
+    expect(source).toContain("import { AuthProvider } from './hooks/useAuth';");
+    expect(source).toContain('const ProtectedRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {');
+    expect(source).toContain('return <Navigate to={buildLoginUrl(getCurrentRelativeUrl(location))} replace />;');
+    expect(source).toContain('const protectedRouteElement = (element: React.ReactElement) => (');
+    expect(appSource).toContain('<AuthProvider>');
+    expect(appSource).toContain('<AuthStartupGate>');
+    expect(appSource).toContain('<Route path="profile" element={protectedRouteElement(<Profile />)} />');
+    expect(appSource).toContain('<Route path="wishlist" element={protectedRouteElement(<Wishlist />)} />');
+    expect(appSource).toContain('<Route path="notifications" element={protectedRouteElement(<Notifications />)} />');
+    expect(appSource).toContain('<Route path="checkout" element={<Checkout />} />');
+    expect(appSource.indexOf('<AuthProvider>')).toBeLessThan(appSource.indexOf('<AuthStartupGate>'));
+    expect(appSource.indexOf('</AuthStartupGate>')).toBeLessThan(appSource.indexOf('</AuthProvider>'));
+  });
+
+  it('routes floating overlay boundary failures through non-blocking diagnostics', () => {
+    const source = readAppSource();
+    const boundarySource = source.slice(
+      source.indexOf('class FloatingOverlayBoundary'),
+      source.indexOf('const getSupportOpenDetail'),
+    );
+
+    expect(boundarySource).toContain('reportNonBlockingError(this.props.reportContext, error);');
+    expect(boundarySource).not.toMatch(/\bconsole\.(error|warn)\b/);
+  });
+
+  it('keeps cart and support floating overlays inside their own recoverable boundary', () => {
+    const source = readAppSource();
+    const cartHostSource = source.slice(
+      source.indexOf('const LazyCartDrawerHost'),
+      source.indexOf('type SupportOpenDetail'),
+    );
+    const supportHostSource = source.slice(
+      source.indexOf('const LazySupportWidgetHost'),
+      source.indexOf('const StorefrontLayout'),
+    );
+
+    expect(cartHostSource).toContain('<FloatingOverlayBoundary');
+    expect(cartHostSource).toContain('reportContext="FloatingOverlayBoundary.cartDrawer.componentDidCatch"');
+    expect(cartHostSource).toContain('<LazyCartDrawer');
+    expect(cartHostSource.indexOf('<FloatingOverlayBoundary')).toBeLessThan(cartHostSource.indexOf('<LazyCartDrawer'));
+    expect(cartHostSource.indexOf('</FloatingOverlayBoundary>')).toBeGreaterThan(cartHostSource.indexOf('<LazyCartDrawer'));
+
+    expect(supportHostSource).toContain('<FloatingOverlayBoundary');
+    expect(supportHostSource).toContain('reportContext="FloatingOverlayBoundary.supportWidget.componentDidCatch"');
+    expect(supportHostSource).toContain('<CustomerSupportWidget');
+    expect(supportHostSource.indexOf('<FloatingOverlayBoundary')).toBeLessThan(supportHostSource.indexOf('<CustomerSupportWidget'));
+    expect(supportHostSource.indexOf('</FloatingOverlayBoundary>')).toBeGreaterThan(supportHostSource.indexOf('<CustomerSupportWidget'));
   });
 });
 

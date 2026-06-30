@@ -61,7 +61,7 @@ public class SecurityAuditLogService {
         try {
             auditLogMapper.insert(auditLog);
         } catch (RuntimeException e) {
-            log.warn("Security audit log write failed. action={}, result={}, actor={}, resourceType={}, resourceId={}",
+            log.error("Security audit log write failed. action={}, result={}, actor={}, resourceType={}, resourceId={}",
                     action, result, actorUsername, resourceType, resourceId, e);
         }
     }

@@ -118,7 +118,7 @@ public class UserDetailsImpl implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return status == null || !"BANNED".equalsIgnoreCase(status);
+        return UserAccountStatusPolicy.isActiveStatus(status);
     }
 
     @Override

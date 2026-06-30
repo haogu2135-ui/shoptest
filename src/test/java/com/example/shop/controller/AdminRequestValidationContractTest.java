@@ -26,6 +26,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.web.bind.annotation.RequestBody;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.validation.ConstraintViolation;
@@ -90,6 +91,31 @@ class AdminRequestValidationContractTest {
     }
 
     @Test
+    void adminBugReportRequestMatchesServiceTextLimits() throws Exception {
+        AdminBugReportRequest valid = new AdminBugReportRequest();
+        valid.setTitle("x".repeat(160));
+        valid.setDescription("x".repeat(4000));
+
+        Set<ConstraintViolation<AdminBugReportRequest>> validViolations = validator.validate(valid);
+
+        assertFalse(hasViolation(validViolations, "title"));
+        assertFalse(hasViolation(validViolations, "description"));
+
+        AdminBugReportRequest oversized = new AdminBugReportRequest();
+        oversized.setTitle("x".repeat(161));
+        oversized.setDescription("x".repeat(4001));
+
+        Set<ConstraintViolation<AdminBugReportRequest>> oversizedViolations = validator.validate(oversized);
+
+        assertHasViolation(oversizedViolations, "title");
+        assertHasViolation(oversizedViolations, "description");
+
+        String serviceSource = Files.readString(Path.of("src/main/java/com/example/shop/service/AdminBugReportService.java"));
+        assertTrue(serviceSource.contains("requiredText(request.getTitle(), 160, \"Title is required\")"));
+        assertTrue(serviceSource.contains("requiredMultilineText(request.getDescription(), 4000, \"Description is required\")"));
+    }
+
+    @Test
     void adminBugReportEntityCarriesStorageAlignedValidation() {
         AdminBugReport report = new AdminBugReport();
         report.setTitle(" ");
@@ -107,6 +133,12 @@ class AdminRequestValidationContractTest {
 
     @Test
     void adminBugReportStatusRequestRejectsOversizedStatusNotesAndAssignee() {
+        AdminBugReportStatusRequest blankStatus = new AdminBugReportStatusRequest();
+        blankStatus.setStatus(" ");
+        Set<ConstraintViolation<AdminBugReportStatusRequest>> blankStatusViolations = validator.validate(blankStatus);
+
+        assertHasViolation(blankStatusViolations, "status");
+
         AdminBugReportStatusRequest request = new AdminBugReportStatusRequest();
         request.setStatus("x".repeat(41));
         request.setNote("x".repeat(2001));
@@ -145,6 +177,19 @@ class AdminRequestValidationContractTest {
                 CouponUpsertRequest.class, Authentication.class, HttpServletRequest.class);
         assertParameterValid(AdminController.class, "updateCoupon", 1,
                 Long.class, CouponUpsertRequest.class, Authentication.class, HttpServletRequest.class);
+    }
+
+    @Test
+    void adminCategoryUpdateKeepsJsonRequestBodyBinding() throws Exception {
+        Method method = AdminController.class.getMethod("updateCategory",
+                Long.class, Category.class, Authentication.class, HttpServletRequest.class);
+
+        RequestBody requestBody = method.getParameters()[1].getAnnotation(RequestBody.class);
+
+        assertFalse(Files.exists(Path.of("src/main/java/com/example/shop/controller/CategoryAdminController.java")));
+        assertTrue(method.getParameters()[1].isAnnotationPresent(Valid.class));
+        assertTrue(requestBody != null, "AdminController.updateCategory category parameter must keep @RequestBody");
+        assertFalse(requestBody.required(), "AdminController.updateCategory should keep nullable body handling");
     }
 
     @Test
@@ -349,6 +394,11 @@ class AdminRequestValidationContractTest {
         assertTrue(violations.stream()
                         .anyMatch(violation -> property.contentEquals(violation.getPropertyPath().toString())),
                 () -> "Expected violation for property: " + property);
+    }
+
+    private static boolean hasViolation(Set<? extends ConstraintViolation<?>> violations, String property) {
+        return violations.stream()
+                .anyMatch(violation -> property.contentEquals(violation.getPropertyPath().toString()));
     }
 
     private static boolean hasDeclaredField(Class<?> target, String fieldName) {

@@ -6,6 +6,7 @@ import path from 'path';
 import Cart, { deriveCartCheckoutMetrics } from './Cart';
 import Checkout from './Checkout';
 import { addressApi, cartApi, couponApi, orderApi, paymentApi } from '../api';
+import { loadRegionData, type RegionOption } from '../regionData';
 import { getGuestCartItems, removeGuestCartItems } from '../utils/guestCart';
 import { clearCheckoutCartItemIds, hasAuthenticatedCartSession, readCheckoutCartItemIds, syncCheckoutCartItemIds } from '../utils/cartSession';
 import { getSavedForLaterItems, saveCartItemForLater } from '../utils/saveForLater';
@@ -17,6 +18,7 @@ let mockLocalStorage: Record<string, string | null> = {};
 let mockSessionStorage: Record<string, string | null> = {};
 let mockGuestCartItems: any[] = [];
 let mockCheckoutCartItemIds: number[] = [];
+let cartCheckoutFlowFakeTimersActive = false;
 
 const configureSafeStorageMock = () => {
   const safeStorage = jest.requireMock('../utils/safeStorage');
@@ -322,6 +324,10 @@ jest.mock('../utils/safeStorage', () => ({
   }),
 }));
 
+jest.mock('../regionData', () => ({
+  loadRegionData: jest.fn(),
+}));
+
 jest.mock('../utils/guestCart', () => ({
   addGuestCartItem: jest.fn(),
   getGuestCartItems: jest.fn(() => mockGuestCartItems),
@@ -417,6 +423,7 @@ jest.mock('../utils/domEvents', () => ({
 
 jest.mock('../utils/apiError', () => ({
   getApiErrorMessage: jest.fn((_error: unknown, fallback: string) => fallback),
+  isAuthExpiredError: jest.fn(() => false),
 }));
 
 jest.mock('../utils/safeUrl', () => ({
@@ -479,6 +486,40 @@ const secondMemberCartItem = {
   price: 12,
 };
 
+const guestCheckoutRegionPath = ['Beijing', 'Beijing', 'Chaoyang'];
+const mexicoCheckoutRegionPath = ['\u58a8\u897f\u54e5', 'Ciudad de M\u00e9xico', 'Centro'];
+const memberCheckoutRegionPath = ['\u4e2d\u56fd', '\u5317\u4eac\u5e02', '\u671d\u9633\u533a'];
+
+const checkoutRegionOptions: RegionOption[] = [
+  {
+    value: 'Beijing',
+    label: 'Beijing',
+    children: [{
+      value: 'Beijing',
+      label: 'Beijing',
+      children: [{ value: 'Chaoyang', label: 'Chaoyang' }],
+    }],
+  },
+  {
+    value: '\u58a8\u897f\u54e5',
+    label: 'Mexico',
+    children: [{
+      value: 'Ciudad de M\u00e9xico',
+      label: 'Ciudad de M\u00e9xico',
+      children: [{ value: 'Centro', label: 'Centro' }],
+    }],
+  },
+  {
+    value: '\u4e2d\u56fd',
+    label: 'China',
+    children: [{
+      value: '\u5317\u4eac\u5e02',
+      label: 'Beijing',
+      children: [{ value: '\u671d\u9633\u533a', label: 'Chaoyang' }],
+    }],
+  },
+];
+
 const renderWithRouter = (component: React.ReactElement, route: string) => render(
   <MemoryRouter initialEntries={[route]}>
     {component}
@@ -492,7 +533,7 @@ const setPaymentChannels = (code: string, displayName: string) => {
 };
 
 const getPrimarySubmitButton = () => (
-  document.querySelector('.checkout-page__submitButton') as HTMLButtonElement
+  document.querySelector('.checkout-page__confirmationButton') as HTMLButtonElement
 );
 
 const getCartSummaryCheckoutButton = () => (
@@ -516,6 +557,7 @@ const getQuantityButtons = (productName: string) => {
 };
 
 const useQuantityFakeTimers = () => {
+  cartCheckoutFlowFakeTimersActive = true;
   jest.useFakeTimers({ shouldClearNativeTimers: true } as any);
 };
 
@@ -533,14 +575,28 @@ const flushMicrotasks = async () => {
   });
 };
 
+const getPopconfirmOkButton = () => (
+  document.querySelector('.cart-page-popconfirm .ant-popconfirm-buttons .ant-btn-primary') as HTMLButtonElement | null
+);
+
 const clickOpenPopconfirmOk = async () => {
   await flushMicrotasks();
-  let okButton = document.querySelector('.cart-page-popconfirm .ant-popconfirm-buttons .ant-btn-primary') as HTMLButtonElement | null;
+  let okButton = getPopconfirmOkButton();
+  if (!okButton && cartCheckoutFlowFakeTimersActive) {
+    for (const delayMs of [0, 50, 100, 100]) {
+      await act(async () => {
+        jest.advanceTimersByTime(delayMs);
+        await Promise.resolve();
+      });
+      okButton = getPopconfirmOkButton();
+      if (okButton) break;
+    }
+  }
   if (!okButton) {
-    act(() => {
-      jest.advanceTimersByTime(0);
+    await waitFor(() => {
+      expect(getPopconfirmOkButton()).toBeInTheDocument();
     });
-    okButton = document.querySelector('.cart-page-popconfirm .ant-popconfirm-buttons .ant-btn-primary') as HTMLButtonElement | null;
+    okButton = getPopconfirmOkButton();
   }
   expect(okButton).toBeInTheDocument();
   fireEvent.click(okButton as HTMLButtonElement);
@@ -557,6 +613,7 @@ describe('cart to checkout flows', () => {
     mockSessionStorage = {};
     mockGuestCartItems = [];
     mockCheckoutCartItemIds = [];
+    cartCheckoutFlowFakeTimersActive = false;
     configureSafeStorageMock();
     (getGuestCartItems as jest.Mock).mockImplementation(() => mockGuestCartItems);
     (hasAuthenticatedCartSession as jest.Mock).mockImplementation(() => Boolean(mockLocalStorage.token));
@@ -572,6 +629,7 @@ describe('cart to checkout flows', () => {
     (cartApi.removeItem as jest.Mock).mockResolvedValue({ data: {} });
     (cartApi.removeItems as jest.Mock).mockResolvedValue({ data: {} });
     (cartApi.updateQuantity as jest.Mock).mockResolvedValue({ data: {} });
+    (loadRegionData as jest.Mock).mockResolvedValue(checkoutRegionOptions);
     (getApiErrorMessage as jest.Mock).mockImplementation((_error: unknown, fallback: string) => fallback);
     (getSavedForLaterItems as jest.Mock).mockReturnValue([]);
     (saveCartItemForLater as jest.Mock).mockImplementation((item: any) => ({
@@ -619,9 +677,11 @@ describe('cart to checkout flows', () => {
         createdAt: '2026-06-05T00:00:00Z',
       },
     });
+    setPaymentChannels('STRIPE', 'Stripe');
   });
 
   afterEach(() => {
+    cartCheckoutFlowFakeTimersActive = false;
     jest.useRealTimers();
   });
 
@@ -813,6 +873,19 @@ describe('cart to checkout flows', () => {
     expect(f2709Css).not.toMatch(/grid-auto-flow:\s*column/);
   });
 
+  it('keeps Chinese cart copy wrapped on dense cart surfaces', () => {
+    const css = fs.readFileSync(path.resolve(__dirname, 'Cart.css'), 'utf8');
+    const zhStart = css.indexOf('Chinese cart pass: CJK copy needs explicit break opportunities');
+    const zhCss = css.slice(zhStart, css.indexOf('.cart-page .ant-card'));
+
+    expect(zhStart).toBeGreaterThan(-1);
+    expect(zhCss).toContain('.cart-page--zh');
+    expect(zhCss).toMatch(/\.cart-page--zh\s*\{[\s\S]*?line-break:\s*strict;[\s\S]*?overflow-wrap:\s*anywhere;/);
+    expect(zhCss).toMatch(/\.cart-page--zh \.cart-page__mobileItemTitle,[\s\S]*?\.cart-page--zh \.ant-list-item-meta-title\s*\{[\s\S]*?line-height:\s*1\.25;/);
+    expect(zhCss).toMatch(/\.cart-page--zh \.cart-page__heroActions \.ant-btn,[\s\S]*?\.cart-page--zh \.cart-page__summary \.ant-btn-primary\s*\{[\s\S]*?min-height:\s*42px;[\s\S]*?white-space:\s*normal;/);
+    expect(zhCss).toMatch(/@media \(max-width:\s*560px\)\s*\{[\s\S]*?\.cart-page--zh \.cart-page__heroActions,[\s\S]*?grid-template-columns:\s*1fr;[\s\S]*?\.cart-page--zh \.cart-page__summary \.ant-btn-primary\s*\{[\s\S]*?width:\s*100%;/);
+  });
+
   it('keeps checkout as the primary next action once purchasable items are selected', () => {
     const source = fs.readFileSync(path.resolve(__dirname, 'Cart.tsx'), 'utf8');
     const checkoutBranch = source.indexOf('if (selectedItems.some(canCheckout))');
@@ -824,6 +897,55 @@ describe('cart to checkout flows', () => {
     expect(source.slice(checkoutBranch, addOnBranch)).toContain("key: 'checkout'");
     expect(source.slice(checkoutBranch, addOnBranch)).toContain("label: t('pages.cart.checkout')");
     expect(source.slice(checkoutBranch, addOnBranch)).toContain('action: goCheckout');
+  });
+
+  it('keeps the top checkout action label distinct from the summary checkout button', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, 'Cart.tsx'), 'utf8');
+
+    expect(source).toContain("const cartNextActionLabel = `${cartNextAction.label}: ${cartNextAction.title}`;");
+    expect(source).toContain("const cartTopNextActionLabel = `${t('pages.cart.nextActionEyebrow')}: ${cartNextActionLabel}`;");
+    expect(source).toContain('aria-label={cartItems.length > 0 ? cartTopNextActionLabel : emptyBrowseActionLabel}');
+    expect(source).toContain('title={cartItems.length > 0 ? cartTopNextActionLabel : emptyBrowseActionLabel}');
+    expect(source).toContain('aria-label={checkoutActionLabel}');
+    expect(source).not.toContain('`${cartNextActionLabel} (top action)`');
+  });
+
+  it('keeps checkout flow tests aligned with async region data, payment channel, and popconfirm timer setup', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, 'CartCheckoutFlow.test.tsx'), 'utf8');
+    const setupTestsSource = fs.readFileSync(path.resolve(__dirname, '../setupTests.ts'), 'utf8');
+
+    expect(source).toContain("import { loadRegionData, type RegionOption } from '../regionData';");
+    expect(source).toContain("jest.mock('../regionData', () => ({");
+    expect(source).toContain('(loadRegionData as jest.Mock).mockResolvedValue(checkoutRegionOptions);');
+    expect(source).toContain("setPaymentChannels('STRIPE', 'Stripe');");
+    expect(source).toContain("const guestCheckoutRegionPath = ['Beijing', 'Beijing', 'Chaoyang'];");
+    expect(source).toContain('region: guestCheckoutRegionPath,');
+    expect(source).toContain('let cartCheckoutFlowFakeTimersActive = false;');
+    expect(source).toContain('if (!okButton && cartCheckoutFlowFakeTimersActive) {');
+    expect(source).toContain('for (const delayMs of [0, 50, 100, 100])');
+    expect(source).toContain("document.querySelector('.checkout-page__confirmationButton')");
+    expect(source).not.toContain("document.querySelector('.checkout-page__submitButton') as HTMLButtonElement");
+    expect(source).not.toContain('/submit/i');
+    expect(setupTestsSource).toContain("if (typeof MessageChannel === 'undefined') {");
+    expect(setupTestsSource).toContain("Object.defineProperty(globalThis, 'MessageChannel'");
+  });
+
+  it('keeps cart checkout submission tied to the latest selected item snapshot', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, 'Cart.tsx'), 'utf8');
+    const checkoutStart = source.indexOf('const goCheckout = useCallback(async () => {');
+    const checkoutEnd = source.indexOf('const removeSelectedItems = () => {', checkoutStart);
+    const checkoutSource = source.slice(checkoutStart, checkoutEnd);
+
+    expect(source).toContain('const checkoutSubmittingRef = useRef(false);');
+    expect(checkoutStart).toBeGreaterThan(-1);
+    expect(checkoutEnd).toBeGreaterThan(checkoutStart);
+    expect(source).not.toContain('const goCheckout = async () => {');
+    expect(checkoutSource).toContain('if (checkoutSubmittingRef.current) return;');
+    expect(checkoutSource).toContain('const checkoutItems = selectedItems.filter(canCheckout);');
+    expect(checkoutSource.indexOf('checkoutSubmittingRef.current = true;')).toBeLessThan(checkoutSource.indexOf('setCheckoutSubmitting(true);'));
+    expect(checkoutSource.indexOf('setCheckoutSubmitting(true);')).toBeLessThan(checkoutSource.indexOf('await flushPendingQuantityUpdates(checkoutItems);'));
+    expect(checkoutSource).toContain('checkoutSubmittingRef.current = false;');
+    expect(checkoutSource).toContain('}, [flushPendingQuantityUpdates, hasStaleCartData, navigate, selectedItems, t]);');
   });
 
   it('derives the cart hero shipping highlight from the shared shipping summary', () => {
@@ -845,10 +967,24 @@ describe('cart to checkout flows', () => {
     expect(highlightSource).not.toMatch(/key:\s*'shipping'[\s\S]*?title:\s*t\('pages\.cart\.freeShippingUnlocked'\)/);
   });
 
+  it('keeps cart amount phrase fragment keys tied to rendered text content', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, 'Cart.tsx'), 'utf8');
+    const amountTextStart = source.indexOf('const renderCartAmountText = (label: string, amount: string) => {');
+    const amountTextEnd = source.indexOf('const freeShippingRemainingText', amountTextStart);
+    const amountTextSource = source.slice(amountTextStart, amountTextEnd);
+
+    expect(amountTextStart).toBeGreaterThan(-1);
+    expect(amountTextEnd).toBeGreaterThan(amountTextStart);
+    expect(amountTextSource).toContain('const parts = label.split(amount);');
+    expect(amountTextSource).toContain('key={`${part}-${index}`}');
+    expect(amountTextSource).not.toContain('key={index}');
+    expect(amountTextSource).not.toContain('key={i}');
+  });
+
   it('keeps cart error handling typed without broad any usage', () => {
     const source = fs.readFileSync(path.resolve(__dirname, 'Cart.tsx'), 'utf8');
 
-    expect(source).toContain('const isAuthExpiredError = (error: unknown) =>');
+    expect(source).toContain("import { getApiErrorMessage, isAuthExpiredError } from '../utils/apiError';");
     expect(source).toContain('} catch (error: unknown) {');
     expect(source).toContain('} catch (err: unknown) {');
     expect(source).not.toMatch(/\bany\b/);
@@ -890,6 +1026,134 @@ describe('cart to checkout flows', () => {
     expect(suggestedSource).toContain('const response = await cartApi.getItems(0);');
     expect(suggestedSource).toContain('if (isCurrentCartSnapshotRequest(cartSnapshotRequestId)) {');
     expect(suggestedSource).toContain('setCartItems(nextItems);');
+  });
+
+  it('contains cart refresh failures inside quantity sync error recovery', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, 'Cart.tsx'), 'utf8');
+    const handlerStart = source.indexOf('const handleQuantitySyncError = useCallback(async (err: unknown) => {');
+    const handlerEnd = source.indexOf('const {\n    cancelQuantitySync', handlerStart);
+    const handlerSource = source.slice(handlerStart, handlerEnd);
+
+    expect(handlerStart).toBeGreaterThan(-1);
+    expect(handlerEnd).toBeGreaterThan(handlerStart);
+    expect(handlerSource).toContain("message.error(getApiErrorMessage(err, t('pages.cart.quantityFailed'), language));");
+    expect(handlerSource).toContain('try {\n      await fetchCartItems();\n    } catch (refreshError) {');
+    expect(handlerSource).toContain("reportNonBlockingError('Cart.handleQuantitySyncError.fetchCartItems', refreshError);");
+  });
+
+  it('keeps remove and save-for-later cart mutations from rolling back stale cart rows', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, 'Cart.tsx'), 'utf8');
+    const removeStart = source.indexOf('const removeItem = async (itemId: number) => {');
+    const removeEnd = source.indexOf('const saveForLater = async (item: CartItem) => {', removeStart);
+    const removeSource = source.slice(removeStart, removeEnd);
+    const removeCatchStart = removeSource.indexOf('} catch (err: unknown) {');
+    const removeCatchEnd = removeSource.indexOf('} finally {', removeCatchStart);
+    const removeCatchSource = removeSource.slice(removeCatchStart, removeCatchEnd);
+    const saveStart = source.indexOf('const saveForLater = async (item: CartItem) => {');
+    const saveEnd = source.indexOf('const moveSavedItemToCart = async (item: SavedForLaterItem) => {', saveStart);
+    const saveSource = source.slice(saveStart, saveEnd);
+    const saveCatchStart = saveSource.indexOf('} catch (error: unknown) {');
+    const saveCatchEnd = saveSource.indexOf('} finally {', saveCatchStart);
+    const saveCatchSource = saveSource.slice(saveCatchStart, saveCatchEnd);
+    const removeItemsStart = source.indexOf('const removeItems = async (itemIds: number[], successMessage: string) => {');
+    const removeItemsEnd = source.indexOf('const cartCheckoutMetrics = useMemo', removeItemsStart);
+    const removeItemsSource = source.slice(removeItemsStart, removeItemsEnd);
+
+    expect(removeStart).toBeGreaterThan(-1);
+    expect(removeEnd).toBeGreaterThan(removeStart);
+    expect(removeSource).toContain('if (removingItemIds.includes(itemId)) return;');
+    expect(removeSource).toContain('setRemovingItemIds((ids) => Array.from(new Set([...ids, itemId])));');
+    expect(removeSource.indexOf('await cartApi.removeItem(itemId);')).toBeLessThan(removeSource.indexOf('setCartItems((items) => normalizeCartItems(items).filter((item) => item.id !== itemId));'));
+    expect(removeCatchSource).toContain("message.error(getApiErrorMessage(err, t('messages.deleteFailed'), language));");
+    expect(removeCatchSource).not.toContain('setCartItems');
+    expect(saveStart).toBeGreaterThan(-1);
+    expect(saveEnd).toBeGreaterThan(saveStart);
+    expect(saveSource).toContain('const previousSavedItems = getSavedForLaterItemsSnapshot();');
+    expect(saveSource).toContain('const savedItem = saveCartItemForLater(item);');
+    expect(saveSource.indexOf('await cartApi.removeItem(item.id);')).toBeLessThan(saveSource.indexOf('setCartItems((items) => normalizeCartItems(items).filter((cartItem) => cartItem.id !== item.id));'));
+    expect(saveCatchSource).toContain('replaceSavedForLaterItems(previousSavedItems);');
+    expect(saveCatchSource).toContain('setSavedItems(previousSavedItems);');
+    expect(saveCatchSource).not.toContain('setCartItems');
+    expect(removeItemsStart).toBeGreaterThan(-1);
+    expect(removeItemsEnd).toBeGreaterThan(removeItemsStart);
+    expect(removeItemsSource.indexOf('await cartApi.removeItems(normalizedIds);')).toBeLessThan(removeItemsSource.indexOf('setCartItems((items) => normalizeCartItems(items).filter((item) => !normalizedIds.includes(item.id)));'));
+  });
+
+  it('keeps saved-for-later and guest-cart storage changes synchronized across tabs', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, 'Cart.tsx'), 'utf8');
+    const saveForLaterSource = fs.readFileSync(path.resolve(__dirname, '../utils/saveForLater.ts'), 'utf8');
+    const storageStart = source.indexOf('const refreshSavedItems = () => setSavedItems(getSavedForLaterItemsSnapshot());');
+    const storageEffectStart = source.lastIndexOf('useEffect(() => {', storageStart);
+    const storageEffectEnd = source.indexOf('}, [resetCheckoutStateAfterCartMutation]);', storageStart);
+    const storageSource = source.slice(storageEffectStart, storageEffectEnd);
+
+    expect(saveForLaterSource).toContain("export const SAVE_FOR_LATER_STORAGE_KEY = 'shop-save-for-later';");
+    expect(saveForLaterSource).toContain('getLocalStorageItem(SAVE_FOR_LATER_STORAGE_KEY)');
+    expect(saveForLaterSource).toContain('setLocalStorageItem(SAVE_FOR_LATER_STORAGE_KEY, JSON.stringify(normalizeSavedItems(items)))');
+    expect(saveForLaterSource).toContain("dispatchDomEvent('shop:save-for-later-updated');");
+    expect(source).toContain('SAVE_FOR_LATER_STORAGE_KEY,');
+    expect(storageEffectStart).toBeGreaterThan(-1);
+    expect(storageStart).toBeGreaterThan(-1);
+    expect(storageEffectEnd).toBeGreaterThan(storageStart);
+    expect(storageSource).toContain('const refreshSavedItems = () => setSavedItems(getSavedForLaterItemsSnapshot());');
+    expect(storageSource).toContain('const allStorageCleared = event.key === null;');
+    expect(storageSource).toContain('if (allStorageCleared || event.key === SAVE_FOR_LATER_STORAGE_KEY) {');
+    expect(storageSource).toContain('refreshSavedItems();');
+    expect(storageSource).toContain("if ((!allStorageCleared && event.key !== 'shop-guest-cart') || getLocalStorageItem('token')) return;");
+    expect(storageSource).toContain('setCartItems(guestItems);');
+    expect(storageSource).toContain('setSelectedIds(guestItems.filter(canCheckout).map((item) => item.id));');
+    expect(storageSource).toContain("window.addEventListener('shop:save-for-later-updated', refreshSavedItems);");
+    expect(storageSource).toContain("window.addEventListener('storage', refreshCartStorage);");
+    expect(storageSource).toContain("window.removeEventListener('storage', refreshCartStorage);");
+  });
+
+  it('clears recently viewed recovery cache after cart mutations that change recovery context', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, 'Cart.tsx'), 'utf8');
+    const resetStart = source.indexOf('const resetCheckoutStateAfterCartMutation = useCallback(() => {');
+    const resetEnd = source.indexOf('const beginCartSnapshotRequest = useCallback', resetStart);
+    const resetSource = source.slice(resetStart, resetEnd);
+    const restoreStart = source.indexOf('const moveSavedItemToCart = async (item: SavedForLaterItem) => {');
+    const restoreEnd = source.indexOf('const removeSavedItem = (itemId: number) => {', restoreStart);
+    const restoreSource = source.slice(restoreStart, restoreEnd);
+    const suggestedStart = source.indexOf('const addSuggestedProduct = async (product: Product) => {');
+    const suggestedEnd = source.indexOf('const addRecentProduct = async (product: Product) => {', suggestedStart);
+    const suggestedSource = source.slice(suggestedStart, suggestedEnd);
+
+    expect(source).toContain('const RECENT_PRODUCTS_CACHE_MS = 2 * 60 * 1000;');
+    expect(source).toContain('const RECENT_PRODUCTS_CACHE_MAX_ENTRIES = 50;');
+    expect(source).toContain('const recentProductsCache = new Map<string, CachedRecentProducts>();');
+    expect(source).toContain('const clearRecentProductsCache = () => {\n  recentProductsCache.clear();\n};');
+    expect(source).not.toContain('recentProductsCache._timestamp');
+    expect(resetStart).toBeGreaterThan(-1);
+    expect(resetEnd).toBeGreaterThan(resetStart);
+    expect(resetSource).toContain('clearRecentProductsCache();');
+    expect(restoreStart).toBeGreaterThan(-1);
+    expect(restoreEnd).toBeGreaterThan(restoreStart);
+    expect((restoreSource.match(/clearRecentProductsCache\(\);/g) ?? []).length).toBeGreaterThanOrEqual(4);
+    expect(suggestedStart).toBeGreaterThan(-1);
+    expect(suggestedEnd).toBeGreaterThan(suggestedStart);
+    expect((suggestedSource.match(/clearRecentProductsCache\(\);/g) ?? []).length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('prunes selected cart ids when the visible checkoutable cart items change', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, 'Cart.tsx'), 'utf8');
+    const pruneMarker = 'const checkoutableItemIds = new Set(cartItems.filter(canCheckout).map((item) => item.id));';
+    const pruneStart = source.indexOf(pruneMarker);
+    const effectStart = source.lastIndexOf('useEffect(() => {', pruneStart);
+    const effectEnd = source.indexOf('useEffect(() => {', pruneStart);
+    const effectSource = source.slice(effectStart, effectEnd);
+
+    expect(pruneStart).toBeGreaterThan(-1);
+    expect(effectStart).toBeGreaterThan(-1);
+    expect(effectEnd).toBeGreaterThan(pruneStart);
+    expect(effectSource).toContain('setSelectedIds((ids) => {');
+    expect(effectSource).toContain('if (ids.length === 0) return ids;');
+    expect(effectSource).toContain(pruneMarker);
+    expect(effectSource).toContain('if (!checkoutableItemIds.has(id)) {');
+    expect(effectSource).toContain('if (nextIds.includes(id)) {');
+    expect(effectSource).toContain('nextIds.push(id);');
+    expect(effectSource).toContain('return changed ? nextIds : ids;');
+    expect(effectSource).toContain('}, [cartItems]);');
   });
 
   it('persists only the final visible quantity after rapid authenticated input edits', async () => {
@@ -948,6 +1212,7 @@ describe('cart to checkout flows', () => {
 
   it('keeps cart quantity source free of stale callbacks and invalid empty syncs', () => {
     const source = fs.readFileSync(path.resolve(__dirname, 'Cart.tsx'), 'utf8');
+    const cartUiSource = fs.readFileSync(path.resolve(__dirname, '../utils/cartUi.ts'), 'utf8');
     const updateStart = source.indexOf('const updateQuantity = (item: CartItem, quantity: number) => {');
     const updateEnd = source.indexOf('const renderQuantityControl', updateStart);
     const updateSource = source.slice(updateStart, updateEnd);
@@ -955,15 +1220,113 @@ describe('cart to checkout flows', () => {
     expect(updateStart).toBeGreaterThan(-1);
     expect(updateEnd).toBeGreaterThan(updateStart);
     expect(updateSource).not.toContain('useCallback(');
+    expect(updateSource).toContain('const normalizedQuantity = normalizeCartQuantity(item, quantity);');
     expect(updateSource).toContain('setCartItems((items) =>');
     expect(updateSource).toContain('scheduleQuantitySync(item.id, normalizedQuantity)');
+    expect(cartUiSource).toContain('export const DEFAULT_CART_QUANTITY_LIMIT = 99;');
+    expect(cartUiSource).toContain('Math.min(getCartLineQuantity(quantity), getCartQuantityLimit(item?.stock))');
+    expect(source).toContain('const limit = getCartQuantityLimit(item.stock);');
     expect(source).toContain('type="number"');
+    expect(source).toContain('max={limit}');
     expect(source).toContain("if (nextValue === '')");
     expect(source).toContain("setQuantityDrafts((drafts) => ({ ...drafts, [item.id]: '' }))");
     expect(source).toContain('return;');
+    expect(source).toContain('updateQuantity(item, Math.floor(Number(nextValue) || 1));');
     expect(source).toContain('onBlur={() => {');
     expect(source).toContain('updateQuantity(item, 1);');
+    expect(source).toContain('disabled={disabled || quantity >= limit}');
     expect(source).not.toContain("parseInt('', 10)");
+  });
+
+  it('keeps stale cart snapshots read-only until a refresh succeeds', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, 'Cart.tsx'), 'utf8');
+    const staleMarker = 'const hasStaleCartData = loadError && cartItems.length > 0;';
+    const nextActionStart = source.indexOf('const cartNextAction = (() => {');
+    const nextActionEnd = source.indexOf('const cartHeroHighlights = [', nextActionStart);
+    const nextActionSource = source.slice(nextActionStart, nextActionEnd);
+    const checkoutStart = source.indexOf('const goCheckout = useCallback(async () => {');
+    const checkoutEnd = source.indexOf('const removeSelectedItems = () => {', checkoutStart);
+    const checkoutSource = source.slice(checkoutStart, checkoutEnd);
+    const staleAlertStart = source.indexOf('{hasStaleCartData ? (');
+    const staleAlertEnd = source.indexOf('{showRecentlyViewedRecovery ? (', staleAlertStart);
+    const staleAlertSource = source.slice(staleAlertStart, staleAlertEnd);
+
+    expect(source).toContain(staleMarker);
+    expect(source).toContain('const refreshCartItems = useCallback(() => {');
+    expect(nextActionStart).toBeGreaterThan(-1);
+    expect(nextActionEnd).toBeGreaterThan(nextActionStart);
+    expect(nextActionSource).toContain('if (hasStaleCartData) {');
+    expect(nextActionSource).toContain("key: 'refresh'");
+    expect(nextActionSource).toContain("label: t('messages.retry')");
+    expect(nextActionSource).toContain('action: refreshCartItems');
+    expect(checkoutStart).toBeGreaterThan(-1);
+    expect(checkoutEnd).toBeGreaterThan(checkoutStart);
+    expect(checkoutSource).toContain('if (hasStaleCartData) {');
+    expect(checkoutSource).toContain("message.warning(t('pages.cart.staleDataWarning'));");
+    expect(source).toContain('if (hasStaleCartData) return;\n    const normalizedQuantity = normalizeCartQuantity(item, quantity);');
+    expect(source).toContain('if (hasStaleCartData) return;\n    if (removingItemIds.includes(itemId)) return;');
+    expect(source).toContain('if (hasStaleCartData) return;\n    if (removingItemIds.includes(item.id)) return;');
+    expect(source).toContain('if (hasStaleCartData) return;\n    setSelectedIds(checked ? purchasableItems.map((item) => item.id) : []);');
+    expect(staleAlertStart).toBeGreaterThan(-1);
+    expect(staleAlertEnd).toBeGreaterThan(staleAlertStart);
+    expect(staleAlertSource).toContain("message={t('pages.cart.staleDataTitle')}");
+    expect(staleAlertSource).toContain("description={loadErrorMessage || t('pages.cart.staleDataWarning')}");
+    expect(staleAlertSource).toContain('onClick={refreshCartItems}');
+  });
+
+  it('keeps saved-item restore actions visibly pending while a restore is in flight', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, 'Cart.tsx'), 'utf8');
+    const restoreStart = source.indexOf('const moveSavedItemToCart = async (item: SavedForLaterItem) => {');
+    const restoreEnd = source.indexOf('const moveSavedItemsToCart', restoreStart);
+    const restoreSource = source.slice(restoreStart, restoreEnd);
+    const savedRenderStart = source.indexOf('const restoringSavedItem = restoringSaved || restoringSavedItemIds.includes(item.id);');
+    const savedRenderEnd = source.indexOf('</Space>', savedRenderStart);
+    const savedRenderSource = source.slice(savedRenderStart, savedRenderEnd);
+
+    expect(source).toContain('const [restoringSavedItemIds, setRestoringSavedItemIds] = useState<number[]>([]);');
+    expect(restoreStart).toBeGreaterThan(-1);
+    expect(restoreEnd).toBeGreaterThan(restoreStart);
+    expect(restoreSource).toContain('if (restoringSaved || restoringSavedItemIds.includes(item.id)) return;');
+    expect(restoreSource).toContain('setRestoringSavedItemIds((ids) => Array.from(new Set([...ids, item.id])));');
+    expect(restoreSource).toContain('setRestoringSavedItemIds((ids) => ids.filter((id) => id !== item.id));');
+    expect(savedRenderStart).toBeGreaterThan(-1);
+    expect(savedRenderEnd).toBeGreaterThan(savedRenderStart);
+    expect(savedRenderSource).toContain('const restoringSavedItem = restoringSaved || restoringSavedItemIds.includes(item.id);');
+    expect(savedRenderSource).toContain('loading={restoringSavedItem}');
+    expect(savedRenderSource).toContain('disabled={hasStaleCartData || restoringSavedItem}');
+    expect(savedRenderSource).toContain('<Button danger type="text" icon={<DeleteOutlined />} disabled={restoringSavedItem}');
+  });
+
+  it('keeps saved-for-later items exposed as a navigable list', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, 'Cart.tsx'), 'utf8');
+
+    expect(source).toContain('<div className="cart-page__savedGrid" role="list" aria-label={t(\'pages.cart.saveForLaterTitle\')}>');
+    expect(source).toContain('<div className="cart-page__savedItem" key={item.id} role="listitem">');
+    expect(source).not.toContain('className="products-grid"');
+  });
+
+  it('keeps authenticated bulk saved-item restore on the canonical cart snapshot', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, 'Cart.tsx'), 'utf8');
+    const restoreStart = source.indexOf('const moveSavedItemsToCart = async (items: SavedForLaterItem[]) => {');
+    const restoreEnd = source.indexOf('const removeSavedItem = (itemId: number) => {', restoreStart);
+    const restoreSource = source.slice(restoreStart, restoreEnd);
+    const authenticatedStart = restoreSource.indexOf('if (authenticated) {');
+    const authenticatedEnd = restoreSource.indexOf('} else {', authenticatedStart);
+    const authenticatedSource = restoreSource.slice(authenticatedStart, authenticatedEnd);
+
+    expect(restoreStart).toBeGreaterThan(-1);
+    expect(restoreEnd).toBeGreaterThan(restoreStart);
+    expect(authenticatedStart).toBeGreaterThan(-1);
+    expect(authenticatedEnd).toBeGreaterThan(authenticatedStart);
+    expect(authenticatedSource).toContain('const results = await allSettledWithConcurrency(');
+    expect(authenticatedSource).toContain('restoredItems = targetItems.filter((_, index) => results[index].status === \'fulfilled\');');
+    expect(authenticatedSource).toContain('const response = await cartApi.getItems(0);');
+    expect(authenticatedSource).toContain('if (isCurrentCartSnapshotRequest(cartSnapshotRequestId)) {');
+    expect(authenticatedSource).toContain('const nextItems = normalizeCartItems(response.data);');
+    expect(authenticatedSource).toContain('setCartItems(nextItems);');
+    expect(authenticatedSource).toContain('setSelectedIds(nextItems.filter(canCheckout).map((cartItem) => cartItem.id));');
+    expect(authenticatedSource).not.toContain('concat(');
+    expect(authenticatedSource).not.toContain('newItems');
   });
 
   it('persists only the final visible quantity after rapid authenticated plus/minus edits', async () => {
@@ -1152,7 +1515,7 @@ describe('cart to checkout flows', () => {
       recipientName: 'Guest Buyer',
       phone: '555-123-4567',
       postalCode: '100000',
-      region: ['Beijing', 'Beijing', 'Chaoyang'],
+      region: guestCheckoutRegionPath,
       shippingAddress: '88 Guest Road',
     });
     mockSessionStorage['checkoutGuestDraft'] = guestDraft;
@@ -1217,7 +1580,7 @@ describe('cart to checkout flows', () => {
       recipientName: 'Guest Buyer',
       phone: '555-123-4567',
       postalCode: '100000',
-      region: ['Beijing', 'Beijing', 'Chaoyang'],
+      region: guestCheckoutRegionPath,
       shippingAddress: '88 Guest Road',
     });
     mockSessionStorage['checkoutGuestDraft'] = guestDraft;
@@ -1248,6 +1611,8 @@ describe('cart to checkout flows', () => {
     expect(window.sessionStorage.getItem('checkoutIdempotencyKey')).toBe(submittedKey);
     expect(mockSessionStorage['checkoutPendingOrder']).toEqual(expect.any(String));
     expect(window.sessionStorage.getItem('checkoutPendingOrder')).toBe(mockSessionStorage['checkoutPendingOrder']);
+    expect(mockSessionStorage['checkoutGuestDraft']).toBe(guestDraft);
+    expect(window.sessionStorage.getItem('checkoutGuestDraft')).toBe(guestDraft);
 
     const pendingOrder = JSON.parse(mockSessionStorage['checkoutPendingOrder'] as string);
     expect(pendingOrder).toEqual(expect.objectContaining({
@@ -1260,6 +1625,45 @@ describe('cart to checkout flows', () => {
       orderNo: 'GUEST-1001',
       status: 'PENDING_PAYMENT',
     }));
+  });
+
+  it('keeps the checkout idempotency key when guest order creation has a transient server error', async () => {
+    mockGuestCartItems = [guestCartItem];
+    mockCheckoutCartItemIds = [guestCartItem.id];
+    const guestDraft = JSON.stringify({
+      guestEmail: 'guest@example.com',
+      recipientName: 'Guest Buyer',
+      phone: '555-123-4567',
+      postalCode: '100000',
+      region: guestCheckoutRegionPath,
+      shippingAddress: '88 Guest Road',
+    });
+    mockSessionStorage['checkoutGuestDraft'] = guestDraft;
+    window.sessionStorage.setItem('checkoutGuestDraft', guestDraft);
+    setPaymentChannels('MERCADO_PAGO', 'Mercado Pago');
+    (orderApi.guestCheckout as jest.Mock).mockRejectedValueOnce({ response: { status: 502 } });
+
+    renderWithRouter(<Checkout />, '/checkout');
+
+    await screen.findAllByText('Guest Bowl');
+    fireEvent.change(screen.getByLabelText('Postal code'), { target: { value: '100000' } });
+
+    await waitFor(() => {
+      expect(getPrimarySubmitButton()).not.toBeDisabled();
+    });
+
+    fireEvent.click(getPrimarySubmitButton());
+
+    await waitFor(() => {
+      expect(orderApi.guestCheckout).toHaveBeenCalled();
+    });
+
+    const submittedKey = (orderApi.guestCheckout as jest.Mock).mock.calls[0][1].idempotencyKey;
+    expect(mockSessionStorage['checkoutIdempotencyKey']).toBe(submittedKey);
+    expect(window.sessionStorage.getItem('checkoutIdempotencyKey')).toBe(submittedKey);
+    expect(mockSessionStorage['checkoutPendingOrder']).toBeUndefined();
+    expect(window.sessionStorage.getItem('checkoutPendingOrder')).toBeNull();
+    expect(paymentApi.create).not.toHaveBeenCalled();
   });
 
   it('recovers a pending guest order after refresh and clears recovery storage when retry creates payment', async () => {
@@ -1315,7 +1719,7 @@ describe('cart to checkout flows', () => {
       recipientName: 'Guest Buyer',
       phone: '555-123-4567',
       postalCode: '100000',
-      region: ['Beijing', 'Beijing', 'Chaoyang'],
+      region: guestCheckoutRegionPath,
       shippingAddress: '88 Guest Road',
     });
     mockSessionStorage['checkoutGuestDraft'] = guestDraft;
@@ -1355,7 +1759,7 @@ describe('cart to checkout flows', () => {
       recipientName: 'Guest Buyer',
       phone: '555-123-4567',
       postalCode: '0100A',
-      region: ['\u58a8\u897f\u54e5', 'Ciudad de M\u00e9xico', 'Centro'],
+      region: mexicoCheckoutRegionPath,
       shippingAddress: '88 Guest Road',
     });
     mockSessionStorage['checkoutGuestDraft'] = guestDraft;
@@ -1400,7 +1804,7 @@ describe('cart to checkout flows', () => {
         userId: 7,
         recipientName: 'Member Buyer',
         phone: '555-222-3333',
-        region: ['\u4e2d\u56fd', '\u5317\u4eac\u5e02', '\u671d\u9633\u533a'],
+        region: memberCheckoutRegionPath,
         postalCode: '100000',
         detailAddress: '1 Member Way',
         address: '\u4e2d\u56fd \u5317\u4eac\u5e02 \u671d\u9633\u533a 100000 1 Member Way',
@@ -1421,7 +1825,7 @@ describe('cart to checkout flows', () => {
 
     await screen.findAllByText('Member Kibble');
     await waitFor(() => {
-      expect(screen.getByRole('radio', { name: 'Member Buyer, 5552223333, 1 Member Way, Default address' })).toBeChecked();
+      expect(screen.getByRole('radio', { name: 'Member Buyer, 5552223333, \u4e2d\u56fd \u5317\u4eac\u5e02 \u671d\u9633\u533a 100000 1 Member Way, Default address' })).toBeChecked();
     });
     expect(screen.getByRole('radio', { name: 'Use new address' })).toBeInTheDocument();
 

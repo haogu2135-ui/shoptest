@@ -4,6 +4,7 @@ import path from 'path';
 const pageSource = fs.readFileSync(path.join(__dirname, 'BugManagement.tsx'), 'utf8');
 const cssSource = fs.readFileSync(path.join(__dirname, 'BugManagement.css'), 'utf8');
 const apiSource = fs.readFileSync(path.resolve(__dirname, '../api/index.ts'), 'utf8');
+const typesSource = fs.readFileSync(path.resolve(__dirname, '../types.ts'), 'utf8');
 const localesRoot = path.resolve(__dirname, '../locales');
 const englishLocaleSource = fs.readFileSync(path.join(localesRoot, 'en.json'), 'utf8');
 const spanishLocaleSource = fs.readFileSync(path.join(localesRoot, 'es.json'), 'utf8');
@@ -77,13 +78,24 @@ describe('BugManagement mobile modal guards', () => {
     const permissionEffectStart = pageSource.indexOf('useEffect(() => {\n    if (!permissionsLoaded) return;');
     const permissionLoadStart = pageSource.indexOf('const loadPermissions = useCallback(async () => {');
     const permissionLoadSource = pageSource.slice(permissionLoadStart, pageSource.indexOf('useEffect(() => {', permissionLoadStart));
+    const permissionSkeletonStart = pageSource.indexOf('className="bug-management__skeleton"');
+    const bugListSkeletonStart = pageSource.indexOf('className="bug-management__skeleton bug-management__loadingState"');
+    const bugListSkeletonEnd = pageSource.indexOf('{canRenderBugStats ? (', bugListSkeletonStart);
 
     expect(pageSource).toContain('const [permissionsLoaded, setPermissionsLoaded] = useState(false);');
     expect(permissionLoadSource).toContain('setPermissionsLoaded(true);');
     expect(permissionEffectStart).toBeGreaterThan(-1);
     expect(pageSource).toContain('{!permissionsLoaded ? (');
-    expect(pageSource).toContain('<div className="bug-management__skeleton" aria-busy="true">');
-    expect(pageSource).toContain('<Skeleton active paragraph={{ rows: 8 }} />');
+    expect(permissionSkeletonStart).toBeGreaterThan(-1);
+    expect(bugListSkeletonStart).toBeGreaterThan(permissionSkeletonStart);
+    expect(bugListSkeletonEnd).toBeGreaterThan(bugListSkeletonStart);
+    [pageSource.slice(permissionSkeletonStart, bugListSkeletonStart), pageSource.slice(bugListSkeletonStart, bugListSkeletonEnd)].forEach((loadingSource) => {
+      expect(loadingSource).toContain('role="status"');
+      expect(loadingSource).toContain('aria-live="polite"');
+      expect(loadingSource).toContain('aria-busy="true"');
+      expect(loadingSource).toContain("aria-label={`${bugPageLabel}: ${t('common.loading')}`}");
+      expect(loadingSource).toContain('<Skeleton active paragraph={{ rows: 8 }} />');
+    });
     expect(pageSource).toContain('{!canReadBugs ? (');
     expect(pageSource.indexOf('{!permissionsLoaded ? (')).toBeLessThan(pageSource.indexOf('{!canReadBugs ? ('));
   });
@@ -122,6 +134,32 @@ describe('BugManagement mobile modal guards', () => {
     expect(pageSource).toContain("cancelButtonProps={{ 'aria-label': cancelBugStatusActionLabel, title: cancelBugStatusActionLabel }}");
   });
 
+  it('keeps BUG table columns memoized across unrelated admin page rerenders', () => {
+    const statusEditorStart = pageSource.indexOf("const openStatusEditor = useCallback((bug: AdminBugReport, mode: 'scan' | 'status', nextStatus?: string) => {");
+    const statusEditorEnd = pageSource.indexOf('const handleStatusSave = async () => {', statusEditorStart);
+    const statusEditorSource = pageSource.slice(statusEditorStart, statusEditorEnd);
+    const columnsStart = pageSource.indexOf('const columns = useMemo<ColumnsType<AdminBugReport>>(() => [');
+    const columnsEnd = pageSource.indexOf('const showInitialBugLoading', columnsStart);
+    const columnsSource = pageSource.slice(columnsStart, columnsEnd);
+
+    expect(statusEditorStart).toBeGreaterThan(-1);
+    expect(statusEditorEnd).toBeGreaterThan(statusEditorStart);
+    expect(statusEditorSource).toContain('setStatusOpen(true);');
+    expect(statusEditorSource).toContain('}, [bugActionUnavailableMessage, bugMutationDisabled, canScanBugs, canUpdateBugStatus, statusForm, t]);');
+    expect(columnsStart).toBeGreaterThan(-1);
+    expect(columnsEnd).toBeGreaterThan(columnsStart);
+    expect(pageSource).not.toContain('const columns: ColumnsType<AdminBugReport> = [');
+    expect(columnsSource).toContain("title: tx('bug', 'Bug')");
+    expect(columnsSource).toContain('<Space wrap className="bug-management__rowActions">');
+    expect(columnsSource).toContain("openStatusEditor(bug, 'scan')");
+    expect(columnsSource).toContain('withPermissionTooltip(');
+    expect(columnsSource).toContain('], [');
+    expect(columnsSource).toContain('openEditor,');
+    expect(columnsSource).toContain('openStatusEditor,');
+    expect(columnsSource).toContain('withPermissionTooltip,');
+    expect(pageSource).toContain('columns={columns}');
+  });
+
   it('keeps BUG row cards and actions responsive at tablet and short-landscape widths', () => {
     expect(pageSource).toContain('<Space wrap className="bug-management__rowActions">');
 
@@ -142,17 +180,49 @@ describe('BugManagement mobile modal guards', () => {
   it('uses the server-provided scan interval with a bounded fallback instead of a fixed poll cadence', () => {
     const scanRefreshStart = pageSource.indexOf('const scanRefreshMs = useMemo(() => {');
     const scanRefreshSource = pageSource.slice(scanRefreshStart, pageSource.indexOf('const noPermissionLabel', scanRefreshStart));
-    const intervalEffectStart = pageSource.indexOf('useEffect(() => {\n    if (!permissionsLoaded || !canReadBugs) return;');
+    const intervalEffectStart = pageSource.indexOf('useEffect(() => {\n    if (!permissionsLoaded || !canReadBugs || bugModalOpen || loading) return;');
     const intervalEffectSource = pageSource.slice(intervalEffectStart, pageSource.indexOf('const openEditor', intervalEffectStart));
 
     expect(pageSource).toContain('const DEFAULT_SCAN_REFRESH_MS = 10 * 60 * 1000;');
+    expect(pageSource).toContain('const bugModalOpen = editorOpen || statusOpen;');
     expect(scanRefreshStart).toBeGreaterThan(-1);
     expect(scanRefreshSource).toContain('const intervalMinutes = Number(summary?.scanIntervalMinutes);');
     expect(scanRefreshSource).toContain('return DEFAULT_SCAN_REFRESH_MS;');
     expect(scanRefreshSource).toContain('return Math.max(60 * 1000, intervalMinutes * 60 * 1000);');
     expect(scanRefreshSource).toContain('}, [summary?.scanIntervalMinutes]);');
+    expect(intervalEffectSource).toContain('if (!permissionsLoaded || !canReadBugs || bugModalOpen || loading) return;');
     expect(intervalEffectSource).toContain('}, scanRefreshMs);');
-    expect(intervalEffectSource).toContain('}, [canReadBugs, permissionsLoaded, reload, scanRefreshMs]);');
+    expect(intervalEffectSource).toContain('}, [bugModalOpen, canReadBugs, loading, permissionsLoaded, reload, scanRefreshMs]);');
+  });
+
+  it('aborts stale BUG list requests before applying list state', () => {
+    const loadBugsStart = pageSource.indexOf('const loadBugs = useCallback(async (');
+    const loadBugsEnd = pageSource.indexOf('const loadBugDetail = useCallback(async', loadBugsStart);
+    const loadBugsSource = pageSource.slice(loadBugsStart, loadBugsEnd);
+
+    expect(pageSource).toContain('const bugListAbortRef = useRef<AbortController | null>(null);');
+    expect(apiSource).toContain('getBugs: (params?: { page?: number; size?: number; status?: string; severity?: string; module?: string; keyword?: string; scanQueueOnly?: boolean }, signal?: AbortSignal) =>');
+    expect(apiSource).toContain('...(signal ? { signal } : {})');
+    expect(loadBugsSource).toContain('bugListAbortRef.current?.abort();');
+    expect(loadBugsSource).toContain('const controller = new AbortController();');
+    expect(loadBugsSource).toContain('bugListAbortRef.current = controller;');
+    expect(loadBugsSource).toContain('}, controller.signal);');
+    expect(loadBugsSource).toContain('if (controller.signal.aborted) return;');
+    expect(loadBugsSource).toContain('if (bugListAbortRef.current === controller) {');
+    expect(pageSource).toContain('bugListAbortRef.current?.abort();\n  }, []);');
+  });
+
+  it('rechecks BUG status permissions before saving status modal actions', () => {
+    const saveStart = pageSource.indexOf('const handleStatusSave = async () => {');
+    const saveEnd = pageSource.indexOf('const summaryCards = [', saveStart);
+    const saveSource = pageSource.slice(saveStart, saveEnd);
+
+    expect(saveSource).toContain("const canSaveCurrentStatusMode = statusMode === 'scan' ? canScanBugs : canUpdateBugStatus;");
+    expect(saveSource).toContain('if (!canSaveCurrentStatusMode) {');
+    expect(saveSource).toContain("message.error(t('adminLayout.noPermission'));");
+    expect(saveSource.indexOf('if (!canSaveCurrentStatusMode) {')).toBeLessThan(saveSource.indexOf('const values = await statusForm.validateFields();'));
+    expect(saveSource.indexOf('if (!canSaveCurrentStatusMode) {')).toBeLessThan(saveSource.indexOf('adminApi.markBugScanned'));
+    expect(saveSource.indexOf('if (!canSaveCurrentStatusMode) {')).toBeLessThan(saveSource.indexOf('adminApi.updateBugStatus'));
   });
 
   it('keeps BUG list rows light and lazy-loads full details only on expansion', () => {
@@ -163,11 +233,88 @@ describe('BugManagement mobile modal guards', () => {
     expect(pageSource).toContain('const response = await adminApi.getBug(bugId);');
     expect(pageSource).toContain('setBugDetails((current) => ({ ...current, [bugId]: response.data }));');
     expect(pageSource).toContain('const detail = bugDetails[bug.id] || bug;');
-    expect(pageSource).toContain('<Spin spinning={loadingDetailIds.has(bug.id)}>');
+    expect(pageSource).toContain('const detailLoading = loadingDetailIds.has(bug.id);');
+    expect(pageSource).toContain("const detailLoadingLabel = `${tx('bug', 'Bug')}: ${bugDisplayLabel(bug)} ${t('common.loading')}`;");
+    expect(pageSource).toContain('spinning={detailLoading}');
+    expect(pageSource).toContain('aria-busy={detailLoading}');
+    expect(pageSource).toContain('aria-label={detailLoading ? detailLoadingLabel : undefined}');
     expect(pageSource).toContain('onExpand: (expanded, bug) => {');
     expect(pageSource).toContain('void loadBugDetail(bug.id);');
     expect(pageSource).toContain('<Paragraph>{detail.description || \'-\'}</Paragraph>');
     expect(pageSource).toContain('<Paragraph>{detail.scanNote || \'-\'}</Paragraph>');
+  });
+
+  it('renders BUG page and attachment URLs as safe clickable references', () => {
+    expect(pageSource).toContain('const { Link: TextLink, Paragraph, Text, Title } = Typography;');
+    expect(pageSource).toContain('const resolveBugReferenceHref = (value?: string) => {');
+    expect(pageSource).toContain("normalized.startsWith('/') && !normalized.startsWith('//') && !normalized.includes('\\\\')");
+    expect(pageSource).toContain("parsed.origin === browserOrigin");
+    expect(pageSource).toContain('<TextLink href={href} target="_blank" rel="noopener noreferrer" className={className}>');
+    expect(pageSource).toContain('const isBugAttachmentHref = (value?: string) => {');
+    expect(pageSource).toContain('const renderBugAttachmentLink = (value: string, onOpen: (value: string) => void) => {');
+    expect(pageSource).toContain('const openBugAttachment = useCallback(async (value: string) => {');
+    expect(pageSource).toContain('const response = await adminApi.downloadBugAttachment(value);');
+    expect(pageSource).toContain("window.open(objectUrl, '_blank', 'noopener,noreferrer');");
+    expect(pageSource).toContain('const parseBugReferenceLines = (value?: string) => (');
+    expect(pageSource).toContain("renderBugReferenceLink(bug.pageUrl, 'bug-management__pageUrl')");
+    expect(pageSource).toContain('const attachmentUrls = parseBugReferenceLines(detail.attachmentUrls);');
+    expect(pageSource).toContain('attachmentUrls.map((url, index) => (');
+    expect(pageSource).toContain('{renderBugAttachmentLink(url, openBugAttachment)}');
+    expect(pageSource).not.toContain('<Text type="secondary" className="bug-management__pageUrl">{bug.pageUrl}</Text>');
+    expect(pageSource).not.toContain('<Paragraph>{detail.attachmentUrls || \'-\'}</Paragraph>');
+  });
+
+  it('supports admin bug screenshot uploads by appending protected attachment URLs to the form', () => {
+    expect(apiSource).toContain('uploadBugAttachment: (file: File) => {');
+    expect(apiSource).toContain("return api.post<AdminBugAttachmentUploadResponse>('/admin/bugs/attachments', formData);");
+    expect(apiSource).toContain('const normalizeBugAttachmentApiPath = (value: unknown) => {');
+    expect(apiSource).toContain("pathFromUrl.startsWith('/api/admin/bugs/attachments/')");
+    expect(apiSource).toContain('downloadBugAttachment: (attachmentUrl: string) => api.get<Blob>(normalizeBugAttachmentApiPath(attachmentUrl), {');
+    expect(pageSource).toContain("const MAX_BUG_ATTACHMENT_SIZE_BYTES = 8 * 1024 * 1024;");
+    expect(pageSource).toContain('const MAX_BUG_ATTACHMENT_URL_COUNT = 20;');
+    expect(pageSource).toContain("const BUG_ATTACHMENT_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif'];");
+    expect(pageSource).toContain('const validateAttachmentUrls = useCallback((_: unknown, value?: string) => {');
+    expect(pageSource).toContain('const handleAttachmentUpload = async (file: File) => {');
+    expect(pageSource).toContain('const response = await adminApi.uploadBugAttachment(file);');
+    expect(pageSource).toContain("const attachmentUrl = String(response.data.attachmentUrl || '').trim();");
+    expect(pageSource).toContain("const currentValue = String(form.getFieldValue('attachmentUrls') || '').trim();");
+    expect(pageSource).toContain("const nextCount = nextValue.split('\\n').map((item) => item.trim()).filter(Boolean).length;");
+    expect(pageSource).toContain('form.setFieldsValue({ attachmentUrls: nextValue });');
+    expect(pageSource).toContain('rules={[{ validator: validateAttachmentUrls }]}');
+    expect(pageSource).toContain('beforeUpload={handleAttachmentUpload}');
+    expect(pageSource).toContain('<UploadOutlined />');
+  });
+
+  it('keeps admin bug response types free of backend-only workflow fields', () => {
+    const typeStart = typesSource.indexOf('export interface AdminBugReport {');
+    const typeEnd = typesSource.indexOf('export interface AdminBugAttachmentUploadResponse', typeStart);
+    const bugType = typesSource.slice(typeStart, typeEnd);
+
+    expect(typeStart).toBeGreaterThan(-1);
+    expect(typeEnd).toBeGreaterThan(typeStart);
+    expect(bugType).toContain('reporterName?: string;');
+    expect(bugType).not.toContain('reporterId');
+    expect(bugType).not.toContain('fixedBy');
+    expect(bugType).not.toContain('regressionBy');
+    expect(bugType).not.toContain('version');
+  });
+
+  it('keeps admin bug status severity and priority as strict unions', () => {
+    const typeStart = typesSource.indexOf('export interface AdminBugReport {');
+    const typeEnd = typesSource.indexOf('export interface AdminBugAttachmentUploadResponse', typeStart);
+    const bugType = typesSource.slice(typeStart, typeEnd);
+
+    expect(typesSource).toContain("export type AdminBugReportSeverity = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';");
+    expect(typesSource).toContain("export type AdminBugReportPriority = 'P0' | 'P1' | 'P2' | 'P3';");
+    expect(typesSource).toContain("export type AdminBugReportStatus = 'OPEN' | 'FIXING' | 'FIXED_PENDING_REGRESSION' | 'REGRESSION_PASSED' | 'REGRESSION_FAILED' | 'CLOSED' | 'NON_ISSUE';");
+    expect(bugType).toContain('severity: AdminBugReportSeverity;');
+    expect(bugType).toContain('priority: AdminBugReportPriority;');
+    expect(bugType).toContain('status: AdminBugReportStatus;');
+    expect(bugType).not.toContain("'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' | string");
+    expect(bugType).not.toContain("'P0' | 'P1' | 'P2' | 'P3' | string");
+    expect(bugType).not.toContain("'OPEN' | 'FIXING'");
+    expect(pageSource).toContain('const isBugStatus = (status?: string): status is AdminBugReportStatus => (');
+    expect(pageSource).toContain("const openStatusEditor = useCallback((bug: AdminBugReport, mode: 'scan' | 'status', nextStatus?: AdminBugReportStatus) => {");
   });
 
   it('keeps BUG API pagination zero-based while translating Ant table pages at the UI boundary', () => {
