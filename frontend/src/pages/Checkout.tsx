@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Card, Cascader, Divider, Form, Input, List, message, Modal, Progress, Radio, Result, Select, Space, Spin, Tag, Tooltip, Typography } from 'antd';
+import { Alert, Button, Card, Cascader, Divider, Form, Input, List, message, Modal, Progress, Radio, Result, Select, Space, Spin, Tag, Typography } from 'antd';
 import type { FormInstance } from 'antd/es/form';
 import { CheckCircleOutlined, CustomerServiceOutlined, GiftOutlined, HistoryOutlined, RollbackOutlined, SafetyCertificateOutlined, ShoppingCartOutlined, ShoppingOutlined, SwapOutlined, TruckOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
@@ -97,9 +97,10 @@ const areSameIds = (left: number[], right: number[]) => {
   return leftIds.size === rightIds.size && Array.from(leftIds).every((id) => rightIds.has(id));
 };
 const scrollCheckoutElementIntoView = (elementId: string, behavior: ScrollBehavior = 'smooth') => {
+  if (typeof document === 'undefined') return;
   const element = document.getElementById(elementId);
-  if (!element) return;
-  const isMobile = window.matchMedia?.(mobileCheckoutQuery).matches;
+  if (!element || typeof element.scrollIntoView !== 'function') return;
+  const isMobile = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(max-width: 780px)').matches;
   element.scrollIntoView({ behavior, block: isMobile ? 'center' : 'start' });
 };
 const scrollCheckoutElementIntoMobileView = (elementId: string, behavior: ScrollBehavior = 'smooth') => {
@@ -111,7 +112,9 @@ const scrollCheckoutFieldIntoMobileView = (target: EventTarget | null, fallbackE
   if (target instanceof HTMLElement) {
     const field = target.closest('.ant-form-item') || target.closest('.checkout-page__addressChoice') || target;
     window.setTimeout(() => {
-      field.scrollIntoView({ behavior, block: 'center', inline: 'nearest' });
+      if (typeof field.scrollIntoView === 'function') {
+        field.scrollIntoView({ behavior, block: 'center', inline: 'nearest' });
+      }
     }, 80);
     return;
   }
@@ -1589,7 +1592,10 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
       scrollToAddOns();
       return;
     }
-    document.getElementById('checkout-coupon-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const couponCard = document.getElementById('checkout-coupon-card');
+      if (couponCard && typeof couponCard.scrollIntoView === 'function') {
+        couponCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
   };
   const checkoutCoachActionLabel = !checkoutNextAction
     ? t('pages.checkout.nextActionSupport')
@@ -2569,8 +2575,6 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
             <Text strong>{selectedPaymentDetail?.title || t('pages.checkout.paymentConfidenceDefault')}</Text>
           </span>
         </div>
-        <Tooltip title={checkoutBlockingAction ? checkoutConfirmationActionLabel : checkoutSubmitTooltip}>
-        <span className="checkout-page__confirmationButtonWrap">
         <Button
           type="primary"
           className="checkout-page__confirmationButton"
@@ -2582,8 +2586,6 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
         >
           {checkoutBlockingAction ? checkoutNextActionLabel : shippingQuoteReady ? t('pages.checkout.submitWithAmount', { amount: payableAmountText }) : shippingFeeText}
         </Button>
-        </span>
-        </Tooltip>
       </section>
 
       <div className="checkout-page__trustBar" aria-label={t('pages.checkout.trustTitle')}>
@@ -2828,7 +2830,7 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
               </Text>
             </span>
             <Button size="small" type={checkoutNextAction ? 'primary' : 'default'} aria-label={checkoutReadinessActionLabel} title={checkoutReadinessActionLabel} onClick={handleCheckoutNextAction}>
-              {checkoutNextActionLabel}
+              {checkoutCoachActionLabel}
             </Button>
           </div>
         </Card>
@@ -3218,13 +3220,9 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
               <Text strong>{selectedPaymentDetail?.title || t('pages.checkout.paymentConfidenceDefault')}</Text>
             </div>
             <Form.Item className="checkout-page__submitAction">
-              <Tooltip title={checkoutSubmitTooltip}>
-                <span className="checkout-page__submitButtonWrap">
-                  <Button className="checkout-page__submitButton" type="primary" htmlType="submit" loading={submitting} disabled={checkoutSubmitDisabled} block size="large" aria-label={checkoutSubmitActionLabel} title={checkoutSubmitTooltip}>
+              <Button className="checkout-page__submitButton" type="primary" htmlType="submit" loading={submitting} disabled={checkoutSubmitDisabled} block size="large" aria-label={checkoutSubmitActionLabel} title={checkoutSubmitTooltip}>
                     {renderSubmitWithAmount()}
                   </Button>
-                </span>
-              </Tooltip>
             </Form.Item>
           </div>
           <div className="checkout-page__mobilePayBar" aria-label={t('pages.checkout.paymentConfidenceTitle')}>
@@ -3232,9 +3230,7 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
               <Text type="secondary">{t('pages.checkout.payable')}</Text>
               <Text strong className={shippingQuoteReady ? 'commerce-money' : undefined}>{payableAmountText}</Text>
             </span>
-            <Tooltip title={checkoutBlockingAction ? checkoutConfirmationActionLabel : checkoutSubmitTooltip}>
-              <span className="checkout-page__mobilePayButtonWrap">
-                <Button
+            <Button
                   type="primary"
                   htmlType={checkoutBlockingAction ? 'button' : 'submit'}
                   onClick={checkoutBlockingAction ? handleCheckoutNextAction : undefined}
@@ -3245,8 +3241,6 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
                 >
                   {checkoutBlockingAction ? checkoutNextActionLabel : renderSubmitWithAmount()}
                 </Button>
-              </span>
-            </Tooltip>
           </div>
         </Card>
       </Form>

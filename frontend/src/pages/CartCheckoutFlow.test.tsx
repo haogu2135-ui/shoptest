@@ -1539,6 +1539,7 @@ describe('cart to checkout flows', () => {
     fireEvent.change(screen.getByLabelText('Postal code'), { target: { value: '100000' } });
 
     await waitFor(() => {
+      expect(getPrimarySubmitButton().textContent || '').toMatch(/Submit/);
       expect(getPrimarySubmitButton()).not.toBeDisabled();
     });
 
@@ -1649,6 +1650,7 @@ describe('cart to checkout flows', () => {
     fireEvent.change(screen.getByLabelText('Postal code'), { target: { value: '100000' } });
 
     await waitFor(() => {
+      expect(getPrimarySubmitButton().textContent || '').toMatch(/Submit/);
       expect(getPrimarySubmitButton()).not.toBeDisabled();
     });
 
@@ -1770,8 +1772,10 @@ describe('cart to checkout flows', () => {
 
     await screen.findAllByText('Guest Bowl');
 
+    // Incomplete/invalid address stays a guided next action (enabled), not a dead disabled CTA.
     await waitFor(() => {
-      expect(getPrimarySubmitButton()).toBeDisabled();
+      expect(getPrimarySubmitButton()).not.toBeDisabled();
+      expect(getPrimarySubmitButton().textContent || '').toMatch(/address|Address|Complete|Add/i);
     });
 
     fireEvent.click(getPrimarySubmitButton());
@@ -1781,6 +1785,7 @@ describe('cart to checkout flows', () => {
 
     await waitFor(() => {
       expect(getPrimarySubmitButton()).not.toBeDisabled();
+      expect(getPrimarySubmitButton().textContent || '').toMatch(/Submit|\$/);
     });
 
     fireEvent.click(getPrimarySubmitButton());
@@ -1830,6 +1835,7 @@ describe('cart to checkout flows', () => {
     expect(screen.getByRole('radio', { name: 'Use new address' })).toBeInTheDocument();
 
     await waitFor(() => {
+      expect(getPrimarySubmitButton().textContent || '').toMatch(/Submit/);
       expect(getPrimarySubmitButton()).not.toBeDisabled();
     });
 

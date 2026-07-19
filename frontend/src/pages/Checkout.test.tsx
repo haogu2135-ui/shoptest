@@ -795,11 +795,11 @@ describe('Checkout payment availability', () => {
   it('turns the mobile pay bar into the next required checkout action before submit is ready', () => {
     const source = readCheckoutPageSource();
 
-    expect(source).toContain("htmlType={checkoutNextAction ? 'button' : 'submit'}");
-    expect(source).toContain('onClick={checkoutNextAction ? handleCheckoutNextAction : undefined}');
-    expect(source).toContain('disabled={!checkoutNextAction && checkoutSubmitDisabled}');
-    expect(source).toContain('aria-label={checkoutNextAction ? checkoutConfirmationActionLabel : checkoutSubmitActionLabel}');
-    expect(source).toContain('{checkoutNextAction ? checkoutNextActionLabel : renderSubmitWithAmount()}');
+    expect(source).toContain("htmlType={checkoutBlockingAction ? 'button' : 'submit'}");
+    expect(source).toContain('onClick={checkoutBlockingAction ? handleCheckoutNextAction : undefined}');
+    expect(source).toContain('disabled={!checkoutBlockingAction && checkoutSubmitDisabled}');
+    expect(source).toContain('aria-label={checkoutBlockingAction ? checkoutConfirmationActionLabel : checkoutSubmitActionLabel}');
+    expect(source).toContain('{checkoutBlockingAction ? checkoutNextActionLabel : renderSubmitWithAmount()}');
   });
 
   it('orders mobile checkout forms before promotional readiness content', () => {

@@ -59,7 +59,7 @@ jest.mock('../i18n', () => ({
         'nav.ariaHome': 'Home',
         'nav.ariaNotifications': 'Notifications',
         'nav.ariaStockAlerts': 'Stock alerts',
-        'nav.badgeLoadFailed': 'Some account counters could not refresh.',
+        'nav.badgeLoadFailed': 'Some account counters could not refresh. Pull down or try again later.',
         'nav.coupons': 'Coupons',
         'nav.currency': 'Currency',
         'nav.download': 'Coupons',
@@ -626,7 +626,7 @@ describe('Navbar Android app download entry', () => {
     });
 
     await waitFor(() => {
-      expect(warningSpy).toHaveBeenCalledWith('Some account counters could not refresh.');
+      expect(warningSpy).toHaveBeenCalledWith('Some account counters could not refresh. Pull down or try again later.');
     });
 
     expect(warningSpy).toHaveBeenCalledTimes(1);

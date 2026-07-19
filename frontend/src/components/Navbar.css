@@ -3188,6 +3188,18 @@ body.shop-mobile-app .shop-nav__bottomItem--active .ant-badge + span {
   }
 }
 
+/* F3393 Spanish bottom-nav column balance for longer labels. */
+.shop-nav__bottomBar--es:not(.shop-nav__bottomBar--native) {
+  grid-template-columns: 0.94fr 1.1fr 1fr 0.98fr 0.88fr 1fr;
+  column-gap: 3px;
+}
+
+.shop-nav__bottomBar--es .shop-nav__bottomItem--products span:not(.anticon):not(.ant-badge):not(.ant-scroll-number) {
+  font-size: 9.5px !important;
+  letter-spacing: 0;
+  text-overflow: clip;
+}
+
 /* F3393: 360px phones need two-line bottom labels before the icon-only fallback. */
 @media (min-width: 341px) and (max-width: 380px) {
   .shop-nav__bottomBar {
