@@ -633,7 +633,8 @@
         "walletFilteredEmpty": "当前状态下暂无优惠券",
         "walletThreshold": "门槛",
         "remainingLabel": "剩余"
-      }
+      },
+      "catalogFallbackDescription": "实时优惠券暂时不可用。你可以先浏览精选优惠，稍后再重试领取。"
     },
     "adminCoupons": {
       "title": "优惠券",
@@ -1016,7 +1017,7 @@
       "registerTrustTracking": "订单追踪",
       "registerPrivacyHint": "联系方式仅用于账号、配送和服务通知。",
       "loginTrustTitle": "登录权益",
-      "loginHeroSubtitle": "登录后可找回游客购物车、追踪每一笔订单，并在不同设备上延续更顺畅的结账体验。",
+      "loginHeroSubtitle": "找回购物车、追踪订单，并保持结账信息可用。",
       "loginGuestCartHint": "登录后可找回 {count} 件游客购物车商品，并更快继续结账。",
       "loginTrustCart": "找回游客购物车",
       "loginTrustTracking": "追踪每个订单",
@@ -3373,9 +3374,9 @@
       "dealMatches": "正在优惠",
       "topRatedMatches": "高评分",
       "nextStepEyebrow": "下一步建议",
-      "nextStepTitle": "把匹配结果变成购物车决策",
-      "nextStepBest": "{name}，{price}。建议先查看。",
-      "nextStepSearch": "用这组偏好继续搜索全站商品，扩大选择范围。",
+      "nextStepTitle": "先看最匹配的商品",
+      "nextStepBest": "{name}，{price}。下一步查看详情。",
+      "nextStepSearch": "用当前偏好继续搜索商品。",
       "viewBest": "查看最佳匹配",
       "petTypes": {
         "all": "任意宠物",

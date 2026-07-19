@@ -469,13 +469,15 @@ const AlertManagement: React.FC = () => {
           className="alert-management__permissionNotice"
         />
       ) : (
-      <Spin
-        spinning={(!permissionsLoaded || loading) && alerts.length === 0}
+      <div
         role="status"
         aria-live="polite"
         aria-busy={(!permissionsLoaded || loading) && alerts.length === 0}
         aria-label={t('common.loading')}
       >
+        <Spin
+          spinning={(!permissionsLoaded || loading) && alerts.length === 0}
+        >
         {loadError ? (
           <Alert
             className="alert-management__alert"
@@ -761,7 +763,8 @@ const AlertManagement: React.FC = () => {
         </Card>
           </>
         )}
-      </Spin>
+        </Spin>
+      </div>
       )}
     </div>
   );

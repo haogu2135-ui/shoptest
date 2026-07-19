@@ -250,13 +250,15 @@ const ConfigCenter: React.FC = () => {
         />
       ) : null}
 
-      <Spin
-        spinning={loading && !snapshot}
+      <div
         role="status"
         aria-live="polite"
         aria-busy={loading && !snapshot}
         aria-label={t('common.loading')}
       >
+        <Spin
+          spinning={loading && !snapshot}
+        >
         {loadError && !snapshot ? null : (snapshot?.sensitiveKeys || []).length > 0 ? (
           <Alert
             className="config-center__alert"
@@ -370,7 +372,8 @@ const ConfigCenter: React.FC = () => {
             <Empty description={t('pages.configCenter.noEffectiveValues')} />
           )}
         </Card>}
-      </Spin>
+        </Spin>
+      </div>
     </div>
   );
 };

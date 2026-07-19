@@ -503,13 +503,15 @@ const IpBlacklistManagement: React.FC = () => {
       ) : null}
 
       {canRenderBlacklistSnapshot ? (
-        <Spin
-          spinning={blacklistSnapshotLoading}
+        <div
           role="status"
           aria-live="polite"
           aria-busy={blacklistSnapshotLoading}
           aria-label={blacklistSnapshotLoading ? t('common.loading') : undefined}
         >
+          <Spin
+            spinning={blacklistSnapshotLoading}
+          >
         <div className="ip-blacklist__stats">
           <Card>
             <Statistic title={t('pages.ipBlacklistAdmin.featureStatus')} value={statusInfo ? (statusInfo.enabled ? t('pages.ipBlacklistAdmin.enabledStatus') : t('pages.ipBlacklistAdmin.disabledStatus')) : t('common.unknown')} prefix={<StopOutlined />} />
@@ -641,7 +643,8 @@ const IpBlacklistManagement: React.FC = () => {
             }}
           />
         </Card>
-      </Spin>
+          </Spin>
+        </div>
       ) : null}
 
       <Modal

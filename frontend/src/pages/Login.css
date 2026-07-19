@@ -2732,3 +2732,19 @@
   -webkit-text-fill-color: var(--login-link-active) !important;
   opacity: 1 !important;
 }
+
+/* COMMERCIAL_LOGIN_COPY_V1 */
+@media (max-width: 640px) {
+  .shopee-login-card__intro,
+  .shopee-login-panel__subtitle,
+  .shopee-login-subtitle {
+    display: block !important;
+    max-width: 100% !important;
+    overflow: visible !important;
+    overflow-wrap: break-word !important;
+    text-overflow: clip !important;
+    white-space: normal !important;
+    -webkit-line-clamp: unset !important;
+    -webkit-box-orient: initial !important;
+  }
+}

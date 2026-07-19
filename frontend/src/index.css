@@ -938,3 +938,46 @@ button:focus-visible {
     }
   }
 }
+
+/* COMMERCIAL_UI_POLISH_V1 */
+/* WCAG secondary text fallback for non-token consumers */
+.ant-typography.ant-typography-secondary,
+.ant-form-item-extra,
+.ant-empty-description,
+.ant-list-item-meta-description,
+.ant-statistic-content-suffix,
+.ant-statistic-title {
+  color: rgba(16, 47, 34, 0.72) !important;
+}
+
+/* Mobile table overflow affordance */
+@media (max-width: 860px) {
+  .ant-table-wrapper {
+    position: relative;
+  }
+
+  .ant-table-wrapper::before,
+  .ant-table-wrapper::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 12px;
+    width: 28px;
+    z-index: 3;
+    pointer-events: none;
+  }
+
+  .ant-table-wrapper::before {
+    left: 0;
+    background: linear-gradient(to right, rgba(255, 255, 255, 0.96), rgba(255, 255, 255, 0));
+  }
+
+  .ant-table-wrapper::after {
+    right: 0;
+    background: linear-gradient(to left, rgba(255, 255, 255, 0.96), rgba(255, 255, 255, 0));
+  }
+
+  .ant-table-wrapper .ant-table-container {
+    scrollbar-width: thin;
+  }
+}

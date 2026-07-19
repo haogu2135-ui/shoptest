@@ -991,13 +991,15 @@ const BugManagement: React.FC = () => {
                       const detailLoadingLabel = `${tx('bug', 'Bug')}: ${bugDisplayLabel(bug)} ${t('common.loading')}`;
                       const attachmentUrls = parseBugReferenceLines(detail.attachmentUrls);
                       return (
-                        <Spin
-                          spinning={detailLoading}
+                        <div
                           role="status"
                           aria-live="polite"
                           aria-busy={detailLoading}
                           aria-label={detailLoading ? detailLoadingLabel : undefined}
                         >
+                          <Spin
+                            spinning={detailLoading}
+                          >
                           <div className="bug-management__details">
                             <div>
                               <Text strong>{tx('description', 'Description')}</Text>
@@ -1034,7 +1036,8 @@ const BugManagement: React.FC = () => {
                               )}
                             </div>
                           </div>
-                        </Spin>
+                          </Spin>
+                        </div>
                       );
                     })()
                   ),

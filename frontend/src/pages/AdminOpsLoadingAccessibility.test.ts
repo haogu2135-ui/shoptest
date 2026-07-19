@@ -12,17 +12,31 @@ const opsLoadingSpinners = [
   { file: 'AlertManagement.tsx', marker: 'spinning={(!permissionsLoaded || loading) && alerts.length === 0}' },
 ];
 
-const getSpinOpeningTag = (source: string, marker: string) => {
+const getLoadingRegion = (source: string, marker: string) => {
   const markerIndex = source.indexOf(marker);
-  const openingTagStart = source.lastIndexOf('<Spin', markerIndex);
-  const openingTagEnd = source.indexOf('>', markerIndex);
+  if (markerIndex < 0) {
+    return {
+      markerIndex,
+      regionStart: -1,
+      region: '',
+      openingTag: '',
+    };
+  }
+
+  // Prefer the accessible wrapper region that owns ARIA announcements.
+  const wrapperStart = source.lastIndexOf('<div', markerIndex);
+  const spinStart = source.lastIndexOf('<Spin', markerIndex);
+  const regionStart = wrapperStart >= 0 && wrapperStart > spinStart - 200 ? wrapperStart : spinStart;
+  const regionEnd = source.indexOf('>', markerIndex);
 
   return {
     markerIndex,
-    openingTagStart,
-    openingTagEnd,
-    openingTag: openingTagStart >= 0 && openingTagEnd > openingTagStart
-      ? source.slice(openingTagStart, openingTagEnd + 1)
+    regionStart,
+    region: regionStart >= 0 && regionEnd > regionStart
+      ? source.slice(regionStart, regionEnd + 1)
+      : '',
+    openingTag: spinStart >= 0 && regionEnd > spinStart
+      ? source.slice(spinStart, regionEnd + 1)
       : '',
   };
 };
@@ -31,15 +45,17 @@ describe('admin ops loading accessibility guards', () => {
   it('keeps ops monitoring spinners announced as busy status regions', () => {
     opsLoadingSpinners.forEach(({ file, marker }) => {
       const source = readPageSource(file);
-      const { markerIndex, openingTagStart, openingTagEnd, openingTag } = getSpinOpeningTag(source, marker);
+      const busyExpression = marker.replace('spinning={', '').replace(/}$/, '');
+      const { markerIndex, regionStart, region, openingTag } = getLoadingRegion(source, marker);
 
       expect(markerIndex).toBeGreaterThan(-1);
-      expect(openingTagStart).toBeGreaterThan(-1);
-      expect(openingTagEnd).toBeGreaterThan(openingTagStart);
-      expect(openingTag).toContain('role="status"');
-      expect(openingTag).toContain('aria-live="polite"');
-      expect(openingTag).toContain(`aria-busy={${marker.replace('spinning={', '').replace(/}$/, '')}}`);
-      expect(openingTag).toContain("aria-label={t('common.loading')}");
+      expect(regionStart).toBeGreaterThan(-1);
+      expect(region).toContain('role="status"');
+      expect(region).toContain('aria-live="polite"');
+      expect(region).toContain(`aria-busy={${busyExpression}}`);
+      expect(region).toContain("aria-label={t('common.loading')}");
+      // Spinner remains the visual busy indicator; ARIA lives on a valid DOM host.
+      expect(openingTag).toContain(marker);
     });
   });
 });

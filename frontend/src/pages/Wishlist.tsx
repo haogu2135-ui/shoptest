@@ -13,6 +13,8 @@ import { reportNonBlockingError } from '../utils/nonBlockingError';
 import { hasStoredValue } from '../utils/safeStorage';
 import { allSettledWithConcurrency } from '../utils/asyncBatch';
 import { getApiErrorMessage } from '../utils/apiError';
+import PageError from '../components/PageError';
+import PageEmpty from '../components/PageEmpty';
 import './Wishlist.css';
 import '../styles/mobile-page-contrast.css';
 
@@ -382,26 +384,15 @@ const Wishlist: React.FC = () => {
   if (items.length === 0 && loadError) {
     return (
       <div className={`wishlist-page wishlist-page--${language} wishlist-page--empty`}>
-        <Alert
+        <PageError
           className="wishlist-page__loadAlert"
-          type="error"
-          showIcon
-          message={t('pages.wishlist.loadErrorTitle')}
+          title={t('pages.wishlist.loadErrorTitle')}
           description={loadError}
-          action={(
-            <Button size="small" onClick={fetchWishlist} loading={loading}>
-              {t('common.retry')}
-            </Button>
-          )}
+          retryLabel={t('common.retry')}
+          onRetry={fetchWishlist}
+          homeLabel={wishlistBrowseActionLabel}
+          onHome={() => navigate('/products')}
         />
-        <Button
-          className="wishlist-page__emptyBrowse"
-          aria-label={wishlistBrowseActionLabel}
-          title={wishlistBrowseActionLabel}
-          onClick={() => navigate('/products')}
-        >
-          {t('pages.wishlist.browse')}
-        </Button>
       </div>
     );
   }
@@ -409,16 +400,20 @@ const Wishlist: React.FC = () => {
   if (items.length === 0) {
     return (
       <div className={`wishlist-page wishlist-page--${language} wishlist-page--empty`}>
-        <Empty description={t('pages.wishlist.empty')} />
-        <Button
-          type="primary"
-          className="wishlist-page__emptyBrowse"
-          aria-label={wishlistBrowseActionLabel}
-          title={wishlistBrowseActionLabel}
-          onClick={() => navigate('/products')}
-        >
-          {t('pages.wishlist.browse')}
-        </Button>
+        <PageEmpty
+          description={t('pages.wishlist.empty')}
+          primaryAction={{
+            key: 'browse',
+            label: wishlistBrowseActionLabel,
+            onClick: () => navigate('/products'),
+          }}
+          secondaryAction={{
+            key: 'home',
+            label: t('nav.ariaHome'),
+            onClick: () => navigate('/'),
+            type: 'default',
+          }}
+        />
       </div>
     );
   }

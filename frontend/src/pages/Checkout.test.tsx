@@ -314,7 +314,8 @@ describe('Checkout payment availability', () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByText('Gateway configuration unavailable')).toBeInTheDocument();
+    const gatewayErrors = await screen.findAllByText('Gateway configuration unavailable');
+    expect(gatewayErrors.length).toBeGreaterThan(0);
     expect(paymentApi.getChannels).toHaveBeenCalledTimes(1);
 
     const retryButtons = await screen.findAllByRole('button', { name: 'Retry' });
@@ -322,7 +323,7 @@ describe('Checkout payment availability', () => {
 
     expect(await screen.findByRole('radio', { name: /Stripe/ }, { timeout: 5000 })).toHaveClass('checkout-page__paymentMethod');
     expect(paymentApi.getChannels).toHaveBeenCalledTimes(2);
-    expect(screen.queryByText('Gateway configuration unavailable')).not.toBeInTheDocument();
+    expect(screen.queryAllByText('Gateway configuration unavailable')).toHaveLength(0);
   });
 
   it('keeps the checkout region Cascader controlled and closes it during scroll-sensitive actions', () => {

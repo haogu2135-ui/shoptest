@@ -38,6 +38,7 @@ import {
   roundCartMoney,
 } from '../utils/cartUi';
 import { dispatchDomEvent } from '../utils/domEvents';
+import PageError from '../components/PageError';
 import { reportNonBlockingError } from '../utils/nonBlockingError';
 import { getLocalStorageItem, removeSessionStorageItem } from '../utils/safeStorage';
 import { allSettledWithConcurrency } from '../utils/asyncBatch';
@@ -1208,25 +1209,15 @@ const Cart: React.FC = () => {
   if (!loading && loadError && cartItems.length === 0) {
     return (
       <div className={`cart-page cart-page--empty cart-page--${language}`}>
-        <div className="cart-page__loadError">
-          <Alert
-            className="cart-page__loadErrorAlert"
-            type="error"
-            showIcon
-            message={t('messages.loadFailed')}
-            description={loadErrorMessage || t('pages.cart.fetchFailed')}
-            action={
-              <Button
-                type="primary"
-                aria-label={retryCartLoadActionLabel}
-                title={retryCartLoadActionLabel}
-                onClick={() => { setLoading(true); fetchCartItems(); }}
-              >
-                {t('messages.retry')}
-              </Button>
-            }
-          />
-        </div>
+        <PageError
+          className="cart-page__loadError"
+          title={t('messages.loadFailed')}
+          description={loadErrorMessage || t('pages.cart.fetchFailed')}
+          retryLabel={retryCartLoadActionLabel}
+          onRetry={() => { setLoading(true); fetchCartItems(); }}
+          homeLabel={t('pages.cart.browse')}
+          onHome={() => navigate('/products')}
+        />
       </div>
     );
   }

@@ -492,7 +492,13 @@ const CouponCenter: React.FC = () => {
           type={usingFallbackCoupons ? 'info' : 'warning'}
           showIcon
           message={usingFallbackCoupons ? t('pages.coupons.catalogFallback') : t('pages.coupons.loadFailed')}
+          description={usingFallbackCoupons ? t('pages.coupons.catalogFallbackDescription') : t('messages.loadFailedRetry')}
           className="coupon-center-page__loadAlert"
+          action={(
+            <Button size="small" onClick={() => window.location.reload()} aria-label={t('messages.retry')} title={t('messages.retry')}>
+              {t('messages.retry')}
+            </Button>
+          )}
         />
       ) : null}
       <section className={`coupon-center-page__hero coupon-center-page__hero--${couponNextAction.tone}`}>

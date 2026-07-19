@@ -12,6 +12,7 @@ import { useMarket } from '../hooks/useMarket';
 import SeventeenTrackWidget from '../components/SeventeenTrackWidget';
 import { paymentMethodLabel } from '../utils/paymentMethods';
 import { getApiErrorMessage } from '../utils/apiError';
+import PageError from '../components/PageError';
 import { resolveProductImage } from '../utils/productMedia';
 import { isAdminRole } from '../utils/roles';
 import { cancelIdleTask, scheduleIdleTask, type ScheduledIdleTask } from '../utils/idleScheduler';
@@ -418,10 +419,12 @@ const AdminDashboard: React.FC = () => {
   if (!stats) {
     return (
       <div className="admin-dashboard__error">
-        <WarningOutlined />
-        <Typography.Title level={4}>{t('pages.adminDashboard.loadFailed')}</Typography.Title>
-        <Typography.Text type="secondary">{loadError || t('pages.adminDashboard.loadFailed')}</Typography.Text>
-        <Button type="primary" aria-label={dashboardReloadActionLabel} title={dashboardReloadActionLabel} onClick={() => window.location.reload()}>{t('common.refresh')}</Button>
+        <PageError
+          title={t('pages.adminDashboard.loadFailed')}
+          description={loadError || t('pages.adminDashboard.loadFailed')}
+          retryLabel={dashboardReloadActionLabel}
+          onRetry={() => window.location.reload()}
+        />
       </div>
     );
   }

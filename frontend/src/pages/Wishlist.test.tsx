@@ -203,7 +203,7 @@ describe('Wishlist add-all guard', () => {
     expect(source).toContain('addingAllToCartRef.current = true;');
     expect(source).toContain('addingAllToCartRef.current = false;');
     expect(source).toContain('loading={addingAllToCart}');
-    expect(source).toContain('disabled={addingAllToCart || directAddItems.length === 0}');
+    expect(source).toContain('disabled={addingAllToCart || directAddItems.length === 0 || actionsDisabledByStaleData}');
     expect(source).toContain('loading={wishlistNextAction.tone === \'ready\' && addingAllToCart}');
     expect(source).toContain('disabled={wishlistNextAction.disabled}');
   });

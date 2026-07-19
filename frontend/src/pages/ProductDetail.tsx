@@ -29,6 +29,7 @@ import { AUTH_SESSION_CHANGED_EVENT } from '../utils/authEvents';
 import { formatProductSpecLabel } from '../utils/productSpecLabels';
 import { syncHiddenCarouselSlideFocus } from '../utils/carouselAccessibility';
 import { reportNonBlockingError } from '../utils/nonBlockingError';
+import PageEmpty from '../components/PageEmpty';
 import {
   applyImageFallback,
   cacheProductRecommendations,
@@ -872,9 +873,20 @@ const ProductDetail: React.FC = () => {
   if (!product) {
     return (
       <div className="product-detail-empty">
-        <Empty description={t('pages.productDetail.notFound')}>
-          <Button type="primary" onClick={() => navigate('/products')}>{t('pages.productList.title')}</Button>
-        </Empty>
+        <PageEmpty
+          description={t('pages.productDetail.notFound')}
+          primaryAction={{
+            key: 'browse',
+            label: t('pages.productList.title'),
+            onClick: () => navigate('/products'),
+          }}
+          secondaryAction={{
+            key: 'home',
+            label: t('nav.ariaHome'),
+            onClick: () => navigate('/'),
+            type: 'default',
+          }}
+        />
       </div>
     );
   }
@@ -953,6 +965,14 @@ const ProductDetail: React.FC = () => {
   const addToCartBlocked = isOutOfStock || purchaseSelectionBlocked || purchaseSubmitting !== null;
   const mobileAddToCartBlocked = !isOutOfStock && (purchaseSelectionBlocked || purchaseSubmitting !== null);
   const buyNowBlocked = isOutOfStock || purchaseSelectionBlocked || purchaseSubmitting !== null;
+  const buyNowBlockedReason = isOutOfStock
+    ? `${t('pages.productDetail.soldOut')}: ${productName}`
+    : purchaseSelectionBlocked
+      ? selectOptionsActionLabel
+      : buyNowActionLabel;
+  const mobileCartBlockedReason = purchaseSelectionBlocked
+    ? selectOptionsActionLabel
+    : addToCartActionLabel;
   const selectedOptionTags = optionGroups
     .map((group) => ({
       name: group.name,
@@ -1551,15 +1571,15 @@ const ProductDetail: React.FC = () => {
                   <Button
                     className="product-mobile-buybar__cart"
                     icon={isOutOfStock ? <BellOutlined /> : <ShoppingCartOutlined />}
-                    aria-label={isOutOfStock ? stockAlertActionLabel : addToCartActionLabel}
-                    title={isOutOfStock ? stockAlertActionLabel : addToCartActionLabel}
+                    aria-label={isOutOfStock ? stockAlertActionLabel : mobileCartBlockedReason}
+                    title={isOutOfStock ? stockAlertActionLabel : mobileCartBlockedReason}
                     onClick={isOutOfStock ? handleStockAlert : handleAddToCart}
                     loading={purchaseSubmitting === 'cart'}
                     disabled={mobileAddToCartBlocked}
                   >
                     {isOutOfStock ? (isAlerted ? t('pages.stockAlerts.remove') : t('pages.stockAlerts.notifyMe')) : t('pages.productDetail.addCart')}
                   </Button>
-                  <Button className="product-mobile-buybar__buy" type="primary" icon={<ThunderboltOutlined />} aria-label={buyNowActionLabel} title={buyNowActionLabel} onClick={handleBuyNow} loading={purchaseSubmitting === 'buy'} disabled={buyNowBlocked}>
+                  <Button className="product-mobile-buybar__buy" type="primary" icon={<ThunderboltOutlined />} aria-label={buyNowBlockedReason} title={buyNowBlockedReason} onClick={handleBuyNow} loading={purchaseSubmitting === 'buy'} disabled={buyNowBlocked}>
                     {t('pages.productDetail.buyNow')}
                   </Button>
                 </div>
@@ -1956,8 +1976,8 @@ const ProductDetail: React.FC = () => {
                     size="large"
                     icon={<ThunderboltOutlined />}
                     className={isOutOfStock ? 'product-detail__soldoutButton' : undefined}
-                    aria-label={buyNowActionLabel}
-                    title={buyNowActionLabel}
+                    aria-label={buyNowBlockedReason}
+                    title={buyNowBlockedReason}
                     onClick={handleBuyNow}
                     loading={purchaseSubmitting === 'buy'}
                     disabled={buyNowBlocked}

@@ -266,7 +266,7 @@ describe('ProductDetail mobile buybar layout contract', () => {
     expect(source).toMatch(/className="product-mobile-buybar__cart"[\s\S]*?onClick=\{isOutOfStock \? handleStockAlert : handleAddToCart\}[\s\S]*?disabled=\{mobileAddToCartBlocked\}/);
     expect(source).toMatch(/className="product-mobile-buybar__buy"[\s\S]*?onClick={handleBuyNow}[\s\S]*?disabled={buyNowBlocked}/);
     expect(source).toMatch(/onClick={handleAddToCart}[\s\S]*?disabled={addToCartBlocked}/);
-    expect(source).toMatch(/aria-label={buyNowActionLabel}[\s\S]*?onClick={handleBuyNow}[\s\S]*?disabled={buyNowBlocked}[\s\S]*?ghost/);
+    expect(source).toMatch(/aria-label={buyNowBlockedReason}[\s\S]*?onClick={handleBuyNow}[\s\S]*?disabled={buyNowBlocked}[\s\S]*?ghost/);
   });
 
   it('uses centralized size option semantics instead of hardcoded product-detail keywords', () => {

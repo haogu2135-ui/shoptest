@@ -3835,3 +3835,17 @@ body.checkout-page-active:not(.checkout-region-cascader-open) .ant-cascader-drop
     -webkit-text-fill-color: rgba(255, 255, 255, 0.78) !important;
   }
 }
+
+/* COMMERCIAL_CHECKOUT_DISABLED_TOOLTIP_V1 */
+.checkout-page__submitButtonWrap,
+.checkout-page__mobilePayButtonWrap,
+.checkout-page__confirmationButtonWrap {
+  display: block;
+  width: 100%;
+}
+
+.checkout-page__submitButtonWrap .ant-btn,
+.checkout-page__mobilePayButtonWrap .ant-btn,
+.checkout-page__confirmationButtonWrap .ant-btn {
+  width: 100%;
+}

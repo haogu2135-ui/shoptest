@@ -580,7 +580,7 @@
       "daysLeft": "Quedan {count} día(s)",
       "useNext": "Usar en carrito",
       "savingsPathEyebrow": "Ruta de ahorro",
-      "savingsPathTitle": "Del cupón al pedido",
+      "savingsPathTitle": "Usa este cupón",
       "savingsPathHint": "{name} es tu objetivo. Arma un carrito cerca de {threshold} para usarlo fácil.",
       "savingsPathHintNoThreshold": "{name} está listo para usarse. Agrega un producto para mascota y revisa el carrito con el cupón aplicado.",
       "savingsPathEmpty": "Toma un cupón o empieza a comprar para crear una ruta de ahorro más clara.",
@@ -633,7 +633,8 @@
         "walletFilteredEmpty": "No hay cupones con este estado",
         "walletThreshold": "Mínimo",
         "remainingLabel": "Restantes"
-      }
+      },
+      "catalogFallbackDescription": "Los cupones en vivo no están disponibles por ahora. Puedes seguir viendo ahorros recomendados y reintentar para canjear."
     },
     "adminCoupons": {
       "title": "Cupones",
@@ -1016,7 +1017,7 @@
       "registerTrustTracking": "Rastreo de pedidos",
       "registerPrivacyHint": "Usamos tus datos de contacto solo para cuenta, entrega y actualizaciones de servicio.",
       "loginTrustTitle": "Beneficios de inicio",
-      "loginHeroSubtitle": "Recupera el carrito guardado, sigue cada pedido y mantén tus datos de pago listos en todos tus dispositivos.",
+      "loginHeroSubtitle": "Recupera tu carrito, sigue pedidos y mantén el pago listo.",
       "loginGuestCartHint": "Inicia sesión para recuperar {count} productos del carrito invitado y continuar el pago más rápido.",
       "loginTrustCart": "Recupera carrito invitado",
       "loginTrustTracking": "Rastrea cada pedido",
@@ -1277,9 +1278,9 @@
       "dealMatches": "En oferta",
       "topRatedMatches": "Mejor calificados",
       "nextStepEyebrow": "Siguiente mejor acción",
-      "nextStepTitle": "Convierte la afinidad en decisión de carrito",
-      "nextStepBest": "{name} por {price}. Revísala primero.",
-      "nextStepSearch": "Usa estas preferencias como búsqueda de catálogo para seguir explorando.",
+      "nextStepTitle": "Revisa tu mejor opción",
+      "nextStepBest": "{name} por {price}. Ábrela ahora.",
+      "nextStepSearch": "Busca en el catálogo con estas preferencias.",
       "viewBest": "Ver mejor opción",
       "petTypes": {
         "all": "Cualquier mascota",

@@ -38,6 +38,7 @@ import { addAppScrollListener, getAppScrollMetrics } from '../utils/nativeScroll
 import { getLocalStorageItem, hasStoredValue, setLocalStorageItem } from '../utils/safeStorage';
 import { cancelIdleTask, scheduleIdleTask } from '../utils/idleScheduler';
 import { openCartDrawerWithSnapshot } from '../utils/cartDrawer';
+import PageError from '../components/PageError';
 import { allSettledWithConcurrency } from '../utils/asyncBatch';
 import { buildProductCatalogFallbackCategories, loadFallbackProductCatalog, loadProductCatalogSnapshot, saveProductCatalogSnapshot } from '../utils/productCatalogSnapshot';
 import { reportNonBlockingError } from '../utils/nonBlockingError';
@@ -855,18 +856,14 @@ const Home: React.FC = () => {
   if (loadError) {
     return (
       <main className={homeLanguageClass} style={homeImageVariables}>
-        <div className="shopee-container" style={{ padding: '80px 24px', textAlign: 'center' }}>
-          <Alert
-            type="error"
-            showIcon
-            message={t('messages.loadFailed')}
+        <div className="shopee-container">
+          <PageError
+            title={t('messages.loadFailed')}
             description={t('messages.loadFailedRetry')}
-            style={{ maxWidth: 480, margin: '0 auto 24px' }}
-            action={
-              <Button type="primary" onClick={() => window.location.reload()}>
-                {t('messages.retry')}
-              </Button>
-            }
+            retryLabel={t('messages.retry')}
+            onRetry={() => window.location.reload()}
+            homeLabel={t('nav.ariaHome')}
+            onHome={() => navigate('/')}
           />
         </div>
       </main>

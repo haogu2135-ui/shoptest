@@ -265,13 +265,15 @@ const TrafficControl: React.FC = () => {
         />
       ) : null}
 
-      <Spin
-        spinning={loading && !status}
+      <div
         role="status"
         aria-live="polite"
         aria-busy={loading && !status}
         aria-label={t('common.loading')}
       >
+        <Spin
+          spinning={loading && !status}
+        >
         {loadError && !status ? null : <div className="traffic-control__stats">
           <Card>
             <Statistic title={t('pages.trafficControl.rateLimitStatus')} value={rateLimit?.enabled ? t('pages.trafficControl.enabled') : t('pages.trafficControl.disabled')} prefix={<DashboardOutlined />} />
@@ -327,7 +329,8 @@ const TrafficControl: React.FC = () => {
             <Empty description={t('pages.trafficControl.emptyCircuits')} />
           )}
         </Card>}
-      </Spin>
+        </Spin>
+      </div>
     </div>
   );
 };

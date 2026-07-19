@@ -523,7 +523,7 @@
       "registerTrustTracking": "Order tracking",
       "registerPrivacyHint": "We use your contact details only for account, delivery and service updates.",
       "loginTrustTitle": "Login benefits",
-      "loginHeroSubtitle": "Recover saved cart items, follow every order, and keep checkout details ready across devices.",
+      "loginHeroSubtitle": "Recover your cart, track every order, and keep checkout ready.",
       "loginGuestCartHint": "Log in to recover {count} guest cart items and continue checkout faster.",
       "loginTrustCart": "Recover guest cart",
       "loginTrustTracking": "Track every order",
@@ -689,7 +689,8 @@
         "walletFilteredEmpty": "No coupons in this status",
         "walletThreshold": "Threshold",
         "remainingLabel": "Remaining"
-      }
+      },
+      "catalogFallbackDescription": "Live coupons are temporarily unavailable. You can keep browsing curated savings, then retry for claimable offers."
     },
     "adminCoupons": {
       "title": "Coupons",
@@ -3585,9 +3586,9 @@
       "dealMatches": "On deal",
       "topRatedMatches": "Top rated",
       "nextStepEyebrow": "Next best action",
-      "nextStepTitle": "Turn the match into a cart decision",
-      "nextStepBest": "{name} at {price}. Review this first.",
-      "nextStepSearch": "Use this preference set as a catalog search to keep exploring.",
+      "nextStepTitle": "Review your best match",
+      "nextStepBest": "{name} at {price}. Open details next.",
+      "nextStepSearch": "Search the catalog with these preferences.",
       "viewBest": "View best match",
       "petTypes": {
         "all": "Any pet",

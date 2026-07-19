@@ -48,7 +48,7 @@ const normalizeOptionalNonNegativeMoney = (value: unknown) => {
   return Number.isFinite(numeric) && numeric >= 0 ? numeric : undefined;
 };
 
-type GuestCartProductInput = {
+export type GuestCartProductInput = {
   id?: unknown;
   name?: unknown;
   imageUrl?: unknown;
@@ -59,14 +59,15 @@ type GuestCartProductInput = {
   status?: unknown;
   freeShipping?: unknown;
   freeShippingThreshold?: unknown;
-  [key: string]: unknown;
 };
 
 const EMPTY_PRODUCT_SNAPSHOT: GuestCartProductInput = {};
 
 const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null;
 
-const toProductInput = (value: unknown): GuestCartProductInput => (isRecord(value) ? value : EMPTY_PRODUCT_SNAPSHOT);
+const toProductInput = (value: unknown): GuestCartProductInput => (
+  isRecord(value) ? (value as GuestCartProductInput) : EMPTY_PRODUCT_SNAPSHOT
+);
 
 const normalizeOptionalStock = (stock: unknown) => (stock === undefined ? undefined : normalizeStockLimit(stock));
 

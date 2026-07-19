@@ -9,6 +9,8 @@ import { buildLoginUrlFromWindow } from '../utils/authRedirect';
 import { stripUnsafeHtml } from '../utils/sanitizeHtml';
 import { dispatchDomEvent } from '../utils/domEvents';
 import { reportNonBlockingError } from '../utils/nonBlockingError';
+import PageError from '../components/PageError';
+import PageEmpty from '../components/PageEmpty';
 import { hasStoredValue } from '../utils/safeStorage';
 import './Notifications.css';
 import '../styles/mobile-page-contrast.css';
@@ -343,15 +345,29 @@ const Notifications: React.FC = () => {
         </section>
       ) : null}
       {fetchError && notifications.length === 0 ? (
-        <Alert
-          type="error"
-          showIcon
-          message={t('common.loadFailed')}
+        <PageError
+          title={t('common.loadFailed')}
           description={t('common.loadFailedRetry')}
-          action={<Button size="small" onClick={() => fetchNotifications()}>{t('common.retry')}</Button>}
+          retryLabel={t('common.retry')}
+          onRetry={() => fetchNotifications()}
+          homeLabel={t('pages.cart.browse')}
+          onHome={() => navigate('/products')}
         />
       ) : notifications.length === 0 ? (
-        <Empty description={t('pages.notifications.empty')} />
+        <PageEmpty
+          description={t('pages.notifications.empty')}
+          primaryAction={{
+            key: 'browse',
+            label: t('pages.cart.browse'),
+            onClick: () => navigate('/products'),
+          }}
+          secondaryAction={{
+            key: 'home',
+            label: t('nav.ariaHome'),
+            onClick: () => navigate('/'),
+            type: 'default',
+          }}
+        />
       ) : (
         <>
           {fetchError ? (

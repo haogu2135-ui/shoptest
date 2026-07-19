@@ -3429,3 +3429,49 @@ body.shop-mobile-app .shop-nav .shop-nav__actions > .shop-nav__actionSummary {
     scroll-margin-inline: 0 44px !important;
   }
 }
+
+/* COMMERCIAL_TOUCH_TARGET_44_V1
+   Close F408: keep App/mobile top utility controls at a true 44x44 hit area.
+   Earlier compact rules still force height 36 on some language/more/cart nodes. */
+@media (max-width: 780px) {
+  body.shop-mobile-app .shop-nav .shop-nav__actions > .shop-nav__mobile-locale,
+  body.shop-mobile-app .shop-nav .shop-nav__actions > .shop-nav__mobile-locale > button,
+  body.shop-mobile-app .shop-nav .shop-nav__actions > .shop-nav__secondary-action,
+  body.shop-mobile-app .shop-nav .shop-nav__actions > .shop-nav__more-trigger,
+  body.shop-mobile-app .shop-nav .shop-nav__actions > .shop-nav__cart-action,
+  body.shop-mobile-app .shop-nav .shop-nav__actions > button[aria-label],
+  body.shop-mobile-app .shop-nav .shop-nav__actions > a[aria-label],
+  .shop-nav .shop-nav__actions > .shop-nav__mobile-locale,
+  .shop-nav .shop-nav__actions > .shop-nav__mobile-locale > button,
+  .shop-nav .shop-nav__actions > .shop-nav__secondary-action,
+  .shop-nav .shop-nav__actions > .shop-nav__more-trigger,
+  .shop-nav .shop-nav__actions > .shop-nav__cart-action,
+  .shop-nav .shop-nav__actions > button[aria-label],
+  .shop-nav .shop-nav__actions > a[aria-label] {
+    box-sizing: border-box !important;
+    flex: 0 0 44px !important;
+    width: 44px !important;
+    min-width: 44px !important;
+    max-width: 44px !important;
+    height: 44px !important;
+    min-height: 44px !important;
+    max-height: 44px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 0 !important;
+    line-height: 1 !important;
+    transform: none !important;
+    touch-action: manipulation;
+  }
+
+  body.shop-mobile-app .shop-nav .shop-nav__actions > .shop-nav__mobile-locale .anticon,
+  body.shop-mobile-app .shop-nav .shop-nav__actions > .shop-nav__more-trigger .anticon,
+  body.shop-mobile-app .shop-nav .shop-nav__actions > .shop-nav__cart-action .anticon,
+  .shop-nav .shop-nav__actions > .shop-nav__mobile-locale .anticon,
+  .shop-nav .shop-nav__actions > .shop-nav__more-trigger .anticon,
+  .shop-nav .shop-nav__actions > .shop-nav__cart-action .anticon {
+    font-size: 18px !important;
+    line-height: 1 !important;
+  }
+}

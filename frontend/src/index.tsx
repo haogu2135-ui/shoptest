@@ -32,7 +32,17 @@ const LocalizedApp: React.FC = () => {
   }, [language, t]);
 
   return (
-    <ConfigProvider locale={localeMap[language]}>
+    <ConfigProvider
+      locale={localeMap[language]}
+      theme={{
+        token: {
+          // WCAG AA secondary text contrast (>= 4.5:1 on white).
+          colorTextSecondary: 'rgba(16, 47, 34, 0.72)',
+          colorTextTertiary: 'rgba(16, 47, 34, 0.58)',
+          colorTextDescription: 'rgba(16, 47, 34, 0.72)',
+        },
+      }}
+    >
       <App />
     </ConfigProvider>
   );

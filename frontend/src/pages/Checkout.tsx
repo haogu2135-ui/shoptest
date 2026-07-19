@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Card, Cascader, Divider, Form, Input, List, message, Modal, Progress, Radio, Result, Select, Space, Spin, Tag, Typography } from 'antd';
+import { Alert, Button, Card, Cascader, Divider, Form, Input, List, message, Modal, Progress, Radio, Result, Select, Space, Spin, Tag, Tooltip, Typography } from 'antd';
 import type { FormInstance } from 'antd/es/form';
 import { CheckCircleOutlined, CustomerServiceOutlined, GiftOutlined, HistoryOutlined, RollbackOutlined, SafetyCertificateOutlined, ShoppingCartOutlined, ShoppingOutlined, SwapOutlined, TruckOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
@@ -371,7 +371,7 @@ const parseCheckoutPendingOrderSnapshot = (raw: string | null): CheckoutPendingO
     const orderId = Number(order?.id);
     const paymentMethod = normalizeCheckoutText(parsed?.paymentMethod, 40);
     const guestPaymentEmail = normalizeCheckoutEmail(parsed?.guestPaymentEmail);
-    const cartItems = Array.isArray(parsed?.cartItems)
+    const cartItems = parsed && Array.isArray(parsed.cartItems)
       ? (parsed.cartItems as CartItem[]).filter((item) => Number(item?.productId) > 0 && Number(item?.quantity) > 0)
       : [];
     const savedAt = Number(parsed?.savedAt);
@@ -1500,6 +1500,8 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
   ];
   const checkoutReadinessScore = Math.round((checkoutReadinessItems.filter((item) => item.ready).length / checkoutReadinessItems.length) * 100);
   const checkoutNextAction = checkoutReadinessItems.find((item) => !item.ready) || null;
+  // Savings coaching must never block place-order. Only items/address/payment gate submit CTAs.
+  const checkoutBlockingAction = checkoutReadinessItems.find((item) => !item.ready && item.key !== 'savings') || null;
   const needsCheckoutSupport = Boolean(addOnTarget || couponOpportunity || checkoutNextAction);
   const supportPanelAutoOpenKey = useMemo(() => {
     if (!needsCheckoutSupport) return '';
@@ -1556,24 +1558,25 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
     scrollCheckoutElementIntoView('checkout-add-on-assistant');
   }, []);
   const handleCheckoutNextAction = () => {
-    if (!checkoutNextAction) {
+    const action = checkoutBlockingAction || checkoutNextAction;
+    if (!action) {
       openSupport();
       return;
     }
-    if (checkoutNextAction.key === 'items') {
+    if (action.key === 'items') {
       navigate('/cart');
       return;
     }
-    if (checkoutNextAction.key === 'address') {
+    if (action.key === 'address') {
       scrollCheckoutElementIntoView('checkout-address-card');
       return;
     }
-    if (checkoutNextAction.key === 'payment') {
+    if (action.key === 'payment') {
       closeCheckoutRegionCascader();
       scrollCheckoutElementIntoView('checkout-payment-card');
       return;
     }
-    if (checkoutNextAction.key === 'savings') {
+    if (action.key === 'savings') {
       if (addOnTarget) {
         scrollToAddOns();
         return;
@@ -1588,7 +1591,7 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
     }
     document.getElementById('checkout-coupon-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
-  const checkoutNextActionLabel = !checkoutNextAction
+  const checkoutCoachActionLabel = !checkoutNextAction
     ? t('pages.checkout.nextActionSupport')
     : checkoutNextAction.key === 'items'
       ? t('pages.checkout.nextActionReviewCart')
@@ -1597,14 +1600,23 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
         : checkoutNextAction.key === 'payment'
           ? t('pages.checkout.nextActionPayment')
           : t('pages.checkout.nextActionSavings');
+  const checkoutNextActionLabel = !checkoutBlockingAction
+    ? t('pages.checkout.nextActionSupport')
+    : checkoutBlockingAction.key === 'items'
+      ? t('pages.checkout.nextActionReviewCart')
+      : checkoutBlockingAction.key === 'address'
+        ? t('pages.checkout.nextActionAddress')
+        : checkoutBlockingAction.key === 'payment'
+          ? t('pages.checkout.nextActionPayment')
+          : t('pages.checkout.nextActionSavings');
   const selectedPaymentMethodLabel = selectedPaymentDetail?.title || t('pages.checkout.paymentConfidenceDefault');
   const checkoutSubmitActionLabel = shippingQuoteReady
     ? `${t('pages.checkout.submitWithAmount', { amount: payableAmountText })}: ${t('pages.checkout.paymentMethod')} ${selectedPaymentMethodLabel}`
     : `${shippingPolicyText}: ${t('pages.checkout.paymentMethod')} ${selectedPaymentMethodLabel}`;
-  const checkoutConfirmationActionLabel = checkoutNextAction
+  const checkoutConfirmationActionLabel = checkoutBlockingAction
     ? `${t('pages.checkout.nextActionTitle')}: ${checkoutNextActionLabel}`
     : `${t('pages.checkout.nextActionReadyTitle')}: ${checkoutSubmitActionLabel}`;
-  const checkoutReadinessActionLabel = `${t('pages.checkout.readinessTitle')}: ${checkoutNextActionLabel}`;
+  const checkoutReadinessActionLabel = `${t('pages.checkout.readinessTitle')}: ${checkoutCoachActionLabel}`;
   const checkoutCouponSelectLabel = `${t('pages.checkout.coupon')}: ${t('pages.checkout.selectCoupon')}`;
   const checkoutSavingsAddOnsActionLabel = addOnTarget
     ? `${t('pages.checkout.savingsShopAddOns')}: ${t('pages.checkout.savingsCoachTitle')}, ${formatMoney(addOnTarget.remainingAmount)}`
@@ -1682,6 +1694,26 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
     || !shippingQuoteReady
     || !paymentMethodsAvailable
     || !watchedPaymentMethod;
+  const checkoutSubmitDisabledReason = submitting
+    ? t('common.loading')
+    : !hasCheckoutItems
+      ? t('pages.checkout.emptyCart')
+      : cartItems.some((item) => !isPurchasable(item))
+        ? t('pages.checkout.unavailableSelected')
+        : !selectedAddressReady
+          ? t('pages.checkout.addressRequired')
+          : !shippingQuoteReady
+            ? (shippingQuoteUnavailable
+              ? t('pages.checkout.shippingFeeUnavailableDescription')
+              : t('pages.checkout.shippingFeeCalculatingDescription'))
+            : !paymentMethodsAvailable
+              ? t('pages.checkout.paymentUnavailableDescription')
+              : !watchedPaymentMethod
+                ? t('pages.checkout.paymentRequired')
+                : '';
+  const checkoutSubmitTooltip = checkoutSubmitDisabled && checkoutSubmitDisabledReason
+    ? checkoutSubmitDisabledReason
+    : checkoutSubmitActionLabel;
 
   useEffect(() => {
     if (!giftUnlocked || giftCelebrated) return;
@@ -2537,17 +2569,21 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
             <Text strong>{selectedPaymentDetail?.title || t('pages.checkout.paymentConfidenceDefault')}</Text>
           </span>
         </div>
+        <Tooltip title={checkoutBlockingAction ? checkoutConfirmationActionLabel : checkoutSubmitTooltip}>
+        <span className="checkout-page__confirmationButtonWrap">
         <Button
           type="primary"
           className="checkout-page__confirmationButton"
-          onClick={checkoutNextAction ? handleCheckoutNextAction : () => form.submit()}
+          onClick={checkoutBlockingAction ? handleCheckoutNextAction : () => form.submit()}
           loading={submitting}
-          disabled={!checkoutNextAction && checkoutSubmitDisabled}
-          aria-label={checkoutConfirmationActionLabel}
-          title={checkoutConfirmationActionLabel}
+          disabled={!checkoutBlockingAction && checkoutSubmitDisabled}
+          aria-label={checkoutBlockingAction ? checkoutConfirmationActionLabel : checkoutSubmitActionLabel}
+          title={checkoutBlockingAction ? checkoutConfirmationActionLabel : checkoutSubmitTooltip}
         >
-          {checkoutNextAction ? checkoutNextActionLabel : shippingQuoteReady ? t('pages.checkout.submitWithAmount', { amount: payableAmountText }) : shippingFeeText}
+          {checkoutBlockingAction ? checkoutNextActionLabel : shippingQuoteReady ? t('pages.checkout.submitWithAmount', { amount: payableAmountText }) : shippingFeeText}
         </Button>
+        </span>
+        </Tooltip>
       </section>
 
       <div className="checkout-page__trustBar" aria-label={t('pages.checkout.trustTitle')}>
@@ -3182,9 +3218,13 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
               <Text strong>{selectedPaymentDetail?.title || t('pages.checkout.paymentConfidenceDefault')}</Text>
             </div>
             <Form.Item className="checkout-page__submitAction">
-              <Button className="checkout-page__submitButton" type="primary" htmlType="submit" loading={submitting} disabled={checkoutSubmitDisabled} block size="large" aria-label={checkoutSubmitActionLabel} title={checkoutSubmitActionLabel}>
-                {renderSubmitWithAmount()}
-              </Button>
+              <Tooltip title={checkoutSubmitTooltip}>
+                <span className="checkout-page__submitButtonWrap">
+                  <Button className="checkout-page__submitButton" type="primary" htmlType="submit" loading={submitting} disabled={checkoutSubmitDisabled} block size="large" aria-label={checkoutSubmitActionLabel} title={checkoutSubmitTooltip}>
+                    {renderSubmitWithAmount()}
+                  </Button>
+                </span>
+              </Tooltip>
             </Form.Item>
           </div>
           <div className="checkout-page__mobilePayBar" aria-label={t('pages.checkout.paymentConfidenceTitle')}>
@@ -3192,17 +3232,21 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
               <Text type="secondary">{t('pages.checkout.payable')}</Text>
               <Text strong className={shippingQuoteReady ? 'commerce-money' : undefined}>{payableAmountText}</Text>
             </span>
-            <Button
-              type="primary"
-              htmlType={checkoutNextAction ? 'button' : 'submit'}
-              onClick={checkoutNextAction ? handleCheckoutNextAction : undefined}
-              loading={submitting}
-              disabled={!checkoutNextAction && checkoutSubmitDisabled}
-              aria-label={checkoutNextAction ? checkoutConfirmationActionLabel : checkoutSubmitActionLabel}
-              title={checkoutNextAction ? checkoutConfirmationActionLabel : checkoutSubmitActionLabel}
-            >
-              {checkoutNextAction ? checkoutNextActionLabel : renderSubmitWithAmount()}
-            </Button>
+            <Tooltip title={checkoutBlockingAction ? checkoutConfirmationActionLabel : checkoutSubmitTooltip}>
+              <span className="checkout-page__mobilePayButtonWrap">
+                <Button
+                  type="primary"
+                  htmlType={checkoutBlockingAction ? 'button' : 'submit'}
+                  onClick={checkoutBlockingAction ? handleCheckoutNextAction : undefined}
+                  loading={submitting}
+                  disabled={!checkoutBlockingAction && checkoutSubmitDisabled}
+                  aria-label={checkoutBlockingAction ? checkoutConfirmationActionLabel : checkoutSubmitActionLabel}
+                  title={checkoutBlockingAction ? checkoutConfirmationActionLabel : checkoutSubmitTooltip}
+                >
+                  {checkoutBlockingAction ? checkoutNextActionLabel : renderSubmitWithAmount()}
+                </Button>
+              </span>
+            </Tooltip>
           </div>
         </Card>
       </Form>

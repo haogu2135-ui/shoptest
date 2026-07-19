@@ -180,13 +180,15 @@ const LogManagement: React.FC = () => {
         />
       ) : null}
 
-      <Spin
-        spinning={loading && !status}
+      <div
         role="status"
         aria-live="polite"
         aria-busy={loading && !status}
         aria-label={t('common.loading')}
       >
+        <Spin
+          spinning={loading && !status}
+        >
         {loadError && !status ? null : (
           <>
             <div className="log-management__stats">
@@ -325,7 +327,8 @@ const LogManagement: React.FC = () => {
             </Card>
           </>
         )}
-      </Spin>
+        </Spin>
+      </div>
     </div>
   );
 };

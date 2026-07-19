@@ -3295,3 +3295,16 @@
     grid-template-columns: minmax(0, 1fr) !important;
   }
 }
+
+/* COMMERCIAL_CART_EMPTY_GAP_V1 */
+@media (min-width: 641px) and (max-width: 1024px) {
+  .cart-page__emptyActions {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 12px !important;
+  }
+
+  .cart-page__emptyActions .ant-btn {
+    width: 100%;
+  }
+}

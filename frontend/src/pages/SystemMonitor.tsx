@@ -224,13 +224,15 @@ const SystemMonitor: React.FC = () => {
         />
       ) : null}
 
-      <Spin
-        spinning={loading && !status}
+      <div
         role="status"
         aria-live="polite"
         aria-busy={loading && !status}
         aria-label={t('common.loading')}
       >
+        <Spin
+          spinning={loading && !status}
+        >
         {loadError && !status ? null : status ? (
           <>
             <div className="system-monitor__stats">
@@ -411,7 +413,8 @@ const SystemMonitor: React.FC = () => {
             <Text type="secondary">{t('pages.systemMonitor.noStatus')}</Text>
           </Card>
         )}
-      </Spin>
+        </Spin>
+      </div>
     </div>
   );
 };

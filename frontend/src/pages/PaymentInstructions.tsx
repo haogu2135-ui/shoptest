@@ -210,13 +210,15 @@ const PaymentInstructions: React.FC = () => {
 
       <div className="payment-instructions-page__grid">
         <Card className="payment-instructions-page__card">
-          <Spin
-            spinning={verifying}
+          <div
             role="status"
             aria-live="polite"
             aria-busy={verifying}
             aria-label={verifying ? t('common.loading') : undefined}
           >
+            <Spin
+              spinning={verifying}
+            >
             <Space direction="vertical" size="middle" className="payment-instructions-page__stack">
             {verifyError ? (
               <Alert type="warning" showIcon message={verifyError} />
@@ -244,7 +246,8 @@ const PaymentInstructions: React.FC = () => {
               <Text>{t('pages.paymentInstructions.notice')}</Text>
             </div>
             </Space>
-          </Spin>
+            </Spin>
+          </div>
         </Card>
 
         <Card className="payment-instructions-page__card">
