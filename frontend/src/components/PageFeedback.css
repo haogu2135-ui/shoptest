@@ -76,3 +76,11 @@
     min-width: 0;
   }
 }
+
+
+/* COMMERCIAL_PAGE_FEEDBACK_FOCUS_V1 */
+.page-feedback .ant-result-extra .ant-btn:focus-visible,
+.page-feedback__actions .ant-btn:focus-visible {
+  outline: 3px solid rgba(18, 71, 52, 0.35);
+  outline-offset: 2px;
+}

@@ -7,6 +7,7 @@ import type { ProductPublic as Product, ProductPublicPage, CategoryPublic } from
 import { flattenCategoryTree, getDisplayCategoryRoots, getLocalizedCategoryValue } from '../utils/categoryTree';
 import type { CategoryTreeNode } from '../utils/categoryTree';
 import { useLanguage } from '../i18n';
+import { usePageTitle } from '../hooks/usePageTitle';
 import { useMarket } from '../hooks/useMarket';
 import { localizeProduct } from '../utils/localizedProduct';
 import { addGuestCartItem } from '../utils/guestCart';
@@ -31,6 +32,8 @@ import { addAppScrollListener, getAppScrollMetrics, scrollAppToTop } from '../ut
 import { useNativeBackHandler } from '../utils/nativeBack';
 import { AUTH_SESSION_CHANGED_EVENT } from '../utils/authEvents';
 import { reportNonBlockingError } from '../utils/nonBlockingError';
+import PageError from '../components/PageError';
+import PageEmpty from '../components/PageEmpty';
 import './ProductList.css';
 import '../styles/mobile-page-contrast.css';
 
@@ -545,6 +548,7 @@ const ProductList: React.FC = () => {
   const productFetchAbortRef = useRef<AbortController | null>(null);
   const previousProductsRef = useRef<Product[]>([]);
   const { t, language } = useLanguage();
+  usePageTitle(t('pages.productList.title'));
   const { formatMoney } = useMarket();
   const productSearchActionLabel = `${t('common.search')}: ${t('pages.productList.searchPlaceholder')}`;
   const productListProductName = useCallback((product: Pick<Product, 'id' | 'name'>) =>
@@ -2459,55 +2463,60 @@ const ProductList: React.FC = () => {
               </div>
             </div>
           ) : loadFailed ? (
-            <div className="product-list__loadFailed" role="alert">
-              <Empty description={t('pages.productList.fetchFailed')}>
-                <div className="product-list__recovery">
-                  <Text>{t('pages.productList.loadRecoveryText')}</Text>
-                  <div className="product-list__recoveryGrid">
-                    <Button
-                      type="primary"
-                      icon={<ReloadOutlined />}
-                      aria-label={refreshCatalogActionLabel}
-                      title={refreshCatalogActionLabel}
-                      onClick={() => fetchProducts(keyword, categoryId, discount, buildActiveFetchFilters(Math.max(0, currentPage - 1)))}
-                    >
-                      {t('common.refresh')}
-                    </Button>
-                    <Button icon={<FilterOutlined />} aria-label={allCategoriesRecoveryActionLabel} title={allCategoriesRecoveryActionLabel} onClick={() => navigate('/products')}>
-                      {t('pages.productList.allCategories')}
-                    </Button>
-                    <Button icon={<GiftOutlined />} aria-label={couponsRecoveryActionLabel} title={couponsRecoveryActionLabel} onClick={() => navigate('/coupons')}>
-                      {t('pages.productList.loadRecoveryCoupons')}
-                    </Button>
-                    <Button icon={<CustomerServiceOutlined />} aria-label={supportRecoveryActionLabel} title={supportRecoveryActionLabel} onClick={openSupport}>
-                      {t('pages.productList.loadRecoverySupport')}
-                    </Button>
+            <div className="product-list__loadFailed">
+              <PageError
+                title={t('pages.productList.fetchFailed')}
+                description={(
+                  <div className="product-list__recovery">
+                    <Text>{t('pages.productList.loadRecoveryText')}</Text>
+                    <div className="product-list__recoveryTips">
+                      <span>{t('pages.productList.loadRecoveryTipRefresh')}</span>
+                      <span>{t('pages.productList.loadRecoveryTipFilters')}</span>
+                      <span>{t('pages.productList.loadRecoveryTipSupport')}</span>
+                    </div>
                   </div>
-                  <div className="product-list__recoveryTips">
-                    <span>{t('pages.productList.loadRecoveryTipRefresh')}</span>
-                    <span>{t('pages.productList.loadRecoveryTipFilters')}</span>
-                    <span>{t('pages.productList.loadRecoveryTipSupport')}</span>
-                  </div>
-                  {renderDiscoveryActions()}
+                )}
+                retryLabel={refreshCatalogActionLabel}
+                onRetry={() => fetchProducts(keyword, categoryId, discount, buildActiveFetchFilters(Math.max(0, currentPage - 1)))}
+                homeLabel={allCategoriesRecoveryActionLabel}
+                onHome={() => navigate('/products')}
+              />
+              <div className="product-list__recovery product-list__recovery--secondary">
+                <div className="product-list__recoveryGrid">
+                  <Button icon={<GiftOutlined />} aria-label={couponsRecoveryActionLabel} title={couponsRecoveryActionLabel} onClick={() => navigate('/coupons')}>
+                    {t('pages.productList.loadRecoveryCoupons')}
+                  </Button>
+                  <Button icon={<CustomerServiceOutlined />} aria-label={supportRecoveryActionLabel} title={supportRecoveryActionLabel} onClick={openSupport}>
+                    {t('pages.productList.loadRecoverySupport')}
+                  </Button>
                 </div>
-              </Empty>
+                {renderDiscoveryActions()}
+              </div>
             </div>
           ) : paginatedProducts.length === 0 ? (
-            <Empty description={t('pages.productList.empty')} className="product-list__empty">
-              <div className="product-list__emptyContent">
-                {renderDiscoveryActions()}
-                {(keyword || categoryId || collection || activeFilterCount > 0) ? (
-                  <Space wrap className="product-list__emptyActions">
-                    <Button type="link" aria-label={emptyAllCategoriesActionLabel} title={emptyAllCategoriesActionLabel} onClick={() => navigate('/products')}>
-                      {t('pages.productList.allCategories')}
-                    </Button>
-                    <Button type="link" aria-label={emptyResetFiltersActionLabel} title={emptyResetFiltersActionLabel} onClick={resetFilters}>
-                      {t('pages.productList.resetFilters')}
-                    </Button>
-                  </Space>
-                ) : null}
-              </div>
-            </Empty>
+            <PageEmpty
+              className="product-list__empty"
+              description={(
+                <div className="product-list__emptyContent">
+                  <div>{t('pages.productList.empty')}</div>
+                  {renderDiscoveryActions()}
+                </div>
+              )}
+              primaryAction={(keyword || categoryId || collection || activeFilterCount > 0) ? {
+                key: 'reset',
+                label: emptyResetFiltersActionLabel,
+                onClick: resetFilters,
+              } : {
+                key: 'all',
+                label: emptyAllCategoriesActionLabel,
+                onClick: () => navigate('/products'),
+              }}
+              secondaryAction={(keyword || categoryId || collection || activeFilterCount > 0) ? {
+                key: 'all',
+                label: emptyAllCategoriesActionLabel,
+                onClick: () => navigate('/products'),
+              } : undefined}
+            />
           ) : (
             <>
               <Row gutter={[16, 16]} className="product-list__grid">

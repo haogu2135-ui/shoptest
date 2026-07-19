@@ -15,6 +15,8 @@ import { dispatchDomEvent } from '../utils/domEvents';
 import { getLocalStorageItem } from '../utils/safeStorage';
 import { allSettledWithConcurrency } from '../utils/asyncBatch';
 import { getApiErrorMessage } from '../utils/apiError';
+import PageError from '../components/PageError';
+import PageEmpty from '../components/PageEmpty';
 import './StockAlerts.css';
 import '../styles/mobile-page-contrast.css';
 
@@ -374,9 +376,9 @@ const StockAlerts: React.FC = () => {
           </div>
         ) : null}
 
-        {loadError ? (
+        {loadError && hasStaleProductData ? (
           <Alert
-            type="error"
+            type="warning"
             showIcon
             message={t('pages.stockAlerts.loadFailed')}
             description={hasStaleProductData ? t('pages.stockAlerts.staleDataWarning') : t('common.loadFailedRetry')}
@@ -384,12 +386,25 @@ const StockAlerts: React.FC = () => {
           />
         ) : null}
 
-        {alerts.length === 0 ? (
-          <Empty description={t('pages.stockAlerts.empty')}>
-            <Button type="primary" aria-label={browseStockAlertsActionLabel} title={browseStockAlertsActionLabel} onClick={() => navigate('/products')}>
-              {t('pages.stockAlerts.browse')}
-            </Button>
-          </Empty>
+        {loadError && !hasStaleProductData ? (
+          <PageError
+            className="stock-alerts__loadError"
+            title={t('pages.stockAlerts.loadFailed')}
+            description={t('common.loadFailedRetry')}
+            retryLabel={t('common.retry')}
+            onRetry={() => setReloadKey((value) => value + 1)}
+            homeLabel={browseStockAlertsActionLabel}
+            onHome={() => navigate('/products')}
+          />
+        ) : alerts.length === 0 ? (
+          <PageEmpty
+            description={t('pages.stockAlerts.empty')}
+            primaryAction={{
+              key: 'browse',
+              label: browseStockAlertsActionLabel,
+              onClick: () => navigate('/products'),
+            }}
+          />
         ) : (
           <List
             loading={loading}

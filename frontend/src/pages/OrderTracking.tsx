@@ -2,9 +2,12 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Alert, Button, Card, Descriptions, Empty, Form, Input, List, Modal, Space, Tag, Typography, message } from 'antd';
 import { CheckCircleOutlined, ClockCircleOutlined, CreditCardOutlined, CustomerServiceOutlined, RollbackOutlined, SearchOutlined, TruckOutlined } from '@ant-design/icons';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import PageEmpty from '../components/PageEmpty';
+import PageError from '../components/PageError';
 import { cartApi, createApiAbortController, orderApi, paymentApi } from '../api';
 import type { OrderCustomer, OrderItemCustomer, PaymentCustomer } from '../types';
 import { useLanguage } from '../i18n';
+import { usePageTitle } from '../hooks/usePageTitle';
 import { useMarket } from '../hooks/useMarket';
 import { formatSelectedSpecs } from '../utils/selectedSpecs';
 import { paymentMethodLabel } from '../utils/paymentMethods';
@@ -117,6 +120,7 @@ const OrderTracking: React.FC = () => {
   const trackAbortRef = useRef<AbortController | null>(null);
   const refreshAbortRef = useRef<AbortController | null>(null);
   const { t, language } = useLanguage();
+  usePageTitle(t('pages.orderTracking.title'));
   const { formatMoney } = useMarket();
   const dateLocale = language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US';
   const orderTrackingItemName = (item: Pick<OrderItemCustomer, 'productId' | 'productName'>) => (
@@ -581,28 +585,38 @@ const OrderTracking: React.FC = () => {
             {t('pages.orderTracking.search')}
           </Button>
         </Form>
-        {lookupError ? (
-          <Alert
-            className="order-tracking-page__lookupError"
-            type="error"
-            showIcon
-            message={lookupError}
-            description={t('pages.orderTracking.empty')}
-          />
-        ) : null}
       </Card>
 
       {!order ? (
         <section className="order-tracking-page__emptyState">
-          <Empty description={lookupError || t('pages.orderTracking.empty')} />
-          <div className="order-tracking-page__emptyActions">
-            <Button icon={<CustomerServiceOutlined />} aria-label={trackActionLabel(t('pages.profile.contactSupport'))} title={trackActionLabel(t('pages.profile.contactSupport'))} onClick={supportOpen}>
-              {t('pages.profile.contactSupport')}
-            </Button>
-            <Button type="primary" aria-label={trackActionLabel(t('pages.orderTracking.shopAgain'))} title={trackActionLabel(t('pages.orderTracking.shopAgain'))} onClick={() => navigate('/products')}>
-              {t('pages.orderTracking.shopAgain')}
-            </Button>
-          </div>
+          {lookupError ? (
+            <PageError
+              className="order-tracking-page__lookupErrorState"
+              title={lookupError}
+              description={t('pages.orderTracking.empty')}
+              retryLabel={t('pages.orderTracking.search')}
+              onRetry={() => {
+                void form.submit();
+              }}
+              homeLabel={t('pages.orderTracking.shopAgain')}
+              onHome={() => navigate('/products')}
+            />
+          ) : (
+            <PageEmpty
+              description={t('pages.orderTracking.empty')}
+              primaryAction={{
+                key: 'shop',
+                label: t('pages.orderTracking.shopAgain'),
+                onClick: () => navigate('/products'),
+              }}
+              secondaryAction={{
+                key: 'support',
+                label: t('pages.profile.contactSupport'),
+                onClick: supportOpen,
+                icon: <CustomerServiceOutlined />,
+              }}
+            />
+          )}
         </section>
       ) : (
         <Space direction="vertical" size="middle" className="order-tracking-page__resultStack">

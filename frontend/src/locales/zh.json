@@ -413,7 +413,10 @@
       "harness": "日常遛弯胸背"
     },
     "inStock": "有货",
-    "stockAvailable": "库存 {count} 件"
+    "stockAvailable": "库存 {count} 件",
+    "browseCatalog": "浏览商品",
+    "emptyCategoriesHint": "分类就绪后会显示在这里。",
+    "emptyProductsHint": "新品即将上架，可先浏览分类或使用搜索。"
   },
   "footer": {
     "customerCare": "客户服务",
@@ -878,7 +881,8 @@
       "nextActionBrowseText": "使用个性化排序补充更匹配的商品到收藏夹。",
       "readyValue": "可加购金额 {amount}",
       "viewBestPick": "查看优先推荐",
-      "browsePersonalized": "查看个性化推荐"
+      "browsePersonalized": "查看个性化推荐",
+      "pageTitle": "心愿单"
     },
     "notifications": {
       "title": "通知",
@@ -1757,7 +1761,8 @@
       "saveFailed": "公告保存失败",
       "statusUpdateFailed": "状态更新失败",
       "deleted": "公告已删除",
-      "deleteFailed": "公告删除失败"
+      "deleteFailed": "公告删除失败",
+      "placeholderContentBlocked": "启用中的公告不能使用测试、占位或无意义文案。"
     },
     "alertAdmin": {
       "title": "告警中心",
@@ -2989,7 +2994,9 @@
       "completeSetTitle": "顺手搭配",
       "completeSetText": "同类目热卖配件，可减少二次寻找。",
       "completeSetAdd": "加购",
-      "mobileBuybarMeta": "{price} · {stock}"
+      "mobileBuybarMeta": "{price} · {stock}",
+      "loadFailed": "商品加载失败",
+      "loadFailedDescription": "请检查网络后重试，也可先浏览商品目录。"
     },
     "profile": {
       "fetchUserFailed": "用户信息加载失败",

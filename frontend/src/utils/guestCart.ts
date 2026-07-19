@@ -145,7 +145,7 @@ export const clearGuestCart = () => writeGuestCart([]);
 
 export const replaceGuestCartItems = (items: CartItem[]) => writeGuestCart(items);
 
-export const addGuestCartItem = (product: GuestCartProductInput | null | undefined, quantity = 1, selectedSpecs?: string, price?: number): CartItem | null => {
+export const addGuestCartItem = (product: unknown, quantity = 1, selectedSpecs?: string, price?: number): CartItem | null => {
   const productInput = toProductInput(product);
   const items = readGuestCart();
   const productId = normalizePositiveProductId(productInput.id);

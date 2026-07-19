@@ -7377,3 +7377,21 @@
     --product-list-app-floating-rail-clearance: 104px;
   }
 }
+
+
+.product-list__loadFailed .page-feedback {
+  margin-bottom: 12px;
+}
+
+.product-list__recovery--secondary {
+  display: grid;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.product-list__recovery--secondary .product-list__recoveryGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}

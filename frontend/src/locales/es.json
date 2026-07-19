@@ -413,7 +413,10 @@
       "harness": "un arnés de paseo"
     },
     "inStock": "Disponible",
-    "stockAvailable": "{count} disponibles"
+    "stockAvailable": "{count} disponibles",
+    "browseCatalog": "Explorar catálogo",
+    "emptyCategoriesHint": "Las categorías aparecerán aquí cuando el catálogo esté listo.",
+    "emptyProductsHint": "Pronto habrá más productos. Explora categorías o usa la búsqueda."
   },
   "footer": {
     "customerCare": "Atención al cliente",
@@ -878,7 +881,8 @@
       "nextActionBrowseText": "Encuentra productos similares y completa tu lista de favoritos.",
       "readyValue": "Valor listo {amount}",
       "viewBestPick": "Ver mejor pick",
-      "browsePersonalized": "Ver recomendaciones personales"
+      "browsePersonalized": "Ver recomendaciones personales",
+      "pageTitle": "Lista de deseos"
     },
     "notifications": {
       "title": "Notificaciones",
@@ -1967,7 +1971,8 @@
       "saveFailed": "No se pudo guardar el anuncio",
       "statusUpdateFailed": "No se pudo actualizar el estado",
       "deleted": "Anuncio eliminado",
-      "deleteFailed": "No se pudo eliminar el anuncio"
+      "deleteFailed": "No se pudo eliminar el anuncio",
+      "placeholderContentBlocked": "Los anuncios activos no pueden usar textos de prueba, marcadores o contenido sin sentido."
     },
     "alertAdmin": {
       "title": "Centro de alertas",
@@ -3199,7 +3204,9 @@
       "completeSetTitle": "Completa el set",
       "completeSetText": "Complementos populares de la misma categoría para evitar otra búsqueda.",
       "completeSetAdd": "Agregar",
-      "mobileBuybarMeta": "{price} · {stock} disponibles"
+      "mobileBuybarMeta": "{price} · {stock} disponibles",
+      "loadFailed": "No se pudo cargar este producto",
+      "loadFailedDescription": "Revisa tu conexión e inténtalo de nuevo. También puedes explorar el catálogo."
     },
     "profile": {
       "fetchUserFailed": "No se pudo cargar la información del usuario",

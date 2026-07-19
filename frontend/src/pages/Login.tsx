@@ -1,11 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Form, Input, Button, Typography, message, Tabs } from 'antd';
+import { Alert, Form, Input, Button, Typography, message, Tabs } from 'antd';
 import type { InputRef } from 'antd/es/input';
 import { CompassOutlined, CustomerServiceOutlined, EyeInvisibleOutlined, EyeOutlined, LockOutlined, MailOutlined, MobileOutlined, SafetyCertificateOutlined, ShoppingCartOutlined, TruckOutlined, UserOutlined } from '@ant-design/icons';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { cartApi, clearStoredAuthCredentials, persistAuthSession, userApi } from '../api';
 import { useAppConfig } from '../hooks/useAppConfig';
 import { useLanguage } from '../i18n';
+import { usePageTitle } from '../hooks/usePageTitle';
 import type { Language } from '../i18n';
 import { getPostLoginRedirectTarget } from '../utils/authRedirect';
 import { getGuestCartItems, replaceGuestCartItems } from '../utils/guestCart';
@@ -124,6 +125,7 @@ const shouldTryNextLoginCandidate = (error: unknown) => {
 
 const Login: React.FC = () => {
   const [loading, setLoading] = useState(false);
+  const [authBannerError, setAuthBannerError] = useState<string | null>(null);
   const [codeSending, setCodeSending] = useState(false);
   const [sendCodeCountdown, setSendCodeCountdown] = useState(0);
   const [verifyRetryCountdown, setVerifyRetryCountdown] = useState(0);
@@ -140,6 +142,7 @@ const Login: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { t, language } = useLanguage();
+  usePageTitle(t('pages.auth.login'));
   const { config: appConfig, loading: appConfigLoading } = useAppConfig();
   const guestCartItemsSnapshot = useMemo(() => getGuestCartItems(), []);
   const guestCartCount = guestCartItemsSnapshot.reduce((sum, item) => sum + item.quantity, 0);
@@ -228,6 +231,7 @@ const Login: React.FC = () => {
   };
 
   const completeLogin = async (responseData: LoginSessionResponse) => {
+    setAuthBannerError(null);
     const { id } = responseData || {};
     if (!id) {
       throw new Error(t('pages.auth.loginFailed'));
@@ -248,6 +252,7 @@ const Login: React.FC = () => {
     const normalizedLogin = normalizePasswordLogin(values.username);
     passwordForm.setFieldValue('username', normalizedLogin);
     setLoading(true);
+    setAuthBannerError(null);
     passwordForm.setFields([
       { name: 'username', errors: [] },
       { name: 'password', errors: [] },
@@ -281,6 +286,7 @@ const Login: React.FC = () => {
         { name: 'username', errors: [loginError] },
         { name: 'password', errors: [loginError] },
       ]);
+      setAuthBannerError(loginError);
       message.error(loginError);
     } finally {
       passwordSubmittingRef.current = false;
@@ -318,9 +324,11 @@ const Login: React.FC = () => {
         if (errorCode === 'RATE_LIMITED') {
           setSendCodeCountdown(getRetryAfterSeconds(error, 60));
         }
-        message.error(errorCode === 'RATE_LIMITED'
+        const errorMessage = errorCode === 'RATE_LIMITED'
           ? t('pages.auth.emailCodeRateLimited')
-          : t('pages.auth.emailCodeSendFailed'));
+          : t('pages.auth.emailCodeSendFailed');
+        setAuthBannerError(errorMessage);
+        message.error(errorMessage);
       }
     } finally {
       emailCodeSendingRef.current = false;
@@ -338,6 +346,7 @@ const Login: React.FC = () => {
     }
     emailSubmittingRef.current = true;
     setLoading(true);
+    setAuthBannerError(null);
     try {
       const normalizedEmail = normalizeEmail(values.email);
       emailForm.setFieldsValue({ email: normalizedEmail, code: normalizedCode });
@@ -350,13 +359,18 @@ const Login: React.FC = () => {
         setVerifyRetryCountdown(retryAfterSeconds);
         const errorMessage = t('pages.auth.emailCodeTooManyAttempts');
         emailForm.setFields([{ name: 'code', errors: [errorMessage] }]);
+        setAuthBannerError(errorMessage);
         message.error(errorMessage);
       } else if (errorCode === 'INVALID_CODE') {
         const errorMessage = t('pages.auth.emailCodeInvalid');
         emailForm.setFields([{ name: 'code', errors: [errorMessage] }]);
+        setAuthBannerError(errorMessage);
         message.error(errorMessage);
       } else {
-        message.error(getApiErrorMessage(error, t('pages.auth.emailLoginFailed'), language));
+        const errorMessage = getApiErrorMessage(error, t('pages.auth.emailLoginFailed'), language);
+        emailForm.setFields([{ name: 'code', errors: [errorMessage] }]);
+        setAuthBannerError(errorMessage);
+        message.error(errorMessage);
       }
     } finally {
       emailSubmittingRef.current = false;
@@ -477,9 +491,21 @@ const Login: React.FC = () => {
             </div>
           </div>
 
+
+          {authBannerError ? (
+            <Alert
+              className="shopee-login-errorBanner"
+              type="error"
+              showIcon
+              closable
+              role="alert"
+              message={authBannerError}
+              onClose={() => setAuthBannerError(null)}
+            />
+          ) : null}
           <Tabs
             activeKey={activeLoginTab}
-            onChange={setActiveLoginTab}
+            onChange={(key) => { setAuthBannerError(null); setActiveLoginTab(key); }}
             className={`shopee-login-tabs shopee-login-tabs--${activeLoginTab}`}
             centered
             items={[

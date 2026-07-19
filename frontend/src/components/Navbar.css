@@ -3487,3 +3487,39 @@ body.shop-mobile-app .shop-nav .shop-nav__actions > .shop-nav__actionSummary {
     line-height: 1 !important;
   }
 }
+
+
+/* COMMERCIAL_TOUCH_TARGET_44_V2
+   Extend F408 44x44 coverage to announcement pause control and native bottom rail. */
+@media (max-width: 780px) {
+  .shop-nav__announcementToggle,
+  body.shop-mobile-app .shop-nav__announcementToggle {
+    box-sizing: border-box !important;
+    width: 44px !important;
+    min-width: 44px !important;
+    height: 44px !important;
+    min-height: 44px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 0 !important;
+    touch-action: manipulation;
+  }
+
+  .shop-nav__bottomBar .shop-nav__bottomItem,
+  body.shop-mobile-app .shop-nav__bottomBar .shop-nav__bottomItem {
+    min-height: 44px !important;
+    min-width: 44px !important;
+    touch-action: manipulation;
+  }
+
+  .shop-nav .shop-nav__search .ant-input-search-button,
+  .shop-nav .shop-nav__search .ant-btn,
+  body.shop-mobile-app .shop-nav .shop-nav__search .ant-input-search-button,
+  body.shop-mobile-app .shop-nav .shop-nav__search .ant-btn {
+    min-width: 44px !important;
+    min-height: 44px !important;
+    height: 44px !important;
+    touch-action: manipulation;
+  }
+}

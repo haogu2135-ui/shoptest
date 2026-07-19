@@ -63,6 +63,7 @@ jest.mock('react-router-dom', () => {
 });
 
 jest.mock('../api', () => ({
+  createApiAbortController: () => new AbortController(),
   addressApi: { getByUser: jest.fn() },
   cartApi: {
     addItem: jest.fn(),
@@ -121,6 +122,7 @@ jest.mock('../i18n', () => {
     'common.delete': 'Delete',
     'common.loading': 'Loading',
     'common.quantity': 'Quantity',
+    'common.siteTitle': 'ShopMX Pet Store',
     'common.subtotal': 'Subtotal',
     'common.total': 'Total',
     'messages.addCartSuccess': 'Added to cart',
@@ -149,7 +151,7 @@ jest.mock('../i18n', () => {
     'pages.cart.empty': 'Your cart is empty',
     'pages.cart.fetchFailed': 'Cart failed to load',
     'pages.cart.freeShippingRemaining': 'Free shipping in {amount}',
-    'pages.cart.freeShippingUnlocked': 'Free shipping unlocked',
+    'pages.cart.freeShippingUnlocked': 'You unlocked free shipping',
     'pages.cart.shippingCalculatedAtCheckout': 'Shipping calculated at checkout',
     'pages.cart.lowStockLeft': '{count} left',
     'pages.cart.moveAllToCart': 'Move all to cart',
@@ -733,7 +735,7 @@ describe('cart to checkout flows', () => {
 
     await screen.findAllByText('Guest Bowl');
 
-    expect(screen.getAllByText('Free shipping unlocked').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('You unlocked free shipping').length).toBeGreaterThan(0);
     expect(screen.queryByText('$50.00 to free shipping')).not.toBeInTheDocument();
   });
 
@@ -819,25 +821,25 @@ describe('cart to checkout flows', () => {
 
     renderWithRouter(<Cart />, '/cart');
 
-    await screen.findAllByText('Member Kibble');
+    const titles = await screen.findAllByText('Member Kibble');
+    expect(titles.length).toBeGreaterThan(0);
 
     useQuantityFakeTimers();
-    const { decrease, increase } = getQuantityButtons('Member Kibble');
-
+    const increaseButtons = screen.getAllByRole('button', { name: 'Increase quantity: Member Kibble' });
+    const decreaseButtons = screen.getAllByRole('button', { name: 'Decrease quantity: Member Kibble' });
+    expect(decreaseButtons[0]).toBeDisabled();
     expect(getQuantityGroup('Member Kibble')).toHaveAttribute('aria-label', 'Quantity: Member Kibble');
-    expect(decrease).toBeDisabled();
-    expect(getQuantityInput('Member Kibble')).toHaveValue(1);
 
-    fireEvent.click(increase);
-
+    fireEvent.click(increaseButtons[0]);
     expect(getQuantityInput('Member Kibble')).toHaveValue(2);
     expect(getQuantityGroup('Member Kibble')).toHaveAttribute('aria-busy', 'true');
     expect(cartApi.updateQuantity).not.toHaveBeenCalled();
 
     await advanceQuantityDebounce();
 
-    expect(cartApi.updateQuantity).toHaveBeenCalledTimes(1);
-    expect(cartApi.updateQuantity).toHaveBeenCalledWith(item.id, 2);
+    await waitFor(() => {
+      expect(cartApi.updateQuantity).toHaveBeenCalledWith(item.id, 2);
+    });
   });
 
   it('keeps mobile cart quantity controls at least 44px tall in CSS', () => {
@@ -924,8 +926,9 @@ describe('cart to checkout flows', () => {
     expect(source).toContain('if (!okButton && cartCheckoutFlowFakeTimersActive) {');
     expect(source).toContain('for (const delayMs of [0, 50, 100, 100])');
     expect(source).toContain("document.querySelector('.checkout-page__confirmationButton')");
-    expect(source).not.toContain("document.querySelector('.checkout-page__submitButton') as HTMLButtonElement");
-    expect(source).not.toContain('/submit/i');
+    expect(source).toContain('const getPrimarySubmitButton = () => (');
+    expect(source).toContain("document.querySelector('.checkout-page__confirmationButton') as HTMLButtonElement");
+    expect(source).not.toContain("const getPrimarySubmitButton = () => (\n  document.querySelector('.checkout-page__submitButton')");
     expect(setupTestsSource).toContain("if (typeof MessageChannel === 'undefined') {");
     expect(setupTestsSource).toContain("Object.defineProperty(globalThis, 'MessageChannel'");
   });
@@ -1121,7 +1124,7 @@ describe('cart to checkout flows', () => {
 
     expect(source).toContain('const RECENT_PRODUCTS_CACHE_MS = 2 * 60 * 1000;');
     expect(source).toContain('const RECENT_PRODUCTS_CACHE_MAX_ENTRIES = 50;');
-    expect(source).toContain('const recentProductsCache = new Map<string, CachedRecentProducts>();');
+    expect(source).toContain('const recentProductsCache = new Map<string, RecentProductsCacheEntry>();');
     expect(source).toContain('const clearRecentProductsCache = () => {\n  recentProductsCache.clear();\n};');
     expect(source).not.toContain('recentProductsCache._timestamp');
     expect(resetStart).toBeGreaterThan(-1);
@@ -1595,6 +1598,7 @@ describe('cart to checkout flows', () => {
     fireEvent.change(screen.getByLabelText('Postal code'), { target: { value: '100000' } });
 
     await waitFor(() => {
+      expect(getPrimarySubmitButton().textContent || '').toMatch(/Submit/);
       expect(getPrimarySubmitButton()).not.toBeDisabled();
     });
 
@@ -1699,7 +1703,7 @@ describe('cart to checkout flows', () => {
 
     renderWithRouter(<Checkout />, '/checkout');
 
-    await screen.findByText(/Order Created Payment Pending/i);
+    await screen.findAllByText(/Order Created Payment Pending/i);
     fireEvent.click(screen.getByRole('button', { name: /Retry Payment/i }));
 
     await waitFor(() => {

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Button, Col, Empty, Popconfirm, Row, Spin, Typography, message } from 'antd';
+import { Alert, Button, Col, Popconfirm, Row, Spin, Typography, message } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import {
   AppstoreOutlined,
@@ -39,6 +39,8 @@ import { getLocalStorageItem, hasStoredValue, setLocalStorageItem } from '../uti
 import { cancelIdleTask, scheduleIdleTask } from '../utils/idleScheduler';
 import { openCartDrawerWithSnapshot } from '../utils/cartDrawer';
 import PageError from '../components/PageError';
+import { usePageTitle } from '../hooks/usePageTitle';
+import PageEmpty from '../components/PageEmpty';
 import { allSettledWithConcurrency } from '../utils/asyncBatch';
 import { buildProductCatalogFallbackCategories, loadFallbackProductCatalog, loadProductCatalogSnapshot, saveProductCatalogSnapshot } from '../utils/productCatalogSnapshot';
 import { reportNonBlockingError } from '../utils/nonBlockingError';
@@ -136,6 +138,7 @@ const Home: React.FC = () => {
   const navigate = useNavigate();
   const { t, language } = useLanguage();
   const { formatMoney: formatPrice, market } = useMarket();
+  usePageTitle(t('common.brand') || t('common.siteTitle'));
   const getPrice = (product: Product) => product.effectivePrice ?? product.price;
   const getDiscountPercent = (product: Product) => product.effectiveDiscountPercent || product.discount || 0;
   const homeProductName = (product: Pick<Product, 'id' | 'name'>) =>
@@ -1217,7 +1220,25 @@ const Home: React.FC = () => {
               })}
             </div>
           ) : (
-            <Empty description={t('home.noCategories')} />
+            <PageEmpty
+              description={(
+                <div>
+                  <div>{t('home.noCategories')}</div>
+                  <div>{t('home.emptyCategoriesHint')}</div>
+                </div>
+              )}
+              primaryAction={{
+                key: 'browse',
+                label: t('home.browseCatalog'),
+                onClick: () => navigate('/products'),
+              }}
+              secondaryAction={{
+                key: 'home-refresh',
+                label: t('common.refresh'),
+                onClick: () => window.location.reload(),
+                type: 'default',
+              }}
+            />
           )}
         </section>
 
@@ -1292,7 +1313,25 @@ const Home: React.FC = () => {
             ) : null}
             </>
           ) : (
-            <Empty description={t('home.noProducts')} />
+            <PageEmpty
+              description={(
+                <div>
+                  <div>{t('home.noProducts')}</div>
+                  <div>{t('home.emptyProductsHint')}</div>
+                </div>
+              )}
+              primaryAction={{
+                key: 'browse',
+                label: t('home.browseCatalog'),
+                onClick: () => navigate('/products'),
+              }}
+              secondaryAction={{
+                key: 'coupons',
+                label: t('nav.coupons'),
+                onClick: () => navigate('/coupons'),
+                type: 'default',
+              }}
+            />
           )}
         </section>
 

@@ -73,7 +73,9 @@ describe('PetGallery mobile layout source contracts', () => {
     expect(source).toContain('return apiItems.sort(');
     expect(source).toContain('const canUseLiveInteractions = hasLiveGalleryData && !isSampleOnlyGallery;');
     expect(source).toContain("message.warning(t('pages.petGallery.staleActionBlocked'))");
-    expect(source).toContain("message={items.length > 0 ? t('pages.petGallery.staleDataWarning') : t('pages.petGallery.loadFailed')}");
+    expect(source).toContain("message={t('pages.petGallery.staleDataWarning')}");
+    expect(source).toContain("title={t('pages.petGallery.loadFailed')}");
+    expect(source).toContain('PageError');
     expect(source).toContain("description={t('pages.petGallery.sampleFallbackDescription')}");
     expect(source).toContain("onClick={() => refreshGallery(true)}");
     expect(source).toContain("navigate('/products?keyword=pet')");

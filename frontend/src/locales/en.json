@@ -413,7 +413,10 @@
       "harness": "a walking harness"
     },
     "inStock": "In stock",
-    "stockAvailable": "{count} available"
+    "stockAvailable": "{count} available",
+    "browseCatalog": "Browse catalog",
+    "emptyCategoriesHint": "Categories will appear here once the catalog is ready.",
+    "emptyProductsHint": "New pet essentials are on the way. Browse categories or try search."
   },
   "footer": {
     "customerCare": "Customer care",
@@ -934,7 +937,8 @@
       "nextActionBrowseText": "Use personalized product ranking to add better-matched items to this wishlist.",
       "readyValue": "Ready value {amount}",
       "viewBestPick": "View best pick",
-      "browsePersonalized": "Browse personal picks"
+      "browsePersonalized": "Browse personal picks",
+      "pageTitle": "Wishlist"
     },
     "notifications": {
       "title": "Notifications",
@@ -1540,7 +1544,8 @@
       "saveFailed": "Failed to save announcement",
       "statusUpdateFailed": "Failed to update status",
       "deleted": "Announcement deleted",
-      "deleteFailed": "Failed to delete announcement"
+      "deleteFailed": "Failed to delete announcement",
+      "placeholderContentBlocked": "Active announcements cannot use test, placeholder, or gibberish copy."
     },
     "alertAdmin": {
       "title": "Alert Center",
@@ -3857,7 +3862,9 @@
       "completeSetTitle": "Complete the set",
       "completeSetText": "Popular same-category add-ons reduce the second search.",
       "completeSetAdd": "Add",
-      "mobileBuybarMeta": "{price} · {stock}"
+      "mobileBuybarMeta": "{price} · {stock}",
+      "loadFailed": "Couldn't load this product",
+      "loadFailedDescription": "Check your connection and try again. You can also browse the catalog while we reconnect."
     },
     "permissions": {
       "title": "Permission management",

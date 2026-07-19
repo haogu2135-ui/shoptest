@@ -12,6 +12,7 @@ import { getGuestCartItems } from '../utils/guestCart';
 import { getCouponUiText } from '../utils/couponUiText';
 import { getLocalStorageItem } from '../utils/safeStorage';
 import { reportNonBlockingError } from '../utils/nonBlockingError';
+import PageError from '../components/PageError';
 import { getApiErrorMessage } from '../utils/apiError';
 import {
   filterPublicCoupons,
@@ -487,12 +488,23 @@ const CouponCenter: React.FC = () => {
 
   return (
     <div className={`coupon-center-page ${couponPageStateClass} coupon-center-page--${language}`}>
-      {loadError || usingFallbackCoupons ? (
+      {loadError && !usingFallbackCoupons ? (
+        <PageError
+          className="coupon-center-page__loadAlert"
+          title={t('pages.coupons.loadFailed')}
+          description={t('messages.loadFailedRetry')}
+          retryLabel={t('messages.retry')}
+          onRetry={() => window.location.reload()}
+          homeLabel={t('pages.coupons.goShopping')}
+          onHome={() => navigate('/products')}
+        />
+      ) : null}
+      {usingFallbackCoupons ? (
         <Alert
-          type={usingFallbackCoupons ? 'info' : 'warning'}
+          type="info"
           showIcon
-          message={usingFallbackCoupons ? t('pages.coupons.catalogFallback') : t('pages.coupons.loadFailed')}
-          description={usingFallbackCoupons ? t('pages.coupons.catalogFallbackDescription') : t('messages.loadFailedRetry')}
+          message={t('pages.coupons.catalogFallback')}
+          description={t('pages.coupons.catalogFallbackDescription')}
           className="coupon-center-page__loadAlert"
           action={(
             <Button size="small" onClick={() => window.location.reload()} aria-label={t('messages.retry')} title={t('messages.retry')}>

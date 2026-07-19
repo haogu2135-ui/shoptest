@@ -2748,3 +2748,12 @@
     -webkit-box-orient: initial !important;
   }
 }
+
+
+.shopee-login-errorBanner {
+  margin: 0 0 12px;
+}
+
+.shopee-login-errorBanner.ant-alert {
+  border-radius: 12px;
+}

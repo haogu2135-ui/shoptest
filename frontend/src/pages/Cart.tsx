@@ -5,6 +5,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { cartApi, productApi } from '../api';
 import type { CartItem, ProductPublic as Product } from '../types';
 import { useLanguage } from '../i18n';
+import { usePageTitle } from '../hooks/usePageTitle';
 import { useMarket } from '../hooks/useMarket';
 import { useCartQuantitySync } from '../hooks/useCartQuantitySync';
 import { formatSelectedSpecs } from '../utils/selectedSpecs';
@@ -188,6 +189,7 @@ const Cart: React.FC = () => {
   const cartSnapshotRequestRef = useRef(0);
   const navigate = useNavigate();
   const { t, language } = useLanguage();
+  usePageTitle(t('pages.cart.title'));
   const { currency, market, formatMoney } = useMarket();
   const cartFetchErrorFallbackRef = useRef(t('pages.cart.fetchFailed'));
   const cartFetchErrorLanguageRef = useRef(language);
@@ -332,6 +334,10 @@ const Cart: React.FC = () => {
   }, [cartItems]);
 
   useEffect(() => {
+    // Skip empty-cart prunes so the initial mount effect cannot race the first
+    // fetchCartItems() selection write (same commit can queue this updater after
+    // setSelectedIds([...readyIds]) and wipe guest/member auto-select).
+    if (cartItems.length === 0) return;
     setSelectedIds((ids) => {
       if (ids.length === 0) return ids;
       const checkoutableItemIds = new Set(cartItems.filter(canCheckout).map((item) => item.id));

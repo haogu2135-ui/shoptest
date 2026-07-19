@@ -7,6 +7,7 @@ import { addressApi, cartApi, clearStoredAuthSession, couponApi, createApiAbortC
 import type { CartItem, CouponQuote, OrderCustomer, PaymentCustomer, PaymentChannel, ProductPublic as Product, UserAddress, UserCoupon } from '../types';
 import { loadRegionData, type RegionOption } from '../regionData';
 import { useLanguage, type Language } from '../i18n';
+import { usePageTitle } from '../hooks/usePageTitle';
 import { createPaymentMethodDetails, paymentMethodLabel } from '../utils/paymentMethods';
 import { useMarket } from '../hooks/useMarket';
 import { formatSelectedSpecs } from '../utils/selectedSpecs';
@@ -40,6 +41,8 @@ import {
   type CheckoutPaymentPollWebLockSession,
 } from '../utils/checkoutPaymentPollLock';
 import AddOnAssistant from '../components/AddOnAssistant';
+import PageError from '../components/PageError';
+import ShopBreadcrumb from '../components/ShopBreadcrumb';
 import './Checkout.css';
 import '../styles/mobile-page-contrast.css';
 
@@ -622,6 +625,7 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [addresses, setAddresses] = useState<UserAddress[]>([]);
   const [addressLoadFailed, setAddressLoadFailed] = useState(false);
+  const [cartLoadError, setCartLoadError] = useState<string | null>(null);
   const [checkoutReloadKey, setCheckoutReloadKey] = useState(0);
   const [selectedAddressId, setSelectedAddressId] = useState<number | 'new'>('new');
   const initialPendingOrderRef = React.useRef<CheckoutPendingOrderSnapshot | null>(null);
@@ -681,6 +685,7 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
   const checkoutStatusAnnouncementIdRef = React.useRef(0);
   const mountedRef = React.useRef(true);
   const { t, language } = useLanguage();
+  usePageTitle(t('pages.checkout.title'));
   const checkoutLocalizationRef = React.useRef({ t, language });
   const announceCheckoutStatus = useCallback((messageText: string) => {
     const text = normalizeCheckoutText(messageText, 500);
@@ -1020,6 +1025,7 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
       setCartItems(purchasableItems);
       setAddresses([]);
       setAddressLoadFailed(false);
+      setCartLoadError(null);
       const draftFields = readCheckoutGuestDraftFields();
       if (draftFields) {
         form.setFieldsValue(draftFields);
@@ -1033,6 +1039,7 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
     const loadCheckout = async () => {
       setLoading(true);
       setAddressLoadFailed(false);
+      setCartLoadError(null);
       try {
         const [cartRes, addressRes] = await Promise.all([
           cartApi.getItems(0),
@@ -1056,6 +1063,7 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
           syncCheckoutCartItemIds(purchasableItems);
         }
         setCartItems(purchasableItems);
+        setCartLoadError(null);
         setAddresses(addressRes.data);
         const defaultAddress = addressRes.data.find((address) => address.isDefault) || addressRes.data[0];
         if (defaultAddress) setSelectedAddressId(defaultAddress.id);
@@ -1077,7 +1085,9 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
           showCheckoutMessage('warning', t('pages.checkout.authExpired'));
           navigate(buildLoginUrlFromWindow(), { replace: true });
         } else {
-          showCheckoutMessage('error', t('pages.checkout.loadFailed'));
+          const errorMessage = getApiErrorMessage(error, t('pages.checkout.loadFailed'), language);
+          setCartLoadError(errorMessage);
+          showCheckoutMessage('error', errorMessage);
         }
       } finally {
         if (!disposed && mountedRef.current) {
@@ -1090,7 +1100,7 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
     return () => {
       disposed = true;
     };
-  }, [checkoutReloadKey, form, mergeCheckoutFormSnapshot, navigate, showCheckoutMessage, t]);
+  }, [checkoutReloadKey, form, language, mergeCheckoutFormSnapshot, navigate, showCheckoutMessage, t]);
 
   useEffect(() => {
     if (!hasCheckoutItems) return;
@@ -2315,7 +2325,17 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
           aria-label={t('common.loading')}
         >
           {renderCheckoutStatusLiveRegion()}
-          <Spin size="large" />
+          <div className="checkout-page__loadingShell" aria-hidden="true">
+            <div className="checkout-page__loadingHero shimmer" />
+            <div className="checkout-page__loadingGrid">
+              <div className="checkout-page__loadingCard shimmer" />
+              <div className="checkout-page__loadingCard shimmer" />
+            </div>
+            <div className="checkout-page__loadingSummary shimmer" />
+          </div>
+          <div className="checkout-page__loadingSpinner">
+            <Spin size="large" />
+          </div>
         </div>
       </Form>
     );
@@ -2345,7 +2365,18 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
           ]}
         />
         {paymentCreateError ? (
-          <Alert type="warning" showIcon message={t('pages.checkout.paymentCreateWarning')} description={paymentCreateError} />
+          <Alert
+            className="checkout-page__paymentCreateError"
+            type="error"
+            showIcon
+            message={t('pages.checkout.paymentCreateWarning')}
+            description={paymentCreateError}
+            action={(
+              <Button size="small" type="primary" loading={paying} aria-label={retryPaymentActionLabel} title={retryPaymentActionLabel} onClick={retryCreatePayment}>
+                {t('pages.checkout.retryPayment')}
+              </Button>
+            )}
+          />
         ) : null}
       </div>
     );
@@ -2460,11 +2491,46 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
     );
   }
 
+  if (cartLoadError && !createdOrder) {
+    return (
+      <Form form={form} component={false}>
+        <div className={`checkout-page checkout-page--error checkout-page--${language}`}>
+          {renderCheckoutStatusLiveRegion()}
+          <ShopBreadcrumb
+            ariaLabel={t('pages.checkout.title')}
+            items={[
+              { key: 'home', label: t('nav.ariaHome'), path: '/' },
+              { key: 'cart', label: t('pages.cart.title'), path: '/cart' },
+              { key: 'checkout', label: t('pages.checkout.title') },
+            ]}
+          />
+          <PageError
+            className="checkout-page__loadError"
+            title={t('pages.checkout.loadFailed')}
+            description={cartLoadError}
+            retryLabel={t('messages.retry')}
+            onRetry={() => setCheckoutReloadKey((key) => key + 1)}
+            homeLabel={t('pages.cart.title')}
+            onHome={() => navigate('/cart')}
+          />
+        </div>
+      </Form>
+    );
+  }
+
   if (cartItems.length === 0) {
     return (
       <Form form={form} component={false}>
         <div className={`checkout-page checkout-page--empty checkout-page--${language}`}>
         {renderCheckoutStatusLiveRegion()}
+        <ShopBreadcrumb
+          ariaLabel={t('pages.checkout.title')}
+          items={[
+            { key: 'home', label: t('nav.ariaHome'), path: '/' },
+            { key: 'cart', label: t('pages.cart.title'), path: '/cart' },
+            { key: 'checkout', label: t('pages.checkout.title') },
+          ]}
+        />
         <section className="checkout-page__emptyHero" aria-label={t('pages.checkout.emptySelected')}>
           <span className="checkout-page__emptyIcon">
             <ShoppingCartOutlined />
@@ -2533,6 +2599,14 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
 
   return (
     <div className={`checkout-page checkout-page--${language}`}>
+      <ShopBreadcrumb
+        ariaLabel={t('pages.checkout.title')}
+        items={[
+          { key: 'home', label: t('nav.ariaHome'), path: '/' },
+          { key: 'cart', label: t('pages.cart.title'), path: '/cart' },
+          { key: 'checkout', label: t('pages.checkout.title') },
+        ]}
+      />
       <section className="checkout-page__hero">
         <div className="checkout-page__heroContent">
           <span className="checkout-page__heroEyebrow">{t('pages.checkout.readinessEyebrow')}</span>

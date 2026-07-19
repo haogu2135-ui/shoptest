@@ -21,7 +21,7 @@ import { buildResponsiveImageSrcSet, getOptimizedImageUrl } from '../utils/media
 import { buildLoginUrlFromWindow } from '../utils/authRedirect';
 import { getLocalStorageItem, hasStoredValue, removeSessionStorageItem } from '../utils/safeStorage';
 import { getLimitedTimeEndMs, getLimitedTimeRemainingMs, shouldRunLimitedTimeTicker } from '../utils/limitedTimeCountdown';
-import { getApiErrorMessage } from '../utils/apiError';
+import { getApiErrorMessage, getApiErrorStatus } from '../utils/apiError';
 import { addCompareProduct, isProductCompared, MAX_COMPARE_ITEMS } from '../utils/productCompare';
 import { addAppScrollListener } from '../utils/nativeScroll';
 import { useNativeBackHandler } from '../utils/nativeBack';
@@ -30,6 +30,8 @@ import { formatProductSpecLabel } from '../utils/productSpecLabels';
 import { syncHiddenCarouselSlideFocus } from '../utils/carouselAccessibility';
 import { reportNonBlockingError } from '../utils/nonBlockingError';
 import PageEmpty from '../components/PageEmpty';
+import PageError from '../components/PageError';
+import { usePageTitle } from '../hooks/usePageTitle';
 import {
   applyImageFallback,
   cacheProductRecommendations,
@@ -206,6 +208,8 @@ const ProductDetail: React.FC = () => {
   const navigate = useNavigate();
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [reloadToken, setReloadToken] = useState(0);
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({});
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string>('');
@@ -252,6 +256,8 @@ const ProductDetail: React.FC = () => {
   const galleryScrollRafRef = useRef<number | null>(null);
   const recommendationCarouselRef = useRef<HTMLDivElement | null>(null);
   const { t, language } = useLanguage();
+  const pageTitle = product?.name?.trim() || (loadError ? t('pages.productDetail.loadFailed') : '');
+  usePageTitle(pageTitle || t('pages.productDetail.product'));
   const { currency, market, formatMoney } = useMarket();
   const detailProductName = useCallback((item: Pick<Product, 'id' | 'name'>) =>
     (item.name || '').trim() || t('pages.profile.productFallback', { id: item.id }), [t]);
@@ -540,6 +546,7 @@ const ProductDetail: React.FC = () => {
     const token = getLocalStorageItem('token');
     const fetchProduct = async () => {
       setLoading(true);
+      setLoadError(null);
       try {
         const res = await productApi.getById(Number(id));
         if (disposed) return;
@@ -547,6 +554,7 @@ const ProductDetail: React.FC = () => {
         setSelectedImage(normalizeProductImages(res.data)[0]);
         setActiveMobileImageIndex(0);
         recordProductView(res.data);
+        setLoadError(null);
       } catch (error) {
         if (disposed) return;
         reportNonBlockingError('ProductDetail.fetchProduct', error);
@@ -555,7 +563,14 @@ const ProductDetail: React.FC = () => {
           setProduct(localizeProduct(fallbackProduct as Product, language));
           setSelectedImage(normalizeProductImages(fallbackProduct)[0]);
           setActiveMobileImageIndex(0);
+          setLoadError(null);
           return;
+        }
+        const status = getApiErrorStatus(error);
+        if (status === 404) {
+          setLoadError(null);
+        } else {
+          setLoadError(getApiErrorMessage(error, t('pages.productDetail.loadFailed'), language));
         }
         setProduct(null);
       } finally {
@@ -621,7 +636,7 @@ const ProductDetail: React.FC = () => {
       window.clearTimeout(fallbackTimer);
       observer?.disconnect();
     };
-  }, [authSessionVersion, id, language, warmNonCriticalContent]);
+  }, [authSessionVersion, id, language, reloadToken, warmNonCriticalContent]);
 
   useEffect(() => {
     const syncStockAlert = () => setIsAlerted(hasStockAlert(Number(id)));
@@ -871,6 +886,20 @@ const ProductDetail: React.FC = () => {
   }
 
   if (!product) {
+    if (loadError) {
+      return (
+        <div className="product-detail-empty">
+          <PageError
+            title={t('pages.productDetail.loadFailed')}
+            description={loadError || t('pages.productDetail.loadFailedDescription')}
+            retryLabel={t('common.refresh')}
+            onRetry={() => setReloadToken((value) => value + 1)}
+            homeLabel={t('pages.productList.title')}
+            onHome={() => navigate('/products')}
+          />
+        </div>
+      );
+    }
     return (
       <div className="product-detail-empty">
         <PageEmpty

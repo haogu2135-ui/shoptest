@@ -3849,3 +3849,44 @@ body.checkout-page-active:not(.checkout-region-cascader-open) .ant-cascader-drop
 .checkout-page__confirmationButtonWrap .ant-btn {
   width: 100%;
 }
+
+
+/* COMMERCIAL_PAYMENT_CREATE_ERROR_V1 */
+.checkout-page__paymentCreateError.ant-alert {
+  margin-top: 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(180, 35, 24, 0.18);
+  background: linear-gradient(180deg, #fff7f6 0%, #ffffff 100%);
+}
+
+.checkout-page__paymentCreateError .ant-alert-message {
+  color: #7a1f18;
+  font-weight: 700;
+}
+
+.checkout-page__paymentCreateError .ant-alert-description {
+  color: rgba(122, 31, 24, 0.88);
+  line-height: 1.5;
+}
+
+.checkout-page__paymentCreateError .ant-alert-action .ant-btn {
+  min-height: 36px;
+  border-radius: 999px;
+  font-weight: 700;
+}
+
+@media (max-width: 640px) {
+  .checkout-page__paymentCreateError.ant-alert {
+    margin-top: 10px;
+  }
+
+  .checkout-page__paymentCreateError .ant-alert-action {
+    margin-top: 10px;
+    width: 100%;
+  }
+
+  .checkout-page__paymentCreateError .ant-alert-action .ant-btn {
+    width: 100%;
+    min-height: 44px;
+  }
+}

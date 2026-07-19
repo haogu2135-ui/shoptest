@@ -15,6 +15,7 @@ import { dispatchDomEvent } from '../utils/domEvents';
 import { reportNonBlockingError } from '../utils/nonBlockingError';
 import { getLocalStorageItem } from '../utils/safeStorage';
 import { getApiErrorMessage } from '../utils/apiError';
+import PageError from '../components/PageError';
 import {
   clearProductViewHistory,
   loadProductViewPreferences,
@@ -465,17 +466,28 @@ const BrowsingHistory: React.FC = () => {
 
       {loadError ? (
         <section className="browsing-history__loadError" aria-live="polite">
-          <Alert
-            type="warning"
-            showIcon
-            message={t('messages.loadFailed')}
-            description={hasStaleHistoryData ? t('pages.browsingHistory.staleDataWarning') : t('messages.loadFailedRetry')}
-            action={(
-              <Button size="small" onClick={() => setReloadToken((current) => current + 1)}>
-                {t('messages.retry')}
-              </Button>
-            )}
-          />
+          {hasStaleHistoryData ? (
+            <Alert
+              type="warning"
+              showIcon
+              message={t('messages.loadFailed')}
+              description={hasStaleHistoryData ? t('pages.browsingHistory.staleDataWarning') : t('messages.loadFailedRetry')}
+              action={(
+                <Button size="small" onClick={() => setReloadToken((current) => current + 1)}>
+                  {t('messages.retry')}
+                </Button>
+              )}
+            />
+          ) : (
+            <PageError
+              title={t('messages.loadFailed')}
+              description={t('messages.loadFailedRetry')}
+              retryLabel={t('messages.retry')}
+              onRetry={() => setReloadToken((current) => current + 1)}
+              homeLabel={t('pages.browsingHistory.browse')}
+              onHome={() => navigate('/products')}
+            />
+          )}
         </section>
       ) : null}
 

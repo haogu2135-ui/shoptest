@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { wishlistApi, cartApi } from '../api';
 import type { WishlistItem } from '../types';
 import { useLanguage } from '../i18n';
+import { usePageTitle } from '../hooks/usePageTitle';
 import { buildLoginUrlFromWindow } from '../utils/authRedirect';
 import { useMarket } from '../hooks/useMarket';
 import { productImageFallback, resolveProductImage } from '../utils/productMedia';
@@ -41,6 +42,7 @@ const Wishlist: React.FC = () => {
   const addingAllToCartRef = useRef(false);
   const navigate = useNavigate();
   const { t, language } = useLanguage();
+  usePageTitle(t('pages.wishlist.pageTitle'));
   const { formatMoney } = useMarket();
   const actionsDisabledByStaleData = Boolean(loadError);
   const wishlistProductName = useCallback((item: WishlistItem) =>

@@ -15,7 +15,7 @@
   --brand-gold: #ee4d2d;
   --brand-accent: #ee4d2d;
   --text-main: #173f2b;
-  --text-muted: #627064;
+  --text-muted: #3f5147; /* WCAG AA on white ~7:1, aligned with mobile muted ink */
   --surface-card: rgba(255, 255, 255, 0.98);
   --radius-card: 8px;
   --radius-tile: 8px;

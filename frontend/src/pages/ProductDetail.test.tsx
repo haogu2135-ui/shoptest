@@ -300,7 +300,7 @@ describe('ProductDetail mobile buybar layout contract', () => {
     const source = readProductDetailSource();
     const nativeScrollSource = readNativeScrollSource();
     const warmupStart = source.indexOf('const fallbackTimer = window.setTimeout(() => warmNonCriticalContent(nonCriticalRequestSeq), 1800);');
-    const warmupEffect = source.slice(warmupStart, source.indexOf('}, [authSessionVersion, id, language, warmNonCriticalContent]);', warmupStart));
+    const warmupEffect = source.slice(warmupStart, source.indexOf('}, [authSessionVersion, id, language, reloadToken, warmNonCriticalContent]);', warmupStart));
 
     expect(nativeScrollSource).toContain("window.addEventListener('scroll', listener, options);");
     expect(nativeScrollSource).toContain("window.removeEventListener('scroll', listener, options);");
@@ -311,12 +311,25 @@ describe('ProductDetail mobile buybar layout contract', () => {
     expect(warmupEffect).toMatch(/return \(\) => \{\s*disposed = true;\s*nonCriticalRequestSeqRef\.current \+= 1;\s*window\.clearTimeout\(fallbackTimer\);\s*detachScrollWarmup\(\);\s*observer\?\.disconnect\(\);/);
   });
 
-  it('keeps main product fetch cleanup-bound', () => {
+
+  it('distinguishes product load failures from not-found empty state', () => {
+    const source = readProductDetailSource();
+    expect(source).toContain("const [loadError, setLoadError] = useState<string | null>(null);");
+    expect(source).toContain('const [reloadToken, setReloadToken] = useState(0);');
+    expect(source).toContain("const status = getApiErrorStatus(error);");
+    expect(source).toContain("if (status === 404)");
+    expect(source).toContain("setLoadError(getApiErrorMessage(error, t('pages.productDetail.loadFailed'), language));");
+    expect(source).toContain("title={t('pages.productDetail.loadFailed')}");
+    expect(source).toContain('onRetry={() => setReloadToken((value) => value + 1)}');
+    expect(source).toContain('reloadToken, warmNonCriticalContent');
+  });
+
+it('keeps main product fetch cleanup-bound', () => {
     const source = readProductDetailSource();
     const effectStart = source.indexOf('useEffect(() => {\n    let disposed = false;\n    const nonCriticalRequestSeq');
     const fetchStart = source.indexOf('const fetchProduct = async () => {', effectStart);
     const fetchSource = source.slice(fetchStart, source.indexOf('fetchProduct();', fetchStart));
-    const effectSource = source.slice(effectStart, source.indexOf('}, [authSessionVersion, id, language, warmNonCriticalContent]);', effectStart));
+    const effectSource = source.slice(effectStart, source.indexOf('}, [authSessionVersion, id, language, reloadToken, warmNonCriticalContent]);', effectStart));
 
     expect(effectStart).toBeGreaterThan(-1);
     expect(fetchStart).toBeGreaterThan(effectStart);

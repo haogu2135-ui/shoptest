@@ -7,6 +7,7 @@ import type { SiteAnnouncement, SiteAnnouncementAdminSummary } from '../types';
 import { useLanguage } from '../i18n';
 import { useDebounce } from '../hooks/useDebounce';
 import { isSafeAnnouncementLink } from '../utils/announcementLinks';
+import { commercialAnnouncementRejectionReason } from '../utils/commercialAnnouncement';
 import { getApiErrorMessage } from '../utils/apiError';
 import { reportNonBlockingError } from '../utils/nonBlockingError';
 import { ANNOUNCEMENTS_DELETE_PERMISSION, ANNOUNCEMENTS_WRITE_PERMISSION, getEffectiveRole, hasAdminPermission } from '../utils/roles';
@@ -16,6 +17,23 @@ const { Title, Text } = Typography;
 const { TextArea } = Input;
 const DEFAULT_PAGE_SIZE = 20;
 const mobilePopupClassNames = { popup: { root: 'shop-mobile-popup-layer' } };
+const validateCommercialAnnouncementFields = (title: unknown, content: unknown, status: unknown, t: (key: string) => string) => {
+  if (String(status || '').toUpperCase() !== 'ACTIVE') {
+    return Promise.resolve();
+  }
+  const reason = commercialAnnouncementRejectionReason(
+    typeof title === 'string' ? title : '',
+    typeof content === 'string' ? content : '',
+  );
+  if (reason === 'empty') {
+    return Promise.reject(new Error(t('pages.announcementAdmin.titleRequired')));
+  }
+  if (reason === 'placeholder') {
+    return Promise.reject(new Error(t('pages.announcementAdmin.placeholderContentBlocked')));
+  }
+  return Promise.resolve();
+};
+
 const announcementDatePopupClassNames = { popup: { root: 'shop-mobile-popup-layer announcement-management-page__datePopup' } };
 const mobilePopconfirmClassNames = { root: 'shop-mobile-popup-layer' };
 
@@ -555,10 +573,32 @@ const AnnouncementManagement: React.FC = () => {
         destroyOnHidden
       >
         <Form form={form} layout="vertical">
-          <Form.Item name="title" label={t('pages.announcementAdmin.titleField')} rules={[{ required: true, message: t('pages.announcementAdmin.titleRequired') }, { max: titleMaxChars, message: t('pages.announcementAdmin.titleTooLong', { count: titleMaxChars }) }]}>
+          <Form.Item
+            name="title"
+            label={t('pages.announcementAdmin.titleField')}
+            dependencies={['content', 'status']}
+            rules={[
+              { required: true, message: t('pages.announcementAdmin.titleRequired') },
+              { max: titleMaxChars, message: t('pages.announcementAdmin.titleTooLong', { count: titleMaxChars }) },
+              {
+                validator: async (_, value) => validateCommercialAnnouncementFields(value, form.getFieldValue('content'), form.getFieldValue('status'), t),
+              },
+            ]}
+          >
             <Input maxLength={titleMaxChars} showCount placeholder={t('pages.announcementAdmin.titlePlaceholder')} aria-label={titleFieldLabel} title={titleFieldLabel} />
           </Form.Item>
-          <Form.Item name="content" label={t('pages.announcementAdmin.contentField')} rules={[{ required: true, message: t('pages.announcementAdmin.contentRequired') }, { max: contentMaxChars, message: t('pages.announcementAdmin.contentTooLong', { count: contentMaxChars }) }]}>
+          <Form.Item
+            name="content"
+            label={t('pages.announcementAdmin.contentField')}
+            dependencies={['title', 'status']}
+            rules={[
+              { required: true, message: t('pages.announcementAdmin.contentRequired') },
+              { max: contentMaxChars, message: t('pages.announcementAdmin.contentTooLong', { count: contentMaxChars }) },
+              {
+                validator: async (_, value) => validateCommercialAnnouncementFields(form.getFieldValue('title'), value, form.getFieldValue('status'), t),
+              },
+            ]}
+          >
             <TextArea rows={4} maxLength={contentMaxChars} showCount placeholder={t('pages.announcementAdmin.contentPlaceholder')} aria-label={contentFieldLabel} title={contentFieldLabel} />
           </Form.Item>
           <Form.Item

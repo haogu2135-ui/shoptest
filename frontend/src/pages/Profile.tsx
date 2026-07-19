@@ -6,6 +6,7 @@ import { addressApi, cartApi, orderApi, paymentApi, petProfileApi, userApi } fro
 import type { OrderCustomer, OrderItemCustomer, PaymentCustomer, PaymentChannel, PetProfile, UserAddress, UserProfile } from '../types';
 import { findRegionPath, loadRegionData, type RegionOption } from '../regionData';
 import { useLanguage } from '../i18n';
+import { usePageTitle } from '../hooks/usePageTitle';
 import { buildLoginUrlFromWindow } from '../utils/authRedirect';
 import { createPaymentMethodDetails, createPaymentMethodOptions, paymentMethodLabel } from '../utils/paymentMethods';
 import { useAppConfig } from '../hooks/useAppConfig';
@@ -21,6 +22,8 @@ import { allSettledWithConcurrency } from '../utils/asyncBatch';
 import { getLocalStorageItem } from '../utils/safeStorage';
 import { getApiErrorMessage } from '../utils/apiError';
 import { reportNonBlockingError } from '../utils/nonBlockingError';
+import PageError from '../components/PageError';
+import PageEmpty from '../components/PageEmpty';
 import { isLikelyPhoneNumber, normalizeLikelyPhoneNumber, normalizePhoneNumber } from '../utils/phone';
 import { isValidRegionalPostalCode, normalizeRegionalPostalCode } from '../utils/postalCode';
 import {
@@ -180,6 +183,7 @@ const Profile: React.FC = () => {
   const paymentReturnOrderNo = normalizeProfileOrderNo(searchParams.get('orderNo'));
   const paymentReturnOrderId = Number(searchParams.get('orderId') || '');
   const { t, language } = useLanguage();
+  usePageTitle(t('pages.profile.title'));
   const { config: appConfig } = useAppConfig();
   const [user, setUser] = useState<UserProfile | null>(null);
   const [orders, setOrders] = useState<OrderCustomer[]>([]);
@@ -1587,15 +1591,22 @@ const Profile: React.FC = () => {
                   />
                 )}
                 {addressesLoadFailed && addresses.length === 0 ? (
-                  <Alert
-                    type="error"
-                    showIcon
-                    message={t('common.loadFailed')}
+                  <PageError
+                    className="profile-section-card profile-load-error"
+                    title={t('common.loadFailed')}
                     description={t('common.loadFailedRetry')}
-                    action={<Button size="small" onClick={() => fetchAddresses()}>{t('common.retry')}</Button>}
+                    retryLabel={t('common.retry')}
+                    onRetry={() => fetchAddresses()}
                   />
                 ) : addresses.length === 0 ? (
-                  <Empty description={t('pages.profile.noAddresses')} />
+                  <PageEmpty
+                    description={t('pages.profile.noAddresses')}
+                    primaryAction={{
+                      key: 'add-address',
+                      label: t('pages.profile.addAddress'),
+                      onClick: () => openAddressModal(),
+                    }}
+                  />
                 ) : (
                   <List
                     dataSource={addresses}
@@ -1647,17 +1658,24 @@ const Profile: React.FC = () => {
             key: 'orders',
             label: t('pages.profile.orders', { count: orders.length }),
             children: ordersLoadFailed && orders.length === 0 ? (
-              <Alert
-                type="error"
-                showIcon
-                message={t('pages.profile.fetchOrdersFailed')}
+              <PageError
+                className="profile-section-card profile-load-error"
+                title={t('pages.profile.fetchOrdersFailed')}
                 description={t('common.loadFailedRetry')}
-                action={<Button size="small" onClick={() => fetchOrders()}>{t('common.retry')}</Button>}
+                retryLabel={t('common.retry')}
+                onRetry={() => fetchOrders()}
+                homeLabel={t('pages.profile.goShopping')}
+                onHome={() => navigate('/products')}
               />
             ) : orders.length === 0 ? (
-              <Empty description={t('pages.profile.noOrders')}>
-                <Button type="primary" onClick={() => navigate('/products')}>{t('pages.profile.goShopping')}</Button>
-              </Empty>
+              <PageEmpty
+                description={t('pages.profile.noOrders')}
+                primaryAction={{
+                  key: 'shop',
+                  label: t('pages.profile.goShopping'),
+                  onClick: () => navigate('/products'),
+                }}
+              />
             ) : (
               <div className="profile-orders">
                 <div className="profile-after-sale-panel">

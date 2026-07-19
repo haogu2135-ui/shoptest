@@ -35,9 +35,11 @@ public class SiteAnnouncementService {
     private static final int DEFAULT_CONTENT_MAX_CHARS = 500;
     private static final int DEFAULT_LINK_URL_MAX_CHARS = 500;
     private static final Pattern PLACEHOLDER_COPY_PATTERN = Pattern.compile(
-            "(?i)(^|\\b)(test|testing|dummy|placeholder|lorem|asdf|qwer|sadsad|foobar)(\\b|$)");
+            "(?i)(^|\\b)(test|testing|dummy|placeholder|lorem|ipsum|asdf|qwer|sadsad|foobar|sample|demo|xxx|yyyy|zzzz|junk|garbage|qa|tmp|temp|hello\\s*world|foo\\s*bar)(\\b|$)");
     private static final Pattern REPEATED_CHARACTER_PATTERN = Pattern.compile("(?i)([a-z])\\1{4,}");
     private static final Pattern LONG_ALPHANUMERIC_TOKEN_PATTERN = Pattern.compile("(?i)\\b[a-z0-9]{18,}\\b");
+    private static final Pattern KEYBOARD_MASH_PATTERN = Pattern.compile(
+            "(?i)(qwerty|asdfgh|zxcvbn|123456789|987654321|abcdefg|aabbcc|abcabc)");
 
     private final SiteAnnouncementRepository repository;
     private final RuntimeConfigService runtimeConfig;
@@ -252,7 +254,9 @@ public class SiteAnnouncementService {
         if (text.isBlank()) {
             return true;
         }
-        if (PLACEHOLDER_COPY_PATTERN.matcher(text).find() || REPEATED_CHARACTER_PATTERN.matcher(text).find()) {
+        if (PLACEHOLDER_COPY_PATTERN.matcher(text).find()
+                || REPEATED_CHARACTER_PATTERN.matcher(text).find()
+                || KEYBOARD_MASH_PATTERN.matcher(text).find()) {
             return true;
         }
         return LONG_ALPHANUMERIC_TOKEN_PATTERN.matcher(text).results()
@@ -267,15 +271,26 @@ public class SiteAnnouncementService {
     private boolean looksLikeGibberishToken(String token) {
         int letters = 0;
         int digits = 0;
+        int vowels = 0;
         for (int i = 0; i < token.length(); i++) {
             char ch = token.charAt(i);
             if (Character.isDigit(ch)) {
                 digits++;
             } else if (Character.isLetter(ch)) {
                 letters++;
+                char lower = Character.toLowerCase(ch);
+                if (lower == 'a' || lower == 'e' || lower == 'i' || lower == 'o' || lower == 'u') {
+                    vowels++;
+                }
             }
         }
-        return letters >= 6 && digits >= 6;
+        if (digits >= 12) {
+            return true;
+        }
+        if (letters >= 6 && digits >= 6) {
+            return true;
+        }
+        return letters >= 8 && ((double) vowels / (double) letters) < 0.2d;
     }
 
     private String safePublicLinkUrl(String value) {

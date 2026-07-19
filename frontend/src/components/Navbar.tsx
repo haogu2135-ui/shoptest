@@ -58,15 +58,13 @@ import {
   type MobileReleaseManifest,
 } from '../utils/mobileUpdate';
 import { reportNonBlockingError } from '../utils/nonBlockingError';
+import { isCommercialAnnouncement } from '../utils/commercialAnnouncement';
 import './Navbar.css';
 
 const { Search } = Input;
 const NAV_SEARCH_MAX_LENGTH = 80;
 const NAV_BADGE_REFRESH_DEBOUNCE_MS = 350;
 const NAV_POPUP_Z_INDEX = 2400;
-const ANNOUNCEMENT_PLACEHOLDER_PATTERN = /(^|\b)(test|testing|dummy|placeholder|lorem|asdf|qwer|sadsad|foobar)(\b|$)/i;
-const ANNOUNCEMENT_REPEATED_CHARACTER_PATTERN = /([a-z])\1{4,}/i;
-const ANNOUNCEMENT_LONG_TOKEN_PATTERN = /\b[a-z0-9]{18,}\b/gi;
 const languageOptions = SUPPORTED_LANGUAGES.map((value) => ({ value, label: LANGUAGE_LABELS[value] }));
 const NAV_BADGE_REPORT_CONTEXTS = {
   'stock alert': 'Navbar.refreshStockAlertBadge',
@@ -84,35 +82,6 @@ const readNavAuthSnapshot = () => ({
   role: getLocalStorageItem('role') || '',
   adminDefaultPath: getLocalStorageItem('adminDefaultPath') || '/admin',
 });
-const replaceAnnouncementControlCharacters = (value: string) => {
-  let normalized = '';
-  for (const char of value) {
-    const code = char.charCodeAt(0);
-    normalized += code <= 31 || code === 127 ? ' ' : char;
-  }
-  return normalized;
-};
-const normalizeAnnouncementCopy = (value?: string | null) => replaceAnnouncementControlCharacters(String(value || ''))
-  .replace(/\s+/g, ' ')
-  .trim()
-  .toLowerCase();
-const looksLikeAnnouncementGibberish = (token: string) => {
-  const letters = token.replace(/[^a-z]/gi, '');
-  const digits = token.replace(/\D/g, '');
-  if (digits.length >= 12) return true;
-  if (letters.length < 8) return false;
-  const vowels = letters.match(/[aeiou]/gi)?.length || 0;
-  return vowels / letters.length < 0.2;
-};
-const isCommercialAnnouncement = (announcement: SiteAnnouncementPublic) => {
-  const text = `${normalizeAnnouncementCopy(announcement.title)} ${normalizeAnnouncementCopy(announcement.content)}`.trim();
-  if (!text) return false;
-  if (ANNOUNCEMENT_PLACEHOLDER_PATTERN.test(text) || ANNOUNCEMENT_REPEATED_CHARACTER_PATTERN.test(text)) {
-    return false;
-  }
-  const tokens = text.match(ANNOUNCEMENT_LONG_TOKEN_PATTERN) || [];
-  return !tokens.some(looksLikeAnnouncementGibberish);
-};
 const normalizeBadgeCount = (value: unknown) => {
   const numeric = Number(value);
   return Number.isFinite(numeric) && numeric > 0 ? Math.floor(numeric) : 0;
@@ -159,6 +128,8 @@ const Navbar: React.FC = () => {
   const { currency, setCurrency, market, formatMoney } = useMarket();
   const navSearchActionLabel = `${t('common.search')}: ${t('nav.searchPlaceholder')}`;
   const badgeLoadWarningShown = useRef(false);
+  const translateRef = useRef(t);
+  translateRef.current = t;
   const showBadgeLoadWarning = useCallback((source: NavBadgeSource, error: unknown) => {
     reportNonBlockingError(NAV_BADGE_REPORT_CONTEXTS[source], error);
     if (isNativeMobileApp() || document.body?.classList.contains('shop-mobile-app')) {
@@ -166,9 +137,9 @@ const Navbar: React.FC = () => {
     }
     if (!badgeLoadWarningShown.current) {
       badgeLoadWarningShown.current = true;
-      message.warning(t('nav.badgeLoadFailed'));
+      message.warning(translateRef.current('nav.badgeLoadFailed'));
     }
-  }, [t]);
+  }, []);
   const syncAuthSnapshot = useCallback(() => {
     const nextSnapshot = readNavAuthSnapshot();
     setAuthSnapshot(nextSnapshot);
@@ -603,7 +574,7 @@ const Navbar: React.FC = () => {
       window.removeEventListener('shop:coupons-updated', refreshCouponCountFromEvent);
       window.removeEventListener('storage', refreshLocalCountsFromStorage);
     };
-  }, [showBadgeLoadWarning, token]);
+  }, [token]);
 
   const handleLogout = () => {
     const loginUrl = buildLoginUrlFromWindow();

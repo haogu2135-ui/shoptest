@@ -1,11 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Form, Input, Button, Card, Typography, message, Space, Tag } from 'antd';
+import { Alert, Form, Input, Button, Card, Typography, message, Space, Tag } from 'antd';
 import type { InputRef } from 'antd/es/input';
 import { UserOutlined, LockOutlined, MailOutlined, PhoneOutlined, SafetyCertificateOutlined, GiftOutlined, TruckOutlined } from '@ant-design/icons';
 import { Link, useNavigate } from 'react-router-dom';
 import { userApi } from '../api';
 import { useAppConfig } from '../hooks/useAppConfig';
 import { useLanguage } from '../i18n';
+import { usePageTitle } from '../hooks/usePageTitle';
 import { setSessionStorageItem } from '../utils/safeStorage';
 import { getApiErrorDiagnosticText, getApiErrorMessage } from '../utils/apiError';
 import {
@@ -107,8 +108,10 @@ const scrollFirstRegisterErrorIntoView = () => {
 const Register: React.FC = () => {
   const navigate = useNavigate();
   const { t, language } = useLanguage();
+  usePageTitle(t('pages.auth.register'));
   const { config: appConfig, loading: appConfigLoading } = useAppConfig();
   const [form] = Form.useForm<RegisterForm>();
+  const [authBannerError, setAuthBannerError] = useState<string | null>(null);
   const [registering, setRegistering] = useState(false);
   const [codeSending, setCodeSending] = useState(false);
   const [sendCodeCountdown, setSendCodeCountdown] = useState(0);
@@ -192,9 +195,11 @@ const Register: React.FC = () => {
         if (errorCode === 'RATE_LIMITED') {
           setSendCodeCountdown(getRetryAfterSeconds(error, 60));
         }
-        message.error(errorCode === 'RATE_LIMITED'
+        const errorMessage = errorCode === 'RATE_LIMITED'
           ? t('pages.auth.emailCodeRateLimited')
-          : t('pages.auth.emailCodeSendFailed'));
+          : t('pages.auth.emailCodeSendFailed');
+        setAuthBannerError(errorMessage);
+        message.error(errorMessage);
       }
     } finally {
       registerCodeSendingRef.current = false;
@@ -206,14 +211,16 @@ const Register: React.FC = () => {
     if (registeringRef.current) return;
     registeringRef.current = true;
     setRegistering(true);
+    setAuthBannerError(null);
     try {
       const username = normalizeUsername(values.username);
       const email = normalizeEmail(values.email);
       const phone = normalizePhone(values.phone);
       const emailCode = normalizeEmailCode(values.emailCode);
       if (emailCodeRequired && emailCode.length !== 6) {
-        form.setFields([{ name: 'emailCode', errors: [t('pages.auth.emailCodeLength')] }]);
-        setRegistering(false);
+        const lengthError = t('pages.auth.emailCodeLength');
+        form.setFields([{ name: 'emailCode', errors: [lengthError] }]);
+        setAuthBannerError(lengthError);
         return;
       }
       form.setFieldsValue({ username, email, phone });
@@ -230,6 +237,7 @@ const Register: React.FC = () => {
       const registeredLogin = loginCandidates[0] || username || email || phone;
       setSessionStorageItem('loginPrefill', registeredLogin);
       setSessionStorageItem('loginCandidates', JSON.stringify(loginCandidates));
+      setAuthBannerError(null);
       message.success(t('pages.auth.registerSuccess'));
       navigate('/login');
     } catch (error: unknown) {
@@ -249,6 +257,7 @@ const Register: React.FC = () => {
           setSendCodeCountdown(getRetryAfterSeconds(error, 60));
         }
         form.setFields([{ name: 'emailCode', errors: [msg] }]);
+        setAuthBannerError(msg);
         message.error(msg);
         window.setTimeout(() => codeInputRef.current?.focus?.(), 0);
         return;
@@ -264,6 +273,7 @@ const Register: React.FC = () => {
       if (fieldError) {
         form.setFields([{ name: fieldError.name, errors: [fieldError.message] }]);
       }
+      setAuthBannerError(msg);
       message.error(msg);
     } finally {
       registeringRef.current = false;
@@ -330,6 +340,17 @@ const Register: React.FC = () => {
         <Title level={2} className="register-page__title">
           {t('pages.auth.registerTitle')}
         </Title>
+        {authBannerError ? (
+          <Alert
+            className="register-page__errorBanner"
+            type="error"
+            showIcon
+            closable
+            role="alert"
+            message={authBannerError}
+            onClose={() => setAuthBannerError(null)}
+          />
+        ) : null}
         <Form
           form={form}
           name="register"

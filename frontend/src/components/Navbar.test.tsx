@@ -33,14 +33,8 @@ jest.mock('../hooks/useMarket', () => ({
   }),
 }));
 
-jest.mock('../i18n', () => ({
-  LANGUAGE_LABELS: { en: 'English' },
-  SUPPORTED_LANGUAGES: ['en'],
-  useLanguage: () => ({
-    language: 'en',
-    setLanguage: jest.fn(),
-    t: (key: string, params?: Record<string, string | number>) => {
-      const labels: Record<string, string> = {
+jest.mock('../i18n', () => {
+  const labels: Record<string, string> = {
         'common.admin': 'Admin',
         'common.brand': 'ShopMX',
         'common.search': 'Search',
@@ -49,7 +43,7 @@ jest.mock('../i18n', () => ({
         'home.heroEyebrow': 'Pet essentials',
         'home.heroTitle': 'Pet gear',
         'home.trust.easyReturns': 'Easy returns',
-        'home.trust.freeShipping': `Free shipping over ${params?.amount}`,
+        'home.trust.freeShipping': 'Free shipping over {amount}',
         'home.trust.petSafe': 'Pet safe',
         'nav.account': 'My account',
         'nav.ariaCart': 'Cart',
@@ -66,7 +60,7 @@ jest.mock('../i18n', () => ({
         'nav.downloadAndroid': 'Download Android app',
         'nav.easyReturns': 'Easy returns',
         'nav.followDeals': 'Deals',
-        'nav.freeShippingOver': `Free shipping over ${params?.amount}`,
+        'nav.freeShippingOver': 'Free shipping over {amount}',
         'nav.help': 'Help',
         'nav.highlightDeal': 'Deals',
         'nav.language': 'Language',
@@ -104,11 +98,27 @@ jest.mock('../i18n', () => ({
         'pages.cart.title': 'Cart',
         'pages.coupons.title': 'Coupons',
         'pages.profile.allOrders': 'All orders',
-      };
-      return labels[key] || key;
-    },
-  }),
-}));
+  };
+
+  const translate = (key: string, params?: Record<string, string | number>) => {
+    const template = labels[key] || key;
+    if (!params) return template;
+    return Object.entries(params).reduce(
+      (result, [paramKey, value]) => result.replace(new RegExp(`\\{${paramKey}\\}`, 'g'), String(value)),
+      template,
+    );
+  };
+
+  return {
+    LANGUAGE_LABELS: { en: 'English' },
+    SUPPORTED_LANGUAGES: ['en'],
+    useLanguage: () => ({
+      language: 'en',
+      setLanguage: jest.fn(),
+      t: translate,
+    }),
+  };
+});
 
 jest.mock('../utils/domEvents', () => ({
   dispatchDomEvent: jest.fn(),
@@ -195,7 +205,10 @@ const flushScheduledIdleTasks = async () => {
     (scheduleIdleTask as jest.Mock).mock.calls.forEach(([callback]) => {
       callback();
     });
-    await Promise.resolve();
+    // Drain badge refresh promise chains (cart -> notification -> wishlist -> coupons -> alerts).
+    for (let i = 0; i < 8; i += 1) {
+      await Promise.resolve();
+    }
   });
 };
 

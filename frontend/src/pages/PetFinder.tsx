@@ -11,6 +11,8 @@ import { productImageFallback, resolveProductImage } from '../utils/productMedia
 import { loadFallbackProductCatalog, loadProductCatalogSnapshot, saveProductCatalogSnapshot } from '../utils/productCatalogSnapshot';
 import { getLocalStorageItem, setLocalStorageItem } from '../utils/safeStorage';
 import { reportNonBlockingError } from '../utils/nonBlockingError';
+import PageError from '../components/PageError';
+import PageEmpty from '../components/PageEmpty';
 import './PetFinder.css';
 import '../styles/mobile-page-contrast.css';
 
@@ -405,21 +407,28 @@ const PetFinder: React.FC = () => {
               <Spin size="large" />
             </div>
           ) : matches.length === 0 ? (
-            <Empty
-              className={loadError ? 'pet-finder-page__empty pet-finder-page__empty--loadFailed' : 'pet-finder-page__empty'}
-              description={loadError ? t('pages.petFinder.emptyAfterLoadFailure') : t('pages.petFinder.empty')}
-            >
-              <Space wrap>
-                {loadError ? (
-                  <Button icon={<ReloadOutlined />} onClick={retryFinderProducts}>
-                    {t('messages.retry')}
-                  </Button>
-                ) : null}
-                <Button type="primary" icon={<SearchOutlined />} onClick={() => navigate('/products')}>
-                  {t('pages.petFinder.browseAll')}
-                </Button>
-              </Space>
-            </Empty>
+            loadError ? (
+              <PageError
+                className="pet-finder-page__empty pet-finder-page__empty--loadFailed"
+                title={t('pages.petFinder.emptyAfterLoadFailure')}
+                description={t('pages.petFinder.loadFailedDescription')}
+                retryLabel={t('messages.retry')}
+                onRetry={retryFinderProducts}
+                homeLabel={t('pages.petFinder.browseAll')}
+                onHome={() => navigate('/products')}
+              />
+            ) : (
+              <PageEmpty
+                className="pet-finder-page__empty"
+                description={t('pages.petFinder.empty')}
+                primaryAction={{
+                  key: 'browse',
+                  label: t('pages.petFinder.browseAll'),
+                  onClick: () => navigate('/products'),
+                  icon: <SearchOutlined />,
+                }}
+              />
+            )
           ) : (
             <Row gutter={[16, 16]} className="pet-finder-page__recommendationGrid">
               {matches.map(({ product, score }) => {

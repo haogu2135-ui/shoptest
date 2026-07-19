@@ -19,6 +19,8 @@ import type { PetGalleryPhotoPublic, PetGalleryQuota } from '../types';
 import { buildResponsiveImageSrcSet, getOptimizedImageUrl, imageFallbacks, resolveApiAssetUrl } from '../utils/mediaAssets';
 import { getApiErrorMessage } from '../utils/apiError';
 import { reportNonBlockingError } from '../utils/nonBlockingError';
+import PageError from '../components/PageError';
+import PageEmpty from '../components/PageEmpty';
 import { isSupportedPetGalleryImageFile } from '../utils/petGalleryUpload';
 import { getLocalStorageItem, hasStoredValue, setLocalStorageItem } from '../utils/safeStorage';
 import './PetGallery.css';
@@ -405,24 +407,28 @@ const PetGallery: React.FC = () => {
         </Space>
       </section>
 
-      {loadError && !loading ? (
+      {loadError && !loading && items.length > 0 ? (
         <Alert
-          type={items.length > 0 ? 'info' : 'warning'}
+          type="info"
           showIcon
-          message={items.length > 0 ? t('pages.petGallery.staleDataWarning') : t('pages.petGallery.loadFailed')}
+          message={t('pages.petGallery.staleDataWarning')}
           action={(
-            <Space wrap>
-              <Button size="small" icon={<ReloadOutlined />} onClick={() => refreshGallery(true)}>
-                {t('common.retry')}
-              </Button>
-              {items.length === 0 ? (
-                <Button size="small" icon={<ShopOutlined />} onClick={() => navigate('/products?keyword=pet')}>
-                  {t('pages.petGallery.browsePetProducts')}
-                </Button>
-              ) : null}
-            </Space>
+            <Button size="small" icon={<ReloadOutlined />} onClick={() => refreshGallery(true)}>
+              {t('common.retry')}
+            </Button>
           )}
           className="pet-gallery-page__loadAlert"
+        />
+      ) : null}
+      {loadError && !loading && items.length === 0 ? (
+        <PageError
+          className="pet-gallery-page__loadAlert"
+          title={t('pages.petGallery.loadFailed')}
+          description={t('pages.petGallery.loadFailedEmpty')}
+          retryLabel={t('common.retry')}
+          onRetry={() => refreshGallery(true)}
+          homeLabel={t('pages.petGallery.browsePetProducts')}
+          onHome={() => navigate('/products?keyword=pet')}
         />
       ) : null}
 
@@ -532,7 +538,17 @@ const PetGallery: React.FC = () => {
           ))}
         </div>
       ) : items.length === 0 ? (
-        <Empty description={loadError ? t('pages.petGallery.loadFailedEmpty') : t('pages.petGallery.empty')} className="pet-gallery-empty" />
+        loadError ? null : (
+          <PageEmpty
+            className="pet-gallery-empty"
+            description={t('pages.petGallery.empty')}
+            primaryAction={{
+              key: 'browse',
+              label: t('pages.petGallery.browsePetProducts'),
+              onClick: () => navigate('/products?keyword=pet'),
+            }}
+          />
+        )
       ) : (
         <div className="pet-gallery-grid">
           {items.map((item, index) => (

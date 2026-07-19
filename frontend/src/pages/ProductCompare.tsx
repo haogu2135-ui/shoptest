@@ -16,6 +16,8 @@ import { getLocalStorageItem } from '../utils/safeStorage';
 import { allSettledWithConcurrency } from '../utils/asyncBatch';
 import { formatProductSpecLabel } from '../utils/productSpecLabels';
 import { reportNonBlockingError } from '../utils/nonBlockingError';
+import PageError from '../components/PageError';
+import PageEmpty from '../components/PageEmpty';
 import './ProductCompare.css';
 
 const { Title, Text } = Typography;
@@ -523,31 +525,24 @@ const ProductCompare: React.FC = () => {
             <Spin size="large" />
           </div>
         ) : compareLoadError && products.length === 0 ? (
-          <div className="product-compare__loadError">
-            <Alert
-              type="error"
-              showIcon
-              message={t('pages.compare.loadErrorTitle')}
-              description={t('pages.compare.loadErrorDescription', { count: compareLoadAttemptCount })}
-              action={(
-                <Space wrap>
-                  <Button size="small" onClick={fetchComparedProducts} loading={loading}>
-                    {t('common.retry')}
-                  </Button>
-                  <Button size="small" onClick={() => navigate('/products')}>
-                    {t('pages.compare.browse')}
-                  </Button>
-                  <Button size="small" danger onClick={clearAll}>
-                    {t('pages.compare.clear')}
-                  </Button>
-                </Space>
-              )}
-            />
-          </div>
+          <PageError
+            className="product-compare__loadError"
+            title={t('pages.compare.loadErrorTitle')}
+            description={t('pages.compare.loadErrorDescription', { count: compareLoadAttemptCount })}
+            retryLabel={t('common.retry')}
+            onRetry={fetchComparedProducts}
+            homeLabel={compareBrowseActionLabel}
+            onHome={() => navigate('/products')}
+          />
         ) : products.length === 0 ? (
-          <Empty description={t('pages.compare.empty')}>
-            <Button type="primary" aria-label={compareBrowseActionLabel} title={compareBrowseActionLabel} onClick={() => navigate('/products')}>{t('pages.compare.browse')}</Button>
-          </Empty>
+          <PageEmpty
+            description={t('pages.compare.empty')}
+            primaryAction={{
+              key: 'browse',
+              label: compareBrowseActionLabel,
+              onClick: () => navigate('/products'),
+            }}
+          />
         ) : (
           <>
             {compareLoadError ? (

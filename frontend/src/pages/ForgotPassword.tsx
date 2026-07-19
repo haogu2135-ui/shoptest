@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Button, Form, Input, message } from 'antd';
+import { Alert, Button, Form, Input, message } from 'antd';
 import type { InputRef } from 'antd/es/input';
 import { CheckCircleOutlined, LockOutlined, MailOutlined, SafetyCertificateOutlined, UserOutlined } from '@ant-design/icons';
 import { Link, useNavigate } from 'react-router-dom';
@@ -64,6 +64,7 @@ const isFormValidationError = (error: unknown): error is { errorFields: unknown[
 
 const ForgotPassword: React.FC = () => {
   const [loading, setLoading] = useState(false);
+  const [authBannerError, setAuthBannerError] = useState<string | null>(null);
   const [codeSending, setCodeSending] = useState(false);
   const [sendCodeCountdown, setSendCodeCountdown] = useState(0);
   const [codeTtlMinutes, setCodeTtlMinutes] = useState(0);
@@ -149,9 +150,11 @@ const ForgotPassword: React.FC = () => {
         if (errorCode === 'RATE_LIMITED') {
           setSendCodeCountdown(getRetryAfterSeconds(error, 60));
         }
-        message.error(errorCode === 'RATE_LIMITED'
+        const errorMessage = errorCode === 'RATE_LIMITED'
           ? t('pages.auth.emailCodeRateLimited')
-          : t('pages.auth.emailCodeSendFailed'));
+          : t('pages.auth.emailCodeSendFailed');
+        setAuthBannerError(errorMessage);
+        message.error(errorMessage);
       }
     } finally {
       resetCodeSendingRef.current = false;
@@ -162,14 +165,19 @@ const ForgotPassword: React.FC = () => {
   const onFinish = async (values: ForgotPasswordForm) => {
     if (resetSubmittingRef.current) return;
     resetSubmittingRef.current = true;
+    setAuthBannerError(null);
     try {
       if (!emailCodeEnabled) {
-        message.warning(t('pages.auth.emailCodeUnavailable'));
+        const unavailable = t('pages.auth.emailCodeUnavailable');
+        setAuthBannerError(unavailable);
+        message.warning(unavailable);
         return;
       }
       const normalizedCode = normalizeEmailCode(values.code);
       if (normalizedCode.length !== 6) {
-        form.setFields([{ name: 'code', errors: [t('pages.auth.emailCodeLength')] }]);
+        const lengthError = t('pages.auth.emailCodeLength');
+        form.setFields([{ name: 'code', errors: [lengthError] }]);
+        setAuthBannerError(lengthError);
         return;
       }
       setLoading(true);
@@ -182,6 +190,7 @@ const ForgotPassword: React.FC = () => {
         code: normalizedCode,
         newPassword: values.newPassword,
       });
+      setAuthBannerError(null);
       message.success(t('pages.auth.resetSuccess'));
       navigate('/login');
     } catch (error: unknown) {
@@ -191,9 +200,11 @@ const ForgotPassword: React.FC = () => {
           ? t('pages.auth.emailCodeTooManyAttempts')
           : t('pages.auth.emailCodeInvalid');
         form.setFields([{ name: 'code', errors: [msg] }]);
+        setAuthBannerError(msg);
         message.error(msg);
       } else {
         const msg = t('pages.auth.resetFailed');
+        setAuthBannerError(msg);
         message.error(msg);
       }
     } finally {
@@ -224,6 +235,17 @@ const ForgotPassword: React.FC = () => {
           </div>
         </div>
 
+        {authBannerError ? (
+          <Alert
+            className="shopee-login-errorBanner"
+            type="error"
+            showIcon
+            closable
+            role="alert"
+            message={authBannerError}
+            onClose={() => setAuthBannerError(null)}
+          />
+        ) : null}
         <Form form={form} name="forgotPassword" onFinish={onFinish} layout="vertical" className="shopee-login-form">
           {!emailCodeEnabled && !appConfigLoading && (
             <div className="shopee-login-emailHint shopee-login-emailHint--warning" role="status">
