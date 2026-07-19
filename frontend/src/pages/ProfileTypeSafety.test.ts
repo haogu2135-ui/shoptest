@@ -14,9 +14,9 @@ describe('Profile type-safety guard', () => {
     expect(source).toContain('const isFormValidationError = (error: unknown): error is FormValidationError =>');
     expect(source).toContain('const getProfileApiErrorData = (error: unknown): Record<string, unknown> =>');
     expect(source).toContain('const getProfileApiErrorCode = (error: unknown) =>');
-    expect(source).toContain("const getProfileErrorMessage = (error: unknown, fallback: string, language: ReturnType<typeof useLanguage>['language']) =>");
+    expect(source).toContain("import { getApiErrorMessage } from '../utils/apiError';");
     expect(source).toContain('if (isFormValidationError(err)) return;');
-    expect(source).toContain("message.error(getProfileErrorMessage(err, t('pages.profile.continuePayFailed'), language));");
+    expect(source).toContain("message.error(getApiErrorMessage(err, t('pages.profile.continuePayFailed'), language, { includeClientMessage: true }));");
   });
 
   it('keeps payment-return synchronization off the mutable orders dependency', () => {

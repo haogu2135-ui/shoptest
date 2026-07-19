@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Card, Row, Col, Button, Input, Select, Pagination, Tag, message, Empty, Typography, Slider, Checkbox, Modal, Space, Drawer, Rate } from 'antd';
+import { Card, Row, Col, Button, Input, Select, Pagination, Tag, message, Typography, Slider, Checkbox, Modal, Space, Drawer, Rate } from 'antd';
 import { ArrowUpOutlined, BarChartOutlined, BellOutlined, CheckCircleOutlined, CloseOutlined, CustomerServiceOutlined, FireOutlined, FilterOutlined, GiftOutlined, HeartFilled, HeartOutlined, ReloadOutlined, SearchOutlined, ShoppingCartOutlined } from '@ant-design/icons';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { productApi, cartApi, categoryApi, wishlistApi, createApiAbortController } from '../api';
@@ -34,6 +34,7 @@ import { AUTH_SESSION_CHANGED_EVENT } from '../utils/authEvents';
 import { reportNonBlockingError } from '../utils/nonBlockingError';
 import PageError from '../components/PageError';
 import PageEmpty from '../components/PageEmpty';
+import ShopBreadcrumb from '../components/ShopBreadcrumb';
 import './ProductList.css';
 import '../styles/mobile-page-contrast.css';
 
@@ -2073,6 +2074,20 @@ const ProductList: React.FC = () => {
 
   return (
     <div className={`product-list product-list--${language}${!loading && !loadFailed && filteredProducts.length === 0 ? ' product-list--empty' : ''}${quickAddProduct ? ' product-list--quickAddOpen' : ''}${previewProduct ? ' product-list--previewOpen' : ''}${filterDrawerOpen ? ' product-list--filterDrawerOpen' : ''}`}>
+      <ShopBreadcrumb
+        ariaLabel={t('pages.productList.title')}
+        items={[
+          { key: 'home', label: t('nav.ariaHome'), path: '/' },
+          {
+            key: 'products',
+            label: t('pages.productList.title'),
+            path: selectedCategoryName ? '/products' : undefined,
+          },
+          ...(selectedCategoryName
+            ? [{ key: 'category', label: selectedCategoryName }]
+            : []),
+        ]}
+      />
       <Row gutter={24}>
         <Col xs={0} sm={0} md={5} lg={4} className="product-list__sidebar">
           <Card title={t('pages.productList.sidebarTitle')} size="small" className="product-list__sidebarCard">

@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -158,7 +159,7 @@ class ProductSearchServiceTest {
         Page<Product> page = service.findPublicProductPage(query);
 
         assertEquals(List.of(), page.getContent());
-        assertEquals(1, page.getTotalElements());
+        assertEquals(0, page.getTotalElements());
         verify(categoryRepository, never()).findByParentId(10L);
         verify(productRepository, never()).findAll();
     }

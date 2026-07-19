@@ -2404,7 +2404,7 @@ class PaymentFlowServiceTest {
         service.shipOrder(42L, "TRACK123");
 
         verify(orderRepository).updateShipping(42L, "PENDING_SHIPMENT", "SHIPPED", "TRACK123", null, null);
-        verify(notificationService).tryCreateNotification(eq(7L), eq("ORDER"), eq("Order shipped"), contains("TRACK123"));
+        verify(notificationService).tryCreateNotification(eq(7L), eq("DELIVERY"), eq("Order shipped"), contains("TRACK123"));
     }
 
     @Test
@@ -2465,7 +2465,7 @@ class PaymentFlowServiceTest {
         verify(logisticsCarrierService).findByTrackingCode("dhl");
         verify(logisticsCarrierService, never()).findAll(false);
         verify(orderRepository).updateShipping(42L, "PENDING_SHIPMENT", "SHIPPED", "TRACK123", "DHL", "DHL Express");
-        verify(notificationService).tryCreateNotification(eq(7L), eq("ORDER"), eq("Order shipped"), contains("via DHL Express"));
+        verify(notificationService).tryCreateNotification(eq(7L), eq("DELIVERY"), eq("Order shipped"), contains("via DHL Express"));
     }
 
     @Test
@@ -2510,7 +2510,7 @@ class PaymentFlowServiceTest {
             TransactionSynchronizationManager.clearSynchronization();
         }
 
-        verify(notificationService).tryCreateNotification(eq(7L), eq("ORDER"), eq("Order shipped"), contains("TRACK123"));
+        verify(notificationService).tryCreateNotification(eq(7L), eq("DELIVERY"), eq("Order shipped"), contains("TRACK123"));
         verify(orderEmailNotificationService).trySendOrderStatusEmail(eq("mia@example.com"), eq("Order shipped"), contains("TRACK123"));
     }
 

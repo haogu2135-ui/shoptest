@@ -333,6 +333,37 @@ const SystemMonitor: React.FC = () => {
                       {renderMessages(productionConfigWarnings, 'warning')}
                     </Descriptions.Item>
                   </Descriptions>
+                  {Array.isArray(productionConfig.checks?.paymentChannels?.channels) && (productionConfig.checks?.paymentChannels?.channels?.length || 0) > 0 ? (
+                    <div className="system-monitor__paymentChannelChecklist" aria-label={t('pages.systemMonitor.paymentChannelChecklist')}>
+                      <Text strong>{t('pages.systemMonitor.paymentChannelChecklist')}</Text>
+                      <Text type="secondary">{t('pages.systemMonitor.paymentChannelChecklistHint')}</Text>
+                      <div className="system-monitor__paymentChannelList">
+                        {(productionConfig.checks?.paymentChannels?.channels || []).map((channel) => {
+                          const code = channel.code || t('common.unknown');
+                          const available = channel.available === true;
+                          return (
+                            <div
+                              key={`${code}-${channel.provider || 'provider'}`}
+                              className={`system-monitor__paymentChannelItem system-monitor__paymentChannelItem--${available ? 'ready' : 'blocked'}`}
+                            >
+                              <Space wrap size={[8, 4]}>
+                                <Tag color={available ? 'green' : 'red'}>
+                                  {available ? t('pages.systemMonitor.channelReady') : t('pages.systemMonitor.channelBlocked')}
+                                </Tag>
+                                <Text strong>{code}</Text>
+                                {channel.provider ? <Text type="secondary">{channel.provider}</Text> : null}
+                                {channel.refundMode ? (
+                                  <Text type="secondary">
+                                    {t('pages.systemMonitor.channelRefundMode')}: {channel.refundMode}
+                                  </Text>
+                                ) : null}
+                              </Space>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
               </Card>
             ) : null}

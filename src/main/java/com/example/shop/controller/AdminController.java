@@ -1349,20 +1349,15 @@ public class AdminController {
                     "Invalid product status", "status=" + body.get("status"));
             return ResponseEntity.badRequest().body(Map.of("error", "status must be one of " + ProductStatusUtils.PRODUCT_STATUSES));
         }
-        return productService.findById(id)
-                .map(product -> {
-                    String previousStatus = product.getStatus();
-                    product.setStatus(status);
-                    productService.save(product);
-                    auditLogService.record("PRODUCT_STATUS_UPDATE", "SUCCESS", authentication, "PRODUCT", id, request,
-                            "Product status updated", "from=" + previousStatus + ",to=" + status);
-                    return ResponseEntity.ok(Map.of("message", "status updated", "status", status));
-                })
-                .orElseGet(() -> {
-                    auditLogService.record("PRODUCT_STATUS_UPDATE", "FAILURE", authentication, "PRODUCT", id, request,
-                            "Product not found", "to=" + status);
-                    return ResponseEntity.notFound().build();
-                });
+        int updated = productService.updateStatusByIds(List.of(id), status);
+        if (updated <= 0) {
+            auditLogService.record("PRODUCT_STATUS_UPDATE", "FAILURE", authentication, "PRODUCT", id, request,
+                    "Product not found", "to=" + status);
+            return ResponseEntity.notFound().build();
+        }
+        auditLogService.record("PRODUCT_STATUS_UPDATE", "SUCCESS", authentication, "PRODUCT", id, request,
+                "Product status updated", "to=" + status);
+        return ResponseEntity.ok(Map.of("message", "status updated", "status", status));
     }
 
     @PostMapping("/products/batch-status")

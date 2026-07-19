@@ -14,6 +14,15 @@ import { paymentMethodLabel } from '../utils/paymentMethods';
 import { productImageFallback, resolveProductImage } from '../utils/productMedia';
 import { navigateToSafeUrl } from '../utils/safeUrl';
 import { getPaymentRecoveryState } from '../utils/paymentRecovery';
+import {
+  isReturnReasonReady,
+  isReturnTrackingReady,
+  normalizeReturnReason,
+  normalizeReturnTrackingNumber,
+  RETURN_REASON_PRESET_KEYS,
+  returnReasonPresetI18nKey,
+  returnFlowStepI18nKeys,
+} from '../utils/returnFlow';
 import { addGuestCartItem } from '../utils/guestCart';
 import { dispatchDomEvent } from '../utils/domEvents';
 import { getLocalStorageItem, hasStoredValue } from '../utils/safeStorage';
@@ -115,6 +124,7 @@ const OrderTracking: React.FC = () => {
   const [items, setItems] = useState<OrderItemCustomer[]>([]);
   const [detailsRestricted, setDetailsRestricted] = useState(false);
   const [prefillNoticeVisible, setPrefillNoticeVisible] = useState(false);
+  const paymentReturnAutoTrackKeyRef = useRef('');
   const mountedRef = useRef(true);
   const trackRequestSeqRef = useRef(0);
   const trackAbortRef = useRef<AbortController | null>(null);
@@ -153,7 +163,7 @@ const OrderTracking: React.FC = () => {
   const trackedOrderLabel = order ? order.orderNo || `#${order.id}` : t('pages.orderTracking.title');
   const trackActionLabel = (action: string) => `${action}: ${trackedOrderLabel}`;
   const returnRequestActionLabel = `${t('pages.profile.returnOrder')}: ${trackedOrderLabel}`;
-  const returnShipmentActionLabel = `${t('pages.profile.returnShipmentSubmitted')}: ${trackedOrderLabel}`;
+  const returnShipmentActionLabel = `${t('pages.profile.submitReturnShipment')}: ${trackedOrderLabel}`;
   const returnReasonInputLabel = `${t('pages.profile.returnReason')}: ${trackedOrderLabel}`;
   const returnTrackingInputLabel = `${t('pages.profile.returnTracking')}: ${trackedOrderLabel}`;
   const signInForOrder = useCallback(() => navigate(buildLoginUrlFromWindow()), [navigate]);
@@ -322,6 +332,42 @@ const OrderTracking: React.FC = () => {
     form.setFieldsValue(email ? { orderNo, email } : { orderNo });
     setPrefillNoticeVisible(Boolean(email));
   }, [form, searchParams, setSearchParams]);
+
+  useEffect(() => {
+    const isPaymentReturn = paymentReturnStatus === 'success'
+      || paymentReturnStatus === 'cancelled'
+      || paymentReturnStatus === 'canceled'
+      || paymentReturnStatus === 'failed';
+    if (!isPaymentReturn || order || loading) {
+      return;
+    }
+
+    const orderNo = cleanTrackingParam(searchParams.get('orderNo') || searchParams.get('order'), 80);
+    if (!orderNo) {
+      return;
+    }
+
+    const queryContext = normalizeGuestSupportContext({
+      orderNo,
+      email: searchParams.get('guestEmail') || searchParams.get('email'),
+    });
+    const storedContext = queryContext || loadGuestSupportContext();
+    const email = storedContext && storedContext.orderNo.toUpperCase() === orderNo.toUpperCase()
+      ? String(storedContext.email || '').trim().toLowerCase()
+      : '';
+    if (!email) {
+      return;
+    }
+
+    const autoTrackKey = `${paymentReturnStatus}:${orderNo}:${email}`;
+    if (paymentReturnAutoTrackKeyRef.current === autoTrackKey) {
+      return;
+    }
+    paymentReturnAutoTrackKeyRef.current = autoTrackKey;
+    form.setFieldsValue({ orderNo, email });
+    setPrefillNoticeVisible(false);
+    void trackOrder({ orderNo, email }, true);
+  }, [form, loading, order, paymentReturnStatus, searchParams, trackOrder]);
 
   const refreshTrackedOrder = useCallback(async (quiet = false) => {
     if (!order?.orderNo || !trackedEmail) return false;
@@ -506,11 +552,17 @@ const OrderTracking: React.FC = () => {
 
   const submitReturnRequest = async () => {
     if (!order?.returnable || !canOperateTrackedOrder) return;
+    const cleanedReason = normalizeReturnReason(returnReason);
+    if (!isReturnReasonReady(cleanedReason)) {
+      message.warning(t('pages.profile.returnReasonRequired'));
+      return;
+    }
     setReturning(true);
     try {
-      await orderApi.returnOrder(order.id, returnReason.trim(), canUseGuestActions ? trackedEmail : undefined, canUseGuestActions ? order.orderNo : undefined);
+      await orderApi.returnOrder(order.id, cleanedReason, canUseGuestActions ? trackedEmail : undefined, canUseGuestActions ? order.orderNo : undefined);
       await refreshTrackedOrder();
       setReturnRequestOpen(false);
+      setReturnReason('');
       message.success(t('pages.profile.returnRequested'));
     } catch (error: unknown) {
       message.error(getApiErrorMessage(error, t('pages.profile.returnFailed'), language));
@@ -521,15 +573,17 @@ const OrderTracking: React.FC = () => {
 
   const submitReturnTracking = async () => {
     if (!order || order.status !== 'RETURN_APPROVED' || !canOperateTrackedOrder) return;
-    if (!returnTrackingNumber.trim()) {
-      message.error(t('pages.profile.returnTrackingRequired'));
+    const cleanedTracking = normalizeReturnTrackingNumber(returnTrackingNumber);
+    if (!isReturnTrackingReady(cleanedTracking)) {
+      message.error(t('pages.profile.returnTrackingInvalid'));
       return;
     }
     setReturnShipping(true);
     try {
-      await orderApi.submitReturnShipment(order.id, returnTrackingNumber.trim(), canUseGuestActions ? trackedEmail : undefined, canUseGuestActions ? order.orderNo : undefined);
+      await orderApi.submitReturnShipment(order.id, cleanedTracking, canUseGuestActions ? trackedEmail : undefined, canUseGuestActions ? order.orderNo : undefined);
       await refreshTrackedOrder();
       setReturnShipmentOpen(false);
+      setReturnTrackingNumber('');
       message.success(t('pages.profile.returnShipmentSubmitted'));
     } catch (error: unknown) {
       message.error(getApiErrorMessage(error, t('pages.profile.returnShipmentFailed'), language));
@@ -549,13 +603,51 @@ const OrderTracking: React.FC = () => {
           message={t('pages.checkout.paidTitle')}
           description={t('pages.checkout.paymentRecoveryNextPaid')}
         />
-      ) : paymentReturnStatus === 'cancelled' ? (
+      ) : paymentReturnStatus === 'cancelled' || paymentReturnStatus === 'canceled' ? (
         <Alert
           className="order-tracking-page__paymentReturn"
           type="warning"
           showIcon
           message={t('pages.checkout.paymentRecoveryPending')}
-          description={t('pages.checkout.paymentRecoveryNextRetry')}
+          description={order
+            ? t('pages.checkout.paymentRecoveryNextRetry')
+            : t('pages.orderTracking.paymentReturnLookupHint')}
+          action={order && order.status === 'PENDING_PAYMENT' && canOperateTrackedOrder ? (
+            <Button
+              size="small"
+              type="primary"
+              icon={<CreditCardOutlined />}
+              loading={paying}
+              aria-label={trackActionLabel(t('pages.profile.continuePay'))}
+              title={trackActionLabel(t('pages.profile.continuePay'))}
+              onClick={continuePayment}
+            >
+              {t('pages.profile.continuePay')}
+            </Button>
+          ) : undefined}
+        />
+      ) : paymentReturnStatus === 'failed' ? (
+        <Alert
+          className="order-tracking-page__paymentReturn"
+          type="error"
+          showIcon
+          message={t('pages.orderTracking.paymentFailedTitle')}
+          description={order
+            ? t('pages.orderTracking.paymentFailedText')
+            : t('pages.orderTracking.paymentReturnLookupHint')}
+          action={order && order.status === 'PENDING_PAYMENT' && canOperateTrackedOrder ? (
+            <Button
+              size="small"
+              type="primary"
+              icon={<CreditCardOutlined />}
+              loading={paying}
+              aria-label={trackActionLabel(t('pages.profile.continuePay'))}
+              title={trackActionLabel(t('pages.profile.continuePay'))}
+              onClick={continuePayment}
+            >
+              {t('pages.profile.continuePay')}
+            </Button>
+          ) : undefined}
         />
       ) : null}
       <Card className="order-tracking-page__lookupCard">
@@ -693,6 +785,16 @@ const OrderTracking: React.FC = () => {
                 <Space wrap className="order-tracking-page__nextActionButtons">
                   <Button type="primary" icon={<CreditCardOutlined />} loading={paying} aria-label={trackActionLabel(t('pages.profile.continuePay'))} title={trackActionLabel(t('pages.profile.continuePay'))} onClick={continuePayment}>
                     {t('pages.profile.continuePay')}
+                  </Button>
+                  <Button
+                    aria-label={trackActionLabel(t('pages.paymentInstructions.title'))}
+                    title={trackActionLabel(t('pages.paymentInstructions.title'))}
+                    onClick={() => {
+                      const emailQuery = trackedEmail ? `?guestEmail=${encodeURIComponent(trackedEmail)}` : '';
+                      navigate(`/payment/${encodeURIComponent(String(order.orderNo || order.id))}${emailQuery}`);
+                    }}
+                  >
+                    {t('pages.paymentInstructions.title')}
                   </Button>
                   <Button danger icon={<RollbackOutlined />} loading={canceling} aria-label={trackActionLabel(t('pages.profile.cancelOrder'))} title={trackActionLabel(t('pages.profile.cancelOrder'))} onClick={cancelPendingPayment}>
                     {t('pages.profile.cancelOrder')}
@@ -873,22 +975,76 @@ const OrderTracking: React.FC = () => {
         title={t('pages.profile.returnOrder')}
         open={returnRequestOpen}
         onOk={submitReturnRequest}
-        onCancel={() => setReturnRequestOpen(false)}
+        onCancel={() => { setReturnRequestOpen(false); setReturnReason(''); }}
         confirmLoading={returning}
         okText={t('pages.profile.returnOrder')}
         cancelText={t('common.cancel')}
-        okButtonProps={{ 'aria-label': returnRequestActionLabel, title: returnRequestActionLabel }}
+        okButtonProps={{
+          'aria-label': returnRequestActionLabel,
+          title: returnRequestActionLabel,
+          disabled: !isReturnReasonReady(returnReason),
+        }}
         cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${returnRequestActionLabel}`, title: `${t('common.cancel')}: ${returnRequestActionLabel}` }}
-        className="profile-mobile-safe-modal order-tracking-page__returnModal"
+        className="profile-mobile-safe-modal order-tracking-page__returnModal profile-return-modal"
       >
-        <Space direction="vertical" className="order-tracking-page__resultStack">
+        <Space direction="vertical" size="middle" className="profile-return-modal__content order-tracking-page__resultStack">
+          {order ? (
+            <div
+              className="profile-return-modal__summary"
+              aria-label={t('pages.profile.returnOrderSummary', {
+                orderNo: order.orderNo || order.id,
+                amount: formatMoney(order.totalAmount),
+              })}
+            >
+              <Text strong>
+                {t('pages.profile.returnOrderSummary', {
+                  orderNo: order.orderNo || order.id,
+                  amount: formatMoney(order.totalAmount),
+                })}
+              </Text>
+            </div>
+          ) : null}
+          <div className="profile-return-modal__timeline" aria-label={t('pages.profile.returnTimelineTitle')}>
+            <Text className="profile-return-modal__timelineTitle">{t('pages.profile.returnTimelineTitle')}</Text>
+            <div className="profile-return-modal__steps" role="list">
+              {returnFlowStepI18nKeys.map((stepKey) => (
+                <span key={stepKey} className="profile-return-modal__step" role="listitem">{t(stepKey)}</span>
+              ))}
+            </div>
+          </div>
           <Text type="secondary">{t('pages.profile.returnReviewHint')}</Text>
           {order?.returnDeadline ? (
-            <Text>{t('pages.profile.returnAvailableUntil', { time: new Date(order.returnDeadline).toLocaleString(dateLocale) })}</Text>
+            <Text type="secondary">
+              {t('pages.profile.returnAvailableUntil', { time: new Date(order.returnDeadline).toLocaleString(dateLocale) })}
+            </Text>
           ) : null}
+          <div className="profile-return-modal__presets" role="group" aria-label={t('pages.profile.returnReasonPresetsLabel')}>
+            <Text className="profile-return-modal__presetsLabel">{t('pages.profile.returnReasonPresetsLabel')}</Text>
+            <div className="profile-return-modal__presetGrid">
+              {RETURN_REASON_PRESET_KEYS.map((preset) => {
+                const label = t(returnReasonPresetI18nKey(preset));
+                const selected = normalizeReturnReason(returnReason).toLowerCase() === label.toLowerCase();
+                return (
+                  <Button
+                    key={preset}
+                    size="small"
+                    type={selected ? 'primary' : 'default'}
+                    className="profile-return-modal__preset"
+                    aria-label={label}
+                    title={label}
+                    aria-pressed={selected}
+                    onClick={() => setReturnReason(label)}
+                  >
+                    {label}
+                  </Button>
+                );
+              })}
+            </div>
+          </div>
           <Input.TextArea
             rows={4}
             value={returnReason}
+            status={returnReason && !isReturnReasonReady(returnReason) ? 'error' : undefined}
             onChange={(event) => setReturnReason(event.target.value)}
             maxLength={500}
             showCount
@@ -899,27 +1055,54 @@ const OrderTracking: React.FC = () => {
         </Space>
       </Modal>
       <Modal
-        title={t('pages.profile.returnTracking')}
+        title={t('pages.profile.submitReturnShipment')}
         open={returnShipmentOpen}
         onOk={submitReturnTracking}
-        onCancel={() => setReturnShipmentOpen(false)}
+        onCancel={() => { setReturnShipmentOpen(false); setReturnTrackingNumber(''); }}
         confirmLoading={returnShipping}
-        okText={t('pages.profile.returnShipmentSubmitted')}
+        okText={t('pages.profile.submitReturnShipment')}
         cancelText={t('common.cancel')}
-        okButtonProps={{ 'aria-label': returnShipmentActionLabel, title: returnShipmentActionLabel }}
+        okButtonProps={{
+          'aria-label': returnShipmentActionLabel,
+          title: returnShipmentActionLabel,
+          disabled: !isReturnTrackingReady(returnTrackingNumber),
+        }}
         cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${returnShipmentActionLabel}`, title: `${t('common.cancel')}: ${returnShipmentActionLabel}` }}
-        className="profile-mobile-safe-modal order-tracking-page__returnModal"
+        className="profile-mobile-safe-modal order-tracking-page__returnModal profile-return-modal"
       >
-        <Input
-          value={returnTrackingNumber}
-          onChange={(event) => setReturnTrackingNumber(event.target.value)}
-          autoComplete="off"
-          inputMode="text"
-          maxLength={120}
-          placeholder={t('pages.profile.returnTrackingPlaceholder')}
-          aria-label={returnTrackingInputLabel}
-          title={returnTrackingInputLabel}
-        />
+        <Space direction="vertical" size="middle" className="profile-return-modal__content">
+          {order ? (
+            <div className="profile-return-modal__summary">
+              <Text strong>
+                {t('pages.profile.returnOrderSummary', {
+                  orderNo: order.orderNo || order.id,
+                  amount: formatMoney(order.totalAmount),
+                })}
+              </Text>
+            </div>
+          ) : null}
+          <div className="profile-return-modal__timeline" aria-label={t('pages.profile.returnShipmentStepsTitle')}>
+            <Text className="profile-return-modal__timelineTitle">{t('pages.profile.returnShipmentStepsTitle')}</Text>
+            <div className="profile-return-modal__steps" role="list">
+              {returnFlowStepI18nKeys.map((stepKey) => (
+                <span key={stepKey} className="profile-return-modal__step" role="listitem">{t(stepKey)}</span>
+              ))}
+            </div>
+          </div>
+          <Text type="secondary">{t('pages.profile.returnShipmentHint')}</Text>
+          <Input
+            value={returnTrackingNumber}
+            onChange={(event) => setReturnTrackingNumber(event.target.value)}
+            autoComplete="off"
+            inputMode="text"
+            maxLength={120}
+            status={returnTrackingNumber && !isReturnTrackingReady(returnTrackingNumber) ? 'error' : undefined}
+            placeholder={t('pages.profile.returnTrackingPlaceholder')}
+            aria-label={returnTrackingInputLabel}
+            title={returnTrackingInputLabel}
+            onBlur={() => setReturnTrackingNumber((value) => normalizeReturnTrackingNumber(value))}
+          />
+        </Space>
       </Modal>
     </div>
   );

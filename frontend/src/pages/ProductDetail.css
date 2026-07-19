@@ -1775,6 +1775,23 @@
   overflow-wrap: anywhere;
 }
 
+
+.product-detail__lowStockAlert {
+  margin: 0 0 12px;
+  border-radius: 12px;
+  border-color: #ffd591;
+  background: #fff7e6;
+}
+
+.product-detail__stockMeta--low {
+  color: #d46b08;
+  font-weight: 700;
+}
+
+.product-detail__stockMeta--low .ant-tag {
+  margin-inline-start: 6px;
+}
+
 .product-actions {
   display: flex !important;
   width: 100%;

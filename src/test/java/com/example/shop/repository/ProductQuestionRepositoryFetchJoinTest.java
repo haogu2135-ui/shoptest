@@ -26,8 +26,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @Import(ProductQuestionRepositoryFetchJoinTest.TestApplication.class)
 @TestPropertySource(properties = {
         "app.runtime-mode=test",
+        "spring.flyway.enabled=false",
         "spring.jpa.hibernate.ddl-auto=create-drop",
         "spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.H2Dialect",
+        "spring.datasource.url=jdbc:h2:mem:shoprepo;MODE=MySQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE",
+        "spring.datasource.driver-class-name=org.h2.Driver",
+        "spring.datasource.username=sa",
+        "spring.datasource.password=",
         "spring.sql.init.mode=never"
 })
 class ProductQuestionRepositoryFetchJoinTest {

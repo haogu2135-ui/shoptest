@@ -295,12 +295,13 @@ class OrderInputNormalizationServiceTest {
         when(runtimeConfig.getInt("order.payment-method-max-chars", 40)).thenReturn(40);
         when(runtimeConfig.getInt("order.max-quantity-per-line", 99)).thenReturn(99);
         when(userRepository.findByEmail("buyer@example.com")).thenReturn(Optional.empty());
-        when(userRepository.save(any(User.class))).thenAnswer(invocation -> {
+        when(userRepository.saveAndFlush(any(User.class))).thenAnswer(invocation -> {
             User user = invocation.getArgument(0);
             user.setId(88L);
             return user;
         });
         when(productRepository.findAllByIdForUpdate(List.of(500L))).thenReturn(List.of(product));
+        when(productRepository.decreaseStock(500L, 1)).thenReturn(1);
         when(productVariantService.normalizeSpecs(null)).thenReturn(null);
         when(productVariantService.resolveStock(product, null)).thenReturn(10);
         when(productVariantService.resolvePrice(product, null)).thenReturn(null);

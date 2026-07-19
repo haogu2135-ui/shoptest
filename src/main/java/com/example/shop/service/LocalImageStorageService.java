@@ -1,5 +1,7 @@
 package com.example.shop.service;
 
+import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -27,6 +29,7 @@ import java.util.Map;
 import java.util.UUID;
 
 @Service
+@Slf4j
 public class LocalImageStorageService implements ImageStorageService {
     private static final Map<String, String> EXTENSIONS_BY_CONTENT_TYPE = Map.of(
             "image/jpeg", ".jpg",

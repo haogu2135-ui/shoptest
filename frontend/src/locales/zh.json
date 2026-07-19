@@ -819,7 +819,15 @@
       "drawerClearBlockedConfirm": "从购物车移除 {count} 件受阻商品？",
       "drawerClearedBlocked": "已清理 {count} 件受阻商品。",
       "drawerSyncingQuantity": "正在同步 {count} 件商品数量",
-      "checkoutSyncing": "同步数量后结算"
+      "checkoutSyncing": "同步数量后结算",
+      "paymentCancelledTitle": "支付未完成",
+      "paymentCancelledText": "购物车商品可能已生成待支付订单。请到“我的订单”继续支付，或继续选购。",
+      "paymentCancelledOrderText": "订单 {orderNo} 仍待支付。可到“我的订单”继续支付、查询订单，或继续选购。",
+      "paymentFailedTitle": "支付失败",
+      "paymentFailedText": "支付网关返回失败。请到“我的订单”继续支付，或更换支付方式。",
+      "paymentFailedOrderText": "订单 {orderNo} 支付失败。请到“我的订单”继续支付，或更换支付方式。",
+      "paymentCancelledResume": "继续支付",
+      "paymentCancelledTrack": "查询订单"
     },
     "addOnAssistant": {
       "title": "智能凑单推荐",
@@ -930,7 +938,8 @@
       "actionBrowseProducts": "浏览商品",
       "actionSignalUnread": "{count} 条未读",
       "actionSignalOffers": "{count} 条优惠",
-      "actionSignalDelivery": "{count} 条配送"
+      "actionSignalDelivery": "{count} 条配送",
+      "openRelated": "打开相关内容"
     },
     "auth": {
       "loginTitle": "登录",
@@ -1280,7 +1289,22 @@
       "nextTitle": "下一步",
       "stepOne": "使用所选本地支付方式完成付款，并保留付款凭证。",
       "stepTwo": "使用同一订单号和结算邮箱查询订单。",
-      "stepThree": "付款后订单仍显示待付款时，请联系客服核对。"
+      "stepThree": "付款后订单仍显示待付款时，请联系客服核对。",
+      "openPayment": "打开安全支付",
+      "refreshStatus": "刷新支付状态",
+      "retryVerify": "重新验证",
+      "paidTitle": "支付已确认",
+      "paidText": "订单已支付。你可以查看物流，或联系客服获取帮助。",
+      "expiredTitle": "支付时效已过期",
+      "expiredText": "请从订单或购物车重新发起支付，或联系客服协助恢复。",
+      "expiringSoonTitle": "支付即将到期",
+      "expiringSoonText": "请在 {minutes} 分钟内完成支付，以免订单失效。",
+      "paymentLink": "支付链接",
+      "statusLabel": "支付状态",
+      "recoveryEyebrow": "支付恢复",
+      "backToOrders": "查看订单",
+      "missingOrder": "缺少订单号",
+      "missingOrderText": "请从结账、订单追踪或个人中心进入本页，以便核验支付金额。"
     },
     "checkout": {
       "loadFailed": "结算信息加载失败",
@@ -1565,7 +1589,16 @@
       "assuranceTrackingPending": "物流待生成",
       "assuranceSupportReady": "客服可协助",
       "submitReturnTracking": "提交退货物流",
-      "shopAgain": "继续选购"
+      "shopAgain": "继续选购",
+      "paymentFailedTitle": "支付失败",
+      "paymentFailedText": "支付网关返回失败。请在下方查询订单后继续支付。",
+      "prefillNotice": "已从本设备填充保存的订单信息。点击查询订单以确认详情。",
+      "paymentReturnLookupHint": "如本设备已保存订单信息，我们会自动填充。请确认邮箱后查询订单，以便继续支付或查看状态。",
+      "copyTrackingNumber": "复制运单号",
+      "trackingNumberCopied": "运单号已复制",
+      "copyTrackingFailed": "复制运单号失败",
+      "emptyRecoveryHint": "暂无实时物流事件。可复制单号、重试查询或联系客服。",
+      "retryTracking": "重试查询"
     },
     "adminDashboard": {
       "title": "仪表盘",
@@ -2096,7 +2129,12 @@
       "diskTip": "磁盘超过 85% 时，优先检查 `logs`、`uploads` 和历史导出文件。",
       "nacosTip": "Nacos 注册异常时，确认 `NACOS_SERVER_ADDR`、namespace 和 group 与网关一致。",
       "databaseTip": "数据库 URL 已隐藏密码，但仍不建议把该页面开放给非管理员角色。",
-      "noStatus": "暂无系统状态。"
+      "noStatus": "暂无系统状态。",
+      "paymentChannelChecklist": "支付渠道生产检查清单",
+      "paymentChannelChecklistHint": "仅标记为可用的渠道可完成生产结账与退款。",
+      "channelReady": "可用",
+      "channelBlocked": "不可用",
+      "channelRefundMode": "退款模式"
     },
     "logAdmin": {
       "title": "日志管理",
@@ -2306,7 +2344,26 @@
       "syncPaymentConfirm": "现在与支付网关同步支付 #{id}？",
       "paymentSynced": "支付状态已刷新",
       "paymentSyncFailed": "刷新支付状态失败",
-      "staleDataWarning": "正在显示上一次成功加载的订单快照。刷新成功前，导出、状态、履约、退款与支付同步操作已禁用。"
+      "staleDataWarning": "正在显示上一次成功加载的订单快照。刷新成功前，导出、状态、履约、退款与支付同步操作已禁用。",
+      "afterSalesQueueHint": "优先处理退货审核、在途退件，以及等待仓库签收的退款。",
+      "refundReasonPresetsLabel": "常用退款原因",
+      "refundConfirmRequired": "请先确认退款金额与支付记录，再发起退款。",
+      "refundConfirmAcknowledge": "我已核对订单 {orderNo}，确认向原支付方式退款 {amount}。",
+      "refundReasonPresets": {
+        "customerRequest": "客户主动申请退款",
+        "duplicatePayment": "重复支付或超额扣款",
+        "outOfStock": "支付后商品不可用",
+        "qualityIssue": "质量或履约问题",
+        "pricingError": "价格或促销错误",
+        "other": "其他已审批退款原因"
+      },
+      "afterSalesQueuePriorityHint": "队列按 SLA 紧急度排序，再按售后阶段排列，优先露出逾期退款与退货审核。",
+      "afterSalesBreakdownLabel": "售后阶段",
+      "nextActionShipCta": "立即发货",
+      "nextActionReviewCta": "审核退货",
+      "nextActionRefundCta": "发起退款",
+      "nextActionRefundFollowCta": "查看退款详情",
+      "nextActionInspectCta": "查看订单"
     },
     "logisticsCarriers": {
       "title": "快递公司配置",
@@ -2996,7 +3053,11 @@
       "completeSetAdd": "加购",
       "mobileBuybarMeta": "{price} · {stock}",
       "loadFailed": "商品加载失败",
-      "loadFailedDescription": "请检查网络后重试，也可先浏览商品目录。"
+      "loadFailedDescription": "请检查网络后重试，也可先浏览商品目录。",
+      "lowStockUrgency": "仅剩 {count} 件",
+      "lowStockUrgencyText": "库存紧张，尽快结算可锁定该规格（剩余 {count} 件）。",
+      "decisionStockLowTitle": "库存紧张，建议尽快下单",
+      "decisionStockLowText": "当前选择仅剩 {count} 件（显示为 {stock}）。"
     },
     "profile": {
       "fetchUserFailed": "用户信息加载失败",
@@ -3231,7 +3292,37 @@
       "petSizeLarge": "大型",
       "shippedAt": "发货时间",
       "birthdayCouponEnabled": "生日券已启用",
-      "petAdded": "宠物档案已添加"
+      "petAdded": "宠物档案已添加",
+      "returnReasonRequired": "请填写退货原因（至少 8 个字符）。",
+      "returnTrackingInvalid": "请输入有效的退货物流单号（字母或数字，至少 6 位）。",
+      "returnStepRequest": "1. 申请",
+      "returnStepReview": "2. 审核",
+      "returnStepShip": "3. 寄回",
+      "returnStepRefund": "4. 退款",
+      "returnTimelineTitle": "退货路径",
+      "returnOrderSummary": "订单 {orderNo} · {amount}",
+      "returnReasonPresetsLabel": "常见原因",
+      "returnReasonPreset": {
+        "damaged": "收到时已损坏",
+        "wrongItem": "发错商品",
+        "notAsDescribed": "与描述不符",
+        "sizeFit": "尺码/适配问题",
+        "changedMind": "不想要了",
+        "other": "其他原因"
+      },
+      "returnShipmentHint": "寄出后填写承运商物流单号。仓库签收后退款流程才会开始。",
+      "returnShipmentStepsTitle": "接下来会发生什么",
+      "paymentReturnCancelled": "支付未完成。已为你打开待支付订单，可继续付款。",
+      "paymentReturnCancelledOrder": "订单 {orderNo} 支付未完成。请在待支付订单中继续付款。",
+      "paymentReturnFailed": "支付失败。已为你打开待支付订单，可重试付款。",
+      "paymentReturnFailedOrder": "订单 {orderNo} 支付失败。请在待支付订单中重试付款。",
+      "paidAt": "支付时间",
+      "paymentRefundedTitle": "退款已完成",
+      "paymentRefundedText": "该笔支付已于 {date} 退款。到账时间通常为 1–5 个工作日，取决于发卡行。",
+      "paymentRefundedNext": "请保留退款记录。若超过 5 个工作日仍未到账，请联系客服。",
+      "paymentRefundingTitle": "退款处理中",
+      "paymentRefundingText": "正在向原支付方式发起退款。网关确认后会在此显示完成时间。",
+      "paymentRefundingNext": "无需额外操作，请关注订单退款状态更新。"
     },
     "brandAdmin": {
       "title": "品牌管理",

@@ -44,8 +44,7 @@ class ProductDiscountQueryContractTest {
                 "Public products must be fetched through the JPA specification and Pageable");
         assertTrue(pageQuery.contains(", pageRequest)"));
         assertTrue(specification.contains("Boolean.TRUE.equals(query.getDiscount())"));
-        assertTrue(specification.contains("criteriaBuilder.greaterThan(root.get(\"discount\"), 0)"));
-        assertTrue(specification.contains("criteriaBuilder.greaterThan(root.get(\"limitedTimePrice\"), BigDecimal.ZERO)"));
+        assertTrue(specification.contains("activeDiscountPredicate(criteriaBuilder, root)"));
     }
 
     private static String read(String path) throws IOException {

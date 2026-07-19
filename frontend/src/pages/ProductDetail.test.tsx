@@ -296,6 +296,19 @@ describe('ProductDetail mobile buybar layout contract', () => {
     expect(fixCss).toMatch(/\.product-detail-tabs \.ant-tabs-tab-active \.ant-tabs-tab-btn[\s\S]*?border-color:\s*#124734\s*!important;[\s\S]*?box-shadow:\s*0 0 0 2px rgba\(18,\s*71,\s*52,\s*0\.14\)\s*!important;/);
   });
 
+  
+  it('keeps product detail conversion low-stock urgency wired', () => {
+    const source = readProductDetailSource();
+    expect(source).toContain("import { conversionConfig, estimatePetSize, getDeliveryPromise, getLowStockCount }");
+    expect(source).toContain('const lowStockCount = getLowStockCount(selectedStock, quantity);');
+    expect(source).toContain('const isLowStock = !isOutOfStock && lowStockCount !== null && lowStockCount > 0;');
+    expect(source).toContain("t('pages.productDetail.lowStockUrgency'");
+    expect(source).toContain("t('pages.productDetail.lowStockUrgencyText'");
+    expect(source).toContain('isOutOfStock || isLowStock');
+    expect(source).toContain("t('pages.productDetail.decisionStockLowTitle')");
+    expect(source).toContain('product-detail__lowStockAlert');
+  });
+
   it('keeps non-critical content scroll warmup fallback cleanup-bound', () => {
     const source = readProductDetailSource();
     const nativeScrollSource = readNativeScrollSource();

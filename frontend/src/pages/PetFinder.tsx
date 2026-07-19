@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Card, Col, Empty, Image, Row, Select, Slider, Space, Spin, Tag, Typography } from 'antd';
+import { Alert, Button, Card, Col, Image, Row, Select, Slider, Space, Spin, Tag, Typography } from 'antd';
 import { FireOutlined, GiftOutlined, ReloadOutlined, SearchOutlined, StarOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { productApi } from '../api';
 import { useLanguage } from '../i18n';
+import { usePageTitle } from '../hooks/usePageTitle';
 import { useMarket } from '../hooks/useMarket';
 import type { ProductPublic as Product } from '../types';
 import { localizeProduct } from '../utils/localizedProduct';
@@ -103,6 +104,7 @@ const isInStock = (product: Product) => product.stock === undefined || product.s
 const PetFinder: React.FC = () => {
   const navigate = useNavigate();
   const { t, language } = useLanguage();
+  usePageTitle(t('pages.petFinder.title'));
   const { formatMoney } = useMarket();
   const stored = useMemo(() => readPreferences(), []);
   const [products, setProducts] = useState<Product[]>([]);

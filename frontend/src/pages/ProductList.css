@@ -7395,3 +7395,10 @@
   gap: 8px;
   justify-content: center;
 }
+
+
+/* COMMERCIAL_PRODUCT_LIST_BREADCRUMB_V1 */
+.product-list > .shop-breadcrumb {
+  margin: 4px 0 14px;
+  padding: 0 2px;
+}

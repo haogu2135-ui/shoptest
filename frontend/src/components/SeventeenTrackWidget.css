@@ -207,3 +207,23 @@
     min-height: 44px;
   }
 }
+
+.seventeen-track-widget__recovery {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+.seventeen-track-widget__recoveryHint {
+  display: block;
+  line-height: 1.45;
+}
+
+.seventeen-track-widget__recoveryActions {
+  width: 100%;
+}
+
+.seventeen-track-widget__recoveryActions .ant-btn {
+  min-height: 36px;
+}

@@ -4,6 +4,7 @@ import { ClockCircleOutlined, DeleteOutlined, FireOutlined, HistoryOutlined, Rel
 import { useNavigate } from 'react-router-dom';
 import { cartApi, productApi } from '../api';
 import { useLanguage } from '../i18n';
+import { usePageTitle } from '../hooks/usePageTitle';
 import { useMarket } from '../hooks/useMarket';
 import type { ProductPublic as Product } from '../types';
 import { localizeProduct } from '../utils/localizedProduct';
@@ -49,6 +50,7 @@ const BrowsingHistory: React.FC = () => {
   const [preferences, setPreferences] = useState(() => loadProductViewPreferences());
   const navigate = useNavigate();
   const { t, language } = useLanguage();
+  usePageTitle(t('pages.browsingHistory.title'));
   const { formatMoney } = useMarket();
   const hasHistory = preferences.recent.length > 0;
   const historyProductName = (product: Pick<Product, 'id' | 'name'>) =>

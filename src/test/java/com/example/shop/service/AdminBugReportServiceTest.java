@@ -57,7 +57,7 @@ class AdminBugReportServiceTest {
 
     @Test
     void searchUsesLightweightListProjectionInsteadOfSelectStar() {
-        when(jdbcTemplate.queryForObject(startsWith("SELECT COUNT(*)"), eq(Long.class)))
+        when(jdbcTemplate.queryForObject(startsWith("SELECT COUNT(*)"), eq(Long.class), any(Object[].class)))
                 .thenReturn(1L);
         when(jdbcTemplate.query(anyString(), any(RowMapper.class), any(), any())).thenReturn(List.of());
 
@@ -76,7 +76,7 @@ class AdminBugReportServiceTest {
 
     @Test
     void searchUsesZeroBasedPageIndexForOffsetsAndResponseMetadata() {
-        when(jdbcTemplate.queryForObject(startsWith("SELECT COUNT(*)"), eq(Long.class)))
+        when(jdbcTemplate.queryForObject(startsWith("SELECT COUNT(*)"), eq(Long.class), any(Object[].class)))
                 .thenReturn(41L);
         when(jdbcTemplate.query(anyString(), any(RowMapper.class), any(), any())).thenReturn(List.of());
 

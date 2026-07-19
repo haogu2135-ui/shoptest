@@ -56,7 +56,8 @@
 }
 
 .checkout-page__validationLiveRegion,
-.checkout-page__statusLiveRegion {
+.checkout-page__statusLiveRegion,
+.checkout-page__fieldErrorDescription {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -3888,5 +3889,107 @@ body.checkout-page-active:not(.checkout-region-cascader-open) .ant-cascader-drop
   .checkout-page__paymentCreateError .ant-alert-action .ant-btn {
     width: 100%;
     min-height: 44px;
+  }
+}
+
+
+/* COMMERCIAL_CHECKOUT_LOADING_SHELL_V1 */
+.checkout-page--loading {
+  position: relative;
+  min-height: min(70vh, 720px);
+  padding: 20px 0 40px;
+}
+
+.checkout-page__loadingShell {
+  display: grid;
+  gap: 16px;
+  width: min(100%, 1080px);
+  margin: 0 auto;
+  padding: 0 12px;
+}
+
+.checkout-page__loadingHero,
+.checkout-page__loadingCard,
+.checkout-page__loadingSummary {
+  border-radius: 18px;
+  background: linear-gradient(90deg, #edf3ef 0%, #f7fbf8 48%, #edf3ef 100%);
+  background-size: 200% 100%;
+}
+
+.checkout-page__loadingHero {
+  min-height: 148px;
+}
+
+.checkout-page__loadingGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: 14px;
+}
+
+.checkout-page__loadingCard {
+  min-height: 220px;
+}
+
+.checkout-page__loadingSummary {
+  min-height: 120px;
+}
+
+.checkout-page__loadingSpinner {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+.checkout-page--error {
+  width: min(100%, 920px);
+  margin: 0 auto;
+  padding: 20px 12px 40px;
+}
+
+.checkout-page__loadError {
+  margin-top: 8px;
+}
+
+@media (max-width: 860px) {
+  .checkout-page__loadingGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .checkout-page__loadingHero {
+    min-height: 120px;
+  }
+
+  .checkout-page__loadingCard {
+    min-height: 160px;
+  }
+}
+
+/* COMMERCIAL_MOBILE_DENSITY_V1 */
+@media (max-width: 420px) {
+  .checkout-page__hero {
+    padding: 12px 12px 10px;
+    gap: 10px;
+  }
+
+  .checkout-page__heroContent h2.ant-typography {
+    font-size: 1.35rem !important;
+    line-height: 1.25 !important;
+    margin-bottom: 4px !important;
+  }
+
+  .checkout-page__heroStat {
+    min-width: 112px;
+    padding: 8px 10px;
+  }
+
+  .checkout-page__sectionCard .ant-card-body {
+    padding: 12px !important;
+  }
+
+  .checkout-page__summaryStripCard {
+    min-width: 124px;
+    padding: 8px 10px;
   }
 }

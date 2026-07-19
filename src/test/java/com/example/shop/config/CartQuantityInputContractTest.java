@@ -18,10 +18,15 @@ class CartQuantityInputContractTest {
                 "className=\"cart-page__quantityInput\"",
                 "<Button\n          size=\"small\"\n          icon={<PlusOutlined />}");
 
-        assertTrue(quantityInput.contains("Math.floor(Number(event.currentTarget.value) || 1)"),
+        boolean floorsViaEventValue = quantityInput.contains("Math.floor(Number(event.currentTarget.value) || 1)");
+        boolean floorsViaNextValue = quantityInput.contains("Math.floor(Number(nextValue) || 1)")
+                && quantityInput.contains("const nextValue = event.currentTarget.value");
+        assertTrue(floorsViaEventValue || floorsViaNextValue,
                 "Quantity input should floor decimal user input before calling updateQuantity");
         assertFalse(quantityInput.contains("updateQuantity(item, Number(event.currentTarget.value) || 1)"),
                 "Quantity input must not dispatch fractional numbers to updateQuantity");
+        assertFalse(quantityInput.contains("updateQuantity(item, Number(nextValue) || 1)"),
+                "Quantity input must not dispatch fractional numbers via nextValue to updateQuantity");
     }
 
     private static String sliceBetween(String source, String startMarker, String endMarker) {

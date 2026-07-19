@@ -1,5 +1,7 @@
 package com.example.shop.service;
 
+import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.stereotype.Service;
 
 import javax.servlet.http.HttpServletRequest;
@@ -8,6 +10,7 @@ import java.net.UnknownHostException;
 import java.util.Arrays;
 
 @Service
+@Slf4j
 public class ClientIpResolver {
     static final String TRUSTED_PROXIES_KEY = "security.client-ip.trusted-proxies";
     private static final String DEFAULT_TRUSTED_PROXIES = "127.0.0.1,::1,0:0:0:0:0:0:0:1";

@@ -1,5 +1,7 @@
 package com.example.shop.service;
 
+import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -9,6 +11,7 @@ import java.util.Locale;
 import java.util.Objects;
 
 @Service
+@Slf4j
 public class CheckoutIdempotencyService {
     private static final int MAX_KEY_LENGTH = 120;
 

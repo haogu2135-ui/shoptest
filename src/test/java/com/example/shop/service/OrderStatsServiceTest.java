@@ -118,24 +118,24 @@ class OrderStatsServiceTest {
     void dashboardOrderStatsMapsAggregateRowsIntoOperationalMetrics() {
         LocalDateTime basis = LocalDateTime.of(2026, 6, 15, 10, 0);
         when(runtimeConfig.getLong("order.dashboard-stats-cache-ms", 5000L)).thenReturn(5000L);
-        when(orderRepository.dashboardOrderStats(basis)).thenReturn(Map.of(
-                "totalOrders", 10L,
-                "paidOrders", 4L,
-                "netRevenue", new BigDecimal("300.00"),
-                "refundedOrders", 2L,
-                "refundedAmount", new BigDecimal("100.00"),
-                "grossOrderAmount", new BigDecimal("700.00"),
-                "cancelledOrders", 1L,
-                "pendingPaymentOrders", 3L,
-                "pendingShipmentOrders", 4L,
-                "shippedOrders", 5L,
-                "ordersWithTracking", 3L,
-                "ordersWithoutTracking", 2L,
-                "completedOrders", 6L,
-                "stalePendingPayment", 1L,
-                "delayedShipment", 2L,
-                "returnAwaitingShipment", 3L,
-                "refundDue", 4L
+        when(orderRepository.dashboardOrderStats(basis)).thenReturn(Map.ofEntries(
+                Map.entry("totalOrders", 10L),
+                Map.entry("paidOrders", 4L),
+                Map.entry("netRevenue", new BigDecimal("300.00")),
+                Map.entry("refundedOrders", 2L),
+                Map.entry("refundedAmount", new BigDecimal("100.00")),
+                Map.entry("grossOrderAmount", new BigDecimal("700.00")),
+                Map.entry("cancelledOrders", 1L),
+                Map.entry("pendingPaymentOrders", 3L),
+                Map.entry("pendingShipmentOrders", 4L),
+                Map.entry("shippedOrders", 5L),
+                Map.entry("ordersWithTracking", 3L),
+                Map.entry("ordersWithoutTracking", 2L),
+                Map.entry("completedOrders", 6L),
+                Map.entry("stalePendingPayment", 1L),
+                Map.entry("delayedShipment", 2L),
+                Map.entry("returnAwaitingShipment", 3L),
+                Map.entry("refundDue", 4L)
         ));
         when(orderRepository.countByStatusGroup()).thenReturn(List.of(Map.of("status", "COMPLETED", "count", 6L)));
         when(orderRepository.findRecentAdminOrders(3)).thenReturn(List.of());

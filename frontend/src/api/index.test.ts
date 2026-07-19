@@ -488,6 +488,46 @@ describe('api parameter normalization', () => {
     expect(config.headers?.Authorization).toBeUndefined();
   });
 
+  it('sends Accept-Language from shop-language for storefront locales', async () => {
+    const cases: Array<[string | null, string]> = [
+      ['zh', 'zh-CN'],
+      ['es', 'es-MX'],
+      ['en', 'en-US'],
+      [null, 'en-US'],
+      ['fr', 'en-US'],
+    ];
+
+    for (const [language, expected] of cases) {
+      jest.resetModules();
+      mockRequestInterceptorFulfilled = undefined;
+      clearLocalStorage();
+      if (language) {
+        window.localStorage.setItem('shop-language', language);
+      }
+
+      require('./index');
+
+      const config = await mockRequestInterceptorFulfilled!({ url: '/orders', headers: { Accept: 'application/json' } });
+      expect(config.headers).toEqual(expect.objectContaining({
+        Accept: 'application/json',
+        'Accept-Language': expected,
+      }));
+    }
+  });
+
+  it('keeps Accept-Language wiring in the request interceptor source contract', () => {
+    const source = readApiSource();
+    expect(source).toContain("const SHOP_LANGUAGE_STORAGE_KEY = 'shop-language'");
+    expect(source).toContain('const resolveAcceptLanguageHeader');
+    expect(source).toContain('const applyAcceptLanguageHeader');
+    expect(source).toContain("setHeader.call(headers, 'Accept-Language', acceptLanguage)");
+    expect(source).toContain("'Accept-Language': acceptLanguage");
+    expect(source).toContain('applyAcceptLanguageHeader(authConfig)');
+    expect(source).toContain("return 'zh-CN'");
+    expect(source).toContain("return 'es-MX'");
+    expect(source).toContain("return 'en-US'");
+  });
+
   it('clears auth storage when a 401 cannot be refreshed', async () => {
     jest.resetModules();
     window.history.pushState({}, '', '/profile?tab=orders#latest');

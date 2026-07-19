@@ -1,6 +1,6 @@
 import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Row, Col, Card, Button, Tag, Typography, Radio, Rate, Carousel, Modal, Space, Breadcrumb, Tabs, message, List, Input, Segmented, Empty, Alert } from 'antd';
+import { Row, Col, Card, Button, Tag, Typography, Radio, Rate, Carousel, Modal, Space, Breadcrumb, Tabs, message, List, Input, Segmented, Alert } from 'antd';
 import { BarChartOutlined, HomeOutlined, ShoppingCartOutlined, HeartOutlined, HeartFilled, CheckCircleOutlined, TruckOutlined, SafetyCertificateOutlined, ThunderboltOutlined, BellOutlined, MinusOutlined, PlusOutlined, EllipsisOutlined } from '@ant-design/icons';
 import { productApi, cartApi, reviewApi, wishlistApi, questionApi } from '../api';
 import { useNavigate } from 'react-router-dom';
@@ -13,7 +13,7 @@ import { addGuestCartItem } from '../utils/guestCart';
 import { getBundleInfo } from '../utils/bundle';
 import { recordProductView } from '../utils/productViewPreferences';
 import { addStockAlert, hasStockAlert, removeStockAlert } from '../utils/stockAlerts';
-import { conversionConfig, estimatePetSize, getDeliveryPromise } from '../utils/conversionConfig';
+import { conversionConfig, estimatePetSize, getDeliveryPromise, getLowStockCount } from '../utils/conversionConfig';
 import { getProductOptionGroups, getProductVariants, needsOptionSelection, optionValueIsCompatible, selectCompatibleProductOption, variantMatchesSelectedOptions } from '../utils/productOptions';
 import { clearCheckoutCartItemIds, syncCheckoutCartItemIds } from '../utils/cartSession';
 import { dispatchDomEvent } from '../utils/domEvents';
@@ -636,6 +636,8 @@ const ProductDetail: React.FC = () => {
       window.clearTimeout(fallbackTimer);
       observer?.disconnect();
     };
+  // Intentionally omit `t`: its identity can change every render and retriggers product/session resets.
+  // language/id/reloadToken cover localization reloads without unstable translator identity.
   }, [authSessionVersion, id, language, reloadToken, warmNonCriticalContent]);
 
   useEffect(() => {
@@ -943,6 +945,11 @@ const ProductDetail: React.FC = () => {
   const selectedStock = currentStock;
   const isOutOfStock = selectedStock !== undefined && selectedStock <= 0;
   const stockLabel = selectedStock !== undefined ? selectedStock : t('pages.productDetail.enough');
+  const lowStockCount = getLowStockCount(selectedStock, quantity);
+  const isLowStock = !isOutOfStock && lowStockCount !== null && lowStockCount > 0;
+  const lowStockUrgencyLabel = isLowStock
+    ? t('pages.productDetail.lowStockUrgency', { count: lowStockCount })
+    : '';
   const displayedRating = Number(averageRating || product.averageRating || 0);
   const activePrice = selectedVariant?.price ?? product.effectivePrice ?? product.price;
   const displayPrice = purchaseMode === 'bundle' && bundleInfo ? bundleInfo.price : activePrice;
@@ -1070,11 +1077,17 @@ const ProductDetail: React.FC = () => {
     {
       key: 'stock',
       icon: <SafetyCertificateOutlined />,
-      ready: !isOutOfStock,
-      title: isOutOfStock ? t('pages.productDetail.decisionStockOutTitle') : t('pages.productDetail.decisionStockReadyTitle'),
+      ready: !isOutOfStock && !isLowStock,
+      title: isOutOfStock
+        ? t('pages.productDetail.decisionStockOutTitle')
+        : isLowStock
+          ? t('pages.productDetail.decisionStockLowTitle')
+          : t('pages.productDetail.decisionStockReadyTitle'),
       text: isOutOfStock
         ? t('pages.productDetail.decisionStockOutText')
-        : t('pages.productDetail.decisionStockReadyText', { stock: stockLabel }),
+        : isLowStock
+          ? t('pages.productDetail.decisionStockLowText', { count: lowStockCount, stock: stockLabel })
+          : t('pages.productDetail.decisionStockReadyText', { stock: stockLabel }),
     },
     {
       key: 'delivery',
@@ -1192,10 +1205,12 @@ const ProductDetail: React.FC = () => {
       ? t('pages.productDetail.selectedVariantUnavailable')
       : optionsMissing
         ? t('pages.productDetail.decisionOptionsMissingText')
-        : t('pages.productDetail.decisionReady');
+        : isLowStock
+          ? lowStockUrgencyLabel
+          : t('pages.productDetail.decisionReady');
   const mobileBuybarPrice = formatMoney(displayPrice);
   const mobileBuybarStatus = mobilePurchaseStatus;
-  const shouldShowDecisionChecklist = optionsMissing || hasUnavailableSelectedVariant || isOutOfStock;
+  const shouldShowDecisionChecklist = optionsMissing || hasUnavailableSelectedVariant || isOutOfStock || isLowStock;
   const purchaseReadinessItems = [
     {
       key: 'selection',
@@ -1217,11 +1232,17 @@ const ProductDetail: React.FC = () => {
     {
       key: 'stock',
       icon: <SafetyCertificateOutlined />,
-      ready: !isOutOfStock,
-      title: isOutOfStock ? t('pages.productDetail.decisionStockOutTitle') : t('pages.productDetail.decisionStockReadyTitle'),
+      ready: !isOutOfStock && !isLowStock,
+      title: isOutOfStock
+        ? t('pages.productDetail.decisionStockOutTitle')
+        : isLowStock
+          ? t('pages.productDetail.decisionStockLowTitle')
+          : t('pages.productDetail.decisionStockReadyTitle'),
       text: isOutOfStock
         ? t('pages.productDetail.decisionStockOutText')
-        : t('pages.productDetail.decisionStockReadyText', { stock: stockLabel }),
+        : isLowStock
+          ? t('pages.productDetail.decisionStockLowText', { count: lowStockCount, stock: stockLabel })
+          : t('pages.productDetail.decisionStockReadyText', { stock: stockLabel }),
     },
     {
       key: 'delivery',
@@ -1572,7 +1593,10 @@ const ProductDetail: React.FC = () => {
                   </div>
 
 	                  <div className="product-compact-signals">
-	                    <span>{t('pages.productDetail.stock')}: {stockLabel}</span>
+	                    <span className={isLowStock ? 'product-detail__stockMeta product-detail__stockMeta--low' : 'product-detail__stockMeta'}>
+                      {t('pages.productDetail.stock')}: {stockLabel}
+                      {isLowStock ? <Tag color="orange">{lowStockUrgencyLabel}</Tag> : null}
+                    </span>
 	                    {priceSavingsAmount > 0 ? <span>{t('pages.productDetail.purchaseSavings')}: <span className="commerce-money">{formatMoney(priceSavingsAmount * quantity)}</span></span> : null}
 	                  </div>
 	                </div>
@@ -1978,6 +2002,15 @@ const ProductDetail: React.FC = () => {
                   </details>
                 ) : null}
 
+                {isLowStock ? (
+                  <Alert
+                    className="product-detail__lowStockAlert"
+                    type="warning"
+                    showIcon
+                    message={lowStockUrgencyLabel}
+                    description={t('pages.productDetail.lowStockUrgencyText', { count: lowStockCount })}
+                  />
+                ) : null}
                 {isOutOfStock && (
                   <Space wrap>
                     <Tag color="red" style={{ fontSize: 16, padding: '4px 12px' }}>{t('pages.productDetail.soldOut')}</Tag>

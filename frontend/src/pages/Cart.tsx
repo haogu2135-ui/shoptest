@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Button, Card, Checkbox, Empty, message, Popconfirm, Progress, Space, Table, Tag, Typography } from 'antd';
 import { CheckCircleOutlined, ClockCircleOutlined, DeleteOutlined, ExclamationCircleOutlined, MinusOutlined, PlusOutlined, ReloadOutlined, ShoppingCartOutlined, ShoppingOutlined } from '@ant-design/icons';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { cartApi, productApi } from '../api';
 import type { CartItem, ProductPublic as Product } from '../types';
 import { useLanguage } from '../i18n';
@@ -40,6 +40,7 @@ import {
 } from '../utils/cartUi';
 import { dispatchDomEvent } from '../utils/domEvents';
 import PageError from '../components/PageError';
+import ShopBreadcrumb from '../components/ShopBreadcrumb';
 import { reportNonBlockingError } from '../utils/nonBlockingError';
 import { getLocalStorageItem, removeSessionStorageItem } from '../utils/safeStorage';
 import { allSettledWithConcurrency } from '../utils/asyncBatch';
@@ -188,6 +189,23 @@ const Cart: React.FC = () => {
   const mountedRef = useRef(true);
   const cartSnapshotRequestRef = useRef(0);
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const paymentReturnStatus = String(searchParams.get('payment') || '').trim().toLowerCase();
+  const paymentReturnOrderNo = String(searchParams.get('orderNo') || searchParams.get('order') || '').trim();
+  const paymentReturnIncomplete = paymentReturnStatus === 'cancelled'
+    || paymentReturnStatus === 'canceled'
+    || paymentReturnStatus === 'failed';
+  const clearPaymentReturnParams = useCallback(() => {
+    if (!searchParams.has('payment') && !searchParams.has('orderNo') && !searchParams.has('order') && !searchParams.has('orderId')) {
+      return;
+    }
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete('payment');
+    nextParams.delete('orderNo');
+    nextParams.delete('order');
+    nextParams.delete('orderId');
+    setSearchParams(nextParams, { replace: true });
+  }, [searchParams, setSearchParams]);
   const { t, language } = useLanguage();
   usePageTitle(t('pages.cart.title'));
   const { currency, market, formatMoney } = useMarket();
@@ -226,8 +244,8 @@ const Cart: React.FC = () => {
 
   const fetchCartItems = useCallback(async () => {
     if (!mountedRef.current) return;
-    const requestId = beginCartSnapshotRequest();
     const authenticated = hasAuthenticatedCartSession();
+    const requestId = beginCartSnapshotRequest();
     if (!authenticated) {
       const guestItems = normalizeCartItems(getGuestCartItems());
       if (!isCurrentCartSnapshotRequest(requestId)) return;
@@ -238,21 +256,23 @@ const Cart: React.FC = () => {
       setLoadErrorMessage(null);
       setCartItems(guestItems);
       setSelectedIds(guestItems.filter(canCheckout).map((item) => item.id));
-      setLoading(false);
+      if (mountedRef.current) setLoading(false);
       return;
     }
     try {
       setLoadError(false);
       setLoadErrorMessage(null);
       const response = await cartApi.getItems(0);
-      if (!isCurrentCartSnapshotRequest(requestId)) return;
+      if (!mountedRef.current) return;
       const nextItems = normalizeCartItems(response.data);
+      if (!isCurrentCartSnapshotRequest(requestId)) return;
       if (nextItems.length === 0) {
         resetCheckoutStateAfterCartMutation();
       }
       setCartItems(nextItems);
       setSelectedIds(nextItems.filter(canCheckout).map((item) => item.id));
     } catch (error: unknown) {
+      if (!mountedRef.current) return;
       if (!isCurrentCartSnapshotRequest(requestId)) return;
       if (isAuthExpiredError(error)) {
         const guestItems = normalizeCartItems(getGuestCartItems());
@@ -270,7 +290,9 @@ const Cart: React.FC = () => {
         message.error(errorMessage);
       }
     } finally {
-      if (isCurrentCartSnapshotRequest(requestId)) setLoading(false);
+      if (isCurrentCartSnapshotRequest(requestId)) {
+        if (mountedRef.current) setLoading(false);
+      }
     }
   }, [beginCartSnapshotRequest, isCurrentCartSnapshotRequest, resetCheckoutStateAfterCartMutation]);
 
@@ -421,7 +443,7 @@ const Cart: React.FC = () => {
       }
       setCartItems(guestItems);
       setSelectedIds(guestItems.filter(canCheckout).map((item) => item.id));
-      setLoading(false);
+      if (mountedRef.current) setLoading(false);
     };
     window.addEventListener('shop:save-for-later-updated', refreshSavedItems);
     window.addEventListener('storage', refreshCartStorage);
@@ -768,7 +790,6 @@ const Cart: React.FC = () => {
 
   const freeShippingThreshold = market.freeShippingThreshold;
   const {
-    shippingSummary,
     freeShippingRemaining,
     freeShippingUnlocked,
     benefitTarget,
@@ -1185,6 +1206,95 @@ const Cart: React.FC = () => {
     },
   ];
 
+  const paymentCancelledResumeLabel = paymentReturnOrderNo
+    ? `${t('pages.cart.paymentCancelledResume')}: ${paymentReturnOrderNo}`
+    : t('pages.cart.paymentCancelledResume');
+  const paymentCancelledTrackLabel = paymentReturnOrderNo
+    ? `${t('pages.cart.paymentCancelledTrack')}: ${paymentReturnOrderNo}`
+    : t('pages.cart.paymentCancelledTrack');
+  const paymentCancelledCheckoutLabel = t('pages.cart.checkout');
+
+  const paymentReturnBanner = paymentReturnIncomplete ? (
+        <Alert
+          className="cart-page__paymentReturn"
+          type={paymentReturnStatus === 'failed' ? 'error' : 'warning'}
+          showIcon
+          closable
+          onClose={clearPaymentReturnParams}
+          message={paymentReturnStatus === 'failed'
+            ? t('pages.cart.paymentFailedTitle')
+            : t('pages.cart.paymentCancelledTitle')}
+          description={paymentReturnOrderNo
+            ? t(
+              paymentReturnStatus === 'failed'
+                ? 'pages.cart.paymentFailedOrderText'
+                : 'pages.cart.paymentCancelledOrderText',
+              { orderNo: paymentReturnOrderNo },
+            )
+            : t(
+              paymentReturnStatus === 'failed'
+                ? 'pages.cart.paymentFailedText'
+                : 'pages.cart.paymentCancelledText',
+            )}
+          action={(
+            <Space className="cart-page__paymentReturnActions" wrap>
+              <Button
+                type="primary"
+                size="small"
+                aria-label={paymentCancelledResumeLabel}
+                title={paymentCancelledResumeLabel}
+                onClick={() => {
+                  clearPaymentReturnParams();
+                  navigate(paymentReturnOrderNo
+                    ? `/profile?tab=orders&orderNo=${encodeURIComponent(paymentReturnOrderNo)}`
+                    : '/profile?tab=orders');
+                }}
+              >
+                {t('pages.cart.paymentCancelledResume')}
+              </Button>
+              {paymentReturnOrderNo ? (
+                <Button
+                  size="small"
+                  aria-label={paymentCancelledTrackLabel}
+                  title={paymentCancelledTrackLabel}
+                  onClick={() => {
+                    clearPaymentReturnParams();
+                    navigate(`/track-order?orderNo=${encodeURIComponent(paymentReturnOrderNo)}`);
+                  }}
+                >
+                  {t('pages.cart.paymentCancelledTrack')}
+                </Button>
+              ) : null}
+              {cartItems.length > 0 ? (
+                <Button
+                  size="small"
+                  aria-label={paymentCancelledCheckoutLabel}
+                  title={paymentCancelledCheckoutLabel}
+                  onClick={() => {
+                    clearPaymentReturnParams();
+                    navigate('/checkout');
+                  }}
+                >
+                  {t('pages.cart.checkout')}
+                </Button>
+              ) : (
+                <Button
+                  size="small"
+                  aria-label={t('pages.cart.browse')}
+                  title={t('pages.cart.browse')}
+                  onClick={() => {
+                    clearPaymentReturnParams();
+                    navigate('/products');
+                  }}
+                >
+                  {t('pages.cart.browse')}
+                </Button>
+              )}
+            </Space>
+          )}
+        />
+      ) : null;
+
   if (loading) {
     return (
       <div className={`cart-page cart-page--${language}`} role="status" aria-live="polite" aria-busy="true" aria-label={t('common.loading')}>
@@ -1215,6 +1325,15 @@ const Cart: React.FC = () => {
   if (!loading && loadError && cartItems.length === 0) {
     return (
       <div className={`cart-page cart-page--empty cart-page--${language}`}>
+        <ShopBreadcrumb
+          ariaLabel={t('pages.cart.title')}
+          items={[
+            { key: 'home', label: t('nav.ariaHome'), path: '/' },
+            { key: 'products', label: t('pages.productList.title'), path: '/products' },
+            { key: 'cart', label: t('pages.cart.title') },
+          ]}
+        />
+        {paymentReturnBanner}
         <PageError
           className="cart-page__loadError"
           title={t('messages.loadFailed')}
@@ -1231,6 +1350,15 @@ const Cart: React.FC = () => {
   if (!loading && cartItems.length === 0 && savedItems.length === 0 && recentProducts.length === 0) {
     return (
       <div className={`cart-page cart-page--empty cart-page--${language}`}>
+        <ShopBreadcrumb
+          ariaLabel={t('pages.cart.title')}
+          items={[
+            { key: 'home', label: t('nav.ariaHome'), path: '/' },
+            { key: 'products', label: t('pages.productList.title'), path: '/products' },
+            { key: 'cart', label: t('pages.cart.title') },
+          ]}
+        />
+        {paymentReturnBanner}
         <section className="cart-page__emptyHero" aria-label={t('pages.cart.empty')}>
           <span className="cart-page__emptyIcon">
             <ShoppingCartOutlined />
@@ -1279,6 +1407,15 @@ const Cart: React.FC = () => {
 
   return (
     <div className={`cart-page cart-page--${language}`}>
+      <ShopBreadcrumb
+        ariaLabel={t('pages.cart.title')}
+        items={[
+          { key: 'home', label: t('nav.ariaHome'), path: '/' },
+          { key: 'products', label: t('pages.productList.title'), path: '/products' },
+          { key: 'cart', label: t('pages.cart.title') },
+        ]}
+      />
+      {paymentReturnBanner}
       <section className="cart-page__hero">
         <div className="cart-page__heroContent">
           <span className="cart-page__heroEyebrow">{t('pages.cart.nextActionEyebrow')}</span>

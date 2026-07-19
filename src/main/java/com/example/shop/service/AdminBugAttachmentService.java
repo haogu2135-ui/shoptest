@@ -1,5 +1,6 @@
 package com.example.shop.service;
 
+import lombok.extern.slf4j.Slf4j;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
@@ -17,6 +18,7 @@ import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AdminBugAttachmentService {
     private static final String PUBLIC_ATTACHMENT_PATH = "/api/admin/bugs/attachments";
     private static final Set<String> SUPPORTED_IMAGE_CONTENT_TYPES = Set.of(

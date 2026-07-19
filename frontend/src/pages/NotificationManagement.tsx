@@ -4,6 +4,7 @@ import { CheckCircleOutlined, LinkOutlined, NotificationOutlined, ReloadOutlined
 import { adminApi } from '../api';
 import { useLanguage } from '../i18n';
 import { stripUnsafeHtml } from '../utils/sanitizeHtml';
+import { reportNonBlockingError } from '../utils/nonBlockingError';
 import { dispatchDomEvent } from '../utils/domEvents';
 import { getApiErrorMessage } from '../utils/apiError';
 import { NOTIFICATIONS_BROADCAST_PERMISSION, getEffectiveRole, hasAdminPermission } from '../utils/roles';
@@ -40,7 +41,8 @@ const NotificationManagement: React.FC = () => {
       setCurrentRole(getEffectiveRole(response.data.role, response.data.roleCode));
       setAdminPermissions(response.data.permissions || []);
       setPermissionStatus('ready');
-    } catch {
+    } catch (error) {
+      reportNonBlockingError('NotificationManagement.loadPermissions', error);
       setCurrentRole('');
       setAdminPermissions([]);
       setPermissionStatus('error');
@@ -57,8 +59,9 @@ const NotificationManagement: React.FC = () => {
         setAdminPermissions(response.data.permissions || []);
         setPermissionStatus('ready');
       })
-      .catch(() => {
+      .catch((error) => {
         if (disposed) return;
+        reportNonBlockingError('NotificationManagement.loadPermissionsEffect', error);
         setCurrentRole('');
         setAdminPermissions([]);
         setPermissionStatus('error');

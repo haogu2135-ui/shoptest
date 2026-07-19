@@ -2,6 +2,7 @@ package com.example.shop.service;
 
 import com.example.shop.config.PaymentChannelConfig;
 import com.example.shop.util.GatewayUrlValidator;
+import lombok.extern.slf4j.Slf4j;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -11,6 +12,7 @@ import java.util.Locale;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class PaymentChannelAvailabilityService {
     private static final String DEFAULT_STOREFRONT_BASE_URL = "https://pet.686888666.xyz";
     private final PaymentChannelConfig paymentChannelConfig;
@@ -45,7 +47,7 @@ public class PaymentChannelAvailabilityService {
                     || isProductionGatewayUrl(channelConfig.getRefundUrl());
         }
         if (channelConfig.isGenericRedirectProvider()) {
-            String providerCheckoutUrl = channelConfig.getCheckoutUrl();
+            String providerCheckoutUrl = firstNonBlank(channelConfig.getCheckoutUrl(), paymentChannelConfig.getCheckoutBaseUrl());
             return !containsPlaceholderGatewayHost(providerCheckoutUrl) && isProductionGatewayUrl(providerCheckoutUrl);
         }
         String configuredUrl = firstNonBlank(channelConfig.getCheckoutUrl(), paymentChannelConfig.getCheckoutBaseUrl());
@@ -101,7 +103,7 @@ public class PaymentChannelAvailabilityService {
     private String stripeCancelUrl() {
         return firstNonBlank(
                 runtimeConfig.getString("stripe.checkout-cancel-url", ""),
-                storefrontBaseUrl() + "/cart?payment=cancelled");
+                storefrontBaseUrl() + "/profile?payment=cancelled");
     }
 
     private String firstNonBlank(String... values) {

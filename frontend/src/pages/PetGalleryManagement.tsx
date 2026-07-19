@@ -198,7 +198,7 @@ const PetGalleryManagement: React.FC = () => {
     } finally {
       setDeletingId(null);
     }
-  }, [canDeletePhotos, fetchPhotos, language, pageState.page, pageState.size, t]);
+  }, [canDeletePhotos, fetchPhotos, galleryActionDisabled, galleryActionUnavailableMessage, language, pageState.page, pageState.size, t]);
 
   const handleTableChange = useCallback((pagination: TablePaginationConfig) => {
     const nextPage = pagination.current || 1;

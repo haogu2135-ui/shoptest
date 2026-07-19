@@ -11,6 +11,7 @@ import com.example.shop.entity.UserCoupon;
 import com.example.shop.repository.CouponRepository;
 import com.example.shop.repository.UserCouponMapper;
 import com.example.shop.repository.UserMapper;
+import lombok.extern.slf4j.Slf4j;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DuplicateKeyException;
@@ -33,6 +34,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class CouponService {
     private static final String UNUSED = "UNUSED";
     private static final String FULL_REDUCTION = "FULL_REDUCTION";

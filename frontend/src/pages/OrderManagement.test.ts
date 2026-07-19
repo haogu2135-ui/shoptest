@@ -79,4 +79,27 @@ describe('OrderManagement modal evidence guards', () => {
     expect(f3537Css).toMatch(/body \.order-management-page__carrierPopup\.shop-mobile-popup-layer\.ant-select-dropdown\s*\{[\s\S]*?max-width:\s*calc\(100vw - 16px\)\s*!important;[\s\S]*?max-height:\s*min\(300px,\s*calc\(100dvh - 24px - env\(safe-area-inset-top,\s*0px\) - env\(safe-area-inset-bottom,\s*0px\)\)\)\s*!important;[\s\S]*?pointer-events:\s*auto\s*!important;/);
     expect(f3537Css).toMatch(/body \.order-management-page__carrierPopup\.shop-mobile-popup-layer\.ant-select-dropdown \.ant-select-item-option-content\s*\{[\s\S]*?white-space:\s*normal\s*!important;[\s\S]*?overflow-wrap:\s*anywhere\s*!important;[\s\S]*?word-break:\s*break-word\s*!important;/);
   });
+
+  it('requires refund reason confirmation and offers reason presets before issuing refunds', () => {
+    const pageSource = require('fs').readFileSync(require('path').resolve(__dirname, 'OrderManagement.tsx'), 'utf8');
+    expect(pageSource).toContain('REFUND_REASON_PRESET_KEYS');
+    expect(pageSource).toContain('const [refundConfirmed, setRefundConfirmed] = useState(false);');
+    expect(pageSource).toContain("t('pages.adminOrders.refundConfirmAcknowledge'");
+    expect(pageSource).toContain("t('pages.adminOrders.refundConfirmRequired')");
+    expect(pageSource).toContain('!refundReason.trim() || !refundConfirmed');
+    expect(pageSource).toContain('order-management-page__refundReasonPresets');
+  });
+
+
+  it('prioritizes after-sales queues and exposes one-click next-action CTAs', () => {
+    const pageSource = require('fs').readFileSync(require('path').resolve(__dirname, 'OrderManagement.tsx'), 'utf8');
+    expect(pageSource).toContain('const displayOrders = prioritizeAfterSalesQueue');
+    expect(pageSource).toContain('AFTER_SALES_STATUS_PRIORITY');
+    expect(pageSource).toContain('runPrimaryNextAction');
+    expect(pageSource).toContain('order-management-page__afterSalesBreakdown');
+    expect(pageSource).toContain("t('pages.adminOrders.afterSalesQueuePriorityHint')");
+    expect(pageSource).toContain("t('pages.adminOrders.nextActionRefundCta')");
+    expect(pageSource).toContain('dataSource={displayOrders}');
+  });
+
 });

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Button, Empty, Modal, Popconfirm, Skeleton, Space, Statistic, Typography, message } from 'antd';
+import { Alert, Button, Modal, Popconfirm, Skeleton, Space, Statistic, Typography, message } from 'antd';
 import {
   CameraOutlined,
   DeleteOutlined,
@@ -14,6 +14,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { petGalleryApi } from '../api';
 import { useLanguage } from '../i18n';
+import { usePageTitle } from '../hooks/usePageTitle';
 import { buildLoginUrlFromWindow } from '../utils/authRedirect';
 import type { PetGalleryPhotoPublic, PetGalleryQuota } from '../types';
 import { buildResponsiveImageSrcSet, getOptimizedImageUrl, imageFallbacks, resolveApiAssetUrl } from '../utils/mediaAssets';
@@ -83,6 +84,7 @@ const usePetGalleryImageFallback = (event: React.SyntheticEvent<HTMLImageElement
 const PetGallery: React.FC = () => {
   const navigate = useNavigate();
   const { t, language } = useLanguage();
+  usePageTitle(t('pages.petGallery.title'));
   const uploadInputRef = useRef<HTMLInputElement>(null);
   const [photos, setPhotos] = useState<PetGalleryPhotoPublic[]>([]);
   const [quota, setQuota] = useState<PetGalleryQuota | null>(null);
@@ -165,7 +167,7 @@ const PetGallery: React.FC = () => {
     const activeMembers = Math.max(0, new Set(liveItems.map((item) => item.label.toLowerCase())).size);
     const featuredMoments = photos.filter((photo) => isWithinDays(photo.createdAt, 7)).length;
     return { totalLikes, likedByMe, topMoment, communityMoments, activeMembers, featuredMoments };
-  }, [items.length, liveItems, photos]);
+  }, [liveItems, photos]);
   const lastUpdated = useMemo(() => lastUpdatedAt.toLocaleTimeString(language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US', {
     hour: '2-digit',
     minute: '2-digit',

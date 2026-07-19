@@ -671,3 +671,33 @@
     line-height: 1.25;
   }
 }
+
+.system-monitor__paymentChannelChecklist {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.system-monitor__paymentChannelList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.system-monitor__paymentChannelItem {
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: #fafbfc;
+}
+
+.system-monitor__paymentChannelItem--ready {
+  border-color: rgba(31, 138, 76, 0.28);
+  background: rgba(31, 138, 76, 0.04);
+}
+
+.system-monitor__paymentChannelItem--blocked {
+  border-color: rgba(207, 19, 34, 0.22);
+  background: rgba(207, 19, 34, 0.04);
+}

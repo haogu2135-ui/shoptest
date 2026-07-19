@@ -2,6 +2,7 @@ package com.example.shop.service;
 
 import com.example.shop.security.JwtService;
 import com.example.shop.security.UserDetailsImpl;
+import lombok.extern.slf4j.Slf4j;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -12,6 +13,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class SupportWebSocketTicketService {
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
     private static final int TICKET_BYTES = 32;

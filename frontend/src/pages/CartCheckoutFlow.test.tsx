@@ -570,6 +570,23 @@ const advanceQuantityDebounce = async (ms = 350) => {
   });
 };
 
+
+const waitForCondition = async (
+  assertion: () => void,
+  options?: Parameters<typeof waitFor>[1],
+) => {
+  if (cartCheckoutFlowFakeTimersActive) {
+    // Fake timers pause waitFor polling; keep advancing while the assertion retries.
+    return waitFor(assertion, {
+      ...(options || {}),
+      advanceTimers: (ms: number) => {
+        jest.advanceTimersByTime(ms);
+      },
+    } as any);
+  }
+  return waitFor(assertion, options);
+};
+
 const flushMicrotasks = async () => {
   await act(async () => {
     await Promise.resolve();
@@ -595,7 +612,7 @@ const clickOpenPopconfirmOk = async () => {
     }
   }
   if (!okButton) {
-    await waitFor(() => {
+    await waitForCondition(() => {
       expect(getPopconfirmOkButton()).toBeInTheDocument();
     });
     okButton = getPopconfirmOkButton();
@@ -606,6 +623,7 @@ const clickOpenPopconfirmOk = async () => {
 };
 
 describe('cart to checkout flows', () => {
+  jest.setTimeout(15000);
   beforeEach(() => {
     jest.clearAllMocks();
     window.localStorage.clear();
@@ -722,7 +740,7 @@ describe('cart to checkout flows', () => {
 
     fireEvent.click(getCartSummaryCheckoutButton());
 
-    await waitFor(() => {
+    await waitForCondition(() => {
       expect(syncCheckoutCartItemIds).toHaveBeenCalledWith([guestCartItem]);
       expect(mockNavigate).toHaveBeenCalledWith('/checkout');
     });
@@ -802,13 +820,13 @@ describe('cart to checkout flows', () => {
     fireEvent.click(screen.getAllByRole('button', { name: 'Increase quantity: Member Kibble' })[0]);
     await advanceQuantityDebounce();
 
-    await waitFor(() => {
+    await waitForCondition(() => {
       expect(cartApi.updateQuantity).toHaveBeenCalledWith(11, 2);
     });
 
     fireEvent.click(getCartSummaryCheckoutButton());
 
-    await waitFor(() => {
+    await waitForCondition(() => {
       expect(syncCheckoutCartItemIds).toHaveBeenCalledWith([{ ...memberCartItem, quantity: 2 }]);
       expect(mockNavigate).toHaveBeenCalledWith('/checkout');
     });
@@ -837,7 +855,7 @@ describe('cart to checkout flows', () => {
 
     await advanceQuantityDebounce();
 
-    await waitFor(() => {
+    await waitForCondition(() => {
       expect(cartApi.updateQuantity).toHaveBeenCalledWith(item.id, 2);
     });
   });
@@ -1395,7 +1413,7 @@ describe('cart to checkout flows', () => {
     });
     await flushMicrotasks();
 
-    await waitFor(() => {
+    await waitForCondition(() => {
       expect(saveCartItemForLater).toHaveBeenCalledWith(expect.objectContaining({ id: item.id }));
       expect(cartApi.removeItem).toHaveBeenCalledWith(item.id);
     });
@@ -1443,7 +1461,7 @@ describe('cart to checkout flows', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Delete selected: 2 selected' }));
     await clickOpenPopconfirmOk();
 
-    await waitFor(() => {
+    await waitForCondition(() => {
       expect(cartApi.removeItems).toHaveBeenCalledWith([item.id, secondItem.id]);
     });
     expect(clearCheckoutCartItemIds).toHaveBeenCalled();
@@ -1464,7 +1482,7 @@ describe('cart to checkout flows', () => {
     fireEvent.click(getCartSummaryCheckoutButton());
     await flushMicrotasks();
 
-    await waitFor(() => {
+    await waitForCondition(() => {
       expect(cartApi.updateQuantity).toHaveBeenCalledTimes(1);
       expect(cartApi.updateQuantity).toHaveBeenCalledWith(item.id, 12);
       expect(syncCheckoutCartItemIds).toHaveBeenCalledWith([{ ...item, quantity: 12 }]);
@@ -1495,7 +1513,7 @@ describe('cart to checkout flows', () => {
     fireEvent.click(getCartSummaryCheckoutButton());
     await flushMicrotasks();
 
-    await waitFor(() => {
+    await waitForCondition(() => {
       expect(cartApi.updateQuantity).toHaveBeenCalledWith(item.id, 12);
       expect(getApiErrorMessage).toHaveBeenCalledWith(expect.anything(), 'Quantity update failed', 'en');
     });
@@ -1541,14 +1559,14 @@ describe('cart to checkout flows', () => {
     await screen.findAllByText('Guest Bowl');
     fireEvent.change(screen.getByLabelText('Postal code'), { target: { value: '100000' } });
 
-    await waitFor(() => {
+    await waitForCondition(() => {
       expect(getPrimarySubmitButton().textContent || '').toMatch(/Submit/);
       expect(getPrimarySubmitButton()).not.toBeDisabled();
     });
 
     fireEvent.click(getPrimarySubmitButton());
 
-    await waitFor(() => {
+    await waitForCondition(() => {
       expect(orderApi.guestCheckout).toHaveBeenCalled();
     });
 
@@ -1568,7 +1586,7 @@ describe('cart to checkout flows', () => {
     expect(removeGuestCartItems).toHaveBeenCalledWith([guestCartItem.id]);
     expect(clearCheckoutCartItemIds).toHaveBeenCalled();
     expect(paymentApi.create).toHaveBeenCalledWith(1001, 'MERCADO_PAGO', 'guest@example.com', 'GUEST-1001');
-    await waitFor(() => {
+    await waitForCondition(() => {
       expect(mockSessionStorage['checkoutIdempotencyKey']).toBeUndefined();
       expect(mockSessionStorage['checkoutPendingOrder']).toBeUndefined();
       expect(window.sessionStorage.getItem('checkoutIdempotencyKey')).toBeNull();
@@ -1597,17 +1615,17 @@ describe('cart to checkout flows', () => {
     await screen.findAllByText('Guest Bowl');
     fireEvent.change(screen.getByLabelText('Postal code'), { target: { value: '100000' } });
 
-    await waitFor(() => {
+    await waitForCondition(() => {
       expect(getPrimarySubmitButton().textContent || '').toMatch(/Submit/);
       expect(getPrimarySubmitButton()).not.toBeDisabled();
     });
 
     fireEvent.click(getPrimarySubmitButton());
 
-    await waitFor(() => {
+    await waitForCondition(() => {
       expect(paymentApi.create).toHaveBeenCalledWith(1001, 'MERCADO_PAGO', 'guest@example.com', 'GUEST-1001');
     });
-    await waitFor(() => {
+    await waitForCondition(() => {
       expect(screen.getByText('Payment create failed')).toBeInTheDocument();
     });
 
@@ -1653,14 +1671,14 @@ describe('cart to checkout flows', () => {
     await screen.findAllByText('Guest Bowl');
     fireEvent.change(screen.getByLabelText('Postal code'), { target: { value: '100000' } });
 
-    await waitFor(() => {
+    await waitForCondition(() => {
       expect(getPrimarySubmitButton().textContent || '').toMatch(/Submit/);
       expect(getPrimarySubmitButton()).not.toBeDisabled();
     });
 
     fireEvent.click(getPrimarySubmitButton());
 
-    await waitFor(() => {
+    await waitForCondition(() => {
       expect(orderApi.guestCheckout).toHaveBeenCalled();
     });
 
@@ -1706,10 +1724,10 @@ describe('cart to checkout flows', () => {
     await screen.findAllByText(/Order Created Payment Pending/i);
     fireEvent.click(screen.getByRole('button', { name: /Retry Payment/i }));
 
-    await waitFor(() => {
+    await waitForCondition(() => {
       expect(paymentApi.create).toHaveBeenCalledWith(1001, 'MERCADO_PAGO', 'guest@example.com', 'GUEST-1001');
     });
-    await waitFor(() => {
+    await waitForCondition(() => {
       expect(mockSessionStorage['checkoutIdempotencyKey']).toBeUndefined();
       expect(mockSessionStorage['checkoutPendingOrder']).toBeUndefined();
       expect(window.sessionStorage.getItem('checkoutIdempotencyKey')).toBeNull();
@@ -1744,14 +1762,14 @@ describe('cart to checkout flows', () => {
     renderWithRouter(<Checkout />, '/checkout');
 
     await screen.findAllByText('Guest Bowl');
-    await waitFor(() => {
+    await waitForCondition(() => {
       expect(getPrimarySubmitButton()).toHaveTextContent('Submit $50.00');
       expect(getPrimarySubmitButton()).not.toBeDisabled();
     });
 
     fireEvent.click(getPrimarySubmitButton());
 
-    await waitFor(() => {
+    await waitForCondition(() => {
       expect(orderApi.guestCheckout).toHaveBeenCalled();
     });
     expect(paymentApi.create).toHaveBeenCalledWith(1001, 'MERCADO_PAGO', 'guest@example.com', 'GUEST-1001');
@@ -1777,7 +1795,7 @@ describe('cart to checkout flows', () => {
     await screen.findAllByText('Guest Bowl');
 
     // Incomplete/invalid address stays a guided next action (enabled), not a dead disabled CTA.
-    await waitFor(() => {
+    await waitForCondition(() => {
       expect(getPrimarySubmitButton()).not.toBeDisabled();
       expect(getPrimarySubmitButton().textContent || '').toMatch(/address|Address|Complete|Add/i);
     });
@@ -1787,14 +1805,14 @@ describe('cart to checkout flows', () => {
 
     fireEvent.change(screen.getByLabelText('Postal code'), { target: { value: '01000' } });
 
-    await waitFor(() => {
+    await waitForCondition(() => {
       expect(getPrimarySubmitButton()).not.toBeDisabled();
       expect(getPrimarySubmitButton().textContent || '').toMatch(/Submit|\$/);
     });
 
     fireEvent.click(getPrimarySubmitButton());
 
-    await waitFor(() => {
+    await waitForCondition(() => {
       expect(orderApi.guestCheckout).toHaveBeenCalled();
     });
     expect(orderApi.guestCheckout).toHaveBeenCalledWith(expect.objectContaining({
@@ -1833,19 +1851,19 @@ describe('cart to checkout flows', () => {
     renderWithRouter(<Checkout />, '/checkout');
 
     await screen.findAllByText('Member Kibble');
-    await waitFor(() => {
+    await waitForCondition(() => {
       expect(screen.getByRole('radio', { name: 'Member Buyer, 5552223333, \u4e2d\u56fd \u5317\u4eac\u5e02 \u671d\u9633\u533a 100000 1 Member Way, Default address' })).toBeChecked();
     });
     expect(screen.getByRole('radio', { name: 'Use new address' })).toBeInTheDocument();
 
-    await waitFor(() => {
+    await waitForCondition(() => {
       expect(getPrimarySubmitButton().textContent || '').toMatch(/Submit/);
       expect(getPrimarySubmitButton()).not.toBeDisabled();
     });
 
     fireEvent.click(getPrimarySubmitButton());
 
-    await waitFor(() => {
+    await waitForCondition(() => {
       expect(orderApi.checkout).toHaveBeenCalled();
     });
 

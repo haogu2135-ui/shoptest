@@ -11,6 +11,7 @@ import {
   isOrderNeedsAction,
   isOrderRefunded,
   isOrderShippable,
+  getOrderSlaStart,
   getOrderSlaState,
   orderNextActionByStatus,
   orderStatusColors,
@@ -89,6 +90,30 @@ const REFUND_RESTOCK_REQUIRED_STATUSES = new Set(['PENDING_SHIPMENT', 'COMPLETED
 
 const normalizeStatusCode = (status?: string) => String(status || '').trim().toUpperCase();
 const isRefundRestockRequired = (status?: string) => REFUND_RESTOCK_REQUIRED_STATUSES.has(normalizeStatusCode(status));
+const AFTER_SALES_STATUS_PRIORITY: Record<string, number> = {
+  RETURN_REQUESTED: 10,
+  RETURN_SHIPPED: 20,
+  RETURN_REFUNDING: 30,
+  RETURN_APPROVED: 40,
+  REFUNDING: 50,
+  RETURNED: 60,
+  REFUNDED: 70,
+};
+
+const getAfterSalesPriority = (order: Order) => {
+  const statusPriority = AFTER_SALES_STATUS_PRIORITY[normalizeStatusCode(order.status)] ?? 100;
+  return statusPriority;
+};
+
+const REFUND_REASON_PRESET_KEYS = [
+  'customerRequest',
+  'duplicatePayment',
+  'outOfStock',
+  'qualityIssue',
+  'pricingError',
+  'other',
+] as const;
+
 
 const OrderManagement: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -127,6 +152,7 @@ const OrderManagement: React.FC = () => {
   const [refunding, setRefunding] = useState(false);
   const [refundPayments, setRefundPayments] = useState<AdminPayment[]>([]);
   const [refundPaymentsLoading, setRefundPaymentsLoading] = useState(false);
+  const [refundConfirmed, setRefundConfirmed] = useState(false);
   const [orderPayments, setOrderPayments] = useState<AdminPayment[]>([]);
   const [paymentsLoading, setPaymentsLoading] = useState(false);
   const [syncingPaymentIds, setSyncingPaymentIds] = useState<React.Key[]>([]);
@@ -582,6 +608,7 @@ const OrderManagement: React.FC = () => {
     setRefundOrder(order);
     setRefundReason(order.returnReason || '');
     setRefundRestock(isRefundRestockRequired(order.status));
+    setRefundConfirmed(false);
     setRefundPayments([]);
     setRefundPaymentsLoading(canSyncOrderPayments);
     if (!canSyncOrderPayments) {
@@ -604,6 +631,7 @@ const OrderManagement: React.FC = () => {
     setRefundReason('');
     setManualRefundReference('');
     setRefundRestock(false);
+    setRefundConfirmed(false);
     setRefundPayments([]);
     setRefundPaymentsLoading(false);
   };
@@ -622,6 +650,10 @@ const OrderManagement: React.FC = () => {
       message.warning(t('pages.adminOrders.refundReasonRequired'));
       return;
     }
+    if (!refundConfirmed) {
+      message.warning(t('pages.adminOrders.refundConfirmRequired'));
+      return;
+    }
     try {
       setRefunding(true);
       const effectiveRestock = isRefundRestockRequired(refundOrder.status) || refundRestock;
@@ -635,6 +667,7 @@ const OrderManagement: React.FC = () => {
       setRefundReason('');
       setManualRefundReference('');
       setRefundRestock(false);
+      setRefundConfirmed(false);
       setRefundPayments([]);
       fetchOrders({ status: filterStatus, quick: quickFilter, search: debouncedSearchText, page: orderPage.page, size: orderPage.size });
     } catch (err: unknown) {
@@ -897,6 +930,52 @@ const OrderManagement: React.FC = () => {
   };
   const activeQuickFilterLabel = orderSummaryCards.find((item) => item.filter === quickFilter)?.label
     || (quickFilter ? specificQuickFilterLabels[quickFilter] : undefined);
+  const afterSalesStatuses = ['AFTER_SALES', 'RETURN_REQUESTED', 'RETURN_APPROVED', 'RETURN_SHIPPED', 'RETURN_REFUNDING', 'RETURNED', 'REFUNDED', 'REFUNDING', 'SLA_OVERDUE_RETURN_APPROVED', 'SLA_OVERDUE_RETURN_SHIPPED'];
+  const showAfterSalesQueueHint = afterSalesStatuses.includes(String(quickFilter || ''))
+    || afterSalesStatuses.includes(String(filterStatus || ''));
+  const afterSalesBreakdown = [
+    {
+      key: 'RETURN_REQUESTED',
+      filter: 'RETURN_REQUESTED',
+      label: t('status.RETURN_REQUESTED'),
+      value: orderSummary.RETURN_REQUESTED ?? orders.filter((order) => normalizeStatusCode(order.status) === 'RETURN_REQUESTED').length,
+    },
+    {
+      key: 'RETURN_APPROVED',
+      filter: 'RETURN_APPROVED',
+      label: t('status.RETURN_APPROVED'),
+      value: orderSummary.RETURN_APPROVED ?? orders.filter((order) => normalizeStatusCode(order.status) === 'RETURN_APPROVED').length,
+    },
+    {
+      key: 'RETURN_SHIPPED',
+      filter: 'RETURN_SHIPPED',
+      label: t('status.RETURN_SHIPPED'),
+      value: orderSummary.RETURN_SHIPPED ?? orders.filter((order) => normalizeStatusCode(order.status) === 'RETURN_SHIPPED').length,
+    },
+    {
+      key: 'RETURN_REFUNDING',
+      filter: 'RETURN_REFUNDING',
+      label: t('status.RETURN_REFUNDING'),
+      value: orderSummary.RETURN_REFUNDING ?? orders.filter((order) => normalizeStatusCode(order.status) === 'RETURN_REFUNDING').length,
+    },
+  ];
+  const prioritizeAfterSalesQueue = showAfterSalesQueueHint
+    || String(quickFilter || '') === 'SLA_OVERDUE'
+    || String(quickFilter || '') === 'SLA_DUE_SOON';
+  const displayOrders = prioritizeAfterSalesQueue
+    ? [...orders].sort((left, right) => {
+      const leftSla = getOrderSla(left);
+      const rightSla = getOrderSla(right);
+      const leftUrgency = leftSla?.overdue ? 0 : leftSla?.dueSoon ? 1 : 2;
+      const rightUrgency = rightSla?.overdue ? 0 : rightSla?.dueSoon ? 1 : 2;
+      if (leftUrgency !== rightUrgency) return leftUrgency - rightUrgency;
+      const statusDiff = getAfterSalesPriority(left) - getAfterSalesPriority(right);
+      if (statusDiff !== 0) return statusDiff;
+      const leftStart = Date.parse(String(getOrderSlaStart(left) || left.createdAt || '')) || 0;
+      const rightStart = Date.parse(String(getOrderSlaStart(right) || right.createdAt || '')) || 0;
+      return leftStart - rightStart;
+    })
+    : orders;
   const currentOrderStatusLabel = filterStatus ? formatOrderStatusLabel(filterStatus) : t('pages.adminOrders.allStatus');
   const currentOrderSearchLabel = searchText.trim() || normalizedSearchText || t('pages.adminOrders.searchPlaceholder');
   const activeOrderFilterLabel = [
@@ -1027,9 +1106,58 @@ const OrderManagement: React.FC = () => {
       onOk: () => handleStatusChange(record.id, nextStatus),
     });
   };
+  const runPrimaryNextAction = (order: Order) => {
+    const status = normalizeStatusCode(order.status);
+    if (status === 'PENDING_SHIPMENT' && canFulfillOrders) {
+      setShippingOrder(order);
+      setTrackingNumber(order.trackingNumber || '');
+      setTrackingCarrierCode(order.trackingCarrierCode);
+      return;
+    }
+    if (status === 'RETURN_REQUESTED') {
+      const transitions = (orderValidTransitions[order.status] || []).filter((next) => canApplyOrderTransition(order, next));
+      const approveStatus = transitions.find((next) => normalizeStatusCode(next) === 'RETURN_APPROVED');
+      if (approveStatus) {
+        confirmStatusChange(order, approveStatus);
+        return;
+      }
+    }
+    if (status === 'RETURN_SHIPPED' && canRefundOrders && canRefundOrder(order)) {
+      void openRefundModal(order);
+      return;
+    }
+    if (status === 'RETURN_REFUNDING' || status === 'REFUNDED' || status === 'RETURN_APPROVED' || status === 'SHIPPED' || status === 'PENDING_PAYMENT') {
+      void handleViewItems(order);
+      return;
+    }
+    void handleViewItems(order);
+  };
+
+  const primaryNextActionLabel = (order: Order) => {
+    const status = normalizeStatusCode(order.status);
+    if (status === 'PENDING_SHIPMENT') return t('pages.adminOrders.nextActionShipCta');
+    if (status === 'RETURN_REQUESTED') return t('pages.adminOrders.nextActionReviewCta');
+    if (status === 'RETURN_SHIPPED') return t('pages.adminOrders.nextActionRefundCta');
+    if (status === 'RETURN_REFUNDING') return t('pages.adminOrders.nextActionRefundFollowCta');
+    if (status === 'RETURN_APPROVED') return t('pages.adminOrders.nextActionInspectCta');
+    return t('pages.adminOrders.items');
+  };
+
+  const canRunPrimaryNextAction = (order: Order) => {
+    const status = normalizeStatusCode(order.status);
+    if (orderActionDisabled) return false;
+    if (status === 'PENDING_SHIPMENT') return canFulfillOrders;
+    if (status === 'RETURN_REQUESTED') {
+      return (orderValidTransitions[order.status] || []).some((next) => canApplyOrderTransition(order, next) && normalizeStatusCode(next) === 'RETURN_APPROVED');
+    }
+    if (status === 'RETURN_SHIPPED') return canRefundOrders && canRefundOrder(order);
+    return true;
+  };
+
   const renderNextAction = (order: Order) => {
     const action = orderNextActionByStatus[order.status] || orderNextActionByStatus.COMPLETED;
     const sla = getOrderSla(order);
+    const ctaLabel = `${primaryNextActionLabel(order)}: ${orderDisplayLabel(order)}`;
     return (
       <div className={`order-management-page__nextAction order-management-page__nextAction--${action.tone}`}>
         <Typography.Text strong>{t(action.titleKey)}</Typography.Text>
@@ -1038,6 +1166,19 @@ const OrderManagement: React.FC = () => {
           <Tag color={sla.overdue ? 'red' : sla.dueSoon ? 'orange' : 'green'} className="order-management-page__slaTag">
             {sla.label}
           </Tag>
+        ) : null}
+        {canRunPrimaryNextAction(order) ? (
+          <Button
+            size="small"
+            type={action.tone === 'urgent' || action.tone === 'warning' ? 'primary' : 'default'}
+            danger={normalizeStatusCode(order.status) === 'RETURN_SHIPPED'}
+            className="order-management-page__nextActionCta"
+            aria-label={ctaLabel}
+            title={ctaLabel}
+            onClick={() => runPrimaryNextAction(order)}
+          >
+            {primaryNextActionLabel(order)}
+          </Button>
         ) : null}
       </div>
     );
@@ -1274,6 +1415,40 @@ const OrderManagement: React.FC = () => {
               </button>
             ))}
           </div>
+          {showAfterSalesQueueHint ? (
+            <div className="order-management-page__afterSalesPanel">
+              <Alert
+                className="order-management-page__alert order-management-page__afterSalesHint"
+                type="info"
+                showIcon
+                message={t('pages.adminOrders.afterSalesQueueHint')}
+                description={t('pages.adminOrders.afterSalesQueuePriorityHint')}
+              />
+              <div className="order-management-page__afterSalesBreakdown" role="group" aria-label={t('pages.adminOrders.afterSalesBreakdownLabel')}>
+                {afterSalesBreakdown.map((item) => {
+                  const active = quickFilter === item.filter || filterStatus === item.filter;
+                  const label = `${item.label}: ${item.value}`;
+                  return (
+                    <button
+                      key={item.key}
+                      type="button"
+                      className={active
+                        ? 'order-management-page__afterSalesChip order-management-page__afterSalesChip--active'
+                        : 'order-management-page__afterSalesChip'}
+                      aria-pressed={active}
+                      aria-label={label}
+                      title={label}
+                      disabled={orderActionDisabled}
+                      onClick={() => handleQuickFilterChange(item.filter)}
+                    >
+                      <span>{item.label}</span>
+                      <strong>{item.value}</strong>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
           <Card className="order-management-page__toolbar">
             <Space wrap>
               <span>{t('pages.adminOrders.filter')}</span>
@@ -1353,7 +1528,7 @@ const OrderManagement: React.FC = () => {
             <Table
               className="shop-admin-selection-table order-management-page__mobileCardTable"
               columns={columns}
-              dataSource={orders}
+              dataSource={displayOrders}
               rowKey="id"
               rowSelection={canFulfillOrders ? {
                 columnWidth: 56,
@@ -1437,7 +1612,7 @@ const OrderManagement: React.FC = () => {
         okText={t('pages.adminOrders.refundNow')}
         okButtonProps={{
           danger: true,
-          disabled: !canRefundOrders || orderActionDisabled || refundPaymentsLoading || (hasLoadedRefundPayments && !hasRefundablePayment),
+          disabled: !canRefundOrders || orderActionDisabled || refundPaymentsLoading || !refundReason.trim() || !refundConfirmed || (hasLoadedRefundPayments && !hasRefundablePayment),
           'aria-label': refundSubmitActionLabel,
           title: refundSubmitActionLabel,
         }}
@@ -1466,6 +1641,44 @@ const OrderManagement: React.FC = () => {
             aria-label={refundReasonInputLabel}
             title={refundReasonInputLabel}
           />
+          <div className="order-management-page__refundReasonPresets" role="group" aria-label={t('pages.adminOrders.refundReasonPresetsLabel')}>
+            <Typography.Text type="secondary">{t('pages.adminOrders.refundReasonPresetsLabel')}</Typography.Text>
+            <Space wrap size={[8, 8]}>
+              {REFUND_REASON_PRESET_KEYS.map((presetKey) => {
+                const presetLabel = t(`pages.adminOrders.refundReasonPresets.${presetKey}`);
+                const selected = refundReason.trim() === presetLabel;
+                const presetActionLabel = `${t('pages.adminOrders.refundReasonPresetsLabel')}: ${presetLabel}`;
+                return (
+                  <Button
+                    key={presetKey}
+                    size="small"
+                    type={selected ? 'primary' : 'default'}
+                    disabled={orderActionDisabled}
+                    aria-label={presetActionLabel}
+                    title={presetActionLabel}
+                    aria-pressed={selected}
+                    onClick={() => setRefundReason(presetLabel)}
+                  >
+                    {presetLabel}
+                  </Button>
+                );
+              })}
+            </Space>
+          </div>
+          <Checkbox
+            checked={refundConfirmed}
+            disabled={orderActionDisabled}
+            aria-label={t('pages.adminOrders.refundConfirmAcknowledge', {
+              orderNo: refundOrder?.orderNo || refundOrder?.id || '',
+              amount: refundOrder ? formatMoney(refundOrder.totalAmount) : '',
+            })}
+            onChange={(event) => setRefundConfirmed(event.target.checked)}
+          >
+            {t('pages.adminOrders.refundConfirmAcknowledge', {
+              orderNo: refundOrder?.orderNo || refundOrder?.id || '',
+              amount: refundOrder ? formatMoney(refundOrder.totalAmount) : '',
+            })}
+          </Checkbox>
           <Input
             value={manualRefundReference}
             onChange={(event) => setManualRefundReference(event.target.value)}

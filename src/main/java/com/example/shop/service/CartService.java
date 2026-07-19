@@ -5,6 +5,7 @@ import com.example.shop.entity.Product;
 import com.example.shop.repository.CartItemMapper;
 import com.example.shop.repository.ProductRepository;
 import com.example.shop.security.SecurityUtils;
+import lombok.extern.slf4j.Slf4j;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
@@ -22,6 +23,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class CartService {
     private static final int DEFAULT_MAX_QUANTITY_PER_LINE = 99;
     private static final int HARD_MAX_QUANTITY_PER_LINE = 999;

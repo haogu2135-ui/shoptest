@@ -830,6 +830,7 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
     };
     document.addEventListener('focusin', handleFocusIn);
     window.addEventListener('keydown', handleTabKey);
+    const supportButtonNode = supportButtonRef.current;
     return () => {
       window.clearTimeout(focusTimer);
       document.removeEventListener('focusin', handleFocusIn);
@@ -838,7 +839,7 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
         previousFocus.focus({ preventScroll: true });
         return;
       }
-      supportButtonRef.current?.focus({ preventScroll: true });
+      supportButtonNode?.focus({ preventScroll: true });
     };
   }, [isMobileViewport, open]);
 

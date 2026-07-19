@@ -70,4 +70,16 @@ describe('Notifications mobile bottom-nav clearance contract', () => {
     expect(f2719Css).toMatch(/\.notifications-page__actionPlan > \.ant-btn\s*\{[^}]*min-height:\s*44px\s*!important;[^}]*scroll-margin-bottom:/);
     expect(f2719Css).toMatch(/\.notifications-page__item:first-child,[\s\S]*?\.notifications-page \.ant-list > \.ant-spin-nested-loading:first-child\s*\{[^}]*scroll-margin-bottom:/);
   });
+
+  it('deep-links order and delivery notifications to the right commercial destinations', () => {
+    const source = readNotificationsSource();
+    expect(source).toContain('const extractOrderNoFromNotification');
+    expect(source).toContain('const openRelatedNotification = useCallback');
+    expect(source).toContain('navigate(`/track-order?orderNo=${encodeURIComponent(orderNo)}`);');
+    expect(source).toContain('navigate(`/profile?tab=orders&orderNo=${encodeURIComponent(orderNo)}`);');
+    expect(source).toContain("t('pages.notifications.actionTrackOrder')");
+    expect(source).toContain("t('pages.notifications.actionOpenOrders')");
+    expect(source).toContain('notifications-page__titleButton');
+  });
+
 });

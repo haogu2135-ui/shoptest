@@ -15,26 +15,40 @@ describe('PaymentInstructions step readability guards', () => {
     expect(appSource).toContain("const PaymentInstructions = lazy(() => import('./pages/PaymentInstructions'));");
     expect(appSource).toContain('<Route path="payment/:orderNo" element={<PaymentInstructions />} />');
     expect(effectSource).toContain('let disposed = false;');
-    expect(effectSource).toContain('if (disposed) return;');
+    expect(effectSource).toContain('verifyRequestSeqRef.current');
+    expect(effectSource).toContain('if (disposed || verifyRequestSeqRef.current !== requestSeq) return;');
     expect(effectSource).toContain('setOrder(nextOrder);');
-    expect(effectSource).toContain('if (!disposed) setPayment(paymentResponse.data);');
-    expect(effectSource).toContain('if (!disposed) setPayment(null);');
-    expect(effectSource).toContain('if (!disposed) setVerifying(false);');
+    expect(effectSource).toContain('setPayment(paymentResponse.data)');
+    expect(effectSource).toContain('setPayment(null)');
+    expect(effectSource).toContain('setVerifying(false)');
     expect(effectSource).toContain('disposed = true;');
     expect(pageSource).not.toContain('const Payment: React.FC');
   });
 
   it('announces payment verification loading as a busy status region', () => {
-    const spinStart = pageSource.indexOf('<Spin');
-    const spinOpeningTag = pageSource.slice(spinStart, pageSource.indexOf('>', spinStart) + 1);
-
-    expect(spinStart).toBeGreaterThan(-1);
-    expect(spinOpeningTag).toContain('spinning={verifying}');
-    expect(spinOpeningTag).toContain('role="status"');
-    expect(spinOpeningTag).toContain('aria-live="polite"');
-    expect(spinOpeningTag).toContain('aria-busy={verifying}');
-    expect(spinOpeningTag).toContain("aria-label={verifying ? t('common.loading') : undefined}");
+    // Keep a11y on a native wrapper: Ant Design Spin props are not typed for role/aria-*.
+    expect(pageSource).toContain('role="status"');
+    expect(pageSource).toContain('aria-live="polite"');
+    expect(pageSource).toContain('aria-busy={verifying}');
+    expect(pageSource).toContain("aria-label={verifying ? t('common.loading') : undefined}");
+    expect(pageSource).toContain('<Spin spinning={verifying}>');
+    const statusRegionStart = pageSource.indexOf('role="status"');
+    const spinStart = pageSource.indexOf('<Spin spinning={verifying}>');
+    expect(statusRegionStart).toBeGreaterThan(-1);
+    expect(spinStart).toBeGreaterThan(statusRegionStart);
   });
+
+
+  it('keeps commercial payment recovery actions and status polling', () => {
+    expect(pageSource).toContain("t('pages.paymentInstructions.openPayment')");
+    expect(pageSource).toContain("t('pages.paymentInstructions.refreshStatus')");
+    expect(pageSource).toContain('getPaymentRecoveryState(payment)');
+    expect(pageSource).toContain('paymentApi.sync');
+    expect(pageSource).toContain('PAYMENT_STATUS_POLL_MS');
+    expect(pageSource).toContain('ShopBreadcrumb');
+    expect(pageSource).toContain('payment-instructions-page__status--');
+  });
+
 
   it('scopes the circular badge style to the numeric marker only', () => {
     expect(pageSource).toContain('className="payment-instructions-page__stepNumber"');

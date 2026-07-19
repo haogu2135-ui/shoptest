@@ -21,6 +21,15 @@ import { dispatchDomEvent } from '../utils/domEvents';
 import { allSettledWithConcurrency } from '../utils/asyncBatch';
 import { getLocalStorageItem } from '../utils/safeStorage';
 import { getApiErrorMessage } from '../utils/apiError';
+import {
+  isReturnReasonReady,
+  isReturnTrackingReady,
+  normalizeReturnReason,
+  normalizeReturnTrackingNumber,
+  RETURN_REASON_PRESET_KEYS,
+  returnReasonPresetI18nKey,
+  returnFlowStepI18nKeys,
+} from '../utils/returnFlow';
 import { reportNonBlockingError } from '../utils/nonBlockingError';
 import PageError from '../components/PageError';
 import PageEmpty from '../components/PageEmpty';
@@ -237,10 +246,23 @@ const Profile: React.FC = () => {
   const [selectedTrackingNumber, setSelectedTrackingNumber] = useState('');
   const [selectedTrackingCarrierCode, setSelectedTrackingCarrierCode] = useState<string | undefined>();
   const [selectedTrackingOrderId, setSelectedTrackingOrderId] = useState<number | undefined>();
-  const [profileActiveTab, setProfileActiveTab] = useState(requestedProfileTab || (paymentReturnStatus === 'success' ? 'orders' : 'info'));
+  const isPaymentReturnSuccess = paymentReturnStatus === 'success';
+  const isPaymentReturnIncomplete = paymentReturnStatus === 'cancelled'
+    || paymentReturnStatus === 'canceled'
+    || paymentReturnStatus === 'failed';
+  const [profileActiveTab, setProfileActiveTab] = useState(requestedProfileTab || ((isPaymentReturnSuccess || isPaymentReturnIncomplete) ? 'orders' : 'info'));
   const [orderStatusFilter, setOrderStatusFilter] = useState('all');
   const [orderSearchText, setOrderSearchText] = useState('');
+  // Notification/order deep-link: prefill order search when orderNo is present without payment return status.
+  useEffect(() => {
+    if (paymentReturnStatus) return;
+    const deepLinkOrderNo = paymentReturnOrderNo;
+    if (!deepLinkOrderNo) return;
+    setOrderSearchText((current) => (current.trim() ? current : deepLinkOrderNo));
+  }, [paymentReturnOrderNo, paymentReturnStatus]);
+
   const handledPaymentReturnRef = useRef('');
+  const autoResumePaymentReturnRef = useRef('');
   const paymentReturnSyncSeqRef = useRef(0);
   const ordersRef = useRef<OrderCustomer[]>([]);
   const mountedRef = useRef(false);
@@ -429,11 +451,11 @@ const Profile: React.FC = () => {
   }, [addressModalVisible, editingAddress?.id]);
 
   useEffect(() => {
-    if (requestedProfileTab || paymentReturnStatus === 'success') {
+    if (requestedProfileTab || isPaymentReturnSuccess || isPaymentReturnIncomplete) {
       const nextTab = requestedProfileTab || 'orders';
       setProfileActiveTab((current) => nextTab === current ? current : nextTab);
     }
-  }, [paymentReturnStatus, requestedProfileTab]);
+  }, [isPaymentReturnIncomplete, isPaymentReturnSuccess, requestedProfileTab]);
 
   useEffect(() => {
     if (paymentReturnStatus !== 'success') return;
@@ -461,6 +483,35 @@ const Profile: React.FC = () => {
       }
     });
   }, [fetchOrders, ordersInitialLoadComplete, paymentChannelsLoaded, paymentReturnOrderId, paymentReturnOrderNo, paymentReturnStatus, searchParams, setSearchParams, syncPaymentReturnState, t]);
+
+  useEffect(() => {
+    if (!isPaymentReturnIncomplete) return;
+    if (!ordersInitialLoadComplete) return;
+    const returnKey = `incomplete:${paymentReturnStatus}:${paymentReturnOrderNo || paymentReturnOrderId || ''}`;
+    if (handledPaymentReturnRef.current === returnKey) return;
+    handledPaymentReturnRef.current = returnKey;
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete('payment');
+    if (!normalizeProfileTab(nextParams.get('tab'))) {
+      nextParams.set('tab', 'orders');
+    }
+    // Keep orderNo so orders list can surface the pending order when present.
+    setSearchParams(nextParams, { replace: true });
+    setProfileActiveTab('orders');
+    setOrderStatusFilter('PENDING_PAYMENT');
+    if (paymentReturnOrderNo) {
+      setOrderSearchText(paymentReturnOrderNo);
+    }
+    if (paymentReturnStatus === 'failed') {
+      message.error(paymentReturnOrderNo
+        ? t('pages.profile.paymentReturnFailedOrder', { orderNo: paymentReturnOrderNo })
+        : t('pages.profile.paymentReturnFailed'));
+    } else {
+      message.warning(paymentReturnOrderNo
+        ? t('pages.profile.paymentReturnCancelledOrder', { orderNo: paymentReturnOrderNo })
+        : t('pages.profile.paymentReturnCancelled'));
+    }
+  }, [isPaymentReturnIncomplete, ordersInitialLoadComplete, paymentReturnOrderId, paymentReturnOrderNo, paymentReturnStatus, searchParams, setSearchParams, t]);
 
   useEffect(() => {
     if (profileEmailCodeCountdown <= 0) return;
@@ -681,6 +732,25 @@ const Profile: React.FC = () => {
     }
   };
 
+  // After cancelled/failed gateway return, open continue-payment for the matching pending order.
+  useEffect(() => {
+    if (!ordersInitialLoadComplete || !paymentChannelsLoaded) return;
+    if (!paymentReturnOrderNo && !(Number.isFinite(paymentReturnOrderId) && paymentReturnOrderId > 0)) return;
+    // Resume is keyed off the incomplete return handling ref once URL payment= is cleared.
+    const handledKey = handledPaymentReturnRef.current;
+    if (!handledKey.startsWith('incomplete:')) return;
+
+    const targetOrderId = Number.isFinite(paymentReturnOrderId) && paymentReturnOrderId > 0 ? paymentReturnOrderId : null;
+    const targetOrder = ordersRef.current.find((order) => paymentReturnOrderNo && normalizeProfileOrderNo(order.orderNo) === paymentReturnOrderNo)
+      || ordersRef.current.find((order) => targetOrderId !== null && order.id === targetOrderId);
+    if (!targetOrder || normalizeStatusCode(targetOrder.status) !== 'PENDING_PAYMENT') return;
+
+    const resumeKey = `resume:${handledKey}:${targetOrder.id}`;
+    if (autoResumePaymentReturnRef.current === resumeKey) return;
+    autoResumePaymentReturnRef.current = resumeKey;
+    void handleContinuePayment(targetOrder);
+  }, [handleContinuePayment, ordersInitialLoadComplete, paymentChannelsLoaded, paymentReturnOrderId, paymentReturnOrderNo]);
+
   const handleRefreshPayment = async () => {
     if (!selectedOrder) return;
     const method = getPreferredPaymentChannel(paymentChannels, selectedPaymentMethod || selectedPayment?.channel || selectedOrder.paymentMethod);
@@ -792,9 +862,14 @@ const Profile: React.FC = () => {
 
   const handleReturnOrder = async () => {
     if (!returnRequestOrder) return;
+    const cleanedReason = normalizeReturnReason(returnReason);
+    if (!isReturnReasonReady(cleanedReason)) {
+      message.warning(t('pages.profile.returnReasonRequired'));
+      return;
+    }
     try {
       setRequestingReturn(true);
-      await orderApi.returnOrder(returnRequestOrder.id, returnReason.trim());
+      await orderApi.returnOrder(returnRequestOrder.id, cleanedReason);
       message.success(t('pages.profile.returnRequested'));
       setReturnRequestOrder(null);
       setReturnReason('');
@@ -808,13 +883,14 @@ const Profile: React.FC = () => {
 
   const handleSubmitReturnShipment = async () => {
     if (!returnShipmentOrder) return;
-    if (!returnTrackingNumber.trim()) {
-      message.error(t('pages.profile.returnTrackingRequired'));
+    const cleanedTracking = normalizeReturnTrackingNumber(returnTrackingNumber);
+    if (!isReturnTrackingReady(cleanedTracking)) {
+      message.error(t('pages.profile.returnTrackingInvalid'));
       return;
     }
     try {
       setSubmittingReturnShipment(true);
-      await orderApi.submitReturnShipment(returnShipmentOrder.id, returnTrackingNumber.trim());
+      await orderApi.submitReturnShipment(returnShipmentOrder.id, cleanedTracking);
       message.success(t('pages.profile.returnShipmentSubmitted'));
       setReturnShipmentOrder(null);
       setReturnTrackingNumber('');
@@ -2454,22 +2530,49 @@ const Profile: React.FC = () => {
         confirmLoading={submittingReturnShipment}
         okText={t('pages.profile.submitReturnShipment')}
         cancelText={t('common.cancel')}
-        okButtonProps={{ 'aria-label': submitReturnShipmentActionLabel, title: submitReturnShipmentActionLabel }}
+        okButtonProps={{
+          'aria-label': submitReturnShipmentActionLabel,
+          title: submitReturnShipmentActionLabel,
+          disabled: !isReturnTrackingReady(returnTrackingNumber),
+        }}
         cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${submitReturnShipmentActionLabel}`, title: `${t('common.cancel')}: ${submitReturnShipmentActionLabel}` }}
         onOk={handleSubmitReturnShipment}
         onCancel={() => { setReturnShipmentOrder(null); setReturnTrackingNumber(''); }}
-        className="profile-mobile-safe-modal"
+        className="profile-mobile-safe-modal profile-return-modal"
       >
-        <Input
-          value={returnTrackingNumber}
-          onChange={(e) => setReturnTrackingNumber(e.target.value)}
-          placeholder={t('pages.profile.returnTrackingPlaceholder')}
-          autoComplete="off"
-          inputMode="text"
-          maxLength={100}
-          aria-label={returnTrackingInputLabel}
-          title={returnTrackingInputLabel}
-        />
+        <Space direction="vertical" size="middle" className="profile-return-modal__content">
+          {returnShipmentOrder ? (
+            <div className="profile-return-modal__summary">
+              <Text strong>
+                {t('pages.profile.returnOrderSummary', {
+                  orderNo: returnShipmentOrder.orderNo || returnShipmentOrder.id,
+                  amount: formatMoney(returnShipmentOrder.totalAmount),
+                })}
+              </Text>
+            </div>
+          ) : null}
+          <div className="profile-return-modal__timeline" aria-label={t('pages.profile.returnShipmentStepsTitle')}>
+            <Text className="profile-return-modal__timelineTitle">{t('pages.profile.returnShipmentStepsTitle')}</Text>
+            <div className="profile-return-modal__steps" role="list">
+              {returnFlowStepI18nKeys.map((stepKey) => (
+                <span key={stepKey} className="profile-return-modal__step" role="listitem">{t(stepKey)}</span>
+              ))}
+            </div>
+          </div>
+          <Text type="secondary">{t('pages.profile.returnShipmentHint')}</Text>
+          <Input
+            value={returnTrackingNumber}
+            onChange={(e) => setReturnTrackingNumber(e.target.value)}
+            placeholder={t('pages.profile.returnTrackingPlaceholder')}
+            autoComplete="off"
+            inputMode="text"
+            maxLength={120}
+            status={returnTrackingNumber && !isReturnTrackingReady(returnTrackingNumber) ? 'error' : undefined}
+            aria-label={returnTrackingInputLabel}
+            title={returnTrackingInputLabel}
+            onBlur={() => setReturnTrackingNumber((value) => normalizeReturnTrackingNumber(value))}
+          />
+        </Space>
       </Modal>
 
       <Modal
@@ -2478,24 +2581,73 @@ const Profile: React.FC = () => {
         confirmLoading={requestingReturn}
         okText={t('pages.profile.returnOrder')}
         cancelText={t('common.cancel')}
-        okButtonProps={{ 'aria-label': submitReturnRequestActionLabel, title: submitReturnRequestActionLabel }}
+        okButtonProps={{
+          'aria-label': submitReturnRequestActionLabel,
+          title: submitReturnRequestActionLabel,
+          disabled: !isReturnReasonReady(returnReason),
+        }}
         cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${submitReturnRequestActionLabel}`, title: `${t('common.cancel')}: ${submitReturnRequestActionLabel}` }}
         onOk={handleReturnOrder}
         onCancel={() => { setReturnRequestOrder(null); setReturnReason(''); }}
-        className="profile-mobile-safe-modal"
+        className="profile-mobile-safe-modal profile-return-modal"
       >
-        <Space direction="vertical" className="profile-return-modal__content">
+        <Space direction="vertical" size="middle" className="profile-return-modal__content">
+          {returnRequestOrder ? (
+            <div className="profile-return-modal__summary" aria-label={t('pages.profile.returnOrderSummary', {
+              orderNo: returnRequestOrder.orderNo || returnRequestOrder.id,
+              amount: formatMoney(returnRequestOrder.totalAmount),
+            })}>
+              <Text strong>
+                {t('pages.profile.returnOrderSummary', {
+                  orderNo: returnRequestOrder.orderNo || returnRequestOrder.id,
+                  amount: formatMoney(returnRequestOrder.totalAmount),
+                })}
+              </Text>
+            </div>
+          ) : null}
+          <div className="profile-return-modal__timeline" aria-label={t('pages.profile.returnTimelineTitle')}>
+            <Text className="profile-return-modal__timelineTitle">{t('pages.profile.returnTimelineTitle')}</Text>
+            <div className="profile-return-modal__steps" role="list">
+              {returnFlowStepI18nKeys.map((stepKey) => (
+                <span key={stepKey} className="profile-return-modal__step" role="listitem">{t(stepKey)}</span>
+              ))}
+            </div>
+          </div>
           <Text type="secondary">{t('pages.profile.returnReviewHint')}</Text>
           {returnRequestOrder?.returnDeadline ? (
             <Text type="secondary">
               {t('pages.profile.returnAvailableUntil', { time: new Date(returnRequestOrder.returnDeadline).toLocaleString(dateLocale) })}
             </Text>
           ) : null}
+          <div className="profile-return-modal__presets" role="group" aria-label={t('pages.profile.returnReasonPresetsLabel')}>
+            <Text className="profile-return-modal__presetsLabel">{t('pages.profile.returnReasonPresetsLabel')}</Text>
+            <div className="profile-return-modal__presetGrid">
+              {RETURN_REASON_PRESET_KEYS.map((preset) => {
+                const label = t(returnReasonPresetI18nKey(preset));
+                const selected = normalizeReturnReason(returnReason).toLowerCase() === label.toLowerCase();
+                return (
+                  <Button
+                    key={preset}
+                    size="small"
+                    type={selected ? 'primary' : 'default'}
+                    className="profile-return-modal__preset"
+                    aria-label={label}
+                    title={label}
+                    aria-pressed={selected}
+                    onClick={() => setReturnReason(label)}
+                  >
+                    {label}
+                  </Button>
+                );
+              })}
+            </div>
+          </div>
           <Input.TextArea
             rows={4}
             maxLength={500}
             showCount
             value={returnReason}
+            status={returnReason && !isReturnReasonReady(returnReason) ? 'error' : undefined}
             onChange={(event) => setReturnReason(event.target.value)}
             placeholder={t('pages.profile.returnReasonPlaceholder')}
             aria-label={returnReasonInputLabel}
@@ -2552,6 +2704,10 @@ const Profile: React.FC = () => {
                 <Tag color={selectedPaymentReconcileRequired ? 'magenta' : selectedPaymentPaid ? 'green' : selectedPaymentRecovery.isExpired ? 'red' : selectedPaymentRecovery.isExpiringSoon ? 'orange' : 'blue'}>
                   {selectedPaymentReconcileRequired
                     ? t('pages.checkout.paymentRecoveryReconcileRequired')
+                    : normalizeStatusCode(selectedPayment.status) === 'REFUNDED'
+                    ? t('status.REFUNDED')
+                    : normalizeStatusCode(selectedPayment.status) === 'REFUNDING'
+                    ? t('status.REFUNDING')
                     : selectedPaymentPaid
                     ? t('pages.checkout.paymentRecoveryPaid')
                     : selectedPaymentRecovery.isExpired
@@ -2574,6 +2730,10 @@ const Profile: React.FC = () => {
                 <Text type="secondary">
                   {selectedPaymentReconcileRequired
                     ? t('pages.checkout.paymentRecoveryNextReconcileRequired')
+                    : normalizeStatusCode(selectedPayment.status) === 'REFUNDED'
+                    ? t('pages.profile.paymentRefundedNext')
+                    : normalizeStatusCode(selectedPayment.status) === 'REFUNDING'
+                    ? t('pages.profile.paymentRefundingNext')
                     : selectedPaymentPaid
                     ? t('pages.checkout.paymentRecoveryNextPaid')
                     : selectedPayment.paymentUrl
@@ -2652,10 +2812,37 @@ const Profile: React.FC = () => {
               <Descriptions.Item label={t('pages.profile.paymentExpiresAt')}>
                 {selectedPayment.expiresAt ? new Date(selectedPayment.expiresAt).toLocaleString(dateLocale) : '-'}
               </Descriptions.Item>
+              {selectedPayment.paidAt ? (
+                <Descriptions.Item label={t('pages.profile.paidAt')}>
+                  {new Date(selectedPayment.paidAt).toLocaleString(dateLocale)}
+                </Descriptions.Item>
+              ) : null}
+              {selectedPayment.refundedAt ? (
+                <Descriptions.Item label={t('pages.profile.refundedAt')}>
+                  {new Date(selectedPayment.refundedAt).toLocaleString(dateLocale)}
+                </Descriptions.Item>
+              ) : null}
               {selectedPayment.transactionId && (
                 <Descriptions.Item label={t('pages.checkout.transactionId')}>{selectedPayment.transactionId}</Descriptions.Item>
               )}
             </Descriptions>
+            {normalizeStatusCode(selectedPayment.status) === 'REFUNDED' || normalizeStatusCode(selectedPayment.status) === 'REFUNDING' ? (
+              <Alert
+                type={normalizeStatusCode(selectedPayment.status) === 'REFUNDED' ? 'success' : 'info'}
+                showIcon
+                className="profile-payment-refund-audit"
+                message={normalizeStatusCode(selectedPayment.status) === 'REFUNDED'
+                  ? t('pages.profile.paymentRefundedTitle')
+                  : t('pages.profile.paymentRefundingTitle')}
+                description={normalizeStatusCode(selectedPayment.status) === 'REFUNDED'
+                  ? t('pages.profile.paymentRefundedText', {
+                    date: selectedPayment.refundedAt
+                      ? new Date(selectedPayment.refundedAt).toLocaleString(dateLocale)
+                      : t('common.unknown'),
+                  })
+                  : t('pages.profile.paymentRefundingText')}
+              />
+            ) : null}
             <div>
               <Text strong>{t('pages.profile.paymentHistory')}</Text>
               <List
@@ -2675,6 +2862,16 @@ const Profile: React.FC = () => {
                       <Text type="secondary" className="profile-payment-history__time">
                         {payment.createdAt ? new Date(payment.createdAt).toLocaleString(dateLocale) : ''}
                       </Text>
+                      {payment.paidAt ? (
+                        <Text type="secondary" className="profile-payment-history__time">
+                          {t('pages.profile.paidAt')}: {new Date(payment.paidAt).toLocaleString(dateLocale)}
+                        </Text>
+                      ) : null}
+                      {payment.refundedAt ? (
+                        <Text type="secondary" className="profile-payment-history__time">
+                          {t('pages.profile.refundedAt')}: {new Date(payment.refundedAt).toLocaleString(dateLocale)}
+                        </Text>
+                      ) : null}
                     </Space>
                   </List.Item>
                 )}

@@ -493,7 +493,7 @@ public class EmailLoginService {
         try {
             JavaMailSenderImpl sender = mailSenderFor(account);
             MimeMessage message = sender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, "UTF-8");
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
             String brandName = mailAccountProperties.getBrandName();
             String safePurpose = isBlank(purposeLabel) ? "login" : purposeLabel.trim();
             helper.setFrom(account.getFrom().trim(), isBlank(brandName) ? "ShopMX" : brandName.trim());
@@ -832,7 +832,10 @@ public class EmailLoginService {
         String safePurpose = isBlank(purposeLabel) ? "Login" : purposeLabel.trim();
         long minutes = codeTtl().toMinutes();
         return "<!doctype html>"
-                + "<html><body style=\"margin:0;background:#f6f8f6;font-family:Arial,sans-serif;color:#173f2b;\">"
+                + "<html lang=\"en\"><head><meta charset=\"UTF-8\"/>"
+                + "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"/>"
+                + "<title>" + escapeHtml(brandName) + " verification</title></head>"
+                + "<body style=\"margin:0;background:#f6f8f6;font-family:Arial,sans-serif;color:#173f2b;\">"
                 + "<div style=\"max-width:520px;margin:0 auto;padding:28px 18px;\">"
                 + "<div style=\"background:#ffffff;border:1px solid #e4ebe4;border-radius:8px;padding:26px;\">"
                 + "<div style=\"font-size:22px;font-weight:800;color:#ee4d2d;margin-bottom:14px;\">" + escapeHtml(brandName) + "</div>"
@@ -844,6 +847,7 @@ public class EmailLoginService {
                 + " minutes. If you did not request this, you can safely ignore this email.</div>"
                 + "</div></div></body></html>";
     }
+
 
     private String escapeHtml(String value) {
         if (value == null) {

@@ -70,14 +70,19 @@ class SupportControllerAdminResponseTest {
 
     @Test
     void legacyDuplicateAdminSupportTestDoesNotReturnWithRawStatusNumbersOrTodo() throws Exception {
-        Path staleTest = Path.of("src/test/java/com/example/shop/controller/SupportControllerAdminDuplicateTest.java");
+        String staleName = "SupportControllerAdmin" + "DuplicateTest.java";
+        Path staleTest = Path.of("src/test/java/com/example/shop/controller", staleName);
         String currentTest = Files.readString(Path.of("src/test/java/com/example/shop/controller/SupportControllerAdminResponseTest.java"));
         String supportController = Files.readString(Path.of("src/main/java/com/example/shop/controller/SupportController.java"));
+        String todoMarker = "// " + "TODO";
+        String blockTodoMarker = "* " + "TODO";
+        String fixmeMarker = "FIX" + "ME";
+        String duplicateMarker = "SupportControllerAdmin" + "DuplicateTest";
 
         assertFalse(Files.exists(staleTest));
         assertFalse(Files.exists(Path.of("src/main/java/com/example/shop/controller/ChatController.java")));
-        assertFalse(currentTest.contains("TODO"));
-        assertFalse(currentTest.contains("SupportControllerAdminDuplicateTest"));
+        assertFalse(currentTest.contains(todoMarker) || currentTest.contains(blockTodoMarker) || currentTest.contains(fixmeMarker));
+        assertFalse(currentTest.contains(duplicateMarker));
         assertFalse(supportController.contains("sendAdminReply("));
         assertTrue(supportController.contains("public ResponseEntity<?> sendSupportMessage(@PathVariable Long sessionId,\n"
                 + "                                                @RequestBody(required = false) Map<String, Object> body,"));

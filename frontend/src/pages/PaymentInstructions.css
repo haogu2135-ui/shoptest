@@ -224,3 +224,110 @@
     line-height: 1.5;
   }
 }
+
+
+/* COMMERCIAL_PAYMENT_INSTRUCTIONS_RECOVERY_V1 */
+.payment-instructions-page > .shop-breadcrumb {
+  margin: 0 0 14px;
+}
+
+.payment-instructions-page__banner {
+  margin: 0 0 16px;
+  border-radius: 14px;
+}
+
+.payment-instructions-page__status {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: start;
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(18, 71, 52, 0.12);
+  background: linear-gradient(180deg, #f7fbf8 0%, #ffffff 100%);
+}
+
+.payment-instructions-page__status .anticon {
+  font-size: 22px;
+  margin-top: 2px;
+  color: #124734;
+}
+
+.payment-instructions-page__status span {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.payment-instructions-page__status--success {
+  border-color: rgba(35, 120, 4, 0.2);
+  background: linear-gradient(180deg, #f3faf3 0%, #ffffff 100%);
+}
+
+.payment-instructions-page__status--success .anticon {
+  color: #237804;
+}
+
+.payment-instructions-page__status--warning {
+  border-color: rgba(173, 104, 0, 0.22);
+  background: linear-gradient(180deg, #fff9f0 0%, #ffffff 100%);
+}
+
+.payment-instructions-page__status--warning .anticon {
+  color: #ad6800;
+}
+
+.payment-instructions-page__status--error {
+  border-color: rgba(180, 35, 24, 0.2);
+  background: linear-gradient(180deg, #fff6f5 0%, #ffffff 100%);
+}
+
+.payment-instructions-page__status--error .anticon {
+  color: #b42318;
+}
+
+.payment-instructions-page__primaryActions {
+  width: 100%;
+}
+
+.payment-instructions-page__primaryActions .ant-btn {
+  min-height: 44px;
+  border-radius: 999px;
+  font-weight: 700;
+}
+
+.payment-instructions-page__recoveryEyebrow {
+  display: inline-block;
+  margin-bottom: 4px;
+  color: rgba(16, 47, 34, 0.62);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.payment-instructions-page__paymentUrl {
+  overflow-wrap: anywhere;
+  color: rgba(16, 47, 34, 0.78);
+  font-weight: 600;
+}
+
+@media (max-width: 640px) {
+  .payment-instructions-page__status {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .payment-instructions-page__status .ant-tag {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+
+  .payment-instructions-page__primaryActions {
+    display: grid !important;
+    grid-template-columns: 1fr;
+  }
+
+  .payment-instructions-page__primaryActions .ant-btn {
+    width: 100%;
+  }
+}

@@ -82,7 +82,7 @@ class LoginControllerRefreshTest {
         assertEquals("refresh-new", body.get("refreshToken"));
         assertEquals(7L, body.get("id"));
         assertEquals("mia", body.get("username"));
-        assertEquals("mia@example.com", body.get("email"));
+        assertFalse(body.containsKey("email"));
         assertFalse(body.containsKey("phone"));
         assertEquals("ADMIN", body.get("role"));
         assertEquals("SUPER_ADMIN", body.get("roleCode"));

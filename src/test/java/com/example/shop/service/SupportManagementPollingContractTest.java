@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -12,7 +14,7 @@ class SupportManagementPollingContractTest {
 
     @Test
     void supportManagementQueueLoadSkipsStateUpdatesAfterDisposal() throws Exception {
-        String source = trackedSource("frontend/src/pages/SupportManagement.tsx");
+        String source = Files.readString(Path.of("frontend/src/pages/SupportManagement.tsx"), StandardCharsets.UTF_8);
         String loadSessions = sliceBetween(source,
                 "const loadSessions = useCallback",
                 "const loadMessages = async");
@@ -21,13 +23,15 @@ class SupportManagementPollingContractTest {
         assertTrue(loadSessions.contains("const shouldApply = () => options?.isActive?.() !== false;"));
         assertTrue(loadSessions.contains("if (!shouldApply()) return;"));
         assertTrue(loadSessions.indexOf("if (!shouldApply()) return;") < loadSessions.indexOf("sortSupportSessions(sessionsRes.data.items)"));
-        assertTrue(loadSessions.contains("if (shouldApply()) {\n        message.error"));
+        assertTrue(loadSessions.contains("if (shouldApply()) {"));
+        assertTrue(loadSessions.contains("message.error"));
+        assertTrue(loadSessions.indexOf("if (shouldApply())") < loadSessions.indexOf("message.error"));
         assertTrue(loadSessions.contains("if (shouldApply()) {\n        setQueueLoading(false);"));
     }
 
     @Test
     void supportManagementPollingChecksDisposedBetweenAsyncSteps() throws Exception {
-        String source = trackedSource("frontend/src/pages/SupportManagement.tsx");
+        String source = Files.readString(Path.of("frontend/src/pages/SupportManagement.tsx"), StandardCharsets.UTF_8);
         String pollingEffect = sliceBetween(source,
                 "const timer = window.setInterval(async () => {",
                 "}, [canUpdateSupportReadState, loadSessions]);");

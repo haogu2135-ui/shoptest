@@ -5716,3 +5716,10 @@
     white-space: normal !important;
   }
 }
+
+
+/* COMMERCIAL_COUPON_BREADCRUMB_V1 */
+.coupon-center-page > .shop-breadcrumb {
+  margin: 0 0 12px;
+  padding: 0 2px;
+}

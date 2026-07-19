@@ -22,7 +22,8 @@ class LocalImageStorageServiceTest {
         assertTrue(source.contains("!options.getAllowedContentTypes().contains(contentType)"));
         assertTrue(source.contains("validateImageSignature(file, contentType, options);"));
         assertTrue(source.contains("validateImageDimensions(file, contentType, options);"));
-        assertTrue(source.contains("BufferedImage image = ImageIO.read(inputStream);"));
+        assertTrue(source.contains("BufferedImage image = ImageIO.read(inputStream);")
+                || source.contains("ImageIO.createImageInputStream(inputStream)"));
         assertTrue(source.contains("byte[] bytes = encodeImage(decoded, outputContentType, outputFormat, options);"));
         assertTrue(source.contains("if (bytes.length > options.getMaxFileSizeBytes())"));
     }

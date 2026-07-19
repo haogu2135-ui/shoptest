@@ -484,12 +484,15 @@ public class OrderService {
             if (availableStock == null || availableStock < item.getQuantity()) {
                 throw new IllegalArgumentException("Insufficient stock for product: " + product.getName());
             }
+            BigDecimal effectivePrice = productVariantService.resolvePrice(product, item.getSelectedSpecs());
+            if (effectivePrice == null) {
+                throw new IllegalStateException("Item price not resolved: " + item.getId());
+            }
             if (reserveStock) {
                 if (reserveProductStock(product, item.getSelectedSpecs(), item.getQuantity())) {
                     reservedProducts.put(product.getId(), product);
                 }
             }
-            BigDecimal effectivePrice = productVariantService.resolvePrice(product, item.getSelectedSpecs());
             item.setProductName(product.getName());
             item.setImageUrl(resolveProductImageUrl(product));
             item.setPrice(effectivePrice);
@@ -534,6 +537,10 @@ public class OrderService {
             if (availableStock == null || availableStock < normalizedQuantity) {
                 throw new IllegalArgumentException("Insufficient stock for product: " + product.getName());
             }
+            BigDecimal resolvedPrice = productVariantService.resolvePrice(product, normalizedSpecs);
+            if (resolvedPrice == null) {
+                throw new IllegalStateException("Item price not resolved: " + product.getId());
+            }
             if (reserveStock) {
                 if (reserveProductStock(product, normalizedSpecs, normalizedQuantity)) {
                     reservedProducts.put(product.getId(), product);
@@ -543,7 +550,7 @@ public class OrderService {
             item.setUserId(userId);
             item.setProductId(product.getId());
             item.setQuantity(normalizedQuantity);
-            item.setPrice(productVariantService.resolvePrice(product, normalizedSpecs));
+            item.setPrice(resolvedPrice);
             item.setSelectedSpecs(normalizedSpecs);
             item.setProductName(product.getName());
             item.setImageUrl(resolveProductImageUrl(product));
@@ -1543,11 +1550,10 @@ public class OrderService {
         if ("PENDING_PAYMENT".equals(previousStatus)) {
             releaseOrderCoupon(order);
         }
-        notifyCustomer(
-                order,
-                "Order cancelled",
-                "Order " + safeOrderNo(order) + " has been cancelled."
-        );
+        notifyLifecycle(order, "ORDER", OrderLifecycleNotificationCopy.orderCancelled(
+                OrderLifecycleNotificationCopy.resolveLocale(),
+                safeOrderNo(order)
+        ));
         return true;
     }
 
@@ -1775,11 +1781,10 @@ public class OrderService {
         String cleanedReason = normalizeOptionalText(reason, "Return reason", runtimeConfig.getInt("order.return-reason-max-chars", 500));
         boolean updated = orderRepository.requestReturnIfCurrent(id, "COMPLETED", cleanedReason) > 0;
         if (updated) {
-            notifyCustomer(
-                    order,
-                    "Return request received",
-                    "Return request for order " + safeOrderNo(order) + " has been submitted for review."
-            );
+            notifyLifecycle(order, "ORDER", OrderLifecycleNotificationCopy.returnRequested(
+                    OrderLifecycleNotificationCopy.resolveLocale(),
+                    safeOrderNo(order)
+            ));
         }
         return updated;
     }
@@ -1795,11 +1800,10 @@ public class OrderService {
         }
         boolean updated = orderRepository.approveReturnIfCurrent(id, "RETURN_REQUESTED") > 0;
         if (updated) {
-            notifyCustomer(
-                    order,
-                    "Return approved",
-                    "Return request for order " + safeOrderNo(order) + " has been approved. Please send the return shipment and submit the tracking number."
-            );
+            notifyLifecycle(order, "ORDER", OrderLifecycleNotificationCopy.returnApproved(
+                    OrderLifecycleNotificationCopy.resolveLocale(),
+                    safeOrderNo(order)
+            ));
         }
         return updated;
     }
@@ -1815,11 +1819,10 @@ public class OrderService {
         }
         boolean updated = orderRepository.rejectReturnIfCurrent(id, "RETURN_REQUESTED") > 0;
         if (updated) {
-            notifyCustomer(
-                    order,
-                    "Return request closed",
-                    "Return request for order " + safeOrderNo(order) + " was not approved. The order is now back to completed status."
-            );
+            notifyLifecycle(order, "ORDER", OrderLifecycleNotificationCopy.returnRejected(
+                    OrderLifecycleNotificationCopy.resolveLocale(),
+                    safeOrderNo(order)
+            ));
         }
         return updated;
     }
@@ -1839,11 +1842,11 @@ public class OrderService {
         String cleanedTrackingNumber = normalizeRequiredText(returnTrackingNumber, "Return tracking number", runtimeConfig.getInt("order.tracking-number-max-chars", 120));
         boolean updated = orderRepository.updateReturnTrackingIfCurrent(id, "RETURN_APPROVED", "RETURN_SHIPPED", cleanedTrackingNumber) > 0;
         if (updated) {
-            notifyCustomer(
-                    order,
-                    "Return shipment submitted",
-                    "Return tracking number " + cleanedTrackingNumber + " was saved for order " + safeOrderNo(order) + "."
-            );
+            notifyLifecycle(order, "ORDER", OrderLifecycleNotificationCopy.returnShipped(
+                    OrderLifecycleNotificationCopy.resolveLocale(),
+                    safeOrderNo(order),
+                    cleanedTrackingNumber
+            ));
         }
         return updated;
     }
@@ -1887,11 +1890,10 @@ public class OrderService {
         List<OrderItem> items = orderItemRepository.findByOrderId(id);
         restoreStock(items);
         releaseOrderCoupon(order);
-        notifyCustomer(
-                order,
-                "Return completed",
-                "Return refund for order " + safeOrderNo(order) + " has been completed."
-        );
+        notifyLifecycle(order, "ORDER", OrderLifecycleNotificationCopy.returnCompleted(
+                OrderLifecycleNotificationCopy.resolveLocale(),
+                safeOrderNo(order)
+        ));
         return true;
     }
 
@@ -1955,11 +1957,10 @@ public class OrderService {
             );
         }
         releaseOrderCoupon(order);
-        notifyCustomer(
-                order,
-                "Order refunded",
-                "Refund for order " + safeOrderNo(order) + " has been completed."
-        );
+        notifyLifecycle(order, "ORDER", OrderLifecycleNotificationCopy.orderRefunded(
+                OrderLifecycleNotificationCopy.resolveLocale(),
+                safeOrderNo(order)
+        ));
         return refundedPayment;
     }
 
@@ -2100,12 +2101,12 @@ public class OrderService {
         assertNextStatus(order.getStatus(), "SHIPPED");
         boolean updated = orderRepository.updateShipping(id, order.getStatus(), "SHIPPED", cleanedTrackingNumber, carrierCode, carrierName) > 0;
         if (updated) {
-            String carrierLabel = trimToNull(carrierName) == null ? "" : " via " + carrierName;
-            notifyCustomer(
-                    order,
-                    "Order shipped",
-                    "Order " + safeOrderNo(order) + " has shipped" + carrierLabel + ". Tracking number: " + cleanedTrackingNumber + "."
-            );
+            notifyLifecycle(order, "DELIVERY", OrderLifecycleNotificationCopy.orderShipped(
+                    OrderLifecycleNotificationCopy.resolveLocale(),
+                    safeOrderNo(order),
+                    cleanedTrackingNumber,
+                    trimToNull(carrierName)
+            ));
         }
         return updated;
     }
@@ -2116,49 +2117,63 @@ public class OrderService {
             return;
         }
         if ("SHIPPED".equals(nextStatus)) {
-            notifyCustomer(
-                    order,
-                    "Order shipped",
-                    "Order " + safeOrderNo(order) + " has shipped."
-            );
+            notifyLifecycle(order, "DELIVERY", OrderLifecycleNotificationCopy.orderShipped(
+                    OrderLifecycleNotificationCopy.resolveLocale(),
+                    safeOrderNo(order),
+                    null,
+                    null
+            ));
             return;
         }
         if ("COMPLETED".equals(nextStatus)) {
-            notifyCustomer(
-                    order,
-                    "Order completed",
-                    "Order " + safeOrderNo(order) + " has been completed. You can request a return from order tracking while the return window is open."
-            );
+            notifyLifecycle(order, "ORDER", OrderLifecycleNotificationCopy.orderCompleted(
+                    OrderLifecycleNotificationCopy.resolveLocale(),
+                    safeOrderNo(order)
+            ));
         }
     }
 
     private void notifyPaymentConfirmed(Order order, Payment payment) {
-        String amountText = payment != null && payment.getAmount() != null
-                ? " Amount: " + payment.getAmount().stripTrailingZeros().toPlainString() + "."
-                : "";
-        notifyCustomer(
-                order,
-                "Payment received",
-                "Payment for order " + safeOrderNo(order) + " has been received." + amountText + " We will prepare shipment next."
-        );
+        notifyLifecycle(order, "ORDER", OrderLifecycleNotificationCopy.paymentReceived(
+                OrderLifecycleNotificationCopy.resolveLocale(),
+                safeOrderNo(order),
+                payment != null && payment.getAmount() != null
+                        ? payment.getAmount().stripTrailingZeros().toPlainString()
+                        : null
+        ));
     }
 
-    private void notifyCustomer(Order order, String title, String message) {
-        if (order == null || isBlank(title) || isBlank(message)) {
+    private void notifyLifecycle(Order order, String notificationType, OrderLifecycleNotificationCopy.Notice notice) {
+        if (order == null || notice == null || isBlank(notice.getTitle()) || isBlank(notice.getMessage())) {
             return;
         }
         Long userId = order.getUserId();
         String shippingAddress = order.getShippingAddress();
         String contactEmail = order.getContactEmail();
         String orderNo = safeOrderNo(order);
-        runAfterCommit(() -> dispatchCustomerNotification(userId, shippingAddress, contactEmail, orderNo, title.trim(), message.trim()));
+        String type = normalizeNotificationType(notificationType);
+        String title = notice.getTitle().trim();
+        String message = notice.getMessage().trim();
+        runAfterCommit(() -> dispatchCustomerNotification(userId, shippingAddress, contactEmail, orderNo, type, title, message));
     }
 
-    private void dispatchCustomerNotification(Long userId, String shippingAddress, String contactEmail, String orderNo, String title, String message) {
+    private String normalizeNotificationType(String notificationType) {
+        String normalized = trimToNull(notificationType);
+        if (normalized == null) {
+            return "ORDER";
+        }
+        String upper = normalized.toUpperCase(Locale.ROOT);
+        if ("DELIVERY".equals(upper) || "PROMOTION".equals(upper) || "SYSTEM".equals(upper) || "ORDER".equals(upper)) {
+            return upper;
+        }
+        return "ORDER";
+    }
+
+    private void dispatchCustomerNotification(Long userId, String shippingAddress, String contactEmail, String orderNo, String notificationType, String title, String message) {
         try {
             CustomerContact contact = resolveCustomerContact(userId, shippingAddress, contactEmail);
             if (notificationService != null && userId != null && !contact.guestUser) {
-                notificationService.tryCreateNotification(userId, "ORDER", title, message);
+                notificationService.tryCreateNotification(userId, notificationType, title, message);
             }
             if (orderEmailNotificationService != null && contact.email != null) {
                 orderEmailNotificationService.trySendOrderStatusEmail(contact.email, title, message);

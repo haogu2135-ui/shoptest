@@ -599,7 +599,11 @@ describe('Checkout payment availability', () => {
     expect(loadEffect).toContain('const selectedCartItemIds = readCheckoutCartItemIds();');
     expect(loadEffect).toContain('cartApi.getItems(0)');
     expect(loadEffect).toContain('addressApi.getByUser(0)');
-    expect(loadEffect).toContain('}, [checkoutReloadKey, form, mergeCheckoutFormSnapshot, navigate, showCheckoutMessage, t]);');
+    expect(loadEffect).toContain('}, [checkoutReloadKey, form, language, mergeCheckoutFormSnapshot, navigate, showCheckoutMessage, t]);');
+    expect(source).toContain("const [cartLoadError, setCartLoadError] = useState<string | null>(null);");
+    expect(source).toContain('checkout-page__loadingShell');
+    expect(source).toContain("if (cartLoadError && !createdOrder)");
+
     expect(loadEffect).not.toContain('selectedAddressId');
     expect(loadEffect).not.toContain('watchedPaymentMethod');
     expect(loadEffect).not.toContain('pendingPaymentMethod');

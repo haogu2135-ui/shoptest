@@ -6,6 +6,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { userApi } from '../api';
 import { useAppConfig } from '../hooks/useAppConfig';
 import { useLanguage } from '../i18n';
+import { usePageTitle } from '../hooks/usePageTitle';
 import {
   STRONG_PASSWORD_MAX_LENGTH,
   STRONG_PASSWORD_MIN_LENGTH,
@@ -75,6 +76,7 @@ const ForgotPassword: React.FC = () => {
   const resetSubmittingRef = useRef(false);
   const navigate = useNavigate();
   const { t } = useLanguage();
+  usePageTitle(t('pages.auth.resetPasswordTitle'));
   const { config: appConfig, loading: appConfigLoading } = useAppConfig();
   const emailCodeEnabled = appConfig.emailCodeEnabled === true;
   const resetPageLabel = t('pages.auth.resetPasswordTitle');

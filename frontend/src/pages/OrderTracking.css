@@ -1368,6 +1368,91 @@
   }
 }
 
+
+
+/* Commercial return modals (parity with profile return flow) */
+.order-tracking-page__returnModal.profile-return-modal .profile-return-modal__content,
+.order-tracking-page__returnModal .profile-return-modal__content {
+  width: 100%;
+}
+
+.order-tracking-page__returnModal .profile-return-modal__summary {
+  padding: 12px 14px;
+  border: 1px solid #e7eadf;
+  border-radius: 10px;
+  background: #fbfff8;
+}
+
+.order-tracking-page__returnModal .profile-return-modal__summary .ant-typography {
+  color: #173f2b;
+}
+
+.order-tracking-page__returnModal .profile-return-modal__timeline {
+  display: grid;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid #e8edf3;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #f8fbff 0%, #ffffff 100%);
+}
+
+.order-tracking-page__returnModal .profile-return-modal__timelineTitle,
+.order-tracking-page__returnModal .profile-return-modal__presetsLabel {
+  display: block;
+  color: #4a5b53;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.order-tracking-page__returnModal .profile-return-modal__steps {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.order-tracking-page__returnModal .profile-return-modal__step {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 8px 6px;
+  border-radius: 8px;
+  border: 1px solid rgba(18, 71, 52, 0.12);
+  background: #ffffff;
+  color: #124734;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.25;
+  text-align: center;
+}
+
+.order-tracking-page__returnModal .profile-return-modal__presets {
+  display: grid;
+  gap: 8px;
+}
+
+.order-tracking-page__returnModal .profile-return-modal__presetGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.order-tracking-page__returnModal .profile-return-modal__preset {
+  min-height: 36px;
+}
+
+@media (max-width: 640px) {
+  .order-tracking-page__returnModal .profile-return-modal__steps {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .order-tracking-page__returnModal .profile-return-modal__preset {
+    min-height: 40px;
+  }
+}
+
 /* F3515: shipped/return recovery actions must not hide in a no-scrollbar rail. */
 @media (max-width: 640px) {
   .order-tracking-page__nextAction {

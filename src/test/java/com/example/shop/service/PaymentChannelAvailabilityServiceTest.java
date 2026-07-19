@@ -38,7 +38,7 @@ class PaymentChannelAvailabilityServiceTest {
         assertTrue(source.contains("!\"GENERIC_API\".equals(channelConfig.getRefundMode())"));
         assertTrue(source.contains("isProductionGatewayUrl(channelConfig.getRefundUrl())"));
         assertTrue(source.contains("channelConfig.isGenericRedirectProvider()"));
-        assertTrue(source.contains("String providerCheckoutUrl = channelConfig.getCheckoutUrl()"));
+        assertTrue(source.contains("String providerCheckoutUrl = firstNonBlank(channelConfig.getCheckoutUrl(), paymentChannelConfig.getCheckoutBaseUrl())"));
         assertTrue(source.contains("isProductionGatewayUrl(providerCheckoutUrl)"));
         assertTrue(source.contains("GatewayUrlValidator.isLocalOrPrivateHost(host)"));
         assertTrue(source.contains("containsPlaceholderGatewayHost(configuredUrl)"));

@@ -29,7 +29,8 @@ class ProductRecommendationCacheContractTest {
         String source = productServiceSource();
 
         assertTrue(source.contains("boundedRecommendationCandidates(personalizedCandidateTerms(pets), candidateWindow)"));
-        assertTrue(source.contains("productRepository.findPublicKeywordCandidateWindow(term, PageRequest.of(0, candidateWindow))"));
+        assertTrue(source.contains("productRepository.findPublicKeywordCandidateWindow(escapeLikeTerm(term), PageRequest.of(0, candidateWindow))")
+                || source.contains("productRepository.findPublicKeywordCandidateWindow(term, PageRequest.of(0, candidateWindow))"));
         assertTrue(source.contains("productRepository.findPublicSellableCandidateWindow(PageRequest.of(0, candidateWindow))"));
         assertTrue(source.contains("runtimeConfig.getInt(\"product.recommendation-candidate-window\", defaultWindow)"));
         assertTrue(source.contains("runtimeConfig.getLong(\"product.search-cache-ttl-ms\", 30000)"));

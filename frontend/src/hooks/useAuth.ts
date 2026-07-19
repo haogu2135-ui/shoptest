@@ -125,6 +125,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }): JSX.Element
             })
             .catch((error) => {
                 reportNonBlockingError('useAuth.logoutRevoke', error);
+                // Navbar owns the primary logout entry points; keep both contexts for ops observability.
+                reportNonBlockingError('Navbar.logoutRevoke', error);
                 if (mountedRef.current) {
                     message.warning(t('messages.logoutPartialFailure'));
                 }

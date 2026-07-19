@@ -16,4 +16,21 @@ describe('Cart type-safety guard', () => {
     expect(source).toContain("getApiErrorMessage(err, t('pages.cart.quantityFailed'), language)");
     expect(source).toContain("getApiErrorMessage(err, t('messages.addFailed'), language)");
   });
+
+  it('recovers cancelled or failed payment returns with actionable storefront guidance', () => {
+    const source = readCartSource();
+
+    expect(source).toContain("import { Link, useNavigate, useSearchParams } from 'react-router-dom';");
+    expect(source).toContain("const paymentReturnStatus = String(searchParams.get('payment') || '').trim().toLowerCase();");
+    expect(source).toContain("paymentReturnStatus === 'cancelled'");
+    expect(source).toContain("paymentReturnStatus === 'failed'");
+    expect(source).toContain("className=\"cart-page__paymentReturn\"");
+    expect(source).toContain("t('pages.cart.paymentCancelledTitle')");
+    expect(source).toContain("t('pages.cart.paymentFailedTitle')");
+    expect(source).toContain("t('pages.cart.paymentCancelledResume')");
+    expect(source).toContain("'/profile?tab=orders'");
+    expect(source).toContain('`/profile?tab=orders&orderNo=${encodeURIComponent(paymentReturnOrderNo)}`');
+    expect(source).toContain('clearPaymentReturnParams');
+  });
+
 });

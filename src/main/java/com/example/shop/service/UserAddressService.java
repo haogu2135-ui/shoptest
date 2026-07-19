@@ -5,6 +5,7 @@ import com.example.shop.repository.UserAddressMapper;
 import com.example.shop.repository.UserMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import lombok.extern.slf4j.Slf4j;
 import lombok.RequiredArgsConstructor;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -12,6 +13,7 @@ import java.util.Locale;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class UserAddressService {
     private final UserAddressMapper userAddressMapper;
     private final UserMapper userMapper;

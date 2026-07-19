@@ -55,6 +55,7 @@ body.shop-mobile-app .shop-app-shell :is(
   .cart-page__readiness,
   .cart-page__confidencePanel,
   .cart-page__confidenceItem,
+  .cart-page__paymentReturn,
   .cart-page__nextAction,
   .cart-page__recentRecovery,
   .cart-page__recentItem,

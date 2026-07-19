@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Card, Empty, Image, List, Popconfirm, Space, Tag, Typography, message } from 'antd';
+import { Alert, Button, Card, Image, List, Popconfirm, Space, Tag, Typography, message } from 'antd';
 import { BellOutlined, CheckCircleOutlined, DeleteOutlined, FireOutlined, ReloadOutlined, ShoppingCartOutlined } from '@ant-design/icons';
 import { Link, useNavigate } from 'react-router-dom';
 import { cartApi, productApi } from '../api';
 import { useLanguage } from '../i18n';
+import { usePageTitle } from '../hooks/usePageTitle';
 import { useMarket } from '../hooks/useMarket';
 import type { ProductPublic as Product } from '../types';
 import { addGuestCartItem } from '../utils/guestCart';
@@ -29,6 +30,7 @@ const isBackInStock = (product?: Product) => Boolean(product && (product.stock =
 const StockAlerts: React.FC = () => {
   const navigate = useNavigate();
   const { t, language } = useLanguage();
+  usePageTitle(t('pages.stockAlerts.title'));
   const { formatMoney } = useMarket();
   const dateLocale = language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US';
   const [alerts, setAlerts] = useState<StockAlertItem[]>(() => readStockAlerts());

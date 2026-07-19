@@ -309,7 +309,7 @@ describe('OrderTracking auto refresh', () => {
   it('does not poll or render lifecycle fields for account-restricted tracking responses', () => {
     const source = readOrderTrackingSource();
     const summaryStart = source.indexOf("<Card title={t('pages.orderTracking.summary')}>");
-    const summaryEnd = source.indexOf('{returnRequestOpen ? (', summaryStart);
+    const summaryEnd = source.indexOf("<Card title={t('pages.profile.orderItems')}>", summaryStart);
     const summarySource = source.slice(summaryStart, summaryEnd);
 
     expect(source).toContain('const autoRefreshEnabled = Boolean(order?.orderNo && trackedEmail && !detailsRestricted && shouldAutoRefreshTrackedOrder(order));');
@@ -319,17 +319,22 @@ describe('OrderTracking auto refresh', () => {
     expect(summarySource).toContain("<Descriptions.Item label={t('common.status')}>");
     expect(summarySource.indexOf("{canShowFullTrackingDetails ? (")).toBeLessThan(summarySource.indexOf("<Descriptions.Item label={t('common.status')}>"));
     expect(summarySource).toContain("<Descriptions.Item label={t('pages.orderTracking.createdAt')}>");
-    expect(summarySource.lastIndexOf("{canShowFullTrackingDetails ? (")).toBeLessThan(summarySource.indexOf("<Descriptions.Item label={t('pages.orderTracking.createdAt')}>"));
+    // createdAt and later lifecycle rows stay behind canShowFullTrackingDetails gates.
+    expect(summarySource.indexOf("{canShowFullTrackingDetails ? (")).toBeLessThan(summarySource.indexOf("<Descriptions.Item label={t('pages.orderTracking.createdAt')}>"));
+    expect(summarySource).toContain('canShowFullTrackingDetails && order.trackingCarrierName');
+    expect(summarySource).toContain('canShowFullTrackingDetails && order.returnDeadline');
+    expect(source).toContain('navigate(`/payment/${encodeURIComponent(String(order.orderNo || order.id))}${emailQuery}`)');
   });
 
   it('prefills URL tracking parameters without auto-submitting an order lookup', () => {
     const source = readOrderTrackingSource();
     const prefillStart = source.indexOf("useEffect(() => {\n    const orderNo = cleanTrackingParam(searchParams.get('orderNo') || searchParams.get('order'), 80);");
-    const prefillEnd = source.indexOf('const refreshTrackedOrder = useCallback', prefillStart);
-    const prefillSource = source.slice(prefillStart, prefillEnd);
+    const prefillEnd = source.indexOf('const autoTrackKey = `${paymentReturnStatus}:${orderNo}:${email}`;', prefillStart);
+    const prefillBoundary = prefillEnd > prefillStart ? prefillEnd : source.indexOf('const refreshTrackedOrder = useCallback', prefillStart);
+    const prefillSource = source.slice(prefillStart, prefillBoundary);
 
     expect(prefillStart).toBeGreaterThan(-1);
-    expect(prefillEnd).toBeGreaterThan(prefillStart);
+    expect(prefillBoundary).toBeGreaterThan(prefillStart);
     expect(prefillSource).toContain('form.setFieldsValue(email ? { orderNo, email } : { orderNo });');
     expect(prefillSource).toContain('setPrefillNoticeVisible(Boolean(email));');
     expect(prefillSource).toContain('if (sanitized.toString() !== searchParams.toString()) {');
@@ -370,4 +375,23 @@ describe('OrderTracking auto refresh', () => {
       expect(resetIndex).toBeLessThan(apiCallIndex);
     });
   });
+
+  it('auto-tracks payment returns when guest order context is available', () => {
+    const source = readOrderTrackingSource();
+    expect(source).toContain('paymentReturnAutoTrackKeyRef');
+    expect(source).toContain("paymentReturnStatus === 'success'");
+    expect(source).toContain("paymentReturnStatus === 'failed'");
+    expect(source).toContain('void trackOrder({ orderNo, email }, true);');
+    expect(source).toContain("t('pages.orderTracking.paymentReturnLookupHint')");
+    expect(source).toContain("onClick={continuePayment}");
+    expect(source).toContain("order.status === 'PENDING_PAYMENT' && canOperateTrackedOrder");
+    const autoStart = source.indexOf('const autoTrackKey = `${paymentReturnStatus}:${orderNo}:${email}`;');
+    expect(autoStart).toBeGreaterThan(-1);
+    const prefillStart = source.indexOf("useEffect(() => {\n    const orderNo = cleanTrackingParam(searchParams.get('orderNo') || searchParams.get('order'), 80);");
+    const prefillEnd = source.indexOf('const refreshTrackedOrder = useCallback', prefillStart);
+    // auto-track effect is between prefill and refreshTrackedOrder now
+    const between = source.slice(prefillStart, prefillEnd);
+    expect(between).toContain('void trackOrder({ orderNo, email }, true);');
+  });
+
 });

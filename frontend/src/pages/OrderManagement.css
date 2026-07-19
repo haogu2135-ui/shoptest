@@ -1555,3 +1555,69 @@ body .order-management-page__carrierPopup.shop-mobile-popup-layer.ant-select-dro
     gap: 4px;
   }
 }
+
+.order-management-page__refundReasonPresets {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.order-management-page__refundReasonPresets .ant-btn {
+  max-width: 100%;
+  white-space: normal;
+  height: auto;
+  text-align: left;
+}
+
+.order-management-page__afterSalesPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.order-management-page__afterSalesBreakdown {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.order-management-page__afterSalesChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: #fff;
+  border-radius: 999px;
+  padding: 6px 12px;
+  cursor: pointer;
+  min-height: 36px;
+}
+
+.order-management-page__afterSalesChip strong {
+  font-variant-numeric: tabular-nums;
+}
+
+.order-management-page__afterSalesChip--active {
+  border-color: rgba(22, 119, 255, 0.45);
+  background: rgba(22, 119, 255, 0.08);
+  color: #0958d9;
+}
+
+.order-management-page__nextAction {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.order-management-page__nextActionCta {
+  margin-top: 4px;
+}
+
+@media (max-width: 720px) {
+  .order-management-page__afterSalesChip {
+    flex: 1 1 calc(50% - 8px);
+    justify-content: space-between;
+  }
+}

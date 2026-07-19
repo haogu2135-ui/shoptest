@@ -556,15 +556,24 @@ public class AdminSystemController {
 
         List<PaymentChannelConfig.Channel> enabledChannels = channelConfig.enabledChannels();
         int availableChannels = 0;
+        List<Map<String, Object>> channelDetails = new ArrayList<>();
         for (PaymentChannelConfig.Channel channel : enabledChannels) {
-            if (isProductionCheckoutChannelAvailable(channelConfig, channel, issues, warnings)) {
+            boolean available = isProductionCheckoutChannelAvailable(channelConfig, channel, issues, warnings);
+            if (available) {
                 availableChannels++;
             }
+            Map<String, Object> detail = new LinkedHashMap<>();
+            detail.put("code", channel.getCode());
+            detail.put("provider", channel.getProvider());
+            detail.put("available", available);
+            detail.put("refundMode", channel.getRefundMode());
+            channelDetails.add(detail);
         }
 
         check.put("status", availableChannels > 0 ? "PASS" : "FAIL");
         check.put("enabledChannelCount", enabledChannels.size());
         check.put("availableCheckoutChannelCount", availableChannels);
+        check.put("channels", channelDetails);
         if (availableChannels == 0) {
             issues.add("at least one enabled payment channel must be configured for production checkout");
         }

@@ -1,9 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Card, Empty, Image, message, Popconfirm, Rate, Space, Spin, Switch, Table, Tag, Typography } from 'antd';
+import { Alert, Button, Card, Image, message, Popconfirm, Rate, Space, Spin, Switch, Table, Tag, Typography } from 'antd';
 import { CheckCircleOutlined, DeleteOutlined, FireOutlined, SettingOutlined, ShoppingCartOutlined, StarOutlined } from '@ant-design/icons';
 import { Link, useNavigate } from 'react-router-dom';
 import { cartApi, productApi } from '../api';
 import { useLanguage } from '../i18n';
+import { usePageTitle } from '../hooks/usePageTitle';
 import { useMarket } from '../hooks/useMarket';
 import type { ProductPublic as Product } from '../types';
 import { addGuestCartItem } from '../utils/guestCart';
@@ -76,6 +77,7 @@ const getSpecValue = (product: Product, specKey: string) => {
 const ProductCompare: React.FC = () => {
   const navigate = useNavigate();
   const { t, language } = useLanguage();
+  usePageTitle(t('pages.compare.title'));
   const { formatMoney } = useMarket();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);

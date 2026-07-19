@@ -91,8 +91,8 @@ CREATE TABLE IF NOT EXISTS products (
     CONSTRAINT ck_products_status CHECK (status IN ('ACTIVE', 'INACTIVE', 'PENDING_REVIEW', 'REJECTED')),
     INDEX idx_products_best_seller_rank (best_seller_rank, id),
     INDEX idx_products_limited_time_window (limited_time_start_at, limited_time_end_at, status, id),
-    FULLTEXT INDEX idx_products_search_text (name, description, brand, tag)
-);
+    FULLTEXT INDEX idx_products_search_text (name, description, brand, tag),
+    UNIQUE KEY uk_products_category_name (category_id, name));
 
 -- 璐墿杞﹁〃
 CREATE TABLE IF NOT EXISTS cart_items (

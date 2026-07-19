@@ -1593,7 +1593,7 @@ public class PaymentService {
     private String stripeCancelUrl() {
         return firstNonBlank(
                 runtimeConfig.getString("stripe.checkout-cancel-url", ""),
-                storefrontBaseUrl() + "/cart?payment=cancelled");
+                storefrontBaseUrl() + "/profile?payment=cancelled");
     }
 
     private String paymentSuccessUrl() {
@@ -1605,7 +1605,7 @@ public class PaymentService {
     private String paymentCancelUrl() {
         return firstNonBlank(
                 runtimeConfig.getString("payment.cancel-url", ""),
-                storefrontBaseUrl() + "/cart?payment=cancelled");
+                storefrontBaseUrl() + "/profile?payment=cancelled");
     }
 
     private String contextualStripeSuccessUrl(Order order) {
@@ -1628,6 +1628,7 @@ public class PaymentService {
         boolean guestOrder = order != null && (Boolean.TRUE.equals(order.getGuestOrder()) || guestEmailForOrder(order) != null);
         String baseUrl = trimToNull(configuredUrl);
         if (guestOrder) {
+            // Guests recover on track-order (profile requires auth).
             baseUrl = storefrontBaseUrl() + "/track-order";
         }
         if (baseUrl == null) {
@@ -1636,7 +1637,29 @@ public class PaymentService {
                     : storefrontBaseUrl() + "/profile";
         }
         String url = appendQueryParam(baseUrl, "orderNo", order == null ? null : order.getOrderNo());
+        if (!guestOrder && order != null && order.getId() != null) {
+            url = appendQueryParam(url, "orderId", String.valueOf(order.getId()));
+        }
+        // Guest email enables track-order auto-lookup; FE strips it into local guest context after load.
+        if (guestOrder) {
+            url = appendQueryParam(url, "guestEmail", guestEmailForOrder(order));
+        }
+        // Keep tab=orders for registered recovery when profile is the landing page.
+        if (!guestOrder && urlContainsPath(url, "/profile")) {
+            url = appendQueryParam(url, "tab", "orders");
+        }
         return appendQueryParam(url, statusKey, statusValue);
+    }
+
+    private boolean urlContainsPath(String url, String pathFragment) {
+        String normalized = trimToNull(url);
+        String fragment = trimToNull(pathFragment);
+        if (normalized == null || fragment == null) {
+            return false;
+        }
+        int queryIndex = normalized.indexOf('?');
+        String pathOnly = queryIndex >= 0 ? normalized.substring(0, queryIndex) : normalized;
+        return pathOnly.contains(fragment);
     }
 
     private String appendQueryParam(String url, String key, String value) {

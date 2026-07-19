@@ -215,6 +215,7 @@ type CheckoutCouponErrorLike = {
 };
 
 type CheckoutValidationField = {
+  name?: Array<string | number>;
   errors?: React.ReactNode[];
 };
 
@@ -239,6 +240,24 @@ const buildCheckoutValidationAnnouncement = (
     return '';
   }
   return `${t('pages.checkout.validationErrorSummary', { count: messages.length })} ${messages.join(' ')}`;
+};
+
+const buildCheckoutFieldErrorMap = (fields: CheckoutValidationField[]): Record<string, string> => {
+  const next: Record<string, string> = {};
+  fields.forEach((field) => {
+    const namePath = field.name;
+    if (!namePath || namePath.length === 0) {
+      return;
+    }
+    const key = namePath.map(String).join('.');
+    const message = (field.errors || [])
+      .map(normalizeCheckoutValidationMessage)
+      .find(Boolean);
+    if (message) {
+      next[key] = message;
+    }
+  });
+  return next;
 };
 
 const couponBusinessErrorStatuses = new Set([400, 404, 409, 422]);
@@ -662,6 +681,7 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
   const [couponManuallyChanged, setCouponManuallyChanged] = useState(false);
   const [supportPanelOpen, setSupportPanelOpen] = useState(false);
   const [checkoutValidationAnnouncement, setCheckoutValidationAnnouncement] = useState('');
+  const [checkoutFieldErrors, setCheckoutFieldErrors] = useState<Record<string, string>>({});
   const [checkoutStatusAnnouncement, setCheckoutStatusAnnouncement] = useState<{ id: number; text: string } | null>(null);
   const initialCheckoutDraftRef = React.useRef<CheckoutFormSnapshot | null>(null);
   if (initialCheckoutDraftRef.current === null) {
@@ -699,7 +719,19 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
   }, [announceCheckoutStatus]);
   const updateCheckoutValidationAnnouncement = useCallback((fields: CheckoutValidationField[]) => {
     setCheckoutValidationAnnouncement(buildCheckoutValidationAnnouncement(fields, t));
+    setCheckoutFieldErrors(buildCheckoutFieldErrorMap(fields));
   }, [t]);
+  const renderCheckoutFieldErrorExtra = useCallback((fieldName: string) => {
+    const message = checkoutFieldErrors[fieldName];
+    if (!message) {
+      return undefined;
+    }
+    return (
+      <span className="checkout-page__fieldErrorDescription">
+        {message}
+      </span>
+    );
+  }, [checkoutFieldErrors]);
   const checkoutCartItemName = (item: Pick<CartItem, 'productId' | 'productName'>) => (
     (item.productName || '').trim() || t('pages.profile.productFallback', { id: item.productId })
   );
@@ -1388,13 +1420,11 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
           amount: formatMoney(nextCouponUnlock.gap),
           value: formatMoney(nextCouponUnlock.estimatedValue),
         }),
-        action: addOnTarget
-          ? t('pages.checkout.savingsShopAddOns')
-          : t('pages.checkout.couponOpportunityReview'),
+        action: t('pages.checkout.couponOpportunityReview'),
       };
     }
     return null;
-  }, [addOnTarget, availableCoupons.length, discountAmount, formatMoney, isGuestCheckout, nextCouponUnlock, selectedCoupon, selectedIsBestCoupon, t]);
+  }, [availableCoupons.length, discountAmount, formatMoney, isGuestCheckout, nextCouponUnlock, selectedCoupon, selectedIsBestCoupon, t]);
   const savingsCoachItems = [
     {
       key: 'shipping',
@@ -1598,14 +1628,10 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
     }
   };
   const handleCouponOpportunityAction = () => {
-    if (couponOpportunity?.type === 'build' && addOnTarget) {
-      scrollToAddOns();
-      return;
-    }
     const couponCard = document.getElementById('checkout-coupon-card');
-      if (couponCard && typeof couponCard.scrollIntoView === 'function') {
-        couponCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
+    if (couponCard && typeof couponCard.scrollIntoView === 'function') {
+      couponCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
   };
   const checkoutCoachActionLabel = !checkoutNextAction
     ? t('pages.checkout.nextActionSupport')
@@ -2460,6 +2486,13 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
           {!paid ? (
             <Space wrap className="checkout-page__paymentRecoveryActions">
               {payment.paymentUrl ? <Button type="primary" aria-label={openPaymentActionLabel} title={openPaymentActionLabel} onClick={openPaymentUrl}>{t('pages.checkout.openPayment')}</Button> : null}
+              <Button
+                aria-label={`${t('pages.paymentInstructions.title')}: ${orderPaymentContext}`}
+                title={t('pages.paymentInstructions.title')}
+                onClick={() => navigate(`/payment/${encodeURIComponent(String(createdOrder.orderNo || createdOrder.id))}${guestPaymentEmail ? `?guestEmail=${encodeURIComponent(guestPaymentEmail)}` : ''}`)}
+              >
+                {t('pages.paymentInstructions.title')}
+              </Button>
               {paymentSimulationEnabled ? (
                 <Button loading={simulatingPayment} aria-label={simulatePaymentActionLabel} title={simulatePaymentActionLabel} onClick={simulatePayment}>
                   {t('pages.checkout.simulatePay')}
@@ -2860,7 +2893,6 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
             <Button
               size="small"
               type={couponOpportunity.type === 'ready' ? 'default' : 'primary'}
-              icon={couponOpportunity.type === 'build' && addOnTarget ? <SwapOutlined /> : undefined}
               className="checkout-page__addOnButton"
               aria-label={checkoutCouponOpportunityActionLabel}
               title={checkoutCouponOpportunityActionLabel}
@@ -3002,7 +3034,12 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
         </div>
         {isGuestCheckout ? (
           <Card title={t('pages.checkout.contact')} className="checkout-page__sectionCard">
-            <Form.Item name="guestEmail" label={t('pages.checkout.email')} rules={[{ required: true, message: t('pages.checkout.emailRequired') }, { type: 'email', message: t('pages.checkout.emailInvalid') }]}>
+            <Form.Item
+              name="guestEmail"
+              label={t('pages.checkout.email')}
+              rules={[{ required: true, message: t('pages.checkout.emailRequired') }, { type: 'email', message: t('pages.checkout.emailInvalid') }]}
+              extra={renderCheckoutFieldErrorExtra('guestEmail')}
+            >
               <Input placeholder={t('pages.checkout.guestEmailPlaceholder')} autoComplete="email" inputMode="email" maxLength={120} />
             </Form.Item>
             <Text type="secondary">{t('pages.checkout.guestHint')}</Text>
@@ -3079,6 +3116,7 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
                     ),
                   },
                 ]}
+                extra={renderCheckoutFieldErrorExtra('recipientName')}
               >
                 <Input placeholder={t('pages.checkout.recipientRequired')} maxLength={80} autoComplete="name" />
               </Form.Item>
@@ -3089,6 +3127,7 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
                   { required: true, message: t('pages.checkout.phoneRequired') },
                   { validator: (_, value) => (!value || isLikelyPhone(value) ? Promise.resolve() : Promise.reject(new Error(t('pages.checkout.phoneInvalid')))) },
                 ]}
+                extra={renderCheckoutFieldErrorExtra('phone')}
               >
                 <Input
                   placeholder={t('pages.checkout.phoneRequired')}
@@ -3098,7 +3137,12 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
                   onBlur={handleCheckoutPhoneBlur}
                 />
               </Form.Item>
-              <Form.Item name="region" label={t('pages.checkout.region')} rules={[{ required: true, message: t('pages.checkout.regionRequired') }]}>
+              <Form.Item
+                name="region"
+                label={t('pages.checkout.region')}
+                rules={[{ required: true, message: t('pages.checkout.regionRequired') }]}
+                extra={renderCheckoutFieldErrorExtra('region')}
+              >
                 <Cascader
                   options={regionOptions}
                   placeholder={regionOptionsLoading ? t('common.loading') : t('pages.checkout.regionPlaceholder')}
@@ -3133,6 +3177,7 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
                     ),
                   },
                 ]}
+                extra={renderCheckoutFieldErrorExtra('shippingAddress')}
               >
                 <Input.TextArea rows={3} placeholder={t('pages.checkout.detailPlaceholder')} maxLength={260} showCount autoComplete="street-address" />
               </Form.Item>
@@ -3150,6 +3195,7 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
                     ),
                   }),
                 ]}
+                extra={renderCheckoutFieldErrorExtra('postalCode')}
               >
                 <Input
                   placeholder={t('pages.checkout.postalCodePlaceholder')}

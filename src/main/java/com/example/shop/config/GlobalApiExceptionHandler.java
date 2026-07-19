@@ -224,15 +224,15 @@ public class GlobalApiExceptionHandler {
             ResponseStatusException exception,
             HttpServletRequest request
     ) {
-        if (status.is5xxServerError()) {
-            return "Internal server error";
-        }
         String safeReason = safeClientMessage(exception.getReason());
         if (safeReason != null) {
             return safeReason;
         }
         if (exception.getReason() != null && !exception.getReason().isBlank()) {
             logFilteredClientError(status, exception, request);
+        }
+        if (status.is5xxServerError()) {
+            return "Internal server error";
         }
         if (status == HttpStatus.BAD_REQUEST) {
             return "Bad request";

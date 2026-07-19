@@ -10,6 +10,7 @@ import com.example.shop.repository.PetBirthdayCouponConfigRepository;
 import com.example.shop.repository.PetBirthdayCouponGrantMapper;
 import com.example.shop.repository.PetProfileMapper;
 import com.example.shop.repository.UserCouponMapper;
+import lombok.extern.slf4j.Slf4j;
 import lombok.RequiredArgsConstructor;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -25,6 +26,7 @@ import java.util.Locale;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class PetBirthdayCouponService {
     private static final long DEFAULT_CONFIG_ID = 1L;
     private static final String FULL_REDUCTION = "FULL_REDUCTION";

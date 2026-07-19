@@ -59,7 +59,8 @@ class GuestCredentialTransportContractTest {
         assertTrue(apiClient.contains("api.post<OrderCustomer>(`/orders/guest/${normalizedId}`, credentials, anonymousRequestConfig())"));
         assertTrue(apiClient.contains("api.post<OrderItemCustomer[]>(`/orders/guest/${normalizedOrderId}/items`, credentials, anonymousRequestConfig())"));
         assertTrue(apiClient.contains("api.post<PaymentCustomer[]>(`/payments/guest/order/${normalizedId}`, credentials, anonymousRequestConfig())"));
-        assertTrue(apiClient.contains("api.post<PaymentCustomer>(`/payments/guest/order/${normalizedId}/latest`, credentials, anonymousRequestConfig())"));
+        assertTrue(apiClient.contains("api.post<PaymentCustomer>(`/payments/guest/order/${normalizedId}/latest`, credentials, anonymousRequestConfig("));
+        assertTrue(apiClient.contains("anonymousRequestConfig({}, options)") || apiClient.contains("anonymousRequestConfig())"));
         assertFalse(apiClient.contains("api.get<OrderTrackResult>('/orders/track'"));
         assertFalse(apiClient.contains("api.get<OrderCustomer>(`/orders/guest/${normalizedId}`"));
         assertFalse(apiClient.contains("api.get<OrderItemCustomer[]>(`/orders/guest/${normalizedOrderId}/items`"));

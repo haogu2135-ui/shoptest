@@ -27,7 +27,7 @@ class CheckoutIdempotencyLifecycleContractTest {
     @Test
     void checkoutPersistsPendingOrderBeforeClearingCartSelection() throws IOException {
         String source = Files.readString(CHECKOUT_SOURCE);
-        int persistIndex = source.indexOf("persistCheckoutPendingOrder(orderRes.data, normalizedPaymentMethod, normalizedGuestEmail);");
+        int persistIndex = source.indexOf("persistCheckoutPendingOrder(orderRes.data, normalizedPaymentMethod, normalizedGuestEmail, submittedCartItems);");
         int clearCartIndex = source.indexOf("clearCheckoutCartItemIds();", Math.max(0, persistIndex));
 
         assertTrue(persistIndex >= 0, "Checkout should persist pending-order recovery after order creation");
@@ -42,7 +42,7 @@ class CheckoutIdempotencyLifecycleContractTest {
     }
 
     private boolean preservesPendingOrderRecovery(String source) {
-        int persistIndex = source.indexOf("persistCheckoutPendingOrder(orderRes.data, normalizedPaymentMethod, normalizedGuestEmail);");
+        int persistIndex = source.indexOf("persistCheckoutPendingOrder(orderRes.data, normalizedPaymentMethod, normalizedGuestEmail, submittedCartItems);");
         int paymentCreateIndex = source.indexOf("paymentApi.create(", Math.max(0, persistIndex));
         return source.contains("CHECKOUT_PENDING_ORDER_KEY")
                 && source.contains("const readCheckoutPendingOrder = () =>")

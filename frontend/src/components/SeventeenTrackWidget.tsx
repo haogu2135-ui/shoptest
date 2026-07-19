@@ -1,9 +1,11 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Button, Empty, Input, Space, Tag, Typography, message } from 'antd';
-import { SearchOutlined } from '@ant-design/icons';
+import { CopyOutlined, CustomerServiceOutlined, ReloadOutlined, SearchOutlined } from '@ant-design/icons';
 import { logisticsApi } from '../api';
 import { useLanguage } from '../i18n';
 import { getApiErrorDiagnosticText, getApiErrorMessage } from '../utils/apiError';
+import { dispatchDomEvent } from '../utils/domEvents';
+import { reportNonBlockingError } from '../utils/nonBlockingError';
 import type { LogisticsTrackResponse } from '../types';
 import './SeventeenTrackWidget.css';
 
@@ -126,10 +128,68 @@ const SeventeenTrackWidget: React.FC<SeventeenTrackWidgetProps> = ({
   const events = result?.events || [];
   const status = result?.status || '';
   const trackingUnavailable = status === 'TRACKING_UNAVAILABLE';
-  const trackingContext = value.trim() || result?.trackingNumber || trackingNumber.trim() || orderNo || t('pages.orderTracking.title');
+  const externalEmpty = status === 'EXTERNAL_EMPTY';
+  const activeTrackingNumber = value.trim() || result?.trackingNumber || trackingNumber.trim();
+  const trackingContext = activeTrackingNumber || orderNo || t('pages.orderTracking.title');
   const trackingInputLabel = `${t('pages.orderTracking.trackingNumber')}: ${trackingContext}`;
   const trackActionLabel = `${t('pages.orderTracking.trackShipment')}: ${trackingContext}`;
   const trackingResultsLabel = `${t('pages.orderTracking.logistics')}: ${trackingContext}`;
+  const needsEmptyRecovery = Boolean(error) || trackingUnavailable || externalEmpty || (result && events.length === 0) || !result;
+
+  const copyTrackingNumber = async () => {
+    if (!activeTrackingNumber) {
+      message.warning(t('pages.adminOrders.noTrackingNumber'));
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(activeTrackingNumber);
+      message.success(t('pages.orderTracking.trackingNumberCopied'));
+    } catch (error) {
+      reportNonBlockingError('SeventeenTrackWidget.copyTrackingNumber', error);
+      message.error(t('pages.orderTracking.copyTrackingFailed'));
+    }
+  };
+
+  const openSupport = () => {
+    dispatchDomEvent('shop:open-support', {
+      clearGuestContext: false,
+      orderNo: orderNo || undefined,
+      email: guestEmail || undefined,
+    });
+  };
+
+  const recoveryActions = (
+    <Space wrap className="seventeen-track-widget__recoveryActions" size={[8, 8]}>
+      {activeTrackingNumber ? (
+        <Button
+          icon={<CopyOutlined />}
+          onClick={() => { void copyTrackingNumber(); }}
+          aria-label={`${t('pages.orderTracking.copyTrackingNumber')}: ${activeTrackingNumber}`}
+          title={`${t('pages.orderTracking.copyTrackingNumber')}: ${activeTrackingNumber}`}
+        >
+          {t('pages.orderTracking.copyTrackingNumber')}
+        </Button>
+      ) : null}
+      <Button
+        icon={<ReloadOutlined />}
+        loading={loading}
+        onClick={runTrack}
+        disabled={!value.trim() && !activeTrackingNumber}
+        aria-label={`${t('pages.orderTracking.retryTracking')}: ${trackingContext}`}
+        title={`${t('pages.orderTracking.retryTracking')}: ${trackingContext}`}
+      >
+        {t('pages.orderTracking.retryTracking')}
+      </Button>
+      <Button
+        icon={<CustomerServiceOutlined />}
+        onClick={openSupport}
+        aria-label={t('pages.profile.contactSupport')}
+        title={t('pages.profile.contactSupport')}
+      >
+        {t('pages.profile.contactSupport')}
+      </Button>
+    </Space>
+  );
 
   return (
     <Space className="seventeen-track-widget" direction="vertical" size="middle">
@@ -147,32 +207,36 @@ const SeventeenTrackWidget: React.FC<SeventeenTrackWidgetProps> = ({
           type="primary"
           icon={<SearchOutlined />}
           loading={loading}
+          onClick={runTrack}
           aria-label={trackActionLabel}
           title={trackActionLabel}
-          onClick={runTrack}
         >
           {t('pages.adminOrders.track')}
         </Button>
       </Space.Compact>
+
       <div
         className="seventeen-track-widget__results"
         style={{ minHeight: resultsMinHeight }}
         aria-live="polite"
-        role="region"
-        aria-label={trackingResultsLabel}
+        aria-busy={loading}
       >
-        {loading ? (
-          <Typography.Text type="secondary" className="seventeen-track-widget__empty" role="status">
-            {t('common.loading')}
-          </Typography.Text>
+        {loading && !result && !error ? (
+          <Typography.Text type="secondary">{t('common.loading')}</Typography.Text>
         ) : error ? (
-          <Alert
-            className="seventeen-track-widget__alert"
-            type="warning"
-            showIcon
-            message={t('pages.orderTracking.trackingFailed')}
-            description={error}
-          />
+          <div className="seventeen-track-widget__recovery">
+            <Alert
+              className="seventeen-track-widget__alert"
+              type="error"
+              showIcon
+              message={t('pages.orderTracking.trackingFailed')}
+              description={error}
+            />
+            <Typography.Text type="secondary" className="seventeen-track-widget__recoveryHint">
+              {t('pages.orderTracking.emptyRecoveryHint')}
+            </Typography.Text>
+            {recoveryActions}
+          </div>
         ) : result ? (
           <div className="seventeen-track-widget__content">
             <div className="seventeen-track-widget__summary">
@@ -210,22 +274,44 @@ const SeventeenTrackWidget: React.FC<SeventeenTrackWidgetProps> = ({
                 })}
               </div>
             ) : trackingUnavailable ? (
-              <Alert
-                className="seventeen-track-widget__alert seventeen-track-widget__inlineAlert"
-                type="info"
-                showIcon
-                message={t('pages.orderTracking.trackingUnavailable')}
-                description={result.summary || t('pages.orderTracking.noTrackingData')}
-              />
+              <div className="seventeen-track-widget__recovery">
+                <Alert
+                  className="seventeen-track-widget__alert seventeen-track-widget__inlineAlert"
+                  type="info"
+                  showIcon
+                  message={t('pages.orderTracking.trackingUnavailable')}
+                  description={result.summary || t('pages.orderTracking.noTrackingData')}
+                />
+                <Typography.Text type="secondary" className="seventeen-track-widget__recoveryHint">
+                  {t('pages.orderTracking.emptyRecoveryHint')}
+                </Typography.Text>
+                {recoveryActions}
+              </div>
             ) : (
-              <Empty
-                image={Empty.PRESENTED_IMAGE_SIMPLE}
-                description={t('pages.orderTracking.noTrackingData')}
-              />
+              <div className="seventeen-track-widget__recovery">
+                <Empty
+                  image={Empty.PRESENTED_IMAGE_SIMPLE}
+                  description={t('pages.orderTracking.noTrackingData')}
+                />
+                <Typography.Text type="secondary" className="seventeen-track-widget__recoveryHint">
+                  {t('pages.orderTracking.emptyRecoveryHint')}
+                </Typography.Text>
+                {recoveryActions}
+              </div>
             )}
           </div>
         ) : (
-          <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('pages.orderTracking.noTrackingData')} />
+          <div className="seventeen-track-widget__recovery">
+            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('pages.orderTracking.noTrackingData')} />
+            {needsEmptyRecovery ? (
+              <>
+                <Typography.Text type="secondary" className="seventeen-track-widget__recoveryHint">
+                  {t('pages.orderTracking.emptyRecoveryHint')}
+                </Typography.Text>
+                {recoveryActions}
+              </>
+            ) : null}
+          </div>
         )}
       </div>
     </Space>

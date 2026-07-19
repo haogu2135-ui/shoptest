@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { cartApi, couponApi } from '../api';
 import type { CartItem, CouponPublic, UserCoupon } from '../types';
 import { useLanguage } from '../i18n';
+import { usePageTitle } from '../hooks/usePageTitle';
 import { buildLoginUrlFromWindow } from '../utils/authRedirect';
 import { useMarket } from '../hooks/useMarket';
 import { dispatchDomEvent } from '../utils/domEvents';
@@ -13,6 +14,7 @@ import { getCouponUiText } from '../utils/couponUiText';
 import { getLocalStorageItem } from '../utils/safeStorage';
 import { reportNonBlockingError } from '../utils/nonBlockingError';
 import PageError from '../components/PageError';
+import ShopBreadcrumb from '../components/ShopBreadcrumb';
 import { getApiErrorMessage } from '../utils/apiError';
 import {
   filterPublicCoupons,
@@ -62,6 +64,7 @@ const claimCouponsInBatches = async (coupons: CouponPublic[]) => {
 const CouponCenter: React.FC = () => {
   const navigate = useNavigate();
   const { t, language } = useLanguage();
+  usePageTitle(t('pages.coupons.title'));
   const token = getLocalStorageItem('token') || '';
   const isAuthenticated = Boolean(token);
   const mountedRef = useRef(true);
@@ -488,6 +491,14 @@ const CouponCenter: React.FC = () => {
 
   return (
     <div className={`coupon-center-page ${couponPageStateClass} coupon-center-page--${language}`}>
+      <ShopBreadcrumb
+        ariaLabel={t('pages.coupons.title')}
+        items={[
+          { key: 'home', label: t('nav.ariaHome'), path: '/' },
+          { key: 'products', label: t('pages.productList.title'), path: '/products' },
+          { key: 'coupons', label: t('pages.coupons.title') },
+        ]}
+      />
       {loadError && !usingFallbackCoupons ? (
         <PageError
           className="coupon-center-page__loadAlert"

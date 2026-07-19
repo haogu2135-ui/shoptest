@@ -574,7 +574,7 @@ const Navbar: React.FC = () => {
       window.removeEventListener('shop:coupons-updated', refreshCouponCountFromEvent);
       window.removeEventListener('storage', refreshLocalCountsFromStorage);
     };
-  }, [token]);
+  }, [showBadgeLoadWarning, token]);
 
   const handleLogout = () => {
     const loginUrl = buildLoginUrlFromWindow();

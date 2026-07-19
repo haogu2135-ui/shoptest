@@ -1061,11 +1061,98 @@
 }
 
 .profile-pet-modal__field,
-.profile-return-modal__content,
 .profile-payment-modal__content,
 .profile-payment-history__item {
   width: 100%;
 }
+
+/* Commercial return request / shipment modal */
+.profile-return-modal__content {
+  width: 100%;
+}
+
+.profile-return-modal__summary {
+  padding: 12px 14px;
+  border: 1px solid #e7eadf;
+  border-radius: 10px;
+  background: #fbfff8;
+}
+
+.profile-return-modal__summary .ant-typography {
+  color: #173f2b;
+}
+
+.profile-return-modal__timeline {
+  display: grid;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid #e8edf3;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #f8fbff 0%, #ffffff 100%);
+}
+
+.profile-return-modal__timelineTitle,
+.profile-return-modal__presetsLabel {
+  display: block;
+  color: #4a5b53;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.profile-return-modal__steps {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.profile-return-modal__step {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 8px 6px;
+  border-radius: 8px;
+  border: 1px solid rgba(18, 71, 52, 0.12);
+  background: #ffffff;
+  color: #124734;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.25;
+  text-align: center;
+}
+
+.profile-return-modal__presets {
+  display: grid;
+  gap: 8px;
+}
+
+.profile-return-modal__presetGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.profile-return-modal__preset {
+  min-height: 36px;
+}
+
+.profile-return-modal .ant-input-textarea-show-count::after,
+.profile-return-modal .ant-input-data-count {
+  color: #6b7a72;
+}
+
+@media (max-width: 640px) {
+  .profile-return-modal__steps {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .profile-return-modal__preset {
+    min-height: 40px;
+  }
+}
+
 
 .profile-order-card__link {
   font-weight: 800;
@@ -3622,4 +3709,8 @@
   body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--profile-flow .profile-pet-card .ant-card-actions {
     padding-bottom: 2px !important;
   }
+}
+
+.profile-payment-refund-audit {
+  width: 100%;
 }

@@ -35,10 +35,10 @@ class CouponUsageCounterContractTest {
     void repositoryUsageCounterUpdatesAreDatabaseSideIncrements() throws IOException {
         String repository = read("src/main/java/com/example/shop/repository/CouponRepository.java");
 
-        assertTrue(repository.contains("int incrementUsedCount(Long couponId);"));
+        assertTrue(repository.contains("int incrementUsedCount(@Param(\"couponId\") Long couponId);"));
         assertTrue(repository.contains("update Coupon c set c.usedCount = coalesce(c.usedCount, 0) + 1"),
                 "used_count should increment in one database UPDATE statement");
-        assertTrue(repository.contains("int decrementUsedCount(Long couponId);"));
+        assertTrue(repository.contains("int decrementUsedCount(@Param(\"couponId\") Long couponId);"));
         assertTrue(repository.contains("update coupons set used_count = case"),
                 "release should decrement used_count in one guarded database UPDATE statement");
         assertTrue(repository.contains("when coalesce(used_count, 0) > 0 then coalesce(used_count, 0) - 1"),

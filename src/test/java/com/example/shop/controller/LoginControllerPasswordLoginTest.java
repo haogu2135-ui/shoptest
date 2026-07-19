@@ -330,6 +330,7 @@ class LoginControllerPasswordLoginTest {
 
         when(clientIpResolver.resolve(servletRequest)).thenReturn("203.0.113.30");
         when(userService.findByUsernameOrPhoneOrEmail("mia@example.com")).thenReturn(user);
+        when(userService.findById(7L)).thenReturn(user);
         when(authenticationManager.authenticate(any())).thenReturn(authentication);
         when(jwtService.generateToken(principal)).thenThrow(new NullPointerException("jwt signer missing"));
 

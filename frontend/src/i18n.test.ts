@@ -26,7 +26,16 @@ const readFrontendSourceFiles = (directory: string): string[] => {
   const entries = fs.readdirSync(directory, { withFileTypes: true });
   return entries.flatMap((entry) => {
     const fullPath = path.join(directory, entry.name);
-    if (entry.isDirectory()) return readFrontendSourceFiles(fullPath);
+    if (entry.isDirectory()) {
+      if (entry.name === 'node_modules' || entry.name === 'build' || entry.name === 'coverage') {
+        return [];
+      }
+      return readFrontendSourceFiles(fullPath);
+    }
+    // Exclude tests so forbidden-key fixtures in this suite cannot self-match.
+    if (/\.(test|spec)\.(tsx?|jsx?)$/.test(entry.name)) {
+      return [];
+    }
     return /\.(tsx?|jsx?)$/.test(entry.name) ? [fs.readFileSync(fullPath, 'utf8')] : [];
   });
 };

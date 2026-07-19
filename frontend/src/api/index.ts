@@ -1607,11 +1607,41 @@ const removeAuthorizationHeader = (config: AuthRetryConfig) => {
     config.headers = mutableHeaders as AuthRetryConfig['headers'];
 };
 
+const SHOP_LANGUAGE_STORAGE_KEY = 'shop-language';
+
+const resolveAcceptLanguageHeader = (language?: string | null) => {
+    const normalized = String(language || '').trim().toLowerCase();
+    if (normalized === 'zh' || normalized.startsWith('zh-')) {
+        return 'zh-CN';
+    }
+    if (normalized === 'es' || normalized.startsWith('es-')) {
+        return 'es-MX';
+    }
+    return 'en-US';
+};
+
+const applyAcceptLanguageHeader = (config: AuthRetryConfig) => {
+    const acceptLanguage = resolveAcceptLanguageHeader(getStoredItem(SHOP_LANGUAGE_STORAGE_KEY));
+    const headers = config.headers;
+    const headerSetter = headers as { set?: unknown } | undefined;
+    if (typeof headerSetter?.set === 'function') {
+        const setHeader = headerSetter.set as (name: string, value: string) => void;
+        setHeader.call(headers, 'Accept-Language', acceptLanguage);
+        config.headers = headers;
+        return;
+    }
+    config.headers = {
+        ...(isRecord(headers) ? headers : {}),
+        'Accept-Language': acceptLanguage,
+    } as AuthRetryConfig['headers'];
+};
+
 // 请求拦截器
 api.interceptors.request.use(
     async (config) => {
         config.url = resolveApiDispatcherUrl(config.url);
         const authConfig = config as AuthRetryConfig;
+        applyAcceptLanguageHeader(authConfig);
         let token = getStoredItem('token');
         if (token && !authConfig.skipAuthHeader && !authConfig.skipAuthRefresh && isJwtExpiring(token)) {
             token = await refreshAuthToken();

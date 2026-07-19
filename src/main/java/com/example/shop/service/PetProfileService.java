@@ -3,6 +3,7 @@ package com.example.shop.service;
 import com.example.shop.entity.PetProfile;
 import com.example.shop.repository.PetProfileMapper;
 import com.example.shop.repository.UserMapper;
+import lombok.extern.slf4j.Slf4j;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -13,6 +14,7 @@ import java.util.Locale;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class PetProfileService {
     private final PetProfileMapper petProfileMapper;
     private final UserMapper userMapper;

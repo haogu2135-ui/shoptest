@@ -20,6 +20,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.data.domain.Page;
@@ -273,11 +274,12 @@ public class ProductServiceImpl implements ProductService {
                 normalizedStatus), pageRequest);
         List<Product> pageItems = enrichReviewStats(page.getContent());
         Map<Long, Category> categoryLookup = loadCategoryLookupForProducts(pageItems);
-        pageItems = pageItems.stream()
+        List<Product> visibleProducts = pageItems.stream()
                 .filter(product -> matchesPublicListQuery(product, normalizedQuery, normalizedKeyword, categoryLookup,
                         categoryIds, normalizedCollection, collectionCategoryIds, minPrice, maxPrice, normalizedStatus))
                 .collect(Collectors.toList());
-        return new PageImpl<>(pageItems, pageRequest, page.getTotalElements());
+        // Post-query visibility must not reuse the unfiltered database total.
+        return new PageImpl<>(visibleProducts, page.getPageable(), visibleProducts.size());
     }
 
     private Specification<Product> publicProductSpecification(ProductListQuery query,
@@ -804,10 +806,18 @@ public class ProductServiceImpl implements ProductService {
     @Transactional(rollbackFor = Exception.class)
     public Product save(Product product) {
         validateDirectProduct(product);
-        Product saved = productRepository.save(product);
-        invalidateProductSearchCacheForProduct(saved);
-        evictCategoryReferenceCache();
-        return saved;
+        validateDirectProductNameUniqueness(product);
+        try {
+            Product saved = productRepository.save(product);
+            invalidateProductSearchCacheForProduct(saved);
+            evictCategoryReferenceCache();
+            return saved;
+        } catch (DataIntegrityViolationException e) {
+            if (isProductCategoryNameConstraintViolation(e)) {
+                throw new IllegalArgumentException("A product with this name already exists in the selected category");
+            }
+            throw e;
+        }
     }
 
     @Override
@@ -2280,6 +2290,29 @@ public class ProductServiceImpl implements ProductService {
         if (duplicate) {
             throw new IllegalArgumentException("name already exists in this category: " + normalizedName);
         }
+    }
+
+    
+    private void validateDirectProductNameUniqueness(Product product) {
+        if (product == null || product.getCategoryId() == null) {
+            return;
+        }
+        String name = product.getName() == null ? null : product.getName().trim();
+        if (name == null || name.isEmpty()) {
+            return;
+        }
+        boolean exists = product.getId() == null
+                ? productRepository.existsByCategoryIdAndNameIgnoreCase(product.getCategoryId(), name)
+                : productRepository.existsByCategoryIdAndNameIgnoreCaseAndIdNot(product.getCategoryId(), name, product.getId());
+        if (exists) {
+            throw new IllegalArgumentException("A product with this name already exists in the selected category");
+        }
+    }
+
+    private boolean isProductCategoryNameConstraintViolation(DataIntegrityViolationException e) {
+        String message = String.valueOf(e.getMostSpecificCause() != null ? e.getMostSpecificCause().getMessage() : e.getMessage()).toLowerCase(Locale.ROOT);
+        return message.contains("uk_products_category_name")
+                || (message.contains("duplicate") && message.contains("category") && message.contains("name"));
     }
 
     private void validateDirectProduct(Product product) {

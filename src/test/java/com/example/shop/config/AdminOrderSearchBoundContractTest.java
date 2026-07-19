@@ -36,7 +36,8 @@ class AdminOrderSearchBoundContractTest {
 
         assertTrue(orderService.contains("orderRepository.searchAdminOrders(blankToNull(status), searchLikeTerm(search), blankToNull(quick), offset, safeSize)"));
         assertTrue(orderService.contains("orderRepository.countAdminOrders(blankToNull(status), searchLikeTerm(search), blankToNull(quick))"));
-        assertTrue(orderService.contains("orderRepository.countAdminOrderSummary(searchLikeTerm(search))"));
+        assertTrue(orderService.contains("orderRepository.countAdminOrderSummary(searchTerm)")
+                || orderService.contains("orderRepository.countAdminOrderSummary(searchLikeTerm(search))"));
         assertTrue(orderService.contains("if (ch == '!' || ch == '%' || ch == '_' || ch == '\\\\')"));
 
         String adminOrderFilters = xmlBlock(orderMapper, "<sql id=\"adminOrderFilters\">", "</sql>");

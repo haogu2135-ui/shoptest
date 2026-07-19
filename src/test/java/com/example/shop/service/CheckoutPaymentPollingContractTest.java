@@ -20,7 +20,7 @@ class CheckoutPaymentPollingContractTest {
 
         assertTrue(refreshEffect.contains("let disposed = false;"));
         assertTrue(refreshEffect.contains("const timer = window.setTimeout(async () => {"));
-        assertTrue(refreshEffect.contains("if (!disposed) {"));
+        assertTrue(refreshEffect.contains("if (!disposed && !abortController.signal.aborted) {") || refreshEffect.contains("if (!disposed) {"));
         assertTrue(refreshEffect.contains("setPayment(paymentRes.data);"));
         assertTrue(refreshEffect.contains("disposed = true;"));
         assertTrue(refreshEffect.contains("window.clearTimeout(timer);"));

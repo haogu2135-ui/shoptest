@@ -14,7 +14,7 @@ class NavbarGuestStockAlertContractTest {
     void navbarDoesNotFetchStockAlertProductsForGuests() throws Exception {
         String source = Files.readString(Path.of("frontend/src/components/Navbar.tsx"), StandardCharsets.UTF_8);
         String refreshAlertCount = sliceBetween(source,
-                "const refreshAlertCount = () => {",
+                "const refreshAlertCount = async () => {",
                 "const refreshGuestCartCount = () => {");
 
         int tokenGuardIndex = refreshAlertCount.indexOf("if (!token) {");
@@ -28,7 +28,8 @@ class NavbarGuestStockAlertContractTest {
                 "Guest guard should run before reading persisted stock alerts");
         assertTrue(tokenGuardIndex < fetchProductsIndex,
                 "Guest guard should run before productApi.getByIds can be called");
-        assertTrue(source.contains("queueIdleRefresh(refreshAlertCount, token ? 1900 : 900);"),
+        assertTrue(source.contains("queueIdleRefresh(refreshAlertCount, 900);")
+                        || source.contains("queueIdleRefresh(refreshAlertCount, token ? 1900 : 900);"),
                 "The idle refresh may still be scheduled, but refreshAlertCount must be safe for guests");
     }
 

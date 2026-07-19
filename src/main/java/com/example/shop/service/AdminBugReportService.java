@@ -5,6 +5,7 @@ import com.example.shop.dto.AdminBugReportRequest;
 import com.example.shop.dto.AdminBugReportStatusRequest;
 import com.example.shop.dto.AdminBugReportSummaryResponse;
 import com.example.shop.entity.AdminBugReport;
+import lombok.extern.slf4j.Slf4j;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
@@ -27,6 +28,7 @@ import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AdminBugReportService {
     private static final String DEFAULT_STOREFRONT_BASE_URL = "https://pet.686888666.xyz";
     public static final String STATUS_OPEN = "OPEN";

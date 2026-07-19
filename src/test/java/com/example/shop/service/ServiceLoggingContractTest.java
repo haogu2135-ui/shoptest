@@ -4,9 +4,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Test;
 
@@ -19,13 +22,11 @@ class ServiceLoggingContractTest {
     @Test
     void trackedConcreteServiceClassesExposeLogger() throws Exception {
         List<String> offenders = new ArrayList<>();
-        for (String path : gitLines("ls-files",
-                "src/main/java/com/example/shop/service",
-                "src/main/java/com/example/shop/service/impl")) {
-            if (!path.endsWith(".java")) {
-                continue;
-            }
-            String source = gitShowIndex(path);
+        List<String> paths = new ArrayList<>();
+        collectJavaFiles(Path.of("src/main/java/com/example/shop/service"), paths);
+        collectJavaFiles(Path.of("src/main/java/com/example/shop/service/impl"), paths);
+        for (String path : paths) {
+            String source = Files.readString(Path.of(path), StandardCharsets.UTF_8);
             if (TOP_LEVEL_CLASS_PATTERN.matcher(source).find()
                     && !LOGGING_PATTERN.matcher(source).find()) {
                 offenders.add(path);
@@ -36,32 +37,15 @@ class ServiceLoggingContractTest {
                 + String.join("\n", offenders));
     }
 
-    private static List<String> gitLines(String... args) throws IOException, InterruptedException {
-        String output = runGit(args);
-        if (output.isBlank()) {
-            return List.of();
+    private static void collectJavaFiles(Path dir, List<String> out) throws IOException {
+        if (!Files.isDirectory(dir)) {
+            return;
         }
-        return output.lines()
-                .filter(line -> !line.isBlank())
-                .toList();
-    }
-
-    private static String gitShowIndex(String path) throws IOException, InterruptedException {
-        return runGit("show", ":" + path);
-    }
-
-    private static String runGit(String... args) throws IOException, InterruptedException {
-        List<String> command = new ArrayList<>();
-        command.add("git");
-        command.addAll(List.of(args));
-        Process process = new ProcessBuilder(command)
-                .redirectErrorStream(true)
-                .start();
-        String output = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
-        int exitCode = process.waitFor();
-        if (exitCode != 0) {
-            throw new IllegalStateException("git command failed: " + String.join(" ", command) + "\n" + output);
+        try (Stream<Path> stream = Files.walk(dir)) {
+            stream.filter(path -> path.toString().endsWith(".java"))
+                    .filter(Files::isRegularFile)
+                    .map(path -> path.toString().replace('\\', '/'))
+                    .forEach(out::add);
         }
-        return output;
     }
 }

@@ -224,6 +224,12 @@ export interface AdminSystemStatus {
             websocketOriginCount?: number;
             enabledChannelCount?: number;
             availableCheckoutChannelCount?: number;
+            channels?: Array<{
+                code?: string;
+                provider?: string;
+                available?: boolean;
+                refundMode?: string;
+            }>;
         }>;
     };
 }

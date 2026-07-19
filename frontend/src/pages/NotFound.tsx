@@ -3,10 +3,12 @@ import { Button, Result } from 'antd';
 import { HomeOutlined, SearchOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../i18n';
+import { usePageTitle } from '../hooks/usePageTitle';
 import './NotFound.css';
 
 const NotFound: React.FC = () => {
   const { t } = useLanguage();
+  usePageTitle(t('notFound.title'));
   const navigate = useNavigate();
   const title = t('notFound.title');
   const subtitle = t('notFound.subtitle');

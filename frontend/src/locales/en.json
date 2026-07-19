@@ -119,7 +119,7 @@
     "network": "Network connection failed. Please check the storefront API proxy and try again.",
     "timeout": "The request timed out. Please try again.",
     "serviceUnavailable": "The service is temporarily unavailable. Please try again later.",
-    "rateLimited": "Too many requests. Please wait and try again.",
+    "rateLimited": "Too many requests. Please try again later.",
     "rateLimitedWithOneSecond": "Too many requests. Please try again in 1 second.",
     "rateLimitedWithSeconds": "Too many requests. Please try again in {seconds} seconds."
   },
@@ -875,7 +875,15 @@
       "drawerClearBlockedConfirm": "Remove {count} blocked item(s) from the cart?",
       "drawerClearedBlocked": "Cleared {count} blocked item(s).",
       "drawerSyncingQuantity": "Syncing {count} quantity update(s)",
-      "checkoutSyncing": "Checkout after quantity sync"
+      "checkoutSyncing": "Checkout after quantity sync",
+      "paymentCancelledTitle": "Payment not completed",
+      "paymentCancelledText": "Your cart items may already be reserved in a pending order. Resume payment from My orders, or keep shopping.",
+      "paymentCancelledOrderText": "Order {orderNo} is still waiting for payment. Resume payment from My orders, track the order, or keep shopping.",
+      "paymentFailedTitle": "Payment failed",
+      "paymentFailedText": "The payment gateway reported a failure. Resume payment from My orders or try another method.",
+      "paymentFailedOrderText": "Payment for order {orderNo} failed. Resume payment from My orders or try another method.",
+      "paymentCancelledResume": "Resume payment",
+      "paymentCancelledTrack": "Track order"
     },
     "addOnAssistant": {
       "title": "Smart add-on picks",
@@ -986,7 +994,8 @@
       "actionBrowseProducts": "Browse products",
       "actionSignalUnread": "{count} unread",
       "actionSignalOffers": "{count} offer(s)",
-      "actionSignalDelivery": "{count} delivery"
+      "actionSignalDelivery": "{count} delivery",
+      "openRelated": "Open related"
     },
     "review": {
       "title": "Product reviews",
@@ -1062,7 +1071,22 @@
       "nextTitle": "Next steps",
       "stepOne": "Complete payment with the selected local method and keep your receipt.",
       "stepTwo": "Use Track order with the same order number and checkout email.",
-      "stepThree": "Contact support if the order still shows pending after payment."
+      "stepThree": "Contact support if the order still shows pending after payment.",
+      "openPayment": "Open secure payment",
+      "refreshStatus": "Refresh payment status",
+      "retryVerify": "Retry verification",
+      "paidTitle": "Payment confirmed",
+      "paidText": "This order is paid. You can track fulfillment or contact support if you need help.",
+      "expiredTitle": "Payment window expired",
+      "expiredText": "Create a new payment from your orders or cart, or contact support for recovery help.",
+      "expiringSoonTitle": "Payment expiring soon",
+      "expiringSoonText": "Complete payment within {minutes} minutes to keep this order reserved.",
+      "paymentLink": "Payment link",
+      "statusLabel": "Payment status",
+      "recoveryEyebrow": "Payment recovery",
+      "backToOrders": "View orders",
+      "missingOrder": "Order number missing",
+      "missingOrderText": "Open this page from checkout, track order, or your profile so we can verify the payment amount."
     },
     "checkout": {
       "loadFailed": "Failed to load checkout information",
@@ -1348,7 +1372,15 @@
       "assuranceTrackingPending": "Tracking pending",
       "assuranceSupportReady": "Support ready",
       "submitReturnTracking": "Submit return tracking",
-      "shopAgain": "Shop again"
+      "shopAgain": "Shop again",
+      "paymentFailedTitle": "Payment failed",
+      "paymentFailedText": "The payment gateway reported a failure. Look up the order below and resume payment when ready.",
+      "paymentReturnLookupHint": "We prefilled your order details when available. Confirm the email and track the order to resume payment or check status.",
+      "copyTrackingNumber": "Copy tracking number",
+      "trackingNumberCopied": "Tracking number copied",
+      "copyTrackingFailed": "Could not copy tracking number",
+      "emptyRecoveryHint": "No live events yet. Copy the number, retry tracking, or contact support.",
+      "retryTracking": "Retry tracking"
     },
     "adminDashboard": {
       "title": "Dashboard",
@@ -1879,7 +1911,12 @@
       "diskTip": "When disk usage exceeds 85%, check `logs`, `uploads` and historical export files first.",
       "nacosTip": "When Nacos registration is abnormal, confirm `NACOS_SERVER_ADDR`, namespace and group match the gateway.",
       "databaseTip": "The database URL masks passwords, but this page should still not be exposed to non-admin roles.",
-      "noStatus": "No system status."
+      "noStatus": "No system status.",
+      "paymentChannelChecklist": "Payment channel production checklist",
+      "paymentChannelChecklistHint": "Only channels marked ready can complete production checkout and refunds.",
+      "channelReady": "Ready",
+      "channelBlocked": "Blocked",
+      "channelRefundMode": "Refund mode"
     },
     "logAdmin": {
       "title": "Log Management",
@@ -2308,7 +2345,37 @@
       "petSizeLarge": "Large",
       "shippedAt": "Shipped at",
       "birthdayCouponEnabled": "Birthday coupon active",
-      "petAdded": "Pet profile added"
+      "petAdded": "Pet profile added",
+      "returnReasonRequired": "Please describe the return reason (at least 8 characters).",
+      "returnTrackingInvalid": "Enter a valid return tracking number (letters and numbers, at least 6 characters).",
+      "returnStepRequest": "1. Request",
+      "returnStepReview": "2. Review",
+      "returnStepShip": "3. Ship back",
+      "returnStepRefund": "4. Refund",
+      "returnTimelineTitle": "Return path",
+      "returnOrderSummary": "Order {orderNo} · {amount}",
+      "returnReasonPresetsLabel": "Common reasons",
+      "returnReasonPreset": {
+        "damaged": "Arrived damaged",
+        "wrongItem": "Wrong item sent",
+        "notAsDescribed": "Not as described",
+        "sizeFit": "Size or fit issue",
+        "changedMind": "Changed my mind",
+        "other": "Other reason"
+      },
+      "returnShipmentHint": "Use the carrier tracking number after you drop off the parcel. Refund starts after warehouse receipt.",
+      "returnShipmentStepsTitle": "What happens next",
+      "paymentReturnCancelled": "Payment was not completed. We opened your pending-payment orders so you can resume checkout.",
+      "paymentReturnCancelledOrder": "Payment for order {orderNo} was not completed. Resume payment from the pending orders list.",
+      "paymentReturnFailed": "Payment failed. We opened your pending-payment orders so you can retry.",
+      "paymentReturnFailedOrder": "Payment for order {orderNo} failed. Resume payment from the pending orders list.",
+      "paidAt": "Paid at",
+      "paymentRefundedTitle": "Refund completed",
+      "paymentRefundedText": "This payment was refunded on {date}. Funds typically return to the original method within 1–5 business days depending on the bank.",
+      "paymentRefundedNext": "Keep the refund confirmation for your records. Contact support if funds have not arrived after 5 business days.",
+      "paymentRefundingTitle": "Refund in progress",
+      "paymentRefundingText": "We are processing the refund to the original payment method. You will see the completed timestamp here once the gateway confirms it.",
+      "paymentRefundingNext": "No extra action is needed. Watch this order for the refunded status update."
     },
     "brandAdmin": {
       "title": "Brand Management",
@@ -2511,7 +2578,26 @@
       "syncPaymentConfirm": "Sync payment #{id} with the gateway now?",
       "paymentSynced": "Payment status synced",
       "paymentSyncFailed": "Payment status sync failed",
-      "staleDataWarning": "Showing the last successful order snapshot. Order export, status, fulfillment, refund, and payment-sync actions are disabled until refresh succeeds."
+      "staleDataWarning": "Showing the last successful order snapshot. Order export, status, fulfillment, refund, and payment-sync actions are disabled until refresh succeeds.",
+      "afterSalesQueueHint": "Prioritize return review, return parcels in transit, and refunds waiting on warehouse receipt.",
+      "refundReasonPresetsLabel": "Common refund reasons",
+      "refundConfirmRequired": "Confirm the refund amount and payment record before issuing the refund.",
+      "refundConfirmAcknowledge": "I verified order {orderNo} and will refund {amount} to the original payment method.",
+      "refundReasonPresets": {
+        "customerRequest": "Customer requested refund",
+        "duplicatePayment": "Duplicate or overcharge payment",
+        "outOfStock": "Item unavailable after payment",
+        "qualityIssue": "Quality or fulfillment issue",
+        "pricingError": "Pricing or promotion error",
+        "other": "Other approved refund reason"
+      },
+      "afterSalesQueuePriorityHint": "Queue is sorted by SLA urgency, then by after-sales stage so overdue refunds and return reviews surface first.",
+      "afterSalesBreakdownLabel": "After-sales stages",
+      "nextActionShipCta": "Ship now",
+      "nextActionReviewCta": "Review return",
+      "nextActionRefundCta": "Issue refund",
+      "nextActionRefundFollowCta": "Open refund detail",
+      "nextActionInspectCta": "Inspect order"
     },
     "logisticsCarriers": {
       "title": "Carrier configuration",
@@ -3864,7 +3950,11 @@
       "completeSetAdd": "Add",
       "mobileBuybarMeta": "{price} · {stock}",
       "loadFailed": "Couldn't load this product",
-      "loadFailedDescription": "Check your connection and try again. You can also browse the catalog while we reconnect."
+      "loadFailedDescription": "Check your connection and try again. You can also browse the catalog while we reconnect.",
+      "lowStockUrgency": "Only {count} left",
+      "lowStockUrgencyText": "Low stock — checkout soon to secure this selection ({count} remaining).",
+      "decisionStockLowTitle": "Low stock — order soon",
+      "decisionStockLowText": "Only {count} left for this selection (shows as {stock})."
     },
     "permissions": {
       "title": "Permission management",

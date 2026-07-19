@@ -819,7 +819,15 @@
       "drawerClearBlockedConfirm": "¿Quitar {count} producto(s) bloqueado(s) del carrito?",
       "drawerClearedBlocked": "Se quitaron {count} productos no disponibles.",
       "drawerSyncingQuantity": "Sincronizando {count} cambio(s) de cantidad",
-      "checkoutSyncing": "Pagar tras sincronizar cantidades"
+      "checkoutSyncing": "Pagar tras sincronizar cantidades",
+      "paymentCancelledTitle": "Pago no completado",
+      "paymentCancelledText": "Tus productos pueden estar en un pedido pendiente de pago. Reanuda el pago en Mis pedidos o sigue comprando.",
+      "paymentCancelledOrderText": "El pedido {orderNo} sigue pendiente de pago. Reanuda el pago en Mis pedidos, rastrea el pedido o sigue comprando.",
+      "paymentFailedTitle": "Pago fallido",
+      "paymentFailedText": "La pasarela reportó un error. Reanuda el pago en Mis pedidos o prueba otro método.",
+      "paymentFailedOrderText": "El pago del pedido {orderNo} falló. Reanuda el pago en Mis pedidos o prueba otro método.",
+      "paymentCancelledResume": "Reanudar pago",
+      "paymentCancelledTrack": "Rastrear pedido"
     },
     "addOnAssistant": {
       "title": "Sugerencias para completar",
@@ -930,7 +938,8 @@
       "actionBrowseProducts": "Ver productos",
       "actionSignalUnread": "{count} no leídas",
       "actionSignalOffers": "{count} ofertas",
-      "actionSignalDelivery": "{count} entregas"
+      "actionSignalDelivery": "{count} entregas",
+      "openRelated": "Abrir relacionado"
     },
     "auth": {
       "loginTitle": "Iniciar sesión",
@@ -1490,7 +1499,22 @@
       "nextTitle": "Siguientes pasos",
       "stepOne": "Completa el pago con el método local seleccionado y conserva tu comprobante.",
       "stepTwo": "Usa Rastrear pedido con el mismo número de pedido y correo de compra.",
-      "stepThree": "Contacta a soporte si el pedido sigue pendiente después del pago."
+      "stepThree": "Contacta a soporte si el pedido sigue pendiente después del pago.",
+      "openPayment": "Abrir pago seguro",
+      "refreshStatus": "Actualizar estado del pago",
+      "retryVerify": "Reintentar verificación",
+      "paidTitle": "Pago confirmado",
+      "paidText": "Este pedido ya está pagado. Puedes seguir el envío o contactar soporte si necesitas ayuda.",
+      "expiredTitle": "Ventana de pago vencida",
+      "expiredText": "Crea un nuevo pago desde tus pedidos o carrito, o contacta soporte para recuperarlo.",
+      "expiringSoonTitle": "El pago vence pronto",
+      "expiringSoonText": "Completa el pago en {minutes} minutos para mantener el pedido reservado.",
+      "paymentLink": "Enlace de pago",
+      "statusLabel": "Estado del pago",
+      "recoveryEyebrow": "Recuperación de pago",
+      "backToOrders": "Ver pedidos",
+      "missingOrder": "Falta el número de pedido",
+      "missingOrderText": "Abre esta página desde el checkout, seguimiento o perfil para verificar el monto."
     },
     "checkout": {
       "loadFailed": "No se pudo cargar la información de pago",
@@ -1775,7 +1799,16 @@
       "assuranceTrackingPending": "Guía pendiente",
       "assuranceSupportReady": "Soporte listo",
       "submitReturnTracking": "Enviar guía de devolución",
-      "shopAgain": "Comprar de nuevo"
+      "shopAgain": "Comprar de nuevo",
+      "paymentFailedTitle": "Pago fallido",
+      "paymentFailedText": "La pasarela reportó un error. Busca el pedido abajo y reanuda el pago cuando estés listo.",
+      "prefillNotice": "Completamos los datos del pedido guardados en este dispositivo. Selecciona Rastrear pedido para confirmar.",
+      "paymentReturnLookupHint": "Completamos los datos del pedido cuando están disponibles. Confirma el correo y rastrea el pedido para reanudar el pago o ver el estado.",
+      "copyTrackingNumber": "Copiar guía",
+      "trackingNumberCopied": "Guía copiada",
+      "copyTrackingFailed": "No se pudo copiar la guía",
+      "emptyRecoveryHint": "Aún no hay eventos en vivo. Copia la guía, reintenta el rastreo o contacta soporte.",
+      "retryTracking": "Reintentar rastreo"
     },
     "adminDashboard": {
       "title": "Panel",
@@ -2306,7 +2339,12 @@
       "diskTip": "Si el disco supera 85%, revisa primero `logs`, `uploads` y archivos históricos de exportación.",
       "nacosTip": "Si el registro Nacos es anormal, confirma que `NACOS_SERVER_ADDR`, namespace y group coincidan con el gateway.",
       "databaseTip": "La URL de base de datos oculta contraseñas, pero esta página no debe exponerse a roles no administradores.",
-      "noStatus": "Sin estado del sistema."
+      "noStatus": "Sin estado del sistema.",
+      "paymentChannelChecklist": "Lista de canales de pago en producción",
+      "paymentChannelChecklistHint": "Solo los canales listos pueden completar checkout y reembolsos en producción.",
+      "channelReady": "Listo",
+      "channelBlocked": "Bloqueado",
+      "channelRefundMode": "Modo de reembolso"
     },
     "logAdmin": {
       "title": "Gestión de logs",
@@ -2516,7 +2554,26 @@
       "syncPaymentConfirm": "¿Sincronizar ahora el pago #{id} con la pasarela?",
       "paymentSynced": "Estado de pago sincronizado",
       "paymentSyncFailed": "No se pudo sincronizar el pago",
-      "staleDataWarning": "Se muestra la última instantánea de pedidos cargada correctamente. Las acciones de exportar, cambiar estado, preparar envío, reembolsar y sincronizar pagos quedan deshabilitadas hasta que el refresco tenga éxito."
+      "staleDataWarning": "Se muestra la última instantánea de pedidos cargada correctamente. Las acciones de exportar, cambiar estado, preparar envío, reembolsar y sincronizar pagos quedan deshabilitadas hasta que el refresco tenga éxito.",
+      "afterSalesQueueHint": "Prioriza revisiones de devolución, paquetes en tránsito y reembolsos en espera de recepción.",
+      "refundReasonPresetsLabel": "Motivos frecuentes de reembolso",
+      "refundConfirmRequired": "Confirma el monto y el registro de pago antes de emitir el reembolso.",
+      "refundConfirmAcknowledge": "Verifiqué el pedido {orderNo} y reembolsaré {amount} al método de pago original.",
+      "refundReasonPresets": {
+        "customerRequest": "El cliente solicitó el reembolso",
+        "duplicatePayment": "Pago duplicado o cobro de más",
+        "outOfStock": "Producto no disponible tras el pago",
+        "qualityIssue": "Problema de calidad o fulfillment",
+        "pricingError": "Error de precio o promoción",
+        "other": "Otro motivo de reembolso aprobado"
+      },
+      "afterSalesQueuePriorityHint": "La cola se ordena por urgencia SLA y luego por etapa postventa, para mostrar primero reembolsos vencidos y revisiones de devolución.",
+      "afterSalesBreakdownLabel": "Etapas postventa",
+      "nextActionShipCta": "Enviar ahora",
+      "nextActionReviewCta": "Revisar devolución",
+      "nextActionRefundCta": "Emitir reembolso",
+      "nextActionRefundFollowCta": "Abrir detalle de reembolso",
+      "nextActionInspectCta": "Inspeccionar pedido"
     },
     "logisticsCarriers": {
       "title": "Configuración de paqueterías",
@@ -3206,7 +3263,11 @@
       "completeSetAdd": "Agregar",
       "mobileBuybarMeta": "{price} · {stock} disponibles",
       "loadFailed": "No se pudo cargar este producto",
-      "loadFailedDescription": "Revisa tu conexión e inténtalo de nuevo. También puedes explorar el catálogo."
+      "loadFailedDescription": "Revisa tu conexión e inténtalo de nuevo. También puedes explorar el catálogo.",
+      "lowStockUrgency": "Solo quedan {count}",
+      "lowStockUrgencyText": "Pocas unidades — paga pronto para asegurar esta selección ({count} restantes).",
+      "decisionStockLowTitle": "Pocas unidades — pide pronto",
+      "decisionStockLowText": "Solo quedan {count} de esta selección (muestra {stock})."
     },
     "profile": {
       "fetchUserFailed": "No se pudo cargar la información del usuario",
@@ -3441,7 +3502,37 @@
       "petSizeLarge": "Grande",
       "shippedAt": "Enviado el",
       "birthdayCouponEnabled": "Cupón de cumpleaños activo",
-      "petAdded": "Perfil de mascota agregado"
+      "petAdded": "Perfil de mascota agregado",
+      "returnReasonRequired": "Describe el motivo de la devolución (mínimo 8 caracteres).",
+      "returnTrackingInvalid": "Ingresa un número de guía válido (letras y números, mínimo 6 caracteres).",
+      "returnStepRequest": "1. Solicitud",
+      "returnStepReview": "2. Revisión",
+      "returnStepShip": "3. Envío de vuelta",
+      "returnStepRefund": "4. Reembolso",
+      "returnTimelineTitle": "Ruta de devolución",
+      "returnOrderSummary": "Pedido {orderNo} · {amount}",
+      "returnReasonPresetsLabel": "Motivos comunes",
+      "returnReasonPreset": {
+        "damaged": "Llegó dañado",
+        "wrongItem": "Producto incorrecto",
+        "notAsDescribed": "No coincide con la descripción",
+        "sizeFit": "Talla o ajuste",
+        "changedMind": "Cambié de opinión",
+        "other": "Otro motivo"
+      },
+      "returnShipmentHint": "Usa el número de guía del transportista después de enviar el paquete. El reembolso inicia al recibirlo en almacén.",
+      "returnShipmentStepsTitle": "Qué sigue",
+      "paymentReturnCancelled": "El pago no se completó. Abrimos tus pedidos pendientes de pago para que puedas continuar.",
+      "paymentReturnCancelledOrder": "El pago del pedido {orderNo} no se completó. Continúa el pago desde la lista de pendientes.",
+      "paymentReturnFailed": "El pago falló. Abrimos tus pedidos pendientes de pago para reintentar.",
+      "paymentReturnFailedOrder": "El pago del pedido {orderNo} falló. Reintenta desde la lista de pendientes.",
+      "paidAt": "Pagado el",
+      "paymentRefundedTitle": "Reembolso completado",
+      "paymentRefundedText": "Este pago se reembolsó el {date}. Los fondos suelen regresar al método original en 1–5 días hábiles según el banco.",
+      "paymentRefundedNext": "Conserva la confirmación del reembolso. Contacta soporte si no llega en 5 días hábiles.",
+      "paymentRefundingTitle": "Reembolso en proceso",
+      "paymentRefundingText": "Estamos procesando el reembolso al método de pago original. Verás la fecha de finalización aquí cuando la pasarela lo confirme.",
+      "paymentRefundingNext": "No necesitas hacer nada más. Revisa el pedido para el estado reembolsado."
     },
     "brandAdmin": {
       "title": "Gestión de marcas",

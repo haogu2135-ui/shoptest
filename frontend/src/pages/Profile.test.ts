@@ -284,7 +284,7 @@ describe('Profile mobile control visibility', () => {
     expect(continuePaymentSource).toContain('if (continuingPaymentRef.current === order.id) {');
     expect(continuePaymentSource).toContain('continuingPaymentRef.current = null;');
     expect(continuePaymentSource).toContain('setPayingOrderId(null);');
-    expect(source).toMatch(/loading=\{payingOrderId === order\.id\} disabled=\{payingOrderId !== null\}/);
+    expect(source).toMatch(/loading=\{payingOrderId === order\.id\} disabled=\{ordersStale \|\| payingOrderId !== null\}/);
   });
 
   it('shows a localized error when pet profiles fail to load', () => {
@@ -304,4 +304,28 @@ describe('Profile mobile control visibility', () => {
       expect(messages.pages.profile.fetchPetProfilesFailed).toBeTruthy();
     }
   });
+
+  it('routes cancelled and failed payment returns into pending-payment orders', () => {
+    const source = require('fs').readFileSync(require('path').resolve(__dirname, 'Profile.tsx'), 'utf8');
+    expect(source).toContain('const isPaymentReturnIncomplete = paymentReturnStatus === \'cancelled\'');
+    expect(source).toContain("paymentReturnStatus === 'failed'");
+    expect(source).toContain("setOrderStatusFilter('PENDING_PAYMENT')");
+    expect(source).toContain("t('pages.profile.paymentReturnCancelled')");
+    expect(source).toContain("t('pages.profile.paymentReturnFailed')");
+    expect(source).toContain('autoResumePaymentReturnRef');
+    expect(source).toContain("normalizeStatusCode(targetOrder.status) !== 'PENDING_PAYMENT'");
+    expect(source).toContain('void handleContinuePayment(targetOrder)');
+    expect(source).toContain('setOrderSearchText(paymentReturnOrderNo)');
+  });
+
+
+  it('surfaces refund audit timestamps and customer guidance in the payment modal', () => {
+    const source = require('fs').readFileSync(require('path').resolve(__dirname, 'Profile.tsx'), 'utf8');
+    expect(source).toContain("t('pages.profile.paymentRefundedTitle')");
+    expect(source).toContain("t('pages.profile.paymentRefundingTitle')");
+    expect(source).toContain("t('pages.profile.paidAt')");
+    expect(source).toContain('selectedPayment.refundedAt');
+    expect(source).toContain('payment.refundedAt');
+  });
+
 });

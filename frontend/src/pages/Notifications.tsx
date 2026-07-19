@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, List, Typography, Tag, Button, Empty, Spin, message, Popconfirm, Space } from 'antd';
+import { Alert, List, Typography, Tag, Button, Spin, message, Popconfirm, Space } from 'antd';
 import { BellOutlined, CheckOutlined, DeleteOutlined, CheckCircleOutlined, GiftOutlined, ShoppingOutlined, TruckOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { notificationApi } from '../api';
 import type { AppNotification } from '../types';
 import { useLanguage } from '../i18n';
+import { usePageTitle } from '../hooks/usePageTitle';
 import { buildLoginUrlFromWindow } from '../utils/authRedirect';
 import { stripUnsafeHtml } from '../utils/sanitizeHtml';
 import { dispatchDomEvent } from '../utils/domEvents';
@@ -25,6 +26,23 @@ const typeColors: Record<string, string> = {
 };
 const NOTIFICATION_TYPE_KEYS = new Set(['ORDER', 'PROMOTION', 'SYSTEM', 'DELIVERY']);
 const NOTIFICATION_PAGE_SIZE = 50;
+
+const extractOrderNoFromNotification = (item: Pick<AppNotification, 'title' | 'message' | 'type'>) => {
+  const haystack = `${item.title || ''} ${item.message || ''}`;
+  const patterns = [
+    /\border\s+([A-Za-z0-9_-]{4,})/i,
+    /\bpedido\s+([A-Za-z0-9_-]{4,})/i,
+    /\b订单\s*([A-Za-z0-9_-]{4,})/i,
+  ];
+  for (const pattern of patterns) {
+    const match = haystack.match(pattern);
+    if (match?.[1]) {
+      return match[1].replace(/[.,;:!?]+$/, '');
+    }
+  }
+  return '';
+};
+
 
 const notifyNavbarChanged = () => {
   dispatchDomEvent('shop:notifications-updated');
@@ -57,6 +75,7 @@ const Notifications: React.FC = () => {
   const notificationFetchSeqRef = useRef(0);
   const navigate = useNavigate();
   const { t, language } = useLanguage();
+  usePageTitle(t('pages.notifications.title'));
 
   const formatNotificationType = useCallback((type?: string) => {
     const rawType = String(type || '').trim();
@@ -175,7 +194,34 @@ const Notifications: React.FC = () => {
     return { unread, promotions, orders, deliveries };
   }, [notifications]);
 
-  const actionPlan = useMemo(() => {
+  const openRelatedNotification = useCallback((item: AppNotification) => {
+    const orderNo = extractOrderNoFromNotification(item);
+    const type = String(item.type || '').trim().toUpperCase();
+    if (orderNo) {
+      if (type === 'DELIVERY') {
+        navigate(`/track-order?orderNo=${encodeURIComponent(orderNo)}`);
+      } else {
+        navigate(`/profile?tab=orders&orderNo=${encodeURIComponent(orderNo)}`);
+      }
+      if (!item.isRead) {
+        void handleMarkAsRead(item.id);
+      }
+      return;
+    }
+    if (type === 'DELIVERY') {
+      navigate('/track-order');
+      return;
+    }
+    if (type === 'PROMOTION') {
+      navigate('/coupons');
+      return;
+    }
+    if (type === 'ORDER') {
+      navigate('/profile?tab=orders');
+    }
+  }, [handleMarkAsRead, navigate]);
+
+    const actionPlan = useMemo(() => {
     if (notificationInsights.unread > 0) {
       return {
         title: t('pages.notifications.actionUnreadTitle'),
@@ -399,12 +445,39 @@ const Notifications: React.FC = () => {
             ) : null}
             renderItem={(item) => {
               const notificationName = item.title || formatNotificationType(item.type) || `#${item.id}`;
+              const relatedOrderNo = extractOrderNoFromNotification(item);
+              const relatedType = String(item.type || '').trim().toUpperCase();
+              const openRelatedLabel = relatedOrderNo
+                ? `${relatedType === 'DELIVERY' ? t('pages.notifications.actionTrackOrder') : t('pages.notifications.actionOpenOrders')}: ${relatedOrderNo}`
+                : relatedType === 'DELIVERY'
+                  ? t('pages.notifications.actionTrackOrder')
+                  : relatedType === 'PROMOTION'
+                    ? t('pages.notifications.actionOpenCoupons')
+                    : relatedType === 'ORDER'
+                      ? t('pages.notifications.actionOpenOrders')
+                      : t('pages.notifications.openRelated');
+              const showOpenRelated = Boolean(relatedOrderNo || relatedType === 'DELIVERY' || relatedType === 'ORDER' || relatedType === 'PROMOTION');
               const markReadActionLabel = `${t('pages.notifications.markRead')}: ${notificationName}`;
               const deleteActionLabel = `${t('common.delete')}: ${notificationName}`;
               return (
               <List.Item
                 className={item.isRead ? 'notifications-page__item' : 'notifications-page__item notifications-page__item--unread'}
                 actions={[
+                  showOpenRelated ? (
+                    <Button
+                      key="open-related"
+                      size="small"
+                      type="link"
+                      aria-label={openRelatedLabel}
+                      title={openRelatedLabel}
+                      onClick={() => openRelatedNotification(item)}
+                      disabled={notificationActionsDisabled}
+                    >
+                      {relatedOrderNo
+                        ? (relatedType === 'DELIVERY' ? t('pages.notifications.actionTrackOrder') : t('pages.notifications.actionOpenOrders'))
+                        : openRelatedLabel}
+                    </Button>
+                  ) : null,
                   !item.isRead && (
                     <Button
                       key="mark-read"
@@ -448,7 +521,15 @@ const Notifications: React.FC = () => {
                       <Tag color={typeColors[String(item.type || '').trim().toUpperCase()] || 'default'}>
                         {formatNotificationType(item.type)}
                       </Tag>
-                      <Text strong={!item.isRead}>{item.title}</Text>
+                      <button
+                        type="button"
+                        className="notifications-page__titleButton"
+                        onClick={() => openRelatedNotification(item)}
+                        aria-label={openRelatedLabel}
+                        title={openRelatedLabel}
+                      >
+                        <Text strong={!item.isRead}>{item.title}</Text>
+                      </button>
                       {item.isRead && <CheckCircleOutlined style={{ color: '#52c41a' }} />}
                     </Space>
                   }
