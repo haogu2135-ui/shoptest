@@ -248,7 +248,7 @@
 
   .product-detail-page--es .product-mobile-buybar__cart,
   .product-detail-page--es .product-mobile-buybar__buy {
-    min-height: 42px;
+    min-height: 44px;
     padding-inline: 8px;
   }
 
@@ -1482,6 +1482,24 @@
   padding: 48px 16px;
 }
 
+.product-detail-empty__copy {
+  display: grid;
+  gap: 6px;
+}
+
+.product-detail-empty__hint {
+  color: rgba(16, 47, 34, 0.72);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.product-detail-empty__panel .page-feedback__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
 .product-detail-breadcrumb__link {
   border: 0;
   padding: 0;
@@ -2468,7 +2486,8 @@
     border-radius: 8px;
     background: #f6fbf7;
     color: #173f2b;
-    font-size: 10px;
+    font-size: 12px;
+    touch-action: manipulation;
   }
 
   .product-mobile-buybar__tool .anticon {

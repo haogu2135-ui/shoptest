@@ -48,7 +48,13 @@
     "offlineTitle": "当前已离线",
     "offlineText": "仅可浏览已缓存页面。网络恢复后即可继续下单与结账。",
     "onlineRestoredTitle": "网络已恢复",
-    "onlineRestoredText": "可以继续购物和结账了。"
+    "onlineRestoredText": "可以继续购物和结账了。",
+    "apiErrorTitle": "出了点问题",
+    "apiErrorDismiss": "关闭",
+    "apiErrorRetryHint": "请稍后再试上一次操作。",
+    "apiErrorRateLimitedTitle": "请求过于频繁",
+    "apiErrorServerTitle": "服务繁忙",
+    "apiErrorNetworkTitle": "网络连接异常"
   },
   "app": {
     "loading": "App 加载中…",
@@ -646,7 +652,10 @@
         "remainingLabel": "剩余"
       },
       "catalogFallbackDescription": "实时优惠券暂时不可用。你可以先浏览精选优惠，稍后再重试领取。",
-      "seoDescription": "领取宠物商城优惠券、查看卡包节省金额，并在结账前应用优惠。"
+      "seoDescription": "领取宠物商城优惠券、查看卡包节省金额，并在结账前应用优惠。",
+      "emptyWalletPetFinder": "找适合的宝贝",
+      "emptyWalletCart": "打开购物车",
+      "emptyWalletHint": "可先领取公开优惠，或去选购、打开宠物匹配路径来组成可用购物车。"
     },
     "adminCoupons": {
       "title": "优惠券",
@@ -845,7 +854,10 @@
       "trustReturnsTitle": "便捷售后",
       "trustReturnsText": "可随时在订单中发起售后。",
       "trustSupportTitle": "人工客服",
-      "trustSupportText": "尺码、物流与支付问题随时咨询。"
+      "trustSupportText": "尺码、物流与支付问题随时咨询。",
+      "saveForLaterEmptyHint": "可将购物车商品稍后购买，也可继续选购或从心愿单添加收藏。",
+      "saveForLaterBrowse": "去逛商品",
+      "saveForLaterWishlist": "打开心愿单"
     },
     "addOnAssistant": {
       "title": "智能凑单推荐",
@@ -908,7 +920,10 @@
       "readyValue": "可加购金额 {amount}",
       "viewBestPick": "查看优先推荐",
       "browsePersonalized": "查看个性化推荐",
-      "pageTitle": "心愿单"
+      "pageTitle": "心愿单",
+      "emptyHint": "先收藏心仪的宠物用品，再去领券或用匹配助手找合适商品。",
+      "emptyCoupons": "去领券",
+      "emptyPetFinder": "智能找商品"
     },
     "notifications": {
       "title": "通知",
@@ -957,7 +972,10 @@
       "actionSignalUnread": "{count} 条未读",
       "actionSignalOffers": "{count} 条优惠",
       "actionSignalDelivery": "{count} 条配送",
-      "openRelated": "打开相关内容"
+      "openRelated": "打开相关内容",
+      "emptyHint": "订单、优惠券和物流更新会出现在这里。",
+      "emptyCoupons": "去领券",
+      "emptyTrackOrder": "查询订单"
     },
     "auth": {
       "loginTitle": "登录",
@@ -1233,7 +1251,10 @@
       "checkoutStepNoOptions": "无规格阻力",
       "checkoutStepLowStock": "低库存，建议尽快决定",
       "checkoutStepStock": "库存稳定",
-      "checkoutPathCta": "加入购物车"
+      "checkoutPathCta": "加入购物车",
+      "emptyHint": "从商品列表或心愿单添加商品，对比价格、评分与规格后再下单。",
+      "emptyWishlist": "打开心愿单",
+      "emptyCoupons": "查看优惠券"
     },
     "review": {
       "title": "商品评价",
@@ -1556,7 +1577,9 @@
       "couponOpportunityAppliedText": "{name} 已为本单节省 {amount}。",
       "couponOpportunityBuildTitle": "再凑一点可解锁更强优惠",
       "couponOpportunityBuildText": "再加 {amount}，可解锁约 {value} 优惠。",
-      "couponOpportunityReview": "查看优惠券"
+      "couponOpportunityReview": "查看优惠券",
+      "mobilePayBarTrust": "安全结账 · {method}",
+      "mobilePayBarTrustDefault": "安全结账已保护"
     },
     "orderTracking": {
       "title": "订单追踪",
@@ -1627,7 +1650,10 @@
       "trackingNumberCopied": "运单号已复制",
       "copyTrackingFailed": "复制运单号失败",
       "emptyRecoveryHint": "暂无实时物流事件。可复制单号、重试查询或联系客服。",
-      "retryTracking": "重试查询"
+      "retryTracking": "重试查询",
+      "emptyHint": "有近期订单？在此查询物流，或边等更新边用优惠券继续选购。",
+      "emptyCoupons": "查看优惠券",
+      "emptyProfileOrders": "查看我的订单"
     },
     "adminDashboard": {
       "title": "仪表盘",
@@ -3090,7 +3116,11 @@
       "galleryPause": "暂停图片轮播",
       "galleryPlay": "播放图片轮播",
       "galleryPaused": "轮播已暂停",
-      "galleryPlaying": "轮播播放中"
+      "galleryPlaying": "轮播播放中",
+      "notFoundHint": "该商品可能已下架或缺货。可浏览相似商品、优惠券或宠物匹配推荐。",
+      "notFoundCoupons": "查看优惠券",
+      "notFoundWishlist": "打开心愿单",
+      "notFoundPetFinder": "找适合的宝贝"
     },
     "profile": {
       "fetchUserFailed": "用户信息加载失败",
@@ -3358,7 +3388,10 @@
       "paymentRefundingNext": "无需额外操作，请关注订单退款状态更新。",
       "noOrdersHint": "可先逛热销、领优惠券，或用宠物匹配助手找合适商品。",
       "emptyOrdersCoupons": "去领券",
-      "emptyOrdersPetFinder": "智能找商品"
+      "emptyOrdersPetFinder": "智能找商品",
+      "noPetsHint": "添加宠物资料可解锁尺码建议、生日优惠和更精准推荐。",
+      "noPetsFindFit": "找适合的宝贝",
+      "noPetsBrowse": "去逛商品"
     },
     "brandAdmin": {
       "title": "品牌管理",
@@ -3533,7 +3566,9 @@
         "deal": "优惠优先",
         "budget": "价格友好"
       },
-      "seoDescription": "按预算、宠物类型和生活方式找到合适的宠物商品推荐。"
+      "seoDescription": "按预算、宠物类型和生活方式找到合适的宠物商品推荐。",
+      "emptyHint": "可放宽预算或宠物类型，或直接浏览全部商品。",
+      "emptyCoupons": "去领券"
     },
     "petGallery": {
       "eyebrow": "社区图库",
@@ -3593,7 +3628,10 @@
       "sampleBadge": "示例",
       "sampleSource": "示例内容",
       "staleActionBlocked": "请先刷新实时宠物图库，再修改点赞、上传或删除。",
-      "seoDescription": "浏览 ShopMX 社区真实宠物照片，获取食品、玩具与护理灵感。"
+      "seoDescription": "浏览 ShopMX 社区真实宠物照片，获取食品、玩具与护理灵感。",
+      "emptyHint": "成为第一位分享宠物瞬间的用户，或先逛逛宠物用品。",
+      "emptyUploadHint": "上传宠物照片",
+      "emptyCoupons": "去领券"
     },
     "stockAlerts": {
       "title": "到货提醒",
@@ -3643,7 +3681,10 @@
       "nextActionEyebrow": "下一步行动",
       "directReady": "{count} 件可直加",
       "optionReady": "{count} 件需选项",
-      "stillWatchingCount": "{count} 件追踪中"
+      "stillWatchingCount": "{count} 件追踪中",
+      "emptyHint": "浏览商品，遇到售罄时可点击“到货通知”。",
+      "emptyWishlist": "打开收藏",
+      "emptyPetFinder": "智能找商品"
     },
     "auditLogs": {
       "title": "安全审计日志",
@@ -4027,12 +4068,18 @@
     "title": "页面未找到",
     "subtitle": "您访问的页面不存在或已被移动。",
     "backHome": "返回首页",
-    "searchProducts": "搜索商品"
+    "searchProducts": "搜索商品",
+    "hint": "可以去逛商品、领取优惠券，或查询最近订单，我们帮你回到正确路径。",
+    "browseCoupons": "查看优惠券",
+    "trackOrder": "追踪订单"
   },
   "errorBoundary": {
     "title": "出了点问题",
     "subtitle": "发生了意外错误，请重试。",
     "retry": "重试",
-    "backHome": "返回首页"
+    "backHome": "返回首页",
+    "browseProducts": "去逛商品",
+    "contactSupport": "联系客服",
+    "hint": "可重试本页、返回首页，或继续选购；我们会记录这次异常。"
   }
 }

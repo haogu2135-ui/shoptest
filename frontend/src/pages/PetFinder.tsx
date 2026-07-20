@@ -430,13 +430,32 @@ const PetFinder: React.FC = () => {
             ) : (
               <PageEmpty
                 className="pet-finder-page__empty"
-                description={t('pages.petFinder.empty')}
-                primaryAction={{
-                  key: 'browse',
-                  label: t('pages.petFinder.browseAll'),
-                  onClick: () => navigate('/products'),
-                  icon: <SearchOutlined />,
-                }}
+                description={(
+                  <div className="pet-finder-page__emptyCopy">
+                    <div>{t('pages.petFinder.empty')}</div>
+                    <div className="pet-finder-page__emptyHint">{t('pages.petFinder.emptyHint')}</div>
+                  </div>
+                )}
+                actions={[
+                  {
+                    key: 'browse',
+                    label: t('pages.petFinder.browseAll'),
+                    onClick: () => navigate('/products'),
+                    icon: <SearchOutlined />,
+                  },
+                  {
+                    key: 'coupons',
+                    label: t('pages.petFinder.emptyCoupons'),
+                    onClick: () => navigate('/coupons'),
+                    type: 'default',
+                  },
+                  {
+                    key: 'gallery',
+                    label: t('nav.petGallery'),
+                    onClick: () => navigate('/pet-gallery'),
+                    type: 'default',
+                  },
+                ]}
               />
             )
           ) : (

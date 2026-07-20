@@ -14,6 +14,12 @@ describe('ErrorBoundary i18n fallback guards', () => {
     expect(componentSource).toContain("subtitle: t('errorBoundary.subtitle')");
     expect(componentSource).toContain("retry: t('errorBoundary.retry')");
     expect(componentSource).toContain("backHome: t('errorBoundary.backHome')");
+    expect(componentSource).toContain("hint: t('errorBoundary.hint')");
+    expect(componentSource).toContain("browseProducts: t('errorBoundary.browseProducts')");
+    expect(componentSource).toContain("contactSupport: t('errorBoundary.contactSupport')");
+    expect(componentSource).toContain('shop-error-boundary');
+    expect(componentSource).toContain("navigate('/products'");
+    expect(componentSource).toContain("dispatchDomEvent('shop:open-support'");
     expect(componentSource).not.toContain('data-testid="error-fallback"');
     expect(componentSource).not.toContain('title="Error"');
     expect(componentSource).not.toContain('>Error<');
@@ -36,6 +42,9 @@ describe('ErrorBoundary i18n fallback guards', () => {
       expect(messages.errorBoundary.subtitle).toBeTruthy();
       expect(messages.errorBoundary.retry).toBeTruthy();
       expect(messages.errorBoundary.backHome).toBeTruthy();
+      expect(messages.errorBoundary.hint).toBeTruthy();
+      expect(messages.errorBoundary.browseProducts).toBeTruthy();
+      expect(messages.errorBoundary.contactSupport).toBeTruthy();
     }
   });
 });

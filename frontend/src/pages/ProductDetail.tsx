@@ -1031,18 +1031,38 @@ const ProductDetail: React.FC = () => {
     return (
       <div className="product-detail-empty">
         <PageEmpty
-          description={t('pages.productDetail.notFound')}
-          primaryAction={{
-            key: 'browse',
-            label: t('pages.productList.title'),
-            onClick: () => navigate('/products'),
-          }}
-          secondaryAction={{
-            key: 'home',
-            label: t('nav.ariaHome'),
-            onClick: () => navigate('/'),
-            type: 'default',
-          }}
+          className="product-detail-empty__panel"
+          description={(
+            <div className="product-detail-empty__copy">
+              <div>{t('pages.productDetail.notFound')}</div>
+              <div className="product-detail-empty__hint">{t('pages.productDetail.notFoundHint')}</div>
+            </div>
+          )}
+          actions={[
+            {
+              key: 'browse',
+              label: t('pages.productList.title'),
+              onClick: () => navigate('/products'),
+            },
+            {
+              key: 'wishlist',
+              label: t('pages.productDetail.notFoundWishlist'),
+              onClick: () => navigate('/wishlist'),
+              type: 'default',
+            },
+            {
+              key: 'coupons',
+              label: t('pages.productDetail.notFoundCoupons'),
+              onClick: () => navigate('/coupons'),
+              type: 'default',
+            },
+            {
+              key: 'pet-finder',
+              label: t('pages.productDetail.notFoundPetFinder'),
+              onClick: () => navigate('/pet-finder'),
+              type: 'default',
+            },
+          ]}
         />
       </div>
     );

@@ -50,3 +50,46 @@
     border-radius: 999px;
   }
 }
+
+
+/* Commercial admin table action touch targets + scroll affordance */
+@media (max-width: 1024px) {
+  .admin-layout__content .ant-table-wrapper,
+  .shop-admin-selection-table.ant-table-wrapper,
+  .ant-table-wrapper.shop-admin-selection-table {
+    position: relative;
+  }
+
+  .admin-layout__content .ant-table-wrapper::after,
+  .shop-admin-selection-table.ant-table-wrapper::after {
+    content: '';
+    pointer-events: none;
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 8px;
+    width: 18px;
+    border-radius: 0 10px 10px 0;
+    background: linear-gradient(to left, rgba(18, 71, 52, 0.12), transparent);
+    opacity: 0.9;
+  }
+
+  .admin-layout__content .ant-table-tbody .ant-btn,
+  .admin-layout__content .ant-table-tbody .ant-btn.ant-btn-sm,
+  .admin-layout__content .ant-table-tbody .ant-btn.ant-btn-link,
+  .shop-admin-selection-table .ant-table-tbody .ant-btn,
+  .shop-admin-selection-table .ant-table-tbody .ant-btn.ant-btn-sm {
+    min-height: 44px !important;
+    min-width: 44px;
+    padding-inline: 12px;
+    touch-action: manipulation;
+  }
+
+  .admin-layout__content .ant-table-selection-column,
+  .shop-admin-selection-table .ant-table-selection-column {
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    background: #fff;
+  }
+}

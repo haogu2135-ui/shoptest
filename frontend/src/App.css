@@ -3216,3 +3216,80 @@ body.shop-mobile-app .shop-connectivity-banner {
   padding-left: max(14px, env(safe-area-inset-left, 0px));
   padding-right: max(14px, env(safe-area-inset-right, 0px));
 }
+
+
+/* Commercial terminal API error banner (shop:api-error) */
+.shop-api-error-banner {
+  position: sticky;
+  top: 0;
+  z-index: 1090;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-bottom: 1px solid transparent;
+}
+
+.shop-api-error-banner--critical {
+  background: #fff1f0;
+  color: #a8071a;
+  border-bottom-color: #ffccc7;
+}
+
+.shop-api-error-banner--warning {
+  background: #fffbe6;
+  color: #ad6800;
+  border-bottom-color: #ffe58f;
+}
+
+.shop-api-error-banner__copy {
+  display: grid;
+  gap: 2px;
+  max-width: 920px;
+  font-size: 13px;
+  line-height: 1.4;
+  text-align: left;
+}
+
+.shop-api-error-banner__hint {
+  opacity: 0.86;
+  font-size: 12px;
+}
+
+.shop-api-error-banner__dismiss {
+  flex-shrink: 0;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.shop-api-error-banner__dismiss:hover,
+.shop-api-error-banner__dismiss:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 1px;
+}
+
+body.shop-mobile-app .shop-api-error-banner {
+  top: env(safe-area-inset-top, 0px);
+  padding-left: max(14px, env(safe-area-inset-left, 0px));
+  padding-right: max(14px, env(safe-area-inset-right, 0px));
+}
+
+/* Stack under connectivity banner when both visible */
+.shop-connectivity-banner + .shop-api-error-banner {
+  top: auto;
+}
+
+
+/* Commercial secondary text contrast (closer to WCAG AA on white panels) */
+.shop-app-shell .ant-typography.ant-typography-secondary,
+.shop-app-shell .ant-form-item-extra,
+.shop-app-shell .ant-empty-description {
+  color: rgba(16, 47, 34, 0.72);
+}

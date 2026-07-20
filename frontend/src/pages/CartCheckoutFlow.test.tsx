@@ -862,6 +862,8 @@ describe('cart to checkout flows', () => {
     const css = fs.readFileSync(path.resolve(__dirname, 'Cart.css'), 'utf8');
 
     expect(css).toContain('.cart-page__quantityStepper .ant-btn');
+    expect(css).toMatch(/\.cart-page__mobileItemBottom \.cart-page__quantityStepper \.ant-btn[\s\S]*?min-height:\s*44px/);
+    expect(css).toMatch(/\.cart-page__mobileItemBottom \.cart-page__quantityInput[\s\S]*?min-height:\s*44px/);
     expect(css).toMatch(/\.cart-page__quantityStepper[\s\S]*?min-height:\s*48px\s*!important/);
     expect(css).toMatch(/\.cart-page__quantityStepper \.ant-btn[\s\S]*?min-width:\s*48px\s*!important/);
     expect(css).toMatch(/\.cart-page__quantityInput[\s\S]*?height:\s*48px\s*!important/);

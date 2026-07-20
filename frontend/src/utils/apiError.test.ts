@@ -1,4 +1,5 @@
 import { getApiErrorDiagnosticText, getApiErrorMessage, getApiErrorStatus, isAuthExpiredError } from './apiError';
+import { ensureLanguagePack } from '../i18n';
 import fs from 'fs';
 import path from 'path';
 
@@ -24,6 +25,11 @@ const retryAfterAliasError = (retryAfter?: number | string) => ({
 const apiErrorSource = fs.readFileSync(path.resolve(__dirname, 'apiError.ts'), 'utf8');
 
 describe('getApiErrorMessage', () => {
+  beforeAll(async () => {
+    // apiErrors catalogs for es/zh are lazy-loaded with language packs.
+    await Promise.all([ensureLanguagePack('es'), ensureLanguagePack('zh')]);
+  });
+
   it('keeps retry-after normalization capped and string-alias aware in source', () => {
     const normalizeStart = apiErrorSource.indexOf('const normalizeRetryAfterSeconds = (error: ApiErrorLike) => {');
     const normalizeEnd = apiErrorSource.indexOf('const apiErrorMessage = (', normalizeStart);

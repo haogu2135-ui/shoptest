@@ -1562,3 +1562,41 @@
     padding-bottom: max(12px, env(safe-area-inset-bottom, 0px)) !important;
   }
 }
+
+/* Commercial empty recovery CTAs */
+.order-tracking-page__emptyCopy {
+  display: grid;
+  gap: 6px;
+}
+
+.order-tracking-page__emptyHint {
+  color: rgba(16, 47, 34, 0.72);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.order-tracking-page__emptyPanel .page-feedback__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+
+/* Commercial order-tracking mobile touch targets */
+.order-tracking-page__lookupButton.ant-btn,
+.order-tracking-page__nextActionButtons .ant-btn,
+.order-tracking-page__assuranceActions .ant-btn {
+  min-height: 44px;
+}
+
+@media (max-width: 640px) {
+  .order-tracking-page .ant-input,
+  .order-tracking-page .ant-input-affix-wrapper,
+  .order-tracking-page .ant-btn,
+  .order-tracking-page__lookupButton.ant-btn,
+  .order-tracking-page__nextActionButtons .ant-btn,
+  .order-tracking-page__assuranceActions .ant-btn {
+    min-height: 44px !important;
+  }
+}

@@ -3993,3 +3993,45 @@ body.checkout-page-active:not(.checkout-region-cascader-open) .ant-cascader-drop
     padding: 8px 10px;
   }
 }
+
+
+/* Commercial checkout validation focus target spacing under sticky headers */
+.checkout-page .ant-form-item,
+.checkout-page .ant-form-item-has-error {
+  scroll-margin-top: calc(96px + env(safe-area-inset-top, 0px));
+  scroll-margin-bottom: 24px;
+}
+
+#checkout-contact-card,
+#checkout-address-card,
+#checkout-payment-card,
+#checkout-coupon-card {
+  scroll-margin-top: calc(88px + env(safe-area-inset-top, 0px));
+}
+
+
+/* Commercial mobile pay rail trust microcopy */
+.checkout-page__mobilePayBarMeta {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+
+.checkout-page__mobilePayBarTrust {
+  font-size: 11px !important;
+  line-height: 1.25 !important;
+  color: rgba(18, 71, 52, 0.72) !important;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 560px) {
+  .checkout-page__mobilePayBar {
+    align-items: stretch;
+  }
+
+  .checkout-page__mobilePayBar .ant-btn {
+    align-self: center;
+  }
+}

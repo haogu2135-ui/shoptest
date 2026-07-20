@@ -2757,3 +2757,32 @@
 .shopee-login-errorBanner.ant-alert {
   border-radius: 12px;
 }
+
+
+/* Commercial login mobile touch targets (WCAG/Android-friendly 44px) */
+@media (max-width: 780px) {
+  .shopee-login-card .ant-btn,
+  .shopee-login-card .ant-btn.ant-btn-primary,
+  .shopee-login-codeButton,
+  .shopee-login-form__field--code .ant-btn,
+  .shopee-login-tabs .ant-tabs-tab,
+  .shopee-login-tabs .ant-tabs-tab-btn,
+  .shopee-login-links a,
+  .shopee-login-links button,
+  .shopee-login-quickLinks a,
+  .shopee-login-quickLinks button {
+    min-height: 44px !important;
+    touch-action: manipulation;
+  }
+
+  .shopee-login-trust__item {
+    min-height: 44px;
+  }
+
+  .shopee-login-card .ant-input,
+  .shopee-login-card .ant-input-affix-wrapper,
+  .shopee-login-card .ant-input-affix-wrapper > input.ant-input {
+    min-height: 44px;
+    font-size: 16px; /* prevent iOS zoom on focus */
+  }
+}

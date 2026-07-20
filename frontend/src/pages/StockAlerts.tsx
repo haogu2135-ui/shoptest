@@ -409,12 +409,32 @@ const StockAlerts: React.FC = () => {
           />
         ) : alerts.length === 0 ? (
           <PageEmpty
-            description={t('pages.stockAlerts.empty')}
-            primaryAction={{
-              key: 'browse',
-              label: browseStockAlertsActionLabel,
-              onClick: () => navigate('/products'),
-            }}
+            className="stock-alerts__emptyPanel"
+            description={(
+              <div className="stock-alerts__emptyCopy">
+                <div>{t('pages.stockAlerts.empty')}</div>
+                <div className="stock-alerts__emptyHint">{t('pages.stockAlerts.emptyHint')}</div>
+              </div>
+            )}
+            actions={[
+              {
+                key: 'browse',
+                label: browseStockAlertsActionLabel,
+                onClick: () => navigate('/products'),
+              },
+              {
+                key: 'wishlist',
+                label: t('pages.stockAlerts.emptyWishlist'),
+                onClick: () => navigate('/wishlist'),
+                type: 'default',
+              },
+              {
+                key: 'pet-finder',
+                label: t('pages.stockAlerts.emptyPetFinder'),
+                onClick: () => navigate('/pet-finder'),
+                type: 'default',
+              },
+            ]}
           />
         ) : (
           <List

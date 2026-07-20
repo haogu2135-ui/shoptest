@@ -426,18 +426,32 @@ const Notifications: React.FC = () => {
         />
       ) : notifications.length === 0 ? (
         <PageEmpty
-          description={t('pages.notifications.empty')}
-          primaryAction={{
-            key: 'browse',
-            label: t('pages.cart.browse'),
-            onClick: () => navigate('/products'),
-          }}
-          secondaryAction={{
-            key: 'home',
-            label: t('nav.ariaHome'),
-            onClick: () => navigate('/'),
-            type: 'default',
-          }}
+          className="notifications-page__emptyPanel"
+          description={(
+            <div className="notifications-page__emptyCopy">
+              <div>{t('pages.notifications.empty')}</div>
+              <div className="notifications-page__emptyHint">{t('pages.notifications.emptyHint')}</div>
+            </div>
+          )}
+          actions={[
+            {
+              key: 'browse',
+              label: t('pages.cart.browse'),
+              onClick: () => navigate('/products'),
+            },
+            {
+              key: 'coupons',
+              label: t('pages.notifications.emptyCoupons'),
+              onClick: () => navigate('/coupons'),
+              type: 'default',
+            },
+            {
+              key: 'track',
+              label: t('pages.notifications.emptyTrackOrder'),
+              onClick: () => navigate('/track-order'),
+              type: 'default',
+            },
+          ]}
         />
       ) : (
         <>

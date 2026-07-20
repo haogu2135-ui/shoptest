@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Alert, Form, Input, Button, Card, Typography, message, Space, Tag } from 'antd';
 import type { InputRef } from 'antd/es/input';
-import { UserOutlined, LockOutlined, MailOutlined, PhoneOutlined, SafetyCertificateOutlined, GiftOutlined, TruckOutlined } from '@ant-design/icons';
+import { UserOutlined, LockOutlined, MailOutlined, PhoneOutlined, SafetyCertificateOutlined, GiftOutlined, TruckOutlined, EyeOutlined, EyeInvisibleOutlined } from '@ant-design/icons';
 import { Link, useNavigate } from 'react-router-dom';
 import { userApi } from '../api';
 import { useAppConfig } from '../hooks/useAppConfig';
@@ -10,6 +10,7 @@ import { usePageTitle } from '../hooks/usePageTitle';
 import { useDocumentMeta } from '../hooks/useDocumentMeta';
 import { setSessionStorageItem } from '../utils/safeStorage';
 import { getApiErrorDiagnosticText, getApiErrorMessage } from '../utils/apiError';
+import { focusFirstFormError } from '../utils/formValidationFocus';
 import {
   STRONG_PASSWORD_MAX_LENGTH,
   STRONG_PASSWORD_MIN_LENGTH,
@@ -77,33 +78,12 @@ const isRegisterEmailCodeRequired = (value: unknown) => value === true || value 
 const isFormValidationError = (error: unknown): error is { errorFields: unknown[] } => (
   Boolean(error) && typeof error === 'object' && Array.isArray((error as { errorFields?: unknown }).errorFields)
 );
-const REGISTER_VALIDATION_SCROLL_OFFSET = 176;
-
 const scrollFirstRegisterErrorIntoView = () => {
-  const firstInvalidItem = document.querySelector('.register-page__card .ant-form-item-has-error') as HTMLElement | null;
-  if (!firstInvalidItem) return;
-
-  const prefersReducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true;
-  const behavior: ScrollBehavior = prefersReducedMotion ? 'auto' : 'smooth';
-  const card = firstInvalidItem.closest('.register-page__card') as HTMLElement | null;
-
-  if (card && card.scrollHeight > card.clientHeight + 1) {
-    const cardRect = card.getBoundingClientRect();
-    const fieldRect = firstInvalidItem.getBoundingClientRect();
-    card.scrollTo({
-      top: Math.max(0, card.scrollTop + fieldRect.top - cardRect.top - 16),
-      behavior,
-    });
-  }
-
-  const fieldTop = firstInvalidItem.getBoundingClientRect().top + window.scrollY;
-  window.scrollTo({
-    top: Math.max(0, fieldTop - REGISTER_VALIDATION_SCROLL_OFFSET),
-    behavior,
+  focusFirstFormError({
+    rootSelector: '.register-page__card',
+    scrollOffset: 176,
+    scrollContainerSelector: '.register-page__card',
   });
-
-  const firstControl = firstInvalidItem.querySelector('input, textarea, button, .ant-select-selector') as HTMLElement | null;
-  firstControl?.focus?.({ preventScroll: true });
 };
 
 const Register: React.FC = () => {
@@ -137,6 +117,8 @@ const Register: React.FC = () => {
   const usernameInputLabel = `${registerPageLabel}: ${t('pages.auth.usernameShort')}`;
   const passwordInputLabel = `${registerPageLabel}: ${t('pages.auth.password')}`;
   const confirmPasswordInputLabel = `${registerPageLabel}: ${t('pages.auth.confirmPassword')}`;
+  const passwordVisibilityActionLabel = (visible: boolean) => `${passwordInputLabel}: ${visible ? t('pages.auth.hidePassword') : t('pages.auth.showPassword')}`;
+  const confirmPasswordVisibilityActionLabel = (visible: boolean) => `${confirmPasswordInputLabel}: ${visible ? t('pages.auth.hidePassword') : t('pages.auth.showPassword')}`;
   const emailInputLabel = `${registerPageLabel}: ${t('pages.auth.email')}`;
   const emailCodeInputLabel = `${registerPageLabel}: ${t('pages.auth.verificationCode')}`;
   const phoneInputLabel = `${registerPageLabel}: ${t('pages.auth.phone')}`;
@@ -405,6 +387,17 @@ const Register: React.FC = () => {
               maxLength={STRONG_PASSWORD_MAX_LENGTH}
               aria-label={passwordInputLabel}
               title={passwordInputLabel}
+              iconRender={(visible) => (
+                <button
+                  type="button"
+                  aria-label={passwordVisibilityActionLabel(visible)}
+                  aria-pressed={visible}
+                  title={passwordVisibilityActionLabel(visible)}
+                  style={{ border: 0, padding: 0, background: 'transparent', color: 'inherit', lineHeight: 0, cursor: 'pointer' }}
+                >
+                  {visible ? <EyeOutlined /> : <EyeInvisibleOutlined />}
+                </button>
+              )}
             />
           </Form.Item>
 
@@ -431,6 +424,17 @@ const Register: React.FC = () => {
               maxLength={128}
               aria-label={confirmPasswordInputLabel}
               title={confirmPasswordInputLabel}
+              iconRender={(visible) => (
+                <button
+                  type="button"
+                  aria-label={confirmPasswordVisibilityActionLabel(visible)}
+                  aria-pressed={visible}
+                  title={confirmPasswordVisibilityActionLabel(visible)}
+                  style={{ border: 0, padding: 0, background: 'transparent', color: 'inherit', lineHeight: 0, cursor: 'pointer' }}
+                >
+                  {visible ? <EyeOutlined /> : <EyeInvisibleOutlined />}
+                </button>
+              )}
             />
           </Form.Item>
 

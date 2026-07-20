@@ -1,6 +1,6 @@
 import React from 'react';
 import { Button, Result } from 'antd';
-import { HomeOutlined, SearchOutlined } from '@ant-design/icons';
+import { FileSearchOutlined, GiftOutlined, HomeOutlined, SearchOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../i18n';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -35,8 +35,9 @@ const NotFound: React.FC = () => {
         status="404"
         title={<span id={titleId}>{title}</span>}
         subTitle={(
-          <span id={subtitleId} role="status" aria-live="polite">
-            {subtitle}
+          <span id={subtitleId} role="status" aria-live="polite" className="not-found-page__status">
+            <span className="not-found-page__subtitle">{subtitle}</span>
+            <span className="not-found-page__hint">{t('notFound.hint')}</span>
           </span>
         )}
         extra={[
@@ -54,6 +55,20 @@ const NotFound: React.FC = () => {
             onClick={() => navigate('/products')}
           >
             {t('notFound.searchProducts')}
+          </Button>,
+          <Button
+            key="coupons"
+            icon={<GiftOutlined />}
+            onClick={() => navigate('/coupons')}
+          >
+            {t('notFound.browseCoupons')}
+          </Button>,
+          <Button
+            key="track"
+            icon={<FileSearchOutlined />}
+            onClick={() => navigate('/track-order')}
+          >
+            {t('notFound.trackOrder')}
           </Button>,
         ]}
       />

@@ -602,22 +602,23 @@
 
 .cart-page__quantityStepper {
   display: inline-grid;
-  grid-template-columns: 30px minmax(42px, 54px) 30px;
+  grid-template-columns: 36px minmax(48px, 60px) 36px;
   align-items: center;
   gap: 4px;
-  max-width: 132px;
+  max-width: 148px;
 }
 
 .cart-page__quantityStepper .ant-btn {
-  width: 30px;
-  height: 30px;
-  min-width: 30px;
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  min-height: 36px;
   padding: 0;
 }
 
 .cart-page__quantityInput {
   width: 100%;
-  height: 30px;
+  height: 36px;
   min-width: 0;
   border: 1px solid #d8e2da;
   border-radius: 8px;
@@ -641,7 +642,7 @@
 .cart-page__quantityUnavailable,
 .cart-page__unavailableSubtotal {
   display: inline-flex;
-  min-height: 30px;
+  min-height: 36px;
   align-items: center;
   justify-content: center;
   border-radius: 999px;
@@ -1773,25 +1774,30 @@
   }
 
   .cart-page__mobileItemBottom .cart-page__quantityStepper {
-    grid-template-columns: 36px minmax(44px, 56px) 36px;
-    max-width: 142px;
+    grid-template-columns: 44px minmax(48px, 64px) 44px;
+    max-width: 168px;
+    gap: 6px;
   }
 
   .cart-page__mobileItemBottom .cart-page__quantityStepper .ant-btn {
-    width: 36px;
-    height: 36px;
-    min-width: 36px;
-    min-height: 36px;
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+    touch-action: manipulation;
   }
 
   .cart-page__mobileItemBottom .cart-page__quantityInput {
-    height: 36px;
+    height: 44px;
+    min-height: 44px;
+    font-size: 16px; /* avoid iOS focus zoom */
   }
 
   .cart-page__mobileItemBottom .ant-btn,
   .cart-page__readinessActions .ant-btn,
   .cart-page__nextAction .ant-btn {
-    min-height: 40px;
+    min-height: 44px;
+    touch-action: manipulation;
   }
 
   .cart-page__summary {
@@ -3412,4 +3418,28 @@
     grid-template-columns: 1fr;
     gap: 8px;
   }
+}
+
+/* Commercial save-for-later empty recovery */
+.cart-page__savedEmptyCopy {
+  display: grid;
+  gap: 6px;
+}
+
+.cart-page__savedEmptyHint {
+  color: rgba(16, 47, 34, 0.72);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.cart-page__savedEmptyActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.cart-page__savedEmptyActions .ant-btn {
+  min-height: 40px;
 }

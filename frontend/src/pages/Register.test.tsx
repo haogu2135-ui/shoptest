@@ -96,11 +96,13 @@ describe('Register mobile validation scroll', () => {
     const css = readRegisterCss();
     const fixCss = css.slice(css.indexOf('F3413:'));
 
-    expect(source).toContain('const REGISTER_VALIDATION_SCROLL_OFFSET = 176;');
-    expect(source).toContain("document.querySelector('.register-page__card .ant-form-item-has-error')");
+    expect(source).toContain("from '../utils/formValidationFocus'");
+    expect(source).toContain('focusFirstFormError');
+    expect(source).toContain("rootSelector: '.register-page__card'");
+    expect(source).toContain('scrollOffset: 176');
+    expect(source).toContain("scrollContainerSelector: '.register-page__card'");
     expect(source).toContain('window.requestAnimationFrame(scrollFirstRegisterErrorIntoView)');
     expect(source).toContain('onFinishFailed={onFinishFailed}');
-    expect(source).toContain('preventScroll: true');
     expect(fixCss).toContain('@media (max-width: 640px)');
     expect(fixCss).toMatch(/\.register-page\s*\{[^}]*scroll-padding-top:\s*calc\(176px \+ env\(safe-area-inset-top,\s*0px\)\);/);
     expect(fixCss).toMatch(/\.register-page__card \.ant-form-item,\s*\.register-page__card \.ant-form-item-has-error\s*\{[^}]*scroll-margin-top:\s*calc\(176px \+ env\(safe-area-inset-top,\s*0px\)\);[^}]*scroll-margin-bottom:\s*24px;/);

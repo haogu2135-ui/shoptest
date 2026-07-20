@@ -741,9 +741,10 @@
   .admin-layout__content .ant-btn,
   .admin-layout__content .ant-tag {
     max-width: 100%;
-    min-height: 34px;
+    min-height: 44px;
     align-items: center;
     white-space: nowrap;
+    touch-action: manipulation;
   }
 
   .admin-layout__content .ant-btn > span:not(.anticon):not(.ant-btn-icon),

@@ -551,12 +551,31 @@ const PetGallery: React.FC = () => {
         loadError ? null : (
           <PageEmpty
             className="pet-gallery-empty"
-            description={t('pages.petGallery.empty')}
-            primaryAction={{
-              key: 'browse',
-              label: t('pages.petGallery.browsePetProducts'),
-              onClick: () => navigate('/products?keyword=pet'),
-            }}
+            description={(
+              <div className="pet-gallery-empty__copy">
+                <div>{t('pages.petGallery.empty')}</div>
+                <div className="pet-gallery-empty__hint">{t('pages.petGallery.emptyHint')}</div>
+              </div>
+            )}
+            actions={[
+              {
+                key: 'browse',
+                label: t('pages.petGallery.browsePetProducts'),
+                onClick: () => navigate('/products?keyword=pet'),
+              },
+              {
+                key: 'coupons',
+                label: t('pages.petGallery.emptyCoupons'),
+                onClick: () => navigate('/coupons'),
+                type: 'default',
+              },
+              {
+                key: 'finder',
+                label: t('nav.petFinder'),
+                onClick: () => navigate('/pet-finder'),
+                type: 'default',
+              },
+            ]}
           />
         )
       ) : (

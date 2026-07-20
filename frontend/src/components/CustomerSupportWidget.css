@@ -3088,3 +3088,40 @@ body .customer-support-widget__orderModalRoot .customer-support-widget__orderMod
     padding: 5px 7px max(7px, env(safe-area-inset-bottom, 0px)) !important;
   }
 }
+
+
+/* Commercial support mobile touch targets */
+@media (max-width: 860px) {
+  .customer-support-widget__headerClose.ant-btn {
+    width: 44px !important;
+    height: 44px !important;
+    min-width: 44px !important;
+    min-height: 44px !important;
+    touch-action: manipulation;
+  }
+
+  .customer-support-widget__sessionPicker .ant-select-selector,
+  .customer-support-widget__orderDetail .ant-select-selector {
+    min-height: 44px !important;
+  }
+
+  .customer-support-widget__quickReplies .ant-btn,
+  .customer-support-widget__welcomeQuickReplies button,
+  .customer-support-widget__shareLatest.ant-btn,
+  .customer-support-widget__actions .ant-btn,
+  .customer-support-widget__linkButton.ant-btn,
+  .customer-support-widget__composer .ant-btn {
+    min-height: 44px !important;
+    touch-action: manipulation;
+  }
+
+  .customer-support-widget__mobileStatus span {
+    min-height: 28px;
+    font-size: 12px;
+  }
+
+  .customer-support-widget__composer .ant-input-textarea textarea,
+  .customer-support-widget__messageInput .ant-input {
+    font-size: 16px;
+  }
+}

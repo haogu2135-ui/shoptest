@@ -3734,3 +3734,22 @@
   justify-content: center;
   gap: 8px;
 }
+
+/* Commercial empty pet profiles recovery */
+.profile-pets-empty__copy {
+  display: grid;
+  gap: 6px;
+}
+
+.profile-pets-empty__hint {
+  color: rgba(16, 47, 34, 0.72);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.profile-pets-empty .page-feedback__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}

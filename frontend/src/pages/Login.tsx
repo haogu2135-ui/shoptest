@@ -12,6 +12,7 @@ import type { Language } from '../i18n';
 import { getPostLoginRedirectTarget } from '../utils/authRedirect';
 import { getGuestCartItems, replaceGuestCartItems } from '../utils/guestCart';
 import { getSessionStorageItem, removeSessionStorageItem } from '../utils/safeStorage';
+import { focusFirstFormError } from '../utils/formValidationFocus';
 import { getApiErrorMessage } from '../utils/apiError';
 import { dispatchDomEvent } from '../utils/domEvents';
 import { reportNonBlockingError } from '../utils/nonBlockingError';
@@ -123,6 +124,15 @@ const shouldTryNextLoginCandidate = (error: unknown) => {
   if ([400, 401, 404].includes(status)) return true;
   return code.includes('INVALID') || code.includes('NOT_FOUND') || serverMessage.includes('invalid') || serverMessage.includes('not found');
 };
+
+
+const scrollFirstLoginErrorIntoView = () => {
+  focusFirstFormError({
+    rootSelector: '.shopee-login-card, .shopee-login-root',
+    scrollOffset: 120,
+  });
+};
+
 
 const Login: React.FC = () => {
   const [loading, setLoading] = useState(false);
@@ -522,7 +532,7 @@ const Login: React.FC = () => {
                 key: 'password',
                 label: t('pages.auth.passwordLogin'),
                 children: (
-                  <Form form={passwordForm} name="login" onFinish={onFinish} layout="vertical" className="shopee-login-form" validateTrigger={["onChange", "onBlur"]} requiredMark>
+                  <Form form={passwordForm} name="login" onFinish={onFinish} onFinishFailed={() => { window.requestAnimationFrame(() => window.requestAnimationFrame(scrollFirstLoginErrorIntoView)); }} layout="vertical" className="shopee-login-form" validateTrigger={["onChange", "onBlur"]} requiredMark>
                     <Form.Item name="username" label={t('pages.auth.username')} rules={[
                       { required: true, message: t('pages.auth.usernameRequired') },
                       { min: 3, message: t('pages.auth.usernameMinLength') },
@@ -577,6 +587,7 @@ const Login: React.FC = () => {
                     form={emailForm}
                     name="email-login"
                     onFinish={onEmailLogin}
+                    onFinishFailed={() => { window.requestAnimationFrame(() => window.requestAnimationFrame(scrollFirstLoginErrorIntoView)); }}
                     validateTrigger={['onChange', 'onBlur']}
                     requiredMark
                     onValuesChange={(changedValues) => {

@@ -13,8 +13,13 @@ describe('NotFound mobile recovery layout contract', () => {
     expect(source).toContain('status="404"');
     expect(source).toContain("t('notFound.backHome')");
     expect(source).toContain("t('notFound.searchProducts')");
+    expect(source).toContain("t('notFound.browseCoupons')");
+    expect(source).toContain("t('notFound.trackOrder')");
+    expect(source).toContain("t('notFound.hint')");
     expect(source).toContain("navigate('/')");
     expect(source).toContain("navigate('/products')");
+    expect(source).toContain("navigate('/coupons')");
+    expect(source).toContain("navigate('/track-order')");
   });
 
   it('exposes the 404 result as a named and described status region', () => {
@@ -26,7 +31,11 @@ describe('NotFound mobile recovery layout contract', () => {
     expect(source).toContain('aria-labelledby={titleId}');
     expect(source).toContain('aria-describedby={subtitleId}');
     expect(source).toContain('title={<span id={titleId}>{title}</span>}');
-    expect(source).toContain('<span id={subtitleId} role="status" aria-live="polite">');
+    expect(source).toContain('id={subtitleId}');
+    expect(source).toContain('role="status"');
+    expect(source).toContain('aria-live="polite"');
+    expect(source).toContain('not-found-page__status');
+    expect(source).toContain('not-found-page__hint');
   });
 
   it('reserves fixed bottom-nav clearance for mobile recovery buttons', () => {

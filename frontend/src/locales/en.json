@@ -48,7 +48,13 @@
     "offlineTitle": "You are offline",
     "offlineText": "Browse saved pages only. Checkout and cart updates will resume when the network returns.",
     "onlineRestoredTitle": "Back online",
-    "onlineRestoredText": "Connection restored. You can continue shopping and checkout."
+    "onlineRestoredText": "Connection restored. You can continue shopping and checkout.",
+    "apiErrorTitle": "Something went wrong",
+    "apiErrorDismiss": "Dismiss",
+    "apiErrorRetryHint": "You can retry the last action in a moment.",
+    "apiErrorRateLimitedTitle": "Too many requests",
+    "apiErrorServerTitle": "Service is busy",
+    "apiErrorNetworkTitle": "Connection problem"
   },
   "app": {
     "loading": "Loading app…",
@@ -702,7 +708,10 @@
         "remainingLabel": "Remaining"
       },
       "catalogFallbackDescription": "Live coupons are temporarily unavailable. You can keep browsing curated savings, then retry for claimable offers.",
-      "seoDescription": "Claim pet-store coupons, track wallet savings, and apply offers before Mexico-ready checkout."
+      "seoDescription": "Claim pet-store coupons, track wallet savings, and apply offers before Mexico-ready checkout.",
+      "emptyWalletPetFinder": "Find a pet fit",
+      "emptyWalletCart": "Open cart",
+      "emptyWalletHint": "Claim a public offer above, shop essentials, or open a pet-fit path to build a usable cart."
     },
     "adminCoupons": {
       "title": "Coupons",
@@ -901,7 +910,10 @@
       "trustReturnsTitle": "Easy returns",
       "trustReturnsText": "Start after-sales from your orders anytime.",
       "trustSupportTitle": "Live support",
-      "trustSupportText": "Ask about fit, delivery, or payment help."
+      "trustSupportText": "Ask about fit, delivery, or payment help.",
+      "saveForLaterEmptyHint": "Save cart items for later, or keep shopping and add favorites from the wishlist.",
+      "saveForLaterBrowse": "Browse products",
+      "saveForLaterWishlist": "Open wishlist"
     },
     "addOnAssistant": {
       "title": "Smart add-on picks",
@@ -964,7 +976,10 @@
       "readyValue": "Ready value {amount}",
       "viewBestPick": "View best pick",
       "browsePersonalized": "Browse personal picks",
-      "pageTitle": "Wishlist"
+      "pageTitle": "Wishlist",
+      "emptyHint": "Save pet essentials you love, then claim coupons or get a personal fit recommendation.",
+      "emptyCoupons": "Browse coupons",
+      "emptyPetFinder": "Find a pet fit"
     },
     "notifications": {
       "title": "Notifications",
@@ -1013,7 +1028,10 @@
       "actionSignalUnread": "{count} unread",
       "actionSignalOffers": "{count} offer(s)",
       "actionSignalDelivery": "{count} delivery",
-      "openRelated": "Open related"
+      "openRelated": "Open related",
+      "emptyHint": "Order, coupon and delivery updates will appear here.",
+      "emptyCoupons": "Browse coupons",
+      "emptyTrackOrder": "Track an order"
     },
     "review": {
       "title": "Product reviews",
@@ -1336,7 +1354,9 @@
       "couponOpportunityAppliedText": "{name} is saving {amount} on this order.",
       "couponOpportunityBuildTitle": "A stronger coupon is close",
       "couponOpportunityBuildText": "Add {amount} more to unlock about {value} in coupon value.",
-      "couponOpportunityReview": "Review coupon"
+      "couponOpportunityReview": "Review coupon",
+      "mobilePayBarTrust": "Secure checkout · {method}",
+      "mobilePayBarTrustDefault": "Secure checkout protected"
     },
     "orderTracking": {
       "title": "Track order",
@@ -1407,7 +1427,10 @@
       "trackingNumberCopied": "Tracking number copied",
       "copyTrackingFailed": "Could not copy tracking number",
       "emptyRecoveryHint": "No live events yet. Copy the number, retry tracking, or contact support.",
-      "retryTracking": "Retry tracking"
+      "retryTracking": "Retry tracking",
+      "emptyHint": "Have a recent purchase? Track it here, or keep shopping with coupons while you wait for updates.",
+      "emptyCoupons": "Browse coupons",
+      "emptyProfileOrders": "View my orders"
     },
     "adminDashboard": {
       "title": "Dashboard",
@@ -2405,7 +2428,10 @@
       "paymentRefundingNext": "No extra action is needed. Watch this order for the refunded status update.",
       "noOrdersHint": "Start with best sellers, claim a coupon, or let Pet Finder pick a fit.",
       "emptyOrdersCoupons": "Browse coupons",
-      "emptyOrdersPetFinder": "Find a pet fit"
+      "emptyOrdersPetFinder": "Find a pet fit",
+      "noPetsHint": "Pet profiles unlock size help, birthday offers, and sharper product recommendations.",
+      "noPetsFindFit": "Find a pet fit",
+      "noPetsBrowse": "Browse products"
     },
     "brandAdmin": {
       "title": "Brand Management",
@@ -3631,7 +3657,10 @@
       "checkoutStepNoOptions": "No option friction",
       "checkoutStepLowStock": "Low stock, decide soon",
       "checkoutStepStock": "Stock looks stable",
-      "checkoutPathCta": "Add pick to cart"
+      "checkoutPathCta": "Add pick to cart",
+      "emptyHint": "Add products from the catalog or your wishlist, then compare price, ratings, and specs before you buy.",
+      "emptyWishlist": "Open wishlist",
+      "emptyCoupons": "Browse coupons"
     },
     "stockAlerts": {
       "title": "Back-in-stock alerts",
@@ -3681,7 +3710,10 @@
       "nextActionEyebrow": "Next best action",
       "directReady": "{count} direct add",
       "optionReady": "{count} need options",
-      "stillWatchingCount": "{count} watching"
+      "stillWatchingCount": "{count} watching",
+      "emptyHint": "Browse products and tap “Notify me” when an item is sold out.",
+      "emptyWishlist": "Open wishlist",
+      "emptyPetFinder": "Find a pet fit"
     },
     "petFinder": {
       "title": "Pet finder",
@@ -3734,7 +3766,9 @@
         "deal": "Best deals",
         "budget": "Budget friendly"
       },
-      "seoDescription": "Find the right pet products by budget, pet type, and lifestyle with personalized recommendations."
+      "seoDescription": "Find the right pet products by budget, pet type, and lifestyle with personalized recommendations.",
+      "emptyHint": "Try a wider budget or pet type, or browse the full catalog.",
+      "emptyCoupons": "Browse coupons"
     },
     "petGallery": {
       "eyebrow": "Community gallery",
@@ -3794,7 +3828,10 @@
       "sampleBadge": "Sample",
       "sampleSource": "Sample content",
       "staleActionBlocked": "Refresh the live pet gallery before changing likes, uploads or deletes.",
-      "seoDescription": "Browse real pet photos from the ShopMX community and get inspired for food, toys, and care gear."
+      "seoDescription": "Browse real pet photos from the ShopMX community and get inspired for food, toys, and care gear.",
+      "emptyHint": "Be the first to share a pet moment, or shop essentials while the feed fills up.",
+      "emptyUploadHint": "Upload a pet photo",
+      "emptyCoupons": "Browse coupons"
     },
     "browsingHistory": {
       "eyebrow": "Recently viewed",
@@ -3992,7 +4029,11 @@
       "galleryPause": "Pause image carousel",
       "galleryPlay": "Play image carousel",
       "galleryPaused": "Carousel paused",
-      "galleryPlaying": "Carousel playing"
+      "galleryPlaying": "Carousel playing",
+      "notFoundHint": "This listing may be sold out or retired. Browse similar picks, coupons, or a pet-fit path.",
+      "notFoundCoupons": "Browse coupons",
+      "notFoundWishlist": "Open wishlist",
+      "notFoundPetFinder": "Find a pet fit"
     },
     "permissions": {
       "title": "Permission management",
@@ -4027,12 +4068,18 @@
     "title": "Page Not Found",
     "subtitle": "The page you're looking for doesn't exist or has been moved.",
     "backHome": "Back to Home",
-    "searchProducts": "Search Products"
+    "searchProducts": "Search Products",
+    "hint": "Try the catalog, claim a coupon, or track a recent order while we get you back on path.",
+    "browseCoupons": "Browse coupons",
+    "trackOrder": "Track an order"
   },
   "errorBoundary": {
     "title": "Something Went Wrong",
     "subtitle": "An unexpected error occurred. Please try again.",
     "retry": "Try Again",
-    "backHome": "Back to Home"
+    "backHome": "Back to Home",
+    "browseProducts": "Browse products",
+    "contactSupport": "Contact support",
+    "hint": "You can retry this page, return home, or keep shopping while we capture the error."
   }
 }

@@ -28,6 +28,34 @@ const contentTypes = {
   '.woff2': 'font/woff2',
 };
 
+/** Commercial baseline security headers for storefront static responses. */
+function commercialSecurityHeaders() {
+  return {
+    'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'SAMEORIGIN',
+    'Referrer-Policy': 'strict-origin-when-cross-origin',
+    'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), payment=()',
+    'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
+  };
+}
+
+function cacheControlFor(filePath) {
+  const rel = path.relative(buildRoot, filePath).split(path.sep).join('/');
+  const ext = path.extname(filePath).toLowerCase();
+  // Hashed CRA bundles under /static are content-addressed → long cache.
+  if (rel.startsWith('static/')) {
+    return 'public, max-age=31536000, immutable';
+  }
+  // Fonts / images in public root can cache briefly; HTML and config stay fresh.
+  if (['.woff', '.woff2', '.png', '.jpg', '.jpeg', '.gif', '.webp', '.avif', '.svg', '.ico'].includes(ext)) {
+    return 'public, max-age=86400';
+  }
+  if (rel === 'runtime-config.js' || rel === 'index.html' || ext === '.html' || rel === 'robots.txt' || rel === 'sitemap.xml' || rel === 'manifest.json') {
+    return 'no-cache';
+  }
+  return 'no-store';
+}
+
 function safeBuildPath(urlPath) {
   const decodedPath = decodeURIComponent(urlPath);
   const normalizedPath = path.normalize(decodedPath).replace(/^(\.\.[/\\])+/, '');
@@ -38,13 +66,14 @@ function safeBuildPath(urlPath) {
 function sendFile(res, filePath) {
   fs.readFile(filePath, (error, body) => {
     if (error) {
-      res.writeHead(404, { 'Cache-Control': 'no-store' });
+      res.writeHead(404, { 'Cache-Control': 'no-store', ...commercialSecurityHeaders() });
       res.end('not found');
       return;
     }
     res.writeHead(200, {
-      'Cache-Control': 'no-store',
+      'Cache-Control': cacheControlFor(filePath),
       'Content-Type': contentTypes[path.extname(filePath)] || 'application/octet-stream',
+      ...commercialSecurityHeaders(),
     });
     res.end(body);
   });
@@ -95,7 +124,7 @@ function handleStatic(req, res) {
   const requestUrl = new URL(req.url, `http://${host}:${port}`);
   const filePath = safeBuildPath(requestUrl.pathname);
   if (!filePath) {
-    res.writeHead(403, { 'Cache-Control': 'no-store' });
+    res.writeHead(403, { 'Cache-Control': 'no-store', ...commercialSecurityHeaders() });
     res.end('forbidden');
     return;
   }
@@ -157,9 +186,7 @@ server.on('upgrade', (req, socket, head) => {
     path: `${requestUrl.pathname}${requestUrl.search}`,
     headers: {
       ...req.headers,
-      connection: 'Upgrade',
       host: backendOrigin.host,
-      upgrade: req.headers.upgrade || 'websocket',
       'x-forwarded-host': req.headers.host || '',
       'x-forwarded-proto': 'http',
     },

@@ -34,6 +34,7 @@ import { isAdminRole } from '../utils/roles';
 import SeventeenTrackWidget from '../components/SeventeenTrackWidget';
 import './OrderTracking.css';
 import '../styles/mobile-page-contrast.css';
+import { focusFirstFormError } from '../utils/formValidationFocus';
 
 const { Text, Title } = Typography;
 const orderTrackingImageFallback = productImageFallback;
@@ -689,7 +690,18 @@ const OrderTracking: React.FC = () => {
             message={t('pages.orderTracking.prefillNotice')}
           />
         ) : null}
-        <Form form={form} className="order-tracking-page__lookupForm" layout="vertical" onFinish={onFinish} onValuesChange={() => setPrefillNoticeVisible(false)}>
+        <Form
+          form={form}
+          className="order-tracking-page__lookupForm"
+          layout="vertical"
+          requiredMark
+          validateTrigger={['onChange', 'onBlur']}
+          onFinish={onFinish}
+          onFinishFailed={() => {
+            focusFirstFormError({ rootSelector: '.order-tracking-page__lookupCard' });
+          }}
+          onValuesChange={() => setPrefillNoticeVisible(false)}
+        >
           <Form.Item name="orderNo" label={t('pages.orderTracking.orderNo')} rules={[{ required: true, message: t('pages.orderTracking.orderNoRequired') }]}>
             <Input placeholder={t('pages.orderTracking.orderNoPlaceholder')} autoComplete="off" inputMode="text" maxLength={80} />
           </Form.Item>
@@ -718,18 +730,39 @@ const OrderTracking: React.FC = () => {
             />
           ) : (
             <PageEmpty
-              description={t('pages.orderTracking.empty')}
-              primaryAction={{
-                key: 'shop',
-                label: t('pages.orderTracking.shopAgain'),
-                onClick: () => navigate('/products'),
-              }}
-              secondaryAction={{
-                key: 'support',
-                label: t('pages.profile.contactSupport'),
-                onClick: supportOpen,
-                icon: <CustomerServiceOutlined />,
-              }}
+              className="order-tracking-page__emptyPanel"
+              description={(
+                <div className="order-tracking-page__emptyCopy">
+                  <div>{t('pages.orderTracking.empty')}</div>
+                  <div className="order-tracking-page__emptyHint">{t('pages.orderTracking.emptyHint')}</div>
+                </div>
+              )}
+              actions={[
+                {
+                  key: 'shop',
+                  label: t('pages.orderTracking.shopAgain'),
+                  onClick: () => navigate('/products'),
+                },
+                {
+                  key: 'coupons',
+                  label: t('pages.orderTracking.emptyCoupons'),
+                  onClick: () => navigate('/coupons'),
+                  type: 'default',
+                },
+                {
+                  key: 'orders',
+                  label: t('pages.orderTracking.emptyProfileOrders'),
+                  onClick: () => navigate('/profile?tab=orders'),
+                  type: 'default',
+                },
+                {
+                  key: 'support',
+                  label: t('pages.profile.contactSupport'),
+                  onClick: supportOpen,
+                  icon: <CustomerServiceOutlined />,
+                  type: 'default',
+                },
+              ]}
             />
           )}
         </section>

@@ -412,18 +412,32 @@ const Wishlist: React.FC = () => {
     return (
       <div className={`wishlist-page wishlist-page--${language} wishlist-page--empty`}>
         <PageEmpty
-          description={t('pages.wishlist.empty')}
-          primaryAction={{
-            key: 'browse',
-            label: wishlistBrowseActionLabel,
-            onClick: () => navigate('/products'),
-          }}
-          secondaryAction={{
-            key: 'home',
-            label: t('nav.ariaHome'),
-            onClick: () => navigate('/'),
-            type: 'default',
-          }}
+          className="wishlist-page__emptyPanel"
+          description={(
+            <div className="wishlist-page__emptyCopy">
+              <div>{t('pages.wishlist.empty')}</div>
+              <div className="wishlist-page__emptyHint">{t('pages.wishlist.emptyHint')}</div>
+            </div>
+          )}
+          actions={[
+            {
+              key: 'browse',
+              label: wishlistBrowseActionLabel,
+              onClick: () => navigate('/products'),
+            },
+            {
+              key: 'coupons',
+              label: t('pages.wishlist.emptyCoupons'),
+              onClick: () => navigate('/coupons'),
+              type: 'default',
+            },
+            {
+              key: 'pet-finder',
+              label: t('pages.wishlist.emptyPetFinder'),
+              onClick: () => navigate('/pet-finder'),
+              type: 'default',
+            },
+          ]}
         />
       </div>
     );

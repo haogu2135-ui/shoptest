@@ -48,7 +48,13 @@
     "offlineTitle": "Sin conexión",
     "offlineText": "Solo puedes ver páginas guardadas. El carrito y el pago se reanudarán al volver la red.",
     "onlineRestoredTitle": "Conexión restablecida",
-    "onlineRestoredText": "Ya puedes seguir comprando y pagando."
+    "onlineRestoredText": "Ya puedes seguir comprando y pagando.",
+    "apiErrorTitle": "Algo salió mal",
+    "apiErrorDismiss": "Cerrar",
+    "apiErrorRetryHint": "Puedes reintentar la última acción en un momento.",
+    "apiErrorRateLimitedTitle": "Demasiadas solicitudes",
+    "apiErrorServerTitle": "El servicio está ocupado",
+    "apiErrorNetworkTitle": "Problema de conexión"
   },
   "app": {
     "loading": "Cargando app…",
@@ -646,7 +652,10 @@
         "remainingLabel": "Restantes"
       },
       "catalogFallbackDescription": "Los cupones en vivo no están disponibles por ahora. Puedes seguir viendo ahorros recomendados y reintentar para canjear.",
-      "seoDescription": "Canjea cupones, revisa tu monedero de descuentos y aplícalos antes del checkout en México."
+      "seoDescription": "Canjea cupones, revisa tu monedero de descuentos y aplícalos antes del checkout en México.",
+      "emptyWalletPetFinder": "Encontrar ajuste",
+      "emptyWalletCart": "Abrir carrito",
+      "emptyWalletHint": "Reclama una oferta pública, compra esenciales o abre un ajuste para mascota y arma un carrito útil."
     },
     "adminCoupons": {
       "title": "Cupones",
@@ -845,7 +854,10 @@
       "trustReturnsTitle": "Devoluciones fáciles",
       "trustReturnsText": "Inicia posventa desde tus pedidos en cualquier momento.",
       "trustSupportTitle": "Soporte en vivo",
-      "trustSupportText": "Pregunta por talla, envío o pago."
+      "trustSupportText": "Pregunta por talla, envío o pago.",
+      "saveForLaterEmptyHint": "Guarda artículos del carrito para después, o sigue comprando y agrega favoritos de la lista de deseos.",
+      "saveForLaterBrowse": "Ver productos",
+      "saveForLaterWishlist": "Abrir lista de deseos"
     },
     "addOnAssistant": {
       "title": "Sugerencias para completar",
@@ -908,7 +920,10 @@
       "readyValue": "Valor listo {amount}",
       "viewBestPick": "Ver mejor pick",
       "browsePersonalized": "Ver recomendaciones personales",
-      "pageTitle": "Lista de deseos"
+      "pageTitle": "Lista de deseos",
+      "emptyHint": "Guarda esenciales para mascotas y luego reclama cupones o recibe una recomendación personalizada.",
+      "emptyCoupons": "Ver cupones",
+      "emptyPetFinder": "Encontrar producto ideal"
     },
     "notifications": {
       "title": "Notificaciones",
@@ -957,7 +972,10 @@
       "actionSignalUnread": "{count} no leídas",
       "actionSignalOffers": "{count} ofertas",
       "actionSignalDelivery": "{count} entregas",
-      "openRelated": "Abrir relacionado"
+      "openRelated": "Abrir relacionado",
+      "emptyHint": "Aquí verás actualizaciones de pedidos, cupones y envíos.",
+      "emptyCoupons": "Ver cupones",
+      "emptyTrackOrder": "Rastrear pedido"
     },
     "auth": {
       "loginTitle": "Iniciar sesión",
@@ -1233,7 +1251,10 @@
       "checkoutStepNoOptions": "Sin variantes pendientes",
       "checkoutStepLowStock": "Bajo inventario, decide pronto",
       "checkoutStepStock": "Inventario estable",
-      "checkoutPathCta": "Agregar opción al carrito"
+      "checkoutPathCta": "Agregar opción al carrito",
+      "emptyHint": "Agrega productos del catálogo o de tu lista de deseos y compara precio, valoraciones y especificaciones antes de comprar.",
+      "emptyWishlist": "Abrir lista de deseos",
+      "emptyCoupons": "Ver cupones"
     },
     "stockAlerts": {
       "title": "Alertas de reposición",
@@ -1283,7 +1304,10 @@
       "nextActionEyebrow": "Siguiente mejor acción",
       "directReady": "{count} directos al carrito",
       "optionReady": "{count} requieren opciones",
-      "stillWatchingCount": "{count} en vigilancia"
+      "stillWatchingCount": "{count} en vigilancia",
+      "emptyHint": "Explora productos y toca “Avisarme” cuando un artículo se agote.",
+      "emptyWishlist": "Abrir favoritos",
+      "emptyPetFinder": "Encontrar producto ideal"
     },
     "petFinder": {
       "title": "Buscador para mascotas",
@@ -1336,7 +1360,9 @@
         "deal": "Mejores ofertas",
         "budget": "Más económico"
       },
-      "seoDescription": "Encuentra productos para mascotas por presupuesto, tipo de mascota y estilo de vida."
+      "seoDescription": "Encuentra productos para mascotas por presupuesto, tipo de mascota y estilo de vida.",
+      "emptyHint": "Prueba un presupuesto o tipo de mascota más amplio, o revisa todo el catálogo.",
+      "emptyCoupons": "Ver cupones"
     },
     "petGallery": {
       "eyebrow": "Galería comunitaria",
@@ -1396,7 +1422,10 @@
       "sampleBadge": "Muestra",
       "sampleSource": "Contenido de muestra",
       "staleActionBlocked": "Actualiza la galería en vivo antes de cambiar me gusta, subidas o eliminaciones.",
-      "seoDescription": "Explora fotos reales de mascotas de la comunidad ShopMX y descubre alimento, juguetes y cuidado."
+      "seoDescription": "Explora fotos reales de mascotas de la comunidad ShopMX y descubre alimento, juguetes y cuidado.",
+      "emptyHint": "Sé el primero en compartir un momento con tu mascota, o compra esenciales mientras se llena el feed.",
+      "emptyUploadHint": "Subir foto de mascota",
+      "emptyCoupons": "Ver cupones"
     },
     "browsingHistory": {
       "eyebrow": "Visto recientemente",
@@ -1768,7 +1797,9 @@
       "couponOpportunityAppliedText": "{name} ahorra {amount} en este pedido.",
       "couponOpportunityBuildTitle": "Hay un cupón mejor cerca",
       "couponOpportunityBuildText": "Agrega {amount} más para desbloquear alrededor de {value} en cupón.",
-      "couponOpportunityReview": "Revisar cupón"
+      "couponOpportunityReview": "Revisar cupón",
+      "mobilePayBarTrust": "Pago seguro · {method}",
+      "mobilePayBarTrustDefault": "Pago seguro protegido"
     },
     "orderTracking": {
       "title": "Rastrear pedido",
@@ -1839,7 +1870,10 @@
       "trackingNumberCopied": "Guía copiada",
       "copyTrackingFailed": "No se pudo copiar la guía",
       "emptyRecoveryHint": "Aún no hay eventos en vivo. Copia la guía, reintenta el rastreo o contacta soporte.",
-      "retryTracking": "Reintentar rastreo"
+      "retryTracking": "Reintentar rastreo",
+      "emptyHint": "¿Tienes una compra reciente? Rastréala aquí o sigue comprando con cupones mientras llegan las actualizaciones.",
+      "emptyCoupons": "Ver cupones",
+      "emptyProfileOrders": "Ver mis pedidos"
     },
     "adminDashboard": {
       "title": "Panel",
@@ -3302,7 +3336,11 @@
       "galleryPause": "Pausar carrusel de imágenes",
       "galleryPlay": "Reproducir carrusel de imágenes",
       "galleryPaused": "Carrusel en pausa",
-      "galleryPlaying": "Carrusel en reproducción"
+      "galleryPlaying": "Carrusel en reproducción",
+      "notFoundHint": "Este producto puede estar agotado o retirado. Explora opciones similares, cupones o un ajuste para tu mascota.",
+      "notFoundCoupons": "Ver cupones",
+      "notFoundWishlist": "Abrir lista de deseos",
+      "notFoundPetFinder": "Encontrar ajuste"
     },
     "profile": {
       "fetchUserFailed": "No se pudo cargar la información del usuario",
@@ -3570,7 +3608,10 @@
       "paymentRefundingNext": "No necesitas hacer nada más. Revisa el pedido para el estado reembolsado.",
       "noOrdersHint": "Empieza con los más vendidos, reclama un cupón o usa Pet Finder.",
       "emptyOrdersCoupons": "Ver cupones",
-      "emptyOrdersPetFinder": "Encontrar producto ideal"
+      "emptyOrdersPetFinder": "Encontrar producto ideal",
+      "noPetsHint": "Los perfiles de mascota desbloquean tallas, ofertas de cumpleaños y mejores recomendaciones.",
+      "noPetsFindFit": "Encontrar ajuste",
+      "noPetsBrowse": "Ver productos"
     },
     "brandAdmin": {
       "title": "Gestión de marcas",
@@ -4027,12 +4068,18 @@
     "title": "Página No Encontrada",
     "subtitle": "La página que buscas no existe o ha sido movida.",
     "backHome": "Volver al Inicio",
-    "searchProducts": "Buscar Productos"
+    "searchProducts": "Buscar Productos",
+    "hint": "Prueba el catálogo, reclama un cupón o rastrea un pedido reciente mientras te reubicamos.",
+    "browseCoupons": "Ver cupones",
+    "trackOrder": "Rastrear pedido"
   },
   "errorBoundary": {
     "title": "Algo Salió Mal",
     "subtitle": "Ocurrió un error inesperado. Por favor, inténtalo de nuevo.",
     "retry": "Reintentar",
-    "backHome": "Volver al Inicio"
+    "backHome": "Volver al Inicio",
+    "browseProducts": "Ver productos",
+    "contactSupport": "Contactar soporte",
+    "hint": "Puedes reintentar esta página, volver al inicio o seguir comprando mientras registramos el error."
   }
 }

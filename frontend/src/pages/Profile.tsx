@@ -2147,7 +2147,34 @@ const Profile: React.FC = () => {
                   {t('pages.profile.addPet')}
                 </Button>
                 {petProfiles.length === 0 ? (
-                  <Empty description={t('pages.profile.noPets')} />
+                  <PageEmpty
+                    className="profile-pets-empty"
+                    description={(
+                      <div className="profile-pets-empty__copy">
+                        <div>{t('pages.profile.noPets')}</div>
+                        <div className="profile-pets-empty__hint">{t('pages.profile.noPetsHint')}</div>
+                      </div>
+                    )}
+                    actions={[
+                      {
+                        key: 'add-pet',
+                        label: t('pages.profile.addPet'),
+                        onClick: () => openPetModal(),
+                      },
+                      {
+                        key: 'pet-finder',
+                        label: t('pages.profile.noPetsFindFit'),
+                        onClick: () => navigate('/pet-finder'),
+                        type: 'default',
+                      },
+                      {
+                        key: 'browse',
+                        label: t('pages.profile.noPetsBrowse'),
+                        onClick: () => navigate('/products'),
+                        type: 'default',
+                      },
+                    ]}
+                  />
                 ) : (
                   <List
                     grid={{ gutter: 16, xs: 1, sm: 2, md: 2 }}

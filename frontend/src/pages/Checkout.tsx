@@ -28,6 +28,7 @@ import { allSettledWithConcurrency } from '../utils/asyncBatch';
 import { getLocalStorageItem, getSessionStorageItem, removeSessionStorageItem, setLocalStorageItem, setSessionStorageItem } from '../utils/safeStorage';
 import { useNativeBackHandler } from '../utils/nativeBack';
 import { reportNonBlockingError } from '../utils/nonBlockingError';
+import { focusFirstFormError } from '../utils/formValidationFocus';
 import { buildLoginUrlFromWindow } from '../utils/authRedirect';
 import { isLikelyPhoneNumber, normalizeLikelyPhoneNumber, normalizePhoneNumber } from '../utils/phone';
 import { isValidRegionalPostalCode, normalizeRegionalPostalCode } from '../utils/postalCode';
@@ -259,6 +260,37 @@ const buildCheckoutFieldErrorMap = (fields: CheckoutValidationField[]): Record<s
     }
   });
   return next;
+};
+
+
+const CHECKOUT_VALIDATION_SCROLL_OFFSET = 96;
+const focusFirstCheckoutValidationError = (errorFields?: CheckoutValidationField[]) => {
+  const firstFieldName = String(errorFields?.[0]?.name?.[0] || '');
+  if (firstFieldName === 'paymentMethod') {
+    scrollCheckoutElementIntoView('checkout-payment-card');
+    const paymentOption = document.querySelector(
+      '#checkout-payment-card .checkout-page__paymentMethod, #checkout-payment-card button, #checkout-payment-card [role="radio"]',
+    ) as HTMLElement | null;
+    if (paymentOption && typeof paymentOption.focus === 'function') {
+      try {
+        paymentOption.focus({ preventScroll: true });
+      } catch {
+        paymentOption.focus();
+      }
+    }
+    return;
+  }
+  if (firstFieldName === 'guestEmail') {
+    scrollCheckoutElementIntoView('checkout-contact-card');
+  } else if (['recipientName', 'phone', 'region', 'shippingAddress', 'postalCode'].includes(firstFieldName)) {
+    scrollCheckoutElementIntoView('checkout-address-card');
+  }
+  window.requestAnimationFrame(() => {
+    focusFirstFormError({
+      rootSelector: '.checkout-page',
+      scrollOffset: CHECKOUT_VALIDATION_SCROLL_OFFSET,
+    });
+  });
 };
 
 const couponBusinessErrorStatuses = new Set([400, 404, 409, 422]);
@@ -3059,6 +3091,7 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
         onFinishFailed={(info) => {
           closeCheckoutRegionCascader();
           updateCheckoutValidationAnnouncement(info.errorFields);
+          focusFirstCheckoutValidationError(info.errorFields as CheckoutValidationField[]);
         }}
         onFieldsChange={(_, allFields) => updateCheckoutValidationAnnouncement(allFields)}
         onValuesChange={(changedValues) => {
@@ -3078,7 +3111,7 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
           {checkoutValidationAnnouncement}
         </div>
         {isGuestCheckout ? (
-          <Card title={t('pages.checkout.contact')} className="checkout-page__sectionCard">
+          <Card id="checkout-contact-card" title={t('pages.checkout.contact')} className="checkout-page__sectionCard">
             <Form.Item
               name="guestEmail"
               label={t('pages.checkout.email')}
@@ -3392,10 +3425,19 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
                   </Button>
             </Form.Item>
           </div>
-          <div className="checkout-page__mobilePayBar" aria-label={t('pages.checkout.paymentConfidenceTitle')}>
-            <span>
+          <div
+            className="checkout-page__mobilePayBar"
+            role="region"
+            aria-label={t('pages.checkout.paymentConfidenceTitle')}
+          >
+            <span className="checkout-page__mobilePayBarMeta">
               <Text type="secondary">{t('pages.checkout.payable')}</Text>
               <Text strong className={shippingQuoteReady ? 'commerce-money' : undefined}>{payableAmountText}</Text>
+              <Text type="secondary" className="checkout-page__mobilePayBarTrust">
+                {selectedPaymentDetail?.title
+                  ? t('pages.checkout.mobilePayBarTrust', { method: selectedPaymentDetail.title })
+                  : t('pages.checkout.mobilePayBarTrustDefault')}
+              </Text>
             </span>
             <Button
                   type="primary"

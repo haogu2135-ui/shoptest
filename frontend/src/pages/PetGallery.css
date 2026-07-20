@@ -1809,3 +1809,7 @@
     line-height: 1.25 !important;
   }
 }
+
+.pet-gallery-empty__copy { display: grid; gap: 6px; }
+.pet-gallery-empty__hint { color: rgba(16, 47, 34, 0.72); font-size: 13px; line-height: 1.45; }
+.pet-gallery-empty .page-feedback__actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }

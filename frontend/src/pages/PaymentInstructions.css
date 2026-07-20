@@ -416,7 +416,9 @@
     flex-shrink: 0;
   }
 
+  .payment-instructions-page__stickyActions .ant-btn,
   .payment-instructions-page__stickyActions .ant-btn-primary {
     min-height: 44px;
   }
 }
+

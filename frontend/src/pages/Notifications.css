@@ -1140,3 +1140,7 @@
   outline-offset: 2px;
   border-radius: 4px;
 }
+
+.notifications-page__emptyCopy { display: grid; gap: 6px; }
+.notifications-page__emptyHint { color: rgba(16, 47, 34, 0.72); font-size: 13px; line-height: 1.45; }
+.notifications-page__emptyPanel .page-feedback__actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }

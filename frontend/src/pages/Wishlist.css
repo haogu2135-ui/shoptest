@@ -1479,3 +1479,23 @@
     -webkit-text-fill-color: #7f1d12 !important;
   }
 }
+
+
+/* Commercial empty wishlist conversion */
+.wishlist-page__emptyCopy {
+  display: grid;
+  gap: 6px;
+}
+
+.wishlist-page__emptyHint {
+  color: rgba(16, 47, 34, 0.72);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.wishlist-page__emptyPanel .page-feedback__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}

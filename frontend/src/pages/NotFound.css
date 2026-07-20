@@ -77,3 +77,17 @@
     margin-top: 14px;
   }
 }
+
+.not-found-page__status {
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+}
+
+.not-found-page__hint {
+  display: block;
+  max-width: 34rem;
+  color: rgba(16, 47, 34, 0.72);
+  font-size: 13px;
+  line-height: 1.45;
+}

@@ -1,0 +1,50 @@
+.shop-error-boundary {
+  min-height: 52vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 16px calc(24px + env(safe-area-inset-bottom, 0px));
+  text-align: center;
+}
+
+.shop-error-boundary__copy {
+  display: grid;
+  gap: 6px;
+  justify-items: center;
+}
+
+.shop-error-boundary__hint {
+  max-width: 34rem;
+  color: rgba(16, 47, 34, 0.72);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.shop-error-boundary .ant-result-extra {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.shop-error-boundary .ant-result-extra .ant-btn {
+  min-height: 44px;
+  touch-action: manipulation;
+}
+
+@media (max-width: 640px) {
+  .shop-error-boundary {
+    padding: 24px 12px calc(96px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .shop-error-boundary .ant-result-extra {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    width: min(100%, 360px);
+    margin-inline: auto;
+  }
+
+  .shop-error-boundary .ant-result-extra .ant-btn {
+    width: 100%;
+  }
+}

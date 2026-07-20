@@ -8,6 +8,8 @@ import { resolveApiDispatcherUrl } from '../utils/apiDispatcher';
 import { dispatchDomEvent } from '../utils/domEvents';
 import { normalizePersistentImageUrl } from '../utils/mediaAssets';
 import { reportNonBlockingError } from '../utils/nonBlockingError';
+import { getApiErrorMessage } from '../utils/apiError';
+import { ensureLanguagePack } from '../i18n';
 import { resolveApiBaseUrl, resolveSupportWebSocketUrl } from '../utils/runtimeConfig';
 import { getEffectiveRole } from '../utils/roles';
 import { getLocalStorageItem, removeLocalStorageItem, setLocalStorageItem } from '../utils/safeStorage';
@@ -596,14 +598,32 @@ const apiErrorStatus = (error: AxiosError) => {
     return Number.isFinite(status) && status > 0 ? status : undefined;
 };
 
+const resolveApiErrorLanguage = (): 'en' | 'es' | 'zh' => {
+    const stored = String(getLocalStorageItem('shop-language') || '').trim().toLowerCase();
+    if (stored === 'es' || stored === 'zh' || stored === 'en') {
+        return stored;
+    }
+    return 'en';
+};
+
 const apiErrorUserMessage = (error: AxiosError) => {
+    const language = resolveApiErrorLanguage();
+    // Keep non-English packs warm so later terminal errors resolve from locale catalogs.
+    if (language !== 'en') {
+        void ensureLanguagePack(language).catch((packError) => {
+            reportNonBlockingError('api.ensureLanguagePack', packError);
+        });
+    }
     const status = apiErrorStatus(error);
-    if (!error.response) return 'Network error. Please check your connection and try again.';
-    if (status === 401) return 'Your session expired. Please sign in again.';
-    if (status === 403) return 'You do not have permission to perform this action.';
-    if (status === 429) return 'Too many requests. Please wait and retry.';
-    if (status && status >= 500) return 'Server error. Please try again later.';
-    return 'Request failed. Please check the form and retry.';
+    const fallback = status === 429
+        ? 'Too many requests. Please wait and retry.'
+        : status && status >= 500
+            ? 'Server error. Please try again later.'
+            : !error.response
+                ? 'Network error. Please check your connection and try again.'
+                : 'Request failed. Please check the form and retry.';
+    // Prefer localized catalog messages (rate limit / network / service) for commercial UX.
+    return getApiErrorMessage(error, fallback, language);
 };
 
 const reportTerminalApiError = (error: AxiosError, config?: AuthRetryConfig) => {

@@ -1214,3 +1214,7 @@
     gap: 8px;
   }
 }
+
+.stock-alerts__emptyCopy { display: grid; gap: 6px; }
+.stock-alerts__emptyHint { color: rgba(16, 47, 34, 0.72); font-size: 13px; line-height: 1.45; }
+.stock-alerts__emptyPanel .page-feedback__actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }

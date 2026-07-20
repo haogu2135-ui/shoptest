@@ -1900,7 +1900,37 @@ const Cart: React.FC = () => {
           />
         ) : null}
         {savedItems.length === 0 ? (
-          <Empty description={t('pages.cart.saveForLaterEmpty')} image={Empty.PRESENTED_IMAGE_SIMPLE} />
+          <div className="cart-page__savedEmpty" role="status">
+            <Empty
+              description={(
+                <div className="cart-page__savedEmptyCopy">
+                  <div>{t('pages.cart.saveForLaterEmpty')}</div>
+                  <div className="cart-page__savedEmptyHint">{t('pages.cart.saveForLaterEmptyHint')}</div>
+                </div>
+              )}
+              image={Empty.PRESENTED_IMAGE_SIMPLE}
+            >
+              <div className="cart-page__savedEmptyActions">
+                <Button
+                  type="primary"
+                  icon={<ShoppingOutlined />}
+                  aria-label={t('pages.cart.saveForLaterBrowse')}
+                  title={t('pages.cart.saveForLaterBrowse')}
+                  onClick={() => navigate('/products')}
+                >
+                  {t('pages.cart.saveForLaterBrowse')}
+                </Button>
+                <Button
+                  icon={<ShoppingOutlined />}
+                  aria-label={t('pages.cart.saveForLaterWishlist')}
+                  title={t('pages.cart.saveForLaterWishlist')}
+                  onClick={() => navigate('/wishlist')}
+                >
+                  {t('pages.cart.saveForLaterWishlist')}
+                </Button>
+              </div>
+            </Empty>
+          </div>
         ) : (
           <div className="cart-page__savedGrid" role="list" aria-label={t('pages.cart.saveForLaterTitle')}>
             {savedItems.map((item) => {

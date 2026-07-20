@@ -5723,3 +5723,30 @@
   margin: 0 0 12px;
   padding: 0 2px;
 }
+
+
+/* Commercial coupon wallet empty multi-path recovery */
+.coupon-wallet__emptyActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.coupon-wallet__emptyActions .ant-btn {
+  min-height: 40px;
+}
+
+@media (max-width: 560px) {
+  .coupon-wallet__emptyActions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .coupon-wallet__emptyActions .ant-btn {
+    width: 100%;
+    min-height: 44px;
+    touch-action: manipulation;
+  }
+}

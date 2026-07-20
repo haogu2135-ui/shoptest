@@ -1203,19 +1203,37 @@ const CouponCenter: React.FC = () => {
         className={couponWalletStats.unused === 0 && myCoupons.length > 0 ? 'coupon-wallet coupon-wallet--historyOnly' : 'coupon-wallet'}
       >
         {myCoupons.length === 0 ? (
-          <div className="coupon-wallet__empty">
+          <div className="coupon-wallet__empty" role="status">
             <span className="coupon-wallet__emptyIcon"><GiftOutlined /></span>
             <h3>{t('pages.coupons.noMine')}</h3>
-            <p>{t('pages.coupons.noNextUseHint')}</p>
-            <Button
-              type="primary"
-              icon={<ShoppingOutlined />}
-              aria-label={goShoppingActionLabel}
-              title={goShoppingActionLabel}
-              onClick={() => navigate('/products')}
-            >
-              {t('pages.coupons.goShopping')}
-            </Button>
+            <p>{t('pages.coupons.emptyWalletHint')}</p>
+            <div className="coupon-wallet__emptyActions">
+              <Button
+                type="primary"
+                icon={<ShoppingOutlined />}
+                aria-label={goShoppingActionLabel}
+                title={goShoppingActionLabel}
+                onClick={() => navigate('/products')}
+              >
+                {t('pages.coupons.goShopping')}
+              </Button>
+              <Button
+                icon={<ShoppingOutlined />}
+                aria-label={t('pages.coupons.emptyWalletCart')}
+                title={t('pages.coupons.emptyWalletCart')}
+                onClick={() => navigate('/cart')}
+              >
+                {t('pages.coupons.emptyWalletCart')}
+              </Button>
+              <Button
+                icon={<GiftOutlined />}
+                aria-label={t('pages.coupons.emptyWalletPetFinder')}
+                title={t('pages.coupons.emptyWalletPetFinder')}
+                onClick={() => navigate('/pet-finder')}
+              >
+                {t('pages.coupons.emptyWalletPetFinder')}
+              </Button>
+            </div>
           </div>
         ) : (
           <>

@@ -547,12 +547,32 @@ const ProductCompare: React.FC = () => {
           />
         ) : products.length === 0 ? (
           <PageEmpty
-            description={t('pages.compare.empty')}
-            primaryAction={{
-              key: 'browse',
-              label: compareBrowseActionLabel,
-              onClick: () => navigate('/products'),
-            }}
+            className="product-compare__emptyPanel"
+            description={(
+              <div className="product-compare__emptyCopy">
+                <div>{t('pages.compare.empty')}</div>
+                <div className="product-compare__emptyHint">{t('pages.compare.emptyHint')}</div>
+              </div>
+            )}
+            actions={[
+              {
+                key: 'browse',
+                label: compareBrowseActionLabel,
+                onClick: () => navigate('/products'),
+              },
+              {
+                key: 'wishlist',
+                label: t('pages.compare.emptyWishlist'),
+                onClick: () => navigate('/wishlist'),
+                type: 'default',
+              },
+              {
+                key: 'coupons',
+                label: t('pages.compare.emptyCoupons'),
+                onClick: () => navigate('/coupons'),
+                type: 'default',
+              },
+            ]}
           />
         ) : (
           <>

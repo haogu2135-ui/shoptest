@@ -1,11 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Alert, Button, Form, Input, message } from 'antd';
 import type { InputRef } from 'antd/es/input';
-import { CheckCircleOutlined, LockOutlined, MailOutlined, SafetyCertificateOutlined, UserOutlined } from '@ant-design/icons';
+import { CheckCircleOutlined, LockOutlined, MailOutlined, SafetyCertificateOutlined, UserOutlined, EyeOutlined, EyeInvisibleOutlined } from '@ant-design/icons';
 import { Link, useNavigate } from 'react-router-dom';
 import { userApi } from '../api';
 import { useAppConfig } from '../hooks/useAppConfig';
 import { useLanguage } from '../i18n';
+import { focusFirstFormError } from '../utils/formValidationFocus';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useDocumentMeta } from '../hooks/useDocumentMeta';
 import {
@@ -64,6 +65,15 @@ const isFormValidationError = (error: unknown): error is { errorFields: unknown[
   Boolean(error) && typeof error === 'object' && Array.isArray((error as { errorFields?: unknown }).errorFields)
 );
 
+
+const scrollFirstForgotPasswordErrorIntoView = () => {
+  focusFirstFormError({
+    rootSelector: '.shopee-login-card, .shopee-login-root, .forgot-password-page',
+    scrollOffset: 120,
+  });
+};
+
+
 const ForgotPassword: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [authBannerError, setAuthBannerError] = useState<string | null>(null);
@@ -100,6 +110,8 @@ const ForgotPassword: React.FC = () => {
   const resetSendCodeActionLabel = `${resetPageLabel}: ${resetCodeActionText}`;
   const resetNewPasswordInputLabel = `${resetPageLabel}: ${t('pages.auth.newPassword')}`;
   const resetConfirmPasswordInputLabel = `${resetPageLabel}: ${t('pages.auth.confirmPassword')}`;
+  const passwordVisibilityActionLabel = (visible: boolean) => `${resetNewPasswordInputLabel}: ${visible ? t('pages.auth.hidePassword') : t('pages.auth.showPassword')}`;
+  const confirmPasswordVisibilityActionLabel = (visible: boolean) => `${resetConfirmPasswordInputLabel}: ${visible ? t('pages.auth.hidePassword') : t('pages.auth.showPassword')}`;
   const resetSubmitActionLabel = `${resetPageLabel}: ${t('pages.auth.resetPassword')}`;
   const validateStrongPassword = (_rule: unknown, value?: string) => {
     if (!value) return Promise.resolve();
@@ -257,7 +269,7 @@ const ForgotPassword: React.FC = () => {
             onClose={() => setAuthBannerError(null)}
           />
         ) : null}
-        <Form form={form} name="forgotPassword" onFinish={onFinish} layout="vertical" className="shopee-login-form" validateTrigger={["onChange", "onBlur"]} requiredMark>
+        <Form form={form} name="forgotPassword" onFinish={onFinish} onFinishFailed={() => { window.requestAnimationFrame(() => window.requestAnimationFrame(scrollFirstForgotPasswordErrorIntoView)); }} layout="vertical" className="shopee-login-form" validateTrigger={["onChange", "onBlur"]} requiredMark>
           {!emailCodeEnabled && !appConfigLoading && (
             <div className="shopee-login-emailHint shopee-login-emailHint--warning" role="status">
               <SafetyCertificateOutlined />
@@ -346,7 +358,26 @@ const ForgotPassword: React.FC = () => {
               { validator: validateStrongPassword },
             ]}
           >
-            <Input.Password prefix={<LockOutlined />} placeholder={t('pages.auth.newPassword')} size="large" autoComplete="new-password" maxLength={STRONG_PASSWORD_MAX_LENGTH} aria-label={resetNewPasswordInputLabel} title={resetNewPasswordInputLabel} />
+            <Input.Password
+              prefix={<LockOutlined />}
+              placeholder={t('pages.auth.newPassword')}
+              size="large"
+              autoComplete="new-password"
+              maxLength={STRONG_PASSWORD_MAX_LENGTH}
+              aria-label={resetNewPasswordInputLabel}
+              title={resetNewPasswordInputLabel}
+              iconRender={(visible) => (
+                <button
+                  type="button"
+                  aria-label={passwordVisibilityActionLabel(visible)}
+                  aria-pressed={visible}
+                  title={passwordVisibilityActionLabel(visible)}
+                  style={{ border: 0, padding: 0, background: 'transparent', color: 'inherit', lineHeight: 0, cursor: 'pointer' }}
+                >
+                  {visible ? <EyeOutlined /> : <EyeInvisibleOutlined />}
+                </button>
+              )}
+            />
           </Form.Item>
           <Form.Item
             name="confirmPassword"
@@ -363,7 +394,25 @@ const ForgotPassword: React.FC = () => {
               }),
             ]}
           >
-            <Input.Password prefix={<LockOutlined />} placeholder={t('pages.auth.confirmPassword')} size="large" autoComplete="new-password" aria-label={resetConfirmPasswordInputLabel} title={resetConfirmPasswordInputLabel} />
+            <Input.Password
+              prefix={<LockOutlined />}
+              placeholder={t('pages.auth.confirmPassword')}
+              size="large"
+              autoComplete="new-password"
+              aria-label={resetConfirmPasswordInputLabel}
+              title={resetConfirmPasswordInputLabel}
+              iconRender={(visible) => (
+                <button
+                  type="button"
+                  aria-label={confirmPasswordVisibilityActionLabel(visible)}
+                  aria-pressed={visible}
+                  title={confirmPasswordVisibilityActionLabel(visible)}
+                  style={{ border: 0, padding: 0, background: 'transparent', color: 'inherit', lineHeight: 0, cursor: 'pointer' }}
+                >
+                  {visible ? <EyeOutlined /> : <EyeInvisibleOutlined />}
+                </button>
+              )}
+            />
           </Form.Item>
           <Form.Item>
             <Button type="primary" htmlType="submit" block size="large" loading={loading} disabled={loading || codeSending || !emailCodeEnabled} aria-label={resetSubmitActionLabel} title={resetSubmitActionLabel}>

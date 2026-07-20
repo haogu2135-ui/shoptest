@@ -1042,6 +1042,102 @@ const LazySupportWidgetHost: React.FC = () => {
   );
 };
 
+
+type ShopApiErrorDetail = {
+  status?: number;
+  method?: string;
+  path?: string;
+  retryCount?: number;
+  transient?: boolean;
+  message?: string;
+};
+
+const ApiErrorBanner: React.FC = () => {
+  const { t } = useLanguage();
+  const [errorDetail, setErrorDetail] = useState<ShopApiErrorDetail | null>(null);
+  const hideTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    const clearHideTimer = () => {
+      if (hideTimerRef.current !== null) {
+        window.clearTimeout(hideTimerRef.current);
+        hideTimerRef.current = null;
+      }
+    };
+
+    const onApiError = (event: Event) => {
+      const custom = event as CustomEvent<ShopApiErrorDetail>;
+      const detail = custom?.detail || {};
+      const status = Number(detail.status || 0);
+      // Auth redirects already own 401 UX; keep the banner for operational failures.
+      if (status === 401) {
+        return;
+      }
+      clearHideTimer();
+      setErrorDetail({
+        status: Number.isFinite(status) && status > 0 ? status : undefined,
+        method: detail.method,
+        path: detail.path,
+        retryCount: detail.retryCount,
+        transient: detail.transient,
+        message: String(detail.message || '').trim() || t('common.apiErrorTitle'),
+      });
+      // Auto-dismiss softer failures; keep rate-limit/server/network until dismissed.
+      const sticky = status === 429 || status >= 500 || !status;
+      if (!sticky) {
+        hideTimerRef.current = window.setTimeout(() => {
+          setErrorDetail(null);
+          hideTimerRef.current = null;
+        }, 7000);
+      }
+    };
+
+    window.addEventListener('shop:api-error', onApiError as EventListener);
+    return () => {
+      clearHideTimer();
+      window.removeEventListener('shop:api-error', onApiError as EventListener);
+    };
+  }, [t]);
+
+  if (!errorDetail) {
+    return null;
+  }
+
+  const status = Number(errorDetail.status || 0);
+  const title = status === 429
+    ? t('common.apiErrorRateLimitedTitle')
+    : status >= 500
+      ? t('common.apiErrorServerTitle')
+      : !status
+        ? t('common.apiErrorNetworkTitle')
+        : t('common.apiErrorTitle');
+  const tone = status === 429 || status >= 500 || !status ? 'critical' : 'warning';
+
+  return (
+    <div
+      className={`shop-api-error-banner shop-api-error-banner--${tone}`}
+      role="alert"
+      aria-live="assertive"
+      aria-atomic="true"
+    >
+      <div className="shop-api-error-banner__copy">
+        <strong>{title}</strong>
+        <span>{errorDetail.message}</span>
+        <span className="shop-api-error-banner__hint">{t('common.apiErrorRetryHint')}</span>
+      </div>
+      <button
+        type="button"
+        className="shop-api-error-banner__dismiss"
+        aria-label={t('common.apiErrorDismiss')}
+        title={t('common.apiErrorDismiss')}
+        onClick={() => setErrorDetail(null)}
+      >
+        {t('common.apiErrorDismiss')}
+      </button>
+    </div>
+  );
+};
+
 const StorefrontLayout: React.FC = () => {
   const { t } = useLanguage();
   const location = useLocation();
@@ -1156,6 +1252,7 @@ const StorefrontLayout: React.FC = () => {
     <Layout className={shellClassName} style={{ minHeight: '100vh' }}>
       <SkipToContentLink />
       <ConnectivityBanner />
+      <ApiErrorBanner />
       <Suspense fallback={<header className="app-navbar-skeleton" aria-hidden="true" style={{ minHeight: 56 }} />}>
         <LazyNavbar />
       </Suspense>

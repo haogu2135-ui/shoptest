@@ -1684,3 +1684,22 @@
     white-space: normal;
   }
 }
+
+/* Commercial empty recovery CTAs */
+.product-compare__emptyCopy {
+  display: grid;
+  gap: 6px;
+}
+
+.product-compare__emptyHint {
+  color: rgba(16, 47, 34, 0.72);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.product-compare__emptyPanel .page-feedback__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
