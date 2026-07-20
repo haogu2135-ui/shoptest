@@ -1396,3 +1396,27 @@
     min-height: 44px !important;
   }
 }
+
+
+/* Commercial register order/account agreement notice */
+.register-page__legalNotice {
+  margin: 0 0 12px;
+  color: rgba(16, 47, 34, 0.72);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.register-page__legalNotice a {
+  color: #124734;
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+@media (max-width: 860px) {
+  .register-page__legalNotice a {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    touch-action: manipulation;
+  }
+}

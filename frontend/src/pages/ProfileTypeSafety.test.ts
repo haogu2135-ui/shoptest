@@ -15,7 +15,9 @@ describe('Profile type-safety guard', () => {
     expect(source).toContain('const getProfileApiErrorData = (error: unknown): Record<string, unknown> =>');
     expect(source).toContain('const getProfileApiErrorCode = (error: unknown) =>');
     expect(source).toContain("import { getApiErrorMessage } from '../utils/apiError';");
-    expect(source).toContain('if (isFormValidationError(err)) return;');
+    expect(source).toContain('if (isFormValidationError(err)) {');
+    expect(source).toContain('focusProfileModalFormError');
+    expect(source).toMatch(/if \(isFormValidationError\(err\)\) \{[\s\S]*?return;/);
     expect(source).toContain("message.error(getApiErrorMessage(err, t('pages.profile.continuePayFailed'), language, { includeClientMessage: true }));");
   });
 

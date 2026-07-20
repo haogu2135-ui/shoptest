@@ -84,6 +84,7 @@ jest.mock('../i18n', () => ({
         'pages.adminDashboard.paidOrders': 'Paid orders',
         'pages.adminDashboard.paymentMethods': 'Payment methods',
         'pages.adminDashboard.paymentReturnOps.auditAction': 'Open audit logs',
+        'pages.adminDashboard.paymentReturnOps.providerReadinessAction': 'Provider webhooks',
         'pages.adminDashboard.paymentReturnOps.guideText': 'Recommended order text.',
         'pages.adminDashboard.paymentReturnOps.guideTitle': 'Recommended order',
         'pages.adminDashboard.paymentReturnOps.healthReady': 'Healthy',

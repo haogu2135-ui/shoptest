@@ -87,4 +87,21 @@ describe('ForgotPassword responsive reset guide', () => {
     expect(css).toContain('.shopee-login-form__field--code .shopee-login-codeButton');
     expect(css).toContain('white-space: normal !important;');
   });
+
+
+  it('keeps multi-path recovery when email verification codes are offline', () => {
+    const source = readPageSource();
+    const css = readLoginCss();
+    expect(source).toContain('const resetUnavailable = !emailCodeEnabled && !appConfigLoading');
+    expect(source).toContain('data-forgot-password-unavailable="true"');
+    expect(source).toContain("t('pages.auth.resetUnavailableTitle')");
+    expect(source).toContain("t('pages.auth.resetUnavailableText')");
+    expect(source).toContain("t('pages.auth.backToPasswordLogin')");
+    expect(source).toContain("navigate('/login')");
+    expect(source).toContain("navigate('/track-order')");
+    expect(source).toContain("dispatchDomEvent('shop:open-support')");
+    expect(css).toContain('.shopee-login-resetUnavailable');
+    expect(css).toMatch(/shopee-login-resetUnavailable__actions[\s\S]*?min-height:\s*44px/);
+  });
+
 });

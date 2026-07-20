@@ -30,4 +30,14 @@
     <changefreq>weekly</changefreq>
     <priority>0.5</priority>
   </url>
+  <url>
+    <loc>https://pet.686888666.xyz/privacy</loc>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+  </url>
+  <url>
+    <loc>https://pet.686888666.xyz/terms</loc>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+  </url>
 </urlset>

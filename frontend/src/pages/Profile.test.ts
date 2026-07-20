@@ -23,7 +23,7 @@ describe('Profile mobile control visibility', () => {
     expect(source).toContain('const isFormValidationError = (error: unknown): error is FormValidationError =>');
     expect(source).toContain('const getProfileApiErrorData = (error: unknown): Record<string, unknown> =>');
     expect(source).toContain('const getProfileApiErrorCode = (error: unknown) =>');
-    expect(source).toContain('if (isFormValidationError(err)) return;');
+    expect(source).toContain('if (isFormValidationError(err)) {');
     expect(source).toContain('} catch (err: unknown) {');
     expect(source).not.toMatch(/\bany\b/);
     expect(source).not.toContain('err?.errorFields');
@@ -371,6 +371,20 @@ describe('Profile mobile control visibility', () => {
     expect(source).toContain('className="profile-payment-recovery" role="status" aria-live="polite"');
     expect(source).not.toContain('selectedPayment.refundReference');
     expect(source).not.toContain('payment.refundReference');
+  });
+
+
+  it('keeps a commercial multi-path guest auth gate instead of hard-redirect-only login', () => {
+    const source = readProfileSource();
+    const css = readProfileCss();
+    expect(source).toContain('profile-page__authGate');
+    expect(source).toContain('pages.profile.authGateTitle');
+    expect(source).toContain("buildLoginUrl('/profile')");
+    expect(source).toContain("navigate('/register?redirect=%2Fprofile')");
+    expect(source).toContain("navigate('/track-order')");
+    expect(source).not.toContain("message.warning(profileLocalizationRef.current.t('messages.loginRequired'))");
+    expect(css).toContain('Commercial guest profile auth gate multi-path conversion');
+    expect(css).toMatch(/\.profile-page__authGate \.page-feedback__actions \.ant-btn[\s\S]*?min-height:\s*44px/);
   });
 
 });

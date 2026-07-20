@@ -324,6 +324,9 @@ const SystemMonitor: React.FC = () => {
                     <Descriptions.Item label={t('pages.systemMonitor.paymentChannels')}>
                       {(productionConfig.checks?.paymentChannels?.availableCheckoutChannelCount ?? '-')}/{(productionConfig.checks?.paymentChannels?.enabledChannelCount ?? '-')}
                     </Descriptions.Item>
+                    <Descriptions.Item label={t('pages.systemMonitor.paymentWebhooks')}>
+                      {(productionConfig.checks?.paymentChannels?.webhookReadyChannelCount ?? '-')}/{(productionConfig.checks?.paymentChannels?.webhookRequiredChannelCount ?? '-')}
+                    </Descriptions.Item>
                     <Descriptions.Item label={t('pages.systemMonitor.corsOrigins')}>
                       {productionConfig.checks?.cors?.corsOriginCount ?? '-'}
                     </Descriptions.Item>
@@ -342,15 +345,34 @@ const SystemMonitor: React.FC = () => {
                         {(productionConfig.checks?.paymentChannels?.channels || []).map((channel) => {
                           const code = channel.code || t('common.unknown');
                           const available = channel.available === true;
+                          const webhookRequired = channel.webhookRequired === true;
+                          const webhookReady = channel.webhookReady === true;
+                          const webhookStatus = String(channel.webhookStatus || '').toUpperCase();
+                          let webhookLabel = t('pages.systemMonitor.channelWebhookNotRequired');
+                          let webhookColor: 'default' | 'green' | 'orange' | 'red' = 'default';
+                          if (webhookRequired) {
+                            if (webhookReady || webhookStatus === 'READY') {
+                              webhookLabel = t('pages.systemMonitor.channelWebhookReady');
+                              webhookColor = 'green';
+                            } else if (webhookStatus === 'INVALID') {
+                              webhookLabel = t('pages.systemMonitor.channelWebhookInvalid');
+                              webhookColor = 'red';
+                            } else {
+                              webhookLabel = t('pages.systemMonitor.channelWebhookMissing');
+                              webhookColor = 'orange';
+                            }
+                          }
                           return (
                             <div
                               key={`${code}-${channel.provider || 'provider'}`}
                               className={`system-monitor__paymentChannelItem system-monitor__paymentChannelItem--${available ? 'ready' : 'blocked'}`}
+                              data-webhook-status={webhookStatus || (webhookRequired ? 'UNKNOWN' : 'NOT_APPLICABLE')}
                             >
                               <Space wrap size={[8, 4]}>
                                 <Tag color={available ? 'green' : 'red'}>
                                   {available ? t('pages.systemMonitor.channelReady') : t('pages.systemMonitor.channelBlocked')}
                                 </Tag>
+                                <Tag color={webhookColor}>{webhookLabel}</Tag>
                                 <Text strong>{code}</Text>
                                 {channel.provider ? <Text type="secondary">{channel.provider}</Text> : null}
                                 {channel.refundMode ? (

@@ -445,7 +445,9 @@
     "methods": "Tarjeta, transferencia y pagos digitales",
     "shipping": "Envío nacional",
     "tracking": "Seguimiento de pedidos",
-    "rights": "2026 ShopMX. Todos los derechos reservados."
+    "rights": "2026 ShopMX. Todos los derechos reservados.",
+    "terms": "Términos del servicio",
+    "privacy": "Aviso de privacidad"
   },
   "pages": {
     "keywords": {
@@ -655,7 +657,8 @@
       "seoDescription": "Canjea cupones, revisa tu monedero de descuentos y aplícalos antes del checkout en México.",
       "emptyWalletPetFinder": "Encontrar ajuste",
       "emptyWalletCart": "Abrir carrito",
-      "emptyWalletHint": "Reclama una oferta pública, compra esenciales o abre un ajuste para mascota y arma un carrito útil."
+      "emptyWalletHint": "Reclama una oferta pública, compra esenciales o abre un ajuste para mascota y arma un carrito útil.",
+      "loginToClaim": "Inicia sesión para tomar"
     },
     "adminCoupons": {
       "title": "Cupones",
@@ -736,6 +739,7 @@
     "cart": {
       "title": "Carrito",
       "empty": "El carrito está vacío",
+      "emptyHint": "Explora el catálogo, reclama un cupón o reabre tus productos vistos recientemente.",
       "browse": "Ir de compras",
       "fetchFailed": "No se pudo cargar el carrito",
       "quantityFailed": "No se pudo actualizar la cantidad",
@@ -923,7 +927,11 @@
       "pageTitle": "Lista de deseos",
       "emptyHint": "Guarda esenciales para mascotas y luego reclama cupones o recibe una recomendación personalizada.",
       "emptyCoupons": "Ver cupones",
-      "emptyPetFinder": "Encontrar producto ideal"
+      "emptyPetFinder": "Encontrar producto ideal",
+      "authGateTitle": "Inicia sesión para guardar favoritos",
+      "authGateHint": "Inicia sesión para sincronizar la lista de deseos en tus dispositivos, o sigue explorando productos y cupones.",
+      "authGateLogin": "Iniciar sesión",
+      "authGateRegister": "Crear cuenta"
     },
     "notifications": {
       "title": "Notificaciones",
@@ -975,7 +983,11 @@
       "openRelated": "Abrir relacionado",
       "emptyHint": "Aquí verás actualizaciones de pedidos, cupones y envíos.",
       "emptyCoupons": "Ver cupones",
-      "emptyTrackOrder": "Rastrear pedido"
+      "emptyTrackOrder": "Rastrear pedido",
+      "authGateTitle": "Inicia sesión para ver notificaciones",
+      "authGateHint": "Inicia sesión para ver pedidos, cupones y envíos, o sigue comprando y rastreando como invitado.",
+      "authGateLogin": "Iniciar sesión",
+      "authGateRegister": "Crear cuenta"
     },
     "auth": {
       "loginTitle": "Iniciar sesión",
@@ -1076,7 +1088,16 @@
       "resetGuideTitle": "Guía de restablecimiento",
       "resetGuideEmail": "Coincide con tu correo",
       "resetGuideVerify": "Protege tu cuenta",
-      "resetGuideLogin": "Inicia sesión después"
+      "resetGuideLogin": "Inicia sesión después",
+      "registerAgreementPrefix": "Al crear una cuenta aceptas nuestros",
+      "registerAgreementAnd": "y el",
+      "registerAgreementSuffix": ".",
+      "loginAgreementPrefix": "Al continuar aceptas nuestros",
+      "loginAgreementAnd": "y el",
+      "loginAgreementSuffix": ".",
+      "resetUnavailableTitle": "El restablecimiento de contraseña no está disponible",
+      "resetUnavailableText": "Los códigos de verificación por correo están fuera de servicio. Usa el inicio de sesión con contraseña si la recuerdas, rastrea un pedido reciente o contacta a soporte para recuperar la cuenta.",
+      "backToPasswordLogin": "Volver al inicio con contraseña"
     },
     "productList": {
       "title": "Comprar por categoría",
@@ -1574,7 +1595,17 @@
       "trustTrackTitle": "Sigue el pedido",
       "trustTrackText": "El estado del pago y del pedido permanece disponible después del banco.",
       "trustSupportTitle": "¿Necesitas ayuda?",
-      "trustSupportText": "Soporte puede ayudar con pagos fallidos, cancelados o pendientes."
+      "trustSupportText": "Soporte puede ayudar con pagos fallidos, cancelados o pendientes.",
+      "stickyTrackOrder": "Rastrear pedido",
+      "stickyContinueShopping": "Seguir comprando",
+      "guestEmailRequiredTitle": "Confirma el correo de compra",
+      "guestEmailRequiredText": "Ingresa el correo usado en el checkout para verificar este pedido y el estado del pago.",
+      "guestEmailInvalid": "Ingresa un correo de compra válido para continuar.",
+      "guestEmailLabel": "Correo de compra",
+      "guestEmailSubmit": "Verificar con correo",
+      "failedTitle": "Pago fallido",
+      "failedText": "Este pago no se completó. Rastrea el pedido, contacta soporte o sigue comprando con un nuevo checkout.",
+      "stickyRecovery": "Acciones de recuperación de pago"
     },
     "checkout": {
       "loadFailed": "No se pudo cargar la información de pago",
@@ -1619,6 +1650,8 @@
       "paymentRecoveryPaid": "Pagado",
       "paymentRecoveryPending": "Pendiente",
       "paymentRecoveryExpired": "Expirado",
+      "paymentRecoveryFailed": "Fallido",
+      "paymentRecoveryNextFailed": "Este pago no se completó. Rastrea el pedido, contacta soporte o sigue comprando con un nuevo checkout.",
       "paymentRecoveryReconcileRequired": "Requiere revisión",
       "paymentRecoveryWindow": "Tiempo para pagar",
       "paymentRecoveryWindowUnknown": "Confirmando tiempo disponible",
@@ -1799,7 +1832,10 @@
       "couponOpportunityBuildText": "Agrega {amount} más para desbloquear alrededor de {value} en cupón.",
       "couponOpportunityReview": "Revisar cupón",
       "mobilePayBarTrust": "Pago seguro · {method}",
-      "mobilePayBarTrustDefault": "Pago seguro protegido"
+      "mobilePayBarTrustDefault": "Pago seguro protegido",
+      "orderAgreementPrefix": "Al confirmar este pedido aceptas nuestros",
+      "orderAgreementAnd": "y el",
+      "orderAgreementSuffix": "."
     },
     "orderTracking": {
       "title": "Rastrear pedido",
@@ -1873,7 +1909,9 @@
       "retryTracking": "Reintentar rastreo",
       "emptyHint": "¿Tienes una compra reciente? Rastréala aquí o sigue comprando con cupones mientras llegan las actualizaciones.",
       "emptyCoupons": "Ver cupones",
-      "emptyProfileOrders": "Ver mis pedidos"
+      "emptyProfileOrders": "Ver mis pedidos",
+      "paymentReturnEmailRequiredTitle": "Confirma el correo de compra para reanudar el pago",
+      "paymentReturnEmailRequiredText": "Encontramos un retorno de pago para este pedido. Ingresa el mismo correo del checkout y rastrea el pedido para verificar el estado o continuar el pago."
     },
     "adminDashboard": {
       "title": "Panel",
@@ -1954,7 +1992,8 @@
         "healthWatch": "Vigilar",
         "healthRisk": "Prioridad alta",
         "guideTitle": "Orden recomendado",
-        "guideText": "Primero pagos pendientes, luego solicitudes de devolución y después reembolsos listos."
+        "guideText": "Primero pagos pendientes, luego solicitudes de devolución y después reembolsos listos.",
+        "providerReadinessAction": "Webhooks de proveedor"
       },
       "operationsSla": {
         "title": "Cola de riesgo SLA",
@@ -2406,10 +2445,15 @@
       "databaseTip": "La URL de base de datos oculta contraseñas, pero esta página no debe exponerse a roles no administradores.",
       "noStatus": "Sin estado del sistema.",
       "paymentChannelChecklist": "Lista de canales de pago en producción",
-      "paymentChannelChecklistHint": "Solo los canales listos pueden completar checkout y reembolsos en producción.",
+      "paymentChannelChecklistHint": "Disponibilidad de checkout y webhooks de proveedores para recuperar pagos en producción.",
       "channelReady": "Listo",
       "channelBlocked": "Bloqueado",
-      "channelRefundMode": "Modo de reembolso"
+      "channelRefundMode": "Modo de reembolso",
+      "paymentWebhooks": "Webhooks del proveedor",
+      "channelWebhookReady": "Webhook listo",
+      "channelWebhookMissing": "Webhook faltante",
+      "channelWebhookInvalid": "Webhook inválido",
+      "channelWebhookNotRequired": "Webhook N/D"
     },
     "logAdmin": {
       "title": "Gestión de logs",
@@ -3611,7 +3655,12 @@
       "emptyOrdersPetFinder": "Encontrar producto ideal",
       "noPetsHint": "Los perfiles de mascota desbloquean tallas, ofertas de cumpleaños y mejores recomendaciones.",
       "noPetsFindFit": "Encontrar ajuste",
-      "noPetsBrowse": "Ver productos"
+      "noPetsBrowse": "Ver productos",
+      "authGateTitle": "Inicia sesión para gestionar tu cuenta",
+      "authGateHint": "Inicia sesión para pedidos, direcciones y mascotas, o rastrea un pedido de invitado y sigue comprando.",
+      "authGateLogin": "Iniciar sesión",
+      "authGateRegister": "Crear cuenta",
+      "authGateTrackOrder": "Rastrear pedido"
     },
     "brandAdmin": {
       "title": "Gestión de marcas",
@@ -4062,6 +4111,33 @@
       "editRole": "Editar rol",
       "systemRole": "Rol del sistema",
       "reservedRoleReadonly": "Los roles integrados del sistema son de solo lectura."
+    },
+    "legal": {
+      "eyebrow": "Políticas ShopMX",
+      "termsTitle": "Términos del servicio",
+      "privacyTitle": "Aviso de privacidad",
+      "termsSeoDescription": "Términos de ShopMX para navegar, pedir, pagar, enviar y recibir soporte en México.",
+      "privacySeoDescription": "Cómo ShopMX recolecta, usa y protege datos de cuenta, pedidos y pagos.",
+      "updatedAt": "Última actualización: julio 2026",
+      "relatedTitle": "Acciones relacionadas",
+      "browseProducts": "Ver productos",
+      "backHome": "Volver al inicio",
+      "termsSection1Title": "1. Uso de ShopMX",
+      "termsSection1Body": "Al usar ShopMX aceptas comprar productos para mascotas de uso personal, proporcionar datos de checkout correctos y usar métodos de pago autorizados. Podemos rechazar o cancelar pedidos fraudulentos, sin stock o restringidos por ley.",
+      "termsSection2Title": "2. Pedidos, precios y pagos",
+      "termsSection2Body": "El total incluye precio, envío y descuentos mostrados en el checkout. El pago se procesa por el canal que elijas (por ejemplo Mercado Pago, OXXO, SPEI o tarjeta). El pedido pasa a envío solo cuando el pago se confirma.",
+      "termsSection3Title": "3. Envío, seguimiento y devoluciones",
+      "termsSection3Body": "Las estimaciones de entrega se muestran antes de pagar y pueden cambiar. Usa Rastrear pedido con tu número y correo de checkout. Devoluciones o cambios siguen la ventana indicada en el producto o pedido cuando aplique.",
+      "termsSection4Title": "4. Soporte y cambios",
+      "termsSection4Body": "Contacta soporte desde la tienda para problemas de pedido. Podemos actualizar estos términos por motivos legales, de seguridad o de producto. Seguir usando ShopMX implica aceptar los términos actualizados.",
+      "privacySection1Title": "1. Datos que recolectamos",
+      "privacySection1Body": "Recolectamos identificadores de cuenta (usuario, correo, teléfono), direcciones, estado de pedidos y pagos, mensajes de soporte y señales básicas de seguridad. No guardamos números completos de tarjeta en servidores de ShopMX cuando el proveedor procesa el cobro.",
+      "privacySection2Title": "2. Cómo usamos los datos",
+      "privacySection2Body": "Usamos los datos para procesar pedidos, entregar paquetes, prevenir fraude, dar soporte, mejorar el catálogo y cumplir obligaciones legales en México y otros mercados. El marketing se envía solo con preferencias o consentimiento aplicables.",
+      "privacySection3Title": "3. Compartición y retención",
+      "privacySection3Body": "Compartimos datos con procesadores de pago, logística e infraestructura solo para cumplir pedidos o proteger la plataforma. Conservamos registros de pedidos según contabilidad, disputas y cumplimiento legal, y luego los eliminamos o anonimizamos.",
+      "privacySection4Title": "4. Tus opciones",
+      "privacySection4Body": "Puedes actualizar tu perfil, solicitar acceso a tu historial de pedidos y pedir corrección o eliminación cuando la ley lo permita. Reporta temas de seguridad o privacidad por el soporte en la tienda."
     }
   },
   "notFound": {
@@ -4081,5 +4157,11 @@
     "browseProducts": "Ver productos",
     "contactSupport": "Contactar soporte",
     "hint": "Puedes reintentar esta página, volver al inicio o seguir comprando mientras registramos el error."
+  },
+  "cookieConsent": {
+    "title": "Cookies y privacidad",
+    "body": "ShopMX usa cookies esenciales para carrito, inicio de sesión, seguridad y seguimiento de pedidos. Las preferencias opcionales ayudan a mejorar la tienda.",
+    "acceptEssential": "Solo esenciales",
+    "acceptAll": "Aceptar todo"
   }
 }

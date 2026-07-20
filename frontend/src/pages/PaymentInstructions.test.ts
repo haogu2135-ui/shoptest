@@ -111,4 +111,23 @@ describe('PaymentInstructions step readability guards', () => {
     expect(closureCss).toMatch(/\.payment-instructions-page__actions \.ant-btn-primary\s*\{[\s\S]*?background:\s*#124734\s*!important;[\s\S]*?color:\s*#ffffff\s*!important;[\s\S]*?-webkit-text-fill-color:\s*#ffffff\s*!important;/);
     expect(closureCss).toMatch(/@media \(max-width:\s*380px\)[\s\S]*?\.payment-instructions-page__actions[\s\S]*?grid-template-columns:\s*minmax\(0,\s*1fr\)\s*!important;/);
   });
+
+
+  it('keeps guest email recovery gate for payment verify without stored context', () => {
+    expect(pageSource).toContain('manualGuestEmail');
+    expect(pageSource).toContain('applyGuestEmailForVerify');
+    expect(pageSource).toContain('data-payment-guest-email-gate="true"');
+    expect(pageSource).toContain('payment-instructions-page__guestEmailGate');
+    expect(pageSource).toContain("t('pages.paymentInstructions.guestEmailRequiredTitle')");
+    expect(pageSource).toContain("t('pages.paymentInstructions.guestEmailRequiredText')");
+    expect(pageSource).toContain("t('pages.paymentInstructions.guestEmailInvalid')");
+    expect(pageSource).toContain("t('pages.paymentInstructions.guestEmailLabel')");
+    expect(pageSource).toContain("t('pages.paymentInstructions.guestEmailSubmit')");
+    expect(pageSource).toContain('saveGuestSupportContext');
+    expect(pageSource).toContain('setReloadToken((value) => value + 1)');
+    expect(cssSource).toContain('.payment-instructions-page__guestEmailGate');
+    expect(cssSource).toContain('.payment-instructions-page__guestEmailForm');
+    expect(cssSource).toMatch(/payment-instructions-page__guestEmailForm[\s\S]*?min-height:\s*44px/);
+  });
+
 });

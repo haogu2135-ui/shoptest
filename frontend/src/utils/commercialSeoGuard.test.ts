@@ -31,11 +31,23 @@ describe('commercial SEO contracts', () => {
 
     expect(indexHtml).toContain('property="og:image"');
     expect(indexHtml).toContain('name="twitter:image"');
+    expect(indexHtml).toContain('images.unsplash.com');
+    expect(indexHtml).toContain('rel="preconnect"');
+    expect(indexHtml).toContain('assets/home/hero-mobile-pet.jpg');
+    expect(indexHtml).toContain('assets/home/hero-dog.jpg');
   });
 
   it('keeps JSON-LD serialization XSS-safe', () => {
     const source = readFrontend('utils', 'documentMeta.ts');
     expect(source).toContain(".replace(/</g, '\\\\u003c')");
+  });
+
+  it('keeps public legal pages indexable with document meta', () => {
+    const legal = readFrontend('pages', 'LegalPage.tsx');
+    expect(legal).toContain('useDocumentMeta');
+    expect(legal).toContain("const path = isTerms ? '/terms' : '/privacy'");
+    expect(legal).toContain('path,');
+    expect(legal).not.toContain('noIndex: true');
   });
 
   it('keeps private commerce routes noindexed', () => {
@@ -85,6 +97,10 @@ describe('commercial SEO contracts', () => {
     expect(robots).toContain('Sitemap:');
     expect(sitemap).toContain('/products');
     expect(sitemap).toContain('/coupons');
+    expect(sitemap).toContain('/privacy');
+    expect(sitemap).toContain('/terms');
+    expect(robots).toContain('Allow: /privacy');
+    expect(robots).toContain('Allow: /terms');
   });
 
   it('keeps product detail and profile tabs URL-synced for shareable commercial deep links', () => {

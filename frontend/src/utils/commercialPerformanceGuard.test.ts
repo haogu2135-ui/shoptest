@@ -80,4 +80,14 @@ describe('commercial performance contracts', () => {
     expect(apiIndexSource).toContain("export * from './core'");
   });
 
+
+  it('keeps first-fold home product tiles on eager LCP-friendly loading', () => {
+    const card = readFrontend('components', 'HomeProductCard.tsx');
+    const home = readFrontend('pages', 'Home.tsx');
+    expect(card).toContain('priority?: boolean');
+    expect(card).toContain("loading={priority ? 'eager' : 'lazy'}");
+    expect(card).toContain("fetchPriority={priority ? 'high' : 'auto'}");
+    expect(home).toContain('priority={index < 2}');
+  });
+
 });

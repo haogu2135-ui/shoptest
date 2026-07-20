@@ -576,6 +576,13 @@ const Login: React.FC = () => {
                         {t('pages.auth.login')}
                       </Button>
                     </Form.Item>
+                    <p className="shopee-login-legalNotice" role="note">
+                      {t('pages.auth.loginAgreementPrefix')}{' '}
+                      <Link to="/terms">{t('footer.terms')}</Link>
+                      {' '}{t('pages.auth.loginAgreementAnd')}{' '}
+                      <Link to="/privacy">{t('footer.privacy')}</Link>
+                      {t('pages.auth.loginAgreementSuffix')}
+                    </p>
                   </Form>
                 ),
               },
@@ -714,6 +721,13 @@ const Login: React.FC = () => {
                           : t('pages.auth.emailLogin')}
                       </Button>
                     </Form.Item>
+                    <p className="shopee-login-legalNotice" role="note">
+                      {t('pages.auth.loginAgreementPrefix')}{' '}
+                      <Link to="/terms">{t('footer.terms')}</Link>
+                      {' '}{t('pages.auth.loginAgreementAnd')}{' '}
+                      <Link to="/privacy">{t('footer.privacy')}</Link>
+                      {t('pages.auth.loginAgreementSuffix')}
+                    </p>
                   </Form>
                 ),
               },

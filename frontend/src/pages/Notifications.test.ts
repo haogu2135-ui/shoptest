@@ -87,4 +87,19 @@ describe('Notifications mobile bottom-nav clearance contract', () => {
 
   });
 
+
+  it('keeps a commercial multi-path guest auth gate instead of hard-redirect-only login', () => {
+    const source = readNotificationsSource();
+    const css = readNotificationsCss();
+    expect(source).toContain('notifications-page__authGate');
+    expect(source).toContain('pages.notifications.authGateTitle');
+    expect(source).toContain("buildLoginUrl('/notifications')");
+    expect(source).toContain("navigate('/register?redirect=%2Fnotifications')");
+    expect(source).toContain("navigate('/track-order')");
+    expect(source).not.toContain('buildLoginUrlFromWindow');
+    expect(source).not.toContain("message.warning(t('messages.loginRequired'))");
+    expect(css).toContain('Commercial guest notifications auth gate multi-path conversion');
+    expect(css).toMatch(/\.notifications-page__authGate \.page-feedback__actions \.ant-btn[\s\S]*?min-height:\s*44px/);
+  });
+
 });

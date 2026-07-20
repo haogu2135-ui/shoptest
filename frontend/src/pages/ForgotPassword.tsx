@@ -7,6 +7,7 @@ import { userApi } from '../api';
 import { useAppConfig } from '../hooks/useAppConfig';
 import { useLanguage } from '../i18n';
 import { focusFirstFormError } from '../utils/formValidationFocus';
+import { dispatchDomEvent } from '../utils/domEvents';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useDocumentMeta } from '../hooks/useDocumentMeta';
 import {
@@ -98,6 +99,7 @@ const ForgotPassword: React.FC = () => {
   });
   const { config: appConfig, loading: appConfigLoading } = useAppConfig();
   const emailCodeEnabled = appConfig.emailCodeEnabled === true;
+  const resetUnavailable = !emailCodeEnabled && !appConfigLoading;
   const resetPageLabel = t('pages.auth.resetPasswordTitle');
   const resetLoginInputLabel = `${resetPageLabel}: ${t('pages.auth.username')}`;
   const resetEmailInputLabel = `${resetPageLabel}: ${t('pages.auth.email')}`;
@@ -243,20 +245,22 @@ const ForgotPassword: React.FC = () => {
           <div className="shopee-login-mark">{t('common.brand')}</div>
           <div className="shopee-login-subtitle">{t('pages.auth.resetPasswordTitle')}</div>
         </div>
-        <div className="shopee-login-reset-guide" aria-label={t('pages.auth.resetGuideTitle')}>
-          <div className="shopee-login-reset-guide__item">
-            <MailOutlined />
-            <span>{t('pages.auth.resetGuideEmail')}</span>
+        {!resetUnavailable ? (
+          <div className="shopee-login-reset-guide" aria-label={t('pages.auth.resetGuideTitle')}>
+            <div className="shopee-login-reset-guide__item">
+              <MailOutlined />
+              <span>{t('pages.auth.resetGuideEmail')}</span>
+            </div>
+            <div className="shopee-login-reset-guide__item">
+              <SafetyCertificateOutlined />
+              <span>{t('pages.auth.resetGuideVerify')}</span>
+            </div>
+            <div className="shopee-login-reset-guide__item">
+              <CheckCircleOutlined />
+              <span>{t('pages.auth.resetGuideLogin')}</span>
+            </div>
           </div>
-          <div className="shopee-login-reset-guide__item">
-            <SafetyCertificateOutlined />
-            <span>{t('pages.auth.resetGuideVerify')}</span>
-          </div>
-          <div className="shopee-login-reset-guide__item">
-            <CheckCircleOutlined />
-            <span>{t('pages.auth.resetGuideLogin')}</span>
-          </div>
-        </div>
+        ) : null}
 
         {authBannerError ? (
           <Alert
@@ -269,13 +273,47 @@ const ForgotPassword: React.FC = () => {
             onClose={() => setAuthBannerError(null)}
           />
         ) : null}
-        <Form form={form} name="forgotPassword" onFinish={onFinish} onFinishFailed={() => { window.requestAnimationFrame(() => window.requestAnimationFrame(scrollFirstForgotPasswordErrorIntoView)); }} layout="vertical" className="shopee-login-form" validateTrigger={["onChange", "onBlur"]} requiredMark>
-          {!emailCodeEnabled && !appConfigLoading && (
-            <div className="shopee-login-emailHint shopee-login-emailHint--warning" role="status">
-              <SafetyCertificateOutlined />
-              <span>{t('pages.auth.emailCodeUnavailable')}</span>
+        {resetUnavailable ? (
+          <div className="shopee-login-resetUnavailable" data-forgot-password-unavailable="true" role="status">
+            <Alert
+              type="warning"
+              showIcon
+              message={t('pages.auth.resetUnavailableTitle')}
+              description={t('pages.auth.resetUnavailableText')}
+            />
+            <div className="shopee-login-resetUnavailable__actions">
+              <Button
+                type="primary"
+                block
+                size="large"
+                onClick={() => navigate('/login')}
+                aria-label={t('pages.auth.backToPasswordLogin')}
+                title={t('pages.auth.backToPasswordLogin')}
+              >
+                {t('pages.auth.backToPasswordLogin')}
+              </Button>
+              <Button
+                block
+                size="large"
+                onClick={() => navigate('/track-order')}
+                aria-label={t('nav.trackOrder')}
+                title={t('nav.trackOrder')}
+              >
+                {t('nav.trackOrder')}
+              </Button>
+              <Button
+                block
+                size="large"
+                onClick={() => dispatchDomEvent('shop:open-support')}
+                aria-label={t('nav.support')}
+                title={t('nav.support')}
+              >
+                {t('nav.support')}
+              </Button>
             </div>
-          )}
+          </div>
+        ) : (
+          <Form form={form} name="forgotPassword" onFinish={onFinish} onFinishFailed={() => { window.requestAnimationFrame(() => window.requestAnimationFrame(scrollFirstForgotPasswordErrorIntoView)); }} layout="vertical" className="shopee-login-form" validateTrigger={["onChange", "onBlur"]} requiredMark>
           <Form.Item name="login" rules={[{ required: true, message: t('pages.auth.usernameRequired') }]}>
             <Input
               prefix={<UserOutlined />}
@@ -420,6 +458,7 @@ const ForgotPassword: React.FC = () => {
             </Button>
           </Form.Item>
         </Form>
+        )}
 
         <div className="shopee-login-links shopee-login-links--single">
           <Link to="/login">{t('pages.auth.backToLogin')}</Link>

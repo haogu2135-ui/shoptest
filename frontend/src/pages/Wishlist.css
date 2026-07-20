@@ -1499,3 +1499,28 @@
   justify-content: center;
   gap: 8px;
 }
+
+
+/* Commercial guest wishlist auth gate multi-path conversion */
+.wishlist-page__authGate .page-feedback__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.wishlist-page__authGate .page-feedback__actions .ant-btn {
+  min-height: 44px;
+  touch-action: manipulation;
+}
+
+@media (max-width: 780px) {
+  .wishlist-page__authGate .page-feedback__actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .wishlist-page__authGate .page-feedback__actions .ant-btn {
+    width: 100%;
+  }
+}

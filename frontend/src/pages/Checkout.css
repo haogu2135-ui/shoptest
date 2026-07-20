@@ -4035,3 +4035,61 @@ body.checkout-page-active:not(.checkout-region-cascader-open) .ant-cascader-drop
     align-self: center;
   }
 }
+
+
+/* Commercial checkout order agreement notice */
+.checkout-page__legalNotice {
+  margin: 8px 0 0;
+  color: rgba(16, 47, 34, 0.72);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.checkout-page__legalNotice a {
+  color: #124734;
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+@media (max-width: 780px) {
+  .checkout-page__legalNotice a {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    touch-action: manipulation;
+  }
+}
+
+/* Commercial checkout payment-unavailable multipath recovery */
+.checkout-page__paymentUnavailableActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.checkout-page__paymentUnavailableActions .ant-btn {
+  min-height: 44px;
+}
+
+.checkout-page__paymentUnavailableActions--mobile {
+  justify-content: flex-end;
+  max-width: min(100%, 280px);
+}
+
+@media (max-width: 780px) {
+  .checkout-page__paymentUnavailable .ant-alert-action {
+    margin-top: 10px;
+    margin-inline-start: 0 !important;
+    width: 100%;
+  }
+
+  .checkout-page__paymentUnavailableActions {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .checkout-page__paymentUnavailableActions .ant-btn {
+    flex: 1 1 calc(50% - 8px);
+  }
+}

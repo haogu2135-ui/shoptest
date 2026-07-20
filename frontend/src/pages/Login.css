@@ -2786,3 +2786,48 @@
     font-size: 16px; /* prevent iOS zoom on focus */
   }
 }
+
+
+/* Commercial login legal agreement notice */
+.shopee-login-legalNotice {
+  margin: 0 0 8px;
+  color: rgba(var(--login-brand-rgb), 0.72);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.shopee-login-legalNotice a {
+  color: var(--login-brand);
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+@media (max-width: 780px) {
+  .shopee-login-legalNotice a {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    touch-action: manipulation;
+  }
+}
+
+
+/* Commercial: forgot-password multi-path recovery when email codes are offline */
+.shopee-login-resetUnavailable {
+  display: grid;
+  gap: 14px;
+}
+
+.shopee-login-resetUnavailable .ant-alert {
+  margin: 0;
+}
+
+.shopee-login-resetUnavailable__actions {
+  display: grid;
+  gap: 10px;
+}
+
+.shopee-login-resetUnavailable__actions .ant-btn {
+  min-height: 44px;
+  touch-action: manipulation;
+}

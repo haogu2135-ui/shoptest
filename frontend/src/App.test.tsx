@@ -195,9 +195,9 @@ describe('AuthStartupGate', () => {
     expect(source).toContain('const protectedRouteElement = (element: React.ReactElement) => (');
     expect(appSource).toContain('<AuthProvider>');
     expect(appSource).toContain('<AuthStartupGate>');
-    expect(appSource).toContain('<Route path="profile" element={protectedRouteElement(<Profile />)} />');
-    expect(appSource).toContain('<Route path="wishlist" element={protectedRouteElement(<Wishlist />)} />');
-    expect(appSource).toContain('<Route path="notifications" element={protectedRouteElement(<Notifications />)} />');
+    expect(appSource).toContain('<Route path="profile" element={<Profile />} />');
+    expect(appSource).toContain('<Route path="wishlist" element={<Wishlist />} />');
+    expect(appSource).toContain('<Route path="notifications" element={<Notifications />} />');
     expect(appSource).toContain('<Route path="checkout" element={<Checkout />} />');
     expect(appSource.indexOf('<AuthProvider>')).toBeLessThan(appSource.indexOf('<AuthStartupGate>'));
     expect(appSource.indexOf('</AuthStartupGate>')).toBeLessThan(appSource.indexOf('</AuthProvider>'));

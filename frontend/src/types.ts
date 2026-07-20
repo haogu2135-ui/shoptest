@@ -224,11 +224,18 @@ export interface AdminSystemStatus {
             websocketOriginCount?: number;
             enabledChannelCount?: number;
             availableCheckoutChannelCount?: number;
+            webhookRequiredChannelCount?: number;
+            webhookReadyChannelCount?: number;
             channels?: Array<{
                 code?: string;
                 provider?: string;
                 available?: boolean;
                 refundMode?: string;
+                webhookRequired?: boolean;
+                webhookReady?: boolean;
+                webhookStatus?: string;
+                credentialsConfigured?: boolean;
+                webhookSecretConfigured?: boolean;
             }>;
         }>;
     };

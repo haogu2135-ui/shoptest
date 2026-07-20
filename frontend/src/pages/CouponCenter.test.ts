@@ -97,5 +97,7 @@ describe('CouponCenter mobile coupon rail contract', () => {
     expect(claimAllSource).toContain('if (!isAuthenticated)');
     expect(claimAllSource).toContain("message.warning(t('messages.loginRequired'))");
     expect(claimAllSource).toContain('navigate(buildLoginUrlFromWindow())');
+    expect(source).toContain("t('pages.coupons.loginToClaim')");
+    expect(source).toContain("primaryClaimLabel");
   });
 });

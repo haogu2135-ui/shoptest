@@ -125,6 +125,8 @@ export type HomeProductCardProps = {
   handleQuickAddToCart: (event: React.MouseEvent, product: Product) => void;
   handleQuickWishlist: (event: React.MouseEvent, product: Product) => void;
   wishlistedProductIds: Set<number>;
+  /** First above-the-fold tile(s) for commercial LCP. */
+  priority?: boolean;
 };
 
 const HomeProductCard: React.FC<HomeProductCardProps> = ({
@@ -141,6 +143,7 @@ const HomeProductCard: React.FC<HomeProductCardProps> = ({
   handleQuickAddToCart,
   handleQuickWishlist,
   wishlistedProductIds,
+  priority = false,
 }) => {
   const fallbackName = t('pages.profile.productFallback', { id: product.id });
   const productName = (product.name || '').trim() || fallbackName;
@@ -184,8 +187,9 @@ const HomeProductCard: React.FC<HomeProductCardProps> = ({
             className="shopee-product__image"
             width={card.imageWidth}
             height={card.imageWidth}
-            loading="lazy"
+            loading={priority ? 'eager' : 'lazy'}
             decoding="async"
+            fetchPriority={priority ? 'high' : 'auto'}
             onError={(event) => applyProductImageFallback(event, card.fallbackImage)}
           />
           {card.discountPercent > 0 ? (

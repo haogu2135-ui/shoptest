@@ -226,6 +226,37 @@ public class PaymentController {
         }
     }
 
+    @PostMapping({"/mercado-pago/webhook", "/mercadopago/webhook"})
+    public ResponseEntity<?> mercadoPagoWebhook(
+            @RequestBody(required = false) String payload,
+            @RequestHeader(value = "x-signature", required = false) String signatureHeader,
+            @RequestHeader(value = "x-request-id", required = false) String requestIdHeader,
+            @RequestParam(value = "topic", required = false) String topic,
+            @RequestParam(value = "type", required = false) String type,
+            @RequestParam(value = "id", required = false) String dataId,
+            @RequestParam(value = "data.id", required = false) String dataIdAlt,
+            HttpServletRequest request) {
+        try {
+            Payment payment = paymentService.handleMercadoPagoWebhook(
+                    payload,
+                    signatureHeader,
+                    requestIdHeader,
+                    firstNonBlank(topic, type),
+                    firstNonBlank(dataId, dataIdAlt));
+            auditLogService.record("MERCADO_PAGO_WEBHOOK", "SUCCESS", null, null, null,
+                    "PAYMENT", payment != null ? payment.getId() : null, request,
+                    "Mercado Pago webhook accepted", null);
+            return ResponseEntity.ok(Map.of("received", true));
+        } catch (IllegalArgumentException e) {
+            auditLogService.record("MERCADO_PAGO_WEBHOOK", "FAILURE", null, null, null, "PAYMENT", null, request, e.getMessage(), null);
+            recordPaymentBlacklistFailureIfSuspicious(request, e);
+            throw e;
+        } catch (IllegalStateException e) {
+            auditLogService.record("MERCADO_PAGO_WEBHOOK", "FAILURE", null, null, null, "PAYMENT", null, request, e.getMessage(), null);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Payment provider is temporarily unavailable", e);
+        }
+    }
+
     @GetMapping("/order/{orderId}")
     public ResponseEntity<List<PaymentCustomerResponse>> findByOrderId(@PathVariable Long orderId,
                                                                        Authentication authentication) {
@@ -402,5 +433,20 @@ public class PaymentController {
             return status != null && status.is4xxClientError();
         }
         return false;
+    }
+
+    private String firstNonBlank(String... values) {
+        if (values == null) {
+            return null;
+        }
+        for (String value : values) {
+            if (value != null) {
+                String trimmed = value.trim();
+                if (!trimmed.isEmpty()) {
+                    return trimmed;
+                }
+            }
+        }
+        return null;
     }
 }

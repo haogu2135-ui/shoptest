@@ -1088,6 +1088,15 @@ class PaymentFlowServiceTest {
         return "t=" + timestamp + ",v1=" + hmacSha256Hex(signedPayload, secret);
     }
 
+    private String mercadoPagoSignatureHeader(String dataId, String requestId, String secret) {
+        return mercadoPagoSignatureHeader(dataId, requestId, secret, Instant.now().getEpochSecond());
+    }
+
+    private String mercadoPagoSignatureHeader(String dataId, String requestId, String secret, long timestamp) {
+        String manifest = "id:" + dataId + ";request-id:" + requestId + ";ts:" + timestamp + ";";
+        return "ts=" + timestamp + ",v1=" + hmacSha256Hex(manifest, secret);
+    }
+
     private String hmacSha256Hex(String value, String secret) {
         try {
             Mac mac = Mac.getInstance("HmacSHA256");
@@ -1580,6 +1589,123 @@ class PaymentFlowServiceTest {
         InOrder inOrder = inOrder(orderService, paymentRepository);
         inOrder.verify(orderService).updateOrderStatus(42L, "PENDING_SHIPMENT");
         inOrder.verify(paymentRepository).markPaidDetailed(eq(9L), eq("pi_test_42"), eq("cs_test_42"), any());
+    }
+
+    @Test
+    void mercadoPagoWebhookRejectsInvalidSignatureWithoutProviderLookup() {
+        PaymentRepository paymentRepository = mock(PaymentRepository.class);
+        OrderService orderService = mock(OrderService.class);
+        RuntimeConfigService runtimeConfig = mock(RuntimeConfigService.class);
+        when(runtimeConfig.getString("payment.mercado-pago.webhook-secret", "")).thenReturn("mp-webhook-secret-32chars-min-ok");
+        when(runtimeConfig.getString("payment.mercado-pago.access-token", "")).thenReturn("TEST-MP-ACCESS-TOKEN");
+        when(runtimeConfig.getString("mercadopago.webhook-secret", "")).thenReturn("");
+        when(runtimeConfig.getString("mercadopago.access-token", "")).thenReturn("");
+
+        PaymentService service = new PaymentService();
+        ReflectionTestUtils.setField(service, "paymentRepository", paymentRepository);
+        ReflectionTestUtils.setField(service, "orderService", orderService);
+        ReflectionTestUtils.setField(service, "runtimeConfig", runtimeConfig);
+
+        String payload = "{\"type\":\"payment\",\"data\":{\"id\":\"mp_pay_1\"}}";
+        IllegalArgumentException ex = assertThrows(
+                IllegalArgumentException.class,
+                () -> service.handleMercadoPagoWebhook(payload, "ts=1,v1=deadbeef", "req-1", null, null)
+        );
+        assertEquals("Invalid Mercado Pago webhook signature", ex.getMessage());
+        verifyNoInteractions(paymentRepository, orderService);
+    }
+
+    @Test
+    void mercadoPagoWebhookRejectsExpiredSignatureEvenWhenHmacMatches() {
+        PaymentRepository paymentRepository = mock(PaymentRepository.class);
+        OrderService orderService = mock(OrderService.class);
+        RuntimeConfigService runtimeConfig = mock(RuntimeConfigService.class);
+        String webhookSecret = "mp-webhook-secret-32chars-min-ok";
+        when(runtimeConfig.getString("payment.mercado-pago.webhook-secret", "")).thenReturn(webhookSecret);
+        when(runtimeConfig.getString("payment.mercado-pago.access-token", "")).thenReturn("TEST-MP-ACCESS-TOKEN");
+        when(runtimeConfig.getString("mercadopago.webhook-secret", "")).thenReturn("");
+        when(runtimeConfig.getString("mercadopago.access-token", "")).thenReturn("");
+
+        PaymentService service = new PaymentService();
+        ReflectionTestUtils.setField(service, "paymentRepository", paymentRepository);
+        ReflectionTestUtils.setField(service, "orderService", orderService);
+        ReflectionTestUtils.setField(service, "runtimeConfig", runtimeConfig);
+
+        String payload = "{\"type\":\"payment\",\"data\":{\"id\":\"mp_pay_1\"}}";
+        long expired = Instant.now().minusSeconds(600).getEpochSecond();
+        String signature = mercadoPagoSignatureHeader("mp_pay_1", "req-expired", webhookSecret, expired);
+        IllegalArgumentException ex = assertThrows(
+                IllegalArgumentException.class,
+                () -> service.handleMercadoPagoWebhook(payload, signature, "req-expired", null, null)
+        );
+        assertEquals("Invalid Mercado Pago webhook signature", ex.getMessage());
+        verifyNoInteractions(paymentRepository, orderService);
+    }
+
+    @Test
+    void mercadoPagoWebhookApprovedPaymentMarksPaidAfterProviderLookup() {
+        PaymentRepository paymentRepository = mock(PaymentRepository.class);
+        OrderService orderService = mock(OrderService.class);
+        RuntimeConfigService runtimeConfig = mock(RuntimeConfigService.class);
+        PaymentChannelConfig channelConfig = new PaymentChannelConfig();
+        String webhookSecret = "mp-webhook-secret-32chars-min-ok";
+        String accessToken = "TEST-MP-ACCESS-TOKEN";
+
+        Payment payment = new Payment();
+        payment.setId(11L);
+        payment.setOrderId(77L);
+        payment.setOrderNo("SO202607200001");
+        payment.setChannel("MERCADO_PAGO");
+        payment.setStatus("PENDING");
+        payment.setAmount(new BigDecimal("49.90"));
+
+        Payment paidPayment = new Payment();
+        paidPayment.setId(11L);
+        paidPayment.setOrderId(77L);
+        paidPayment.setOrderNo(payment.getOrderNo());
+        paidPayment.setChannel("MERCADO_PAGO");
+        paidPayment.setStatus("PAID");
+        paidPayment.setAmount(payment.getAmount());
+
+        Order order = new Order();
+        order.setId(77L);
+        order.setOrderNo(payment.getOrderNo());
+        order.setStatus("PENDING_PAYMENT");
+        order.setTotalAmount(payment.getAmount());
+
+        when(runtimeConfig.getString("payment.mercado-pago.webhook-secret", "")).thenReturn(webhookSecret);
+        when(runtimeConfig.getString("payment.mercado-pago.access-token", "")).thenReturn(accessToken);
+        when(runtimeConfig.getString("mercadopago.webhook-secret", "")).thenReturn("");
+        when(runtimeConfig.getString("mercadopago.access-token", "")).thenReturn("");
+        when(paymentRepository.findByOrderNoAndChannel("SO202607200001", "MERCADO_PAGO")).thenReturn(payment);
+        when(orderService.getOrderById(77L)).thenReturn(order);
+        when(orderService.updateOrderStatus(77L, "PENDING_SHIPMENT")).thenReturn(true);
+        when(paymentRepository.markPaidDetailed(eq(11L), any(), eq("mp_pay_1"), any())).thenReturn(1);
+        when(paymentRepository.findById(11L)).thenReturn(paidPayment);
+
+        PaymentService service = new PaymentService();
+        ReflectionTestUtils.setField(service, "paymentRepository", paymentRepository);
+        ReflectionTestUtils.setField(service, "orderService", orderService);
+        ReflectionTestUtils.setField(service, "paymentChannelConfig", channelConfig);
+        ReflectionTestUtils.setField(service, "runtimeConfig", runtimeConfig);
+
+        RestTemplate restTemplate = (RestTemplate) ReflectionTestUtils.getField(service, "restTemplate");
+        MockRestServiceServer server = MockRestServiceServer.bindTo(restTemplate).build();
+        server.expect(requestTo("https://api.mercadopago.com/v1/payments/mp_pay_1"))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withSuccess(
+                        "{\"id\":\"mp_pay_1\",\"status\":\"approved\",\"transaction_amount\":49.90,\"external_reference\":\"SO202607200001\"}",
+                        MediaType.APPLICATION_JSON));
+
+        String payload = "{\"type\":\"payment\",\"data\":{\"id\":\"mp_pay_1\"}}";
+        String signature = mercadoPagoSignatureHeader("mp_pay_1", "req-ok", webhookSecret);
+        Payment result = service.handleMercadoPagoWebhook(payload, signature, "req-ok", null, null);
+
+        assertEquals("PAID", result.getStatus());
+        server.verify();
+        InOrder inOrder = inOrder(orderService, paymentRepository);
+        inOrder.verify(orderService).updateOrderStatus(77L, "PENDING_SHIPMENT");
+        inOrder.verify(paymentRepository).markPaidDetailed(eq(11L), any(), eq("mp_pay_1"), any());
     }
 
     @Test

@@ -77,14 +77,23 @@ describe('Wishlist mobile action layout', () => {
     expect(source).not.toContain('catch (error: any)');
   });
 
-  it('deduplicates the unauthenticated redirect warning with a stable message key', () => {
+  it('keeps a commercial multi-path guest auth gate instead of hard-redirect-only login', () => {
     const source = readWishlistSource();
+    const css = readWishlistCss();
 
     expect(source).toContain("const WISHLIST_LOGIN_REQUIRED_MESSAGE_KEY = 'wishlist-login-required';");
-    expect(source).toContain('message.open({');
-    expect(source).toContain('key: WISHLIST_LOGIN_REQUIRED_MESSAGE_KEY');
-    expect(source).toContain("content: t('messages.loginRequired')");
-    expect(source).not.toContain("message.warning(t('messages.loginRequired'))");
+    expect(source).toContain('data-auth-gate={WISHLIST_LOGIN_REQUIRED_MESSAGE_KEY}');
+    expect(source).toContain('wishlist-page__authGate');
+    expect(source).toContain('pages.wishlist.authGateTitle');
+    expect(source).toContain('pages.wishlist.authGateLogin');
+    expect(source).toContain("buildLoginUrl('/wishlist')");
+    expect(source).toContain("navigate('/register?redirect=%2Fwishlist')");
+    expect(source).toContain("navigate('/products')");
+    expect(source).toContain("navigate('/coupons')");
+    expect(source).not.toContain('buildLoginUrlFromWindow');
+    expect(source).not.toContain('message.open({');
+    expect(css).toContain('Commercial guest wishlist auth gate multi-path conversion');
+    expect(css).toMatch(/\.wishlist-page__authGate \.page-feedback__actions \.ant-btn[\s\S]*?min-height:\s*44px/);
   });
 
   it('keeps the loaded-state conversion action clear of the shared bottom navigation', () => {

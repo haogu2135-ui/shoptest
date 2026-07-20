@@ -91,3 +91,10 @@
   font-size: 13px;
   line-height: 1.45;
 }
+
+
+/* Commercial not-found recovery touch targets */
+.not-found-page .ant-result-extra .ant-btn {
+  min-height: 44px;
+  touch-action: manipulation;
+}

@@ -1105,7 +1105,7 @@ const Home: React.FC = () => {
             <Row gutter={[12, 12]}>
               {bestSellers.map((product, index) => (
                 <Col key={product.id} xs={12} sm={8} md={6} lg={4}>
-                  <HomeProductCard {...productCardCommonProps} product={product} index={index} compact sectionLabel={t('home.bestSellers')} />
+                  <HomeProductCard {...productCardCommonProps} product={product} index={index} compact priority={index < 2} sectionLabel={t('home.bestSellers')} />
                 </Col>
               ))}
             </Row>
@@ -1334,7 +1334,7 @@ const Home: React.FC = () => {
             <Row gutter={[12, 12]} role="list" aria-label={t('home.dailyDiscovery')}>
               {visibleDiscoveryProducts.map((product, index) => (
                 <Col key={product.id} xs={12} sm={8} md={6} lg={4} role="listitem">
-                  <HomeProductCard {...productCardCommonProps} product={product} index={index} sectionLabel={t('home.dailyDiscovery')} />
+                  <HomeProductCard {...productCardCommonProps} product={product} index={index} priority={index < 2} sectionLabel={t('home.dailyDiscovery')} />
                 </Col>
               ))}
             </Row>

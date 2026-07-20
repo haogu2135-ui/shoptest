@@ -1463,6 +1463,26 @@ const Cart: React.FC = () => {
             >
               {cartItems.length > 0 ? t('pages.cart.browse') : t('nav.coupons')}
             </Button>
+            {cartItems.length === 0 ? (
+              <>
+                <Button
+                  icon={<ShoppingOutlined />}
+                  aria-label={emptyPetFinderActionLabel}
+                  title={emptyPetFinderActionLabel}
+                  onClick={() => navigate('/pet-finder')}
+                >
+                  {t('nav.petFinder')}
+                </Button>
+                <Button
+                  icon={<ClockCircleOutlined />}
+                  aria-label={emptyHistoryActionLabel}
+                  title={emptyHistoryActionLabel}
+                  onClick={() => navigate('/history')}
+                >
+                  {t('nav.history')}
+                </Button>
+              </>
+            ) : null}
           </div>
         </div>
         <div className="cart-page__heroStats">

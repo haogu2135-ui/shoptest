@@ -1,6 +1,6 @@
 import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Button, Drawer, Empty, InputNumber, List, message, Popconfirm, Progress, Space, Tag, Typography } from 'antd';
-import { AppleOutlined, CheckCircleOutlined, ClockCircleOutlined, CreditCardOutlined, DeleteOutlined, GoogleOutlined, ReloadOutlined, ShoppingOutlined, WalletOutlined } from '@ant-design/icons';
+import { AppleOutlined, CheckCircleOutlined, ClockCircleOutlined, CreditCardOutlined, DeleteOutlined, GiftOutlined, GoogleOutlined, ReloadOutlined, ShoppingOutlined, WalletOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { cartApi } from '../api';
 import type { CartItem, ProductPublic as Product } from '../types';
@@ -540,6 +540,13 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
   const checkoutDrawerActionLabel = `${t('pages.cart.checkout')}: ${formatMoney(subtotal)}`;
   const fullCartActionLabel = `${t('pages.cart.viewFullCart')}: ${t('pages.cart.yourCart')}`;
   const emptyDrawerBrowseActionLabel = `${t('pages.cart.browse')}: ${t('pages.cart.empty')}`;
+  const emptyDrawerCouponsActionLabel = `${t('nav.coupons')}: ${t('pages.cart.empty')}`;
+  const emptyDrawerPetFinderActionLabel = `${t('nav.petFinder')}: ${t('pages.cart.empty')}`;
+  const emptyDrawerHistoryActionLabel = `${t('nav.history')}: ${t('pages.cart.recentRecoveryTitle')}`;
+  const closeAndGo = (path: string) => {
+    setOpen(false);
+    navigate(path);
+  };
 
   return (
     <Drawer
@@ -699,16 +706,49 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
             showIcon
             message={t('pages.cart.fetchFailed')}
             description={t('common.loadFailedRetry')}
-            action={<Button size="small" onClick={() => loadCart()}>{t('common.retry')}</Button>}
+            action={(
+              <Space wrap className="cart-drawer__emptyActions" data-cart-drawer-load-recovery="true">
+                <Button size="small" type="primary" icon={<ReloadOutlined />} onClick={() => loadCart()} aria-label={t('common.retry')} title={t('common.retry')}>
+                  {t('common.retry')}
+                </Button>
+                <Button size="small" icon={<ShoppingOutlined />} onClick={() => closeAndGo('/products')} aria-label={emptyDrawerBrowseActionLabel} title={emptyDrawerBrowseActionLabel}>
+                  {t('pages.cart.browse')}
+                </Button>
+                <Button size="small" icon={<GiftOutlined />} onClick={() => closeAndGo('/coupons')} aria-label={emptyDrawerCouponsActionLabel} title={emptyDrawerCouponsActionLabel}>
+                  {t('nav.coupons')}
+                </Button>
+              </Space>
+            )}
           />
         ) : null}
 
         {items.length === 0 && !loadError ? (
-          <Empty image={<ShoppingOutlined style={{ fontSize: 54, color: '#ccc' }} />} description={t('pages.cart.empty')}>
-            <Button type="primary" aria-label={emptyDrawerBrowseActionLabel} title={emptyDrawerBrowseActionLabel} onClick={() => { setOpen(false); navigate('/products'); }}>
-              {t('pages.cart.browse')}
-            </Button>
-          </Empty>
+          <div className="cart-drawer__empty" data-cart-drawer-empty="true">
+            <Empty
+              image={<ShoppingOutlined style={{ fontSize: 54, color: '#ccc' }} />}
+              description={(
+                <div className="cart-drawer__emptyCopy">
+                  <div>{t('pages.cart.empty')}</div>
+                  <div className="cart-drawer__emptyHint">{t('pages.cart.emptyHint')}</div>
+                </div>
+              )}
+            >
+              <Space wrap className="cart-drawer__emptyActions" data-cart-drawer-empty-actions="true">
+                <Button type="primary" icon={<ShoppingOutlined />} aria-label={emptyDrawerBrowseActionLabel} title={emptyDrawerBrowseActionLabel} onClick={() => closeAndGo('/products')}>
+                  {t('pages.cart.browse')}
+                </Button>
+                <Button icon={<GiftOutlined />} aria-label={emptyDrawerCouponsActionLabel} title={emptyDrawerCouponsActionLabel} onClick={() => closeAndGo('/coupons')}>
+                  {t('nav.coupons')}
+                </Button>
+                <Button icon={<ShoppingOutlined />} aria-label={emptyDrawerPetFinderActionLabel} title={emptyDrawerPetFinderActionLabel} onClick={() => closeAndGo('/pet-finder')}>
+                  {t('nav.petFinder')}
+                </Button>
+                <Button icon={<ClockCircleOutlined />} aria-label={emptyDrawerHistoryActionLabel} title={emptyDrawerHistoryActionLabel} onClick={() => closeAndGo('/history')}>
+                  {t('nav.history')}
+                </Button>
+              </Space>
+            </Empty>
+          </div>
         ) : items.length > 0 ? (
           <List
             loading={loading}

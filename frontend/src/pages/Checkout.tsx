@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Button, Card, Cascader, Divider, Form, Input, List, message, Modal, Progress, Radio, Result, Select, Space, Spin, Tag, Typography } from 'antd';
 import type { FormInstance } from 'antd/es/form';
 import { CheckCircleOutlined, CustomerServiceOutlined, GiftOutlined, HistoryOutlined, RollbackOutlined, SafetyCertificateOutlined, ShoppingCartOutlined, ShoppingOutlined, SwapOutlined, TruckOutlined } from '@ant-design/icons';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { addressApi, cartApi, clearStoredAuthSession, couponApi, createApiAbortController, orderApi, paymentApi, productApi } from '../api';
 import type { CartItem, CouponQuote, OrderCustomer, PaymentCustomer, PaymentChannel, ProductPublic as Product, UserAddress, UserCoupon } from '../types';
 import { loadRegionData, type RegionOption } from '../regionData';
@@ -842,6 +842,41 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
     }
     dispatchDomEvent('shop:open-support', token ? undefined : { orderNo: guestOrderNo, email: guestEmail });
   }, [checkoutFormSnapshot.guestEmail, createdOrder?.orderNo, guestPaymentEmail, watchedGuestEmail]);
+  const reloadPaymentChannels = useCallback(() => {
+    setPaymentChannelsReloadKey((key) => key + 1);
+  }, []);
+  const paymentUnavailableRecoveryActions = (
+    <Space wrap className="checkout-page__paymentUnavailableActions" data-checkout-payment-unavailable-recovery="true">
+      <Button
+        size="small"
+        type="primary"
+        loading={paymentChannelsLoading}
+        aria-label={t('messages.retry')}
+        title={t('messages.retry')}
+        onClick={reloadPaymentChannels}
+      >
+        {t('messages.retry')}
+      </Button>
+      <Button
+        size="small"
+        icon={<CustomerServiceOutlined />}
+        aria-label={t('pages.profile.contactSupport')}
+        title={t('pages.profile.contactSupport')}
+        onClick={openSupport}
+      >
+        {t('pages.profile.contactSupport')}
+      </Button>
+      <Button
+        size="small"
+        icon={<ShoppingCartOutlined />}
+        aria-label={t('pages.cart.title')}
+        title={t('pages.cart.title')}
+        onClick={() => navigate('/cart')}
+      >
+        {t('pages.cart.title')}
+      </Button>
+    </Space>
+  );
   const recommendedPaymentMethod = useMemo(
     () => getRecommendedPaymentMethod(paymentChannels, currency),
     [currency, paymentChannels],
@@ -2798,21 +2833,15 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
         <div className="checkout-page__paymentGrid" role="radiogroup" aria-label={t('pages.payment.title')} aria-required="true">
           {!paymentMethodsAvailable ? (
             <Alert
+              className="checkout-page__paymentUnavailable"
+              data-checkout-payment-unavailable="true"
               type="warning"
               showIcon
               role="alert"
               aria-live="polite"
               message={t('pages.checkout.paymentUnavailable')}
               description={paymentChannelsError || t('pages.checkout.paymentUnavailableDescription')}
-              action={(
-                <Button
-                  size="small"
-                  onClick={() => setPaymentChannelsReloadKey((key) => key + 1)}
-                  loading={paymentChannelsLoading}
-                >
-                  {t('messages.retry')}
-                </Button>
-              )}
+              action={paymentUnavailableRecoveryActions}
             />
           ) : null}
           {paymentMethodDetails.map((method, index) => {
@@ -3390,21 +3419,15 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
           </div>
           {!paymentMethodsAvailable ? (
             <Alert
+              className="checkout-page__paymentUnavailable"
+              data-checkout-payment-unavailable="true"
               type="warning"
               showIcon
               role="alert"
               aria-live="polite"
               message={t('pages.checkout.paymentUnavailable')}
               description={paymentChannelsError || t('pages.checkout.paymentUnavailableDescription')}
-              action={(
-                <Button
-                  size="small"
-                  onClick={() => setPaymentChannelsReloadKey((key) => key + 1)}
-                  loading={paymentChannelsLoading}
-                >
-                  {t('messages.retry')}
-                </Button>
-              )}
+              action={paymentUnavailableRecoveryActions}
             />
           ) : null}
           <Form.Item name="paymentMethod" rules={[{ required: true, message: t('pages.checkout.paymentRequired') }]} hidden>
@@ -3424,6 +3447,13 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
                     {renderSubmitWithAmount()}
                   </Button>
             </Form.Item>
+            <p className="checkout-page__legalNotice" role="note">
+              {t('pages.checkout.orderAgreementPrefix')}{' '}
+              <Link to="/terms">{t('footer.terms')}</Link>
+              {' '}{t('pages.checkout.orderAgreementAnd')}{' '}
+              <Link to="/privacy">{t('footer.privacy')}</Link>
+              {t('pages.checkout.orderAgreementSuffix')}
+            </p>
           </div>
           <div
             className="checkout-page__mobilePayBar"
@@ -3439,7 +3469,30 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
                   : t('pages.checkout.mobilePayBarTrustDefault')}
               </Text>
             </span>
-            <Button
+            {!paymentMethodsAvailable ? (
+              <Space wrap className="checkout-page__paymentUnavailableActions checkout-page__paymentUnavailableActions--mobile" data-checkout-payment-unavailable-recovery="true">
+                <Button
+                  type="primary"
+                  size="large"
+                  loading={paymentChannelsLoading}
+                  aria-label={t('messages.retry')}
+                  title={t('messages.retry')}
+                  onClick={reloadPaymentChannels}
+                >
+                  {t('messages.retry')}
+                </Button>
+                <Button
+                  size="large"
+                  icon={<CustomerServiceOutlined />}
+                  aria-label={t('pages.profile.contactSupport')}
+                  title={t('pages.profile.contactSupport')}
+                  onClick={openSupport}
+                >
+                  {t('pages.profile.contactSupport')}
+                </Button>
+              </Space>
+            ) : (
+              <Button
                   type="primary"
                   htmlType={checkoutBlockingAction ? 'button' : 'submit'}
                   onClick={checkoutBlockingAction ? handleCheckoutNextAction : undefined}
@@ -3450,6 +3503,7 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
                 >
                   {checkoutBlockingAction ? checkoutNextActionLabel : renderSubmitWithAmount()}
                 </Button>
+            )}
           </div>
         </Card>
       </Form>

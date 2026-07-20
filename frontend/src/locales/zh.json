@@ -445,7 +445,9 @@
     "methods": "银行卡、转账和数字支付",
     "shipping": "全国配送",
     "tracking": "订单追踪",
-    "rights": "2026 ShopMX. 保留所有权利。"
+    "rights": "2026 ShopMX. 保留所有权利。",
+    "terms": "服务条款",
+    "privacy": "隐私政策"
   },
   "pages": {
     "keywords": {
@@ -655,7 +657,8 @@
       "seoDescription": "领取宠物商城优惠券、查看卡包节省金额，并在结账前应用优惠。",
       "emptyWalletPetFinder": "找适合的宝贝",
       "emptyWalletCart": "打开购物车",
-      "emptyWalletHint": "可先领取公开优惠，或去选购、打开宠物匹配路径来组成可用购物车。"
+      "emptyWalletHint": "可先领取公开优惠，或去选购、打开宠物匹配路径来组成可用购物车。",
+      "loginToClaim": "登录后领取"
     },
     "adminCoupons": {
       "title": "优惠券",
@@ -736,6 +739,7 @@
     "cart": {
       "title": "购物车",
       "empty": "购物车为空",
+      "emptyHint": "可先逛商品、领优惠券，或从最近浏览继续选购。",
       "browse": "去逛逛",
       "fetchFailed": "购物车加载失败",
       "quantityFailed": "数量更新失败",
@@ -875,6 +879,7 @@
     "wishlist": {
       "title": "我的收藏（{count}）",
       "empty": "收藏夹为空",
+      "emptyHint": "可先逛商品、领优惠券，或从最近浏览继续选购。",
       "browse": "去逛逛",
       "fetchFailed": "收藏加载失败",
       "loadErrorTitle": "收藏加载失败",
@@ -923,7 +928,11 @@
       "pageTitle": "心愿单",
       "emptyHint": "先收藏心仪的宠物用品，再去领券或用匹配助手找合适商品。",
       "emptyCoupons": "去领券",
-      "emptyPetFinder": "智能找商品"
+      "emptyPetFinder": "智能找商品",
+      "authGateTitle": "登录后保存心愿单",
+      "authGateHint": "登录后可跨设备同步心愿单，也可先继续浏览商品与优惠券。",
+      "authGateLogin": "登录",
+      "authGateRegister": "注册账号"
     },
     "notifications": {
       "title": "通知",
@@ -975,7 +984,11 @@
       "openRelated": "打开相关内容",
       "emptyHint": "订单、优惠券和物流更新会出现在这里。",
       "emptyCoupons": "去领券",
-      "emptyTrackOrder": "查询订单"
+      "emptyTrackOrder": "查询订单",
+      "authGateTitle": "登录后查看通知",
+      "authGateHint": "登录可查看订单、优惠券与物流更新，也可先继续购物或查询订单。",
+      "authGateLogin": "登录",
+      "authGateRegister": "注册账号"
     },
     "auth": {
       "loginTitle": "登录",
@@ -1076,7 +1089,16 @@
       "resetGuideTitle": "重置流程",
       "resetGuideEmail": "匹配账号邮箱",
       "resetGuideVerify": "保护账号安全",
-      "resetGuideLogin": "重置后登录"
+      "resetGuideLogin": "重置后登录",
+      "registerAgreementPrefix": "注册即表示你同意我们的",
+      "registerAgreementAnd": "与",
+      "registerAgreementSuffix": "。",
+      "loginAgreementPrefix": "继续即表示你同意我们的",
+      "loginAgreementAnd": "与",
+      "loginAgreementSuffix": "。",
+      "resetUnavailableTitle": "密码重置暂不可用",
+      "resetUnavailableText": "邮箱验证码服务暂时不可用。若你记得密码请使用密码登录，也可查询最近订单或联系客服协助找回账户。",
+      "backToPasswordLogin": "返回密码登录"
     },
     "productList": {
       "title": "分类",
@@ -1354,7 +1376,17 @@
       "trustTrackTitle": "随时查单",
       "trustTrackText": "离开银行页面后仍可查看支付与订单状态。",
       "trustSupportTitle": "需要帮助",
-      "trustSupportText": "支付失败、取消或待支付问题可联系客服。"
+      "trustSupportText": "支付失败、取消或待支付问题可联系客服。",
+      "stickyTrackOrder": "跟踪订单",
+      "stickyContinueShopping": "继续购物",
+      "guestEmailRequiredTitle": "确认结账邮箱",
+      "guestEmailRequiredText": "请输入下单时使用的邮箱，以便核验订单与支付状态。",
+      "guestEmailInvalid": "请输入有效的结账邮箱后继续。",
+      "guestEmailLabel": "结账邮箱",
+      "guestEmailSubmit": "用邮箱核验",
+      "failedTitle": "支付失败",
+      "failedText": "本次支付未完成。可追踪订单、联系客服，或继续购物重新下单。",
+      "stickyRecovery": "支付恢复操作"
     },
     "checkout": {
       "loadFailed": "结算信息加载失败",
@@ -1399,6 +1431,8 @@
       "paymentRecoveryPaid": "已支付",
       "paymentRecoveryPending": "待支付",
       "paymentRecoveryExpired": "已过期",
+      "paymentRecoveryFailed": "失败",
+      "paymentRecoveryNextFailed": "本次支付未完成。可追踪订单、联系客服，或继续购物重新下单。",
       "paymentRecoveryReconcileRequired": "需客服核对",
       "paymentRecoveryWindow": "支付窗口",
       "paymentRecoveryWindowUnknown": "正在确认网关时效",
@@ -1579,7 +1613,10 @@
       "couponOpportunityBuildText": "再加 {amount}，可解锁约 {value} 优惠。",
       "couponOpportunityReview": "查看优惠券",
       "mobilePayBarTrust": "安全结账 · {method}",
-      "mobilePayBarTrustDefault": "安全结账已保护"
+      "mobilePayBarTrustDefault": "安全结账已保护",
+      "orderAgreementPrefix": "提交订单即表示你同意我们的",
+      "orderAgreementAnd": "与",
+      "orderAgreementSuffix": "。"
     },
     "orderTracking": {
       "title": "订单追踪",
@@ -1653,7 +1690,9 @@
       "retryTracking": "重试查询",
       "emptyHint": "有近期订单？在此查询物流，或边等更新边用优惠券继续选购。",
       "emptyCoupons": "查看优惠券",
-      "emptyProfileOrders": "查看我的订单"
+      "emptyProfileOrders": "查看我的订单",
+      "paymentReturnEmailRequiredTitle": "请确认结账邮箱以继续支付",
+      "paymentReturnEmailRequiredText": "检测到该订单的支付回跳。请输入下单时使用的邮箱，再查询订单以核对状态或继续支付。"
     },
     "adminDashboard": {
       "title": "仪表盘",
@@ -1734,7 +1773,8 @@
         "healthWatch": "需要关注",
         "healthRisk": "优先处理",
         "guideTitle": "处理顺序",
-        "guideText": "先看待付款恢复，再处理待审核售后，最后确认已回寄订单的退款。"
+        "guideText": "先看待付款恢复，再处理待审核售后，最后确认已回寄订单的退款。",
+        "providerReadinessAction": "支付提供商就绪"
       },
       "operationsSla": {
         "title": "运营 SLA 风险队列",
@@ -2186,10 +2226,15 @@
       "databaseTip": "数据库 URL 已隐藏密码，但仍不建议把该页面开放给非管理员角色。",
       "noStatus": "暂无系统状态。",
       "paymentChannelChecklist": "支付渠道生产检查清单",
-      "paymentChannelChecklistHint": "仅标记为可用的渠道可完成生产结账与退款。",
+      "paymentChannelChecklistHint": "展示生产结账可用性与提供商 Webhook 就绪状态，用于支付回调恢复。",
       "channelReady": "可用",
       "channelBlocked": "不可用",
-      "channelRefundMode": "退款模式"
+      "channelRefundMode": "退款模式",
+      "paymentWebhooks": "支付提供商 Webhook",
+      "channelWebhookReady": "Webhook 已就绪",
+      "channelWebhookMissing": "Webhook 未配置",
+      "channelWebhookInvalid": "Webhook 无效",
+      "channelWebhookNotRequired": "无需 Webhook"
     },
     "logAdmin": {
       "title": "日志管理",
@@ -3391,7 +3436,12 @@
       "emptyOrdersPetFinder": "智能找商品",
       "noPetsHint": "添加宠物资料可解锁尺码建议、生日优惠和更精准推荐。",
       "noPetsFindFit": "找适合的宝贝",
-      "noPetsBrowse": "去逛商品"
+      "noPetsBrowse": "去逛商品",
+      "authGateTitle": "登录后管理账户",
+      "authGateHint": "登录可查看订单、地址与宠物资料，也可先查询游客订单或继续购物。",
+      "authGateLogin": "登录",
+      "authGateRegister": "注册账号",
+      "authGateTrackOrder": "查询订单"
     },
     "brandAdmin": {
       "title": "品牌管理",
@@ -4062,6 +4112,33 @@
       "editRole": "编辑角色",
       "systemRole": "系统角色",
       "reservedRoleReadonly": "内置系统角色为只读。"
+    },
+    "legal": {
+      "eyebrow": "ShopMX 政策",
+      "termsTitle": "服务条款",
+      "privacyTitle": "隐私政策",
+      "termsSeoDescription": "ShopMX 关于浏览、下单、支付、配送与客服支持的服务条款。",
+      "privacySeoDescription": "ShopMX 如何收集、使用并保护账户、订单与支付相关数据。",
+      "updatedAt": "最近更新：2026 年 7 月",
+      "relatedTitle": "相关操作",
+      "browseProducts": "浏览商品",
+      "backHome": "返回首页",
+      "termsSection1Title": "1. 使用 ShopMX",
+      "termsSection1Body": "使用 ShopMX 即表示你同意以个人用途购买宠物商品，提供准确结账信息，并使用你有权使用的支付方式。我们可拒绝或取消涉嫌欺诈、缺货或法律限制的订单。",
+      "termsSection2Title": "2. 订单、价格与支付",
+      "termsSection2Body": "订单总额包含商品价格、运费及结账页展示的优惠。支付通过你选择的渠道完成（如 Mercado Pago、OXXO、SPEI 或银行卡）。仅在支付确认后才会进入履约发货。",
+      "termsSection3Title": "3. 配送、物流与退换",
+      "termsSection3Body": "送达时效在支付前展示，并可能因承运能力变化。请使用订单号与结账邮箱进行订单追踪。退换货适用商品或订单详情中注明的时限。",
+      "termsSection4Title": "4. 支持与变更",
+      "termsSection4Body": "订单问题可通过店内客服联系。我们可能因法律、安全或产品原因更新条款。继续使用 ShopMX 即表示接受更新后的条款。",
+      "privacySection1Title": "1. 我们收集的数据",
+      "privacySection1Body": "我们收集账户标识（用户名、邮箱、手机）、收货地址、订单与支付状态、客服消息，以及保障平台安全所需的基础设备/安全信号。当支付由第三方完成时，ShopMX 服务器不保存完整卡号。",
+      "privacySection2Title": "2. 数据用途",
+      "privacySection2Body": "数据用于处理订单、配送、防欺诈、客服、优化目录，并履行墨西哥及其他市场的法定义务。营销消息仅在账户偏好或适用同意规则允许时发送。",
+      "privacySection3Title": "3. 共享与保存",
+      "privacySection3Body": "我们仅在履约或保障平台安全所需范围内与支付、物流和基础设施服务商共享数据。订单记录按会计、争议处理与合规要求保存，到期后删除或匿名化。",
+      "privacySection4Title": "4. 你的选择",
+      "privacySection4Body": "你可以更新资料、申请查询订单历史，并在法律允许时请求更正或删除。安全或隐私问题可通过店内客服提交。"
     }
   },
   "notFound": {
@@ -4081,5 +4158,11 @@
     "browseProducts": "去逛商品",
     "contactSupport": "联系客服",
     "hint": "可重试本页、返回首页，或继续选购；我们会记录这次异常。"
+  },
+  "cookieConsent": {
+    "title": "Cookie 与隐私",
+    "body": "ShopMX 使用必要 Cookie 支持购物车、登录、安全与订单追踪。可选偏好设置用于改进商城体验。",
+    "acceptEssential": "仅必要",
+    "acceptAll": "全部接受"
   }
 }

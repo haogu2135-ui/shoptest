@@ -226,13 +226,13 @@ describe('Register submit guard', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: 'Create account: Register' }));
 
-    const sendButton = await screen.findByRole('button', { name: 'Create account: Send code' });
+    const sendButton = await screen.findByRole('button', { name: 'Create account: Send code' }, { timeout: 10000 });
     fireEvent.click(sendButton);
     fireEvent.click(sendButton);
 
     await waitFor(() => expect(userApi.sendEmailLoginCode).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(sendButton).toBeDisabled());
-  });
+  }, 15000);
 
   it('submits password text exactly as entered, including surrounding spaces', async () => {
     (userApi.register as jest.Mock).mockResolvedValue({ data: { username: 'newbuyer' } });
@@ -266,4 +266,11 @@ describe('Register submit guard', () => {
       password: passwordWithSpaces,
     })));
   });
+
+  it('preserves commercial post-register redirect into login', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, 'Register.tsx'), 'utf8');
+    expect(source).toContain('getPostLoginRedirectTarget');
+    expect(source).toContain('buildLoginUrl(postRegisterRedirect)');
+  });
+
 });

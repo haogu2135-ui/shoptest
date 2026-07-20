@@ -386,7 +386,11 @@ public class RateLimitService {
         return path.equals("/payment/callback")
                 || path.equals("/payments/callback")
                 || path.equals("/payment/stripe/webhook")
-                || path.equals("/payments/stripe/webhook");
+                || path.equals("/payments/stripe/webhook")
+                || path.equals("/payment/mercado-pago/webhook")
+                || path.equals("/payment/mercadopago/webhook")
+                || path.equals("/payments/mercado-pago/webhook")
+                || path.equals("/payments/mercadopago/webhook");
     }
 
     private boolean isAdminOrderListPath(String path) {

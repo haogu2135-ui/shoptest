@@ -383,6 +383,12 @@ describe('OrderTracking auto refresh', () => {
     expect(source).toContain("paymentReturnStatus === 'failed'");
     expect(source).toContain('void trackOrder({ orderNo, email }, true);');
     expect(source).toContain("t('pages.orderTracking.paymentReturnLookupHint')");
+    expect(source).toContain('paymentReturnEmailGateVisible');
+    expect(source).toContain('data-order-tracking-payment-return-email-gate');
+    expect(source).toContain("t('pages.orderTracking.paymentReturnEmailRequiredTitle')");
+    expect(source).toContain("t('pages.orderTracking.paymentReturnEmailRequiredText')");
+    expect(source).toContain('setPaymentReturnEmailGateVisible(true)');
+
     expect(source).toContain("onClick={continuePayment}");
     expect(source).toContain("RECONCILE_REQUIRED");
     expect(source).toContain("pages.profile.paymentReturnReconcileRequired");

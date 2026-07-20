@@ -367,6 +367,58 @@
   font-size: 12px;
 }
 
+.payment-instructions-page__guestEmailGate {
+  display: grid;
+  gap: 12px;
+  padding: 14px 14px 12px;
+  border: 1px solid #d7e7dc;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #f7fcf8 0%, #eef7f1 100%);
+}
+
+.payment-instructions-page__guestEmailGate .ant-alert {
+  margin: 0;
+}
+
+.payment-instructions-page__guestEmailForm {
+  width: 100%;
+  display: flex;
+}
+
+.payment-instructions-page__guestEmailForm .ant-input-affix-wrapper,
+.payment-instructions-page__guestEmailForm .ant-input {
+  min-height: 44px;
+}
+
+.payment-instructions-page__guestEmailForm .ant-btn {
+  min-height: 44px;
+  min-width: 120px;
+}
+
+.payment-instructions-page__guestEmailGate > .ant-btn-link {
+  justify-self: start;
+  min-height: 44px;
+  padding-inline: 0;
+}
+
+@media (max-width: 560px) {
+  .payment-instructions-page__guestEmailForm {
+    flex-direction: column;
+  }
+
+  .payment-instructions-page__guestEmailForm .ant-space-compact {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr);
+    width: 100%;
+  }
+
+  .payment-instructions-page__guestEmailForm .ant-input-affix-wrapper,
+  .payment-instructions-page__guestEmailForm .ant-btn {
+    width: 100%;
+    border-radius: 10px !important;
+  }
+}
+
 .payment-instructions-page__stickyBar {
   display: none;
 }
@@ -422,3 +474,32 @@
   }
 }
 
+/* Commercial paid success sticky conversion rail */
+.payment-instructions-page__stickyBar--paid {
+  border-top-color: rgba(18, 120, 72, 0.22);
+  background: rgba(241, 255, 247, 0.96);
+}
+
+@media (max-width: 780px) {
+  .payment-instructions-page__stickyBar--paid .ant-btn {
+    min-height: 44px;
+  }
+}
+
+/* Commercial failed/expired recovery sticky conversion rail */
+.payment-instructions-page__stickyBar--recovery {
+  border-top-color: rgba(176, 48, 48, 0.22);
+  background: rgba(255, 246, 246, 0.96);
+}
+
+@media (max-width: 780px) {
+  .payment-instructions-page__stickyBar--recovery .payment-instructions-page__stickyActions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    max-width: min(100%, 320px);
+  }
+
+  .payment-instructions-page__stickyBar--recovery .ant-btn {
+    min-height: 44px;
+  }
+}

@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Button, Card, Descriptions, Empty, Form, Input, List, Modal, Space, Tag, Typography, message } from 'antd';
-import { CheckCircleOutlined, ClockCircleOutlined, CreditCardOutlined, CustomerServiceOutlined, RollbackOutlined, SearchOutlined, TruckOutlined } from '@ant-design/icons';
+import type { InputRef } from 'antd/es/input';
+import { CheckCircleOutlined, ClockCircleOutlined, CreditCardOutlined, CustomerServiceOutlined, GiftOutlined, RollbackOutlined, SearchOutlined, ShoppingOutlined, TruckOutlined } from '@ant-design/icons';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import PageEmpty from '../components/PageEmpty';
 import PageError from '../components/PageError';
@@ -126,6 +127,8 @@ const OrderTracking: React.FC = () => {
   const [items, setItems] = useState<OrderItemCustomer[]>([]);
   const [detailsRestricted, setDetailsRestricted] = useState(false);
   const [prefillNoticeVisible, setPrefillNoticeVisible] = useState(false);
+  const [paymentReturnEmailGateVisible, setPaymentReturnEmailGateVisible] = useState(false);
+  const paymentReturnEmailInputRef = useRef<InputRef | null>(null);
   const paymentReturnAutoTrackKeyRef = useRef('');
   const mountedRef = useRef(true);
   const trackRequestSeqRef = useRef(0);
@@ -312,6 +315,7 @@ const OrderTracking: React.FC = () => {
 
   const onFinish = (values: { orderNo: string; email: string }) => {
     setPrefillNoticeVisible(false);
+    setPaymentReturnEmailGateVisible(false);
     void trackOrder(values);
   };
 
@@ -366,9 +370,15 @@ const OrderTracking: React.FC = () => {
       ? String(storedContext.email || '').trim().toLowerCase()
       : '';
     if (!email) {
+      form.setFieldsValue({ orderNo });
+      setPaymentReturnEmailGateVisible(true);
+      window.requestAnimationFrame(() => {
+        paymentReturnEmailInputRef.current?.focus?.();
+      });
       return;
     }
 
+    setPaymentReturnEmailGateVisible(false);
     const autoTrackKey = `${paymentReturnStatus}:${orderNo}:${email}`;
     if (paymentReturnAutoTrackKeyRef.current === autoTrackKey) {
       return;
@@ -612,6 +622,7 @@ const OrderTracking: React.FC = () => {
       {paymentReturnStatus === 'success' ? (
         <Alert
           className="order-tracking-page__paymentReturn"
+          data-order-tracking-payment-return="success"
           type={order && order.status === 'PENDING_PAYMENT' ? 'info' : 'success'}
           showIcon
           role="alert"
@@ -626,6 +637,7 @@ const OrderTracking: React.FC = () => {
       ) : paymentReturnStatus === 'cancelled' || paymentReturnStatus === 'canceled' ? (
         <Alert
           className="order-tracking-page__paymentReturn"
+          data-order-tracking-payment-return="cancelled"
           type="warning"
           showIcon
           role="alert"
@@ -634,23 +646,55 @@ const OrderTracking: React.FC = () => {
           description={order
             ? t('pages.checkout.paymentRecoveryNextRetry')
             : t('pages.orderTracking.paymentReturnLookupHint')}
-          action={order && order.status === 'PENDING_PAYMENT' && canOperateTrackedOrder ? (
-            <Button
-              size="small"
-              type="primary"
-              icon={<CreditCardOutlined />}
-              loading={paying}
-              aria-label={trackActionLabel(t('pages.profile.continuePay'))}
-              title={trackActionLabel(t('pages.profile.continuePay'))}
-              onClick={continuePayment}
-            >
-              {t('pages.profile.continuePay')}
-            </Button>
-          ) : undefined}
+          action={(
+            <Space wrap className="order-tracking-page__paymentReturnActions" data-order-tracking-payment-return-recovery="true">
+              {order && order.status === 'PENDING_PAYMENT' && canOperateTrackedOrder ? (
+                <Button
+                  size="small"
+                  type="primary"
+                  icon={<CreditCardOutlined />}
+                  loading={paying}
+                  aria-label={trackActionLabel(t('pages.profile.continuePay'))}
+                  title={trackActionLabel(t('pages.profile.continuePay'))}
+                  onClick={continuePayment}
+                >
+                  {t('pages.profile.continuePay')}
+                </Button>
+              ) : null}
+              <Button
+                size="small"
+                icon={<ShoppingOutlined />}
+                aria-label={trackActionLabel(t('pages.orderTracking.shopAgain'))}
+                title={trackActionLabel(t('pages.orderTracking.shopAgain'))}
+                onClick={() => navigate('/products')}
+              >
+                {t('pages.orderTracking.shopAgain')}
+              </Button>
+              <Button
+                size="small"
+                icon={<GiftOutlined />}
+                aria-label={trackActionLabel(t('pages.orderTracking.emptyCoupons'))}
+                title={trackActionLabel(t('pages.orderTracking.emptyCoupons'))}
+                onClick={() => navigate('/coupons')}
+              >
+                {t('pages.orderTracking.emptyCoupons')}
+              </Button>
+              <Button
+                size="small"
+                icon={<CustomerServiceOutlined />}
+                aria-label={trackActionLabel(t('pages.profile.contactSupport'))}
+                title={trackActionLabel(t('pages.profile.contactSupport'))}
+                onClick={supportOpen}
+              >
+                {t('pages.profile.contactSupport')}
+              </Button>
+            </Space>
+          )}
         />
       ) : paymentReturnStatus === 'failed' ? (
         <Alert
           className="order-tracking-page__paymentReturn"
+          data-order-tracking-payment-return="failed"
           type="error"
           showIcon
           role="alert"
@@ -659,19 +703,50 @@ const OrderTracking: React.FC = () => {
           description={order
             ? t('pages.orderTracking.paymentFailedText')
             : t('pages.orderTracking.paymentReturnLookupHint')}
-          action={order && order.status === 'PENDING_PAYMENT' && canOperateTrackedOrder ? (
-            <Button
-              size="small"
-              type="primary"
-              icon={<CreditCardOutlined />}
-              loading={paying}
-              aria-label={trackActionLabel(t('pages.profile.continuePay'))}
-              title={trackActionLabel(t('pages.profile.continuePay'))}
-              onClick={continuePayment}
-            >
-              {t('pages.profile.continuePay')}
-            </Button>
-          ) : undefined}
+          action={(
+            <Space wrap className="order-tracking-page__paymentReturnActions" data-order-tracking-payment-return-recovery="true">
+              {order && order.status === 'PENDING_PAYMENT' && canOperateTrackedOrder ? (
+                <Button
+                  size="small"
+                  type="primary"
+                  icon={<CreditCardOutlined />}
+                  loading={paying}
+                  aria-label={trackActionLabel(t('pages.profile.continuePay'))}
+                  title={trackActionLabel(t('pages.profile.continuePay'))}
+                  onClick={continuePayment}
+                >
+                  {t('pages.profile.continuePay')}
+                </Button>
+              ) : null}
+              <Button
+                size="small"
+                icon={<ShoppingOutlined />}
+                aria-label={trackActionLabel(t('pages.orderTracking.shopAgain'))}
+                title={trackActionLabel(t('pages.orderTracking.shopAgain'))}
+                onClick={() => navigate('/products')}
+              >
+                {t('pages.orderTracking.shopAgain')}
+              </Button>
+              <Button
+                size="small"
+                icon={<GiftOutlined />}
+                aria-label={trackActionLabel(t('pages.orderTracking.emptyCoupons'))}
+                title={trackActionLabel(t('pages.orderTracking.emptyCoupons'))}
+                onClick={() => navigate('/coupons')}
+              >
+                {t('pages.orderTracking.emptyCoupons')}
+              </Button>
+              <Button
+                size="small"
+                icon={<CustomerServiceOutlined />}
+                aria-label={trackActionLabel(t('pages.profile.contactSupport'))}
+                title={trackActionLabel(t('pages.profile.contactSupport'))}
+                onClick={supportOpen}
+              >
+                {t('pages.profile.contactSupport')}
+              </Button>
+            </Space>
+          )}
         />
       ) : null}
       <Card className="order-tracking-page__lookupCard">
@@ -682,6 +757,17 @@ const OrderTracking: React.FC = () => {
             <Text type="secondary">{t('pages.orderTracking.empty')}</Text>
           </span>
         </div>
+        {paymentReturnEmailGateVisible ? (
+          <Alert
+            className="order-tracking-page__paymentReturnEmailGate"
+            data-order-tracking-payment-return-email-gate="true"
+            type="info"
+            showIcon
+            role="status"
+            message={t('pages.orderTracking.paymentReturnEmailRequiredTitle')}
+            description={t('pages.orderTracking.paymentReturnEmailRequiredText')}
+          />
+        ) : null}
         {prefillNoticeVisible ? (
           <Alert
             className="order-tracking-page__prefillNotice"
@@ -706,7 +792,16 @@ const OrderTracking: React.FC = () => {
             <Input placeholder={t('pages.orderTracking.orderNoPlaceholder')} autoComplete="off" inputMode="text" maxLength={80} />
           </Form.Item>
           <Form.Item name="email" label={t('pages.orderTracking.email')} rules={[{ required: true, message: t('pages.orderTracking.emailRequired') }, { type: 'email', message: t('pages.auth.emailInvalid') }]}>
-            <Input placeholder={t('pages.orderTracking.emailPlaceholder')} autoComplete="email" inputMode="email" maxLength={120} />
+            <Input
+              ref={paymentReturnEmailInputRef}
+              className={paymentReturnEmailGateVisible ? 'order-tracking-page__emailInput--gate' : undefined}
+              placeholder={t('pages.orderTracking.emailPlaceholder')}
+              autoComplete="email"
+              inputMode="email"
+              maxLength={120}
+              aria-label={t('pages.orderTracking.email')}
+              title={t('pages.orderTracking.email')}
+            />
           </Form.Item>
           <Button className="order-tracking-page__lookupButton" type="primary" htmlType="submit" loading={loading} icon={<SearchOutlined />} block>
             {t('pages.orderTracking.search')}

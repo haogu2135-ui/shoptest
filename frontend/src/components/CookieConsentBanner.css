@@ -1,0 +1,122 @@
+.cookie-consent-banner {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  z-index: 1150;
+  pointer-events: none;
+}
+
+.cookie-consent-banner__inner {
+  pointer-events: auto;
+  display: grid;
+  gap: 12px;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.98);
+  border: 1px solid rgba(18, 71, 52, 0.14);
+  box-shadow: 0 18px 44px rgba(16, 47, 34, 0.18);
+  backdrop-filter: blur(8px);
+}
+
+.cookie-consent-banner__copy {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.cookie-consent-banner__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #124734;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.cookie-consent-banner__text {
+  margin: 0 !important;
+  color: rgba(16, 47, 34, 0.82);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.cookie-consent-banner__link {
+  color: #124734;
+  font-weight: 700;
+  text-decoration: underline;
+}
+
+.cookie-consent-banner__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+/* Commercial cookie consent mobile touch targets */
+.cookie-consent-banner__button.ant-btn,
+.cookie-consent-banner__link {
+  min-height: 44px;
+  touch-action: manipulation;
+}
+
+.cookie-consent-banner__link {
+  display: inline-flex;
+  align-items: center;
+}
+
+@media (min-width: 781px) {
+  .cookie-consent-banner__inner {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+  }
+}
+
+@media (max-width: 780px) {
+  body.shop-mobile-app .cookie-consent-banner {
+    bottom: calc(var(--shop-mobile-bottom-nav-height, 74px) + 10px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .cookie-consent-banner__actions {
+    width: 100%;
+  }
+
+  .cookie-consent-banner__button.ant-btn {
+    flex: 1 1 calc(50% - 4px);
+    min-height: 44px !important;
+  }
+}
+
+/* Commercial: lift sticky conversion rails above the cookie panel while it is visible. */
+@media (max-width: 780px) {
+  body.shop-cookie-consent-visible .product-mobile-buybar,
+  body.shop-cookie-consent-visible .checkout-page__mobilePayBar,
+  body.shop-cookie-consent-visible .checkout-page__submitReview,
+  body.shop-cookie-consent-visible .payment-instructions-page__stickyBar,
+  body.shop-cookie-consent-visible .coupon-center-page__mobileActions,
+  body.shop-cookie-consent-visible .cart-page__summary,
+  body.shop-cookie-consent-visible .cart-drawer__footer {
+    bottom: var(--shop-cookie-consent-clearance, 0px) !important;
+  }
+
+  /* Bottom nav and empty product-list conversion rail already sit above the safe area. */
+  body.shop-cookie-consent-visible .shop-nav__bottomBar,
+  body.shop-cookie-consent-visible .product-list__mobileConversionBar {
+    bottom: calc(max(8px, env(safe-area-inset-bottom, 0px)) + var(--shop-cookie-consent-clearance, 0px)) !important;
+  }
+
+  body.shop-cookie-consent-visible .product-list__backToTop.ant-btn {
+    bottom: calc(24px + env(safe-area-inset-bottom, 0px) + var(--shop-cookie-consent-clearance, 0px)) !important;
+  }
+
+  /* Support launcher sits above bottom nav; preserve that offset while cookie panel is open. */
+  body.shop-cookie-consent-visible .customer-support-widget__button,
+  body.shop-cookie-consent-visible .customer-support-widget__panel {
+    bottom: calc(92px + env(safe-area-inset-bottom, 0px) + var(--shop-cookie-consent-clearance, 0px)) !important;
+  }
+}

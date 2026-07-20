@@ -36,6 +36,19 @@ function commercialSecurityHeaders() {
     'Referrer-Policy': 'strict-origin-when-cross-origin',
     'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), payment=()',
     'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
+    // Commercial storefront CSP baseline (matches backend intent; allows product CDN images).
+    'Content-Security-Policy': [
+      "default-src 'self'",
+      "script-src 'self'",
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' https: http: data: blob:",
+      "font-src 'self' data:",
+      "connect-src 'self' https: http: wss: ws:",
+      "object-src 'none'",
+      "base-uri 'self'",
+      "form-action 'self'",
+      "frame-ancestors 'self'",
+    ].join('; '),
   };
 }
 

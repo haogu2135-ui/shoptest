@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Button, Card, Descriptions, Space, Spin, Tag, Typography, message } from 'antd';
-import { CreditCardOutlined, CustomerServiceOutlined, FileSearchOutlined, LockOutlined, ReloadOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
+import { Alert, Button, Card, Descriptions, Input, Space, Spin, Tag, Typography, message } from 'antd';
+import { CreditCardOutlined, CustomerServiceOutlined, FileSearchOutlined, LockOutlined, MailOutlined, ReloadOutlined, SafetyCertificateOutlined, ShoppingOutlined } from '@ant-design/icons';
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { orderApi, paymentApi } from '../api';
 import { useLanguage } from '../i18n';
@@ -94,9 +94,32 @@ const PaymentInstructions: React.FC = () => {
     if (!context || !normalizedOrderNo) return null;
     return context.orderNo.toUpperCase() === normalizedOrderNo.toUpperCase() ? context : null;
   }, [normalizedOrderNo, queryGuestContext]);
-  const guestEmail = storedGuestContext?.email || '';
+  const [manualGuestEmail, setManualGuestEmail] = useState('');
+  const [guestEmailInput, setGuestEmailInput] = useState('');
+  const guestEmail = storedGuestContext?.email || manualGuestEmail;
   const isAuthenticated = Boolean(getLocalStorageItem('token'));
   const canVerify = Boolean(normalizedOrderNo && (guestEmail || isAuthenticated));
+  const normalizeGuestEmailInput = (value: unknown) => cleanParam(String(value || '').toLowerCase(), 120);
+  const applyGuestEmailForVerify = () => {
+    const email = normalizeGuestEmailInput(guestEmailInput);
+    if (!email || !email.includes('@') || email.startsWith('@') || email.endsWith('@')) {
+      message.warning(t('pages.paymentInstructions.guestEmailInvalid'));
+      return;
+    }
+    if (normalizedOrderNo) {
+      saveGuestSupportContext({ orderNo: normalizedOrderNo, email });
+    }
+    setManualGuestEmail(email);
+    setGuestEmailInput(email);
+    setVerifyError('');
+    setReloadToken((value) => value + 1);
+  };
+  useEffect(() => {
+    if (guestEmail && !guestEmailInput) {
+      setGuestEmailInput(guestEmail);
+    }
+  }, [guestEmail, guestEmailInput]);
+
   const dateLocale = language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US';
 
   const openTrackOrder = () => {
@@ -254,8 +277,10 @@ const PaymentInstructions: React.FC = () => {
   const isRefunded = paymentStatus === 'REFUNDED' || orderStatusCode === 'REFUNDED' || orderStatusCode === 'RETURNED';
   const isRefunding = paymentStatus === 'REFUNDING' || orderStatusCode === 'RETURN_REFUNDING';
   const isReconcileRequired = paymentStatus === 'RECONCILE_REQUIRED';
+  const isFailed = paymentStatus === 'FAILED';
+  const isExpiredOrFailed = recovery.isExpired || isFailed;
   const fulfilledOrderStatuses = new Set(['PENDING_SHIPMENT', 'SHIPPED', 'COMPLETED', 'RETURN_REQUESTED', 'RETURN_APPROVED', 'RETURN_SHIPPED']);
-  const isPaid = !isRefunded && !isRefunding && !isReconcileRequired && (
+  const isPaid = !isRefunded && !isRefunding && !isReconcileRequired && !isFailed && (
     recovery.isPaid
     || paymentStatus === 'PAID'
     || fulfilledOrderStatuses.has(orderStatusCode)
@@ -279,13 +304,13 @@ const PaymentInstructions: React.FC = () => {
   }, [dateLocale, expiresAt, t]);
 
   useEffect(() => {
-    if (!canVerify || !order?.id || isPaid || isRefunded || isRefunding || isReconcileRequired || recovery.isExpired || verifying) return;
+    if (!canVerify || !order?.id || isPaid || isRefunded || isRefunding || isReconcileRequired || isFailed || recovery.isExpired || verifying) return;
     if (process.env.NODE_ENV === 'test') return;
     const timer = window.setInterval(() => {
       void refreshPaymentStatus();
     }, PAYMENT_STATUS_POLL_MS);
     return () => window.clearInterval(timer);
-  }, [canVerify, isPaid, isRefunded, isRefunding, isReconcileRequired, order?.id, recovery.isExpired, refreshPaymentStatus, verifying]);
+  }, [canVerify, isFailed, isPaid, isRefunded, isRefunding, isReconcileRequired, order?.id, recovery.isExpired, refreshPaymentStatus, verifying]);
 
   const refundedAtLabel = payment?.refundedAt
     ? new Date(payment.refundedAt).toLocaleString(dateLocale)
@@ -298,7 +323,7 @@ const PaymentInstructions: React.FC = () => {
         ? 'warning'
         : isPaid
           ? 'success'
-          : recovery.isExpired
+          : isExpiredOrFailed
             ? 'error'
             : recovery.isExpiringSoon
               ? 'warning'
@@ -311,11 +336,13 @@ const PaymentInstructions: React.FC = () => {
         ? t('pages.checkout.paymentRecoveryReconcileRequired')
         : isPaid
           ? t('pages.paymentInstructions.paidTitle')
-          : recovery.isExpired
-            ? t('pages.paymentInstructions.expiredTitle')
-            : recovery.isExpiringSoon
-              ? t('pages.paymentInstructions.expiringSoonTitle')
-              : t('pages.paymentInstructions.pendingTitle');
+          : isFailed
+            ? t('pages.paymentInstructions.failedTitle')
+            : recovery.isExpired
+              ? t('pages.paymentInstructions.expiredTitle')
+              : recovery.isExpiringSoon
+                ? t('pages.paymentInstructions.expiringSoonTitle')
+                : t('pages.paymentInstructions.pendingTitle');
   const statusText = isRefunded
     ? (refundedAtLabel
       ? t('pages.profile.paymentRefundedText', { date: refundedAtLabel })
@@ -326,11 +353,13 @@ const PaymentInstructions: React.FC = () => {
         ? t('pages.checkout.paymentRecoveryNextReconcileRequired')
         : isPaid
           ? t('pages.paymentInstructions.paidText')
-          : recovery.isExpired
-            ? t('pages.paymentInstructions.expiredText')
-            : recovery.isExpiringSoon && recovery.minutesLeft != null
-              ? t('pages.paymentInstructions.expiringSoonText', { minutes: recovery.minutesLeft })
-              : t('pages.paymentInstructions.pendingText');
+          : isFailed
+            ? t('pages.paymentInstructions.failedText')
+            : recovery.isExpired
+              ? t('pages.paymentInstructions.expiredText')
+              : recovery.isExpiringSoon && recovery.minutesLeft != null
+                ? t('pages.paymentInstructions.expiringSoonText', { minutes: recovery.minutesLeft })
+                : t('pages.paymentInstructions.pendingText');
   const statusTagColor = isRefunded
     ? 'purple'
     : isRefunding
@@ -339,11 +368,15 @@ const PaymentInstructions: React.FC = () => {
         ? 'magenta'
         : isPaid
           ? 'green'
-          : recovery.isExpired
+          : isExpiredOrFailed
             ? 'red'
             : recovery.isExpiringSoon
               ? 'orange'
               : 'gold';
+
+  const openContinueShopping = () => {
+    navigate('/products');
+  };
 
   const openPaymentUrl = () => {
     if (isReconcileRequired) {
@@ -372,8 +405,32 @@ const PaymentInstructions: React.FC = () => {
 
       <section className="payment-instructions-page__hero">
         <Text className="payment-instructions-page__eyebrow">{t('pages.payment.secureEyebrow')}</Text>
-        <Title level={1}>{t('pages.paymentInstructions.title')}</Title>
-        <Text className="payment-instructions-page__subtitle">{t('pages.paymentInstructions.subtitle')}</Text>
+        <Title level={1}>
+          {isPaid
+            ? t('pages.paymentInstructions.paidTitle')
+            : isRefunded
+              ? t('pages.profile.paymentRefundedTitle')
+              : isReconcileRequired
+                ? t('pages.checkout.paymentRecoveryReconcileRequired')
+                : isFailed
+                  ? t('pages.paymentInstructions.failedTitle')
+                  : recovery.isExpired
+                    ? t('pages.paymentInstructions.expiredTitle')
+                    : t('pages.paymentInstructions.title')}
+        </Title>
+        <Text className="payment-instructions-page__subtitle">
+          {isPaid
+            ? t('pages.paymentInstructions.paidText')
+            : isRefunded
+              ? t('pages.profile.paymentRefundedNext')
+              : isReconcileRequired
+                ? t('pages.checkout.paymentRecoveryNextReconcileRequired')
+                : isFailed
+                  ? t('pages.paymentInstructions.failedText')
+                  : recovery.isExpired
+                    ? t('pages.paymentInstructions.expiredText')
+                    : t('pages.paymentInstructions.subtitle')}
+        </Text>
       </section>
 
       {!normalizedOrderNo ? (
@@ -425,7 +482,40 @@ const PaymentInstructions: React.FC = () => {
                     )}
                   />
                 ) : !guestEmail && !isAuthenticated ? (
-                  <Alert type="info" showIcon message={t('pages.paymentInstructions.verifyWithTrackOrder')} />
+                  <div className="payment-instructions-page__guestEmailGate" data-payment-guest-email-gate="true">
+                    <Alert
+                      type="info"
+                      showIcon
+                      message={t('pages.paymentInstructions.guestEmailRequiredTitle')}
+                      description={t('pages.paymentInstructions.guestEmailRequiredText')}
+                    />
+                    <Space.Compact className="payment-instructions-page__guestEmailForm">
+                      <Input
+                        prefix={<MailOutlined />}
+                        type="email"
+                        inputMode="email"
+                        autoComplete="email"
+                        maxLength={120}
+                        value={guestEmailInput}
+                        onChange={(event) => setGuestEmailInput(normalizeGuestEmailInput(event.target.value))}
+                        onPressEnter={applyGuestEmailForVerify}
+                        placeholder={t('pages.checkout.guestEmailPlaceholder')}
+                        aria-label={t('pages.paymentInstructions.guestEmailLabel')}
+                        title={t('pages.paymentInstructions.guestEmailLabel')}
+                      />
+                      <Button
+                        type="primary"
+                        onClick={applyGuestEmailForVerify}
+                        aria-label={t('pages.paymentInstructions.guestEmailSubmit')}
+                        title={t('pages.paymentInstructions.guestEmailSubmit')}
+                      >
+                        {t('pages.paymentInstructions.guestEmailSubmit')}
+                      </Button>
+                    </Space.Compact>
+                    <Button type="link" onClick={openTrackOrder} aria-label={t('nav.trackOrder')} title={t('nav.trackOrder')}>
+                      {t('pages.paymentInstructions.verifyWithTrackOrder')}
+                    </Button>
+                  </div>
                 ) : null}
 
                 <div
@@ -450,7 +540,7 @@ const PaymentInstructions: React.FC = () => {
                     <Tag color={statusTagColor}>{paymentStatus || t('pages.paymentInstructions.pendingTitle')}</Tag>
                   </Descriptions.Item>
                   <Descriptions.Item label={t('pages.paymentInstructions.expiresAt')}>{expiresText}</Descriptions.Item>
-                  {payment?.paymentUrl && !isReconcileRequired ? (
+                  {payment?.paymentUrl && !isReconcileRequired && !isExpiredOrFailed ? (
                     <Descriptions.Item label={t('pages.paymentInstructions.paymentLink')}>
                       <span className="payment-instructions-page__paymentUrl">{formatPaymentUrlLabel(payment.paymentUrl)}</span>
                     </Descriptions.Item>
@@ -463,7 +553,7 @@ const PaymentInstructions: React.FC = () => {
                 </div>
 
                 <Space wrap className="payment-instructions-page__primaryActions">
-                  {!isPaid && !isRefunded && !isRefunding && !isReconcileRequired && payment?.paymentUrl && !recovery.isExpired ? (
+                  {!isPaid && !isRefunded && !isRefunding && !isReconcileRequired && !isFailed && payment?.paymentUrl && !recovery.isExpired ? (
                     <Button
                       type="primary"
                       size="large"
@@ -545,7 +635,7 @@ const PaymentInstructions: React.FC = () => {
         </div>
       </div>
 
-      {!isPaid && !isRefunded && !isRefunding && !isReconcileRequired && payment?.paymentUrl && !recovery.isExpired ? (
+      {!isPaid && !isRefunded && !isRefunding && !isReconcileRequired && !isFailed && payment?.paymentUrl && !recovery.isExpired ? (
         <div className="payment-instructions-page__stickyBar" role="region" aria-label={t('pages.paymentInstructions.stickyOpenPayment')}>
           <div className="payment-instructions-page__stickyMeta">
             <Text strong className="commerce-money">{amountText}</Text>
@@ -572,6 +662,77 @@ const PaymentInstructions: React.FC = () => {
               onClick={openPaymentUrl}
             >
               {t('pages.paymentInstructions.stickyOpenPayment')}
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
+      {isExpiredOrFailed && !isPaid && !isRefunded && !isRefunding && !isReconcileRequired ? (
+        <div
+          className="payment-instructions-page__stickyBar payment-instructions-page__stickyBar--recovery"
+          role="region"
+          aria-label={t('pages.paymentInstructions.stickyRecovery')}
+          data-payment-recovery-sticky="true"
+        >
+          <div className="payment-instructions-page__stickyMeta">
+            <Text strong>{statusTitle}</Text>
+            <Text type="secondary">{paymentContextLabel}</Text>
+          </div>
+          <div className="payment-instructions-page__stickyActions">
+            <Button
+              icon={<ShoppingOutlined />}
+              aria-label={t('pages.paymentInstructions.stickyContinueShopping')}
+              title={t('pages.paymentInstructions.stickyContinueShopping')}
+              onClick={openContinueShopping}
+            >
+              {t('pages.paymentInstructions.stickyContinueShopping')}
+            </Button>
+            <Button
+              icon={<CustomerServiceOutlined />}
+              aria-label={supportActionLabel}
+              title={supportActionLabel}
+              onClick={openSupport}
+            >
+              {t('pages.profile.contactSupport')}
+            </Button>
+            <Button
+              type="primary"
+              size="large"
+              icon={<FileSearchOutlined />}
+              aria-label={trackOrderActionLabel}
+              title={trackOrderActionLabel}
+              onClick={openTrackOrder}
+            >
+              {t('pages.paymentInstructions.stickyTrackOrder')}
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
+      {isPaid ? (
+        <div className="payment-instructions-page__stickyBar payment-instructions-page__stickyBar--paid" role="region" aria-label={t('pages.paymentInstructions.stickyTrackOrder')}>
+          <div className="payment-instructions-page__stickyMeta">
+            <Text strong>{t('pages.paymentInstructions.paidTitle')}</Text>
+            <Text type="secondary">{paymentContextLabel}</Text>
+          </div>
+          <div className="payment-instructions-page__stickyActions">
+            <Button
+              icon={<ShoppingOutlined />}
+              aria-label={t('pages.paymentInstructions.stickyContinueShopping')}
+              title={t('pages.paymentInstructions.stickyContinueShopping')}
+              onClick={openContinueShopping}
+            >
+              {t('pages.paymentInstructions.stickyContinueShopping')}
+            </Button>
+            <Button
+              type="primary"
+              size="large"
+              icon={<FileSearchOutlined />}
+              aria-label={trackOrderActionLabel}
+              title={trackOrderActionLabel}
+              onClick={openTrackOrder}
+            >
+              {t('pages.paymentInstructions.stickyTrackOrder')}
             </Button>
           </div>
         </div>

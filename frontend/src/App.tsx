@@ -14,6 +14,7 @@ import { getLocalStorageItem, hasStoredValue, removeLocalStorageItem, setLocalSt
 import { clearGuestSupportContext, loadGuestSupportContext, normalizeGuestSupportContext, saveGuestSupportContext } from './utils/guestSupportContext';
 import { clearStoredAuthSession, userApi } from './api/core';
 import { buildLoginUrl, buildLoginUrlFromWindow, getCurrentRelativeUrl } from './utils/authRedirect';
+import CookieConsentBanner from './components/CookieConsentBanner';
 import { AUTH_SESSION_CHANGED_EVENT, AUTH_SESSION_STORAGE_KEYS } from './utils/authEvents';
 import { isAuthExpiredError } from './utils/apiError';
 import { getEffectiveRole } from './utils/roles';
@@ -106,6 +107,7 @@ const TrafficControl = lazy(() => import('./pages/TrafficControl'));
 const UserManagement = lazy(() => import('./pages/UserManagement'));
 const Wishlist = lazy(() => import('./pages/Wishlist'));
 const NotFound = lazy(() => import('./pages/NotFound'));
+const LegalPage = lazy(() => import('./pages/LegalPage'));
 const loadCartDrawer = () => import(/* webpackChunkName: "cart-drawer" */ './components/CartDrawer');
 const LazyCartDrawer = lazy(loadCartDrawer);
 const loadCustomerSupportWidget = () => import(/* webpackChunkName: "customer-support-widget" */ './components/CustomerSupportWidget');
@@ -1252,6 +1254,7 @@ const StorefrontLayout: React.FC = () => {
     <Layout className={shellClassName} style={{ minHeight: '100vh' }}>
       <SkipToContentLink />
       <ConnectivityBanner />
+      <CookieConsentBanner />
       <ApiErrorBanner />
       <Suspense fallback={<header className="app-navbar-skeleton" aria-hidden="true" style={{ minHeight: 56 }} />}>
         <LazyNavbar />
@@ -1284,6 +1287,8 @@ const StorefrontLayout: React.FC = () => {
             <div>
               <h3>{t('footer.about')}</h3>
               <Link to="/products?keyword=deal">{t('footer.dailyDeals')}</Link>
+              <Link to="/privacy">{t('footer.privacy')}</Link>
+              <Link to="/terms">{t('footer.terms')}</Link>
               <Link to="/pet-finder">{t('nav.petFinder')}</Link>
               <Link to="/pet-gallery">{t('nav.petGallery')}</Link>
             </div>
@@ -1329,16 +1334,18 @@ const App: React.FC = () => {
                 <Route path="cart" element={<Cart />} />
                 <Route path="checkout" element={<Checkout />} />
                 <Route path="coupons" element={<CouponCenter />} />
-                <Route path="profile" element={protectedRouteElement(<Profile />)} />
-                <Route path="wishlist" element={protectedRouteElement(<Wishlist />)} />
+                <Route path="profile" element={<Profile />} />
+                <Route path="wishlist" element={<Wishlist />} />
                 <Route path="history" element={<BrowsingHistory />} />
                 <Route path="stock-alerts" element={<StockAlerts />} />
-                <Route path="notifications" element={protectedRouteElement(<Notifications />)} />
+                <Route path="notifications" element={<Notifications />} />
                 <Route path="track-order" element={<OrderTracking />} />
                 <Route path="payment/:orderNo" element={<PaymentInstructions />} />
                 <Route path="login" element={<Login />} />
                 <Route path="forgot-password" element={<ForgotPassword />} />
                 <Route path="register" element={<Register />} />
+                <Route path="privacy" element={<LegalPage />} />
+                <Route path="terms" element={<LegalPage />} />
                 <Route path="*" element={<NotFound />} />
               </Route>
 

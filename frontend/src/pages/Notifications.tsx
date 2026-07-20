@@ -7,7 +7,7 @@ import type { AppNotification } from '../types';
 import { useLanguage } from '../i18n';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useDocumentMeta } from '../hooks/useDocumentMeta';
-import { buildLoginUrlFromWindow } from '../utils/authRedirect';
+import { buildLoginUrl } from '../utils/authRedirect';
 import { stripUnsafeHtml } from '../utils/sanitizeHtml';
 import { dispatchDomEvent } from '../utils/domEvents';
 import { reportNonBlockingError } from '../utils/nonBlockingError';
@@ -80,7 +80,8 @@ const mergeNotificationPages = (current: AppNotification[], next: AppNotificatio
 
 const Notifications: React.FC = () => {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => hasStoredValue('token'));
+  const [authRequired, setAuthRequired] = useState(() => !hasStoredValue('token'));
   const [loadingMore, setLoadingMore] = useState(false);
   const [fetchError, setFetchError] = useState('');
   const [notificationPage, setNotificationPage] = useState(1);
@@ -155,12 +156,16 @@ const Notifications: React.FC = () => {
 
   useEffect(() => {
     if (!hasStoredValue('token')) {
-      message.warning(t('messages.loginRequired'));
-      navigate(buildLoginUrlFromWindow());
+      setAuthRequired(true);
+      setLoading(false);
+      setNotifications([]);
+      setFetchError('');
       return;
     }
+    setAuthRequired(false);
+    setLoading(true);
     fetchNotifications();
-  }, [fetchNotifications, navigate, t]);
+  }, [fetchNotifications]);
 
   const handleMarkAsRead = useCallback(async (id: number) => {
     try {
@@ -304,6 +309,58 @@ const Notifications: React.FC = () => {
   const notificationActionPlanLabel = `${actionPlan.label}: ${actionPlan.title}`;
   const loadMoreActionLabel = `${t('pages.notifications.loadMore')}: ${t('pages.notifications.loadedCount', { count: notifications.length })}`;
   const notificationActionsDisabled = Boolean(fetchError);
+
+  if (authRequired) {
+    const loginLabel = t('pages.notifications.authGateLogin');
+    const registerLabel = t('pages.notifications.authGateRegister');
+    return (
+      <div
+        className={`notifications-page notifications-page--${language} notifications-page--empty notifications-page--authGate`}
+        data-auth-gate="notifications-login-required"
+      >
+        <PageEmpty
+          className="notifications-page__authGate"
+          description={(
+            <div className="notifications-page__emptyCopy">
+              <div>{t('pages.notifications.authGateTitle')}</div>
+              <div className="notifications-page__emptyHint">{t('pages.notifications.authGateHint')}</div>
+            </div>
+          )}
+          actions={[
+            {
+              key: 'login',
+              label: loginLabel,
+              onClick: () => navigate(buildLoginUrl('/notifications')),
+            },
+            {
+              key: 'register',
+              label: registerLabel,
+              onClick: () => navigate('/register?redirect=%2Fnotifications'),
+              type: 'default',
+            },
+            {
+              key: 'browse',
+              label: t('pages.cart.browse'),
+              onClick: () => navigate('/products'),
+              type: 'default',
+            },
+            {
+              key: 'track',
+              label: t('pages.notifications.emptyTrackOrder'),
+              onClick: () => navigate('/track-order'),
+              type: 'default',
+            },
+            {
+              key: 'coupons',
+              label: t('pages.notifications.emptyCoupons'),
+              onClick: () => navigate('/coupons'),
+              type: 'default',
+            },
+          ]}
+        />
+      </div>
+    );
+  }
 
   if (loading) {
     return (

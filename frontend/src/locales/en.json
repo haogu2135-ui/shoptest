@@ -445,7 +445,9 @@
     "methods": "Card, transfer, and digital payment",
     "shipping": "National shipping",
     "tracking": "Order tracking",
-    "rights": "2026 ShopMX. All rights reserved."
+    "rights": "2026 ShopMX. All rights reserved.",
+    "terms": "Terms of service",
+    "privacy": "Privacy policy"
   },
   "pages": {
     "keywords": {
@@ -550,7 +552,16 @@
       "resetGuideTitle": "Reset guide",
       "resetGuideEmail": "Match account email",
       "resetGuideVerify": "Protect your account",
-      "resetGuideLogin": "Log in after reset"
+      "resetGuideLogin": "Log in after reset",
+      "registerAgreementPrefix": "By creating an account you agree to our",
+      "registerAgreementAnd": "and",
+      "registerAgreementSuffix": ".",
+      "loginAgreementPrefix": "By continuing you agree to our",
+      "loginAgreementAnd": "and",
+      "loginAgreementSuffix": ".",
+      "resetUnavailableTitle": "Password reset is temporarily unavailable",
+      "resetUnavailableText": "Email verification codes are offline right now. Use password login if you still know your password, track a recent order, or contact support for account recovery help.",
+      "backToPasswordLogin": "Back to password login"
     },
     "support": {
       "title": "Online support",
@@ -711,7 +722,8 @@
       "seoDescription": "Claim pet-store coupons, track wallet savings, and apply offers before Mexico-ready checkout.",
       "emptyWalletPetFinder": "Find a pet fit",
       "emptyWalletCart": "Open cart",
-      "emptyWalletHint": "Claim a public offer above, shop essentials, or open a pet-fit path to build a usable cart."
+      "emptyWalletHint": "Claim a public offer above, shop essentials, or open a pet-fit path to build a usable cart.",
+      "loginToClaim": "Log in to claim"
     },
     "adminCoupons": {
       "title": "Coupons",
@@ -793,6 +805,7 @@
       "title": "Cart",
       "yourCart": "Your cart",
       "empty": "Your cart is empty",
+      "emptyHint": "Browse the catalog, claim a coupon, or reopen recently viewed picks while you decide.",
       "browse": "Browse products",
       "fetchFailed": "Failed to load cart",
       "quantityFailed": "Failed to update quantity",
@@ -979,7 +992,11 @@
       "pageTitle": "Wishlist",
       "emptyHint": "Save pet essentials you love, then claim coupons or get a personal fit recommendation.",
       "emptyCoupons": "Browse coupons",
-      "emptyPetFinder": "Find a pet fit"
+      "emptyPetFinder": "Find a pet fit",
+      "authGateTitle": "Sign in to save favorites",
+      "authGateHint": "Log in to sync wishlist items across devices, or keep browsing products and coupons first.",
+      "authGateLogin": "Log in",
+      "authGateRegister": "Create account"
     },
     "notifications": {
       "title": "Notifications",
@@ -1031,7 +1048,11 @@
       "openRelated": "Open related",
       "emptyHint": "Order, coupon and delivery updates will appear here.",
       "emptyCoupons": "Browse coupons",
-      "emptyTrackOrder": "Track an order"
+      "emptyTrackOrder": "Track an order",
+      "authGateTitle": "Sign in to view notifications",
+      "authGateHint": "Log in for order, coupon and delivery updates, or keep shopping and tracking as a guest.",
+      "authGateLogin": "Log in",
+      "authGateRegister": "Create account"
     },
     "review": {
       "title": "Product reviews",
@@ -1131,7 +1152,17 @@
       "trustTrackTitle": "Track anytime",
       "trustTrackText": "Payment and order status stay available after you leave the bank page.",
       "trustSupportTitle": "Need help",
-      "trustSupportText": "Support can help with failed, cancelled, or pending payments."
+      "trustSupportText": "Support can help with failed, cancelled, or pending payments.",
+      "stickyTrackOrder": "Track order",
+      "stickyContinueShopping": "Keep shopping",
+      "guestEmailRequiredTitle": "Confirm checkout email",
+      "guestEmailRequiredText": "Enter the email used at checkout so we can verify this order and payment status.",
+      "guestEmailInvalid": "Enter a valid checkout email to continue.",
+      "guestEmailLabel": "Checkout email",
+      "guestEmailSubmit": "Verify with email",
+      "failedTitle": "Payment failed",
+      "failedText": "This payment did not complete. Track the order, contact support, or continue shopping with a new checkout.",
+      "stickyRecovery": "Payment recovery actions"
     },
     "checkout": {
       "loadFailed": "Failed to load checkout information",
@@ -1176,6 +1207,8 @@
       "paymentRecoveryPaid": "Paid",
       "paymentRecoveryPending": "Pending",
       "paymentRecoveryExpired": "Expired",
+      "paymentRecoveryFailed": "Failed",
+      "paymentRecoveryNextFailed": "This payment did not complete. Track the order, contact support, or continue shopping with a new checkout.",
       "paymentRecoveryReconcileRequired": "Needs review",
       "paymentRecoveryWindow": "Payment window",
       "paymentRecoveryWindowUnknown": "Gateway timing is being confirmed",
@@ -1356,7 +1389,10 @@
       "couponOpportunityBuildText": "Add {amount} more to unlock about {value} in coupon value.",
       "couponOpportunityReview": "Review coupon",
       "mobilePayBarTrust": "Secure checkout · {method}",
-      "mobilePayBarTrustDefault": "Secure checkout protected"
+      "mobilePayBarTrustDefault": "Secure checkout protected",
+      "orderAgreementPrefix": "By placing this order you agree to our",
+      "orderAgreementAnd": "and",
+      "orderAgreementSuffix": "."
     },
     "orderTracking": {
       "title": "Track order",
@@ -1430,7 +1466,9 @@
       "retryTracking": "Retry tracking",
       "emptyHint": "Have a recent purchase? Track it here, or keep shopping with coupons while you wait for updates.",
       "emptyCoupons": "Browse coupons",
-      "emptyProfileOrders": "View my orders"
+      "emptyProfileOrders": "View my orders",
+      "paymentReturnEmailRequiredTitle": "Confirm checkout email to resume payment",
+      "paymentReturnEmailRequiredText": "We found a payment return for this order. Enter the same email used at checkout, then track the order to verify status or continue payment."
     },
     "adminDashboard": {
       "title": "Dashboard",
@@ -1511,7 +1549,8 @@
         "healthWatch": "Watch",
         "healthRisk": "Prioritize",
         "guideTitle": "Recommended order",
-        "guideText": "Recover pending payments first, review return requests next, then close ready-to-refund orders."
+        "guideText": "Recover pending payments first, review return requests next, then close ready-to-refund orders.",
+        "providerReadinessAction": "Provider webhooks"
       },
       "operationsSla": {
         "title": "Operations SLA risk queue",
@@ -1963,10 +2002,15 @@
       "databaseTip": "The database URL masks passwords, but this page should still not be exposed to non-admin roles.",
       "noStatus": "No system status.",
       "paymentChannelChecklist": "Payment channel production checklist",
-      "paymentChannelChecklistHint": "Only channels marked ready can complete production checkout and refunds.",
+      "paymentChannelChecklistHint": "Checkout readiness and provider webhook readiness for production paid recovery.",
       "channelReady": "Ready",
       "channelBlocked": "Blocked",
-      "channelRefundMode": "Refund mode"
+      "channelRefundMode": "Refund mode",
+      "paymentWebhooks": "Provider webhooks",
+      "channelWebhookReady": "Webhook ready",
+      "channelWebhookMissing": "Webhook missing",
+      "channelWebhookInvalid": "Webhook invalid",
+      "channelWebhookNotRequired": "Webhook N/A"
     },
     "logAdmin": {
       "title": "Log Management",
@@ -2431,7 +2475,12 @@
       "emptyOrdersPetFinder": "Find a pet fit",
       "noPetsHint": "Pet profiles unlock size help, birthday offers, and sharper product recommendations.",
       "noPetsFindFit": "Find a pet fit",
-      "noPetsBrowse": "Browse products"
+      "noPetsBrowse": "Browse products",
+      "authGateTitle": "Sign in to manage your account",
+      "authGateHint": "Log in for orders, addresses and pets, or track a guest order and keep shopping first.",
+      "authGateLogin": "Log in",
+      "authGateRegister": "Create account",
+      "authGateTrackOrder": "Track an order"
     },
     "brandAdmin": {
       "title": "Brand Management",
@@ -4062,6 +4111,33 @@
       "editRole": "Edit role",
       "systemRole": "System role",
       "reservedRoleReadonly": "Built-in system roles are read-only."
+    },
+    "legal": {
+      "eyebrow": "ShopMX policies",
+      "termsTitle": "Terms of service",
+      "privacyTitle": "Privacy policy",
+      "termsSeoDescription": "ShopMX terms for browsing, ordering, payments, shipping and support across Mexico.",
+      "privacySeoDescription": "How ShopMX collects, uses and protects account, order and payment data for pet shoppers.",
+      "updatedAt": "Last updated: July 2026",
+      "relatedTitle": "Related actions",
+      "browseProducts": "Browse products",
+      "backHome": "Back home",
+      "termsSection1Title": "1. Using ShopMX",
+      "termsSection1Body": "By using ShopMX you agree to shop for personal pet products, provide accurate checkout details, and use payment methods you are authorized to use. We may refuse or cancel orders that look fraudulent, out of stock, or restricted by law.",
+      "termsSection2Title": "2. Orders, pricing and payments",
+      "termsSection2Body": "Order totals include product price, shipping and applicable discounts shown at checkout. Payment is processed through the channel you select (for example Mercado Pago, OXXO, SPEI or card). An order moves to fulfillment only after payment is confirmed.",
+      "termsSection3Title": "3. Shipping, tracking and returns",
+      "termsSection3Body": "Delivery estimates are shown before you pay and may change with carrier capacity. Use Track order with your order number and checkout email. Return or exchange requests follow the return window shown on the product or order details when applicable.",
+      "termsSection4Title": "4. Support and changes",
+      "termsSection4Body": "Contact support from the storefront help channel for order issues. We may update these terms for legal, security or product changes. Continued use of ShopMX after updates means you accept the revised terms.",
+      "privacySection1Title": "1. Data we collect",
+      "privacySection1Body": "We collect account identifiers (username, email, phone), delivery addresses, order and payment status metadata, support messages, and basic device or security signals needed to protect the store. We do not store full card numbers on ShopMX servers when a payment provider handles the charge.",
+      "privacySection2Title": "2. How we use data",
+      "privacySection2Body": "Data is used to process orders, deliver packages, prevent fraud, provide support, improve catalog quality, and meet legal obligations in Mexico and other markets we serve. Marketing messages are sent only when allowed by your account preferences or applicable consent rules.",
+      "privacySection3Title": "3. Sharing and retention",
+      "privacySection3Body": "We share data with payment processors, logistics partners and infrastructure providers strictly to fulfill orders or secure the platform. We retain order records as required for accounting, dispute handling and legal compliance, then delete or anonymize data when no longer needed.",
+      "privacySection4Title": "4. Your choices",
+      "privacySection4Body": "You can update profile details, request support access to your order history, and ask about correction or deletion where the law allows. Security issues or privacy requests can be raised through in-app support."
     }
   },
   "notFound": {
@@ -4081,5 +4157,11 @@
     "browseProducts": "Browse products",
     "contactSupport": "Contact support",
     "hint": "You can retry this page, return home, or keep shopping while we capture the error."
+  },
+  "cookieConsent": {
+    "title": "Cookies & privacy",
+    "body": "ShopMX uses essential cookies for cart, login, security and order tracking. Optional preferences help us improve the storefront experience.",
+    "acceptEssential": "Essential only",
+    "acceptAll": "Accept all"
   }
 }

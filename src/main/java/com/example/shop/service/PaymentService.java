@@ -71,6 +71,7 @@ public class PaymentService {
     private static final String RECONCILE_REQUIRED = "RECONCILE_REQUIRED";
     private static final long DEFAULT_CALLBACK_MAX_SKEW_SECONDS = 300L;
     private static final long STRIPE_WEBHOOK_TOLERANCE_SECONDS = 300L;
+    private static final long MERCADO_PAGO_WEBHOOK_TOLERANCE_SECONDS = 300L;
     private static final int DEFAULT_EXPIRY_SCAN_BATCH_SIZE = 500;
     private static final int HARD_EXPIRY_SCAN_BATCH_SIZE_LIMIT = 5000;
     private static final int DEFAULT_GATEWAY_HTTP_MAX_ATTEMPTS = 3;
@@ -358,6 +359,153 @@ public class PaymentService {
         } else if (PENDING.equals(payment.getStatus())) {
             expirePayment(payment);
         }
+        return paymentRepository.findById(payment.getId());
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public Payment handleMercadoPagoWebhook(String payload,
+                                            String signatureHeader,
+                                            String requestIdHeader,
+                                            String topicQuery,
+                                            String dataIdQuery) {
+        String webhookSecret = mercadoPagoWebhookSecret();
+        if (isBlank(webhookSecret)) {
+            throw new IllegalStateException("Mercado Pago webhook secret is not configured");
+        }
+        String accessToken = mercadoPagoAccessToken();
+        if (isBlank(accessToken)) {
+            throw new IllegalStateException("Mercado Pago access token is not configured");
+        }
+
+        JsonNode root = null;
+        if (!isBlank(payload)) {
+            try {
+                root = objectMapper.readTree(payload);
+            } catch (Exception e) {
+                log.warn("Mercado Pago webhook rejected malformed JSON payload");
+                throw new IllegalArgumentException("Invalid Mercado Pago webhook payload", e);
+            }
+        }
+
+        String topic = firstNonBlank(
+                topicQuery,
+                root == null ? null : readText(root, "type"),
+                root == null ? null : readText(root, "topic"),
+                root == null ? null : readText(root, "action"));
+        String dataId = firstNonBlank(
+                dataIdQuery,
+                root == null ? null : readNestedText(root, "data", "id"),
+                root == null ? null : readText(root, "id"),
+                root == null ? null : readText(root, "resource"));
+        if (isBlank(dataId) && topic != null && topic.contains("/")) {
+            // Some notifications send resource paths such as "payments/123".
+            String[] parts = topic.split("/");
+            if (parts.length > 0) {
+                dataId = firstNonBlank(parts[parts.length - 1]);
+            }
+        }
+        dataId = trimToNull(dataId);
+        if (isBlank(dataId)) {
+            log.debug("Mercado Pago webhook ignored notification without payment id: topic={}", topic);
+            return null;
+        }
+
+        String normalizedTopic = String.valueOf(topic == null ? "" : topic).trim().toLowerCase(Locale.ROOT);
+        boolean paymentTopic = normalizedTopic.isEmpty()
+                || normalizedTopic.contains("payment")
+                || "merchant_order".equals(normalizedTopic);
+        if (!paymentTopic) {
+            log.debug("Mercado Pago webhook ignored unsupported topic: topic={}, dataId={}", topic, dataId);
+            return null;
+        }
+
+        if (!verifyMercadoPagoSignature(signatureHeader, requestIdHeader, dataId, webhookSecret)) {
+            log.warn("Mercado Pago webhook rejected invalid signature: dataId={}", dataId);
+            throw new IllegalArgumentException("Invalid Mercado Pago webhook signature");
+        }
+
+        JsonNode providerPayment = fetchMercadoPagoPayment(dataId, accessToken);
+        if (providerPayment == null || providerPayment.isNull()) {
+            log.warn("Mercado Pago webhook ignored unavailable payment payload: dataId={}", dataId);
+            return null;
+        }
+
+        String status = firstNonBlank(readText(providerPayment, "status"), "").toLowerCase(Locale.ROOT);
+        String externalReference = firstNonBlank(
+                readText(providerPayment, "external_reference"),
+                readText(providerPayment, "externalReference"));
+        String providerReference = firstNonBlank(readText(providerPayment, "id"), dataId);
+        String transactionId = firstNonBlank(
+                readNestedText(providerPayment, "transaction_details", "payment_method_reference_id"),
+                readText(providerPayment, "payment_method_id"),
+                providerReference);
+
+        Payment payment = null;
+        if (!isBlank(externalReference)) {
+            payment = paymentRepository.findByOrderNoAndChannel(externalReference, "MERCADO_PAGO");
+        }
+        if (payment == null) {
+            payment = paymentRepository.findByProviderReference(providerReference);
+        }
+        if (payment == null) {
+            payment = paymentRepository.findByTransactionId(providerReference);
+        }
+        if (payment == null) {
+            throw new IllegalArgumentException("Payment not found");
+        }
+        if (!"MERCADO_PAGO".equalsIgnoreCase(String.valueOf(payment.getChannel()))) {
+            throw new IllegalArgumentException("Payment channel is not Mercado Pago");
+        }
+
+        if ("approved".equals(status)) {
+            validateMercadoPagoPaidPayment(payment, providerPayment);
+            if (isProviderPaidAlreadyAcknowledged(payment) || RECONCILE_REQUIRED.equals(payment.getStatus())) {
+                return payment;
+            }
+            if (requiresProviderPaidReconciliation(payment)) {
+                return markProviderPaidReconciliationRequired(
+                        payment,
+                        transactionId,
+                        providerReference,
+                        LocalDateTime.now(ZoneOffset.UTC));
+            }
+            if (!PENDING.equals(payment.getStatus())) {
+                throw new IllegalStateException("Payment is not pending");
+            }
+            Payment reconcilePayment = claimOrderForProviderPaidSuccessOrReconcile(
+                    payment,
+                    transactionId,
+                    providerReference,
+                    LocalDateTime.now(ZoneOffset.UTC));
+            if (reconcilePayment != null) {
+                return reconcilePayment;
+            }
+            int updated = paymentRepository.markPaidDetailed(
+                    payment.getId(),
+                    transactionId,
+                    providerReference,
+                    LocalDateTime.now(ZoneOffset.UTC));
+            if (updated == 0) {
+                Payment latest = paymentRepository.findById(payment.getId());
+                if (latest != null && PAID.equals(latest.getStatus())) {
+                    logPaymentLifecycle("Mercado Pago webhook observed already paid payment", latest);
+                    return latest;
+                }
+                throw new IllegalStateException("Mercado Pago payment state update failed");
+            }
+            logPaymentLifecycle("Mercado Pago webhook marked payment paid", payment, PAID);
+            return paymentRepository.findById(payment.getId());
+        }
+
+        if (("rejected".equals(status) || "cancelled".equals(status) || "canceled".equals(status))
+                && PENDING.equals(payment.getStatus())) {
+            paymentRepository.markFailed(payment.getId());
+            Payment latest = paymentRepository.findById(payment.getId());
+            logPaymentLifecycle("Mercado Pago webhook marked payment failed", latest == null ? payment : latest, FAILED);
+            return latest;
+        }
+
+        log.debug("Mercado Pago webhook acknowledged non-terminal status: paymentId={}, status={}", payment.getId(), status);
         return paymentRepository.findById(payment.getId());
     }
 
@@ -1573,6 +1721,121 @@ public class PaymentService {
 
     private String stripeSecretKey() {
         return runtimeConfig.getString("stripe.secret-key", "");
+    }
+
+
+    private boolean verifyMercadoPagoSignature(String signatureHeader, String requestIdHeader, String dataId, String secret) {
+        String signature = trimToNull(signatureHeader);
+        if (signature == null || isBlank(secret) || isBlank(dataId)) {
+            return false;
+        }
+        String ts = null;
+        String v1 = null;
+        for (String part : signature.split(",")) {
+            String[] kv = part.split("=", 2);
+            if (kv.length != 2) {
+                continue;
+            }
+            String key = kv[0].trim().toLowerCase(Locale.ROOT);
+            String value = kv[1].trim();
+            if ("ts".equals(key)) {
+                ts = value;
+            } else if ("v1".equals(key)) {
+                v1 = value;
+            }
+        }
+        if (isBlank(ts) || isBlank(v1)) {
+            return false;
+        }
+        long timestampSeconds;
+        try {
+            timestampSeconds = Long.parseLong(ts);
+        } catch (NumberFormatException ex) {
+            return false;
+        }
+        long now = Instant.now().getEpochSecond();
+        if (Math.abs(now - timestampSeconds) > MERCADO_PAGO_WEBHOOK_TOLERANCE_SECONDS) {
+            log.warn("Mercado Pago webhook rejected stale signature timestamp: ts={}, now={}", timestampSeconds, now);
+            return false;
+        }
+        String requestId = firstNonBlank(requestIdHeader, "");
+        String manifest = "id:" + dataId + ";request-id:" + requestId + ";ts:" + ts + ";";
+        String expected = hmacSha256Hex(manifest, secret);
+        return MessageDigest.isEqual(
+                expected.getBytes(StandardCharsets.UTF_8),
+                v1.toLowerCase(Locale.ROOT).getBytes(StandardCharsets.UTF_8));
+    }
+
+    private JsonNode fetchMercadoPagoPayment(String paymentId, String accessToken) {
+        String url = "https://api.mercadopago.com/v1/payments/" + urlEncode(paymentId);
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.setBearerAuth(accessToken);
+            headers.setAccept(List.of(MediaType.APPLICATION_JSON));
+            ResponseEntity<String> response = restTemplate.exchange(
+                    url,
+                    HttpMethod.GET,
+                    new HttpEntity<>(headers),
+                    String.class);
+            if (!response.getStatusCode().is2xxSuccessful() || isBlank(response.getBody())) {
+                throw new IllegalStateException("Mercado Pago payment lookup failed");
+            }
+            return objectMapper.readTree(response.getBody());
+        } catch (HttpStatusCodeException e) {
+            throw new IllegalStateException("Mercado Pago payment lookup failed: HTTP " + e.getRawStatusCode(), e);
+        } catch (RestClientException e) {
+            throw new IllegalStateException("Mercado Pago payment lookup failed", e);
+        } catch (Exception e) {
+            throw new IllegalStateException("Mercado Pago payment lookup failed", e);
+        }
+    }
+
+    private void validateMercadoPagoPaidPayment(Payment payment, JsonNode providerPayment) {
+        if (payment == null || providerPayment == null) {
+            throw new IllegalArgumentException("Mercado Pago payment payload is required");
+        }
+        BigDecimal paidAmount = null;
+        JsonNode transactionAmount = providerPayment.get("transaction_amount");
+        if (transactionAmount != null && !transactionAmount.isNull()) {
+            try {
+                paidAmount = new BigDecimal(transactionAmount.asText()).setScale(2, RoundingMode.HALF_UP);
+            } catch (Exception ignored) {
+                paidAmount = null;
+            }
+        }
+        if (paidAmount != null && payment.getAmount() != null) {
+            BigDecimal expected = payment.getAmount().setScale(2, RoundingMode.HALF_UP);
+            if (paidAmount.compareTo(expected) != 0) {
+                throw new IllegalArgumentException("Mercado Pago paid amount mismatch");
+            }
+        }
+        String currency = firstNonBlank(readText(providerPayment, "currency_id"), "MXN").toUpperCase(Locale.ROOT);
+        if (!isBlank(currency)) {
+            log.debug("Mercado Pago currency observed: {}", currency);
+        }
+    }
+
+    private String readNestedText(JsonNode root, String parent, String child) {
+        if (root == null) {
+            return null;
+        }
+        JsonNode parentNode = root.get(parent);
+        if (parentNode == null || parentNode.isNull()) {
+            return null;
+        }
+        return readText(parentNode, child);
+    }
+
+    private String mercadoPagoWebhookSecret() {
+        return firstNonBlank(
+                runtimeConfig.getString("payment.mercado-pago.webhook-secret", ""),
+                runtimeConfig.getString("mercadopago.webhook-secret", ""));
+    }
+
+    private String mercadoPagoAccessToken() {
+        return firstNonBlank(
+                runtimeConfig.getString("payment.mercado-pago.access-token", ""),
+                runtimeConfig.getString("mercadopago.access-token", ""));
     }
 
     private String stripeWebhookSecret() {

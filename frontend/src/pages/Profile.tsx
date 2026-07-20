@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Button, Card, Cascader, Checkbox, DatePicker, Descriptions, Empty, Form, Input, InputNumber, List, message, Modal, Popconfirm, Progress, Select, Space, Spin, Tabs, Tag, Typography } from 'antd';
-import { DeleteOutlined, EditOutlined, EnvironmentOutlined, HeartOutlined, LockOutlined, MailOutlined, PlusOutlined, ReloadOutlined, SafetyCertificateOutlined, ShoppingCartOutlined, StarFilled, StarOutlined, UserOutlined } from '@ant-design/icons';
+import { DeleteOutlined, EditOutlined, EnvironmentOutlined, EyeInvisibleOutlined, EyeOutlined, HeartOutlined, LockOutlined, MailOutlined, PlusOutlined, ReloadOutlined, SafetyCertificateOutlined, ShoppingCartOutlined, StarFilled, StarOutlined, UserOutlined } from '@ant-design/icons';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { addressApi, cartApi, orderApi, paymentApi, petProfileApi, userApi } from '../api';
 import type { OrderCustomer, OrderItemCustomer, PaymentCustomer, PaymentChannel, PetProfile, UserAddress, UserProfile } from '../types';
@@ -8,7 +8,7 @@ import { findRegionPath, loadRegionData, type RegionOption } from '../regionData
 import { useLanguage } from '../i18n';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useDocumentMeta } from '../hooks/useDocumentMeta';
-import { buildLoginUrlFromWindow } from '../utils/authRedirect';
+import { buildLoginUrl, buildLoginUrlFromWindow } from '../utils/authRedirect';
 import { createPaymentMethodDetails, createPaymentMethodOptions, paymentMethodLabel } from '../utils/paymentMethods';
 import { useAppConfig } from '../hooks/useAppConfig';
 import { useMarket } from '../hooks/useMarket';
@@ -44,6 +44,7 @@ import {
 } from '../utils/passwordPolicy';
 import SeventeenTrackWidget from '../components/SeventeenTrackWidget';
 import '../styles/mobile-page-contrast.css';
+import { focusFirstFormError } from '../utils/formValidationFocus';
 
 const { Title, Text } = Typography;
 const profileModalPopupClassNames = { popup: { root: 'shop-mobile-popup-layer profile-modal-popup' } };
@@ -57,6 +58,20 @@ const isFormValidationError = (error: unknown): error is FormValidationError => 
   if (!error || typeof error !== 'object') return false;
   return Array.isArray((error as { errorFields?: unknown }).errorFields);
 };
+
+
+const focusProfileModalFormError = (rootSelector: string) => {
+  window.requestAnimationFrame(() => {
+    window.requestAnimationFrame(() => {
+      focusFirstFormError({
+        rootSelector,
+        scrollOffset: 80,
+        scrollContainerSelector: `${rootSelector} .ant-modal-body`,
+      });
+    });
+  });
+};
+
 
 const getProfileApiErrorData = (error: unknown): Record<string, unknown> => {
   if (!error || typeof error !== 'object') return {};
@@ -213,7 +228,8 @@ const Profile: React.FC = () => {
   const [addressesLoadFailed, setAddressesLoadFailed] = useState(false);
   const addressesStale = addressesLoadFailed && addresses.length > 0;
   const [petProfiles, setPetProfiles] = useState<PetProfile[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => Boolean(getLocalStorageItem('token')));
+  const [authRequired, setAuthRequired] = useState(() => !getLocalStorageItem('token'));
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [passwordModalVisible, setPasswordModalVisible] = useState(false);
   const [addressModalVisible, setAddressModalVisible] = useState(false);
@@ -445,15 +461,18 @@ const Profile: React.FC = () => {
   useEffect(() => {
     const token = getLocalStorageItem('token');
     if (!token) {
-      message.warning(profileLocalizationRef.current.t('messages.loginRequired'));
-      navigate(buildLoginUrlFromWindow());
+      setAuthRequired(true);
+      setLoading(false);
+      setUser(null);
       return;
     }
+    setAuthRequired(false);
+    setLoading(true);
     fetchUserInfo();
     fetchOrders();
     fetchAddresses();
     fetchPetProfiles();
-  }, [fetchAddresses, fetchOrders, fetchPetProfiles, fetchUserInfo, navigate]);
+  }, [fetchAddresses, fetchOrders, fetchPetProfiles, fetchUserInfo]);
 
   useEffect(() => {
     if (!addressModalVisible) return;
@@ -579,7 +598,10 @@ const Profile: React.FC = () => {
       setProfileEmailCodeCountdown(0);
       fetchUserInfo();
     } catch (err: unknown) {
-      if (isFormValidationError(err)) return;
+      if (isFormValidationError(err)) {
+        focusProfileModalFormError('.profile-mobile-safe-modal');
+        return;
+      }
       const errorCode = getProfileApiErrorCode(err);
       if (errorCode === 'INVALID_CODE' || errorCode === 'TOO_MANY_ATTEMPTS') {
         const msg = errorCode === 'TOO_MANY_ATTEMPTS'
@@ -619,7 +641,10 @@ const Profile: React.FC = () => {
       editForm.setFields([{ name: 'emailCode', errors: [] }]);
       message.success(t('pages.auth.emailCodeSentTo', { email: normalizedEmail }));
     } catch (err: unknown) {
-      if (isFormValidationError(err)) return;
+      if (isFormValidationError(err)) {
+        focusProfileModalFormError('.profile-mobile-safe-modal');
+        return;
+      }
       const retryAfterSeconds = Number(getProfileApiErrorData(err).retryAfterSeconds);
       if (Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0) {
         setProfileEmailCodeCountdown(Math.ceil(retryAfterSeconds));
@@ -640,7 +665,10 @@ const Profile: React.FC = () => {
       setPasswordModalVisible(false);
       passwordForm.resetFields();
     } catch (err: unknown) {
-      if (isFormValidationError(err)) return;
+      if (isFormValidationError(err)) {
+        focusProfileModalFormError('.profile-mobile-safe-modal');
+        return;
+      }
       message.error(getApiErrorMessage(err, t('pages.profile.passwordFailed'), language));
     } finally {
       setPasswordSubmitting(false);
@@ -957,6 +985,7 @@ const Profile: React.FC = () => {
       const detailAddress = normalizeProfileAddressText(values.detail, 260);
       if (!isValidRegionalPostalCode(postalCode, regionPath)) {
         addressForm.setFields([{ name: 'postalCode', errors: [t('pages.profile.postalCodeInvalid')] }]);
+        focusProfileModalFormError('.profile-address-modal');
         return;
       }
       const regionStr = regionPath.join(' ');
@@ -982,7 +1011,10 @@ const Profile: React.FC = () => {
       addressForm.resetFields();
       fetchAddresses();
     } catch (err: unknown) {
-      if (isFormValidationError(err)) return;
+      if (isFormValidationError(err)) {
+        focusProfileModalFormError('.profile-address-modal');
+        return;
+      }
       message.error(getApiErrorMessage(err, t('pages.profile.addressSaveFailed'), language));
     } finally {
       setAddressSubmitting(false);
@@ -1135,7 +1167,10 @@ const Profile: React.FC = () => {
       petForm.resetFields();
       fetchPetProfiles();
     } catch (err: unknown) {
-      if (isFormValidationError(err)) return;
+      if (isFormValidationError(err)) {
+        focusProfileModalFormError('.profile-mobile-safe-modal');
+        return;
+      }
       message.error(getApiErrorMessage(err, t('messages.operationFailed'), language));
     } finally {
       setPetSubmitting(false);
@@ -1205,8 +1240,10 @@ const Profile: React.FC = () => {
   const selectedPaymentMethodDetail = paymentMethodDetails.find((method) => method.value === selectedPaymentMethod);
   const selectedPaymentStatus = normalizeStatusCode(selectedPayment?.status);
   const selectedPaymentPaid = selectedPaymentStatus === 'PAID';
+  const selectedPaymentFailed = selectedPaymentStatus === 'FAILED';
   const selectedPaymentReconcileRequired = selectedPaymentStatus === 'RECONCILE_REQUIRED';
   const selectedPaymentRecovery = getPaymentRecoveryState(selectedPayment);
+  const selectedPaymentExpiredOrFailed = selectedPaymentFailed || selectedPaymentRecovery.isExpired;
   const pendingPaymentCount = orders.filter((order) => order.status === 'PENDING_PAYMENT').length;
   const inTransitCount = orders.filter((order) => order.status === 'SHIPPED').length;
   const afterSaleCount = orders.filter((order) => afterSaleStatuses.includes(order.status)).length;
@@ -1431,6 +1468,58 @@ const Profile: React.FC = () => {
     syncProfileTabToUrl('orders');
     setOrderStatusFilter(filter);
   };
+
+  if (authRequired) {
+    const loginLabel = t('pages.profile.authGateLogin');
+    const registerLabel = t('pages.profile.authGateRegister');
+    return (
+      <div
+        className={`profile-page profile-page--${language} profile-page--empty profile-page--authGate`}
+        data-auth-gate="profile-login-required"
+      >
+        <PageEmpty
+          className="profile-page__authGate"
+          description={(
+            <div className="profile-page__authGateCopy">
+              <div>{t('pages.profile.authGateTitle')}</div>
+              <div className="profile-page__authGateHint">{t('pages.profile.authGateHint')}</div>
+            </div>
+          )}
+          actions={[
+            {
+              key: 'login',
+              label: loginLabel,
+              onClick: () => navigate(buildLoginUrl('/profile')),
+            },
+            {
+              key: 'register',
+              label: registerLabel,
+              onClick: () => navigate('/register?redirect=%2Fprofile'),
+              type: 'default',
+            },
+            {
+              key: 'orders',
+              label: t('pages.profile.authGateTrackOrder'),
+              onClick: () => navigate('/track-order'),
+              type: 'default',
+            },
+            {
+              key: 'browse',
+              label: t('pages.cart.browse'),
+              onClick: () => navigate('/products'),
+              type: 'default',
+            },
+            {
+              key: 'coupons',
+              label: t('pages.profile.emptyOrdersCoupons'),
+              onClick: () => navigate('/coupons'),
+              type: 'default',
+            },
+          ]}
+        />
+      </div>
+    );
+  }
 
   if (loading || !user) {
     return (
@@ -2244,7 +2333,7 @@ const Profile: React.FC = () => {
         cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${editProfileActionLabel}`, title: `${t('common.cancel')}: ${editProfileActionLabel}` }}
         className="profile-mobile-safe-modal"
       >
-        <Form form={editForm} layout="vertical">
+        <Form form={editForm} layout="vertical" requiredMark validateTrigger={['onChange', 'onBlur']}>
           <Form.Item
             name="email"
             label={t('pages.profile.email')}
@@ -2346,15 +2435,39 @@ const Profile: React.FC = () => {
         className="profile-mobile-safe-modal"
         destroyOnHidden
       >
-        <Form form={passwordForm} layout="vertical">
+        <Form form={passwordForm} layout="vertical" requiredMark validateTrigger={['onChange', 'onBlur']}>
           <Form.Item name="oldPassword" label={t('pages.profile.oldPassword')} rules={[{ required: true, message: t('pages.profile.oldPasswordRequired') }]}>
-            <Input.Password />
+            <Input.Password 
+              iconRender={(visible) => (
+              <button
+                type="button"
+                aria-label={visible ? t('pages.auth.hidePassword') : t('pages.auth.showPassword')}
+                aria-pressed={visible}
+                title={visible ? t('pages.auth.hidePassword') : t('pages.auth.showPassword')}
+                style={{ border: 0, padding: 0, background: 'transparent', color: 'inherit', lineHeight: 0, cursor: 'pointer' }}
+              >
+                {visible ? <EyeOutlined /> : <EyeInvisibleOutlined />}
+              </button>
+            )}
+            />
           </Form.Item>
           <Form.Item name="newPassword" label={t('pages.profile.newPassword')} rules={[
             { required: true, min: STRONG_PASSWORD_MIN_LENGTH, max: STRONG_PASSWORD_MAX_LENGTH, message: t('pages.profile.newPasswordMin') },
             { validator: validateStrongPassword }
           ]}>
-            <Input.Password maxLength={STRONG_PASSWORD_MAX_LENGTH} />
+            <Input.Password maxLength={STRONG_PASSWORD_MAX_LENGTH} 
+              iconRender={(visible) => (
+              <button
+                type="button"
+                aria-label={visible ? t('pages.auth.hidePassword') : t('pages.auth.showPassword')}
+                aria-pressed={visible}
+                title={visible ? t('pages.auth.hidePassword') : t('pages.auth.showPassword')}
+                style={{ border: 0, padding: 0, background: 'transparent', color: 'inherit', lineHeight: 0, cursor: 'pointer' }}
+              >
+                {visible ? <EyeOutlined /> : <EyeInvisibleOutlined />}
+              </button>
+            )}
+            />
           </Form.Item>
           <Form.Item
             name="confirmPassword"
@@ -2370,7 +2483,19 @@ const Profile: React.FC = () => {
               }),
             ]}
           >
-            <Input.Password />
+            <Input.Password 
+              iconRender={(visible) => (
+              <button
+                type="button"
+                aria-label={visible ? t('pages.auth.hidePassword') : t('pages.auth.showPassword')}
+                aria-pressed={visible}
+                title={visible ? t('pages.auth.hidePassword') : t('pages.auth.showPassword')}
+                style={{ border: 0, padding: 0, background: 'transparent', color: 'inherit', lineHeight: 0, cursor: 'pointer' }}
+              >
+                {visible ? <EyeOutlined /> : <EyeInvisibleOutlined />}
+              </button>
+            )}
+            />
           </Form.Item>
         </Form>
       </Modal>
@@ -2389,7 +2514,7 @@ const Profile: React.FC = () => {
         className="profile-mobile-safe-modal profile-address-modal"
         destroyOnHidden
       >
-        <Form form={addressForm} layout="vertical" onFocusCapture={(event) => scrollProfileAddressFieldIntoMobileView(event.target)}>
+        <Form form={addressForm} layout="vertical" requiredMark validateTrigger={['onChange', 'onBlur']} onFocusCapture={(event) => scrollProfileAddressFieldIntoMobileView(event.target)}>
           <Form.Item name="recipientName" label={t('pages.profile.recipient')} rules={[{ required: true, message: t('pages.profile.recipientRequired') }]}>
             <Input placeholder={t('pages.profile.recipientRequired')} autoComplete="name" maxLength={80} />
           </Form.Item>
@@ -2474,7 +2599,7 @@ const Profile: React.FC = () => {
         className="profile-mobile-safe-modal"
         destroyOnHidden
       >
-        <Form form={petForm} layout="vertical">
+        <Form form={petForm} layout="vertical" requiredMark validateTrigger={['onChange', 'onBlur']}>
           <Form.Item name="name" label={t('pages.profile.petName')} rules={[{ required: true, message: t('pages.profile.petNameRequired') }]}>
             <Input placeholder={t('pages.profile.petNamePlaceholder')} />
           </Form.Item>
@@ -2806,7 +2931,7 @@ const Profile: React.FC = () => {
             <div className="profile-payment-recovery" role="status" aria-live="polite">
               <div>
                 <Text strong>{t('pages.checkout.paymentRecoveryStatus')}</Text>
-                <Tag color={selectedPaymentReconcileRequired ? 'magenta' : selectedPaymentPaid ? 'green' : selectedPaymentRecovery.isExpired ? 'red' : selectedPaymentRecovery.isExpiringSoon ? 'orange' : 'blue'}>
+                <Tag color={selectedPaymentReconcileRequired ? 'magenta' : selectedPaymentPaid ? 'green' : selectedPaymentExpiredOrFailed ? 'red' : selectedPaymentRecovery.isExpiringSoon ? 'orange' : 'blue'}>
                   {selectedPaymentReconcileRequired
                     ? t('pages.checkout.paymentRecoveryReconcileRequired')
                     : normalizeStatusCode(selectedPayment.status) === 'REFUNDED'
@@ -2815,9 +2940,11 @@ const Profile: React.FC = () => {
                     ? t('status.REFUNDING')
                     : selectedPaymentPaid
                     ? t('pages.checkout.paymentRecoveryPaid')
-                    : selectedPaymentRecovery.isExpired
-                      ? t('pages.checkout.paymentRecoveryExpired')
-                      : t('pages.checkout.paymentRecoveryPending')}
+                    : selectedPaymentFailed
+                      ? t('pages.checkout.paymentRecoveryFailed')
+                      : selectedPaymentRecovery.isExpired
+                        ? t('pages.checkout.paymentRecoveryExpired')
+                        : t('pages.checkout.paymentRecoveryPending')}
                 </Tag>
               </div>
               <div>
@@ -2841,9 +2968,13 @@ const Profile: React.FC = () => {
                     ? t('pages.profile.paymentRefundingNext')
                     : selectedPaymentPaid
                     ? t('pages.checkout.paymentRecoveryNextPaid')
-                    : selectedPayment.paymentUrl
-                      ? t('pages.checkout.paymentRecoveryNextOpen')
-                      : t('pages.checkout.paymentRecoveryNextRetry')}
+                    : selectedPaymentFailed
+                      ? t('pages.checkout.paymentRecoveryNextFailed')
+                      : selectedPaymentRecovery.isExpired
+                        ? t('pages.checkout.paymentRecoveryNextRetry')
+                        : selectedPayment.paymentUrl
+                          ? t('pages.checkout.paymentRecoveryNextOpen')
+                          : t('pages.checkout.paymentRecoveryNextRetry')}
                 </Text>
               </div>
             </div>
@@ -2900,7 +3031,7 @@ const Profile: React.FC = () => {
                 </Tag>
               </Descriptions.Item>
               <Descriptions.Item label={t('pages.checkout.paymentLink')}>
-                {selectedPayment.paymentUrl && !selectedPaymentPaid && !selectedPaymentReconcileRequired ? (
+                {selectedPayment.paymentUrl && !selectedPaymentPaid && !selectedPaymentReconcileRequired && !selectedPaymentExpiredOrFailed ? (
                   <Button
                     type="link"
                     className="profile-payment-link"
@@ -2916,6 +3047,10 @@ const Profile: React.FC = () => {
                   </Button>
                 ) : selectedPaymentReconcileRequired ? (
                   <Text type="secondary">{t('pages.checkout.paymentRecoveryNextReconcileRequired')}</Text>
+                ) : selectedPaymentFailed ? (
+                  <Text type="secondary">{t('pages.checkout.paymentRecoveryNextFailed')}</Text>
+                ) : selectedPaymentRecovery.isExpired ? (
+                  <Text type="secondary">{t('pages.checkout.paymentRecoveryNextRetry')}</Text>
                 ) : '-'}
               </Descriptions.Item>
               <Descriptions.Item label={t('pages.profile.paymentExpiresAt')}>

@@ -1144,3 +1144,28 @@
 .notifications-page__emptyCopy { display: grid; gap: 6px; }
 .notifications-page__emptyHint { color: rgba(16, 47, 34, 0.72); font-size: 13px; line-height: 1.45; }
 .notifications-page__emptyPanel .page-feedback__actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+
+
+/* Commercial guest notifications auth gate multi-path conversion */
+.notifications-page__authGate .page-feedback__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.notifications-page__authGate .page-feedback__actions .ant-btn {
+  min-height: 44px;
+  touch-action: manipulation;
+}
+
+@media (max-width: 780px) {
+  .notifications-page__authGate .page-feedback__actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .notifications-page__authGate .page-feedback__actions .ant-btn {
+    width: 100%;
+  }
+}

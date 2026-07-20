@@ -300,6 +300,7 @@ const AdminDashboard: React.FC = () => {
     paymentAction: t('pages.adminDashboard.paymentReturnOps.paymentAction'),
     returnAction: t('pages.adminDashboard.paymentReturnOps.returnAction'),
     auditAction: t('pages.adminDashboard.paymentReturnOps.auditAction'),
+    providerReadinessAction: t('pages.adminDashboard.paymentReturnOps.providerReadinessAction'),
     healthReady: t('pages.adminDashboard.paymentReturnOps.healthReady'),
     healthWatch: t('pages.adminDashboard.paymentReturnOps.healthWatch'),
     healthRisk: t('pages.adminDashboard.paymentReturnOps.healthRisk'),
@@ -791,6 +792,7 @@ const AdminDashboard: React.FC = () => {
             <Button size="small" aria-label={`${paymentRefundCopy.title}: ${paymentRefundCopy.paymentAction}`} title={`${paymentRefundCopy.title}: ${paymentRefundCopy.paymentAction}`} onClick={() => navigate('/admin/orders?status=PENDING_PAYMENT')}>{paymentRefundCopy.paymentAction}</Button>
             <Button size="small" type="primary" aria-label={`${paymentRefundCopy.title}: ${paymentRefundCopy.returnAction}`} title={`${paymentRefundCopy.title}: ${paymentRefundCopy.returnAction}`} onClick={() => navigate('/admin/orders?quick=RETURN_SHIPPED')}>{paymentRefundCopy.returnAction}</Button>
             <Button size="small" aria-label={`${paymentRefundCopy.title}: ${paymentRefundCopy.auditAction}`} title={`${paymentRefundCopy.title}: ${paymentRefundCopy.auditAction}`} onClick={() => navigate('/admin/audit-logs?view=payment-failures')}>{paymentRefundCopy.auditAction}</Button>
+            <Button size="small" data-admin-payment-provider-readiness="true" aria-label={`${paymentRefundCopy.title}: ${paymentRefundCopy.providerReadinessAction}`} title={`${paymentRefundCopy.title}: ${paymentRefundCopy.providerReadinessAction}`} onClick={() => navigate('/admin/system')}>{paymentRefundCopy.providerReadinessAction}</Button>
           </Space>
         </div>
       </section>

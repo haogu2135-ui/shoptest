@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Alert, Form, Input, Button, Card, Typography, message, Space, Tag } from 'antd';
 import type { InputRef } from 'antd/es/input';
 import { UserOutlined, LockOutlined, MailOutlined, PhoneOutlined, SafetyCertificateOutlined, GiftOutlined, TruckOutlined, EyeOutlined, EyeInvisibleOutlined } from '@ant-design/icons';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { userApi } from '../api';
 import { useAppConfig } from '../hooks/useAppConfig';
 import { useLanguage } from '../i18n';
@@ -11,6 +11,7 @@ import { useDocumentMeta } from '../hooks/useDocumentMeta';
 import { setSessionStorageItem } from '../utils/safeStorage';
 import { getApiErrorDiagnosticText, getApiErrorMessage } from '../utils/apiError';
 import { focusFirstFormError } from '../utils/formValidationFocus';
+import { buildLoginUrl, getPostLoginRedirectTarget } from '../utils/authRedirect';
 import {
   STRONG_PASSWORD_MAX_LENGTH,
   STRONG_PASSWORD_MIN_LENGTH,
@@ -88,6 +89,8 @@ const scrollFirstRegisterErrorIntoView = () => {
 
 const Register: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const postRegisterRedirect = getPostLoginRedirectTarget(location.search, '');
   const { t, language } = useLanguage();
   usePageTitle(t('pages.auth.register'));
   useDocumentMeta({
@@ -230,7 +233,7 @@ const Register: React.FC = () => {
       setSessionStorageItem('loginCandidates', JSON.stringify(loginCandidates));
       setAuthBannerError(null);
       message.success(t('pages.auth.registerSuccess'));
-      navigate('/login');
+      navigate(postRegisterRedirect ? buildLoginUrl(postRegisterRedirect) : '/login');
     } catch (error: unknown) {
       const responseData = registerApiErrorData(error);
       const serverCode = registerApiErrorCode(error);
@@ -538,6 +541,13 @@ const Register: React.FC = () => {
               {t('pages.auth.register')}
             </Button>
           </Form.Item>
+          <p className="register-page__legalNotice" role="note">
+            {t('pages.auth.registerAgreementPrefix')}{' '}
+            <Link to="/terms">{t('footer.terms')}</Link>
+            {' '}{t('pages.auth.registerAgreementAnd')}{' '}
+            <Link to="/privacy">{t('footer.privacy')}</Link>
+            {t('pages.auth.registerAgreementSuffix')}
+          </p>
 
           <Space direction="vertical" className="register-page__footer">
             <Text type="secondary">{t('pages.auth.registerPrivacyHint')}</Text>

@@ -2413,3 +2413,36 @@
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   }
 }
+
+/* Commercial empty cart drawer multipath conversion */
+.cart-drawer__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 4px 8px;
+}
+
+.cart-drawer__emptyCopy {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cart-drawer__emptyHint {
+  color: rgba(16, 47, 34, 0.72);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.cart-drawer__emptyActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 4px;
+  max-width: 100%;
+}
+
+.cart-drawer__emptyActions .ant-btn {
+  min-height: 44px;
+}

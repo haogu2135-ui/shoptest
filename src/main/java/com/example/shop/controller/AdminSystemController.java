@@ -74,7 +74,8 @@ public class AdminSystemController {
     @GetMapping("/status")
     public Map<String, Object> getStatus(Authentication authentication) {
         requireSuperAdminSystemStatusPermission(authentication);
-        return publicStatusPayload(buildStatus());
+        // Super-admin ops view: expose sanitized readiness details without infrastructure secrets.
+        return adminOperationalStatusPayload(buildStatus());
     }
 
     @GetMapping("/readiness")
@@ -111,8 +112,133 @@ public class AdminSystemController {
         return payload;
     }
 
+    /**
+     * Super-admin operational payload for System Monitor.
+     * Includes sanitized production checks (payment webhook readiness, issues/warnings)
+     * while still omitting infrastructure secrets (DB URLs, Redis hosts, Nacos addresses).
+     */
+    private Map<String, Object> adminOperationalStatusPayload(Map<String, Object> detailed) {
+        Map<String, Object> payload = publicStatusPayload(detailed);
+        Object application = detailed.get("application");
+        if (application instanceof Map) {
+            payload.put("application", copyStringKeyedMap((Map<?, ?>) application));
+        }
+        Object runtime = detailed.get("runtime");
+        if (runtime instanceof Map) {
+            payload.put("runtime", copyStringKeyedMap((Map<?, ?>) runtime));
+        }
+        Object memory = detailed.get("memory");
+        if (memory instanceof Map) {
+            payload.put("memory", copyStringKeyedMap((Map<?, ?>) memory));
+        }
+        Object disk = detailed.get("disk");
+        if (disk instanceof Map) {
+            Map<?, ?> diskMap = (Map<?, ?>) disk;
+            Map<String, Object> diskPayload = new LinkedHashMap<>();
+            diskPayload.put("totalBytes", diskMap.get("totalBytes"));
+            diskPayload.put("freeBytes", diskMap.get("freeBytes"));
+            diskPayload.put("usedBytes", diskMap.get("usedBytes"));
+            diskPayload.put("usedPercent", diskMap.get("usedPercent"));
+            payload.put("disk", diskPayload);
+        }
+        payload.put("productionConfig", publicProductionConfig(detailed.get("productionConfig")));
+        return payload;
+    }
+
+    private Map<String, Object> publicProductionConfig(Object component) {
+        Map<String, Object> source = component instanceof Map ? castStringKeyedMap(component) : Collections.emptyMap();
+        Map<String, Object> payload = componentHealth(source);
+        if (source.containsKey("runtimeMode")) {
+            payload.put("runtimeMode", source.get("runtimeMode"));
+        }
+        Object issues = source.get("issues");
+        if (issues instanceof List) {
+            payload.put("issues", sanitizeMessages(castStringList(issues)));
+        }
+        Object warnings = source.get("warnings");
+        if (warnings instanceof List) {
+            payload.put("warnings", sanitizeMessages(castStringList(warnings)));
+        }
+        Object checks = source.get("checks");
+        if (checks instanceof Map) {
+            payload.put("checks", sanitizeProductionChecks(checks));
+        }
+        return payload;
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> sanitizeProductionChecks(Object checks) {
+        if (!(checks instanceof Map)) {
+            return Collections.emptyMap();
+        }
+        Map<?, ?> source = (Map<?, ?>) checks;
+        Map<String, Object> safe = new LinkedHashMap<>();
+        for (Map.Entry<?, ?> entry : source.entrySet()) {
+            if (entry.getKey() == null) {
+                continue;
+            }
+            String key = String.valueOf(entry.getKey());
+            Object value = entry.getValue();
+            if (value instanceof Map) {
+                safe.put(key, sanitizeProductionChecks(value));
+            } else if (value instanceof List) {
+                List<?> list = (List<?>) value;
+                List<Object> items = new ArrayList<>();
+                for (Object item : list) {
+                    if (item instanceof Map) {
+                        items.add(sanitizeProductionChecks(item));
+                    } else if (item instanceof String) {
+                        items.add(sanitizeText((String) item, 240));
+                    } else if (item instanceof Number || item instanceof Boolean || item == null) {
+                        items.add(item);
+                    } else {
+                        items.add(sanitizeText(String.valueOf(item), 240));
+                    }
+                }
+                safe.put(key, items);
+            } else if (value instanceof String) {
+                safe.put(key, sanitizeText((String) value, 240));
+            } else if (value instanceof Number || value instanceof Boolean || value == null) {
+                safe.put(key, value);
+            } else {
+                safe.put(key, sanitizeText(String.valueOf(value), 240));
+            }
+        }
+        return safe;
+    }
+
+    private Map<String, Object> copyStringKeyedMap(Map<?, ?> source) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        for (Map.Entry<?, ?> entry : source.entrySet()) {
+            if (entry.getKey() == null) {
+                continue;
+            }
+            payload.put(String.valueOf(entry.getKey()), entry.getValue());
+        }
+        return payload;
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> castStringKeyedMap(Object value) {
+        return value instanceof Map ? (Map<String, Object>) value : Collections.emptyMap();
+    }
+
+    private List<String> castStringList(Object value) {
+        if (!(value instanceof List)) {
+            return Collections.emptyList();
+        }
+        List<?> list = (List<?>) value;
+        List<String> result = new ArrayList<>();
+        for (Object item : list) {
+            if (item != null) {
+                result.add(String.valueOf(item));
+            }
+        }
+        return result;
+    }
+
     private Map<String, Object> componentHealth(Object component) {
-        Map<String, Object> source = component instanceof Map ? (Map<String, Object>) component : Collections.emptyMap();
+        Map<String, Object> source = component instanceof Map ? castStringKeyedMap(component) : Collections.emptyMap();
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("status", source.getOrDefault("status", "UNKNOWN"));
         payload.put("healthy", source.getOrDefault("healthy", false));
@@ -556,6 +682,8 @@ public class AdminSystemController {
 
         List<PaymentChannelConfig.Channel> enabledChannels = channelConfig.enabledChannels();
         int availableChannels = 0;
+        int webhookRequiredChannels = 0;
+        int webhookReadyChannels = 0;
         List<Map<String, Object>> channelDetails = new ArrayList<>();
         for (PaymentChannelConfig.Channel channel : enabledChannels) {
             boolean available = isProductionCheckoutChannelAvailable(channelConfig, channel, issues, warnings);
@@ -567,17 +695,77 @@ public class AdminSystemController {
             detail.put("provider", channel.getProvider());
             detail.put("available", available);
             detail.put("refundMode", channel.getRefundMode());
+            enrichPaymentProviderWebhookReadiness(channel, detail);
+            if (Boolean.TRUE.equals(detail.get("webhookRequired"))) {
+                webhookRequiredChannels++;
+                if (Boolean.TRUE.equals(detail.get("webhookReady"))) {
+                    webhookReadyChannels++;
+                }
+            }
             channelDetails.add(detail);
         }
 
         check.put("status", availableChannels > 0 ? "PASS" : "FAIL");
         check.put("enabledChannelCount", enabledChannels.size());
         check.put("availableCheckoutChannelCount", availableChannels);
+        check.put("webhookRequiredChannelCount", webhookRequiredChannels);
+        check.put("webhookReadyChannelCount", webhookReadyChannels);
         check.put("channels", channelDetails);
         if (availableChannels == 0) {
             issues.add("at least one enabled payment channel must be configured for production checkout");
         }
         return check;
+    }
+
+    private void enrichPaymentProviderWebhookReadiness(PaymentChannelConfig.Channel channel, Map<String, Object> detail) {
+        if (channel == null) {
+            detail.put("webhookRequired", false);
+            detail.put("webhookReady", true);
+            detail.put("webhookStatus", "NOT_APPLICABLE");
+            return;
+        }
+        if (channel.isStripeProvider()) {
+            String secretKey = property("stripe.secret-key", "");
+            String webhookSecret = property("stripe.webhook-secret", "");
+            boolean credentialsConfigured = hasText(secretKey);
+            boolean webhookSecretConfigured = hasText(webhookSecret);
+            boolean webhookShapeOk = webhookSecretConfigured && webhookSecret.trim().startsWith("whsec_");
+            boolean webhookReady = credentialsConfigured && webhookShapeOk;
+            detail.put("webhookRequired", true);
+            detail.put("credentialsConfigured", credentialsConfigured);
+            detail.put("webhookSecretConfigured", webhookSecretConfigured);
+            detail.put("webhookReady", webhookReady);
+            if (webhookReady) {
+                detail.put("webhookStatus", "READY");
+            } else if (!credentialsConfigured || !webhookSecretConfigured) {
+                detail.put("webhookStatus", "MISSING");
+            } else {
+                detail.put("webhookStatus", "INVALID");
+            }
+            return;
+        }
+        if ("MERCADO_PAGO".equalsIgnoreCase(channel.getCode())) {
+            String accessToken = firstNonBlank(
+                    property("payment.mercado-pago.access-token", ""),
+                    property("mercadopago.access-token", "")
+            );
+            String webhookSecret = firstNonBlank(
+                    property("payment.mercado-pago.webhook-secret", ""),
+                    property("mercadopago.webhook-secret", "")
+            );
+            boolean credentialsConfigured = hasText(accessToken);
+            boolean webhookSecretConfigured = hasText(webhookSecret) && webhookSecret.trim().length() >= 16;
+            boolean webhookReady = credentialsConfigured && webhookSecretConfigured;
+            detail.put("webhookRequired", true);
+            detail.put("credentialsConfigured", credentialsConfigured);
+            detail.put("webhookSecretConfigured", webhookSecretConfigured);
+            detail.put("webhookReady", webhookReady);
+            detail.put("webhookStatus", webhookReady ? "READY" : "MISSING");
+            return;
+        }
+        detail.put("webhookRequired", false);
+        detail.put("webhookReady", true);
+        detail.put("webhookStatus", "NOT_APPLICABLE");
     }
 
     private Map<String, Object> logisticsConfigCheck(List<String> issues, List<String> warnings) {
@@ -649,7 +837,25 @@ public class AdminSystemController {
             return true;
         }
         String checkoutUrl = firstNonBlank(channel.getCheckoutUrl(), channelConfig.getCheckoutBaseUrl());
-        return isPublicHttpsUrl(checkoutUrl) && !checkoutUrl.contains("pay.example.local");
+        boolean redirectReady = isPublicHttpsUrl(checkoutUrl) && !checkoutUrl.contains("pay.example.local");
+        if ("MERCADO_PAGO".equalsIgnoreCase(channel.getCode())) {
+            String accessToken = property("payment.mercado-pago.access-token", "");
+            if (!hasText(accessToken)) {
+                accessToken = property("mercadopago.access-token", "");
+            }
+            String webhookSecret = property("payment.mercado-pago.webhook-secret", "");
+            if (!hasText(webhookSecret)) {
+                webhookSecret = property("mercadopago.webhook-secret", "");
+            }
+            if (!hasText(accessToken)) {
+                warnings.add("payment.mercado-pago.access-token is not configured; Mercado Pago webhooks cannot verify paid status automatically");
+            }
+            if (!hasText(webhookSecret) || webhookSecret.trim().length() < 16) {
+                warnings.add("payment.mercado-pago.webhook-secret is not configured; configure it before relying on Mercado Pago webhooks");
+            }
+            // Keep redirect checkout available, but surface webhook readiness as production warnings.
+        }
+        return redirectReady;
     }
 
     private boolean isStrongProductionSecret(String value, List<String> extraPlaceholders) {

@@ -130,4 +130,35 @@ class PaymentCallbackSignatureContractTest {
         }
         throw new AssertionError("Unterminated method body: " + signaturePrefix);
     }
+
+
+    @Test
+    void mercadoPagoWebhooksRequireSignedProviderLookupBeforeStateMutation() throws Exception {
+        String service = read("src/main/java/com/example/shop/service/PaymentService.java");
+        String controller = read("src/main/java/com/example/shop/controller/PaymentController.java");
+        String security = read("src/main/java/com/example/shop/config/SecurityConfig.java");
+        String rateLimit = read("src/main/java/com/example/shop/service/RateLimitService.java");
+
+        assertTrue(controller.contains("@PostMapping({\"/mercado-pago/webhook\", \"/mercadopago/webhook\"})"));
+        assertTrue(controller.contains("@RequestHeader(value = \"x-signature\", required = false) String signatureHeader"));
+        assertTrue(controller.contains("paymentService.handleMercadoPagoWebhook("));
+        assertTrue(security.contains("/payments/mercado-pago/webhook"));
+        assertTrue(rateLimit.contains("/payments/mercado-pago/webhook"));
+
+        int start = service.indexOf("public Payment handleMercadoPagoWebhook");
+        assertTrue(start >= 0);
+        int end = service.indexOf("public List<Payment> findByOrderId", start);
+        assertTrue(end > start);
+        String handle = service.substring(start, end);
+        assertTrue(handle.contains("mercadoPagoWebhookSecret()"));
+        assertTrue(handle.contains("mercadoPagoAccessToken()"));
+        assertTrue(handle.contains("verifyMercadoPagoSignature("));
+        assertTrue(handle.contains("fetchMercadoPagoPayment("));
+        assertOrder(handle, "verifyMercadoPagoSignature(", "fetchMercadoPagoPayment(");
+        assertOrder(handle, "fetchMercadoPagoPayment(", "markPaidDetailed(");
+        assertTrue(handle.contains("Invalid Mercado Pago webhook signature"));
+        assertTrue(service.contains("MERCADO_PAGO_WEBHOOK_TOLERANCE_SECONDS = 300L"));
+        assertTrue(service.contains("id:\" + dataId + \";request-id:\""));
+    }
+
 }

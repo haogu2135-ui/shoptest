@@ -27,6 +27,35 @@
   border-radius: 8px;
 }
 
+/* Commercial payment-return multipath recovery */
+.order-tracking-page__paymentReturnActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.order-tracking-page__paymentReturnActions .ant-btn {
+  min-height: 44px;
+}
+
+@media (max-width: 780px) {
+  .order-tracking-page__paymentReturn .ant-alert-action {
+    margin-top: 10px;
+    margin-inline-start: 0 !important;
+    width: 100%;
+  }
+
+  .order-tracking-page__paymentReturnActions {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .order-tracking-page__paymentReturnActions .ant-btn {
+    flex: 1 1 calc(50% - 8px);
+  }
+}
+
 .order-tracking-page__lookupError {
   margin-top: 12px;
   border-radius: 8px;
@@ -1599,4 +1628,20 @@
   .order-tracking-page__assuranceActions .ant-btn {
     min-height: 44px !important;
   }
+}
+
+
+/* Commercial: payment-return guest email recovery gate */
+.order-tracking-page__paymentReturnEmailGate {
+  margin-bottom: 12px;
+}
+
+.order-tracking-page__emailInput--gate.ant-input,
+.order-tracking-page__emailInput--gate.ant-input-affix-wrapper {
+  border-color: #124734;
+  box-shadow: 0 0 0 3px rgba(18, 71, 52, 0.12);
+}
+
+.order-tracking-page__lookupForm .order-tracking-page__emailInput--gate {
+  min-height: 44px;
 }

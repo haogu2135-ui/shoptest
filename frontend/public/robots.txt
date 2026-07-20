@@ -6,6 +6,8 @@ Allow: /coupons
 Allow: /pet-finder
 Allow: /pet-gallery
 Allow: /track-order
+Allow: /privacy
+Allow: /terms
 
 # Private commerce and account surfaces stay out of the public index.
 Disallow: /admin

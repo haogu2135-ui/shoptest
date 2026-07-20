@@ -1455,8 +1455,9 @@
     text-align: left;
   }
 
+  /* Commercial profile order action touch targets */
   .profile-order-card__actions .ant-btn {
-    min-height: 34px;
+    min-height: 44px !important;
     flex: 1 1 124px;
   }
 
@@ -3752,4 +3753,51 @@
   flex-wrap: wrap;
   justify-content: center;
   gap: 8px;
+}
+
+/* Commercial profile modal mobile touch targets */
+@media (max-width: 640px) {
+  .profile-mobile-safe-modal .ant-input,
+  .profile-mobile-safe-modal .ant-input-affix-wrapper,
+  .profile-mobile-safe-modal .ant-input-password,
+  .profile-mobile-safe-modal .ant-btn,
+  .profile-mobile-safe-modal .ant-modal-footer .ant-btn {
+    min-height: 44px !important;
+  }
+}
+
+
+/* Commercial guest profile auth gate multi-path conversion */
+.profile-page__authGateCopy {
+  display: grid;
+  gap: 6px;
+}
+
+.profile-page__authGateHint {
+  color: rgba(16, 47, 34, 0.72);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.profile-page__authGate .page-feedback__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.profile-page__authGate .page-feedback__actions .ant-btn {
+  min-height: 44px;
+  touch-action: manipulation;
+}
+
+@media (max-width: 780px) {
+  .profile-page__authGate .page-feedback__actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .profile-page__authGate .page-feedback__actions .ant-btn {
+    width: 100%;
+  }
 }

@@ -7,7 +7,7 @@ import type { WishlistItem } from '../types';
 import { useLanguage } from '../i18n';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useDocumentMeta } from '../hooks/useDocumentMeta';
-import { buildLoginUrlFromWindow } from '../utils/authRedirect';
+import { buildLoginUrl } from '../utils/authRedirect';
 import { useMarket } from '../hooks/useMarket';
 import { productImageFallback, resolveProductImage } from '../utils/productMedia';
 import { dispatchDomEvent } from '../utils/domEvents';
@@ -33,7 +33,8 @@ const getLowStockCount = (item: WishlistItem) =>
 
 const Wishlist: React.FC = () => {
   const [items, setItems] = useState<WishlistItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => hasStoredValue('token'));
+  const [authRequired, setAuthRequired] = useState(() => !hasStoredValue('token'));
   const [loadError, setLoadError] = useState<string | null>(null);
   const [removingProductIds, setRemovingProductIds] = useState<number[]>([]);
   const [addingAllToCart, setAddingAllToCart] = useState(false);
@@ -139,16 +140,16 @@ const Wishlist: React.FC = () => {
 
   useEffect(() => {
     if (!hasStoredValue('token')) {
-      message.open({
-        key: WISHLIST_LOGIN_REQUIRED_MESSAGE_KEY,
-        type: 'warning',
-        content: t('messages.loginRequired'),
-      });
-      navigate(buildLoginUrlFromWindow());
+      setAuthRequired(true);
+      setLoading(false);
+      setItems([]);
+      setLoadError(null);
       return;
     }
+    setAuthRequired(false);
+    setLoading(true);
     fetchWishlist();
-  }, [fetchWishlist, navigate, t]);
+  }, [fetchWishlist]);
 
   const handleRemove = async (productId: number) => {
     if (actionsDisabledByStaleData) {
@@ -377,6 +378,52 @@ const Wishlist: React.FC = () => {
       </div>
     );
   };
+
+  if (authRequired) {
+    const loginLabel = t('pages.wishlist.authGateLogin');
+    const registerLabel = t('pages.wishlist.authGateRegister');
+    return (
+      <div
+        className={`wishlist-page wishlist-page--${language} wishlist-page--empty wishlist-page--authGate`}
+        data-auth-gate={WISHLIST_LOGIN_REQUIRED_MESSAGE_KEY}
+      >
+        <PageEmpty
+          className="wishlist-page__authGate"
+          description={(
+            <div className="wishlist-page__emptyCopy">
+              <div>{t('pages.wishlist.authGateTitle')}</div>
+              <div className="wishlist-page__emptyHint">{t('pages.wishlist.authGateHint')}</div>
+            </div>
+          )}
+          actions={[
+            {
+              key: 'login',
+              label: loginLabel,
+              onClick: () => navigate(buildLoginUrl('/wishlist')),
+            },
+            {
+              key: 'register',
+              label: registerLabel,
+              onClick: () => navigate('/register?redirect=%2Fwishlist'),
+              type: 'default',
+            },
+            {
+              key: 'browse',
+              label: wishlistBrowseActionLabel,
+              onClick: () => navigate('/products'),
+              type: 'default',
+            },
+            {
+              key: 'coupons',
+              label: t('pages.wishlist.emptyCoupons'),
+              onClick: () => navigate('/coupons'),
+              type: 'default',
+            },
+          ]}
+        />
+      </div>
+    );
+  }
 
   if (loading) {
     return (

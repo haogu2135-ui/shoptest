@@ -307,7 +307,7 @@ const CouponCenter: React.FC = () => {
         tone: 'warning',
         title: t('pages.coupons.nextActionLoginTitle'),
         text: t('pages.coupons.nextActionLoginText', { name: couponInsights.bestCoupon.name }),
-        label: t('nav.login'),
+        label: t('pages.coupons.loginToClaim'),
         action: () => navigate(buildLoginUrlFromWindow()),
       };
     }
@@ -365,7 +365,7 @@ const CouponCenter: React.FC = () => {
     ? t('pages.coupons.preview')
     : isAuthenticated
       ? t('pages.coupons.claimAll')
-      : t('nav.login');
+      : t('pages.coupons.loginToClaim');
   const primaryClaimActionLabel = `${primaryClaimLabel}: ${isAuthenticated ? claimableCoupons.length : publicCoupons.length}`;
   const couponNextActionLabel = `${couponNextAction.label}: ${couponNextAction.title}`;
   const goShoppingActionLabel = t('pages.coupons.goShopping');

@@ -79,6 +79,11 @@ describe('SystemMonitor mobile diagnostics guards', () => {
     expect(pageSource).toContain('productionConfig.checks?.paymentChannels?.channels');
     expect(pageSource).toContain("t('pages.systemMonitor.channelReady')");
     expect(pageSource).toContain("t('pages.systemMonitor.channelBlocked')");
+    expect(pageSource).toContain("t('pages.systemMonitor.paymentWebhooks')");
+    expect(pageSource).toContain("t('pages.systemMonitor.channelWebhookReady')");
+    expect(pageSource).toContain("t('pages.systemMonitor.channelWebhookMissing')");
+    expect(pageSource).toContain('webhookReadyChannelCount');
+    expect(pageSource).toContain('data-webhook-status');
     expect(cssSource).toContain('.system-monitor__paymentChannelItem--ready');
     expect(cssSource).toContain('.system-monitor__paymentChannelItem--blocked');
 
@@ -86,6 +91,9 @@ describe('SystemMonitor mobile diagnostics guards', () => {
       expect(messages.pages.systemMonitor.paymentChannelChecklist).toBeTruthy();
       expect(messages.pages.systemMonitor.channelReady).toBeTruthy();
       expect(messages.pages.systemMonitor.channelBlocked).toBeTruthy();
+      expect(messages.pages.systemMonitor.paymentWebhooks).toBeTruthy();
+      expect(messages.pages.systemMonitor.channelWebhookReady).toBeTruthy();
+      expect(messages.pages.systemMonitor.channelWebhookMissing).toBeTruthy();
     }
   });
 
