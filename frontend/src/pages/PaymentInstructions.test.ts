@@ -39,6 +39,29 @@ describe('PaymentInstructions step readability guards', () => {
   });
 
 
+
+  it('treats RECONCILE_REQUIRED as review-only and hides open-payment actions', () => {
+    expect(pageSource).toContain("const isReconcileRequired = paymentStatus === 'RECONCILE_REQUIRED'");
+    expect(pageSource).toContain('!isRefunded && !isRefunding && !isReconcileRequired');
+    expect(pageSource).toContain('isRefunded || isRefunding || isReconcileRequired || recovery.isExpired');
+    expect(pageSource).toContain("t('pages.checkout.paymentRecoveryReconcileRequired')");
+    expect(pageSource).toContain("t('pages.checkout.paymentRecoveryNextReconcileRequired')");
+    expect(pageSource).toContain("message.warning(t('pages.profile.paymentReturnReconcileRequired'))");
+    expect(pageSource).toContain('!isPaid && !isRefunded && !isRefunding && !isReconcileRequired && payment?.paymentUrl');
+    expect(pageSource).toContain('payment?.paymentUrl && !isReconcileRequired');
+    expect(pageSource).toContain('role="alert"');
+    expect(pageSource).toContain('aria-live="assertive"');
+  });
+
+  it('keeps refunded and refunding payment states distinct from paid recovery', () => {
+    expect(pageSource).toContain("paymentStatus === 'REFUNDED'");
+    expect(pageSource).toContain("paymentStatus === 'REFUNDING'");
+    expect(pageSource).toContain("t('pages.profile.paymentRefundedTitle')");
+    expect(pageSource).toContain("t('pages.profile.paymentRefundingTitle')");
+    expect(pageSource).not.toContain("paidOrderStatuses = new Set(['PENDING_SHIPMENT', 'SHIPPED', 'COMPLETED', 'RETURN_REQUESTED', 'RETURN_APPROVED', 'RETURN_SHIPPED', 'REFUNDED'])");
+    expect(pageSource).toContain("if (process.env.NODE_ENV === 'test') return;");
+  });
+
   it('keeps commercial payment recovery actions and status polling', () => {
     expect(pageSource).toContain("t('pages.paymentInstructions.openPayment')");
     expect(pageSource).toContain("t('pages.paymentInstructions.refreshStatus')");

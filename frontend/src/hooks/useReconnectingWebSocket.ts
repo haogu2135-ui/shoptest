@@ -49,6 +49,7 @@ export const useReconnectingWebSocket = ({
     if (!enabled) return;
 
     let shouldReconnect = true;
+    let cancelled = false;
 
     const clearReconnectTimer = () => {
       if (reconnectTimerRef.current !== null) {
@@ -91,7 +92,7 @@ export const useReconnectingWebSocket = ({
       }
 
       const attachSocket = (socket: WebSocket) => {
-        if (!shouldReconnect) {
+        if (cancelled || !shouldReconnect) {
           socket.close();
           return;
         }
@@ -117,7 +118,7 @@ export const useReconnectingWebSocket = ({
         (socketOrPromise as Promise<WebSocket>)
           .then(attachSocket)
           .catch((error) => {
-            if (!shouldReconnect) return;
+            if (cancelled || !shouldReconnect) return;
             onConnectErrorRef.current?.(error);
             scheduleReconnect();
           });
@@ -130,6 +131,7 @@ export const useReconnectingWebSocket = ({
     connect();
 
     return () => {
+      cancelled = true;
       shouldReconnect = false;
       clearReconnectTimer();
       reconnectAttemptRef.current = 0;

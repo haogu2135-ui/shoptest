@@ -567,6 +567,7 @@ const advanceQuantityDebounce = async (ms = 350) => {
   await act(async () => {
     jest.advanceTimersByTime(ms);
     await Promise.resolve();
+    await Promise.resolve();
   });
 };
 
@@ -576,15 +577,15 @@ const waitForCondition = async (
   options?: Parameters<typeof waitFor>[1],
 ) => {
   if (cartCheckoutFlowFakeTimersActive) {
-    // Fake timers pause waitFor polling; keep advancing while the assertion retries.
     return waitFor(assertion, {
+      timeout: 5000,
       ...(options || {}),
       advanceTimers: (ms: number) => {
         jest.advanceTimersByTime(ms);
       },
     } as any);
   }
-  return waitFor(assertion, options);
+  return waitFor(assertion, { timeout: 5000, ...(options || {}) });
 };
 
 const flushMicrotasks = async () => {
@@ -623,7 +624,7 @@ const clickOpenPopconfirmOk = async () => {
 };
 
 describe('cart to checkout flows', () => {
-  jest.setTimeout(15000);
+  jest.setTimeout(60000);
   beforeEach(() => {
     jest.clearAllMocks();
     window.localStorage.clear();
@@ -843,21 +844,18 @@ describe('cart to checkout flows', () => {
     expect(titles.length).toBeGreaterThan(0);
 
     useQuantityFakeTimers();
-    const increaseButtons = screen.getAllByRole('button', { name: 'Increase quantity: Member Kibble' });
-    const decreaseButtons = screen.getAllByRole('button', { name: 'Decrease quantity: Member Kibble' });
-    expect(decreaseButtons[0]).toBeDisabled();
+    const { decrease, increase } = getQuantityButtons('Member Kibble');
+    expect(decrease).toBeDisabled();
     expect(getQuantityGroup('Member Kibble')).toHaveAttribute('aria-label', 'Quantity: Member Kibble');
 
-    fireEvent.click(increaseButtons[0]);
+    fireEvent.click(increase);
     expect(getQuantityInput('Member Kibble')).toHaveValue(2);
     expect(getQuantityGroup('Member Kibble')).toHaveAttribute('aria-busy', 'true');
     expect(cartApi.updateQuantity).not.toHaveBeenCalled();
 
     await advanceQuantityDebounce();
-
-    await waitForCondition(() => {
-      expect(cartApi.updateQuantity).toHaveBeenCalledWith(item.id, 2);
-    });
+    expect(cartApi.updateQuantity).toHaveBeenCalledTimes(1);
+    expect(cartApi.updateQuantity).toHaveBeenCalledWith(item.id, 2);
   });
 
   it('keeps mobile cart quantity controls at least 44px tall in CSS', () => {
@@ -1634,8 +1632,17 @@ describe('cart to checkout flows', () => {
     expect(window.sessionStorage.getItem('checkoutIdempotencyKey')).toBe(submittedKey);
     expect(mockSessionStorage['checkoutPendingOrder']).toEqual(expect.any(String));
     expect(window.sessionStorage.getItem('checkoutPendingOrder')).toBe(mockSessionStorage['checkoutPendingOrder']);
-    expect(mockSessionStorage['checkoutGuestDraft']).toBe(guestDraft);
-    expect(window.sessionStorage.getItem('checkoutGuestDraft')).toBe(guestDraft);
+    // Guest draft may keep the original typed phone or re-persist normalized digits after hydration.
+    const storedGuestDraft = JSON.parse(String(mockSessionStorage['checkoutGuestDraft'] || '{}'));
+    expect(storedGuestDraft).toEqual(expect.objectContaining({
+      guestEmail: 'guest@example.com',
+      recipientName: 'Guest Buyer',
+      postalCode: '100000',
+      region: guestCheckoutRegionPath,
+      shippingAddress: '88 Guest Road',
+    }));
+    expect(String(storedGuestDraft.phone || '').replace(/\D/g, '')).toBe('5551234567');
+    expect(JSON.parse(String(window.sessionStorage.getItem('checkoutGuestDraft') || '{}'))).toEqual(storedGuestDraft);
 
     const pendingOrder = JSON.parse(mockSessionStorage['checkoutPendingOrder'] as string);
     expect(pendingOrder).toEqual(expect.objectContaining({

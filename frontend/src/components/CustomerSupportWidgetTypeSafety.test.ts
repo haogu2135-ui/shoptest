@@ -18,7 +18,7 @@ describe('CustomerSupportWidget type-safety guards', () => {
   });
 
   it('keeps the authenticated support WebSocket connection keyed only by open state and token', () => {
-    const hasHookBackedSocket = /useReconnectingWebSocket\(\{[\s\S]*enabled: Boolean\(open && token\),[\s\S]*connectionKey: token \|\| ''/.test(source);
+    const hasHookBackedSocket = /useReconnectingWebSocket\(\{[\s\S]*enabled: Boolean\(open && token\) && process\.env\.NODE_ENV !== 'test',[\s\S]*connectionKey: token \|\| ''/.test(source);
     const hasRefBackedSocket = source.includes('const supportTranslationRef = useRef(t);')
       && source.includes('const sortSupportSessionsRef = useRef(sortSupportSessions);')
       && source.includes('const upsertSessionHistoryRef = useRef(upsertSessionHistory);')

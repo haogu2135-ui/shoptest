@@ -29,7 +29,7 @@ class PaymentChannelAvailabilityServiceTest {
         String source = Files.readString(SOURCE, StandardCharsets.UTF_8);
 
         assertTrue(source.contains("channelConfig.isStripeProvider()"));
-        assertTrue(source.contains("!isBlank(stripeSecretKey())"));
+        assertTrue(source.contains("if (isBlank(stripeSecretKey()))"));
         assertTrue(source.contains("!isBlank(stripeWebhookSecret())"));
         assertTrue(source.contains("isProductionGatewayUrl(stripeSuccessUrl())"));
         assertTrue(source.contains("isProductionGatewayUrl(stripeCancelUrl())"));
@@ -43,4 +43,16 @@ class PaymentChannelAvailabilityServiceTest {
         assertTrue(source.contains("GatewayUrlValidator.isLocalOrPrivateHost(host)"));
         assertTrue(source.contains("containsPlaceholderGatewayHost(configuredUrl)"));
     }
+
+    @Test
+    void stripeRequiresSecretKeyInAllRuntimeModes() throws Exception {
+        String source = Files.readString(SOURCE, StandardCharsets.UTF_8);
+        assertTrue(source.contains("if (channelConfig.isStripeProvider())"));
+        assertTrue(source.contains("if (isBlank(stripeSecretKey()))"));
+        assertTrue(source.contains("return false;"));
+        // Non-production may still short-circuit after the Stripe secret gate.
+        assertTrue(source.contains("if (!isProductionMode())"));
+        assertTrue(source.contains("return true;"));
+    }
+
 }

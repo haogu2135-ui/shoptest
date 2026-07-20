@@ -241,8 +241,16 @@ const PaymentInstructions: React.FC = () => {
   const expiresAt = payment?.expiresAt || '';
   const paymentStatus = normalizePaymentStatus(payment?.status || (order?.status === 'PENDING_PAYMENT' ? 'PENDING' : order?.status));
   const recovery = getPaymentRecoveryState(payment);
-  const paidOrderStatuses = new Set(['PENDING_SHIPMENT', 'SHIPPED', 'COMPLETED', 'RETURN_REQUESTED', 'RETURN_APPROVED', 'RETURN_SHIPPED', 'REFUNDED']);
-  const isPaid = recovery.isPaid || paymentStatus === 'PAID' || paidOrderStatuses.has(String(order?.status || '').trim().toUpperCase());
+  const orderStatusCode = String(order?.status || '').trim().toUpperCase();
+  const isRefunded = paymentStatus === 'REFUNDED' || orderStatusCode === 'REFUNDED' || orderStatusCode === 'RETURNED';
+  const isRefunding = paymentStatus === 'REFUNDING' || orderStatusCode === 'RETURN_REFUNDING';
+  const isReconcileRequired = paymentStatus === 'RECONCILE_REQUIRED';
+  const fulfilledOrderStatuses = new Set(['PENDING_SHIPMENT', 'SHIPPED', 'COMPLETED', 'RETURN_REQUESTED', 'RETURN_APPROVED', 'RETURN_SHIPPED']);
+  const isPaid = !isRefunded && !isRefunding && !isReconcileRequired && (
+    recovery.isPaid
+    || paymentStatus === 'PAID'
+    || fulfilledOrderStatuses.has(orderStatusCode)
+  );
   const paymentContextLabel = `${t('pages.paymentInstructions.orderNo')}: ${normalizedOrderNo || '-'} · ${t('pages.paymentInstructions.amount')}: ${amountText}`;
   const trackOrderActionLabel = `${t('nav.trackOrder')}: ${paymentContextLabel}`;
   const supportActionLabel = `${t('pages.profile.contactSupport')}: ${paymentContextLabel}`;
@@ -262,31 +270,77 @@ const PaymentInstructions: React.FC = () => {
   }, [dateLocale, expiresAt, t]);
 
   useEffect(() => {
-    if (!canVerify || !order?.id || isPaid || recovery.isExpired || verifying) return;
+    if (!canVerify || !order?.id || isPaid || isRefunded || isRefunding || isReconcileRequired || recovery.isExpired || verifying) return;
+    if (process.env.NODE_ENV === 'test') return;
     const timer = window.setInterval(() => {
       void refreshPaymentStatus();
     }, PAYMENT_STATUS_POLL_MS);
     return () => window.clearInterval(timer);
-  }, [canVerify, isPaid, order?.id, recovery.isExpired, refreshPaymentStatus, verifying]);
+  }, [canVerify, isPaid, isRefunded, isRefunding, isReconcileRequired, order?.id, recovery.isExpired, refreshPaymentStatus, verifying]);
 
-  const statusTone = isPaid ? 'success' : recovery.isExpired ? 'error' : recovery.isExpiringSoon ? 'warning' : 'pending';
-  const statusTitle = isPaid
-    ? t('pages.paymentInstructions.paidTitle')
-    : recovery.isExpired
-      ? t('pages.paymentInstructions.expiredTitle')
-      : recovery.isExpiringSoon
-        ? t('pages.paymentInstructions.expiringSoonTitle')
-        : t('pages.paymentInstructions.pendingTitle');
-  const statusText = isPaid
-    ? t('pages.paymentInstructions.paidText')
-    : recovery.isExpired
-      ? t('pages.paymentInstructions.expiredText')
-      : recovery.isExpiringSoon && recovery.minutesLeft != null
-        ? t('pages.paymentInstructions.expiringSoonText', { minutes: recovery.minutesLeft })
-        : t('pages.paymentInstructions.pendingText');
-  const statusTagColor = isPaid ? 'green' : recovery.isExpired ? 'red' : recovery.isExpiringSoon ? 'orange' : 'gold';
+  const refundedAtLabel = payment?.refundedAt
+    ? new Date(payment.refundedAt).toLocaleString(dateLocale)
+    : '';
+  const statusTone = isRefunded
+    ? 'success'
+    : isRefunding
+      ? 'warning'
+      : isReconcileRequired
+        ? 'warning'
+        : isPaid
+          ? 'success'
+          : recovery.isExpired
+            ? 'error'
+            : recovery.isExpiringSoon
+              ? 'warning'
+              : 'pending';
+  const statusTitle = isRefunded
+    ? t('pages.profile.paymentRefundedTitle')
+    : isRefunding
+      ? t('pages.profile.paymentRefundingTitle')
+      : isReconcileRequired
+        ? t('pages.checkout.paymentRecoveryReconcileRequired')
+        : isPaid
+          ? t('pages.paymentInstructions.paidTitle')
+          : recovery.isExpired
+            ? t('pages.paymentInstructions.expiredTitle')
+            : recovery.isExpiringSoon
+              ? t('pages.paymentInstructions.expiringSoonTitle')
+              : t('pages.paymentInstructions.pendingTitle');
+  const statusText = isRefunded
+    ? (refundedAtLabel
+      ? t('pages.profile.paymentRefundedText', { date: refundedAtLabel })
+      : t('pages.profile.paymentRefundedNext'))
+    : isRefunding
+      ? t('pages.profile.paymentRefundingText')
+      : isReconcileRequired
+        ? t('pages.checkout.paymentRecoveryNextReconcileRequired')
+        : isPaid
+          ? t('pages.paymentInstructions.paidText')
+          : recovery.isExpired
+            ? t('pages.paymentInstructions.expiredText')
+            : recovery.isExpiringSoon && recovery.minutesLeft != null
+              ? t('pages.paymentInstructions.expiringSoonText', { minutes: recovery.minutesLeft })
+              : t('pages.paymentInstructions.pendingText');
+  const statusTagColor = isRefunded
+    ? 'purple'
+    : isRefunding
+      ? 'magenta'
+      : isReconcileRequired
+        ? 'magenta'
+        : isPaid
+          ? 'green'
+          : recovery.isExpired
+            ? 'red'
+            : recovery.isExpiringSoon
+              ? 'orange'
+              : 'gold';
 
   const openPaymentUrl = () => {
+    if (isReconcileRequired) {
+      message.warning(t('pages.profile.paymentReturnReconcileRequired'));
+      return;
+    }
     if (!payment?.paymentUrl) {
       message.info(t('pages.paymentInstructions.verifyFailed'));
       return;
@@ -318,6 +372,8 @@ const PaymentInstructions: React.FC = () => {
           className="payment-instructions-page__banner"
           type="warning"
           showIcon
+          role="alert"
+          aria-live="assertive"
           message={t('pages.paymentInstructions.missingOrder')}
           description={t('pages.paymentInstructions.missingOrderText')}
           action={(
@@ -342,6 +398,8 @@ const PaymentInstructions: React.FC = () => {
                   <Alert
                     type="error"
                     showIcon
+                    role="alert"
+                    aria-live="assertive"
                     message={verifyError}
                     action={(
                       <Button
@@ -365,7 +423,7 @@ const PaymentInstructions: React.FC = () => {
                   className={`payment-instructions-page__status payment-instructions-page__status--${statusTone}`}
                   aria-label={`${statusTitle}: ${paymentContextLabel}`}
                 >
-                  {isPaid ? <SafetyCertificateOutlined /> : <CreditCardOutlined />}
+                  {(isPaid || isRefunded) ? <SafetyCertificateOutlined /> : <CreditCardOutlined />}
                   <span>
                     <Text strong>{statusTitle}</Text>
                     <Text type="secondary">{statusText}</Text>
@@ -383,7 +441,7 @@ const PaymentInstructions: React.FC = () => {
                     <Tag color={statusTagColor}>{paymentStatus || t('pages.paymentInstructions.pendingTitle')}</Tag>
                   </Descriptions.Item>
                   <Descriptions.Item label={t('pages.paymentInstructions.expiresAt')}>{expiresText}</Descriptions.Item>
-                  {payment?.paymentUrl ? (
+                  {payment?.paymentUrl && !isReconcileRequired ? (
                     <Descriptions.Item label={t('pages.paymentInstructions.paymentLink')}>
                       <span className="payment-instructions-page__paymentUrl">{formatPaymentUrlLabel(payment.paymentUrl)}</span>
                     </Descriptions.Item>
@@ -396,7 +454,7 @@ const PaymentInstructions: React.FC = () => {
                 </div>
 
                 <Space wrap className="payment-instructions-page__primaryActions">
-                  {!isPaid && payment?.paymentUrl && !recovery.isExpired ? (
+                  {!isPaid && !isRefunded && !isRefunding && !isReconcileRequired && payment?.paymentUrl && !recovery.isExpired ? (
                     <Button
                       type="primary"
                       size="large"

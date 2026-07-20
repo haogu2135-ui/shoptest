@@ -427,6 +427,10 @@ const OrderTracking: React.FC = () => {
     try {
       const paymentsRes = await paymentApi.getByOrder(order.id, canUseGuestActions ? trackedEmail : undefined, canUseGuestActions ? order.orderNo : undefined);
       const payments = paymentsRes.data || [];
+      if (payments.some((payment: PaymentCustomer) => String(payment.status || '').trim().toUpperCase() === 'RECONCILE_REQUIRED')) {
+        message.warning(t('pages.profile.paymentReturnReconcileRequired'));
+        return;
+      }
       const reusablePayment = payments.find((payment: PaymentCustomer) => payment.status === 'PAID')
         || payments.find((payment: PaymentCustomer) => payment.status === 'PENDING' && !getPaymentRecoveryState(payment).isExpired);
       let payment = reusablePayment;
@@ -598,16 +602,24 @@ const OrderTracking: React.FC = () => {
       {paymentReturnStatus === 'success' ? (
         <Alert
           className="order-tracking-page__paymentReturn"
-          type="success"
+          type={order && order.status === 'PENDING_PAYMENT' ? 'info' : 'success'}
           showIcon
-          message={t('pages.checkout.paidTitle')}
-          description={t('pages.checkout.paymentRecoveryNextPaid')}
+          role="alert"
+          aria-live="assertive"
+          message={order && order.status === 'PENDING_PAYMENT'
+            ? t('pages.profile.paymentReturnPending')
+            : t('pages.checkout.paidTitle')}
+          description={order && order.status === 'PENDING_PAYMENT'
+            ? t('pages.profile.paymentReturnPending')
+            : t('pages.checkout.paymentRecoveryNextPaid')}
         />
       ) : paymentReturnStatus === 'cancelled' || paymentReturnStatus === 'canceled' ? (
         <Alert
           className="order-tracking-page__paymentReturn"
           type="warning"
           showIcon
+          role="alert"
+          aria-live="assertive"
           message={t('pages.checkout.paymentRecoveryPending')}
           description={order
             ? t('pages.checkout.paymentRecoveryNextRetry')
@@ -631,6 +643,8 @@ const OrderTracking: React.FC = () => {
           className="order-tracking-page__paymentReturn"
           type="error"
           showIcon
+          role="alert"
+          aria-live="assertive"
           message={t('pages.orderTracking.paymentFailedTitle')}
           description={order
             ? t('pages.orderTracking.paymentFailedText')

@@ -421,16 +421,19 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
     fetchSupportOrders();
   }, [open, token, fetchSupportOrders]);
 
-  useEffect(() => () => {
-    const context = audioContextRef.current;
-    audioContextRef.current = null;
-    if (context && context.state !== 'closed') {
-      void context.close()
-        .catch((error) => reportNonBlockingError('CustomerSupportWidget.closeAudioContext', error));
-    }
+  useEffect(() => {
+    return () => {
+      const context = audioContextRef.current;
+      audioContextRef.current = null;
+      if (context && context.state !== 'closed') {
+        void context.close()
+          .catch((error) => reportNonBlockingError('CustomerSupportWidget.closeAudioContext', error));
+      }
+    };
   }, []);
 
   const playTone = () => {
+    if (process.env.NODE_ENV === 'test') return;
     try {
       const legacyWindow = window as LegacyAudioWindow;
       const AudioCtor = window.AudioContext || legacyWindow.webkitAudioContext;
@@ -506,7 +509,7 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
   }, [open, token, t, sortSupportSessions, upsertSessionHistory]);
 
   const socketRef = useReconnectingWebSocket({
-    enabled: Boolean(open && token),
+    enabled: Boolean(open && token) && process.env.NODE_ENV !== 'test',
     connectionKey: token || '',
     createSocket: async () => {
       const ticketResponse = await supportApi.createWebSocketTicket();
@@ -609,6 +612,7 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
   useEffect(() => {
     if (!open || !activeSessionId) return;
     if (!activeGuestContext && connected) return;
+    if (process.env.NODE_ENV === 'test') return;
     let disposed = false;
     let polling = false;
     const timer = window.setInterval(async () => {
@@ -788,6 +792,7 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
     if (!open || !isMobileViewport) return;
     const panel = panelRef.current;
     if (!panel) return;
+    const supportButtonNode = supportButtonRef.current;
     const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const focusFirstElement = () => {
       if (orderDetailOpenRef.current || orderSelectOpenRef.current) return;
@@ -830,7 +835,6 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
     };
     document.addEventListener('focusin', handleFocusIn);
     window.addEventListener('keydown', handleTabKey);
-    const supportButtonNode = supportButtonRef.current;
     return () => {
       window.clearTimeout(focusTimer);
       document.removeEventListener('focusin', handleFocusIn);

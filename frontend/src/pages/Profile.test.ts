@@ -182,7 +182,7 @@ describe('Profile mobile control visibility', () => {
   it('keeps payment polling lifecycle-bound without delayed location redirects', () => {
     const source = readProfileSource();
     const refreshStateStart = source.indexOf('const refreshPaymentState = useCallback(async (orderId: number, isActive: () => boolean = () => true) => {');
-    const continuePaymentStart = source.indexOf('const handleContinuePayment = async (order: OrderCustomer) => {');
+    const continuePaymentStart = source.indexOf('const handleContinuePayment = useCallback(async (order: OrderCustomer) => {');
     const pollingEffectStart = source.indexOf('if (!paymentModalVisible || !orderId) return;');
     const channelEffectStart = source.indexOf('paymentApi.getChannels()');
     const refreshStateSource = source.slice(refreshStateStart, continuePaymentStart);
@@ -225,7 +225,8 @@ describe('Profile mobile control visibility', () => {
     expect(paymentReturnEffectSource).toMatch(/\}, \[[^\]]*paymentChannelsLoaded[^\]]*\]\);/);
     expect(channelEffectSource).toContain('const res = await paymentApi.getChannels();');
     expect(channelEffectSource.match(/setPaymentChannelsLoaded\(true\);/g)?.length).toBe(2);
-    expect(channelEffectSource).toContain("setPaymentChannelsError(getApiErrorMessage(error, t('pages.checkout.paymentUnavailableDescription'), language));");
+    expect(channelEffectSource).toContain("const { t: latestT, language: latestLanguage } = profileLocalizationRef.current;");
+    expect(channelEffectSource).toContain("setPaymentChannelsError(getApiErrorMessage(error, latestT('pages.checkout.paymentUnavailableDescription'), latestLanguage));");
     expect(channelEffectSource).toContain('void loadPaymentChannels(() => !disposed && mountedRef.current);');
     expect(preferredChannelSource).toContain("const normalizedPreferred = String(preferred || '').trim();");
     expect(preferredChannelSource).toContain("channels.length === 0 || channels.some((channel) => channel.code === normalizedPreferred)");
@@ -272,7 +273,7 @@ describe('Profile mobile control visibility', () => {
 
   it('guards continue-payment actions against duplicate in-flight requests', () => {
     const source = readProfileSource();
-    const continuePaymentStart = source.indexOf('const handleContinuePayment = async (order: OrderCustomer) => {');
+    const continuePaymentStart = source.indexOf('const handleContinuePayment = useCallback(async (order: OrderCustomer) => {');
     const refreshPaymentStart = source.indexOf('const handleRefreshPayment = async () => {');
     const continuePaymentSource = source.slice(continuePaymentStart, refreshPaymentStart);
 
@@ -296,8 +297,9 @@ describe('Profile mobile control visibility', () => {
     expect(fetchPetProfilesStart).toBeGreaterThan(-1);
     expect(fetchPetProfilesSource).toContain("reportNonBlockingError('Profile.fetchPetProfiles', error);");
     expect(fetchPetProfilesSource).toContain('setPetProfiles([]);');
-    expect(fetchPetProfilesSource).toContain("message.error(t('pages.profile.fetchPetProfilesFailed'));");
-    expect(fetchPetProfilesSource).toContain('}, [t]);');
+    expect(fetchPetProfilesSource).toContain("message.error(profileLocalizationRef.current.t('pages.profile.fetchPetProfilesFailed'));");
+    expect(fetchPetProfilesSource).toContain('}, []);');
+    expect(source).toContain('const profileLocalizationRef = useRef({ t, language });');
 
     for (const locale of ['en', 'zh', 'es']) {
       const messages = readLocale(locale);
@@ -305,19 +307,59 @@ describe('Profile mobile control visibility', () => {
     }
   });
 
+
+  it('opens the orders tab when deep-linking from a notification order number', () => {
+    const source = require('fs').readFileSync(require('path').resolve(__dirname, 'Profile.tsx'), 'utf8');
+    expect(source).toContain("setProfileActiveTab('orders')");
+    expect(source).toContain('setOrderSearchText((current) => (current.trim() ? current : deepLinkOrderNo))');
+  });
+
   it('routes cancelled and failed payment returns into pending-payment orders', () => {
     const source = require('fs').readFileSync(require('path').resolve(__dirname, 'Profile.tsx'), 'utf8');
     expect(source).toContain('const isPaymentReturnIncomplete = paymentReturnStatus === \'cancelled\'');
     expect(source).toContain("paymentReturnStatus === 'failed'");
     expect(source).toContain("setOrderStatusFilter('PENDING_PAYMENT')");
-    expect(source).toContain("t('pages.profile.paymentReturnCancelled')");
-    expect(source).toContain("t('pages.profile.paymentReturnFailed')");
+    expect(source).toContain("latestT('pages.profile.paymentReturnCancelled')");
+    expect(source).toContain("latestT('pages.profile.paymentReturnFailed')");
+    expect(source).toContain("latestT('pages.profile.paymentReturnCancelledOrder'");
+    expect(source).toContain("latestT('pages.profile.paymentReturnFailedOrder'");
     expect(source).toContain('autoResumePaymentReturnRef');
     expect(source).toContain("normalizeStatusCode(targetOrder.status) !== 'PENDING_PAYMENT'");
     expect(source).toContain('void handleContinuePayment(targetOrder)');
     expect(source).toContain('setOrderSearchText(paymentReturnOrderNo)');
   });
 
+
+  it('announces payment-return recovery as a persistent orders alert', () => {
+    const source = readProfileSource();
+    expect(source).toContain('className="profile-payment-return"');
+    expect(source).toContain('isPaymentReturnSuccess || isPaymentReturnIncomplete');
+    expect(source).toContain('role="alert"');
+    expect(source).toContain('aria-live="assertive"');
+    expect(source).toContain("t('pages.profile.paymentReturnSynced')");
+    expect(source).toContain("t('pages.profile.paymentReturnFailedOrder'");
+    expect(source).toContain("t('pages.profile.paymentReturnCancelledOrder'");
+    expect(source).toContain("t('pages.checkout.paymentRecoveryNextPaid')");
+    expect(source).toContain("t('pages.checkout.paymentRecoveryNextRetry')");
+  });
+
+  it('keeps continue-pay reconcile-safe and hides gateway actions when review is required', () => {
+    const source = readProfileSource();
+    const modalStart = source.indexOf("title={t('pages.profile.continuePay')}");
+    const modalSource = source.slice(modalStart, source.indexOf('</Modal>', modalStart));
+
+    expect(source).toContain("normalizeStatusCode(item.status) === 'RECONCILE_REQUIRED'");
+    expect(source).toContain('const paidPayment = paymentList.find');
+    expect(source).toContain('const reconcilePayment = paymentList.find');
+    expect(source).toContain('const pendingPayment = paymentList.find');
+    expect(source).toContain('const reusablePayment = paidPayment || reconcilePayment || pendingPayment');
+    expect(source).toContain("normalizeStatusCode(selectedPayment?.status) === 'RECONCILE_REQUIRED'");
+    expect(source).toContain("message.warning(t('pages.profile.paymentReturnReconcileRequired'))");
+    expect(modalSource).toContain('role="alert"');
+    expect(modalSource).toContain('aria-live="assertive"');
+    expect(modalSource).toContain('selectedPayment.paymentUrl && !selectedPaymentPaid && !selectedPaymentReconcileRequired');
+    expect(modalSource).toContain("t('pages.checkout.paymentRecoveryNextReconcileRequired')");
+  });
 
   it('surfaces refund audit timestamps and customer guidance in the payment modal', () => {
     const source = require('fs').readFileSync(require('path').resolve(__dirname, 'Profile.tsx'), 'utf8');
@@ -326,6 +368,9 @@ describe('Profile mobile control visibility', () => {
     expect(source).toContain("t('pages.profile.paidAt')");
     expect(source).toContain('selectedPayment.refundedAt');
     expect(source).toContain('payment.refundedAt');
+    expect(source).toContain('className="profile-payment-recovery" role="status" aria-live="polite"');
+    expect(source).not.toContain('selectedPayment.refundReference');
+    expect(source).not.toContain('payment.refundReference');
   });
 
 });

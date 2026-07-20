@@ -80,6 +80,11 @@ describe('Notifications mobile bottom-nav clearance contract', () => {
     expect(source).toContain("t('pages.notifications.actionTrackOrder')");
     expect(source).toContain("t('pages.notifications.actionOpenOrders')");
     expect(source).toContain('notifications-page__titleButton');
+    expect(source).toContain('notificationLooksLikeShipment');
+    expect(source).toContain('notificationLooksLikeReturnFlow');
+    expect(source).toContain('navigate(`/track-order?orderNo=${encodeURIComponent(orderNo)}`);');
+    expect(source).toContain('(SO\\d{6,})');
+
   });
 
 });

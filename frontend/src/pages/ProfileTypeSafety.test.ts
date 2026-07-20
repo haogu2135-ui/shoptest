@@ -52,7 +52,8 @@ describe('Profile type-safety guard', () => {
     expect(syncSource).toContain('await fetchOrders();');
     expect(paymentReturnEffectSource).toContain('syncPaymentReturnState(targetOrder).catch(() => {');
     expect(paymentReturnEffectSource).toContain('if (mountedRef.current && handledPaymentReturnRef.current === returnKey) {');
-    expect(paymentReturnEffectSource.indexOf('if (mountedRef.current && handledPaymentReturnRef.current === returnKey) {')).toBeLessThan(paymentReturnEffectSource.indexOf("message.error(t('pages.profile.paymentReturnSyncFailed'));"));
+    expect(paymentReturnEffectSource).toContain("message.error(profileLocalizationRef.current.t('pages.profile.paymentReturnSyncFailed'));");
+    expect(paymentReturnEffectSource.indexOf('if (mountedRef.current && handledPaymentReturnRef.current === returnKey) {')).toBeLessThan(paymentReturnEffectSource.indexOf("message.error(profileLocalizationRef.current.t('pages.profile.paymentReturnSyncFailed'));"));
     expect(source).toMatch(/\}, \[fetchOrders, ordersInitialLoadComplete, [^\]]*paymentReturnOrderId[^\]]*\]\);/);
     expect(source).not.toMatch(/\}, \[fetchOrders, orders, [^\]]*paymentReturnOrderId[^\]]*\]\);/);
   });

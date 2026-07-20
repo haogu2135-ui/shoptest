@@ -33,6 +33,8 @@ const extractOrderNoFromNotification = (item: Pick<AppNotification, 'title' | 'm
     /\border\s+([A-Za-z0-9_-]{4,})/i,
     /\bpedido\s+([A-Za-z0-9_-]{4,})/i,
     /\b订单\s*([A-Za-z0-9_-]{4,})/i,
+    /\border\s*#?\s*([A-Za-z0-9_-]{4,})/i,
+    /\b(SO\d{6,})\b/i,
   ];
   for (const pattern of patterns) {
     const match = haystack.match(pattern);
@@ -41,6 +43,18 @@ const extractOrderNoFromNotification = (item: Pick<AppNotification, 'title' | 'm
     }
   }
   return '';
+};
+
+const notificationLooksLikeShipment = (item: Pick<AppNotification, 'title' | 'message' | 'type'>) => {
+  const type = String(item.type || '').trim().toUpperCase();
+  if (type === 'DELIVERY') return true;
+  const haystack = `${item.title || ''} ${item.message || ''}`;
+  return /\bshipped\b|has shipped|tracking number|已发货|运单号|enviado|n[uú]mero de gu[ií]a/i.test(haystack);
+};
+
+const notificationLooksLikeReturnFlow = (item: Pick<AppNotification, 'title' | 'message' | 'type'>) => {
+  const haystack = `${item.title || ''} ${item.message || ''}`;
+  return /\breturn\b|refund|退货|退款|devoluci[oó]n|reembolso/i.test(haystack);
 };
 
 
@@ -139,7 +153,7 @@ const Notifications: React.FC = () => {
     fetchNotifications();
   }, [fetchNotifications, navigate, t]);
 
-  const handleMarkAsRead = async (id: number) => {
+  const handleMarkAsRead = useCallback(async (id: number) => {
     try {
       await notificationApi.markAsRead(id);
       setNotifications((current) => current.map(n => n.id === id ? { ...n, isRead: true } : n));
@@ -148,7 +162,7 @@ const Notifications: React.FC = () => {
       reportNonBlockingError('Notifications.handleMarkAsRead', error);
       message.error(t('messages.operationFailed'));
     }
-  };
+  }, [t]);
 
   const handleMarkAllAsRead = async () => {
     try {
@@ -198,8 +212,10 @@ const Notifications: React.FC = () => {
     const orderNo = extractOrderNoFromNotification(item);
     const type = String(item.type || '').trim().toUpperCase();
     if (orderNo) {
-      if (type === 'DELIVERY') {
+      if (notificationLooksLikeShipment(item)) {
         navigate(`/track-order?orderNo=${encodeURIComponent(orderNo)}`);
+      } else if (notificationLooksLikeReturnFlow(item)) {
+        navigate(`/profile?tab=orders&orderNo=${encodeURIComponent(orderNo)}`);
       } else {
         navigate(`/profile?tab=orders&orderNo=${encodeURIComponent(orderNo)}`);
       }
@@ -208,7 +224,7 @@ const Notifications: React.FC = () => {
       }
       return;
     }
-    if (type === 'DELIVERY') {
+    if (type === 'DELIVERY' || notificationLooksLikeShipment(item)) {
       navigate('/track-order');
       return;
     }

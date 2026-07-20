@@ -1579,19 +1579,25 @@ const refreshAuthToken = () => {
     return refreshTokenRequest;
 };
 
+type HeaderSetter = {
+    set: (name: string, value: string) => void;
+};
+
+const hasHeaderSetter = (headers: unknown): headers is HeaderSetter => (
+    Boolean(headers)
+    && typeof headers === 'object'
+    && typeof (headers as HeaderSetter).set === 'function'
+);
+
 const applyAuthorizationHeader = (config: AuthRetryConfig, token: string) => {
     const headers = config.headers;
-    const headerSetter = headers as { set?: unknown } | undefined;
-    if (typeof headerSetter?.set === 'function') {
-        const setHeader = headerSetter.set as (name: string, value: string) => void;
-        setHeader.call(headers, 'Authorization', `Bearer ${token}`);
+    if (hasHeaderSetter(headers)) {
+        headers.set('Authorization', `Bearer ${token}`);
         config.headers = headers;
         return;
     }
-    config.headers = {
-        ...(isRecord(headers) ? headers : {}),
-        Authorization: `Bearer ${token}`,
-    } as AuthRetryConfig['headers'];
+    const mutableHeaders = isRecord(headers) ? headers : {};
+    config.headers = { ...mutableHeaders, Authorization: `Bearer ${token}` } as AuthRetryConfig['headers'];
 };
 
 const removeAuthorizationHeader = (config: AuthRetryConfig) => {

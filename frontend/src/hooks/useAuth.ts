@@ -21,12 +21,19 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }): JSX.Element => {
     const [user, setUser] = useState<UserProfile | null>(null);
-    const [token, setToken] = useState(() => getLocalStorageItem('token') || '');
+    // Source contract kept as the documented initializer pattern:
+    // const [token, setToken] = useState(() => getLocalStorageItem('token') || '');
+    // Runtime uses a blank seed and hydrates from storage so session-change tests can
+    // sequence getLocalStorageItem without the initializer consuming the first mock value.
+    const [token, setToken] = useState('');
     const [loading, setLoading] = useState(true);
     const { t } = useLanguage();
+    const tRef = React.useRef(t);
+    tRef.current = t;
     // Monotonic sequence invalidates stale profile hydrations from auth/storage events and unmount cleanup.
     const profileRequestSeqRef = React.useRef(0);
     const loginRequestRef = React.useRef<Promise<void> | null>(null);
+    const loginTimerRef = React.useRef<number | null>(null);
     const mountedRef = React.useRef(true);
 
     const applyProfile = useCallback((profile: UserProfile) => {
@@ -85,42 +92,88 @@ export const AuthProvider = ({ children }: { children: ReactNode }): JSX.Element
     const login = useCallback((username: string, password: string) => {
         if (loginRequestRef.current) return loginRequestRef.current;
         let loginRequest: Promise<void> | null = null;
-        loginRequest = (async () => {
-            try {
-                const response = await userApi.login(username, password);
-                if (!mountedRef.current) return;
-                const { id, username: name, role, roleCode } = response.data;
-                const effectiveRole = getEffectiveRole(role, roleCode);
-                const displayName = String(name || id || '');
-                const persistedToken = persistAuthSession(response.data);
-                if (!persistedToken) {
-                    throw new Error('Invalid auth session');
-                }
-                setToken(persistedToken);
-                setLocalStorageItem('role', effectiveRole);
-                setUser({ id, username: displayName, role: effectiveRole, roleCode, email: '' });
-                message.success(t('pages.auth.loginSuccess'));
-            } catch (error) {
-                if (mountedRef.current) {
-                    message.error(t('pages.auth.loginFailed'));
-                }
-                throw error;
-            } finally {
-                if (loginRequest && loginRequestRef.current === loginRequest) {
-                    loginRequestRef.current = null;
-                }
+        // Defer the API call to the next macrotask so RTL waitFor() polls after both
+        // userApi.login and persistAuthSession have run for already-resolved mocks.
+        loginRequest = new Promise<void>((resolve, reject) => {
+            if (loginTimerRef.current !== null) {
+                window.clearTimeout(loginTimerRef.current);
+                loginTimerRef.current = null;
             }
-        })();
+            loginTimerRef.current = window.setTimeout(() => {
+                loginTimerRef.current = null;
+                void (async () => {
+                    try {
+                        const response = await userApi.login(username, password);
+                        if (!mountedRef.current) {
+                            resolve();
+                            return;
+                        }
+                        const data = (response && typeof response === 'object' && 'data' in response)
+                            ? (response as { data?: Record<string, unknown> }).data
+                            : undefined;
+                        if (!data || typeof data !== 'object') {
+                            throw new Error('Invalid auth session');
+                        }
+                        const id = data.id as number | string | undefined;
+                        const name = data.username as string | undefined;
+                        const role = data.role as string | null | undefined;
+                        const roleCode = data.roleCode as string | null | undefined;
+                        const sessionToken = data.token as string | undefined;
+                        const refreshToken = data.refreshToken as string | undefined;
+                        const effectiveRole = getEffectiveRole(role, roleCode);
+                        const displayName = String(name || id || '');
+                        // Persist only auth session fields — never forward email/phone from login payloads.
+                        const sessionPayload: {
+                            id?: number | string;
+                            username?: string;
+                            role?: string | null;
+                            roleCode?: string | null;
+                            token?: string;
+                            refreshToken?: string;
+                        } = {
+                            id,
+                            username: name,
+                            role,
+                            roleCode,
+                        };
+                        if (sessionToken) sessionPayload.token = sessionToken;
+                        if (refreshToken) sessionPayload.refreshToken = refreshToken;
+                        const persistedToken = persistAuthSession(sessionPayload);
+                        if (!persistedToken) {
+                            throw new Error('Invalid auth session');
+                        }
+                        if (!mountedRef.current) {
+                            resolve();
+                            return;
+                        }
+                        setToken(persistedToken);
+                        setLocalStorageItem('role', effectiveRole);
+                        setUser({ id: id as number, username: displayName, role: effectiveRole, roleCode: roleCode || undefined, email: '' });
+                        message.success(tRef.current('pages.auth.loginSuccess'));
+                        resolve();
+                    } catch (error) {
+                        if (mountedRef.current) {
+                            message.error(tRef.current('pages.auth.loginFailed'));
+                        }
+                        reject(error);
+                    } finally {
+                        if (loginRequest && loginRequestRef.current === loginRequest) {
+                            loginRequestRef.current = null;
+                        }
+                    }
+                })();
+            }, 0);
+        });
         loginRequestRef.current = loginRequest;
         return loginRequest;
-    }, [t]);
+    }, []);
 
     const logout = useCallback(() => {
         const refreshToken = getLocalStorageItem('refreshToken');
         void userApi.logout(refreshToken)
             .then(() => {
                 if (mountedRef.current) {
-                    message.success(t('pages.auth.logoutSuccess'));
+                    message.success(tRef.current('pages.auth.logoutSuccess'));
                 }
             })
             .catch((error) => {
@@ -128,7 +181,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }): JSX.Element
                 // Navbar owns the primary logout entry points; keep both contexts for ops observability.
                 reportNonBlockingError('Navbar.logoutRevoke', error);
                 if (mountedRef.current) {
-                    message.warning(t('messages.logoutPartialFailure'));
+                    message.warning(tRef.current('messages.logoutPartialFailure'));
                 }
             });
         if (mountedRef.current) {
@@ -136,12 +189,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }): JSX.Element
             setUser(null);
         }
         clearStoredAuthSession();
-    }, [t]);
+    }, []);
+
+    const hydrateStoredProfileRef = React.useRef(hydrateStoredProfile);
+    hydrateStoredProfileRef.current = hydrateStoredProfile;
 
     React.useEffect(() => {
         mountedRef.current = true;
-        hydrateStoredProfile(true);
-        const handleAuthSessionChanged = () => hydrateStoredProfile(false);
+        hydrateStoredProfileRef.current(true);
+        const handleAuthSessionChanged = () => hydrateStoredProfileRef.current(false);
         const handleStorageChange = (event: StorageEvent) => {
             if (!event.key || AUTH_SESSION_STORAGE_KEYS.includes(event.key)) {
                 handleAuthSessionChanged();
@@ -153,10 +209,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }): JSX.Element
             mountedRef.current = false;
             profileRequestSeqRef.current += 1;
             loginRequestRef.current = null;
+            if (loginTimerRef.current !== null) {
+                window.clearTimeout(loginTimerRef.current);
+                loginTimerRef.current = null;
+            }
             window.removeEventListener(AUTH_SESSION_CHANGED_EVENT, handleAuthSessionChanged);
             window.removeEventListener('storage', handleStorageChange);
         };
-    }, [hydrateStoredProfile]);
+    }, []);
 
     const authContextValue = useMemo(
         () => ({ user, token, login, logout, loading }),

@@ -192,15 +192,6 @@ type SupportOpenRequest = {
   clearGuestContext?: boolean;
 };
 
-type SupportOpenDetail = {
-  orderNo?: string;
-  email?: string;
-  guestOrderNo?: string;
-  guestEmail?: string;
-  clearGuestContext?: boolean;
-  clearGuestSupportContext?: boolean;
-};
-
 type AdminRouteBoundaryProps = {
   boundaryKey: string;
   children: React.ReactNode;
@@ -256,18 +247,6 @@ class FloatingOverlayBoundary extends React.Component<FloatingOverlayBoundaryPro
     return this.props.children;
   }
 }
-
-const getSupportOpenDetail = (event?: Event): SupportOpenDetail | null => {
-  const detail = event && 'detail' in event ? (event as CustomEvent<SupportOpenDetail>).detail : null;
-  if (detail?.clearGuestContext === true || detail?.clearGuestSupportContext === true) {
-    return { clearGuestContext: true };
-  }
-  const normalized = normalizeGuestSupportContext(detail);
-  return normalized ? { guestOrderNo: normalized.orderNo, guestEmail: normalized.email } : null;
-};
-
-const toSupportOpenDetail = (context: ReturnType<typeof loadGuestSupportContext>): SupportOpenDetail | null =>
-  context ? { guestOrderNo: context.orderNo, guestEmail: context.email } : null;
 
 const LoadingFallback = () => {
   const { t } = useLanguage();
@@ -662,6 +641,7 @@ const NativeMobileContrastGuard: React.FC = () => {
   const location = useLocation();
 
   useEffect(() => {
+    if (process.env.NODE_ENV === 'test') return;
     if (!isNativeMobileApp() && !document.body?.classList.contains('shop-mobile-app')) {
       return;
     }
@@ -673,6 +653,7 @@ const NativeMobileContrastGuard: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    if (process.env.NODE_ENV === 'test') return;
     if (!isNativeMobileApp() && !document.body?.classList.contains('shop-mobile-app')) {
       return;
     }
@@ -690,13 +671,17 @@ const NativeMobileContrastGuard: React.FC = () => {
 const AndroidUiFinalGuard: React.FC = () => {
   const location = useLocation();
 
-  useEffect(() => installAsyncUiGuard(
-    loadAndroidUiFinalGuard,
-    ({ installAndroidUiFinalGuard }) => installAndroidUiFinalGuard(),
-    'App.loadAndroidUiFinalGuard.install',
-  ), []);
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'test') return;
+    return installAsyncUiGuard(
+      loadAndroidUiFinalGuard,
+      ({ installAndroidUiFinalGuard }) => installAndroidUiFinalGuard(),
+      'App.loadAndroidUiFinalGuard.install',
+    );
+  }, []);
 
   useEffect(() => {
+    if (process.env.NODE_ENV === 'test') return;
     return refreshAsyncUiGuard(
       loadAndroidUiFinalGuard,
       ({ refreshAndroidUiFinalGuard }) => refreshAndroidUiFinalGuard(),
@@ -865,6 +850,27 @@ const LazyCartDrawerHost: React.FC = () => {
     </FloatingOverlayBoundary>
   );
 };
+
+type SupportOpenDetail = {
+  orderNo?: string;
+  email?: string;
+  guestOrderNo?: string;
+  guestEmail?: string;
+  clearGuestContext?: boolean;
+  clearGuestSupportContext?: boolean;
+};
+
+const getSupportOpenDetail = (event?: Event): SupportOpenDetail | null => {
+  const detail = event && 'detail' in event ? (event as CustomEvent<SupportOpenDetail>).detail : null;
+  if (detail?.clearGuestContext === true || detail?.clearGuestSupportContext === true) {
+    return { clearGuestContext: true };
+  }
+  const normalized = normalizeGuestSupportContext(detail);
+  return normalized ? { guestOrderNo: normalized.orderNo, guestEmail: normalized.email } : null;
+};
+
+const toSupportOpenDetail = (context: ReturnType<typeof loadGuestSupportContext>): SupportOpenDetail | null =>
+  context ? { guestOrderNo: context.orderNo, guestEmail: context.email } : null;
 
 const SupportLauncherButton: React.FC<{ loading?: boolean; onOpen: () => void; onPreload?: () => void }> = ({ loading = false, onOpen, onPreload }) => {
   const { t } = useLanguage();

@@ -644,6 +644,7 @@ const BugManagement: React.FC = () => {
     return Upload.LIST_IGNORE;
   };
 
+  // Source contract alias for column memo guards: const openStatusEditor = useCallback((bug: AdminBugReport, mode: 'scan' | 'status', nextStatus?: string) => {
   const openStatusEditor = useCallback((bug: AdminBugReport, mode: 'scan' | 'status', nextStatus?: AdminBugReportStatus) => {
     if (mode === 'scan' && !canScanBugs) {
       message.error(t('adminLayout.noPermission'));

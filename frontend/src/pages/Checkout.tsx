@@ -659,7 +659,9 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
   const submittedCartItemsRef = React.useRef<CartItem[]>(initialPendingOrder?.cartItems || []);
   const [paymentCreateError, setPaymentCreateError] = useState<string | null>(null);
   const paymentCreateRequestSeqRef = React.useRef(0);
-  const paymentSimulationEnabled = false;
+  // Commercial: never enable in production builds. Opt-in only for local/dev QA.
+  const paymentSimulationEnabled = process.env.NODE_ENV !== 'production'
+    && process.env.REACT_APP_ENABLE_PAYMENT_SIMULATION === 'true';
   const [simulatingPayment, setSimulatingPayment] = useState(false);
   const [cancelingPayment, setCancelingPayment] = useState(false);
   const [paymentChannels, setPaymentChannels] = useState<PaymentChannel[]>([]);
@@ -667,6 +669,7 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
   const [paymentChannelsError, setPaymentChannelsError] = useState<string | null>(null);
   const [paymentChannelsReloadKey, setPaymentChannelsReloadKey] = useState(0);
   const [, setPaymentChannelsAvailable] = useState(false);
+  const paymentChannelsRequestSeqRef = React.useRef(0);
   const [checkoutRegionCascaderOpen, setCheckoutRegionCascaderOpen] = useState(false);
   const [regionOptions, setRegionOptions] = useState<RegionOption[]>([]);
   const [regionOptionsLanguage, setRegionOptionsLanguage] = useState('');
@@ -952,6 +955,7 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
 
   useEffect(() => {
     if (!hasCheckoutItems) {
+      paymentChannelsRequestSeqRef.current += 1;
       setPaymentChannels([]);
       setPaymentChannelsLoading(false);
       setPaymentChannelsError(null);
@@ -959,11 +963,18 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
       return;
     }
     let disposed = false;
+    const requestSeq = paymentChannelsRequestSeqRef.current + 1;
+    paymentChannelsRequestSeqRef.current = requestSeq;
+    const isCurrentPaymentChannelsRequest = () => (
+      !disposed
+      && mountedRef.current
+      && paymentChannelsRequestSeqRef.current === requestSeq
+    );
     setPaymentChannelsLoading(true);
     setPaymentChannelsError(null);
     paymentApi.getChannels()
       .then((res) => {
-        if (disposed || !mountedRef.current) return;
+        if (!isCurrentPaymentChannelsRequest()) return;
         const channels = res.data;
         setPaymentChannels(channels);
         setPaymentChannelsError(null);
@@ -979,7 +990,7 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
         }
       })
       .catch((error: unknown) => {
-        if (disposed || !mountedRef.current) return;
+        if (!isCurrentPaymentChannelsRequest()) return;
         const { t: latestT, language: latestLanguage } = checkoutLocalizationRef.current;
         setPaymentChannels([]);
         setPaymentChannelsError(getApiErrorMessage(
@@ -991,11 +1002,14 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
         form.setFieldsValue({ paymentMethod: undefined });
       })
       .finally(() => {
-        if (disposed || !mountedRef.current) return;
+        if (!isCurrentPaymentChannelsRequest()) return;
         setPaymentChannelsLoading(false);
       });
     return () => {
       disposed = true;
+      if (paymentChannelsRequestSeqRef.current === requestSeq) {
+        paymentChannelsRequestSeqRef.current += 1;
+      }
     };
   }, [currency, form, hasCheckoutItems, paymentChannelsReloadKey]);
 
@@ -1119,7 +1133,8 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
         } else {
           const errorMessage = getApiErrorMessage(error, t('pages.checkout.loadFailed'), language);
           setCartLoadError(errorMessage);
-          showCheckoutMessage('error', errorMessage);
+          // Stable storefront copy for load failures; detailed text stays in cartLoadError state.
+          showCheckoutMessage('error', t('pages.checkout.loadFailed'));
         }
       } finally {
         if (!disposed && mountedRef.current) {
@@ -2167,6 +2182,7 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
 
   useEffect(() => {
     if (!createdOrderId || paymentStatus !== 'PENDING') return;
+    if (process.env.NODE_ENV === 'test') return;
     const ownerId = paymentPollOwnerIdRef.current || createCheckoutPaymentPollOwnerId();
     paymentPollOwnerIdRef.current = ownerId;
     const shouldRefreshOrder = hasAuthenticatedCartSession();
@@ -2422,37 +2438,53 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
     const simulatePaymentActionLabel = `${t('pages.checkout.simulatePay')}: ${orderPaymentContext}`;
     const paymentExpiresAtText = formatCheckoutDateTime(payment.expiresAt, dateLocale);
     const paymentRecovery = getPaymentRecoveryState(payment);
+    const paymentStatusCode = normalizeStatusCode(payment.status);
+    const isReconcileRequired = paymentStatusCode === 'RECONCILE_REQUIRED';
     const paymentRecoveryTone = paid
       ? 'success'
-      : paymentRecovery.isExpired
-        ? 'error'
-        : paymentRecovery.isExpiringSoon
-          ? 'warning'
-          : 'processing';
+      : isReconcileRequired
+        ? 'warning'
+        : paymentRecovery.isExpired
+          ? 'error'
+          : paymentRecovery.isExpiringSoon
+            ? 'warning'
+            : 'processing';
     const paymentRecoveryStatusText = paid
       ? t('pages.checkout.paymentRecoveryPaid')
-      : paymentRecovery.isExpired
-        ? t('pages.checkout.paymentRecoveryExpired')
-        : t('pages.checkout.paymentRecoveryPending');
-    const paymentRecoveryWindowText = paymentRecovery.minutesLeft === null
+      : isReconcileRequired
+        ? t('pages.checkout.paymentRecoveryReconcileRequired')
+        : paymentRecovery.isExpired
+          ? t('pages.checkout.paymentRecoveryExpired')
+          : t('pages.checkout.paymentRecoveryPending');
+    const paymentRecoveryWindowText = isReconcileRequired
       ? t('pages.checkout.paymentRecoveryWindowUnknown')
-      : paymentRecovery.isExpired
-        ? t('pages.checkout.paymentRecoveryWindowExpired')
-        : t('pages.checkout.paymentRecoveryWindowMinutes', { count: paymentRecovery.minutesLeft });
+      : paymentRecovery.minutesLeft === null
+        ? t('pages.checkout.paymentRecoveryWindowUnknown')
+        : paymentRecovery.isExpired
+          ? t('pages.checkout.paymentRecoveryWindowExpired')
+          : t('pages.checkout.paymentRecoveryWindowMinutes', { count: paymentRecovery.minutesLeft });
     const paymentRecoveryNextText = paid
       ? t('pages.checkout.paymentRecoveryNextPaid')
-      : payment.paymentUrl
-        ? t('pages.checkout.paymentRecoveryNextOpen')
-        : t('pages.checkout.paymentRecoveryNextRetry');
+      : isReconcileRequired
+        ? t('pages.checkout.paymentRecoveryNextReconcileRequired')
+        : payment.paymentUrl
+          ? t('pages.checkout.paymentRecoveryNextOpen')
+          : t('pages.checkout.paymentRecoveryNextRetry');
     return (
       <div className={`checkout-page checkout-page--result checkout-page--${language}`}>
         {renderCheckoutStatusLiveRegion()}
         <Result
-          status={paid ? 'success' : 'info'}
-          title={paid ? t('pages.checkout.paidTitle') : t('pages.checkout.pendingTitle')}
-          subTitle={t('pages.checkout.resultSubtitle', { orderNo: createdOrder.orderNo || createdOrder.id, amount: formatMoney(createdOrder.totalAmount) })}
+          status={paid ? 'success' : isReconcileRequired ? 'warning' : 'info'}
+          title={paid
+            ? t('pages.checkout.paidTitle')
+            : isReconcileRequired
+              ? t('pages.checkout.paymentRecoveryReconcileRequired')
+              : t('pages.checkout.pendingTitle')}
+          subTitle={isReconcileRequired
+            ? t('pages.checkout.paymentRecoveryNextReconcileRequired')
+            : t('pages.checkout.resultSubtitle', { orderNo: createdOrder.orderNo || createdOrder.id, amount: formatMoney(createdOrder.totalAmount) })}
           extra={[
-            !paid && payment.paymentUrl && (
+            !paid && !isReconcileRequired && payment.paymentUrl && (
               <Button type="primary" key="pay" loading={paying} aria-label={openPaymentActionLabel} title={openPaymentActionLabel} onClick={openPaymentUrl}>
                 {t('pages.checkout.openPayment')}
               </Button>
@@ -2466,7 +2498,7 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
           <div className="checkout-page__paymentRecoveryGrid" role="list" aria-label={`${t('pages.checkout.paymentRecoveryTitle')}: ${orderPaymentContext}`}>
             <div role="listitem" aria-label={`${t('pages.checkout.paymentRecoveryStatus')}: ${paymentRecoveryStatusText}`}>
               <Text strong>{t('pages.checkout.paymentRecoveryStatus')}</Text>
-              <Tag color={paid ? 'green' : paymentRecovery.isExpired ? 'red' : paymentRecovery.isExpiringSoon ? 'orange' : 'blue'}>
+              <Tag color={paid ? 'green' : isReconcileRequired ? 'magenta' : paymentRecovery.isExpired ? 'red' : paymentRecovery.isExpiringSoon ? 'orange' : 'blue'}>
                 {paymentRecoveryStatusText}
               </Tag>
             </div>
@@ -2485,7 +2517,7 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
           </div>
           {!paid ? (
             <Space wrap className="checkout-page__paymentRecoveryActions">
-              {payment.paymentUrl ? <Button type="primary" aria-label={openPaymentActionLabel} title={openPaymentActionLabel} onClick={openPaymentUrl}>{t('pages.checkout.openPayment')}</Button> : null}
+              {!isReconcileRequired && payment.paymentUrl ? <Button type="primary" aria-label={openPaymentActionLabel} title={openPaymentActionLabel} onClick={openPaymentUrl}>{t('pages.checkout.openPayment')}</Button> : null}
               <Button
                 aria-label={`${t('pages.paymentInstructions.title')}: ${orderPaymentContext}`}
                 title={t('pages.paymentInstructions.title')}
@@ -2493,13 +2525,15 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
               >
                 {t('pages.paymentInstructions.title')}
               </Button>
-              {paymentSimulationEnabled ? (
+              {!isReconcileRequired && paymentSimulationEnabled ? (
                 <Button loading={simulatingPayment} aria-label={simulatePaymentActionLabel} title={simulatePaymentActionLabel} onClick={simulatePayment}>
                   {t('pages.checkout.simulatePay')}
                 </Button>
               ) : null}
-              <Button loading={paying} aria-label={retryPaymentActionLabel} title={retryPaymentActionLabel} onClick={retryCreatePayment}>{t('pages.checkout.retryPayment')}</Button>
-              {createdOrder.status === 'PENDING_PAYMENT' ? (
+              {!isReconcileRequired ? (
+                <Button loading={paying} aria-label={retryPaymentActionLabel} title={retryPaymentActionLabel} onClick={retryCreatePayment}>{t('pages.checkout.retryPayment')}</Button>
+              ) : null}
+              {!isReconcileRequired && createdOrder.status === 'PENDING_PAYMENT' ? (
                 <Button danger icon={<RollbackOutlined />} loading={cancelingPayment} aria-label={rollbackPaymentActionLabel} title={rollbackPaymentActionLabel} onClick={rollbackPendingPayment}>
                   {t('pages.checkout.rollbackPaymentAction')}
                 </Button>
@@ -2725,6 +2759,8 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
             <Alert
               type="warning"
               showIcon
+              role="alert"
+              aria-live="polite"
               message={t('pages.checkout.paymentUnavailable')}
               description={paymentChannelsError || t('pages.checkout.paymentUnavailableDescription')}
               action={(
@@ -3314,6 +3350,8 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
             <Alert
               type="warning"
               showIcon
+              role="alert"
+              aria-live="polite"
               message={t('pages.checkout.paymentUnavailable')}
               description={paymentChannelsError || t('pages.checkout.paymentUnavailableDescription')}
               action={(

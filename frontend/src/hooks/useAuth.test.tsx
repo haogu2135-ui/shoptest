@@ -249,6 +249,8 @@ describe('AuthProvider initial profile cleanup', () => {
     const loginSource = useAuthSource.slice(loginStart, useAuthSource.indexOf('const logout = useCallback', loginStart));
 
     expect(useAuthSource).toContain('const loginRequestRef = React.useRef<Promise<void> | null>(null);');
+    expect(useAuthSource).toContain('const loginTimerRef = React.useRef<number | null>(null);');
+    expect(useAuthSource).toContain('window.clearTimeout(loginTimerRef.current);');
     expect(loginStart).toBeGreaterThan(-1);
     expect(loginSource).toContain('if (loginRequestRef.current) return loginRequestRef.current;');
     expect(loginSource.indexOf('if (loginRequestRef.current) return loginRequestRef.current;')).toBeLessThan(loginSource.indexOf('const response = await userApi.login(username, password);'));
@@ -281,7 +283,8 @@ describe('AuthProvider initial profile cleanup', () => {
     const { getByTestId } = render(<AuthProvider><LoginStateProbe /></AuthProvider>);
 
     await waitFor(() => expect(userApi.login).toHaveBeenCalledTimes(1));
-
+    // persistAuthSession runs after the login await resolves — wait for it.
+    await waitFor(() => expect(persistAuthSession).toHaveBeenCalled());
     expect(persistAuthSession).toHaveBeenCalledWith(expect.not.objectContaining({ email: expect.anything(), phone: expect.anything() }));
     await waitFor(() => expect(getByTestId('login-username').textContent).toBe('jane'));
     expect(getByTestId('login-phone').textContent).toBe('no-phone');

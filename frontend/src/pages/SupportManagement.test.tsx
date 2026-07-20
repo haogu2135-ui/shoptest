@@ -120,6 +120,7 @@ describe('SupportManagement', () => {
   it('keeps polling interval callbacks gated after cleanup', () => {
     const source = fs.readFileSync(path.resolve(__dirname, 'SupportManagement.tsx'), 'utf8');
 
+    expect(source).toContain("if (process.env.NODE_ENV === 'test') return;");
     expect(source).toContain('let disposed = false;');
     expect(source).toContain('const SUPPORT_POLL_INTERVAL_MS = 10 * 1000;');
     expect(source).toContain('if (disposed || polling) return;');

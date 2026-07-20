@@ -256,7 +256,7 @@ const Cart: React.FC = () => {
       setLoadErrorMessage(null);
       setCartItems(guestItems);
       setSelectedIds(guestItems.filter(canCheckout).map((item) => item.id));
-      if (mountedRef.current) setLoading(false);
+      if (isCurrentCartSnapshotRequest(requestId)) setLoading(false);
       return;
     }
     try {
@@ -290,9 +290,7 @@ const Cart: React.FC = () => {
         message.error(errorMessage);
       }
     } finally {
-      if (isCurrentCartSnapshotRequest(requestId)) {
-        if (mountedRef.current) setLoading(false);
-      }
+      if (isCurrentCartSnapshotRequest(requestId)) setLoading(false);
     }
   }, [beginCartSnapshotRequest, isCurrentCartSnapshotRequest, resetCheckoutStateAfterCartMutation]);
 
@@ -1220,6 +1218,8 @@ const Cart: React.FC = () => {
           type={paymentReturnStatus === 'failed' ? 'error' : 'warning'}
           showIcon
           closable
+          role="alert"
+          aria-live="assertive"
           onClose={clearPaymentReturnParams}
           message={paymentReturnStatus === 'failed'
             ? t('pages.cart.paymentFailedTitle')
@@ -1478,6 +1478,8 @@ const Cart: React.FC = () => {
           className="cart-page__loadErrorAlert"
           type="warning"
           showIcon
+          role="alert"
+          aria-live="assertive"
           message={t('pages.cart.staleDataTitle')}
           description={loadErrorMessage || t('pages.cart.staleDataWarning')}
           action={

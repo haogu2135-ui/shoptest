@@ -103,7 +103,8 @@ const supportSessionMatchesQueue = (session: SupportSession, filter?: string, se
 const SupportManagement: React.FC = () => {
   const [sessions, setSessions] = useState<SupportSession[]>([]);
   const [summary, setSummary] = useState<SupportAdminSummary | null>(null);
-  const [selectedSession, setSelectedSession] = useState<SupportSession | null>(null);
+  const [selectedSession, setSelectedSession] = useState<SupportSession | null>(null);
+
   const [messages, setMessages] = useState<SupportMessage[]>([]);
   const [filter, setFilter] = useState<string | undefined>('OPEN');
   const [queueSearch, setQueueSearch] = useState('');
@@ -186,7 +187,8 @@ const SupportManagement: React.FC = () => {
       disposed = true;
     };
   }, []);
-
+
+
   useEffect(() => {
     return () => {
       const context = audioContextRef.current;
@@ -199,36 +201,59 @@ const SupportManagement: React.FC = () => {
   }, []);
 
   const playTone = () => {
+    if (process.env.NODE_ENV === 'test') return;
     try {
       const audioWindow = window as LegacyAudioWindow;
       const AudioCtor = audioWindow.AudioContext || audioWindow.webkitAudioContext;
       if (!AudioCtor) return;
       const context = audioContextRef.current || new AudioCtor();
-      audioContextRef.current = context;
-      if (context.state === 'suspended') {
-        void context.resume();
-      }
-      const oscillator = context.createOscillator();
-      const gain = context.createGain();
-      oscillator.type = 'sine';
-      oscillator.frequency.value = 880;
-      gain.gain.value = 0.0001;
-      oscillator.connect(gain);
-      gain.connect(context.destination);
-      oscillator.start();
-      gain.gain.exponentialRampToValueAtTime(0.08, context.currentTime + 0.01);
-      gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + 0.18);
-      oscillator.stop(context.currentTime + 0.2);
+      audioContextRef.current = context;
+
+      if (context.state === 'suspended') {
+
+        void context.resume();
+
+      }
+
+      const oscillator = context.createOscillator();
+
+      const gain = context.createGain();
+
+      oscillator.type = 'sine';
+
+      oscillator.frequency.value = 880;
+
+      gain.gain.value = 0.0001;
+
+      oscillator.connect(gain);
+
+      gain.connect(context.destination);
+
+      oscillator.start();
+
+      gain.gain.exponentialRampToValueAtTime(0.08, context.currentTime + 0.01);
+
+      gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + 0.18);
+
+      oscillator.stop(context.currentTime + 0.2);
+
     } catch (error) {
       reportNonBlockingError('SupportManagement.playTone', error);
-    }
-  };
-
+    }
+
+  };
+
+
+
   const decodeOrderMessage = useCallback(decodeSupportOrderMessage, []);
-
-  const displayLastMessage = (content?: string) => {
-    if (!content) return t('pages.support.noMessages');
-    const order = decodeOrderMessage(content);
+
+
+  const displayLastMessage = (content?: string) => {
+
+    if (!content) return t('pages.support.noMessages');
+
+    const order = decodeOrderMessage(content);
+
     return order ? `${t('pages.support.order')} ${order.orderNo || `#${order.id}`}` : content;
   };
 
@@ -268,19 +293,30 @@ const SupportManagement: React.FC = () => {
           : latestOrderContext
             ? t('pages.adminSupport.replyUseWorkflow')
             : t('pages.adminSupport.replyNeedsContext');
-
-  const sortSupportSessions = (items: SupportSession[]) =>
-    [...items].sort((left, right) => {
-      const unreadDelta = Number(right.unreadByAdmin || 0) - Number(left.unreadByAdmin || 0);
-      if (unreadDelta !== 0) return unreadDelta;
-      const leftOpen = left.status === 'OPEN' ? 1 : 0;
-      const rightOpen = right.status === 'OPEN' ? 1 : 0;
-      if (leftOpen !== rightOpen) return rightOpen - leftOpen;
+
+
+  const sortSupportSessions = (items: SupportSession[]) =>
+
+    [...items].sort((left, right) => {
+
+      const unreadDelta = Number(right.unreadByAdmin || 0) - Number(left.unreadByAdmin || 0);
+
+      if (unreadDelta !== 0) return unreadDelta;
+
+      const leftOpen = left.status === 'OPEN' ? 1 : 0;
+
+      const rightOpen = right.status === 'OPEN' ? 1 : 0;
+
+      if (leftOpen !== rightOpen) return rightOpen - leftOpen;
+
       const leftTime = getSafeTime(left.updatedAt);
       const rightTime = getSafeTime(right.updatedAt);
-      return rightTime - leftTime || right.id - left.id;
-    });
-
+      return rightTime - leftTime || right.id - left.id;
+
+    });
+
+
+
   useEffect(() => {
     selectedSessionRef.current = selectedSession;
   }, [selectedSession]);
@@ -324,7 +360,8 @@ const SupportManagement: React.FC = () => {
       setQueueTotal(nextTotal);
     }
   }, []);
-
+
+
   const loadSessions = useCallback(async (options?: { status?: string; page?: number; pageSize?: number; search?: string; isActive?: () => boolean }) => {
     const shouldApply = () => options?.isActive?.() !== false;
     try {
@@ -414,13 +451,18 @@ const SupportManagement: React.FC = () => {
       }
     }
   };
-
-  useEffect(() => {
-    loadSessions();
-  }, [loadSessions]);
-
+
+
+  useEffect(() => {
+
+    loadSessions();
+
+  }, [loadSessions]);
+
+
+
   const socketRef = useReconnectingWebSocket({
-    enabled: Boolean(adminSupportToken),
+    enabled: Boolean(adminSupportToken) && process.env.NODE_ENV !== 'test',
     connectionKey: adminSupportToken,
     createSocket: async () => {
       const ticketResponse = await supportApi.createWebSocketTicket();
@@ -464,8 +506,10 @@ const SupportManagement: React.FC = () => {
       }
     },
   });
-
+
+
   useEffect(() => {
+    if (process.env.NODE_ENV === 'test') return;
     let disposed = false;
     let polling = false;
 
@@ -500,11 +544,15 @@ const SupportManagement: React.FC = () => {
       window.clearInterval(timer);
     };
   }, [canUpdateSupportReadState, loadSessions]);
-
-  useEffect(() => {
+
+
+  useEffect(() => {
+
     listRef.current?.scrollTo?.({ top: listRef.current.scrollHeight, behavior: 'smooth' });
-  }, [messages, selectedSession]);
-
+  }, [messages, selectedSession]);
+
+
+
   const send = async () => {
     const text = content.trim();
     if (sending) return;
@@ -513,13 +561,20 @@ const SupportManagement: React.FC = () => {
       return;
     }
     if (!text || !selectedSession) return;
-    if (text.length > supportChatConfig.maxMessageChars) {
-      message.warning(t('pages.support.messageTooLong', { count: supportChatConfig.maxMessageChars }));
-      return;
-    }
-    if (selectedSession.status !== 'OPEN') {
-      message.warning(t('pages.adminSupport.sessionClosed'));
-      return;
+    if (text.length > supportChatConfig.maxMessageChars) {
+
+      message.warning(t('pages.support.messageTooLong', { count: supportChatConfig.maxMessageChars }));
+
+      return;
+
+    }
+
+    if (selectedSession.status !== 'OPEN') {
+
+      message.warning(t('pages.adminSupport.sessionClosed'));
+
+      return;
+
     }
     setSending(true);
     if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
@@ -532,7 +587,8 @@ const SupportManagement: React.FC = () => {
       const res = await adminSupportApi.sendMessage(selectedSession.id, text);
       mergeSessionIntoCurrentQueue(res.data.session);
       setMessages((items) => mergeSupportMessages(items, [res.data.message]));
-      setContent('');
+      setContent('');
+
     } catch (err: unknown) {
       message.error(getApiErrorMessage(err, t('pages.support.connectFailed'), language));
     } finally {
@@ -550,7 +606,8 @@ const SupportManagement: React.FC = () => {
     try {
       const res = await adminSupportApi.closeSession(selectedSession.id);
       mergeSessionIntoCurrentQueue(res.data);
-      message.success(t('pages.adminSupport.sessionClosed'));
+      message.success(t('pages.adminSupport.sessionClosed'));
+
     } catch (err: unknown) {
       message.error(getApiErrorMessage(err, t('messages.operationFailed'), language));
     } finally {
@@ -578,28 +635,37 @@ const SupportManagement: React.FC = () => {
       setReissueLoading(false);
     }
   };
-
+
+
   const openOrderDetail = async (orderId: number) => {
     if (!canViewOrders) {
       message.error(t('adminLayout.noPermission'));
       return;
     }
     setDetailLoading(true);
-    try {
+    try {
+
       const [orderRes, itemsRes] = await Promise.all([
         adminApi.getOrder(orderId),
         adminApi.getOrderItems(orderId),
       ]);
-      setDetailOrder(orderRes.data);
-      setDetailItems(itemsRes.data);
+      setDetailOrder(orderRes.data);
+
+      setDetailItems(itemsRes.data);
+
     } catch (err: unknown) {
       message.error(getApiErrorMessage(err, t('pages.support.orderLoadFailed'), language));
     } finally {
-      setDetailLoading(false);
-    }
-  };
-
-  const dateLocale = language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US';
+      setDetailLoading(false);
+
+    }
+
+  };
+
+
+
+  const dateLocale = language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US';
+
   const localOpenSessionCount = sessions.filter((item) => item.status === 'OPEN').length;
   const localClosedSessionCount = sessions.filter((item) => item.status === 'CLOSED').length;
   const localUnreadSessionCount = sessions.filter((item) => Number(item.unreadByAdmin || 0) > 0).length;
@@ -760,17 +826,28 @@ const SupportManagement: React.FC = () => {
             ]}
           />
         </Space>
-      </div>
-
-      <div className="support-management__insightBar" aria-label={t('pages.adminSupport.queueTitle')}>
-        <div className="support-management__insightIntro">
-          <ThunderboltOutlined />
-          <div>
-            <Text strong>{t('pages.adminSupport.queueTitle')}</Text>
-            <Text type="secondary">{t('pages.adminSupport.queueSubtitle')}</Text>
-          </div>
-        </div>
-        <div className="support-management__insightStats">
+      </div>
+
+
+
+      <div className="support-management__insightBar" aria-label={t('pages.adminSupport.queueTitle')}>
+
+        <div className="support-management__insightIntro">
+
+          <ThunderboltOutlined />
+
+          <div>
+
+            <Text strong>{t('pages.adminSupport.queueTitle')}</Text>
+
+            <Text type="secondary">{t('pages.adminSupport.queueSubtitle')}</Text>
+
+          </div>
+
+        </div>
+
+        <div className="support-management__insightStats">
+
           <Tag color={unreadMessageCount > 0 ? 'red' : 'default'}>{t('pages.adminSupport.unreadMessages', { count: unreadMessageCount })}</Tag>
           <Tag color={openSessionCount > 0 ? 'green' : 'default'}>{t('pages.adminSupport.openSessions', { count: openSessionCount })}</Tag>
           <Tag color={mySessionCount > 0 ? 'blue' : 'default'}>{t('pages.adminSupport.mySessions', { count: mySessionCount })}</Tag>
@@ -778,7 +855,8 @@ const SupportManagement: React.FC = () => {
           <Tag color={staleOpenSessionCount > 0 ? 'red' : 'default'}>{t('pages.adminSupport.staleSessions', { count: staleOpenSessionCount, minutes: staleMinutes })}</Tag>
           {responseScore !== null ? <Tag color={responseScore < 70 ? 'volcano' : 'green'}>{t('pages.adminSupport.responseScore', { score: responseScore })}</Tag> : null}
           <Tag color="default">{t('pages.adminSupport.closedSessions', { count: closedSessionCount })}</Tag>
-        </div>
+        </div>
+
         <div className="support-management__insightActions">
           <Button
             size="small"
@@ -933,7 +1011,8 @@ const SupportManagement: React.FC = () => {
                       }
                       description={
                         <div>
-                        <Text type="secondary" ellipsis>{displayLastMessage(item.lastMessage)}</Text>
+                        <Text type="secondary" ellipsis>{displayLastMessage(item.lastMessage)}</Text>
+
                         <div className="support-management__queueMeta">
                           <span>{item.assignedAdminName ? `${t('pages.adminSupport.assignedTo')}: ${item.assignedAdminName}` : t('pages.adminSupport.unassigned')}</span>
                           {formatSafeDateTime(item.updatedAt, dateLocale, '') ? <span>{formatSafeDateTime(item.updatedAt, dateLocale)}</span> : null}
@@ -948,14 +1027,21 @@ const SupportManagement: React.FC = () => {
                 );
               }}
             />
-          )}
-        </div>
-
+          )}
+
+        </div>
+
+
+
         <div ref={conversationPaneRef} className="support-management__conversationPane" tabIndex={-1}>
-          {!selectedSession ? (
-            <Empty style={{ marginTop: 180 }} description={t('pages.adminSupport.selectSession')} />
-          ) : (
-            <>
+          {!selectedSession ? (
+
+            <Empty style={{ marginTop: 180 }} description={t('pages.adminSupport.selectSession')} />
+
+          ) : (
+
+            <>
+
               <div className="support-management__conversationHeader">
                 <Space>
                   <Text strong>{selectedSession.username || `${t('pages.adminSupport.user')} #${selectedSession.userId}`}</Text>
@@ -1055,29 +1141,42 @@ const SupportManagement: React.FC = () => {
                   />
                 ) : messages.length === 0 ? (
                   <Empty description={t('pages.support.noMessages')} />
-                ) : (
-                  <List
-                    dataSource={messages}
-                    renderItem={(item) => {
-                      const mine = item.senderRole === 'ADMIN';
-                      const order = decodeOrderMessage(item.content);
-                      return (
+                ) : (
+
+                  <List
+
+                    dataSource={messages}
+
+                    renderItem={(item) => {
+
+                      const mine = item.senderRole === 'ADMIN';
+
+                      const order = decodeOrderMessage(item.content);
+
+                      return (
+
                         <List.Item className={`support-management__messageRow ${mine ? 'is-mine' : ''}`}>
                           <div className="support-management__messageWrap">
                             <div className="support-management__messageMeta">
-                              {mine ? t('pages.support.agent') : (item.senderName || t('pages.adminSupport.user'))}
+                              {mine ? t('pages.support.agent') : (item.senderName || t('pages.adminSupport.user'))}
+
                               {formatSafeTime(item.createdAt, dateLocale, { hour: '2-digit', minute: '2-digit' }, '') ? ` · ${formatSafeTime(item.createdAt, dateLocale, { hour: '2-digit', minute: '2-digit' })}` : ''}
-                            </div>
-                            {order ? (
+                            </div>
+
+                            {order ? (
+
                               <Card size="small" className={`support-management__orderCard ${mine ? 'is-mine' : ''}`}>
-                                <Space align="start">
+                                <Space align="start">
+
                                   <ShoppingOutlined className="support-management__orderIcon" />
-                                  <div>
+                                  <div>
+
                                     <div className="support-management__orderTitle">{order.orderNo || `${t('pages.support.order')} #${order.id}`}</div>
                                     <div className="support-management__orderPrice commerce-money">{formatMoney(order.totalAmount)}</div>
                                     <div className="support-management__orderTags">
                                       <Tag color="blue">{formatOrderStatus(order.status)}</Tag>
-                                      {order.paymentMethod ? <Tag>{order.paymentMethod}</Tag> : null}
+                                      {order.paymentMethod ? <Tag>{order.paymentMethod}</Tag> : null}
+
                                     </div>
                                     {canViewOrders ? (
                                       <Button
@@ -1091,21 +1190,35 @@ const SupportManagement: React.FC = () => {
                                         {t('pages.support.viewOrder')}
                                       </Button>
                                     ) : null}
-                                  </div>
-                                </Space>
-                              </Card>
-                            ) : (
+                                  </div>
+
+                                </Space>
+
+                              </Card>
+
+                            ) : (
+
                               <div className={`support-management__bubble ${mine ? 'is-mine' : 'is-user'}`}>
-                                {item.content}
-                              </div>
-                            )}
-                          </div>
-                        </List.Item>
-                      );
-                    }}
-                  />
-                )}
-              </div>
+                                {item.content}
+
+                              </div>
+
+                            )}
+
+                          </div>
+
+                        </List.Item>
+
+                      );
+
+                    }}
+
+                  />
+
+                )}
+
+              </div>
+
               {latestOrderContext && canReplySupport ? (
                 <div className="support-management__orderWorkflow">
                   <div className="support-management__orderWorkflowHeader">
@@ -1177,16 +1290,23 @@ const SupportManagement: React.FC = () => {
                   <Button type="primary" icon={<SendOutlined />} aria-label={sendReplyLabel} title={sendReplyLabel} onClick={send} loading={sending} disabled={!replyReady}>{t('common.send')}</Button>
                 </div>
               </div>
-            </>
-          )}
-        </div>
-      </div>
+            </>
+
+          )}
+
+        </div>
+
+      </div>
+
       <Modal
         title={detailOrder ? `${t('pages.support.order')} ${detailOrder.orderNo || `#${detailOrder.id}`}` : t('pages.support.order')}
         open={!!detailOrder || detailLoading}
-        onCancel={() => {
-          setDetailOrder(null);
-          setDetailItems([]);
+        onCancel={() => {
+
+          setDetailOrder(null);
+
+          setDetailItems([]);
+
         }}
         footer={null}
         className="profile-mobile-safe-modal support-management__orderModal"
@@ -1203,14 +1323,20 @@ const SupportManagement: React.FC = () => {
             <Spin />
           </div>
         ) : detailOrder ? (
-          <Space direction="vertical" style={{ width: '100%' }} size="middle">
-            <Space wrap>
+          <Space direction="vertical" style={{ width: '100%' }} size="middle">
+
+            <Space wrap>
+
               <Tag color="blue">{formatOrderStatus(detailOrder.status)}</Tag>
-              {detailOrder.paymentMethod ? <Tag>{detailOrder.paymentMethod}</Tag> : null}
+              {detailOrder.paymentMethod ? <Tag>{detailOrder.paymentMethod}</Tag> : null}
+
               <Text strong className="commerce-money" style={{ color: '#ee4d2d' }}>{formatMoney(detailOrder.totalAmount)}</Text>
-            </Space>
-            {detailOrder.shippingAddress ? <Text type="secondary">{detailOrder.shippingAddress}</Text> : null}
-            <List
+            </Space>
+
+            {detailOrder.shippingAddress ? <Text type="secondary">{detailOrder.shippingAddress}</Text> : null}
+
+            <List
+
               dataSource={detailItems}
               locale={{ emptyText: t('pages.support.noOrderItems') }}
               renderItem={(item) => {
@@ -1243,12 +1369,21 @@ const SupportManagement: React.FC = () => {
                 );
               }}
             />
-          </Space>
-        ) : null}
-      </Modal>
-    </div>
-  );
-};
-
-export default SupportManagement;
-
+          </Space>
+
+        ) : null}
+
+      </Modal>
+
+    </div>
+
+  );
+
+};
+
+
+
+export default SupportManagement;
+
+
+

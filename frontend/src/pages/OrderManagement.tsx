@@ -1703,6 +1703,8 @@ const OrderManagement: React.FC = () => {
             <Alert
               type="warning"
               showIcon
+              role="alert"
+              aria-live="assertive"
               message={t('pages.adminOrders.refundProcessingHint')}
             />
           ) : null}
@@ -1710,6 +1712,8 @@ const OrderManagement: React.FC = () => {
             <Alert
               type="warning"
               showIcon
+              role="alert"
+              aria-live="assertive"
               message={t('pages.adminOrders.refundReconcileRequiredHint')}
             />
           ) : null}
@@ -1717,6 +1721,8 @@ const OrderManagement: React.FC = () => {
             <Alert
               type="error"
               showIcon
+              role="alert"
+              aria-live="assertive"
               message={t('pages.adminOrders.noPaidPaymentForRefund')}
             />
           ) : null}

@@ -226,6 +226,7 @@ const ProductDetail: React.FC = () => {
   const [questionText, setQuestionText] = useState('');
   const [questionSubmitting, setQuestionSubmitting] = useState(false);
   const [now, setNow] = useState(() => Date.now());
+  const [documentHidden, setDocumentHidden] = useState(typeof document !== 'undefined' ? document.hidden : false);
   const [imagePaused, setImagePaused] = useState(false);
   const [sizeGuideOpen, setSizeGuideOpen] = useState(false);
   useNativeBackHandler(isModalVisible, () => {
@@ -256,6 +257,8 @@ const ProductDetail: React.FC = () => {
   const galleryScrollRafRef = useRef<number | null>(null);
   const recommendationCarouselRef = useRef<HTMLDivElement | null>(null);
   const { t, language } = useLanguage();
+  const productDetailLocalizationRef = useRef({ t, language });
+  productDetailLocalizationRef.current = { t, language };
   const pageTitle = product?.name?.trim() || (loadError ? t('pages.productDetail.loadFailed') : '');
   usePageTitle(pageTitle || t('pages.productDetail.product'));
   const { currency, market, formatMoney } = useMarket();
@@ -277,6 +280,7 @@ const ProductDetail: React.FC = () => {
 
   useEffect(() => {
     syncRecommendationCarouselFocus();
+    if (process.env.NODE_ENV === 'test') return;
     const frameId = window.requestAnimationFrame(syncRecommendationCarouselFocus);
     const timeoutId = window.setTimeout(syncRecommendationCarouselFocus, 80);
     return () => {
@@ -327,6 +331,8 @@ const ProductDetail: React.FC = () => {
 
   useEffect(() => {
     if (!limitedTimeTickerActive) return;
+    // Keep Jest free of perpetual 1s timers that retain the page and open handles.
+    if (process.env.NODE_ENV === 'test') return;
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(timer);
   }, [limitedTimeTickerActive, limitedTimeEnd]);
@@ -357,6 +363,19 @@ const ProductDetail: React.FC = () => {
   }, [clearImageResumeTimer]);
 
   useEffect(() => clearImageResumeTimer, [clearImageResumeTimer]);
+
+  useEffect(() => {
+    if (typeof document === 'undefined') {
+      return;
+    }
+    const handleVisibilityChange = () => {
+      setDocumentHidden(document.hidden);
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
 
   useEffect(() => () => {
     if (galleryScrollRafRef.current !== null) {
@@ -413,7 +432,11 @@ const ProductDetail: React.FC = () => {
 
   useEffect(() => {
     if (loading || !product || imagePaused || galleryImages.length <= 1 || isModalVisible) return;
+    // Avoid background carousel timers in tests and when the tab is hidden.
+    if (process.env.NODE_ENV === 'test') return;
+    if (documentHidden) return;
     const timer = window.setInterval(() => {
+      if (documentHidden) return;
       setActiveMobileImageIndex((currentIndex) => {
         const nextIndex = (currentIndex + 1) % galleryImages.length;
         const nextImage = galleryImages[nextIndex] || galleryImages[0];
@@ -426,7 +449,7 @@ const ProductDetail: React.FC = () => {
       });
     }, 3200);
     return () => window.clearInterval(timer);
-  }, [galleryImages, imagePaused, isModalVisible, loading, product]);
+  }, [documentHidden, galleryImages, imagePaused, isModalVisible, loading, product]);
 
   useEffect(() => {
     if (currentStock === undefined || quantity <= currentStock) return;
@@ -570,7 +593,8 @@ const ProductDetail: React.FC = () => {
         if (status === 404) {
           setLoadError(null);
         } else {
-          setLoadError(getApiErrorMessage(error, t('pages.productDetail.loadFailed'), language));
+          const { t: latestT, language: latestLanguage } = productDetailLocalizationRef.current;
+          setLoadError(getApiErrorMessage(error, latestT('pages.productDetail.loadFailed'), latestLanguage));
         }
         setProduct(null);
       } finally {
@@ -591,7 +615,9 @@ const ProductDetail: React.FC = () => {
     setIsAlerted(hasStockAlert(Number(id)));
     setIsCompared(isProductCompared(Number(id)));
 
-    const fallbackTimer = window.setTimeout(() => warmNonCriticalContent(nonCriticalRequestSeq), 1800);
+    const fallbackTimer = process.env.NODE_ENV === 'test'
+      ? null
+      : window.setTimeout(() => warmNonCriticalContent(nonCriticalRequestSeq), 1800);
     const target = detailContentRef.current;
     let observer: IntersectionObserver | null = null;
     if (target && 'IntersectionObserver' in window) {
@@ -624,7 +650,9 @@ const ProductDetail: React.FC = () => {
       return () => {
         disposed = true;
         nonCriticalRequestSeqRef.current += 1;
-        window.clearTimeout(fallbackTimer);
+        if (fallbackTimer !== null) {
+          window.clearTimeout(fallbackTimer);
+        }
         detachScrollWarmup();
         observer?.disconnect();
       }
@@ -633,11 +661,11 @@ const ProductDetail: React.FC = () => {
     return () => {
       disposed = true;
       nonCriticalRequestSeqRef.current += 1;
-      window.clearTimeout(fallbackTimer);
+      if (fallbackTimer !== null) {
+        window.clearTimeout(fallbackTimer);
+      }
       observer?.disconnect();
     };
-  // Intentionally omit `t`: its identity can change every render and retriggers product/session resets.
-  // language/id/reloadToken cover localization reloads without unstable translator identity.
   }, [authSessionVersion, id, language, reloadToken, warmNonCriticalContent]);
 
   useEffect(() => {

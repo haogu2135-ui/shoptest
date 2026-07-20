@@ -119,6 +119,28 @@ class PaymentFlowServiceTest {
     }
 
     @Test
+    void nonProductionCheckoutHidesStripeWithoutSecretKey() {
+        PaymentChannelConfig channelConfig = new PaymentChannelConfig();
+        PaymentChannelConfig.Channel channel = new PaymentChannelConfig.Channel();
+        channel.setCode("STRIPE");
+        channel.setProvider("STRIPE");
+        channel.setEnabled(true);
+        RuntimeConfigService runtimeConfig = mock(RuntimeConfigService.class);
+        when(runtimeConfig.getString("app.runtime-mode", "production")).thenReturn("dev");
+        when(runtimeConfig.getString("stripe.secret-key", "")).thenReturn("");
+
+        PaymentService service = new PaymentService();
+        ReflectionTestUtils.setField(service, "paymentChannelConfig", channelConfig);
+        ReflectionTestUtils.setField(service, "runtimeConfig", runtimeConfig);
+        ReflectionTestUtils.setField(service, "paymentChannelAvailabilityService", availabilityService(channelConfig, runtimeConfig));
+
+        assertFalse(service.isChannelAvailableForCheckout(channel));
+
+        when(runtimeConfig.getString("stripe.secret-key", "")).thenReturn("sk_test_1234567890");
+        assertTrue(service.isChannelAvailableForCheckout(channel));
+    }
+
+    @Test
     void productionCheckoutRequiresSafeStripeRuntimeConfig() {
         PaymentChannelConfig channelConfig = new PaymentChannelConfig();
         PaymentChannelConfig.Channel channel = new PaymentChannelConfig.Channel();

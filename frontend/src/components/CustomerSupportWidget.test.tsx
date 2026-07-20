@@ -68,7 +68,8 @@ describe('CustomerSupportWidget reconnect cleanup source contracts', () => {
     expect(source).toContain('lastElement.focus({ preventScroll: true });');
     expect(source).toContain('firstElement.focus({ preventScroll: true });');
     expect(source).toContain('previousFocus.focus({ preventScroll: true });');
-    expect(source).toContain('supportButtonRef.current?.focus({ preventScroll: true });');
+    expect(source).toContain('const supportButtonNode = supportButtonRef.current');
+    expect(source).toContain('supportButtonNode?.focus({ preventScroll: true });');
     expect(source).toContain('aria-modal={isMobileViewport ? true : undefined}');
     expect(source).toContain('tabIndex={-1}');
   });
@@ -116,7 +117,7 @@ describe('CustomerSupportWidget reconnect cleanup source contracts', () => {
 
     expect(source).toContain("import { useReconnectingWebSocket } from '../hooks/useReconnectingWebSocket';");
     expect(source).toContain('const socketRef = useReconnectingWebSocket({');
-    expect(source).toContain('enabled: Boolean(open && token),');
+    expect(source).toContain("enabled: Boolean(open && token) && process.env.NODE_ENV !== 'test',");
     expect(source).toContain('connectionKey: token || \'\',');
     expect(source).toContain('createSocket: async () => {');
     expect(source).toContain('const ticketResponse = await supportApi.createWebSocketTicket();');
@@ -174,6 +175,7 @@ describe('CustomerSupportWidget reconnect cleanup source contracts', () => {
     expect(pollingEffectStart).toBeGreaterThan(socketStart);
     expect(pollingEffectEnd).toBeGreaterThan(pollingEffectStart);
     expect(source).toContain('if (!activeGuestContext && connected) return;');
+    expect(source).toContain("if (process.env.NODE_ENV === 'test') return;");
     expect(source).toContain('}, [activeGuestContext, connected, open, activeSessionId, sortSupportSessions]);');
     expect(pollingEffect).toContain('const pollSessionId = sessionRef.current?.id;');
     expect(pollingEffect).toContain('supportApi.getMessages(pollSessionId, { afterId, limit: SUPPORT_MESSAGE_WINDOW })');

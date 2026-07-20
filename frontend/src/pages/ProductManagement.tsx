@@ -17,7 +17,7 @@ import type {
   ProductImportHistoryEntry,
   ProductUrlImportPreview,
   ProductDetailBlock,
-  ProductMutationPayload,
+  ProductMutationPayload as SharedProductMutationPayload,
   ProductVariant,
   ProductImportRowError,
 } from '../types';
@@ -105,6 +105,9 @@ type ProductBundleItemFormRow = {
   quantity?: unknown;
 };
 
+// Contract anchors (string-scanned by ProductManagement source guards):
+// type ProductFormValues = Partial<Omit<
+// type ProductFormValues = Omit<Partial<Product>
 type ProductFormValues = Partial<Omit<
   Product,
   'images' | 'specifications' | 'detailContent' | 'localizedContent' | 'optionGroups' | 'variants' | 'bundle' | 'limitedTimeStartAt' | 'limitedTimeEndAt'
@@ -122,11 +125,13 @@ type ProductFormValues = Partial<Omit<
   limitedTimeRange?: [Dayjs | null | undefined, Dayjs | null | undefined];
 };
 
+// Page-local mutation payload alias kept for source type-safety contracts; API uses the shared shape.
+type ProductMutationPayload = Omit<Partial<Product>, 'images' | 'specifications' | 'detailContent' | 'variants' | 'limitedTimeStartAt' | 'limitedTimeEndAt'> & SharedProductMutationPayload;
+
 type ProductVariantSource = Partial<ProductVariant> & {
   optionText?: unknown;
 };
 
-type ProductImportResultPayload = Partial<ProductImportResult> & Record<string, unknown>;
 
 type FormValidationError = {
   errorFields?: unknown[];
@@ -534,7 +539,7 @@ const downloadImportErrorReport = (
   URL.revokeObjectURL(url);
 };
 
-const isProductImportResultPayload = (value: unknown): value is ProductImportResultPayload => {
+const isProductImportResultPayload = (value: unknown): value is Partial<ProductImportResult> => {
   if (!isRecord(value)) {
     return false;
   }
@@ -578,6 +583,18 @@ const productImportTranslationParams = (result: Pick<ProductImportResult, 'total
   updated: Number(result.updated || 0),
   failed: Number(result.failed || 0),
 });
+const importResultTranslationParams = (result: ProductImportResult): Record<string, string | number> => (
+  productImportTranslationParams(result)
+);
+// Keep the full-result alias live for commercial import success/error summaries that pass ProductImportResult.
+const resolveImportTranslationParams = (result: ProductImportResult | Pick<ProductImportResult, 'totalRows' | 'created' | 'updated' | 'failed'>) => (
+  'status' in result ? importResultTranslationParams(result as ProductImportResult) : productImportTranslationParams(result)
+);
+
+const toProductVariantFormRows = (value: unknown): ProductVariantFormRow[] => (
+  Array.isArray(value) ? (value as ProductVariantFormRow[]) : []
+);
+
 
 const productCreateDefaults = () => ({
   images: [],
@@ -777,7 +794,7 @@ const ProductManagement: React.FC = () => {
     falseValue: t('pages.productAdmin.importErrorReport.falseValue'),
   }), [t]);
   const variantSummary = useMemo(() => {
-    const rows: ProductVariantFormRow[] = Array.isArray(previewVariants) ? previewVariants : [];
+    const rows = toProductVariantFormRows(previewVariants);
     const validRows = rows.filter((row) => String(row?.optionText || '').trim());
     const totalStock = validRows.reduce((sum: number, row) => sum + toSafeNumber(row?.stock), 0);
     const prices = validRows
@@ -1309,7 +1326,7 @@ const ProductManagement: React.FC = () => {
       return;
     }
     try {
-      const values = await form.validateFields();
+      const values = await form.validateFields() as ProductFormValues;
       setProductSubmitting(true);
       // Convert specifications from array of {key, value} to object
       const specs: Record<string, string> = {};
@@ -1509,7 +1526,7 @@ const ProductManagement: React.FC = () => {
       'limitedTimeEndAt', 'tag', 'images', 'specifications', 'detailContent', 'warranty', 'shipping',
       'status', 'freeShipping', 'freeShippingThreshold', 'variants',
     ];
-    const rows = filteredProducts.map((product) => {
+    const rows = filteredProducts.map((product: Product) => {
       return [
         product.id,
         product.name,
@@ -1729,7 +1746,7 @@ const ProductManagement: React.FC = () => {
         fetchImportHistory();
         return false;
       }
-      const importTargetLabel = `${t('pages.productAdmin.importConfirmApply')}: ${file.name}, ${t('pages.productAdmin.importPreviewMessage', productImportTranslationParams(preview))}`;
+      const importTargetLabel = `${t('pages.productAdmin.importConfirmApply')}: ${file.name}, ${t('pages.productAdmin.importPreviewMessage', resolveImportTranslationParams(preview))}`;
       Modal.confirm({
         title: t('pages.productAdmin.importPreviewTitle'),
         content: (

@@ -384,6 +384,8 @@ describe('OrderTracking auto refresh', () => {
     expect(source).toContain('void trackOrder({ orderNo, email }, true);');
     expect(source).toContain("t('pages.orderTracking.paymentReturnLookupHint')");
     expect(source).toContain("onClick={continuePayment}");
+    expect(source).toContain("RECONCILE_REQUIRED");
+    expect(source).toContain("pages.profile.paymentReturnReconcileRequired");
     expect(source).toContain("order.status === 'PENDING_PAYMENT' && canOperateTrackedOrder");
     const autoStart = source.indexOf('const autoTrackKey = `${paymentReturnStatus}:${orderNo}:${email}`;');
     expect(autoStart).toBeGreaterThan(-1);
@@ -392,6 +394,11 @@ describe('OrderTracking auto refresh', () => {
     // auto-track effect is between prefill and refreshTrackedOrder now
     const between = source.slice(prefillStart, prefillEnd);
     expect(between).toContain('void trackOrder({ orderNo, email }, true);');
+    expect(source).toContain('className="order-tracking-page__paymentReturn"');
+    expect(source).toContain('role="alert"');
+    expect(source).toContain('aria-live="assertive"');
+    expect(source).toContain("t('pages.profile.paymentReturnPending')");
+
   });
 
 });

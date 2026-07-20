@@ -30,14 +30,19 @@ public class PaymentChannelAvailabilityService {
         if (channelConfig == null || !channelConfig.isEnabled()) {
             return false;
         }
-        if (!isProductionMode()) {
-            return true;
-        }
         if (channelConfig.isStripeProvider()) {
-            return !isBlank(stripeSecretKey())
-                    && !isBlank(stripeWebhookSecret())
+            if (isBlank(stripeSecretKey())) {
+                return false;
+            }
+            if (!isProductionMode()) {
+                return true;
+            }
+            return !isBlank(stripeWebhookSecret())
                     && isProductionGatewayUrl(stripeSuccessUrl())
                     && isProductionGatewayUrl(stripeCancelUrl());
+        }
+        if (!isProductionMode()) {
+            return true;
         }
         if (channelConfig.isGenericApiProvider()) {
             if (!isProductionGatewayUrl(channelConfig.getCreateUrl())) {

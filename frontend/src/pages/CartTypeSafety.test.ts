@@ -25,12 +25,23 @@ describe('Cart type-safety guard', () => {
     expect(source).toContain("paymentReturnStatus === 'cancelled'");
     expect(source).toContain("paymentReturnStatus === 'failed'");
     expect(source).toContain("className=\"cart-page__paymentReturn\"");
+    expect(source).toContain('role="alert"');
+    expect(source).toContain('aria-live="assertive"');
     expect(source).toContain("t('pages.cart.paymentCancelledTitle')");
     expect(source).toContain("t('pages.cart.paymentFailedTitle')");
     expect(source).toContain("t('pages.cart.paymentCancelledResume')");
     expect(source).toContain("'/profile?tab=orders'");
     expect(source).toContain('`/profile?tab=orders&orderNo=${encodeURIComponent(paymentReturnOrderNo)}`');
     expect(source).toContain('clearPaymentReturnParams');
+  });
+
+
+  it('announces cart recovery and stale-data alerts accessibly', () => {
+    const source = require('fs').readFileSync(require('path').resolve(__dirname, 'Cart.tsx'), 'utf8');
+    expect(source).toContain('className="cart-page__paymentReturn"');
+    expect(source).toContain('className="cart-page__loadErrorAlert"');
+    expect(source).toContain('role="alert"');
+    expect(source).toContain('aria-live="assertive"');
   });
 
 });

@@ -92,7 +92,7 @@ const ProductQuestionManagement: React.FC = () => {
 
   const visibleQuestions = questions;
 
-  const hasQuestionSnapshot = summary !== null;
+  const hasQuestionSnapshot = questions.length > 0 || summary !== null;
   const answeredCount = summary?.answeredQuestions ?? visibleQuestions.filter((item) => String(item.answer || '').trim()).length;
   const unansweredCount = summary?.unansweredQuestions ?? visibleQuestions.filter((item) => !String(item.answer || '').trim()).length;
   const responseScore = summary?.responseScore ?? Math.max(0, 100 - unansweredCount * 8);

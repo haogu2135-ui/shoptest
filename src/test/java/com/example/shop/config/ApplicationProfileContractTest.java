@@ -138,6 +138,8 @@ class ApplicationProfileContractTest {
                 "mail code pepper must not fall back to the JWT signing secret");
 
         assertContains(validator, "implements BeanFactoryPostProcessor");
+        assertContains(validator, "EnvironmentAware");
+        assertContains(validator, "setEnvironment(Environment environment)");
         assertContains(validator, "isProductionMode(property(\"app.runtime-mode\", \"production\"))");
         assertContains(validator, "app.jwtSecret");
         assertContains(validator, "spring.datasource.password");

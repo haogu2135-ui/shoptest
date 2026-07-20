@@ -463,12 +463,16 @@ describe('Checkout payment availability', () => {
     expect(renderBeforeChannelsEffect).not.toContain('paymentApi.getChannels()');
     expect(channelsEffect).toContain('paymentApi.getChannels()');
     expect(channelsEffect).toContain('let disposed = false;');
+    expect(channelsEffect).toContain('const requestSeq = paymentChannelsRequestSeqRef.current + 1;');
+    expect(channelsEffect).toContain('const isCurrentPaymentChannelsRequest = () => (');
     expect(channelsEffect).toContain('setPaymentChannelsLoading(true);');
     expect(channelsEffect).toContain('setPaymentChannelsError(null);');
-    expect(channelsEffect).toContain('if (disposed || !mountedRef.current) return;');
+    expect(channelsEffect).toContain('if (!isCurrentPaymentChannelsRequest()) return;');
     expect(channelsEffect).toContain('setPaymentChannelsError(getApiErrorMessage(');
     expect(channelsEffect).toContain('setPaymentChannelsLoading(false);');
     expect(channelsEffect).toContain('disposed = true;');
+    expect(source).toContain('const paymentChannelsRequestSeqRef = React.useRef(0);');
+    expect(source).toContain('role="alert"');
     expect(source).toContain('const [paymentChannelsError, setPaymentChannelsError] = useState<string | null>(null);');
     expect(source).toContain('const [paymentChannelsReloadKey, setPaymentChannelsReloadKey] = useState(0);');
     expect(source).toContain('description={paymentChannelsError || t(\'pages.checkout.paymentUnavailableDescription\')}');
@@ -546,6 +550,17 @@ describe('Checkout payment availability', () => {
     expect(handleSubmitSource).toContain('} finally {\n      submittingRef.current = false;\n    }');
     expect(handleSubmitSource.indexOf('submittingRef.current = true;')).toBeLessThan(handleSubmitSource.indexOf('setSubmitting(true);'));
     expect(handleSubmitSource.lastIndexOf('setSubmitting(false);')).toBeLessThan(handleSubmitSource.lastIndexOf('submittingRef.current = false;'));
+  });
+
+  it('keeps production payment simulation opt-in and reconcile recovery guidance', () => {
+    const source = readCheckoutPageSource();
+    expect(source).toContain("process.env.NODE_ENV !== 'production'");
+    expect(source).toContain("process.env.REACT_APP_ENABLE_PAYMENT_SIMULATION === 'true'");
+    expect(source).toContain("paymentStatusCode === 'RECONCILE_REQUIRED'");
+    expect(source).toContain("t('pages.checkout.paymentRecoveryReconcileRequired')");
+    expect(source).toContain("t('pages.checkout.paymentRecoveryNextReconcileRequired')");
+    expect(source).toContain('!isReconcileRequired && payment.paymentUrl');
+    expect(source).toContain('!isReconcileRequired && paymentSimulationEnabled');
   });
 
   it('keeps checkout payment actions guarded by synchronous in-flight latches', () => {

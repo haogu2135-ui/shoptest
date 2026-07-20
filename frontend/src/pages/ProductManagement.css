@@ -1758,6 +1758,7 @@
     gap: 8px !important;
   }
 
+  .product-management-page__actions .ant-upload-wrapper.product-management-page__uploadAction,
   .product-management-page__actions > .ant-space-item,
   .product-management-page__actions > .ant-space-item > .ant-upload-wrapper.product-management-page__uploadAction,
   .product-management-page__actions .product-management-page__uploadAction,

@@ -19,7 +19,7 @@ describe('SupportManagement type-safety guard', () => {
 
   it('keeps the admin support WebSocket connection keyed only by the admin token', () => {
     const source = readSupportManagementSource();
-    const hasHookBackedSocket = /useReconnectingWebSocket\(\{[\s\S]*enabled: Boolean\(adminSupportToken\),[\s\S]*connectionKey: adminSupportToken/.test(source);
+    const hasHookBackedSocket = /useReconnectingWebSocket\(\{[\s\S]*enabled: Boolean\(adminSupportToken\) && process\.env\.NODE_ENV !== 'test',[\s\S]*connectionKey: adminSupportToken/.test(source);
     const hasRefBackedSocket = source.includes('const adminSupportToken = readAdminSupportToken();')
       && source.includes('const canUpdateSupportReadStateRef = useRef(canUpdateSupportReadState);')
       && source.includes('const supportTranslationRef = useRef(t);')

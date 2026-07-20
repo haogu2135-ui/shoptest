@@ -192,6 +192,8 @@ const Profile: React.FC = () => {
   const paymentReturnOrderNo = normalizeProfileOrderNo(searchParams.get('orderNo'));
   const paymentReturnOrderId = Number(searchParams.get('orderId') || '');
   const { t, language } = useLanguage();
+  const profileLocalizationRef = useRef({ t, language });
+  profileLocalizationRef.current = { t, language };
   usePageTitle(t('pages.profile.title'));
   const { config: appConfig } = useAppConfig();
   const [user, setUser] = useState<UserProfile | null>(null);
@@ -253,11 +255,12 @@ const Profile: React.FC = () => {
   const [profileActiveTab, setProfileActiveTab] = useState(requestedProfileTab || ((isPaymentReturnSuccess || isPaymentReturnIncomplete) ? 'orders' : 'info'));
   const [orderStatusFilter, setOrderStatusFilter] = useState('all');
   const [orderSearchText, setOrderSearchText] = useState('');
-  // Notification/order deep-link: prefill order search when orderNo is present without payment return status.
+  // Notification/order deep-link: open orders tab and prefill search when orderNo is present without payment return status.
   useEffect(() => {
     if (paymentReturnStatus) return;
     const deepLinkOrderNo = paymentReturnOrderNo;
     if (!deepLinkOrderNo) return;
+    setProfileActiveTab('orders');
     setOrderSearchText((current) => (current.trim() ? current : deepLinkOrderNo));
   }, [paymentReturnOrderNo, paymentReturnStatus]);
 
@@ -325,14 +328,14 @@ const Profile: React.FC = () => {
     } catch (error) {
       reportNonBlockingError('Profile.fetchUserInfo', error);
       if (mountedRef.current) {
-        message.error(t('pages.profile.fetchUserFailed'));
+        message.error(profileLocalizationRef.current.t('pages.profile.fetchUserFailed'));
       }
     } finally {
       if (mountedRef.current) {
         setLoading(false);
       }
     }
-  }, [t]);
+  }, []);
 
   const fetchOrders = useCallback(async () => {
     const requestSeq = ordersRequestSeqRef.current + 1;
@@ -372,10 +375,10 @@ const Profile: React.FC = () => {
       if (mountedRef.current && ordersRequestSeqRef.current === requestSeq) {
         setOrdersLoadFailed(true);
         setOrdersInitialLoadComplete(true);
-        message.error(t('pages.profile.fetchOrdersFailed'));
+        message.error(profileLocalizationRef.current.t('pages.profile.fetchOrdersFailed'));
       }
     }
-  }, [t]);
+  }, []);
 
   const syncPaymentReturnState = useCallback(async (order: OrderCustomer) => {
     const syncSeq = paymentReturnSyncSeqRef.current + 1;
@@ -392,14 +395,15 @@ const Profile: React.FC = () => {
     }
     await fetchOrders();
     if (!isCurrentPaymentReturnSync()) return;
+    const { t: latestT } = profileLocalizationRef.current;
     if (mergedPayments.some((payment) => normalizeStatusCode(payment.status) === 'RECONCILE_REQUIRED')) {
-      message.warning(t('pages.profile.paymentReturnReconcileRequired'));
+      message.warning(latestT('pages.profile.paymentReturnReconcileRequired'));
     } else if (mergedPayments.some((payment) => normalizeStatusCode(payment.status) === 'PAID')) {
-      message.success(t('pages.profile.paymentReturnSynced'));
+      message.success(latestT('pages.profile.paymentReturnSynced'));
     } else {
-      message.info(t('pages.profile.paymentReturnPending'));
+      message.info(latestT('pages.profile.paymentReturnPending'));
     }
-  }, [fetchOrders, paymentChannels, t]);
+  }, [fetchOrders, paymentChannels]);
 
   const fetchAddresses = useCallback(async () => {
     try {
@@ -424,15 +428,15 @@ const Profile: React.FC = () => {
       reportNonBlockingError('Profile.fetchPetProfiles', error);
       if (mountedRef.current) {
         setPetProfiles([]);
-        message.error(t('pages.profile.fetchPetProfilesFailed'));
+        message.error(profileLocalizationRef.current.t('pages.profile.fetchPetProfilesFailed'));
       }
     }
-  }, [t]);
+  }, []);
 
   useEffect(() => {
     const token = getLocalStorageItem('token');
     if (!token) {
-      message.warning(t('messages.loginRequired'));
+      message.warning(profileLocalizationRef.current.t('messages.loginRequired'));
       navigate(buildLoginUrlFromWindow());
       return;
     }
@@ -440,7 +444,7 @@ const Profile: React.FC = () => {
     fetchOrders();
     fetchAddresses();
     fetchPetProfiles();
-  }, [fetchAddresses, fetchOrders, fetchPetProfiles, fetchUserInfo, navigate, t]);
+  }, [fetchAddresses, fetchOrders, fetchPetProfiles, fetchUserInfo, navigate]);
 
   useEffect(() => {
     if (!addressModalVisible) return;
@@ -478,11 +482,11 @@ const Profile: React.FC = () => {
     setSearchParams(nextParams, { replace: true });
     syncPaymentReturnState(targetOrder).catch(() => {
       if (mountedRef.current && handledPaymentReturnRef.current === returnKey) {
-        message.error(t('pages.profile.paymentReturnSyncFailed'));
+        message.error(profileLocalizationRef.current.t('pages.profile.paymentReturnSyncFailed'));
         fetchOrders();
       }
     });
-  }, [fetchOrders, ordersInitialLoadComplete, paymentChannelsLoaded, paymentReturnOrderId, paymentReturnOrderNo, paymentReturnStatus, searchParams, setSearchParams, syncPaymentReturnState, t]);
+  }, [fetchOrders, ordersInitialLoadComplete, paymentChannelsLoaded, paymentReturnOrderId, paymentReturnOrderNo, paymentReturnStatus, searchParams, setSearchParams, syncPaymentReturnState]);
 
   useEffect(() => {
     if (!isPaymentReturnIncomplete) return;
@@ -502,16 +506,17 @@ const Profile: React.FC = () => {
     if (paymentReturnOrderNo) {
       setOrderSearchText(paymentReturnOrderNo);
     }
+    const { t: latestT } = profileLocalizationRef.current;
     if (paymentReturnStatus === 'failed') {
       message.error(paymentReturnOrderNo
-        ? t('pages.profile.paymentReturnFailedOrder', { orderNo: paymentReturnOrderNo })
-        : t('pages.profile.paymentReturnFailed'));
+        ? latestT('pages.profile.paymentReturnFailedOrder', { orderNo: paymentReturnOrderNo })
+        : latestT('pages.profile.paymentReturnFailed'));
     } else {
       message.warning(paymentReturnOrderNo
-        ? t('pages.profile.paymentReturnCancelledOrder', { orderNo: paymentReturnOrderNo })
-        : t('pages.profile.paymentReturnCancelled'));
+        ? latestT('pages.profile.paymentReturnCancelledOrder', { orderNo: paymentReturnOrderNo })
+        : latestT('pages.profile.paymentReturnCancelled'));
     }
-  }, [isPaymentReturnIncomplete, ordersInitialLoadComplete, paymentReturnOrderId, paymentReturnOrderNo, paymentReturnStatus, searchParams, setSearchParams, t]);
+  }, [isPaymentReturnIncomplete, ordersInitialLoadComplete, paymentReturnOrderId, paymentReturnOrderNo, paymentReturnStatus, searchParams, setSearchParams]);
 
   useEffect(() => {
     if (profileEmailCodeCountdown <= 0) return;
@@ -702,7 +707,7 @@ const Profile: React.FC = () => {
     }
   };
 
-  const handleContinuePayment = async (order: OrderCustomer) => {
+  const handleContinuePayment = useCallback(async (order: OrderCustomer) => {
     if (continuingPaymentRef.current !== null) return;
     continuingPaymentRef.current = order.id;
     setPayingOrderId(order.id);
@@ -710,10 +715,13 @@ const Profile: React.FC = () => {
       const paymentListRes = await paymentApi.getByOrder(order.id);
       const paymentList = paymentListRes.data;
       const preferredMethod = getPreferredPaymentChannel(paymentChannels, order.paymentMethod || paymentList[0]?.channel);
-      const reusablePayment = paymentList.find((item) => item.status === 'PAID')
-        || paymentList.find((item) => item.status === 'PENDING' && !getPaymentRecoveryState(item).isExpired);
+      const paidPayment = paymentList.find((item) => normalizeStatusCode(item.status) === 'PAID');
+      const reconcilePayment = paymentList.find((item) => normalizeStatusCode(item.status) === 'RECONCILE_REQUIRED');
+      const pendingPayment = paymentList.find((item) => normalizeStatusCode(item.status) === 'PENDING' && !getPaymentRecoveryState(item).isExpired);
+      // Reconcile payments must surface for review — never open/create a competing gateway charge.
+      const reusablePayment = paidPayment || reconcilePayment || pendingPayment;
       if (!reusablePayment && !preferredMethod) {
-        throw new Error(t('pages.checkout.paymentUnavailable'));
+        throw new Error(profileLocalizationRef.current.t('pages.checkout.paymentUnavailable'));
       }
       const latestPayment = reusablePayment || (await paymentApi.create(order.id, preferredMethod)).data;
       setSelectedOrder(order);
@@ -722,7 +730,8 @@ const Profile: React.FC = () => {
       setSelectedPaymentMethod(latestPayment.channel || preferredMethod);
       setPaymentModalVisible(true);
     } catch (err: unknown) {
-      message.error(getApiErrorMessage(err, t('pages.profile.continuePayFailed'), language, { includeClientMessage: true }));
+      const { t: latestT, language: latestLanguage } = profileLocalizationRef.current;
+      message.error(getApiErrorMessage(err, latestT('pages.profile.continuePayFailed'), latestLanguage, { includeClientMessage: true }));
       fetchOrders();
     } finally {
       if (continuingPaymentRef.current === order.id) {
@@ -730,7 +739,7 @@ const Profile: React.FC = () => {
       }
       setPayingOrderId(null);
     }
-  };
+  }, [fetchOrders, paymentChannels]);
 
   // After cancelled/failed gateway return, open continue-payment for the matching pending order.
   useEffect(() => {
@@ -753,6 +762,10 @@ const Profile: React.FC = () => {
 
   const handleRefreshPayment = async () => {
     if (!selectedOrder) return;
+    if (normalizeStatusCode(selectedPayment?.status) === 'RECONCILE_REQUIRED') {
+      message.warning(t('pages.profile.paymentReturnReconcileRequired'));
+      return;
+    }
     const method = getPreferredPaymentChannel(paymentChannels, selectedPaymentMethod || selectedPayment?.channel || selectedOrder.paymentMethod);
     if (!method) {
       message.error(t('pages.checkout.paymentUnavailable'));
@@ -814,13 +827,14 @@ const Profile: React.FC = () => {
       if (!isActive()) return;
       setPaymentChannels([]);
       setPaymentChannelsLoaded(true);
-      setPaymentChannelsError(getApiErrorMessage(error, t('pages.checkout.paymentUnavailableDescription'), language));
+      const { t: latestT, language: latestLanguage } = profileLocalizationRef.current;
+      setPaymentChannelsError(getApiErrorMessage(error, latestT('pages.checkout.paymentUnavailableDescription'), latestLanguage));
     } finally {
       if (isActive()) {
         setPaymentChannelsLoading(false);
       }
     }
-  }, [language, t]);
+  }, []);
 
   useEffect(() => {
     let disposed = false;
@@ -1754,6 +1768,27 @@ const Profile: React.FC = () => {
               />
             ) : (
               <div className="profile-orders">
+                {(isPaymentReturnSuccess || isPaymentReturnIncomplete) ? (
+                  <Alert
+                    className="profile-payment-return"
+                    type={isPaymentReturnSuccess ? 'success' : paymentReturnStatus === 'failed' ? 'error' : 'warning'}
+                    showIcon
+                    role="alert"
+                    aria-live="assertive"
+                    message={isPaymentReturnSuccess
+                      ? t('pages.profile.paymentReturnSynced')
+                      : paymentReturnStatus === 'failed'
+                        ? (paymentReturnOrderNo
+                          ? t('pages.profile.paymentReturnFailedOrder', { orderNo: paymentReturnOrderNo })
+                          : t('pages.profile.paymentReturnFailed'))
+                        : (paymentReturnOrderNo
+                          ? t('pages.profile.paymentReturnCancelledOrder', { orderNo: paymentReturnOrderNo })
+                          : t('pages.profile.paymentReturnCancelled'))}
+                    description={isPaymentReturnSuccess
+                      ? t('pages.checkout.paymentRecoveryNextPaid')
+                      : t('pages.checkout.paymentRecoveryNextRetry')}
+                  />
+                ) : null}
                 <div className="profile-after-sale-panel">
                   <div className="profile-after-sale-panel__main">
                     <Text strong>{t('pages.profile.afterSaleAssistantTitle')}</Text>
@@ -1796,6 +1831,8 @@ const Profile: React.FC = () => {
                   <Alert
                     type="warning"
                     showIcon
+                    role="alert"
+                    aria-live="assertive"
                     message={t('pages.profile.ordersStaleWarning')}
                     action={<Button size="small" onClick={() => fetchOrders()}>{t('common.retry')}</Button>}
                   />
@@ -2698,7 +2735,7 @@ const Profile: React.FC = () => {
       >
         {selectedOrder && selectedPayment && (
           <Space direction="vertical" className="profile-payment-modal__content" size="middle">
-            <div className="profile-payment-recovery">
+            <div className="profile-payment-recovery" role="status" aria-live="polite">
               <div>
                 <Text strong>{t('pages.checkout.paymentRecoveryStatus')}</Text>
                 <Tag color={selectedPaymentReconcileRequired ? 'magenta' : selectedPaymentPaid ? 'green' : selectedPaymentRecovery.isExpired ? 'red' : selectedPaymentRecovery.isExpiringSoon ? 'orange' : 'blue'}>
@@ -2763,6 +2800,8 @@ const Profile: React.FC = () => {
                   <Alert
                     type="warning"
                     showIcon
+                    role="alert"
+                    aria-live="assertive"
                     message={t('pages.checkout.paymentUnavailable')}
                     description={paymentChannelsError || t('pages.checkout.paymentUnavailableDescription')}
                     action={(
@@ -2793,7 +2832,7 @@ const Profile: React.FC = () => {
                 </Tag>
               </Descriptions.Item>
               <Descriptions.Item label={t('pages.checkout.paymentLink')}>
-                {selectedPayment.paymentUrl ? (
+                {selectedPayment.paymentUrl && !selectedPaymentPaid && !selectedPaymentReconcileRequired ? (
                   <Button
                     type="link"
                     className="profile-payment-link"
@@ -2807,6 +2846,8 @@ const Profile: React.FC = () => {
                   >
                     {formatPaymentUrlLabel(selectedPayment.paymentUrl)}
                   </Button>
+                ) : selectedPaymentReconcileRequired ? (
+                  <Text type="secondary">{t('pages.checkout.paymentRecoveryNextReconcileRequired')}</Text>
                 ) : '-'}
               </Descriptions.Item>
               <Descriptions.Item label={t('pages.profile.paymentExpiresAt')}>

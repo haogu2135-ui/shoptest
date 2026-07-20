@@ -1655,3 +1655,32 @@
     grid-column: auto !important;
   }
 }
+
+/* Commercial 430px compare header actions: single-column full-width CTAs, no clipped labels */
+@media (max-width: 430px) {
+  .product-compare__headerActions {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+    width: 100% !important;
+  }
+
+  .product-compare__headerActions .ant-space-item {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .product-compare__headerActions .ant-btn {
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 44px;
+    white-space: normal;
+  }
+
+  .product-compare__headerActions .ant-btn > span:not(.anticon):not(.ant-btn-icon) {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: clip;
+    white-space: normal;
+  }
+}

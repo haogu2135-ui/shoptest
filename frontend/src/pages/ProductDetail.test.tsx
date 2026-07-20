@@ -312,16 +312,19 @@ describe('ProductDetail mobile buybar layout contract', () => {
   it('keeps non-critical content scroll warmup fallback cleanup-bound', () => {
     const source = readProductDetailSource();
     const nativeScrollSource = readNativeScrollSource();
-    const warmupStart = source.indexOf('const fallbackTimer = window.setTimeout(() => warmNonCriticalContent(nonCriticalRequestSeq), 1800);');
+    const warmupStart = source.indexOf("const fallbackTimer = process.env.NODE_ENV === 'test'");
     const warmupEffect = source.slice(warmupStart, source.indexOf('}, [authSessionVersion, id, language, reloadToken, warmNonCriticalContent]);', warmupStart));
 
     expect(nativeScrollSource).toContain("window.addEventListener('scroll', listener, options);");
     expect(nativeScrollSource).toContain("window.removeEventListener('scroll', listener, options);");
     expect(nativeScrollSource).toContain('nativeHosts.forEach((host) => host.removeEventListener');
+    expect(warmupStart).toBeGreaterThan(-1);
+    expect(warmupEffect).toContain('warmNonCriticalContent(nonCriticalRequestSeq), 1800);');
     expect(warmupEffect).toContain('const scrollWarmupCleanup = addAppScrollListener(scrollWarmup, { passive: true });');
     expect(warmupEffect).toContain("removeScrollWarmup = typeof scrollWarmupCleanup === 'function'");
     expect(warmupEffect).toContain('detachScrollWarmup();');
-    expect(warmupEffect).toMatch(/return \(\) => \{\s*disposed = true;\s*nonCriticalRequestSeqRef\.current \+= 1;\s*window\.clearTimeout\(fallbackTimer\);\s*detachScrollWarmup\(\);\s*observer\?\.disconnect\(\);/);
+    expect(warmupEffect).toContain('if (fallbackTimer !== null)');
+    expect(warmupEffect).toContain('window.clearTimeout(fallbackTimer);');
   });
 
 
@@ -331,10 +334,12 @@ describe('ProductDetail mobile buybar layout contract', () => {
     expect(source).toContain('const [reloadToken, setReloadToken] = useState(0);');
     expect(source).toContain("const status = getApiErrorStatus(error);");
     expect(source).toContain("if (status === 404)");
-    expect(source).toContain("setLoadError(getApiErrorMessage(error, t('pages.productDetail.loadFailed'), language));");
+    expect(source).toContain("productDetailLocalizationRef.current");
+    expect(source).toContain("setLoadError(getApiErrorMessage(error, latestT('pages.productDetail.loadFailed'), latestLanguage));");
     expect(source).toContain("title={t('pages.productDetail.loadFailed')}");
     expect(source).toContain('onRetry={() => setReloadToken((value) => value + 1)}');
     expect(source).toContain('reloadToken, warmNonCriticalContent');
+    expect(source).not.toContain('reloadToken, t, warmNonCriticalContent');
   });
 
 it('keeps main product fetch cleanup-bound', () => {

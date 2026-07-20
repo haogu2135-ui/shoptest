@@ -3,6 +3,7 @@ package com.example.shop.config;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.config.BeanFactoryPostProcessor;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
+import org.springframework.context.EnvironmentAware;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
 
@@ -12,10 +13,11 @@ import java.util.Locale;
 import java.util.stream.Collectors;
 
 @Component
-public class ProductionSecretStartupValidator implements BeanFactoryPostProcessor {
-    private final Environment environment;
+public class ProductionSecretStartupValidator implements BeanFactoryPostProcessor, EnvironmentAware {
+    private Environment environment;
 
-    public ProductionSecretStartupValidator(Environment environment) {
+    @Override
+    public void setEnvironment(Environment environment) {
         this.environment = environment;
     }
 
