@@ -3,7 +3,7 @@ import { message } from 'antd';
 import fs from 'fs';
 import path from 'path';
 
-jest.mock('../api', () => ({
+jest.mock('../api/admin', () => ({
   adminApi: {
     getCoupons: jest.fn(),
     getCouponSummary: jest.fn(),
@@ -33,7 +33,7 @@ jest.mock('../i18n', () => {
 });
 
 const CouponManagement = require('./CouponManagement').default as typeof import('./CouponManagement').default;
-const { adminApi: mockAdminApi } = require('../api');
+const { adminApi: mockAdminApi } = require('../api/admin');
 const pageSource = fs.readFileSync(path.join(__dirname, 'CouponManagement.tsx'), 'utf8');
 const appCssSource = fs.readFileSync(path.join(__dirname, '../App.css'), 'utf8');
 

@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Alert, Button, Card, DatePicker, Form, Input, InputNumber, Modal, Popconfirm, Select, Space, Switch, Table, Tag, Typography, message } from 'antd';
 import { ClockCircleOutlined, LinkOutlined, PlusOutlined, SearchOutlined, SoundOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import { adminApi } from '../api';
+import { adminApi } from '../api/admin';
 import type { SiteAnnouncement, SiteAnnouncementAdminSummary } from '../types';
 import { useLanguage } from '../i18n';
 import { useDebounce } from '../hooks/useDebounce';

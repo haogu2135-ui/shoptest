@@ -12,9 +12,9 @@ const readProductListCss = () => fs.readFileSync(path.resolve(__dirname, 'Produc
 const readMobileAppCss = () => fs.readFileSync(path.resolve(__dirname, '../mobile-app.css'), 'utf8');
 const readMobilePageContrastCss = () => fs.readFileSync(path.resolve(__dirname, '../styles/mobile-page-contrast.css'), 'utf8');
 
-const mockStorage = new Map<string, string>();
 let mockScrollMetrics = { scrollTop: 0, scrollHeight: 900, viewportHeight: 800 };
 let mockScrollListener: EventListenerOrEventListenerObject | undefined;
+const mockStorage = (jest.requireMock('../utils/safeStorage') as { __mockStore: Map<string, string> }).__mockStore;
 
 jest.mock('../api', () => ({
   cartApi: { addItem: jest.fn() },
@@ -38,14 +38,21 @@ jest.mock('../hooks/useMarket', () => ({
   }),
 }));
 
-jest.mock('../utils/safeStorage', () => ({
-  getLocalStorageItem: jest.fn((key: string) => mockStorage.get(key) || null),
-  getSessionStorageItem: jest.fn(() => null),
-  hasStoredValue: jest.fn(() => false),
-  removeLocalStorageItem: jest.fn((key: string) => mockStorage.delete(key)),
-  removeSessionStorageItem: jest.fn(),
-  setLocalStorageItem: jest.fn((key: string, value: string) => mockStorage.set(key, value)),
-}));
+jest.mock('../utils/safeStorage', () => {
+  const store = new Map<string, string>();
+  return {
+    __esModule: true,
+    getLocalStorageItem: jest.fn((key: string) => store.get(key) || null),
+    getSessionStorageItem: jest.fn(() => null),
+    hasStoredValue: jest.fn((key?: string) => (key ? store.has(key) : store.size > 0)),
+    removeLocalStorageItem: jest.fn((key: string) => store.delete(key)),
+    removeSessionStorageItem: jest.fn(),
+    setLocalStorageItem: jest.fn((key: string, value: string) => {
+      store.set(key, value);
+    }),
+    __mockStore: store,
+  };
+});
 
 jest.mock('../utils/nativeScroll', () => ({
   addAppScrollListener: jest.fn(),

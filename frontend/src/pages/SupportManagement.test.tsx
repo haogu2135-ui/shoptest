@@ -11,7 +11,7 @@ const mockMarkRead = jest.fn();
 const mockGetAppConfig = jest.fn();
 const mockCreateWebSocketTicket = jest.fn();
 
-jest.mock('../api', () => ({
+jest.mock('../api/admin', () => ({
   adminApi: {
     getMyPermissions: jest.fn(),
     getOrder: jest.fn(),
@@ -28,6 +28,9 @@ jest.mock('../api', () => ({
     reopenSession: jest.fn(),
     reissueBirthdayCoupons: jest.fn(),
   },
+}));
+
+jest.mock('../api', () => ({
   appConfigApi: {
     get: (...args: unknown[]) => mockGetAppConfig(...args),
   },

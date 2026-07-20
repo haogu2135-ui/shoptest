@@ -5605,3 +5605,38 @@ body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .shopee-hom
     justify-self: end;
   }
 }
+
+
+/* Commercial discovery infinite-scroll a11y */
+.shopee-discovery__status {
+  margin: 0 0 10px;
+  color: rgba(0, 0, 0, 0.58);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.shopee-load-more {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 0 8px;
+}
+
+.shopee-load-more__button {
+  min-height: 40px;
+  padding: 0 16px;
+  border: 1px solid #d8e5dc;
+  border-radius: 999px;
+  background: #fff;
+  color: #124734;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.shopee-load-more__button:hover,
+.shopee-load-more__button:focus-visible {
+  border-color: #124734;
+  box-shadow: 0 0 0 2px rgba(18, 71, 52, 0.14);
+  outline: none;
+}

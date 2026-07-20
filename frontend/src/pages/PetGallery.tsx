@@ -15,6 +15,7 @@ import { useNavigate } from 'react-router-dom';
 import { petGalleryApi } from '../api';
 import { useLanguage } from '../i18n';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { useDocumentMeta } from '../hooks/useDocumentMeta';
 import { buildLoginUrlFromWindow } from '../utils/authRedirect';
 import type { PetGalleryPhotoPublic, PetGalleryQuota } from '../types';
 import { buildResponsiveImageSrcSet, getOptimizedImageUrl, imageFallbacks, resolveApiAssetUrl } from '../utils/mediaAssets';
@@ -85,6 +86,13 @@ const PetGallery: React.FC = () => {
   const navigate = useNavigate();
   const { t, language } = useLanguage();
   usePageTitle(t('pages.petGallery.title'));
+  useDocumentMeta({
+    title: t('pages.petGallery.title'),
+    description: t('pages.petGallery.seoDescription'),
+    path: '/pet-gallery',
+    type: 'website',
+    siteName: t('common.siteTitle'),
+  });
   const uploadInputRef = useRef<HTMLInputElement>(null);
   const [photos, setPhotos] = useState<PetGalleryPhotoPublic[]>([]);
   const [quota, setQuota] = useState<PetGalleryQuota | null>(null);

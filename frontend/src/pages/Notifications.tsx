@@ -6,6 +6,7 @@ import { notificationApi } from '../api';
 import type { AppNotification } from '../types';
 import { useLanguage } from '../i18n';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { useDocumentMeta } from '../hooks/useDocumentMeta';
 import { buildLoginUrlFromWindow } from '../utils/authRedirect';
 import { stripUnsafeHtml } from '../utils/sanitizeHtml';
 import { dispatchDomEvent } from '../utils/domEvents';
@@ -90,6 +91,14 @@ const Notifications: React.FC = () => {
   const navigate = useNavigate();
   const { t, language } = useLanguage();
   usePageTitle(t('pages.notifications.title'));
+  useDocumentMeta({
+    title: t('pages.notifications.title'),
+    description: t('common.siteDescription'),
+    path: '/notifications',
+    type: 'website',
+    noIndex: true,
+    siteName: t('common.siteTitle'),
+  });
 
   const formatNotificationType = useCallback((type?: string) => {
     const rawType = String(type || '').trim();

@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { cartApi, productApi } from '../api';
 import { useLanguage } from '../i18n';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { useDocumentMeta } from '../hooks/useDocumentMeta';
 import { useMarket } from '../hooks/useMarket';
 import type { ProductPublic as Product } from '../types';
 import { localizeProduct } from '../utils/localizedProduct';
@@ -51,6 +52,14 @@ const BrowsingHistory: React.FC = () => {
   const navigate = useNavigate();
   const { t, language } = useLanguage();
   usePageTitle(t('pages.browsingHistory.title'));
+  useDocumentMeta({
+    title: t('pages.browsingHistory.title'),
+    description: t('common.siteDescription'),
+    path: '/browsing-history',
+    type: 'website',
+    noIndex: true,
+    siteName: t('common.siteTitle'),
+  });
   const { formatMoney } = useMarket();
   const hasHistory = preferences.recent.length > 0;
   const historyProductName = (product: Pick<Product, 'id' | 'name'>) =>

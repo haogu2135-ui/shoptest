@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { adminApi } from '../api';
+import { adminApi } from '../api/admin';
 import { useAuth } from '../hooks/useAuth';
 import AdminDashboard from './AdminDashboard';
 
@@ -10,7 +10,7 @@ const readAdminDashboardCss = () => fs.readFileSync(path.resolve(__dirname, 'Adm
 
 const mockIdleCallbacks: Array<() => void> = [];
 
-jest.mock('../api', () => ({
+jest.mock('../api/admin', () => ({
   adminApi: {
     getDashboard: jest.fn(),
   },

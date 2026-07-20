@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Button, Card, Empty, Form, Input, InputNumber, Modal, Popconfirm, Select, Space, Spin, Statistic, Table, Tag, Typography, message } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { PlusOutlined, ReloadOutlined, SearchOutlined, StopOutlined, UnlockOutlined } from '@ant-design/icons';
-import { adminApi } from '../api';
+import { adminApi } from '../api/admin';
 import type { IpBlacklistEntry, IpBlacklistStatus } from '../types';
 import { useLanguage } from '../i18n';
 import { getApiErrorMessage } from '../utils/apiError';

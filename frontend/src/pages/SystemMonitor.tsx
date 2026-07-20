@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Button, Card, Descriptions, Progress, Space, Spin, Statistic, Tag, Typography, message } from 'antd';
 import { CloudServerOutlined, DatabaseOutlined, HddOutlined, ReloadOutlined, SafetyCertificateOutlined, SettingOutlined } from '@ant-design/icons';
-import { adminApi, apiBaseUrl } from '../api';
+import { apiBaseUrl } from '../api';
+import { adminApi } from '../api/admin';
 import type { AdminSystemStatus } from '../types';
 import { useLanguage } from '../i18n';
 import { getApiErrorMessage } from '../utils/apiError';

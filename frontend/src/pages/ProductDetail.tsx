@@ -1,5 +1,5 @@
 import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { Row, Col, Card, Button, Tag, Typography, Radio, Rate, Carousel, Modal, Space, Breadcrumb, Tabs, message, List, Input, Segmented, Alert } from 'antd';
 import { BarChartOutlined, HomeOutlined, ShoppingCartOutlined, HeartOutlined, HeartFilled, CheckCircleOutlined, TruckOutlined, SafetyCertificateOutlined, ThunderboltOutlined, BellOutlined, MinusOutlined, PlusOutlined, EllipsisOutlined } from '@ant-design/icons';
 import { productApi, cartApi, reviewApi, wishlistApi, questionApi } from '../api';
@@ -22,6 +22,7 @@ import { buildLoginUrlFromWindow } from '../utils/authRedirect';
 import { getLocalStorageItem, hasStoredValue, removeSessionStorageItem } from '../utils/safeStorage';
 import { getLimitedTimeEndMs, getLimitedTimeRemainingMs, shouldRunLimitedTimeTicker } from '../utils/limitedTimeCountdown';
 import { getApiErrorMessage, getApiErrorStatus } from '../utils/apiError';
+import { buildBreadcrumbStructuredData, buildProductStructuredData } from '../utils/structuredData';
 import { addCompareProduct, isProductCompared, MAX_COMPARE_ITEMS } from '../utils/productCompare';
 import { addAppScrollListener } from '../utils/nativeScroll';
 import { useNativeBackHandler } from '../utils/nativeBack';
@@ -32,6 +33,7 @@ import { reportNonBlockingError } from '../utils/nonBlockingError';
 import PageEmpty from '../components/PageEmpty';
 import PageError from '../components/PageError';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { useDocumentMeta } from '../hooks/useDocumentMeta';
 import {
   applyImageFallback,
   cacheProductRecommendations,
@@ -203,9 +205,23 @@ const ProductDetailLazyFallback: React.FC<{ label: string; variant: 'rich' | 're
   </div>
 );
 
+const PRODUCT_DETAIL_TAB_KEYS = ['details', 'specs', 'service'] as const;
+type ProductDetailTabKey = (typeof PRODUCT_DETAIL_TAB_KEYS)[number];
+
+const normalizeProductDetailTab = (value: string | null | undefined): ProductDetailTabKey => {
+  const normalized = String(value || '').trim().toLowerCase();
+  if (normalized === 'specs' || normalized === '2') return 'specs';
+  if (normalized === 'service' || normalized === 'shipping' || normalized === '3') return 'service';
+  if (normalized === 'details' || normalized === '1' || normalized === 'detail') return 'details';
+  return 'details';
+};
+
 const ProductDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedDetailTab = normalizeProductDetailTab(searchParams.get('tab'));
+  const [detailActiveTab, setDetailActiveTab] = useState<ProductDetailTabKey>(requestedDetailTab);
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -262,6 +278,88 @@ const ProductDetail: React.FC = () => {
   const pageTitle = product?.name?.trim() || (loadError ? t('pages.productDetail.loadFailed') : '');
   usePageTitle(pageTitle || t('pages.productDetail.product'));
   const { currency, market, formatMoney } = useMarket();
+  const productSeoDescription = useMemo(() => {
+    const raw = String(product?.description || '').replace(/\s+/g, ' ').trim();
+    if (raw) return raw.slice(0, 300);
+    if (loadError) return t('pages.productDetail.loadFailedDescription');
+    return t('common.siteDescription');
+  }, [loadError, product?.description, t]);
+  const productSeoImage = selectedImage || product?.imageUrl || product?.images?.[0] || '';
+  const productJsonLd = useMemo(() => {
+    if (!product) return null;
+    const productData = buildProductStructuredData({
+      id: product.id,
+      name: product.name,
+      description: product.description,
+      imageUrl: productSeoImage || product.imageUrl,
+      images: product.images,
+      brand: product.brand,
+      price: product.effectivePrice ?? product.price,
+      currency,
+      stock: product.stock,
+      path: `/products/${product.id}`,
+      averageRating: product.averageRating,
+      reviewCount: product.reviewCount,
+    });
+    const breadcrumbData = buildBreadcrumbStructuredData([
+      { name: t('nav.ariaHome'), path: '/' },
+      { name: t('pages.productList.title'), path: '/products' },
+      { name: product.name },
+    ]);
+    return [productData, breadcrumbData].filter(Boolean) as Array<Record<string, unknown>>;
+  }, [currency, product, productSeoImage, t]);
+  useDocumentMeta({
+    enabled: Boolean(product) || Boolean(loadError),
+    title: pageTitle || t('pages.productDetail.product'),
+    description: productSeoDescription,
+    imageUrl: product ? productSeoImage : undefined,
+    path: product ? `/products/${product.id}` : '/products',
+    type: product ? 'product' : 'website',
+    noIndex: Boolean(loadError) || (!product && !loadError),
+    siteName: t('common.siteTitle'),
+    jsonLdId: product ? `product-${product.id}` : 'product-detail',
+    jsonLd: productJsonLd,
+  });
+
+  useEffect(() => {
+    const nextTab = normalizeProductDetailTab(searchParams.get('tab'));
+    setDetailActiveTab((current) => (current === nextTab ? current : nextTab));
+  }, [searchParams]);
+
+  const openProductDetailTab = useCallback((tabKey: string) => {
+    const nextTab = normalizeProductDetailTab(tabKey);
+    setDetailActiveTab(nextTab);
+    const nextParams = new URLSearchParams(searchParams);
+    if (nextTab === 'details') {
+      nextParams.delete('tab');
+    } else {
+      nextParams.set('tab', nextTab);
+    }
+    setSearchParams(nextParams, { replace: true });
+  }, [searchParams, setSearchParams]);
+
+  useEffect(() => {
+    if (typeof document === 'undefined' || loading) return undefined;
+    const hash = String(window.location.hash || '').replace(/^#/, '').toLowerCase();
+    if (!hash) return undefined;
+    const targetId = hash === 'reviews' || hash === 'review'
+      ? 'product-reviews-card'
+      : hash === 'qa' || hash === 'questions' || hash === 'ask'
+        ? 'product-qa-card'
+        : hash === 'specs' || hash === 'service' || hash === 'details'
+          ? 'product-service-tabs'
+          : '';
+    if (!targetId) return undefined;
+    if (hash === 'specs' || hash === 'service' || hash === 'details') {
+      openProductDetailTab(hash);
+    }
+    const frameId = window.requestAnimationFrame(() => {
+      const target = document.getElementById(targetId);
+      target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    return () => window.cancelAnimationFrame(frameId);
+  }, [id, loading, openProductDetailTab, product?.id]);
+
   const detailProductName = useCallback((item: Pick<Product, 'id' | 'name'>) =>
     (item.name || '').trim() || t('pages.profile.productFallback', { id: item.id }), [t]);
   const trustBadges = conversionConfig.productTrustBadges.enabled ? conversionConfig.productTrustBadges.badges : [];
@@ -1394,8 +1492,14 @@ const ProductDetail: React.FC = () => {
             },
             {
               title: (
-                <button type="button" className="product-detail-breadcrumb__link" onClick={() => navigate('/products')}>
-                  {t('pages.productDetail.product')}
+                <button
+                  type="button"
+                  className="product-detail-breadcrumb__link"
+                  aria-label={t('pages.productList.title')}
+                  title={t('pages.productList.title')}
+                  onClick={() => navigate('/products')}
+                >
+                  {t('pages.productList.title')}
                 </button>
               ),
             },
@@ -1493,9 +1597,24 @@ const ProductDetail: React.FC = () => {
                   </Tag>
                 )}
                 {galleryImages.length > 1 && (
-                  <span className="product-mobile-gallery__count">
-                    {activeMobileImageIndex + 1}/{galleryImages.length}
-                  </span>
+                  <div className="product-gallery-controls">
+                    <span className="product-mobile-gallery__count" aria-live="polite">
+                      {activeMobileImageIndex + 1}/{galleryImages.length}
+                    </span>
+                    <button
+                      type="button"
+                      className="product-gallery-controls__pause"
+                      aria-pressed={imagePaused}
+                      aria-label={imagePaused ? t('pages.productDetail.galleryPlay') : t('pages.productDetail.galleryPause')}
+                      title={imagePaused ? t('pages.productDetail.galleryPlay') : t('pages.productDetail.galleryPause')}
+                      onClick={() => setImagePaused((paused) => !paused)}
+                    >
+                      {imagePaused ? t('pages.productDetail.galleryPlay') : t('pages.productDetail.galleryPause')}
+                    </button>
+                    <span className="product-detail__srOnly" aria-live="polite">
+                      {imagePaused ? t('pages.productDetail.galleryPaused') : t('pages.productDetail.galleryPlaying')}
+                    </span>
+                  </div>
                 )}
               </div>
 
@@ -2136,7 +2255,8 @@ const ProductDetail: React.FC = () => {
         <Card className="product-tabs-card" id="product-service-tabs">
           <Tabs
             className="product-detail-tabs"
-            defaultActiveKey="1"
+            activeKey={detailActiveTab}
+            onChange={openProductDetailTab}
             tabBarGutter={10}
             more={{
               icon: (
@@ -2150,7 +2270,7 @@ const ProductDetail: React.FC = () => {
             }}
             items={[
               {
-                key: '1',
+                key: 'details',
                 label: t('pages.productDetail.details'),
                 children: (
                   <div className="product-tab-content">
@@ -2171,7 +2291,7 @@ const ProductDetail: React.FC = () => {
                 ),
               },
               {
-                key: '2',
+                key: 'specs',
                 label: t('pages.productDetail.specs'),
                 children: (
                   <div className="product-tab-content">
@@ -2187,7 +2307,7 @@ const ProductDetail: React.FC = () => {
                 ),
               },
               {
-                key: '3',
+                key: 'service',
                 label: t('pages.productDetail.service'),
                 children: (
                   <div className="product-tab-content">

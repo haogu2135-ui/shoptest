@@ -1,6 +1,6 @@
 import React, { createContext, ReactNode, useCallback, useContext, useMemo, useState } from 'react';
 import { message } from 'antd';
-import { clearStoredAuthSession, persistAuthSession, userApi } from '../api';
+import { clearStoredAuthSession, persistAuthSession, userApi } from '../api/core';
 import type { UserProfile } from '../types';
 import { useLanguage } from '../i18n';
 import { AUTH_SESSION_CHANGED_EVENT, AUTH_SESSION_STORAGE_KEYS } from '../utils/authEvents';

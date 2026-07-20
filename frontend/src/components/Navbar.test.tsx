@@ -9,7 +9,6 @@ const mockLoginAuthSession = jest.fn();
 const mockUseAuth = jest.fn();
 
 jest.mock('../api', () => ({
-  adminApi: { getMyPermissions: jest.fn() },
   announcementApi: { getActive: jest.fn(() => Promise.resolve({ data: [] })) },
   cartApi: { getItems: jest.fn() },
   clearStoredAuthSession: jest.fn(),
@@ -18,6 +17,11 @@ jest.mock('../api', () => ({
   productApi: { getByIds: jest.fn() },
   userApi: { getProfile: jest.fn(), logout: jest.fn() },
   wishlistApi: { getCount: jest.fn() },
+}));
+
+jest.mock('../api/admin', () => ({
+  adminApi: { getMyPermissions: jest.fn() },
+  adminSupportApi: {},
 }));
 
 jest.mock('../hooks/useAuth', () => ({
@@ -177,7 +181,8 @@ jest.mock('../utils/announcementLinks', () => ({
 }));
 
 const Navbar = require('./Navbar').default as typeof import('./Navbar').default;
-const { adminApi, announcementApi, cartApi, clearStoredAuthSession, couponApi, notificationApi, userApi, wishlistApi } = require('../api');
+const { announcementApi, cartApi, clearStoredAuthSession, couponApi, notificationApi, userApi, wishlistApi } = require('../api');
+const { adminApi } = require('../api/admin');
 const {
   fetchLatestMobileRelease,
   resolveMobileReleaseDownloadUrl,

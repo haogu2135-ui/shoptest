@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Button, Card, Empty, Popconfirm, Space, Spin, Statistic, Table, Tag, Typography, message } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { ClearOutlined, DashboardOutlined, ReloadOutlined, ThunderboltOutlined, UndoOutlined } from '@ant-design/icons';
-import { adminApi } from '../api';
+import { adminApi } from '../api/admin';
 import type { AdminTrafficControlStatus } from '../types';
 import { useLanguage } from '../i18n';
 import { getApiErrorMessage } from '../utils/apiError';

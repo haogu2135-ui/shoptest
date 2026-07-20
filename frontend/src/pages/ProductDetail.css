@@ -6522,3 +6522,86 @@ body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .product-de
     font-size: 12px !important;
   }
 }
+
+
+/* Commercial gallery pause control (keyboard + screen-reader friendly) */
+.product-gallery-controls {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px 4px 10px;
+  border-radius: 999px;
+  background: rgba(8, 28, 20, 0.72);
+  color: #fff;
+  backdrop-filter: blur(4px);
+}
+
+.product-gallery-controls .product-mobile-gallery__count {
+  position: static;
+  background: transparent;
+  padding: 0;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.product-gallery-controls__pause {
+  border: 0;
+  border-radius: 999px;
+  min-height: 32px;
+  padding: 0 10px;
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.product-gallery-controls__pause:hover,
+.product-gallery-controls__pause:focus-visible {
+  background: rgba(255, 255, 255, 0.28);
+  outline: 2px solid rgba(255, 255, 255, 0.7);
+  outline-offset: 1px;
+}
+
+.product-detail__srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 768px) {
+  .product-gallery-controls {
+    right: 8px;
+    bottom: 8px;
+  }
+
+  .product-gallery-controls__pause {
+    min-height: 36px;
+  }
+}
+
+
+/* Keep pause control visible on desktop even when mobile gallery chrome is hidden */
+.product-detail-main-image .product-gallery-controls {
+  display: inline-flex !important;
+}
+
+.product-detail-main-image .product-gallery-controls .product-mobile-gallery__count {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .product-detail-main-image .product-gallery-controls .product-mobile-gallery__count {
+    display: inline-flex;
+  }
+}

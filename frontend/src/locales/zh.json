@@ -44,7 +44,11 @@
     "backToTop": "返回顶部",
     "previousPages": "上一组页",
     "nextPages": "下一组页",
-    "unknown": "未知"
+    "unknown": "未知",
+    "offlineTitle": "当前已离线",
+    "offlineText": "仅可浏览已缓存页面。网络恢复后即可继续下单与结账。",
+    "onlineRestoredTitle": "网络已恢复",
+    "onlineRestoredText": "可以继续购物和结账了。"
   },
   "app": {
     "loading": "App 加载中…",
@@ -416,7 +420,11 @@
     "stockAvailable": "库存 {count} 件",
     "browseCatalog": "浏览商品",
     "emptyCategoriesHint": "分类就绪后会显示在这里。",
-    "emptyProductsHint": "新品即将上架，可先浏览分类或使用搜索。"
+    "emptyProductsHint": "新品即将上架，可先浏览分类或使用搜索。",
+    "discoveryShowing": "已显示 {shown} / {total} 个推荐",
+    "discoveryLoadMore": "加载更多推荐",
+    "discoveryLoadingMore": "正在加载更多推荐",
+    "discoveryAllLoaded": "推荐商品已全部加载"
   },
   "footer": {
     "customerCare": "客户服务",
@@ -637,7 +645,8 @@
         "walletThreshold": "门槛",
         "remainingLabel": "剩余"
       },
-      "catalogFallbackDescription": "实时优惠券暂时不可用。你可以先浏览精选优惠，稍后再重试领取。"
+      "catalogFallbackDescription": "实时优惠券暂时不可用。你可以先浏览精选优惠，稍后再重试领取。",
+      "seoDescription": "领取宠物商城优惠券、查看卡包节省金额，并在结账前应用优惠。"
     },
     "adminCoupons": {
       "title": "优惠券",
@@ -827,7 +836,16 @@
       "paymentFailedText": "支付网关返回失败。请到“我的订单”继续支付，或更换支付方式。",
       "paymentFailedOrderText": "订单 {orderNo} 支付失败。请到“我的订单”继续支付，或更换支付方式。",
       "paymentCancelledResume": "继续支付",
-      "paymentCancelledTrack": "查询订单"
+      "paymentCancelledTrack": "查询订单",
+      "freeShippingProgressLabel": "免运费进度",
+      "freeShippingProgressValue": "距离免运费已完成 {percent}%",
+      "trustTitle": "购物车信任保障",
+      "trustSecureTitle": "安全结账",
+      "trustSecureText": "支持本地加密支付方式。",
+      "trustReturnsTitle": "便捷售后",
+      "trustReturnsText": "可随时在订单中发起售后。",
+      "trustSupportTitle": "人工客服",
+      "trustSupportText": "尺码、物流与支付问题随时咨询。"
     },
     "addOnAssistant": {
       "title": "智能凑单推荐",
@@ -1163,7 +1181,9 @@
       "checkoutPathText": "{count} 件商品位于当前结果前列，其中 {ready} 件可直接加购。",
       "snapshotNotice": "实时目录恢复前，正在展示最近保存的商品目录。",
       "snapshotTitle": "临时目录",
-      "snapshotText": "实时目录恢复后，价格和库存可能会更新。"
+      "snapshotText": "实时目录恢复后，价格和库存可能会更新。",
+      "seoDescription": "选购宠物食品、玩具、宠物床、外出装备与智能照护用品，支持墨西哥本地化结账体验。",
+      "searchSeoDescription": "“{keyword}” 的搜索结果 — 查看库存、优惠与一键加购的匹配商品。"
     },
     "compare": {
       "title": "商品对比",
@@ -1304,7 +1324,16 @@
       "recoveryEyebrow": "支付恢复",
       "backToOrders": "查看订单",
       "missingOrder": "缺少订单号",
-      "missingOrderText": "请从结账、订单追踪或个人中心进入本页，以便核验支付金额。"
+      "missingOrderText": "请从结账、订单追踪或个人中心进入本页，以便核验支付金额。",
+      "stickyOpenPayment": "打开安全支付",
+      "stickyRefresh": "刷新支付状态",
+      "trustTitle": "支付信任保障",
+      "trustSecureTitle": "加密支付通道",
+      "trustSecureText": "仅打开当前市场已配置的支付链接。",
+      "trustTrackTitle": "随时查单",
+      "trustTrackText": "离开银行页面后仍可查看支付与订单状态。",
+      "trustSupportTitle": "需要帮助",
+      "trustSupportText": "支付失败、取消或待支付问题可联系客服。"
     },
     "checkout": {
       "loadFailed": "结算信息加载失败",
@@ -3057,7 +3086,11 @@
       "lowStockUrgency": "仅剩 {count} 件",
       "lowStockUrgencyText": "库存紧张，尽快结算可锁定该规格（剩余 {count} 件）。",
       "decisionStockLowTitle": "库存紧张，建议尽快下单",
-      "decisionStockLowText": "当前选择仅剩 {count} 件（显示为 {stock}）。"
+      "decisionStockLowText": "当前选择仅剩 {count} 件（显示为 {stock}）。",
+      "galleryPause": "暂停图片轮播",
+      "galleryPlay": "播放图片轮播",
+      "galleryPaused": "轮播已暂停",
+      "galleryPlaying": "轮播播放中"
     },
     "profile": {
       "fetchUserFailed": "用户信息加载失败",
@@ -3322,7 +3355,10 @@
       "paymentRefundedNext": "请保留退款记录。若超过 5 个工作日仍未到账，请联系客服。",
       "paymentRefundingTitle": "退款处理中",
       "paymentRefundingText": "正在向原支付方式发起退款。网关确认后会在此显示完成时间。",
-      "paymentRefundingNext": "无需额外操作，请关注订单退款状态更新。"
+      "paymentRefundingNext": "无需额外操作，请关注订单退款状态更新。",
+      "noOrdersHint": "可先逛热销、领优惠券，或用宠物匹配助手找合适商品。",
+      "emptyOrdersCoupons": "去领券",
+      "emptyOrdersPetFinder": "智能找商品"
     },
     "brandAdmin": {
       "title": "品牌管理",
@@ -3496,7 +3532,8 @@
         "rating": "评分最高",
         "deal": "优惠优先",
         "budget": "价格友好"
-      }
+      },
+      "seoDescription": "按预算、宠物类型和生活方式找到合适的宠物商品推荐。"
     },
     "petGallery": {
       "eyebrow": "社区图库",
@@ -3555,7 +3592,8 @@
       "shopInspired": "选购灵感商品",
       "sampleBadge": "示例",
       "sampleSource": "示例内容",
-      "staleActionBlocked": "请先刷新实时宠物图库，再修改点赞、上传或删除。"
+      "staleActionBlocked": "请先刷新实时宠物图库，再修改点赞、上传或删除。",
+      "seoDescription": "浏览 ShopMX 社区真实宠物照片，获取食品、玩具与护理灵感。"
     },
     "stockAlerts": {
       "title": "到货提醒",

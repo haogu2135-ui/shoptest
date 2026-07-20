@@ -3,7 +3,7 @@ import { Alert, Button, Form, Input, Modal, Select, Skeleton, Space, Spin, Stati
 import type { ColumnsType } from 'antd/es/table';
 import { BugOutlined, CheckCircleOutlined, EditOutlined, PlusOutlined, ReloadOutlined, SearchOutlined, SyncOutlined, ToolOutlined, UploadOutlined } from '@ant-design/icons';
 import { useSearchParams } from 'react-router-dom';
-import { adminApi } from '../api';
+import { adminApi } from '../api/admin';
 import type { AdminBugReport, AdminBugReportPriority, AdminBugReportSeverity, AdminBugReportStatus, AdminBugReportSummary } from '../types';
 import { useLanguage } from '../i18n';
 import { useDebounce } from '../hooks/useDebounce';

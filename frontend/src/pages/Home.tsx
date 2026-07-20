@@ -40,10 +40,13 @@ import { cancelIdleTask, scheduleIdleTask } from '../utils/idleScheduler';
 import { openCartDrawerWithSnapshot } from '../utils/cartDrawer';
 import PageError from '../components/PageError';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { useDocumentMeta } from '../hooks/useDocumentMeta';
 import PageEmpty from '../components/PageEmpty';
 import { allSettledWithConcurrency } from '../utils/asyncBatch';
 import { buildProductCatalogFallbackCategories, loadFallbackProductCatalog, loadProductCatalogSnapshot, saveProductCatalogSnapshot } from '../utils/productCatalogSnapshot';
 import { reportNonBlockingError } from '../utils/nonBlockingError';
+import { buildWebsiteStructuredData } from '../utils/structuredData';
+import { resolveDefaultSocialImageUrl } from '../utils/documentMeta';
 import { isSupportedPetGalleryImageFile } from '../utils/petGalleryUpload';
 import HomePetGallery, { type HomePetGalleryItem } from '../components/HomePetGallery';
 import HomeProductCard from '../components/HomeProductCard';
@@ -139,6 +142,22 @@ const Home: React.FC = () => {
   const { t, language } = useLanguage();
   const { formatMoney: formatPrice, market } = useMarket();
   usePageTitle(t('common.brand') || t('common.siteTitle'));
+  const homeJsonLd = useMemo(() => buildWebsiteStructuredData({
+    name: t('common.siteTitle'),
+    description: t('common.siteDescription'),
+    path: '/',
+    searchPathTemplate: '/products?keyword={search_term_string}',
+  }), [t]);
+  useDocumentMeta({
+    title: t('common.siteTitle'),
+    description: t('common.siteDescription'),
+    imageUrl: resolveDefaultSocialImageUrl() || publicAssetUrl('/logo512.png'),
+    path: '/',
+    type: 'website',
+    siteName: t('common.siteTitle'),
+    jsonLdId: 'website-home',
+    jsonLd: homeJsonLd,
+  });
   const getPrice = (product: Product) => product.effectivePrice ?? product.price;
   const getDiscountPercent = (product: Product) => product.effectiveDiscountPercent || product.discount || 0;
   const homeProductName = (product: Pick<Product, 'id' | 'name'>) =>
@@ -1299,16 +1318,38 @@ const Home: React.FC = () => {
           </div>
           {discoveryProducts.length ? (
             <>
-            <Row gutter={[12, 12]}>
+            <div
+              className="shopee-discovery__status"
+              role="status"
+              aria-live="polite"
+              aria-atomic="true"
+            >
+              {hasMoreDiscoveryProducts
+                ? t('home.discoveryShowing', {
+                    shown: visibleDiscoveryProducts.length,
+                    total: discoveryProducts.length,
+                  })
+                : t('home.discoveryAllLoaded')}
+            </div>
+            <Row gutter={[12, 12]} role="list" aria-label={t('home.dailyDiscovery')}>
               {visibleDiscoveryProducts.map((product, index) => (
-                <Col key={product.id} xs={12} sm={8} md={6} lg={4}>
+                <Col key={product.id} xs={12} sm={8} md={6} lg={4} role="listitem">
                   <HomeProductCard {...productCardCommonProps} product={product} index={index} sectionLabel={t('home.dailyDiscovery')} />
                 </Col>
               ))}
             </Row>
             {hasMoreDiscoveryProducts ? (
-              <div className="shopee-load-more">
+              <div className="shopee-load-more" role="status" aria-live="polite" aria-busy="true" aria-label={t('home.discoveryLoadingMore')}>
                 <Spin size="small" />
+                <button
+                  type="button"
+                  className="shopee-load-more__button"
+                  aria-label={t('home.discoveryLoadMore')}
+                  title={t('home.discoveryLoadMore')}
+                  onClick={() => setVisibleCount((count) => Math.min(count + DISCOVERY_BATCH_SIZE, discoveryProducts.length))}
+                >
+                  {t('home.discoveryLoadMore')}
+                </button>
               </div>
             ) : null}
             </>

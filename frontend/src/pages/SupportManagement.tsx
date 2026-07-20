@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Badge, Button, Card, Empty, Input, List, message, Modal, Popconfirm, Select, Space, Spin, Tag, Typography } from 'antd';
 import { AlertOutlined, CheckCircleOutlined, CustomerServiceOutlined, GiftOutlined, SearchOutlined, SendOutlined, ShoppingOutlined, ThunderboltOutlined } from '@ant-design/icons';
-import { adminApi, adminSupportApi, supportApi, supportWebSocketProtocols, supportWebSocketUrl, userApi } from '../api';
+import { supportApi, supportWebSocketProtocols, supportWebSocketUrl, userApi } from '../api';
+import { adminApi, adminSupportApi } from '../api/admin';
 import type { Order, OrderItem, SupportAdminSummary, SupportMessage, SupportSession } from '../types';
 import { useLanguage } from '../i18n';
 import { useMarket } from '../hooks/useMarket';

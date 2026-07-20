@@ -636,9 +636,19 @@
   gap: 8px;
 }
 
+
+.product-list__checkoutPathThumb {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  object-fit: cover;
+  background: #eef5f0;
+  border: 1px solid #d9e7dd;
+}
+
 .product-list__checkoutPathItem {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
   gap: 8px;
   align-items: center;
   min-height: 48px;

@@ -2,9 +2,7 @@ import React, { Suspense, lazy, useCallback, useEffect, useRef, useState } from 
 import { BrowserRouter as Router, Link, Navigate, Outlet, Route, Routes, useLocation, useNavigate, useNavigationType } from 'react-router-dom';
 import { Button, Layout, Modal, Space, Spin, Typography, message } from 'antd';
 import { CustomerServiceOutlined, GiftOutlined, UserAddOutlined, FileSearchOutlined, CopyOutlined } from '@ant-design/icons';
-import Navbar from './components/Navbar';
 import ErrorBoundary from './components/ErrorBoundary';
-import CustomerSupportWidget from './components/CustomerSupportWidget';
 import SkipToContentLink, { MAIN_CONTENT_ID } from './components/SkipToContentLink';
 import { AuthProvider } from './hooks/useAuth';
 import { useLanguage } from './i18n';
@@ -14,7 +12,7 @@ import { addAppScrollListener, getAppScrollMetrics, scrollAppToTop } from './uti
 import { consumeNativeBack, useNativeBackHandler } from './utils/nativeBack';
 import { getLocalStorageItem, hasStoredValue, removeLocalStorageItem, setLocalStorageItem } from './utils/safeStorage';
 import { clearGuestSupportContext, loadGuestSupportContext, normalizeGuestSupportContext, saveGuestSupportContext } from './utils/guestSupportContext';
-import { clearStoredAuthSession, userApi } from './api';
+import { clearStoredAuthSession, userApi } from './api/core';
 import { buildLoginUrl, buildLoginUrlFromWindow, getCurrentRelativeUrl } from './utils/authRedirect';
 import { AUTH_SESSION_CHANGED_EVENT, AUTH_SESSION_STORAGE_KEYS } from './utils/authEvents';
 import { isAuthExpiredError } from './utils/apiError';
@@ -34,8 +32,6 @@ import {
   type MobileReleaseManifest,
 } from './utils/mobileUpdate';
 import './App.css';
-import './mobile-app.css';
-import './styles/admin-table-selection.css';
 
 const { Content, Footer } = Layout;
 const { Text } = Typography;
@@ -63,6 +59,8 @@ declare global {
   }
 }
 
+const loadNavbar = () => import(/* webpackChunkName: "navbar" */ './components/Navbar');
+const LazyNavbar = lazy(loadNavbar);
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
 const AdminLayout = lazy(() => import('./components/AdminLayout'));
 const AlertManagement = lazy(() => import('./pages/AlertManagement'));
@@ -108,10 +106,13 @@ const TrafficControl = lazy(() => import('./pages/TrafficControl'));
 const UserManagement = lazy(() => import('./pages/UserManagement'));
 const Wishlist = lazy(() => import('./pages/Wishlist'));
 const NotFound = lazy(() => import('./pages/NotFound'));
-const loadCartDrawer = () => import('./components/CartDrawer');
+const loadCartDrawer = () => import(/* webpackChunkName: "cart-drawer" */ './components/CartDrawer');
 const LazyCartDrawer = lazy(loadCartDrawer);
+const loadCustomerSupportWidget = () => import(/* webpackChunkName: "customer-support-widget" */ './components/CustomerSupportWidget');
+const LazyCustomerSupportWidget = lazy(loadCustomerSupportWidget);
 const loadAndroidUiFinalGuard = () => import('./utils/androidUiFinalGuard');
 const loadMobileContrastGuard = () => import('./utils/mobileContrastGuard');
+const loadMobileAppCss = () => import(/* webpackChunkName: "mobile-app-css" */ './mobile-app.css');
 
 type GuardCleanup = () => void;
 
@@ -390,17 +391,28 @@ const NativeAppClassHost: React.FC = () => {
 
     const body = document.body;
     if (!body) return;
+    let disposed = false;
 
-    document.documentElement.classList.add('shop-mobile-app-root');
-    body.classList.add('shop-mobile-app');
-    if (platform) {
-      body.classList.add(`shop-mobile-app--${platform}`);
-      document.documentElement.dataset.shopPlatform = platform;
-    }
+    // Commercial web performance: keep the 500KB+ native shell CSS out of desktop main CSS.
+    // Apply classes after stylesheet resolves to avoid unstyled native chrome flash.
+    loadMobileAppCss()
+      .catch((error) => {
+        reportNonBlockingError('App.loadMobileAppCss', error);
+      })
+      .finally(() => {
+        if (disposed || !document.body) return;
+        document.documentElement.classList.add('shop-mobile-app-root');
+        document.body.classList.add('shop-mobile-app');
+        if (platform) {
+          document.body.classList.add(`shop-mobile-app--${platform}`);
+          document.documentElement.dataset.shopPlatform = platform;
+        }
+      });
 
     return () => {
+      disposed = true;
       document.documentElement.classList.remove('shop-mobile-app-root');
-      body.classList.remove('shop-mobile-app', 'shop-mobile-app--android', 'shop-mobile-app--ios');
+      document.body?.classList.remove('shop-mobile-app', 'shop-mobile-app--android', 'shop-mobile-app--ios');
       delete document.documentElement.dataset.shopPlatform;
     };
   }, []);
@@ -721,6 +733,89 @@ const RouteScrollReset: React.FC = () => {
   return null;
 };
 
+const RouteFocusManager: React.FC = () => {
+  const location = useLocation();
+  const isFirstRouteRef = useRef(true);
+
+  useEffect(() => {
+    if (location.hash) return;
+    if (isFirstRouteRef.current) {
+      isFirstRouteRef.current = false;
+      return;
+    }
+    // Commercial SPA a11y: move keyboard focus to main content after navigation.
+    const mainContent = document.getElementById(MAIN_CONTENT_ID);
+    if (!mainContent || typeof mainContent.focus !== 'function') return;
+    const frameId = window.requestAnimationFrame(() => {
+      try {
+        mainContent.focus({ preventScroll: true });
+      } catch (error) {
+        reportNonBlockingError('App.RouteFocusManager.focus', error);
+        mainContent.focus();
+      }
+    });
+    return () => window.cancelAnimationFrame(frameId);
+  }, [location.pathname, location.search]);
+
+  return null;
+};
+
+const ConnectivityBanner: React.FC = () => {
+  const { t } = useLanguage();
+  const [online, setOnline] = useState(() => (typeof navigator === 'undefined' ? true : navigator.onLine));
+  const [showRestored, setShowRestored] = useState(false);
+  const restoredTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    const clearRestoredTimer = () => {
+      if (restoredTimerRef.current !== null) {
+        window.clearTimeout(restoredTimerRef.current);
+        restoredTimerRef.current = null;
+      }
+    };
+    const handleOnline = () => {
+      setOnline(true);
+      setShowRestored(true);
+      clearRestoredTimer();
+      restoredTimerRef.current = window.setTimeout(() => {
+        setShowRestored(false);
+        restoredTimerRef.current = null;
+      }, 3200);
+    };
+    const handleOffline = () => {
+      clearRestoredTimer();
+      setShowRestored(false);
+      setOnline(false);
+    };
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      clearRestoredTimer();
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  if (online && !showRestored) {
+    return null;
+  }
+
+  const title = online ? t('common.onlineRestoredTitle') : t('common.offlineTitle');
+  const text = online ? t('common.onlineRestoredText') : t('common.offlineText');
+
+  return (
+    <div
+      className={online ? 'shop-connectivity-banner shop-connectivity-banner--online' : 'shop-connectivity-banner shop-connectivity-banner--offline'}
+      role="status"
+      aria-live="assertive"
+      aria-atomic="true"
+    >
+      <strong>{title}</strong>
+      <span>{text}</span>
+    </div>
+  );
+};
+
 const NativeBackNavigation: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -909,9 +1004,12 @@ const LazySupportWidgetHost: React.FC = () => {
     requestSeqRef.current += 1;
     setOpenRequest({ id: requestSeqRef.current, ...(guestDetail || {}) });
     setLoaded(true);
+    void loadCustomerSupportWidget();
   }, []);
 
-  const preloadSupport = useCallback(() => undefined, []);
+  const preloadSupport = useCallback(() => {
+    void loadCustomerSupportWidget();
+  }, []);
 
   useEffect(() => {
     if (widgetReady) return;
@@ -933,10 +1031,12 @@ const LazySupportWidgetHost: React.FC = () => {
         fallback={<SupportLauncherButton onOpen={openSupport} onPreload={preloadSupport} />}
         reportContext="FloatingOverlayBoundary.supportWidget.componentDidCatch"
       >
-        <CustomerSupportWidget
-          initialOpenRequest={openRequest}
-          onReady={handleWidgetReady}
-        />
+        <Suspense fallback={null}>
+          <LazyCustomerSupportWidget
+            initialOpenRequest={openRequest}
+            onReady={handleWidgetReady}
+          />
+        </Suspense>
       </FloatingOverlayBoundary>
     </>
   );
@@ -1055,7 +1155,10 @@ const StorefrontLayout: React.FC = () => {
   return (
     <Layout className={shellClassName} style={{ minHeight: '100vh' }}>
       <SkipToContentLink />
-      <Navbar />
+      <ConnectivityBanner />
+      <Suspense fallback={<header className="app-navbar-skeleton" aria-hidden="true" style={{ minHeight: 56 }} />}>
+        <LazyNavbar />
+      </Suspense>
       <Content id={MAIN_CONTENT_ID} tabIndex={-1} style={{ marginTop: 0, padding: 0 }}>
         <ErrorBoundary key={location.pathname}>
           <Outlet />
@@ -1115,6 +1218,7 @@ const App: React.FC = () => {
       <AuthProvider>
         <AuthStartupGate>
           <RouteScrollReset />
+          <RouteFocusManager />
           <ErrorBoundary>
             <Suspense fallback={<LoadingFallback />}>
               <Routes>

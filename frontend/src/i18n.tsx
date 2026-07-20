@@ -1,8 +1,7 @@
-import React, { createContext, useContext, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import enLocale from './locales/en.json';
-import esLocale from './locales/es.json';
-import zhLocale from './locales/zh.json';
 import { getLocalStorageItem, setLocalStorageItem } from './utils/safeStorage';
+import { reportNonBlockingError } from './utils/nonBlockingError';
 
 export const SUPPORTED_LANGUAGES = ['es', 'zh', 'en'] as const;
 export type Language = (typeof SUPPORTED_LANGUAGES)[number];
@@ -34,10 +33,50 @@ const mergeTranslations = (base: TranslationMap, override: TranslationMap): Tran
   return result;
 };
 
+const enMap = enLocale as TranslationMap;
+
+// English is the commercial fallback pack and stays in the main bundle.
+// Spanish/Chinese packs load on demand so the default storefront shell stays lighter.
 const translations: Record<Language, TranslationMap> = {
-  en: enLocale as TranslationMap,
-  es: mergeTranslations(enLocale as TranslationMap, esLocale as TranslationMap),
-  zh: mergeTranslations(enLocale as TranslationMap, zhLocale as TranslationMap),
+  en: enMap,
+  es: enMap,
+  zh: enMap,
+};
+
+const packLoaded: Record<Language, boolean> = {
+  en: true,
+  es: false,
+  zh: false,
+};
+
+const packPromises: Partial<Record<Language, Promise<TranslationMap>>> = {};
+
+export const ensureLanguagePack = async (language: Language): Promise<TranslationMap> => {
+  if (packLoaded[language]) {
+    return translations[language];
+  }
+  if (!packPromises[language]) {
+    packPromises[language] = (async () => {
+      if (language === 'es') {
+        const module = await import(/* webpackChunkName: "i18n-es" */ './locales/es.json');
+        translations.es = mergeTranslations(enMap, module.default as TranslationMap);
+        packLoaded.es = true;
+        return translations.es;
+      }
+      if (language === 'zh') {
+        const module = await import(/* webpackChunkName: "i18n-zh" */ './locales/zh.json');
+        translations.zh = mergeTranslations(enMap, module.default as TranslationMap);
+        packLoaded.zh = true;
+        return translations.zh;
+      }
+      packLoaded.en = true;
+      return translations.en;
+    })().catch((error) => {
+      delete packPromises[language];
+      throw error;
+    });
+  }
+  return packPromises[language] as Promise<TranslationMap>;
 };
 
 type LanguageContextValue = {
@@ -70,6 +109,19 @@ const detectBrowserLanguage = (): Language => {
   }
   return timezone.includes('Mexico') ? 'es' : 'en';
 };
+
+const resolveInitialLanguage = (): Language => {
+  const storedLanguage = getLocalStorageItem(STORAGE_KEY);
+  if (isLanguage(storedLanguage)) return storedLanguage;
+  return detectBrowserLanguage();
+};
+
+// Warm the active pack as soon as the language module boots.
+if (typeof window !== 'undefined') {
+  void ensureLanguagePack(resolveInitialLanguage()).catch((error) => {
+    reportNonBlockingError('i18n.ensureLanguagePack.bootstrap', error);
+  });
+}
 
 const getNestedValue = (source: TranslationMap, key: string) =>
   key.split('.').reduce<string | TranslationMap | undefined>((current, part) => {
@@ -111,16 +163,35 @@ export const translateForLanguage = (language: Language, key: string, params?: T
 };
 
 export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [language, setLanguageState] = useState<Language>(() => {
-    const storedLanguage = getLocalStorageItem(STORAGE_KEY);
-    if (isLanguage(storedLanguage)) return storedLanguage;
-    return detectBrowserLanguage();
-  });
+  const [language, setLanguageState] = useState<Language>(() => resolveInitialLanguage());
+  const [packRevision, setPackRevision] = useState(0);
 
-  const setLanguage = (nextLanguage: Language) => {
+  useEffect(() => {
+    let cancelled = false;
+    // Only bump packRevision when a pack actually becomes available for the first time.
+    // Re-bumping an already-loaded English pack remints `t` and retriggers storefront fetches.
+    const needsRevisionBump = !packLoaded[language];
+    ensureLanguagePack(language)
+      .then(() => {
+        if (!cancelled && needsRevisionBump) {
+          setPackRevision((value) => value + 1);
+        }
+      })
+      .catch((error) => {
+        reportNonBlockingError('i18n.ensureLanguagePack.provider', error);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [language]);
+
+  const setLanguage = useCallback((nextLanguage: Language) => {
     setLocalStorageItem(STORAGE_KEY, nextLanguage);
     setLanguageState(nextLanguage);
-  };
+    void ensureLanguagePack(nextLanguage).catch((error) => {
+      reportNonBlockingError('i18n.ensureLanguagePack.setLanguage', error);
+    });
+  }, []);
 
   const value = useMemo<LanguageContextValue>(
     () => ({
@@ -128,7 +199,7 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       setLanguage,
       t: (key: string, params?: TranslationParams) => translateForLanguage(language, key, params),
     }),
-    [language],
+    [language, packRevision, setLanguage],
   );
 
   return <LanguageContext.Provider value={value}>{children}</LanguageContext.Provider>;

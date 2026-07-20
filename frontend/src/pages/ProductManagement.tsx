@@ -8,7 +8,7 @@ import {
   PlusOutlined, EditOutlined, DeleteOutlined, StarOutlined, StarFilled,
   SearchOutlined, MinusCircleOutlined, UploadOutlined, DownloadOutlined, CopyOutlined, SyncOutlined, LinkOutlined,
 } from '@ant-design/icons';
-import { adminApi } from '../api';
+import { adminApi } from '../api/admin';
 import type {
   Product,
   CategoryPublic,

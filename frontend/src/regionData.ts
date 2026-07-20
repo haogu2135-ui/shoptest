@@ -12,11 +12,6 @@ type ChinaLevelItem = {
   d?: ChinaLevelItem[];
 };
 
-type ChinaTownItem = {
-  c: string;
-  n: string;
-};
-
 type MexicoMunicipalities = Record<string, string[]>;
 
 const normalizeRegionLanguage = (language?: string): RegionLanguage => {
@@ -43,23 +38,28 @@ const option = (name: string, children?: RegionOption[]): RegionOption => ({
   ...(children && children.length > 0 ? { children } : {}),
 });
 
-const buildChinaRegionData = (chinaLevelData: ChinaLevelItem[], chinaTownData: ChinaTownItem[]): RegionOption => {
-  const townsByAreaCode = chinaTownData.reduce<Record<string, RegionOption[]>>((acc, town) => {
-    if (!acc[town.c]) acc[town.c] = [];
-    acc[town.c].push(option(town.n));
-    return acc;
-  }, {});
+const streets = (names: string[]): RegionOption[] => names.map((name) => option(name));
+
+// Keep leaf locality options lightweight so checkout never pulls multi-MB district catalogs.
+const localityFallback = ['Centro', 'Colonia', 'Fraccionamiento', 'Localidad'];
+
+/**
+ * Commercial performance: China district-level data is enough for checkout cascader
+ * leaves. Street-level detail stays free-text in the address form instead of shipping
+ * the multi-megabyte province-city-china street catalog to every shopper.
+ */
+const buildChinaRegionData = (chinaLevelData: ChinaLevelItem[]): RegionOption => {
   const provinces = chinaLevelData.map((province) =>
     option(
       province.n,
       (province.d || []).map((cityOrArea) => {
         const childAreas = cityOrArea.d || [];
         if (childAreas.length === 0) {
-          return option(cityOrArea.n, townsByAreaCode[cityOrArea.c] || []);
+          return option(cityOrArea.n, streets(localityFallback));
         }
         return option(
           cityOrArea.n,
-          childAreas.map((area) => option(area.n, townsByAreaCode[area.c] || [])),
+          childAreas.map((area) => option(area.n, streets(localityFallback))),
         );
       }),
     ),
@@ -67,10 +67,6 @@ const buildChinaRegionData = (chinaLevelData: ChinaLevelItem[], chinaTownData: C
 
   return option('\u4e2d\u56fd', provinces);
 };
-
-const streets = (names: string[]): RegionOption[] => names.map((name) => option(name));
-
-const mexicoLocalityFallback = ['Centro', 'Colonia', 'Fraccionamiento', 'Localidad'];
 
 const buildMexicoRegionData = (mexicoMunicipalitiesData: MexicoMunicipalities): RegionOption => {
   const states = Object.entries(mexicoMunicipalitiesData)
@@ -81,7 +77,7 @@ const buildMexicoRegionData = (mexicoMunicipalitiesData: MexicoMunicipalities): 
         municipalities
           .slice()
           .sort((a, b) => a.localeCompare(b, 'es-MX'))
-          .map((municipality) => option(municipality, streets(mexicoLocalityFallback))),
+          .map((municipality) => option(municipality, streets(localityFallback))),
       ),
     );
 
@@ -112,14 +108,15 @@ export const loadRegionData = async (language?: string): Promise<RegionOption[]>
     return localizedData;
   }
   if (!regionDataPromise) {
+    // Mexico-first commercial market: load MX municipalities + compact CN level data only.
+    // Never import the multi-megabyte province-city-china street catalog into the client graph.
     regionDataPromise = Promise.all([
       import(/* webpackChunkName: "region-china-level" */ 'province-city-china/dist/level.min.json') as Promise<{ default: ChinaLevelItem[] }>,
-      import(/* webpackChunkName: "region-china-town" */ 'province-city-china/dist/town.min.json') as Promise<{ default: ChinaTownItem[] }>,
       import(/* webpackChunkName: "region-mexico-municipalities" */ './mexicoMunicipalities.json') as Promise<{ default: MexicoMunicipalities }>,
-    ]).then(([chinaLevelModule, chinaTownModule, mexicoMunicipalitiesModule]) => {
+    ]).then(([chinaLevelModule, mexicoMunicipalitiesModule]) => {
       const data = [
-        buildChinaRegionData(chinaLevelModule.default, chinaTownModule.default),
         buildMexicoRegionData(mexicoMunicipalitiesModule.default),
+        buildChinaRegionData(chinaLevelModule.default),
       ];
       cachedRegionData = data;
       cachedLocalizedRegionData = {};

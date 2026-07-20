@@ -8,6 +8,7 @@ import type { CartItem, CouponQuote, OrderCustomer, PaymentCustomer, PaymentChan
 import { loadRegionData, type RegionOption } from '../regionData';
 import { useLanguage, type Language } from '../i18n';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { useDocumentMeta } from '../hooks/useDocumentMeta';
 import { createPaymentMethodDetails, paymentMethodLabel } from '../utils/paymentMethods';
 import { useMarket } from '../hooks/useMarket';
 import { formatSelectedSpecs } from '../utils/selectedSpecs';
@@ -709,6 +710,14 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
   const mountedRef = React.useRef(true);
   const { t, language } = useLanguage();
   usePageTitle(t('pages.checkout.title'));
+  useDocumentMeta({
+    title: t('pages.checkout.title'),
+    description: t('common.siteDescription'),
+    path: '/checkout',
+    type: 'website',
+    noIndex: true,
+    siteName: t('common.siteTitle'),
+  });
   const checkoutLocalizationRef = React.useRef({ t, language });
   const announceCheckoutStatus = useCallback((messageText: string) => {
     const text = normalizeCheckoutText(messageText, 500);
@@ -2358,7 +2367,7 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
 
   if (loading) {
     return (
-      <Form form={form} component={false}>
+      <Form form={form} component={false} validateTrigger={["onChange", "onBlur"]} requiredMark>
         <div
           className={`checkout-page checkout-page--loading checkout-page--${language}`}
           role="status"
@@ -2560,7 +2569,7 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
 
   if (cartLoadError && !createdOrder) {
     return (
-      <Form form={form} component={false}>
+      <Form form={form} component={false} validateTrigger={["onChange", "onBlur"]} requiredMark>
         <div className={`checkout-page checkout-page--error checkout-page--${language}`}>
           {renderCheckoutStatusLiveRegion()}
           <ShopBreadcrumb
@@ -2587,7 +2596,7 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
 
   if (cartItems.length === 0) {
     return (
-      <Form form={form} component={false}>
+      <Form form={form} component={false} validateTrigger={["onChange", "onBlur"]} requiredMark>
         <div className={`checkout-page checkout-page--empty checkout-page--${language}`}>
         {renderCheckoutStatusLiveRegion()}
         <ShopBreadcrumb
@@ -3410,7 +3419,7 @@ const Checkout: React.FC = () => {
   const [form] = Form.useForm<CheckoutFormValues>();
 
   return (
-    <Form form={form} component={false}>
+    <Form form={form} component={false} validateTrigger={["onChange", "onBlur"]} requiredMark>
       <CheckoutContent form={form} />
     </Form>
   );

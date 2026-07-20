@@ -3,7 +3,7 @@ import { Alert, Button, Card, Empty, Image, Input, Popconfirm, Select, Space, St
 import type { ColumnsType } from 'antd/es/table';
 import type { TablePaginationConfig } from 'antd/es/table';
 import { CameraOutlined, DeleteOutlined, HeartOutlined, ReloadOutlined, SearchOutlined, UserOutlined, WarningOutlined } from '@ant-design/icons';
-import { adminApi } from '../api';
+import { adminApi } from '../api/admin';
 import type { AdminPetGalleryPhoto } from '../types';
 import { useLanguage } from '../i18n';
 import { useDebounce } from '../hooks/useDebounce';

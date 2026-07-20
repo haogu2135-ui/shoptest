@@ -4,7 +4,7 @@ import {
   ShopOutlined, ShoppingOutlined, TeamOutlined, DollarOutlined, CheckCircleOutlined, ClockCircleOutlined, WarningOutlined, RiseOutlined, TruckOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import { adminApi } from '../api';
+import { adminApi } from '../api/admin';
 import type { DashboardStats } from '../types';
 import { useAuth } from '../hooks/useAuth';
 import { useLanguage } from '../i18n';

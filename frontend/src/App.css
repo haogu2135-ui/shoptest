@@ -3177,3 +3177,42 @@ body:has(.ant-modal-root .ant-modal-wrap:not([style*="display: none"])) .app-sup
     pointer-events: none !important;
   }
 }
+
+
+/* Commercial connectivity status banner */
+.shop-connectivity-banner {
+  position: sticky;
+  top: 0;
+  z-index: 1100;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 14px;
+  font-size: 13px;
+  line-height: 1.4;
+  text-align: center;
+}
+
+.shop-connectivity-banner--offline {
+  background: #fff1f0;
+  color: #a8071a;
+  border-bottom: 1px solid #ffccc7;
+}
+
+.shop-connectivity-banner--online {
+  background: #f6ffed;
+  color: #237804;
+  border-bottom: 1px solid #b7eb8f;
+}
+
+.shop-connectivity-banner strong {
+  font-weight: 700;
+}
+
+body.shop-mobile-app .shop-connectivity-banner {
+  top: env(safe-area-inset-top, 0px);
+  padding-left: max(14px, env(safe-area-inset-left, 0px));
+  padding-right: max(14px, env(safe-area-inset-right, 0px));
+}

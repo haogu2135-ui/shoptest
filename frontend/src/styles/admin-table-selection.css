@@ -18,3 +18,35 @@
     top: 0;
   }
 }
+
+
+/* Commercial mobile/admin table overflow affordance */
+.ant-table-wrapper,
+.admin-dashboard .ant-table-wrapper,
+.admin-layout-content .ant-table-wrapper {
+  position: relative;
+}
+
+@media (max-width: 1024px) {
+  .ant-table-content,
+  .ant-table-body {
+    overflow-x: auto;
+    background:
+      linear-gradient(to right, #fff 30%, rgba(255, 255, 255, 0)) left center / 28px 100% no-repeat,
+      linear-gradient(to left, #fff 30%, rgba(255, 255, 255, 0)) right center / 28px 100% no-repeat,
+      radial-gradient(farthest-side at 0 50%, rgba(18, 71, 52, 0.18), transparent) left center / 14px 100% no-repeat,
+      radial-gradient(farthest-side at 100% 50%, rgba(18, 71, 52, 0.18), transparent) right center / 14px 100% no-repeat;
+    background-attachment: local, local, scroll, scroll;
+  }
+
+  .ant-table-content::-webkit-scrollbar,
+  .ant-table-body::-webkit-scrollbar {
+    height: 8px;
+  }
+
+  .ant-table-content::-webkit-scrollbar-thumb,
+  .ant-table-body::-webkit-scrollbar-thumb {
+    background: rgba(18, 71, 52, 0.28);
+    border-radius: 999px;
+  }
+}

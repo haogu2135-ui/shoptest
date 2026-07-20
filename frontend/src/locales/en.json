@@ -44,7 +44,11 @@
     "backToTop": "Back to top",
     "previousPages": "Previous pages",
     "nextPages": "Next pages",
-    "unknown": "Unknown"
+    "unknown": "Unknown",
+    "offlineTitle": "You are offline",
+    "offlineText": "Browse saved pages only. Checkout and cart updates will resume when the network returns.",
+    "onlineRestoredTitle": "Back online",
+    "onlineRestoredText": "Connection restored. You can continue shopping and checkout."
   },
   "app": {
     "loading": "Loading app…",
@@ -416,7 +420,11 @@
     "stockAvailable": "{count} available",
     "browseCatalog": "Browse catalog",
     "emptyCategoriesHint": "Categories will appear here once the catalog is ready.",
-    "emptyProductsHint": "New pet essentials are on the way. Browse categories or try search."
+    "emptyProductsHint": "New pet essentials are on the way. Browse categories or try search.",
+    "discoveryShowing": "Showing {shown} of {total} picks",
+    "discoveryLoadMore": "Load more picks",
+    "discoveryLoadingMore": "Loading more picks",
+    "discoveryAllLoaded": "All discovery picks are loaded"
   },
   "footer": {
     "customerCare": "Customer care",
@@ -693,7 +701,8 @@
         "walletThreshold": "Threshold",
         "remainingLabel": "Remaining"
       },
-      "catalogFallbackDescription": "Live coupons are temporarily unavailable. You can keep browsing curated savings, then retry for claimable offers."
+      "catalogFallbackDescription": "Live coupons are temporarily unavailable. You can keep browsing curated savings, then retry for claimable offers.",
+      "seoDescription": "Claim pet-store coupons, track wallet savings, and apply offers before Mexico-ready checkout."
     },
     "adminCoupons": {
       "title": "Coupons",
@@ -883,7 +892,16 @@
       "paymentFailedText": "The payment gateway reported a failure. Resume payment from My orders or try another method.",
       "paymentFailedOrderText": "Payment for order {orderNo} failed. Resume payment from My orders or try another method.",
       "paymentCancelledResume": "Resume payment",
-      "paymentCancelledTrack": "Track order"
+      "paymentCancelledTrack": "Track order",
+      "freeShippingProgressLabel": "Free shipping progress",
+      "freeShippingProgressValue": "{percent}% toward free shipping",
+      "trustTitle": "Cart trust signals",
+      "trustSecureTitle": "Secure checkout",
+      "trustSecureText": "Encrypted payment options for your market.",
+      "trustReturnsTitle": "Easy returns",
+      "trustReturnsText": "Start after-sales from your orders anytime.",
+      "trustSupportTitle": "Live support",
+      "trustSupportText": "Ask about fit, delivery, or payment help."
     },
     "addOnAssistant": {
       "title": "Smart add-on picks",
@@ -1086,7 +1104,16 @@
       "recoveryEyebrow": "Payment recovery",
       "backToOrders": "View orders",
       "missingOrder": "Order number missing",
-      "missingOrderText": "Open this page from checkout, track order, or your profile so we can verify the payment amount."
+      "missingOrderText": "Open this page from checkout, track order, or your profile so we can verify the payment amount.",
+      "stickyOpenPayment": "Open secure payment",
+      "stickyRefresh": "Refresh status",
+      "trustTitle": "Payment trust signals",
+      "trustSecureTitle": "Encrypted gateway",
+      "trustSecureText": "We only open configured payment links for your market.",
+      "trustTrackTitle": "Track anytime",
+      "trustTrackText": "Payment and order status stay available after you leave the bank page.",
+      "trustSupportTitle": "Need help",
+      "trustSupportText": "Support can help with failed, cancelled, or pending payments."
     },
     "checkout": {
       "loadFailed": "Failed to load checkout information",
@@ -2375,7 +2402,10 @@
       "paymentRefundedNext": "Keep the refund confirmation for your records. Contact support if funds have not arrived after 5 business days.",
       "paymentRefundingTitle": "Refund in progress",
       "paymentRefundingText": "We are processing the refund to the original payment method. You will see the completed timestamp here once the gateway confirms it.",
-      "paymentRefundingNext": "No extra action is needed. Watch this order for the refunded status update."
+      "paymentRefundingNext": "No extra action is needed. Watch this order for the refunded status update.",
+      "noOrdersHint": "Start with best sellers, claim a coupon, or let Pet Finder pick a fit.",
+      "emptyOrdersCoupons": "Browse coupons",
+      "emptyOrdersPetFinder": "Find a pet fit"
     },
     "brandAdmin": {
       "title": "Brand Management",
@@ -3549,7 +3579,9 @@
       "checkoutPathText": "{count} products lead the current results, and {ready} can go straight to cart.",
       "snapshotNotice": "Showing your latest saved catalog while the live catalog reconnects.",
       "snapshotTitle": "Temporary catalog",
-      "snapshotText": "Prices and stock may refresh when the live catalog is back."
+      "snapshotText": "Prices and stock may refresh when the live catalog is back.",
+      "seoDescription": "Shop pet food, toys, beds, walking gear and smart care essentials with fast Mexico-ready checkout.",
+      "searchSeoDescription": "Results for \"{keyword}\" — shop matching pet supplies with stock, deals and quick add."
     },
     "compare": {
       "title": "Product comparison",
@@ -3701,7 +3733,8 @@
         "rating": "Top rated",
         "deal": "Best deals",
         "budget": "Budget friendly"
-      }
+      },
+      "seoDescription": "Find the right pet products by budget, pet type, and lifestyle with personalized recommendations."
     },
     "petGallery": {
       "eyebrow": "Community gallery",
@@ -3760,7 +3793,8 @@
       "shopInspired": "Shop inspired picks",
       "sampleBadge": "Sample",
       "sampleSource": "Sample content",
-      "staleActionBlocked": "Refresh the live pet gallery before changing likes, uploads or deletes."
+      "staleActionBlocked": "Refresh the live pet gallery before changing likes, uploads or deletes.",
+      "seoDescription": "Browse real pet photos from the ShopMX community and get inspired for food, toys, and care gear."
     },
     "browsingHistory": {
       "eyebrow": "Recently viewed",
@@ -3954,7 +3988,11 @@
       "lowStockUrgency": "Only {count} left",
       "lowStockUrgencyText": "Low stock — checkout soon to secure this selection ({count} remaining).",
       "decisionStockLowTitle": "Low stock — order soon",
-      "decisionStockLowText": "Only {count} left for this selection (shows as {stock})."
+      "decisionStockLowText": "Only {count} left for this selection (shows as {stock}).",
+      "galleryPause": "Pause image carousel",
+      "galleryPlay": "Play image carousel",
+      "galleryPaused": "Carousel paused",
+      "galleryPlaying": "Carousel playing"
     },
     "permissions": {
       "title": "Permission management",

@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Button, Card, Checkbox, Empty, message, Popconfirm, Progress, Space, Table, Tag, Typography } from 'antd';
-import { CheckCircleOutlined, ClockCircleOutlined, DeleteOutlined, ExclamationCircleOutlined, MinusOutlined, PlusOutlined, ReloadOutlined, ShoppingCartOutlined, ShoppingOutlined } from '@ant-design/icons';
+import { CheckCircleOutlined, ClockCircleOutlined, DeleteOutlined, ExclamationCircleOutlined, MinusOutlined, PlusOutlined, ReloadOutlined, ShoppingCartOutlined, ShoppingOutlined, SafetyCertificateOutlined, CustomerServiceOutlined, LockOutlined } from '@ant-design/icons';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { cartApi, productApi } from '../api';
 import type { CartItem, ProductPublic as Product } from '../types';
 import { useLanguage } from '../i18n';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { useDocumentMeta } from '../hooks/useDocumentMeta';
 import { useMarket } from '../hooks/useMarket';
 import { useCartQuantitySync } from '../hooks/useCartQuantitySync';
 import { formatSelectedSpecs } from '../utils/selectedSpecs';
@@ -208,6 +209,14 @@ const Cart: React.FC = () => {
   }, [searchParams, setSearchParams]);
   const { t, language } = useLanguage();
   usePageTitle(t('pages.cart.title'));
+  useDocumentMeta({
+    title: t('pages.cart.title'),
+    description: t('common.siteDescription'),
+    path: '/cart',
+    type: 'website',
+    noIndex: true,
+    siteName: t('common.siteTitle'),
+  });
   const { currency, market, formatMoney } = useMarket();
   const cartFetchErrorFallbackRef = useRef(t('pages.cart.fetchFailed'));
   const cartFetchErrorLanguageRef = useRef(language);
@@ -1766,11 +1775,26 @@ const Cart: React.FC = () => {
             })}
           </div>
           <Card className="cart-page__summary">
-            <div className="cart-page__summaryProgress">
-              <Text strong>
+            <div
+              className="cart-page__summaryProgress"
+              role="group"
+              aria-label={t('pages.cart.freeShippingProgressLabel')}
+            >
+              <Text strong id="cart-free-shipping-status">
                 {freeShippingStatusTitle}
               </Text>
-              <Progress percent={freeShippingPercent} showInfo={false} strokeColor="#124734" />
+              <Progress
+                percent={freeShippingPercent}
+                showInfo={false}
+                strokeColor="#124734"
+                aria-labelledby="cart-free-shipping-status"
+                format={() => t('pages.cart.freeShippingProgressValue', { percent: freeShippingPercent })}
+              />
+              <span className="cart-page__srOnly" aria-live="polite">
+                {freeShippingUnlocked
+                  ? t('pages.cart.freeShippingUnlocked')
+                  : t('pages.cart.freeShippingProgressValue', { percent: freeShippingPercent })}
+              </span>
             </div>
             <div className="cart-page__summaryFooter">
               <div>
@@ -1782,6 +1806,29 @@ const Cart: React.FC = () => {
               <Button type="primary" size="large" aria-label={checkoutActionLabel} title={checkoutActionLabel} onClick={goCheckout} disabled={hasStaleCartData || checkoutBlocked || checkoutSubmitting} loading={checkoutSubmitting}>
                 {checkoutSubmitting ? t('pages.cart.checkoutSyncing') : t('pages.cart.checkout')}
               </Button>
+            </div>
+            <div className="cart-page__trustBar" aria-label={t('pages.cart.trustTitle')}>
+              <div className="cart-page__trustItem">
+                <LockOutlined aria-hidden="true" />
+                <div>
+                  <Text strong>{t('pages.cart.trustSecureTitle')}</Text>
+                  <Text type="secondary">{t('pages.cart.trustSecureText')}</Text>
+                </div>
+              </div>
+              <div className="cart-page__trustItem">
+                <SafetyCertificateOutlined aria-hidden="true" />
+                <div>
+                  <Text strong>{t('pages.cart.trustReturnsTitle')}</Text>
+                  <Text type="secondary">{t('pages.cart.trustReturnsText')}</Text>
+                </div>
+              </div>
+              <div className="cart-page__trustItem">
+                <CustomerServiceOutlined aria-hidden="true" />
+                <div>
+                  <Text strong>{t('pages.cart.trustSupportTitle')}</Text>
+                  <Text type="secondary">{t('pages.cart.trustSupportText')}</Text>
+                </div>
+              </div>
             </div>
           </Card>
           {selectedItems.length > 0 && !hasStaleCartData ? (

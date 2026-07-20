@@ -19,7 +19,7 @@ import {
   Typography,
 } from 'antd';
 import { BranchesOutlined, DeleteOutlined, EditOutlined, GlobalOutlined, PictureOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons';
-import { adminApi } from '../api';
+import { adminApi } from '../api/admin';
 import type { Category } from '../types';
 import {
   buildCategoryTree,

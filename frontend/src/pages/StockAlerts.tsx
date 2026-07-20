@@ -5,6 +5,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { cartApi, productApi } from '../api';
 import { useLanguage } from '../i18n';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { useDocumentMeta } from '../hooks/useDocumentMeta';
 import { useMarket } from '../hooks/useMarket';
 import type { ProductPublic as Product } from '../types';
 import { addGuestCartItem } from '../utils/guestCart';
@@ -31,6 +32,14 @@ const StockAlerts: React.FC = () => {
   const navigate = useNavigate();
   const { t, language } = useLanguage();
   usePageTitle(t('pages.stockAlerts.title'));
+  useDocumentMeta({
+    title: t('pages.stockAlerts.title'),
+    description: t('common.siteDescription'),
+    path: '/stock-alerts',
+    type: 'website',
+    noIndex: true,
+    siteName: t('common.siteTitle'),
+  });
   const { formatMoney } = useMarket();
   const dateLocale = language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US';
   const [alerts, setAlerts] = useState<StockAlertItem[]>(() => readStockAlerts());

@@ -4,11 +4,20 @@ import { HomeOutlined, SearchOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../i18n';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { useDocumentMeta } from '../hooks/useDocumentMeta';
 import './NotFound.css';
 
 const NotFound: React.FC = () => {
   const { t } = useLanguage();
   usePageTitle(t('notFound.title'));
+  useDocumentMeta({
+    title: t('notFound.title'),
+    description: t('common.siteDescription'),
+    path: '/404',
+    type: 'website',
+    noIndex: true,
+    siteName: t('common.siteTitle'),
+  });
   const navigate = useNavigate();
   const title = t('notFound.title');
   const subtitle = t('notFound.subtitle');

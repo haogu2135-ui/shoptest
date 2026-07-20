@@ -9,7 +9,8 @@ import {
   BugOutlined, MenuOutlined,
 } from '@ant-design/icons';
 import { Outlet, useNavigate, useLocation, Link } from 'react-router-dom';
-import { adminApi, adminSupportApi, clearStoredAuthSession, userApi } from '../api';
+import { clearStoredAuthSession, userApi } from '../api';
+import { adminApi, adminSupportApi } from '../api/admin';
 import { useLanguage } from '../i18n';
 import { buildLoginUrlFromWindow } from '../utils/authRedirect';
 import {
@@ -25,6 +26,7 @@ import { isAuthExpiredError } from '../utils/apiError';
 import ErrorBoundary from './ErrorBoundary';
 import SkipToContentLink, { MAIN_CONTENT_ID } from './SkipToContentLink';
 import './AdminLayout.css';
+import '../styles/admin-table-selection.css';
 
 const { Header, Sider, Content } = Layout;
 const { Title } = Typography;

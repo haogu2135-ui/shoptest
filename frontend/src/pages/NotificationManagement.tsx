@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Button, Card, Divider, Form, Input, message, Popconfirm, Radio, Select, Space, Tag, Typography } from 'antd';
 import { CheckCircleOutlined, LinkOutlined, NotificationOutlined, ReloadOutlined, SendOutlined, ThunderboltOutlined } from '@ant-design/icons';
-import { adminApi } from '../api';
+import { adminApi } from '../api/admin';
 import { useLanguage } from '../i18n';
 import { stripUnsafeHtml } from '../utils/sanitizeHtml';
 import { reportNonBlockingError } from '../utils/nonBlockingError';

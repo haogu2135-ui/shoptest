@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { auditActionOptions } from './SecurityAuditLogManagement';
 
-jest.mock('../api', () => ({
+jest.mock('../api/admin', () => ({
   adminApi: {},
 }));
 

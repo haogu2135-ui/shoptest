@@ -7,6 +7,7 @@ import type { OrderCustomer, OrderItemCustomer, PaymentCustomer, PaymentChannel,
 import { findRegionPath, loadRegionData, type RegionOption } from '../regionData';
 import { useLanguage } from '../i18n';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { useDocumentMeta } from '../hooks/useDocumentMeta';
 import { buildLoginUrlFromWindow } from '../utils/authRedirect';
 import { createPaymentMethodDetails, createPaymentMethodOptions, paymentMethodLabel } from '../utils/paymentMethods';
 import { useAppConfig } from '../hooks/useAppConfig';
@@ -195,6 +196,14 @@ const Profile: React.FC = () => {
   const profileLocalizationRef = useRef({ t, language });
   profileLocalizationRef.current = { t, language };
   usePageTitle(t('pages.profile.title'));
+  useDocumentMeta({
+    title: t('pages.profile.title'),
+    description: t('common.siteDescription'),
+    path: '/profile',
+    type: 'website',
+    noIndex: true,
+    siteName: t('common.siteTitle'),
+  });
   const { config: appConfig } = useAppConfig();
   const [user, setUser] = useState<UserProfile | null>(null);
   const [orders, setOrders] = useState<OrderCustomer[]>([]);
@@ -1396,18 +1405,30 @@ const Profile: React.FC = () => {
       text: t('pages.profile.nextOrderText'),
     };
   };
+  const syncProfileTabToUrl = useCallback((tabKey: string) => {
+    const nextTab = normalizeProfileTab(tabKey) || 'info';
+    setProfileActiveTab(nextTab);
+    const nextParams = new URLSearchParams(searchParams);
+    if (nextTab === 'info') {
+      nextParams.delete('tab');
+    } else {
+      nextParams.set('tab', nextTab);
+    }
+    setSearchParams(nextParams, { replace: true });
+  }, [searchParams, setSearchParams]);
+
   const openProfileTab = (tabKey: string) => {
-    setProfileActiveTab(tabKey);
+    syncProfileTabToUrl(tabKey);
     if (tabKey === 'orders') {
       setOrderStatusFilter('all');
     }
   };
   const openAddressSetup = () => {
-    setProfileActiveTab('addresses');
+    syncProfileTabToUrl('addresses');
     openAddressModal();
   };
   const openOrdersWithFilter = (filter: string) => {
-    setProfileActiveTab('orders');
+    syncProfileTabToUrl('orders');
     setOrderStatusFilter(filter);
   };
 
@@ -1541,7 +1562,7 @@ const Profile: React.FC = () => {
               <Text>{t('pages.profile.actionAfterSale')}</Text>
             </span>
           </button>
-          <button type="button" className="profile-action-center__card" aria-label={profileCompletionActionLabel} title={profileCompletionActionLabel} onClick={() => (defaultAddressReady ? setProfileActiveTab('pets') : openAddressSetup())}>
+          <button type="button" className="profile-action-center__card" aria-label={profileCompletionActionLabel} title={profileCompletionActionLabel} onClick={() => (defaultAddressReady ? openProfileTab('pets') : openAddressSetup())}>
             {defaultAddressReady ? <HeartOutlined /> : <EnvironmentOutlined />}
             <span>
               <strong>{defaultAddressReady ? `${petProfileProgress}%` : '!'}</strong>
@@ -1601,7 +1622,7 @@ const Profile: React.FC = () => {
       <Tabs
         className="profile-tabs"
         activeKey={profileActiveTab}
-        onChange={setProfileActiveTab}
+        onChange={openProfileTab}
         items={[
           {
             key: 'info',
@@ -1759,12 +1780,32 @@ const Profile: React.FC = () => {
               />
             ) : orders.length === 0 ? (
               <PageEmpty
-                description={t('pages.profile.noOrders')}
-                primaryAction={{
-                  key: 'shop',
-                  label: t('pages.profile.goShopping'),
-                  onClick: () => navigate('/products'),
-                }}
+                className="profile-empty-orders"
+                description={(
+                  <div className="profile-empty-orders__copy">
+                    <div>{t('pages.profile.noOrders')}</div>
+                    <div className="profile-empty-orders__hint">{t('pages.profile.noOrdersHint')}</div>
+                  </div>
+                )}
+                actions={[
+                  {
+                    key: 'shop',
+                    label: t('pages.profile.goShopping'),
+                    onClick: () => navigate('/products'),
+                  },
+                  {
+                    key: 'coupons',
+                    label: t('pages.profile.emptyOrdersCoupons'),
+                    onClick: () => navigate('/coupons'),
+                    type: 'default',
+                  },
+                  {
+                    key: 'pet-finder',
+                    label: t('pages.profile.emptyOrdersPetFinder'),
+                    onClick: () => navigate('/pet-finder'),
+                    type: 'default',
+                  },
+                ]}
               />
             ) : (
               <div className="profile-orders">

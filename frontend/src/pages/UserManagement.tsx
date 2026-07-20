@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Table, Tag, Button, Popconfirm, Select, message, Typography, Divider, Space, Card, Progress, Input, Modal, Form } from 'antd';
 import { DeleteOutlined, StopOutlined, CheckCircleOutlined, SafetyCertificateOutlined, TeamOutlined, MailOutlined, PhoneOutlined, DownloadOutlined, SearchOutlined, EditOutlined } from '@ant-design/icons';
-import { adminApi, userApi } from '../api';
+import { userApi } from '../api';
+import { adminApi } from '../api/admin';
 import type { AdminRole, User, UserAdminSummary } from '../types';
 import { useLanguage } from '../i18n';
 import {

@@ -7,6 +7,7 @@ import { userApi } from '../api';
 import { useAppConfig } from '../hooks/useAppConfig';
 import { useLanguage } from '../i18n';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { useDocumentMeta } from '../hooks/useDocumentMeta';
 import {
   STRONG_PASSWORD_MAX_LENGTH,
   STRONG_PASSWORD_MIN_LENGTH,
@@ -77,6 +78,14 @@ const ForgotPassword: React.FC = () => {
   const navigate = useNavigate();
   const { t } = useLanguage();
   usePageTitle(t('pages.auth.resetPasswordTitle'));
+  useDocumentMeta({
+    title: t('pages.auth.resetPasswordTitle'),
+    description: t('common.siteDescription'),
+    path: '/forgot-password',
+    type: 'website',
+    noIndex: true,
+    siteName: t('common.siteTitle'),
+  });
   const { config: appConfig, loading: appConfigLoading } = useAppConfig();
   const emailCodeEnabled = appConfig.emailCodeEnabled === true;
   const resetPageLabel = t('pages.auth.resetPasswordTitle');
@@ -248,7 +257,7 @@ const ForgotPassword: React.FC = () => {
             onClose={() => setAuthBannerError(null)}
           />
         ) : null}
-        <Form form={form} name="forgotPassword" onFinish={onFinish} layout="vertical" className="shopee-login-form">
+        <Form form={form} name="forgotPassword" onFinish={onFinish} layout="vertical" className="shopee-login-form" validateTrigger={["onChange", "onBlur"]} requiredMark>
           {!emailCodeEnabled && !appConfigLoading && (
             <div className="shopee-login-emailHint shopee-login-emailHint--warning" role="status">
               <SafetyCertificateOutlined />

@@ -62,7 +62,16 @@ const createJwt = (expiresAtSeconds: number) => [
   'signature',
 ].join('.');
 
-const readApiSource = (fileName = 'index.ts') => require('fs').readFileSync(require('path').join(__dirname, fileName), 'utf8') as string;
+const readApiSource = (fileName?: string) => {
+  const fs = require('fs') as typeof import('fs');
+  const path = require('path') as typeof import('path');
+  if (fileName) {
+    return fs.readFileSync(path.join(__dirname, fileName), 'utf8');
+  }
+  return ['core.ts', 'storefront.ts', 'admin.ts', 'index.ts']
+    .map((name) => fs.readFileSync(path.join(__dirname, name), 'utf8'))
+    .join('\n');
+};
 
 jest.mock('axios', () => ({
   __esModule: true,
@@ -716,7 +725,7 @@ describe('api parameter normalization', () => {
       .mockResolvedValueOnce({ data: { permissions: ['dashboard'] } })
       .mockResolvedValueOnce({ data: { permissions: ['orders'] } });
 
-    const { adminApi } = require('./index');
+    const { adminApi } = require('./admin');
 
     await adminApi.getMyPermissions({ bypassCache: true, signal: firstController.signal });
     await adminApi.getMyPermissions({ signal: secondController.signal });
@@ -988,7 +997,8 @@ describe('api parameter normalization', () => {
   });
 
   it('covers payment info, latest, simulation, callback, and admin payment routes', async () => {
-    const { paymentApi, adminApi } = require('./index');
+    const { paymentApi } = require('./index');
+const { adminApi } = require('./admin');
     const callbackPayload = {
       orderNo: 'SO202605260001',
       channel: 'STRIPE',
@@ -1052,7 +1062,8 @@ describe('api parameter normalization', () => {
   });
 
   it('caches active announcements until admin announcement mutations', async () => {
-    const { adminApi, announcementApi } = require('./index');
+    const { announcementApi } = require('./index');
+const { adminApi } = require('./admin');
 
     await announcementApi.getActive(8);
     await announcementApi.getActive(8);
@@ -1120,7 +1131,8 @@ describe('api parameter normalization', () => {
   });
 
   it('normalizes support session path params and optional session payloads', async () => {
-    const { supportApi, adminSupportApi } = require('./index');
+    const { supportApi } = require('./index');
+const { adminSupportApi } = require('./admin');
 
     await supportApi.createSession();
     await supportApi.getMessages('9' as unknown as number);
@@ -1139,7 +1151,8 @@ describe('api parameter normalization', () => {
   });
 
   it('normalizes support message content before REST sends', async () => {
-    const { supportApi, adminSupportApi } = require('./index');
+    const { supportApi } = require('./index');
+const { adminSupportApi } = require('./admin');
 
     await supportApi.sendMessage('  hello\u0000   there\r\nline\t two  ', 12);
     await supportApi.sendGuestMessage('  guest\u0007   text\r\nnext\t line  ', ' so-42 ', ' GUEST@Example.COM ', 15);
@@ -1170,7 +1183,7 @@ describe('api parameter normalization', () => {
   });
 
   it('requests admin support summary for queue health panels', async () => {
-    const { adminSupportApi } = require('./index');
+    const { adminSupportApi } = require('./admin');
 
     await adminSupportApi.getSummary();
 
@@ -1178,7 +1191,7 @@ describe('api parameter normalization', () => {
   });
 
   it('strips internal support session context keys from admin session pages', async () => {
-    const { adminSupportApi } = require('./index');
+    const { adminSupportApi } = require('./admin');
     mockGet.mockResolvedValueOnce({
       data: {
         items: [{
@@ -1244,7 +1257,8 @@ describe('api parameter normalization', () => {
   });
 
   it('normalizes product page totalElements metadata and rich list fields', async () => {
-    const { productApi, adminApi } = require('./index');
+    const { productApi } = require('./index');
+const { adminApi } = require('./admin');
     mockGet
       .mockResolvedValueOnce({
         data: {
@@ -1289,7 +1303,7 @@ describe('api parameter normalization', () => {
   });
 
   it('normalizes product rich-detail media URLs to the backend media contract', async () => {
-    const { adminApi } = require('./index');
+    const { adminApi } = require('./admin');
 
     await adminApi.createProduct({
       name: 'Harness',
@@ -1321,7 +1335,7 @@ describe('api parameter normalization', () => {
   });
 
   it('keeps admin product search unified on keyword instead of the legacy q alias', async () => {
-    const { adminApi } = require('./index');
+    const { adminApi } = require('./admin');
     const source = readApiSource();
 
     await adminApi.getProducts({
@@ -1353,7 +1367,7 @@ describe('api parameter normalization', () => {
   });
 
   it('keeps admin product descriptions aligned to the backend entity limit', async () => {
-    const { adminApi } = require('./index');
+    const { adminApi } = require('./admin');
 
     await adminApi.createProduct({
       name: 'Harness',
@@ -1365,7 +1379,7 @@ describe('api parameter normalization', () => {
   });
 
   it('keeps admin product names aligned to the backend and schema limit', async () => {
-    const { adminApi } = require('./index');
+    const { adminApi } = require('./admin');
     const source = readApiSource();
 
     await adminApi.createProduct({
@@ -1380,7 +1394,7 @@ describe('api parameter normalization', () => {
   });
 
   it('keeps admin product status payloads aligned to the backend entity limit', async () => {
-    const { adminApi } = require('./index');
+    const { adminApi } = require('./admin');
 
     await adminApi.createProduct({
       name: 'Harness',
@@ -1398,7 +1412,7 @@ describe('api parameter normalization', () => {
   });
 
   it('keeps admin product imageUrl aligned to the backend entity limit', async () => {
-    const { adminApi } = require('./index');
+    const { adminApi } = require('./admin');
 
     await adminApi.createProduct({
       name: 'Harness',
@@ -1410,7 +1424,7 @@ describe('api parameter normalization', () => {
   });
 
   it('normalizes persisted image payload fields to public asset URLs', async () => {
-    const { adminApi } = require('./index');
+    const { adminApi } = require('./admin');
 
     await adminApi.createProduct({
       name: 'Harness',
@@ -1720,7 +1734,7 @@ describe('api parameter normalization', () => {
   });
 
   it('normalizes admin coupon upsert payloads to the backend DTO contract', async () => {
-    const { adminApi } = require('./index');
+    const { adminApi } = require('./admin');
 
     await adminApi.createCoupon({
       id: 99,
@@ -1776,7 +1790,7 @@ describe('api parameter normalization', () => {
   });
 
   it('rejects admin coupon upsert payloads missing backend required fields', () => {
-    const { adminApi } = require('./index');
+    const { adminApi } = require('./admin');
 
     expect(() => adminApi.createCoupon({ name: 'Spring' } as any)).toThrow('Coupon type is required');
     expect(() => adminApi.updateCoupon(7, { couponType: 'DISCOUNT' } as any)).toThrow('Coupon name is required');
@@ -1801,7 +1815,8 @@ describe('api parameter normalization', () => {
   });
 
   it('normalizes review and question params and text payloads', async () => {
-    const { reviewApi, questionApi, adminApi } = require('./index');
+    const { reviewApi, questionApi } = require('./index');
+const { adminApi } = require('./admin');
 
     await reviewApi.create(3, '9' as unknown as number, 9, '  Great   bowl  ');
     await questionApi.ask(4, '  Is   it washable?  ');
@@ -1906,7 +1921,8 @@ describe('api parameter normalization', () => {
   });
 
   it('clears storefront coupon caches after admin coupon changes', async () => {
-    const { adminApi, couponApi } = require('./index');
+    const { couponApi } = require('./index');
+const { adminApi } = require('./admin');
 
     await couponApi.claim(99, 0);
     mockGet.mockClear();
@@ -1927,7 +1943,7 @@ describe('api parameter normalization', () => {
   });
 
   it('normalizes admin mutation and batch payload ids', async () => {
-    const { adminApi } = require('./index');
+    const { adminApi } = require('./admin');
 
     await adminApi.updateOrderStatus(3, ' SHIPPED ', '  TN\u0000   1 ', '  DHL ');
     await adminApi.getOrdersPage({ status: ' PENDING_SHIPMENT ', search: '  TN\u0000   1 ', quick: ' SLA_OVERDUE ', page: 2, size: 200 });
@@ -1954,7 +1970,7 @@ describe('api parameter normalization', () => {
   });
 
   it('caps admin coupon page size to the table maximum', async () => {
-    const { adminApi } = require('./index');
+    const { adminApi } = require('./admin');
 
     await adminApi.getCoupons({
       keyword: '  summer\u0000   sale  ',
@@ -1971,7 +1987,7 @@ describe('api parameter normalization', () => {
   });
 
   it('keeps admin bug list pagination zero-based like public product pages', async () => {
-    const { adminApi } = require('./index');
+    const { adminApi } = require('./admin');
 
     await adminApi.getBugs({
       keyword: '  checkout\u0000   bug  ',
@@ -1995,7 +2011,7 @@ describe('api parameter normalization', () => {
   });
 
   it('normalizes system alert batch action and purge payloads', async () => {
-    const { adminApi } = require('./index');
+    const { adminApi } = require('./admin');
 
     await adminApi.acknowledgeAlerts([4, '5', 5, 0, -2, 7.7] as unknown as number[], '  ack\u0000   note  ', 3);
     await adminApi.resolveAlerts([9, 9, Number.NaN, 10] as unknown as number[], '  resolve   note  ');
@@ -2017,7 +2033,7 @@ describe('api parameter normalization', () => {
   });
 
   it('normalizes IP blacklist filters and batch release payloads', async () => {
-    const { adminApi } = require('./index');
+    const { adminApi } = require('./admin');
 
     await adminApi.getIpBlacklist({
       status: ' BLOCKED ',
@@ -2038,7 +2054,7 @@ describe('api parameter normalization', () => {
   });
 
   it('normalizes audit log filters, summary params, export params, and purge retention', async () => {
-    const { adminApi } = require('./index');
+    const { adminApi } = require('./admin');
 
     await adminApi.getAuditLogs({
       action: ' ORDER_EXPORT\u0000 ',
@@ -2103,7 +2119,7 @@ describe('api parameter normalization', () => {
   });
 
   it('requests admin announcement summary for CMS health panels', async () => {
-    const { adminApi } = require('./index');
+    const { adminApi } = require('./admin');
 
     await adminApi.getAnnouncementSummary();
     await adminApi.getAnnouncements();
@@ -2115,7 +2131,7 @@ describe('api parameter normalization', () => {
   });
 
   it('caches admin dashboard and keeps operational health endpoints explicit', async () => {
-    const { adminApi } = require('./index');
+    const { adminApi } = require('./admin');
 
     await adminApi.getDashboard();
     await adminApi.getDashboard();
@@ -2133,7 +2149,7 @@ describe('api parameter normalization', () => {
   });
 
   it('caches bounded admin order pages while normalizing filters until order mutations', async () => {
-    const { adminApi } = require('./index');
+    const { adminApi } = require('./admin');
 
     await adminApi.getOrders(' PENDING ');
     await adminApi.getOrders('PENDING');
@@ -2153,7 +2169,7 @@ describe('api parameter normalization', () => {
   });
 
   it('caches admin reviews until review moderation changes', async () => {
-    const { adminApi } = require('./index');
+    const { adminApi } = require('./admin');
 
     await adminApi.getReviews();
     await adminApi.getReviews();
@@ -2168,7 +2184,7 @@ describe('api parameter normalization', () => {
   });
 
   it('requests admin question summary and normalizes queue filters', async () => {
-    const { adminApi } = require('./index');
+    const { adminApi } = require('./admin');
 
     await adminApi.getQuestionSummary();
     await adminApi.getQuestions({ status: ' unanswered ', limit: 99999 });
@@ -2181,7 +2197,7 @@ describe('api parameter normalization', () => {
   });
 
   it('caches admin question queues until an answer invalidates them', async () => {
-    const { adminApi } = require('./index');
+    const { adminApi } = require('./admin');
 
     await adminApi.getQuestions({ status: 'UNANSWERED', limit: 200 });
     await adminApi.getQuestions({ status: ' unanswered ', limit: 200 });
@@ -2199,7 +2215,7 @@ describe('api parameter normalization', () => {
   });
 
   it('caches admin users and roles while normalizing user filters', async () => {
-    const { adminApi } = require('./index');
+    const { adminApi } = require('./admin');
 
     await adminApi.getUsers({ keyword: '  jane\u0000   doe ', role: ' ADMIN ', status: ' ACTIVE ' });
     await adminApi.getUsers({ keyword: 'jane doe', role: 'ADMIN', status: 'ACTIVE' });
@@ -2240,7 +2256,7 @@ describe('api parameter normalization', () => {
     );
     const assignUserRoleSource = source.slice(
       source.indexOf('assignUserRole: (id: number, roleCode: string)'),
-      source.indexOf('getAdminPermissions:', source.indexOf('assignUserRole: (id: number, roleCode: string)')),
+      source.indexOf('getMyPermissions:', source.indexOf('assignUserRole: (id: number, roleCode: string)')),
     );
 
     expect(updateUserSource).not.toContain('user.roleCode');
@@ -2252,7 +2268,7 @@ describe('api parameter normalization', () => {
   });
 
   it('normalizes admin user summary filters for account health panels', async () => {
-    const { adminApi } = require('./index');
+    const { adminApi } = require('./admin');
 
     await adminApi.getUserSummary({ keyword: '  jane\u0000   doe ', role: ' ADMIN ', status: ' ACTIVE ' });
 
@@ -2263,7 +2279,7 @@ describe('api parameter normalization', () => {
   });
 
   it('uses the role-code endpoint for user demotion requests', async () => {
-    const { adminApi } = require('./index');
+    const { adminApi } = require('./admin');
 
     await adminApi.assignUserRole(9, ' USER ');
 
@@ -2274,7 +2290,8 @@ describe('api parameter normalization', () => {
   });
 
   it('lets the browser set multipart upload boundaries', async () => {
-    const { adminApi, petGalleryApi } = require('./index');
+    const { petGalleryApi } = require('./index');
+const { adminApi } = require('./admin');
     const csvFile = new File(['id,name,description,price,stock,categoryId\n'], 'products.csv', { type: 'text/csv' });
     const imageFile = new File(['image'], 'pet.jpg', { type: 'image/jpeg' });
     const bugAttachment = new File(['screenshot'], 'bug.png', { type: 'image/png' });
@@ -2299,7 +2316,7 @@ describe('api parameter normalization', () => {
   });
 
   it('does not coalesce multipart uploads', async () => {
-    const { adminApi } = require('./index');
+    const { adminApi } = require('./admin');
     const csvFile = new File(['id,name,description,price,stock,categoryId\n'], 'products.csv', { type: 'text/csv' });
     const resolvers: Array<(value: unknown) => void> = [];
     mockPost.mockImplementation(() => new Promise((resolve) => {
@@ -2316,7 +2333,7 @@ describe('api parameter normalization', () => {
   });
 
   it('requests typed product import history with a bounded limit', async () => {
-    const { adminApi } = require('./index');
+    const { adminApi } = require('./admin');
 
     await adminApi.getProductImportHistory(999);
 
@@ -2327,7 +2344,7 @@ describe('api parameter normalization', () => {
   });
 
   it('normalizes product URL imports before requesting a preview', async () => {
-    const { adminApi } = require('./index');
+    const { adminApi } = require('./admin');
 
     await adminApi.importProductFromUrl('  https://item.taobao.com/item.htm?id=123  ');
 
@@ -2338,7 +2355,8 @@ describe('api parameter normalization', () => {
   });
 
   it('covers notification self and explicit user route variants', async () => {
-    const { adminApi, notificationApi } = require('./index');
+    const { notificationApi } = require('./index');
+const { adminApi } = require('./admin');
     const broadcastPayload = {
       type: 'SYSTEM',
       title: 'Maintenance',

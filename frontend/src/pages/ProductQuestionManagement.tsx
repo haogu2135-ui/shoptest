@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, Button, Divider, Input, message, Modal, Popconfirm, Select, Space, Table, Tag, Typography } from 'antd';
 import { CheckCircleOutlined, ClockCircleOutlined, DeleteOutlined, MessageOutlined, QuestionCircleOutlined, SearchOutlined, WarningOutlined } from '@ant-design/icons';
-import { adminApi } from '../api';
+import { adminApi } from '../api/admin';
 import type { ProductQuestion, ProductQuestionAdminSummary } from '../types';
 import { useLanguage } from '../i18n';
 import { getApiErrorMessage } from '../utils/apiError';

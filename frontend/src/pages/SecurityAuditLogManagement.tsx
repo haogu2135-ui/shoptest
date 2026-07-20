@@ -3,7 +3,7 @@ import { Alert, Button, Card, DatePicker, Input, InputNumber, Popconfirm, Progre
 import type { RangePickerProps } from 'antd/es/date-picker';
 import { AlertOutlined, DeleteOutlined, DownloadOutlined, KeyOutlined, MailOutlined, SafetyCertificateOutlined, SearchOutlined, UserOutlined } from '@ant-design/icons';
 import { useSearchParams } from 'react-router-dom';
-import { adminApi } from '../api';
+import { adminApi } from '../api/admin';
 import type { SecurityAuditLog, SecurityAuditSummary } from '../types';
 import { useLanguage } from '../i18n';
 import type { TranslateFn } from '../i18n';

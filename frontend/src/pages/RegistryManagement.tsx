@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Button, Card, Descriptions, Empty, Input, Space, Spin, Statistic, Table, Tag, Typography, message } from 'antd';
 import { ApiOutlined, CloudServerOutlined, LinkOutlined, ReloadOutlined, SafetyCertificateOutlined, SearchOutlined } from '@ant-design/icons';
-import { adminApi, apiBaseUrl } from '../api';
+import { apiBaseUrl } from '../api';
+import { adminApi } from '../api/admin';
 import { apiGatewayEnabled, apiGatewayPrefix } from '../utils/apiDispatcher';
 import type { AdminRegistryInstance, AdminRegistryServiceSummary, AdminRegistryStatus } from '../types';
 import { useLanguage } from '../i18n';

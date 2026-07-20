@@ -37,7 +37,9 @@ describe('Home render memoization contracts', () => {
 
   it('keeps local pet gallery fallback media off third-party image hosts', () => {
     expect(homeSource).toContain('const petGalleryImageFallback = imageFallbacks.media;');
-    expect(homeSource).toContain('image: petGalleryImageFallback');
+    expect(homeSource).toContain('return petGalleryImageFallback');
+    expect(homeSource).toContain("publicAssetUrl('/assets/home/hero-dog.jpg')");
+    expect(homeSource).toContain('resolvePetGalleryImage');
     expect(homeSource).not.toContain('images.unsplash.com');
     expect(homeSource).not.toContain('unsplash.com');
   });
@@ -59,5 +61,14 @@ describe('Home render memoization contracts', () => {
     expect(loadingSource).toContain('<ProductCardSkeleton count={8} />');
     expect(loadingSource).toContain('className="shopee-hero__asideSkeleton shimmer"');
     expect(loadingSource).toContain('className="shopee-loading-products"');
+  });
+
+  it('keeps discovery infinite scroll announced and keyboard reachable', () => {
+    expect(homeSource).toContain('home.discoveryShowing');
+    expect(homeSource).toContain('home.discoveryLoadMore');
+    expect(homeSource).toContain('shopee-discovery__status');
+    expect(homeSource).toContain('role="list"');
+    expect(homeSource).toContain('role="listitem"');
+    expect(homeSource).toContain('shopee-load-more__button');
   });
 });

@@ -8,6 +8,7 @@ import { cartApi, createApiAbortController, orderApi, paymentApi } from '../api'
 import type { OrderCustomer, OrderItemCustomer, PaymentCustomer } from '../types';
 import { useLanguage } from '../i18n';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { useDocumentMeta } from '../hooks/useDocumentMeta';
 import { useMarket } from '../hooks/useMarket';
 import { formatSelectedSpecs } from '../utils/selectedSpecs';
 import { paymentMethodLabel } from '../utils/paymentMethods';
@@ -131,6 +132,14 @@ const OrderTracking: React.FC = () => {
   const refreshAbortRef = useRef<AbortController | null>(null);
   const { t, language } = useLanguage();
   usePageTitle(t('pages.orderTracking.title'));
+  useDocumentMeta({
+    title: t('pages.orderTracking.title'),
+    description: t('common.siteDescription'),
+    path: '/track-order',
+    type: 'website',
+    noIndex: true,
+    siteName: t('common.siteTitle'),
+  });
   const { formatMoney } = useMarket();
   const dateLocale = language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US';
   const orderTrackingItemName = (item: Pick<OrderItemCustomer, 'productId' | 'productName'>) => (

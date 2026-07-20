@@ -5,6 +5,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { cartApi, productApi } from '../api';
 import { useLanguage } from '../i18n';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { useDocumentMeta } from '../hooks/useDocumentMeta';
 import { useMarket } from '../hooks/useMarket';
 import type { ProductPublic as Product } from '../types';
 import { addGuestCartItem } from '../utils/guestCart';
@@ -78,6 +79,14 @@ const ProductCompare: React.FC = () => {
   const navigate = useNavigate();
   const { t, language } = useLanguage();
   usePageTitle(t('pages.compare.title'));
+  useDocumentMeta({
+    title: t('pages.compare.title'),
+    description: t('common.siteDescription'),
+    path: '/compare',
+    type: 'website',
+    noIndex: true,
+    siteName: t('common.siteTitle'),
+  });
   const { formatMoney } = useMarket();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);

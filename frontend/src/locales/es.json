@@ -44,7 +44,11 @@
     "backToTop": "Volver arriba",
     "previousPages": "Páginas anteriores",
     "nextPages": "Páginas siguientes",
-    "unknown": "Desconocido"
+    "unknown": "Desconocido",
+    "offlineTitle": "Sin conexión",
+    "offlineText": "Solo puedes ver páginas guardadas. El carrito y el pago se reanudarán al volver la red.",
+    "onlineRestoredTitle": "Conexión restablecida",
+    "onlineRestoredText": "Ya puedes seguir comprando y pagando."
   },
   "app": {
     "loading": "Cargando app…",
@@ -416,7 +420,11 @@
     "stockAvailable": "{count} disponibles",
     "browseCatalog": "Explorar catálogo",
     "emptyCategoriesHint": "Las categorías aparecerán aquí cuando el catálogo esté listo.",
-    "emptyProductsHint": "Pronto habrá más productos. Explora categorías o usa la búsqueda."
+    "emptyProductsHint": "Pronto habrá más productos. Explora categorías o usa la búsqueda.",
+    "discoveryShowing": "Mostrando {shown} de {total} recomendaciones",
+    "discoveryLoadMore": "Cargar más recomendaciones",
+    "discoveryLoadingMore": "Cargando más recomendaciones",
+    "discoveryAllLoaded": "Todas las recomendaciones están cargadas"
   },
   "footer": {
     "customerCare": "Atención al cliente",
@@ -637,7 +645,8 @@
         "walletThreshold": "Mínimo",
         "remainingLabel": "Restantes"
       },
-      "catalogFallbackDescription": "Los cupones en vivo no están disponibles por ahora. Puedes seguir viendo ahorros recomendados y reintentar para canjear."
+      "catalogFallbackDescription": "Los cupones en vivo no están disponibles por ahora. Puedes seguir viendo ahorros recomendados y reintentar para canjear.",
+      "seoDescription": "Canjea cupones, revisa tu monedero de descuentos y aplícalos antes del checkout en México."
     },
     "adminCoupons": {
       "title": "Cupones",
@@ -827,7 +836,16 @@
       "paymentFailedText": "La pasarela reportó un error. Reanuda el pago en Mis pedidos o prueba otro método.",
       "paymentFailedOrderText": "El pago del pedido {orderNo} falló. Reanuda el pago en Mis pedidos o prueba otro método.",
       "paymentCancelledResume": "Reanudar pago",
-      "paymentCancelledTrack": "Rastrear pedido"
+      "paymentCancelledTrack": "Rastrear pedido",
+      "freeShippingProgressLabel": "Progreso de envío gratis",
+      "freeShippingProgressValue": "{percent}% hacia el envío gratis",
+      "trustTitle": "Señales de confianza del carrito",
+      "trustSecureTitle": "Pago seguro",
+      "trustSecureText": "Opciones de pago cifradas para tu mercado.",
+      "trustReturnsTitle": "Devoluciones fáciles",
+      "trustReturnsText": "Inicia posventa desde tus pedidos en cualquier momento.",
+      "trustSupportTitle": "Soporte en vivo",
+      "trustSupportText": "Pregunta por talla, envío o pago."
     },
     "addOnAssistant": {
       "title": "Sugerencias para completar",
@@ -1163,7 +1181,9 @@
       "checkoutPathText": "{count} destacan ahora; {ready} van directo al carrito.",
       "snapshotNotice": "Mostramos tu catálogo guardado mientras vuelve el catálogo en vivo.",
       "snapshotTitle": "Catálogo temporal",
-      "snapshotText": "Precios e inventario pueden actualizarse cuando vuelva la conexión."
+      "snapshotText": "Precios e inventario pueden actualizarse cuando vuelva la conexión.",
+      "seoDescription": "Compra alimento, juguetes, camas, accesorios de paseo y cuidado inteligente con checkout listo para México.",
+      "searchSeoDescription": "Resultados para \"{keyword}\" — encuentra productos para mascotas con stock, ofertas y compra rápida."
     },
     "compare": {
       "title": "Comparación de productos",
@@ -1315,7 +1335,8 @@
         "rating": "Mejor calificado",
         "deal": "Mejores ofertas",
         "budget": "Más económico"
-      }
+      },
+      "seoDescription": "Encuentra productos para mascotas por presupuesto, tipo de mascota y estilo de vida."
     },
     "petGallery": {
       "eyebrow": "Galería comunitaria",
@@ -1374,7 +1395,8 @@
       "shopInspired": "Comprar inspirados",
       "sampleBadge": "Muestra",
       "sampleSource": "Contenido de muestra",
-      "staleActionBlocked": "Actualiza la galería en vivo antes de cambiar me gusta, subidas o eliminaciones."
+      "staleActionBlocked": "Actualiza la galería en vivo antes de cambiar me gusta, subidas o eliminaciones.",
+      "seoDescription": "Explora fotos reales de mascotas de la comunidad ShopMX y descubre alimento, juguetes y cuidado."
     },
     "browsingHistory": {
       "eyebrow": "Visto recientemente",
@@ -1514,7 +1536,16 @@
       "recoveryEyebrow": "Recuperación de pago",
       "backToOrders": "Ver pedidos",
       "missingOrder": "Falta el número de pedido",
-      "missingOrderText": "Abre esta página desde el checkout, seguimiento o perfil para verificar el monto."
+      "missingOrderText": "Abre esta página desde el checkout, seguimiento o perfil para verificar el monto.",
+      "stickyOpenPayment": "Abrir pago seguro",
+      "stickyRefresh": "Actualizar estado",
+      "trustTitle": "Señales de confianza del pago",
+      "trustSecureTitle": "Pasarela cifrada",
+      "trustSecureText": "Solo abrimos enlaces de pago configurados para tu mercado.",
+      "trustTrackTitle": "Sigue el pedido",
+      "trustTrackText": "El estado del pago y del pedido permanece disponible después del banco.",
+      "trustSupportTitle": "¿Necesitas ayuda?",
+      "trustSupportText": "Soporte puede ayudar con pagos fallidos, cancelados o pendientes."
     },
     "checkout": {
       "loadFailed": "No se pudo cargar la información de pago",
@@ -3267,7 +3298,11 @@
       "lowStockUrgency": "Solo quedan {count}",
       "lowStockUrgencyText": "Pocas unidades — paga pronto para asegurar esta selección ({count} restantes).",
       "decisionStockLowTitle": "Pocas unidades — pide pronto",
-      "decisionStockLowText": "Solo quedan {count} de esta selección (muestra {stock})."
+      "decisionStockLowText": "Solo quedan {count} de esta selección (muestra {stock}).",
+      "galleryPause": "Pausar carrusel de imágenes",
+      "galleryPlay": "Reproducir carrusel de imágenes",
+      "galleryPaused": "Carrusel en pausa",
+      "galleryPlaying": "Carrusel en reproducción"
     },
     "profile": {
       "fetchUserFailed": "No se pudo cargar la información del usuario",
@@ -3532,7 +3567,10 @@
       "paymentRefundedNext": "Conserva la confirmación del reembolso. Contacta soporte si no llega en 5 días hábiles.",
       "paymentRefundingTitle": "Reembolso en proceso",
       "paymentRefundingText": "Estamos procesando el reembolso al método de pago original. Verás la fecha de finalización aquí cuando la pasarela lo confirme.",
-      "paymentRefundingNext": "No necesitas hacer nada más. Revisa el pedido para el estado reembolsado."
+      "paymentRefundingNext": "No necesitas hacer nada más. Revisa el pedido para el estado reembolsado.",
+      "noOrdersHint": "Empieza con los más vendidos, reclama un cupón o usa Pet Finder.",
+      "emptyOrdersCoupons": "Ver cupones",
+      "emptyOrdersPetFinder": "Encontrar producto ideal"
     },
     "brandAdmin": {
       "title": "Gestión de marcas",

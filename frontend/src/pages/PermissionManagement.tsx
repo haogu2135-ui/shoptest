@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Button, Card, Checkbox, Form, Input, Modal, Space, Table, Tag, Typography, message } from 'antd';
 import { DownloadOutlined, PlusOutlined, SafetyCertificateOutlined, SearchOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import { adminApi } from '../api';
+import { adminApi } from '../api/admin';
 import { useLanguage } from '../i18n';
 import type { AdminRole } from '../types';
 import { ADMIN_PAGE_PERMISSIONS, adminPermissionLabelKey, isSuperAdminRole } from '../utils/roles';

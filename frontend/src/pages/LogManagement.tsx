@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, Button, Card, DatePicker, Descriptions, Empty, Input, Popconfirm, Select, Space, Spin, Statistic, Switch, Tag, Typography, message } from 'antd';
 import { BugOutlined, ClockCircleOutlined, DownloadOutlined, FileTextOutlined, ReloadOutlined } from '@ant-design/icons';
 import dayjs, { Dayjs } from 'dayjs';
-import { adminApi } from '../api';
+import { adminApi } from '../api/admin';
 import type { AdminLogManagementStatus } from '../types';
 import { useLanguage } from '../i18n';
 import { getApiErrorMessage } from '../utils/apiError';

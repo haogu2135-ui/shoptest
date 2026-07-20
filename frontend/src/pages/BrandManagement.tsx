@@ -19,7 +19,7 @@ import {
   Typography,
 } from 'antd';
 import { CheckCircleOutlined, DeleteOutlined, EditOutlined, GlobalOutlined, PictureOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons';
-import { adminApi } from '../api';
+import { adminApi } from '../api/admin';
 import type { Brand } from '../types';
 import { useLanguage } from '../i18n';
 import { imageFallbacks, resolveApiAssetUrl } from '../utils/mediaAssets';

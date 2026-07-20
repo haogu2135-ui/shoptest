@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { productApi } from '../api';
 import { useLanguage } from '../i18n';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { useDocumentMeta } from '../hooks/useDocumentMeta';
 import { useMarket } from '../hooks/useMarket';
 import type { ProductPublic as Product } from '../types';
 import { localizeProduct } from '../utils/localizedProduct';
@@ -105,6 +106,13 @@ const PetFinder: React.FC = () => {
   const navigate = useNavigate();
   const { t, language } = useLanguage();
   usePageTitle(t('pages.petFinder.title'));
+  useDocumentMeta({
+    title: t('pages.petFinder.title'),
+    description: t('pages.petFinder.seoDescription'),
+    path: '/pet-finder',
+    type: 'website',
+    siteName: t('common.siteTitle'),
+  });
   const { formatMoney } = useMarket();
   const stored = useMemo(() => readPreferences(), []);
   const [products, setProducts] = useState<Product[]>([]);

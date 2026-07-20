@@ -25,7 +25,7 @@ import {
   UserAddOutlined,
   UserOutlined,
 } from '@ant-design/icons';
-import { adminApi, announcementApi, cartApi, couponApi, notificationApi, productApi, userApi, wishlistApi } from '../api';
+import { announcementApi, cartApi, couponApi, notificationApi, productApi, userApi, wishlistApi } from '../api';
 import { useAuth } from '../hooks/useAuth';
 import { LANGUAGE_LABELS, type Language, SUPPORTED_LANGUAGES, useLanguage } from '../i18n';
 import type { CartItem, SiteAnnouncementPublic } from '../types';
@@ -378,7 +378,7 @@ const Navbar: React.FC = () => {
             setAdminPath('/admin');
             return null;
           }
-          return adminApi.getMyPermissions();
+          return import(/* webpackChunkName: "api-admin" */ '../api/admin').then(({ adminApi }) => adminApi.getMyPermissions());
         })
         .then((permissionsRes) => {
           if (disposed || !permissionsRes) return;

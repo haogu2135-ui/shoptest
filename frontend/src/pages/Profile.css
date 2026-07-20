@@ -3714,3 +3714,23 @@
 .profile-payment-refund-audit {
   width: 100%;
 }
+
+
+/* Commercial empty orders conversion */
+.profile-empty-orders__copy {
+  display: grid;
+  gap: 6px;
+}
+
+.profile-empty-orders__hint {
+  color: rgba(16, 47, 34, 0.72);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.profile-empty-orders .page-feedback__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}

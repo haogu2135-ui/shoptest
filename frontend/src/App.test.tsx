@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { clearStoredAuthSession, userApi } from './api';
+import { clearStoredAuthSession, userApi } from './api/core';
 import { AccessibleMessageLiveRegion, AuthStartupGate } from './App';
 import { LanguageProvider } from './i18n';
 import enLocale from './locales/en.json';
@@ -13,7 +13,7 @@ import { getEffectiveRole } from './utils/roles';
 import { subscribeAccessibleMessages } from './utils/accessibleMessage';
 import { reportNonBlockingError } from './utils/nonBlockingError';
 
-jest.mock('./api', () => ({
+jest.mock('./api/core', () => ({
   clearStoredAuthSession: jest.fn(),
   userApi: {
     getProfile: jest.fn(),
@@ -233,9 +233,11 @@ describe('AuthStartupGate', () => {
 
     expect(supportHostSource).toContain('<FloatingOverlayBoundary');
     expect(supportHostSource).toContain('reportContext="FloatingOverlayBoundary.supportWidget.componentDidCatch"');
-    expect(supportHostSource).toContain('<CustomerSupportWidget');
-    expect(supportHostSource.indexOf('<FloatingOverlayBoundary')).toBeLessThan(supportHostSource.indexOf('<CustomerSupportWidget'));
-    expect(supportHostSource.indexOf('</FloatingOverlayBoundary>')).toBeGreaterThan(supportHostSource.indexOf('<CustomerSupportWidget'));
+    expect(supportHostSource).toContain('<LazyCustomerSupportWidget');
+    expect(supportHostSource).toContain('<Suspense fallback={null}>');
+    expect(supportHostSource).toContain('void loadCustomerSupportWidget()');
+    expect(supportHostSource.indexOf('<FloatingOverlayBoundary')).toBeLessThan(supportHostSource.indexOf('<LazyCustomerSupportWidget'));
+    expect(supportHostSource.indexOf('</FloatingOverlayBoundary>')).toBeGreaterThan(supportHostSource.indexOf('<LazyCustomerSupportWidget'));
   });
 });
 
@@ -249,6 +251,13 @@ describe('App chunking contracts', () => {
     expect(source).toContain("const loadAndroidUiFinalGuard = () => import('./utils/androidUiFinalGuard');");
     expect(source).toContain('installAsyncUiGuard(');
     expect(source).toContain('refreshAsyncUiGuard(');
+    expect(source).not.toMatch(/^import '\.\/mobile-app\.css';/m);
+    expect(source).toContain("import(/* webpackChunkName: \"mobile-app-css\" */ './mobile-app.css')");
+    expect(source).toContain('loadMobileAppCss()');
+    expect(source).not.toMatch(/^import CustomerSupportWidget from '\.\/components\/CustomerSupportWidget';/m);
+    expect(source).toContain('loadCustomerSupportWidget');
+    expect(source).toContain('LazyCustomerSupportWidget');
+
   });
 
   it('keeps storefront and admin page routes lazy loaded behind the route Suspense boundary', () => {

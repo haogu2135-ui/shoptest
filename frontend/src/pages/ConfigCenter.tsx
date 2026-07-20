@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Button, Card, Checkbox, Descriptions, Empty, Form, Input, Popconfirm, Space, Spin, Statistic, Table, Tag, Typography, message } from 'antd';
 import { CheckCircleOutlined, CloudSyncOutlined, CodeOutlined, ReloadOutlined, SendOutlined } from '@ant-design/icons';
-import { adminApi } from '../api';
+import { adminApi } from '../api/admin';
 import type { AdminConfigCenterSnapshot } from '../types';
 import { useLanguage } from '../i18n';
 import { getApiErrorMessage } from '../utils/apiError';

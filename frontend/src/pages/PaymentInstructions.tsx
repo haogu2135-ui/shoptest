@@ -5,6 +5,7 @@ import { useLocation, useNavigate, useParams, useSearchParams } from 'react-rout
 import { orderApi, paymentApi } from '../api';
 import { useLanguage } from '../i18n';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { useDocumentMeta } from '../hooks/useDocumentMeta';
 import type { OrderCustomer, PaymentChannel, PaymentCustomer } from '../types';
 import { dispatchDomEvent } from '../utils/domEvents';
 import { loadGuestSupportContext, normalizeGuestSupportContext, saveGuestSupportContext } from '../utils/guestSupportContext';
@@ -61,6 +62,14 @@ const PaymentInstructions: React.FC = () => {
   const [searchParams] = useSearchParams();
   const { t, language } = useLanguage();
   usePageTitle(t('pages.paymentInstructions.title'));
+  useDocumentMeta({
+    title: t('pages.paymentInstructions.title'),
+    description: t('common.siteDescription'),
+    path: location.pathname,
+    type: 'website',
+    noIndex: true,
+    siteName: t('common.siteTitle'),
+  });
   const [order, setOrder] = useState<OrderCustomer | null>(null);
   const [payment, setPayment] = useState<PaymentCustomer | null>(null);
   const [paymentChannels, setPaymentChannels] = useState<PaymentChannel[]>([]);
@@ -511,6 +520,62 @@ const PaymentInstructions: React.FC = () => {
           </Space>
         </Card>
       </div>
+
+      <div className="payment-instructions-page__trustBar" aria-label={t('pages.paymentInstructions.trustTitle')}>
+        <div className="payment-instructions-page__trustItem">
+          <LockOutlined aria-hidden="true" />
+          <div>
+            <Text strong>{t('pages.paymentInstructions.trustSecureTitle')}</Text>
+            <Text type="secondary">{t('pages.paymentInstructions.trustSecureText')}</Text>
+          </div>
+        </div>
+        <div className="payment-instructions-page__trustItem">
+          <FileSearchOutlined aria-hidden="true" />
+          <div>
+            <Text strong>{t('pages.paymentInstructions.trustTrackTitle')}</Text>
+            <Text type="secondary">{t('pages.paymentInstructions.trustTrackText')}</Text>
+          </div>
+        </div>
+        <div className="payment-instructions-page__trustItem">
+          <CustomerServiceOutlined aria-hidden="true" />
+          <div>
+            <Text strong>{t('pages.paymentInstructions.trustSupportTitle')}</Text>
+            <Text type="secondary">{t('pages.paymentInstructions.trustSupportText')}</Text>
+          </div>
+        </div>
+      </div>
+
+      {!isPaid && !isRefunded && !isRefunding && !isReconcileRequired && payment?.paymentUrl && !recovery.isExpired ? (
+        <div className="payment-instructions-page__stickyBar" role="region" aria-label={t('pages.paymentInstructions.stickyOpenPayment')}>
+          <div className="payment-instructions-page__stickyMeta">
+            <Text strong className="commerce-money">{amountText}</Text>
+            <Text type="secondary">{channel}</Text>
+          </div>
+          <div className="payment-instructions-page__stickyActions">
+            {canVerify ? (
+              <Button
+                icon={<ReloadOutlined />}
+                loading={refreshing || verifying}
+                aria-label={refreshStatusActionLabel}
+                title={refreshStatusActionLabel}
+                onClick={() => { void refreshPaymentStatus(); }}
+              >
+                {t('pages.paymentInstructions.stickyRefresh')}
+              </Button>
+            ) : null}
+            <Button
+              type="primary"
+              size="large"
+              icon={<CreditCardOutlined />}
+              aria-label={openPaymentActionLabel}
+              title={openPaymentActionLabel}
+              onClick={openPaymentUrl}
+            >
+              {t('pages.paymentInstructions.stickyOpenPayment')}
+            </Button>
+          </div>
+        </div>
+      ) : null}
     </main>
   );
 };

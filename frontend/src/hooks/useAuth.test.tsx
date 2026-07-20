@@ -3,14 +3,14 @@ import fs from 'fs';
 import path from 'path';
 import { act, render, waitFor } from '@testing-library/react';
 import { AuthProvider, useAuth } from './useAuth';
-import { clearStoredAuthSession, persistAuthSession, userApi } from '../api';
+import { clearStoredAuthSession, persistAuthSession, userApi } from '../api/core';
 import { AUTH_SESSION_CHANGED_EVENT } from '../utils/authEvents';
 import { getLocalStorageItem, setLocalStorageItem } from '../utils/safeStorage';
 import { reportNonBlockingError } from '../utils/nonBlockingError';
 
 const useAuthSource = fs.readFileSync(path.resolve(__dirname, 'useAuth.ts'), 'utf8');
 
-jest.mock('../api', () => ({
+jest.mock('../api/core', () => ({
   clearStoredAuthSession: jest.fn(),
   persistAuthSession: jest.fn(),
   userApi: {

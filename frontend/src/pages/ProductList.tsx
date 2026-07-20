@@ -8,6 +8,8 @@ import { flattenCategoryTree, getDisplayCategoryRoots, getLocalizedCategoryValue
 import type { CategoryTreeNode } from '../utils/categoryTree';
 import { useLanguage } from '../i18n';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { useDocumentMeta } from '../hooks/useDocumentMeta';
+import { buildItemListStructuredData, buildWebsiteStructuredData } from '../utils/structuredData';
 import { useMarket } from '../hooks/useMarket';
 import { localizeProduct } from '../utils/localizedProduct';
 import { addGuestCartItem } from '../utils/guestCart';
@@ -550,7 +552,44 @@ const ProductList: React.FC = () => {
   const previousProductsRef = useRef<Product[]>([]);
   const { t, language } = useLanguage();
   usePageTitle(t('pages.productList.title'));
-  const { formatMoney } = useMarket();
+  const productListDescription = useMemo(() => {
+    if (keyword.trim()) {
+      return t('pages.productList.searchSeoDescription', { keyword: keyword.trim() });
+    }
+    return t('pages.productList.seoDescription');
+  }, [keyword, t]);
+  const { currency, formatMoney } = useMarket();
+  const productListJsonLd = useMemo(() => {
+    const websiteData = buildWebsiteStructuredData({
+      name: t('pages.productList.title'),
+      description: productListDescription,
+      path: '/products',
+      searchPathTemplate: '/products?keyword={search_term_string}',
+    });
+    const itemListData = buildItemListStructuredData({
+      name: t('pages.productList.title'),
+      description: productListDescription,
+      path: '/products',
+      items: products.slice(0, 24).map((product) => ({
+        id: product.id,
+        name: product.name,
+        path: `/products/${product.id}`,
+        imageUrl: product.imageUrl || product.images?.[0] || '',
+        price: product.effectivePrice ?? product.price,
+        currency,
+      })),
+    });
+    return [websiteData, itemListData].filter(Boolean) as Array<Record<string, unknown>>;
+  }, [currency, productListDescription, products, t]);
+  useDocumentMeta({
+    title: t('pages.productList.title'),
+    description: productListDescription,
+    path: '/products',
+    type: 'website',
+    siteName: t('common.siteTitle'),
+    jsonLdId: 'website-products',
+    jsonLd: productListJsonLd,
+  });
   const productSearchActionLabel = `${t('common.search')}: ${t('pages.productList.searchPlaceholder')}`;
   const productListProductName = useCallback((product: Pick<Product, 'id' | 'name'>) =>
     (product.name || '').trim() || t('pages.profile.productFallback', { id: product.id }), [t]);
@@ -2454,6 +2493,20 @@ const ProductList: React.FC = () => {
                             openProductDetail(product.id);
                           }}
                         >
+                          <img
+                            className="product-list__checkoutPathThumb"
+                            src={getOptimizedImageUrl(resolveProductPrimaryImage(product), 96)}
+                            alt=""
+                            width={40}
+                            height={40}
+                            loading="lazy"
+                            decoding="async"
+                            onError={(event) => {
+                              if (event.currentTarget.src !== productImageFallback) {
+                                event.currentTarget.src = productImageFallback;
+                              }
+                            }}
+                          />
                           <span>
                             <strong>{productName}</strong>
                             <small className="commerce-atomic">

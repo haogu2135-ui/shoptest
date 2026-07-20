@@ -7,6 +7,7 @@ import { cartApi, clearStoredAuthCredentials, persistAuthSession, userApi } from
 import { useAppConfig } from '../hooks/useAppConfig';
 import { useLanguage } from '../i18n';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { useDocumentMeta } from '../hooks/useDocumentMeta';
 import type { Language } from '../i18n';
 import { getPostLoginRedirectTarget } from '../utils/authRedirect';
 import { getGuestCartItems, replaceGuestCartItems } from '../utils/guestCart';
@@ -143,6 +144,14 @@ const Login: React.FC = () => {
   const location = useLocation();
   const { t, language } = useLanguage();
   usePageTitle(t('pages.auth.login'));
+  useDocumentMeta({
+    title: t('pages.auth.login'),
+    description: t('common.siteDescription'),
+    path: '/login',
+    type: 'website',
+    noIndex: true,
+    siteName: t('common.siteTitle'),
+  });
   const { config: appConfig, loading: appConfigLoading } = useAppConfig();
   const guestCartItemsSnapshot = useMemo(() => getGuestCartItems(), []);
   const guestCartCount = guestCartItemsSnapshot.reduce((sum, item) => sum + item.quantity, 0);
@@ -513,7 +522,7 @@ const Login: React.FC = () => {
                 key: 'password',
                 label: t('pages.auth.passwordLogin'),
                 children: (
-                  <Form form={passwordForm} name="login" onFinish={onFinish} layout="vertical" className="shopee-login-form">
+                  <Form form={passwordForm} name="login" onFinish={onFinish} layout="vertical" className="shopee-login-form" validateTrigger={["onChange", "onBlur"]} requiredMark>
                     <Form.Item name="username" label={t('pages.auth.username')} rules={[
                       { required: true, message: t('pages.auth.usernameRequired') },
                       { min: 3, message: t('pages.auth.usernameMinLength') },
@@ -568,6 +577,8 @@ const Login: React.FC = () => {
                     form={emailForm}
                     name="email-login"
                     onFinish={onEmailLogin}
+                    validateTrigger={['onChange', 'onBlur']}
+                    requiredMark
                     onValuesChange={(changedValues) => {
                       if (Object.prototype.hasOwnProperty.call(changedValues, 'email')) {
                         setSentEmailHint('');

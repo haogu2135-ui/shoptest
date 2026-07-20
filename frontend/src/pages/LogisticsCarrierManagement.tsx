@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Button, Card, Form, Input, InputNumber, message, Modal, Popconfirm, Progress, Select, Space, Table, Tag, Typography } from 'antd';
 import { CheckCircleOutlined, PlusOutlined, SearchOutlined, WarningOutlined } from '@ant-design/icons';
-import { adminApi, logisticsCarrierApi } from '../api';
+import { logisticsCarrierApi } from '../api';
+import { adminApi } from '../api/admin';
 import type { LogisticsCarrier } from '../types';
 import { useLanguage } from '../i18n';
 import { getApiErrorMessage } from '../utils/apiError';

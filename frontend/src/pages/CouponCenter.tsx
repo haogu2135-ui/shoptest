@@ -6,6 +6,7 @@ import { cartApi, couponApi } from '../api';
 import type { CartItem, CouponPublic, UserCoupon } from '../types';
 import { useLanguage } from '../i18n';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { useDocumentMeta } from '../hooks/useDocumentMeta';
 import { buildLoginUrlFromWindow } from '../utils/authRedirect';
 import { useMarket } from '../hooks/useMarket';
 import { dispatchDomEvent } from '../utils/domEvents';
@@ -65,6 +66,13 @@ const CouponCenter: React.FC = () => {
   const navigate = useNavigate();
   const { t, language } = useLanguage();
   usePageTitle(t('pages.coupons.title'));
+  useDocumentMeta({
+    title: t('pages.coupons.title'),
+    description: t('pages.coupons.seoDescription'),
+    path: '/coupons',
+    type: 'website',
+    siteName: t('common.siteTitle'),
+  });
   const token = getLocalStorageItem('token') || '';
   const isAuthenticated = Boolean(token);
   const mountedRef = useRef(true);
@@ -476,7 +484,13 @@ const CouponCenter: React.FC = () => {
 
   if (loading) {
     return (
-      <div className={`coupon-center-page coupon-center-page--loading coupon-center-page--${language}`}>
+      <div
+        className={`coupon-center-page coupon-center-page--loading coupon-center-page--${language}`}
+        role="status"
+        aria-live="polite"
+        aria-busy="true"
+        aria-label={t('common.loading')}
+      >
         <div className="coupon-center-page__loadingHero">
           <Skeleton active paragraph={{ rows: 3 }} />
         </div>

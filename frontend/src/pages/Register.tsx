@@ -7,6 +7,7 @@ import { userApi } from '../api';
 import { useAppConfig } from '../hooks/useAppConfig';
 import { useLanguage } from '../i18n';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { useDocumentMeta } from '../hooks/useDocumentMeta';
 import { setSessionStorageItem } from '../utils/safeStorage';
 import { getApiErrorDiagnosticText, getApiErrorMessage } from '../utils/apiError';
 import {
@@ -109,6 +110,14 @@ const Register: React.FC = () => {
   const navigate = useNavigate();
   const { t, language } = useLanguage();
   usePageTitle(t('pages.auth.register'));
+  useDocumentMeta({
+    title: t('pages.auth.register'),
+    description: t('common.siteDescription'),
+    path: '/register',
+    type: 'website',
+    noIndex: true,
+    siteName: t('common.siteTitle'),
+  });
   const { config: appConfig, loading: appConfigLoading } = useAppConfig();
   const [form] = Form.useForm<RegisterForm>();
   const [authBannerError, setAuthBannerError] = useState<string | null>(null);
@@ -357,6 +366,8 @@ const Register: React.FC = () => {
           onFinish={onFinish}
           onFinishFailed={onFinishFailed}
           size="large"
+          validateTrigger={['onChange', 'onBlur']}
+          requiredMark
         >
           <Form.Item
             name="username"
