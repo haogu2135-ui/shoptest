@@ -27,7 +27,7 @@
 }
 
 .product-list .ant-card-small .ant-card-head {
-  min-height: 42px;
+  min-height: 44px;
   border-bottom-color: #edf3ee;
   background: #f8fcf9;
 }
@@ -412,7 +412,7 @@
 .product-list__smartPick {
   max-width: 310px;
   height: auto;
-  min-height: 30px;
+  min-height: 44px;
   justify-content: flex-start;
   gap: 5px;
   padding: 4px 9px;
@@ -486,11 +486,11 @@
 .product-list__activeContextChip {
   min-width: 0;
   max-width: min(100%, 320px);
-  min-height: 34px;
+  min-height: 44px;
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  padding: 0 10px;
+  padding: 0 12px;
   border: 1px solid #dce9df;
   border-radius: 999px;
   background: #ffffff;
@@ -706,7 +706,7 @@
 
 .product-list__categoryButton {
   height: auto;
-  min-height: 34px;
+  min-height: 44px;
   border-radius: 6px;
   text-align: left;
   white-space: normal;
@@ -1078,9 +1078,10 @@
 }
 
 .product-list__actionButton--compact {
-  width: 34px;
-  min-width: 34px;
-  height: 34px;
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  min-height: 44px;
   padding-inline: 0;
 }
 
@@ -1773,7 +1774,7 @@
 
   .product-list__card .ant-card-actions {
     display: grid !important;
-    grid-template-columns: minmax(0, 1fr) 42px 42px;
+    grid-template-columns: minmax(0, 1fr) 44px 44px;
   }
 
   .product-list__card .ant-card-actions > li {
@@ -1816,8 +1817,10 @@
   }
 
   .product-list__actionButton--compact {
-    width: 32px;
-    min-width: 32px;
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    min-height: 44px;
     padding-inline: 0;
   }
 
@@ -2394,9 +2397,9 @@
 }
 
 .product-list__actionButton--compact.ant-btn {
-  width: 38px;
-  min-width: 38px;
-  height: 38px;
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
 }
 
 .product-list__favoriteButton,
@@ -2457,9 +2460,10 @@
   }
 
   .product-list__actionButton--compact.ant-btn {
-    width: 34px;
-    min-width: 34px;
-    height: 34px;
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    min-height: 44px;
   }
 }
 
@@ -2516,7 +2520,7 @@
 
 .product-list--es .product-list__smartPick {
   max-width: 320px;
-  min-height: 40px;
+  min-height: 44px;
 }
 
 .product-list--es .product-list__smartPick strong {
@@ -2593,7 +2597,7 @@
   }
 
   .product-list--es .product-list__card .ant-card-actions {
-    grid-template-columns: minmax(0, 1fr) 38px 38px;
+    grid-template-columns: minmax(0, 1fr) 44px 44px;
   }
 
   .product-list--es .product-list__actionButton {
@@ -3078,7 +3082,7 @@
 
   .product-list__mobileConversionBar button,
   .product-list__mobileConversionBar a {
-    min-height: 42px;
+    min-height: 44px;
     border-radius: 14px;
     font-weight: 800;
   }
@@ -3171,7 +3175,7 @@
 
   .product-list__card .ant-card-actions {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 36px 36px;
+    grid-template-columns: minmax(0, 1fr) 44px 44px;
     align-items: center;
   }
 
@@ -3192,9 +3196,9 @@
   }
 
   .product-list__actionButton--compact.ant-btn {
-    width: 34px;
-    min-width: 34px;
-    height: 34px;
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
     padding: 0;
   }
 
@@ -3240,13 +3244,13 @@
   }
 
   .product-list__card .ant-card-actions {
-    grid-template-columns: minmax(0, 1fr) 32px 32px;
+    grid-template-columns: minmax(0, 1fr) 44px 44px;
   }
 
   .product-list__actionButton--compact.ant-btn {
-    width: 32px;
-    min-width: 32px;
-    height: 32px;
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
   }
 }
 
@@ -3359,7 +3363,7 @@
   }
 
   .product-list__mobileConversionActions .ant-btn:first-child {
-    width: 36px;
+    width: 44px;
   }
 }
 
@@ -3793,13 +3797,13 @@
   }
 
   .product-list__card .ant-card-actions {
-    grid-template-columns: minmax(0, 1fr) 30px 30px;
+    grid-template-columns: minmax(0, 1fr) 44px 44px;
   }
 
   .product-list__actionButton--compact.ant-btn {
-    width: 30px;
-    min-width: 30px;
-    height: 30px;
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
   }
 
   .product-list__mobileConversionActions {
@@ -3836,9 +3840,9 @@
 
   .product-list__search .ant-input-search-button,
   .product-list__search .ant-btn {
-    width: 42px !important;
-    min-width: 42px !important;
-    height: 38px;
+    width: 44px !important;
+    min-width: 44px !important;
+    height: 44px;
     min-height: 44px;
     padding-inline: 0;
   }
@@ -3847,15 +3851,15 @@
 @media (max-width: 380px) {
   .product-list__search .ant-input-group,
   .product-list__search .ant-input-wrapper {
-    grid-template-columns: minmax(0, 1fr) 40px;
+    grid-template-columns: minmax(0, 1fr) 44px;
   }
 
   .product-list__search .ant-input-group-addon,
   .product-list__search .ant-input-search-button,
   .product-list__search .ant-btn {
-    width: 40px !important;
-    min-width: 40px !important;
-    max-width: 40px !important;
+    width: 44px !important;
+    min-width: 44px !important;
+    max-width: 44px !important;
   }
 }
 
@@ -3868,7 +3872,7 @@
 
   .product-list__sortSelect .ant-select-selection-search-input,
   .product-list__toolbar .ant-select-selection-search-input {
-    height: 38px !important;
+    height: 44px !important;
   }
 
   .product-list__sortSelect .ant-select-selection-item,
@@ -4186,7 +4190,7 @@
   .product-list__mobileDiscoveryButton {
     flex: 0 0 auto;
     min-width: 92px;
-    min-height: 40px;
+    min-height: 44px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -4284,9 +4288,10 @@
   }
 
   .product-list__previewTrigger.ant-btn {
-    width: 34px;
-    min-width: 34px;
-    height: 34px;
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    min-height: 44px;
     min-height: 44px;
     padding: 0;
     border-radius: 999px;
@@ -4368,7 +4373,7 @@
 
   .product-list__card .ant-card-actions {
     min-height: 44px;
-    grid-template-columns: minmax(0, 1fr) 34px 34px;
+    grid-template-columns: minmax(0, 1fr) 44px 44px;
   }
 
   .product-list__card .ant-card-actions > li {
@@ -4381,9 +4386,9 @@
   }
 
   .product-list__actionButton--compact.ant-btn {
-    width: 32px;
-    min-width: 32px;
-    height: 32px;
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
   }
 
   .product-list__mobileDrawer .ant-drawer-content-wrapper {
@@ -4412,7 +4417,7 @@
   }
 
   .product-list__categoryButton {
-    min-height: 40px;
+    min-height: 44px;
     border-radius: 10px;
   }
 
@@ -4454,14 +4459,14 @@
   }
 
   .product-list__card .ant-card-actions {
-    grid-template-columns: minmax(0, 1fr) 30px 30px;
+    grid-template-columns: minmax(0, 1fr) 44px 44px;
   }
 
   .product-list__actionButton--compact.ant-btn,
   .product-list__previewTrigger.ant-btn {
-    width: 30px;
-    min-width: 30px;
-    height: 30px;
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
     min-height: 44px;
   }
 }
@@ -4898,7 +4903,7 @@
   .product-list__mobileContextChip {
     min-width: 0;
     max-width: min(68vw, 220px);
-    min-height: 34px;
+    min-height: 44px;
     flex: 0 0 auto;
     display: inline-flex;
     align-items: center;
@@ -4973,7 +4978,7 @@
 @media (max-width: 380px) {
   .product-list__mobileContextChip {
     max-width: min(72vw, 190px);
-    min-height: 32px;
+    min-height: 44px;
     padding-inline: 8px;
     font-size: 12px;
   }
@@ -5198,7 +5203,7 @@
 
   .product-list__mobileConversionActions .ant-btn {
     min-height: 44px;
-    height: 36px;
+    height: 44px;
     padding-inline: 6px;
     border-radius: 12px;
     font-size: 12px;
@@ -5253,9 +5258,9 @@
   }
 
   .product-list__previewTrigger.ant-btn {
-    width: 30px;
-    min-width: 30px;
-    height: 30px;
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
     min-height: 44px;
   }
 
@@ -5338,8 +5343,8 @@
   }
 
   .product-list__card .ant-card-actions {
-    min-height: 39px;
-    grid-template-columns: minmax(0, 1fr) 31px 31px;
+    min-height: 44px;
+    grid-template-columns: minmax(0, 1fr) 44px 44px;
   }
 
   .product-list__card .ant-card-actions > li > span {
@@ -5348,16 +5353,16 @@
 
   .product-list__actionButton.ant-btn {
     min-height: 44px;
-    height: 31px;
+    height: 44px;
     padding-inline: 5px;
     border-radius: 10px;
     font-size: 12px;
   }
 
   .product-list__actionButton--compact.ant-btn {
-    width: 31px;
-    min-width: 31px;
-    height: 31px;
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
   }
 }
 
@@ -5401,15 +5406,15 @@
   }
 
   .product-list__card .ant-card-actions {
-    grid-template-columns: minmax(0, 1fr) 29px 29px;
+    grid-template-columns: minmax(0, 1fr) 44px 44px;
   }
 
   .product-list__actionButton--compact.ant-btn,
   .product-list__previewTrigger.ant-btn {
-    width: 29px;
-    min-width: 29px;
-    height: 29px;
-    min-height: 29px;
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    min-height: 44px;
   }
 }
 
@@ -5417,9 +5422,9 @@
 @media (max-width: 720px) {
   .product-list__card .ant-card-actions {
     display: grid !important;
-    grid-template-columns: minmax(68px, 1fr) 30px 30px;
+    grid-template-columns: minmax(68px, 1fr) 44px 44px;
     align-items: center;
-    min-height: 40px;
+    min-height: 44px;
   }
 
   .product-list__card .ant-card-actions > li {
@@ -5443,7 +5448,7 @@
   .product-list__actionButton.ant-btn {
     width: 100%;
     min-width: 0;
-    height: 31px;
+    height: 44px;
     min-height: 44px;
     padding-inline: 6px;
     font-size: 12px;
@@ -5463,7 +5468,7 @@
   }
 
   .product-list--es .product-list__card .ant-card-actions {
-    grid-template-columns: minmax(68px, 1fr) 30px 30px;
+    grid-template-columns: minmax(68px, 1fr) 44px 44px;
   }
 
   .product-list--es .product-list__card .ant-card-actions > li:first-child .product-list__actionButton.ant-btn .ant-btn-icon {
@@ -5480,24 +5485,24 @@
   }
 
   .product-list__actionButton--compact.ant-btn {
-    width: 30px;
-    min-width: 30px;
-    height: 30px;
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
     padding-inline: 0;
   }
 }
 
 @media (max-width: 380px) {
   .product-list__card .ant-card-actions {
-    grid-template-columns: minmax(60px, 1fr) 28px 28px;
+    grid-template-columns: minmax(60px, 1fr) 44px 44px;
   }
 
   .product-list--es .product-list__card .ant-card-actions {
-    grid-template-columns: minmax(60px, 1fr) 28px 28px;
+    grid-template-columns: minmax(60px, 1fr) 44px 44px;
   }
 
   .product-list__actionButton.ant-btn {
-    height: 30px;
+    height: 44px;
     min-height: 44px;
     padding-inline: 5px;
     font-size: 12px;
@@ -5505,10 +5510,10 @@
 
   .product-list__actionButton--compact.ant-btn,
   .product-list__previewTrigger.ant-btn {
-    width: 28px;
-    min-width: 28px;
-    height: 28px;
-    min-height: 28px;
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    min-height: 44px;
   }
 }
 
@@ -5521,7 +5526,7 @@
 
   .product-list:not(.product-list--empty) .product-list__mobileConversionActions .ant-btn {
     min-height: 44px;
-    height: 38px;
+    height: 44px;
     padding-inline: 8px;
     font-size: 12px;
     line-height: 1.05;
@@ -5560,7 +5565,7 @@
 
   .product-list:not(.product-list--empty) .product-list__mobileConversionActions .ant-btn {
     min-height: 44px;
-    height: 36px;
+    height: 44px;
     padding-inline: 6px;
     font-size: 12px;
   }
@@ -5815,7 +5820,7 @@
 
   .product-list__card .ant-card-actions {
     display: grid !important;
-    grid-template-columns: minmax(0, 1fr) 38px 38px;
+    grid-template-columns: minmax(0, 1fr) 44px 44px;
     align-items: stretch;
   }
 
@@ -5832,7 +5837,7 @@
 
   .product-list__actionButton.ant-btn {
     min-height: 44px;
-    height: 38px;
+    height: 44px;
     padding-inline: 6px;
   }
 
@@ -5845,9 +5850,9 @@
   }
 
   .product-list__actionButton--compact.ant-btn {
-    width: 34px;
-    min-width: 34px;
-    height: 38px;
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
   }
 }
 
@@ -5972,8 +5977,8 @@
   .product-list__mobileDiscoveryButton {
     flex: 0 0 auto;
     max-width: min(196px, 62vw);
-    height: 36px;
-    min-height: 36px;
+    height: 44px;
+    min-height: 44px;
     overflow: hidden;
     white-space: nowrap;
   }

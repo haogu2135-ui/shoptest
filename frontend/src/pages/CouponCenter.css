@@ -4423,8 +4423,8 @@
 
   .coupon-claim-section__search .ant-input,
   .coupon-claim-section__search.ant-input-affix-wrapper .ant-input {
-    height: 34px;
-    line-height: 34px;
+    height: 44px;
+    line-height: 44px;
   }
 
   .coupon-claim-section__search .ant-input-prefix,
@@ -4438,12 +4438,12 @@
   }
 
   .coupon-claim-section__sort .ant-select-selection-search-input {
-    height: 38px !important;
+    height: 44px !important;
   }
 
   .coupon-claim-section__sort .ant-select-selection-item {
     min-height: 44px;
-    line-height: 38px !important;
+    line-height: 44px !important;
   }
 }
 
@@ -4896,7 +4896,7 @@
 @media (max-width: 560px) {
   .coupon-center-page__quickNav button {
     max-width: min(192px, 58vw);
-    height: 40px;
+    height: 44px;
     min-height: 44px;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -4915,7 +4915,7 @@
 
   .coupon-next-action__metaItem {
     min-height: 44px;
-    height: 42px;
+    height: 44px;
     align-items: center;
   }
 

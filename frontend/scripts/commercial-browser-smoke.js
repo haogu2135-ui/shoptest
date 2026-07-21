@@ -68,6 +68,9 @@ async function main() {
     await page.addInitScript(() => {
       try {
         localStorage.removeItem('shopmx.cookie-consent.v1');
+        // Deterministic English probes; production ShopMX home language seeds Spanish.
+        localStorage.setItem('shop-language', 'en');
+        localStorage.setItem('currency', 'MXN');
       } catch (error) {
         // ignore private-mode failures
       }
@@ -201,12 +204,12 @@ async function main() {
     }
 
     if (cookieVisible >= 1) {
-      const acceptAll = page.getByRole('button', { name: /accept all/i }).first();
+      const acceptAll = page.getByRole('button', { name: /accept all|aceptar todo/i }).first();
       await acceptAll.click({ timeout: 5000 }).catch(async () => {
         // Fallback: force DOM activation for ant button edge cases.
         await page.evaluate(() => {
           const btn = Array.from(document.querySelectorAll('.cookie-consent-banner button'))
-            .find((node) => /accept all/i.test(node.textContent || ''));
+            .find((node) => /accept all|aceptar todo/i.test(node.textContent || ''));
           if (btn) btn.click();
         });
       });
@@ -1326,7 +1329,7 @@ async function main() {
       await page.waitForSelector('#root', { timeout: 20000 });
       const cookie = page.locator('.cookie-consent-banner');
       if (await cookie.count()) {
-        await page.getByRole('button', { name: /accept all/i }).first().click({ timeout: 3000 }).catch(() => undefined);
+        await page.getByRole('button', { name: /accept all|aceptar todo/i }).first().click({ timeout: 3000 }).catch(() => undefined);
         await cookie.first().waitFor({ state: 'detached', timeout: 4000 }).catch(() => undefined);
       }
       let opened = false;

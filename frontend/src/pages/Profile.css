@@ -1111,7 +1111,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 40px;
+  min-height: 44px;
   padding: 8px 6px;
   border-radius: 8px;
   border: 1px solid rgba(18, 71, 52, 0.12);
@@ -1135,7 +1135,7 @@
 }
 
 .profile-return-modal__preset {
-  min-height: 36px;
+  min-height: 44px;
 }
 
 .profile-return-modal .ant-input-textarea-show-count::after,
@@ -1149,7 +1149,7 @@
   }
 
   .profile-return-modal__preset {
-    min-height: 40px;
+    min-height: 44px;
   }
 }
 
@@ -1818,7 +1818,7 @@
   .profile-mobile-entry__item {
     flex: 0 0 auto;
     min-width: 108px;
-    min-height: 42px;
+    min-height: 44px;
     padding: 8px 12px;
     border-radius: 999px;
     font-size: 13px;
@@ -2067,7 +2067,7 @@
 
   .profile-mobile-entry__item {
     min-width: 96px;
-    min-height: 38px;
+    min-height: 44px;
     padding: 7px 10px;
     font-size: 12px;
   }
@@ -2222,7 +2222,7 @@
   .profile-payment-link {
     display: inline-flex;
     align-items: center;
-    min-height: 34px;
+    min-height: 44px;
     padding: 0 2px;
     line-height: 1.35;
   }
@@ -2288,7 +2288,7 @@
   }
 
   .profile-payment-modal .ant-select-selector {
-    min-height: 40px;
+    min-height: 44px;
     border-radius: 14px !important;
   }
 
@@ -2710,7 +2710,7 @@
   }
 
   .profile-tabs .ant-tabs-tab {
-    min-height: 38px;
+    min-height: 44px;
     padding: 8px 10px;
   }
 

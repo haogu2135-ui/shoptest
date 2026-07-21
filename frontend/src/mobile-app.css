@@ -118,9 +118,9 @@ body.shop-mobile-app .shop-nav__actions {
 body.shop-mobile-app .shop-nav__actions button,
 body.shop-mobile-app .shop-nav__actions a,
 body.shop-mobile-app .shop-nav__admin {
-  min-width: 38px !important;
-  width: 38px !important;
-  height: 38px !important;
+  min-width: 44px !important;
+  width: 44px !important;
+  height: 44px !important;
   min-height: 44px !important;
   justify-content: center;
   border: 1px solid #e2ebe5;
@@ -160,7 +160,7 @@ body.shop-mobile-app .shop-nav__search .ant-input-group {
 }
 
 body.shop-mobile-app .shop-nav__search .ant-input-group {
-  height: 42px;
+  height: 44px;
   padding: 2px;
   border: 1px solid #dce8e0;
   border-radius: 8px;
@@ -173,7 +173,7 @@ body.shop-mobile-app .shop-nav__search .ant-input-group::before {
 }
 
 body.shop-mobile-app .shop-nav__search .ant-input-affix-wrapper {
-  height: 38px;
+  height: 44px;
   border: 0 !important;
   background: transparent !important;
   box-shadow: none !important;
@@ -187,7 +187,7 @@ body.shop-mobile-app .shop-nav__search .ant-input-group-addon,
 body.shop-mobile-app .shop-nav__search .ant-btn {
   width: 44px;
   min-width: 44px;
-  height: 38px;
+  height: 44px;
   border-radius: 7px !important;
 }
 
@@ -364,9 +364,9 @@ body.shop-mobile-app .ant-modal-content {
   body.shop-mobile-app .shop-nav__actions button,
   body.shop-mobile-app .shop-nav__actions a,
   body.shop-mobile-app .shop-nav__admin {
-    min-width: 36px !important;
-    width: 36px !important;
-    height: 36px !important;
+    min-width: 44px !important;
+    width: 44px !important;
+    height: 44px !important;
     min-height: 44px !important;
   }
 
@@ -940,9 +940,9 @@ body.shop-mobile-app .shop-nav__actions {
 body.shop-mobile-app .shop-nav__actions button,
 body.shop-mobile-app .shop-nav__actions a,
 body.shop-mobile-app .shop-nav__admin {
-  width: 36px !important;
-  min-width: 36px !important;
-  height: 36px !important;
+  width: 44px !important;
+  min-width: 44px !important;
+  height: 44px !important;
   min-height: 44px !important;
   border: 0;
   border-radius: 8px;
@@ -960,7 +960,7 @@ body.shop-mobile-app .shop-nav__search .ant-input-group {
 }
 
 body.shop-mobile-app .shop-nav__search .ant-input-affix-wrapper {
-  height: 40px;
+  height: 44px;
   padding-inline: 12px;
 }
 
@@ -970,9 +970,9 @@ body.shop-mobile-app .shop-nav__search .ant-input {
 }
 
 body.shop-mobile-app .shop-nav__search .ant-btn {
-  width: 42px;
-  min-width: 42px;
-  height: 40px;
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
   border-radius: 8px !important;
   background: var(--app-primary);
   color: #ffffff;
@@ -1308,7 +1308,7 @@ body.shop-mobile-app :where(.ant-tabs-nav) {
 }
 
 body.shop-mobile-app :where(.ant-tabs-tab) {
-  min-height: 38px;
+  min-height: 44px;
   padding: 8px 10px !important;
 }
 
@@ -1522,7 +1522,7 @@ body.shop-mobile-app .product-list__search .ant-input-group,
 body.shop-mobile-app .product-list__sortSelect .ant-select-selector,
 body.shop-mobile-app .product-list__filterButton.ant-btn {
   min-height: 44px !important;
-  height: 40px !important;
+  height: 44px !important;
   border-radius: 8px !important;
 }
 
@@ -1558,8 +1558,8 @@ body.shop-mobile-app .product-list__mobileDiscovery {
 
 body.shop-mobile-app .product-list__mobileDiscoveryButton,
 body.shop-mobile-app .product-list__mobileContextChip {
-  height: 34px !important;
-  min-height: 34px !important;
+  height: 44px !important;
+  min-height: 44px !important;
   border-radius: 999px !important;
   background: #ffffff !important;
   box-shadow: 0 6px 14px rgba(21, 40, 30, 0.06) !important;
@@ -1625,7 +1625,7 @@ body.shop-mobile-app .product-list__mobileConversionActions {
 body.shop-mobile-app .product-list__mobileConversionActions .ant-btn {
   width: 100%;
   min-width: 0 !important;
-  height: 38px !important;
+  height: 44px !important;
   min-height: 44px !important;
   border-radius: 8px !important;
   font-size: 12px;
@@ -1963,10 +1963,10 @@ body.shop-mobile-app :where(
   }
 
   body.shop-mobile-app .shop-nav__actions :where(button, a) {
-    flex-basis: 34px;
-    width: 34px !important;
-    min-width: 34px !important;
-    height: 34px !important;
+    flex-basis: 44px;
+    width: 44px !important;
+    min-width: 44px !important;
+    height: 44px !important;
     min-height: 44px !important;
   }
 
@@ -5958,13 +5958,13 @@ body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-nav__actions {
 body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-nav .shop-nav__actions > .shop-nav__secondary-action--notifications,
 body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-nav .shop-nav__actions > .shop-nav__more-trigger,
 body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-nav .shop-nav__actions > .shop-nav__cart-action {
-  flex: 0 0 42px !important;
-  width: 42px !important;
-  min-width: 42px !important;
-  max-width: 42px !important;
-  height: 42px !important;
+  flex: 0 0 44px !important;
+  width: 44px !important;
+  min-width: 44px !important;
+  max-width: 44px !important;
+  height: 44px !important;
   min-height: 44px !important;
-  max-height: 42px !important;
+  max-height: 44px !important;
   border-radius: 8px !important;
   background: rgba(255, 255, 255, 0.13) !important;
   box-shadow: none !important;
@@ -6325,12 +6325,12 @@ body.shop-mobile-app.shop-mobile-app.shop-mobile-app .product-list__mobileConver
 
 body.shop-mobile-app.shop-mobile-app.shop-mobile-app .product-list__card .ant-card-actions {
   min-height: 48px !important;
-  grid-template-columns: minmax(0, 1fr) 42px 42px !important;
+  grid-template-columns: minmax(0, 1fr) 44px 44px !important;
 }
 
 body.shop-mobile-app.shop-mobile-app.shop-mobile-app .product-list__actionButton.ant-btn {
   min-height: 44px !important;
-  height: 42px !important;
+  height: 44px !important;
 }
 
 body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-detail-page {

@@ -115,7 +115,7 @@
 }
 
 .shopee-hero__categoryRail button {
-  min-height: 34px;
+  min-height: 44px;
   border: 1px solid rgba(255, 255, 255, 0.24);
   border-radius: 999px;
   padding: 6px 12px;
@@ -162,7 +162,7 @@
 }
 
 .shopee-hero__trustPills span {
-  min-height: 30px;
+  min-height: 36px;
   display: inline-flex;
   align-items: center;
   padding: 0 10px;
@@ -1211,8 +1211,8 @@
 }
 
 .shopee-product__quickActions button {
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1809,7 +1809,7 @@
   }
 
   .shopee-hero__categoryRail button {
-    min-height: 30px;
+    min-height: 44px;
     padding-inline: 10px;
     font-size: 12px;
   }
@@ -2194,7 +2194,7 @@ body.shop-mobile-app .shop-app-shell .shopee-home .shopee-categories button {
 
 body.shop-mobile-app .shop-app-shell .shopee-home .shopee-categories button > span:first-child {
   width: 42px !important;
-  height: 42px !important;
+  height: 44px !important;
   background: #fff7f0 !important;
   color: #8f2d17 !important;
   -webkit-text-fill-color: #8f2d17 !important;
@@ -2447,7 +2447,7 @@ body.shop-mobile-app .shop-app-shell .shopee-home .shopee-product__quickActions 
   }
 
   .shopee-mobile-quick-panel__label {
-    min-height: 30px;
+    min-height: 44px;
     font-size: 12px;
     line-height: 12px;
   }
@@ -3514,7 +3514,7 @@ body.shop-mobile-app .shop-app-shell .shopee-home .shopee-product__quickActions 
 
   .shopee-section__header button {
     width: auto;
-    min-height: 32px;
+    min-height: 44px;
     padding-inline: 9px;
     flex: 0 0 auto;
   }
@@ -3555,8 +3555,8 @@ body.shop-mobile-app .shop-app-shell .shopee-home .shopee-product__quickActions 
   }
 
   .shopee-categories button > span:first-child {
-    width: 34px;
-    height: 34px;
+    width: 44px;
+    height: 44px;
     font-size: 18px;
   }
 
@@ -4096,7 +4096,7 @@ body.shop-mobile-app .shop-app-shell .shopee-home .shopee-product__quickActions 
   }
 
   .shopee-section__header button {
-    min-height: 34px;
+    min-height: 44px;
     white-space: normal;
   }
 
@@ -4335,7 +4335,7 @@ body.shop-mobile-app .shop-app-shell .shopee-home .shopee-product__quickActions 
   }
 
   .shopee-hero__categoryRail button {
-    min-height: 36px;
+    min-height: 44px;
     max-width: 58vw;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -5274,7 +5274,7 @@ body.shop-mobile-app .shop-app-shell .shopee-home .shopee-section__header h2 {
 body.shop-mobile-app .shop-app-shell .shopee-home .shopee-section__header button {
   width: auto !important;
   min-width: 0 !important;
-  min-height: 36px !important;
+  min-height: 44px !important;
   padding: 6px 9px !important;
   background: transparent !important;
   color: #8f2d17 !important;
@@ -5314,7 +5314,7 @@ body.shop-mobile-app .shop-app-shell .shopee-home .shopee-categories button::aft
 
 body.shop-mobile-app .shop-app-shell .shopee-home .shopee-categories button > span:first-child {
   width: 42px !important;
-  height: 42px !important;
+  height: 44px !important;
   border-radius: 999px !important;
   background: #fff7f0 !important;
   color: #8f2d17 !important;

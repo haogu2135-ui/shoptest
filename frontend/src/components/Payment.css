@@ -154,8 +154,8 @@
   }
 
   .payment-modal__method.ant-radio-button-wrapper {
-    min-height: 40px;
-    padding: 8px 10px;
+    min-height: 44px;
+    padding: 10px 12px;
     border-radius: 12px;
     font-size: 12px;
     line-height: 1.35;
@@ -183,7 +183,7 @@
   }
 
   .payment-modal__confirm {
-    min-height: 40px;
+    min-height: 44px;
     margin-top: 8px;
     border-radius: 999px;
     font-weight: 900;
@@ -331,8 +331,8 @@
   .payment-modal .ant-modal-close {
     top: 10px;
     right: 10px;
-    width: 36px;
-    height: 36px;
+    width: 44px;
+    height: 44px;
     border-radius: 999px;
   }
 

@@ -13,7 +13,7 @@
 
 .seventeen-track-widget__search .ant-input,
 .seventeen-track-widget__search .ant-btn {
-  min-height: 40px;
+  min-height: 44px;
 }
 
 .seventeen-track-widget__search .ant-input-affix-wrapper,
@@ -139,7 +139,7 @@
   }
 
   .seventeen-track-widget__search .ant-btn {
-    min-height: 42px;
+    min-height: 44px;
     white-space: normal;
   }
 
@@ -163,7 +163,7 @@
   }
 
   .seventeen-track-widget__search .ant-input-affix-wrapper {
-    min-height: 42px;
+    min-height: 44px;
     border-radius: 999px !important;
   }
 
@@ -225,5 +225,5 @@
 }
 
 .seventeen-track-widget__recoveryActions .ant-btn {
-  min-height: 36px;
+  min-height: 44px;
 }

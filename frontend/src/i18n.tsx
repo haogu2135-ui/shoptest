@@ -1,5 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import enLocale from './locales/en.json';
+// ShopMX Mexico-first: Spanish is the home pack and ships with the shell to avoid EN→ES flash.
+import esLocale from './locales/es.json';
 import { getLocalStorageItem, setLocalStorageItem } from './utils/safeStorage';
 import { reportNonBlockingError } from './utils/nonBlockingError';
 
@@ -34,18 +36,20 @@ const mergeTranslations = (base: TranslationMap, override: TranslationMap): Tran
 };
 
 const enMap = enLocale as TranslationMap;
+const esMap = mergeTranslations(enMap, esLocale as TranslationMap);
 
-// English is the commercial fallback pack and stays in the main bundle.
-// Spanish/Chinese packs load on demand so the default storefront shell stays lighter.
+// English remains the commercial fallback pack.
+// Spanish is the Mexico-first home pack and is bundled to avoid first-paint English flash.
+// Chinese still loads on demand.
 const translations: Record<Language, TranslationMap> = {
   en: enMap,
-  es: enMap,
+  es: esMap,
   zh: enMap,
 };
 
 const packLoaded: Record<Language, boolean> = {
   en: true,
-  es: false,
+  es: true,
   zh: false,
 };
 
@@ -58,8 +62,7 @@ export const ensureLanguagePack = async (language: Language): Promise<Translatio
   if (!packPromises[language]) {
     packPromises[language] = (async () => {
       if (language === 'es') {
-        const module = await import(/* webpackChunkName: "i18n-es" */ './locales/es.json');
-        translations.es = mergeTranslations(enMap, module.default as TranslationMap);
+        // Bundled at module init; keep path for callers that always await ensureLanguagePack.
         packLoaded.es = true;
         return translations.es;
       }
@@ -107,13 +110,22 @@ const detectBrowserLanguage = (): Language => {
   if (/china|shanghai|hong_kong|hongkong|taipei|macau|chongqing|urumqi/i.test(timezone)) {
     return 'zh';
   }
-  return timezone.includes('Mexico') ? 'es' : 'en';
+  // ShopMX is Mexico-first: Spanish for Mexico TZ and ambiguous non-Chinese locales.
+  if (/mexico|monterrey|cancun|tijuana|mazatlan|chihuahua|hermosillo|bahia_banderas/i.test(timezone)) {
+    return 'es';
+  }
+  return 'es';
 };
 
 const resolveInitialLanguage = (): Language => {
   const storedLanguage = getLocalStorageItem(STORAGE_KEY);
   if (isLanguage(storedLanguage)) return storedLanguage;
-  return detectBrowserLanguage();
+  // Persist home-market language so nav/checkout/support stay aligned across sessions
+  // (mirrors MXN currency seed). Keep Chinese when browser/timezone clearly indicates it.
+  const detected = detectBrowserLanguage();
+  const home: Language = detected === 'zh' ? 'zh' : 'es';
+  setLocalStorageItem(STORAGE_KEY, home);
+  return home;
 };
 
 // Warm the active pack as soon as the language module boots.

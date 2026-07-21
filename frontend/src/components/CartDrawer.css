@@ -247,7 +247,7 @@
   grid-template-columns: minmax(0, 1fr) auto auto;
   gap: 8px;
   align-items: center;
-  min-height: 42px;
+  min-height: 44px;
   padding: 8px 12px;
   color: #173f2b;
   cursor: pointer;
@@ -817,7 +817,7 @@
   }
 
   .cart-drawer__boostPanel > summary {
-    min-height: 42px;
+    min-height: 44px;
     padding: 9px 10px;
   }
 
@@ -833,7 +833,7 @@
   }
 
   .cart-drawer__productLink {
-    min-height: 36px;
+    min-height: 44px;
     font-size: 13px;
     line-height: 18px;
   }
@@ -859,7 +859,7 @@
 
   .cart-drawer__item .ant-input-number {
     width: 96px;
-    min-height: 40px;
+    min-height: 44px;
   }
 
   .cart-drawer__item .ant-btn {

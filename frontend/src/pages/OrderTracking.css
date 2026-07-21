@@ -260,7 +260,7 @@
 }
 
 .order-tracking-page__assuranceSignals span {
-  min-height: 34px;
+  min-height: 44px;
   display: inline-flex;
   align-items: center;
   gap: 7px;
@@ -579,7 +579,7 @@
   }
 
   .order-tracking-page .ant-card-head {
-    min-height: 42px;
+    min-height: 44px;
     padding: 0 12px;
   }
 
@@ -685,7 +685,7 @@
   }
 
   .order-tracking-page__assuranceSignals span {
-    min-height: 30px;
+    min-height: 44px;
     max-width: 232px;
     padding: 6px 9px;
     border-radius: 999px;
@@ -1029,11 +1029,11 @@
 
   .order-tracking-page__lookupForm .ant-input,
   .order-tracking-page__lookupForm .ant-input-affix-wrapper {
-    min-height: 38px;
+    min-height: 44px;
   }
 
   .order-tracking-page__lookupButton {
-    min-height: 40px;
+    min-height: 44px;
   }
 
   .order-tracking-page__emptyState {
@@ -1072,7 +1072,7 @@
   }
 
   .order-tracking-page__lookupHeader {
-    min-height: 34px;
+    min-height: 44px;
   }
 
   .order-tracking-page__lookupHeader .ant-typography-secondary {
@@ -1215,7 +1215,7 @@
   }
 
   .order-tracking-page__lookupButton {
-    min-height: 42px;
+    min-height: 44px;
     white-space: normal;
     line-height: 1.12;
   }
@@ -1247,7 +1247,7 @@
 
 @media (max-width: 360px) {
   .order-tracking-page__lookupButton {
-    min-height: 40px;
+    min-height: 44px;
     font-size: 12px;
   }
 }
@@ -1447,7 +1447,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 40px;
+  min-height: 44px;
   padding: 8px 6px;
   border-radius: 8px;
   border: 1px solid rgba(18, 71, 52, 0.12);
@@ -1471,7 +1471,7 @@
 }
 
 .order-tracking-page__returnModal .profile-return-modal__preset {
-  min-height: 36px;
+  min-height: 44px;
 }
 
 @media (max-width: 640px) {
@@ -1480,7 +1480,7 @@
   }
 
   .order-tracking-page__returnModal .profile-return-modal__preset {
-    min-height: 40px;
+    min-height: 44px;
   }
 }
 

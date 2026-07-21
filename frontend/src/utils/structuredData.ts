@@ -107,6 +107,12 @@ export const buildProductStructuredData = (
       price,
       availability,
       itemCondition: 'https://schema.org/NewCondition',
+      // Mexico-first commercial offer eligibility for local shopping surfaces.
+      areaServed: {
+        '@type': 'Country',
+        name: 'MX',
+      },
+      availableLanguage: 'es-MX',
     };
   }
   if (Number.isFinite(averageRating) && averageRating > 0 && Number.isFinite(reviewCount) && reviewCount > 0) {
@@ -167,9 +173,20 @@ export const buildWebsiteStructuredData = (
     '@context': 'https://schema.org',
     '@type': 'WebSite',
     name,
+    inLanguage: 'es-MX',
   };
   if (url) data.url = url;
   if (description) data.description = description;
+  // Mexico-first commercial entity for local SEO / knowledge-panel eligibility.
+  data.publisher = {
+    '@type': 'Organization',
+    name,
+    ...(url ? { url } : {}),
+    areaServed: {
+      '@type': 'Country',
+      name: 'MX',
+    },
+  };
   if (searchTemplate) {
     const pathPart = searchTemplate.split('?')[0] || '/';
     const queryPart = searchTemplate.includes('?') ? searchTemplate.slice(searchTemplate.indexOf('?') + 1) : '';

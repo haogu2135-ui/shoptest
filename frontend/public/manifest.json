@@ -1,7 +1,8 @@
 {
   "short_name": "ShopMX",
-  "name": "ShopMX Pet Store",
-  "description": "ShopMX pet supplies, food, toys, beds, walking gear and smart care essentials.",
+  "lang": "es-MX",
+  "name": "ShopMX Tienda para mascotas",
+  "description": "ShopMX México: alimento, juguetes, camas, paseo y cuidado inteligente para mascotas.",
   "icons": [
     {
       "src": "favicon.ico",

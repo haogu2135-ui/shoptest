@@ -598,7 +598,7 @@
   }
 
   .support-order-select-popup .ant-select-item {
-    min-height: 42px;
+    min-height: 44px;
     padding: 8px 10px;
   }
 
@@ -1673,7 +1673,7 @@ body:has(.ant-modal-root .ant-modal-wrap:not([style*="display: none"])) .app-sup
 
   .shop-footer a,
   .shop-footer button {
-    min-height: 30px;
+    min-height: 44px;
   }
 }
 
@@ -1748,6 +1748,7 @@ body:has(.ant-modal-root .ant-modal-wrap:not([style*="display: none"])) .app-sup
   }
 
   .support-order-select-popup .ant-select-item {
+    min-height: 44px;
     border-radius: 10px;
   }
 }
@@ -1820,7 +1821,7 @@ body:has(.ant-modal-root .ant-modal-wrap:not([style*="display: none"])) .app-sup
 
   .shop-footer__columns a,
   .shop-footer__columns button {
-    min-height: 34px;
+    min-height: 44px;
     display: flex;
     align-items: center;
     width: fit-content;
@@ -3026,7 +3027,7 @@ body:has(.ant-modal-root .ant-modal-wrap:not([style*="display: none"])) .app-sup
   }
 
   body :where(.shop-mobile-popup-layer, .ant-select-dropdown) .ant-select-item {
-    min-height: 40px;
+    min-height: 44px;
     display: flex;
     align-items: center;
   }

@@ -539,8 +539,8 @@
   }
 
   .customer-support-widget__headerClose.ant-btn {
-    width: 42px;
-    height: 42px;
+    width: 44px;
+    height: 44px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -621,7 +621,7 @@
   }
 
   .customer-support-widget__sessionPicker .ant-select-selector {
-    min-height: 38px;
+    min-height: 44px;
     border-radius: 999px !important;
     background: #fbfdfb !important;
   }
@@ -778,7 +778,7 @@
   }
 
   .customer-support-widget__linkButton.ant-btn {
-    height: 28px;
+    height: 44px;
     margin-top: 3px;
     padding: 0 10px !important;
     border-radius: 999px;
@@ -966,7 +966,7 @@
 
   .customer-support-widget__orderSelect .ant-select-selection-placeholder,
   .customer-support-widget__orderSelect .ant-select-selection-item {
-    line-height: 42px;
+    line-height: 44px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -1623,8 +1623,8 @@
   }
 
   .customer-support-widget__headerClose.ant-btn {
-    width: 36px;
-    height: 36px;
+    width: 44px;
+    height: 44px;
   }
 
   .customer-support-widget__mobileStatus {
@@ -1643,7 +1643,7 @@
   }
 
   .customer-support-widget__sessionPicker .ant-select-selector {
-    min-height: 34px;
+    min-height: 44px;
   }
 
   .customer-support-widget__messages {
@@ -1748,7 +1748,7 @@
   }
 
   .customer-support-widget__linkButton.ant-btn {
-    height: 26px;
+    height: 44px;
     padding: 0 8px !important;
     font-size: 12px;
   }
@@ -1842,7 +1842,7 @@
   }
 
   .customer-support-widget__orderSelect .ant-select-selector {
-    min-height: 34px;
+    min-height: 44px;
     border-radius: 10px !important;
   }
 
@@ -2901,9 +2901,9 @@ body .customer-support-widget__orderModalRoot .customer-support-widget__orderMod
   }
 
   .customer-support-widget__headerClose.ant-btn {
-    min-width: 40px !important;
-    width: 40px !important;
-    height: 40px;
+    min-width: 44px !important;
+    width: 44px !important;
+    height: 44px;
   }
 
   .customer-support-widget__mobileStatus {
@@ -2961,7 +2961,7 @@ body .customer-support-widget__orderModalRoot .customer-support-widget__orderMod
   }
 
   .customer-support-widget__header {
-    min-height: 40px;
+    min-height: 44px;
     padding: 5px 9px !important;
   }
 
@@ -2983,7 +2983,7 @@ body .customer-support-widget__orderModalRoot .customer-support-widget__orderMod
 
   .customer-support-widget__messageInput .ant-input,
   .customer-support-widget__composer .ant-input-textarea textarea {
-    min-height: 40px !important;
+    min-height: 44px !important;
     max-height: 52px;
   }
 

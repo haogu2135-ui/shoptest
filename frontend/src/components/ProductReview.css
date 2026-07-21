@@ -219,7 +219,7 @@
 
   .product-review__submit {
     width: 100%;
-    min-height: 38px;
+    min-height: 44px;
   }
 
   .product-review__list .ant-list-empty-text {
@@ -314,7 +314,7 @@
   .product-review__orderSelect .ant-select-selector,
   .product-review__textarea,
   .product-review__submit.ant-btn-primary {
-    min-height: 40px;
+    min-height: 44px;
   }
 
   .product-review__rate {
@@ -479,7 +479,7 @@
   .product-review__orderSelect .ant-select-selector,
   .product-review__textarea,
   .product-review__submit {
-    min-height: 42px;
+    min-height: 44px;
   }
 
   .product-review__list .ant-list-items {

@@ -317,7 +317,7 @@
 
 .cart-page__loadingAction {
   width: 140px;
-  height: 40px;
+  height: 44px;
   border-radius: 10px;
 }
 
@@ -617,7 +617,7 @@
 
 .cart-page__quantityStepper .ant-btn {
   width: 36px;
-  height: 36px;
+  height: 44px;
   min-width: 36px;
   min-height: 44px;
   padding: 0;
@@ -625,7 +625,7 @@
 
 .cart-page__quantityInput {
   width: 100%;
-  height: 36px;
+  height: 44px;
   min-width: 0;
   border: 1px solid #d8e2da;
   border-radius: 8px;
@@ -2513,7 +2513,7 @@
   }
 
   .cart-page__mobileItemBottom .ant-input-number {
-    min-height: 38px;
+    min-height: 44px;
     border-radius: 12px;
   }
 

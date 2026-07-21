@@ -33,6 +33,8 @@ describe('structuredData', () => {
         priceCurrency: 'MXN',
         price: '49.90',
         availability: 'https://schema.org/InStock',
+        areaServed: { '@type': 'Country', name: 'MX' },
+        availableLanguage: 'es-MX',
       },
       aggregateRating: {
         '@type': 'AggregateRating',
@@ -80,6 +82,13 @@ describe('structuredData', () => {
       '@type': 'WebSite',
       name: 'ShopMX Pet Store',
       url: `${origin}/`,
+      inLanguage: 'es-MX',
+      publisher: {
+        '@type': 'Organization',
+        name: 'ShopMX Pet Store',
+        url: `${origin}/`,
+        areaServed: { '@type': 'Country', name: 'MX' },
+      },
     });
     expect((website?.potentialAction as { target?: string } | undefined)?.target)
       .toBe(`${origin}/products?keyword={search_term_string}`);

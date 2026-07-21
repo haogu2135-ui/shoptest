@@ -979,7 +979,7 @@
 .checkout-page__addOnButton {
   flex: 0 0 auto;
   max-width: min(100%, 180px);
-  min-height: 36px;
+  min-height: 44px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -2249,7 +2249,7 @@
   .checkout-page__sectionCard .ant-input-affix-wrapper,
   .checkout-page__sectionCard .ant-select-selector,
   .checkout-page__sectionCard textarea.ant-input {
-    min-height: 40px;
+    min-height: 44px;
     border-radius: 14px !important;
   }
 

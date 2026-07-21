@@ -180,7 +180,7 @@
 
 .product-detail-page--es .product-option-radio .ant-radio-button-wrapper {
   height: auto;
-  min-height: 34px;
+  min-height: 44px;
   white-space: normal;
   line-height: 1.2;
 }
@@ -3117,7 +3117,7 @@
 }
 
 .product-tabs-card .ant-tabs-tab {
-  min-height: 42px;
+  min-height: 44px;
   font-weight: 900;
 }
 
@@ -3135,7 +3135,7 @@
 }
 
 .product-detail-tabs .ant-tabs-tab-btn {
-  min-height: 42px;
+  min-height: 44px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -3448,7 +3448,7 @@
   }
 
   .product-option-radio .ant-radio-button-wrapper {
-    min-height: 36px;
+    min-height: 44px;
     padding-inline: 12px;
   }
 
@@ -3583,7 +3583,7 @@
 
   .product-detail-tabs .ant-tabs-tab {
     flex: 0 0 auto;
-    min-height: 40px;
+    min-height: 44px;
   }
 
   .product-detail-tabs .ant-tabs-tab-btn {
@@ -3742,14 +3742,14 @@
   }
 
   .product-detail-tabs .ant-tabs-tab {
-    min-height: 36px;
+    min-height: 44px;
     margin: 0 !important;
     padding: 0 !important;
     scroll-snap-align: start;
   }
 
   .product-detail-tabs .ant-tabs-tab-btn {
-    min-height: 36px;
+    min-height: 44px;
     display: inline-flex;
     align-items: center;
     padding: 0 12px;
@@ -3792,7 +3792,7 @@
 
 @media (max-width: 420px) {
   .product-detail-tabs .ant-tabs-tab-btn {
-    min-height: 34px;
+    min-height: 44px;
     padding-inline: 10px;
     font-size: 12px;
   }
@@ -3818,7 +3818,7 @@
   }
 
   .product-detail-tabs .ant-tabs-tab-btn {
-    min-height: 32px;
+    min-height: 44px;
     padding-inline: 9px;
   }
 
@@ -4199,7 +4199,7 @@
   }
 
   .product-detail-tabs .ant-tabs-tab {
-    min-height: 38px;
+    min-height: 44px;
     margin-inline: 0 6px;
     padding: 8px 10px;
   }
@@ -4372,7 +4372,7 @@
 
   .product-option-radio .ant-radio-button-wrapper {
     flex: 0 0 auto;
-    min-height: 38px;
+    min-height: 44px;
     max-width: min(58vw, 210px);
     display: inline-flex;
     align-items: center;

@@ -73,7 +73,7 @@ async function waitForMainContent(page, predicate, attempts = 14) {
 async function dismissCookie(page) {
   const cookie = page.locator('.cookie-consent-banner');
   if (await cookie.count()) {
-    await page.getByRole('button', { name: /accept all/i }).first().click({ timeout: 2500 }).catch(() => undefined);
+    await page.getByRole('button', { name: /accept all|aceptar todo/i }).first().click({ timeout: 2500 }).catch(() => undefined);
     await cookie.first().waitFor({ state: 'detached', timeout: 3000 }).catch(() => undefined);
   }
 }
@@ -180,6 +180,9 @@ async function main() {
       await page.addInitScript(() => {
         try {
           localStorage.removeItem('shopmx.cookie-consent.v1');
+          // Deterministic English probes; production ShopMX home language seeds Spanish.
+          localStorage.setItem('shop-language', 'en');
+          localStorage.setItem('currency', 'MXN');
         } catch (error) {
           // ignore
         }

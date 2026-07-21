@@ -139,7 +139,7 @@
 .shop-nav__links a,
 .shop-nav__links button {
   opacity: 0.92;
-  min-height: 28px;
+  min-height: 44px;
   display: inline-flex;
   align-items: center;
   border-radius: 8px;
@@ -353,7 +353,7 @@
 }
 
 .shop-nav__search .ant-input-affix-wrapper {
-  height: 36px;
+  height: 44px;
   border: 0;
   box-shadow: none;
 }
@@ -433,7 +433,7 @@
 }
 
 .shop-nav__suggestions button {
-  min-height: 24px;
+  min-height: 44px;
   padding: 0;
   font-size: 12px;
   line-height: 1.2;
@@ -490,7 +490,7 @@
 
 .shop-nav__guestCta {
   min-width: 88px;
-  min-height: 36px;
+  min-height: 44px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -614,7 +614,7 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  min-height: 32px;
+  min-height: 44px;
   border-radius: 8px;
   padding-inline: 6px;
   transition: background 0.15s ease, transform 0.15s ease;
@@ -746,7 +746,7 @@
 
 .shop-nav__menu-action {
   width: 100%;
-  min-height: 34px;
+  min-height: 44px;
   display: flex;
   align-items: center;
   border: 0;
@@ -847,12 +847,12 @@
   }
 
   .shop-nav__search .ant-input-group {
-    height: 38px;
+    height: 44px;
     padding: 2px;
   }
 
   .shop-nav__search .ant-input-affix-wrapper {
-    height: 34px;
+    height: 44px;
   }
 
   .shop-nav__search .ant-btn {
@@ -968,7 +968,7 @@
   }
 
   .shop-nav__mobile-auth {
-    min-height: 32px;
+    min-height: 44px;
     display: inline-flex !important;
     align-items: center;
     justify-content: center;
@@ -1000,9 +1000,9 @@
 
   .shop-nav__actions button[aria-label],
   .shop-nav__actions .shop-nav__admin {
-    width: 32px;
-    min-width: 32px;
-    height: 32px;
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
     justify-content: center;
     padding: 0;
   }
@@ -1164,7 +1164,7 @@
 .shop-nav--es .shop-nav__mobile-orders,
 .shop-nav--es .shop-nav__mobile-locale,
 .shop-nav--es .shop-nav__mobile-logout {
-  min-height: 40px;
+  min-height: 44px;
   white-space: normal;
   overflow-wrap: anywhere;
   line-height: 1.15;
@@ -1259,7 +1259,7 @@
 
 .shop-nav__actions button,
 .shop-nav__admin {
-  min-height: 38px;
+  min-height: 44px;
   padding-inline: 9px;
 }
 
@@ -1451,7 +1451,7 @@
 }
 
 .shop-nav__guestCta {
-  min-height: 36px;
+  min-height: 44px;
   align-items: center;
 }
 
@@ -1588,10 +1588,10 @@
   .shop-nav__actions button[aria-label],
   .shop-nav__actions .shop-nav__admin,
   .shop-nav__mobile-auth {
-    width: 34px;
-    min-width: 34px;
-    height: 34px;
-    min-height: 34px;
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    min-height: 44px;
     border-radius: 999px;
   }
 
@@ -1606,12 +1606,12 @@
   }
 
   .shop-nav__search .ant-input-group {
-    height: 42px;
+    height: 44px;
     border-radius: 18px;
   }
 
   .shop-nav__search .ant-input-affix-wrapper {
-    height: 38px;
+    height: 44px;
     border-radius: 16px 0 0 16px;
   }
 
@@ -1664,9 +1664,9 @@
 
   .shop-nav__actions button[aria-label],
   .shop-nav__actions .shop-nav__admin {
-    width: 32px;
-    min-width: 32px;
-    height: 32px;
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
   }
 }
 
@@ -1750,18 +1750,18 @@
 /* Final compact mobile account controls */
 @media (max-width: 420px) {
   .shop-nav__mobile-auth {
-    min-width: 42px;
+    min-width: 44px;
     max-width: 62px;
     padding-inline: 7px;
   }
 
   .shop-nav__mobile-authText {
-    max-width: 34px;
+    max-width: 44px;
   }
 
   .shop-nav__mobile-auth:not(.shop-nav__mobile-auth--primary) {
-    min-width: 34px;
-    width: 34px;
+    min-width: 44px;
+    width: 44px;
     padding-inline: 0;
   }
 
@@ -1785,9 +1785,9 @@
   }
 
   .shop-nav__mobile-auth--primary {
-    min-width: 36px;
-    width: 36px;
-    max-width: 36px;
+    min-width: 44px;
+    width: 44px;
+    max-width: 44px;
     padding-inline: 0;
   }
 
@@ -1871,7 +1871,7 @@
   }
 
   .shop-nav__suggestions button {
-    min-height: 28px;
+    min-height: 44px;
     max-width: 62vw;
     padding-inline: 9px;
     overflow: hidden;
@@ -1899,7 +1899,7 @@
 
   .shop-nav__suggestions button {
     max-width: 58vw;
-    min-height: 27px;
+    min-height: 44px;
     padding-inline: 8px;
     font-size: 12px;
   }
@@ -1912,7 +1912,7 @@
   }
 
   .shop-nav__suggestions button {
-    min-height: 34px;
+    min-height: 44px;
     padding: 7px 11px;
     line-height: 1.2;
   }
@@ -1920,7 +1920,7 @@
 
 @media (max-width: 380px) {
   .shop-nav__suggestions button {
-    min-height: 34px;
+    min-height: 44px;
     padding: 7px 10px;
   }
 }
@@ -1931,9 +1931,9 @@
   .shop-nav__secondary-action,
   .shop-nav__actions button[aria-label],
   .shop-nav__actions .shop-nav__admin {
-    width: 36px;
-    min-width: 36px;
-    height: 36px;
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
     min-height: 44px;
     padding-inline: 0;
   }
@@ -1944,9 +1944,9 @@
   .shop-nav__secondary-action,
   .shop-nav__actions button[aria-label],
   .shop-nav__actions .shop-nav__admin {
-    width: 36px;
-    min-width: 36px;
-    height: 36px;
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
     min-height: 44px;
   }
 }
@@ -2126,8 +2126,8 @@
   }
 
   .shop-nav__search .ant-input-affix-wrapper .ant-input {
-    height: 34px;
-    line-height: 34px;
+    height: 44px;
+    line-height: 44px;
   }
 
   .shop-nav__search .ant-input-prefix,
@@ -2201,13 +2201,13 @@
   }
 
   .shop-nav__search .ant-input-group {
-    height: 40px;
+    height: 44px;
     padding: 2px;
     border-radius: 15px;
   }
 
   .shop-nav__search .ant-input-affix-wrapper {
-    height: 36px;
+    height: 44px;
     border-radius: 14px 0 0 14px;
   }
 
@@ -2285,19 +2285,19 @@
   }
 
   .shop-nav__search .ant-input-group {
-    height: 38px;
+    height: 44px;
     padding: 2px;
     border-radius: 14px;
   }
 
   .shop-nav__search .ant-input-affix-wrapper {
-    height: 34px;
+    height: 44px;
     border-radius: 12px 0 0 12px;
   }
 
   .shop-nav__search .ant-input-affix-wrapper .ant-input {
-    height: 32px;
-    line-height: 32px;
+    height: 44px;
+    line-height: 44px;
   }
 
   .shop-nav__search .ant-input-group-addon,
@@ -2339,9 +2339,9 @@
 /* Final mobile nav search field target pass */
 @media (max-width: 430px) {
   .shop-nav__search .ant-input-affix-wrapper .ant-input {
-    height: 34px;
+    height: 44px;
     min-height: 44px;
-    line-height: 34px;
+    line-height: 44px;
   }
 }
 
@@ -3255,7 +3255,7 @@ body.shop-mobile-app .shop-nav__bottomItem--active .ant-badge + span {
 
   .shop-nav__dropdown-popup .ant-dropdown-menu-title-content,
   .shop-nav__dropdown-popup .shop-nav__menu-action {
-    min-height: 24px;
+    min-height: 44px;
     display: flex;
     align-items: center;
   }

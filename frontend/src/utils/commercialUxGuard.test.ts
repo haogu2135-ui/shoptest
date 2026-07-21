@@ -1243,6 +1243,111 @@ it('keeps home empty category and product rails on multipath commercial recovery
   });
 
 
+  it('keeps navbar conversion controls commercially tappable at >=44px', () => {
+    const nav = readFrontend('components', 'Navbar.css');
+    expect(nav).toMatch(/\.shop-nav__guestCta[\s\S]{0,80}?min-height:\s*44px/);
+    expect(nav).toMatch(/\.shop-nav__suggestions button[\s\S]{0,60}?min-height:\s*44px/);
+    expect(nav).toMatch(/\.shop-nav__actions button[\s\S]{0,80}?min-height:\s*44px/);
+    expect(nav).toMatch(/\.shop-nav__menu-action[\s\S]{0,60}?min-height:\s*44px/);
+    // search field must not regress below 44 on commercial mobile
+    expect(nav).not.toMatch(/\.shop-nav__search \.ant-input-group\s*\{[\s\S]{0,80}?height:\s*(?:3[0-9]|4[0-3])px/);
+  });
+
+
+  it('keeps catalog conversion action targets commercially tappable at >=44px', () => {
+    const list = readFrontend('pages', 'ProductList.css');
+    const detail = readFrontend('pages', 'ProductDetail.css');
+    expect(list).toMatch(/\.product-list__actionButton--compact[\s\S]{0,120}?min-height:\s*44px|height:\s*44px/);
+    expect(list).not.toMatch(/\.product-list__actionButton--compact\s*\{[\s\S]{0,80}?height:\s*34px/);
+    expect(list).toMatch(/\.product-list__smartPick[\s\S]{0,120}?min-height:\s*44px/);
+    expect(list).toMatch(/mobileNextStepActions \.ant-btn[\s\S]{0,80}?min-height:\s*44px/);
+    expect(detail).toMatch(/\.product-detail-tabs \.ant-tabs-tab-btn[\s\S]{0,40}?min-height:\s*44px/);
+  });
+
+
+  
+  it('keeps home and catalog residual conversion rails commercially tappable at >=44px', () => {
+    const home = readFrontend('pages', 'Home.css');
+    const list = readFrontend('pages', 'ProductList.css');
+    const cart = readFrontend('pages', 'Cart.css');
+    const profile = readFrontend('pages', 'Profile.css');
+    expect(home).toMatch(/\.shopee-hero__categoryRail button[\s\S]{0,80}?min-height:\s*44px/);
+    expect(home).toMatch(/\.shopee-product__quickActions button[\s\S]{0,80}?height:\s*44px/);
+    expect(home).toMatch(/\.shopee-section__header button[\s\S]{0,80}?min-height:\s*44px/);
+    expect(list).toMatch(/\.product-list__actionButton\.ant-btn[\s\S]{0,120}?min-height:\s*44px/);
+    expect(list).not.toMatch(/\.product-list__actionButton\.ant-btn[\s\S]{0,80}?height:\s*(?:3[0-9]|4[0-3])px/);
+    expect(list).toMatch(/\.product-list__mobileDiscoveryButton[\s\S]{0,80}?min-height:\s*44px/);
+    expect(list).toMatch(/\.product-list__categoryButton[\s\S]{0,60}?min-height:\s*44px/);
+    expect(cart).toMatch(/\.cart-page__quantityStepper \.ant-btn[\s\S]{0,80}?height:\s*44px/);
+    expect(profile).toMatch(/\.profile-tabs \.ant-tabs-tab[\s\S]{0,60}?min-height:\s*44px/);
+    expect(profile).toMatch(/\.profile-payment-modal \.ant-select-selector[\s\S]{0,60}?min-height:\s*44px/);
+  });
+
+  
+  
+  
+  it('keeps native mobile-app shell conversion rails commercially tappable at >=44px', () => {
+    const mobile = readFrontend('mobile-app.css');
+    // Native WebView shell must not regress search/nav/catalog conversion under 44.
+    expect(mobile).toMatch(/body\.shop-mobile-app \.shop-nav__search \.ant-input-group[\s\S]{0,80}?height:\s*44px/);
+    expect(mobile).not.toMatch(/body\.shop-mobile-app \.shop-nav__search \.ant-input-group\s*\{[\s\S]{0,60}?height:\s*(?:3[0-9]|4[0-3])px/);
+    expect(mobile).toMatch(/body\.shop-mobile-app \.shop-nav__search \.ant-btn[\s\S]{0,80}?height:\s*44px/);
+    expect(mobile).toMatch(/product-list__mobileConversionActions \.ant-btn[\s\S]{0,100}?min-height:\s*44px/);
+    expect(mobile).not.toMatch(/product-list__mobileContextChip[\s\S]{0,80}?min-height:\s*34px/);
+    expect(mobile).toMatch(/product-list__actionButton\.ant-btn[\s\S]{0,100}?min-height:\s*44px/);
+    // cart launcher / action cluster square targets
+    expect(mobile).not.toMatch(/shop-nav__cart-action[\s\S]{0,120}?height:\s*42px/);
+  });
+
+  it('keeps login auth conversion rails commercially tappable at >=44px', () => {
+    const login = readFrontend('pages', 'Login.css');
+    expect(login).toMatch(/\.shopee-login-codeButton[\s\S]{0,120}?height:\s*44px/);
+    expect(login).toMatch(/\.shopee-login-quickLinks (?:a|button)[\s\S]{0,80}?min-height:\s*44px|\.shopee-login-quickLinks a,[\s\S]{0,80}?min-height:\s*44px/);
+    expect(login).toMatch(/\.shopee-login-links a,[\s\S]{0,80}?min-height:\s*44px|\.shopee-login-links a,\s*\.shopee-login-links button[\s\S]{0,60}?min-height:\s*44px/);
+    expect(login).toMatch(/\.shopee-login-tabs \.ant-tabs-tab[\s\S]{0,80}?min-height:\s*44px/);
+    expect(login).toMatch(/\.shopee-login-tabs \.ant-tabs-tab-btn[\s\S]{0,60}?min-height:\s*44px/);
+    expect(login).not.toMatch(/\.shopee-login-codeButton[\s\S]{0,80}?height:\s*(?:3[0-9]|4[0-3])px/);
+  });
+
+  it('keeps footer and coupon conversion rails commercially tappable at >=44px', () => {
+    const appCss = readFrontend('App.css');
+    const couponCss = readFrontend('pages', 'CouponCenter.css');
+    expect(appCss).toMatch(/\.shop-footer a,\s*\.shop-footer button[\s\S]{0,60}?min-height:\s*44px/);
+    expect(appCss).toMatch(/\.shop-footer__columns a,\s*\.shop-footer__columns button[\s\S]{0,80}?min-height:\s*44px/);
+    expect(appCss).toMatch(/\.support-order-select-popup \.ant-select-item[\s\S]{0,60}?min-height:\s*44px/);
+    expect(couponCss).toMatch(/\.coupon-claim-section__search \.ant-input[\s\S]{0,120}?height:\s*44px/);
+    expect(couponCss).toMatch(/\.coupon-center-page__quickNav button[\s\S]{0,100}?min-height:\s*44px/);
+    expect(couponCss).not.toMatch(/\.coupon-center-page__quickNav button[\s\S]{0,80}?height:\s*(?:3[0-9]|4[0-3])px/);
+  });
+
+  it('bundles Spanish home pack to avoid Mexico-first first-paint English flash', () => {
+    const i18n = readFrontend('i18n.tsx');
+    expect(i18n).toMatch(/import esLocale from '\.\/locales\/es\.json'/);
+    expect(i18n).toContain('Spanish is the Mexico-first home pack');
+    expect(i18n).toMatch(/es:\s*true/);
+    expect(i18n).not.toMatch(/webpackChunkName:\s*["']i18n-es["']/);
+  });
+
+
+  it('keeps ShopMX commercial home language Spanish-first and payment mobile touch >=44px', () => {
+    const i18n = readFrontend('i18n.tsx');
+    const paymentCss = readFrontend('components', 'Payment.css');
+    const checkoutCss = readFrontend('pages', 'Checkout.css');
+    const indexHtml = readFrontend('..', 'public', 'index.html');
+    // Mexico-first language seed aligned with MXN currency default
+    expect(i18n).toMatch(/const home:\s*Language\s*=\s*detected === 'zh' \? 'zh' : 'es'/);
+    expect(i18n).toContain("setLocalStorageItem(STORAGE_KEY, home)");
+    expect(i18n).not.toMatch(/return timezone\.includes\('Mexico'\) \? 'es' : 'en'/);
+    // payment modal must not shrink methods/confirm below 44 on mobile
+    expect(paymentCss).not.toMatch(/\.payment-modal__method\.ant-radio-button-wrapper[\s\S]{0,80}?min-height:\s*40px/);
+    expect(paymentCss).not.toMatch(/\.payment-modal__confirm[\s\S]{0,60}?min-height:\s*40px/);
+    expect(paymentCss).toMatch(/\.payment-modal__method\.ant-radio-button-wrapper[\s\S]{0,80}?min-height:\s*44px/);
+    expect(checkoutCss).toMatch(/\.checkout-page__sectionCard \.ant-input[\s\S]{0,200}?min-height:\s*44px/);
+    expect(indexHtml).toContain('lang="es-MX"');
+    expect(indexHtml).toContain('og:locale" content="es_MX"');
+  });
+
+
   it('keeps high-traffic catalog/PDP/home storefront residual fonts >=12px', () => {
     const files = [
       ['pages', 'ProductDetail.css'],

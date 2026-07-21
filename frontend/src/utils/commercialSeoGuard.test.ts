@@ -37,6 +37,22 @@ describe('commercial SEO contracts', () => {
     expect(indexHtml).toContain('assets/home/hero-dog.jpg');
   });
 
+  it('keeps product offers Mexico-first with areaServed and Spanish language', () => {
+    const structured = readFrontend('utils', 'structuredData.ts');
+    expect(structured).toContain("availableLanguage: 'es-MX'");
+    expect(structured).toMatch(/data\.offers = \{[\s\S]*?areaServed:[\s\S]*?name: 'MX'/);
+    expect(structured).toMatch(/data\.offers = \{[\s\S]*?availableLanguage: 'es-MX'/);
+  });
+
+  it('keeps website structured data Mexico-first with Organization publisher', () => {
+    const structured = readFrontend('utils', 'structuredData.ts');
+    expect(structured).toContain("inLanguage: 'es-MX'");
+    expect(structured).toContain("'@type': 'Organization'");
+    expect(structured).toContain('areaServed');
+    expect(structured).toContain("name: 'MX'");
+    expect(structured).toContain('publisher');
+  });
+
   it('keeps JSON-LD serialization XSS-safe', () => {
     const source = readFrontend('utils', 'documentMeta.ts');
     expect(source).toContain(".replace(/</g, '\\\\u003c')");

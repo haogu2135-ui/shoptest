@@ -418,7 +418,7 @@
 }
 
 .shopee-login-emailHint {
-  min-height: 40px;
+  min-height: 44px;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -449,7 +449,7 @@
 }
 
 .shopee-login-emailSent {
-  min-height: 38px;
+  min-height: 44px;
   display: flex;
   align-items: flex-start;
   gap: 8px;
@@ -512,7 +512,7 @@
 }
 
 .shopee-login-emailMeta span {
-  min-height: 36px;
+  min-height: 44px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -552,13 +552,14 @@
 
 .shopee-login-codeButton {
   width: 112px;
-  height: 42px;
+  height: 44px;
+  min-height: 44px;
   padding: 0 14px;
   border-left: 1px solid var(--login-border);
   border-radius: 0 8px 8px 0;
   color: var(--login-brand);
   font-weight: 800;
-  line-height: 42px;
+  line-height: 44px;
   transition: background var(--transition-fast), color var(--transition-fast);
 }
 
@@ -956,7 +957,7 @@
 .shopee-login-emailMeta span,
 .shopee-login-quickLinks a,
 .shopee-login-quickLinks button {
-  min-height: 42px;
+  min-height: 44px;
 }
 
 .shopee-login-reset-guide__item .anticon,
@@ -1244,7 +1245,7 @@
 
   .shopee-login-card .ant-input,
   .shopee-login-card .ant-input-affix-wrapper {
-    min-height: 42px;
+    min-height: 44px;
   }
 
   .shopee-login-form__field--code .ant-input-group-wrapper,
@@ -1268,7 +1269,7 @@
   .shopee-login-emailMeta span,
   .shopee-login-quickLinks a,
   .shopee-login-quickLinks button {
-    min-height: 38px;
+    min-height: 44px;
     padding: 8px 10px;
     font-size: 12px;
   }
@@ -1475,12 +1476,12 @@
 
   .shopee-login-links a,
   .shopee-login-links button {
-    min-height: 36px;
+    min-height: 44px;
     max-width: 100%;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding-inline: 6px;
+    padding-inline: 8px;
     border-radius: 999px;
     line-height: 1.2;
     overflow-wrap: anywhere;
@@ -1532,7 +1533,7 @@
   }
 
   .shopee-login-tabs .ant-tabs-tab {
-    min-height: 36px;
+    min-height: 44px;
   }
 
   .shopee-login-quickLinks {
@@ -1541,7 +1542,7 @@
 
   .shopee-login-quickLinks a,
   .shopee-login-quickLinks button {
-    min-height: 38px;
+    min-height: 44px;
     padding: 8px 10px;
   }
 
@@ -1631,7 +1632,7 @@
   }
 
   .shopee-login-tabs .ant-tabs-tab {
-    min-height: 38px;
+    min-height: 44px;
     padding: 7px 6px;
     border-radius: 10px;
   }
@@ -1680,7 +1681,7 @@
   .shopee-login-quickLinks a,
   .shopee-login-quickLinks button {
     min-width: 0;
-    min-height: 40px;
+    min-height: 44px;
     padding: 8px 6px;
     gap: 6px;
     font-size: 12px;
@@ -1703,7 +1704,7 @@
   }
 
   .shopee-login-links {
-    min-height: 36px;
+    min-height: 44px;
     margin-top: 0;
     gap: 8px;
     font-size: 12px;
@@ -1711,7 +1712,7 @@
 
   .shopee-login-links a,
   .shopee-login-links button {
-    min-height: 34px;
+    min-height: 44px;
   }
 }
 
@@ -1928,11 +1929,11 @@
   .shopee-login-tabs .ant-tabs-tab {
     flex: 1 1 0;
     justify-content: center;
-    min-height: 36px;
+    min-height: 44px;
   }
 
   .shopee-login-tabs .ant-tabs-tab-btn {
-    min-height: 32px;
+    min-height: 44px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -1954,7 +1955,7 @@
 @media (max-width: 780px) {
   .shopee-login-links a,
   .shopee-login-links button {
-    min-height: 34px;
+    min-height: 44px;
     display: inline-flex;
     align-items: center;
   }
