@@ -583,7 +583,7 @@ const CouponCenter: React.FC = () => {
       <section className={`coupon-center-page__hero coupon-center-page__hero--${couponNextAction.tone}`}>
         <div className="coupon-center-page__heroCopy">
           <Text className="coupon-center-page__eyebrow">{t('pages.coupons.title')}</Text>
-          <Title level={2}><GiftOutlined /> {t('pages.coupons.opportunityTitle')}</Title>
+          <Title level={1}><GiftOutlined /> {t('pages.coupons.opportunityTitle')}</Title>
           <Text className="coupon-center-page__heroText">
             {couponInsights.bestCoupon
               ? t('pages.coupons.opportunitySubtitleBest', { name: couponInsights.bestCoupon.name })

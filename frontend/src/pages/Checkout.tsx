@@ -13,12 +13,10 @@ import { createPaymentMethodDetails, paymentMethodLabel } from '../utils/payment
 import { useMarket } from '../hooks/useMarket';
 import { formatSelectedSpecs } from '../utils/selectedSpecs';
 import { addGuestCartItem, getGuestCartItems, removeGuestCartItems } from '../utils/guestCart';
-import { navigateToSafeUrl } from '../utils/safeUrl';
 import { conversionConfig, getDeliveryPromise, getLowStockCount } from '../utils/conversionConfig';
 import { getGiftThreshold, getNearestCartBenefitTarget } from '../utils/cartBenefits';
 import { getBundleInfo } from '../utils/bundle';
 import { clearCheckoutCartItemIds, hasAuthenticatedCartSession, readCheckoutCartItemIds, syncCheckoutCartItemIds } from '../utils/cartSession';
-import { formatPaymentUrlLabel, getPaymentRecoveryState } from '../utils/paymentRecovery';
 import { productImageFallback, resolveProductImage } from '../utils/productMedia';
 import { getApiErrorMessage, isAuthExpiredError } from '../utils/apiError';
 import { deriveCartShippingSummary, getCartLineAmount, roundCartMoney } from '../utils/cartUi';
@@ -47,6 +45,7 @@ import PageError from '../components/PageError';
 import ShopBreadcrumb from '../components/ShopBreadcrumb';
 import './Checkout.css';
 import '../styles/mobile-page-contrast.css';
+import { navigateToCommercialPaymentUrl, formatPaymentUrlLabel, getPaymentRecoveryState } from '../utils/paymentRecovery';
 
 const { Text, Title } = Typography;
 const checkoutImageFallback = productImageFallback;
@@ -2045,7 +2044,7 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
         clearCheckoutPendingOrder();
         showCheckoutMessage('success', t('pages.checkout.orderCreated'));
         if (paymentRes.data.paymentUrl) {
-          if (!navigateToSafeUrl(paymentRes.data.paymentUrl)) {
+          if (!navigateToCommercialPaymentUrl(paymentRes.data.paymentUrl)) {
             showCheckoutMessage('error', t('pages.payment.failed'));
           }
         }
@@ -2093,7 +2092,7 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
       clearCheckoutPendingOrder();
       setPaymentCreateError(null);
       showCheckoutMessage('success', t('pages.checkout.paymentReady'));
-      if (paymentRes.data.paymentUrl && !navigateToSafeUrl(paymentRes.data.paymentUrl)) {
+      if (paymentRes.data.paymentUrl && !navigateToCommercialPaymentUrl(paymentRes.data.paymentUrl)) {
         showCheckoutMessage('error', t('pages.payment.failed'));
       }
     } catch (error: unknown) {
@@ -2110,7 +2109,7 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
   };
 
   const openPaymentUrl = () => {
-    if (payment?.paymentUrl && !navigateToSafeUrl(payment.paymentUrl)) {
+    if (payment?.paymentUrl && !navigateToCommercialPaymentUrl(payment.paymentUrl)) {
       showCheckoutMessage('error', t('pages.payment.failed'));
     }
   };
@@ -2461,6 +2460,13 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
           aria-label={t('common.loading')}
         >
           {renderCheckoutStatusLiveRegion()}
+          <section className="checkout-page__hero">
+            <div className="checkout-page__heroContent">
+              <span className="checkout-page__heroEyebrow">{t('pages.checkout.readinessEyebrow')}</span>
+              <Title level={1}>{t('pages.checkout.title')}</Title>
+              <Text type="secondary">{t('common.loading')}</Text>
+            </div>
+          </section>
           <div className="checkout-page__loadingShell" aria-hidden="true">
             <div className="checkout-page__loadingHero shimmer" />
             <div className="checkout-page__loadingGrid">
@@ -2665,6 +2671,12 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
               { key: 'checkout', label: t('pages.checkout.title') },
             ]}
           />
+          <section className="checkout-page__hero checkout-page__hero--recovery">
+            <div className="checkout-page__heroContent">
+              <span className="checkout-page__heroEyebrow">{t('pages.checkout.readinessEyebrow')}</span>
+              <Title level={1}>{t('pages.checkout.title')}</Title>
+            </div>
+          </section>
           <div data-checkout-load-recovery="true">
             <PageError
               className="checkout-page__loadError"
@@ -2728,7 +2740,7 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
           </span>
           <div className="checkout-page__emptyCopy">
             <span className="checkout-page__emptyEyebrow">{t('pages.checkout.readinessEyebrow')}</span>
-            <Title level={2}>{t('pages.checkout.emptySelected')}</Title>
+            <Title level={1}>{t('pages.checkout.emptySelected')}</Title>
             <Text>{t('pages.checkout.savingsCoachSubtitle')}</Text>
           </div>
           <div className="checkout-page__emptyActions" data-checkout-empty-actions="true">
@@ -2809,7 +2821,7 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
       <section className="checkout-page__hero">
         <div className="checkout-page__heroContent">
           <span className="checkout-page__heroEyebrow">{t('pages.checkout.readinessEyebrow')}</span>
-          <Title level={2}>{t('pages.checkout.title')}</Title>
+          <Title level={1}>{t('pages.checkout.title')}</Title>
           <Text>{t('pages.checkout.savingsCoachSubtitle')}</Text>
         </div>
         <div className="checkout-page__heroStats">

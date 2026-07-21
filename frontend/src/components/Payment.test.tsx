@@ -53,8 +53,8 @@ jest.mock('../utils/paymentMethods', () => ({
   paymentMethodLabel: (method: string) => method,
 }));
 
-jest.mock('../utils/safeUrl', () => ({
-  navigateToSafeUrl: jest.fn(() => true),
+jest.mock('../utils/paymentRecovery', () => ({
+  navigateToCommercialPaymentUrl: jest.fn(() => true),
 }));
 
 const channel = {

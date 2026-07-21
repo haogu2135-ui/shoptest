@@ -1080,7 +1080,7 @@
   .stock-alerts.stock-alerts-page {
     --stock-alerts-mobile-action-height: 76px;
     --stock-alerts-mobile-action-gap: 12px;
-    --stock-alerts-mobile-action-bottom: calc(var(--shop-mobile-bottom-nav-height, 74px) + var(--stock-alerts-mobile-action-gap) + env(safe-area-inset-bottom, 0px));
+    --stock-alerts-mobile-action-bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + var(--stock-alerts-mobile-action-gap) + env(safe-area-inset-bottom, 0px));
     padding-bottom: calc(
       var(--stock-alerts-mobile-action-bottom)
       + var(--stock-alerts-mobile-action-height)

@@ -1454,7 +1454,23 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
                   ) : ordersLoadFailed ? (
                     t('messages.operationFailed')
                   ) : (
-                    t('pages.support.noOrderItems')
+                    <div className="customer-support-widget__orderSelectEmpty" data-support-order-select-empty="true">
+                      <Text type="secondary">{t('pages.support.noOrderItems')}</Text>
+                      <Text type="secondary" className="customer-support-widget__orderSelectEmptyHint">
+                        {t('pages.support.noOrderItemsHint')}
+                      </Text>
+                      <Space wrap className="customer-support-widget__recoveryActions" data-support-order-select-empty-actions="true">
+                        <Button size="small" type="primary" icon={<FileSearchOutlined />} onClick={() => navigate('/track-order')} aria-label={t('nav.trackOrder')} title={t('nav.trackOrder')}>
+                          {t('nav.trackOrder')}
+                        </Button>
+                        <Button size="small" icon={<ShoppingOutlined />} onClick={() => navigate('/products')} aria-label={t('pages.cart.browse')} title={t('pages.cart.browse')}>
+                          {t('pages.cart.browse')}
+                        </Button>
+                        <Button size="small" icon={<GiftOutlined />} onClick={() => navigate('/coupons')} aria-label={t('nav.coupons')} title={t('nav.coupons')}>
+                          {t('nav.coupons')}
+                        </Button>
+                      </Space>
+                    </div>
                   )
                 }
                 loading={ordersLoading || sendingOrderId !== null}
@@ -1516,7 +1532,27 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
             {detailOrder.shippingAddress ? <Text type="secondary">{detailOrder.shippingAddress}</Text> : null}
             <List
               dataSource={detailItems}
-              locale={{ emptyText: t('pages.support.noOrderItems') }}
+              locale={{
+                emptyText: (
+                  <div className="customer-support-widget__orderItemsEmpty" data-support-order-items-empty="true">
+                    <Text type="secondary">{t('pages.support.noOrderItems')}</Text>
+                    <Text type="secondary" className="customer-support-widget__orderSelectEmptyHint">
+                      {t('pages.support.noOrderItemsHint')}
+                    </Text>
+                    <Space wrap className="customer-support-widget__recoveryActions" data-support-order-items-empty-actions="true">
+                      <Button size="small" type="primary" icon={<FileSearchOutlined />} onClick={() => navigate('/track-order')} aria-label={t('nav.trackOrder')} title={t('nav.trackOrder')}>
+                        {t('nav.trackOrder')}
+                      </Button>
+                      <Button size="small" icon={<ShoppingOutlined />} onClick={() => navigate('/products')} aria-label={t('pages.cart.browse')} title={t('pages.cart.browse')}>
+                        {t('pages.cart.browse')}
+                      </Button>
+                      <Button size="small" icon={<GiftOutlined />} onClick={() => navigate('/coupons')} aria-label={t('nav.coupons')} title={t('nav.coupons')}>
+                        {t('nav.coupons')}
+                      </Button>
+                    </Space>
+                  </div>
+                ),
+              }}
               renderItem={(item) => {
                 const productName = supportOrderItemName(item);
                 return (

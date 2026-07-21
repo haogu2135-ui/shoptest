@@ -1442,3 +1442,15 @@
   min-height: 44px;
   touch-action: manipulation;
 }
+
+
+/* Commercial mobile: register trust chips stay >=12px. */
+@media (max-width: 780px) {
+  .register-page__trustGrid .ant-tag,
+  .register-page__trustGrid .ant-tag span,
+  .register-page__featureCard strong,
+  .register-page__featureCard span {
+    font-size: 12px !important;
+    line-height: 1.25 !important;
+  }
+}

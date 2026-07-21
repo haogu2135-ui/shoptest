@@ -13,8 +13,9 @@ describe('HomeProductCard commerce tile contract', () => {
     expect(source).toContain('title={titleViewActionLabel}');
     expect(source).toContain('buildResponsiveImageSrcSet(card.primaryImage, card.imageWidths)');
     expect(source).toContain('onError={(event) => applyProductImageFallback(event, card.fallbackImage)}');
-    expect(source).toContain('loading="lazy"');
+    expect(source).toContain("loading={priority ? 'eager' : 'lazy'}");
     expect(source).toContain('decoding="async"');
+    expect(source).toContain("fetchPriority={priority ? 'high' : 'auto'}");
   });
 
   it('uses local product placeholders instead of third-party fallback hosts', () => {
@@ -41,5 +42,17 @@ describe('HomeProductCard commerce tile contract', () => {
     expect(source).toContain('const MemoizedHomeProductCard = React.memo(HomeProductCard);');
     expect(source).toContain("MemoizedHomeProductCard.displayName = 'HomeProductCard';");
     expect(source).toContain('export default MemoizedHomeProductCard;');
+  });
+
+  it('reserves social, original, signal, and viewed slots for CLS-stable tiles', () => {
+    expect(source).toContain('data-home-card-social=');
+    expect(source).toContain('data-home-card-original=');
+    expect(source).toContain('data-home-card-signal=');
+    expect(source).toContain('data-home-card-viewed=');
+    expect(source).toContain('shopee-product__original--empty');
+    expect(source).toContain('shopee-product__lastViewed--empty');
+    expect(source).toContain('width={card.imageWidth}');
+    expect(source).toContain('height={card.imageWidth}');
+    expect(source).toContain("priority ? 'eager' : 'lazy'");
   });
 });

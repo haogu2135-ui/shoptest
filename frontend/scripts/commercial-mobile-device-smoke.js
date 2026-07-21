@@ -91,6 +91,10 @@ async function measurePrimaryTouchTargets(page) {
       '.product-actions .ant-btn-primary',
       '.order-tracking-page__notShippedActions .ant-btn',
       '.page-feedback__actions .ant-btn',
+      '.shopee-hero__actions .ant-btn',
+      '.shopee-conversion-band__card',
+      '.cart-page__emptyActions .ant-btn',
+      '.checkout-page__mobilePayBar .ant-btn',
       'main .ant-btn-primary',
     ];
     const nodes = [];

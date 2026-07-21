@@ -30,6 +30,7 @@
     "serve:build": "node scripts/serve-build.js",
     "prebuild": "node scripts/generate-mobile-version.js",
     "build": "GENERATE_SOURCEMAP=false react-scripts build",
+    "build:commercial": "bash scripts/safe-commercial-build.sh",
     "postbuild": "node scripts/restore-build-ownership.js",
     "analyze:bundle": "node scripts/analyze-bundle.js",
     "build:analyze": "npm run build && npm run analyze:bundle",

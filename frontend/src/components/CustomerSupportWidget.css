@@ -3169,3 +3169,20 @@ body .customer-support-widget__orderModalRoot .customer-support-widget__orderMod
     flex: 1 1 calc(50% - 8px);
   }
 }
+
+.customer-support-widget__orderSelectEmpty,
+.customer-support-widget__orderItemsEmpty {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+  padding: 8px 4px 4px;
+  max-width: 320px;
+}
+.customer-support-widget__orderSelectEmptyHint {
+  font-size: 12px;
+  line-height: 1.4;
+}
+.customer-support-widget__orderSelectEmpty .customer-support-widget__recoveryActions .ant-btn,
+.customer-support-widget__orderItemsEmpty .customer-support-widget__recoveryActions .ant-btn {
+  min-height: 40px;
+}

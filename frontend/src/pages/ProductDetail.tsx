@@ -236,6 +236,8 @@ const ProductDetail: React.FC = () => {
   const [averageRating, setAverageRating] = useState(0);
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [recommendations, setRecommendations] = useState<Product[]>([]);
+  const [recommendationsLoading, setRecommendationsLoading] = useState(false);
+  const [recommendationsLoadFailed, setRecommendationsLoadFailed] = useState(false);
   const [recommendationAddingId, setRecommendationAddingId] = useState<number | null>(null);
   const [questions, setQuestions] = useState<ProductQuestionPublic[]>([]);
   const [pendingQuestions, setPendingQuestions] = useState<PendingProductQuestion[]>([]);
@@ -565,6 +567,8 @@ const ProductDetail: React.FC = () => {
       setIsWishlisted(false);
       setReviewableOrders([]);
       setRecommendations([]);
+      setRecommendationsLoading(false);
+      setRecommendationsLoadFailed(false);
       setRecommendationAddingId(null);
       setAuthSessionVersion((version) => version + 1);
     };
@@ -591,12 +595,16 @@ const ProductDetail: React.FC = () => {
   }, [id, isCurrentNonCriticalRequest]);
 
   const fetchRecommendations = useCallback(async (requestSeq: number) => {
+    if (!isCurrentNonCriticalRequest(requestSeq)) return;
+    setRecommendationsLoading(true);
+    setRecommendationsLoadFailed(false);
     try {
       const cacheKey = `${language}|${id}`;
       const cached = getCachedProductRecommendations(cacheKey);
       if (cached) {
         if (!isCurrentNonCriticalRequest(requestSeq)) return;
         setRecommendations(cached);
+        setRecommendationsLoadFailed(false);
         return;
       }
       const res = await productApi.getRecommendations(Number(id));
@@ -604,9 +612,16 @@ const ProductDetail: React.FC = () => {
       if (!isCurrentNonCriticalRequest(requestSeq)) return;
       cacheProductRecommendations(cacheKey, items);
       setRecommendations(items);
+      setRecommendationsLoadFailed(false);
     } catch (error) {
       if (!isCurrentNonCriticalRequest(requestSeq)) return;
       reportNonBlockingError('ProductDetail.fetchRecommendations', error);
+      setRecommendations([]);
+      setRecommendationsLoadFailed(true);
+    } finally {
+      if (isCurrentNonCriticalRequest(requestSeq)) {
+        setRecommendationsLoading(false);
+      }
     }
   }, [id, isCurrentNonCriticalRequest, language]);
 
@@ -661,6 +676,8 @@ const ProductDetail: React.FC = () => {
     setPendingQuestions([]);
     setQuestionText('');
     setRecommendations([]);
+    setRecommendationsLoading(false);
+    setRecommendationsLoadFailed(false);
     setReviewableOrders([]);
     setAverageRating(0);
     setQuestionSubmitting(false);
@@ -1238,17 +1255,22 @@ const ProductDetail: React.FC = () => {
     {
       key: 'options',
       icon: <CheckCircleOutlined />,
-      ready: optionGroups.length === 0 || (hasCompleteOptions && !hasUnavailableSelectedVariant),
-      title: optionGroups.length === 0
-        ? t('pages.productDetail.decisionNoOptionsTitle')
-        : hasCompleteOptions && !hasUnavailableSelectedVariant
-          ? t('pages.productDetail.decisionOptionsReadyTitle')
-          : t('pages.productDetail.decisionOptionsMissingTitle'),
-      text: optionGroups.length === 0
-        ? t('pages.productDetail.decisionNoOptionsText')
-        : hasCompleteOptions && !hasUnavailableSelectedVariant
-          ? t('pages.productDetail.decisionOptionsReadyText')
-          : t('pages.productDetail.decisionOptionsMissingText'),
+      // Commercial trust: never mark options "ready to add" when the SKU is sold out.
+      ready: !isOutOfStock && (optionGroups.length === 0 || (hasCompleteOptions && !hasUnavailableSelectedVariant)),
+      title: isOutOfStock
+        ? t('pages.productDetail.decisionStockOutTitle')
+        : optionGroups.length === 0
+          ? t('pages.productDetail.decisionNoOptionsTitle')
+          : hasCompleteOptions && !hasUnavailableSelectedVariant
+            ? t('pages.productDetail.decisionOptionsReadyTitle')
+            : t('pages.productDetail.decisionOptionsMissingTitle'),
+      text: isOutOfStock
+        ? t('pages.productDetail.decisionStockOutText')
+        : optionGroups.length === 0
+          ? t('pages.productDetail.decisionNoOptionsText')
+          : hasCompleteOptions && !hasUnavailableSelectedVariant
+            ? t('pages.productDetail.decisionOptionsReadyText')
+            : t('pages.productDetail.decisionOptionsMissingText'),
     },
     {
       key: 'stock',
@@ -1751,7 +1773,7 @@ const ProductDetail: React.FC = () => {
             <Card className="product-summary-card">
               <Space direction="vertical" size="large" className="product-summary-space">
                 <div className="product-title-block">
-                  <Title level={2}>{productName}</Title>
+                  <Title level={1}>{productName}</Title>
                   {product.brand && (
                     <Text type="secondary" className="product-brand-text">{t('pages.productDetail.brand')}: {product.brand}</Text>
                   )}
@@ -2571,16 +2593,36 @@ const ProductDetail: React.FC = () => {
               })}
             </Carousel>
           </div>
+        ) : recommendationsLoading ? (
+          <div className="product-recommendations product-recommendations--loading" data-product-detail-recommendations-loading="true" role="status" aria-live="polite" aria-busy="true" aria-label={t('common.loading')}>
+            <Title level={3}>{t('pages.productDetail.recommendations')}</Title>
+            <div className="product-recommendations__loadingCopy">{t('common.loading')}</div>
+          </div>
         ) : (
-          <div className="product-recommendations product-recommendations--empty" data-product-detail-recommendations-empty="true">
+          <div className="product-recommendations product-recommendations--empty" data-product-detail-recommendations-empty={recommendationsLoadFailed ? 'failed' : 'true'}>
             <Title level={3}>{t('pages.productDetail.recommendations')}</Title>
             <div className="product-recommendations__emptyCopy">
-              <div>{t('pages.productDetail.recommendationsEmpty')}</div>
-              <div className="product-recommendations__emptyHint">{t('pages.productDetail.recommendationsEmptyHint')}</div>
+              <div>{recommendationsLoadFailed ? t('pages.productDetail.recommendationsLoadFailed') : t('pages.productDetail.recommendationsEmpty')}</div>
+              <div className="product-recommendations__emptyHint">{recommendationsLoadFailed ? t('pages.productDetail.recommendationsLoadFailedHint') : t('pages.productDetail.recommendationsEmptyHint')}</div>
             </div>
             <Space wrap className="product-recommendations__emptyActions" data-product-detail-recommendations-empty-actions="true">
+              {recommendationsLoadFailed ? (
+                <Button
+                  type="primary"
+                  aria-label={t('common.retry')}
+                  title={t('common.retry')}
+                  onClick={() => {
+                    const requestSeq = nonCriticalRequestSeqRef.current + 1;
+                    nonCriticalRequestSeqRef.current = requestSeq;
+                    nonCriticalLoadedRef.current = false;
+                    warmNonCriticalContent(requestSeq);
+                  }}
+                >
+                  {t('common.retry')}
+                </Button>
+              ) : null}
               <Button
-                type="primary"
+                type={recommendationsLoadFailed ? 'default' : 'primary'}
                 icon={<ShoppingCartOutlined />}
                 aria-label={t('pages.cart.browse')}
                 title={t('pages.cart.browse')}

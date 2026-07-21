@@ -339,7 +339,8 @@
     padding: 14px 0 24px;
   }
 
-  .order-tracking-page h2.ant-typography {
+  .order-tracking-page h1.ant-typography,
+.order-tracking-page h2.ant-typography {
     font-size: 24px;
   }
 
@@ -565,7 +566,8 @@
     padding: 8px 0 20px;
   }
 
-  .order-tracking-page h2.ant-typography {
+  .order-tracking-page h1.ant-typography,
+.order-tracking-page h2.ant-typography {
     margin-bottom: 10px;
     font-size: 22px;
     line-height: 1.15;

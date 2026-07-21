@@ -11,10 +11,9 @@ import { dispatchDomEvent } from '../utils/domEvents';
 import { loadGuestSupportContext, normalizeGuestSupportContext, saveGuestSupportContext } from '../utils/guestSupportContext';
 import { reportNonBlockingError } from '../utils/nonBlockingError';
 import { getLocalStorageItem } from '../utils/safeStorage';
-import { formatPaymentUrlLabel, getPaymentRecoveryState } from '../utils/paymentRecovery';
-import { navigateToSafeUrl } from '../utils/safeUrl';
 import ShopBreadcrumb from '../components/ShopBreadcrumb';
 import './PaymentInstructions.css';
+import { formatPaymentUrlLabel, getPaymentRecoveryState, navigateToCommercialPaymentUrl } from '../utils/paymentRecovery';
 
 const { Text, Title } = Typography;
 
@@ -387,7 +386,7 @@ const PaymentInstructions: React.FC = () => {
       message.info(t('pages.paymentInstructions.verifyFailed'));
       return;
     }
-    if (!navigateToSafeUrl(payment.paymentUrl)) {
+    if (!navigateToCommercialPaymentUrl(payment.paymentUrl)) {
       message.error(t('pages.paymentInstructions.verifyFailed'));
     }
   };

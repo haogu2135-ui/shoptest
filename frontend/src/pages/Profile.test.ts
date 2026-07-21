@@ -190,7 +190,7 @@ describe('Profile mobile control visibility', () => {
 
     expect(source).not.toContain('window.location.href');
     expect(source).not.toMatch(/setTimeout\s*\([\s\S]{0,400}window\.location/);
-    expect(source.match(/navigateToSafeUrl\(selectedPayment\.paymentUrl\)/g)?.length).toBeGreaterThanOrEqual(2);
+    expect(source.match(/navigateToCommercialPaymentUrl\(selectedPayment\.paymentUrl\)/g)?.length).toBeGreaterThanOrEqual(2);
     expect(refreshStateStart).toBeGreaterThan(-1);
     expect(continuePaymentStart).toBeGreaterThan(refreshStateStart);
     expect(pollingEffectStart).toBeGreaterThan(continuePaymentStart);

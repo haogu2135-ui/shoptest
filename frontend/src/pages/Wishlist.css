@@ -1402,7 +1402,7 @@
   .wishlist-page.wishlist-page--withMobileAction {
     --wishlist-mobile-action-height: 88px;
     --wishlist-mobile-action-gap: 12px;
-    --wishlist-mobile-action-bottom: calc(var(--shop-mobile-bottom-nav-height, 74px) + var(--wishlist-mobile-action-gap) + env(safe-area-inset-bottom, 0px));
+    --wishlist-mobile-action-bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + var(--wishlist-mobile-action-gap) + env(safe-area-inset-bottom, 0px));
     padding-bottom: calc(
       var(--wishlist-mobile-action-bottom)
       + var(--wishlist-mobile-action-height)

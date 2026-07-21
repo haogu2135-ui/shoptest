@@ -445,6 +445,38 @@ async function main() {
       );
     }
 
+    // Commercial: multi-host storefront payment rewrite must ship in built assets so
+    // conversion survives production CDN/origin mismatches (CF 522, tunnel, local edge).
+    {
+      const fs = require('fs');
+      const path = require('path');
+      const buildDir = path.join(__dirname, '..', 'build', 'static', 'js');
+      let hasTrycloudflare = false;
+      let hasProductionHost = false;
+      let hasPaymentPath = false;
+      const walk = (dir) => {
+        if (!fs.existsSync(dir) || (hasTrycloudflare && hasProductionHost && hasPaymentPath)) return;
+        for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+          const full = path.join(dir, entry.name);
+          if (entry.isDirectory()) {
+            walk(full);
+            continue;
+          }
+          if (!/\.js$/.test(entry.name)) continue;
+          const body = fs.readFileSync(full, 'utf8');
+          if (body.includes('trycloudflare.com')) hasTrycloudflare = true;
+          if (body.includes('pet.686888666.xyz')) hasProductionHost = true;
+          if (body.includes('/payment/') || body.includes('"/payment"') || body.includes("'/payment'")) hasPaymentPath = true;
+        }
+      };
+      walk(buildDir);
+      check(
+        'payment multi-host rewrite contract in build',
+        hasTrycloudflare && hasProductionHost && hasPaymentPath,
+        `trycloudflare=${hasTrycloudflare};prodHost=${hasProductionHost};paymentPath=${hasPaymentPath}`,
+      );
+    }
+
     // Commercial: login rate-limit / lock multipath recovery must ship in built assets.
     {
       const fs = require('fs');
@@ -693,6 +725,18 @@ async function main() {
 
 
     // Local mobile CWV soft budgets (production host still required for ship-bar CWV).
+    // Warm home once so cold post-rebuild asset compile does not flake the LCP soft gate.
+    await page.goto(`${base}/`, { waitUntil: 'domcontentloaded', timeout: 45000 });
+    await page.waitForTimeout(800);
+    await page.evaluate(() => {
+      try {
+        window.__shopmxCwv = { lcp: 0, cls: 0 };
+        performance.clearResourceTimings();
+      } catch (error) {
+        // ignore
+      }
+    });
+    await page.reload({ waitUntil: 'domcontentloaded', timeout: 45000 });
     await page.waitForTimeout(1500);
     const cwv = await page.evaluate(() => {
       const nav = performance.getEntriesByType('navigation')[0];
@@ -726,11 +770,29 @@ async function main() {
     check('home FCP soft budget', !cwv.fcp || cwv.fcp < 5000, `fcp=${Math.round(cwv.fcp)}ms`);
     // LCP may still be 0 in some headless builds; keep skip-pass but prefer PerformanceObserver path.
     if (cwv.lcp > 0) {
-      check('home LCP soft budget', cwv.lcp < 8000, `lcp=${Math.round(cwv.lcp)}ms source=${cwv.lcpSource}`);
+      check('home LCP soft budget', cwv.lcp < 4000, `lcp=${Math.round(cwv.lcp)}ms source=${cwv.lcpSource}`);
     } else {
       check('home LCP soft budget', true, 'lcp-entry-unavailable-in-headless');
     }
-    check('home CLS soft budget', cwv.cls < 0.25, `cls=${Number(cwv.cls).toFixed(3)}`);
+    // Commercial CWV good threshold is 0.1; local target is zero-shift after bottom-nav lock.
+    check('home CLS soft budget', cwv.cls < 0.1, `cls=${Number(cwv.cls).toFixed(3)}`);
+    const bottomBarMetrics = await page.evaluate(() => {
+      const el = document.querySelector('.shop-nav__bottomBar');
+      if (!el) return { present: false, height: 0 };
+      const rect = el.getBoundingClientRect();
+      const style = window.getComputedStyle(el);
+      return {
+        present: true,
+        height: Math.round(rect.height),
+        maxHeight: style.maxHeight,
+        overflow: style.overflow,
+      };
+    });
+    check(
+      'home mobile bottom bar height locked',
+      bottomBarMetrics.present && bottomBarMetrics.height >= 64 && bottomBarMetrics.height <= 76,
+      JSON.stringify(bottomBarMetrics),
+    );
 
     // Offline connectivity multipath recovery (local cart/history remain useful offline).
     {

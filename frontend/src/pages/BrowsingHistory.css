@@ -1785,7 +1785,7 @@
    and readable wrapped copy after the atomic nowrap pass above. */
 @media (max-width: 640px) {
   .browsing-history {
-    padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 76px) + 176px + env(safe-area-inset-bottom, 0px)) !important;
+    padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 176px + env(safe-area-inset-bottom, 0px)) !important;
   }
 
   .browsing-history__mobileAction {

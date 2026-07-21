@@ -462,7 +462,7 @@
   }
 
   body.shop-mobile-app .payment-instructions-page__stickyBar {
-    bottom: calc(var(--shop-mobile-bottom-nav-height, 74px));
+    bottom: calc(var(--shop-mobile-bottom-nav-height, 72px));
     padding-bottom: 10px;
   }
 

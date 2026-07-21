@@ -2013,7 +2013,7 @@
   }
 
   .shopee-product__name {
-    min-height: 36px;
+    min-height: 44px;
     font-size: 13px;
     line-height: 18px;
   }
@@ -3282,7 +3282,7 @@ body.shop-mobile-app .shop-app-shell .shopee-home .shopee-product__quickActions 
 }
 
 .shopee-product__imageWrap {
-  aspect-ratio: 1 / 0.92;
+  aspect-ratio: 1 / 1;
   min-height: 168px;
 }
 
@@ -3570,7 +3570,7 @@ body.shop-mobile-app .shop-app-shell .shopee-home .shopee-product__quickActions 
 
   .shopee-product__imageWrap {
     min-height: 124px;
-    aspect-ratio: 1 / 0.88;
+    aspect-ratio: 1 / 1;
   }
 
   .shopee-product__image,
@@ -4270,7 +4270,7 @@ body.shop-mobile-app .shop-app-shell .shopee-home .shopee-product__quickActions 
   }
 
   .shopee-product__name {
-    min-height: 32px;
+    min-height: 44px;
     line-height: 16px;
   }
 
@@ -4490,7 +4490,7 @@ body.shop-mobile-app .shop-app-shell .shopee-home .shopee-product__quickActions 
   }
 
   .shopee-product__image {
-    aspect-ratio: 1 / 0.88;
+    aspect-ratio: 1 / 1;
   }
 
   .shopee-product__body {
@@ -5507,22 +5507,22 @@ body.shop-mobile-app .shop-app-shell .shopee-home .shopee-categories__name {
 /* Final APP home bottom-rail clearance: the first product row is interactive
    content, so it needs enough scroll room to clear the fixed native rail. */
 body.shop-mobile-app .shop-app-shell .shopee-home {
-  padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 74px) + 132px + env(safe-area-inset-bottom, 0px)) !important;
-  scroll-padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 74px) + 148px + env(safe-area-inset-bottom, 0px)) !important;
+  padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 132px + env(safe-area-inset-bottom, 0px)) !important;
+  scroll-padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 148px + env(safe-area-inset-bottom, 0px)) !important;
 }
 
 body.shop-mobile-app .shop-app-shell .shopee-home > .shopee-container:last-of-type {
-  padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 74px) + 96px + env(safe-area-inset-bottom, 0px)) !important;
+  padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 96px + env(safe-area-inset-bottom, 0px)) !important;
 }
 
 body.shop-mobile-app .shop-app-shell .shopee-home .shopee-flash-products {
-  margin-bottom: calc(var(--shop-mobile-bottom-nav-height, 74px) + 16px) !important;
-  padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 74px) + 24px) !important;
+  margin-bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 16px) !important;
+  padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 24px) !important;
 }
 
 body.shop-mobile-app .shop-app-shell .shopee-home .shopee-flash-products .ant-row {
-  margin-top: calc(var(--shop-mobile-bottom-nav-height, 74px) + 16px) !important;
-  padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 74px) + 12px) !important;
+  margin-top: calc(var(--shop-mobile-bottom-nav-height, 72px) + 16px) !important;
+  padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 12px) !important;
 }
 
 body.shop-mobile-app .shop-app-shell .shopee-home .shopee-flash-products .shopee-product__discount,
@@ -5639,4 +5639,199 @@ body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .shopee-hom
   border-color: #124734;
   box-shadow: 0 0 0 2px rgba(18, 71, 52, 0.14);
   outline: none;
+}
+
+
+/* Commercial CLS reserves: stable home product tiles + below-fold section space */
+.shopee-product {
+  contain: layout style;
+}
+
+.shopee-product__body {
+  min-height: 142px;
+}
+
+.shopee-product__original {
+  min-height: 16px;
+  line-height: 16px;
+}
+
+.shopee-product__original--empty {
+  visibility: hidden;
+}
+
+.shopee-product__lastViewed--empty {
+  visibility: hidden;
+}
+
+.shopee-product__socialProof[data-home-card-social='empty'] {
+  min-height: 22px;
+}
+
+/* Keep HTML width/height (square) aligned with CSS so first paint does not reflow. */
+.shopee-product__imageWrap,
+.shopee-product__image {
+  aspect-ratio: 1 / 1;
+}
+
+.shopee-categories {
+  min-height: 96px;
+}
+
+/* Below-fold rails only — keep best-sellers/categories eager for LCP. */
+.shopee-discovery,
+.shopee-for-you,
+.pet-ugc,
+.shopee-recently-viewed-products,
+.shopee-personalized-products,
+.shopee-flash-products {
+  content-visibility: auto;
+  contain-intrinsic-size: 1200px 420px;
+}
+
+@media (max-width: 600px) {
+  .shopee-product__body {
+    min-height: 124px;
+  }
+
+  .shopee-product__socialProof {
+    min-height: 18px;
+  }
+
+  .shopee-product__socialProof[data-home-card-social='empty'] {
+    min-height: 18px;
+  }
+
+  .shopee-categories {
+    min-height: 168px;
+  }
+
+  .shopee-discovery,
+  .shopee-for-you,
+  .pet-ugc,
+  .shopee-recently-viewed-products,
+  .shopee-personalized-products,
+  .shopee-flash-products {
+    contain-intrinsic-size: 100vw 520px;
+  }
+}
+
+
+/* Recently viewed pending rail keeps below-fold insertion from janking nearby content */
+.shopee-recently-viewed-products__pending {
+  min-height: 280px;
+}
+
+@media (max-width: 600px) {
+  .shopee-recently-viewed-products__pending {
+    min-height: 320px;
+  }
+}
+
+
+/* Commercial home loading shell AOTF reserves */
+.shopee-home--loading .shopee-hero {
+  min-height: 360px;
+}
+
+.shopee-mobile-quick-panel--skeleton {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  min-height: 66px;
+  padding: 8px;
+}
+
+.shopee-mobile-quick-panel__skeletonCell {
+  min-height: 66px;
+  border-radius: 15px;
+  display: block;
+}
+
+.pet-trust-strip--skeleton {
+  min-height: 100px;
+}
+
+.pet-trust-strip--skeleton > div {
+  min-height: 90px;
+  border-radius: 8px;
+}
+
+.shopee-categories-section--skeleton {
+  min-height: 168px;
+}
+
+.shopee-categories--skeleton {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  min-height: 96px;
+}
+
+.shopee-categories__skeletonTile {
+  min-height: 76px;
+  border-radius: 16px;
+  display: block;
+}
+
+@media (max-width: 600px) {
+  .shopee-categories--skeleton {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    min-height: 168px;
+  }
+}
+
+/* Commercial mobile: product title links must stay >=44px touch targets. */
+@media (max-width: 780px) {
+  .shopee-product__name,
+  a.shopee-product__name,
+  body.shop-mobile-app .shop-app-shell .shopee-home .shopee-product__name,
+  body:not(.shop-mobile-app) .shopee-home .shopee-product__name {
+    box-sizing: border-box !important;
+    display: -webkit-box !important;
+    -webkit-box-orient: vertical !important;
+    -webkit-line-clamp: 2 !important;
+    min-height: 44px !important;
+    padding-block: 4px !important;
+    line-height: 1.25 !important;
+    touch-action: manipulation;
+  }
+}
+
+/* Commercial mobile: quick-panel and hero eyebrow labels stay >=12px. */
+@media (max-width: 780px) {
+  .shopee-hero__eyebrow,
+  body:not(.shop-mobile-app) .shopee-home .shopee-hero__eyebrow,
+  body.shop-mobile-app .shop-app-shell .shopee-home .shopee-hero__eyebrow {
+    font-size: 12px !important;
+    line-height: 1.2 !important;
+  }
+
+  .shopee-mobile-quick-panel__label,
+  .shopee-home--es .shopee-mobile-quick-panel__label,
+  body:not(.shop-mobile-app) .shopee-home .shopee-mobile-quick-panel__label,
+  body.shop-mobile-app .shop-app-shell .shopee-home .shopee-mobile-quick-panel__label {
+    font-size: 12px !important;
+    line-height: 1.2 !important;
+    min-height: 28px !important;
+  }
+}
+
+@media (max-width: 360px) {
+  .shopee-mobile-quick-panel__label,
+  .shopee-home--es .shopee-mobile-quick-panel__label {
+    font-size: 11px !important;
+    line-height: 1.15 !important;
+  }
+}
+
+/* Commercial stock badges stay >=12px — scarcity copy drives conversion. */
+@media (max-width: 780px) {
+  .shopee-product__stockBadge,
+  body:not(.shop-mobile-app) .shopee-home .shopee-product__stockBadge,
+  body.shop-mobile-app .shop-app-shell .shopee-home .shopee-product__stockBadge {
+    font-size: 12px !important;
+    line-height: 1.2 !important;
+    min-height: 22px;
+  }
 }

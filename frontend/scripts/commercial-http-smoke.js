@@ -337,6 +337,37 @@ async function main() {
       check('payment PENDING', payment.status === 'PENDING', payment.status);
       check('payment has paymentUrl', Boolean(payment.paymentUrl) && String(payment.paymentUrl).startsWith('http'), String(payment.paymentUrl || '').slice(0, 80));
       check('payment channel MERCADO_PAGO', payment.channel === 'MERCADO_PAGO', payment.channel);
+      // Commercial multi-host conversion: storefront payment instruction links must
+      // rewrite onto the current UI origin (local/tunnel/production) instead of
+      // trapping shoppers on a hard-coded CDN host during origin outages.
+      try {
+        const paymentUrl = new URL(String(payment.paymentUrl || ''));
+        const isStorefrontPaymentPath = /^\/payment(?:\/|$)/i.test(paymentUrl.pathname);
+        check(
+          'payment url storefront payment path',
+          isStorefrontPaymentPath,
+          paymentUrl.pathname,
+        );
+        if (isStorefrontPaymentPath) {
+          const uiOrigin = new URL(base).origin;
+          const rewritten = `${uiOrigin}${paymentUrl.pathname}${paymentUrl.search}${paymentUrl.hash}`;
+          check(
+            'payment url rewrites onto current UI origin',
+            rewritten.startsWith(uiOrigin) && rewritten.includes(`/payment/`),
+            rewritten.slice(0, 120),
+          );
+          const spaRes = await get(`${paymentUrl.pathname}${paymentUrl.search}`);
+          check(
+            'payment instructions spa on current UI',
+            spaRes.status === 200,
+            spaRes.status,
+          );
+        }
+      } catch (error) {
+        check('payment url storefront payment path', false, error && error.message ? error.message : String(error));
+        check('payment url rewrites onto current UI origin', false, 'parse-failed');
+        check('payment instructions spa on current UI', false, 'parse-failed');
+      }
     }
 
     const trackRes = await post('/api/orders/track', { orderNo, email: guestEmail });

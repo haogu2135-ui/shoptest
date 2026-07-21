@@ -45,7 +45,7 @@ describe('NotFound mobile recovery layout contract', () => {
       css.indexOf('@media (max-width: 640px) and (max-height: 760px)'),
     );
 
-    expect(mobileCss).toMatch(/\.not-found-page\s*\{[^}]*min-height:\s*calc\(100svh - var\(--shop-mobile-bottom-nav-height,\s*76px\)\);[^}]*padding:\s*18px 12px calc\(104px \+ env\(safe-area-inset-bottom,\s*0px\)\);/);
+    expect(mobileCss).toMatch(/\.not-found-page\s*\{[^}]*min-height:\s*calc\(100svh - var\(--shop-mobile-bottom-nav-height,\s*72px\)\);[^}]*padding:\s*18px 12px calc\(104px \+ env\(safe-area-inset-bottom,\s*0px\)\);/);
     expect(mobileCss).toMatch(/\.not-found-page \.ant-result-extra\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\);[^}]*gap:\s*10px;/);
     expect(mobileCss).toMatch(/\.not-found-page \.ant-result-extra \.ant-btn\s*\{[^}]*width:\s*100%;[^}]*min-height:\s*44px;[^}]*touch-action:\s*manipulation;/);
   });

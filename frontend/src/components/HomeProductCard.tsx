@@ -241,24 +241,26 @@ const HomeProductCard: React.FC<HomeProductCardProps> = ({
         >
           {card.productName}
         </Link>
-        {card.ratingText || card.hasPositiveSignal ? (
-          <span className="shopee-product__socialProof">
-            {card.ratingText ? (
-              <span className="shopee-product__rating">
-                <StarFilled /> {card.ratingText}
-              </span>
-            ) : null}
-            {card.hasPositiveSignal ? (
-              <span className="shopee-product__reviewCount">
-                {t('pages.productList.positiveRate', { rate: card.positiveRate, count: product.reviewCount || 0 })}
-              </span>
-            ) : product.reviewCount ? (
-              <span className="shopee-product__reviewCount">
-                {product.reviewCount} {t('home.sold')}
-              </span>
-            ) : null}
-          </span>
-        ) : null}
+        <span
+          className="shopee-product__socialProof"
+          data-home-card-social={card.ratingText || card.hasPositiveSignal || product.reviewCount ? 'ready' : 'empty'}
+          aria-hidden={!(card.ratingText || card.hasPositiveSignal || product.reviewCount) || undefined}
+        >
+          {card.ratingText ? (
+            <span className="shopee-product__rating">
+              <StarFilled /> {card.ratingText}
+            </span>
+          ) : null}
+          {card.hasPositiveSignal ? (
+            <span className="shopee-product__reviewCount">
+              {t('pages.productList.positiveRate', { rate: card.positiveRate, count: product.reviewCount || 0 })}
+            </span>
+          ) : product.reviewCount ? (
+            <span className="shopee-product__reviewCount">
+              {product.reviewCount} {t('home.sold')}
+            </span>
+          ) : null}
+        </span>
         <span className="shopee-product__meta">
           <span className="shopee-product__price commerce-money">{formatPrice(card.price)}</span>
           {!compact && !card.isSoldOut ? (
@@ -267,30 +269,48 @@ const HomeProductCard: React.FC<HomeProductCardProps> = ({
             </span>
           ) : null}
         </span>
-        {card.originalPrice !== null ? (
-          <span className="shopee-product__original commerce-money">{formatPrice(card.originalPrice)}</span>
-        ) : null}
-        {!card.isSoldOut ? (
-          <span className="shopee-product__signalRow">
-            {card.savingsAmount > 0 ? (
-              <span className="shopee-product__signal shopee-product__signal--deal">
-                <FireOutlined />
-                {t('pages.productList.bestValueSavings', { amount: formatPrice(card.savingsAmount) })}
-              </span>
-            ) : null}
-            <span className={card.lowStockCount !== null ? 'shopee-product__signal shopee-product__signal--urgent' : 'shopee-product__signal shopee-product__signal--ready'}>
-              {card.lowStockCount !== null ? <FireOutlined /> : <CheckCircleOutlined />}
-              {card.lowStockCount !== null
-                ? t('pages.productList.cardLowStock', { count: card.lowStockCount })
-                : card.quickAddReady
-                  ? t('pages.productList.cardQuickReady')
-                  : t('pages.productList.cardOptionsNeeded')}
+        <span
+          className={card.originalPrice !== null ? 'shopee-product__original commerce-money' : 'shopee-product__original shopee-product__original--empty'}
+          data-home-card-original={card.originalPrice !== null ? 'ready' : 'empty'}
+          aria-hidden={card.originalPrice === null || undefined}
+        >
+          {card.originalPrice !== null ? formatPrice(card.originalPrice) : ' '}
+        </span>
+        <span
+          className="shopee-product__signalRow"
+          data-home-card-signal={card.isSoldOut ? 'sold-out' : 'ready'}
+        >
+          {card.isSoldOut ? (
+            <span className="shopee-product__signal shopee-product__signal--urgent">
+              <FireOutlined />
+              {t('pages.productList.soldOut')}
             </span>
-          </span>
-        ) : null}
-        {viewedAt ? (
-          <span className="shopee-product__lastViewed">{t('home.viewedAt', { time: formatViewedAt(viewedAt) })}</span>
-        ) : null}
+          ) : (
+            <>
+              {card.savingsAmount > 0 ? (
+                <span className="shopee-product__signal shopee-product__signal--deal">
+                  <FireOutlined />
+                  {t('pages.productList.bestValueSavings', { amount: formatPrice(card.savingsAmount) })}
+                </span>
+              ) : null}
+              <span className={card.lowStockCount !== null ? 'shopee-product__signal shopee-product__signal--urgent' : 'shopee-product__signal shopee-product__signal--ready'}>
+                {card.lowStockCount !== null ? <FireOutlined /> : <CheckCircleOutlined />}
+                {card.lowStockCount !== null
+                  ? t('pages.productList.cardLowStock', { count: card.lowStockCount })
+                  : card.quickAddReady
+                    ? t('pages.productList.cardQuickReady')
+                    : t('pages.productList.cardOptionsNeeded')}
+              </span>
+            </>
+          )}
+        </span>
+        <span
+          className={viewedAt ? 'shopee-product__lastViewed' : 'shopee-product__lastViewed shopee-product__lastViewed--empty'}
+          data-home-card-viewed={viewedAt ? 'ready' : 'empty'}
+          aria-hidden={!viewedAt || undefined}
+        >
+          {viewedAt ? t('home.viewedAt', { time: formatViewedAt(viewedAt) }) : ' '}
+        </span>
       </span>
     </article>
   );

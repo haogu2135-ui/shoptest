@@ -3662,7 +3662,7 @@
 /* UI-20260607-06F: final App profile bottom-nav clearance. */
 @media (max-width: 780px) {
   body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--profile-flow {
-    --profile-app-bottom-nav-clearance: calc(var(--shop-mobile-bottom-nav-height, 76px) + env(safe-area-inset-bottom, 0px));
+    --profile-app-bottom-nav-clearance: calc(var(--shop-mobile-bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px));
     --profile-app-scroll-clearance: calc(var(--profile-app-bottom-nav-clearance) + 42px);
   }
 

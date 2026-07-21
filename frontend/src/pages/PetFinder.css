@@ -1239,7 +1239,7 @@
    decorative overflow or the fixed bottom navigation. */
 @media (max-width: 640px) {
   .pet-finder-page {
-    padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 76px) + 120px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 120px + env(safe-area-inset-bottom, 0px));
   }
 
   .pet-finder-page__insights {
@@ -1268,9 +1268,9 @@
   .pet-finder-page__nextStep {
     grid-template-columns: minmax(0, 1fr);
     gap: 10px;
-    margin-bottom: calc(var(--shop-mobile-bottom-nav-height, 76px) + 20px + env(safe-area-inset-bottom, 0px));
+    margin-bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 20px + env(safe-area-inset-bottom, 0px));
     overflow: visible;
-    scroll-margin-bottom: calc(var(--shop-mobile-bottom-nav-height, 76px) + 24px + env(safe-area-inset-bottom, 0px));
+    scroll-margin-bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 24px + env(safe-area-inset-bottom, 0px));
   }
 
   .pet-finder-page__nextStepCopy,
@@ -1329,7 +1329,7 @@
 @media (max-width: 780px) {
   body.shop-mobile-app.shop-mobile-app.shop-mobile-app .pet-finder-page {
     overflow-x: clip !important;
-    padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 74px) + 130px + env(safe-area-inset-bottom, 0px)) !important;
+    padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 130px + env(safe-area-inset-bottom, 0px)) !important;
   }
 
   body.shop-mobile-app.shop-mobile-app.shop-mobile-app .pet-finder-page__productCard .ant-card-actions {
@@ -1374,13 +1374,13 @@
 /* F2758: reserve bottom-nav clearance for the first finder budget controls. */
 @media (max-width: 780px), (max-height: 480px) {
   .pet-finder-page {
-    padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 76px) + 136px + env(safe-area-inset-bottom, 0px)) !important;
-    scroll-padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 76px) + 96px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 136px + env(safe-area-inset-bottom, 0px)) !important;
+    scroll-padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 96px + env(safe-area-inset-bottom, 0px));
   }
 
   .pet-finder-page__finderCard {
-    margin-bottom: calc(var(--shop-mobile-bottom-nav-height, 76px) + 18px + env(safe-area-inset-bottom, 0px));
-    scroll-margin-bottom: calc(var(--shop-mobile-bottom-nav-height, 76px) + 24px + env(safe-area-inset-bottom, 0px));
+    margin-bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 18px + env(safe-area-inset-bottom, 0px));
+    scroll-margin-bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 24px + env(safe-area-inset-bottom, 0px));
     overflow: visible !important;
   }
 
@@ -1389,8 +1389,8 @@
   }
 
   .pet-finder-page__budgetControl {
-    padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 76px) + 14px + env(safe-area-inset-bottom, 0px));
-    scroll-margin-bottom: calc(var(--shop-mobile-bottom-nav-height, 76px) + 28px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 14px + env(safe-area-inset-bottom, 0px));
+    scroll-margin-bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 28px + env(safe-area-inset-bottom, 0px));
   }
 
   .pet-finder-page__budgetControl .ant-slider {

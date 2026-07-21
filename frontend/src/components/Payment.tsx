@@ -5,11 +5,11 @@ import { paymentApi } from '../api';
 import { useLanguage } from '../i18n';
 import { createPaymentMethodOptions, PaymentMethod, paymentMethodLabel } from '../utils/paymentMethods';
 import { useMarket } from '../hooks/useMarket';
-import { navigateToSafeUrl } from '../utils/safeUrl';
 import { getApiErrorMessage } from '../utils/apiError';
 import type { PaymentChannel } from '../types';
 import './Payment.css';
 import '../styles/mobile-page-contrast.css';
+import { navigateToCommercialPaymentUrl } from '../utils/paymentRecovery';
 
 const { Text, Title } = Typography;
 const getDefaultPaymentMethod = (channels: PaymentChannel[]) =>
@@ -112,7 +112,7 @@ export const Payment: React.FC<PaymentProps> = ({
             const response = await paymentApi.create(orderId, safePaymentMethod, guestEmail, orderNo);
             const payment = response.data;
             if (payment.paymentUrl) {
-                if (!navigateToSafeUrl(payment.paymentUrl)) {
+                if (!navigateToCommercialPaymentUrl(payment.paymentUrl)) {
                     message.error(t('pages.payment.failed'));
                     return;
                 }

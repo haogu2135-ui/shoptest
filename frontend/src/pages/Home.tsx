@@ -22,6 +22,7 @@ import {
 } from '@ant-design/icons';
 import { cartApi, categoryApi, petGalleryApi, productApi, wishlistApi } from '../api';
 import { useLanguage } from '../i18n';
+import type { Language } from '../i18n';
 import type { CategoryPublic, PetGalleryPhotoPublic, PetGalleryQuota, ProductPublic as Product } from '../types';
 import { useMarket } from '../hooks/useMarket';
 import { localizeProduct } from '../utils/localizedProduct';
@@ -120,13 +121,57 @@ const applyHomeImageFallback = (event: React.SyntheticEvent<HTMLImageElement>, f
   }
 };
 
+
+type HomeCatalogBootstrap = {
+  products: Product[];
+  featured: Product[];
+  categories: CategoryPublic[];
+  source: 'snapshot' | 'fallback';
+};
+
+/** Paint a commercial catalog immediately (snapshot or built-in fallback) to avoid skeleton→content CLS. */
+const resolveHomeCatalogBootstrap = (language: Language): HomeCatalogBootstrap | null => {
+  try {
+    const snapshot = loadProductCatalogSnapshot();
+    const sourceProducts = snapshot?.products?.length
+      ? snapshot.products
+      : loadFallbackProductCatalog();
+    if (!sourceProducts.length) return null;
+    const products = sourceProducts.map((product) => localizeProduct(product, language));
+    const featuredFromFlag = products.filter((product) => product.isFeatured).slice(0, HOME_FEATURED_LIMIT);
+    const featured = featuredFromFlag.length
+      ? featuredFromFlag
+      : products.slice(0, Math.min(HOME_FEATURED_LIMIT, products.length));
+    return {
+      products,
+      featured,
+      categories: buildProductCatalogFallbackCategories(sourceProducts),
+      source: snapshot?.products?.length ? 'snapshot' : 'fallback',
+    };
+  } catch (error) {
+    reportNonBlockingError('Home.resolveHomeCatalogBootstrap', error);
+    return null;
+  }
+};
+
 const Home: React.FC = () => {
-  const [featured, setFeatured] = useState<Product[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
+  const navigate = useNavigate();
+  const { t, language } = useLanguage();
+  const { formatMoney: formatPrice, market } = useMarket();
+  const homeCatalogBootstrapRef = useRef<HomeCatalogBootstrap | null | undefined>(undefined);
+  if (homeCatalogBootstrapRef.current === undefined) {
+    homeCatalogBootstrapRef.current = resolveHomeCatalogBootstrap(language);
+  }
+  const homeCatalogBootstrap = homeCatalogBootstrapRef.current;
+  const catalogReadyRef = useRef(Boolean(homeCatalogBootstrap));
+  const [featured, setFeatured] = useState<Product[]>(() => homeCatalogBootstrap?.featured || []);
+  const [products, setProducts] = useState<Product[]>(() => homeCatalogBootstrap?.products || []);
   const [personalizedProducts, setPersonalizedProducts] = useState<Product[]>([]);
   const [recentlyViewedDetails, setRecentlyViewedDetails] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<CategoryPublic[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [recentlyViewedHydrated, setRecentlyViewedHydrated] = useState(true);
+  const [categories, setCategories] = useState<CategoryPublic[]>(() => homeCatalogBootstrap?.categories || []);
+  // Commercial CLS: skip full-page skeleton when bootstrap catalog can paint immediately.
+  const [loading, setLoading] = useState(() => !homeCatalogBootstrap);
   const [loadError, setLoadError] = useState(false);
   const [usingCatalogSnapshot, setUsingCatalogSnapshot] = useState(false);
   const [visibleCount, setVisibleCount] = useState(DISCOVERY_BATCH_SIZE);
@@ -138,10 +183,7 @@ const Home: React.FC = () => {
   const [wishlistedProductIds, setWishlistedProductIds] = useState<Set<number>>(new Set());
   const [petPreviewItem, setPetPreviewItem] = useState<HomePetGalleryItem | null>(null);
   const petUploadInputRef = useRef<HTMLInputElement>(null);
-  const navigate = useNavigate();
-  const { t, language } = useLanguage();
-  const { formatMoney: formatPrice, market } = useMarket();
-  usePageTitle(t('common.brand') || t('common.siteTitle'));
+  usePageTitle(); // commercial home SEO: bare site title, not "Brand | Brand Site"
   const homeJsonLd = useMemo(() => buildWebsiteStructuredData({
     name: t('common.siteTitle'),
     description: t('common.siteDescription'),
@@ -449,9 +491,11 @@ const Home: React.FC = () => {
   useEffect(() => {
     let disposed = false;
     const fetchHome = async () => {
-      setLoading(true);
+      // Stale-while-revalidate: only blank to skeleton when nothing is paintable yet.
+      if (!catalogReadyRef.current) {
+        setLoading(true);
+      }
       setLoadError(false);
-      setUsingCatalogSnapshot(false);
       try {
         const [productsRes, featuredRes, categoriesRes] = await Promise.all([
           productApi.getAll(undefined, undefined, undefined, { page: 0, size: HOME_PRODUCT_PAGE_SIZE }),
@@ -462,28 +506,39 @@ const Home: React.FC = () => {
         const boundedCatalog = mergeProductsById(featuredRes.data, productsRes.data);
         saveProductCatalogSnapshot(boundedCatalog);
         const localizedProducts = boundedCatalog.map((product) => localizeProduct(product, language));
-        setFeatured(featuredRes.data.map((product) => localizeProduct(product, language)).slice(0, HOME_FEATURED_LIMIT));
+        const featuredProducts = featuredRes.data.map((product) => localizeProduct(product, language)).slice(0, HOME_FEATURED_LIMIT);
+        setFeatured(featuredProducts.length ? featuredProducts : localizedProducts.slice(0, HOME_FEATURED_LIMIT));
         setProducts(localizedProducts);
         setCategories(categoriesRes.data);
         setVisibleCount(DISCOVERY_BATCH_SIZE);
+        setUsingCatalogSnapshot(false);
+        setLoadError(false);
+        catalogReadyRef.current = true;
       } catch (error) {
         reportNonBlockingError('Home.fetchHome', error);
         if (disposed) return;
         const fallbackSourceProducts = loadProductCatalogSnapshot()?.products || loadFallbackProductCatalog();
         const fallbackProducts = fallbackSourceProducts.map((product) => localizeProduct(product, language));
         if (fallbackProducts.length > 0) {
-          setFeatured(fallbackProducts.filter((product) => product.isFeatured).slice(0, HOME_FEATURED_LIMIT));
-          setProducts(fallbackProducts);
-          setCategories(buildProductCatalogFallbackCategories(fallbackSourceProducts));
-          setVisibleCount(DISCOVERY_BATCH_SIZE);
+          // Keep already-painted bootstrap content when possible; only replace if empty or hard failure.
+          if (!catalogReadyRef.current) {
+            const featuredFallback = fallbackProducts.filter((product) => product.isFeatured).slice(0, HOME_FEATURED_LIMIT);
+            setFeatured(featuredFallback.length ? featuredFallback : fallbackProducts.slice(0, HOME_FEATURED_LIMIT));
+            setProducts(fallbackProducts);
+            setCategories(buildProductCatalogFallbackCategories(fallbackSourceProducts));
+            setVisibleCount(DISCOVERY_BATCH_SIZE);
+          }
           setLoadError(false);
           setUsingCatalogSnapshot(true);
+          catalogReadyRef.current = true;
           return;
         }
-        setLoadError(true);
-        setFeatured([]);
-        setProducts([]);
-        setCategories([]);
+        if (!catalogReadyRef.current) {
+          setLoadError(true);
+          setFeatured([]);
+          setProducts([]);
+          setCategories([]);
+        }
       } finally {
         if (!disposed) setLoading(false);
       }
@@ -538,18 +593,26 @@ const Home: React.FC = () => {
   useEffect(() => {
     if (viewPreferences.recent.length === 0) {
       setRecentlyViewedDetails([]);
+      setRecentlyViewedHydrated(true);
       return;
     }
     let disposed = false;
+    setRecentlyViewedHydrated(false);
     const recentProductIds = viewPreferences.recent.slice(0, 8);
     const task = scheduleIdleTask(() => {
       productApi.getByIds(recentProductIds)
         .then((response) => {
-          if (!disposed) setRecentlyViewedDetails(response.data.map((product) => localizeProduct(product, language)));
+          if (!disposed) {
+            setRecentlyViewedDetails(response.data.map((product) => localizeProduct(product, language)));
+            setRecentlyViewedHydrated(true);
+          }
         })
         .catch((error) => {
           reportNonBlockingError('Home.fetchRecentlyViewedDetails', error);
-          if (!disposed) setRecentlyViewedDetails([]);
+          if (!disposed) {
+            setRecentlyViewedDetails([]);
+            setRecentlyViewedHydrated(true);
+          }
         });
     }, 1900);
     return () => {
@@ -590,6 +653,9 @@ const Home: React.FC = () => {
       .filter(Boolean)
       .slice(0, 8) as Array<{ product: Product; viewedAt?: number }>;
   }, [recentlyViewedDetails, viewPreferences]);
+
+  // Reserve rail space while history ids exist but product payloads are still hydrating (CLS).
+  const recentlyViewedPending = !loading && viewPreferences.recent.length > 0 && !recentlyViewedHydrated;
 
   const discoveryProducts = useMemo(() => {
     const merged = [...featured, ...products];
@@ -852,7 +918,7 @@ const Home: React.FC = () => {
 
   if (loading) {
     return (
-      <main className={homeLanguageClass} aria-busy="true">
+      <main className={`${homeLanguageClass} shopee-home--loading`} style={homeImageVariables} aria-busy="true" data-home-loading-shell="true">
         <div role="status" aria-live="polite" aria-busy="true" aria-label={t('common.loading')}>
           <section className="shopee-hero">
             <div className="shopee-container shopee-hero__grid">
@@ -864,8 +930,30 @@ const Home: React.FC = () => {
               </div>
             </div>
           </section>
+          <div className="shopee-container shopee-mobile-priority" aria-hidden="true">
+            <section className="shopee-mobile-quick-panel shopee-mobile-quick-panel--skeleton">
+              {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+                <span key={i} className="shopee-mobile-quick-panel__skeletonCell shimmer" />
+              ))}
+            </section>
+          </div>
           <div className="shopee-container">
+            <section className="pet-trust-strip pet-trust-strip--skeleton" aria-hidden="true">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="shimmer" />
+              ))}
+            </section>
             <StatsStripSkeleton />
+            <section className="shopee-section shopee-categories-section shopee-categories-section--skeleton" aria-hidden="true">
+              <div className="shopee-section__header">
+                <span className="shimmer" style={{ width: 140, height: 22, display: 'inline-block', borderRadius: 6 }} />
+              </div>
+              <div className="shopee-categories shopee-categories--skeleton">
+                {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+                  <span key={i} className="shopee-categories__skeletonTile shimmer" />
+                ))}
+              </div>
+            </section>
             <div className="shopee-loading-products">
               <ProductCardSkeleton count={8} />
             </div>
@@ -1306,7 +1394,7 @@ const Home: React.FC = () => {
           )}
         </section>
 
-        {recentlyViewedProducts.length ? (
+        {(recentlyViewedProducts.length || recentlyViewedPending) ? (
           <section className="shopee-section shopee-promo-products shopee-recently-viewed-products">
             <div className="shopee-section__header shopee-section__header--with-actions">
               <h2>{t('home.recentlyViewed')}</h2>
@@ -1328,6 +1416,11 @@ const Home: React.FC = () => {
                 </Popconfirm>
               </div>
             </div>
+            {recentlyViewedPending ? (
+              <div className="shopee-recently-viewed-products__pending" data-home-recently-viewed-pending="true" aria-busy="true" aria-live="polite">
+                <ProductCardSkeleton count={4} />
+              </div>
+            ) : (
             <Row gutter={[12, 12]}>
               {recentlyViewedProducts.map(({ product, viewedAt }, index) => (
                 <Col key={product.id} xs={12} sm={8} md={6} lg={4}>
@@ -1335,6 +1428,7 @@ const Home: React.FC = () => {
                 </Col>
               ))}
             </Row>
+            )}
           </section>
         ) : null}
 

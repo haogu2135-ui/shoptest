@@ -2853,3 +2853,14 @@
   min-height: 44px;
   touch-action: manipulation;
 }
+
+
+/* Commercial mobile: login trust chips stay >=12px. */
+@media (max-width: 780px) {
+  .shopee-login-panel__featureList span,
+  .shopee-login-card__stats span,
+  .shopee-login-trust span {
+    font-size: 12px !important;
+    line-height: 1.25 !important;
+  }
+}

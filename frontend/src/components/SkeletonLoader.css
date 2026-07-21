@@ -95,8 +95,9 @@
   display: grid;
   grid-template-columns: minmax(0, 1.4fr) minmax(220px, 360px);
   gap: 16px;
-  min-height: 430px;
-  padding: 34px 44px;
+  /* Match .shopee-hero__main min-height to reduce loading→content CLS. */
+  min-height: 360px;
+  padding: 28px 36px;
   border-radius: 8px;
   background: linear-gradient(135deg, rgba(18, 71, 52, 0.92), rgba(18, 71, 52, 0.6));
 }
@@ -170,6 +171,7 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
+  min-height: 142px;
   padding: 10px;
 }
 
@@ -469,7 +471,8 @@
   }
 
   .hero-skeleton {
-    min-height: clamp(220px, 64vw, 280px);
+    /* Prefer stable reserve over aggressive shrink to cut AOTF CLS. */
+    min-height: min(360px, max(240px, 58vw));
   }
 
   .product-skeleton {
@@ -491,6 +494,27 @@
   }
 
   .product-skeleton__image {
-    aspect-ratio: 4 / 3;
+    aspect-ratio: 1 / 1;
+  }
+}
+
+
+/* Commercial skeleton CLS reserves */
+.hero-skeleton {
+  contain: layout style;
+}
+
+.product-skeleton__card {
+  contain: layout style;
+}
+
+.product-skeleton__image {
+  aspect-ratio: 1 / 1;
+  min-height: 0;
+}
+
+@media (max-width: 600px) {
+  .product-skeleton__body {
+    min-height: 124px;
   }
 }

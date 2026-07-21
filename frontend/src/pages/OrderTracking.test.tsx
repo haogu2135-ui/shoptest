@@ -163,12 +163,9 @@ jest.mock('../utils/selectedSpecs', () => ({
   formatSelectedSpecs: () => '',
 }));
 
-jest.mock('../utils/safeUrl', () => ({
-  navigateToSafeUrl: jest.fn(() => true),
-}));
-
 jest.mock('../utils/paymentRecovery', () => ({
   getPaymentRecoveryState: () => ({ isExpired: false }),
+  navigateToCommercialPaymentUrl: jest.fn(() => true),
 }));
 
 jest.mock('../utils/guestCart', () => ({

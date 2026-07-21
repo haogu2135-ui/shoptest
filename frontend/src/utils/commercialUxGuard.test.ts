@@ -317,14 +317,27 @@ describe('commercial UX contracts', () => {
     expect(tracking).toContain('shop:open-support');
   });
 
-  it('keeps product detail empty recommendations on multipath commercial conversion exits', () => {
+
+  it('keeps product detail recommendation load/empty states on multipath commercial recovery exits', () => {
     const productDetail = readFrontend('pages', 'ProductDetail.tsx');
+    expect(productDetail).toContain('data-product-detail-recommendations-loading');
     expect(productDetail).toContain('data-product-detail-recommendations-empty');
-    expect(productDetail).toContain('data-product-detail-recommendations-empty-actions');
-    expect(productDetail).toContain('pages.productDetail.recommendationsEmpty');
-    expect(productDetail).toContain("navigate('/coupons')");
+    expect(productDetail).toContain('recommendationsLoading');
+    expect(productDetail).toContain('recommendationsLoadFailed');
+    expect(productDetail).toContain('pages.productDetail.recommendationsLoadFailed');
     expect(productDetail).toContain("navigate('/pet-finder')");
   });
+
+  it('keeps support order-select empty on multipath commercial recovery exits', () => {
+    const support = readFrontend('components', 'CustomerSupportWidget.tsx');
+    expect(support).toContain('data-support-order-select-empty');
+    expect(support).toContain('data-support-order-select-empty-actions');
+    expect(support).toContain('data-support-order-items-empty');
+    expect(support).toContain('pages.support.noOrderItemsHint');
+    expect(support).toContain("navigate('/track-order')");
+    expect(support).toContain("navigate('/coupons')");
+  });
+
 
   it('keeps notification filter empties on multipath commercial recovery exits', () => {
     const notifications = readFrontend('pages', 'Notifications.tsx');
@@ -801,7 +814,56 @@ describe('commercial UX contracts', () => {
     expect(forgot).toContain("shop:open-support");
   });
 
-    it('keeps home empty category and product rails on multipath commercial recovery exits', () => {
+    
+  
+  
+  it('keeps mobile bottom nav and cookie consent CLS-stable on first paint', () => {
+    const navCss = readFrontend('components', 'Navbar.css');
+    const cookie = readFrontend('components', 'CookieConsentBanner.tsx');
+    expect(navCss).toContain('Commercial CLS: stable mobile bottom commerce bar');
+    expect(navCss).toMatch(/\.shop-nav__bottomBar[\s\S]*?height:\s*72px/);
+    expect(navCss).toMatch(/\.shop-nav__bottomBar[\s\S]*?max-height:\s*72px/);
+    expect(cookie).toContain('hasCookieConsent()');
+    expect(cookie).toContain('// Commercial CLS: decide visibility on first paint');
+    expect(cookie).toMatch(/useState\(\(\) =>/);
+  });
+
+  it('bootstraps home catalog for stale-while-revalidate CLS-safe first paint', () => {
+    const home = readFrontend('pages', 'Home.tsx');
+    const homeCss = readFrontend('pages', 'Home.css');
+    expect(home).toContain('resolveHomeCatalogBootstrap');
+    expect(home).toContain('catalogReadyRef');
+    expect(home).toContain('loadFallbackProductCatalog');
+    expect(home).toContain('data-home-loading-shell');
+    expect(home).toContain('if (!catalogReadyRef.current)');
+    expect(home).toContain('setLoading(true)');
+    expect(homeCss).toContain('Commercial home loading shell AOTF reserves');
+    expect(homeCss).toContain('shopee-mobile-quick-panel--skeleton');
+  });
+
+  it('keeps home CLS reserves for product tiles, skeletons, and below-fold sections', () => {
+    const homeCss = readFrontend('pages', 'Home.css');
+    const home = readFrontend('pages', 'Home.tsx');
+    const card = readFrontend('components', 'HomeProductCard.tsx');
+    const skeletonCss = readFrontend('components', 'SkeletonLoader.css');
+    expect(homeCss).toMatch(/\.shopee-product__imageWrap[\s\S]*?aspect-ratio:\s*1 \/ 1/);
+    expect(homeCss).toContain('content-visibility: auto');
+    expect(homeCss).toContain('contain-intrinsic-size');
+    expect(homeCss).toContain('Commercial CLS reserves');
+    expect(homeCss).not.toContain('aspect-ratio: 1 / 0.88');
+    expect(homeCss).not.toContain('aspect-ratio: 1 / 0.92');
+    expect(card).toContain('data-home-card-social');
+    expect(card).toContain('data-home-card-signal');
+    expect(card).toContain('shopee-product__original--empty');
+    expect(home).toContain('recentlyViewedPending');
+    expect(home).toContain('data-home-recently-viewed-pending');
+    expect(home).toContain('recentlyViewedHydrated');
+    expect(skeletonCss).toMatch(/\.hero-skeleton[\s\S]*?min-height:\s*360px/);
+    expect(skeletonCss).toMatch(/\.product-skeleton__body[\s\S]*?min-height:\s*142px/);
+    expect(skeletonCss).toContain('aspect-ratio: 1 / 1');
+  });
+
+it('keeps home empty category and product rails on multipath commercial recovery exits', () => {
     const home = readFrontend('pages', 'Home.tsx');
     expect(home).toContain('home-empty-categories');
     expect(home).toContain('home-empty-products');
@@ -836,6 +898,135 @@ describe('commercial UX contracts', () => {
     expect(productList).toContain('pages.productList.loadRecoverySupport');
     expect(productList).toContain('actions={[');
     expect(productList).toContain('openSupport');
+  });
+
+  it('keeps storefront payment links on current shopping origin for multi-host conversion', () => {
+    const recovery = readFrontend('utils', 'paymentRecovery.ts');
+    const checkout = readFrontend('pages', 'Checkout.tsx');
+    const paymentInstructions = readFrontend('pages', 'PaymentInstructions.tsx');
+    const orderTracking = readFrontend('pages', 'OrderTracking.tsx');
+    const profile = readFrontend('pages', 'Profile.tsx');
+    expect(recovery).toContain('resolveCommercialPaymentNavigationUrl');
+    expect(recovery).toContain('navigateToCommercialPaymentUrl');
+    expect(recovery).toContain('isStorefrontPaymentPath');
+    expect(recovery).toContain('pet.686888666.xyz');
+    expect(recovery).toContain('.trycloudflare.com');
+    expect(checkout).toContain('navigateToCommercialPaymentUrl');
+    expect(paymentInstructions).toContain('navigateToCommercialPaymentUrl');
+    expect(orderTracking).toContain('navigateToCommercialPaymentUrl');
+    expect(profile).toContain('navigateToCommercialPaymentUrl');
+  });
+
+  it('keeps conversion route Suspense shells on a commercial h1 primary title', () => {
+    const app = readFrontend('App.tsx');
+    expect(app).toContain('Keep conversion shells on a commercial h1 while lazy route chunks hydrate');
+    expect(app).toMatch(/Title level=\{1\} className="app-route-loading__title"/);
+    expect(app).toMatch(/pages\.cart\.title/);
+    expect(app).toMatch(/pages\.checkout\.title/);
+    expect(app).toMatch(/pages\.orderTracking\.title/);
+  });
+
+  it('keeps conversion pages on a single commercial h1 primary title', () => {
+    const cart = readFrontend('pages', 'Cart.tsx');
+    const checkout = readFrontend('pages', 'Checkout.tsx');
+    const productDetail = readFrontend('pages', 'ProductDetail.tsx');
+    const tracking = readFrontend('pages', 'OrderTracking.tsx');
+    const coupons = readFrontend('pages', 'CouponCenter.tsx');
+    const homeCss = readFrontend('pages', 'Home.css');
+    const listCss = readFrontend('pages', 'ProductList.css');
+    expect(cart).toMatch(/Title level=\{1\}\>\{t\('pages\.cart\.title'\)\}/);
+    expect(cart).toMatch(/Title level=\{1\}\>\{t\('pages\.cart\.empty'\)\}/);
+    // Loading + recovery shells must also expose the commercial h1 (not shimmer-only).
+    expect(cart).toMatch(/role="status"[\s\S]*?Title level=\{1\}\>\{t\('pages\.cart\.title'\)\}/);
+    expect(cart).toMatch(/Title level=\{1\}\>\{t\('pages\.cart\.title'\)\}[\s\S]*?data-cart-load-recovery="true"/);
+    expect(checkout).toMatch(/Title level=\{1\}\>\{t\('pages\.checkout\.title'\)\}/);
+    expect(checkout).toMatch(/checkout-page--loading[\s\S]*?Title level=\{1\}\>\{t\('pages\.checkout\.title'\)\}/);
+    expect(checkout).toMatch(/Title level=\{1\}\>\{t\('pages\.checkout\.title'\)\}[\s\S]*?data-checkout-load-recovery="true"/);
+    expect(productDetail).toMatch(/product-title-block[\s\S]*?Title level=\{1\}\>\{productName\}/);
+    expect(tracking).toMatch(/Title level=\{1\} className="order-tracking-page__title"/);
+    expect(coupons).toMatch(/Title level=\{1\}\>\<GiftOutlined \/\> \{t\('pages\.coupons\.opportunityTitle'\)\}/);
+    expect(homeCss).toContain('Commercial stock badges stay >=12px');
+    expect(listCss).toContain('Commercial catalog hero eyebrow stays >=12px');
+  });
+
+  it('keeps mobile bottom-nav and home quick-panel labels commercially legible', () => {
+    const navCss = readFrontend('components', 'Navbar.css');
+    const homeCss = readFrontend('pages', 'Home.css');
+    const home = readFrontend('pages', 'Home.tsx');
+    expect(navCss).toContain('bottom-nav labels stay >=12px');
+    // Do not reintroduce sub-12px bottom-nav floors after the commercial guard.
+    expect(navCss).not.toMatch(/bottom-nav labels stay >=12px[\s\S]*@media \(max-width: 380px\)[\s\S]*font-size:\s*11px\s*!important/);
+    expect(navCss).toMatch(/\.shop-nav__bottomItem[\s\S]*?font-size:\s*12px\s*!important/);
+    expect(homeCss).toContain('quick-panel and hero eyebrow labels stay >=12px');
+    expect(homeCss).toMatch(/\.shopee-mobile-quick-panel__label[\s\S]*?font-size:\s*12px\s*!important/);
+    // Home document title must not be "Brand | Brand Site".
+    expect(home).toMatch(/usePageTitle\(\s*\)/);
+    expect(home).not.toMatch(/usePageTitle\(\s*t\('common\.brand'\)/);
+  });
+
+  it('keeps mobile web support launcher visible on browse shells', () => {
+    const appCss = readFrontend('App.css');
+    expect(appCss).toContain('Keep one-tap Live Support on browse/account surfaces');
+    // Must not globally force-hide the FAB on all mobile surfaces.
+    expect(appCss).not.toMatch(
+      /@media \(max-width:\s*780px\) \{\s*\.app-support-launcher,\s*\.customer-support-widget__button \{\s*display:\s*none\s*!important;/
+    );
+    // Sticky conversion rails still hide the FAB.
+    expect(appCss).toMatch(
+      /\.shop-app-shell--product-detail[\s\S]*?\.customer-support-widget__button[\s\S]*?display:\s*none\s*!important/
+    );
+    expect(appCss).toMatch(
+      /\.shop-app-shell--checkout[\s\S]*?\.customer-support-widget__button[\s\S]*?display:\s*none\s*!important/
+    );
+    // Browse shells reaffirm visibility + commercial hit size.
+    expect(appCss).toMatch(
+      /\.shop-app-shell--home \.customer-support-widget__button[\s\S]*?min-height:\s*48px\s*!important/
+    );
+  });
+
+  it('keeps mobile product title links on commercial 44px touch targets', () => {
+    const homeCss = readFrontend('pages', 'Home.css');
+    const listCss = readFrontend('pages', 'ProductList.css');
+    expect(homeCss).toContain('product title links must stay >=44px');
+    expect(homeCss).toMatch(/\.shopee-product__name[\s\S]*?min-height:\s*44px\s*!important;/);
+    expect(listCss).toContain('catalog product titles must stay >=44px');
+    expect(listCss).toMatch(/\.product-list__titleLink[\s\S]*?min-height:\s*44px\s*!important;/);
+    // Mobile web path (not only native app) must keep 44px.
+    expect(listCss).toMatch(
+      /body:not\(\.shop-mobile-app\)[\s\S]*?\.product-list__titleLink[\s\S]*?min-height:\s*44px\s*!important;/
+    );
+  });
+
+  it('keeps mobile category mega chips on commercial 44px touch targets', () => {
+    const css = readFrontend('components', 'Navbar.css');
+    expect(css).toContain('category mega chips must stay >=44px');
+    expect(css).toMatch(/\.shop-nav__megaButton[\s\S]*?min-height:\s*44px\s*!important;/);
+    expect(css).toMatch(/@media \(max-width:\s*780px\)[\s\S]*?\.shop-nav__megaButton[\s\S]*?min-height:\s*44px\s*!important;/);
+    // F2710 high-specificity mobile web path must itself be 44px (not 38px).
+    expect(css).toMatch(
+      /body:not\(\.shop-mobile-app\) \.shop-nav:not\(\.shop-nav--es\) \.shop-nav__megaButton[\s\S]*?min-height:\s*44px\s*!important;/
+    );
+    expect(css).not.toMatch(
+      /body:not\(\.shop-mobile-app\) \.shop-nav:not\(\.shop-nav--es\) \.shop-nav__megaButton[\s\S]{0,240}?min-height:\s*38px\s*!important;/
+    );
+  });
+
+
+  it('keeps sold-out PDP decision checklist from claiming addable options', () => {
+    const productDetail = readFrontend('pages', 'ProductDetail.tsx');
+    expect(productDetail).toContain('never mark options "ready to add" when the SKU is sold out');
+    expect(productDetail).toMatch(/ready:\s*!isOutOfStock\s*&&/);
+  });
+
+  it('keeps conversion microcopy commercially legible at >=12px on mobile', () => {
+    const cartCss = readFrontend('pages', 'Cart.css');
+    const listCss = readFrontend('pages', 'ProductList.css');
+    const pdpCss = readFrontend('pages', 'ProductDetail.css');
+    const appCss = readFrontend('App.css');
+    expect(cartCss).toContain('cart empty recovery copy/actions stay legible');
+    expect(listCss).toContain('catalog next-step coaching stays >=12px');
+    expect(pdpCss).toContain('stock + secondary money/microcopy stay >=12px');
+    expect(appCss).toContain('footer link columns stay >=12px');
   });
 
 });

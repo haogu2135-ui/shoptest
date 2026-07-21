@@ -772,6 +772,15 @@ body:has(.ant-modal-root .ant-modal-wrap:not([style*="display: none"])) .app-sup
   gap: 10px;
 }
 
+.app-route-loading__title {
+  margin: 0 !important;
+  color: #124734 !important;
+  font-size: 24px !important;
+  font-weight: 800 !important;
+  line-height: 1.2 !important;
+  text-align: center;
+}
+
 .app-route-loading__text {
   color: #3f5549;
   font-size: 14px;
@@ -1893,17 +1902,6 @@ body:has(.ant-modal-root .ant-modal-wrap:not([style*="display: none"])) .app-sup
   }
 }
 
-/* Final mobile support-entry closure: mobile users open support from the bottom
-   navigation or More menu, preventing fixed launchers from covering CTAs. */
-@media (max-width: 780px) {
-  .app-support-launcher,
-  .customer-support-widget__button {
-    display: none !important;
-    visibility: hidden !important;
-    opacity: 0 !important;
-    pointer-events: none !important;
-  }
-}
 
 /* Android UI closure: tablet WebView inputs also avoid browser zoom. */
 @media (max-width: 860px) {
@@ -1989,15 +1987,50 @@ body:has(.ant-modal-root .ant-modal-wrap:not([style*="display: none"])) .app-sup
   }
 }
 
-/* Mobile uses the bottom navigation and More menu for support so fixed launchers
-   cannot cover checkout, coupon, comparison, history, or gallery actions. */
+/* Commercial mobile support launcher:
+   Keep one-tap Live Support on browse/account surfaces.
+   Hide only where sticky conversion rails own the bottom edge
+   (PDP buybar, cart/checkout/payment sticky actions, history fixed rail).
+   More-menu support remains available as multipath fallback. */
 @media (max-width: 780px) {
-  .app-support-launcher,
-  .customer-support-widget__button {
+  .shop-app-shell--product-detail .app-support-launcher,
+  .shop-app-shell--product-detail .customer-support-widget__button,
+  .shop-app-shell--cart .app-support-launcher,
+  .shop-app-shell--cart .customer-support-widget__button,
+  .shop-app-shell--checkout .app-support-launcher,
+  .shop-app-shell--checkout .customer-support-widget__button,
+  .shop-app-shell--checkout-flow .app-support-launcher,
+  .shop-app-shell--checkout-flow .customer-support-widget__button,
+  .shop-app-shell--payment-instructions .app-support-launcher,
+  .shop-app-shell--payment-instructions .customer-support-widget__button,
+  .shop-app-shell--history .app-support-launcher,
+  .shop-app-shell--history .customer-support-widget__button {
     display: none !important;
     visibility: hidden !important;
     opacity: 0 !important;
     pointer-events: none !important;
+  }
+
+  /* Explicit reaffirmation: browse shells keep a 48px fixed support entry. */
+  body:not(.shop-mobile-app) .shop-app-shell--home .customer-support-widget__button,
+  body:not(.shop-mobile-app) .shop-app-shell--product-list .customer-support-widget__button,
+  body:not(.shop-mobile-app) .shop-app-shell--coupon-center .customer-support-widget__button,
+  body:not(.shop-mobile-app) .shop-app-shell--order-tracking-flow .customer-support-widget__button,
+  body:not(.shop-mobile-app) .shop-app-shell--profile-flow .customer-support-widget__button,
+  body:not(.shop-mobile-app) .shop-app-shell--auth-flow .customer-support-widget__button,
+  body:not(.shop-mobile-app) .shop-app-shell--home .app-support-launcher,
+  body:not(.shop-mobile-app) .shop-app-shell--product-list .app-support-launcher,
+  body:not(.shop-mobile-app) .shop-app-shell--coupon-center .app-support-launcher {
+    display: grid !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    position: fixed !important;
+    width: 48px !important;
+    height: 48px !important;
+    min-width: 48px !important;
+    min-height: 48px !important;
+    touch-action: manipulation;
   }
 }
 
@@ -2288,7 +2321,7 @@ body:has(.ant-modal-root .ant-modal-wrap:not([style*="display: none"])) .app-sup
 @media (max-width: 780px) {
   .shop-app-shell .ant-layout-content {
     padding-bottom: calc(112px + env(safe-area-inset-bottom)) !important;
-    min-height: calc(100svh - 74px);
+    min-height: calc(100svh - var(--shop-mobile-bottom-nav-height, 72px));
   }
 
   .shop-app-shell--product-detail .ant-layout-content,
@@ -3122,16 +3155,12 @@ body:has(.ant-modal-root .ant-modal-wrap:not([style*="display: none"])) .app-sup
   pointer-events: auto !important;
 }
 
-/* UI issues pass: keep floating support above the mobile commerce nav and page CTAs. */
+/* UI issues pass: position floating support above mobile commerce nav (visible on browse shells). */
 @media (max-width: 780px) {
   .app-support-launcher,
   .customer-support-widget__button {
-    display: none !important;
-    visibility: hidden !important;
-    opacity: 0 !important;
-    pointer-events: none !important;
     right: calc(12px + env(safe-area-inset-right, 0px)) !important;
-    bottom: calc(var(--shop-mobile-bottom-nav-height, 76px) + 22px + env(safe-area-inset-bottom, 0px)) !important;
+    bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 22px + env(safe-area-inset-bottom, 0px)) !important;
     width: 48px !important;
     height: 48px !important;
     min-width: 48px !important;
@@ -3150,7 +3179,7 @@ body:has(.ant-modal-root .ant-modal-wrap:not([style*="display: none"])) .app-sup
   .shop-app-shell--checkout .customer-support-widget__button,
   .shop-app-shell--product-detail .app-support-launcher,
   .shop-app-shell--product-detail .customer-support-widget__button {
-    bottom: calc(var(--shop-mobile-bottom-nav-height, 76px) + 50px + env(safe-area-inset-bottom, 0px)) !important;
+    bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 50px + env(safe-area-inset-bottom, 0px)) !important;
   }
 }
 
@@ -3166,15 +3195,43 @@ body:has(.ant-modal-root .ant-modal-wrap:not([style*="display: none"])) .app-sup
   }
 }
 
-/* Absolute final mobile support-entry closure. Mobile support remains available
-   through navigation, so fixed launchers cannot cover page actions. */
+/* Absolute final commercial mobile support-entry policy:
+   one-tap FAB on browse/account shells; hide only on sticky conversion rails. */
 @media (max-width: 780px) {
-  .app-support-launcher,
-  .customer-support-widget__button {
+  .shop-app-shell--product-detail .app-support-launcher,
+  .shop-app-shell--product-detail .customer-support-widget__button,
+  .shop-app-shell--cart .app-support-launcher,
+  .shop-app-shell--cart .customer-support-widget__button,
+  .shop-app-shell--checkout .app-support-launcher,
+  .shop-app-shell--checkout .customer-support-widget__button,
+  .shop-app-shell--checkout-flow .app-support-launcher,
+  .shop-app-shell--checkout-flow .customer-support-widget__button,
+  .shop-app-shell--payment-instructions .app-support-launcher,
+  .shop-app-shell--payment-instructions .customer-support-widget__button,
+  .shop-app-shell--history .app-support-launcher,
+  .shop-app-shell--history .customer-support-widget__button {
     display: none !important;
     visibility: hidden !important;
     opacity: 0 !important;
     pointer-events: none !important;
+  }
+
+  body:not(.shop-mobile-app) .shop-app-shell--home .customer-support-widget__button,
+  body:not(.shop-mobile-app) .shop-app-shell--product-list .customer-support-widget__button,
+  body:not(.shop-mobile-app) .shop-app-shell--coupon-center .customer-support-widget__button,
+  body:not(.shop-mobile-app) .shop-app-shell--order-tracking-flow .customer-support-widget__button,
+  body:not(.shop-mobile-app) .shop-app-shell--profile-flow .customer-support-widget__button,
+  body:not(.shop-mobile-app) .shop-app-shell--auth-flow .customer-support-widget__button {
+    display: grid !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    position: fixed !important;
+    min-width: 48px !important;
+    min-height: 48px !important;
+    width: 48px !important;
+    height: 48px !important;
+    touch-action: manipulation;
   }
 }
 
@@ -3323,4 +3380,17 @@ body.shop-mobile-app .shop-api-error-banner {
 .shop-app-shell .ant-form-item-extra,
 .shop-app-shell .ant-empty-description {
   color: rgba(16, 47, 34, 0.72);
+}
+
+
+/* Commercial mobile: footer link columns stay >=12px for storefront trust. */
+@media (max-width: 780px) {
+  .shop-footer h3,
+  .shop-footer p,
+  .shop-footer a,
+  .shop-footer button,
+  .shop-footer__copy {
+    font-size: 12px !important;
+    line-height: 1.35 !important;
+  }
 }

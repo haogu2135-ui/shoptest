@@ -1307,24 +1307,24 @@ const Cart: React.FC = () => {
   if (loading) {
     return (
       <div className={`cart-page cart-page--${language}`} role="status" aria-live="polite" aria-busy="true" aria-label={t('common.loading')}>
-        <section className="cart-page__hero" aria-hidden="true">
+        <section className="cart-page__hero">
           <div className="cart-page__heroContent">
-            <div className="cart-page__loadingEyebrow shimmer" />
-            <div className="cart-page__loadingTitle shimmer" />
-            <div className="cart-page__loadingText shimmer" />
-            <div className="cart-page__heroActions">
+            <span className="cart-page__heroEyebrow">{t('pages.cart.nextActionEyebrow')}</span>
+            <Title level={1}>{t('pages.cart.title')}</Title>
+            <div className="cart-page__loadingText shimmer" aria-hidden="true" />
+            <div className="cart-page__heroActions" aria-hidden="true">
               <div className="cart-page__loadingAction shimmer" />
               <div className="cart-page__loadingAction cart-page__loadingAction--secondary shimmer" />
             </div>
           </div>
-          <div className="cart-page__heroStats">
+          <div className="cart-page__heroStats" aria-hidden="true">
             {[1, 2, 3].map(i => <div key={i} className="cart-page__loadingStat shimmer" />)}
           </div>
         </section>
-        <section className="cart-page__summaryStrip">
+        <section className="cart-page__summaryStrip" aria-hidden="true">
           <StatsStripSkeleton cols={3} />
         </section>
-        <div className="cart-page__loadingProducts">
+        <div className="cart-page__loadingProducts" aria-hidden="true">
           <ProductCardSkeleton count={6} />
         </div>
       </div>
@@ -1343,6 +1343,12 @@ const Cart: React.FC = () => {
           ]}
         />
         {paymentReturnBanner}
+        <section className="cart-page__hero cart-page__hero--recovery">
+          <div className="cart-page__heroContent">
+            <span className="cart-page__heroEyebrow">{t('pages.cart.nextActionEyebrow')}</span>
+            <Title level={1}>{t('pages.cart.title')}</Title>
+          </div>
+        </section>
         <div data-cart-load-recovery="true">
           <PageError
             className="cart-page__loadError"
@@ -1404,7 +1410,7 @@ const Cart: React.FC = () => {
           </span>
           <div className="cart-page__emptyCopy">
             <span className="cart-page__emptyEyebrow">{t('pages.cart.yourCart')}</span>
-            <Title level={2}>{t('pages.cart.empty')}</Title>
+            <Title level={1}>{t('pages.cart.empty')}</Title>
             <Text>{t('pages.cart.recentRecoverySubtitle')}</Text>
           </div>
           <div className="cart-page__emptyActions" data-cart-empty-actions="true">
@@ -1458,7 +1464,7 @@ const Cart: React.FC = () => {
       <section className="cart-page__hero">
         <div className="cart-page__heroContent">
           <span className="cart-page__heroEyebrow">{t('pages.cart.nextActionEyebrow')}</span>
-          <Title level={2}>{t('pages.cart.title')}</Title>
+          <Title level={1}>{t('pages.cart.title')}</Title>
           <Text>{cartItems.length > 0 ? cartNextAction.text : t('pages.cart.empty')}</Text>
           <div className="cart-page__heroActions">
             {cartItems.length > 0 && cartNextAction.key === 'clear' ? (

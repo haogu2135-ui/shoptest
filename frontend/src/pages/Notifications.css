@@ -1097,8 +1097,8 @@
    the fixed storefront bottom navigation on portrait phones. */
 @media (max-width: 640px) {
   .notifications-page {
-    padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 76px) + 96px + env(safe-area-inset-bottom, 0px)) !important;
-    scroll-padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 76px) + 112px + env(safe-area-inset-bottom, 0px)) !important;
+    padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 96px + env(safe-area-inset-bottom, 0px)) !important;
+    scroll-padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 112px + env(safe-area-inset-bottom, 0px)) !important;
   }
 
   .notifications-page__assistant,
@@ -1108,18 +1108,18 @@
 
   .notifications-page__actionPlan {
     gap: 8px !important;
-    margin-bottom: calc(var(--shop-mobile-bottom-nav-height, 76px) + 16px + env(safe-area-inset-bottom, 0px)) !important;
-    scroll-margin-bottom: calc(var(--shop-mobile-bottom-nav-height, 76px) + 16px + env(safe-area-inset-bottom, 0px)) !important;
+    margin-bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 16px + env(safe-area-inset-bottom, 0px)) !important;
+    scroll-margin-bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 16px + env(safe-area-inset-bottom, 0px)) !important;
   }
 
   .notifications-page__actionPlan > .ant-btn {
     min-height: 44px !important;
-    scroll-margin-bottom: calc(var(--shop-mobile-bottom-nav-height, 76px) + 16px + env(safe-area-inset-bottom, 0px)) !important;
+    scroll-margin-bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 16px + env(safe-area-inset-bottom, 0px)) !important;
   }
 
   .notifications-page__item:first-child,
   .notifications-page .ant-list > .ant-spin-nested-loading:first-child {
-    scroll-margin-bottom: calc(var(--shop-mobile-bottom-nav-height, 76px) + 16px + env(safe-area-inset-bottom, 0px)) !important;
+    scroll-margin-bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 16px + env(safe-area-inset-bottom, 0px)) !important;
   }
 }
 

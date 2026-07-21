@@ -35,7 +35,7 @@ import {
 import './App.css';
 
 const { Content, Footer } = Layout;
-const { Text } = Typography;
+const { Text, Title } = Typography;
 const MOBILE_UPDATE_DISMISSED_KEY_PREFIX = 'shop-mobile-update-dismissed';
 
 declare global {
@@ -253,11 +253,27 @@ class FloatingOverlayBoundary extends React.Component<FloatingOverlayBoundaryPro
 
 const LoadingFallback = () => {
   const { t } = useLanguage();
+  const location = useLocation();
+  const path = location.pathname || '/';
+  // Keep conversion shells on a commercial h1 while lazy route chunks hydrate.
+  let routeTitle: string | null = null;
+  if (path === '/cart' || path.startsWith('/cart/')) {
+    routeTitle = t('pages.cart.title');
+  } else if (path === '/checkout' || path.startsWith('/checkout/')) {
+    routeTitle = t('pages.checkout.title');
+  } else if (path === '/track-order' || path.startsWith('/track-order')) {
+    routeTitle = t('pages.orderTracking.title');
+  } else if (path === '/coupons' || path.startsWith('/coupons/')) {
+    routeTitle = t('pages.coupons.title');
+  } else if (/^\/products\/[^/]+/.test(path)) {
+    routeTitle = t('pages.productDetail.product');
+  }
 
   return (
-    <div className="app-route-loading">
+    <div className="app-route-loading" role="status" aria-live="polite" aria-busy="true" aria-label={t('app.loading')}>
+      {routeTitle ? <Title level={1} className="app-route-loading__title">{routeTitle}</Title> : null}
       <Spin size="large" />
-      <span className="app-route-loading__text" role="status" aria-live="polite">
+      <span className="app-route-loading__text">
         {t('app.loading')}
       </span>
     </div>

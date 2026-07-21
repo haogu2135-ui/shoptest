@@ -390,7 +390,7 @@ body.shop-mobile-app .shop-app-shell {
 }
 
 body.shop-mobile-app {
-  --shop-mobile-bottom-nav-height: 76px;
+  --shop-mobile-bottom-nav-height: 72px;
   margin: 0;
   background: #f4f7f5;
   touch-action: manipulation;
@@ -398,7 +398,7 @@ body.shop-mobile-app {
 }
 
 body.shop-mobile-app .shop-app-shell .ant-layout-content {
-  min-height: calc(100svh - var(--shop-mobile-bottom-nav-height, 76px));
+  min-height: calc(100svh - var(--shop-mobile-bottom-nav-height, 72px));
 }
 
 body.shop-mobile-app .shopee-container,
@@ -490,7 +490,7 @@ body.shop-mobile-app .shop-nav {
 }
 
 body.shop-mobile-app .shop-nav__bottomBar {
-  --shop-mobile-bottom-nav-height: 76px;
+  --shop-mobile-bottom-nav-height: 72px;
 }
 
 body.shop-mobile-app .shop-nav__bottomItem {
@@ -875,7 +875,7 @@ body.shop-mobile-app {
 
 body.shop-mobile-app .shop-app-shell .ant-layout-content {
   padding-top: 0 !important;
-  padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 76px) + 18px + env(safe-area-inset-bottom, 0px)) !important;
+  padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 18px + env(safe-area-inset-bottom, 0px)) !important;
   background: transparent;
 }
 
@@ -983,8 +983,11 @@ body.shop-mobile-app .shop-nav__mega {
 }
 
 body.shop-mobile-app .shop-nav__bottomBar {
-  --shop-mobile-bottom-nav-height: 74px;
-  min-height: calc(74px + env(safe-area-inset-bottom, 0px));
+  /* Commercial CLS: lock native bottom commerce bar (content + safe area). */
+  --shop-mobile-bottom-nav-height: 72px;
+  height: calc(72px + env(safe-area-inset-bottom, 0px));
+  min-height: calc(72px + env(safe-area-inset-bottom, 0px));
+  max-height: calc(72px + env(safe-area-inset-bottom, 0px));
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 2px;
@@ -993,6 +996,9 @@ body.shop-mobile-app .shop-nav__bottomBar {
   background: rgba(255, 255, 255, 0.97);
   box-shadow: 0 -12px 28px rgba(21, 40, 30, 0.1);
   backdrop-filter: blur(18px);
+  overflow: hidden;
+  box-sizing: border-box;
+  contain: layout style;
 }
 
 body.shop-mobile-app .shop-nav__bottomItem {
@@ -1351,7 +1357,7 @@ body.shop-mobile-app .app-support-launcher,
 body.shop-mobile-app .customer-support-widget__button {
   display: inline-flex !important;
   right: 14px !important;
-  bottom: calc(var(--shop-mobile-bottom-nav-height, 74px) + 18px + env(safe-area-inset-bottom, 0px)) !important;
+  bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 18px + env(safe-area-inset-bottom, 0px)) !important;
   width: 46px !important;
   height: 46px !important;
   border-radius: 999px !important;
@@ -1408,7 +1414,7 @@ body.shop-mobile-app .shop-nav__bottomItem span:not(.anticon):not(.ant-badge):no
 
 body.shop-mobile-app .product-list {
   width: 100% !important;
-  padding: 10px 0 calc(var(--shop-mobile-bottom-nav-height, 74px) + 28px + env(safe-area-inset-bottom, 0px)) !important;
+  padding: 10px 0 calc(var(--shop-mobile-bottom-nav-height, 72px) + 28px + env(safe-area-inset-bottom, 0px)) !important;
 }
 
 body.shop-mobile-app .product-list > .ant-row {
@@ -1914,7 +1920,7 @@ body.shop-mobile-app :where(
 
 @media (max-width: 380px) {
   body.shop-mobile-app {
-    --shop-mobile-bottom-nav-height: 70px;
+    --shop-mobile-bottom-nav-height: 72px;
   }
 
   body.shop-mobile-app .shop-nav__inner,
@@ -2156,7 +2162,7 @@ body.shop-mobile-app :where(
 }
 
 body.shop-mobile-app .shop-app-shell--cart .cart-page__summary {
-  bottom: calc(var(--shop-mobile-bottom-nav-height, 74px) + 12px + env(safe-area-inset-bottom, 0px)) !important;
+  bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 12px + env(safe-area-inset-bottom, 0px)) !important;
   z-index: var(--shop-z-cart-summary-under-nav);
 }
 
@@ -2708,8 +2714,8 @@ body.shop-mobile-app .shop-app-shell.ant-layout {
 
 body.shop-mobile-app .shop-app-shell .ant-layout-content {
   flex: 0 0 auto !important;
-  min-height: calc(100dvh - var(--shop-mobile-bottom-nav-height, 74px)) !important;
-  min-height: calc(100svh - var(--shop-mobile-bottom-nav-height, 74px)) !important;
+  min-height: calc(100dvh - var(--shop-mobile-bottom-nav-height, 72px)) !important;
+  min-height: calc(100svh - var(--shop-mobile-bottom-nav-height, 72px)) !important;
   overflow: visible !important;
   touch-action: pan-y pinch-zoom !important;
 }
@@ -3023,12 +3029,12 @@ body.shop-mobile-app .shop-nav__bottomItem {
 }
 
 body.shop-mobile-app .shop-app-shell--cart .cart-page {
-  padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 76px) + 142px + env(safe-area-inset-bottom, 0px)) !important;
+  padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 142px + env(safe-area-inset-bottom, 0px)) !important;
 }
 
 body.shop-mobile-app .shop-app-shell--cart .cart-page__summary {
   position: sticky !important;
-  bottom: calc(var(--shop-mobile-bottom-nav-height, 76px) + 14px + env(safe-area-inset-bottom, 0px)) !important;
+  bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 14px + env(safe-area-inset-bottom, 0px)) !important;
   z-index: var(--shop-z-inline-floating) !important;
   margin-right: calc(var(--app-screen-gutter, 12px) * -1) !important;
   margin-bottom: 0 !important;
@@ -3426,7 +3432,7 @@ body.shop-mobile-app {
   --app-line: rgba(18, 71, 52, 0.16);
   --app-primary: #124734;
   --app-accent: #ee4d2d;
-  --shop-mobile-bottom-nav-height: 76px;
+  --shop-mobile-bottom-nav-height: 72px;
 }
 
 body.shop-mobile-app .shop-app-shell :where(
@@ -3894,7 +3900,7 @@ body.shop-mobile-app .shop-nav__bottomBar {
   left: 0 !important;
   z-index: var(--shop-z-mobile-bottom-nav) !important;
   display: grid !important;
-  min-height: calc(var(--shop-mobile-bottom-nav-height, 76px) + env(safe-area-inset-bottom, 0px)) !important;
+  min-height: calc(var(--shop-mobile-bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px)) !important;
   padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px)) !important;
   pointer-events: auto !important;
   transform: translateZ(0);
@@ -3905,13 +3911,13 @@ body.shop-mobile-app .shop-nav__bottomItem {
 }
 
 body.shop-mobile-app .shop-app-shell--cart .cart-page {
-  padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 76px) + 164px + env(safe-area-inset-bottom, 0px)) !important;
+  padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 164px + env(safe-area-inset-bottom, 0px)) !important;
 }
 
 body.shop-mobile-app .shop-app-shell--cart .cart-page__summary {
   position: sticky !important;
   right: var(--app-screen-gutter, 12px) !important;
-  bottom: calc(var(--shop-mobile-bottom-nav-height, 76px) + 18px + env(safe-area-inset-bottom, 0px)) !important;
+  bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 18px + env(safe-area-inset-bottom, 0px)) !important;
   left: var(--app-screen-gutter, 12px) !important;
   z-index: var(--shop-z-floating-panel) !important;
   margin-bottom: 0 !important;
@@ -3969,9 +3975,9 @@ body.shop-mobile-app .shop-app-shell.ant-layout {
 }
 
 body.shop-mobile-app .shop-app-shell .ant-layout-content {
-  min-height: calc(100dvh - var(--shop-mobile-bottom-nav-height, 76px)) !important;
-  min-height: calc(100svh - var(--shop-mobile-bottom-nav-height, 76px)) !important;
-  padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 76px) + 24px + env(safe-area-inset-bottom, 0px)) !important;
+  min-height: calc(100dvh - var(--shop-mobile-bottom-nav-height, 72px)) !important;
+  min-height: calc(100svh - var(--shop-mobile-bottom-nav-height, 72px)) !important;
+  padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 24px + env(safe-area-inset-bottom, 0px)) !important;
   overflow: visible !important;
 }
 
@@ -4128,13 +4134,13 @@ body.shop-mobile-app .shop-nav__bottomItem {
 }
 
 body.shop-mobile-app .shop-app-shell--cart .cart-page {
-  padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 76px) + 176px + env(safe-area-inset-bottom, 0px)) !important;
+  padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 176px + env(safe-area-inset-bottom, 0px)) !important;
 }
 
 body.shop-mobile-app .shop-app-shell--cart .cart-page__summary {
-  bottom: calc(var(--shop-mobile-bottom-nav-height, 76px) + 20px + env(safe-area-inset-bottom, 0px)) !important;
+  bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 20px + env(safe-area-inset-bottom, 0px)) !important;
   z-index: var(--shop-z-cart-summary) !important;
-  max-height: calc(100dvh - var(--shop-mobile-bottom-nav-height, 76px) - 132px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) !important;
+  max-height: calc(100dvh - var(--shop-mobile-bottom-nav-height, 72px) - 132px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) !important;
   overflow-y: auto !important;
   overscroll-behavior: contain !important;
   -webkit-overflow-scrolling: touch;
@@ -5297,7 +5303,7 @@ body.shop-mobile-app .ant-modal-root .ant-modal:not(.ant-modal-confirm) .ant-mod
 
 body.shop-mobile-app .customer-support-widget__button {
   z-index: var(--shop-z-support-fab) !important;
-  bottom: calc(var(--shop-mobile-bottom-nav-height, 76px) + 18px + env(safe-area-inset-bottom, 0px)) !important;
+  bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 18px + env(safe-area-inset-bottom, 0px)) !important;
 }
 
 body.shop-mobile-app .customer-support-widget__backdrop {
@@ -6948,14 +6954,14 @@ body.shop-mobile-app:has(.pet-finder-page) .shop-nav__bottomBar {
 }
 
 body.shop-mobile-app .shop-app-shell--product-list .product-list {
-  padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 76px) + 154px + env(safe-area-inset-bottom, 0px)) !important;
+  padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 154px + env(safe-area-inset-bottom, 0px)) !important;
 }
 
 body.shop-mobile-app .shop-app-shell--product-list .product-list:not(.product-list--empty) .product-list__mobileConversionBar {
   position: fixed !important;
   top: auto !important;
   right: max(8px, env(safe-area-inset-right, 0px)) !important;
-  bottom: calc(var(--shop-mobile-bottom-nav-height, 76px) + 14px + env(safe-area-inset-bottom, 0px)) !important;
+  bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 14px + env(safe-area-inset-bottom, 0px)) !important;
   left: max(8px, env(safe-area-inset-left, 0px)) !important;
   z-index: var(--shop-z-product-conversion) !important;
   width: auto !important;
@@ -6966,7 +6972,7 @@ body.shop-mobile-app .shop-app-shell--product-list .product-list:not(.product-li
 
 body.shop-mobile-app .shop-app-shell--coupon-center .coupon-center-page,
 body.shop-mobile-app:has(.coupon-center-page) .coupon-center-page {
-  padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 76px) + 270px + env(safe-area-inset-bottom, 0px)) !important;
+  padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 270px + env(safe-area-inset-bottom, 0px)) !important;
 }
 
 body.shop-mobile-app .shop-app-shell--coupon-center .coupon-center-page__quickNav,
@@ -6974,7 +6980,7 @@ body.shop-mobile-app:has(.coupon-center-page) .coupon-center-page__quickNav {
   position: fixed !important;
   top: auto !important;
   right: max(8px, env(safe-area-inset-right, 0px)) !important;
-  bottom: calc(var(--shop-mobile-bottom-nav-height, 76px) + 146px + env(safe-area-inset-bottom, 0px)) !important;
+  bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 146px + env(safe-area-inset-bottom, 0px)) !important;
   left: max(8px, env(safe-area-inset-left, 0px)) !important;
   z-index: var(--shop-z-coupon-quick-nav) !important;
   width: auto !important;
@@ -7021,7 +7027,7 @@ body.shop-mobile-app:has(.coupon-center-page) .coupon-center-page__mobileActionB
   position: fixed !important;
   top: auto !important;
   right: max(12px, env(safe-area-inset-right, 0px)) !important;
-  bottom: calc(var(--shop-mobile-bottom-nav-height, 76px) + 16px + env(safe-area-inset-bottom, 0px)) !important;
+  bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 16px + env(safe-area-inset-bottom, 0px)) !important;
   left: max(12px, env(safe-area-inset-left, 0px)) !important;
   z-index: var(--shop-z-coupon-action) !important;
   width: auto !important;
@@ -7090,11 +7096,11 @@ body.shop-mobile-app .ant-dropdown .ant-dropdown-menu-submenu-title {
 /* Final App auth-flow guard: login recovery/register links must clear the
    fixed native bottom navigation. */
 body.shop-mobile-app .shop-app-shell--auth-flow .shopee-login-root {
-  padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 76px) + 28px + env(safe-area-inset-bottom, 0px)) !important;
+  padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 28px + env(safe-area-inset-bottom, 0px)) !important;
 }
 
 body.shop-mobile-app .shop-app-shell--auth-flow .shopee-login-links {
-  margin-bottom: calc(var(--shop-mobile-bottom-nav-height, 76px) + 12px + env(safe-area-inset-bottom, 0px));
+  margin-bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 12px + env(safe-area-inset-bottom, 0px));
 }
 
 body.shop-mobile-app .shop-nav .shop-nav__actions > .shop-nav__actionSummary {
@@ -8114,7 +8120,7 @@ body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .product-de
 
   body.shop-mobile-app .shop-app-shell--coupon-center .coupon-center-page,
   body.shop-mobile-app:has(.coupon-center-page) .coupon-center-page {
-    padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 76px) + 320px + env(safe-area-inset-bottom, 0px)) !important;
+    padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 320px + env(safe-area-inset-bottom, 0px)) !important;
   }
 
   body.shop-mobile-app .shop-app-shell--coupon-center .coupon-center-page__quickNav,
@@ -8122,7 +8128,7 @@ body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .product-de
     display: grid !important;
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
     gap: 8px !important;
-    bottom: calc(var(--shop-mobile-bottom-nav-height, 76px) + 134px + env(safe-area-inset-bottom, 0px)) !important;
+    bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 134px + env(safe-area-inset-bottom, 0px)) !important;
     max-height: none !important;
     overflow: visible !important;
   }
@@ -9289,12 +9295,12 @@ body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-nav .shop-nav__brandC
   }
 
   body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .ant-layout-content {
-    padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 74px) + 112px + env(safe-area-inset-bottom, 0px)) !important;
-    scroll-padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 74px) + 128px + env(safe-area-inset-bottom, 0px)) !important;
+    padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 112px + env(safe-area-inset-bottom, 0px)) !important;
+    scroll-padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 128px + env(safe-area-inset-bottom, 0px)) !important;
   }
 
   body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-list .product-list {
-    padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 74px) + 116px + env(safe-area-inset-bottom, 0px)) !important;
+    padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 116px + env(safe-area-inset-bottom, 0px)) !important;
   }
 
   body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-list .product-list__toolbar.ant-card,
@@ -9384,7 +9390,7 @@ body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-nav .shop-nav__brandC
   }
 
   body.shop-mobile-app.shop-mobile-app.shop-mobile-app .pet-finder-page {
-    padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 74px) + 130px + env(safe-area-inset-bottom, 0px)) !important;
+    padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 130px + env(safe-area-inset-bottom, 0px)) !important;
   }
 
   body.shop-mobile-app.shop-mobile-app.shop-mobile-app .pet-finder-page__productCard .ant-card-actions {
@@ -9518,8 +9524,8 @@ body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-nav .shop-nav__brandC
   body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--checkout-flow .checkout-page {
     width: min(100% - 16px, 1160px) !important;
     max-width: calc(100vw - 16px) !important;
-    padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 74px) + 168px + env(safe-area-inset-bottom, 0px)) !important;
-    scroll-padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 74px) + 184px + env(safe-area-inset-bottom, 0px)) !important;
+    padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 168px + env(safe-area-inset-bottom, 0px)) !important;
+    scroll-padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 184px + env(safe-area-inset-bottom, 0px)) !important;
     overflow-x: hidden !important;
   }
 
@@ -9604,7 +9610,7 @@ body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-nav .shop-nav__brandC
 
   body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--checkout-flow .checkout-page__mobilePayBar {
     right: max(10px, env(safe-area-inset-right, 0px)) !important;
-    bottom: calc(var(--shop-mobile-bottom-nav-height, 74px) + 12px + env(safe-area-inset-bottom, 0px)) !important;
+    bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 12px + env(safe-area-inset-bottom, 0px)) !important;
     left: max(10px, env(safe-area-inset-left, 0px)) !important;
     width: auto !important;
     max-width: calc(100vw - 20px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)) !important;
@@ -9619,7 +9625,7 @@ body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-nav .shop-nav__brandC
     width: min(100% - 16px, 1160px) !important;
     max-width: calc(100vw - 16px) !important;
     padding-top: 10px !important;
-    padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 74px) + 96px + env(safe-area-inset-bottom, 0px)) !important;
+    padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 96px + env(safe-area-inset-bottom, 0px)) !important;
     overflow-x: hidden !important;
   }
 
@@ -9846,7 +9852,7 @@ body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-nav .shop-nav__brandC
     width: min(100% - 16px, 1160px) !important;
     max-width: calc(100vw - 16px) !important;
     min-height: auto !important;
-    padding: 8px 0 calc(var(--shop-mobile-bottom-nav-height, 74px) + 36px + env(safe-area-inset-bottom, 0px)) !important;
+    padding: 8px 0 calc(var(--shop-mobile-bottom-nav-height, 72px) + 36px + env(safe-area-inset-bottom, 0px)) !important;
     overflow-x: hidden !important;
   }
 

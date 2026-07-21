@@ -15,8 +15,6 @@ import { useMarket } from '../hooks/useMarket';
 import './Profile.css';
 import dayjs from 'dayjs';
 import { formatSelectedSpecs } from '../utils/selectedSpecs';
-import { navigateToSafeUrl } from '../utils/safeUrl';
-import { formatPaymentUrlLabel, getPaymentRecoveryState } from '../utils/paymentRecovery';
 import { productImageFallback, resolveProductImage } from '../utils/productMedia';
 import { dispatchDomEvent } from '../utils/domEvents';
 import { allSettledWithConcurrency } from '../utils/asyncBatch';
@@ -45,6 +43,7 @@ import {
 import SeventeenTrackWidget from '../components/SeventeenTrackWidget';
 import '../styles/mobile-page-contrast.css';
 import { focusFirstFormError } from '../utils/formValidationFocus';
+import { navigateToCommercialPaymentUrl, formatPaymentUrlLabel, getPaymentRecoveryState } from '../utils/paymentRecovery';
 
 const { Title, Text } = Typography;
 const profileModalPopupClassNames = { popup: { root: 'shop-mobile-popup-layer profile-modal-popup' } };
@@ -3089,7 +3088,7 @@ const Profile: React.FC = () => {
               aria-label={openPaymentActionLabel}
               title={openPaymentActionLabel}
               onClick={() => {
-                if (!navigateToSafeUrl(selectedPayment.paymentUrl)) {
+                if (!navigateToCommercialPaymentUrl(selectedPayment.paymentUrl)) {
                   message.error(t('pages.payment.failed'));
                 }
               }}
@@ -3217,7 +3216,7 @@ const Profile: React.FC = () => {
                     aria-label={paymentLinkActionLabel}
                     title={paymentLinkActionLabel}
                     onClick={() => {
-                      if (!navigateToSafeUrl(selectedPayment.paymentUrl)) {
+                      if (!navigateToCommercialPaymentUrl(selectedPayment.paymentUrl)) {
                         message.error(t('pages.payment.failed'));
                       }
                     }}

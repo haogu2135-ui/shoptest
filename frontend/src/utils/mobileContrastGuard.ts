@@ -1581,7 +1581,7 @@ body.shop-mobile-app .ant-modal-root .ant-modal:not(.ant-modal-confirm) .ant-mod
 
 body.shop-mobile-app .customer-support-widget__button {
   z-index: 8700 !important;
-  bottom: calc(var(--shop-mobile-bottom-nav-height, 76px) + 18px + env(safe-area-inset-bottom, 0px)) !important;
+  bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 18px + env(safe-area-inset-bottom, 0px)) !important;
 }
 
 body.shop-mobile-app .customer-support-widget__backdrop {

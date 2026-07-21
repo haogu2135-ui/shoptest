@@ -64,6 +64,14 @@ describe('commercial ops contracts', () => {
     expect(mobile).toContain('real-device APK/WebView install E2E remains required');
     expect(production).toContain('SHOPTEST_REQUIRE_PRODUCTION');
     expect(production).toContain('production host reachable');
+    expect(production).toContain('production DNS A records');
+    expect(production).toContain('production DNS AAAA records');
+    expect(production).toContain('Cloudflare origin connect failed');
+    expect(production).toContain('probeOriginEdgeDual');
+    expect(production).toContain('origin edge CWV measurement');
+    expect(production).toContain('SHOPTEST_PRODUCTION_HOST');
+    expect(production).toContain('measureProductionCwv');
+    expect(production).toContain('productionTlsInsecure');
     expect(production).toContain('local stripe webhook rejects bad signature');
     expect(production).toContain('local mercado webhook rejects bad signature');
     expect(production).toContain('real provider webhook traffic evidence');
@@ -113,8 +121,12 @@ describe('commercial ops contracts', () => {
     expect(browserSmoke).toContain('/api/auth/register');
     expect(browserSmoke).toContain('readMainText');
     expect(browserSmoke).toContain('home LCP soft budget');
+    expect(browserSmoke).toContain('Warm home once so cold post-rebuild asset compile does not flake the LCP soft gate');
     expect(browserSmoke).toContain('built multipath recovery markers present');
     expect(browserSmoke).toContain('home CLS soft budget');
+    expect(browserSmoke).toContain('cwv.cls < 0.1');
+    expect(browserSmoke).toContain('home mobile bottom bar height locked');
+    expect(browserSmoke).toContain('cwv.lcp < 4000');
     expect(browserSmoke).toContain('product-mobile-buybar');
     expect(browserSmoke).toContain('login legal agreement notice');
     expect(browserSmoke).toContain('wishlist guest multi-path auth gate');
@@ -260,6 +272,24 @@ describe('commercial ops contracts', () => {
     const bugs = fs.readFileSync(path.join(__dirname, '..', 'pages', 'BugManagement.tsx'), 'utf8');
     expect(bugs).toContain('data-admin-bugs-summary-load-recovery');
     expect(bugs).toContain('data-admin-bugs-summary-stale-recovery');
+  });
+
+  it('keeps multi-host storefront payment URL rewrite contracts in commercial HTTP smoke', () => {
+    const smoke = readFrontendRoot('scripts', 'commercial-http-smoke.js');
+    expect(smoke).toContain('payment url storefront payment path');
+    expect(smoke).toContain('payment url rewrites onto current UI origin');
+    expect(smoke).toContain('payment instructions spa on current UI');
+    expect(smoke).toContain('isStorefrontPaymentPath');
+  });
+
+  it('keeps an atomic commercial frontend build entry that avoids mid-build UI outages', () => {
+    const pkg = JSON.parse(readFrontendRoot('package.json'));
+    const safeBuild = readFrontendRoot('scripts', 'safe-commercial-build.sh');
+    expect(pkg.scripts['build:commercial']).toContain('safe-commercial-build.sh');
+    expect(safeBuild).toContain('BUILD_PATH');
+    expect(safeBuild).toContain('build.next');
+    expect(safeBuild).toContain('inode-preserving');
+    expect(safeBuild).toContain('DISABLE_ESLINT_PLUGIN');
   });
 
 });

@@ -172,6 +172,9 @@ class PaymentCallbackSignatureContractTest {
         // Commercial: signed webhook for unknown remote payments should not 500-retry forever.
         assertTrue(fetch.contains("getRawStatusCode() == 404"));
         assertTrue(fetch.contains("return null;"));
+        // Simulation-aware ack after signature verify keeps local contract smokes green.
+        assertTrue(fetch.contains("isPaymentSimulationEnabled()"));
+        assertTrue(fetch.contains("getRawStatusCode() == 401 || e.getRawStatusCode() == 403"));
     }
 
 }

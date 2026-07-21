@@ -6699,12 +6699,15 @@
 
 /* Final mobile/App product-list operation touch-target guard */
 @media (max-width: 720px) {
-  body.shop-mobile-app .product-list__titleLink {
+  body.shop-mobile-app .product-list__titleLink,
+  body:not(.shop-mobile-app) .product-list__titleLink,
+  .product-list__titleLink {
     display: flex;
     align-items: flex-start;
     min-height: 44px !important;
     padding-block: 5px !important;
     line-height: 1.25 !important;
+    touch-action: manipulation;
   }
 
   .product-list__focusActions .ant-btn,
@@ -6906,7 +6909,7 @@
     position: fixed;
     top: auto;
     right: max(8px, env(safe-area-inset-right, 0px));
-    bottom: calc(var(--shop-mobile-bottom-nav-height, 76px) + 14px + env(safe-area-inset-bottom, 0px));
+    bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 14px + env(safe-area-inset-bottom, 0px));
     left: max(8px, env(safe-area-inset-left, 0px));
     z-index: 1241;
     max-width: calc(100vw - 16px);
@@ -7033,7 +7036,7 @@
 @media (max-width: 780px) {
   body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-list .product-list {
     overflow-x: clip !important;
-    padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 74px) + 116px + env(safe-area-inset-bottom, 0px)) !important;
+    padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 116px + env(safe-area-inset-bottom, 0px)) !important;
   }
 
   body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-list .product-list__toolbar.ant-card,
@@ -7324,7 +7327,7 @@
 /* UI-20260607-06E: final App catalog bottom-nav clearance. */
 @media (max-width: 780px) {
   body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-list {
-    --product-list-app-nav-clearance: calc(var(--shop-mobile-bottom-nav-height, 76px) + env(safe-area-inset-bottom, 0px));
+    --product-list-app-nav-clearance: calc(var(--shop-mobile-bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px));
     --product-list-app-floating-rail-clearance: 132px;
     --product-list-app-scroll-clearance: calc(
       var(--product-list-app-nav-clearance)
@@ -7411,4 +7414,43 @@
 .product-list > .shop-breadcrumb {
   margin: 4px 0 14px;
   padding: 0 2px;
+}
+
+/* Commercial mobile web: catalog product titles must stay >=44px touch targets. */
+@media (max-width: 780px) {
+  .product-list__titleLink,
+  a.product-list__titleLink,
+  body:not(.shop-mobile-app) .product-list .product-list__titleLink,
+  body.shop-mobile-app .product-list .product-list__titleLink {
+    box-sizing: border-box !important;
+    display: flex !important;
+    align-items: flex-start !important;
+    min-height: 44px !important;
+    padding-block: 5px !important;
+    line-height: 1.25 !important;
+    touch-action: manipulation;
+  }
+}
+
+/* Commercial catalog hero eyebrow stays >=12px. */
+@media (max-width: 780px) {
+  .product-list__heroEyebrow,
+  body:not(.shop-mobile-app) .product-list .product-list__heroEyebrow,
+  body.shop-mobile-app .shop-app-shell--product-list .product-list__heroEyebrow {
+    font-size: 12px !important;
+    line-height: 1.2 !important;
+  }
+}
+
+
+/* Commercial mobile: catalog next-step coaching stays >=12px. */
+@media (max-width: 780px) {
+  .product-list__mobileNextStepCopy span,
+  .product-list__mobileNextStepCopy strong,
+  .product-list__mobileNextStepCopy .ant-typography,
+  .product-list__mobileContextChip,
+  .product-list__activeContextChip {
+    font-size: 12px !important;
+    line-height: 1.25 !important;
+  }
 }

@@ -1399,7 +1399,7 @@
 @media (max-width: 600px) {
   body.shop-mobile-app .product-compare-page {
     width: calc(100% - 16px) !important;
-    padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 76px) + 34px + env(safe-area-inset-bottom, 0px)) !important;
+    padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 34px + env(safe-area-inset-bottom, 0px)) !important;
     overflow: visible !important;
   }
 

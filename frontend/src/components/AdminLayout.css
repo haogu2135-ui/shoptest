@@ -905,7 +905,7 @@ body.shop-mobile-app .admin-layout__menu.ant-menu-dark {
     max-width: 100% !important;
     padding-right: max(12px, env(safe-area-inset-right, 0px)) !important;
     padding-left: max(12px, env(safe-area-inset-left, 0px)) !important;
-    padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 74px) + 116px + env(safe-area-inset-bottom, 0px)) !important;
+    padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 116px + env(safe-area-inset-bottom, 0px)) !important;
     overflow-x: clip !important;
   }
 

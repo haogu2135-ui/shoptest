@@ -79,7 +79,7 @@
 
 @media (max-width: 780px) {
   body.shop-mobile-app .cookie-consent-banner {
-    bottom: calc(var(--shop-mobile-bottom-nav-height, 74px) + 10px + env(safe-area-inset-bottom, 0px));
+    bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 10px + env(safe-area-inset-bottom, 0px));
   }
 
   .cookie-consent-banner__actions {
@@ -101,22 +101,22 @@
   body.shop-cookie-consent-visible .coupon-center-page__mobileActions,
   body.shop-cookie-consent-visible .cart-page__summary,
   body.shop-cookie-consent-visible .cart-drawer__footer {
-    bottom: var(--shop-cookie-consent-clearance, 0px) !important;
+    bottom: var(--shop-cookie-consent-clearance, 200px) !important;
   }
 
   /* Bottom nav and empty product-list conversion rail already sit above the safe area. */
   body.shop-cookie-consent-visible .shop-nav__bottomBar,
   body.shop-cookie-consent-visible .product-list__mobileConversionBar {
-    bottom: calc(max(8px, env(safe-area-inset-bottom, 0px)) + var(--shop-cookie-consent-clearance, 0px)) !important;
+    bottom: calc(max(8px, env(safe-area-inset-bottom, 0px)) + var(--shop-cookie-consent-clearance, 200px)) !important;
   }
 
   body.shop-cookie-consent-visible .product-list__backToTop.ant-btn {
-    bottom: calc(24px + env(safe-area-inset-bottom, 0px) + var(--shop-cookie-consent-clearance, 0px)) !important;
+    bottom: calc(24px + env(safe-area-inset-bottom, 0px) + var(--shop-cookie-consent-clearance, 200px)) !important;
   }
 
   /* Support launcher sits above bottom nav; preserve that offset while cookie panel is open. */
   body.shop-cookie-consent-visible .customer-support-widget__button,
   body.shop-cookie-consent-visible .customer-support-widget__panel {
-    bottom: calc(92px + env(safe-area-inset-bottom, 0px) + var(--shop-cookie-consent-clearance, 0px)) !important;
+    bottom: calc(92px + env(safe-area-inset-bottom, 0px) + var(--shop-cookie-consent-clearance, 200px)) !important;
   }
 }

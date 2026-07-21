@@ -1,4 +1,9 @@
-import { formatPaymentUrlLabel, getPaymentRecoveryState } from './paymentRecovery';
+import {
+  formatPaymentUrlLabel,
+  getPaymentRecoveryState,
+  navigateToCommercialPaymentUrl,
+  resolveCommercialPaymentNavigationUrl,
+} from './paymentRecovery';
 
 describe('paymentRecovery', () => {
   it('marks paid payments as final even when an expiry date exists', () => {
@@ -45,4 +50,44 @@ describe('paymentRecovery', () => {
     expect(formatPaymentUrlLabel('javascript:alert(1)')).toBe('-');
     expect(formatPaymentUrlLabel('https://user:pass@pay.example.com/session')).toBe('-');
   });
+
+  it('rewrites storefront payment instruction URLs onto the current shopping origin', () => {
+    const rewritten = resolveCommercialPaymentNavigationUrl(
+      'https://pet.686888666.xyz/payment/SO123?channel=MERCADO_PAGO&amount=10',
+      'https://electrical-measure-duck-contributions.trycloudflare.com',
+    );
+    expect(rewritten).toBe(
+      'https://electrical-measure-duck-contributions.trycloudflare.com/payment/SO123?channel=MERCADO_PAGO&amount=10',
+    );
+  });
+
+  it('keeps external provider checkout URLs absolute', () => {
+    const external = resolveCommercialPaymentNavigationUrl(
+      'https://www.mercadopago.com.mx/checkout/v1/redirect?pref_id=abc',
+      'https://pet.686888666.xyz',
+    );
+    expect(external).toBe('https://www.mercadopago.com.mx/checkout/v1/redirect?pref_id=abc');
+  });
+
+  it('navigates via the rewritten commercial payment URL', () => {
+    const hits: string[] = [];
+    const ok = navigateToCommercialPaymentUrl(
+      'https://pet.686888666.xyz/payment/SO999?channel=OXXO',
+      (url) => { hits.push(url); },
+      { currentOrigin: 'http://127.0.0.1:4187', allowInsecureHttp: true },
+    );
+    expect(ok).toBe(true);
+    expect(hits).toEqual(['http://127.0.0.1:4187/payment/SO999?channel=OXXO']);
+  });
+
+  it('displays storefront payment links on the current shopping origin', () => {
+    const label = formatPaymentUrlLabel(
+      'https://pet.686888666.xyz/payment/SO123?channel=MERCADO_PAGO',
+      'http://127.0.0.1:4187',
+    );
+    expect(label).toContain('127.0.0.1');
+    expect(label).toContain('/payment/SO123');
+    expect(label).not.toContain('pet.686888666.xyz');
+  });
+
 });

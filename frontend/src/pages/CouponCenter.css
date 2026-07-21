@@ -4973,7 +4973,7 @@
 
   .coupon-center-page__mobileActionBar {
     right: max(8px, env(safe-area-inset-right, 0px));
-    bottom: calc(var(--shop-mobile-bottom-nav-height, 76px) + 8px + env(safe-area-inset-bottom, 0px));
+    bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 8px + env(safe-area-inset-bottom, 0px));
     left: max(8px, env(safe-area-inset-left, 0px));
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     gap: 7px;
@@ -5211,7 +5211,7 @@
    competing as sticky layers over each other and over the global bottom nav. */
 @media (max-width: 560px) {
   .coupon-center-page {
-    padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 76px) + 24px + env(safe-area-inset-bottom, 0px)) !important;
+    padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 24px + env(safe-area-inset-bottom, 0px)) !important;
   }
 
   .coupon-center-page__quickNav,
@@ -5362,7 +5362,7 @@
    inside the viewport instead of relying on clipped horizontal rails. */
 @media (max-width: 560px) {
   .coupon-center-page {
-    padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 76px) + 152px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 152px + env(safe-area-inset-bottom, 0px));
   }
 
   .coupon-center-page__hero {
@@ -5528,7 +5528,7 @@
 
 @media (max-width: 560px) {
   .coupon-center-page {
-    padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 76px) + 152px + env(safe-area-inset-bottom, 0px)) !important;
+    padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 152px + env(safe-area-inset-bottom, 0px)) !important;
   }
 
   .coupon-center-page__mobileActionBar {
@@ -5780,4 +5780,19 @@
 }
 .coupon-wallet__filterEmpty .coupon-wallet__emptyActions .ant-btn {
   min-height: 44px;
+}
+
+
+/* Commercial mobile: coupon status chips/labels stay >=12px. */
+@media (max-width: 780px) {
+  .coupon-center-page__couponFit,
+  .coupon-center-page__couponMicroFacts,
+  .coupon-wallet__fit,
+  .coupon-wallet__quickFact,
+  .coupon-wallet__expiryPill,
+  .coupon-claim-section__filterButton,
+  .coupon-center-page .ant-tag {
+    font-size: 12px !important;
+    line-height: 1.2 !important;
+  }
 }

@@ -6645,3 +6645,37 @@ body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .product-de
 .product-recommendations__emptyActions .ant-btn {
   min-height: 44px;
 }
+
+.product-recommendations--loading {
+  display: grid;
+  gap: 10px;
+  margin-top: 16px;
+  padding: 16px;
+  border-radius: 16px;
+  background: rgba(16, 47, 34, 0.03);
+}
+.product-recommendations__loadingCopy {
+  color: rgba(16, 47, 34, 0.72);
+  font-size: 13px;
+}
+
+/* Commercial product detail: primary product name is the page h1. */
+.product-title-block .ant-typography,
+.product-title-block h1.ant-typography {
+  margin-bottom: 0;
+}
+
+
+/* Commercial mobile: stock + secondary money/microcopy stay >=12px. */
+@media (max-width: 780px) {
+  .product-detail__stockMeta,
+  .product-compact-signals,
+  .product-compact-signals .commerce-money,
+  .product-decision-item .ant-typography,
+  .product-decision-item .ant-typography-secondary,
+  .product-price-delivery,
+  .product-price-delivery .ant-typography {
+    font-size: 12px !important;
+    line-height: 1.3 !important;
+  }
+}

@@ -1,0 +1,4 @@
+services:
+  shoptest-frontend:
+    network_mode: host
+    ports: []

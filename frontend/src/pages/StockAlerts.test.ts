@@ -12,7 +12,7 @@ describe('StockAlerts mobile action layout', () => {
 
     expect(source).toContain('stock-alerts stock-alerts-page');
     expect(source).toContain('stock-alerts__mobileAction');
-    expect(fixCss).toContain('--stock-alerts-mobile-action-bottom: calc(var(--shop-mobile-bottom-nav-height, 74px)');
+    expect(fixCss).toContain('--stock-alerts-mobile-action-bottom: calc(var(--shop-mobile-bottom-nav-height, 72px)');
     expect(fixCss).toMatch(/\.stock-alerts\.stock-alerts-page\s*\{[\s\S]*?padding-bottom:\s*calc\([\s\S]*?var\(--stock-alerts-mobile-action-bottom\)[\s\S]*?var\(--stock-alerts-mobile-action-height\)[\s\S]*?\)\s*!important;/);
     expect(fixCss).toMatch(/\.stock-alerts\.stock-alerts-page \.stock-alerts__mobileAction\s*\{[\s\S]*?bottom:\s*var\(--stock-alerts-mobile-action-bottom\)\s*!important;[\s\S]*?z-index:\s*1240\s*!important;/);
     expect(fixCss).toMatch(/body\.shop-mobile-app \.stock-alerts\.stock-alerts-page \.stock-alerts__mobileAction\s*\{[^}]*z-index:\s*8998\s*!important;/);

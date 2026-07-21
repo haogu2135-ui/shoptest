@@ -104,6 +104,7 @@
   letter-spacing: 0;
 }
 
+.checkout-page__heroContent h1.ant-typography,
 .checkout-page__heroContent h2.ant-typography {
   margin: 0;
   color: #fff;
@@ -222,7 +223,8 @@
     text-align: center;
   }
 
-  .checkout-page__heroContent h2.ant-typography {
+  .checkout-page__heroContent h1.ant-typography,
+.checkout-page__heroContent h2.ant-typography {
     font-size: 26px;
   }
 
@@ -241,7 +243,8 @@
     min-width: 0;
   }
 
-  .checkout-page__heroContent h2.ant-typography {
+  .checkout-page__heroContent h1.ant-typography,
+.checkout-page__heroContent h2.ant-typography {
     font-size: 26px;
   }
 
@@ -308,6 +311,7 @@
   text-transform: uppercase;
 }
 
+.checkout-page__emptyCopy h1.ant-typography,
 .checkout-page__emptyCopy h2.ant-typography {
   margin: 0;
   color: #173f2b;
@@ -1274,7 +1278,8 @@
     padding: 16px;
   }
 
-  .checkout-page__heroContent h2.ant-typography {
+  .checkout-page__heroContent h1.ant-typography,
+.checkout-page__heroContent h2.ant-typography {
     font-size: 26px;
   }
 
@@ -1444,6 +1449,7 @@
   overflow-wrap: anywhere;
 }
 
+.checkout-page--es .checkout-page__heroContent h1.ant-typography,
 .checkout-page--es .checkout-page__heroContent h2.ant-typography {
   max-width: 680px;
   font-size: clamp(28px, 4vw, 44px);
@@ -1499,7 +1505,8 @@
 }
 
 @media (max-width: 560px) {
-  .checkout-page--es .checkout-page__heroContent h2.ant-typography {
+  .checkout-page--es .checkout-page__heroContent h1.ant-typography,
+.checkout-page--es .checkout-page__heroContent h2.ant-typography {
     font-size: 24px;
   }
 
@@ -1536,6 +1543,7 @@
   box-shadow: 0 28px 64px rgba(18, 71, 52, 0.2);
 }
 
+.checkout-page__heroContent h1.ant-typography,
 .checkout-page__heroContent h2.ant-typography {
   font-size: clamp(30px, 4vw, 48px);
   letter-spacing: 0;
@@ -1884,7 +1892,8 @@
     border-radius: 20px;
   }
 
-  .checkout-page__heroContent h2.ant-typography {
+  .checkout-page__heroContent h1.ant-typography,
+.checkout-page__heroContent h2.ant-typography {
     font-size: 24px;
     line-height: 1.12;
     letter-spacing: 0;
@@ -2721,7 +2730,8 @@
     font-size: 11px;
   }
 
-  .checkout-page__emptyCopy h2.ant-typography {
+  .checkout-page__emptyCopy h1.ant-typography,
+.checkout-page__emptyCopy h2.ant-typography {
     font-size: 23px;
     line-height: 1.12;
   }
@@ -3739,7 +3749,8 @@ body.checkout-page-active:not(.checkout-region-cascader-open) .ant-cascader-drop
     padding: 12px !important;
   }
 
-  .checkout-page__heroContent h2.ant-typography {
+  .checkout-page__heroContent h1.ant-typography,
+.checkout-page__heroContent h2.ant-typography {
     margin-bottom: 4px !important;
     font-size: 22px !important;
     line-height: 1.15 !important;
@@ -3973,7 +3984,8 @@ body.checkout-page-active:not(.checkout-region-cascader-open) .ant-cascader-drop
     gap: 10px;
   }
 
-  .checkout-page__heroContent h2.ant-typography {
+  .checkout-page__heroContent h1.ant-typography,
+.checkout-page__heroContent h2.ant-typography {
     font-size: 1.35rem !important;
     line-height: 1.25 !important;
     margin-bottom: 4px !important;

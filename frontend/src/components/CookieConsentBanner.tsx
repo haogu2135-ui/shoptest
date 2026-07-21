@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useLayoutEffect, useRef, useState } from 'react';
 import { Button, Typography } from 'antd';
 import { SafetyCertificateOutlined } from '@ant-design/icons';
 import { Link } from 'react-router-dom';
@@ -16,14 +16,18 @@ const clearCookieConsentLayout = () => {
 
 const CookieConsentBanner: React.FC = () => {
   const { t } = useLanguage();
-  const [visible, setVisible] = useState(false);
+  // Commercial CLS: decide visibility on first paint (not after effect) so bottom nav
+  // clearance does not jump from unset → reserved after hydration.
+  const [visible, setVisible] = useState(() => {
+    try {
+      return !hasCookieConsent();
+    } catch {
+      return true;
+    }
+  });
   const bannerRef = useRef<HTMLDivElement | null>(null);
 
-  useEffect(() => {
-    setVisible(!hasCookieConsent());
-  }, []);
-
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!visible) {
       clearCookieConsentLayout();
       return;
@@ -40,6 +44,10 @@ const CookieConsentBanner: React.FC = () => {
       document.documentElement.style.setProperty(COOKIE_CONSENT_CLEARANCE_VAR, `${clearance}px`);
     };
 
+    // Commercial CLS: seed a stable clearance before the first browser paint when possible.
+    if (!document.documentElement.style.getPropertyValue(COOKIE_CONSENT_CLEARANCE_VAR)) {
+      document.documentElement.style.setProperty(COOKIE_CONSENT_CLEARANCE_VAR, '200px');
+    }
     updateClearance();
     const frame = window.requestAnimationFrame(updateClearance);
     const resizeObserver = typeof ResizeObserver !== 'undefined'

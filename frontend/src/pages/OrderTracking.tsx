@@ -14,8 +14,6 @@ import { useMarket } from '../hooks/useMarket';
 import { formatSelectedSpecs } from '../utils/selectedSpecs';
 import { paymentMethodLabel } from '../utils/paymentMethods';
 import { productImageFallback, resolveProductImage } from '../utils/productMedia';
-import { navigateToSafeUrl } from '../utils/safeUrl';
-import { getPaymentRecoveryState } from '../utils/paymentRecovery';
 import {
   isReturnReasonReady,
   isReturnTrackingReady,
@@ -36,6 +34,7 @@ import SeventeenTrackWidget from '../components/SeventeenTrackWidget';
 import './OrderTracking.css';
 import '../styles/mobile-page-contrast.css';
 import { focusFirstFormError } from '../utils/formValidationFocus';
+import { navigateToCommercialPaymentUrl, getPaymentRecoveryState } from '../utils/paymentRecovery';
 
 const { Text, Title } = Typography;
 const orderTrackingImageFallback = productImageFallback;
@@ -475,7 +474,7 @@ const OrderTracking: React.FC = () => {
         return;
       }
       message.success(t('pages.checkout.paymentReady'));
-      if (payment.paymentUrl && !navigateToSafeUrl(payment.paymentUrl)) {
+      if (payment.paymentUrl && !navigateToCommercialPaymentUrl(payment.paymentUrl)) {
         message.error(t('pages.payment.failed'));
       }
     } catch (error: unknown) {
@@ -621,7 +620,7 @@ const OrderTracking: React.FC = () => {
 
   return (
     <div className={`order-tracking-page order-tracking-page--${language}`}>
-      <Title level={2} className="order-tracking-page__title">{t('pages.orderTracking.title')}</Title>
+      <Title level={1} className="order-tracking-page__title">{t('pages.orderTracking.title')}</Title>
       {paymentReturnStatus === 'success' ? (
         <Alert
           className="order-tracking-page__paymentReturn"

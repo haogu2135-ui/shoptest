@@ -432,6 +432,12 @@ jest.mock('../utils/safeUrl', () => ({
   navigateToSafeUrl: jest.fn(() => true),
 }));
 
+jest.mock('../utils/paymentRecovery', () => ({
+  navigateToCommercialPaymentUrl: jest.fn(() => true),
+  getPaymentRecoveryState: () => ({ isPaid: false, isExpired: false, isExpiringSoon: false, minutesLeft: null }),
+  formatPaymentUrlLabel: (value: string) => value || '-',
+}));
+
 jest.mock('../utils/authRedirect', () => ({
   buildLoginUrlFromWindow: () => '/login',
 }));

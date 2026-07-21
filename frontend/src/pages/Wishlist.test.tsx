@@ -103,7 +103,7 @@ describe('Wishlist mobile action layout', () => {
 
     expect(source).toContain('wishlist-page--withMobileAction');
     expect(source).toContain('wishlist-page__mobileAction');
-    expect(fixCss).toContain('--wishlist-mobile-action-bottom: calc(var(--shop-mobile-bottom-nav-height, 74px)');
+    expect(fixCss).toContain('--wishlist-mobile-action-bottom: calc(var(--shop-mobile-bottom-nav-height, 72px)');
     expect(fixCss).toMatch(/\.wishlist-page\.wishlist-page--withMobileAction\s*\{[\s\S]*?padding-bottom:\s*calc\([\s\S]*?var\(--wishlist-mobile-action-bottom\)[\s\S]*?var\(--wishlist-mobile-action-height\)[\s\S]*?\)\s*!important;/);
     expect(fixCss).toMatch(/\.wishlist-page\.wishlist-page--withMobileAction \.wishlist-page__mobileAction\s*\{[\s\S]*?bottom:\s*var\(--wishlist-mobile-action-bottom\)\s*!important;[\s\S]*?z-index:\s*1240\s*!important;/);
     expect(fixCss).toMatch(/body\.shop-mobile-app \.wishlist-page\.wishlist-page--withMobileAction \.wishlist-page__mobileAction\s*\{[^}]*z-index:\s*8998\s*!important;/);

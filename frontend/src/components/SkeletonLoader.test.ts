@@ -21,4 +21,12 @@ describe('SkeletonLoader shared loading contract', () => {
     expect(source).toContain('stats-strip-skeleton');
     expect(source).toContain('export default SkeletonLoader;');
   });
+
+  it('keeps hero and product skeleton reserves aligned with home product tiles', () => {
+    const css = fs.readFileSync(path.join(__dirname, 'SkeletonLoader.css'), 'utf8');
+    expect(css).toMatch(/\.hero-skeleton[\s\S]*?min-height:\s*360px/);
+    expect(css).toMatch(/\.product-skeleton__body[\s\S]*?min-height:\s*142px/);
+    expect(css).toContain('aspect-ratio: 1 / 1');
+    expect(css).not.toContain('aspect-ratio: 4 / 3');
+  });
 });
