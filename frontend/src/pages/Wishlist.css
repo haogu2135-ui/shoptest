@@ -251,7 +251,7 @@
 }
 
 .wishlist-page__bestPickAction .ant-btn {
-  min-height: 40px;
+  min-height: 44px;
   font-weight: 700;
   white-space: normal;
 }
@@ -311,7 +311,7 @@
 }
 
 .wishlist-page__productName {
-  min-height: 42px;
+  min-height: 44px;
   display: -webkit-box;
   overflow: hidden;
   border: 0;
@@ -332,7 +332,7 @@
 }
 
 .wishlist-page__meta {
-  min-height: 32px;
+  min-height: 44px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -388,7 +388,7 @@
 .wishlist-page__actions .ant-btn {
   min-width: 0;
   height: auto;
-  min-height: 40px;
+  min-height: 44px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -433,7 +433,7 @@
 .wishlist-page--es .wishlist-page__primaryAction,
 .wishlist-page--es .wishlist-page__removeAction,
 .wishlist-page--es .wishlist-page__bestPickAction .ant-btn {
-  min-height: 40px;
+  min-height: 44px;
   white-space: normal;
 }
 
@@ -760,7 +760,7 @@
 
   .wishlist-page__insightStats .ant-tag {
     flex: 0 0 auto;
-    min-height: 30px;
+    min-height: 44px;
     display: inline-flex;
     align-items: center;
     margin-inline-end: 0;
@@ -871,7 +871,7 @@
   }
 
   .wishlist-page__productName {
-    min-height: 40px;
+    min-height: 44px;
   }
 }
 
@@ -905,7 +905,7 @@
   .wishlist-page__nextAction .ant-btn,
   .wishlist-page__bestPickAction .ant-btn,
   .wishlist-page__actions .ant-btn {
-    min-height: 38px;
+    min-height: 44px;
   }
 
   .wishlist-page__insightBar,
@@ -939,7 +939,7 @@
   .wishlist-page__nextActionMeta .ant-tag,
   .wishlist-page__readinessPill {
     min-height: 26px;
-    font-size: 11px;
+    font-size: 12px;
     line-height: 1.18;
   }
 
@@ -963,7 +963,7 @@
   }
 
   .wishlist-page__bestPickEyebrow {
-    font-size: 10px;
+    font-size: 12px;
   }
 
   .wishlist-page__bestPickName {
@@ -995,7 +995,7 @@
   }
 
   .wishlist-page__productName {
-    min-height: 36px;
+    min-height: 44px;
     font-size: 13px;
     line-height: 18px;
   }
@@ -1262,7 +1262,7 @@
   .wishlist-page__actions .ant-btn,
   .wishlist-page__bestPickAction .ant-btn,
   .wishlist-page__header .ant-btn {
-    min-height: 40px;
+    min-height: 44px;
     border-radius: 13px;
   }
 
@@ -1282,7 +1282,7 @@
 
   .wishlist-page__actions .ant-btn,
   .wishlist-page__bestPickAction .ant-btn {
-    min-height: 38px;
+    min-height: 44px;
   }
 }
 
@@ -1391,7 +1391,7 @@
   .wishlist-page__bestPickEyebrow,
   .wishlist-page__bestPickName,
   .wishlist-page__readinessPill {
-    min-height: 34px !important;
+    min-height: 44px !important;
     font-size: max(12px, 1em) !important;
     line-height: 1.25 !important;
   }
@@ -1522,5 +1522,25 @@
 
   .wishlist-page__authGate .page-feedback__actions .ant-btn {
     width: 100%;
+  }
+}
+
+
+/* Commercial: wishlist primary titles stay scannable on empty/auth shells. */
+.wishlist-page__emptyCopy h1.ant-typography,
+.wishlist-page__authGate h1.ant-typography,
+.wishlist-page__header h1.ant-typography {
+  margin: 0 !important;
+  color: #173f2b !important;
+  font-size: 24px !important;
+  font-weight: 800 !important;
+  line-height: 1.2 !important;
+}
+
+@media (max-width: 780px) {
+  .wishlist-page__emptyCopy h1.ant-typography,
+  .wishlist-page__authGate h1.ant-typography,
+  .wishlist-page__header h1.ant-typography {
+    font-size: 22px !important;
   }
 }

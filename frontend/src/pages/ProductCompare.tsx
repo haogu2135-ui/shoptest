@@ -497,7 +497,7 @@ const ProductCompare: React.FC = () => {
       <Card>
         <div className="product-compare__header">
           <div>
-            <Title level={2} style={{ margin: 0 }}>{t('pages.compare.title')}</Title>
+            <Title level={1} style={{ margin: 0 }}>{t('pages.compare.title')}</Title>
             <Text type="secondary">{t('pages.compare.subtitle', { count: selectedCompareCount })}</Text>
           </div>
           <Space wrap className="product-compare__headerActions">

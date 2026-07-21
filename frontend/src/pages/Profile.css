@@ -1178,7 +1178,7 @@
 .profile-page--es .profile-orders__tab,
 .profile-page--es .profile-order-card__actions .ant-btn,
 .profile-page--es .profile-pet-shop-path__actions .ant-btn {
-  min-height: 40px;
+  min-height: 44px;
   white-space: normal;
 }
 
@@ -1697,7 +1697,7 @@
 
   .profile-overview__eyebrow {
     padding: 4px 9px;
-    font-size: 11px;
+    font-size: 12px;
     letter-spacing: 0;
   }
 
@@ -1744,7 +1744,7 @@
   .profile-overview__stat span {
     display: -webkit-box;
     overflow: hidden;
-    font-size: 11px;
+    font-size: 12px;
     line-height: 1.25;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 2;
@@ -1893,7 +1893,7 @@
   }
 
   .profile-orders__tab {
-    min-height: 38px;
+    min-height: 44px;
     padding: 8px 12px !important;
     white-space: nowrap;
   }
@@ -1940,7 +1940,7 @@
   }
 
   .profile-order-card__actions .ant-btn {
-    min-height: 42px;
+    min-height: 44px;
     flex: none;
     padding-inline: 10px;
   }
@@ -2016,7 +2016,7 @@
   }
 
   .profile-overview__actions .ant-btn {
-    min-height: 38px;
+    min-height: 44px;
     padding-inline: 8px;
   }
 
@@ -2082,11 +2082,11 @@
   .profile-orders__toolbar .ant-input-search .ant-input,
   .profile-orders__toolbar .ant-select-selector,
   .profile-orders__toolbar .ant-btn {
-    min-height: 40px;
+    min-height: 44px;
   }
 
   .profile-orders__tab {
-    min-height: 36px;
+    min-height: 44px;
     padding: 7px 10px !important;
   }
 
@@ -2121,7 +2121,7 @@
   }
 
   .profile-order-card__actions .ant-btn {
-    min-height: 38px;
+    min-height: 44px;
   }
 }
 
@@ -2162,7 +2162,7 @@
   .profile-payment-actions .ant-btn,
   .profile-flow-actions__buttons .ant-btn {
     width: 100%;
-    min-height: 40px;
+    min-height: 44px;
     white-space: normal;
   }
 
@@ -2192,7 +2192,7 @@
   .profile-payment-recommend__chip {
     flex: 0 0 auto;
     width: auto;
-    min-height: 38px;
+    min-height: 44px;
     max-width: 78vw;
     scroll-snap-align: start;
     white-space: nowrap;
@@ -2277,7 +2277,7 @@
 
   .profile-payment-modal .ant-modal-footer .ant-btn {
     width: 100%;
-    min-height: 40px;
+    min-height: 44px;
     margin-inline-start: 0 !important;
     border-radius: 999px;
     font-weight: 900;
@@ -2724,7 +2724,7 @@
   }
 
   .profile-order-card__actions .ant-btn {
-    min-height: 38px;
+    min-height: 44px;
     border-radius: 12px;
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
@@ -2825,7 +2825,7 @@
 
   .profile-payment-modal .ant-modal-footer .ant-btn {
     width: 100%;
-    min-height: 42px;
+    min-height: 44px;
     margin-inline-start: 0;
   }
 }
@@ -2843,7 +2843,7 @@
   }
 
   .profile-order-card__actions .ant-btn {
-    min-height: 40px;
+    min-height: 44px;
     padding-inline: 8px;
     font-size: 12px;
   }
@@ -3851,4 +3851,22 @@
 }
 .profile-payment-history__emptyActions .ant-btn {
   min-height: 44px;
+}
+
+
+/* Commercial: profile primary titles stay scannable on auth/overview shells. */
+.profile-page__authGateCopy h1.ant-typography,
+.profile-overview__copy h1.ant-typography {
+  margin: 0 !important;
+  color: #173f2b !important;
+  font-size: 24px !important;
+  font-weight: 800 !important;
+  line-height: 1.2 !important;
+}
+
+@media (max-width: 780px) {
+  .profile-page__authGateCopy h1.ant-typography,
+  .profile-overview__copy h1.ant-typography {
+    font-size: 22px !important;
+  }
 }

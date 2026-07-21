@@ -9,7 +9,7 @@ import { loadRegionData, type RegionOption } from '../regionData';
 import { useLanguage, type Language } from '../i18n';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useDocumentMeta } from '../hooks/useDocumentMeta';
-import { createPaymentMethodDetails, paymentMethodLabel } from '../utils/paymentMethods';
+import { createPaymentMethodDetails, filterPaymentChannelsForMarket, paymentMethodLabel } from '../utils/paymentMethods';
 import { useMarket } from '../hooks/useMarket';
 import { formatSelectedSpecs } from '../utils/selectedSpecs';
 import { addGuestCartItem, getGuestCartItems, removeGuestCartItems } from '../utils/guestCart';
@@ -640,7 +640,9 @@ const firstCheckoutRegionPath = (...values: unknown[]) =>
   values.find((value) => Array.isArray(value) && value.length > 0);
 
 const getRecommendedPaymentMethod = (channels: PaymentChannel[], currency: string) => {
-  const backendRecommended = channels.find((channel) => channel.recommended)?.code;
+  // Always recommend within market-filtered rails so MXN never lands on CN methods.
+  const marketChannels = filterPaymentChannelsForMarket(channels, { currency });
+  const backendRecommended = marketChannels.find((channel) => channel.recommended)?.code;
   if (backendRecommended) {
     return backendRecommended;
   }
@@ -648,7 +650,9 @@ const getRecommendedPaymentMethod = (channels: PaymentChannel[], currency: strin
   const preferredCodes = conversionConfig.paymentRecommendation.byCurrency[
     currency as keyof typeof conversionConfig.paymentRecommendation.byCurrency
   ] || conversionConfig.paymentRecommendation.fallback;
-  return preferredCodes.find((code) => channels.some((channel) => channel.code === code)) || channels[0]?.code || null;
+  return preferredCodes.find((code) => marketChannels.some((channel) => channel.code === code))
+    || marketChannels[0]?.code
+    || null;
 };
 
 const resolveCheckoutPaymentMethod = (
@@ -656,10 +660,11 @@ const resolveCheckoutPaymentMethod = (
   channels: PaymentChannel[],
   currency: string,
 ) => {
-  if (candidate && channels.some((channel) => channel.code === candidate)) {
+  const marketChannels = filterPaymentChannelsForMarket(channels, { currency });
+  if (candidate && marketChannels.some((channel) => channel.code === candidate)) {
     return candidate;
   }
-  return getRecommendedPaymentMethod(channels, currency) || channels[0]?.code || '';
+  return getRecommendedPaymentMethod(channels, currency) || marketChannels[0]?.code || '';
 };
 
 type CheckoutFormInstance = FormInstance<CheckoutFormValues>;
@@ -823,9 +828,12 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
   const watchedRegion = Form.useWatch('region', form);
   const watchedShippingAddress = Form.useWatch('shippingAddress', form);
   const watchedPostalCode = Form.useWatch('postalCode', form);
-  const paymentMethodDetails = useMemo(() => createPaymentMethodDetails(paymentChannels), [paymentChannels]);
-  const paymentMethodsAvailable = paymentMethodDetails.length > 0;
   const { currency, market, formatMoney } = useMarket();
+  const paymentMethodDetails = useMemo(
+    () => createPaymentMethodDetails(paymentChannels, { currency }),
+    [currency, paymentChannels],
+  );
+  const paymentMethodsAvailable = paymentMethodDetails.length > 0;
   const isGuestCheckout = !hasAuthenticatedCartSession();
   const hasCheckoutItems = cartItems.length > 0;
   const openSupport = useCallback(() => {
@@ -1071,15 +1079,18 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
         const channels = res.data;
         setPaymentChannels(channels);
         setPaymentChannelsError(null);
-        setPaymentChannelsAvailable(createPaymentMethodDetails(channels).length > 0);
+        setPaymentChannelsAvailable(createPaymentMethodDetails(channels, { currency }).length > 0);
         const current = form.getFieldValue('paymentMethod');
         const rememberedMethod = getSessionStorageItem('checkoutPaymentMethod');
         const bootstrapCandidate = rememberedMethod || (current && current !== 'STRIPE' ? current : null);
         const nextMethod = resolveCheckoutPaymentMethod(bootstrapCandidate, channels, currency);
-        if (nextMethod && nextMethod !== current) {
+        const allowed = createPaymentMethodDetails(channels, { currency }).some((method) => method.value === current);
+        if (nextMethod && (nextMethod !== current || !allowed)) {
           form.setFieldsValue({ paymentMethod: nextMethod });
+          setSessionStorageItem('checkoutPaymentMethod', nextMethod);
         } else if (!nextMethod && current) {
           form.setFieldsValue({ paymentMethod: undefined });
+          removeSessionStorageItem('checkoutPaymentMethod');
         }
       })
       .catch((error: unknown) => {
@@ -1969,6 +1980,10 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
       const normalizedPaymentMethod = normalizeCheckoutText(values.paymentMethod, 40);
       const normalizedGuestEmail = hasToken ? undefined : normalizeCheckoutEmail(values.guestEmail);
       if (!normalizedPaymentMethod) {
+        showCheckoutMessage('error', t('pages.checkout.paymentRequired'));
+        return;
+      }
+      if (!paymentMethodDetails.some((method) => method.value === normalizedPaymentMethod)) {
         showCheckoutMessage('error', t('pages.checkout.paymentRequired'));
         return;
       }

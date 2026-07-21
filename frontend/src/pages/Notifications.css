@@ -190,7 +190,7 @@
 }
 
 .notifications-page__actionSignals span {
-  min-height: 34px;
+  min-height: 44px;
   display: inline-flex;
   align-items: center;
   gap: 7px;
@@ -208,7 +208,7 @@
 }
 
 .notifications-page__actionPlan > .ant-btn {
-  min-height: 40px;
+  min-height: 44px;
   font-weight: 700;
 }
 
@@ -230,7 +230,7 @@
 }
 
 .notifications-page__loadMore .ant-btn {
-  min-height: 40px;
+  min-height: 44px;
   font-weight: 700;
 }
 
@@ -477,7 +477,7 @@
 
   .notifications-page__assistant > .ant-btn {
     width: 100%;
-    min-height: 40px;
+    min-height: 44px;
     border-radius: 999px;
   }
 
@@ -499,7 +499,7 @@
   .notifications-page__actionSignals span {
     flex: 0 0 auto;
     max-width: 82vw;
-    min-height: 36px;
+    min-height: 44px;
     border-radius: 999px;
     white-space: nowrap;
   }
@@ -564,7 +564,7 @@
   }
 
   .notifications-page__item .ant-list-item-action .ant-btn {
-    min-height: 38px;
+    min-height: 44px;
   }
 
   .notifications-page__item .ant-list-item-action .ant-btn-link {
@@ -616,7 +616,7 @@
   .notifications-page__header .ant-btn,
   .notifications-page__assistant > .ant-btn,
   .notifications-page__actionPlan > .ant-btn {
-    min-height: 38px;
+    min-height: 44px;
   }
 
   .notifications-page__assistant,
@@ -654,15 +654,16 @@
     font-size: 18px;
   }
 
+  /* commercial signal labels stay >=12px */
   .notifications-page__signal span {
-    font-size: 11px;
+    font-size: 12px;
     line-height: 1.15;
   }
 
   .notifications-page__actionSignals span {
-    min-height: 30px;
+    min-height: 44px;
     padding: 6px 9px;
-    font-size: 11px;
+    font-size: 12px;
     line-height: 1.2;
   }
 
@@ -702,7 +703,7 @@
   }
 
   .notifications-page__item .ant-list-item-action .ant-btn {
-    min-height: 36px;
+    min-height: 44px;
   }
 
   .notifications-page__item .ant-list-item-action .ant-btn-dangerous {
@@ -927,7 +928,7 @@
   .notifications-page__header .ant-btn,
   .notifications-page__assistant > .ant-btn,
   .notifications-page__actionPlan > .ant-btn {
-    min-height: 40px;
+    min-height: 44px;
     border-radius: 13px;
   }
 
@@ -944,7 +945,7 @@
 @media (max-width: 380px) {
   .notifications-page__header .ant-btn,
   .notifications-page__item .ant-list-item-action .ant-btn {
-    min-height: 38px;
+    min-height: 44px;
   }
 }
 
@@ -1031,7 +1032,7 @@
     width: 100%;
     min-width: 0;
     max-width: 100%;
-    min-height: 42px;
+    min-height: 44px;
     display: grid;
     grid-template-columns: 18px minmax(0, 1fr);
     align-items: center;
@@ -1179,4 +1180,16 @@
 }
 .notifications-page__filterEmptyActions .ant-btn {
   min-height: 44px;
+}
+
+
+/* Commercial: notifications primary titles stay scannable. */
+.notifications-page__title h1.ant-typography,
+.notifications-page__emptyCopy h1.ant-typography,
+.notifications-page--loading h1.ant-typography {
+  margin: 0 !important;
+  color: #173f2b !important;
+  font-size: 24px !important;
+  font-weight: 800 !important;
+  line-height: 1.2 !important;
 }

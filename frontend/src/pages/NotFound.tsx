@@ -33,7 +33,7 @@ const NotFound: React.FC = () => {
     >
       <Result
         status="404"
-        title={<span id={titleId}>{title}</span>}
+        title={<h1 id={titleId} className="not-found-page__title">{title}</h1>}
         subTitle={(
           <span id={subtitleId} role="status" aria-live="polite" className="not-found-page__status">
             <span className="not-found-page__subtitle">{subtitle}</span>

@@ -398,7 +398,7 @@
 
 .customer-support-widget__workflowChip span {
   color: #627064;
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.4;
 }
 
@@ -590,7 +590,7 @@
     border-radius: 999px;
     background: #ffffff;
     color: #9a3412;
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 900;
     line-height: 1.15;
     overflow: hidden;
@@ -740,7 +740,7 @@
     padding: 1px 6px;
     border-radius: 999px;
     background: rgba(255, 255, 255, 0.78);
-    font-size: 10px;
+    font-size: 12px;
     opacity: 0.78;
   }
 
@@ -856,7 +856,7 @@
 
   .customer-support-widget__quickReplies .ant-btn {
     flex: 0 0 auto;
-    min-height: 36px;
+    min-height: 44px;
     padding: 0 12px;
     border-color: #dce8e0;
     background: #ffffff;
@@ -926,7 +926,7 @@
   }
 
   .customer-support-widget__shareLatest.ant-btn {
-    min-height: 38px;
+    min-height: 44px;
     justify-self: stretch;
     justify-content: center;
     padding-inline: 12px;
@@ -946,7 +946,7 @@
   }
 
   .customer-support-widget__orderPickerHeader {
-    font-size: 11px;
+    font-size: 12px;
     line-height: 1.2;
   }
 
@@ -1021,7 +1021,7 @@
     border-radius: 999px;
     background: rgba(255, 255, 255, 0.92);
     color: #6f7d73;
-    font-size: 10px;
+    font-size: 12px;
   }
 
   .customer-support-widget__composer .ant-input-textarea textarea {
@@ -1212,7 +1212,7 @@
   }
 
   .customer-support-widget__quickReplies .ant-btn {
-    min-height: 34px;
+    min-height: 44px;
   }
 
   .customer-support-widget__composer .ant-input-textarea textarea {
@@ -1513,7 +1513,7 @@
 .customer-support-widget__panel--es .customer-support-widget__workflowChip,
 .customer-support-widget__panel--es .customer-support-widget__quickReplies .ant-btn,
 .customer-support-widget__panel--es .customer-support-widget__actions .ant-btn {
-  min-height: 40px;
+  min-height: 44px;
 }
 
 .customer-support-widget__panel--es .customer-support-widget__orderTitle,
@@ -1635,7 +1635,7 @@
     max-width: min(52vw, 168px);
     min-height: 24px;
     padding: 3px 8px;
-    font-size: 10px;
+    font-size: 12px;
   }
 
   .customer-support-widget__sessionPicker {
@@ -1688,7 +1688,7 @@
   .customer-support-widget__welcomeQuickReplies button {
     flex: 0 0 auto;
     max-width: 190px;
-    font-size: 11px;
+    font-size: 12px;
     line-height: 1.25;
     white-space: normal;
   }
@@ -1709,7 +1709,7 @@
   }
 
   .customer-support-widget__messageMeta {
-    font-size: 10px;
+    font-size: 12px;
     line-height: 1.25;
   }
 
@@ -1743,14 +1743,14 @@
   }
 
   .customer-support-widget__orderTags .ant-tag {
-    font-size: 10px;
+    font-size: 12px;
     line-height: 1.25;
   }
 
   .customer-support-widget__linkButton.ant-btn {
     height: 26px;
     padding: 0 8px !important;
-    font-size: 11px;
+    font-size: 12px;
   }
 
   .customer-support-widget__composer {
@@ -1778,7 +1778,7 @@
   .customer-support-widget__messageQuality,
   .customer-support-widget__workflowLabel,
   .customer-support-widget__orderPickerHeader .ant-typography {
-    font-size: 11px;
+    font-size: 12px;
     line-height: 1.35;
   }
 
@@ -1790,14 +1790,14 @@
   .customer-support-widget__triageHeader .ant-tag {
     max-width: 128px;
     overflow: hidden;
-    font-size: 10px;
+    font-size: 12px;
     text-overflow: ellipsis;
   }
 
   .customer-support-widget__shareLatest.ant-btn {
-    min-height: 32px;
+    min-height: 44px;
     padding-inline: 9px;
-    font-size: 11px;
+    font-size: 12px;
   }
 
   .customer-support-widget__workflowActions {
@@ -1817,11 +1817,11 @@
   }
 
   .customer-support-widget__workflowChip strong {
-    font-size: 11px;
+    font-size: 12px;
   }
 
   .customer-support-widget__workflowChip span {
-    font-size: 10px;
+    font-size: 12px;
     line-height: 1.3;
   }
 
@@ -1830,10 +1830,10 @@
   }
 
   .customer-support-widget__quickReplies .ant-btn {
-    min-height: 32px;
+    min-height: 44px;
     max-width: 190px;
     padding: 0 10px;
-    font-size: 11px;
+    font-size: 12px;
   }
 
   .customer-support-widget__orderPicker {
@@ -1861,7 +1861,7 @@
   }
 
   .customer-support-widget__actions .ant-btn {
-    min-height: 36px;
+    min-height: 44px;
     padding-inline: 8px;
     font-size: 12px;
     white-space: normal;
@@ -2945,7 +2945,7 @@ body .customer-support-widget__orderModalRoot .customer-support-widget__orderMod
   }
 
   .customer-support-widget__actions .ant-btn {
-    min-height: 40px !important;
+    min-height: 44px !important;
   }
 }
 
@@ -2994,7 +2994,7 @@ body .customer-support-widget__orderModalRoot .customer-support-widget__orderMod
   }
 
   .customer-support-widget__actions .ant-btn {
-    min-height: 38px !important;
+    min-height: 44px !important;
   }
 }
 
@@ -3184,5 +3184,39 @@ body .customer-support-widget__orderModalRoot .customer-support-widget__orderMod
 }
 .customer-support-widget__orderSelectEmpty .customer-support-widget__recoveryActions .ant-btn,
 .customer-support-widget__orderItemsEmpty .customer-support-widget__recoveryActions .ant-btn {
-  min-height: 40px;
+  min-height: 44px;
+}
+
+
+/* Commercial residual floor: support panel quick replies/tags/meta stay >=12px,
+   and primary support chips/buttons stay >=44px touch targets on mobile. */
+@media (max-width: 780px) {
+  .customer-support-widget__welcomeQuickReplies button,
+  .customer-support-widget__quickReplies .ant-btn,
+  .customer-support-widget__quickReplies .ant-btn > span,
+  .customer-support-widget__triageMeta .ant-tag,
+  .customer-support-widget__triageHeader .ant-tag,
+  .customer-support-widget__triageMeta .ant-typography,
+  .customer-support-widget__messageQuality,
+  .customer-support-widget__triageHelper,
+  .customer-support-widget__workflowLabel,
+  .customer-support-widget__orderPickerHeader .ant-typography,
+  .customer-support-widget__messageInput .ant-input-data-count,
+  .customer-support-widget__panel .ant-tag,
+  .customer-support-widget__panel .ant-typography-secondary,
+  .customer-support-widget__shareLatest.ant-btn,
+  .customer-support-widget__shareLatest.ant-btn > span {
+    font-size: 12px !important;
+    line-height: 1.25 !important;
+  }
+
+  .customer-support-widget__welcomeQuickReplies button,
+  .customer-support-widget__quickReplies .ant-btn,
+  .customer-support-widget__shareLatest.ant-btn {
+    min-height: 44px !important;
+    height: auto !important;
+    max-height: none !important;
+    padding-top: 10px !important;
+    padding-bottom: 10px !important;
+  }
 }

@@ -1273,6 +1273,7 @@
       "paymentWallet": "Wallet",
       "paymentMexico": "Mexico",
       "paymentChina": "China",
+      "paymentGlobal": "Global",
       "contact": "Contact",
       "email": "Email",
       "guestEmailPlaceholder": "name@example.com",

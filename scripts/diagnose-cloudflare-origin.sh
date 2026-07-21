@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
-# Diagnose Cloudflare 522 vs healthy ShopMX origin edge.
+# Diagnose Cloudflare 521/522/525/526 vs healthy ShopMX origin edge.
 # Confirms whether the outage is CF origin config vs host/app downtime.
 set -euo pipefail
 
 DOMAIN="${SHOPTEST_PRODUCTION_HOST:-pet.686888666.xyz}"
 ORIGIN_IP="${SHOPTEST_ORIGIN_PUBLIC_IP:-161.153.37.250}"
-PUBLIC_URL="${SHOPTEST_PRODUCTION_BASE:-https://${DOMAIN}}"
+# Always probe the public CDN hostname — do not reuse SHOPTEST_PRODUCTION_BASE
+# (often https://127.0.0.1 for origin-edge TLS-insecure CWV).
+PUBLIC_URL="${SHOPTEST_PUBLIC_CDN_BASE:-https://${DOMAIN}}"
 
 echo "== ShopMX Cloudflare origin diagnosis =="
 echo "domain=${DOMAIN}"
@@ -14,8 +16,17 @@ echo "public_url=${PUBLIC_URL}"
 echo
 
 echo "-- public CDN --"
-public_code="$(curl -sS -m 12 -o /tmp/shopmx-cf-home.body -w '%{http_code}' "${PUBLIC_URL}/" || true)"
+# Prefer HTTP/1.1 + IPv4 so Cloudflare error pages (522/521/526) surface instead of silent timeouts.
+public_headers="$(curl -4 --http1.1 -sS -m 25 -D /tmp/shopmx-cf-home.hdr -o /tmp/shopmx-cf-home.body -w '%{http_code}' "${PUBLIC_URL}/" || true)"
+public_code="${public_headers}"
+public_location="$(awk 'BEGIN{IGNORECASE=1} /^Location:/ {sub(/\r$/,""); sub(/^Location:[[:space:]]*/,""); print; exit}' /tmp/shopmx-cf-home.hdr 2>/dev/null || true)"
 echo "public_home_http_code=${public_code:-000}"
+if [[ -n "${public_location}" ]]; then
+  echo "public_home_location=${public_location}"
+fi
+if [[ -s /tmp/shopmx-cf-home.body ]]; then
+  echo "public_home_body_preview=$(head -c 80 /tmp/shopmx-cf-home.body | tr '\n' ' ')"
+fi
 if curl -sS -m 8 -o /tmp/shopmx-cf-trace.txt -w "cdn_cgi_trace=%{http_code}\n" "https://${DOMAIN}/cdn-cgi/trace" >/tmp/shopmx-cf-trace.code 2>/dev/null; then
   cat /tmp/shopmx-cf-trace.code
   head -5 /tmp/shopmx-cf-trace.txt || true
@@ -40,8 +51,52 @@ echo
 
 if [[ "${http_code:-0}" == "200" || "${https_code:-0}" == "200" ]]; then
   if [[ "${public_code:-0}" != "200" ]]; then
-    cat <<MSG
-RESULT: Origin is healthy on ${ORIGIN_IP}, but Cloudflare public URL is not.
+    case "${public_code:-000}" in
+      522)
+        cat <<MSG
+RESULT: Origin is healthy on ${ORIGIN_IP}, but Cloudflare returns 522 (connection timed out to origin).
+ACTION:
+  1) Cloudflare DNS A for ${DOMAIN} must point to ${ORIGIN_IP} (proxied / orange cloud). Wrong origin IP is the most common 522 cause.
+  2) SSL/TLS mode: Full (self-signed origin cert present) — avoid Full Strict until a publicly trusted origin cert is installed; Flexible only if origin HTTP is intended.
+  3) Disable Authenticated Origin Pulls unless origin mTLS is configured.
+  4) Confirm OCI Security List/NSG allows Cloudflare egress IPs to TCP 80/443 (host iptables already accepts NEW 80/443).
+  5) Confirm no Cloudflare Workers/Spectrum/Load Balancer pool points at a dead origin.
+  6) After fix: SHOPTEST_REQUIRE_PRODUCTION=1 npm --prefix frontend run test:commercial-production-readiness
+MSG
+        ;;
+      521)
+        cat <<MSG
+RESULT: Origin is healthy on ${ORIGIN_IP} (host + external multiprobe), but Cloudflare returns 521 (web server is down from CF path).
+ACTION:
+  1) Cloudflare DNS A for ${DOMAIN} (proxied/orange) must point to origin ${ORIGIN_IP}. Wrong/stale origin IP is the most common 521 cause when bare-IP HTTP/HTTPS already return 200 from the public internet.
+  2) SSL/TLS mode: Full (self-signed origin cert) — not Full Strict until a trusted origin cert is installed; Flexible only if CF should speak HTTP to origin :80.
+  3) Disable Authenticated Origin Pulls unless origin mTLS is configured.
+  4) Confirm no Cloudflare Load Balancer / Spectrum / Worker route targets a dead origin.
+  5) Host already listens 0.0.0.0:80/443 with default_server; bare-IP Host/no-Host both serve the storefront.
+  6) After CF fix: SHOPTEST_REQUIRE_PRODUCTION=1 SHOPTEST_PRODUCTION_BASE=https://${DOMAIN} npm --prefix frontend run test:commercial-production-readiness
+MSG
+        ;;
+      526|525)
+        cat <<MSG
+RESULT: Origin is healthy, but Cloudflare SSL handshake to origin failed (${public_code}).
+ACTION: Set SSL/TLS mode to Full (not Full Strict) for the ShopMX self-signed origin cert, or install a trusted origin cert.
+MSG
+        ;;
+      301|302|307|308)
+        cat <<MSG
+RESULT: Origin ShopMX is healthy on ${ORIGIN_IP}, but public CDN returns ${public_code} (not the storefront).
+LOCATION: ${public_location:-none}
+ACTION:
+  1) Cloudflare is reaching a *different* origin than ShopMX (e.g. rapid4cloud/controller). DNS A for ${DOMAIN} (proxied) must be ${ORIGIN_IP} only.
+  2) Remove CNAME/LB/Worker/Page Rule that rewrites ${DOMAIN} to a foreign host.
+  3) SSL/TLS: Full (self-signed origin cert on ${ORIGIN_IP}).
+  4) After fix, public home must be HTTP 200 with ShopMX HTML (not a redirect to another product).
+  5) Verify: curl -4 --http1.1 -D- -o /dev/null https://${DOMAIN}/ | head
+MSG
+        ;;
+      000|*)
+        cat <<MSG
+RESULT: Origin is healthy on ${ORIGIN_IP}, but Cloudflare public URL is not (http_code=${public_code:-000}).
 ACTION:
   1) Cloudflare DNS A for ${DOMAIN} origin IP must be ${ORIGIN_IP} (proxied orange cloud).
   2) SSL/TLS mode: Flexible (HTTP origin) or Full (HTTPS origin self-signed) / Full Strict (real cert).
@@ -49,6 +104,8 @@ ACTION:
   4) Confirm no Cloudflare Spectrum/Workers route overrides the origin.
   5) After fix: SHOPTEST_REQUIRE_PRODUCTION=1 npm --prefix frontend run test:commercial-production-readiness
 MSG
+        ;;
+    esac
     exit 2
   fi
   echo "RESULT: Public CDN and origin both healthy."

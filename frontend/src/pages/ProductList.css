@@ -166,7 +166,7 @@
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.12);
   color: rgba(255, 255, 255, 0.88);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
 }
 
@@ -286,7 +286,7 @@
   border-radius: 999px;
   background: #ee4d2d;
   color: #fff;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 800;
   line-height: 1;
 }
@@ -519,7 +519,7 @@
 }
 
 .product-list__activeContextReset.ant-btn {
-  min-height: 34px;
+  min-height: 44px;
   padding-inline: 8px;
   font-weight: 800;
 }
@@ -545,7 +545,7 @@
 
 .product-list__insightCopy span {
   color: #124734;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 800;
   text-transform: uppercase;
 }
@@ -620,7 +620,7 @@
 
 .product-list__checkoutPathEyebrow {
   color: #124734;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 900;
   letter-spacing: 0;
   text-transform: uppercase;
@@ -882,7 +882,7 @@
   white-space: normal;
   overflow-wrap: anywhere;
   color: #124734 !important;
-  font-size: 11px !important;
+  font-size: 12px !important;
   font-weight: 700;
 }
 
@@ -902,7 +902,8 @@
   border-radius: 999px;
   background: #f2f7f3;
   color: #4f5d52;
-  font-size: 11px;
+  /* Commercial confidence pills stay >=12px */
+  font-size: 12px;
   line-height: 1.2;
 }
 
@@ -1048,7 +1049,7 @@
 
 .product-list__actionButton {
   max-width: 100%;
-  min-height: 34px;
+  min-height: 44px;
   min-width: 0;
   display: inline-flex;
   align-items: center;
@@ -1171,7 +1172,7 @@
 }
 
 .product-list__quickAddModal .ant-select-selector {
-  min-height: 42px;
+  min-height: 44px;
 }
 
 .product-list__quickAddContent,
@@ -1210,7 +1211,7 @@
 }
 
 .product-list__empty .ant-btn {
-  min-height: 40px;
+  min-height: 44px;
   border-radius: 8px;
   font-weight: 700;
   box-shadow: 0 6px 16px rgba(18, 71, 52, 0.1);
@@ -1357,7 +1358,7 @@
 }
 
 .product-list__recoveryGrid .ant-btn {
-  min-height: 42px;
+  min-height: 44px;
   height: auto;
   border-radius: 8px;
   white-space: normal;
@@ -1446,7 +1447,7 @@
     justify-content: center;
     min-height: 26px;
     padding: 0 8px;
-    font-size: 11px;
+    font-size: 12px;
   }
 
   .product-list__heroCard {
@@ -1572,7 +1573,7 @@
     border-radius: 999px;
     background: #173f2b;
     color: #fff !important;
-    font-size: 10px !important;
+    font-size: 12px !important;
     font-weight: 900;
   }
 
@@ -1583,7 +1584,7 @@
 
   .product-list__mobileConversionStats span {
     color: #6c796f;
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 700;
   }
 
@@ -1596,11 +1597,11 @@
 
   .product-list__mobileConversionActions .ant-btn {
     min-width: 0;
-    min-height: 38px;
+    min-height: 44px;
     height: auto;
     padding-inline: 7px;
     border-radius: 999px;
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 800;
     line-height: 1.1;
     white-space: normal;
@@ -1807,8 +1808,10 @@
   .product-list__actionButton {
     width: 100%;
     min-width: 0;
+    min-height: 44px;
     padding-inline: 5px;
-    font-size: 11px;
+    /* Commercial catalog action labels stay >=12px */
+    font-size: 12px;
     line-height: 1.15;
   }
 
@@ -1826,7 +1829,7 @@
 
   .product-list__badges .ant-tag {
     padding-inline: 5px;
-    font-size: 11px;
+    font-size: 12px;
   }
 
   .product-list__soldOut {
@@ -1909,7 +1912,7 @@
 .product-list--es .product-list__smartAction,
 .product-list--es .product-list__smartPersonal,
 .product-list--es .product-list__insightMetrics .ant-btn {
-  min-height: 34px;
+  min-height: 44px;
   white-space: normal;
   line-height: 1.15;
 }
@@ -1924,7 +1927,7 @@
 
 .product-list--es .product-list__badges .ant-tag {
   max-width: 112px;
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .product-list--es .product-list__priceLine {
@@ -1953,7 +1956,7 @@
 }
 
 .product-list--es .product-list__actionButton {
-  min-height: 36px;
+  min-height: 44px;
   line-height: 1.1;
 }
 
@@ -2000,7 +2003,7 @@
   .product-list--es .product-list__badges .ant-tag {
     max-width: 96px;
     padding-inline: 5px;
-    font-size: 10px;
+    font-size: 12px;
   }
 }
 
@@ -2140,7 +2143,7 @@
 }
 
 .product-list__categoryButton.ant-btn {
-  min-height: 38px;
+  min-height: 44px;
   border-radius: 14px;
   color: #173f2b;
   font-weight: 800;
@@ -2300,7 +2303,7 @@
   border-radius: 999px;
   background: #fff0e7;
   color: #c73719;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 900;
 }
 
@@ -2373,7 +2376,7 @@
 }
 
 .product-list__actionButton.ant-btn {
-  min-height: 38px;
+  min-height: 44px;
   border-radius: 999px;
   font-weight: 900;
 }
@@ -2449,8 +2452,8 @@
   }
 
   .product-list__actionButton.ant-btn {
-    min-height: 34px;
-    font-size: 11px;
+    min-height: 44px;
+    font-size: 12px;
   }
 
   .product-list__actionButton--compact.ant-btn {
@@ -2594,7 +2597,7 @@
   }
 
   .product-list--es .product-list__actionButton {
-    min-height: 34px;
+    min-height: 44px;
     padding-inline: 6px;
   }
 
@@ -2621,7 +2624,7 @@
 /* Quick product preview */
 .product-list__previewTrigger.ant-btn {
   width: 100%;
-  min-height: 36px;
+  min-height: 44px;
   border: 0;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.94);
@@ -2683,7 +2686,7 @@
   position: absolute;
   left: 18px;
   top: 18px;
-  min-height: 40px;
+  min-height: 44px;
   display: inline-flex;
   align-items: center;
   padding: 0 14px;
@@ -2769,7 +2772,7 @@
 }
 
 .product-list__previewSignals span {
-  min-height: 38px;
+  min-height: 44px;
   display: inline-flex;
   align-items: center;
   padding: 8px 10px;
@@ -2789,7 +2792,7 @@
 }
 
 .product-list__previewActions .ant-btn {
-  min-height: 42px;
+  min-height: 44px;
   border-radius: 999px;
   font-weight: 900;
 }
@@ -2988,7 +2991,7 @@
   }
 
   .product-list__heroEyebrow {
-    font-size: 10px;
+    font-size: 12px;
   }
 
   .product-list__heroContent h1 {
@@ -3029,7 +3032,7 @@
   .product-list__search .ant-input-search,
   .product-list__toolbar .ant-select-selector,
   .product-list__toolbar .ant-btn {
-    min-height: 40px;
+    min-height: 44px;
   }
 
   .product-list__toolbarMeta {
@@ -3038,7 +3041,7 @@
 
   .product-list__filterButton {
     display: inline-flex;
-    min-height: 40px;
+    min-height: 44px;
     justify-content: center;
   }
 
@@ -3113,7 +3116,7 @@
     max-width: 96px;
     min-height: 21px;
     padding-inline: 6px;
-    font-size: 10px;
+    font-size: 12px;
     line-height: 1.08;
   }
 
@@ -3122,8 +3125,8 @@
   }
 
   .product-list__previewTrigger.ant-btn {
-    min-height: 34px;
-    font-size: 11px;
+    min-height: 44px;
+    font-size: 12px;
   }
 
   .product-list__card .ant-card-body {
@@ -3157,7 +3160,8 @@
   .product-list__valueLine .ant-typography,
   .product-list__brand,
   .product-list__confidencePill {
-    font-size: 10px;
+    /* Commercial confidence pills stay >=12px */
+    font-size: 12px;
   }
 
   .product-list__confidencePill {
@@ -3182,9 +3186,9 @@
   }
 
   .product-list__actionButton.ant-btn {
-    min-height: 34px;
+    min-height: 44px;
     padding-inline: 7px;
-    font-size: 11px;
+    font-size: 12px;
   }
 
   .product-list__actionButton--compact.ant-btn {
@@ -3279,9 +3283,9 @@
   .product-list__mobileConversionActions .ant-btn {
     width: 100%;
     min-width: 0;
-    min-height: 38px;
+    min-height: 44px;
     padding-inline: 7px;
-    font-size: 11px;
+    font-size: 12px;
     line-height: 1.1;
     white-space: normal;
   }
@@ -3307,9 +3311,9 @@
   }
 
   .product-list__mobileConversionActions .ant-btn {
-    min-height: 36px;
+    min-height: 44px;
     padding-inline: 5px;
-    font-size: 10px;
+    font-size: 12px;
   }
 }
 
@@ -3325,7 +3329,7 @@
   }
 
   .product-list__mobileConversionStats span {
-    font-size: 10px;
+    font-size: 12px;
   }
 
   .product-list__mobileConversionActions {
@@ -3333,7 +3337,7 @@
   }
 
   .product-list__mobileConversionActions .ant-btn {
-    min-height: 36px;
+    min-height: 44px;
     border-radius: 13px;
   }
 }
@@ -3349,9 +3353,9 @@
   }
 
   .product-list__mobileConversionActions .ant-btn {
-    min-height: 34px;
+    min-height: 44px;
     padding-inline: 5px;
-    font-size: 10px;
+    font-size: 12px;
   }
 
   .product-list__mobileConversionActions .ant-btn:first-child {
@@ -3381,7 +3385,7 @@
   .product-list__search .ant-input-affix-wrapper,
   .product-list__toolbar .ant-select-selector,
   .product-list__toolbar .ant-btn {
-    min-height: 38px;
+    min-height: 44px;
   }
 
   .product-list__mobileConversionBar {
@@ -3525,7 +3529,7 @@
   }
 
   .product-list__previewActions .ant-btn {
-    min-height: 40px;
+    min-height: 44px;
     white-space: normal;
   }
 }
@@ -3767,7 +3771,7 @@
   .product-list__quickAddModal .ant-modal-footer .ant-btn {
     width: 100%;
     min-width: 0;
-    min-height: 40px;
+    min-height: 44px;
     margin-inline-start: 0 !important;
     white-space: normal;
   }
@@ -3835,7 +3839,7 @@
     width: 42px !important;
     min-width: 42px !important;
     height: 38px;
-    min-height: 38px;
+    min-height: 44px;
     padding-inline: 0;
   }
 }
@@ -3871,7 +3875,7 @@
   .product-list__sortSelect .ant-select-selection-placeholder,
   .product-list__toolbar .ant-select-selection-item,
   .product-list__toolbar .ant-select-selection-placeholder {
-    min-height: 38px;
+    min-height: 44px;
     line-height: 38px !important;
   }
 
@@ -3880,7 +3884,7 @@
   .product-list__toolbar .ant-select-arrow,
   .product-list__toolbar .ant-select-clear {
     min-width: 34px;
-    min-height: 34px;
+    min-height: 44px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -3918,7 +3922,7 @@
     min-height: 28px;
     padding-inline: 5px;
     overflow: hidden;
-    font-size: 10px;
+    font-size: 12px;
     line-height: 1.15;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -3935,7 +3939,7 @@
   .product-list__sortSelect.ant-select,
   .product-list__sortSelect .ant-select-selector,
   .product-list__toolbar .ant-select-selector {
-    min-height: 38px !important;
+    min-height: 44px !important;
   }
 
   .product-list__empty {
@@ -3992,7 +3996,7 @@
   }
 
   .product-list__emptyDiscoveryCard small {
-    font-size: 11px;
+    font-size: 12px;
     line-height: 1.25;
     -webkit-line-clamp: 1;
   }
@@ -4011,14 +4015,14 @@
 
   .product-list__emptyActions .ant-btn {
     min-width: 0;
-    min-height: 38px;
+    min-height: 44px;
     padding-inline: 8px;
   }
 }
 
 @media (max-width: 380px) {
   .product-list__heroStats span {
-    font-size: 9px;
+    font-size: 12px;
   }
 
   .product-list__emptyDiscoveryCard {
@@ -4155,7 +4159,7 @@
 
   .product-list__filterButton.ant-btn {
     height: 100%;
-    min-height: 38px;
+    min-height: 44px;
     border-radius: 12px !important;
   }
 
@@ -4283,7 +4287,7 @@
     width: 34px;
     min-width: 34px;
     height: 34px;
-    min-height: 34px;
+    min-height: 44px;
     padding: 0;
     border-radius: 999px;
     background: rgba(255, 255, 255, 0.94);
@@ -4372,7 +4376,7 @@
   }
 
   .product-list__actionButton.ant-btn {
-    min-height: 32px;
+    min-height: 44px;
     border-radius: 11px;
   }
 
@@ -4419,7 +4423,7 @@
   }
 
   .product-list__filterStack .ant-checkbox-wrapper {
-    min-height: 36px;
+    min-height: 44px;
     align-items: center;
     padding: 7px 8px;
     border: 1px solid #e4ebe4;
@@ -4458,7 +4462,7 @@
     width: 30px;
     min-width: 30px;
     height: 30px;
-    min-height: 30px;
+    min-height: 44px;
   }
 }
 
@@ -4496,7 +4500,7 @@
   }
 
   .product-list--empty .product-list__mobileConversionActions .ant-btn {
-    min-height: 36px;
+    min-height: 44px;
   }
 
   .product-list--empty .product-list__empty {
@@ -4604,7 +4608,7 @@
 
   .product-list__mobileNextStepCopy span {
     color: #124734;
-    font-size: 10px;
+    font-size: 12px;
     font-weight: 900;
     line-height: 1.2;
     text-transform: uppercase;
@@ -4621,7 +4625,7 @@
     grid-column: 1 / -1;
     display: -webkit-box;
     color: #66736a;
-    font-size: 11px;
+    font-size: 12px;
     line-height: 1.35;
     white-space: normal;
     -webkit-box-orient: vertical;
@@ -4651,10 +4655,10 @@
     flex: 0 0 auto;
     min-width: 84px;
     max-width: min(46vw, 156px);
-    min-height: 34px;
+    min-height: 44px;
     padding-inline: 9px;
     border-radius: 999px;
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 800;
     line-height: 1.1;
     scroll-snap-align: start;
@@ -4701,9 +4705,9 @@
   .product-list__mobileNextStepActions .ant-btn {
     min-width: 78px;
     max-width: min(48vw, 138px);
-    min-height: 32px;
+    min-height: 44px;
     padding-inline: 8px;
-    font-size: 10px;
+    font-size: 12px;
   }
 }
 
@@ -4790,7 +4794,7 @@
     border-radius: 999px;
     background: #fff2ee;
     color: #d94424;
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 900;
   }
 
@@ -4832,7 +4836,7 @@
 
   .product-list__drawerFooter .ant-btn {
     min-width: 0;
-    min-height: 42px;
+    min-height: 44px;
     border-radius: 13px;
     font-weight: 900;
     white-space: normal;
@@ -4864,7 +4868,7 @@
   }
 
   .product-list__drawerFooter .ant-btn {
-    min-height: 40px;
+    min-height: 44px;
     padding-inline: 8px;
   }
 }
@@ -4906,7 +4910,7 @@
     background: #ffffff;
     color: #173f2b;
     font: inherit;
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 800;
     line-height: 1;
     box-shadow: 0 8px 18px rgba(18, 71, 52, 0.05);
@@ -4942,7 +4946,7 @@
 
   .product-list__mobileContextClose {
     color: #7b8a80;
-    font-size: 10px;
+    font-size: 12px;
   }
 
   .product-list__mobileContextChip:active {
@@ -4971,7 +4975,7 @@
     max-width: min(72vw, 190px);
     min-height: 32px;
     padding-inline: 8px;
-    font-size: 10px;
+    font-size: 12px;
   }
 
   .product-list__mobileContextIcon {
@@ -5003,7 +5007,7 @@
   .product-list--empty .product-list__emptyDiscoveryCard--primary small {
     display: -webkit-box;
     color: #6b5a4f;
-    font-size: 11px;
+    font-size: 12px;
     line-height: 1.25;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 1;
@@ -5080,7 +5084,7 @@
   .product-list__refinementChips .ant-tag,
   .product-list__refinementChips .ant-btn {
     min-height: 28px;
-    font-size: 11px;
+    font-size: 12px;
   }
 
   .product-list__mobileContextBar {
@@ -5095,9 +5099,10 @@
 
   .product-list__mobileDiscoveryButton {
     min-width: 86px;
-    min-height: 36px;
+    min-height: 44px;
     padding-inline: 9px;
-    font-size: 11px;
+    /* Commercial discovery chips stay >=12px and 44px touch */
+    font-size: 12px;
   }
 
   .product-list__mobileDiscoveryIcon {
@@ -5113,7 +5118,7 @@
   }
 
   .product-list__mobileNextStepActions .ant-btn {
-    min-height: 32px;
+    min-height: 44px;
   }
 
   .product-list__smartBar,
@@ -5179,11 +5184,11 @@
   }
 
   .product-list__mobileConversionStats strong {
-    font-size: 11px;
+    font-size: 12px;
   }
 
   .product-list__mobileConversionStats span {
-    font-size: 10px;
+    font-size: 12px;
   }
 
   .product-list__mobileConversionActions {
@@ -5192,11 +5197,11 @@
   }
 
   .product-list__mobileConversionActions .ant-btn {
-    min-height: 36px;
+    min-height: 44px;
     height: 36px;
     padding-inline: 6px;
     border-radius: 12px;
-    font-size: 10px;
+    font-size: 12px;
   }
 
   .product-list__mobileConversionActions .ant-btn:first-child {
@@ -5242,7 +5247,7 @@
     max-width: 86px;
     min-height: 21px;
     padding-inline: 6px;
-    font-size: 10px;
+    font-size: 12px;
     line-height: 1.1;
     white-space: normal;
   }
@@ -5251,7 +5256,7 @@
     width: 30px;
     min-width: 30px;
     height: 30px;
-    min-height: 30px;
+    min-height: 44px;
   }
 
   .product-list__card .ant-card-body {
@@ -5266,7 +5271,7 @@
   }
 
   .product-list__card .ant-card-meta-title .ant-typography {
-    font-size: 11px;
+    font-size: 12px;
     line-height: 1.35;
   }
 
@@ -5283,14 +5288,14 @@
   }
 
   .product-list__originalPrice {
-    font-size: 10px;
+    font-size: 12px;
   }
 
   .product-list__priceTag.ant-tag {
     max-width: 72px;
     min-height: 18px;
     padding-inline: 5px;
-    font-size: 9px;
+    font-size: 12px;
     line-height: 18px;
   }
 
@@ -5303,7 +5308,7 @@
   .product-list__ratingLine .ant-typography,
   .product-list__valueLine .ant-typography,
   .product-list__brand {
-    font-size: 10px;
+    font-size: 12px;
     line-height: 1.25;
   }
 
@@ -5321,10 +5326,11 @@
   }
 
   .product-list__confidencePill {
-    min-height: 18px;
+    min-height: 22px;
     padding: 2px 5px;
-    font-size: 9px;
-    line-height: 1.1;
+    /* Commercial confidence pills stay >=12px */
+    font-size: 12px;
+    line-height: 1.15;
   }
 
   .product-list__confidencePill:not(:first-child) {
@@ -5341,11 +5347,11 @@
   }
 
   .product-list__actionButton.ant-btn {
-    min-height: 31px;
+    min-height: 44px;
     height: 31px;
     padding-inline: 5px;
     border-radius: 10px;
-    font-size: 10px;
+    font-size: 12px;
   }
 
   .product-list__actionButton--compact.ant-btn {
@@ -5438,9 +5444,9 @@
     width: 100%;
     min-width: 0;
     height: 31px;
-    min-height: 31px;
+    min-height: 44px;
     padding-inline: 6px;
-    font-size: 10px;
+    font-size: 12px;
     line-height: 1;
   }
 
@@ -5492,9 +5498,9 @@
 
   .product-list__actionButton.ant-btn {
     height: 30px;
-    min-height: 30px;
+    min-height: 44px;
     padding-inline: 5px;
-    font-size: 9px;
+    font-size: 12px;
   }
 
   .product-list__actionButton--compact.ant-btn,
@@ -5514,10 +5520,10 @@
   }
 
   .product-list:not(.product-list--empty) .product-list__mobileConversionActions .ant-btn {
-    min-height: 38px;
+    min-height: 44px;
     height: 38px;
     padding-inline: 8px;
-    font-size: 10px;
+    font-size: 12px;
     line-height: 1.05;
   }
 
@@ -5553,10 +5559,10 @@
   }
 
   .product-list:not(.product-list--empty) .product-list__mobileConversionActions .ant-btn {
-    min-height: 36px;
+    min-height: 44px;
     height: 36px;
     padding-inline: 6px;
-    font-size: 9px;
+    font-size: 12px;
   }
 }
 
@@ -5635,7 +5641,7 @@
   }
 
   .product-list__filterButton.ant-btn {
-    min-height: 40px;
+    min-height: 44px;
     border-radius: 14px !important;
   }
 
@@ -5803,7 +5809,8 @@
     max-width: 100%;
     min-height: 24px;
     padding-inline: 6px;
-    font-size: 10px;
+    /* Commercial confidence pills stay >=12px */
+    font-size: 12px;
   }
 
   .product-list__card .ant-card-actions {
@@ -5824,7 +5831,7 @@
   }
 
   .product-list__actionButton.ant-btn {
-    min-height: 38px;
+    min-height: 44px;
     height: 38px;
     padding-inline: 6px;
   }
@@ -5924,7 +5931,7 @@
 
   .product-list__drawerFooter .ant-btn {
     width: 100%;
-    min-height: 42px;
+    min-height: 44px;
     border-radius: 13px;
   }
 
@@ -5942,7 +5949,7 @@
   }
 
   .product-list__drawerFooter .ant-btn {
-    min-height: 40px;
+    min-height: 44px;
     padding-inline: 8px;
     font-size: 12px;
   }
@@ -6075,7 +6082,7 @@
   .product-list__priceTag.ant-tag {
     min-width: 0;
     padding-inline: 5px;
-    font-size: 10px;
+    font-size: 12px;
   }
 
   .product-list .ant-btn:not(.ant-btn-icon-only),
@@ -6496,7 +6503,7 @@
     max-width: 100%;
     min-width: 0;
     height: auto;
-    min-height: 38px;
+    min-height: 44px;
     line-height: 1.15;
     white-space: normal !important;
   }
@@ -7284,7 +7291,7 @@
     min-height: 30px !important;
     justify-content: center !important;
     padding: 4px 8px !important;
-    font-size: 11px !important;
+    font-size: 12px !important;
   }
 
   .shop-app-shell--product-list .product-list__heroCard,
@@ -7452,5 +7459,81 @@
   .product-list__activeContextChip {
     font-size: 12px !important;
     line-height: 1.25 !important;
+  }
+}
+
+
+/* Commercial catalog confidence/discovery labels stay >=12px */
+@media (max-width: 780px) {
+  .product-list__confidencePill,
+  .product-list__mobileDiscoveryButton,
+  .product-list__newReviewSignal,
+  .product-list__originalPrice,
+  .product-list__card .ant-card-actions .ant-btn {
+    font-size: 12px !important;
+    line-height: 1.2 !important;
+  }
+
+  .product-list__mobileDiscoveryButton {
+    min-height: 44px !important;
+  }
+}
+
+
+/* Commercial catalog titles/actions stay >=12px */
+@media (max-width: 780px) {
+  .product-list__titleLink,
+  .product-list__card .ant-card-meta-title,
+  .product-list__card .ant-card-meta-title .ant-typography,
+  .product-list__actionButton,
+  .product-list__actionButton .product-list__actionLabel,
+  .product-list__card .ant-card-actions .ant-btn,
+  .product-list__card .ant-card-actions .ant-btn > span,
+  .product-list__toolbar .ant-btn,
+  .product-list__toolbar .ant-btn > span,
+  .product-list__filterButton.ant-btn,
+  .product-list__filterButton.ant-btn > span {
+    font-size: 12px !important;
+    line-height: 1.25 !important;
+  }
+
+  .product-list__actionButton,
+  .product-list__card .ant-card-actions .ant-btn,
+  .product-list__toolbar .ant-btn,
+  .product-list__filterButton.ant-btn {
+    min-height: 44px !important;
+  }
+}
+
+
+/* Commercial residual floor: next-step/preview/badge labels stay >=12px (beats ant-btn-sm + density). */
+@media (max-width: 780px) {
+  .product-list__mobileNextStepActions .ant-btn,
+  .product-list__mobileNextStepActions .ant-btn.ant-btn-sm,
+  .product-list__mobileNextStepActions .ant-btn > span,
+  .product-list__mobileNextStepActions .ant-btn > span:not(.anticon):not(.ant-btn-icon),
+  .product-list__previewTrigger.ant-btn,
+  .product-list__previewTrigger.ant-btn.ant-btn-sm,
+  .product-list__previewTrigger.ant-btn > span,
+  .product-list__previewTrigger.ant-btn > span:not(.anticon):not(.ant-btn-icon),
+  .product-list__badges .ant-tag,
+  .product-list__badges .ant-tag > span,
+  body:not(.shop-mobile-app) .product-list .product-list__mobileNextStepActions .ant-btn,
+  body:not(.shop-mobile-app) .product-list .product-list__mobileNextStepActions .ant-btn > span,
+  body:not(.shop-mobile-app) .product-list .product-list__previewTrigger.ant-btn,
+  body:not(.shop-mobile-app) .product-list .product-list__previewTrigger.ant-btn > span,
+  body:not(.shop-mobile-app) .product-list .product-list__badges .ant-tag,
+  body.shop-mobile-app .shop-app-shell--product-list .product-list__mobileNextStepActions .ant-btn,
+  body.shop-mobile-app .shop-app-shell--product-list .product-list__mobileNextStepActions .ant-btn > span,
+  body.shop-mobile-app .shop-app-shell--product-list .product-list__previewTrigger.ant-btn,
+  body.shop-mobile-app .shop-app-shell--product-list .product-list__previewTrigger.ant-btn > span,
+  body.shop-mobile-app .shop-app-shell--product-list .product-list__badges .ant-tag {
+    font-size: 12px !important;
+    line-height: 1.2 !important;
+  }
+
+  .product-list__mobileNextStepActions .ant-btn,
+  .product-list__previewTrigger.ant-btn {
+    min-height: 44px !important;
   }
 }

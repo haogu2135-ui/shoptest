@@ -250,7 +250,7 @@ const PetFinder: React.FC = () => {
           <Row gutter={[20, 20]} align="middle">
             <Col xs={24} md={9}>
               <Space direction="vertical" size={6}>
-                <Title level={2} style={{ margin: 0 }}>
+                <Title level={1} style={{ margin: 0 }}>
                   <GiftOutlined /> {t('pages.petFinder.title')}
                 </Title>
                 <Paragraph type="secondary" style={{ margin: 0 }}>{t('pages.petFinder.subtitle')}</Paragraph>

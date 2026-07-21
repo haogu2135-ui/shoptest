@@ -1012,10 +1012,131 @@ it('keeps home empty category and product rails on multipath commercial recovery
   });
 
 
+
+  it('keeps Spanish category mega labels commercially legible at >=12px on mobile', () => {
+    const css = readFrontend('components', 'Navbar.css');
+    expect(css).toContain('category mega labels stay >=12px on mobile for all locales');
+    expect(css).toMatch(
+      /category mega labels stay >=12px on mobile for all locales[\s\S]*?\.shop-nav--es \.shop-nav__megaButton[\s\S]*?font-size:\s*12px\s*!important/,
+    );
+    // Residual floor must not re-collapse Spanish long labels under 12px.
+    expect(css).not.toMatch(
+      /@media \(max-width:\s*420px\)[\s\S]*?\.shop-nav--es \.shop-nav__megaButton[\s\S]*?font-size:\s*10\.5px/,
+    );
+  });
+
+  it('keeps sold-out purchase readiness from claiming direct-add', () => {
+    const productDetail = readFrontend('pages', 'ProductDetail.tsx');
+    expect(productDetail).toContain('sold-out SKUs must never claim "ready to add"');
+    expect(productDetail).toMatch(/ready:\s*!isOutOfStock\s*&&\s*!purchaseSelectionBlocked/);
+  });
+
+  it('keeps catalog titles/actions commercially legible at >=12px on mobile', () => {
+    const listCss = readFrontend('pages', 'ProductList.css');
+    expect(listCss).toContain('Commercial catalog titles/actions stay >=12px');
+    expect(listCss).toMatch(
+      /Commercial catalog titles\/actions stay >=12px[\s\S]*?\.product-list__titleLink[\s\S]*?font-size:\s*12px/
+    );
+  });
+
+  it('keeps residual catalog/cart/coupon conversion labels commercially legible at >=12px', () => {
+    const listCss = readFrontend('pages', 'ProductList.css');
+    const cartCss = readFrontend('pages', 'Cart.css');
+    const couponCss = readFrontend('pages', 'CouponCenter.css');
+    expect(listCss).toContain('next-step/preview/badge labels stay >=12px');
+    expect(listCss).toMatch(
+      /next-step\/preview\/badge labels stay >=12px[\s\S]*?\.product-list__mobileNextStepActions \.ant-btn[\s\S]*?font-size:\s*12px/
+    );
+    expect(cartCss).toContain('cart hero/summary uppercase labels stay >=12px');
+    expect(cartCss).toMatch(
+      /cart hero\/summary uppercase labels stay >=12px[\s\S]*?\.cart-page__heroStat strong[\s\S]*?font-size:\s*12px/
+    );
+    expect(couponCss).toContain('coupon hero stats/badges/quick-nav/result labels stay >=12px');
+    expect(couponCss).toMatch(
+      /coupon hero stats\/badges\/quick-nav\/result labels stay >=12px[\s\S]*?\.coupon-center-page__heroStats span[\s\S]*?font-size:\s*12px/
+    );
+  });
+
+  it('keeps cart drawer conversion labels commercially legible at >=12px on mobile', () => {
+    const drawerCss = readFrontend('components', 'CartDrawer.css');
+    expect(drawerCss).toContain('cart drawer hero/subtotal/trust labels stay >=12px');
+    expect(drawerCss).toMatch(
+      /cart drawer hero\/subtotal\/trust labels stay >=12px[\s\S]*?\.cart-drawer__heroStat strong[\s\S]*?font-size:\s*12px/
+    );
+  });
+
+  it('keeps storefront /orders multipath on profile orders tab', () => {
+    const app = readFrontend('App.tsx');
+    expect(app).toContain('path="orders"');
+    expect(app).toMatch(/path="orders"\s+element=\{<Navigate to="\/profile\?tab=orders" replace \/>\}/);
+  });
+
+  it('keeps nav badge digits commercially legible at >=12px on mobile', () => {
+    const navCss = readFrontend('components', 'Navbar.css');
+    expect(navCss).toContain('nav cart/wishlist/notification badge digits stay >=12px');
+    expect(navCss).toMatch(
+      /nav cart\/wishlist\/notification badge digits stay >=12px[\s\S]*?\.ant-scroll-number-only-unit[\s\S]*?font-size:\s*12px/
+    );
+  });
+
+  it('keeps login shell on a commercial loginTitle h1', () => {
+    const login = readFrontend('pages', 'Login.tsx');
+    expect(login).toMatch(/Title level=\{1\}\>\{t\('pages\.auth\.loginTitle'\)\}/);
+    expect(login).not.toMatch(/Title level=\{1\}\>\{t\('pages\.auth\.loginTrustTitle'\)\}/);
+  });
+
+  it('keeps support panel conversion microcopy commercially legible at >=12px', () => {
+    const supportCss = readFrontend('components', 'CustomerSupportWidget.css');
+    expect(supportCss).toContain('support panel quick replies/tags/meta stay >=12px');
+    expect(supportCss).toMatch(
+      /support panel quick replies\/tags\/meta stay >=12px[\s\S]*?\.customer-support-widget__welcomeQuickReplies button[\s\S]*?font-size:\s*12px/
+    );
+  });
+
+  it('keeps support panel quick-reply chips commercially tappable at >=44px on mobile', () => {
+    const supportCss = readFrontend('components', 'CustomerSupportWidget.css');
+    expect(supportCss).toContain('primary support chips/buttons stay >=44px touch targets');
+    expect(supportCss).toMatch(
+      /primary support chips\/buttons stay >=44px touch targets[\s\S]*?\.customer-support-widget__welcomeQuickReplies button[\s\S]*?min-height:\s*44px\s*!important/
+    );
+    expect(supportCss).toMatch(
+      /primary support chips\/buttons stay >=44px touch targets[\s\S]*?\.customer-support-widget__quickReplies \.ant-btn[\s\S]*?min-height:\s*44px\s*!important/
+    );
+    // Residual floor must not re-collapse below the Android UI closure 44px floor.
+    expect(supportCss).not.toMatch(
+      /support panel quick replies\/tags\/meta stay >=12px[\s\S]*?min-height:\s*3[0-9]px\s*!important/
+    );
+  });
+
+  it('keeps ShopMX commercial home market on MXN with Mexico-first payment fallback', () => {
+    const market = readFrontend('utils', 'market.ts');
+    const conversion = readFrontend('utils', 'conversionConfig.ts');
+    expect(market).toContain("return 'MXN'");
+    expect(market).toMatch(/ShopMX is a Mexico-first storefront[\s\S]*return 'MXN'/);
+    expect(conversion).toMatch(/fallback:\s*\[[^\]]*MERCADO_PAGO/);
+    expect(conversion).toMatch(/MXN:\s*\[[^\]]*MERCADO_PAGO/);
+  });
+
+  it('keeps home product signals and catalog confidence chips commercially legible', () => {
+    const homeCss = readFrontend('pages', 'Home.css');
+    const listCss = readFrontend('pages', 'ProductList.css');
+    expect(homeCss).toContain('Commercial product signal labels stay >=12px');
+    expect(listCss).toContain('Commercial catalog confidence/discovery labels stay >=12px');
+    expect(listCss).toContain('Commercial confidence pills stay >=12px');
+  });
+
   it('keeps sold-out PDP decision checklist from claiming addable options', () => {
     const productDetail = readFrontend('pages', 'ProductDetail.tsx');
     expect(productDetail).toContain('never mark options "ready to add" when the SKU is sold out');
     expect(productDetail).toMatch(/ready:\s*!isOutOfStock\s*&&/);
+  });
+
+  it('keeps pet gallery insight chips commercially legible at >=12px on mobile', () => {
+    const petGalleryCss = readFrontend('pages', 'PetGallery.css');
+    expect(petGalleryCss).toContain('insight chips stay >=12px');
+    expect(petGalleryCss).toMatch(
+      /insight chips stay >=12px[\s\S]*?\.pet-gallery-insights__item span[\s\S]*?font-size:\s*12px/
+    );
   });
 
   it('keeps conversion microcopy commercially legible at >=12px on mobile', () => {
@@ -1027,6 +1148,114 @@ it('keeps home empty category and product rails on multipath commercial recovery
     expect(listCss).toContain('catalog next-step coaching stays >=12px');
     expect(pdpCss).toContain('stock + secondary money/microcopy stay >=12px');
     expect(appCss).toContain('footer link columns stay >=12px');
+  });
+
+
+  it('keeps wishlist and profile shells on a commercial h1 primary title', () => {
+    const wishlist = readFrontend('pages', 'Wishlist.tsx');
+    const profile = readFrontend('pages', 'Profile.tsx');
+    const app = readFrontend('App.tsx');
+    expect(wishlist).toMatch(/Title level=\{1\}\>\{t\('pages\.wishlist\.authGateTitle'\)\}/);
+    expect(wishlist).toMatch(/Title level=\{1\}\>\{t\('pages\.wishlist\.empty'\)\}/);
+    expect(wishlist).toMatch(/Title level=\{1\} style=\{\{ margin: 0 \}\}\>\{t\('pages\.wishlist\.title'/);
+    expect(profile).toMatch(/Title level=\{1\}\>\{t\('pages\.profile\.authGateTitle'\)\}/);
+    expect(profile).toMatch(/Title level=\{1\}\>\{user\.username\}/);
+    expect(app).toMatch(/path === '\/wishlist'/);
+    expect(app).toMatch(/path === '\/profile'/);
+  });
+
+  it('keeps footer CTA and checkout conversion microcopy commercially legible', () => {
+    const appCss = readFrontend('App.css');
+    const checkoutCss = readFrontend('pages', 'Checkout.css');
+    expect(appCss).toContain('footer CTA strip titles/copy stay >=12px');
+    expect(checkoutCss).toContain('checkout conversion microcopy stays >=12px');
+  });
+
+
+  it('keeps remaining storefront shells on a commercial h1 primary title', () => {
+    const notifications = readFrontend('pages', 'Notifications.tsx');
+    const petFinder = readFrontend('pages', 'PetFinder.tsx');
+    const compare = readFrontend('pages', 'ProductCompare.tsx');
+    const stock = readFrontend('pages', 'StockAlerts.tsx');
+    const notFound = readFrontend('pages', 'NotFound.tsx');
+    const forgot = readFrontend('pages', 'ForgotPassword.tsx');
+    const app = readFrontend('App.tsx');
+    expect(notifications).toMatch(/Title level=\{1\}\>\{t\('pages\.notifications\.authGateTitle'\)\}/);
+    expect(notifications).toMatch(/Title level=\{1\}\>\{t\('pages\.notifications\.title'\)\}/);
+    expect(petFinder).toMatch(/Title level=\{1\} style=\{\{ margin: 0 \}\}/);
+    expect(compare).toMatch(/Title level=\{1\} style=\{\{ margin: 0 \}\}\>\{t\('pages\.compare\.title'\)\}/);
+    expect(stock).toMatch(/Title level=\{1\} style=\{\{ margin: 0 \}\}/);
+    expect(notFound).toContain('not-found-page__title');
+    expect(forgot).toMatch(/Title level=\{1\} className="shopee-login-subtitle shopee-login-subtitle--h1"/);
+    expect(app).toMatch(/path === '\/notifications'/);
+    expect(app).toMatch(/path === '\/pet-finder'/);
+    expect(app).toMatch(/path === '\/stock-alerts'/);
+  });
+
+
+  it('keeps checkout payment method ordering Mexico-first without CN-over-GLOBAL sortOrder regression', () => {
+    const paymentMethods = readFrontend('utils', 'paymentMethods.tsx');
+    const en = readFrontend('locales', 'en.json');
+    expect(paymentMethods).toContain('preservePaymentChannelOrder');
+    expect(paymentMethods).toContain('badgeKeyForPaymentMarket');
+    expect(paymentMethods).toMatch(/paymentMethodOrder:\s*PaymentMethod\[\]\s*=\s*\[[^\]]*MERCADO_PAGO/);
+    // Must not re-sort solely by raw sortOrder (elevates CN 70-90 over GLOBAL 100+)
+    expect(paymentMethods).not.toMatch(/\.sort\(\s*\(a,\s*b\)\s*=>\s*\(a\.sortOrder/);
+    expect(en).toContain('"paymentGlobal"');
+  });
+
+
+  it('hides CN payment rails for MXN checkout and keeps conversion-critical mobile floors', () => {
+    const paymentMethods = readFrontend('utils', 'paymentMethods.tsx');
+    const checkout = readFrontend('pages', 'Checkout.tsx');
+    const payment = readFrontend('components', 'Payment.tsx');
+    const mobileApp = readFrontend('mobile-app.css');
+    const searchBar = readFrontend('components', 'SearchBar.css');
+    const pdp = readFrontend('pages', 'ProductDetail.css');
+    expect(paymentMethods).toContain('filterPaymentChannelsForMarket');
+    expect(paymentMethods).toContain("currency === 'MXN'");
+    expect(paymentMethods).toMatch(/hideForeign && market === 'CN'/);
+    expect(checkout).toMatch(/createPaymentMethodDetails\(paymentChannels,\s*\{\s*currency\s*\}\)/);
+    // Recommendation + bootstrap resolve must use market-filtered rails (not raw API list).
+    expect(checkout).toContain('filterPaymentChannelsForMarket');
+    expect(checkout).toMatch(/filterPaymentChannelsForMarket\(channels,\s*\{\s*currency\s*\}\)/);
+    expect(checkout).toMatch(/paymentMethodDetails\.some\(\s*\(method\)\s*=>\s*method\.value === normalizedPaymentMethod\s*\)/);
+    expect(payment).toContain('filterPaymentChannelsForMarket');
+    expect(payment).toMatch(/getDefaultPaymentMethod\(channels,\s*currency\)/);
+    expect(mobileApp).toMatch(/shop-nav__bottomItem span[\s\S]*?font-size:\s*12px/);
+    expect(searchBar).toMatch(/min-height:\s*44px/);
+    expect(pdp).toMatch(/product-mobile-buybar__cart[\s\S]*?min-height:\s*44px/);
+  });
+
+
+  it('keeps conversion-path residual fonts >=12px and seeds MXN home currency', () => {
+    const market = readFrontend('utils', 'market.ts');
+    const checkoutCss = readFrontend('pages', 'Checkout.css');
+    const cartCss = readFrontend('pages', 'Cart.css');
+    const supportCss = readFrontend('components', 'CustomerSupportWidget.css');
+    const paymentCss = readFrontend('components', 'Payment.css');
+    expect(market).toContain("const home: CurrencyCode = 'MXN'");
+    expect(market).toContain('writeStoredCurrency(home)');
+    // residual 9-11px primary floors should be closed on conversion CSS
+    for (const css of [checkoutCss, cartCss, supportCss, paymentCss]) {
+      expect(css).not.toMatch(/font-size:\s*(?:9|10|11)px/);
+    }
+  });
+
+
+  it('keeps high-traffic catalog/PDP/home storefront residual fonts >=12px', () => {
+    const files = [
+      ['pages', 'ProductDetail.css'],
+      ['pages', 'ProductList.css'],
+      ['pages', 'Home.css'],
+      ['pages', 'Wishlist.css'],
+      ['pages', 'CouponCenter.css'],
+      ['mobile-app.css'],
+    ];
+    for (const parts of files) {
+      const css = readFrontend(...parts);
+      expect(css).not.toMatch(/font-size:\s*(?:9|10|11)px/);
+    }
   });
 
 });

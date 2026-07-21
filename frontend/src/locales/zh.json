@@ -652,7 +652,8 @@
         "walletAll": "全部",
         "walletFilteredEmpty": "当前状态下暂无优惠券",
         "walletThreshold": "门槛",
-        "remainingLabel": "剩余"
+        "remainingLabel": "剩余",
+        "walletFilteredEmptyHint": "可查看全部已领券，继续逛商品、打开购物车，或用宠物找货推荐。"
       },
       "catalogFallbackDescription": "实时优惠券暂时不可用。你可以先浏览精选优惠，稍后再重试领取。",
       "seoDescription": "领取宠物商城优惠券、查看卡包节省金额，并在结账前应用优惠。",
@@ -1615,6 +1616,7 @@
       "paymentWallet": "钱包",
       "paymentMexico": "墨西哥",
       "paymentChina": "中国",
+      "paymentGlobal": "全球",
       "couponOpportunityBestTitle": "最省优惠券已生效",
       "couponOpportunityAppliedTitle": "优惠券省钱已生效",
       "couponOpportunityAppliedText": "{name} 已为本单节省 {amount}。",

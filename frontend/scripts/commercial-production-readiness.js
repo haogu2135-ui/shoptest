@@ -142,10 +142,16 @@ async function probeProduction() {
   const home = await request(`${productionBase}/`, { timeout: 25000 });
   const reachable = home.status > 0 && !home.error;
   const bodyHint = String(home.body || '').slice(0, 80).replace(/\s+/g, ' ');
+  const cfStatusHints = {
+    521: 'status=521 Cloudflare cannot connect to origin (wrong origin IP/port most common; origin may still be healthy on public IP)',
+    522: 'status=522 Cloudflare origin connect timed out (cfOrigin unreachable / wrong origin IP / security list)',
+    523: 'status=523 Cloudflare origin unreachable',
+    525: 'status=525 Cloudflare SSL handshake failed to origin (use SSL Full with self-signed, not Full Strict)',
+    526: 'status=526 Cloudflare invalid origin certificate (use SSL Full or install trusted origin cert)',
+  };
   const detailBase = home.error
-    || (home.status === 522
-      ? 'status=522 Cloudflare origin connect failed (cfOrigin unreachable / wrong origin IP / security list)'
-      : `status=${home.status}${bodyHint ? ` body=${bodyHint}` : ''}`);
+    || cfStatusHints[home.status]
+    || `status=${home.status}${bodyHint ? ` body=${bodyHint}` : ''}`;
   if (requireProduction) {
     check('production host reachable', reachable && home.status === 200, detailBase);
   } else if (!reachable || home.status !== 200) {
@@ -205,7 +211,11 @@ async function diagnoseCloudflareOriginGap(publicHome) {
   const httpsOk = httpsProbe.status === 200;
   const publicStatus = publicHome && publicHome.status ? publicHome.status : 0;
   const publicErr = publicHome && publicHome.error ? publicHome.error : '';
-  const publicIsCfFailure = publicStatus === 522
+  const publicIsCfFailure = publicStatus === 521
+    || publicStatus === 522
+    || publicStatus === 523
+    || publicStatus === 525
+    || publicStatus === 526
     || /timeout/i.test(publicErr)
     || publicStatus === 0;
 
@@ -213,7 +223,7 @@ async function diagnoseCloudflareOriginGap(publicHome) {
     soft(
       'cloudflare origin gap diagnosis',
       false,
-      `origin IP ${originIp} healthy (http=${httpProbe.status} https=${httpsProbe.status} host=${originHost}) but public CDN failed (status=${publicStatus || 0}${publicErr ? ` err=${publicErr}` : ''}) — set CF DNS A record origin to ${originIp}, SSL Full/Flexible, confirm no Authenticated Origin Pulls mismatch`,
+      `origin IP ${originIp} healthy (http=${httpProbe.status} https=${httpsProbe.status} host=${originHost}) but public CDN failed (status=${publicStatus || 0}${publicErr ? ` err=${publicErr}` : ''}) — CF dashboard: DNS A/AAAA/CNAME for ${originHost} must resolve origin to ${originIp} only (proxied); remove foreign origins (e.g. rapid4cloud); SSL Full for self-signed; disable Auth Origin Pulls; no dead LB/Worker override`,
     );
     soft(
       'cloudflare origin IP direct probe',
@@ -338,6 +348,137 @@ async function measureProductionCwv() {
   }
 }
 
+
+
+async function probePublicCdnShipBar() {
+  // Independent of SHOPTEST_PRODUCTION_BASE (often origin-edge 127.0.0.1): always soft-probe the
+  // public Cloudflare hostname so the ship bar reflects real customer reachability.
+  const publicDomain = process.env.SHOPTEST_PUBLIC_CDN_HOST
+    || process.env.SHOPTEST_ORIGIN_EDGE_HOST
+    || productionHostHeader
+    || 'pet.686888666.xyz';
+  const publicBase = (process.env.SHOPTEST_PUBLIC_CDN_BASE || `https://${publicDomain}`).replace(/\/$/, '');
+  let publicHost;
+  try {
+    publicHost = new URL(publicBase).hostname;
+  } catch (error) {
+    soft('public CDN host reachable', false, `invalid SHOPTEST_PUBLIC_CDN_BASE=${publicBase}`);
+    return;
+  }
+  // Skip duplicate work when productionBase already is the public CDN URL.
+  let productionHost = '';
+  try {
+    productionHost = new URL(productionBase).hostname;
+  } catch (error) {
+    productionHost = '';
+  }
+  if (productionHost && productionHost === publicHost) {
+    // Already covered by probeProduction against the public host.
+    return;
+  }
+
+  const home = await request(publicBase + '/', {
+    timeout: 20000,
+    // Do not inherit origin Host override for the public CDN hostname.
+    headers: { Host: publicHost },
+    rejectUnauthorized: true,
+  });
+  const locationHeader = String(
+    (home.headers && (home.headers.location || home.headers.Location)) || '',
+  ).trim();
+  let locationHost = '';
+  try {
+    locationHost = locationHeader ? new URL(locationHeader, publicBase).hostname : '';
+  } catch (error) {
+    locationHost = '';
+  }
+  const bodyHint = String(home.body || '').slice(0, 160).replace(/\s+/g, ' ');
+  const looksLikeShopmx = /ShopMX|shop-frontend|main\.[a-f0-9]+\.js|Pet Store|pet essentials/i.test(
+    String(home.body || ''),
+  );
+  const foreignRedirect = Boolean(
+    locationHost
+    && locationHost !== publicHost
+    && !locationHost.endsWith(`.${publicHost}`)
+    && locationHost !== 'www.' + publicHost,
+  );
+  const cfHints = {
+    521: '521 web server down from CF path (wrong origin IP/port; origin may still serve 200 on public IP)',
+    522: '522 connection timed out to origin',
+    523: '523 origin unreachable',
+    525: '525 SSL handshake failed to origin',
+    526: '526 invalid origin certificate',
+  };
+  let failReason = '';
+  if (home.error) {
+    failReason = home.error;
+  } else if (foreignRedirect) {
+    failReason = `wrong-origin redirect Location=${locationHeader} (CF origin is not ShopMX ${process.env.SHOPTEST_ORIGIN_PUBLIC_IP || '161.153.37.250'})`;
+  } else if (home.status === 200 && !looksLikeShopmx) {
+    failReason = `status=200 but body is not ShopMX storefront${bodyHint ? ` body=${bodyHint}` : ''}`;
+  } else if (home.status !== 200) {
+    failReason = `${cfHints[home.status] || `status=${home.status || 0}`}${locationHeader ? ` Location=${locationHeader}` : ''}${bodyHint ? ` body=${bodyHint}` : ''}`;
+  }
+  const ok = home.status === 200 && looksLikeShopmx && !foreignRedirect;
+  const detail = ok
+    ? `status=200 base=${publicBase} storefront=ok`
+    : `${failReason} base=${publicBase}`;
+  soft('public CDN host reachable', ok, detail);
+  if (!ok) {
+    soft('public CDN CWV measurement', false, 'blocked — public CDN not customer-reachable ShopMX storefront');
+    await diagnoseCloudflareOriginGap({
+      status: home.status,
+      error: failReason || home.error || '',
+      body: home.body || '',
+      location: locationHeader,
+    });
+  } else {
+    // Soft CWV on real public host when reachable (ship-bar evidence).
+    let playwright;
+    try {
+      // eslint-disable-next-line global-require, import/no-extraneous-dependencies
+      playwright = require('playwright');
+    } catch (error) {
+      soft('public CDN CWV measurement', false, 'playwright unavailable');
+      return;
+    }
+    let browser;
+    try {
+      browser = await playwright.chromium.launch({ headless: true, args: ['--disable-dev-shm-usage'] });
+      const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+      const page = await context.newPage();
+      await page.goto(`${publicBase}/`, { waitUntil: 'domcontentloaded', timeout: 45000 });
+      await page.waitForTimeout(1500);
+      const cwv = await page.evaluate(() => {
+        let lcp = 0;
+        let cls = 0;
+        try {
+          const lcpEntries = performance.getEntriesByType('largest-contentful-paint') || [];
+          if (lcpEntries.length) lcp = lcpEntries[lcpEntries.length - 1].startTime || 0;
+          const shifts = performance.getEntriesByType('layout-shift') || [];
+          cls = shifts.reduce((sum, entry) => sum + ((entry && entry.hadRecentInput) ? 0 : (Number(entry.value) || 0)), 0);
+        } catch (err) { /* ignore */ }
+        return { lcp, cls };
+      });
+      soft(
+        'public CDN CWV measurement',
+        (!cwv.lcp || cwv.lcp < 4000) && cwv.cls < 0.1,
+        `lcp=${Math.round(cwv.lcp)}ms cls=${Number(cwv.cls).toFixed(3)} host=${publicHost}`,
+      );
+      await context.close();
+    } catch (error) {
+      soft(
+        'public CDN CWV measurement',
+        false,
+        error && error.message ? error.message : String(error),
+      );
+    } finally {
+      if (browser) {
+        try { await browser.close(); } catch (err) { /* ignore */ }
+      }
+    }
+  }
+}
 
 async function probeOriginEdgeDual() {
   // When public CDN returns 522/timeout, still measure the local origin edge so ship-prep
@@ -525,11 +666,30 @@ async function probeLocalWebhookContracts() {
     soft('local mercado webhook accepts signed payload contract', false, 'MERCADO_PAGO_WEBHOOK_SECRET not set');
   }
 
-  soft(
-    'real provider webhook traffic evidence',
-    false,
-    'requires live Stripe/Mercado dashboard deliveries against production webhook URLs with real secrets',
-  );
+  // Commercial evidence journal: signed accepts recorded by backend PaymentWebhookEvidenceService.
+  // PROVIDER_LIKE (non-loopback / known provider UA) is the ship-bar bar for real traffic.
+  try {
+    const evidence = await request(`${localUiBase}/api/payments/webhook-evidence`, { timeout: 6000 });
+    let payload = {};
+    try {
+      payload = evidence.body ? JSON.parse(evidence.body) : {};
+    } catch (_) {
+      payload = {};
+    }
+    const providerLike = Boolean(payload.anyProviderLikeSuccess);
+    const stripeCount = Number(payload.stripe && payload.stripe.successCount) || 0;
+    const mercadoCount = Number(payload.mercadoPago && payload.mercadoPago.successCount) || 0;
+    const detail = providerLike
+      ? `provider-like delivery recorded stripe=${stripeCount} mercado=${mercadoCount}`
+      : `no provider-like delivery yet (local signed ok: stripe=${stripeCount} mercado=${mercadoCount}); requires live Stripe/Mercado dashboard deliveries against production webhook URLs with real secrets`;
+    soft('real provider webhook traffic evidence', providerLike, detail);
+  } catch (error) {
+    soft(
+      'real provider webhook traffic evidence',
+      false,
+      `evidence endpoint unavailable: ${error && error.message ? error.message : String(error)}`,
+    );
+  }
 }
 
 
@@ -602,15 +762,41 @@ async function main() {
   console.log(`productionHost=${productionHostHeader || '(url-host)'} tlsInsecure=${productionTlsInsecure}`);
 
   await probeProduction();
+  await probePublicCdnShipBar();
   await probeOriginEdgeDual();
   await probeLocalWebhookContracts();
   await probeLocalMobileReleaseArtifact();
 
-  soft(
-    'real-device mobile E2E evidence',
-    false,
-    'run APK/WebView install on a physical device; local matrix covered by test:commercial-mobile-device-smoke',
-  );
+  // Optional operator-recorded physical-device evidence file.
+  try {
+    const fs = require('fs');
+    const path = require('path');
+    const evidencePath = process.env.SHOPTEST_DEVICE_E2E_EVIDENCE
+      || path.resolve(__dirname, '../public/downloads/device-e2e-evidence.json');
+    if (fs.existsSync(evidencePath)) {
+      const raw = JSON.parse(fs.readFileSync(evidencePath, 'utf8'));
+      const ok = raw && raw.passed === true && Boolean(raw.deviceId || raw.serial || raw.model);
+      soft(
+        'real-device mobile E2E evidence',
+        ok,
+        ok
+          ? `evidence=${evidencePath} device=${raw.deviceId || raw.serial || raw.model} at=${raw.recordedAt || '?'}`
+          : `evidence present but incomplete at ${evidencePath}`,
+      );
+    } else {
+      soft(
+        'real-device mobile E2E evidence',
+        false,
+        'run scripts/record-commercial-device-e2e.js on a physical device (adb); local matrix covered by test:commercial-mobile-device-smoke',
+      );
+    }
+  } catch (error) {
+    soft(
+      'real-device mobile E2E evidence',
+      false,
+      `device evidence check failed: ${error && error.message ? error.message : String(error)}`,
+    );
+  }
 
   const hardFails = results.filter((item) => !item.pass);
   const passed = results.filter((item) => item.pass).length;

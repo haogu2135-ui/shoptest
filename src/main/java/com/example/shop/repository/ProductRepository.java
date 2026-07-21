@@ -105,7 +105,9 @@ public interface ProductRepository extends JpaRepository<Product, Long>, JpaSpec
     Product findByIdForUpdate(@Param("id") Long id);
 
     @Modifying
-    @Query(value = "update products set stock = stock - :quantity, updated_at = current_timestamp"
+    @Query(value = "update products set stock = stock - :quantity,"
+            + " is_featured = case when (stock - :quantity) <= 0 then false else is_featured end,"
+            + " updated_at = current_timestamp"
             + " where id = :productId and stock >= :quantity",
             nativeQuery = true)
     int decreaseStock(@Param("productId") Long productId, @Param("quantity") Integer quantity);

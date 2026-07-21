@@ -227,7 +227,7 @@
 }
 
 .order-tracking-page__nextActionButtons .ant-btn {
-  min-height: 40px;
+  min-height: 44px;
   font-weight: 700;
 }
 
@@ -285,7 +285,7 @@
 }
 
 .order-tracking-page__assuranceActions .ant-btn {
-  min-height: 40px;
+  min-height: 44px;
   font-weight: 700;
 }
 
@@ -329,7 +329,7 @@
 .order-tracking-page--es .order-tracking-page__assuranceSignals span,
 .order-tracking-page--es .order-tracking-page__nextActionButtons .ant-btn,
 .order-tracking-page--es .order-tracking-page__assuranceActions .ant-btn {
-  min-height: 40px;
+  min-height: 44px;
   white-space: normal;
 }
 
@@ -598,7 +598,7 @@
   .order-tracking-page .ant-input,
   .order-tracking-page .ant-input-affix-wrapper,
   .order-tracking-page .ant-btn {
-    min-height: 38px;
+    min-height: 44px;
   }
 
   .order-tracking-page__journey,
@@ -655,7 +655,7 @@
   }
 
   .order-tracking-page__step span {
-    font-size: 11px;
+    font-size: 12px;
     line-height: 1.18;
   }
 
@@ -681,7 +681,7 @@
 
   .order-tracking-page__nextActionButtons .ant-btn,
   .order-tracking-page__assuranceActions .ant-btn {
-    min-height: 38px;
+    min-height: 44px;
   }
 
   .order-tracking-page__assuranceSignals span {
@@ -976,7 +976,7 @@
 }
 
 .order-tracking-page__emptyActions .ant-btn {
-  min-height: 40px;
+  min-height: 44px;
 }
 
 @media (max-width: 640px) {
@@ -1059,7 +1059,7 @@
 
   .order-tracking-page__emptyActions .ant-btn {
     width: 100%;
-    min-height: 40px;
+    min-height: 44px;
     white-space: normal;
   }
 }
@@ -1140,7 +1140,7 @@
   .order-tracking-page__nextActionButtons .ant-btn,
   .order-tracking-page__assuranceActions .ant-btn,
   .order-tracking-page__emptyActions .ant-btn {
-    min-height: 40px;
+    min-height: 44px;
     border-radius: 13px;
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
@@ -1346,7 +1346,7 @@
 
   .order-tracking-page__returnModal .ant-modal-footer .ant-btn {
     width: 100%;
-    min-height: 42px;
+    min-height: 44px;
     margin-inline-start: 0 !important;
   }
 }
@@ -1694,4 +1694,21 @@
 }
 .order-tracking-page__itemsEmptyActions .ant-btn {
   min-height: 44px;
+}
+
+
+/* Commercial mobile: order tracking labels stay >=12px. */
+@media (max-width: 780px) {
+  .order-tracking-page,
+  .order-tracking-page .ant-typography,
+  .order-tracking-page .ant-form-item-label > label,
+  .order-tracking-page .ant-btn {
+    font-size: inherit;
+  }
+
+  .order-tracking-page__hint,
+  .order-tracking-page .ant-typography-secondary {
+    font-size: 12px !important;
+    line-height: 1.3 !important;
+  }
 }

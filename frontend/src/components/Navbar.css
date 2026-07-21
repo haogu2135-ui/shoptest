@@ -253,7 +253,7 @@
 
 .shop-nav__brandCopy small {
   color: rgba(255, 255, 255, 0.74);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   letter-spacing: 0;
   text-transform: uppercase;
@@ -278,7 +278,7 @@
 
 .shop-nav__mega button,
 .shop-nav__megaButton {
-  min-height: 30px;
+  min-height: 44px;
   border-radius: 999px;
   padding: 4px 12px;
   max-width: 100%;
@@ -378,7 +378,7 @@
 
 .shop-nav__search .ant-btn {
   width: 62px;
-  min-height: 36px;
+  min-height: 44px;
   height: auto;
   padding-inline: 8px;
   border-radius: 6px !important;
@@ -466,7 +466,7 @@
 
 .shop-nav__actionSummary span {
   color: rgba(255, 255, 255, 0.72);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   line-height: 1.2;
 }
@@ -670,7 +670,7 @@
   min-width: 18px;
   height: 18px;
   line-height: 18px;
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .shop-nav__select-popup .shop-nav__select-option-current {
@@ -783,7 +783,8 @@
 
 @media (max-width: 780px) {
   .shop-nav__announcement {
-    font-size: 11px;
+    /* commercial announcement ticker stays >=12px */
+    font-size: 12px;
   }
 
   .shop-nav__ticker {
@@ -857,7 +858,7 @@
   .shop-nav__search .ant-btn {
     width: 48px;
     min-width: 46px;
-    min-height: 34px;
+    min-height: 44px;
     height: auto;
     padding-inline: 7px;
   }
@@ -882,7 +883,7 @@
   }
 
   .shop-nav__searchIntro span {
-    font-size: 11px;
+    font-size: 12px;
   }
 
   .shop-nav__mega {
@@ -907,7 +908,7 @@
   .shop-nav__mega button,
   .shop-nav__megaButton {
     flex: 0 0 auto;
-    min-height: 34px;
+    min-height: 44px;
     max-width: none;
     border: 1px solid #e4ebe4;
     border-radius: 8px;
@@ -1057,9 +1058,9 @@
 
   .shop-nav__mega button,
   .shop-nav__megaButton {
-    min-height: 32px;
+    min-height: 44px;
     padding-inline: 10px;
-    font-size: 11px;
+    font-size: 12px;
   }
 }
 
@@ -1107,13 +1108,13 @@
 
 @media (max-width: 780px) {
   .shop-nav--es .shop-nav__announcement {
-    font-size: 10px;
+    font-size: 12px;
   }
 
   .shop-nav--es .shop-nav__mega button,
   .shop-nav--es .shop-nav__megaButton {
     max-width: 136px;
-    min-height: 36px;
+    min-height: 44px;
     padding-inline: 10px;
     line-height: 1.15;
     white-space: normal;
@@ -1132,8 +1133,8 @@
   .shop-nav--es .shop-nav__mega button,
   .shop-nav--es .shop-nav__megaButton {
     max-width: 128px;
-    min-height: 34px;
-    font-size: 10.5px;
+    min-height: 44px;
+    font-size: 12px;
   }
 }
 
@@ -1580,7 +1581,7 @@
 
   .shop-nav__actions {
     align-items: center;
-    min-height: 34px;
+    min-height: 44px;
     gap: 4px;
   }
 
@@ -1621,7 +1622,7 @@
   .shop-nav__search .ant-btn {
     width: 52px;
     min-width: 52px;
-    min-height: 38px;
+    min-height: 44px;
     border-radius: 16px !important;
   }
 
@@ -1631,7 +1632,7 @@
   }
 
   .shop-nav__mega {
-    min-height: 42px;
+    min-height: 44px;
     margin-top: 2px;
     padding-block: 5px;
     border-radius: 18px;
@@ -1639,7 +1640,7 @@
 
   .shop-nav__mega button,
   .shop-nav__megaButton {
-    min-height: 32px;
+    min-height: 44px;
     padding-inline: 12px;
     font-size: 12px;
   }
@@ -1658,7 +1659,7 @@
   .shop-nav__mobile-auth {
     min-width: 50px;
     padding-inline: 8px;
-    font-size: 11px;
+    font-size: 12px;
   }
 
   .shop-nav__actions button[aria-label],
@@ -1844,13 +1845,13 @@
   }
 
   .shop-nav__mega {
-    min-height: 40px;
+    min-height: 44px;
     padding-block: 4px;
   }
 
   .shop-nav__mega button,
   .shop-nav__megaButton {
-    min-height: 30px;
+    min-height: 44px;
     padding-inline: 9px;
   }
 }
@@ -1900,7 +1901,7 @@
     max-width: 58vw;
     min-height: 27px;
     padding-inline: 8px;
-    font-size: 11px;
+    font-size: 12px;
   }
 }
 
@@ -1933,7 +1934,7 @@
     width: 36px;
     min-width: 36px;
     height: 36px;
-    min-height: 36px;
+    min-height: 44px;
     padding-inline: 0;
   }
 }
@@ -1946,7 +1947,7 @@
     width: 36px;
     min-width: 36px;
     height: 36px;
-    min-height: 36px;
+    min-height: 44px;
   }
 }
 
@@ -2082,7 +2083,7 @@
   .shop-nav__bottomItem {
     min-height: 46px;
     border-radius: 14px;
-    font-size: 11px;
+    font-size: 12px;
   }
 
   .shop-nav__bottomItem .anticon,
@@ -2102,7 +2103,7 @@
   }
 
   .shop-nav__bottomItem {
-    min-height: 42px;
+    min-height: 44px;
     gap: 0;
     padding: 4px 2px;
   }
@@ -2133,7 +2134,7 @@
   .shop-nav__search .ant-input-suffix,
   .shop-nav__search .ant-input-clear-icon {
     min-width: 34px;
-    min-height: 34px;
+    min-height: 44px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -2186,7 +2187,7 @@
   }
 
   .shop-nav__actions {
-    min-height: 36px;
+    min-height: 44px;
     gap: 3px;
   }
 
@@ -2217,7 +2218,7 @@
   }
 
   .shop-nav__search .ant-btn {
-    min-height: 36px;
+    min-height: 44px;
     border-radius: 14px !important;
   }
 
@@ -2227,7 +2228,7 @@
 
   .shop-nav__mega {
     grid-row: 3;
-    min-height: 38px;
+    min-height: 44px;
     margin-top: 0;
     padding: 3px 30px 3px 4px;
     border-radius: 14px;
@@ -2235,7 +2236,7 @@
 
   .shop-nav__mega button,
   .shop-nav__megaButton {
-    min-height: 32px;
+    min-height: 44px;
     padding-inline: 10px;
   }
 }
@@ -2246,7 +2247,7 @@
   }
 
   .shop-nav__search .ant-input::placeholder {
-    font-size: 11px;
+    font-size: 12px;
   }
 }
 
@@ -2280,7 +2281,7 @@
   }
 
   .shop-nav__actions {
-    min-height: 34px;
+    min-height: 44px;
   }
 
   .shop-nav__search .ant-input-group {
@@ -2306,19 +2307,19 @@
   }
 
   .shop-nav__search .ant-btn {
-    min-height: 34px;
+    min-height: 44px;
     border-radius: 12px !important;
   }
 
   .shop-nav__mega {
-    min-height: 36px;
+    min-height: 44px;
     padding: 2px 28px 2px 4px;
     border-radius: 12px;
   }
 
   .shop-nav__mega button,
   .shop-nav__megaButton {
-    min-height: 34px;
+    min-height: 44px;
     padding-inline: 10px;
     line-height: 1.08;
   }
@@ -2339,7 +2340,7 @@
 @media (max-width: 430px) {
   .shop-nav__search .ant-input-affix-wrapper .ant-input {
     height: 34px;
-    min-height: 34px;
+    min-height: 44px;
     line-height: 34px;
   }
 }
@@ -2425,7 +2426,7 @@
     min-height: 44px;
     gap: 3px;
     padding-inline: 2px;
-    font-size: 9px;
+    font-size: 12px;
   }
 }
 
@@ -3225,7 +3226,7 @@ body.shop-mobile-app .shop-nav__bottomItem--active .ant-badge + span {
     display: -webkit-box;
     overflow: hidden;
     max-width: 100%;
-    font-size: 9px !important;
+    font-size: 12px !important;
     letter-spacing: 0;
     line-height: 1.08;
     text-overflow: clip;
@@ -3239,7 +3240,7 @@ body.shop-mobile-app .shop-nav__bottomItem--active .ant-badge + span {
 @media (max-width: 340px) {
   .shop-nav__bottomItem,
   body.shop-mobile-app .shop-nav__bottomItem {
-    font-size: 11px !important;
+    font-size: 12px !important;
   }
 }
 
@@ -3614,5 +3615,58 @@ body.shop-mobile-app .shop-nav .shop-nav__actions > .shop-nav__actionSummary {
   .shop-nav__mobile-authText {
     font-size: 12px !important;
     line-height: 1.15 !important;
+  }
+}
+
+
+/* Commercial residual floor: nav cart/wishlist/notification badge digits stay >=12px on mobile web. */
+@media (max-width: 780px) {
+  .shop-nav .ant-badge-count,
+  .shop-nav .ant-badge-count bdi,
+  .shop-nav .ant-scroll-number,
+  .shop-nav .ant-scroll-number-only,
+  .shop-nav .ant-scroll-number-only-unit,
+  .shop-nav .ant-scroll-number-only-unit.current,
+  .shop-nav__bottomBar .ant-badge-count,
+  .shop-nav__bottomBar .ant-badge-count bdi,
+  .shop-nav__bottomBar .ant-scroll-number,
+  .shop-nav__bottomBar .ant-scroll-number-only,
+  .shop-nav__bottomBar .ant-scroll-number-only-unit,
+  .shop-nav__actions .ant-badge-count,
+  .shop-nav__actions .ant-scroll-number-only-unit,
+  body:not(.shop-mobile-app) .shop-nav .ant-badge-count,
+  body:not(.shop-mobile-app) .shop-nav .ant-scroll-number-only-unit,
+  body.shop-mobile-app .shop-nav .ant-badge-count,
+  body.shop-mobile-app .shop-nav .ant-scroll-number-only-unit {
+    font-size: 12px !important;
+    line-height: 1 !important;
+  }
+
+  .shop-nav .ant-badge-count,
+  .shop-nav__bottomBar .ant-badge-count,
+  body:not(.shop-mobile-app) .shop-nav .ant-badge-count {
+    min-width: 18px !important;
+    height: 18px !important;
+    line-height: 18px !important;
+  }
+}
+
+
+/* Commercial residual floor: category mega labels stay >=12px on mobile for all locales (incl. es long labels). */
+@media (max-width: 780px) {
+  .shop-nav__mega button,
+  .shop-nav__megaButton,
+  .shop-nav--es .shop-nav__mega button,
+  .shop-nav--es .shop-nav__megaButton,
+  body:not(.shop-mobile-app) .shop-nav:not(.shop-nav--es) .shop-nav__mega button,
+  body:not(.shop-mobile-app) .shop-nav:not(.shop-nav--es) .shop-nav__megaButton,
+  body:not(.shop-mobile-app) .shop-nav.shop-nav--es .shop-nav__mega button,
+  body:not(.shop-mobile-app) .shop-nav.shop-nav--es .shop-nav__megaButton,
+  body.shop-mobile-app .shop-nav:not(.shop-nav--es) .shop-nav__mega button,
+  body.shop-mobile-app .shop-nav:not(.shop-nav--es) .shop-nav__megaButton,
+  body.shop-mobile-app .shop-nav.shop-nav--es .shop-nav__mega button,
+  body.shop-mobile-app .shop-nav.shop-nav--es .shop-nav__megaButton {
+    font-size: 12px !important;
+    line-height: 1.2 !important;
   }
 }

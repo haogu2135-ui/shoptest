@@ -94,7 +94,8 @@
 
     <update id="decreaseStock">
         UPDATE products
-        SET stock = stock - #{quantity}
+        SET stock = stock - #{quantity},
+            is_featured = CASE WHEN (stock - #{quantity}) &lt;= 0 THEN FALSE ELSE is_featured END
         WHERE id = #{productId} AND stock &gt;= #{quantity}
     </update>
 

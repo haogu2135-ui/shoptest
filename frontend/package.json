@@ -43,7 +43,8 @@
     "test:commercial-smoke": "node scripts/commercial-http-smoke.js",
     "test:commercial-browser-smoke": "node scripts/commercial-browser-smoke.js",
     "test:commercial-mobile-device-smoke": "node scripts/commercial-mobile-device-smoke.js",
-    "test:commercial-production-readiness": "node scripts/commercial-production-readiness.js"
+    "test:commercial-production-readiness": "node scripts/commercial-production-readiness.js",
+    "record:commercial-device-e2e": "node scripts/record-commercial-device-e2e.js"
   },
   "overrides": {
     "@adobe/css-tools": "4.0.0"

@@ -29,7 +29,7 @@
 
 .cart-drawer__heroStat strong {
   color: #124734;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0;
@@ -74,7 +74,7 @@
   border-radius: 50%;
   background: #ee4d2d;
   color: #ffffff;
-  font-size: 11px;
+  font-size: 12px;
   margin-top: 1px;
 }
 
@@ -172,7 +172,7 @@
 .cart-drawer__nextAction .ant-btn {
   min-width: 0;
   max-width: 112px;
-  min-height: 36px;
+  min-height: 44px;
   padding-inline: 10px;
   border-radius: 8px;
   font-weight: 800;
@@ -473,7 +473,7 @@
 
 .cart-drawer__syncText {
   display: block;
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.25;
 }
 
@@ -544,7 +544,7 @@
   border-radius: 8px;
   background: #f8fcf9;
   color: #124734;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   line-height: 1.2;
   overflow-wrap: anywhere;
@@ -590,7 +590,7 @@
 .cart-drawer--es .cart-drawer__express .ant-btn,
 .cart-drawer--es .cart-drawer__item .ant-btn,
 .cart-drawer--es .cart-drawer__footer .ant-btn {
-  min-height: 40px;
+  min-height: 44px;
   white-space: normal;
 }
 
@@ -796,7 +796,7 @@
   }
 
   .cart-drawer__heroStat span {
-    font-size: 10px;
+    font-size: 12px;
     line-height: 1.16;
   }
 
@@ -863,7 +863,7 @@
   }
 
   .cart-drawer__item .ant-btn {
-    min-height: 40px;
+    min-height: 44px;
     border-radius: 999px;
   }
 
@@ -897,7 +897,7 @@
   .cart-drawer__trustRow span {
     min-height: 30px;
     padding: 3px 4px;
-    font-size: 10px;
+    font-size: 12px;
   }
 }
 
@@ -1151,7 +1151,7 @@
 
   .cart-drawer__footerHint {
     margin-top: 6px;
-    font-size: 11px;
+    font-size: 12px;
   }
 }
 
@@ -1195,7 +1195,7 @@
 
   .cart-drawer__item .ant-input-number,
   .cart-drawer__item .ant-btn {
-    min-height: 38px;
+    min-height: 44px;
   }
 
   .cart-drawer__item .ant-list-item-action {
@@ -1265,8 +1265,8 @@
 
   .cart-drawer__root .cart-drawer__trustRow span {
     justify-content: flex-start;
-    min-height: 40px;
-    padding: 7px 10px;
+    min-height: 44px;
+    padding: 8px 10px;
     font-size: 12px;
     overflow-wrap: normal;
     text-align: left;
@@ -1823,7 +1823,7 @@
   }
 
   .cart-drawer__heroStat strong {
-    font-size: 10px;
+    font-size: 12px;
     line-height: 1.15;
   }
 
@@ -1902,7 +1902,7 @@
   }
 
   .cart-drawer__itemAction.ant-btn {
-    min-height: 38px;
+    min-height: 44px;
     border-radius: 9px !important;
   }
 
@@ -1940,7 +1940,7 @@
   .cart-drawer__trustRow span {
     min-height: 28px;
     padding: 3px;
-    font-size: 10px;
+    font-size: 12px;
   }
 }
 
@@ -1955,11 +1955,11 @@
   }
 
   .cart-drawer__heroStat strong {
-    font-size: 9px;
+    font-size: 12px;
   }
 
   .cart-drawer__heroStat span {
-    font-size: 11px;
+    font-size: 12px;
   }
 
   .cart-drawer__item .ant-list-item-meta {
@@ -2302,7 +2302,7 @@
   .cart-drawer__stats,
   .cart-drawer__footerHint,
   .cart-drawer__itemAction.ant-btn > span:not(.anticon):not(.ant-btn-icon) {
-    min-height: 34px !important;
+    min-height: 44px !important;
     font-size: max(12px, 1em) !important;
     line-height: 1.25 !important;
   }
@@ -2389,7 +2389,7 @@
     justify-content: flex-start;
     min-height: 34px !important;
     padding: 6px 8px;
-    font-size: 11px !important;
+    font-size: 12px !important;
     line-height: 1.2 !important;
     overflow-wrap: normal;
     text-align: left;
@@ -2445,4 +2445,26 @@
 
 .cart-drawer__emptyActions .ant-btn {
   min-height: 44px;
+}
+
+
+/* Commercial residual floor: cart drawer hero/subtotal/trust labels stay >=12px. */
+@media (max-width: 780px) {
+  .cart-drawer__heroStat strong,
+  .cart-drawer__heroStat span,
+  .cart-drawer__subtotal,
+  .cart-drawer__subtotal strong,
+  .cart-drawer__subtotal span,
+  .cart-drawer__trustRow span,
+  .cart-drawer__shippingStatus,
+  .cart-drawer__shippingText .ant-typography,
+  .cart-drawer .cart-drawer__heroStat strong,
+  .cart-drawer .cart-drawer__heroStat span,
+  .cart-drawer .cart-drawer__trustRow span,
+  .cart-drawer__root .cart-drawer__heroStat strong,
+  .cart-drawer__root .cart-drawer__heroStat span,
+  .cart-drawer__root .cart-drawer__trustRow span {
+    font-size: 12px !important;
+    line-height: 1.2 !important;
+  }
 }

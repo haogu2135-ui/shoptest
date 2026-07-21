@@ -81,6 +81,7 @@ public class SecurityConfig {
             .antMatchers(HttpMethod.GET, "/home/products", "/home/products/**").permitAll()
             .antMatchers(HttpMethod.GET, "/payment", "/payment/").permitAll()
             .antMatchers(HttpMethod.GET, "/payment/channels", "/payments/channels").permitAll()
+            .antMatchers(HttpMethod.GET, "/payment/webhook-evidence", "/payments/webhook-evidence").permitAll()
             .antMatchers(HttpMethod.POST, "/payment/guest/order/*", "/payment/guest/order/**", "/payments/guest/order/*", "/payments/guest/order/**").permitAll()
             .antMatchers("/auth/login", "/auth/register", "/auth/forgot-password", "/auth/password-reset-code", "/auth/email-code", "/auth/email-login", "/auth/refresh").permitAll()
             .antMatchers("/ws/support").permitAll()

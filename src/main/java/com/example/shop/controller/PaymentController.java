@@ -16,6 +16,7 @@ import com.example.shop.service.IpBlacklistService;
 import com.example.shop.service.OrderService;
 import com.example.shop.service.PaymentChannelRecommendationService;
 import com.example.shop.service.PaymentService;
+import com.example.shop.service.PaymentWebhookEvidenceService;
 import com.example.shop.service.SecurityAuditLogService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -36,6 +37,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class PaymentController {
     private final PaymentService paymentService;
+    private final PaymentWebhookEvidenceService webhookEvidenceService;
     private final OrderService orderService;
     private final SecurityAuditLogService auditLogService;
     private final PaymentChannelConfig paymentChannelConfig;
@@ -215,6 +217,9 @@ public class PaymentController {
             auditLogService.record("STRIPE_WEBHOOK", "SUCCESS", null, null, null,
                     "PAYMENT", payment != null ? payment.getId() : null, request,
                     "Stripe webhook accepted", null);
+            if (webhookEvidenceService != null) {
+                webhookEvidenceService.recordSuccess(PaymentWebhookEvidenceService.CHANNEL_STRIPE, request);
+            }
             return ResponseEntity.ok(Map.of("received", true));
         } catch (IllegalArgumentException e) {
             auditLogService.record("STRIPE_WEBHOOK", "FAILURE", null, null, null, "PAYMENT", null, request, e.getMessage(), null);
@@ -246,6 +251,9 @@ public class PaymentController {
             auditLogService.record("MERCADO_PAGO_WEBHOOK", "SUCCESS", null, null, null,
                     "PAYMENT", payment != null ? payment.getId() : null, request,
                     "Mercado Pago webhook accepted", null);
+            if (webhookEvidenceService != null) {
+                webhookEvidenceService.recordSuccess(PaymentWebhookEvidenceService.CHANNEL_MERCADO, request);
+            }
             return ResponseEntity.ok(Map.of("received", true));
         } catch (IllegalArgumentException e) {
             auditLogService.record("MERCADO_PAGO_WEBHOOK", "FAILURE", null, null, null, "PAYMENT", null, request, e.getMessage(), null);
@@ -449,4 +457,17 @@ public class PaymentController {
         }
         return null;
     }
+
+    @GetMapping("/webhook-evidence")
+    public ResponseEntity<?> webhookEvidence() {
+        if (webhookEvidenceService == null) {
+            return ResponseEntity.ok(Map.of(
+                    "stripe", Map.of("successCount", 0),
+                    "mercadoPago", Map.of("successCount", 0),
+                    "anyProviderLikeSuccess", false
+            ));
+        }
+        return ResponseEntity.ok(webhookEvidenceService.snapshot());
+    }
+
 }

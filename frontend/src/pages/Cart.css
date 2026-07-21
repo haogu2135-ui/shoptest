@@ -41,7 +41,7 @@
 
 .cart-page--es .cart-page__savedActions .ant-btn,
 .cart-page--es .cart-page__summary .ant-btn-primary {
-  min-height: 42px;
+  min-height: 44px;
   white-space: normal;
 }
 
@@ -83,7 +83,7 @@
 .cart-page--es .cart-page__readinessActions .ant-btn,
 .cart-page--es .cart-page__nextAction .ant-btn,
 .cart-page--es .cart-page__summary .ant-btn-primary {
-  min-height: 42px;
+  min-height: 44px;
   height: auto;
   white-space: normal;
   line-height: 1.15;
@@ -192,7 +192,7 @@
 .cart-page--zh .cart-page__nextAction .ant-btn,
 .cart-page--zh .cart-page__savedActions .ant-btn,
 .cart-page--zh .cart-page__summary .ant-btn-primary {
-  min-height: 42px;
+  min-height: 44px;
   height: auto;
   line-height: 1.15;
   white-space: normal;
@@ -547,7 +547,7 @@
 }
 
 .cart-page__emptySignal {
-  min-height: 34px;
+  min-height: 44px;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -619,7 +619,7 @@
   width: 36px;
   height: 36px;
   min-width: 36px;
-  min-height: 36px;
+  min-height: 44px;
   padding: 0;
 }
 
@@ -1467,7 +1467,7 @@
   }
 
   .cart-page__savedActions .ant-btn {
-    min-height: 38px;
+    min-height: 44px;
   }
 
   .cart-page__savedItem img {
@@ -1895,7 +1895,7 @@
 
   .cart-page__heroStat strong,
   .cart-page__summaryStripCard strong {
-    font-size: 11px;
+    font-size: 12px;
     line-height: 1.15;
   }
 
@@ -1933,7 +1933,7 @@
 
   .cart-page__mobileItemBottom .ant-btn {
     width: 100%;
-    min-height: 38px;
+    min-height: 44px;
   }
 
   .cart-page__mobileItemBottom .ant-btn:nth-of-type(1) {
@@ -1979,7 +1979,7 @@
   .cart-page--es .cart-page__summaryStripCard strong {
     display: -webkit-box;
     overflow: hidden;
-    font-size: 10px;
+    font-size: 12px;
     line-height: 1.2;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 2;
@@ -2013,7 +2013,7 @@
   .cart-page__mobileItemBottom .ant-btn {
     min-width: 0;
     padding-inline: 7px;
-    font-size: 11px;
+    font-size: 12px;
   }
 
   .cart-page__mobileItemBottom .ant-btn-dangerous {
@@ -2147,7 +2147,7 @@
 
   .cart-page__mobileItemBottom .ant-btn {
     grid-row: 2;
-    min-height: 36px;
+    min-height: 44px;
   }
 
   .cart-page__mobileItemBottom .ant-btn:not(.ant-btn-dangerous) {
@@ -2174,7 +2174,7 @@
   }
 
   .cart-page__mobileItemBottom .ant-btn {
-    min-height: 34px;
+    min-height: 44px;
   }
 }
 
@@ -2262,7 +2262,7 @@
   .cart-page__mobileItemBottom .ant-btn:not(.ant-btn-dangerous) {
     grid-column: 1 / span 2;
     width: 100%;
-    min-height: 38px;
+    min-height: 44px;
     background: #fff7f0;
     color: #c73719;
     font-weight: 800;
@@ -2361,7 +2361,7 @@
   }
 
   .cart-page__emptyEyebrow {
-    font-size: 11px;
+    font-size: 12px;
   }
 
   .cart-page__emptyCopy h1.ant-typography,
@@ -2386,7 +2386,7 @@
   }
 
   .cart-page__emptyActions .ant-btn {
-    min-height: 42px;
+    min-height: 44px;
     padding-inline: 8px;
     font-size: 12px;
   }
@@ -2398,11 +2398,11 @@
   }
 
   .cart-page__emptySignal {
-    min-height: 32px;
+    min-height: 44px;
     flex: 1 1 142px;
     justify-content: center;
     padding: 6px 8px;
-    font-size: 11px;
+    font-size: 12px;
   }
 }
 
@@ -2412,9 +2412,9 @@
   }
 
   .cart-page__emptyActions .ant-btn {
-    min-height: 40px;
+    min-height: 44px;
     padding-inline: 6px;
-    font-size: 11px;
+    font-size: 12px;
   }
 
   .cart-page__emptySignal {
@@ -3478,7 +3478,7 @@
 }
 
 .cart-page__savedEmptyActions .ant-btn {
-  min-height: 40px;
+  min-height: 44px;
 }
 
 
@@ -3496,11 +3496,42 @@
   }
 
   .cart-page__emptySignal {
-    min-height: 36px !important;
+    min-height: 44px !important;
   }
 
   .cart-page__emptyActions .ant-btn {
     min-height: 44px !important;
     font-size: 12px !important;
+  }
+}
+
+
+/* Commercial residual floor: cart hero/summary uppercase labels stay >=12px when cart has items. */
+@media (max-width: 780px) {
+  .cart-page__heroStat strong,
+  .cart-page__heroStat span,
+  .cart-page__summaryStripCard strong,
+  .cart-page__summaryStripCard span,
+  .cart-page__summaryProgress .ant-typography,
+  .cart-page__summaryProgress > .ant-typography,
+  .cart-page__summary .ant-typography,
+  .cart-page__savedCard .ant-card-head-title,
+  .cart-page__savedCard .ant-card-extra,
+  .cart-page__savedReminder .ant-typography,
+  .cart-page__emptyEyebrow,
+  .cart-page__emptySignal,
+  .cart-page__emptySignalText,
+  .cart-page--es .cart-page__heroStat strong,
+  .cart-page--es .cart-page__summaryStripCard strong,
+  body:not(.shop-mobile-app) .cart-page .cart-page__heroStat strong,
+  body:not(.shop-mobile-app) .cart-page .cart-page__heroStat span,
+  body:not(.shop-mobile-app) .cart-page .cart-page__summaryStripCard strong,
+  body:not(.shop-mobile-app) .cart-page .cart-page__summaryStripCard span,
+  body.shop-mobile-app .shop-app-shell--cart .cart-page__heroStat strong,
+  body.shop-mobile-app .shop-app-shell--cart .cart-page__heroStat span,
+  body.shop-mobile-app .shop-app-shell--cart .cart-page__summaryStripCard strong,
+  body.shop-mobile-app .shop-app-shell--cart .cart-page__summaryStripCard span {
+    font-size: 12px !important;
+    line-height: 1.2 !important;
   }
 }

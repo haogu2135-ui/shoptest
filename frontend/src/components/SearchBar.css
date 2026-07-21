@@ -19,7 +19,7 @@
 }
 
 .shop-search-bar__input.ant-input-affix-wrapper {
-  min-height: 40px;
+  min-height: 44px;
   border-radius: 999px;
 }
 
@@ -39,7 +39,7 @@
   }
 
   .shop-search-bar__input.ant-input-affix-wrapper {
-    min-height: 38px;
+    min-height: 44px;
     padding-inline: 12px;
     -webkit-tap-highlight-color: transparent;
   }
@@ -53,7 +53,7 @@
   }
 
   .shop-search-bar__input.ant-input-affix-wrapper {
-    min-height: 42px;
+    min-height: 44px;
     border-color: rgba(18, 71, 52, 0.12);
     background: rgba(255, 255, 255, 0.98);
     box-shadow: 0 8px 20px rgba(18, 71, 52, 0.08);

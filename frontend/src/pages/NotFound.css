@@ -98,3 +98,21 @@
   min-height: 44px;
   touch-action: manipulation;
 }
+
+
+/* Commercial: 404 primary title is a real h1. */
+.not-found-page__title,
+.not-found-page .ant-result-title h1 {
+  margin: 0 !important;
+  color: #173f2b !important;
+  font-size: 28px !important;
+  font-weight: 800 !important;
+  line-height: 1.2 !important;
+}
+
+@media (max-width: 780px) {
+  .not-found-page__title,
+  .not-found-page .ant-result-title h1 {
+    font-size: 24px !important;
+  }
+}

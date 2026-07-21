@@ -130,7 +130,7 @@
   }
 
   .payment-modal__eyebrow {
-    font-size: 10px;
+    font-size: 12px;
     line-height: 1.35;
   }
 
@@ -148,7 +148,7 @@
     flex: 0 0 auto;
     max-width: 180px;
     overflow: hidden;
-    font-size: 10px;
+    font-size: 12px;
     line-height: 1.35;
     text-overflow: ellipsis;
   }
@@ -444,5 +444,24 @@
 
   .payment-modal__summary .ant-typography-secondary {
     color: #40564a;
+  }
+}
+
+
+/* Commercial residual floor: payment channel/microcopy stays >=12px on mobile. */
+@media (max-width: 780px) {
+  .payment-method-card,
+  .payment-method-card .ant-typography,
+  .payment-method-card .ant-tag,
+  .payment-channel,
+  .payment-channel .ant-typography,
+  .payment-channel .ant-tag,
+  .payment-instructions,
+  .payment-instructions .ant-typography,
+  .payment-instructions .ant-tag,
+  .payment-status,
+  .payment-status .ant-typography {
+    font-size: 12px !important;
+    line-height: 1.25 !important;
   }
 }

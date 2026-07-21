@@ -3,7 +3,7 @@ import { Alert, Button, Modal, Radio, Space, Tag, Typography, message } from 'an
 import { SafetyCertificateOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import { paymentApi } from '../api';
 import { useLanguage } from '../i18n';
-import { createPaymentMethodOptions, PaymentMethod, paymentMethodLabel } from '../utils/paymentMethods';
+import { createPaymentMethodOptions, filterPaymentChannelsForMarket, PaymentMethod, paymentMethodLabel } from '../utils/paymentMethods';
 import { useMarket } from '../hooks/useMarket';
 import { getApiErrorMessage } from '../utils/apiError';
 import type { PaymentChannel } from '../types';
@@ -12,8 +12,10 @@ import '../styles/mobile-page-contrast.css';
 import { navigateToCommercialPaymentUrl } from '../utils/paymentRecovery';
 
 const { Text, Title } = Typography;
-const getDefaultPaymentMethod = (channels: PaymentChannel[]) =>
-    channels.find((channel) => channel.recommended)?.code || channels[0]?.code || '';
+const getDefaultPaymentMethod = (channels: PaymentChannel[], currency: string) => {
+    const marketChannels = filterPaymentChannelsForMarket(channels, { currency });
+    return marketChannels.find((channel) => channel.recommended)?.code || marketChannels[0]?.code || '';
+};
 
 interface PaymentProps {
     amount: number;
@@ -38,19 +40,23 @@ export const Payment: React.FC<PaymentProps> = ({
     const [paymentChannelsError, setPaymentChannelsError] = useState('');
     const [loading, setLoading] = useState(false);
     const { t, language } = useLanguage();
-    const { formatMoney } = useMarket();
+    const { formatMoney, currency } = useMarket();
     const languageRef = useRef(language);
     const translateRef = useRef(t);
     languageRef.current = language;
     translateRef.current = t;
-    const paymentOptions = useMemo(() => createPaymentMethodOptions(t, paymentChannels), [paymentChannels, t]);
-    const selectedChannel = useMemo(
-        () => paymentChannels.find((channel) => channel.code === paymentMethod),
-        [paymentChannels, paymentMethod],
+    const paymentOptions = useMemo(() => createPaymentMethodOptions(t, paymentChannels, { currency }), [currency, paymentChannels, t]);
+    const marketPaymentChannels = useMemo(
+        () => filterPaymentChannelsForMarket(paymentChannels, { currency }),
+        [currency, paymentChannels],
     );
-    const activeMarkets = useMemo(() => Array.from(new Set(paymentChannels
+    const selectedChannel = useMemo(
+        () => marketPaymentChannels.find((channel) => channel.code === paymentMethod),
+        [marketPaymentChannels, paymentMethod],
+    );
+    const activeMarkets = useMemo(() => Array.from(new Set(marketPaymentChannels
         .map((channel) => String(channel.market || '').toUpperCase())
-        .filter(Boolean))), [paymentChannels]);
+        .filter(Boolean))), [marketPaymentChannels]);
     const formattedAmount = formatMoney(amount);
     const paymentTargetLabel = orderNo
         ? `${t('pages.paymentInstructions.orderNo')}: ${orderNo}`
@@ -73,7 +79,7 @@ export const Payment: React.FC<PaymentProps> = ({
             if (!isActive()) return;
             const channels = res.data || [];
             setPaymentChannels(channels);
-            setPaymentMethod(getDefaultPaymentMethod(channels));
+            setPaymentMethod(getDefaultPaymentMethod(channels, currency));
         } catch (error: unknown) {
             if (!isActive()) return;
             setPaymentChannels([]);
@@ -86,7 +92,7 @@ export const Payment: React.FC<PaymentProps> = ({
         } finally {
             if (isActive()) setPaymentChannelsLoading(false);
         }
-    }, []);
+    }, [currency]);
 
     useEffect(() => {
         let disposed = false;
@@ -96,12 +102,18 @@ export const Payment: React.FC<PaymentProps> = ({
         };
     }, [loadPaymentChannels]);
 
+    useEffect(() => {
+        if (!paymentChannels.length) return;
+        if (paymentMethod && paymentOptions.some((option) => option.value === paymentMethod)) return;
+        setPaymentMethod(getDefaultPaymentMethod(paymentChannels, currency));
+    }, [currency, paymentChannels, paymentMethod, paymentOptions]);
+
     const handlePayment = async () => {
         setLoading(true);
         try {
-            const safePaymentMethod = paymentChannels.some((channel) => channel.code === paymentMethod)
+            const safePaymentMethod = marketPaymentChannels.some((channel) => channel.code === paymentMethod)
                 ? paymentMethod
-                : getDefaultPaymentMethod(paymentChannels);
+                : getDefaultPaymentMethod(paymentChannels, currency);
             if (!safePaymentMethod) {
                 message.error(t('pages.checkout.paymentUnavailable'));
                 return;

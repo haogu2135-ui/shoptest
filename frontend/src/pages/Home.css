@@ -237,7 +237,8 @@
   border-radius: 999px;
   background: rgba(238, 77, 45, 0.18);
   color: #fff7f0;
-  font-size: 11px;
+  /* quick-panel and hero eyebrow labels stay >=12px */
+  font-size: 12px;
   font-weight: 800;
   text-transform: uppercase;
 }
@@ -279,7 +280,7 @@
 
 .shopee-hero__featuredActions .ant-btn {
   flex: 1 1 140px;
-  min-height: 40px;
+  min-height: 44px;
   border-radius: 8px;
   font-weight: 700;
 }
@@ -400,7 +401,7 @@
 }
 
 .shopee-home .ant-empty .ant-btn {
-  min-height: 40px;
+  min-height: 44px;
   border-radius: 8px;
   font-weight: 700;
   box-shadow: 0 6px 16px rgba(18, 71, 52, 0.12);
@@ -785,7 +786,7 @@
   display: block;
   overflow-wrap: anywhere;
   color: #173f2b;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   line-height: 13px;
   text-align: center;
@@ -1352,7 +1353,8 @@
   border-radius: 999px;
   background: #f8fcf9;
   color: #4f5d52;
-  font-size: 11px;
+  /* Commercial product signal labels stay >=12px */
+  font-size: 12px;
   font-weight: 800;
   line-height: 1.15;
   overflow-wrap: anywhere;
@@ -1360,7 +1362,7 @@
 
 .shopee-product__signal .anticon {
   flex: 0 0 auto;
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .shopee-product__signal--deal {
@@ -1422,7 +1424,7 @@
   min-height: 22px;
   padding: 2px 7px;
   border-radius: 999px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   margin-left: auto;
 }
@@ -1753,7 +1755,7 @@
 
   .shopee-hero__eyebrow {
     margin-bottom: 7px;
-    font-size: 11px;
+    font-size: 12px;
   }
 
   .shopee-hero p {
@@ -1781,7 +1783,7 @@
   }
 
   .shopee-hero__actions .ant-btn {
-    min-height: 38px;
+    min-height: 44px;
     height: auto;
     padding: 8px 12px;
     font-size: 13px;
@@ -1965,7 +1967,7 @@
   .pet-ugc__actions button {
     flex: 1 1 auto;
     justify-content: center;
-    min-height: 38px;
+    min-height: 44px;
   }
 
   .pet-ugc__upload {
@@ -2446,7 +2448,7 @@ body.shop-mobile-app .shop-app-shell .shopee-home .shopee-product__quickActions 
 
   .shopee-mobile-quick-panel__label {
     min-height: 30px;
-    font-size: 10px;
+    font-size: 12px;
     line-height: 12px;
   }
 
@@ -2948,7 +2950,7 @@ body.shop-mobile-app .shop-app-shell .shopee-home .shopee-product__quickActions 
 .shopee-story-card .ant-btn {
   position: relative;
   z-index: 1;
-  min-height: 34px;
+  min-height: 44px;
   padding-inline: 12px;
   border-radius: 999px;
   background: #f4fbf6;
@@ -3082,7 +3084,7 @@ body.shop-mobile-app .shop-app-shell .shopee-home .shopee-product__quickActions 
 .shopee-home--es .shopee-hero__actions .ant-btn,
 .shopee-home--es .shopee-hero__authActions .ant-btn,
 .shopee-home--es .shopee-hero__featuredActions .ant-btn {
-  min-height: 40px;
+  min-height: 44px;
   height: auto;
   white-space: normal;
   line-height: 1.15;
@@ -3176,7 +3178,7 @@ body.shop-mobile-app .shop-app-shell .shopee-home .shopee-product__quickActions 
 .shopee-hero__actions .ant-btn,
 .shopee-hero__authActions .ant-btn,
 .shopee-hero__featuredActions .ant-btn {
-  min-height: 42px;
+  min-height: 44px;
   padding-inline: 18px;
   font-weight: 900;
 }
@@ -3216,7 +3218,7 @@ body.shop-mobile-app .shop-app-shell .shopee-home .shopee-product__quickActions 
 
 .shopee-section__header button,
 .pet-ugc__actions button {
-  min-height: 36px;
+  min-height: 44px;
   white-space: normal;
 }
 
@@ -3437,7 +3439,7 @@ body.shop-mobile-app .shop-app-shell .shopee-home .shopee-product__quickActions 
 
   .shopee-hero__eyebrow {
     margin-bottom: 8px;
-    font-size: 10px;
+    font-size: 12px;
   }
 
   .shopee-hero h1 {
@@ -3463,7 +3465,7 @@ body.shop-mobile-app .shop-app-shell .shopee-home .shopee-product__quickActions 
   .shopee-hero__actions .ant-btn,
   .shopee-hero__authActions .ant-btn {
     min-width: 0;
-    min-height: 40px;
+    min-height: 44px;
     padding-inline: 10px;
   }
 
@@ -3537,7 +3539,7 @@ body.shop-mobile-app .shop-app-shell .shopee-home .shopee-product__quickActions 
 
   .shopee-mobile-quick-panel__label {
     min-height: 24px;
-    font-size: 10px;
+    font-size: 12px;
     line-height: 12px;
   }
 
@@ -3599,11 +3601,11 @@ body.shop-mobile-app .shop-app-shell .shopee-home .shopee-product__quickActions 
   .shopee-product__rating {
     min-height: 18px;
     padding: 1px 5px;
-    font-size: 10px;
+    font-size: 12px;
   }
 
   .shopee-product__reviewCount {
-    font-size: 10px;
+    font-size: 12px;
     line-height: 16px;
   }
 
@@ -3620,7 +3622,7 @@ body.shop-mobile-app .shop-app-shell .shopee-home .shopee-product__quickActions 
   .shopee-product__stockBadge,
   .shopee-product__reviewCount,
   .shopee-product__lastViewed {
-    font-size: 10px;
+    font-size: 12px;
     line-height: 1.1;
   }
 
@@ -3718,7 +3720,7 @@ body.shop-mobile-app .shop-app-shell .shopee-home .shopee-product__quickActions 
   .shopee-hero__actions .ant-btn,
   .shopee-hero__authActions .ant-btn {
     height: auto;
-    min-height: 38px;
+    min-height: 44px;
     padding: 7px 8px;
     line-height: 1.15;
     white-space: normal;
@@ -3910,7 +3912,7 @@ body.shop-mobile-app .shop-app-shell .shopee-home .shopee-product__quickActions 
 
   .shopee-hero__actions .ant-btn,
   .shopee-hero__authActions .ant-btn {
-    min-height: 36px;
+    min-height: 44px;
     padding-inline: 6px;
     font-size: 12px;
   }
@@ -4176,7 +4178,7 @@ body.shop-mobile-app .shop-app-shell .shopee-home .shopee-product__quickActions 
   .shopee-section__header button,
   .shopee-story-card .ant-btn,
   .pet-ugc__actions button {
-    min-height: 36px;
+    min-height: 44px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -4364,7 +4366,8 @@ body.shop-mobile-app .shop-app-shell .shopee-home .shopee-product__quickActions 
     min-height: 22px;
     max-width: 100%;
     padding-inline: 6px;
-    font-size: 10px;
+    /* Commercial product signal labels stay >=12px */
+    font-size: 12px;
   }
 
   .shopee-product__socialProof {
@@ -4451,7 +4454,7 @@ body.shop-mobile-app .shop-app-shell .shopee-home .shopee-product__quickActions 
 
   .shopee-hero__actions .ant-btn {
     min-width: 0;
-    min-height: 38px;
+    min-height: 44px;
     padding-inline: 10px;
     border-radius: 14px;
   }
@@ -4598,7 +4601,7 @@ body.shop-mobile-app .shop-app-shell .shopee-home .shopee-product__quickActions 
   }
 
   .shopee-mobile-quick-panel__label {
-    font-size: 10px;
+    font-size: 12px;
   }
 }
 
@@ -5165,7 +5168,7 @@ body.shop-mobile-app .shop-app-shell .shopee-home .shopee-hero__eyebrow {
   background: rgba(255, 247, 240, 0.14) !important;
   color: #fff7f0 !important;
   -webkit-text-fill-color: #fff7f0 !important;
-  font-size: 11px !important;
+  font-size: 12px !important;
   letter-spacing: 0 !important;
 }
 
@@ -5323,7 +5326,7 @@ body.shop-mobile-app .shop-app-shell .shopee-home .shopee-categories__name {
   min-height: 30px !important;
   color: #173f2b !important;
   -webkit-text-fill-color: #173f2b !important;
-  font-size: 11px !important;
+  font-size: 12px !important;
   font-weight: 800 !important;
   line-height: 15px !important;
 }
@@ -5493,7 +5496,7 @@ body.shop-mobile-app .shop-app-shell .shopee-home .shopee-categories__name {
   overflow: visible !important;
   color: #173f2b !important;
   -webkit-text-fill-color: #173f2b !important;
-  font-size: 11px !important;
+  font-size: 12px !important;
   font-weight: 800 !important;
   line-height: 15px !important;
   text-align: center !important;
@@ -5624,7 +5627,7 @@ body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .shopee-hom
 }
 
 .shopee-load-more__button {
-  min-height: 40px;
+  min-height: 44px;
   padding: 0 16px;
   border: 1px solid #d8e5dc;
   border-radius: 999px;
@@ -5817,11 +5820,14 @@ body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .shopee-hom
   }
 }
 
+/* Keep commercial quick-panel labels >=12px even on narrow phones (do not undercut residual floor). */
 @media (max-width: 360px) {
   .shopee-mobile-quick-panel__label,
-  .shopee-home--es .shopee-mobile-quick-panel__label {
-    font-size: 11px !important;
-    line-height: 1.15 !important;
+  .shopee-home--es .shopee-mobile-quick-panel__label,
+  body:not(.shop-mobile-app) .shopee-home .shopee-mobile-quick-panel__label,
+  body.shop-mobile-app .shop-app-shell .shopee-home .shopee-mobile-quick-panel__label {
+    font-size: 12px !important;
+    line-height: 1.2 !important;
   }
 }
 

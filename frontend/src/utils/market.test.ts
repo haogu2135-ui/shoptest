@@ -67,9 +67,15 @@ describe('market currency storage', () => {
     const setRuntimeCurrency = setCurrency as (currency: string) => void;
     setRuntimeCurrency('DOGE');
 
-    expect(localStorage.getItem('currency')).toBe('USD');
-    expect((listener.mock.calls[0][0] as CustomEvent).detail).toEqual({ currency: 'USD' });
+    expect(localStorage.getItem('currency')).toBe('MXN');
+    expect((listener.mock.calls[0][0] as CustomEvent).detail).toEqual({ currency: 'MXN' });
     window.removeEventListener('shop:currency-changed', listener);
+  });
+
+  it('defaults ShopMX commercial home market to MXN when no currency is stored', () => {
+    expect(detectDefaultCurrency()).toBe('MXN');
+    expect(getCurrency()).toBe('MXN');
+    expect(localStorage.getItem('currency')).toBe('MXN');
   });
 
   it('keeps shipping config and money formatting finite', () => {

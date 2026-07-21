@@ -799,6 +799,7 @@ public class ProductServiceImpl implements ProductService {
         if (product.getFreeShipping() != null) existingProduct.setFreeShipping(product.getFreeShipping());
         if (product.getFreeShippingThreshold() != null) existingProduct.setFreeShippingThreshold(product.getFreeShippingThreshold());
         if (product.getBestSellerRank() != null) existingProduct.setBestSellerRank(product.getBestSellerRank());
+        applyOutOfStockFeaturedHygiene(existingProduct);
         return existingProduct;
     }
 
@@ -806,6 +807,7 @@ public class ProductServiceImpl implements ProductService {
     @Transactional(rollbackFor = Exception.class)
     public Product save(Product product) {
         validateDirectProduct(product);
+        applyOutOfStockFeaturedHygiene(product);
         validateDirectProductNameUniqueness(product);
         try {
             Product saved = productRepository.save(product);
@@ -2313,6 +2315,15 @@ public class ProductServiceImpl implements ProductService {
         String message = String.valueOf(e.getMostSpecificCause() != null ? e.getMostSpecificCause().getMessage() : e.getMessage()).toLowerCase(Locale.ROOT);
         return message.contains("uk_products_category_name")
                 || (message.contains("duplicate") && message.contains("category") && message.contains("name"));
+    }
+
+    private void applyOutOfStockFeaturedHygiene(Product product) {
+        if (product == null) {
+            return;
+        }
+        if (product.getStock() != null && product.getStock() <= 0) {
+            product.setIsFeatured(false);
+        }
     }
 
     private void validateDirectProduct(Product product) {

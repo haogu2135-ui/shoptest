@@ -54,6 +54,8 @@ class OrderStockReservationRaceContractTest {
                 "guest checkout should reserve stock only after locked product loading");
         assertTrue(orderService.contains("productRepository.decreaseStock(product.getId(), quantity)"),
                 "simple product stock should be decremented with the atomic repository update");
+        assertTrue(orderService.contains("product.setIsFeatured(false)"),
+                "sold-out reservations should clear featured so OOS SKUs leave homepage rails");
         assertTrue(productRepository.contains("@Lock(LockModeType.PESSIMISTIC_WRITE)"),
                 "product repository should declare pessimistic row locking for checkout reservations");
         assertTrue(productRepository.contains("List<Product> findAllByIdForUpdate(@Param(\"ids\") List<Long> ids)"),

@@ -182,7 +182,7 @@
 }
 
 .pet-finder-page__nextStepActions .ant-btn {
-  min-height: 38px;
+  min-height: 44px;
   font-weight: 700;
   border-radius: 8px;
 }
@@ -463,13 +463,13 @@
 }
 
   .pet-finder-page__productCard .ant-btn {
-    min-height: 34px;
+    min-height: 44px;
     white-space: normal;
   }
 
   .pet-finder-page__productCard .ant-tag {
     margin-inline-end: 0;
-    font-size: 11px;
+    font-size: 12px;
     line-height: 1.35;
     white-space: normal;
   }
@@ -529,7 +529,7 @@
   .pet-finder-page .ant-select-selector,
   .pet-finder-page .ant-input,
   .pet-finder-page .ant-btn {
-    min-height: 38px;
+    min-height: 44px;
   }
 
   .pet-finder-page .ant-slider {
@@ -603,7 +603,7 @@
   }
 
   .pet-finder-page__signal span {
-    font-size: 11px;
+    font-size: 12px;
     line-height: 1.25;
     white-space: nowrap;
   }
@@ -631,7 +631,7 @@
   .pet-finder-page__nextStepMeta .ant-tag {
     max-width: 190px;
     overflow: hidden;
-    font-size: 11px;
+    font-size: 12px;
     text-overflow: ellipsis;
   }
 
@@ -672,7 +672,7 @@
   }
 
   .pet-finder-page__productCard .ant-card-actions .ant-btn {
-    min-height: 30px;
+    min-height: 44px;
     padding-inline: 6px;
     font-size: 12px;
   }
@@ -908,7 +908,7 @@
   .pet-finder-page__productCard .ant-card-actions .ant-btn {
     width: 100%;
     min-width: 0;
-    min-height: 34px;
+    min-height: 44px;
     padding-inline: 7px;
     line-height: 1.12;
   }
@@ -1007,7 +1007,7 @@
   .pet-finder-page .ant-input-affix-wrapper,
   .pet-finder-page .ant-select-selector,
   .pet-finder-page .ant-btn {
-    min-height: 40px;
+    min-height: 44px;
   }
 
   .pet-finder-page__signalGrid,
@@ -1482,3 +1482,14 @@
 .pet-finder-page__emptyCopy { display: grid; gap: 6px; }
 .pet-finder-page__emptyHint { color: rgba(16, 47, 34, 0.72); font-size: 13px; line-height: 1.45; }
 .pet-finder-page__empty .page-feedback__actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+
+
+/* Commercial mobile: pet finder labels stay >=12px. */
+@media (max-width: 780px) {
+  .pet-finder-page .ant-typography-secondary,
+  .pet-finder-page__insight,
+  .pet-finder-page .ant-tag {
+    font-size: 12px !important;
+    line-height: 1.3 !important;
+  }
+}

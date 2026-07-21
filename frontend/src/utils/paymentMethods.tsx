@@ -22,7 +22,24 @@ const normalizePaymentMarket = (market?: string) => {
     return ['MX', 'CN', 'GLOBAL'].includes(normalized) ? normalized : 'GLOBAL';
 };
 
-export const paymentMethodOrder: PaymentMethod[] = ['STRIPE', 'MERCADO_PAGO', 'OXXO', 'SPEI', 'CODI', 'MX_LOCAL_CARD', 'ALIPAY', 'WECHAT_PAY', 'UNIONPAY', 'PAYPAL', 'APPLE_PAY', 'GOOGLE_PAY', 'VISA', 'SHOP_PAY'];
+/** Market badge for conversion honesty (do not label GLOBAL rails as Mexico). */
+export const badgeKeyForPaymentMarket = (market?: string) => {
+    const normalized = normalizePaymentMarket(market);
+    if (normalized === 'CN') return 'pages.checkout.paymentChina';
+    if (normalized === 'MX') return 'pages.checkout.paymentMexico';
+    return 'pages.checkout.paymentGlobal';
+};
+
+/**
+ * Preserve backend geo ranking. Re-sorting by raw sortOrder elevates CN (70-90)
+ * above GLOBAL (100+) and undoes Mexico-first channel order from /payments/channels.
+ */
+export const preservePaymentChannelOrder = <T extends { sortOrder?: number; code?: string }>(
+    channels: T[],
+): T[] => channels.slice();
+
+
+export const paymentMethodOrder: PaymentMethod[] = ['MERCADO_PAGO', 'SPEI', 'OXXO', 'CODI', 'MX_LOCAL_CARD', 'PAYPAL', 'APPLE_PAY', 'GOOGLE_PAY', 'VISA', 'SHOP_PAY', 'STRIPE', 'ALIPAY', 'WECHAT_PAY', 'UNIONPAY'];
 
 const iconForPaymentMethod = (method: string) => {
     switch (method) {
@@ -45,23 +62,62 @@ const iconForPaymentMethod = (method: string) => {
     }
 };
 
-export const createPaymentMethodOptions = (t: (key: string) => string, channels: PaymentChannel[] = []): PaymentMethodOption[] =>
-    [...channels]
-        .sort((a, b) => (a.sortOrder ?? 100) - (b.sortOrder ?? 100))
+export type PaymentMethodChannelFilterOptions = {
+    /** Shopper currency (MXN hides CN rails for Mexico-first conversion). */
+    currency?: string;
+    /** Explicit home market override. */
+    homeMarket?: 'MX' | 'CN' | 'GLOBAL';
+    /** Force-hide non-home foreign rails (CN when home is MX). Default: true for MXN. */
+    hideForeignRails?: boolean;
+};
+
+const shouldHideForeignPaymentRails = (options?: PaymentMethodChannelFilterOptions) => {
+    if (options?.hideForeignRails === true) return true;
+    if (options?.hideForeignRails === false) return false;
+    const currency = String(options?.currency || '').trim().toUpperCase();
+    if (currency === 'MXN') return true;
+    if (options?.homeMarket === 'MX') return true;
+    return false;
+};
+
+/** Filter + preserve backend geo order for commercial checkout/profile payment UIs. */
+export const filterPaymentChannelsForMarket = (
+    channels: PaymentChannel[] = [],
+    options?: PaymentMethodChannelFilterOptions,
+): PaymentChannel[] => {
+    const hideForeign = shouldHideForeignPaymentRails(options);
+    return preservePaymentChannelOrder(
+        channels.filter((channel) => {
+            const market = normalizePaymentMarket(channel.market);
+            if (!['MX', 'CN', 'GLOBAL'].includes(market)) return false;
+            // Mexico-first: do not surface Alipay/WeChat/UnionPay for MXN shoppers.
+            if (hideForeign && market === 'CN') return false;
+            return true;
+        }),
+    );
+};
+
+export const createPaymentMethodOptions = (
+    t: (key: string) => string,
+    channels: PaymentChannel[] = [],
+    options?: PaymentMethodChannelFilterOptions,
+): PaymentMethodOption[] =>
+    filterPaymentChannelsForMarket(channels, options)
         .map((channel) => ({
             value: channel.code,
             label: <span>{iconForPaymentMethod(channel.code)} {channel.labelKey ? t(channel.labelKey) : channel.displayName}</span>,
         }));
 
-export const createPaymentMethodDetails = (channels: PaymentChannel[]): PaymentMethodDetail[] =>
-    channels
-        .filter((channel) => ['MX', 'CN', 'GLOBAL'].includes(normalizePaymentMarket(channel.market)))
-        .sort((a, b) => (a.sortOrder ?? 100) - (b.sortOrder ?? 100))
+export const createPaymentMethodDetails = (
+    channels: PaymentChannel[],
+    options?: PaymentMethodChannelFilterOptions,
+): PaymentMethodDetail[] =>
+    filterPaymentChannelsForMarket(channels, options)
         .map((channel) => ({
             value: channel.code,
             title: channel.displayName,
             descriptionKey: channel.descriptionKey || 'pages.checkout.paymentGenericDesc',
-            badgeKey: channel.badgeKey || (normalizePaymentMarket(channel.market) === 'CN' ? 'pages.checkout.paymentChina' : 'pages.checkout.paymentMexico'),
+            badgeKey: channel.badgeKey || badgeKeyForPaymentMarket(channel.market),
             market: normalizePaymentMarket(channel.market),
         }));
 

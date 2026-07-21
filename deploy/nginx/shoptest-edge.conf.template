@@ -1,3 +1,8 @@
+# Ensure CSP connect-src is always initialized (avoids nginx warn on odd Host paths).
+map $host $shop_csp_connect_src {
+    default "'self' https://cloudflareinsights.com wss://$host ${CSP_EXTRA_CONNECT_SRC}";
+}
+
 # Commercial edge: serve HTTP content (no force-HTTPS redirect).
 # Cloudflare Flexible SSL proxies client HTTPS -> origin HTTP. A 301 to HTTPS here
 # creates a CF edge loop and hangs public requests. Full/Strict still use :443 below.
@@ -17,8 +22,10 @@ server {
 }
 
 server {
-    listen 80;
-    server_name ${CANONICAL_SERVER_NAME};
+    # default_server: unknown Host / bare-IP probes still serve the storefront so Cloudflare
+    # origin health checks and mis-set Host headers do not 301-loop into 521/522.
+    listen 80 default_server;
+    server_name ${CANONICAL_SERVER_NAME} _;
 
     root /usr/share/nginx/html;
     index index.html;
@@ -194,8 +201,8 @@ server {
 }
 
 server {
-    listen ${HTTPS_LISTEN_PORT} ssl http2;
-    server_name ${CANONICAL_SERVER_NAME};
+    listen ${HTTPS_LISTEN_PORT} ssl http2 default_server;
+    server_name ${CANONICAL_SERVER_NAME} _;
 
     ssl_certificate ${SSL_CERTIFICATE};
     ssl_certificate_key ${SSL_CERTIFICATE_KEY};

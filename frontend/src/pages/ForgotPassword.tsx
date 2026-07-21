@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Alert, Button, Form, Input, message } from 'antd';
+import { Alert, Button, Form, Input, message, Typography } from 'antd';
 import type { InputRef } from 'antd/es/input';
 import { CheckCircleOutlined, LockOutlined, MailOutlined, SafetyCertificateOutlined, UserOutlined, EyeOutlined, EyeInvisibleOutlined } from '@ant-design/icons';
 import { Link, useNavigate } from 'react-router-dom';
@@ -17,6 +17,8 @@ import {
   isCommonPassword,
 } from '../utils/passwordPolicy';
 import './Login.css';
+
+const { Title } = Typography;
 
 interface ForgotPasswordForm {
   login: string;
@@ -243,7 +245,7 @@ const ForgotPassword: React.FC = () => {
       <section className="shopee-login-card shopee-login-card--reset">
         <div className="shopee-login-brand">
           <div className="shopee-login-mark">{t('common.brand')}</div>
-          <div className="shopee-login-subtitle">{t('pages.auth.resetPasswordTitle')}</div>
+          <Title level={1} className="shopee-login-subtitle shopee-login-subtitle--h1">{t('pages.auth.resetPasswordTitle')}</Title>
         </div>
         {!resetUnavailable ? (
           <div className="shopee-login-reset-guide" aria-label={t('pages.auth.resetGuideTitle')}>

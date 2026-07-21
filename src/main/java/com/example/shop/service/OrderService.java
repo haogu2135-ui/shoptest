@@ -589,6 +589,9 @@ public class OrderService {
                 throw new IllegalArgumentException("Insufficient stock for product: " + product.getName());
             }
             product.setStock(currentStock - quantity);
+            if (product.getStock() != null && product.getStock() <= 0) {
+                product.setIsFeatured(false);
+            }
             reservedScalarStock = true;
         }
         boolean reservedVariantStock = productVariantService.decreaseVariantStock(product, selectedSpecs, quantity);

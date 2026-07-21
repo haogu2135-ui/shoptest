@@ -101,7 +101,7 @@
 }
 
 .browsing-history__loadError .ant-alert-action .ant-btn {
-  min-height: 36px;
+  min-height: 44px;
   font-weight: 800;
 }
 
@@ -227,7 +227,7 @@
 }
 
 .browsing-history__recovery .ant-btn {
-  min-height: 40px;
+  min-height: 44px;
   font-weight: 700;
 }
 
@@ -280,7 +280,7 @@
 }
 
 .browsing-history__nextAction .ant-btn {
-  min-height: 40px;
+  min-height: 44px;
   font-weight: 700;
 }
 
@@ -457,7 +457,7 @@
 .browsing-history--es .browsing-history__tools .ant-btn,
 .browsing-history--es .browsing-history__nextAction .ant-btn,
 .browsing-history--es .browsing-history__mobileAction .ant-btn {
-  min-height: 40px;
+  min-height: 44px;
   white-space: normal;
 }
 
@@ -572,7 +572,7 @@
   .browsing-history__mobileAction > span > span,
   .browsing-history__mobileAction small {
     color: #627064;
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 700;
     line-height: 1.2;
     overflow: hidden;
@@ -887,7 +887,7 @@
   }
 
   .browsing-history__footer > div .ant-btn {
-    min-height: 40px;
+    min-height: 44px;
     min-width: 0;
     padding-inline: 10px;
   }
@@ -937,7 +937,7 @@
   }
 
   .browsing-history__eyebrow {
-    font-size: 11px;
+    font-size: 12px;
   }
 
   .browsing-history__title.ant-typography {
@@ -960,7 +960,7 @@
 
   .browsing-history__tools .ant-input-affix-wrapper,
   .browsing-history__tools .ant-btn {
-    min-height: 40px;
+    min-height: 44px;
   }
 
   .browsing-history__tools .ant-btn {
@@ -1029,13 +1029,13 @@
   .browsing-history__recovery-tags .ant-tag,
   .browsing-history__nextActionStats .ant-tag {
     min-height: 26px;
-    font-size: 11px;
+    font-size: 12px;
     line-height: 1.15;
   }
 
   .browsing-history__recovery .ant-btn,
   .browsing-history__nextAction .ant-btn {
-    min-height: 38px;
+    min-height: 44px;
   }
 
   .browsing-history__grid {
@@ -1066,7 +1066,7 @@
   .browsing-history__meta {
     gap: 5px;
     margin-top: 5px;
-    font-size: 11px;
+    font-size: 12px;
   }
 
   .browsing-history__footer {
@@ -1083,7 +1083,7 @@
   }
 
   .browsing-history__footer > div .ant-btn {
-    min-height: 36px;
+    min-height: 44px;
     padding-inline: 8px;
   }
 
@@ -1281,7 +1281,7 @@
   }
 
   .browsing-history__footer > div .ant-btn {
-    min-height: 34px;
+    min-height: 44px;
     padding-inline: 7px;
   }
 
@@ -1305,7 +1305,7 @@
   .browsing-history__tools .ant-input-suffix,
   .browsing-history__tools .ant-input-clear-icon {
     min-width: 34px;
-    min-height: 34px;
+    min-height: 44px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -1365,7 +1365,7 @@
   }
 
   .browsing-history--empty .browsing-history__eyebrow {
-    font-size: 10px;
+    font-size: 12px;
   }
 
   .browsing-history--empty .browsing-history__title.ant-typography {
@@ -1413,7 +1413,7 @@
 
   .browsing-history__emptyActions .ant-btn {
     width: 100%;
-    min-height: 40px;
+    min-height: 44px;
     border-radius: 999px;
     font-weight: 900;
     white-space: normal;
@@ -1490,9 +1490,9 @@
   }
 
   .browsing-history__emptyActions--guide .ant-btn {
-    min-height: 42px;
+    min-height: 44px;
     padding-inline: 6px;
-    font-size: 11px;
+    font-size: 12px;
   }
 }
 
@@ -1605,7 +1605,7 @@
 
   .browsing-history__footer .ant-btn {
     width: 100%;
-    min-height: 40px;
+    min-height: 44px;
     white-space: normal;
     line-height: 1.15;
   }
@@ -1633,7 +1633,7 @@
   }
 
   .browsing-history__footer .ant-btn {
-    min-height: 38px;
+    min-height: 44px;
     padding-inline: 8px;
     font-size: 12px;
   }
@@ -1742,7 +1742,7 @@
   }
 
   .browsing-history__tools .ant-input-affix-wrapper .ant-input {
-    min-height: 36px;
+    min-height: 44px;
   }
 
   .browsing-history__footer > div {
@@ -1879,5 +1879,23 @@
     background: #fff1ed !important;
     color: #7f1d12 !important;
     -webkit-text-fill-color: #7f1d12 !important;
+  }
+}
+
+
+/* Commercial mobile: browsing history labels stay >=12px. */
+@media (max-width: 780px) {
+  .browsing-history,
+  .browsing-history .ant-typography-secondary,
+  .browsing-history__assistant,
+  .browsing-history__chip,
+  .browsing-history__meta {
+    font-size: inherit;
+  }
+  .browsing-history .ant-typography-secondary,
+  .browsing-history__chip,
+  .browsing-history__meta {
+    font-size: 12px !important;
+    line-height: 1.3 !important;
   }
 }

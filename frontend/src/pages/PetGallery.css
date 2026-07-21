@@ -284,7 +284,7 @@
 }
 
 .pet-gallery-conversion__actions .ant-btn {
-  min-height: 40px;
+  min-height: 44px;
   font-weight: 700;
 }
 
@@ -478,7 +478,7 @@
 .pet-gallery-page--es .pet-gallery-action-card .ant-btn,
 .pet-gallery-page--es .pet-gallery-conversion__actions .ant-btn,
 .pet-gallery-page--es .pet-gallery-card__like {
-  min-height: 40px;
+  min-height: 44px;
   white-space: normal;
 }
 
@@ -741,7 +741,7 @@
   }
 
   .pet-gallery-hero__stats .ant-statistic-title {
-    font-size: 11px;
+    font-size: 12px;
     line-height: 1.25;
   }
 
@@ -846,7 +846,7 @@
   }
 
   .pet-gallery-hero__eyebrow {
-    font-size: 11px;
+    font-size: 12px;
   }
 
   .pet-gallery-hero__copy > .ant-typography:not(h1) {
@@ -870,7 +870,7 @@
   }
 
   .pet-gallery-hero__copy .ant-btn {
-    min-height: 38px;
+    min-height: 44px;
     padding-inline: 8px;
     white-space: normal;
   }
@@ -883,7 +883,7 @@
 
   .pet-gallery-hero__stats .ant-statistic-title {
     min-height: 24px;
-    font-size: 10px;
+    font-size: 12px;
   }
 
   .pet-gallery-hero__stats .ant-statistic-content {
@@ -907,7 +907,7 @@
   }
 
   .pet-gallery-toolbar .ant-btn {
-    min-height: 38px;
+    min-height: 44px;
     padding-inline: 8px;
     white-space: normal;
   }
@@ -974,9 +974,10 @@
     font-size: 18px;
   }
 
+  /* insight chips stay >=12px */
   .pet-gallery-insights__item span,
   .pet-gallery-conversion__signals span {
-    font-size: 11px;
+    font-size: 12px;
     line-height: 1.25;
   }
 
@@ -1000,7 +1001,7 @@
 
   .pet-gallery-action-card .ant-btn,
   .pet-gallery-conversion__actions .ant-btn {
-    min-height: 38px;
+    min-height: 44px;
     padding-inline: 8px;
     white-space: normal;
   }
@@ -1019,7 +1020,7 @@
 
   .pet-gallery-card__owner {
     padding: 4px 7px;
-    font-size: 11px;
+    font-size: 12px;
   }
 
   .pet-gallery-card__meta {
@@ -1028,7 +1029,7 @@
   }
 
   .pet-gallery-card__meta > .ant-typography {
-    font-size: 11px;
+    font-size: 12px;
     line-height: 1.3;
   }
 
@@ -1040,7 +1041,7 @@
 
   .pet-gallery-card__like {
     padding-inline: 7px;
-    font-size: 11px;
+    font-size: 12px;
   }
 
   .pet-gallery-card__delete,
@@ -1266,7 +1267,7 @@
 
   .pet-gallery-card__like {
     width: 100%;
-    min-height: 34px;
+    min-height: 44px;
     justify-content: flex-start;
     overflow: hidden;
     padding: 6px 9px;
@@ -1307,7 +1308,7 @@
   }
 
   .pet-gallery-preview__figure figcaption .ant-btn {
-    min-height: 40px;
+    min-height: 44px;
     overflow-wrap: anywhere;
     white-space: normal;
   }
@@ -1420,7 +1421,7 @@
 
   .pet-gallery-toolbar .ant-btn {
     width: 100%;
-    min-height: 40px;
+    min-height: 44px;
     white-space: normal;
   }
 

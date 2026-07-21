@@ -1055,7 +1055,7 @@
   }
 
   .shopee-login-card__stat span {
-    font-size: 11px;
+    font-size: 12px;
   }
 
   .shopee-login-trust {
@@ -1148,7 +1148,7 @@
 
   .shopee-login-panel__feature span,
   .shopee-login-panel__spotlightCard span {
-    font-size: 11px;
+    font-size: 12px;
     line-height: 1.3;
   }
 
@@ -1164,7 +1164,7 @@
   }
 
   .shopee-login-panel__actions .ant-btn {
-    min-height: 38px;
+    min-height: 44px;
     padding-inline: 10px;
     white-space: normal;
   }
@@ -1204,7 +1204,7 @@
   }
 
   .shopee-login-card__stat span {
-    font-size: 10px;
+    font-size: 12px;
     line-height: 1.2;
   }
 
@@ -1256,7 +1256,7 @@
     width: 76px;
     min-width: 76px;
     padding-inline: 5px;
-    font-size: 11px;
+    font-size: 12px;
   }
 
   .shopee-login-emailHint,
@@ -1366,7 +1366,7 @@
   }
 
   .shopee-login-codeButton {
-    font-size: 10px;
+    font-size: 12px;
   }
 }
 
@@ -1422,7 +1422,7 @@
   }
 
   .shopee-login-form .ant-btn {
-    min-height: 42px;
+    min-height: 44px;
     white-space: normal;
   }
 }
@@ -1652,7 +1652,7 @@
   .shopee-login-card .ant-input,
   .shopee-login-card .ant-input-affix-wrapper,
   .shopee-login-card .ant-btn-primary {
-    min-height: 42px;
+    min-height: 44px;
   }
 
   .shopee-login-card .ant-input,
@@ -1666,7 +1666,7 @@
   }
 
   .shopee-login-card .ant-input-group-addon .ant-btn {
-    min-height: 42px;
+    min-height: 44px;
     padding-inline: 10px;
     white-space: normal;
   }
@@ -1726,7 +1726,7 @@
 
   .shopee-login-quickLinks a,
   .shopee-login-quickLinks button {
-    font-size: 11px;
+    font-size: 12px;
   }
 }
 
@@ -1801,7 +1801,7 @@
   .shopee-login-card--reset .shopee-login-reset-guide__item span {
     display: -webkit-box;
     overflow: hidden;
-    font-size: 10px;
+    font-size: 12px;
     line-height: 1.2;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 2;
@@ -2062,7 +2062,7 @@
   .shopee-login-card .ant-input-affix-wrapper,
   .shopee-login-card .ant-input,
   .shopee-login-card .ant-btn {
-    min-height: 40px;
+    min-height: 44px;
   }
 }
 
@@ -2863,4 +2863,16 @@
     font-size: 12px !important;
     line-height: 1.25 !important;
   }
+}
+
+
+/* Commercial: forgot-password page uses Title h1 with login subtitle styling. */
+h1.shopee-login-subtitle,
+.shopee-login-subtitle--h1.ant-typography {
+  display: block;
+  margin: 0 !important;
+  color: inherit !important;
+  font-size: inherit !important;
+  font-weight: inherit !important;
+  line-height: inherit !important;
 }

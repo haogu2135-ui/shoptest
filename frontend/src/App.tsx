@@ -265,6 +265,22 @@ const LoadingFallback = () => {
     routeTitle = t('pages.orderTracking.title');
   } else if (path === '/coupons' || path.startsWith('/coupons/')) {
     routeTitle = t('pages.coupons.title');
+  } else if (path === '/wishlist' || path.startsWith('/wishlist/')) {
+    routeTitle = t('pages.wishlist.pageTitle');
+  } else if (path === '/profile' || path.startsWith('/profile')) {
+    routeTitle = t('pages.profile.title');
+  } else if (path === '/notifications' || path.startsWith('/notifications')) {
+    routeTitle = t('pages.notifications.title');
+  } else if (path === '/pet-finder' || path.startsWith('/pet-finder')) {
+    routeTitle = t('pages.petFinder.title');
+  } else if (path === '/compare' || path.startsWith('/compare')) {
+    routeTitle = t('pages.compare.title');
+  } else if (path === '/stock-alerts' || path.startsWith('/stock-alerts')) {
+    routeTitle = t('pages.stockAlerts.title');
+  } else if (path === '/history' || path.startsWith('/history')) {
+    routeTitle = t('pages.browsingHistory.title');
+  } else if (path === '/forgot-password' || path.startsWith('/forgot-password')) {
+    routeTitle = t('pages.auth.resetPasswordTitle');
   } else if (/^\/products\/[^/]+/.test(path)) {
     routeTitle = t('pages.productDetail.product');
   }
@@ -1478,6 +1494,7 @@ const App: React.FC = () => {
                 <Route path="stock-alerts" element={<StockAlerts />} />
                 <Route path="notifications" element={<Notifications />} />
                 <Route path="track-order" element={<OrderTracking />} />
+                <Route path="orders" element={<Navigate to="/profile?tab=orders" replace />} />
                 <Route path="payment/:orderNo" element={<PaymentInstructions />} />
                 <Route path="login" element={<Login />} />
                 <Route path="forgot-password" element={<ForgotPassword />} />

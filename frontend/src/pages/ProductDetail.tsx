@@ -1413,19 +1413,24 @@ const ProductDetail: React.FC = () => {
     {
       key: 'selection',
       icon: <CheckCircleOutlined />,
-      ready: !purchaseSelectionBlocked,
-      title: optionGroups.length === 0
-        ? t('pages.productDetail.decisionNoOptionsTitle')
-        : purchaseSelectionBlocked
-          ? t('pages.productDetail.decisionOptionsMissingTitle')
-          : t('pages.productDetail.decisionOptionsReadyTitle'),
-      text: optionGroups.length === 0
-        ? t('pages.productDetail.decisionNoOptionsText')
-        : hasUnavailableSelectedVariant
-          ? t('pages.productDetail.selectedVariantUnavailable')
-          : hasCompleteOptions
-            ? t('pages.productDetail.selectedVariantStock', { stock: stockLabel })
-            : t('pages.productDetail.selectedOptionsEmpty'),
+      // Commercial trust: sold-out SKUs must never claim "ready to add" / direct-add copy.
+      ready: !isOutOfStock && !purchaseSelectionBlocked,
+      title: isOutOfStock
+        ? t('pages.productDetail.decisionStockOutTitle')
+        : optionGroups.length === 0
+          ? t('pages.productDetail.decisionNoOptionsTitle')
+          : purchaseSelectionBlocked
+            ? t('pages.productDetail.decisionOptionsMissingTitle')
+            : t('pages.productDetail.decisionOptionsReadyTitle'),
+      text: isOutOfStock
+        ? t('pages.productDetail.decisionStockOutText')
+        : optionGroups.length === 0
+          ? t('pages.productDetail.decisionNoOptionsText')
+          : hasUnavailableSelectedVariant
+            ? t('pages.productDetail.selectedVariantUnavailable')
+            : hasCompleteOptions
+              ? t('pages.productDetail.selectedVariantStock', { stock: stockLabel })
+              : t('pages.productDetail.selectedOptionsEmpty'),
     },
     {
       key: 'stock',

@@ -36,6 +36,7 @@ class RepositoryNamedParameterContractTest {
         String petGalleryPhotoRepository = read("PetGalleryPhotoRepository.java");
 
         assertTrue(productRepository.contains("stock = stock - :quantity"));
+        assertTrue(productRepository.contains("is_featured = case when (stock - :quantity) <= 0 then false else is_featured end"));
         assertTrue(productRepository.contains("where id = :productId and stock >= :quantity"));
         assertTrue(productRepository.contains("@Param(\"productId\") Long productId"));
         assertTrue(productRepository.contains("@Param(\"quantity\") Integer quantity"));

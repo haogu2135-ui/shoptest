@@ -442,8 +442,8 @@ const Login: React.FC = () => {
     <main className="shopee-login-root">
       <section className="shopee-login-shell">
         <aside className="shopee-login-panel">
-          <Text className="shopee-login-panel__eyebrow">{t('pages.auth.loginTitle')}</Text>
-          <Title level={1}>{t('pages.auth.loginTrustTitle')}</Title>
+          <Text className="shopee-login-panel__eyebrow">{t('pages.auth.loginTrustTitle')}</Text>
+          <Title level={1}>{t('pages.auth.loginTitle')}</Title>
           <Text className="shopee-login-panel__subtitle">
             {guestCartCount > 0
               ? t('pages.auth.loginGuestCartHint', { count: guestCartCount })

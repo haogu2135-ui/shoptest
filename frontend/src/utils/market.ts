@@ -35,22 +35,22 @@ const writeStoredCurrency = (currency: CurrencyCode) => {
 };
 
 export const detectDefaultCurrency = (): CurrencyCode => {
-  if (typeof window === 'undefined') return 'USD';
+  // ShopMX is a Mexico-first storefront (pet.686888666.xyz, MXN catalog/shipping).
+  // Default to MXN so conversion recommends Mercado/OXXO/SPEI instead of USD/PayPal.
+  if (typeof window === 'undefined') return 'MXN';
   const stored = readStoredCurrency();
   if (isCurrencyCode(stored)) return stored;
 
-  const locale = navigator.language || '';
-  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
-  if (locale.toLowerCase().includes('mx') || timezone.includes('Mexico')) {
-    return 'MXN';
-  }
-  return 'USD';
+  // Persist home-market default so checkout, payments, and nav stay aligned across sessions.
+  const home: CurrencyCode = 'MXN';
+  writeStoredCurrency(home);
+  return home;
 };
 
 export const getCurrency = (): CurrencyCode => detectDefaultCurrency();
 
 export const setCurrency = (currency: CurrencyCode) => {
-  const nextCurrency = isCurrencyCode(currency) ? currency : 'USD';
+  const nextCurrency = isCurrencyCode(currency) ? currency : 'MXN';
   writeStoredCurrency(nextCurrency);
   dispatchDomEvent(CURRENCY_CHANGED_EVENT, { currency: nextCurrency });
 };

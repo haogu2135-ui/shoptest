@@ -254,7 +254,7 @@ const StockAlerts: React.FC = () => {
       <Card>
         <div className="stock-alerts__header">
           <div>
-            <Title level={2} style={{ margin: 0 }}>
+            <Title level={1} style={{ margin: 0 }}>
               <BellOutlined /> {t('pages.stockAlerts.title')}
             </Title>
             <Text type="secondary">

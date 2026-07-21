@@ -308,7 +308,7 @@
   .pet-personalized-assistant__eyebrow {
     max-width: 100%;
     padding: 3px 8px;
-    font-size: 10px;
+    font-size: 12px;
     line-height: 1.35;
   }
 
@@ -336,7 +336,7 @@
 
   .pet-personalized-assistant__actions .ant-btn {
     width: 100%;
-    min-height: 36px;
+    min-height: 44px;
     padding-inline: 8px;
     font-size: 12px;
     white-space: normal;
@@ -355,7 +355,7 @@
     flex: 0 0 auto;
     max-width: 220px;
     overflow: hidden;
-    font-size: 11px;
+    font-size: 12px;
     line-height: 1.35;
     text-overflow: ellipsis;
   }
@@ -413,7 +413,7 @@
 
   .pet-personalized-assistant__meta .ant-typography,
   .pet-personalized-assistant__meta .ant-tag {
-    font-size: 10px;
+    font-size: 12px;
     line-height: 1.3;
   }
 
@@ -426,9 +426,9 @@
   }
 
   .pet-personalized-assistant__foot .ant-btn {
-    min-height: 34px;
+    min-height: 44px;
     padding-inline: 8px;
-    font-size: 11px;
+    font-size: 12px;
     white-space: normal;
   }
 }
@@ -622,7 +622,7 @@
   }
 
   .pet-personalized-assistant__foot .ant-btn {
-    min-height: 40px;
+    min-height: 44px;
   }
 
   .pet-personalized-assistant__media img {

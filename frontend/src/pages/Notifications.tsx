@@ -322,7 +322,7 @@ const Notifications: React.FC = () => {
           className="notifications-page__authGate"
           description={(
             <div className="notifications-page__emptyCopy">
-              <div>{t('pages.notifications.authGateTitle')}</div>
+              <Title level={1}>{t('pages.notifications.authGateTitle')}</Title>
               <div className="notifications-page__emptyHint">{t('pages.notifications.authGateHint')}</div>
             </div>
           )}
@@ -371,6 +371,7 @@ const Notifications: React.FC = () => {
         aria-busy="true"
         aria-label={t('common.loading')}
       >
+        <Title level={1}>{t('pages.notifications.title')}</Title>
         <Spin size="large" />
       </div>
     );
@@ -381,7 +382,7 @@ const Notifications: React.FC = () => {
       <div className="notifications-page__header">
         <div className="notifications-page__title">
           <BellOutlined />
-          <Title level={3}>{t('pages.notifications.title')}</Title>
+          <Title level={1}>{t('pages.notifications.title')}</Title>
         </div>
         {notifications.some(n => !n.isRead) && (
           <Button
@@ -517,7 +518,7 @@ const Notifications: React.FC = () => {
           className="notifications-page__emptyPanel"
           description={(
             <div className="notifications-page__emptyCopy">
-              <div>{t('pages.notifications.empty')}</div>
+              <Title level={1}>{t('pages.notifications.empty')}</Title>
               <div className="notifications-page__emptyHint">{t('pages.notifications.emptyHint')}</div>
             </div>
           )}

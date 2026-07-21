@@ -9,9 +9,10 @@ import { useLanguage } from '../i18n';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useDocumentMeta } from '../hooks/useDocumentMeta';
 import { buildLoginUrl, buildLoginUrlFromWindow } from '../utils/authRedirect';
-import { createPaymentMethodDetails, createPaymentMethodOptions, paymentMethodLabel } from '../utils/paymentMethods';
+import { createPaymentMethodDetails, createPaymentMethodOptions, filterPaymentChannelsForMarket, paymentMethodLabel } from '../utils/paymentMethods';
 import { useAppConfig } from '../hooks/useAppConfig';
 import { useMarket } from '../hooks/useMarket';
+import { getCurrency } from '../utils/market';
 import './Profile.css';
 import dayjs from 'dayjs';
 import { formatSelectedSpecs } from '../utils/selectedSpecs';
@@ -85,12 +86,23 @@ const getProfileApiErrorCode = (error: unknown) => {
   return typeof code === 'string' ? code : '';
 };
 
-const getPreferredPaymentChannel = (channels: PaymentChannel[], preferred?: string | null) => {
+const getPreferredPaymentChannel = (
+  channels: PaymentChannel[],
+  preferred?: string | null,
+  currency: string = getCurrency(),
+) => {
   const normalizedPreferred = String(preferred || '').trim();
-  if (normalizedPreferred && (channels.length === 0 || channels.some((channel) => channel.code === normalizedPreferred))) {
-    return normalizedPreferred;
+  const marketChannels = filterPaymentChannelsForMarket(channels, { currency });
+  if (normalizedPreferred) {
+    if (marketChannels.some((channel) => channel.code === normalizedPreferred)) {
+      return normalizedPreferred;
+    }
+    // Preserve historical order channel so continue-pay can finish an existing charge.
+    if (channels.some((channel) => channel.code === normalizedPreferred)) {
+      return normalizedPreferred;
+    }
   }
-  return channels.find((channel) => channel.recommended)?.code || channels[0]?.code || '';
+  return marketChannels.find((channel) => channel.recommended)?.code || marketChannels[0]?.code || '';
 };
 
 const useImageFallback = (event: React.SyntheticEvent<HTMLImageElement>) => {
@@ -1233,9 +1245,9 @@ const Profile: React.FC = () => {
       ].some((value) => String(value || '').toLowerCase().includes(normalizedSearchText));
     });
   const dateLocale = language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US';
-  const { formatMoney } = useMarket();
-  const paymentOptions = createPaymentMethodOptions(t, paymentChannels);
-  const paymentMethodDetails = createPaymentMethodDetails(paymentChannels);
+  const { formatMoney, currency } = useMarket();
+  const paymentOptions = createPaymentMethodOptions(t, paymentChannels, { currency });
+  const paymentMethodDetails = createPaymentMethodDetails(paymentChannels, { currency });
   const selectedPaymentMethodDetail = paymentMethodDetails.find((method) => method.value === selectedPaymentMethod);
   const selectedPaymentStatus = normalizeStatusCode(selectedPayment?.status);
   const selectedPaymentPaid = selectedPaymentStatus === 'PAID';
@@ -1480,7 +1492,7 @@ const Profile: React.FC = () => {
           className="profile-page__authGate"
           description={(
             <div className="profile-page__authGateCopy">
-              <div>{t('pages.profile.authGateTitle')}</div>
+              <Title level={1}>{t('pages.profile.authGateTitle')}</Title>
               <div className="profile-page__authGateHint">{t('pages.profile.authGateHint')}</div>
             </div>
           )}
@@ -1585,7 +1597,7 @@ const Profile: React.FC = () => {
       <div className="profile-overview">
         <div className="profile-overview__copy">
           <Text className="profile-overview__eyebrow">{t('pages.profile.title')}</Text>
-          <Title level={2}>{user.username}</Title>
+          <Title level={1}>{user.username}</Title>
           <Text className="profile-overview__text">
             {defaultAddressReady ? petProfileFocusText : addressReadinessText}
           </Text>

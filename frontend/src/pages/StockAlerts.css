@@ -141,7 +141,7 @@
 }
 
 .stock-alerts__recoveryActions .ant-btn {
-  min-height: 40px;
+  min-height: 44px;
   font-weight: 700;
 }
 
@@ -189,7 +189,7 @@
 }
 
 .stock-alerts__nextAction .ant-btn {
-  min-height: 40px;
+  min-height: 44px;
   font-weight: 700;
 }
 
@@ -265,7 +265,7 @@
 .stock-alerts__itemSignalRow .ant-tag {
   margin-inline-end: 0;
   border-radius: 999px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
 }
 
@@ -315,7 +315,7 @@
 .stock-alerts--es .stock-alerts__recoveryActions .ant-btn,
 .stock-alerts--es .stock-alerts__nextAction .ant-btn,
 .stock-alerts--es .stock-alerts__item .ant-btn {
-  min-height: 40px;
+  min-height: 44px;
 }
 
 @media (max-width: 640px) {
@@ -401,7 +401,7 @@
 
   .stock-alerts__mobileActionCopy span {
     color: #627064;
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 700;
   }
 
@@ -625,7 +625,7 @@
 
   .stock-alerts__item .ant-btn {
     width: 100%;
-    min-height: 40px;
+    min-height: 44px;
     white-space: normal;
   }
 
@@ -665,7 +665,7 @@
   .stock-alerts__recoveryActions .ant-btn,
   .stock-alerts__nextAction .ant-btn,
   .stock-alerts__item .ant-btn {
-    min-height: 38px;
+    min-height: 44px;
   }
 
   .stock-alerts__header .ant-space {
@@ -721,8 +721,9 @@
     font-size: 18px;
   }
 
+  /* commercial signal labels stay >=12px */
   .stock-alerts__signal span {
-    font-size: 11px;
+    font-size: 12px;
     line-height: 1.15;
   }
 
@@ -730,7 +731,7 @@
     min-height: 26px;
     display: inline-flex;
     align-items: center;
-    font-size: 11px;
+    font-size: 12px;
     line-height: 1.15;
   }
 
@@ -992,7 +993,7 @@
   .stock-alerts__recoveryActions .ant-btn,
   .stock-alerts__nextAction .ant-btn,
   .stock-alerts__item .ant-btn {
-    min-height: 40px;
+    min-height: 44px;
     border-radius: 13px;
   }
 }
@@ -1200,7 +1201,7 @@
 
   .stock-alerts.stock-alerts-page .stock-alerts__watchTime {
     display: block !important;
-    min-height: 32px;
+    min-height: 44px;
     overflow: visible !important;
     text-overflow: clip !important;
     white-space: normal !important;

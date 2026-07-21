@@ -652,7 +652,8 @@
         "walletAll": "Todos",
         "walletFilteredEmpty": "No hay cupones con este estado",
         "walletThreshold": "Mínimo",
-        "remainingLabel": "Restantes"
+        "remainingLabel": "Restantes",
+        "walletFilteredEmptyHint": "Muestra todos los cupones guardados, compra esenciales, abre el carrito o busca un ajuste para mascota."
       },
       "catalogFallbackDescription": "Los cupones en vivo no están disponibles por ahora. Puedes seguir viendo ahorros recomendados y reintentar para canjear.",
       "seoDescription": "Canjea cupones, revisa tu monedero de descuentos y aplícalos antes del checkout en México.",
@@ -1716,6 +1717,7 @@
       "paymentWallet": "Cartera digital",
       "paymentMexico": "México",
       "paymentChina": "China",
+      "paymentGlobal": "Global",
       "contact": "Contacto",
       "email": "Correo",
       "guestEmailPlaceholder": "nombre@ejemplo.com",

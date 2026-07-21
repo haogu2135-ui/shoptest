@@ -56,7 +56,7 @@
   border-radius: 999px;
   background: #f7fbf8;
   color: #124734;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   line-height: 16px;
 }
@@ -123,7 +123,7 @@
   border-radius: 4px;
   background: #f0f8f3;
   color: #124734;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   line-height: 16px;
 }
@@ -164,7 +164,7 @@
 
   .add-on-assistant__item .ant-btn {
     grid-column: 1 / -1;
-    min-height: 40px;
+    min-height: 44px;
   }
 }
 
@@ -189,7 +189,7 @@
   .add-on-assistant__header .ant-typography-secondary {
     display: -webkit-box;
     overflow: hidden;
-    font-size: 11px;
+    font-size: 12px;
     line-height: 1.35;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 2;
@@ -198,7 +198,7 @@
   .add-on-assistant__target {
     max-width: 170px;
     padding: 3px 8px;
-    font-size: 11px;
+    font-size: 12px;
     line-height: 1.45;
   }
 
@@ -214,7 +214,7 @@
     max-width: 190px;
     overflow: hidden;
     padding: 2px 7px;
-    font-size: 10px;
+    font-size: 12px;
     line-height: 1.35;
     text-overflow: ellipsis;
   }
@@ -248,7 +248,7 @@
   .add-on-assistant__fit {
     max-width: 140px;
     overflow: hidden;
-    font-size: 10px;
+    font-size: 12px;
     line-height: 1.35;
     text-overflow: ellipsis;
   }
@@ -257,7 +257,7 @@
     grid-column: auto;
     width: 34px;
     min-width: 34px;
-    min-height: 34px;
+    min-height: 44px;
     padding: 0;
     border-radius: 999px;
   }
@@ -281,7 +281,7 @@
   .add-on-assistant__item .ant-btn {
     width: 32px;
     min-width: 32px;
-    min-height: 32px;
+    min-height: 44px;
   }
 }
 

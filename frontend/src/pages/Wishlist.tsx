@@ -391,7 +391,7 @@ const Wishlist: React.FC = () => {
           className="wishlist-page__authGate"
           description={(
             <div className="wishlist-page__emptyCopy">
-              <div>{t('pages.wishlist.authGateTitle')}</div>
+              <Title level={1}>{t('pages.wishlist.authGateTitle')}</Title>
               <div className="wishlist-page__emptyHint">{t('pages.wishlist.authGateHint')}</div>
             </div>
           )}
@@ -434,6 +434,7 @@ const Wishlist: React.FC = () => {
         aria-busy="true"
         aria-label={t('common.loading')}
       >
+        <Title level={1}>{t('pages.wishlist.pageTitle')}</Title>
         <Spin size="large" />
       </div>
     );
@@ -442,6 +443,7 @@ const Wishlist: React.FC = () => {
   if (items.length === 0 && loadError) {
     return (
       <div className={`wishlist-page wishlist-page--${language} wishlist-page--empty`}>
+        <Title level={1}>{t('pages.wishlist.pageTitle')}</Title>
         <div data-wishlist-load-recovery="true">
           <PageError
             className="wishlist-page__loadAlert"
@@ -492,7 +494,7 @@ const Wishlist: React.FC = () => {
           className="wishlist-page__emptyPanel"
           description={(
             <div className="wishlist-page__emptyCopy">
-              <div>{t('pages.wishlist.empty')}</div>
+              <Title level={1}>{t('pages.wishlist.empty')}</Title>
               <div className="wishlist-page__emptyHint">{t('pages.wishlist.emptyHint')}</div>
             </div>
           )}
@@ -539,7 +541,7 @@ const Wishlist: React.FC = () => {
       <div className="wishlist-page__header">
         <Space align="center">
           <HeartFilled style={{ color: '#ee4d2d', fontSize: 24 }} />
-          <Title level={3} style={{ margin: 0 }}>{t('pages.wishlist.title', { count: items.length })}</Title>
+          <Title level={1} style={{ margin: 0 }}>{t('pages.wishlist.title', { count: items.length })}</Title>
         </Space>
         <Button
           type="primary"

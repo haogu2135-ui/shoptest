@@ -72,7 +72,7 @@ export const conversionConfig = {
       EUR: ['STRIPE', 'PAYPAL'],
       GBP: ['STRIPE', 'PAYPAL'],
     },
-    fallback: ['STRIPE', 'PAYPAL'],
+    fallback: ['MERCADO_PAGO', 'SPEI', 'OXXO', 'MX_LOCAL_CARD', 'PAYPAL', 'STRIPE'],
   },
   productTrustBadges: {
     enabled: true,
