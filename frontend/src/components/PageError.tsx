@@ -3,6 +3,14 @@ import { Button, Result } from 'antd';
 import { HomeOutlined, ReloadOutlined } from '@ant-design/icons';
 import './PageFeedback.css';
 
+export type PageErrorAction = {
+  key: string;
+  label: string;
+  onClick: () => void;
+  type?: 'primary' | 'default' | 'link' | 'dashed' | 'text';
+  icon?: React.ReactNode;
+};
+
 export type PageErrorProps = {
   title: string;
   description?: React.ReactNode;
@@ -10,6 +18,8 @@ export type PageErrorProps = {
   onRetry?: () => void;
   homeLabel?: string;
   onHome?: () => void;
+  /** Commercial multipath recovery exits beyond Retry/Home. */
+  actions?: PageErrorAction[];
   className?: string;
 };
 
@@ -20,9 +30,10 @@ const PageError: React.FC<PageErrorProps> = ({
   onRetry,
   homeLabel,
   onHome,
+  actions,
   className = '',
 }) => {
-  const actions = [
+  const defaultActions = [
     onRetry && retryLabel ? (
       <Button
         key="retry"
@@ -48,17 +59,39 @@ const PageError: React.FC<PageErrorProps> = ({
     ) : null,
   ].filter(Boolean);
 
+  const multipathActions = Array.isArray(actions) && actions.length > 0
+    ? actions.map((action, index) => (
+      <Button
+        key={action.key}
+        type={action.type || (index === 0 ? 'primary' : 'default')}
+        icon={action.icon || (index === 0 ? <ReloadOutlined /> : undefined)}
+        aria-label={action.label}
+        title={action.label}
+        onClick={action.onClick}
+      >
+        {action.label}
+      </Button>
+    ))
+    : null;
+
+  const resolvedActions = multipathActions || defaultActions;
+
   return (
     <div
       className={`page-feedback page-feedback--error ${className}`.trim()}
       role="alert"
       aria-live="assertive"
+      data-page-error-recovery={multipathActions ? 'true' : undefined}
     >
       <Result
         status="error"
         title={title}
         subTitle={description}
-        extra={actions.length > 0 ? actions : undefined}
+        extra={resolvedActions && resolvedActions.length > 0 ? (
+          <div className="page-feedback__actions" data-page-error-actions="true">
+            {resolvedActions}
+          </div>
+        ) : undefined}
       />
     </div>
   );

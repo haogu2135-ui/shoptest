@@ -2,11 +2,12 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Button, Card, DatePicker, Input, InputNumber, Popconfirm, Progress, Select, Space, Spin, Table, Tag, Typography, message } from 'antd';
 import type { RangePickerProps } from 'antd/es/date-picker';
 import { AlertOutlined, DeleteOutlined, DownloadOutlined, KeyOutlined, MailOutlined, SafetyCertificateOutlined, SearchOutlined, UserOutlined } from '@ant-design/icons';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { adminApi } from '../api/admin';
 import type { SecurityAuditLog, SecurityAuditSummary } from '../types';
 import { useLanguage } from '../i18n';
 import type { TranslateFn } from '../i18n';
+import PageError from '../components/PageError';
 import { getApiErrorMessage } from '../utils/apiError';
 import { buildPaginationItemRender } from '../utils/paginationLabels';
 import { AUDIT_LOGS_EXPORT_PERMISSION, AUDIT_LOGS_PURGE_PERMISSION, getEffectiveRole, hasAdminPermission } from '../utils/roles';
@@ -293,6 +294,7 @@ const auditAdminText = (t: TranslateFn, key: string, params?: Record<string, str
   t(`pages.auditLogs.admin.${key}`, params);
 
 const SecurityAuditLogManagement: React.FC = () => {
+  const navigate = useNavigate();
   const { t, language } = useLanguage();
   const [searchParams, setSearchParams] = useSearchParams();
   const [logs, setLogs] = useState<SecurityAuditLog[]>([]);
@@ -637,19 +639,39 @@ const SecurityAuditLogManagement: React.FC = () => {
     <div className="audit-log-page">
       <Title level={4}>{t('pages.auditLogs.title')}</Title>
 
-      {loadError ? (
+      {loadError && auditSnapshotLoaded ? (
         <Alert
           className="audit-log-page__alert"
           type="warning"
           showIcon
           message={loadError}
-          description={auditSnapshotLoaded ? t('pages.auditLogs.staleDataWarning') : undefined}
+          description={t('pages.auditLogs.staleDataWarning')}
           action={(
-            <Button size="small" onClick={fetchLogs} loading={loading}>
-              {t('common.retry')}
-            </Button>
+            <Space wrap data-admin-audit-stale-recovery="true">
+              <Button size="small" type="primary" onClick={fetchLogs} loading={loading}>
+                {t('common.retry')}
+              </Button>
+              <Button size="small" onClick={() => navigate('/admin')}>{t('pages.adminDashboard.title')}</Button>
+              <Button size="small" onClick={() => navigate('/admin/system')}>{t('pages.adminDashboard.paymentReturnOps.providerReadinessAction')}</Button>
+              <Button size="small" onClick={() => navigate('/admin/orders')}>{t('pages.adminDashboard.orders')}</Button>
+            </Space>
           )}
         />
+      ) : null}
+
+      {loadError && !auditSnapshotLoaded ? (
+        <div className="audit-log-page__error" data-admin-audit-load-recovery="true">
+          <PageError
+            title={t('pages.auditLogs.loadFailed')}
+            description={loadError}
+            actions={[
+              { key: 'retry', label: t('common.retry'), onClick: () => { void fetchLogs(); }, type: 'primary' },
+              { key: 'dashboard', label: t('pages.adminDashboard.title'), onClick: () => navigate('/admin'), type: 'default' },
+              { key: 'system', label: t('pages.adminDashboard.paymentReturnOps.providerReadinessAction'), onClick: () => navigate('/admin/system'), type: 'default' },
+              { key: 'orders', label: t('pages.adminDashboard.orders'), onClick: () => navigate('/admin/orders'), type: 'default' },
+            ]}
+          />
+        </div>
       ) : null}
 
       {showInitialAuditLoading ? (

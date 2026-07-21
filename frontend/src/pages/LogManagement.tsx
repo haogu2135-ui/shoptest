@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, Button, Card, DatePicker, Descriptions, Empty, Input, Popconfirm, Select, Space, Spin, Statistic, Switch, Tag, Typography, message } from 'antd';
 import { BugOutlined, ClockCircleOutlined, DownloadOutlined, FileTextOutlined, ReloadOutlined } from '@ant-design/icons';
@@ -5,6 +6,7 @@ import dayjs, { Dayjs } from 'dayjs';
 import { adminApi } from '../api/admin';
 import type { AdminLogManagementStatus } from '../types';
 import { useLanguage } from '../i18n';
+import PageError from '../components/PageError';
 import { getApiErrorMessage } from '../utils/apiError';
 import { LOGS_DEBUG_PERMISSION, LOGS_DOWNLOAD_PERMISSION, getEffectiveRole, hasAdminPermission } from '../utils/roles';
 import './LogManagement.css';
@@ -16,6 +18,7 @@ const DEFAULT_LOGGER = 'com.example.shop';
 const logRangePickerClassNames = { popup: { root: 'shop-mobile-popup-layer log-management__rangePopup' } };
 
 const LogManagement: React.FC = () => {
+  const navigate = useNavigate();
   const { t, language } = useLanguage();
   const [status, setStatus] = useState<AdminLogManagementStatus | null>(null);
   const [loggerName, setLoggerName] = useState(DEFAULT_LOGGER);
@@ -165,19 +168,39 @@ const LogManagement: React.FC = () => {
         </Space>
       </div>
 
-      {loadError ? (
+      {loadError && status ? (
         <Alert
           className="log-management__alert"
           type="warning"
           showIcon
           message={loadError}
-          description={status ? t('pages.logAdmin.staleDataWarning') : undefined}
+          description={t('pages.logAdmin.staleDataWarning')}
           action={(
-            <Button size="small" onClick={() => loadStatus(loggerName)} loading={loading}>
-              {t('common.retry')}
-            </Button>
+            <Space wrap data-admin-logs-stale-recovery="true">
+              <Button size="small" type="primary" onClick={() => loadStatus(loggerName)} loading={loading}>
+                {t('common.retry')}
+              </Button>
+              <Button size="small" onClick={() => navigate('/admin')}>{t('pages.adminDashboard.title')}</Button>
+              <Button size="small" onClick={() => navigate('/admin/system')}>{t('pages.adminDashboard.paymentReturnOps.providerReadinessAction')}</Button>
+              <Button size="small" onClick={() => navigate('/admin/orders')}>{t('pages.adminDashboard.orders')}</Button>
+            </Space>
           )}
         />
+      ) : null}
+
+      {loadError && !status ? (
+        <div className="log-management__error" data-admin-logs-load-recovery="true">
+          <PageError
+            title={t('pages.logAdmin.loadFailed')}
+            description={loadError}
+            actions={[
+              { key: 'retry', label: t('common.retry'), onClick: () => { void loadStatus(loggerName); }, type: 'primary' },
+              { key: 'dashboard', label: t('pages.adminDashboard.title'), onClick: () => navigate('/admin'), type: 'default' },
+              { key: 'system', label: t('pages.adminDashboard.paymentReturnOps.providerReadinessAction'), onClick: () => navigate('/admin/system'), type: 'default' },
+              { key: 'orders', label: t('pages.adminDashboard.orders'), onClick: () => navigate('/admin/orders'), type: 'default' },
+            ]}
+          />
+        </div>
       ) : null}
 
       <div

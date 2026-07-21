@@ -3,7 +3,7 @@ import {
   Table, Button, Modal, Form, Input, InputNumber, message, Space, Select, Tag, Switch, DatePicker,
   Tooltip, Typography, Divider, Image, Popconfirm, TreeSelect, Upload, Tabs, Alert, Card,
 } from 'antd';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   PlusOutlined, EditOutlined, DeleteOutlined, StarOutlined, StarFilled,
   SearchOutlined, MinusCircleOutlined, UploadOutlined, DownloadOutlined, CopyOutlined, SyncOutlined, LinkOutlined,
@@ -30,6 +30,7 @@ import { useMarket } from '../hooks/useMarket';
 import { useDebounce } from '../hooks/useDebounce';
 import { productImageFallback, resolveProductImage } from '../utils/productMedia';
 import { csvRow } from '../utils/csvExport';
+import PageError from '../components/PageError';
 import { getApiErrorMessage } from '../utils/apiError';
 import { labelTableSelectionCheckbox } from '../utils/tableSelectionAccessibility';
 import { reportNonBlockingError } from '../utils/nonBlockingError';
@@ -675,6 +676,7 @@ const formatImportUpdateFields = (fields?: string[], labels: Record<string, stri
 };
 
 const ProductManagement: React.FC = () => {
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<CategoryPublic[]>([]);
@@ -2175,19 +2177,65 @@ const ProductManagement: React.FC = () => {
       ) : null}
       <Divider />
 
-      {productLoadError ? (
+      {productLoadError && productSnapshotLoaded ? (
         <Alert
           className="product-management-page__alert"
           type="warning"
           showIcon
           message={productLoadError}
-          description={productSnapshotLoaded ? t('pages.productAdmin.staleDataWarning') : undefined}
+          description={t('pages.productAdmin.staleDataWarning')}
           action={(
-            <Button size="small" loading={loading} onClick={fetchProducts}>
-              {t('common.retry')}
-            </Button>
+            <Space wrap data-admin-products-stale-recovery="true">
+              <Button size="small" type="primary" loading={loading} onClick={fetchProducts}>
+                {t('common.retry')}
+              </Button>
+              <Button size="small" onClick={() => navigate('/admin')}>
+                {t('pages.adminDashboard.title')}
+              </Button>
+              <Button size="small" onClick={() => navigate('/admin/orders')}>
+                {t('pages.adminDashboard.orders')}
+              </Button>
+              <Button size="small" onClick={() => navigate('/admin/system')}>
+                {t('pages.adminDashboard.paymentReturnOps.providerReadinessAction')}
+              </Button>
+            </Space>
           )}
         />
+      ) : null}
+
+      {productLoadError && !productSnapshotLoaded ? (
+        <div className="product-management-page__error" data-admin-products-load-recovery="true">
+          <PageError
+            title={t('pages.productAdmin.fetchProductsFailed')}
+            description={productLoadError}
+            actions={[
+              {
+                key: 'retry',
+                label: t('common.retry'),
+                onClick: () => { void fetchProducts(); },
+                type: 'primary',
+              },
+              {
+                key: 'dashboard',
+                label: t('pages.adminDashboard.title'),
+                onClick: () => navigate('/admin'),
+                type: 'default',
+              },
+              {
+                key: 'orders',
+                label: t('pages.adminDashboard.orders'),
+                onClick: () => navigate('/admin/orders'),
+                type: 'default',
+              },
+              {
+                key: 'system',
+                label: t('pages.adminDashboard.paymentReturnOps.providerReadinessAction'),
+                onClick: () => navigate('/admin/system'),
+                type: 'default',
+              },
+            ]}
+          />
+        </div>
       ) : null}
 
       {showInitialProductLoading ? (

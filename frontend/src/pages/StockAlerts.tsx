@@ -398,18 +398,49 @@ const StockAlerts: React.FC = () => {
         ) : null}
 
         {loadError && !hasStaleProductData ? (
-          <PageError
-            className="stock-alerts__loadError"
-            title={t('pages.stockAlerts.loadFailed')}
-            description={t('common.loadFailedRetry')}
-            retryLabel={t('common.retry')}
-            onRetry={() => setReloadKey((value) => value + 1)}
-            homeLabel={browseStockAlertsActionLabel}
-            onHome={() => navigate('/products')}
-          />
+          <div data-stock-alerts-load-recovery="true">
+            <PageError
+              className="stock-alerts__loadError"
+              title={t('pages.stockAlerts.loadFailed')}
+              description={t('common.loadFailedRetry')}
+              actions={[
+                {
+                  key: 'retry',
+                  label: t('common.retry'),
+                  onClick: () => setReloadKey((value) => value + 1),
+                  type: 'primary',
+                },
+                {
+                  key: 'browse',
+                  label: browseStockAlertsActionLabel,
+                  onClick: () => navigate('/products'),
+                  type: 'default',
+                },
+                {
+                  key: 'wishlist',
+                  label: t('pages.compare.emptyWishlist'),
+                  onClick: () => navigate('/wishlist'),
+                  type: 'default',
+                },
+                {
+                  key: 'coupons',
+                  label: t('pages.productList.loadRecoveryCoupons'),
+                  onClick: () => navigate('/coupons'),
+                  type: 'default',
+                },
+                {
+                  key: 'support',
+                  label: t('pages.productList.loadRecoverySupport'),
+                  onClick: () => dispatchDomEvent('shop:open-support'),
+                  type: 'default',
+                },
+              ]}
+            />
+          </div>
         ) : alerts.length === 0 ? (
           <PageEmpty
             className="stock-alerts__emptyPanel"
+            data-stock-alerts-empty-actions="true"
             description={(
               <div className="stock-alerts__emptyCopy">
                 <div>{t('pages.stockAlerts.empty')}</div>
@@ -426,6 +457,12 @@ const StockAlerts: React.FC = () => {
                 key: 'wishlist',
                 label: t('pages.stockAlerts.emptyWishlist'),
                 onClick: () => navigate('/wishlist'),
+                type: 'default',
+              },
+              {
+                key: 'coupons',
+                label: t('pages.stockAlerts.emptyCoupons'),
+                onClick: () => navigate('/coupons'),
                 type: 'default',
               },
               {

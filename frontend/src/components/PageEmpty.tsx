@@ -18,7 +18,7 @@ export type PageEmptyProps = {
   secondaryAction?: PageEmptyAction;
   actions?: PageEmptyAction[];
   className?: string;
-};
+} & Omit<React.HTMLAttributes<HTMLDivElement>, 'children'>;
 
 const PageEmpty: React.FC<PageEmptyProps> = ({
   description,
@@ -27,6 +27,7 @@ const PageEmpty: React.FC<PageEmptyProps> = ({
   secondaryAction,
   actions,
   className = '',
+  ...rest
 }) => {
   const resolvedActions = actions
     || [primaryAction, secondaryAction].filter(Boolean) as PageEmptyAction[];
@@ -36,6 +37,7 @@ const PageEmpty: React.FC<PageEmptyProps> = ({
       className={`page-feedback page-feedback--empty ${className}`.trim()}
       role="status"
       aria-live="polite"
+      {...rest}
     >
       <Empty
         image={image}

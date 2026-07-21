@@ -12,6 +12,7 @@ import { setSessionStorageItem } from '../utils/safeStorage';
 import { getApiErrorDiagnosticText, getApiErrorMessage } from '../utils/apiError';
 import { focusFirstFormError } from '../utils/formValidationFocus';
 import { buildLoginUrl, getPostLoginRedirectTarget } from '../utils/authRedirect';
+import { dispatchDomEvent } from '../utils/domEvents';
 import {
   STRONG_PASSWORD_MAX_LENGTH,
   STRONG_PASSWORD_MIN_LENGTH,
@@ -33,6 +34,8 @@ interface RegisterForm {
 
 type RegisterApiErrorData = {
   code?: unknown;
+  error?: unknown;
+  message?: unknown;
   emailCodeRequired?: unknown;
   retryAfterSeconds?: unknown;
   resendIntervalSeconds?: unknown;
@@ -40,6 +43,7 @@ type RegisterApiErrorData = {
 
 type RegisterApiErrorLike = {
   response?: {
+    status?: unknown;
     data?: RegisterApiErrorData;
   };
 };
@@ -76,6 +80,22 @@ const asRegisterApiError = (error: unknown): RegisterApiErrorLike => (
 const registerApiErrorData = (error: unknown) => asRegisterApiError(error).response?.data || {};
 const registerApiErrorCode = (error: unknown) => String(registerApiErrorData(error).code || '').toUpperCase();
 const isRegisterEmailCodeRequired = (value: unknown) => value === true || value === 'true';
+
+type RegisterRecoveryKind = 'rate_limited' | null;
+
+const resolveRegisterRecoveryKind = (error: unknown): RegisterRecoveryKind => {
+  const status = Number(asRegisterApiError(error).response?.status);
+  const code = registerApiErrorCode(error);
+  if (status === 429 || code === 'RATE_LIMITED' || code === 'TOO_MANY_ATTEMPTS') {
+    return 'rate_limited';
+  }
+  const message = String(registerApiErrorData(error).error || registerApiErrorData(error).message || '').toLowerCase();
+  if (message.includes('too many') || message.includes('rate limited')) {
+    return 'rate_limited';
+  }
+  return null;
+};
+
 const isFormValidationError = (error: unknown): error is { errorFields: unknown[] } => (
   Boolean(error) && typeof error === 'object' && Array.isArray((error as { errorFields?: unknown }).errorFields)
 );
@@ -104,6 +124,7 @@ const Register: React.FC = () => {
   const { config: appConfig, loading: appConfigLoading } = useAppConfig();
   const [form] = Form.useForm<RegisterForm>();
   const [authBannerError, setAuthBannerError] = useState<string | null>(null);
+  const [authRecoveryKind, setAuthRecoveryKind] = useState<RegisterRecoveryKind>(null);
   const [registering, setRegistering] = useState(false);
   const [codeSending, setCodeSending] = useState(false);
   const [sendCodeCountdown, setSendCodeCountdown] = useState(0);
@@ -193,6 +214,7 @@ const Register: React.FC = () => {
           ? t('pages.auth.emailCodeRateLimited')
           : t('pages.auth.emailCodeSendFailed');
         setAuthBannerError(errorMessage);
+        setAuthRecoveryKind(errorCode === 'RATE_LIMITED' ? 'rate_limited' : null);
         message.error(errorMessage);
       }
     } finally {
@@ -206,6 +228,7 @@ const Register: React.FC = () => {
     registeringRef.current = true;
     setRegistering(true);
     setAuthBannerError(null);
+    setAuthRecoveryKind(null);
     try {
       const username = normalizeUsername(values.username);
       const email = normalizeEmail(values.email);
@@ -215,6 +238,7 @@ const Register: React.FC = () => {
         const lengthError = t('pages.auth.emailCodeLength');
         form.setFields([{ name: 'emailCode', errors: [lengthError] }]);
         setAuthBannerError(lengthError);
+        setAuthRecoveryKind(null);
         return;
       }
       form.setFieldsValue({ username, email, phone });
@@ -232,6 +256,7 @@ const Register: React.FC = () => {
       setSessionStorageItem('loginPrefill', registeredLogin);
       setSessionStorageItem('loginCandidates', JSON.stringify(loginCandidates));
       setAuthBannerError(null);
+      setAuthRecoveryKind(null);
       message.success(t('pages.auth.registerSuccess'));
       navigate(postRegisterRedirect ? buildLoginUrl(postRegisterRedirect) : '/login');
     } catch (error: unknown) {
@@ -252,6 +277,7 @@ const Register: React.FC = () => {
         }
         form.setFields([{ name: 'emailCode', errors: [msg] }]);
         setAuthBannerError(msg);
+        setAuthRecoveryKind(serverCode === 'TOO_MANY_ATTEMPTS' ? 'rate_limited' : null);
         message.error(msg);
         window.setTimeout(() => codeInputRef.current?.focus?.(), 0);
         return;
@@ -263,11 +289,16 @@ const Register: React.FC = () => {
         : normalizedMessage.includes('username already registered')
         ? { name: 'username' as const, message: t('pages.auth.usernameAlreadyRegistered') }
         : null;
-      const msg = fieldError?.message || getApiErrorMessage(error, t('pages.auth.registerFailed'), language);
+      const recoveryKind = resolveRegisterRecoveryKind(error);
+      const msg = fieldError?.message
+        || (recoveryKind === 'rate_limited'
+          ? t('pages.auth.registerRateLimited')
+          : getApiErrorMessage(error, t('pages.auth.registerFailed'), language));
       if (fieldError) {
         form.setFields([{ name: fieldError.name, errors: [fieldError.message] }]);
       }
       setAuthBannerError(msg);
+      setAuthRecoveryKind(fieldError ? null : recoveryKind);
       message.error(msg);
     } finally {
       registeringRef.current = false;
@@ -335,15 +366,57 @@ const Register: React.FC = () => {
           {t('pages.auth.registerTitle')}
         </Title>
         {authBannerError ? (
-          <Alert
-            className="register-page__errorBanner"
-            type="error"
-            showIcon
-            closable
-            role="alert"
-            message={authBannerError}
-            onClose={() => setAuthBannerError(null)}
-          />
+          <div
+            className="register-page__errorRecovery"
+            data-register-error-recovery="true"
+            data-register-error-kind={authRecoveryKind || 'generic'}
+          >
+            <Alert
+              className="register-page__errorBanner"
+              type="error"
+              showIcon
+              closable
+              role="alert"
+              message={authBannerError}
+              description={authRecoveryKind === 'rate_limited' ? t('pages.auth.registerRecoveryNextRateLimited') : undefined}
+              onClose={() => {
+                setAuthBannerError(null);
+                setAuthRecoveryKind(null);
+              }}
+            />
+            {authRecoveryKind === 'rate_limited' ? (
+              <div className="register-page__errorRecovery__actions" data-register-recovery-actions="true">
+                <Button
+                  type="primary"
+                  block
+                  size="large"
+                  onClick={() => navigate('/login')}
+                  aria-label={t('pages.auth.loginNow')}
+                  title={t('pages.auth.loginNow')}
+                >
+                  {t('pages.auth.loginNow')}
+                </Button>
+                <Button
+                  block
+                  size="large"
+                  onClick={() => navigate('/track-order')}
+                  aria-label={t('nav.trackOrder')}
+                  title={t('nav.trackOrder')}
+                >
+                  {t('nav.trackOrder')}
+                </Button>
+                <Button
+                  block
+                  size="large"
+                  onClick={() => dispatchDomEvent('shop:open-support')}
+                  aria-label={t('nav.support')}
+                  title={t('nav.support')}
+                >
+                  {t('nav.support')}
+                </Button>
+              </div>
+            ) : null}
+          </div>
         ) : null}
         <Form
           form={form}

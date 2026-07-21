@@ -7,7 +7,10 @@
 const crypto = require('crypto');
 const base = (process.env.SHOPTEST_UI_BASE || 'http://127.0.0.1:4187').replace(/\/$/, '');
 const paymentCallbackSecret = String(process.env.SHOPTEST_PAYMENT_CALLBACK_SECRET || process.env.PAYMENT_CALLBACK_SECRET || '').trim();
+const mercadoWebhookSecret = String(process.env.SHOPTEST_MERCADO_PAGO_WEBHOOK_SECRET || process.env.MERCADO_PAGO_WEBHOOK_SECRET || '').trim();
+const stripeWebhookSecret = String(process.env.SHOPTEST_STRIPE_WEBHOOK_SECRET || process.env.STRIPE_WEBHOOK_SECRET || '').trim();
 const results = [];
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const check = (name, pass, detail = '') => {
   results.push({ name, pass: Boolean(pass), detail: String(detail || '').slice(0, 240) });
@@ -52,7 +55,19 @@ function signPaymentCallback({ orderNo, channel, transactionId, status, amount, 
   return crypto.createHmac('sha256', secret).update(payload, 'utf8').digest('hex');
 }
 
-async function post(path, body, extraHeaders = {}) {
+function signMercadoPagoWebhook({ dataId, requestId, secret, ts = Math.floor(Date.now() / 1000) }) {
+  const manifest = `id:${dataId};request-id:${requestId};ts:${ts};`;
+  const v1 = crypto.createHmac('sha256', secret).update(manifest, 'utf8').digest('hex');
+  return { ts, signature: `ts=${ts},v1=${v1}` };
+}
+
+function signStripeWebhook({ payload, secret, ts = Math.floor(Date.now() / 1000) }) {
+  const signedPayload = `${ts}.${payload}`;
+  const v1 = crypto.createHmac('sha256', secret).update(signedPayload, 'utf8').digest('hex');
+  return { ts, signature: `t=${ts},v1=${v1}` };
+}
+
+async function postRaw(path, bodyText, extraHeaders = {}) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 15000);
   try {
@@ -63,7 +78,7 @@ async function post(path, body, extraHeaders = {}) {
         'Content-Type': 'application/json',
         ...extraHeaders,
       },
-      body: JSON.stringify(body || {}),
+      body: String(bodyText || ''),
       signal: controller.signal,
     });
     const buf = Buffer.from(await res.arrayBuffer());
@@ -71,6 +86,10 @@ async function post(path, body, extraHeaders = {}) {
   } finally {
     clearTimeout(timer);
   }
+}
+
+async function post(path, body, extraHeaders = {}) {
+  return postRaw(path, JSON.stringify(body || {}), extraHeaders);
 }
 
 async function get(path, extraHeaders = {}) {
@@ -261,9 +280,9 @@ async function main() {
 
   // Commercial conversion path: guest checkout → payment create → order track
   const productId = Number(pid) || 2;
-  const guestEmail = `smoke.guest.${Date.now()}@example.com`;
+  let guestEmail = `smoke.guest.${Date.now()}@example.com`;
   const idempotencyKey = `commercial-smoke-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-  const checkoutRes = await post('/api/orders/checkout/guest', {
+  let checkoutRes = await post('/api/orders/checkout/guest', {
     guestEmail,
     guestName: 'Commercial Smoke Guest',
     guestPhone: '5512345678',
@@ -271,8 +290,22 @@ async function main() {
     paymentMethod: 'MERCADO_PAGO',
     items: [{ productId, quantity: 1 }],
   }, { 'Idempotency-Key': idempotencyKey });
+  // Commercial: one backoff retry on guest checkout rate-limit before degrading path.
   if (checkoutRes.status === 429) {
-    check('guest checkout rate-limit handled', true, 'skipped guest conversion while checkout is rate-limited');
+    await sleep(2500);
+    const retryKey = `${idempotencyKey}-retry`;
+    guestEmail = `smoke.guest.retry.${Date.now()}@example.com`;
+    checkoutRes = await post('/api/orders/checkout/guest', {
+      guestEmail,
+      guestName: 'Commercial Smoke Guest',
+      guestPhone: '5512345678',
+      shippingAddress: 'Av. Reforma 222, Ciudad de Mexico, CDMX 06600, MX',
+      paymentMethod: 'MERCADO_PAGO',
+      items: [{ productId, quantity: 1 }],
+    }, { 'Idempotency-Key': retryKey });
+  }
+  if (checkoutRes.status === 429) {
+    check('guest checkout rate-limit handled', true, 'skipped guest conversion after backoff retry');
   } else {
     check('guest checkout 200', checkoutRes.status === 200, checkoutRes.status);
   }
@@ -434,6 +467,175 @@ async function main() {
           }
         }
       }
+    }
+  }
+
+
+  // Commercial ops: provider webhook endpoints must be live through the UI proxy and
+  // reject unconfigured / unsigned traffic (not 404 "missing route").
+  {
+    const mpWebhook = await post('/api/payments/mercado-pago/webhook', {
+      type: 'payment',
+      data: { id: 'shopmx-smoke-probe' },
+    }, {
+      'x-signature': 'ts=1,v1=deadbeef',
+      'x-request-id': 'shopmx-smoke-req',
+    });
+    const mpBody = mpWebhook.body.toString('utf8');
+    const mpLive = [400, 401, 403, 422, 500].includes(mpWebhook.status)
+      && !/not found/i.test(mpBody)
+      && mpWebhook.status !== 404;
+    check(
+      'mercado webhook endpoint live',
+      mpLive,
+      `${mpWebhook.status} ${mpBody.slice(0, 120)}`,
+    );
+
+    const stripeWebhook = await post('/api/payments/stripe/webhook', {
+      id: 'evt_shopmx_smoke',
+      type: 'checkout.session.completed',
+      data: { object: { id: 'cs_test_smoke' } },
+    }, {
+      'Stripe-Signature': 't=1,v1=deadbeef',
+    });
+    const stripeBody = stripeWebhook.body.toString('utf8');
+    const stripeLive = [400, 401, 403, 422, 500].includes(stripeWebhook.status)
+      && !/not found/i.test(stripeBody)
+      && stripeWebhook.status !== 404;
+    check(
+      'stripe webhook endpoint live',
+      stripeLive,
+      `${stripeWebhook.status} ${stripeBody.slice(0, 120)}`,
+    );
+
+    // Alias path used by some Mercado/Shopify-style integrations.
+    const mpAlias = await post('/api/payment/mercadopago/webhook', {
+      type: 'payment',
+      data: { id: 'shopmx-smoke-probe-alias' },
+    });
+    const aliasBody = mpAlias.body.toString('utf8');
+    const aliasLive = [400, 401, 403, 422, 500].includes(mpAlias.status)
+      && !/not found/i.test(aliasBody)
+      && mpAlias.status !== 404;
+    check(
+      'mercado webhook alias endpoint live',
+      aliasLive,
+      `${mpAlias.status} ${aliasBody.slice(0, 120)}`,
+    );
+
+    // When a local/dev Mercado webhook secret is configured, prove signature enforcement:
+    // bad HMAC -> 400 invalid signature; valid HMAC clears signature gate (provider lookup may 500).
+    if (!mercadoWebhookSecret) {
+      check(
+        'mercado webhook signed path skipped',
+        true,
+        'set MERCADO_PAGO_WEBHOOK_SECRET or SHOPTEST_MERCADO_PAGO_WEBHOOK_SECRET to enable',
+      );
+    } else {
+      const badSigRes = await post('/api/payments/mercado-pago/webhook', {
+        type: 'payment',
+        data: { id: 'shopmx-smoke-signed-bad' },
+      }, {
+        'x-signature': 'ts=1,v1=deadbeef',
+        'x-request-id': 'shopmx-smoke-signed-bad-req',
+      });
+      const badSigBody = badSigRes.body.toString('utf8');
+      check(
+        'mercado webhook invalid signature 400',
+        badSigRes.status === 400 && /invalid mercado pago webhook signature/i.test(badSigBody),
+        `${badSigRes.status} ${badSigBody.slice(0, 160)}`,
+      );
+
+      const dataId = 'shopmx-smoke-signed-ok';
+      const requestId = 'shopmx-smoke-signed-ok-req';
+      const signed = signMercadoPagoWebhook({
+        dataId,
+        requestId,
+        secret: mercadoWebhookSecret,
+      });
+      const goodSigRes = await post('/api/payments/mercado-pago/webhook', {
+        type: 'payment',
+        data: { id: dataId },
+      }, {
+        'x-signature': signed.signature,
+        'x-request-id': requestId,
+      });
+      const goodSigBody = goodSigRes.body.toString('utf8');
+      // Signature accepted: provider lookup with local fake token typically 500; 200 also OK if mockable.
+      const signatureAccepted = goodSigRes.status === 200
+        || (goodSigRes.status === 500 && /temporarily unavailable|provider/i.test(goodSigBody))
+        || (goodSigRes.status >= 200 && goodSigRes.status < 500 && goodSigRes.status !== 400
+          && !/invalid mercado pago webhook signature/i.test(goodSigBody));
+      check(
+        'mercado webhook valid signature accepted',
+        signatureAccepted && goodSigRes.status !== 400,
+        `${goodSigRes.status} ${goodSigBody.slice(0, 160)}`,
+      );
+    }
+
+    // Stripe signed path: bad HMAC -> 400; valid HMAC clears signature gate (200 accepted / null payment OK).
+    if (!stripeWebhookSecret) {
+      check(
+        'stripe webhook signed path skipped',
+        true,
+        'set STRIPE_WEBHOOK_SECRET or SHOPTEST_STRIPE_WEBHOOK_SECRET to enable',
+      );
+    } else {
+      const stripePayloadObj = {
+        id: 'evt_shopmx_signed',
+        object: 'event',
+        api_version: '2020-08-27',
+        created: Math.floor(Date.now() / 1000),
+        livemode: false,
+        pending_webhooks: 1,
+        type: 'checkout.session.completed',
+        data: {
+          object: {
+            id: 'cs_test_shopmx_signed',
+            object: 'checkout.session',
+            payment_status: 'paid',
+            payment_intent: 'pi_test_shopmx_signed',
+            amount_total: 1000,
+            currency: 'mxn',
+            mode: 'payment',
+            status: 'complete',
+            metadata: {},
+          },
+        },
+      };
+      const stripePayload = JSON.stringify(stripePayloadObj);
+
+      const badStripeRes = await postRaw('/api/payments/stripe/webhook', stripePayload, {
+        'Stripe-Signature': 't=1,v1=deadbeef',
+      });
+      const badStripeBody = badStripeRes.body.toString('utf8');
+      check(
+        'stripe webhook invalid signature 400',
+        badStripeRes.status === 400 && /invalid stripe webhook signature/i.test(badStripeBody),
+        `${badStripeRes.status} ${badStripeBody.slice(0, 160)}`,
+      );
+
+      const signedStripe = signStripeWebhook({
+        payload: stripePayload,
+        secret: stripeWebhookSecret,
+      });
+      const goodStripeRes = await postRaw('/api/payments/stripe/webhook', stripePayload, {
+        'Stripe-Signature': signedStripe.signature,
+      });
+      const goodStripeBody = goodStripeRes.body.toString('utf8');
+      // Signature accepted: unknown session -> 400 payment not found, or 200 if payload ignored/null.
+      // Must never report invalid signature after a valid HMAC.
+      const stripeAccepted = !/invalid stripe webhook signature/i.test(goodStripeBody)
+        && (
+          goodStripeRes.status === 200
+          || (goodStripeRes.status === 400 && /payment not found/i.test(goodStripeBody))
+          || goodStripeRes.status === 500
+        );
+      check(
+        'stripe webhook valid signature accepted',
+        stripeAccepted,
+        `${goodStripeRes.status} ${goodStripeBody.slice(0, 160)}`,
+      );
     }
   }
 

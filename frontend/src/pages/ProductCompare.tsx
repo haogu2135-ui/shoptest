@@ -537,17 +537,46 @@ const ProductCompare: React.FC = () => {
           </div>
         ) : compareLoadError && products.length === 0 ? (
           <PageError
-            className="product-compare__loadError"
+            className="product-compare__loadError" data-compare-load-recovery="true"
             title={t('pages.compare.loadErrorTitle')}
             description={t('pages.compare.loadErrorDescription', { count: compareLoadAttemptCount })}
-            retryLabel={t('common.retry')}
-            onRetry={fetchComparedProducts}
-            homeLabel={compareBrowseActionLabel}
-            onHome={() => navigate('/products')}
+            actions={[
+              {
+                key: 'retry',
+                label: t('common.retry'),
+                onClick: fetchComparedProducts,
+                type: 'primary',
+              },
+              {
+                key: 'browse',
+                label: compareBrowseActionLabel,
+                onClick: () => navigate('/products'),
+                type: 'default',
+              },
+              {
+                key: 'wishlist',
+                label: t('pages.compare.emptyWishlist'),
+                onClick: () => navigate('/wishlist'),
+                type: 'default',
+              },
+              {
+                key: 'coupons',
+                label: t('pages.compare.emptyCoupons'),
+                onClick: () => navigate('/coupons'),
+                type: 'default',
+              },
+              {
+                key: 'support',
+                label: t('pages.productList.loadRecoverySupport'),
+                onClick: () => dispatchDomEvent('shop:open-support'),
+                type: 'default',
+              },
+            ]}
           />
         ) : products.length === 0 ? (
           <PageEmpty
             className="product-compare__emptyPanel"
+            data-compare-empty-actions="true"
             description={(
               <div className="product-compare__emptyCopy">
                 <div>{t('pages.compare.empty')}</div>
@@ -572,6 +601,12 @@ const ProductCompare: React.FC = () => {
                 onClick: () => navigate('/coupons'),
                 type: 'default',
               },
+              {
+                key: 'pet-finder',
+                label: t('nav.petFinder'),
+                onClick: () => navigate('/pet-finder'),
+                type: 'default',
+              },
             ]}
           />
         ) : (
@@ -581,12 +616,24 @@ const ProductCompare: React.FC = () => {
                 className="product-compare__loadError"
                 type="warning"
                 showIcon
+                data-compare-stale-recovery="true"
                 message={t('pages.compare.loadErrorTitle')}
                 description={t('pages.compare.staleDataWarning')}
                 action={(
-                  <Button size="small" onClick={fetchComparedProducts} loading={loading}>
-                    {t('common.retry')}
-                  </Button>
+                  <Space wrap className="product-compare__staleActions" data-compare-stale-actions="true">
+                    <Button size="small" type="primary" onClick={fetchComparedProducts} loading={loading}>
+                      {t('common.retry')}
+                    </Button>
+                    <Button size="small" onClick={() => navigate('/products')}>
+                      {compareBrowseActionLabel}
+                    </Button>
+                    <Button size="small" onClick={() => navigate('/wishlist')}>
+                      {t('pages.compare.emptyWishlist')}
+                    </Button>
+                    <Button size="small" onClick={() => navigate('/coupons')}>
+                      {t('pages.compare.emptyCoupons')}
+                    </Button>
+                  </Space>
                 )}
               />
             ) : null}

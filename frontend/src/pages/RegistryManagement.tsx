@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Button, Card, Descriptions, Empty, Input, Space, Spin, Statistic, Table, Tag, Typography, message } from 'antd';
 import { ApiOutlined, CloudServerOutlined, LinkOutlined, ReloadOutlined, SafetyCertificateOutlined, SearchOutlined } from '@ant-design/icons';
@@ -6,6 +7,7 @@ import { adminApi } from '../api/admin';
 import { apiGatewayEnabled, apiGatewayPrefix } from '../utils/apiDispatcher';
 import type { AdminRegistryInstance, AdminRegistryServiceSummary, AdminRegistryStatus } from '../types';
 import { useLanguage } from '../i18n';
+import PageError from '../components/PageError';
 import { getApiErrorMessage } from '../utils/apiError';
 import './RegistryManagement.css';
 
@@ -16,6 +18,7 @@ const boolTag = (value: boolean | undefined, labels: { enabled: string; disabled
 );
 
 const RegistryManagement: React.FC = () => {
+  const navigate = useNavigate();
   const { t, language } = useLanguage();
   const [status, setStatus] = useState<AdminRegistryStatus | null>(null);
   const [loading, setLoading] = useState(false);
@@ -76,19 +79,39 @@ const RegistryManagement: React.FC = () => {
         </Button>
       </div>
 
-      {loadError ? (
+      {loadError && status ? (
         <Alert
           className="registry-management__alert"
           type="warning"
           showIcon
           message={loadError}
-          description={status ? t('pages.registryAdmin.staleDataWarning') : undefined}
+          description={t('pages.registryAdmin.staleDataWarning')}
           action={(
-            <Button size="small" onClick={loadStatus} loading={loading}>
-              {t('common.retry')}
-            </Button>
+            <Space wrap data-admin-registry-stale-recovery="true">
+              <Button size="small" type="primary" onClick={loadStatus} loading={loading}>
+                {t('common.retry')}
+              </Button>
+              <Button size="small" onClick={() => navigate('/admin')}>{t('pages.adminDashboard.title')}</Button>
+              <Button size="small" onClick={() => navigate('/admin/system')}>{t('pages.adminDashboard.paymentReturnOps.providerReadinessAction')}</Button>
+              <Button size="small" onClick={() => navigate('/admin/orders')}>{t('pages.adminDashboard.orders')}</Button>
+            </Space>
           )}
         />
+      ) : null}
+
+      {loadError && !status ? (
+        <div className="registry-management__error" data-admin-registry-load-recovery="true">
+          <PageError
+            title={t('pages.registryAdmin.loadFailed')}
+            description={loadError}
+            actions={[
+              { key: 'retry', label: t('common.retry'), onClick: () => { void loadStatus(); }, type: 'primary' },
+              { key: 'dashboard', label: t('pages.adminDashboard.title'), onClick: () => navigate('/admin'), type: 'default' },
+              { key: 'system', label: t('pages.adminDashboard.paymentReturnOps.providerReadinessAction'), onClick: () => navigate('/admin/system'), type: 'default' },
+              { key: 'orders', label: t('pages.adminDashboard.orders'), onClick: () => navigate('/admin/orders'), type: 'default' },
+            ]}
+          />
+        </div>
       ) : null}
 
       <div

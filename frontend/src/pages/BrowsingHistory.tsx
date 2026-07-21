@@ -476,7 +476,7 @@ const BrowsingHistory: React.FC = () => {
       ) : null}
 
       {loadError ? (
-        <section className="browsing-history__loadError" aria-live="polite">
+        <section className="browsing-history__loadError" aria-live="polite" data-history-load-recovery="true">
           {hasStaleHistoryData ? (
             <Alert
               type="warning"
@@ -484,19 +484,59 @@ const BrowsingHistory: React.FC = () => {
               message={t('messages.loadFailed')}
               description={hasStaleHistoryData ? t('pages.browsingHistory.staleDataWarning') : t('messages.loadFailedRetry')}
               action={(
-                <Button size="small" onClick={() => setReloadToken((current) => current + 1)}>
-                  {t('messages.retry')}
-                </Button>
+                <div className="browsing-history__emptyActions" data-history-stale-recovery="true">
+                  <Button size="small" type="primary" onClick={() => setReloadToken((current) => current + 1)}>
+                    {t('messages.retry')}
+                  </Button>
+                  <Button size="small" onClick={() => navigate('/products')}>
+                    {t('pages.browsingHistory.browse')}
+                  </Button>
+                  <Button size="small" onClick={() => navigate('/coupons')}>
+                    {t('nav.coupons')}
+                  </Button>
+                  <Button size="small" onClick={() => navigate('/pet-finder')}>
+                    {t('nav.petFinder')}
+                  </Button>
+                </div>
               )}
             />
           ) : (
             <PageError
+              className="browsing-history__loadErrorPanel"
               title={t('messages.loadFailed')}
               description={t('messages.loadFailedRetry')}
-              retryLabel={t('messages.retry')}
-              onRetry={() => setReloadToken((current) => current + 1)}
-              homeLabel={t('pages.browsingHistory.browse')}
-              onHome={() => navigate('/products')}
+              actions={[
+                {
+                  key: 'retry',
+                  label: t('messages.retry'),
+                  onClick: () => setReloadToken((current) => current + 1),
+                  type: 'primary',
+                },
+                {
+                  key: 'browse',
+                  label: t('pages.browsingHistory.browse'),
+                  onClick: () => navigate('/products'),
+                  type: 'default',
+                },
+                {
+                  key: 'coupons',
+                  label: t('pages.productList.loadRecoveryCoupons'),
+                  onClick: () => navigate('/coupons'),
+                  type: 'default',
+                },
+                {
+                  key: 'pet-finder',
+                  label: t('pages.productDetail.notFoundPetFinder'),
+                  onClick: () => navigate('/pet-finder'),
+                  type: 'default',
+                },
+                {
+                  key: 'support',
+                  label: t('pages.productList.loadRecoverySupport'),
+                  onClick: () => dispatchDomEvent('shop:open-support'),
+                  type: 'default',
+                },
+              ]}
             />
           )}
         </section>
@@ -586,16 +626,25 @@ const BrowsingHistory: React.FC = () => {
             }
           >
             {loadError && hasHistory ? (
-              <div className="browsing-history__emptyActions">
+              <div className="browsing-history__emptyActions" data-history-empty-load-actions="true">
                 <Button type="primary" icon={<ReloadOutlined />} onClick={() => setReloadToken((current) => current + 1)}>
                   {t('messages.retry')}
                 </Button>
                 <Button icon={<ShoppingOutlined />} aria-label={historyBrowseActionLabel} title={historyBrowseActionLabel} onClick={() => navigate('/products')}>
                   {t('pages.browsingHistory.browse')}
                 </Button>
+                <Button aria-label={t('nav.coupons')} title={t('nav.coupons')} onClick={() => navigate('/coupons')}>
+                  {t('nav.coupons')}
+                </Button>
+                <Button aria-label={t('nav.petFinder')} title={t('nav.petFinder')} onClick={() => navigate('/pet-finder')}>
+                  {t('nav.petFinder')}
+                </Button>
+                <Button aria-label={t('pages.productList.loadRecoverySupport')} title={t('pages.productList.loadRecoverySupport')} onClick={() => dispatchDomEvent('shop:open-support')}>
+                  {t('pages.productList.loadRecoverySupport')}
+                </Button>
               </div>
             ) : historyProducts.length ? (
-              <div className="browsing-history__emptyActions">
+              <div className="browsing-history__emptyActions" data-history-empty-filter-actions="true">
                 <Button type="primary" icon={<ShoppingOutlined />} aria-label={historyBrowseActionLabel} title={historyBrowseActionLabel} onClick={() => navigate('/products')}>
                   {t('pages.browsingHistory.browse')}
                 </Button>
@@ -605,9 +654,15 @@ const BrowsingHistory: React.FC = () => {
                 }}>
                   {t('pages.productList.resetFilters')}
                 </Button>
+                <Button aria-label={t('nav.coupons')} title={t('nav.coupons')} onClick={() => navigate('/coupons')}>
+                  {t('nav.coupons')}
+                </Button>
+                <Button aria-label={t('nav.petFinder')} title={t('nav.petFinder')} onClick={() => navigate('/pet-finder')}>
+                  {t('nav.petFinder')}
+                </Button>
               </div>
             ) : (
-              <div className="browsing-history__emptyActions browsing-history__emptyActions--guide">
+              <div className="browsing-history__emptyActions browsing-history__emptyActions--guide" data-history-empty-actions="true">
                 {emptyQuickActions.map((action) => (
                   <Button
                     key={action.key}

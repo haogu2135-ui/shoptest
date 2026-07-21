@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Button, Card, Checkbox, Divider, Input, message, Modal, Popconfirm, Select, Space, Table, Tag, Typography } from 'antd';
 import { DownloadOutlined, SearchOutlined } from '@ant-design/icons';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { logisticsCarrierApi } from '../api';
 import { adminApi } from '../api/admin';
 import type { AdminPayment, LogisticsCarrier, Order, OrderItem } from '../types';
@@ -20,6 +20,7 @@ import {
 } from '../utils/orderOperationsConfig';
 import { formatSelectedSpecs } from '../utils/selectedSpecs';
 import { paymentMethodLabel } from '../utils/paymentMethods';
+import PageError from '../components/PageError';
 import { getApiErrorMessage } from '../utils/apiError';
 import { buildPaginationItemRender } from '../utils/paginationLabels';
 import { labelTableSelectionCheckbox } from '../utils/tableSelectionAccessibility';
@@ -117,6 +118,7 @@ const REFUND_REASON_PRESET_KEYS = [
 
 
 const OrderManagement: React.FC = () => {
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1367,23 +1369,72 @@ const OrderManagement: React.FC = () => {
     <div className="order-management-page">
       <Title level={4}>{t('pages.adminOrders.title')}</Title>
       <Divider />
-      {orderLoadError ? (
+      {orderLoadError && orderSnapshotLoaded ? (
         <Alert
           className="order-management-page__alert"
           type="warning"
           showIcon
           message={orderLoadError}
-          description={orderSnapshotLoaded ? t('pages.adminOrders.staleDataWarning') : undefined}
+          description={t('pages.adminOrders.staleDataWarning')}
           action={(
-            <Button
-              size="small"
-              onClick={() => fetchOrders({ status: filterStatus, quick: quickFilter, search: debouncedSearchText, page: orderPage.page, size: orderPage.size })}
-              loading={loading}
-            >
-              {t('common.retry')}
-            </Button>
+            <Space wrap data-admin-orders-stale-recovery="true">
+              <Button
+                size="small"
+                type="primary"
+                onClick={() => fetchOrders({ status: filterStatus, quick: quickFilter, search: debouncedSearchText, page: orderPage.page, size: orderPage.size })}
+                loading={loading}
+              >
+                {t('common.retry')}
+              </Button>
+              <Button size="small" onClick={() => navigate('/admin')}>
+                {t('pages.adminDashboard.title')}
+              </Button>
+              <Button size="small" onClick={() => navigate('/admin/system')}>
+                {t('pages.adminDashboard.paymentReturnOps.providerReadinessAction')}
+              </Button>
+              <Button size="small" onClick={() => navigate('/admin/support')}>
+                {t('adminLayout.support')}
+              </Button>
+            </Space>
           )}
         />
+      ) : null}
+
+      {orderLoadError && !orderSnapshotLoaded ? (
+        <div className="order-management-page__error" data-admin-orders-load-recovery="true">
+          <PageError
+            title={t('pages.adminOrders.fetchFailed')}
+            description={orderLoadError}
+            actions={[
+              {
+                key: 'retry',
+                label: t('common.retry'),
+                onClick: () => {
+                  void fetchOrders({ status: filterStatus, quick: quickFilter, search: debouncedSearchText, page: orderPage.page, size: orderPage.size });
+                },
+                type: 'primary',
+              },
+              {
+                key: 'dashboard',
+                label: t('pages.adminDashboard.title'),
+                onClick: () => navigate('/admin'),
+                type: 'default',
+              },
+              {
+                key: 'system',
+                label: t('pages.adminDashboard.paymentReturnOps.providerReadinessAction'),
+                onClick: () => navigate('/admin/system'),
+                type: 'default',
+              },
+              {
+                key: 'support',
+                label: t('adminLayout.support'),
+                onClick: () => navigate('/admin/support'),
+                type: 'default',
+              },
+            ]}
+          />
+        </div>
       ) : null}
 
       {showInitialOrderLoading ? (

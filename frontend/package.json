@@ -40,7 +40,9 @@
     "test:jest-config": "node scripts/jest-transform-config.test.js",
     "eject": "react-scripts eject",
     "test:commercial-smoke": "node scripts/commercial-http-smoke.js",
-    "test:commercial-browser-smoke": "node scripts/commercial-browser-smoke.js"
+    "test:commercial-browser-smoke": "node scripts/commercial-browser-smoke.js",
+    "test:commercial-mobile-device-smoke": "node scripts/commercial-mobile-device-smoke.js",
+    "test:commercial-production-readiness": "node scripts/commercial-production-readiness.js"
   },
   "overrides": {
     "@adobe/css-tools": "4.0.0"

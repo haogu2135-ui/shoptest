@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Button, Card, DatePicker, Form, Input, InputNumber, message, Modal, Popconfirm, Select, Space, Switch, Table, Tag, Typography } from 'antd';
 import { ClockCircleOutlined, DeleteOutlined, EditOutlined, FireOutlined, GiftOutlined, PlusOutlined, SearchOutlined, SendOutlined, ThunderboltOutlined } from '@ant-design/icons';
@@ -7,6 +8,7 @@ import type { Coupon, CouponAdminSummary, PetBirthdayCouponConfig, User } from '
 import { useLanguage } from '../i18n';
 import { useMarket } from '../hooks/useMarket';
 import { useDebounce } from '../hooks/useDebounce';
+import PageError from '../components/PageError';
 import { getApiErrorMessage } from '../utils/apiError';
 import { reportNonBlockingError } from '../utils/nonBlockingError';
 import {
@@ -36,6 +38,7 @@ const isFormValidationError = (error: unknown): error is FormValidationError => 
 };
 
 const CouponManagement: React.FC = () => {
+  const navigate = useNavigate();
   const { t, language } = useLanguage();
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [users, setUsers] = useState<User[]>([]);
@@ -664,19 +667,65 @@ const CouponManagement: React.FC = () => {
         </Space>
       </div>
 
-      {couponLoadError ? (
+      {couponLoadError && couponSnapshotLoaded ? (
         <Alert
           className="coupon-management-page__alert"
           type="warning"
           showIcon
           message={couponLoadError}
-          description={couponSnapshotLoaded ? t('pages.adminCoupons.staleDataWarning') : undefined}
+          description={t('pages.adminCoupons.staleDataWarning')}
           action={(
-            <Button size="small" onClick={() => loadCoupons(pageState.page, pageState.size)} loading={loading}>
-              {t('common.retry')}
-            </Button>
+            <Space wrap data-admin-coupons-stale-recovery="true">
+              <Button size="small" type="primary" onClick={() => loadCoupons(pageState.page, pageState.size)} loading={loading}>
+                {t('common.retry')}
+              </Button>
+              <Button size="small" onClick={() => navigate('/admin')}>
+                {t('pages.adminDashboard.title')}
+              </Button>
+              <Button size="small" onClick={() => navigate('/admin/orders')}>
+                {t('pages.adminDashboard.orders')}
+              </Button>
+              <Button size="small" onClick={() => navigate('/admin/support')}>
+                {t('adminLayout.support')}
+              </Button>
+            </Space>
           )}
         />
+      ) : null}
+
+      {couponLoadError && !couponSnapshotLoaded ? (
+        <div className="coupon-management-page__error" data-admin-coupons-load-recovery="true">
+          <PageError
+            title={t('pages.adminCoupons.loadFailed')}
+            description={couponLoadError}
+            actions={[
+              {
+                key: 'retry',
+                label: t('common.retry'),
+                onClick: () => { void loadCoupons(pageState.page, pageState.size); },
+                type: 'primary',
+              },
+              {
+                key: 'dashboard',
+                label: t('pages.adminDashboard.title'),
+                onClick: () => navigate('/admin'),
+                type: 'default',
+              },
+              {
+                key: 'orders',
+                label: t('pages.adminDashboard.orders'),
+                onClick: () => navigate('/admin/orders'),
+                type: 'default',
+              },
+              {
+                key: 'support',
+                label: t('adminLayout.support'),
+                onClick: () => navigate('/admin/support'),
+                type: 'default',
+              },
+            ]}
+          />
+        </div>
       ) : null}
 
       {showInitialCouponLoading ? (

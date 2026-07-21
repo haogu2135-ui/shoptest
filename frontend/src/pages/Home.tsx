@@ -877,15 +877,44 @@ const Home: React.FC = () => {
 
   if (loadError) {
     return (
-      <main className={homeLanguageClass} style={homeImageVariables}>
+      <main className={homeLanguageClass} style={homeImageVariables} data-home-load-recovery="true">
         <div className="shopee-container">
           <PageError
+            className="home-load-recovery"
             title={t('messages.loadFailed')}
             description={t('messages.loadFailedRetry')}
-            retryLabel={t('messages.retry')}
-            onRetry={() => window.location.reload()}
-            homeLabel={t('nav.ariaHome')}
-            onHome={() => navigate('/')}
+            actions={[
+              {
+                key: 'retry',
+                label: t('messages.retry'),
+                onClick: () => window.location.reload(),
+                type: 'primary',
+              },
+              {
+                key: 'products',
+                label: t('pages.productList.title'),
+                onClick: () => navigate('/products'),
+                type: 'default',
+              },
+              {
+                key: 'coupons',
+                label: t('pages.productList.loadRecoveryCoupons'),
+                onClick: () => navigate('/coupons'),
+                type: 'default',
+              },
+              {
+                key: 'track',
+                label: t('nav.trackOrder'),
+                onClick: () => navigate('/track-order'),
+                type: 'default',
+              },
+              {
+                key: 'support',
+                label: t('pages.productList.loadRecoverySupport'),
+                onClick: () => dispatchDomEvent('shop:open-support'),
+                type: 'default',
+              },
+            ]}
           />
         </div>
       </main>
@@ -1240,23 +1269,39 @@ const Home: React.FC = () => {
             </div>
           ) : (
             <PageEmpty
+              className="home-empty-categories"
+              data-home-empty-categories="true"
               description={(
                 <div>
                   <div>{t('home.noCategories')}</div>
                   <div>{t('home.emptyCategoriesHint')}</div>
                 </div>
               )}
-              primaryAction={{
-                key: 'browse',
-                label: t('home.browseCatalog'),
-                onClick: () => navigate('/products'),
-              }}
-              secondaryAction={{
-                key: 'home-refresh',
-                label: t('common.refresh'),
-                onClick: () => window.location.reload(),
-                type: 'default',
-              }}
+              actions={[
+                {
+                  key: 'browse',
+                  label: t('home.browseCatalog'),
+                  onClick: () => navigate('/products'),
+                },
+                {
+                  key: 'coupons',
+                  label: t('nav.coupons'),
+                  onClick: () => navigate('/coupons'),
+                  type: 'default',
+                },
+                {
+                  key: 'pet-finder',
+                  label: t('nav.petFinder'),
+                  onClick: () => navigate('/pet-finder'),
+                  type: 'default',
+                },
+                {
+                  key: 'home-refresh',
+                  label: t('common.refresh'),
+                  onClick: () => window.location.reload(),
+                  type: 'default',
+                },
+              ]}
             />
           )}
         </section>
@@ -1355,23 +1400,39 @@ const Home: React.FC = () => {
             </>
           ) : (
             <PageEmpty
+              className="home-empty-products"
+              data-home-empty-products="true"
               description={(
                 <div>
                   <div>{t('home.noProducts')}</div>
                   <div>{t('home.emptyProductsHint')}</div>
                 </div>
               )}
-              primaryAction={{
-                key: 'browse',
-                label: t('home.browseCatalog'),
-                onClick: () => navigate('/products'),
-              }}
-              secondaryAction={{
-                key: 'coupons',
-                label: t('nav.coupons'),
-                onClick: () => navigate('/coupons'),
-                type: 'default',
-              }}
+              actions={[
+                {
+                  key: 'browse',
+                  label: t('home.browseCatalog'),
+                  onClick: () => navigate('/products'),
+                },
+                {
+                  key: 'coupons',
+                  label: t('nav.coupons'),
+                  onClick: () => navigate('/coupons'),
+                  type: 'default',
+                },
+                {
+                  key: 'pet-finder',
+                  label: t('nav.petFinder'),
+                  onClick: () => navigate('/pet-finder'),
+                  type: 'default',
+                },
+                {
+                  key: 'track',
+                  label: t('nav.trackOrder'),
+                  onClick: () => navigate('/track-order'),
+                  type: 'default',
+                },
+              ]}
             />
           )}
         </section>

@@ -875,6 +875,24 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
       >
         {t('pages.cart.title')}
       </Button>
+      <Button
+        size="small"
+        icon={<ShoppingOutlined />}
+        aria-label={t('pages.cart.browse')}
+        title={t('pages.cart.browse')}
+        onClick={() => navigate('/products')}
+      >
+        {t('pages.cart.browse')}
+      </Button>
+      <Button
+        size="small"
+        icon={<GiftOutlined />}
+        aria-label={t('nav.coupons')}
+        title={t('nav.coupons')}
+        onClick={() => navigate('/coupons')}
+      >
+        {t('nav.coupons')}
+      </Button>
     </Space>
   );
   const recommendedPaymentMethod = useMemo(
@@ -2647,15 +2665,45 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
               { key: 'checkout', label: t('pages.checkout.title') },
             ]}
           />
-          <PageError
-            className="checkout-page__loadError"
-            title={t('pages.checkout.loadFailed')}
-            description={cartLoadError}
-            retryLabel={t('messages.retry')}
-            onRetry={() => setCheckoutReloadKey((key) => key + 1)}
-            homeLabel={t('pages.cart.title')}
-            onHome={() => navigate('/cart')}
-          />
+          <div data-checkout-load-recovery="true">
+            <PageError
+              className="checkout-page__loadError"
+              title={t('pages.checkout.loadFailed')}
+              description={cartLoadError}
+              actions={[
+                {
+                  key: 'retry',
+                  label: t('messages.retry'),
+                  onClick: () => setCheckoutReloadKey((key) => key + 1),
+                  type: 'primary',
+                },
+                {
+                  key: 'cart',
+                  label: t('pages.cart.title'),
+                  onClick: () => navigate('/cart'),
+                  type: 'default',
+                },
+                {
+                  key: 'browse',
+                  label: t('pages.cart.browse'),
+                  onClick: () => navigate('/products'),
+                  type: 'default',
+                },
+                {
+                  key: 'coupons',
+                  label: t('nav.coupons'),
+                  onClick: () => navigate('/coupons'),
+                  type: 'default',
+                },
+                {
+                  key: 'support',
+                  label: t('pages.productList.loadRecoverySupport'),
+                  onClick: () => dispatchDomEvent('shop:open-support'),
+                  type: 'default',
+                },
+              ]}
+            />
+          </div>
         </div>
       </Form>
     );
@@ -2683,7 +2731,7 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
             <Title level={2}>{t('pages.checkout.emptySelected')}</Title>
             <Text>{t('pages.checkout.savingsCoachSubtitle')}</Text>
           </div>
-          <div className="checkout-page__emptyActions">
+          <div className="checkout-page__emptyActions" data-checkout-empty-actions="true">
             <Button
               type="primary"
               icon={<ShoppingCartOutlined />}
@@ -2708,6 +2756,14 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
               title={t('pages.checkout.emptyCouponsAction')}
             >
               {t('nav.coupons')}
+            </Button>
+            <Button
+              icon={<ShoppingOutlined />}
+              onClick={() => navigate('/pet-finder')}
+              aria-label={`${t('nav.petFinder')}: ${t('pages.checkout.emptySelected')}`}
+              title={`${t('nav.petFinder')}: ${t('pages.checkout.emptySelected')}`}
+            >
+              {t('nav.petFinder')}
             </Button>
             <Button
               icon={<HistoryOutlined />}
@@ -3489,6 +3545,33 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
                   onClick={openSupport}
                 >
                   {t('pages.profile.contactSupport')}
+                </Button>
+                <Button
+                  size="large"
+                  icon={<ShoppingCartOutlined />}
+                  aria-label={t('pages.cart.title')}
+                  title={t('pages.cart.title')}
+                  onClick={() => navigate('/cart')}
+                >
+                  {t('pages.cart.title')}
+                </Button>
+                <Button
+                  size="large"
+                  icon={<ShoppingOutlined />}
+                  aria-label={t('pages.cart.browse')}
+                  title={t('pages.cart.browse')}
+                  onClick={() => navigate('/products')}
+                >
+                  {t('pages.cart.browse')}
+                </Button>
+                <Button
+                  size="large"
+                  icon={<GiftOutlined />}
+                  aria-label={t('nav.coupons')}
+                  title={t('nav.coupons')}
+                  onClick={() => navigate('/coupons')}
+                >
+                  {t('nav.coupons')}
                 </Button>
               </Space>
             ) : (

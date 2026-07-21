@@ -1049,6 +1049,31 @@
   font-size: clamp(40px, 12vw, 54px);
 }
 
+.cart-page__emptyPanelActions {
+  width: min(100%, 520px);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.cart-page__emptyPanelActions .ant-btn {
+  min-width: 0;
+  min-height: 44px;
+  justify-content: center;
+  border-radius: 999px;
+  font-weight: 900;
+  line-height: 1.15;
+  white-space: normal;
+}
+
+.cart-page__emptyPanelActions .ant-btn-primary {
+  border: 0;
+  background: linear-gradient(135deg, #ff6d46, #ee4d2d);
+  box-shadow: 0 14px 26px rgba(238, 77, 45, 0.2);
+}
+
+
 .cart-page__recentRecovery {
   margin-bottom: 14px;
 }
@@ -2752,6 +2777,7 @@
   .cart-page__heroActions .ant-btn,
   .cart-page__emptyActions .ant-btn,
   .cart-page__emptyPanel .ant-btn,
+  .cart-page__emptyPanelActions .ant-btn,
   .cart-page__recentRecovery .ant-btn,
   .cart-page__bulkActions .ant-btn,
   .cart-page__readinessActions .ant-btn,

@@ -473,14 +473,45 @@ const Notifications: React.FC = () => {
         </section>
       ) : null}
       {fetchError && notifications.length === 0 ? (
-        <PageError
-          title={t('common.loadFailed')}
-          description={t('common.loadFailedRetry')}
-          retryLabel={t('common.retry')}
-          onRetry={() => fetchNotifications()}
-          homeLabel={t('pages.cart.browse')}
-          onHome={() => navigate('/products')}
-        />
+        <div data-notifications-load-recovery="true">
+          <PageError
+            className="notifications-page__loadError"
+            title={t('common.loadFailed')}
+            description={t('common.loadFailedRetry')}
+            actions={[
+              {
+                key: 'retry',
+                label: t('common.retry'),
+                onClick: () => fetchNotifications(),
+                type: 'primary',
+              },
+              {
+                key: 'browse',
+                label: t('pages.cart.browse'),
+                onClick: () => navigate('/products'),
+                type: 'default',
+              },
+              {
+                key: 'coupons',
+                label: t('pages.notifications.emptyCoupons'),
+                onClick: () => navigate('/coupons'),
+                type: 'default',
+              },
+              {
+                key: 'track',
+                label: t('pages.notifications.emptyTrackOrder'),
+                onClick: () => navigate('/track-order'),
+                type: 'default',
+              },
+              {
+                key: 'support',
+                label: t('pages.productList.loadRecoverySupport'),
+                onClick: () => dispatchDomEvent('shop:open-support'),
+                type: 'default',
+              },
+            ]}
+          />
+        </div>
       ) : notifications.length === 0 ? (
         <PageEmpty
           className="notifications-page__emptyPanel"
@@ -524,7 +555,50 @@ const Notifications: React.FC = () => {
           ) : null}
           <List
             dataSource={filteredNotifications}
-            locale={{ emptyText: t('pages.notifications.noFilterResults') }}
+            locale={{
+              emptyText: (
+                <div className="notifications-page__filterEmpty" data-notifications-filter-empty="true">
+                  <div className="notifications-page__emptyCopy">
+                    <div>{t('pages.notifications.noFilterResults')}</div>
+                    <div className="notifications-page__emptyHint">{t('pages.notifications.noFilterResultsHint')}</div>
+                  </div>
+                  <Space wrap className="notifications-page__filterEmptyActions" data-notifications-filter-empty-actions="true">
+                    <Button
+                      type="primary"
+                      aria-label={t('pages.notifications.clearFilter')}
+                      title={t('pages.notifications.clearFilter')}
+                      onClick={() => setQuickFilter('ALL')}
+                    >
+                      {t('pages.notifications.clearFilter')}
+                    </Button>
+                    <Button
+                      icon={<ShoppingOutlined />}
+                      aria-label={t('pages.cart.browse')}
+                      title={t('pages.cart.browse')}
+                      onClick={() => navigate('/products')}
+                    >
+                      {t('pages.cart.browse')}
+                    </Button>
+                    <Button
+                      icon={<GiftOutlined />}
+                      aria-label={t('pages.notifications.emptyCoupons')}
+                      title={t('pages.notifications.emptyCoupons')}
+                      onClick={() => navigate('/coupons')}
+                    >
+                      {t('pages.notifications.emptyCoupons')}
+                    </Button>
+                    <Button
+                      icon={<TruckOutlined />}
+                      aria-label={t('pages.notifications.emptyTrackOrder')}
+                      title={t('pages.notifications.emptyTrackOrder')}
+                      onClick={() => navigate('/track-order')}
+                    >
+                      {t('pages.notifications.emptyTrackOrder')}
+                    </Button>
+                  </Space>
+                </div>
+              ),
+            }}
             footer={hasMoreNotifications ? (
               <div className="notifications-page__loadMore">
                 <Text type="secondary">{t('pages.notifications.loadedCount', { count: notifications.length })}</Text>

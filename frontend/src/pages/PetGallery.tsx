@@ -22,6 +22,7 @@ import { buildResponsiveImageSrcSet, getOptimizedImageUrl, imageFallbacks, resol
 import { getApiErrorMessage } from '../utils/apiError';
 import { reportNonBlockingError } from '../utils/nonBlockingError';
 import PageError from '../components/PageError';
+import { dispatchDomEvent } from '../utils/domEvents';
 import PageEmpty from '../components/PageEmpty';
 import { isSupportedPetGalleryImageFile } from '../utils/petGalleryUpload';
 import { getLocalStorageItem, hasStoredValue, setLocalStorageItem } from '../utils/safeStorage';
@@ -431,15 +432,45 @@ const PetGallery: React.FC = () => {
         />
       ) : null}
       {loadError && !loading && items.length === 0 ? (
-        <PageError
-          className="pet-gallery-page__loadAlert"
-          title={t('pages.petGallery.loadFailed')}
-          description={t('pages.petGallery.loadFailedEmpty')}
-          retryLabel={t('common.retry')}
-          onRetry={() => refreshGallery(true)}
-          homeLabel={t('pages.petGallery.browsePetProducts')}
-          onHome={() => navigate('/products?keyword=pet')}
-        />
+        <div data-pet-gallery-load-recovery="true">
+          <PageError
+            className="pet-gallery-page__loadAlert"
+            title={t('pages.petGallery.loadFailed')}
+            description={t('pages.petGallery.loadFailedEmpty')}
+            actions={[
+              {
+                key: 'retry',
+                label: t('common.retry'),
+                onClick: () => refreshGallery(true),
+                type: 'primary',
+              },
+              {
+                key: 'browse',
+                label: t('pages.petGallery.browsePetProducts'),
+                onClick: () => navigate('/products?keyword=pet'),
+                type: 'default',
+              },
+              {
+                key: 'pet-finder',
+                label: t('nav.petFinder'),
+                onClick: () => navigate('/pet-finder'),
+                type: 'default',
+              },
+              {
+                key: 'coupons',
+                label: t('pages.productList.loadRecoveryCoupons'),
+                onClick: () => navigate('/coupons'),
+                type: 'default',
+              },
+              {
+                key: 'support',
+                label: t('pages.productList.loadRecoverySupport'),
+                onClick: () => dispatchDomEvent('shop:open-support'),
+                type: 'default',
+              },
+            ]}
+          />
+        </div>
       ) : null}
 
       {isSampleOnlyGallery ? (

@@ -3801,3 +3801,54 @@
     width: 100%;
   }
 }
+
+
+/* Commercial multipath recovery on profile payment-return banners */
+.profile-payment-return__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+  max-width: min(100%, 420px);
+}
+
+.profile-payment-return__actions .ant-btn {
+  min-height: 44px;
+}
+
+@media (max-width: 780px) {
+  .profile-payment-return .ant-alert-action {
+    margin-inline-start: 0;
+    margin-top: 10px;
+    width: 100%;
+  }
+
+  .profile-payment-return__actions {
+    max-width: 100%;
+    justify-content: stretch;
+  }
+
+  .profile-payment-return__actions .ant-btn {
+    flex: 1 1 calc(50% - 8px);
+  }
+}
+
+.profile-payment-history__empty {
+  display: grid;
+  gap: 12px;
+  justify-items: center;
+  padding: 12px 8px 4px;
+  text-align: center;
+}
+.profile-payment-history__emptyCopy {
+  display: grid;
+  gap: 6px;
+}
+.profile-payment-history__emptyHint {
+  color: rgba(16, 47, 34, 0.72);
+  font-size: 13px;
+  line-height: 1.45;
+}
+.profile-payment-history__emptyActions .ant-btn {
+  min-height: 44px;
+}

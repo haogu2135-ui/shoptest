@@ -1446,6 +1446,20 @@
   box-shadow: 0 12px 24px rgba(18, 71, 52, 0.18);
 }
 
+
+.customer-support-widget__emptyMultipath {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 12px;
+  width: 100%;
+}
+
+.customer-support-widget__emptyMultipath .ant-btn {
+  min-height: 44px;
+}
+
 .customer-support-widget__welcomeQuickReplies {
   display: flex;
   flex-wrap: wrap;
@@ -3123,5 +3137,35 @@ body .customer-support-widget__orderModalRoot .customer-support-widget__orderMod
   .customer-support-widget__composer .ant-input-textarea textarea,
   .customer-support-widget__messageInput .ant-input {
     font-size: 16px;
+  }
+}
+
+/* Commercial support recovery multipath exits */
+.customer-support-widget__recoveryActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.customer-support-widget__recoveryActions .ant-btn {
+  min-height: 44px;
+}
+
+@media (max-width: 780px) {
+  .customer-support-widget__sessionError .ant-alert-action,
+  .customer-support-widget__orderAlert .ant-alert-action {
+    margin-top: 10px;
+    margin-inline-start: 0 !important;
+    width: 100%;
+  }
+
+  .customer-support-widget__recoveryActions {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .customer-support-widget__recoveryActions .ant-btn {
+    flex: 1 1 calc(50% - 8px);
   }
 }

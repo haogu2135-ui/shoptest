@@ -514,15 +514,45 @@ const CouponCenter: React.FC = () => {
         ]}
       />
       {loadError && !usingFallbackCoupons ? (
-        <PageError
-          className="coupon-center-page__loadAlert"
-          title={t('pages.coupons.loadFailed')}
-          description={t('messages.loadFailedRetry')}
-          retryLabel={t('messages.retry')}
-          onRetry={() => window.location.reload()}
-          homeLabel={t('pages.coupons.goShopping')}
-          onHome={() => navigate('/products')}
-        />
+        <div data-coupon-load-recovery="true">
+          <PageError
+            className="coupon-center-page__loadAlert"
+            title={t('pages.coupons.loadFailed')}
+            description={t('messages.loadFailedRetry')}
+            actions={[
+              {
+                key: 'retry',
+                label: t('messages.retry'),
+                onClick: () => window.location.reload(),
+                type: 'primary',
+              },
+              {
+                key: 'shop',
+                label: t('pages.coupons.goShopping'),
+                onClick: () => navigate('/products'),
+                type: 'default',
+              },
+              {
+                key: 'cart',
+                label: t('pages.cart.title'),
+                onClick: () => navigate('/cart'),
+                type: 'default',
+              },
+              {
+                key: 'pet-finder',
+                label: t('nav.petFinder'),
+                onClick: () => navigate('/pet-finder'),
+                type: 'default',
+              },
+              {
+                key: 'support',
+                label: t('pages.productList.loadRecoverySupport'),
+                onClick: () => dispatchDomEvent('shop:open-support'),
+                type: 'default',
+              },
+            ]}
+          />
+        </div>
       ) : null}
       {usingFallbackCoupons ? (
         <Alert
@@ -531,10 +561,22 @@ const CouponCenter: React.FC = () => {
           message={t('pages.coupons.catalogFallback')}
           description={t('pages.coupons.catalogFallbackDescription')}
           className="coupon-center-page__loadAlert"
+          data-coupon-fallback-recovery="true"
           action={(
-            <Button size="small" onClick={() => window.location.reload()} aria-label={t('messages.retry')} title={t('messages.retry')}>
-              {t('messages.retry')}
-            </Button>
+            <Space wrap className="coupon-center-page__fallbackActions" data-coupon-fallback-actions="true">
+              <Button size="small" type="primary" onClick={() => window.location.reload()} aria-label={t('messages.retry')} title={t('messages.retry')}>
+                {t('messages.retry')}
+              </Button>
+              <Button size="small" onClick={() => navigate('/products')} aria-label={t('pages.coupons.goShopping')} title={t('pages.coupons.goShopping')}>
+                {t('pages.coupons.goShopping')}
+              </Button>
+              <Button size="small" onClick={() => navigate('/cart')} aria-label={t('pages.cart.title')} title={t('pages.cart.title')}>
+                {t('pages.cart.title')}
+              </Button>
+              <Button size="small" onClick={() => navigate('/pet-finder')} aria-label={t('nav.petFinder')} title={t('nav.petFinder')}>
+                {t('nav.petFinder')}
+              </Button>
+            </Space>
           )}
         />
       ) : null}
@@ -1207,7 +1249,7 @@ const CouponCenter: React.FC = () => {
             <span className="coupon-wallet__emptyIcon"><GiftOutlined /></span>
             <h3>{t('pages.coupons.noMine')}</h3>
             <p>{t('pages.coupons.emptyWalletHint')}</p>
-            <div className="coupon-wallet__emptyActions">
+            <div className="coupon-wallet__emptyActions" data-coupon-wallet-empty-actions="true">
               <Button
                 type="primary"
                 icon={<ShoppingOutlined />}
@@ -1301,7 +1343,50 @@ const CouponCenter: React.FC = () => {
           <List
             className="coupon-wallet__list"
             dataSource={filteredWalletCoupons}
-            locale={{ emptyText: couponUiText.walletFilteredEmpty }}
+            locale={{
+              emptyText: (
+                <div className="coupon-wallet__filterEmpty" data-coupon-wallet-filter-empty="true">
+                  <div className="coupon-wallet__filterEmptyCopy">
+                    <strong>{couponUiText.walletFilteredEmpty}</strong>
+                    <p>{t('pages.coupons.walletFilteredEmptyHint')}</p>
+                  </div>
+                  <div className="coupon-wallet__emptyActions" data-coupon-wallet-filter-empty-actions="true">
+                    <Button
+                      type="primary"
+                      aria-label={couponUiText.walletAll}
+                      title={couponUiText.walletAll}
+                      onClick={() => setWalletFilter('all')}
+                    >
+                      {couponUiText.walletAll}
+                    </Button>
+                    <Button
+                      icon={<ShoppingOutlined />}
+                      aria-label={goShoppingActionLabel}
+                      title={goShoppingActionLabel}
+                      onClick={() => navigate('/products')}
+                    >
+                      {t('pages.coupons.goShopping')}
+                    </Button>
+                    <Button
+                      icon={<ShoppingOutlined />}
+                      aria-label={t('pages.coupons.emptyWalletCart')}
+                      title={t('pages.coupons.emptyWalletCart')}
+                      onClick={() => navigate('/cart')}
+                    >
+                      {t('pages.coupons.emptyWalletCart')}
+                    </Button>
+                    <Button
+                      icon={<GiftOutlined />}
+                      aria-label={t('pages.coupons.emptyWalletPetFinder')}
+                      title={t('pages.coupons.emptyWalletPetFinder')}
+                      onClick={() => navigate('/pet-finder')}
+                    >
+                      {t('pages.coupons.emptyWalletPetFinder')}
+                    </Button>
+                  </div>
+                </div>
+              ),
+            }}
             renderItem={(coupon) => {
               const expiryText = formatCouponDate(coupon.endAt);
               const statusLabel = formatWalletStatusLabel(coupon.status);

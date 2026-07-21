@@ -22,9 +22,23 @@ describe('commercial ops contracts', () => {
     expect(smoke).toContain('/api/orders/track');
     expect(smoke).toContain('guest checkout PENDING_PAYMENT');
     expect(smoke).toContain('guest checkout rate-limit handled');
+    expect(smoke).toContain('skipped guest conversion after backoff retry');
     expect(smoke).toContain('payment has paymentUrl');
     expect(smoke).toContain('signPaymentCallback');
     expect(smoke).toContain('payment callback received');
+    expect(smoke).toContain('mercado webhook endpoint live');
+    expect(smoke).toContain('stripe webhook endpoint live');
+    expect(smoke).toContain('mercado webhook alias endpoint live');
+    expect(smoke).toContain('signMercadoPagoWebhook');
+    expect(smoke).toContain('MERCADO_PAGO_WEBHOOK_SECRET');
+    expect(smoke).toContain('mercado webhook invalid signature 400');
+    expect(smoke).toContain('mercado webhook valid signature accepted');
+    expect(smoke).toContain('mercado webhook signed path skipped');
+    expect(smoke).toContain('signStripeWebhook');
+    expect(smoke).toContain('STRIPE_WEBHOOK_SECRET');
+    expect(smoke).toContain('stripe webhook invalid signature 400');
+    expect(smoke).toContain('stripe webhook valid signature accepted');
+    expect(smoke).toContain('stripe webhook signed path skipped');
     expect(smoke).toContain('paid payment status PAID');
     expect(smoke).toContain('auth register 200');
     expect(smoke).toContain('auth register rate-limit handled');
@@ -32,6 +46,31 @@ describe('commercial ops contracts', () => {
     expect(smoke).toContain('auth payment create 200');
     expect(smoke).toContain('auth paid payment status PAID');
     expect(smoke).toContain('SHOPTEST_PAYMENT_CALLBACK_SECRET');
+  });
+
+
+  it('keeps commercial mobile-device viewport and production readiness smoke entries', () => {
+    const pkg = JSON.parse(readFrontendRoot('package.json'));
+    const mobile = readFrontendRoot('scripts', 'commercial-mobile-device-smoke.js');
+    const production = readFrontendRoot('scripts', 'commercial-production-readiness.js');
+    expect(pkg.scripts['test:commercial-mobile-device-smoke']).toContain('commercial-mobile-device-smoke.js');
+    expect(pkg.scripts['test:commercial-production-readiness']).toContain('commercial-production-readiness.js');
+    expect(mobile).toContain('320x568');
+    expect(mobile).toContain('360x740');
+    expect(mobile).toContain('390x844');
+    expect(mobile).toContain('ShopTestAndroidApp');
+    expect(mobile).toContain('primary touch targets >=44px');
+    expect(mobile).toContain('sticky rail clear of bottom nav');
+    expect(mobile).toContain('real-device APK/WebView install E2E remains required');
+    expect(production).toContain('SHOPTEST_REQUIRE_PRODUCTION');
+    expect(production).toContain('production host reachable');
+    expect(production).toContain('local stripe webhook rejects bad signature');
+    expect(production).toContain('local mercado webhook rejects bad signature');
+    expect(production).toContain('real provider webhook traffic evidence');
+    expect(production).toContain('real-device mobile E2E evidence');
+    expect(production).toContain('local APK artifact integrity');
+    expect(production).toContain('local mobile-version.json present');
+    expect(production).toContain('probeLocalMobileReleaseArtifact');
   });
 
   it('keeps local UI server proxying API to the backend origin', () => {
@@ -74,6 +113,7 @@ describe('commercial ops contracts', () => {
     expect(browserSmoke).toContain('/api/auth/register');
     expect(browserSmoke).toContain('readMainText');
     expect(browserSmoke).toContain('home LCP soft budget');
+    expect(browserSmoke).toContain('built multipath recovery markers present');
     expect(browserSmoke).toContain('home CLS soft budget');
     expect(browserSmoke).toContain('product-mobile-buybar');
     expect(browserSmoke).toContain('login legal agreement notice');
@@ -109,11 +149,15 @@ describe('commercial ops contracts', () => {
     const paymentController = fs.readFileSync(path.join(__dirname, '..', '..', '..', 'src/main/java/com/example/shop/controller/PaymentController.java'), 'utf8');
     const paymentService = fs.readFileSync(path.join(__dirname, '..', '..', '..', 'src/main/java/com/example/shop/service/PaymentService.java'), 'utf8');
     const security = fs.readFileSync(path.join(__dirname, '..', '..', '..', 'src/main/java/com/example/shop/config/SecurityConfig.java'), 'utf8');
+    const smoke = readFrontendRoot('scripts', 'commercial-http-smoke.js');
     expect(paymentController).toContain('/mercado-pago/webhook');
     expect(paymentController).toContain('handleMercadoPagoWebhook');
     expect(paymentService).toContain('verifyMercadoPagoSignature');
     expect(paymentService).toContain('fetchMercadoPagoPayment');
+    expect(paymentService).toContain('id:');
+    expect(paymentService).toContain('request-id:');
     expect(security).toContain('/payments/mercado-pago/webhook');
+    expect(smoke).toContain("id:${dataId};request-id:${requestId};ts:${ts};");
   });
 
   it('keeps admin system status payment webhook readiness surface for ops', () => {
@@ -128,6 +172,10 @@ describe('commercial ops contracts', () => {
     expect(systemMonitor).toContain('channelWebhookReady');
     expect(systemMonitor).toContain('webhookReadyChannelCount');
     expect(systemMonitor).toContain('data-webhook-status');
+    expect(systemMonitor).toContain('data-system-monitor-load-recovery');
+    expect(systemMonitor).toContain("navigate('/admin')");
+    expect(systemMonitor).toContain("navigate('/admin/orders')");
+    expect(systemMonitor).toContain('actions={[');
   });
 
   it('keeps admin dashboard drilldown into payment provider webhook readiness', () => {
@@ -137,6 +185,81 @@ describe('commercial ops contracts', () => {
     expect(dashboard).toContain('providerReadinessAction');
     expect(dashboard).toContain('data-admin-payment-provider-readiness');
     expect(en.pages.adminDashboard.paymentReturnOps.providerReadinessAction).toBeTruthy();
+  });
+
+  it('keeps admin dashboard load failures on multipath ops recovery exits', () => {
+    const dashboard = fs.readFileSync(path.join(__dirname, '..', 'pages', 'AdminDashboard.tsx'), 'utf8');
+    expect(dashboard).toContain('data-admin-dashboard-load-recovery');
+    expect(dashboard).toContain('actions={[');
+    expect(dashboard).toContain("navigate('/admin/orders')");
+    expect(dashboard).toContain("navigate('/admin/system')");
+    expect(dashboard).toContain("navigate('/admin/products')");
+  });
+
+  it('keeps commercial-critical admin load failures on multipath ops recovery exits', () => {
+    const orders = fs.readFileSync(path.join(__dirname, '..', 'pages', 'OrderManagement.tsx'), 'utf8');
+    const products = fs.readFileSync(path.join(__dirname, '..', 'pages', 'ProductManagement.tsx'), 'utf8');
+    const coupons = fs.readFileSync(path.join(__dirname, '..', 'pages', 'CouponManagement.tsx'), 'utf8');
+    const support = fs.readFileSync(path.join(__dirname, '..', 'pages', 'SupportManagement.tsx'), 'utf8');
+    const system = fs.readFileSync(path.join(__dirname, '..', 'pages', 'SystemMonitor.tsx'), 'utf8');
+
+    expect(orders).toContain('data-admin-orders-load-recovery');
+    expect(orders).toContain('data-admin-orders-stale-recovery');
+    expect(orders).toContain("navigate('/admin/system')");
+    expect(orders).toContain("navigate('/admin/support')");
+    expect(orders).toContain('actions={[');
+
+    expect(products).toContain('data-admin-products-load-recovery');
+    expect(products).toContain('data-admin-products-stale-recovery');
+    expect(products).toContain("navigate('/admin/orders')");
+    expect(products).toContain('actions={[');
+
+    expect(coupons).toContain('data-admin-coupons-load-recovery');
+    expect(coupons).toContain('data-admin-coupons-stale-recovery');
+    expect(coupons).toContain("navigate('/admin/orders')");
+    expect(coupons).toContain('actions={[');
+
+    expect(support).toContain('data-admin-support-queue-recovery');
+    expect(support).toContain('data-admin-support-messages-recovery');
+    expect(support).toContain("navigate('/admin/orders')");
+    expect(support).toContain("navigate('/admin/system')");
+
+    expect(system).toContain('data-system-monitor-load-recovery');
+    expect(system).toContain('data-system-monitor-stale-recovery');
+
+    const users = fs.readFileSync(path.join(__dirname, '..', 'pages', 'UserManagement.tsx'), 'utf8');
+    expect(users).toContain('data-admin-users-load-recovery');
+    expect(users).toContain('data-admin-users-stale-recovery');
+    expect(users).toContain("navigate('/admin/orders')");
+    expect(users).toContain('actions={[');
+
+    for (const [file, loadMarker, staleMarker] of [
+      ['CategoryManagement.tsx', 'data-admin-categories-load-recovery', 'data-admin-categories-stale-recovery'],
+      ['BrandManagement.tsx', 'data-admin-brands-load-recovery', 'data-admin-brands-stale-recovery'],
+      ['LogisticsCarrierManagement.tsx', 'data-admin-carriers-load-recovery', 'data-admin-carriers-stale-recovery'],
+      ['ReviewManagement.tsx', 'data-admin-reviews-load-recovery', 'data-admin-reviews-stale-recovery'],
+      ['SecurityAuditLogManagement.tsx', 'data-admin-audit-load-recovery', 'data-admin-audit-stale-recovery'],
+      ['AlertManagement.tsx', 'data-admin-alerts-load-recovery', 'data-admin-alerts-stale-recovery'],
+      ['AnnouncementManagement.tsx', 'data-admin-announcements-load-recovery', 'data-admin-announcements-stale-recovery'],
+      ['IpBlacklistManagement.tsx', 'data-admin-ip-blacklist-load-recovery', 'data-admin-ip-blacklist-stale-recovery'],
+      ['ConfigCenter.tsx', 'data-admin-config-load-recovery', 'data-admin-config-stale-recovery'],
+      ['LogManagement.tsx', 'data-admin-logs-load-recovery', 'data-admin-logs-stale-recovery'],
+      ['PermissionManagement.tsx', 'data-admin-permissions-load-recovery', 'data-admin-permissions-stale-recovery'],
+      ['PetGalleryManagement.tsx', 'data-admin-pet-gallery-load-recovery', 'data-admin-pet-gallery-stale-recovery'],
+      ['ProductQuestionManagement.tsx', 'data-admin-questions-load-recovery', 'data-admin-questions-stale-recovery'],
+      ['RegistryManagement.tsx', 'data-admin-registry-load-recovery', 'data-admin-registry-stale-recovery'],
+      ['TrafficControl.tsx', 'data-admin-traffic-load-recovery', 'data-admin-traffic-stale-recovery'],
+      ['BugManagement.tsx', 'data-admin-bugs-load-recovery', 'data-admin-bugs-stale-recovery'],
+    ] as const) {
+      const source = fs.readFileSync(path.join(__dirname, '..', 'pages', file), 'utf8');
+      expect(source).toContain(loadMarker);
+      expect(source).toContain(staleMarker);
+      expect(source).toContain('actions={[');
+      expect(source).toContain("navigate('/admin')");
+    }
+    const bugs = fs.readFileSync(path.join(__dirname, '..', 'pages', 'BugManagement.tsx'), 'utf8');
+    expect(bugs).toContain('data-admin-bugs-summary-load-recovery');
+    expect(bugs).toContain('data-admin-bugs-summary-stale-recovery');
   });
 
 });

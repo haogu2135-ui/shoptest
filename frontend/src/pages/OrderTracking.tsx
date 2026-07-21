@@ -271,7 +271,7 @@ const OrderTracking: React.FC = () => {
     trackRequestSeqRef.current = requestSeq;
     const abortController = createApiAbortController();
     trackAbortRef.current = abortController;
-    const isCurrentTrackRequest = () => mountedRef.current && trackRequestSeqRef.current === requestSeq && !abortController.signal.aborted;
+    const isCurrentTrackRequest = () => mountedRef.current && trackRequestSeqRef.current === requestSeq;
     setLoading(true);
     setLookupError('');
     setReturnRequestOpen(false);
@@ -292,6 +292,9 @@ const OrderTracking: React.FC = () => {
       setReturnTrackingNumber(res.data.order?.returnTrackingNumber || '');
     } catch (error: unknown) {
       if (!isCurrentTrackRequest()) {
+        return;
+      }
+      if (abortController.signal.aborted) {
         return;
       }
       setTrackedEmail('');
@@ -812,17 +815,39 @@ const OrderTracking: React.FC = () => {
       {!order ? (
         <section className="order-tracking-page__emptyState">
           {lookupError ? (
-            <PageError
-              className="order-tracking-page__lookupErrorState"
-              title={lookupError}
-              description={t('pages.orderTracking.empty')}
-              retryLabel={t('pages.orderTracking.search')}
-              onRetry={() => {
-                void form.submit();
-              }}
-              homeLabel={t('pages.orderTracking.shopAgain')}
-              onHome={() => navigate('/products')}
-            />
+            <div data-order-tracking-lookup-recovery="true">
+              <PageError
+                className="order-tracking-page__lookupErrorState"
+                title={lookupError}
+                description={t('pages.orderTracking.empty')}
+                actions={[
+                  {
+                    key: 'retry',
+                    label: t('pages.orderTracking.search'),
+                    onClick: () => { void form.submit(); },
+                    type: 'primary',
+                  },
+                  {
+                    key: 'shop',
+                    label: t('pages.orderTracking.shopAgain'),
+                    onClick: () => navigate('/products'),
+                    type: 'default',
+                  },
+                  {
+                    key: 'coupons',
+                    label: t('pages.orderTracking.emptyCoupons'),
+                    onClick: () => navigate('/coupons'),
+                    type: 'default',
+                  },
+                  {
+                    key: 'support',
+                    label: t('pages.productList.loadRecoverySupport'),
+                    onClick: () => dispatchDomEvent('shop:open-support'),
+                    type: 'default',
+                  },
+                ]}
+              />
+            </div>
           ) : (
             <PageEmpty
               className="order-tracking-page__emptyPanel"
@@ -1069,7 +1094,43 @@ const OrderTracking: React.FC = () => {
               <Card title={t('pages.profile.orderItems')}>
                 <List
                   dataSource={items}
-                  locale={{ emptyText: t('pages.profile.noOrderItems') }}
+                  locale={{
+                    emptyText: (
+                      <div className="order-tracking-page__itemsEmpty" data-order-tracking-items-empty="true">
+                        <div className="order-tracking-page__itemsEmptyCopy">
+                          <div>{t('pages.profile.noOrderItems')}</div>
+                          <div className="order-tracking-page__itemsEmptyHint">{t('pages.orderTracking.noOrderItemsHint')}</div>
+                        </div>
+                        <Space wrap className="order-tracking-page__itemsEmptyActions" data-order-tracking-items-empty-actions="true">
+                          <Button
+                            type="primary"
+                            icon={<ShoppingOutlined />}
+                            aria-label={t('pages.orderTracking.shopAgain')}
+                            title={t('pages.orderTracking.shopAgain')}
+                            onClick={() => navigate('/products')}
+                          >
+                            {t('pages.orderTracking.shopAgain')}
+                          </Button>
+                          <Button
+                            icon={<GiftOutlined />}
+                            aria-label={t('pages.orderTracking.emptyCoupons')}
+                            title={t('pages.orderTracking.emptyCoupons')}
+                            onClick={() => navigate('/coupons')}
+                          >
+                            {t('pages.orderTracking.emptyCoupons')}
+                          </Button>
+                          <Button
+                            icon={<CustomerServiceOutlined />}
+                            aria-label={t('pages.productList.loadRecoverySupport')}
+                            title={t('pages.productList.loadRecoverySupport')}
+                            onClick={() => dispatchDomEvent('shop:open-support')}
+                          >
+                            {t('pages.productList.loadRecoverySupport')}
+                          </Button>
+                        </Space>
+                      </div>
+                    ),
+                  }}
                   renderItem={(item) => {
                     const itemName = orderTrackingItemName(item);
                     return (
@@ -1115,7 +1176,49 @@ const OrderTracking: React.FC = () => {
                     orderNo={canUseGuestActions ? order.orderNo : undefined}
                   />
                 ) : (
-                  <Empty description={t('pages.orderTracking.notShipped')} />
+                  <div className="order-tracking-page__notShipped" data-order-tracking-not-shipped="true">
+                    <Empty
+                      description={(
+                        <div className="order-tracking-page__emptyCopy">
+                          <div>{t('pages.orderTracking.notShipped')}</div>
+                          <div className="order-tracking-page__emptyHint">{t('pages.orderTracking.notShippedHint')}</div>
+                        </div>
+                      )}
+                    >
+                      <div className="order-tracking-page__notShippedActions">
+                        <Button
+                          type="primary"
+                          icon={<CustomerServiceOutlined />}
+                          aria-label={trackActionLabel(t('pages.profile.contactSupport'))}
+                          title={trackActionLabel(t('pages.profile.contactSupport'))}
+                          onClick={supportOpen}
+                        >
+                          {t('pages.profile.contactSupport')}
+                        </Button>
+                        <Button
+                          aria-label={trackActionLabel(t('pages.orderTracking.emptyProfileOrders'))}
+                          title={trackActionLabel(t('pages.orderTracking.emptyProfileOrders'))}
+                          onClick={() => navigate('/profile?tab=orders')}
+                        >
+                          {t('pages.orderTracking.emptyProfileOrders')}
+                        </Button>
+                        <Button
+                          aria-label={trackActionLabel(t('pages.orderTracking.shopAgain'))}
+                          title={trackActionLabel(t('pages.orderTracking.shopAgain'))}
+                          onClick={() => navigate('/products')}
+                        >
+                          {t('pages.orderTracking.shopAgain')}
+                        </Button>
+                        <Button
+                          aria-label={trackActionLabel(t('pages.orderTracking.emptyCoupons'))}
+                          title={trackActionLabel(t('pages.orderTracking.emptyCoupons'))}
+                          onClick={() => navigate('/coupons')}
+                        >
+                          {t('pages.orderTracking.emptyCoupons')}
+                        </Button>
+                      </div>
+                    </Empty>
+                  </div>
                 )}
               </Card>
             </>

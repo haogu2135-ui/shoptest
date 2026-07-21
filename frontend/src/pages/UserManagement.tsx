@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Table, Tag, Button, Popconfirm, Select, message, Typography, Divider, Space, Card, Progress, Input, Modal, Form } from 'antd';
 import { DeleteOutlined, StopOutlined, CheckCircleOutlined, SafetyCertificateOutlined, TeamOutlined, MailOutlined, PhoneOutlined, DownloadOutlined, SearchOutlined, EditOutlined } from '@ant-design/icons';
@@ -18,6 +19,7 @@ import {
   roleLabelKey,
 } from '../utils/roles';
 import { hasStoredValue } from '../utils/safeStorage';
+import PageError from '../components/PageError';
 import { getApiErrorMessage } from '../utils/apiError';
 import { buildPaginationItemRender } from '../utils/paginationLabels';
 import './UserManagement.css';
@@ -56,6 +58,7 @@ const userStatusColors: Record<UserAccountStatus, string> = {
 };
 
 const UserManagement: React.FC = () => {
+  const navigate = useNavigate();
   const [users, setUsers] = useState<User[]>([]);
   const [summary, setSummary] = useState<UserAdminSummary | null>(null);
   const [roles, setRoles] = useState<AdminRole[]>([]);
@@ -549,19 +552,65 @@ const UserManagement: React.FC = () => {
     <div className="user-management-page">
       <Title level={4}>{t('pages.adminUsers.title')}</Title>
       <Divider />
-      {userLoadError ? (
+      {userLoadError && userSnapshotLoaded ? (
         <Alert
           className="user-management-page__alert"
           type="warning"
           showIcon
           message={userLoadError}
-          description={userSnapshotLoaded ? t('pages.adminUsers.staleDataWarning') : undefined}
+          description={t('pages.adminUsers.staleDataWarning')}
           action={(
-            <Button size="small" loading={loading} onClick={() => fetchUsers(pageState.page, pageState.size)}>
-              {t('common.retry')}
-            </Button>
+            <Space wrap data-admin-users-stale-recovery="true">
+              <Button size="small" type="primary" loading={loading} onClick={() => fetchUsers(pageState.page, pageState.size)}>
+                {t('common.retry')}
+              </Button>
+              <Button size="small" onClick={() => navigate('/admin')}>
+                {t('pages.adminDashboard.title')}
+              </Button>
+              <Button size="small" onClick={() => navigate('/admin/orders')}>
+                {t('pages.adminDashboard.orders')}
+              </Button>
+              <Button size="small" onClick={() => navigate('/admin/support')}>
+                {t('adminLayout.support')}
+              </Button>
+            </Space>
           )}
         />
+      ) : null}
+
+      {userLoadError && !userSnapshotLoaded ? (
+        <div className="user-management-page__error" data-admin-users-load-recovery="true">
+          <PageError
+            title={t('pages.adminUsers.fetchFailed')}
+            description={userLoadError}
+            actions={[
+              {
+                key: 'retry',
+                label: t('common.retry'),
+                onClick: () => { void fetchUsers(pageState.page, pageState.size); },
+                type: 'primary',
+              },
+              {
+                key: 'dashboard',
+                label: t('pages.adminDashboard.title'),
+                onClick: () => navigate('/admin'),
+                type: 'default',
+              },
+              {
+                key: 'orders',
+                label: t('pages.adminDashboard.orders'),
+                onClick: () => navigate('/admin/orders'),
+                type: 'default',
+              },
+              {
+                key: 'support',
+                label: t('adminLayout.support'),
+                onClick: () => navigate('/admin/support'),
+                type: 'default',
+              },
+            ]}
+          />
+        </div>
       ) : null}
 
       {showInitialUserLoading ? (

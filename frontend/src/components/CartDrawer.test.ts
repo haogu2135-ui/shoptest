@@ -10,7 +10,7 @@ describe('CartDrawer mobile overlay and trust-row contracts', () => {
     const css = readCartDrawerCss();
     const f2756Css = css.slice(css.indexOf('F2756:'));
 
-    expect(source).toContain('rootClassName="cart-drawer__root"');
+    expect(source).toMatch(/rootClassName=\{`cart-drawer__root\$\{open \? ' cart-drawer__root--open' : ''\}`\}|rootClassName="cart-drawer__root"/);
     expect(source).toContain('width="min(420px, 100%)"');
     expect(source).not.toContain('width="min(420px, 100vw)"');
     expect(f2756Css).toMatch(/\.cart-drawer__root\.ant-drawer\s*\{[^}]*z-index:\s*9500\s*!important;/);

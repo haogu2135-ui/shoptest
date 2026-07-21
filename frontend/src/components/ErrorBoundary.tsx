@@ -1,6 +1,6 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { Button, Result } from 'antd';
-import { CustomerServiceOutlined, HomeOutlined, ReloadOutlined, ShoppingOutlined } from '@ant-design/icons';
+import { CustomerServiceOutlined, GiftOutlined, HomeOutlined, ReloadOutlined, ShoppingOutlined } from '@ant-design/icons';
 import { useNavigate, type NavigateFunction } from 'react-router-dom';
 import { useLanguage } from '../i18n';
 import { reportNonBlockingError } from '../utils/nonBlockingError';
@@ -20,6 +20,8 @@ type ErrorBoundaryCopy = {
   retry: string;
   backHome: string;
   browseProducts: string;
+  browseCoupons: string;
+  trackOrder: string;
   contactSupport: string;
 };
 
@@ -89,12 +91,32 @@ class ErrorBoundaryInner extends Component<InnerProps, State> {
     dispatchDomEvent('shop:open-support', { source: 'error-boundary' });
   };
 
+  handleBrowseCoupons = () => {
+    this.reportRecoveryAction('ErrorBoundary browse coupons');
+    this.props.navigate('/coupons', { replace: true });
+    this.setState((prevState) => ({
+      hasError: false,
+      error: null,
+      retryKey: prevState.retryKey + 1,
+    }));
+  };
+
+  handleTrackOrder = () => {
+    this.reportRecoveryAction('ErrorBoundary track order');
+    this.props.navigate('/track-order', { replace: true });
+    this.setState((prevState) => ({
+      hasError: false,
+      error: null,
+      retryKey: prevState.retryKey + 1,
+    }));
+  };
+
   render() {
     if (this.state.hasError) {
       const { copy } = this.props;
 
       return (
-        <div className="shop-error-boundary" role="alert" aria-live="assertive">
+        <div className="shop-error-boundary" data-error-boundary-recovery="true" role="alert" aria-live="assertive">
           <Result
             status="error"
             title={copy.title}
@@ -128,6 +150,20 @@ class ErrorBoundaryInner extends Component<InnerProps, State> {
                 {copy.browseProducts}
               </Button>,
               <Button
+                key="coupons"
+                icon={<GiftOutlined />}
+                onClick={this.handleBrowseCoupons}
+              >
+                {copy.browseCoupons}
+              </Button>,
+              <Button
+                key="track"
+                icon={<ShoppingOutlined />}
+                onClick={this.handleTrackOrder}
+              >
+                {copy.trackOrder}
+              </Button>,
+              <Button
                 key="support"
                 icon={<CustomerServiceOutlined />}
                 onClick={this.handleContactSupport}
@@ -154,6 +190,8 @@ const ErrorBoundary: React.FC<Props> = (props) => {
     retry: t('errorBoundary.retry'),
     backHome: t('errorBoundary.backHome'),
     browseProducts: t('errorBoundary.browseProducts'),
+    browseCoupons: t('nav.coupons'),
+    trackOrder: t('nav.trackOrder'),
     contactSupport: t('errorBoundary.contactSupport'),
   };
   return <ErrorBoundaryInner {...props} copy={copy} navigate={navigate} />;

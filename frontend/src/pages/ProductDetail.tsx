@@ -1016,14 +1016,43 @@ const ProductDetail: React.FC = () => {
   if (!product) {
     if (loadError) {
       return (
-        <div className="product-detail-empty">
+        <div className="product-detail-empty" data-product-detail-load-recovery="true">
           <PageError
+            className="product-detail-empty__panel product-detail-empty__panel--error"
             title={t('pages.productDetail.loadFailed')}
             description={loadError || t('pages.productDetail.loadFailedDescription')}
-            retryLabel={t('common.refresh')}
-            onRetry={() => setReloadToken((value) => value + 1)}
-            homeLabel={t('pages.productList.title')}
-            onHome={() => navigate('/products')}
+            actions={[
+              {
+                key: 'retry',
+                label: t('common.refresh'),
+                onClick: () => setReloadToken((value) => value + 1),
+                type: 'primary',
+              },
+              {
+                key: 'browse',
+                label: t('pages.productList.title'),
+                onClick: () => navigate('/products'),
+                type: 'default',
+              },
+              {
+                key: 'coupons',
+                label: t('pages.productDetail.notFoundCoupons'),
+                onClick: () => navigate('/coupons'),
+                type: 'default',
+              },
+              {
+                key: 'pet-finder',
+                label: t('pages.productDetail.notFoundPetFinder'),
+                onClick: () => navigate('/pet-finder'),
+                type: 'default',
+              },
+              {
+                key: 'support',
+                label: t('nav.support'),
+                onClick: () => dispatchDomEvent('shop:open-support'),
+                type: 'default',
+              },
+            ]}
           />
         </div>
       );
@@ -1032,6 +1061,7 @@ const ProductDetail: React.FC = () => {
       <div className="product-detail-empty">
         <PageEmpty
           className="product-detail-empty__panel"
+          data-product-not-found-actions="true"
           description={(
             <div className="product-detail-empty__copy">
               <div>{t('pages.productDetail.notFound')}</div>
@@ -2437,7 +2467,7 @@ const ProductDetail: React.FC = () => {
         </Card>
 
         {/* Related recommendations */}
-        {relatedRecommendations.length > 0 && (
+        {relatedRecommendations.length > 0 ? (
           <div className="product-recommendations" ref={recommendationCarouselRef}>
             <Title level={3}>{t('pages.productDetail.boughtTogether', { defaultValue: t('pages.productDetail.recommendations') })}</Title>
             <Carousel
@@ -2540,6 +2570,39 @@ const ProductDetail: React.FC = () => {
                 );
               })}
             </Carousel>
+          </div>
+        ) : (
+          <div className="product-recommendations product-recommendations--empty" data-product-detail-recommendations-empty="true">
+            <Title level={3}>{t('pages.productDetail.recommendations')}</Title>
+            <div className="product-recommendations__emptyCopy">
+              <div>{t('pages.productDetail.recommendationsEmpty')}</div>
+              <div className="product-recommendations__emptyHint">{t('pages.productDetail.recommendationsEmptyHint')}</div>
+            </div>
+            <Space wrap className="product-recommendations__emptyActions" data-product-detail-recommendations-empty-actions="true">
+              <Button
+                type="primary"
+                icon={<ShoppingCartOutlined />}
+                aria-label={t('pages.cart.browse')}
+                title={t('pages.cart.browse')}
+                onClick={() => navigate('/products')}
+              >
+                {t('pages.cart.browse')}
+              </Button>
+              <Button
+                aria-label={t('nav.coupons')}
+                title={t('nav.coupons')}
+                onClick={() => navigate('/coupons')}
+              >
+                {t('nav.coupons')}
+              </Button>
+              <Button
+                aria-label={t('nav.petFinder')}
+                title={t('nav.petFinder')}
+                onClick={() => navigate('/pet-finder')}
+              >
+                {t('nav.petFinder')}
+              </Button>
+            </Space>
           </div>
         )}
       </div>

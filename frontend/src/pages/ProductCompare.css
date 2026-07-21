@@ -1703,3 +1703,32 @@
   justify-content: center;
   gap: 8px;
 }
+
+
+.product-compare__staleActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+  max-width: min(100%, 420px);
+}
+
+.product-compare__staleActions .ant-btn {
+  min-height: 44px;
+}
+
+@media (max-width: 780px) {
+  .product-compare__loadError .ant-alert-action {
+    margin-inline-start: 0;
+    margin-top: 10px;
+    width: 100%;
+  }
+
+  .product-compare__staleActions {
+    max-width: 100%;
+  }
+
+  .product-compare__staleActions .ant-btn {
+    flex: 1 1 calc(50% - 8px);
+  }
+}

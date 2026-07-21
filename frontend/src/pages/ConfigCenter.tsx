@@ -1,9 +1,11 @@
+import { useNavigate } from 'react-router-dom';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Button, Card, Checkbox, Descriptions, Empty, Form, Input, Popconfirm, Space, Spin, Statistic, Table, Tag, Typography, message } from 'antd';
 import { CheckCircleOutlined, CloudSyncOutlined, CodeOutlined, ReloadOutlined, SendOutlined } from '@ant-design/icons';
 import { adminApi } from '../api/admin';
 import type { AdminConfigCenterSnapshot } from '../types';
 import { useLanguage } from '../i18n';
+import PageError from '../components/PageError';
 import { getApiErrorMessage } from '../utils/apiError';
 import {
   CONFIG_CENTER_APPLY_PERMISSION,
@@ -32,6 +34,7 @@ const isFormValidationError = (error: unknown): error is { errorFields: unknown[
 );
 
 const ConfigCenter: React.FC = () => {
+  const navigate = useNavigate();
   const { t, language } = useLanguage();
   const [form] = Form.useForm<FormValues>();
   const watchedDataId = Form.useWatch('dataId', form);
@@ -235,19 +238,39 @@ const ConfigCenter: React.FC = () => {
         </Space>
       </div>
 
-      {loadError ? (
+      {loadError && snapshot ? (
         <Alert
           className="config-center__alert"
           type="warning"
           showIcon
           message={loadError}
-          description={snapshot ? t('pages.configCenter.staleDataWarning') : undefined}
+          description={t('pages.configCenter.staleDataWarning')}
           action={(
-            <Button size="small" onClick={() => loadSnapshot()} loading={loading}>
-              {t('common.retry')}
-            </Button>
+            <Space wrap data-admin-config-stale-recovery="true">
+              <Button size="small" type="primary" onClick={() => loadSnapshot()} loading={loading}>
+                {t('common.retry')}
+              </Button>
+              <Button size="small" onClick={() => navigate('/admin')}>{t('pages.adminDashboard.title')}</Button>
+              <Button size="small" onClick={() => navigate('/admin/system')}>{t('pages.adminDashboard.paymentReturnOps.providerReadinessAction')}</Button>
+              <Button size="small" onClick={() => navigate('/admin/orders')}>{t('pages.adminDashboard.orders')}</Button>
+            </Space>
           )}
         />
+      ) : null}
+
+      {loadError && !snapshot ? (
+        <div className="config-center__error" data-admin-config-load-recovery="true">
+          <PageError
+            title={t('pages.configCenter.loadFailed')}
+            description={loadError}
+            actions={[
+              { key: 'retry', label: t('common.retry'), onClick: () => { void loadSnapshot(); }, type: 'primary' },
+              { key: 'dashboard', label: t('pages.adminDashboard.title'), onClick: () => navigate('/admin'), type: 'default' },
+              { key: 'system', label: t('pages.adminDashboard.paymentReturnOps.providerReadinessAction'), onClick: () => navigate('/admin/system'), type: 'default' },
+              { key: 'orders', label: t('pages.adminDashboard.orders'), onClick: () => navigate('/admin/orders'), type: 'default' },
+            ]}
+          />
+        </div>
       ) : null}
 
       <div

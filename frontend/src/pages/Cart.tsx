@@ -1343,15 +1343,45 @@ const Cart: React.FC = () => {
           ]}
         />
         {paymentReturnBanner}
-        <PageError
-          className="cart-page__loadError"
-          title={t('messages.loadFailed')}
-          description={loadErrorMessage || t('pages.cart.fetchFailed')}
-          retryLabel={retryCartLoadActionLabel}
-          onRetry={() => { setLoading(true); fetchCartItems(); }}
-          homeLabel={t('pages.cart.browse')}
-          onHome={() => navigate('/products')}
-        />
+        <div data-cart-load-recovery="true">
+          <PageError
+            className="cart-page__loadError"
+            title={t('messages.loadFailed')}
+            description={loadErrorMessage || t('pages.cart.fetchFailed')}
+            actions={[
+              {
+                key: 'retry',
+                label: retryCartLoadActionLabel,
+                onClick: () => { setLoading(true); fetchCartItems(); },
+                type: 'primary',
+              },
+              {
+                key: 'browse',
+                label: t('pages.cart.browse'),
+                onClick: () => navigate('/products'),
+                type: 'default',
+              },
+              {
+                key: 'coupons',
+                label: t('pages.productList.loadRecoveryCoupons'),
+                onClick: () => navigate('/coupons'),
+                type: 'default',
+              },
+              {
+                key: 'history',
+                label: t('nav.history'),
+                onClick: () => navigate('/history'),
+                type: 'default',
+              },
+              {
+                key: 'support',
+                label: t('pages.productList.loadRecoverySupport'),
+                onClick: () => dispatchDomEvent('shop:open-support'),
+                type: 'default',
+              },
+            ]}
+          />
+        </div>
       </div>
     );
   }
@@ -1377,7 +1407,7 @@ const Cart: React.FC = () => {
             <Title level={2}>{t('pages.cart.empty')}</Title>
             <Text>{t('pages.cart.recentRecoverySubtitle')}</Text>
           </div>
-          <div className="cart-page__emptyActions">
+          <div className="cart-page__emptyActions" data-cart-empty-actions="true">
             <Button type="primary" icon={<ShoppingOutlined />} aria-label={emptyBrowseActionLabel} title={emptyBrowseActionLabel} onClick={() => navigate('/products')}>
               {t('pages.cart.browse')}
             </Button>
@@ -1867,7 +1897,20 @@ const Cart: React.FC = () => {
       ) : (
         <Card className="cart-page__emptyPanel">
           <Empty image={<ShoppingOutlined className="cart-page__emptyPanelIcon" />} description={t('pages.cart.empty')}>
-            <Button type="primary" aria-label={emptyBrowseActionLabel} title={emptyBrowseActionLabel} onClick={() => navigate('/products')}>{t('pages.cart.browse')}</Button>
+            <div className="cart-page__emptyPanelActions" data-cart-empty-panel-actions="true">
+              <Button type="primary" icon={<ShoppingOutlined />} aria-label={emptyBrowseActionLabel} title={emptyBrowseActionLabel} onClick={() => navigate('/products')}>
+                {t('pages.cart.browse')}
+              </Button>
+              <Button icon={<ShoppingOutlined />} aria-label={emptyCouponsActionLabel} title={emptyCouponsActionLabel} onClick={() => navigate('/coupons')}>
+                {t('nav.coupons')}
+              </Button>
+              <Button icon={<ShoppingOutlined />} aria-label={emptyPetFinderActionLabel} title={emptyPetFinderActionLabel} onClick={() => navigate('/pet-finder')}>
+                {t('nav.petFinder')}
+              </Button>
+              <Button icon={<ClockCircleOutlined />} aria-label={emptyHistoryActionLabel} title={emptyHistoryActionLabel} onClick={() => navigate('/history')}>
+                {t('nav.history')}
+              </Button>
+            </div>
           </Empty>
         </Card>
       )}

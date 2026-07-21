@@ -5750,3 +5750,34 @@
     touch-action: manipulation;
   }
 }
+
+/* Commercial coupon fallback multipath recovery */
+.coupon-center-page__fallbackActions .ant-btn {
+  min-height: 44px;
+}
+
+.coupon-wallet__filterEmpty {
+  display: grid;
+  gap: 12px;
+  justify-items: center;
+  padding: 18px 12px 10px;
+  text-align: center;
+}
+.coupon-wallet__filterEmptyCopy {
+  display: grid;
+  gap: 6px;
+  max-width: 420px;
+}
+.coupon-wallet__filterEmptyCopy strong {
+  font-size: 15px;
+  color: rgba(16, 47, 34, 0.92);
+}
+.coupon-wallet__filterEmptyCopy p {
+  margin: 0;
+  color: rgba(16, 47, 34, 0.7);
+  font-size: 13px;
+  line-height: 1.45;
+}
+.coupon-wallet__filterEmpty .coupon-wallet__emptyActions .ant-btn {
+  min-height: 44px;
+}

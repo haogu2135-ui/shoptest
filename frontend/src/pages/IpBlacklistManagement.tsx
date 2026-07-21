@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Button, Card, Empty, Form, Input, InputNumber, Modal, Popconfirm, Select, Space, Spin, Statistic, Table, Tag, Typography, message } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
@@ -5,6 +6,7 @@ import { PlusOutlined, ReloadOutlined, SearchOutlined, StopOutlined, UnlockOutli
 import { adminApi } from '../api/admin';
 import type { IpBlacklistEntry, IpBlacklistStatus } from '../types';
 import { useLanguage } from '../i18n';
+import PageError from '../components/PageError';
 import { getApiErrorMessage } from '../utils/apiError';
 import { buildPaginationItemRender } from '../utils/paginationLabels';
 import { labelTableSelectionCheckbox } from '../utils/tableSelectionAccessibility';
@@ -69,6 +71,7 @@ const normalizeStatusInfo = (payload: unknown): IpBlacklistStatus | null => {
 };
 
 const IpBlacklistManagement: React.FC = () => {
+  const navigate = useNavigate();
   const { t, language } = useLanguage();
   const dateLocale = language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US';
   const [entries, setEntries] = useState<IpBlacklistEntry[]>([]);
@@ -476,19 +479,39 @@ const IpBlacklistManagement: React.FC = () => {
         </Space>
       </div>
 
-      {listLoadError ? (
+      {listLoadError && listSnapshotLoaded ? (
         <Alert
           type="warning"
           showIcon
           className="ip-blacklist__notice"
           message={listLoadError}
-          description={listSnapshotLoaded ? t('pages.ipBlacklistAdmin.staleDataWarning') : undefined}
+          description={t('pages.ipBlacklistAdmin.staleDataWarning')}
           action={(
-            <Button size="small" loading={loading} onClick={refreshData}>
-              {t('common.retry')}
-            </Button>
+            <Space wrap data-admin-ip-blacklist-stale-recovery="true">
+              <Button size="small" type="primary" loading={loading} onClick={refreshData}>
+                {t('common.retry')}
+              </Button>
+              <Button size="small" onClick={() => navigate('/admin')}>{t('pages.adminDashboard.title')}</Button>
+              <Button size="small" onClick={() => navigate('/admin/system')}>{t('pages.adminDashboard.paymentReturnOps.providerReadinessAction')}</Button>
+              <Button size="small" onClick={() => navigate('/admin/orders')}>{t('pages.adminDashboard.orders')}</Button>
+            </Space>
           )}
         />
+      ) : null}
+
+      {listLoadError && !listSnapshotLoaded ? (
+        <div className="ip-blacklist__error" data-admin-ip-blacklist-load-recovery="true">
+          <PageError
+            title={t('pages.ipBlacklistAdmin.loadFailed')}
+            description={listLoadError}
+            actions={[
+              { key: 'retry', label: t('common.retry'), onClick: () => { void refreshData(); }, type: 'primary' },
+              { key: 'dashboard', label: t('pages.adminDashboard.title'), onClick: () => navigate('/admin'), type: 'default' },
+              { key: 'system', label: t('pages.adminDashboard.paymentReturnOps.providerReadinessAction'), onClick: () => navigate('/admin/system'), type: 'default' },
+              { key: 'orders', label: t('pages.adminDashboard.orders'), onClick: () => navigate('/admin/orders'), type: 'default' },
+            ]}
+          />
+        </div>
       ) : null}
 
       {showInitialBlacklistLoading ? (

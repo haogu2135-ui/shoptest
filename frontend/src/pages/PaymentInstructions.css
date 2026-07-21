@@ -395,6 +395,18 @@
   min-width: 120px;
 }
 
+.payment-instructions-page__guestEmailRecovery {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  margin-top: 4px;
+}
+
+.payment-instructions-page__guestEmailRecovery .ant-btn {
+  min-height: 44px;
+  padding-inline: 8px;
+}
+
 .payment-instructions-page__guestEmailGate > .ant-btn-link {
   justify-self: start;
   min-height: 44px;

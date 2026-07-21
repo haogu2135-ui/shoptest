@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Badge, Button, Card, Empty, Input, List, message, Modal, Popconfirm, Select, Space, Spin, Tag, Typography } from 'antd';
 import { AlertOutlined, CheckCircleOutlined, CustomerServiceOutlined, GiftOutlined, SearchOutlined, SendOutlined, ShoppingOutlined, ThunderboltOutlined } from '@ant-design/icons';
@@ -102,6 +103,7 @@ const supportSessionMatchesQueue = (session: SupportSession, filter?: string, se
 };
 
 const SupportManagement: React.FC = () => {
+  const navigate = useNavigate();
   const [sessions, setSessions] = useState<SupportSession[]>([]);
   const [summary, setSummary] = useState<SupportAdminSummary | null>(null);
   const [selectedSession, setSelectedSession] = useState<SupportSession | null>(null);
@@ -914,10 +916,22 @@ const SupportManagement: React.FC = () => {
               type="warning"
               showIcon
               message={queueError}
+              data-admin-support-queue-recovery="true"
               action={(
-                <Button size="small" onClick={() => loadSessions()}>
-                  {t('common.retry')}
-                </Button>
+                <Space wrap>
+                  <Button size="small" type="primary" onClick={() => loadSessions()}>
+                    {t('common.retry')}
+                  </Button>
+                  <Button size="small" onClick={() => navigate('/admin/orders')}>
+                    {t('pages.adminDashboard.orders')}
+                  </Button>
+                  <Button size="small" onClick={() => navigate('/admin')}>
+                    {t('pages.adminDashboard.title')}
+                  </Button>
+                  <Button size="small" onClick={() => navigate('/admin/system')}>
+                    {t('pages.adminDashboard.paymentReturnOps.providerReadinessAction')}
+                  </Button>
+                </Space>
               )}
             />
           ) : null}
@@ -1134,10 +1148,22 @@ const SupportManagement: React.FC = () => {
                     type="warning"
                     showIcon
                     message={messageError}
+                    data-admin-support-messages-recovery="true"
                     action={(
-                      <Button size="small" onClick={() => loadMessages(selectedSession)}>
-                        {t('common.retry')}
-                      </Button>
+                      <Space wrap>
+                        <Button size="small" type="primary" onClick={() => loadMessages(selectedSession)}>
+                          {t('common.retry')}
+                        </Button>
+                        <Button size="small" onClick={() => loadSessions()}>
+                          {t('common.refresh')}
+                        </Button>
+                        <Button size="small" onClick={() => navigate('/admin/orders')}>
+                          {t('pages.adminDashboard.orders')}
+                        </Button>
+                        <Button size="small" onClick={() => navigate('/admin')}>
+                          {t('pages.adminDashboard.title')}
+                        </Button>
+                      </Space>
                     )}
                   />
                 ) : messages.length === 0 ? (

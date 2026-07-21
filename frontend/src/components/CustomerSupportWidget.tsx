@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Avatar, Badge, Button, Card, Empty, Input, List, message, Modal, Select, Space, Spin, Tag, Typography } from 'antd';
-import { CloseOutlined, CustomerServiceOutlined, SendOutlined, ShoppingOutlined, SoundOutlined, UserOutlined } from '@ant-design/icons';
+import { CloseOutlined, CustomerServiceOutlined, FileSearchOutlined, GiftOutlined, SendOutlined, ShoppingOutlined, SoundOutlined, UserOutlined } from '@ant-design/icons';
+import { useNavigate } from 'react-router-dom';
 import { orderApi, supportApi, supportWebSocketProtocols, supportWebSocketUrl } from '../api';
 import type { OrderCustomer, OrderItemCustomer, SupportMessageCustomer, SupportSessionCustomer } from '../types';
 import { useLanguage } from '../i18n';
@@ -149,6 +150,7 @@ const getFocusableSupportElements = (container: HTMLElement) =>
     .filter((element) => element.tabIndex >= 0 && element.getAttribute('aria-hidden') !== 'true');
 
 const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOpenRequest, onReady }) => {
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [connected, setConnected] = useState(false);
   const [session, setSession] = useState<SupportSessionCustomer | null>(null);
@@ -1202,17 +1204,29 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
             ) : sessionSwitchError ? (
               <Alert
                 className="customer-support-widget__sessionError"
+                data-support-session-recovery="true"
                 type="warning"
                 showIcon
                 message={sessionSwitchError}
                 action={(
-                  <Button size="small" onClick={() => session?.id && switchSession(session.id)}>
-                    {t('common.retry')}
-                  </Button>
+                  <Space wrap className="customer-support-widget__recoveryActions" data-support-recovery-actions="true">
+                    <Button size="small" type="primary" onClick={() => session?.id && switchSession(session.id)} aria-label={t('common.retry')} title={t('common.retry')}>
+                      {t('common.retry')}
+                    </Button>
+                    <Button size="small" icon={<FileSearchOutlined />} onClick={() => navigate('/track-order')} aria-label={t('nav.trackOrder')} title={t('nav.trackOrder')}>
+                      {t('nav.trackOrder')}
+                    </Button>
+                    <Button size="small" icon={<ShoppingOutlined />} onClick={() => navigate('/products')} aria-label={t('pages.cart.browse')} title={t('pages.cart.browse')}>
+                      {t('pages.cart.browse')}
+                    </Button>
+                    <Button size="small" icon={<GiftOutlined />} onClick={() => navigate('/coupons')} aria-label={t('nav.coupons')} title={t('nav.coupons')}>
+                      {t('nav.coupons')}
+                    </Button>
+                  </Space>
                 )}
               />
             ) : messages.length === 0 ? (
-              <div className="customer-support-widget__emptyState">
+              <div className="customer-support-widget__emptyState" data-support-empty-actions="true">
                 <div className="customer-support-widget__welcomeCard">
                   <div className="customer-support-widget__welcomeIcon">
                     <CustomerServiceOutlined />
@@ -1232,6 +1246,17 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
                       </button>
                     ))}
                   </div>
+                  <Space wrap className="customer-support-widget__emptyMultipath" data-support-empty-multipath="true">
+                    <Button size="small" icon={<FileSearchOutlined />} onClick={() => navigate('/track-order')} aria-label={t('nav.trackOrder')} title={t('nav.trackOrder')}>
+                      {t('nav.trackOrder')}
+                    </Button>
+                    <Button size="small" icon={<ShoppingOutlined />} onClick={() => navigate('/products')} aria-label={t('pages.cart.browse')} title={t('pages.cart.browse')}>
+                      {t('pages.cart.browse')}
+                    </Button>
+                    <Button size="small" icon={<GiftOutlined />} onClick={() => navigate('/coupons')} aria-label={t('nav.coupons')} title={t('nav.coupons')}>
+                      {t('nav.coupons')}
+                    </Button>
+                  </Space>
                 </div>
               </div>
             ) : (
@@ -1370,13 +1395,22 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
               {ordersLoadFailed ? (
                 <Alert
                   className="customer-support-widget__orderAlert"
+                  data-support-orders-recovery="true"
                   type="warning"
                   showIcon
                   message={t('messages.operationFailed')}
                   action={(
-                    <Button size="small" onClick={fetchSupportOrders}>
-                      {t('common.retry')}
-                    </Button>
+                    <Space wrap className="customer-support-widget__recoveryActions" data-support-recovery-actions="true">
+                      <Button size="small" type="primary" onClick={fetchSupportOrders} aria-label={t('common.retry')} title={t('common.retry')}>
+                        {t('common.retry')}
+                      </Button>
+                      <Button size="small" icon={<FileSearchOutlined />} onClick={() => navigate('/track-order')} aria-label={t('nav.trackOrder')} title={t('nav.trackOrder')}>
+                        {t('nav.trackOrder')}
+                      </Button>
+                      <Button size="small" icon={<ShoppingOutlined />} onClick={() => navigate('/products')} aria-label={t('pages.cart.browse')} title={t('pages.cart.browse')}>
+                        {t('pages.cart.browse')}
+                      </Button>
+                    </Space>
                   )}
                 />
               ) : null}

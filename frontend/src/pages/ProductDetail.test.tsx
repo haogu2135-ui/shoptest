@@ -337,7 +337,11 @@ describe('ProductDetail mobile buybar layout contract', () => {
     expect(source).toContain("productDetailLocalizationRef.current");
     expect(source).toContain("setLoadError(getApiErrorMessage(error, latestT('pages.productDetail.loadFailed'), latestLanguage));");
     expect(source).toContain("title={t('pages.productDetail.loadFailed')}");
-    expect(source).toContain('onRetry={() => setReloadToken((value) => value + 1)}');
+    expect(source).toContain('data-product-detail-load-recovery');
+    expect(source).toContain("setReloadToken((value) => value + 1)");
+    expect(source).toContain("navigate('/coupons')");
+    expect(source).toContain("navigate('/pet-finder')");
+    expect(source).toContain("shop:open-support");
     expect(source).toContain('reloadToken, warmNonCriticalContent');
     expect(source).not.toContain('reloadToken, t, warmNonCriticalContent');
   });

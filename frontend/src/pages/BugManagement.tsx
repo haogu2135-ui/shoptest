@@ -1,3 +1,5 @@
+import { useNavigate } from 'react-router-dom';
+import PageError from '../components/PageError';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Button, Form, Input, Modal, Select, Skeleton, Space, Spin, Statistic, Switch, Table, Tag, Tooltip, Typography, Upload, message } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
@@ -175,6 +177,7 @@ const parseBugReferenceLines = (value?: string) => (
 );
 
 const BugManagement: React.FC = () => {
+  const navigate = useNavigate();
   const { t, language } = useLanguage();
   const [searchParams, setSearchParams] = useSearchParams();
   const [bugs, setBugs] = useState<AdminBugReport[]>([]);
@@ -874,34 +877,72 @@ const BugManagement: React.FC = () => {
             <Alert type="warning" showIcon message={noPermissionLabel} description={tx('readPermissionHint', 'Ask an administrator to grant bug read permission before viewing the bug queue.')} />
           ) : null}
 
-          {canReadBugs && bugListLoadError ? (
+          {canReadBugs && bugListLoadError && bugSnapshotLoaded ? (
             <Alert
               className="bug-management__alert"
               type="warning"
               showIcon
               message={bugListLoadError}
-              description={bugSnapshotLoaded ? tx('staleDataWarning', 'Showing the last successful bug queue snapshot. Bug create, edit, scan, and status actions are disabled until refresh succeeds.') : undefined}
+              description={tx('staleDataWarning', 'Showing the last successful bug queue snapshot. Bug create, edit, scan, and status actions are disabled until refresh succeeds.')}
               action={(
-                <Button size="small" onClick={() => reload(false)} loading={loading} aria-label={bugListRetryActionLabel} title={bugListRetryActionLabel}>
-                  {t('common.retry')}
-                </Button>
+                <Space wrap data-admin-bugs-stale-recovery="true">
+                  <Button size="small" type="primary" onClick={() => reload(false)} loading={loading} aria-label={bugListRetryActionLabel} title={bugListRetryActionLabel}>
+                    {t('common.retry')}
+                  </Button>
+                  <Button size="small" onClick={() => navigate('/admin')}>{t('pages.adminDashboard.title')}</Button>
+                  <Button size="small" onClick={() => navigate('/admin/system')}>{t('pages.adminDashboard.paymentReturnOps.providerReadinessAction')}</Button>
+                  <Button size="small" onClick={() => navigate('/admin/orders')}>{t('pages.adminDashboard.orders')}</Button>
+                </Space>
               )}
             />
           ) : null}
+          {canReadBugs && bugListLoadError && !bugSnapshotLoaded ? (
+            <div className="bug-management__error" data-admin-bugs-load-recovery="true">
+              <PageError
+                title={tx('loadFailed', 'Failed to load bugs')}
+                description={bugListLoadError}
+                actions={[
+                  { key: 'retry', label: bugListRetryActionLabel, onClick: () => { void reload(false); }, type: 'primary' },
+                  { key: 'dashboard', label: t('pages.adminDashboard.title'), onClick: () => navigate('/admin'), type: 'default' },
+                  { key: 'system', label: t('pages.adminDashboard.paymentReturnOps.providerReadinessAction'), onClick: () => navigate('/admin/system'), type: 'default' },
+                  { key: 'orders', label: t('pages.adminDashboard.orders'), onClick: () => navigate('/admin/orders'), type: 'default' },
+                ]}
+              />
+            </div>
+          ) : null}
 
-          {canReadBugs && summaryLoadError ? (
+          {canReadBugs && summaryLoadError && summarySnapshotLoaded ? (
             <Alert
               className="bug-management__alert"
               type="warning"
               showIcon
               message={summaryLoadError}
-              description={summarySnapshotLoaded ? tx('summaryStaleDataWarning', 'Showing the last successful bug summary. Summary counts may be stale until refresh succeeds.') : undefined}
+              description={tx('summaryStaleDataWarning', 'Showing the last successful bug summary. Summary counts may be stale until refresh succeeds.')}
               action={(
-                <Button size="small" onClick={() => loadSummary(false)} aria-label={bugSummaryRetryActionLabel} title={bugSummaryRetryActionLabel}>
-                  {t('common.retry')}
-                </Button>
+                <Space wrap data-admin-bugs-summary-stale-recovery="true">
+                  <Button size="small" type="primary" onClick={() => loadSummary(false)} aria-label={bugSummaryRetryActionLabel} title={bugSummaryRetryActionLabel}>
+                    {t('common.retry')}
+                  </Button>
+                  <Button size="small" onClick={() => navigate('/admin')}>{t('pages.adminDashboard.title')}</Button>
+                  <Button size="small" onClick={() => navigate('/admin/system')}>{t('pages.adminDashboard.paymentReturnOps.providerReadinessAction')}</Button>
+                  <Button size="small" onClick={() => navigate('/admin/orders')}>{t('pages.adminDashboard.orders')}</Button>
+                </Space>
               )}
             />
+          ) : null}
+          {canReadBugs && summaryLoadError && !summarySnapshotLoaded ? (
+            <div className="bug-management__summaryError" data-admin-bugs-summary-load-recovery="true">
+              <PageError
+                title={tx('summaryFailed', 'Failed to load bug summary')}
+                description={summaryLoadError}
+                actions={[
+                  { key: 'retry', label: bugSummaryRetryActionLabel, onClick: () => { void loadSummary(false); }, type: 'primary' },
+                  { key: 'dashboard', label: t('pages.adminDashboard.title'), onClick: () => navigate('/admin'), type: 'default' },
+                  { key: 'system', label: t('pages.adminDashboard.paymentReturnOps.providerReadinessAction'), onClick: () => navigate('/admin/system'), type: 'default' },
+                  { key: 'orders', label: t('pages.adminDashboard.orders'), onClick: () => navigate('/admin/orders'), type: 'default' },
+                ]}
+              />
+            </div>
           ) : null}
 
           {showInitialBugLoading ? (

@@ -48,12 +48,59 @@ describe('commercial UX contracts', () => {
     expect(cart).toContain('aria-live="polite"');
   });
 
+  it('keeps navbar cart launcher addressable for mini-cart conversion', () => {
+    const navbar = readFrontend('components', 'Navbar.tsx');
+    const app = readFrontend('App.tsx');
+    expect(navbar).toContain('data-nav-cart');
+    expect(navbar).toContain("shop:open-cart");
+    expect(navbar).toContain('shop-nav__cart-action');
+    expect(app).toContain('requestIdleCallback');
+    expect(app).toContain('loadCartDrawer');
+    expect(app).toContain('LazyCartDrawerHost');
+  });
+
+  it('keeps support launcher on idle-preload parity with mini-cart conversion', () => {
+    const app = readFrontend('App.tsx');
+    expect(app).toContain('LazySupportWidgetHost');
+    expect(app).toContain('loadCustomerSupportWidget');
+    expect(app).toContain('requestIdleCallback');
+    expect(app).toContain("shop:open-support");
+    // Idle preload mounts support chunk so first open is not download-blocked.
+    expect(app).toMatch(/LazySupportWidgetHost[\s\S]*?requestIdleCallback[\s\S]*?loadCustomerSupportWidget/);
+  });
+
+  it('keeps login rate-limit and lock failures on multipath commercial recovery exits', () => {
+    const login = readFrontend('pages', 'Login.tsx');
+    const loginCss = readFrontend('pages', 'Login.css');
+    const en = readFrontend('locales', 'en.json');
+    const zh = readFrontend('locales', 'zh.json');
+    const es = readFrontend('locales', 'es.json');
+    expect(login).toContain('data-login-error-recovery');
+    expect(login).toContain('data-login-recovery-actions');
+    expect(login).toContain("navigate('/forgot-password')");
+    expect(login).toContain("navigate('/track-order')");
+    expect(login).toContain("shop:open-support");
+    expect(login).toContain("recoveryKind: 'rate_limited'");
+    expect(login).toContain("recoveryKind: 'locked'");
+    expect(login).toContain("recoveryKind: 'unavailable'");
+    expect(login).toContain('pages.auth.loginRecoveryNextRateLimited');
+    expect(loginCss).toContain('shopee-login-errorRecovery__actions');
+    expect(loginCss).toMatch(/shopee-login-errorRecovery__actions[\s\S]*?min-height:\s*44px/);
+    for (const locale of [en, zh, es]) {
+      expect(locale).toContain('"loginRecoveryNextRateLimited"');
+      expect(locale).toContain('"loginRecoveryNextLocked"');
+      expect(locale).toContain('"loginRecoveryNextUnavailable"');
+    }
+  });
+
   it('keeps empty cart multi-path CTAs when recently viewed recovery is present', () => {
     const cart = readFrontend('pages', 'Cart.tsx');
     const cartDrawer = readFrontend('components', 'CartDrawer.tsx');
     const cartDrawerCss = readFrontend('components', 'CartDrawer.css');
     expect(cart).toContain('cart-page__emptyActions');
+    expect(cart).toContain('data-cart-empty-actions');
     expect(cartDrawer).toContain('data-cart-drawer-empty-actions');
+    expect(cartDrawer).toContain('cart-drawer__root--open');
     expect(cartDrawer).toContain('data-cart-drawer-empty');
     expect(cartDrawer).toContain("closeAndGo('/coupons')");
     expect(cartDrawer).toContain("closeAndGo('/pet-finder')");
@@ -71,6 +118,10 @@ describe('commercial UX contracts', () => {
     expect(cart).toContain('emptyPetFinderActionLabel');
     expect(cart).toContain("onClick={() => navigate('/pet-finder')}");
     expect(cart).toContain("onClick={() => navigate('/history')}");
+    // Empty panel (cart empty but saved/recent present) must keep multipath exits, not Browse-only.
+    expect(cart).toContain('cart-page__emptyPanelActions');
+    expect(cart).toContain('data-cart-empty-panel-actions');
+    expect(cart).toMatch(/cart-page__emptyPanel[\s\S]*?navigate\('\/coupons'\)[\s\S]*?navigate\('\/pet-finder'\)[\s\S]*?navigate\('\/history'\)/);
   });
 
 
@@ -84,12 +135,33 @@ describe('commercial UX contracts', () => {
 
   it('keeps offline connectivity and route focus commercial-ready', () => {
     const app = readFrontend('App.tsx');
+    const appCss = readFrontend('App.css');
     expect(app).toContain('ConnectivityBanner');
     expect(app).toContain('RouteFocusManager');
     expect(app).toContain('common.offlineTitle');
     expect(app).toContain('common.onlineRestoredTitle');
+    expect(app).toContain('data-connectivity-offline-recovery');
+    expect(app).toContain('data-connectivity-online-recovery');
+    expect(app).toContain('data-connectivity-banner');
+    expect(app).toContain("navigate('/cart')");
+    expect(app).toContain("navigate('/history')");
+    expect(app).toContain("navigate('/products')");
     expect(app).toContain("getElementById(MAIN_CONTENT_ID)");
     expect(app).toContain('preventScroll: true');
+    expect(appCss).toContain('shop-connectivity-banner__actions');
+    expect(appCss).toMatch(/shop-connectivity-banner__actions[\s\S]*?min-height:\s*44px/);
+  });
+
+  it('keeps coupon catalog fallback on multipath commercial recovery exits', () => {
+    const coupons = readFrontend('pages', 'CouponCenter.tsx');
+    const couponsCss = readFrontend('pages', 'CouponCenter.css');
+    expect(coupons).toContain('data-coupon-fallback-recovery');
+    expect(coupons).toContain('data-coupon-fallback-actions');
+    expect(coupons).toContain("navigate('/products')");
+    expect(coupons).toContain("navigate('/cart')");
+    expect(coupons).toContain("navigate('/pet-finder')");
+    expect(couponsCss).toContain('coupon-center-page__fallbackActions');
+    expect(couponsCss).toMatch(/coupon-center-page__fallbackActions[\s\S]*?min-height:\s*44px/);
   });
 
   it('keeps profile empty orders on multi-path conversion CTAs', () => {
@@ -97,8 +169,32 @@ describe('commercial UX contracts', () => {
     expect(profile).toContain('pages.profile.noOrdersHint');
     expect(profile).toContain('pages.profile.emptyOrdersCoupons');
     expect(profile).toContain('pages.profile.emptyOrdersPetFinder');
+    expect(profile).toContain('data-profile-orders-empty-actions');
     expect(profile).toContain("navigate('/coupons')");
     expect(profile).toContain("navigate('/pet-finder')");
+    expect(profile).toContain("navigate('/track-order')");
+    // Filtered order list empty must multipath (clear filter · browse · coupons · track), not bare Empty.
+    expect(profile).toContain('data-profile-orders-filter-empty');
+    expect(profile).toContain('pages.profile.noFilterOrders');
+    expect(profile).toContain('pages.profile.noFilterOrdersHint');
+    expect(profile).toContain('pages.profile.clearOrderFilter');
+    expect(profile).toContain("setOrderStatusFilter('all')");
+    expect(profile).toContain("navigate('/track-order')");
+  });
+
+  it('keeps profile empty addresses and payment-return banners on multipath commercial recovery exits', () => {
+    const profile = readFrontend('pages', 'Profile.tsx');
+    expect(profile).toContain('data-profile-addresses-empty-actions');
+    expect(profile).toContain('pages.profile.noAddresses');
+    expect(profile).toContain('pages.profile.addressReadinessEmpty');
+    expect(profile).toContain('pages.profile.addAddress');
+    expect(profile).toContain("navigate('/products')");
+    expect(profile).toContain("navigate('/coupons')");
+    expect(profile).toContain("navigate('/track-order')");
+    expect(profile).toContain('data-profile-payment-return-recovery');
+    expect(profile).toContain("data-profile-payment-return={");
+    expect(profile).toContain('pages.orderTracking.shopAgain');
+    expect(profile).toContain('shop:open-support');
   });
 
   it('keeps profile payment modal recovery guidance for failed and expired payments', () => {
@@ -120,6 +216,11 @@ describe('commercial UX contracts', () => {
     expect(payment).toContain('payment-instructions-page__stickyBar--paid');
     expect(payment).toContain('payment-instructions-page__stickyBar--recovery');
     expect(payment).toContain('data-payment-recovery-sticky');
+    expect(payment).toContain('data-payment-recovery-actions');
+    expect(payment).toContain('data-payment-paid-sticky');
+    expect(payment).toContain('data-payment-paid-actions');
+    expect(payment).toContain("navigate('/coupons')");
+    expect(payment).toContain("navigate('/profile?tab=orders')");
     expect(payment).toContain('pages.paymentInstructions.stickyTrackOrder');
     expect(payment).toContain('pages.paymentInstructions.stickyContinueShopping');
     expect(payment).toContain('pages.paymentInstructions.stickyRecovery');
@@ -187,6 +288,10 @@ describe('commercial UX contracts', () => {
     const tracking = readFrontend('pages', 'OrderTracking.tsx');
 
     expect(compare).toContain('pages.compare.emptyHint');
+    expect(compare).toContain('data-compare-empty-actions');
+    expect(compare).toContain("navigate('/pet-finder')");
+    expect(compare).toContain('data-compare-stale-recovery');
+    expect(compare).toContain('data-compare-stale-actions');
     expect(compare).toContain("navigate('/wishlist')");
     expect(compare).toContain("navigate('/coupons')");
     expect(tracking).toContain('pages.orderTracking.emptyHint');
@@ -201,6 +306,56 @@ describe('commercial UX contracts', () => {
     expect(tracking).toContain("navigate('/profile?tab=orders')");
   });
 
+
+  it('keeps order tracking empty line-items on multipath commercial recovery exits', () => {
+    const tracking = readFrontend('pages', 'OrderTracking.tsx');
+    expect(tracking).toContain('data-order-tracking-items-empty');
+    expect(tracking).toContain('data-order-tracking-items-empty-actions');
+    expect(tracking).toContain('pages.orderTracking.noOrderItemsHint');
+    expect(tracking).toContain("navigate('/products')");
+    expect(tracking).toContain("navigate('/coupons')");
+    expect(tracking).toContain('shop:open-support');
+  });
+
+  it('keeps product detail empty recommendations on multipath commercial conversion exits', () => {
+    const productDetail = readFrontend('pages', 'ProductDetail.tsx');
+    expect(productDetail).toContain('data-product-detail-recommendations-empty');
+    expect(productDetail).toContain('data-product-detail-recommendations-empty-actions');
+    expect(productDetail).toContain('pages.productDetail.recommendationsEmpty');
+    expect(productDetail).toContain("navigate('/coupons')");
+    expect(productDetail).toContain("navigate('/pet-finder')");
+  });
+
+  it('keeps notification filter empties on multipath commercial recovery exits', () => {
+    const notifications = readFrontend('pages', 'Notifications.tsx');
+    expect(notifications).toContain('data-notifications-filter-empty');
+    expect(notifications).toContain('data-notifications-filter-empty-actions');
+    expect(notifications).toContain('pages.notifications.noFilterResultsHint');
+    expect(notifications).toContain("setQuickFilter('ALL')");
+    expect(notifications).toContain("navigate('/coupons')");
+    expect(notifications).toContain("navigate('/track-order')");
+  });
+
+  it('keeps coupon wallet filter empties on multipath commercial recovery exits', () => {
+    const coupons = readFrontend('pages', 'CouponCenter.tsx');
+    expect(coupons).toContain('data-coupon-wallet-filter-empty');
+    expect(coupons).toContain('data-coupon-wallet-filter-empty-actions');
+    expect(coupons).toContain('pages.coupons.walletFilteredEmptyHint');
+    expect(coupons).toContain("setWalletFilter('all')");
+    expect(coupons).toContain("navigate('/cart')");
+    expect(coupons).toContain("navigate('/pet-finder')");
+  });
+
+  it('keeps profile payment-history empty on multipath commercial recovery exits', () => {
+    const profile = readFrontend('pages', 'Profile.tsx');
+    expect(profile).toContain('data-profile-payment-history-empty');
+    expect(profile).toContain('data-profile-payment-history-empty-actions');
+    expect(profile).toContain('pages.profile.noPaymentHistoryHint');
+    expect(profile).toContain("navigate('/track-order')");
+    expect(profile).toContain("navigate('/coupons')");
+    expect(profile).toContain('shop:open-support');
+  });
+
   it('keeps recovery empty states on multi-path commercial CTAs', () => {
     const stock = readFrontend('pages', 'StockAlerts.tsx');
     const notifications = readFrontend('pages', 'Notifications.tsx');
@@ -209,12 +364,39 @@ describe('commercial UX contracts', () => {
 
     expect(stock).toContain('pages.stockAlerts.emptyHint');
     expect(stock).toContain("navigate('/wishlist')");
+    expect(stock).toContain('data-stock-alerts-empty-actions');
+    expect(stock).toContain('pages.stockAlerts.emptyCoupons');
+    expect(stock).toContain("navigate('/coupons')");
     expect(notifications).toContain('pages.notifications.emptyTrackOrder');
     expect(notifications).toContain("navigate('/track-order')");
     expect(petFinder).toContain('pages.petFinder.emptyHint');
+    expect(petFinder).toContain('data-pet-finder-empty-actions');
     expect(petFinder).toContain("navigate('/pet-gallery')");
     expect(petGallery).toContain('pages.petGallery.emptyHint');
     expect(petGallery).toContain("navigate('/pet-finder')");
+  });
+
+  it('keeps support empty welcome rail on multipath commercial conversion exits', () => {
+    const support = readFrontend('components', 'CustomerSupportWidget.tsx');
+    expect(support).toContain('data-support-empty-actions');
+    expect(support).toContain('data-support-empty-multipath');
+    expect(support).toContain("navigate('/track-order')");
+    expect(support).toContain("navigate('/products')");
+    expect(support).toContain("navigate('/coupons')");
+  });
+
+  it('keeps logistics tracking and coupon wallet empties on multipath commercial recovery exits', () => {
+    const seventeen = readFrontend('components', 'SeventeenTrackWidget.tsx');
+    const coupons = readFrontend('pages', 'CouponCenter.tsx');
+    expect(seventeen).toContain('data-seventeen-track-recovery');
+    expect(seventeen).toContain("navigate('/products')");
+    expect(seventeen).toContain("navigate('/coupons')");
+    expect(seventeen).toContain('pages.orderTracking.shopAgain');
+    expect(seventeen).toContain('pages.orderTracking.emptyCoupons');
+    expect(coupons).toContain('data-coupon-wallet-empty-actions');
+    expect(coupons).toContain('pages.coupons.emptyWalletHint');
+    expect(coupons).toContain("navigate('/cart')");
+    expect(coupons).toContain("navigate('/pet-finder')");
   });
 
   it('keeps product-not-found, 404, profile pets, and cart saved-empty on multi-path recovery CTAs', () => {
@@ -226,6 +408,7 @@ describe('commercial UX contracts', () => {
     expect(productDetail).toContain('pages.productDetail.notFoundHint');
     expect(productDetail).toContain("navigate('/wishlist')");
     expect(productDetail).toContain("navigate('/pet-finder')");
+    expect(productDetail).toContain('data-product-not-found-actions');
     expect(notFound).toContain('notFound.hint');
     expect(notFound).toContain("navigate('/coupons')");
     expect(notFound).toContain("navigate('/track-order')");
@@ -237,11 +420,14 @@ describe('commercial UX contracts', () => {
 
 
   it('keeps route ErrorBoundary on multi-path commercial recovery CTAs', () => {
-    const boundary = readFrontend('components', 'ErrorBoundary.tsx');
-    expect(boundary).toContain('shop-error-boundary');
-    expect(boundary).toContain("errorBoundary.hint");
-    expect(boundary).toContain("navigate('/products'");
-    expect(boundary).toContain("shop:open-support");
+    const errorBoundary = readFrontend('components', 'ErrorBoundary.tsx');
+    expect(errorBoundary).toContain('data-error-boundary-recovery');
+    expect(errorBoundary).toContain("navigate('/products'");
+    expect(errorBoundary).toContain("navigate('/coupons'");
+    expect(errorBoundary).toContain("navigate('/track-order'");
+    expect(errorBoundary).toContain("shop:open-support");
+    expect(errorBoundary).toContain('handleBrowseCoupons');
+    expect(errorBoundary).toContain('handleTrackOrder');
   });
 
 
@@ -258,6 +444,9 @@ describe('commercial UX contracts', () => {
     expect(checkout).toContain('data-checkout-payment-unavailable');
     expect(checkout).toContain('paymentUnavailableRecoveryActions');
     expect(checkout).toContain('pages.checkout.paymentUnavailable');
+    expect(checkout).toContain("navigate('/products')");
+    expect(checkout).toContain("navigate('/coupons')");
+    expect(checkout).toContain("navigate('/cart')");
     expect(checkout).toContain("navigate('/cart')");
     expect(checkoutCss).toContain('paymentUnavailableActions');
     expect(checkoutCss).toMatch(/paymentUnavailableActions[\s\S]*?min-height:\s*44px/);
@@ -285,6 +474,19 @@ describe('commercial UX contracts', () => {
     expect(login).toContain('min-height: 44px !important');
   });
 
+
+  it('keeps support widget load failures on multipath commercial recovery exits', () => {
+    const support = readFrontend('components', 'CustomerSupportWidget.tsx');
+    const supportCss = readFrontend('components', 'CustomerSupportWidget.css');
+    expect(support).toContain('data-support-recovery-actions');
+    expect(support).toContain('data-support-session-recovery');
+    expect(support).toContain('data-support-orders-recovery');
+    expect(support).toContain("navigate('/track-order')");
+    expect(support).toContain("navigate('/products')");
+    expect(support).toContain("navigate('/coupons')");
+    expect(supportCss).toContain('customer-support-widget__recoveryActions');
+    expect(supportCss).toMatch(/customer-support-widget__recoveryActions[\s\S]*?min-height:\s*44px/);
+  });
 
   it('keeps register and support surfaces on commercial mobile touch targets with readable secondary text', () => {
     const register = readFrontend('pages', 'Register.css');
@@ -457,6 +659,183 @@ describe('commercial UX contracts', () => {
     expect(profile).toContain('pages.profile.authGateTitle');
     expect(profile).toContain("buildLoginUrl('/profile')");
     expect(profileCss).toContain('Commercial guest profile auth gate multi-path conversion');
+  });
+
+
+  it('keeps product detail load failures on multipath commercial recovery exits', () => {
+    const productDetail = readFrontend('pages', 'ProductDetail.tsx');
+    const pageError = readFrontend('components', 'PageError.tsx');
+    expect(productDetail).toContain('data-product-detail-load-recovery');
+    expect(productDetail).toContain("navigate('/coupons')");
+    expect(productDetail).toContain("navigate('/pet-finder')");
+    expect(productDetail).toContain("shop:open-support");
+    expect(productDetail).toContain('pages.productDetail.notFoundCoupons');
+    expect(pageError).toContain('data-page-error-actions');
+    expect(pageError).toContain('actions?: PageErrorAction[]');
+  });
+
+  it('keeps register rate-limit failures on multipath commercial recovery exits', () => {
+    const register = readFrontend('pages', 'Register.tsx');
+    const registerCss = readFrontend('pages', 'Register.css');
+    const en = readFrontend('locales', 'en.json');
+    const zh = readFrontend('locales', 'zh.json');
+    const es = readFrontend('locales', 'es.json');
+    expect(register).toContain('data-register-error-recovery');
+    expect(register).toContain('data-register-recovery-actions');
+    expect(register).toContain("navigate('/login')");
+    expect(register).toContain("navigate('/track-order')");
+    expect(register).toContain("shop:open-support");
+    expect(register).toContain("recoveryKind === 'rate_limited'");
+    expect(register).toContain('pages.auth.registerRateLimited');
+    expect(registerCss).toContain('register-page__errorRecovery__actions');
+    expect(registerCss).toMatch(/register-page__errorRecovery__actions[\s\S]*?min-height:\s*44px/);
+    for (const locale of [en, zh, es]) {
+      expect(locale).toContain('"registerRateLimited"');
+      expect(locale).toContain('"registerRecoveryNextRateLimited"');
+    }
+  });
+
+
+  it('keeps storefront load failures on multipath commercial recovery exits', () => {
+    const home = readFrontend('pages', 'Home.tsx');
+    const history = readFrontend('pages', 'BrowsingHistory.tsx');
+    const notifications = readFrontend('pages', 'Notifications.tsx');
+    const petFinder = readFrontend('pages', 'PetFinder.tsx');
+    const compare = readFrontend('pages', 'ProductCompare.tsx');
+    expect(home).toContain('data-home-load-recovery');
+    expect(home).toContain("navigate('/products')");
+    expect(home).toContain("navigate('/coupons')");
+    expect(home).toContain("navigate('/track-order')");
+    expect(home).toContain("shop:open-support");
+    expect(history).toContain('data-history-load-recovery');
+    expect(history).toContain("navigate('/pet-finder')");
+    expect(history).toContain('data-history-empty-actions');
+    expect(history).toContain('data-history-empty-filter-actions');
+    expect(history).toContain('data-history-empty-load-actions');
+    expect(history).toContain('data-history-stale-recovery');
+    expect(notifications).toContain('data-notifications-load-recovery');
+    expect(notifications).toContain("navigate('/track-order')");
+    expect(petFinder).toContain('data-pet-finder-load-recovery');
+    expect(petFinder).toContain("navigate('/pet-gallery')");
+    expect(compare).toContain('data-compare-load-recovery');
+    expect(compare).toContain("navigate('/wishlist')");
+    for (const source of [home, history, notifications, petFinder, compare]) {
+      expect(source).toContain("shop:open-support");
+      expect(source).toContain('actions={[');
+    }
+  });
+
+
+  it('keeps conversion-critical load failures on multipath commercial recovery exits', () => {
+    const cart = readFrontend('pages', 'Cart.tsx');
+    const checkout = readFrontend('pages', 'Checkout.tsx');
+    const wishlist = readFrontend('pages', 'Wishlist.tsx');
+    const profile = readFrontend('pages', 'Profile.tsx');
+    const coupons = readFrontend('pages', 'CouponCenter.tsx');
+    const stockAlerts = readFrontend('pages', 'StockAlerts.tsx');
+    const petGallery = readFrontend('pages', 'PetGallery.tsx');
+    const orderTracking = readFrontend('pages', 'OrderTracking.tsx');
+    expect(cart).toContain('data-cart-load-recovery');
+    expect(checkout).toContain('data-checkout-load-recovery');
+    expect(wishlist).toContain('data-wishlist-load-recovery');
+    expect(profile).toContain('data-profile-orders-load-recovery');
+    expect(profile).toContain('data-profile-addresses-load-recovery');
+    expect(coupons).toContain('data-coupon-load-recovery');
+    expect(stockAlerts).toContain('data-stock-alerts-load-recovery');
+    expect(petGallery).toContain('data-pet-gallery-load-recovery');
+    expect(orderTracking).toContain('data-order-tracking-lookup-recovery');
+    for (const source of [cart, checkout, wishlist, profile, coupons, stockAlerts, petGallery, orderTracking]) {
+      expect(source).toContain('actions={[');
+      expect(source).toContain("shop:open-support");
+    }
+  });
+
+
+  it('keeps checkout empty and payment guest-email gates on multipath commercial recovery exits', () => {
+    const checkout = readFrontend('pages', 'Checkout.tsx');
+    const payment = readFrontend('pages', 'PaymentInstructions.tsx');
+    expect(checkout).toContain('data-checkout-empty-actions');
+    expect(checkout).toContain("navigate('/pet-finder')");
+    expect(checkout).toContain("navigate('/coupons')");
+    expect(checkout).toContain("navigate('/history')");
+    expect(checkout).toContain('data-checkout-load-recovery');
+    expect(payment).toContain('data-payment-guest-email-gate');
+    expect(payment).toContain('data-payment-guest-email-recovery');
+    expect(payment).toContain("navigate('/products')");
+    expect(payment).toContain("navigate('/coupons')");
+    expect(payment).toContain('openSupport');
+    expect(payment).toContain('openTrackOrder');
+  });
+
+    it('keeps order tracking not-shipped logistics on multipath commercial recovery exits', () => {
+    const orderTracking = readFrontend('pages', 'OrderTracking.tsx');
+    expect(orderTracking).toContain('data-order-tracking-not-shipped');
+    expect(orderTracking).toContain('pages.orderTracking.notShippedHint');
+    expect(orderTracking).toContain('order-tracking-page__notShippedActions');
+    expect(orderTracking).toContain("navigate('/profile?tab=orders')");
+    expect(orderTracking).toContain("navigate('/products')");
+    expect(orderTracking).toContain("navigate('/coupons')");
+    expect(orderTracking).toContain('supportOpen');
+  });
+
+  it('keeps product review no-order and auth-gate composers on multipath commercial recovery exits', () => {
+    const productReview = readFrontend('components', 'ProductReview.tsx');
+    expect(productReview).toContain('data-review-no-order-recovery');
+    expect(productReview).toContain('data-review-auth-gate');
+    expect(productReview).toContain('pages.review.noReviewableOrderHint');
+    expect(productReview).toContain("navigate('/profile?tab=orders')");
+    expect(productReview).toContain("navigate('/coupons')");
+    expect(productReview).toContain("navigate('/track-order')");
+    expect(productReview).toContain('getCurrentRelativeUrl');
+    expect(productReview).toContain('/register?redirect=');
+  });
+
+    it('keeps forgot-password unavailable on multipath commercial recovery exits', () => {
+    const forgot = readFrontend('pages', 'ForgotPassword.tsx');
+    expect(forgot).toContain('data-forgot-password-unavailable');
+    expect(forgot).toContain('data-forgot-password-unavailable-actions');
+    expect(forgot).toContain("navigate('/login')");
+    expect(forgot).toContain("navigate('/track-order')");
+    expect(forgot).toContain("navigate('/products')");
+    expect(forgot).toContain("navigate('/coupons')");
+    expect(forgot).toContain("shop:open-support");
+  });
+
+    it('keeps home empty category and product rails on multipath commercial recovery exits', () => {
+    const home = readFrontend('pages', 'Home.tsx');
+    expect(home).toContain('home-empty-categories');
+    expect(home).toContain('home-empty-products');
+    expect(home).toContain('data-home-empty-categories');
+    expect(home).toContain('data-home-empty-products');
+    expect(home).toContain("navigate('/pet-finder')");
+    expect(home).toContain("navigate('/track-order')");
+    expect(home).toContain("navigate('/coupons')");
+  });
+
+    it('keeps product list zero-results empty on multipath commercial recovery exits', () => {
+    const productList = readFrontend('pages', 'ProductList.tsx');
+    expect(productList).toContain('product-list__empty');
+    expect(productList).toContain('data-product-list-empty-actions');
+    expect(productList).toContain('const [loading, setLoading] = useState(true)');
+    expect(productList).toContain('productCountLabel');
+    // Loading currency is seq-only so aborted-without-successor still clears the spinner.
+    expect(productList).toMatch(/const isCurrentRequest = \(\) => productRequestSeqRef\.current === requestSeq;/);
+    expect(productList).toContain('if (abortController.signal.aborted) return;');
+    expect(productList).toMatch(/if \(isCurrentRequest\(\)\) \{\s*setLoading\(false\);/);
+    expect(productList).toContain('emptyCouponsActionLabel');
+    expect(productList).toContain('emptyPetFinderActionLabel');
+    expect(productList).toContain("navigate('/coupons')");
+    expect(productList).toContain("navigate('/pet-finder')");
+    expect(productList).toContain('openSupport');
+  });
+
+    it('keeps product list catalog load failures on multipath commercial recovery exits', () => {
+    const productList = readFrontend('pages', 'ProductList.tsx');
+    expect(productList).toContain('data-product-list-load-recovery');
+    expect(productList).toContain('pages.productList.loadRecoveryCoupons');
+    expect(productList).toContain('pages.productList.loadRecoverySupport');
+    expect(productList).toContain('actions={[');
+    expect(productList).toContain('openSupport');
   });
 
 });

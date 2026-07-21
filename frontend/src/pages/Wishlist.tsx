@@ -442,15 +442,45 @@ const Wishlist: React.FC = () => {
   if (items.length === 0 && loadError) {
     return (
       <div className={`wishlist-page wishlist-page--${language} wishlist-page--empty`}>
-        <PageError
-          className="wishlist-page__loadAlert"
-          title={t('pages.wishlist.loadErrorTitle')}
-          description={loadError}
-          retryLabel={t('common.retry')}
-          onRetry={fetchWishlist}
-          homeLabel={wishlistBrowseActionLabel}
-          onHome={() => navigate('/products')}
-        />
+        <div data-wishlist-load-recovery="true">
+          <PageError
+            className="wishlist-page__loadAlert"
+            title={t('pages.wishlist.loadErrorTitle')}
+            description={loadError}
+            actions={[
+              {
+                key: 'retry',
+                label: t('common.retry'),
+                onClick: fetchWishlist,
+                type: 'primary',
+              },
+              {
+                key: 'browse',
+                label: wishlistBrowseActionLabel,
+                onClick: () => navigate('/products'),
+                type: 'default',
+              },
+              {
+                key: 'coupons',
+                label: t('pages.productList.loadRecoveryCoupons'),
+                onClick: () => navigate('/coupons'),
+                type: 'default',
+              },
+              {
+                key: 'pet-finder',
+                label: t('pages.productDetail.notFoundPetFinder'),
+                onClick: () => navigate('/pet-finder'),
+                type: 'default',
+              },
+              {
+                key: 'support',
+                label: t('pages.productList.loadRecoverySupport'),
+                onClick: () => dispatchDomEvent('shop:open-support'),
+                type: 'default',
+              },
+            ]}
+          />
+        </div>
       </div>
     );
   }

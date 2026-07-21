@@ -7,6 +7,7 @@ import { useLanguage } from '../i18n';
 import type { AdminRole } from '../types';
 import { ADMIN_PAGE_PERMISSIONS, adminPermissionLabelKey, isSuperAdminRole } from '../utils/roles';
 import { getLocalStorageItem } from '../utils/safeStorage';
+import PageError from '../components/PageError';
 import { getApiErrorMessage } from '../utils/apiError';
 import './PermissionManagement.css';
 
@@ -150,19 +151,39 @@ const PermissionManagement: React.FC = () => {
       <Title level={4}>{t('pages.permissions.title')}</Title>
       <Text type="secondary">{t('pages.permissions.subtitle')}</Text>
 
-      {roleLoadError ? (
+      {roleLoadError && roleSnapshotLoaded ? (
         <Alert
           className="permission-management-page__alert"
           type="warning"
           showIcon
           message={roleLoadError}
-          description={roleSnapshotLoaded ? t('pages.permissions.staleDataWarning') : undefined}
+          description={t('pages.permissions.staleDataWarning')}
           action={(
-            <Button size="small" loading={loading} onClick={loadRoles}>
-              {t('common.retry')}
-            </Button>
+            <Space wrap data-admin-permissions-stale-recovery="true">
+              <Button size="small" type="primary" loading={loading} onClick={loadRoles}>
+                {t('common.retry')}
+              </Button>
+              <Button size="small" onClick={() => navigate('/admin')}>{t('pages.adminDashboard.title')}</Button>
+              <Button size="small" onClick={() => navigate('/admin/users')}>{t('adminLayout.users')}</Button>
+              <Button size="small" onClick={() => navigate('/admin/system')}>{t('pages.adminDashboard.paymentReturnOps.providerReadinessAction')}</Button>
+            </Space>
           )}
         />
+      ) : null}
+
+      {roleLoadError && !roleSnapshotLoaded ? (
+        <div className="permission-management-page__error" data-admin-permissions-load-recovery="true">
+          <PageError
+            title={t('pages.permissions.fetchFailed')}
+            description={roleLoadError}
+            actions={[
+              { key: 'retry', label: t('common.retry'), onClick: () => { void loadRoles(); }, type: 'primary' },
+              { key: 'dashboard', label: t('pages.adminDashboard.title'), onClick: () => navigate('/admin'), type: 'default' },
+              { key: 'users', label: t('adminLayout.users'), onClick: () => navigate('/admin/users'), type: 'default' },
+              { key: 'system', label: t('pages.adminDashboard.paymentReturnOps.providerReadinessAction'), onClick: () => navigate('/admin/system'), type: 'default' },
+            ]}
+          />
+        </div>
       ) : null}
 
       {showInitialRoleLoading ? (

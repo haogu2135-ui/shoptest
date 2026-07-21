@@ -281,7 +281,7 @@ const ForgotPassword: React.FC = () => {
               message={t('pages.auth.resetUnavailableTitle')}
               description={t('pages.auth.resetUnavailableText')}
             />
-            <div className="shopee-login-resetUnavailable__actions">
+            <div className="shopee-login-resetUnavailable__actions" data-forgot-password-unavailable-actions="true">
               <Button
                 type="primary"
                 block
@@ -300,6 +300,24 @@ const ForgotPassword: React.FC = () => {
                 title={t('nav.trackOrder')}
               >
                 {t('nav.trackOrder')}
+              </Button>
+              <Button
+                block
+                size="large"
+                onClick={() => navigate('/products')}
+                aria-label={t('pages.cart.browse')}
+                title={t('pages.cart.browse')}
+              >
+                {t('pages.cart.browse')}
+              </Button>
+              <Button
+                block
+                size="large"
+                onClick={() => navigate('/coupons')}
+                aria-label={t('nav.coupons')}
+                title={t('nav.coupons')}
+              >
+                {t('nav.coupons')}
               </Button>
               <Button
                 block

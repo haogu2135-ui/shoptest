@@ -1169,3 +1169,14 @@
     width: 100%;
   }
 }
+
+.notifications-page__filterEmpty {
+  display: grid;
+  gap: 12px;
+  justify-items: center;
+  padding: 20px 12px 8px;
+  text-align: center;
+}
+.notifications-page__filterEmptyActions .ant-btn {
+  min-height: 44px;
+}

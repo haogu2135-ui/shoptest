@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Button, Card, Empty, Input, InputNumber, Popconfirm, Select, Space, Spin, Statistic, Table, Tag, Typography, message } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
@@ -5,6 +6,7 @@ import { AlertOutlined, CheckCircleOutlined, DeleteOutlined, ReloadOutlined, Sea
 import { adminApi } from '../api/admin';
 import type { SystemAlert, SystemAlertSummary } from '../types';
 import { useLanguage } from '../i18n';
+import PageError from '../components/PageError';
 import { getApiErrorMessage } from '../utils/apiError';
 import { labelTableSelectionCheckbox } from '../utils/tableSelectionAccessibility';
 import {
@@ -36,6 +38,7 @@ const statusColor = (status: string) => {
 const statusOptions = ['ALL', 'OPEN', 'ACKNOWLEDGED', 'RESOLVED'];
 
 const AlertManagement: React.FC = () => {
+  const navigate = useNavigate();
   const { t, language } = useLanguage();
   const dateLocale = language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US';
   const [alerts, setAlerts] = useState<SystemAlert[]>([]);
@@ -478,19 +481,39 @@ const AlertManagement: React.FC = () => {
         <Spin
           spinning={(!permissionsLoaded || loading) && alerts.length === 0}
         >
-        {loadError ? (
+        {loadError && (summary || alerts.length > 0) ? (
           <Alert
             className="alert-management__alert"
             type="warning"
             showIcon
             message={loadError}
-            description={summary || alerts.length ? t('pages.alertAdmin.staleDataWarning') : undefined}
+            description={t('pages.alertAdmin.staleDataWarning')}
             action={(
-              <Button size="small" onClick={loadData} loading={loading}>
-                {t('common.retry')}
-              </Button>
+              <Space wrap data-admin-alerts-stale-recovery="true">
+                <Button size="small" type="primary" onClick={loadData} loading={loading}>
+                  {t('common.retry')}
+                </Button>
+                <Button size="small" onClick={() => navigate('/admin')}>{t('pages.adminDashboard.title')}</Button>
+                <Button size="small" onClick={() => navigate('/admin/system')}>{t('pages.adminDashboard.paymentReturnOps.providerReadinessAction')}</Button>
+                <Button size="small" onClick={() => navigate('/admin/orders')}>{t('pages.adminDashboard.orders')}</Button>
+              </Space>
             )}
           />
+        ) : null}
+
+        {loadError && !(summary || alerts.length > 0) ? (
+          <div className="alert-management__error" data-admin-alerts-load-recovery="true">
+            <PageError
+              title={t('pages.alertAdmin.loadFailed')}
+              description={loadError}
+              actions={[
+                { key: 'retry', label: t('common.retry'), onClick: () => { void loadData(); }, type: 'primary' },
+                { key: 'dashboard', label: t('pages.adminDashboard.title'), onClick: () => navigate('/admin'), type: 'default' },
+                { key: 'system', label: t('pages.adminDashboard.paymentReturnOps.providerReadinessAction'), onClick: () => navigate('/admin/system'), type: 'default' },
+                { key: 'orders', label: t('pages.adminDashboard.orders'), onClick: () => navigate('/admin/orders'), type: 'default' },
+              ]}
+            />
+          </div>
         ) : null}
 
         {loadError && !summary && alerts.length === 0 ? null : (

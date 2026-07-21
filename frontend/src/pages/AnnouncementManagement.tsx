@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Button, Card, DatePicker, Form, Input, InputNumber, Modal, Popconfirm, Select, Space, Switch, Table, Tag, Typography, message } from 'antd';
 import { ClockCircleOutlined, LinkOutlined, PlusOutlined, SearchOutlined, SoundOutlined, ThunderboltOutlined } from '@ant-design/icons';
@@ -8,6 +9,7 @@ import { useLanguage } from '../i18n';
 import { useDebounce } from '../hooks/useDebounce';
 import { isSafeAnnouncementLink } from '../utils/announcementLinks';
 import { commercialAnnouncementRejectionReason } from '../utils/commercialAnnouncement';
+import PageError from '../components/PageError';
 import { getApiErrorMessage } from '../utils/apiError';
 import { reportNonBlockingError } from '../utils/nonBlockingError';
 import { ANNOUNCEMENTS_DELETE_PERMISSION, ANNOUNCEMENTS_WRITE_PERMISSION, getEffectiveRole, hasAdminPermission } from '../utils/roles';
@@ -60,6 +62,7 @@ const parseDateValue = (value?: string) => {
 };
 
 const AnnouncementManagement: React.FC = () => {
+  const navigate = useNavigate();
   const [announcements, setAnnouncements] = useState<SiteAnnouncement[]>([]);
   const [summary, setSummary] = useState<SiteAnnouncementAdminSummary | null>(null);
   const [loading, setLoading] = useState(true);
@@ -353,19 +356,39 @@ const AnnouncementManagement: React.FC = () => {
         ) : null}
       </div>
 
-      {announcementLoadError ? (
+      {announcementLoadError && announcementSnapshotLoaded ? (
         <Alert
           className="announcement-management__alert"
           type="warning"
           showIcon
           message={announcementLoadError}
-          description={announcementSnapshotLoaded ? t('pages.announcementAdmin.staleDataWarning') : undefined}
+          description={t('pages.announcementAdmin.staleDataWarning')}
           action={(
-            <Button size="small" loading={loading} onClick={() => loadAnnouncements(pageState.page, pageState.size)}>
-              {t('common.retry')}
-            </Button>
+            <Space wrap data-admin-announcements-stale-recovery="true">
+              <Button size="small" type="primary" loading={loading} onClick={() => loadAnnouncements(pageState.page, pageState.size)}>
+                {t('common.retry')}
+              </Button>
+              <Button size="small" onClick={() => navigate('/admin')}>{t('pages.adminDashboard.title')}</Button>
+              <Button size="small" onClick={() => navigate('/admin/orders')}>{t('pages.adminDashboard.orders')}</Button>
+              <Button size="small" onClick={() => navigate('/admin/support')}>{t('adminLayout.support')}</Button>
+            </Space>
           )}
         />
+      ) : null}
+
+      {announcementLoadError && !announcementSnapshotLoaded ? (
+        <div className="announcement-management__error" data-admin-announcements-load-recovery="true">
+          <PageError
+            title={t('pages.announcementAdmin.fetchFailed')}
+            description={announcementLoadError}
+            actions={[
+              { key: 'retry', label: t('common.retry'), onClick: () => { void loadAnnouncements(pageState.page, pageState.size); }, type: 'primary' },
+              { key: 'dashboard', label: t('pages.adminDashboard.title'), onClick: () => navigate('/admin'), type: 'default' },
+              { key: 'orders', label: t('pages.adminDashboard.orders'), onClick: () => navigate('/admin/orders'), type: 'default' },
+              { key: 'support', label: t('adminLayout.support'), onClick: () => navigate('/admin/support'), type: 'default' },
+            ]}
+          />
+        </div>
       ) : null}
 
       {summaryLoadError ? (

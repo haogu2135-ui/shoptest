@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Button, Card, Empty, Image, Input, Popconfirm, Select, Space, Statistic, Table, Tag, Typography, message } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
@@ -7,6 +8,7 @@ import { adminApi } from '../api/admin';
 import type { AdminPetGalleryPhoto } from '../types';
 import { useLanguage } from '../i18n';
 import { useDebounce } from '../hooks/useDebounce';
+import PageError from '../components/PageError';
 import { getApiErrorMessage } from '../utils/apiError';
 import { imageFallbacks, resolveApiAssetUrl } from '../utils/mediaAssets';
 import { PET_GALLERY_DELETE_PERMISSION, getEffectiveRole, hasAdminPermission } from '../utils/roles';
@@ -48,6 +50,7 @@ const isRecent = (value?: string) => {
 };
 
 const PetGalleryManagement: React.FC = () => {
+  const navigate = useNavigate();
   const { t, language } = useLanguage();
   const dateLocale = language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US';
   const [photos, setPhotos] = useState<AdminPetGalleryPhoto[]>([]);
@@ -339,19 +342,39 @@ const PetGalleryManagement: React.FC = () => {
         </Button>
       </div>
 
-      {galleryLoadError ? (
+      {galleryLoadError && gallerySnapshotLoaded ? (
         <Alert
           className="pet-gallery-management-page__alert"
           type="warning"
           showIcon
           message={galleryLoadError}
-          description={gallerySnapshotLoaded ? t('pages.petGalleryAdmin.staleDataWarning') : undefined}
+          description={t('pages.petGalleryAdmin.staleDataWarning')}
           action={(
-            <Button size="small" loading={loading} onClick={() => fetchPhotos(pageState.page, pageState.size)}>
-              {t('common.retry')}
-            </Button>
+            <Space wrap data-admin-pet-gallery-stale-recovery="true">
+              <Button size="small" type="primary" loading={loading} onClick={() => fetchPhotos(pageState.page, pageState.size)}>
+                {t('common.retry')}
+              </Button>
+              <Button size="small" onClick={() => navigate('/admin')}>{t('pages.adminDashboard.title')}</Button>
+              <Button size="small" onClick={() => navigate('/admin/products')}>{t('pages.adminDashboard.products')}</Button>
+              <Button size="small" onClick={() => navigate('/admin/orders')}>{t('pages.adminDashboard.orders')}</Button>
+            </Space>
           )}
         />
+      ) : null}
+
+      {galleryLoadError && !gallerySnapshotLoaded ? (
+        <div className="pet-gallery-management-page__error" data-admin-pet-gallery-load-recovery="true">
+          <PageError
+            title={t('pages.petGalleryAdmin.fetchFailed')}
+            description={galleryLoadError}
+            actions={[
+              { key: 'retry', label: t('common.retry'), onClick: () => { void fetchPhotos(pageState.page, pageState.size); }, type: 'primary' },
+              { key: 'dashboard', label: t('pages.adminDashboard.title'), onClick: () => navigate('/admin'), type: 'default' },
+              { key: 'products', label: t('pages.adminDashboard.products'), onClick: () => navigate('/admin/products'), type: 'default' },
+              { key: 'orders', label: t('pages.adminDashboard.orders'), onClick: () => navigate('/admin/orders'), type: 'default' },
+            ]}
+          />
+        </div>
       ) : null}
 
       {showInitialGalleryLoading ? (

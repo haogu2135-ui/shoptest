@@ -555,7 +555,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
       width="min(420px, 100%)"
       open={open}
       onClose={closeDrawer}
-      rootClassName="cart-drawer__root"
+      rootClassName={`cart-drawer__root${open ? ' cart-drawer__root--open' : ''}`}
       className={`cart-drawer cart-drawer--${language}`}
       styles={{ body: { padding: 16 } }}
       extra={<Text strong className="commerce-money">{formatMoney(subtotal)}</Text>}

@@ -1050,7 +1050,7 @@ const Navbar: React.FC = () => {
                     </Badge>
                   </button>
                 </Dropdown>
-                <button type="button" className="shop-nav__cart-action" onClick={() => dispatchDomEvent('shop:open-cart')} aria-label={cartBadgeLabel} title={cartBadgeLabel}>
+                <button type="button" className="shop-nav__cart-action" data-nav-cart="true" onClick={() => dispatchDomEvent('shop:open-cart')} aria-label={cartBadgeLabel} title={cartBadgeLabel}>
                   {renderCartBadge()}
                 </button>
                 <button type="button" className="shop-nav__mobile-logout" onClick={handleLogout} aria-label={t('nav.logout')}>
@@ -1108,7 +1108,7 @@ const Navbar: React.FC = () => {
                     </Badge>
                   </button>
                 </Dropdown>
-                <button type="button" className="shop-nav__cart-action" onClick={() => dispatchDomEvent('shop:open-cart')} aria-label={cartBadgeLabel} title={cartBadgeLabel}>
+                <button type="button" className="shop-nav__cart-action" data-nav-cart="true" onClick={() => dispatchDomEvent('shop:open-cart')} aria-label={cartBadgeLabel} title={cartBadgeLabel}>
                   {renderCartBadge()}
                 </button>
               </>

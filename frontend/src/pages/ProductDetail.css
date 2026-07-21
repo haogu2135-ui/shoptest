@@ -6624,3 +6624,24 @@ body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .product-de
     display: inline-flex;
   }
 }
+
+.product-recommendations--empty {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 16px;
+  border-radius: 16px;
+  background: rgba(16, 47, 34, 0.03);
+}
+.product-recommendations__emptyCopy {
+  display: grid;
+  gap: 6px;
+}
+.product-recommendations__emptyHint {
+  color: rgba(16, 47, 34, 0.72);
+  font-size: 13px;
+  line-height: 1.45;
+}
+.product-recommendations__emptyActions .ant-btn {
+  min-height: 44px;
+}

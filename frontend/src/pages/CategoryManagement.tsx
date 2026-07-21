@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
@@ -30,6 +31,7 @@ import {
 } from '../utils/categoryTree';
 import { useLanguage } from '../i18n';
 import { imageFallbacks, resolveApiAssetUrl } from '../utils/mediaAssets';
+import PageError from '../components/PageError';
 import { getApiErrorMessage } from '../utils/apiError';
 import { CATEGORIES_DELETE_PERMISSION, CATEGORIES_WRITE_PERMISSION, getEffectiveRole, hasAdminPermission } from '../utils/roles';
 import './CategoryManagement.css';
@@ -44,6 +46,7 @@ const isFormValidationError = (error: unknown): error is { errorFields: unknown[
 );
 
 const CategoryManagement: React.FC = () => {
+  const navigate = useNavigate();
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [categoryLoadError, setCategoryLoadError] = useState<string | null>(null);
@@ -429,19 +432,39 @@ const CategoryManagement: React.FC = () => {
       </Title>
       <Divider />
 
-      {categoryLoadError ? (
+      {categoryLoadError && categorySnapshotLoaded ? (
         <Alert
           className="category-management-page__alert"
           type="warning"
           showIcon
           message={categoryLoadError}
-          description={categorySnapshotLoaded ? t('pages.categoryAdmin.staleDataWarning') : undefined}
+          description={t('pages.categoryAdmin.staleDataWarning')}
           action={(
-            <Button size="small" loading={loading} onClick={fetchCategories}>
-              {t('common.retry')}
-            </Button>
+            <Space wrap data-admin-categories-stale-recovery="true">
+              <Button size="small" type="primary" loading={loading} onClick={fetchCategories}>
+                {t('common.retry')}
+              </Button>
+              <Button size="small" onClick={() => navigate('/admin')}>{t('pages.adminDashboard.title')}</Button>
+              <Button size="small" onClick={() => navigate('/admin/products')}>{t('pages.adminDashboard.products')}</Button>
+              <Button size="small" onClick={() => navigate('/admin/orders')}>{t('pages.adminDashboard.orders')}</Button>
+            </Space>
           )}
         />
+      ) : null}
+
+      {categoryLoadError && !categorySnapshotLoaded ? (
+        <div className="category-management-page__error" data-admin-categories-load-recovery="true">
+          <PageError
+            title={t('pages.categoryAdmin.fetchFailed')}
+            description={categoryLoadError}
+            actions={[
+              { key: 'retry', label: t('common.retry'), onClick: () => { void fetchCategories(); }, type: 'primary' },
+              { key: 'dashboard', label: t('pages.adminDashboard.title'), onClick: () => navigate('/admin'), type: 'default' },
+              { key: 'products', label: t('pages.adminDashboard.products'), onClick: () => navigate('/admin/products'), type: 'default' },
+              { key: 'orders', label: t('pages.adminDashboard.orders'), onClick: () => navigate('/admin/orders'), type: 'default' },
+            ]}
+          />
+        </div>
       ) : null}
 
       {showInitialCategoryLoading ? (

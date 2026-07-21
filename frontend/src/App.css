@@ -3211,6 +3211,37 @@ body:has(.ant-modal-root .ant-modal-wrap:not([style*="display: none"])) .app-sup
   font-weight: 700;
 }
 
+.shop-connectivity-banner__copy {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  align-items: center;
+  justify-content: center;
+}
+
+.shop-connectivity-banner__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+}
+
+.shop-connectivity-banner__actions .ant-btn {
+  min-height: 44px;
+}
+
+@media (max-width: 780px) {
+  .shop-connectivity-banner {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .shop-connectivity-banner__actions .ant-btn {
+    flex: 1 1 calc(50% - 8px);
+  }
+}
+
 body.shop-mobile-app .shop-connectivity-banner {
   top: env(safe-area-inset-top, 0px);
   padding-left: max(14px, env(safe-area-inset-left, 0px));

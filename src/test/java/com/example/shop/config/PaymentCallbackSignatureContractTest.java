@@ -57,6 +57,10 @@ class PaymentCallbackSignatureContractTest {
         assertOrder(handleStripeWebhook, "String webhookSecret = stripeWebhookSecret();", "Webhook.constructEvent(payload, signatureHeader, webhookSecret, STRIPE_WEBHOOK_TOLERANCE_SECONDS)");
         assertTrue(handleStripeWebhook.contains("throw new IllegalArgumentException(\"Invalid Stripe webhook signature\", e)"));
         assertFalse(handleStripeWebhook.contains("expectedSignature("));
+        // Signed webhooks must not 500 when Stripe SDK fails to deserialize (missing api_version etc.).
+        assertTrue(handleStripeWebhook.contains("getDataObjectDeserializer().getObject()"));
+        assertTrue(handleStripeWebhook.contains("could not deserialize checkout session payload"));
+        assertTrue(handleStripeWebhook.contains("catch (RuntimeException deserializeError)"));
     }
 
     @Test
@@ -159,6 +163,15 @@ class PaymentCallbackSignatureContractTest {
         assertTrue(handle.contains("Invalid Mercado Pago webhook signature"));
         assertTrue(service.contains("MERCADO_PAGO_WEBHOOK_TOLERANCE_SECONDS = 300L"));
         assertTrue(service.contains("id:\" + dataId + \";request-id:\""));
+
+        int fetchStart = service.indexOf("private JsonNode fetchMercadoPagoPayment");
+        assertTrue(fetchStart >= 0);
+        int fetchEnd = service.indexOf("private void validateMercadoPagoPaidPayment", fetchStart);
+        assertTrue(fetchEnd > fetchStart);
+        String fetch = service.substring(fetchStart, fetchEnd);
+        // Commercial: signed webhook for unknown remote payments should not 500-retry forever.
+        assertTrue(fetch.contains("getRawStatusCode() == 404"));
+        assertTrue(fetch.contains("return null;"));
     }
 
 }

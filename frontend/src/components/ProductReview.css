@@ -530,3 +530,46 @@
     font-size: 16px !important;
   }
 }
+
+
+/* Commercial multipath recovery for review composer empty / auth gate */
+.product-review__composerEmpty {
+  width: 100%;
+}
+
+.product-review__emptyCopy {
+  display: grid;
+  gap: 6px;
+}
+
+.product-review__emptyHint {
+  color: rgba(16, 47, 34, 0.72);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.product-review__emptyActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.product-review__emptyActions .ant-btn {
+  min-height: 44px;
+}
+
+.product-review__composer--login .product-review__emptyActions {
+  margin-top: 4px;
+}
+
+@media (max-width: 640px) {
+  .product-review__emptyActions {
+    width: 100%;
+  }
+
+  .product-review__emptyActions .ant-btn {
+    flex: 1 1 calc(50% - 8px);
+    min-width: 0;
+  }
+}

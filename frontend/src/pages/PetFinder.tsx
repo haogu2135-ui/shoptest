@@ -15,6 +15,7 @@ import { getLocalStorageItem, setLocalStorageItem } from '../utils/safeStorage';
 import { reportNonBlockingError } from '../utils/nonBlockingError';
 import PageError from '../components/PageError';
 import PageEmpty from '../components/PageEmpty';
+import { dispatchDomEvent } from '../utils/domEvents';
 import './PetFinder.css';
 import '../styles/mobile-page-contrast.css';
 
@@ -419,17 +420,46 @@ const PetFinder: React.FC = () => {
           ) : matches.length === 0 ? (
             loadError ? (
               <PageError
-                className="pet-finder-page__empty pet-finder-page__empty--loadFailed"
+                className="pet-finder-page__empty pet-finder-page__empty--loadFailed" data-pet-finder-load-recovery="true"
                 title={t('pages.petFinder.emptyAfterLoadFailure')}
                 description={t('pages.petFinder.loadFailedDescription')}
-                retryLabel={t('messages.retry')}
-                onRetry={retryFinderProducts}
-                homeLabel={t('pages.petFinder.browseAll')}
-                onHome={() => navigate('/products')}
+                actions={[
+                  {
+                    key: 'retry',
+                    label: t('messages.retry'),
+                    onClick: retryFinderProducts,
+                    type: 'primary',
+                  },
+                  {
+                    key: 'browse',
+                    label: t('pages.petFinder.browseAll'),
+                    onClick: () => navigate('/products'),
+                    type: 'default',
+                  },
+                  {
+                    key: 'coupons',
+                    label: t('pages.petFinder.emptyCoupons'),
+                    onClick: () => navigate('/coupons'),
+                    type: 'default',
+                  },
+                  {
+                    key: 'gallery',
+                    label: t('nav.petGallery'),
+                    onClick: () => navigate('/pet-gallery'),
+                    type: 'default',
+                  },
+                  {
+                    key: 'support',
+                    label: t('pages.productList.loadRecoverySupport'),
+                    onClick: () => dispatchDomEvent('shop:open-support'),
+                    type: 'default',
+                  },
+                ]}
               />
             ) : (
               <PageEmpty
                 className="pet-finder-page__empty"
+                data-pet-finder-empty-actions="true"
                 description={(
                   <div className="pet-finder-page__emptyCopy">
                     <div>{t('pages.petFinder.empty')}</div>

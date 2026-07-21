@@ -2831,3 +2831,25 @@
   min-height: 44px;
   touch-action: manipulation;
 }
+
+
+/* Commercial: login rate-limit / lock / unavailable multipath recovery */
+.shopee-login-errorRecovery {
+  display: grid;
+  gap: 12px;
+  margin: 0 0 12px;
+}
+
+.shopee-login-errorRecovery .shopee-login-errorBanner {
+  margin: 0;
+}
+
+.shopee-login-errorRecovery__actions {
+  display: grid;
+  gap: 10px;
+}
+
+.shopee-login-errorRecovery__actions .ant-btn {
+  min-height: 44px;
+  touch-action: manipulation;
+}

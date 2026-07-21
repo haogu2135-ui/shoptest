@@ -1,9 +1,11 @@
+import { useNavigate } from 'react-router-dom';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, Button, Divider, Input, message, Modal, Popconfirm, Select, Space, Table, Tag, Typography } from 'antd';
 import { CheckCircleOutlined, ClockCircleOutlined, DeleteOutlined, MessageOutlined, QuestionCircleOutlined, SearchOutlined, WarningOutlined } from '@ant-design/icons';
 import { adminApi } from '../api/admin';
 import type { ProductQuestion, ProductQuestionAdminSummary } from '../types';
 import { useLanguage } from '../i18n';
+import PageError from '../components/PageError';
 import { getApiErrorMessage } from '../utils/apiError';
 import {
   getEffectiveRole,
@@ -19,6 +21,7 @@ const mobilePopconfirmClassNames = { root: 'shop-mobile-popup-layer' };
 type QuestionStatus = 'UNANSWERED' | 'ANSWERED' | 'ALL';
 
 const ProductQuestionManagement: React.FC = () => {
+  const navigate = useNavigate();
   const [questions, setQuestions] = useState<ProductQuestion[]>([]);
   const [summary, setSummary] = useState<ProductQuestionAdminSummary | null>(null);
   const [statusFilter, setStatusFilter] = useState<QuestionStatus>('UNANSWERED');
@@ -343,19 +346,39 @@ const ProductQuestionManagement: React.FC = () => {
           {t('pages.adminQuestions.answeredQuestions', { count: hasQuestionSnapshot ? answeredCount : '-' })}
         </Tag>
       </Space>
-      {loadError ? (
+      {loadError && visibleQuestions.length > 0 ? (
         <Alert
           className="product-question-management-page__loadAlert"
-          type={visibleQuestions.length ? 'warning' : 'error'}
+          type="warning"
           showIcon
           message={t('pages.adminQuestions.loadErrorTitle')}
-          description={visibleQuestions.length ? t('pages.adminQuestions.staleDataWarning') : loadError}
+          description={t('pages.adminQuestions.staleDataWarning')}
           action={(
-            <Button size="small" onClick={loadQuestions} loading={loading}>
-              {t('common.retry')}
-            </Button>
+            <Space wrap data-admin-questions-stale-recovery="true">
+              <Button size="small" type="primary" onClick={loadQuestions} loading={loading}>
+                {t('common.retry')}
+              </Button>
+              <Button size="small" onClick={() => navigate('/admin')}>{t('pages.adminDashboard.title')}</Button>
+              <Button size="small" onClick={() => navigate('/admin/products')}>{t('pages.adminDashboard.products')}</Button>
+              <Button size="small" onClick={() => navigate('/admin/orders')}>{t('pages.adminDashboard.orders')}</Button>
+            </Space>
           )}
         />
+      ) : null}
+
+      {loadError && visibleQuestions.length === 0 ? (
+        <div className="product-question-management-page__error" data-admin-questions-load-recovery="true">
+          <PageError
+            title={t('pages.adminQuestions.loadErrorTitle')}
+            description={loadError}
+            actions={[
+              { key: 'retry', label: t('common.retry'), onClick: () => { void loadQuestions(); }, type: 'primary' },
+              { key: 'dashboard', label: t('pages.adminDashboard.title'), onClick: () => navigate('/admin'), type: 'default' },
+              { key: 'products', label: t('pages.adminDashboard.products'), onClick: () => navigate('/admin/products'), type: 'default' },
+              { key: 'orders', label: t('pages.adminDashboard.orders'), onClick: () => navigate('/admin/orders'), type: 'default' },
+            ]}
+          />
+        </div>
       ) : null}
       <div className="product-question-mobile-list" aria-label={t('pages.adminQuestions.title')}>
         {loading ? (

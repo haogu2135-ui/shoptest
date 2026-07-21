@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../i18n';
 import type { PublicReview, ReviewableOrder } from '../types';
 import { reviewApi } from '../api';
-import { buildLoginUrlFromWindow } from '../utils/authRedirect';
+import { buildLoginUrlFromWindow, getCurrentRelativeUrl } from '../utils/authRedirect';
 import { formatSafeDate, formatSafeDateTime } from '../utils/dateFormat';
 import { getLocalStorageItem } from '../utils/safeStorage';
 import { getApiErrorMessage } from '../utils/apiError';
@@ -235,15 +235,88 @@ export const ProductReview: React.FC<ProductReviewProps> = ({
                             </Button>
                         </Space>
                     ) : (
-                        <Empty description={t('pages.review.noReviewableOrder')} image={Empty.PRESENTED_IMAGE_SIMPLE} />
+                        <div className="product-review__composerEmpty" data-review-no-order-recovery="true">
+                            <Empty
+                                description={(
+                                    <div className="product-review__emptyCopy">
+                                        <div>{t('pages.review.noReviewableOrder')}</div>
+                                        <div className="product-review__emptyHint">{t('pages.review.noReviewableOrderHint')}</div>
+                                    </div>
+                                )}
+                                image={Empty.PRESENTED_IMAGE_SIMPLE}
+                            >
+                                <div className="product-review__emptyActions">
+                                    <Button
+                                        type="primary"
+                                        aria-label={t('pages.orderTracking.emptyProfileOrders')}
+                                        title={t('pages.orderTracking.emptyProfileOrders')}
+                                        onClick={() => navigate('/profile?tab=orders')}
+                                    >
+                                        {t('pages.orderTracking.emptyProfileOrders')}
+                                    </Button>
+                                    <Button
+                                        aria-label={t('pages.cart.browse')}
+                                        title={t('pages.cart.browse')}
+                                        onClick={() => navigate('/products')}
+                                    >
+                                        {t('pages.cart.browse')}
+                                    </Button>
+                                    <Button
+                                        aria-label={t('pages.review.emptyCoupons')}
+                                        title={t('pages.review.emptyCoupons')}
+                                        onClick={() => navigate('/coupons')}
+                                    >
+                                        {t('pages.review.emptyCoupons')}
+                                    </Button>
+                                    <Button
+                                        aria-label={t('nav.trackOrder')}
+                                        title={t('nav.trackOrder')}
+                                        onClick={() => navigate('/track-order')}
+                                    >
+                                        {t('nav.trackOrder')}
+                                    </Button>
+                                </div>
+                            </Empty>
+                        </div>
                     )}
                 </div>
             ) : (
-                <div className="product-review__composer product-review__composer--login">
+                <div
+                    className="product-review__composer product-review__composer--login"
+                    data-review-auth-gate="true"
+                >
                     <Text type="secondary">{t('messages.loginRequired')}</Text>
-                    <Button type="primary" onClick={() => navigate(buildLoginUrlFromWindow())}>
-                        {t('nav.login')}
-                    </Button>
+                    <div className="product-review__emptyActions">
+                        <Button
+                            type="primary"
+                            aria-label={t('nav.login')}
+                            title={t('nav.login')}
+                            onClick={() => navigate(buildLoginUrlFromWindow())}
+                        >
+                            {t('nav.login')}
+                        </Button>
+                        <Button
+                            aria-label={t('nav.register')}
+                            title={t('nav.register')}
+                            onClick={() => navigate(`/register?redirect=${encodeURIComponent(getCurrentRelativeUrl())}`)}
+                        >
+                            {t('nav.register')}
+                        </Button>
+                        <Button
+                            aria-label={t('pages.cart.browse')}
+                            title={t('pages.cart.browse')}
+                            onClick={() => navigate('/products')}
+                        >
+                            {t('pages.cart.browse')}
+                        </Button>
+                        <Button
+                            aria-label={t('pages.review.emptyCoupons')}
+                            title={t('pages.review.emptyCoupons')}
+                            onClick={() => navigate('/coupons')}
+                        >
+                            {t('pages.review.emptyCoupons')}
+                        </Button>
+                    </div>
                 </div>
             )}
             {reviews.length === 0 ? (

@@ -48,7 +48,16 @@ jest.mock('../i18n', () => ({
           'pages.auth.emailLoginTrust': 'Email login trust signals',
           'pages.auth.cartMerged': (value) => `Merged ${value?.count} guest cart items`,
           'pages.auth.cartMergePartial': (value) => `Merged ${value?.count} guest cart items; some remain`,
-          'pages.auth.loginFailed': 'Incorrect username or password',
+                    'pages.auth.loginFailed': 'Incorrect username or password',
+          'pages.auth.loginRateLimited': 'Too many login attempts. Please try again later.',
+          'pages.auth.loginLocked': 'This account is temporarily locked. Try again later or reset your password.',
+          'pages.auth.loginServiceUnavailable': 'Login is temporarily unavailable. Please try again later or contact support.',
+          'pages.auth.loginRecoveryNextRateLimited': 'Wait a moment, reset your password, track a guest order, or contact support for help.',
+          'pages.auth.loginRecoveryNextLocked': 'Reset your password, track a recent order, or contact support for account recovery help.',
+          'pages.auth.loginRecoveryNextUnavailable': 'Track a recent order or contact support while login recovers.',
+          'pages.auth.forgotPassword': 'Forgot password',
+          'nav.support': 'Support',
+
           'pages.auth.loginHeroSubtitle': 'Keep checkout ready.',
           'pages.auth.loginSuccess': 'Logged in',
           'pages.auth.loginTitle': 'Log in',
@@ -79,7 +88,16 @@ jest.mock('../i18n', () => ({
           'pages.auth.emailLoginFailed': 'No se pudo iniciar sesión con el código',
           'pages.auth.emailLoginHint': 'Usa un código de correo de un solo uso.',
           'pages.auth.emailLoginTrust': 'Señales de confianza',
-          'pages.auth.loginFailed': 'Usuario o contraseña incorrectos',
+                    'pages.auth.loginFailed': 'Usuario o contraseña incorrectos',
+          'pages.auth.loginRateLimited': 'Demasiados intentos de inicio de sesión. Intenta de nuevo más tarde.',
+          'pages.auth.loginLocked': 'Esta cuenta está bloqueada temporalmente.',
+          'pages.auth.loginServiceUnavailable': 'El inicio de sesión no está disponible temporalmente.',
+          'pages.auth.loginRecoveryNextRateLimited': 'Espera un momento o contacta soporte.',
+          'pages.auth.loginRecoveryNextLocked': 'Restablece tu contraseña o contacta soporte.',
+          'pages.auth.loginRecoveryNextUnavailable': 'Rastrea un pedido o contacta soporte.',
+          'pages.auth.forgotPassword': 'Olvidé mi contraseña',
+          'nav.support': 'Soporte',
+
           'pages.auth.loginHeroSubtitle': 'Mantén el pago listo.',
           'pages.auth.loginTitle': 'Iniciar sesión',
           'pages.auth.loginTrustCart': 'Recuperar carrito invitado',
@@ -109,7 +127,16 @@ jest.mock('../i18n', () => ({
           'pages.auth.emailLoginFailed': '邮箱验证码登录失败',
           'pages.auth.emailLoginHint': '使用一次性邮箱验证码。',
           'pages.auth.emailLoginTrust': '邮箱登录信任提示',
-          'pages.auth.loginFailed': '用户名或密码错误',
+                    'pages.auth.loginFailed': '用户名或密码错误',
+          'pages.auth.loginRateLimited': '登录尝试过于频繁，请稍后再试',
+          'pages.auth.loginLocked': '账号已临时锁定',
+          'pages.auth.loginServiceUnavailable': '登录服务暂不可用',
+          'pages.auth.loginRecoveryNextRateLimited': '请稍后再试或联系客服',
+          'pages.auth.loginRecoveryNextLocked': '可重置密码或联系客服',
+          'pages.auth.loginRecoveryNextUnavailable': '可先追踪订单或联系客服',
+          'pages.auth.forgotPassword': '忘记密码',
+          'nav.support': '客服',
+
           'pages.auth.loginHeroSubtitle': '让结账保持就绪。',
           'pages.auth.loginTitle': '登录',
           'pages.auth.loginTrustCart': '找回游客购物车',
@@ -644,4 +671,42 @@ describe('Login accessibility labels', () => {
     await waitFor(() => expect(userApi.emailLogin).toHaveBeenCalledWith('customer@example.com', '123456'));
     await waitFor(() => expect(screen.queryByText('Invalid verification code')).not.toBeInTheDocument());
   });
+
+  it('shows multipath recovery exits when password login is rate limited', async () => {
+    mockLanguage = 'en';
+    (userApi.login as jest.Mock).mockRejectedValueOnce({
+      response: { status: 429, data: { message: 'Too many login attempts' } },
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/login']}>
+        <Login />
+      </MemoryRouter>,
+    );
+
+    fireEvent.change(screen.getByLabelText('Password login: Log in: Username'), {
+      target: { value: 'customer@example.com' },
+    });
+    fireEvent.change(screen.getByLabelText('Password login: Log in: Password'), {
+      target: { value: 'wrong-password-1' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Password login: Log in' }));
+
+    await waitFor(() => expect(screen.getAllByText('Too many login attempts. Please try again later.').length).toBeGreaterThan(0));
+    const recovery = document.querySelector('[data-login-recovery-actions="true"]');
+    expect(recovery).toBeTruthy();
+    expect(recovery?.textContent).toMatch(/Forgot password/i);
+    expect(recovery?.textContent).toMatch(/Track order/i);
+    expect(recovery?.textContent).toMatch(/Support/i);
+    expect(document.querySelector('[data-login-error-kind="rate_limited"]')).toBeTruthy();
+  });
+
+  it('keeps login rate-limit multipath recovery wired in source and styles', () => {
+    const source = readLoginPageSource();
+    const css = readLoginCss();
+    expect(source).toContain('data-login-recovery-actions');
+    expect(source).toContain("recoveryKind: 'rate_limited'");
+    expect(css).toContain('shopee-login-errorRecovery__actions');
+  });
+
 });

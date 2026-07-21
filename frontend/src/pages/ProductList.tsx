@@ -515,7 +515,7 @@ const ProductList: React.FC = () => {
   const [searchParams] = useSearchParams();
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<CategoryPublic[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
   const [usingCatalogSnapshot, setUsingCatalogSnapshot] = useState(false);
   const [keyword, setKeyword] = useState(normalizeSearchValue(searchParams.get('keyword') || ''));
@@ -1030,7 +1030,7 @@ const ProductList: React.FC = () => {
     const abortController = createApiAbortController();
     productFetchAbortRef.current = abortController;
     previousAbortController?.abort();
-    const isCurrentRequest = () => productRequestSeqRef.current === requestSeq && !abortController.signal.aborted;
+    const isCurrentRequest = () => productRequestSeqRef.current === requestSeq;
     try {
       setLoading(true);
       const requestedPage = Math.max(0, normalizePageNumber((filters.page ?? 0) + 1) - 1);
@@ -1092,6 +1092,7 @@ const ProductList: React.FC = () => {
       setCurrentPage(pageData.total === 0 ? 1 : Math.min(totalPagesForUi, Math.max(1, pageData.page + 1)));
     } catch (error) {
       if (!isCurrentRequest()) return;
+      if (abortController.signal.aborted) return;
       const errorMessage = getApiErrorMessage(error, t('pages.productList.fetchFailed'), language);
       if (kw || cid || disc || filters.collection) {
         try {
@@ -1565,6 +1566,9 @@ const ProductList: React.FC = () => {
     return getConversionSortScore(b) - getConversionSortScore(a);
   });
   const productCountForUi = usingServerPagination ? productTotal : sortedProducts.length;
+  const productCountLabel = loading
+    ? t('common.loading')
+    : t('pages.productList.count', { count: productCountForUi });
   const handleProductPageChange = useCallback((nextPage: number) => {
     const totalPages = Math.max(1, Math.ceil(productCountForUi / pageSize));
     const normalizedPage = Math.min(totalPages, normalizePageNumber(nextPage));
@@ -1812,7 +1816,7 @@ const ProductList: React.FC = () => {
     : productListGuideText;
   const mobileNextStepTitle = filteredProducts.length === 0 && activeRefinementCount > 0
     ? t('pages.productList.activeFilters', { count: activeRefinementCount })
-    : t('pages.productList.count', { count: productCountForUi });
+    : productCountLabel;
   const mobileNextStepActions = filteredProducts.length === 0
     ? [
       {
@@ -1912,11 +1916,11 @@ const ProductList: React.FC = () => {
       }
       : null,
   ].filter(Boolean) as ActiveResultContextAction[];
-  const productListFilterContextLabel = `${t('pages.productList.filters')}: ${activeRefinementCount > 0 ? t('pages.productList.activeFilters', { count: activeRefinementCount }) : t('pages.productList.allCategories')}, ${t('pages.productList.count', { count: productCountForUi })}`;
+  const productListFilterContextLabel = `${t('pages.productList.filters')}: ${activeRefinementCount > 0 ? t('pages.productList.activeFilters', { count: activeRefinementCount }) : t('pages.productList.allCategories')}, ${productCountLabel}`;
   const openFilterDrawerActionLabel = productListFilterContextLabel;
   const resetRefinementsActionLabel = `${t('pages.productList.resetFilters')}: ${productListFilterContextLabel}`;
   const applyRefinementsActionLabel = `${t('pages.productList.applyFilters')}: ${productListFilterContextLabel}`;
-  const shopBestDealsActionLabel = `${t('pages.productList.shopBestDeals')}: ${t('pages.productList.count', { count: productCountForUi })}`;
+  const shopBestDealsActionLabel = `${t('pages.productList.shopBestDeals')}: ${productCountLabel}`;
   const shopQuickAddActionLabel = `${t('pages.productList.shopQuickAdd')}: ${t('pages.productList.quickAddReady', { count: productListInsights.quickAddReadyCount })}`;
   const loadRecoveryContextLabel = `${t('pages.productList.fetchFailed')}: ${productListFilterContextLabel}`;
   const refreshCatalogActionLabel = `${t('common.refresh')}: ${loadRecoveryContextLabel}`;
@@ -1925,6 +1929,8 @@ const ProductList: React.FC = () => {
   const supportRecoveryActionLabel = `${t('pages.productList.loadRecoverySupport')}: ${loadRecoveryContextLabel}`;
   const emptyAllCategoriesActionLabel = `${t('pages.productList.allCategories')}: ${t('pages.productList.empty')}`;
   const emptyResetFiltersActionLabel = `${t('pages.productList.resetFilters')}: ${t('pages.productList.empty')}, ${productListFilterContextLabel}`;
+  const emptyCouponsActionLabel = `${t('pages.productList.loadRecoveryCoupons')}: ${t('pages.productList.empty')}`;
+  const emptyPetFinderActionLabel = `${t('nav.petFinder')}: ${t('pages.productList.empty')}`;
   const mobilePrimaryActionLabel = heroProduct
     ? `${isQuickAddReady(heroProduct) ? t('pages.productList.addToCart') : t('pages.productList.chooseOptionsAction')}: ${heroProductName}`
     : filteredProducts.length > 0
@@ -2162,7 +2168,7 @@ const ProductList: React.FC = () => {
                     : t('pages.productList.searchPlaceholder')}
               </Text>
               <div className="product-list__heroStats">
-                <span>{t('pages.productList.count', { count: productCountForUi })}</span>
+                <span>{productCountLabel}</span>
                 <span>{t('pages.productList.quickAddReady', { count: productListInsights.quickAddReadyCount })}</span>
                 <span>{t('pages.productList.bestValueCount', { count: productListInsights.bestValueCount })}</span>
               </div>
@@ -2226,7 +2232,7 @@ const ProductList: React.FC = () => {
               </Col>
               <Col xs={12} sm={7} md={4}>
                 <div className="product-list__toolbarMeta">
-                  <Text type="secondary">{t('pages.productList.count', { count: productCountForUi })}</Text>
+                  <Text type="secondary">{productCountLabel}</Text>
                   <Button className="product-list__filterButton" icon={<FilterOutlined />} aria-label={openFilterDrawerActionLabel} title={openFilterDrawerActionLabel} onClick={() => setFilterDrawerOpen(true)}>
                     <span>{t('pages.productList.filters')}</span>
                     {activeRefinementCount > 0 ? (
@@ -2337,7 +2343,7 @@ const ProductList: React.FC = () => {
             >
               <div className="product-list__mobileConversionStats">
                 <span className="product-list__mobileConversionEyebrow">{t('pages.productList.viewPick')}</span>
-                <strong>{heroProduct?.name || t('pages.productList.count', { count: productCountForUi })}</strong>
+                <strong>{heroProduct?.name || productCountLabel}</strong>
                 <span>
                   {activeRefinementCount > 0
                     ? t('pages.productList.activeFilters', { count: activeRefinementCount })
@@ -2531,8 +2537,9 @@ const ProductList: React.FC = () => {
               </div>
             </div>
           ) : loadFailed ? (
-            <div className="product-list__loadFailed">
+            <div className="product-list__loadFailed" data-product-list-load-recovery="true">
               <PageError
+                className="product-list__loadError"
                 title={t('pages.productList.fetchFailed')}
                 description={(
                   <div className="product-list__recovery">
@@ -2544,10 +2551,32 @@ const ProductList: React.FC = () => {
                     </div>
                   </div>
                 )}
-                retryLabel={refreshCatalogActionLabel}
-                onRetry={() => fetchProducts(keyword, categoryId, discount, buildActiveFetchFilters(Math.max(0, currentPage - 1)))}
-                homeLabel={allCategoriesRecoveryActionLabel}
-                onHome={() => navigate('/products')}
+                actions={[
+                  {
+                    key: 'retry',
+                    label: refreshCatalogActionLabel,
+                    onClick: () => fetchProducts(keyword, categoryId, discount, buildActiveFetchFilters(Math.max(0, currentPage - 1))),
+                    type: 'primary',
+                  },
+                  {
+                    key: 'all',
+                    label: allCategoriesRecoveryActionLabel,
+                    onClick: () => navigate('/products'),
+                    type: 'default',
+                  },
+                  {
+                    key: 'coupons',
+                    label: couponsRecoveryActionLabel,
+                    onClick: () => navigate('/coupons'),
+                    type: 'default',
+                  },
+                  {
+                    key: 'support',
+                    label: supportRecoveryActionLabel,
+                    onClick: openSupport,
+                    type: 'default',
+                  },
+                ]}
               />
               <div className="product-list__recovery product-list__recovery--secondary">
                 <div className="product-list__recoveryGrid">
@@ -2564,26 +2593,44 @@ const ProductList: React.FC = () => {
           ) : paginatedProducts.length === 0 ? (
             <PageEmpty
               className="product-list__empty"
+              data-product-list-empty-actions="true"
               description={(
                 <div className="product-list__emptyContent">
                   <div>{t('pages.productList.empty')}</div>
                   {renderDiscoveryActions()}
                 </div>
               )}
-              primaryAction={(keyword || categoryId || collection || activeFilterCount > 0) ? {
-                key: 'reset',
-                label: emptyResetFiltersActionLabel,
-                onClick: resetFilters,
-              } : {
-                key: 'all',
-                label: emptyAllCategoriesActionLabel,
-                onClick: () => navigate('/products'),
-              }}
-              secondaryAction={(keyword || categoryId || collection || activeFilterCount > 0) ? {
-                key: 'all',
-                label: emptyAllCategoriesActionLabel,
-                onClick: () => navigate('/products'),
-              } : undefined}
+              actions={[
+                (keyword || categoryId || collection || activeFilterCount > 0)
+                  ? {
+                      key: 'reset',
+                      label: emptyResetFiltersActionLabel,
+                      onClick: resetFilters,
+                    }
+                  : {
+                      key: 'all',
+                      label: emptyAllCategoriesActionLabel,
+                      onClick: () => navigate('/products'),
+                    },
+                {
+                  key: 'coupons',
+                  label: emptyCouponsActionLabel,
+                  onClick: () => navigate('/coupons'),
+                  type: 'default',
+                },
+                {
+                  key: 'pet-finder',
+                  label: emptyPetFinderActionLabel,
+                  onClick: () => navigate('/pet-finder'),
+                  type: 'default',
+                },
+                {
+                  key: 'support',
+                  label: supportRecoveryActionLabel,
+                  onClick: openSupport,
+                  type: 'default',
+                },
+              ]}
             />
           ) : (
             <>
@@ -2652,7 +2699,7 @@ const ProductList: React.FC = () => {
       >
         <div className="product-list__drawerContent">
           <section className="product-list__drawerSummary" aria-live="polite">
-            <span>{t('pages.productList.count', { count: productCountForUi })}</span>
+            <span>{productCountLabel}</span>
             <strong>
               {activeRefinementCount > 0
                 ? t('pages.productList.activeFilters', { count: activeRefinementCount })

@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Button, Card, Empty, Popconfirm, Space, Spin, Statistic, Table, Tag, Typography, message } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
@@ -5,6 +6,7 @@ import { ClearOutlined, DashboardOutlined, ReloadOutlined, ThunderboltOutlined, 
 import { adminApi } from '../api/admin';
 import type { AdminTrafficControlStatus } from '../types';
 import { useLanguage } from '../i18n';
+import PageError from '../components/PageError';
 import { getApiErrorMessage } from '../utils/apiError';
 import {
   TRAFFIC_CONTROL_CIRCUIT_RESET_PERMISSION,
@@ -26,6 +28,7 @@ const stateColor = (state: string) => {
 };
 
 const TrafficControl: React.FC = () => {
+  const navigate = useNavigate();
   const { t, language } = useLanguage();
   const dateLocale = language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US';
   const [status, setStatus] = useState<AdminTrafficControlStatus | null>(null);
@@ -250,19 +253,39 @@ const TrafficControl: React.FC = () => {
         </Space>
       </div>
 
-      {loadError ? (
+      {loadError && status ? (
         <Alert
           className="traffic-control__alert"
           type="warning"
           showIcon
           message={loadError}
-          description={status ? t('pages.trafficControl.staleDataWarning') : undefined}
+          description={t('pages.trafficControl.staleDataWarning')}
           action={(
-            <Button size="small" onClick={loadStatus} loading={loading}>
-              {t('common.retry')}
-            </Button>
+            <Space wrap data-admin-traffic-stale-recovery="true">
+              <Button size="small" type="primary" onClick={loadStatus} loading={loading}>
+                {t('common.retry')}
+              </Button>
+              <Button size="small" onClick={() => navigate('/admin')}>{t('pages.adminDashboard.title')}</Button>
+              <Button size="small" onClick={() => navigate('/admin/system')}>{t('pages.adminDashboard.paymentReturnOps.providerReadinessAction')}</Button>
+              <Button size="small" onClick={() => navigate('/admin/orders')}>{t('pages.adminDashboard.orders')}</Button>
+            </Space>
           )}
         />
+      ) : null}
+
+      {loadError && !status ? (
+        <div className="traffic-control__error" data-admin-traffic-load-recovery="true">
+          <PageError
+            title={t('pages.trafficControl.loadFailed')}
+            description={loadError}
+            actions={[
+              { key: 'retry', label: t('common.retry'), onClick: () => { void loadStatus(); }, type: 'primary' },
+              { key: 'dashboard', label: t('pages.adminDashboard.title'), onClick: () => navigate('/admin'), type: 'default' },
+              { key: 'system', label: t('pages.adminDashboard.paymentReturnOps.providerReadinessAction'), onClick: () => navigate('/admin/system'), type: 'default' },
+              { key: 'orders', label: t('pages.adminDashboard.orders'), onClick: () => navigate('/admin/orders'), type: 'default' },
+            ]}
+          />
+        </div>
       ) : null}
 
       <div

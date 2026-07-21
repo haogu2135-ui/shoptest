@@ -419,12 +419,36 @@ const AdminDashboard: React.FC = () => {
 
   if (!stats) {
     return (
-      <div className="admin-dashboard__error">
+      <div className="admin-dashboard__error" data-admin-dashboard-load-recovery="true">
         <PageError
           title={t('pages.adminDashboard.loadFailed')}
           description={loadError || t('pages.adminDashboard.loadFailed')}
-          retryLabel={dashboardReloadActionLabel}
-          onRetry={() => window.location.reload()}
+          actions={[
+            {
+              key: 'retry',
+              label: dashboardReloadActionLabel,
+              onClick: () => window.location.reload(),
+              type: 'primary',
+            },
+            {
+              key: 'orders',
+              label: t('pages.adminDashboard.orders'),
+              onClick: () => navigate('/admin/orders'),
+              type: 'default',
+            },
+            {
+              key: 'system',
+              label: t('pages.adminDashboard.paymentReturnOps.providerReadinessAction'),
+              onClick: () => navigate('/admin/system'),
+              type: 'default',
+            },
+            {
+              key: 'products',
+              label: t('pages.adminDashboard.products'),
+              onClick: () => navigate('/admin/products'),
+              type: 'default',
+            },
+          ]}
         />
       </div>
     );

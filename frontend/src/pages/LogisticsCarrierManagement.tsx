@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Button, Card, Form, Input, InputNumber, message, Modal, Popconfirm, Progress, Select, Space, Table, Tag, Typography } from 'antd';
 import { CheckCircleOutlined, PlusOutlined, SearchOutlined, WarningOutlined } from '@ant-design/icons';
@@ -5,6 +6,7 @@ import { logisticsCarrierApi } from '../api';
 import { adminApi } from '../api/admin';
 import type { LogisticsCarrier } from '../types';
 import { useLanguage } from '../i18n';
+import PageError from '../components/PageError';
 import { getApiErrorMessage } from '../utils/apiError';
 import {
   LOGISTICS_CARRIERS_DELETE_PERMISSION,
@@ -24,6 +26,7 @@ const isFormValidationError = (error: unknown): error is { errorFields: unknown[
 );
 
 const LogisticsCarrierManagement: React.FC = () => {
+  const navigate = useNavigate();
   const [carriers, setCarriers] = useState<LogisticsCarrier[]>([]);
   const [loading, setLoading] = useState(true);
   const [carrierLoadError, setCarrierLoadError] = useState<string | null>(null);
@@ -226,19 +229,39 @@ const LogisticsCarrierManagement: React.FC = () => {
   return (
     <div className="logistics-carrier-page">
       <Title level={4}>{t('pages.logisticsCarriers.title')}</Title>
-      {carrierLoadError ? (
+      {carrierLoadError && carrierSnapshotLoaded ? (
         <Alert
           className="logistics-carrier-page__alert"
           type="warning"
           showIcon
           message={carrierLoadError}
-          description={carrierSnapshotLoaded ? t('pages.logisticsCarriers.staleDataWarning') : undefined}
+          description={t('pages.logisticsCarriers.staleDataWarning')}
           action={(
-            <Button size="small" loading={loading} onClick={fetchCarriers}>
-              {t('common.retry')}
-            </Button>
+            <Space wrap data-admin-carriers-stale-recovery="true">
+              <Button size="small" type="primary" loading={loading} onClick={fetchCarriers}>
+                {t('common.retry')}
+              </Button>
+              <Button size="small" onClick={() => navigate('/admin')}>{t('pages.adminDashboard.title')}</Button>
+              <Button size="small" onClick={() => navigate('/admin/orders')}>{t('pages.adminDashboard.orders')}</Button>
+              <Button size="small" onClick={() => navigate('/admin/system')}>{t('pages.adminDashboard.paymentReturnOps.providerReadinessAction')}</Button>
+            </Space>
           )}
         />
+      ) : null}
+
+      {carrierLoadError && !carrierSnapshotLoaded ? (
+        <div className="logistics-carrier-page__error" data-admin-carriers-load-recovery="true">
+          <PageError
+            title={t('pages.logisticsCarriers.fetchFailed')}
+            description={carrierLoadError}
+            actions={[
+              { key: 'retry', label: t('common.retry'), onClick: () => { void fetchCarriers(); }, type: 'primary' },
+              { key: 'dashboard', label: t('pages.adminDashboard.title'), onClick: () => navigate('/admin'), type: 'default' },
+              { key: 'orders', label: t('pages.adminDashboard.orders'), onClick: () => navigate('/admin/orders'), type: 'default' },
+              { key: 'system', label: t('pages.adminDashboard.paymentReturnOps.providerReadinessAction'), onClick: () => navigate('/admin/system'), type: 'default' },
+            ]}
+          />
+        </div>
       ) : null}
 
       {showInitialCarrierLoading ? (

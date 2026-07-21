@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Button, Empty, Input, Space, Tag, Typography, message } from 'antd';
-import { CopyOutlined, CustomerServiceOutlined, ReloadOutlined, SearchOutlined } from '@ant-design/icons';
+import { CopyOutlined, CustomerServiceOutlined, GiftOutlined, ReloadOutlined, SearchOutlined, ShoppingOutlined } from '@ant-design/icons';
+import { useNavigate } from 'react-router-dom';
 import { logisticsApi } from '../api';
 import { useLanguage } from '../i18n';
 import { getApiErrorDiagnosticText, getApiErrorMessage } from '../utils/apiError';
@@ -55,6 +56,7 @@ const SeventeenTrackWidget: React.FC<SeventeenTrackWidgetProps> = ({
   height = 560,
 }) => {
   const { t, language } = useLanguage();
+  const navigate = useNavigate();
   const [value, setValue] = useState(trackingNumber);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<LogisticsTrackResponse | null>(null);
@@ -159,7 +161,7 @@ const SeventeenTrackWidget: React.FC<SeventeenTrackWidgetProps> = ({
   };
 
   const recoveryActions = (
-    <Space wrap className="seventeen-track-widget__recoveryActions" size={[8, 8]}>
+    <Space wrap className="seventeen-track-widget__recoveryActions" size={[8, 8]} data-seventeen-track-recovery="true">
       {activeTrackingNumber ? (
         <Button
           icon={<CopyOutlined />}
@@ -179,6 +181,22 @@ const SeventeenTrackWidget: React.FC<SeventeenTrackWidgetProps> = ({
         title={`${t('pages.orderTracking.retryTracking')}: ${trackingContext}`}
       >
         {t('pages.orderTracking.retryTracking')}
+      </Button>
+      <Button
+        icon={<ShoppingOutlined />}
+        onClick={() => navigate('/products')}
+        aria-label={t('pages.orderTracking.shopAgain')}
+        title={t('pages.orderTracking.shopAgain')}
+      >
+        {t('pages.orderTracking.shopAgain')}
+      </Button>
+      <Button
+        icon={<GiftOutlined />}
+        onClick={() => navigate('/coupons')}
+        aria-label={t('pages.orderTracking.emptyCoupons')}
+        title={t('pages.orderTracking.emptyCoupons')}
+      >
+        {t('pages.orderTracking.emptyCoupons')}
       </Button>
       <Button
         icon={<CustomerServiceOutlined />}

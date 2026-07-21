@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Button, Card, Descriptions, Input, Space, Spin, Tag, Typography, message } from 'antd';
-import { CreditCardOutlined, CustomerServiceOutlined, FileSearchOutlined, LockOutlined, MailOutlined, ReloadOutlined, SafetyCertificateOutlined, ShoppingOutlined } from '@ant-design/icons';
+import { CreditCardOutlined, CustomerServiceOutlined, FileSearchOutlined, GiftOutlined, LockOutlined, MailOutlined, ReloadOutlined, SafetyCertificateOutlined, ShoppingOutlined } from '@ant-design/icons';
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { orderApi, paymentApi } from '../api';
 import { useLanguage } from '../i18n';
@@ -512,9 +512,20 @@ const PaymentInstructions: React.FC = () => {
                         {t('pages.paymentInstructions.guestEmailSubmit')}
                       </Button>
                     </Space.Compact>
-                    <Button type="link" onClick={openTrackOrder} aria-label={t('nav.trackOrder')} title={t('nav.trackOrder')}>
-                      {t('pages.paymentInstructions.verifyWithTrackOrder')}
-                    </Button>
+                    <Space wrap className="payment-instructions-page__guestEmailRecovery" data-payment-guest-email-recovery="true">
+                      <Button type="link" onClick={openTrackOrder} aria-label={t('nav.trackOrder')} title={t('nav.trackOrder')}>
+                        {t('pages.paymentInstructions.verifyWithTrackOrder')}
+                      </Button>
+                      <Button type="link" onClick={() => navigate('/products')} aria-label={t('pages.cart.browse')} title={t('pages.cart.browse')}>
+                        {t('pages.cart.browse')}
+                      </Button>
+                      <Button type="link" onClick={() => navigate('/coupons')} aria-label={t('nav.coupons')} title={t('nav.coupons')}>
+                        {t('nav.coupons')}
+                      </Button>
+                      <Button type="link" onClick={openSupport} aria-label={t('pages.profile.contactSupport')} title={t('pages.profile.contactSupport')}>
+                        {t('pages.profile.contactSupport')}
+                      </Button>
+                    </Space>
                   </div>
                 ) : null}
 
@@ -678,7 +689,7 @@ const PaymentInstructions: React.FC = () => {
             <Text strong>{statusTitle}</Text>
             <Text type="secondary">{paymentContextLabel}</Text>
           </div>
-          <div className="payment-instructions-page__stickyActions">
+          <div className="payment-instructions-page__stickyActions" data-payment-recovery-actions="true">
             <Button
               icon={<ShoppingOutlined />}
               aria-label={t('pages.paymentInstructions.stickyContinueShopping')}
@@ -686,6 +697,14 @@ const PaymentInstructions: React.FC = () => {
               onClick={openContinueShopping}
             >
               {t('pages.paymentInstructions.stickyContinueShopping')}
+            </Button>
+            <Button
+              icon={<GiftOutlined />}
+              aria-label={t('nav.coupons')}
+              title={t('nav.coupons')}
+              onClick={() => navigate('/coupons')}
+            >
+              {t('nav.coupons')}
             </Button>
             <Button
               icon={<CustomerServiceOutlined />}
@@ -710,12 +729,17 @@ const PaymentInstructions: React.FC = () => {
       ) : null}
 
       {isPaid ? (
-        <div className="payment-instructions-page__stickyBar payment-instructions-page__stickyBar--paid" role="region" aria-label={t('pages.paymentInstructions.stickyTrackOrder')}>
+        <div
+          className="payment-instructions-page__stickyBar payment-instructions-page__stickyBar--paid"
+          role="region"
+          aria-label={t('pages.paymentInstructions.stickyTrackOrder')}
+          data-payment-paid-sticky="true"
+        >
           <div className="payment-instructions-page__stickyMeta">
             <Text strong>{t('pages.paymentInstructions.paidTitle')}</Text>
             <Text type="secondary">{paymentContextLabel}</Text>
           </div>
-          <div className="payment-instructions-page__stickyActions">
+          <div className="payment-instructions-page__stickyActions" data-payment-paid-actions="true">
             <Button
               icon={<ShoppingOutlined />}
               aria-label={t('pages.paymentInstructions.stickyContinueShopping')}
@@ -723,6 +747,22 @@ const PaymentInstructions: React.FC = () => {
               onClick={openContinueShopping}
             >
               {t('pages.paymentInstructions.stickyContinueShopping')}
+            </Button>
+            <Button
+              icon={<GiftOutlined />}
+              aria-label={t('nav.coupons')}
+              title={t('nav.coupons')}
+              onClick={() => navigate('/coupons')}
+            >
+              {t('nav.coupons')}
+            </Button>
+            <Button
+              icon={<FileSearchOutlined />}
+              aria-label={t('pages.orderTracking.emptyProfileOrders')}
+              title={t('pages.orderTracking.emptyProfileOrders')}
+              onClick={() => navigate('/profile?tab=orders')}
+            >
+              {t('pages.orderTracking.emptyProfileOrders')}
             </Button>
             <Button
               type="primary"

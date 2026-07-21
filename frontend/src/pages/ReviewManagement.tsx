@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Table, Button, Popconfirm, Rate, message, Typography, Divider, Input, Modal, Select, Space, Tag } from 'antd';
 import { DeleteOutlined, EyeInvisibleOutlined, CheckOutlined, MessageOutlined, SearchOutlined, StarOutlined, WarningOutlined } from '@ant-design/icons';
@@ -5,6 +6,7 @@ import { adminApi } from '../api/admin';
 import type { Review } from '../types';
 import { useLanguage } from '../i18n';
 import { useDebounce } from '../hooks/useDebounce';
+import PageError from '../components/PageError';
 import { getApiErrorMessage } from '../utils/apiError';
 import { productImageFallback, resolveProductImage } from '../utils/productMedia';
 import {
@@ -22,6 +24,7 @@ const REVIEW_STATUS_KEYS = new Set(['PENDING', 'APPROVED', 'HIDDEN']);
 const mobilePopconfirmClassNames = { root: 'shop-mobile-popup-layer' };
 
 const ReviewManagement: React.FC = () => {
+  const navigate = useNavigate();
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -479,19 +482,39 @@ const ReviewManagement: React.FC = () => {
           {t('common.search')}
         </Button>
       </Space>
-      {loadError ? (
+      {loadError && reviewSnapshotLoaded ? (
         <Alert
           className="review-management-page__loadAlert"
-          type={reviewSnapshotLoaded ? 'warning' : 'error'}
+          type="warning"
           showIcon
           message={t('pages.adminReviews.loadErrorTitle')}
-          description={reviewSnapshotLoaded ? t('pages.adminReviews.staleDataWarning') : loadError}
+          description={t('pages.adminReviews.staleDataWarning')}
           action={(
-            <Button size="small" onClick={() => fetchReviews(pageState.page || 1, pageState.size || pageSizeRef.current)} loading={loading}>
-              {t('common.retry')}
-            </Button>
+            <Space wrap data-admin-reviews-stale-recovery="true">
+              <Button size="small" type="primary" onClick={() => fetchReviews(pageState.page || 1, pageState.size || pageSizeRef.current)} loading={loading}>
+                {t('common.retry')}
+              </Button>
+              <Button size="small" onClick={() => navigate('/admin')}>{t('pages.adminDashboard.title')}</Button>
+              <Button size="small" onClick={() => navigate('/admin/products')}>{t('pages.adminDashboard.products')}</Button>
+              <Button size="small" onClick={() => navigate('/admin/orders')}>{t('pages.adminDashboard.orders')}</Button>
+            </Space>
           )}
         />
+      ) : null}
+
+      {loadError && !reviewSnapshotLoaded ? (
+        <div className="review-management-page__error" data-admin-reviews-load-recovery="true">
+          <PageError
+            title={t('pages.adminReviews.loadErrorTitle')}
+            description={loadError}
+            actions={[
+              { key: 'retry', label: t('common.retry'), onClick: () => { void fetchReviews(pageState.page || 1, pageState.size || pageSizeRef.current); }, type: 'primary' },
+              { key: 'dashboard', label: t('pages.adminDashboard.title'), onClick: () => navigate('/admin'), type: 'default' },
+              { key: 'products', label: t('pages.adminDashboard.products'), onClick: () => navigate('/admin/products'), type: 'default' },
+              { key: 'orders', label: t('pages.adminDashboard.orders'), onClick: () => navigate('/admin/orders'), type: 'default' },
+            ]}
+          />
+        </div>
       ) : null}
       <Table
         className="review-management-page__table"

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Button, Card, Cascader, Checkbox, DatePicker, Descriptions, Empty, Form, Input, InputNumber, List, message, Modal, Popconfirm, Progress, Select, Space, Spin, Tabs, Tag, Typography } from 'antd';
+import { Alert, Button, Card, Cascader, Checkbox, DatePicker, Descriptions, Form, Input, InputNumber, List, message, Modal, Popconfirm, Progress, Select, Space, Spin, Tabs, Tag, Typography } from 'antd';
 import { DeleteOutlined, EditOutlined, EnvironmentOutlined, EyeInvisibleOutlined, EyeOutlined, HeartOutlined, LockOutlined, MailOutlined, PlusOutlined, ReloadOutlined, SafetyCertificateOutlined, ShoppingCartOutlined, StarFilled, StarOutlined, UserOutlined } from '@ant-design/icons';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { addressApi, cartApi, orderApi, paymentApi, petProfileApi, userApi } from '../api';
@@ -1791,21 +1791,74 @@ const Profile: React.FC = () => {
                   />
                 )}
                 {addressesLoadFailed && addresses.length === 0 ? (
-                  <PageError
-                    className="profile-section-card profile-load-error"
-                    title={t('common.loadFailed')}
-                    description={t('common.loadFailedRetry')}
-                    retryLabel={t('common.retry')}
-                    onRetry={() => fetchAddresses()}
-                  />
+                  <div data-profile-addresses-load-recovery="true">
+                    <PageError
+                      className="profile-section-card profile-load-error"
+                      title={t('common.loadFailed')}
+                      description={t('common.loadFailedRetry')}
+                      actions={[
+                        {
+                          key: 'retry',
+                          label: t('common.retry'),
+                          onClick: () => fetchAddresses(),
+                          type: 'primary',
+                        },
+                        {
+                          key: 'checkout',
+                          label: t('pages.cart.checkout'),
+                          onClick: () => navigate('/checkout'),
+                          type: 'default',
+                        },
+                        {
+                          key: 'track',
+                          label: t('nav.trackOrder'),
+                          onClick: () => navigate('/track-order'),
+                          type: 'default',
+                        },
+                        {
+                          key: 'support',
+                          label: t('pages.productList.loadRecoverySupport'),
+                          onClick: () => dispatchDomEvent('shop:open-support'),
+                          type: 'default',
+                        },
+                      ]}
+                    />
+                  </div>
                 ) : addresses.length === 0 ? (
                   <PageEmpty
-                    description={t('pages.profile.noAddresses')}
-                    primaryAction={{
-                      key: 'add-address',
-                      label: t('pages.profile.addAddress'),
-                      onClick: () => openAddressModal(),
-                    }}
+                    className="profile-empty-addresses"
+                    data-profile-addresses-empty-actions="true"
+                    description={(
+                      <div className="profile-empty-orders__copy">
+                        <div>{t('pages.profile.noAddresses')}</div>
+                        <div className="profile-empty-orders__hint">{t('pages.profile.addressReadinessEmpty')}</div>
+                      </div>
+                    )}
+                    actions={[
+                      {
+                        key: 'add-address',
+                        label: t('pages.profile.addAddress'),
+                        onClick: () => openAddressModal(),
+                      },
+                      {
+                        key: 'shop',
+                        label: t('pages.profile.goShopping'),
+                        onClick: () => navigate('/products'),
+                        type: 'default',
+                      },
+                      {
+                        key: 'coupons',
+                        label: t('pages.profile.emptyOrdersCoupons'),
+                        onClick: () => navigate('/coupons'),
+                        type: 'default',
+                      },
+                      {
+                        key: 'track',
+                        label: t('pages.profile.authGateTrackOrder'),
+                        onClick: () => navigate('/track-order'),
+                        type: 'default',
+                      },
+                    ]}
                   />
                 ) : (
                   <List
@@ -1858,18 +1911,49 @@ const Profile: React.FC = () => {
             key: 'orders',
             label: t('pages.profile.orders', { count: orders.length }),
             children: ordersLoadFailed && orders.length === 0 ? (
-              <PageError
-                className="profile-section-card profile-load-error"
-                title={t('pages.profile.fetchOrdersFailed')}
-                description={t('common.loadFailedRetry')}
-                retryLabel={t('common.retry')}
-                onRetry={() => fetchOrders()}
-                homeLabel={t('pages.profile.goShopping')}
-                onHome={() => navigate('/products')}
-              />
+              <div data-profile-orders-load-recovery="true">
+                <PageError
+                  className="profile-section-card profile-load-error"
+                  title={t('pages.profile.fetchOrdersFailed')}
+                  description={t('common.loadFailedRetry')}
+                  actions={[
+                    {
+                      key: 'retry',
+                      label: t('common.retry'),
+                      onClick: () => fetchOrders(),
+                      type: 'primary',
+                    },
+                    {
+                      key: 'shop',
+                      label: t('pages.profile.goShopping'),
+                      onClick: () => navigate('/products'),
+                      type: 'default',
+                    },
+                    {
+                      key: 'track',
+                      label: t('nav.trackOrder'),
+                      onClick: () => navigate('/track-order'),
+                      type: 'default',
+                    },
+                    {
+                      key: 'coupons',
+                      label: t('pages.profile.emptyOrdersCoupons'),
+                      onClick: () => navigate('/coupons'),
+                      type: 'default',
+                    },
+                    {
+                      key: 'support',
+                      label: t('pages.productList.loadRecoverySupport'),
+                      onClick: () => dispatchDomEvent('shop:open-support'),
+                      type: 'default',
+                    },
+                  ]}
+                />
+              </div>
             ) : orders.length === 0 ? (
               <PageEmpty
                 className="profile-empty-orders"
+                data-profile-orders-empty-actions="true"
                 description={(
                   <div className="profile-empty-orders__copy">
                     <div>{t('pages.profile.noOrders')}</div>
@@ -1894,6 +1978,12 @@ const Profile: React.FC = () => {
                     onClick: () => navigate('/pet-finder'),
                     type: 'default',
                   },
+                  {
+                    key: 'track',
+                    label: t('pages.profile.authGateTrackOrder'),
+                    onClick: () => navigate('/track-order'),
+                    type: 'default',
+                  },
                 ]}
               />
             ) : (
@@ -1901,6 +1991,7 @@ const Profile: React.FC = () => {
                 {(isPaymentReturnSuccess || isPaymentReturnIncomplete) ? (
                   <Alert
                     className="profile-payment-return"
+                    data-profile-payment-return={isPaymentReturnSuccess ? 'success' : paymentReturnStatus === 'failed' ? 'failed' : 'cancelled'}
                     type={isPaymentReturnSuccess ? 'success' : paymentReturnStatus === 'failed' ? 'error' : 'warning'}
                     showIcon
                     role="alert"
@@ -1917,6 +2008,58 @@ const Profile: React.FC = () => {
                     description={isPaymentReturnSuccess
                       ? t('pages.checkout.paymentRecoveryNextPaid')
                       : t('pages.checkout.paymentRecoveryNextRetry')}
+                    action={(
+                      <Space wrap className="profile-payment-return__actions" data-profile-payment-return-recovery="true">
+                        {isPaymentReturnSuccess ? (
+                          <>
+                            <Button
+                              size="small"
+                              type="primary"
+                              onClick={() => navigate(paymentReturnOrderNo
+                                ? `/track-order?orderNo=${encodeURIComponent(paymentReturnOrderNo)}`
+                                : '/track-order')}
+                            >
+                              {t('pages.paymentInstructions.stickyTrackOrder')}
+                            </Button>
+                            <Button size="small" onClick={() => navigate('/products')}>
+                              {t('pages.profile.goShopping')}
+                            </Button>
+                            <Button size="small" onClick={() => navigate('/coupons')}>
+                              {t('pages.profile.emptyOrdersCoupons')}
+                            </Button>
+                          </>
+                        ) : (
+                          <>
+                            <Button
+                              size="small"
+                              type="primary"
+                              onClick={() => navigate('/products')}
+                            >
+                              {t('pages.orderTracking.shopAgain')}
+                            </Button>
+                            <Button size="small" onClick={() => navigate('/coupons')}>
+                              {t('pages.profile.emptyOrdersCoupons')}
+                            </Button>
+                            <Button
+                              size="small"
+                              onClick={() => navigate(paymentReturnOrderNo
+                                ? `/track-order?orderNo=${encodeURIComponent(paymentReturnOrderNo)}`
+                                : '/track-order')}
+                            >
+                              {t('pages.paymentInstructions.stickyTrackOrder')}
+                            </Button>
+                            <Button
+                              size="small"
+                              onClick={() => dispatchDomEvent('shop:open-support', paymentReturnOrderNo
+                                ? { orderNo: paymentReturnOrderNo }
+                                : undefined)}
+                            >
+                              {t('pages.profile.contactSupport')}
+                            </Button>
+                          </>
+                        )}
+                      </Space>
+                    )}
                   />
                 ) : null}
                 <div className="profile-after-sale-panel">
@@ -2006,7 +2149,43 @@ const Profile: React.FC = () => {
                   <span>{t('pages.profile.orderActions')}</span>
                 </div>
                 {filteredOrders.length === 0 ? (
-                  <Empty description={t('pages.profile.noOrders')} />
+                  <div data-profile-orders-filter-empty="true">
+                    <PageEmpty
+                      className="profile-empty-orders profile-empty-orders--filtered"
+                      description={(
+                        <div className="profile-empty-orders__copy">
+                          <div>{t('pages.profile.noFilterOrders')}</div>
+                          <div className="profile-empty-orders__hint">{t('pages.profile.noFilterOrdersHint')}</div>
+                        </div>
+                      )}
+                      actions={[
+                        {
+                          key: 'clear-filter',
+                          label: t('pages.profile.clearOrderFilter'),
+                          onClick: () => setOrderStatusFilter('all'),
+                          type: 'primary',
+                        },
+                        {
+                          key: 'shop',
+                          label: t('pages.profile.goShopping'),
+                          onClick: () => navigate('/products'),
+                          type: 'default',
+                        },
+                        {
+                          key: 'coupons',
+                          label: t('pages.profile.emptyOrdersCoupons'),
+                          onClick: () => navigate('/coupons'),
+                          type: 'default',
+                        },
+                        {
+                          key: 'track',
+                          label: t('pages.profile.authGateTrackOrder'),
+                          onClick: () => navigate('/track-order'),
+                          type: 'default',
+                        },
+                      ]}
+                    />
+                  </div>
                 ) : (
                   filteredOrders.map((order) => {
                     const items = orderItemsByOrderId[order.id] || [];
@@ -3092,7 +3271,47 @@ const Profile: React.FC = () => {
               <List
                 size="small"
                 dataSource={orderPayments}
-                locale={{ emptyText: t('pages.profile.noPaymentHistory') }}
+                locale={{
+                  emptyText: (
+                    <div className="profile-payment-history__empty" data-profile-payment-history-empty="true">
+                      <div className="profile-payment-history__emptyCopy">
+                        <div>{t('pages.profile.noPaymentHistory')}</div>
+                        <div className="profile-payment-history__emptyHint">{t('pages.profile.noPaymentHistoryHint')}</div>
+                      </div>
+                      <Space wrap className="profile-payment-history__emptyActions" data-profile-payment-history-empty-actions="true">
+                        <Button
+                          type="primary"
+                          aria-label={t('pages.profile.authGateTrackOrder')}
+                          title={t('pages.profile.authGateTrackOrder')}
+                          onClick={() => navigate('/track-order')}
+                        >
+                          {t('pages.profile.authGateTrackOrder')}
+                        </Button>
+                        <Button
+                          aria-label={t('pages.profile.goShopping')}
+                          title={t('pages.profile.goShopping')}
+                          onClick={() => navigate('/products')}
+                        >
+                          {t('pages.profile.goShopping')}
+                        </Button>
+                        <Button
+                          aria-label={t('pages.profile.emptyOrdersCoupons')}
+                          title={t('pages.profile.emptyOrdersCoupons')}
+                          onClick={() => navigate('/coupons')}
+                        >
+                          {t('pages.profile.emptyOrdersCoupons')}
+                        </Button>
+                        <Button
+                          aria-label={t('pages.productList.loadRecoverySupport')}
+                          title={t('pages.productList.loadRecoverySupport')}
+                          onClick={() => dispatchDomEvent('shop:open-support')}
+                        >
+                          {t('pages.productList.loadRecoverySupport')}
+                        </Button>
+                      </Space>
+                    </div>
+                  ),
+                }}
                 renderItem={(payment) => (
                   <List.Item>
                     <Space direction="vertical" size={0} className="profile-payment-history__item">

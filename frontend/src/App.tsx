@@ -764,6 +764,7 @@ const RouteFocusManager: React.FC = () => {
 
 const ConnectivityBanner: React.FC = () => {
   const { t } = useLanguage();
+  const navigate = useNavigate();
   const [online, setOnline] = useState(() => (typeof navigator === 'undefined' ? true : navigator.onLine));
   const [showRestored, setShowRestored] = useState(false);
   const restoredTimerRef = useRef<number | null>(null);
@@ -811,9 +812,69 @@ const ConnectivityBanner: React.FC = () => {
       role="status"
       aria-live="assertive"
       aria-atomic="true"
+      data-connectivity-banner={online ? 'online' : 'offline'}
     >
-      <strong>{title}</strong>
-      <span>{text}</span>
+      <div className="shop-connectivity-banner__copy">
+        <strong>{title}</strong>
+        <span>{text}</span>
+      </div>
+      {!online ? (
+        <div className="shop-connectivity-banner__actions" data-connectivity-offline-recovery="true">
+          <Button
+            size="small"
+            type="primary"
+            aria-label={t('messages.retry')}
+            title={t('messages.retry')}
+            onClick={() => window.location.reload()}
+          >
+            {t('messages.retry')}
+          </Button>
+          <Button
+            size="small"
+            aria-label={t('pages.cart.title')}
+            title={t('pages.cart.title')}
+            onClick={() => navigate('/cart')}
+          >
+            {t('pages.cart.title')}
+          </Button>
+          <Button
+            size="small"
+            aria-label={t('nav.history')}
+            title={t('nav.history')}
+            onClick={() => navigate('/history')}
+          >
+            {t('nav.history')}
+          </Button>
+          <Button
+            size="small"
+            aria-label={t('pages.cart.browse')}
+            title={t('pages.cart.browse')}
+            onClick={() => navigate('/products')}
+          >
+            {t('pages.cart.browse')}
+          </Button>
+        </div>
+      ) : (
+        <div className="shop-connectivity-banner__actions" data-connectivity-online-recovery="true">
+          <Button
+            size="small"
+            type="primary"
+            aria-label={t('pages.cart.browse')}
+            title={t('pages.cart.browse')}
+            onClick={() => navigate('/products')}
+          >
+            {t('pages.cart.browse')}
+          </Button>
+          <Button
+            size="small"
+            aria-label={t('pages.cart.title')}
+            title={t('pages.cart.title')}
+            onClick={() => navigate('/cart')}
+          >
+            {t('pages.cart.title')}
+          </Button>
+        </div>
+      )}
     </div>
   );
 };
@@ -905,6 +966,36 @@ const LazyCartDrawerHost: React.FC = () => {
   const [openRequest, setOpenRequest] = useState<CartDrawerOpenRequest | null>(null);
   const requestSeqRef = useRef(0);
 
+  // Commercial conversion: idle-preload mini-cart so first open is not blocked on chunk download.
+  useEffect(() => {
+    let cancelled = false;
+    let idleHandle: number | null = null;
+    let timeoutHandle: ReturnType<typeof globalThis.setTimeout> | null = null;
+    const preloadCart = () => {
+      if (cancelled) return;
+      setLoaded(true);
+      void loadCartDrawer();
+    };
+    const win = window as Window & {
+      requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
+      cancelIdleCallback?: (id: number) => void;
+    };
+    if (typeof win.requestIdleCallback === 'function') {
+      idleHandle = win.requestIdleCallback(() => preloadCart(), { timeout: 2500 });
+    } else {
+      timeoutHandle = globalThis.setTimeout(preloadCart, 1200);
+    }
+    return () => {
+      cancelled = true;
+      if (idleHandle != null && typeof win.cancelIdleCallback === 'function') {
+        win.cancelIdleCallback(idleHandle);
+      }
+      if (timeoutHandle != null) {
+        globalThis.clearTimeout(timeoutHandle);
+      }
+    };
+  }, []);
+
   useEffect(() => {
     if (drawerReady) return;
     const handleOpenCart = (event: Event) => {
@@ -993,6 +1084,36 @@ const LazySupportWidgetHost: React.FC = () => {
   const [openRequest, setOpenRequest] = useState<SupportOpenRequest | null>(null);
   const requestSeqRef = useRef(0);
 
+  // Commercial conversion: idle-preload support widget so first open is not blocked on chunk download.
+  useEffect(() => {
+    let cancelled = false;
+    let idleHandle: number | null = null;
+    let timeoutHandle: ReturnType<typeof globalThis.setTimeout> | null = null;
+    const preloadSupportIdle = () => {
+      if (cancelled) return;
+      setLoaded(true);
+      void loadCustomerSupportWidget();
+    };
+    const win = window as Window & {
+      requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
+      cancelIdleCallback?: (id: number) => void;
+    };
+    if (typeof win.requestIdleCallback === 'function') {
+      idleHandle = win.requestIdleCallback(() => preloadSupportIdle(), { timeout: 2800 });
+    } else {
+      timeoutHandle = globalThis.setTimeout(preloadSupportIdle, 1400);
+    }
+    return () => {
+      cancelled = true;
+      if (idleHandle != null && typeof win.cancelIdleCallback === 'function') {
+        win.cancelIdleCallback(idleHandle);
+      }
+      if (timeoutHandle != null) {
+        globalThis.clearTimeout(timeoutHandle);
+      }
+    };
+  }, []);
+
   const openSupport = useCallback((event?: Event) => {
     const eventDetail = getSupportOpenDetail(event);
     const clearGuestContext = eventDetail?.clearGuestContext === true;
@@ -1010,6 +1131,7 @@ const LazySupportWidgetHost: React.FC = () => {
   }, []);
 
   const preloadSupport = useCallback(() => {
+    setLoaded(true);
     void loadCustomerSupportWidget();
   }, []);
 

@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
@@ -23,6 +24,7 @@ import { adminApi } from '../api/admin';
 import type { Brand } from '../types';
 import { useLanguage } from '../i18n';
 import { imageFallbacks, resolveApiAssetUrl } from '../utils/mediaAssets';
+import PageError from '../components/PageError';
 import { getApiErrorMessage } from '../utils/apiError';
 import { BRANDS_DELETE_PERMISSION, BRANDS_WRITE_PERMISSION, getEffectiveRole, hasAdminPermission } from '../utils/roles';
 import './BrandManagement.css';
@@ -46,6 +48,7 @@ const statusColors: Record<string, string> = {
 };
 
 const BrandManagement: React.FC = () => {
+  const navigate = useNavigate();
   const [brands, setBrands] = useState<Brand[]>([]);
   const [loading, setLoading] = useState(true);
   const [brandLoadError, setBrandLoadError] = useState<string | null>(null);
@@ -387,19 +390,39 @@ const BrandManagement: React.FC = () => {
       <Title level={3} className="brand-management-page__title">{t('pages.brandAdmin.title')}</Title>
       <Divider />
 
-      {brandLoadError ? (
+      {brandLoadError && brandSnapshotLoaded ? (
         <Alert
           className="brand-management-page__alert"
           type="warning"
           showIcon
           message={brandLoadError}
-          description={brandSnapshotLoaded ? t('pages.brandAdmin.staleDataWarning') : undefined}
+          description={t('pages.brandAdmin.staleDataWarning')}
           action={(
-            <Button size="small" loading={loading} onClick={fetchBrands}>
-              {t('common.retry')}
-            </Button>
+            <Space wrap data-admin-brands-stale-recovery="true">
+              <Button size="small" type="primary" loading={loading} onClick={fetchBrands}>
+                {t('common.retry')}
+              </Button>
+              <Button size="small" onClick={() => navigate('/admin')}>{t('pages.adminDashboard.title')}</Button>
+              <Button size="small" onClick={() => navigate('/admin/products')}>{t('pages.adminDashboard.products')}</Button>
+              <Button size="small" onClick={() => navigate('/admin/orders')}>{t('pages.adminDashboard.orders')}</Button>
+            </Space>
           )}
         />
+      ) : null}
+
+      {brandLoadError && !brandSnapshotLoaded ? (
+        <div className="brand-management-page__error" data-admin-brands-load-recovery="true">
+          <PageError
+            title={t('pages.brandAdmin.fetchFailed')}
+            description={brandLoadError}
+            actions={[
+              { key: 'retry', label: t('common.retry'), onClick: () => { void fetchBrands(); }, type: 'primary' },
+              { key: 'dashboard', label: t('pages.adminDashboard.title'), onClick: () => navigate('/admin'), type: 'default' },
+              { key: 'products', label: t('pages.adminDashboard.products'), onClick: () => navigate('/admin/products'), type: 'default' },
+              { key: 'orders', label: t('pages.adminDashboard.orders'), onClick: () => navigate('/admin/orders'), type: 'default' },
+            ]}
+          />
+        </div>
       ) : null}
 
       {showInitialBrandLoading ? (

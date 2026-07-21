@@ -98,21 +98,52 @@ const apiErrorData = (error: unknown): ApiErrorPayload => asApiError(error).resp
 
 const apiErrorCode = (error: unknown) => String(apiErrorData(error).code || '').toUpperCase();
 
-const resolvePasswordLoginError = (error: unknown, fallback: string, t: TranslationFunction, language: Language) => {
+type AuthRecoveryKind = 'rate_limited' | 'locked' | 'unavailable' | null;
+
+type PasswordLoginErrorResolution = {
+  message: string;
+  recoveryKind: AuthRecoveryKind;
+};
+
+const resolvePasswordLoginError = (
+  error: unknown,
+  fallback: string,
+  t: TranslationFunction,
+  language: Language,
+): PasswordLoginErrorResolution => {
   const apiError = asApiError(error);
   const data = apiErrorData(error);
   const status = Number(apiError.response?.status);
   const serverMessage = String(data.error || data.message || '').toLowerCase();
   if (status === 429 || serverMessage.includes('too many') || serverMessage.includes('rate limited')) {
-    return t('pages.auth.loginRateLimited');
+    return { message: t('pages.auth.loginRateLimited'), recoveryKind: 'rate_limited' };
   }
   if (status === 503 || serverMessage.includes('temporarily unavailable') || serverMessage.includes('service unavailable')) {
-    return t('pages.auth.loginServiceUnavailable');
+    return { message: t('pages.auth.loginServiceUnavailable'), recoveryKind: 'unavailable' };
   }
   if (serverMessage.includes('locked')) {
-    return t('pages.auth.loginLocked');
+    return { message: t('pages.auth.loginLocked'), recoveryKind: 'locked' };
   }
-  return getApiErrorMessage(error, fallback, language);
+  return { message: getApiErrorMessage(error, fallback, language), recoveryKind: null };
+};
+
+const resolveEmailLoginRecoveryKind = (error: unknown): AuthRecoveryKind => {
+  const apiError = asApiError(error);
+  const status = Number(apiError.response?.status);
+  const code = String(apiErrorData(error).code || '').toUpperCase();
+  if (status === 429 || code === 'RATE_LIMITED' || code === 'TOO_MANY_ATTEMPTS') {
+    return 'rate_limited';
+  }
+  if (status === 503) {
+    return 'unavailable';
+  }
+  return null;
+};
+
+const authRecoveryNextKey = (kind: Exclude<AuthRecoveryKind, null>) => {
+  if (kind === 'locked') return 'pages.auth.loginRecoveryNextLocked';
+  if (kind === 'unavailable') return 'pages.auth.loginRecoveryNextUnavailable';
+  return 'pages.auth.loginRecoveryNextRateLimited';
 };
 
 const shouldTryNextLoginCandidate = (error: unknown) => {
@@ -137,6 +168,7 @@ const scrollFirstLoginErrorIntoView = () => {
 const Login: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [authBannerError, setAuthBannerError] = useState<string | null>(null);
+  const [authRecoveryKind, setAuthRecoveryKind] = useState<AuthRecoveryKind>(null);
   const [codeSending, setCodeSending] = useState(false);
   const [sendCodeCountdown, setSendCodeCountdown] = useState(0);
   const [verifyRetryCountdown, setVerifyRetryCountdown] = useState(0);
@@ -251,6 +283,7 @@ const Login: React.FC = () => {
 
   const completeLogin = async (responseData: LoginSessionResponse) => {
     setAuthBannerError(null);
+    setAuthRecoveryKind(null);
     const { id } = responseData || {};
     if (!id) {
       throw new Error(t('pages.auth.loginFailed'));
@@ -272,6 +305,7 @@ const Login: React.FC = () => {
     passwordForm.setFieldValue('username', normalizedLogin);
     setLoading(true);
     setAuthBannerError(null);
+    setAuthRecoveryKind(null);
     passwordForm.setFields([
       { name: 'username', errors: [] },
       { name: 'password', errors: [] },
@@ -302,11 +336,12 @@ const Login: React.FC = () => {
     } catch (error: unknown) {
       const loginError = resolvePasswordLoginError(error, t('pages.auth.loginFailed'), t, language);
       passwordForm.setFields([
-        { name: 'username', errors: [loginError] },
-        { name: 'password', errors: [loginError] },
+        { name: 'username', errors: [loginError.message] },
+        { name: 'password', errors: [loginError.message] },
       ]);
-      setAuthBannerError(loginError);
-      message.error(loginError);
+      setAuthBannerError(loginError.message);
+      setAuthRecoveryKind(loginError.recoveryKind);
+      message.error(loginError.message);
     } finally {
       passwordSubmittingRef.current = false;
       setLoading(false);
@@ -347,6 +382,7 @@ const Login: React.FC = () => {
           ? t('pages.auth.emailCodeRateLimited')
           : t('pages.auth.emailCodeSendFailed');
         setAuthBannerError(errorMessage);
+        setAuthRecoveryKind(errorCode === 'RATE_LIMITED' ? 'rate_limited' : null);
         message.error(errorMessage);
       }
     } finally {
@@ -366,6 +402,7 @@ const Login: React.FC = () => {
     emailSubmittingRef.current = true;
     setLoading(true);
     setAuthBannerError(null);
+    setAuthRecoveryKind(null);
     try {
       const normalizedEmail = normalizeEmail(values.email);
       emailForm.setFieldsValue({ email: normalizedEmail, code: normalizedCode });
@@ -373,22 +410,26 @@ const Login: React.FC = () => {
       await completeLogin(response.data);
     } catch (error: unknown) {
       const errorCode = apiErrorCode(error);
+      const recoveryKind = resolveEmailLoginRecoveryKind(error);
       if (errorCode === 'TOO_MANY_ATTEMPTS') {
         const retryAfterSeconds = getRetryAfterSeconds(error, 60);
         setVerifyRetryCountdown(retryAfterSeconds);
         const errorMessage = t('pages.auth.emailCodeTooManyAttempts');
         emailForm.setFields([{ name: 'code', errors: [errorMessage] }]);
         setAuthBannerError(errorMessage);
+        setAuthRecoveryKind(recoveryKind || 'rate_limited');
         message.error(errorMessage);
       } else if (errorCode === 'INVALID_CODE') {
         const errorMessage = t('pages.auth.emailCodeInvalid');
         emailForm.setFields([{ name: 'code', errors: [errorMessage] }]);
         setAuthBannerError(errorMessage);
+        setAuthRecoveryKind(null);
         message.error(errorMessage);
       } else {
         const errorMessage = getApiErrorMessage(error, t('pages.auth.emailLoginFailed'), language);
         emailForm.setFields([{ name: 'code', errors: [errorMessage] }]);
         setAuthBannerError(errorMessage);
+        setAuthRecoveryKind(recoveryKind);
         message.error(errorMessage);
       }
     } finally {
@@ -512,19 +553,65 @@ const Login: React.FC = () => {
 
 
           {authBannerError ? (
-            <Alert
-              className="shopee-login-errorBanner"
-              type="error"
-              showIcon
-              closable
-              role="alert"
-              message={authBannerError}
-              onClose={() => setAuthBannerError(null)}
-            />
+            <div
+              className="shopee-login-errorRecovery"
+              data-login-error-recovery="true"
+              data-login-error-kind={authRecoveryKind || 'generic'}
+            >
+              <Alert
+                className="shopee-login-errorBanner"
+                type="error"
+                showIcon
+                closable
+                role="alert"
+                message={authBannerError}
+                description={authRecoveryKind ? t(authRecoveryNextKey(authRecoveryKind)) : undefined}
+                onClose={() => {
+                  setAuthBannerError(null);
+                  setAuthRecoveryKind(null);
+                }}
+              />
+              {authRecoveryKind ? (
+                <div className="shopee-login-errorRecovery__actions" data-login-recovery-actions="true">
+                  <Button
+                    type="primary"
+                    block
+                    size="large"
+                    onClick={() => navigate('/forgot-password')}
+                    aria-label={t('pages.auth.forgotPassword')}
+                    title={t('pages.auth.forgotPassword')}
+                  >
+                    {t('pages.auth.forgotPassword')}
+                  </Button>
+                  <Button
+                    block
+                    size="large"
+                    onClick={() => navigate('/track-order')}
+                    aria-label={t('nav.trackOrder')}
+                    title={t('nav.trackOrder')}
+                  >
+                    {t('nav.trackOrder')}
+                  </Button>
+                  <Button
+                    block
+                    size="large"
+                    onClick={() => dispatchDomEvent('shop:open-support')}
+                    aria-label={t('nav.support')}
+                    title={t('nav.support')}
+                  >
+                    {t('nav.support')}
+                  </Button>
+                </div>
+              ) : null}
+            </div>
           ) : null}
           <Tabs
             activeKey={activeLoginTab}
-            onChange={(key) => { setAuthBannerError(null); setActiveLoginTab(key); }}
+            onChange={(key) => {
+              setAuthBannerError(null);
+              setAuthRecoveryKind(null);
+              setActiveLoginTab(key);
+            }}
             className={`shopee-login-tabs shopee-login-tabs--${activeLoginTab}`}
             centered
             items={[

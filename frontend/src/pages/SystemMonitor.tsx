@@ -4,7 +4,9 @@ import { CloudServerOutlined, DatabaseOutlined, HddOutlined, ReloadOutlined, Saf
 import { apiBaseUrl } from '../api';
 import { adminApi } from '../api/admin';
 import type { AdminSystemStatus } from '../types';
+import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../i18n';
+import PageError from '../components/PageError';
 import { getApiErrorMessage } from '../utils/apiError';
 import './SystemMonitor.css';
 
@@ -80,6 +82,7 @@ const renderMessages = (messages?: string[], tone: 'warning' | 'error' = 'warnin
 };
 
 const SystemMonitor: React.FC = () => {
+  const navigate = useNavigate();
   const { t, language } = useLanguage();
   const [status, setStatus] = useState<AdminSystemStatus | null>(null);
   const [loading, setLoading] = useState(false);
@@ -210,19 +213,62 @@ const SystemMonitor: React.FC = () => {
         </Button>
       </div>
 
-      {loadError ? (
+      {loadError && status ? (
         <Alert
           className="system-monitor__alert"
           type="warning"
           showIcon
           message={loadError}
-          description={status ? t('pages.systemMonitor.staleDataWarning') : undefined}
+          description={t('pages.systemMonitor.staleDataWarning')}
           action={(
-            <Button size="small" onClick={loadStatus} loading={loading}>
-              {t('common.retry')}
-            </Button>
+            <Space wrap data-system-monitor-stale-recovery="true">
+              <Button size="small" type="primary" onClick={loadStatus} loading={loading}>
+                {t('common.retry')}
+              </Button>
+              <Button size="small" onClick={() => navigate('/admin')}>
+                {t('pages.adminDashboard.title')}
+              </Button>
+              <Button size="small" onClick={() => navigate('/admin/orders')}>
+                {t('pages.adminDashboard.orders')}
+              </Button>
+            </Space>
           )}
         />
+      ) : null}
+
+      {loadError && !status ? (
+        <div className="system-monitor__error" data-system-monitor-load-recovery="true">
+          <PageError
+            title={t('pages.systemMonitor.loadFailed')}
+            description={loadError}
+            actions={[
+              {
+                key: 'retry',
+                label: refreshSystemStatusActionLabel,
+                onClick: () => { void loadStatus(); },
+                type: 'primary',
+              },
+              {
+                key: 'dashboard',
+                label: t('pages.adminDashboard.title'),
+                onClick: () => navigate('/admin'),
+                type: 'default',
+              },
+              {
+                key: 'orders',
+                label: t('pages.adminDashboard.orders'),
+                onClick: () => navigate('/admin/orders'),
+                type: 'default',
+              },
+              {
+                key: 'products',
+                label: t('pages.adminDashboard.products'),
+                onClick: () => navigate('/admin/products'),
+                type: 'default',
+              },
+            ]}
+          />
+        </div>
       ) : null}
 
       <div

@@ -36,13 +36,15 @@ describe('BrowsingHistory mobile action readability guards', () => {
     expect(pageSource).toContain('const historyDisplayCount = loadError ? preferences.recent.length : historyProducts.length;');
     expect(pageSource).toContain('setLoadError(true);');
     expect(pageSource).toContain('{loadError ? (');
-    expect(pageSource).toContain('<section className="browsing-history__loadError" aria-live="polite">');
+    expect(pageSource).toContain('data-history-load-recovery');
     expect(pageSource).toContain('message={t(\'messages.loadFailed\')}');
     expect(pageSource).toContain("description={hasStaleHistoryData ? t('pages.browsingHistory.staleDataWarning') : t('messages.loadFailedRetry')}");
     expect(pageSource).toContain("title: t('pages.browsingHistory.nextActionStaleTitle'),");
     expect(pageSource).toContain('disabled={hasStaleHistoryData}');
     expect(pageSource).toContain('icon={hasStaleHistoryData ? <ReloadOutlined /> : historyNextAction.tone === \'ready\' ? <ShoppingCartOutlined /> : <ShoppingOutlined />}');
     expect(pageSource).toContain('<Button size="small" onClick={() => setReloadToken((current) => current + 1)}>');
+    expect(pageSource).toContain("navigate('/coupons')");
+    expect(pageSource).toContain("shop:open-support");
     expect(pageSource).toContain('reloadToken]');
   });
 

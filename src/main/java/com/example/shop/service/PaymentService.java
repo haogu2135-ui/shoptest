@@ -304,7 +304,14 @@ public class PaymentService {
             log.debug("Stripe webhook ignored unsupported event type: type={}", event.getType());
             return null;
         }
-        Object stripeObject = event.getDataObjectDeserializer().getObject().orElse(null);
+        // Stripe SDK can NPE when api_version is missing/mismatched; never 500 a signed webhook on that.
+        Object stripeObject = null;
+        try {
+            stripeObject = event.getDataObjectDeserializer().getObject().orElse(null);
+        } catch (RuntimeException deserializeError) {
+            log.warn("Stripe webhook could not deserialize checkout session payload: eventId={}, type={}, reason={}",
+                    event.getId(), event.getType(), deserializeError.getMessage());
+        }
         if (!(stripeObject instanceof Session)) {
             log.warn("Stripe webhook ignored event with unavailable checkout session payload: eventId={}, type={}",
                     event.getId(), event.getType());
@@ -1782,6 +1789,12 @@ public class PaymentService {
             }
             return objectMapper.readTree(response.getBody());
         } catch (HttpStatusCodeException e) {
+            // Commercial webhook resilience: acknowledge signed notifications for unknown remote
+            // payments (404) so the provider does not infinite-retry. Transient 5xx still bubble.
+            if (e.getRawStatusCode() == 404) {
+                log.warn("Mercado Pago payment not found at provider: paymentId={}", paymentId);
+                return null;
+            }
             throw new IllegalStateException("Mercado Pago payment lookup failed: HTTP " + e.getRawStatusCode(), e);
         } catch (RestClientException e) {
             throw new IllegalStateException("Mercado Pago payment lookup failed", e);

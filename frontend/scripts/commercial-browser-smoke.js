@@ -95,6 +95,55 @@ async function main() {
     });
     const home = await page.goto(`${base}/`, { waitUntil: 'domcontentloaded', timeout: 45000 });
     check('home status 200', Boolean(home && home.status() === 200), home && home.status());
+
+    // Built multipath recovery markers must ship in static assets (source contracts alone are not enough).
+    {
+      const fs = require('fs');
+      const path = require('path');
+      const jsDir = path.join(__dirname, '..', 'build', 'static', 'js');
+      let assetText = '';
+      try {
+        for (const file of fs.readdirSync(jsDir)) {
+          if (!file.endsWith('.js')) continue;
+          assetText += fs.readFileSync(path.join(jsDir, file), 'utf8');
+        }
+      } catch (error) {
+        assetText = '';
+      }
+      const markers = [
+        'data-cart-empty-panel-actions',
+        'data-cart-empty-actions',
+        'data-profile-orders-filter-empty',
+        'data-profile-orders-empty-actions',
+        'data-profile-addresses-empty-actions',
+        'data-profile-payment-return-recovery',
+        'data-review-no-order-recovery',
+        'data-order-tracking-not-shipped',
+        'data-forgot-password-unavailable-actions',
+        'home-empty-products',
+        'data-home-empty-products',
+        'data-error-boundary-recovery',
+        'data-checkout-empty-actions',
+        'data-payment-guest-email-recovery',
+        'data-payment-paid-sticky',
+        'data-payment-recovery-actions',
+        'data-product-list-empty-actions',
+        'data-seventeen-track-recovery',
+        'data-history-empty-actions',
+        'data-pet-finder-empty-actions',
+        'data-support-empty-actions',
+        'data-product-not-found-actions',
+        'data-compare-empty-actions',
+        'data-compare-stale-recovery',
+      ];
+      const missing = markers.filter((marker) => !assetText.includes(marker));
+      check(
+        'built multipath recovery markers present',
+        assetText.length > 0 && missing.length === 0,
+        assetText.length ? `missing=${missing.join(',') || 'none'}` : 'build/static/js unavailable',
+      );
+    }
+
     await page.waitForSelector('#root', { timeout: 20000 });
     const homeMain = await waitForMainContent(
       page,
@@ -291,6 +340,356 @@ async function main() {
       );
     }
 
+    // Commercial: support widget load-failure multipath recovery + navbar cart launcher.
+    {
+      const fs = require('fs');
+      const path = require('path');
+      const buildDir = path.join(__dirname, '..', 'build', 'static');
+      let hasSupportRecovery = false;
+      let hasNavCart = false;
+      let hasSupportCss = false;
+      try {
+        const jsDir = path.join(buildDir, 'js');
+        const cssDir = path.join(buildDir, 'css');
+        for (const name of fs.readdirSync(jsDir)) {
+          if (!/\.js$/.test(name)) continue;
+          const full = path.join(jsDir, name);
+          if (fs.statSync(full).size > 2500000) continue;
+          const body = fs.readFileSync(full, 'utf8');
+          if (body.includes('data-support-recovery-actions')) hasSupportRecovery = true;
+          if (body.includes('data-nav-cart')) hasNavCart = true;
+          if (hasSupportRecovery && hasNavCart) break;
+        }
+        for (const name of fs.readdirSync(cssDir)) {
+          if (!/\.css$/.test(name)) continue;
+          const full = path.join(cssDir, name);
+          if (fs.statSync(full).size > 1500000) continue;
+          const body = fs.readFileSync(full, 'utf8');
+          if (body.includes('customer-support-widget__recoveryActions')) {
+            hasSupportCss = true;
+            break;
+          }
+        }
+      } catch (err) {
+        // keep false
+      }
+      check(
+        'support recovery multipath contract',
+        hasSupportRecovery && hasSupportCss,
+        `recovery=${hasSupportRecovery} css=${hasSupportCss}`,
+      );
+      check(
+        'navbar cart launcher contract',
+        hasNavCart,
+        `data-nav-cart=${hasNavCart}`,
+      );
+    }
+
+    // Commercial: mini-cart should idle-preload for first-open conversion speed.
+    {
+      const fs = require('fs');
+      const path = require('path');
+      const buildDir = path.join(__dirname, '..', 'build', 'static');
+      let hasIdlePreload = false;
+      let hasOpenClass = false;
+      try {
+        const jsDir = path.join(buildDir, 'js');
+        for (const name of fs.readdirSync(jsDir)) {
+          if (!/\.js$/.test(name)) continue;
+          const full = path.join(jsDir, name);
+          if (fs.statSync(full).size > 2500000) continue;
+          const body = fs.readFileSync(full, 'utf8');
+          if (body.includes('requestIdleCallback') && (body.includes('cart-drawer') || body.includes('shop:open-cart'))) hasIdlePreload = true;
+          if (body.includes('cart-drawer__root--open')) hasOpenClass = true;
+          if (hasIdlePreload && hasOpenClass) break;
+        }
+      } catch (err) {
+        // keep false
+      }
+      check(
+        'mini-cart idle preload contract',
+        hasIdlePreload && hasOpenClass,
+        `idle=${hasIdlePreload} openClass=${hasOpenClass}`,
+      );
+    }
+
+    // Commercial: support widget should idle-preload for first-open conversion speed (parity with mini-cart).
+    {
+      const fs = require('fs');
+      const path = require('path');
+      const buildDir = path.join(__dirname, '..', 'build', 'static');
+      let hasSupportIdle = false;
+      const walk = (dir) => {
+        if (!fs.existsSync(dir) || hasSupportIdle) return;
+        for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+          const full = path.join(dir, entry.name);
+          if (entry.isDirectory()) {
+            walk(full);
+            continue;
+          }
+          if (!/\.(js|css)$/.test(entry.name)) continue;
+          const body = fs.readFileSync(full, 'utf8');
+          if (
+            body.includes('requestIdleCallback')
+            && (body.includes('customer-support-widget') || body.includes('loadCustomerSupportWidget') || body.includes('shop:open-support'))
+          ) {
+            hasSupportIdle = true;
+          }
+        }
+      };
+      walk(buildDir);
+      check(
+        'support idle preload contract',
+        hasSupportIdle,
+        `supportIdle=${hasSupportIdle}`,
+      );
+    }
+
+    // Commercial: login rate-limit / lock multipath recovery must ship in built assets.
+    {
+      const fs = require('fs');
+      const path = require('path');
+      const buildDir = path.join(__dirname, '..', 'build', 'static');
+      let hasLoginRecovery = false;
+      let hasLoginRecoveryActions = false;
+      let hasLoginRecoveryCss = false;
+      const walk = (dir) => {
+        if (!fs.existsSync(dir) || (hasLoginRecovery && hasLoginRecoveryActions && hasLoginRecoveryCss)) return;
+        for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+          const full = path.join(dir, entry.name);
+          if (entry.isDirectory()) {
+            walk(full);
+            continue;
+          }
+          if (!/\.(js|css)$/.test(entry.name)) continue;
+          const body = fs.readFileSync(full, 'utf8');
+          if (body.includes('data-login-error-recovery')) hasLoginRecovery = true;
+          if (body.includes('data-login-recovery-actions')) hasLoginRecoveryActions = true;
+          if (body.includes('shopee-login-errorRecovery__actions') || body.includes('login-errorRecovery')) {
+            hasLoginRecoveryCss = true;
+          }
+        }
+      };
+      walk(buildDir);
+      check(
+        'login rate-limit multipath recovery contract',
+        hasLoginRecovery && hasLoginRecoveryActions && hasLoginRecoveryCss,
+        `recovery=${hasLoginRecovery} actions=${hasLoginRecoveryActions} css=${hasLoginRecoveryCss}`,
+      );
+    }
+
+    // Commercial: product detail load-failure multipath recovery must ship in built assets.
+    {
+      const fs = require('fs');
+      const path = require('path');
+      const buildDir = path.join(__dirname, '..', 'build', 'static');
+      let hasProductLoad = false;
+      let hasPageErrorActions = false;
+      const walk = (dir) => {
+        if (!fs.existsSync(dir) || (hasProductLoad && hasPageErrorActions)) return;
+        for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+          const full = path.join(dir, entry.name);
+          if (entry.isDirectory()) {
+            walk(full);
+            continue;
+          }
+          if (!/\.(js|css)$/.test(entry.name)) continue;
+          const body = fs.readFileSync(full, 'utf8');
+          if (body.includes('data-product-detail-load-recovery')) hasProductLoad = true;
+          if (body.includes('data-page-error-actions') || body.includes('data-page-error-recovery')) hasPageErrorActions = true;
+        }
+      };
+      walk(buildDir);
+      check(
+        'product detail load multipath recovery contract',
+        hasProductLoad && hasPageErrorActions,
+        `productLoad=${hasProductLoad} pageError=${hasPageErrorActions}`,
+      );
+    }
+
+    // Commercial: register rate-limit multipath recovery must ship in built assets.
+    {
+      const fs = require('fs');
+      const path = require('path');
+      const buildDir = path.join(__dirname, '..', 'build', 'static');
+      let hasRegisterRecovery = false;
+      let hasRegisterActions = false;
+      let hasRegisterCss = false;
+      const walk = (dir) => {
+        if (!fs.existsSync(dir) || (hasRegisterRecovery && hasRegisterActions && hasRegisterCss)) return;
+        for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+          const full = path.join(dir, entry.name);
+          if (entry.isDirectory()) {
+            walk(full);
+            continue;
+          }
+          if (!/\.(js|css)$/.test(entry.name)) continue;
+          const body = fs.readFileSync(full, 'utf8');
+          if (body.includes('data-register-error-recovery')) hasRegisterRecovery = true;
+          if (body.includes('data-register-recovery-actions')) hasRegisterActions = true;
+          if (body.includes('register-page__errorRecovery__actions') || body.includes('errorRecovery__actions')) {
+            hasRegisterCss = true;
+          }
+        }
+      };
+      walk(buildDir);
+      check(
+        'register rate-limit multipath recovery contract',
+        hasRegisterRecovery && hasRegisterActions && hasRegisterCss,
+        `recovery=${hasRegisterRecovery} actions=${hasRegisterActions} css=${hasRegisterCss}`,
+      );
+    }
+
+    // Commercial: storefront load-failure multipath recovery must ship in built assets.
+    {
+      const fs = require('fs');
+      const path = require('path');
+      const buildDir = path.join(__dirname, '..', 'build', 'static');
+      let hasHome = false;
+      let hasHistory = false;
+      let hasNotifications = false;
+      let hasPetFinder = false;
+      let hasCompare = false;
+      const walk = (dir) => {
+        if (!fs.existsSync(dir) || (hasHome && hasHistory && hasNotifications && hasPetFinder && hasCompare)) return;
+        for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+          const full = path.join(dir, entry.name);
+          if (entry.isDirectory()) {
+            walk(full);
+            continue;
+          }
+          if (!/\.(js|css)$/.test(entry.name)) continue;
+          const body = fs.readFileSync(full, 'utf8');
+          if (body.includes('data-home-load-recovery')) hasHome = true;
+          if (body.includes('data-history-load-recovery')) hasHistory = true;
+          if (body.includes('data-notifications-load-recovery')) hasNotifications = true;
+          if (body.includes('data-pet-finder-load-recovery')) hasPetFinder = true;
+          if (body.includes('data-compare-load-recovery')) hasCompare = true;
+        }
+      };
+      walk(buildDir);
+      check(
+        'storefront load multipath recovery contract',
+        hasHome && hasHistory && hasNotifications && hasPetFinder && hasCompare,
+        `home=${hasHome} history=${hasHistory} notifications=${hasNotifications} petFinder=${hasPetFinder} compare=${hasCompare}`,
+      );
+    }
+
+    // Commercial: conversion-critical load multipath recovery must ship in built assets.
+    {
+      const fs = require('fs');
+      const path = require('path');
+      const buildDir = path.join(__dirname, '..', 'build', 'static');
+      const markers = {
+        cart: 'data-cart-load-recovery',
+        checkout: 'data-checkout-load-recovery',
+        wishlist: 'data-wishlist-load-recovery',
+        profileOrders: 'data-profile-orders-load-recovery',
+        profileAddresses: 'data-profile-addresses-load-recovery',
+        coupons: 'data-coupon-load-recovery',
+        stockAlerts: 'data-stock-alerts-load-recovery',
+        petGallery: 'data-pet-gallery-load-recovery',
+        orderLookup: 'data-order-tracking-lookup-recovery',
+      };
+      const found = Object.fromEntries(Object.keys(markers).map((k) => [k, false]));
+      const walk = (dir) => {
+        if (!fs.existsSync(dir) || Object.values(found).every(Boolean)) return;
+        for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+          const full = path.join(dir, entry.name);
+          if (entry.isDirectory()) {
+            walk(full);
+            continue;
+          }
+          if (!/\.(js|css)$/.test(entry.name)) continue;
+          const body = fs.readFileSync(full, 'utf8');
+          for (const [key, markerText] of Object.entries(markers)) {
+            if (!found[key] && body.includes(markerText)) found[key] = true;
+          }
+        }
+      };
+      walk(buildDir);
+      check(
+        'conversion load multipath recovery contract',
+        Object.values(found).every(Boolean),
+        Object.entries(found).map(([k, v]) => `${k}=${v}`).join(' '),
+      );
+    }
+
+    // Commercial: product list load multipath recovery marker must ship in built assets.
+    {
+      const fs = require('fs');
+      const path = require('path');
+      const buildDir = path.join(__dirname, '..', 'build', 'static');
+      let hasProductListLoad = false;
+      const walk = (dir) => {
+        if (!fs.existsSync(dir) || hasProductListLoad) return;
+        for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+          const full = path.join(dir, entry.name);
+          if (entry.isDirectory()) {
+            walk(full);
+            continue;
+          }
+          if (!/\.(js|css)$/.test(entry.name)) continue;
+          const body = fs.readFileSync(full, 'utf8');
+          if (body.includes('data-product-list-load-recovery')) hasProductListLoad = true;
+        }
+      };
+      walk(buildDir);
+      check(
+        'product list load multipath recovery contract',
+        hasProductListLoad,
+        `productListLoad=${hasProductListLoad}`,
+      );
+    }
+
+    // Commercial: offline connectivity multipath recovery + coupon fallback recovery ship in assets.
+    {
+      const fs = require('fs');
+      const path = require('path');
+      const buildDir = path.join(__dirname, '..', 'build', 'static');
+      let hasOffline = false;
+      let hasCouponFallback = false;
+      let hasCss = false;
+      try {
+        const jsDir = path.join(buildDir, 'js');
+        const cssDir = path.join(buildDir, 'css');
+        for (const name of fs.readdirSync(jsDir)) {
+          if (!/\.js$/.test(name)) continue;
+          const full = path.join(jsDir, name);
+          if (fs.statSync(full).size > 2500000) continue;
+          const body = fs.readFileSync(full, 'utf8');
+          if (body.includes('data-connectivity-offline-recovery')) hasOffline = true;
+          if (body.includes('data-coupon-fallback-actions') || body.includes('data-coupon-fallback-recovery')) hasCouponFallback = true;
+          if (hasOffline && hasCouponFallback) break;
+        }
+        for (const name of fs.readdirSync(cssDir)) {
+          if (!/\.css$/.test(name)) continue;
+          const full = path.join(cssDir, name);
+          if (fs.statSync(full).size > 1500000) continue;
+          const body = fs.readFileSync(full, 'utf8');
+          if (body.includes('shop-connectivity-banner__actions')) {
+            hasCss = true;
+            break;
+          }
+        }
+      } catch (err) {
+        // keep false
+      }
+      check(
+        'connectivity offline recovery contract',
+        hasOffline && hasCss,
+        `offline=${hasOffline} css=${hasCss}`,
+      );
+      check(
+        'coupon fallback recovery contract',
+        hasCouponFallback,
+        `fallback=${hasCouponFallback}`,
+      );
+    }
+
+
+
+
 
 
     // Local mobile CWV soft budgets (production host still required for ship-bar CWV).
@@ -332,6 +731,35 @@ async function main() {
       check('home LCP soft budget', true, 'lcp-entry-unavailable-in-headless');
     }
     check('home CLS soft budget', cwv.cls < 0.25, `cls=${Number(cwv.cls).toFixed(3)}`);
+
+    // Offline connectivity multipath recovery (local cart/history remain useful offline).
+    {
+      await page.evaluate(() => {
+        try { window.dispatchEvent(new Event('offline')); } catch (err) { /* ignore */ }
+      });
+      const recovery = page.locator('[data-connectivity-offline-recovery="true"]');
+      await recovery.first().waitFor({ state: 'visible', timeout: 5000 }).catch(() => undefined);
+      const count = await recovery.count();
+      const banner = page.locator('[data-connectivity-banner="offline"]');
+      const bannerCount = await banner.count();
+      const text = count ? await recovery.first().innerText() : '';
+      const hits = [
+        /retry|reload/i.test(text),
+        /cart/i.test(text),
+        /history|recent/i.test(text),
+        /browse|product/i.test(text),
+      ].filter(Boolean).length;
+      check(
+        'offline connectivity multipath recovery',
+        bannerCount >= 1 && count >= 1 && hits >= 3,
+        `banner=${bannerCount} recovery=${count} hits=${hits} text=${String(text).slice(0, 120)}`,
+      );
+      await page.evaluate(() => {
+        try { window.dispatchEvent(new Event('online')); } catch (err) { /* ignore */ }
+      });
+      await page.waitForTimeout(300);
+    }
+
 
     const routes = [
       {
@@ -406,6 +834,18 @@ async function main() {
         path: '/terms',
         expect: /terms|service|order|payment|shipping|support/i,
         selectorHint: '.legal-page, main',
+      },
+      {
+        path: '/pet-finder',
+        expect: /pet finder|budget|size|breed|recommend|browse|coupon|empty/i,
+        softExpect: /pet|product|budget|browse|coupon/i,
+        selectorHint: '.pet-finder-page, main',
+      },
+      {
+        path: '/stock-alerts',
+        expect: /stock|alert|notify|browse|wishlist|pet finder|empty/i,
+        softExpect: /stock|alert|browse|product|empty/i,
+        selectorHint: '.stock-alerts, main',
       },
       {
         path: '/no-such-page-commercial-smoke',
@@ -708,6 +1148,21 @@ async function main() {
       `gateNodes=${gateNode} text=${paymentGate.text.slice(0, 140)}`,
     );
 
+      const guestRecovery = page.locator('[data-payment-guest-email-recovery="true"]');
+      const guestRecoveryCount = await guestRecovery.count();
+      const guestRecoveryText = guestRecoveryCount ? await guestRecovery.first().innerText() : '';
+      const guestRecoveryHits = [
+        /track/i.test(guestRecoveryText),
+        /browse|product/i.test(guestRecoveryText),
+        /coupon/i.test(guestRecoveryText),
+        /support|contact/i.test(guestRecoveryText),
+      ].filter(Boolean).length;
+      check(
+        'payment guest email multipath recovery',
+        guestRecoveryCount >= 1 && guestRecoveryHits >= 3,
+        `recovery=${guestRecoveryCount} hits=${guestRecoveryHits} text=${guestRecoveryText.slice(0, 120)}`,
+      );
+
     // Guest coupon claim CTA should invite login without dead-ending claim.
     await page.goto(`${base}/coupons`, { waitUntil: 'domcontentloaded', timeout: 45000 });
     await page.waitForSelector('#root', { timeout: 20000 });
@@ -745,7 +1200,65 @@ async function main() {
       (ctaHits.join(', ') || cartMain.text.slice(0, 120)),
     );
 
-    // Mini-cart drawer empty multipath recovery (parity with cart page conversion rails).
+    
+    // Commercial mobile conversion shells: cart/checkout/payment keep multipath CTAs addressable on 390px.
+    {
+      await page.goto(`${base}/cart`, { waitUntil: 'domcontentloaded', timeout: 45000 });
+      const cartMain = await waitForMainContent(
+        page,
+        (info) => /cart|empty|browse|coupon/i.test(info.text) && info.text.length > 30,
+        18,
+      );
+      const cartShell = await page.locator('.cart-page, .cart-page--empty, main').count();
+      const cartActions = await page.locator(
+        '.cart-page__emptyActions .ant-btn, .cart-page__emptyActions button, .cart-page button, .cart-page .ant-btn, main button, main .ant-btn',
+      ).count();
+      const cartPaths = ['Browse products', 'Coupons', 'Pet finder', 'History']
+        .filter((label) => cartMain.text.includes(label)).length;
+      check(
+        'mobile cart conversion controls live',
+        cartShell >= 1 && (cartActions >= 2 || cartPaths >= 2),
+        `shell=${cartShell} actions=${cartActions} paths=${cartPaths}`,
+      );
+
+      await page.goto(`${base}/checkout`, { waitUntil: 'domcontentloaded', timeout: 45000 });
+      const checkoutMain = await waitForMainContent(
+        page,
+        (info) => /checkout|cart|browse|payment|empty|selected/i.test(info.text) && info.text.length > 30,
+        18,
+      );
+      const checkoutShell = await page.locator('.checkout-page, .checkout-page--empty, .checkout-page--error, main').count();
+      const checkoutActions = await page.locator(
+        '.checkout-page__emptyActions .ant-btn, .checkout-page__paymentUnavailableActions .ant-btn, .checkout-page button, .checkout-page .ant-btn, main button, main .ant-btn',
+      ).count();
+      const checkoutPaths = [/browse/i, /cart/i, /support|coupon|product/i]
+        .filter((re) => re.test(checkoutMain.text)).length;
+      check(
+        'mobile checkout conversion controls live',
+        checkoutShell >= 1 && (checkoutActions >= 1 || checkoutPaths >= 1),
+        `shell=${checkoutShell} actions=${checkoutActions} paths=${checkoutPaths}`,
+      );
+
+      await page.goto(`${base}/payment/SMOKE-GUEST-EMAIL-ORDER`, { waitUntil: 'domcontentloaded', timeout: 45000 });
+      const paymentMain = await waitForMainContent(
+        page,
+        (info) => /payment|email|secure|order|track|verify/i.test(info.text) && info.text.length > 30,
+        18,
+      );
+      const paymentShell = await page.locator(
+        '.payment-instructions-page, .payment-instructions-page__stickyBar, [data-payment-recovery-sticky="true"], [data-payment-guest-email-gate="true"], main',
+      ).count();
+      const paymentActions = await page.locator(
+        '.payment-instructions-page button, .payment-instructions-page .ant-btn, [data-payment-guest-email-gate] button, main button, main .ant-btn',
+      ).count();
+      check(
+        'mobile payment sticky/recovery shell live',
+        paymentShell >= 1 && (paymentActions >= 1 || /email|payment|track/i.test(paymentMain.text)),
+        `shell=${paymentShell} actions=${paymentActions} text=${paymentMain.text.slice(0, 80)}`,
+      );
+    }
+
+// Mini-cart drawer empty multipath recovery (parity with cart page conversion rails).
     {
       await page.goto(`${base}/`, { waitUntil: 'domcontentloaded', timeout: 45000 });
       await page.waitForSelector('#root', { timeout: 20000 });
@@ -754,23 +1267,25 @@ async function main() {
         await page.getByRole('button', { name: /accept all/i }).first().click({ timeout: 3000 }).catch(() => undefined);
         await cookie.first().waitFor({ state: 'detached', timeout: 4000 }).catch(() => undefined);
       }
-      const cartTriggers = [
-        page.locator('[data-nav-cart], [aria-label*="cart" i], .shop-nav__cart, button:has-text("Cart")').first(),
-        page.getByRole('button', { name: /cart|bag/i }).first(),
-        page.locator('a[href="/cart"]').first(),
-      ];
       let opened = false;
-      for (const trigger of cartTriggers) {
-        const count = await trigger.count().catch(() => 0);
-        if (!count) continue;
-        await trigger.click({ timeout: 4000 }).catch(() => undefined);
-        const drawer = page.locator('.cart-drawer, .ant-drawer-open .cart-drawer, .ant-drawer-content');
-        await drawer.first().waitFor({ state: 'visible', timeout: 4000 }).catch(() => undefined);
-        if (await page.locator('.cart-drawer, .ant-drawer-open').count()) {
-          opened = true;
-          break;
-        }
+      // Warm mini-cart chunk (idle preload may already have started).
+      await page.evaluate(() => {
+        try { window.dispatchEvent(new CustomEvent('shop:cart-updated')); } catch (err) { /* ignore */ }
+      }).catch(() => undefined);
+      await page.waitForTimeout(400);
+      const navCart = page.locator('[data-nav-cart="true"]').first();
+      if (await navCart.count()) {
+        await navCart.click({ timeout: 4000 }).catch(() => undefined);
       }
+      await page.evaluate(() => {
+        try { window.dispatchEvent(new CustomEvent('shop:open-cart')); } catch (err) { /* ignore */ }
+      }).catch(() => undefined);
+      // Wait for lazy host + drawer open class / empty multipath rail.
+      await page.waitForFunction(() => {
+        const openRoot = document.querySelector('.cart-drawer__root--open, .ant-drawer-open, [data-cart-drawer-empty="true"]');
+        return Boolean(openRoot);
+      }, { timeout: 10000 }).catch(() => undefined);
+      opened = (await page.locator('.cart-drawer__root--open, .ant-drawer-open, [data-cart-drawer-empty="true"], .cart-drawer__emptyActions').count()) > 0;
       if (!opened) {
         check('cart drawer empty multipath CTAs', true, 'drawer-trigger-unavailable-in-headless');
       } else {

@@ -1420,3 +1420,25 @@
     touch-action: manipulation;
   }
 }
+
+
+/* Commercial: register rate-limit multipath recovery */
+.register-page__errorRecovery {
+  display: grid;
+  gap: 12px;
+  margin: 0 0 12px;
+}
+
+.register-page__errorRecovery .register-page__errorBanner {
+  margin: 0;
+}
+
+.register-page__errorRecovery__actions {
+  display: grid;
+  gap: 10px;
+}
+
+.register-page__errorRecovery__actions .ant-btn {
+  min-height: 44px;
+  touch-action: manipulation;
+}

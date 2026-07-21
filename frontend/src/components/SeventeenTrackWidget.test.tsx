@@ -1,4 +1,6 @@
+import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import SeventeenTrackWidget from './SeventeenTrackWidget';
 import { logisticsApi } from '../api';
 import { dispatchDomEvent } from '../utils/domEvents';
@@ -31,6 +33,8 @@ const translate = (key: string) => {
     'pages.orderTracking.copyTrackingFailed': 'Could not copy tracking number',
     'pages.orderTracking.emptyRecoveryHint': 'No live events yet. Copy the number, retry tracking, or contact support.',
     'pages.orderTracking.retryTracking': 'Retry tracking',
+    'pages.orderTracking.shopAgain': 'Shop again',
+    'pages.orderTracking.emptyCoupons': 'Browse coupons',
     'pages.profile.contactSupport': 'Contact support',
   };
   return labels[key] || key;
@@ -43,6 +47,8 @@ jest.mock('../i18n', () => ({
   }),
 }));
 
+const renderWidget = (ui: React.ReactElement) => render(<MemoryRouter>{ui}</MemoryRouter>);
+
 describe('SeventeenTrackWidget', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -54,14 +60,17 @@ describe('SeventeenTrackWidget', () => {
   });
 
   it('keeps the empty state local and does not load the 17TRACK script on mount', () => {
-    render(<SeventeenTrackWidget />);
+    renderWidget(<SeventeenTrackWidget />);
 
     expect(logisticsApi.track).not.toHaveBeenCalled();
     expect(document.getElementById('seventeen-track-external-call')).toBeNull();
     expect(document.querySelector('script[src*="17track.net"]')).toBeNull();
     expect(screen.getByText('No tracking data')).toBeInTheDocument();
     expect(screen.getByText(/Copy the number, retry tracking/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /shop again/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /browse coupons/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /contact support/i })).toBeInTheDocument();
+    expect(document.querySelector('[data-seventeen-track-recovery="true"]')).toBeTruthy();
   });
 
   it('queries the backend logistics API when the user searches', async () => {
@@ -79,7 +88,7 @@ describe('SeventeenTrackWidget', () => {
       },
     });
 
-    render(<SeventeenTrackWidget carrierCode="UPS" />);
+    renderWidget(<SeventeenTrackWidget carrierCode="UPS" />);
 
     fireEvent.change(screen.getByPlaceholderText('Tracking number'), { target: { value: ' 1Z999 ' } });
     fireEvent.click(screen.getByRole('button', { name: /Track shipment/i }));
@@ -94,7 +103,7 @@ describe('SeventeenTrackWidget', () => {
       response: { data: { error: 'Production logistics tracking provider is not configured' } },
     });
 
-    render(<SeventeenTrackWidget trackingNumber="NO_PROVIDER" />);
+    renderWidget(<SeventeenTrackWidget trackingNumber="NO_PROVIDER" />);
 
     await waitFor(() => expect(logisticsApi.track).toHaveBeenCalledWith('NO_PROVIDER', undefined, undefined, undefined, undefined));
     expect(await screen.findByText('EXTERNAL_EMPTY')).toBeInTheDocument();
@@ -115,7 +124,7 @@ describe('SeventeenTrackWidget', () => {
       },
     });
 
-    render(<SeventeenTrackWidget trackingNumber="NO_PROVIDER" />);
+    renderWidget(<SeventeenTrackWidget trackingNumber="NO_PROVIDER" />);
 
     await waitFor(() => expect(logisticsApi.track).toHaveBeenCalledWith('NO_PROVIDER', undefined, undefined, undefined, undefined));
     expect(await screen.findByText('TRACKING_UNAVAILABLE')).toBeInTheDocument();
@@ -125,7 +134,7 @@ describe('SeventeenTrackWidget', () => {
   });
 
   it('copies tracking number and opens support from empty recovery actions', async () => {
-    render(<SeventeenTrackWidget trackingNumber="TRACK-42" />);
+    renderWidget(<SeventeenTrackWidget trackingNumber="TRACK-42" />);
 
     fireEvent.click(await screen.findByRole('button', { name: /copy tracking number/i }));
     await waitFor(() => expect(navigator.clipboard.writeText).toHaveBeenCalledWith('TRACK-42'));
