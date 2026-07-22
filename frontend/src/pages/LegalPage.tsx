@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
-import { Button, Typography } from 'antd';
-import { HomeOutlined, SafetyCertificateOutlined, ShoppingOutlined } from '@ant-design/icons';
+import { ShopIcon, SI } from '../components/ShopIcon';
+import { Button } from 'antd';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useLanguage } from '../i18n';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -73,28 +73,28 @@ const LegalPage: React.FC = () => {
       />
       <section className="legal-page__hero">
         <span className="legal-page__eyebrow">
-          <SafetyCertificateOutlined aria-hidden />
+          <ShopIcon path={SI.safety} aria-hidden />
           {t('pages.legal.eyebrow')}
         </span>
-        <Typography.Title level={1}>{title}</Typography.Title>
-        <Typography.Paragraph type="secondary">{description}</Typography.Paragraph>
-        <Typography.Text type="secondary" className="legal-page__updated">
+        <h1 className="legal-page__title">{title}</h1>
+        <p className="legal-page__text legal-page__paragraph legal-page__text--secondary">{description}</p>
+        <span className="legal-page__text legal-page__text--secondary legal-page__updated">
           {t('pages.legal.updatedAt')}
-        </Typography.Text>
+        </span>
       </section>
       <section className="legal-page__content" aria-label={title}>
         {pairs.map((section) => (
           <article key={section.heading} className="legal-page__section">
-            <Typography.Title level={2}>{section.heading}</Typography.Title>
-            <Typography.Paragraph>{section.body}</Typography.Paragraph>
+            <h2 className="legal-page__title">{section.heading}</h2>
+            <p className="legal-page__text legal-page__paragraph">{section.body}</p>
           </article>
         ))}
       </section>
       <section className="legal-page__actions" aria-label={t('pages.legal.relatedTitle')}>
-        <Button type="primary" icon={<ShoppingOutlined />} onClick={() => navigate('/products')}>
+        <Button type="primary" icon={<ShopIcon path={SI.shopping} />} onClick={() => navigate('/products')}>
           {t('pages.legal.browseProducts')}
         </Button>
-        <Button icon={<HomeOutlined />} onClick={() => navigate('/')}>
+        <Button icon={<ShopIcon path={SI.home} />} onClick={() => navigate('/')}>
           {t('pages.legal.backHome')}
         </Button>
         <Link className="legal-page__crossLink" to={isTerms ? '/privacy' : '/terms'}>

@@ -1,7 +1,8 @@
 import React, { Component, useEffect, useMemo, useState } from 'react';
+import { announceAccessibleMessage } from '../utils/accessibleMessage';
+import { ShopIcon, SI } from './ShopIcon';
 import type { ErrorInfo, ReactNode } from 'react';
-import { Alert, Button, Skeleton, Typography, message } from 'antd';
-import { PlusOutlined } from '@ant-design/icons';
+import { Alert, Button, Skeleton, Typography } from 'antd';
 import { productApi } from '../api';
 import type { ProductPublic as Product } from '../types';
 import { useLanguage } from '../i18n';
@@ -133,9 +134,9 @@ const AddOnAssistantContent: React.FC<AddOnAssistantProps> = ({ cartProductIds, 
     try {
       await onAdd(product);
       setProducts((current) => current.filter((item) => item.id !== product.id));
-      message.success(t('pages.addOnAssistant.added'));
+      announceAccessibleMessage(t('pages.addOnAssistant.added'), 'success');
     } catch (error: unknown) {
-      message.error(getApiErrorMessage(error, t('messages.addFailed'), language));
+      announceAccessibleMessage(getApiErrorMessage(error, t('messages.addFailed'), language), 'error');
     } finally {
       setAddingId(null);
     }
@@ -223,7 +224,7 @@ const AddOnAssistantContent: React.FC<AddOnAssistantProps> = ({ cartProductIds, 
               <Button
                 size="small"
                 type="primary"
-                icon={<PlusOutlined />}
+                icon={<ShopIcon path={SI.plus} />}
                 loading={addingId === product.id}
                 aria-label={`${t('pages.addOnAssistant.add')}: ${productName}`}
                 title={`${t('pages.addOnAssistant.add')}: ${productName}`}

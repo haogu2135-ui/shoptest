@@ -6,7 +6,7 @@
 .product-compare-page .ant-card,
 .product-compare-page .ant-btn,
 .product-compare-page .ant-table,
-.product-compare-page .ant-typography {
+.product-compare-page .product-compare-page__text {
   font-family: 'Avenir Next', 'Manrope', 'Segoe UI Variable', sans-serif;
 }
 
@@ -115,7 +115,7 @@
   gap: 4px;
 }
 
-.product-compare__decisionCopy .ant-typography {
+.product-compare__decisionCopy .product-compare-page__text {
   margin: 0;
 }
 
@@ -210,7 +210,7 @@
   padding: 16px;
 }
 
-.product-compare__recommendationMain .ant-typography {
+.product-compare__recommendationMain .product-compare-page__text {
   margin: 0;
 }
 
@@ -273,7 +273,7 @@
   gap: 4px;
 }
 
-.product-compare__checkoutCopy .ant-typography {
+.product-compare__checkoutCopy .product-compare-page__text {
   margin: 0;
 }
 
@@ -399,7 +399,7 @@
     width: 100%;
   }
 
-  .product-compare-page h2.ant-typography {
+  .product-compare-page h2.product-compare-page__title {
     font-size: 22px;
   }
 
@@ -648,12 +648,12 @@
     margin-bottom: 12px !important;
   }
 
-  .product-compare-page h2.ant-typography {
+  .product-compare-page h2.product-compare-page__title {
     font-size: 20px;
     line-height: 1.15;
   }
 
-  .product-compare__header > div:first-child > .ant-typography:last-child {
+  .product-compare__header > div:first-child > .product-compare-page__text:last-child {
     display: -webkit-box;
     overflow: hidden;
     font-size: 12px;
@@ -698,7 +698,7 @@
     gap: 3px;
   }
 
-  .product-compare__diff-summary > .ant-typography {
+  .product-compare__diff-summary > .product-compare-page__text {
     font-size: 12px;
     line-height: 1.35;
   }
@@ -719,7 +719,7 @@
     padding: 6px 9px;
   }
 
-  .product-compare__difference-toggle .ant-typography {
+  .product-compare__difference-toggle .product-compare-page__text {
     font-size: 12px;
   }
 
@@ -739,16 +739,16 @@
     line-height: 1.25;
   }
 
-  .product-compare__decision h4.ant-typography,
-  .product-compare__recommendation h4.ant-typography,
-  .product-compare__checkoutPath h4.ant-typography {
+  .product-compare__decision h4.product-compare-page__title,
+  .product-compare__recommendation h4.product-compare-page__title,
+  .product-compare__checkoutPath h4.product-compare-page__title {
     font-size: 16px;
     line-height: 1.2;
   }
 
-  .product-compare__decisionCopy > .ant-typography:last-child,
-  .product-compare__recommendationMain > .ant-typography:not(.product-compare__eyebrow):not(h4),
-  .product-compare__checkoutCopy > .ant-typography:last-child {
+  .product-compare__decisionCopy > .product-compare-page__text:last-child,
+  .product-compare__recommendationMain > .product-compare-page__text:not(.product-compare__eyebrow):not(h4),
+  .product-compare__checkoutCopy > .product-compare-page__text:last-child {
     display: -webkit-box;
     overflow: hidden;
     font-size: 12px;
@@ -1023,8 +1023,8 @@
   }
 
   .product-compare__header > div:first-child,
-  .product-compare__header h2.ant-typography,
-  .product-compare__header .ant-typography {
+  .product-compare__header h2.product-compare-page__title,
+  .product-compare__header .product-compare-page__text {
     max-width: 100%;
     overflow-wrap: anywhere;
   }
@@ -1732,4 +1732,76 @@
   .product-compare__staleActions .ant-btn {
     flex: 1 1 calc(50% - 8px);
   }
+}
+
+/* native compare product image */
+.product-compare-page__image {
+  width: 120px;
+  height: 120px;
+  object-fit: cover;
+  border-radius: 8px;
+  display: block;
+}
+
+/* Commercial ProductCompare native Space */
+.product-compare__chipRow,
+.product-compare__headerActions,
+.product-compare__staleActions,
+.product-compare__difference-toggle {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.product-compare__stack,
+.product-compare__stackTight {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.product-compare__stackTight {
+  gap: 0;
+}
+
+
+/* Native typography densification (no ant Typography runtime) */
+.product-compare-page__title {
+  margin: 0;
+  font-weight: 700;
+  line-height: 1.2;
+  color: inherit;
+}
+
+.product-compare-page__text {
+  margin: 0;
+  color: inherit;
+  line-height: 1.5;
+}
+
+.product-compare-page__paragraph {
+  display: block;
+}
+
+.product-compare-page__text--strong {
+  font-weight: 600;
+}
+
+.product-compare-page__text--secondary {
+  color: rgba(0, 0, 0, 0.45);
+}
+
+.product-compare-page__text--danger {
+  color: #ff4d4f;
+}
+
+.product-compare-page__text--warning {
+  color: #faad14;
+}
+
+.product-compare-page__text--success {
+  color: #52c41a;
+}
+
+.product-compare-page__text--delete {
+  text-decoration: line-through;
 }

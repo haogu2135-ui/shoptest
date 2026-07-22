@@ -39,7 +39,7 @@
 .coupon-center-page,
 .coupon-center-page .ant-card,
 .coupon-center-page .ant-btn,
-.coupon-center-page .ant-typography {
+.coupon-center-page .coupon-center-page__text {
   font-family: 'Avenir Next', 'Manrope', 'Segoe UI Variable', sans-serif;
 }
 
@@ -276,7 +276,7 @@
   line-height: 1.25;
 }
 
-.coupon-center-page__heroPlan > span:not(.ant-typography) {
+.coupon-center-page__heroPlan > span:not(.coupon-center-page__text):not(.coupon-center-page__title) {
   display: -webkit-box;
   overflow: hidden;
   color: #627064;
@@ -725,8 +725,8 @@
   color: #647067;
 }
 
-.coupon-center-page__coupon--claimed .ant-typography,
-.coupon-center-page__coupon--empty .ant-typography {
+.coupon-center-page__coupon--claimed .coupon-center-page__text,
+.coupon-center-page__coupon--empty .coupon-center-page__text {
   color: #7d877f !important;
 }
 
@@ -1408,7 +1408,7 @@
 }
 
 .coupon-next-action__metaItem--empty strong,
-.coupon-next-action__metaItem--empty .ant-typography {
+.coupon-next-action__metaItem--empty .coupon-center-page__text {
   color: #7d877f !important;
 }
 
@@ -1451,7 +1451,7 @@
   font-variant-numeric: tabular-nums;
 }
 
-.coupon-next-action__progressLabel .ant-typography {
+.coupon-next-action__progressLabel .coupon-center-page__text {
   font-size: 12px;
   line-height: 1.25;
   text-align: right;
@@ -2494,7 +2494,7 @@
     overflow-wrap: anywhere;
   }
 
-  .coupon-next-action__meta .ant-typography {
+  .coupon-next-action__meta .coupon-center-page__text {
     /* Commercial coupon next-action labels stay >=12px */
     font-size: 12px;
     line-height: 1.2;
@@ -2508,7 +2508,7 @@
     align-items: flex-start;
   }
 
-  .coupon-next-action__progressLabel .ant-typography {
+  .coupon-next-action__progressLabel .coupon-center-page__text {
     max-width: 70%;
     font-size: 12px;
   }
@@ -2688,7 +2688,7 @@
     white-space: nowrap;
   }
 
-  .coupon-claim-section__filters > .ant-typography {
+  .coupon-claim-section__filters > .coupon-center-page__text {
     justify-self: start;
     font-size: 12px;
   }
@@ -4805,7 +4805,7 @@
 
   .coupon-center-page__couponTitle,
   .coupon-center-page__couponDescription,
-  .coupon-center-page__couponBody .ant-typography {
+  .coupon-center-page__couponBody .coupon-center-page__text {
     overflow-wrap: anywhere;
   }
 }
@@ -4859,7 +4859,7 @@
     overflow: hidden;
   }
 
-  .coupon-center-page__heroCopy .ant-typography,
+  .coupon-center-page__heroCopy .coupon-center-page__text, .coupon-center-page__heroCopy .coupon-center-page__title,
   .coupon-center-page__heroStats span,
   .coupon-center-page__statGrid span {
     overflow-wrap: anywhere;
@@ -4881,7 +4881,7 @@
 
 /* Mobile coupon long-copy readability pass */
 @media (max-width: 560px) {
-  .coupon-center-page__heroPlan > span:not(.ant-typography),
+  .coupon-center-page__heroPlan > span:not(.coupon-center-page__text):not(.coupon-center-page__title),
   .coupon-center-page__heroText,
   .coupon-wallet__guide small {
     display: block;
@@ -4906,7 +4906,7 @@
   .coupon-center-page__quickNav button span,
   .coupon-next-action__metaItem,
   .coupon-next-action__metaItem strong,
-  .coupon-next-action__metaItem .ant-typography {
+  .coupon-next-action__metaItem .coupon-center-page__text {
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -5013,7 +5013,7 @@
   white-space: nowrap;
 }
 
-.coupon-next-action__progressLabel .ant-typography {
+.coupon-next-action__progressLabel .coupon-center-page__text {
   min-width: 0;
   max-width: min(72%, 260px);
   overflow: hidden;
@@ -5027,7 +5027,7 @@
     gap: 8px;
   }
 
-  .coupon-next-action__progressLabel .ant-typography {
+  .coupon-next-action__progressLabel .coupon-center-page__text {
     max-width: calc(100% - 52px);
     font-size: 12px;
     line-height: 1.2;
@@ -5190,7 +5190,7 @@
 /* A-10 final App coupon-center legibility floor after compact toolbar rules. */
 @media (max-width: 780px) {
   body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--coupon-center .coupon-next-action__progressLabel > span,
-  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--coupon-center .coupon-next-action__progressLabel .ant-typography,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--coupon-center .coupon-next-action__progressLabel .coupon-center-page__text,
   body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--coupon-center .coupon-claim-section__toolbar span,
   body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--coupon-center .coupon-claim-section__toolbar .ant-btn,
   body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--coupon-center .coupon-claim-section__toolbar .ant-btn > span:not(.anticon):not(.ant-btn-icon),
@@ -5207,7 +5207,7 @@
    signals in App, so they need the same 12px minimum as controls. */
 @media (max-width: 780px) {
   body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--coupon-center .coupon-next-action__metaItem,
-  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--coupon-center .coupon-next-action__metaItem .ant-typography,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--coupon-center .coupon-next-action__metaItem .coupon-center-page__text,
   body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--coupon-center .coupon-center-page__couponMicroFacts span,
   body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--coupon-center .coupon-center-page__couponTags .ant-tag,
   body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--coupon-center .coupon-center-page__couponTags .ant-tag span {
@@ -5281,7 +5281,7 @@
   .coupon-center-page__heroStats span,
   .coupon-savings-path__steps span,
   .coupon-center-page__quickNav button span,
-  .coupon-center-page__heroPlan > span:not(.ant-typography),
+  .coupon-center-page__heroPlan > span:not(.coupon-center-page__text):not(.coupon-center-page__title),
   .coupon-center-page__heroText,
   .coupon-center-page .ant-tag {
     min-height: 44px !important;
@@ -5821,9 +5821,9 @@
   .coupon-claim-section__filterButton span,
   .coupon-claim-section__resultSummary small,
   .coupon-claim-section__resultMetric small,
-  .coupon-next-action__meta .ant-typography,
-  .coupon-next-action__metaItem .ant-typography,
-  .coupon-next-action__progressLabel .ant-typography {
+  .coupon-next-action__meta .coupon-center-page__text,
+  .coupon-next-action__metaItem .coupon-center-page__text,
+  .coupon-next-action__progressLabel .coupon-center-page__text {
     font-size: 12px !important;
     line-height: 1.2 !important;
   }
@@ -5847,12 +5847,12 @@
   .coupon-claim-section__toolbar span,
   .coupon-claim-section__toolbar strong,
   .coupon-claim-section__resultSummary,
-  .coupon-claim-section__resultSummary .ant-typography,
+  .coupon-claim-section__resultSummary .coupon-center-page__text,
   .coupon-claim-section__resultSummary small,
   .coupon-claim-section__filterButton,
   .coupon-claim-section__filterButton span,
   .coupon-claim-section__filterButton strong,
-  .coupon-center-page .ant-typography-secondary,
+  .coupon-center-page .coupon-center-page__text-secondary,
   body:not(.shop-mobile-app) .coupon-center-page .coupon-center-page__heroBadges span,
   body:not(.shop-mobile-app) .coupon-center-page .coupon-center-page__heroStats span,
   body:not(.shop-mobile-app) .coupon-center-page .coupon-center-page__statGrid span,
@@ -5864,4 +5864,84 @@
     font-size: 12px !important;
     line-height: 1.2 !important;
   }
+}
+
+/* Commercial coupon claim grid without ant Row/Col */
+.coupon-center-page__claimGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+}
+@media (min-width: 992px) {
+  .coupon-center-page__claimGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+.coupon-center-page__claimEmpty {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+.coupon-center-page__claimItem {
+  min-width: 0;
+}
+.coupon-center-page__claimItem .coupon-center-page__coupon {
+  height: 100%;
+}
+
+/* Commercial CouponCenter native Space replacements */
+.coupon-center-page__fallbackActions,
+.coupon-center-page__heroActions,
+.coupon-center-page__actionRow,
+.coupon-center-page__couponTags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.coupon-center-page__couponTags {
+  gap: 4px;
+}
+.coupon-center-page__couponBody {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+
+/* Native typography densification (no ant Typography runtime) */
+.coupon-center-page__title {
+  margin: 0;
+  font-weight: 700;
+  line-height: 1.2;
+  color: inherit;
+}
+
+.coupon-center-page__text {
+  margin: 0;
+  color: inherit;
+  line-height: 1.5;
+}
+
+.coupon-center-page__text--strong {
+  font-weight: 600;
+}
+
+.coupon-center-page__text--secondary {
+  color: rgba(0, 0, 0, 0.45);
+}
+
+.coupon-center-page__text--danger {
+  color: #ff4d4f;
+}
+
+.coupon-center-page__text--warning {
+  color: #faad14;
+}
+
+.coupon-center-page__text--success {
+  color: #52c41a;
+}
+
+.coupon-center-page__text--delete {
+  text-decoration: line-through;
 }

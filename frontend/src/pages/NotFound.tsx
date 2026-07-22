@@ -1,6 +1,6 @@
 import React from 'react';
+import { ShopIcon, SI } from '../components/ShopIcon';
 import { Button, Result } from 'antd';
-import { FileSearchOutlined, GiftOutlined, HomeOutlined, SearchOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../i18n';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -44,28 +44,28 @@ const NotFound: React.FC = () => {
           <Button
             key="home"
             type="primary"
-            icon={<HomeOutlined />}
+            icon={<ShopIcon path={SI.home} />}
             onClick={() => navigate('/')}
           >
             {t('notFound.backHome')}
           </Button>,
           <Button
             key="search"
-            icon={<SearchOutlined />}
+            icon={<ShopIcon path={SI.search} />}
             onClick={() => navigate('/products')}
           >
             {t('notFound.searchProducts')}
           </Button>,
           <Button
             key="coupons"
-            icon={<GiftOutlined />}
+            icon={<ShopIcon path={SI.gift} />}
             onClick={() => navigate('/coupons')}
           >
             {t('notFound.browseCoupons')}
           </Button>,
           <Button
             key="track"
-            icon={<FileSearchOutlined />}
+            icon={<ShopIcon path={SI.fileSearch} />}
             onClick={() => navigate('/track-order')}
           >
             {t('notFound.trackOrder')}

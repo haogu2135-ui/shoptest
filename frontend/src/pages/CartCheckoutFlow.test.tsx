@@ -12,6 +12,7 @@ import { clearCheckoutCartItemIds, hasAuthenticatedCartSession, readCheckoutCart
 import { getSavedForLaterItems, saveCartItemForLater } from '../utils/saveForLater';
 import { dispatchDomEvent } from '../utils/domEvents';
 import { getApiErrorMessage } from '../utils/apiError';
+import { announceAccessibleMessage } from '../utils/accessibleMessage';
 
 const mockNavigate = jest.fn();
 let mockLocalStorage: Record<string, string | null> = {};
@@ -54,6 +55,11 @@ const configureSafeStorageMock = () => {
   });
 };
 
+
+jest.mock('../utils/accessibleMessage', () => ({
+  announceAccessibleMessage: jest.fn(),
+  runWithoutAccessibleMessageAnnouncement: (fn: () => void) => fn(),
+}));
 jest.mock('react-router-dom', () => {
   const actual = jest.requireActual('react-router-dom');
   return {
@@ -388,6 +394,7 @@ jest.mock('../utils/cartBenefits', () => ({
 }));
 
 jest.mock('../utils/paymentMethods', () => ({
+  filterPaymentChannelsForMarket: (channels: any[] = []) => channels,
   createPaymentMethodDetails: (channels: any[]) => channels.map((channel) => ({
     value: channel.code,
     title: channel.displayName,
@@ -908,7 +915,7 @@ describe('cart to checkout flows', () => {
     expect(zhCss).toContain('.cart-page--zh');
     expect(zhCss).toMatch(/\.cart-page--zh\s*\{[\s\S]*?line-break:\s*strict;[\s\S]*?overflow-wrap:\s*anywhere;/);
     expect(zhCss).toMatch(/\.cart-page--zh \.cart-page__mobileItemTitle,[\s\S]*?\.cart-page--zh \.ant-list-item-meta-title\s*\{[\s\S]*?line-height:\s*1\.25;/);
-    expect(zhCss).toMatch(/\.cart-page--zh \.cart-page__heroActions \.ant-btn,[\s\S]*?\.cart-page--zh \.cart-page__summary \.ant-btn-primary\s*\{[\s\S]*?min-height:\s*42px;[\s\S]*?white-space:\s*normal;/);
+    expect(zhCss).toMatch(/\.cart-page--zh \.cart-page__heroActions \.ant-btn,[\s\S]*?\.cart-page--zh \.cart-page__summary \.ant-btn-primary\s*\{[\s\S]*?min-height:\s*44px;[\s\S]*?white-space:\s*normal;/);
     expect(zhCss).toMatch(/@media \(max-width:\s*560px\)\s*\{[\s\S]*?\.cart-page--zh \.cart-page__heroActions,[\s\S]*?grid-template-columns:\s*1fr;[\s\S]*?\.cart-page--zh \.cart-page__summary \.ant-btn-primary\s*\{[\s\S]*?width:\s*100%;/);
   });
 
@@ -1063,7 +1070,7 @@ describe('cart to checkout flows', () => {
 
     expect(handlerStart).toBeGreaterThan(-1);
     expect(handlerEnd).toBeGreaterThan(handlerStart);
-    expect(handlerSource).toContain("message.error(getApiErrorMessage(err, t('pages.cart.quantityFailed'), language));");
+    expect(handlerSource).toContain("announceAccessibleMessage(getApiErrorMessage(err, t('pages.cart.quantityFailed'), language), 'error');");
     expect(handlerSource).toContain('try {\n      await fetchCartItems();\n    } catch (refreshError) {');
     expect(handlerSource).toContain("reportNonBlockingError('Cart.handleQuantitySyncError.fetchCartItems', refreshError);");
   });
@@ -1091,7 +1098,7 @@ describe('cart to checkout flows', () => {
     expect(removeSource).toContain('if (removingItemIds.includes(itemId)) return;');
     expect(removeSource).toContain('setRemovingItemIds((ids) => Array.from(new Set([...ids, itemId])));');
     expect(removeSource.indexOf('await cartApi.removeItem(itemId);')).toBeLessThan(removeSource.indexOf('setCartItems((items) => normalizeCartItems(items).filter((item) => item.id !== itemId));'));
-    expect(removeCatchSource).toContain("message.error(getApiErrorMessage(err, t('messages.deleteFailed'), language));");
+    expect(removeCatchSource).toContain("announceAccessibleMessage(getApiErrorMessage(err, t('messages.deleteFailed'), language), 'error');");
     expect(removeCatchSource).not.toContain('setCartItems');
     expect(saveStart).toBeGreaterThan(-1);
     expect(saveEnd).toBeGreaterThan(saveStart);
@@ -1289,7 +1296,7 @@ describe('cart to checkout flows', () => {
     expect(checkoutStart).toBeGreaterThan(-1);
     expect(checkoutEnd).toBeGreaterThan(checkoutStart);
     expect(checkoutSource).toContain('if (hasStaleCartData) {');
-    expect(checkoutSource).toContain("message.warning(t('pages.cart.staleDataWarning'));");
+    expect(checkoutSource).toContain("announceAccessibleMessage(t('pages.cart.staleDataWarning'), 'warning');");
     expect(source).toContain('if (hasStaleCartData) return;\n    const normalizedQuantity = normalizeCartQuantity(item, quantity);');
     expect(source).toContain('if (hasStaleCartData) return;\n    if (removingItemIds.includes(itemId)) return;');
     expect(source).toContain('if (hasStaleCartData) return;\n    if (removingItemIds.includes(item.id)) return;');
@@ -1307,7 +1314,7 @@ describe('cart to checkout flows', () => {
     const restoreEnd = source.indexOf('const moveSavedItemsToCart', restoreStart);
     const restoreSource = source.slice(restoreStart, restoreEnd);
     const savedRenderStart = source.indexOf('const restoringSavedItem = restoringSaved || restoringSavedItemIds.includes(item.id);');
-    const savedRenderEnd = source.indexOf('</Space>', savedRenderStart);
+    const savedRenderEnd = source.indexOf('icon={<ShopIcon path={SI.delete} />}', savedRenderStart) + 80;
     const savedRenderSource = source.slice(savedRenderStart, savedRenderEnd);
 
     expect(source).toContain('const [restoringSavedItemIds, setRestoringSavedItemIds] = useState<number[]>([]);');
@@ -1321,7 +1328,7 @@ describe('cart to checkout flows', () => {
     expect(savedRenderSource).toContain('const restoringSavedItem = restoringSaved || restoringSavedItemIds.includes(item.id);');
     expect(savedRenderSource).toContain('loading={restoringSavedItem}');
     expect(savedRenderSource).toContain('disabled={hasStaleCartData || restoringSavedItem}');
-    expect(savedRenderSource).toContain('<Button danger type="text" icon={<DeleteOutlined />} disabled={restoringSavedItem}');
+    expect(savedRenderSource).toContain('<Button danger type="text" icon={<ShopIcon path={SI.delete} />} disabled={restoringSavedItem}');
   });
 
   it('keeps saved-for-later items exposed as a navigable list', () => {
@@ -1502,7 +1509,7 @@ describe('cart to checkout flows', () => {
 
   it('blocks checkout navigation when pending authenticated quantity persistence fails', async () => {
     const item = { ...memberCartItem, stock: 20 };
-    const warningSpy = jest.spyOn(message, 'warning').mockImplementation(() => null as any);
+    (announceAccessibleMessage as jest.Mock).mockClear();
     mockLocalStorage = { token: 'member-token', userId: '7' };
     (cartApi.getItems as jest.Mock).mockResolvedValue({ data: [item] });
     (cartApi.updateQuantity as jest.Mock).mockRejectedValueOnce({
@@ -1524,14 +1531,13 @@ describe('cart to checkout flows', () => {
       expect(getApiErrorMessage).toHaveBeenCalledWith(expect.anything(), 'Quantity update failed', 'en');
     });
 
-    expect(warningSpy).toHaveBeenCalledWith('Checkout could not continue');
+    expect(announceAccessibleMessage).toHaveBeenCalledWith('Checkout could not continue', 'warning');
     expect(syncCheckoutCartItemIds).not.toHaveBeenCalledWith([{ ...item, quantity: 12 }]);
     expect(mockNavigate).not.toHaveBeenCalledWith('/checkout');
 
     await advanceQuantityDebounce(400);
 
     expect(cartApi.updateQuantity).toHaveBeenCalledTimes(1);
-    warningSpy.mockRestore();
   });
 
   it('creates a guest checkout order, creates payment, and removes submitted guest cart items', async () => {

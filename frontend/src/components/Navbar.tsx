@@ -1,30 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Badge, Button, Dropdown, Input, message, Select } from 'antd';
+import { announceAccessibleMessage } from '../utils/accessibleMessage';
+import { ShopIcon, SI } from './ShopIcon';
+import { Badge, Button, Dropdown, Input, Select } from 'antd';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import {
-  AlertOutlined,
-  BellOutlined,
-  BarChartOutlined,
-  CheckOutlined,
-  CustomerServiceOutlined,
-  DownloadOutlined,
-  EllipsisOutlined,
-  GiftOutlined,
-  GlobalOutlined,
-  HeartOutlined,
-  HistoryOutlined,
-  HomeOutlined,
-  LogoutOutlined,
-  PauseCircleOutlined,
-  PlayCircleOutlined,
-  SearchOutlined,
-  SettingOutlined,
-  ShoppingOutlined,
-  ShopOutlined,
-  ShoppingCartOutlined,
-  UserAddOutlined,
-  UserOutlined,
-} from '@ant-design/icons';
 import { announcementApi, cartApi, couponApi, notificationApi, productApi, userApi, wishlistApi } from '../api';
 import { useAuth } from '../hooks/useAuth';
 import { LANGUAGE_LABELS, type Language, SUPPORTED_LANGUAGES, useLanguage } from '../i18n';
@@ -137,7 +115,7 @@ const Navbar: React.FC = () => {
     }
     if (!badgeLoadWarningShown.current) {
       badgeLoadWarningShown.current = true;
-      message.warning(translateRef.current('nav.badgeLoadFailed'));
+      announceAccessibleMessage(translateRef.current('nav.badgeLoadFailed'), 'warning');
     }
   }, []);
   const syncAuthSnapshot = useCallback(() => {
@@ -230,7 +208,7 @@ const Navbar: React.FC = () => {
   const cartBadgeLabel = `${t('nav.ariaCart')}: ${safeCartCount}`;
   const renderCartBadge = () => (
     <Badge count={safeCartCount} size="small" overflowCount={99}>
-      <ShoppingCartOutlined />
+      <ShopIcon path={SI.cart} />
     </Badge>
   );
   const androidApkUrl = useMemo(
@@ -277,7 +255,7 @@ const Navbar: React.FC = () => {
   ];
   const renderCurrentMenuLabel = (active: boolean, label: React.ReactNode) => (
     <span className={active ? 'shop-nav__menu-current' : 'shop-nav__menu-item'}>
-      {active ? <CheckOutlined /> : <span className="shop-nav__menu-check-spacer" />}
+      {active ? <ShopIcon path={SI.check} /> : <span className="shop-nav__menu-check-spacer" />}
       {label}
     </span>
   );
@@ -324,25 +302,25 @@ const Navbar: React.FC = () => {
     try {
       const opened = await openMobileReleaseDownload(mobileRelease);
       if (!opened) {
-        message.error(t('appUpdate.downloadFailed'));
+        announceAccessibleMessage(t('appUpdate.downloadFailed'), 'error');
       }
     } catch (error) {
       reportNonBlockingError('Navbar.openNativeAndroidDownload', error);
-      message.error(t('appUpdate.downloadFailed'));
+      announceAccessibleMessage(t('appUpdate.downloadFailed'), 'error');
     } finally {
       setOpeningAndroidApk(false);
     }
   };
 
   const handleAndroidDownloadUnavailable = () => {
-    message.warning(t('nav.mobileAppUnavailable'));
+    announceAccessibleMessage(t('nav.mobileAppUnavailable'), 'warning');
   };
 
   const androidDownloadMenuItem = showAndroidDownloadLink
     ? nativeBottomNav
       ? {
         key: 'android-app',
-        icon: <DownloadOutlined />,
+        icon: <ShopIcon path={SI.download} />,
         label: t('nav.downloadAndroid'),
         disabled: openingAndroidApk,
         onClick: () => {
@@ -351,7 +329,7 @@ const Navbar: React.FC = () => {
       }
       : {
         key: 'android-app',
-        icon: <DownloadOutlined />,
+        icon: <ShopIcon path={SI.download} />,
         label: androidApkUrl
           ? <a href={androidApkUrl} download>{t('nav.downloadAndroid')}</a>
           : t('nav.downloadAndroid'),
@@ -591,7 +569,7 @@ const Navbar: React.FC = () => {
   const handleSearch = (value: string) => {
     const trimmedKeyword = value.trim();
     if (trimmedKeyword.length > NAV_SEARCH_MAX_LENGTH) {
-      message.warning(t('nav.searchLimitWarning', { count: NAV_SEARCH_MAX_LENGTH }));
+      announceAccessibleMessage(t('nav.searchLimitWarning', { count: NAV_SEARCH_MAX_LENGTH }), 'warning');
     }
     const keyword = trimmedKeyword.slice(0, NAV_SEARCH_MAX_LENGTH);
     if (keyword) {
@@ -712,7 +690,7 @@ const Navbar: React.FC = () => {
           aria-pressed={announcementPaused}
           onClick={() => setAnnouncementPaused((current) => !current)}
         >
-          {announcementPaused ? <PlayCircleOutlined /> : <PauseCircleOutlined />}
+          {announcementPaused ? <ShopIcon path={SI.play} /> : <ShopIcon path={SI.pause} />}
         </button>
         <div className="shop-nav__ticker">
           {tickerAnnouncements.length > 0 ? tickerAnnouncements.map((announcement, index) => (
@@ -746,12 +724,12 @@ const Navbar: React.FC = () => {
                   aria-label={t('nav.downloadAndroid')}
                   title={t('nav.downloadAndroid')}
                 >
-                  <DownloadOutlined /> {t('nav.downloadAndroid')}
+                  <ShopIcon path={SI.download} /> {t('nav.downloadAndroid')}
                 </button>
               ) : (
                 androidApkUrl ? (
                   <a href={androidApkUrl} download className="shop-nav__downloadLink" aria-label={t('nav.downloadAndroid')} title={t('nav.downloadAndroid')}>
-                    <DownloadOutlined /> {t('nav.downloadAndroid')}
+                    <ShopIcon path={SI.download} /> {t('nav.downloadAndroid')}
                   </a>
                 ) : (
                   <button
@@ -761,7 +739,7 @@ const Navbar: React.FC = () => {
                     aria-label={androidDownloadActionLabel}
                     title={androidDownloadActionLabel}
                   >
-                    <DownloadOutlined /> {t('nav.downloadAndroid')}
+                    <ShopIcon path={SI.download} /> {t('nav.downloadAndroid')}
                   </button>
                 )
               )
@@ -805,7 +783,7 @@ const Navbar: React.FC = () => {
             {token ? (
               <>
                 <Link to="/profile">
-                  <UserOutlined /> {username || t('nav.account')}
+                  <ShopIcon path={SI.user} /> {username || t('nav.account')}
                 </Link>
                 <button type="button" onClick={handleLogout}>{t('nav.logout')}</button>
               </>
@@ -822,7 +800,7 @@ const Navbar: React.FC = () => {
       <div className="shop-nav__main">
         <div className="shop-nav__inner shop-nav__inner--main">
           <Link to="/" className={location.pathname === '/' ? 'shop-nav__brand shop-nav__brand--active' : 'shop-nav__brand'} aria-label={t('nav.ariaHome')} aria-current={location.pathname === '/' ? 'page' : undefined}>
-            <span className="shop-nav__brandIcon"><ShopOutlined /></span>
+            <span className="shop-nav__brandIcon"><ShopIcon path={SI.shop} /></span>
             <span className="shop-nav__brandCopy">
               <strong>{t('common.brand')}</strong>
               <small>{t('home.heroEyebrow')}</small>
@@ -853,7 +831,7 @@ const Navbar: React.FC = () => {
                       type="primary"
                       aria-label={navSearchActionLabel}
                       title={navSearchActionLabel}
-                      icon={<SearchOutlined />}
+                      icon={<ShopIcon path={SI.search} />}
                     />
                   )}
                   size="large"
@@ -903,7 +881,7 @@ const Navbar: React.FC = () => {
               />
               {token ? (
                 <Link to="/profile" className="shop-nav__mobile-profile">
-                  <UserOutlined /> {t('nav.account')}
+                  <ShopIcon path={SI.user} /> {t('nav.account')}
                 </Link>
               ) : null}
             </div>
@@ -994,25 +972,25 @@ const Navbar: React.FC = () => {
               }}
             >
               <button type="button" aria-label={`${t('nav.language')} / ${t('nav.currency')}`} aria-haspopup="menu" aria-expanded={isDropdownOpen('mobile-locale')}>
-                <GlobalOutlined />
+                <ShopIcon path={SI.global} />
               </button>
             </Dropdown>
             {token ? (
               <>
                 <button type="button" className="shop-nav__mobile-orders" onClick={() => navigate('/profile?tab=orders')} aria-label={t('pages.profile.allOrders')}>
-                  <ShoppingOutlined />
+                  <ShopIcon path={SI.shopping} />
                 </button>
                 {!nativeBottomNav ? (
-                  <Link to="/profile" className="shop-nav__mobile-auth" aria-label={t('nav.account')} title={t('nav.account')}><UserOutlined /><span className="shop-nav__mobile-authText">{t('nav.account')}</span></Link>
+                  <Link to="/profile" className="shop-nav__mobile-auth" aria-label={t('nav.account')} title={t('nav.account')}><ShopIcon path={SI.user} /><span className="shop-nav__mobile-authText">{t('nav.account')}</span></Link>
                 ) : null}
                 <button type="button" className="shop-nav__secondary-action shop-nav__secondary-action--wishlist" onClick={() => navigate('/wishlist')} aria-label={wishlistBadgeLabel} title={wishlistBadgeLabel}>
                     <Badge count={safeWishlistCount} size="small">
-                    <HeartOutlined />
+                    <ShopIcon path={SI.heart} />
                   </Badge>
                 </button>
                 <button type="button" className="shop-nav__secondary-action shop-nav__secondary-action--notifications" onClick={() => navigate('/notifications')} aria-label={notificationsBadgeLabel} title={notificationsBadgeLabel}>
                     <Badge count={safeUnreadCount} size="small">
-                    <BellOutlined />
+                    <ShopIcon path={SI.bell} />
                   </Badge>
                 </button>
                 <Dropdown
@@ -1027,26 +1005,26 @@ const Navbar: React.FC = () => {
                       ...(androidDownloadMenuItem ? [androidDownloadMenuItem] : []),
                       {
                         key: 'locale-settings',
-                        icon: <GlobalOutlined />,
+                        icon: <ShopIcon path={SI.global} />,
                         label: `${t('nav.language')} / ${t('nav.currency')}`,
                         children: buildLocaleMenuItems(),
                       },
-                      { key: 'sell', icon: <ShopOutlined />, label: t('nav.sell'), onClick: () => navigate(canAccessAdmin ? adminPath : '/products') },
-                      { key: 'pet-finder', icon: <SearchOutlined />, label: t('nav.petFinder'), onClick: () => navigate('/pet-finder') },
-                      { key: 'pet-gallery', icon: <ShoppingOutlined />, label: t('nav.petGallery'), onClick: () => navigate('/pet-gallery') },
-                      { key: 'deals', icon: <GiftOutlined />, label: t('nav.followDeals'), onClick: () => navigate('/products?discount=true') },
-                      { key: 'track-order', icon: <ShoppingOutlined />, label: t('nav.trackOrder'), onClick: () => navigate('/track-order') },
-                      { key: 'coupons', icon: <GiftOutlined />, label: t('pages.coupons.title'), onClick: () => navigate('/coupons') },
-                      { key: 'support', icon: <CustomerServiceOutlined />, label: t('nav.help'), onClick: openSupport },
-                      { key: 'compare', icon: <BarChartOutlined />, label: t('nav.ariaCompare'), onClick: () => navigate('/compare') },
-                      { key: 'history', icon: <HistoryOutlined />, label: t('nav.ariaHistory'), onClick: () => navigate('/history') },
-                      { key: 'alerts', icon: <AlertOutlined />, label: t('nav.ariaStockAlerts'), onClick: () => navigate('/stock-alerts') },
+                      { key: 'sell', icon: <ShopIcon path={SI.shop} />, label: t('nav.sell'), onClick: () => navigate(canAccessAdmin ? adminPath : '/products') },
+                      { key: 'pet-finder', icon: <ShopIcon path={SI.search} />, label: t('nav.petFinder'), onClick: () => navigate('/pet-finder') },
+                      { key: 'pet-gallery', icon: <ShopIcon path={SI.shopping} />, label: t('nav.petGallery'), onClick: () => navigate('/pet-gallery') },
+                      { key: 'deals', icon: <ShopIcon path={SI.gift} />, label: t('nav.followDeals'), onClick: () => navigate('/products?discount=true') },
+                      { key: 'track-order', icon: <ShopIcon path={SI.shopping} />, label: t('nav.trackOrder'), onClick: () => navigate('/track-order') },
+                      { key: 'coupons', icon: <ShopIcon path={SI.gift} />, label: t('pages.coupons.title'), onClick: () => navigate('/coupons') },
+                      { key: 'support', icon: <ShopIcon path={SI.support} />, label: t('nav.help'), onClick: openSupport },
+                      { key: 'compare', icon: <ShopIcon path={SI.barChart} />, label: t('nav.ariaCompare'), onClick: () => navigate('/compare') },
+                      { key: 'history', icon: <ShopIcon path={SI.history} />, label: t('nav.ariaHistory'), onClick: () => navigate('/history') },
+                      { key: 'alerts', icon: <ShopIcon path={SI.alert} />, label: t('nav.ariaStockAlerts'), onClick: () => navigate('/stock-alerts') },
                     ],
                   }}
                 >
                   <button type="button" className="shop-nav__secondary-action shop-nav__more-trigger" aria-label={utilityMenuBadgeLabel} title={utilityMenuBadgeLabel} aria-haspopup="menu" aria-expanded={isDropdownOpen('account-more')}>
                     <Badge count={utilityMenuCount} size="small" overflowCount={99}>
-                      <EllipsisOutlined />
+                      <ShopIcon path={SI.ellipsis} />
                     </Badge>
                   </button>
                 </Dropdown>
@@ -1054,11 +1032,11 @@ const Navbar: React.FC = () => {
                   {renderCartBadge()}
                 </button>
                 <button type="button" className="shop-nav__mobile-logout" onClick={handleLogout} aria-label={t('nav.logout')}>
-                  <LogoutOutlined />
+                  <ShopIcon path={SI.logout} />
                 </button>
                 {canAccessAdmin ? (
                   <Link to={adminPath} className="shop-nav__admin">
-                    <SettingOutlined /> {t('common.admin')}
+                    <ShopIcon path={SI.settings} /> {t('common.admin')}
                   </Link>
                 ) : null}
               </>
@@ -1066,8 +1044,8 @@ const Navbar: React.FC = () => {
               <>
                 {!nativeBottomNav ? (
                   <>
-                    <Link to="/register" className="shop-nav__mobile-auth shop-nav__mobile-auth--primary" aria-label={t('nav.register')} title={t('nav.register')}><UserAddOutlined /><span className="shop-nav__mobile-authText">{t('nav.register')}</span></Link>
-                    <Link to="/login" className="shop-nav__mobile-auth" aria-label={t('nav.login')} title={t('nav.login')}><UserOutlined /><span className="shop-nav__mobile-authText">{t('nav.login')}</span></Link>
+                    <Link to="/register" className="shop-nav__mobile-auth shop-nav__mobile-auth--primary" aria-label={t('nav.register')} title={t('nav.register')}><ShopIcon path={SI.userAdd} /><span className="shop-nav__mobile-authText">{t('nav.register')}</span></Link>
+                    <Link to="/login" className="shop-nav__mobile-auth" aria-label={t('nav.login')} title={t('nav.login')}><ShopIcon path={SI.user} /><span className="shop-nav__mobile-authText">{t('nav.login')}</span></Link>
                   </>
                 ) : null}
                 <Dropdown
@@ -1079,32 +1057,32 @@ const Navbar: React.FC = () => {
                   onOpenChange={(open) => setDropdownOpen('guest-more', open)}
                   menu={{
                     items: [
-                      { key: 'login', icon: <UserOutlined />, label: t('nav.login'), onClick: () => navigate('/login') },
-                      { key: 'register', icon: <UserOutlined />, label: t('nav.register'), onClick: () => navigate('/register') },
+                      { key: 'login', icon: <ShopIcon path={SI.user} />, label: t('nav.login'), onClick: () => navigate('/login') },
+                      { key: 'register', icon: <ShopIcon path={SI.user} />, label: t('nav.register'), onClick: () => navigate('/register') },
                       { key: 'guest-divider', type: 'divider' },
                       {
                         key: 'locale-settings',
-                        icon: <GlobalOutlined />,
+                        icon: <ShopIcon path={SI.global} />,
                         label: `${t('nav.language')} / ${t('nav.currency')}`,
                         children: buildLocaleMenuItems(),
                       },
-                      { key: 'sell', icon: <ShopOutlined />, label: t('nav.sell'), onClick: () => navigate('/products') },
-                      { key: 'pet-finder', icon: <SearchOutlined />, label: t('nav.petFinder'), onClick: () => navigate('/pet-finder') },
-                      { key: 'pet-gallery', icon: <ShoppingOutlined />, label: t('nav.petGallery'), onClick: () => navigate('/pet-gallery') },
-                      { key: 'coupons', icon: <GiftOutlined />, label: t('pages.coupons.title'), onClick: () => navigate('/coupons') },
-                      { key: 'deals', icon: <GiftOutlined />, label: t('nav.followDeals'), onClick: () => navigate('/products?discount=true') },
-                      { key: 'track-order', icon: <ShoppingOutlined />, label: t('nav.trackOrder'), onClick: () => navigate('/track-order') },
+                      { key: 'sell', icon: <ShopIcon path={SI.shop} />, label: t('nav.sell'), onClick: () => navigate('/products') },
+                      { key: 'pet-finder', icon: <ShopIcon path={SI.search} />, label: t('nav.petFinder'), onClick: () => navigate('/pet-finder') },
+                      { key: 'pet-gallery', icon: <ShopIcon path={SI.shopping} />, label: t('nav.petGallery'), onClick: () => navigate('/pet-gallery') },
+                      { key: 'coupons', icon: <ShopIcon path={SI.gift} />, label: t('pages.coupons.title'), onClick: () => navigate('/coupons') },
+                      { key: 'deals', icon: <ShopIcon path={SI.gift} />, label: t('nav.followDeals'), onClick: () => navigate('/products?discount=true') },
+                      { key: 'track-order', icon: <ShopIcon path={SI.shopping} />, label: t('nav.trackOrder'), onClick: () => navigate('/track-order') },
                       ...(androidDownloadMenuItem ? [androidDownloadMenuItem] : []),
-                      { key: 'support', icon: <CustomerServiceOutlined />, label: t('nav.help'), onClick: openSupport },
-                      { key: 'compare', icon: <BarChartOutlined />, label: t('nav.ariaCompare'), onClick: () => navigate('/compare') },
-                      { key: 'history', icon: <HistoryOutlined />, label: t('nav.ariaHistory'), onClick: () => navigate('/history') },
-                      { key: 'alerts', icon: <AlertOutlined />, label: t('nav.ariaStockAlerts'), onClick: () => navigate('/stock-alerts') },
+                      { key: 'support', icon: <ShopIcon path={SI.support} />, label: t('nav.help'), onClick: openSupport },
+                      { key: 'compare', icon: <ShopIcon path={SI.barChart} />, label: t('nav.ariaCompare'), onClick: () => navigate('/compare') },
+                      { key: 'history', icon: <ShopIcon path={SI.history} />, label: t('nav.ariaHistory'), onClick: () => navigate('/history') },
+                      { key: 'alerts', icon: <ShopIcon path={SI.alert} />, label: t('nav.ariaStockAlerts'), onClick: () => navigate('/stock-alerts') },
                     ],
                   }}
                 >
                   <button type="button" className="shop-nav__secondary-action shop-nav__more-trigger" aria-label={utilityMenuBadgeLabel} title={utilityMenuBadgeLabel} aria-haspopup="menu" aria-expanded={isDropdownOpen('guest-more')}>
                     <Badge count={utilityMenuCount} size="small" overflowCount={99}>
-                      <EllipsisOutlined />
+                      <ShopIcon path={SI.ellipsis} />
                     </Badge>
                   </button>
                 </Dropdown>
@@ -1119,15 +1097,15 @@ const Navbar: React.FC = () => {
       </header>
       <nav className={bottomBarClassName} aria-label={t('home.categories')}>
         <Link to="/" className={location.pathname === '/' ? 'shop-nav__bottomItem shop-nav__bottomItem--home shop-nav__bottomItem--active' : 'shop-nav__bottomItem shop-nav__bottomItem--home'} aria-current={location.pathname === '/' ? 'page' : undefined}>
-          <HomeOutlined />
+          <ShopIcon path={SI.home} />
           <span>{t('nav.ariaHome')}</span>
         </Link>
         <Link to="/products" className={isProductsActive ? 'shop-nav__bottomItem shop-nav__bottomItem--products shop-nav__bottomItem--active' : 'shop-nav__bottomItem shop-nav__bottomItem--products'} aria-current={isProductsActive ? 'page' : undefined}>
-          <ShoppingOutlined />
+          <ShopIcon path={SI.shopping} />
           <span>{t('nav.products')}</span>
         </Link>
         <Link to="/coupons" className={isCouponsActive ? 'shop-nav__bottomItem shop-nav__bottomItem--coupons shop-nav__bottomItem--active' : 'shop-nav__bottomItem shop-nav__bottomItem--coupons'} aria-current={isCouponsActive ? 'page' : undefined}>
-          <GiftOutlined />
+          <ShopIcon path={SI.gift} />
           <span>{t('nav.coupons')}</span>
         </Link>
         <Link to="/cart" className={isCartActive ? 'shop-nav__bottomItem shop-nav__bottomItem--cart shop-nav__bottomItem--active' : 'shop-nav__bottomItem shop-nav__bottomItem--cart'} aria-label={cartBadgeLabel} title={cartBadgeLabel} aria-current={isCartActive ? 'page' : undefined}>
@@ -1137,7 +1115,7 @@ const Navbar: React.FC = () => {
         {!nativeBottomNav && showAndroidDownloadLink ? (
           androidApkUrl ? (
             <a href={androidApkUrl} download className="shop-nav__bottomItem shop-nav__bottomItem--app" aria-label={t('nav.downloadAndroid')} title={t('nav.downloadAndroid')}>
-              <DownloadOutlined />
+              <ShopIcon path={SI.download} />
               <span>{t('nav.mobileAppShort')}</span>
             </a>
           ) : (
@@ -1148,7 +1126,7 @@ const Navbar: React.FC = () => {
               aria-label={androidDownloadActionLabel}
               title={androidDownloadActionLabel}
             >
-              <DownloadOutlined />
+              <ShopIcon path={SI.download} />
               <span>{t('nav.mobileAppShort')}</span>
             </button>
           )
@@ -1158,7 +1136,7 @@ const Navbar: React.FC = () => {
           className={isAccountActive ? 'shop-nav__bottomItem shop-nav__bottomItem--account shop-nav__bottomItem--active' : 'shop-nav__bottomItem shop-nav__bottomItem--account'}
           aria-current={isAccountActive ? 'page' : undefined}
         >
-          <UserOutlined />
+          <ShopIcon path={SI.user} />
           <span>{bottomAccountLabel}</span>
         </Link>
       </nav>

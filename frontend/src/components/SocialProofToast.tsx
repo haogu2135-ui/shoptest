@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { CheckCircleOutlined } from '@ant-design/icons';
+import { ShopIcon, SI } from './ShopIcon';
 import { useLanguage } from '../i18n';
 import { conversionConfig, type SocialProofEvent } from '../utils/conversionConfig';
 import './SocialProofToast.css';
@@ -22,7 +22,7 @@ const SocialProofToast: React.FC = () => {
   const event = events[activeIndex];
   return (
     <aside className="social-proof-toast" aria-live="polite">
-      <span className="social-proof-toast__icon"><CheckCircleOutlined /></span>
+      <span className="social-proof-toast__icon"><ShopIcon path={SI.checkCircle} /></span>
       <span>
         <strong>{t('home.socialProofTitle')}</strong>
         <span>

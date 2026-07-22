@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Alert, Form, Input, Button, Card, Typography, message, Space, Tag } from 'antd';
+import { announceAccessibleMessage } from '../utils/accessibleMessage';
+import { ShopIcon, SI } from '../components/ShopIcon';
+import { Alert, Form, Input, Button, Card, Tag } from 'antd';
 import type { InputRef } from 'antd/es/input';
-import { UserOutlined, LockOutlined, MailOutlined, PhoneOutlined, SafetyCertificateOutlined, GiftOutlined, TruckOutlined, EyeOutlined, EyeInvisibleOutlined } from '@ant-design/icons';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { userApi } from '../api';
 import { useAppConfig } from '../hooks/useAppConfig';
@@ -21,7 +22,6 @@ import {
 } from '../utils/passwordPolicy';
 import './Register.css';
 
-const { Text, Title } = Typography;
 
 interface RegisterForm {
   username: string;
@@ -186,7 +186,7 @@ const Register: React.FC = () => {
     registerCodeSendingRef.current = true;
     try {
       if (!emailCodeEnabled) {
-        message.warning(t('pages.auth.emailCodeUnavailable'));
+        announceAccessibleMessage(t('pages.auth.emailCodeUnavailable'), 'warning');
         return;
       }
       const { email } = await form.validateFields(['email']);
@@ -203,7 +203,7 @@ const Register: React.FC = () => {
       form.setFieldValue('emailCode', '');
       form.setFields([{ name: 'emailCode', errors: [] }]);
       window.setTimeout(() => codeInputRef.current?.focus?.(), 0);
-      message.success(t('pages.auth.emailCodeSentTo', { email: maskEmail(normalizedEmail) }));
+      announceAccessibleMessage(t('pages.auth.emailCodeSentTo', { email: maskEmail(normalizedEmail) }), 'success');
     } catch (error: unknown) {
       if (!isFormValidationError(error)) {
         const errorCode = registerApiErrorCode(error);
@@ -215,7 +215,7 @@ const Register: React.FC = () => {
           : t('pages.auth.emailCodeSendFailed');
         setAuthBannerError(errorMessage);
         setAuthRecoveryKind(errorCode === 'RATE_LIMITED' ? 'rate_limited' : null);
-        message.error(errorMessage);
+        announceAccessibleMessage(errorMessage, 'error');
       }
     } finally {
       registerCodeSendingRef.current = false;
@@ -257,7 +257,7 @@ const Register: React.FC = () => {
       setSessionStorageItem('loginCandidates', JSON.stringify(loginCandidates));
       setAuthBannerError(null);
       setAuthRecoveryKind(null);
-      message.success(t('pages.auth.registerSuccess'));
+      announceAccessibleMessage(t('pages.auth.registerSuccess'), 'success');
       navigate(postRegisterRedirect ? buildLoginUrl(postRegisterRedirect) : '/login');
     } catch (error: unknown) {
       const responseData = registerApiErrorData(error);
@@ -278,7 +278,7 @@ const Register: React.FC = () => {
         form.setFields([{ name: 'emailCode', errors: [msg] }]);
         setAuthBannerError(msg);
         setAuthRecoveryKind(serverCode === 'TOO_MANY_ATTEMPTS' ? 'rate_limited' : null);
-        message.error(msg);
+        announceAccessibleMessage(msg, 'error');
         window.setTimeout(() => codeInputRef.current?.focus?.(), 0);
         return;
       }
@@ -299,7 +299,7 @@ const Register: React.FC = () => {
       }
       setAuthBannerError(msg);
       setAuthRecoveryKind(fieldError ? null : recoveryKind);
-      message.error(msg);
+      announceAccessibleMessage(msg, 'error');
     } finally {
       registeringRef.current = false;
       setRegistering(false);
@@ -316,31 +316,31 @@ const Register: React.FC = () => {
     <div className="register-page">
       <section className="register-page__panel">
         <div className="register-page__copy">
-          <Text className="register-page__eyebrow">{t('pages.auth.registerEyebrow')}</Text>
-          <Title level={1}>{t('pages.auth.registerHeroTitle')}</Title>
-          <Text>{t('pages.auth.registerHeroSubtitle')}</Text>
+          <p className="register-page__eyebrow">{t('pages.auth.registerEyebrow')}</p>
+          <h1 className="register-page__heroTitle">{t('pages.auth.registerHeroTitle')}</h1>
+          <p className="register-page__heroSubtitle">{t('pages.auth.registerHeroSubtitle')}</p>
           <div className="register-page__trustGrid">
-            <Tag icon={<SafetyCertificateOutlined />} color="green">{t('pages.auth.registerTrustSecure')}</Tag>
-            <Tag icon={<GiftOutlined />} color="orange">{t('pages.auth.registerTrustPerks')}</Tag>
-            <Tag icon={<TruckOutlined />} color="blue">{t('pages.auth.registerTrustTracking')}</Tag>
+            <Tag icon={<ShopIcon path={SI.safety} />} color="green">{t('pages.auth.registerTrustSecure')}</Tag>
+            <Tag icon={<ShopIcon path={SI.gift} />} color="orange">{t('pages.auth.registerTrustPerks')}</Tag>
+            <Tag icon={<ShopIcon path={SI.truck} />} color="blue">{t('pages.auth.registerTrustTracking')}</Tag>
           </div>
           <div className="register-page__featureCards">
             <div className="register-page__featureCard">
-              <SafetyCertificateOutlined />
+              <ShopIcon path={SI.safety} />
               <div>
                 <strong>{t('pages.auth.registerTrustSecure')}</strong>
                 <span>{t('pages.auth.registerPrivacyHint')}</span>
               </div>
             </div>
             <div className="register-page__featureCard">
-              <GiftOutlined />
+              <ShopIcon path={SI.gift} />
               <div>
                 <strong>{t('pages.auth.registerTrustPerks')}</strong>
                 <span>{t('pages.auth.registerHeroSubtitle')}</span>
               </div>
             </div>
             <div className="register-page__featureCard">
-              <TruckOutlined />
+              <ShopIcon path={SI.truck} />
               <div>
                 <strong>{t('pages.auth.registerTrustTracking')}</strong>
                 <span>{t('nav.trackOrder')}</span>
@@ -360,11 +360,11 @@ const Register: React.FC = () => {
       <Card className="register-page__card">
         <div className="register-page__cardHeader">
           <div className="register-page__brand">{t('common.brand')}</div>
-          <Text className="register-page__cardHint">{t('pages.auth.registerPrivacyHint')}</Text>
+          <p className="register-page__cardHint">{t('pages.auth.registerPrivacyHint')}</p>
         </div>
-        <Title level={2} className="register-page__title">
+        <h2 className="register-page__title">
           {t('pages.auth.registerTitle')}
-        </Title>
+        </h2>
         {authBannerError ? (
           <div
             className="register-page__errorRecovery"
@@ -436,7 +436,7 @@ const Register: React.FC = () => {
             ]}
           >
             <Input
-              prefix={<UserOutlined />}
+              prefix={<ShopIcon path={SI.user} />}
               placeholder={t('pages.auth.usernameShort')}
               autoComplete="username"
               inputMode="text"
@@ -457,7 +457,7 @@ const Register: React.FC = () => {
             ]}
           >
             <Input.Password
-              prefix={<LockOutlined />}
+              prefix={<ShopIcon path={SI.lock} />}
               placeholder={t('pages.auth.password')}
               autoComplete="new-password"
               maxLength={STRONG_PASSWORD_MAX_LENGTH}
@@ -471,7 +471,7 @@ const Register: React.FC = () => {
                   title={passwordVisibilityActionLabel(visible)}
                   style={{ border: 0, padding: 0, background: 'transparent', color: 'inherit', lineHeight: 0, cursor: 'pointer' }}
                 >
-                  {visible ? <EyeOutlined /> : <EyeInvisibleOutlined />}
+                  {visible ? <ShopIcon path={SI.eye} /> : <ShopIcon path={SI.eyeOff} />}
                 </button>
               )}
             />
@@ -494,7 +494,7 @@ const Register: React.FC = () => {
             ]}
           >
             <Input.Password
-              prefix={<LockOutlined />}
+              prefix={<ShopIcon path={SI.lock} />}
               placeholder={t('pages.auth.confirmPassword')}
               autoComplete="new-password"
               maxLength={128}
@@ -508,7 +508,7 @@ const Register: React.FC = () => {
                   title={confirmPasswordVisibilityActionLabel(visible)}
                   style={{ border: 0, padding: 0, background: 'transparent', color: 'inherit', lineHeight: 0, cursor: 'pointer' }}
                 >
-                  {visible ? <EyeOutlined /> : <EyeInvisibleOutlined />}
+                  {visible ? <ShopIcon path={SI.eye} /> : <ShopIcon path={SI.eyeOff} />}
                 </button>
               )}
             />
@@ -523,7 +523,7 @@ const Register: React.FC = () => {
             ]}
           >
             <Input
-              prefix={<MailOutlined />}
+              prefix={<ShopIcon path={SI.mail} />}
               placeholder={t('pages.auth.email')}
               autoComplete="email"
               inputMode="email"
@@ -537,15 +537,15 @@ const Register: React.FC = () => {
           {emailCodeRequired && (
             <>
               {emailCodeRequired && sentEmailHint && (
-                <Text type="secondary" className="register-page__codeHint">
+                <p className="register-page__codeHint register-page__codeHint--secondary">
                   {t('pages.auth.emailCodeSentTo', { email: sentEmailHint })}
                   {codeTtlMinutes > 0 ? ` · ${t('pages.auth.emailCodeExpiresIn', { minutes: codeTtlMinutes })}` : ''}
-                </Text>
+                </p>
               )}
               {emailCodeRequired && !emailCodeEnabled && !appConfigLoading && (
-                <Text type="warning" className="register-page__codeHint">
+                <p className="register-page__codeHint register-page__codeHint--warning">
                   {t('pages.auth.emailCodeUnavailable')}
-                </Text>
+                </p>
               )}
               <Form.Item
                 name="emailCode"
@@ -558,7 +558,7 @@ const Register: React.FC = () => {
               >
                 <Input
                   ref={codeInputRef}
-                  prefix={<SafetyCertificateOutlined />}
+                  prefix={<ShopIcon path={SI.safety} />}
                   placeholder={t('pages.auth.emailCodeRequired')}
                   autoComplete="one-time-code"
                   inputMode="numeric"
@@ -598,7 +598,7 @@ const Register: React.FC = () => {
             ]}
           >
             <Input
-              prefix={<PhoneOutlined />}
+              prefix={<ShopIcon path={SI.phone} />}
               placeholder={t('pages.auth.phonePlaceholder')}
               autoComplete="tel"
               inputMode="tel"
@@ -622,12 +622,12 @@ const Register: React.FC = () => {
             {t('pages.auth.registerAgreementSuffix')}
           </p>
 
-          <Space direction="vertical" className="register-page__footer">
-            <Text type="secondary">{t('pages.auth.registerPrivacyHint')}</Text>
+          <div className="register-page__footer">
+            <p className="register-page__footerHint">{t('pages.auth.registerPrivacyHint')}</p>
             <div>
               {t('pages.auth.alreadyAccount')}<Link to="/login">{t('pages.auth.loginNow')}</Link>
             </div>
-          </Space>
+          </div>
         </Form>
       </Card>
     </div>

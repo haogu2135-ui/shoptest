@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Card, Image, message, Popconfirm, Rate, Space, Spin, Switch, Table, Tag, Typography } from 'antd';
-import { CheckCircleOutlined, DeleteOutlined, FireOutlined, SettingOutlined, ShoppingCartOutlined, StarOutlined } from '@ant-design/icons';
+import { announceAccessibleMessage } from '../utils/accessibleMessage';
+import { ShopIcon, SI } from '../components/ShopIcon';
+import { Alert, Button, Card, Popconfirm, Rate, Spin, Switch, Table, Tag } from 'antd';
 import { Link, useNavigate } from 'react-router-dom';
 import { cartApi, productApi } from '../api';
 import { useLanguage } from '../i18n';
@@ -22,7 +23,6 @@ import PageError from '../components/PageError';
 import PageEmpty from '../components/PageEmpty';
 import './ProductCompare.css';
 
-const { Title, Text } = Typography;
 
 const compareImageFallback = productImageFallback;
 const resolveCompareImage = resolveProductImage;
@@ -124,7 +124,7 @@ const ProductCompare: React.FC = () => {
     } catch (error) {
       reportNonBlockingError('ProductCompare.fetchComparedProducts', error);
       setCompareLoadError(true);
-      message.error(t('pages.compare.loadFailed'));
+      announceAccessibleMessage(t('pages.compare.loadFailed'), 'error');
     } finally {
       setLoading(false);
     }
@@ -202,11 +202,11 @@ const ProductCompare: React.FC = () => {
 
   const addToCart = async (product: Product) => {
     if (compareActionsDisabled) {
-      message.warning(t('pages.compare.staleDataWarning'));
+      announceAccessibleMessage(t('pages.compare.staleDataWarning'), 'warning');
       return;
     }
     if (product.stock !== undefined && product.stock <= 0) {
-      message.error(t('pages.productDetail.insufficientStock'));
+      announceAccessibleMessage(t('pages.productDetail.insufficientStock'), 'error');
       return;
     }
     const token = getLocalStorageItem('token');
@@ -217,21 +217,21 @@ const ProductCompare: React.FC = () => {
       } else {
         addGuestCartItem({ ...product, imageUrl: resolveCompareImage(product.imageUrl) }, 1, undefined, getPrice(product));
       }
-      message.success(t('messages.addCartSuccess'));
+      announceAccessibleMessage(t('messages.addCartSuccess'), 'success');
       dispatchDomEvent('shop:open-cart');
     } catch (error) {
       reportNonBlockingError('ProductCompare.addToCart', error);
-      message.error(t('messages.addFailed'));
+      announceAccessibleMessage(t('messages.addFailed'), 'error');
     }
   };
 
   const addDirectReadyProductsToCart = async () => {
     if (compareActionsDisabled) {
-      message.warning(t('pages.compare.staleDataWarning'));
+      announceAccessibleMessage(t('pages.compare.staleDataWarning'), 'warning');
       return;
     }
     if (directReadyProducts.length === 0) {
-      message.info(t('pages.compare.recommendationEmpty'));
+      announceAccessibleMessage(t('pages.compare.recommendationEmpty'), 'info');
       return;
     }
     const token = getLocalStorageItem('token');
@@ -243,21 +243,21 @@ const ProductCompare: React.FC = () => {
         );
         const added = results.filter((result) => result.status === 'fulfilled').length;
         if (added === 0) {
-          message.error(t('messages.addFailed'));
+          announceAccessibleMessage(t('messages.addFailed'), 'error');
           return;
         }
         dispatchDomEvent('shop:cart-updated');
-        message.success(t('pages.wishlist.addedAllToCart', { count: added }));
+        announceAccessibleMessage(t('pages.wishlist.addedAllToCart', { count: added }), 'success');
       } else {
         directReadyProducts.forEach((product) => {
           addGuestCartItem({ ...product, imageUrl: resolveCompareImage(product.imageUrl) }, 1, undefined, getPrice(product));
         });
-        message.success(t('pages.wishlist.addedAllToCart', { count: directReadyProducts.length }));
+        announceAccessibleMessage(t('pages.wishlist.addedAllToCart', { count: directReadyProducts.length }), 'success');
       }
       dispatchDomEvent('shop:open-cart');
     } catch (error) {
       reportNonBlockingError('ProductCompare.addDirectReadyProductsToCart', error);
-      message.error(t('messages.addFailed'));
+      announceAccessibleMessage(t('messages.addFailed'), 'error');
     }
   };
 
@@ -292,10 +292,10 @@ const ProductCompare: React.FC = () => {
       key: `spec-${specKey}`,
       rawLabel: specLabel,
       label: (
-        <Space size={6} wrap>
+        <div className="product-compare__chipRow">
           <span>{specLabel}</span>
           {isDifferent ? <Tag color="red">{compareCopy.different}</Tag> : null}
-        </Space>
+        </div>
       ),
       isDifferent,
       render: (product: Product) => {
@@ -317,10 +317,10 @@ const ProductCompare: React.FC = () => {
   }), [compareCopy.different, compareCopy.missing, products, specKeys, t]);
 
   const renderAttributeLabel = (label: React.ReactNode, isDifferent?: boolean) => (
-    <Space size={6} wrap>
+    <div className="product-compare__chipRow">
       <span>{label}</span>
       {isDifferent ? <Tag color="red">{compareCopy.different}</Tag> : null}
-    </Space>
+    </div>
   );
 
   const priceDifferent = valuesDiffer(products, (product) => getPrice(product));
@@ -336,14 +336,19 @@ const ProductCompare: React.FC = () => {
       alwaysVisible: true,
       render: (product: Product) => (
         <Link to={`/products/${product.id}`}>
-          <Image
+          <img
+            className="product-compare__image"
             src={resolveCompareImage(product.imageUrl)}
             alt={compareProductName(product)}
             width={120}
             height={120}
-            preview={false}
-            fallback={compareImageFallback}
-            className="product-compare__image"
+            loading="lazy"
+            decoding="async"
+            onError={(event) => {
+              if (event.currentTarget.src !== compareImageFallback) {
+                event.currentTarget.src = compareImageFallback;
+              }
+            }}
           />
         </Link>
       ),
@@ -362,12 +367,12 @@ const ProductCompare: React.FC = () => {
       label: renderAttributeLabel(t('pages.compare.price'), priceDifferent),
       isDifferent: priceDifferent,
       render: (product: Product) => (
-        <Space direction="vertical" size={0}>
-          <Text strong className="commerce-money" style={{ color: '#ee4d2d' }}>{formatMoney(getPrice(product))}</Text>
+        <div className="product-compare__stackTight">
+          <span className="product-compare-page__text product-compare-page__text--strong commerce-money" style={{ color: '#ee4d2d' }}>{formatMoney(getPrice(product))}</span>
           {product.originalPrice && product.originalPrice > getPrice(product) ? (
-            <Text delete type="secondary" className="commerce-money">{formatMoney(product.originalPrice)}</Text>
+            <span className="product-compare-page__text product-compare-page__text--delete product-compare-page__text--secondary commerce-money">{formatMoney(product.originalPrice)}</span>
           ) : null}
-        </Space>
+        </div>
       ),
     },
     {
@@ -375,10 +380,10 @@ const ProductCompare: React.FC = () => {
       label: renderAttributeLabel(t('pages.compare.rating'), ratingDifferent),
       isDifferent: ratingDifferent,
       render: (product: Product) => (
-        <Space direction="vertical" size={0}>
+        <div className="product-compare__stackTight">
           <Rate disabled allowHalf value={Number(product.averageRating || 0)} />
-          <Text type="secondary">{t('pages.productList.positiveRate', { rate: (product.positiveRate || 0).toFixed(1), count: product.reviewCount || 0 })}</Text>
-        </Space>
+          <span className="product-compare-page__text product-compare-page__text--secondary">{t('pages.productList.positiveRate', { rate: (product.positiveRate || 0).toFixed(1), count: product.reviewCount || 0 })}</span>
+        </div>
       ),
     },
     {
@@ -412,11 +417,11 @@ const ProductCompare: React.FC = () => {
         const addActionLabel = `${addActionText}: ${productName}`;
         const removeActionLabel = `${t('pages.compare.remove')}: ${productName}`;
         return (
-          <Space direction="vertical">
+          <div className="product-compare__stack">
             {needsSelection && !isSoldOut ? (
               <Button
                 type="primary"
-                icon={<SettingOutlined />}
+                icon={<ShopIcon path={SI.settings} />}
                 aria-label={selectActionLabel}
                 title={selectActionLabel}
                 disabled={compareActionsDisabled}
@@ -427,7 +432,7 @@ const ProductCompare: React.FC = () => {
             ) : (
               <Button
                 type="primary"
-                icon={<ShoppingCartOutlined />}
+                icon={<ShopIcon path={SI.cart} />}
                 className={isSoldOut ? 'product-compare__soldoutButton' : undefined}
                 aria-label={addActionLabel}
                 title={addActionLabel}
@@ -437,10 +442,10 @@ const ProductCompare: React.FC = () => {
                 {addActionText}
               </Button>
             )}
-            <Button icon={<DeleteOutlined />} aria-label={removeActionLabel} title={removeActionLabel} onClick={() => removeProduct(product.id)}>
+            <Button icon={<ShopIcon path={SI.delete} />} aria-label={removeActionLabel} title={removeActionLabel} onClick={() => removeProduct(product.id)}>
               {t('pages.compare.remove')}
             </Button>
-          </Space>
+          </div>
         );
       },
     },
@@ -478,7 +483,7 @@ const ProductCompare: React.FC = () => {
       fixed: 'left' as const,
       width: 150,
       onCell: () => ({ 'data-label': compareAttributeHeader } as React.TdHTMLAttributes<HTMLElement>),
-      render: (value: React.ReactNode) => <Text strong className="product-compare__attribute">{value}</Text>,
+      render: (value: React.ReactNode) => <span className="product-compare-page__text product-compare-page__text--strong product-compare__attribute">{value}</span>,
     },
     ...products.map((product) => {
       const productName = compareProductName(product);
@@ -497,13 +502,13 @@ const ProductCompare: React.FC = () => {
       <Card>
         <div className="product-compare__header">
           <div>
-            <Title level={1} style={{ margin: 0 }}>{t('pages.compare.title')}</Title>
-            <Text type="secondary">{t('pages.compare.subtitle', { count: selectedCompareCount })}</Text>
+            <h1 className="product-compare-page__title" style={{ margin: 0 }}>{t('pages.compare.title')}</h1>
+            <span className="product-compare-page__text product-compare-page__text--secondary">{t('pages.compare.subtitle', { count: selectedCompareCount })}</span>
           </div>
-          <Space wrap className="product-compare__headerActions">
+          <div className="product-compare__headerActions">
             <Button
               type="primary"
-              icon={<ShoppingCartOutlined />}
+              icon={<ShopIcon path={SI.cart} />}
               disabled={directReadyProducts.length === 0 || compareActionsDisabled}
               aria-label={compareAddAllActionLabel}
               title={compareAddAllActionLabel}
@@ -523,7 +528,7 @@ const ProductCompare: React.FC = () => {
             >
               <Button danger disabled={products.length === 0 && compareLoadAttemptCount === 0} aria-label={compareClearActionLabel} title={compareClearActionLabel}>{t('pages.compare.clear')}</Button>
             </Popconfirm>
-          </Space>
+          </div>
         </div>
         {loading ? (
           <div
@@ -620,7 +625,7 @@ const ProductCompare: React.FC = () => {
                 message={t('pages.compare.loadErrorTitle')}
                 description={t('pages.compare.staleDataWarning')}
                 action={(
-                  <Space wrap className="product-compare__staleActions" data-compare-stale-actions="true">
+                  <div className="product-compare__staleActions" data-compare-stale-actions="true">
                     <Button size="small" type="primary" onClick={fetchComparedProducts} loading={loading}>
                       {t('common.retry')}
                     </Button>
@@ -633,62 +638,62 @@ const ProductCompare: React.FC = () => {
                     <Button size="small" onClick={() => navigate('/coupons')}>
                       {t('pages.compare.emptyCoupons')}
                     </Button>
-                  </Space>
+                  </div>
                 )}
               />
             ) : null}
             <div className="product-compare__toolbar">
               <div className="product-compare__diff-summary">
-                <Text strong>{compareCopy.detailDifferences}</Text>
-                <Text type="secondary">
+                <span className="product-compare-page__text product-compare-page__text--strong">{compareCopy.detailDifferences}</span>
+                <span className="product-compare-page__text product-compare-page__text--secondary">
                   {differentRows.length > 0
                     ? compareCopy.summary(differentRows.length)
                     : compareCopy.noDifferences}
-                </Text>
+                </span>
                 {differentSpecNames.length > 0 ? (
                   <div className="product-compare__diff-tags">
                     {differentSpecNames.slice(0, 8).map((name) => <Tag key={name} color="red">{name}</Tag>)}
                   </div>
                 ) : null}
               </div>
-              <Space className="product-compare__difference-toggle">
-                <Text>{compareCopy.onlyDifferent}</Text>
+              <div className="product-compare__difference-toggle">
+                <span className="product-compare-page__text">{compareCopy.onlyDifferent}</span>
                 <Switch
                   checked={showOnlyDifferences}
                   aria-label={compareDifferenceToggleLabel}
                   title={compareDifferenceToggleLabel}
                   onChange={setShowOnlyDifferences}
                 />
-              </Space>
+              </div>
             </div>
             <section className="product-compare__decision" aria-label={t('pages.compare.decisionTitle')}>
               <div className="product-compare__decisionCopy">
-                <Text className="product-compare__eyebrow">{t('pages.compare.decisionEyebrow')}</Text>
-                <Title level={4}>{t('pages.compare.decisionTitle')}</Title>
-                <Text type="secondary">
+                <span className="product-compare-page__text product-compare__eyebrow">{t('pages.compare.decisionEyebrow')}</span>
+                <h4 className="product-compare-page__title">{t('pages.compare.decisionTitle')}</h4>
+                <span className="product-compare-page__text product-compare-page__text--secondary">
                   {compareDecision.bestValue
                     ? t('pages.compare.decisionSubtitleBest', { name: compareProductName(compareDecision.bestValue) })
                     : t('pages.compare.decisionSubtitle')}
-                </Text>
+                </span>
               </div>
               <div className="product-compare__decisionGrid">
                 <div className="product-compare__decisionItem is-ok">
-                  <CheckCircleOutlined />
+                  <ShopIcon path={SI.checkCircle} />
                   <strong>{compareDecision.readyCount}</strong>
                   <span>{t('pages.compare.readyToBuy')}</span>
                 </div>
                 <div className="product-compare__decisionItem is-warm">
-                  <FireOutlined />
+                  <ShopIcon path={SI.fire} />
                   <strong className="commerce-money">{compareDecision.bestValue ? formatMoney(getPrice(compareDecision.bestValue)) : '-'}</strong>
                   <span>{t('pages.compare.bestValue')}</span>
                 </div>
                 <div className="product-compare__decisionItem is-ok">
-                  <StarOutlined />
+                  <ShopIcon path={SI.starOutline} />
                   <strong>{compareDecision.topRated ? Number(compareDecision.topRated.averageRating || 0).toFixed(1) : '-'}</strong>
                   <span>{t('pages.compare.topRated')}</span>
                 </div>
                 <div className={`product-compare__decisionItem ${compareDecision.lowStock ? 'is-risk' : 'is-ok'}`}>
-                  <FireOutlined />
+                  <ShopIcon path={SI.fire} />
                   <strong>{compareDecision.lowStock}</strong>
                   <span>{t('pages.compare.lowStock')}</span>
                 </div>
@@ -696,21 +701,21 @@ const ProductCompare: React.FC = () => {
             </section>
             <section className="product-compare__recommendation" aria-label={t('pages.compare.recommendationTitle')}>
               <div className="product-compare__recommendationMain">
-                <Text className="product-compare__eyebrow">{t('pages.compare.recommendationEyebrow')}</Text>
-                <Title level={4}>
+                <span className="product-compare-page__text product-compare__eyebrow">{t('pages.compare.recommendationEyebrow')}</span>
+                <h4 className="product-compare-page__title">
                   {compareDecision.recommended
                     ? t('pages.compare.recommendationTitleWithName', { name: compareProductName(compareDecision.recommended) })
                     : t('pages.compare.recommendationTitle')}
-                </Title>
-                <Text type="secondary">
+                </h4>
+                <span className="product-compare-page__text product-compare-page__text--secondary">
                   {compareDecision.recommended
                     ? t('pages.compare.recommendationSubtitle', {
                       price: formatMoney(getPrice(compareDecision.recommended)),
                       rating: Number(compareDecision.recommended.averageRating || 0).toFixed(1),
                     })
                     : t('pages.compare.recommendationEmpty')}
-                </Text>
-                <Space wrap>
+                </span>
+                <div className="product-compare__chipRow">
                   {compareDecision.recommended ? (
                     (() => {
                       const recommended = compareDecision.recommended!;
@@ -718,11 +723,11 @@ const ProductCompare: React.FC = () => {
                       const selectActionLabel = `${t('pages.wishlist.selectOptions')}: ${productName}`;
                       const addActionLabel = `${t('pages.compare.addRecommended')}: ${productName}`;
                       return needsOptionSelection(recommended) ? (
-                        <Button type="primary" icon={<SettingOutlined />} aria-label={selectActionLabel} title={selectActionLabel} disabled={compareActionsDisabled} onClick={() => navigate(`/products/${recommended.id}`)}>
+                        <Button type="primary" icon={<ShopIcon path={SI.settings} />} aria-label={selectActionLabel} title={selectActionLabel} disabled={compareActionsDisabled} onClick={() => navigate(`/products/${recommended.id}`)}>
                           {t('pages.wishlist.selectOptions')}
                         </Button>
                       ) : (
-                        <Button type="primary" icon={<ShoppingCartOutlined />} aria-label={addActionLabel} title={addActionLabel} disabled={compareActionsDisabled} onClick={() => addToCart(recommended)}>
+                        <Button type="primary" icon={<ShopIcon path={SI.cart} />} aria-label={addActionLabel} title={addActionLabel} disabled={compareActionsDisabled} onClick={() => addToCart(recommended)}>
                           {t('pages.compare.addRecommended')}
                         </Button>
                       );
@@ -730,7 +735,7 @@ const ProductCompare: React.FC = () => {
                   ) : null}
                   {directReadyProducts.length > 1 ? (
                     <Button
-                      icon={<ShoppingCartOutlined />}
+                      icon={<ShopIcon path={SI.cart} />}
                       aria-label={compareAddAllActionLabel}
                       title={compareAddAllActionLabel}
                       disabled={compareActionsDisabled}
@@ -740,7 +745,7 @@ const ProductCompare: React.FC = () => {
                     </Button>
                   ) : null}
                   <Button aria-label={compareAddMoreActionLabel} title={compareAddMoreActionLabel} onClick={() => navigate('/products')}>{t('pages.compare.addMore')}</Button>
-                </Space>
+                </div>
               </div>
               <div className="product-compare__riskGrid">
                 <div>
@@ -760,20 +765,20 @@ const ProductCompare: React.FC = () => {
             {compareDecision.recommended ? (
               <section className="product-compare__checkoutPath" aria-label={t('pages.compare.checkoutPathTitle')}>
                 <div className="product-compare__checkoutCopy">
-                  <Text className="product-compare__eyebrow">{t('pages.compare.checkoutPathEyebrow')}</Text>
-                  <Title level={4}>{t('pages.compare.checkoutPathTitle')}</Title>
-                  <Text type="secondary">
+                  <span className="product-compare-page__text product-compare__eyebrow">{t('pages.compare.checkoutPathEyebrow')}</span>
+                  <h4 className="product-compare-page__title">{t('pages.compare.checkoutPathTitle')}</h4>
+                  <span className="product-compare-page__text product-compare-page__text--secondary">
                     {t('pages.compare.checkoutPathSubtitle', { name: compareProductName(compareDecision.recommended) })}
-                  </Text>
+                  </span>
                 </div>
                 <div className="product-compare__checkoutSteps">
-                  <span className="is-ready"><CheckCircleOutlined /> {t('pages.compare.checkoutStepAvailable')}</span>
+                  <span className="is-ready"><ShopIcon path={SI.checkCircle} /> {t('pages.compare.checkoutStepAvailable')}</span>
                   <span className={compareDecision.recommendedNeedsSelection ? 'is-warm' : 'is-ready'}>
-                    {compareDecision.recommendedNeedsSelection ? <SettingOutlined /> : <CheckCircleOutlined />}
+                    {compareDecision.recommendedNeedsSelection ? <ShopIcon path={SI.settings} /> : <ShopIcon path={SI.checkCircle} />}
                     {compareDecision.recommendedNeedsSelection ? t('pages.compare.checkoutStepOptions') : t('pages.compare.checkoutStepNoOptions')}
                   </span>
                   <span className={compareDecision.recommendedLowStock ? 'is-risk' : 'is-ready'}>
-                    {compareDecision.recommendedLowStock ? <FireOutlined /> : <CheckCircleOutlined />}
+                    {compareDecision.recommendedLowStock ? <ShopIcon path={SI.fire} /> : <ShopIcon path={SI.checkCircle} />}
                     {compareDecision.recommendedLowStock ? t('pages.compare.checkoutStepLowStock') : t('pages.compare.checkoutStepStock')}
                   </span>
                 </div>
@@ -782,7 +787,7 @@ const ProductCompare: React.FC = () => {
                     const productName = compareProductName(compareDecision.recommended!);
                     const selectActionLabel = `${t('pages.wishlist.selectOptions')}: ${productName}`;
                     return (
-                      <Button type="primary" icon={<SettingOutlined />} aria-label={selectActionLabel} title={selectActionLabel} disabled={compareActionsDisabled} onClick={() => navigate(`/products/${compareDecision.recommended!.id}`)}>
+                      <Button type="primary" icon={<ShopIcon path={SI.settings} />} aria-label={selectActionLabel} title={selectActionLabel} disabled={compareActionsDisabled} onClick={() => navigate(`/products/${compareDecision.recommended!.id}`)}>
                         {t('pages.wishlist.selectOptions')}
                       </Button>
                     );
@@ -792,7 +797,7 @@ const ProductCompare: React.FC = () => {
                     const productName = compareProductName(compareDecision.recommended!);
                     const addActionLabel = `${t('pages.compare.checkoutPathCta')}: ${productName}`;
                     return (
-                      <Button type="primary" icon={<ShoppingCartOutlined />} aria-label={addActionLabel} title={addActionLabel} disabled={compareActionsDisabled} onClick={() => addToCart(compareDecision.recommended!)}>
+                      <Button type="primary" icon={<ShopIcon path={SI.cart} />} aria-label={addActionLabel} title={addActionLabel} disabled={compareActionsDisabled} onClick={() => addToCart(compareDecision.recommended!)}>
                         {t('pages.compare.checkoutPathCta')}
                       </Button>
                     );

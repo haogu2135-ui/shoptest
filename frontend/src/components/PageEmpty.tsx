@@ -1,6 +1,6 @@
 import React from 'react';
+import { ShopIcon, SI } from './ShopIcon';
 import { Button, Empty } from 'antd';
-import { HomeOutlined, ShoppingOutlined } from '@ant-design/icons';
 import './PageFeedback.css';
 
 export type PageEmptyAction = {
@@ -49,7 +49,7 @@ const PageEmpty: React.FC<PageEmptyProps> = ({
               <Button
                 key={action.key}
                 type={action.type || (index === 0 ? 'primary' : 'default')}
-                icon={action.icon || (index === 0 ? <ShoppingOutlined /> : <HomeOutlined />)}
+                icon={action.icon || (index === 0 ? <ShopIcon path={SI.shopping} /> : <ShopIcon path={SI.home} />)}
                 aria-label={action.label}
                 title={action.label}
                 onClick={action.onClick}

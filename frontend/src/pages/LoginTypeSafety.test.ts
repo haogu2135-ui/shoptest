@@ -16,7 +16,8 @@ describe('Login type-safety guard', () => {
     expect(source).toContain('type LoginSessionResponse = Parameters<typeof persistAuthSession>[0]');
     expect(source).toContain('const asApiError = (error: unknown): ApiErrorLike =>');
     expect(source).toContain('const apiErrorCode = (error: unknown)');
-    expect(source).toContain('const resolvePasswordLoginError = (error: unknown');
+    expect(source).toContain('const resolvePasswordLoginError = (');
+    expect(source).toContain('error: unknown');
     expect(source).toContain('const shouldTryNextLoginCandidate = (error: unknown)');
     expect(source).toContain('const codeInputRef = useRef<InputRef | null>(null);');
     expect(source).toContain('const completeLogin = async (responseData: LoginSessionResponse) =>');

@@ -1,7 +1,8 @@
 import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { announceAccessibleMessage } from '../utils/accessibleMessage';
+import { ShopIcon, SI } from '../components/ShopIcon';
 import { useParams, useSearchParams } from 'react-router-dom';
-import { Row, Col, Card, Button, Tag, Typography, Radio, Rate, Carousel, Modal, Space, Breadcrumb, Tabs, message, List, Input, Segmented, Alert } from 'antd';
-import { BarChartOutlined, HomeOutlined, ShoppingCartOutlined, HeartOutlined, HeartFilled, CheckCircleOutlined, TruckOutlined, SafetyCertificateOutlined, ThunderboltOutlined, BellOutlined, MinusOutlined, PlusOutlined, EllipsisOutlined } from '@ant-design/icons';
+import { Card, Button, Tag, Radio, Rate, Carousel, Modal, Breadcrumb, Tabs, List, Input, Segmented, Alert } from 'antd';
 import { productApi, cartApi, reviewApi, wishlistApi, questionApi } from '../api';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../i18n';
@@ -55,7 +56,6 @@ import type { GalleryTouchPoint, ProductRecommendationCandidate } from './produc
 import './ProductDetail.css';
 import '../styles/mobile-page-contrast.css';
 
-const { Title, Text } = Typography;
 const ProductRichDetail = React.lazy(() => import('../components/ProductRichDetail'));
 const ProductReview = React.lazy(() => import('../components/ProductReview').then((module) => ({ default: module.ProductReview })));
 
@@ -518,12 +518,12 @@ const ProductDetail: React.FC = () => {
   const validateOptions = () => {
     const missing = optionGroups.find((group) => !selectedOptions[group.name]);
     if (missing) {
-      message.warning(t('pages.productDetail.selectOption', { option: missing.name }));
+      announceAccessibleMessage(t('pages.productDetail.selectOption', { option: missing.name }), 'warning');
       focusOptionsSection();
       return false;
     }
     if (variants.length > 0 && !selectedVariant) {
-      message.warning(t('pages.productDetail.variantUnavailable'));
+      announceAccessibleMessage(t('pages.productDetail.variantUnavailable'), 'warning');
       focusOptionsSection();
       return false;
     }
@@ -855,7 +855,7 @@ const ProductDetail: React.FC = () => {
     try {
       if (!validateOptions()) return;
       if (selectedStock !== undefined && selectedStock < quantity) {
-        message.error(t('pages.productDetail.insufficientStock'));
+        announceAccessibleMessage(t('pages.productDetail.insufficientStock'), 'error');
         return;
       }
       const specs = optionGroups.length || purchaseMode !== 'once' ? selectedSpecsPayload : undefined;
@@ -867,14 +867,14 @@ const ProductDetail: React.FC = () => {
       } else {
         const cartItem = addGuestCartItem(buildCartProductSnapshot(), quantity, specs, displayPrice);
         if (!cartItem) {
-          message.error(t('messages.addFailed'));
+          announceAccessibleMessage(t('messages.addFailed'), 'error');
           return;
         }
       }
-      message.success(t('messages.addCartSuccess'));
+      announceAccessibleMessage(t('messages.addCartSuccess'), 'success');
       dispatchDomEvent('shop:open-cart');
     } catch (err: unknown) {
-      message.error(getApiErrorMessage(err, t('messages.addFailed'), language));
+      announceAccessibleMessage(getApiErrorMessage(err, t('messages.addFailed'), language), 'error');
     } finally {
       purchaseRequestKeyRef.current = null;
       setPurchaseSubmitting(null);
@@ -894,7 +894,7 @@ const ProductDetail: React.FC = () => {
     try {
       if (!validateOptions()) return;
       if (selectedStock !== undefined && selectedStock < quantity) {
-        message.error(t('pages.productDetail.insufficientStock'));
+        announceAccessibleMessage(t('pages.productDetail.insufficientStock'), 'error');
         return;
       }
       const specs = optionGroups.length || purchaseMode !== 'once' ? selectedSpecsPayload : undefined;
@@ -909,13 +909,13 @@ const ProductDetail: React.FC = () => {
           syncCheckoutCartItemIds([cartItem]);
         } else {
           clearCheckoutCartItemIds();
-          message.error(t('messages.operationFailed'));
+          announceAccessibleMessage(t('messages.operationFailed'), 'error');
           return;
         }
       } else {
         const cartItem = addGuestCartItem(buildCartProductSnapshot(), quantity, specs, displayPrice);
         if (!cartItem) {
-          message.error(t('messages.operationFailed'));
+          announceAccessibleMessage(t('messages.operationFailed'), 'error');
           return;
         }
         syncCheckoutCartItemIds([cartItem]);
@@ -923,7 +923,7 @@ const ProductDetail: React.FC = () => {
       removeSessionStorageItem('checkoutPaymentMethod');
       navigate('/checkout');
     } catch (err: unknown) {
-      message.error(getApiErrorMessage(err, t('messages.operationFailed'), language));
+      announceAccessibleMessage(getApiErrorMessage(err, t('messages.operationFailed'), language), 'error');
     } finally {
       purchaseRequestKeyRef.current = null;
       setPurchaseSubmitting(null);
@@ -933,7 +933,7 @@ const ProductDetail: React.FC = () => {
   const handleFavorite = async () => {
     const token = getLocalStorageItem('token');
     if (!token) {
-      message.warning(t('messages.loginRequired'));
+      announceAccessibleMessage(t('messages.loginRequired'), 'warning');
       navigate(buildLoginUrlFromWindow());
       return;
     }
@@ -941,9 +941,9 @@ const ProductDetail: React.FC = () => {
       const res = await wishlistApi.toggle(0, Number(id));
       setIsWishlisted(res.data.wishlisted);
       dispatchDomEvent('shop:wishlist-updated');
-      message.success(res.data.wishlisted ? t('pages.productDetail.favoritedMsg') : t('pages.productDetail.unfavoritedMsg'));
+      announceAccessibleMessage(res.data.wishlisted ? t('pages.productDetail.favoritedMsg') : t('pages.productDetail.unfavoritedMsg'), 'success');
     } catch (err: unknown) {
-      message.error(getApiErrorMessage(err, t('messages.operationFailed'), language));
+      announceAccessibleMessage(getApiErrorMessage(err, t('messages.operationFailed'), language), 'error');
     }
   };
 
@@ -955,12 +955,12 @@ const ProductDetail: React.FC = () => {
     if (isAlerted) {
       removeStockAlert(Number(id));
       setIsAlerted(false);
-      message.success(t('pages.stockAlerts.removed'));
+      announceAccessibleMessage(t('pages.stockAlerts.removed'), 'success');
       return;
     }
     const result = addStockAlert(currentProduct);
     setIsAlerted(true);
-    message.success(result.status === 'exists' ? t('pages.stockAlerts.exists') : t('pages.stockAlerts.added'));
+    announceAccessibleMessage(result.status === 'exists' ? t('pages.stockAlerts.exists') : t('pages.stockAlerts.added'), 'success');
   };
 
   const handleCompare = () => {
@@ -970,11 +970,11 @@ const ProductDetail: React.FC = () => {
     }
     const result = addCompareProduct(currentProduct);
     if (result.status === 'full') {
-      message.warning(t('pages.productList.compareFull', { count: MAX_COMPARE_ITEMS }));
+      announceAccessibleMessage(t('pages.productList.compareFull', { count: MAX_COMPARE_ITEMS }), 'warning');
       return;
     }
     setIsCompared(true);
-    message.success(result.status === 'exists' ? t('pages.productList.compareExists') : t('pages.productList.compareAdded'));
+    announceAccessibleMessage(result.status === 'exists' ? t('pages.productList.compareExists') : t('pages.productList.compareAdded'), 'success');
     navigate('/compare');
   };
 
@@ -991,12 +991,12 @@ const ProductDetail: React.FC = () => {
 
   const handleAskQuestion = async () => {
     if (!hasStoredValue('token')) {
-      message.warning(t('messages.loginRequired'));
+      announceAccessibleMessage(t('messages.loginRequired'), 'warning');
       navigate(buildLoginUrlFromWindow());
       return;
     }
     if (!normalizeQuestionText(questionText)) {
-      message.warning(t('pages.ask.emptyQuestion'));
+      announceAccessibleMessage(t('pages.ask.emptyQuestion'), 'warning');
       return;
     }
     const requestSeq = nonCriticalRequestSeqRef.current;
@@ -1015,10 +1015,10 @@ const ProductDetail: React.FC = () => {
       ]);
       setQuestionText('');
       await fetchQuestions(requestSeq);
-      message.success(t('pages.ask.pendingTitle'));
+      announceAccessibleMessage(t('pages.ask.pendingTitle'), 'success');
     } catch (err: unknown) {
       if (!isCurrentNonCriticalRequest(requestSeq)) return;
-      message.error(getApiErrorMessage(err, t('pages.ask.askFailed'), language));
+      announceAccessibleMessage(getApiErrorMessage(err, t('pages.ask.askFailed'), language), 'error');
     } finally {
       if (isCurrentNonCriticalRequest(requestSeq)) {
         setQuestionSubmitting(false);
@@ -1254,7 +1254,7 @@ const ProductDetail: React.FC = () => {
   const decisionChecklist = [
     {
       key: 'options',
-      icon: <CheckCircleOutlined />,
+      icon: <ShopIcon path={SI.checkCircle} />,
       // Commercial trust: never mark options "ready to add" when the SKU is sold out.
       ready: !isOutOfStock && (optionGroups.length === 0 || (hasCompleteOptions && !hasUnavailableSelectedVariant)),
       title: isOutOfStock
@@ -1274,7 +1274,7 @@ const ProductDetail: React.FC = () => {
     },
     {
       key: 'stock',
-      icon: <SafetyCertificateOutlined />,
+      icon: <ShopIcon path={SI.safety} />,
       ready: !isOutOfStock && !isLowStock,
       title: isOutOfStock
         ? t('pages.productDetail.decisionStockOutTitle')
@@ -1289,7 +1289,7 @@ const ProductDetail: React.FC = () => {
     },
     {
       key: 'delivery',
-      icon: <TruckOutlined />,
+      icon: <ShopIcon path={SI.truck} />,
       ready: Boolean(deliveryPromise.enabled),
       title: t('pages.productDetail.decisionDeliveryTitle'),
       text: deliveryPromise.enabled
@@ -1298,7 +1298,7 @@ const ProductDetail: React.FC = () => {
     },
     {
       key: 'value',
-      icon: purchaseSavings > 0 || discountPercent > 0 ? <ThunderboltOutlined /> : <CheckCircleOutlined />,
+      icon: purchaseSavings > 0 || discountPercent > 0 ? <ShopIcon path={SI.thunder} /> : <ShopIcon path={SI.checkCircle} />,
       ready: true,
       title: purchaseSavings > 0 || discountPercent > 0
         ? t('pages.productDetail.decisionValueDealTitle')
@@ -1350,11 +1350,11 @@ const ProductDetail: React.FC = () => {
       return;
     }
     if (isRecommendationUnavailable(item)) {
-      message.warning(t('pages.productDetail.soldOut'));
+      announceAccessibleMessage(t('pages.productDetail.soldOut'), 'warning');
       return;
     }
     if (needsOptionSelection(item)) {
-      message.info(t('pages.wishlist.selectOptions'));
+      announceAccessibleMessage(t('pages.wishlist.selectOptions'), 'info');
       navigate(`/products/${item.id}`);
       return;
     }
@@ -1369,10 +1369,10 @@ const ProductDetail: React.FC = () => {
       } else {
         addGuestCartItem(item, 1, undefined, item.effectivePrice ?? item.price);
       }
-      message.success(t('messages.addCartSuccess'));
+      announceAccessibleMessage(t('messages.addCartSuccess'), 'success');
       dispatchDomEvent('shop:open-cart');
     } catch (err: unknown) {
-      message.error(getApiErrorMessage(err, t('messages.addFailed'), language));
+      announceAccessibleMessage(getApiErrorMessage(err, t('messages.addFailed'), language), 'error');
     } finally {
       recommendationRequestIdsRef.current.delete(recommendationId);
       setRecommendationAddingId(null);
@@ -1412,7 +1412,7 @@ const ProductDetail: React.FC = () => {
   const purchaseReadinessItems = [
     {
       key: 'selection',
-      icon: <CheckCircleOutlined />,
+      icon: <ShopIcon path={SI.checkCircle} />,
       // Commercial trust: sold-out SKUs must never claim "ready to add" / direct-add copy.
       ready: !isOutOfStock && !purchaseSelectionBlocked,
       title: isOutOfStock
@@ -1434,7 +1434,7 @@ const ProductDetail: React.FC = () => {
     },
     {
       key: 'stock',
-      icon: <SafetyCertificateOutlined />,
+      icon: <ShopIcon path={SI.safety} />,
       ready: !isOutOfStock && !isLowStock,
       title: isOutOfStock
         ? t('pages.productDetail.decisionStockOutTitle')
@@ -1449,7 +1449,7 @@ const ProductDetail: React.FC = () => {
     },
     {
       key: 'delivery',
-      icon: <TruckOutlined />,
+      icon: <ShopIcon path={SI.truck} />,
       ready: Boolean(deliveryPromise.enabled),
       title: t('pages.productDetail.trustShippingTitle'),
       text: deliveryPromise.enabled
@@ -1458,7 +1458,7 @@ const ProductDetail: React.FC = () => {
     },
     {
       key: 'value',
-      icon: <ThunderboltOutlined />,
+      icon: <ShopIcon path={SI.thunder} />,
       ready: true,
       title: purchaseSavings > 0 ? t('pages.productDetail.purchaseSavings') : t('pages.productDetail.purchaseSubtotal'),
       text: purchaseSavings > 0 ? formatMoney(purchaseSavings) : formatMoney(purchaseSubtotal),
@@ -1563,7 +1563,7 @@ const ProductDetail: React.FC = () => {
                   title={t('nav.ariaHome')}
                   onClick={() => navigate('/')}
                 >
-                  <HomeOutlined />
+                  <ShopIcon path={SI.home} />
                 </button>
               ),
             },
@@ -1584,9 +1584,9 @@ const ProductDetail: React.FC = () => {
           ]}
         />
 
-        <Row gutter={24}>
+        <div className="product-detail__layout">
           {/* Product media gallery */}
-          <Col span={12}>
+          <div className="product-detail__gallery">
             <Card className="product-gallery-card">
               <div
                 className="product-detail-main-image"
@@ -1771,30 +1771,30 @@ const ProductDetail: React.FC = () => {
                 </div>
               )}
             </Card>
-          </Col>
+          </div>
 
           {/* Product purchase summary */}
-          <Col span={12}>
+          <div className="product-detail__summary">
             <Card className="product-summary-card">
-              <Space direction="vertical" size="large" className="product-summary-space">
+              <div className="product-summary-space">
                 <div className="product-title-block">
-                  <Title level={1}>{productName}</Title>
+                  <h1 className="product-detail-page__title">{productName}</h1>
                   {product.brand && (
-                    <Text type="secondary" className="product-brand-text">{t('pages.productDetail.brand')}: {product.brand}</Text>
+                    <span className="product-detail-page__text product-detail-page__text--secondary product-brand-text">{t('pages.productDetail.brand')}: {product.brand}</span>
                   )}
                 </div>
 
                 <div className="product-price-panel">
                   <div className="product-rating-row">
                     <Rate disabled allowHalf value={displayedRating} />
-                    <Text>{displayedRating.toFixed(1)} {t('pages.productDetail.rating')}</Text>
+                    <span className="product-detail-page__text">{displayedRating.toFixed(1)} {t('pages.productDetail.rating')}</span>
                   </div>
                   <div className="product-price-line">
                     <span className="product-price-line__current commerce-money">{formatMoney(displayPrice)}</span>
                     {originalReferencePrice ? (
-                      <Text delete className="product-price-line__original commerce-money">
+                      <span className="product-detail-page__text product-detail-page__text--delete product-price-line__original commerce-money">
                         {formatMoney(originalReferencePrice)}
-                      </Text>
+                      </span>
                     ) : null}
                     {priceSavingsPercent > 0 && (
                       <Tag color="gold" className="product-price-line__discount">
@@ -1803,8 +1803,8 @@ const ProductDetail: React.FC = () => {
                     )}
                   </div>
                   <div className="product-price-delivery">
-                    <span><TruckOutlined /> {deliveryPromise.enabled ? t('pages.productDetail.deliveryPromise', { window: deliveryPromise.windowText }) : productShippingText}</span>
-                    <span><CheckCircleOutlined /> {productFreeShippingText}</span>
+                    <span><ShopIcon path={SI.truck} /> {deliveryPromise.enabled ? t('pages.productDetail.deliveryPromise', { window: deliveryPromise.windowText }) : productShippingText}</span>
+                    <span><ShopIcon path={SI.checkCircle} /> {productFreeShippingText}</span>
                   </div>
                   <div
                     className="product-mobile-promo"
@@ -1829,25 +1829,25 @@ const ProductDetail: React.FC = () => {
                   <div className="product-mobile-buybar__meta" title={`${mobileBuybarPrice} - ${mobileBuybarStatus}`}>
                     <strong>{mobileBuybarPrice}</strong>
                     <span className={`product-mobile-buybar__status${purchaseSelectionBlocked || isOutOfStock ? ' product-mobile-buybar__status--attention' : ''}`}>
-                      {purchaseSelectionBlocked || isOutOfStock ? <BellOutlined /> : <CheckCircleOutlined />}
+                      {purchaseSelectionBlocked || isOutOfStock ? <ShopIcon path={SI.bell} /> : <ShopIcon path={SI.checkCircle} />}
                       {mobileBuybarStatus}
                     </span>
                   </div>
                   <button type="button" className="product-mobile-buybar__tool product-mobile-buybar__tool--home" aria-label={homeActionLabel} title={homeActionLabel} onClick={() => navigate('/')}>
-                    <HomeOutlined />
+                    <ShopIcon path={SI.home} />
                     <span>{t('nav.ariaHome')}</span>
                   </button>
                   <button type="button" className="product-mobile-buybar__tool product-mobile-buybar__tool--favorite" aria-label={favoriteActionLabel} title={favoriteActionLabel} onClick={handleFavorite}>
-                    {isWishlisted ? <HeartFilled /> : <HeartOutlined />}
+                    {isWishlisted ? <ShopIcon path={SI.heartFill} /> : <ShopIcon path={SI.heart} />}
                     <span>{isWishlisted ? t('pages.productDetail.favorited') : t('pages.productDetail.favorite')}</span>
                   </button>
                   <button type="button" className="product-mobile-buybar__tool product-mobile-buybar__tool--compare" aria-label={compareActionLabel} title={compareActionLabel} onClick={handleCompare}>
-                    <BarChartOutlined />
+                    <ShopIcon path={SI.barChart} />
                     <span>{isCompared ? t('pages.productList.viewCompare') : t('pages.productList.compare')}</span>
                   </button>
                   <Button
                     className="product-mobile-buybar__cart"
-                    icon={isOutOfStock ? <BellOutlined /> : <ShoppingCartOutlined />}
+                    icon={isOutOfStock ? <ShopIcon path={SI.bell} /> : <ShopIcon path={SI.cart} />}
                     aria-label={isOutOfStock ? stockAlertActionLabel : mobileCartBlockedReason}
                     title={isOutOfStock ? stockAlertActionLabel : mobileCartBlockedReason}
                     onClick={isOutOfStock ? handleStockAlert : handleAddToCart}
@@ -1856,7 +1856,7 @@ const ProductDetail: React.FC = () => {
                   >
                     {isOutOfStock ? (isAlerted ? t('pages.stockAlerts.remove') : t('pages.stockAlerts.notifyMe')) : t('pages.productDetail.addCart')}
                   </Button>
-                  <Button className="product-mobile-buybar__buy" type="primary" icon={<ThunderboltOutlined />} aria-label={buyNowBlockedReason} title={buyNowBlockedReason} onClick={handleBuyNow} loading={purchaseSubmitting === 'buy'} disabled={buyNowBlocked}>
+                  <Button className="product-mobile-buybar__buy" type="primary" icon={<ShopIcon path={SI.thunder} />} aria-label={buyNowBlockedReason} title={buyNowBlockedReason} onClick={handleBuyNow} loading={purchaseSubmitting === 'buy'} disabled={buyNowBlocked}>
                     {t('pages.productDetail.buyNow')}
                   </Button>
                 </div>
@@ -1870,8 +1870,8 @@ const ProductDetail: React.FC = () => {
                     >
                       <span className="product-purchase-readiness__icon">{item.icon}</span>
                       <span className="product-purchase-readiness__copy">
-                        <Text strong>{item.title}</Text>
-                        <Text type="secondary">{item.text}</Text>
+                        <span className="product-detail-page__text product-detail-page__text--strong">{item.title}</span>
+                        <span className="product-detail-page__text product-detail-page__text--secondary">{item.text}</span>
                       </span>
                     </div>
                   ))}
@@ -1886,7 +1886,7 @@ const ProductDetail: React.FC = () => {
                     return (
                       <div key={group.name} role="group" aria-label={optionGroupLabel} title={optionGroupLabel}>
                         <div className="product-option-header">
-                          <Text strong>{getLocalizedOptionLabel(group.name, language)}</Text>
+                          <span className="product-detail-page__text product-detail-page__text--strong">{getLocalizedOptionLabel(group.name, language)}</span>
                           {isSizeOptionName(group.name) ? (
                             <Button
                               size="small"
@@ -1910,7 +1910,7 @@ const ProductDetail: React.FC = () => {
                             const selected = selectedOptions[group.name] === value;
                             return (
                               <Radio.Button key={value} value={value} disabled={disabled}>
-                                {selected ? <CheckCircleOutlined className="product-option-radio__check" /> : null}
+                                {selected ? <ShopIcon path={SI.checkCircle} className="product-option-radio__check" /> : null}
                                 <span>{getLocalizedOptionLabel(value, language)}</span>
                               </Radio.Button>
                             );
@@ -1924,15 +1924,15 @@ const ProductDetail: React.FC = () => {
                 {optionGroups.length > 0 && (
                   <div className={`product-selected-summary${hasUnavailableSelectedVariant ? ' product-selected-summary--warning' : ''}`}>
                     <div className="product-selected-summary__header">
-                      <Text strong>{t('pages.productDetail.selectedOptionsTitle')}</Text>
-                      <Space size={8} wrap>
-                        <Text type={hasUnavailableSelectedVariant ? 'danger' : 'secondary'}>
+                      <span className="product-detail-page__text product-detail-page__text--strong">{t('pages.productDetail.selectedOptionsTitle')}</span>
+                      <div className="product-detail__chipRow">
+                        <span className={`product-detail-page__text ${hasUnavailableSelectedVariant ? 'product-detail-page__text--danger' : 'product-detail-page__text--secondary'}`}>
                           {hasUnavailableSelectedVariant
                             ? t('pages.productDetail.selectedVariantUnavailable')
                             : hasCompleteOptions
                               ? t('pages.productDetail.selectedVariantStock', { stock: stockLabel })
                               : t('pages.productDetail.selectedOptionsEmpty')}
-                        </Text>
+                        </span>
                         {selectedOptionTags.length > 0 ? (
                           <Button
                             size="small"
@@ -1944,9 +1944,9 @@ const ProductDetail: React.FC = () => {
                             {t('pages.productList.resetFilters')}
                           </Button>
                         ) : null}
-                      </Space>
+                      </div>
                     </div>
-                    <Space wrap size={[6, 6]}>
+                    <div className="product-detail__chipRow">
                       {selectedOptionTags.length > 0 ? selectedOptionTags.map((item) => (
                         <Tag key={item.name}>{item.label}: {item.valueLabel}</Tag>
                       )) : (
@@ -1956,7 +1956,7 @@ const ProductDetail: React.FC = () => {
                       {hasCompleteOptions && !hasUnavailableSelectedVariant ? (
                         <Tag color="green">{renderProductDetailAmountText(t('pages.productDetail.selectedVariantPrice', { price: formatMoney(displayPrice) }), formatMoney(displayPrice))}</Tag>
                       ) : null}
-                    </Space>
+                    </div>
                   </div>
                 )}
 
@@ -1964,11 +1964,11 @@ const ProductDetail: React.FC = () => {
                   <details className="product-detail-disclosure">
                     <summary>
                       <span>{t('pages.productDetail.sizeCalculatorTitle')}</span>
-                      <Text type="secondary">{fitConfidenceText}</Text>
+                      <span className="product-detail-page__text product-detail-page__text--secondary">{fitConfidenceText}</span>
                     </summary>
                     <div className="product-size-calculator">
                     <div className="product-size-calculator__header">
-                      <Text strong>{t('pages.productDetail.sizeCalculatorTitle')}</Text>
+                      <span className="product-detail-page__text product-detail-page__text--strong">{t('pages.productDetail.sizeCalculatorTitle')}</span>
                       <Button
                         size="small"
                         type="link"
@@ -2019,7 +2019,7 @@ const ProductDetail: React.FC = () => {
                         ) : undefined}
                       />
                     ) : (
-                      <Text type="secondary">{t('pages.productDetail.sizeCalculatorHint')}</Text>
+                      <span className="product-detail-page__text product-detail-page__text--secondary">{t('pages.productDetail.sizeCalculatorHint')}</span>
                     )}
                     </div>
                   </details>
@@ -2027,10 +2027,10 @@ const ProductDetail: React.FC = () => {
 
                 {bundleInfo ? (
                 <div className="product-value-callout">
-                  <span className="product-value-callout__icon"><ThunderboltOutlined /></span>
+                  <span className="product-value-callout__icon"><ShopIcon path={SI.thunder} /></span>
                   <div className="product-value-callout__copy">
-                    <Text strong>{recommendedPathTitle}</Text>
-                    <Text type="secondary">{recommendedPathText}</Text>
+                    <span className="product-detail-page__text product-detail-page__text--strong">{recommendedPathTitle}</span>
+                    <span className="product-detail-page__text product-detail-page__text--secondary">{recommendedPathText}</span>
                   </div>
                   {purchaseMode !== recommendedPurchaseMode ? (
                     <Button
@@ -2064,17 +2064,17 @@ const ProductDetail: React.FC = () => {
                     {purchaseMode === 'bundle' ? (
                       <div className="product-purchase-mode__details">
                         <div className="product-purchase-mode__summary">
-                          <Text strong>{t('bundle.includes')}</Text>
-                          <Space wrap size={[6, 6]}>
+                          <span className="product-detail-page__text product-detail-page__text--strong">{t('bundle.includes')}</span>
+                          <div className="product-detail__chipRow">
                             {bundleInfo.items.map((item) => (
                               <Tag key={item.name} className="commerce-atomic">{item.name} <span className="commerce-quantity">x{item.quantity || 1}</span></Tag>
                             ))}
-                          </Space>
-                          <Text type="secondary">
+                          </div>
+                          <span className="product-detail-page__text product-detail-page__text--secondary">
                             {bundleSavings > 0
                               ? t('bundle.saveWithBundle', { amount: formatMoney(bundleSavings) })
                               : t('bundle.bundleHint')}
-                          </Text>
+                          </span>
                         </div>
                       </div>
                     ) : null}
@@ -2082,10 +2082,10 @@ const ProductDetail: React.FC = () => {
                 ) : null}
 
                 <div>
-                  <Text strong className="product-quantity-label">{t('pages.productDetail.quantity')}</Text>
+                  <span className="product-detail-page__text product-detail-page__text--strong product-quantity-label">{t('pages.productDetail.quantity')}</span>
                   <div className="product-quantity-row" role="group" aria-label={t('pages.productDetail.quantity')}>
                     <Button
-                      icon={<MinusOutlined />}
+                      icon={<ShopIcon path={SI.minus} />}
                       aria-label={decreaseQuantityLabel}
                       title={decreaseQuantityLabel}
                       onClick={() => handleQuantityChange(quantity - 1)}
@@ -2095,7 +2095,7 @@ const ProductDetail: React.FC = () => {
                       {quantity}
                     </span>
                     <Button
-                      icon={<PlusOutlined />}
+                      icon={<ShopIcon path={SI.plus} />}
                       aria-label={increaseQuantityLabel}
                       title={increaseQuantityLabel}
                       onClick={() => handleQuantityChange(quantity + 1)}
@@ -2107,35 +2107,35 @@ const ProductDetail: React.FC = () => {
                 <div className="product-purchase-summary">
                   {bundleInfo ? (
                     <div className="product-purchase-summary__line">
-                      <Text type="secondary">{t('pages.productDetail.purchaseMode')}</Text>
-                      <Text strong>{purchaseModeLabel}</Text>
+                      <span className="product-detail-page__text product-detail-page__text--secondary">{t('pages.productDetail.purchaseMode')}</span>
+                      <span className="product-detail-page__text product-detail-page__text--strong">{purchaseModeLabel}</span>
                     </div>
                   ) : null}
                   <div className="product-purchase-summary__line">
-                    <Text type="secondary">{t('pages.productDetail.unitPrice')}</Text>
-                      <Text className="commerce-money">{formatMoney(displayPrice)}</Text>
+                    <span className="product-detail-page__text product-detail-page__text--secondary">{t('pages.productDetail.unitPrice')}</span>
+                      <span className="product-detail-page__text commerce-money">{formatMoney(displayPrice)}</span>
                   </div>
                   <div className="product-purchase-summary__line">
-                    <Text type="secondary">{t('pages.productDetail.purchaseQuantity')}</Text>
-                      <Text className="commerce-quantity">{quantity}</Text>
+                    <span className="product-detail-page__text product-detail-page__text--secondary">{t('pages.productDetail.purchaseQuantity')}</span>
+                      <span className="product-detail-page__text commerce-quantity">{quantity}</span>
                   </div>
                   {purchaseSavings > 0 ? (
                     <div className="product-purchase-summary__line product-purchase-summary__line--saving">
-                      <Text>{t('pages.productDetail.purchaseSavings')}</Text>
-                      <Text strong className="commerce-money">{formatMoney(purchaseSavings)}</Text>
+                      <span className="product-detail-page__text">{t('pages.productDetail.purchaseSavings')}</span>
+                      <span className="product-detail-page__text product-detail-page__text--strong commerce-money">{formatMoney(purchaseSavings)}</span>
                     </div>
                   ) : null}
                   <div className="product-purchase-summary__total">
-                    <Text strong>{t('pages.productDetail.purchaseSubtotal')}</Text>
-                    <Text strong className="commerce-money">{formatMoney(purchaseSubtotal)}</Text>
+                    <span className="product-detail-page__text product-detail-page__text--strong">{t('pages.productDetail.purchaseSubtotal')}</span>
+                    <span className="product-detail-page__text product-detail-page__text--strong commerce-money">{formatMoney(purchaseSubtotal)}</span>
                   </div>
                 </div>
 
                 {completeSetItems.length > 0 ? (
                   <div className="product-complete-set">
                     <div className="product-complete-set__header">
-                      <Text strong>{t('pages.productDetail.completeSetTitle')}</Text>
-                      <Text type="secondary">{t('pages.productDetail.completeSetText')}</Text>
+                      <span className="product-detail-page__text product-detail-page__text--strong">{t('pages.productDetail.completeSetTitle')}</span>
+                      <span className="product-detail-page__text product-detail-page__text--secondary">{t('pages.productDetail.completeSetText')}</span>
                     </div>
                     <div className="product-complete-set__items">
                       {completeSetItems.map((item) => {
@@ -2179,7 +2179,7 @@ const ProductDetail: React.FC = () => {
                             <Button
                               size="small"
                               type={needsOptions ? 'default' : 'primary'}
-                              icon={<ShoppingCartOutlined />}
+                              icon={<ShopIcon path={SI.cart} />}
                               loading={recommendationAddingId === item.id}
                               aria-label={addSetActionLabel}
                               title={addSetActionLabel}
@@ -2203,10 +2203,10 @@ const ProductDetail: React.FC = () => {
                     </summary>
                     <div className="product-conversion-nudges">
                       <div className="product-conversion-nudge">
-                        <span className="product-conversion-nudge__icon"><SafetyCertificateOutlined /></span>
+                        <span className="product-conversion-nudge__icon"><ShopIcon path={SI.safety} /></span>
                         <span>
-                          <Text strong>{t('pages.productDetail.fitConfidenceTitle')}</Text>
-                          <Text type="secondary">{fitConfidenceText}</Text>
+                          <span className="product-detail-page__text product-detail-page__text--strong">{t('pages.productDetail.fitConfidenceTitle')}</span>
+                          <span className="product-detail-page__text product-detail-page__text--secondary">{fitConfidenceText}</span>
                         </span>
                       </div>
                     </div>
@@ -2216,8 +2216,8 @@ const ProductDetail: React.FC = () => {
                           <div className={`product-decision-item${item.ready ? ' product-decision-item--ready' : ' product-decision-item--pending'}`} key={item.key}>
                             <span className="product-decision-item__icon">{item.icon}</span>
                             <span>
-                              <Text strong>{item.title}</Text>
-                              <Text type="secondary">{item.text}</Text>
+                              <span className="product-detail-page__text product-detail-page__text--strong">{item.title}</span>
+                              <span className="product-detail-page__text product-detail-page__text--secondary">{item.text}</span>
                             </span>
                           </div>
                         ))}
@@ -2236,18 +2236,18 @@ const ProductDetail: React.FC = () => {
                   />
                 ) : null}
                 {isOutOfStock && (
-                  <Space wrap>
+                  <div className="product-detail__chipRow">
                     <Tag color="red" style={{ fontSize: 16, padding: '4px 12px' }}>{t('pages.productDetail.soldOut')}</Tag>
-                    <Button icon={<BellOutlined />} aria-label={stockAlertActionLabel} title={stockAlertActionLabel} onClick={handleStockAlert}>
+                    <Button icon={<ShopIcon path={SI.bell} />} aria-label={stockAlertActionLabel} title={stockAlertActionLabel} onClick={handleStockAlert}>
                       {isAlerted ? t('pages.stockAlerts.remove') : t('pages.stockAlerts.notifyMe')}
                     </Button>
-                  </Space>
+                  </div>
                 )}
-                <Space size="middle" wrap className="product-actions">
+                <div className="product-actions">
                   <Button
                     type="primary"
                     size="large"
-                    icon={<ShoppingCartOutlined />}
+                    icon={<ShopIcon path={SI.cart} />}
                     className={isOutOfStock ? 'product-detail__soldoutButton' : undefined}
                     aria-label={isOutOfStock ? `${t('pages.productDetail.soldOut')}: ${productName}` : addToCartActionLabel}
                     title={isOutOfStock ? `${t('pages.productDetail.soldOut')}: ${productName}` : addToCartActionLabel}
@@ -2260,7 +2260,7 @@ const ProductDetail: React.FC = () => {
                   <Button
                     type="primary"
                     size="large"
-                    icon={<ThunderboltOutlined />}
+                    icon={<ShopIcon path={SI.thunder} />}
                     className={isOutOfStock ? 'product-detail__soldoutButton' : undefined}
                     aria-label={buyNowBlockedReason}
                     title={buyNowBlockedReason}
@@ -2272,37 +2272,37 @@ const ProductDetail: React.FC = () => {
                     {t('pages.productDetail.buyNow')}
                   </Button>
                   {isOutOfStock ? (
-                    <Button size="large" icon={<BellOutlined />} aria-label={stockAlertActionLabel} title={stockAlertActionLabel} onClick={handleStockAlert}>
+                    <Button size="large" icon={<ShopIcon path={SI.bell} />} aria-label={stockAlertActionLabel} title={stockAlertActionLabel} onClick={handleStockAlert}>
                       {isAlerted ? t('pages.stockAlerts.remove') : t('pages.stockAlerts.notifyMe')}
                     </Button>
                   ) : null}
-                  <Button size="large" icon={isWishlisted ? <HeartFilled style={{ color: '#ee4d2d' }} /> : <HeartOutlined />} aria-label={favoriteActionLabel} title={favoriteActionLabel} onClick={handleFavorite}>
+                  <Button size="large" icon={isWishlisted ? <ShopIcon path={SI.heartFill} style={{ color: '#ee4d2d' }} /> : <ShopIcon path={SI.heart} />} aria-label={favoriteActionLabel} title={favoriteActionLabel} onClick={handleFavorite}>
                     {isWishlisted ? t('pages.productDetail.favorited') : t('pages.productDetail.favorite')}
                   </Button>
-                  <Button size="large" icon={<BarChartOutlined />} aria-label={compareActionLabel} title={compareActionLabel} onClick={handleCompare}>
+                  <Button size="large" icon={<ShopIcon path={SI.barChart} />} aria-label={compareActionLabel} title={compareActionLabel} onClick={handleCompare}>
                     {isCompared ? t('pages.productList.viewCompare') : t('pages.productList.compare')}
                   </Button>
-                </Space>
+                </div>
 
                 <details className="product-detail-disclosure product-detail-disclosure--service">
                   <summary>
                     <span>{t('pages.productDetail.service')}</span>
-                    {deliveryPromise.enabled ? <Text type="secondary">{t('pages.productDetail.deliveryPromise', { window: deliveryPromise.windowText })}</Text> : null}
+                    {deliveryPromise.enabled ? <span className="product-detail-page__text product-detail-page__text--secondary">{t('pages.productDetail.deliveryPromise', { window: deliveryPromise.windowText })}</span> : null}
                   </summary>
                   <div className="product-service-list">
-                  <Space direction="vertical" size="middle">
+                  <div className="product-detail__stack">
                     {deliveryPromise.enabled ? (
                       <div className="product-delivery-promise">
-                        <TruckOutlined className="product-delivery-promise__icon" />
+                        <ShopIcon path={SI.truck} className="product-delivery-promise__icon" />
                         <div>
-                          <Text strong>
+                          <span className="product-detail-page__text product-detail-page__text--strong">
                             {t('pages.productDetail.deliveryPromise', { window: deliveryPromise.windowText })}
-                          </Text>
-                          <Text type="secondary">
+                          </span>
+                          <span className="product-detail-page__text product-detail-page__text--secondary">
                             {deliveryPromise.shipsToday
                               ? t('pages.productDetail.shipsToday', { cutoff: `${deliveryPromise.cutoffHour}:00` })
                               : t('pages.productDetail.shipsNextBusinessDay')}
-                          </Text>
+                          </span>
                         </div>
                       </div>
                     ) : null}
@@ -2312,20 +2312,20 @@ const ProductDetail: React.FC = () => {
                           <div className="product-trust-card" key={badge.titleKey}>
                             <span className="product-trust-card__icon">{renderTrustIcon(badge.icon)}</span>
                             <span>
-                              <Text strong>{t(badge.titleKey)}</Text>
-                              <Text type="secondary">{t(badge.textKey)}</Text>
+                              <span className="product-detail-page__text product-detail-page__text--strong">{t(badge.titleKey)}</span>
+                              <span className="product-detail-page__text product-detail-page__text--secondary">{t(badge.textKey)}</span>
                             </span>
                           </div>
                         ))}
                       </div>
                     ) : null}
-                  </Space>
+                  </div>
                   </div>
                 </details>
-              </Space>
+              </div>
             </Card>
-          </Col>
-        </Row>
+          </div>
+        </div>
 
         {/* Product details and specifications */}
         <div ref={detailContentRef} className="product-detail-content-anchor" />
@@ -2338,7 +2338,7 @@ const ProductDetail: React.FC = () => {
             more={{
               icon: (
                 <span className="product-detail-tabs__moreIcon">
-                  <EllipsisOutlined aria-hidden="true" />
+                  <ShopIcon path={SI.ellipsis} aria-hidden="true" />
                   <span className="product-detail-tabs__srText">
                     {t('pages.productDetail.moreTabs', { defaultValue: `${t('common.more')}: ${t('pages.productDetail.service')}` })}
                   </span>
@@ -2376,8 +2376,8 @@ const ProductDetail: React.FC = () => {
                       .filter(([key]) => !key.startsWith('options.') && !key.startsWith('i18n.') && !key.startsWith('bundle.'))
                       .map(([key, value]) => (
                         <div key={key} className="product-spec-row">
-                          <Text strong>{formatProductSpecLabel(key, t)}: </Text>
-                          <Text>{value as string}</Text>
+                          <span className="product-detail-page__text product-detail-page__text--strong">{formatProductSpecLabel(key, t)}: </span>
+                          <span className="product-detail-page__text">{value as string}</span>
                         </div>
                       ))}
                   </div>
@@ -2389,12 +2389,12 @@ const ProductDetail: React.FC = () => {
                 children: (
                   <div className="product-tab-content">
                     <div className="product-warranty-row">
-                      <Text strong>{t('pages.productDetail.warranty')}</Text>
-                      <Text>{product.warranty || t('pages.productDetail.defaultWarranty')}</Text>
+                      <span className="product-detail-page__text product-detail-page__text--strong">{t('pages.productDetail.warranty')}</span>
+                      <span className="product-detail-page__text">{product.warranty || t('pages.productDetail.defaultWarranty')}</span>
                     </div>
                     <div>
-                      <Text strong>{t('pages.productDetail.shipping')}</Text>
-                      <Text>{productShippingText}</Text>
+                      <span className="product-detail-page__text product-detail-page__text--strong">{t('pages.productDetail.shipping')}</span>
+                      <span className="product-detail-page__text">{productShippingText}</span>
                     </div>
                   </div>
                 ),
@@ -2416,8 +2416,8 @@ const ProductDetail: React.FC = () => {
         </Card>
 
         <Card className="product-qa-card" id="product-qa-card">
-          <Title level={4} style={{ marginBottom: 16 }}>{t('pages.ask.title')}</Title>
-          <Space direction="vertical" className="product-qa-space">
+          <h4 className="product-detail-page__title" style={{ marginBottom: 16 }}>{t('pages.ask.title')}</h4>
+          <div className="product-qa-space">
             <Input.TextArea
               rows={3}
               value={questionText}
@@ -2431,7 +2431,7 @@ const ProductDetail: React.FC = () => {
             <Button type="primary" aria-label={questionSubmitActionLabel} title={questionSubmitActionLabel} onClick={handleAskQuestion} loading={questionSubmitting}>
               {t('pages.ask.submit')}
             </Button>
-          </Space>
+          </div>
           {pendingQuestions.length > 0 ? (
             <div className="product-qa-pending" role="status" aria-live="polite" aria-label={t('pages.ask.pendingTitle')}>
               <Alert
@@ -2451,8 +2451,8 @@ const ProductDetail: React.FC = () => {
                         {new Date(pendingQuestion.createdAt).toLocaleString(language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US')}
                       </div>
                       <div className="product-answer-box product-answer-box--pending">
-                        <Text strong>{t('pages.ask.answerLabel')}: </Text>
-                        <Text>{t('pages.ask.pendingAnswer')}</Text>
+                        <span className="product-detail-page__text product-detail-page__text--strong">{t('pages.ask.answerLabel')}: </span>
+                        <span className="product-detail-page__text">{t('pages.ask.pendingAnswer')}</span>
                       </div>
                     </div>
                   </List.Item>
@@ -2462,7 +2462,7 @@ const ProductDetail: React.FC = () => {
           ) : null}
           {questions.length === 0 ? (
             <div className="product-qa-faq" aria-label={t('pages.ask.empty')}>
-              <Text strong>{t('pages.productDetail.faqTitle', { defaultValue: 'Frequently asked questions' })}</Text>
+              <span className="product-detail-page__text product-detail-page__text--strong">{t('pages.productDetail.faqTitle', { defaultValue: 'Frequently asked questions' })}</span>
               <div className="product-qa-faq__list">
                 {productFaqItems.map((item) => (
                   <div key={item.question} className="product-qa-faq__item">
@@ -2483,8 +2483,8 @@ const ProductDetail: React.FC = () => {
                       {new Date(q.createdAt).toLocaleString(language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US')}
                     </div>
                     <div className="product-answer-box">
-                      <Text strong>{t('pages.ask.answerLabel')}: </Text>
-                      <Text>{q.answer}</Text>
+                      <span className="product-detail-page__text product-detail-page__text--strong">{t('pages.ask.answerLabel')}: </span>
+                      <span className="product-detail-page__text">{q.answer}</span>
                     </div>
                   </div>
                 </List.Item>
@@ -2496,7 +2496,7 @@ const ProductDetail: React.FC = () => {
         {/* Related recommendations */}
         {relatedRecommendations.length > 0 ? (
           <div className="product-recommendations" ref={recommendationCarouselRef}>
-            <Title level={3}>{t('pages.productDetail.boughtTogether', { defaultValue: t('pages.productDetail.recommendations') })}</Title>
+            <h3 className="product-detail-page__title">{t('pages.productDetail.boughtTogether', { defaultValue: t('pages.productDetail.recommendations') })}</h3>
             <Carousel
               slidesToShow={4}
               dots={false}
@@ -2565,7 +2565,7 @@ const ProductDetail: React.FC = () => {
                       }}
                     >
                       <div className="product-recommendations__content">
-                        <Text strong className="product-recommendations__name">{recName}</Text>
+                        <span className="product-detail-page__text product-detail-page__text--strong product-recommendations__name">{recName}</span>
                         <div className="product-recommendations__meta">
                           <span className="product-recommendations__price commerce-money">{formatMoney(rec.effectivePrice ?? rec.price)}</span>
                           {recommendationReviewCount > 0 && (
@@ -2578,7 +2578,7 @@ const ProductDetail: React.FC = () => {
                           block
                           size="small"
                           type={needsOptions ? 'default' : 'primary'}
-                          icon={<ShoppingCartOutlined />}
+                          icon={<ShopIcon path={SI.cart} />}
                           loading={recommendationAddingId === rec.id}
                           disabled={isRecommendationSoldOut}
                           aria-label={recommendationActionLabel}
@@ -2600,17 +2600,17 @@ const ProductDetail: React.FC = () => {
           </div>
         ) : recommendationsLoading ? (
           <div className="product-recommendations product-recommendations--loading" data-product-detail-recommendations-loading="true" role="status" aria-live="polite" aria-busy="true" aria-label={t('common.loading')}>
-            <Title level={3}>{t('pages.productDetail.recommendations')}</Title>
+            <h3 className="product-detail-page__title">{t('pages.productDetail.recommendations')}</h3>
             <div className="product-recommendations__loadingCopy">{t('common.loading')}</div>
           </div>
         ) : (
           <div className="product-recommendations product-recommendations--empty" data-product-detail-recommendations-empty={recommendationsLoadFailed ? 'failed' : 'true'}>
-            <Title level={3}>{t('pages.productDetail.recommendations')}</Title>
+            <h3 className="product-detail-page__title">{t('pages.productDetail.recommendations')}</h3>
             <div className="product-recommendations__emptyCopy">
               <div>{recommendationsLoadFailed ? t('pages.productDetail.recommendationsLoadFailed') : t('pages.productDetail.recommendationsEmpty')}</div>
               <div className="product-recommendations__emptyHint">{recommendationsLoadFailed ? t('pages.productDetail.recommendationsLoadFailedHint') : t('pages.productDetail.recommendationsEmptyHint')}</div>
             </div>
-            <Space wrap className="product-recommendations__emptyActions" data-product-detail-recommendations-empty-actions="true">
+            <div className="product-recommendations__emptyActions" data-product-detail-recommendations-empty-actions="true">
               {recommendationsLoadFailed ? (
                 <Button
                   type="primary"
@@ -2628,7 +2628,7 @@ const ProductDetail: React.FC = () => {
               ) : null}
               <Button
                 type={recommendationsLoadFailed ? 'default' : 'primary'}
-                icon={<ShoppingCartOutlined />}
+                icon={<ShopIcon path={SI.cart} />}
                 aria-label={t('pages.cart.browse')}
                 title={t('pages.cart.browse')}
                 onClick={() => navigate('/products')}
@@ -2649,7 +2649,7 @@ const ProductDetail: React.FC = () => {
               >
                 {t('nav.petFinder')}
               </Button>
-            </Space>
+            </div>
           </div>
         )}
       </div>

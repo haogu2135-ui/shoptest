@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Button, Modal, Space, Typography, message } from 'antd';
-import { CopyOutlined } from '@ant-design/icons';
+import { announceAccessibleMessage } from '../utils/accessibleMessage';
+import { ShopIcon, SI } from './ShopIcon';
+import { Button, Modal, Space, Typography } from 'antd';
 import { useLanguage } from '../i18n';
 import { getLocalStorageItem, setLocalStorageItem } from '../utils/safeStorage';
 import { reportNonBlockingError } from '../utils/nonBlockingError';
@@ -164,10 +165,10 @@ export const NativeMobileUpdateGate: React.FC = () => {
     if (!downloadUrl) return;
     try {
       await navigator.clipboard.writeText(downloadUrl);
-      message.success(t('appUpdate.copyDownloadLinkSuccess'));
+      announceAccessibleMessage(t('appUpdate.copyDownloadLinkSuccess'), 'success');
     } catch (error) {
       reportNonBlockingError('App.copyDownloadLink', error);
-      message.error(t('appUpdate.copyDownloadLinkFailed'));
+      announceAccessibleMessage(t('appUpdate.copyDownloadLinkFailed'), 'error');
     }
   };
 
@@ -217,7 +218,7 @@ export const NativeMobileUpdateGate: React.FC = () => {
           <Space direction="vertical" size={8} style={{ width: '100%' }}>
             <Text type="danger">{t('appUpdate.downloadFailed')}</Text>
             <Button
-              icon={<CopyOutlined />}
+              icon={<ShopIcon path={SI.copy} />}
               aria-label={copyDownloadActionLabel}
               title={copyDownloadActionLabel}
               onClick={handleCopyDownloadLink}

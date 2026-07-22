@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Form, Input, Button, Typography, message, Tabs } from 'antd';
+import { announceAccessibleMessage } from '../utils/accessibleMessage';
+import { ShopIcon, SI } from '../components/ShopIcon';
+import { Alert, Form, Input, Button, Tabs } from 'antd';
 import type { InputRef } from 'antd/es/input';
-import { CompassOutlined, CustomerServiceOutlined, EyeInvisibleOutlined, EyeOutlined, LockOutlined, MailOutlined, MobileOutlined, SafetyCertificateOutlined, ShoppingCartOutlined, TruckOutlined, UserOutlined } from '@ant-design/icons';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { cartApi, clearStoredAuthCredentials, persistAuthSession, userApi } from '../api';
 import { useAppConfig } from '../hooks/useAppConfig';
@@ -19,7 +20,6 @@ import { reportNonBlockingError } from '../utils/nonBlockingError';
 import type { CartItem } from '../types';
 import './Login.css';
 
-const { Text, Title } = Typography;
 
 type TranslationFunction = (key: string, params?: Record<string, string | number>) => string;
 type PasswordLoginValues = {
@@ -275,9 +275,9 @@ const Login: React.FC = () => {
     const mergedCount = mergeResults.reduce((sum, result) => sum + result.mergedQuantity, 0);
     replaceGuestCartItems(failedItems);
     if (mergedCount > 0 && failedItems.length === 0) {
-      message.success(t('pages.auth.cartMerged', { count: mergedCount }));
+      announceAccessibleMessage(t('pages.auth.cartMerged', { count: mergedCount }), 'success');
     } else if (mergedCount > 0) {
-      message.warning(t('pages.auth.cartMergePartial', { count: mergedCount }));
+      announceAccessibleMessage(t('pages.auth.cartMergePartial', { count: mergedCount }), 'warning');
     }
   };
 
@@ -293,7 +293,7 @@ const Login: React.FC = () => {
       throw new Error(t('pages.auth.loginFailed'));
     }
     await mergeGuestCart(Number(id), guestCartItemsSnapshot);
-    message.success(t('pages.auth.loginSuccess'));
+    announceAccessibleMessage(t('pages.auth.loginSuccess'), 'success');
     navigate(postLoginRedirectTarget, { replace: true });
   };
 
@@ -341,7 +341,7 @@ const Login: React.FC = () => {
       ]);
       setAuthBannerError(loginError.message);
       setAuthRecoveryKind(loginError.recoveryKind);
-      message.error(loginError.message);
+      announceAccessibleMessage(loginError.message, 'error');
     } finally {
       passwordSubmittingRef.current = false;
       setLoading(false);
@@ -354,7 +354,7 @@ const Login: React.FC = () => {
     clearStoredAuthCredentials();
     try {
       if (!emailCodeEnabled) {
-        message.warning(t('pages.auth.emailCodeUnavailable'));
+        announceAccessibleMessage(t('pages.auth.emailCodeUnavailable'), 'warning');
         return;
       }
       const { email } = await emailForm.validateFields(['email']);
@@ -371,7 +371,7 @@ const Login: React.FC = () => {
       setVerifyRetryCountdown(0);
       setSentEmailHint(maskEmail(normalizedEmail));
       window.setTimeout(() => codeInputRef.current?.focus?.(), 0);
-      message.success(t('pages.auth.emailCodeSentTo', { email: maskEmail(normalizedEmail) }));
+      announceAccessibleMessage(t('pages.auth.emailCodeSentTo', { email: maskEmail(normalizedEmail) }), 'success');
     } catch (error: unknown) {
       if (!asApiError(error).errorFields) {
         const errorCode = apiErrorCode(error);
@@ -383,7 +383,7 @@ const Login: React.FC = () => {
           : t('pages.auth.emailCodeSendFailed');
         setAuthBannerError(errorMessage);
         setAuthRecoveryKind(errorCode === 'RATE_LIMITED' ? 'rate_limited' : null);
-        message.error(errorMessage);
+        announceAccessibleMessage(errorMessage, 'error');
       }
     } finally {
       emailCodeSendingRef.current = false;
@@ -418,19 +418,19 @@ const Login: React.FC = () => {
         emailForm.setFields([{ name: 'code', errors: [errorMessage] }]);
         setAuthBannerError(errorMessage);
         setAuthRecoveryKind(recoveryKind || 'rate_limited');
-        message.error(errorMessage);
+        announceAccessibleMessage(errorMessage, 'error');
       } else if (errorCode === 'INVALID_CODE') {
         const errorMessage = t('pages.auth.emailCodeInvalid');
         emailForm.setFields([{ name: 'code', errors: [errorMessage] }]);
         setAuthBannerError(errorMessage);
         setAuthRecoveryKind(null);
-        message.error(errorMessage);
+        announceAccessibleMessage(errorMessage, 'error');
       } else {
         const errorMessage = getApiErrorMessage(error, t('pages.auth.emailLoginFailed'), language);
         emailForm.setFields([{ name: 'code', errors: [errorMessage] }]);
         setAuthBannerError(errorMessage);
         setAuthRecoveryKind(recoveryKind);
-        message.error(errorMessage);
+        announceAccessibleMessage(errorMessage, 'error');
       }
     } finally {
       emailSubmittingRef.current = false;
@@ -442,24 +442,24 @@ const Login: React.FC = () => {
     <main className="shopee-login-root">
       <section className="shopee-login-shell">
         <aside className="shopee-login-panel">
-          <Text className="shopee-login-panel__eyebrow">{t('pages.auth.loginTrustTitle')}</Text>
-          <Title level={1}>{t('pages.auth.loginTitle')}</Title>
-          <Text className="shopee-login-panel__subtitle">
+          <p className="shopee-login-panel__eyebrow">{t('pages.auth.loginTrustTitle')}</p>
+          <h1 className="shopee-login-panel__title">{t('pages.auth.loginTitle')}</h1>
+          <p className="shopee-login-panel__subtitle">
             {guestCartCount > 0
               ? t('pages.auth.loginGuestCartHint', { count: guestCartCount })
               : t('pages.auth.loginHeroSubtitle')}
-          </Text>
+          </p>
           <div className="shopee-login-panel__featureList" aria-label={t('pages.auth.loginTrustTitle')}>
             <div className="shopee-login-panel__feature">
-              <ShoppingCartOutlined />
+              <ShopIcon path={SI.cart} />
               <span>{t('pages.auth.loginTrustCart')}</span>
             </div>
             <div className="shopee-login-panel__feature">
-              <TruckOutlined />
+              <ShopIcon path={SI.truck} />
               <span>{t('pages.auth.loginTrustTracking')}</span>
             </div>
             <div className="shopee-login-panel__feature">
-              <SafetyCertificateOutlined />
+              <ShopIcon path={SI.safety} />
               <span>{t('pages.auth.loginTrustSecure')}</span>
             </div>
           </div>
@@ -490,24 +490,24 @@ const Login: React.FC = () => {
         <section className="shopee-login-card">
           <div className="shopee-login-appHeader" aria-label={t('pages.auth.mobileLoginTitle')}>
             <span className="shopee-login-appHeader__icon">
-              <MobileOutlined />
+              <ShopIcon path={SI.phone} />
             </span>
             <span className="shopee-login-appHeader__copy">
               <strong>{t('pages.auth.mobileAppLabel')}</strong>
               <span>{t('pages.auth.mobileLoginTitle')}</span>
             </span>
             <span className="shopee-login-appHeader__status">
-              <SafetyCertificateOutlined />
+              <ShopIcon path={SI.safety} />
               {t('pages.auth.mobileSecure')}
             </span>
           </div>
           <div className="shopee-login-appActions" aria-label={t('pages.auth.mobileQuickActions')}>
             <button type="button" aria-label={loginTrackOrderActionLabel} title={loginTrackOrderActionLabel} onClick={() => navigate('/track-order')}>
-              <TruckOutlined />
+              <ShopIcon path={SI.truck} />
               <span>{t('nav.trackOrder')}</span>
             </button>
             <button type="button" aria-label={loginSupportActionLabel} title={loginSupportActionLabel} onClick={() => dispatchDomEvent('shop:open-support')}>
-              <CustomerServiceOutlined />
+              <ShopIcon path={SI.support} />
               <span>{t('nav.help')}</span>
             </button>
           </div>
@@ -516,11 +516,11 @@ const Login: React.FC = () => {
               <div className="shopee-login-mark">{t('common.brand')}</div>
               <div className="shopee-login-subtitle">{t('pages.auth.loginTitle')}</div>
             </div>
-            <Text className="shopee-login-card__intro">
+            <p className="shopee-login-card__intro">
               {guestCartCount > 0
                 ? t('pages.auth.loginGuestCartHint', { count: guestCartCount })
                 : t('pages.auth.loginHeroSubtitle')}
-            </Text>
+            </p>
           </div>
           <div className="shopee-login-card__stats" aria-label={t('pages.auth.loginTrustTitle')}>
             <div className="shopee-login-card__stat">
@@ -538,15 +538,15 @@ const Login: React.FC = () => {
           </div>
           <div className="shopee-login-trust" aria-label={t('pages.auth.loginTrustTitle')}>
             <div className="shopee-login-trust__item">
-              <ShoppingCartOutlined />
+              <ShopIcon path={SI.cart} />
               <span>{t('pages.auth.loginTrustCart')}</span>
             </div>
             <div className="shopee-login-trust__item">
-              <TruckOutlined />
+              <ShopIcon path={SI.truck} />
               <span>{t('pages.auth.loginTrustTracking')}</span>
             </div>
             <div className="shopee-login-trust__item">
-              <SafetyCertificateOutlined />
+              <ShopIcon path={SI.safety} />
               <span>{t('pages.auth.loginTrustSecure')}</span>
             </div>
           </div>
@@ -625,7 +625,7 @@ const Login: React.FC = () => {
                       { min: 3, message: t('pages.auth.usernameMinLength') },
                     ]}>
                       <Input
-                        prefix={<UserOutlined />}
+                        prefix={<ShopIcon path={SI.user} />}
                         placeholder={t('pages.auth.username')}
                         size="large"
                         autoComplete="username"
@@ -639,7 +639,7 @@ const Login: React.FC = () => {
                       { min: 8, message: t('pages.auth.passwordMinLength') },
                     ]}>
                       <Input.Password
-                        prefix={<LockOutlined />}
+                        prefix={<ShopIcon path={SI.lock} />}
                         placeholder={t('pages.auth.password')}
                         size="large"
                         autoComplete="current-password"
@@ -653,7 +653,7 @@ const Login: React.FC = () => {
                             title={passwordVisibilityActionLabel(visible)}
                             style={{ border: 0, padding: 0, background: 'transparent', color: 'inherit', lineHeight: 0, cursor: 'pointer' }}
                           >
-                            {visible ? <EyeOutlined /> : <EyeInvisibleOutlined />}
+                            {visible ? <ShopIcon path={SI.eye} /> : <ShopIcon path={SI.eyeOff} />}
                           </button>
                         )}
                       />
@@ -697,18 +697,18 @@ const Login: React.FC = () => {
                     className="shopee-login-form shopee-login-form--email"
                   >
                     <div className="shopee-login-emailHint">
-                      <MailOutlined />
+                      <ShopIcon path={SI.mail} />
                       <span>{appConfigLoading ? t('common.loading') : t('pages.auth.emailLoginHint')}</span>
                     </div>
                     {!emailCodeEnabled && !appConfigLoading && (
                       <div className="shopee-login-emailHint shopee-login-emailHint--warning" role="status">
-                        <SafetyCertificateOutlined />
+                        <ShopIcon path={SI.safety} />
                         <span>{t('pages.auth.emailCodeUnavailable')}</span>
                       </div>
                     )}
                     {sentEmailHint && (
                       <div className="shopee-login-emailSent" role="status">
-                        <SafetyCertificateOutlined />
+                        <ShopIcon path={SI.safety} />
                         <span>
                           <strong>{t('pages.auth.emailCodeSentTo', { email: sentEmailHint })}</strong>
                           {codeTtlMinutes > 0 && (
@@ -727,7 +727,7 @@ const Login: React.FC = () => {
                       ]}
                     >
                       <Input
-                        prefix={<MailOutlined />}
+                        prefix={<ShopIcon path={SI.mail} />}
                         placeholder={t('pages.auth.email')}
                         size="large"
                         autoComplete="email"
@@ -749,7 +749,7 @@ const Login: React.FC = () => {
                       <Input
                         ref={codeInputRef}
                         className="shopee-login-codeInput"
-                        prefix={<SafetyCertificateOutlined />}
+                        prefix={<ShopIcon path={SI.safety} />}
                         placeholder={t('pages.auth.verificationCode')}
                         size="large"
                         maxLength={6}
@@ -793,11 +793,11 @@ const Login: React.FC = () => {
                     </div>
                     <div className="shopee-login-emailMeta" aria-label={t('pages.auth.emailLoginTrust')}>
                       <span>
-                        <SafetyCertificateOutlined />
+                        <ShopIcon path={SI.safety} />
                         {t('pages.auth.emailCodePrivacy')}
                       </span>
                       <span>
-                        <MailOutlined />
+                        <ShopIcon path={SI.mail} />
                         {t('pages.auth.emailCodeFast')}
                       </span>
                     </div>
@@ -823,11 +823,11 @@ const Login: React.FC = () => {
 
           <div className="shopee-login-quickLinks">
             <button type="button" aria-label={loginTrackOrderActionLabel} title={loginTrackOrderActionLabel} onClick={() => navigate('/track-order')}>
-              <TruckOutlined />
+              <ShopIcon path={SI.truck} />
               <span>{t('nav.trackOrder')}</span>
             </button>
             <Link to="/register">
-              <CompassOutlined />
+              <ShopIcon path={SI.compass} />
               <span>{t('pages.auth.register')}</span>
             </Link>
           </div>

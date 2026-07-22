@@ -1,8 +1,8 @@
 import fs from 'fs';
 import path from 'path';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { message } from 'antd';
 import { MemoryRouter } from 'react-router-dom';
+import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { cartApi, wishlistApi } from '../api';
 import { hasStoredValue } from '../utils/safeStorage';
 import Wishlist from './Wishlist';
@@ -48,6 +48,10 @@ jest.mock('../utils/productMedia', () => ({
 
 jest.mock('../utils/safeStorage', () => ({
   hasStoredValue: jest.fn(() => true),
+}));
+
+jest.mock('../utils/accessibleMessage', () => ({
+  announceAccessibleMessage: jest.fn(),
 }));
 
 const createDeferred = <T,>() => {
@@ -133,7 +137,7 @@ describe('Wishlist async lifecycle', () => {
     expect(fetchSource).toContain('setItems(res.data);');
     expect(fetchSource).toContain("const errorMessage = getApiErrorMessage(error, t('pages.wishlist.fetchFailed'), language);");
     expect(fetchSource).toContain('setLoadError(errorMessage);');
-    expect(fetchSource).toContain('message.error(errorMessage);');
+    expect(fetchSource).toContain("announceAccessibleMessage(errorMessage, 'error');");
     expect(fetchSource).toContain('setLoading(false);');
   });
 
@@ -167,7 +171,7 @@ describe('Wishlist async lifecycle', () => {
     expect(source).toContain("message={t('pages.wishlist.loadErrorTitle')}");
     expect(source).toContain("description={t('pages.wishlist.staleDataWarning')}");
     expect(source).toContain('<Button size="small" onClick={fetchWishlist} loading={loading}>');
-    expect(source).toContain("message.warning(t('pages.wishlist.staleActionBlocked'))");
+    expect(source).toContain("announceAccessibleMessage(t('pages.wishlist.staleActionBlocked'), 'warning')");
     expect(addSource).toContain('if (actionsDisabledByStaleData) {');
     expect(addAllSource).toContain('if (actionsDisabledByStaleData) {');
     expect(clearSource).toContain('if (actionsDisabledByStaleData) {');
@@ -177,8 +181,7 @@ describe('Wishlist async lifecycle', () => {
 
   it('does not report an initial load failure after the page unmounts', async () => {
     const wishlistRequest = createDeferred<{ data: [] }>();
-    const noopMessage = (() => undefined) as ReturnType<typeof message.error>;
-    const messageErrorSpy = jest.spyOn(message, 'error').mockImplementation(() => noopMessage);
+    (announceAccessibleMessage as jest.Mock).mockClear();
     (wishlistApi.getByUser as jest.Mock).mockReturnValue(wishlistRequest.promise);
 
     const { unmount } = renderWishlist();
@@ -192,8 +195,7 @@ describe('Wishlist async lifecycle', () => {
       await Promise.resolve();
     });
 
-    expect(messageErrorSpy).not.toHaveBeenCalled();
-    messageErrorSpy.mockRestore();
+    expect(announceAccessibleMessage).not.toHaveBeenCalled();
   });
 });
 

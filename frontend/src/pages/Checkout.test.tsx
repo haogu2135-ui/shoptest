@@ -136,6 +136,7 @@ jest.mock('../i18n', () => {
 });
 
 jest.mock('../utils/paymentMethods', () => ({
+  filterPaymentChannelsForMarket: (channels: Array<Record<string, unknown>> = []) => (Array.isArray(channels) ? channels : []),
   createPaymentMethodDetails: (channels: Array<Record<'code' | 'displayName' | 'descriptionKey' | 'badgeKey' | 'market', string | undefined>> = []) => (Array.isArray(channels) ? channels : []).map((channel) => ({
     value: channel.code,
     title: channel.displayName || channel.code,
@@ -476,7 +477,8 @@ describe('Checkout payment availability', () => {
     expect(source).toContain('const [paymentChannelsError, setPaymentChannelsError] = useState<string | null>(null);');
     expect(source).toContain('const [paymentChannelsReloadKey, setPaymentChannelsReloadKey] = useState(0);');
     expect(source).toContain('description={paymentChannelsError || t(\'pages.checkout.paymentUnavailableDescription\')}');
-    expect(source).toContain('onClick={() => setPaymentChannelsReloadKey((key) => key + 1)}');
+    expect(source).toContain('const reloadPaymentChannels = useCallback(() => {\n    setPaymentChannelsReloadKey((key) => key + 1);\n  }, []);');
+    expect(source).toContain('onClick={reloadPaymentChannels}');
     expect(channelsEffect).not.toContain('.catch(() => {');
   });
 
@@ -743,7 +745,7 @@ describe('Checkout payment availability', () => {
     expect(source).toContain('export const formatCheckoutDateTime = (value: unknown, dateLocale: string) => {');
     expect(source).toContain('Number.isFinite(date.getTime()) ? date.toLocaleString(dateLocale) : null;');
     expect(source).toContain('const paymentExpiresAtText = formatCheckoutDateTime(payment.expiresAt, dateLocale);');
-    expect(source).toContain("{paymentExpiresAtText ? <Text>{t('pages.checkout.paymentExpiresAt')}: {paymentExpiresAtText}</Text> : null}");
+    expect(source).toContain("{paymentExpiresAtText ? <span className=\"checkout-page__text\">{t('pages.checkout.paymentExpiresAt')}: {paymentExpiresAtText}</span> : null}");
     expect(source).not.toContain('new Date(payment.expiresAt).toLocaleString(dateLocale)');
   });
 
@@ -808,7 +810,7 @@ describe('Checkout payment availability', () => {
 
     expect(fixCss).toContain('@media (max-width: 780px)');
     expect(fixCss).toMatch(/\.checkout-page__mobilePayBar \.ant-btn-primary,[\s\S]*?\.checkout-page__mobilePayBar \.ant-btn-primary \.checkout-page__submitAmountPending\s*\{[\s\S]*?color:\s*#ffffff\s*!important;[\s\S]*?-webkit-text-fill-color:\s*#ffffff\s*!important;[\s\S]*?text-shadow:\s*none\s*!important;/);
-    expect(fixCss).toMatch(/\.checkout-page__mobilePayBar \.ant-btn-primary:disabled,[\s\S]*?\.checkout-page__mobilePayBar \.ant-btn-primary:disabled :where\(span,\s*strong,\s*b,\s*\.ant-typography,\s*\.commerce-money\)\s*\{[\s\S]*?color:\s*rgba\(255,\s*255,\s*255,\s*0\.78\)\s*!important;[\s\S]*?-webkit-text-fill-color:\s*rgba\(255,\s*255,\s*255,\s*0\.78\)\s*!important;/);
+    expect(fixCss).toMatch(/\.checkout-page__mobilePayBar \.ant-btn-primary:disabled,[\s\S]*?\.checkout-page__mobilePayBar \.ant-btn-primary:disabled :where\(span,\s*strong,\s*b,\s*\.checkout-page__text,\s*\.commerce-money\)\s*\{[\s\S]*?color:\s*rgba\(255,\s*255,\s*255,\s*0\.78\)\s*!important;[\s\S]*?-webkit-text-fill-color:\s*rgba\(255,\s*255,\s*255,\s*0\.78\)\s*!important;/);
   });
 
   it('turns the mobile pay bar into the next required checkout action before submit is ready', () => {

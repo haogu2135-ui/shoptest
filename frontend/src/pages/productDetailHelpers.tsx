@@ -1,5 +1,5 @@
 import React from 'react';
-import { CheckCircleOutlined, SafetyCertificateOutlined, TruckOutlined } from '@ant-design/icons';
+import { ShopIcon, SI } from '../components/ShopIcon';
 import type { ProductPublic as Product } from '../types';
 import { loadFallbackProductCatalog, loadProductCatalogSnapshot } from '../utils/productCatalogSnapshot';
 import { resolveApiAssetUrl } from '../utils/mediaAssets';
@@ -130,12 +130,12 @@ export const getTouchPair = (touches: GalleryTouchList) => {
 export const renderTrustIcon = (icon: string) => {
   switch (icon) {
     case 'truck':
-      return <TruckOutlined />;
+      return <ShopIcon path={SI.truck} />;
     case 'shield':
     case 'support':
-      return <SafetyCertificateOutlined />;
+      return <ShopIcon path={SI.safety} />;
     default:
-      return <CheckCircleOutlined />;
+      return <ShopIcon path={SI.checkCircle} />;
   }
 };
 

@@ -37,12 +37,12 @@
   gap: 12px;
 }
 
-.profile-overview__copy .ant-typography {
+.profile-overview__copy .profile-page__text {
   margin: 0;
   color: #ffffff;
 }
 
-.profile-overview__copy h2.ant-typography {
+.profile-overview__copy h2.profile-page__title {
   font-size: 38px;
   line-height: 1.05;
 }
@@ -322,7 +322,7 @@
   line-height: 1;
 }
 
-.profile-action-center__card .ant-typography {
+.profile-action-center__card .profile-page__text {
   overflow-wrap: anywhere;
   line-height: 1.25;
 }
@@ -403,7 +403,7 @@
   line-height: 1;
 }
 
-.profile-address-readiness__stats .ant-typography {
+.profile-address-readiness__stats .profile-page__text {
   font-size: 12px;
   line-height: 1.25;
 }
@@ -772,7 +772,7 @@
   gap: 2px;
 }
 
-.profile-pet-next-step .ant-typography {
+.profile-pet-next-step .profile-page__text {
   display: block;
   line-height: 1.35;
   overflow-wrap: anywhere;
@@ -796,7 +796,7 @@
   gap: 2px;
 }
 
-.profile-pet-shop-path .ant-typography {
+.profile-pet-shop-path .profile-page__text {
   display: block;
   line-height: 1.35;
   overflow-wrap: anywhere;
@@ -1078,7 +1078,7 @@
   background: #fbfff8;
 }
 
-.profile-return-modal__summary .ant-typography {
+.profile-return-modal__summary .profile-page__text {
   color: #173f2b;
 }
 
@@ -1166,7 +1166,7 @@
 .profile-page--es .ant-card,
 .profile-page--es .ant-btn,
 .profile-page--es .ant-input,
-.profile-page--es .ant-typography,
+.profile-page--es .profile-page__text,
 .profile-page--es .ant-descriptions,
 .profile-page--es .ant-tag {
   hyphens: auto;
@@ -1207,7 +1207,7 @@
     border-radius: 8px;
   }
 
-  .profile-overview__copy h2.ant-typography {
+  .profile-overview__copy h2.profile-page__title {
     font-size: 28px;
   }
 
@@ -1215,7 +1215,7 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .profile-page h2.ant-typography {
+  .profile-page h2.profile-page__title {
     margin-bottom: 12px;
     font-size: 22px;
   }
@@ -1494,7 +1494,7 @@
   min-width: 0;
 }
 
-.profile-payment-recovery .ant-typography {
+.profile-payment-recovery .profile-page__text {
   display: block;
   line-height: 1.35;
   overflow-wrap: anywhere;
@@ -1701,7 +1701,7 @@
     letter-spacing: 0;
   }
 
-  .profile-overview__copy h2.ant-typography {
+  .profile-overview__copy h2.profile-page__title {
     font-size: 24px;
     line-height: 1.12;
   }
@@ -1768,7 +1768,7 @@
     font-size: 16px;
   }
 
-  .profile-action-center__intro .ant-typography {
+  .profile-action-center__intro .profile-page__text {
     display: block;
     line-height: 1.35;
   }
@@ -1994,7 +1994,7 @@
     padding: 12px;
   }
 
-  .profile-overview__copy h2.ant-typography {
+  .profile-overview__copy h2.profile-page__title {
     font-size: 21px;
     line-height: 1.12;
   }
@@ -2451,19 +2451,19 @@
     line-height: 1.15;
   }
 
-  .profile-overview__copy h2.ant-typography,
+  .profile-overview__copy h2.profile-page__title,
   .profile-overview__text,
-  .profile-action-center__intro .ant-typography,
-  .profile-action-center__card .ant-typography,
-  .profile-address-readiness .ant-typography,
-  .profile-after-sale-panel .ant-typography,
+  .profile-action-center__intro .profile-page__text,
+  .profile-action-center__card .profile-page__text,
+  .profile-address-readiness .profile-page__text,
+  .profile-after-sale-panel .profile-page__text,
   .profile-order-card__link,
   .profile-order-card__next,
-  .profile-order-item__main .ant-typography,
-  .profile-order-card__amount .ant-typography,
-  .profile-order-card__paid .ant-typography,
-  .profile-pet-next-step .ant-typography,
-  .profile-pet-shop-path .ant-typography {
+  .profile-order-item__main .profile-page__text,
+  .profile-order-card__amount .profile-page__text,
+  .profile-order-card__paid .profile-page__text,
+  .profile-pet-next-step .profile-page__text,
+  .profile-pet-shop-path .profile-page__text {
     overflow-wrap: anywhere;
   }
 
@@ -2611,11 +2611,11 @@
     z-index: 1;
   }
 
-  .profile-payment-modal .ant-typography,
+  .profile-payment-modal .profile-page__text,
   .profile-payment-modal .ant-tag,
   .profile-payment-link,
   .profile-payment-method-hint,
-  .profile-payment-recovery .ant-typography,
+  .profile-payment-recovery .profile-page__text,
   .profile-flow-actions__card strong,
   .profile-flow-actions__card span,
   .profile-order-detail__title,
@@ -2670,7 +2670,7 @@
     padding: 12px;
   }
 
-  .profile-overview__copy h2.ant-typography {
+  .profile-overview__copy h2.profile-page__title {
     font-size: 22px;
     line-height: 1.12;
   }
@@ -2736,7 +2736,7 @@
     width: min(100% - 10px, 1080px);
   }
 
-  .profile-overview__copy h2.ant-typography {
+  .profile-overview__copy h2.profile-page__title {
     font-size: 20px;
   }
 
@@ -3489,10 +3489,10 @@
   .profile-orders__tab,
   .profile-order-card__link,
   .profile-order-card__next,
-  .profile-order-item__main .ant-typography,
-  .profile-order-card__amount .ant-typography,
-  .profile-order-card__paid .ant-typography,
-  .profile-action-center__card .ant-typography,
+  .profile-order-item__main .profile-page__text,
+  .profile-order-card__amount .profile-page__text,
+  .profile-order-card__paid .profile-page__text,
+  .profile-action-center__card .profile-page__text,
   .profile-flow-actions__card span {
     font-size: max(12px, 1em) !important;
     line-height: 1.25 !important;
@@ -3855,8 +3855,8 @@
 
 
 /* Commercial: profile primary titles stay scannable on auth/overview shells. */
-.profile-page__authGateCopy h1.ant-typography,
-.profile-overview__copy h1.ant-typography {
+.profile-page__authGateCopy h1.profile-page__title,
+.profile-overview__copy h1.profile-page__title {
   margin: 0 !important;
   color: #173f2b !important;
   font-size: 24px !important;
@@ -3865,8 +3865,83 @@
 }
 
 @media (max-width: 780px) {
-  .profile-page__authGateCopy h1.ant-typography,
-  .profile-overview__copy h1.ant-typography {
+  .profile-page__authGateCopy h1.profile-page__title,
+  .profile-overview__copy h1.profile-page__title {
     font-size: 22px !important;
   }
+}
+
+/* Commercial Profile native Space */
+.profile-overview__actions,
+.profile-info-actions,
+.profile-payment-return__actions,
+.profile-pet-shop-path__actions,
+.profile-payment-history__emptyActions,
+.profile-page__chipRow,
+.profile-page__inlineRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.profile-order-item__previewError,
+.profile-return-modal__content,
+.profile-payment-modal__content,
+.profile-payment-history__item,
+.profile-page__stack,
+.profile-page__stackTight {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.profile-page__stackTight,
+.profile-payment-history__item {
+  gap: 0;
+}
+.profile-return-modal__content,
+.profile-payment-modal__content {
+  gap: 12px;
+}
+
+
+/* Native typography densification (no ant Typography runtime) */
+.profile-page__title {
+  margin: 0;
+  font-weight: 700;
+  line-height: 1.2;
+  color: inherit;
+}
+
+.profile-page__text {
+  margin: 0;
+  color: inherit;
+  line-height: 1.5;
+}
+
+.profile-page__paragraph {
+  display: block;
+}
+
+.profile-page__text--strong {
+  font-weight: 600;
+}
+
+.profile-page__text--secondary {
+  color: rgba(0, 0, 0, 0.45);
+}
+
+.profile-page__text--danger {
+  color: #ff4d4f;
+}
+
+.profile-page__text--warning {
+  color: #faad14;
+}
+
+.profile-page__text--success {
+  color: #52c41a;
+}
+
+.profile-page__text--delete {
+  text-decoration: line-through;
 }

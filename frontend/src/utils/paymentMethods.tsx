@@ -1,5 +1,5 @@
 import React from 'react';
-import { AlipayOutlined, AppleOutlined, CreditCardOutlined, GoogleOutlined, WechatOutlined, WalletOutlined } from '@ant-design/icons';
+import { ShopIcon, SI } from '../components/ShopIcon';
 import type { PaymentChannel } from '../types';
 
 export type PaymentMethod = string;
@@ -44,21 +44,21 @@ export const paymentMethodOrder: PaymentMethod[] = ['MERCADO_PAGO', 'SPEI', 'OXX
 const iconForPaymentMethod = (method: string) => {
     switch (method) {
         case 'ALIPAY':
-            return <AlipayOutlined />;
+            return <ShopIcon path={SI.alipay} />;
         case 'WECHAT':
         case 'WECHAT_PAY':
-            return <WechatOutlined />;
+            return <ShopIcon path={SI.wechat} />;
         case 'APPLE_PAY':
-            return <AppleOutlined />;
+            return <ShopIcon path={SI.apple} />;
         case 'GOOGLE_PAY':
-            return <GoogleOutlined />;
+            return <ShopIcon path={SI.google} />;
         case 'STRIPE':
         case 'VISA':
         case 'MX_LOCAL_CARD':
         case 'UNIONPAY':
-            return <CreditCardOutlined />;
+            return <ShopIcon path={SI.creditCard} />;
         default:
-            return <WalletOutlined />;
+            return <ShopIcon path={SI.wallet} />;
     }
 };
 

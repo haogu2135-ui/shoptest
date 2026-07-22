@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Alert, Button, Form, Input, message, Typography } from 'antd';
+import { announceAccessibleMessage } from '../utils/accessibleMessage';
+import { ShopIcon, SI } from '../components/ShopIcon';
+import { Alert, Button, Form, Input } from 'antd';
 import type { InputRef } from 'antd/es/input';
-import { CheckCircleOutlined, LockOutlined, MailOutlined, SafetyCertificateOutlined, UserOutlined, EyeOutlined, EyeInvisibleOutlined } from '@ant-design/icons';
 import { Link, useNavigate } from 'react-router-dom';
 import { userApi } from '../api';
 import { useAppConfig } from '../hooks/useAppConfig';
@@ -18,7 +19,6 @@ import {
 } from '../utils/passwordPolicy';
 import './Login.css';
 
-const { Title } = Typography;
 
 interface ForgotPasswordForm {
   login: string;
@@ -154,7 +154,7 @@ const ForgotPassword: React.FC = () => {
     resetCodeSendingRef.current = true;
     try {
       if (!emailCodeEnabled) {
-        message.warning(t('pages.auth.emailCodeUnavailable'));
+        announceAccessibleMessage(t('pages.auth.emailCodeUnavailable'), 'warning');
         return;
       }
       const { email } = await form.validateFields(['email']);
@@ -170,7 +170,7 @@ const ForgotPassword: React.FC = () => {
       form.setFields([{ name: 'code', errors: [] }]);
       setSentEmailHint(maskEmail(normalizedEmail));
       window.setTimeout(() => codeInputRef.current?.focus?.(), 0);
-      message.success(t('pages.auth.emailCodeSentTo', { email: maskEmail(normalizedEmail) }));
+      announceAccessibleMessage(t('pages.auth.emailCodeSentTo', { email: maskEmail(normalizedEmail) }), 'success');
     } catch (error: unknown) {
       if (!isFormValidationError(error)) {
         const errorCode = authApiErrorCode(error);
@@ -181,7 +181,7 @@ const ForgotPassword: React.FC = () => {
           ? t('pages.auth.emailCodeRateLimited')
           : t('pages.auth.emailCodeSendFailed');
         setAuthBannerError(errorMessage);
-        message.error(errorMessage);
+        announceAccessibleMessage(errorMessage, 'error');
       }
     } finally {
       resetCodeSendingRef.current = false;
@@ -197,7 +197,7 @@ const ForgotPassword: React.FC = () => {
       if (!emailCodeEnabled) {
         const unavailable = t('pages.auth.emailCodeUnavailable');
         setAuthBannerError(unavailable);
-        message.warning(unavailable);
+        announceAccessibleMessage(unavailable, 'warning');
         return;
       }
       const normalizedCode = normalizeEmailCode(values.code);
@@ -218,7 +218,7 @@ const ForgotPassword: React.FC = () => {
         newPassword: values.newPassword,
       });
       setAuthBannerError(null);
-      message.success(t('pages.auth.resetSuccess'));
+      announceAccessibleMessage(t('pages.auth.resetSuccess'), 'success');
       navigate('/login');
     } catch (error: unknown) {
       const errorCode = authApiErrorCode(error);
@@ -228,11 +228,11 @@ const ForgotPassword: React.FC = () => {
           : t('pages.auth.emailCodeInvalid');
         form.setFields([{ name: 'code', errors: [msg] }]);
         setAuthBannerError(msg);
-        message.error(msg);
+        announceAccessibleMessage(msg, 'error');
       } else {
         const msg = t('pages.auth.resetFailed');
         setAuthBannerError(msg);
-        message.error(msg);
+        announceAccessibleMessage(msg, 'error');
       }
     } finally {
       resetSubmittingRef.current = false;
@@ -245,20 +245,20 @@ const ForgotPassword: React.FC = () => {
       <section className="shopee-login-card shopee-login-card--reset">
         <div className="shopee-login-brand">
           <div className="shopee-login-mark">{t('common.brand')}</div>
-          <Title level={1} className="shopee-login-subtitle shopee-login-subtitle--h1">{t('pages.auth.resetPasswordTitle')}</Title>
+          <h1 className="shopee-login-subtitle shopee-login-subtitle--h1">{t('pages.auth.resetPasswordTitle')}</h1>
         </div>
         {!resetUnavailable ? (
           <div className="shopee-login-reset-guide" aria-label={t('pages.auth.resetGuideTitle')}>
             <div className="shopee-login-reset-guide__item">
-              <MailOutlined />
+              <ShopIcon path={SI.mail} />
               <span>{t('pages.auth.resetGuideEmail')}</span>
             </div>
             <div className="shopee-login-reset-guide__item">
-              <SafetyCertificateOutlined />
+              <ShopIcon path={SI.safety} />
               <span>{t('pages.auth.resetGuideVerify')}</span>
             </div>
             <div className="shopee-login-reset-guide__item">
-              <CheckCircleOutlined />
+              <ShopIcon path={SI.checkCircle} />
               <span>{t('pages.auth.resetGuideLogin')}</span>
             </div>
           </div>
@@ -336,7 +336,7 @@ const ForgotPassword: React.FC = () => {
           <Form form={form} name="forgotPassword" onFinish={onFinish} onFinishFailed={() => { window.requestAnimationFrame(() => window.requestAnimationFrame(scrollFirstForgotPasswordErrorIntoView)); }} layout="vertical" className="shopee-login-form" validateTrigger={["onChange", "onBlur"]} requiredMark>
           <Form.Item name="login" rules={[{ required: true, message: t('pages.auth.usernameRequired') }]}>
             <Input
-              prefix={<UserOutlined />}
+              prefix={<ShopIcon path={SI.user} />}
               placeholder={t('pages.auth.username')}
               size="large"
               autoComplete="username"
@@ -352,11 +352,11 @@ const ForgotPassword: React.FC = () => {
               { type: 'email', message: t('pages.auth.emailInvalid') },
             ]}
           >
-            <Input prefix={<MailOutlined />} placeholder={t('pages.auth.email')} size="large" autoComplete="email" disabled={loading || !emailCodeEnabled} aria-label={resetEmailInputLabel} title={resetEmailInputLabel} />
+            <Input prefix={<ShopIcon path={SI.mail} />} placeholder={t('pages.auth.email')} size="large" autoComplete="email" disabled={loading || !emailCodeEnabled} aria-label={resetEmailInputLabel} title={resetEmailInputLabel} />
           </Form.Item>
           {sentEmailHint && (
             <div className="shopee-login-emailSent" role="status">
-              <SafetyCertificateOutlined />
+              <ShopIcon path={SI.safety} />
               <span>
                 <strong>{t('pages.auth.emailCodeSentTo', { email: sentEmailHint })}</strong>
                 {codeTtlMinutes > 0 && (
@@ -376,7 +376,7 @@ const ForgotPassword: React.FC = () => {
             <Input
               ref={codeInputRef}
               className="shopee-login-codeInput"
-              prefix={<SafetyCertificateOutlined />}
+              prefix={<ShopIcon path={SI.safety} />}
               placeholder={t('pages.auth.verificationCode')}
               size="large"
               maxLength={6}
@@ -417,7 +417,7 @@ const ForgotPassword: React.FC = () => {
             ]}
           >
             <Input.Password
-              prefix={<LockOutlined />}
+              prefix={<ShopIcon path={SI.lock} />}
               placeholder={t('pages.auth.newPassword')}
               size="large"
               autoComplete="new-password"
@@ -432,7 +432,7 @@ const ForgotPassword: React.FC = () => {
                   title={passwordVisibilityActionLabel(visible)}
                   style={{ border: 0, padding: 0, background: 'transparent', color: 'inherit', lineHeight: 0, cursor: 'pointer' }}
                 >
-                  {visible ? <EyeOutlined /> : <EyeInvisibleOutlined />}
+                  {visible ? <ShopIcon path={SI.eye} /> : <ShopIcon path={SI.eyeOff} />}
                 </button>
               )}
             />
@@ -453,7 +453,7 @@ const ForgotPassword: React.FC = () => {
             ]}
           >
             <Input.Password
-              prefix={<LockOutlined />}
+              prefix={<ShopIcon path={SI.lock} />}
               placeholder={t('pages.auth.confirmPassword')}
               size="large"
               autoComplete="new-password"
@@ -467,7 +467,7 @@ const ForgotPassword: React.FC = () => {
                   title={confirmPasswordVisibilityActionLabel(visible)}
                   style={{ border: 0, padding: 0, background: 'transparent', color: 'inherit', lineHeight: 0, cursor: 'pointer' }}
                 >
-                  {visible ? <EyeOutlined /> : <EyeInvisibleOutlined />}
+                  {visible ? <ShopIcon path={SI.eye} /> : <ShopIcon path={SI.eyeOff} />}
                 </button>
               )}
             />

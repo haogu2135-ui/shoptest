@@ -25,7 +25,7 @@
   text-transform: uppercase;
 }
 
-.legal-page__hero .ant-typography {
+.legal-page__hero .legal-page__text {
   margin-bottom: 0;
 }
 
@@ -46,11 +46,11 @@
   box-shadow: 0 10px 28px rgba(18, 71, 52, 0.05);
 }
 
-.legal-page__section .ant-typography {
+.legal-page__section .legal-page__text {
   margin-bottom: 0;
 }
 
-.legal-page__section h2.ant-typography {
+.legal-page__section h2.legal-page__text {
   margin-bottom: 8px;
   font-size: 1.15rem;
   color: #102f22;
@@ -85,4 +85,47 @@
     min-height: 44px !important;
     touch-action: manipulation;
   }
+}
+
+
+/* Native typography densification (no ant Typography runtime) */
+.legal-page__title {
+  margin: 0;
+  font-weight: 700;
+  line-height: 1.2;
+  color: inherit;
+}
+
+.legal-page__text {
+  margin: 0;
+  color: inherit;
+  line-height: 1.5;
+}
+
+.legal-page__paragraph {
+  display: block;
+}
+
+.legal-page__text--strong {
+  font-weight: 600;
+}
+
+.legal-page__text--secondary {
+  color: rgba(0, 0, 0, 0.45);
+}
+
+.legal-page__text--danger {
+  color: #ff4d4f;
+}
+
+.legal-page__text--warning {
+  color: #faad14;
+}
+
+.legal-page__text--success {
+  color: #52c41a;
+}
+
+.legal-page__text--delete {
+  text-decoration: line-through;
 }

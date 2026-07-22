@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Rate, Input, Button, List, Avatar, Space, message, Select, Empty, Typography, Upload } from 'antd';
-import { DeleteOutlined, PlusOutlined, UserOutlined } from '@ant-design/icons';
+import { announceAccessibleMessage } from '../utils/accessibleMessage';
+import { ShopIcon, SI } from './ShopIcon';
+import { Rate, Input, Button, List, Avatar, Space, Select, Empty, Typography, Upload } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../i18n';
 import type { PublicReview, ReviewableOrder } from '../types';
@@ -61,15 +62,15 @@ export const ProductReview: React.FC<ProductReviewProps> = ({
 
     const handleImageUpload = async (file: File) => {
         if (!file.type || !['image/jpeg', 'image/png', 'image/gif'].includes(file.type.toLowerCase())) {
-            message.warning(t('pages.review.imageInvalidType'));
+            announceAccessibleMessage(t('pages.review.imageInvalidType'), 'warning');
             return Upload.LIST_IGNORE;
         }
         if (file.size > MAX_REVIEW_IMAGE_SIZE_BYTES) {
-            message.warning(t('pages.review.imageTooLarge'));
+            announceAccessibleMessage(t('pages.review.imageTooLarge'), 'warning');
             return Upload.LIST_IGNORE;
         }
         if (imageUrls.length >= MAX_REVIEW_IMAGES) {
-            message.warning(t('pages.review.imageLimit', { count: MAX_REVIEW_IMAGES }));
+            announceAccessibleMessage(t('pages.review.imageLimit', { count: MAX_REVIEW_IMAGES }), 'warning');
             return Upload.LIST_IGNORE;
         }
         setUploadingImage(true);
@@ -80,9 +81,9 @@ export const ProductReview: React.FC<ProductReviewProps> = ({
                 throw new Error('Empty review image URL');
             }
             setImageUrls((current) => [...current, uploadedUrl].slice(0, MAX_REVIEW_IMAGES));
-            message.success(t('pages.review.imageUploadSuccess'));
+            announceAccessibleMessage(t('pages.review.imageUploadSuccess'), 'success');
         } catch (error: unknown) {
-            message.error(getApiErrorMessage(error, t('pages.review.imageUploadFailed'), language));
+            announceAccessibleMessage(getApiErrorMessage(error, t('pages.review.imageUploadFailed'), language), 'error');
         } finally {
             setUploadingImage(false);
         }
@@ -95,31 +96,31 @@ export const ProductReview: React.FC<ProductReviewProps> = ({
 
     const handleSubmit = async () => {
         if (!isLoggedIn) {
-            message.warning(t('messages.loginRequired'));
+            announceAccessibleMessage(t('messages.loginRequired'), 'warning');
             navigate(buildLoginUrlFromWindow());
             return;
         }
         if (!orderId) {
-            message.warning(t('pages.review.selectOrder'));
+            announceAccessibleMessage(t('pages.review.selectOrder'), 'warning');
             return;
         }
         if (!comment.trim()) {
-            message.warning(t('pages.review.emptyComment'));
+            announceAccessibleMessage(t('pages.review.emptyComment'), 'warning');
             return;
         }
         if (comment.trim().length > MAX_REVIEW_COMMENT_LENGTH) {
-            message.warning(t('pages.review.commentTooLong', { count: MAX_REVIEW_COMMENT_LENGTH }));
+            announceAccessibleMessage(t('pages.review.commentTooLong', { count: MAX_REVIEW_COMMENT_LENGTH }), 'warning');
             return;
         }
         if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
-            message.warning(t('pages.review.invalidRating'));
+            announceAccessibleMessage(t('pages.review.invalidRating'), 'warning');
             return;
         }
         const safeImageUrls = imageUrls
             .map((imageUrl) => imageUrl.trim())
             .filter(Boolean);
         if (safeImageUrls.length > MAX_REVIEW_IMAGES || safeImageUrls.some((imageUrl) => !REVIEW_IMAGE_URL_PATTERN.test(imageUrl))) {
-            message.warning(t('pages.review.imageInvalid'));
+            announceAccessibleMessage(t('pages.review.imageInvalid'), 'warning');
             return;
         }
 
@@ -130,9 +131,9 @@ export const ProductReview: React.FC<ProductReviewProps> = ({
             setRating(5);
             setImageUrls([]);
             setOrderId(undefined);
-            message.success(t('pages.review.success'));
+            announceAccessibleMessage(t('pages.review.success'), 'success');
         } catch (error: unknown) {
-            message.error(getApiErrorMessage(error, t('pages.review.failed'), language));
+            announceAccessibleMessage(getApiErrorMessage(error, t('pages.review.failed'), language), 'error');
         } finally {
             setSubmitting(false);
         }
@@ -195,7 +196,7 @@ export const ProductReview: React.FC<ProductReviewProps> = ({
                                                 <Button
                                                     type="text"
                                                     danger
-                                                    icon={<DeleteOutlined />}
+                                                    icon={<ShopIcon path={SI.delete} />}
                                                     aria-label={t('pages.review.imageRemove', { index: index + 1 })}
                                                     title={t('pages.review.imageRemove', { index: index + 1 })}
                                                     onClick={() => removeImage(imageUrl)}
@@ -212,7 +213,7 @@ export const ProductReview: React.FC<ProductReviewProps> = ({
                                         disabled={uploadingImage || submitting}
                                     >
                                         <Button
-                                            icon={<PlusOutlined />}
+                                            icon={<ShopIcon path={SI.plus} />}
                                             loading={uploadingImage}
                                             aria-label={reviewImageUploadLabel}
                                             title={reviewImageUploadLabel}
@@ -338,7 +339,7 @@ export const ProductReview: React.FC<ProductReviewProps> = ({
                     renderItem={(review) => (
                         <List.Item className="product-review__item">
                             <List.Item.Meta
-                                avatar={<Avatar icon={<UserOutlined />} />}
+                                avatar={<Avatar icon={<ShopIcon path={SI.user} />} />}
                                 title={
                                     <Space className="product-review__meta" wrap>
                                         <span>{review.username}</span>

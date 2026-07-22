@@ -8,7 +8,7 @@
 .stock-alerts .ant-card,
 .stock-alerts .ant-btn,
 .stock-alerts .ant-list,
-.stock-alerts .ant-typography {
+.stock-alerts .stock-alerts-page__text {
   font-family: 'Avenir Next', 'Manrope', 'Segoe UI Variable', sans-serif;
 }
 
@@ -39,7 +39,7 @@
   gap: 4px;
 }
 
-.stock-alerts__assistantCopy .ant-typography {
+.stock-alerts__assistantCopy .stock-alerts-page__text {
   margin: 0;
 }
 
@@ -127,11 +127,11 @@
   box-shadow: 0 12px 28px rgba(18, 71, 52, 0.08);
 }
 
-.stock-alerts__recovery .ant-typography {
+.stock-alerts__recovery .stock-alerts-page__text {
   margin: 0;
 }
 
-.stock-alerts__recovery h4.ant-typography {
+.stock-alerts__recovery h4.stock-alerts-page__title {
   margin: 4px 0;
   color: #173f2b;
 }
@@ -171,11 +171,11 @@
   background: #ffffff;
 }
 
-.stock-alerts__nextAction .ant-typography {
+.stock-alerts__nextAction .stock-alerts-page__text {
   margin: 0;
 }
 
-.stock-alerts__nextAction h4.ant-typography {
+.stock-alerts__nextAction h4.stock-alerts-page__title {
   margin: 4px 0;
   color: #173f2b;
 }
@@ -293,7 +293,7 @@
 .stock-alerts--es .ant-card,
 .stock-alerts--es .ant-btn,
 .stock-alerts--es .ant-list,
-.stock-alerts--es .ant-typography,
+.stock-alerts--es .stock-alerts-page__text,
 .stock-alerts--es .ant-tag {
   hyphens: auto;
   overflow-wrap: anywhere;
@@ -563,7 +563,7 @@
     padding: 14px 12px;
   }
 
-  .stock-alerts__header h2.ant-typography {
+  .stock-alerts__header h2.stock-alerts-page__title {
     font-size: 22px;
     line-height: 1.18;
   }
@@ -656,7 +656,7 @@
     margin-bottom: 10px;
   }
 
-  .stock-alerts__header h2.ant-typography {
+  .stock-alerts__header h2.stock-alerts-page__title {
     font-size: 20px;
     line-height: 1.15;
   }
@@ -683,16 +683,16 @@
     border-radius: 16px;
   }
 
-  .stock-alerts__assistantCopy h4.ant-typography,
-  .stock-alerts__recovery h4.ant-typography,
-  .stock-alerts__nextAction h4.ant-typography {
+  .stock-alerts__assistantCopy h4.stock-alerts-page__title,
+  .stock-alerts__recovery h4.stock-alerts-page__title,
+  .stock-alerts__nextAction h4.stock-alerts-page__title {
     font-size: 16px;
     line-height: 1.2;
   }
 
-  .stock-alerts__assistantCopy .ant-typography,
-  .stock-alerts__recovery .ant-typography,
-  .stock-alerts__nextAction .ant-typography {
+  .stock-alerts__assistantCopy .stock-alerts-page__text,
+  .stock-alerts__recovery .stock-alerts-page__text,
+  .stock-alerts__nextAction .stock-alerts-page__text {
     font-size: 12px;
     line-height: 1.35;
   }
@@ -894,14 +894,14 @@
     scroll-snap-align: start;
   }
 
-  .stock-alerts__assistantCopy .ant-typography,
-  .stock-alerts__recovery .ant-typography,
-  .stock-alerts__nextAction .ant-typography,
+  .stock-alerts__assistantCopy .stock-alerts-page__text,
+  .stock-alerts__recovery .stock-alerts-page__text,
+  .stock-alerts__nextAction .stock-alerts-page__text,
   .stock-alerts__signal span,
   .stock-alerts__nextActionMeta .ant-tag,
   .stock-alerts__item .ant-list-item-meta-title,
   .stock-alerts__item .ant-list-item-meta-title a,
-  .stock-alerts__item .ant-list-item-meta-description .ant-typography,
+  .stock-alerts__item .ant-list-item-meta-description .stock-alerts-page__text,
   .stock-alerts__price {
     overflow-wrap: anywhere;
   }
@@ -1219,3 +1219,65 @@
 .stock-alerts__emptyCopy { display: grid; gap: 6px; }
 .stock-alerts__emptyHint { color: rgba(16, 47, 34, 0.72); font-size: 13px; line-height: 1.45; }
 .stock-alerts__emptyPanel .page-feedback__actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+
+/* native stock alert thumb */
+.stock-alerts-page__image {
+  width: 72px;
+  height: 72px;
+  object-fit: cover;
+  border-radius: 8px;
+  display: block;
+}
+
+/* Commercial StockAlerts native Space */
+.stock-alerts__actionRow,
+.stock-alerts__recoveryActions,
+.stock-alerts__nextActionMeta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+
+/* Native typography densification (no ant Typography runtime) */
+.stock-alerts-page__title {
+  margin: 0;
+  font-weight: 700;
+  line-height: 1.2;
+  color: inherit;
+}
+
+.stock-alerts-page__text {
+  margin: 0;
+  color: inherit;
+  line-height: 1.5;
+}
+
+.stock-alerts-page__paragraph {
+  display: block;
+}
+
+.stock-alerts-page__text--strong {
+  font-weight: 600;
+}
+
+.stock-alerts-page__text--secondary {
+  color: rgba(0, 0, 0, 0.45);
+}
+
+.stock-alerts-page__text--danger {
+  color: #ff4d4f;
+}
+
+.stock-alerts-page__text--warning {
+  color: #faad14;
+}
+
+.stock-alerts-page__text--success {
+  color: #52c41a;
+}
+
+.stock-alerts-page__text--delete {
+  text-decoration: line-through;
+}

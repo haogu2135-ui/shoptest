@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Card, Image, List, Popconfirm, Space, Tag, Typography, message } from 'antd';
-import { BellOutlined, CheckCircleOutlined, DeleteOutlined, FireOutlined, ReloadOutlined, ShoppingCartOutlined } from '@ant-design/icons';
+import { announceAccessibleMessage } from '../utils/accessibleMessage';
+import { ShopIcon, SI } from '../components/ShopIcon';
+import { Alert, Button, Card, List, Popconfirm, Tag } from 'antd';
 import { Link, useNavigate } from 'react-router-dom';
 import { cartApi, productApi } from '../api';
 import { useLanguage } from '../i18n';
@@ -22,7 +23,6 @@ import PageEmpty from '../components/PageEmpty';
 import './StockAlerts.css';
 import '../styles/mobile-page-contrast.css';
 
-const { Title, Text } = Typography;
 const stockAlertImageFallback = productImageFallback;
 const resolveStockAlertImage = resolveProductImage;
 
@@ -81,7 +81,7 @@ const StockAlerts: React.FC = () => {
         if (disposed) return;
         const localizedError = getApiErrorMessage(error, t('pages.stockAlerts.loadFailed'), language);
         setLoadError(localizedError);
-        message.error(localizedError);
+        announceAccessibleMessage(localizedError, 'error');
       } finally {
         if (!disposed) setLoading(false);
       }
@@ -105,7 +105,7 @@ const StockAlerts: React.FC = () => {
 
   const addToCart = async (product: Product, quiet = false) => {
     if (product.stock !== undefined && product.stock <= 0) {
-      message.error(t('pages.productDetail.insufficientStock'));
+      announceAccessibleMessage(t('pages.productDetail.insufficientStock'), 'error');
       return false;
     }
     if (needsOptionSelection(product)) {
@@ -121,12 +121,12 @@ const StockAlerts: React.FC = () => {
         addGuestCartItem({ ...product, imageUrl: resolveStockAlertImage(product.imageUrl) }, 1, undefined, product.effectivePrice ?? product.price);
       }
       if (!quiet) {
-        message.success(t('messages.addCartSuccess'));
+        announceAccessibleMessage(t('messages.addCartSuccess'), 'success');
         dispatchDomEvent('shop:open-cart');
       }
       return true;
     } catch (error: unknown) {
-      message.error(getApiErrorMessage(error, t('messages.addFailed'), language));
+      announceAccessibleMessage(getApiErrorMessage(error, t('messages.addFailed'), language), 'error');
       return false;
     }
   };
@@ -176,7 +176,7 @@ const StockAlerts: React.FC = () => {
       .map((item) => item.product)
       .filter(Boolean) as Product[];
     if (readyProducts.length === 0) {
-      message.info(t('pages.stockAlerts.noReadyToCart'));
+      announceAccessibleMessage(t('pages.stockAlerts.noReadyToCart'), 'info');
       return;
     }
     const results = await allSettledWithConcurrency(
@@ -185,7 +185,7 @@ const StockAlerts: React.FC = () => {
     );
     const added = results.filter((result) => result.status === 'fulfilled' && result.value).length;
     if (added > 0) {
-      message.success(t('pages.stockAlerts.addedReadyCount', { count: added }));
+      announceAccessibleMessage(t('pages.stockAlerts.addedReadyCount', { count: added }), 'success');
       dispatchDomEvent('shop:open-cart');
     }
   };
@@ -238,7 +238,7 @@ const StockAlerts: React.FC = () => {
   })();
   const addReadyActionLabel = `${t('pages.stockAlerts.addReadyToCart')}: ${t('pages.stockAlerts.directReady', { count: visibleStockAlertInsights.directAddItems.length })}`;
   const restockNextActionLabel = `${restockNextAction.label}: ${restockNextAction.title}`;
-  const restockNextActionIcon = restockNextAction.tone === 'stale' ? <ReloadOutlined /> : <ShoppingCartOutlined />;
+  const restockNextActionIcon = restockNextAction.tone === 'stale' ? <ShopIcon path={SI.reload} /> : <ShopIcon path={SI.cart} />;
   const mobileNextActionStatus = restockNextAction.tone === 'ready'
     ? t('pages.stockAlerts.directReady', { count: visibleStockAlertInsights.directAddItems.length })
     : restockNextAction.tone === 'options'
@@ -254,14 +254,14 @@ const StockAlerts: React.FC = () => {
       <Card>
         <div className="stock-alerts__header">
           <div>
-            <Title level={1} style={{ margin: 0 }}>
-              <BellOutlined /> {t('pages.stockAlerts.title')}
-            </Title>
-            <Text type="secondary">
+            <h1 className="stock-alerts-page__title" style={{ margin: 0 }}>
+              <ShopIcon path={SI.bell} /> {t('pages.stockAlerts.title')}
+            </h1>
+            <span className="stock-alerts-page__text stock-alerts-page__text--secondary">
               {t('pages.stockAlerts.subtitle', { count: loading || hasStaleProductData ? 0 : visibleStockAlertInsights.backInStockItems.length, saved: alerts.length })}
-            </Text>
+            </span>
           </div>
-          <Space wrap>
+          <div className="stock-alerts__actionRow">
             <Button aria-label={browseStockAlertsActionLabel} title={browseStockAlertsActionLabel} onClick={() => navigate('/products')}>{t('pages.stockAlerts.browse')}</Button>
             <Popconfirm
               classNames={{ root: 'shop-mobile-popup-layer stock-alerts-popconfirm' }}
@@ -274,29 +274,29 @@ const StockAlerts: React.FC = () => {
             >
               <Button danger disabled={alerts.length === 0} aria-label={clearStockAlertsActionLabel} title={clearStockAlertsActionLabel}>{t('pages.stockAlerts.clear')}</Button>
             </Popconfirm>
-          </Space>
+          </div>
         </div>
 
         {alerts.length > 0 ? (
           <section className="stock-alerts__assistant" aria-label={t('pages.stockAlerts.assistantTitle')}>
             <div className="stock-alerts__assistantCopy">
-              <Text className="stock-alerts__eyebrow">{t('pages.stockAlerts.assistantEyebrow')}</Text>
-              <Title level={4}>{t('pages.stockAlerts.assistantTitle')}</Title>
-              <Text type="secondary">{assistantSubtitle}</Text>
+              <span className="stock-alerts-page__text stock-alerts__eyebrow">{t('pages.stockAlerts.assistantEyebrow')}</span>
+              <h4 className="stock-alerts-page__title">{t('pages.stockAlerts.assistantTitle')}</h4>
+              <span className="stock-alerts-page__text stock-alerts-page__text--secondary">{assistantSubtitle}</span>
             </div>
             <div className="stock-alerts__signalGrid">
               <div className="stock-alerts__signal is-ok">
-                <CheckCircleOutlined />
+                <ShopIcon path={SI.checkCircle} />
                 <strong>{visibleStockAlertInsights.backInStockItems.length}</strong>
                 <span>{t('pages.stockAlerts.readyNow')}</span>
               </div>
               <div className={`stock-alerts__signal ${visibleStockAlertInsights.urgentItems.length ? 'is-risk' : 'is-ok'}`}>
-                <FireOutlined />
+                <ShopIcon path={SI.fire} />
                 <strong>{visibleStockAlertInsights.urgentItems.length}</strong>
                 <span>{t('pages.stockAlerts.lowStockReady')}</span>
               </div>
               <div className={`stock-alerts__signal ${visibleStockAlertInsights.waitingItems ? '' : 'is-ok'}`}>
-                <BellOutlined />
+                <ShopIcon path={SI.bell} />
                 <strong>{visibleStockAlertInsights.waitingItems}</strong>
                 <span>{t('pages.stockAlerts.stillWatching')}</span>
               </div>
@@ -307,18 +307,18 @@ const StockAlerts: React.FC = () => {
         {visibleStockAlertInsights.backInStockItems.length > 0 ? (
           <section className="stock-alerts__recovery" aria-label={t('pages.stockAlerts.recoveryTitle')}>
             <div>
-              <Text className="stock-alerts__eyebrow">{t('pages.stockAlerts.recoveryEyebrow')}</Text>
-              <Title level={4}>{t('pages.stockAlerts.recoveryTitle')}</Title>
-              <Text type="secondary">
+              <span className="stock-alerts-page__text stock-alerts__eyebrow">{t('pages.stockAlerts.recoveryEyebrow')}</span>
+              <h4 className="stock-alerts-page__title">{t('pages.stockAlerts.recoveryTitle')}</h4>
+              <span className="stock-alerts-page__text stock-alerts-page__text--secondary">
                 {visibleStockAlertInsights.bestReadyItem?.product
                   ? t('pages.stockAlerts.recoverySubtitleBest', {
                     name: stockAlertProductName(visibleStockAlertInsights.bestReadyItem),
                     price: formatMoney(visibleStockAlertInsights.bestReadyItem.product.effectivePrice ?? visibleStockAlertInsights.bestReadyItem.product.price),
                   })
                   : t('pages.stockAlerts.recoverySubtitle', { count: visibleStockAlertInsights.backInStockItems.length })}
-              </Text>
+              </span>
             </div>
-            <Space wrap className="stock-alerts__recoveryActions">
+            <div className="stock-alerts__recoveryActions">
               {visibleStockAlertInsights.bestReadyItem?.product ? (
                 <Button
                   onClick={() => navigate(`/products/${visibleStockAlertInsights.bestReadyItem!.productId}`)}
@@ -330,25 +330,25 @@ const StockAlerts: React.FC = () => {
               ) : null}
               <Button
                 type="primary"
-                icon={<ShoppingCartOutlined />}
+                icon={<ShopIcon path={SI.cart} />}
                 aria-label={addReadyActionLabel}
                 title={addReadyActionLabel}
                 onClick={addReadyItemsToCart}
               >
                 {t('pages.stockAlerts.addReadyToCart')}
               </Button>
-            </Space>
+            </div>
           </section>
         ) : null}
 
         {alerts.length > 0 ? (
           <section className={`stock-alerts__nextAction stock-alerts__nextAction--${restockNextAction.tone}`} aria-label={t('pages.stockAlerts.nextActionEyebrow')}>
             <div>
-              <Text className="stock-alerts__eyebrow">{t('pages.stockAlerts.nextActionEyebrow')}</Text>
-              <Title level={4}>{restockNextAction.title}</Title>
-              <Text type="secondary">{restockNextAction.text}</Text>
+              <span className="stock-alerts-page__text stock-alerts__eyebrow">{t('pages.stockAlerts.nextActionEyebrow')}</span>
+              <h4 className="stock-alerts-page__title">{restockNextAction.title}</h4>
+              <span className="stock-alerts-page__text stock-alerts-page__text--secondary">{restockNextAction.text}</span>
             </div>
-            <Space wrap className="stock-alerts__nextActionMeta">
+            <div className="stock-alerts__nextActionMeta">
               <Tag color="green">{t('pages.stockAlerts.directReady', { count: visibleStockAlertInsights.directAddItems.length })}</Tag>
               <Tag color={visibleStockAlertInsights.optionItems.length > 0 ? 'gold' : 'default'}>
                 {t('pages.stockAlerts.optionReady', { count: visibleStockAlertInsights.optionItems.length })}
@@ -356,7 +356,7 @@ const StockAlerts: React.FC = () => {
               <Tag color={visibleStockAlertInsights.waitingItems > 0 ? 'blue' : 'default'}>
                 {t('pages.stockAlerts.stillWatchingCount', { count: visibleStockAlertInsights.waitingItems })}
               </Tag>
-            </Space>
+            </div>
             <Button
               type={restockNextAction.tone === 'ready' ? 'primary' : 'default'}
               icon={restockNextActionIcon}
@@ -503,7 +503,7 @@ const StockAlerts: React.FC = () => {
                     <Button
                       key="add"
                       type="primary"
-                      icon={<ShoppingCartOutlined />}
+                      icon={<ShopIcon path={SI.cart} />}
                       className={ready ? undefined : 'stock-alerts__soldoutButton'}
                       aria-label={addActionLabel}
                       title={addActionLabel}
@@ -522,33 +522,38 @@ const StockAlerts: React.FC = () => {
                       okButtonProps={{ danger: true, 'aria-label': removeActionLabel, title: removeActionLabel }}
                       cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${removeActionLabel}`, title: `${t('common.cancel')}: ${removeActionLabel}` }}
                     >
-                      <Button icon={<DeleteOutlined />} aria-label={removeActionLabel} title={removeActionLabel}>{t('pages.stockAlerts.remove')}</Button>
+                      <Button icon={<ShopIcon path={SI.delete} />} aria-label={removeActionLabel} title={removeActionLabel}>{t('pages.stockAlerts.remove')}</Button>
                     </Popconfirm>,
                   ]}
                 >
                   <List.Item.Meta
                     avatar={
                       <Link className="stock-alerts__imageLink" to={`/products/${item.productId}`} aria-label={productLinkLabel} title={productLinkLabel}>
-                        <Image
+                        <img
+                          className="stock-alerts__image"
                           src={resolveStockAlertImage(product?.imageUrl || item.imageUrl)}
                           alt={productName}
-                          fallback={stockAlertImageFallback}
                           width={72}
                           height={72}
-                          preview={false}
-                          className="stock-alerts__image"
+                          loading="lazy"
+                          decoding="async"
+                          onError={(event) => {
+                            if (event.currentTarget.src !== stockAlertImageFallback) {
+                              event.currentTarget.src = stockAlertImageFallback;
+                            }
+                          }}
                         />
                       </Link>
                     }
                     title={<Link className="stock-alerts__productLink" to={`/products/${item.productId}`} aria-label={productLinkLabel} title={productLinkLabel}>{productName}</Link>}
                     description={
                       <div className="stock-alerts__itemDetails">
-                        <Text type="secondary" className="stock-alerts__watchTime">
+                        <span className="stock-alerts-page__text stock-alerts-page__text--secondary stock-alerts__watchTime">
                           {t('pages.stockAlerts.createdAt', { time: new Date(item.createdAt).toLocaleString(dateLocale) })}
-                        </Text>
+                        </span>
                         {product ? (
                           <div className="stock-alerts__itemSignalRow">
-                            <Text strong className="stock-alerts__price commerce-money">{formatMoney(product.effectivePrice ?? product.price)}</Text>
+                            <span className="stock-alerts-page__text stock-alerts-page__text--strong stock-alerts__price commerce-money">{formatMoney(product.effectivePrice ?? product.price)}</span>
                             <Tag color={ready ? 'green' : 'default'}>
                               {ready ? t('pages.productDetail.enough') : t('pages.productList.soldOut')}
                             </Tag>

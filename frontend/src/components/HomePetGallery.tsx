@@ -1,6 +1,6 @@
 import React from 'react';
+import { ShopIcon, SI } from './ShopIcon';
 import { Modal, Popconfirm } from 'antd';
-import { CameraOutlined, DeleteOutlined, HeartFilled, HeartOutlined } from '@ant-design/icons';
 import type { PetGalleryPhotoPublic } from '../types';
 import { buildResponsiveImageSrcSet, getOptimizedImageUrl, imageFallbacks } from '../utils/mediaAssets';
 
@@ -64,7 +64,7 @@ const HomePetGallery: React.FC<HomePetGalleryProps> = ({
   <>
     <section className="shopee-section pet-ugc">
       <div className="shopee-section__header">
-        <h2><CameraOutlined /> {t('home.petUgcTitle')}</h2>
+        <h2><ShopIcon path={SI.camera} /> {t('home.petUgcTitle')}</h2>
         <div className="pet-ugc__actions">
           <input
             ref={uploadInputRef}
@@ -80,7 +80,7 @@ const HomePetGallery: React.FC<HomePetGalleryProps> = ({
             onClick={onUploadClick}
             disabled={uploading || uploadDisabled}
           >
-            <CameraOutlined /> {uploadButtonLabel}
+            <ShopIcon path={SI.camera} /> {uploadButtonLabel}
           </button>
           <button type="button" aria-label={galleryActionLabel} title={galleryActionLabel} onClick={onOpenGallery}>
             {t('nav.petGallery')}
@@ -122,7 +122,7 @@ const HomePetGallery: React.FC<HomePetGalleryProps> = ({
                   title={likeActionLabel}
                   onClick={() => onLike(item)}
                 >
-                  {item.likedByMe ? <HeartFilled /> : <HeartOutlined />}
+                  {item.likedByMe ? <ShopIcon path={SI.heartFill} /> : <ShopIcon path={SI.heart} />}
                   {t('home.petUgcLikes', { count: item.likeCount })}
                 </button>
                 {item.canDelete && photo ? (
@@ -136,7 +136,7 @@ const HomePetGallery: React.FC<HomePetGalleryProps> = ({
                     onConfirm={() => onDeletePhoto(photo)}
                   >
                     <button type="button" className="pet-ugc__delete" aria-label={deleteActionLabel} title={deleteActionLabel}>
-                      <DeleteOutlined />
+                      <ShopIcon path={SI.delete} />
                     </button>
                   </Popconfirm>
                 ) : null}

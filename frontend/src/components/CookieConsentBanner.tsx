@@ -1,6 +1,6 @@
 import React, { useLayoutEffect, useRef, useState } from 'react';
+import { ShopIcon, SI } from './ShopIcon';
 import { Button, Typography } from 'antd';
-import { SafetyCertificateOutlined } from '@ant-design/icons';
 import { Link } from 'react-router-dom';
 import { useLanguage } from '../i18n';
 import { acceptCookieConsent, hasCookieConsent } from '../utils/cookieConsent';
@@ -88,7 +88,7 @@ const CookieConsentBanner: React.FC = () => {
       <div className="cookie-consent-banner__inner">
         <div className="cookie-consent-banner__copy">
           <span className="cookie-consent-banner__eyebrow">
-            <SafetyCertificateOutlined aria-hidden />
+            <ShopIcon path={SI.safety} aria-hidden />
             {t('cookieConsent.title')}
           </span>
           <Typography.Paragraph id="cookie-consent-banner-text" className="cookie-consent-banner__text">

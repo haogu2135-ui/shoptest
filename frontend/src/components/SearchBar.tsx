@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { ShopIcon, SI } from './ShopIcon';
 import { Input, Space } from 'antd';
-import { SearchOutlined } from '@ant-design/icons';
 import { useLanguage } from '../i18n';
 import './SearchBar.css';
 
@@ -37,7 +37,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({ onSearch, placeholder, deb
                 className="shop-search-bar__input"
                 value={value}
                 placeholder={placeholder || t('pages.productList.searchPlaceholder')}
-                prefix={<SearchOutlined />}
+                prefix={<ShopIcon path={SI.search} />}
                 onChange={(e) => setValue(e.target.value)}
                 onPressEnter={() => onSearchRef.current(value)}
                 allowClear

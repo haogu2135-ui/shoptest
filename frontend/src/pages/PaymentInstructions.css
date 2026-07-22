@@ -7,7 +7,7 @@
 .payment-instructions-page,
 .payment-instructions-page .ant-card,
 .payment-instructions-page .ant-btn,
-.payment-instructions-page .ant-typography {
+.payment-instructions-page .payment-instructions-page__text {
   font-family: 'Avenir Next', 'Manrope', 'Segoe UI Variable', sans-serif;
 }
 
@@ -22,7 +22,7 @@
   box-shadow: 0 10px 24px rgba(18, 71, 52, 0.06);
 }
 
-.payment-instructions-page__hero .ant-typography {
+.payment-instructions-page__hero .payment-instructions-page__text {
   margin: 0;
 }
 
@@ -83,7 +83,7 @@
   gap: 2px;
 }
 
-.payment-instructions-page__status .ant-typography {
+.payment-instructions-page__status .payment-instructions-page__text {
   display: block;
   line-height: 1.35;
 }
@@ -123,7 +123,7 @@
   font-weight: 800;
 }
 
-.payment-instructions-page__step .ant-typography {
+.payment-instructions-page__step .payment-instructions-page__text {
   min-width: 0;
   width: 100%;
   display: block;
@@ -178,7 +178,7 @@
     padding: 14px;
   }
 
-  .payment-instructions-page__hero h1.ant-typography {
+  .payment-instructions-page__hero h1.payment-instructions-page__title {
     font-size: 24px;
   }
 
@@ -219,7 +219,7 @@
     padding: 2px 0;
   }
 
-  .payment-instructions-page__step .ant-typography {
+  .payment-instructions-page__step .payment-instructions-page__text {
     overflow: visible;
     line-height: 1.5;
   }
@@ -358,12 +358,12 @@
   margin-top: 2px;
 }
 
-.payment-instructions-page__trustItem .ant-typography {
+.payment-instructions-page__trustItem .payment-instructions-page__text {
   display: block;
   line-height: 1.35;
 }
 
-.payment-instructions-page__trustItem .ant-typography-secondary {
+.payment-instructions-page__trustItem .payment-instructions-page__text--secondary {
   font-size: 12px;
 }
 
@@ -514,4 +514,79 @@
   .payment-instructions-page__stickyBar--recovery .ant-btn {
     min-height: 44px;
   }
+}
+
+/* Commercial PaymentInstructions native Space */
+.payment-instructions-page__stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.payment-instructions-page__guestEmailForm {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  gap: 0;
+  width: 100%;
+}
+.payment-instructions-page__guestEmailForm .ant-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.payment-instructions-page__guestEmailForm .ant-btn {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+.payment-instructions-page__guestEmailRecovery,
+.payment-instructions-page__primaryActions,
+.payment-instructions-page__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+
+/* Native typography densification (no ant Typography runtime) */
+.payment-instructions-page__title {
+  margin: 0;
+  font-weight: 700;
+  line-height: 1.2;
+  color: inherit;
+}
+
+.payment-instructions-page__text {
+  margin: 0;
+  color: inherit;
+  line-height: 1.5;
+}
+
+.payment-instructions-page__paragraph {
+  display: block;
+}
+
+.payment-instructions-page__text--strong {
+  font-weight: 600;
+}
+
+.payment-instructions-page__text--secondary {
+  color: rgba(0, 0, 0, 0.45);
+}
+
+.payment-instructions-page__text--danger {
+  color: #ff4d4f;
+}
+
+.payment-instructions-page__text--warning {
+  color: #faad14;
+}
+
+.payment-instructions-page__text--success {
+  color: #52c41a;
+}
+
+.payment-instructions-page__text--delete {
+  text-decoration: line-through;
 }

@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Button, Card, Checkbox, Empty, message, Popconfirm, Progress, Space, Table, Tag, Typography } from 'antd';
-import { CheckCircleOutlined, ClockCircleOutlined, DeleteOutlined, ExclamationCircleOutlined, MinusOutlined, PlusOutlined, ReloadOutlined, ShoppingCartOutlined, ShoppingOutlined, SafetyCertificateOutlined, CustomerServiceOutlined, LockOutlined } from '@ant-design/icons';
+import { announceAccessibleMessage } from '../utils/accessibleMessage';
+import { Alert, Button, Card, Checkbox, Empty, Popconfirm, Progress, Table, Tag } from 'antd';
+import { ShopIcon, SI } from '../components/ShopIcon';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { cartApi, productApi } from '../api';
 import type { CartItem, ProductPublic as Product } from '../types';
@@ -51,7 +52,6 @@ import { ProductCardSkeleton, StatsStripSkeleton } from '../components/SkeletonL
 import './Cart.css';
 import '../styles/mobile-page-contrast.css';
 
-const { Title, Text } = Typography;
 const RECENT_PRODUCTS_CACHE_MS = 2 * 60 * 1000;
 const RECENT_PRODUCTS_CACHE_MAX_ENTRIES = 50;
 type RecentProductsCacheEntry = { expiresAt: number; products: Product[] };
@@ -296,7 +296,7 @@ const Cart: React.FC = () => {
         const errorMessage = getApiErrorMessage(error, cartFetchErrorFallbackRef.current, cartFetchErrorLanguageRef.current);
         setLoadError(true);
         setLoadErrorMessage(errorMessage);
-        message.error(errorMessage);
+        announceAccessibleMessage(errorMessage, 'error');
       }
     } finally {
       if (isCurrentCartSnapshotRequest(requestId)) setLoading(false);
@@ -321,7 +321,7 @@ const Cart: React.FC = () => {
   }, []);
 
   const handleQuantitySyncError = useCallback(async (err: unknown) => {
-    message.error(getApiErrorMessage(err, t('pages.cart.quantityFailed'), language));
+    announceAccessibleMessage(getApiErrorMessage(err, t('pages.cart.quantityFailed'), language), 'error');
     try {
       await fetchCartItems();
     } catch (refreshError) {
@@ -510,7 +510,7 @@ const Cart: React.FC = () => {
       <div className="cart-page__quantityStepper" role="group" aria-label={quantityLabel} title={quantityLabel} aria-busy={syncing}>
         <Button
           size="small"
-          icon={<MinusOutlined />}
+          icon={<ShopIcon path={SI.minus} />}
           aria-label={decreaseLabel}
           title={decreaseLabel}
           disabled={disabled || quantity <= 1}
@@ -548,7 +548,7 @@ const Cart: React.FC = () => {
         />
         <Button
           size="small"
-          icon={<PlusOutlined />}
+          icon={<ShopIcon path={SI.plus} />}
           aria-label={increaseLabel}
           title={increaseLabel}
           disabled={disabled || quantity >= limit}
@@ -560,8 +560,8 @@ const Cart: React.FC = () => {
 
   const renderLineTotal = (item: CartItem) => (
     canCheckout(item)
-      ? <Text strong className="cart-page__priceText commerce-money">{formatMoney(getLineTotal(item))}</Text>
-      : <Text type="danger" className="cart-page__unavailableSubtotal">{t('pages.cart.quantityUnavailable')}</Text>
+      ? <span className="cart-page__text cart-page__text--strong cart-page__priceText commerce-money">{formatMoney(getLineTotal(item))}</span>
+      : <span className="cart-page__text cart-page__text--danger cart-page__unavailableSubtotal">{t('pages.cart.quantityUnavailable')}</span>
   );
 
   const removeItem = async (itemId: number) => {
@@ -579,13 +579,13 @@ const Cart: React.FC = () => {
       } else {
         setCartItems(normalizeCartItems(removeGuestCartItem(itemId)));
       }
-      message.success(t('messages.deleteSuccess'));
+      announceAccessibleMessage(t('messages.deleteSuccess'), 'success');
       setSelectedIds((ids) => ids.filter((id) => id !== itemId));
       resetCheckoutStateAfterCartMutation();
       dispatchDomEvent('shop:cart-updated');
     } catch (err: unknown) {
       if (!mountedRef.current) return;
-      message.error(getApiErrorMessage(err, t('messages.deleteFailed'), language));
+      announceAccessibleMessage(getApiErrorMessage(err, t('messages.deleteFailed'), language), 'error');
     } finally {
       if (mountedRef.current) {
         setRemovingItemIds((ids) => ids.filter((id) => id !== itemId));
@@ -601,7 +601,7 @@ const Cart: React.FC = () => {
     const previousSavedItems = getSavedForLaterItemsSnapshot();
     const savedItem = saveCartItemForLater(item);
     if (!savedItem) {
-      message.error(t('messages.operationFailed'));
+      announceAccessibleMessage(t('messages.operationFailed'), 'error');
       return;
     }
     setSavedItems(getSavedForLaterItemsSnapshot());
@@ -617,13 +617,13 @@ const Cart: React.FC = () => {
       }
       setSelectedIds((ids) => ids.filter((id) => id !== item.id));
       resetCheckoutStateAfterCartMutation();
-      message.success(t('pages.cart.savedForLater'));
+      announceAccessibleMessage(t('pages.cart.savedForLater'), 'success');
       dispatchDomEvent('shop:cart-updated');
     } catch (error: unknown) {
       replaceSavedForLaterItems(previousSavedItems);
       if (!mountedRef.current) return;
       setSavedItems(previousSavedItems);
-      message.error(getApiErrorMessage(error, t('messages.operationFailed'), language));
+      announceAccessibleMessage(getApiErrorMessage(error, t('messages.operationFailed'), language), 'error');
     } finally {
       if (mountedRef.current) {
         setRemovingItemIds((ids) => ids.filter((id) => id !== item.id));
@@ -667,11 +667,11 @@ const Cart: React.FC = () => {
       }
       removeSavedForLaterProduct(item.productId, item.selectedSpecs);
       setSavedItems(getSavedForLaterItemsSnapshot());
-      message.success(t('pages.cart.movedToCart'));
+      announceAccessibleMessage(t('pages.cart.movedToCart'), 'success');
       if (authenticated) dispatchDomEvent('shop:cart-updated');
     } catch (err: unknown) {
       if (!mountedRef.current) return;
-      message.error(getApiErrorMessage(err, t('messages.operationFailed'), language));
+      announceAccessibleMessage(getApiErrorMessage(err, t('messages.operationFailed'), language), 'error');
     } finally {
       if (mountedRef.current) {
         setRestoringSavedItemIds((ids) => ids.filter((id) => id !== item.id));
@@ -697,7 +697,7 @@ const Cart: React.FC = () => {
         restoredItems = targetItems.filter((_, index) => results[index].status === 'fulfilled');
         if (restoredItems.length === 0) {
           const failedResult = results.find((result) => result.status === 'rejected') as PromiseRejectedResult | undefined;
-          message.error(getApiErrorMessage(failedResult?.reason, t('messages.operationFailed'), language));
+          announceAccessibleMessage(getApiErrorMessage(failedResult?.reason, t('messages.operationFailed'), language), 'error');
           return;
         }
         const response = await cartApi.getItems(0);
@@ -730,14 +730,14 @@ const Cart: React.FC = () => {
       restoredItems.forEach((item) => removeSavedForLaterProduct(item.productId, item.selectedSpecs));
       setSavedItems(getSavedForLaterItemsSnapshot());
       if (restoredItems.length === targetItems.length) {
-        message.success(t('pages.cart.movedSavedBatch', { count: restoredItems.length }));
+        announceAccessibleMessage(t('pages.cart.movedSavedBatch', { count: restoredItems.length }), 'success');
       } else {
-        message.warning(t('pages.cart.movedSavedBatchPartial', { count: restoredItems.length, failed: targetItems.length - restoredItems.length }));
+        announceAccessibleMessage(t('pages.cart.movedSavedBatchPartial', { count: restoredItems.length, failed: targetItems.length - restoredItems.length }), 'warning');
       }
       if (authenticated) dispatchDomEvent('shop:cart-updated');
     } catch (err: unknown) {
       if (!mountedRef.current) return;
-      message.error(getApiErrorMessage(err, t('messages.operationFailed'), language));
+      announceAccessibleMessage(getApiErrorMessage(err, t('messages.operationFailed'), language), 'error');
     } finally {
       if (mountedRef.current) setRestoringSaved(false);
     }
@@ -745,7 +745,7 @@ const Cart: React.FC = () => {
 
   const removeSavedItem = (itemId: number) => {
     setSavedItems(normalizeSavedForLaterItems(removeSavedForLaterItem(itemId)));
-    message.success(t('messages.deleteSuccess'));
+    announceAccessibleMessage(t('messages.deleteSuccess'), 'success');
   };
 
   const removeItems = async (itemIds: number[], successMessage: string) => {
@@ -766,11 +766,11 @@ const Cart: React.FC = () => {
       }
       setSelectedIds((ids) => ids.filter((id) => !normalizedIds.includes(id)));
       resetCheckoutStateAfterCartMutation();
-      message.success(successMessage);
+      announceAccessibleMessage(successMessage, 'success');
       dispatchDomEvent('shop:cart-updated');
     } catch (err: unknown) {
       if (!mountedRef.current) return;
-      message.error(getApiErrorMessage(err, t('messages.deleteFailed'), language));
+      announceAccessibleMessage(getApiErrorMessage(err, t('messages.deleteFailed'), language), 'error');
     } finally {
       if (mountedRef.current) {
         setRemovingItemIds((ids) => ids.filter((id) => !normalizedIds.includes(id)));
@@ -835,13 +835,13 @@ const Cart: React.FC = () => {
 
   const goCheckout = useCallback(async () => {
     if (hasStaleCartData) {
-      message.warning(t('pages.cart.staleDataWarning'));
+      announceAccessibleMessage(t('pages.cart.staleDataWarning'), 'warning');
       return;
     }
     if (checkoutSubmittingRef.current) return;
     const checkoutItems = selectedItems.filter(canCheckout);
     if (checkoutItems.length === 0) {
-      message.warning(t('pages.cart.chooseItems'));
+      announceAccessibleMessage(t('pages.cart.chooseItems'), 'warning');
       return;
     }
     checkoutSubmittingRef.current = true;
@@ -853,7 +853,7 @@ const Cart: React.FC = () => {
       navigate('/checkout');
     } catch (error) {
       reportNonBlockingError('Cart.goCheckout', error);
-      message.warning(t('pages.cart.checkoutSyncFailed'));
+      announceAccessibleMessage(t('pages.cart.checkoutSyncFailed'), 'warning');
       return;
     } finally {
       checkoutSubmittingRef.current = false;
@@ -1088,9 +1088,9 @@ const Cart: React.FC = () => {
     setAddingRecentId(product.id);
     try {
       await addSuggestedProduct(product);
-      message.success(t('messages.addCartSuccess'));
+      announceAccessibleMessage(t('messages.addCartSuccess'), 'success');
     } catch (err: unknown) {
-      message.error(getApiErrorMessage(err, t('messages.addFailed'), language));
+      announceAccessibleMessage(getApiErrorMessage(err, t('messages.addFailed'), language), 'error');
     } finally {
       setAddingRecentId(null);
     }
@@ -1133,7 +1133,7 @@ const Cart: React.FC = () => {
       render: (_name: string, record: CartItem) => {
         const itemName = getCartItemName(record);
         return (
-          <Space>
+          <div className="cart-page__productCell">
             <img
               src={resolveCartImage(record.imageUrl)}
               alt={itemName}
@@ -1147,18 +1147,18 @@ const Cart: React.FC = () => {
               }}
             />
             <div>
-              <Link to={`/products/${record.productId}`}><Text>{itemName}</Text></Link>
-              {record.selectedSpecs ? <div><Text type="secondary">{formatSelectedSpecs(record.selectedSpecs, t, language)}</Text></div> : null}
-              {!canCheckout(record) && <div><Text type="danger">{t('pages.cart.unavailable')}</Text></div>}
+              <Link to={`/products/${record.productId}`}><span className="cart-page__text">{itemName}</span></Link>
+              {record.selectedSpecs ? <div><span className="cart-page__text cart-page__text--secondary">{formatSelectedSpecs(record.selectedSpecs, t, language)}</span></div> : null}
+              {!canCheckout(record) && <div><span className="cart-page__text cart-page__text--danger">{t('pages.cart.unavailable')}</span></div>}
               {canCheckout(record) && getCartItemLowStockCount(record) !== null ? (
                 <div>
-                  <Text type="warning" className="cart-page__urgency">
+                  <span className="cart-page__text cart-page__text--warning cart-page__urgency">
                     {t('pages.cart.lowStockLeft', { count: getCartItemLowStockCount(record) ?? 0 })}
-                  </Text>
+                  </span>
                 </div>
               ) : null}
             </div>
-          </Space>
+          </div>
         );
       },
     },
@@ -1167,7 +1167,7 @@ const Cart: React.FC = () => {
       dataIndex: 'price',
       key: 'price',
       width: 110,
-      render: (price: number) => <Text className="cart-page__priceText commerce-money">{formatMoney(price)}</Text>,
+      render: (price: number) => <span className="cart-page__text cart-page__priceText commerce-money">{formatMoney(price)}</span>,
     },
     {
       title: t('common.quantity'),
@@ -1191,8 +1191,8 @@ const Cart: React.FC = () => {
         const saveActionLabel = `${t('pages.cart.saveForLater')}: ${itemName}`;
         const deleteActionLabel = `${t('common.delete')}: ${itemName}`;
         return (
-          <Space direction="vertical" size={2}>
-            <Button type="text" icon={<ClockCircleOutlined />} size="small" aria-label={saveActionLabel} title={saveActionLabel} onClick={() => saveForLater(record)} disabled={hasStaleCartData || removingItemIds.includes(record.id)}>
+          <div className="cart-page__tableActions">
+            <Button type="text" icon={<ShopIcon path={SI.clock} />} size="small" aria-label={saveActionLabel} title={saveActionLabel} onClick={() => saveForLater(record)} disabled={hasStaleCartData || removingItemIds.includes(record.id)}>
               {t('pages.cart.saveForLater')}
             </Button>
             <Popconfirm
@@ -1205,9 +1205,9 @@ const Cart: React.FC = () => {
               okButtonProps={{ danger: true, 'aria-label': deleteActionLabel, title: deleteActionLabel }}
               cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${deleteActionLabel}`, title: `${t('common.cancel')}: ${deleteActionLabel}` }}
             >
-              <Button type="text" danger icon={<DeleteOutlined />} size="small" loading={removingItemIds.includes(record.id)} disabled={hasStaleCartData} aria-label={deleteActionLabel} title={deleteActionLabel}>{t('common.delete')}</Button>
+              <Button type="text" danger icon={<ShopIcon path={SI.delete} />} size="small" loading={removingItemIds.includes(record.id)} disabled={hasStaleCartData} aria-label={deleteActionLabel} title={deleteActionLabel}>{t('common.delete')}</Button>
             </Popconfirm>
-          </Space>
+          </div>
         );
       },
     },
@@ -1246,7 +1246,7 @@ const Cart: React.FC = () => {
                 : 'pages.cart.paymentCancelledText',
             )}
           action={(
-            <Space className="cart-page__paymentReturnActions" wrap>
+            <div className="cart-page__paymentReturnActions">
               <Button
                 type="primary"
                 size="small"
@@ -1299,7 +1299,7 @@ const Cart: React.FC = () => {
                   {t('pages.cart.browse')}
                 </Button>
               )}
-            </Space>
+            </div>
           )}
         />
       ) : null;
@@ -1310,7 +1310,7 @@ const Cart: React.FC = () => {
         <section className="cart-page__hero">
           <div className="cart-page__heroContent">
             <span className="cart-page__heroEyebrow">{t('pages.cart.nextActionEyebrow')}</span>
-            <Title level={1}>{t('pages.cart.title')}</Title>
+            <h1 className="cart-page__title">{t('pages.cart.title')}</h1>
             <div className="cart-page__loadingText shimmer" aria-hidden="true" />
             <div className="cart-page__heroActions" aria-hidden="true">
               <div className="cart-page__loadingAction shimmer" />
@@ -1346,7 +1346,7 @@ const Cart: React.FC = () => {
         <section className="cart-page__hero cart-page__hero--recovery">
           <div className="cart-page__heroContent">
             <span className="cart-page__heroEyebrow">{t('pages.cart.nextActionEyebrow')}</span>
-            <Title level={1}>{t('pages.cart.title')}</Title>
+            <h1 className="cart-page__title">{t('pages.cart.title')}</h1>
           </div>
         </section>
         <div data-cart-load-recovery="true">
@@ -1406,30 +1406,30 @@ const Cart: React.FC = () => {
         {paymentReturnBanner}
         <section className="cart-page__emptyHero" aria-label={t('pages.cart.empty')}>
           <span className="cart-page__emptyIcon">
-            <ShoppingCartOutlined />
+            <ShopIcon path={SI.cart} />
           </span>
           <div className="cart-page__emptyCopy">
             <span className="cart-page__emptyEyebrow">{t('pages.cart.yourCart')}</span>
-            <Title level={1}>{t('pages.cart.empty')}</Title>
-            <Text>{t('pages.cart.recentRecoverySubtitle')}</Text>
+            <h1 className="cart-page__title">{t('pages.cart.empty')}</h1>
+            <span className="cart-page__text">{t('pages.cart.recentRecoverySubtitle')}</span>
           </div>
           <div className="cart-page__emptyActions" data-cart-empty-actions="true">
-            <Button type="primary" icon={<ShoppingOutlined />} aria-label={emptyBrowseActionLabel} title={emptyBrowseActionLabel} onClick={() => navigate('/products')}>
+            <Button type="primary" icon={<ShopIcon path={SI.shopping} />} aria-label={emptyBrowseActionLabel} title={emptyBrowseActionLabel} onClick={() => navigate('/products')}>
               {t('pages.cart.browse')}
             </Button>
-            <Button icon={<ShoppingOutlined />} aria-label={emptyCouponsActionLabel} title={emptyCouponsActionLabel} onClick={() => navigate('/coupons')}>
+            <Button icon={<ShopIcon path={SI.shopping} />} aria-label={emptyCouponsActionLabel} title={emptyCouponsActionLabel} onClick={() => navigate('/coupons')}>
               {t('nav.coupons')}
             </Button>
-            <Button icon={<ShoppingOutlined />} aria-label={emptyPetFinderActionLabel} title={emptyPetFinderActionLabel} onClick={() => navigate('/pet-finder')}>
+            <Button icon={<ShopIcon path={SI.shopping} />} aria-label={emptyPetFinderActionLabel} title={emptyPetFinderActionLabel} onClick={() => navigate('/pet-finder')}>
               {t('nav.petFinder')}
             </Button>
-            <Button icon={<ClockCircleOutlined />} aria-label={emptyHistoryActionLabel} title={emptyHistoryActionLabel} onClick={() => navigate('/history')}>
+            <Button icon={<ShopIcon path={SI.clock} />} aria-label={emptyHistoryActionLabel} title={emptyHistoryActionLabel} onClick={() => navigate('/history')}>
               {t('nav.history')}
             </Button>
           </div>
           <div className="cart-page__emptySignals">
             <span className="cart-page__emptySignal">
-              <CheckCircleOutlined />
+              <ShopIcon path={SI.check} />
               <span className="cart-page__emptySignalText">
                 {freeShippingThreshold > 0
                   ? t('pages.cart.freeShippingRemaining', { amount: formatMoney(freeShippingThreshold) })
@@ -1437,11 +1437,11 @@ const Cart: React.FC = () => {
               </span>
             </span>
             <span className="cart-page__emptySignal">
-              <ClockCircleOutlined />
+              <ShopIcon path={SI.clock} />
               <span className="cart-page__emptySignalText">{t('pages.cart.saveForLaterTitle')}</span>
             </span>
             <span className="cart-page__emptySignal">
-              <ShoppingOutlined />
+              <ShopIcon path={SI.shopping} />
               <span className="cart-page__emptySignalText">{t('pages.cart.recentRecoveryTitle')}</span>
             </span>
           </div>
@@ -1464,8 +1464,8 @@ const Cart: React.FC = () => {
       <section className="cart-page__hero">
         <div className="cart-page__heroContent">
           <span className="cart-page__heroEyebrow">{t('pages.cart.nextActionEyebrow')}</span>
-          <Title level={1}>{t('pages.cart.title')}</Title>
-          <Text>{cartItems.length > 0 ? cartNextAction.text : t('pages.cart.empty')}</Text>
+          <h1 className="cart-page__title">{t('pages.cart.title')}</h1>
+          <span className="cart-page__text">{cartItems.length > 0 ? cartNextAction.text : t('pages.cart.empty')}</span>
           <div className="cart-page__heroActions">
             {cartItems.length > 0 && cartNextAction.key === 'clear' ? (
               <Popconfirm
@@ -1484,7 +1484,7 @@ const Cart: React.FC = () => {
             ) : (
               <Button
                 type={cartItems.length > 0 ? 'primary' : 'default'}
-                icon={cartNextAction.key === 'refresh' ? <ReloadOutlined /> : undefined}
+                icon={cartNextAction.key === 'refresh' ? <ShopIcon path={SI.reload} /> : undefined}
                 aria-label={cartItems.length > 0 ? cartTopNextActionLabel : emptyBrowseActionLabel}
                 title={cartItems.length > 0 ? cartTopNextActionLabel : emptyBrowseActionLabel}
                 onClick={cartItems.length > 0 ? cartNextAction.action : () => navigate('/products')}
@@ -1502,7 +1502,7 @@ const Cart: React.FC = () => {
             {cartItems.length === 0 ? (
               <>
                 <Button
-                  icon={<ShoppingOutlined />}
+                  icon={<ShopIcon path={SI.shopping} />}
                   aria-label={emptyPetFinderActionLabel}
                   title={emptyPetFinderActionLabel}
                   onClick={() => navigate('/pet-finder')}
@@ -1510,7 +1510,7 @@ const Cart: React.FC = () => {
                   {t('nav.petFinder')}
                 </Button>
                 <Button
-                  icon={<ClockCircleOutlined />}
+                  icon={<ShopIcon path={SI.clock} />}
                   aria-label={emptyHistoryActionLabel}
                   title={emptyHistoryActionLabel}
                   onClick={() => navigate('/history')}
@@ -1548,7 +1548,7 @@ const Cart: React.FC = () => {
           message={t('pages.cart.staleDataTitle')}
           description={loadErrorMessage || t('pages.cart.staleDataWarning')}
           action={
-            <Button type="primary" icon={<ReloadOutlined />} aria-label={retryCartLoadActionLabel} title={retryCartLoadActionLabel} onClick={refreshCartItems}>
+            <Button type="primary" icon={<ShopIcon path={SI.reload} />} aria-label={retryCartLoadActionLabel} title={retryCartLoadActionLabel} onClick={refreshCartItems}>
               {t('messages.retry')}
             </Button>
           }
@@ -1558,8 +1558,8 @@ const Cart: React.FC = () => {
         <Card className="cart-page__recentRecovery">
           <div className="cart-page__recentRecoveryHeader">
             <div>
-              <Text strong>{t('pages.cart.recentRecoveryTitle')}</Text>
-              <Text type="secondary">{t('pages.cart.recentRecoverySubtitle')}</Text>
+              <span className="cart-page__text cart-page__text--strong">{t('pages.cart.recentRecoveryTitle')}</span>
+              <span className="cart-page__text cart-page__text--secondary">{t('pages.cart.recentRecoverySubtitle')}</span>
             </div>
             <Button size="small" aria-label={recentRecoveryBrowseActionLabel} title={recentRecoveryBrowseActionLabel} onClick={() => navigate('/products')}>{t('pages.cart.browse')}</Button>
           </div>
@@ -1587,14 +1587,14 @@ const Cart: React.FC = () => {
                       }}
                     />
                     <span>
-                      <Text strong>{productName}</Text>
-                      <Text type="secondary" className="commerce-money">{formatMoney(product.effectivePrice ?? product.price)}</Text>
+                      <span className="cart-page__text cart-page__text--strong">{productName}</span>
+                      <span className="cart-page__text cart-page__text--secondary commerce-money">{formatMoney(product.effectivePrice ?? product.price)}</span>
                     </span>
                   </button>
                   <Button
                     size="small"
                     type={needsOptionSelection(product) ? 'default' : 'primary'}
-                    icon={<ShoppingCartOutlined />}
+                    icon={<ShopIcon path={SI.cart} />}
                     loading={addingRecentId === product.id}
                     disabled={hasStaleCartData}
                     aria-label={recentActionLabel}
@@ -1612,7 +1612,7 @@ const Cart: React.FC = () => {
       {cartItems.length > 0 ? (
         <>
           <Card size="small" className="cart-page__bulkActions">
-            <Space wrap>
+            <div className="cart-page__bulkActionsRow">
               <Popconfirm
                 classNames={{ root: 'shop-mobile-popup-layer cart-page-popconfirm' }}
                 title={t('pages.cart.deleteSelectedConfirm', { count: selectedIds.length })}
@@ -1625,7 +1625,7 @@ const Cart: React.FC = () => {
               >
                 <Button
                   danger
-                  icon={<DeleteOutlined />}
+                  icon={<ShopIcon path={SI.delete} />}
                   disabled={hasStaleCartData || selectedIds.length === 0}
                   loading={selectedIds.some((id) => removingItemIds.includes(id))}
                   aria-label={deleteSelectedActionLabel}
@@ -1653,20 +1653,20 @@ const Cart: React.FC = () => {
                   {t('pages.cart.clearUnavailable')}
                 </Button>
               </Popconfirm>
-              <Text type="secondary">{t('pages.cart.unavailableSummary', { count: unavailableItems.length })}</Text>
-            </Space>
+              <span className="cart-page__text cart-page__text--secondary">{t('pages.cart.unavailableSummary', { count: unavailableItems.length })}</span>
+            </div>
           </Card>
           <div className={checkoutBlocked ? 'cart-page__readiness cart-page__readiness--warning' : 'cart-page__readiness'}>
             <div className="cart-page__readinessIntro">
-              {checkoutBlocked ? <ExclamationCircleOutlined /> : <CheckCircleOutlined />}
+              {checkoutBlocked ? <ShopIcon path={SI.exclamation} /> : <ShopIcon path={SI.check} />}
               <div>
-                <Text strong>{checkoutBlocked ? t('pages.cart.readinessNeedsAction') : t('pages.cart.readinessReady')}</Text>
-                <Text type="secondary">
+                <span className="cart-page__text cart-page__text--strong">{checkoutBlocked ? t('pages.cart.readinessNeedsAction') : t('pages.cart.readinessReady')}</span>
+                <span className="cart-page__text cart-page__text--secondary">
                   {t('pages.cart.readinessSubtitle', {
                     selected: selectedUnitCount,
                     available: purchasableUnitCount,
                   })}
-                </Text>
+                </span>
               </div>
             </div>
             <div className="cart-page__readinessStats">
@@ -1716,9 +1716,9 @@ const Cart: React.FC = () => {
           {cartNextAction.tone !== 'ready' ? (
             <div className={`cart-page__nextAction cart-page__nextAction--${cartNextAction.tone}`}>
               <span>
-                <Text type="secondary">{t('pages.cart.nextActionEyebrow')}</Text>
-                <Text strong>{cartNextAction.title}</Text>
-                <Text type="secondary">{cartNextAction.text}</Text>
+                <span className="cart-page__text cart-page__text--secondary">{t('pages.cart.nextActionEyebrow')}</span>
+                <span className="cart-page__text cart-page__text--strong">{cartNextAction.title}</span>
+                <span className="cart-page__text cart-page__text--secondary">{cartNextAction.text}</span>
               </span>
               {cartNextAction.key === 'clear' ? (
                 <Popconfirm
@@ -1737,7 +1737,7 @@ const Cart: React.FC = () => {
               ) : (
                 <Button
                   type="default"
-                  icon={cartNextAction.key === 'refresh' ? <ReloadOutlined /> : undefined}
+                  icon={cartNextAction.key === 'refresh' ? <ShopIcon path={SI.reload} /> : undefined}
                   aria-label={cartNextActionLabel}
                   title={cartNextActionLabel}
                   onClick={cartNextAction.action}
@@ -1778,20 +1778,20 @@ const Cart: React.FC = () => {
                     }}
                   />
                   <div className="cart-page__mobileItemInfo">
-                    <Link className="cart-page__mobileItemTitle" to={`/products/${item.productId}`}><Text strong>{itemName}</Text></Link>
-                    {item.selectedSpecs ? <div className="cart-page__mobileItemMeta"><Text type="secondary">{formatSelectedSpecs(item.selectedSpecs, t, language)}</Text></div> : null}
-                    {!canCheckout(item) && <div><Text type="danger">{t('pages.cart.unavailable')}</Text></div>}
+                    <Link className="cart-page__mobileItemTitle" to={`/products/${item.productId}`}><span className="cart-page__text cart-page__text--strong">{itemName}</span></Link>
+                    {item.selectedSpecs ? <div className="cart-page__mobileItemMeta"><span className="cart-page__text cart-page__text--secondary">{formatSelectedSpecs(item.selectedSpecs, t, language)}</span></div> : null}
+                    {!canCheckout(item) && <div><span className="cart-page__text cart-page__text--danger">{t('pages.cart.unavailable')}</span></div>}
                     {canCheckout(item) && getCartItemLowStockCount(item) !== null ? (
                       <div>
-                        <Text type="warning" className="cart-page__urgency">
+                        <span className="cart-page__text cart-page__text--warning cart-page__urgency">
                           {t('pages.cart.lowStockLeft', { count: getCartItemLowStockCount(item) ?? 0 })}
-                        </Text>
+                        </span>
                       </div>
                     ) : null}
-                    <Text type="secondary" className="cart-page__mobileItemUnit commerce-atomic commerce-price-quantity">
+                    <span className="cart-page__text cart-page__text--secondary cart-page__mobileItemUnit commerce-atomic commerce-price-quantity">
                       <span className="cart-page__mobileItemUnitPrice commerce-money">{formatMoney(item.price)}</span>
                       <span className="commerce-quantity">x {item.quantity}</span>
-                    </Text>
+                    </span>
                   </div>
                 </div>
                 <div className="cart-page__mobileItemBottom">
@@ -1800,7 +1800,7 @@ const Cart: React.FC = () => {
                     {renderLineTotal(item)}
                   </div>
                   <div className="cart-page__mobileItemActions">
-                    <Button type="text" icon={<ClockCircleOutlined />} size="small" aria-label={saveActionLabel} title={saveActionLabel} onClick={() => saveForLater(item)} disabled={hasStaleCartData || removingItemIds.includes(item.id)}>
+                    <Button type="text" icon={<ShopIcon path={SI.clock} />} size="small" aria-label={saveActionLabel} title={saveActionLabel} onClick={() => saveForLater(item)} disabled={hasStaleCartData || removingItemIds.includes(item.id)}>
                       {t('pages.cart.saveForLaterShort')}
                     </Button>
                     <Popconfirm
@@ -1816,7 +1816,7 @@ const Cart: React.FC = () => {
                       <Button
                         type="text"
                         danger
-                        icon={<DeleteOutlined />}
+                        icon={<ShopIcon path={SI.delete} />}
                         size="small"
                         loading={removingItemIds.includes(item.id)}
                         disabled={hasStaleCartData}
@@ -1836,9 +1836,9 @@ const Cart: React.FC = () => {
               role="group"
               aria-label={t('pages.cart.freeShippingProgressLabel')}
             >
-              <Text strong id="cart-free-shipping-status">
+              <span className="cart-page__text cart-page__text--strong" id="cart-free-shipping-status">
                 {freeShippingStatusTitle}
-              </Text>
+              </span>
               <Progress
                 percent={freeShippingPercent}
                 showInfo={false}
@@ -1854,10 +1854,10 @@ const Cart: React.FC = () => {
             </div>
             <div className="cart-page__summaryFooter">
               <div>
-                <Text>{t('pages.cart.selectedSummary', { count: selectedUnitCount })}</Text>
-                <Text className="cart-page__total">
-                  {t('common.total')}: <Text strong className="cart-page__totalAmount commerce-money">{formatMoney(selectedTotal)}</Text>
-                </Text>
+                <span className="cart-page__text">{t('pages.cart.selectedSummary', { count: selectedUnitCount })}</span>
+                <span className="cart-page__text cart-page__total">
+                  {t('common.total')}: <span className="cart-page__text cart-page__text--strong cart-page__totalAmount commerce-money">{formatMoney(selectedTotal)}</span>
+                </span>
               </div>
               <Button type="primary" size="large" aria-label={checkoutActionLabel} title={checkoutActionLabel} onClick={goCheckout} disabled={hasStaleCartData || checkoutBlocked || checkoutSubmitting} loading={checkoutSubmitting}>
                 {checkoutSubmitting ? t('pages.cart.checkoutSyncing') : t('pages.cart.checkout')}
@@ -1865,24 +1865,24 @@ const Cart: React.FC = () => {
             </div>
             <div className="cart-page__trustBar" aria-label={t('pages.cart.trustTitle')}>
               <div className="cart-page__trustItem">
-                <LockOutlined aria-hidden="true" />
+                <ShopIcon path={SI.lock} aria-hidden="true"  />
                 <div>
-                  <Text strong>{t('pages.cart.trustSecureTitle')}</Text>
-                  <Text type="secondary">{t('pages.cart.trustSecureText')}</Text>
+                  <span className="cart-page__text cart-page__text--strong">{t('pages.cart.trustSecureTitle')}</span>
+                  <span className="cart-page__text cart-page__text--secondary">{t('pages.cart.trustSecureText')}</span>
                 </div>
               </div>
               <div className="cart-page__trustItem">
-                <SafetyCertificateOutlined aria-hidden="true" />
+                <ShopIcon path={SI.safety} aria-hidden="true"  />
                 <div>
-                  <Text strong>{t('pages.cart.trustReturnsTitle')}</Text>
-                  <Text type="secondary">{t('pages.cart.trustReturnsText')}</Text>
+                  <span className="cart-page__text cart-page__text--strong">{t('pages.cart.trustReturnsTitle')}</span>
+                  <span className="cart-page__text cart-page__text--secondary">{t('pages.cart.trustReturnsText')}</span>
                 </div>
               </div>
               <div className="cart-page__trustItem">
-                <CustomerServiceOutlined aria-hidden="true" />
+                <ShopIcon path={SI.support} aria-hidden="true"  />
                 <div>
-                  <Text strong>{t('pages.cart.trustSupportTitle')}</Text>
-                  <Text type="secondary">{t('pages.cart.trustSupportText')}</Text>
+                  <span className="cart-page__text cart-page__text--strong">{t('pages.cart.trustSupportTitle')}</span>
+                  <span className="cart-page__text cart-page__text--secondary">{t('pages.cart.trustSupportText')}</span>
                 </div>
               </div>
             </div>
@@ -1902,18 +1902,18 @@ const Cart: React.FC = () => {
         </>
       ) : (
         <Card className="cart-page__emptyPanel">
-          <Empty image={<ShoppingOutlined className="cart-page__emptyPanelIcon" />} description={t('pages.cart.empty')}>
+          <Empty image={<ShopIcon path={SI.shopping} className="cart-page__emptyPanelIcon" />} description={t('pages.cart.empty')}>
             <div className="cart-page__emptyPanelActions" data-cart-empty-panel-actions="true">
-              <Button type="primary" icon={<ShoppingOutlined />} aria-label={emptyBrowseActionLabel} title={emptyBrowseActionLabel} onClick={() => navigate('/products')}>
+              <Button type="primary" icon={<ShopIcon path={SI.shopping} />} aria-label={emptyBrowseActionLabel} title={emptyBrowseActionLabel} onClick={() => navigate('/products')}>
                 {t('pages.cart.browse')}
               </Button>
-              <Button icon={<ShoppingOutlined />} aria-label={emptyCouponsActionLabel} title={emptyCouponsActionLabel} onClick={() => navigate('/coupons')}>
+              <Button icon={<ShopIcon path={SI.shopping} />} aria-label={emptyCouponsActionLabel} title={emptyCouponsActionLabel} onClick={() => navigate('/coupons')}>
                 {t('nav.coupons')}
               </Button>
-              <Button icon={<ShoppingOutlined />} aria-label={emptyPetFinderActionLabel} title={emptyPetFinderActionLabel} onClick={() => navigate('/pet-finder')}>
+              <Button icon={<ShopIcon path={SI.shopping} />} aria-label={emptyPetFinderActionLabel} title={emptyPetFinderActionLabel} onClick={() => navigate('/pet-finder')}>
                 {t('nav.petFinder')}
               </Button>
-              <Button icon={<ClockCircleOutlined />} aria-label={emptyHistoryActionLabel} title={emptyHistoryActionLabel} onClick={() => navigate('/history')}>
+              <Button icon={<ShopIcon path={SI.clock} />} aria-label={emptyHistoryActionLabel} title={emptyHistoryActionLabel} onClick={() => navigate('/history')}>
                 {t('nav.history')}
               </Button>
             </div>
@@ -1926,7 +1926,7 @@ const Cart: React.FC = () => {
         extra={savedItems.length > 0 ? (
           <Button
             size="small"
-            icon={<ShoppingCartOutlined />}
+            icon={<ShopIcon path={SI.cart} />}
             loading={restoringSaved}
             disabled={hasStaleCartData || restoringSavedItemIds.length > 0}
             aria-label={moveAllSavedActionLabel}
@@ -1939,10 +1939,10 @@ const Cart: React.FC = () => {
       >
         {savedItems.length > 0 ? (
           <div className="cart-page__savedValue">
-            <ClockCircleOutlined />
+            <ShopIcon path={SI.clock} />
             <span>
-              <Text strong>{t('pages.cart.savedValueTitle')}</Text>
-              <Text type="secondary" className="cart-page__amountPhrase">{savedValueText}</Text>
+              <span className="cart-page__text cart-page__text--strong">{t('pages.cart.savedValueTitle')}</span>
+              <span className="cart-page__text cart-page__text--secondary cart-page__amountPhrase">{savedValueText}</span>
             </span>
           </div>
         ) : null}
@@ -1982,7 +1982,7 @@ const Cart: React.FC = () => {
               <div className="cart-page__savedEmptyActions">
                 <Button
                   type="primary"
-                  icon={<ShoppingOutlined />}
+                  icon={<ShopIcon path={SI.shopping} />}
                   aria-label={t('pages.cart.saveForLaterBrowse')}
                   title={t('pages.cart.saveForLaterBrowse')}
                   onClick={() => navigate('/products')}
@@ -1990,7 +1990,7 @@ const Cart: React.FC = () => {
                   {t('pages.cart.saveForLaterBrowse')}
                 </Button>
                 <Button
-                  icon={<ShoppingOutlined />}
+                  icon={<ShopIcon path={SI.shopping} />}
                   aria-label={t('pages.cart.saveForLaterWishlist')}
                   title={t('pages.cart.saveForLaterWishlist')}
                   onClick={() => navigate('/wishlist')}
@@ -2023,16 +2023,16 @@ const Cart: React.FC = () => {
                   />
                 </Link>
                 <div className="cart-page__savedInfo">
-                  <Link to={`/products/${item.productId}`}><Text strong>{itemName}</Text></Link>
-                  {item.selectedSpecs ? <Text type="secondary">{formatSelectedSpecs(item.selectedSpecs, t, language)}</Text> : null}
-                  <Text type="secondary" className="cart-page__savedQuantity commerce-quantity">{t('common.quantity')}: {item.quantity}</Text>
+                  <Link to={`/products/${item.productId}`}><span className="cart-page__text cart-page__text--strong">{itemName}</span></Link>
+                  {item.selectedSpecs ? <span className="cart-page__text cart-page__text--secondary">{formatSelectedSpecs(item.selectedSpecs, t, language)}</span> : null}
+                  <span className="cart-page__text cart-page__text--secondary cart-page__savedQuantity commerce-quantity">{t('common.quantity')}: {item.quantity}</span>
                   <Tag className="cart-page__savedAge">
                     {t('pages.cart.savedDaysAgo', { count: getSavedAgeDays(item.savedAt) })}
                   </Tag>
-                  <Text strong className="cart-page__savedPrice commerce-money">{formatMoney(item.price)}</Text>
+                  <span className="cart-page__text cart-page__text--strong cart-page__savedPrice commerce-money">{formatMoney(item.price)}</span>
                 </div>
-                <Space className="cart-page__savedActions">
-                  <Button icon={<ShoppingCartOutlined />} loading={restoringSavedItem} disabled={hasStaleCartData || restoringSavedItem} aria-label={moveActionLabel} title={moveActionLabel} onClick={() => moveSavedItemToCart(item)}>
+                <div className="cart-page__savedActions">
+                  <Button icon={<ShopIcon path={SI.cart} />} loading={restoringSavedItem} disabled={hasStaleCartData || restoringSavedItem} aria-label={moveActionLabel} title={moveActionLabel} onClick={() => moveSavedItemToCart(item)}>
                     {t('pages.cart.moveToCart')}
                   </Button>
                   <Popconfirm
@@ -2044,9 +2044,9 @@ const Cart: React.FC = () => {
                     okButtonProps={{ danger: true, 'aria-label': deleteActionLabel, title: deleteActionLabel }}
                     cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${deleteActionLabel}`, title: `${t('common.cancel')}: ${deleteActionLabel}` }}
                   >
-                    <Button danger type="text" icon={<DeleteOutlined />} disabled={restoringSavedItem} aria-label={deleteActionLabel} title={deleteActionLabel} />
+                    <Button danger type="text" icon={<ShopIcon path={SI.delete} />} disabled={restoringSavedItem} aria-label={deleteActionLabel} title={deleteActionLabel} />
                   </Popconfirm>
-                </Space>
+                </div>
               </div>
               );
             })}

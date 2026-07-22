@@ -1,6 +1,7 @@
 import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Button, Drawer, Empty, InputNumber, List, message, Popconfirm, Progress, Space, Tag, Typography } from 'antd';
-import { AppleOutlined, CheckCircleOutlined, ClockCircleOutlined, CreditCardOutlined, DeleteOutlined, GiftOutlined, GoogleOutlined, ReloadOutlined, ShoppingOutlined, WalletOutlined } from '@ant-design/icons';
+import { announceAccessibleMessage } from '../utils/accessibleMessage';
+import { ShopIcon, SI } from './ShopIcon';
+import { Alert, Button, Drawer, Empty, InputNumber, List, Popconfirm, Progress, Space, Tag, Typography } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { cartApi } from '../api';
 import type { CartItem, ProductPublic as Product } from '../types';
@@ -47,10 +48,10 @@ const expressPaymentCodesByCurrency: Record<string, string[]> = {
 };
 
 const expressPaymentIcon = (code: string) => {
-  if (code === 'APPLE_PAY') return <AppleOutlined />;
-  if (code === 'GOOGLE_PAY') return <GoogleOutlined />;
-  if (code === 'STRIPE' || code === 'MX_LOCAL_CARD') return <CreditCardOutlined />;
-  return <WalletOutlined />;
+  if (code === 'APPLE_PAY') return <ShopIcon path={SI.apple} />;
+  if (code === 'GOOGLE_PAY') return <ShopIcon path={SI.google} />;
+  if (code === 'STRIPE' || code === 'MX_LOCAL_CARD') return <ShopIcon path={SI.creditCard} />;
+  return <ShopIcon path={SI.wallet} />;
 };
 
 const applyCartImageFallback = (event: React.SyntheticEvent<HTMLImageElement>) => {
@@ -120,7 +121,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
         } else {
           const localizedError = getApiErrorMessage(error, t('pages.cart.fetchFailed'), language);
           setLoadError(localizedError);
-          message.error(localizedError);
+          announceAccessibleMessage(localizedError, 'error');
         }
       }
     } finally {
@@ -157,7 +158,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
   }, []);
 
   const handleQuantitySyncError = useCallback(async (err: unknown) => {
-    message.error(getApiErrorMessage(err, t('pages.cart.quantityFailed'), language));
+    announceAccessibleMessage(getApiErrorMessage(err, t('pages.cart.quantityFailed'), language), 'error');
     await loadCart();
   }, [language, loadCart, t]);
 
@@ -315,7 +316,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
 
   const updateQuantity = (item: CartItem, quantity: number) => {
     if (hasStaleCartData) {
-      message.warning(t('pages.cart.staleDataWarning'));
+      announceAccessibleMessage(t('pages.cart.staleDataWarning'), 'warning');
       return;
     }
     const normalizedQuantity = normalizeCartQuantity(item, quantity);
@@ -331,7 +332,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
 
   const removeItem = async (item: CartItem) => {
     if (hasStaleCartData) {
-      message.warning(t('pages.cart.staleDataWarning'));
+      announceAccessibleMessage(t('pages.cart.staleDataWarning'), 'warning');
       return;
     }
     cancelQuantitySync([item.id]);
@@ -347,13 +348,13 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
       if (authenticated) dispatchDomEvent('shop:cart-updated');
     } catch (err: unknown) {
       if (!mountedRef.current) return;
-      message.error(getApiErrorMessage(err, t('messages.deleteFailed'), language));
+      announceAccessibleMessage(getApiErrorMessage(err, t('messages.deleteFailed'), language), 'error');
     }
   };
 
   const saveForLater = async (item: CartItem) => {
     if (hasStaleCartData) {
-      message.warning(t('pages.cart.staleDataWarning'));
+      announceAccessibleMessage(t('pages.cart.staleDataWarning'), 'warning');
       return;
     }
     if (savingForLaterIds[item.id]) return;
@@ -361,7 +362,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
     const previousSavedItems = getSavedForLaterItems();
     const savedItem = saveCartItemForLater(item);
     if (!savedItem) {
-      message.error(t('messages.operationFailed'));
+      announceAccessibleMessage(t('messages.operationFailed'), 'error');
       return;
     }
     setSavingForLaterIds((current) => ({ ...current, [item.id]: true }));
@@ -374,12 +375,12 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
       } else {
         setItems(removeGuestCartItem(item.id));
       }
-      message.success(t('pages.cart.savedForLater'));
+      announceAccessibleMessage(t('pages.cart.savedForLater'), 'success');
       if (authenticated) dispatchDomEvent('shop:cart-updated');
     } catch (err: unknown) {
       replaceSavedForLaterItems(previousSavedItems);
       if (!mountedRef.current) return;
-      message.error(getApiErrorMessage(err, t('messages.operationFailed'), language));
+      announceAccessibleMessage(getApiErrorMessage(err, t('messages.operationFailed'), language), 'error');
     } finally {
       if (mountedRef.current) {
         setSavingForLaterIds((current) => {
@@ -394,15 +395,15 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
   const goCheckout = async (paymentMethod?: string) => {
     if (checkoutSubmitting) return;
     if (hasStaleCartData) {
-      message.warning(t('pages.cart.staleDataWarning'));
+      announceAccessibleMessage(t('pages.cart.staleDataWarning'), 'warning');
       return;
     }
     if (checkoutItems.length === 0) {
-      message.warning(t('pages.cart.chooseItems'));
+      announceAccessibleMessage(t('pages.cart.chooseItems'), 'warning');
       return;
     }
     if (paymentMethod && !drawerReady) {
-      message.warning(t('pages.cart.drawerExpressBlocked', { count: blockedCount }));
+      announceAccessibleMessage(t('pages.cart.drawerExpressBlocked', { count: blockedCount }), 'warning');
       return;
     }
     setCheckoutSubmitting(true);
@@ -431,7 +432,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
   const clearBlockedItems = async () => {
     if (blockedItems.length === 0) return;
     if (hasStaleCartData) {
-      message.warning(t('pages.cart.staleDataWarning'));
+      announceAccessibleMessage(t('pages.cart.staleDataWarning'), 'warning');
       return;
     }
     try {
@@ -449,25 +450,25 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
         );
         if (removedIds.size === 0) {
           const firstFailed = results.find((result) => result.status === 'rejected') as PromiseRejectedResult | undefined;
-          message.error(getApiErrorMessage(firstFailed?.reason, t('messages.operationFailed'), language));
+          announceAccessibleMessage(getApiErrorMessage(firstFailed?.reason, t('messages.operationFailed'), language), 'error');
           return;
         }
         setItems((current) => current.filter((item) => !removedIds.has(item.id)));
         dispatchDomEvent('shop:cart-updated');
-        message.success(t('pages.cart.drawerClearedBlocked', { count: removedIds.size }));
+        announceAccessibleMessage(t('pages.cart.drawerClearedBlocked', { count: removedIds.size }), 'success');
       } else {
         setItems(removeGuestCartItems(blockedItems.map((item) => item.id)));
-        message.success(t('pages.cart.drawerClearedBlocked', { count: blockedItems.length }));
+        announceAccessibleMessage(t('pages.cart.drawerClearedBlocked', { count: blockedItems.length }), 'success');
       }
     } catch (err: unknown) {
       if (!mountedRef.current) return;
-      message.error(getApiErrorMessage(err, t('messages.operationFailed'), language));
+      announceAccessibleMessage(getApiErrorMessage(err, t('messages.operationFailed'), language), 'error');
     }
   };
 
   const addSuggestedProduct = async (product: Product) => {
     if (hasStaleCartData) {
-      message.warning(t('pages.cart.staleDataWarning'));
+      announceAccessibleMessage(t('pages.cart.staleDataWarning'), 'warning');
       return;
     }
     const authenticated = hasAuthenticatedCartSession();
@@ -493,7 +494,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
     if (hasStaleCartData) {
       return {
         tone: 'refresh',
-        icon: <ReloadOutlined />,
+        icon: <ShopIcon path={SI.reload} />,
         title: t('pages.cart.nextActionRefreshTitle'),
         text: t('pages.cart.nextActionRefreshText'),
         label: t('common.retry'),
@@ -504,7 +505,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
     if (blockedCount > 0) {
       return {
         tone: 'attention',
-        icon: <ClockCircleOutlined />,
+        icon: <ShopIcon path={SI.clock} />,
         title: t('pages.cart.nextActionClearTitle'),
         text: t('pages.cart.nextActionClearText', { count: blockedCount }),
         label: t('pages.cart.drawerClearBlocked'),
@@ -515,7 +516,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
     if (checkoutItems.length > 0 && benefitTarget) {
       return {
         tone: 'boost',
-        icon: <ShoppingOutlined />,
+        icon: <ShopIcon path={SI.shopping} />,
         title: benefitTarget.reason === 'gift'
           ? t('pages.cart.nextActionGiftTitle')
           : t('pages.cart.nextActionShippingTitle'),
@@ -529,7 +530,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
 
     return {
       tone: 'ready',
-      icon: <CheckCircleOutlined />,
+      icon: <ShopIcon path={SI.checkCircle} />,
       title: t('pages.cart.nextActionCheckoutTitle'),
       text: renderDrawerAmountText(t('pages.cart.nextActionCheckoutText', { amount: formatMoney(subtotal) }), formatMoney(subtotal)),
       label: t('pages.cart.checkout'),
@@ -572,7 +573,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
 
         <div className={`cart-drawer__shipping${drawerReady ? ' cart-drawer__shipping--ready' : ''}`} role="status" aria-live="polite">
           <div className="cart-drawer__shippingHeader">
-            <CheckCircleOutlined className={`cart-drawer__shippingIcon${drawerReady ? ' cart-drawer__shippingIcon--ready' : ''}`} />
+            <ShopIcon path={SI.checkCircle} className={`cart-drawer__shippingIcon${drawerReady ? ' cart-drawer__shippingIcon--ready' : ''}`} />
             <div className="cart-drawer__shippingText">
               <Text strong>{freeShippingStatusText}</Text>
               <Text type="secondary" className="cart-drawer__shippingStatus">
@@ -708,13 +709,13 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
             description={t('common.loadFailedRetry')}
             action={(
               <Space wrap className="cart-drawer__emptyActions" data-cart-drawer-load-recovery="true">
-                <Button size="small" type="primary" icon={<ReloadOutlined />} onClick={() => loadCart()} aria-label={t('common.retry')} title={t('common.retry')}>
+                <Button size="small" type="primary" icon={<ShopIcon path={SI.reload} />} onClick={() => loadCart()} aria-label={t('common.retry')} title={t('common.retry')}>
                   {t('common.retry')}
                 </Button>
-                <Button size="small" icon={<ShoppingOutlined />} onClick={() => closeAndGo('/products')} aria-label={emptyDrawerBrowseActionLabel} title={emptyDrawerBrowseActionLabel}>
+                <Button size="small" icon={<ShopIcon path={SI.shopping} />} onClick={() => closeAndGo('/products')} aria-label={emptyDrawerBrowseActionLabel} title={emptyDrawerBrowseActionLabel}>
                   {t('pages.cart.browse')}
                 </Button>
-                <Button size="small" icon={<GiftOutlined />} onClick={() => closeAndGo('/coupons')} aria-label={emptyDrawerCouponsActionLabel} title={emptyDrawerCouponsActionLabel}>
+                <Button size="small" icon={<ShopIcon path={SI.gift} />} onClick={() => closeAndGo('/coupons')} aria-label={emptyDrawerCouponsActionLabel} title={emptyDrawerCouponsActionLabel}>
                   {t('nav.coupons')}
                 </Button>
               </Space>
@@ -725,7 +726,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
         {items.length === 0 && !loadError ? (
           <div className="cart-drawer__empty" data-cart-drawer-empty="true">
             <Empty
-              image={<ShoppingOutlined style={{ fontSize: 54, color: '#ccc' }} />}
+              image={<ShopIcon path={SI.shopping} style={{ fontSize: 54, color: '#ccc' }} />}
               description={(
                 <div className="cart-drawer__emptyCopy">
                   <div>{t('pages.cart.empty')}</div>
@@ -734,16 +735,16 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
               )}
             >
               <Space wrap className="cart-drawer__emptyActions" data-cart-drawer-empty-actions="true">
-                <Button type="primary" icon={<ShoppingOutlined />} aria-label={emptyDrawerBrowseActionLabel} title={emptyDrawerBrowseActionLabel} onClick={() => closeAndGo('/products')}>
+                <Button type="primary" icon={<ShopIcon path={SI.shopping} />} aria-label={emptyDrawerBrowseActionLabel} title={emptyDrawerBrowseActionLabel} onClick={() => closeAndGo('/products')}>
                   {t('pages.cart.browse')}
                 </Button>
-                <Button icon={<GiftOutlined />} aria-label={emptyDrawerCouponsActionLabel} title={emptyDrawerCouponsActionLabel} onClick={() => closeAndGo('/coupons')}>
+                <Button icon={<ShopIcon path={SI.gift} />} aria-label={emptyDrawerCouponsActionLabel} title={emptyDrawerCouponsActionLabel} onClick={() => closeAndGo('/coupons')}>
                   {t('nav.coupons')}
                 </Button>
-                <Button icon={<ShoppingOutlined />} aria-label={emptyDrawerPetFinderActionLabel} title={emptyDrawerPetFinderActionLabel} onClick={() => closeAndGo('/pet-finder')}>
+                <Button icon={<ShopIcon path={SI.shopping} />} aria-label={emptyDrawerPetFinderActionLabel} title={emptyDrawerPetFinderActionLabel} onClick={() => closeAndGo('/pet-finder')}>
                   {t('nav.petFinder')}
                 </Button>
-                <Button icon={<ClockCircleOutlined />} aria-label={emptyDrawerHistoryActionLabel} title={emptyDrawerHistoryActionLabel} onClick={() => closeAndGo('/history')}>
+                <Button icon={<ShopIcon path={SI.clock} />} aria-label={emptyDrawerHistoryActionLabel} title={emptyDrawerHistoryActionLabel} onClick={() => closeAndGo('/history')}>
                   {t('nav.history')}
                 </Button>
               </Space>
@@ -767,7 +768,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
                     key="later"
                     type="link"
                     className="cart-drawer__itemAction cart-drawer__itemAction--save"
-                    icon={<ClockCircleOutlined />}
+                    icon={<ShopIcon path={SI.clock} />}
                     loading={savingForLaterIds[item.id]}
                     disabled={savingForLaterIds[item.id] || hasStaleCartData}
                     aria-label={saveActionLabel}
@@ -786,7 +787,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
                     okButtonProps={{ danger: true, 'aria-label': deleteActionLabel, title: deleteActionLabel }}
                     cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${deleteActionLabel}`, title: `${t('common.cancel')}: ${deleteActionLabel}` }}
                   >
-                    <Button type="link" danger className="cart-drawer__itemAction cart-drawer__itemAction--delete" icon={<DeleteOutlined />} aria-label={deleteActionLabel} title={deleteActionLabel} disabled={hasStaleCartData}>
+                    <Button type="link" danger className="cart-drawer__itemAction cart-drawer__itemAction--delete" icon={<ShopIcon path={SI.delete} />} aria-label={deleteActionLabel} title={deleteActionLabel} disabled={hasStaleCartData}>
                       {t('common.delete')}
                     </Button>
                   </Popconfirm>,
@@ -887,9 +888,9 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
             </Button>
           </div>
           <div className="cart-drawer__trustRow" aria-label={t('pages.checkout.trustSecureTitle')}>
-            <span><CheckCircleOutlined /> {t('pages.checkout.trustSecureTitle')}</span>
-            <span><ShoppingOutlined /> {t('pages.productDetail.trustShippingTitle')}</span>
-            <span><ClockCircleOutlined /> {t('pages.productDetail.trustReturnsTitle')}</span>
+            <span><ShopIcon path={SI.checkCircle} /> {t('pages.checkout.trustSecureTitle')}</span>
+            <span><ShopIcon path={SI.shopping} /> {t('pages.productDetail.trustShippingTitle')}</span>
+            <span><ShopIcon path={SI.clock} /> {t('pages.productDetail.trustReturnsTitle')}</span>
           </div>
           <Text type="secondary" className="cart-drawer__footerHint">
             {t('pages.cart.drawerFooterHint')}

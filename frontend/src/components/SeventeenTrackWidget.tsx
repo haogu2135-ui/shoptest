@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, Button, Empty, Input, Space, Tag, Typography, message } from 'antd';
-import { CopyOutlined, CustomerServiceOutlined, GiftOutlined, ReloadOutlined, SearchOutlined, ShoppingOutlined } from '@ant-design/icons';
+import { announceAccessibleMessage } from '../utils/accessibleMessage';
+import { ShopIcon, SI } from './ShopIcon';
+import { Alert, Button, Empty, Input, Space, Tag, Typography } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { logisticsApi } from '../api';
 import { useLanguage } from '../i18n';
@@ -69,7 +70,7 @@ const SeventeenTrackWidget: React.FC<SeventeenTrackWidgetProps> = ({
   const queryTracking = useCallback(async (nextValue: string, silent = false) => {
     const num = nextValue.trim();
     if (!num) {
-      message.warning(t('pages.adminOrders.noTrackingNumber'));
+      announceAccessibleMessage(t('pages.adminOrders.noTrackingNumber'), 'warning');
       return;
     }
 
@@ -100,7 +101,7 @@ const SeventeenTrackWidget: React.FC<SeventeenTrackWidgetProps> = ({
       setResult(null);
       setError(localizedError);
       if (!silent) {
-        message.error(localizedError);
+        announceAccessibleMessage(localizedError, 'error');
       }
     } finally {
       if (requestSeq.current === requestId) {
@@ -140,15 +141,15 @@ const SeventeenTrackWidget: React.FC<SeventeenTrackWidgetProps> = ({
 
   const copyTrackingNumber = async () => {
     if (!activeTrackingNumber) {
-      message.warning(t('pages.adminOrders.noTrackingNumber'));
+      announceAccessibleMessage(t('pages.adminOrders.noTrackingNumber'), 'warning');
       return;
     }
     try {
       await navigator.clipboard.writeText(activeTrackingNumber);
-      message.success(t('pages.orderTracking.trackingNumberCopied'));
+      announceAccessibleMessage(t('pages.orderTracking.trackingNumberCopied'), 'success');
     } catch (error) {
       reportNonBlockingError('SeventeenTrackWidget.copyTrackingNumber', error);
-      message.error(t('pages.orderTracking.copyTrackingFailed'));
+      announceAccessibleMessage(t('pages.orderTracking.copyTrackingFailed'), 'error');
     }
   };
 
@@ -164,7 +165,7 @@ const SeventeenTrackWidget: React.FC<SeventeenTrackWidgetProps> = ({
     <Space wrap className="seventeen-track-widget__recoveryActions" size={[8, 8]} data-seventeen-track-recovery="true">
       {activeTrackingNumber ? (
         <Button
-          icon={<CopyOutlined />}
+          icon={<ShopIcon path={SI.copy} />}
           onClick={() => { void copyTrackingNumber(); }}
           aria-label={`${t('pages.orderTracking.copyTrackingNumber')}: ${activeTrackingNumber}`}
           title={`${t('pages.orderTracking.copyTrackingNumber')}: ${activeTrackingNumber}`}
@@ -173,7 +174,7 @@ const SeventeenTrackWidget: React.FC<SeventeenTrackWidgetProps> = ({
         </Button>
       ) : null}
       <Button
-        icon={<ReloadOutlined />}
+        icon={<ShopIcon path={SI.reload} />}
         loading={loading}
         onClick={runTrack}
         disabled={!value.trim() && !activeTrackingNumber}
@@ -183,7 +184,7 @@ const SeventeenTrackWidget: React.FC<SeventeenTrackWidgetProps> = ({
         {t('pages.orderTracking.retryTracking')}
       </Button>
       <Button
-        icon={<ShoppingOutlined />}
+        icon={<ShopIcon path={SI.shopping} />}
         onClick={() => navigate('/products')}
         aria-label={t('pages.orderTracking.shopAgain')}
         title={t('pages.orderTracking.shopAgain')}
@@ -191,7 +192,7 @@ const SeventeenTrackWidget: React.FC<SeventeenTrackWidgetProps> = ({
         {t('pages.orderTracking.shopAgain')}
       </Button>
       <Button
-        icon={<GiftOutlined />}
+        icon={<ShopIcon path={SI.gift} />}
         onClick={() => navigate('/coupons')}
         aria-label={t('pages.orderTracking.emptyCoupons')}
         title={t('pages.orderTracking.emptyCoupons')}
@@ -199,7 +200,7 @@ const SeventeenTrackWidget: React.FC<SeventeenTrackWidgetProps> = ({
         {t('pages.orderTracking.emptyCoupons')}
       </Button>
       <Button
-        icon={<CustomerServiceOutlined />}
+        icon={<ShopIcon path={SI.support} />}
         onClick={openSupport}
         aria-label={t('pages.profile.contactSupport')}
         title={t('pages.profile.contactSupport')}
@@ -223,7 +224,7 @@ const SeventeenTrackWidget: React.FC<SeventeenTrackWidgetProps> = ({
         />
         <Button
           type="primary"
-          icon={<SearchOutlined />}
+          icon={<ShopIcon path={SI.search} />}
           loading={loading}
           onClick={runTrack}
           aria-label={trackActionLabel}

@@ -105,7 +105,8 @@
   color: var(--login-surface);
 }
 
-.shopee-login-panel h1.ant-typography {
+.shopee-login-panel h1.ant-typography,
+.shopee-login-panel h1.shopee-login-panel__title {
   max-width: 560px;
   font-size: 44px;
   line-height: 1.08;
@@ -774,7 +775,8 @@
     justify-self: center;
   }
 
-  .shopee-login-panel h1.ant-typography {
+  .shopee-login-panel h1.ant-typography,
+.shopee-login-panel h1.shopee-login-panel__title {
     font-size: 30px;
   }
 
@@ -1009,7 +1011,8 @@
     background-position: 52% center;
   }
 
-  .shopee-login-panel h1.ant-typography {
+  .shopee-login-panel h1.ant-typography,
+.shopee-login-panel h1.shopee-login-panel__title {
     font-size: 25px;
     line-height: 1.14;
   }
@@ -1113,7 +1116,8 @@
     gap: 8px;
   }
 
-  .shopee-login-panel h1.ant-typography {
+  .shopee-login-panel h1.ant-typography,
+.shopee-login-panel h1.shopee-login-panel__title {
     font-size: 22px;
     line-height: 1.12;
   }
@@ -2876,4 +2880,17 @@ h1.shopee-login-subtitle,
   font-size: inherit !important;
   font-weight: inherit !important;
   line-height: inherit !important;
+}
+
+/* Commercial Login native Typography */
+.shopee-login-panel__title {
+  margin: 0;
+  font-size: 32px;
+  line-height: 1.2;
+  font-weight: 700;
+}
+.shopee-login-panel__eyebrow,
+.shopee-login-panel__subtitle,
+.shopee-login-card__intro {
+  margin: 0;
 }

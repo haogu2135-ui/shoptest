@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Card, Col, Image, Row, Select, Slider, Space, Spin, Tag, Typography } from 'antd';
-import { FireOutlined, GiftOutlined, ReloadOutlined, SearchOutlined, StarOutlined, ThunderboltOutlined } from '@ant-design/icons';
+import { ShopIcon, SI } from '../components/ShopIcon';
+import { Alert, Button, Card, Select, Slider, Spin, Tag } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { productApi } from '../api';
 import { useLanguage } from '../i18n';
@@ -19,7 +19,6 @@ import { dispatchDomEvent } from '../utils/domEvents';
 import './PetFinder.css';
 import '../styles/mobile-page-contrast.css';
 
-const { Title, Text, Paragraph } = Typography;
 
 type PetType = 'all' | 'dog' | 'cat' | 'small';
 type NeedType = 'all' | 'play' | 'walk' | 'sleep' | 'smart' | 'groom' | 'food';
@@ -247,80 +246,78 @@ const PetFinder: React.FC = () => {
     <div className="pet-finder-page">
       <div className="pet-finder-page__layout">
         <Card className="pet-finder-page__finderCard">
-          <Row gutter={[20, 20]} align="middle">
-            <Col xs={24} md={9}>
-              <Space direction="vertical" size={6}>
-                <Title level={1} style={{ margin: 0 }}>
-                  <GiftOutlined /> {t('pages.petFinder.title')}
-                </Title>
-                <Paragraph type="secondary" style={{ margin: 0 }}>{t('pages.petFinder.subtitle')}</Paragraph>
-              </Space>
-            </Col>
-            <Col xs={24} md={15}>
-              <Row gutter={[12, 12]}>
-                <Col xs={24} sm={12} className="pet-finder-page__budgetControl">
-                  <Text strong>{t('pages.petFinder.petType')}</Text>
-                  <Select
-                    value={petType}
-                    onChange={setPetType}
-                    className="pet-finder-page__fieldControl"
-                    aria-label={t('pages.petFinder.petType')}
-                    title={t('pages.petFinder.petType')}
-                    classNames={{ popup: { root: 'shop-mobile-popup-layer' } }}
-                    getPopupContainer={() => document.body}
-                    options={(['all', 'dog', 'cat', 'small'] as PetType[]).map((value) => ({ value, label: t(`pages.petFinder.petTypes.${value}`) }))}
-                  />
-                </Col>
-                <Col xs={24} sm={12}>
-                  <Text strong>{t('pages.petFinder.need')}</Text>
-                  <Select
-                    value={need}
-                    onChange={setNeed}
-                    className="pet-finder-page__fieldControl"
-                    aria-label={t('pages.petFinder.need')}
-                    title={t('pages.petFinder.need')}
-                    classNames={{ popup: { root: 'shop-mobile-popup-layer' } }}
-                    getPopupContainer={() => document.body}
-                    options={(['all', 'play', 'walk', 'sleep', 'smart', 'groom', 'food'] as NeedType[]).map((value) => ({ value, label: t(`pages.petFinder.needs.${value}`) }))}
-                  />
-                </Col>
-                <Col xs={24} sm={12}>
-                  <Text strong>{t('pages.petFinder.budget')}</Text>
-                  <Slider
-                    range
-                    min={0}
-                    max={maxBudget}
-                    step={maxBudget > 1000 ? 50 : 10}
-                    value={budget}
-                    ariaLabelForHandle={[
-                      `${t('pages.petFinder.budget')} ${formatMoney(budget[0])}`,
-                      `${t('pages.petFinder.budget')} ${formatMoney(budget[1])}`,
-                    ]}
-                    onChange={(value) => setBudget(normalizeBudget(value, maxBudget))}
-                  />
-                  <Text type="secondary" className="commerce-atomic">{formatMoney(budget[0])} - {formatMoney(budget[1])}</Text>
-                </Col>
-                <Col xs={24} sm={12}>
-                  <Text strong>{t('pages.petFinder.priority')}</Text>
-                  <Select
-                    value={priority}
-                    onChange={setPriority}
-                    className="pet-finder-page__fieldControl"
-                    aria-label={t('pages.petFinder.priority')}
-                    title={t('pages.petFinder.priority')}
-                    classNames={{ popup: { root: 'shop-mobile-popup-layer' } }}
-                    getPopupContainer={() => document.body}
-                    options={(['best', 'rating', 'deal', 'budget'] as Priority[]).map((value) => ({ value, label: t(`pages.petFinder.priorities.${value}`) }))}
-                  />
-                </Col>
-              </Row>
-            </Col>
-          </Row>
+          <div className="pet-finder-page__finderShell">
+            <div className="pet-finder-page__finderIntro">
+              <div className="pet-finder-page__introStack">
+                <h1 className="pet-finder-page__title" style={{ margin: 0 }}>
+                  <ShopIcon path={SI.gift} /> {t('pages.petFinder.title')}
+                </h1>
+                <p className="pet-finder-page__text pet-finder-page__paragraph pet-finder-page__text--secondary" style={{ margin: 0 }}>{t('pages.petFinder.subtitle')}</p>
+              </div>
+            </div>
+            <div className="pet-finder-page__finderControls">
+              <div className="pet-finder-page__control pet-finder-page__budgetControl">
+                <span className="pet-finder-page__text pet-finder-page__text--strong">{t('pages.petFinder.petType')}</span>
+                <Select
+                  value={petType}
+                  onChange={setPetType}
+                  className="pet-finder-page__fieldControl"
+                  aria-label={t('pages.petFinder.petType')}
+                  title={t('pages.petFinder.petType')}
+                  classNames={{ popup: { root: 'shop-mobile-popup-layer' } }}
+                  getPopupContainer={() => document.body}
+                  options={(['all', 'dog', 'cat', 'small'] as PetType[]).map((value) => ({ value, label: t(`pages.petFinder.petTypes.${value}`) }))}
+                />
+              </div>
+              <div className="pet-finder-page__control">
+                <span className="pet-finder-page__text pet-finder-page__text--strong">{t('pages.petFinder.need')}</span>
+                <Select
+                  value={need}
+                  onChange={setNeed}
+                  className="pet-finder-page__fieldControl"
+                  aria-label={t('pages.petFinder.need')}
+                  title={t('pages.petFinder.need')}
+                  classNames={{ popup: { root: 'shop-mobile-popup-layer' } }}
+                  getPopupContainer={() => document.body}
+                  options={(['all', 'play', 'walk', 'sleep', 'smart', 'groom', 'food'] as NeedType[]).map((value) => ({ value, label: t(`pages.petFinder.needs.${value}`) }))}
+                />
+              </div>
+              <div className="pet-finder-page__control">
+                <span className="pet-finder-page__text pet-finder-page__text--strong">{t('pages.petFinder.budget')}</span>
+                <Slider
+                  range
+                  min={0}
+                  max={maxBudget}
+                  step={maxBudget > 1000 ? 50 : 10}
+                  value={budget}
+                  ariaLabelForHandle={[
+                    `${t('pages.petFinder.budget')} ${formatMoney(budget[0])}`,
+                    `${t('pages.petFinder.budget')} ${formatMoney(budget[1])}`,
+                  ]}
+                  onChange={(value) => setBudget(normalizeBudget(value, maxBudget))}
+                />
+                <span className="pet-finder-page__text pet-finder-page__text--secondary commerce-atomic">{formatMoney(budget[0])} - {formatMoney(budget[1])}</span>
+              </div>
+              <div className="pet-finder-page__control">
+                <span className="pet-finder-page__text pet-finder-page__text--strong">{t('pages.petFinder.priority')}</span>
+                <Select
+                  value={priority}
+                  onChange={setPriority}
+                  className="pet-finder-page__fieldControl"
+                  aria-label={t('pages.petFinder.priority')}
+                  title={t('pages.petFinder.priority')}
+                  classNames={{ popup: { root: 'shop-mobile-popup-layer' } }}
+                  getPopupContainer={() => document.body}
+                  options={(['best', 'rating', 'deal', 'budget'] as Priority[]).map((value) => ({ value, label: t(`pages.petFinder.priorities.${value}`) }))}
+                />
+              </div>
+            </div>
+          </div>
         </Card>
 
         <Card
           title={t('pages.petFinder.results', { count: matches.length })}
-          extra={<Button className="pet-finder-page__searchAllButton" icon={<SearchOutlined />} aria-label={t('pages.petFinder.searchAll')} title={t('pages.petFinder.searchAll')} onClick={applyAsSearch}>{t('pages.petFinder.searchAll')}</Button>}
+          extra={<Button className="pet-finder-page__searchAllButton" icon={<ShopIcon path={SI.search} />} aria-label={t('pages.petFinder.searchAll')} title={t('pages.petFinder.searchAll')} onClick={applyAsSearch}>{t('pages.petFinder.searchAll')}</Button>}
         >
           {(loadError || usingCatalogFallback) && !loading ? (
             <Alert
@@ -329,14 +326,14 @@ const PetFinder: React.FC = () => {
               message={loadError ? t('pages.petFinder.loadFailed') : t('pages.petFinder.catalogFallback')}
               description={loadError ? t('pages.petFinder.loadFailedDescription') : t('pages.petFinder.catalogFallbackDescription')}
               action={(
-                <Space wrap>
-                  <Button size="small" icon={<ReloadOutlined />} onClick={retryFinderProducts}>
+                <div className="pet-finder-page__chipRow">
+                  <Button size="small" icon={<ShopIcon path={SI.reload} />} onClick={retryFinderProducts}>
                     {t('messages.retry')}
                   </Button>
-                  <Button size="small" type="link" icon={<SearchOutlined />} onClick={() => navigate('/products')}>
+                  <Button size="small" type="link" icon={<ShopIcon path={SI.search} />} onClick={() => navigate('/products')}>
                     {t('pages.petFinder.browseAll')}
                   </Button>
-                </Space>
+                </div>
               )}
               className="pet-finder-page__loadAlert"
             />
@@ -344,27 +341,27 @@ const PetFinder: React.FC = () => {
           {!loading && matches.length > 0 ? (
             <section className="pet-finder-page__insights" aria-label={t('pages.petFinder.insightTitle')}>
               <div className="pet-finder-page__insightCopy">
-                <Text className="pet-finder-page__eyebrow">{t('pages.petFinder.insightEyebrow')}</Text>
-                <Title level={4}>{t('pages.petFinder.insightTitle')}</Title>
-                <Text type="secondary">
+                <span className="pet-finder-page__text pet-finder-page__eyebrow">{t('pages.petFinder.insightEyebrow')}</span>
+                <h4 className="pet-finder-page__title">{t('pages.petFinder.insightTitle')}</h4>
+                <span className="pet-finder-page__text pet-finder-page__text--secondary">
                   {finderInsights.bestMatch
                     ? t('pages.petFinder.insightBest', { name: finderProductName(finderInsights.bestMatch) })
                     : t('pages.petFinder.insightSubtitle')}
-                </Text>
+                </span>
               </div>
               <div className="pet-finder-page__signalGrid">
                 <div className="pet-finder-page__signal is-ok">
-                  <ThunderboltOutlined />
+                  <ShopIcon path={SI.thunder} />
                   <strong>{finderInsights.readyMatches}</strong>
                   <span>{t('pages.petFinder.readyMatches')}</span>
                 </div>
                 <div className={`pet-finder-page__signal ${finderInsights.dealMatches ? 'is-warm' : 'is-ok'}`}>
-                  <FireOutlined />
+                  <ShopIcon path={SI.fire} />
                   <strong>{finderInsights.dealMatches}</strong>
                   <span>{t('pages.petFinder.dealMatches')}</span>
                 </div>
                 <div className="pet-finder-page__signal is-ok">
-                  <StarOutlined />
+                  <ShopIcon path={SI.starOutline} />
                   <strong>{finderInsights.topRatedMatches}</strong>
                   <span>{t('pages.petFinder.topRatedMatches')}</span>
                 </div>
@@ -374,23 +371,23 @@ const PetFinder: React.FC = () => {
           {!loading && matches.length > 0 ? (
             <section className="pet-finder-page__nextStep" aria-label={t('pages.petFinder.nextStepTitle')}>
               <div className="pet-finder-page__nextStepCopy">
-                <Text className="pet-finder-page__eyebrow">{t('pages.petFinder.nextStepEyebrow')}</Text>
-                <Title level={4}>{t('pages.petFinder.nextStepTitle')}</Title>
-                <Text type="secondary">
+                <span className="pet-finder-page__text pet-finder-page__eyebrow">{t('pages.petFinder.nextStepEyebrow')}</span>
+                <h4 className="pet-finder-page__title">{t('pages.petFinder.nextStepTitle')}</h4>
+                <span className="pet-finder-page__text pet-finder-page__text--secondary">
                   {finderInsights.bestMatch
                     ? t('pages.petFinder.nextStepBest', {
                       name: finderProductName(finderInsights.bestMatch),
                       price: formatMoney(finderInsights.bestMatchPrice),
                     })
                     : t('pages.petFinder.nextStepSearch')}
-                </Text>
+                </span>
               </div>
               <div className="pet-finder-page__nextStepMeta">
                 <Tag color="blue">{t(`pages.petFinder.petTypes.${petType}`)}</Tag>
                 <Tag color="green">{t(`pages.petFinder.needs.${need}`)}</Tag>
                 <Tag color="orange"><span className="commerce-atomic"><span className="commerce-money">{formatMoney(budget[0])}</span> - <span className="commerce-money">{formatMoney(budget[1])}</span></span></Tag>
               </div>
-              <Space wrap className="pet-finder-page__nextStepActions">
+              <div className="pet-finder-page__nextStepActions">
                 {finderInsights.bestMatch && finderInsights.nextAction === 'view' ? (
                   <Button
                     type="primary"
@@ -401,10 +398,10 @@ const PetFinder: React.FC = () => {
                     {t('pages.petFinder.viewBest')}
                   </Button>
                 ) : null}
-                <Button className="pet-finder-page__searchAllButton" icon={<SearchOutlined />} aria-label={t('pages.petFinder.searchAll')} title={t('pages.petFinder.searchAll')} onClick={applyAsSearch}>
+                <Button className="pet-finder-page__searchAllButton" icon={<ShopIcon path={SI.search} />} aria-label={t('pages.petFinder.searchAll')} title={t('pages.petFinder.searchAll')} onClick={applyAsSearch}>
                   {t('pages.petFinder.searchAll')}
                 </Button>
-              </Space>
+              </div>
             </section>
           ) : null}
           {loading ? (
@@ -471,7 +468,7 @@ const PetFinder: React.FC = () => {
                     key: 'browse',
                     label: t('pages.petFinder.browseAll'),
                     onClick: () => navigate('/products'),
-                    icon: <SearchOutlined />,
+                    icon: <ShopIcon path={SI.search} />,
                   },
                   {
                     key: 'coupons',
@@ -489,24 +486,29 @@ const PetFinder: React.FC = () => {
               />
             )
           ) : (
-            <Row gutter={[16, 16]} className="pet-finder-page__recommendationGrid">
+            <div className="pet-finder-page__recommendationGrid">
               {matches.map(({ product, score }) => {
                 const productName = finderProductName(product);
                 const viewLabel = `${t('pages.petFinder.view')}: ${productName}`;
                 return (
-                  <Col key={product.id} xs={12} sm={12} md={8} lg={6}>
+                  <div key={product.id} className="pet-finder-page__recommendationItem">
                     <Card
                       hoverable
                       className="pet-finder-page__productCard"
                       cover={
                         <button type="button" className="pet-finder-page__productImageButton" aria-label={viewLabel} title={viewLabel} onClick={() => navigate(`/products/${product.id}`)}>
-                          <Image
+                          <img
                             className="pet-finder-page__productImage"
                             src={resolveProductImage(product.imageUrl)}
                             alt={productName}
-                            preview={false}
                             height={180}
-                            fallback={productImageFallback}
+                            loading="lazy"
+                            decoding="async"
+                            onError={(event) => {
+                              if (event.currentTarget.src !== productImageFallback) {
+                                event.currentTarget.src = productImageFallback;
+                              }
+                            }}
                           />
                         </button>
                       }
@@ -516,20 +518,20 @@ const PetFinder: React.FC = () => {
                         </Button>,
                       ]}
                     >
-                      <Space direction="vertical" size={6} className="pet-finder-page__productBody">
-                        <Text strong className="pet-finder-page__productName" title={productName}>{productName}</Text>
-                        <Text strong className="commerce-money pet-finder-page__productPrice">{formatMoney(productPrice(product))}</Text>
-                        <Space wrap size={[4, 4]}>
+                      <div className="pet-finder-page__productBody">
+                        <span className="pet-finder-page__text pet-finder-page__text--strong pet-finder-page__productName" title={productName}>{productName}</span>
+                        <span className="pet-finder-page__text pet-finder-page__text--strong commerce-money pet-finder-page__productPrice">{formatMoney(productPrice(product))}</span>
+                        <div className="pet-finder-page__productTags">
                           {isInStock(product) ? <Tag color="green">{t('pages.productDetail.enough')}</Tag> : <Tag color="red">{t('pages.productList.soldOut')}</Tag>}
                           {(product.effectiveDiscountPercent || product.discount || 0) > 0 ? <Tag color="volcano">{t('pages.productList.sale')}</Tag> : null}
                           <Tag color="blue">{t('pages.petFinder.matchScore', { score: Math.max(0, Math.round(score)) })}</Tag>
-                        </Space>
-                      </Space>
+                        </div>
+                      </div>
                     </Card>
-                  </Col>
+                  </div>
                 );
               })}
-            </Row>
+            </div>
           )}
         </Card>
       </div>

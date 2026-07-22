@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Card, Row, Col, Button, Input, Select, Pagination, Tag, message, Typography, Slider, Checkbox, Modal, Space, Drawer, Rate } from 'antd';
-import { ArrowUpOutlined, BarChartOutlined, BellOutlined, CheckCircleOutlined, CloseOutlined, CustomerServiceOutlined, FireOutlined, FilterOutlined, GiftOutlined, HeartFilled, HeartOutlined, ReloadOutlined, SearchOutlined, ShoppingCartOutlined } from '@ant-design/icons';
+import { announceAccessibleMessage } from '../utils/accessibleMessage';
+import { Card, Button, Input, Select, Pagination, Tag, Slider, Checkbox, Modal, Drawer, Rate } from 'antd';
+import { ShopIcon, SI } from '../components/ShopIcon';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { productApi, cartApi, categoryApi, wishlistApi, createApiAbortController } from '../api';
 import type { ProductPublic as Product, ProductPublicPage, CategoryPublic } from '../types';
@@ -40,7 +41,6 @@ import ShopBreadcrumb from '../components/ShopBreadcrumb';
 import './ProductList.css';
 import '../styles/mobile-page-contrast.css';
 
-const { Text } = Typography;
 const SEARCH_HISTORY_KEY = 'shop-product-search-history';
 const MAX_SEARCH_HISTORY = 6;
 const MAX_SEARCH_LENGTH = 80;
@@ -192,7 +192,7 @@ const pickBestProductFallback = (products: Product[], keyword?: string, category
 
 const notifyCatalogFallback = (text: string) => {
   if (shouldShowCatalogFallbackToast) {
-    message.warning(text);
+    announceAccessibleMessage(text, 'warning');
   }
 };
 
@@ -293,19 +293,19 @@ const ProductListConfidenceStrip: React.FC<{ product: Product; t: ProductListTra
     <div className="product-list__confidenceStrip">
       {!soldOut && (
         <span className={`product-list__confidencePill${quickReady ? ' product-list__confidencePill--ready' : ''}`}>
-          <CheckCircleOutlined />
+          <ShopIcon path={SI.check} />
           {quickReady ? t('pages.productList.cardQuickReady') : t('pages.productList.cardOptionsNeeded')}
         </span>
       )}
       {lowStock !== null && (
         <span className="product-list__confidencePill product-list__confidencePill--alert">
-          <FireOutlined />
+          <ShopIcon path={SI.fire} />
           {t('pages.productList.cardLowStock', { count: lowStock })}
         </span>
       )}
       {lowStock === null && !soldOut && (
         <span className="product-list__confidencePill product-list__confidencePill--trust">
-          <CheckCircleOutlined />
+          <ShopIcon path={SI.check} />
           {t('pages.productList.cardReturnReady')}
         </span>
       )}
@@ -344,7 +344,7 @@ const ProductListCard = React.memo(({
   const stockAlertActionLabel = `${stockAlerted ? t('pages.stockAlerts.remove') : t('pages.stockAlerts.notifyMe')}: ${productName}`;
 
   return (
-    <Col xs={12} sm={12} md={8} lg={6}>
+    <div className="product-list__gridItem">
       <Card
         className="product-list__card"
         hoverable
@@ -388,7 +388,7 @@ const ProductListCard = React.memo(({
             <div className="product-list__imageOverlay">
               <Button
                 size="small"
-                icon={<SearchOutlined />}
+                icon={<ShopIcon path={SI.search} />}
                 className="product-list__previewTrigger"
                 aria-label={previewActionLabel}
                 title={previewActionLabel}
@@ -403,7 +403,7 @@ const ProductListCard = React.memo(({
           soldOut ? (
             <Button
               key="stock-alert"
-              icon={<BellOutlined />}
+              icon={<ShopIcon path={SI.bell} />}
               size="small"
               className="product-list__actionButton product-list__alertButton"
               aria-pressed={stockAlerted}
@@ -419,7 +419,7 @@ const ProductListCard = React.memo(({
             <Button
               key="quick-add"
               type="primary"
-              icon={<ShoppingCartOutlined />}
+              icon={<ShopIcon path={SI.cart} />}
               size="small"
               className="product-list__actionButton"
               aria-label={quickAddActionLabel}
@@ -433,7 +433,7 @@ const ProductListCard = React.memo(({
           ),
           <Button
             key="wishlist"
-            icon={wishlisted ? <HeartFilled /> : <HeartOutlined />}
+            icon={wishlisted ? <ShopIcon path={SI.heartFill} /> : <ShopIcon path={SI.heart} />}
             size="small"
             className={wishlisted
               ? 'product-list__actionButton product-list__actionButton--compact product-list__favoriteButton product-list__favoriteButton--active'
@@ -449,7 +449,7 @@ const ProductListCard = React.memo(({
           </Button>,
           <Button
             key="compare"
-            icon={<BarChartOutlined />}
+            icon={<ShopIcon path={SI.barChart} />}
             size="small"
             className="product-list__actionButton product-list__actionButton--compact"
             aria-label={compareActionLabel}
@@ -470,7 +470,7 @@ const ProductListCard = React.memo(({
               aria-label={viewDetailsActionLabel}
               title={viewDetailsActionLabel}
             >
-              <Text ellipsis={{ tooltip: productName }}>{productName}</Text>
+              <span className="product-list__text product-list__text--ellipsis" title={productName}>{productName}</span>
             </Link>
           )}
           description={
@@ -478,33 +478,33 @@ const ProductListCard = React.memo(({
               <div className="product-list__priceLine">
                 <span className="product-list__currentPrice commerce-money">{formatMoney(getPrice(product))}</span>
                 {product.originalPrice && product.originalPrice > getPrice(product) && (
-                  <Text delete type="secondary" className="product-list__originalPrice commerce-money">{formatMoney(product.originalPrice)}</Text>
+                  <span className="product-list__text product-list__text--delete product-list__text--secondary product-list__originalPrice commerce-money">{formatMoney(product.originalPrice)}</span>
                 )}
                 {product.activeLimitedTimeDiscount && <Tag color="red" className="product-list__priceTag">{t('pages.keywords.deal')}</Tag>}
               </div>
               {isBestValueProduct(product) && getSavingsAmount(product) > 0 ? (
                 <div className="product-list__valueLine">
-                  <Text type="success">
+                  <span className="product-list__text product-list__text--success">
                     {renderSavingsText(getSavingsAmount(product))}
-                  </Text>
+                  </span>
                 </div>
               ) : null}
               <div className="product-list__ratingLine">
-                <Text type={hasReviewSignal(product) ? 'secondary' : undefined} className={hasReviewSignal(product) ? undefined : 'product-list__newReviewSignal'}>
+                <span className={`product-list__text ${hasReviewSignal(product) ? 'product-list__text--secondary' : 'product-list__newReviewSignal'}`}>
                   {hasReviewSignal(product)
                     ? t('pages.productList.positiveRate', { rate: Math.round(product.positiveRate || 0).toString(), count: product.reviewCount || 0 })
                     : t('pages.productList.noReviewsYet')}
-                </Text>
+                </span>
               </div>
               <div className="product-list__metaRow">
-                {product.brand && <Text type="secondary" className="product-list__brand">{product.brand}</Text>}
+                {product.brand && <span className="product-list__text product-list__text--secondary product-list__brand">{product.brand}</span>}
               </div>
               <ProductListConfidenceStrip product={product} t={t} />
             </div>
           }
         />
       </Card>
-    </Col>
+    </div>
   );
 });
 
@@ -1181,7 +1181,7 @@ const ProductList: React.FC = () => {
       setProductTotal(0);
       setProducts([]);
       if (process.env.NODE_ENV !== 'production') {
-        message.error(errorMessage);
+        announceAccessibleMessage(errorMessage, 'error');
       }
     } finally {
       if (productFetchAbortRef.current === abortController) {
@@ -1285,17 +1285,17 @@ const ProductList: React.FC = () => {
     e.stopPropagation();
     const result = addCompareProduct(product);
     if (result.status === 'full') {
-      message.warning(t('pages.productList.compareFull', { count: MAX_COMPARE_ITEMS }));
+      announceAccessibleMessage(t('pages.productList.compareFull', { count: MAX_COMPARE_ITEMS }), 'warning');
       return;
     }
-    message.success(result.status === 'exists' ? t('pages.productList.compareExists') : t('pages.productList.compareAdded'));
+    announceAccessibleMessage(result.status === 'exists' ? t('pages.productList.compareExists') : t('pages.productList.compareAdded'), 'success');
     navigate('/compare');
   }, [navigate, t]);
 
   const handleWishlistToggle = useCallback(async (e: React.MouseEvent, product: Product) => {
     e.stopPropagation();
     if (!isAuthenticated) {
-      message.warning(t('messages.loginRequired'));
+      announceAccessibleMessage(t('messages.loginRequired'), 'warning');
       navigate(buildLoginUrlFromWindow());
       return;
     }
@@ -1311,9 +1311,9 @@ const ProductList: React.FC = () => {
         return next;
       });
       dispatchDomEvent('shop:wishlist-updated');
-      message.success(res.data.wishlisted ? t('pages.productDetail.favoritedMsg') : t('pages.productDetail.unfavoritedMsg'));
+      announceAccessibleMessage(res.data.wishlisted ? t('pages.productDetail.favoritedMsg') : t('pages.productDetail.unfavoritedMsg'), 'success');
     } catch (error) {
-      message.error(getApiErrorMessage(error, t('messages.operationFailed'), language));
+      announceAccessibleMessage(getApiErrorMessage(error, t('messages.operationFailed'), language), 'error');
     }
   }, [isAuthenticated, language, navigate, t]);
 
@@ -1358,7 +1358,7 @@ const ProductList: React.FC = () => {
 
   const renderQuickAddOptions = () => (
     <>
-      <Text type="secondary">{t('pages.productList.quickAddHint')}</Text>
+      <span className="product-list__text product-list__text--secondary">{t('pages.productList.quickAddHint')}</span>
       {quickAddOptionGroups.map((group) => (
         (() => {
           const groupLabel = getLocalizedOptionLabel(group.name, language);
@@ -1401,11 +1401,11 @@ const ProductList: React.FC = () => {
     e.stopPropagation();
     if (stockAlerted) {
       removeStockAlert(product.id);
-      message.success(t('pages.stockAlerts.removed'));
+      announceAccessibleMessage(t('pages.stockAlerts.removed'), 'success');
       return;
     }
     const result = addStockAlert(product);
-    message.success(result.status === 'exists' ? t('pages.stockAlerts.exists') : t('pages.stockAlerts.added'));
+    announceAccessibleMessage(result.status === 'exists' ? t('pages.stockAlerts.exists') : t('pages.stockAlerts.added'), 'success');
   }, [t]);
 
   const prefetchProduct = useCallback((productId: number) => {
@@ -1423,16 +1423,16 @@ const ProductList: React.FC = () => {
     if (quickAddSubmitting) return;
     const missingOption = quickAddOptionGroups.find((group) => !quickAddOptions[group.name]);
     if (missingOption) {
-      message.warning(t('pages.productDetail.selectOption', { option: missingOption.name }));
+      announceAccessibleMessage(t('pages.productDetail.selectOption', { option: missingOption.name }), 'warning');
       return;
     }
     if (quickAddVariants.length > 0 && !quickAddVariant) {
-      message.warning(t('pages.productDetail.variantUnavailable'));
+      announceAccessibleMessage(t('pages.productDetail.variantUnavailable'), 'warning');
       return;
     }
     const selectedStock = quickAddVariant?.stock ?? quickAddProduct.stock;
     if (selectedStock !== undefined && selectedStock <= 0) {
-      message.error(t('pages.productDetail.insufficientStock'));
+      announceAccessibleMessage(t('pages.productDetail.insufficientStock'), 'error');
       return;
     }
     const bundleInfo = getBundleInfo(quickAddProduct);
@@ -1448,11 +1448,11 @@ const ProductList: React.FC = () => {
         } else if (snapshot) {
           addGuestCartItem(snapshot, 1, selectedSpecs, bundleInfo.price);
         }
-        message.success(t('messages.addCartSuccess'));
+        announceAccessibleMessage(t('messages.addCartSuccess'), 'success');
         setQuickAddProduct(null);
         await openCartDrawerWithSnapshot({ authenticated: Boolean(token) });
       } catch (error) {
-        message.error(getApiErrorMessage(error, t('messages.addFailed'), language));
+        announceAccessibleMessage(getApiErrorMessage(error, t('messages.addFailed'), language), 'error');
       } finally {
         setQuickAddSubmitting(false);
       }
@@ -1475,11 +1475,11 @@ const ProductList: React.FC = () => {
       } else if (snapshot) {
         addGuestCartItem(snapshot, 1, selectedSpecs, selectedPrice);
       }
-      message.success(t('messages.addCartSuccess'));
+      announceAccessibleMessage(t('messages.addCartSuccess'), 'success');
       setQuickAddProduct(null);
       await openCartDrawerWithSnapshot({ authenticated: Boolean(token) });
     } catch (error) {
-      message.error(getApiErrorMessage(error, t('messages.addFailed'), language));
+      announceAccessibleMessage(getApiErrorMessage(error, t('messages.addFailed'), language), 'error');
     } finally {
       setQuickAddSubmitting(false);
     }
@@ -1722,7 +1722,7 @@ const ProductList: React.FC = () => {
   const mobileDiscoveryActions = [
     {
       key: 'all',
-      icon: <SearchOutlined />,
+      icon: <ShopIcon path={SI.search} />,
       label: t('pages.productList.allCategories'),
       active: !collection && !keyword.trim() && !discount && sortBy === 'default' && activeRefinementCount === 0,
       onClick: () => {
@@ -1741,7 +1741,7 @@ const ProductList: React.FC = () => {
     },
     {
       key: 'deals',
-      icon: <FireOutlined />,
+      icon: <ShopIcon path={SI.fire} />,
       label: t('pages.productList.shopBestDeals'),
       active: discount || sortBy === 'discount-desc',
       onClick: () => {
@@ -1753,7 +1753,7 @@ const ProductList: React.FC = () => {
     },
     {
       key: 'smart',
-      icon: <GiftOutlined />,
+      icon: <ShopIcon path={SI.gift} />,
       label: t('nav.petNav.smartDevices'),
       active: collection === 'smart-devices',
       onClick: () => {
@@ -1763,21 +1763,21 @@ const ProductList: React.FC = () => {
     },
     {
       key: 'rated',
-      icon: <BarChartOutlined />,
+      icon: <ShopIcon path={SI.barChart} />,
       label: t('pages.productList.shopTopRated'),
       active: sortBy === 'positive-rate-desc',
       onClick: () => applySort('positive-rate-desc'),
     },
     {
       key: 'quick',
-      icon: <ShoppingCartOutlined />,
+      icon: <ShopIcon path={SI.cart} />,
       label: t('pages.productList.shopQuickAdd'),
       active: sortBy === 'quick-add-desc',
       onClick: () => applySort('quick-add-desc'),
     },
     {
       key: 'support',
-      icon: <CustomerServiceOutlined />,
+      icon: <ShopIcon path={SI.support} />,
       label: t('footer.helpCenter'),
       active: false,
       onClick: openSupport,
@@ -1821,21 +1821,21 @@ const ProductList: React.FC = () => {
     ? [
       {
         key: 'recover',
-        icon: activeRefinementCount > 0 ? <ReloadOutlined /> : <FilterOutlined />,
+        icon: activeRefinementCount > 0 ? <ShopIcon path={SI.reload} /> : <ShopIcon path={SI.filter} />,
         label: activeRefinementCount > 0 ? t('pages.productList.resetFilters') : t('pages.productList.filters'),
         primary: activeRefinementCount > 0,
         onClick: activeRefinementCount > 0 ? resetMobileRefinements : () => setFilterDrawerOpen(true),
       },
       {
         key: 'catalog',
-        icon: <SearchOutlined />,
+        icon: <ShopIcon path={SI.search} />,
         label: t('pages.productList.allCategories'),
         primary: activeRefinementCount === 0 && hasActiveCatalogContext,
         onClick: resetCatalogView,
       },
       {
         key: 'coupons',
-        icon: <GiftOutlined />,
+        icon: <ShopIcon path={SI.gift} />,
         label: t('pages.productList.loadRecoveryCoupons'),
         primary: !hasActiveCatalogContext,
         onClick: () => navigate('/coupons'),
@@ -1844,21 +1844,21 @@ const ProductList: React.FC = () => {
     : [
       {
         key: 'filter',
-        icon: <FilterOutlined />,
+        icon: <ShopIcon path={SI.filter} />,
         label: t('pages.productList.filters'),
         primary: activeRefinementCount > 0,
         onClick: () => setFilterDrawerOpen(true),
       },
       {
         key: 'deals',
-        icon: <FireOutlined />,
+        icon: <ShopIcon path={SI.fire} />,
         label: t('pages.productList.shopBestDeals'),
         primary: productListInsights.bestValueCount > 0,
         onClick: () => applySort('discount-desc'),
       },
       {
         key: 'quick',
-        icon: <ShoppingCartOutlined />,
+        icon: <ShopIcon path={SI.cart} />,
         label: t('pages.productList.shopQuickAdd'),
         primary: productListInsights.quickAddReadyCount > 0,
         onClick: () => applySort('quick-add-desc'),
@@ -1869,7 +1869,7 @@ const ProductList: React.FC = () => {
     keyword.trim()
       ? {
         key: 'keyword',
-        icon: <SearchOutlined />,
+        icon: <ShopIcon path={SI.search} />,
         label: `${t('common.search')}: ${keyword.trim()}`,
         onClear: () => {
           setKeyword('');
@@ -1881,7 +1881,7 @@ const ProductList: React.FC = () => {
     collection
       ? {
         key: 'collection',
-        icon: <GiftOutlined />,
+        icon: <ShopIcon path={SI.gift} />,
         label: normalizeCatalogTitle(getCollectionLabel(collection), catalogTitleFallback),
         onClear: () => {
           setCurrentPage(1);
@@ -1892,7 +1892,7 @@ const ProductList: React.FC = () => {
     discount
       ? {
         key: 'discount',
-        icon: <FireOutlined />,
+        icon: <ShopIcon path={SI.fire} />,
         label: t('pages.productList.shopBestDeals'),
         onClear: () => {
           setDiscount(false);
@@ -1903,14 +1903,14 @@ const ProductList: React.FC = () => {
       : null,
     ...activeRefinementTags.map((tag) => ({
       key: `refinement-${tag.key}`,
-      icon: <FilterOutlined />,
+      icon: <ShopIcon path={SI.filter} />,
       label: tag.label,
       onClear: tag.onClose,
     })),
     sortBy !== 'default'
       ? {
         key: 'sort',
-        icon: <BarChartOutlined />,
+        icon: <ShopIcon path={SI.barChart} />,
         label: `${t('pages.productList.sortLabel')}: ${currentSortLabel}`,
         onClear: () => applySort('default'),
       }
@@ -1991,9 +1991,9 @@ const ProductList: React.FC = () => {
   );
 
   const renderFilterPanel = () => (
-    <Space direction="vertical" className="product-list__filterStack" size="middle">
+    <div className="product-list__filterStack">
       <div>
-        <Text strong>{t('pages.productList.price')}</Text>
+        <span className="product-list__text product-list__text--strong">{t('pages.productList.price')}</span>
         <Slider
           range
           min={0}
@@ -2011,10 +2011,10 @@ const ProductList: React.FC = () => {
           }}
           onChangeComplete={(value) => commitPriceRange(value as [number, number])}
         />
-        <Text type="secondary" className="commerce-atomic">{formatMoney(displayedPriceRange[0])} - {formatMoney(displayedPriceRange[1])}</Text>
+        <span className="product-list__text product-list__text--secondary commerce-atomic">{formatMoney(displayedPriceRange[0])} - {formatMoney(displayedPriceRange[1])}</span>
       </div>
       <div>
-        <Text strong className="product-list__filterLabel">{t('pages.productList.filterSize')}</Text>
+        <span className="product-list__text product-list__text--strong product-list__filterLabel">{t('pages.productList.filterSize')}</span>
         <Checkbox.Group
           value={petSizes}
           aria-label={`${t('pages.productList.filterSize')}: ${t('pages.productList.filters')}`}
@@ -2023,7 +2023,7 @@ const ProductList: React.FC = () => {
         />
       </div>
       <div>
-        <Text strong className="product-list__filterLabel">{t('pages.productList.filterMaterial')}</Text>
+        <span className="product-list__text product-list__text--strong product-list__filterLabel">{t('pages.productList.filterMaterial')}</span>
         <Checkbox.Group
           value={materials}
           aria-label={`${t('pages.productList.filterMaterial')}: ${t('pages.productList.filters')}`}
@@ -2032,7 +2032,7 @@ const ProductList: React.FC = () => {
         />
       </div>
       <div>
-        <Text strong className="product-list__filterLabel">{t('pages.productList.filterColor')}</Text>
+        <span className="product-list__text product-list__text--strong product-list__filterLabel">{t('pages.productList.filterColor')}</span>
         <Checkbox.Group
           value={colors}
           aria-label={`${t('pages.productList.filterColor')}: ${t('pages.productList.filters')}`}
@@ -2053,12 +2053,12 @@ const ProductList: React.FC = () => {
           ))}
         </Checkbox.Group>
       </div>
-    </Space>
+    </div>
   );
   const emptyDiscoveryActions = [
     {
       key: 'catalog',
-      icon: <FilterOutlined />,
+      icon: <ShopIcon path={SI.filter} />,
       title: activeRefinementCount > 0 ? t('pages.productList.resetFilters') : t('pages.productList.allCategories'),
       text: t('pages.productList.loadRecoveryTipFilters'),
       ariaLabel: activeRefinementCount > 0 ? resetRefinementsActionLabel : emptyAllCategoriesActionLabel,
@@ -2073,7 +2073,7 @@ const ProductList: React.FC = () => {
     },
     {
       key: 'deals',
-      icon: <FireOutlined />,
+      icon: <ShopIcon path={SI.fire} />,
       title: t('pages.productList.shopBestDeals'),
       text: t('pages.productList.guideStart'),
       ariaLabel: `${t('pages.productList.shopBestDeals')}: ${t('pages.productList.empty')}`,
@@ -2081,7 +2081,7 @@ const ProductList: React.FC = () => {
     },
     {
       key: 'coupons',
-      icon: <GiftOutlined />,
+      icon: <ShopIcon path={SI.gift} />,
       title: t('pages.productList.loadRecoveryCoupons'),
       text: t('pages.productList.loadRecoveryText'),
       ariaLabel: `${t('pages.productList.loadRecoveryCoupons')}: ${t('pages.productList.empty')}`,
@@ -2089,7 +2089,7 @@ const ProductList: React.FC = () => {
     },
     {
       key: 'support',
-      icon: <CustomerServiceOutlined />,
+      icon: <ShopIcon path={SI.support} />,
       title: t('pages.productList.loadRecoverySupport'),
       text: t('pages.productList.loadRecoveryTipSupport'),
       ariaLabel: `${t('pages.productList.loadRecoverySupport')}: ${t('pages.productList.empty')}`,
@@ -2133,17 +2133,17 @@ const ProductList: React.FC = () => {
             : []),
         ]}
       />
-      <Row gutter={24}>
-        <Col xs={0} sm={0} md={5} lg={4} className="product-list__sidebar">
+      <div className="product-list__layout">
+        <aside className="product-list__sidebar">
           <Card title={t('pages.productList.sidebarTitle')} size="small" className="product-list__sidebarCard">
             {renderCategoryPanel()}
           </Card>
           <Card
             title={
-              <Space>
+              <div className="product-list__inlineRow">
                 <span>{t('pages.productList.filters')}</span>
                 {activeFilterCount > 0 ? <Tag color="blue">{t('pages.productList.activeFilters', { count: activeFilterCount })}</Tag> : null}
-              </Space>
+              </div>
             }
             size="small"
             extra={
@@ -2154,19 +2154,19 @@ const ProductList: React.FC = () => {
           >
             {renderFilterPanel()}
           </Card>
-        </Col>
-        <Col xs={24} sm={24} md={19} lg={20}>
+        </aside>
+        <div className="product-list__main">
           <section className="product-list__heroBand">
             <div className="product-list__heroContent">
               <span className="product-list__heroEyebrow">{topCategoryName}</span>
               <h1>{catalogHeroTitle}</h1>
-              <Text>
+              <span className="product-list__text">
                 {collection
                   ? `${t('pages.productList.resultContextLabel')}: ${collectionLabel}`
                   : resultContextTags.length > 0
                     ? resultContextTags.map((tag) => tag.label).join(' / ')
                     : t('pages.productList.searchPlaceholder')}
-              </Text>
+              </span>
               <div className="product-list__heroStats">
                 <span>{productCountLabel}</span>
                 <span>{t('pages.productList.quickAddReady', { count: productListInsights.quickAddReadyCount })}</span>
@@ -2184,7 +2184,7 @@ const ProductList: React.FC = () => {
                 title={`${t('pages.productList.viewPick')}: ${heroProductName}`}
               >
                 <strong>{heroProductName}</strong>
-                <Text className="commerce-money">{formatMoney(getPrice(heroProduct))}</Text>
+                <span className="product-list__text commerce-money">{formatMoney(getPrice(heroProduct))}</span>
                 <span>{renderBadges(heroProduct).slice(0, 2).map((badge) => badge.label).join(' / ') || t('pages.productList.viewPick')}</span>
                 {heroProductHighlights.length ? (
                   <div className="product-list__heroHighlights">
@@ -2197,8 +2197,8 @@ const ProductList: React.FC = () => {
             ) : null}
           </section>
           <Card className="product-list__toolbar">
-            <Row gutter={[12, 12]} align="middle">
-              <Col xs={24} sm={12} md={14} flex="auto">
+            <div className="product-list__toolbarRow">
+              <div className="product-list__toolbarSearch">
                 <Input.Search
                   placeholder={t('pages.productList.searchPlaceholder')}
                   aria-label={productSearchActionLabel}
@@ -2213,12 +2213,12 @@ const ProductList: React.FC = () => {
                       type="primary"
                       aria-label={productSearchActionLabel}
                       title={productSearchActionLabel}
-                      icon={<SearchOutlined />}
+                      icon={<ShopIcon path={SI.search} />}
                     />
                   )}
                 />
-              </Col>
-              <Col xs={12} sm={5} md={6}>
+              </div>
+              <div className="product-list__toolbarSort">
                 <Select
                   value={sortBy}
                   onChange={applySort}
@@ -2229,19 +2229,19 @@ const ProductList: React.FC = () => {
                   classNames={{ popup: { root: 'shop-mobile-popup-layer' } }}
                   getPopupContainer={() => document.body}
                 />
-              </Col>
-              <Col xs={12} sm={7} md={4}>
+              </div>
+              <div className="product-list__toolbarMetaWrap">
                 <div className="product-list__toolbarMeta">
-                  <Text type="secondary">{productCountLabel}</Text>
-                  <Button className="product-list__filterButton" icon={<FilterOutlined />} aria-label={openFilterDrawerActionLabel} title={openFilterDrawerActionLabel} onClick={() => setFilterDrawerOpen(true)}>
+                  <span className="product-list__text product-list__text--secondary">{productCountLabel}</span>
+                  <Button className="product-list__filterButton" icon={<ShopIcon path={SI.filter} />} aria-label={openFilterDrawerActionLabel} title={openFilterDrawerActionLabel} onClick={() => setFilterDrawerOpen(true)}>
                     <span>{t('pages.productList.filters')}</span>
                     {activeRefinementCount > 0 ? (
                       <span className="product-list__filterCount">{activeRefinementCount > 99 ? '99+' : activeRefinementCount}</span>
                     ) : null}
                   </Button>
                 </div>
-              </Col>
-            </Row>
+              </div>
+            </div>
             {activeResultContextActions.length > 0 ? (
               <section className="product-list__activeContextBar product-list__mobileContextBar" aria-label={t('pages.productList.resultContextLabel')}>
                 {activeResultContextActions.map((action) => (
@@ -2255,7 +2255,7 @@ const ProductList: React.FC = () => {
                   >
                     <span className="product-list__mobileContextIcon">{action.icon}</span>
                     <span>{action.label}</span>
-                    <CloseOutlined className="product-list__mobileContextClose" aria-hidden />
+                    <ShopIcon path={SI.close} className="product-list__mobileContextClose" aria-hidden  />
                   </button>
                 ))}
                 <Button
@@ -2271,8 +2271,8 @@ const ProductList: React.FC = () => {
               </section>
             ) : null}
             {searchHistory.length > 0 && (
-              <Space wrap size={[8, 8]} className="product-list__recentSearches">
-                <Text type="secondary">{t('pages.productList.recentSearches')}</Text>
+              <div className="product-list__recentSearches">
+                <span className="product-list__text product-list__text--secondary">{t('pages.productList.recentSearches')}</span>
                 {searchHistory.map((term) => (
                   <Tag
                     key={term}
@@ -2290,7 +2290,7 @@ const ProductList: React.FC = () => {
                 <Button type="link" size="small" aria-label={`${t('pages.productList.clearSearches')}: ${t('pages.productList.recentSearches')}`} title={`${t('pages.productList.clearSearches')}: ${t('pages.productList.recentSearches')}`} onClick={clearSearchHistory}>
                   {t('pages.productList.clearSearches')}
                 </Button>
-              </Space>
+              </div>
             )}
           </Card>
           <section className="product-list__mobileDiscovery" aria-label={t('home.categories')}>
@@ -2317,7 +2317,7 @@ const ProductList: React.FC = () => {
               <div className="product-list__mobileNextStepCopy">
                 <span>{t('pages.productList.guideTitle')}</span>
                 <strong>{mobileNextStepTitle}</strong>
-                <Text>{mobileNextStepText}</Text>
+                <span className="product-list__text">{mobileNextStepText}</span>
               </div>
               <div className="product-list__mobileNextStepActions">
                 {mobileNextStepActions.map((action) => (
@@ -2351,7 +2351,7 @@ const ProductList: React.FC = () => {
                 </span>
               </div>
               <div className="product-list__mobileConversionActions">
-                <Button icon={<FilterOutlined />} aria-label={openFilterDrawerActionLabel} title={openFilterDrawerActionLabel} onClick={() => setFilterDrawerOpen(true)}>
+                <Button icon={<ShopIcon path={SI.filter} />} aria-label={openFilterDrawerActionLabel} title={openFilterDrawerActionLabel} onClick={() => setFilterDrawerOpen(true)}>
                   {t('pages.productList.filters')}
                 </Button>
                 <Button aria-label={mobileSecondaryActionLabel} title={mobileSecondaryActionLabel} onClick={filteredProducts.length > 0 ? () => applySort('discount-desc') : activeRefinementCount > 0 ? resetMobileRefinements : () => navigate('/products')}>
@@ -2363,7 +2363,7 @@ const ProductList: React.FC = () => {
                 </Button>
                 <Button
                   type="primary"
-                  icon={heroProduct || filteredProducts.length > 0 ? <ShoppingCartOutlined /> : <GiftOutlined />}
+                  icon={heroProduct || filteredProducts.length > 0 ? <ShopIcon path={SI.cart} /> : <ShopIcon path={SI.gift} />}
                   aria-label={mobilePrimaryActionLabel}
                   title={mobilePrimaryActionLabel}
                   onClick={(event) => {
@@ -2398,12 +2398,12 @@ const ProductList: React.FC = () => {
               {usingCatalogSnapshot ? (
                 <section className="product-list__snapshotNotice" role="status" aria-live="polite">
                   <div>
-                    <Text strong>{t('pages.productList.snapshotTitle')}</Text>
-                    <Text type="secondary">{t('pages.productList.snapshotText')}</Text>
+                    <span className="product-list__text product-list__text--strong">{t('pages.productList.snapshotTitle')}</span>
+                    <span className="product-list__text product-list__text--secondary">{t('pages.productList.snapshotText')}</span>
                   </div>
                   <Button
                     size="small"
-                    icon={<ReloadOutlined />}
+                    icon={<ShopIcon path={SI.reload} />}
                     aria-label={refreshCatalogActionLabel}
                     title={refreshCatalogActionLabel}
                     onClick={() => fetchProducts(keyword, categoryId, discount, buildActiveFetchFilters(Math.max(0, currentPage - 1)))}
@@ -2414,18 +2414,18 @@ const ProductList: React.FC = () => {
               ) : null}
               <section className="product-list__smartBar" aria-label={t('pages.productList.insightTitle')}>
                 <div className="product-list__smartBarLeft">
-                  <CheckCircleOutlined />
-                  <Text strong>{t('pages.productList.insightTitle')}</Text>
-                  <Space wrap size={[6, 6]} className="product-list__smartStats">
+                  <ShopIcon path={SI.check} />
+                  <span className="product-list__text product-list__text--strong">{t('pages.productList.insightTitle')}</span>
+                  <div className="product-list__smartStats">
                     <Tag className="product-list__smartStat product-list__smartStat--ready">
                       {t('pages.productList.quickAddReady', { count: productListInsights.quickAddReadyCount })}
                     </Tag>
                     <Tag className="product-list__smartStat product-list__smartStat--value">
                       {t('pages.productList.bestValueCount', { count: productListInsights.bestValueCount })}
                     </Tag>
-                  </Space>
+                  </div>
                 </div>
-                <Space wrap className="product-list__smartActions" size={[8, 8]}>
+                <div className="product-list__smartActions">
                   {heroProduct ? (
                     <Button
                       className="product-list__smartPick"
@@ -2445,13 +2445,13 @@ const ProductList: React.FC = () => {
                   <Button className="product-list__smartPersonal" aria-label={shopQuickAddActionLabel} title={shopQuickAddActionLabel} onClick={() => applySort('quick-add-desc')}>
                     {t('pages.productList.shopQuickAdd')}
                   </Button>
-                </Space>
+                </div>
               </section>
               <section className="product-list__insightPanel" aria-label={t('pages.productList.guideTitle')}>
                 <div className="product-list__insightCopy">
                   <span>{t('pages.productList.guideTitle')}</span>
                   <strong>{topCategoryName}</strong>
-                  <Text>{productListGuideText}</Text>
+                  <span className="product-list__text">{productListGuideText}</span>
                 </div>
                 <div className="product-list__insightMetrics">
                   <span>{renderProductAmountText(t('pages.productList.averageSavings', { amount: formatMoney(productListInsights.averageSavings) }), formatMoney(productListInsights.averageSavings))}</span>
@@ -2466,9 +2466,9 @@ const ProductList: React.FC = () => {
               {checkoutPathProducts.length > 0 ? (
                 <section className="product-list__checkoutPath" aria-label={t('pages.productList.checkoutPathEyebrow')}>
                   <div className="product-list__checkoutPathCopy">
-                    <Text className="product-list__checkoutPathEyebrow">{t('pages.productList.checkoutPathEyebrow')}</Text>
+                    <span className="product-list__text product-list__checkoutPathEyebrow">{t('pages.productList.checkoutPathEyebrow')}</span>
                     <strong>{t('pages.productList.checkoutPathTitle')}</strong>
-                    <Text>{t('pages.productList.checkoutPathText', { count: checkoutPathProducts.length, ready: checkoutPathReadyCount })}</Text>
+                    <span className="product-list__text">{t('pages.productList.checkoutPathText', { count: checkoutPathProducts.length, ready: checkoutPathReadyCount })}</span>
                   </div>
                   <div className="product-list__checkoutPathItems">
                     {checkoutPathProducts.map((product) => {
@@ -2543,7 +2543,7 @@ const ProductList: React.FC = () => {
                 title={t('pages.productList.fetchFailed')}
                 description={(
                   <div className="product-list__recovery">
-                    <Text>{t('pages.productList.loadRecoveryText')}</Text>
+                    <span className="product-list__text">{t('pages.productList.loadRecoveryText')}</span>
                     <div className="product-list__recoveryTips">
                       <span>{t('pages.productList.loadRecoveryTipRefresh')}</span>
                       <span>{t('pages.productList.loadRecoveryTipFilters')}</span>
@@ -2580,10 +2580,10 @@ const ProductList: React.FC = () => {
               />
               <div className="product-list__recovery product-list__recovery--secondary">
                 <div className="product-list__recoveryGrid">
-                  <Button icon={<GiftOutlined />} aria-label={couponsRecoveryActionLabel} title={couponsRecoveryActionLabel} onClick={() => navigate('/coupons')}>
+                  <Button icon={<ShopIcon path={SI.gift} />} aria-label={couponsRecoveryActionLabel} title={couponsRecoveryActionLabel} onClick={() => navigate('/coupons')}>
                     {t('pages.productList.loadRecoveryCoupons')}
                   </Button>
-                  <Button icon={<CustomerServiceOutlined />} aria-label={supportRecoveryActionLabel} title={supportRecoveryActionLabel} onClick={openSupport}>
+                  <Button icon={<ShopIcon path={SI.support} />} aria-label={supportRecoveryActionLabel} title={supportRecoveryActionLabel} onClick={openSupport}>
                     {t('pages.productList.loadRecoverySupport')}
                   </Button>
                 </div>
@@ -2634,7 +2634,7 @@ const ProductList: React.FC = () => {
             />
           ) : (
             <>
-              <Row gutter={[16, 16]} className="product-list__grid">
+              <div className="product-list__grid">
                 {paginatedProducts.map((product, index) => (
                   <ProductListCard
                     key={product.id}
@@ -2656,7 +2656,7 @@ const ProductList: React.FC = () => {
                     onCompare={handleCompare}
                   />
                 ))}
-              </Row>
+              </div>
               {productCountForUi > pageSize && (
                 <div className="product-list__pagination">
                   <Pagination
@@ -2675,15 +2675,15 @@ const ProductList: React.FC = () => {
               )}
             </>
           )}
-        </Col>
-      </Row>
+        </div>
+      </div>
       <Drawer
         title={
-          <Space>
-            <FilterOutlined />
+          <div className="product-list__inlineRow">
+            <ShopIcon path={SI.filter} />
             <span>{t('pages.productList.filters')}</span>
             {activeRefinementCount > 0 ? <Tag color="blue">{t('pages.productList.activeFilters', { count: activeRefinementCount })}</Tag> : null}
-          </Space>
+          </div>
         }
         open={filterDrawerOpen}
         onClose={() => setFilterDrawerOpen(false)}
@@ -2729,7 +2729,7 @@ const ProductList: React.FC = () => {
           type="primary"
           shape="circle"
           size="large"
-          icon={<ArrowUpOutlined />}
+          icon={<ShopIcon path={SI.arrowUp} />}
           className="product-list__backToTop"
           aria-label={backToTopActionLabel}
           title={backToTopActionLabel}
@@ -2751,39 +2751,39 @@ const ProductList: React.FC = () => {
         rootClassName="product-list__quickAddModalRoot"
         className="profile-mobile-safe-modal product-list__quickAddModal"
       >
-        <Space direction="vertical" className="product-list__quickAddContent">
+        <div className="product-list__quickAddContent">
           {quickAddBundleInfo ? (
             <>
               {quickAddOptionGroups.length > 0 ? renderQuickAddOptions() : null}
-              <Text type="secondary">{t('bundle.includes')}</Text>
-              <Space wrap size={[6, 6]}>
+              <span className="product-list__text product-list__text--secondary">{t('bundle.includes')}</span>
+              <div className="product-list__chipRow">
                 {quickAddBundleInfo.items.map((item) => (
                   <Tag key={item.name} className="commerce-atomic">{item.name} <span className="commerce-quantity">x{item.quantity || 1}</span></Tag>
                 ))}
-              </Space>
-                <Text>{t('pages.productList.quickAddPrice')}: <span className="commerce-money">{formatMoney(quickAddBundleInfo.price)}</span></Text>
+              </div>
+                <span className="product-list__text">{t('pages.productList.quickAddPrice')}: <span className="commerce-money">{formatMoney(quickAddBundleInfo.price)}</span></span>
             </>
           ) : quickAddOptionGroups.length > 0 ? (
             <>
               {renderQuickAddOptions()}
               {quickAddMissingOption ? (
-                <Text type="secondary">{t('pages.productList.quickAddCompleteOptions', { option: getLocalizedOptionLabel(quickAddMissingOption.name, language) })}</Text>
+                <span className="product-list__text product-list__text--secondary">{t('pages.productList.quickAddCompleteOptions', { option: getLocalizedOptionLabel(quickAddMissingOption.name, language) })}</span>
               ) : quickAddInvalidSelection ? (
-                <Text type="danger">{t('pages.productList.quickAddUnavailable')}</Text>
+                <span className="product-list__text product-list__text--danger">{t('pages.productList.quickAddUnavailable')}</span>
               ) : (
-                <Text type="success">{t('pages.productList.quickAddSelectionReady')}</Text>
+                <span className="product-list__text product-list__text--success">{t('pages.productList.quickAddSelectionReady')}</span>
               )}
-              <Text>
+              <span className="product-list__text">
                 {t('pages.productList.quickAddPrice')}: <span className="commerce-money">{formatMoney(quickAddPrice)}</span>
-              </Text>
+              </span>
               {quickAddVariant?.stock !== undefined && (
-                <Text type="secondary">{t('pages.productDetail.stock')}: {quickAddVariant.stock}</Text>
+                <span className="product-list__text product-list__text--secondary">{t('pages.productDetail.stock')}: {quickAddVariant.stock}</span>
               )}
             </>
           ) : (
-            <Text type="secondary">{t('pages.productList.quickAddNoOptions')}</Text>
+            <span className="product-list__text product-list__text--secondary">{t('pages.productList.quickAddNoOptions')}</span>
           )}
-        </Space>
+        </div>
       </Modal>
       <Modal
         title={null}
@@ -2817,26 +2817,26 @@ const ProductList: React.FC = () => {
               ) : null}
             </div>
             <div className="product-list__previewBody">
-              <Space wrap size={[6, 6]} className="product-list__previewBadges">
+              <div className="product-list__previewBadges">
                 {renderBadges(previewProduct).slice(0, 4).map((badge) => (
                   <Tag key={badge.label} color={badge.color}>{badge.label}</Tag>
                 ))}
-              </Space>
-              <Text type="secondary" className="product-list__previewBrand">
+              </div>
+              <span className="product-list__text product-list__text--secondary product-list__previewBrand">
                 {previewProduct.brand || topCategoryName}
-              </Text>
+              </span>
               <h2>{previewProductName}</h2>
               <div className="product-list__previewRating" aria-label={previewRatingLabel} title={previewRatingLabel}>
                 <Rate disabled allowHalf value={previewRatingValue} />
-                <Text type="secondary">{previewRatingSummary}</Text>
+                <span className="product-list__text product-list__text--secondary">{previewRatingSummary}</span>
               </div>
-              <Text className="product-list__previewDescription">
+              <span className="product-list__text product-list__previewDescription">
                 {previewProduct.description || t('pages.productList.previewNoDescription')}
-              </Text>
+              </span>
               <div className="product-list__previewPrice">
                 <strong className="commerce-money">{formatMoney(getPrice(previewProduct))}</strong>
                 {previewProduct.originalPrice && previewProduct.originalPrice > getPrice(previewProduct) ? (
-                  <Text delete className="commerce-money">{formatMoney(previewProduct.originalPrice)}</Text>
+                  <span className="product-list__text product-list__text--delete commerce-money">{formatMoney(previewProduct.originalPrice)}</span>
                 ) : null}
               </div>
               <div className="product-list__previewSignals">
@@ -2862,7 +2862,7 @@ const ProductList: React.FC = () => {
               <div className="product-list__previewActions">
                 {isProductSoldOut(previewProduct) ? (
                   <Button
-                    icon={<BellOutlined />}
+                    icon={<ShopIcon path={SI.bell} />}
                     aria-pressed={previewProductStockAlerted}
                     aria-label={previewStockAlertActionLabel}
                     title={previewStockAlertActionLabel}
@@ -2873,7 +2873,7 @@ const ProductList: React.FC = () => {
                 ) : (
                   <Button
                     type="primary"
-                    icon={<ShoppingCartOutlined />}
+                    icon={<ShopIcon path={SI.cart} />}
                     aria-label={previewPrimaryActionLabel}
                     title={previewPrimaryActionLabel}
                     onClick={(event) => {
@@ -2888,7 +2888,7 @@ const ProductList: React.FC = () => {
                   {t('pages.productList.viewDetails')}
                 </Button>
                 <Button
-                  icon={previewProductWishlisted ? <HeartFilled /> : <HeartOutlined />}
+                  icon={previewProductWishlisted ? <ShopIcon path={SI.heartFill} /> : <ShopIcon path={SI.heart} />}
                   aria-pressed={previewProductWishlisted}
                   aria-label={previewWishlistActionLabel}
                   title={previewWishlistActionLabel}

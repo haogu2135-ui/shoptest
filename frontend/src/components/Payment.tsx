@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Button, Modal, Radio, Space, Tag, Typography, message } from 'antd';
-import { SafetyCertificateOutlined, ThunderboltOutlined } from '@ant-design/icons';
+import { announceAccessibleMessage } from '../utils/accessibleMessage';
+import { ShopIcon, SI } from './ShopIcon';
+import { Alert, Button, Modal, Radio, Space, Tag, Typography } from 'antd';
 import { paymentApi } from '../api';
 import { useLanguage } from '../i18n';
 import { createPaymentMethodOptions, filterPaymentChannelsForMarket, PaymentMethod, paymentMethodLabel } from '../utils/paymentMethods';
@@ -115,7 +116,7 @@ export const Payment: React.FC<PaymentProps> = ({
                 ? paymentMethod
                 : getDefaultPaymentMethod(paymentChannels, currency);
             if (!safePaymentMethod) {
-                message.error(t('pages.checkout.paymentUnavailable'));
+                announceAccessibleMessage(t('pages.checkout.paymentUnavailable'), 'error');
                 return;
             }
             if (safePaymentMethod !== paymentMethod) {
@@ -125,15 +126,15 @@ export const Payment: React.FC<PaymentProps> = ({
             const payment = response.data;
             if (payment.paymentUrl) {
                 if (!navigateToCommercialPaymentUrl(payment.paymentUrl)) {
-                    message.error(t('pages.payment.failed'));
+                    announceAccessibleMessage(t('pages.payment.failed'), 'error');
                     return;
                 }
-                message.success(t('pages.checkout.paymentReady'));
+                announceAccessibleMessage(t('pages.checkout.paymentReady'), 'success');
                 return;
             }
             onSuccess();
         } catch (error: unknown) {
-            message.error(getApiErrorMessage(error, t('pages.payment.createFailed'), language));
+            announceAccessibleMessage(getApiErrorMessage(error, t('pages.payment.createFailed'), language), 'error');
         } finally {
             setLoading(false);
         }
@@ -153,8 +154,8 @@ export const Payment: React.FC<PaymentProps> = ({
                     <Title level={3} className="commerce-money">{t('pages.payment.amount', { amount: formattedAmount })}</Title>
                     <Text type="secondary">{t('pages.payment.secureSubtitle')}</Text>
                     <div className="payment-modal__badges">
-                        <Tag icon={<SafetyCertificateOutlined />} color="green">{t('pages.payment.encrypted')}</Tag>
-                        <Tag icon={<ThunderboltOutlined />} color="orange">{t('pages.payment.localMethods')}</Tag>
+                        <Tag icon={<ShopIcon path={SI.safety} />} color="green">{t('pages.payment.encrypted')}</Tag>
+                        <Tag icon={<ShopIcon path={SI.thunder} />} color="orange">{t('pages.payment.localMethods')}</Tag>
                         {activeMarkets.slice(0, 3).map((market) => (
                             <Tag key={market}>{market}</Tag>
                         ))}

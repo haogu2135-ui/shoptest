@@ -34,7 +34,7 @@ describe('CouponCenter mobile coupon rail contract', () => {
 
     expect(f2721Start).toBeGreaterThan(priorBottomAwareRule);
     expect(f2721Css).toContain('@media (max-width: 560px)');
-    expect(f2721Css).toMatch(/\.coupon-center-page\s*\{[^}]*padding-bottom:\s*calc\(var\(--shop-mobile-bottom-nav-height,\s*76px\)\s*\+\s*24px\s*\+\s*env\(safe-area-inset-bottom,\s*0px\)\)\s*!important;/);
+    expect(f2721Css).toMatch(/\.coupon-center-page\s*\{[^}]*padding-bottom:\s*calc\(var\(--shop-mobile-bottom-nav-height,\s*72px\)\s*\+\s*24px\s*\+\s*env\(safe-area-inset-bottom,\s*0px\)\)\s*!important;/);
     expect(f2721Css).toMatch(/\.coupon-center-page__quickNav,\s*\.coupon-center-page__mobileActionBar\s*\{[^}]*position:\s*static\s*!important;[^}]*inset:\s*auto\s*!important;[^}]*z-index:\s*auto\s*!important;[^}]*width:\s*100%\s*!important;[^}]*transform:\s*none\s*!important;/);
     expect(f2721Css).toMatch(/\.coupon-center-page__quickNav\s*\{[^}]*display:\s*grid\s*!important;[^}]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)\s*!important;[^}]*padding:\s*0\s*!important;/);
     expect(f2721Css).toMatch(/\.coupon-center-page__mobileActionBar\s*\{[^}]*display:\s*grid\s*!important;[^}]*border-radius:\s*8px\s*!important;/);
@@ -92,10 +92,10 @@ describe('CouponCenter mobile coupon rail contract', () => {
     expect(singleClaimStart).toBeGreaterThan(-1);
     expect(claimAllStart).toBeGreaterThan(singleClaimStart);
     expect(singleClaimSource).toContain('if (!isAuthenticated)');
-    expect(singleClaimSource).toContain("message.warning(t('messages.loginRequired'))");
+    expect(singleClaimSource).toContain("announceAccessibleMessage(t('messages.loginRequired'), 'warning')");
     expect(singleClaimSource).toContain('navigate(buildLoginUrlFromWindow())');
     expect(claimAllSource).toContain('if (!isAuthenticated)');
-    expect(claimAllSource).toContain("message.warning(t('messages.loginRequired'))");
+    expect(claimAllSource).toContain("announceAccessibleMessage(t('messages.loginRequired'), 'warning')");
     expect(claimAllSource).toContain('navigate(buildLoginUrlFromWindow())');
     expect(source).toContain("t('pages.coupons.loginToClaim')");
     expect(source).toContain("primaryClaimLabel");

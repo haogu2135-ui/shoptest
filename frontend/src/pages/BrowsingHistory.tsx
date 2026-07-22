@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Empty, Input, message, Popconfirm, Spin, Tag, Typography } from 'antd';
-import { ClockCircleOutlined, DeleteOutlined, FireOutlined, HistoryOutlined, ReloadOutlined, SearchOutlined, ShoppingCartOutlined, ShoppingOutlined, ThunderboltOutlined } from '@ant-design/icons';
+import { announceAccessibleMessage } from '../utils/accessibleMessage';
+import { ShopIcon, SI } from '../components/ShopIcon';
+import { Alert, Button, Empty, Input, Popconfirm, Spin, Tag } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { cartApi, productApi } from '../api';
 import { useLanguage } from '../i18n';
@@ -28,7 +29,6 @@ import './BrowsingHistory.css';
 import '../styles/mobile-page-contrast.css';
 
 const fallbackImage = productImageFallback;
-const { Paragraph, Title } = Typography;
 type HistoryQuickFilter = 'all' | 'recent' | 'deals' | 'lowStock';
 const resolveHistoryImage = resolveProductImage;
 
@@ -188,7 +188,7 @@ const BrowsingHistory: React.FC = () => {
 
   const addHistoryProductToCart = async (product: Product) => {
     if (!isPurchasable(product)) {
-      message.warning(t('pages.browsingHistory.unavailable'));
+      announceAccessibleMessage(t('pages.browsingHistory.unavailable'), 'warning');
       return;
     }
     if (needsOptionSelection(product)) {
@@ -202,11 +202,11 @@ const BrowsingHistory: React.FC = () => {
       } else {
         addGuestCartItem(product, 1, undefined, product.effectivePrice ?? product.price);
       }
-      message.success(t('messages.addCartSuccess'));
+      announceAccessibleMessage(t('messages.addCartSuccess'), 'success');
       dispatchDomEvent('shop:cart-updated');
       dispatchDomEvent('shop:open-cart');
     } catch (err: unknown) {
-      message.error(getApiErrorMessage(err, t('messages.addFailed'), language));
+      announceAccessibleMessage(getApiErrorMessage(err, t('messages.addFailed'), language), 'error');
     }
   };
 
@@ -274,26 +274,26 @@ const BrowsingHistory: React.FC = () => {
   const emptyQuickActions = [
     {
       key: 'browse',
-      icon: <ShoppingOutlined />,
+      icon: <ShopIcon path={SI.shopping} />,
       label: t('pages.browsingHistory.browse'),
       action: () => navigate('/products'),
       type: 'primary' as const,
     },
     {
       key: 'personalized',
-      icon: <ThunderboltOutlined />,
+      icon: <ShopIcon path={SI.thunder} />,
       label: t('pages.browsingHistory.browsePersonalized'),
       action: () => navigate('/products?sort=personalized-desc'),
     },
     {
       key: 'coupons',
-      icon: <FireOutlined />,
+      icon: <ShopIcon path={SI.fire} />,
       label: t('nav.coupons'),
       action: () => navigate('/coupons'),
     },
     {
       key: 'petFinder',
-      icon: <SearchOutlined />,
+      icon: <ShopIcon path={SI.search} />,
       label: t('nav.petFinder'),
       action: () => navigate('/pet-finder'),
     },
@@ -318,15 +318,15 @@ const BrowsingHistory: React.FC = () => {
       <section className="browsing-history__hero">
         <div>
           <span className="browsing-history__eyebrow">
-            <HistoryOutlined /> {t('pages.browsingHistory.eyebrow')}
+            <ShopIcon path={SI.history} /> {t('pages.browsingHistory.eyebrow')}
           </span>
-          <Title level={1} className="browsing-history__title">{t('pages.browsingHistory.title')}</Title>
-          <Paragraph className="browsing-history__subtitle">{t('pages.browsingHistory.subtitle', { count: historyDisplayCount })}</Paragraph>
+          <h1 className="browsing-history__title">{t('pages.browsingHistory.title')}</h1>
+          <p className="browsing-history__text browsing-history__paragraph browsing-history__subtitle">{t('pages.browsingHistory.subtitle', { count: historyDisplayCount })}</p>
         </div>
         <div className="browsing-history__tools">
           <Input
             allowClear
-            prefix={<SearchOutlined />}
+            prefix={<ShopIcon path={SI.search} />}
             value={keyword}
             onChange={(event) => setKeyword(event.target.value)}
             placeholder={t('pages.browsingHistory.searchPlaceholder')}
@@ -342,7 +342,7 @@ const BrowsingHistory: React.FC = () => {
             onConfirm={clearHistory}
             disabled={!hasHistory}
           >
-            <Button danger icon={<DeleteOutlined />} disabled={!hasHistory} aria-label={clearHistoryActionLabel} title={clearHistoryActionLabel}>
+            <Button danger icon={<ShopIcon path={SI.delete} />} disabled={!hasHistory} aria-label={clearHistoryActionLabel} title={clearHistoryActionLabel}>
               {t('pages.browsingHistory.clear')}
             </Button>
           </Popconfirm>
@@ -353,14 +353,14 @@ const BrowsingHistory: React.FC = () => {
         <section className="browsing-history__assistant">
           <div className="browsing-history__assistant-copy">
             <span>{t('pages.browsingHistory.assistantEyebrow')}</span>
-            <Title level={2} className="browsing-history__sectionTitle">{t('pages.browsingHistory.assistantTitle')}</Title>
-            <Paragraph className="browsing-history__sectionText">
+            <h2 className="browsing-history__title browsing-history__sectionTitle">{t('pages.browsingHistory.assistantTitle')}</h2>
+            <p className="browsing-history__text browsing-history__paragraph browsing-history__sectionText">
               {hasStaleHistoryData
                 ? t('pages.browsingHistory.assistantSubtitleStale')
                 : historyInsights.topBrand
                 ? t('pages.browsingHistory.assistantSubtitleBrand', { brand: historyInsights.topBrand })
                 : t('pages.browsingHistory.assistantSubtitle')}
-            </Paragraph>
+            </p>
           </div>
           <div className="browsing-history__assistant-actions">
             <button
@@ -371,7 +371,7 @@ const BrowsingHistory: React.FC = () => {
               title={`${t('pages.browsingHistory.allViewed')}: ${historyDisplayCount}`}
               onClick={() => setQuickFilter('all')}
             >
-              <HistoryOutlined />
+              <ShopIcon path={SI.history} />
               <strong>{historyDisplayCount}</strong>
               <span>{t('pages.browsingHistory.allViewed')}</span>
             </button>
@@ -384,7 +384,7 @@ const BrowsingHistory: React.FC = () => {
               onClick={() => setQuickFilter('recent')}
               disabled={hasStaleHistoryData}
             >
-              <ClockCircleOutlined />
+              <ShopIcon path={SI.clock} />
               <strong>{hasStaleHistoryData ? 0 : historyInsights.viewedToday}</strong>
               <span>{t('pages.browsingHistory.viewedToday')}</span>
             </button>
@@ -397,7 +397,7 @@ const BrowsingHistory: React.FC = () => {
               onClick={() => setQuickFilter('deals')}
               disabled={hasStaleHistoryData}
             >
-              <ThunderboltOutlined />
+              <ShopIcon path={SI.thunder} />
               <strong>{hasStaleHistoryData ? 0 : historyInsights.deals}</strong>
               <span>{t('pages.browsingHistory.dealWatch')}</span>
             </button>
@@ -410,7 +410,7 @@ const BrowsingHistory: React.FC = () => {
               onClick={() => setQuickFilter('lowStock')}
               disabled={hasStaleHistoryData}
             >
-              <FireOutlined />
+              <ShopIcon path={SI.fire} />
               <strong>{hasStaleHistoryData ? 0 : historyInsights.lowStock}</strong>
               <span>{t('pages.browsingHistory.lowStockWatch')}</span>
             </button>
@@ -426,20 +426,20 @@ const BrowsingHistory: React.FC = () => {
         <section className="browsing-history__recovery" aria-label={t('pages.browsingHistory.recoveryTitle')}>
           <div>
             <span className="browsing-history__recovery-eyebrow">{t('pages.browsingHistory.recoveryEyebrow')}</span>
-            <Title level={2} className="browsing-history__sectionTitle">{t('pages.browsingHistory.recoveryTitle')}</Title>
-            <Paragraph className="browsing-history__sectionText">
+            <h2 className="browsing-history__title browsing-history__sectionTitle">{t('pages.browsingHistory.recoveryTitle')}</h2>
+            <p className="browsing-history__text browsing-history__paragraph browsing-history__sectionText">
               {t('pages.browsingHistory.recoverySubtitle', {
                 name: productName,
                 price: formatMoney(historyInsights.bestRecovery.effectivePrice ?? historyInsights.bestRecovery.price),
               })}
-            </Paragraph>
+            </p>
           </div>
           <div className="browsing-history__recovery-tags">
             {isDealProduct(historyInsights.bestRecovery) ? <Tag color="volcano">{t('pages.browsingHistory.recoveryDeal')}</Tag> : null}
             {getLowStockCount(historyInsights.bestRecovery.stock, 1) !== null ? <Tag color="orange">{t('pages.browsingHistory.recoveryLowStock')}</Tag> : null}
             <Tag color="blue">{formatViewedAt(viewedAtById.get(historyInsights.bestRecovery.id))}</Tag>
           </div>
-          <Button type="primary" icon={<ShoppingOutlined />} aria-label={resumeActionLabel} title={resumeActionLabel} onClick={() => navigate(`/products/${historyInsights.bestRecovery!.id}`)}>
+          <Button type="primary" icon={<ShopIcon path={SI.shopping} />} aria-label={resumeActionLabel} title={resumeActionLabel} onClick={() => navigate(`/products/${historyInsights.bestRecovery!.id}`)}>
             {t('pages.browsingHistory.resumeProduct')}
           </Button>
         </section>
@@ -451,8 +451,8 @@ const BrowsingHistory: React.FC = () => {
         <section className={`browsing-history__nextAction browsing-history__nextAction--${historyNextAction.tone}`} aria-label={t('pages.browsingHistory.nextActionEyebrow')}>
           <div>
             <span>{t('pages.browsingHistory.nextActionEyebrow')}</span>
-            <Title level={2} className="browsing-history__sectionTitle">{historyNextAction.title}</Title>
-            <Paragraph className="browsing-history__sectionText">{historyNextAction.text}</Paragraph>
+            <h2 className="browsing-history__title browsing-history__sectionTitle">{historyNextAction.title}</h2>
+            <p className="browsing-history__text browsing-history__paragraph browsing-history__sectionText">{historyNextAction.text}</p>
           </div>
           <div className="browsing-history__nextActionStats">
             <Tag color={hasStaleHistoryData ? 'warning' : 'green'}>
@@ -465,7 +465,7 @@ const BrowsingHistory: React.FC = () => {
           </div>
           <Button
             type={historyNextAction.tone === 'ready' ? 'primary' : 'default'}
-            icon={hasStaleHistoryData ? <ReloadOutlined /> : historyNextAction.tone === 'ready' ? <ShoppingCartOutlined /> : <ShoppingOutlined />}
+            icon={hasStaleHistoryData ? <ShopIcon path={SI.reload} /> : historyNextAction.tone === 'ready' ? <ShopIcon path={SI.cart} /> : <ShopIcon path={SI.shopping} />}
             aria-label={historyNextActionLabel}
             title={historyNextActionLabel}
             onClick={historyNextAction.action}
@@ -592,11 +592,11 @@ const BrowsingHistory: React.FC = () => {
                     </span>
                     <div>
                       {productReadyToCart ? (
-                        <Button type="primary" icon={<ShoppingCartOutlined />} disabled={hasStaleHistoryData} aria-label={addActionLabel} title={addActionLabel} onClick={() => addHistoryProductToCart(product)}>
+                        <Button type="primary" icon={<ShopIcon path={SI.cart} />} disabled={hasStaleHistoryData} aria-label={addActionLabel} title={addActionLabel} onClick={() => addHistoryProductToCart(product)}>
                           {t('pages.browsingHistory.addToCart')}
                         </Button>
                       ) : null}
-                      <Button type={productNeedsOptions ? 'primary' : 'default'} icon={<ShoppingOutlined />} aria-label={viewActionLabel} title={viewActionLabel} onClick={() => navigate(`/products/${product.id}`)}>
+                      <Button type={productNeedsOptions ? 'primary' : 'default'} icon={<ShopIcon path={SI.shopping} />} aria-label={viewActionLabel} title={viewActionLabel} onClick={() => navigate(`/products/${product.id}`)}>
                         {productNeedsOptions ? t('pages.browsingHistory.resumeProduct') : t('pages.browsingHistory.viewProduct')}
                       </Button>
                       <Popconfirm
@@ -605,7 +605,7 @@ const BrowsingHistory: React.FC = () => {
                         cancelText={t('common.cancel')}
                         onConfirm={() => removeItem(product.id)}
                       >
-                        <Button type="text" danger icon={<DeleteOutlined />} aria-label={deleteActionLabel} title={deleteActionLabel} />
+                        <Button type="text" danger icon={<ShopIcon path={SI.delete} />} aria-label={deleteActionLabel} title={deleteActionLabel} />
                       </Popconfirm>
                     </div>
                   </div>
@@ -627,10 +627,10 @@ const BrowsingHistory: React.FC = () => {
           >
             {loadError && hasHistory ? (
               <div className="browsing-history__emptyActions" data-history-empty-load-actions="true">
-                <Button type="primary" icon={<ReloadOutlined />} onClick={() => setReloadToken((current) => current + 1)}>
+                <Button type="primary" icon={<ShopIcon path={SI.reload} />} onClick={() => setReloadToken((current) => current + 1)}>
                   {t('messages.retry')}
                 </Button>
-                <Button icon={<ShoppingOutlined />} aria-label={historyBrowseActionLabel} title={historyBrowseActionLabel} onClick={() => navigate('/products')}>
+                <Button icon={<ShopIcon path={SI.shopping} />} aria-label={historyBrowseActionLabel} title={historyBrowseActionLabel} onClick={() => navigate('/products')}>
                   {t('pages.browsingHistory.browse')}
                 </Button>
                 <Button aria-label={t('nav.coupons')} title={t('nav.coupons')} onClick={() => navigate('/coupons')}>
@@ -645,7 +645,7 @@ const BrowsingHistory: React.FC = () => {
               </div>
             ) : historyProducts.length ? (
               <div className="browsing-history__emptyActions" data-history-empty-filter-actions="true">
-                <Button type="primary" icon={<ShoppingOutlined />} aria-label={historyBrowseActionLabel} title={historyBrowseActionLabel} onClick={() => navigate('/products')}>
+                <Button type="primary" icon={<ShopIcon path={SI.shopping} />} aria-label={historyBrowseActionLabel} title={historyBrowseActionLabel} onClick={() => navigate('/products')}>
                   {t('pages.browsingHistory.browse')}
                 </Button>
                 <Button aria-label={resetHistoryFiltersLabel} title={resetHistoryFiltersLabel} onClick={() => {
@@ -692,7 +692,7 @@ const BrowsingHistory: React.FC = () => {
         </span>
         <Button
           type={historyNextAction.tone === 'ready' ? 'primary' : 'default'}
-          icon={hasStaleHistoryData ? <ReloadOutlined /> : historyNextAction.tone === 'ready' ? <ShoppingCartOutlined /> : <ShoppingOutlined />}
+          icon={hasStaleHistoryData ? <ShopIcon path={SI.reload} /> : historyNextAction.tone === 'ready' ? <ShopIcon path={SI.cart} /> : <ShopIcon path={SI.shopping} />}
           aria-label={historyNextActionLabel}
           title={historyNextActionLabel}
           onClick={historyNextAction.action}

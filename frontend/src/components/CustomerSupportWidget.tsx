@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Avatar, Badge, Button, Card, Empty, Input, List, message, Modal, Select, Space, Spin, Tag, Typography } from 'antd';
-import { CloseOutlined, CustomerServiceOutlined, FileSearchOutlined, GiftOutlined, SendOutlined, ShoppingOutlined, SoundOutlined, UserOutlined } from '@ant-design/icons';
+import { announceAccessibleMessage } from '../utils/accessibleMessage';
+import { ShopIcon, SI } from './ShopIcon';
+import { Alert, Avatar, Badge, Button, Card, Empty, Input, List, Modal, Select, Space, Spin, Tag, Typography } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { orderApi, supportApi, supportWebSocketProtocols, supportWebSocketUrl } from '../api';
 import type { OrderCustomer, OrderItemCustomer, SupportMessageCustomer, SupportSessionCustomer } from '../types';
@@ -496,7 +497,7 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
       } catch (error) {
         if (disposed) return;
         reportNonBlockingError('CustomerSupportWidget.loadSession', error);
-        message.error(t('pages.support.loadFailed'));
+        announceAccessibleMessage(t('pages.support.loadFailed'), 'error');
       } finally {
         if (!disposed) {
           setSessionLoading(false);
@@ -522,13 +523,13 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
     onClose: () => setConnected(false),
     onError: () => setConnected(false),
     onReconnectExhausted: (attempts) => {
-      message.warning(t('pages.support.connectFailed'));
+      announceAccessibleMessage(t('pages.support.connectFailed'), 'warning');
       reportNonBlockingError('CustomerSupportWidget.websocketReconnectExhausted', { attempts });
     },
     onMessage: (event) => {
       const payload = parseSupportSocketPayload(event.data);
       if (payload.type === 'ERROR') {
-        message.warning(payload.message || t('pages.support.messageRejected'));
+        announceAccessibleMessage(payload.message || t('pages.support.messageRejected'), 'warning');
         return;
       }
       if (payload.type === 'MESSAGE') {
@@ -597,7 +598,7 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
           .catch((error) => reportNonBlockingError('CustomerSupportWidget.markGuestReadAfterSessionLoad', error));
       } catch (err: unknown) {
         if (disposed) return;
-        message.error(getApiErrorMessage(err, t('pages.support.loadFailed'), language));
+        announceAccessibleMessage(getApiErrorMessage(err, t('pages.support.loadFailed'), language), 'error');
       } finally {
         if (!disposed) {
           setSessionLoading(false);
@@ -874,11 +875,11 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
     const text = content.trim();
     if (!text) return;
     if (!canSendSupportMessage) {
-      message.warning(t('pages.support.loginOrOrderRequired'));
+      announceAccessibleMessage(t('pages.support.loginOrOrderRequired'), 'warning');
       return;
     }
     if (text.length > supportChatConfig.maxMessageChars) {
-      message.warning(t('pages.support.messageTooLong', { count: supportChatConfig.maxMessageChars }));
+      announceAccessibleMessage(t('pages.support.messageTooLong', { count: supportChatConfig.maxMessageChars }), 'warning');
       return;
     }
     setSending(true);
@@ -914,7 +915,7 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
       setMessages((items) => mergeSupportMessages(items, [res.data.message]));
       setContent('');
     } catch (err: unknown) {
-      message.error(getApiErrorMessage(err, t('pages.support.connectFailed'), language));
+      announceAccessibleMessage(getApiErrorMessage(err, t('pages.support.connectFailed'), language), 'error');
     } finally {
       setSending(false);
     }
@@ -953,9 +954,9 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
         upsertSessionHistory(res.data.session);
         setMessages((items) => mergeSupportMessages(items, [res.data.message]));
       }
-      message.success(t('pages.support.orderSent'));
+      announceAccessibleMessage(t('pages.support.orderSent'), 'success');
     } catch (err: unknown) {
-      message.error(getApiErrorMessage(err, t('pages.support.connectFailed'), language));
+      announceAccessibleMessage(getApiErrorMessage(err, t('pages.support.connectFailed'), language), 'error');
     } finally {
       setSendingOrderId(null);
     }
@@ -989,7 +990,7 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
     } catch (error) {
       if (detailRequestSeqRef.current === requestId) {
         reportNonBlockingError('CustomerSupportWidget.openOrderDetail', error);
-        message.error(t('pages.support.orderLoadFailed'));
+        announceAccessibleMessage(t('pages.support.orderLoadFailed'), 'error');
       }
     } finally {
       if (detailRequestSeqRef.current === requestId) {
@@ -1012,7 +1013,7 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
       reportNonBlockingError('CustomerSupportWidget.closeSession', error);
       setSession(closingSession);
       sessionRef.current = closingSession;
-      message.error(t('messages.operationFailed'));
+      announceAccessibleMessage(t('messages.operationFailed'), 'error');
     }
   };
 
@@ -1068,7 +1069,7 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
       if (sessionSwitchRequestSeqRef.current === requestId && sessionRef.current?.id === sessionId) {
         setSessionSwitchError(t('pages.support.loadFailed'));
       }
-      message.error(t('pages.support.loadFailed'));
+      announceAccessibleMessage(t('pages.support.loadFailed'), 'error');
     } finally {
       if (sessionSwitchRequestSeqRef.current === requestId && sessionRef.current?.id === sessionId) {
         setSessionSwitching(false);
@@ -1099,7 +1100,7 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
         }}
       >
         <Badge count={unread} size="small">
-          <CustomerServiceOutlined style={{ color: '#fff' }} />
+          <ShopIcon path={SI.support} style={{ color: '#fff' }} />
         </Badge>
       </button>
 
@@ -1123,7 +1124,7 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
           <div className="customer-support-widget__header">
             <Space>
               <span className="customer-support-widget__headerIcon" aria-hidden="true">
-                <CustomerServiceOutlined />
+                <ShopIcon path={SI.support} />
               </span>
               <span className="customer-support-widget__headerCopy">
                 <Text className="customer-support-widget__headerTitle" strong>{t('pages.support.title')}</Text>
@@ -1133,7 +1134,7 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
               </span>
               <Badge status={supportOnline ? 'success' : 'default'} text={<span className="customer-support-widget__presenceText">{supportPresenceText}</span>} />
             </Space>
-            <Button className="customer-support-widget__headerClose" type="text" size="small" icon={<CloseOutlined />} aria-label={supportPanelCloseLabel} title={supportPanelCloseLabel} onClick={() => setOpen(false)} />
+            <Button className="customer-support-widget__headerClose" type="text" size="small" icon={<ShopIcon path={SI.close} />} aria-label={supportPanelCloseLabel} title={supportPanelCloseLabel} onClick={() => setOpen(false)} />
           </div>
           <div className="customer-support-widget__mobileStatus" aria-label={t('pages.support.conversationBrief')}>
             <span className={supportOnline ? 'is-online' : ''}>{supportPresenceText}</span>
@@ -1213,13 +1214,13 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
                     <Button size="small" type="primary" onClick={() => session?.id && switchSession(session.id)} aria-label={t('common.retry')} title={t('common.retry')}>
                       {t('common.retry')}
                     </Button>
-                    <Button size="small" icon={<FileSearchOutlined />} onClick={() => navigate('/track-order')} aria-label={t('nav.trackOrder')} title={t('nav.trackOrder')}>
+                    <Button size="small" icon={<ShopIcon path={SI.fileSearch} />} onClick={() => navigate('/track-order')} aria-label={t('nav.trackOrder')} title={t('nav.trackOrder')}>
                       {t('nav.trackOrder')}
                     </Button>
-                    <Button size="small" icon={<ShoppingOutlined />} onClick={() => navigate('/products')} aria-label={t('pages.cart.browse')} title={t('pages.cart.browse')}>
+                    <Button size="small" icon={<ShopIcon path={SI.shopping} />} onClick={() => navigate('/products')} aria-label={t('pages.cart.browse')} title={t('pages.cart.browse')}>
                       {t('pages.cart.browse')}
                     </Button>
-                    <Button size="small" icon={<GiftOutlined />} onClick={() => navigate('/coupons')} aria-label={t('nav.coupons')} title={t('nav.coupons')}>
+                    <Button size="small" icon={<ShopIcon path={SI.gift} />} onClick={() => navigate('/coupons')} aria-label={t('nav.coupons')} title={t('nav.coupons')}>
                       {t('nav.coupons')}
                     </Button>
                   </Space>
@@ -1229,7 +1230,7 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
               <div className="customer-support-widget__emptyState" data-support-empty-actions="true">
                 <div className="customer-support-widget__welcomeCard">
                   <div className="customer-support-widget__welcomeIcon">
-                    <CustomerServiceOutlined />
+                    <ShopIcon path={SI.support} />
                   </div>
                   <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('pages.support.welcome')} />
                   <div className="customer-support-widget__welcomeQuickReplies">
@@ -1247,13 +1248,13 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
                     ))}
                   </div>
                   <Space wrap className="customer-support-widget__emptyMultipath" data-support-empty-multipath="true">
-                    <Button size="small" icon={<FileSearchOutlined />} onClick={() => navigate('/track-order')} aria-label={t('nav.trackOrder')} title={t('nav.trackOrder')}>
+                    <Button size="small" icon={<ShopIcon path={SI.fileSearch} />} onClick={() => navigate('/track-order')} aria-label={t('nav.trackOrder')} title={t('nav.trackOrder')}>
                       {t('nav.trackOrder')}
                     </Button>
-                    <Button size="small" icon={<ShoppingOutlined />} onClick={() => navigate('/products')} aria-label={t('pages.cart.browse')} title={t('pages.cart.browse')}>
+                    <Button size="small" icon={<ShopIcon path={SI.shopping} />} onClick={() => navigate('/products')} aria-label={t('pages.cart.browse')} title={t('pages.cart.browse')}>
                       {t('pages.cart.browse')}
                     </Button>
-                    <Button size="small" icon={<GiftOutlined />} onClick={() => navigate('/coupons')} aria-label={t('nav.coupons')} title={t('nav.coupons')}>
+                    <Button size="small" icon={<ShopIcon path={SI.gift} />} onClick={() => navigate('/coupons')} aria-label={t('nav.coupons')} title={t('nav.coupons')}>
                       {t('nav.coupons')}
                     </Button>
                   </Space>
@@ -1272,7 +1273,7 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
                         <Avatar
                           size={30}
                           className={`customer-support-widget__avatar ${mine ? 'customer-support-widget__avatar--mine' : ''}`}
-                          icon={mine ? <UserOutlined /> : <CustomerServiceOutlined />}
+                          icon={mine ? <ShopIcon path={SI.user} /> : <ShopIcon path={SI.support} />}
                         />
                         <div className={`customer-support-widget__message ${mine ? 'customer-support-widget__message--mine' : ''}`}>
                           <div className="customer-support-widget__messageMeta">
@@ -1282,7 +1283,7 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
                           {order ? (
                             <Card size="small" className={`customer-support-widget__orderCard ${mine ? 'customer-support-widget__orderCard--mine' : ''}`}>
                               <Space align="start">
-                                <ShoppingOutlined className="customer-support-widget__orderIcon" />
+                                <ShopIcon path={SI.shopping} className="customer-support-widget__orderIcon" />
                                 <div>
                                   <div className="customer-support-widget__orderTitle">{supportOrderLabel(order)}</div>
                                   <div className="customer-support-widget__orderAmount commerce-money">{formatMoney(order.totalAmount)}</div>
@@ -1339,7 +1340,7 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
                   size="small"
                   type="primary"
                   ghost
-                  icon={<ShoppingOutlined />}
+                  icon={<ShopIcon path={SI.shopping} />}
                   loading={sendingOrderId === latestOrder.id}
                   disabled={conversationUnavailable || sendingOrderId !== null}
                   aria-label={supportShareOrderLabel(latestOrder)}
@@ -1390,7 +1391,7 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
             <div className="customer-support-widget__orderPicker">
               <Space className="customer-support-widget__orderPickerHeader">
                 <Text type="secondary">{t('pages.support.sendOrder')}</Text>
-                <SoundOutlined className="customer-support-widget__soundIcon" />
+                <ShopIcon path={SI.sound} className="customer-support-widget__soundIcon" />
               </Space>
               {ordersLoadFailed ? (
                 <Alert
@@ -1404,10 +1405,10 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
                       <Button size="small" type="primary" onClick={fetchSupportOrders} aria-label={t('common.retry')} title={t('common.retry')}>
                         {t('common.retry')}
                       </Button>
-                      <Button size="small" icon={<FileSearchOutlined />} onClick={() => navigate('/track-order')} aria-label={t('nav.trackOrder')} title={t('nav.trackOrder')}>
+                      <Button size="small" icon={<ShopIcon path={SI.fileSearch} />} onClick={() => navigate('/track-order')} aria-label={t('nav.trackOrder')} title={t('nav.trackOrder')}>
                         {t('nav.trackOrder')}
                       </Button>
-                      <Button size="small" icon={<ShoppingOutlined />} onClick={() => navigate('/products')} aria-label={t('pages.cart.browse')} title={t('pages.cart.browse')}>
+                      <Button size="small" icon={<ShopIcon path={SI.shopping} />} onClick={() => navigate('/products')} aria-label={t('pages.cart.browse')} title={t('pages.cart.browse')}>
                         {t('pages.cart.browse')}
                       </Button>
                     </Space>
@@ -1460,13 +1461,13 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
                         {t('pages.support.noOrderItemsHint')}
                       </Text>
                       <Space wrap className="customer-support-widget__recoveryActions" data-support-order-select-empty-actions="true">
-                        <Button size="small" type="primary" icon={<FileSearchOutlined />} onClick={() => navigate('/track-order')} aria-label={t('nav.trackOrder')} title={t('nav.trackOrder')}>
+                        <Button size="small" type="primary" icon={<ShopIcon path={SI.fileSearch} />} onClick={() => navigate('/track-order')} aria-label={t('nav.trackOrder')} title={t('nav.trackOrder')}>
                           {t('nav.trackOrder')}
                         </Button>
-                        <Button size="small" icon={<ShoppingOutlined />} onClick={() => navigate('/products')} aria-label={t('pages.cart.browse')} title={t('pages.cart.browse')}>
+                        <Button size="small" icon={<ShopIcon path={SI.shopping} />} onClick={() => navigate('/products')} aria-label={t('pages.cart.browse')} title={t('pages.cart.browse')}>
                           {t('pages.cart.browse')}
                         </Button>
-                        <Button size="small" icon={<GiftOutlined />} onClick={() => navigate('/coupons')} aria-label={t('nav.coupons')} title={t('nav.coupons')}>
+                        <Button size="small" icon={<ShopIcon path={SI.gift} />} onClick={() => navigate('/coupons')} aria-label={t('nav.coupons')} title={t('nav.coupons')}>
                           {t('nav.coupons')}
                         </Button>
                       </Space>
@@ -1497,7 +1498,7 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
             />
             <div className="customer-support-widget__actions">
               <Button className="customer-support-widget__secondaryAction" aria-label={supportCloseSessionLabel} title={supportCloseSessionLabel} disabled={conversationUnavailable || Boolean(activeGuestContext) || !session || session.status !== 'OPEN'} onClick={closeSession}>{t('pages.support.closeSession')}</Button>
-              <Button className="customer-support-widget__primaryAction" type="primary" icon={<SendOutlined />} aria-label={supportSendLabel} title={supportSendLabel} loading={sending} disabled={conversationUnavailable || messageTooLong || messageLength === 0 || sending} onClick={send}>{canSendSupportMessage ? t('common.send') : t('pages.auth.login')}</Button>
+              <Button className="customer-support-widget__primaryAction" type="primary" icon={<ShopIcon path={SI.send} />} aria-label={supportSendLabel} title={supportSendLabel} loading={sending} disabled={conversationUnavailable || messageTooLong || messageLength === 0 || sending} onClick={send}>{canSendSupportMessage ? t('common.send') : t('pages.auth.login')}</Button>
             </div>
           </div>
         </div>
@@ -1540,13 +1541,13 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
                       {t('pages.support.noOrderItemsHint')}
                     </Text>
                     <Space wrap className="customer-support-widget__recoveryActions" data-support-order-items-empty-actions="true">
-                      <Button size="small" type="primary" icon={<FileSearchOutlined />} onClick={() => navigate('/track-order')} aria-label={t('nav.trackOrder')} title={t('nav.trackOrder')}>
+                      <Button size="small" type="primary" icon={<ShopIcon path={SI.fileSearch} />} onClick={() => navigate('/track-order')} aria-label={t('nav.trackOrder')} title={t('nav.trackOrder')}>
                         {t('nav.trackOrder')}
                       </Button>
-                      <Button size="small" icon={<ShoppingOutlined />} onClick={() => navigate('/products')} aria-label={t('pages.cart.browse')} title={t('pages.cart.browse')}>
+                      <Button size="small" icon={<ShopIcon path={SI.shopping} />} onClick={() => navigate('/products')} aria-label={t('pages.cart.browse')} title={t('pages.cart.browse')}>
                         {t('pages.cart.browse')}
                       </Button>
-                      <Button size="small" icon={<GiftOutlined />} onClick={() => navigate('/coupons')} aria-label={t('nav.coupons')} title={t('nav.coupons')}>
+                      <Button size="small" icon={<ShopIcon path={SI.gift} />} onClick={() => navigate('/coupons')} aria-label={t('nav.coupons')} title={t('nav.coupons')}>
                         {t('nav.coupons')}
                       </Button>
                     </Space>

@@ -1,13 +1,5 @@
 import React from 'react';
-import {
-  CheckCircleOutlined,
-  FireOutlined,
-  HeartFilled,
-  HeartOutlined,
-  SearchOutlined,
-  ShoppingCartOutlined,
-  StarFilled,
-} from '@ant-design/icons';
+import { ShopIcon, SI } from './ShopIcon';
 import { Link } from 'react-router-dom';
 import type { ProductPublic as Product } from '../types';
 import type { TranslateFn } from '../i18n';
@@ -210,7 +202,7 @@ const HomeProductCard: React.FC<HomeProductCardProps> = ({
               openProduct(product.id);
             }}
           >
-            <SearchOutlined />
+            <ShopIcon path={SI.search} />
           </button>
           <button
             type="button"
@@ -219,7 +211,7 @@ const HomeProductCard: React.FC<HomeProductCardProps> = ({
             disabled={card.isSoldOut}
             onClick={(event) => handleQuickAddToCart(event, product)}
           >
-            <ShoppingCartOutlined />
+            <ShopIcon path={SI.cart} />
           </button>
           <button
             type="button"
@@ -228,7 +220,7 @@ const HomeProductCard: React.FC<HomeProductCardProps> = ({
             className={isWishlisted ? 'shopee-product__quickAction--favorite shopee-product__quickAction--favoriteActive' : 'shopee-product__quickAction--favorite'}
             onClick={(event) => handleQuickWishlist(event, product)}
           >
-            {isWishlisted ? <HeartFilled /> : <HeartOutlined />}
+            {isWishlisted ? <ShopIcon path={SI.heartFill} /> : <ShopIcon path={SI.heart} />}
           </button>
         </span>
       </span>
@@ -248,7 +240,7 @@ const HomeProductCard: React.FC<HomeProductCardProps> = ({
         >
           {card.ratingText ? (
             <span className="shopee-product__rating">
-              <StarFilled /> {card.ratingText}
+              <ShopIcon path={SI.star} /> {card.ratingText}
             </span>
           ) : null}
           {card.hasPositiveSignal ? (
@@ -282,19 +274,19 @@ const HomeProductCard: React.FC<HomeProductCardProps> = ({
         >
           {card.isSoldOut ? (
             <span className="shopee-product__signal shopee-product__signal--urgent">
-              <FireOutlined />
+              <ShopIcon path={SI.fire} />
               {t('pages.productList.soldOut')}
             </span>
           ) : (
             <>
               {card.savingsAmount > 0 ? (
                 <span className="shopee-product__signal shopee-product__signal--deal">
-                  <FireOutlined />
+                  <ShopIcon path={SI.fire} />
                   {t('pages.productList.bestValueSavings', { amount: formatPrice(card.savingsAmount) })}
                 </span>
               ) : null}
               <span className={card.lowStockCount !== null ? 'shopee-product__signal shopee-product__signal--urgent' : 'shopee-product__signal shopee-product__signal--ready'}>
-                {card.lowStockCount !== null ? <FireOutlined /> : <CheckCircleOutlined />}
+                {card.lowStockCount !== null ? <ShopIcon path={SI.fire} /> : <ShopIcon path={SI.checkCircle} />}
                 {card.lowStockCount !== null
                   ? t('pages.productList.cardLowStock', { count: card.lowStockCount })
                   : card.quickAddReady

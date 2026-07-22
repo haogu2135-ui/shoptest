@@ -7,7 +7,7 @@
 .browsing-history,
 .browsing-history .ant-btn,
 .browsing-history .ant-input,
-.browsing-history .ant-typography {
+.browsing-history .browsing-history__text {
   font-family: 'Avenir Next', 'Manrope', 'Segoe UI Variable', sans-serif;
 }
 
@@ -38,15 +38,15 @@
   font-weight: 700;
 }
 
-.browsing-history__title.ant-typography {
+.browsing-history__title.browsing-history__text {
   margin: 8px 0 6px;
   color: #173f2b;
   font-size: 28px;
   letter-spacing: 0;
 }
 
-.browsing-history__subtitle.ant-typography,
-.browsing-history__sectionText.ant-typography {
+.browsing-history__subtitle.browsing-history__text,
+.browsing-history__sectionText.browsing-history__text {
   max-width: 620px;
   margin: 0;
   color: #627064;
@@ -131,7 +131,7 @@
   text-transform: uppercase;
 }
 
-.browsing-history__sectionTitle.ant-typography {
+.browsing-history__sectionTitle.browsing-history__text {
   margin: 0;
   color: #173f2b;
   font-size: 20px;
@@ -208,14 +208,14 @@
   text-transform: uppercase;
 }
 
-.browsing-history__recovery .browsing-history__sectionTitle.ant-typography {
+.browsing-history__recovery .browsing-history__sectionTitle.browsing-history__text {
   margin: 4px 0 6px;
   color: #173f2b;
   font-size: 20px;
   line-height: 1.25;
 }
 
-.browsing-history__recovery .browsing-history__sectionText.ant-typography {
+.browsing-history__recovery .browsing-history__sectionText.browsing-history__text {
   max-width: 680px;
 }
 
@@ -261,7 +261,7 @@
   text-transform: uppercase;
 }
 
-.browsing-history__nextAction .browsing-history__sectionTitle.ant-typography {
+.browsing-history__nextAction .browsing-history__sectionTitle.browsing-history__text {
   margin: 4px 0 6px;
   color: #173f2b;
   font-size: 19px;
@@ -437,7 +437,7 @@
 .browsing-history--es,
 .browsing-history--es .ant-btn,
 .browsing-history--es .ant-input,
-.browsing-history--es .ant-typography,
+.browsing-history--es .browsing-history__text,
 .browsing-history--es .ant-tag {
   hyphens: auto;
   overflow-wrap: anywhere;
@@ -486,7 +486,7 @@
     padding: 16px;
   }
 
-  .browsing-history__title.ant-typography {
+  .browsing-history__title.browsing-history__text {
     font-size: 24px;
   }
 
@@ -732,14 +732,14 @@
     font-size: 12px;
   }
 
-  .browsing-history__title.ant-typography {
+  .browsing-history__title.browsing-history__text {
     margin-top: 6px;
     font-size: 23px;
     line-height: 1.15;
   }
 
-  .browsing-history__subtitle.ant-typography,
-  .browsing-history__sectionText.ant-typography {
+  .browsing-history__subtitle.browsing-history__text,
+  .browsing-history__sectionText.browsing-history__text {
     display: -webkit-box;
     overflow: hidden;
     font-size: 13px;
@@ -803,8 +803,8 @@
     padding: 12px;
   }
 
-  .browsing-history__recovery .browsing-history__sectionTitle.ant-typography,
-  .browsing-history__nextAction .browsing-history__sectionTitle.ant-typography {
+  .browsing-history__recovery .browsing-history__sectionTitle.browsing-history__text,
+  .browsing-history__nextAction .browsing-history__sectionTitle.browsing-history__text {
     font-size: 17px;
   }
 
@@ -940,14 +940,14 @@
     font-size: 12px;
   }
 
-  .browsing-history__title.ant-typography {
+  .browsing-history__title.browsing-history__text {
     margin: 5px 0;
     font-size: 21px;
     line-height: 1.12;
   }
 
-  .browsing-history__subtitle.ant-typography,
-  .browsing-history__sectionText.ant-typography {
+  .browsing-history__subtitle.browsing-history__text,
+  .browsing-history__sectionText.browsing-history__text {
     font-size: 12px;
     line-height: 1.4;
   }
@@ -980,16 +980,16 @@
     padding: 10px;
   }
 
-  .browsing-history__assistant-copy .browsing-history__sectionTitle.ant-typography,
-  .browsing-history__recovery .browsing-history__sectionTitle.ant-typography,
-  .browsing-history__nextAction .browsing-history__sectionTitle.ant-typography {
+  .browsing-history__assistant-copy .browsing-history__sectionTitle.browsing-history__text,
+  .browsing-history__recovery .browsing-history__sectionTitle.browsing-history__text,
+  .browsing-history__nextAction .browsing-history__sectionTitle.browsing-history__text {
     font-size: 16px;
     line-height: 1.18;
   }
 
-  .browsing-history__assistant-copy .browsing-history__sectionText.ant-typography,
-  .browsing-history__recovery .browsing-history__sectionText.ant-typography,
-  .browsing-history__nextAction .browsing-history__sectionText.ant-typography {
+  .browsing-history__assistant-copy .browsing-history__sectionText.browsing-history__text,
+  .browsing-history__recovery .browsing-history__sectionText.browsing-history__text,
+  .browsing-history__nextAction .browsing-history__sectionText.browsing-history__text {
     -webkit-line-clamp: 2;
   }
 
@@ -1368,12 +1368,12 @@
     font-size: 12px;
   }
 
-  .browsing-history--empty .browsing-history__title.ant-typography {
+  .browsing-history--empty .browsing-history__title.browsing-history__text {
     margin: 4px 0 3px;
     font-size: 20px;
   }
 
-  .browsing-history--empty .browsing-history__subtitle.ant-typography {
+  .browsing-history--empty .browsing-history__subtitle.browsing-history__text {
     -webkit-line-clamp: 1;
   }
 
@@ -1612,7 +1612,7 @@
 
   .browsing-history__name,
   .browsing-history__meta,
-  .browsing-history__item .ant-typography {
+  .browsing-history__item .browsing-history__text {
     overflow-wrap: anywhere;
   }
 
@@ -1886,16 +1886,59 @@
 /* Commercial mobile: browsing history labels stay >=12px. */
 @media (max-width: 780px) {
   .browsing-history,
-  .browsing-history .ant-typography-secondary,
+  .browsing-history .browsing-history__text--secondary,
   .browsing-history__assistant,
   .browsing-history__chip,
   .browsing-history__meta {
     font-size: inherit;
   }
-  .browsing-history .ant-typography-secondary,
+  .browsing-history .browsing-history__text--secondary,
   .browsing-history__chip,
   .browsing-history__meta {
     font-size: 12px !important;
     line-height: 1.3 !important;
   }
+}
+
+
+/* Native typography densification (no ant Typography runtime) */
+.browsing-history__title {
+  margin: 0;
+  font-weight: 700;
+  line-height: 1.2;
+  color: inherit;
+}
+
+.browsing-history__text {
+  margin: 0;
+  color: inherit;
+  line-height: 1.5;
+}
+
+.browsing-history__paragraph {
+  display: block;
+}
+
+.browsing-history__text--strong {
+  font-weight: 600;
+}
+
+.browsing-history__text--secondary {
+  color: rgba(0, 0, 0, 0.45);
+}
+
+.browsing-history__text--danger {
+  color: #ff4d4f;
+}
+
+.browsing-history__text--warning {
+  color: #faad14;
+}
+
+.browsing-history__text--success {
+  color: #52c41a;
+}
+
+.browsing-history__text--delete {
+  text-decoration: line-through;
 }

@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Card, Cascader, Divider, Form, Input, List, message, Modal, Progress, Radio, Result, Select, Space, Spin, Tag, Typography } from 'antd';
+import { announceAccessibleMessage } from '../utils/accessibleMessage';
+import { ShopIcon, SI } from '../components/ShopIcon';
+import { Alert, Button, Card, Cascader, Divider, Form, Input, List, message, Modal, Progress, Radio, Result, Select, Tag } from 'antd';
 import type { FormInstance } from 'antd/es/form';
-import { CheckCircleOutlined, CustomerServiceOutlined, GiftOutlined, HistoryOutlined, RollbackOutlined, SafetyCertificateOutlined, ShoppingCartOutlined, ShoppingOutlined, SwapOutlined, TruckOutlined } from '@ant-design/icons';
 import { Link, useNavigate } from 'react-router-dom';
 import { addressApi, cartApi, clearStoredAuthSession, couponApi, createApiAbortController, orderApi, paymentApi, productApi } from '../api';
 import type { CartItem, CouponQuote, OrderCustomer, PaymentCustomer, PaymentChannel, ProductPublic as Product, UserAddress, UserCoupon } from '../types';
@@ -47,7 +48,6 @@ import './Checkout.css';
 import '../styles/mobile-page-contrast.css';
 import { navigateToCommercialPaymentUrl, formatPaymentUrlLabel, getPaymentRecoveryState } from '../utils/paymentRecovery';
 
-const { Text, Title } = Typography;
 const checkoutImageFallback = productImageFallback;
 const resolveCheckoutImage = resolveProductImage;
 const mobileCheckoutQuery = '(max-width: 780px)';
@@ -853,7 +853,7 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
     setPaymentChannelsReloadKey((key) => key + 1);
   }, []);
   const paymentUnavailableRecoveryActions = (
-    <Space wrap className="checkout-page__paymentUnavailableActions" data-checkout-payment-unavailable-recovery="true">
+    <div className="checkout-page__paymentUnavailableActions" data-checkout-payment-unavailable-recovery="true">
       <Button
         size="small"
         type="primary"
@@ -866,7 +866,7 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
       </Button>
       <Button
         size="small"
-        icon={<CustomerServiceOutlined />}
+        icon={<ShopIcon path={SI.support} />}
         aria-label={t('pages.profile.contactSupport')}
         title={t('pages.profile.contactSupport')}
         onClick={openSupport}
@@ -875,7 +875,7 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
       </Button>
       <Button
         size="small"
-        icon={<ShoppingCartOutlined />}
+        icon={<ShopIcon path={SI.cart} />}
         aria-label={t('pages.cart.title')}
         title={t('pages.cart.title')}
         onClick={() => navigate('/cart')}
@@ -884,7 +884,7 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
       </Button>
       <Button
         size="small"
-        icon={<ShoppingOutlined />}
+        icon={<ShopIcon path={SI.shopping} />}
         aria-label={t('pages.cart.browse')}
         title={t('pages.cart.browse')}
         onClick={() => navigate('/products')}
@@ -893,14 +893,14 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
       </Button>
       <Button
         size="small"
-        icon={<GiftOutlined />}
+        icon={<ShopIcon path={SI.gift} />}
         aria-label={t('nav.coupons')}
         title={t('nav.coupons')}
         onClick={() => navigate('/coupons')}
       >
         {t('nav.coupons')}
       </Button>
-    </Space>
+    </div>
   );
   const recommendedPaymentMethod = useMemo(
     () => getRecommendedPaymentMethod(paymentChannels, currency),
@@ -1547,7 +1547,7 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
   const savingsCoachItems = [
     {
       key: 'shipping',
-      icon: <TruckOutlined />,
+      icon: <ShopIcon path={SI.truck} />,
       ready: freeShippingUnlocked,
       title: t('pages.checkout.savingsFreeShippingTitle'),
       text: freeShippingUnlocked
@@ -1556,7 +1556,7 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
     },
     giftEligible ? {
       key: 'gift',
-      icon: <GiftOutlined />,
+      icon: <ShopIcon path={SI.gift} />,
       ready: giftUnlocked,
       title: t('pages.checkout.savingsGiftTitle'),
       text: giftUnlocked
@@ -1565,7 +1565,7 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
     } : null,
     !isGuestCheckout ? {
       key: 'coupon',
-      icon: <SafetyCertificateOutlined />,
+      icon: <ShopIcon path={SI.safety} />,
       ready: discountAmount > 0,
       title: t('pages.checkout.savingsCouponTitle'),
       text: discountAmount > 0
@@ -2478,8 +2478,8 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
           <section className="checkout-page__hero">
             <div className="checkout-page__heroContent">
               <span className="checkout-page__heroEyebrow">{t('pages.checkout.readinessEyebrow')}</span>
-              <Title level={1}>{t('pages.checkout.title')}</Title>
-              <Text type="secondary">{t('common.loading')}</Text>
+              <h1 className="checkout-page__title">{t('pages.checkout.title')}</h1>
+              <span className="checkout-page__text checkout-page__text--secondary">{t('common.loading')}</span>
             </div>
           </section>
           <div className="checkout-page__loadingShell" aria-hidden="true">
@@ -2490,8 +2490,8 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
             </div>
             <div className="checkout-page__loadingSummary shimmer" />
           </div>
-          <div className="checkout-page__loadingSpinner">
-            <Spin size="large" />
+          <div className="checkout-page__loadingSpinner" role="status" aria-live="polite" aria-label={t('common.loading')}>
+            <span className="checkout-page__spinner" aria-hidden="true" />
           </div>
         </div>
       </Form>
@@ -2515,7 +2515,7 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
           subTitle={t('pages.checkout.paymentPendingSubtitle', { orderNo: createdOrder.orderNo || createdOrder.id, amount: formatMoney(createdOrder.totalAmount) })}
           extra={[
             <Button type="primary" key="retry" loading={paying} aria-label={retryPaymentActionLabel} title={retryPaymentActionLabel} onClick={retryCreatePayment}>{t('pages.checkout.retryPayment')}</Button>,
-            <Button danger key="rollback" icon={<RollbackOutlined />} loading={cancelingPayment} aria-label={rollbackPaymentActionLabel} title={rollbackPaymentActionLabel} onClick={rollbackPendingPayment}>{t('pages.checkout.rollbackPaymentAction')}</Button>,
+            <Button danger key="rollback" icon={<ShopIcon path={SI.rollback} />} loading={cancelingPayment} aria-label={rollbackPaymentActionLabel} title={rollbackPaymentActionLabel} onClick={rollbackPendingPayment}>{t('pages.checkout.rollbackPaymentAction')}</Button>,
             <Button key="profile" aria-label={viewOrderActionLabel} title={viewOrderActionLabel} onClick={guestPaymentEmail ? openTrackedOrder : () => navigate('/profile?tab=orders')}>{t('pages.checkout.viewOrder')}</Button>,
             <Button key="track" aria-label={trackOrderActionLabel} title={trackOrderActionLabel} onClick={openTrackedOrder}>{t('pages.orderTracking.title')}</Button>,
             <Button key="home" aria-label={backHomeActionLabel} title={backHomeActionLabel} onClick={() => navigate('/')}>{t('pages.checkout.backHome')}</Button>,
@@ -2612,26 +2612,26 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
         <Card className="checkout-page__paymentRecovery" title={t('pages.checkout.paymentRecoveryTitle')}>
           <div className="checkout-page__paymentRecoveryGrid" role="list" aria-label={`${t('pages.checkout.paymentRecoveryTitle')}: ${orderPaymentContext}`}>
             <div role="listitem" aria-label={`${t('pages.checkout.paymentRecoveryStatus')}: ${paymentRecoveryStatusText}`}>
-              <Text strong>{t('pages.checkout.paymentRecoveryStatus')}</Text>
+              <span className="checkout-page__text checkout-page__text--strong">{t('pages.checkout.paymentRecoveryStatus')}</span>
               <Tag color={paid ? 'green' : isReconcileRequired ? 'magenta' : paymentRecovery.isExpired ? 'red' : paymentRecovery.isExpiringSoon ? 'orange' : 'blue'}>
                 {paymentRecoveryStatusText}
               </Tag>
             </div>
             <div role="listitem" aria-label={`${t('pages.checkout.paymentRecoveryWindow')}: ${paymentRecoveryWindowText}`}>
-              <Text strong>{t('pages.checkout.paymentRecoveryWindow')}</Text>
-              <Text type={paymentRecoveryTone === 'error' ? 'danger' : paymentRecoveryTone === 'warning' ? 'warning' : 'secondary'}>
+              <span className="checkout-page__text checkout-page__text--strong">{t('pages.checkout.paymentRecoveryWindow')}</span>
+              <span className={`checkout-page__text ${paymentRecoveryTone === 'error' ? 'checkout-page__text--danger' : paymentRecoveryTone === 'warning' ? 'checkout-page__text--warning' : 'checkout-page__text--secondary'}`}>
                 {paymentRecoveryWindowText}
-              </Text>
+              </span>
             </div>
             <div role="listitem" aria-label={`${t('pages.checkout.paymentRecoveryNext')}: ${paymentRecoveryNextText}`}>
-              <Text strong>{t('pages.checkout.paymentRecoveryNext')}</Text>
-              <Text type="secondary">
+              <span className="checkout-page__text checkout-page__text--strong">{t('pages.checkout.paymentRecoveryNext')}</span>
+              <span className="checkout-page__text checkout-page__text--secondary">
                 {paymentRecoveryNextText}
-              </Text>
+              </span>
             </div>
           </div>
           {!paid ? (
-            <Space wrap className="checkout-page__paymentRecoveryActions">
+            <div className="checkout-page__paymentRecoveryActions">
               {!isReconcileRequired && payment.paymentUrl ? <Button type="primary" aria-label={openPaymentActionLabel} title={openPaymentActionLabel} onClick={openPaymentUrl}>{t('pages.checkout.openPayment')}</Button> : null}
               <Button
                 aria-label={`${t('pages.paymentInstructions.title')}: ${orderPaymentContext}`}
@@ -2649,25 +2649,25 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
                 <Button loading={paying} aria-label={retryPaymentActionLabel} title={retryPaymentActionLabel} onClick={retryCreatePayment}>{t('pages.checkout.retryPayment')}</Button>
               ) : null}
               {!isReconcileRequired && createdOrder.status === 'PENDING_PAYMENT' ? (
-                <Button danger icon={<RollbackOutlined />} loading={cancelingPayment} aria-label={rollbackPaymentActionLabel} title={rollbackPaymentActionLabel} onClick={rollbackPendingPayment}>
+                <Button danger icon={<ShopIcon path={SI.rollback} />} loading={cancelingPayment} aria-label={rollbackPaymentActionLabel} title={rollbackPaymentActionLabel} onClick={rollbackPendingPayment}>
                   {t('pages.checkout.rollbackPaymentAction')}
                 </Button>
               ) : null}
               <Button aria-label={supportActionLabel} title={supportActionLabel} onClick={openSupport}>{t('pages.checkout.nextActionSupport')}</Button>
-            </Space>
+            </div>
           ) : null}
         </Card>
         <Card title={t('pages.checkout.paymentCard')}>
-          <Space direction="vertical">
-            <Text>{t('pages.checkout.channel')}: {paymentMethodLabel(payment.channel, t)}</Text>
-            {createdOrder.originalAmount ? <Text>{t('common.subtotal')}: <span className="commerce-money">{formatMoney(createdOrder.originalAmount)}</span></Text> : null}
-            {createdOrder.discountAmount && createdOrder.discountAmount > 0 ? <Text>{t('pages.checkout.coupon')}: <span className="commerce-money">-{formatMoney(createdOrder.discountAmount)}</span> {createdOrder.couponName ? `(${createdOrder.couponName})` : ''}</Text> : null}
-            <Text>{t('pages.checkout.shippingFee')}: <span className="commerce-money">{formatMoney(createdOrder.shippingFee)}</span></Text>
-            <Text>{t('pages.checkout.paymentStatus')}: <Tag color={getPaymentStatusColor(payment.status)}>{formatPaymentStatusLabel(payment.status)}</Tag></Text>
-            <Text className="checkout-page__paymentUrl">{t('pages.checkout.paymentLink')}: {formatPaymentUrlLabel(payment.paymentUrl)}</Text>
-            {paymentExpiresAtText ? <Text>{t('pages.checkout.paymentExpiresAt')}: {paymentExpiresAtText}</Text> : null}
-            {payment.transactionId && <Text>{t('pages.checkout.transactionId')}: {payment.transactionId}</Text>}
-          </Space>
+          <div className="checkout-page__stack">
+            <span className="checkout-page__text">{t('pages.checkout.channel')}: {paymentMethodLabel(payment.channel, t)}</span>
+            {createdOrder.originalAmount ? <span className="checkout-page__text">{t('common.subtotal')}: <span className="commerce-money">{formatMoney(createdOrder.originalAmount)}</span></span> : null}
+            {createdOrder.discountAmount && createdOrder.discountAmount > 0 ? <span className="checkout-page__text">{t('pages.checkout.coupon')}: <span className="commerce-money">-{formatMoney(createdOrder.discountAmount)}</span> {createdOrder.couponName ? `(${createdOrder.couponName})` : ''}</span> : null}
+            <span className="checkout-page__text">{t('pages.checkout.shippingFee')}: <span className="commerce-money">{formatMoney(createdOrder.shippingFee)}</span></span>
+            <span className="checkout-page__text">{t('pages.checkout.paymentStatus')}: <Tag color={getPaymentStatusColor(payment.status)}>{formatPaymentStatusLabel(payment.status)}</Tag></span>
+            <span className="checkout-page__text checkout-page__paymentUrl">{t('pages.checkout.paymentLink')}: {formatPaymentUrlLabel(payment.paymentUrl)}</span>
+            {paymentExpiresAtText ? <span className="checkout-page__text">{t('pages.checkout.paymentExpiresAt')}: {paymentExpiresAtText}</span> : null}
+            {payment.transactionId && <span className="checkout-page__text">{t('pages.checkout.transactionId')}: {payment.transactionId}</span>}
+          </div>
         </Card>
       </div>
     );
@@ -2689,7 +2689,7 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
           <section className="checkout-page__hero checkout-page__hero--recovery">
             <div className="checkout-page__heroContent">
               <span className="checkout-page__heroEyebrow">{t('pages.checkout.readinessEyebrow')}</span>
-              <Title level={1}>{t('pages.checkout.title')}</Title>
+              <h1 className="checkout-page__title">{t('pages.checkout.title')}</h1>
             </div>
           </section>
           <div data-checkout-load-recovery="true">
@@ -2751,17 +2751,17 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
         />
         <section className="checkout-page__emptyHero" aria-label={t('pages.checkout.emptySelected')}>
           <span className="checkout-page__emptyIcon">
-            <ShoppingCartOutlined />
+            <ShopIcon path={SI.cart} />
           </span>
           <div className="checkout-page__emptyCopy">
             <span className="checkout-page__emptyEyebrow">{t('pages.checkout.readinessEyebrow')}</span>
-            <Title level={1}>{t('pages.checkout.emptySelected')}</Title>
-            <Text>{t('pages.checkout.savingsCoachSubtitle')}</Text>
+            <h1 className="checkout-page__title">{t('pages.checkout.emptySelected')}</h1>
+            <span className="checkout-page__text">{t('pages.checkout.savingsCoachSubtitle')}</span>
           </div>
           <div className="checkout-page__emptyActions" data-checkout-empty-actions="true">
             <Button
               type="primary"
-              icon={<ShoppingCartOutlined />}
+              icon={<ShopIcon path={SI.cart} />}
               onClick={() => navigate('/cart')}
               aria-label={t('pages.checkout.emptyBackCartAction')}
               title={t('pages.checkout.emptyBackCartAction')}
@@ -2769,7 +2769,7 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
               {t('pages.checkout.backCart')}
             </Button>
             <Button
-              icon={<ShoppingOutlined />}
+              icon={<ShopIcon path={SI.shopping} />}
               onClick={() => navigate('/products')}
               aria-label={t('pages.checkout.emptyBrowseAction')}
               title={t('pages.checkout.emptyBrowseAction')}
@@ -2777,7 +2777,7 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
               {t('pages.cart.browse')}
             </Button>
             <Button
-              icon={<GiftOutlined />}
+              icon={<ShopIcon path={SI.gift} />}
               onClick={() => navigate('/coupons')}
               aria-label={t('pages.checkout.emptyCouponsAction')}
               title={t('pages.checkout.emptyCouponsAction')}
@@ -2785,7 +2785,7 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
               {t('nav.coupons')}
             </Button>
             <Button
-              icon={<ShoppingOutlined />}
+              icon={<ShopIcon path={SI.shopping} />}
               onClick={() => navigate('/pet-finder')}
               aria-label={`${t('nav.petFinder')}: ${t('pages.checkout.emptySelected')}`}
               title={`${t('nav.petFinder')}: ${t('pages.checkout.emptySelected')}`}
@@ -2793,7 +2793,7 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
               {t('nav.petFinder')}
             </Button>
             <Button
-              icon={<HistoryOutlined />}
+              icon={<ShopIcon path={SI.history} />}
               onClick={() => navigate('/history')}
               aria-label={t('pages.checkout.emptyHistoryAction')}
               title={t('pages.checkout.emptyHistoryAction')}
@@ -2803,17 +2803,17 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
           </div>
           <div className="checkout-page__emptySignals">
             <span>
-              <SafetyCertificateOutlined />
+              <ShopIcon path={SI.safety} />
               {t('pages.checkout.trustSecureTitle')}
             </span>
             <span>
-              <TruckOutlined />
+              <ShopIcon path={SI.truck} />
               {market.freeShippingThreshold > 0
                 ? t('pages.cart.freeShippingRemaining', { amount: formatMoney(market.freeShippingThreshold) })
                 : t('pages.cart.freeShippingUnlocked')}
             </span>
             <span>
-              <CustomerServiceOutlined />
+              <ShopIcon path={SI.support} />
               {t('pages.checkout.trustSupportTitle')}
             </span>
           </div>
@@ -2836,8 +2836,8 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
       <section className="checkout-page__hero">
         <div className="checkout-page__heroContent">
           <span className="checkout-page__heroEyebrow">{t('pages.checkout.readinessEyebrow')}</span>
-          <Title level={1}>{t('pages.checkout.title')}</Title>
-          <Text>{t('pages.checkout.savingsCoachSubtitle')}</Text>
+          <h1 className="checkout-page__title">{t('pages.checkout.title')}</h1>
+          <span className="checkout-page__text">{t('pages.checkout.savingsCoachSubtitle')}</span>
         </div>
         <div className="checkout-page__heroStats">
           {checkoutHeroHighlights.map((item) => (
@@ -2861,18 +2861,18 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
         <div className="checkout-page__confirmationScore">
           <Progress type="circle" percent={checkoutReadinessScore} size={58} strokeColor="#124734" />
           <span>
-            <Text strong>{checkoutNextAction ? t('pages.checkout.nextActionTitle') : t('pages.checkout.nextActionReadyTitle')}</Text>
-            <Text type="secondary">{checkoutNextAction ? checkoutNextAction.text : t('pages.checkout.nextActionReadyText')}</Text>
+            <span className="checkout-page__text checkout-page__text--strong">{checkoutNextAction ? t('pages.checkout.nextActionTitle') : t('pages.checkout.nextActionReadyTitle')}</span>
+            <span className="checkout-page__text checkout-page__text--secondary">{checkoutNextAction ? checkoutNextAction.text : t('pages.checkout.nextActionReadyText')}</span>
           </span>
         </div>
         <div className="checkout-page__confirmationFacts">
           <span>
-            <Text type="secondary">{t('pages.checkout.itemSummary', { count: checkoutItemCount })}</Text>
-            <Text strong className={shippingQuoteReady ? 'commerce-money' : undefined}>{payableAmountText}</Text>
+            <span className="checkout-page__text checkout-page__text--secondary">{t('pages.checkout.itemSummary', { count: checkoutItemCount })}</span>
+            <span className={`checkout-page__text checkout-page__text--strong ${shippingQuoteReady ? 'commerce-money' : ''}`}>{payableAmountText}</span>
           </span>
           <span>
-            <Text type="secondary">{t('pages.checkout.paymentMethod')}</Text>
-            <Text strong>{selectedPaymentDetail?.title || t('pages.checkout.paymentConfidenceDefault')}</Text>
+            <span className="checkout-page__text checkout-page__text--secondary">{t('pages.checkout.paymentMethod')}</span>
+            <span className="checkout-page__text checkout-page__text--strong">{selectedPaymentDetail?.title || t('pages.checkout.paymentConfidenceDefault')}</span>
           </span>
         </div>
         <Button
@@ -2890,24 +2890,24 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
 
       <div className="checkout-page__trustBar" aria-label={t('pages.checkout.trustTitle')}>
         <div className="checkout-page__trustItem">
-          <SafetyCertificateOutlined />
+          <ShopIcon path={SI.safety} />
           <div>
-            <Text strong>{t('pages.checkout.trustSecureTitle')}</Text>
-            <Text type="secondary">{t('pages.checkout.trustSecureText')}</Text>
+            <span className="checkout-page__text checkout-page__text--strong">{t('pages.checkout.trustSecureTitle')}</span>
+            <span className="checkout-page__text checkout-page__text--secondary">{t('pages.checkout.trustSecureText')}</span>
           </div>
         </div>
         <div className="checkout-page__trustItem">
-          <SwapOutlined />
+          <ShopIcon path={SI.swap} />
           <div>
-            <Text strong>{t('pages.checkout.trustReturnsTitle')}</Text>
-            <Text type="secondary">{t('pages.checkout.trustReturnsText')}</Text>
+            <span className="checkout-page__text checkout-page__text--strong">{t('pages.checkout.trustReturnsTitle')}</span>
+            <span className="checkout-page__text checkout-page__text--secondary">{t('pages.checkout.trustReturnsText')}</span>
           </div>
         </div>
         <div className="checkout-page__trustItem">
-          <CustomerServiceOutlined />
+          <ShopIcon path={SI.support} />
           <div>
-            <Text strong>{t('pages.checkout.trustSupportTitle')}</Text>
-            <Text type="secondary">{t('pages.checkout.trustSupportText')}</Text>
+            <span className="checkout-page__text checkout-page__text--strong">{t('pages.checkout.trustSupportTitle')}</span>
+            <span className="checkout-page__text checkout-page__text--secondary">{t('pages.checkout.trustSupportText')}</span>
           </div>
         </div>
       </div>
@@ -2958,45 +2958,45 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
             );
           })}
         </div>
-        <Text type="secondary" className="checkout-page__expressHint">
+        <span className="checkout-page__text checkout-page__text--secondary checkout-page__expressHint">
           {t('pages.checkout.expressHint')}
-        </Text>
+        </span>
       </Card>
 
       <Card className="checkout-page__benefitStrip">
         <div className="checkout-page__benefitItem">
-          <span className="checkout-page__benefitIcon"><TruckOutlined /></span>
+          <span className="checkout-page__benefitIcon"><ShopIcon path={SI.truck} /></span>
           <div>
-            <Text strong>
+            <span className="checkout-page__text checkout-page__text--strong">
               {freeShippingRemaining > 0
                 ? t('pages.cart.freeShippingRemaining', { amount: formatMoney(freeShippingRemaining) })
                 : t('pages.cart.freeShippingUnlocked')}
-            </Text>
+            </span>
             <Progress percent={freeShippingPercent} showInfo={false} strokeColor="#124734" trailColor="#edf0ed" />
           </div>
         </div>
         {deliveryPromise.enabled ? (
           <div className="checkout-page__benefitItem">
-            <span className="checkout-page__benefitIcon"><SafetyCertificateOutlined /></span>
+            <span className="checkout-page__benefitIcon"><ShopIcon path={SI.safety} /></span>
             <div>
-              <Text strong>{t('pages.checkout.deliveryPromise', { window: deliveryPromise.windowText })}</Text>
-              <Text type="secondary">
+              <span className="checkout-page__text checkout-page__text--strong">{t('pages.checkout.deliveryPromise', { window: deliveryPromise.windowText })}</span>
+              <span className="checkout-page__text checkout-page__text--secondary">
                 {deliveryPromise.shipsToday
                   ? t('pages.checkout.shipsToday', { cutoff: `${deliveryPromise.cutoffHour}:00` })
                   : t('pages.checkout.shipsNextBusinessDay')}
-              </Text>
+              </span>
             </div>
           </div>
         ) : null}
         {giftEligible ? (
           <div className={giftUnlocked ? 'checkout-page__benefitItem checkout-page__benefitItem--ready' : 'checkout-page__benefitItem'}>
-            <span className="checkout-page__benefitIcon">{giftUnlocked ? <CheckCircleOutlined /> : <GiftOutlined />}</span>
+            <span className="checkout-page__benefitIcon">{giftUnlocked ? <ShopIcon path={SI.checkCircle} /> : <ShopIcon path={SI.gift} />}</span>
             <div>
-              <Text strong>
+              <span className="checkout-page__text checkout-page__text--strong">
                 {giftUnlocked
                   ? t('pages.checkout.giftUnlocked', { gift: t(conversionConfig.giftAtCheckout.giftNameKey) })
                   : t('pages.checkout.giftRemaining', { amount: formatMoney(giftRemaining), gift: t(conversionConfig.giftAtCheckout.giftNameKey) })}
-              </Text>
+              </span>
               <Progress percent={giftProgress} showInfo={false} strokeColor={giftUnlocked ? '#124734' : '#ffb84d'} trailColor="#edf0ed" />
             </div>
           </div>
@@ -3010,10 +3010,10 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
         footer={<Button type="primary" aria-label={giftConfirmActionLabel} title={giftConfirmActionLabel} onClick={() => setGiftCelebrationOpen(false)}>{t('common.confirm')}</Button>}
         className="profile-mobile-safe-modal checkout-page__giftCelebrationModal"
       >
-        <Space align="start" className="checkout-page__giftModal">
-          <span className="checkout-page__giftIcon"><GiftOutlined /></span>
-          <Text>{t('pages.checkout.giftModalText', { gift: t(conversionConfig.giftAtCheckout.giftNameKey) })}</Text>
-        </Space>
+        <div className="checkout-page__giftModal">
+          <span className="checkout-page__giftIcon"><ShopIcon path={SI.gift} /></span>
+          <span className="checkout-page__text">{t('pages.checkout.giftModalText', { gift: t(conversionConfig.giftAtCheckout.giftNameKey) })}</span>
+        </div>
       </Modal>
 
       <details
@@ -3023,8 +3023,8 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
       >
         <summary>
           <span>
-            <Text strong>{t('pages.checkout.savingsCoachTitle')}</Text>
-            <Text type="secondary">{t('pages.checkout.savingsCoachSubtitle')}</Text>
+            <span className="checkout-page__text checkout-page__text--strong">{t('pages.checkout.savingsCoachTitle')}</span>
+            <span className="checkout-page__text checkout-page__text--secondary">{t('pages.checkout.savingsCoachSubtitle')}</span>
           </span>
           <Tag color={checkoutNextAction ? 'orange' : 'green'}>{checkoutReadinessScore}%</Tag>
         </summary>
@@ -3032,14 +3032,14 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
         <Card className="checkout-page__savingsCoach">
           <div className="checkout-page__savingsCoachHeader">
             <div>
-              <Text type="secondary">{t('pages.checkout.savingsCoachEyebrow')}</Text>
-              <Text strong>{t('pages.checkout.savingsCoachTitle')}</Text>
-              <Text type="secondary">{t('pages.checkout.savingsCoachSubtitle')}</Text>
+              <span className="checkout-page__text checkout-page__text--secondary">{t('pages.checkout.savingsCoachEyebrow')}</span>
+              <span className="checkout-page__text checkout-page__text--strong">{t('pages.checkout.savingsCoachTitle')}</span>
+              <span className="checkout-page__text checkout-page__text--secondary">{t('pages.checkout.savingsCoachSubtitle')}</span>
             </div>
             {addOnTarget ? (
               <Button
                 size="small"
-                icon={<SwapOutlined />}
+                icon={<ShopIcon path={SI.swap} />}
                 className="checkout-page__addOnButton"
                 aria-label={checkoutSavingsAddOnsActionLabel}
                 title={checkoutSavingsAddOnsActionLabel}
@@ -3052,10 +3052,10 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
           <div className="checkout-page__savingsCoachGrid">
             {savingsCoachItems.map((item) => (
               <div className={item.ready ? 'checkout-page__savingsCoachItem checkout-page__savingsCoachItem--ready' : 'checkout-page__savingsCoachItem'} key={item.key}>
-                <span className="checkout-page__savingsCoachIcon">{item.ready ? <CheckCircleOutlined /> : item.icon}</span>
+                <span className="checkout-page__savingsCoachIcon">{item.ready ? <ShopIcon path={SI.checkCircle} /> : item.icon}</span>
                 <span>
-                  <Text strong>{item.title}</Text>
-                  <Text type="secondary">{item.text}</Text>
+                  <span className="checkout-page__text checkout-page__text--strong">{item.title}</span>
+                  <span className="checkout-page__text checkout-page__text--secondary">{item.text}</span>
                 </span>
               </div>
             ))}
@@ -3076,8 +3076,8 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
         {couponOpportunity ? (
           <Card className={couponOpportunity.type === 'ready' ? 'checkout-page__couponOpportunity checkout-page__couponOpportunity--ready' : 'checkout-page__couponOpportunity'}>
             <div>
-              <Text strong>{couponOpportunity.title}</Text>
-              <Text type="secondary">{couponOpportunity.text}</Text>
+              <span className="checkout-page__text checkout-page__text--strong">{couponOpportunity.title}</span>
+              <span className="checkout-page__text checkout-page__text--secondary">{couponOpportunity.text}</span>
             </div>
             <Button
               size="small"
@@ -3095,34 +3095,34 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
         <Card className="checkout-page__readiness">
           <div className="checkout-page__readinessHeader">
             <div>
-              <Text type="secondary">{t('pages.checkout.readinessEyebrow')}</Text>
-              <Text strong>{t('pages.checkout.readinessTitle')}</Text>
+              <span className="checkout-page__text checkout-page__text--secondary">{t('pages.checkout.readinessEyebrow')}</span>
+              <span className="checkout-page__text checkout-page__text--strong">{t('pages.checkout.readinessTitle')}</span>
             </div>
             <Progress type="circle" percent={checkoutReadinessScore} size={64} strokeColor="#124734" />
           </div>
           <div className="checkout-page__readinessGrid">
             {checkoutReadinessItems.map((item) => (
               <div className={item.ready ? 'checkout-page__readinessItem checkout-page__readinessItem--ready' : 'checkout-page__readinessItem'} key={item.key}>
-                <CheckCircleOutlined />
+                <ShopIcon path={SI.checkCircle} />
                 <span>
-                  <Text strong>{item.label}</Text>
-                  <Text type="secondary">{item.text}</Text>
+                  <span className="checkout-page__text checkout-page__text--strong">{item.label}</span>
+                  <span className="checkout-page__text checkout-page__text--secondary">{item.text}</span>
                 </span>
               </div>
             ))}
           </div>
           <div className={checkoutNextAction ? 'checkout-page__nextAction' : 'checkout-page__nextAction checkout-page__nextAction--ready'}>
             <span>
-              <Text strong>
+              <span className="checkout-page__text checkout-page__text--strong">
                 {checkoutNextAction
                   ? t('pages.checkout.nextActionTitle')
                   : t('pages.checkout.nextActionReadyTitle')}
-              </Text>
-              <Text type="secondary">
+              </span>
+              <span className="checkout-page__text checkout-page__text--secondary">
                 {checkoutNextAction
                   ? checkoutNextAction.text
                   : t('pages.checkout.nextActionReadyText')}
-              </Text>
+              </span>
             </span>
             <Button size="small" type={checkoutNextAction ? 'primary' : 'default'} aria-label={checkoutReadinessActionLabel} title={checkoutReadinessActionLabel} onClick={handleCheckoutNextAction}>
               {checkoutCoachActionLabel}
@@ -3168,18 +3168,18 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
                   }
                   description={
                     <div className="checkout-page__itemDescription">
-                      {item.selectedSpecs ? <Text type="secondary">{formatSelectedSpecs(item.selectedSpecs, t, language)}</Text> : null}
+                      {item.selectedSpecs ? <span className="checkout-page__text checkout-page__text--secondary">{formatSelectedSpecs(item.selectedSpecs, t, language)}</span> : null}
                       {getCartItemLowStockCount(item) !== null ? (
-                        <Text type="warning" className="checkout-page__urgency">
+                        <span className="checkout-page__text checkout-page__text--warning checkout-page__urgency">
                           {t('pages.cart.lowStockLeft', { count: getCartItemLowStockCount(item) ?? 0 })}
-                        </Text>
+                        </span>
                       ) : null}
                       <div className="checkout-page__itemCommerce">
-                        <Text type="secondary" className="checkout-page__itemUnit commerce-atomic commerce-price-quantity">
+                        <span className="checkout-page__text checkout-page__text--secondary checkout-page__itemUnit commerce-atomic commerce-price-quantity">
                           <span className="commerce-money">{formatMoney(item.price)}</span>
                           <span className="commerce-quantity">x {item.quantity}</span>
-                        </Text>
-                        <Text strong className="checkout-page__itemTotal commerce-money">{formatMoney(getCartLineAmount(item))}</Text>
+                        </span>
+                        <span className="checkout-page__text checkout-page__text--strong checkout-page__itemTotal commerce-money">{formatMoney(getCartLineAmount(item))}</span>
                       </div>
                     </div>
                   }
@@ -3190,8 +3190,8 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
         />
         <Divider />
         <div className="checkout-page__summaryLine">
-          <Text>{t('pages.checkout.itemSummary', { count: checkoutItemCount })}</Text>
-          <Text strong className="checkout-page__summaryTotal commerce-money"> {formatMoney(cartTotal)}</Text>
+          <span className="checkout-page__text">{t('pages.checkout.itemSummary', { count: checkoutItemCount })}</span>
+          <span className="checkout-page__text checkout-page__text--strong checkout-page__summaryTotal commerce-money"> {formatMoney(cartTotal)}</span>
         </div>
       </Card>
 
@@ -3232,7 +3232,7 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
             >
               <Input placeholder={t('pages.checkout.guestEmailPlaceholder')} autoComplete="email" inputMode="email" maxLength={120} />
             </Form.Item>
-            <Text type="secondary">{t('pages.checkout.guestHint')}</Text>
+            <span className="checkout-page__text checkout-page__text--secondary">{t('pages.checkout.guestHint')}</span>
           </Card>
         ) : null}
 
@@ -3270,11 +3270,11 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
                       aria-label={addressChoiceLabel}
                       title={addressChoiceLabel}
                     >
-                      <Space className="checkout-page__addressHeader">
-                        <Text strong>{address.recipientName}</Text>
-                        <Text type="secondary">{address.phone}</Text>
+                      <div className="checkout-page__addressHeader">
+                        <span className="checkout-page__text checkout-page__text--strong">{address.recipientName}</span>
+                        <span className="checkout-page__text checkout-page__text--secondary">{address.phone}</span>
                         {address.isDefault && <Tag color="orange">{t('pages.checkout.defaultAddress')}</Tag>}
-                      </Space>
+                      </div>
                       <div className="checkout-page__addressText">{address.address}</div>
                     </Radio>
                   );
@@ -3285,7 +3285,7 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
                   aria-label={t('pages.checkout.useNewAddress')}
                   title={t('pages.checkout.useNewAddress')}
                 >
-                  <Text strong>{t('pages.checkout.useNewAddress')}</Text>
+                  <span className="checkout-page__text checkout-page__text--strong">{t('pages.checkout.useNewAddress')}</span>
                 </Radio>
               </Radio.Group>
             </div>
@@ -3449,14 +3449,14 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
           ) : null}
           {couponQuote && availableCoupons.length > 0 && !availableCoupons.some((coupon) => calculateCouponDiscount(coupon) > 0) ? (
             <div className="checkout-page__couponRules">
-              <Text type="secondary">{t('pages.checkout.couponRulesNotMet')}</Text>
+              <span className="checkout-page__text checkout-page__text--secondary">{t('pages.checkout.couponRulesNotMet')}</span>
             </div>
           ) : null}
           <div className="checkout-page__couponSummary">
-            <div><Text>{t('common.subtotal')}: <span className="commerce-money">{formatMoney(cartTotal)}</span></Text></div>
-            {discountAmount > 0 ? <div><Text type="success">{t('pages.checkout.couponDiscount')}: <span className="commerce-money">-{formatMoney(discountAmount)}</span></Text></div> : null}
-            <div><Text>{t('pages.checkout.shippingFee')}: <span className={shippingQuoteReady ? 'commerce-money' : 'checkout-page__pendingAmount'}>{shippingFeeText}</span></Text></div>
-            <Text type="secondary" className="checkout-page__shippingPolicy">{shippingPolicyText}</Text>
+            <div><span className="checkout-page__text">{t('common.subtotal')}: <span className="commerce-money">{formatMoney(cartTotal)}</span></span></div>
+            {discountAmount > 0 ? <div><span className="checkout-page__text checkout-page__text--success">{t('pages.checkout.couponDiscount')}: <span className="commerce-money">-{formatMoney(discountAmount)}</span></span></div> : null}
+            <div><span className="checkout-page__text">{t('pages.checkout.shippingFee')}: <span className={shippingQuoteReady ? 'commerce-money' : 'checkout-page__pendingAmount'}>{shippingFeeText}</span></span></div>
+            <span className="checkout-page__text checkout-page__text--secondary checkout-page__shippingPolicy">{shippingPolicyText}</span>
             {shippingQuotePending || shippingQuoteUnavailable || shippingQuoteFallbackActive ? (
               <Alert
                 type={shippingQuoteUnavailable ? 'error' : shippingQuoteFallbackActive ? 'warning' : 'info'}
@@ -3465,14 +3465,14 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
                 description={shippingQuoteAlertDescription}
               />
             ) : null}
-            <div><Text strong className="checkout-page__payableTotal">{t('pages.checkout.payable')}: <span className={shippingQuoteReady ? 'commerce-money' : 'checkout-page__pendingAmount'}>{payableAmountText}</span></Text></div>
+            <div><span className="checkout-page__text checkout-page__text--strong checkout-page__payableTotal">{t('pages.checkout.payable')}: <span className={shippingQuoteReady ? 'commerce-money' : 'checkout-page__pendingAmount'}>{payableAmountText}</span></span></div>
           </div>
         </Card> : (
           <Card id="checkout-coupon-card" title={t('pages.checkout.orderSummary')} className="checkout-page__sectionCard">
             <div className="checkout-page__couponSummary">
-              <div><Text>{t('common.subtotal')}: <span className="commerce-money">{formatMoney(cartTotal)}</span></Text></div>
-              <div><Text>{t('pages.checkout.shippingFee')}: <span className={shippingQuoteReady ? 'commerce-money' : 'checkout-page__pendingAmount'}>{shippingFeeText}</span></Text></div>
-              <Text type="secondary" className="checkout-page__shippingPolicy">{shippingPolicyText}</Text>
+              <div><span className="checkout-page__text">{t('common.subtotal')}: <span className="commerce-money">{formatMoney(cartTotal)}</span></span></div>
+              <div><span className="checkout-page__text">{t('pages.checkout.shippingFee')}: <span className={shippingQuoteReady ? 'commerce-money' : 'checkout-page__pendingAmount'}>{shippingFeeText}</span></span></div>
+              <span className="checkout-page__text checkout-page__text--secondary checkout-page__shippingPolicy">{shippingPolicyText}</span>
               {shippingQuotePending || shippingQuoteUnavailable || shippingQuoteFallbackActive ? (
                 <Alert
                   type={shippingQuoteUnavailable ? 'error' : shippingQuoteFallbackActive ? 'warning' : 'info'}
@@ -3481,23 +3481,23 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
                   description={shippingQuoteAlertDescription}
                 />
               ) : null}
-              <div><Text strong className="checkout-page__payableTotal">{t('pages.checkout.payable')}: <span className={shippingQuoteReady ? 'commerce-money' : 'checkout-page__pendingAmount'}>{payableAmountText}</span></Text></div>
+              <div><span className="checkout-page__text checkout-page__text--strong checkout-page__payableTotal">{t('pages.checkout.payable')}: <span className={shippingQuoteReady ? 'commerce-money' : 'checkout-page__pendingAmount'}>{payableAmountText}</span></span></div>
             </div>
           </Card>
         )}
 
         <Card id="checkout-payment-card" title={t('pages.payment.title')}>
           <div className="checkout-page__paymentConfidence">
-            <SafetyCertificateOutlined />
+            <ShopIcon path={SI.safety} />
             <span>
-              <Text strong>{t('pages.checkout.paymentConfidenceTitle')}</Text>
-              <Text type="secondary">
+              <span className="checkout-page__text checkout-page__text--strong">{t('pages.checkout.paymentConfidenceTitle')}</span>
+              <span className="checkout-page__text checkout-page__text--secondary">
                 {!paymentMethodsAvailable
                   ? t('pages.checkout.paymentUnavailable')
                   : selectedPaymentDetail
                   ? t('pages.checkout.paymentConfidenceSelected', { method: selectedPaymentDetail.title })
                   : t('pages.checkout.paymentConfidenceDefault')}
-              </Text>
+              </span>
             </span>
           </div>
           {!paymentMethodsAvailable ? (
@@ -3518,12 +3518,12 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
           </Form.Item>
           <div className="checkout-page__submitReview">
             <div className="checkout-page__submitMetric">
-              <Text type="secondary">{t('pages.checkout.itemSummary', { count: checkoutItemCount })}</Text>
-              <Text strong className={shippingQuoteReady ? 'commerce-money' : undefined}>{payableAmountText}</Text>
+              <span className="checkout-page__text checkout-page__text--secondary">{t('pages.checkout.itemSummary', { count: checkoutItemCount })}</span>
+              <span className={`checkout-page__text checkout-page__text--strong ${shippingQuoteReady ? 'commerce-money' : ''}`}>{payableAmountText}</span>
             </div>
             <div className="checkout-page__submitMetric checkout-page__submitMetric--method">
-              <Text type="secondary">{t('pages.checkout.paymentMethod')}</Text>
-              <Text strong>{selectedPaymentDetail?.title || t('pages.checkout.paymentConfidenceDefault')}</Text>
+              <span className="checkout-page__text checkout-page__text--secondary">{t('pages.checkout.paymentMethod')}</span>
+              <span className="checkout-page__text checkout-page__text--strong">{selectedPaymentDetail?.title || t('pages.checkout.paymentConfidenceDefault')}</span>
             </div>
             <Form.Item className="checkout-page__submitAction">
               <Button className="checkout-page__submitButton" type="primary" htmlType="submit" loading={submitting} disabled={checkoutSubmitDisabled} block size="large" aria-label={checkoutSubmitActionLabel} title={checkoutSubmitTooltip}>
@@ -3544,16 +3544,16 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
             aria-label={t('pages.checkout.paymentConfidenceTitle')}
           >
             <span className="checkout-page__mobilePayBarMeta">
-              <Text type="secondary">{t('pages.checkout.payable')}</Text>
-              <Text strong className={shippingQuoteReady ? 'commerce-money' : undefined}>{payableAmountText}</Text>
-              <Text type="secondary" className="checkout-page__mobilePayBarTrust">
+              <span className="checkout-page__text checkout-page__text--secondary">{t('pages.checkout.payable')}</span>
+              <span className={`checkout-page__text checkout-page__text--strong ${shippingQuoteReady ? 'commerce-money' : ''}`}>{payableAmountText}</span>
+              <span className="checkout-page__text checkout-page__text--secondary checkout-page__mobilePayBarTrust">
                 {selectedPaymentDetail?.title
                   ? t('pages.checkout.mobilePayBarTrust', { method: selectedPaymentDetail.title })
                   : t('pages.checkout.mobilePayBarTrustDefault')}
-              </Text>
+              </span>
             </span>
             {!paymentMethodsAvailable ? (
-              <Space wrap className="checkout-page__paymentUnavailableActions checkout-page__paymentUnavailableActions--mobile" data-checkout-payment-unavailable-recovery="true">
+              <div className="checkout-page__paymentUnavailableActions checkout-page__paymentUnavailableActions--mobile" data-checkout-payment-unavailable-recovery="true">
                 <Button
                   type="primary"
                   size="large"
@@ -3566,7 +3566,7 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
                 </Button>
                 <Button
                   size="large"
-                  icon={<CustomerServiceOutlined />}
+                  icon={<ShopIcon path={SI.support} />}
                   aria-label={t('pages.profile.contactSupport')}
                   title={t('pages.profile.contactSupport')}
                   onClick={openSupport}
@@ -3575,7 +3575,7 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
                 </Button>
                 <Button
                   size="large"
-                  icon={<ShoppingCartOutlined />}
+                  icon={<ShopIcon path={SI.cart} />}
                   aria-label={t('pages.cart.title')}
                   title={t('pages.cart.title')}
                   onClick={() => navigate('/cart')}
@@ -3584,7 +3584,7 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
                 </Button>
                 <Button
                   size="large"
-                  icon={<ShoppingOutlined />}
+                  icon={<ShopIcon path={SI.shopping} />}
                   aria-label={t('pages.cart.browse')}
                   title={t('pages.cart.browse')}
                   onClick={() => navigate('/products')}
@@ -3593,14 +3593,14 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
                 </Button>
                 <Button
                   size="large"
-                  icon={<GiftOutlined />}
+                  icon={<ShopIcon path={SI.gift} />}
                   aria-label={t('nav.coupons')}
                   title={t('nav.coupons')}
                   onClick={() => navigate('/coupons')}
                 >
                   {t('nav.coupons')}
                 </Button>
-              </Space>
+              </div>
             ) : (
               <Button
                   type="primary"

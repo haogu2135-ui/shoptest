@@ -7,7 +7,7 @@
 .notifications-page,
 .notifications-page .ant-btn,
 .notifications-page .ant-list,
-.notifications-page .ant-typography {
+.notifications-page .notifications-page__text {
   font-family: 'Avenir Next', 'Manrope', 'Segoe UI Variable', sans-serif;
 }
 
@@ -37,7 +37,7 @@
   font-size: 24px;
 }
 
-.notifications-page__title h3.ant-typography {
+.notifications-page__title h3.notifications-page__title {
   margin: 0;
 }
 
@@ -60,7 +60,7 @@
   gap: 4px;
 }
 
-.notifications-page__assistantCopy .ant-typography {
+.notifications-page__assistantCopy .notifications-page__text {
   margin: 0;
 }
 
@@ -174,12 +174,12 @@
   gap: 4px;
 }
 
-.notifications-page__actionPlan .ant-typography {
+.notifications-page__actionPlan .notifications-page__text {
   margin: 0;
   overflow-wrap: anywhere;
 }
 
-.notifications-page__actionPlan h4.ant-typography {
+.notifications-page__actionPlan h4.notifications-page__title {
   color: #173f2b;
   line-height: 1.25;
 }
@@ -268,7 +268,7 @@
     width: 100%;
   }
 
-  .notifications-page__title h3.ant-typography {
+  .notifications-page__title h3.notifications-page__title {
     font-size: 22px;
   }
 
@@ -415,7 +415,7 @@
     font-size: 22px;
   }
 
-  .notifications-page__title h3.ant-typography {
+  .notifications-page__title h3.notifications-page__title {
     font-size: 21px;
     line-height: 1.18;
   }
@@ -432,13 +432,13 @@
     border-radius: 18px;
   }
 
-  .notifications-page__assistantCopy h4.ant-typography,
-  .notifications-page__actionPlan h4.ant-typography {
+  .notifications-page__assistantCopy h4.notifications-page__title,
+  .notifications-page__actionPlan h4.notifications-page__title {
     font-size: 17px;
   }
 
-  .notifications-page__assistantCopy .ant-typography,
-  .notifications-page__actionPlan .ant-typography {
+  .notifications-page__assistantCopy .notifications-page__text,
+  .notifications-page__actionPlan .notifications-page__text {
     line-height: 1.4;
   }
 
@@ -538,7 +538,7 @@
     border-radius: 999px;
   }
 
-  .notifications-page__item .ant-list-item-meta-title .ant-typography {
+  .notifications-page__item .ant-list-item-meta-title .notifications-page__text {
     flex: 1 1 180px;
     min-width: 0;
     line-height: 1.35;
@@ -604,7 +604,7 @@
     border-radius: 16px;
   }
 
-  .notifications-page__title h3.ant-typography {
+  .notifications-page__title h3.notifications-page__title {
     font-size: 19px;
     line-height: 1.15;
   }
@@ -624,14 +624,14 @@
     gap: 9px;
   }
 
-  .notifications-page__assistantCopy h4.ant-typography,
-  .notifications-page__actionPlan h4.ant-typography {
+  .notifications-page__assistantCopy h4.notifications-page__title,
+  .notifications-page__actionPlan h4.notifications-page__title {
     font-size: 16px;
     line-height: 1.2;
   }
 
-  .notifications-page__assistantCopy .ant-typography,
-  .notifications-page__actionPlan .ant-typography {
+  .notifications-page__assistantCopy .notifications-page__text,
+  .notifications-page__actionPlan .notifications-page__text {
     font-size: 12px;
     line-height: 1.35;
   }
@@ -678,7 +678,7 @@
     margin-bottom: 4px;
   }
 
-  .notifications-page__item .ant-list-item-meta-title .ant-typography {
+  .notifications-page__item .ant-list-item-meta-title .notifications-page__text {
     font-size: 13px;
     line-height: 1.3;
   }
@@ -826,13 +826,13 @@
     scroll-snap-align: start;
   }
 
-  .notifications-page__title h3.ant-typography,
-  .notifications-page__assistantCopy .ant-typography,
-  .notifications-page__actionPlan .ant-typography,
+  .notifications-page__title h3.notifications-page__title,
+  .notifications-page__assistantCopy .notifications-page__text,
+  .notifications-page__actionPlan .notifications-page__text,
   .notifications-page__plainText,
   .notification-rich-content,
-  .notifications-page__item .ant-list-item-meta-title .ant-typography,
-  .notifications-page__item .ant-list-item-meta-description .ant-typography {
+  .notifications-page__item .ant-list-item-meta-title .notifications-page__text,
+  .notifications-page__item .ant-list-item-meta-description .notifications-page__text {
     overflow-wrap: anywhere;
   }
 
@@ -995,8 +995,8 @@
   .notifications-page__signal span,
   .notifications-page__actionSignals span,
   .notifications-page__item .ant-list-item-meta-title .ant-tag,
-  .notifications-page__assistantCopy .ant-typography,
-  .notifications-page__actionPlan .ant-typography {
+  .notifications-page__assistantCopy .notifications-page__text,
+  .notifications-page__actionPlan .notifications-page__text {
     color: #2f4f3a !important;
     font-size: max(12px, 1em) !important;
     line-height: 1.25 !important;
@@ -1184,12 +1184,64 @@
 
 
 /* Commercial: notifications primary titles stay scannable. */
-.notifications-page__title h1.ant-typography,
-.notifications-page__emptyCopy h1.ant-typography,
-.notifications-page--loading h1.ant-typography {
+.notifications-page__title h1.notifications-page__title,
+.notifications-page__emptyCopy h1.notifications-page__title,
+.notifications-page--loading h1.notifications-page__title {
   margin: 0 !important;
   color: #173f2b !important;
   font-size: 24px !important;
   font-weight: 800 !important;
   line-height: 1.2 !important;
+}
+
+/* Commercial Notifications native Space */
+.notifications-page__filterEmptyActions,
+.notifications-page__itemActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+
+/* Native typography densification (no ant Typography runtime) */
+.notifications-page__title {
+  margin: 0;
+  font-weight: 700;
+  line-height: 1.2;
+  color: inherit;
+}
+
+.notifications-page__text {
+  margin: 0;
+  color: inherit;
+  line-height: 1.5;
+}
+
+.notifications-page__paragraph {
+  display: block;
+}
+
+.notifications-page__text--strong {
+  font-weight: 600;
+}
+
+.notifications-page__text--secondary {
+  color: rgba(0, 0, 0, 0.45);
+}
+
+.notifications-page__text--danger {
+  color: #ff4d4f;
+}
+
+.notifications-page__text--warning {
+  color: #faad14;
+}
+
+.notifications-page__text--success {
+  color: #52c41a;
+}
+
+.notifications-page__text--delete {
+  text-decoration: line-through;
 }

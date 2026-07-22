@@ -1,6 +1,6 @@
 import React from 'react';
+import { ShopIcon, SI } from './ShopIcon';
 import { Button, Result } from 'antd';
-import { HomeOutlined, ReloadOutlined } from '@ant-design/icons';
 import './PageFeedback.css';
 
 export type PageErrorAction = {
@@ -38,7 +38,7 @@ const PageError: React.FC<PageErrorProps> = ({
       <Button
         key="retry"
         type="primary"
-        icon={<ReloadOutlined />}
+        icon={<ShopIcon path={SI.reload} />}
         aria-label={retryLabel}
         title={retryLabel}
         onClick={onRetry}
@@ -49,7 +49,7 @@ const PageError: React.FC<PageErrorProps> = ({
     onHome && homeLabel ? (
       <Button
         key="home"
-        icon={<HomeOutlined />}
+        icon={<ShopIcon path={SI.home} />}
         aria-label={homeLabel}
         title={homeLabel}
         onClick={onHome}
@@ -64,7 +64,7 @@ const PageError: React.FC<PageErrorProps> = ({
       <Button
         key={action.key}
         type={action.type || (index === 0 ? 'primary' : 'default')}
-        icon={action.icon || (index === 0 ? <ReloadOutlined /> : undefined)}
+        icon={action.icon || (index === 0 ? <ShopIcon path={SI.reload} /> : undefined)}
         aria-label={action.label}
         title={action.label}
         onClick={action.onClick}

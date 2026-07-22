@@ -71,6 +71,33 @@ jest.mock('../utils/cartDrawer', () => ({
   openCartDrawerWithSnapshot: jest.fn(),
 }));
 
+jest.mock('../i18n', () => {
+  const actual = jest.requireActual('../i18n');
+  const en = require('../locales/en.json');
+  const readNested = (source: any, key: string): any => key.split('.').reduce((current: any, part: string) => (
+    current && typeof current === 'object' ? current[part] : undefined
+  ), source);
+  const t = (key: string, params?: Record<string, string | number>) => {
+    const translated = readNested(en, key);
+    let template = typeof translated === 'string' ? translated : key;
+    if (params) {
+      Object.entries(params).forEach(([paramKey, value]) => {
+        if (paramKey === 'defaultValue') return;
+        template = template.replace(new RegExp(`\{${paramKey}\}`, 'g'), String(value));
+      });
+    }
+    return template;
+  };
+  const setLanguage = jest.fn();
+  const value = { language: 'en', setLanguage, t };
+  return {
+    ...actual,
+    LanguageProvider: ({ children }: { children: any }) => children,
+    useLanguage: () => value,
+  };
+});
+
+
 const catalogProduct = {
   id: 101,
   name: 'Smart feeder bowl',
@@ -112,7 +139,7 @@ describe('ProductList quick-add mobile overlay contracts', () => {
   it('keeps product title links at a full App touch target height', () => {
     const css = readProductListCss();
 
-    expect(css).toMatch(/body\.shop-mobile-app \.product-list__titleLink\s*\{[\s\S]*?min-height:\s*44px\s*!important;[\s\S]*?padding-block:\s*5px\s*!important;/);
+    expect(css).toMatch(/body\.shop-mobile-app \.product-list__titleLink[\s\S]*?\{[\s\S]*?min-height:\s*44px\s*!important;[\s\S]*?padding-block:\s*5px\s*!important;/);
   });
 
   it('keeps App product card links from inheriting browser hyperlink decoration', () => {

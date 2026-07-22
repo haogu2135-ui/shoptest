@@ -1,16 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Button, Modal, Popconfirm, Skeleton, Space, Statistic, Typography, message } from 'antd';
-import {
-  CameraOutlined,
-  DeleteOutlined,
-  HeartFilled,
-  HeartOutlined,
-  RiseOutlined,
-  ReloadOutlined,
-  ShopOutlined,
-  UploadOutlined,
-  UserAddOutlined,
-} from '@ant-design/icons';
+import { announceAccessibleMessage } from '../utils/accessibleMessage';
+import { ShopIcon, SI } from '../components/ShopIcon';
+import { Alert, Button, Modal, Popconfirm, Skeleton, Statistic } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { petGalleryApi } from '../api';
 import { useLanguage } from '../i18n';
@@ -29,7 +20,6 @@ import { getLocalStorageItem, hasStoredValue, setLocalStorageItem } from '../uti
 import './PetGallery.css';
 import '../styles/mobile-page-contrast.css';
 
-const { Paragraph, Text, Title } = Typography;
 
 const PET_GALLERY_MAX_FILE_SIZE = 5 * 1024 * 1024;
 const PET_GALLERY_LOCAL_LIKES_KEY = 'shop-pet-gallery-local-likes';
@@ -196,11 +186,11 @@ const PetGallery: React.FC = () => {
   const galleryItemShopLabel = (item: Pick<GalleryItem, 'label'>) => `${t('home.petUgcShopFeed')}: ${item.label}`;
   const galleryItemLikeLabel = (item: Pick<GalleryItem, 'label' | 'likeCount'>) => `${t('home.petUgcLikes', { count: item.likeCount })}: ${item.label}`;
   const galleryItemDeleteLabel = (item: Pick<GalleryItem, 'label'>) => `${t('home.petUgcDelete')}: ${item.label}`;
-  const heroUploadIcon = hasLiveGalleryData ? <UploadOutlined /> : <ReloadOutlined />;
+  const heroUploadIcon = hasLiveGalleryData ? <ShopIcon path={SI.upload} /> : <ShopIcon path={SI.reload} />;
 
   const handleUploadClick = useCallback(() => {
     if (!isAuthenticated) {
-      message.warning(t('messages.loginRequired'));
+      announceAccessibleMessage(t('messages.loginRequired'), 'warning');
       navigate(buildLoginUrlFromWindow());
       return;
     }
@@ -209,7 +199,7 @@ const PetGallery: React.FC = () => {
       return;
     }
     if (quota && !quota.canUpload) {
-      message.warning(t('home.petUgcLimitReached'));
+      announceAccessibleMessage(t('home.petUgcLimitReached'), 'warning');
       return;
     }
     uploadInputRef.current?.click();
@@ -222,7 +212,7 @@ const PetGallery: React.FC = () => {
         text: t('pages.petGallery.uploadLoginText'),
         action: t('pages.petGallery.loginToUpload'),
         onClick: () => navigate(buildLoginUrlFromWindow()),
-        icon: <UserAddOutlined />,
+        icon: <ShopIcon path={SI.userAdd} />,
       };
     }
     if (!hasLiveGalleryData) {
@@ -231,7 +221,7 @@ const PetGallery: React.FC = () => {
         text: t('pages.petGallery.uploadStaleText'),
         action: t('common.retry'),
         onClick: () => refreshGallery(true),
-        icon: <ReloadOutlined />,
+        icon: <ShopIcon path={SI.reload} />,
       };
     }
     if (quota && !quota.canUpload) {
@@ -240,7 +230,7 @@ const PetGallery: React.FC = () => {
         text: t('pages.petGallery.uploadLimitText'),
         action: t('home.petUgcShopFeed'),
         onClick: () => navigate('/products?keyword=pet'),
-        icon: <ShopOutlined />,
+        icon: <ShopIcon path={SI.shop} />,
       };
     }
     return {
@@ -248,7 +238,7 @@ const PetGallery: React.FC = () => {
       text: t('pages.petGallery.uploadReadyText'),
       action: t('home.petUgcUploadRemaining', { count: remainingUploads }),
       onClick: handleUploadClick,
-      icon: <UploadOutlined />,
+      icon: <ShopIcon path={SI.upload} />,
     };
   }, [handleUploadClick, hasLiveGalleryData, isAuthenticated, navigate, quota, refreshGallery, remainingUploads, t]);
   const uploadReadinessActionLabel = `${uploadReadiness.action}: ${uploadReadiness.title}`;
@@ -286,18 +276,18 @@ const PetGallery: React.FC = () => {
     if (!file) return;
 
     if (!hasLiveGalleryData) {
-      message.warning(t('pages.petGallery.staleActionBlocked'));
+      announceAccessibleMessage(t('pages.petGallery.staleActionBlocked'), 'warning');
       refreshGallery(true);
       return;
     }
 
     const isSupportedImage = isSupportedPetGalleryImageFile(file);
     if (!isSupportedImage) {
-      message.error(t('home.petUgcInvalidType'));
+      announceAccessibleMessage(t('home.petUgcInvalidType'), 'error');
       return;
     }
     if (file.size > PET_GALLERY_MAX_FILE_SIZE) {
-      message.error(t('home.petUgcTooLarge'));
+      announceAccessibleMessage(t('home.petUgcTooLarge'), 'error');
       return;
     }
 
@@ -305,10 +295,10 @@ const PetGallery: React.FC = () => {
     try {
       const response = await petGalleryApi.upload(file);
       setPhotos((current) => [response.data, ...current.filter((photo) => photo.id !== response.data.id)].slice(0, 24));
-      message.success(t('home.petUgcUploadSuccess'));
+      announceAccessibleMessage(t('home.petUgcUploadSuccess'), 'success');
       await refreshGallery(true);
     } catch (error) {
-      message.error(getApiErrorMessage(error, t('home.petUgcUploadFailed'), language));
+      announceAccessibleMessage(getApiErrorMessage(error, t('home.petUgcUploadFailed'), language), 'error');
     } finally {
       setUploading(false);
     }
@@ -316,45 +306,45 @@ const PetGallery: React.FC = () => {
 
   const handleLike = async (item: GalleryItem) => {
     if (!canUseLiveInteractions) {
-      message.warning(t('pages.petGallery.staleActionBlocked'));
+      announceAccessibleMessage(t('pages.petGallery.staleActionBlocked'), 'warning');
       return;
     }
     if (!item.photo) {
       if (localLikes.includes(item.key)) {
-        message.info(t('home.petUgcAlreadyLiked'));
+        announceAccessibleMessage(t('home.petUgcAlreadyLiked'), 'info');
         return;
       }
       const nextLikes = [...localLikes, item.key];
       setLocalLikes(nextLikes);
       writeLocalLikes(nextLikes);
-      message.success(t('home.petUgcLiked'));
+      announceAccessibleMessage(t('home.petUgcLiked'), 'success');
       return;
     }
     if (item.photo.likedByMe) {
-      message.info(t('home.petUgcAlreadyLiked'));
+      announceAccessibleMessage(t('home.petUgcAlreadyLiked'), 'info');
       return;
     }
     try {
       const response = await petGalleryApi.like(item.photo.id);
       setPhotos((current) => current.map((photo) => photo.id === response.data.id ? response.data : photo));
-      message.success(t('home.petUgcLiked'));
+      announceAccessibleMessage(t('home.petUgcLiked'), 'success');
     } catch (error) {
-      message.error(getApiErrorMessage(error, t('home.petUgcLikeFailed'), language));
+      announceAccessibleMessage(getApiErrorMessage(error, t('home.petUgcLikeFailed'), language), 'error');
     }
   };
 
   const handleDelete = async (photo: PetGalleryPhotoPublic) => {
     if (!canUseLiveInteractions) {
-      message.warning(t('pages.petGallery.staleActionBlocked'));
+      announceAccessibleMessage(t('pages.petGallery.staleActionBlocked'), 'warning');
       return;
     }
     try {
       await petGalleryApi.delete(photo.id);
       setPhotos((current) => current.filter((item) => item.id !== photo.id));
-      message.success(t('home.petUgcDeleted'));
+      announceAccessibleMessage(t('home.petUgcDeleted'), 'success');
       await refreshGallery(true);
     } catch (error) {
-      message.error(getApiErrorMessage(error, t('home.petUgcDeleteFailed'), language));
+      announceAccessibleMessage(getApiErrorMessage(error, t('home.petUgcDeleteFailed'), language), 'error');
     }
   };
 
@@ -362,10 +352,10 @@ const PetGallery: React.FC = () => {
     <main className={`pet-gallery-page pet-gallery-page--${language}`}>
       <section className="pet-gallery-hero">
         <div className="pet-gallery-hero__copy">
-          <Text className="pet-gallery-hero__eyebrow">{t('pages.petGallery.eyebrow')}</Text>
-          <Title level={1}>{t('pages.petGallery.title')}</Title>
-          <Paragraph>{t('pages.petGallery.subtitle')}</Paragraph>
-          <Space wrap>
+          <span className="pet-gallery-page__text pet-gallery-hero__eyebrow">{t('pages.petGallery.eyebrow')}</span>
+          <h1 className="pet-gallery-page__title">{t('pages.petGallery.title')}</h1>
+          <p className="pet-gallery-page__text pet-gallery-page__paragraph">{t('pages.petGallery.subtitle')}</p>
+          <div className="pet-gallery-page__actionRow">
             <Button
               type="primary"
               size="large"
@@ -381,10 +371,10 @@ const PetGallery: React.FC = () => {
                   : t('common.retry')
                 : t('pages.petGallery.loginToUpload')}
             </Button>
-            <Button size="large" icon={<ShopOutlined />} aria-label={galleryShopFeedActionLabel} title={galleryShopFeedActionLabel} onClick={() => navigate('/products?keyword=pet')}>
+            <Button size="large" icon={<ShopIcon path={SI.shop} />} aria-label={galleryShopFeedActionLabel} title={galleryShopFeedActionLabel} onClick={() => navigate('/products?keyword=pet')}>
               {t('home.petUgcShopFeed')}
             </Button>
-          </Space>
+          </div>
           <input
             ref={uploadInputRef}
             type="file"
@@ -403,19 +393,19 @@ const PetGallery: React.FC = () => {
 
       <section className="pet-gallery-toolbar">
         <div>
-          <Text strong>{t('pages.petGallery.latest')}</Text>
-          <Text type="secondary">{t('pages.petGallery.updatedAt', { time: lastUpdated })}</Text>
+          <span className="pet-gallery-page__text pet-gallery-page__text--strong">{t('pages.petGallery.latest')}</span>
+          <span className="pet-gallery-page__text pet-gallery-page__text--secondary">{t('pages.petGallery.updatedAt', { time: lastUpdated })}</span>
         </div>
-        <Space wrap>
+        <div className="pet-gallery-page__actionRow">
           {!isAuthenticated ? (
-            <Button icon={<UserAddOutlined />} aria-label={galleryLoginActionLabel} title={galleryLoginActionLabel} onClick={() => navigate(buildLoginUrlFromWindow())}>
+            <Button icon={<ShopIcon path={SI.userAdd} />} aria-label={galleryLoginActionLabel} title={galleryLoginActionLabel} onClick={() => navigate(buildLoginUrlFromWindow())}>
               {t('pages.petGallery.loginToUpload')}
             </Button>
           ) : null}
-          <Button icon={<ReloadOutlined />} aria-label={galleryRefreshActionLabel} title={galleryRefreshActionLabel} onClick={() => refreshGallery(true)}>
+          <Button icon={<ShopIcon path={SI.reload} />} aria-label={galleryRefreshActionLabel} title={galleryRefreshActionLabel} onClick={() => refreshGallery(true)}>
             {t('common.refresh')}
           </Button>
-        </Space>
+        </div>
       </section>
 
       {loadError && !loading && items.length > 0 ? (
@@ -424,7 +414,7 @@ const PetGallery: React.FC = () => {
           showIcon
           message={t('pages.petGallery.staleDataWarning')}
           action={(
-            <Button size="small" icon={<ReloadOutlined />} onClick={() => refreshGallery(true)}>
+            <Button size="small" icon={<ShopIcon path={SI.reload} />} onClick={() => refreshGallery(true)}>
               {t('common.retry')}
             </Button>
           )}
@@ -480,7 +470,7 @@ const PetGallery: React.FC = () => {
           message={t('pages.petGallery.sampleFallback')}
           description={t('pages.petGallery.sampleFallbackDescription')}
           action={(
-            <Button size="small" icon={<ShopOutlined />} onClick={() => navigate('/products?keyword=pet')}>
+            <Button size="small" icon={<ShopIcon path={SI.shop} />} onClick={() => navigate('/products?keyword=pet')}>
               {t('pages.petGallery.browsePetProducts')}
             </Button>
           )}
@@ -491,23 +481,23 @@ const PetGallery: React.FC = () => {
       {!loading && items.length > 0 ? (
         <section className="pet-gallery-insights" aria-label={t('pages.petGallery.insightTitle')}>
           <div className="pet-gallery-insights__copy">
-            <Text className="pet-gallery-insights__eyebrow">{t('pages.petGallery.insightEyebrow')}</Text>
-            <Title level={4}>{t('pages.petGallery.insightTitle')}</Title>
-            <Text type="secondary">{galleryInsightSubtitle}</Text>
+            <span className="pet-gallery-page__text pet-gallery-insights__eyebrow">{t('pages.petGallery.insightEyebrow')}</span>
+            <h4 className="pet-gallery-page__title">{t('pages.petGallery.insightTitle')}</h4>
+            <span className="pet-gallery-page__text pet-gallery-page__text--secondary">{galleryInsightSubtitle}</span>
           </div>
           <div className="pet-gallery-insights__grid">
             <div className="pet-gallery-insights__item is-ok">
-              <HeartFilled />
+              <ShopIcon path={SI.heartFill} />
               <strong>{galleryInsights.totalLikes}</strong>
               <span>{t('pages.petGallery.totalLikes')}</span>
             </div>
             <div className="pet-gallery-insights__item is-warm">
-              <RiseOutlined />
+              <ShopIcon path={SI.rise} />
               <strong>{galleryInsights.featuredMoments}</strong>
               <span>{t('pages.petGallery.savedMoments')}</span>
             </div>
             <div className="pet-gallery-insights__item is-ok">
-              <CameraOutlined />
+              <ShopIcon path={SI.camera} />
               <strong>{displayedRemainingUploads}</strong>
               <span>{t('pages.petGallery.uploadSlots')}</span>
             </div>
@@ -518,23 +508,23 @@ const PetGallery: React.FC = () => {
       {!loading ? (
         <section className="pet-gallery-actions" aria-label={t('pages.petGallery.actionTitle')}>
           <div className="pet-gallery-action-card">
-            <Text className="pet-gallery-insights__eyebrow">{t('pages.petGallery.uploadPlanEyebrow')}</Text>
-            <Title level={4}>{uploadReadiness.title}</Title>
-            <Text type="secondary">{uploadReadiness.text}</Text>
+            <span className="pet-gallery-page__text pet-gallery-insights__eyebrow">{t('pages.petGallery.uploadPlanEyebrow')}</span>
+            <h4 className="pet-gallery-page__title">{uploadReadiness.title}</h4>
+            <span className="pet-gallery-page__text pet-gallery-page__text--secondary">{uploadReadiness.text}</span>
             <Button type="primary" icon={uploadReadiness.icon} loading={uploading || (loadError && loading)} aria-label={uploadReadinessActionLabel} title={uploadReadinessActionLabel} onClick={uploadReadiness.onClick}>
               {uploadReadiness.action}
             </Button>
           </div>
           <div className="pet-gallery-action-card pet-gallery-action-card--shop">
-            <Text className="pet-gallery-insights__eyebrow">{t('pages.petGallery.shopMomentEyebrow')}</Text>
-            <Title level={4}>{shopMomentTitle}</Title>
-            <Text type="secondary">
+            <span className="pet-gallery-page__text pet-gallery-insights__eyebrow">{t('pages.petGallery.shopMomentEyebrow')}</span>
+            <h4 className="pet-gallery-page__title">{shopMomentTitle}</h4>
+            <span className="pet-gallery-page__text pet-gallery-page__text--secondary">
               {isSampleOnlyGallery
                 ? t('pages.petGallery.sampleShopMomentText')
                 : t('pages.petGallery.shopMomentText', { count: galleryInsights.communityMoments })}
-            </Text>
-            <Space wrap>
-              <Button icon={<ShopOutlined />} aria-label={galleryShopFeedActionLabel} title={galleryShopFeedActionLabel} onClick={() => navigate('/products?keyword=pet')}>
+            </span>
+            <div className="pet-gallery-page__actionRow">
+              <Button icon={<ShopIcon path={SI.shop} />} aria-label={galleryShopFeedActionLabel} title={galleryShopFeedActionLabel} onClick={() => navigate('/products?keyword=pet')}>
                 {t('home.petUgcShopFeed')}
               </Button>
               {galleryInsights.topMoment ? (
@@ -542,7 +532,7 @@ const PetGallery: React.FC = () => {
                   {t('pages.petGallery.previewTop')}
                 </Button>
               ) : null}
-            </Space>
+            </div>
           </div>
         </section>
       ) : null}
@@ -550,17 +540,17 @@ const PetGallery: React.FC = () => {
       {!loading && items.length > 0 ? (
         <section className="pet-gallery-conversion" aria-label={t('pages.petGallery.conversionTitle')}>
           <div>
-            <Text className="pet-gallery-insights__eyebrow">{t('pages.petGallery.conversionEyebrow')}</Text>
-            <Title level={4}>{t('pages.petGallery.conversionTitle')}</Title>
-            <Text type="secondary">{conversionSubtitle}</Text>
+            <span className="pet-gallery-page__text pet-gallery-insights__eyebrow">{t('pages.petGallery.conversionEyebrow')}</span>
+            <h4 className="pet-gallery-page__title">{t('pages.petGallery.conversionTitle')}</h4>
+            <span className="pet-gallery-page__text pet-gallery-page__text--secondary">{conversionSubtitle}</span>
           </div>
           <div className="pet-gallery-conversion__signals">
-            <span><HeartFilled /> {t('pages.petGallery.conversionLikes', { count: galleryInsights.totalLikes })}</span>
-            <span><CameraOutlined /> {t('pages.petGallery.conversionMoments', { count: galleryInsights.communityMoments })}</span>
-            <span><RiseOutlined /> {t('pages.petGallery.conversionCommunity', { count: galleryInsights.communityMoments })}</span>
+            <span><ShopIcon path={SI.heartFill} /> {t('pages.petGallery.conversionLikes', { count: galleryInsights.totalLikes })}</span>
+            <span><ShopIcon path={SI.camera} /> {t('pages.petGallery.conversionMoments', { count: galleryInsights.communityMoments })}</span>
+            <span><ShopIcon path={SI.rise} /> {t('pages.petGallery.conversionCommunity', { count: galleryInsights.communityMoments })}</span>
           </div>
-          <Space wrap className="pet-gallery-conversion__actions">
-            <Button type="primary" icon={<ShopOutlined />} aria-label={shopInspiredActionLabel} title={shopInspiredActionLabel} onClick={() => navigate('/products?keyword=pet')}>
+          <div className="pet-gallery-conversion__actions">
+            <Button type="primary" icon={<ShopIcon path={SI.shop} />} aria-label={shopInspiredActionLabel} title={shopInspiredActionLabel} onClick={() => navigate('/products?keyword=pet')}>
               {t('pages.petGallery.shopInspired')}
             </Button>
             {galleryInsights.topMoment ? (
@@ -568,7 +558,7 @@ const PetGallery: React.FC = () => {
                 {t('pages.petGallery.previewTop')}
               </Button>
             ) : null}
-          </Space>
+          </div>
         </section>
       ) : null}
 
@@ -638,7 +628,7 @@ const PetGallery: React.FC = () => {
               </button>
               <div className="pet-gallery-card__meta">
                 {item.isSample || !canUseLiveInteractions ? (
-                  <Text className="pet-gallery-card__sampleMeta">{t('pages.petGallery.sampleSource')}</Text>
+                  <span className="pet-gallery-page__text pet-gallery-card__sampleMeta">{t('pages.petGallery.sampleSource')}</span>
                 ) : (
                   <button
                     type="button"
@@ -648,7 +638,7 @@ const PetGallery: React.FC = () => {
                     title={galleryItemLikeLabel(item)}
                     onClick={() => handleLike(item)}
                   >
-                    {item.likedByMe ? <HeartFilled /> : <HeartOutlined />}
+                    {item.likedByMe ? <ShopIcon path={SI.heartFill} /> : <ShopIcon path={SI.heart} />}
                     {t('home.petUgcLikes', { count: item.likeCount })}
                   </button>
                 )}
@@ -663,11 +653,11 @@ const PetGallery: React.FC = () => {
                     onConfirm={() => handleDelete(item.photo as PetGalleryPhotoPublic)}
                   >
                     <button type="button" className="pet-gallery-card__delete" aria-label={galleryItemDeleteLabel(item)} title={galleryItemDeleteLabel(item)}>
-                      <DeleteOutlined />
+                      <ShopIcon path={SI.delete} />
                     </button>
                   </Popconfirm>
                 ) : (
-                  <CameraOutlined className="pet-gallery-card__camera" />
+                  <ShopIcon path={SI.camera} className="pet-gallery-card__camera" />
                 )}
               </div>
             </article>
@@ -698,14 +688,14 @@ const PetGallery: React.FC = () => {
             />
             <figcaption>
               <span>{activePreviewItem.label}</span>
-              <Space wrap>
-                <Button icon={<ShopOutlined />} aria-label={galleryItemShopLabel(activePreviewItem)} title={galleryItemShopLabel(activePreviewItem)} onClick={() => navigate('/products?keyword=pet')}>
+              <div className="pet-gallery-page__actionRow">
+                <Button icon={<ShopIcon path={SI.shop} />} aria-label={galleryItemShopLabel(activePreviewItem)} title={galleryItemShopLabel(activePreviewItem)} onClick={() => navigate('/products?keyword=pet')}>
                   {t('home.petUgcShopFeed')}
                 </Button>
                 {!activePreviewItem.isSample && canUseLiveInteractions ? (
                   <Button
                     type="primary"
-                    icon={activePreviewItem.likedByMe ? <HeartFilled /> : <HeartOutlined />}
+                    icon={activePreviewItem.likedByMe ? <ShopIcon path={SI.heartFill} /> : <ShopIcon path={SI.heart} />}
                     aria-pressed={activePreviewItem.likedByMe}
                     aria-label={galleryItemLikeLabel(activePreviewItem)}
                     title={galleryItemLikeLabel(activePreviewItem)}
@@ -714,7 +704,7 @@ const PetGallery: React.FC = () => {
                     {t('home.petUgcLikes', { count: activePreviewItem.likeCount })}
                   </Button>
                 ) : null}
-              </Space>
+              </div>
             </figcaption>
           </figure>
         ) : null}

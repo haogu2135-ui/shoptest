@@ -1,6 +1,7 @@
 import React, { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Button, Card, Col, Input, List, message, Row, Select, Skeleton, Space, Tag, Typography } from 'antd';
-import { CheckCircleOutlined, ClockCircleOutlined, FireOutlined, GiftOutlined, SearchOutlined, ShoppingOutlined, SortAscendingOutlined, ThunderboltOutlined } from '@ant-design/icons';
+import { announceAccessibleMessage } from '../utils/accessibleMessage';
+import { ShopIcon, SI } from '../components/ShopIcon';
+import { Alert, Button, Card, Input, List, Select, Skeleton, Tag } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { cartApi, couponApi } from '../api';
 import type { CartItem, CouponPublic, UserCoupon } from '../types';
@@ -36,7 +37,6 @@ import type { CouponFilter, CouponSort } from '../utils/couponCenter';
 import './CouponCenter.css';
 import '../styles/mobile-page-contrast.css';
 
-const { Text, Title } = Typography;
 
 const couponStatusColor: Record<string, string> = {
   UNUSED: 'green',
@@ -238,23 +238,23 @@ const CouponCenter: React.FC = () => {
   const claimCoupon = async (couponId: number) => {
     if (claimingId != null || claimingAll) return;
     if (!isAuthenticated) {
-      message.warning(t('messages.loginRequired'));
+      announceAccessibleMessage(t('messages.loginRequired'), 'warning');
       navigate(buildLoginUrlFromWindow());
       return;
     }
     if (isFallbackCoupon(couponId)) {
-      message.info(t('pages.coupons.previewOnly'));
+      announceAccessibleMessage(t('pages.coupons.previewOnly'), 'info');
       return;
     }
     setClaimingId(couponId);
     setClaimBatchSummary(null);
     try {
       await couponApi.claim(couponId, 0);
-      message.success(t('pages.coupons.claimedSuccess'));
+      announceAccessibleMessage(t('pages.coupons.claimedSuccess'), 'success');
       dispatchDomEvent('shop:coupons-updated');
       await loadCoupons();
     } catch (error: unknown) {
-      message.error(getApiErrorMessage(error, t('pages.coupons.claimFailed'), language));
+      announceAccessibleMessage(getApiErrorMessage(error, t('pages.coupons.claimFailed'), language), 'error');
     } finally {
       setClaimingId(null);
     }
@@ -263,17 +263,17 @@ const CouponCenter: React.FC = () => {
   const claimAllCoupons = async () => {
     if (claimingAll || claimingId != null) return;
     if (!isAuthenticated) {
-      message.warning(t('messages.loginRequired'));
+      announceAccessibleMessage(t('messages.loginRequired'), 'warning');
       navigate(buildLoginUrlFromWindow());
       return;
     }
     const liveClaimableCoupons = claimableCoupons.filter((coupon) => !isFallbackCoupon(coupon.id));
     if (claimableCoupons.length > 0 && liveClaimableCoupons.length === 0) {
-      message.info(t('pages.coupons.previewOnly'));
+      announceAccessibleMessage(t('pages.coupons.previewOnly'), 'info');
       return;
     }
     if (claimableCoupons.length === 0) {
-      message.info(t('pages.coupons.noClaimable'));
+      announceAccessibleMessage(t('pages.coupons.noClaimable'), 'info');
       return;
     }
     try {
@@ -283,15 +283,15 @@ const CouponCenter: React.FC = () => {
       const claimed = results.filter((result) => result.status === 'fulfilled').length;
       setClaimBatchSummary({ claimed, total: liveClaimableCoupons.length });
       if (claimed > 0) {
-        message.success(t('pages.coupons.claimedAllSuccess', { count: claimed }));
+        announceAccessibleMessage(t('pages.coupons.claimedAllSuccess', { count: claimed }), 'success');
         dispatchDomEvent('shop:coupons-updated');
       } else {
-        message.error(t('pages.coupons.claimFailed'));
+        announceAccessibleMessage(t('pages.coupons.claimFailed'), 'error');
       }
       await loadCoupons();
     } catch (error) {
       reportNonBlockingError('CouponCenter.claimAllCoupons', error);
-      message.error(t('pages.coupons.claimFailed'));
+      announceAccessibleMessage(t('pages.coupons.claimFailed'), 'error');
     } finally {
       setClaimingAll(false);
     }
@@ -563,7 +563,7 @@ const CouponCenter: React.FC = () => {
           className="coupon-center-page__loadAlert"
           data-coupon-fallback-recovery="true"
           action={(
-            <Space wrap className="coupon-center-page__fallbackActions" data-coupon-fallback-actions="true">
+            <div className="coupon-center-page__fallbackActions" data-coupon-fallback-actions="true">
               <Button size="small" type="primary" onClick={() => window.location.reload()} aria-label={t('messages.retry')} title={t('messages.retry')}>
                 {t('messages.retry')}
               </Button>
@@ -576,20 +576,20 @@ const CouponCenter: React.FC = () => {
               <Button size="small" onClick={() => navigate('/pet-finder')} aria-label={t('nav.petFinder')} title={t('nav.petFinder')}>
                 {t('nav.petFinder')}
               </Button>
-            </Space>
+            </div>
           )}
         />
       ) : null}
       <section className={`coupon-center-page__hero coupon-center-page__hero--${couponNextAction.tone}`}>
         <div className="coupon-center-page__heroCopy">
-          <Text className="coupon-center-page__eyebrow">{t('pages.coupons.title')}</Text>
-          <Title level={1}><GiftOutlined /> {t('pages.coupons.opportunityTitle')}</Title>
-          <Text className="coupon-center-page__heroText">
+          <span className="coupon-center-page__text coupon-center-page__eyebrow">{t('pages.coupons.title')}</span>
+          <h1 className="coupon-center-page__title"><ShopIcon path={SI.gift} /> {t('pages.coupons.opportunityTitle')}</h1>
+          <span className="coupon-center-page__text coupon-center-page__heroText">
             {couponInsights.bestCoupon
               ? t('pages.coupons.opportunitySubtitleBest', { name: couponInsights.bestCoupon.name })
               : t('pages.coupons.opportunitySubtitle')}
-          </Text>
-          <Space wrap className="coupon-center-page__heroActions">
+          </span>
+          <div className="coupon-center-page__heroActions">
             <Button
               type="primary"
               loading={showClaimCta && isAuthenticated ? claimingAll : false}
@@ -601,7 +601,7 @@ const CouponCenter: React.FC = () => {
               {showClaimCta ? primaryClaimLabel : couponNextAction.label}
             </Button>
             <Button
-              icon={<ShoppingOutlined />}
+              icon={<ShopIcon path={SI.shopping} />}
               className={hideMobileSecondaryAction ? 'coupon-center-page__secondaryAction--hidden' : undefined}
               aria-label={goShoppingActionLabel}
               title={goShoppingActionLabel}
@@ -609,18 +609,18 @@ const CouponCenter: React.FC = () => {
             >
               {t('pages.coupons.goShopping')}
             </Button>
-          </Space>
+          </div>
           <div className="coupon-center-page__heroBadges" aria-label={t('pages.coupons.opportunitySummaryTitle')}>
             <span className={bestCouponValue > 0 ? 'coupon-center-page__heroBadge coupon-center-page__heroBadge--primary' : 'coupon-center-page__heroBadge coupon-center-page__heroBadge--primary coupon-center-page__heroBadge--muted'}>
-              <GiftOutlined />
+              <ShopIcon path={SI.gift} />
               {bestCouponValue > 0 ? <span className="commerce-money">{formatMoney(bestCouponValue)}</span> : t('pages.coupons.noBestClaim')}
             </span>
             <span className={couponInsights.expiringSoon > 0 ? 'coupon-center-page__heroBadge' : 'coupon-center-page__heroBadge coupon-center-page__heroBadge--muted'}>
-              <ClockCircleOutlined />
+              <ShopIcon path={SI.clock} />
               {t('pages.coupons.expiringSoon')}: {couponInsights.expiringSoon}
             </span>
             <span className={couponInsights.unusedMine > 0 ? 'coupon-center-page__heroBadge' : 'coupon-center-page__heroBadge coupon-center-page__heroBadge--muted'}>
-              <ThunderboltOutlined />
+              <ShopIcon path={SI.thunder} />
               {t('pages.coupons.readyToUse')}: {couponInsights.unusedMine}
             </span>
           </div>
@@ -628,23 +628,23 @@ const CouponCenter: React.FC = () => {
         <div className="coupon-center-page__heroStats" aria-label={t('pages.coupons.title')}>
           <div className="coupon-center-page__statGrid">
             <div className={claimableCoupons.length === 0 ? 'coupon-center-page__statCard coupon-center-page__statCard--empty' : 'coupon-center-page__statCard'}>
-              <span className="coupon-center-page__statIcon"><GiftOutlined /></span>
+              <span className="coupon-center-page__statIcon"><ShopIcon path={SI.gift} /></span>
               <strong>{claimableCoupons.length}</strong>
               <span>{t('pages.coupons.claimableCount')}</span>
             </div>
             <div className={couponInsights.unusedMine === 0 ? 'coupon-center-page__statCard coupon-center-page__statCard--empty' : 'coupon-center-page__statCard'}>
-              <span className="coupon-center-page__statIcon"><ThunderboltOutlined /></span>
+              <span className="coupon-center-page__statIcon"><ShopIcon path={SI.thunder} /></span>
               <strong>{couponInsights.unusedMine}</strong>
               <span>{t('pages.coupons.readyToUse')}</span>
             </div>
             <div className="coupon-center-page__statCard coupon-center-page__statCard--cart">
-              <span className="coupon-center-page__statIcon"><ShoppingOutlined /></span>
+              <span className="coupon-center-page__statIcon"><ShopIcon path={SI.shopping} /></span>
               <strong className="commerce-money">{formatMoney(cartSubtotal)}</strong>
               <span>{t('pages.coupons.currentCartValue')}</span>
             </div>
           </div>
           <div className={`coupon-center-page__heroPlan coupon-center-page__heroPlan--${couponNextAction.tone}`}>
-            <Text type="secondary">{t('pages.coupons.nextActionEyebrow')}</Text>
+            <span className="coupon-center-page__text coupon-center-page__text--secondary">{t('pages.coupons.nextActionEyebrow')}</span>
             <strong>{couponNextAction.title}</strong>
             <span>{couponNextAction.text}</span>
             <Button
@@ -669,7 +669,7 @@ const CouponCenter: React.FC = () => {
           title={`${t('pages.coupons.nextActionEyebrow')}: ${couponThresholdProgress}%`}
           onClick={() => scrollToSection('coupon-next-action')}
         >
-          <ThunderboltOutlined /> <span className="coupon-center-page__quickNavLabel">{t('pages.coupons.nextActionEyebrow')}</span> <span className="coupon-center-page__quickNavCount">{couponThresholdProgress}%</span>
+          <ShopIcon path={SI.thunder} /> <span className="coupon-center-page__quickNavLabel">{t('pages.coupons.nextActionEyebrow')}</span> <span className="coupon-center-page__quickNavCount">{couponThresholdProgress}%</span>
         </button>
         <button
           type="button"
@@ -678,7 +678,7 @@ const CouponCenter: React.FC = () => {
           title={`${t('pages.coupons.claimTitle')}: ${sortedClaimablePublicCoupons.length}`}
           onClick={() => scrollToSection('coupon-claim-list')}
         >
-          <GiftOutlined /> <span className="coupon-center-page__quickNavLabel">{t('pages.coupons.claimTitle')}</span> <span className="coupon-center-page__quickNavCount">{sortedClaimablePublicCoupons.length}</span>
+          <ShopIcon path={SI.gift} /> <span className="coupon-center-page__quickNavLabel">{t('pages.coupons.claimTitle')}</span> <span className="coupon-center-page__quickNavCount">{sortedClaimablePublicCoupons.length}</span>
         </button>
         <button
           type="button"
@@ -687,7 +687,7 @@ const CouponCenter: React.FC = () => {
           title={`${t('pages.coupons.myCoupons')}: ${myCoupons.length}`}
           onClick={() => scrollToSection('coupon-wallet')}
         >
-          <ClockCircleOutlined /> <span className="coupon-center-page__quickNavLabel">{t('pages.coupons.myCoupons')}</span> <span className="coupon-center-page__quickNavCount">{myCoupons.length}</span>
+          <ShopIcon path={SI.clock} /> <span className="coupon-center-page__quickNavLabel">{t('pages.coupons.myCoupons')}</span> <span className="coupon-center-page__quickNavCount">{myCoupons.length}</span>
         </button>
       </nav>
 
@@ -725,7 +725,7 @@ const CouponCenter: React.FC = () => {
           {showClaimCta ? primaryClaimLabel : couponNextAction.label}
         </Button>
         <Button
-          icon={<ShoppingOutlined />}
+          icon={<ShopIcon path={SI.shopping} />}
           className={hideMobileSecondaryAction ? 'coupon-center-page__secondaryAction--hidden' : undefined}
           aria-label={goShoppingActionLabel}
           title={goShoppingActionLabel}
@@ -737,7 +737,7 @@ const CouponCenter: React.FC = () => {
 
       <div className={hasAnyCouponAction ? 'coupon-section-header' : 'coupon-section-header coupon-section-header--quiet'}>
         <div>
-          <Text type="secondary">{t('pages.coupons.opportunityEyebrow')}</Text>
+          <span className="coupon-center-page__text coupon-center-page__text--secondary">{t('pages.coupons.opportunityEyebrow')}</span>
           <h2>{t('pages.coupons.opportunitySummaryTitle')}</h2>
         </div>
         <span>{t('pages.coupons.opportunitySummaryText')}</span>
@@ -753,16 +753,16 @@ const CouponCenter: React.FC = () => {
         onPointerUp={endPriorityDrag}
       >
         <div className={couponInsights.bestCoupon ? 'coupon-priority-card coupon-priority-card--claim' : 'coupon-priority-card coupon-priority-card--claim coupon-priority-card--empty'}>
-          <Text type="secondary" className="coupon-priority-card__label">
-            <GiftOutlined /> {t('pages.coupons.bestClaimEyebrow')}
-          </Text>
+          <span className="coupon-center-page__text coupon-center-page__text--secondary coupon-priority-card__label">
+            <ShopIcon path={SI.gift} /> {t('pages.coupons.bestClaimEyebrow')}
+          </span>
           <h3>{couponInsights.bestCoupon?.name || t('pages.coupons.noBestClaim')}</h3>
           <p>
             {couponInsights.bestCoupon
               ? describeCoupon(couponInsights.bestCoupon)
               : t('pages.coupons.noBestClaimHint')}
           </p>
-          <Space wrap>
+          <div className="coupon-center-page__actionRow">
             {(() => {
               const bestCouponExpiry = formatCouponDate(couponInsights.bestCoupon?.endAt);
               return bestCouponExpiry ? (
@@ -783,35 +783,35 @@ const CouponCenter: React.FC = () => {
             ) : (
               <Button aria-label={goShoppingActionLabel} title={goShoppingActionLabel} onClick={() => navigate('/products')}>{t('pages.coupons.goShopping')}</Button>
             )}
-          </Space>
+          </div>
         </div>
         <div className={couponInsights.nextToUse ? 'coupon-priority-card coupon-priority-card--use' : 'coupon-priority-card coupon-priority-card--use coupon-priority-card--empty'}>
-          <Text type="secondary" className="coupon-priority-card__label">
-            <ClockCircleOutlined /> {t('pages.coupons.nextUseEyebrow')}
-          </Text>
+          <span className="coupon-center-page__text coupon-center-page__text--secondary coupon-priority-card__label">
+            <ShopIcon path={SI.clock} /> {t('pages.coupons.nextUseEyebrow')}
+          </span>
           <h3>{couponInsights.nextToUse?.couponName || t('pages.coupons.noNextUse')}</h3>
           <p>
             {couponInsights.nextToUse
               ? t('pages.coupons.nextUseHint', { value: describeCoupon(couponInsights.nextToUse) })
               : t('pages.coupons.noNextUseHint')}
           </p>
-          <Space wrap>
+          <div className="coupon-center-page__actionRow">
             {couponInsights.nextToUse?.endAt ? (
               <Tag color={(getDaysUntilEnd(couponInsights.nextToUse.endAt) ?? 99) <= 3 ? 'volcano' : 'blue'}>
                 {t('pages.coupons.daysLeft', { count: Math.max(0, getDaysUntilEnd(couponInsights.nextToUse.endAt) || 0) })}
               </Tag>
             ) : null}
-            <Button icon={<ShoppingOutlined />} aria-label={nextUseActionLabel} title={nextUseActionLabel} onClick={() => navigate(couponInsights.nextToUse ? '/cart' : '/products')}>
+            <Button icon={<ShopIcon path={SI.shopping} />} aria-label={nextUseActionLabel} title={nextUseActionLabel} onClick={() => navigate(couponInsights.nextToUse ? '/cart' : '/products')}>
               {couponInsights.nextToUse ? t('pages.coupons.useNext') : t('pages.coupons.goShopping')}
             </Button>
-          </Space>
+          </div>
         </div>
       </section>
 
       <div className={!hasCouponTarget ? 'coupon-guidance-grid coupon-guidance-grid--neutral' : 'coupon-guidance-grid'}>
         <section className={!hasCouponTarget ? 'coupon-savings-path coupon-savings-path--neutral' : 'coupon-savings-path'} aria-label={t('pages.coupons.savingsPathTitle')}>
           <div>
-            <Text type="secondary">{t('pages.coupons.savingsPathEyebrow')}</Text>
+            <span className="coupon-center-page__text coupon-center-page__text--secondary">{t('pages.coupons.savingsPathEyebrow')}</span>
             <h3>{t('pages.coupons.savingsPathTitle')}</h3>
             <p>
               {couponInsights.targetCoupon
@@ -833,7 +833,7 @@ const CouponCenter: React.FC = () => {
           </div>
           <Button
             type="primary"
-            icon={<ShoppingOutlined />}
+            icon={<ShopIcon path={SI.shopping} />}
             aria-label={nextUseActionLabel}
             title={nextUseActionLabel}
             onClick={() => navigate(couponInsights.nextToUse ? '/cart' : '/products')}
@@ -844,18 +844,18 @@ const CouponCenter: React.FC = () => {
 
         <section id="coupon-next-action" className={`coupon-next-action coupon-next-action--${couponNextAction.tone}`} aria-label={t('pages.coupons.nextActionEyebrow')}>
           <div>
-            <Text type="secondary">{t('pages.coupons.nextActionEyebrow')}</Text>
+            <span className="coupon-center-page__text coupon-center-page__text--secondary">{t('pages.coupons.nextActionEyebrow')}</span>
             <h3>{couponNextAction.title}</h3>
             <p>{couponNextAction.text}</p>
           </div>
           <div className="coupon-next-action__meta">
             <span className="coupon-next-action__metaItem coupon-next-action__metaItem--cart">
               <strong className="commerce-money">{formatMoney(cartSubtotal)}</strong>
-              <Text type="secondary">{t('pages.coupons.currentCartValue')}</Text>
+              <span className="coupon-center-page__text coupon-center-page__text--secondary">{t('pages.coupons.currentCartValue')}</span>
             </span>
             <span className={hasCouponTarget ? 'coupon-next-action__metaItem' : 'coupon-next-action__metaItem coupon-next-action__metaItem--empty'}>
               <strong className="commerce-money">{couponCartGap > 0 ? formatMoney(couponCartGap) : formatMoney(0)}</strong>
-              <Text type="secondary">{hasCouponTarget ? t('pages.coupons.couponThresholdGap') : t('pages.coupons.noBestClaim')}</Text>
+              <span className="coupon-center-page__text coupon-center-page__text--secondary">{hasCouponTarget ? t('pages.coupons.couponThresholdGap') : t('pages.coupons.noBestClaim')}</span>
             </span>
           </div>
           <div
@@ -872,11 +872,11 @@ const CouponCenter: React.FC = () => {
           </div>
           <div className="coupon-next-action__progressLabel">
             <span>{couponThresholdProgress}%</span>
-            <Text type="secondary">{hasCouponTarget ? (couponCartGap > 0 ? t('pages.coupons.couponThresholdGap') : t('pages.coupons.useNext')) : t('pages.coupons.goShopping')}</Text>
+            <span className="coupon-center-page__text coupon-center-page__text--secondary">{hasCouponTarget ? (couponCartGap > 0 ? t('pages.coupons.couponThresholdGap') : t('pages.coupons.useNext')) : t('pages.coupons.goShopping')}</span>
           </div>
           <Button
             type={couponNextAction.tone === 'ready' || couponNextAction.tone === 'claim' ? 'primary' : 'default'}
-            icon={<ShoppingOutlined />}
+            icon={<ShopIcon path={SI.shopping} />}
             loading={couponInsights.bestCoupon ? claimingId === couponInsights.bestCoupon.id : false}
             disabled={claimingAll || claimingId != null || (isAuthenticated && bestCouponIsPreview)}
             aria-label={couponNextActionLabel}
@@ -917,7 +917,7 @@ const CouponCenter: React.FC = () => {
       >
         {publicCoupons.length === 0 || sortedClaimablePublicCoupons.length === 0 ? (
           <div className={publicCoupons.length === 0 ? 'coupon-claim-section__empty' : 'coupon-claim-section__empty coupon-claim-section__empty--resolved'}>
-            <span className="coupon-claim-section__emptyIcon"><GiftOutlined /></span>
+            <span className="coupon-claim-section__emptyIcon"><ShopIcon path={SI.gift} /></span>
             <h3>
               {isAuthenticated && myCoupons.length > 0
                 ? t('pages.coupons.assignedReadyTitle')
@@ -934,7 +934,7 @@ const CouponCenter: React.FC = () => {
             </p>
             <Button
               type="primary"
-              icon={isAuthenticated && myCoupons.length > 0 ? <ClockCircleOutlined /> : <ShoppingOutlined />}
+              icon={isAuthenticated && myCoupons.length > 0 ? <ShopIcon path={SI.clock} /> : <ShopIcon path={SI.shopping} />}
               aria-label={isAuthenticated && myCoupons.length > 0 ? `${t('pages.coupons.myCoupons')}: ${myCoupons.length}` : goShoppingActionLabel}
               title={isAuthenticated && myCoupons.length > 0 ? `${t('pages.coupons.myCoupons')}: ${myCoupons.length}` : goShoppingActionLabel}
               onClick={() => isAuthenticated && myCoupons.length > 0 ? scrollToSection('coupon-wallet') : navigate('/products')}
@@ -946,17 +946,17 @@ const CouponCenter: React.FC = () => {
           <>
             <div className="coupon-claim-section__toolbar">
               <div>
-                <GiftOutlined className="coupon-claim-section__toolbarIcon" />
+                <ShopIcon path={SI.gift} className="coupon-claim-section__toolbarIcon" />
                 <span>{t('pages.coupons.claimableCount')}</span>
                 <strong>{claimableCoupons.length}</strong>
               </div>
               <div>
-                <ClockCircleOutlined className="coupon-claim-section__toolbarIcon" />
+                <ShopIcon path={SI.clock} className="coupon-claim-section__toolbarIcon" />
                 <span>{t('pages.coupons.expiringSoon')}</span>
                 <strong>{couponInsights.expiringSoon}</strong>
               </div>
               <div>
-                <FireOutlined className="coupon-claim-section__toolbarIcon" />
+                <ShopIcon path={SI.fire} className="coupon-claim-section__toolbarIcon" />
                 <span>{t('pages.coupons.limitedStock')}</span>
                 <strong>{couponInsights.limitedStock}</strong>
               </div>
@@ -975,13 +975,13 @@ const CouponCenter: React.FC = () => {
             </div>
             {claimableCoupons.length === 0 ? (
               <div className="coupon-claim-section__notice" role="status">
-                <CheckCircleOutlined />
+                <ShopIcon path={SI.checkCircle} />
                 <span>{t('pages.coupons.noBestClaimHint')}</span>
               </div>
             ) : null}
             {claimBatchSummary ? (
               <div className="coupon-claim-section__claimResult" role="status">
-                <CheckCircleOutlined />
+                <ShopIcon path={SI.checkCircle} />
                 <span>
                   {t('pages.coupons.ui.claimSummary', {
                     claimed: claimBatchSummary.claimed,
@@ -994,7 +994,7 @@ const CouponCenter: React.FC = () => {
               <Input
                 allowClear
                 className="coupon-claim-section__search"
-                prefix={<SearchOutlined />}
+                prefix={<ShopIcon path={SI.search} />}
                 value={couponSearch}
                 placeholder={couponUiText.searchPlaceholder}
                 aria-label={couponUiText.searchPlaceholder}
@@ -1003,7 +1003,7 @@ const CouponCenter: React.FC = () => {
               <Select
                 className="coupon-claim-section__sort"
                 value={couponSort}
-                suffixIcon={<SortAscendingOutlined />}
+                suffixIcon={<ShopIcon path={SI.sort} />}
                 aria-label={couponUiText.sortRecommended}
                 onChange={(value) => setCouponSort(value)}
                 classNames={{ popup: { root: 'shop-mobile-popup-layer' } }}
@@ -1040,9 +1040,9 @@ const CouponCenter: React.FC = () => {
                   );
                 })}
               </div>
-              <Text type="secondary">
+              <span className="coupon-center-page__text coupon-center-page__text--secondary">
                 {couponUiText.visibleResults}: {filteredClaimablePublicCoupons.length} / {sortedClaimablePublicCoupons.length}
-              </Text>
+              </span>
             </div>
             {hasActiveCouponControls ? (
               <div className="coupon-claim-section__activeContext">
@@ -1078,14 +1078,14 @@ const CouponCenter: React.FC = () => {
                 <small>{t('common.all')}</small>
               </span>
             </div>
-            <Row gutter={[16, 16]}>
+            <div className="coupon-center-page__claimGrid">
               {filteredClaimablePublicCoupons.length === 0 ? (
-                <Col span={24}>
+                <div className="coupon-center-page__claimEmpty">
                   <div className="coupon-claim-section__filterEmpty">
-                    <GiftOutlined />
+                    <ShopIcon path={SI.gift} />
                     <strong>{couponSearch.trim() ? couponUiText.noSearchResults : t('pages.coupons.noClaimable')}</strong>
                     <span>{t('pages.coupons.opportunitySubtitle')}</span>
-                    <Space wrap>
+                    <div className="coupon-center-page__actionRow">
                       <Button
                         aria-label={`${t('pages.notifications.clearFilter')}: ${couponFilterOptions.find((option) => option.key === couponFilter)?.label || t('pages.productList.filters')}`}
                         title={`${t('pages.notifications.clearFilter')}: ${couponFilterOptions.find((option) => option.key === couponFilter)?.label || t('pages.productList.filters')}`}
@@ -1102,9 +1102,9 @@ const CouponCenter: React.FC = () => {
                           {couponUiText.resetSearch}
                         </Button>
                       ) : null}
-                    </Space>
+                    </div>
                   </div>
-                </Col>
+                </div>
               ) : filteredClaimablePublicCoupons.map((coupon) => {
               const claimed = ownedCouponIds.has(coupon.id);
               const remaining = getCouponRemaining(coupon);
@@ -1143,7 +1143,7 @@ const CouponCenter: React.FC = () => {
               const couponActionLabel = `${couponStateLabel}: ${coupon.name}`;
               const validUntilText = formatCouponDate(coupon.endAt);
               return (
-                <Col xs={24} md={24} lg={8} key={coupon.id}>
+                <div className="coupon-center-page__claimItem" key={coupon.id}>
                   <Card
                     className={`coupon-center-page__coupon ${couponStateClass}`}
                     size="small"
@@ -1156,19 +1156,19 @@ const CouponCenter: React.FC = () => {
                       </span>
                     )}
                     extra={(
-                      <Space size={4} wrap className="coupon-center-page__couponTags">
+                      <div className="coupon-center-page__couponTags">
                         {endingSoon ? <Tag color="volcano">{t('pages.coupons.expiringSoon')}</Tag> : null}
                         {limitedStock ? <Tag color="gold">{t('pages.coupons.limitedStock')}</Tag> : null}
                         <Tag color={coupon.couponType === 'FULL_REDUCTION' ? 'volcano' : 'blue'}>
                           {coupon.couponType === 'FULL_REDUCTION' ? t('pages.coupons.fullReduction') : t('pages.coupons.discount')}
                         </Tag>
-                      </Space>
+                      </div>
                     )}
                   >
                     <span className="coupon-center-page__couponRibbon">{couponStateLabel}</span>
-                    <Space direction="vertical" className="coupon-center-page__couponBody">
+                    <div className="coupon-center-page__couponBody">
                       <div className="coupon-center-page__couponValueRow">
-                        <Text strong className="coupon-center-page__couponValue">{describeCoupon(coupon)}</Text>
+                        <span className="coupon-center-page__text coupon-center-page__text--strong coupon-center-page__couponValue">{describeCoupon(coupon)}</span>
                       {estimatedValue > 0 ? <span className="coupon-center-page__couponEstimate commerce-money">{formatMoney(estimatedValue)}</span> : null}
                       </div>
                       <div className="coupon-center-page__couponDetails" aria-label={coupon.name}>
@@ -1183,11 +1183,11 @@ const CouponCenter: React.FC = () => {
                       </div>
                       <div className="coupon-center-page__couponMicroFacts">
                         <span>
-                          <ClockCircleOutlined />
+                          <ShopIcon path={SI.clock} />
                           {formatDaysBadge(daysLeft)}
                         </span>
                         <span>
-                          <GiftOutlined />
+                          <ShopIcon path={SI.gift} />
                           {remaining == null ? couponUiText.unlimitedStock : t('pages.coupons.remaining', { count: remaining })}
                         </span>
                       </div>
@@ -1200,16 +1200,16 @@ const CouponCenter: React.FC = () => {
                       ) : null}
                       {isCartReadyCoupon ? (
                         <span className="coupon-center-page__couponReady">
-                          <CheckCircleOutlined /> {couponUiText.cartReady}
+                          <ShopIcon path={SI.checkCircle} /> {couponUiText.cartReady}
                         </span>
                       ) : null}
-                      {coupon.description ? <Text type="secondary" className="coupon-center-page__couponMeta">{coupon.description}</Text> : null}
-                      {validUntilText ? <Text type="secondary" className="coupon-center-page__couponMeta">{t('pages.coupons.validUntil', { time: validUntilText })}</Text> : null}
+                      {coupon.description ? <span className="coupon-center-page__text coupon-center-page__text--secondary coupon-center-page__couponMeta">{coupon.description}</span> : null}
+                      {validUntilText ? <span className="coupon-center-page__text coupon-center-page__text--secondary coupon-center-page__couponMeta">{t('pages.coupons.validUntil', { time: validUntilText })}</span> : null}
                       <Button
                         type="primary"
                         block
                         className="coupon-center-page__couponAction"
-                        icon={!isAuthenticated ? undefined : claimed ? <CheckCircleOutlined /> : <GiftOutlined />}
+                        icon={!isAuthenticated ? undefined : claimed ? <ShopIcon path={SI.checkCircle} /> : <ShopIcon path={SI.gift} />}
                         disabled={claimingAll || claimingId != null || claimed || remaining === 0 || (isAuthenticated && previewCoupon)}
                         loading={claimingId === coupon.id}
                         aria-label={couponActionLabel}
@@ -1224,12 +1224,12 @@ const CouponCenter: React.FC = () => {
                               ? t('pages.coupons.claimed')
                               : t('pages.coupons.claim')}
                       </Button>
-                    </Space>
+                    </div>
                   </Card>
-                </Col>
+                </div>
               );
               })}
-            </Row>
+            </div>
           </>
         )}
       </Card>
@@ -1246,13 +1246,13 @@ const CouponCenter: React.FC = () => {
       >
         {myCoupons.length === 0 ? (
           <div className="coupon-wallet__empty" role="status">
-            <span className="coupon-wallet__emptyIcon"><GiftOutlined /></span>
+            <span className="coupon-wallet__emptyIcon"><ShopIcon path={SI.gift} /></span>
             <h3>{t('pages.coupons.noMine')}</h3>
             <p>{t('pages.coupons.emptyWalletHint')}</p>
             <div className="coupon-wallet__emptyActions" data-coupon-wallet-empty-actions="true">
               <Button
                 type="primary"
-                icon={<ShoppingOutlined />}
+                icon={<ShopIcon path={SI.shopping} />}
                 aria-label={goShoppingActionLabel}
                 title={goShoppingActionLabel}
                 onClick={() => navigate('/products')}
@@ -1260,7 +1260,7 @@ const CouponCenter: React.FC = () => {
                 {t('pages.coupons.goShopping')}
               </Button>
               <Button
-                icon={<ShoppingOutlined />}
+                icon={<ShopIcon path={SI.shopping} />}
                 aria-label={t('pages.coupons.emptyWalletCart')}
                 title={t('pages.coupons.emptyWalletCart')}
                 onClick={() => navigate('/cart')}
@@ -1268,7 +1268,7 @@ const CouponCenter: React.FC = () => {
                 {t('pages.coupons.emptyWalletCart')}
               </Button>
               <Button
-                icon={<GiftOutlined />}
+                icon={<ShopIcon path={SI.gift} />}
                 aria-label={t('pages.coupons.emptyWalletPetFinder')}
                 title={t('pages.coupons.emptyWalletPetFinder')}
                 onClick={() => navigate('/pet-finder')}
@@ -1360,7 +1360,7 @@ const CouponCenter: React.FC = () => {
                       {couponUiText.walletAll}
                     </Button>
                     <Button
-                      icon={<ShoppingOutlined />}
+                      icon={<ShopIcon path={SI.shopping} />}
                       aria-label={goShoppingActionLabel}
                       title={goShoppingActionLabel}
                       onClick={() => navigate('/products')}
@@ -1368,7 +1368,7 @@ const CouponCenter: React.FC = () => {
                       {t('pages.coupons.goShopping')}
                     </Button>
                     <Button
-                      icon={<ShoppingOutlined />}
+                      icon={<ShopIcon path={SI.shopping} />}
                       aria-label={t('pages.coupons.emptyWalletCart')}
                       title={t('pages.coupons.emptyWalletCart')}
                       onClick={() => navigate('/cart')}
@@ -1376,7 +1376,7 @@ const CouponCenter: React.FC = () => {
                       {t('pages.coupons.emptyWalletCart')}
                     </Button>
                     <Button
-                      icon={<GiftOutlined />}
+                      icon={<ShopIcon path={SI.gift} />}
                       aria-label={t('pages.coupons.emptyWalletPetFinder')}
                       title={t('pages.coupons.emptyWalletPetFinder')}
                       onClick={() => navigate('/pet-finder')}
@@ -1405,22 +1405,22 @@ const CouponCenter: React.FC = () => {
               return (
               <List.Item className="coupon-wallet__item">
                 <div className={`coupon-wallet__coupon coupon-wallet__coupon--${(coupon.status || 'unknown').toLowerCase()} ${isNextWalletCoupon ? 'coupon-wallet__coupon--next' : ''}`}>
-                  <span className="coupon-wallet__couponIcon"><GiftOutlined /></span>
+                  <span className="coupon-wallet__couponIcon"><ShopIcon path={SI.gift} /></span>
                   <div className="coupon-wallet__main">
                     <div className="coupon-wallet__titleRow">
-                      <Text strong className="coupon-wallet__name">{coupon.couponName}</Text>
+                      <span className="coupon-center-page__text coupon-center-page__text--strong coupon-wallet__name">{coupon.couponName}</span>
                       {isNextWalletCoupon ? <Tag className="coupon-wallet__nextTag" color="volcano">{couponUiText.walletNext}</Tag> : null}
                       <Tag className="coupon-wallet__status" color={couponStatusColor[coupon.status] || 'default'}>
                         {statusLabel}
                       </Tag>
                     </div>
                     <div className={coupon.status === 'UNUSED' ? 'coupon-wallet__valueRow' : 'coupon-wallet__valueRow coupon-wallet__valueRow--closed'}>
-                      <Text className="coupon-wallet__value">{describeCoupon(coupon)}</Text>
+                      <span className="coupon-center-page__text coupon-wallet__value">{describeCoupon(coupon)}</span>
                       {walletCouponValue > 0 ? <span className="commerce-money">{formatMoney(walletCouponValue)}</span> : null}
                     </div>
                     {expiryText ? (
                       <span className={`coupon-wallet__expiryPill coupon-wallet__expiryPill--${expiryTone}`}>
-                        <ClockCircleOutlined />
+                        <ShopIcon path={SI.clock} />
                         {t('pages.coupons.validUntilPrefix', { time: expiryText })}
                       </span>
                     ) : null}
@@ -1440,7 +1440,7 @@ const CouponCenter: React.FC = () => {
                     {coupon.status === 'UNUSED' ? (
                       <Button
                         type="primary"
-                        icon={<ShoppingOutlined />}
+                        icon={<ShopIcon path={SI.shopping} />}
                         className="coupon-wallet__action"
                         aria-label={walletUseActionLabel}
                         title={walletUseActionLabel}

@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Skeleton, Tag, Typography, message } from 'antd';
-import { CompassOutlined, ShoppingCartOutlined } from '@ant-design/icons';
+import { announceAccessibleMessage } from '../utils/accessibleMessage';
+import { ShopIcon, SI } from './ShopIcon';
+import { Alert, Button, Skeleton, Tag, Typography } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { petProfileApi, productApi } from '../api';
 import type { PetProfile, ProductPublic as Product } from '../types';
@@ -117,9 +118,9 @@ const PetPersonalizedAssistant: React.FC<PetPersonalizedAssistantProps> = ({
     try {
       await onAdd(product);
       setProducts((current) => current.filter((item) => item.id !== product.id));
-      message.success(t('messages.addCartSuccess'));
+      announceAccessibleMessage(t('messages.addCartSuccess'), 'success');
     } catch (error: unknown) {
-      message.error(getApiErrorMessage(error, t('messages.addFailed'), language));
+      announceAccessibleMessage(getApiErrorMessage(error, t('messages.addFailed'), language), 'error');
     } finally {
       setAddingId(null);
     }
@@ -177,7 +178,7 @@ const PetPersonalizedAssistant: React.FC<PetPersonalizedAssistantProps> = ({
       <div className="pet-personalized-assistant__header">
         <div>
           <span className="pet-personalized-assistant__eyebrow">
-            <CompassOutlined /> {t('home.petRecommendations')}
+            <ShopIcon path={SI.compass} /> {t('home.petRecommendations')}
           </span>
           <Title level={variant === 'compact' ? 5 : 4}>
             {leadPet
@@ -268,7 +269,7 @@ const PetPersonalizedAssistant: React.FC<PetPersonalizedAssistantProps> = ({
                   />
                   <Button
                     type="primary"
-                    icon={hasOptions ? undefined : <ShoppingCartOutlined />}
+                    icon={hasOptions ? undefined : <ShopIcon path={SI.cart} />}
                     loading={addingId === product.id}
                     aria-label={productPrimaryActionLabel}
                     title={productPrimaryActionLabel}

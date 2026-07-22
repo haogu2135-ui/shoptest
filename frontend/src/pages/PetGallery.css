@@ -7,7 +7,7 @@
 .pet-gallery-page,
 .pet-gallery-page .ant-btn,
 .pet-gallery-page .ant-card,
-.pet-gallery-page .ant-typography,
+.pet-gallery-page .pet-gallery-page__text,
 .pet-gallery-page .ant-statistic {
   font-family: 'Avenir Next', 'Manrope', 'Segoe UI Variable', sans-serif;
 }
@@ -47,14 +47,14 @@
   text-transform: uppercase;
 }
 
-.pet-gallery-hero h1.ant-typography {
+.pet-gallery-hero h1.pet-gallery-page__title {
   margin: 0;
   color: #fff;
   font-size: 42px;
   line-height: 1.12;
 }
 
-.pet-gallery-hero .ant-typography {
+.pet-gallery-hero .pet-gallery-page__text {
   color: rgba(255, 255, 255, 0.92);
 }
 
@@ -130,7 +130,7 @@
   gap: 4px;
 }
 
-.pet-gallery-insights__copy .ant-typography {
+.pet-gallery-insights__copy .pet-gallery-page__text {
   margin: 0;
 }
 
@@ -219,11 +219,11 @@
   transform: translateY(-1px);
 }
 
-.pet-gallery-action-card .ant-typography {
+.pet-gallery-action-card .pet-gallery-page__text {
   margin: 0;
 }
 
-.pet-gallery-action-card h4.ant-typography {
+.pet-gallery-action-card h4.pet-gallery-page__title {
   color: #173f2b;
   line-height: 1.25;
 }
@@ -247,11 +247,11 @@
   gap: 4px;
 }
 
-.pet-gallery-conversion .ant-typography {
+.pet-gallery-conversion .pet-gallery-page__text {
   margin: 0;
 }
 
-.pet-gallery-conversion h4.ant-typography {
+.pet-gallery-conversion h4.pet-gallery-page__title {
   color: #173f2b;
   line-height: 1.25;
 }
@@ -460,7 +460,7 @@
 
 .pet-gallery-page--es,
 .pet-gallery-page--es .ant-btn,
-.pet-gallery-page--es .ant-typography,
+.pet-gallery-page--es .pet-gallery-page__text,
 .pet-gallery-page--es .ant-statistic,
 .pet-gallery-page--es .ant-tag {
   hyphens: auto;
@@ -516,7 +516,7 @@
     background-size: cover;
   }
 
-  .pet-gallery-hero h1.ant-typography {
+  .pet-gallery-hero h1.pet-gallery-page__title {
     font-size: 28px;
   }
 
@@ -836,7 +836,7 @@
     border-radius: 18px;
   }
 
-  .pet-gallery-hero h1.ant-typography {
+  .pet-gallery-hero h1.pet-gallery-page__title {
     font-size: 23px;
     line-height: 1.1;
   }
@@ -849,7 +849,7 @@
     font-size: 12px;
   }
 
-  .pet-gallery-hero__copy > .ant-typography:not(h1) {
+  .pet-gallery-hero__copy > .pet-gallery-page__text:not(h1) {
     display: -webkit-box;
     overflow: hidden;
     font-size: 12px;
@@ -937,16 +937,16 @@
     line-height: 1.25;
   }
 
-  .pet-gallery-insights h4.ant-typography,
-  .pet-gallery-action-card h4.ant-typography,
-  .pet-gallery-conversion h4.ant-typography {
+  .pet-gallery-insights h4.pet-gallery-page__title,
+  .pet-gallery-action-card h4.pet-gallery-page__title,
+  .pet-gallery-conversion h4.pet-gallery-page__title {
     font-size: 16px;
     line-height: 1.2;
   }
 
-  .pet-gallery-insights__copy > .ant-typography:last-child,
-  .pet-gallery-action-card > .ant-typography:not(.pet-gallery-insights__eyebrow):not(h4),
-  .pet-gallery-conversion > div:first-child > .ant-typography:last-child {
+  .pet-gallery-insights__copy > .pet-gallery-page__text:last-child,
+  .pet-gallery-action-card > .pet-gallery-page__text:not(.pet-gallery-insights__eyebrow):not(h4),
+  .pet-gallery-conversion > div:first-child > .pet-gallery-page__text:last-child {
     display: -webkit-box;
     overflow: hidden;
     font-size: 12px;
@@ -1028,7 +1028,7 @@
     padding: 7px;
   }
 
-  .pet-gallery-card__meta > .ant-typography {
+  .pet-gallery-card__meta > .pet-gallery-page__text {
     font-size: 12px;
     line-height: 1.3;
   }
@@ -1209,7 +1209,7 @@
   }
 
   .pet-gallery-card__owner,
-  .pet-gallery-card__meta .ant-typography,
+  .pet-gallery-card__meta .pet-gallery-page__text,
   .pet-gallery-card__like,
   .pet-gallery-insights__item,
   .pet-gallery-insights__item span {
@@ -1682,7 +1682,7 @@
 
   .pet-gallery-hero__stats .ant-statistic-title,
   .pet-gallery-card__owner,
-  .pet-gallery-card__meta > .ant-typography,
+  .pet-gallery-card__meta > .pet-gallery-page__text,
   .pet-gallery-card__like > span:not(.anticon):not(.ant-btn-icon) {
     font-size: max(12px, 1em) !important;
     line-height: 1.25 !important;
@@ -1756,12 +1756,12 @@
   }
 
   .pet-gallery-insights__eyebrow,
-  .pet-gallery-insights h4.ant-typography,
-  .pet-gallery-action-card h4.ant-typography,
-  .pet-gallery-conversion h4.ant-typography,
-  .pet-gallery-insights__copy .ant-typography,
-  .pet-gallery-action-card .ant-typography,
-  .pet-gallery-conversion .ant-typography {
+  .pet-gallery-insights h4.pet-gallery-page__title,
+  .pet-gallery-action-card h4.pet-gallery-page__title,
+  .pet-gallery-conversion h4.pet-gallery-page__title,
+  .pet-gallery-insights__copy .pet-gallery-page__text,
+  .pet-gallery-action-card .pet-gallery-page__text,
+  .pet-gallery-conversion .pet-gallery-page__text {
     max-width: 100%;
     overflow-wrap: break-word;
     word-break: normal;
@@ -1814,3 +1814,55 @@
 .pet-gallery-empty__copy { display: grid; gap: 6px; }
 .pet-gallery-empty__hint { color: rgba(16, 47, 34, 0.72); font-size: 13px; line-height: 1.45; }
 .pet-gallery-empty .page-feedback__actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+
+/* Commercial PetGallery native Space */
+.pet-gallery-conversion__actions,
+.pet-gallery-page__actionRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+
+/* Native typography densification (no ant Typography runtime) */
+.pet-gallery-page__title {
+  margin: 0;
+  font-weight: 700;
+  line-height: 1.2;
+  color: inherit;
+}
+
+.pet-gallery-page__text {
+  margin: 0;
+  color: inherit;
+  line-height: 1.5;
+}
+
+.pet-gallery-page__paragraph {
+  display: block;
+}
+
+.pet-gallery-page__text--strong {
+  font-weight: 600;
+}
+
+.pet-gallery-page__text--secondary {
+  color: rgba(0, 0, 0, 0.45);
+}
+
+.pet-gallery-page__text--danger {
+  color: #ff4d4f;
+}
+
+.pet-gallery-page__text--warning {
+  color: #faad14;
+}
+
+.pet-gallery-page__text--success {
+  color: #52c41a;
+}
+
+.pet-gallery-page__text--delete {
+  text-decoration: line-through;
+}

@@ -9,7 +9,7 @@
 .pet-finder-page .ant-btn,
 .pet-finder-page .ant-select,
 .pet-finder-page .ant-input,
-.pet-finder-page .ant-typography {
+.pet-finder-page .pet-finder-page__text {
   font-family: 'Avenir Next', 'Manrope', 'Segoe UI Variable', sans-serif;
 }
 
@@ -73,7 +73,7 @@
   gap: 4px;
 }
 
-.pet-finder-page__insightCopy .ant-typography {
+.pet-finder-page__insightCopy .pet-finder-page__text {
   margin: 0;
 }
 
@@ -166,7 +166,7 @@
   gap: 4px;
 }
 
-.pet-finder-page__nextStepCopy .ant-typography {
+.pet-finder-page__nextStepCopy .pet-finder-page__text {
   margin: 0;
 }
 
@@ -199,7 +199,7 @@
     padding: 14px 0;
   }
 
-  .pet-finder-page h2.ant-typography {
+  .pet-finder-page h2.pet-finder-page__title {
     font-size: 22px;
   }
 
@@ -238,7 +238,7 @@
     max-width: 100%;
   }
 
-  .pet-finder-page__nextStepCopy h4.ant-typography {
+  .pet-finder-page__nextStepCopy h4.pet-finder-page__title {
     max-width: 100%;
     overflow-wrap: normal;
     word-break: normal;
@@ -336,7 +336,7 @@
 }
 
 .pet-finder-page .ant-form-item-label > label,
-.pet-finder-page .ant-typography,
+.pet-finder-page .pet-finder-page__text,
 .pet-finder-page__nextStepCopy {
   min-width: 0;
   overflow-wrap: anywhere;
@@ -451,7 +451,7 @@
   margin: 6px 0;
 }
 
-.pet-finder-page__productName.ant-typography {
+.pet-finder-page__productName.pet-finder-page__text {
   display: block;
   max-width: 100%;
   color: #173f2b;
@@ -508,17 +508,17 @@
     padding: 12px 10px;
   }
 
-  .pet-finder-page h2.ant-typography {
+  .pet-finder-page h2.pet-finder-page__title {
     font-size: 20px;
     line-height: 1.15;
   }
 
-  .pet-finder-page h4.ant-typography {
+  .pet-finder-page h4.pet-finder-page__title {
     font-size: 16px;
     line-height: 1.2;
   }
 
-  .pet-finder-page .ant-typography {
+  .pet-finder-page .pet-finder-page__text {
     min-width: 0;
   }
 
@@ -554,8 +554,8 @@
     line-height: 1.25;
   }
 
-  .pet-finder-page__insightCopy > .ant-typography:last-child,
-  .pet-finder-page__nextStepCopy > .ant-typography:last-child {
+  .pet-finder-page__insightCopy > .pet-finder-page__text:last-child,
+  .pet-finder-page__nextStepCopy > .pet-finder-page__text:last-child {
     display: -webkit-box;
     overflow: hidden;
     font-size: 12px;
@@ -657,7 +657,7 @@
     gap: 4px !important;
   }
 
-  .pet-finder-page__productCard .ant-typography {
+  .pet-finder-page__productCard .pet-finder-page__text {
     font-size: 12px;
     line-height: 1.3;
   }
@@ -817,7 +817,7 @@
   .pet-finder-page__productCard .ant-card-meta-detail,
   .pet-finder-page__productCard .ant-card-meta-title,
   .pet-finder-page__productCard .ant-card-meta-description,
-  .pet-finder-page__productCard .ant-typography,
+  .pet-finder-page__productCard .pet-finder-page__text,
   .pet-finder-page__productCard .ant-tag,
   .pet-finder-page__signal,
   .pet-finder-page__signal span,
@@ -886,8 +886,8 @@
     min-width: 0;
   }
 
-  .pet-finder-page__productCard .ant-card-meta-title .ant-typography,
-  .pet-finder-page__productCard .ant-card-meta-description .ant-typography {
+  .pet-finder-page__productCard .ant-card-meta-title .pet-finder-page__text,
+  .pet-finder-page__productCard .ant-card-meta-description .pet-finder-page__text {
     display: -webkit-box;
     overflow: hidden;
     line-height: 1.3;
@@ -1112,12 +1112,12 @@
     gap: 3px;
   }
 
-  .pet-finder-page__nextStepCopy h4.ant-typography {
+  .pet-finder-page__nextStepCopy h4.pet-finder-page__title {
     font-size: 16px;
     line-height: 1.22;
   }
 
-  .pet-finder-page__nextStepCopy > span.ant-typography:not(.pet-finder-page__eyebrow) {
+  .pet-finder-page__nextStepCopy > span.pet-finder-page__text:not(.pet-finder-page__eyebrow) {
     font-size: 13px;
     line-height: 1.35;
     overflow-wrap: break-word;
@@ -1178,7 +1178,7 @@
 }
 
 /* Commercial UI guard: keep next actions inside mobile viewports and raise text contrast. */
-.pet-finder-page .ant-typography-secondary,
+.pet-finder-page .pet-finder-page__text--secondary,
 .pet-finder-page .ant-card-meta-description {
   color: #40564a;
 }
@@ -1285,7 +1285,7 @@
     mask-image: none;
   }
 
-  .pet-finder-page__nextStepCopy > span.ant-typography:not(.pet-finder-page__eyebrow),
+  .pet-finder-page__nextStepCopy > span.pet-finder-page__text:not(.pet-finder-page__eyebrow),
   .pet-finder-page__nextStepMeta .ant-tag,
   .pet-finder-page__nextStepActions .ant-btn {
     overflow: visible;
@@ -1315,7 +1315,7 @@
   }
 
   .pet-finder-page__productCard .ant-tag,
-  .pet-finder-page__productCard .ant-typography,
+  .pet-finder-page__productCard .pet-finder-page__text,
   .pet-finder-page__signal span,
   .pet-finder-page__signal strong,
   .pet-finder-page__nextStepMeta .ant-tag {
@@ -1464,13 +1464,13 @@
 
 /* COMMERCIAL_PETFINDER_NEXTSTEP_V1 */
 @media (max-width: 640px) {
-  .pet-finder-page__nextStepCopy h4.ant-typography {
+  .pet-finder-page__nextStepCopy h4.pet-finder-page__title {
     font-size: 16px !important;
     line-height: 1.3 !important;
   }
 
-  .pet-finder-page__nextStepCopy > .ant-typography:last-child,
-  .pet-finder-page__nextStepCopy > span.ant-typography:not(.pet-finder-page__eyebrow) {
+  .pet-finder-page__nextStepCopy > .pet-finder-page__text:last-child,
+  .pet-finder-page__nextStepCopy > span.pet-finder-page__text:not(.pet-finder-page__eyebrow) {
     display: block !important;
     overflow: visible !important;
     font-size: 13px !important;
@@ -1486,10 +1486,134 @@
 
 /* Commercial mobile: pet finder labels stay >=12px. */
 @media (max-width: 780px) {
-  .pet-finder-page .ant-typography-secondary,
+  .pet-finder-page .pet-finder-page__text--secondary,
   .pet-finder-page__insight,
   .pet-finder-page .ant-tag {
     font-size: 12px !important;
     line-height: 1.3 !important;
   }
+}
+
+/* Commercial PetFinder layout without ant Row/Col */
+.pet-finder-page__finderShell {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 20px;
+  align-items: center;
+}
+@media (min-width: 768px) {
+  .pet-finder-page__finderShell {
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.5fr);
+    gap: 20px;
+  }
+}
+.pet-finder-page__finderIntro,
+.pet-finder-page__finderControls {
+  min-width: 0;
+}
+.pet-finder-page__finderControls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+}
+@media (min-width: 576px) {
+  .pet-finder-page__finderControls {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.pet-finder-page__control {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+}
+.pet-finder-page__recommendationGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+@media (min-width: 768px) {
+  .pet-finder-page__recommendationGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (min-width: 992px) {
+  .pet-finder-page__recommendationGrid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+.pet-finder-page__recommendationItem {
+  min-width: 0;
+}
+.pet-finder-page__recommendationItem .pet-finder-page__productCard {
+  height: 100%;
+}
+
+/* native product image (no ant Image) */
+.pet-finder-page__productImage {
+  width: 100%;
+  height: 180px;
+  object-fit: cover;
+  display: block;
+}
+
+/* Commercial PetFinder native Space */
+.pet-finder-page__introStack,
+.pet-finder-page__productBody {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.pet-finder-page__chipRow,
+.pet-finder-page__nextStepActions,
+.pet-finder-page__productTags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.pet-finder-page__productTags {
+  gap: 4px;
+}
+
+
+/* Native typography densification (no ant Typography runtime) */
+.pet-finder-page__title {
+  margin: 0;
+  font-weight: 700;
+  line-height: 1.2;
+  color: inherit;
+}
+
+.pet-finder-page__text {
+  margin: 0;
+  color: inherit;
+  line-height: 1.5;
+}
+
+.pet-finder-page__paragraph {
+  display: block;
+}
+
+.pet-finder-page__text--strong {
+  font-weight: 600;
+}
+
+.pet-finder-page__text--secondary {
+  color: rgba(0, 0, 0, 0.45);
+}
+
+.pet-finder-page__text--danger {
+  color: #ff4d4f;
+}
+
+.pet-finder-page__text--warning {
+  color: #faad14;
+}
+
+.pet-finder-page__text--success {
+  color: #52c41a;
+}
+
+.pet-finder-page__text--delete {
+  text-decoration: line-through;
 }

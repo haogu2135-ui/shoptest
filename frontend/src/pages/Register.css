@@ -1454,3 +1454,38 @@
     line-height: 1.25 !important;
   }
 }
+
+/* Commercial Register native Space */
+.register-page__footer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Commercial Register native Typography */
+.register-page__heroTitle {
+  margin: 0;
+  font-size: 32px;
+  line-height: 1.2;
+  font-weight: 700;
+}
+.register-page__title {
+  margin: 0 0 12px;
+  font-size: 24px;
+  line-height: 1.25;
+  font-weight: 700;
+}
+.register-page__eyebrow,
+.register-page__heroSubtitle,
+.register-page__cardHint,
+.register-page__codeHint,
+.register-page__footerHint {
+  margin: 0;
+}
+.register-page__codeHint--secondary,
+.register-page__footerHint {
+  color: rgba(0, 0, 0, 0.45);
+}
+.register-page__codeHint--warning {
+  color: #d48806;
+}

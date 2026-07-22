@@ -153,7 +153,7 @@ describe('Profile mobile control visibility', () => {
     expect(source).toContain('const addressesStale = addressesLoadFailed && addresses.length > 0;');
     expect(source).toContain("t('pages.profile.addressesStaleTitle')");
     expect(source).toContain("description={t('pages.profile.addressesStaleWarning')}");
-    expect(source).toContain("message.warning(t('pages.profile.addressesStaleWarning'))");
+    expect(source).toContain("announceAccessibleMessage(t('pages.profile.addressesStaleWarning'), 'warning')");
     expect(source).toContain('title={addressesStale ? t(\'pages.profile.addressesStaleWarning\') : undefined}');
     expect(source).toContain('disabled={addressesStale} onClick={() => handleSetDefault(address.id)}');
     expect(source).toContain('disabled={addressesStale} onClick={() => openAddressModal(address)}');
@@ -297,7 +297,7 @@ describe('Profile mobile control visibility', () => {
     expect(fetchPetProfilesStart).toBeGreaterThan(-1);
     expect(fetchPetProfilesSource).toContain("reportNonBlockingError('Profile.fetchPetProfiles', error);");
     expect(fetchPetProfilesSource).toContain('setPetProfiles([]);');
-    expect(fetchPetProfilesSource).toContain("message.error(profileLocalizationRef.current.t('pages.profile.fetchPetProfilesFailed'));");
+    expect(fetchPetProfilesSource).toContain("announceAccessibleMessage(profileLocalizationRef.current.t('pages.profile.fetchPetProfilesFailed'), 'error')");
     expect(fetchPetProfilesSource).toContain('}, []);');
     expect(source).toContain('const profileLocalizationRef = useRef({ t, language });');
 
@@ -354,7 +354,7 @@ describe('Profile mobile control visibility', () => {
     expect(source).toContain('const pendingPayment = paymentList.find');
     expect(source).toContain('const reusablePayment = paidPayment || reconcilePayment || pendingPayment');
     expect(source).toContain("normalizeStatusCode(selectedPayment?.status) === 'RECONCILE_REQUIRED'");
-    expect(source).toContain("message.warning(t('pages.profile.paymentReturnReconcileRequired'))");
+    expect(source).toContain("announceAccessibleMessage(t('pages.profile.paymentReturnReconcileRequired'), 'warning')");
     expect(modalSource).toContain('role="alert"');
     expect(modalSource).toContain('aria-live="assertive"');
     expect(modalSource).toContain('selectedPayment.paymentUrl && !selectedPaymentPaid && !selectedPaymentReconcileRequired');

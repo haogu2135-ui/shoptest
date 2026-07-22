@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, List, Typography, Tag, Button, Spin, message, Popconfirm, Space } from 'antd';
-import { BellOutlined, CheckOutlined, DeleteOutlined, CheckCircleOutlined, GiftOutlined, ShoppingOutlined, TruckOutlined } from '@ant-design/icons';
+import { announceAccessibleMessage } from '../utils/accessibleMessage';
+import { ShopIcon, SI } from '../components/ShopIcon';
+import { Alert, List, Tag, Button, Spin, Popconfirm } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { notificationApi } from '../api';
 import type { AppNotification } from '../types';
@@ -17,7 +18,6 @@ import { hasStoredValue } from '../utils/safeStorage';
 import './Notifications.css';
 import '../styles/mobile-page-contrast.css';
 
-const { Text, Title } = Typography;
 
 const typeColors: Record<string, string> = {
   ORDER: 'blue',
@@ -135,7 +135,7 @@ const Notifications: React.FC = () => {
         setFetchError(t('pages.notifications.fetchFailed'));
         setHasMoreNotifications(false);
       }
-      message.error(t('pages.notifications.fetchFailed'));
+      announceAccessibleMessage(t('pages.notifications.fetchFailed'), 'error');
     } finally {
       if (!isCurrentRequest()) return;
       if (append) {
@@ -174,7 +174,7 @@ const Notifications: React.FC = () => {
       notifyNavbarChanged();
     } catch (error) {
       reportNonBlockingError('Notifications.handleMarkAsRead', error);
-      message.error(t('messages.operationFailed'));
+      announceAccessibleMessage(t('messages.operationFailed'), 'error');
     }
   }, [t]);
 
@@ -183,10 +183,10 @@ const Notifications: React.FC = () => {
       await notificationApi.markAllAsRead();
       setNotifications((current) => current.map(n => ({ ...n, isRead: true })));
       notifyNavbarChanged();
-      message.success(t('pages.notifications.allRead'));
+      announceAccessibleMessage(t('pages.notifications.allRead'), 'success');
     } catch (error) {
       reportNonBlockingError('Notifications.handleMarkAllAsRead', error);
-      message.error(t('messages.operationFailed'));
+      announceAccessibleMessage(t('messages.operationFailed'), 'error');
     }
   };
 
@@ -195,10 +195,10 @@ const Notifications: React.FC = () => {
       await notificationApi.delete(id);
       setNotifications((current) => current.filter(n => n.id !== id));
       notifyNavbarChanged();
-      message.success(t('messages.deleteSuccess'));
+      announceAccessibleMessage(t('messages.deleteSuccess'), 'success');
     } catch (error) {
       reportNonBlockingError('Notifications.handleDelete', error);
-      message.error(t('messages.deleteFailed'));
+      announceAccessibleMessage(t('messages.deleteFailed'), 'error');
     }
   };
 
@@ -322,7 +322,7 @@ const Notifications: React.FC = () => {
           className="notifications-page__authGate"
           description={(
             <div className="notifications-page__emptyCopy">
-              <Title level={1}>{t('pages.notifications.authGateTitle')}</Title>
+              <h1 className="notifications-page__title">{t('pages.notifications.authGateTitle')}</h1>
               <div className="notifications-page__emptyHint">{t('pages.notifications.authGateHint')}</div>
             </div>
           )}
@@ -371,7 +371,7 @@ const Notifications: React.FC = () => {
         aria-busy="true"
         aria-label={t('common.loading')}
       >
-        <Title level={1}>{t('pages.notifications.title')}</Title>
+        <h1 className="notifications-page__title">{t('pages.notifications.title')}</h1>
         <Spin size="large" />
       </div>
     );
@@ -381,12 +381,12 @@ const Notifications: React.FC = () => {
     <div className="notifications-page">
       <div className="notifications-page__header">
         <div className="notifications-page__title">
-          <BellOutlined />
-          <Title level={1}>{t('pages.notifications.title')}</Title>
+          <ShopIcon path={SI.bell} />
+          <h1 className="notifications-page__title">{t('pages.notifications.title')}</h1>
         </div>
         {notifications.some(n => !n.isRead) && (
           <Button
-            icon={<CheckOutlined />}
+            icon={<ShopIcon path={SI.check} />}
             aria-label={markAllActionLabel}
             title={markAllActionLabel}
             onClick={handleMarkAllAsRead}
@@ -399,9 +399,9 @@ const Notifications: React.FC = () => {
       {notifications.length > 0 ? (
         <section className="notifications-page__assistant" aria-label={t('pages.notifications.assistantTitle')}>
           <div className="notifications-page__assistantCopy">
-            <Text className="notifications-page__eyebrow">{t('pages.notifications.assistantEyebrow')}</Text>
-            <Title level={4}>{t('pages.notifications.assistantTitle')}</Title>
-            <Text type="secondary">{t('pages.notifications.assistantSubtitle')}</Text>
+            <span className="notifications-page__text notifications-page__eyebrow">{t('pages.notifications.assistantEyebrow')}</span>
+            <h4 className="notifications-page__title">{t('pages.notifications.assistantTitle')}</h4>
+            <span className="notifications-page__text notifications-page__text--secondary">{t('pages.notifications.assistantSubtitle')}</span>
           </div>
           <div className="notifications-page__signalGrid">
             <button
@@ -412,7 +412,7 @@ const Notifications: React.FC = () => {
               title={`${t('pages.notifications.unreadCount')}: ${notificationInsights.unread}`}
               onClick={() => setQuickFilter('UNREAD')}
             >
-              <BellOutlined />
+              <ShopIcon path={SI.bell} />
               <strong>{notificationInsights.unread}</strong>
               <span>{t('pages.notifications.unreadCount')}</span>
             </button>
@@ -424,7 +424,7 @@ const Notifications: React.FC = () => {
               title={`${t('pages.notifications.promotionCount')}: ${notificationInsights.promotions}`}
               onClick={() => setQuickFilter('PROMOTION')}
             >
-              <GiftOutlined />
+              <ShopIcon path={SI.gift} />
               <strong>{notificationInsights.promotions}</strong>
               <span>{t('pages.notifications.promotionCount')}</span>
             </button>
@@ -436,7 +436,7 @@ const Notifications: React.FC = () => {
               title={`${t('pages.notifications.orderCount')}: ${notificationInsights.orders}`}
               onClick={() => setQuickFilter('ORDER')}
             >
-              <ShoppingOutlined />
+              <ShopIcon path={SI.shopping} />
               <strong>{notificationInsights.orders}</strong>
               <span>{t('pages.notifications.orderCount')}</span>
             </button>
@@ -448,7 +448,7 @@ const Notifications: React.FC = () => {
               title={`${t('pages.notifications.deliveryCount')}: ${notificationInsights.deliveries}`}
               onClick={() => setQuickFilter('DELIVERY')}
             >
-              <TruckOutlined />
+              <ShopIcon path={SI.truck} />
               <strong>{notificationInsights.deliveries}</strong>
               <span>{t('pages.notifications.deliveryCount')}</span>
             </button>
@@ -461,14 +461,14 @@ const Notifications: React.FC = () => {
       {notifications.length > 0 ? (
         <section className="notifications-page__actionPlan" aria-label={t('pages.notifications.actionPlanTitle')}>
           <div>
-            <Text className="notifications-page__eyebrow">{t('pages.notifications.actionPlanEyebrow')}</Text>
-            <Title level={4}>{actionPlan.title}</Title>
-            <Text type="secondary">{actionPlan.text}</Text>
+            <span className="notifications-page__text notifications-page__eyebrow">{t('pages.notifications.actionPlanEyebrow')}</span>
+            <h4 className="notifications-page__title">{actionPlan.title}</h4>
+            <span className="notifications-page__text notifications-page__text--secondary">{actionPlan.text}</span>
           </div>
           <div className="notifications-page__actionSignals">
-            <span><BellOutlined /> {t('pages.notifications.actionSignalUnread', { count: notificationInsights.unread })}</span>
-            <span><GiftOutlined /> {t('pages.notifications.actionSignalOffers', { count: notificationInsights.promotions })}</span>
-            <span><TruckOutlined /> {t('pages.notifications.actionSignalDelivery', { count: notificationInsights.deliveries })}</span>
+            <span><ShopIcon path={SI.bell} /> {t('pages.notifications.actionSignalUnread', { count: notificationInsights.unread })}</span>
+            <span><ShopIcon path={SI.gift} /> {t('pages.notifications.actionSignalOffers', { count: notificationInsights.promotions })}</span>
+            <span><ShopIcon path={SI.truck} /> {t('pages.notifications.actionSignalDelivery', { count: notificationInsights.deliveries })}</span>
           </div>
           <Button type="primary" aria-label={notificationActionPlanLabel} title={notificationActionPlanLabel} onClick={actionPlan.onClick}>{actionPlan.label}</Button>
         </section>
@@ -518,7 +518,7 @@ const Notifications: React.FC = () => {
           className="notifications-page__emptyPanel"
           description={(
             <div className="notifications-page__emptyCopy">
-              <Title level={1}>{t('pages.notifications.empty')}</Title>
+              <h1 className="notifications-page__title">{t('pages.notifications.empty')}</h1>
               <div className="notifications-page__emptyHint">{t('pages.notifications.emptyHint')}</div>
             </div>
           )}
@@ -563,7 +563,7 @@ const Notifications: React.FC = () => {
                     <div>{t('pages.notifications.noFilterResults')}</div>
                     <div className="notifications-page__emptyHint">{t('pages.notifications.noFilterResultsHint')}</div>
                   </div>
-                  <Space wrap className="notifications-page__filterEmptyActions" data-notifications-filter-empty-actions="true">
+                  <div className="notifications-page__filterEmptyActions" data-notifications-filter-empty-actions="true">
                     <Button
                       type="primary"
                       aria-label={t('pages.notifications.clearFilter')}
@@ -573,7 +573,7 @@ const Notifications: React.FC = () => {
                       {t('pages.notifications.clearFilter')}
                     </Button>
                     <Button
-                      icon={<ShoppingOutlined />}
+                      icon={<ShopIcon path={SI.shopping} />}
                       aria-label={t('pages.cart.browse')}
                       title={t('pages.cart.browse')}
                       onClick={() => navigate('/products')}
@@ -581,7 +581,7 @@ const Notifications: React.FC = () => {
                       {t('pages.cart.browse')}
                     </Button>
                     <Button
-                      icon={<GiftOutlined />}
+                      icon={<ShopIcon path={SI.gift} />}
                       aria-label={t('pages.notifications.emptyCoupons')}
                       title={t('pages.notifications.emptyCoupons')}
                       onClick={() => navigate('/coupons')}
@@ -589,20 +589,20 @@ const Notifications: React.FC = () => {
                       {t('pages.notifications.emptyCoupons')}
                     </Button>
                     <Button
-                      icon={<TruckOutlined />}
+                      icon={<ShopIcon path={SI.truck} />}
                       aria-label={t('pages.notifications.emptyTrackOrder')}
                       title={t('pages.notifications.emptyTrackOrder')}
                       onClick={() => navigate('/track-order')}
                     >
                       {t('pages.notifications.emptyTrackOrder')}
                     </Button>
-                  </Space>
+                  </div>
                 </div>
               ),
             }}
             footer={hasMoreNotifications ? (
               <div className="notifications-page__loadMore">
-                <Text type="secondary">{t('pages.notifications.loadedCount', { count: notifications.length })}</Text>
+                <span className="notifications-page__text notifications-page__text--secondary">{t('pages.notifications.loadedCount', { count: notifications.length })}</span>
                 <Button
                   onClick={() => fetchNotifications(notificationPage + 1, true)}
                   loading={loadingMore}
@@ -678,7 +678,7 @@ const Notifications: React.FC = () => {
                       size="small"
                       type="link"
                       danger
-                      icon={<DeleteOutlined />}
+                      icon={<ShopIcon path={SI.delete} />}
                       aria-label={deleteActionLabel}
                       title={deleteActionLabel}
                       disabled={notificationActionsDisabled}
@@ -688,7 +688,7 @@ const Notifications: React.FC = () => {
               >
                 <List.Item.Meta
                   title={
-                    <Space>
+                    <div className="notifications-page__itemActions">
                       <Tag color={typeColors[String(item.type || '').trim().toUpperCase()] || 'default'}>
                         {formatNotificationType(item.type)}
                       </Tag>
@@ -699,17 +699,17 @@ const Notifications: React.FC = () => {
                         aria-label={openRelatedLabel}
                         title={openRelatedLabel}
                       >
-                        <Text strong={!item.isRead}>{item.title}</Text>
+                        <span className={`notifications-page__text${!item.isRead ? ' notifications-page__text--strong' : ''}`}>{item.title}</span>
                       </button>
-                      {item.isRead && <CheckCircleOutlined style={{ color: '#52c41a' }} />}
-                    </Space>
+                      {item.isRead && <ShopIcon path={SI.checkCircle} style={{ color: '#52c41a' }} />}
+                    </div>
                   }
                   description={
                     <div>
                       {renderMessage(item)}
-                      <Text type="secondary" style={{ fontSize: 12 }}>
+                      <span className="notifications-page__text notifications-page__text--secondary" style={{ fontSize: 12 }}>
                         {item.createdAt ? new Date(item.createdAt).toLocaleString(language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US') : ''}
-                      </Text>
+                      </span>
                     </div>
                   }
                 />

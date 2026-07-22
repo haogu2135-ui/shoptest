@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Button, Col, Popconfirm, Row, Spin, Typography, message } from 'antd';
+import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { useNavigate } from 'react-router-dom';
 import { cartApi, categoryApi, petGalleryApi, productApi, wishlistApi } from '../api';
 import { useLanguage } from '../i18n';
@@ -66,7 +66,6 @@ const HI = {
 } as const;
 
 
-const { Text } = Typography;
 const DISCOVERY_BATCH_SIZE = 12;
 const HOME_FEATURED_LIMIT = 12;
 const HOME_PRODUCT_PAGE_SIZE = 48;
@@ -346,12 +345,12 @@ const Home: React.FC = () => {
 
   const handlePetUploadClick = () => {
     if (!isAuthenticated) {
-      message.warning(t('messages.loginRequired'));
+      announceAccessibleMessage(t('messages.loginRequired'), 'warning');
       navigate(buildLoginUrlFromWindow());
       return;
     }
     if (petGalleryQuota && !petGalleryQuota.canUpload) {
-      message.warning(t('home.petUgcLimitReached'));
+      announceAccessibleMessage(t('home.petUgcLimitReached'), 'warning');
       return;
     }
     petUploadInputRef.current?.click();
@@ -364,11 +363,11 @@ const Home: React.FC = () => {
 
     const isSupportedImage = isSupportedPetGalleryImageFile(file);
     if (!isSupportedImage) {
-      message.error(t('home.petUgcInvalidType'));
+      announceAccessibleMessage(t('home.petUgcInvalidType'), 'error');
       return;
     }
     if (file.size > PET_GALLERY_MAX_FILE_SIZE) {
-      message.error(t('home.petUgcTooLarge'));
+      announceAccessibleMessage(t('home.petUgcTooLarge'), 'error');
       return;
     }
 
@@ -376,10 +375,10 @@ const Home: React.FC = () => {
     try {
       const response = await petGalleryApi.upload(file);
       setPetGalleryPhotos((current) => [response.data, ...current.filter((photo) => photo.id !== response.data.id)].slice(0, 24));
-      message.success(t('home.petUgcUploadSuccess'));
+      announceAccessibleMessage(t('home.petUgcUploadSuccess'), 'success');
       await refreshPetGallery();
     } catch (error) {
-      message.error(getApiErrorMessage(error, t('home.petUgcUploadFailed'), language));
+      announceAccessibleMessage(getApiErrorMessage(error, t('home.petUgcUploadFailed'), language), 'error');
     } finally {
       setUploadingPetPhoto(false);
     }
@@ -388,25 +387,25 @@ const Home: React.FC = () => {
   const handlePetGalleryLike = async (item: HomePetGalleryItem) => {
     if (!item.photo) {
       if (localPetGalleryLikes.includes(item.key)) {
-        message.info(t('home.petUgcAlreadyLiked'));
+        announceAccessibleMessage(t('home.petUgcAlreadyLiked'), 'info');
         return;
       }
       const nextLikes = [...localPetGalleryLikes, item.key];
       setLocalPetGalleryLikes(nextLikes);
       writeLocalPetGalleryLikes(nextLikes);
-      message.success(t('home.petUgcLiked'));
+      announceAccessibleMessage(t('home.petUgcLiked'), 'success');
       return;
     }
     if (item.photo.likedByMe) {
-      message.info(t('home.petUgcAlreadyLiked'));
+      announceAccessibleMessage(t('home.petUgcAlreadyLiked'), 'info');
       return;
     }
     try {
       const response = await petGalleryApi.like(item.photo.id);
       setPetGalleryPhotos((current) => current.map((photo) => photo.id === response.data.id ? response.data : photo));
-      message.success(t('home.petUgcLiked'));
+      announceAccessibleMessage(t('home.petUgcLiked'), 'success');
     } catch (error) {
-      message.error(getApiErrorMessage(error, t('home.petUgcLikeFailed'), language));
+      announceAccessibleMessage(getApiErrorMessage(error, t('home.petUgcLikeFailed'), language), 'error');
     }
   };
 
@@ -414,21 +413,21 @@ const Home: React.FC = () => {
     try {
       await petGalleryApi.delete(photo.id);
       setPetGalleryPhotos((current) => current.filter((item) => item.id !== photo.id));
-      message.success(t('home.petUgcDeleted'));
+      announceAccessibleMessage(t('home.petUgcDeleted'), 'success');
       await refreshPetGallery();
     } catch (error) {
-      message.error(getApiErrorMessage(error, t('home.petUgcDeleteFailed'), language));
+      announceAccessibleMessage(getApiErrorMessage(error, t('home.petUgcDeleteFailed'), language), 'error');
     }
   };
 
   const handleQuickAddToCart = async (event: React.MouseEvent | undefined, product: Product) => {
     event?.stopPropagation();
     if (product.stock !== undefined && product.stock <= 0) {
-      message.warning(t('pages.productList.soldOut'));
+      announceAccessibleMessage(t('pages.productList.soldOut'), 'warning');
       return;
     }
     if (needsOptionSelection(product)) {
-      message.info(t('pages.wishlist.selectOptions'));
+      announceAccessibleMessage(t('pages.wishlist.selectOptions'), 'info');
       openProduct(product.id);
       return;
     }
@@ -441,16 +440,16 @@ const Home: React.FC = () => {
         addGuestCartItem(product, 1);
       }
       await openCartWithSnapshot();
-      message.success(t('messages.addCartSuccess'));
+      announceAccessibleMessage(t('messages.addCartSuccess'), 'success');
     } catch (error) {
-      message.error(getApiErrorMessage(error, t('messages.addFailed'), language));
+      announceAccessibleMessage(getApiErrorMessage(error, t('messages.addFailed'), language), 'error');
     }
   };
 
   const handleQuickWishlist = async (event: React.MouseEvent, product: Product) => {
     event.stopPropagation();
     if (!isAuthenticated) {
-      message.warning(t('messages.loginRequired'));
+      announceAccessibleMessage(t('messages.loginRequired'), 'warning');
       navigate(buildLoginUrlFromWindow());
       return;
     }
@@ -467,9 +466,9 @@ const Home: React.FC = () => {
         return next;
       });
       dispatchDomEvent('shop:wishlist-updated');
-      message.success(response.data.wishlisted ? t('pages.productDetail.favoritedMsg') : t('pages.productDetail.unfavoritedMsg'));
+      announceAccessibleMessage(response.data.wishlisted ? t('pages.productDetail.favoritedMsg') : t('pages.productDetail.unfavoritedMsg'), 'success');
     } catch (error) {
-      message.error(getApiErrorMessage(error, t('messages.operationFailed'), language));
+      announceAccessibleMessage(getApiErrorMessage(error, t('messages.operationFailed'), language), 'error');
     }
   };
 
@@ -792,7 +791,7 @@ const Home: React.FC = () => {
   }, [localPetGalleryLikes, petGalleryPhotos]);
   const addPersonalizedReadyProducts = async () => {
     if (personalizedReadyProducts.length === 0) {
-      message.info(t('pages.compare.recommendationEmpty'));
+      announceAccessibleMessage(t('pages.compare.recommendationEmpty'), 'info');
       return;
     }
     try {
@@ -803,19 +802,19 @@ const Home: React.FC = () => {
         );
         const added = results.filter((result) => result.status === 'fulfilled').length;
         if (added === 0) {
-          message.error(t('messages.addFailed'));
+          announceAccessibleMessage(t('messages.addFailed'), 'error');
           return;
         }
         dispatchDomEvent('shop:cart-updated');
         await openCartWithSnapshot();
-        message.success(t('pages.wishlist.addedAllToCart', { count: added }));
+        announceAccessibleMessage(t('pages.wishlist.addedAllToCart', { count: added }), 'success');
       } else {
         personalizedReadyProducts.forEach((product) => addGuestCartItem(product, 1));
         await openCartWithSnapshot();
-        message.success(t('pages.wishlist.addedAllToCart', { count: personalizedReadyProducts.length }));
+        announceAccessibleMessage(t('pages.wishlist.addedAllToCart', { count: personalizedReadyProducts.length }), 'success');
       }
     } catch (error) {
-      message.error(getApiErrorMessage(error, t('messages.addFailed'), language));
+      announceAccessibleMessage(getApiErrorMessage(error, t('messages.addFailed'), language), 'error');
     }
   };
   const heroSpotlights = [
@@ -1037,21 +1036,23 @@ const Home: React.FC = () => {
               <h1>{t('home.heroTitle')}</h1>
               <p>{t('home.heroText')}</p>
               <div className="shopee-hero__actions">
-                <Button size="large" icon={<HomeIcon path={HI.shopping} />} onClick={() => navigate('/products')}>
+                <button type="button" className="home-btn home-btn--lg" onClick={() => navigate('/products')}>
+                  <HomeIcon path={HI.shopping} />
                   {t('home.buyNow')}
-                </Button>
-                <Button size="large" ghost icon={<HomeIcon path={HI.gift} />} onClick={() => navigate('/coupons')}>
+                </button>
+                <button type="button" className="home-btn home-btn--lg home-btn--ghost" onClick={() => navigate('/coupons')}>
+                  <HomeIcon path={HI.gift} />
                   {t('home.claimCoupons')}
-                </Button>
+                </button>
               </div>
               {!isAuthenticated ? (
                 <div className="shopee-hero__authActions" aria-label={t('nav.account')}>
-                  <Button size="large" type="primary" onClick={() => navigate('/register')}>
+                  <button type="button" className="home-btn home-btn--lg home-btn--primary" onClick={() => navigate('/register')}>
                     {t('nav.register')}
-                  </Button>
-                  <Button size="large" ghost onClick={() => navigate(buildLoginUrlFromWindow())}>
+                  </button>
+                  <button type="button" className="home-btn home-btn--lg home-btn--ghost" onClick={() => navigate(buildLoginUrlFromWindow())}>
                     {t('nav.login')}
-                  </Button>
+                  </button>
                 </div>
               ) : null}
               {heroCategoryTiles.length ? (
@@ -1099,8 +1100,9 @@ const Home: React.FC = () => {
                   {heroFeaturedTag ? <small>{heroFeaturedTag}</small> : null}
                 </div>
                 <div className="shopee-hero__featuredActions">
-                <Button
-                  type="primary"
+                <button
+                  type="button"
+                  className="home-btn home-btn--primary"
                   onMouseEnter={() => prefetchProduct(heroFeaturedProduct.id)}
                   onFocus={() => prefetchProduct(heroFeaturedProduct.id)}
                   aria-label={`${t('home.buyNow')}: ${heroFeaturedProductName}`}
@@ -1108,10 +1110,10 @@ const Home: React.FC = () => {
                   onClick={() => openProduct(heroFeaturedProduct.id)}
                 >
                     {t('home.buyNow')}
-                  </Button>
-                  <Button aria-label={`${t('pages.productList.addToCart')}: ${heroFeaturedProductName}`} title={`${t('pages.productList.addToCart')}: ${heroFeaturedProductName}`} onClick={() => handleQuickAddToCart(undefined, heroFeaturedProduct)}>
+                </button>
+                  <button type="button" className="home-btn" aria-label={`${t('pages.productList.addToCart')}: ${heroFeaturedProductName}`} title={`${t('pages.productList.addToCart')}: ${heroFeaturedProductName}`} onClick={() => handleQuickAddToCart(undefined, heroFeaturedProduct)}>
                     {t('pages.productList.addToCart')}
-                  </Button>
+                  </button>
                 </div>
               </article>
             ) : null}
@@ -1122,9 +1124,9 @@ const Home: React.FC = () => {
                   <strong>{card.title}</strong>
                   <p>{card.summary}</p>
                 </div>
-                <Button type="default" aria-label={homeSectionActionLabel(card.title, card.actionLabel, card.summary)} title={homeSectionActionLabel(card.title, card.actionLabel, card.summary)} onClick={card.action} disabled={card.disabled}>
+                <button type="button" className="home-btn home-btn--default" aria-label={homeSectionActionLabel(card.title, card.actionLabel, card.summary)} title={homeSectionActionLabel(card.title, card.actionLabel, card.summary)} onClick={card.action} disabled={card.disabled}>
                   {card.actionLabel}
-                </Button>
+                </button>
               </article>
             ))}
           </aside>
@@ -1152,13 +1154,10 @@ const Home: React.FC = () => {
 
         <section className="shopee-home-actions" aria-label={t('home.couponsExtra')}>
           {usingCatalogSnapshot ? (
-            <Alert
-              className="shopee-home__snapshotNotice"
-              type="warning"
-              showIcon
-              message={t('pages.productList.snapshotTitle')}
-              description={t('pages.productList.snapshotText')}
-            />
+            <div className="shopee-home__snapshotNotice home-alert home-alert--warning" role="status">
+              <strong>{t('pages.productList.snapshotTitle')}</strong>
+              <p>{t('pages.productList.snapshotText')}</p>
+            </div>
           ) : null}
           {!isAuthenticated ? (
             <div className="shopee-conversion-band" aria-label={t('nav.account')}>
@@ -1167,7 +1166,7 @@ const Home: React.FC = () => {
                   <span className="shopee-conversion-band__icon">{item.icon}</span>
                   <span className="shopee-conversion-band__body">
                     <strong>{item.title}</strong>
-                    <Text>{item.text}</Text>
+                    <span className="home-text">{item.text}</span>
                   </span>
                   <span className="shopee-conversion-band__action">{item.actionLabel}</span>
                 </button>
@@ -1186,14 +1185,14 @@ const Home: React.FC = () => {
             <span className="shopee-coupon-entry__icon"><HomeIcon path={HI.gift} /></span>
             <span>
               <strong>{t('home.couponsExtra')}</strong>
-              <Text>{t('nav.coupons')}</Text>
+              <span className="home-text">{t('nav.coupons')}</span>
             </span>
           </button>
           <button type="button" className="shopee-coupon-entry shopee-coupon-entry--deal" onClick={openDiscountProducts}>
             <span className="shopee-coupon-entry__icon"><HomeIcon path={HI.fire} /></span>
             <span>
               <strong>{t('home.flashOffers')}</strong>
-              <Text>{t('home.viewDeals')}</Text>
+              <span className="home-text">{t('home.viewDeals')}</span>
             </span>
           </button>
         </section>
@@ -1204,11 +1203,11 @@ const Home: React.FC = () => {
               <span className="shopee-story-card__icon">{card.icon}</span>
               <div className="shopee-story-card__body">
                 <strong>{card.title}</strong>
-                <Text>{card.summary}</Text>
+                <span className="home-text">{card.summary}</span>
               </div>
-              <Button type="text" onClick={card.action}>
+              <button type="button" className="home-btn home-btn--text" onClick={card.action}>
                 {card.actionLabel}
-              </Button>
+              </button>
             </article>
           ))}
         </section>
@@ -1221,13 +1220,13 @@ const Home: React.FC = () => {
               </h2>
 	              <button type="button" aria-label={bestSellersShopAllLabel} title={bestSellersShopAllLabel} onClick={() => navigate('/products')}>{t('home.shopAll')}</button>
             </div>
-            <Row gutter={[12, 12]}>
+            <div className="home-product-grid">
               {bestSellers.map((product, index) => (
-                <Col key={product.id} xs={12} sm={8} md={6} lg={4}>
+                <div key={product.id} className="home-product-grid__item">
                   <HomeProductCard {...productCardCommonProps} product={product} index={index} compact priority={index < 2} sectionLabel={t('home.bestSellers')} />
-                </Col>
+                </div>
               ))}
-            </Row>
+            </div>
           </section>
         ) : null}
 
@@ -1243,14 +1242,14 @@ const Home: React.FC = () => {
               <article className="shopee-editorial-band__feature">
                 <span className="shopee-editorial-band__eyebrow">{t('home.heroEyebrow')}</span>
                 <strong>{editorialFeatureName}</strong>
-                <Text>{editorialFeatureProduct?.description || t('home.petRecommendationsHint')}</Text>
+                <span className="home-text">{editorialFeatureProduct?.description || t('home.petRecommendationsHint')}</span>
                 <div className="shopee-editorial-band__actions">
-                  <Button type="primary" aria-label={`${t('home.buyNow')}: ${editorialFeatureName}`} title={`${t('home.buyNow')}: ${editorialFeatureName}`} onClick={() => openProduct(bestSellers[0].id)}>
+                  <button type="button" className="home-btn home-btn--primary" aria-label={`${t('home.buyNow')}: ${editorialFeatureName}`} title={`${t('home.buyNow')}: ${editorialFeatureName}`} onClick={() => openProduct(bestSellers[0].id)}>
                     {t('home.buyNow')}
-                  </Button>
-                  <Button aria-label={`${t('pages.productList.addToCart')}: ${editorialFeatureName}`} title={`${t('pages.productList.addToCart')}: ${editorialFeatureName}`} onClick={() => handleQuickAddToCart(undefined, bestSellers[0])}>
+                  </button>
+                  <button type="button" className="home-btn" aria-label={`${t('pages.productList.addToCart')}: ${editorialFeatureName}`} title={`${t('pages.productList.addToCart')}: ${editorialFeatureName}`} onClick={() => handleQuickAddToCart(undefined, bestSellers[0])}>
                     {t('pages.productList.addToCart')}
-                  </Button>
+                  </button>
                 </div>
               </article>
               <div className="shopee-editorial-band__stack">
@@ -1268,7 +1267,7 @@ const Home: React.FC = () => {
                     <span className="shopee-editorial-band__miniIndex">0{index + 2}</span>
                     <span className="shopee-editorial-band__miniBody">
                       <strong>{productName}</strong>
-                      <Text className="commerce-money">{formatPrice(getPrice(product))}</Text>
+                      <span className="commerce-money">{formatPrice(getPrice(product))}</span>
                     </span>
                   </button>
                   );
@@ -1288,37 +1287,38 @@ const Home: React.FC = () => {
             </div>
             <div className="shopee-personalized-insight">
               <div>
-                <Text strong>{t('home.petRecommendationInsightTitle')}</Text>
-                <Text type="secondary">
+                <strong className="home-text">{t('home.petRecommendationInsightTitle')}</strong>
+                <span className="home-text home-text--secondary">
                   {personalizedRecommendationSource === 'petProfile'
                     ? t('home.petRecommendationInsightPetProfile')
                     : personalizedPreferenceLabel
                       ? t('home.petRecommendationInsightPreference', { value: personalizedPreferenceLabel })
                       : t('home.petRecommendationsHint')}
-                </Text>
+                </span>
               </div>
               <div className="shopee-personalized-insight__stats">
                 <span>{t('home.petRecommendationReady', { count: personalizedReadyCount })}</span>
                 <span>{t('home.petRecommendationDeals', { count: personalizedDealCount })}</span>
               </div>
-	              <Button
-	                type="primary"
-	                icon={<HomeIcon path={HI.cart} />}
+	              <button
+	                type="button"
+	                className="home-btn home-btn--primary"
 	                disabled={personalizedReadyProducts.length === 0}
 	                aria-label={personalizedAddAllActionLabel}
 	                title={personalizedAddAllActionLabel}
 	                onClick={addPersonalizedReadyProducts}
 	              >
+                <HomeIcon path={HI.cart} />
                 {t('pages.wishlist.addAllToCart')}
-              </Button>
+              </button>
             </div>
-            <Row gutter={[12, 12]}>
+            <div className="home-product-grid">
               {personalizedDisplayProducts.slice(0, 8).map((product, index) => (
-                <Col key={product.id} xs={12} sm={8} md={6} lg={4}>
+                <div key={product.id} className="home-product-grid__item">
                   <HomeProductCard {...productCardCommonProps} product={product} index={index} compact sectionLabel={t('home.petRecommendations')} />
-                </Col>
+                </div>
               ))}
-            </Row>
+            </div>
           </section>
         ) : null}
 
@@ -1352,7 +1352,7 @@ const Home: React.FC = () => {
                         [<HomeIcon path={HI.appstore} />, <HomeIcon path={HI.mobile} />, <HomeIcon path={HI.shop} />, <HomeIcon path={HI.gift} />, <HomeIcon path={HI.star} />][index % 5]
                       )}
                     </span>
-                    <Text className="shopee-categories__name">{categoryName}</Text>
+                    <span className="shopee-categories__name">{categoryName}</span>
                   </button>
                 );
               })}
@@ -1402,20 +1402,18 @@ const Home: React.FC = () => {
               <h2>{t('home.recentlyViewed')}</h2>
               <div className="shopee-section__actions">
 	                <button type="button" aria-label={recentlyViewedMoreProductsLabel} title={recentlyViewedMoreProductsLabel} onClick={() => navigate('/products')}>{t('home.moreProducts')}</button>
-                <Popconfirm
-                  classNames={{ root: 'shop-mobile-popup-layer shopee-home-popconfirm' }}
-                  title={t('home.clearRecentlyViewedConfirm')}
-                  okText={t('common.confirm')}
-                  cancelText={t('common.cancel')}
-                  okButtonProps={{ danger: true, 'aria-label': clearRecentlyViewedActionLabel, title: clearRecentlyViewedActionLabel }}
-                  cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${clearRecentlyViewedActionLabel}`, title: `${t('common.cancel')}: ${clearRecentlyViewedActionLabel}` }}
-                  onConfirm={() => {
+                <button
+                  type="button"
+                  aria-label={clearRecentlyViewedActionLabel}
+                  title={clearRecentlyViewedActionLabel}
+                  onClick={() => {
+                    if (!window.confirm(t('home.clearRecentlyViewedConfirm'))) return;
                     clearProductViewHistory();
                     setViewPreferences(loadProductViewPreferences());
                   }}
                 >
-                  <button type="button" aria-label={clearRecentlyViewedActionLabel} title={clearRecentlyViewedActionLabel}>{t('home.clearRecentlyViewed')}</button>
-                </Popconfirm>
+                  {t('home.clearRecentlyViewed')}
+                </button>
               </div>
             </div>
             {recentlyViewedPending ? (
@@ -1423,13 +1421,13 @@ const Home: React.FC = () => {
                 <ProductCardSkeleton count={4} />
               </div>
             ) : (
-            <Row gutter={[12, 12]}>
+            <div className="home-product-grid">
               {recentlyViewedProducts.map(({ product, viewedAt }, index) => (
-                <Col key={product.id} xs={12} sm={8} md={6} lg={4}>
+                <div key={product.id} className="home-product-grid__item">
                   <HomeProductCard {...productCardCommonProps} product={product} index={index} compact viewedAt={viewedAt} sectionLabel={t('home.recentlyViewed')} />
-                </Col>
+                </div>
               ))}
-            </Row>
+            </div>
             )}
           </section>
         ) : null}
@@ -1442,13 +1440,13 @@ const Home: React.FC = () => {
               </h2>
 	              <button type="button" aria-label={flashOffersViewAllLabel} title={flashOffersViewAllLabel} onClick={openDiscountProducts}>{t('home.viewAll')}</button>
             </div>
-            <Row gutter={[12, 12]}>
+            <div className="home-product-grid">
               {promoProducts.map((product, index) => (
-                <Col key={product.id} xs={12} sm={8} md={6} lg={4}>
+                <div key={product.id} className="home-product-grid__item">
                   <HomeProductCard {...productCardCommonProps} product={product} index={index} compact sectionLabel={t('home.flashOffers')} />
-                </Col>
+                </div>
               ))}
-            </Row>
+            </div>
           </section>
         ) : null}
 
@@ -1472,16 +1470,16 @@ const Home: React.FC = () => {
                   })
                 : t('home.discoveryAllLoaded')}
             </div>
-            <Row gutter={[12, 12]} role="list" aria-label={t('home.dailyDiscovery')}>
+            <div className="home-product-grid" role="list" aria-label={t('home.dailyDiscovery')}>
               {visibleDiscoveryProducts.map((product, index) => (
-                <Col key={product.id} xs={12} sm={8} md={6} lg={4} role="listitem">
+                <div key={product.id} className="home-product-grid__item" role="listitem">
                   <HomeProductCard {...productCardCommonProps} product={product} index={index} priority={index < 2} sectionLabel={t('home.dailyDiscovery')} />
-                </Col>
+                </div>
               ))}
-            </Row>
+            </div>
             {hasMoreDiscoveryProducts ? (
               <div className="shopee-load-more" role="status" aria-live="polite" aria-busy="true" aria-label={t('home.discoveryLoadingMore')}>
-                <Spin size="small" />
+                <span className="home-spinner" aria-hidden="true" />
                 <button
                   type="button"
                   className="shopee-load-more__button"

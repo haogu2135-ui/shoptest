@@ -8,7 +8,7 @@
 .order-tracking-page .ant-card,
 .order-tracking-page .ant-btn,
 .order-tracking-page .ant-input,
-.order-tracking-page .ant-typography {
+.order-tracking-page .order-tracking-page__text {
   font-family: 'Avenir Next', 'Manrope', 'Segoe UI Variable', sans-serif;
 }
 
@@ -87,7 +87,7 @@
   gap: 4px;
 }
 
-.order-tracking-page__journeyCopy .ant-typography {
+.order-tracking-page__journeyCopy .order-tracking-page__text {
   margin: 0;
 }
 
@@ -186,7 +186,7 @@
   color: #ffffff;
 }
 
-.order-tracking-page__confidenceCard .ant-typography {
+.order-tracking-page__confidenceCard .order-tracking-page__text {
   display: block;
   line-height: 1.35;
 }
@@ -218,7 +218,7 @@
   gap: 2px;
 }
 
-.order-tracking-page__nextAction .ant-typography {
+.order-tracking-page__nextAction .order-tracking-page__text {
   overflow-wrap: anywhere;
 }
 
@@ -249,7 +249,7 @@
   gap: 4px;
 }
 
-.order-tracking-page__assurance .ant-typography {
+.order-tracking-page__assurance .order-tracking-page__text {
   margin: 0;
   overflow-wrap: anywhere;
 }
@@ -310,7 +310,7 @@
 .order-tracking-page--es .ant-card,
 .order-tracking-page--es .ant-btn,
 .order-tracking-page--es .ant-input,
-.order-tracking-page--es .ant-typography,
+.order-tracking-page--es .order-tracking-page__text,
 .order-tracking-page--es .ant-descriptions,
 .order-tracking-page--es .ant-tag {
   hyphens: auto;
@@ -339,8 +339,8 @@
     padding: 14px 0 24px;
   }
 
-  .order-tracking-page h1.ant-typography,
-.order-tracking-page h2.ant-typography {
+  .order-tracking-page h1.order-tracking-page__text,
+.order-tracking-page h2.order-tracking-page__text {
     font-size: 24px;
   }
 
@@ -566,8 +566,8 @@
     padding: 8px 0 20px;
   }
 
-  .order-tracking-page h1.ant-typography,
-.order-tracking-page h2.ant-typography {
+  .order-tracking-page h1.order-tracking-page__text,
+.order-tracking-page h2.order-tracking-page__text {
     margin-bottom: 10px;
     font-size: 22px;
     line-height: 1.15;
@@ -613,15 +613,15 @@
     gap: 3px;
   }
 
-  .order-tracking-page__journeyCopy h4.ant-typography,
-  .order-tracking-page__assurance h4.ant-typography {
+  .order-tracking-page__journeyCopy h4.order-tracking-page__text,
+  .order-tracking-page__assurance h4.order-tracking-page__text {
     font-size: 16px;
     line-height: 1.2;
   }
 
-  .order-tracking-page__journeyCopy .ant-typography,
-  .order-tracking-page__assurance .ant-typography,
-  .order-tracking-page__nextAction .ant-typography {
+  .order-tracking-page__journeyCopy .order-tracking-page__text,
+  .order-tracking-page__assurance .order-tracking-page__text,
+  .order-tracking-page__nextAction .order-tracking-page__text {
     font-size: 12px;
     line-height: 1.35;
   }
@@ -872,7 +872,7 @@
   .order-tracking-page__item .ant-list-item-meta-title,
   .order-tracking-page__item .ant-list-item-meta-description,
   .order-tracking-page__itemTotal,
-  .order-tracking-page__confidenceCard .ant-typography,
+  .order-tracking-page__confidenceCard .order-tracking-page__text,
   .order-tracking-page__assuranceSignals span {
     overflow-wrap: anywhere;
     word-break: break-word;
@@ -935,13 +935,13 @@
   gap: 2px;
 }
 
-.order-tracking-page__lookupHeader .ant-typography {
+.order-tracking-page__lookupHeader .order-tracking-page__text {
   margin: 0;
   overflow-wrap: anywhere;
   line-height: 1.35;
 }
 
-.order-tracking-page__lookupHeader .ant-typography-secondary {
+.order-tracking-page__lookupHeader .order-tracking-page__text--secondary {
   font-size: 13px;
 }
 
@@ -1005,12 +1005,12 @@
     font-size: 14px;
   }
 
-  .order-tracking-page__lookupHeader .ant-typography {
+  .order-tracking-page__lookupHeader .order-tracking-page__text {
     font-size: 13px;
     line-height: 1.25;
   }
 
-  .order-tracking-page__lookupHeader .ant-typography-secondary {
+  .order-tracking-page__lookupHeader .order-tracking-page__text--secondary {
     font-size: 12px;
   }
 
@@ -1075,7 +1075,7 @@
     min-height: 44px;
   }
 
-  .order-tracking-page__lookupHeader .ant-typography-secondary {
+  .order-tracking-page__lookupHeader .order-tracking-page__text--secondary {
     display: none;
   }
 
@@ -1226,7 +1226,7 @@
 
   .order-tracking-page__itemTitle,
   .order-tracking-page__itemMeta,
-  .order-tracking-page__item .ant-typography {
+  .order-tracking-page__item .order-tracking-page__text {
     overflow-wrap: anywhere;
   }
 
@@ -1414,7 +1414,7 @@
   background: #fbfff8;
 }
 
-.order-tracking-page__returnModal .profile-return-modal__summary .ant-typography {
+.order-tracking-page__returnModal .profile-return-modal__summary .order-tracking-page__text {
   color: #173f2b;
 }
 
@@ -1700,15 +1700,68 @@
 /* Commercial mobile: order tracking labels stay >=12px. */
 @media (max-width: 780px) {
   .order-tracking-page,
-  .order-tracking-page .ant-typography,
+  .order-tracking-page .order-tracking-page__text,
   .order-tracking-page .ant-form-item-label > label,
   .order-tracking-page .ant-btn {
     font-size: inherit;
   }
 
   .order-tracking-page__hint,
-  .order-tracking-page .ant-typography-secondary {
+  .order-tracking-page .order-tracking-page__text--secondary {
     font-size: 12px !important;
     line-height: 1.3 !important;
   }
+}
+
+/* Commercial OrderTracking native Space */
+.order-tracking-page__stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.order-tracking-page__chipRow,
+.order-tracking-page__inlineRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+
+/* Native typography densification (no ant Typography runtime) */
+.order-tracking-page__title {
+  margin: 0;
+  font-weight: 700;
+  line-height: 1.2;
+  color: inherit;
+}
+
+.order-tracking-page__text {
+  margin: 0;
+  color: inherit;
+  line-height: 1.5;
+}
+
+.order-tracking-page__text--strong {
+  font-weight: 600;
+}
+
+.order-tracking-page__text--secondary {
+  color: rgba(0, 0, 0, 0.45);
+}
+
+.order-tracking-page__text--danger {
+  color: #ff4d4f;
+}
+
+.order-tracking-page__text--warning {
+  color: #faad14;
+}
+
+.order-tracking-page__text--success {
+  color: #52c41a;
+}
+
+.order-tracking-page__text--delete {
+  text-decoration: line-through;
 }
