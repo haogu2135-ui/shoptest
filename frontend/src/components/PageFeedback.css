@@ -1,3 +1,4 @@
+/* Native page feedback densification (no ant Result/Empty runtime) */
 .page-feedback {
   width: min(100%, 720px);
   margin: 0 auto;
@@ -5,24 +6,59 @@
   text-align: center;
 }
 
-.page-feedback .ant-result {
+.page-feedback__result {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
   padding: 24px 12px;
 }
 
-.page-feedback .ant-result-title {
+.page-feedback__resultIcon {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: rgba(255, 77, 79, 0.12);
+  position: relative;
+}
+
+.page-feedback__resultIcon::before,
+.page-feedback__resultIcon::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 22px;
+  height: 3px;
+  border-radius: 999px;
+  background: #ff4d4f;
+  transform-origin: center;
+}
+
+.page-feedback__resultIcon::before {
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.page-feedback__resultIcon::after {
+  transform: translate(-50%, -50%) rotate(-45deg);
+}
+
+.page-feedback__resultTitle {
+  margin: 0;
   color: #102f22;
+  font-size: clamp(1.25rem, 2.4vw, 1.6rem);
   font-weight: 800;
   line-height: 1.3;
 }
 
-.page-feedback .ant-result-subtitle,
-.page-feedback .ant-empty-description {
+.page-feedback__resultSubtitle,
+.page-feedback__emptyDescription {
   color: rgba(16, 47, 34, 0.72);
   font-size: 15px;
   line-height: 1.55;
+  max-width: 36rem;
 }
 
-.page-feedback .ant-result-extra,
+.page-feedback__resultExtra,
 .page-feedback__actions {
   display: flex;
   flex-wrap: wrap;
@@ -31,7 +67,7 @@
   margin-top: 8px;
 }
 
-.page-feedback .ant-result-extra .ant-btn,
+.page-feedback__resultExtra .ant-btn,
 .page-feedback__actions .ant-btn {
   min-width: 132px;
   min-height: 44px;
@@ -39,13 +75,30 @@
   font-weight: 700;
 }
 
-.page-feedback--empty .ant-empty {
-  margin-block: 0;
+.page-feedback__empty {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
 }
 
-.page-feedback--empty .ant-empty-image {
-  height: 96px;
-  margin-bottom: 12px;
+.page-feedback__emptyImage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 96px;
+  margin-bottom: 4px;
+}
+
+.page-feedback__emptyIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: rgba(18, 71, 52, 0.08);
+  color: #124734;
+  font-size: 28px;
 }
 
 @media (max-width: 640px) {
@@ -53,16 +106,16 @@
     padding: 28px 12px calc(24px + env(safe-area-inset-bottom, 0px));
   }
 
-  .page-feedback .ant-result-title {
+  .page-feedback__resultTitle {
     font-size: 20px;
   }
 
-  .page-feedback .ant-result-subtitle,
-  .page-feedback .ant-empty-description {
+  .page-feedback__resultSubtitle,
+  .page-feedback__emptyDescription {
     font-size: 14px;
   }
 
-  .page-feedback .ant-result-extra,
+  .page-feedback__resultExtra,
   .page-feedback__actions {
     width: 100%;
     display: grid;
@@ -70,16 +123,15 @@
     gap: 10px;
   }
 
-  .page-feedback .ant-result-extra .ant-btn,
+  .page-feedback__resultExtra .ant-btn,
   .page-feedback__actions .ant-btn {
     width: 100%;
     min-width: 0;
   }
 }
 
-
 /* COMMERCIAL_PAGE_FEEDBACK_FOCUS_V1 */
-.page-feedback .ant-result-extra .ant-btn:focus-visible,
+.page-feedback__resultExtra .ant-btn:focus-visible,
 .page-feedback__actions .ant-btn:focus-visible {
   outline: 3px solid rgba(18, 71, 52, 0.35);
   outline-offset: 2px;

@@ -914,7 +914,7 @@ describe('cart to checkout flows', () => {
     expect(zhStart).toBeGreaterThan(-1);
     expect(zhCss).toContain('.cart-page--zh');
     expect(zhCss).toMatch(/\.cart-page--zh\s*\{[\s\S]*?line-break:\s*strict;[\s\S]*?overflow-wrap:\s*anywhere;/);
-    expect(zhCss).toMatch(/\.cart-page--zh \.cart-page__mobileItemTitle,[\s\S]*?\.cart-page--zh \.ant-list-item-meta-title\s*\{[\s\S]*?line-height:\s*1\.25;/);
+    expect(zhCss).toMatch(/\.cart-page--zh \.cart-page__mobileItemTitle,[\s\S]*?\.cart-page--zh \.cart-page__itemTitle\s*\{[\s\S]*?line-height:\s*1\.25;/);
     expect(zhCss).toMatch(/\.cart-page--zh \.cart-page__heroActions \.ant-btn,[\s\S]*?\.cart-page--zh \.cart-page__summary \.ant-btn-primary\s*\{[\s\S]*?min-height:\s*44px;[\s\S]*?white-space:\s*normal;/);
     expect(zhCss).toMatch(/@media \(max-width:\s*560px\)\s*\{[\s\S]*?\.cart-page--zh \.cart-page__heroActions,[\s\S]*?grid-template-columns:\s*1fr;[\s\S]*?\.cart-page--zh \.cart-page__summary \.ant-btn-primary\s*\{[\s\S]*?width:\s*100%;/);
   });

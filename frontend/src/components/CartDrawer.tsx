@@ -1,7 +1,7 @@
 import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { ShopIcon, SI } from './ShopIcon';
-import { Alert, Button, Drawer, Empty, InputNumber, List, Popconfirm, Progress, Space, Tag, Typography } from 'antd';
+import { Alert, Button, InputNumber, Popconfirm, Progress, Tag } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { cartApi } from '../api';
 import type { CartItem, ProductPublic as Product } from '../types';
@@ -33,10 +33,10 @@ import { allSettledWithConcurrency } from '../utils/asyncBatch';
 import { getLocalStorageItem, removeSessionStorageItem, setSessionStorageItem } from '../utils/safeStorage';
 import { getApiErrorMessage, isAuthExpiredError } from '../utils/apiError';
 import { useNativeBackHandler } from '../utils/nativeBack';
+import ShopDrawer from './ShopDrawer';
 import './CartDrawer.css';
 import '../styles/mobile-page-contrast.css';
 
-const { Text } = Typography;
 const AddOnAssistant = React.lazy(() => import('./AddOnAssistant'));
 const PetPersonalizedAssistant = React.lazy(() => import('./PetPersonalizedAssistant'));
 const expressPaymentCodesByCurrency: Record<string, string[]> = {
@@ -550,7 +550,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
   };
 
   return (
-    <Drawer
+    <ShopDrawer
       title={t('pages.cart.yourCart')}
       placement="right"
       width="min(420px, 100%)"
@@ -558,8 +558,9 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
       onClose={closeDrawer}
       rootClassName={`cart-drawer__root${open ? ' cart-drawer__root--open' : ''}`}
       className={`cart-drawer cart-drawer--${language}`}
-      styles={{ body: { padding: 16 } }}
-      extra={<Text strong className="commerce-money">{formatMoney(subtotal)}</Text>}
+      ariaLabel={t('pages.cart.yourCart')}
+      closeLabel={t('common.close', { defaultValue: 'Close' })}
+      extra={<span className="cart-drawer__text cart-drawer__text--strong commerce-money">{formatMoney(subtotal)}</span>}
     >
       <div className="cart-drawer__content">
         <section className="cart-drawer__hero">
@@ -575,10 +576,10 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
           <div className="cart-drawer__shippingHeader">
             <ShopIcon path={SI.checkCircle} className={`cart-drawer__shippingIcon${drawerReady ? ' cart-drawer__shippingIcon--ready' : ''}`} />
             <div className="cart-drawer__shippingText">
-              <Text strong>{freeShippingStatusText}</Text>
-              <Text type="secondary" className="cart-drawer__shippingStatus">
+              <span className="cart-drawer__text cart-drawer__text--strong">{freeShippingStatusText}</span>
+              <span className="cart-drawer__text cart-drawer__text--secondary cart-drawer__shippingStatus">
                 {shippingStatusText}
-              </Text>
+              </span>
             </div>
           </div>
           <Progress
@@ -593,7 +594,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
                 : t('pages.cart.shippingCalculatedAtCheckout')}
           />
           {giftUnlocked ? (
-            <Text type="secondary" className="cart-drawer__shippingGift">{t('pages.cart.drawerGiftUnlocked')}</Text>
+            <span className="cart-drawer__text cart-drawer__text--secondary cart-drawer__shippingGift">{t('pages.cart.drawerGiftUnlocked')}</span>
           ) : null}
         </div>
 
@@ -601,8 +602,8 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
           <section className={`cart-drawer__nextAction cart-drawer__nextAction--${drawerNextAction.tone}`} aria-label={t('pages.cart.nextActionEyebrow')}>
             <span className="cart-drawer__nextActionIcon">{drawerNextAction.icon}</span>
             <span className="cart-drawer__nextActionCopy">
-              <Text strong>{drawerNextAction.title}</Text>
-              <Text type="secondary">{drawerNextAction.text}</Text>
+              <span className="cart-drawer__text cart-drawer__text--strong">{drawerNextAction.title}</span>
+              <span className="cart-drawer__text cart-drawer__text--secondary">{drawerNextAction.text}</span>
             </span>
             {drawerNextAction.tone === 'attention' ? (
               <Popconfirm
@@ -640,7 +641,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
 
         {blockedCount > 0 ? (
           <div className="cart-drawer__unavailable">
-            <Text type="secondary">{t('pages.cart.unavailableSummary', { count: blockedCount })}</Text>
+            <span className="cart-drawer__text cart-drawer__text--secondary">{t('pages.cart.unavailableSummary', { count: blockedCount })}</span>
             <Popconfirm
               classNames={{ root: 'shop-mobile-popup-layer cart-drawer-popconfirm' }}
               title={t('pages.cart.drawerClearBlockedConfirm', { count: blockedCount })}
@@ -670,13 +671,13 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
           <details className="cart-drawer__boostPanel">
             <summary>
               <span>
-                <Text strong>{t('pages.checkout.expressCheckout')}</Text>
-                <Text type="secondary">{expressHint}</Text>
+                <span className="cart-drawer__text cart-drawer__text--strong">{t('pages.checkout.expressCheckout')}</span>
+                <span className="cart-drawer__text cart-drawer__text--secondary">{expressHint}</span>
               </span>
               {benefitTarget ? <Tag color="orange">{t('pages.cart.nextActionFindAddOn')}</Tag> : null}
             </summary>
             <div className="cart-drawer__expressWrap">
-              <Space.Compact block className="cart-drawer__express">
+              <div className="cart-drawer__express cart-drawer__expressCompact">
                 {expressPaymentCodes.map((code) => (
                   (() => {
                     const paymentLabel = paymentMethodLabel(code, t);
@@ -696,7 +697,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
                     );
                   })()
                 ))}
-              </Space.Compact>
+              </div>
             </div>
           </details>
         ) : null}
@@ -708,7 +709,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
             message={t('pages.cart.fetchFailed')}
             description={t('common.loadFailedRetry')}
             action={(
-              <Space wrap className="cart-drawer__emptyActions" data-cart-drawer-load-recovery="true">
+              <div className="cart-drawer__emptyActions" data-cart-drawer-load-recovery="true">
                 <Button size="small" type="primary" icon={<ShopIcon path={SI.reload} />} onClick={() => loadCart()} aria-label={t('common.retry')} title={t('common.retry')}>
                   {t('common.retry')}
                 </Button>
@@ -718,23 +719,20 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
                 <Button size="small" icon={<ShopIcon path={SI.gift} />} onClick={() => closeAndGo('/coupons')} aria-label={emptyDrawerCouponsActionLabel} title={emptyDrawerCouponsActionLabel}>
                   {t('nav.coupons')}
                 </Button>
-              </Space>
+              </div>
             )}
           />
         ) : null}
 
         {items.length === 0 && !loadError ? (
           <div className="cart-drawer__empty" data-cart-drawer-empty="true">
-            <Empty
-              image={<ShopIcon path={SI.shopping} style={{ fontSize: 54, color: '#ccc' }} />}
-              description={(
-                <div className="cart-drawer__emptyCopy">
-                  <div>{t('pages.cart.empty')}</div>
-                  <div className="cart-drawer__emptyHint">{t('pages.cart.emptyHint')}</div>
-                </div>
-              )}
-            >
-              <Space wrap className="cart-drawer__emptyActions" data-cart-drawer-empty-actions="true">
+            <div className="cart-drawer__emptyPanel">
+              <span className="cart-drawer__emptyIcon" aria-hidden="true"><ShopIcon path={SI.shopping} style={{ fontSize: 54, color: '#ccc' }} /></span>
+              <div className="cart-drawer__emptyCopy">
+                <div>{t('pages.cart.empty')}</div>
+                <div className="cart-drawer__emptyHint">{t('pages.cart.emptyHint')}</div>
+              </div>
+              <div className="cart-drawer__emptyActions" data-cart-drawer-empty-actions="true">
                 <Button type="primary" icon={<ShopIcon path={SI.shopping} />} aria-label={emptyDrawerBrowseActionLabel} title={emptyDrawerBrowseActionLabel} onClick={() => closeAndGo('/products')}>
                   {t('pages.cart.browse')}
                 </Button>
@@ -747,54 +745,25 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
                 <Button icon={<ShopIcon path={SI.clock} />} aria-label={emptyDrawerHistoryActionLabel} title={emptyDrawerHistoryActionLabel} onClick={() => closeAndGo('/history')}>
                   {t('nav.history')}
                 </Button>
-              </Space>
-            </Empty>
+              </div>
+            </div>
           </div>
         ) : items.length > 0 ? (
-          <List
-            loading={loading}
-            dataSource={items}
-            className="cart-drawer__list"
-            renderItem={(item) => {
+          <div className={`cart-drawer__listWrap${loading ? ' cart-drawer__listWrap--loading' : ''}`}>
+            {loading ? (
+              <div className="cart-drawer__spinnerOverlay" role="status" aria-live="polite" aria-label={t('common.loading')}>
+                <span className="cart-drawer__spinner" aria-hidden="true" />
+              </div>
+            ) : null}
+            <ul className="cart-drawer__list cart-drawer__itemList" role="list">
+              {items.map((item) => {
               const itemName = getCartItemName(item);
               const saveActionLabel = `${t('pages.cart.saveForLaterShort')}: ${itemName}`;
               const deleteActionLabel = `${t('common.delete')}: ${itemName}`;
               const productLinkLabel = `${t('pages.productList.viewPick')}: ${itemName}`;
               return (
-              <List.Item
-                className="cart-drawer__item"
-                actions={[
-                  <Button
-                    key="later"
-                    type="link"
-                    className="cart-drawer__itemAction cart-drawer__itemAction--save"
-                    icon={<ShopIcon path={SI.clock} />}
-                    loading={savingForLaterIds[item.id]}
-                    disabled={savingForLaterIds[item.id] || hasStaleCartData}
-                    aria-label={saveActionLabel}
-                    title={saveActionLabel}
-                    onClick={() => saveForLater(item)}
-                  >
-                    {t('pages.cart.saveForLaterShort')}
-                  </Button>,
-                  <Popconfirm
-                    key="delete"
-                    classNames={{ root: 'shop-mobile-popup-layer cart-drawer-popconfirm' }}
-                    title={t('pages.cart.deleteConfirm')}
-                    onConfirm={() => removeItem(item)}
-                    okText={t('common.confirm')}
-                    cancelText={t('common.cancel')}
-                    okButtonProps={{ danger: true, 'aria-label': deleteActionLabel, title: deleteActionLabel }}
-                    cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${deleteActionLabel}`, title: `${t('common.cancel')}: ${deleteActionLabel}` }}
-                  >
-                    <Button type="link" danger className="cart-drawer__itemAction cart-drawer__itemAction--delete" icon={<ShopIcon path={SI.delete} />} aria-label={deleteActionLabel} title={deleteActionLabel} disabled={hasStaleCartData}>
-                      {t('common.delete')}
-                    </Button>
-                  </Popconfirm>,
-                ]}
-              >
-                <List.Item.Meta
-                  avatar={
+              <li key={item.id} className="cart-drawer__item">
+                <div className="cart-drawer__itemMeta">
                     <img
                       src={getOptimizedImageUrl(resolveCartImage(item.imageUrl), 144)}
                       srcSet={buildResponsiveImageSrcSet(resolveCartImage(item.imageUrl), [96, 144, 192, 288])}
@@ -807,12 +776,11 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
                       decoding="async"
                       onError={applyCartImageFallback}
                     />
-                  }
-                  title={<button type="button" className="cart-drawer__productLink" aria-label={productLinkLabel} title={productLinkLabel} onClick={() => { setOpen(false); navigate(`/products/${item.productId}`); }}>{itemName}</button>}
-                  description={
-                    <Space direction="vertical" size={4}>
+                  <div className="cart-drawer__itemBody">
+                    <button type="button" className="cart-drawer__productLink" aria-label={productLinkLabel} title={productLinkLabel} onClick={() => { setOpen(false); navigate(`/products/${item.productId}`); }}>{itemName}</button>
+                    <div className="cart-drawer__itemDetails">
                       {!canCheckout(item) ? <Tag color="red">{t('pages.cart.unavailable')}</Tag> : null}
-                      {item.selectedSpecs ? <Text type="secondary">{formatSelectedSpecs(item.selectedSpecs, t, language)}</Text> : null}
+                      {item.selectedSpecs ? <span className="cart-drawer__text cart-drawer__text--secondary">{formatSelectedSpecs(item.selectedSpecs, t, language)}</span> : null}
                       {canCheckout(item) && getCartItemLowStockCount(item) !== null ? (
                         <Tag color="orange" className="cart-drawer__urgency">
                           {t('pages.cart.lowStockLeft', { count: getCartItemLowStockCount(item) ?? 0 })}
@@ -821,10 +789,10 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
                       <div className="cart-drawer__itemCommerce">
                         <div className="cart-drawer__itemCommerceTop">
                           <span className="cart-drawer__itemPrice commerce-atomic commerce-price-quantity">
-                            <Text className="cart-drawer__itemUnitPrice commerce-money">{formatMoney(item.price)}</Text>
+                            <span className="cart-drawer__itemUnitPrice commerce-money">{formatMoney(item.price)}</span>
                             <span className="cart-drawer__itemQuantity commerce-quantity">x {item.quantity}</span>
                           </span>
-                          <Text strong className="cart-drawer__lineTotal commerce-money">{formatMoney(getCartLineAmount(item))}</Text>
+                          <span className="cart-drawer__text cart-drawer__text--strong cart-drawer__lineTotal commerce-money">{formatMoney(getCartLineAmount(item))}</span>
                         </div>
                         <InputNumber
                           min={1}
@@ -839,17 +807,45 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
                         />
                       </div>
                       {updatingQuantityIds[item.id] ? (
-                        <Text type="secondary" className="cart-drawer__syncText">
+                        <span className="cart-drawer__text cart-drawer__text--secondary cart-drawer__syncText">
                           {t('pages.cart.drawerSyncingQuantity', { count: 1 })}
-                        </Text>
+                        </span>
                       ) : null}
-                    </Space>
-                  }
-                />
-              </List.Item>
+                    </div>
+                  </div>
+                </div>
+                <div className="cart-drawer__itemActions">
+                  <Button
+                    type="link"
+                    className="cart-drawer__itemAction cart-drawer__itemAction--save"
+                    icon={<ShopIcon path={SI.clock} />}
+                    loading={savingForLaterIds[item.id]}
+                    disabled={savingForLaterIds[item.id] || hasStaleCartData}
+                    aria-label={saveActionLabel}
+                    title={saveActionLabel}
+                    onClick={() => saveForLater(item)}
+                  >
+                    {t('pages.cart.saveForLaterShort')}
+                  </Button>
+                  <Popconfirm
+                    classNames={{ root: 'shop-mobile-popup-layer cart-drawer-popconfirm' }}
+                    title={t('pages.cart.deleteConfirm')}
+                    onConfirm={() => removeItem(item)}
+                    okText={t('common.confirm')}
+                    cancelText={t('common.cancel')}
+                    okButtonProps={{ danger: true, 'aria-label': deleteActionLabel, title: deleteActionLabel }}
+                    cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${deleteActionLabel}`, title: `${t('common.cancel')}: ${deleteActionLabel}` }}
+                  >
+                    <Button type="link" danger className="cart-drawer__itemAction cart-drawer__itemAction--delete" icon={<ShopIcon path={SI.delete} />} aria-label={deleteActionLabel} title={deleteActionLabel} disabled={hasStaleCartData}>
+                      {t('common.delete')}
+                    </Button>
+                  </Popconfirm>
+                </div>
+              </li>
               );
-            }}
-          />
+            })}
+            </ul>
+          </div>
         ) : null}
 
         {open && items.length > 0 && !hasStaleCartData ? (
@@ -864,10 +860,10 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
       </div>
 
       <div className="cart-drawer__footer">
-        <Space direction="vertical" className="cart-drawer__footerStack">
+        <div className="cart-drawer__footerStack">
           <div className="cart-drawer__subtotal">
-            <Text>{t('common.subtotal')}</Text>
-            <Text strong className="commerce-money">{formatMoney(subtotal)}</Text>
+            <span className="cart-drawer__text">{t('common.subtotal')}</span>
+            <span className="cart-drawer__text cart-drawer__text--strong commerce-money">{formatMoney(subtotal)}</span>
           </div>
           <div className="cart-drawer__footerActions">
             <Button
@@ -892,12 +888,12 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
             <span><ShopIcon path={SI.shopping} /> {t('pages.productDetail.trustShippingTitle')}</span>
             <span><ShopIcon path={SI.clock} /> {t('pages.productDetail.trustReturnsTitle')}</span>
           </div>
-          <Text type="secondary" className="cart-drawer__footerHint">
+          <span className="cart-drawer__text cart-drawer__text--secondary cart-drawer__footerHint">
             {t('pages.cart.drawerFooterHint')}
-          </Text>
-        </Space>
+          </span>
+        </div>
       </div>
-    </Drawer>
+    </ShopDrawer>
   );
 };
 

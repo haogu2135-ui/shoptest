@@ -937,17 +937,17 @@ it('keeps home empty category and product rails on multipath commercial recovery
     const coupons = readFrontend('pages', 'CouponCenter.tsx');
     const homeCss = readFrontend('pages', 'Home.css');
     const listCss = readFrontend('pages', 'ProductList.css');
-    expect(cart).toMatch(/Title level=\{1\}\>\{t\('pages\.cart\.title'\)\}/);
-    expect(cart).toMatch(/Title level=\{1\}\>\{t\('pages\.cart\.empty'\)\}/);
-    // Loading + recovery shells must also expose the commercial h1 (not shimmer-only).
-    expect(cart).toMatch(/role="status"[\s\S]*?Title level=\{1\}\>\{t\('pages\.cart\.title'\)\}/);
-    expect(cart).toMatch(/Title level=\{1\}\>\{t\('pages\.cart\.title'\)\}[\s\S]*?data-cart-load-recovery="true"/);
-    expect(checkout).toMatch(/Title level=\{1\}\>\{t\('pages\.checkout\.title'\)\}/);
-    expect(checkout).toMatch(/checkout-page--loading[\s\S]*?Title level=\{1\}\>\{t\('pages\.checkout\.title'\)\}/);
-    expect(checkout).toMatch(/Title level=\{1\}\>\{t\('pages\.checkout\.title'\)\}[\s\S]*?data-checkout-load-recovery="true"/);
-    expect(productDetail).toMatch(/product-title-block[\s\S]*?Title level=\{1\}\>\{productName\}/);
-    expect(tracking).toMatch(/Title level=\{1\} className="order-tracking-page__title"/);
-    expect(coupons).toMatch(/Title level=\{1\}\>\<GiftOutlined \/\> \{t\('pages\.coupons\.opportunityTitle'\)\}/);
+    // Native h1 densification (no ant Typography Title runtime).
+    expect(cart).toContain("<h1 className=\"cart-page__title\">{t('pages.cart.title')}</h1>");
+    expect(cart).toContain("<h1 className=\"cart-page__title\">{t('pages.cart.empty')}</h1>");
+    expect(cart).toMatch(/role="status"[\s\S]*?<h1 className="cart-page__title">\{t\('pages\.cart\.title'\)\}<\/h1>/);
+    expect(cart).toMatch(/<h1 className="cart-page__title">\{t\('pages\.cart\.title'\)\}<\/h1>[\s\S]*?data-cart-load-recovery="true"/);
+    expect(checkout).toContain("<h1 className=\"checkout-page__title\">{t('pages.checkout.title')}</h1>");
+    expect(checkout).toMatch(/checkout-page--loading[\s\S]*?<h1 className="checkout-page__title">\{t\('pages\.checkout\.title'\)\}<\/h1>/);
+    expect(checkout).toMatch(/<h1 className="checkout-page__title">\{t\('pages\.checkout\.title'\)\}<\/h1>[\s\S]*?data-checkout-load-recovery="true"/);
+    expect(productDetail).toMatch(/product-title-block[\s\S]*?<h1 className="product-detail-page__title">\{productName\}<\/h1>/);
+    expect(tracking).toContain('<h1 className="order-tracking-page__title">');
+    expect(coupons).toContain("<h1 className=\"coupon-center-page__title\"><ShopIcon path={SI.gift} /> {t('pages.coupons.opportunityTitle')}</h1>");
     expect(homeCss).toContain('Commercial stock badges stay >=12px');
     expect(listCss).toContain('Commercial catalog hero eyebrow stays >=12px');
   });
@@ -1084,8 +1084,8 @@ it('keeps home empty category and product rails on multipath commercial recovery
 
   it('keeps login shell on a commercial loginTitle h1', () => {
     const login = readFrontend('pages', 'Login.tsx');
-    expect(login).toMatch(/Title level=\{1\}\>\{t\('pages\.auth\.loginTitle'\)\}/);
-    expect(login).not.toMatch(/Title level=\{1\}\>\{t\('pages\.auth\.loginTrustTitle'\)\}/);
+    expect(login).toContain("<h1 className=\"shopee-login-panel__title\">{t('pages.auth.loginTitle')}</h1>");
+    expect(login).not.toContain("<h1 className=\"shopee-login-panel__title\">{t('pages.auth.loginTrustTitle')}</h1>");
   });
 
   it('keeps support panel conversion microcopy commercially legible at >=12px', () => {
@@ -1158,14 +1158,14 @@ it('keeps home empty category and product rails on multipath commercial recovery
     const wishlist = readFrontend('pages', 'Wishlist.tsx');
     const profile = readFrontend('pages', 'Profile.tsx');
     const app = readFrontend('App.tsx');
-    expect(wishlist).toMatch(/Title level=\{1\}\>\{t\('pages\.wishlist\.authGateTitle'\)\}/);
-    expect(wishlist).toMatch(/Title level=\{1\}\>\{t\('pages\.wishlist\.empty'\)\}/);
-    expect(wishlist).toMatch(/Title level=\{1\} style=\{\{ margin: 0 \}\}\>\{t\('pages\.wishlist\.title'/);
-    expect(profile).toMatch(/Title level=\{1\}\>\{t\('pages\.profile\.authGateTitle'\)\}/);
-    expect(profile).toMatch(/Title level=\{1\}\>\{user\.username\}/);
+    expect(wishlist).toContain("<h1 className=\"wishlist-page__title\">{t('pages.wishlist.authGateTitle')}</h1>");
+    expect(wishlist).toContain("<h1 className=\"wishlist-page__title\">{t('pages.wishlist.pageTitle')}</h1>");
+    expect(profile).toContain("<h1 className=\"profile-page__title\">{t('pages.profile.authGateTitle')}</h1>");
+    expect(profile).toContain('<h1 className="profile-page__title">{user.username}</h1>');
     expect(app).toMatch(/path === '\/wishlist'/);
     expect(app).toMatch(/path === '\/profile'/);
   });
+
 
   it('keeps footer CTA and checkout conversion microcopy commercially legible', () => {
     const appCss = readFrontend('App.css');
@@ -1183,13 +1183,13 @@ it('keeps home empty category and product rails on multipath commercial recovery
     const notFound = readFrontend('pages', 'NotFound.tsx');
     const forgot = readFrontend('pages', 'ForgotPassword.tsx');
     const app = readFrontend('App.tsx');
-    expect(notifications).toMatch(/Title level=\{1\}\>\{t\('pages\.notifications\.authGateTitle'\)\}/);
-    expect(notifications).toMatch(/Title level=\{1\}\>\{t\('pages\.notifications\.title'\)\}/);
-    expect(petFinder).toMatch(/Title level=\{1\} style=\{\{ margin: 0 \}\}/);
-    expect(compare).toMatch(/Title level=\{1\} style=\{\{ margin: 0 \}\}\>\{t\('pages\.compare\.title'\)\}/);
-    expect(stock).toMatch(/Title level=\{1\} style=\{\{ margin: 0 \}\}/);
+    expect(notifications).toContain("<h1 className=\"notifications-page__title\">{t('pages.notifications.authGateTitle')}</h1>");
+    expect(notifications).toContain("<h1 className=\"notifications-page__title\">{t('pages.notifications.title')}</h1>");
+    expect(petFinder).toContain('<h1 className="pet-finder-page__title" style={{ margin: 0 }}>');
+    expect(compare).toContain("<h1 className=\"product-compare-page__title\" style={{ margin: 0 }}>{t('pages.compare.title')}</h1>");
+    expect(stock).toContain('<h1 className="stock-alerts-page__title" style={{ margin: 0 }}>');
     expect(notFound).toContain('not-found-page__title');
-    expect(forgot).toMatch(/Title level=\{1\} className="shopee-login-subtitle shopee-login-subtitle--h1"/);
+    expect(forgot).toContain('<h1 className="shopee-login-subtitle shopee-login-subtitle--h1">');
     expect(app).toMatch(/path === '\/notifications'/);
     expect(app).toMatch(/path === '\/pet-finder'/);
     expect(app).toMatch(/path === '\/stock-alerts'/);

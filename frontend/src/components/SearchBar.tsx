@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ShopIcon, SI } from './ShopIcon';
-import { Input, Space } from 'antd';
+import { Input } from 'antd';
 import { useLanguage } from '../i18n';
 import './SearchBar.css';
 
@@ -32,7 +32,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({ onSearch, placeholder, deb
     }, [debounceMs, value]);
 
     return (
-        <Space className="shop-search-bar">
+        <div className="shop-search-bar">
             <Input
                 className="shop-search-bar__input"
                 value={value}
@@ -42,6 +42,6 @@ export const SearchBar: React.FC<SearchBarProps> = ({ onSearch, placeholder, deb
                 onPressEnter={() => onSearchRef.current(value)}
                 allowClear
             />
-        </Space>
+        </div>
     );
 };

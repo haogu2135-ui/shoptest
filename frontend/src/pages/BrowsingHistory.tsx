@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { ShopIcon, SI } from '../components/ShopIcon';
-import { Alert, Button, Empty, Input, Popconfirm, Spin, Tag } from 'antd';
+import { Alert, Button, Input, Popconfirm, Tag } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { cartApi, productApi } from '../api';
 import { useLanguage } from '../i18n';
@@ -308,7 +308,7 @@ const BrowsingHistory: React.FC = () => {
         aria-busy="true"
         aria-label={t('common.loading')}
       >
-        <Spin size="large" />
+        <span className="browsing-history__spinner" aria-hidden="true" />
       </main>
     );
   }
@@ -615,16 +615,15 @@ const BrowsingHistory: React.FC = () => {
           })}
         </section>
       ) : (
-        <section className="browsing-history__empty">
-          <Empty
-            description={
-              loadError && hasHistory
+        <section className="browsing-history__empty" role="status" aria-live="polite">
+          <div className="browsing-history__emptyPanel">
+            <div className="browsing-history__emptyDescription">
+              {loadError && hasHistory
                 ? t('pages.browsingHistory.emptyLoadFailed')
                 : historyProducts.length
                   ? t('pages.browsingHistory.noSearchResults')
-                  : t('pages.browsingHistory.empty')
-            }
-          >
+                  : t('pages.browsingHistory.empty')}
+            </div>
             {loadError && hasHistory ? (
               <div className="browsing-history__emptyActions" data-history-empty-load-actions="true">
                 <Button type="primary" icon={<ShopIcon path={SI.reload} />} onClick={() => setReloadToken((current) => current + 1)}>
@@ -677,7 +676,7 @@ const BrowsingHistory: React.FC = () => {
                 ))}
               </div>
             )}
-          </Empty>
+          </div>
         </section>
       )}
       <div className={`browsing-history__mobileAction browsing-history__mobileAction--${historyNextAction.tone}`} aria-label={t('pages.browsingHistory.nextActionEyebrow')}>

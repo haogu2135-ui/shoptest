@@ -1,3 +1,14 @@
+.stock-alerts__shell {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  background: #fff;
+  border: 1px solid #e4ebe4;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 6px 16px rgba(18, 71, 52, 0.05);
+}
+
 ﻿.stock-alerts {
   width: min(1200px, calc(100% - 24px));
   margin: 0 auto;
@@ -5,7 +16,7 @@
 }
 
 .stock-alerts,
-.stock-alerts .ant-card,
+.stock-alerts .stock-alerts__shell,
 .stock-alerts .ant-btn,
 .stock-alerts .ant-list,
 .stock-alerts .stock-alerts-page__text {
@@ -1280,4 +1291,103 @@
 
 .stock-alerts-page__text--delete {
   text-decoration: line-through;
+}
+
+
+/* Native list densification (no ant List runtime) */
+.stock-alerts__listWrap {
+  position: relative;
+  min-height: 120px;
+}
+
+.stock-alerts__listWrap--loading {
+  pointer-events: none;
+}
+
+.stock-alerts__spinnerOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.stock-alerts__spinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid rgba(22, 119, 255, 0.18);
+  border-top-color: #1677ff;
+  border-radius: 50%;
+  animation: stock-alerts-spin 0.8s linear infinite;
+}
+
+@keyframes stock-alerts-spin {
+  to { transform: rotate(360deg); }
+}
+
+.stock-alerts__itemList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0;
+}
+
+.stock-alerts__item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.stock-alerts__itemMeta {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-width: 0;
+  flex: 1;
+}
+
+.stock-alerts__itemBody {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.stock-alerts__itemActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.stock-alerts__itemActions .ant-btn {
+  min-height: 44px;
+}
+
+.stock-alerts__item .ant-list-item-meta-title,
+.stock-alerts__item .ant-list-item-meta-description {
+  /* legacy ant list selectors retained as no-ops after densify */
+}
+
+@media (max-width: 640px) {
+  .stock-alerts__item {
+    flex-direction: column;
+  }
+
+  .stock-alerts__itemActions {
+    width: 100%;
+  }
+
+  .stock-alerts__itemActions .ant-btn {
+    flex: 1 1 calc(50% - 4px);
+  }
 }

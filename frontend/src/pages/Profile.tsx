@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { ShopIcon, SI } from '../components/ShopIcon';
-import { Alert, Button, Card, Cascader, Checkbox, DatePicker, Descriptions, Form, Input, InputNumber, List, Modal, Popconfirm, Progress, Select, Spin, Tabs, Tag } from 'antd';
+import { Alert, Button, Cascader, Checkbox, DatePicker, Form, Input, InputNumber, Modal, Popconfirm, Progress, Select, Tabs, Tag } from 'antd';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { addressApi, cartApi, orderApi, paymentApi, petProfileApi, userApi } from '../api';
 import type { OrderCustomer, OrderItemCustomer, PaymentCustomer, PaymentChannel, PetProfile, UserAddress, UserProfile } from '../types';
@@ -1534,7 +1534,7 @@ const Profile: React.FC = () => {
   if (loading || !user) {
     return (
       <div className="profile-loading" role="status" aria-live="polite" aria-busy="true" aria-label={t('common.loading')}>
-        <Spin />
+        <span className="profile-page__spinner" aria-hidden="true" />
         <span>{t('common.loading')}</span>
       </div>
     );
@@ -1727,7 +1727,7 @@ const Profile: React.FC = () => {
             key: 'info',
             label: t('pages.profile.info'),
             children: (
-              <Card className="profile-section-card">
+              <section className="profile-section-card">
                 <div className="profile-health-panel">
                   <div>
                     <span className="profile-page__text profile-page__text--strong">{t('pages.profile.accountHealthTitle')}</span>
@@ -1741,17 +1741,29 @@ const Profile: React.FC = () => {
                     <Tag color={petProfiles.length > 0 ? 'green' : 'gold'}>{t('pages.profile.accountHealthPet')}</Tag>
                   </div>
                 </div>
-                <Descriptions column={1} bordered>
-                  <Descriptions.Item label={t('pages.profile.username')}>{user.username}</Descriptions.Item>
-                  <Descriptions.Item label={t('pages.profile.email')}>{user.email || t('common.unset')}</Descriptions.Item>
-                  <Descriptions.Item label={t('pages.profile.phone')}>{user.phone || t('common.unset')}</Descriptions.Item>
-                  <Descriptions.Item label={t('pages.profile.defaultAddress')}>{addresses.find((item) => item.isDefault)?.address || t('common.unset')}</Descriptions.Item>
-                </Descriptions>
+                <dl className="profile-page__descList">
+                  <div className="profile-page__descRow">
+                <dt className="profile-page__descLabel">{t('pages.profile.username')}</dt>
+                <dd className="profile-page__descValue">{user.username}</dd>
+              </div>
+                  <div className="profile-page__descRow">
+                <dt className="profile-page__descLabel">{t('pages.profile.email')}</dt>
+                <dd className="profile-page__descValue">{user.email || t('common.unset')}</dd>
+              </div>
+                  <div className="profile-page__descRow">
+                <dt className="profile-page__descLabel">{t('pages.profile.phone')}</dt>
+                <dd className="profile-page__descValue">{user.phone || t('common.unset')}</dd>
+              </div>
+                  <div className="profile-page__descRow">
+                <dt className="profile-page__descLabel">{t('pages.profile.defaultAddress')}</dt>
+                <dd className="profile-page__descValue">{addresses.find((item) => item.isDefault)?.address || t('common.unset')}</dd>
+              </div>
+                </dl>
                 <div className="profile-info-actions">
                   <Button icon={<ShopIcon path={SI.edit} />} onClick={openEditModal}>{t('pages.profile.editProfile')}</Button>
                   <Button icon={<ShopIcon path={SI.lock} />} onClick={() => setPasswordModalVisible(true)}>{t('pages.profile.changePassword')}</Button>
                 </div>
-              </Card>
+              </section>
             ),
           },
           {
@@ -1871,15 +1883,15 @@ const Profile: React.FC = () => {
                     ]}
                   />
                 ) : (
-                  <List
-                    dataSource={addresses}
-                    renderItem={(address) => {
+                  <ul className="profile-page__itemList profile-page__addressList" role="list">
+                    {addresses.map((address) => {
                       const addressLabel = [address.recipientName, address.phone, address.address].filter(Boolean).join(' / ') || `#${address.id}`;
                       const defaultActionLabel = `${t('pages.profile.setDefault')}: ${addressLabel}`;
                       const editActionLabel = `${t('common.edit')}: ${addressLabel}`;
                       const deleteActionLabel = `${t('common.delete')}: ${addressLabel}`;
                       return (
-                      <Card key={address.id} className="profile-section-card profile-address-card">
+                      <li key={address.id} className="profile-page__item">
+                      <section className="profile-section-card profile-address-card">
                         <div className="profile-address-card__content">
                           <div>
                             <div className="profile-page__inlineRow">
@@ -1909,10 +1921,11 @@ const Profile: React.FC = () => {
                             </Popconfirm>
                           </div>
                         </div>
-                      </Card>
+                      </section>
+                      </li>
                       );
-                    }}
-                  />
+                    })}
+                  </ul>
                 )}
               </div>
             ),
@@ -2360,14 +2373,14 @@ const Profile: React.FC = () => {
             children: (
               <div>
                 <div className="profile-pet-insights">
-                  <Card className="profile-pet-insights__card">
+                  <section className="profile-pet-insights__card">
                     <div className="profile-page__stack">
                       <span className="profile-page__text profile-page__text--strong">{t('pages.profile.petCompletenessTitle')}</span>
                       <span className="profile-page__text profile-page__text--secondary">{petCompletenessText}</span>
                       <Progress percent={petProfileProgress} size="small" strokeColor="#ff4d00" />
                     </div>
-                  </Card>
-                  <Card className="profile-pet-insights__card">
+                  </section>
+                  <section className="profile-pet-insights__card">
                     <div className="profile-page__stack">
                       <span className="profile-page__text profile-page__text--strong">{t('pages.profile.petBirthdayPerkTitle')}</span>
                       <span className="profile-page__text profile-page__text--secondary">{t('pages.profile.petBirthdayPerkText')}</span>
@@ -2376,7 +2389,7 @@ const Profile: React.FC = () => {
                         <Tag color={petsMissingFitCount > 0 ? 'orange' : 'green'}>{t('pages.profile.petMissingFit', { count: petsMissingFitCount })}</Tag>
                       </div>
                     </div>
-                  </Card>
+                  </section>
                 </div>
                 <div className="profile-pet-next-step">
                   <div>
@@ -2454,35 +2467,15 @@ const Profile: React.FC = () => {
                     ]}
                   />
                 ) : (
-                  <List
-                    grid={{ gutter: 16, xs: 1, sm: 2, md: 2 }}
-                    dataSource={petProfiles}
-                    renderItem={(pet) => {
+                  <ul className="profile-page__itemList profile-page__petGrid" role="list">
+                    {petProfiles.map((pet) => {
                       const petLabel = pet.name || `#${pet.id}`;
                       const editActionLabel = `${t('common.edit')}: ${petLabel}`;
                       const deleteActionLabel = `${t('common.delete')}: ${petLabel}`;
                       const shopActionLabel = `${t('pages.profile.shopForThisPet')}: ${petLabel}`;
                       return (
-                      <List.Item>
-                        <Card
-                          className="profile-section-card profile-pet-card"
-                          title={pet.name}
-                          extra={<Tag color="green">{petTypeLabel(pet.petType)}</Tag>}
-                          actions={[
-                            <Button type="link" icon={<ShopIcon path={SI.edit} />} aria-label={editActionLabel} title={editActionLabel} onClick={() => openPetModal(pet)}>{t('common.edit')}</Button>,
-                            <Popconfirm
-                              classNames={{ root: 'shop-mobile-popup-layer profile-popconfirm' }}
-                              title={t('pages.profile.deletePetConfirm')}
-                              onConfirm={() => handleDeletePet(pet.id)}
-                              okText={t('common.confirm')}
-                              cancelText={t('common.cancel')}
-                              okButtonProps={{ danger: true, 'aria-label': deleteActionLabel, title: deleteActionLabel }}
-                              cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${deleteActionLabel}`, title: `${t('common.cancel')}: ${deleteActionLabel}` }}
-                            >
-                              <Button type="link" danger icon={<ShopIcon path={SI.delete} />} aria-label={deleteActionLabel} title={deleteActionLabel}>{t('common.delete')}</Button>
-                            </Popconfirm>,
-                          ]}
-                        >
+                      <li key={pet.id} className="profile-page__item profile-page__petGridItem">
+                        <section className="profile-section-card profile-pet-card"><div className="shop-panel__head"><div className="shop-panel__title">{pet.name}</div><div className="shop-panel__extra">{<Tag color="green">{petTypeLabel(pet.petType)}</Tag>}</div></div>
                           <div className="profile-page__stack">
                             <span className="profile-page__text">{t('pages.profile.petBreed')}: {pet.breed || t('common.unset')}</span>
                             <span className="profile-page__text">{t('pages.profile.petBirthday')}: {pet.birthday || t('common.unset')}</span>
@@ -2493,11 +2486,11 @@ const Profile: React.FC = () => {
                               {t('pages.profile.shopForThisPet')}
                             </Button>
                           </div>
-                        </Card>
-                      </List.Item>
+                        </section>
+                      </li>
                       );
-                    }}
-                  />
+                    })}
+                  </ul>
                 )}
               </div>
             ),
@@ -2832,51 +2825,104 @@ const Profile: React.FC = () => {
       <Modal title={t('pages.profile.orderDetail', { id: selectedOrder?.orderNo || selectedOrder?.id || '' })} open={orderDetailVisible} onCancel={() => setOrderDetailVisible(false)} footer={null} width={640} className="profile-mobile-safe-modal profile-order-detail-modal">
         {selectedOrder && (
           <div>
-            <Descriptions column={1} bordered size="small" className="profile-order-detail__descriptions">
-              <Descriptions.Item label={t('common.status')}><Tag color={getOrderStatusColor(selectedOrder.status)}>{formatOrderStatusLabel(selectedOrder.status)}</Tag></Descriptions.Item>
-              <Descriptions.Item label={t('common.amount')}><span className="profile-page__text profile-page__text--strong profile-price-text commerce-money">{formatMoney(selectedOrder.totalAmount)}</span></Descriptions.Item>
-              {selectedOrder.originalAmount ? <Descriptions.Item label={t('common.subtotal')}><span className="commerce-money">{formatMoney(selectedOrder.originalAmount)}</span></Descriptions.Item> : null}
+            <dl className="profile-page__descList profile-order-detail__descriptions">
+              <div className="profile-page__descRow">
+                <dt className="profile-page__descLabel">{t('common.status')}</dt>
+                <dd className="profile-page__descValue"><Tag color={getOrderStatusColor(selectedOrder.status)}>{formatOrderStatusLabel(selectedOrder.status)}</Tag></dd>
+              </div>
+              <div className="profile-page__descRow">
+                <dt className="profile-page__descLabel">{t('common.amount')}</dt>
+                <dd className="profile-page__descValue"><span className="profile-page__text profile-page__text--strong profile-price-text commerce-money">{formatMoney(selectedOrder.totalAmount)}</span></dd>
+              </div>
+              {selectedOrder.originalAmount ? <div className="profile-page__descRow">
+                <dt className="profile-page__descLabel">{t('common.subtotal')}</dt>
+                <dd className="profile-page__descValue"><span className="commerce-money">{formatMoney(selectedOrder.originalAmount)}</span></dd>
+              </div> : null}
               {selectedOrder.discountAmount && selectedOrder.discountAmount > 0 ? (
-                <Descriptions.Item label={t('pages.checkout.coupon')}>{selectedOrder.couponName || '-'} / <span className="commerce-money">-{formatMoney(selectedOrder.discountAmount)}</span></Descriptions.Item>
+                <div className="profile-page__descRow">
+                <dt className="profile-page__descLabel">{t('pages.checkout.coupon')}</dt>
+                <dd className="profile-page__descValue">{selectedOrder.couponName || '-'} / <span className="commerce-money">-{formatMoney(selectedOrder.discountAmount)}</span></dd>
+              </div>
               ) : null}
-              <Descriptions.Item label={t('pages.checkout.address')}>{selectedOrder.shippingAddress || '-'}</Descriptions.Item>
-              <Descriptions.Item label={t('pages.checkout.paymentMethod')}>{selectedOrder.paymentMethod ? paymentMethodLabel(selectedOrder.paymentMethod, t) : '-'}</Descriptions.Item>
-              <Descriptions.Item label={t('pages.adminOrders.tracking')}>
-                {selectedOrder.trackingNumber ? (
+              <div className="profile-page__descRow">
+                <dt className="profile-page__descLabel">{t('pages.checkout.address')}</dt>
+                <dd className="profile-page__descValue">{selectedOrder.shippingAddress || '-'}</dd>
+              </div>
+              <div className="profile-page__descRow">
+                <dt className="profile-page__descLabel">{t('pages.checkout.paymentMethod')}</dt>
+                <dd className="profile-page__descValue">{selectedOrder.paymentMethod ? paymentMethodLabel(selectedOrder.paymentMethod, t) : '-'}</dd>
+              </div>
+              <div className="profile-page__descRow">
+                <dt className="profile-page__descLabel">{t('pages.adminOrders.tracking')}</dt>
+                <dd className="profile-page__descValue">{selectedOrder.trackingNumber ? (
                   <div className="profile-page__inlineRow">
                     <span>{selectedOrder.trackingNumber}</span>
                     {selectedOrder.trackingCarrierName ? <Tag>{selectedOrder.trackingCarrierName}</Tag> : null}
                     <Button size="small" aria-label={selectedOrderTrackActionLabel} title={selectedOrderTrackActionLabel} onClick={() => handleTrackShipment(selectedOrder.trackingNumber, selectedOrder.trackingCarrierCode, selectedOrder.id)}>{t('pages.adminOrders.track')}</Button>
                   </div>
-                ) : '-'}
-              </Descriptions.Item>
-              <Descriptions.Item label={t('pages.profile.returnTracking')}>{selectedOrder.returnTrackingNumber || '-'}</Descriptions.Item>
-              <Descriptions.Item label={t('pages.profile.returnDeadline')}>
-                {selectedOrder.returnDeadline ? new Date(selectedOrder.returnDeadline).toLocaleString(dateLocale) : '-'}
-              </Descriptions.Item>
-              <Descriptions.Item label={t('pages.profile.returnReason')}>{selectedOrder.returnReason || '-'}</Descriptions.Item>
+                ) : '-'}</dd>
+              </div>
+              <div className="profile-page__descRow">
+                <dt className="profile-page__descLabel">{t('pages.profile.returnTracking')}</dt>
+                <dd className="profile-page__descValue">{selectedOrder.returnTrackingNumber || '-'}</dd>
+              </div>
+              <div className="profile-page__descRow">
+                <dt className="profile-page__descLabel">{t('pages.profile.returnDeadline')}</dt>
+                <dd className="profile-page__descValue">{selectedOrder.returnDeadline ? new Date(selectedOrder.returnDeadline).toLocaleString(dateLocale) : '-'}</dd>
+              </div>
+              <div className="profile-page__descRow">
+                <dt className="profile-page__descLabel">{t('pages.profile.returnReason')}</dt>
+                <dd className="profile-page__descValue">{selectedOrder.returnReason || '-'}</dd>
+              </div>
               {selectedOrder.returnRequestedAt ? (
-                <Descriptions.Item label={t('pages.profile.returnRequestedAt')}>{new Date(selectedOrder.returnRequestedAt).toLocaleString(dateLocale)}</Descriptions.Item>
+                <div className="profile-page__descRow">
+                <dt className="profile-page__descLabel">{t('pages.profile.returnRequestedAt')}</dt>
+                <dd className="profile-page__descValue">{new Date(selectedOrder.returnRequestedAt).toLocaleString(dateLocale)}</dd>
+              </div>
               ) : null}
               {selectedOrder.returnApprovedAt ? (
-                <Descriptions.Item label={t('pages.profile.returnApprovedAt')}>{new Date(selectedOrder.returnApprovedAt).toLocaleString(dateLocale)}</Descriptions.Item>
+                <div className="profile-page__descRow">
+                <dt className="profile-page__descLabel">{t('pages.profile.returnApprovedAt')}</dt>
+                <dd className="profile-page__descValue">{new Date(selectedOrder.returnApprovedAt).toLocaleString(dateLocale)}</dd>
+              </div>
               ) : null}
               {selectedOrder.returnRejectedAt ? (
-                <Descriptions.Item label={t('pages.profile.returnRejectedAt')}>{new Date(selectedOrder.returnRejectedAt).toLocaleString(dateLocale)}</Descriptions.Item>
+                <div className="profile-page__descRow">
+                <dt className="profile-page__descLabel">{t('pages.profile.returnRejectedAt')}</dt>
+                <dd className="profile-page__descValue">{new Date(selectedOrder.returnRejectedAt).toLocaleString(dateLocale)}</dd>
+              </div>
               ) : null}
               {selectedOrder.returnShippedAt ? (
-                <Descriptions.Item label={t('pages.profile.returnShippedAt')}>{new Date(selectedOrder.returnShippedAt).toLocaleString(dateLocale)}</Descriptions.Item>
+                <div className="profile-page__descRow">
+                <dt className="profile-page__descLabel">{t('pages.profile.returnShippedAt')}</dt>
+                <dd className="profile-page__descValue">{new Date(selectedOrder.returnShippedAt).toLocaleString(dateLocale)}</dd>
+              </div>
               ) : null}
               {selectedOrder.returnedAt ? (
-                <Descriptions.Item label={t('pages.profile.returnedAt')}>{new Date(selectedOrder.returnedAt).toLocaleString(dateLocale)}</Descriptions.Item>
+                <div className="profile-page__descRow">
+                <dt className="profile-page__descLabel">{t('pages.profile.returnedAt')}</dt>
+                <dd className="profile-page__descValue">{new Date(selectedOrder.returnedAt).toLocaleString(dateLocale)}</dd>
+              </div>
               ) : null}
               {selectedOrder.refundedAt ? (
-                <Descriptions.Item label={t('pages.profile.refundedAt')}>{new Date(selectedOrder.refundedAt).toLocaleString(dateLocale)}</Descriptions.Item>
+                <div className="profile-page__descRow">
+                <dt className="profile-page__descLabel">{t('pages.profile.refundedAt')}</dt>
+                <dd className="profile-page__descValue">{new Date(selectedOrder.refundedAt).toLocaleString(dateLocale)}</dd>
+              </div>
               ) : null}
-              <Descriptions.Item label={t('pages.profile.shippedAt')}>{selectedOrder.shippedAt ? new Date(selectedOrder.shippedAt).toLocaleString(dateLocale) : '-'}</Descriptions.Item>
-              <Descriptions.Item label={t('pages.profile.completedAt')}>{selectedOrder.completedAt ? new Date(selectedOrder.completedAt).toLocaleString(dateLocale) : '-'}</Descriptions.Item>
-              <Descriptions.Item label={t('pages.adminOrders.createdAt')}>{selectedOrder.createdAt ? new Date(selectedOrder.createdAt).toLocaleString(dateLocale) : '-'}</Descriptions.Item>
-            </Descriptions>
+              <div className="profile-page__descRow">
+                <dt className="profile-page__descLabel">{t('pages.profile.shippedAt')}</dt>
+                <dd className="profile-page__descValue">{selectedOrder.shippedAt ? new Date(selectedOrder.shippedAt).toLocaleString(dateLocale) : '-'}</dd>
+              </div>
+              <div className="profile-page__descRow">
+                <dt className="profile-page__descLabel">{t('pages.profile.completedAt')}</dt>
+                <dd className="profile-page__descValue">{selectedOrder.completedAt ? new Date(selectedOrder.completedAt).toLocaleString(dateLocale) : '-'}</dd>
+              </div>
+              <div className="profile-page__descRow">
+                <dt className="profile-page__descLabel">{t('pages.adminOrders.createdAt')}</dt>
+                <dd className="profile-page__descValue">{selectedOrder.createdAt ? new Date(selectedOrder.createdAt).toLocaleString(dateLocale) : '-'}</dd>
+              </div>
+            </dl>
             <div className="profile-order-detail__itemsHeader">
               <h5 className="profile-page__title profile-order-detail__itemsTitle">{t('pages.profile.orderItems')}</h5>
               <Button icon={<ShopIcon path={SI.cart} />} loading={reordering} disabled={orderItems.length === 0} aria-label={reorderSelectedOrderActionLabel} title={reorderSelectedOrderActionLabel} onClick={handleReorder}>
@@ -2884,15 +2930,13 @@ const Profile: React.FC = () => {
               </Button>
             </div>
             {orderItems.length > 0 ? (
-              <List
-                dataSource={orderItems}
-                renderItem={(item) => {
+              <ul className="profile-page__itemList profile-order-detail__itemList" role="list">
+                {orderItems.map((item, index) => {
                   const itemName = profileOrderItemName(item);
                   const itemActionLabel = `${t('pages.productList.viewDetails')}: ${itemName}`;
                   return (
-                    <List.Item>
-                      <List.Item.Meta
-                        avatar={
+                    <li key={String(item.id || `${item.productId || 'item'}-${index}`)} className="profile-page__item profile-order-detail__item">
+                      <div className="profile-page__itemMeta">
                           <button
                             type="button"
                             aria-label={itemActionLabel}
@@ -2909,8 +2953,7 @@ const Profile: React.FC = () => {
                               onError={useImageFallback}
                             />
                           </button>
-                        }
-                        title={
+                        <div className="profile-page__itemBody">
                           <button
                             type="button"
                             aria-label={itemActionLabel}
@@ -2920,8 +2963,6 @@ const Profile: React.FC = () => {
                           >
                             {itemName}
                           </button>
-                        }
-                        description={
                           <div className="profile-page__stackTight">
                             {item.selectedSpecs ? <span className="profile-page__text profile-page__text--secondary">{formatSelectedSpecs(item.selectedSpecs, t, language)}</span> : null}
                             <span className="profile-page__text profile-page__text--secondary profile-order-detail__unit commerce-atomic commerce-price-quantity">
@@ -2929,13 +2970,13 @@ const Profile: React.FC = () => {
                               <span className="commerce-quantity">x {item.quantity}</span>
                             </span>
                           </div>
-                        }
-                      />
+                        </div>
+                      </div>
                       <span className="profile-page__text profile-page__text--strong profile-price-text commerce-money">{formatMoney(item.price * item.quantity)}</span>
-                    </List.Item>
+                    </li>
                   );
-                }}
-              />
+                })}
+              </ul>
             ) : (
               <span className="profile-page__text profile-page__text--secondary">{t('pages.profile.noOrderItems')}</span>
             )}
@@ -3167,13 +3208,18 @@ const Profile: React.FC = () => {
                 </span>
               </div>
             </div>
-            <Descriptions column={1} bordered size="small">
-              <Descriptions.Item label={t('pages.profile.orderNo')}>{selectedOrder.orderNo || selectedOrder.id}</Descriptions.Item>
-              <Descriptions.Item label={t('common.amount')}>
-                <span className="profile-page__text profile-page__text--strong profile-price-text commerce-money">{formatMoney(selectedOrder.totalAmount)}</span>
-              </Descriptions.Item>
-              <Descriptions.Item label={t('pages.checkout.paymentMethod')}>
-                <Select
+            <dl className="profile-page__descList profile-payment-detail__descriptions">
+              <div className="profile-page__descRow">
+                <dt className="profile-page__descLabel">{t('pages.profile.orderNo')}</dt>
+                <dd className="profile-page__descValue">{selectedOrder.orderNo || selectedOrder.id}</dd>
+              </div>
+              <div className="profile-page__descRow">
+                <dt className="profile-page__descLabel">{t('common.amount')}</dt>
+                <dd className="profile-page__descValue"><span className="profile-page__text profile-page__text--strong profile-price-text commerce-money">{formatMoney(selectedOrder.totalAmount)}</span></dd>
+              </div>
+              <div className="profile-page__descRow">
+                <dt className="profile-page__descLabel">{t('pages.checkout.paymentMethod')}</dt>
+                <dd className="profile-page__descValue"><Select
                   className="profile-payment-modal__methodSelect"
                   value={selectedPaymentMethod}
                   options={paymentOptions}
@@ -3212,15 +3258,17 @@ const Profile: React.FC = () => {
                     </Tag>
                     <span className="profile-page__text profile-page__text--secondary">{t(selectedPaymentMethodDetail.descriptionKey)}</span>
                   </div>
-                ) : null}
-              </Descriptions.Item>
-              <Descriptions.Item label={t('common.status')}>
-                <Tag color={getPaymentStatusColor(selectedPayment.status)}>
+                ) : null}</dd>
+              </div>
+              <div className="profile-page__descRow">
+                <dt className="profile-page__descLabel">{t('common.status')}</dt>
+                <dd className="profile-page__descValue"><Tag color={getPaymentStatusColor(selectedPayment.status)}>
                   {formatPaymentStatusLabel(selectedPayment.status)}
-                </Tag>
-              </Descriptions.Item>
-              <Descriptions.Item label={t('pages.checkout.paymentLink')}>
-                {selectedPayment.paymentUrl && !selectedPaymentPaid && !selectedPaymentReconcileRequired && !selectedPaymentExpiredOrFailed ? (
+                </Tag></dd>
+              </div>
+              <div className="profile-page__descRow">
+                <dt className="profile-page__descLabel">{t('pages.checkout.paymentLink')}</dt>
+                <dd className="profile-page__descValue">{selectedPayment.paymentUrl && !selectedPaymentPaid && !selectedPaymentReconcileRequired && !selectedPaymentExpiredOrFailed ? (
                   <Button
                     type="link"
                     className="profile-payment-link"
@@ -3240,25 +3288,31 @@ const Profile: React.FC = () => {
                   <span className="profile-page__text profile-page__text--secondary">{t('pages.checkout.paymentRecoveryNextFailed')}</span>
                 ) : selectedPaymentRecovery.isExpired ? (
                   <span className="profile-page__text profile-page__text--secondary">{t('pages.checkout.paymentRecoveryNextRetry')}</span>
-                ) : '-'}
-              </Descriptions.Item>
-              <Descriptions.Item label={t('pages.profile.paymentExpiresAt')}>
-                {selectedPayment.expiresAt ? new Date(selectedPayment.expiresAt).toLocaleString(dateLocale) : '-'}
-              </Descriptions.Item>
+                ) : '-'}</dd>
+              </div>
+              <div className="profile-page__descRow">
+                <dt className="profile-page__descLabel">{t('pages.profile.paymentExpiresAt')}</dt>
+                <dd className="profile-page__descValue">{selectedPayment.expiresAt ? new Date(selectedPayment.expiresAt).toLocaleString(dateLocale) : '-'}</dd>
+              </div>
               {selectedPayment.paidAt ? (
-                <Descriptions.Item label={t('pages.profile.paidAt')}>
-                  {new Date(selectedPayment.paidAt).toLocaleString(dateLocale)}
-                </Descriptions.Item>
+                <div className="profile-page__descRow">
+                <dt className="profile-page__descLabel">{t('pages.profile.paidAt')}</dt>
+                <dd className="profile-page__descValue">{new Date(selectedPayment.paidAt).toLocaleString(dateLocale)}</dd>
+              </div>
               ) : null}
               {selectedPayment.refundedAt ? (
-                <Descriptions.Item label={t('pages.profile.refundedAt')}>
-                  {new Date(selectedPayment.refundedAt).toLocaleString(dateLocale)}
-                </Descriptions.Item>
+                <div className="profile-page__descRow">
+                <dt className="profile-page__descLabel">{t('pages.profile.refundedAt')}</dt>
+                <dd className="profile-page__descValue">{new Date(selectedPayment.refundedAt).toLocaleString(dateLocale)}</dd>
+              </div>
               ) : null}
               {selectedPayment.transactionId && (
-                <Descriptions.Item label={t('pages.checkout.transactionId')}>{selectedPayment.transactionId}</Descriptions.Item>
+                <div className="profile-page__descRow">
+                <dt className="profile-page__descLabel">{t('pages.checkout.transactionId')}</dt>
+                <dd className="profile-page__descValue">{selectedPayment.transactionId}</dd>
+              </div>
               )}
-            </Descriptions>
+            </dl>
             {normalizeStatusCode(selectedPayment.status) === 'REFUNDED' || normalizeStatusCode(selectedPayment.status) === 'REFUNDING' ? (
               <Alert
                 type={normalizeStatusCode(selectedPayment.status) === 'REFUNDED' ? 'success' : 'info'}
@@ -3278,11 +3332,7 @@ const Profile: React.FC = () => {
             ) : null}
             <div>
               <span className="profile-page__text profile-page__text--strong">{t('pages.profile.paymentHistory')}</span>
-              <List
-                size="small"
-                dataSource={orderPayments}
-                locale={{
-                  emptyText: (
+              {(!orderPayments || orderPayments.length === 0) ? (
                     <div className="profile-payment-history__empty" data-profile-payment-history-empty="true">
                       <div className="profile-payment-history__emptyCopy">
                         <div>{t('pages.profile.noPaymentHistory')}</div>
@@ -3320,10 +3370,10 @@ const Profile: React.FC = () => {
                         </Button>
                       </div>
                     </div>
-                  ),
-                }}
-                renderItem={(payment) => (
-                  <List.Item>
+              ) : (
+              <ul className="profile-page__itemList profile-payment-history__itemList" role="list">
+                {orderPayments.map((payment, index) => (
+                  <li key={String(payment.id || `${payment.channel || 'pay'}-${index}`)} className="profile-page__item">
                     <div className="profile-payment-history__item">
                       <div className="profile-page__chipRow">
                         <Tag color={getPaymentStatusColor(payment.status)}>
@@ -3346,9 +3396,10 @@ const Profile: React.FC = () => {
                         </span>
                       ) : null}
                     </div>
-                  </List.Item>
-                )}
-              />
+                  </li>
+                ))}
+              </ul>
+              )}
             </div>
           </div>
         )}

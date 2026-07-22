@@ -465,3 +465,11 @@
     line-height: 1.25 !important;
   }
 }
+
+
+.payment-modal__stack { display: grid; gap: 12px; width: 100%; }
+.payment-modal__methodList { display: grid; gap: 8px; width: 100%; }
+.payment-modal__methodLabel { display: inline-flex; align-items: center; gap: 8px; }
+.payment-modal__text--strong { font-weight: 700; }
+.payment-modal__text--secondary { color: rgba(0,0,0,0.45); }
+.payment-modal__amount { margin: 0; font-size: 1.35rem; font-weight: 800; }

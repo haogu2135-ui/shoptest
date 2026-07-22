@@ -39,7 +39,7 @@ describe('AddOnAssistant type-safety guards', () => {
     expect(handleSource).toContain('await onAdd(product);');
     expect(source).toContain('} catch (error: unknown) {');
     expect(source).toContain("getApiErrorMessage(error, t('messages.addFailed'), language)");
-    expect(handleSource).toContain("message.error(getApiErrorMessage(error, t('messages.addFailed'), language));");
+    expect(handleSource).toContain("announceAccessibleMessage(getApiErrorMessage(error, t('messages.addFailed'), language), 'error')");
     expect(handleSource).not.toMatch(/handleApiError\s*\([^)]*rethrow:\s*true/);
     expect(handleSource).not.toMatch(/throw\s+(err|error)\s*;/);
     expect(source).not.toMatch(/\bany\b/);
@@ -58,6 +58,7 @@ describe('AddOnAssistant type-safety guards', () => {
     expect(loadingSource).toContain('aria-live="polite"');
     expect(loadingSource).toContain('aria-busy="true"');
     expect(loadingSource).toContain("aria-label={`${t('pages.addOnAssistant.title')}: ${t('common.loading')}`}");
-    expect(loadingSource).toContain('<Skeleton active paragraph={{ rows: 2 }} />');
+    expect(loadingSource).toContain('add-on-assistant__skeleton');
+    expect(loadingSource).not.toMatch(/\bSkeleton\b/);
   });
 });

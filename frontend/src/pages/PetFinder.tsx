@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ShopIcon, SI } from '../components/ShopIcon';
-import { Alert, Button, Card, Select, Slider, Spin, Tag } from 'antd';
+import { Alert, Button, Select, Slider, Tag } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { productApi } from '../api';
 import { useLanguage } from '../i18n';
@@ -245,7 +245,7 @@ const PetFinder: React.FC = () => {
   return (
     <div className="pet-finder-page">
       <div className="pet-finder-page__layout">
-        <Card className="pet-finder-page__finderCard">
+        <section className="pet-finder-page__finderCard" aria-label={t('pages.petFinder.title')}>
           <div className="pet-finder-page__finderShell">
             <div className="pet-finder-page__finderIntro">
               <div className="pet-finder-page__introStack">
@@ -313,12 +313,18 @@ const PetFinder: React.FC = () => {
               </div>
             </div>
           </div>
-        </Card>
+        </section>
 
-        <Card
-          title={t('pages.petFinder.results', { count: matches.length })}
-          extra={<Button className="pet-finder-page__searchAllButton" icon={<ShopIcon path={SI.search} />} aria-label={t('pages.petFinder.searchAll')} title={t('pages.petFinder.searchAll')} onClick={applyAsSearch}>{t('pages.petFinder.searchAll')}</Button>}
+        <section
+          className="pet-finder-page__resultsCard"
+          aria-label={t('pages.petFinder.results', { count: matches.length })}
         >
+          <div className="shop-panel__head">
+            <h2 className="shop-panel__title">{t('pages.petFinder.results', { count: matches.length })}</h2>
+            <div className="shop-panel__extra">
+              <Button className="pet-finder-page__searchAllButton" icon={<ShopIcon path={SI.search} />} aria-label={t('pages.petFinder.searchAll')} title={t('pages.petFinder.searchAll')} onClick={applyAsSearch}>{t('pages.petFinder.searchAll')}</Button>
+            </div>
+          </div>
           {(loadError || usingCatalogFallback) && !loading ? (
             <Alert
               type={loadError ? 'warning' : 'info'}
@@ -412,7 +418,7 @@ const PetFinder: React.FC = () => {
               aria-busy="true"
               aria-label={t('common.loading')}
             >
-              <Spin size="large" />
+              <div className="pet-finder-page__spinner" role="status" aria-label={t('common.loading')} />
             </div>
           ) : matches.length === 0 ? (
             loadError ? (
@@ -492,10 +498,8 @@ const PetFinder: React.FC = () => {
                 const viewLabel = `${t('pages.petFinder.view')}: ${productName}`;
                 return (
                   <div key={product.id} className="pet-finder-page__recommendationItem">
-                    <Card
-                      hoverable
-                      className="pet-finder-page__productCard"
-                      cover={
+                    <article className="pet-finder-page__productCard" aria-label={viewLabel}>
+                      <div className="pet-finder-page__productCover">
                         <button type="button" className="pet-finder-page__productImageButton" aria-label={viewLabel} title={viewLabel} onClick={() => navigate(`/products/${product.id}`)}>
                           <img
                             className="pet-finder-page__productImage"
@@ -511,13 +515,7 @@ const PetFinder: React.FC = () => {
                             }}
                           />
                         </button>
-                      }
-                      actions={[
-                        <Button type="link" onClick={() => navigate(`/products/${product.id}`)} aria-label={viewLabel} title={viewLabel}>
-                          {t('pages.petFinder.view')}
-                        </Button>,
-                      ]}
-                    >
+                      </div>
                       <div className="pet-finder-page__productBody">
                         <span className="pet-finder-page__text pet-finder-page__text--strong pet-finder-page__productName" title={productName}>{productName}</span>
                         <span className="pet-finder-page__text pet-finder-page__text--strong commerce-money pet-finder-page__productPrice">{formatMoney(productPrice(product))}</span>
@@ -527,13 +525,18 @@ const PetFinder: React.FC = () => {
                           <Tag color="blue">{t('pages.petFinder.matchScore', { score: Math.max(0, Math.round(score)) })}</Tag>
                         </div>
                       </div>
-                    </Card>
+                      <div className="pet-finder-page__productActions">
+                        <Button type="link" onClick={() => navigate(`/products/${product.id}`)} aria-label={viewLabel} title={viewLabel}>
+                          {t('pages.petFinder.view')}
+                        </Button>
+                      </div>
+                    </article>
                   </div>
                 );
               })}
             </div>
           )}
-        </Card>
+        </section>
       </div>
     </div>
   );

@@ -5,7 +5,7 @@
 .product-compare-page,
 .product-compare-page .ant-card,
 .product-compare-page .ant-btn,
-.product-compare-page .ant-table,
+.product-compare-page .product-compare__tableMatrix,
 .product-compare-page .product-compare-page__text {
   font-family: 'Avenir Next', 'Manrope', 'Segoe UI Variable', sans-serif;
 }
@@ -18,7 +18,7 @@
 
 .product-compare__attribute,
 .product-compare__productLink,
-.product-compare-page .ant-table-cell {
+.product-compare-page .product-compare__tableCell {
   overflow-wrap: anywhere;
 }
 
@@ -60,7 +60,7 @@
   max-width: 100%;
 }
 
-.product-compare__row--different > td {
+.product-compare__row--different > .product-compare__tableCell {
   background: #fff8f6;
 }
 
@@ -499,7 +499,7 @@
     white-space: normal;
   }
 
-  .product-compare-page .ant-table-cell {
+  .product-compare-page .product-compare__tableCell {
     padding: 10px 8px !important;
     font-size: 12px;
   }
@@ -510,7 +510,7 @@
     height: 96px !important;
   }
 
-  .product-compare-page .ant-rate {
+  .product-compare-page .shop-rate {
     font-size: 13px;
     white-space: nowrap;
   }
@@ -520,7 +520,7 @@
     font-size: 12px;
   }
 
-  .product-compare__row--different > td {
+  .product-compare__row--different > .product-compare__tableCell {
     background: #fff9f7;
   }
 }
@@ -582,23 +582,23 @@
   transform: translateY(-3px);
 }
 
-.product-compare-page .ant-table-wrapper,
-.product-compare-page .ant-table-container {
+.product-compare-page .product-compare__table,
+.product-compare-page .product-compare__tableContainer {
   border-radius: 22px;
   overflow: hidden;
 }
 
-.product-compare-page .ant-table-thead > tr > th {
+.product-compare-page .product-compare__table thead > tr > th {
   background: #f7fbf8;
   color: #244b37;
   font-weight: 900;
 }
 
-.product-compare-page .ant-table-tbody > tr:hover > td {
+.product-compare-page .product-compare__table tbody > tr:hover > .product-compare__tableCell {
   background: #fffaf6;
 }
 
-.product-compare__row--different > td:first-child {
+.product-compare__row--different > .product-compare__tableCell:first-child {
   box-shadow: inset 4px 0 0 #ee4d2d;
 }
 
@@ -622,7 +622,7 @@
     height: 92px;
   }
 
-  .product-compare-page .ant-table-wrapper {
+  .product-compare-page .product-compare__table {
     margin-right: -8px;
     margin-left: -8px;
   }
@@ -846,24 +846,24 @@
     line-height: 1.25;
   }
 
-  .product-compare-page .ant-table-wrapper {
+  .product-compare-page .product-compare__table {
     margin-right: -10px;
     margin-left: -10px;
     border-radius: 0;
   }
 
-  .product-compare-page .ant-table-container {
+  .product-compare-page .product-compare__tableContainer {
     border-radius: 0;
   }
 
-  .product-compare-page .ant-table-cell {
+  .product-compare-page .product-compare__tableCell {
     min-width: 124px;
     padding: 8px 7px !important;
     font-size: 12px;
     line-height: 1.35;
   }
 
-  .product-compare-page .ant-table-cell-fix-left {
+  .product-compare-page .product-compare__tableSticky {
     min-width: 106px;
     max-width: 116px;
   }
@@ -887,15 +887,15 @@
     height: 76px !important;
   }
 
-  .product-compare-page .ant-rate {
+  .product-compare-page .shop-rate {
     font-size: 12px;
   }
 
-  .product-compare-page .ant-table-cell .ant-space {
+  .product-compare-page .product-compare__tableCell .ant-space {
     gap: 4px !important;
   }
 
-  .product-compare-page .ant-table-cell .ant-btn {
+  .product-compare-page .product-compare__tableCell .ant-btn {
     min-height: 44px;
     max-width: 128px;
     padding-inline: 7px;
@@ -903,7 +903,7 @@
     white-space: normal;
   }
 
-  .product-compare-page .ant-table-cell .ant-tag {
+  .product-compare-page .product-compare__tableCell .ant-tag {
     max-width: 116px;
     overflow: hidden;
     font-size: 12px;
@@ -928,7 +928,7 @@
     min-height: 76px;
   }
 
-  .product-compare-page .ant-table-cell {
+  .product-compare-page .product-compare__tableCell {
     min-width: 116px;
   }
 }
@@ -945,7 +945,7 @@
   .product-compare__diff-tags,
   .product-compare__riskGrid,
   .product-compare__checkoutSteps,
-  .product-compare-page .ant-table-wrapper {
+  .product-compare-page .product-compare__table {
     overscroll-behavior-x: contain;
     -webkit-overflow-scrolling: touch;
   }
@@ -984,7 +984,7 @@
     transform: scale(0.98);
   }
 
-  .product-compare-page .ant-table-wrapper {
+  .product-compare-page .product-compare__table {
     overflow-x: auto;
   }
 }
@@ -1030,10 +1030,10 @@
   }
 
   .product-compare-page .ant-card,
-  .product-compare-page .ant-table-wrapper,
-  .product-compare-page .ant-table,
-  .product-compare-page .ant-table-container,
-  .product-compare-page .ant-table-content,
+  .product-compare-page .product-compare__table,
+  .product-compare-page .product-compare__tableMatrix,
+  .product-compare-page .product-compare__tableContainer,
+  .product-compare-page .product-compare__tableScroll,
   .product-compare__header,
   .product-compare__toolbar,
   .product-compare__diff-summary,
@@ -1098,21 +1098,21 @@
 
   .product-compare__checkoutSteps span,
   .product-compare__decisionItem,
-  .product-compare-page .ant-table-cell,
-  .product-compare-page .ant-table-cell .ant-tag,
-  .product-compare-page .ant-table-cell .ant-btn,
+  .product-compare-page .product-compare__tableCell,
+  .product-compare-page .product-compare__tableCell .ant-tag,
+  .product-compare-page .product-compare__tableCell .ant-btn,
   .product-compare__productLink,
   .product-compare__spec-value {
     overflow-wrap: anywhere;
     word-break: break-word;
   }
 
-  .product-compare-page .ant-table-wrapper {
+  .product-compare-page .product-compare__table {
     max-width: calc(100vw - 12px);
     margin-inline: 0;
   }
 
-  .product-compare-page .ant-table-content {
+  .product-compare-page .product-compare__tableScroll {
     overflow-x: auto !important;
     overscroll-behavior-x: contain;
     -webkit-overflow-scrolling: touch;
@@ -1128,7 +1128,7 @@
     padding: 10px;
   }
 
-  .product-compare-page .ant-table-wrapper {
+  .product-compare-page .product-compare__table {
     max-width: calc(100vw - 8px);
   }
 
@@ -1164,7 +1164,7 @@
     text-overflow: ellipsis;
   }
 
-  .product-compare-page .ant-table-cell-fix-left {
+  .product-compare-page .product-compare__tableSticky {
     left: 0 !important;
   }
 
@@ -1229,7 +1229,7 @@
     touch-action: manipulation;
   }
 
-  .product-compare-page .ant-table-wrapper {
+  .product-compare-page .product-compare__table {
     border-radius: 14px;
     background: #ffffff;
     box-shadow: inset 0 0 0 1px rgba(18, 71, 52, 0.08);
@@ -1272,17 +1272,17 @@
     white-space: normal;
   }
 
-  .product-compare-page .ant-table-content {
+  .product-compare-page .product-compare__tableScroll {
     scroll-padding-inline: 0 18px;
   }
 
-  .product-compare-page .ant-table-cell {
+  .product-compare-page .product-compare__tableCell {
     min-width: 112px;
     padding: 8px !important;
     line-height: 1.25;
   }
 
-  .product-compare-page .ant-table-cell:first-child {
+  .product-compare-page .product-compare__tableCell:first-child {
     min-width: 96px;
   }
 
@@ -1301,7 +1301,7 @@
 }
 
 @media (max-width: 360px) {
-  .product-compare-page .ant-table-cell {
+  .product-compare-page .product-compare__tableCell {
     min-width: 104px;
     padding: 7px !important;
   }
@@ -1312,7 +1312,7 @@
   .product-compare__headerActions .ant-btn,
   .product-compare__recommendationMain .ant-btn,
   .product-compare__checkoutPath .ant-btn,
-  .product-compare-page .ant-table-cell .ant-btn,
+  .product-compare-page .product-compare__tableCell .ant-btn,
   .product-compare-page .ant-empty .ant-btn,
   .product-compare__difference-toggle,
   .product-compare__productLink,
@@ -1329,11 +1329,11 @@
     min-width: 44px;
   }
 
-  .product-compare-page .ant-table-cell .ant-space {
+  .product-compare-page .product-compare__tableCell .ant-space {
     gap: 8px !important;
   }
 
-  .product-compare-page .ant-table-cell .ant-btn {
+  .product-compare-page .product-compare__tableCell .ant-btn {
     max-width: 140px;
   }
 }
@@ -1351,7 +1351,7 @@
   .product-compare__headerActions .ant-btn,
   .product-compare__recommendationMain .ant-btn,
   .product-compare__checkoutPath .ant-btn,
-  .product-compare-page .ant-table-cell .ant-btn,
+  .product-compare-page .product-compare__tableCell .ant-btn,
   .product-compare-page .ant-empty .ant-btn,
   .product-compare-clear-popconfirm .ant-popconfirm-buttons .ant-btn,
   .product-compare-page .ant-btn {
@@ -1361,12 +1361,12 @@
     font-size: max(12px, 1em) !important;
   }
 
-  .product-compare-page .ant-table-cell .ant-btn {
+  .product-compare-page .product-compare__tableCell .ant-btn {
     min-width: 44px !important;
   }
 
-  .product-compare-page .ant-table-cell,
-  .product-compare-page .ant-table-cell .ant-tag,
+  .product-compare-page .product-compare__tableCell,
+  .product-compare-page .product-compare__tableCell .ant-tag,
   .product-compare__spec-value,
   .product-compare__decisionItem span,
   .product-compare__decisionItem strong {
@@ -1467,10 +1467,10 @@
     border-bottom: 0;
   }
 
-  body.shop-mobile-app .product-compare__table.ant-table-wrapper,
-  body.shop-mobile-app .product-compare__table .ant-table,
-  body.shop-mobile-app .product-compare__table .ant-table-container,
-  body.shop-mobile-app .product-compare__table .ant-table-content {
+  body.shop-mobile-app .product-compare__table,
+  body.shop-mobile-app .product-compare__table .product-compare__tableMatrix,
+  body.shop-mobile-app .product-compare__table .product-compare__tableContainer,
+  body.shop-mobile-app .product-compare__table .product-compare__tableScroll {
     width: 100% !important;
     min-width: 0 !important;
     max-width: 100% !important;
@@ -1479,24 +1479,24 @@
     border-radius: 14px !important;
   }
 
-  body.shop-mobile-app .product-compare__table .ant-table-content > table {
+  body.shop-mobile-app .product-compare__table .product-compare__tableMatrix {
     width: 100% !important;
     min-width: 0 !important;
     table-layout: auto !important;
   }
 
   body.shop-mobile-app .product-compare__table colgroup,
-  body.shop-mobile-app .product-compare__table .ant-table-thead {
+  body.shop-mobile-app .product-compare__table thead {
     display: none !important;
   }
 
-  body.shop-mobile-app .product-compare__table .ant-table-tbody {
+  body.shop-mobile-app .product-compare__table tbody {
     display: grid !important;
     gap: 10px;
     width: 100% !important;
   }
 
-  body.shop-mobile-app .product-compare__table .ant-table-tbody > tr {
+  body.shop-mobile-app .product-compare__table tbody > tr {
     display: grid !important;
     gap: 0;
     padding: 10px;
@@ -1506,11 +1506,11 @@
     box-shadow: 0 8px 18px rgba(18, 71, 52, 0.06);
   }
 
-  body.shop-mobile-app .product-compare__table .ant-table-tbody > tr.product-compare__row--different {
+  body.shop-mobile-app .product-compare__table tbody > tr.product-compare__row--different {
     background: #fff9f7;
   }
 
-  body.shop-mobile-app .product-compare__table .ant-table-tbody > tr > td.ant-table-cell {
+  body.shop-mobile-app .product-compare__table tbody > tr > .product-compare__tableCell {
     position: static !important;
     left: auto !important;
     right: auto !important;
@@ -1531,11 +1531,11 @@
     white-space: normal !important;
   }
 
-  body.shop-mobile-app .product-compare__table .ant-table-tbody > tr > td.ant-table-cell:last-child {
+  body.shop-mobile-app .product-compare__table tbody > tr > .product-compare__tableCell:last-child {
     border-bottom: 0 !important;
   }
 
-  body.shop-mobile-app .product-compare__table .ant-table-tbody > tr > td.ant-table-cell::before {
+  body.shop-mobile-app .product-compare__table tbody > tr > .product-compare__tableCell::before {
     content: attr(data-label);
     min-width: 0;
     color: #506358;
@@ -1545,19 +1545,19 @@
     overflow-wrap: anywhere;
   }
 
-  body.shop-mobile-app .product-compare__table .ant-table-cell .ant-space,
-  body.shop-mobile-app .product-compare__table .ant-table-cell .ant-space-item {
+  body.shop-mobile-app .product-compare__table .product-compare__tableCell .ant-space,
+  body.shop-mobile-app .product-compare__table .product-compare__tableCell .ant-space-item {
     min-width: 0;
     max-width: 100%;
   }
 
-  body.shop-mobile-app .product-compare__table .ant-table-cell .ant-btn {
+  body.shop-mobile-app .product-compare__table .product-compare__tableCell .ant-btn {
     width: 100% !important;
     max-width: 100% !important;
     min-height: 44px !important;
   }
 
-  body.shop-mobile-app .product-compare__table .ant-table-cell .ant-tag {
+  body.shop-mobile-app .product-compare__table .product-compare__tableCell .ant-tag {
     max-width: 100% !important;
     overflow: visible !important;
     text-overflow: clip !important;
@@ -1804,4 +1804,113 @@
 
 .product-compare-page__text--delete {
   text-decoration: line-through;
+}
+
+
+/* Native spinner densification (no ant Spin runtime) */
+.product-compare__spinnerWrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 180px;
+  padding: 24px 12px;
+}
+
+.product-compare__spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid rgba(22, 119, 255, 0.18);
+  border-top-color: #1677ff;
+  border-radius: 50%;
+  animation: product-compare-spin 0.8s linear infinite;
+}
+
+.product-compare__spinnerTip {
+  color: rgba(0, 0, 0, 0.55);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+@keyframes product-compare-spin {
+  to { transform: rotate(360deg); }
+}
+
+
+/* Native compare matrix densification (no ant Table runtime) */
+.product-compare__table {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid #e4ebe4;
+  border-radius: 22px;
+  background: #ffffff;
+  box-shadow: 0 10px 24px rgba(18, 71, 52, 0.06);
+}
+
+.product-compare__tableScroll,
+.product-compare__tableContainer {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.product-compare__tableMatrix {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  table-layout: fixed;
+}
+
+.product-compare__table thead > tr > th {
+  background: #f7fbf8;
+  color: #244b37;
+  font-weight: 900;
+  text-align: left;
+}
+
+.product-compare__tableCell {
+  padding: 12px 14px;
+  border-bottom: 1px solid #eef3ee;
+  border-right: 1px solid #eef3ee;
+  vertical-align: top;
+  background: #ffffff;
+  overflow-wrap: anywhere;
+}
+
+.product-compare__table thead .product-compare__tableCell {
+  border-bottom: 1px solid #e4ebe4;
+}
+
+.product-compare__table tbody tr:last-child .product-compare__tableCell {
+  border-bottom: 0;
+}
+
+.product-compare__tableSticky {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  min-width: 150px;
+  max-width: 180px;
+  background: #ffffff;
+  box-shadow: 4px 0 12px rgba(18, 71, 52, 0.04);
+}
+
+.product-compare__table thead .product-compare__tableSticky {
+  z-index: 3;
+  background: #f7fbf8;
+}
+
+.product-compare__row--different > .product-compare__tableSticky {
+  box-shadow: inset 4px 0 0 #ee4d2d, 4px 0 12px rgba(18, 71, 52, 0.04);
+}
+
+.product-compare-page__shell {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  background: #fff;
+  border: 1px solid #e4ebe4;
+  border-radius: 12px;
+  padding: 16px;
 }

@@ -447,7 +447,7 @@
     padding: 10px;
   }
 
-.pet-finder-page__productCard .ant-card-actions > li {
+.pet-finder-page__productCard .pet-finder-page__productActions > li {
   margin: 6px 0;
 }
 
@@ -667,11 +667,11 @@
     padding-inline: 5px;
   }
 
-  .pet-finder-page__productCard .ant-card-actions > li {
+  .pet-finder-page__productCard .pet-finder-page__productActions > li {
     margin: 4px 0;
   }
 
-  .pet-finder-page__productCard .ant-card-actions .ant-btn {
+  .pet-finder-page__productCard .pet-finder-page__productActions .ant-btn {
     min-height: 44px;
     padding-inline: 6px;
     font-size: 12px;
@@ -827,16 +827,16 @@
     word-break: break-word;
   }
 
-  .pet-finder-page__productCard .ant-card-actions {
+  .pet-finder-page__productCard .pet-finder-page__productActions {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .pet-finder-page__productCard .ant-card-actions > li {
+  .pet-finder-page__productCard .pet-finder-page__productActions > li {
     min-width: 0;
   }
 
-  .pet-finder-page__productCard .ant-card-actions .ant-btn {
+  .pet-finder-page__productCard .pet-finder-page__productActions .ant-btn {
     max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -895,17 +895,17 @@
     -webkit-line-clamp: 2;
   }
 
-  .pet-finder-page__productCard .ant-card-actions {
+  .pet-finder-page__productCard .pet-finder-page__productActions {
     min-height: 42px;
     border-top-color: #e4ebe4;
   }
 
-  .pet-finder-page__productCard .ant-card-actions > li > span {
+  .pet-finder-page__productCard .pet-finder-page__productActions > li > span {
     min-width: 0;
     padding: 4px;
   }
 
-  .pet-finder-page__productCard .ant-card-actions .ant-btn {
+  .pet-finder-page__productCard .pet-finder-page__productActions .ant-btn {
     width: 100%;
     min-width: 0;
     min-height: 44px;
@@ -913,7 +913,7 @@
     line-height: 1.12;
   }
 
-  .pet-finder-page__productCard .ant-card-actions .ant-btn > span:not(.anticon):not(.ant-btn-icon) {
+  .pet-finder-page__productCard .pet-finder-page__productActions .ant-btn > span:not(.anticon):not(.ant-btn-icon) {
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -921,11 +921,11 @@
 }
 
 @media (max-width: 360px) {
-  .pet-finder-page__productCard .ant-card-actions {
+  .pet-finder-page__productCard .pet-finder-page__productActions {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .pet-finder-page__productCard .ant-card-actions > li {
+  .pet-finder-page__productCard .pet-finder-page__productActions > li {
     border-inline-end: 0;
   }
 }
@@ -1134,7 +1134,7 @@
   .pet-finder-page__fieldControl .ant-select-selection-item,
   .pet-finder-page__fieldControl .ant-select-selection-placeholder,
   .pet-finder-page .ant-slider,
-  .pet-finder-page__productCard .ant-card-actions .ant-btn {
+  .pet-finder-page__productCard .pet-finder-page__productActions .ant-btn {
     min-height: 44px;
   }
 
@@ -1298,8 +1298,8 @@
 @media (max-width: 780px) {
   .pet-finder-page .ant-card-extra .ant-btn,
   .pet-finder-page__searchAllButton.ant-btn,
-  .pet-finder-page__productCard .ant-card-actions,
-  .pet-finder-page__productCard .ant-card-actions .ant-btn,
+  .pet-finder-page__productCard .pet-finder-page__productActions,
+  .pet-finder-page__productCard .pet-finder-page__productActions .ant-btn,
   .pet-finder-page__productCard .ant-btn,
   .pet-finder-page__nextStepActions .ant-btn,
   .pet-finder-page__signal {
@@ -1308,7 +1308,7 @@
     max-height: none !important;
   }
 
-  .pet-finder-page__productCard .ant-card-actions .ant-btn {
+  .pet-finder-page__productCard .pet-finder-page__productActions .ant-btn {
     width: 44px !important;
     min-width: 44px !important;
     height: 44px !important;
@@ -1332,15 +1332,15 @@
     padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 130px + env(safe-area-inset-bottom, 0px)) !important;
   }
 
-  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .pet-finder-page__productCard .ant-card-actions {
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .pet-finder-page__productCard .pet-finder-page__productActions {
     display: grid !important;
     grid-template-columns: minmax(0, 1fr) !important;
     min-height: 54px !important;
     overflow: visible !important;
   }
 
-  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .pet-finder-page__productCard .ant-card-actions > li,
-  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .pet-finder-page__productCard .ant-card-actions > li > span {
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .pet-finder-page__productCard .pet-finder-page__productActions > li,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .pet-finder-page__productCard .pet-finder-page__productActions > li > span {
     width: 100% !important;
     min-width: 0 !important;
     max-width: 100% !important;
@@ -1351,7 +1351,7 @@
     padding: 4px !important;
   }
 
-  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .pet-finder-page__productCard .ant-card-actions .ant-btn,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .pet-finder-page__productCard .pet-finder-page__productActions .ant-btn,
   body.shop-mobile-app.shop-mobile-app.shop-mobile-app .pet-finder-page__productCard .ant-btn {
     width: 100% !important;
     min-width: 0 !important;
@@ -1362,7 +1362,7 @@
     white-space: normal !important;
   }
 
-  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .pet-finder-page__productCard .ant-card-actions .ant-btn > span:not(.anticon):not(.ant-btn-icon) {
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .pet-finder-page__productCard .pet-finder-page__productActions .ant-btn > span:not(.anticon):not(.ant-btn-icon) {
     min-width: 0 !important;
     overflow: visible !important;
     text-overflow: clip !important;
@@ -1419,15 +1419,15 @@
 
 /* F2711: mobile Pet Finder recommendation actions need a full readable row. */
 @media (max-width: 640px) {
-  body:not(.shop-mobile-app) .pet-finder-page__productCard .ant-card-actions {
+  body:not(.shop-mobile-app) .pet-finder-page__productCard .pet-finder-page__productActions {
     display: grid !important;
     grid-template-columns: minmax(0, 1fr) !important;
     min-height: 54px !important;
     overflow: visible !important;
   }
 
-  body:not(.shop-mobile-app) .pet-finder-page__productCard .ant-card-actions > li,
-  body:not(.shop-mobile-app) .pet-finder-page__productCard .ant-card-actions > li > span {
+  body:not(.shop-mobile-app) .pet-finder-page__productCard .pet-finder-page__productActions > li,
+  body:not(.shop-mobile-app) .pet-finder-page__productCard .pet-finder-page__productActions > li > span {
     width: 100% !important;
     min-width: 0 !important;
     max-width: 100% !important;
@@ -1439,7 +1439,7 @@
     overflow: visible !important;
   }
 
-  body:not(.shop-mobile-app) .pet-finder-page__productCard .ant-card-actions .ant-btn {
+  body:not(.shop-mobile-app) .pet-finder-page__productCard .pet-finder-page__productActions .ant-btn {
     width: 100% !important;
     min-width: 0 !important;
     max-width: 100% !important;
@@ -1452,7 +1452,7 @@
     text-overflow: clip !important;
   }
 
-  body:not(.shop-mobile-app) .pet-finder-page__productCard .ant-card-actions .ant-btn > span:not(.anticon):not(.ant-btn-icon) {
+  body:not(.shop-mobile-app) .pet-finder-page__productCard .pet-finder-page__productActions .ant-btn > span:not(.anticon):not(.ant-btn-icon) {
     min-width: 0 !important;
     max-width: 100% !important;
     overflow: visible !important;
@@ -1616,4 +1616,71 @@
 
 .pet-finder-page__text--delete {
   text-decoration: line-through;
+}
+
+
+/* Native spinner densification (no ant Spin runtime) */
+.pet-finder-page__spinnerWrap {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 120px;
+  width: 100%;
+}
+
+.pet-finder-page__spinnerOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.pet-finder-page__spinner {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 3px solid rgba(24, 144, 255, 0.2);
+  border-top-color: #1677ff;
+  display: inline-block;
+  animation: petfinderpage-spin 0.8s linear infinite;
+}
+
+.pet-finder-page__spinnerTip {
+  color: rgba(0, 0, 0, 0.55);
+  font-size: 13px;
+  line-height: 1.4;
+  text-align: center;
+}
+
+@keyframes petfinderpage-spin {
+  to { transform: rotate(360deg); }
+}
+
+.pet-finder-page__productCard {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid #e4ebe4;
+  border-radius: 12px;
+}
+.pet-finder-page__productCover {
+  flex: 0 0 auto;
+}
+.pet-finder-page__productActions {
+  display: flex;
+  justify-content: center;
+  padding: 8px;
+  border-top: 1px solid #eef3ef;
+}
+.pet-finder-page__resultsCard {
+  background: #fff;
+  border: 1px solid #e4ebe4;
+  border-radius: 12px;
+  padding: 16px;
 }

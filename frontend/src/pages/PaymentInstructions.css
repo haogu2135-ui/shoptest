@@ -590,3 +590,90 @@
 .payment-instructions-page__text--delete {
   text-decoration: line-through;
 }
+
+
+/* Native spinner densification (no ant Spin runtime) */
+.payment-instructions-page__spinnerWrap {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 120px;
+  width: 100%;
+}
+
+.payment-instructions-page__spinnerOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.payment-instructions-page__spinner {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 3px solid rgba(24, 144, 255, 0.2);
+  border-top-color: #1677ff;
+  display: inline-block;
+  animation: paymentinstructionspage-spin 0.8s linear infinite;
+}
+
+.payment-instructions-page__spinnerTip {
+  color: rgba(0, 0, 0, 0.55);
+  font-size: 13px;
+  line-height: 1.4;
+  text-align: center;
+}
+
+@keyframes paymentinstructionspage-spin {
+  to { transform: rotate(360deg); }
+}
+
+.payment-instructions-page__verifyPanel {
+  position: relative;
+  min-height: 120px;
+}
+
+
+/* Native descriptions densification (no ant Descriptions runtime) */
+.payment-instructions-page__descList {
+  margin: 0 0 14px;
+  border: 1px solid #e4ebe4;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.payment-instructions-page__descRow {
+  display: grid;
+  grid-template-columns: minmax(120px, 34%) minmax(0, 1fr);
+  gap: 8px 12px;
+  padding: 10px 12px;
+  border-bottom: 1px solid #eef3ee;
+}
+
+.payment-instructions-page__descRow:last-child {
+  border-bottom: 0;
+}
+
+.payment-instructions-page__descLabel {
+  margin: 0;
+  color: #506358;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.payment-instructions-page__descValue {
+  margin: 0;
+  min-width: 0;
+  color: #173f2b;
+  font-size: 13px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}

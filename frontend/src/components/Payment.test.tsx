@@ -50,6 +50,7 @@ jest.mock('../utils/paymentMethods', () => ({
       label: channel.displayName || channel.code,
       value: channel.code,
     })),
+  filterPaymentChannelsForMarket: (channels: Array<Record<string, unknown>> = []) => (Array.isArray(channels) ? channels : []),
   paymentMethodLabel: (method: string) => method,
 }));
 

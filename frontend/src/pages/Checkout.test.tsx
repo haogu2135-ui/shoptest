@@ -786,12 +786,13 @@ describe('Checkout payment availability', () => {
 
   it('keys checkout item rows by the current cart item id', () => {
     const source = readCheckoutPageSource();
-    const itemListStart = source.indexOf("title={t('pages.checkout.itemList')}");
-    const itemListSource = source.slice(itemListStart, source.indexOf('<Divider />', itemListStart));
+    const itemListStart = source.indexOf('checkout-page__itemsCard');
+    const itemListSource = source.slice(itemListStart, source.indexOf('<hr className="checkout-page__divider"', itemListStart));
 
     expect(itemListStart).toBeGreaterThan(-1);
-    expect(itemListSource).toContain('dataSource={cartItems}');
-    expect(itemListSource).toContain('rowKey={(item) => item.id}');
+    expect(itemListSource).toContain("aria-label={t('pages.checkout.itemList')}");
+    expect(itemListSource).toContain('cartItems.map((item) =>');
+    expect(itemListSource).toContain('key={item.id}');
   });
 
   it('keeps narrow mobile checkout pay bar CTA full-width and readable', () => {

@@ -194,11 +194,12 @@ describe('ProductList quick-add mobile overlay contracts', () => {
 
     expect(source).toContain("filterDrawerOpen ? ' product-list--filterDrawerOpen' : ''");
     expect(source).toContain('rootClassName="product-list__filterDrawerRoot"');
+    expect(source).toContain('ShopDrawer');
     expect(fixCss).toMatch(/product-list--filterDrawerOpen[\s\S]*?\.product-list__mobileConversionBar[\s\S]*?\{[\s\S]*?display:\s*none\s*!important;[\s\S]*?pointer-events:\s*none\s*!important;/);
-    expect(fixCss).toMatch(/\.product-list__filterDrawerRoot\.ant-drawer\s*\{[^}]*z-index:\s*9500\s*!important;/);
-    expect(fixCss).toMatch(/\.product-list__filterDrawerRoot \.ant-drawer-mask\s*\{[^}]*z-index:\s*9500\s*!important;[^}]*background:/);
-    expect(fixCss).toMatch(/\.product-list__filterDrawerRoot \.ant-drawer-content-wrapper\s*\{[^}]*z-index:\s*9501\s*!important;/);
-    expect(fixCss).toMatch(/body\.shop-mobile-app \.product-list__filterDrawerRoot\.ant-drawer\s*\{[^}]*z-index:\s*9900\s*!important;/);
+    expect(fixCss).toMatch(/\.product-list__filterDrawerRoot\.shop-drawer\s*\{[^}]*z-index:\s*9500\s*!important;/);
+    expect(fixCss).toMatch(/\.product-list__filterDrawerRoot \.shop-drawer__mask\s*\{[^}]*z-index:\s*9500\s*!important;[^}]*background:/);
+    expect(fixCss).toMatch(/\.product-list__filterDrawerRoot \.shop-drawer__panel\s*\{[^}]*z-index:\s*9501\s*!important;/);
+    expect(fixCss).toMatch(/body\.shop-mobile-app \.product-list__filterDrawerRoot\.shop-drawer\s*\{[^}]*z-index:\s*9900\s*!important;/);
   });
 
   it('keeps the mobile catalog first screen focused on products before the conversion rail appears', () => {

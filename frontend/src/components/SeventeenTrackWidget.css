@@ -11,6 +11,68 @@
   max-width: 100%;
 }
 
+.seventeen-track-widget {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.seventeen-track-widget__search {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  gap: 0;
+}
+
+.seventeen-track-widget__search .ant-input {
+  flex: 1 1 auto;
+  border-start-end-radius: 0;
+  border-end-end-radius: 0;
+}
+
+.seventeen-track-widget__search .ant-btn {
+  border-start-start-radius: 0;
+  border-end-start-radius: 0;
+}
+
+.seventeen-track-widget__summaryMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.seventeen-track-widget__muted {
+  color: rgba(0, 0, 0, 0.45);
+  line-height: 1.45;
+}
+
+.seventeen-track-widget__trackingNo,
+.seventeen-track-widget__eventTitle {
+  font-weight: 700;
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.seventeen-track-widget__emptyPanel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px 16px;
+  text-align: center;
+}
+
+.seventeen-track-widget__emptyDescription {
+  color: rgba(0, 0, 0, 0.45);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
 .seventeen-track-widget__search .ant-input,
 .seventeen-track-widget__search .ant-btn {
   min-height: 44px;
@@ -67,8 +129,9 @@
   min-width: 0;
 }
 
-.seventeen-track-widget__summary .ant-space,
-.seventeen-track-widget__summary .ant-typography,
+.seventeen-track-widget__summary .seventeen-track-widget__summaryMeta,
+.seventeen-track-widget__summary .seventeen-track-widget__muted,
+.seventeen-track-widget__summary .seventeen-track-widget__trackingNo,
 .seventeen-track-widget__summary .ant-tag {
   min-width: 0;
   max-width: 100%;
@@ -221,6 +284,9 @@
 }
 
 .seventeen-track-widget__recoveryActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
   width: 100%;
 }
 

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
-import { Alert, Button, Card, Checkbox, Empty, Popconfirm, Progress, Table, Tag } from 'antd';
+import { Alert, Button, Checkbox, Popconfirm, Progress, Tag } from 'antd';
 import { ShopIcon, SI } from '../components/ShopIcon';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { cartApi, productApi } from '../api';
@@ -1096,123 +1096,6 @@ const Cart: React.FC = () => {
     }
   };
 
-  const columns = [
-    {
-      title: (
-        <Checkbox
-          checked={allSelected}
-          indeterminate={selectedPurchasableCount > 0 && !allSelected}
-          disabled={hasStaleCartData}
-          aria-label={t('pages.cart.selectAll')}
-          title={t('pages.cart.selectAll')}
-          onChange={(e) => toggleAll(e.target.checked)}
-        >
-          {t('pages.cart.selectAll')}
-        </Checkbox>
-      ),
-      key: 'select',
-      width: 90,
-      render: (_: unknown, record: CartItem) => {
-        const itemName = getCartItemName(record);
-        const selectItemLabel = `${t('pages.cart.selectAll')}: ${itemName}`;
-        return (
-          <Checkbox
-            disabled={hasStaleCartData || !canCheckout(record)}
-            checked={selectedIds.includes(record.id)}
-            aria-label={selectItemLabel}
-            title={selectItemLabel}
-            onChange={(e) => toggleOne(record.id, e.target.checked)}
-          />
-        );
-      },
-    },
-    {
-      title: t('pages.cart.product'),
-      dataIndex: 'productName',
-      key: 'productName',
-      render: (_name: string, record: CartItem) => {
-        const itemName = getCartItemName(record);
-        return (
-          <div className="cart-page__productCell">
-            <img
-              src={resolveCartImage(record.imageUrl)}
-              alt={itemName}
-              className="cart-page__tableImage"
-              loading="lazy"
-              decoding="async"
-              onError={(event) => {
-                if (event.currentTarget.src !== cartImageFallback) {
-                  event.currentTarget.src = cartImageFallback;
-                }
-              }}
-            />
-            <div>
-              <Link to={`/products/${record.productId}`}><span className="cart-page__text">{itemName}</span></Link>
-              {record.selectedSpecs ? <div><span className="cart-page__text cart-page__text--secondary">{formatSelectedSpecs(record.selectedSpecs, t, language)}</span></div> : null}
-              {!canCheckout(record) && <div><span className="cart-page__text cart-page__text--danger">{t('pages.cart.unavailable')}</span></div>}
-              {canCheckout(record) && getCartItemLowStockCount(record) !== null ? (
-                <div>
-                  <span className="cart-page__text cart-page__text--warning cart-page__urgency">
-                    {t('pages.cart.lowStockLeft', { count: getCartItemLowStockCount(record) ?? 0 })}
-                  </span>
-                </div>
-              ) : null}
-            </div>
-          </div>
-        );
-      },
-    },
-    {
-      title: t('pages.cart.unitPrice'),
-      dataIndex: 'price',
-      key: 'price',
-      width: 110,
-      render: (price: number) => <span className="cart-page__text cart-page__priceText commerce-money">{formatMoney(price)}</span>,
-    },
-    {
-      title: t('common.quantity'),
-      dataIndex: 'quantity',
-      key: 'quantity',
-      width: 130,
-      render: (_: unknown, record: CartItem) => renderQuantityControl(record),
-    },
-    {
-      title: t('common.subtotal'),
-      key: 'subtotal',
-      width: 120,
-      render: (_: unknown, record: CartItem) => renderLineTotal(record),
-    },
-    {
-      title: t('common.actions'),
-      key: 'action',
-      width: 150,
-      render: (_: unknown, record: CartItem) => {
-        const itemName = getCartItemName(record);
-        const saveActionLabel = `${t('pages.cart.saveForLater')}: ${itemName}`;
-        const deleteActionLabel = `${t('common.delete')}: ${itemName}`;
-        return (
-          <div className="cart-page__tableActions">
-            <Button type="text" icon={<ShopIcon path={SI.clock} />} size="small" aria-label={saveActionLabel} title={saveActionLabel} onClick={() => saveForLater(record)} disabled={hasStaleCartData || removingItemIds.includes(record.id)}>
-              {t('pages.cart.saveForLater')}
-            </Button>
-            <Popconfirm
-              classNames={{ root: 'shop-mobile-popup-layer cart-page-popconfirm' }}
-              title={t('pages.cart.deleteConfirm')}
-              disabled={hasStaleCartData}
-              onConfirm={() => removeItem(record.id)}
-              okText={t('common.confirm')}
-              cancelText={t('common.cancel')}
-              okButtonProps={{ danger: true, 'aria-label': deleteActionLabel, title: deleteActionLabel }}
-              cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${deleteActionLabel}`, title: `${t('common.cancel')}: ${deleteActionLabel}` }}
-            >
-              <Button type="text" danger icon={<ShopIcon path={SI.delete} />} size="small" loading={removingItemIds.includes(record.id)} disabled={hasStaleCartData} aria-label={deleteActionLabel} title={deleteActionLabel}>{t('common.delete')}</Button>
-            </Popconfirm>
-          </div>
-        );
-      },
-    },
-  ];
-
   const paymentCancelledResumeLabel = paymentReturnOrderNo
     ? `${t('pages.cart.paymentCancelledResume')}: ${paymentReturnOrderNo}`
     : t('pages.cart.paymentCancelledResume');
@@ -1555,7 +1438,7 @@ const Cart: React.FC = () => {
         />
       ) : null}
       {showRecentlyViewedRecovery ? (
-        <Card className="cart-page__recentRecovery">
+        <section className="cart-page__recentRecovery" aria-label={t('pages.cart.recentRecoveryTitle')}>
           <div className="cart-page__recentRecoveryHeader">
             <div>
               <span className="cart-page__text cart-page__text--strong">{t('pages.cart.recentRecoveryTitle')}</span>
@@ -1607,11 +1490,11 @@ const Cart: React.FC = () => {
               );
             })}
           </div>
-        </Card>
+        </section>
       ) : null}
       {cartItems.length > 0 ? (
         <>
-          <Card size="small" className="cart-page__bulkActions">
+          <section className="cart-page__bulkActions" aria-label={t('pages.cart.chooseItems')}>
             <div className="cart-page__bulkActionsRow">
               <Popconfirm
                 classNames={{ root: 'shop-mobile-popup-layer cart-page-popconfirm' }}
@@ -1655,7 +1538,7 @@ const Cart: React.FC = () => {
               </Popconfirm>
               <span className="cart-page__text cart-page__text--secondary">{t('pages.cart.unavailableSummary', { count: unavailableItems.length })}</span>
             </div>
-          </Card>
+          </section>
           <div className={checkoutBlocked ? 'cart-page__readiness cart-page__readiness--warning' : 'cart-page__readiness'}>
             <div className="cart-page__readinessIntro">
               {checkoutBlocked ? <ShopIcon path={SI.exclamation} /> : <ShopIcon path={SI.check} />}
@@ -1748,8 +1631,118 @@ const Cart: React.FC = () => {
               )}
             </div>
           ) : null}
-          <div className="cart-page__table">
-            <Table columns={columns} dataSource={cartItems} rowKey="id" loading={loading} pagination={false} />
+          <div
+            className="cart-page__table"
+            role="table"
+            aria-label={t('pages.cart.title')}
+            aria-busy={loading}
+          >
+            <div className="cart-page__tableHead" role="row">
+              <div className="cart-page__tableHeadCell cart-page__tableCol--select" role="columnheader">
+                <Checkbox
+                  checked={allSelected}
+                  indeterminate={selectedPurchasableCount > 0 && !allSelected}
+                  disabled={hasStaleCartData}
+                  aria-label={t('pages.cart.selectAll')}
+                  title={t('pages.cart.selectAll')}
+                  onChange={(e) => toggleAll(e.target.checked)}
+                >
+                  {t('pages.cart.selectAll')}
+                </Checkbox>
+              </div>
+              <div className="cart-page__tableHeadCell cart-page__tableCol--product" role="columnheader">
+                {t('pages.cart.product')}
+              </div>
+              <div className="cart-page__tableHeadCell cart-page__tableCol--price" role="columnheader">
+                {t('pages.cart.unitPrice')}
+              </div>
+              <div className="cart-page__tableHeadCell cart-page__tableCol--qty" role="columnheader">
+                {t('common.quantity')}
+              </div>
+              <div className="cart-page__tableHeadCell cart-page__tableCol--subtotal" role="columnheader">
+                {t('common.subtotal')}
+              </div>
+              <div className="cart-page__tableHeadCell cart-page__tableCol--action" role="columnheader">
+                {t('common.actions')}
+              </div>
+            </div>
+            <div className="cart-page__tableBody" role="rowgroup">
+              {cartItems.map((record) => {
+                const itemName = getCartItemName(record);
+                const selectItemLabel = `${t('pages.cart.selectAll')}: ${itemName}`;
+                const saveActionLabel = `${t('pages.cart.saveForLater')}: ${itemName}`;
+                const deleteActionLabel = `${t('common.delete')}: ${itemName}`;
+                return (
+                  <div key={record.id} className="cart-page__tableRow" role="row">
+                    <div className="cart-page__tableCell cart-page__tableCol--select" role="cell">
+                      <Checkbox
+                        disabled={hasStaleCartData || !canCheckout(record)}
+                        checked={selectedIds.includes(record.id)}
+                        aria-label={selectItemLabel}
+                        title={selectItemLabel}
+                        onChange={(e) => toggleOne(record.id, e.target.checked)}
+                      />
+                    </div>
+                    <div className="cart-page__tableCell cart-page__tableCol--product" role="cell">
+                      <div className="cart-page__productCell">
+                        <img
+                          src={resolveCartImage(record.imageUrl)}
+                          alt={itemName}
+                          className="cart-page__tableImage"
+                          loading="lazy"
+                          decoding="async"
+                          onError={(event) => {
+                            if (event.currentTarget.src !== cartImageFallback) {
+                              event.currentTarget.src = cartImageFallback;
+                            }
+                          }}
+                        />
+                        <div>
+                          <Link to={`/products/${record.productId}`}><span className="cart-page__text">{itemName}</span></Link>
+                          {record.selectedSpecs ? <div><span className="cart-page__text cart-page__text--secondary">{formatSelectedSpecs(record.selectedSpecs, t, language)}</span></div> : null}
+                          {!canCheckout(record) && <div><span className="cart-page__text cart-page__text--danger">{t('pages.cart.unavailable')}</span></div>}
+                          {canCheckout(record) && getCartItemLowStockCount(record) !== null ? (
+                            <div>
+                              <span className="cart-page__text cart-page__text--warning cart-page__urgency">
+                                {t('pages.cart.lowStockLeft', { count: getCartItemLowStockCount(record) ?? 0 })}
+                              </span>
+                            </div>
+                          ) : null}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="cart-page__tableCell cart-page__tableCol--price" role="cell">
+                      <span className="cart-page__text cart-page__priceText commerce-money">{formatMoney(record.price)}</span>
+                    </div>
+                    <div className="cart-page__tableCell cart-page__tableCol--qty" role="cell">
+                      {renderQuantityControl(record)}
+                    </div>
+                    <div className="cart-page__tableCell cart-page__tableCol--subtotal" role="cell">
+                      {renderLineTotal(record)}
+                    </div>
+                    <div className="cart-page__tableCell cart-page__tableCol--action" role="cell">
+                      <div className="cart-page__tableActions">
+                        <Button type="text" icon={<ShopIcon path={SI.clock} />} size="small" aria-label={saveActionLabel} title={saveActionLabel} onClick={() => saveForLater(record)} disabled={hasStaleCartData || removingItemIds.includes(record.id)}>
+                          {t('pages.cart.saveForLater')}
+                        </Button>
+                        <Popconfirm
+                          classNames={{ root: 'shop-mobile-popup-layer cart-page-popconfirm' }}
+                          title={t('pages.cart.deleteConfirm')}
+                          disabled={hasStaleCartData}
+                          onConfirm={() => removeItem(record.id)}
+                          okText={t('common.confirm')}
+                          cancelText={t('common.cancel')}
+                          okButtonProps={{ danger: true, 'aria-label': deleteActionLabel, title: deleteActionLabel }}
+                          cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${deleteActionLabel}`, title: `${t('common.cancel')}: ${deleteActionLabel}` }}
+                        >
+                          <Button type="text" danger icon={<ShopIcon path={SI.delete} />} size="small" loading={removingItemIds.includes(record.id)} disabled={hasStaleCartData} aria-label={deleteActionLabel} title={deleteActionLabel}>{t('common.delete')}</Button>
+                        </Popconfirm>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
           <div className="cart-page__mobileList" role="list" aria-label={t('pages.cart.title')}>
             {cartItems.map((item) => {
@@ -1757,7 +1750,7 @@ const Cart: React.FC = () => {
               const saveActionLabel = `${t('pages.cart.saveForLaterShort')}: ${itemName}`;
               const deleteActionLabel = `${t('common.delete')}: ${itemName}`;
               return (
-              <Card key={item.id} size="small" className="cart-page__mobileItem" role="listitem">
+              <article key={item.id} className="cart-page__mobileItem" role="listitem">
                 <div className="cart-page__mobileItemTop">
                   <Checkbox
                     disabled={hasStaleCartData || !canCheckout(item)}
@@ -1826,11 +1819,11 @@ const Cart: React.FC = () => {
                     </Popconfirm>
                   </div>
                 </div>
-              </Card>
+              </article>
               );
             })}
           </div>
-          <Card className="cart-page__summary">
+          <section className="cart-page__summary" aria-label={t('pages.cart.orderSummary')}>
             <div
               className="cart-page__summaryProgress"
               role="group"
@@ -1886,7 +1879,7 @@ const Cart: React.FC = () => {
                 </div>
               </div>
             </div>
-          </Card>
+          </section>
           {selectedItems.length > 0 && !hasStaleCartData ? (
             <div className="cart-page__addOn" id="cart-add-on-assistant">
               {benefitTarget ? (
@@ -1901,8 +1894,12 @@ const Cart: React.FC = () => {
           ) : null}
         </>
       ) : (
-        <Card className="cart-page__emptyPanel">
-          <Empty image={<ShopIcon path={SI.shopping} className="cart-page__emptyPanelIcon" />} description={t('pages.cart.empty')}>
+        <section className="cart-page__emptyPanel" role="status">
+          <div className="cart-page__emptyPanelInner" role="status" aria-live="polite">
+            <span className="cart-page__emptyPanelIconWrap" aria-hidden="true">
+              <ShopIcon path={SI.shopping} className="cart-page__emptyPanelIcon" />
+            </span>
+            <div className="cart-page__emptyPanelDescription">{t('pages.cart.empty')}</div>
             <div className="cart-page__emptyPanelActions" data-cart-empty-panel-actions="true">
               <Button type="primary" icon={<ShopIcon path={SI.shopping} />} aria-label={emptyBrowseActionLabel} title={emptyBrowseActionLabel} onClick={() => navigate('/products')}>
                 {t('pages.cart.browse')}
@@ -1917,26 +1914,29 @@ const Cart: React.FC = () => {
                 {t('nav.history')}
               </Button>
             </div>
-          </Empty>
-        </Card>
+          </div>
+        </section>
       )}
-      <Card
+      <section
         className="cart-page__savedCard"
-        title={`${t('pages.cart.saveForLaterTitle')} (${savedItems.length})`}
-        extra={savedItems.length > 0 ? (
-          <Button
-            size="small"
-            icon={<ShopIcon path={SI.cart} />}
-            loading={restoringSaved}
-            disabled={hasStaleCartData || restoringSavedItemIds.length > 0}
-            aria-label={moveAllSavedActionLabel}
-            title={moveAllSavedActionLabel}
-            onClick={() => moveSavedItemsToCart(savedItems)}
-          >
-            {t('pages.cart.moveAllToCart')}
-          </Button>
-        ) : null}
+        aria-label={`${t('pages.cart.saveForLaterTitle')} (${savedItems.length})`}
       >
+        <div className="cart-page__panelHead">
+          <h2 className="cart-page__panelTitle">{`${t('pages.cart.saveForLaterTitle')} (${savedItems.length})`}</h2>
+          {savedItems.length > 0 ? (
+            <Button
+              size="small"
+              icon={<ShopIcon path={SI.cart} />}
+              loading={restoringSaved}
+              disabled={hasStaleCartData || restoringSavedItemIds.length > 0}
+              aria-label={moveAllSavedActionLabel}
+              title={moveAllSavedActionLabel}
+              onClick={() => moveSavedItemsToCart(savedItems)}
+            >
+              {t('pages.cart.moveAllToCart')}
+            </Button>
+          ) : null}
+        </div>
         {savedItems.length > 0 ? (
           <div className="cart-page__savedValue">
             <ShopIcon path={SI.clock} />
@@ -1969,16 +1969,12 @@ const Cart: React.FC = () => {
           />
         ) : null}
         {savedItems.length === 0 ? (
-          <div className="cart-page__savedEmpty" role="status">
-            <Empty
-              description={(
-                <div className="cart-page__savedEmptyCopy">
-                  <div>{t('pages.cart.saveForLaterEmpty')}</div>
-                  <div className="cart-page__savedEmptyHint">{t('pages.cart.saveForLaterEmptyHint')}</div>
-                </div>
-              )}
-              image={Empty.PRESENTED_IMAGE_SIMPLE}
-            >
+          <div className="cart-page__savedEmpty" role="status" aria-live="polite">
+            <div className="cart-page__savedEmptyInner">
+              <div className="cart-page__savedEmptyCopy">
+                <div>{t('pages.cart.saveForLaterEmpty')}</div>
+                <div className="cart-page__savedEmptyHint">{t('pages.cart.saveForLaterEmptyHint')}</div>
+              </div>
               <div className="cart-page__savedEmptyActions">
                 <Button
                   type="primary"
@@ -1998,7 +1994,7 @@ const Cart: React.FC = () => {
                   {t('pages.cart.saveForLaterWishlist')}
                 </Button>
               </div>
-            </Empty>
+            </div>
           </div>
         ) : (
           <div className="cart-page__savedGrid" role="list" aria-label={t('pages.cart.saveForLaterTitle')}>
@@ -2052,7 +2048,7 @@ const Cart: React.FC = () => {
             })}
           </div>
         )}
-      </Card>
+      </section>
     </div>
   );
 };

@@ -10,7 +10,8 @@ describe('NotFound mobile recovery layout contract', () => {
 
     expect(source).toContain('<main');
     expect(source).toContain('className="not-found-page"');
-    expect(source).toContain('status="404"');
+    expect(source).toContain('not-found-page__result--404');
+    expect(source).not.toMatch(/\bResult\b/);
     expect(source).toContain("t('notFound.backHome')");
     expect(source).toContain("t('notFound.searchProducts')");
     expect(source).toContain("t('notFound.browseCoupons')");
@@ -30,12 +31,13 @@ describe('NotFound mobile recovery layout contract', () => {
     expect(source).toContain('aria-label={title}');
     expect(source).toContain('aria-labelledby={titleId}');
     expect(source).toContain('aria-describedby={subtitleId}');
-    expect(source).toContain('title={<span id={titleId}>{title}</span>}');
+    expect(source).toContain('id={titleId}');
     expect(source).toContain('id={subtitleId}');
     expect(source).toContain('role="status"');
     expect(source).toContain('aria-live="polite"');
     expect(source).toContain('not-found-page__status');
     expect(source).toContain('not-found-page__hint');
+    expect(source).toContain('not-found-page__resultExtra');
   });
 
   it('reserves fixed bottom-nav clearance for mobile recovery buttons', () => {
@@ -46,8 +48,8 @@ describe('NotFound mobile recovery layout contract', () => {
     );
 
     expect(mobileCss).toMatch(/\.not-found-page\s*\{[^}]*min-height:\s*calc\(100svh - var\(--shop-mobile-bottom-nav-height,\s*72px\)\);[^}]*padding:\s*18px 12px calc\(104px \+ env\(safe-area-inset-bottom,\s*0px\)\);/);
-    expect(mobileCss).toMatch(/\.not-found-page \.ant-result-extra\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\);[^}]*gap:\s*10px;/);
-    expect(mobileCss).toMatch(/\.not-found-page \.ant-result-extra \.ant-btn\s*\{[^}]*width:\s*100%;[^}]*min-height:\s*44px;[^}]*touch-action:\s*manipulation;/);
+    expect(mobileCss).toMatch(/\.not-found-page \.not-found-page__resultExtra\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\);[^}]*gap:\s*10px;/);
+    expect(mobileCss).toMatch(/\.not-found-page \.not-found-page__resultExtra \.ant-btn\s*\{[^}]*width:\s*100%;[^}]*min-height:\s*44px;[^}]*touch-action:\s*manipulation;/);
   });
 
   it('compresses vertical spacing on short mobile viewports before the buttons hit the nav', () => {
@@ -55,9 +57,9 @@ describe('NotFound mobile recovery layout contract', () => {
     const shortViewportCss = css.slice(css.indexOf('@media (max-width: 640px) and (max-height: 760px)'));
 
     expect(shortViewportCss).toMatch(/\.not-found-page\s*\{[^}]*padding-top:\s*10px;/);
-    expect(shortViewportCss).toMatch(/\.not-found-page \.ant-result\s*\{[^}]*padding-top:\s*8px;/);
-    expect(shortViewportCss).toMatch(/\.not-found-page \.ant-result-icon\s*\{[^}]*width:\s*min\(210px,\s*62vw\);/);
-    expect(shortViewportCss).toMatch(/\.not-found-page \.ant-result-title\s*\{[^}]*font-size:\s*26px;/);
-    expect(shortViewportCss).toMatch(/\.not-found-page \.ant-result-extra\s*\{[^}]*margin-top:\s*14px;/);
+    expect(shortViewportCss).toMatch(/\.not-found-page \.not-found-page__result\s*\{[^}]*padding-top:\s*8px;/);
+    expect(shortViewportCss).toMatch(/\.not-found-page \.not-found-page__resultIcon\s*\{[^}]*width:\s*min\(210px,\s*62vw\);/);
+    expect(shortViewportCss).toMatch(/\.not-found-page \.not-found-page__title\s*\{[^}]*font-size:\s*26px;/);
+    expect(shortViewportCss).toMatch(/\.not-found-page \.not-found-page__resultExtra\s*\{[^}]*margin-top:\s*14px;/);
   });
 });

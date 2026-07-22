@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { ShopIcon, SI } from '../components/ShopIcon';
-import { Alert, Button, Card, Cascader, Divider, Form, Input, List, message, Modal, Progress, Radio, Result, Select, Tag } from 'antd';
+import { Alert, Button, Cascader, Form, Input, Modal, Progress, Radio, Select, Tag } from 'antd';
 import type { FormInstance } from 'antd/es/form';
 import { Link, useNavigate } from 'react-router-dom';
 import { addressApi, cartApi, clearStoredAuthSession, couponApi, createApiAbortController, orderApi, paymentApi, productApi } from '../api';
@@ -32,7 +32,6 @@ import { buildLoginUrlFromWindow } from '../utils/authRedirect';
 import { isLikelyPhoneNumber, normalizeLikelyPhoneNumber, normalizePhoneNumber } from '../utils/phone';
 import { isValidRegionalPostalCode, normalizeRegionalPostalCode } from '../utils/postalCode';
 import { getCouponPayablePercent } from '../utils/couponCenter';
-import { runWithoutAccessibleMessageAnnouncement } from '../utils/accessibleMessage';
 import {
   CHECKOUT_PAYMENT_POLL_LOCK_TTL_MS,
   claimCheckoutPaymentPollLock,
@@ -763,7 +762,7 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
   }, []);
   const showCheckoutMessage = useCallback((type: CheckoutMessageType, messageText: string) => {
     announceCheckoutStatus(messageText);
-    runWithoutAccessibleMessageAnnouncement(() => message[type](messageText));
+    announceAccessibleMessage(messageText, type);
   }, [announceCheckoutStatus]);
   const updateCheckoutValidationAnnouncement = useCallback((fields: CheckoutValidationField[]) => {
     setCheckoutValidationAnnouncement(buildCheckoutValidationAnnouncement(fields, t));
@@ -2509,18 +2508,18 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
     return (
       <div className={`checkout-page checkout-page--result checkout-page--${language}`}>
         {renderCheckoutStatusLiveRegion()}
-        <Result
-          status="warning"
-          title={t('pages.checkout.orderCreatedPaymentPending')}
-          subTitle={t('pages.checkout.paymentPendingSubtitle', { orderNo: createdOrder.orderNo || createdOrder.id, amount: formatMoney(createdOrder.totalAmount) })}
-          extra={[
-            <Button type="primary" key="retry" loading={paying} aria-label={retryPaymentActionLabel} title={retryPaymentActionLabel} onClick={retryCreatePayment}>{t('pages.checkout.retryPayment')}</Button>,
-            <Button danger key="rollback" icon={<ShopIcon path={SI.rollback} />} loading={cancelingPayment} aria-label={rollbackPaymentActionLabel} title={rollbackPaymentActionLabel} onClick={rollbackPendingPayment}>{t('pages.checkout.rollbackPaymentAction')}</Button>,
-            <Button key="profile" aria-label={viewOrderActionLabel} title={viewOrderActionLabel} onClick={guestPaymentEmail ? openTrackedOrder : () => navigate('/profile?tab=orders')}>{t('pages.checkout.viewOrder')}</Button>,
-            <Button key="track" aria-label={trackOrderActionLabel} title={trackOrderActionLabel} onClick={openTrackedOrder}>{t('pages.orderTracking.title')}</Button>,
-            <Button key="home" aria-label={backHomeActionLabel} title={backHomeActionLabel} onClick={() => navigate('/')}>{t('pages.checkout.backHome')}</Button>,
-          ]}
-        />
+        <section className="checkout-page__result checkout-page__result--warning" role="status" aria-live="polite">
+          <div className="checkout-page__resultIcon" aria-hidden="true" />
+          <h1 className="checkout-page__resultTitle">{t('pages.checkout.orderCreatedPaymentPending')}</h1>
+          <p className="checkout-page__resultSubtitle">{t('pages.checkout.paymentPendingSubtitle', { orderNo: createdOrder.orderNo || createdOrder.id, amount: formatMoney(createdOrder.totalAmount) })}</p>
+          <div className="checkout-page__resultExtra">
+            <Button type="primary" key="retry" loading={paying} aria-label={retryPaymentActionLabel} title={retryPaymentActionLabel} onClick={retryCreatePayment}>{t('pages.checkout.retryPayment')}</Button>
+            <Button danger key="rollback" icon={<ShopIcon path={SI.rollback} />} loading={cancelingPayment} aria-label={rollbackPaymentActionLabel} title={rollbackPaymentActionLabel} onClick={rollbackPendingPayment}>{t('pages.checkout.rollbackPaymentAction')}</Button>
+            <Button key="profile" aria-label={viewOrderActionLabel} title={viewOrderActionLabel} onClick={guestPaymentEmail ? openTrackedOrder : () => navigate('/profile?tab=orders')}>{t('pages.checkout.viewOrder')}</Button>
+            <Button key="track" aria-label={trackOrderActionLabel} title={trackOrderActionLabel} onClick={openTrackedOrder}>{t('pages.orderTracking.title')}</Button>
+            <Button key="home" aria-label={backHomeActionLabel} title={backHomeActionLabel} onClick={() => navigate('/')}>{t('pages.checkout.backHome')}</Button>
+          </div>
+        </section>
         {paymentCreateError ? (
           <Alert
             className="checkout-page__paymentCreateError"
@@ -2588,28 +2587,36 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
     return (
       <div className={`checkout-page checkout-page--result checkout-page--${language}`}>
         {renderCheckoutStatusLiveRegion()}
-        <Result
-          status={paid ? 'success' : isReconcileRequired ? 'warning' : 'info'}
-          title={paid
-            ? t('pages.checkout.paidTitle')
-            : isReconcileRequired
-              ? t('pages.checkout.paymentRecoveryReconcileRequired')
-              : t('pages.checkout.pendingTitle')}
-          subTitle={isReconcileRequired
-            ? t('pages.checkout.paymentRecoveryNextReconcileRequired')
-            : t('pages.checkout.resultSubtitle', { orderNo: createdOrder.orderNo || createdOrder.id, amount: formatMoney(createdOrder.totalAmount) })}
-          extra={[
-            !paid && !isReconcileRequired && payment.paymentUrl && (
+        <section
+          className={`checkout-page__result checkout-page__result--${paid ? 'success' : isReconcileRequired ? 'warning' : 'info'}`}
+          role="status"
+          aria-live="polite"
+        >
+          <div className="checkout-page__resultIcon" aria-hidden="true" />
+          <h1 className="checkout-page__resultTitle">
+            {paid
+              ? t('pages.checkout.paidTitle')
+              : isReconcileRequired
+                ? t('pages.checkout.paymentRecoveryReconcileRequired')
+                : t('pages.checkout.pendingTitle')}
+          </h1>
+          <p className="checkout-page__resultSubtitle">
+            {isReconcileRequired
+              ? t('pages.checkout.paymentRecoveryNextReconcileRequired')
+              : t('pages.checkout.resultSubtitle', { orderNo: createdOrder.orderNo || createdOrder.id, amount: formatMoney(createdOrder.totalAmount) })}
+          </p>
+          <div className="checkout-page__resultExtra">
+            {!paid && !isReconcileRequired && payment.paymentUrl ? (
               <Button type="primary" key="pay" loading={paying} aria-label={openPaymentActionLabel} title={openPaymentActionLabel} onClick={openPaymentUrl}>
                 {t('pages.checkout.openPayment')}
               </Button>
-            ),
-            <Button key="profile" aria-label={viewOrderActionLabel} title={viewOrderActionLabel} onClick={guestPaymentEmail ? openTrackedOrder : () => navigate('/profile?tab=orders')}>{t('pages.checkout.viewOrder')}</Button>,
-            <Button key="track" aria-label={trackOrderActionLabel} title={trackOrderActionLabel} onClick={openTrackedOrder}>{t('pages.orderTracking.title')}</Button>,
-            <Button key="home" aria-label={backHomeActionLabel} title={backHomeActionLabel} onClick={() => navigate('/')}>{t('pages.checkout.backHome')}</Button>,
-          ].filter(Boolean)}
-        />
-        <Card className="checkout-page__paymentRecovery" title={t('pages.checkout.paymentRecoveryTitle')}>
+            ) : null}
+            <Button key="profile" aria-label={viewOrderActionLabel} title={viewOrderActionLabel} onClick={guestPaymentEmail ? openTrackedOrder : () => navigate('/profile?tab=orders')}>{t('pages.checkout.viewOrder')}</Button>
+            <Button key="track" aria-label={trackOrderActionLabel} title={trackOrderActionLabel} onClick={openTrackedOrder}>{t('pages.orderTracking.title')}</Button>
+            <Button key="home" aria-label={backHomeActionLabel} title={backHomeActionLabel} onClick={() => navigate('/')}>{t('pages.checkout.backHome')}</Button>
+          </div>
+        </section>
+        <section className="checkout-page__paymentRecovery" aria-label={t('pages.checkout.paymentRecoveryTitle')}><div className="shop-panel__head"><div className="shop-panel__title">{t('pages.checkout.paymentRecoveryTitle')}</div></div>
           <div className="checkout-page__paymentRecoveryGrid" role="list" aria-label={`${t('pages.checkout.paymentRecoveryTitle')}: ${orderPaymentContext}`}>
             <div role="listitem" aria-label={`${t('pages.checkout.paymentRecoveryStatus')}: ${paymentRecoveryStatusText}`}>
               <span className="checkout-page__text checkout-page__text--strong">{t('pages.checkout.paymentRecoveryStatus')}</span>
@@ -2656,8 +2663,8 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
               <Button aria-label={supportActionLabel} title={supportActionLabel} onClick={openSupport}>{t('pages.checkout.nextActionSupport')}</Button>
             </div>
           ) : null}
-        </Card>
-        <Card title={t('pages.checkout.paymentCard')}>
+        </section>
+        <section aria-label={t('pages.checkout.paymentCard')}><div className="shop-panel__head"><div className="shop-panel__title">{t('pages.checkout.paymentCard')}</div></div>
           <div className="checkout-page__stack">
             <span className="checkout-page__text">{t('pages.checkout.channel')}: {paymentMethodLabel(payment.channel, t)}</span>
             {createdOrder.originalAmount ? <span className="checkout-page__text">{t('common.subtotal')}: <span className="commerce-money">{formatMoney(createdOrder.originalAmount)}</span></span> : null}
@@ -2668,7 +2675,7 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
             {paymentExpiresAtText ? <span className="checkout-page__text">{t('pages.checkout.paymentExpiresAt')}: {paymentExpiresAtText}</span> : null}
             {payment.transactionId && <span className="checkout-page__text">{t('pages.checkout.transactionId')}: {payment.transactionId}</span>}
           </div>
-        </Card>
+        </section>
       </div>
     );
   }
@@ -2912,7 +2919,7 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
         </div>
       </div>
 
-      <Card title={t('pages.checkout.expressCheckout')} className="checkout-page__expressCard">
+      <section className="checkout-page__expressCard" aria-label={t('pages.checkout.expressCheckout')}><div className="shop-panel__head"><div className="shop-panel__title">{t('pages.checkout.expressCheckout')}</div></div>
         <div className="checkout-page__paymentGrid" role="radiogroup" aria-label={t('pages.payment.title')} aria-required="true">
           {!paymentMethodsAvailable ? (
             <Alert
@@ -2961,9 +2968,9 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
         <span className="checkout-page__text checkout-page__text--secondary checkout-page__expressHint">
           {t('pages.checkout.expressHint')}
         </span>
-      </Card>
+      </section>
 
-      <Card className="checkout-page__benefitStrip">
+      <section className="checkout-page__benefitStrip">
         <div className="checkout-page__benefitItem">
           <span className="checkout-page__benefitIcon"><ShopIcon path={SI.truck} /></span>
           <div>
@@ -3001,7 +3008,7 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
             </div>
           </div>
         ) : null}
-      </Card>
+      </section>
 
       <Modal
         open={giftCelebrationOpen}
@@ -3029,7 +3036,7 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
           <Tag color={checkoutNextAction ? 'orange' : 'green'}>{checkoutReadinessScore}%</Tag>
         </summary>
 
-        <Card className="checkout-page__savingsCoach">
+        <section className="checkout-page__savingsCoach">
           <div className="checkout-page__savingsCoachHeader">
             <div>
               <span className="checkout-page__text checkout-page__text--secondary">{t('pages.checkout.savingsCoachEyebrow')}</span>
@@ -3060,7 +3067,7 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
               </div>
             ))}
           </div>
-        </Card>
+        </section>
 
         {addOnTarget ? (
           <div id="checkout-add-on-assistant" className="checkout-page__addOnDock">
@@ -3074,7 +3081,7 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
         ) : null}
 
         {couponOpportunity ? (
-          <Card className={couponOpportunity.type === 'ready' ? 'checkout-page__couponOpportunity checkout-page__couponOpportunity--ready' : 'checkout-page__couponOpportunity'}>
+          <section className={couponOpportunity.type === 'ready' ? 'checkout-page__couponOpportunity checkout-page__couponOpportunity--ready' : 'checkout-page__couponOpportunity'}>
             <div>
               <span className="checkout-page__text checkout-page__text--strong">{couponOpportunity.title}</span>
               <span className="checkout-page__text checkout-page__text--secondary">{couponOpportunity.text}</span>
@@ -3089,10 +3096,10 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
             >
               {couponOpportunity.action}
             </Button>
-          </Card>
+          </section>
         ) : null}
 
-        <Card className="checkout-page__readiness">
+        <section className="checkout-page__readiness">
           <div className="checkout-page__readinessHeader">
             <div>
               <span className="checkout-page__text checkout-page__text--secondary">{t('pages.checkout.readinessEyebrow')}</span>
@@ -3128,34 +3135,30 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
               {checkoutCoachActionLabel}
             </Button>
           </div>
-        </Card>
+        </section>
       </details>
 
-      <Card title={t('pages.checkout.itemList')} className="checkout-page__itemsCard checkout-page__sectionCard">
-        <List
-          dataSource={cartItems}
-          rowKey={(item) => item.id}
-          renderItem={(item) => {
+      <section className="checkout-page__itemsCard checkout-page__sectionCard" aria-label={t('pages.checkout.itemList')}><div className="shop-panel__head"><div className="shop-panel__title">{t('pages.checkout.itemList')}</div></div>
+        <ul className="checkout-page__itemList" role="list">
+          {cartItems.map((item) => {
             const itemName = checkoutCartItemName(item);
             const itemActionLabel = `${t('pages.productList.viewDetails')}: ${itemName}`;
             return (
-              <List.Item className="checkout-page__item">
-                <List.Item.Meta
-                  avatar={
-                    <img
-                      src={resolveCheckoutImage(item.imageUrl)}
-                      alt={itemName}
-                      className="checkout-page__itemImage"
-                      loading="lazy"
-                      decoding="async"
-                      onError={(event) => {
-                        if (event.currentTarget.src !== checkoutImageFallback) {
-                          event.currentTarget.src = checkoutImageFallback;
-                        }
-                      }}
-                    />
-                  }
-                  title={
+              <li key={item.id} className="checkout-page__item">
+                <div className="checkout-page__itemMeta">
+                  <img
+                    src={resolveCheckoutImage(item.imageUrl)}
+                    alt={itemName}
+                    className="checkout-page__itemImage"
+                    loading="lazy"
+                    decoding="async"
+                    onError={(event) => {
+                      if (event.currentTarget.src !== checkoutImageFallback) {
+                        event.currentTarget.src = checkoutImageFallback;
+                      }
+                    }}
+                  />
+                  <div className="checkout-page__itemBody">
                     <button
                       type="button"
                       className="checkout-page__itemLink"
@@ -3165,8 +3168,6 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
                     >
                       {itemName}
                     </button>
-                  }
-                  description={
                     <div className="checkout-page__itemDescription">
                       {item.selectedSpecs ? <span className="checkout-page__text checkout-page__text--secondary">{formatSelectedSpecs(item.selectedSpecs, t, language)}</span> : null}
                       {getCartItemLowStockCount(item) !== null ? (
@@ -3182,18 +3183,18 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
                         <span className="checkout-page__text checkout-page__text--strong checkout-page__itemTotal commerce-money">{formatMoney(getCartLineAmount(item))}</span>
                       </div>
                     </div>
-                  }
-                />
-              </List.Item>
+                  </div>
+                </div>
+              </li>
             );
-          }}
-        />
-        <Divider />
+          })}
+        </ul>
+        <hr className="checkout-page__divider" />
         <div className="checkout-page__summaryLine">
           <span className="checkout-page__text">{t('pages.checkout.itemSummary', { count: checkoutItemCount })}</span>
           <span className="checkout-page__text checkout-page__text--strong checkout-page__summaryTotal commerce-money"> {formatMoney(cartTotal)}</span>
         </div>
-      </Card>
+      </section>
 
       <Form
         form={form}
@@ -3223,7 +3224,7 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
           {checkoutValidationAnnouncement}
         </div>
         {isGuestCheckout ? (
-          <Card id="checkout-contact-card" title={t('pages.checkout.contact')} className="checkout-page__sectionCard">
+          <section className="checkout-page__sectionCard" id="checkout-contact-card" aria-label={t('pages.checkout.contact')}><div className="shop-panel__head"><div className="shop-panel__title">{t('pages.checkout.contact')}</div></div>
             <Form.Item
               name="guestEmail"
               label={t('pages.checkout.email')}
@@ -3233,15 +3234,10 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
               <Input placeholder={t('pages.checkout.guestEmailPlaceholder')} autoComplete="email" inputMode="email" maxLength={120} />
             </Form.Item>
             <span className="checkout-page__text checkout-page__text--secondary">{t('pages.checkout.guestHint')}</span>
-          </Card>
+          </section>
         ) : null}
 
-        <Card
-          id="checkout-address-card"
-          title={t('pages.checkout.address')}
-          className="checkout-page__sectionCard"
-          onFocusCapture={(event) => scrollCheckoutFieldIntoMobileView(event.target, 'checkout-address-card', 'auto')}
-        >
+        <section className="checkout-page__sectionCard" id="checkout-address-card" aria-label={t('pages.checkout.address')}><div className="shop-panel__head"><div className="shop-panel__title">{t('pages.checkout.address')}</div></div>
           {addressLoadFailed ? (
             <Alert
               type="warning"
@@ -3397,9 +3393,9 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
               </Form.Item>
             </>
           )}
-        </Card>
+        </section>
 
-        {!isGuestCheckout ? <Card id="checkout-coupon-card" title={t('pages.checkout.coupon')} className="checkout-page__sectionCard">
+        {!isGuestCheckout ? <section className="checkout-page__sectionCard" id="checkout-coupon-card" aria-label={t('pages.checkout.coupon')}><div className="shop-panel__head"><div className="shop-panel__title">{t('pages.checkout.coupon')}</div></div>
           <Select
             allowClear
             className="checkout-page__couponSelect"
@@ -3467,8 +3463,8 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
             ) : null}
             <div><span className="checkout-page__text checkout-page__text--strong checkout-page__payableTotal">{t('pages.checkout.payable')}: <span className={shippingQuoteReady ? 'commerce-money' : 'checkout-page__pendingAmount'}>{payableAmountText}</span></span></div>
           </div>
-        </Card> : (
-          <Card id="checkout-coupon-card" title={t('pages.checkout.orderSummary')} className="checkout-page__sectionCard">
+        </section> : (
+          <section className="checkout-page__sectionCard" id="checkout-coupon-card" aria-label={t('pages.checkout.orderSummary')}><div className="shop-panel__head"><div className="shop-panel__title">{t('pages.checkout.orderSummary')}</div></div>
             <div className="checkout-page__couponSummary">
               <div><span className="checkout-page__text">{t('common.subtotal')}: <span className="commerce-money">{formatMoney(cartTotal)}</span></span></div>
               <div><span className="checkout-page__text">{t('pages.checkout.shippingFee')}: <span className={shippingQuoteReady ? 'commerce-money' : 'checkout-page__pendingAmount'}>{shippingFeeText}</span></span></div>
@@ -3483,10 +3479,10 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
               ) : null}
               <div><span className="checkout-page__text checkout-page__text--strong checkout-page__payableTotal">{t('pages.checkout.payable')}: <span className={shippingQuoteReady ? 'commerce-money' : 'checkout-page__pendingAmount'}>{payableAmountText}</span></span></div>
             </div>
-          </Card>
+          </section>
         )}
 
-        <Card id="checkout-payment-card" title={t('pages.payment.title')}>
+        <section id="checkout-payment-card" aria-label={t('pages.payment.title')}><div className="shop-panel__head"><div className="shop-panel__title">{t('pages.payment.title')}</div></div>
           <div className="checkout-page__paymentConfidence">
             <ShopIcon path={SI.safety} />
             <span>
@@ -3615,7 +3611,7 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
                 </Button>
             )}
           </div>
-        </Card>
+        </section>
       </Form>
     </div>
   );

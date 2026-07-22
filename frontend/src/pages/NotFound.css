@@ -9,31 +9,31 @@
     padding: 18px 12px calc(104px + env(safe-area-inset-bottom, 0px));
   }
 
-  .not-found-page .ant-result {
+  .not-found-page .not-found-page__result {
     padding: 14px 0 0;
   }
 
-  .not-found-page .ant-result-icon {
+  .not-found-page .not-found-page__resultIcon {
     margin-bottom: 8px;
   }
 
-  .not-found-page .ant-result-title {
+  .not-found-page .not-found-page__title {
     margin-bottom: 8px;
     font-size: 30px;
     line-height: 1.1;
   }
 
-  .not-found-page .ant-result-subtitle {
+  .not-found-page .not-found-page__status {
     margin-bottom: 14px;
   }
 
-  .not-found-page .ant-result-extra {
+  .not-found-page .not-found-page__resultExtra {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
     gap: 10px;
   }
 
-  .not-found-page .ant-result-extra .ant-btn {
+  .not-found-page .not-found-page__resultExtra .ant-btn {
     width: 100%;
     min-height: 44px;
     margin-inline: 0;
@@ -46,34 +46,34 @@
     padding-top: 10px;
   }
 
-  .not-found-page .ant-result {
+  .not-found-page .not-found-page__result {
     padding-top: 8px;
   }
 
-  .not-found-page .ant-result-icon {
+  .not-found-page .not-found-page__resultIcon {
     width: min(210px, 62vw);
     margin-right: auto;
     margin-bottom: 4px;
     margin-left: auto;
   }
 
-  .not-found-page .ant-result-icon svg,
-  .not-found-page .ant-result-icon img {
+  .not-found-page .not-found-page__resultIcon svg,
+  .not-found-page .not-found-page__resultIcon img {
     width: 100%;
     height: auto;
   }
 
-  .not-found-page .ant-result-title {
+  .not-found-page .not-found-page__title {
     margin-bottom: 6px;
     font-size: 26px;
   }
 
-  .not-found-page .ant-result-subtitle {
+  .not-found-page .not-found-page__status {
     margin-bottom: 10px;
     line-height: 1.35;
   }
 
-  .not-found-page .ant-result-extra {
+  .not-found-page .not-found-page__resultExtra {
     margin-top: 14px;
   }
 }
@@ -94,7 +94,7 @@
 
 
 /* Commercial not-found recovery touch targets */
-.not-found-page .ant-result-extra .ant-btn {
+.not-found-page .not-found-page__resultExtra .ant-btn {
   min-height: 44px;
   touch-action: manipulation;
 }
@@ -102,7 +102,7 @@
 
 /* Commercial: 404 primary title is a real h1. */
 .not-found-page__title,
-.not-found-page .ant-result-title h1 {
+.not-found-page .not-found-page__title {
   margin: 0 !important;
   color: #173f2b !important;
   font-size: 28px !important;
@@ -112,7 +112,42 @@
 
 @media (max-width: 780px) {
   .not-found-page__title,
-  .not-found-page .ant-result-title h1 {
+  .not-found-page .not-found-page__title {
     font-size: 24px !important;
   }
+}
+
+
+/* Native 404 result densification (no ant Result runtime) */
+.not-found-page__result {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  text-align: center;
+  padding: 24px 12px;
+}
+
+.not-found-page__resultIcon {
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  font-size: 1.4rem;
+  color: #1677ff;
+  background: rgba(22, 119, 255, 0.1);
+  border: 3px solid rgba(22, 119, 255, 0.28);
+}
+
+.not-found-page__resultExtra {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.not-found-page__resultExtra .ant-btn {
+  min-height: 44px;
 }

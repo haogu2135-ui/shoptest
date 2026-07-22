@@ -2,7 +2,7 @@ import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } fr
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { ShopIcon, SI } from '../components/ShopIcon';
 import { useParams, useSearchParams } from 'react-router-dom';
-import { Card, Button, Tag, Radio, Rate, Carousel, Modal, Breadcrumb, Tabs, List, Input, Segmented, Alert } from 'antd';
+import { Button, Tag, Radio, Carousel, Modal, Input, Alert } from 'antd';
 import { productApi, cartApi, reviewApi, wishlistApi, questionApi } from '../api';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../i18n';
@@ -32,6 +32,9 @@ import { formatProductSpecLabel } from '../utils/productSpecLabels';
 import { syncHiddenCarouselSlideFocus } from '../utils/carouselAccessibility';
 import { reportNonBlockingError } from '../utils/nonBlockingError';
 import PageEmpty from '../components/PageEmpty';
+import ShopBreadcrumb from '../components/ShopBreadcrumb';
+import ShopSegmented from '../components/ShopSegmented';
+import ShopRate from '../components/ShopRate';
 import PageError from '../components/PageError';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useDocumentMeta } from '../hooks/useDocumentMeta';
@@ -1551,43 +1554,32 @@ const ProductDetail: React.FC = () => {
   return (
     <div className={`product-detail-page product-detail-page--${language}`}>
       <div className="product-detail-shell">
-        <Breadcrumb
+        <ShopBreadcrumb
           className="product-detail-breadcrumb"
+          ariaLabel={productName}
           items={[
             {
-              title: (
-                <button
-                  type="button"
-                  className="product-detail-breadcrumb__link"
-                  aria-label={t('nav.ariaHome')}
-                  title={t('nav.ariaHome')}
-                  onClick={() => navigate('/')}
-                >
-                  <ShopIcon path={SI.home} />
-                </button>
-              ),
+              key: 'home',
+              path: '/',
+              ariaLabel: t('nav.ariaHome'),
+              label: <ShopIcon path={SI.home} />,
             },
             {
-              title: (
-                <button
-                  type="button"
-                  className="product-detail-breadcrumb__link"
-                  aria-label={t('pages.productList.title')}
-                  title={t('pages.productList.title')}
-                  onClick={() => navigate('/products')}
-                >
-                  {t('pages.productList.title')}
-                </button>
-              ),
+              key: 'products',
+              path: '/products',
+              label: t('pages.productList.title'),
             },
-            { title: productName },
+            {
+              key: 'product',
+              label: productName,
+            },
           ]}
         />
 
         <div className="product-detail__layout">
           {/* Product media gallery */}
           <div className="product-detail__gallery">
-            <Card className="product-gallery-card">
+            <section className="product-gallery-card" aria-label={galleryRegionLabel}>
               <div
                 className="product-detail-main-image"
                 role="region"
@@ -1770,12 +1762,12 @@ const ProductDetail: React.FC = () => {
                   ))}
                 </div>
               )}
-            </Card>
+            </section>
           </div>
 
           {/* Product purchase summary */}
           <div className="product-detail__summary">
-            <Card className="product-summary-card">
+            <section className="product-summary-card" aria-label={productName}>
               <div className="product-summary-space">
                 <div className="product-title-block">
                   <h1 className="product-detail-page__title">{productName}</h1>
@@ -1786,7 +1778,12 @@ const ProductDetail: React.FC = () => {
 
                 <div className="product-price-panel">
                   <div className="product-rating-row">
-                    <Rate disabled allowHalf value={displayedRating} />
+                    <ShopRate
+                      disabled
+                      allowHalf
+                      value={displayedRating}
+                      ariaLabel={`${displayedRating.toFixed(1)} ${t('pages.productDetail.rating')}`}
+                    />
                     <span className="product-detail-page__text">{displayedRating.toFixed(1)} {t('pages.productDetail.rating')}</span>
                   </div>
                   <div className="product-price-line">
@@ -2050,11 +2047,11 @@ const ProductDetail: React.FC = () => {
 
                 {bundleInfo ? (
                   <div className="product-purchase-mode">
-                    <Segmented
+                    <ShopSegmented
                       block
                       value={purchaseMode}
                       onChange={(value) => setPurchaseMode(value as 'once' | 'bundle')}
-                      aria-label={purchaseModeActionLabel}
+                      ariaLabel={purchaseModeActionLabel}
                       title={purchaseModeActionLabel}
                       options={[
                         { label: t('pages.productDetail.oneTimePurchase'), value: 'once' },
@@ -2323,55 +2320,73 @@ const ProductDetail: React.FC = () => {
                   </div>
                 </details>
               </div>
-            </Card>
+            </section>
           </div>
         </div>
 
         {/* Product details and specifications */}
         <div ref={detailContentRef} className="product-detail-content-anchor" />
-        <Card className="product-tabs-card" id="product-service-tabs">
-          <Tabs
-            className="product-detail-tabs"
-            activeKey={detailActiveTab}
-            onChange={openProductDetailTab}
-            tabBarGutter={10}
-            more={{
-              icon: (
-                <span className="product-detail-tabs__moreIcon">
-                  <ShopIcon path={SI.ellipsis} aria-hidden="true" />
-                  <span className="product-detail-tabs__srText">
-                    {t('pages.productDetail.moreTabs', { defaultValue: `${t('common.more')}: ${t('pages.productDetail.service')}` })}
-                  </span>
-                </span>
-              ),
-            }}
-            items={[
-              {
-                key: 'details',
-                label: t('pages.productDetail.details'),
-                children: (
-                  <div className="product-tab-content">
-                    <Suspense fallback={<ProductDetailLazyFallback label={t('common.loading')} variant="rich" />}>
-                      <ProductRichDetail
-                        detailContent={product.detailContent}
-                        fallback={product.description}
-                        emptyText={t('pages.productDetail.noDetails')}
-                        labels={{
-                          imageAlt: t('pages.productDetail.richImageAlt'),
-                          videoTitle: (index) => t('pages.productDetail.richVideoTitle', { index }),
-                          openVideo: t('pages.productDetail.openRichVideo'),
-                          unsupported: t('pages.productDetail.unsupportedRichContent'),
-                        }}
-                      />
-                    </Suspense>
-                  </div>
-                ),
-              },
-              {
-                key: 'specs',
-                label: t('pages.productDetail.specs'),
-                children: (
-                  <div className="product-tab-content">
+        <section className="product-tabs-card" id="product-service-tabs" aria-label={t('pages.productDetail.details')}>
+          <div className="product-detail-tabs">
+            <div
+              className="product-detail-tabs__nav"
+              role="tablist"
+              aria-label={t('pages.productDetail.details')}
+            >
+              {([
+                { key: 'details' as const, label: t('pages.productDetail.details') },
+                { key: 'specs' as const, label: t('pages.productDetail.specs') },
+                { key: 'service' as const, label: t('pages.productDetail.service') },
+              ]).map((tab) => {
+                const selected = detailActiveTab === tab.key;
+                return (
+                  <button
+                    key={tab.key}
+                    type="button"
+                    role="tab"
+                    id={`product-detail-tab-${tab.key}`}
+                    className={`product-detail-tabs__tab${selected ? ' product-detail-tabs__tab--active' : ''}`}
+                    aria-selected={selected}
+                    aria-controls={`product-detail-panel-${tab.key}`}
+                    tabIndex={selected ? 0 : -1}
+                    onClick={() => openProductDetailTab(tab.key)}
+                  >
+                    <span className="product-detail-tabs__tabLabel">{tab.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <div
+              className="product-detail-tabs__panel"
+              role="tabpanel"
+              id="product-detail-panel-details"
+              aria-labelledby="product-detail-tab-details"
+              hidden={detailActiveTab !== 'details'}
+            >
+              <div className="product-tab-content">
+                <Suspense fallback={<ProductDetailLazyFallback label={t('common.loading')} variant="rich" />}>
+                  <ProductRichDetail
+                    detailContent={product.detailContent}
+                    fallback={product.description}
+                    emptyText={t('pages.productDetail.noDetails')}
+                    labels={{
+                      imageAlt: t('pages.productDetail.richImageAlt'),
+                      videoTitle: (index) => t('pages.productDetail.richVideoTitle', { index }),
+                      openVideo: t('pages.productDetail.openRichVideo'),
+                      unsupported: t('pages.productDetail.unsupportedRichContent'),
+                    }}
+                  />
+                </Suspense>
+              </div>
+            </div>
+            <div
+              className="product-detail-tabs__panel"
+              role="tabpanel"
+              id="product-detail-panel-specs"
+              aria-labelledby="product-detail-tab-specs"
+              hidden={detailActiveTab !== 'specs'}
+            >
+              <div className="product-tab-content">
                     {product.specifications && Object.entries(product.specifications)
                       .filter(([key]) => !key.startsWith('options.') && !key.startsWith('i18n.') && !key.startsWith('bundle.'))
                       .map(([key, value]) => (
@@ -2381,13 +2396,15 @@ const ProductDetail: React.FC = () => {
                         </div>
                       ))}
                   </div>
-                ),
-              },
-              {
-                key: 'service',
-                label: t('pages.productDetail.service'),
-                children: (
-                  <div className="product-tab-content">
+            </div>
+            <div
+              className="product-detail-tabs__panel"
+              role="tabpanel"
+              id="product-detail-panel-service"
+              aria-labelledby="product-detail-tab-service"
+              hidden={detailActiveTab !== 'service'}
+            >
+              <div className="product-tab-content">
                     <div className="product-warranty-row">
                       <span className="product-detail-page__text product-detail-page__text--strong">{t('pages.productDetail.warranty')}</span>
                       <span className="product-detail-page__text">{product.warranty || t('pages.productDetail.defaultWarranty')}</span>
@@ -2396,15 +2413,13 @@ const ProductDetail: React.FC = () => {
                       <span className="product-detail-page__text product-detail-page__text--strong">{t('pages.productDetail.shipping')}</span>
                       <span className="product-detail-page__text">{productShippingText}</span>
                     </div>
-                  </div>
-                ),
-              },
-            ]}
-          />
-        </Card>
+              </div>
+            </div>
+          </div>
+        </section>
 
         {/* Product reviews */}
-        <Card className="product-review-card" id="product-reviews-card">
+        <section className="product-review-card" id="product-reviews-card" aria-label={t('pages.review.title')}>
           <Suspense fallback={<ProductDetailLazyFallback label={t('common.loading')} variant="review" />}>
             <ProductReview
               productId={Number(id)}
@@ -2413,9 +2428,9 @@ const ProductDetail: React.FC = () => {
               onAddReview={handleAddReview}
             />
           </Suspense>
-        </Card>
+        </section>
 
-        <Card className="product-qa-card" id="product-qa-card">
+        <section className="product-qa-card" id="product-qa-card" aria-label={t('pages.ask.title')}>
           <h4 className="product-detail-page__title" style={{ marginBottom: 16 }}>{t('pages.ask.title')}</h4>
           <div className="product-qa-space">
             <Input.TextArea
@@ -2440,11 +2455,9 @@ const ProductDetail: React.FC = () => {
                 message={t('pages.ask.pendingTitle')}
                 description={t('pages.ask.pendingDescription')}
               />
-              <List
-                className="product-qa-pending-list"
-                dataSource={pendingQuestions}
-                renderItem={(pendingQuestion) => (
-                  <List.Item key={pendingQuestion.id}>
+              <ul className="product-qa-pending-list product-detail-page__itemList" role="list">
+                {pendingQuestions.map((pendingQuestion) => (
+                  <li key={pendingQuestion.id} className="product-detail-page__item">
                     <div className="product-question-item product-question-item--pending">
                       <div className="product-question-text">{pendingQuestion.question}</div>
                       <div className="product-question-meta">
@@ -2455,9 +2468,9 @@ const ProductDetail: React.FC = () => {
                         <span className="product-detail-page__text">{t('pages.ask.pendingAnswer')}</span>
                       </div>
                     </div>
-                  </List.Item>
-                )}
-              />
+                  </li>
+                ))}
+              </ul>
             </div>
           ) : null}
           {questions.length === 0 ? (
@@ -2473,10 +2486,9 @@ const ProductDetail: React.FC = () => {
               </div>
             </div>
           ) : (
-            <List
-              dataSource={questions}
-              renderItem={(q) => (
-                <List.Item key={q.id}>
+            <ul className="product-detail-page__itemList product-qa-list" role="list">
+              {questions.map((q) => (
+                <li key={q.id} className="product-detail-page__item">
                   <div className="product-question-item">
                     <div className="product-question-text">{q.question}</div>
                     <div className="product-question-meta">
@@ -2487,11 +2499,11 @@ const ProductDetail: React.FC = () => {
                       <span className="product-detail-page__text">{q.answer}</span>
                     </div>
                   </div>
-                </List.Item>
-              )}
-            />
+                </li>
+              ))}
+            </ul>
           )}
-        </Card>
+        </section>
 
         {/* Related recommendations */}
         {relatedRecommendations.length > 0 ? (
@@ -2521,9 +2533,22 @@ const ProductDetail: React.FC = () => {
                 const recommendationViewLabel = `${t('pages.productList.viewDetails')}: ${recName}`;
                 return (
                   <div key={rec.id} className="product-recommendations__slide">
-                    <Card
-                      hoverable
-                      cover={
+                    <article
+                      className="product-recommendations__card"
+                      role="button"
+                      tabIndex={0}
+                      aria-label={recommendationViewLabel}
+                      title={recommendationViewLabel}
+                      onClick={() => navigate(`/products/${rec.id}`)}
+                      onKeyDown={(event) => {
+                        if (event.target !== event.currentTarget) return;
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          navigate(`/products/${rec.id}`);
+                        }
+                      }}
+                    >
+                      <div className="product-recommendations__cover">
                         <button
                           type="button"
                           className="product-recommendations__imageButton"
@@ -2549,21 +2574,8 @@ const ProductDetail: React.FC = () => {
                             }}
                           />
                         </button>
-                      }
-                      className="product-recommendations__card"
-                      role="button"
-                      tabIndex={0}
-                      aria-label={recommendationViewLabel}
-                      title={recommendationViewLabel}
-                      onClick={() => navigate(`/products/${rec.id}`)}
-                      onKeyDown={(event) => {
-                        if (event.target !== event.currentTarget) return;
-                        if (event.key === 'Enter' || event.key === ' ') {
-                          event.preventDefault();
-                          navigate(`/products/${rec.id}`);
-                        }
-                      }}
-                    >
+                      </div>
+                      <div className="product-recommendations__body">
                       <div className="product-recommendations__content">
                         <span className="product-detail-page__text product-detail-page__text--strong product-recommendations__name">{recName}</span>
                         <div className="product-recommendations__meta">
@@ -2592,7 +2604,8 @@ const ProductDetail: React.FC = () => {
                               : t('pages.productDetail.addCart')}
                         </Button>
                       </div>
-                    </Card>
+                      </div>
+                    </article>
                   </div>
                 );
               })}

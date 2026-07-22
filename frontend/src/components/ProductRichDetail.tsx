@@ -1,5 +1,4 @@
 import React from 'react';
-import { Empty, Typography } from 'antd';
 import type { ProductDetailBlock } from '../types';
 import { useLanguage } from '../i18n';
 import { buildResponsiveImageSrcSet, normalizePersistentImageUrl, resolveApiAssetUrl } from '../utils/mediaAssets';
@@ -7,7 +6,6 @@ import { reportNonBlockingError } from '../utils/nonBlockingError';
 import './ProductRichDetail.css';
 import '../styles/mobile-page-contrast.css';
 
-const { Paragraph, Text } = Typography;
 
 type ProductRichDetailProps = {
   detailContent?: ProductDetailBlock[] | string | null;
@@ -132,7 +130,7 @@ const ProductRichDetail: React.FC<ProductRichDetailProps> = ({
   });
 
   if (blocks.length === 0) {
-    return fallback ? <Paragraph>{fallback}</Paragraph> : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={resolvedEmptyText} />;
+    return fallback ? <p className="product-rich-detail__text">{fallback}</p> : <div className="product-rich-detail__empty" role="status">{resolvedEmptyText}</div>;
   }
 
   return (
@@ -141,9 +139,9 @@ const ProductRichDetail: React.FC<ProductRichDetailProps> = ({
         const mediaUrl = resolveRichMediaUrl(block.url);
         if (block.type === 'text') {
           return (
-            <Paragraph key={index} className="product-rich-detail__text">
+            <p key={index} className="product-rich-detail__text">
               {block.content}
-            </Paragraph>
+            </p>
           );
         }
 
@@ -197,9 +195,9 @@ const ProductRichDetail: React.FC<ProductRichDetailProps> = ({
         }
 
         return (
-          <Text key={index} type="secondary">
+          <span key={index} className="product-rich-detail__unsupported">
             {resolvedLabels.unsupported}
-          </Text>
+          </span>
         );
       })}
     </div>

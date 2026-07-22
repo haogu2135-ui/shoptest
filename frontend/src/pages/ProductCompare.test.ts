@@ -49,7 +49,7 @@ describe('ProductCompare stale data guards', () => {
     const source = readProductCompareSource();
 
     expect(source).toContain('const compareActionsDisabled = compareLoadError;');
-    expect(source).toContain("message.warning(t('pages.compare.staleDataWarning'))");
+    expect(source).toContain("announceAccessibleMessage(t('pages.compare.staleDataWarning'), 'warning')");
     expect(source).toContain('disabled={isSoldOut || compareActionsDisabled}');
     expect(source).toContain('disabled={directReadyProducts.length === 0 || compareActionsDisabled}');
     expect(source.match(/disabled=\{compareActionsDisabled\}/g)?.length ?? 0).toBeGreaterThanOrEqual(4);

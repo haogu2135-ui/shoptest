@@ -1494,3 +1494,32 @@ body.shop-mobile-app .shop-api-error-banner {
   vertical-align: -0.125em;
   flex-shrink: 0;
 }
+
+/* Gate93: shared native panel shells (Card densify) */
+.shop-panel__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  flex-wrap: wrap;
+  min-width: 0;
+  margin-bottom: 12px;
+}
+.shop-panel__title {
+  margin: 0;
+  min-width: 0;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.35;
+  color: #124734;
+}
+.shop-panel__title strong {
+  display: block;
+}
+.shop-panel__extra {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}

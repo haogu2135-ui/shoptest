@@ -1,12 +1,12 @@
 import React from 'react';
-import { Breadcrumb } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import './ShopBreadcrumb.css';
 
 export type ShopBreadcrumbItem = {
   key: string;
-  label: string;
+  label: React.ReactNode;
   path?: string;
+  ariaLabel?: string;
 };
 
 export type ShopBreadcrumbProps = {
@@ -28,36 +28,35 @@ const ShopBreadcrumb: React.FC<ShopBreadcrumbProps> = ({
       className={`shop-breadcrumb ${className}`.trim()}
       aria-label={ariaLabel || 'Breadcrumb'}
     >
-      <Breadcrumb
-        className="shop-breadcrumb__list"
-        items={items.map((item, index) => {
+      <ol className="shop-breadcrumb__list">
+        {items.map((item, index) => {
           const isLast = index === items.length - 1;
-          if (!item.path || isLast) {
-            return {
-              key: item.key,
-              title: (
-                <span className="shop-breadcrumb__current" aria-current={isLast ? 'page' : undefined}>
+          const linkLabel = item.ariaLabel
+            || (typeof item.label === 'string' ? item.label : item.key);
+          return (
+            <li key={item.key} className="shop-breadcrumb__item">
+              {!item.path || isLast ? (
+                <span
+                  className="shop-breadcrumb__current"
+                  aria-current={isLast ? 'page' : undefined}
+                >
                   {item.label}
                 </span>
-              ),
-            };
-          }
-          return {
-            key: item.key,
-            title: (
-              <button
-                type="button"
-                className="shop-breadcrumb__link"
-                aria-label={item.label}
-                title={item.label}
-                onClick={() => navigate(item.path as string)}
-              >
-                {item.label}
-              </button>
-            ),
-          };
+              ) : (
+                <button
+                  type="button"
+                  className="shop-breadcrumb__link"
+                  aria-label={linkLabel}
+                  title={linkLabel}
+                  onClick={() => navigate(item.path as string)}
+                >
+                  {item.label}
+                </button>
+              )}
+            </li>
+          );
         })}
-      />
+      </ol>
     </nav>
   );
 };

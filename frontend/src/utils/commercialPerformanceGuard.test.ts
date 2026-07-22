@@ -278,11 +278,13 @@ describe('commercial performance contracts', () => {
       expect(source).toContain('announceAccessibleMessage');
       expect(source).not.toMatch(/\bmessage\.(success|error|warning|info)\s*\(/);
     }
-    // Checkout keeps antd message only behind runWithoutAccessibleMessageAnnouncement for form UX.
+    // Checkout uses shell-safe announceAccessibleMessage (no static antd message import).
     const checkout = readFrontend('pages', 'Checkout.tsx');
     expect(checkout).toContain('announceAccessibleMessage');
-    expect(checkout).toContain('runWithoutAccessibleMessageAnnouncement');
+    expect(checkout).toContain('showCheckoutMessage');
+    expect(checkout).not.toMatch(/import \{[^}]*\bmessage\b[^}]*\} from 'antd'/);
     expect(checkout).not.toMatch(/\bmessage\.(success|error|warning|info)\s*\(/);
+    expect(checkout).not.toMatch(/message\[type\]/);
   });
 
 
@@ -655,4 +657,478 @@ describe('commercial performance contracts', () => {
     expect(page).not.toMatch(/Typography\.(Text|Title|Paragraph)/);
   });
 
+  it('keeps Checkout free of ant Result/List/Divider', () => {
+    const checkout = readFrontend('pages', 'Checkout.tsx');
+    expect(checkout).not.toMatch(/import \{[^}]*\bResult\b[^}]*\} from 'antd'/);
+    expect(checkout).not.toMatch(/import \{[^}]*\bList\b[^}]*\} from 'antd'/);
+    expect(checkout).not.toMatch(/import \{[^}]*\bDivider\b[^}]*\} from 'antd'/);
+    expect(checkout).not.toMatch(/<Result\b/);
+    expect(checkout).not.toMatch(/<List\b/);
+    expect(checkout).not.toMatch(/List\.Item/);
+    expect(checkout).not.toMatch(/<Divider\b/);
+    expect(checkout).toContain('checkout-page__result');
+    expect(checkout).toContain('checkout-page__resultTitle');
+    expect(checkout).toContain('checkout-page__itemList');
+    expect(checkout).toContain('checkout-page__divider');
+  });
+
+  it('keeps secondary storefront recovery pages free of ant Spin', () => {
+    for (const [file, spinner] of [
+      ['Notifications.tsx', 'notifications-page__spinner'],
+      ['PetFinder.tsx', 'pet-finder-page__spinner'],
+      ['PaymentInstructions.tsx', 'payment-instructions-page__spinner'],
+      ['BrowsingHistory.tsx', 'browsing-history__spinner'],
+      ['Profile.tsx', 'profile-page__spinner'],
+    ] as const) {
+      const source = readFrontend('pages', file);
+      expect(source).not.toMatch(/\bSpin\b/);
+      expect(source).not.toMatch(/import \{[^}]*\bSpin\b[^}]*\} from 'antd'/);
+      expect(source).toContain(spinner);
+    }
+  });
+
+  it('keeps customer conversion lists free of ant List', () => {
+    for (const [file, marker] of [
+      ['ProductDetail.tsx', 'product-detail-page__itemList'],
+      ['CouponCenter.tsx', 'coupon-wallet__itemList'],
+      ['OrderTracking.tsx', 'order-tracking-page__itemList'],
+      ['Profile.tsx', 'profile-page__itemList'],
+      ['Notifications.tsx', 'notifications-page__itemList'],
+      ['StockAlerts.tsx', 'stock-alerts__itemList'],
+    ] as const) {
+      const source = readFrontend('pages', file);
+      expect(source).not.toMatch(/import \{[^}]*\bList\b[^}]*\} from 'antd'/);
+      expect(source).not.toMatch(/<List\b/);
+      expect(source).not.toMatch(/List\.Item/);
+      expect(source).toContain(marker);
+    }
+  });
+
+  it('keeps NotFound free of ant Result', () => {
+    const notFound = readFrontend('pages', 'NotFound.tsx');
+    expect(notFound).not.toMatch(/\bResult\b/);
+    expect(notFound).not.toMatch(/import \{[^}]*\bResult\b[^}]*\} from 'antd'/);
+    expect(notFound).toContain('not-found-page__result');
+    expect(notFound).toContain('not-found-page__resultExtra');
+  });
+
+  it('keeps conversion assistants free of ant Skeleton/Typography', () => {
+    for (const [file, marker] of [
+      ['AddOnAssistant.tsx', 'add-on-assistant__skeleton'],
+      ['PetPersonalizedAssistant.tsx', 'pet-personalized-assistant__skeleton'],
+    ] as const) {
+      const source = readFrontend('components', file);
+      expect(source).not.toMatch(/\bSkeleton\b/);
+      expect(source).not.toMatch(/\bTypography\b/);
+      expect(source).toContain(marker);
+    }
+  });
+
+  it('keeps ProductReview free of ant List/Empty/Space/Typography', () => {
+    const source = readFrontend('components', 'ProductReview.tsx');
+    expect(source).not.toMatch(/import \{[^}]*\bList\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/import \{[^}]*\bEmpty\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/import \{[^}]*\bSpace\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/import \{[^}]*\bTypography\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<List\b/);
+    expect(source).not.toMatch(/List\.Item/);
+    expect(source).not.toMatch(/<Empty\b/);
+    expect(source).not.toMatch(/\bSpace\b/);
+    expect(source).toContain('product-review__itemList');
+  });
+
+  it('keeps Payment, SearchBar, CookieConsent free of Space/Typography densify leftovers', () => {
+    const payment = readFrontend('components', 'Payment.tsx');
+    const search = readFrontend('components', 'SearchBar.tsx');
+    const cookie = readFrontend('components', 'CookieConsentBanner.tsx');
+    expect(payment).not.toMatch(/\bSpace\b/);
+    expect(payment).not.toMatch(/\bTypography\b/);
+    expect(payment).toContain('payment-modal__stack');
+    expect(search).not.toMatch(/\bSpace\b/);
+    expect(search).toContain('shop-search-bar');
+    expect(cookie).not.toMatch(/\bTypography\b/);
+    expect(cookie).toContain('cookie-consent-banner__text');
+  });
+
+
+  it('keeps PageEmpty and PageError free of ant Empty/Result', () => {
+    const pageEmpty = readFrontend('components', 'PageEmpty.tsx');
+    const pageError = readFrontend('components', 'PageError.tsx');
+    expect(pageEmpty).not.toMatch(/\bEmpty\b/);
+    expect(pageEmpty).not.toMatch(/import \{[^}]*\bEmpty\b[^}]*\} from 'antd'/);
+    expect(pageEmpty).toContain('page-feedback__empty');
+    expect(pageError).not.toMatch(/\bResult\b/);
+    expect(pageError).not.toMatch(/import \{[^}]*\bResult\b[^}]*\} from 'antd'/);
+    expect(pageError).toContain('page-feedback__result');
+  });
+
+  it('keeps CartDrawer free of ant List/Empty/Space/Typography', () => {
+    const source = readFrontend('components', 'CartDrawer.tsx');
+    expect(source).not.toMatch(/import \{[^}]*\bList\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/import \{[^}]*\bEmpty\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/import \{[^}]*\bSpace\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/import \{[^}]*\bTypography\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<List\b/);
+    expect(source).not.toMatch(/List\.Item/);
+    expect(source).not.toMatch(/<Empty\b/);
+    expect(source).not.toMatch(/\bSpace\b/);
+    expect(source).not.toMatch(/\bTypography\b/);
+    expect(source).toContain('cart-drawer__itemList');
+    expect(source).toContain('cart-drawer__emptyPanel');
+  });
+
+  it('keeps Cart free of ant Table/Empty', () => {
+    const source = readFrontend('pages', 'Cart.tsx');
+    expect(source).not.toMatch(/import \{[^}]*\bTable\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/import \{[^}]*\bEmpty\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<Table\b/);
+    expect(source).not.toMatch(/<Empty\b/);
+    expect(source).not.toMatch(/Empty\.PRESENTED/);
+    expect(source).toContain('cart-page__tableHead');
+    expect(source).toContain('cart-page__tableRow');
+    expect(source).toContain('cart-page__productCell');
+    expect(source).toContain('cart-page__tableActions');
+    expect(source).toContain('cart-page__emptyPanelInner');
+    expect(source).toContain('cart-page__savedEmptyInner');
+  });
+
+
+  it('keeps CustomerSupportWidget free of ant List/Empty/Space/Spin/Typography', () => {
+    const source = readFrontend('components', 'CustomerSupportWidget.tsx');
+    expect(source).not.toMatch(/import \{[^}]*\bList\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/import \{[^}]*\bEmpty\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/import \{[^}]*\bSpace\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/import \{[^}]*\bSpin\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/import \{[^}]*\bTypography\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<List\b/);
+    expect(source).not.toMatch(/List\.Item/);
+    expect(source).not.toMatch(/<Empty\b/);
+    expect(source).not.toMatch(/<Space\b/);
+    expect(source).not.toMatch(/<Spin\b/);
+    expect(source).not.toMatch(/\bTypography\b/);
+    expect(source).toContain('customer-support-widget__messageList');
+    expect(source).toContain('customer-support-widget__emptyDescription');
+    expect(source).toContain('customer-support-widget__spinner');
+    expect(source).toContain('customer-support-widget__stack');
+    expect(source).toContain('customer-support-widget__text');
+  });
+
+
+  it('keeps OrderTracking free of ant Descriptions/Empty', () => {
+    const source = readFrontend('pages', 'OrderTracking.tsx');
+    expect(source).not.toMatch(/import \{[^}]*\bDescriptions\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/import \{[^}]*\bEmpty\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<Descriptions\b/);
+    expect(source).not.toMatch(/<Empty\b/);
+    expect(source).toContain('order-tracking-page__descList');
+    expect(source).toContain('order-tracking-page__emptyPanel');
+  });
+
+  it('keeps PaymentInstructions free of ant Descriptions', () => {
+    const source = readFrontend('pages', 'PaymentInstructions.tsx');
+    expect(source).not.toMatch(/import \{[^}]*\bDescriptions\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<Descriptions\b/);
+    expect(source).toContain('payment-instructions-page__descList');
+  });
+
+  it('keeps Profile free of ant Descriptions', () => {
+    const source = readFrontend('pages', 'Profile.tsx');
+    expect(source).not.toMatch(/import \{[^}]*\bDescriptions\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<Descriptions\b/);
+    expect(source).toContain('profile-page__descList');
+    expect(source).toContain('profile-order-detail__descriptions');
+    expect(source).toContain('profile-payment-detail__descriptions');
+  });
+
+
+  it('keeps PetGallery free of ant Statistic', () => {
+    const source = readFrontend('pages', 'PetGallery.tsx');
+    expect(source).not.toMatch(/import \{[^}]*\bStatistic\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<Statistic\b/);
+    expect(source).toContain('pet-gallery-hero__stat');
+    expect(source).toContain('pet-gallery-hero__statValue');
+  });
+
+  it('keeps BrowsingHistory free of ant Empty', () => {
+    const source = readFrontend('pages', 'BrowsingHistory.tsx');
+    expect(source).not.toMatch(/import \{[^}]*\bEmpty\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<Empty\b/);
+    expect(source).toContain('browsing-history__emptyPanel');
+    expect(source).toContain('browsing-history__emptyDescription');
+  });
+
+  it('keeps ProductRichDetail free of ant Empty/Typography', () => {
+    const source = readFrontend('components', 'ProductRichDetail.tsx');
+    expect(source).not.toMatch(/import \{[^}]*\bEmpty\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/import \{[^}]*\bTypography\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<Empty\b/);
+    expect(source).not.toMatch(/\bTypography\b/);
+    expect(source).toContain('product-rich-detail__empty');
+    expect(source).toContain('product-rich-detail__text');
+  });
+
+  it('keeps NativeMobileUpdateGate free of ant Space/Typography', () => {
+    const source = readFrontend('components', 'NativeMobileUpdateGate.tsx');
+    expect(source).not.toMatch(/import \{[^}]*\bSpace\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/import \{[^}]*\bTypography\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<Space\b/);
+    expect(source).not.toMatch(/\bTypography\b/);
+    expect(source).toContain('shop-mobile-update-modal__stack');
+    expect(source).toContain('shop-mobile-update-modal__actions');
+  });
+
+
+
+  it('keeps SeventeenTrackWidget free of ant Empty/Space/Typography', () => {
+    const source = readFrontend('components', 'SeventeenTrackWidget.tsx');
+    expect(source).not.toMatch(/import \{[^}]*\bEmpty\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/import \{[^}]*\bSpace\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/import \{[^}]*\bTypography\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<Empty\b/);
+    expect(source).not.toMatch(/<Space\b/);
+    expect(source).not.toMatch(/\bTypography\b/);
+    expect(source).toContain('seventeen-track-widget__emptyPanel');
+    expect(source).toContain('seventeen-track-widget__recoveryActions');
+    expect(source).toContain('seventeen-track-widget__muted');
+  });
+
+  it('keeps ProductRichDetailEditor free of ant Empty/Space/Typography', () => {
+    const source = readFrontend('components', 'ProductRichDetailEditor.tsx');
+    expect(source).not.toMatch(/import \{[^}]*\bEmpty\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/import \{[^}]*\bSpace\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/import \{[^}]*\bTypography\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<Empty\b/);
+    expect(source).not.toMatch(/<Space\b/);
+    expect(source).not.toMatch(/\bTypography\b/);
+    expect(source).toContain('product-rich-detail-editor__emptyPanel');
+    expect(source).toContain('product-rich-detail-editor__toolbar');
+    expect(source).toContain('product-rich-detail-editor__mediaFields');
+  });
+
+  it('keeps ProductList product cards free of ant Card shell', () => {
+    const source = readFrontend('pages', 'ProductList.tsx');
+    expect(source).not.toContain('Card.Meta');
+    expect(source).not.toMatch(/className="product-list__card"[\s\S]*?cover=/);
+    expect(source).toContain('className="product-list__card"');
+    expect(source).toContain('product-list__cover');
+    expect(source).toContain('product-list__body');
+    expect(source).toContain('product-list__actions');
+    expect(source).toContain('product-list__metaTitle');
+    expect(source).toContain('product-list__actionItem--primary');
+    expect(source).toContain('<article');
+  });
+
+  it('keeps Wishlist free of ant Card shell', () => {
+    const source = readFrontend('pages', 'Wishlist.tsx');
+    expect(source).not.toMatch(/import \{[^}]*\bCard\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<Card\b/);
+    expect(source).toContain('wishlist-page__cover');
+    expect(source).toContain('wishlist-page__body');
+    expect(source).toContain('<article');
+  });
+
+  it('keeps ProductList free of ant Card shell', () => {
+    const source = readFrontend('pages', 'ProductList.tsx');
+    expect(source).not.toMatch(/import \{[^}]*\bCard\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<Card\b/);
+    expect(source).toContain('product-list__panel');
+    expect(source).toContain('product-list__panelHead');
+    expect(source).toContain('product-list__toolbar');
+  });
+
+  it('keeps StockAlerts free of ant Card shell', () => {
+    const source = readFrontend('pages', 'StockAlerts.tsx');
+    expect(source).not.toMatch(/import \{[^}]*\bCard\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<Card\b/);
+    expect(source).toContain('stock-alerts__shell');
+  });
+
+  it('keeps ProductDetail free of ant Card shell', () => {
+    const source = readFrontend('pages', 'ProductDetail.tsx');
+    expect(source).not.toMatch(/import \{[^}]*\bCard\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<Card\b/);
+    expect(source).toContain('product-gallery-card');
+    expect(source).toContain('product-summary-card');
+    expect(source).toContain('product-recommendations__cover');
+    expect(source).toContain('product-recommendations__body');
+  });
+
+  it('keeps conversion path pages free of ant Card shell', () => {
+    for (const [dir, name, marker] of [
+      ['pages', 'Cart.tsx', 'cart-page__savedCard'],
+      ['pages', 'Checkout.tsx', 'checkout-page__sectionCard'],
+      ['pages', 'CouponCenter.tsx', 'coupon-claim-section'],
+      ['pages', 'OrderTracking.tsx', 'order-tracking-page__lookupCard'],
+      ['pages', 'PaymentInstructions.tsx', 'payment-instructions-page__card'],
+      ['pages', 'ProductCompare.tsx', 'product-compare-page__shell'],
+      ['pages', 'PetFinder.tsx', 'pet-finder-page__finderCard'],
+    ] as const) {
+      const source = readFrontend(dir, name);
+      expect(source).not.toMatch(/import \{[^}]*\bCard\b[^}]*\} from 'antd'/);
+      expect(source).not.toMatch(/<Card\b/);
+      expect(source).toContain(marker);
+    }
+  });
+
+  it('keeps ShopBreadcrumb free of ant Breadcrumb', () => {
+    const source = readFrontend('components', 'ShopBreadcrumb.tsx');
+    expect(source).not.toMatch(/import \{[^}]*\bBreadcrumb\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<Breadcrumb\b/);
+    expect(source).toContain('shop-breadcrumb__list');
+    expect(source).toContain('shop-breadcrumb__item');
+    expect(source).toContain('<ol');
+  });
+
+  it('keeps ProductDetail free of static ant Breadcrumb', () => {
+    const source = readFrontend('pages', 'ProductDetail.tsx');
+    expect(source).not.toMatch(/import \{[^}]*\bBreadcrumb\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<Breadcrumb\b/);
+    expect(source).toContain('ShopBreadcrumb');
+    expect(source).toContain('product-detail-breadcrumb');
+  });
+
+  it('keeps ShopSegmented free of ant Segmented', () => {
+    const source = readFrontend('components', 'ShopSegmented.tsx');
+    expect(source).not.toMatch(/import \{[^}]*\bSegmented\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<Segmented\b/);
+    expect(source).toContain('shop-segmented__group');
+    expect(source).toContain('shop-segmented__item');
+    expect(source).toContain('role="radiogroup"');
+  });
+
+  it('keeps ProductDetail free of static ant Segmented', () => {
+    const source = readFrontend('pages', 'ProductDetail.tsx');
+    expect(source).not.toMatch(/import \{[^}]*\bSegmented\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<Segmented\b/);
+    expect(source).toContain('ShopSegmented');
+    expect(source).toContain('product-purchase-mode');
+  });
+
+  it('keeps ShopRate free of ant Rate', () => {
+    const source = readFrontend('components', 'ShopRate.tsx');
+    expect(source).not.toMatch(/import \{[^}]*\bRate\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<Rate\b/);
+    expect(source).toContain('shop-rate');
+    expect(source).toContain('shop-rate__fill');
+  });
+
+  it('keeps ProductDetail free of static ant Rate', () => {
+    const source = readFrontend('pages', 'ProductDetail.tsx');
+    expect(source).not.toMatch(/import \{[^}]*\bRate\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<Rate\b/);
+    expect(source).toContain('ShopRate');
+    expect(source).toContain('product-rating-row');
+  });
+
+  it('keeps ProductCompare free of static ant Rate', () => {
+    const source = readFrontend('pages', 'ProductCompare.tsx');
+    expect(source).not.toMatch(/import \{[^}]*\bRate\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<Rate\b/);
+    expect(source).toContain('ShopRate');
+  });
+
+  it('keeps ProductReview free of ant Rate', () => {
+    const source = readFrontend('components', 'ProductReview.tsx');
+    expect(source).not.toMatch(/import \{[^}]*\bRate\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<Rate\b/);
+    expect(source).toContain('ShopRate');
+  });
+
+  it('keeps ProductList free of static ant Rate', () => {
+    const source = readFrontend('pages', 'ProductList.tsx');
+    expect(source).not.toMatch(/import \{[^}]*\bRate\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<Rate\b/);
+    expect(source).toContain('ShopRate');
+  });
+
+
+
+
+
+
+  it('keeps ProductCompare free of ant Table', () => {
+    const source = readFrontend('pages', 'ProductCompare.tsx');
+    expect(source).not.toMatch(/import \{[^}]*\bTable\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<Table\b/);
+    expect(source).toContain('product-compare__tableMatrix');
+    expect(source).toContain('product-compare__tableCell');
+    expect(source).toContain('product-compare__tableSticky');
+    expect(source).toContain('data-label={compareAttributeHeader}');
+  });
+
+
+
+
+  it('keeps ProductCompare free of ant Spin', () => {
+    const source = readFrontend('pages', 'ProductCompare.tsx');
+    expect(source).not.toMatch(/\bSpin\b/);
+    expect(source).not.toMatch(/import \{[^}]*\bSpin\b[^}]*\} from 'antd'/);
+    expect(source).toContain('product-compare__spinner');
+  });
+
+  it('keeps Checkout free of static antd message import', () => {
+    const source = readFrontend('pages', 'Checkout.tsx');
+    expect(source).not.toMatch(/import \{[^}]*\bmessage\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/message\[type\]/);
+    expect(source).toContain('announceAccessibleMessage');
+    expect(source).toContain('showCheckoutMessage');
+  });
+
+  it('keeps CouponCenter and PetGallery free of ant Skeleton', () => {
+    for (const [file, marker] of [
+      ['CouponCenter.tsx', 'coupon-center-page__skeleton'],
+      ['PetGallery.tsx', 'pet-gallery-skeleton'],
+    ] as const) {
+      const source = readFrontend('pages', file);
+      expect(source).not.toMatch(/\bSkeleton\b/);
+      expect(source).not.toMatch(/import \{[^}]*\bSkeleton\b[^}]*\} from 'antd'/);
+      expect(source).toContain(marker);
+    }
+  });
+
+
 });
+  it('keeps Login free of static ant Tabs', () => {
+    const source = readFrontend('pages', 'Login.tsx');
+    expect(source).not.toMatch(/import \{[^}]*\bTabs\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<Tabs\b/);
+    expect(source).toContain('shopee-login-tabs__nav');
+    expect(source).toContain('role="tablist"');
+  });
+
+  it('keeps ProductDetail free of static ant Tabs', () => {
+    const source = readFrontend('pages', 'ProductDetail.tsx');
+    expect(source).not.toMatch(/import \{[^}]*\bTabs\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<Tabs\b/);
+    expect(source).toContain('product-detail-tabs__nav');
+    expect(source).toContain('role="tablist"');
+    expect(source).toContain('product-detail-tabs__tab');
+  });
+
+  it('keeps ShopDrawer free of ant Drawer', () => {
+    const source = readFrontend('components', 'ShopDrawer.tsx');
+    expect(source).not.toMatch(/import \{[^}]*\bDrawer\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<Drawer\b/);
+    expect(source).toContain('shop-drawer__panel');
+    expect(source).toContain('role="dialog"');
+  });
+
+  it('keeps ProductList free of static ant Drawer', () => {
+    const source = readFrontend('pages', 'ProductList.tsx');
+    expect(source).not.toMatch(/import \{[^}]*\bDrawer\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<Drawer\b/);
+    expect(source).toContain('ShopDrawer');
+    expect(source).toContain('product-list__filterDrawerRoot');
+  });
+
+  it('keeps CartDrawer free of static ant Drawer', () => {
+    const source = readFrontend('components', 'CartDrawer.tsx');
+    expect(source).not.toMatch(/import \{[^}]*\bDrawer\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<Drawer\b/);
+    expect(source).toContain('ShopDrawer');
+    expect(source).toContain('cart-drawer__root');
+  });
+
+
+
+

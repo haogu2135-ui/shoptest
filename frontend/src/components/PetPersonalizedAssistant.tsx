@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { ShopIcon, SI } from './ShopIcon';
-import { Alert, Button, Skeleton, Tag, Typography } from 'antd';
+import { Alert, Button, Tag } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { petProfileApi, productApi } from '../api';
 import type { PetProfile, ProductPublic as Product } from '../types';
@@ -16,7 +16,6 @@ import { getApiErrorMessage } from '../utils/apiError';
 import './PetPersonalizedAssistant.css';
 import '../styles/mobile-page-contrast.css';
 
-const { Text, Title } = Typography;
 
 const isDealProduct = (product: Product) =>
   Boolean(product.activeLimitedTimeDiscount) ||
@@ -137,7 +136,12 @@ const PetPersonalizedAssistant: React.FC<PetPersonalizedAssistantProps> = ({
         aria-busy="true"
         aria-label={`${t('home.petRecommendations')}: ${t('common.loading')}`}
       >
-        <Skeleton active paragraph={{ rows: variant === 'compact' ? 3 : 4 }} />
+        <div className="pet-personalized-assistant__skeleton" aria-hidden="true">
+            <span className="pet-personalized-assistant__skeletonLine" />
+            <span className="pet-personalized-assistant__skeletonLine" />
+            <span className="pet-personalized-assistant__skeletonLine" />
+            {variant === 'compact' ? null : <span className="pet-personalized-assistant__skeletonLine pet-personalized-assistant__skeletonLine--short" />}
+          </div>
       </section>
     );
   }
@@ -148,8 +152,8 @@ const PetPersonalizedAssistant: React.FC<PetPersonalizedAssistantProps> = ({
         <div className="pet-personalized-assistant__header">
           <div>
             <span className="pet-personalized-assistant__eyebrow">{t('home.petRecommendations')}</span>
-            <Title level={variant === 'compact' ? 5 : 4}>{t('home.managePetProfiles')}</Title>
-            <Text type="secondary">{t('pages.productList.personalGuideEmpty')}</Text>
+            <h3 className="pet-personalized-assistant__title">{t('home.managePetProfiles')}</h3>
+            <span className="pet-personalized-assistant__text pet-personalized-assistant__text--secondary">{t('pages.productList.personalGuideEmpty')}</span>
           </div>
           <div className="pet-personalized-assistant__actions">
             <Button
@@ -180,12 +184,12 @@ const PetPersonalizedAssistant: React.FC<PetPersonalizedAssistantProps> = ({
           <span className="pet-personalized-assistant__eyebrow">
             <ShopIcon path={SI.compass} /> {t('home.petRecommendations')}
           </span>
-          <Title level={variant === 'compact' ? 5 : 4}>
+          <h3 className="pet-personalized-assistant__title">
             {leadPet
               ? t('pages.profile.petShopPathTitleWithName', { name: leadPet.name })
               : t('home.petRecommendations')}
-          </Title>
-          <Text type="secondary">{t('home.petRecommendationsHint')}</Text>
+          </h3>
+          <span className="pet-personalized-assistant__text pet-personalized-assistant__text--secondary">{t('home.petRecommendationsHint')}</span>
         </div>
         <div className="pet-personalized-assistant__actions">
           <Button aria-label={managePetProfileActionLabel} title={managePetProfileActionLabel} onClick={openPetProfiles}>
@@ -251,9 +255,9 @@ const PetPersonalizedAssistant: React.FC<PetPersonalizedAssistantProps> = ({
                   {productName}
                 </button>
                 <div className="pet-personalized-assistant__meta">
-                  <Text strong className="pet-personalized-assistant__price commerce-money">{formatMoney(price)}</Text>
+                  <span className="pet-personalized-assistant__text pet-personalized-assistant__text--strong pet-personalized-assistant__price commerce-money">{formatMoney(price)}</span>
                   {rating > 0 ? (
-                    <Text type="secondary">{rating.toFixed(1)}</Text>
+                    <span className="pet-personalized-assistant__text pet-personalized-assistant__text--secondary">{rating.toFixed(1)}</span>
                   ) : null}
                   {showDeal ? (
                     <Tag color="gold">{t('home.flashOffers')}</Tag>

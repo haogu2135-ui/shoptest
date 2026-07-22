@@ -18,7 +18,7 @@ describe('Profile type-safety guard', () => {
     expect(source).toContain('if (isFormValidationError(err)) {');
     expect(source).toContain('focusProfileModalFormError');
     expect(source).toMatch(/if \(isFormValidationError\(err\)\) \{[\s\S]*?return;/);
-    expect(source).toContain("message.error(getApiErrorMessage(err, t('pages.profile.continuePayFailed'), language, { includeClientMessage: true }));");
+    expect(source).toContain("announceAccessibleMessage(getApiErrorMessage(err, t('pages.profile.continuePayFailed'), language, { includeClientMessage: true }), 'error')");
   });
 
   it('keeps payment-return synchronization off the mutable orders dependency', () => {
@@ -54,8 +54,8 @@ describe('Profile type-safety guard', () => {
     expect(syncSource).toContain('await fetchOrders();');
     expect(paymentReturnEffectSource).toContain('syncPaymentReturnState(targetOrder).catch(() => {');
     expect(paymentReturnEffectSource).toContain('if (mountedRef.current && handledPaymentReturnRef.current === returnKey) {');
-    expect(paymentReturnEffectSource).toContain("message.error(profileLocalizationRef.current.t('pages.profile.paymentReturnSyncFailed'));");
-    expect(paymentReturnEffectSource.indexOf('if (mountedRef.current && handledPaymentReturnRef.current === returnKey) {')).toBeLessThan(paymentReturnEffectSource.indexOf("message.error(profileLocalizationRef.current.t('pages.profile.paymentReturnSyncFailed'));"));
+    expect(paymentReturnEffectSource).toContain("announceAccessibleMessage(profileLocalizationRef.current.t('pages.profile.paymentReturnSyncFailed'), 'error')");
+    expect(paymentReturnEffectSource.indexOf('if (mountedRef.current && handledPaymentReturnRef.current === returnKey) {')).toBeLessThan(paymentReturnEffectSource.indexOf("announceAccessibleMessage(profileLocalizationRef.current.t('pages.profile.paymentReturnSyncFailed'), 'error')"));
     expect(source).toMatch(/\}, \[fetchOrders, ordersInitialLoadComplete, [^\]]*paymentReturnOrderId[^\]]*\]\);/);
     expect(source).not.toMatch(/\}, \[fetchOrders, orders, [^\]]*paymentReturnOrderId[^\]]*\]\);/);
   });

@@ -1,6 +1,6 @@
 import React from 'react';
 import { ShopIcon, SI } from '../components/ShopIcon';
-import { Button, Result } from 'antd';
+import { Button } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../i18n';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -31,16 +31,14 @@ const NotFound: React.FC = () => {
       aria-labelledby={titleId}
       aria-describedby={subtitleId}
     >
-      <Result
-        status="404"
-        title={<h1 id={titleId} className="not-found-page__title">{title}</h1>}
-        subTitle={(
-          <span id={subtitleId} role="status" aria-live="polite" className="not-found-page__status">
-            <span className="not-found-page__subtitle">{subtitle}</span>
-            <span className="not-found-page__hint">{t('notFound.hint')}</span>
-          </span>
-        )}
-        extra={[
+      <section className="not-found-page__result not-found-page__result--404" role="status">
+        <div className="not-found-page__resultIcon" aria-hidden="true">404</div>
+        <h1 id={titleId} className="not-found-page__title">{title}</h1>
+        <div id={subtitleId} className="not-found-page__status" role="status" aria-live="polite">
+          <span className="not-found-page__subtitle">{subtitle}</span>
+          <span className="not-found-page__hint">{t('notFound.hint')}</span>
+        </div>
+        <div className="not-found-page__resultExtra">
           <Button
             key="home"
             type="primary"
@@ -48,30 +46,30 @@ const NotFound: React.FC = () => {
             onClick={() => navigate('/')}
           >
             {t('notFound.backHome')}
-          </Button>,
+          </Button>
           <Button
             key="search"
             icon={<ShopIcon path={SI.search} />}
             onClick={() => navigate('/products')}
           >
             {t('notFound.searchProducts')}
-          </Button>,
+          </Button>
           <Button
             key="coupons"
             icon={<ShopIcon path={SI.gift} />}
             onClick={() => navigate('/coupons')}
           >
             {t('notFound.browseCoupons')}
-          </Button>,
+          </Button>
           <Button
             key="track"
             icon={<ShopIcon path={SI.fileSearch} />}
             onClick={() => navigate('/track-order')}
           >
             {t('notFound.trackOrder')}
-          </Button>,
-        ]}
-      />
+          </Button>
+        </div>
+      </section>
     </main>
   );
 };

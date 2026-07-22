@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { ShopIcon, SI } from '../components/ShopIcon';
-import { Alert, Form, Input, Button, Tabs } from 'antd';
+import { Alert, Form, Input, Button } from 'antd';
 import type { InputRef } from 'antd/es/input';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { cartApi, clearStoredAuthCredentials, persistAuthSession, userApi } from '../api';
@@ -605,21 +605,53 @@ const Login: React.FC = () => {
               ) : null}
             </div>
           ) : null}
-          <Tabs
-            activeKey={activeLoginTab}
-            onChange={(key) => {
-              setAuthBannerError(null);
-              setAuthRecoveryKind(null);
-              setActiveLoginTab(key);
-            }}
-            className={`shopee-login-tabs shopee-login-tabs--${activeLoginTab}`}
-            centered
-            items={[
-              {
-                key: 'password',
-                label: t('pages.auth.passwordLogin'),
-                children: (
-                  <Form form={passwordForm} name="login" onFinish={onFinish} onFinishFailed={() => { window.requestAnimationFrame(() => window.requestAnimationFrame(scrollFirstLoginErrorIntoView)); }} layout="vertical" className="shopee-login-form" validateTrigger={["onChange", "onBlur"]} requiredMark>
+          <div className={`shopee-login-tabs shopee-login-tabs--${activeLoginTab}`}>
+            <div
+              className="shopee-login-tabs__nav"
+              role="tablist"
+              aria-label={t('pages.auth.login')}
+            >
+              <button
+                type="button"
+                role="tab"
+                id="login-tab-password"
+                className={`shopee-login-tabs__tab${activeLoginTab === 'password' ? ' shopee-login-tabs__tab--active' : ''}`}
+                aria-selected={activeLoginTab === 'password'}
+                aria-controls="login-panel-password"
+                tabIndex={activeLoginTab === 'password' ? 0 : -1}
+                onClick={() => {
+                  setAuthBannerError(null);
+                  setAuthRecoveryKind(null);
+                  setActiveLoginTab('password');
+                }}
+              >
+                <span className="shopee-login-tabs__tabLabel">{t('pages.auth.passwordLogin')}</span>
+              </button>
+              <button
+                type="button"
+                role="tab"
+                id="login-tab-email"
+                className={`shopee-login-tabs__tab${activeLoginTab === 'email' ? ' shopee-login-tabs__tab--active' : ''}`}
+                aria-selected={activeLoginTab === 'email'}
+                aria-controls="login-panel-email"
+                tabIndex={activeLoginTab === 'email' ? 0 : -1}
+                onClick={() => {
+                  setAuthBannerError(null);
+                  setAuthRecoveryKind(null);
+                  setActiveLoginTab('email');
+                }}
+              >
+                <span className="shopee-login-tabs__tabLabel">{t('pages.auth.emailLogin')}</span>
+              </button>
+            </div>
+            <div
+              className="shopee-login-tabs__panel"
+              role="tabpanel"
+              id="login-panel-password"
+              aria-labelledby="login-tab-password"
+              hidden={activeLoginTab !== 'password'}
+            >
+<Form form={passwordForm} name="login" onFinish={onFinish} onFinishFailed={() => { window.requestAnimationFrame(() => window.requestAnimationFrame(scrollFirstLoginErrorIntoView)); }} layout="vertical" className="shopee-login-form" validateTrigger={["onChange", "onBlur"]} requiredMark>
                     <Form.Item name="username" label={t('pages.auth.username')} rules={[
                       { required: true, message: t('pages.auth.usernameRequired') },
                       { min: 3, message: t('pages.auth.usernameMinLength') },
@@ -671,13 +703,15 @@ const Login: React.FC = () => {
                       {t('pages.auth.loginAgreementSuffix')}
                     </p>
                   </Form>
-                ),
-              },
-              {
-                key: 'email',
-                label: t('pages.auth.emailLogin'),
-                children: (
-                  <Form
+            </div>
+            <div
+              className="shopee-login-tabs__panel"
+              role="tabpanel"
+              id="login-panel-email"
+              aria-labelledby="login-tab-email"
+              hidden={activeLoginTab !== 'email'}
+            >
+<Form
                     form={emailForm}
                     name="email-login"
                     onFinish={onEmailLogin}
@@ -816,10 +850,8 @@ const Login: React.FC = () => {
                       {t('pages.auth.loginAgreementSuffix')}
                     </p>
                   </Form>
-                ),
-              },
-            ]}
-          />
+            </div>
+          </div>
 
           <div className="shopee-login-quickLinks">
             <button type="button" aria-label={loginTrackOrderActionLabel} title={loginTrackOrderActionLabel} onClick={() => navigate('/track-order')}>

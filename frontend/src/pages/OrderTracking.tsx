@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { ShopIcon, SI } from '../components/ShopIcon';
-import { Alert, Button, Card, Descriptions, Empty, Form, Input, List, Modal, Tag } from 'antd';
+import { Alert, Button, Form, Input, Modal, Tag } from 'antd';
 import type { InputRef } from 'antd/es/input';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import PageEmpty from '../components/PageEmpty';
@@ -751,7 +751,7 @@ const OrderTracking: React.FC = () => {
           )}
         />
       ) : null}
-      <Card className="order-tracking-page__lookupCard">
+      <section className="order-tracking-page__lookupCard" aria-label={t('pages.orderTracking.title')}>
         <div className="order-tracking-page__lookupHeader">
           <span className="order-tracking-page__lookupIcon"><ShopIcon path={SI.search} /></span>
           <span>
@@ -809,7 +809,7 @@ const OrderTracking: React.FC = () => {
             {t('pages.orderTracking.search')}
           </Button>
         </Form>
-      </Card>
+      </section>
 
       {!order ? (
         <section className="order-tracking-page__emptyState">
@@ -1042,59 +1042,85 @@ const OrderTracking: React.FC = () => {
               </div>
             </section>
           ) : null}
-          <Card title={t('pages.orderTracking.summary')}>
-            <Descriptions column={1} bordered size="small">
-              <Descriptions.Item label={t('pages.orderTracking.orderNo')}>{order.orderNo || order.id}</Descriptions.Item>
+          <section className="order-tracking-page__summaryCard" aria-label={t('pages.orderTracking.summary')}>
+            <dl className="order-tracking-page__descList">
+              <div className="order-tracking-page__descRow">
+                <dt className="order-tracking-page__descLabel">{t('pages.orderTracking.orderNo')}</dt>
+                <dd className="order-tracking-page__descValue">{order.orderNo || order.id}</dd>
+              </div>
               {canShowFullTrackingDetails ? (
                 <>
-                  <Descriptions.Item label={t('common.status')}>
-                    <Tag color={getOrderStatusColor(order.status)}>{formatOrderStatusLabel(order.status)}</Tag>
-                  </Descriptions.Item>
-                  <Descriptions.Item label={t('common.amount')}>
-                    <span className="order-tracking-page__text order-tracking-page__text--strong order-tracking-page__amount commerce-money">{formatMoney(order.totalAmount)}</span>
-                  </Descriptions.Item>
-                  <Descriptions.Item label={t('pages.checkout.paymentMethod')}>
-                    {order.paymentMethod ? paymentMethodLabel(order.paymentMethod, t) : '-'}
-                  </Descriptions.Item>
-                  <Descriptions.Item label={t('pages.checkout.address')}>{order.shippingAddress || '-'}</Descriptions.Item>
+                  <div className="order-tracking-page__descRow">
+                    <dt className="order-tracking-page__descLabel">{t('common.status')}</dt>
+                    <dd className="order-tracking-page__descValue">
+                      <Tag color={getOrderStatusColor(order.status)}>{formatOrderStatusLabel(order.status)}</Tag>
+                    </dd>
+                  </div>
+                  <div className="order-tracking-page__descRow">
+                    <dt className="order-tracking-page__descLabel">{t('common.amount')}</dt>
+                    <dd className="order-tracking-page__descValue">
+                      <span className="order-tracking-page__text order-tracking-page__text--strong order-tracking-page__amount commerce-money">{formatMoney(order.totalAmount)}</span>
+                    </dd>
+                  </div>
+                  <div className="order-tracking-page__descRow">
+                    <dt className="order-tracking-page__descLabel">{t('pages.checkout.paymentMethod')}</dt>
+                    <dd className="order-tracking-page__descValue">
+                      {order.paymentMethod ? paymentMethodLabel(order.paymentMethod, t) : '-'}
+                    </dd>
+                  </div>
+                  <div className="order-tracking-page__descRow">
+                    <dt className="order-tracking-page__descLabel">{t('pages.checkout.address')}</dt>
+                    <dd className="order-tracking-page__descValue">{order.shippingAddress || '-'}</dd>
+                  </div>
                 </>
               ) : null}
               {canShowFullTrackingDetails ? (
                 <>
-                  <Descriptions.Item label={t('pages.orderTracking.createdAt')}>
-                    {order.createdAt ? new Date(order.createdAt).toLocaleString(dateLocale) : '-'}
-                  </Descriptions.Item>
-                  <Descriptions.Item label={t('pages.orderTracking.trackingNumber')}>
-                    {order.trackingNumber || t('pages.orderTracking.notShipped')}
-                  </Descriptions.Item>
+                  <div className="order-tracking-page__descRow">
+                    <dt className="order-tracking-page__descLabel">{t('pages.orderTracking.createdAt')}</dt>
+                    <dd className="order-tracking-page__descValue">
+                      {order.createdAt ? new Date(order.createdAt).toLocaleString(dateLocale) : '-'}
+                    </dd>
+                  </div>
+                  <div className="order-tracking-page__descRow">
+                    <dt className="order-tracking-page__descLabel">{t('pages.orderTracking.trackingNumber')}</dt>
+                    <dd className="order-tracking-page__descValue">
+                      {order.trackingNumber || t('pages.orderTracking.notShipped')}
+                    </dd>
+                  </div>
                 </>
               ) : null}
               {canShowFullTrackingDetails && order.trackingCarrierName ? (
-                <Descriptions.Item label={t('pages.orderTracking.carrier')}>
-                  {order.trackingCarrierName}
-                </Descriptions.Item>
+                <div className="order-tracking-page__descRow">
+                  <dt className="order-tracking-page__descLabel">{t('pages.orderTracking.carrier')}</dt>
+                  <dd className="order-tracking-page__descValue">{order.trackingCarrierName}</dd>
+                </div>
               ) : null}
               {canShowFullTrackingDetails && order.returnDeadline ? (
-                <Descriptions.Item label={t('pages.profile.returnDeadline')}>
-                  {new Date(order.returnDeadline).toLocaleString(dateLocale)}
-                </Descriptions.Item>
+                <div className="order-tracking-page__descRow">
+                  <dt className="order-tracking-page__descLabel">{t('pages.profile.returnDeadline')}</dt>
+                  <dd className="order-tracking-page__descValue">{new Date(order.returnDeadline).toLocaleString(dateLocale)}</dd>
+                </div>
               ) : null}
               {canShowFullTrackingDetails && order.returnReason ? (
-                <Descriptions.Item label={t('pages.profile.returnReason')}>{order.returnReason}</Descriptions.Item>
+                <div className="order-tracking-page__descRow">
+                  <dt className="order-tracking-page__descLabel">{t('pages.profile.returnReason')}</dt>
+                  <dd className="order-tracking-page__descValue">{order.returnReason}</dd>
+                </div>
               ) : null}
               {canShowFullTrackingDetails && order.returnTrackingNumber ? (
-                <Descriptions.Item label={t('pages.profile.returnTracking')}>{order.returnTrackingNumber}</Descriptions.Item>
+                <div className="order-tracking-page__descRow">
+                  <dt className="order-tracking-page__descLabel">{t('pages.profile.returnTracking')}</dt>
+                  <dd className="order-tracking-page__descValue">{order.returnTrackingNumber}</dd>
+                </div>
               ) : null}
-            </Descriptions>
-          </Card>
+            </dl>
+          </section>
 
           {canShowFullTrackingDetails ? (
             <>
-              <Card title={t('pages.profile.orderItems')}>
-                <List
-                  dataSource={items}
-                  locale={{
-                    emptyText: (
+              <section className="order-tracking-page__itemsCard" aria-label={t('pages.profile.orderItems')}>
+                {(!items || items.length === 0) ? (
                       <div className="order-tracking-page__itemsEmpty" data-order-tracking-items-empty="true">
                         <div className="order-tracking-page__itemsEmptyCopy">
                           <div>{t('pages.profile.noOrderItems')}</div>
@@ -1128,27 +1154,25 @@ const OrderTracking: React.FC = () => {
                           </Button>
                         </div>
                       </div>
-                    ),
-                  }}
-                  renderItem={(item) => {
+                ) : (
+                  <ul className="order-tracking-page__itemList" role="list">
+                    {items.map((item, index) => {
                     const itemName = orderTrackingItemName(item);
                     return (
-                      <List.Item className="order-tracking-page__item">
-                        <List.Item.Meta
-                          avatar={
+                      <li key={String(item.id || `${item.productId || 'item'}-${index}`)} className="order-tracking-page__item">
+                        <div className="order-tracking-page__itemMeta">
                             <img
                               src={resolveOrderTrackingImage(item.imageUrl)}
                               alt={itemName}
-                              className="order-tracking-page__image"
+                              className="order-tracking-page__image order-tracking-page__itemAvatar"
                               onError={(event) => {
                                 if (event.currentTarget.src !== orderTrackingImageFallback) {
                                   event.currentTarget.src = orderTrackingImageFallback;
                                 }
                               }}
                             />
-                          }
-                          title={itemName}
-                          description={
+                          <div className="order-tracking-page__itemBody">
+                            <span className="order-tracking-page__text order-tracking-page__text--strong order-tracking-page__itemTitle">{itemName}</span>
                             <div className="order-tracking-page__stack">
                               {item.selectedSpecs ? <span className="order-tracking-page__text order-tracking-page__text--secondary">{formatSelectedSpecs(item.selectedSpecs, t, language)}</span> : null}
                               <span className="order-tracking-page__text order-tracking-page__text--secondary order-tracking-page__itemUnit commerce-atomic commerce-price-quantity">
@@ -1156,16 +1180,17 @@ const OrderTracking: React.FC = () => {
                                 <span className="commerce-quantity">x {item.quantity}</span>
                               </span>
                             </div>
-                          }
-                        />
+                          </div>
+                        </div>
                         <span className="order-tracking-page__text order-tracking-page__text--strong order-tracking-page__itemTotal commerce-money">{formatMoney(item.price * item.quantity)}</span>
-                      </List.Item>
+                      </li>
                     );
-                  }}
-                />
-              </Card>
+                  })}
+                  </ul>
+                )}
+              </section>
 
-              <Card title={t('pages.orderTracking.logistics')}>
+              <section className="order-tracking-page__logisticsCard" aria-label={t('pages.orderTracking.logistics')}>
                 {order.trackingNumber ? (
                   <SeventeenTrackWidget
                     trackingNumber={order.trackingNumber}
@@ -1175,15 +1200,12 @@ const OrderTracking: React.FC = () => {
                     orderNo={canUseGuestActions ? order.orderNo : undefined}
                   />
                 ) : (
-                  <div className="order-tracking-page__notShipped" data-order-tracking-not-shipped="true">
-                    <Empty
-                      description={(
-                        <div className="order-tracking-page__emptyCopy">
-                          <div>{t('pages.orderTracking.notShipped')}</div>
-                          <div className="order-tracking-page__emptyHint">{t('pages.orderTracking.notShippedHint')}</div>
-                        </div>
-                      )}
-                    >
+                  <div className="order-tracking-page__notShipped" data-order-tracking-not-shipped="true" role="status">
+                    <div className="order-tracking-page__emptyPanel">
+                      <div className="order-tracking-page__emptyCopy">
+                        <div>{t('pages.orderTracking.notShipped')}</div>
+                        <div className="order-tracking-page__emptyHint">{t('pages.orderTracking.notShippedHint')}</div>
+                      </div>
                       <div className="order-tracking-page__notShippedActions">
                         <Button
                           type="primary"
@@ -1216,10 +1238,10 @@ const OrderTracking: React.FC = () => {
                           {t('pages.orderTracking.emptyCoupons')}
                         </Button>
                       </div>
-                    </Empty>
+                    </div>
                   </div>
                 )}
-              </Card>
+              </section>
             </>
           ) : null}
         </div>

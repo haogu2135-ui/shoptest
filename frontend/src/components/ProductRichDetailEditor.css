@@ -19,7 +19,7 @@
 }
 
 .product-rich-detail-editor__toolbar {
-  gap: 8px !important;
+  gap: 8px;
 }
 
 .product-rich-detail-editor__toolbar .ant-btn,
@@ -88,7 +88,8 @@
 }
 
 .product-rich-detail-editor,
-.product-rich-detail-editor .ant-typography,
+.product-rich-detail-editor .product-rich-detail-editor__blockIndex,
+.product-rich-detail-editor .product-rich-detail-editor__invalidUrl,
 .product-rich-detail-editor .ant-input,
 .product-rich-detail-editor textarea {
   overflow-wrap: anywhere;
@@ -101,7 +102,6 @@
     width: 100%;
   }
 
-  .product-rich-detail-editor__toolbar .ant-space-item,
   .product-rich-detail-editor__toolbar .ant-btn {
     width: 100%;
   }
@@ -216,4 +216,75 @@
     min-height: 44px;
     touch-action: manipulation;
   }
+}
+
+
+.product-rich-detail-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.product-rich-detail-editor__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.product-rich-detail-editor__blocks {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.product-rich-detail-editor__blockTitle {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+}
+
+.product-rich-detail-editor__blockActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.product-rich-detail-editor__mediaFields {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  min-width: 0;
+}
+
+.product-rich-detail-editor__blockIndex {
+  color: rgba(0, 0, 0, 0.45);
+  font-size: 13px;
+}
+
+.product-rich-detail-editor__invalidUrl {
+  color: #cf1322;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.product-rich-detail-editor__emptyPanel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  text-align: center;
+  border: 1px dashed #e5e7eb;
+  border-radius: 8px;
+  background: #fafafa;
+}
+
+.product-rich-detail-editor__emptyDescription {
+  color: rgba(0, 0, 0, 0.45);
+  font-size: 14px;
+  line-height: 1.45;
 }

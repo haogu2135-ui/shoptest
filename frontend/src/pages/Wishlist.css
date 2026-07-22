@@ -5,7 +5,7 @@
 }
 
 .wishlist-page,
-.wishlist-page .ant-card,
+.wishlist-page .wishlist-page__card,
 .wishlist-page .ant-btn,
 .wishlist-page .wishlist-page__text {
   font-family: 'Avenir Next', 'Manrope', 'Segoe UI Variable', sans-serif;
@@ -272,7 +272,7 @@
   box-shadow: 0 16px 30px rgba(18, 71, 52, 0.13);
 }
 
-.wishlist-page__card .ant-card-cover {
+.wishlist-page__card .wishlist-page__cover {
   aspect-ratio: 1 / 1;
   overflow: hidden;
   border-bottom: 1px solid #eef3ef;
@@ -281,7 +281,7 @@
     #f8fcf9;
 }
 
-.wishlist-page__card .ant-card-body {
+.wishlist-page__card .wishlist-page__body {
   min-height: 190px;
   display: flex;
   flex-direction: column;
@@ -566,7 +566,7 @@
     line-height: 1.15;
   }
 
-  .wishlist-page__card .ant-card-body {
+  .wishlist-page__card .wishlist-page__body {
     min-height: 178px;
     padding: 12px;
   }
@@ -669,7 +669,7 @@
   opacity: 1;
 }
 
-.wishlist-page__card .ant-card-cover {
+.wishlist-page__card .wishlist-page__cover {
   background:
     radial-gradient(circle at 20% 16%, rgba(238, 77, 45, 0.08), transparent 9rem),
     linear-gradient(145deg, #fffaf6, #eef8f1);
@@ -696,7 +696,7 @@
 }
 
 @media (max-width: 640px) {
-  .wishlist-page__card .ant-card-cover {
+  .wishlist-page__card .wishlist-page__cover {
     aspect-ratio: 1 / 0.9;
   }
 
@@ -835,11 +835,11 @@
     border-radius: 18px;
   }
 
-  .wishlist-page__card .ant-card-body {
+  .wishlist-page__card .wishlist-page__body {
     min-height: 168px;
   }
 
-  .wishlist-page__card .ant-card-cover,
+  .wishlist-page__card .wishlist-page__cover,
   .wishlist-page__imageButton {
     border-radius: 18px 18px 0 0;
   }
@@ -985,11 +985,11 @@
     border-radius: 16px;
   }
 
-  .wishlist-page__card .ant-card-cover {
+  .wishlist-page__card .wishlist-page__cover {
     aspect-ratio: 1 / 0.74;
   }
 
-  .wishlist-page__card .ant-card-body {
+  .wishlist-page__card .wishlist-page__body {
     min-height: 150px;
     padding: 10px;
   }
@@ -1039,11 +1039,11 @@
     width: 58px;
   }
 
-  .wishlist-page__card .ant-card-cover {
+  .wishlist-page__card .wishlist-page__cover {
     aspect-ratio: 1 / 0.7;
   }
 
-  .wishlist-page__card .ant-card-body {
+  .wishlist-page__card .wishlist-page__body {
     min-height: 144px;
   }
 }
@@ -1122,7 +1122,7 @@
   .wishlist-page__nextAction,
   .wishlist-page__bestPick,
   .wishlist-page__card,
-  .wishlist-page__card .ant-card-body,
+  .wishlist-page__card .wishlist-page__body,
   .wishlist-page__bestPickBody,
   .wishlist-page__meta,
   .wishlist-page__actions {
@@ -1252,7 +1252,7 @@
       #ffffff;
   }
 
-  .wishlist-page__card .ant-card-cover {
+  .wishlist-page__card .wishlist-page__cover {
     background: linear-gradient(180deg, #fbfdfb, #f1f7f3);
   }
 

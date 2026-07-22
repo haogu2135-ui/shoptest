@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
+import ShopRate from './ShopRate';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { ShopIcon, SI } from './ShopIcon';
-import { Rate, Input, Button, List, Avatar, Space, Select, Empty, Typography, Upload } from 'antd';
+import { Input, Button, Avatar, Select, Upload } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../i18n';
 import type { PublicReview, ReviewableOrder } from '../types';
@@ -15,7 +16,6 @@ import './ProductReview.css';
 import '../styles/mobile-page-contrast.css';
 
 const { TextArea } = Input;
-const { Text } = Typography;
 const MAX_REVIEW_IMAGES = 4;
 const MAX_REVIEW_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
 const MAX_REVIEW_COMMENT_LENGTH = 1000;
@@ -42,6 +42,7 @@ export const ProductReview: React.FC<ProductReviewProps> = ({
     const [submitting, setSubmitting] = useState(false);
     const [uploadingImage, setUploadingImage] = useState(false);
     const [imageUrls, setImageUrls] = useState<string[]>([]);
+    const [reviewPage, setReviewPage] = useState(1);
     const { t, language } = useLanguage();
     const dateLocale = language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US';
     const selectedReviewOrder = reviewableOrders.find((order) => Number(order.id) === Number(orderId));
@@ -145,7 +146,7 @@ export const ProductReview: React.FC<ProductReviewProps> = ({
             {isLoggedIn ? (
                 <div className="product-review__composer">
                     {reviewableOrders.length > 0 ? (
-                        <Space direction="vertical" className="product-review__form">
+                        <div className="product-review__form product-review__stack">
                             <Select
                                 value={orderId}
                                 onChange={setOrderId}
@@ -161,7 +162,7 @@ export const ProductReview: React.FC<ProductReviewProps> = ({
                                 }))}
                             />
                             <div role="group" aria-label={reviewRatingLabel} title={reviewRatingLabel}>
-                                <Rate className="product-review__rate" value={rating} onChange={setRating} />
+                                <ShopRate className="product-review__rate" value={rating} onChange={setRating} ariaLabel="review-rating" />
                             </div>
                             <TextArea
                                 className="product-review__textarea"
@@ -176,8 +177,8 @@ export const ProductReview: React.FC<ProductReviewProps> = ({
                             />
                             <div className="product-review__imageComposer">
                                 <div className="product-review__imageHeader">
-                                    <Text strong>{t('pages.review.imageUpload')}</Text>
-                                    <Text type="secondary">{t('pages.review.imageHint', { count: MAX_REVIEW_IMAGES })}</Text>
+                                    <span className="product-review__text product-review__text--strong">{t('pages.review.imageUpload')}</span>
+                                    <span className="product-review__text product-review__text--secondary">{t('pages.review.imageHint', { count: MAX_REVIEW_IMAGES })}</span>
                                 </div>
                                 {imageUrls.length > 0 ? (
                                     <div className="product-review__imagePreviewList">
@@ -234,18 +235,14 @@ export const ProductReview: React.FC<ProductReviewProps> = ({
                             >
                                 {t('pages.review.submit')}
                             </Button>
-                        </Space>
+                        </div>
                     ) : (
                         <div className="product-review__composerEmpty" data-review-no-order-recovery="true">
-                            <Empty
-                                description={(
-                                    <div className="product-review__emptyCopy">
-                                        <div>{t('pages.review.noReviewableOrder')}</div>
-                                        <div className="product-review__emptyHint">{t('pages.review.noReviewableOrderHint')}</div>
-                                    </div>
-                                )}
-                                image={Empty.PRESENTED_IMAGE_SIMPLE}
-                            >
+                            <div className="product-review__emptyPanel">
+                                <div className="product-review__emptyCopy">
+                                    <div>{t('pages.review.noReviewableOrder')}</div>
+                                    <div className="product-review__emptyHint">{t('pages.review.noReviewableOrderHint')}</div>
+                                </div>
                                 <div className="product-review__emptyActions">
                                     <Button
                                         type="primary"
@@ -277,7 +274,7 @@ export const ProductReview: React.FC<ProductReviewProps> = ({
                                         {t('nav.trackOrder')}
                                     </Button>
                                 </div>
-                            </Empty>
+                            </div>
                         </div>
                     )}
                 </div>
@@ -286,7 +283,7 @@ export const ProductReview: React.FC<ProductReviewProps> = ({
                     className="product-review__composer product-review__composer--login"
                     data-review-auth-gate="true"
                 >
-                    <Text type="secondary">{t('messages.loginRequired')}</Text>
+                    <span className="product-review__text product-review__text--secondary">{t('messages.loginRequired')}</span>
                     <div className="product-review__emptyActions">
                         <Button
                             type="primary"
@@ -326,30 +323,19 @@ export const ProductReview: React.FC<ProductReviewProps> = ({
                     <span>{t('pages.review.firstReviewText', { defaultValue: 'Share a purchase photo after ordering and earn reward points.' })}</span>
                 </div>
             ) : (
-                <List
-                    className="product-review__list"
-                    itemLayout="horizontal"
-                    dataSource={reviews}
-                    pagination={reviews.length > 8 ? {
-                        pageSize: 8,
-                        size: 'small',
-                        showSizeChanger: false,
-                        hideOnSinglePage: true,
-                    } : false}
-                    renderItem={(review) => (
-                        <List.Item className="product-review__item">
-                            <List.Item.Meta
-                                avatar={<Avatar icon={<ShopIcon path={SI.user} />} />}
-                                title={
-                                    <Space className="product-review__meta" wrap>
+                <>
+                <ul className="product-review__list product-review__itemList" role="list">
+                  {reviews.slice((Math.max(reviewPage, 1) - 1) * 8, Math.max(reviewPage, 1) * 8).map((review) => (
+                        <li key={review.id} className="product-review__item">
+                            <div className="product-review__itemMeta">
+                                <Avatar icon={<ShopIcon path={SI.user} />} />
+                                <div className="product-review__itemBody">
+                                    <div className="product-review__meta">
                                         <span>{review.username}</span>
                                         <span role="group" aria-label={`${t('pages.productDetail.rating')}: ${review.rating}, ${review.username}`} title={`${t('pages.productDetail.rating')}: ${review.rating}, ${review.username}`}>
-                                            <Rate disabled value={review.rating} />
+                                            <ShopRate disabled value={review.rating} ariaLabel={`rating-${review.rating}`} />
                                         </span>
-                                    </Space>
-                                }
-                                description={
-                                    <>
+                                    </div>
                                         <p>{review.comment}</p>
                                         {Array.isArray(review.imageUrls) && review.imageUrls.length > 0 ? (
                                             <div className="product-review__gallery">
@@ -368,19 +354,42 @@ export const ProductReview: React.FC<ProductReviewProps> = ({
                                                 ))}
                                             </div>
                                         ) : null}
-                                        {review.adminReply && (
+                                        {review.adminReply ? (
                                             <div className="product-review__adminReply">
-                                                <Text strong>{t('pages.adminReviews.reply')}: </Text>
-                                                <Text>{review.adminReply}</Text>
+                                                <span className="product-review__text product-review__text--strong">{t('pages.adminReviews.reply')}: </span>
+                                                <span className="product-review__text">{review.adminReply}</span>
                                             </div>
-                                        )}
+                                        ) : null}
                                         <small>{formatSafeDateTime(review.createdAt, dateLocale, '-')}</small>
-                                    </>
-                                }
-                            />
-                        </List.Item>
-                    )}
-                />
+                                </div>
+                            </div>
+                        </li>
+                  ))}
+                </ul>
+                {reviews.length > 8 ? (
+                  <div className="product-review__pagination">
+                    <Button
+                      size="small"
+                      disabled={reviewPage <= 1}
+                      aria-label={t('common.prev', { defaultValue: 'Previous' })}
+                      onClick={() => setReviewPage((page) => Math.max(1, page - 1))}
+                    >
+                      {t('common.prev', { defaultValue: 'Previous' })}
+                    </Button>
+                    <span className="product-review__text product-review__text--secondary">
+                      {reviewPage} / {Math.ceil(reviews.length / 8)}
+                    </span>
+                    <Button
+                      size="small"
+                      disabled={reviewPage >= Math.ceil(reviews.length / 8)}
+                      aria-label={t('common.next', { defaultValue: 'Next' })}
+                      onClick={() => setReviewPage((page) => Math.min(Math.ceil(reviews.length / 8), page + 1))}
+                    >
+                      {t('common.next', { defaultValue: 'Next' })}
+                    </Button>
+                  </div>
+                ) : null}
+                </>
             )}
         </div>
     );

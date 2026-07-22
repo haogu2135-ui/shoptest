@@ -1,7 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
-import { Card, Button, Input, Select, Pagination, Tag, Slider, Checkbox, Modal, Drawer, Rate } from 'antd';
+import { Button, Input, Select, Pagination, Tag, Slider, Checkbox, Modal } from 'antd';
 import { ShopIcon, SI } from '../components/ShopIcon';
+import ShopRate from '../components/ShopRate';
+import ShopDrawer from '../components/ShopDrawer';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { productApi, cartApi, categoryApi, wishlistApi, createApiAbortController } from '../api';
 import type { ProductPublic as Product, ProductPublicPage, CategoryPublic } from '../types';
@@ -345,12 +347,12 @@ const ProductListCard = React.memo(({
 
   return (
     <div className="product-list__gridItem">
-      <Card
+      <article
         className="product-list__card"
-        hoverable
         onMouseEnter={() => onPrefetch(product.id)}
         onFocus={() => onPrefetch(product.id)}
-        cover={
+      >
+        <div className="product-list__cover">
           <div className="product-list__imageWrap">
             <Link
               to={productDetailPath}
@@ -398,72 +400,9 @@ const ProductListCard = React.memo(({
               </Button>
             </div>
           </div>
-        }
-        actions={[
-          soldOut ? (
-            <Button
-              key="stock-alert"
-              icon={<ShopIcon path={SI.bell} />}
-              size="small"
-              className="product-list__actionButton product-list__alertButton"
-              aria-pressed={stockAlerted}
-              aria-label={stockAlertActionLabel}
-              title={stockAlertActionLabel}
-              onClick={(event) => onStockAlert(event, product, stockAlerted)}
-            >
-              <span className="product-list__actionLabel">
-                {stockAlerted ? t('pages.stockAlerts.remove') : t('pages.stockAlerts.notifyMe')}
-              </span>
-            </Button>
-          ) : (
-            <Button
-              key="quick-add"
-              type="primary"
-              icon={<ShopIcon path={SI.cart} />}
-              size="small"
-              className="product-list__actionButton"
-              aria-label={quickAddActionLabel}
-              title={quickAddActionLabel}
-              onClick={(event) => onQuickAdd(event, product)}
-            >
-              <span className="product-list__actionLabel">
-                {quickAddLabel}
-              </span>
-            </Button>
-          ),
-          <Button
-            key="wishlist"
-            icon={wishlisted ? <ShopIcon path={SI.heartFill} /> : <ShopIcon path={SI.heart} />}
-            size="small"
-            className={wishlisted
-              ? 'product-list__actionButton product-list__actionButton--compact product-list__favoriteButton product-list__favoriteButton--active'
-              : 'product-list__actionButton product-list__actionButton--compact product-list__favoriteButton'}
-            aria-pressed={wishlisted}
-            aria-label={wishlistActionLabel}
-            title={wishlistActionLabel}
-            onClick={(event) => onWishlistToggle(event, product)}
-          >
-            <span className="product-list__actionLabel">
-              {wishlisted ? t('pages.productDetail.favorited') : t('pages.productDetail.favorite')}
-            </span>
-          </Button>,
-          <Button
-            key="compare"
-            icon={<ShopIcon path={SI.barChart} />}
-            size="small"
-            className="product-list__actionButton product-list__actionButton--compact"
-            aria-label={compareActionLabel}
-            title={compareActionLabel}
-            onClick={(event) => onCompare(event, product)}
-          >
-            <span className="product-list__actionLabel">
-              {compared ? t('pages.productList.viewCompare') : t('pages.productList.compare')}
-            </span>
-          </Button>,
-        ]}
-      >
-        <Card.Meta
-          title={(
+        </div>
+        <div className="product-list__body">
+          <div className="product-list__metaTitle">
             <Link
               to={productDetailPath}
               className="product-list__titleLink"
@@ -472,38 +411,100 @@ const ProductListCard = React.memo(({
             >
               <span className="product-list__text product-list__text--ellipsis" title={productName}>{productName}</span>
             </Link>
-          )}
-          description={
-            <div>
-              <div className="product-list__priceLine">
-                <span className="product-list__currentPrice commerce-money">{formatMoney(getPrice(product))}</span>
-                {product.originalPrice && product.originalPrice > getPrice(product) && (
-                  <span className="product-list__text product-list__text--delete product-list__text--secondary product-list__originalPrice commerce-money">{formatMoney(product.originalPrice)}</span>
-                )}
-                {product.activeLimitedTimeDiscount && <Tag color="red" className="product-list__priceTag">{t('pages.keywords.deal')}</Tag>}
-              </div>
-              {isBestValueProduct(product) && getSavingsAmount(product) > 0 ? (
-                <div className="product-list__valueLine">
-                  <span className="product-list__text product-list__text--success">
-                    {renderSavingsText(getSavingsAmount(product))}
-                  </span>
-                </div>
-              ) : null}
-              <div className="product-list__ratingLine">
-                <span className={`product-list__text ${hasReviewSignal(product) ? 'product-list__text--secondary' : 'product-list__newReviewSignal'}`}>
-                  {hasReviewSignal(product)
-                    ? t('pages.productList.positiveRate', { rate: Math.round(product.positiveRate || 0).toString(), count: product.reviewCount || 0 })
-                    : t('pages.productList.noReviewsYet')}
+          </div>
+          <div className="product-list__metaDescription">
+            <div className="product-list__priceLine">
+              <span className="product-list__currentPrice commerce-money">{formatMoney(getPrice(product))}</span>
+              {product.originalPrice && product.originalPrice > getPrice(product) && (
+                <span className="product-list__text product-list__text--delete product-list__text--secondary product-list__originalPrice commerce-money">{formatMoney(product.originalPrice)}</span>
+              )}
+              {product.activeLimitedTimeDiscount && <Tag color="red" className="product-list__priceTag">{t('pages.keywords.deal')}</Tag>}
+            </div>
+            {isBestValueProduct(product) && getSavingsAmount(product) > 0 ? (
+              <div className="product-list__valueLine">
+                <span className="product-list__text product-list__text--success">
+                  {renderSavingsText(getSavingsAmount(product))}
                 </span>
               </div>
-              <div className="product-list__metaRow">
-                {product.brand && <span className="product-list__text product-list__text--secondary product-list__brand">{product.brand}</span>}
-              </div>
-              <ProductListConfidenceStrip product={product} t={t} />
+            ) : null}
+            <div className="product-list__ratingLine">
+              <span className={`product-list__text ${hasReviewSignal(product) ? 'product-list__text--secondary' : 'product-list__newReviewSignal'}`}>
+                {hasReviewSignal(product)
+                  ? t('pages.productList.positiveRate', { rate: Math.round(product.positiveRate || 0).toString(), count: product.reviewCount || 0 })
+                  : t('pages.productList.noReviewsYet')}
+              </span>
             </div>
-          }
-        />
-      </Card>
+            <div className="product-list__metaRow">
+              {product.brand && <span className="product-list__text product-list__text--secondary product-list__brand">{product.brand}</span>}
+            </div>
+            <ProductListConfidenceStrip product={product} t={t} />
+          </div>
+        </div>
+        <div className="product-list__actions" role="group" aria-label={productName}>
+          <div className="product-list__actionItem product-list__actionItem--primary">
+            {soldOut ? (
+              <Button
+                icon={<ShopIcon path={SI.bell} />}
+                size="small"
+                className="product-list__actionButton product-list__alertButton"
+                aria-pressed={stockAlerted}
+                aria-label={stockAlertActionLabel}
+                title={stockAlertActionLabel}
+                onClick={(event) => onStockAlert(event, product, stockAlerted)}
+              >
+                <span className="product-list__actionLabel">
+                  {stockAlerted ? t('pages.stockAlerts.remove') : t('pages.stockAlerts.notifyMe')}
+                </span>
+              </Button>
+            ) : (
+              <Button
+                type="primary"
+                icon={<ShopIcon path={SI.cart} />}
+                size="small"
+                className="product-list__actionButton"
+                aria-label={quickAddActionLabel}
+                title={quickAddActionLabel}
+                onClick={(event) => onQuickAdd(event, product)}
+              >
+                <span className="product-list__actionLabel">
+                  {quickAddLabel}
+                </span>
+              </Button>
+            )}
+          </div>
+          <div className="product-list__actionItem">
+            <Button
+              icon={wishlisted ? <ShopIcon path={SI.heartFill} /> : <ShopIcon path={SI.heart} />}
+              size="small"
+              className={wishlisted
+                ? 'product-list__actionButton product-list__actionButton--compact product-list__favoriteButton product-list__favoriteButton--active'
+                : 'product-list__actionButton product-list__actionButton--compact product-list__favoriteButton'}
+              aria-pressed={wishlisted}
+              aria-label={wishlistActionLabel}
+              title={wishlistActionLabel}
+              onClick={(event) => onWishlistToggle(event, product)}
+            >
+              <span className="product-list__actionLabel">
+                {wishlisted ? t('pages.productDetail.favorited') : t('pages.productDetail.favorite')}
+              </span>
+            </Button>
+          </div>
+          <div className="product-list__actionItem">
+            <Button
+              icon={<ShopIcon path={SI.barChart} />}
+              size="small"
+              className="product-list__actionButton product-list__actionButton--compact"
+              aria-label={compareActionLabel}
+              title={compareActionLabel}
+              onClick={(event) => onCompare(event, product)}
+            >
+              <span className="product-list__actionLabel">
+                {compared ? t('pages.productList.viewCompare') : t('pages.productList.compare')}
+              </span>
+            </Button>
+          </div>
+        </div>
+      </article>
     </div>
   );
 });
@@ -2135,25 +2136,28 @@ const ProductList: React.FC = () => {
       />
       <div className="product-list__layout">
         <aside className="product-list__sidebar">
-          <Card title={t('pages.productList.sidebarTitle')} size="small" className="product-list__sidebarCard">
-            {renderCategoryPanel()}
-          </Card>
-          <Card
-            title={
+          <section className="product-list__sidebarCard product-list__panel" aria-label={t('pages.productList.sidebarTitle')}>
+            <div className="product-list__panelHead">
+              <h2 className="product-list__panelTitle">{t('pages.productList.sidebarTitle')}</h2>
+            </div>
+            <div className="product-list__panelBody">
+              {renderCategoryPanel()}
+            </div>
+          </section>
+          <section className="product-list__sidebarCard product-list__panel" aria-label={t('pages.productList.filters')}>
+            <div className="product-list__panelHead">
               <div className="product-list__inlineRow">
-                <span>{t('pages.productList.filters')}</span>
+                <h2 className="product-list__panelTitle">{t('pages.productList.filters')}</h2>
                 {activeFilterCount > 0 ? <Tag color="blue">{t('pages.productList.activeFilters', { count: activeFilterCount })}</Tag> : null}
               </div>
-            }
-            size="small"
-            extra={
               <Button type="link" size="small" disabled={activeFilterCount === 0} onClick={resetFilters}>
                 {t('pages.productList.resetFilters')}
               </Button>
-            }
-          >
-            {renderFilterPanel()}
-          </Card>
+            </div>
+            <div className="product-list__panelBody">
+              {renderFilterPanel()}
+            </div>
+          </section>
         </aside>
         <div className="product-list__main">
           <section className="product-list__heroBand">
@@ -2196,7 +2200,8 @@ const ProductList: React.FC = () => {
               </button>
             ) : null}
           </section>
-          <Card className="product-list__toolbar">
+          <section className="product-list__toolbar product-list__panel" aria-label={t('pages.productList.searchPlaceholder')}>
+            <div className="product-list__panelBody product-list__toolbarBody">
             <div className="product-list__toolbarRow">
               <div className="product-list__toolbarSearch">
                 <Input.Search
@@ -2292,7 +2297,8 @@ const ProductList: React.FC = () => {
                 </Button>
               </div>
             )}
-          </Card>
+          </div>
+          </section>
           <section className="product-list__mobileDiscovery" aria-label={t('home.categories')}>
             {mobileDiscoveryActions.map((action) => (
               <button
@@ -2677,7 +2683,15 @@ const ProductList: React.FC = () => {
           )}
         </div>
       </div>
-      <Drawer
+      <ShopDrawer
+        open={filterDrawerOpen}
+        onClose={() => setFilterDrawerOpen(false)}
+        placement="bottom"
+        height="82vh"
+        rootClassName="product-list__filterDrawerRoot"
+        className="profile-mobile-safe-modal product-list__mobileDrawer"
+        ariaLabel={t('pages.productList.filters')}
+        closeLabel={t('common.close', { defaultValue: 'Close' })}
         title={
           <div className="product-list__inlineRow">
             <ShopIcon path={SI.filter} />
@@ -2685,12 +2699,6 @@ const ProductList: React.FC = () => {
             {activeRefinementCount > 0 ? <Tag color="blue">{t('pages.productList.activeFilters', { count: activeRefinementCount })}</Tag> : null}
           </div>
         }
-        open={filterDrawerOpen}
-        onClose={() => setFilterDrawerOpen(false)}
-        placement="bottom"
-        height="82vh"
-        rootClassName="product-list__filterDrawerRoot"
-        className="profile-mobile-safe-modal product-list__mobileDrawer"
         extra={
           <Button type="link" disabled={activeRefinementCount === 0} aria-label={resetRefinementsActionLabel} title={resetRefinementsActionLabel} onClick={resetMobileRefinements}>
             {t('pages.productList.resetFilters')}
@@ -2707,12 +2715,22 @@ const ProductList: React.FC = () => {
             </strong>
           </section>
           <div className="product-list__drawerPanels">
-            <Card title={t('pages.productList.drawerCategoryTitle')} size="small">
-              {renderCategoryPanel()}
-            </Card>
-            <Card title={t('pages.productList.drawerFilterTitle')} size="small">
-              {renderFilterPanel()}
-            </Card>
+            <section className="product-list__panel product-list__drawerPanel" aria-label={t('pages.productList.drawerCategoryTitle')}>
+              <div className="product-list__panelHead">
+                <h2 className="product-list__panelTitle">{t('pages.productList.drawerCategoryTitle')}</h2>
+              </div>
+              <div className="product-list__panelBody">
+                {renderCategoryPanel()}
+              </div>
+            </section>
+            <section className="product-list__panel product-list__drawerPanel" aria-label={t('pages.productList.drawerFilterTitle')}>
+              <div className="product-list__panelHead">
+                <h2 className="product-list__panelTitle">{t('pages.productList.drawerFilterTitle')}</h2>
+              </div>
+              <div className="product-list__panelBody">
+                {renderFilterPanel()}
+              </div>
+            </section>
           </div>
           <div className="product-list__drawerFooter">
             <Button size="large" disabled={activeRefinementCount === 0} aria-label={resetRefinementsActionLabel} title={resetRefinementsActionLabel} onClick={resetMobileRefinements}>
@@ -2723,7 +2741,7 @@ const ProductList: React.FC = () => {
             </Button>
           </div>
         </div>
-      </Drawer>
+      </ShopDrawer>
       {showBackToTop ? (
         <Button
           type="primary"
@@ -2827,7 +2845,12 @@ const ProductList: React.FC = () => {
               </span>
               <h2>{previewProductName}</h2>
               <div className="product-list__previewRating" aria-label={previewRatingLabel} title={previewRatingLabel}>
-                <Rate disabled allowHalf value={previewRatingValue} />
+                <ShopRate
+                  disabled
+                  allowHalf
+                  value={previewRatingValue}
+                  ariaLabel={`${Number(previewRatingValue || 0).toFixed(1)}`}
+                />
                 <span className="product-list__text product-list__text--secondary">{previewRatingSummary}</span>
               </div>
               <span className="product-list__text product-list__previewDescription">

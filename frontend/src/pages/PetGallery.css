@@ -8,7 +8,7 @@
 .pet-gallery-page .ant-btn,
 .pet-gallery-page .ant-card,
 .pet-gallery-page .pet-gallery-page__text,
-.pet-gallery-page .ant-statistic {
+.pet-gallery-page .pet-gallery-hero__stat {
   font-family: 'Avenir Next', 'Manrope', 'Segoe UI Variable', sans-serif;
 }
 
@@ -75,11 +75,11 @@
   backdrop-filter: blur(10px);
 }
 
-.pet-gallery-hero__stats .ant-statistic-title {
+.pet-gallery-hero__stats .pet-gallery-hero__statTitle {
   color: #53645c;
 }
 
-.pet-gallery-hero__stats .ant-statistic-content {
+.pet-gallery-hero__stats .pet-gallery-hero__statValue {
   color: #124734;
   font-weight: 700;
 }
@@ -461,7 +461,7 @@
 .pet-gallery-page--es,
 .pet-gallery-page--es .ant-btn,
 .pet-gallery-page--es .pet-gallery-page__text,
-.pet-gallery-page--es .ant-statistic,
+.pet-gallery-page--es .pet-gallery-hero__stat,
 .pet-gallery-page--es .ant-tag {
   hyphens: auto;
   overflow-wrap: anywhere;
@@ -736,16 +736,16 @@
     gap: 8px;
   }
 
-  .pet-gallery-hero__stats .ant-statistic {
+  .pet-gallery-hero__stats .pet-gallery-hero__stat {
     min-width: 0;
   }
 
-  .pet-gallery-hero__stats .ant-statistic-title {
+  .pet-gallery-hero__stats .pet-gallery-hero__statTitle {
     font-size: 12px;
     line-height: 1.25;
   }
 
-  .pet-gallery-hero__stats .ant-statistic-content {
+  .pet-gallery-hero__stats .pet-gallery-hero__statValue {
     font-size: 18px;
   }
 
@@ -881,12 +881,12 @@
     border-radius: 16px;
   }
 
-  .pet-gallery-hero__stats .ant-statistic-title {
+  .pet-gallery-hero__stats .pet-gallery-hero__statTitle {
     min-height: 24px;
     font-size: 12px;
   }
 
-  .pet-gallery-hero__stats .ant-statistic-content {
+  .pet-gallery-hero__stats .pet-gallery-hero__statValue {
     font-size: 16px;
   }
 
@@ -1503,9 +1503,9 @@
     grid-template-columns: 1fr !important;
   }
 
-  .pet-gallery-hero__stats .ant-statistic,
-  .pet-gallery-hero__stats .ant-statistic-content,
-  .pet-gallery-hero__stats .ant-statistic-content-value {
+  .pet-gallery-hero__stats .pet-gallery-hero__stat,
+  .pet-gallery-hero__stats .pet-gallery-hero__statValue,
+  .pet-gallery-hero__stats .pet-gallery-hero__statValue {
     min-width: 0;
     max-width: 100%;
     overflow: hidden;
@@ -1680,7 +1680,7 @@
     font-size: 16px !important;
   }
 
-  .pet-gallery-hero__stats .ant-statistic-title,
+  .pet-gallery-hero__stats .pet-gallery-hero__statTitle,
   .pet-gallery-card__owner,
   .pet-gallery-card__meta > .pet-gallery-page__text,
   .pet-gallery-card__like > span:not(.anticon):not(.ant-btn-icon) {
@@ -1865,4 +1865,42 @@
 
 .pet-gallery-page__text--delete {
   text-decoration: line-through;
+}
+
+
+/* Native skeleton densification (no ant Skeleton runtime) */
+.pet-gallery-skeleton {
+  display: block;
+  min-height: 120px;
+  border-radius: 12px;
+  background: linear-gradient(90deg, rgba(0,0,0,0.06) 25%, rgba(0,0,0,0.12) 37%, rgba(0,0,0,0.06) 63%);
+  background-size: 400% 100%;
+  animation: pet-gallery-skeleton-shimmer 1.2s ease infinite;
+}
+
+@keyframes pet-gallery-skeleton-shimmer {
+  0% { background-position: 100% 0; }
+  100% { background-position: 0 0; }
+}
+
+
+/* Native statistic densification (no ant Statistic runtime) */
+.pet-gallery-hero__stat {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.pet-gallery-hero__statTitle {
+  color: rgba(16, 47, 34, 0.68);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.pet-gallery-hero__statValue {
+  color: #173f2b;
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.15;
 }

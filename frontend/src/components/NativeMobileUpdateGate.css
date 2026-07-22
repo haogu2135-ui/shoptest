@@ -1,0 +1,53 @@
+/* Native mobile update gate densification (no ant Space/Typography runtime) */
+.shop-mobile-update-modal__stack {
+  display: grid;
+  gap: 12px;
+  width: 100%;
+}
+
+.shop-mobile-update-modal__stack--tight {
+  gap: 8px;
+}
+
+.shop-mobile-update-modal__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.shop-mobile-update-modal__actions .ant-btn {
+  min-height: 44px;
+}
+
+.shop-mobile-update-modal__text {
+  margin: 0;
+  color: #173f2b;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.shop-mobile-update-modal__text--secondary {
+  color: rgba(16, 47, 34, 0.68);
+}
+
+.shop-mobile-update-modal__text--danger {
+  color: #cf1322;
+}
+
+.shop-mobile-update-modal__text--strong {
+  font-weight: 700;
+}
+
+.shop-mobile-update-modal__code {
+  display: block;
+  max-width: 100%;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #f4f8f5;
+  color: #244b37;
+  font-size: 12px;
+  line-height: 1.4;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}

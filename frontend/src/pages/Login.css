@@ -363,7 +363,55 @@
   flex: 1 0 auto;
 }
 
-.shopee-login-tabs .ant-tabs-nav {
+/* Gate97: native login tab chrome (ant Tabs densify) */
+.shopee-login-tabs__nav {
+  width: 100%;
+  display: flex;
+  gap: 4px;
+  min-width: 0;
+}
+
+.shopee-login-tabs__tab {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 44px;
+  margin: 0;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+}
+
+.shopee-login-tabs__tabLabel {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  text-align: center;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.18;
+  font-weight: 700;
+}
+
+.shopee-login-tabs__panel {
+  min-width: 0;
+  width: 100%;
+}
+
+.shopee-login-tabs__panel[hidden] {
+  display: none !important;
+}
+
+
+
+.shopee-login-tabs .shopee-login-tabs__nav {
   margin-bottom: 18px;
   padding: 4px;
   border: 1px solid var(--login-border);
@@ -372,7 +420,7 @@
   transition: border-color var(--transition-fast), background var(--transition-fast);
 }
 
-.shopee-login-tabs .ant-tabs-tab {
+.shopee-login-tabs .shopee-login-tabs__tab {
   min-width: 0;
   flex: 1 1 0;
   margin: 0 !important;
@@ -383,33 +431,33 @@
   transition: background var(--transition-fast), box-shadow var(--transition-fast);
 }
 
-.shopee-login-tabs .ant-tabs-tab-btn {
+.shopee-login-tabs .shopee-login-tabs__tabLabel {
   color: var(--login-text-soft);
   width: 100%;
   text-align: center;
   white-space: nowrap;
 }
 
-.shopee-login-tabs .ant-tabs-tab-active .ant-tabs-tab-btn {
+.shopee-login-tabs .shopee-login-tabs__tab--active .shopee-login-tabs__tabLabel {
   color: var(--login-brand) !important;
 }
 
-.shopee-login-tabs .ant-tabs-tab-active {
+.shopee-login-tabs .shopee-login-tabs__tab--active {
   background: var(--login-surface);
   box-shadow: 0 6px 16px rgba(var(--login-brand-rgb), 0.08);
 }
 
-.shopee-login-tabs .ant-tabs-nav-list {
+.shopee-login-tabs .shopee-login-tabs__nav {
   width: 100%;
   display: flex;
   gap: 4px;
 }
 
-.shopee-login-tabs .ant-tabs-ink-bar {
+.shopee-login-tabs .shopee-login-tabs__ink {
   display: none;
 }
 
-.shopee-login-tabs--email .ant-tabs-nav {
+.shopee-login-tabs--email .shopee-login-tabs__nav {
   border-color: var(--login-border-strong);
   background: var(--login-surface-success);
 }
@@ -707,11 +755,11 @@
     flex-wrap: wrap;
   }
 
-  .shopee-login-tabs .ant-tabs-tab {
+  .shopee-login-tabs .shopee-login-tabs__tab {
     padding-inline: 6px;
   }
 
-  .shopee-login-tabs .ant-tabs-tab-btn {
+  .shopee-login-tabs .shopee-login-tabs__tabLabel {
     font-size: 13px;
   }
 
@@ -947,12 +995,12 @@
   font-weight: 900;
 }
 
-.shopee-login-tabs .ant-tabs-nav {
+.shopee-login-tabs .shopee-login-tabs__nav {
   border-radius: 999px;
   padding: 5px;
 }
 
-.shopee-login-tabs .ant-tabs-tab {
+.shopee-login-tabs .shopee-login-tabs__tab {
   border-radius: 999px;
 }
 
@@ -1222,21 +1270,21 @@
     font-size: 12px;
   }
 
-  .shopee-login-tabs .ant-tabs-nav {
+  .shopee-login-tabs .shopee-login-tabs__nav {
     margin-bottom: 12px;
   }
 
-  .shopee-login-tabs .ant-tabs-nav-list {
+  .shopee-login-tabs .shopee-login-tabs__nav {
     width: 100%;
   }
 
-  .shopee-login-tabs .ant-tabs-tab {
+  .shopee-login-tabs .shopee-login-tabs__tab {
     flex: 1 1 0;
     justify-content: center;
     margin: 0;
   }
 
-  .shopee-login-tabs .ant-tabs-tab-btn {
+  .shopee-login-tabs .shopee-login-tabs__tabLabel {
     max-width: 100%;
     overflow: hidden;
     font-size: 12px;
@@ -1532,11 +1580,11 @@
     margin-top: 0;
   }
 
-  .shopee-login-tabs .ant-tabs-nav {
+  .shopee-login-tabs .shopee-login-tabs__nav {
     margin-bottom: 10px;
   }
 
-  .shopee-login-tabs .ant-tabs-tab {
+  .shopee-login-tabs .shopee-login-tabs__tab {
     min-height: 44px;
   }
 
@@ -1629,19 +1677,19 @@
     -webkit-line-clamp: 1;
   }
 
-  .shopee-login-tabs .ant-tabs-nav {
+  .shopee-login-tabs .shopee-login-tabs__nav {
     margin-bottom: 8px;
     padding: 3px;
     border-radius: 12px;
   }
 
-  .shopee-login-tabs .ant-tabs-tab {
+  .shopee-login-tabs .shopee-login-tabs__tab {
     min-height: 44px;
     padding: 7px 6px;
     border-radius: 10px;
   }
 
-  .shopee-login-tabs .ant-tabs-tab-btn {
+  .shopee-login-tabs .shopee-login-tabs__tabLabel {
     font-size: 13px;
   }
 
@@ -1926,17 +1974,17 @@
     transform: scale(0.98);
   }
 
-  .shopee-login-tabs .ant-tabs-nav-list {
+  .shopee-login-tabs .shopee-login-tabs__nav {
     width: 100%;
   }
 
-  .shopee-login-tabs .ant-tabs-tab {
+  .shopee-login-tabs .shopee-login-tabs__tab {
     flex: 1 1 0;
     justify-content: center;
     min-height: 44px;
   }
 
-  .shopee-login-tabs .ant-tabs-tab-btn {
+  .shopee-login-tabs .shopee-login-tabs__tabLabel {
     min-height: 44px;
     display: inline-flex;
     align-items: center;
@@ -2079,7 +2127,7 @@
   .shopee-login-quickLinks button,
   .shopee-login-links a,
   .shopee-login-links button,
-  .shopee-login-tabs .ant-tabs-tab-btn {
+  .shopee-login-tabs .shopee-login-tabs__tabLabel {
     overflow: hidden;
     text-overflow: ellipsis;
     overflow-wrap: normal !important;
@@ -2115,8 +2163,8 @@
 .shopee-login-emailMeta span,
 .shopee-login-quickLinks a,
 .shopee-login-quickLinks button,
-.shopee-login-tabs .ant-tabs-nav,
-.shopee-login-tabs .ant-tabs-tab,
+.shopee-login-tabs .shopee-login-tabs__nav,
+.shopee-login-tabs .shopee-login-tabs__tab,
 .shopee-login-card .ant-btn-primary,
 .shopee-login-panel__actions .ant-btn,
 .shopee-login-codeButton {
@@ -2318,8 +2366,8 @@
   }
 
   .shopee-login-tabs,
-  .shopee-login-tabs .ant-tabs-content,
-  .shopee-login-tabs .ant-tabs-tabpane-active {
+  .shopee-login-tabs .shopee-login-tabs__panel,
+  .shopee-login-tabs .shopee-login-tabs__tabpane-active {
     min-height: 0;
   }
 }
@@ -2533,8 +2581,8 @@
   .shopee-login-quickLinks button,
   .shopee-login-links a,
   .shopee-login-links button,
-  .shopee-login-tabs .ant-tabs-tab,
-  .shopee-login-tabs .ant-tabs-tab-btn {
+  .shopee-login-tabs .shopee-login-tabs__tab,
+  .shopee-login-tabs .shopee-login-tabs__tabLabel {
     min-height: 44px;
   }
 
@@ -2657,15 +2705,15 @@
 
 /* F3592: localized APP login tabs and short auth links need real tap width. */
 @media (max-width: 640px) {
-  .shopee-login-tabs .ant-tabs-nav {
+  .shopee-login-tabs .shopee-login-tabs__nav {
     overflow: visible !important;
   }
 
-  .shopee-login-tabs .ant-tabs-nav-list {
+  .shopee-login-tabs .shopee-login-tabs__nav {
     align-items: stretch !important;
   }
 
-  .shopee-login-tabs .ant-tabs-tab {
+  .shopee-login-tabs .shopee-login-tabs__tab {
     min-width: 0 !important;
     min-height: 44px !important;
     height: auto !important;
@@ -2673,7 +2721,7 @@
     align-items: center !important;
   }
 
-  .shopee-login-tabs .ant-tabs-tab-btn {
+  .shopee-login-tabs .shopee-login-tabs__tabLabel {
     min-height: 0 !important;
     display: inline-flex !important;
     align-items: center !important;
@@ -2770,8 +2818,8 @@
   .shopee-login-card .ant-btn.ant-btn-primary,
   .shopee-login-codeButton,
   .shopee-login-form__field--code .ant-btn,
-  .shopee-login-tabs .ant-tabs-tab,
-  .shopee-login-tabs .ant-tabs-tab-btn,
+  .shopee-login-tabs .shopee-login-tabs__tab,
+  .shopee-login-tabs .shopee-login-tabs__tabLabel,
   .shopee-login-links a,
   .shopee-login-links button,
   .shopee-login-quickLinks a,

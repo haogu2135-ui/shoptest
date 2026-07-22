@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { ShopIcon, SI } from './ShopIcon';
-import { Button, Modal, Space, Typography } from 'antd';
+import { Button, Modal } from 'antd';
 import { useLanguage } from '../i18n';
 import { getLocalStorageItem, setLocalStorageItem } from '../utils/safeStorage';
 import { reportNonBlockingError } from '../utils/nonBlockingError';
@@ -16,8 +16,8 @@ import {
   resolveMobileReleaseDownloadUrl,
   type MobileReleaseManifest,
 } from '../utils/mobileUpdate';
+import './NativeMobileUpdateGate.css';
 
-const { Text } = Typography;
 const MOBILE_UPDATE_DISMISSED_KEY_PREFIX = 'shop-mobile-update-dismissed';
 
 export const NativeMobileUpdateGate: React.FC = () => {
@@ -199,24 +199,24 @@ export const NativeMobileUpdateGate: React.FC = () => {
         filter: 'none',
       }}
       footer={(
-        <Space wrap>
+        <div className="shop-mobile-update-modal__actions">
           {!updateRequired ? (
             <Button aria-label={updateLaterActionLabel} title={updateLaterActionLabel} onClick={handleDismiss}>{t('appUpdate.later')}</Button>
           ) : null}
           <Button type="primary" loading={openingDownload} aria-label={updateDownloadActionLabel} title={updateDownloadActionLabel} onClick={handleDownload}>
             {t('appUpdate.download')}
           </Button>
-        </Space>
+        </div>
       )}
     >
-      <Space direction="vertical" size={12} style={{ width: '100%' }}>
-        <Text>{t('appUpdate.description')}</Text>
-        <Text type="secondary">
+      <div className="shop-mobile-update-modal__stack">
+        <p className="shop-mobile-update-modal__text">{t('appUpdate.description')}</p>
+        <p className="shop-mobile-update-modal__text shop-mobile-update-modal__text--secondary">
           {t('appUpdate.versionSummary', { current: currentVersionLabel, latest: latestVersionLabel })}
-        </Text>
+        </p>
         {downloadFailed ? (
-          <Space direction="vertical" size={8} style={{ width: '100%' }}>
-            <Text type="danger">{t('appUpdate.downloadFailed')}</Text>
+          <div className="shop-mobile-update-modal__stack shop-mobile-update-modal__stack--tight">
+            <p className="shop-mobile-update-modal__text shop-mobile-update-modal__text--danger">{t('appUpdate.downloadFailed')}</p>
             <Button
               icon={<ShopIcon path={SI.copy} />}
               aria-label={copyDownloadActionLabel}
@@ -228,15 +228,13 @@ export const NativeMobileUpdateGate: React.FC = () => {
               {t('appUpdate.copyDownloadLink')}
             </Button>
             {downloadUrl ? (
-              <Text code copyable={{ text: downloadUrl }} style={{ maxWidth: '100%', whiteSpace: 'normal', overflowWrap: 'anywhere' }}>
-                {downloadUrl}
-              </Text>
+              <code className="shop-mobile-update-modal__code">{downloadUrl}</code>
             ) : null}
-          </Space>
+          </div>
         ) : null}
         {releaseNotes.length ? (
           <div>
-            <Text strong>{t('appUpdate.releaseNotes')}</Text>
+            <p className="shop-mobile-update-modal__text shop-mobile-update-modal__text--strong">{t('appUpdate.releaseNotes')}</p>
             <ul>
               {releaseNotes.map((note) => (
                 <li key={note}>{note}</li>
@@ -244,7 +242,7 @@ export const NativeMobileUpdateGate: React.FC = () => {
             </ul>
           </div>
         ) : null}
-      </Space>
+      </div>
     </Modal>
   );
 };

@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { ShopIcon, SI } from './ShopIcon';
-import { Alert, Button, Modal, Radio, Space, Tag, Typography } from 'antd';
+import { Alert, Button, Modal, Radio, Tag } from 'antd';
 import { paymentApi } from '../api';
 import { useLanguage } from '../i18n';
 import { createPaymentMethodOptions, filterPaymentChannelsForMarket, PaymentMethod, paymentMethodLabel } from '../utils/paymentMethods';
@@ -12,7 +12,6 @@ import './Payment.css';
 import '../styles/mobile-page-contrast.css';
 import { navigateToCommercialPaymentUrl } from '../utils/paymentRecovery';
 
-const { Text, Title } = Typography;
 const getDefaultPaymentMethod = (channels: PaymentChannel[], currency: string) => {
     const marketChannels = filterPaymentChannelsForMarket(channels, { currency });
     return marketChannels.find((channel) => channel.recommended)?.code || marketChannels[0]?.code || '';
@@ -148,11 +147,11 @@ export const Payment: React.FC<PaymentProps> = ({
             footer={null}
             className="profile-mobile-safe-modal payment-modal"
         >
-            <Space direction="vertical" className="payment-modal__content">
+            <div className="payment-modal__content payment-modal__stack">
                 <div className="payment-modal__summary">
-                    <Text className="payment-modal__eyebrow">{t('pages.payment.secureEyebrow')}</Text>
-                    <Title level={3} className="commerce-money">{t('pages.payment.amount', { amount: formattedAmount })}</Title>
-                    <Text type="secondary">{t('pages.payment.secureSubtitle')}</Text>
+                    <span className="payment-modal__text payment-modal__eyebrow">{t('pages.payment.secureEyebrow')}</span>
+                    <h3 className="payment-modal__amount commerce-money">{t('pages.payment.amount', { amount: formattedAmount })}</h3>
+                    <span className="payment-modal__text payment-modal__text--secondary">{t('pages.payment.secureSubtitle')}</span>
                     <div className="payment-modal__badges">
                         <Tag icon={<ShopIcon path={SI.safety} />} color="green">{t('pages.payment.encrypted')}</Tag>
                         <Tag icon={<ShopIcon path={SI.thunder} />} color="orange">{t('pages.payment.localMethods')}</Tag>
@@ -167,7 +166,7 @@ export const Payment: React.FC<PaymentProps> = ({
                     className="payment-modal__methodGroup"
                     aria-label={paymentMethodGroupLabel}
                 >
-                    <Space direction="vertical" className="payment-modal__methodList">
+                    <div className="payment-modal__methodList payment-modal__stack">
                         {paymentOptions.length === 0 ? (
                             <Alert
                                 type="warning"
@@ -196,18 +195,18 @@ export const Payment: React.FC<PaymentProps> = ({
                                     aria-label={optionActionLabel}
                                     title={optionActionLabel}
                                 >
-                                    <Space>{option.label}</Space>
+                                    <span className="payment-modal__methodLabel">{option.label}</span>
                                 </Radio.Button>
                             );
                         })}
-                    </Space>
+                    </div>
                 </Radio.Group>
                 {selectedChannel ? (
                     <div className="payment-modal__channelNote" role="status" aria-label={`${t('pages.checkout.paymentConfidenceTitle')}: ${selectedPaymentLabel}`}>
-                        <Text strong>{selectedChannel.displayName}</Text>
-                        <Text type="secondary">
+                        <span className="payment-modal__text payment-modal__text--strong">{selectedChannel.displayName}</span>
+                        <span className="payment-modal__text payment-modal__text--secondary">
                             {selectedChannel.descriptionKey ? t(selectedChannel.descriptionKey) : t('pages.payment.channelFallback')}
-                        </Text>
+                        </span>
                     </div>
                 ) : null}
                 <Button
@@ -222,7 +221,7 @@ export const Payment: React.FC<PaymentProps> = ({
                 >
                     {t('pages.payment.confirm')}
                 </Button>
-            </Space>
+            </div>
         </Modal>
     );
 }; 

@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { ShopIcon, SI } from '../components/ShopIcon';
-import { Alert, List, Tag, Button, Spin, Popconfirm } from 'antd';
+import { Alert, Tag, Button, Popconfirm } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { notificationApi } from '../api';
 import type { AppNotification } from '../types';
@@ -372,7 +372,7 @@ const Notifications: React.FC = () => {
         aria-label={t('common.loading')}
       >
         <h1 className="notifications-page__title">{t('pages.notifications.title')}</h1>
-        <Spin size="large" />
+        <span className="notifications-page__spinner" aria-hidden="true" />
       </div>
     );
   }
@@ -554,10 +554,7 @@ const Notifications: React.FC = () => {
               action={<Button size="small" onClick={() => fetchNotifications()}>{t('common.retry')}</Button>}
             />
           ) : null}
-          <List
-            dataSource={filteredNotifications}
-            locale={{
-              emptyText: (
+          {filteredNotifications.length === 0 ? (
                 <div className="notifications-page__filterEmpty" data-notifications-filter-empty="true">
                   <div className="notifications-page__emptyCopy">
                     <div>{t('pages.notifications.noFilterResults')}</div>
@@ -598,23 +595,10 @@ const Notifications: React.FC = () => {
                     </Button>
                   </div>
                 </div>
-              ),
-            }}
-            footer={hasMoreNotifications ? (
-              <div className="notifications-page__loadMore">
-                <span className="notifications-page__text notifications-page__text--secondary">{t('pages.notifications.loadedCount', { count: notifications.length })}</span>
-                <Button
-                  onClick={() => fetchNotifications(notificationPage + 1, true)}
-                  loading={loadingMore}
-                  disabled={loadingMore}
-                  aria-label={loadMoreActionLabel}
-                  title={loadMoreActionLabel}
-                >
-                  {loadingMore ? t('pages.notifications.loadingMore') : t('pages.notifications.loadMore')}
-                </Button>
-              </div>
-            ) : null}
-            renderItem={(item) => {
+          ) : (
+            <>
+            <ul className="notifications-page__itemList" role="list">
+              {filteredNotifications.map((item) => {
               const notificationName = item.title || formatNotificationType(item.type) || `#${item.id}`;
               const relatedOrderNo = extractOrderNoFromNotification(item);
               const relatedType = String(item.type || '').trim().toUpperCase();
@@ -631,12 +615,38 @@ const Notifications: React.FC = () => {
               const markReadActionLabel = `${t('pages.notifications.markRead')}: ${notificationName}`;
               const deleteActionLabel = `${t('common.delete')}: ${notificationName}`;
               return (
-              <List.Item
+              <li
+                key={item.id}
                 className={item.isRead ? 'notifications-page__item' : 'notifications-page__item notifications-page__item--unread'}
-                actions={[
-                  showOpenRelated ? (
+              >
+                <div className="notifications-page__itemMeta">
+                  <div className="notifications-page__itemBody">
+                    <div className="notifications-page__itemActions">
+                      <Tag color={typeColors[String(item.type || '').trim().toUpperCase()] || 'default'}>
+                        {formatNotificationType(item.type)}
+                      </Tag>
+                      <button
+                        type="button"
+                        className="notifications-page__titleButton"
+                        onClick={() => openRelatedNotification(item)}
+                        aria-label={openRelatedLabel}
+                        title={openRelatedLabel}
+                      >
+                        <span className={`notifications-page__text${!item.isRead ? ' notifications-page__text--strong' : ''}`}>{item.title}</span>
+                      </button>
+                      {item.isRead && <ShopIcon path={SI.checkCircle} style={{ color: '#52c41a' }} />}
+                    </div>
+                    <div>
+                      {renderMessage(item)}
+                      <span className="notifications-page__text notifications-page__text--secondary" style={{ fontSize: 12 }}>
+                        {item.createdAt ? new Date(item.createdAt).toLocaleString(language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US') : ''}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <div className="notifications-page__itemSideActions">
+                  {showOpenRelated ? (
                     <Button
-                      key="open-related"
                       size="small"
                       type="link"
                       aria-label={openRelatedLabel}
@@ -648,10 +658,9 @@ const Notifications: React.FC = () => {
                         ? (relatedType === 'DELIVERY' ? t('pages.notifications.actionTrackOrder') : t('pages.notifications.actionOpenOrders'))
                         : openRelatedLabel}
                     </Button>
-                  ) : null,
-                  !item.isRead && (
+                  ) : null}
+                  {!item.isRead ? (
                     <Button
-                      key="mark-read"
                       size="small"
                       type="link"
                       aria-label={markReadActionLabel}
@@ -661,9 +670,8 @@ const Notifications: React.FC = () => {
                     >
                       {t('pages.notifications.markRead')}
                     </Button>
-                  ),
+                  ) : null}
                   <Popconfirm
-                    key="delete"
                     classNames={{ root: 'shop-mobile-popup-layer notifications-delete-popconfirm' }}
                     title={t('pages.notifications.deleteConfirm')}
                     onConfirm={() => handleDelete(item.id)}
@@ -683,40 +691,28 @@ const Notifications: React.FC = () => {
                       title={deleteActionLabel}
                       disabled={notificationActionsDisabled}
                     />
-                  </Popconfirm>,
-                ].filter(Boolean)}
-              >
-                <List.Item.Meta
-                  title={
-                    <div className="notifications-page__itemActions">
-                      <Tag color={typeColors[String(item.type || '').trim().toUpperCase()] || 'default'}>
-                        {formatNotificationType(item.type)}
-                      </Tag>
-                      <button
-                        type="button"
-                        className="notifications-page__titleButton"
-                        onClick={() => openRelatedNotification(item)}
-                        aria-label={openRelatedLabel}
-                        title={openRelatedLabel}
-                      >
-                        <span className={`notifications-page__text${!item.isRead ? ' notifications-page__text--strong' : ''}`}>{item.title}</span>
-                      </button>
-                      {item.isRead && <ShopIcon path={SI.checkCircle} style={{ color: '#52c41a' }} />}
-                    </div>
-                  }
-                  description={
-                    <div>
-                      {renderMessage(item)}
-                      <span className="notifications-page__text notifications-page__text--secondary" style={{ fontSize: 12 }}>
-                        {item.createdAt ? new Date(item.createdAt).toLocaleString(language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US') : ''}
-                      </span>
-                    </div>
-                  }
-                />
-              </List.Item>
+                  </Popconfirm>
+                </div>
+              </li>
               );
-            }}
-          />
+            })}
+            </ul>
+            {hasMoreNotifications ? (
+              <div className="notifications-page__loadMore">
+                <span className="notifications-page__text notifications-page__text--secondary">{t('pages.notifications.loadedCount', { count: notifications.length })}</span>
+                <Button
+                  onClick={() => fetchNotifications(notificationPage + 1, true)}
+                  loading={loadingMore}
+                  disabled={loadingMore}
+                  aria-label={loadMoreActionLabel}
+                  title={loadMoreActionLabel}
+                >
+                  {loadingMore ? t('pages.notifications.loadingMore') : t('pages.notifications.loadMore')}
+                </Button>
+              </div>
+            ) : null}
+            </>
+          )}
         </>
       )}
     </div>

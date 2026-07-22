@@ -36,7 +36,7 @@ describe('StockAlerts mobile action layout', () => {
     expect(source).toContain("description={hasStaleProductData ? t('pages.stockAlerts.staleDataWarning') : t('common.loadFailedRetry')}");
     expect(source).toContain("title: t('pages.stockAlerts.nextActionStaleTitle')");
     expect(source).toContain("text: t('pages.stockAlerts.nextActionStaleText')");
-    expect(source).toContain("const restockNextActionIcon = restockNextAction.tone === 'stale' ? <ReloadOutlined /> : <ShoppingCartOutlined />;");
+    expect(source).toContain("const restockNextActionIcon = restockNextAction.tone === 'stale' ? <ShopIcon path={SI.reload} /> : <ShopIcon path={SI.cart} />;");
     expect(source).toContain('disabled={hasStaleProductData || !ready}');
     expect(source).toMatch(/setLoading\(true\);[\s\S]*?const productIds = Array\.from/);
     expect(source).not.toMatch(/setLoading\(true\);\s*setLoadError\(''\);/);

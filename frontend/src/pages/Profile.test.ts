@@ -121,7 +121,8 @@ describe('Profile mobile control visibility', () => {
     expect(fetchOrdersSource).not.toContain('return [order.id, []] as const;');
     expect(source).toContain("t('pages.profile.orderItemsPreviewFailed')");
     expect(source).toContain('const retryOrderItemsActionLabel');
-    expect(source).toContain('icon={<ReloadOutlined />}');
+    expect(source).toContain('icon={<ShopIcon path={SI.reload} />}');
+    expect(source).toContain('aria-label={retryOrderItemsActionLabel}');
   });
 
   it('keeps stale order snapshots visible but blocks order state changes until refresh succeeds', () => {
@@ -208,12 +209,16 @@ describe('Profile mobile control visibility', () => {
 
   it('waits for payment channels before consuming payment-return sync state', () => {
     const source = readProfileSource();
-    const preferredChannelStart = source.indexOf('const getPreferredPaymentChannel = (channels: PaymentChannel[], preferred?: string | null) => {');
+    const preferredChannelStart = source.indexOf('const getPreferredPaymentChannel = (');
     const paymentReturnEffectStart = source.indexOf("if (paymentReturnStatus !== 'success') return;");
+    const paymentReturnEffectEnd = source.indexOf('}, [fetchOrders, ordersInitialLoadComplete, paymentChannelsLoaded', paymentReturnEffectStart);
+    const paymentReturnEffectSource = source.slice(
+      paymentReturnEffectStart,
+      paymentReturnEffectEnd > -1 ? paymentReturnEffectEnd + 280 : paymentReturnEffectStart + 1600,
+    );
     const channelEffectStart = source.indexOf('const loadPaymentChannels = useCallback');
-    const paymentReturnEffectSource = source.slice(paymentReturnEffectStart, channelEffectStart);
     const channelEffectSource = source.slice(channelEffectStart, source.indexOf('const handleConfirmReceipt', channelEffectStart));
-    const preferredChannelSource = source.slice(preferredChannelStart, source.indexOf('const useImageFallback', preferredChannelStart));
+    const preferredChannelSource = source.slice(preferredChannelStart, preferredChannelStart + 900);
 
     expect(preferredChannelStart).toBeGreaterThan(-1);
     expect(paymentReturnEffectStart).toBeGreaterThan(-1);
@@ -222,14 +227,15 @@ describe('Profile mobile control visibility', () => {
     expect(paymentReturnEffectSource).toContain('if (!paymentChannelsLoaded) return;');
     expect(paymentReturnEffectSource).toContain('handledPaymentReturnRef.current = returnKey;');
     expect(paymentReturnEffectSource.indexOf('if (!paymentChannelsLoaded) return;')).toBeLessThan(paymentReturnEffectSource.indexOf('handledPaymentReturnRef.current = returnKey;'));
-    expect(paymentReturnEffectSource).toMatch(/\}, \[[^\]]*paymentChannelsLoaded[^\]]*\]\);/);
+    expect(paymentReturnEffectSource).toMatch(/\}, \[[\s\S]*paymentChannelsLoaded[\s\S]*?\]\);/);
     expect(channelEffectSource).toContain('const res = await paymentApi.getChannels();');
     expect(channelEffectSource.match(/setPaymentChannelsLoaded\(true\);/g)?.length).toBe(2);
     expect(channelEffectSource).toContain("const { t: latestT, language: latestLanguage } = profileLocalizationRef.current;");
     expect(channelEffectSource).toContain("setPaymentChannelsError(getApiErrorMessage(error, latestT('pages.checkout.paymentUnavailableDescription'), latestLanguage));");
     expect(channelEffectSource).toContain('void loadPaymentChannels(() => !disposed && mountedRef.current);');
     expect(preferredChannelSource).toContain("const normalizedPreferred = String(preferred || '').trim();");
-    expect(preferredChannelSource).toContain("channels.length === 0 || channels.some((channel) => channel.code === normalizedPreferred)");
+    expect(preferredChannelSource).toContain('marketChannels.some((channel) => channel.code === normalizedPreferred)');
+    expect(preferredChannelSource).toContain('channels.some((channel) => channel.code === normalizedPreferred)');
   });
 
   it('keeps profile payment channel failures recoverable from the payment modal', () => {

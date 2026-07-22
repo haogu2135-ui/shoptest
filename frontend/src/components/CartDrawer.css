@@ -1,4 +1,4 @@
-﻿.cart-drawer .ant-drawer-body {
+﻿.cart-drawer .shop-drawer__body {
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -569,7 +569,7 @@
 .cart-drawer--es .ant-btn,
 .cart-drawer--es .ant-typography,
 .cart-drawer--es .ant-tag,
-.cart-drawer--es .ant-drawer-title {
+.cart-drawer--es .shop-drawer__title {
   hyphens: auto;
   overflow-wrap: anywhere;
 }
@@ -599,11 +599,11 @@
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
-  .cart-drawer .ant-drawer-header {
+  .cart-drawer .shop-drawer__header {
     padding: 12px 14px;
   }
 
-  .cart-drawer .ant-drawer-body {
+  .cart-drawer .shop-drawer__body {
     padding: 12px !important;
   }
 
@@ -687,7 +687,7 @@
 }
 
 /* Drawer purchase flow polish */
-.cart-drawer .ant-drawer-content {
+.cart-drawer.shop-drawer__panel {
   background: linear-gradient(180deg, #ffffff 0%, #f8fcf9 100%);
 }
 
@@ -754,27 +754,27 @@
 
 /* Mobile drawer refinement pass */
 @media (max-width: 520px) {
-  .cart-drawer .ant-drawer-content-wrapper {
+  .cart-drawer.shop-drawer__panel {
     width: 100% !important;
     max-width: 100%;
   }
 
-  .cart-drawer .ant-drawer-content {
+  .cart-drawer.shop-drawer__panel {
     border-radius: 20px 20px 0 0;
   }
 
-  .cart-drawer .ant-drawer-header {
+  .cart-drawer .shop-drawer__header {
     min-height: 52px;
     padding: 11px 12px;
     border-bottom-color: rgba(18, 71, 52, 0.08);
   }
 
-  .cart-drawer .ant-drawer-title {
+  .cart-drawer .shop-drawer__title {
     font-size: 16px;
     line-height: 1.2;
   }
 
-  .cart-drawer .ant-drawer-body {
+  .cart-drawer .shop-drawer__body {
     display: flex;
     flex-direction: column;
     min-height: 0;
@@ -988,7 +988,7 @@
     box-sizing: border-box;
   }
 
-  .cart-drawer .ant-drawer-body,
+  .cart-drawer .shop-drawer__body,
   .cart-drawer__content,
   .cart-drawer__list,
   .cart-drawer__item,
@@ -1156,11 +1156,11 @@
 }
 
 @media (max-width: 360px) {
-  .cart-drawer .ant-drawer-header {
+  .cart-drawer .shop-drawer__header {
     padding: 9px 10px;
   }
 
-  .cart-drawer .ant-drawer-body {
+  .cart-drawer .shop-drawer__body {
     padding: 8px !important;
   }
 
@@ -1224,28 +1224,28 @@
 
 /* F2756: empty cart drawer trust labels and overlay stay clear on compact phones. */
 @media (max-width: 520px) {
-  .cart-drawer__root.ant-drawer {
+  .cart-drawer__root.shop-drawer {
     z-index: 9500 !important;
   }
 
-  .cart-drawer__root .ant-drawer-mask {
+  .cart-drawer__root .shop-drawer__mask {
     z-index: 9500 !important;
     background: rgba(15, 30, 22, 0.62) !important;
   }
 
-  .cart-drawer__root .ant-drawer-content-wrapper {
+  .cart-drawer__root .shop-drawer__panel {
     z-index: 9501 !important;
   }
 
-  body.shop-mobile-app .cart-drawer__root.ant-drawer {
+  body.shop-mobile-app .cart-drawer__root.shop-drawer {
     z-index: 9900 !important;
   }
 
-  body.shop-mobile-app .cart-drawer__root .ant-drawer-mask {
+  body.shop-mobile-app .cart-drawer__root .shop-drawer__mask {
     z-index: 9900 !important;
   }
 
-  body.shop-mobile-app .cart-drawer__root .ant-drawer-content-wrapper {
+  body.shop-mobile-app .cart-drawer__root .shop-drawer__panel {
     z-index: 9901 !important;
   }
 }
@@ -1327,35 +1327,35 @@
     box-sizing: border-box;
   }
 
-  .cart-drawer .ant-drawer-content-wrapper {
+  .cart-drawer.shop-drawer__panel {
     width: 100% !important;
     max-width: 100%;
   }
 
-  .cart-drawer .ant-drawer-content {
+  .cart-drawer.shop-drawer__panel {
     overflow: hidden;
   }
 
-  .cart-drawer .ant-drawer-header,
-  .cart-drawer .ant-drawer-body {
+  .cart-drawer .shop-drawer__header,
+  .cart-drawer .shop-drawer__body {
     min-width: 0;
   }
 
-  .cart-drawer .ant-drawer-title {
+  .cart-drawer .shop-drawer__title {
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
-  .cart-drawer .ant-drawer-extra {
+  .cart-drawer .shop-drawer__extra {
     max-width: 42vw;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
-  .cart-drawer .ant-drawer-body {
+  .cart-drawer .shop-drawer__body {
     display: flex;
     min-height: 0;
     flex-direction: column;
@@ -1477,7 +1477,7 @@
     padding-right: 6px;
   }
 
-  .cart-drawer .ant-drawer-extra {
+  .cart-drawer .shop-drawer__extra {
     max-width: 38vw;
   }
 }
@@ -1489,7 +1489,7 @@
 .cart-drawer__itemQuantity,
 .cart-drawer__lineTotal,
 .cart-drawer__subtotal,
-.cart-drawer .ant-drawer-extra {
+.cart-drawer .shop-drawer__extra {
   min-width: 0;
   overflow-wrap: normal !important;
   word-break: normal !important;
@@ -1500,7 +1500,7 @@
 .cart-drawer__itemQuantity,
 .cart-drawer__lineTotal,
 .cart-drawer__subtotal strong,
-.cart-drawer .ant-drawer-extra .commerce-money {
+.cart-drawer .shop-drawer__extra .commerce-money {
   display: inline-flex;
   align-items: baseline;
   gap: 4px;
@@ -1573,7 +1573,7 @@
 .cart-drawer__itemQuantity,
 .cart-drawer__lineTotal,
 .cart-drawer__subtotal strong,
-.cart-drawer .ant-drawer-extra .commerce-money {
+.cart-drawer .shop-drawer__extra .commerce-money {
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -1589,7 +1589,7 @@
   .cart-drawer__itemQuantity,
   .cart-drawer__lineTotal,
   .cart-drawer__subtotal strong,
-  .cart-drawer .ant-drawer-extra .commerce-money
+  .cart-drawer .shop-drawer__extra .commerce-money
 ) {
   min-width: 0;
   overflow-wrap: normal !important;
@@ -1606,7 +1606,7 @@
 
 /* Mobile cart drawer conversion polish */
 @media (max-width: 520px) {
-  .cart-drawer .ant-drawer-header {
+  .cart-drawer .shop-drawer__header {
     position: sticky;
     top: 0;
     z-index: 5;
@@ -1684,7 +1684,7 @@
   .cart-drawer__itemQuantity,
   .cart-drawer__lineTotal,
   .cart-drawer__subtotal strong,
-  .cart-drawer .ant-drawer-extra .commerce-money {
+  .cart-drawer .shop-drawer__extra .commerce-money {
     flex: 0 0 auto;
     width: auto;
     min-width: 0;
@@ -1715,11 +1715,11 @@
 }
 
 /* Stable drawer layout: one scrolling content rail, one fixed checkout footer. */
-.cart-drawer .ant-drawer-content {
+.cart-drawer.shop-drawer__panel {
   overflow: hidden;
 }
 
-.cart-drawer .ant-drawer-body {
+.cart-drawer .shop-drawer__body {
   height: 100%;
   overflow: hidden;
   gap: 0;
@@ -1791,11 +1791,11 @@
 }
 
 @media (max-width: 520px) {
-  .cart-drawer .ant-drawer-content {
+  .cart-drawer.shop-drawer__panel {
     border-radius: 0;
   }
 
-  .cart-drawer .ant-drawer-body {
+  .cart-drawer .shop-drawer__body {
     padding: 10px 10px 0 !important;
   }
 
@@ -1992,7 +1992,7 @@
 .cart-drawer__itemQuantity,
 .cart-drawer__lineTotal,
 .cart-drawer__subtotal .ant-typography:last-child,
-.cart-drawer .ant-drawer-extra,
+.cart-drawer .shop-drawer__extra,
 .cart-drawer__heroStat span {
   overflow-wrap: normal;
   word-break: normal;
@@ -2001,7 +2001,7 @@
 
 .cart-drawer__lineTotal,
 .cart-drawer__subtotal .ant-typography:last-child,
-.cart-drawer .ant-drawer-extra,
+.cart-drawer .shop-drawer__extra,
 .cart-drawer__heroStat span {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2085,7 +2085,7 @@
   .cart-drawer__lineTotal,
   .cart-drawer__subtotal .ant-typography:last-child,
   .cart-drawer__heroStat span,
-  .cart-drawer .ant-drawer-extra
+  .cart-drawer .shop-drawer__extra
 ) {
   overflow-wrap: normal !important;
   word-break: normal !important;
@@ -2248,7 +2248,7 @@
 
 /* Final App cart drawer touch-target guard. */
 @media (max-width: 520px) {
-  .cart-drawer .ant-drawer-close,
+  .cart-drawer .shop-drawer__close,
   .cart-drawer__nextAction .ant-btn,
   .cart-drawer__unavailable .ant-btn,
   .cart-drawer__boostPanel > summary,
@@ -2263,7 +2263,7 @@
     min-height: 44px;
   }
 
-  .cart-drawer .ant-drawer-close {
+  .cart-drawer .shop-drawer__close {
     min-width: 44px;
   }
 
@@ -2309,13 +2309,13 @@
 }
 
 /* APP drawer footer closure: reserve space for checkout controls without covering cart rows. */
-.cart-drawer .ant-drawer-content {
+.cart-drawer.shop-drawer__panel {
   display: flex;
   flex-direction: column;
   max-height: 100dvh;
 }
 
-.cart-drawer .ant-drawer-body {
+.cart-drawer .shop-drawer__body {
   flex: 1 1 auto;
   height: auto;
   min-height: 0;
@@ -2467,4 +2467,148 @@
     font-size: 12px !important;
     line-height: 1.2 !important;
   }
+}
+
+
+/* Native densification (no ant List/Empty/Space/Typography runtime) */
+.cart-drawer__text--strong {
+  font-weight: 700;
+  color: rgba(0, 0, 0, 0.88);
+}
+
+.cart-drawer__text--secondary {
+  color: rgba(0, 0, 0, 0.45);
+}
+
+.cart-drawer__listWrap {
+  position: relative;
+  min-height: 80px;
+}
+
+.cart-drawer__listWrap--loading {
+  pointer-events: none;
+}
+
+.cart-drawer__spinnerOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.cart-drawer__spinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid rgba(18, 71, 52, 0.18);
+  border-top-color: #124734;
+  border-radius: 50%;
+  animation: cart-drawer-spin 0.8s linear infinite;
+}
+
+@keyframes cart-drawer-spin {
+  to { transform: rotate(360deg); }
+}
+
+.cart-drawer__itemList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0;
+}
+
+.cart-drawer__item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.cart-drawer__itemMeta {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-width: 0;
+  flex: 1;
+}
+
+.cart-drawer__itemBody {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.cart-drawer__itemDetails {
+  display: grid;
+  gap: 4px;
+}
+
+.cart-drawer__itemActions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.cart-drawer__emptyPanel {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  text-align: center;
+  padding: 16px 8px;
+}
+
+.cart-drawer__emptyActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.cart-drawer__emptyActions .ant-btn {
+  min-height: 44px;
+}
+
+.cart-drawer__expressCompact {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+  width: 100%;
+}
+
+.cart-drawer__expressCompact .ant-btn {
+  flex: 1 1 auto;
+  min-height: 44px;
+}
+
+.cart-drawer__footerStack {
+  display: grid;
+  gap: 10px;
+  width: 100%;
+}
+
+
+/* Gate100: native cart drawer shell (ShopDrawer densify) */
+.cart-drawer__root.shop-drawer {
+  z-index: 1100;
+}
+
+.cart-drawer.shop-drawer__panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100% !important;
+  max-width: 100%;
+}
+
+.cart-drawer .shop-drawer__body {
+  padding: 16px;
 }

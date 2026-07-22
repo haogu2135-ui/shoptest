@@ -13,7 +13,9 @@ describe('Notifications mobile bottom-nav clearance contract', () => {
     expect(source).toContain('className="notifications-page__actionSignals"');
     expect(source).toContain("t('pages.notifications.actionReviewUnread')");
     expect(source.indexOf('className="notifications-page__actionPlan"')).toBeGreaterThan(-1);
-    expect(source.indexOf('<List')).toBeGreaterThan(source.indexOf('className="notifications-page__actionPlan"'));
+    expect(source.indexOf('notifications-page__itemList')).toBeGreaterThan(source.indexOf('className="notifications-page__actionPlan"'));
+    expect(source).not.toMatch(/import \{[^}]*\bList\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<List\b/);
   });
 
   it('guards notification fetches against stale responses and unmount updates', () => {
@@ -43,7 +45,8 @@ describe('Notifications mobile bottom-nav clearance contract', () => {
     expect(fetchSource).toContain('setHasMoreNotifications(nextNotifications.length === NOTIFICATION_PAGE_SIZE);');
     expect(source).toContain('const [notificationPage, setNotificationPage] = useState(1);');
     expect(source).toContain('const [hasMoreNotifications, setHasMoreNotifications] = useState(false);');
-    expect(source).toContain('footer={hasMoreNotifications ? (');
+    expect(source).toContain('{hasMoreNotifications ? (');
+    expect(source).toContain('notifications-page__loadMore');
     expect(source).toContain('onClick={() => fetchNotifications(notificationPage + 1, true)}');
     expect(source).toContain("t('pages.notifications.loadMore')");
     expect(source).not.toContain('notificationApi.getNotifications(1, 100)');
@@ -65,10 +68,10 @@ describe('Notifications mobile bottom-nav clearance contract', () => {
 
     expect(f2719Start).toBeGreaterThan(css.indexOf('2026-06-07 mobile notification action closure'));
     expect(f2719Css).toContain('@media (max-width: 640px)');
-    expect(f2719Css).toMatch(/\.notifications-page\s*\{[^}]*padding-bottom:\s*calc\(var\(--shop-mobile-bottom-nav-height,\s*76px\)\s*\+\s*96px\s*\+\s*env\(safe-area-inset-bottom,\s*0px\)\)\s*!important;[^}]*scroll-padding-bottom:\s*calc\(var\(--shop-mobile-bottom-nav-height,\s*76px\)\s*\+\s*112px\s*\+\s*env\(safe-area-inset-bottom,\s*0px\)\)\s*!important;/);
-    expect(f2719Css).toMatch(/\.notifications-page__actionPlan\s*\{[^}]*gap:\s*8px\s*!important;[^}]*margin-bottom:\s*calc\(var\(--shop-mobile-bottom-nav-height,\s*76px\)\s*\+\s*16px\s*\+\s*env\(safe-area-inset-bottom,\s*0px\)\)\s*!important;[^}]*scroll-margin-bottom:/);
+    expect(f2719Css).toMatch(/\.notifications-page\s*\{[^}]*padding-bottom:\s*calc\(var\(--shop-mobile-bottom-nav-height,\s*72px\)\s*\+\s*96px\s*\+\s*env\(safe-area-inset-bottom,\s*0px\)\)\s*!important;[^}]*scroll-padding-bottom:\s*calc\(var\(--shop-mobile-bottom-nav-height,\s*72px\)\s*\+\s*112px\s*\+\s*env\(safe-area-inset-bottom,\s*0px\)\)\s*!important;/);
+    expect(f2719Css).toMatch(/\.notifications-page__actionPlan\s*\{[^}]*gap:\s*8px\s*!important;[^}]*margin-bottom:\s*calc\(var\(--shop-mobile-bottom-nav-height,\s*72px\)\s*\+\s*16px\s*\+\s*env\(safe-area-inset-bottom,\s*0px\)\)\s*!important;[^}]*scroll-margin-bottom:/);
     expect(f2719Css).toMatch(/\.notifications-page__actionPlan > \.ant-btn\s*\{[^}]*min-height:\s*44px\s*!important;[^}]*scroll-margin-bottom:/);
-    expect(f2719Css).toMatch(/\.notifications-page__item:first-child,[\s\S]*?\.notifications-page \.ant-list > \.ant-spin-nested-loading:first-child\s*\{[^}]*scroll-margin-bottom:/);
+    expect(f2719Css).toMatch(/\.notifications-page__item:first-child,[\s\S]*?\.ant-spin-nested-loading:first-child\s*\{[^}]*scroll-margin-bottom:/);
   });
 
   it('deep-links order and delivery notifications to the right commercial destinations', () => {

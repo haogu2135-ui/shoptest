@@ -1,0 +1,75 @@
+.shop-rate {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: #f5a623;
+  line-height: 1;
+  vertical-align: middle;
+}
+
+.shop-rate__star {
+  position: relative;
+  display: inline-flex;
+  width: 1em;
+  height: 1em;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.shop-rate__star--button {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+}
+
+.shop-rate__star--button:focus-visible {
+  outline: 3px solid rgba(18, 71, 52, 0.28);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+.shop-rate__base,
+.shop-rate__fill {
+  display: block;
+  width: 1em;
+  height: 1em;
+}
+
+.shop-rate__base {
+  color: rgba(63, 81, 71, 0.22);
+}
+
+.shop-rate__fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  overflow: hidden;
+  color: #f5a623;
+  white-space: nowrap;
+}
+
+.shop-rate__fill .shop-icon,
+.shop-rate__base .shop-icon {
+  display: block;
+  width: 1em;
+  height: 1em;
+}
+
+.shop-rate--interactive .shop-rate__star {
+  font-size: 22px;
+  min-width: 28px;
+  min-height: 28px;
+  align-items: center;
+  justify-content: center;
+}
+
+@media (max-width: 640px) {
+  .shop-rate--interactive .shop-rate__star {
+    min-width: 44px;
+    min-height: 44px;
+    font-size: 24px;
+  }
+}

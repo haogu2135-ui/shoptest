@@ -253,3 +253,25 @@
     margin-inline: 0;
   }
 }
+
+
+.product-rich-detail__empty {
+  color: rgba(16, 47, 34, 0.68);
+  font-size: 14px;
+  line-height: 1.5;
+  text-align: center;
+  padding: 12px 0;
+}
+
+.product-rich-detail__text {
+  margin: 0 0 12px;
+  color: #173f2b;
+  font-size: 14px;
+  line-height: 1.65;
+  white-space: pre-wrap;
+}
+
+.product-rich-detail__unsupported {
+  color: rgba(16, 47, 34, 0.62);
+  font-size: 13px;
+}

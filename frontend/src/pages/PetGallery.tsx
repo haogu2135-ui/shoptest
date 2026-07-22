@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { ShopIcon, SI } from '../components/ShopIcon';
-import { Alert, Button, Modal, Popconfirm, Skeleton, Statistic } from 'antd';
+import { Alert, Button, Modal, Popconfirm } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { petGalleryApi } from '../api';
 import { useLanguage } from '../i18n';
@@ -385,9 +385,18 @@ const PetGallery: React.FC = () => {
           />
         </div>
         <div className="pet-gallery-hero__stats" aria-label={t('pages.petGallery.stats')}>
-          <Statistic title={t('pages.petGallery.totalPhotos')} value={items.length} />
-          <Statistic title={t('pages.petGallery.communityUploads')} value={galleryInsights.activeMembers} />
-          <Statistic title={t('pages.petGallery.remainingUploads')} value={displayedRemainingUploads} />
+          <div className="pet-gallery-hero__stat">
+            <span className="pet-gallery-hero__statTitle">{t('pages.petGallery.totalPhotos')}</span>
+            <strong className="pet-gallery-hero__statValue">{items.length}</strong>
+          </div>
+          <div className="pet-gallery-hero__stat">
+            <span className="pet-gallery-hero__statTitle">{t('pages.petGallery.communityUploads')}</span>
+            <strong className="pet-gallery-hero__statValue">{galleryInsights.activeMembers}</strong>
+          </div>
+          <div className="pet-gallery-hero__stat">
+            <span className="pet-gallery-hero__statTitle">{t('pages.petGallery.remainingUploads')}</span>
+            <strong className="pet-gallery-hero__statValue">{displayedRemainingUploads}</strong>
+          </div>
         </div>
       </section>
 
@@ -565,7 +574,7 @@ const PetGallery: React.FC = () => {
       {loading ? (
         <div className="pet-gallery-grid">
           {Array.from({ length: 12 }).map((_, index) => (
-            <Skeleton.Image key={index} active className="pet-gallery-skeleton" />
+            <span key={index} className="pet-gallery-skeleton" aria-hidden="true" />
           ))}
         </div>
       ) : items.length === 0 ? (

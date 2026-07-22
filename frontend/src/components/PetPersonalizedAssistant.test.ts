@@ -23,6 +23,7 @@ describe('PetPersonalizedAssistant type-safety guards', () => {
     expect(loadingSource).toContain('aria-live="polite"');
     expect(loadingSource).toContain('aria-busy="true"');
     expect(loadingSource).toContain("aria-label={`${t('home.petRecommendations')}: ${t('common.loading')}`}");
-    expect(loadingSource).toContain("<Skeleton active paragraph={{ rows: variant === 'compact' ? 3 : 4 }} />");
+    expect(loadingSource).toContain('pet-personalized-assistant__skeleton');
+    expect(loadingSource).not.toMatch(/\bSkeleton\b/);
   });
 });

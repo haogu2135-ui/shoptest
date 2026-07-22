@@ -502,7 +502,7 @@
   margin-top: 8px;
 }
 
-.checkout-page__itemsCard .ant-list-item-meta-title {
+.checkout-page__itemsCard .checkout-page__itemLink {
   margin-bottom: 4px;
   line-height: 20px;
 }
@@ -734,11 +734,11 @@
   text-align: right;
 }
 
-.checkout-page__itemsCard .ant-list-item {
+.checkout-page__itemsCard .checkout-page__item {
   border-bottom-color: #edf1ec;
 }
 
-.checkout-page__itemsCard .ant-list-item:last-child {
+.checkout-page__itemsCard .checkout-page__item:last-child {
   border-bottom: 0;
 }
 
@@ -1391,7 +1391,7 @@
     align-items: flex-start;
   }
 
-  .checkout-page__item .ant-list-item-meta {
+  .checkout-page__item .checkout-page__itemMeta {
     min-width: 0;
   }
 
@@ -1970,7 +1970,7 @@
     min-width: 0;
   }
 
-  .checkout-page__itemsCard .ant-list-item {
+  .checkout-page__itemsCard .checkout-page__item {
     padding-block: 10px;
   }
 
@@ -1981,12 +1981,12 @@
     width: 100%;
   }
 
-  .checkout-page__item .ant-list-item-meta {
+  .checkout-page__item .checkout-page__itemMeta {
     grid-column: 1 / -1;
     margin-bottom: 0;
   }
 
-  .checkout-page__item .ant-list-item-meta-avatar {
+  .checkout-page__item .checkout-page__itemMeta-avatar {
     margin-inline-end: 10px;
   }
 
@@ -2321,8 +2321,8 @@
     min-width: 0;
   }
 
-  .checkout-page__item .ant-list-item-meta-title,
-  .checkout-page__item .ant-list-item-meta-description {
+  .checkout-page__item .checkout-page__itemMeta-title,
+  .checkout-page__item .checkout-page__itemMeta-description {
     min-width: 0;
     overflow-wrap: anywhere;
   }
@@ -2534,7 +2534,7 @@
     -webkit-line-clamp: 2;
   }
 
-  .checkout-page__itemsCard .ant-list {
+  .checkout-page__itemsCard .checkout-page__itemList {
     margin-inline: -2px;
   }
 
@@ -2544,7 +2544,7 @@
     padding: 10px 0 !important;
   }
 
-  .checkout-page__item .ant-list-item-meta {
+  .checkout-page__item .checkout-page__itemMeta {
     min-width: 0;
     align-items: center;
   }
@@ -2813,7 +2813,7 @@
     gap: 8px;
   }
 
-  .checkout-page__item .ant-list-item-meta-avatar {
+  .checkout-page__item .checkout-page__itemMeta-avatar {
     margin-inline-end: 8px;
   }
 
@@ -4215,4 +4215,112 @@ body.checkout-page-active:not(.checkout-region-cascader-open) .ant-cascader-drop
   text-overflow: ellipsis;
   white-space: nowrap;
   vertical-align: bottom;
+}
+
+
+/* Native Checkout result / item list densification (no ant Result/List/Divider runtime) */
+.checkout-page__result {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  text-align: center;
+  padding: 12px 8px 4px;
+}
+
+.checkout-page__resultIcon {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: rgba(22, 119, 255, 0.12);
+  border: 3px solid rgba(22, 119, 255, 0.35);
+  position: relative;
+}
+
+.checkout-page__result--success .checkout-page__resultIcon {
+  background: rgba(82, 196, 26, 0.14);
+  border-color: rgba(82, 196, 26, 0.45);
+}
+
+.checkout-page__result--warning .checkout-page__resultIcon {
+  background: rgba(250, 173, 20, 0.16);
+  border-color: rgba(250, 173, 20, 0.5);
+}
+
+.checkout-page__result--info .checkout-page__resultIcon {
+  background: rgba(22, 119, 255, 0.12);
+  border-color: rgba(22, 119, 255, 0.35);
+}
+
+.checkout-page__result--error .checkout-page__resultIcon {
+  background: rgba(255, 77, 79, 0.12);
+  border-color: rgba(255, 77, 79, 0.45);
+}
+
+.checkout-page__resultTitle {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 700;
+  line-height: 1.25;
+  color: inherit;
+}
+
+.checkout-page__resultSubtitle {
+  margin: 0;
+  max-width: 42rem;
+  color: rgba(0, 0, 0, 0.55);
+  line-height: 1.5;
+}
+
+.checkout-page__resultExtra {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.checkout-page__resultExtra .ant-btn {
+  min-height: 44px;
+}
+
+.checkout-page__itemList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0;
+}
+
+.checkout-page__itemMeta {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-width: 0;
+}
+
+.checkout-page__itemBody {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.checkout-page__divider {
+  border: 0;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  margin: 12px 0;
+}
+
+@media (max-width: 640px) {
+  .checkout-page__resultTitle {
+    font-size: 1.2rem;
+  }
+
+  .checkout-page__resultExtra {
+    width: 100%;
+  }
+
+  .checkout-page__resultExtra .ant-btn {
+    flex: 1 1 calc(50% - 8px);
+  }
 }

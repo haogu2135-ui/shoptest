@@ -12,11 +12,12 @@ describe('CartDrawer mobile overlay and trust-row contracts', () => {
 
     expect(source).toMatch(/rootClassName=\{`cart-drawer__root\$\{open \? ' cart-drawer__root--open' : ''\}`\}|rootClassName="cart-drawer__root"/);
     expect(source).toContain('width="min(420px, 100%)"');
+    expect(source).toContain('ShopDrawer');
     expect(source).not.toContain('width="min(420px, 100vw)"');
-    expect(f2756Css).toMatch(/\.cart-drawer__root\.ant-drawer\s*\{[^}]*z-index:\s*9500\s*!important;/);
-    expect(f2756Css).toMatch(/\.cart-drawer__root \.ant-drawer-mask\s*\{[^}]*z-index:\s*9500\s*!important;[^}]*background:/);
-    expect(f2756Css).toMatch(/\.cart-drawer__root \.ant-drawer-content-wrapper\s*\{[^}]*z-index:\s*9501\s*!important;/);
-    expect(f2756Css).toMatch(/body\.shop-mobile-app \.cart-drawer__root\.ant-drawer\s*\{[^}]*z-index:\s*9900\s*!important;/);
+    expect(f2756Css).toMatch(/\.cart-drawer__root\.shop-drawer\s*\{[^}]*z-index:\s*9500\s*!important;/);
+    expect(f2756Css).toMatch(/\.cart-drawer__root \.shop-drawer__mask\s*\{[^}]*z-index:\s*9500\s*!important;[^}]*background:/);
+    expect(f2756Css).toMatch(/\.cart-drawer__root \.shop-drawer__panel\s*\{[^}]*z-index:\s*9501\s*!important;/);
+    expect(f2756Css).toMatch(/body\.shop-mobile-app \.cart-drawer__root\.shop-drawer\s*\{[^}]*z-index:\s*9900\s*!important;/);
   });
 
   it('keeps compact trust labels as readable full-width rows', () => {
@@ -31,9 +32,9 @@ describe('CartDrawer mobile overlay and trust-row contracts', () => {
   it('keeps the mobile drawer wrapper from using scrollbar-inclusive viewport width', () => {
     const css = readCartDrawerCss();
     const drawerWrapperRules = Array.from(
-      css.matchAll(/\.cart-drawer \.ant-drawer-content-wrapper\s*\{(?<rules>[^}]*)\}/g),
+      css.matchAll(/\.cart-drawer\.shop-drawer__panel\s*\{(?<rules>[^}]*)\}/g),
       (match) => match.groups?.rules ?? '',
-    );
+    ).filter((rules) => /width\s*:/.test(rules));
 
     expect(drawerWrapperRules.length).toBeGreaterThan(0);
     drawerWrapperRules.forEach((rules) => {
@@ -47,7 +48,7 @@ describe('CartDrawer mobile overlay and trust-row contracts', () => {
     const source = readCartDrawerSource();
 
     expect(source).toContain('const hasStaleCartData = Boolean(loadError && items.length > 0);');
-    expect(source).toContain("message.warning(t('pages.cart.staleDataWarning'))");
+    expect(source).toContain("announceAccessibleMessage(t('pages.cart.staleDataWarning'), 'warning')");
     expect(source).toContain("title: t('pages.cart.nextActionRefreshTitle')");
     expect(source).toContain("label: t('common.retry')");
     expect(source).toContain('!hasStaleCartData ? (');

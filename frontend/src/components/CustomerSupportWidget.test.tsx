@@ -20,10 +20,11 @@ describe('CustomerSupportWidget reconnect cleanup source contracts', () => {
     expect(loadingTag).toContain('aria-live="polite"');
     expect(loadingTag).toContain('aria-busy="true"');
     expect(loadingTag).toContain("aria-label={t('common.loading')}");
-    expect(source).toContain('<Spin size="small" />');
-    expect(source).toContain("<Text>{t('common.loading')}</Text>");
+    expect(source).toContain('customer-support-widget__spinner');
+    expect(source).toContain("{t('common.loading')}");
+    expect(source).toContain('customer-support-widget__text');
     expect(source).toContain('className="customer-support-widget__emptyState"');
-    expect(source).toContain('<Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t(\'pages.support.welcome\')} />');
+    expect(source).toContain('customer-support-widget__emptyDescription');
     expect(source).toContain('className="customer-support-widget__welcomeQuickReplies"');
 
     expect(loadingCss).toMatch(/\.customer-support-widget__loading\s*\{[\s\S]*?display:\s*inline-flex;[\s\S]*?align-items:\s*center;[\s\S]*?gap:\s*8px;[\s\S]*?font-size:\s*12px;/);
@@ -123,7 +124,7 @@ describe('CustomerSupportWidget reconnect cleanup source contracts', () => {
     expect(source).toContain('const ticketResponse = await supportApi.createWebSocketTicket();');
     expect(source).toContain('new WebSocket(supportWebSocketUrl(), supportWebSocketProtocols(ticketResponse.data.ticket))');
     expect(source).toContain('onReconnectExhausted: (attempts) => {');
-    expect(source).toContain("message.warning(t('pages.support.connectFailed'));");
+    expect(source).toContain("announceAccessibleMessage(t('pages.support.connectFailed'), 'warning')");
     expect(source).toContain("reportNonBlockingError('CustomerSupportWidget.websocketReconnectExhausted', { attempts });");
     expect(source).not.toContain('supportWebSocketProtocols(token');
     expect(source).not.toContain('reconnectTimerRef');
@@ -158,7 +159,7 @@ describe('CustomerSupportWidget reconnect cleanup source contracts', () => {
     expect(messageHandlerStart).toBeGreaterThan(socketStart);
     expect(messageHandler).toContain('const payload = parseSupportSocketPayload(event.data);');
     expect(messageHandler).toContain("if (payload.type === 'ERROR') {");
-    expect(messageHandler).toContain("message.warning(payload.message || t('pages.support.messageRejected'));");
+    expect(messageHandler).toContain("announceAccessibleMessage(payload.message || t('pages.support.messageRejected'), 'warning')");
     expect(messageHandler).toContain("if (payload.type === 'MESSAGE') {");
     expect(source).not.toContain('JSON.parse(event.data)');
     expect(source).not.toContain('ws.onmessage');

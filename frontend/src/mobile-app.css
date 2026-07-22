@@ -684,12 +684,12 @@ body.shop-mobile-app .shopee-login-tabs {
   box-shadow: 0 12px 28px rgba(18, 71, 52, 0.08);
 }
 
-body.shop-mobile-app .shopee-login-tabs .ant-tabs-nav {
+body.shop-mobile-app .shopee-login-tabs .shopee-login-tabs__nav {
   margin-bottom: 14px;
   border-radius: 8px;
 }
 
-body.shop-mobile-app .shopee-login-tabs .ant-tabs-tab {
+body.shop-mobile-app .shopee-login-tabs .shopee-login-tabs__tab {
   min-height: 44px;
 }
 
@@ -2748,8 +2748,8 @@ body.shop-mobile-app :where(
   .product-list__mobileDiscovery,
   .product-list__refinementChips,
   .product-list__recentSearches,
-  .product-detail-tabs .ant-tabs-nav,
-  .product-detail-tabs .ant-tabs-nav-wrap,
+  .product-detail-tabs .product-detail-tabs__nav,
+  .product-detail-tabs .product-detail-tabs__nav-wrap,
   .coupon-center-page__quickNav,
   .wishlist-page__insightStats,
   .order-tracking-page__steps,
@@ -8090,7 +8090,7 @@ body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .product-de
     white-space: nowrap !important;
   }
 
-  body.shop-mobile-app .shop-app-shell--product-detail .product-detail-tabs .ant-tabs-nav-list {
+  body.shop-mobile-app .shop-app-shell--product-detail .product-detail-tabs .product-detail-tabs__nav {
     width: 100% !important;
     max-width: 100% !important;
     display: grid !important;
@@ -8098,14 +8098,14 @@ body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .product-de
     transform: none !important;
   }
 
-  body.shop-mobile-app .shop-app-shell--product-detail .product-detail-tabs .ant-tabs-tab {
+  body.shop-mobile-app .shop-app-shell--product-detail .product-detail-tabs .product-detail-tabs__tab {
     min-width: 0 !important;
     width: 100% !important;
     margin: 0 !important;
     padding-inline: 2px !important;
   }
 
-  body.shop-mobile-app .shop-app-shell--product-detail .product-detail-tabs .ant-tabs-tab-btn {
+  body.shop-mobile-app .shop-app-shell--product-detail .product-detail-tabs .product-detail-tabs__tabLabel {
     width: 100% !important;
     max-width: 100% !important;
     min-height: 44px !important;
@@ -11349,12 +11349,12 @@ body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-nav .shop-nav__brandC
     overflow: visible !important;
   }
 
-  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--auth-flow .shopee-login-tabs .ant-tabs-nav {
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--auth-flow .shopee-login-tabs .shopee-login-tabs__nav {
     width: 100% !important;
     overflow: visible !important;
   }
 
-  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--auth-flow .shopee-login-tabs .ant-tabs-nav-list {
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--auth-flow .shopee-login-tabs .shopee-login-tabs__nav {
     width: 100% !important;
     min-width: 0 !important;
     display: grid !important;
@@ -11362,7 +11362,7 @@ body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-nav .shop-nav__brandC
     align-items: stretch !important;
   }
 
-  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--auth-flow .shopee-login-tabs .ant-tabs-tab {
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--auth-flow .shopee-login-tabs .shopee-login-tabs__tab {
     min-width: 0 !important;
     min-height: 44px !important;
     height: auto !important;
@@ -11370,7 +11370,7 @@ body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-nav .shop-nav__brandC
     padding: 8px !important;
   }
 
-  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--auth-flow .shopee-login-tabs .ant-tabs-tab-btn {
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--auth-flow .shopee-login-tabs .shopee-login-tabs__tabLabel {
     min-width: 0 !important;
     max-width: 100% !important;
     min-height: 0 !important;

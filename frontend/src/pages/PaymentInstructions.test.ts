@@ -31,9 +31,10 @@ describe('PaymentInstructions step readability guards', () => {
     expect(pageSource).toContain('aria-live="polite"');
     expect(pageSource).toContain('aria-busy={verifying}');
     expect(pageSource).toContain("aria-label={verifying ? t('common.loading') : undefined}");
-    expect(pageSource).toContain('<Spin spinning={verifying}>');
+    expect(pageSource).toContain('payment-instructions-page__spinnerOverlay');
+    expect(pageSource).toContain('payment-instructions-page__spinner');
     const statusRegionStart = pageSource.indexOf('role="status"');
-    const spinStart = pageSource.indexOf('<Spin spinning={verifying}>');
+    const spinStart = pageSource.indexOf('payment-instructions-page__spinnerOverlay');
     expect(statusRegionStart).toBeGreaterThan(-1);
     expect(spinStart).toBeGreaterThan(statusRegionStart);
   });
@@ -43,11 +44,11 @@ describe('PaymentInstructions step readability guards', () => {
   it('treats RECONCILE_REQUIRED as review-only and hides open-payment actions', () => {
     expect(pageSource).toContain("const isReconcileRequired = paymentStatus === 'RECONCILE_REQUIRED'");
     expect(pageSource).toContain('!isRefunded && !isRefunding && !isReconcileRequired');
-    expect(pageSource).toContain('isRefunded || isRefunding || isReconcileRequired || recovery.isExpired');
+    expect(pageSource).toContain('isRefunded || isRefunding || isReconcileRequired || isFailed || recovery.isExpired');
     expect(pageSource).toContain("t('pages.checkout.paymentRecoveryReconcileRequired')");
     expect(pageSource).toContain("t('pages.checkout.paymentRecoveryNextReconcileRequired')");
-    expect(pageSource).toContain("message.warning(t('pages.profile.paymentReturnReconcileRequired'))");
-    expect(pageSource).toContain('!isPaid && !isRefunded && !isRefunding && !isReconcileRequired && payment?.paymentUrl');
+    expect(pageSource).toContain("announceAccessibleMessage(t('pages.profile.paymentReturnReconcileRequired'), 'warning')");
+    expect(pageSource).toContain('!isPaid && !isRefunded && !isRefunding && !isReconcileRequired && !isFailed && payment?.paymentUrl && !recovery.isExpired');
     expect(pageSource).toContain('payment?.paymentUrl && !isReconcileRequired');
     expect(pageSource).toContain('role="alert"');
     expect(pageSource).toContain('aria-live="assertive"');
@@ -83,7 +84,7 @@ describe('PaymentInstructions step readability guards', () => {
   });
 
   it('keeps step instruction text in the text column instead of the badge', () => {
-    const textRuleMatch = cssSource.match(/\.payment-instructions-page__step \.ant-typography\s*\{([\s\S]*?)\}/);
+    const textRuleMatch = cssSource.match(/\.payment-instructions-page__step \.payment-instructions-page__text\s*\{([\s\S]*?)\}/);
 
     expect(textRuleMatch).not.toBeNull();
     expect(textRuleMatch?.[1]).toMatch(/display:\s*block;/);

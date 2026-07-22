@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { ShopIcon, SI } from '../components/ShopIcon';
-import { Alert, Form, Input, Button, Card, Tag } from 'antd';
+import { Alert, Form, Input, Button, Tag } from 'antd';
 import type { InputRef } from 'antd/es/input';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { userApi } from '../api';
@@ -357,7 +357,7 @@ const Register: React.FC = () => {
           </div>
         </div>
       </section>
-      <Card className="register-page__card">
+      <section className="register-page__card">
         <div className="register-page__cardHeader">
           <div className="register-page__brand">{t('common.brand')}</div>
           <p className="register-page__cardHint">{t('pages.auth.registerPrivacyHint')}</p>
@@ -629,7 +629,7 @@ const Register: React.FC = () => {
             </div>
           </div>
         </Form>
-      </Card>
+      </section>
     </div>
   );
 };

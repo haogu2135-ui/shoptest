@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { ShopIcon, SI } from '../components/ShopIcon';
-import { Alert, Button, Card, Popconfirm, Rate, Spin, Switch, Table, Tag } from 'antd';
+import ShopRate from '../components/ShopRate';
+import { Alert, Button, Popconfirm, Switch, Tag } from 'antd';
 import { Link, useNavigate } from 'react-router-dom';
 import { cartApi, productApi } from '../api';
 import { useLanguage } from '../i18n';
@@ -381,7 +382,12 @@ const ProductCompare: React.FC = () => {
       isDifferent: ratingDifferent,
       render: (product: Product) => (
         <div className="product-compare__stackTight">
-          <Rate disabled allowHalf value={Number(product.averageRating || 0)} />
+          <ShopRate
+            disabled
+            allowHalf
+            value={Number(product.averageRating || 0)}
+            ariaLabel={`${Number(product.averageRating || 0).toFixed(1)}`}
+          />
           <span className="product-compare-page__text product-compare-page__text--secondary">{t('pages.productList.positiveRate', { rate: (product.positiveRate || 0).toFixed(1), count: product.reviewCount || 0 })}</span>
         </div>
       ),
@@ -466,40 +472,12 @@ const ProductCompare: React.FC = () => {
   const compareBrowseActionLabel = t('pages.compare.browse');
   const compareDifferenceToggleLabel = `${compareCopy.onlyDifferent}: ${differentRows.length}`;
 
-  const dataSource = visibleRows.map((row) => ({
-    key: row.key,
-    attribute: row.label,
-    isDifferent: row.isDifferent,
-    ...Object.fromEntries(products.map((product) => [`product-${product.id}`, row.render(product)])),
-  }));
-
   const compareAttributeHeader = t('pages.compare.attribute');
-
-  const columns = [
-    {
-      title: compareAttributeHeader,
-      dataIndex: 'attribute',
-      key: 'attribute',
-      fixed: 'left' as const,
-      width: 150,
-      onCell: () => ({ 'data-label': compareAttributeHeader } as React.TdHTMLAttributes<HTMLElement>),
-      render: (value: React.ReactNode) => <span className="product-compare-page__text product-compare-page__text--strong product-compare__attribute">{value}</span>,
-    },
-    ...products.map((product) => {
-      const productName = compareProductName(product);
-      return {
-        title: productName,
-        dataIndex: `product-${product.id}`,
-        key: `product-${product.id}`,
-        width: 240,
-        onCell: () => ({ 'data-label': productName } as React.TdHTMLAttributes<HTMLElement>),
-      };
-    }),
-  ];
+  const tableMinWidth = 150 + products.length * 240;
 
   return (
     <div className="product-compare-page">
-      <Card>
+      <section className="product-compare-page__shell" aria-label={t('pages.compare.title')}>
         <div className="product-compare__header">
           <div>
             <h1 className="product-compare-page__title" style={{ margin: 0 }}>{t('pages.compare.title')}</h1>
@@ -532,13 +510,14 @@ const ProductCompare: React.FC = () => {
         </div>
         {loading ? (
           <div
-            className="product-compare__loading"
+            className="product-compare__loading product-compare__spinnerWrap"
             role="status"
             aria-live="polite"
             aria-busy="true"
             aria-label={t('common.loading')}
           >
-            <Spin size="large" />
+            <span className="product-compare__spinner" aria-hidden="true" />
+            <span className="product-compare__spinnerTip">{t('common.loading')}</span>
           </div>
         ) : compareLoadError && products.length === 0 ? (
           <PageError
@@ -805,18 +784,75 @@ const ProductCompare: React.FC = () => {
                 )}
               </section>
             ) : null}
-            <Table
+            <div
               className="product-compare__table"
-              bordered
-              pagination={false}
-              columns={columns}
-              dataSource={dataSource}
-              rowClassName={(record) => record.isDifferent ? 'product-compare__row--different' : ''}
-              scroll={{ x: 150 + products.length * 240 }}
-            />
+              role="region"
+              aria-label={t('pages.compare.title')}
+            >
+              <div className="product-compare__tableContainer product-compare__tableScroll">
+                <table
+                  className="product-compare__tableMatrix"
+                  style={{ minWidth: tableMinWidth }}
+                >
+                  <thead>
+                    <tr>
+                      <th
+                        scope="col"
+                        className="product-compare__tableCell product-compare__tableSticky"
+                        data-label={compareAttributeHeader}
+                      >
+                        <span className="product-compare-page__text product-compare-page__text--strong product-compare__attribute">
+                          {compareAttributeHeader}
+                        </span>
+                      </th>
+                      {products.map((product) => {
+                        const productName = compareProductName(product);
+                        return (
+                          <th
+                            key={product.id}
+                            scope="col"
+                            className="product-compare__tableCell"
+                            data-label={productName}
+                          >
+                            {productName}
+                          </th>
+                        );
+                      })}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {visibleRows.map((row) => (
+                      <tr
+                        key={row.key}
+                        className={row.isDifferent ? 'product-compare__row--different' : undefined}
+                      >
+                        <th
+                          scope="row"
+                          className="product-compare__tableCell product-compare__tableSticky"
+                          data-label={compareAttributeHeader}
+                        >
+                          <span className="product-compare-page__text product-compare-page__text--strong product-compare__attribute">
+                            {row.label}
+                          </span>
+                        </th>
+                        {products.map((product) => (
+                          <td
+                            key={product.id}
+                            className="product-compare__tableCell"
+                            data-label={compareProductName(product)}
+                          >
+                            {row.render(product)}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </>
         )}
-      </Card>
+      </section>
     </div>
   );
 };

@@ -1,6 +1,6 @@
 import React from 'react';
 import { ShopIcon, SI } from './ShopIcon';
-import { Button, Result } from 'antd';
+import { Button } from 'antd';
 import './PageFeedback.css';
 
 export type PageErrorAction = {
@@ -83,16 +83,16 @@ const PageError: React.FC<PageErrorProps> = ({
       aria-live="assertive"
       data-page-error-recovery={multipathActions ? 'true' : undefined}
     >
-      <Result
-        status="error"
-        title={title}
-        subTitle={description}
-        extra={resolvedActions && resolvedActions.length > 0 ? (
-          <div className="page-feedback__actions" data-page-error-actions="true">
+      <section className="page-feedback__result page-feedback__result--error" role="status">
+        <div className="page-feedback__resultIcon" aria-hidden="true" />
+        <h2 className="page-feedback__resultTitle">{title}</h2>
+        {description ? <div className="page-feedback__resultSubtitle">{description}</div> : null}
+        {resolvedActions && resolvedActions.length > 0 ? (
+          <div className="page-feedback__resultExtra page-feedback__actions" data-page-error-actions="true">
             {resolvedActions}
           </div>
-        ) : undefined}
-      />
+        ) : null}
+      </section>
     </div>
   );
 };

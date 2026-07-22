@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button, Card, Empty, Image, Input, Select, Space, Typography } from 'antd';
+import { Button, Image, Input, Select } from 'antd';
 import {
   ArrowDownOutlined,
   ArrowUpOutlined,
@@ -14,7 +14,6 @@ import { imageFallbacks } from '../utils/mediaAssets';
 import { canEmbedVideoUrl, isDirectVideo, isHttpMediaUrl, resolveRichMediaUrl, toEmbeddableVideoUrl } from './ProductRichDetail';
 import './ProductRichDetailEditor.css';
 
-const { Text } = Typography;
 const { TextArea } = Input;
 const richDetailTypePopupClassNames = { popup: { root: 'shop-mobile-popup-layer product-management-page__editorPopup' } };
 
@@ -105,17 +104,19 @@ const ProductRichDetailEditor: React.FC<ProductRichDetailEditorProps> = ({ value
   const addRichVideoLabel = `${t('pages.productAdmin.addRichVideo')}: ${editorLabel}`;
 
   return (
-    <Space className="product-rich-detail-editor" direction="vertical" size="middle" aria-label={editorLabel}>
-      <Space className="product-rich-detail-editor__toolbar" wrap aria-label={`${editorLabel}: ${blocks.length}`}>
+    <div className="product-rich-detail-editor" aria-label={editorLabel}>
+      <div className="product-rich-detail-editor__toolbar" aria-label={`${editorLabel}: ${blocks.length}`}>
         <Button icon={<FontSizeOutlined />} aria-label={addRichTextLabel} title={addRichTextLabel} onClick={() => addBlock('text')}>{t('pages.productAdmin.addRichText')}</Button>
         <Button icon={<FileImageOutlined />} aria-label={addRichImageLabel} title={addRichImageLabel} onClick={() => addBlock('image')}>{t('pages.productAdmin.addRichImage')}</Button>
         <Button icon={<VideoCameraOutlined />} aria-label={addRichVideoLabel} title={addRichVideoLabel} onClick={() => addBlock('video')}>{t('pages.productAdmin.addRichVideo')}</Button>
-      </Space>
+      </div>
 
       {blocks.length === 0 ? (
-        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('pages.productAdmin.richContent')} />
+        <div className="product-rich-detail-editor__emptyPanel" role="status">
+          <div className="product-rich-detail-editor__emptyDescription">{t('pages.productAdmin.richContent')}</div>
+        </div>
       ) : (
-        <Space className="product-rich-detail-editor__blocks" direction="vertical" size="middle">
+        <div className="product-rich-detail-editor__blocks">
           {blocks.map((block, index) => {
             const blockNumber = index + 1;
             const blockTypeLabel = block.type === 'image'
@@ -133,12 +134,8 @@ const ProductRichDetailEditor: React.FC<ProductRichDetailEditorProps> = ({ value
             const captionInputLabel = `${t('pages.productAdmin.richCaptionPlaceholder')}: ${blockLabel}`;
 
             return (
-              <Card
-                className="product-rich-detail-editor__block"
-                key={`${block.type}-${index}`}
-                size="small"
-                title={
-                  <Space className="product-rich-detail-editor__blockTitle" aria-label={blockLabel}>
+              <article key={`${block.type}-${index}`} className="product-rich-detail-editor__block"><div className="shop-panel__head"><div className="shop-panel__title">{
+                  <div className="product-rich-detail-editor__blockTitle" aria-label={blockLabel}>
                     <Select
                       className="product-rich-detail-editor__typeSelect"
                       value={block.type}
@@ -154,11 +151,10 @@ const ProductRichDetailEditor: React.FC<ProductRichDetailEditorProps> = ({ value
                       ]}
                       onChange={(type) => updateBlock(index, createBlock(type))}
                     />
-                    <Text type="secondary">#{blockNumber}</Text>
-                  </Space>
-                }
-                extra={
-                  <Space className="product-rich-detail-editor__blockActions" aria-label={`${blockLabel}: ${t('common.actions')}`}>
+                    <span className="product-rich-detail-editor__blockIndex">#{blockNumber}</span>
+                  </div>
+                }</div><div className="shop-panel__extra">{
+                  <div className="product-rich-detail-editor__blockActions" aria-label={`${blockLabel}: ${t('common.actions')}`}>
                     <Button
                       icon={<ArrowUpOutlined />}
                       disabled={index === 0}
@@ -180,9 +176,8 @@ const ProductRichDetailEditor: React.FC<ProductRichDetailEditorProps> = ({ value
                       title={deleteLabel}
                       onClick={() => removeBlock(index)}
                     />
-                  </Space>
-                }
-              >
+                  </div>
+                }</div></div>
                 {block.type === 'text' ? (
                   <TextArea
                     rows={5}
@@ -194,7 +189,7 @@ const ProductRichDetailEditor: React.FC<ProductRichDetailEditorProps> = ({ value
                     onBlur={normalizeBeforeBlur}
                   />
                 ) : (
-                  <Space className="product-rich-detail-editor__mediaFields" direction="vertical" size="middle" aria-label={blockLabel}>
+                  <div className="product-rich-detail-editor__mediaFields" aria-label={blockLabel}>
                     <Input
                       value={block.url}
                       placeholder={block.type === 'image' ? t('pages.productAdmin.richImagePlaceholder') : t('pages.productAdmin.richVideoPlaceholder')}
@@ -211,7 +206,7 @@ const ProductRichDetailEditor: React.FC<ProductRichDetailEditorProps> = ({ value
                       onChange={(event) => updateBlock(index, { caption: event.target.value })}
                     />
                     {block.url && !isHttpMediaUrl(block.url) ? (
-                      <Text type="danger">{t('pages.productAdmin.richInvalidUrl')}</Text>
+                      <span className="product-rich-detail-editor__invalidUrl">{t('pages.productAdmin.richInvalidUrl')}</span>
                     ) : null}
                     {block.type === 'image' && block.url && isHttpMediaUrl(block.url) ? (
                         <Image
@@ -224,14 +219,14 @@ const ProductRichDetailEditor: React.FC<ProductRichDetailEditorProps> = ({ value
                     {block.type === 'video' && block.url && isHttpMediaUrl(block.url) ? (
                       <RichVideoPreview block={block} previewTitle={`${t('pages.productAdmin.richPreview')} #${blockNumber}`} />
                     ) : null}
-                  </Space>
+                  </div>
                 )}
-              </Card>
+              </article>
             );
           })}
-        </Space>
+        </div>
       )}
-    </Space>
+    </div>
   );
 };
 

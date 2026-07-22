@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { ShopIcon, SI } from './ShopIcon';
-import { Alert, Button, Empty, Input, Space, Tag, Typography } from 'antd';
+import { Alert, Button, Input, Tag } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { logisticsApi } from '../api';
 import { useLanguage } from '../i18n';
@@ -162,7 +162,7 @@ const SeventeenTrackWidget: React.FC<SeventeenTrackWidgetProps> = ({
   };
 
   const recoveryActions = (
-    <Space wrap className="seventeen-track-widget__recoveryActions" size={[8, 8]} data-seventeen-track-recovery="true">
+    <div className="seventeen-track-widget__recoveryActions" data-seventeen-track-recovery="true">
       {activeTrackingNumber ? (
         <Button
           icon={<ShopIcon path={SI.copy} />}
@@ -207,12 +207,12 @@ const SeventeenTrackWidget: React.FC<SeventeenTrackWidgetProps> = ({
       >
         {t('pages.profile.contactSupport')}
       </Button>
-    </Space>
+    </div>
   );
 
   return (
-    <Space className="seventeen-track-widget" direction="vertical" size="middle">
-      <Space.Compact className="seventeen-track-widget__search">
+    <div className="seventeen-track-widget">
+      <div className="seventeen-track-widget__search">
         <Input
           value={value}
           onChange={(event) => setValue(event.target.value)}
@@ -232,7 +232,7 @@ const SeventeenTrackWidget: React.FC<SeventeenTrackWidgetProps> = ({
         >
           {t('pages.adminOrders.track')}
         </Button>
-      </Space.Compact>
+      </div>
 
       <div
         className="seventeen-track-widget__results"
@@ -241,7 +241,7 @@ const SeventeenTrackWidget: React.FC<SeventeenTrackWidgetProps> = ({
         aria-busy={loading}
       >
         {loading && !result && !error ? (
-          <Typography.Text type="secondary">{t('common.loading')}</Typography.Text>
+          <span className="seventeen-track-widget__muted">{t('common.loading')}</span>
         ) : error ? (
           <div className="seventeen-track-widget__recovery">
             <Alert
@@ -251,21 +251,21 @@ const SeventeenTrackWidget: React.FC<SeventeenTrackWidgetProps> = ({
               message={t('pages.orderTracking.trackingFailed')}
               description={error}
             />
-            <Typography.Text type="secondary" className="seventeen-track-widget__recoveryHint">
+            <span className="seventeen-track-widget__recoveryHint seventeen-track-widget__muted">
               {t('pages.orderTracking.emptyRecoveryHint')}
-            </Typography.Text>
+            </span>
             {recoveryActions}
           </div>
         ) : result ? (
           <div className="seventeen-track-widget__content">
             <div className="seventeen-track-widget__summary">
-              <Space wrap size={[8, 8]}>
+              <div className="seventeen-track-widget__summaryMeta">
                 <Tag color={statusColors[status] || 'default'}>{status || t('common.status')}</Tag>
                 {result.carrier ? <Tag>{result.carrier}</Tag> : null}
-                <Typography.Text strong>{result.trackingNumber}</Typography.Text>
-              </Space>
+                <strong className="seventeen-track-widget__trackingNo">{result.trackingNumber}</strong>
+              </div>
               {result.summary ? (
-                <Typography.Text type="secondary">{result.summary}</Typography.Text>
+                <span className="seventeen-track-widget__muted">{result.summary}</span>
               ) : null}
             </div>
             {events.length > 0 ? (
@@ -283,10 +283,10 @@ const SeventeenTrackWidget: React.FC<SeventeenTrackWidgetProps> = ({
                     >
                       <span className="seventeen-track-widget__eventDot" aria-hidden="true" />
                       <div className="seventeen-track-widget__eventBody">
-                        <Typography.Text strong>{eventDescription}</Typography.Text>
-                        <Typography.Text type="secondary" className="seventeen-track-widget__eventMeta">
+                        <strong className="seventeen-track-widget__eventTitle">{eventDescription}</strong>
+                        <span className="seventeen-track-widget__eventMeta seventeen-track-widget__muted">
                           {eventMeta}
-                        </Typography.Text>
+                        </span>
                       </div>
                     </div>
                   );
@@ -301,39 +301,40 @@ const SeventeenTrackWidget: React.FC<SeventeenTrackWidgetProps> = ({
                   message={t('pages.orderTracking.trackingUnavailable')}
                   description={result.summary || t('pages.orderTracking.noTrackingData')}
                 />
-                <Typography.Text type="secondary" className="seventeen-track-widget__recoveryHint">
+                <span className="seventeen-track-widget__recoveryHint seventeen-track-widget__muted">
                   {t('pages.orderTracking.emptyRecoveryHint')}
-                </Typography.Text>
+                </span>
                 {recoveryActions}
               </div>
             ) : (
               <div className="seventeen-track-widget__recovery">
-                <Empty
-                  image={Empty.PRESENTED_IMAGE_SIMPLE}
-                  description={t('pages.orderTracking.noTrackingData')}
-                />
-                <Typography.Text type="secondary" className="seventeen-track-widget__recoveryHint">
+                <div className="seventeen-track-widget__emptyPanel" role="status">
+                  <div className="seventeen-track-widget__emptyDescription">{t('pages.orderTracking.noTrackingData')}</div>
+                </div>
+                <span className="seventeen-track-widget__recoveryHint seventeen-track-widget__muted">
                   {t('pages.orderTracking.emptyRecoveryHint')}
-                </Typography.Text>
+                </span>
                 {recoveryActions}
               </div>
             )}
           </div>
         ) : (
           <div className="seventeen-track-widget__recovery">
-            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('pages.orderTracking.noTrackingData')} />
+            <div className="seventeen-track-widget__emptyPanel" role="status">
+              <div className="seventeen-track-widget__emptyDescription">{t('pages.orderTracking.noTrackingData')}</div>
+            </div>
             {needsEmptyRecovery ? (
               <>
-                <Typography.Text type="secondary" className="seventeen-track-widget__recoveryHint">
+                <span className="seventeen-track-widget__recoveryHint seventeen-track-widget__muted">
                   {t('pages.orderTracking.emptyRecoveryHint')}
-                </Typography.Text>
+                </span>
                 {recoveryActions}
               </>
             ) : null}
           </div>
         )}
       </div>
-    </Space>
+    </div>
   );
 };
 

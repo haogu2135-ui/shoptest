@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { ShopIcon, SI } from '../components/ShopIcon';
-import { Alert, Card, Button, Popconfirm, Tag } from 'antd';
+import { Alert, Button, Popconfirm, Tag } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { wishlistApi, cartApi } from '../api';
 import type { WishlistItem } from '../types';
@@ -695,10 +695,8 @@ const Wishlist: React.FC = () => {
           const removing = removingProductIds.includes(item.productId);
           return (
           <div key={item.id} className="wishlist-page__gridItem">
-            <Card
-              className="wishlist-page__card"
-              hoverable
-              cover={
+            <article className="wishlist-page__card">
+              <div className="wishlist-page__cover">
                 <button
                   type="button"
                   className="wishlist-page__imageButton"
@@ -717,53 +715,54 @@ const Wishlist: React.FC = () => {
                     }}
                   />
                 </button>
-              }
-            >
-              <button
-                type="button"
-                className="wishlist-page__productName"
-                onClick={() => navigate(`/products/${item.productId}`)}
-                aria-label={viewActionLabel}
-                title={productName}
-              >
-                {productName}
-              </button>
-              <div className="wishlist-page__meta">
-                <span className="wishlist-page__text wishlist-page__price commerce-money">{formatMoney(item.productPrice)}</span>
-                <div className="wishlist-page__metaTags">
-                  {lowStockCount !== undefined ? (
-                    <Tag color="orange">{t('pages.wishlist.lowStockLeft', { count: lowStockCount })}</Tag>
-                  ) : null}
-                  {!isPurchasable(item) && <Tag color="red">{t('pages.wishlist.outOfStock')}</Tag>}
+              </div>
+              <div className="wishlist-page__body">
+                <button
+                  type="button"
+                  className="wishlist-page__productName"
+                  onClick={() => navigate(`/products/${item.productId}`)}
+                  aria-label={viewActionLabel}
+                  title={productName}
+                >
+                  {productName}
+                </button>
+                <div className="wishlist-page__meta">
+                  <span className="wishlist-page__text wishlist-page__price commerce-money">{formatMoney(item.productPrice)}</span>
+                  <div className="wishlist-page__metaTags">
+                    {lowStockCount !== undefined ? (
+                      <Tag color="orange">{t('pages.wishlist.lowStockLeft', { count: lowStockCount })}</Tag>
+                    ) : null}
+                    {!isPurchasable(item) && <Tag color="red">{t('pages.wishlist.outOfStock')}</Tag>}
+                  </div>
+                </div>
+                {renderReadiness(item)}
+                <div className="wishlist-page__actions">
+                  {primaryAction(item)}
+                  <Popconfirm
+                    classNames={{ root: 'shop-mobile-popup-layer wishlist-remove-popconfirm' }}
+                    title={t('pages.wishlist.removeConfirm')}
+                    onConfirm={() => handleRemove(item.productId)}
+                    okText={t('common.confirm')}
+                    cancelText={t('common.cancel')}
+                    okButtonProps={{ danger: true, disabled: actionsDisabledByStaleData, 'aria-label': removeActionLabel, title: removeActionLabel }}
+                    cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${removeActionLabel}`, title: `${t('common.cancel')}: ${removeActionLabel}` }}
+                  >
+                    <Button
+                      danger
+                      icon={<ShopIcon path={SI.delete} />}
+                      className="wishlist-page__removeAction"
+                      block
+                      loading={removing}
+                      disabled={removing || actionsDisabledByStaleData}
+                      aria-label={removeActionLabel}
+                      title={removeActionLabel}
+                    >
+                      {t('pages.wishlist.remove')}
+                    </Button>
+                  </Popconfirm>
                 </div>
               </div>
-              {renderReadiness(item)}
-              <div className="wishlist-page__actions">
-                {primaryAction(item)}
-                <Popconfirm
-                  classNames={{ root: 'shop-mobile-popup-layer wishlist-remove-popconfirm' }}
-                  title={t('pages.wishlist.removeConfirm')}
-                  onConfirm={() => handleRemove(item.productId)}
-                  okText={t('common.confirm')}
-                  cancelText={t('common.cancel')}
-                  okButtonProps={{ danger: true, disabled: actionsDisabledByStaleData, 'aria-label': removeActionLabel, title: removeActionLabel }}
-                  cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${removeActionLabel}`, title: `${t('common.cancel')}: ${removeActionLabel}` }}
-                >
-                  <Button
-                    danger
-                    icon={<ShopIcon path={SI.delete} />}
-                    className="wishlist-page__removeAction"
-                    block
-                    loading={removing}
-                    disabled={removing || actionsDisabledByStaleData}
-                    aria-label={removeActionLabel}
-                    title={removeActionLabel}
-                  >
-                    {t('pages.wishlist.remove')}
-                  </Button>
-                </Popconfirm>
-              </div>
-            </Card>
+            </article>
           </div>
           );
         })}

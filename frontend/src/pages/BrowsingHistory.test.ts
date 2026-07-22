@@ -14,20 +14,22 @@ describe('BrowsingHistory mobile action readability guards', () => {
     expect(pageSource).not.toContain('catch (error: any)');
   });
 
-  it('uses Ant Design Typography components for page headings and body copy', () => {
-    expect(pageSource).toContain("import { Alert, Button, Empty, Input, message, Popconfirm, Spin, Tag, Typography } from 'antd';");
-    expect(pageSource).toContain('const { Paragraph, Title } = Typography;');
-    expect(pageSource).toContain('<Title level={1} className="browsing-history__title">');
-    expect(pageSource).toContain('<Title level={2} className="browsing-history__sectionTitle">');
-    expect(pageSource).toContain('<Paragraph className="browsing-history__subtitle">');
-    expect(pageSource).toContain('<Paragraph className="browsing-history__sectionText">');
-    expect(pageSource).not.toMatch(/<h[12][\s>]/);
-    expect(pageSource).not.toMatch(/<p[\s>]/);
-    expect(cssSource).toContain('.browsing-history__title.ant-typography');
-    expect(cssSource).toContain('.browsing-history__sectionTitle.ant-typography');
-    expect(cssSource).not.toContain('.browsing-history h1');
-    expect(cssSource).not.toContain('.browsing-history p');
+  it('uses native typography densification for page headings and body copy', () => {
+    expect(pageSource).not.toMatch(/Typography/);
+    expect(pageSource).toContain('browsing-history__title');
+    expect(pageSource).toContain('browsing-history__sectionTitle');
+    expect(pageSource).toContain('browsing-history__text');
+    expect(pageSource).toContain('browsing-history__paragraph');
+    expect(pageSource).toContain('browsing-history__subtitle');
+    expect(pageSource).toContain('browsing-history__sectionText');
+    expect(pageSource).toContain('<h1 className="browsing-history__title">');
+    expect(pageSource).toContain('browsing-history__sectionTitle');
+    expect(pageSource).not.toMatch(/<Title/);
+    expect(pageSource).not.toMatch(/<Paragraph/);
+    expect(cssSource).toContain('.browsing-history__title');
+    expect(cssSource).toContain('.browsing-history__sectionTitle');
   });
+
 
   it('keeps history product load failures visible with a retry action', () => {
     expect(pageSource).toContain('const [loadError, setLoadError] = useState(false);');
@@ -41,8 +43,8 @@ describe('BrowsingHistory mobile action readability guards', () => {
     expect(pageSource).toContain("description={hasStaleHistoryData ? t('pages.browsingHistory.staleDataWarning') : t('messages.loadFailedRetry')}");
     expect(pageSource).toContain("title: t('pages.browsingHistory.nextActionStaleTitle'),");
     expect(pageSource).toContain('disabled={hasStaleHistoryData}');
-    expect(pageSource).toContain('icon={hasStaleHistoryData ? <ReloadOutlined /> : historyNextAction.tone === \'ready\' ? <ShoppingCartOutlined /> : <ShoppingOutlined />}');
-    expect(pageSource).toContain('<Button size="small" onClick={() => setReloadToken((current) => current + 1)}>');
+    expect(pageSource).toContain("icon={hasStaleHistoryData ? <ShopIcon path={SI.reload} /> : historyNextAction.tone === 'ready' ? <ShopIcon path={SI.cart} /> : <ShopIcon path={SI.shopping} />}");
+    expect(pageSource).toContain('<Button size="small" type="primary" onClick={() => setReloadToken((current) => current + 1)}>');
     expect(pageSource).toContain("navigate('/coupons')");
     expect(pageSource).toContain("shop:open-support");
     expect(pageSource).toContain('reloadToken]');

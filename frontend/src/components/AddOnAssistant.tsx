@@ -2,7 +2,7 @@ import React, { Component, useEffect, useMemo, useState } from 'react';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { ShopIcon, SI } from './ShopIcon';
 import type { ErrorInfo, ReactNode } from 'react';
-import { Alert, Button, Skeleton, Typography } from 'antd';
+import { Alert, Button } from 'antd';
 import { productApi } from '../api';
 import type { ProductPublic as Product } from '../types';
 import { useLanguage } from '../i18n';
@@ -17,7 +17,6 @@ import { reportNonBlockingError } from '../utils/nonBlockingError';
 import './AddOnAssistant.css';
 import '../styles/mobile-page-contrast.css';
 
-const { Text } = Typography;
 
 const getAddOnPrice = (product: Product) => Number(product.effectivePrice ?? product.price ?? 0);
 const ADD_ON_CACHE_TTL_MS = 2 * 60 * 1000;
@@ -152,7 +151,10 @@ const AddOnAssistantContent: React.FC<AddOnAssistantProps> = ({ cartProductIds, 
         aria-busy="true"
         aria-label={`${t('pages.addOnAssistant.title')}: ${t('common.loading')}`}
       >
-        <Skeleton active paragraph={{ rows: 2 }} />
+        <div className="add-on-assistant__skeleton" aria-hidden="true">
+            <span className="add-on-assistant__skeletonLine" />
+            <span className="add-on-assistant__skeletonLine" />
+          </div>
       </section>
     );
   }
@@ -179,12 +181,12 @@ const AddOnAssistantContent: React.FC<AddOnAssistantProps> = ({ cartProductIds, 
     <section className="add-on-assistant">
       <div className="add-on-assistant__header">
         <div>
-          <Text strong>{t('pages.addOnAssistant.title')}</Text>
-          <Text type="secondary">
+          <span className="add-on-assistant__text add-on-assistant__text--strong">{t('pages.addOnAssistant.title')}</span>
+          <span className="add-on-assistant__text add-on-assistant__text--secondary">
             {reason === 'gift'
               ? t('pages.addOnAssistant.giftHint', { amount: formatMoney(remainingAmount) })
               : t('pages.addOnAssistant.shippingHint', { amount: formatMoney(remainingAmount) })}
-          </Text>
+          </span>
         </div>
         <span className="add-on-assistant__target commerce-money">{formatMoney(remainingAmount)}</span>
       </div>
@@ -213,11 +215,11 @@ const AddOnAssistantContent: React.FC<AddOnAssistantProps> = ({ cartProductIds, 
                 }}
               />
               <div className="add-on-assistant__body">
-                <Text className="add-on-assistant__name">{productName}</Text>
+                <span className="add-on-assistant__text add-on-assistant__name">{productName}</span>
                 <div className="add-on-assistant__meta">
-                  <Text strong className="add-on-assistant__price commerce-money">{formatMoney(getAddOnPrice(product))}</Text>
+                  <span className="add-on-assistant__text add-on-assistant__text--strong add-on-assistant__price commerce-money">{formatMoney(getAddOnPrice(product))}</span>
                   {getAddOnPrice(product) >= remainingAmount ? (
-                    <Text className="add-on-assistant__fit">{t('pages.addOnAssistant.coversGap')}</Text>
+                    <span className="add-on-assistant__text add-on-assistant__fit">{t('pages.addOnAssistant.coversGap')}</span>
                   ) : null}
                 </div>
               </div>

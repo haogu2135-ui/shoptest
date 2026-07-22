@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { ShopIcon, SI } from '../components/ShopIcon';
-import { Alert, Button, Card, List, Popconfirm, Tag } from 'antd';
+import { Alert, Button, Popconfirm, Tag } from 'antd';
 import { Link, useNavigate } from 'react-router-dom';
 import { cartApi, productApi } from '../api';
 import { useLanguage } from '../i18n';
@@ -251,7 +251,7 @@ const StockAlerts: React.FC = () => {
 
   return (
     <div className={`stock-alerts stock-alerts-page stock-alerts--${language}`}>
-      <Card>
+      <section className="stock-alerts__shell" aria-label={t('pages.stockAlerts.title')}>
         <div className="stock-alerts__header">
           <div>
             <h1 className="stock-alerts-page__title" style={{ margin: 0 }}>
@@ -474,10 +474,14 @@ const StockAlerts: React.FC = () => {
             ]}
           />
         ) : (
-          <List
-            loading={loading}
-            dataSource={visibleStockAlertInsights.items}
-            renderItem={(item) => {
+          <div className={`stock-alerts__listWrap${loading ? ' stock-alerts__listWrap--loading' : ''}`}>
+            {loading ? (
+              <div className="stock-alerts__spinnerOverlay" role="status" aria-live="polite" aria-label={t('common.loading')}>
+                <span className="stock-alerts__spinner" aria-hidden="true" />
+              </div>
+            ) : null}
+            <ul className="stock-alerts__itemList" role="list">
+              {visibleStockAlertInsights.items.map((item) => {
               const product = item.product;
               const productName = stockAlertProductName(item);
               const productLinkLabel = `${t('pages.productList.viewDetails')}: ${productName}`;
@@ -492,61 +496,34 @@ const StockAlerts: React.FC = () => {
               const addActionLabel = `${addActionText}: ${productName}`;
               const removeActionLabel = `${t('pages.stockAlerts.remove')}: ${productName}`;
               return (
-                <List.Item
+                <li
+                  key={item.productId}
                   className={[
                     'stock-alerts__item',
                     ready ? 'stock-alerts__item--ready' : 'stock-alerts__item--waiting',
                     lowStock ? 'stock-alerts__item--lowStock' : '',
                     needsSelection ? 'stock-alerts__item--options' : '',
                   ].filter(Boolean).join(' ')}
-                  actions={[
-                    <Button
-                      key="add"
-                      type="primary"
-                      icon={<ShopIcon path={SI.cart} />}
-                      className={ready ? undefined : 'stock-alerts__soldoutButton'}
-                      aria-label={addActionLabel}
-                      title={addActionLabel}
-                      onClick={() => product && addToCart(product)}
-                      disabled={hasStaleProductData || !ready}
-                    >
-                      {addActionText}
-                    </Button>,
-                    <Popconfirm
-                      key="remove"
-                      classNames={{ root: 'shop-mobile-popup-layer stock-alerts-popconfirm' }}
-                      title={t('pages.stockAlerts.removeConfirm')}
-                      onConfirm={() => removeAlert(item.productId)}
-                      okText={t('common.confirm')}
-                      cancelText={t('common.cancel')}
-                      okButtonProps={{ danger: true, 'aria-label': removeActionLabel, title: removeActionLabel }}
-                      cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${removeActionLabel}`, title: `${t('common.cancel')}: ${removeActionLabel}` }}
-                    >
-                      <Button icon={<ShopIcon path={SI.delete} />} aria-label={removeActionLabel} title={removeActionLabel}>{t('pages.stockAlerts.remove')}</Button>
-                    </Popconfirm>,
-                  ]}
                 >
-                  <List.Item.Meta
-                    avatar={
-                      <Link className="stock-alerts__imageLink" to={`/products/${item.productId}`} aria-label={productLinkLabel} title={productLinkLabel}>
-                        <img
-                          className="stock-alerts__image"
-                          src={resolveStockAlertImage(product?.imageUrl || item.imageUrl)}
-                          alt={productName}
-                          width={72}
-                          height={72}
-                          loading="lazy"
-                          decoding="async"
-                          onError={(event) => {
-                            if (event.currentTarget.src !== stockAlertImageFallback) {
-                              event.currentTarget.src = stockAlertImageFallback;
-                            }
-                          }}
-                        />
-                      </Link>
-                    }
-                    title={<Link className="stock-alerts__productLink" to={`/products/${item.productId}`} aria-label={productLinkLabel} title={productLinkLabel}>{productName}</Link>}
-                    description={
+                  <div className="stock-alerts__itemMeta">
+                    <Link className="stock-alerts__imageLink stock-alerts__itemAvatar" to={`/products/${item.productId}`} aria-label={productLinkLabel} title={productLinkLabel}>
+                      <img
+                        className="stock-alerts__image"
+                        src={resolveStockAlertImage(product?.imageUrl || item.imageUrl)}
+                        alt={productName}
+                        width={72}
+                        height={72}
+                        loading="lazy"
+                        decoding="async"
+                        onError={(event) => {
+                          if (event.currentTarget.src !== stockAlertImageFallback) {
+                            event.currentTarget.src = stockAlertImageFallback;
+                          }
+                        }}
+                      />
+                    </Link>
+                    <div className="stock-alerts__itemBody">
+                      <Link className="stock-alerts__productLink" to={`/products/${item.productId}`} aria-label={productLinkLabel} title={productLinkLabel}>{productName}</Link>
                       <div className="stock-alerts__itemDetails">
                         <span className="stock-alerts-page__text stock-alerts-page__text--secondary stock-alerts__watchTime">
                           {t('pages.stockAlerts.createdAt', { time: new Date(item.createdAt).toLocaleString(dateLocale) })}
@@ -562,14 +539,39 @@ const StockAlerts: React.FC = () => {
                           </div>
                         ) : null}
                       </div>
-                    }
-                  />
-                </List.Item>
+                    </div>
+                  </div>
+                  <div className="stock-alerts__itemActions">
+                    <Button
+                      type="primary"
+                      icon={<ShopIcon path={SI.cart} />}
+                      className={ready ? undefined : 'stock-alerts__soldoutButton'}
+                      aria-label={addActionLabel}
+                      title={addActionLabel}
+                      onClick={() => product && addToCart(product)}
+                      disabled={hasStaleProductData || !ready}
+                    >
+                      {addActionText}
+                    </Button>
+                    <Popconfirm
+                      classNames={{ root: 'shop-mobile-popup-layer stock-alerts-popconfirm' }}
+                      title={t('pages.stockAlerts.removeConfirm')}
+                      onConfirm={() => removeAlert(item.productId)}
+                      okText={t('common.confirm')}
+                      cancelText={t('common.cancel')}
+                      okButtonProps={{ danger: true, 'aria-label': removeActionLabel, title: removeActionLabel }}
+                      cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${removeActionLabel}`, title: `${t('common.cancel')}: ${removeActionLabel}` }}
+                    >
+                      <Button icon={<ShopIcon path={SI.delete} />} aria-label={removeActionLabel} title={removeActionLabel}>{t('pages.stockAlerts.remove')}</Button>
+                    </Popconfirm>
+                  </div>
+                </li>
               );
-            }}
-          />
+            })}
+            </ul>
+          </div>
         )}
-      </Card>
+      </section>
     </div>
   );
 };

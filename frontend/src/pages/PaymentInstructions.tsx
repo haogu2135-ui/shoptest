@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { ShopIcon, SI } from '../components/ShopIcon';
-import { Alert, Button, Card, Descriptions, Input, Spin, Tag } from 'antd';
+import { Alert, Button, Input, Tag } from 'antd';
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { orderApi, paymentApi } from '../api';
 import { useLanguage } from '../i18n';
@@ -450,15 +450,20 @@ const PaymentInstructions: React.FC = () => {
       ) : null}
 
       <div className="payment-instructions-page__grid">
-        <Card className="payment-instructions-page__card">
+        <section className="payment-instructions-page__card">
           <div
+            className="payment-instructions-page__verifyPanel"
             role="status"
             aria-live="polite"
             aria-busy={verifying}
             aria-label={verifying ? t('common.loading') : undefined}
           >
-            <Spin spinning={verifying}>
-              <div className="payment-instructions-page__stack">
+            {verifying ? (
+              <div className="payment-instructions-page__spinnerOverlay" role="status" aria-live="polite">
+                <span className="payment-instructions-page__spinner" aria-hidden="true" />
+              </div>
+            ) : null}
+            <div className="payment-instructions-page__stack">
                 {verifyError ? (
                   <Alert
                     type="error"
@@ -540,22 +545,40 @@ const PaymentInstructions: React.FC = () => {
                   <Tag color={statusTagColor}>{channel}</Tag>
                 </div>
 
-                <Descriptions column={1} size="small" bordered>
-                  <Descriptions.Item label={t('pages.paymentInstructions.orderNo')}>{normalizedOrderNo || '-'}</Descriptions.Item>
-                  <Descriptions.Item label={t('pages.paymentInstructions.amount')}>
-                    <span className="payment-instructions-page__amount commerce-money">{amountText}</span>
-                  </Descriptions.Item>
-                  <Descriptions.Item label={t('pages.paymentInstructions.channel')}>{channel}</Descriptions.Item>
-                  <Descriptions.Item label={t('pages.paymentInstructions.statusLabel')}>
-                    <Tag color={statusTagColor}>{paymentStatus || t('pages.paymentInstructions.pendingTitle')}</Tag>
-                  </Descriptions.Item>
-                  <Descriptions.Item label={t('pages.paymentInstructions.expiresAt')}>{expiresText}</Descriptions.Item>
+                <dl className="payment-instructions-page__descList">
+                  <div className="payment-instructions-page__descRow">
+                    <dt className="payment-instructions-page__descLabel">{t('pages.paymentInstructions.orderNo')}</dt>
+                    <dd className="payment-instructions-page__descValue">{normalizedOrderNo || '-'}</dd>
+                  </div>
+                  <div className="payment-instructions-page__descRow">
+                    <dt className="payment-instructions-page__descLabel">{t('pages.paymentInstructions.amount')}</dt>
+                    <dd className="payment-instructions-page__descValue">
+                      <span className="payment-instructions-page__amount commerce-money">{amountText}</span>
+                    </dd>
+                  </div>
+                  <div className="payment-instructions-page__descRow">
+                    <dt className="payment-instructions-page__descLabel">{t('pages.paymentInstructions.channel')}</dt>
+                    <dd className="payment-instructions-page__descValue">{channel}</dd>
+                  </div>
+                  <div className="payment-instructions-page__descRow">
+                    <dt className="payment-instructions-page__descLabel">{t('pages.paymentInstructions.statusLabel')}</dt>
+                    <dd className="payment-instructions-page__descValue">
+                      <Tag color={statusTagColor}>{paymentStatus || t('pages.paymentInstructions.pendingTitle')}</Tag>
+                    </dd>
+                  </div>
+                  <div className="payment-instructions-page__descRow">
+                    <dt className="payment-instructions-page__descLabel">{t('pages.paymentInstructions.expiresAt')}</dt>
+                    <dd className="payment-instructions-page__descValue">{expiresText}</dd>
+                  </div>
                   {payment?.paymentUrl && !isReconcileRequired && !isExpiredOrFailed ? (
-                    <Descriptions.Item label={t('pages.paymentInstructions.paymentLink')}>
-                      <span className="payment-instructions-page__paymentUrl">{formatPaymentUrlLabel(payment.paymentUrl)}</span>
-                    </Descriptions.Item>
+                    <div className="payment-instructions-page__descRow">
+                      <dt className="payment-instructions-page__descLabel">{t('pages.paymentInstructions.paymentLink')}</dt>
+                      <dd className="payment-instructions-page__descValue">
+                        <span className="payment-instructions-page__paymentUrl">{formatPaymentUrlLabel(payment.paymentUrl)}</span>
+                      </dd>
+                    </div>
                   ) : null}
-                </Descriptions>
+                </dl>
 
                 <div className="payment-instructions-page__notice">
                   <ShopIcon path={SI.lock} />
@@ -588,11 +611,10 @@ const PaymentInstructions: React.FC = () => {
                   ) : null}
                 </div>
               </div>
-            </Spin>
           </div>
-        </Card>
+        </section>
 
-        <Card className="payment-instructions-page__card">
+        <section className="payment-instructions-page__card">
           <div className="payment-instructions-page__stack">
             <div>
               <span className="payment-instructions-page__text payment-instructions-page__recoveryEyebrow">{t('pages.paymentInstructions.recoveryEyebrow')}</span>
@@ -618,7 +640,7 @@ const PaymentInstructions: React.FC = () => {
               </Button>
             </div>
           </div>
-        </Card>
+        </section>
       </div>
 
       <div className="payment-instructions-page__trustBar" aria-label={t('pages.paymentInstructions.trustTitle')}>

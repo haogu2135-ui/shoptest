@@ -338,9 +338,9 @@ describe('Login accessibility labels', () => {
 
     expect(guardStart).toBeGreaterThanOrEqual(0);
     expect(guardCss).toContain('@media (max-width: 640px)');
-    expect(guardCss).toMatch(/\.shop-app-shell--auth-flow \.shopee-login-tabs \.ant-tabs-nav-list\s*\{[\s\S]*?grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)\s*!important;/);
-    expect(guardCss).toMatch(/\.shop-app-shell--auth-flow \.shopee-login-tabs \.ant-tabs-tab\s*\{[\s\S]*?min-height:\s*44px\s*!important;[\s\S]*?padding:\s*8px\s*!important;/);
-    expect(guardCss).toMatch(/\.shop-app-shell--auth-flow \.shopee-login-tabs \.ant-tabs-tab-btn\s*\{[\s\S]*?overflow-wrap:\s*anywhere\s*!important;[\s\S]*?white-space:\s*normal\s*!important;/);
+    expect(guardCss).toMatch(/\.shop-app-shell--auth-flow \.shopee-login-tabs \.shopee-login-tabs__nav\s*\{[\s\S]*?grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)\s*!important;/);
+    expect(guardCss).toMatch(/\.shop-app-shell--auth-flow \.shopee-login-tabs \.shopee-login-tabs__tab\s*\{[\s\S]*?min-height:\s*44px\s*!important;[\s\S]*?padding:\s*8px\s*!important;/);
+    expect(guardCss).toMatch(/\.shop-app-shell--auth-flow \.shopee-login-tabs \.shopee-login-tabs__tabLabel\s*\{[\s\S]*?overflow-wrap:\s*anywhere\s*!important;[\s\S]*?white-space:\s*normal\s*!important;/);
     expect(guardCss).toMatch(/\.shop-app-shell--auth-flow \.shopee-login-links\s*\{[\s\S]*?flex-wrap:\s*wrap\s*!important;[\s\S]*?gap:\s*8px 12px\s*!important;/);
     expect(guardCss).toMatch(/\.shop-app-shell--auth-flow \.shopee-login-links a,[\s\S]*?\.shop-app-shell--auth-flow \.shopee-login-links button\s*\{[\s\S]*?min-width:\s*44px\s*!important;[\s\S]*?min-height:\s*44px\s*!important;[\s\S]*?overflow-wrap:\s*anywhere\s*!important;/);
   });

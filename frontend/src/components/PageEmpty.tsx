@@ -1,6 +1,6 @@
 import React from 'react';
 import { ShopIcon, SI } from './ShopIcon';
-import { Button, Empty } from 'antd';
+import { Button } from 'antd';
 import './PageFeedback.css';
 
 export type PageEmptyAction = {
@@ -39,10 +39,11 @@ const PageEmpty: React.FC<PageEmptyProps> = ({
       aria-live="polite"
       {...rest}
     >
-      <Empty
-        image={image}
-        description={description}
-      >
+      <div className="page-feedback__empty">
+        <div className="page-feedback__emptyImage" aria-hidden="true">
+          {image ?? <span className="page-feedback__emptyIcon"><ShopIcon path={SI.shopping} /></span>}
+        </div>
+        <div className="page-feedback__emptyDescription">{description}</div>
         {resolvedActions.length > 0 ? (
           <div className="page-feedback__actions">
             {resolvedActions.map((action, index) => (
@@ -59,7 +60,7 @@ const PageEmpty: React.FC<PageEmptyProps> = ({
             ))}
           </div>
         ) : null}
-      </Empty>
+      </div>
     </div>
   );
 };

@@ -613,7 +613,7 @@
 .profile-order-card__paid,
 .profile-order-card__amount,
 .profile-order-detail__title,
-.profile-page .ant-descriptions-item-content {
+.profile-page .profile-page__descValue {
   overflow-wrap: anywhere;
 }
 
@@ -1167,7 +1167,7 @@
 .profile-page--es .ant-btn,
 .profile-page--es .ant-input,
 .profile-page--es .profile-page__text,
-.profile-page--es .ant-descriptions,
+.profile-page--es .profile-page__descList,
 .profile-page--es .ant-tag {
   hyphens: auto;
   overflow-wrap: anywhere;
@@ -1343,8 +1343,8 @@
     font-weight: 700;
   }
 
-  .profile-page .ant-descriptions-item-label,
-  .profile-page .ant-descriptions-item-content {
+  .profile-page .profile-page__descLabel,
+  .profile-page .profile-page__descValue {
     padding: 10px 12px !important;
   }
 
@@ -2551,8 +2551,7 @@
   .profile-flow-actions__card,
   .profile-flow-actions__buttons,
   .profile-order-detail,
-  .profile-page .ant-descriptions,
-  .profile-page .ant-descriptions-view,
+  .profile-page .profile-page__descList,
   .profile-page .ant-list,
   .profile-page .ant-list-item,
   .profile-page .ant-list-item-meta,
@@ -2585,13 +2584,13 @@
   }
 
   .profile-payment-method-hint,
-  .profile-payment-modal .ant-descriptions-row > th,
-  .profile-payment-modal .ant-descriptions-row > td {
+  .profile-payment-modal .profile-page__descLabel,
+  .profile-payment-modal .profile-page__descValue {
     display: grid;
     grid-template-columns: 1fr;
   }
 
-  .profile-payment-modal .ant-descriptions-view {
+  .profile-payment-modal .profile-page__descList {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
   }
@@ -2619,7 +2618,7 @@
   .profile-flow-actions__card strong,
   .profile-flow-actions__card span,
   .profile-order-detail__title,
-  .profile-page .ant-descriptions-item-content,
+  .profile-page .profile-page__descValue,
   .profile-page .ant-list-item-meta-title,
   .profile-page .ant-list-item-meta-description {
     overflow-wrap: anywhere;
@@ -3417,7 +3416,7 @@
   .profile-address-modal .ant-cascader,
   .profile-address-modal textarea.ant-input,
   .profile-address-modal .ant-checkbox-wrapper,
-  .profile-order-detail__descriptions .ant-btn,
+  .profile-order-detail__descriptions .ant-btn, .profile-page__descList .ant-btn,
   .profile-order-detail__itemsHeader .ant-btn,
   .profile-order-detail__productButton,
   .profile-popconfirm .ant-popconfirm-buttons .ant-btn {
@@ -3472,7 +3471,7 @@
   .profile-address-modal .ant-input,
   .profile-address-modal .ant-input-affix-wrapper,
   .profile-address-modal textarea.ant-input,
-  .profile-order-detail__descriptions .ant-btn,
+  .profile-order-detail__descriptions .ant-btn, .profile-page__descList .ant-btn,
   .profile-order-detail__itemsHeader .ant-btn,
   .profile-order-detail__productButton {
     min-height: 44px !important;
@@ -3944,4 +3943,154 @@
 
 .profile-page__text--delete {
   text-decoration: line-through;
+}
+
+
+/* Native spinner densification (no ant Spin runtime) */
+.profile-page__spinnerWrap {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 120px;
+  width: 100%;
+}
+
+.profile-page__spinnerOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.profile-page__spinner {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 3px solid rgba(24, 144, 255, 0.2);
+  border-top-color: #1677ff;
+  display: inline-block;
+  animation: profilepage-spin 0.8s linear infinite;
+}
+
+.profile-page__spinnerTip {
+  color: rgba(0, 0, 0, 0.55);
+  font-size: 13px;
+  line-height: 1.4;
+  text-align: center;
+}
+
+@keyframes profilepage-spin {
+  to { transform: rotate(360deg); }
+}
+
+
+/* Native list densification (no ant List runtime) */
+.profile-page__itemList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.profile-page__item {
+  display: block;
+  width: 100%;
+}
+
+.profile-page__petGrid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+@media (max-width: 575px) {
+  .profile-page__petGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.profile-order-detail__itemList {
+  gap: 0;
+}
+
+.profile-order-detail__item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.profile-page__itemMeta {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-width: 0;
+  flex: 1;
+}
+
+.profile-page__itemBody {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.profile-payment-history__itemList {
+  gap: 0;
+}
+
+.profile-payment-history__itemList > .profile-page__item {
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+
+/* Native descriptions densification (no ant Descriptions runtime) */
+.profile-page__descList {
+  margin: 0;
+  border: 1px solid #e4ebe4;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.profile-page__descRow {
+  display: grid;
+  grid-template-columns: minmax(118px, 34%) minmax(0, 1fr);
+  gap: 8px 12px;
+  padding: 10px 12px;
+  border-bottom: 1px solid #eef3ee;
+}
+
+.profile-page__descRow:last-child {
+  border-bottom: 0;
+}
+
+.profile-page__descLabel {
+  margin: 0;
+  color: #506358;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.profile-page__descValue {
+  margin: 0;
+  min-width: 0;
+  color: #173f2b;
+  font-size: 13px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.profile-order-detail__descriptions .profile-page__descValue .ant-btn,
+.profile-payment-detail__descriptions .profile-page__descValue .ant-btn {
+  min-height: 44px;
 }

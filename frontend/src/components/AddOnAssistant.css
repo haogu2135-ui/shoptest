@@ -524,3 +524,15 @@
     gap: 7px;
   }
 }
+
+
+.add-on-assistant__text--strong { font-weight: 700; }
+.add-on-assistant__text--secondary { color: rgba(0,0,0,0.45); }
+.add-on-assistant__skeleton { display: grid; gap: 10px; padding: 8px 0; }
+.add-on-assistant__skeletonLine {
+  display: block; height: 12px; border-radius: 999px;
+  background: linear-gradient(90deg, rgba(0,0,0,0.06) 25%, rgba(0,0,0,0.12) 37%, rgba(0,0,0,0.06) 63%);
+  background-size: 400% 100%;
+  animation: add-on-skeleton 1.2s ease infinite;
+}
+@keyframes add-on-skeleton { 0%{background-position:100% 0} 100%{background-position:0 0} }

@@ -1942,3 +1942,74 @@
 .browsing-history__text--delete {
   text-decoration: line-through;
 }
+
+
+/* Native spinner densification (no ant Spin runtime) */
+.browsing-history__spinnerWrap {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 120px;
+  width: 100%;
+}
+
+.browsing-history__spinnerOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.browsing-history__spinner {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 3px solid rgba(24, 144, 255, 0.2);
+  border-top-color: #1677ff;
+  display: inline-block;
+  animation: browsinghistory-spin 0.8s linear infinite;
+}
+
+.browsing-history__spinnerTip {
+  color: rgba(0, 0, 0, 0.55);
+  font-size: 13px;
+  line-height: 1.4;
+  text-align: center;
+}
+
+@keyframes browsinghistory-spin {
+  to { transform: rotate(360deg); }
+}
+
+
+/* Native empty densification (no ant Empty runtime) */
+.browsing-history__emptyPanel {
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+  padding: 20px 12px;
+  text-align: center;
+}
+
+.browsing-history__emptyDescription {
+  color: rgba(16, 47, 34, 0.78);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.browsing-history__emptyActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.browsing-history__emptyActions .ant-btn {
+  min-height: 44px;
+}

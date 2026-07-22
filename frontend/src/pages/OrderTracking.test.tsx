@@ -305,19 +305,20 @@ describe('OrderTracking auto refresh', () => {
 
   it('does not poll or render lifecycle fields for account-restricted tracking responses', () => {
     const source = readOrderTrackingSource();
-    const summaryStart = source.indexOf("<Card title={t('pages.orderTracking.summary')}>");
-    const summaryEnd = source.indexOf("<Card title={t('pages.profile.orderItems')}>", summaryStart);
+    const summaryStart = source.indexOf("aria-label={t('pages.orderTracking.summary')}");
+    const summaryEnd = source.indexOf("aria-label={t('pages.profile.orderItems')}", summaryStart);
     const summarySource = source.slice(summaryStart, summaryEnd);
 
     expect(source).toContain('const autoRefreshEnabled = Boolean(order?.orderNo && trackedEmail && !detailsRestricted && shouldAutoRefreshTrackedOrder(order));');
     expect(summaryStart).toBeGreaterThan(-1);
     expect(summaryEnd).toBeGreaterThan(summaryStart);
     expect(summarySource).toContain("{canShowFullTrackingDetails ? (");
-    expect(summarySource).toContain("<Descriptions.Item label={t('common.status')}>");
-    expect(summarySource.indexOf("{canShowFullTrackingDetails ? (")).toBeLessThan(summarySource.indexOf("<Descriptions.Item label={t('common.status')}>"));
-    expect(summarySource).toContain("<Descriptions.Item label={t('pages.orderTracking.createdAt')}>");
+    expect(summarySource).toContain("{t('common.status')}");
+    expect(summarySource).toContain('order-tracking-page__descRow');
+    expect(summarySource.indexOf("{canShowFullTrackingDetails ? (")).toBeLessThan(summarySource.indexOf("{t('common.status')}"));
+    expect(summarySource).toContain("{t('pages.orderTracking.createdAt')}");
     // createdAt and later lifecycle rows stay behind canShowFullTrackingDetails gates.
-    expect(summarySource.indexOf("{canShowFullTrackingDetails ? (")).toBeLessThan(summarySource.indexOf("<Descriptions.Item label={t('pages.orderTracking.createdAt')}>"));
+    expect(summarySource.indexOf("{canShowFullTrackingDetails ? (")).toBeLessThan(summarySource.indexOf("{t('pages.orderTracking.createdAt')}"));
     expect(summarySource).toContain('canShowFullTrackingDetails && order.trackingCarrierName');
     expect(summarySource).toContain('canShowFullTrackingDetails && order.returnDeadline');
     expect(source).toContain('navigate(`/payment/${encodeURIComponent(String(order.orderNo || order.id))}${emailQuery}`)');
