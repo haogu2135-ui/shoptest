@@ -1,7 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { ShopIcon, SI } from '../components/ShopIcon';
-import { Alert, Button, Modal, Popconfirm } from 'antd';
+import { Alert, Button } from 'antd';
+import ShopModal from '../components/ShopModal';
+import ShopPopconfirm from '../components/ShopPopconfirm';
 import { useNavigate } from 'react-router-dom';
 import { petGalleryApi } from '../api';
 import { useLanguage } from '../i18n';
@@ -652,8 +654,8 @@ const PetGallery: React.FC = () => {
                   </button>
                 )}
                 {item.canDelete && item.photo && canUseLiveInteractions ? (
-                  <Popconfirm
-                    classNames={{ root: 'shop-mobile-popup-layer pet-gallery-delete-popconfirm' }}
+                  <ShopPopconfirm
+                    rootClassName='shop-mobile-popup-layer pet-gallery-delete-popconfirm'
                     title={t('home.petUgcDeleteConfirm')}
                     okText={t('common.confirm')}
                     cancelText={t('common.cancel')}
@@ -664,7 +666,7 @@ const PetGallery: React.FC = () => {
                     <button type="button" className="pet-gallery-card__delete" aria-label={galleryItemDeleteLabel(item)} title={galleryItemDeleteLabel(item)}>
                       <ShopIcon path={SI.delete} />
                     </button>
-                  </Popconfirm>
+                  </ShopPopconfirm>
                 ) : (
                   <ShopIcon path={SI.camera} className="pet-gallery-card__camera" />
                 )}
@@ -674,14 +676,16 @@ const PetGallery: React.FC = () => {
         </div>
       )}
 
-      <Modal
+      <ShopModal
         open={Boolean(activePreviewItem)}
         footer={null}
-        centered
         width={760}
+        title={null}
         className="profile-mobile-safe-modal pet-gallery-preview"
-        destroyOnHidden
-        onCancel={() => setPreviewItem(null)}
+        rootClassName="pet-gallery-preview-root"
+        ariaLabel={activePreviewItem?.label || t('nav.petGallery')}
+        closeLabel={t('common.close', { defaultValue: 'Close' })}
+        onClose={() => setPreviewItem(null)}
       >
         {activePreviewItem ? (
           <figure className="pet-gallery-preview__figure">
@@ -717,7 +721,7 @@ const PetGallery: React.FC = () => {
             </figcaption>
           </figure>
         ) : null}
-      </Modal>
+      </ShopModal>
     </main>
   );
 };

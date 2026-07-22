@@ -2,7 +2,7 @@ import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } fr
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { ShopIcon, SI } from '../components/ShopIcon';
 import { useParams, useSearchParams } from 'react-router-dom';
-import { Button, Tag, Radio, Carousel, Modal, Input, Alert } from 'antd';
+import { Button, Tag, Input, Alert } from 'antd';
 import { productApi, cartApi, reviewApi, wishlistApi, questionApi } from '../api';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../i18n';
@@ -29,12 +29,12 @@ import { addAppScrollListener } from '../utils/nativeScroll';
 import { useNativeBackHandler } from '../utils/nativeBack';
 import { AUTH_SESSION_CHANGED_EVENT } from '../utils/authEvents';
 import { formatProductSpecLabel } from '../utils/productSpecLabels';
-import { syncHiddenCarouselSlideFocus } from '../utils/carouselAccessibility';
 import { reportNonBlockingError } from '../utils/nonBlockingError';
 import PageEmpty from '../components/PageEmpty';
 import ShopBreadcrumb from '../components/ShopBreadcrumb';
 import ShopSegmented from '../components/ShopSegmented';
 import ShopRate from '../components/ShopRate';
+import ShopModal from '../components/ShopModal';
 import PageError from '../components/PageError';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useDocumentMeta } from '../hooks/useDocumentMeta';
@@ -276,7 +276,6 @@ const ProductDetail: React.FC = () => {
   const purchaseRequestKeyRef = useRef<string | null>(null);
   const recommendationRequestIdsRef = useRef<Set<number>>(new Set());
   const galleryScrollRafRef = useRef<number | null>(null);
-  const recommendationCarouselRef = useRef<HTMLDivElement | null>(null);
   const { t, language } = useLanguage();
   const productDetailLocalizationRef = useRef({ t, language });
   productDetailLocalizationRef.current = { t, language };
@@ -376,21 +375,6 @@ const ProductDetail: React.FC = () => {
   const heroImageSrcSet = useMemo(() => buildResponsiveImageSrcSet(selectedImage || fallbackProductImage, [480, 720, 900, 1200]), [selectedImage]);
   const shouldPreloadHeroImage = Boolean(selectedImage);
   const heroImageSizes = '(max-width: 768px) 100vw, 560px';
-
-  const syncRecommendationCarouselFocus = useCallback(() => {
-    syncHiddenCarouselSlideFocus(recommendationCarouselRef.current);
-  }, []);
-
-  useEffect(() => {
-    syncRecommendationCarouselFocus();
-    if (process.env.NODE_ENV === 'test') return;
-    const frameId = window.requestAnimationFrame(syncRecommendationCarouselFocus);
-    const timeoutId = window.setTimeout(syncRecommendationCarouselFocus, 80);
-    return () => {
-      window.cancelAnimationFrame(frameId);
-      window.clearTimeout(timeoutId);
-    };
-  }, [recommendations, syncRecommendationCarouselFocus]);
 
   useEffect(() => {
     const links: HTMLLinkElement[] = [];
@@ -1688,48 +1672,47 @@ const ProductDetail: React.FC = () => {
               </div>
 
               {galleryImages.length > 1 && (
-                <div className="product-detail-thumbs">
-                  <Carousel autoplay={!imagePaused} autoplaySpeed={3200} slidesToShow={4} dots={false} responsive={[
-                    { breakpoint: 768, settings: { slidesToShow: 3 } },
-                    { breakpoint: 480, settings: { slidesToShow: 2 } },
-                  ]}>
-                    {galleryImages.map((image: string, index: number) => {
-                      const thumbLabel = getGalleryImageLabel(index);
-                      const selectThumb = () => {
-                        selectGalleryImage(image, index);
-                        pauseImageRotation();
-                        scheduleImageRotationResume(5000);
-                      };
-                      return (
-                        <div key={index} className="product-detail-thumbs__slide">
-                          <button
-                            type="button"
-                            className={`product-detail-thumbs__button${selectedImage === image ? ' product-detail-thumbs__button--active' : ''}`}
-                            aria-pressed={selectedImage === image}
-                            aria-label={thumbLabel}
-                            title={thumbLabel}
-                            onClick={selectThumb}
-                            onKeyDown={(event) => handleGalleryKeyDown(event, index)}
-                          >
-                            <img
-                              src={getOptimizedImageUrl(image, 144)}
-                              srcSet={buildResponsiveImageSrcSet(image, [96, 144, 192, 288])}
-                              sizes="120px"
-                              alt=""
-                              className="product-detail-thumbs__img"
-                              width={160}
-                              height={160}
-                              loading="lazy"
-                              decoding="async"
-                              onError={(event) => {
-                                applyImageFallback(event, productImages[productImages.length - 1]);
-                              }}
-                            />
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </Carousel>
+                <div
+                  className="product-detail-thumbs product-detail-thumbs--strip"
+                  role="list"
+                  aria-label={`${t('pages.productDetail.product')} ${t('common.image')}`}
+                >
+                  {galleryImages.map((image: string, index: number) => {
+                    const thumbLabel = getGalleryImageLabel(index);
+                    const selectThumb = () => {
+                      selectGalleryImage(image, index);
+                      pauseImageRotation();
+                      scheduleImageRotationResume(5000);
+                    };
+                    return (
+                      <div key={index} className="product-detail-thumbs__slide" role="listitem">
+                        <button
+                          type="button"
+                          className={`product-detail-thumbs__button${selectedImage === image ? ' product-detail-thumbs__button--active' : ''}`}
+                          aria-pressed={selectedImage === image}
+                          aria-label={thumbLabel}
+                          title={thumbLabel}
+                          onClick={selectThumb}
+                          onKeyDown={(event) => handleGalleryKeyDown(event, index)}
+                        >
+                          <img
+                            src={getOptimizedImageUrl(image, 144)}
+                            srcSet={buildResponsiveImageSrcSet(image, [96, 144, 192, 288])}
+                            sizes="120px"
+                            alt=""
+                            className="product-detail-thumbs__img"
+                            width={160}
+                            height={160}
+                            loading="lazy"
+                            decoding="async"
+                            onError={(event) => {
+                              applyImageFallback(event, productImages[productImages.length - 1]);
+                            }}
+                          />
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
               {galleryImages.length > 1 && (
@@ -1896,23 +1879,35 @@ const ProductDetail: React.FC = () => {
                             </Button>
                           ) : null}
                         </div>
-                        <Radio.Group
-                          value={selectedOptions[group.name]}
-                          onChange={e => selectOptionValue(group.name, e.target.value)}
+                        <div
                           className="product-option-radio"
+                          role="radiogroup"
                           aria-label={optionGroupLabel}
                         >
                           {group.values.map((value) => {
                             const disabled = !optionValueIsCompatible(variants, selectedOptions, group.name, value);
                             const selected = selectedOptions[group.name] === value;
+                            const optionLabel = getLocalizedOptionLabel(value, language);
                             return (
-                              <Radio.Button key={value} value={value} disabled={disabled}>
+                              <button
+                                key={value}
+                                type="button"
+                                role="radio"
+                                className={`product-option-radio__option${selected ? ' product-option-radio__option--selected' : ''}${disabled ? ' product-option-radio__option--disabled' : ''}`}
+                                aria-checked={selected}
+                                aria-label={optionLabel}
+                                title={optionLabel}
+                                disabled={disabled}
+                                onClick={() => {
+                                  if (!disabled) selectOptionValue(group.name, value);
+                                }}
+                              >
                                 {selected ? <ShopIcon path={SI.checkCircle} className="product-option-radio__check" /> : null}
-                                <span>{getLocalizedOptionLabel(value, language)}</span>
-                              </Radio.Button>
+                                <span>{optionLabel}</span>
+                              </button>
                             );
                           })}
-                        </Radio.Group>
+                        </div>
                       </div>
                     );
                   })}
@@ -2507,18 +2502,12 @@ const ProductDetail: React.FC = () => {
 
         {/* Related recommendations */}
         {relatedRecommendations.length > 0 ? (
-          <div className="product-recommendations" ref={recommendationCarouselRef}>
+          <div className="product-recommendations product-recommendations--strip">
             <h3 className="product-detail-page__title">{t('pages.productDetail.boughtTogether', { defaultValue: t('pages.productDetail.recommendations') })}</h3>
-            <Carousel
-              slidesToShow={4}
-              dots={false}
-              arrows
-              afterChange={syncRecommendationCarouselFocus}
-              responsive={[
-                { breakpoint: 1024, settings: { slidesToShow: 3 } },
-                { breakpoint: 768, settings: { slidesToShow: 2 } },
-                { breakpoint: 520, settings: { slidesToShow: 1 } },
-              ]}
+            <div
+              className="product-recommendations__track product-recommendations__track--strip"
+              role="list"
+              aria-label={t('pages.productDetail.recommendations')}
             >
               {relatedRecommendations.map((rec) => {
                 const recName = detailProductName(rec);
@@ -2609,7 +2598,7 @@ const ProductDetail: React.FC = () => {
                   </div>
                 );
               })}
-            </Carousel>
+            </div>
           </div>
         ) : recommendationsLoading ? (
           <div className="product-recommendations product-recommendations--loading" data-product-detail-recommendations-loading="true" role="status" aria-live="polite" aria-busy="true" aria-label={t('common.loading')}>
@@ -2667,14 +2656,16 @@ const ProductDetail: React.FC = () => {
         )}
       </div>
 
-	      {/* Image preview modal */}
-      <Modal
+      {/* Image preview modal */}
+      <ShopModal
         open={isModalVisible}
         footer={null}
-        onCancel={() => setIsModalVisible(false)}
+        onClose={() => setIsModalVisible(false)}
         width="min(800px, calc(100vw - 24px))"
-        centered
         className="profile-mobile-safe-modal product-detail__imageModal"
+        rootClassName="product-detail__imageModalRoot"
+        closeLabel={t('common.close', { defaultValue: 'Close' })}
+        ariaLabel={productName}
       >
         <img
           src={getOptimizedImageUrl(selectedImage, 1200)}
@@ -2689,14 +2680,17 @@ const ProductDetail: React.FC = () => {
             applyImageFallback(event, productImages[productImages.length - 1]);
           }}
         />
-      </Modal>
+      </ShopModal>
 
-      <Modal
+      <ShopModal
         title={t('pages.productDetail.sizeGuideTitle')}
         open={sizeGuideOpen}
-        onCancel={() => setSizeGuideOpen(false)}
+        onClose={() => setSizeGuideOpen(false)}
         footer={<Button type="primary" aria-label={sizeGuideConfirmActionLabel} title={sizeGuideConfirmActionLabel} onClick={() => setSizeGuideOpen(false)}>{t('pages.productDetail.sizeGuideGotIt')}</Button>}
         className="profile-mobile-safe-modal product-detail__sizeGuideModal"
+        rootClassName="product-detail__sizeGuideModalRoot"
+        closeLabel={t('common.close', { defaultValue: 'Close' })}
+        ariaLabel={t('pages.productDetail.sizeGuideTitle')}
       >
         <div className="pet-size-guide">
           <div>
@@ -2712,7 +2706,7 @@ const ProductDetail: React.FC = () => {
             <span>{t('pages.productDetail.sizeGuideBackText')}</span>
           </div>
         </div>
-      </Modal>
+      </ShopModal>
     </div>
   );
 };

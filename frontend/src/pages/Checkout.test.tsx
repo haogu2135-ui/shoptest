@@ -338,7 +338,12 @@ describe('Checkout payment availability', () => {
     expect(source).toContain('setRegionOptionsLanguage(language)');
     expect(source).not.toContain('regionData }');
     expect(source).toContain('open={checkoutRegionCascaderOpen}');
-    expect(source).toContain('onOpenChange={setCheckoutRegionCascaderVisibility}');
+    expect(source).toContain('onOpenChange={(open) => {');
+    expect(source).toContain('setCheckoutRegionCascaderVisibility(open);');
+    expect(source).toContain('if (open) void loadCheckoutRegionOptions();');
+    expect(source).toContain('<ShopCascader');
+    expect(source).not.toMatch(/import \{[^}]*\bCascader\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<Cascader\b/);
     expect(source).not.toContain('popupVisible={checkoutRegionCascaderOpen}');
     expect(source).not.toContain('onPopupVisibleChange={setCheckoutRegionCascaderVisibility}');
     expect(source).toContain('classList.toggle');
@@ -934,7 +939,7 @@ describe('Checkout payment availability', () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByRole('combobox', { name: 'Coupon: Select coupon' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Coupon: Select coupon' })).toBeInTheDocument();
     expect(screen.getByTitle('Coupon: Select coupon')).toBeInTheDocument();
     expect(screen.queryByRole('button', {
       name: /Review coupons/,

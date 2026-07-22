@@ -154,12 +154,12 @@ body.shop-mobile-app .shop-nav__searchShell {
 }
 
 body.shop-mobile-app .shop-nav__searchBar,
-body.shop-mobile-app .shop-nav__search .ant-input-wrapper,
-body.shop-mobile-app .shop-nav__search .ant-input-group {
+body.shop-mobile-app .shop-nav__search .shop-search-field,
+body.shop-mobile-app .shop-nav__search .shop-search-field {
   width: 100%;
 }
 
-body.shop-mobile-app .shop-nav__search .ant-input-group {
+body.shop-mobile-app .shop-nav__search .shop-search-field {
   height: 44px;
   padding: 2px;
   border: 1px solid #dce8e0;
@@ -168,23 +168,23 @@ body.shop-mobile-app .shop-nav__search .ant-input-group {
   box-shadow: none;
 }
 
-body.shop-mobile-app .shop-nav__search .ant-input-group::before {
+body.shop-mobile-app .shop-nav__search .shop-search-field::before {
   display: none;
 }
 
-body.shop-mobile-app .shop-nav__search .ant-input-affix-wrapper {
+body.shop-mobile-app .shop-nav__search .shop-search-field__control {
   height: 44px;
   border: 0 !important;
   background: transparent !important;
   box-shadow: none !important;
 }
 
-body.shop-mobile-app .shop-nav__search .ant-input {
+body.shop-mobile-app .shop-nav__search .shop-search-field__input {
   font-size: 15px;
 }
 
-body.shop-mobile-app .shop-nav__search .ant-input-group-addon,
-body.shop-mobile-app .shop-nav__search .ant-btn {
+body.shop-mobile-app .shop-nav__search .shop-search-field__submit,
+body.shop-mobile-app .shop-nav__search .shop-search-field__submit {
   width: 44px;
   min-width: 44px;
   height: 44px;
@@ -951,7 +951,7 @@ body.shop-mobile-app .shop-nav__admin {
   box-shadow: 0 6px 16px rgba(21, 40, 30, 0.08);
 }
 
-body.shop-mobile-app .shop-nav__search .ant-input-group {
+body.shop-mobile-app .shop-nav__search .shop-search-field {
   height: 44px;
   border: 0;
   border-radius: 8px;
@@ -959,17 +959,17 @@ body.shop-mobile-app .shop-nav__search .ant-input-group {
   box-shadow: 0 8px 20px rgba(21, 40, 30, 0.08);
 }
 
-body.shop-mobile-app .shop-nav__search .ant-input-affix-wrapper {
+body.shop-mobile-app .shop-nav__search .shop-search-field__control {
   height: 44px;
   padding-inline: 12px;
 }
 
-body.shop-mobile-app .shop-nav__search .ant-input {
+body.shop-mobile-app .shop-nav__search .shop-search-field__input {
   color: var(--app-ink);
   font-size: 15px;
 }
 
-body.shop-mobile-app .shop-nav__search .ant-btn {
+body.shop-mobile-app .shop-nav__search .shop-search-field__submit {
   width: 44px;
   min-width: 44px;
   height: 44px;
@@ -1827,19 +1827,19 @@ body.shop-mobile-app .product-list__pagination {
   margin: 14px 0 0 !important;
 }
 
-body.shop-mobile-app .product-list__pagination .ant-pagination {
+body.shop-mobile-app .product-list__pagination .shop-pagination {
   justify-content: center;
 }
 
 body.shop-mobile-app .product-list__mobileDrawer .ant-drawer-content,
-body.shop-mobile-app .product-list__quickAddModal .ant-modal-content,
-body.shop-mobile-app .product-list__previewModal .ant-modal-content {
+body.shop-mobile-app .product-list__quickAddModal .shop-modal__content,
+body.shop-mobile-app .product-list__previewModal .shop-modal__content {
   border-radius: 8px 8px 0 0 !important;
 }
 
 body.shop-mobile-app .product-list__drawerFooter .ant-btn,
 body.shop-mobile-app .product-list__previewActions .ant-btn,
-body.shop-mobile-app .product-list__quickAddModal .ant-modal-footer .ant-btn {
+body.shop-mobile-app .product-list__quickAddModal .shop-modal__footer .ant-btn {
   min-height: 44px !important;
   border-radius: 8px !important;
 }
@@ -2048,16 +2048,16 @@ body.shop-mobile-app .shop-nav__admin {
   box-shadow: none;
 }
 
-body.shop-mobile-app .shop-nav__search .ant-input-group {
+body.shop-mobile-app .shop-nav__search .shop-search-field {
   background: #ffffff !important;
 }
 
-body.shop-mobile-app .shop-nav__search .ant-input,
-body.shop-mobile-app .shop-nav__search .ant-input-affix-wrapper {
+body.shop-mobile-app .shop-nav__search .shop-search-field__input,
+body.shop-mobile-app .shop-nav__search .shop-search-field__control {
   color: var(--app-ink) !important;
 }
 
-body.shop-mobile-app .shop-nav__search .ant-btn {
+body.shop-mobile-app .shop-nav__search .shop-search-field__submit {
   background: #ee4d2d !important;
   color: #ffffff !important;
 }
@@ -2297,7 +2297,7 @@ body.shop-mobile-app .shop-nav__brandCopy small {
   color: rgba(255, 255, 255, 0.78) !important;
 }
 
-body.shop-mobile-app .shop-nav__search .ant-input-group {
+body.shop-mobile-app .shop-nav__search .shop-search-field {
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.16) !important;
 }
 
@@ -2590,13 +2590,13 @@ body.shop-mobile-app .shop-nav {
 }
 
 body.shop-mobile-app .shop-nav__brandIcon,
-body.shop-mobile-app .shop-nav__search .ant-btn,
+body.shop-mobile-app .shop-nav__search .shop-search-field__submit,
 body.shop-mobile-app .shopee-mobile-quick-panel button:first-child,
 body.shop-mobile-app .product-list__mobileConversionActions .ant-btn-primary {
   box-shadow: var(--app-shadow-accent) !important;
 }
 
-body.shop-mobile-app .shop-nav__search .ant-input-group {
+body.shop-mobile-app .shop-nav__search .shop-search-field {
   border-color: rgba(255, 255, 255, 0.7) !important;
   box-shadow: 0 18px 36px rgba(10, 33, 24, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.86) !important;
 }
@@ -2874,7 +2874,7 @@ body.shop-mobile-app :where(
 }
 
 /* Address cascader: keep linked region menus inside phone-width App popups. */
-body.shop-mobile-app .shop-mobile-popup-layer.ant-cascader-dropdown {
+body.shop-mobile-app .shop-mobile-popup-layer.shop-cascader__popup {
   --shop-address-cascader-available-height: calc(100vh - 24px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
   --shop-address-cascader-level-height: calc(var(--shop-address-cascader-available-height) / 5);
   left: max(8px, env(safe-area-inset-left, 0px)) !important;
@@ -2888,12 +2888,12 @@ body.shop-mobile-app .shop-mobile-popup-layer.ant-cascader-dropdown {
 }
 
 @supports (height: 100dvh) {
-  body.shop-mobile-app .shop-mobile-popup-layer.ant-cascader-dropdown {
+  body.shop-mobile-app .shop-mobile-popup-layer.shop-cascader__popup {
     --shop-address-cascader-available-height: calc(100dvh - 24px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
   }
 }
 
-body.shop-mobile-app .shop-mobile-popup-layer.ant-cascader-dropdown .ant-cascader-menus {
+body.shop-mobile-app .shop-mobile-popup-layer.shop-cascader__popup .shop-cascader__columns {
   display: flex !important;
   flex-direction: column !important;
   width: 100% !important;
@@ -2906,7 +2906,7 @@ body.shop-mobile-app .shop-mobile-popup-layer.ant-cascader-dropdown .ant-cascade
   -webkit-overflow-scrolling: touch;
 }
 
-body.shop-mobile-app .shop-mobile-popup-layer.ant-cascader-dropdown .ant-cascader-menu {
+body.shop-mobile-app .shop-mobile-popup-layer.shop-cascader__popup .shop-cascader__column {
   flex: 0 0 auto !important;
   width: 100% !important;
   min-width: 0 !important;
@@ -2920,24 +2920,24 @@ body.shop-mobile-app .shop-mobile-popup-layer.ant-cascader-dropdown .ant-cascade
   -webkit-overflow-scrolling: touch;
 }
 
-body.shop-mobile-app .shop-mobile-popup-layer.ant-cascader-dropdown .ant-cascader-menu-item {
+body.shop-mobile-app .shop-mobile-popup-layer.shop-cascader__popup .shop-cascader__option {
   min-height: 40px !important;
   color: #173f2b !important;
   font-weight: 700;
 }
 
-body.shop-mobile-app .shop-mobile-popup-layer.ant-cascader-dropdown .ant-cascader-menu-item-active,
-body.shop-mobile-app .shop-mobile-popup-layer.ant-cascader-dropdown .ant-cascader-menu-item:hover {
+body.shop-mobile-app .shop-mobile-popup-layer.shop-cascader__popup .shop-cascader__option--selected,
+body.shop-mobile-app .shop-mobile-popup-layer.shop-cascader__popup .shop-cascader__option:hover {
   background: #eaf4ef !important;
   color: #124734 !important;
 }
 
-body.shop-mobile-app .shop-mobile-popup-layer.ant-cascader-dropdown .ant-cascader-menu-item-expand-icon {
+body.shop-mobile-app .shop-mobile-popup-layer.shop-cascader__popup .shop-cascader__optionChevron {
   color: #627064 !important;
 }
 
 /* Address cascader: keep every linked level visible inside the App viewport. */
-body.shop-mobile-app .shop-mobile-popup-layer.ant-cascader-dropdown {
+body.shop-mobile-app .shop-mobile-popup-layer.shop-cascader__popup {
   top: max(12px, calc(env(safe-area-inset-top, 0px) + 12px)) !important;
   bottom: auto !important;
   height: calc(100vh - 24px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) !important;
@@ -2947,20 +2947,20 @@ body.shop-mobile-app .shop-mobile-popup-layer.ant-cascader-dropdown {
 }
 
 @supports (height: 100dvh) {
-  body.shop-mobile-app .shop-mobile-popup-layer.ant-cascader-dropdown {
+  body.shop-mobile-app .shop-mobile-popup-layer.shop-cascader__popup {
     height: calc(100dvh - 24px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) !important;
     max-height: calc(100dvh - 24px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) !important;
   }
 }
 
-body.shop-mobile-app .shop-mobile-popup-layer.ant-cascader-dropdown .ant-cascader-menus {
+body.shop-mobile-app .shop-mobile-popup-layer.shop-cascader__popup .shop-cascader__columns {
   flex: 1 1 auto !important;
   min-height: 0 !important;
   height: 100% !important;
   max-height: none !important;
 }
 
-body.shop-mobile-app .shop-mobile-popup-layer.ant-cascader-dropdown .ant-cascader-menu {
+body.shop-mobile-app .shop-mobile-popup-layer.shop-cascader__popup .shop-cascader__column {
   flex: 1 1 0 !important;
   min-height: 76px !important;
   max-height: none !important;
@@ -3086,7 +3086,7 @@ body.shop-mobile-app #root {
   background: transparent !important;
 }
 
-body.shop-mobile-app .shop-nav__search .ant-input-group,
+body.shop-mobile-app .shop-nav__search .shop-search-field,
 body.shop-mobile-app .shop-nav__actions button,
 body.shop-mobile-app .shop-nav__actions a,
 body.shop-mobile-app .shop-nav__admin {
@@ -3094,7 +3094,7 @@ body.shop-mobile-app .shop-nav__admin {
   border-color: rgba(255, 241, 223, 0.34) !important;
 }
 
-body.shop-mobile-app .shop-nav__search .ant-input-group {
+body.shop-mobile-app .shop-nav__search .shop-search-field {
   background: #fff1df !important;
 }
 
@@ -5149,7 +5149,7 @@ body.shop-mobile-app :where(
 
 /* App shell contrast closure for controls outside lazy page CSS. */
 body.shop-mobile-app .shop-nav__brandIcon,
-body.shop-mobile-app .shop-nav__search .ant-btn {
+body.shop-mobile-app .shop-nav__search .shop-search-field__submit {
   border-color: rgba(255, 247, 240, 0.28) !important;
   background: #124734 !important;
   color: #fff7f0 !important;
@@ -5157,7 +5157,7 @@ body.shop-mobile-app .shop-nav__search .ant-btn {
 }
 
 body.shop-mobile-app .shop-nav__brandIcon :where(span, strong, small, .anticon),
-body.shop-mobile-app .shop-nav__search .ant-btn :where(span, strong, small, .anticon) {
+body.shop-mobile-app .shop-nav__search .shop-search-field__submit :where(span, strong, small, .anticon) {
   color: #fff7f0 !important;
 }
 
@@ -5674,7 +5674,7 @@ body.shop-mobile-app .shop-app-shell--product-list .product-list__mobileContextC
 body.shop-mobile-app .shop-app-shell--product-list .product-list__mobileDiscoveryButton,
 body.shop-mobile-app .shop-app-shell--product-list .product-list__mobileConversionActions .ant-btn,
 body.shop-mobile-app .product-list__mobileDrawer .product-list__drawerFooter .ant-btn,
-body.shop-mobile-app .product-list__quickAddModal .ant-modal-footer .ant-btn,
+body.shop-mobile-app .product-list__quickAddModal .shop-modal__footer .ant-btn,
 body.shop-mobile-app .product-list__quickAddModal .ant-select-selector,
 body.shop-mobile-app .product-list__previewModal .product-list__previewActions .ant-btn {
   min-height: 44px !important;
@@ -5683,7 +5683,7 @@ body.shop-mobile-app .product-list__previewModal .product-list__previewActions .
 }
 
 /* Final native App address cascader touch-target guard */
-body.shop-mobile-app .shop-mobile-popup-layer.ant-cascader-dropdown .ant-cascader-menu-item {
+body.shop-mobile-app .shop-mobile-popup-layer.shop-cascader__popup .shop-cascader__option {
   min-height: 44px !important;
   touch-action: manipulation !important;
 }
@@ -5828,7 +5828,7 @@ body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .shopee-hom
   -webkit-text-fill-color: #ffffff !important;
 }
 
-body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio.ant-radio-group {
+body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio {
   display: flex !important;
   flex-wrap: wrap !important;
   gap: 8px !important;
@@ -5841,7 +5841,7 @@ body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .product-de
   touch-action: manipulation !important;
 }
 
-body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio .ant-radio-button-wrapper {
+body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio__option {
   flex: 1 1 calc(50% - 8px) !important;
   min-width: min(100%, 112px) !important;
   max-width: 100% !important;
@@ -5858,7 +5858,7 @@ body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .product-de
   user-select: none !important;
 }
 
-body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio .ant-radio-button-wrapper-checked:not(.ant-radio-button-wrapper-disabled) {
+body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio__option--selected:not(.product-option-radio__option--disabled) {
   border-color: #8f2d17 !important;
   background: #fff7f0 !important;
   color: #8f2d17 !important;
@@ -5866,14 +5866,14 @@ body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .product-de
   box-shadow: inset 0 0 0 1px rgba(143, 45, 23, 0.18), 0 8px 18px rgba(143, 45, 23, 0.12) !important;
 }
 
-body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio .ant-radio-button-wrapper :where(span, .anticon),
-body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio .ant-radio-button-wrapper-checked :where(span, .anticon) {
+body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio__option :where(span, .anticon),
+body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio__option--selected :where(span, .anticon) {
   color: inherit !important;
   -webkit-text-fill-color: inherit !important;
 }
 
 @media (max-width: 380px) {
-body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio .ant-radio-button-wrapper {
+body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio__option {
     flex-basis: 100% !important;
   }
 }
@@ -5970,7 +5970,7 @@ body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-nav .shop-nav__action
   box-shadow: none !important;
 }
 
-body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-nav__search .ant-input-group {
+body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-nav__search .shop-search-field {
   height: 44px !important;
   min-height: 44px !important;
   border: 0 !important;
@@ -5979,18 +5979,18 @@ body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-nav__search .ant-inpu
   box-shadow: 0 8px 16px rgba(8, 38, 27, 0.18) !important;
 }
 
-body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-nav__search .ant-input-affix-wrapper {
+body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-nav__search .shop-search-field__control {
   height: 44px !important;
   min-height: 44px !important;
 }
 
-body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-nav__search .ant-input {
+body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-nav__search .shop-search-field__input {
   color: var(--app-polish-ink) !important;
   -webkit-text-fill-color: var(--app-polish-ink) !important;
   font-size: 15px !important;
 }
 
-body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-nav__search .ant-btn {
+body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-nav__search .shop-search-field__submit {
   width: 46px !important;
   min-width: 46px !important;
   height: 44px !important;
@@ -6541,26 +6541,24 @@ body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--checkout-f
 /* Final native App closure for submitted regressions. Keep modal overlays clear,
    reserve the header for primary actions, and keep SKU selections readable. */
 body.shop-mobile-app :where(.ant-modal-mask),
-body.shop-mobile-app .ant-modal-root:has(.shop-mobile-update-modal) :where(.ant-modal-mask, .ant-modal-wrap, .ant-modal) {
+body.shop-mobile-app .shop-mobile-update-modal-root :where(.shop-modal__mask, .shop-modal__wrap, .shop-modal__panel) {
   filter: none !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
 }
 
-body.shop-mobile-app .shop-mobile-update-modal-root :where(.ant-modal-mask, .ant-modal-wrap, .ant-modal),
-body.shop-mobile-app .ant-modal-root:has(.shop-mobile-update-modal) .ant-modal-mask {
+body.shop-mobile-app .shop-mobile-update-modal-root :where(.shop-modal__mask, .shop-modal__wrap, .shop-modal__panel) {
   filter: none !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
 }
 
-body.shop-mobile-app .shop-mobile-update-modal-root .ant-modal-mask,
-body.shop-mobile-app .ant-modal-root:has(.shop-mobile-update-modal) .ant-modal-mask {
+body.shop-mobile-app .shop-mobile-update-modal-root .shop-modal__mask {
   background: rgba(15, 30, 22, 0.48) !important;
 }
 
 body.shop-mobile-app .shop-mobile-update-modal,
-body.shop-mobile-app .shop-mobile-update-modal .ant-modal-content {
+body.shop-mobile-app .shop-mobile-update-modal .shop-modal__content {
   filter: none !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
@@ -6653,8 +6651,8 @@ body.shop-mobile-app .shop-nav__bottomItem--active .ant-badge + span {
   font-weight: 900 !important;
 }
 
-body.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio.ant-radio-group,
-body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio.ant-radio-group {
+body.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio,
+body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio {
   display: flex !important;
   flex-wrap: wrap !important;
   gap: 8px !important;
@@ -6665,8 +6663,8 @@ body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .product-de
   mask-image: none !important;
 }
 
-body.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio .ant-radio-button-wrapper,
-body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio .ant-radio-button-wrapper {
+body.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio__option,
+body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio__option {
   flex: 1 1 calc(50% - 8px) !important;
   min-width: min(100%, 112px) !important;
   min-height: 44px !important;
@@ -6680,13 +6678,13 @@ body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .product-de
   font-weight: 800 !important;
 }
 
-body.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio .ant-radio-button-wrapper::before,
-body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio .ant-radio-button-wrapper::before {
+body.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio__option::before,
+body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio__option::before {
   display: none !important;
 }
 
-body.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio .ant-radio-button-wrapper-checked:not(.ant-radio-button-wrapper-disabled),
-body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio .ant-radio-button-wrapper-checked:not(.ant-radio-button-wrapper-disabled) {
+body.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio__option--selected:not(.product-option-radio__option--disabled),
+body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio__option--selected:not(.product-option-radio__option--disabled) {
   border-color: #8f2d17 !important;
   background: #fff7f0 !important;
   color: #8f2d17 !important;
@@ -6695,9 +6693,9 @@ body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .product-de
 }
 
 body.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio__check,
-body.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio .ant-radio-button-wrapper-checked :where(span, .anticon, svg),
+body.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio__option--selected :where(span, .anticon, svg),
 body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio__check,
-body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio .ant-radio-button-wrapper-checked :where(span, .anticon, svg) {
+body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio__option--selected :where(span, .anticon, svg) {
   color: #8f2d17 !important;
   -webkit-text-fill-color: #8f2d17 !important;
 }
@@ -6858,7 +6856,7 @@ body.shop-mobile-app .shop-app-shell .shopee-home .shopee-coupon-entry__icon :wh
 }
 
 /* Submitted BUG closure: native product options must tap immediately and remain readable. */
-body.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio.ant-radio-group {
+body.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio {
   display: flex !important;
   flex-wrap: wrap !important;
   gap: 8px !important;
@@ -6873,7 +6871,7 @@ body.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio.
   touch-action: manipulation !important;
 }
 
-body.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio .ant-radio-button-wrapper {
+body.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio__option {
   position: relative !important;
   flex: 1 1 calc(50% - 8px) !important;
   min-width: min(100%, 112px) !important;
@@ -6891,7 +6889,7 @@ body.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio 
   user-select: none !important;
 }
 
-body.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio .ant-radio-button-wrapper-checked:not(.ant-radio-button-wrapper-disabled) {
+body.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio__option--selected:not(.product-option-radio__option--disabled) {
   border-color: #8f2d17 !important;
   background: #fff7f0 !important;
   color: #8f2d17 !important;
@@ -6899,14 +6897,14 @@ body.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio 
   box-shadow: inset 0 0 0 1px rgba(143, 45, 23, 0.18), 0 8px 18px rgba(143, 45, 23, 0.12) !important;
 }
 
-body.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio .ant-radio-button-wrapper :where(span, .anticon),
-body.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio .ant-radio-button-wrapper-checked :where(span, .anticon) {
+body.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio__option :where(span, .anticon),
+body.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio__option--selected :where(span, .anticon) {
   color: inherit !important;
   -webkit-text-fill-color: inherit !important;
 }
 
 @media (max-width: 380px) {
-  body.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio .ant-radio-button-wrapper {
+  body.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio__option {
     flex-basis: 100% !important;
   }
 }
@@ -7536,7 +7534,7 @@ body.shop-mobile-app.shop-mobile-app.shop-mobile-app :is(
 ) :is(
   .shop-nav,
   .shop-nav__brandIcon,
-  .shop-nav__search .ant-btn,
+  .shop-nav__search .shop-search-field__submit,
   .shopee-hero__main,
   .shopee-login-card__header,
   .product-list__heroBand,
@@ -7591,7 +7589,7 @@ body.shop-mobile-app.shop-mobile-app.shop-mobile-app :is(
 ) :is(
   .shop-nav,
   .shop-nav__brandIcon,
-  .shop-nav__search .ant-btn,
+  .shop-nav__search .shop-search-field__submit,
   .shopee-hero__main,
   .shopee-login-card__header,
   .product-list__heroBand,
@@ -7928,7 +7926,7 @@ body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .shopee-hom
   -webkit-text-fill-color: #ffffff !important;
 }
 
-body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio.ant-radio-group {
+body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio {
   display: flex !important;
   flex-wrap: wrap !important;
   gap: 8px !important;
@@ -7941,7 +7939,7 @@ body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .product-de
   touch-action: manipulation !important;
 }
 
-body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio .ant-radio-button-wrapper {
+body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio__option {
   flex: 1 1 calc(50% - 8px) !important;
   min-width: min(100%, 112px) !important;
   max-width: 100% !important;
@@ -7958,7 +7956,7 @@ body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .product-de
   user-select: none !important;
 }
 
-body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio .ant-radio-button-wrapper-checked:not(.ant-radio-button-wrapper-disabled) {
+body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio__option--selected:not(.product-option-radio__option--disabled) {
   border-color: #124734 !important;
   background: #eaf4ef !important;
   color: #124734 !important;
@@ -7966,14 +7964,14 @@ body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .product-de
   box-shadow: inset 0 0 0 1px rgba(18, 71, 52, 0.2), 0 8px 18px rgba(18, 71, 52, 0.12) !important;
 }
 
-body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio .ant-radio-button-wrapper :where(span, .anticon),
-body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio .ant-radio-button-wrapper-checked :where(span, .anticon) {
+body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio__option :where(span, .anticon),
+body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio__option--selected :where(span, .anticon) {
   color: inherit !important;
   -webkit-text-fill-color: inherit !important;
 }
 
 @media (max-width: 380px) {
-  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio .ant-radio-button-wrapper {
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio__option {
     flex-basis: 100% !important;
   }
 }
@@ -8220,11 +8218,11 @@ body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .product-de
   body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-nav .shop-nav__brand,
   body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-nav .shop-nav__actions > .shop-nav__more-trigger,
   body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-nav .shop-nav__actions > .shop-nav__cart-action,
-  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-nav .shop-nav__search .ant-input-wrapper,
-  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-nav .shop-nav__search .ant-input-group,
-  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-nav .shop-nav__search .ant-input-affix-wrapper,
-  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-nav .shop-nav__search .ant-input-search-button,
-  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-nav .shop-nav__search .ant-btn {
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-nav .shop-nav__search .shop-search-field,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-nav .shop-nav__search .shop-search-field,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-nav .shop-nav__search .shop-search-field__control,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-nav .shop-nav__search .shop-search-field__input-search-button,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-nav .shop-nav__search .shop-search-field__submit {
     box-sizing: border-box !important;
     height: 44px !important;
     min-height: 44px !important;
@@ -8241,14 +8239,14 @@ body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .product-de
     max-width: 44px !important;
   }
 
-  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-nav .shop-nav__search .ant-input-search-button,
-  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-nav .shop-nav__search .ant-btn {
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-nav .shop-nav__search .shop-search-field__input-search-button,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-nav .shop-nav__search .shop-search-field__submit {
     width: 46px !important;
     min-width: 46px !important;
     max-width: 46px !important;
   }
 
-  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-nav .shop-nav__search .ant-input-affix-wrapper {
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-nav .shop-nav__search .shop-search-field__control {
     display: inline-flex !important;
     align-items: center !important;
     padding-block: 0 !important;
@@ -10154,7 +10152,7 @@ body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-nav .shop-nav__brandC
 
 /* Submitted BUG-14: App address cascader linked levels must stay inside the phone frame. */
 @media (max-width: 780px) {
-  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-mobile-popup-layer.ant-cascader-dropdown {
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-mobile-popup-layer.shop-cascader__popup {
     --shop-address-cascader-available-height: calc(100vh - 24px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
     --shop-address-cascader-level-height: calc(var(--shop-address-cascader-available-height) / 5);
     position: fixed !important;
@@ -10176,12 +10174,12 @@ body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-nav .shop-nav__brandC
   }
 
   @supports (height: 100dvh) {
-    body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-mobile-popup-layer.ant-cascader-dropdown {
+    body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-mobile-popup-layer.shop-cascader__popup {
       --shop-address-cascader-available-height: calc(100dvh - 24px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
     }
   }
 
-  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-mobile-popup-layer.ant-cascader-dropdown .ant-cascader-menus {
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-mobile-popup-layer.shop-cascader__popup .shop-cascader__columns {
     box-sizing: border-box !important;
     display: flex !important;
     flex: 0 1 auto !important;
@@ -10196,7 +10194,7 @@ body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-nav .shop-nav__brandC
     overscroll-behavior: contain;
   }
 
-  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-mobile-popup-layer.ant-cascader-dropdown .ant-cascader-menu {
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-mobile-popup-layer.shop-cascader__popup .shop-cascader__column {
     box-sizing: border-box !important;
     flex: 0 0 var(--shop-address-cascader-level-height) !important;
     width: 100% !important;

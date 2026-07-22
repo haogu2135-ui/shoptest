@@ -1,0 +1,190 @@
+.shop-select {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  min-width: 88px;
+  max-width: 100%;
+  margin: 0;
+  padding: 0 12px;
+  border: 1px solid #d5e2d9;
+  border-radius: 10px;
+  background: #fff;
+  color: #173f2b;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.2;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.shop-select--small {
+  min-height: 36px;
+  padding: 0 10px;
+  font-size: 12px;
+  border-radius: 8px;
+}
+
+.shop-select--large {
+  min-height: 48px;
+  padding: 0 14px;
+  font-size: 14px;
+}
+
+.shop-select:hover {
+  border-color: #124734;
+}
+
+.shop-select:focus-visible {
+  outline: 3px solid rgba(18, 71, 52, 0.28);
+  outline-offset: 1px;
+}
+
+.shop-select:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.shop-select__value {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shop-select__arrow {
+  flex: 0 0 auto;
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 6px solid #3f5147;
+}
+
+.shop-select[aria-expanded='true'] .shop-select__arrow {
+  transform: rotate(180deg);
+}
+
+.shop-select__popup {
+  max-height: min(280px, calc(100dvh - 24px));
+  overflow: auto;
+  padding: 6px;
+  border: 1px solid #d8e6dc;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 14px 36px rgba(18, 71, 52, 0.18);
+}
+
+.shop-select__option {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 44px;
+  margin: 0;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #173f2b;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.shop-select__option:hover,
+.shop-select__option:focus-visible {
+  background: #f3faf5;
+}
+
+.shop-select__option--selected,
+.shop-select__option.shop-nav__select-option-current {
+  background: #e7f5ec;
+  color: #124734;
+  font-weight: 800;
+}
+
+.shop-select__optionLabel {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 780px) {
+  .shop-select,
+  .shop-select--small,
+  .shop-select__option {
+    min-height: 44px;
+    font-size: 12px !important;
+    line-height: 1.35 !important;
+  }
+}
+
+.shop-select-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.shop-select-wrap .shop-select {
+  width: 100%;
+}
+
+.shop-select__value--placeholder {
+  color: rgba(23, 63, 43, 0.45);
+  font-weight: 600;
+}
+
+.shop-select__clear {
+  position: absolute;
+  right: 28px;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #40564a;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.shop-select__clear:hover,
+.shop-select__clear:focus-visible {
+  background: #eef5f0;
+  color: #124734;
+}
+
+.shop-select__popup {
+  overflow: auto;
+}
+.shop-select__empty {
+  padding: 12px;
+  min-height: 44px;
+  color: rgba(16, 47, 34, 0.68);
+  font-size: 13px;
+  line-height: 1.4;
+}
+.shop-select--loading {
+  opacity: 0.85;
+}
+.shop-select__arrow--loading {
+  animation: shop-select-spin 0.8s linear infinite;
+}
+@keyframes shop-select-spin {
+  to { transform: rotate(360deg); }
+}

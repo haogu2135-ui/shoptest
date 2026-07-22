@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { ShopIcon, SI } from '../components/ShopIcon';
-import { Alert, Button, Input, Popconfirm, Tag } from 'antd';
+import { Alert, Button, Input, Tag } from 'antd';
+import ShopPopconfirm from '../components/ShopPopconfirm';
 import { useNavigate } from 'react-router-dom';
 import { cartApi, productApi } from '../api';
 import { useLanguage } from '../i18n';
@@ -332,8 +333,8 @@ const BrowsingHistory: React.FC = () => {
             placeholder={t('pages.browsingHistory.searchPlaceholder')}
             aria-label={t('pages.browsingHistory.searchPlaceholder')}
           />
-          <Popconfirm
-            classNames={{ root: 'shop-mobile-popup-layer browsing-history-clear-popconfirm' }}
+          <ShopPopconfirm
+            rootClassName='shop-mobile-popup-layer browsing-history-clear-popconfirm'
             title={t('pages.browsingHistory.clearConfirm')}
             okText={t('common.confirm')}
             cancelText={t('common.cancel')}
@@ -345,7 +346,7 @@ const BrowsingHistory: React.FC = () => {
             <Button danger icon={<ShopIcon path={SI.delete} />} disabled={!hasHistory} aria-label={clearHistoryActionLabel} title={clearHistoryActionLabel}>
               {t('pages.browsingHistory.clear')}
             </Button>
-          </Popconfirm>
+          </ShopPopconfirm>
         </div>
       </section>
 
@@ -599,14 +600,14 @@ const BrowsingHistory: React.FC = () => {
                       <Button type={productNeedsOptions ? 'primary' : 'default'} icon={<ShopIcon path={SI.shopping} />} aria-label={viewActionLabel} title={viewActionLabel} onClick={() => navigate(`/products/${product.id}`)}>
                         {productNeedsOptions ? t('pages.browsingHistory.resumeProduct') : t('pages.browsingHistory.viewProduct')}
                       </Button>
-                      <Popconfirm
+                      <ShopPopconfirm
                         title={t('pages.browsingHistory.removeConfirm')}
                         okText={t('common.delete')}
                         cancelText={t('common.cancel')}
                         onConfirm={() => removeItem(product.id)}
                       >
                         <Button type="text" danger icon={<ShopIcon path={SI.delete} />} aria-label={deleteActionLabel} title={deleteActionLabel} />
-                      </Popconfirm>
+                      </ShopPopconfirm>
                     </div>
                   </div>
                 </div>

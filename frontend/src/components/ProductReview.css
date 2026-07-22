@@ -40,7 +40,7 @@
   max-width: 360px;
 }
 
-.product-review__orderSelect .ant-select-selector,
+.product-review__orderSelect.shop-select,
 .product-review__textarea {
   border-radius: 12px !important;
 }
@@ -311,7 +311,7 @@
     pointer-events: none;
   }
 
-  .product-review__orderSelect .ant-select-selector,
+  .product-review__orderSelect.shop-select,
   .product-review__textarea,
   .product-review__submit.ant-btn-primary {
     min-height: 44px;
@@ -476,7 +476,7 @@
     backdrop-filter: blur(12px);
   }
 
-  .product-review__orderSelect .ant-select-selector,
+  .product-review__orderSelect.shop-select,
   .product-review__textarea,
   .product-review__submit {
     min-height: 44px;
@@ -496,7 +496,7 @@
 
 /* Final mobile/App product review touch-target guard */
 @media (max-width: 520px) {
-  .product-review__orderSelect .ant-select-selector,
+  .product-review__orderSelect.shop-select,
   .product-review__textarea,
   .product-review__rate,
   .product-review__submit,

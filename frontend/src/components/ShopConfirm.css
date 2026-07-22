@@ -1,0 +1,7 @@
+/* ShopConfirm densify */
+.shop-confirm__description {
+  margin: 0;
+  color: rgba(16, 47, 34, 0.82);
+  font-size: 14px;
+  line-height: 1.5;
+}

@@ -1073,7 +1073,7 @@
   .stock-alerts__mobileAction .ant-btn,
   .stock-alerts__item .ant-btn,
   .stock-alerts .ant-empty .ant-btn,
-  .stock-alerts-popconfirm .ant-popconfirm-buttons .ant-btn {
+  .stock-alerts-popconfirm.shop-popconfirm .shop-popconfirm__actions .ant-btn {
     min-height: 44px;
   }
 
@@ -1391,3 +1391,6 @@
     flex: 1 1 calc(50% - 4px);
   }
 }
+
+/* Gate115: stock-alerts-popconfirm ShopPopconfirm z-index */
+body .stock-alerts-popconfirm.shop-popconfirm { z-index: 10050 !important; }

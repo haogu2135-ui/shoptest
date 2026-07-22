@@ -623,6 +623,44 @@
   margin-top: 12px;
 }
 
+
+/* Gate105: native checkout address choices (radiogroup cards) */
+.checkout-page__addressGroup {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  margin-bottom: 14px;
+}
+
+.checkout-page__addressChoice {
+  appearance: none;
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid #e4ebe4;
+  border-radius: 8px;
+  background: #ffffff;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.checkout-page__addressChoice:focus-visible {
+  outline: 3px solid rgba(18, 71, 52, 0.28);
+  outline-offset: 2px;
+}
+
+.checkout-page__addressChoice--selected {
+  border-color: #124734;
+  background: #f8fcf9;
+  box-shadow: inset 0 0 0 1px #124734;
+}
+
 .checkout-page__addressChoice {
   display: block;
   width: 100%;
@@ -1603,6 +1641,7 @@
 .checkout-page .ant-input-affix-wrapper,
 .checkout-page .ant-select-selector,
 .checkout-page .ant-cascader-picker,
+.checkout-page .shop-cascader,
 .checkout-page .ant-btn,
 .checkout-page__paymentMethod {
   border-radius: 16px !important;
@@ -2583,12 +2622,12 @@
     line-height: 1.2;
   }
 
-  .checkout-page__addressChoice .ant-radio {
+  .checkout-page__addressChoice .checkout-page__addressRadioMark {
     align-self: flex-start;
     margin-top: 2px;
   }
 
-  .checkout-page__addressChoice .ant-radio + span {
+  .checkout-page__addressChoice .checkout-page__addressChoiceBody {
     min-width: 0;
   }
 
@@ -3278,13 +3317,13 @@
     scroll-margin-bottom: calc(152px + env(safe-area-inset-bottom, 0px));
   }
 
-  #checkout-address-card :where(.ant-form-item, .ant-input, .ant-input-affix-wrapper, .ant-cascader, .ant-select) {
+  #checkout-address-card :where(.ant-form-item, .ant-input, .ant-input-affix-wrapper, .ant-cascader, .shop-cascader, .shop-cascader-wrap, .ant-select) {
     scroll-margin-top: calc(156px + env(safe-area-inset-top, 0px));
     scroll-margin-bottom: calc(168px + env(safe-area-inset-bottom, 0px));
   }
 
-  #checkout-address-card :where(.ant-form-item, .ant-input, .ant-input-affix-wrapper, .ant-cascader, .ant-select, textarea.ant-input):focus-within,
-  #checkout-address-card :where(.ant-input, .ant-input-affix-wrapper, .ant-cascader, .ant-select, textarea.ant-input):focus {
+  #checkout-address-card :where(.ant-form-item, .ant-input, .ant-input-affix-wrapper, .ant-cascader, .shop-cascader, .shop-cascader-wrap, .ant-select, textarea.ant-input):focus-within,
+  #checkout-address-card :where(.ant-input, .ant-input-affix-wrapper, .ant-cascader, .shop-cascader, .shop-cascader-wrap, .ant-select, textarea.ant-input):focus {
     scroll-margin-top: calc(172px + env(safe-area-inset-top, 0px));
     scroll-margin-bottom: calc(196px + env(safe-area-inset-bottom, 0px));
   }
@@ -3300,7 +3339,7 @@
     max-width: 100%;
   }
 
-  .checkout-page__addressChoice .ant-radio + span {
+  .checkout-page__addressChoice .checkout-page__addressChoiceBody {
     display: block;
   }
 
@@ -3320,6 +3359,7 @@
   .checkout-page .ant-input-affix-wrapper,
   .checkout-page .ant-select-selector,
   .checkout-page .ant-cascader-picker,
+.checkout-page .shop-cascader,
   .checkout-page textarea.ant-input {
     font-size: 16px;
   }
@@ -3460,13 +3500,13 @@
   #checkout-address-card,
   #checkout-address-card .ant-card-body,
   #checkout-address-card .ant-form-item,
-  #checkout-address-card :where(.ant-input, .ant-input-affix-wrapper, .ant-cascader, .ant-select, textarea.ant-input) {
+  #checkout-address-card :where(.ant-input, .ant-input-affix-wrapper, .ant-cascader, .shop-cascader, .shop-cascader-wrap, .ant-select, textarea.ant-input) {
     scroll-margin-top: calc(132px + env(safe-area-inset-top, 0px)) !important;
     scroll-margin-bottom: calc(184px + env(safe-area-inset-bottom, 0px)) !important;
   }
 
-  #checkout-address-card :where(.ant-input, .ant-input-affix-wrapper, .ant-cascader, .ant-select, textarea.ant-input):focus,
-  #checkout-address-card :where(.ant-input, .ant-input-affix-wrapper, .ant-cascader, .ant-select, textarea.ant-input):focus-within {
+  #checkout-address-card :where(.ant-input, .ant-input-affix-wrapper, .ant-cascader, .shop-cascader, .shop-cascader-wrap, .ant-select, textarea.ant-input):focus,
+  #checkout-address-card :where(.ant-input, .ant-input-affix-wrapper, .ant-cascader, .shop-cascader, .shop-cascader-wrap, .ant-select, textarea.ant-input):focus-within {
     scroll-margin-top: calc(156px + env(safe-area-inset-top, 0px)) !important;
     scroll-margin-bottom: calc(204px + env(safe-area-inset-bottom, 0px)) !important;
   }
@@ -3490,7 +3530,8 @@
   .checkout-page__sectionCard .ant-input,
   .checkout-page__sectionCard .ant-input-affix-wrapper,
   .checkout-page__sectionCard .ant-select-selector,
-  .checkout-page__sectionCard .ant-cascader-picker {
+  .checkout-page__sectionCard .ant-cascader-picker,
+  .checkout-page__sectionCard .shop-cascader {
     min-height: 44px;
   }
 }
@@ -3713,6 +3754,7 @@ body:not(.checkout-region-cascader-open) .checkout-region-cascader-popup {
   pointer-events: none !important;
 }
 
+body.checkout-page-active:not(.checkout-region-cascader-open) .checkout-region-cascader-popup.shop-cascader__popup,
 body.checkout-page-active:not(.checkout-region-cascader-open) .ant-cascader-dropdown {
   display: none !important;
   visibility: hidden !important;
@@ -4323,4 +4365,31 @@ body.checkout-page-active:not(.checkout-region-cascader-open) .ant-cascader-drop
   .checkout-page__resultExtra .ant-btn {
     flex: 1 1 calc(50% - 8px);
   }
+}
+
+
+/* Gate120: native ShopSelect coupon densify */
+.checkout-page__couponSelect.shop-select,
+.checkout-page__couponSelect.shop-select .shop-select__value {
+  min-height: 44px;
+  width: 100%;
+}
+.checkout-page__couponSelect.shop-select {
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+@media (max-width: 620px) {
+  .checkout-page__couponSelect.shop-select {
+    min-height: 44px;
+  }
+}
+
+/* Gate122 shop cascader densify */
+.checkout-page .shop-cascader {
+  width: 100%;
+  min-height: 44px;
+}
+body .checkout-region-cascader-popup.shop-cascader__popup {
+  z-index: 2400;
 }

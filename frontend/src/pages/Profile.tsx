@@ -1,7 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { ShopIcon, SI } from '../components/ShopIcon';
-import { Alert, Button, Cascader, Checkbox, DatePicker, Form, Input, InputNumber, Modal, Popconfirm, Progress, Select, Tabs, Tag } from 'antd';
+import ShopModal from '../components/ShopModal';
+import ShopConfirm from '../components/ShopConfirm';
+import { Alert, Button, Checkbox, Form, Input, InputNumber, Progress, Tag } from 'antd';
+import ShopSelect from '../components/ShopSelect';
+import ShopCascader from '../components/ShopCascader';
+import ShopDatePicker from '../components/ShopDatePicker';
+import ShopPopconfirm from '../components/ShopPopconfirm';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { addressApi, cartApi, orderApi, paymentApi, petProfileApi, userApi } from '../api';
 import type { OrderCustomer, OrderItemCustomer, PaymentCustomer, PaymentChannel, PetProfile, UserAddress, UserProfile } from '../types';
@@ -47,7 +53,6 @@ import '../styles/mobile-page-contrast.css';
 import { focusFirstFormError } from '../utils/formValidationFocus';
 import { navigateToCommercialPaymentUrl, formatPaymentUrlLabel, getPaymentRecoveryState } from '../utils/paymentRecovery';
 
-const profileModalPopupClassNames = { popup: { root: 'shop-mobile-popup-layer profile-modal-popup' } };
 const orderImageFallback = productImageFallback;
 const resolveOrderImage = resolveProductImage;
 const PROFILE_ORDER_ITEM_PREVIEW_LIMIT = 30;
@@ -66,7 +71,7 @@ const focusProfileModalFormError = (rootSelector: string) => {
       focusFirstFormError({
         rootSelector,
         scrollOffset: 80,
-        scrollContainerSelector: `${rootSelector} .ant-modal-body`,
+        scrollContainerSelector: `${rootSelector} .shop-modal__body, ${rootSelector} .ant-modal-body`,
       });
     });
   });
@@ -267,6 +272,8 @@ const Profile: React.FC = () => {
   const [returnTrackingNumber, setReturnTrackingNumber] = useState('');
   const [submittingReturnShipment, setSubmittingReturnShipment] = useState(false);
   const [returnRequestOrder, setReturnRequestOrder] = useState<OrderCustomer | null>(null);
+  const [receiptConfirmOrder, setReceiptConfirmOrder] = useState<OrderCustomer | null>(null);
+  const [confirmingReceipt, setConfirmingReceipt] = useState(false);
   const [returnReason, setReturnReason] = useState('');
   const [requestingReturn, setRequestingReturn] = useState(false);
   const [profileSubmitting, setProfileSubmitting] = useState(false);
@@ -892,29 +899,24 @@ const Profile: React.FC = () => {
   }, [loadPaymentChannels]);
 
   const handleConfirmReceipt = async (orderId: number) => {
+    setConfirmingReceipt(true);
     try {
       await orderApi.confirm(orderId);
+      setReceiptConfirmOrder(null);
       announceAccessibleMessage(t('pages.profile.receiptConfirmed'), 'success');
       fetchOrders();
     } catch (err: unknown) {
       announceAccessibleMessage(getApiErrorMessage(err, t('pages.profile.confirmFailed'), language), 'error');
+    } finally {
+      setConfirmingReceipt(false);
     }
   };
 
+
   const confirmReceiptOrder = (order: OrderCustomer) => {
-    const orderLabel = profileOrderLabel(order);
-    const confirmReceiptActionLabel = `${t('pages.profile.confirmReceipt')}: ${orderLabel}`;
-    Modal.confirm({
-      title: t('pages.profile.confirmReceiptTitle'),
-      content: t('pages.profile.confirmReceiptContent', { orderNo: order.orderNo || order.id }),
-      okText: t('pages.profile.confirmReceipt'),
-      cancelText: t('common.cancel'),
-      okButtonProps: { 'aria-label': confirmReceiptActionLabel, title: confirmReceiptActionLabel },
-      cancelButtonProps: { 'aria-label': `${t('common.cancel')}: ${confirmReceiptActionLabel}`, title: `${t('common.cancel')}: ${confirmReceiptActionLabel}` },
-      className: 'profile-mobile-safe-modal profile-page__receiptConfirmModal',
-      onOk: () => handleConfirmReceipt(order.id),
-    });
+    setReceiptConfirmOrder(order);
   };
+
 
   const openReturnModal = (order: OrderCustomer) => {
     setReturnRequestOrder(order);
@@ -1718,15 +1720,70 @@ const Profile: React.FC = () => {
         </button>
       </div>
 
-      <Tabs
-        className="profile-tabs"
-        activeKey={profileActiveTab}
-        onChange={openProfileTab}
-        items={[
-          {
-            key: 'info',
-            label: t('pages.profile.info'),
-            children: (
+      <div className="profile-tabs">
+        <div
+          className="profile-tabs__nav"
+          role="tablist"
+          aria-label={t('pages.profile.title')}
+        >
+          <button
+            type="button"
+            role="tab"
+            id="profile-tab-info"
+            className={profileActiveTab === 'info' ? 'profile-tabs__tab profile-tabs__tab--active' : 'profile-tabs__tab'}
+            aria-selected={profileActiveTab === 'info'}
+            aria-controls="profile-panel-info"
+            tabIndex={profileActiveTab === 'info' ? 0 : -1}
+            onClick={() => openProfileTab('info')}
+          >
+            <span className="profile-tabs__tabLabel">{t('pages.profile.info')}</span>
+          </button>
+          <button
+            type="button"
+            role="tab"
+            id="profile-tab-addresses"
+            className={profileActiveTab === 'addresses' ? 'profile-tabs__tab profile-tabs__tab--active' : 'profile-tabs__tab'}
+            aria-selected={profileActiveTab === 'addresses'}
+            aria-controls="profile-panel-addresses"
+            tabIndex={profileActiveTab === 'addresses' ? 0 : -1}
+            onClick={() => openProfileTab('addresses')}
+          >
+            <span className="profile-tabs__tabLabel">{t('pages.profile.addresses', { count: addresses.length })}</span>
+          </button>
+          <button
+            type="button"
+            role="tab"
+            id="profile-tab-orders"
+            className={profileActiveTab === 'orders' ? 'profile-tabs__tab profile-tabs__tab--active' : 'profile-tabs__tab'}
+            aria-selected={profileActiveTab === 'orders'}
+            aria-controls="profile-panel-orders"
+            tabIndex={profileActiveTab === 'orders' ? 0 : -1}
+            onClick={() => openProfileTab('orders')}
+          >
+            <span className="profile-tabs__tabLabel">{t('pages.profile.orders', { count: orders.length })}</span>
+          </button>
+          <button
+            type="button"
+            role="tab"
+            id="profile-tab-pets"
+            className={profileActiveTab === 'pets' ? 'profile-tabs__tab profile-tabs__tab--active' : 'profile-tabs__tab'}
+            aria-selected={profileActiveTab === 'pets'}
+            aria-controls="profile-panel-pets"
+            tabIndex={profileActiveTab === 'pets' ? 0 : -1}
+            onClick={() => openProfileTab('pets')}
+          >
+            <span className="profile-tabs__tabLabel">{t('pages.profile.pets', { count: petProfiles.length })}</span>
+          </button>
+        </div>
+        <div className="profile-tabs__panels">
+        <div
+          className="profile-tabs__panel"
+          role="tabpanel"
+          id="profile-panel-info"
+          aria-labelledby="profile-tab-info"
+          hidden={profileActiveTab !== 'info'}
+        >
+          {(
               <section className="profile-section-card">
                 <div className="profile-health-panel">
                   <div>
@@ -1764,12 +1821,16 @@ const Profile: React.FC = () => {
                   <Button icon={<ShopIcon path={SI.lock} />} onClick={() => setPasswordModalVisible(true)}>{t('pages.profile.changePassword')}</Button>
                 </div>
               </section>
-            ),
-          },
-          {
-            key: 'addresses',
-            label: t('pages.profile.addresses', { count: addresses.length }),
-            children: (
+            )}
+        </div>
+        <div
+          className="profile-tabs__panel"
+          role="tabpanel"
+          id="profile-panel-addresses"
+          aria-labelledby="profile-tab-addresses"
+          hidden={profileActiveTab !== 'addresses'}
+        >
+          {(
               <div>
                 <div className="profile-address-readiness">
                   <div className="profile-address-readiness__copy">
@@ -1908,8 +1969,8 @@ const Profile: React.FC = () => {
                               <Button size="small" icon={<ShopIcon path={SI.star} />} disabled type="primary">{t('pages.profile.defaultAddressButton')}</Button>
                             )}
                             <Button size="small" icon={<ShopIcon path={SI.edit} />} aria-label={editActionLabel} title={editActionLabel} disabled={addressesStale} onClick={() => openAddressModal(address)}>{t('common.edit')}</Button>
-                            <Popconfirm
-                              classNames={{ root: 'shop-mobile-popup-layer profile-popconfirm' }}
+                            <ShopPopconfirm
+                              rootClassName='shop-mobile-popup-layer profile-popconfirm'
                               title={t('pages.profile.deleteAddressConfirm')}
                               onConfirm={() => handleDeleteAddress(address.id)}
                               okText={t('common.confirm')}
@@ -1918,7 +1979,7 @@ const Profile: React.FC = () => {
                               cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${deleteActionLabel}`, title: `${t('common.cancel')}: ${deleteActionLabel}` }}
                             >
                               <Button size="small" danger icon={<ShopIcon path={SI.delete} />} aria-label={deleteActionLabel} title={deleteActionLabel} disabled={addressesStale}>{t('common.delete')}</Button>
-                            </Popconfirm>
+                            </ShopPopconfirm>
                           </div>
                         </div>
                       </section>
@@ -1928,12 +1989,16 @@ const Profile: React.FC = () => {
                   </ul>
                 )}
               </div>
-            ),
-          },
-          {
-            key: 'orders',
-            label: t('pages.profile.orders', { count: orders.length }),
-            children: ordersLoadFailed && orders.length === 0 ? (
+            )}
+        </div>
+        <div
+          className="profile-tabs__panel"
+          role="tabpanel"
+          id="profile-panel-orders"
+          aria-labelledby="profile-tab-orders"
+          hidden={profileActiveTab !== 'orders'}
+        >
+          {ordersLoadFailed && orders.length === 0 ? (
               <div data-profile-orders-load-recovery="true">
                 <PageError
                   className="profile-section-card profile-load-error"
@@ -2345,8 +2410,8 @@ const Profile: React.FC = () => {
                             <Button type="link" aria-label={detailActionLabel} title={detailActionLabel} onClick={() => handleViewOrder(order)}>{t('pages.profile.detail')}</Button>
                             {order.trackingNumber ? <Button type="link" aria-label={trackShipmentActionLabel} title={trackShipmentActionLabel} onClick={() => handleTrackShipment(order.trackingNumber, order.trackingCarrierCode, order.id)}>{t('pages.orderTracking.trackShipment')}</Button> : null}
                             {order.status === 'PENDING_PAYMENT' && (
-                              <Popconfirm
-                                classNames={{ root: 'shop-mobile-popup-layer profile-popconfirm' }}
+                              <ShopPopconfirm
+                                rootClassName='shop-mobile-popup-layer profile-popconfirm'
                                 title={t('pages.profile.cancelOrderConfirm')}
                                 disabled={ordersStale}
                                 onConfirm={() => handleCancelOrder(order.id)}
@@ -2356,7 +2421,7 @@ const Profile: React.FC = () => {
                                 cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${cancelOrderActionLabel}`, title: `${t('common.cancel')}: ${cancelOrderActionLabel}` }}
                               >
                                 <Button type="link" danger aria-label={cancelOrderActionLabel} title={cancelOrderActionLabel} disabled={ordersStale}>{t('pages.profile.cancelOrder')}</Button>
-                              </Popconfirm>
+                              </ShopPopconfirm>
                             )}
                           </div>
                         </div>
@@ -2365,12 +2430,16 @@ const Profile: React.FC = () => {
                   })
                 )}
               </div>
-            ),
-          },
-          {
-            key: 'pets',
-            label: t('pages.profile.pets', { count: petProfiles.length }),
-            children: (
+            )}
+        </div>
+        <div
+          className="profile-tabs__panel"
+          role="tabpanel"
+          id="profile-panel-pets"
+          aria-labelledby="profile-tab-pets"
+          hidden={profileActiveTab !== 'pets'}
+        >
+          {(
               <div>
                 <div className="profile-pet-insights">
                   <section className="profile-pet-insights__card">
@@ -2493,16 +2562,16 @@ const Profile: React.FC = () => {
                   </ul>
                 )}
               </div>
-            ),
-          },
-        ]}
-      />
+            )}
+        </div>
+        </div>
+      </div>
 
-      <Modal
+      <ShopModal
         title={t('pages.profile.editProfileTitle')}
         open={editModalVisible}
         onOk={handleEditProfile}
-        onCancel={() => {
+        onClose={() => {
           setEditModalVisible(false);
           editForm.resetFields(['emailCode']);
           setProfileEmailCodeSentTo('');
@@ -2602,20 +2671,19 @@ const Profile: React.FC = () => {
             />
           </Form.Item>
         </Form>
-      </Modal>
+      </ShopModal>
 
-      <Modal
+      <ShopModal
         title={t('pages.profile.changePassword')}
         open={passwordModalVisible}
         onOk={handleChangePassword}
-        onCancel={closePasswordModal}
+        onClose={closePasswordModal}
         confirmLoading={passwordSubmitting}
         okText={t('pages.profile.changePassword')}
         cancelText={t('common.cancel')}
         okButtonProps={{ 'aria-label': changePasswordActionLabel, title: changePasswordActionLabel }}
         cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${changePasswordActionLabel}`, title: `${t('common.cancel')}: ${changePasswordActionLabel}` }}
         className="profile-mobile-safe-modal"
-        destroyOnHidden
       >
         <Form form={passwordForm} layout="vertical" requiredMark validateTrigger={['onChange', 'onBlur']}>
           <Form.Item name="oldPassword" label={t('pages.profile.oldPassword')} rules={[{ required: true, message: t('pages.profile.oldPasswordRequired') }]}>
@@ -2680,13 +2748,13 @@ const Profile: React.FC = () => {
             />
           </Form.Item>
         </Form>
-      </Modal>
+      </ShopModal>
 
-      <Modal
+      <ShopModal
         title={editingAddress ? t('pages.profile.editAddressTitle') : t('pages.profile.addAddressTitle')}
         open={addressModalVisible}
         onOk={handleSaveAddress}
-        onCancel={closeAddressModal}
+        onClose={closeAddressModal}
         confirmLoading={addressSubmitting}
         okText={t('common.save')}
         cancelText={t('common.cancel')}
@@ -2694,7 +2762,6 @@ const Profile: React.FC = () => {
         cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${saveAddressActionLabel}`, title: `${t('common.cancel')}: ${saveAddressActionLabel}` }}
         width={560}
         className="profile-mobile-safe-modal profile-address-modal"
-        destroyOnHidden
       >
         <Form form={addressForm} layout="vertical" requiredMark validateTrigger={['onChange', 'onBlur']} onFocusCapture={(event) => scrollProfileAddressFieldIntoMobileView(event.target)}>
           <Form.Item name="recipientName" label={t('pages.profile.recipient')} rules={[{ required: true, message: t('pages.profile.recipientRequired') }]}>
@@ -2719,21 +2786,16 @@ const Profile: React.FC = () => {
             />
           </Form.Item>
           <Form.Item name="region" label={t('pages.profile.region')} rules={[{ required: true, message: t('pages.profile.regionRequired') }]}>
-            <Cascader
+            <ShopCascader
               options={regionOptions}
               placeholder={regionOptionsLoading ? t('common.loading') : t('pages.profile.regionPlaceholder')}
-              showSearch
-              aria-label={addressRegionInputLabel}
+              ariaLabel={addressRegionInputLabel}
               title={addressRegionInputLabel}
-              onClick={() => {
-                void loadProfileRegionOptions();
+              popupClassName="shop-mobile-popup-layer profile-modal-popup"
+              popupZIndex={12050}
+              onOpenChange={(open) => {
+                if (open) void loadProfileRegionOptions();
               }}
-              onFocus={() => {
-                void loadProfileRegionOptions();
-              }}
-              classNames={profileModalPopupClassNames}
-              getPopupContainer={() => document.body}
-              placement="bottomLeft"
             />
           </Form.Item>
           <Form.Item
@@ -2766,63 +2828,72 @@ const Profile: React.FC = () => {
             <Checkbox>{t('pages.profile.makeDefaultAddress')}</Checkbox>
           </Form.Item>
         </Form>
-      </Modal>
+      </ShopModal>
 
-      <Modal
+      <ShopModal
         title={editingPet ? t('pages.profile.editPet') : t('pages.profile.addPet')}
         open={petModalVisible}
         onOk={handleSavePet}
-        onCancel={closePetModal}
+        onClose={closePetModal}
         confirmLoading={petSubmitting}
         okText={t('common.save')}
         cancelText={t('common.cancel')}
         okButtonProps={{ 'aria-label': savePetActionLabel, title: savePetActionLabel }}
         cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${savePetActionLabel}`, title: `${t('common.cancel')}: ${savePetActionLabel}` }}
         className="profile-mobile-safe-modal"
-        destroyOnHidden
       >
         <Form form={petForm} layout="vertical" requiredMark validateTrigger={['onChange', 'onBlur']}>
           <Form.Item name="name" label={t('pages.profile.petName')} rules={[{ required: true, message: t('pages.profile.petNameRequired') }]}>
             <Input placeholder={t('pages.profile.petNamePlaceholder')} />
           </Form.Item>
           <Form.Item name="petType" label={t('pages.profile.petType')} rules={[{ required: true }]}>
-            <Select
+            <ShopSelect
               options={[
                 { value: 'DOG', label: t('pages.profile.petDog') },
                 { value: 'CAT', label: t('pages.profile.petCat') },
                 { value: 'SMALL_PET', label: t('pages.profile.petSmall') },
               ]}
-              classNames={profileModalPopupClassNames}
-              getPopupContainer={() => document.body}
-              placement="bottomLeft"
+              popupClassName="shop-mobile-popup-layer profile-modal-popup"
+              popupZIndex={12050}
+              ariaLabel={t('pages.profile.petType')}
             />
           </Form.Item>
           <Form.Item name="breed" label={t('pages.profile.petBreed')}>
             <Input placeholder={t('pages.profile.petBreedPlaceholder')} />
           </Form.Item>
           <Form.Item name="birthday" label={t('pages.profile.petBirthday')}>
-            <DatePicker className="profile-pet-modal__field" classNames={profileModalPopupClassNames} getPopupContainer={() => document.body} placement="bottomLeft" />
+            <ShopDatePicker className="profile-pet-modal__field" ariaLabel={t('pages.profile.petBirthday')} />
           </Form.Item>
           <Form.Item name="weight" label={t('pages.profile.petWeightKg')}>
             <InputNumber min={0} precision={2} className="profile-pet-modal__field" />
           </Form.Item>
           <Form.Item name="size" label={t('pages.profile.petSize')}>
-            <Select
+            <ShopSelect
               allowClear
               options={[
                 { value: 'SMALL', label: t('pages.profile.petSizeSmall') },
                 { value: 'MEDIUM', label: t('pages.profile.petSizeMedium') },
                 { value: 'LARGE', label: t('pages.profile.petSizeLarge') },
               ]}
-              classNames={profileModalPopupClassNames}
-              getPopupContainer={() => document.body}
-              placement="bottomLeft"
+              popupClassName="shop-mobile-popup-layer profile-modal-popup"
+              popupZIndex={12050}
+              ariaLabel={t('pages.profile.petSize')}
             />
           </Form.Item>
         </Form>
-      </Modal>
+      </ShopModal>
 
-      <Modal title={t('pages.profile.orderDetail', { id: selectedOrder?.orderNo || selectedOrder?.id || '' })} open={orderDetailVisible} onCancel={() => setOrderDetailVisible(false)} footer={null} width={640} className="profile-mobile-safe-modal profile-order-detail-modal">
+      <ShopModal
+        title={t('pages.profile.orderDetail', { id: selectedOrder?.orderNo || selectedOrder?.id || '' })}
+        open={orderDetailVisible}
+        onClose={() => setOrderDetailVisible(false)}
+        footer={null}
+        width={640}
+        className="profile-mobile-safe-modal profile-order-detail-modal"
+        rootClassName="profile-order-detail-modalRoot"
+        closeLabel={t('common.close', { defaultValue: 'Close' })}
+        ariaLabel={t('pages.profile.orderDetail', { id: selectedOrder?.orderNo || selectedOrder?.id || '' })}
+      >
         {selectedOrder && (
           <div>
             <dl className="profile-page__descList profile-order-detail__descriptions">
@@ -2982,9 +3053,9 @@ const Profile: React.FC = () => {
             )}
           </div>
         )}
-      </Modal>
+      </ShopModal>
 
-      <Modal
+      <ShopModal
         title={t('pages.profile.submitReturnShipment')}
         open={!!returnShipmentOrder}
         confirmLoading={submittingReturnShipment}
@@ -2997,7 +3068,7 @@ const Profile: React.FC = () => {
         }}
         cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${submitReturnShipmentActionLabel}`, title: `${t('common.cancel')}: ${submitReturnShipmentActionLabel}` }}
         onOk={handleSubmitReturnShipment}
-        onCancel={() => { setReturnShipmentOrder(null); setReturnTrackingNumber(''); }}
+        onClose={() => { setReturnShipmentOrder(null); setReturnTrackingNumber(''); }}
         className="profile-mobile-safe-modal profile-return-modal"
       >
         <div className="profile-return-modal__content">
@@ -3033,9 +3104,9 @@ const Profile: React.FC = () => {
             onBlur={() => setReturnTrackingNumber((value) => normalizeReturnTrackingNumber(value))}
           />
         </div>
-      </Modal>
+      </ShopModal>
 
-      <Modal
+      <ShopModal
         title={t('pages.profile.returnOrder')}
         open={!!returnRequestOrder}
         confirmLoading={requestingReturn}
@@ -3048,7 +3119,7 @@ const Profile: React.FC = () => {
         }}
         cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${submitReturnRequestActionLabel}`, title: `${t('common.cancel')}: ${submitReturnRequestActionLabel}` }}
         onOk={handleReturnOrder}
-        onCancel={() => { setReturnRequestOrder(null); setReturnReason(''); }}
+        onClose={() => { setReturnRequestOrder(null); setReturnReason(''); }}
         className="profile-mobile-safe-modal profile-return-modal"
       >
         <div className="profile-return-modal__content">
@@ -3114,23 +3185,23 @@ const Profile: React.FC = () => {
             title={returnReasonInputLabel}
           />
         </div>
-      </Modal>
+      </ShopModal>
 
-      <Modal
+      <ShopModal
         title={t('pages.adminOrders.logisticsTracking')}
         open={trackingVisible}
-        onCancel={() => setTrackingVisible(false)}
+        onClose={() => setTrackingVisible(false)}
         footer={null}
         width={720}
         className="profile-mobile-safe-modal profile-tracking-modal"
       >
         <SeventeenTrackWidget trackingNumber={selectedTrackingNumber} carrierCode={selectedTrackingCarrierCode} orderId={selectedTrackingOrderId} />
-      </Modal>
+      </ShopModal>
 
-      <Modal
+      <ShopModal
         title={t('pages.profile.continuePay')}
         open={paymentModalVisible}
-        onCancel={() => setPaymentModalVisible(false)}
+        onClose={() => setPaymentModalVisible(false)}
         className="profile-mobile-safe-modal profile-payment-modal"
         footer={[
           selectedPayment?.status === 'PENDING' && selectedPayment.paymentUrl && (
@@ -3219,15 +3290,15 @@ const Profile: React.FC = () => {
               </div>
               <div className="profile-page__descRow">
                 <dt className="profile-page__descLabel">{t('pages.checkout.paymentMethod')}</dt>
-                <dd className="profile-page__descValue"><Select
+                <dd className="profile-page__descValue"><ShopSelect
                   className="profile-payment-modal__methodSelect"
                   value={selectedPaymentMethod}
                   options={paymentOptions}
-                  onChange={setSelectedPaymentMethod}
-                  classNames={{ popup: { root: 'shop-mobile-popup-layer' } }}
-                  getPopupContainer={() => document.body}
+                  onChange={(value) => setSelectedPaymentMethod(value || '')}
+                  popupClassName="shop-mobile-popup-layer"
+                  popupZIndex={12050}
                   disabled={selectedPaymentPaid || selectedPaymentReconcileRequired || paymentChannelsLoading || paymentOptions.length === 0}
-                  aria-label={paymentMethodSelectLabel}
+                  ariaLabel={paymentMethodSelectLabel}
                   title={paymentMethodSelectLabel}
                 />
                 {paymentOptions.length === 0 ? (
@@ -3403,7 +3474,27 @@ const Profile: React.FC = () => {
             </div>
           </div>
         )}
-      </Modal>
+      </ShopModal>
+      <ShopConfirm
+        open={Boolean(receiptConfirmOrder)}
+        title={t('pages.profile.confirmReceiptTitle')}
+        description={receiptConfirmOrder ? t('pages.profile.confirmReceiptContent', { orderNo: receiptConfirmOrder.orderNo || receiptConfirmOrder.id }) : undefined}
+        okText={t('pages.profile.confirmReceipt')}
+        cancelText={t('common.cancel')}
+        confirmLoading={confirmingReceipt}
+        okButtonProps={{
+          'aria-label': receiptConfirmOrder ? `${t('pages.profile.confirmReceipt')}: ${profileOrderLabel(receiptConfirmOrder)}` : t('pages.profile.confirmReceipt'),
+          title: receiptConfirmOrder ? `${t('pages.profile.confirmReceipt')}: ${profileOrderLabel(receiptConfirmOrder)}` : t('pages.profile.confirmReceipt'),
+        }}
+        cancelButtonProps={{
+          'aria-label': `${t('common.cancel')}: ${t('pages.profile.confirmReceipt')}`,
+          title: `${t('common.cancel')}: ${t('pages.profile.confirmReceipt')}`,
+        }}
+        className="profile-mobile-safe-modal profile-page__receiptConfirmModal"
+        closeLabel={t('common.close', { defaultValue: 'Close' })}
+        onOk={() => receiptConfirmOrder ? handleConfirmReceipt(receiptConfirmOrder.id) : undefined}
+        onCancel={() => { if (!confirmingReceipt) setReceiptConfirmOrder(null); }}
+      />
     </div>
   );
 };

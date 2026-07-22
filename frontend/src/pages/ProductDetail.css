@@ -178,7 +178,7 @@
   gap: 8px;
 }
 
-.product-detail-page--es .product-option-radio .ant-radio-button-wrapper {
+.product-detail-page--es .product-option-radio__option {
   height: auto;
   min-height: 44px;
   white-space: normal;
@@ -840,6 +840,55 @@
   font-size: 16px;
 }
 
+
+/* Gate104: native product option chips (radiogroup) */
+.product-option-radio {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-width: 100%;
+}
+
+.product-option-radio__option {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  margin: 0;
+  padding: 8px 14px;
+  border: 1px solid #dce9df;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #173f2b;
+  font: inherit;
+  font-weight: 800;
+  line-height: 1.2;
+  cursor: pointer;
+  box-shadow: 0 8px 18px rgba(18, 71, 52, 0.05);
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.product-option-radio__option:focus-visible {
+  outline: 3px solid rgba(18, 71, 52, 0.28);
+  outline-offset: 2px;
+}
+
+.product-option-radio__option--selected:not(.product-option-radio__option--disabled) {
+  border-color: #124734;
+  background: #eaf4ef;
+  color: #124734;
+  box-shadow: inset 0 0 0 1px rgba(18, 71, 52, 0.2), 0 8px 18px rgba(18, 71, 52, 0.12);
+}
+
+.product-option-radio__option--disabled {
+  opacity: 0.48;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
 .product-option-radio {
   margin-top: 8px;
 }
@@ -1075,6 +1124,40 @@
   border-color: #b7eb8f;
 }
 
+
+/* Gate109: native recommendations horizontal strip (no slick carousel) */
+.product-recommendations--strip .product-recommendations__track--strip {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 12px;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+  padding: 2px 2px 10px;
+}
+
+.product-recommendations--strip .product-recommendations__slide {
+  flex: 0 0 auto;
+  width: min(240px, 78vw);
+  scroll-snap-align: start;
+}
+
+@media (min-width: 768px) {
+  .product-recommendations--strip .product-recommendations__slide {
+    width: min(220px, 32%);
+  }
+}
+
+@media (min-width: 1024px) {
+  .product-recommendations--strip .product-recommendations__slide {
+    width: min(240px, 24%);
+  }
+}
 .product-recommendations {
   margin-top: 24px;
 }
@@ -1138,6 +1221,42 @@
   display: none;
 }
 
+
+/* Gate108: native horizontal gallery thumb strip (no slick carousel) */
+.product-detail-thumbs--strip {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 8px;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 4px;
+}
+
+.product-detail-thumbs--strip .product-detail-thumbs__slide {
+  flex: 0 0 auto;
+  width: 88px;
+  scroll-snap-align: start;
+}
+
+.product-detail-thumbs--strip .product-detail-thumbs__button {
+  width: 88px;
+  min-width: 88px;
+  min-height: 88px;
+}
+
+@media (max-width: 768px) {
+  .product-detail-thumbs--strip .product-detail-thumbs__slide,
+  .product-detail-thumbs--strip .product-detail-thumbs__button {
+    width: 72px;
+    min-width: 72px;
+  }
+}
 .product-detail-thumbs {
   margin-top: 16px;
 }
@@ -1523,12 +1642,12 @@
   background: #124734;
 }
 
-.product-detail-page .ant-radio-button-wrapper-checked:not(.ant-radio-button-wrapper-disabled) {
+.product-detail-page .product-option-radio__option--selected:not(.product-option-radio__option--disabled) {
   color: #124734;
   border-color: #124734;
 }
 
-.product-detail-page .ant-radio-button-wrapper-checked:not(.ant-radio-button-wrapper-disabled)::before {
+.product-detail-page .product-option-radio__option--selected:not(.product-option-radio__option--disabled)::before {
   background-color: #124734;
 }
 
@@ -2720,7 +2839,7 @@
 
 .product-actions .ant-btn,
 .product-mobile-buybar .ant-btn,
-.product-option-radio .ant-radio-button-wrapper,
+.product-option-radio__option,
 .product-detail-page .ant-input-number,
 .product-detail-page .ant-select-selector {
   border-radius: 999px !important;
@@ -3077,13 +3196,13 @@
   overflow-wrap: anywhere;
 }
 
-.product-option-radio .ant-radio-group {
+.product-option-radio {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
 }
 
-.product-option-radio .ant-radio-button-wrapper {
+.product-option-radio__option {
   margin: 0 !important;
   border-inline-start-width: 1px !important;
   border-color: #dce9df;
@@ -3092,11 +3211,11 @@
   box-shadow: 0 8px 18px rgba(18, 71, 52, 0.05);
 }
 
-.product-option-radio .ant-radio-button-wrapper::before {
+.product-option-radio__option::before {
   display: none !important;
 }
 
-.product-option-radio .ant-radio-button-wrapper-disabled {
+.product-option-radio__option--disabled {
   box-shadow: none;
 }
 
@@ -3345,18 +3464,18 @@
     font-size: 28px;
   }
 
-  .product-option-radio .ant-radio-group {
+  .product-option-radio {
     flex-wrap: nowrap;
     overflow-x: auto;
     padding-bottom: 3px;
     scrollbar-width: none;
   }
 
-  .product-option-radio .ant-radio-group::-webkit-scrollbar {
+  .product-option-radio::-webkit-scrollbar {
     display: none;
   }
 
-  .product-option-radio .ant-radio-button-wrapper {
+  .product-option-radio__option {
     flex: 0 0 auto;
   }
 
@@ -3512,7 +3631,7 @@
     font-size: 12px;
   }
 
-  .product-option-radio .ant-radio-button-wrapper {
+  .product-option-radio__option {
     min-height: 44px;
     padding-inline: 12px;
   }
@@ -3940,7 +4059,7 @@
   .product-mobile-thumbs,
   .product-detail-journey,
   .product-compact-signals,
-  .product-option-radio .ant-radio-group,
+  .product-option-radio,
   .product-complete-set__items,
   .product-trust-grid,
   .product-decision-card__grid,
@@ -3953,7 +4072,7 @@
   .product-mobile-thumbs,
   .product-detail-journey,
   .product-compact-signals,
-  .product-option-radio .ant-radio-group {
+  .product-option-radio {
     overflow-x: auto;
     overscroll-behavior-inline: contain;
     scroll-snap-type: x proximity;
@@ -3968,7 +4087,7 @@
   .product-mobile-thumbs::-webkit-scrollbar,
   .product-detail-journey::-webkit-scrollbar,
   .product-compact-signals::-webkit-scrollbar,
-  .product-option-radio .ant-radio-group::-webkit-scrollbar {
+  .product-option-radio::-webkit-scrollbar {
     display: none;
   }
 
@@ -3980,7 +4099,7 @@
   }
 
   .product-compact-signals span,
-  .product-option-radio .ant-radio-button-wrapper,
+  .product-option-radio__option,
   .product-mobile-thumbs__button,
   .product-detail-journey__card {
     flex: 0 0 auto;
@@ -4421,7 +4540,7 @@
     box-shadow: 0 8px 18px rgba(18, 71, 52, 0.06);
   }
 
-  .product-option-radio .ant-radio-group {
+  .product-option-radio {
     display: flex;
     max-width: 100%;
     gap: 7px;
@@ -4431,11 +4550,11 @@
     -webkit-overflow-scrolling: touch;
   }
 
-  .product-option-radio .ant-radio-group::-webkit-scrollbar {
+  .product-option-radio::-webkit-scrollbar {
     display: none;
   }
 
-  .product-option-radio .ant-radio-button-wrapper {
+  .product-option-radio__option {
     flex: 0 0 auto;
     min-height: 44px;
     max-width: min(58vw, 210px);
@@ -4496,7 +4615,7 @@
     grid-template-columns: 1fr;
   }
 
-  .product-option-radio .ant-radio-button-wrapper {
+  .product-option-radio__option {
     max-width: 68vw;
   }
 }
@@ -4618,7 +4737,7 @@
 .product-mobile-buybar__buy,
 .product-mobile-buybar__tool,
 .product-actions .ant-btn,
-.product-option-radio .ant-radio-button-wrapper {
+.product-option-radio__option {
   white-space: nowrap;
 }
 
@@ -4781,7 +4900,7 @@
   .product-size-calculator__header .ant-btn,
   .product-size-calculator .ant-alert-action .ant-btn,
   .product-size-calculator__inputs .ant-input,
-  .product-option-radio .ant-radio-button-wrapper,
+  .product-option-radio__option,
   .product-purchase-mode .shop-segmented__label,
   .product-purchase-mode__details .ant-radio-button-wrapper,
   .product-quantity-row .ant-btn,
@@ -4849,7 +4968,7 @@
   color: #fff7f0 !important;
 }
 
-.product-option-radio .ant-radio-button-wrapper-checked:not(.ant-radio-button-wrapper-disabled),
+.product-option-radio__option--selected:not(.product-option-radio__option--disabled),
 .product-purchase-mode__details .ant-radio-button-wrapper-checked:not(.ant-radio-button-wrapper-disabled) {
   border-color: #8f2d17 !important;
   color: #8f2d17 !important;
@@ -5065,7 +5184,7 @@
 }
 
 /* Submitted APP BUG fixes: native option chips must be responsive and readable. */
-body.shop-mobile-app .product-detail-page .product-option-radio.ant-radio-group {
+body.shop-mobile-app .product-detail-page .product-option-radio {
   display: flex !important;
   flex-wrap: wrap !important;
   gap: 8px !important;
@@ -5080,7 +5199,7 @@ body.shop-mobile-app .product-detail-page .product-option-radio.ant-radio-group 
   touch-action: manipulation !important;
 }
 
-body.shop-mobile-app .product-detail-page .product-option-radio .ant-radio-button-wrapper {
+body.shop-mobile-app .product-detail-page .product-option-radio__option {
   position: relative !important;
   flex: 1 1 calc(50% - 8px) !important;
   min-width: min(100%, 112px) !important;
@@ -5098,7 +5217,7 @@ body.shop-mobile-app .product-detail-page .product-option-radio .ant-radio-butto
   user-select: none !important;
 }
 
-body.shop-mobile-app .product-detail-page .product-option-radio .ant-radio-button-wrapper-checked:not(.ant-radio-button-wrapper-disabled) {
+body.shop-mobile-app .product-detail-page .product-option-radio__option--selected:not(.product-option-radio__option--disabled) {
   border-color: #124734 !important;
   background: #eaf4ef !important;
   color: #124734 !important;
@@ -5106,14 +5225,14 @@ body.shop-mobile-app .product-detail-page .product-option-radio .ant-radio-butto
   box-shadow: inset 0 0 0 1px rgba(18, 71, 52, 0.2), 0 8px 18px rgba(18, 71, 52, 0.12) !important;
 }
 
-body.shop-mobile-app .product-detail-page .product-option-radio .ant-radio-button-wrapper :where(span, .anticon),
-body.shop-mobile-app .product-detail-page .product-option-radio .ant-radio-button-wrapper-checked :where(span, .anticon) {
+body.shop-mobile-app .product-detail-page .product-option-radio__option :where(span, .anticon),
+body.shop-mobile-app .product-detail-page .product-option-radio__option--selected :where(span, .anticon) {
   color: inherit !important;
   -webkit-text-fill-color: inherit !important;
 }
 
 @media (max-width: 380px) {
-  body.shop-mobile-app .product-detail-page .product-option-radio .ant-radio-button-wrapper {
+  body.shop-mobile-app .product-detail-page .product-option-radio__option {
     flex-basis: 100% !important;
   }
 }
@@ -5418,13 +5537,13 @@ body.shop-mobile-app .shop-app-shell .product-detail-page .product-purchase-read
   background: transparent !important;
 }
 
-body.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio.ant-radio-group {
+body.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio {
   display: flex !important;
   flex-wrap: wrap !important;
   gap: 8px !important;
 }
 
-body.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio .ant-radio-button-wrapper {
+body.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio__option {
   min-height: 44px !important;
   height: auto !important;
   flex: 1 1 calc(50% - 8px) !important;
@@ -5440,11 +5559,11 @@ body.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio 
   line-height: 1.18 !important;
 }
 
-body.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio .ant-radio-button-wrapper::before {
+body.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio__option::before {
   display: none !important;
 }
 
-body.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio .ant-radio-button-wrapper-checked:not(.ant-radio-button-wrapper-disabled) {
+body.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio__option--selected:not(.product-option-radio__option--disabled) {
   border-color: #124734 !important;
   background: #eaf4ef !important;
   color: #124734 !important;
@@ -5453,7 +5572,7 @@ body.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio 
 }
 
 body.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio__check,
-body.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio .ant-radio-button-wrapper-checked :where(span, .anticon, svg) {
+body.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio__option--selected :where(span, .anticon, svg) {
   color: #124734 !important;
   -webkit-text-fill-color: #124734 !important;
 }
@@ -5537,7 +5656,7 @@ body.shop-mobile-app .shop-app-shell .product-detail-page .product-recommendatio
 
 /* Native App SKU final color closure: match the requested green selected state
    even when the global App stylesheet has higher-specificity option-chip rules. */
-body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio .ant-radio-button-wrapper-checked:not(.ant-radio-button-wrapper-disabled) {
+body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio__option--selected:not(.product-option-radio__option--disabled) {
   border-color: #124734 !important;
   background: #eaf4ef !important;
   color: #124734 !important;
@@ -5546,7 +5665,7 @@ body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .product-de
 }
 
 body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio__check,
-body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio .ant-radio-button-wrapper-checked :where(span, .anticon, svg) {
+body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio__option--selected :where(span, .anticon, svg) {
   color: #124734 !important;
   -webkit-text-fill-color: #124734 !important;
 }
@@ -5979,28 +6098,28 @@ body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .product-de
 
 /* F3414: short landscape size guide must show all fit instructions above the footer. */
 @media (max-width: 860px) and (max-height: 430px) {
-  body .ant-modal-root .product-detail__sizeGuideModal.ant-modal:not(.ant-modal-confirm) {
+  body .product-detail__sizeGuideModalRoot .product-detail__sizeGuideModal.shop-modal__panel {
     top: max(6px, calc(env(safe-area-inset-top, 0px) + 6px)) !important;
     width: min(640px, calc(100vw - 16px)) !important;
     max-width: calc(100vw - 16px) !important;
     padding-bottom: max(6px, env(safe-area-inset-bottom, 0px)) !important;
   }
 
-  body .ant-modal-root .product-detail__sizeGuideModal.ant-modal:not(.ant-modal-confirm) .ant-modal-content {
+  body .product-detail__sizeGuideModalRoot .product-detail__sizeGuideModal .shop-modal__content {
     max-height: calc(100dvh - 16px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) !important;
   }
 
-  body .ant-modal-root .product-detail__sizeGuideModal.ant-modal:not(.ant-modal-confirm) .ant-modal-header {
+  body .product-detail__sizeGuideModalRoot .product-detail__sizeGuideModal .shop-modal__header {
     padding: 10px 44px 8px 12px !important;
   }
 
-  body .ant-modal-root .product-detail__sizeGuideModal.ant-modal:not(.ant-modal-confirm) .ant-modal-body {
+  body .product-detail__sizeGuideModalRoot .product-detail__sizeGuideModal .shop-modal__body {
     padding: 10px 12px !important;
     overflow-y: auto !important;
     scroll-padding-bottom: 16px !important;
   }
 
-  body .ant-modal-root .product-detail__sizeGuideModal.ant-modal:not(.ant-modal-confirm) .ant-modal-footer {
+  body .product-detail__sizeGuideModalRoot .product-detail__sizeGuideModal .shop-modal__footer {
     position: static !important;
     display: flex !important;
     justify-content: flex-end;
@@ -6008,7 +6127,7 @@ body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .product-de
     background: #ffffff !important;
   }
 
-  body .ant-modal-root .product-detail__sizeGuideModal.ant-modal:not(.ant-modal-confirm) .ant-modal-footer .ant-btn {
+  body .product-detail__sizeGuideModalRoot .product-detail__sizeGuideModal .shop-modal__footer .ant-btn {
     width: auto !important;
     min-width: 120px;
   }

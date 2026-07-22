@@ -2,7 +2,8 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { ShopIcon, SI } from '../components/ShopIcon';
 import ShopRate from '../components/ShopRate';
-import { Alert, Button, Popconfirm, Switch, Tag } from 'antd';
+import { Alert, Button, Switch, Tag } from 'antd';
+import ShopPopconfirm from '../components/ShopPopconfirm';
 import { Link, useNavigate } from 'react-router-dom';
 import { cartApi, productApi } from '../api';
 import { useLanguage } from '../i18n';
@@ -495,8 +496,8 @@ const ProductCompare: React.FC = () => {
               {t('pages.wishlist.addAllToCart')}
             </Button>
             <Button aria-label={compareAddMoreActionLabel} title={compareAddMoreActionLabel} onClick={() => navigate('/products')}>{t('pages.compare.addMore')}</Button>
-            <Popconfirm
-              classNames={{ root: 'shop-mobile-popup-layer product-compare-clear-popconfirm' }}
+            <ShopPopconfirm
+              rootClassName='shop-mobile-popup-layer product-compare-clear-popconfirm'
               title={t('pages.compare.clearConfirm')}
               onConfirm={clearAll}
               okText={t('common.confirm')}
@@ -505,7 +506,7 @@ const ProductCompare: React.FC = () => {
               cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${compareClearActionLabel}`, title: `${t('common.cancel')}: ${compareClearActionLabel}` }}
             >
               <Button danger disabled={products.length === 0 && compareLoadAttemptCount === 0} aria-label={compareClearActionLabel} title={compareClearActionLabel}>{t('pages.compare.clear')}</Button>
-            </Popconfirm>
+            </ShopPopconfirm>
           </div>
         </div>
         {loading ? (

@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { ShopIcon, SI } from '../components/ShopIcon';
-import { Alert, Button, Popconfirm, Tag } from 'antd';
+import { Alert, Button, Tag } from 'antd';
+import ShopPopconfirm from '../components/ShopPopconfirm';
 import { useNavigate } from 'react-router-dom';
 import { wishlistApi, cartApi } from '../api';
 import type { WishlistItem } from '../types';
@@ -555,8 +556,8 @@ const Wishlist: React.FC = () => {
           {t('pages.wishlist.addAllToCart')}
         </Button>
         {wishlistStats.unavailableCount > 0 ? (
-          <Popconfirm
-            classNames={{ root: 'shop-mobile-popup-layer wishlist-clear-unavailable-popconfirm' }}
+          <ShopPopconfirm
+            rootClassName='shop-mobile-popup-layer wishlist-clear-unavailable-popconfirm'
             title={t('pages.cart.clearUnavailableConfirm', { count: wishlistStats.unavailableCount })}
             onConfirm={clearUnavailableItems}
             okText={t('common.confirm')}
@@ -567,7 +568,7 @@ const Wishlist: React.FC = () => {
             <Button danger icon={<ShopIcon path={SI.delete} />} aria-label={clearUnavailableActionLabel} title={clearUnavailableActionLabel} disabled={actionsDisabledByStaleData}>
               {t('pages.cart.clearUnavailable')}
             </Button>
-          </Popconfirm>
+          </ShopPopconfirm>
         ) : null}
       </div>
       <div className="wishlist-page__insightBar" aria-label={t('pages.wishlist.insightTitle')}>
@@ -738,8 +739,8 @@ const Wishlist: React.FC = () => {
                 {renderReadiness(item)}
                 <div className="wishlist-page__actions">
                   {primaryAction(item)}
-                  <Popconfirm
-                    classNames={{ root: 'shop-mobile-popup-layer wishlist-remove-popconfirm' }}
+                  <ShopPopconfirm
+                    rootClassName='shop-mobile-popup-layer wishlist-remove-popconfirm'
                     title={t('pages.wishlist.removeConfirm')}
                     onConfirm={() => handleRemove(item.productId)}
                     okText={t('common.confirm')}
@@ -759,7 +760,7 @@ const Wishlist: React.FC = () => {
                     >
                       {t('pages.wishlist.remove')}
                     </Button>
-                  </Popconfirm>
+                  </ShopPopconfirm>
                 </div>
               </div>
             </article>

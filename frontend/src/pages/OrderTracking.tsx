@@ -1,7 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { ShopIcon, SI } from '../components/ShopIcon';
-import { Alert, Button, Form, Input, Modal, Tag } from 'antd';
+import { Alert, Button, Form, Input, Tag } from 'antd';
+import ShopModal from '../components/ShopModal';
+import ShopConfirm from '../components/ShopConfirm';
 import type { InputRef } from 'antd/es/input';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import PageEmpty from '../components/PageEmpty';
@@ -113,6 +115,8 @@ const OrderTracking: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [paying, setPaying] = useState(false);
   const [canceling, setCanceling] = useState(false);
+  const [rollbackConfirmOpen, setRollbackConfirmOpen] = useState(false);
+  const [receiptConfirmOpen, setReceiptConfirmOpen] = useState(false);
   const [confirmingReceipt, setConfirmingReceipt] = useState(false);
   const [returning, setReturning] = useState(false);
   const [returnShipping, setReturnShipping] = useState(false);
@@ -515,36 +519,30 @@ const OrderTracking: React.FC = () => {
 
   const cancelPendingPayment = () => {
     if (!order || order.status !== 'PENDING_PAYMENT' || !canOperateTrackedOrder) return;
-    const orderLabel = order.orderNo || `#${order.id}`;
-    const rollbackActionLabel = `${t('pages.checkout.rollbackPaymentAction')}: ${orderLabel}`;
-    Modal.confirm({
-      title: t('pages.checkout.rollbackPaymentTitle'),
-      content: t('pages.checkout.rollbackPaymentContent'),
-      okText: t('pages.checkout.rollbackPaymentAction'),
-      cancelText: t('common.cancel'),
-      okButtonProps: { danger: true, 'aria-label': rollbackActionLabel, title: rollbackActionLabel },
-      cancelButtonProps: { 'aria-label': `${t('common.cancel')}: ${rollbackActionLabel}`, title: `${t('common.cancel')}: ${rollbackActionLabel}` },
-      className: 'profile-mobile-safe-modal order-tracking-page__rollbackConfirmModal',
-      async onOk() {
-        setCanceling(true);
-        try {
-          await orderApi.cancel(order.id, canUseGuestActions ? trackedEmail : undefined, canUseGuestActions ? order.orderNo : undefined);
-          const restoreResult = await restoreTrackedItemsToCart();
-          setOrder({ ...order, status: 'CANCELLED' });
-          if (restoreResult.failed > 0) {
-            announceAccessibleMessage(t('pages.checkout.rollbackPaymentCartRestorePartial', { count: restoreResult.failed }), 'warning');
-            return;
-          }
-          announceAccessibleMessage(t('pages.checkout.rollbackPaymentSuccess'), 'success');
-          navigate('/cart');
-        } catch (error: unknown) {
-          announceAccessibleMessage(getApiErrorMessage(error, t('pages.checkout.rollbackPaymentFailed'), language), 'error');
-        } finally {
-          setCanceling(false);
-        }
-      },
-    });
+    setRollbackConfirmOpen(true);
   };
+
+  const handleRollbackConfirm = async () => {
+    if (!order || order.status !== 'PENDING_PAYMENT' || !canOperateTrackedOrder) return;
+    setCanceling(true);
+    try {
+      await orderApi.cancel(order.id, canUseGuestActions ? trackedEmail : undefined, canUseGuestActions ? order.orderNo : undefined);
+      const restoreResult = await restoreTrackedItemsToCart();
+      setOrder({ ...order, status: 'CANCELLED' });
+      setRollbackConfirmOpen(false);
+      if (restoreResult.failed > 0) {
+        announceAccessibleMessage(t('pages.checkout.rollbackPaymentCartRestorePartial', { count: restoreResult.failed }), 'warning');
+        return;
+      }
+      announceAccessibleMessage(t('pages.checkout.rollbackPaymentSuccess'), 'success');
+      navigate('/cart');
+    } catch (error: unknown) {
+      announceAccessibleMessage(getApiErrorMessage(error, t('pages.checkout.rollbackPaymentFailed'), language), 'error');
+    } finally {
+      setCanceling(false);
+    }
+  };
+
 
   const confirmReceipt = async () => {
     if (!order || order.status !== 'SHIPPED' || !canOperateTrackedOrder) return;
@@ -552,6 +550,7 @@ const OrderTracking: React.FC = () => {
     try {
       await orderApi.confirm(order.id, canUseGuestActions ? trackedEmail : undefined, canUseGuestActions ? order.orderNo : undefined);
       await refreshTrackedOrder();
+      setReceiptConfirmOpen(false);
       announceAccessibleMessage(t('pages.profile.receiptConfirmed'), 'success');
     } catch (error: unknown) {
       announceAccessibleMessage(getApiErrorMessage(error, t('pages.profile.confirmFailed'), language), 'error');
@@ -562,19 +561,9 @@ const OrderTracking: React.FC = () => {
 
   const confirmReceiptWithReview = () => {
     if (!order || order.status !== 'SHIPPED' || !canOperateTrackedOrder) return;
-    const orderLabel = order.orderNo || `#${order.id}`;
-    const confirmReceiptActionLabel = `${t('pages.profile.confirmReceipt')}: ${orderLabel}`;
-    Modal.confirm({
-      title: t('pages.profile.confirmReceiptTitle'),
-      content: t('pages.profile.confirmReceiptContent', { orderNo: order.orderNo || order.id }),
-      okText: t('pages.profile.confirmReceipt'),
-      cancelText: t('common.cancel'),
-      okButtonProps: { 'aria-label': confirmReceiptActionLabel, title: confirmReceiptActionLabel },
-      cancelButtonProps: { 'aria-label': `${t('common.cancel')}: ${confirmReceiptActionLabel}`, title: `${t('common.cancel')}: ${confirmReceiptActionLabel}` },
-      className: 'profile-mobile-safe-modal order-tracking-page__receiptConfirmModal',
-      onOk: confirmReceipt,
-    });
+    setReceiptConfirmOpen(true);
   };
+
 
   const submitReturnRequest = async () => {
     if (!order?.returnable || !canOperateTrackedOrder) return;
@@ -1246,11 +1235,11 @@ const OrderTracking: React.FC = () => {
           ) : null}
         </div>
       )}
-      <Modal
+      <ShopModal
         title={t('pages.profile.returnOrder')}
         open={returnRequestOpen}
         onOk={submitReturnRequest}
-        onCancel={() => { setReturnRequestOpen(false); setReturnReason(''); }}
+        onClose={() => { setReturnRequestOpen(false); setReturnReason(''); }}
         confirmLoading={returning}
         okText={t('pages.profile.returnOrder')}
         cancelText={t('common.cancel')}
@@ -1261,6 +1250,7 @@ const OrderTracking: React.FC = () => {
         }}
         cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${returnRequestActionLabel}`, title: `${t('common.cancel')}: ${returnRequestActionLabel}` }}
         className="profile-mobile-safe-modal order-tracking-page__returnModal profile-return-modal"
+        closeLabel={t('common.close', { defaultValue: 'Close' })}
       >
         <div className="order-tracking-page__stack">
           {order ? (
@@ -1328,12 +1318,12 @@ const OrderTracking: React.FC = () => {
             title={returnReasonInputLabel}
           />
         </div>
-      </Modal>
-      <Modal
+      </ShopModal>
+      <ShopModal
         title={t('pages.profile.submitReturnShipment')}
         open={returnShipmentOpen}
         onOk={submitReturnTracking}
-        onCancel={() => { setReturnShipmentOpen(false); setReturnTrackingNumber(''); }}
+        onClose={() => { setReturnShipmentOpen(false); setReturnTrackingNumber(''); }}
         confirmLoading={returnShipping}
         okText={t('pages.profile.submitReturnShipment')}
         cancelText={t('common.cancel')}
@@ -1344,6 +1334,7 @@ const OrderTracking: React.FC = () => {
         }}
         cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${returnShipmentActionLabel}`, title: `${t('common.cancel')}: ${returnShipmentActionLabel}` }}
         className="profile-mobile-safe-modal order-tracking-page__returnModal profile-return-modal"
+        closeLabel={t('common.close', { defaultValue: 'Close' })}
       >
         <div className="order-tracking-page__stack">
           {order ? (
@@ -1378,7 +1369,48 @@ const OrderTracking: React.FC = () => {
             onBlur={() => setReturnTrackingNumber((value) => normalizeReturnTrackingNumber(value))}
           />
         </div>
-      </Modal>
+      </ShopModal>
+      <ShopConfirm
+        open={rollbackConfirmOpen}
+        title={t('pages.checkout.rollbackPaymentTitle')}
+        description={t('pages.checkout.rollbackPaymentContent')}
+        okText={t('pages.checkout.rollbackPaymentAction')}
+        cancelText={t('common.cancel')}
+        confirmLoading={canceling}
+        okButtonProps={{
+          danger: true,
+          'aria-label': order ? `${t('pages.checkout.rollbackPaymentAction')}: ${order.orderNo || `#${order.id}`}` : t('pages.checkout.rollbackPaymentAction'),
+          title: order ? `${t('pages.checkout.rollbackPaymentAction')}: ${order.orderNo || `#${order.id}`}` : t('pages.checkout.rollbackPaymentAction'),
+        }}
+        cancelButtonProps={{
+          'aria-label': `${t('common.cancel')}: ${t('pages.checkout.rollbackPaymentAction')}`,
+          title: `${t('common.cancel')}: ${t('pages.checkout.rollbackPaymentAction')}`,
+        }}
+        className="profile-mobile-safe-modal order-tracking-page__rollbackConfirmModal"
+        closeLabel={t('common.close', { defaultValue: 'Close' })}
+        onOk={handleRollbackConfirm}
+        onCancel={() => { if (!canceling) setRollbackConfirmOpen(false); }}
+      />
+      <ShopConfirm
+        open={receiptConfirmOpen}
+        title={t('pages.profile.confirmReceiptTitle')}
+        description={order ? t('pages.profile.confirmReceiptContent', { orderNo: order.orderNo || order.id }) : t('pages.profile.confirmReceiptTitle')}
+        okText={t('pages.profile.confirmReceipt')}
+        cancelText={t('common.cancel')}
+        confirmLoading={confirmingReceipt}
+        okButtonProps={{
+          'aria-label': order ? `${t('pages.profile.confirmReceipt')}: ${order.orderNo || `#${order.id}`}` : t('pages.profile.confirmReceipt'),
+          title: order ? `${t('pages.profile.confirmReceipt')}: ${order.orderNo || `#${order.id}`}` : t('pages.profile.confirmReceipt'),
+        }}
+        cancelButtonProps={{
+          'aria-label': `${t('common.cancel')}: ${t('pages.profile.confirmReceipt')}`,
+          title: `${t('common.cancel')}: ${t('pages.profile.confirmReceipt')}`,
+        }}
+        className="profile-mobile-safe-modal order-tracking-page__receiptConfirmModal"
+        closeLabel={t('common.close', { defaultValue: 'Close' })}
+        onOk={confirmReceipt}
+        onCancel={() => { if (!confirmingReceipt) setReceiptConfirmOpen(false); }}
+      />
     </div>
   );
 };

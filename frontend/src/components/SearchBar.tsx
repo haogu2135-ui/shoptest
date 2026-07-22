@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ShopIcon, SI } from './ShopIcon';
-import { Input } from 'antd';
+import ShopSearchField from './ShopSearchField';
 import { useLanguage } from '../i18n';
 import './SearchBar.css';
 
@@ -33,14 +33,17 @@ export const SearchBar: React.FC<SearchBarProps> = ({ onSearch, placeholder, deb
 
     return (
         <div className="shop-search-bar">
-            <Input
-                className="shop-search-bar__input"
+            <ShopSearchField
+                className="shop-search-bar__field"
+                inputClassName="shop-search-bar__input"
                 value={value}
                 placeholder={placeholder || t('pages.productList.searchPlaceholder')}
+                ariaLabel={placeholder || t('pages.productList.searchPlaceholder')}
                 prefix={<ShopIcon path={SI.search} />}
-                onChange={(e) => setValue(e.target.value)}
-                onPressEnter={() => onSearchRef.current(value)}
+                onChange={setValue}
+                onSearch={(next) => onSearchRef.current(next)}
                 allowClear
+                showSubmit={false}
             />
         </div>
     );

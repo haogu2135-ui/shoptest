@@ -7,7 +7,7 @@
 .pet-finder-page,
 .pet-finder-page .ant-card,
 .pet-finder-page .ant-btn,
-.pet-finder-page .ant-select,
+.pet-finder-page .shop-select,
 .pet-finder-page .ant-input,
 .pet-finder-page .pet-finder-page__text {
   font-family: 'Avenir Next', 'Manrope', 'Segoe UI Variable', sans-serif;
@@ -298,7 +298,7 @@
 
 .pet-finder-page .ant-input,
 .pet-finder-page .ant-input-affix-wrapper,
-.pet-finder-page .ant-select-selector {
+.pet-finder-page .shop-select, .pet-finder-page__fieldControl.shop-select {
   border-radius: 16px !important;
 }
 
@@ -318,7 +318,7 @@
 }
 
 @media (max-width: 640px) {
-  .pet-finder-page .ant-slider {
+  .pet-finder-page .shop-range {
     margin-inline: 6px;
   }
 
@@ -377,11 +377,11 @@
     min-width: 0;
   }
 
-  .pet-finder-page .ant-select-selector {
+  .pet-finder-page .shop-select, .pet-finder-page__fieldControl.shop-select {
     min-height: 42px;
   }
 
-  .pet-finder-page .ant-slider {
+  .pet-finder-page .shop-range {
     margin: 12px 8px 8px;
   }
 
@@ -526,13 +526,13 @@
     row-gap: 10px !important;
   }
 
-  .pet-finder-page .ant-select-selector,
+  .pet-finder-page .shop-select, .pet-finder-page__fieldControl.shop-select,
   .pet-finder-page .ant-input,
   .pet-finder-page .ant-btn {
     min-height: 44px;
   }
 
-  .pet-finder-page .ant-slider {
+  .pet-finder-page .shop-range {
     margin: 10px 6px 6px;
   }
 
@@ -775,8 +775,8 @@
   .pet-finder-page .ant-form-item-control-input-content,
   .pet-finder-page .ant-row,
   .pet-finder-page .ant-col,
-  .pet-finder-page .ant-select,
-  .pet-finder-page .ant-select-selector,
+  .pet-finder-page .shop-select,
+  .pet-finder-page .shop-select, .pet-finder-page__fieldControl.shop-select,
   .pet-finder-page .ant-input,
   .pet-finder-page__productCard,
   .pet-finder-page__productCard .ant-card-body {
@@ -785,7 +785,7 @@
   }
 
   .pet-finder-page .ant-form-item-control-input-content,
-  .pet-finder-page .ant-select,
+  .pet-finder-page .shop-select,
   .pet-finder-page .ant-input,
   .pet-finder-page .ant-btn {
     width: 100%;
@@ -851,22 +851,22 @@
 
 /* Final mobile finder select target pass */
 @media (max-width: 640px) {
-  .pet-finder-page .ant-select-selector {
+  .pet-finder-page .shop-select, .pet-finder-page__fieldControl.shop-select {
     align-items: center;
   }
 
-  .pet-finder-page .ant-select-selection-search-input {
+  .pet-finder-page .shop-select-selection-search-input {
     height: 38px !important;
   }
 
-  .pet-finder-page .ant-select-selection-item,
-  .pet-finder-page .ant-select-selection-placeholder {
+  .pet-finder-page .shop-select-selection-item,
+  .pet-finder-page .shop-select-selection-placeholder {
     min-height: 38px;
     line-height: 38px !important;
   }
 
-  .pet-finder-page .ant-select-arrow,
-  .pet-finder-page .ant-select-clear {
+  .pet-finder-page .shop-select-arrow,
+  .pet-finder-page .shop-select-clear {
     min-width: 34px;
     min-height: 34px;
     display: inline-flex;
@@ -956,7 +956,7 @@
 
   .pet-finder-page .ant-input,
   .pet-finder-page .ant-input-affix-wrapper,
-  .pet-finder-page .ant-select-selector,
+  .pet-finder-page .shop-select, .pet-finder-page__fieldControl.shop-select,
   .pet-finder-page .ant-btn {
     border-radius: 13px !important;
   }
@@ -1005,7 +1005,7 @@
 
   .pet-finder-page .ant-input,
   .pet-finder-page .ant-input-affix-wrapper,
-  .pet-finder-page .ant-select-selector,
+  .pet-finder-page .shop-select, .pet-finder-page__fieldControl.shop-select,
   .pet-finder-page .ant-btn {
     min-height: 44px;
   }
@@ -1128,52 +1128,50 @@
 /* Final mobile/App pet finder touch-target guard */
 @media (max-width: 640px) {
   .pet-finder-page .ant-btn,
-  .pet-finder-page__fieldControl.ant-select,
-  .pet-finder-page__fieldControl .ant-select-selector,
-  .pet-finder-page__fieldControl .ant-select-selection-search-input,
-  .pet-finder-page__fieldControl .ant-select-selection-item,
-  .pet-finder-page__fieldControl .ant-select-selection-placeholder,
-  .pet-finder-page .ant-slider,
+  .pet-finder-page__fieldControl.shop-select,
+  .pet-finder-page__fieldControl.shop-select,
+  .pet-finder-page__fieldControl .shop-select__value,
+  .pet-finder-page__fieldControl .shop-select__value,
+  .pet-finder-page__fieldControl .shop-select__value,
+  .pet-finder-page .shop-range,
   .pet-finder-page__productCard .pet-finder-page__productActions .ant-btn {
     min-height: 44px;
   }
 
-  .pet-finder-page__fieldControl.ant-select {
+  .pet-finder-page__fieldControl.shop-select {
     height: 44px;
   }
 
-  .pet-finder-page__fieldControl .ant-select-selector {
+  .pet-finder-page__fieldControl.shop-select {
     align-items: center;
     height: 44px !important;
     padding-block: 0 !important;
   }
 
-  .pet-finder-page__fieldControl .ant-select-selection-search-input,
-  .pet-finder-page__fieldControl .ant-select-selection-item,
-  .pet-finder-page__fieldControl .ant-select-selection-placeholder {
+  .pet-finder-page__fieldControl .shop-select__value,
+  .pet-finder-page__fieldControl .shop-select__value,
+  .pet-finder-page__fieldControl .shop-select__value {
     line-height: 44px !important;
   }
 
-  .pet-finder-page__fieldControl .ant-select-arrow,
-  .pet-finder-page__fieldControl .ant-select-clear {
+  .pet-finder-page__fieldControl .shop-select__arrow,
+  .pet-finder-page__fieldControl .shop-select__arrow {
     min-width: 44px;
     min-height: 44px;
   }
 
-  .pet-finder-page .ant-slider .ant-slider-handle {
-    width: 44px;
-    height: 44px;
-    inset-block-start: 50%;
-    touch-action: pan-x;
-    transform: translate(-50%, -50%) !important;
+  .pet-finder-page .shop-range {
+    min-height: 44px;
   }
 
-  .pet-finder-page .ant-slider .ant-slider-handle::after {
-    top: 50%;
-    left: 50%;
-    width: 14px;
-    height: 14px;
-    transform: translate(-50%, -50%);
+  .pet-finder-page .shop-range__input::-webkit-slider-thumb {
+    width: 28px;
+    height: 28px;
+  }
+
+  .pet-finder-page .shop-range__input::-moz-range-thumb {
+    width: 28px;
+    height: 28px;
   }
 }
 
@@ -1393,7 +1391,7 @@
     scroll-margin-bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 28px + env(safe-area-inset-bottom, 0px));
   }
 
-  .pet-finder-page__budgetControl .ant-slider {
+  .pet-finder-page__budgetControl .shop-range {
     min-height: 44px;
     margin-bottom: 18px;
   }
@@ -1684,3 +1682,15 @@
   border-radius: 12px;
   padding: 16px;
 }
+
+
+/* Gate108: native pet-finder budget range */
+.pet-finder-page__budgetSlider {
+  margin: 8px 0 4px;
+}
+
+/* Gate117: ShopSelect on pet finder filters */
+body .pet-finder-page .shop-select {
+  width: 100%;
+}
+

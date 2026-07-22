@@ -221,7 +221,7 @@
 .product-list__focusActions .ant-btn,
 .product-list__toolbar .ant-btn,
 .product-list__toolbar .ant-input-affix-wrapper,
-.product-list__toolbar .ant-select-selector {
+.product-list__toolbar .shop-select, .product-list__sortSelect.shop-select {
   border-radius: 8px !important;
 }
 
@@ -1176,16 +1176,16 @@
   display: none;
 }
 
-.product-list__quickAddModal .ant-modal-content,
+.product-list__quickAddModal .shop-modal__content,
 .product-list__mobileDrawer.shop-drawer__panel {
   border-radius: 18px;
 }
 
-.product-list__quickAddModal .ant-modal-header {
+.product-list__quickAddModal .shop-modal__header {
   padding-bottom: 8px;
 }
 
-.product-list__quickAddModal .ant-select-selector {
+.product-list__quickAddModal .shop-select, .product-list__quickAddSelect.shop-select {
   min-height: 44px;
 }
 
@@ -1199,7 +1199,7 @@
   padding: 0;
 }
 
-.product-list__quickAddModal .ant-modal-footer .ant-btn-primary:disabled {
+.product-list__quickAddModal .shop-modal__footer .ant-btn-primary:disabled {
   border-color: #d6e4dc;
   background: #eef5f0;
   color: #6c7a70;
@@ -1922,7 +1922,7 @@
   text-align: center;
 }
 
-.product-list--es .product-list__toolbar .ant-select-selection-item,
+.product-list--es .product-list__toolbar .shop-select__value, .product-list--es .product-list__sortSelect .shop-select__value,
 .product-list--es .product-list__toolbar .ant-input::placeholder {
   font-size: 13px;
 }
@@ -2004,7 +2004,7 @@
     min-height: 34px;
   }
 
-  .product-list--es .product-list__sortSelect .ant-select-selection-item {
+  .product-list--es .product-list__sortSelect .shop-select__value {
     font-size: 12px;
   }
 
@@ -2087,7 +2087,7 @@
 .product-list__focusActions .ant-btn,
 .product-list__toolbar .ant-btn,
 .product-list__toolbar .ant-input-affix-wrapper,
-.product-list__toolbar .ant-select-selector {
+.product-list__toolbar .shop-select, .product-list__sortSelect.shop-select {
   border-radius: 999px !important;
 }
 
@@ -2108,13 +2108,13 @@
   border-radius: 14px;
 }
 
-.product-list .ant-pagination {
+.product-list .shop-pagination {
   margin-top: 18px;
 }
 
-.product-list .ant-pagination-item,
-.product-list .ant-pagination-prev .ant-pagination-item-link,
-.product-list .ant-pagination-next .ant-pagination-item-link {
+.product-list .shop-pagination__item,
+.product-list .shop-pagination__control,
+.product-list .shop-pagination__control {
   border-radius: 999px;
 }
 
@@ -2529,7 +2529,7 @@
 
 .product-list--es .product-list__toolbar .ant-btn,
 .product-list--es .product-list__quickAddModal .ant-btn,
-.product-list--es .product-list__pagination .ant-pagination-total-text {
+.product-list--es .product-list__pagination .shop-pagination__total {
   white-space: normal;
   overflow-wrap: anywhere;
 }
@@ -2670,7 +2670,7 @@
   color: #c94321;
 }
 
-.product-list__previewModal .ant-modal-content {
+.product-list__previewModal .shop-modal__content {
   overflow: hidden;
   padding: 0;
   border-radius: 28px;
@@ -2678,11 +2678,11 @@
   box-shadow: 0 28px 80px rgba(10, 33, 24, 0.22);
 }
 
-.product-list__previewModal .ant-modal-body {
+.product-list__previewModal .shop-modal__body {
   padding: 0;
 }
 
-.product-list__previewModal .ant-modal-close {
+.product-list__previewModal .shop-modal__close {
   top: 14px;
   right: 14px;
   border-radius: 999px;
@@ -3064,7 +3064,7 @@
   }
 
   .product-list__search .ant-input-search,
-  .product-list__toolbar .ant-select-selector,
+  .product-list__toolbar .shop-select, .product-list__sortSelect.shop-select,
   .product-list__toolbar .ant-btn {
     min-height: 44px;
   }
@@ -3241,7 +3241,7 @@
     clip: rect(0 0 0 0);
   }
 
-  .product-list .ant-pagination {
+  .product-list .shop-pagination {
     display: flex;
     flex-wrap: nowrap;
     justify-content: flex-start;
@@ -3250,7 +3250,7 @@
     scrollbar-width: none;
   }
 
-  .product-list .ant-pagination::-webkit-scrollbar {
+  .product-list .shop-pagination::-webkit-scrollbar {
     display: none;
   }
 }
@@ -3418,7 +3418,7 @@
 
   .product-list__search .ant-input-search,
   .product-list__search .ant-input-affix-wrapper,
-  .product-list__toolbar .ant-select-selector,
+  .product-list__toolbar .shop-select, .product-list__sortSelect.shop-select,
   .product-list__toolbar .ant-btn {
     min-height: 44px;
   }
@@ -3464,7 +3464,7 @@
     padding-bottom: calc(8px + env(safe-area-inset-bottom));
   }
 
-  .product-list__previewModal .ant-modal-content {
+  .product-list__previewModal .shop-modal__content {
     max-height: calc(100dvh - 18px);
     border-radius: 20px;
     overflow: auto;
@@ -3472,11 +3472,11 @@
     scrollbar-width: none;
   }
 
-  .product-list__previewModal .ant-modal-content::-webkit-scrollbar {
+  .product-list__previewModal .shop-modal__content::-webkit-scrollbar {
     display: none;
   }
 
-  .product-list__previewModal .ant-modal-close {
+  .product-list__previewModal .shop-modal__close {
     top: 10px;
     right: 10px;
     width: 40px;
@@ -3655,14 +3655,14 @@
   .product-list__search,
   .product-list__search .ant-input-search,
   .product-list__sortSelect,
-  .product-list__toolbar .ant-select,
+  .product-list__toolbar .shop-select,
   .product-list__toolbar .ant-btn {
     width: 100%;
     min-width: 0;
   }
 
   .product-list__search .ant-input,
-  .product-list__sortSelect .ant-select-selection-item,
+  .product-list__sortSelect .shop-select__value,
   .product-list__toolbarMeta .product-list__text {
     min-width: 0;
     overflow: hidden;
@@ -3679,7 +3679,7 @@
   .product-list__recentSearches,
   .product-list__smartStats,
   .product-list__checkoutPathItems,
-  .product-list .ant-pagination {
+  .product-list .shop-pagination {
     max-width: calc(100vw - 12px);
     overflow-x: auto;
     overscroll-behavior-inline: contain;
@@ -3694,7 +3694,7 @@
   .product-list__recentSearches::-webkit-scrollbar,
   .product-list__smartStats::-webkit-scrollbar,
   .product-list__checkoutPathItems::-webkit-scrollbar,
-  .product-list .ant-pagination::-webkit-scrollbar {
+  .product-list .shop-pagination::-webkit-scrollbar {
     display: none;
   }
 
@@ -3755,7 +3755,7 @@
   .product-list__mobileDrawer .shop-drawer__body,
   .product-list__drawerContent,
   .product-list__quickAddContent,
-  .product-list__quickAddModal .ant-modal-body {
+  .product-list__quickAddModal .shop-modal__body {
     min-width: 0;
     overflow-x: hidden;
   }
@@ -3767,14 +3767,14 @@
     padding-bottom: calc(8px + env(safe-area-inset-bottom));
   }
 
-  .product-list__quickAddModal .ant-modal-content {
+  .product-list__quickAddModal .shop-modal__content {
     max-height: calc(100dvh - 18px);
     display: flex;
     flex-direction: column;
     overflow: hidden;
   }
 
-  .product-list__quickAddModal .ant-modal-body {
+  .product-list__quickAddModal .shop-modal__body {
     min-height: 0;
     overflow-y: auto;
     overscroll-behavior: contain;
@@ -3783,7 +3783,7 @@
 
   .product-list__quickAddContent,
   .product-list__quickAddContent .ant-space-item,
-  .product-list__quickAddContent .ant-select,
+  .product-list__quickAddContent .shop-select,
   .product-list__quickAddContent .product-list__text {
     width: 100%;
     min-width: 0;
@@ -3797,7 +3797,7 @@
     white-space: nowrap;
   }
 
-  .product-list__quickAddModal .ant-modal-footer {
+  .product-list__quickAddModal .shop-modal__footer {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 8px;
@@ -3807,7 +3807,7 @@
     background: #ffffff;
   }
 
-  .product-list__quickAddModal .ant-modal-footer .ant-btn {
+  .product-list__quickAddModal .shop-modal__footer .ant-btn {
     width: 100%;
     min-width: 0;
     min-height: 44px;
@@ -3900,28 +3900,28 @@
 
 /* Final mobile catalog sort target pass */
 @media (max-width: 720px) {
-  .product-list__sortSelect .ant-select-selector,
-  .product-list__toolbar .ant-select-selector {
+  .product-list__sortSelect.shop-select,
+  .product-list__toolbar .shop-select, .product-list__sortSelect.shop-select {
     align-items: center;
   }
 
-  .product-list__sortSelect .ant-select-selection-search-input,
-  .product-list__toolbar .ant-select-selection-search-input {
+  .product-list__sortSelect .shop-select__value,
+  .product-list__toolbar .shop-select-selection-search-input {
     height: 44px !important;
   }
 
-  .product-list__sortSelect .ant-select-selection-item,
-  .product-list__sortSelect .ant-select-selection-placeholder,
-  .product-list__toolbar .ant-select-selection-item,
-  .product-list__toolbar .ant-select-selection-placeholder {
+  .product-list__sortSelect .shop-select__value,
+  .product-list__sortSelect .shop-select__value,
+  .product-list__toolbar .shop-select-selection-item,
+  .product-list__toolbar .shop-select-selection-placeholder {
     min-height: 44px;
     line-height: 38px !important;
   }
 
-  .product-list__sortSelect .ant-select-arrow,
-  .product-list__sortSelect .ant-select-clear,
-  .product-list__toolbar .ant-select-arrow,
-  .product-list__toolbar .ant-select-clear {
+  .product-list__sortSelect .shop-select__arrow,
+  .product-list__sortSelect .shop-select__arrow,
+  .product-list__toolbar .shop-select-arrow,
+  .product-list__toolbar .shop-select-clear {
     min-width: 34px;
     min-height: 44px;
     display: inline-flex;
@@ -3975,9 +3975,9 @@
     padding: 8px !important;
   }
 
-  .product-list__sortSelect.ant-select,
-  .product-list__sortSelect .ant-select-selector,
-  .product-list__toolbar .ant-select-selector {
+  .product-list__sortSelect.shop-select,
+  .product-list__sortSelect.shop-select,
+  .product-list__toolbar .shop-select, .product-list__sortSelect.shop-select {
     min-height: 44px !important;
   }
 
@@ -5777,7 +5777,7 @@
   }
 
   .product-list__sortSelect,
-  .product-list__toolbar .ant-select {
+  .product-list__toolbar .shop-select {
     min-width: 0;
   }
 
@@ -5958,7 +5958,7 @@
   }
 
   .product-list__toolbar .ant-btn,
-  .product-list__toolbar .ant-select {
+  .product-list__toolbar .shop-select {
     min-width: 0;
   }
 
@@ -6211,7 +6211,7 @@
   text-overflow: ellipsis;
 }
 
-.product-list__quickAddModal .ant-modal-footer .ant-btn,
+.product-list__quickAddModal .shop-modal__footer .ant-btn,
 .product-list__previewActions .ant-btn,
 .product-list__smartActions .ant-btn,
 .product-list__emptyActions .ant-btn,
@@ -6219,7 +6219,7 @@
   white-space: nowrap;
 }
 
-.product-list__quickAddModal .ant-modal-footer .ant-btn > span:not(.anticon):not(.ant-btn-icon),
+.product-list__quickAddModal .shop-modal__footer .ant-btn > span:not(.anticon):not(.ant-btn-icon),
 .product-list__previewActions .ant-btn > span:not(.anticon):not(.ant-btn-icon),
 .product-list__smartActions .ant-btn > span:not(.anticon):not(.ant-btn-icon),
 .product-list__emptyActions .ant-btn > span:not(.anticon):not(.ant-btn-icon),
@@ -6233,12 +6233,12 @@
 }
 
 @media (max-width: 780px) {
-  .product-list__quickAddModal .ant-modal-content,
-  .product-list__previewModal .ant-modal-content {
+  .product-list__quickAddModal .shop-modal__content,
+  .product-list__previewModal .shop-modal__content {
     max-width: 100%;
   }
 
-  .product-list__quickAddModal .ant-modal-footer,
+  .product-list__quickAddModal .shop-modal__footer,
   .product-list__previewActions,
   .product-list__smartActions,
   .product-list__emptyActions {
@@ -6247,7 +6247,7 @@
     gap: 8px;
   }
 
-  .product-list__quickAddModal .ant-modal-footer .ant-btn,
+  .product-list__quickAddModal .shop-modal__footer .ant-btn,
   .product-list__previewActions .ant-btn,
   .product-list__smartActions .ant-btn,
   .product-list__emptyActions .ant-btn,
@@ -6273,7 +6273,7 @@
 }
 
 @media (max-width: 380px) {
-  .product-list__quickAddModal .ant-modal-footer,
+  .product-list__quickAddModal .shop-modal__footer,
   .product-list__previewActions,
   .product-list__smartActions,
   .product-list__emptyActions {
@@ -6328,13 +6328,13 @@
     box-shadow: 0 -10px 24px rgba(18, 71, 52, 0.12);
   }
 
-  .product-list__quickAddModal .ant-modal-content,
-  .product-list__previewModal .ant-modal-content {
+  .product-list__quickAddModal .shop-modal__content,
+  .product-list__previewModal .shop-modal__content {
     max-height: calc(100dvh - 24px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
   }
 
-  .product-list__quickAddModal .ant-modal-body,
-  .product-list__previewModal .ant-modal-body {
+  .product-list__quickAddModal .shop-modal__body,
+  .product-list__previewModal .shop-modal__body {
     min-height: 0;
     overflow-y: auto;
     overscroll-behavior: contain;
@@ -6776,7 +6776,7 @@
   .product-list__focusActions .ant-btn,
   .product-list__toolbar .ant-btn,
   .product-list__toolbar .ant-input-affix-wrapper,
-  .product-list__toolbar .ant-select-selector,
+  .product-list__toolbar .shop-select, .product-list__sortSelect.shop-select,
   .product-list__filterButton.ant-btn,
   .product-list__refinementChips .ant-btn,
   .product-list__mobileContextChip,
@@ -6787,8 +6787,8 @@
   .product-list__categoryButton.ant-btn,
   .product-list__filterStack .ant-checkbox-wrapper,
   .product-list__drawerFooter .ant-btn,
-  .product-list__quickAddModal .ant-modal-footer .ant-btn,
-  .product-list__quickAddModal .ant-select-selector,
+  .product-list__quickAddModal .shop-modal__footer .ant-btn,
+  .product-list__quickAddModal .shop-select, .product-list__quickAddSelect.shop-select,
   .product-list__previewActions .ant-btn,
   .product-list__emptyActions .ant-btn,
   .product-list__recoveryGrid .ant-btn {
@@ -6817,20 +6817,20 @@
     min-width: 44px;
   }
 
-  .product-list .ant-pagination-item,
-  .product-list .ant-pagination-prev,
-  .product-list .ant-pagination-next,
-  .product-list .ant-pagination-prev .ant-pagination-item-link,
-  .product-list .ant-pagination-next .ant-pagination-item-link {
+  .product-list .shop-pagination__item,
+  .product-list .shop-pagination__prev,
+  .product-list .shop-pagination__next,
+  .product-list .shop-pagination__control,
+  .product-list .shop-pagination__control {
     min-width: 44px;
     min-height: 44px;
   }
 
-  body.shop-mobile-app .product-list__pagination .ant-pagination-item,
-  body.shop-mobile-app .product-list__pagination .ant-pagination-prev,
-  body.shop-mobile-app .product-list__pagination .ant-pagination-next,
-  body.shop-mobile-app .product-list__pagination .ant-pagination-jump-prev,
-  body.shop-mobile-app .product-list__pagination .ant-pagination-jump-next {
+  body.shop-mobile-app .product-list__pagination .shop-pagination__item,
+  body.shop-mobile-app .product-list__pagination .shop-pagination__prev,
+  body.shop-mobile-app .product-list__pagination .shop-pagination__next,
+  body.shop-mobile-app .product-list__pagination .shop-pagination__jump,
+  body.shop-mobile-app .product-list__pagination .shop-pagination__jump {
     width: 44px !important;
     min-width: 44px !important;
     height: 44px !important;
@@ -6841,9 +6841,9 @@
     justify-content: center !important;
   }
 
-  body.shop-mobile-app .product-list__pagination .ant-pagination-item a,
-  body.shop-mobile-app .product-list__pagination .ant-pagination-prev .ant-pagination-item-link,
-  body.shop-mobile-app .product-list__pagination .ant-pagination-next .ant-pagination-item-link {
+  body.shop-mobile-app .product-list__pagination .shop-pagination__page,
+  body.shop-mobile-app .product-list__pagination .shop-pagination__control,
+  body.shop-mobile-app .product-list__pagination .shop-pagination__control {
     width: 44px !important;
     min-width: 44px !important;
     height: 44px !important;
@@ -6945,9 +6945,9 @@
     white-space: normal;
   }
 
-  .product-list__toolbar .ant-select-selection-search-input,
-  .product-list__toolbar .ant-select-selection-item,
-  .product-list__toolbar .ant-select-selection-placeholder {
+  .product-list__toolbar .shop-select-selection-search-input,
+  .product-list__toolbar .shop-select-selection-item,
+  .product-list__toolbar .shop-select-selection-placeholder {
     min-height: 44px;
     line-height: 44px !important;
   }
@@ -6983,29 +6983,29 @@
 /* Final mobile sort control guard: AntD compact rules must not shrink the
    visible select or its popup options below the 44px touch target. */
 @media (max-width: 780px) {
-  .product-list__sortSelect.ant-select,
-  .product-list__sortSelect .ant-select-selector,
-  .product-list__toolbar .product-list__sortSelect.ant-select,
-  .product-list__toolbar .product-list__sortSelect .ant-select-selector {
+  .product-list__sortSelect.shop-select,
+  .product-list__sortSelect.shop-select,
+  .product-list__toolbar .product-list__sortSelect.shop-select,
+  .product-list__toolbar .product-list__sortSelect.shop-select {
     min-height: 44px !important;
     height: 44px !important;
   }
 
-  .product-list__sortSelect .ant-select-selector {
+  .product-list__sortSelect.shop-select {
     align-items: center !important;
     padding-block: 0 !important;
   }
 
-  .product-list__sortSelect .ant-select-selection-search-input,
-  .product-list__sortSelect .ant-select-selection-item,
-  .product-list__sortSelect .ant-select-selection-placeholder {
+  .product-list__sortSelect .shop-select__value,
+  .product-list__sortSelect .shop-select__value,
+  .product-list__sortSelect .shop-select__value {
     min-height: 44px !important;
     height: 44px !important;
     line-height: 44px !important;
   }
 
-  .product-list__sortSelect .ant-select-arrow,
-  .product-list__sortSelect .ant-select-clear,
+  .product-list__sortSelect .shop-select__arrow,
+  .product-list__sortSelect .shop-select__arrow,
   .shop-mobile-popup-layer .ant-select-item,
   .shop-mobile-popup-layer .ant-select-item-option-content {
     min-height: 44px !important;
@@ -7131,8 +7131,8 @@
   body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-list .product-list__search .ant-input-group,
   body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-list .product-list__search .ant-input-affix-wrapper,
   body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-list .product-list__search .ant-btn,
-  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-list .product-list__sortSelect.ant-select,
-  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-list .product-list__sortSelect .ant-select-selector,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-list .product-list__sortSelect.shop-select,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-list .product-list__sortSelect.shop-select,
   body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-list .product-list__filterButton.ant-btn {
     min-height: 44px !important;
     height: auto !important;
@@ -7162,33 +7162,41 @@
     pointer-events: none !important;
   }
 
-  .product-list__quickAddModalRoot .ant-modal-mask {
+  .product-list__quickAddModalRoot.shop-modal {
+    z-index: 9500 !important;
+  }
+
+  .product-list__quickAddModalRoot .shop-modal__mask {
     z-index: 9500 !important;
     background: rgba(15, 30, 22, 0.54) !important;
   }
 
-  .product-list__quickAddModalRoot .ant-modal-wrap {
+  .product-list__quickAddModalRoot .shop-modal__wrap {
     z-index: 9501 !important;
   }
 
-  .product-list__quickAddModalRoot .product-list__quickAddModal.ant-modal {
+  .product-list__quickAddModalRoot .product-list__quickAddModal.shop-modal__panel {
     z-index: 9502 !important;
   }
 
-  body.shop-mobile-app .product-list__quickAddModalRoot .ant-modal-mask {
+  body.shop-mobile-app .product-list__quickAddModalRoot.shop-modal {
     z-index: 9900 !important;
   }
 
-  body.shop-mobile-app .product-list__quickAddModalRoot .ant-modal-wrap {
+  body.shop-mobile-app .product-list__quickAddModalRoot .shop-modal__mask {
+    z-index: 9900 !important;
+  }
+
+  body.shop-mobile-app .product-list__quickAddModalRoot .shop-modal__wrap {
     z-index: 9901 !important;
   }
 
-  body.shop-mobile-app .product-list__quickAddModalRoot .product-list__quickAddModal.ant-modal {
+  body.shop-mobile-app .product-list__quickAddModalRoot .product-list__quickAddModal.shop-modal__panel {
     z-index: 9902 !important;
   }
 
   body .product-list__quickAddPopup.shop-mobile-popup-layer,
-  body .product-list__quickAddPopup.ant-select-dropdown {
+  body .product-list__quickAddPopup.shop-select__popup {
     z-index: 9904 !important;
   }
 }
@@ -7203,28 +7211,36 @@
     pointer-events: none !important;
   }
 
-  .product-list__previewModalRoot .ant-modal-mask {
+  .product-list__previewModalRoot.shop-modal {
+    z-index: 9500 !important;
+  }
+
+  .product-list__previewModalRoot .shop-modal__mask {
     z-index: 9500 !important;
     background: rgba(15, 30, 22, 0.68) !important;
   }
 
-  .product-list__previewModalRoot .ant-modal-wrap {
+  .product-list__previewModalRoot .shop-modal__wrap {
     z-index: 9501 !important;
   }
 
-  .product-list__previewModalRoot .product-list__previewModal.ant-modal {
+  .product-list__previewModalRoot .product-list__previewModal.shop-modal__panel {
     z-index: 9502 !important;
   }
 
-  body.shop-mobile-app .product-list__previewModalRoot .ant-modal-mask {
+  body.shop-mobile-app .product-list__previewModalRoot.shop-modal {
     z-index: 9900 !important;
   }
 
-  body.shop-mobile-app .product-list__previewModalRoot .ant-modal-wrap {
+  body.shop-mobile-app .product-list__previewModalRoot .shop-modal__mask {
+    z-index: 9900 !important;
+  }
+
+  body.shop-mobile-app .product-list__previewModalRoot .shop-modal__wrap {
     z-index: 9901 !important;
   }
 
-  body.shop-mobile-app .product-list__previewModalRoot .product-list__previewModal.ant-modal {
+  body.shop-mobile-app .product-list__previewModalRoot .product-list__previewModal.shop-modal__panel {
     z-index: 9902 !important;
   }
 }
@@ -7837,3 +7853,16 @@
   flex: 1 1 auto;
   height: 100%;
 }
+
+
+/* Gate107: native price range control in filter panels */
+.product-list__priceSlider {
+  margin: 10px 0 6px;
+}
+
+/* Gate117: ShopSelect chrome on catalog sort/quick-add */
+body .product-list__quickAddPopup.shop-select__popup,
+body .shop-mobile-popup-layer.shop-select__popup {
+  z-index: 1100 !important;
+}
+

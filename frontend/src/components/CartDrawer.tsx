@@ -1,7 +1,8 @@
 import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { ShopIcon, SI } from './ShopIcon';
-import { Alert, Button, InputNumber, Popconfirm, Progress, Tag } from 'antd';
+import { Alert, Button, InputNumber, Progress, Tag } from 'antd';
+import ShopPopconfirm from './ShopPopconfirm';
 import { useNavigate } from 'react-router-dom';
 import { cartApi } from '../api';
 import type { CartItem, ProductPublic as Product } from '../types';
@@ -606,8 +607,8 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
               <span className="cart-drawer__text cart-drawer__text--secondary">{drawerNextAction.text}</span>
             </span>
             {drawerNextAction.tone === 'attention' ? (
-              <Popconfirm
-                classNames={{ root: 'shop-mobile-popup-layer cart-drawer-popconfirm' }}
+              <ShopPopconfirm
+                rootClassName='shop-mobile-popup-layer cart-drawer-popconfirm'
                 title={t('pages.cart.drawerClearBlockedConfirm', { count: blockedCount })}
                 onConfirm={drawerNextAction.onClick}
                 okText={t('pages.cart.drawerClearBlocked')}
@@ -623,7 +624,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
                 >
                   {drawerNextAction.label}
                 </Button>
-              </Popconfirm>
+              </ShopPopconfirm>
             ) : (
               <Button
                 size="small"
@@ -642,8 +643,8 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
         {blockedCount > 0 ? (
           <div className="cart-drawer__unavailable">
             <span className="cart-drawer__text cart-drawer__text--secondary">{t('pages.cart.unavailableSummary', { count: blockedCount })}</span>
-            <Popconfirm
-              classNames={{ root: 'shop-mobile-popup-layer cart-drawer-popconfirm' }}
+            <ShopPopconfirm
+              rootClassName='shop-mobile-popup-layer cart-drawer-popconfirm'
               title={t('pages.cart.drawerClearBlockedConfirm', { count: blockedCount })}
               onConfirm={clearBlockedItems}
               okText={t('pages.cart.drawerClearBlocked')}
@@ -652,7 +653,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
               cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${clearBlockedActionLabel}`, title: `${t('common.cancel')}: ${clearBlockedActionLabel}` }}
             >
               <Button size="small" aria-label={clearBlockedActionLabel} title={clearBlockedActionLabel} disabled={hasStaleCartData}>{t('pages.cart.drawerClearBlocked')}</Button>
-            </Popconfirm>
+            </ShopPopconfirm>
           </div>
         ) : null}
 
@@ -827,8 +828,8 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
                   >
                     {t('pages.cart.saveForLaterShort')}
                   </Button>
-                  <Popconfirm
-                    classNames={{ root: 'shop-mobile-popup-layer cart-drawer-popconfirm' }}
+                  <ShopPopconfirm
+                    rootClassName='shop-mobile-popup-layer cart-drawer-popconfirm'
                     title={t('pages.cart.deleteConfirm')}
                     onConfirm={() => removeItem(item)}
                     okText={t('common.confirm')}
@@ -839,7 +840,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
                     <Button type="link" danger className="cart-drawer__itemAction cart-drawer__itemAction--delete" icon={<ShopIcon path={SI.delete} />} aria-label={deleteActionLabel} title={deleteActionLabel} disabled={hasStaleCartData}>
                       {t('common.delete')}
                     </Button>
-                  </Popconfirm>
+                  </ShopPopconfirm>
                 </div>
               </li>
               );

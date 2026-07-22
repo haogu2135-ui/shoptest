@@ -1,7 +1,6 @@
 import fs from 'fs';
 import path from 'path';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { message } from 'antd';
 import { Link, MemoryRouter } from 'react-router-dom';
 
 const mockLogoutAuthSession = jest.fn();
@@ -157,6 +156,10 @@ jest.mock('../utils/nonBlockingError', () => ({
   reportNonBlockingError: jest.fn(),
 }));
 
+jest.mock('../utils/accessibleMessage', () => ({
+  announceAccessibleMessage: jest.fn(),
+}));
+
 jest.mock('../utils/productCompare', () => ({
   readCompareProductIds: jest.fn(() => []),
 }));
@@ -193,6 +196,7 @@ const { readCompareProductIds } = require('../utils/productCompare');
 const { readStockAlerts } = require('../utils/stockAlerts');
 const { getLocalStorageItem } = require('../utils/safeStorage');
 const { reportNonBlockingError } = require('../utils/nonBlockingError');
+const { announceAccessibleMessage } = require('../utils/accessibleMessage');
 
 const readNavbarSource = () => fs.readFileSync(path.resolve(__dirname, 'Navbar.tsx'), 'utf8');
 const readNavbarCss = () => fs.readFileSync(path.resolve(__dirname, 'Navbar.css'), 'utf8');
@@ -248,7 +252,7 @@ describe('Navbar Android app download entry', () => {
   });
 
   it('keeps the browser entry visible without exposing an APK URL when no signed release is published', async () => {
-    const warningSpy = jest.spyOn(message, 'warning').mockImplementation(jest.fn());
+    (announceAccessibleMessage as jest.Mock).mockClear();
 
     renderNavbar();
 
@@ -262,9 +266,10 @@ describe('Navbar Android app download entry', () => {
     expect(apkLinks).toHaveLength(0);
 
     fireEvent.click(unavailableButtons[0]);
-    expect(warningSpy).toHaveBeenCalledWith('The Android package is not published yet. Please try again later.');
-
-    warningSpy.mockRestore();
+    expect(announceAccessibleMessage).toHaveBeenCalledWith(
+      'The Android package is not published yet. Please try again later.',
+      'warning',
+    );
   });
 
   it('keeps the Spanish Products bottom-nav label readable before the icon-only fallback', () => {
@@ -313,7 +318,7 @@ describe('Navbar Android app download entry', () => {
     expect(searchEnd).toBeGreaterThan(searchStart);
     expect(searchSource).toContain('const trimmedKeyword = value.trim();');
     expect(searchSource).toContain('if (trimmedKeyword.length > NAV_SEARCH_MAX_LENGTH) {');
-    expect(searchSource).toContain("message.warning(t('nav.searchLimitWarning', { count: NAV_SEARCH_MAX_LENGTH }));");
+    expect(searchSource).toContain("announceAccessibleMessage(t('nav.searchLimitWarning', { count: NAV_SEARCH_MAX_LENGTH }), 'warning');");
     expect(searchSource).toContain('const keyword = trimmedKeyword.slice(0, NAV_SEARCH_MAX_LENGTH);');
     expect(searchSource).toContain("navigate(`/products?keyword=${encodeURIComponent(keyword)}`);");
     expect(source).not.toContain('maxLength={NAV_SEARCH_MAX_LENGTH}');
@@ -342,7 +347,7 @@ describe('Navbar Android app download entry', () => {
     expect(announcementSource).toContain('aria-label={announcementToggleLabel}');
     expect(announcementSource).toContain('aria-pressed={announcementPaused}');
     expect(announcementSource).toContain('onClick={() => setAnnouncementPaused((current) => !current)}');
-    expect(announcementSource).toContain('announcementPaused ? <PlayCircleOutlined /> : <PauseCircleOutlined />');
+    expect(announcementSource).toContain("announcementPaused ? <ShopIcon path={SI.play} /> : <ShopIcon path={SI.pause} />");
     expect(css).toMatch(/\.shop-nav__announcement:hover \.shop-nav__ticker,[\s\S]*?\.shop-nav__announcement:focus-within \.shop-nav__ticker,[\s\S]*?\.shop-nav__announcement--paused \.shop-nav__ticker\s*\{[\s\S]*?animation-play-state:\s*paused;/);
     expect(css).toMatch(/@media \(prefers-reduced-motion:\s*reduce\)\s*\{[\s\S]*?\.shop-nav__ticker\s*\{[\s\S]*?animation:\s*none;/);
   });
@@ -389,9 +394,9 @@ describe('Navbar Android app download entry', () => {
     const css = readNavbarCss();
     const f3358Css = css.slice(css.indexOf('/* F3358'));
 
-    expect(source).toContain("{ key: 'track-order', icon: <ShoppingOutlined />, label: t('nav.trackOrder'), onClick: () => navigate('/track-order') }");
-    expect(source).toContain("{ key: 'pet-finder', icon: <SearchOutlined />, label: t('nav.petFinder'), onClick: () => navigate('/pet-finder') }");
-    expect(source).toContain("{ key: 'deals', icon: <GiftOutlined />, label: t('nav.followDeals'), onClick: () => navigate('/products?discount=true') }");
+    expect(source).toContain("{ key: 'track-order', icon: <ShopIcon path={SI.shopping} />, label: t('nav.trackOrder'), onClick: () => navigate('/track-order') }");
+    expect(source).toContain("{ key: 'pet-finder', icon: <ShopIcon path={SI.search} />, label: t('nav.petFinder'), onClick: () => navigate('/pet-finder') }");
+    expect(source).toContain("{ key: 'deals', icon: <ShopIcon path={SI.gift} />, label: t('nav.followDeals'), onClick: () => navigate('/products?discount=true') }");
     expect(f3358Css).toMatch(/@media \(min-width:\s*781px\) and \(max-width:\s*1024px\)\s*\{/);
     expect(f3358Css).toMatch(/\.shop-nav__top\s*\{[\s\S]*?display:\s*none;/);
     expect(f3358Css).toMatch(/\.shop-nav__inner--main\s*\{[\s\S]*?grid-template-columns:\s*minmax\(150px,\s*auto\) minmax\(280px,\s*1fr\) auto;/);
@@ -433,11 +438,13 @@ describe('Navbar Android app download entry', () => {
     const css = readNavbarCss();
     const f3357Css = css.slice(css.indexOf('/* F3357'));
 
-    expect(source.match(/overlayClassName="shop-nav__dropdown-popup"/g)?.length).toBeGreaterThanOrEqual(4);
-    expect(source).toContain('getPopupContainer={() => document.body}');
+    expect(source).toContain('ShopDropdown');
+    expect((source.match(/popupClassName="shop-nav__dropdown-popup"/g) || []).length).toBeGreaterThanOrEqual(4);
+    expect(source).not.toMatch(/import \{[^}]*\bDropdown\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<Dropdown\b/);
     expect(f3357Css).toMatch(/@media \(max-height:\s*430px\)\s*\{/);
     expect(f3357Css).toMatch(/body \.shop-nav__dropdown-popup\s*\{[\s\S]*?position:\s*fixed\s*!important;[\s\S]*?top:\s*max\(8px,\s*env\(safe-area-inset-top,\s*0px\)\)\s*!important;[\s\S]*?bottom:\s*auto\s*!important;/);
-    expect(f3357Css).toMatch(/body \.shop-nav__dropdown-popup \.ant-dropdown-menu\s*\{[\s\S]*?max-height:\s*calc\(100vh - 24px - env\(safe-area-inset-top,\s*0px\) - env\(safe-area-inset-bottom,\s*0px\)\);[\s\S]*?overflow-y:\s*auto;[\s\S]*?overscroll-behavior:\s*contain;/);
+    expect(f3357Css).toMatch(/body \.shop-nav__dropdown-popup \.shop-dropdown__menu\s*\{[\s\S]*?max-height:\s*calc\(100vh - 24px - env\(safe-area-inset-top,\s*0px\) - env\(safe-area-inset-bottom,\s*0px\)\);[\s\S]*?overflow-y:\s*auto;[\s\S]*?overscroll-behavior:\s*contain;/);
     expect(f3357Css).toMatch(/@media \(max-width:\s*780px\) and \(max-height:\s*430px\)\s*\{[\s\S]*?max-height:\s*calc\(100vh - var\(--shop-mobile-bottom-nav-height,\s*72px\) - 24px - env\(safe-area-inset-top,\s*0px\) - env\(safe-area-inset-bottom,\s*0px\)\)\s*!important;/);
     expect(f3357Css).toMatch(/@supports \(height:\s*100dvh\)\s*\{[\s\S]*?max-height:\s*calc\(100dvh - var\(--shop-mobile-bottom-nav-height,\s*72px\) - 24px - env\(safe-area-inset-top,\s*0px\) - env\(safe-area-inset-bottom,\s*0px\)\)\s*!important;/);
   });
@@ -451,7 +458,7 @@ describe('Navbar Android app download entry', () => {
     expect(f2855Css).toMatch(/\.shop-nav__inner--main\s*\{[\s\S]*?grid-template-columns:\s*minmax\(104px,\s*auto\) minmax\(0,\s*1fr\) auto\s*!important;[\s\S]*?grid-template-areas:\s*"brand search actions";/);
     expect(f2855Css).toMatch(/\.shop-nav__brand\s*\{[\s\S]*?grid-area:\s*brand;[\s\S]*?min-height:\s*44px;/);
     expect(f2855Css).toMatch(/\.shop-nav__search\s*\{[\s\S]*?grid-area:\s*search;[\s\S]*?grid-row:\s*auto\s*!important;/);
-    expect(f2855Css).toMatch(/\.shop-nav \.shop-nav__search \.ant-input-group\s*\{[\s\S]*?min-height:\s*44px\s*!important;[\s\S]*?height:\s*44px\s*!important;/);
+    expect(f2855Css).toMatch(/\.shop-nav \.shop-nav__search \.shop-search-field\s*\{[\s\S]*?min-height:\s*44px\s*!important;[\s\S]*?height:\s*44px\s*!important;/);
     expect(f2855Css).toMatch(/\.shop-nav__actions\s*\{[\s\S]*?grid-area:\s*actions;[\s\S]*?flex-wrap:\s*nowrap\s*!important;[\s\S]*?overflow-x:\s*auto;/);
   });
 
@@ -572,7 +579,7 @@ describe('Navbar Android app download entry', () => {
     expect(source).toContain('const safeCartCount = normalizeBadgeCount(cartCount);');
     expect(source).toContain("const cartBadgeLabel = `${t('nav.ariaCart')}: ${safeCartCount}`;");
     expect(badgeSource).toContain('<Badge count={safeCartCount} size="small" overflowCount={99}>');
-    expect(badgeSource).toContain('<ShoppingCartOutlined />');
+    expect(badgeSource).toContain('<ShopIcon path={SI.cart} />');
     expect(source.match(/\{renderCartBadge\(\)\}/g) ?? []).toHaveLength(3);
     expect(source).not.toContain('<Badge count={cartCount}');
   });
@@ -618,7 +625,7 @@ describe('Navbar Android app download entry', () => {
   });
 
   it('shows one visible warning when account badge refreshes fail', async () => {
-    const warningSpy = jest.spyOn(message, 'warning').mockImplementation(jest.fn());
+    (announceAccessibleMessage as jest.Mock).mockClear();
     mockUseAuth.mockReturnValue({
       user: { id: 12, username: 'Mia', role: 'USER' },
       token: 'member-token',
@@ -644,14 +651,15 @@ describe('Navbar Android app download entry', () => {
     });
 
     await waitFor(() => {
-      expect(warningSpy).toHaveBeenCalledWith('Some account counters could not refresh. Pull down or try again later.');
+      expect(announceAccessibleMessage).toHaveBeenCalledWith(
+        'Some account counters could not refresh. Pull down or try again later.',
+        'warning',
+      );
     });
 
-    expect(warningSpy).toHaveBeenCalledTimes(1);
+    expect(announceAccessibleMessage).toHaveBeenCalledTimes(1);
     expect(reportNonBlockingError).toHaveBeenCalledWith('Navbar.refreshCartBadge', cartError);
     expect(reportNonBlockingError).toHaveBeenCalledWith('Navbar.refreshNotificationBadge', notificationError);
-
-    warningSpy.mockRestore();
   });
 
   it('reports announcement load failures without breaking navigation render', async () => {

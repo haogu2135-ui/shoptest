@@ -2861,7 +2861,7 @@
   .cart-page__savedActions .ant-btn,
   .cart-page__mobileItemTitle,
   .cart-page__savedInfo > a,
-  .cart-page-popconfirm .ant-popconfirm-buttons .ant-btn {
+  .cart-page-popconfirm.shop-popconfirm .shop-popconfirm__actions .ant-btn {
     min-height: 44px;
   }
 
@@ -3687,4 +3687,10 @@
   font-weight: 700;
   line-height: 1.3;
   color: #124734;
+}
+
+
+/* Gate114: ShopPopconfirm above page chrome */
+body .cart-page-popconfirm.shop-popconfirm {
+  z-index: 10050 !important;
 }

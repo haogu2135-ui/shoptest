@@ -1735,7 +1735,7 @@
   .browsing-history__footer .ant-btn,
   .browsing-history__emptyActions .ant-btn,
   .browsing-history__mobileAction .ant-btn,
-  .browsing-history-clear-popconfirm .ant-popconfirm-buttons .ant-btn {
+  .browsing-history-clear-popconfirm.shop-popconfirm .shop-popconfirm__actions .ant-btn {
     min-width: 44px;
     min-height: 44px;
     touch-action: manipulation;
@@ -1860,21 +1860,21 @@
 /* APP account danger actions need WCAG contrast against white card surfaces. */
 @media (max-width: 780px) {
   .browsing-history__tools .ant-btn-dangerous:not(.ant-btn-primary):not(:disabled):not(.ant-btn-disabled),
-  .browsing-history-clear-popconfirm .ant-btn-dangerous:not(.ant-btn-primary):not(:disabled):not(.ant-btn-disabled) {
+  .browsing-history-clear-popconfirm.shop-popconfirm .ant-btn-dangerous:not(.ant-btn-primary):not(:disabled):not(.ant-btn-disabled) {
     border-color: #9f1c12 !important;
     color: #9f1c12 !important;
     -webkit-text-fill-color: #9f1c12 !important;
   }
 
   .browsing-history__tools .ant-btn-dangerous:not(.ant-btn-primary):not(:disabled):not(.ant-btn-disabled) .anticon,
-  .browsing-history-clear-popconfirm .ant-btn-dangerous:not(.ant-btn-primary):not(:disabled):not(.ant-btn-disabled) .anticon {
+  .browsing-history-clear-popconfirm.shop-popconfirm .ant-btn-dangerous:not(.ant-btn-primary):not(:disabled):not(.ant-btn-disabled) .anticon {
     color: #9f1c12 !important;
   }
 
   .browsing-history__tools .ant-btn-dangerous:not(.ant-btn-primary):not(:disabled):not(.ant-btn-disabled):hover,
   .browsing-history__tools .ant-btn-dangerous:not(.ant-btn-primary):not(:disabled):not(.ant-btn-disabled):focus-visible,
-  .browsing-history-clear-popconfirm .ant-btn-dangerous:not(.ant-btn-primary):not(:disabled):not(.ant-btn-disabled):hover,
-  .browsing-history-clear-popconfirm .ant-btn-dangerous:not(.ant-btn-primary):not(:disabled):not(.ant-btn-disabled):focus-visible {
+  .browsing-history-clear-popconfirm.shop-popconfirm .ant-btn-dangerous:not(.ant-btn-primary):not(:disabled):not(.ant-btn-disabled):hover,
+  .browsing-history-clear-popconfirm.shop-popconfirm .ant-btn-dangerous:not(.ant-btn-primary):not(:disabled):not(.ant-btn-disabled):focus-visible {
     border-color: #7f1d12 !important;
     background: #fff1ed !important;
     color: #7f1d12 !important;
@@ -2013,3 +2013,6 @@
 .browsing-history__emptyActions .ant-btn {
   min-height: 44px;
 }
+
+/* Gate115: browsing-history-clear-popconfirm ShopPopconfirm z-index */
+body .browsing-history-clear-popconfirm.shop-popconfirm { z-index: 10050 !important; }

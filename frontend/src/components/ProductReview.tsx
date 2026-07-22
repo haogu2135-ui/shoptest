@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import ShopRate from './ShopRate';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { ShopIcon, SI } from './ShopIcon';
-import { Input, Button, Avatar, Select, Upload } from 'antd';
+import { Input, Button, Avatar, Upload } from 'antd';
+import ShopSelect from './ShopSelect';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../i18n';
 import type { PublicReview, ReviewableOrder } from '../types';
@@ -147,17 +148,17 @@ export const ProductReview: React.FC<ProductReviewProps> = ({
                 <div className="product-review__composer">
                     {reviewableOrders.length > 0 ? (
                         <div className="product-review__form product-review__stack">
-                            <Select
-                                value={orderId}
-                                onChange={setOrderId}
+                            <ShopSelect
+                                value={orderId != null ? String(orderId) : undefined}
+                                onChange={(value) => setOrderId(value ? Number(value) : undefined)}
                                 placeholder={t('pages.review.selectOrder')}
                                 className="product-review__orderSelect"
-                                classNames={{ popup: { root: 'shop-mobile-popup-layer' } }}
-                                getPopupContainer={() => document.body}
-                                aria-label={reviewOrderSelectLabel}
+                                popupClassName="shop-mobile-popup-layer"
+                                popupZIndex={2400}
+                                ariaLabel={reviewOrderSelectLabel}
                                 title={reviewOrderSelectLabel}
                                 options={reviewableOrders.map((order) => ({
-                                    value: order.id,
+                                    value: String(order.id),
                                     label: `${order.orderNo || `#${order.id}`}${formatSafeDate(order.createdAt, dateLocale, '') ? ` - ${formatSafeDate(order.createdAt, dateLocale)}` : ''}`,
                                 }))}
                             />

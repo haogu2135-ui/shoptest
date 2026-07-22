@@ -620,7 +620,7 @@
     background: #ffffff;
   }
 
-  .customer-support-widget__sessionPicker .ant-select-selector {
+  .customer-support-widget__sessionPicker .shop-select {
     min-height: 44px;
     border-radius: 999px !important;
     background: #fbfdfb !important;
@@ -958,14 +958,14 @@
     margin-top: 5px;
   }
 
-  .customer-support-widget__orderSelect .ant-select-selector,
+  .customer-support-widget__orderSelect.shop-select,
   .customer-support-widget__actions .ant-btn {
     min-height: 44px;
     border-radius: 10px !important;
   }
 
-  .customer-support-widget__orderSelect .ant-select-selection-placeholder,
-  .customer-support-widget__orderSelect .ant-select-selection-item {
+  .customer-support-widget__orderSelect .shop-select__value--placeholder,
+  .customer-support-widget__orderSelect .shop-select__value {
     line-height: 44px;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -1075,22 +1075,21 @@
     }
   }
 
-  .customer-support-widget__orderModal {
-    top: 12px;
+  .customer-support-widget__orderModalRoot .customer-support-widget__orderModal.shop-modal__panel {
     max-width: calc(100vw - 20px);
   }
 
-  .customer-support-widget__orderModal .ant-modal-content {
+  .customer-support-widget__orderModalRoot .customer-support-widget__orderModal .shop-modal__content {
     border-radius: 12px;
     overflow: hidden;
   }
 
-  .customer-support-widget__orderModal .ant-modal-header {
+  .customer-support-widget__orderModalRoot .customer-support-widget__orderModal .shop-modal__header {
     padding: 14px 16px;
     border-bottom: 1px solid #edf2ed;
   }
 
-  .customer-support-widget__orderModal .ant-modal-body {
+  .customer-support-widget__orderModalRoot .customer-support-widget__orderModal .shop-modal__body {
     max-height: calc(100dvh - 120px);
     overflow-y: auto;
     padding: 14px;
@@ -1127,21 +1126,21 @@
     box-shadow: 0 16px 36px rgba(18, 71, 52, 0.2);
   }
 
-  .support-order-select-popup .ant-select-item {
+  .support-order-select-popup .shop-select__option {
     min-height: 46px;
     align-items: center;
     padding: 9px 12px;
   }
 
-  .support-order-select-popup .ant-select-item-option-content {
+  .support-order-select-popup .shop-select__optionLabel {
     color: #173f2b;
     font-size: 13px;
     line-height: 1.35;
     white-space: normal;
   }
 
-  .support-order-select-popup .ant-select-item-option-active,
-  .support-order-select-popup .ant-select-item-option-selected {
+  .support-order-select-popup .shop-select__option:focus-visible,
+  .support-order-select-popup .shop-select__option--selected {
     background: #fff4ed;
   }
 }
@@ -1496,8 +1495,8 @@
 .customer-support-widget__panel--es .ant-btn,
 .customer-support-widget__panel--es .ant-typography,
 .customer-support-widget__panel--es .ant-tag,
-.customer-support-widget__panel--es .ant-select-selection-item,
-.customer-support-widget__panel--es .ant-select-selection-placeholder {
+.customer-support-widget__panel--es .shop-select__value,
+.customer-support-widget__panel--es .shop-select__value--placeholder {
   hyphens: auto;
   overflow-wrap: anywhere;
 }
@@ -1642,7 +1641,7 @@
     padding: 7px 9px;
   }
 
-  .customer-support-widget__sessionPicker .ant-select-selector {
+  .customer-support-widget__sessionPicker .shop-select {
     min-height: 44px;
   }
 
@@ -1841,7 +1840,7 @@
     padding: 7px;
   }
 
-  .customer-support-widget__orderSelect .ant-select-selector {
+  .customer-support-widget__orderSelect.shop-select {
     min-height: 44px;
     border-radius: 10px !important;
   }
@@ -1867,7 +1866,7 @@
     white-space: normal;
   }
 
-  .customer-support-widget__orderModal .ant-modal-content {
+  .customer-support-widget__orderModalRoot .customer-support-widget__orderModal .shop-modal__content {
     border-radius: 16px;
   }
 
@@ -2000,7 +1999,7 @@
   .customer-support-widget__actions,
   .customer-support-widget__orderCard,
   .customer-support-widget__orderCard .ant-card-body,
-  .customer-support-widget__orderModal .ant-modal-content {
+  .customer-support-widget__orderModalRoot .customer-support-widget__orderModal .shop-modal__content {
     min-width: 0;
     max-width: 100%;
   }
@@ -2068,8 +2067,8 @@
 
   .customer-support-widget__orderSelect,
   .customer-support-widget__sessionSelect,
-  .customer-support-widget__orderSelect .ant-select-selector,
-  .customer-support-widget__sessionSelect .ant-select-selector,
+  .customer-support-widget__orderSelect.shop-select,
+  .customer-support-widget__sessionSelect.shop-select,
   .customer-support-widget__orderDetail,
   .customer-support-widget__orderDetail .ant-space-item,
   .customer-support-widget__messageInput,
@@ -2082,11 +2081,11 @@
     width: 100%;
   }
 
-  .customer-support-widget__orderModal {
+  .customer-support-widget__orderModalRoot .customer-support-widget__orderModal.shop-modal__panel {
     max-width: calc(100vw - 12px);
   }
 
-  .customer-support-widget__orderModal .ant-modal-body {
+  .customer-support-widget__orderModalRoot .customer-support-widget__orderModal .shop-modal__body {
     max-height: calc(100dvh - 142px);
     overflow: auto;
   }
@@ -2315,7 +2314,7 @@
 
   .customer-support-widget__messages,
   .customer-support-widget__composer,
-  .customer-support-widget__orderModal .ant-modal-content {
+  .customer-support-widget__orderModalRoot .customer-support-widget__orderModal .shop-modal__content {
     min-width: 0;
     max-width: 100%;
   }
@@ -2415,7 +2414,7 @@
     overflow-y: auto;
   }
 
-  .customer-support-widget__orderModal .ant-modal {
+  .customer-support-widget__orderModalRoot .customer-support-widget__orderModal.shop-modal__panel {
     top: calc(8px + env(safe-area-inset-top, 0px));
     max-width: calc(100vw - 12px);
   }
@@ -2498,7 +2497,7 @@
     scroll-margin-bottom: calc(142px + env(safe-area-inset-bottom, 0px));
   }
 
-  .customer-support-widget__orderModal .ant-modal-content {
+  .customer-support-widget__orderModalRoot .customer-support-widget__orderModal .shop-modal__content {
     display: grid !important;
     grid-template-rows: auto minmax(0, 1fr) auto;
     max-height: calc(100svh - 20px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) !important;
@@ -2506,12 +2505,12 @@
   }
 
   @supports (height: 100dvh) {
-    .customer-support-widget__orderModal .ant-modal-content {
+    .customer-support-widget__orderModalRoot .customer-support-widget__orderModal .shop-modal__content {
       max-height: calc(100dvh - 20px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) !important;
     }
   }
 
-  .customer-support-widget__orderModal .ant-modal-body {
+  .customer-support-widget__orderModalRoot .customer-support-widget__orderModal .shop-modal__body {
     min-height: 0 !important;
     overflow-y: auto !important;
     overscroll-behavior: contain;
@@ -2562,12 +2561,12 @@
 /* Final mobile/App support widget touch-target guard */
 @media (max-width: 720px) {
   .customer-support-widget__headerClose.ant-btn,
-  .customer-support-widget__sessionSelect .ant-select-selector,
+  .customer-support-widget__sessionSelect.shop-select,
   .customer-support-widget__welcomeQuickReplies button,
   .customer-support-widget__quickReplies .ant-btn,
   .customer-support-widget__workflowChip,
   .customer-support-widget__shareLatest.ant-btn,
-  .customer-support-widget__orderSelect .ant-select-selector,
+  .customer-support-widget__orderSelect.shop-select,
   .customer-support-widget__messageInput .ant-input,
   .customer-support-widget__actions .ant-btn,
   .customer-support-widget__linkButton.ant-btn {
@@ -2608,12 +2607,12 @@
 
 /* F3540: keep support order overlays above the already-open chat panel. */
 body .support-order-select-popup.shop-mobile-popup-layer,
-body .support-order-select-popup.ant-select-dropdown {
+body .support-order-select-popup.shop-select__popup {
   z-index: 10021 !important;
   pointer-events: auto !important;
 }
 
-body .support-order-select-popup.ant-select-dropdown {
+body .support-order-select-popup.shop-select__popup {
   left: max(8px, env(safe-area-inset-left, 0px)) !important;
   right: max(8px, env(safe-area-inset-right, 0px)) !important;
   width: auto !important;
@@ -2623,32 +2622,35 @@ body .support-order-select-popup.ant-select-dropdown {
   overflow: auto !important;
 }
 
-body .support-order-select-popup .ant-select-item {
+body .support-order-select-popup .shop-select__option {
   min-height: 44px;
   align-items: center;
 }
 
-body .support-order-select-popup .ant-select-item-option-content {
+body .support-order-select-popup .shop-select__optionLabel {
   white-space: normal !important;
   overflow-wrap: anywhere !important;
   word-break: break-word !important;
 }
 
-body .customer-support-widget__orderModalRoot,
-body .customer-support-widget__orderModalRoot .ant-modal-mask {
+body .customer-support-widget__orderModalRoot {
   z-index: 10020 !important;
 }
 
-body .customer-support-widget__orderModalRoot .ant-modal-wrap {
+body .customer-support-widget__orderModalRoot .shop-modal__mask {
+  z-index: 10020 !important;
+}
+
+body .customer-support-widget__orderModalRoot .shop-modal__wrap {
   z-index: 10021 !important;
 }
 
-body .customer-support-widget__orderModalRoot .customer-support-widget__orderModal.ant-modal {
+body .customer-support-widget__orderModalRoot .customer-support-widget__orderModal.shop-modal__panel {
   z-index: 10022 !important;
 }
 
 @media (max-width: 780px), (max-height: 640px) {
-  body .customer-support-widget__orderModalRoot .ant-modal-wrap {
+  body .customer-support-widget__orderModalRoot .shop-modal__wrap {
     display: flex;
     align-items: flex-start;
     justify-content: center;
@@ -2656,10 +2658,8 @@ body .customer-support-widget__orderModalRoot .customer-support-widget__orderMod
     overflow: auto !important;
   }
 
-  body .customer-support-widget__orderModalRoot .customer-support-widget__orderModal.ant-modal {
-    top: 0 !important;
+  body .customer-support-widget__orderModalRoot .customer-support-widget__orderModal.shop-modal__panel {
     max-width: calc(100vw - 12px) !important;
-    padding-bottom: 0;
   }
 }
 
@@ -2684,7 +2684,7 @@ body .customer-support-widget__orderModalRoot .customer-support-widget__orderMod
     min-width: 44px !important;
   }
 
-  .customer-support-widget__orderSelect .ant-select-selector,
+  .customer-support-widget__orderSelect.shop-select,
   .customer-support-widget__messageInput .ant-input,
   .customer-support-widget__composer .ant-input-textarea textarea {
     min-height: 44px !important;
@@ -2862,7 +2862,7 @@ body .customer-support-widget__orderModalRoot .customer-support-widget__orderMod
     padding: 6px;
   }
 
-  .customer-support-widget__orderSelect .ant-select-selector,
+  .customer-support-widget__orderSelect.shop-select,
   .customer-support-widget__messageInput .ant-input,
   .customer-support-widget__composer .ant-input-textarea textarea,
   .customer-support-widget__actions .ant-btn {
@@ -3114,7 +3114,7 @@ body .customer-support-widget__orderModalRoot .customer-support-widget__orderMod
     touch-action: manipulation;
   }
 
-  .customer-support-widget__sessionPicker .ant-select-selector,
+  .customer-support-widget__sessionPicker .shop-select,
   .customer-support-widget__orderDetail .ant-select-selector {
     min-height: 44px !important;
   }

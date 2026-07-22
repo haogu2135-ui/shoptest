@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { ShopIcon, SI } from './ShopIcon';
-import { Alert, Button, Modal, Radio, Tag } from 'antd';
+import { Alert, Button, Tag } from 'antd';
+import ShopModal from './ShopModal';
 import { paymentApi } from '../api';
 import { useLanguage } from '../i18n';
 import { createPaymentMethodOptions, filterPaymentChannelsForMarket, PaymentMethod, paymentMethodLabel } from '../utils/paymentMethods';
@@ -140,12 +141,15 @@ export const Payment: React.FC<PaymentProps> = ({
     };
 
     return (
-        <Modal
+        <ShopModal
             title={t('pages.payment.title')}
-            open={true}
-            onCancel={onCancel}
+            open
+            onClose={onCancel}
             footer={null}
             className="profile-mobile-safe-modal payment-modal"
+            rootClassName="payment-modal-root"
+            ariaLabel={t('pages.payment.title')}
+            closeLabel={t('common.close', { defaultValue: 'Close' })}
         >
             <div className="payment-modal__content payment-modal__stack">
                 <div className="payment-modal__summary">
@@ -160,10 +164,9 @@ export const Payment: React.FC<PaymentProps> = ({
                         ))}
                     </div>
                 </div>
-                <Radio.Group
-                    value={paymentMethod}
-                    onChange={(e) => setPaymentMethod(e.target.value)}
+                <div
                     className="payment-modal__methodGroup"
+                    role="radiogroup"
                     aria-label={paymentMethodGroupLabel}
                 >
                     <div className="payment-modal__methodList payment-modal__stack">
@@ -187,20 +190,24 @@ export const Payment: React.FC<PaymentProps> = ({
                         {paymentOptions.map((option) => {
                             const optionLabel = paymentOptionLabel(option.value);
                             const optionActionLabel = `${t('pages.checkout.paymentMethod')}: ${optionLabel} · ${paymentContextLabel}`;
+                            const selected = paymentMethod === option.value;
                             return (
-                                <Radio.Button
+                                <button
                                     key={option.value}
-                                    value={option.value}
-                                    className="payment-modal__method"
+                                    type="button"
+                                    role="radio"
+                                    aria-checked={selected}
+                                    className={`payment-modal__method${selected ? ' payment-modal__method--selected' : ''}`}
                                     aria-label={optionActionLabel}
                                     title={optionActionLabel}
+                                    onClick={() => setPaymentMethod(option.value)}
                                 >
                                     <span className="payment-modal__methodLabel">{option.label}</span>
-                                </Radio.Button>
+                                </button>
                             );
                         })}
                     </div>
-                </Radio.Group>
+                </div>
                 {selectedChannel ? (
                     <div className="payment-modal__channelNote" role="status" aria-label={`${t('pages.checkout.paymentConfidenceTitle')}: ${selectedPaymentLabel}`}>
                         <span className="payment-modal__text payment-modal__text--strong">{selectedChannel.displayName}</span>
@@ -222,6 +229,6 @@ export const Payment: React.FC<PaymentProps> = ({
                     {t('pages.payment.confirm')}
                 </Button>
             </div>
-        </Modal>
+        </ShopModal>
     );
 }; 

@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { ShopIcon, SI } from '../components/ShopIcon';
-import { Alert, Tag, Button, Popconfirm } from 'antd';
+import { Alert, Tag, Button } from 'antd';
+import ShopPopconfirm from '../components/ShopPopconfirm';
 import { useNavigate } from 'react-router-dom';
 import { notificationApi } from '../api';
 import type { AppNotification } from '../types';
@@ -671,8 +672,8 @@ const Notifications: React.FC = () => {
                       {t('pages.notifications.markRead')}
                     </Button>
                   ) : null}
-                  <Popconfirm
-                    classNames={{ root: 'shop-mobile-popup-layer notifications-delete-popconfirm' }}
+                  <ShopPopconfirm
+                    rootClassName='shop-mobile-popup-layer notifications-delete-popconfirm'
                     title={t('pages.notifications.deleteConfirm')}
                     onConfirm={() => handleDelete(item.id)}
                     okText={t('common.confirm')}
@@ -691,7 +692,7 @@ const Notifications: React.FC = () => {
                       title={deleteActionLabel}
                       disabled={notificationActionsDisabled}
                     />
-                  </Popconfirm>
+                  </ShopPopconfirm>
                 </div>
               </li>
               );

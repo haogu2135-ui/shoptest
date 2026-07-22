@@ -2259,7 +2259,7 @@
   .cart-drawer__item .ant-input-number,
   .cart-drawer__item .ant-btn,
   .cart-drawer__itemAction.ant-btn,
-  .cart-drawer-popconfirm .ant-popconfirm-buttons .ant-btn {
+  .cart-drawer-popconfirm.shop-popconfirm .shop-popconfirm__actions .ant-btn {
     min-height: 44px;
   }
 
@@ -2286,7 +2286,7 @@
   .cart-drawer__footer .ant-btn,
   .cart-drawer__item .ant-btn,
   .cart-drawer__itemAction.ant-btn,
-  .cart-drawer-popconfirm .ant-popconfirm-buttons .ant-btn {
+  .cart-drawer-popconfirm.shop-popconfirm .shop-popconfirm__actions .ant-btn {
     min-height: 44px !important;
     height: auto !important;
     max-height: none !important;
@@ -2611,4 +2611,10 @@
 
 .cart-drawer .shop-drawer__body {
   padding: 16px;
+}
+
+
+/* Gate113: cart drawer confirm overlays sit above the open drawer shell. */
+body .cart-drawer-popconfirm.shop-popconfirm {
+  z-index: 10050 !important;
 }

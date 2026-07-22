@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { ShopIcon, SI } from '../components/ShopIcon';
-import { Alert, Button, Popconfirm, Tag } from 'antd';
+import { Alert, Button, Tag } from 'antd';
+import ShopPopconfirm from '../components/ShopPopconfirm';
 import { Link, useNavigate } from 'react-router-dom';
 import { cartApi, productApi } from '../api';
 import { useLanguage } from '../i18n';
@@ -263,8 +264,8 @@ const StockAlerts: React.FC = () => {
           </div>
           <div className="stock-alerts__actionRow">
             <Button aria-label={browseStockAlertsActionLabel} title={browseStockAlertsActionLabel} onClick={() => navigate('/products')}>{t('pages.stockAlerts.browse')}</Button>
-            <Popconfirm
-              classNames={{ root: 'shop-mobile-popup-layer stock-alerts-popconfirm' }}
+            <ShopPopconfirm
+              rootClassName='shop-mobile-popup-layer stock-alerts-popconfirm'
               title={t('pages.stockAlerts.clearConfirm')}
               onConfirm={clearAll}
               okText={t('common.confirm')}
@@ -273,7 +274,7 @@ const StockAlerts: React.FC = () => {
               cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${clearStockAlertsActionLabel}`, title: `${t('common.cancel')}: ${clearStockAlertsActionLabel}` }}
             >
               <Button danger disabled={alerts.length === 0} aria-label={clearStockAlertsActionLabel} title={clearStockAlertsActionLabel}>{t('pages.stockAlerts.clear')}</Button>
-            </Popconfirm>
+            </ShopPopconfirm>
           </div>
         </div>
 
@@ -553,8 +554,8 @@ const StockAlerts: React.FC = () => {
                     >
                       {addActionText}
                     </Button>
-                    <Popconfirm
-                      classNames={{ root: 'shop-mobile-popup-layer stock-alerts-popconfirm' }}
+                    <ShopPopconfirm
+                      rootClassName='shop-mobile-popup-layer stock-alerts-popconfirm'
                       title={t('pages.stockAlerts.removeConfirm')}
                       onConfirm={() => removeAlert(item.productId)}
                       okText={t('common.confirm')}
@@ -563,7 +564,7 @@ const StockAlerts: React.FC = () => {
                       cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${removeActionLabel}`, title: `${t('common.cancel')}: ${removeActionLabel}` }}
                     >
                       <Button icon={<ShopIcon path={SI.delete} />} aria-label={removeActionLabel} title={removeActionLabel}>{t('pages.stockAlerts.remove')}</Button>
-                    </Popconfirm>
+                    </ShopPopconfirm>
                   </div>
                 </li>
               );

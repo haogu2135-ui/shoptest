@@ -134,7 +134,50 @@
   display: none;
 }
 
-.profile-tabs > .ant-tabs-nav {
+
+.profile-tabs__nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  align-items: center;
+}
+
+.profile-tabs__tab {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: #4a5d52;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.profile-tabs__tab--active {
+  color: #124734;
+  box-shadow: inset 0 -3px 0 #124734;
+}
+
+.profile-tabs__tab:focus-visible {
+  outline: 3px solid rgba(18, 71, 52, 0.28);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+.profile-tabs__tabLabel {
+  display: inline-block;
+  max-width: 100%;
+}
+
+.profile-tabs__panels {
+  min-width: 0;
+}
+
+.profile-tabs__panel[hidden] {
+  display: none !important;
+}
+
+.profile-tabs__nav {
   margin-bottom: 16px;
   padding: 8px 12px;
   border: 1px solid #e6ece3;
@@ -143,17 +186,17 @@
   box-shadow: 0 8px 20px rgba(18, 71, 52, 0.05);
 }
 
-.profile-tabs > .ant-tabs-nav::before {
+.profile-tabs__nav::before {
   display: none;
 }
 
-.profile-tabs .ant-tabs-tab {
+.profile-tabs__tab {
   margin: 0 18px 0 0 !important;
   padding: 10px 0 !important;
   font-weight: 700;
 }
 
-.profile-tabs .ant-tabs-ink-bar {
+.profile-tabs__ink {
   background: #124734;
   height: 3px !important;
   border-radius: 999px;
@@ -1048,6 +1091,7 @@
 
 .profile-payment-modal__methodSelect {
   min-width: 220px;
+  min-height: 44px;
 }
 
 .profile-mobile-safe-modal .ant-modal-body {
@@ -1055,6 +1099,8 @@
 }
 
 .profile-address-modal .ant-cascader,
+.profile-address-modal .shop-cascader,
+.profile-address-modal .shop-cascader-wrap,
 .profile-address-modal .ant-input,
 .profile-address-modal textarea {
   width: 100%;
@@ -1220,15 +1266,15 @@
     font-size: 22px;
   }
 
-  .profile-page .ant-tabs-nav {
+  .profile-page .profile-tabs__nav {
     margin-bottom: 14px;
   }
 
-  .profile-page .ant-tabs-tab {
+  .profile-page .profile-tabs__tab {
     padding: 10px 0;
   }
 
-  .profile-page > .ant-tabs > .ant-tabs-nav {
+  .profile-page > .profile-tabs > .profile-tabs__nav {
     display: none;
   }
 
@@ -2287,7 +2333,9 @@
     width: 100%;
   }
 
-  .profile-payment-modal .ant-select-selector {
+  .profile-payment-modal .ant-select-selector,
+  .profile-payment-modal .shop-select,
+  .profile-payment-modal .profile-payment-modal__methodSelect {
     min-height: 44px;
     border-radius: 14px !important;
   }
@@ -2377,14 +2425,14 @@
   }
 
   .profile-tabs,
-  .profile-tabs > .ant-tabs-nav,
-  .profile-tabs .ant-tabs-content-holder,
-  .profile-tabs .ant-tabs-tabpane {
+  .profile-tabs__nav,
+  .profile-tabs__panels,
+  .profile-tabs__panel {
     max-width: 100%;
     min-width: 0;
   }
 
-  .profile-tabs > .ant-tabs-nav {
+  .profile-tabs__nav {
     overflow-x: auto;
     overflow-y: hidden;
     overscroll-behavior-inline: contain;
@@ -2394,7 +2442,7 @@
     mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent);
   }
 
-  .profile-tabs > .ant-tabs-nav::-webkit-scrollbar {
+  .profile-tabs__nav::-webkit-scrollbar {
     display: none;
   }
 
@@ -2697,7 +2745,7 @@
     transform: scale(0.98);
   }
 
-  .profile-tabs > .ant-tabs-nav {
+  .profile-tabs__nav {
     position: sticky;
     top: 0;
     z-index: 8;
@@ -2708,7 +2756,7 @@
     box-shadow: 0 8px 18px rgba(18, 71, 52, 0.08);
   }
 
-  .profile-tabs .ant-tabs-tab {
+  .profile-tabs__tab {
     min-height: 44px;
     padding: 8px 10px;
   }
@@ -2739,7 +2787,7 @@
     font-size: 20px;
   }
 
-  .profile-tabs > .ant-tabs-nav {
+  .profile-tabs__nav {
     margin-inline: -5px;
   }
 }
@@ -2757,26 +2805,26 @@
     overflow-x: clip;
   }
 
-  .profile-tabs > .ant-tabs-nav {
+  .profile-tabs__nav {
     overflow: hidden;
   }
 
-  .profile-tabs .ant-tabs-nav-wrap {
+  .profile-tabs__nav {
     overflow-x: auto;
     overscroll-behavior-x: contain;
     scrollbar-width: none;
     -webkit-overflow-scrolling: touch;
   }
 
-  .profile-tabs .ant-tabs-nav-wrap::-webkit-scrollbar {
+  .profile-tabs__nav::-webkit-scrollbar {
     display: none;
   }
 
-  .profile-tabs .ant-tabs-nav-list {
+  .profile-tabs__nav {
     min-width: max-content;
   }
 
-  .profile-tabs .ant-tabs-tab {
+  .profile-tabs__tab {
     flex: 0 0 auto;
     white-space: nowrap;
   }
@@ -2905,6 +2953,9 @@
   .profile-mobile-safe-modal .ant-select,
   .profile-mobile-safe-modal .ant-select-selector,
   .profile-mobile-safe-modal .ant-cascader,
+  .profile-mobile-safe-modal .shop-cascader,
+  .profile-mobile-safe-modal .shop-cascader-wrap,
+  .profile-mobile-safe-modal .shop-date-picker,
   .profile-mobile-safe-modal .ant-picker,
   .profile-mobile-safe-modal .ant-input-number {
     min-width: 0;
@@ -2949,7 +3000,9 @@
   .profile-address-modal .ant-input-affix-wrapper,
   .profile-address-modal .ant-select,
   .profile-address-modal .ant-select-selector,
-  .profile-address-modal .ant-cascader {
+  .profile-address-modal .ant-cascader,
+  .profile-address-modal .shop-cascader,
+  .profile-address-modal .shop-cascader-wrap {
     min-width: 0;
     max-width: 100%;
   }
@@ -3391,7 +3444,7 @@
 @media (max-width: 640px) {
   .profile-overview__actions .ant-btn,
   .profile-mobile-entry__item,
-  .profile-tabs .ant-tabs-tab,
+  .profile-tabs__tab,
   .profile-info-actions .ant-btn,
   .profile-section-action.ant-btn,
   .profile-address-card .ant-btn,
@@ -3419,7 +3472,7 @@
   .profile-order-detail__descriptions .ant-btn, .profile-page__descList .ant-btn,
   .profile-order-detail__itemsHeader .ant-btn,
   .profile-order-detail__productButton,
-  .profile-popconfirm .ant-popconfirm-buttons .ant-btn {
+  .profile-popconfirm.shop-popconfirm .shop-popconfirm__actions .ant-btn {
     min-height: 44px;
   }
 }
@@ -3456,7 +3509,7 @@
 
   .profile-overview__actions .ant-btn,
   .profile-mobile-entry__item,
-  .profile-tabs .ant-tabs-tab,
+  .profile-tabs__tab,
   .profile-info-actions .ant-btn,
   .profile-section-action.ant-btn,
   .profile-orders__toolbar .ant-input-search .ant-input,
@@ -3595,8 +3648,8 @@
     pointer-events: auto !important;
   }
 
-  body .profile-modal-popup.shop-mobile-popup-layer.ant-select-dropdown,
-  body .profile-modal-popup.shop-mobile-popup-layer.ant-cascader-dropdown {
+  body .profile-modal-popup.shop-mobile-popup-layer.shop-select__popup,
+  body .profile-modal-popup.shop-mobile-popup-layer.shop-cascader__popup {
     left: max(8px, env(safe-area-inset-left, 0px)) !important;
     right: max(8px, env(safe-area-inset-right, 0px)) !important;
     width: auto !important;
@@ -3606,43 +3659,23 @@
     overflow: auto !important;
   }
 
-  body .profile-modal-popup.shop-mobile-popup-layer.ant-picker-dropdown {
-    position: fixed !important;
-    top: max(12px, env(safe-area-inset-top, 0px)) !important;
-    bottom: auto !important;
-    left: max(8px, env(safe-area-inset-left, 0px)) !important;
-    right: max(8px, env(safe-area-inset-right, 0px)) !important;
-    width: auto !important;
-    min-width: 0 !important;
-    max-width: calc(100vw - 16px) !important;
-    max-height: calc(100dvh - 24px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) !important;
-    overflow: auto !important;
-  }
-
-  body .profile-modal-popup.shop-mobile-popup-layer .ant-select-item,
-  body .profile-modal-popup.shop-mobile-popup-layer .ant-cascader-menu-item {
+  body .profile-modal-popup.shop-mobile-popup-layer .shop-cascader__option,
+  body .profile-modal-popup.shop-mobile-popup-layer .shop-select__option {
     min-height: 44px;
     align-items: center;
   }
 
-  body .profile-modal-popup.shop-mobile-popup-layer .ant-cascader-menu,
-  body .profile-modal-popup.shop-mobile-popup-layer .ant-picker-panel-container {
+  body .profile-modal-popup.shop-mobile-popup-layer .shop-cascader__column,
+  body .profile-modal-popup.shop-mobile-popup-layer .shop-cascader__columns {
     max-width: 100%;
     overflow: auto !important;
   }
 
-  body .profile-modal-popup.shop-mobile-popup-layer .ant-select-item-option-content,
-  body .profile-modal-popup.shop-mobile-popup-layer .ant-select-selection-item,
-  body .profile-modal-popup.shop-mobile-popup-layer .ant-cascader-menu-item-content {
+  body .profile-modal-popup.shop-mobile-popup-layer .shop-cascader__optionLabel,
+  body .profile-modal-popup.shop-mobile-popup-layer .shop-select__option {
     white-space: normal !important;
     overflow-wrap: anywhere !important;
     word-break: break-word !important;
-  }
-
-  body .profile-modal-popup.shop-mobile-popup-layer .ant-picker-footer {
-    position: sticky;
-    bottom: 0;
-    background: #ffffff;
   }
 }
 
@@ -3676,7 +3709,7 @@
 
   body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--profile-flow :where(
     .profile-tabs,
-    .profile-tabs .ant-tabs-content-holder,
+    .profile-tabs__panels,
     .profile-section-card,
     .profile-section-action,
     .profile-info-actions,
@@ -4093,4 +4126,10 @@
 .profile-order-detail__descriptions .profile-page__descValue .ant-btn,
 .profile-payment-detail__descriptions .profile-page__descValue .ant-btn {
   min-height: 44px;
+}
+
+
+/* Gate114: ShopPopconfirm above page chrome */
+body .profile-popconfirm.shop-popconfirm {
+  z-index: 10050 !important;
 }

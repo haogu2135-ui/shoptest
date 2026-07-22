@@ -1608,14 +1608,14 @@
   outline-offset: 2px;
 }
 
-.pet-ugc-preview .ant-modal-content {
+.pet-ugc-preview-root .pet-ugc-preview .shop-modal__content {
   overflow: hidden;
   padding: 0;
   border-radius: 8px;
   background: #0f2119;
 }
 
-.pet-ugc-preview .ant-modal-close {
+.pet-ugc-preview-root .pet-ugc-preview .shop-modal__close {
   color: #fff;
   background: rgba(0, 0, 0, 0.36);
 }
@@ -1650,19 +1650,19 @@
 }
 
 @media (max-width: 600px) {
-  .pet-ugc-preview {
+  .pet-ugc-preview-root .pet-ugc-preview.shop-modal__panel {
     top: max(8px, env(safe-area-inset-top));
     max-width: calc(100vw - 12px);
     padding-bottom: calc(8px + env(safe-area-inset-bottom));
   }
 
-  .pet-ugc-preview .ant-modal-content {
+  .pet-ugc-preview-root .pet-ugc-preview .shop-modal__content {
     max-height: calc(100dvh - 18px);
     border-radius: 20px;
     overflow: hidden;
   }
 
-  .pet-ugc-preview .ant-modal-close {
+  .pet-ugc-preview-root .pet-ugc-preview .shop-modal__close {
     top: 10px;
     right: 10px;
     z-index: 2;
@@ -4872,7 +4872,7 @@ body.shop-mobile-app .shop-app-shell .shopee-home .shopee-product__quickActions 
   .pet-ugc__imageButton,
   .pet-ugc__like,
   .pet-ugc__delete,
-  .shopee-home-popconfirm .ant-popconfirm-buttons .ant-btn {
+  .shopee-home-popconfirm.shop-popconfirm .shop-popconfirm__actions .ant-btn {
     min-height: 44px;
   }
 
@@ -5970,4 +5970,10 @@ body.shop-mobile-app .shop-app-shell .shopee-hero__actions .home-btn {
   padding-inline: 8px !important;
   font-size: 14px !important;
   font-weight: 900 !important;
+}
+
+
+/* Gate114: ShopPopconfirm above page chrome */
+body .shopee-home-popconfirm.shop-popconfirm {
+  z-index: 10050 !important;
 }

@@ -1,7 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { ShopIcon, SI } from '../components/ShopIcon';
-import { Alert, Button, Cascader, Form, Input, Modal, Progress, Radio, Select, Tag } from 'antd';
+import { Alert, Button, Form, Input, Progress, Tag } from 'antd';
+import ShopModal from '../components/ShopModal';
+import ShopConfirm from '../components/ShopConfirm';
+import ShopSelect from '../components/ShopSelect';
+import ShopCascader from '../components/ShopCascader';
 import type { FormInstance } from 'antd/es/form';
 import { Link, useNavigate } from 'react-router-dom';
 import { addressApi, cartApi, clearStoredAuthSession, couponApi, createApiAbortController, orderApi, paymentApi, productApi } from '../api';
@@ -700,6 +704,7 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
     && process.env.REACT_APP_ENABLE_PAYMENT_SIMULATION === 'true';
   const [simulatingPayment, setSimulatingPayment] = useState(false);
   const [cancelingPayment, setCancelingPayment] = useState(false);
+  const [rollbackConfirmOpen, setRollbackConfirmOpen] = useState(false);
   const [paymentChannels, setPaymentChannels] = useState<PaymentChannel[]>([]);
   const [paymentChannelsLoading, setPaymentChannelsLoading] = useState(false);
   const [paymentChannelsError, setPaymentChannelsError] = useState<string | null>(null);
@@ -2203,36 +2208,30 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
 
   const rollbackPendingPayment = () => {
     if (!createdOrder || createdOrder.status !== 'PENDING_PAYMENT') return;
-    const orderDisplayNo = createdOrder.orderNo || String(createdOrder.id);
-    const rollbackActionLabel = `${t('pages.checkout.rollbackPaymentAction')}: ${t('pages.paymentInstructions.orderNo')} ${orderDisplayNo}, ${formatMoney(createdOrder.totalAmount)}`;
-    Modal.confirm({
-      title: t('pages.checkout.rollbackPaymentTitle'),
-      content: t('pages.checkout.rollbackPaymentContent'),
-      okText: t('pages.checkout.rollbackPaymentAction'),
-      cancelText: t('common.cancel'),
-      okButtonProps: { danger: true, 'aria-label': rollbackActionLabel, title: rollbackActionLabel },
-      cancelButtonProps: { 'aria-label': `${t('common.cancel')}: ${rollbackActionLabel}`, title: `${t('common.cancel')}: ${rollbackActionLabel}` },
-      className: 'profile-mobile-safe-modal checkout-page__rollbackConfirmModal',
-      async onOk() {
-        setCancelingPayment(true);
-        try {
-          await orderApi.cancel(createdOrder.id, guestPaymentEmail, guestPaymentEmail ? createdOrder.orderNo : undefined);
-          await restoreSubmittedCartItems();
-          clearCheckoutIdempotencyKey();
-          clearCheckoutPendingOrder();
-          setPayment(null);
-          setCreatedOrder(null);
-          setPaymentCreateError(null);
-          showCheckoutMessage('success', t('pages.checkout.rollbackPaymentSuccess'));
-          navigate('/cart');
-        } catch (error: unknown) {
-          showCheckoutMessage('error', getApiErrorMessage(error, t('pages.checkout.rollbackPaymentFailed'), language));
-        } finally {
-          setCancelingPayment(false);
-        }
-      },
-    });
+    setRollbackConfirmOpen(true);
   };
+
+  const handleRollbackConfirm = async () => {
+    if (!createdOrder || createdOrder.status !== 'PENDING_PAYMENT') return;
+    setCancelingPayment(true);
+    try {
+      await orderApi.cancel(createdOrder.id, guestPaymentEmail, guestPaymentEmail ? createdOrder.orderNo : undefined);
+      await restoreSubmittedCartItems();
+      clearCheckoutIdempotencyKey();
+      clearCheckoutPendingOrder();
+      setPayment(null);
+      setCreatedOrder(null);
+      setPaymentCreateError(null);
+      setRollbackConfirmOpen(false);
+      showCheckoutMessage('success', t('pages.checkout.rollbackPaymentSuccess'));
+      navigate('/cart');
+    } catch (error: unknown) {
+      showCheckoutMessage('error', getApiErrorMessage(error, t('pages.checkout.rollbackPaymentFailed'), language));
+    } finally {
+      setCancelingPayment(false);
+    }
+  };
+
 
   const createdOrderId = createdOrder?.id;
   const createdOrderNo = createdOrder?.orderNo;
@@ -3010,18 +3009,46 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
         ) : null}
       </section>
 
-      <Modal
+      <ShopModal
         open={giftCelebrationOpen}
         title={t('pages.checkout.giftModalTitle')}
-        onCancel={() => setGiftCelebrationOpen(false)}
+        onClose={() => setGiftCelebrationOpen(false)}
         footer={<Button type="primary" aria-label={giftConfirmActionLabel} title={giftConfirmActionLabel} onClick={() => setGiftCelebrationOpen(false)}>{t('common.confirm')}</Button>}
         className="profile-mobile-safe-modal checkout-page__giftCelebrationModal"
+        rootClassName="checkout-page__giftCelebrationModalRoot"
+        closeLabel={t('common.close', { defaultValue: 'Close' })}
+        ariaLabel={t('pages.checkout.giftModalTitle')}
       >
         <div className="checkout-page__giftModal">
           <span className="checkout-page__giftIcon"><ShopIcon path={SI.gift} /></span>
           <span className="checkout-page__text">{t('pages.checkout.giftModalText', { gift: t(conversionConfig.giftAtCheckout.giftNameKey) })}</span>
         </div>
-      </Modal>
+      </ShopModal>
+      <ShopConfirm
+        open={rollbackConfirmOpen}
+        title={t('pages.checkout.rollbackPaymentTitle')}
+        description={t('pages.checkout.rollbackPaymentContent')}
+        okText={t('pages.checkout.rollbackPaymentAction')}
+        cancelText={t('common.cancel')}
+        confirmLoading={cancelingPayment}
+        okButtonProps={{
+          danger: true,
+          'aria-label': createdOrder
+            ? `${t('pages.checkout.rollbackPaymentAction')}: ${t('pages.paymentInstructions.orderNo')} ${createdOrder.orderNo || createdOrder.id}, ${formatMoney(createdOrder.totalAmount)}`
+            : t('pages.checkout.rollbackPaymentAction'),
+          title: createdOrder
+            ? `${t('pages.checkout.rollbackPaymentAction')}: ${t('pages.paymentInstructions.orderNo')} ${createdOrder.orderNo || createdOrder.id}, ${formatMoney(createdOrder.totalAmount)}`
+            : t('pages.checkout.rollbackPaymentAction'),
+        }}
+        cancelButtonProps={{
+          'aria-label': `${t('common.cancel')}: ${t('pages.checkout.rollbackPaymentAction')}`,
+          title: `${t('common.cancel')}: ${t('pages.checkout.rollbackPaymentAction')}`,
+        }}
+        className="profile-mobile-safe-modal checkout-page__rollbackConfirmModal"
+        closeLabel={t('common.close', { defaultValue: 'Close' })}
+        onOk={handleRollbackConfirm}
+        onCancel={() => { if (!cancelingPayment) setRollbackConfirmOpen(false); }}
+      />
 
       <details
         className="checkout-page__supportPanel"
@@ -3249,41 +3276,51 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
             />
           ) : null}
           {addresses.length > 0 && (
-            <div role="group" aria-label={checkoutAddressGroupLabel} title={checkoutAddressGroupLabel}>
-              <Radio.Group value={selectedAddressId} onChange={(e) => setSelectedAddressId(e.target.value)} className="checkout-page__addressGroup" aria-label={checkoutAddressGroupLabel}>
-                {addresses.map((address) => {
-                  const addressChoiceLabel = [
-                    normalizeCheckoutText(address.recipientName, 80),
-                    normalizeLikelyCheckoutPhone(address.phone),
-                    normalizeCheckoutText(address.address, 260),
-                    address.isDefault ? t('pages.checkout.defaultAddress') : null,
-                  ].filter(Boolean).join(', ');
-                  return (
-                    <Radio
-                      key={address.id}
-                      value={address.id}
-                      className={String(selectedAddressId) === String(address.id) ? 'checkout-page__addressChoice checkout-page__addressChoice--selected' : 'checkout-page__addressChoice'}
-                      aria-label={addressChoiceLabel}
-                      title={addressChoiceLabel}
-                    >
-                      <div className="checkout-page__addressHeader">
-                        <span className="checkout-page__text checkout-page__text--strong">{address.recipientName}</span>
-                        <span className="checkout-page__text checkout-page__text--secondary">{address.phone}</span>
-                        {address.isDefault && <Tag color="orange">{t('pages.checkout.defaultAddress')}</Tag>}
-                      </div>
-                      <div className="checkout-page__addressText">{address.address}</div>
-                    </Radio>
-                  );
-                })}
-                <Radio
-                  value="new"
-                  className={selectedAddressId === 'new' ? 'checkout-page__addressChoice checkout-page__addressChoice--selected' : 'checkout-page__addressChoice'}
-                  aria-label={t('pages.checkout.useNewAddress')}
-                  title={t('pages.checkout.useNewAddress')}
-                >
-                  <span className="checkout-page__text checkout-page__text--strong">{t('pages.checkout.useNewAddress')}</span>
-                </Radio>
-              </Radio.Group>
+            <div
+              className="checkout-page__addressGroup"
+              role="radiogroup"
+              aria-label={checkoutAddressGroupLabel}
+              title={checkoutAddressGroupLabel}
+            >
+              {addresses.map((address) => {
+                const addressChoiceLabel = [
+                  normalizeCheckoutText(address.recipientName, 80),
+                  normalizeLikelyCheckoutPhone(address.phone),
+                  normalizeCheckoutText(address.address, 260),
+                  address.isDefault ? t('pages.checkout.defaultAddress') : null,
+                ].filter(Boolean).join(', ');
+                const selected = String(selectedAddressId) === String(address.id);
+                return (
+                  <button
+                    key={address.id}
+                    type="button"
+                    role="radio"
+                    className={selected ? 'checkout-page__addressChoice checkout-page__addressChoice--selected' : 'checkout-page__addressChoice'}
+                    aria-checked={selected}
+                    aria-label={addressChoiceLabel}
+                    title={addressChoiceLabel}
+                    onClick={() => setSelectedAddressId(address.id)}
+                  >
+                    <div className="checkout-page__addressHeader">
+                      <span className="checkout-page__text checkout-page__text--strong">{address.recipientName}</span>
+                      <span className="checkout-page__text checkout-page__text--secondary">{address.phone}</span>
+                      {address.isDefault && <Tag color="orange">{t('pages.checkout.defaultAddress')}</Tag>}
+                    </div>
+                    <div className="checkout-page__addressText">{address.address}</div>
+                  </button>
+                );
+              })}
+              <button
+                type="button"
+                role="radio"
+                className={selectedAddressId === 'new' ? 'checkout-page__addressChoice checkout-page__addressChoice--selected' : 'checkout-page__addressChoice'}
+                aria-checked={selectedAddressId === 'new'}
+                aria-label={t('pages.checkout.useNewAddress')}
+                title={t('pages.checkout.useNewAddress')}
+                onClick={() => setSelectedAddressId('new')}
+              >
+                <span className="checkout-page__text checkout-page__text--strong">{t('pages.checkout.useNewAddress')}</span>
+              </button>
             </div>
           )}
 
@@ -3329,25 +3366,18 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
                 rules={[{ required: true, message: t('pages.checkout.regionRequired') }]}
                 extra={renderCheckoutFieldErrorExtra('region')}
               >
-                <Cascader
+                <ShopCascader
                   options={regionOptions}
                   placeholder={regionOptionsLoading ? t('common.loading') : t('pages.checkout.regionPlaceholder')}
-                  showSearch
-                  aria-label={checkoutRegionInputLabel}
+                  ariaLabel={checkoutRegionInputLabel}
                   title={checkoutRegionInputLabel}
                   open={checkoutRegionCascaderOpen}
-                  onOpenChange={setCheckoutRegionCascaderVisibility}
-                  onClick={() => {
-                    void loadCheckoutRegionOptions();
-                    setCheckoutRegionCascaderVisibility(true);
+                  onOpenChange={(open) => {
+                    if (open) void loadCheckoutRegionOptions();
+                    setCheckoutRegionCascaderVisibility(open);
                   }}
-                  onFocus={() => {
-                    void loadCheckoutRegionOptions();
-                    setCheckoutRegionCascaderVisibility(true);
-                  }}
-                  onBlur={closeCheckoutRegionCascader}
-                  classNames={{ popup: { root: 'shop-mobile-popup-layer checkout-region-cascader-popup' } }}
-                  getPopupContainer={() => document.body}
+                  popupClassName="shop-mobile-popup-layer checkout-region-cascader-popup"
+                  popupZIndex={2400}
                 />
               </Form.Item>
               <Form.Item
@@ -3396,33 +3426,32 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
         </section>
 
         {!isGuestCheckout ? <section className="checkout-page__sectionCard" id="checkout-coupon-card" aria-label={t('pages.checkout.coupon')}><div className="shop-panel__head"><div className="shop-panel__title">{t('pages.checkout.coupon')}</div></div>
-          <Select
+          <ShopSelect
             allowClear
             className="checkout-page__couponSelect"
             placeholder={t('pages.checkout.selectCoupon')}
-            value={selectedUserCouponId ?? undefined}
-            classNames={{ popup: { root: 'shop-mobile-popup-layer' } }}
-            getPopupContainer={() => document.body}
-            aria-label={checkoutCouponSelectLabel}
+            value={selectedUserCouponId != null ? String(selectedUserCouponId) : undefined}
+            popupClassName="shop-mobile-popup-layer"
+            popupZIndex={2400}
+            ariaLabel={checkoutCouponSelectLabel}
             title={checkoutCouponSelectLabel}
             onChange={(value) => {
               couponAutoSelectedQuoteRef.current = null;
               setCouponManuallyChanged(true);
               setCouponQuoteErrorMessage(null);
               setCouponSelectionErrorMessage(null);
-              setSelectedUserCouponId(value ?? null);
+              setSelectedUserCouponId(value ? Number(value) : null);
             }}
             options={availableCoupons.map((coupon) => {
               const couponDiscount = calculateCouponDiscount(coupon);
               return {
-                value: coupon.id,
+                value: String(coupon.id),
                 label: couponDiscount > 0
                   ? `${describeCoupon(coupon)} - ${t('pages.checkout.couponSaveAmount', { amount: formatMoney(couponDiscount) })}${bestCouponCandidate?.coupon.id === coupon.id ? ` - ${t('pages.checkout.bestCoupon')}` : ''}`
                   : describeCoupon(coupon),
                 disabled: couponDiscount <= 0,
               };
             })}
-            notFoundContent={t('pages.checkout.noValidCoupons')}
           />
           {couponSelectionErrorMessage ? (
             <Alert

@@ -1,9 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
-import { Button, Input, Select, Pagination, Tag, Slider, Checkbox, Modal } from 'antd';
+import { Button, Input, Tag, Checkbox } from 'antd';
+import ShopSelect from '../components/ShopSelect';
 import { ShopIcon, SI } from '../components/ShopIcon';
 import ShopRate from '../components/ShopRate';
 import ShopDrawer from '../components/ShopDrawer';
+import ShopPagination from '../components/ShopPagination';
+import ShopRangeSlider from '../components/ShopRangeSlider';
+import ShopModal from '../components/ShopModal';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { productApi, cartApi, categoryApi, wishlistApi, createApiAbortController } from '../api';
 import type { ProductPublic as Product, ProductPublicPage, CategoryPublic } from '../types';
@@ -93,13 +97,6 @@ const writeSearchHistory = (history: string[]) => {
 };
 
 const normalizeSearchValue = (value: string) => value.replace(/\s+/g, ' ').trim().slice(0, MAX_SEARCH_LENGTH);
-const labelPaginationControl = (element: React.ReactNode, label: string) => {
-  if (!React.isValidElement(element)) return element;
-  return React.cloneElement(element as React.ReactElement<{ 'aria-label'?: string; title?: string }>, {
-    'aria-label': label,
-    title: label,
-  });
-};
 const normalizeSortValue = (value: string | null | undefined) =>
   value && VALID_SORT_VALUES.has(value) ? value : 'default';
 const normalizePetSizeValue = (value: string | null | undefined) =>
@@ -1365,21 +1362,21 @@ const ProductList: React.FC = () => {
           const groupLabel = getLocalizedOptionLabel(group.name, language);
           const quickAddOptionLabel = `${groupLabel}: ${quickAddProductName || t('pages.productList.quickAdd')}`;
           return (
-            <Select
+            <ShopSelect
               key={group.name}
               placeholder={groupLabel}
               value={quickAddOptions[group.name] || undefined}
-              aria-label={quickAddOptionLabel}
+              ariaLabel={quickAddOptionLabel}
               title={quickAddOptionLabel}
-              onChange={(value) => selectQuickAddOption(group.name, value)}
+              onChange={(value) => { if (value) selectQuickAddOption(group.name, value); }}
               options={group.values.map((value) => ({
                 value,
                 label: getLocalizedOptionLabel(value, language),
                 disabled: !optionValueIsCompatible(quickAddVariants, quickAddOptions, group.name, value),
               }))}
               className="product-list__quickAddSelect"
-              classNames={{ popup: { root: 'shop-mobile-popup-layer product-list__quickAddPopup' } }}
-              getPopupContainer={() => document.body}
+              popupClassName="shop-mobile-popup-layer product-list__quickAddPopup"
+              popupZIndex={1100}
             />
           );
         })()
@@ -1995,8 +1992,8 @@ const ProductList: React.FC = () => {
     <div className="product-list__filterStack">
       <div>
         <span className="product-list__text product-list__text--strong">{t('pages.productList.price')}</span>
-        <Slider
-          range
+        <ShopRangeSlider
+          className="product-list__priceSlider"
           min={0}
           max={maxCatalogPrice}
           step={priceStep}
@@ -2007,10 +2004,10 @@ const ProductList: React.FC = () => {
           ]}
           onChange={(value) => {
             setPriceFilterTouched(true);
-            setPriceRange(value as [number, number]);
+            setPriceRange(value);
             setCurrentPage(1);
           }}
-          onChangeComplete={(value) => commitPriceRange(value as [number, number])}
+          onChangeComplete={(value) => commitPriceRange(value)}
         />
         <span className="product-list__text product-list__text--secondary commerce-atomic">{formatMoney(displayedPriceRange[0])} - {formatMoney(displayedPriceRange[1])}</span>
       </div>
@@ -2224,15 +2221,15 @@ const ProductList: React.FC = () => {
                 />
               </div>
               <div className="product-list__toolbarSort">
-                <Select
+                <ShopSelect
                   value={sortBy}
-                  onChange={applySort}
+                  onChange={(value) => applySort(value || 'default')}
                   className="product-list__sortSelect"
-                  aria-label={`${t('pages.productList.defaultSort')}: ${currentSortLabel}`}
+                  ariaLabel={`${t('pages.productList.defaultSort')}: ${currentSortLabel}`}
                   title={`${t('pages.productList.defaultSort')}: ${currentSortLabel}`}
                   options={sortOptions}
-                  classNames={{ popup: { root: 'shop-mobile-popup-layer' } }}
-                  getPopupContainer={() => document.body}
+                  popupClassName="shop-mobile-popup-layer"
+                  popupZIndex={1100}
                 />
               </div>
               <div className="product-list__toolbarMetaWrap">
@@ -2665,17 +2662,15 @@ const ProductList: React.FC = () => {
               </div>
               {productCountForUi > pageSize && (
                 <div className="product-list__pagination">
-                  <Pagination
+                  <ShopPagination
                     current={currentPage}
                     total={productCountForUi}
                     pageSize={pageSize}
                     onChange={handleProductPageChange}
                     showTotal={(total) => t('pages.productList.count', { count: total })}
-                    itemRender={(_page, type, element) => {
-                      if (type === 'prev') return labelPaginationControl(element, t('common.previousPage'));
-                      if (type === 'next') return labelPaginationControl(element, t('common.nextPage'));
-                      return element;
-                    }}
+                    prevLabel={t('common.previousPage')}
+                    nextLabel={t('common.nextPage')}
+                    ariaLabel={t('pages.productList.count', { count: productCountForUi })}
                   />
                 </div>
               )}
@@ -2754,10 +2749,10 @@ const ProductList: React.FC = () => {
           onClick={handleBackToTop}
         />
       ) : null}
-      <Modal
+      <ShopModal
         title={quickAddProduct ? t('pages.productList.quickAddTitle', { name: quickAddProductName }) : t('pages.productList.quickAdd')}
         open={!!quickAddProduct}
-        onCancel={() => {
+        onClose={() => {
           if (quickAddSubmitting) return;
           setQuickAddProduct(null);
         }}
@@ -2768,6 +2763,8 @@ const ProductList: React.FC = () => {
         cancelButtonProps={{ disabled: quickAddSubmitting, 'aria-label': `${t('common.cancel')}: ${quickAddSubmitActionLabel}`, title: `${t('common.cancel')}: ${quickAddSubmitActionLabel}` }}
         rootClassName="product-list__quickAddModalRoot"
         className="profile-mobile-safe-modal product-list__quickAddModal"
+        closeLabel={t('common.close', { defaultValue: 'Close' })}
+        ariaLabel={quickAddProduct ? t('pages.productList.quickAddTitle', { name: quickAddProductName }) : t('pages.productList.quickAdd')}
       >
         <div className="product-list__quickAddContent">
           {quickAddBundleInfo ? (
@@ -2802,16 +2799,17 @@ const ProductList: React.FC = () => {
             <span className="product-list__text product-list__text--secondary">{t('pages.productList.quickAddNoOptions')}</span>
           )}
         </div>
-      </Modal>
-      <Modal
+      </ShopModal>
+      <ShopModal
         title={null}
         open={!!previewProduct}
         footer={null}
-        onCancel={() => setPreviewProduct(null)}
+        onClose={() => setPreviewProduct(null)}
         width={860}
         rootClassName="product-list__previewModalRoot"
         className="profile-mobile-safe-modal product-list__previewModal"
-        destroyOnHidden
+        closeLabel={t('common.close', { defaultValue: 'Close' })}
+        ariaLabel={previewProductName || t('pages.productList.quickPreview')}
       >
         {previewProduct ? (
           <div className="product-list__preview">
@@ -2923,7 +2921,7 @@ const ProductList: React.FC = () => {
             </div>
           </div>
         ) : null}
-      </Modal>
+      </ShopModal>
     </div>
   );
 };

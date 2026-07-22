@@ -1,6 +1,7 @@
 import React from 'react';
 import { ShopIcon, SI } from './ShopIcon';
-import { Modal, Popconfirm } from 'antd';
+import ShopPopconfirm from './ShopPopconfirm';
+import ShopModal from './ShopModal';
 import type { PetGalleryPhotoPublic } from '../types';
 import { buildResponsiveImageSrcSet, getOptimizedImageUrl, imageFallbacks } from '../utils/mediaAssets';
 
@@ -126,8 +127,8 @@ const HomePetGallery: React.FC<HomePetGalleryProps> = ({
                   {t('home.petUgcLikes', { count: item.likeCount })}
                 </button>
                 {item.canDelete && photo ? (
-                  <Popconfirm
-                    classNames={{ root: 'shop-mobile-popup-layer shopee-home-popconfirm' }}
+                  <ShopPopconfirm
+                    rootClassName='shop-mobile-popup-layer shopee-home-popconfirm'
                     title={t('home.petUgcDeleteConfirm')}
                     okText={t('common.confirm')}
                     cancelText={t('common.cancel')}
@@ -138,7 +139,7 @@ const HomePetGallery: React.FC<HomePetGalleryProps> = ({
                     <button type="button" className="pet-ugc__delete" aria-label={deleteActionLabel} title={deleteActionLabel}>
                       <ShopIcon path={SI.delete} />
                     </button>
-                  </Popconfirm>
+                  </ShopPopconfirm>
                 ) : null}
               </div>
             </div>
@@ -147,14 +148,16 @@ const HomePetGallery: React.FC<HomePetGalleryProps> = ({
       </div>
     </section>
 
-    <Modal
+    <ShopModal
       open={Boolean(previewItem)}
       footer={null}
-      centered
       width={720}
       className="profile-mobile-safe-modal pet-ugc-preview"
-      destroyOnHidden
-      onCancel={onClosePreview}
+      rootClassName="pet-ugc-preview-root"
+      title={null}
+      ariaLabel={previewItem?.label || t('home.petUgcTitle')}
+      closeLabel={t('common.close', { defaultValue: 'Close' })}
+      onClose={onClosePreview}
     >
       {previewItem ? (
         <figure className="pet-ugc-preview__figure">
@@ -171,7 +174,7 @@ const HomePetGallery: React.FC<HomePetGalleryProps> = ({
           <figcaption>{previewItem.label}</figcaption>
         </figure>
       ) : null}
-    </Modal>
+    </ShopModal>
   </>
 );
 

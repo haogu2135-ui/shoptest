@@ -1,0 +1,131 @@
+.shop-search-field {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  align-items: stretch;
+  gap: 0;
+  box-sizing: border-box;
+}
+
+.shop-search-field,
+.shop-search-field * {
+  box-sizing: border-box;
+}
+
+.shop-search-field__control {
+  position: relative;
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid rgba(18, 71, 52, 0.14);
+  border-radius: 10px 0 0 10px;
+  background: #fff;
+}
+
+.shop-search-field--noSubmit .shop-search-field__control {
+  border-radius: 999px;
+}
+
+.shop-search-field--large .shop-search-field__control,
+.shop-search-field--large .shop-search-field__submit {
+  min-height: 48px;
+}
+
+.shop-search-field__prefix {
+  display: inline-flex;
+  flex: 0 0 auto;
+  margin-right: 8px;
+  color: rgba(16, 47, 34, 0.55);
+}
+
+.shop-search-field__input {
+  flex: 1 1 auto;
+  min-width: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 40px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #173f2b;
+  font: inherit;
+  font-size: max(12px, 0.95em);
+  line-height: 1.35;
+}
+
+.shop-search-field__input:focus {
+  outline: none;
+}
+
+.shop-search-field__input::-webkit-search-cancel-button {
+  display: none;
+}
+
+.shop-search-field__clear {
+  display: inline-flex;
+  flex: 0 0 auto;
+  width: 28px;
+  min-height: 28px;
+  align-items: center;
+  justify-content: center;
+  margin-left: 6px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(16, 47, 34, 0.08);
+  color: #173f2b;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.shop-search-field__submit {
+  display: inline-flex;
+  flex: 0 0 62px;
+  width: 62px;
+  min-width: 62px;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0 10px 10px 0;
+  background: #ee4d2d;
+  color: #fff;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.shop-search-field__submit:hover,
+.shop-search-field__submit:focus-visible {
+  background: #f2673f;
+  outline: none;
+}
+
+.shop-search-field__submit:disabled,
+.shop-search-field__input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.shop-search-field:focus-within .shop-search-field__control {
+  border-color: rgba(238, 77, 45, 0.45);
+  box-shadow: 0 0 0 3px rgba(238, 77, 45, 0.16);
+}
+
+@media (max-width: 780px) {
+  .shop-search-field__control,
+  .shop-search-field__submit,
+  .shop-search-field__input {
+    min-height: 44px;
+  }
+
+  .shop-search-field__input {
+    font-size: 16px;
+  }
+}

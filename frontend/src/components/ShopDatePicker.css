@@ -1,0 +1,45 @@
+.shop-date-picker {
+  position: relative;
+  display: inline-flex;
+  width: 100%;
+  align-items: center;
+}
+
+.shop-date-picker__input {
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 36px 8px 12px;
+  border: 1px solid rgba(18, 71, 52, 0.18);
+  border-radius: 10px;
+  background: #fff;
+  color: #173f2b;
+  font: inherit;
+  font-size: max(12px, 0.95em);
+  line-height: 1.35;
+  touch-action: manipulation;
+}
+
+.shop-date-picker__input:disabled {
+  opacity: 0.6;
+}
+
+.shop-date-picker__input:focus {
+  outline: 2px solid rgba(18, 71, 52, 0.28);
+  outline-offset: 1px;
+}
+
+.shop-date-picker__clear {
+  position: absolute;
+  right: 8px;
+  display: inline-flex;
+  width: 28px;
+  min-height: 28px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(16, 47, 34, 0.08);
+  color: #173f2b;
+  cursor: pointer;
+  touch-action: manipulation;
+}

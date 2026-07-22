@@ -167,10 +167,11 @@ describe('ProductList quick-add mobile overlay contracts', () => {
 
     expect(source).toContain('product-list--quickAddOpen');
     expect(source).toContain('rootClassName="product-list__quickAddModalRoot"');
+    expect(source).toContain('ShopModal');
     expect(source).toContain("classNames={{ popup: { root: 'shop-mobile-popup-layer product-list__quickAddPopup' } }}");
     expect(fixCss).toMatch(/product-list--quickAddOpen[\s\S]*?\.product-list__mobileConversionBar[\s\S]*?\{[\s\S]*?display:\s*none\s*!important;[\s\S]*?pointer-events:\s*none\s*!important;/);
-    expect(fixCss).toMatch(/\.product-list__quickAddModalRoot \.ant-modal-mask\s*\{[^}]*z-index:\s*9500\s*!important;[^}]*background:/);
-    expect(fixCss).toMatch(/body\.shop-mobile-app \.product-list__quickAddModalRoot \.ant-modal-mask\s*\{[^}]*z-index:\s*9900\s*!important;/);
+    expect(fixCss).toMatch(/\.product-list__quickAddModalRoot \.shop-modal__mask\s*\{[^}]*z-index:\s*9500\s*!important;[^}]*background:/);
+    expect(fixCss).toMatch(/body\.shop-mobile-app \.product-list__quickAddModalRoot \.shop-modal__mask\s*\{[^}]*z-index:\s*9900\s*!important;/);
     expect(fixCss).toMatch(/\.product-list__quickAddPopup\.shop-mobile-popup-layer[\s\S]*?\{[^}]*z-index:\s*9904\s*!important;/);
   });
 
@@ -181,10 +182,11 @@ describe('ProductList quick-add mobile overlay contracts', () => {
 
     expect(source).toContain("previewProduct ? ' product-list--previewOpen' : ''");
     expect(source).toContain('rootClassName="product-list__previewModalRoot"');
+    expect(source).toContain('ShopModal');
     expect(fixCss).toMatch(/product-list--previewOpen[\s\S]*?\.product-list__mobileConversionBar[\s\S]*?\{[\s\S]*?display:\s*none\s*!important;[\s\S]*?pointer-events:\s*none\s*!important;/);
-    expect(fixCss).toMatch(/\.product-list__previewModalRoot \.ant-modal-mask\s*\{[^}]*z-index:\s*9500\s*!important;[^}]*background:/);
-    expect(fixCss).toMatch(/\.product-list__previewModalRoot \.ant-modal-wrap\s*\{[^}]*z-index:\s*9501\s*!important;/);
-    expect(fixCss).toMatch(/body\.shop-mobile-app \.product-list__previewModalRoot \.ant-modal-mask\s*\{[^}]*z-index:\s*9900\s*!important;/);
+    expect(fixCss).toMatch(/\.product-list__previewModalRoot \.shop-modal__mask\s*\{[^}]*z-index:\s*9500\s*!important;[^}]*background:/);
+    expect(fixCss).toMatch(/\.product-list__previewModalRoot \.shop-modal__wrap\s*\{[^}]*z-index:\s*9501\s*!important;/);
+    expect(fixCss).toMatch(/body\.shop-mobile-app \.product-list__previewModalRoot \.shop-modal__mask\s*\{[^}]*z-index:\s*9900\s*!important;/);
   });
 
   it('treats the mobile filter drawer as the active overlay above rails', () => {
@@ -240,8 +242,9 @@ describe('ProductList card render performance contracts', () => {
     expect(source).toContain('size: pageSize,');
     expect(source).toContain('const paginatedProducts = usingServerPagination');
     expect(source).toContain(': sortedProducts.slice((currentPage - 1) * pageSize, currentPage * pageSize);');
-    expect(source).toContain('<Pagination');
+    expect(source).toContain('<ShopPagination');
     expect(source).toContain('pageSize={pageSize}');
+    expect(source).toContain('ShopPagination');
     expect(source).not.toContain('paginatedProducts.map((product, index) => {');
     expect(source).not.toContain('const renderPrimaryAction = (product: Product)');
   });

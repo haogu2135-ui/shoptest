@@ -1,7 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { ShopIcon, SI } from './ShopIcon';
-import { Badge, Button, Dropdown, Input, Select } from 'antd';
+import { Badge } from 'antd';
+import ShopSearchField from './ShopSearchField';
+import ShopDropdown from './ShopDropdown';
+import ShopSelect from './ShopSelect';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { announcementApi, cartApi, couponApi, notificationApi, productApi, userApi, wishlistApi } from '../api';
 import { useAuth } from '../hooks/useAuth';
@@ -39,7 +42,6 @@ import { reportNonBlockingError } from '../utils/nonBlockingError';
 import { isCommercialAnnouncement } from '../utils/commercialAnnouncement';
 import './Navbar.css';
 
-const { Search } = Input;
 const NAV_SEARCH_MAX_LENGTH = 80;
 const NAV_BADGE_REFRESH_DEBOUNCE_MS = 350;
 const NAV_POPUP_Z_INDEX = 2400;
@@ -330,10 +332,20 @@ const Navbar: React.FC = () => {
       : {
         key: 'android-app',
         icon: <ShopIcon path={SI.download} />,
-        label: androidApkUrl
-          ? <a href={androidApkUrl} download>{t('nav.downloadAndroid')}</a>
-          : t('nav.downloadAndroid'),
-        onClick: androidApkUrl ? undefined : handleAndroidDownloadUnavailable,
+        label: t('nav.downloadAndroid'),
+        onClick: () => {
+          if (!androidApkUrl) {
+            handleAndroidDownloadUnavailable();
+            return;
+          }
+          const anchor = document.createElement('a');
+          anchor.href = androidApkUrl;
+          anchor.download = '';
+          anchor.rel = 'noopener';
+          document.body.appendChild(anchor);
+          anchor.click();
+          anchor.remove();
+        },
       }
     : null;
 
@@ -749,23 +761,20 @@ const Navbar: React.FC = () => {
           <div className="shop-nav__links shop-nav__links--right">
             <Link className={isPathActive(['/track-order']) ? 'shop-nav__linkActive' : undefined} to="/track-order" aria-current={isPathActive(['/track-order']) ? 'page' : undefined}>{t('nav.trackOrder')}</Link>
             <button type="button" onClick={openSupport}>{t('nav.help')}</button>
-            <Select
-              aria-label={t('nav.language')}
-              aria-haspopup="listbox"
+            <ShopSelect
+              ariaLabel={t('nav.language')}
               className="shop-nav__language"
               size="small"
               value={language}
               open={isDropdownOpen('top-language')}
               onOpenChange={(open) => setDropdownOpen('top-language', open)}
               onChange={(value) => setLanguage(value as Language)}
-              classNames={{ popup: { root: 'shop-nav__select-popup' } }}
-              styles={{ popup: { root: { zIndex: NAV_POPUP_Z_INDEX } } }}
-              getPopupContainer={() => document.body}
+              popupClassName="shop-nav__select-popup"
+              popupZIndex={NAV_POPUP_Z_INDEX}
               options={languageOptions.map((item) => ({ ...item, className: language === item.value ? 'shop-nav__select-option-current' : undefined }))}
             />
-            <Select
-              aria-label={t('nav.currency')}
-              aria-haspopup="listbox"
+            <ShopSelect
+              ariaLabel={t('nav.currency')}
               className="shop-nav__currency"
               size="small"
               value={currency}
@@ -775,9 +784,8 @@ const Navbar: React.FC = () => {
                 const nextCurrency = value as CurrencyCode;
                 setCurrency(nextCurrency);
               }}
-              classNames={{ popup: { root: 'shop-nav__select-popup' } }}
-              styles={{ popup: { root: { zIndex: NAV_POPUP_Z_INDEX } } }}
-              getPopupContainer={() => document.body}
+              popupClassName="shop-nav__select-popup"
+              popupZIndex={NAV_POPUP_Z_INDEX}
               options={currencyOptions.map((item) => ({ ...item, className: currency === item.value ? 'shop-nav__select-option-current' : undefined }))}
             />
             {token ? (
@@ -821,21 +829,16 @@ const Navbar: React.FC = () => {
                 </span>
               </div>
               <div className="shop-nav__searchBar">
-                <Search
-                  placeholder={t('nav.searchPlaceholder')}
-                  aria-label={navSearchActionLabel}
-                  title={navSearchActionLabel}
-                  onSearch={handleSearch}
-                  enterButton={(
-                    <Button
-                      type="primary"
-                      aria-label={navSearchActionLabel}
-                      title={navSearchActionLabel}
-                      icon={<ShopIcon path={SI.search} />}
-                    />
-                  )}
+                <ShopSearchField
+                  className="shop-nav__searchField"
                   size="large"
+                  placeholder={t('nav.searchPlaceholder')}
+                  ariaLabel={navSearchActionLabel}
+                  title={navSearchActionLabel}
+                  submitLabel={navSearchActionLabel}
+                  onSearch={handleSearch}
                   allowClear
+                  showSubmit
                 />
               </div>
             </div>
@@ -851,32 +854,28 @@ const Navbar: React.FC = () => {
               <span>{t('home.trust.petSafe')}</span>
             </div>
             <div className="shop-nav__mobile-tools">
-              <Select
-                aria-label={t('nav.language')}
-                aria-haspopup="listbox"
+              <ShopSelect
+                ariaLabel={t('nav.language')}
                 className="shop-nav__language"
                 size="small"
                 value={language}
                 open={isDropdownOpen('mobile-language')}
                 onOpenChange={(open) => setDropdownOpen('mobile-language', open)}
                 onChange={(value) => setLanguage(value as Language)}
-                classNames={{ popup: { root: 'shop-nav__select-popup' } }}
-                styles={{ popup: { root: { zIndex: NAV_POPUP_Z_INDEX } } }}
-                getPopupContainer={() => document.body}
+                popupClassName="shop-nav__select-popup"
+                popupZIndex={NAV_POPUP_Z_INDEX}
                 options={languageOptions.map((item) => ({ ...item, className: language === item.value ? 'shop-nav__select-option-current' : undefined }))}
               />
-              <Select
-                aria-label={t('nav.currency')}
-                aria-haspopup="listbox"
+              <ShopSelect
+                ariaLabel={t('nav.currency')}
                 className="shop-nav__currency"
                 size="small"
                 value={currency}
                 open={isDropdownOpen('mobile-currency')}
                 onOpenChange={(open) => setDropdownOpen('mobile-currency', open)}
                 onChange={(value) => setCurrency(value as CurrencyCode)}
-                classNames={{ popup: { root: 'shop-nav__select-popup' } }}
-                styles={{ popup: { root: { zIndex: NAV_POPUP_Z_INDEX } } }}
-                getPopupContainer={() => document.body}
+                popupClassName="shop-nav__select-popup"
+                popupZIndex={NAV_POPUP_Z_INDEX}
                 options={currencyOptions.map((item) => ({ ...item, className: currency === item.value ? 'shop-nav__select-option-current' : undefined }))}
               />
               {token ? (
@@ -892,38 +891,30 @@ const Navbar: React.FC = () => {
               if ('children' in item && item.children) {
                 const dropdownKey = `pet-${item.key}`;
                 return (
-                <Dropdown
+                <ShopDropdown
                   key={item.key}
-                  getPopupContainer={() => document.body}
-                  overlayClassName="shop-nav__dropdown-popup"
-                  overlayStyle={{ zIndex: NAV_POPUP_Z_INDEX }}
+                  className="shop-nav__pet-dropdown"
+                  popupClassName="shop-nav__dropdown-popup"
+                  popupZIndex={NAV_POPUP_Z_INDEX}
                   open={isDropdownOpen(dropdownKey)}
                   onOpenChange={(open) => setDropdownOpen(dropdownKey, open)}
-                  menu={{
-                    items: item.children.map((child) => ({
-                      key: child.key,
-                      label: (
-                        <button
-                          type="button"
-                          className="shop-nav__menu-action"
-                          onClick={() => {
-                            if ('to' in child && child.to) {
-                              navigate(child.to);
-                              return;
-                            }
-                            if ('keyword' in child && child.keyword) {
-                              searchByKeyword(child.keyword);
-                            }
-                          }}
-                        >
-                          {child.label}
-                        </button>
-                      ),
-                    })),
-                  }}
+                  items={item.children.map((child) => ({
+                    key: child.key,
+                    label: child.label,
+                    className: 'shop-nav__menu-action',
+                    onClick: () => {
+                      if ('to' in child && child.to) {
+                        navigate(child.to);
+                        return;
+                      }
+                      if ('keyword' in child && child.keyword) {
+                        searchByKeyword(child.keyword);
+                      }
+                    },
+                  }))}
                 >
                   {renderPetNavButton(item, isDropdownOpen(dropdownKey))}
-                </Dropdown>
+                </ShopDropdown>
                 );
               }
               return renderPetNavButton(item);
@@ -959,22 +950,18 @@ const Navbar: React.FC = () => {
                 ))}
               </div>
             ) : null}
-            <Dropdown
+            <ShopDropdown
               className="shop-nav__mobile-locale"
-              getPopupContainer={() => document.body}
-              overlayClassName="shop-nav__dropdown-popup"
-              overlayStyle={{ zIndex: NAV_POPUP_Z_INDEX }}
-              trigger={['click']}
+              popupClassName="shop-nav__dropdown-popup"
+              popupZIndex={NAV_POPUP_Z_INDEX}
               open={isDropdownOpen('mobile-locale')}
               onOpenChange={(open) => setDropdownOpen('mobile-locale', open)}
-              menu={{
-                items: buildLocaleMenuItems(),
-              }}
+              items={buildLocaleMenuItems()}
             >
               <button type="button" aria-label={`${t('nav.language')} / ${t('nav.currency')}`} aria-haspopup="menu" aria-expanded={isDropdownOpen('mobile-locale')}>
                 <ShopIcon path={SI.global} />
               </button>
-            </Dropdown>
+            </ShopDropdown>
             {token ? (
               <>
                 <button type="button" className="shop-nav__mobile-orders" onClick={() => navigate('/profile?tab=orders')} aria-label={t('pages.profile.allOrders')}>
@@ -993,41 +980,37 @@ const Navbar: React.FC = () => {
                     <ShopIcon path={SI.bell} />
                   </Badge>
                 </button>
-                <Dropdown
-                  getPopupContainer={() => document.body}
-                  overlayClassName="shop-nav__dropdown-popup"
-                  overlayStyle={{ zIndex: NAV_POPUP_Z_INDEX }}
-                  trigger={['click']}
+                <ShopDropdown
+                  popupClassName="shop-nav__dropdown-popup"
+                  popupZIndex={NAV_POPUP_Z_INDEX}
                   open={isDropdownOpen('account-more')}
                   onOpenChange={(open) => setDropdownOpen('account-more', open)}
-                  menu={{
-                    items: [
-                      ...(androidDownloadMenuItem ? [androidDownloadMenuItem] : []),
-                      {
-                        key: 'locale-settings',
-                        icon: <ShopIcon path={SI.global} />,
-                        label: `${t('nav.language')} / ${t('nav.currency')}`,
-                        children: buildLocaleMenuItems(),
-                      },
-                      { key: 'sell', icon: <ShopIcon path={SI.shop} />, label: t('nav.sell'), onClick: () => navigate(canAccessAdmin ? adminPath : '/products') },
-                      { key: 'pet-finder', icon: <ShopIcon path={SI.search} />, label: t('nav.petFinder'), onClick: () => navigate('/pet-finder') },
-                      { key: 'pet-gallery', icon: <ShopIcon path={SI.shopping} />, label: t('nav.petGallery'), onClick: () => navigate('/pet-gallery') },
-                      { key: 'deals', icon: <ShopIcon path={SI.gift} />, label: t('nav.followDeals'), onClick: () => navigate('/products?discount=true') },
-                      { key: 'track-order', icon: <ShopIcon path={SI.shopping} />, label: t('nav.trackOrder'), onClick: () => navigate('/track-order') },
-                      { key: 'coupons', icon: <ShopIcon path={SI.gift} />, label: t('pages.coupons.title'), onClick: () => navigate('/coupons') },
-                      { key: 'support', icon: <ShopIcon path={SI.support} />, label: t('nav.help'), onClick: openSupport },
-                      { key: 'compare', icon: <ShopIcon path={SI.barChart} />, label: t('nav.ariaCompare'), onClick: () => navigate('/compare') },
-                      { key: 'history', icon: <ShopIcon path={SI.history} />, label: t('nav.ariaHistory'), onClick: () => navigate('/history') },
-                      { key: 'alerts', icon: <ShopIcon path={SI.alert} />, label: t('nav.ariaStockAlerts'), onClick: () => navigate('/stock-alerts') },
-                    ],
-                  }}
+                  items={[
+                    ...(androidDownloadMenuItem ? [androidDownloadMenuItem] : []),
+                    {
+                      key: 'locale-settings',
+                      icon: <ShopIcon path={SI.global} />,
+                      label: `${t('nav.language')} / ${t('nav.currency')}`,
+                      children: buildLocaleMenuItems(),
+                    },
+                    { key: 'sell', icon: <ShopIcon path={SI.shop} />, label: t('nav.sell'), onClick: () => navigate(canAccessAdmin ? adminPath : '/products') },
+                    { key: 'pet-finder', icon: <ShopIcon path={SI.search} />, label: t('nav.petFinder'), onClick: () => navigate('/pet-finder') },
+                    { key: 'pet-gallery', icon: <ShopIcon path={SI.shopping} />, label: t('nav.petGallery'), onClick: () => navigate('/pet-gallery') },
+                    { key: 'deals', icon: <ShopIcon path={SI.gift} />, label: t('nav.followDeals'), onClick: () => navigate('/products?discount=true') },
+                    { key: 'track-order', icon: <ShopIcon path={SI.shopping} />, label: t('nav.trackOrder'), onClick: () => navigate('/track-order') },
+                    { key: 'coupons', icon: <ShopIcon path={SI.gift} />, label: t('pages.coupons.title'), onClick: () => navigate('/coupons') },
+                    { key: 'support', icon: <ShopIcon path={SI.support} />, label: t('nav.help'), onClick: openSupport },
+                    { key: 'compare', icon: <ShopIcon path={SI.barChart} />, label: t('nav.ariaCompare'), onClick: () => navigate('/compare') },
+                    { key: 'history', icon: <ShopIcon path={SI.history} />, label: t('nav.ariaHistory'), onClick: () => navigate('/history') },
+                    { key: 'alerts', icon: <ShopIcon path={SI.alert} />, label: t('nav.ariaStockAlerts'), onClick: () => navigate('/stock-alerts') },
+                  ]}
                 >
                   <button type="button" className="shop-nav__secondary-action shop-nav__more-trigger" aria-label={utilityMenuBadgeLabel} title={utilityMenuBadgeLabel} aria-haspopup="menu" aria-expanded={isDropdownOpen('account-more')}>
                     <Badge count={utilityMenuCount} size="small" overflowCount={99}>
                       <ShopIcon path={SI.ellipsis} />
                     </Badge>
                   </button>
-                </Dropdown>
+                </ShopDropdown>
                 <button type="button" className="shop-nav__cart-action" data-nav-cart="true" onClick={() => dispatchDomEvent('shop:open-cart')} aria-label={cartBadgeLabel} title={cartBadgeLabel}>
                   {renderCartBadge()}
                 </button>
@@ -1048,44 +1031,40 @@ const Navbar: React.FC = () => {
                     <Link to="/login" className="shop-nav__mobile-auth" aria-label={t('nav.login')} title={t('nav.login')}><ShopIcon path={SI.user} /><span className="shop-nav__mobile-authText">{t('nav.login')}</span></Link>
                   </>
                 ) : null}
-                <Dropdown
-                  getPopupContainer={() => document.body}
-                  overlayClassName="shop-nav__dropdown-popup"
-                  overlayStyle={{ zIndex: NAV_POPUP_Z_INDEX }}
-                  trigger={['click']}
+                <ShopDropdown
+                  popupClassName="shop-nav__dropdown-popup"
+                  popupZIndex={NAV_POPUP_Z_INDEX}
                   open={isDropdownOpen('guest-more')}
                   onOpenChange={(open) => setDropdownOpen('guest-more', open)}
-                  menu={{
-                    items: [
-                      { key: 'login', icon: <ShopIcon path={SI.user} />, label: t('nav.login'), onClick: () => navigate('/login') },
-                      { key: 'register', icon: <ShopIcon path={SI.user} />, label: t('nav.register'), onClick: () => navigate('/register') },
-                      { key: 'guest-divider', type: 'divider' },
-                      {
-                        key: 'locale-settings',
-                        icon: <ShopIcon path={SI.global} />,
-                        label: `${t('nav.language')} / ${t('nav.currency')}`,
-                        children: buildLocaleMenuItems(),
-                      },
-                      { key: 'sell', icon: <ShopIcon path={SI.shop} />, label: t('nav.sell'), onClick: () => navigate('/products') },
-                      { key: 'pet-finder', icon: <ShopIcon path={SI.search} />, label: t('nav.petFinder'), onClick: () => navigate('/pet-finder') },
-                      { key: 'pet-gallery', icon: <ShopIcon path={SI.shopping} />, label: t('nav.petGallery'), onClick: () => navigate('/pet-gallery') },
-                      { key: 'coupons', icon: <ShopIcon path={SI.gift} />, label: t('pages.coupons.title'), onClick: () => navigate('/coupons') },
-                      { key: 'deals', icon: <ShopIcon path={SI.gift} />, label: t('nav.followDeals'), onClick: () => navigate('/products?discount=true') },
-                      { key: 'track-order', icon: <ShopIcon path={SI.shopping} />, label: t('nav.trackOrder'), onClick: () => navigate('/track-order') },
-                      ...(androidDownloadMenuItem ? [androidDownloadMenuItem] : []),
-                      { key: 'support', icon: <ShopIcon path={SI.support} />, label: t('nav.help'), onClick: openSupport },
-                      { key: 'compare', icon: <ShopIcon path={SI.barChart} />, label: t('nav.ariaCompare'), onClick: () => navigate('/compare') },
-                      { key: 'history', icon: <ShopIcon path={SI.history} />, label: t('nav.ariaHistory'), onClick: () => navigate('/history') },
-                      { key: 'alerts', icon: <ShopIcon path={SI.alert} />, label: t('nav.ariaStockAlerts'), onClick: () => navigate('/stock-alerts') },
-                    ],
-                  }}
+                  items={[
+                    { key: 'login', icon: <ShopIcon path={SI.user} />, label: t('nav.login'), onClick: () => navigate('/login') },
+                    { key: 'register', icon: <ShopIcon path={SI.user} />, label: t('nav.register'), onClick: () => navigate('/register') },
+                    { key: 'guest-divider', type: 'divider' },
+                    {
+                      key: 'locale-settings',
+                      icon: <ShopIcon path={SI.global} />,
+                      label: `${t('nav.language')} / ${t('nav.currency')}`,
+                      children: buildLocaleMenuItems(),
+                    },
+                    { key: 'sell', icon: <ShopIcon path={SI.shop} />, label: t('nav.sell'), onClick: () => navigate('/products') },
+                    { key: 'pet-finder', icon: <ShopIcon path={SI.search} />, label: t('nav.petFinder'), onClick: () => navigate('/pet-finder') },
+                    { key: 'pet-gallery', icon: <ShopIcon path={SI.shopping} />, label: t('nav.petGallery'), onClick: () => navigate('/pet-gallery') },
+                    { key: 'coupons', icon: <ShopIcon path={SI.gift} />, label: t('pages.coupons.title'), onClick: () => navigate('/coupons') },
+                    { key: 'deals', icon: <ShopIcon path={SI.gift} />, label: t('nav.followDeals'), onClick: () => navigate('/products?discount=true') },
+                    { key: 'track-order', icon: <ShopIcon path={SI.shopping} />, label: t('nav.trackOrder'), onClick: () => navigate('/track-order') },
+                    ...(androidDownloadMenuItem ? [androidDownloadMenuItem] : []),
+                    { key: 'support', icon: <ShopIcon path={SI.support} />, label: t('nav.help'), onClick: openSupport },
+                    { key: 'compare', icon: <ShopIcon path={SI.barChart} />, label: t('nav.ariaCompare'), onClick: () => navigate('/compare') },
+                    { key: 'history', icon: <ShopIcon path={SI.history} />, label: t('nav.ariaHistory'), onClick: () => navigate('/history') },
+                    { key: 'alerts', icon: <ShopIcon path={SI.alert} />, label: t('nav.ariaStockAlerts'), onClick: () => navigate('/stock-alerts') },
+                  ]}
                 >
                   <button type="button" className="shop-nav__secondary-action shop-nav__more-trigger" aria-label={utilityMenuBadgeLabel} title={utilityMenuBadgeLabel} aria-haspopup="menu" aria-expanded={isDropdownOpen('guest-more')}>
                     <Badge count={utilityMenuCount} size="small" overflowCount={99}>
                       <ShopIcon path={SI.ellipsis} />
                     </Badge>
                   </button>
-                </Dropdown>
+                </ShopDropdown>
                 <button type="button" className="shop-nav__cart-action" data-nav-cart="true" onClick={() => dispatchDomEvent('shop:open-cart')} aria-label={cartBadgeLabel} title={cartBadgeLabel}>
                   {renderCartBadge()}
                 </button>

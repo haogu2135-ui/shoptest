@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
-import { Alert, Button, Checkbox, Popconfirm, Progress, Tag } from 'antd';
+import { Alert, Button, Checkbox, Progress, Tag } from 'antd';
+import ShopPopconfirm from '../components/ShopPopconfirm';
 import { ShopIcon, SI } from '../components/ShopIcon';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { cartApi, productApi } from '../api';
@@ -1351,8 +1352,8 @@ const Cart: React.FC = () => {
           <span className="cart-page__text">{cartItems.length > 0 ? cartNextAction.text : t('pages.cart.empty')}</span>
           <div className="cart-page__heroActions">
             {cartItems.length > 0 && cartNextAction.key === 'clear' ? (
-              <Popconfirm
-                classNames={{ root: 'shop-mobile-popup-layer cart-page-popconfirm' }}
+              <ShopPopconfirm
+                rootClassName='shop-mobile-popup-layer cart-page-popconfirm'
                 title={t('pages.cart.clearUnavailableConfirm', { count: unavailableItems.length })}
                 onConfirm={cartNextAction.action}
                 okText={cartNextAction.label}
@@ -1363,7 +1364,7 @@ const Cart: React.FC = () => {
                 <Button type="primary" aria-label={cartNextActionLabel} title={cartNextActionLabel}>
                   {cartNextAction.label}
                 </Button>
-              </Popconfirm>
+              </ShopPopconfirm>
             ) : (
               <Button
                 type={cartItems.length > 0 ? 'primary' : 'default'}
@@ -1496,8 +1497,8 @@ const Cart: React.FC = () => {
         <>
           <section className="cart-page__bulkActions" aria-label={t('pages.cart.chooseItems')}>
             <div className="cart-page__bulkActionsRow">
-              <Popconfirm
-                classNames={{ root: 'shop-mobile-popup-layer cart-page-popconfirm' }}
+              <ShopPopconfirm
+                rootClassName='shop-mobile-popup-layer cart-page-popconfirm'
                 title={t('pages.cart.deleteSelectedConfirm', { count: selectedIds.length })}
                 disabled={hasStaleCartData || selectedIds.length === 0}
                 onConfirm={removeSelectedItems}
@@ -1516,9 +1517,9 @@ const Cart: React.FC = () => {
                 >
                   {t('pages.cart.deleteSelected')}
                 </Button>
-              </Popconfirm>
-              <Popconfirm
-                classNames={{ root: 'shop-mobile-popup-layer cart-page-popconfirm' }}
+              </ShopPopconfirm>
+              <ShopPopconfirm
+                rootClassName='shop-mobile-popup-layer cart-page-popconfirm'
                 title={t('pages.cart.clearUnavailableConfirm', { count: unavailableItems.length })}
                 disabled={hasStaleCartData || unavailableItems.length === 0}
                 onConfirm={clearUnavailableItems}
@@ -1535,7 +1536,7 @@ const Cart: React.FC = () => {
                 >
                   {t('pages.cart.clearUnavailable')}
                 </Button>
-              </Popconfirm>
+              </ShopPopconfirm>
               <span className="cart-page__text cart-page__text--secondary">{t('pages.cart.unavailableSummary', { count: unavailableItems.length })}</span>
             </div>
           </section>
@@ -1573,8 +1574,8 @@ const Cart: React.FC = () => {
                 {t('pages.cart.selectCheckoutReady')}
               </Button>
               {unavailableItems.length > 0 ? (
-                <Popconfirm
-                  classNames={{ root: 'shop-mobile-popup-layer cart-page-popconfirm' }}
+                <ShopPopconfirm
+                  rootClassName='shop-mobile-popup-layer cart-page-popconfirm'
                   title={t('pages.cart.clearUnavailableConfirm', { count: unavailableItems.length })}
                   disabled={hasStaleCartData}
                   onConfirm={clearUnavailableItems}
@@ -1592,7 +1593,7 @@ const Cart: React.FC = () => {
                   >
                     {t('pages.cart.clearUnavailable')}
                   </Button>
-                </Popconfirm>
+                </ShopPopconfirm>
               ) : null}
             </div>
           </div>
@@ -1604,8 +1605,8 @@ const Cart: React.FC = () => {
                 <span className="cart-page__text cart-page__text--secondary">{cartNextAction.text}</span>
               </span>
               {cartNextAction.key === 'clear' ? (
-                <Popconfirm
-                  classNames={{ root: 'shop-mobile-popup-layer cart-page-popconfirm' }}
+                <ShopPopconfirm
+                  rootClassName='shop-mobile-popup-layer cart-page-popconfirm'
                   title={t('pages.cart.clearUnavailableConfirm', { count: unavailableItems.length })}
                   onConfirm={cartNextAction.action}
                   okText={cartNextAction.label}
@@ -1616,7 +1617,7 @@ const Cart: React.FC = () => {
                   <Button type="default" aria-label={cartNextActionLabel} title={cartNextActionLabel}>
                     {cartNextAction.label}
                   </Button>
-                </Popconfirm>
+                </ShopPopconfirm>
               ) : (
                 <Button
                   type="default"
@@ -1725,8 +1726,8 @@ const Cart: React.FC = () => {
                         <Button type="text" icon={<ShopIcon path={SI.clock} />} size="small" aria-label={saveActionLabel} title={saveActionLabel} onClick={() => saveForLater(record)} disabled={hasStaleCartData || removingItemIds.includes(record.id)}>
                           {t('pages.cart.saveForLater')}
                         </Button>
-                        <Popconfirm
-                          classNames={{ root: 'shop-mobile-popup-layer cart-page-popconfirm' }}
+                        <ShopPopconfirm
+                          rootClassName='shop-mobile-popup-layer cart-page-popconfirm'
                           title={t('pages.cart.deleteConfirm')}
                           disabled={hasStaleCartData}
                           onConfirm={() => removeItem(record.id)}
@@ -1736,7 +1737,7 @@ const Cart: React.FC = () => {
                           cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${deleteActionLabel}`, title: `${t('common.cancel')}: ${deleteActionLabel}` }}
                         >
                           <Button type="text" danger icon={<ShopIcon path={SI.delete} />} size="small" loading={removingItemIds.includes(record.id)} disabled={hasStaleCartData} aria-label={deleteActionLabel} title={deleteActionLabel}>{t('common.delete')}</Button>
-                        </Popconfirm>
+                        </ShopPopconfirm>
                       </div>
                     </div>
                   </div>
@@ -1796,8 +1797,8 @@ const Cart: React.FC = () => {
                     <Button type="text" icon={<ShopIcon path={SI.clock} />} size="small" aria-label={saveActionLabel} title={saveActionLabel} onClick={() => saveForLater(item)} disabled={hasStaleCartData || removingItemIds.includes(item.id)}>
                       {t('pages.cart.saveForLaterShort')}
                     </Button>
-                    <Popconfirm
-                      classNames={{ root: 'shop-mobile-popup-layer cart-page-popconfirm' }}
+                    <ShopPopconfirm
+                      rootClassName='shop-mobile-popup-layer cart-page-popconfirm'
                       title={t('pages.cart.deleteConfirm')}
                       disabled={hasStaleCartData}
                       onConfirm={() => removeItem(item.id)}
@@ -1816,7 +1817,7 @@ const Cart: React.FC = () => {
                         aria-label={deleteActionLabel}
                         title={deleteActionLabel}
                       />
-                    </Popconfirm>
+                    </ShopPopconfirm>
                   </div>
                 </div>
               </article>
@@ -2031,8 +2032,8 @@ const Cart: React.FC = () => {
                   <Button icon={<ShopIcon path={SI.cart} />} loading={restoringSavedItem} disabled={hasStaleCartData || restoringSavedItem} aria-label={moveActionLabel} title={moveActionLabel} onClick={() => moveSavedItemToCart(item)}>
                     {t('pages.cart.moveToCart')}
                   </Button>
-                  <Popconfirm
-                    classNames={{ root: 'shop-mobile-popup-layer cart-page-popconfirm' }}
+                  <ShopPopconfirm
+                    rootClassName='shop-mobile-popup-layer cart-page-popconfirm'
                     title={t('pages.cart.deleteSavedConfirm')}
                     onConfirm={() => removeSavedItem(item.id)}
                     okText={t('common.confirm')}
@@ -2041,7 +2042,7 @@ const Cart: React.FC = () => {
                     cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${deleteActionLabel}`, title: `${t('common.cancel')}: ${deleteActionLabel}` }}
                   >
                     <Button danger type="text" icon={<ShopIcon path={SI.delete} />} disabled={restoringSavedItem} aria-label={deleteActionLabel} title={deleteActionLabel} />
-                  </Popconfirm>
+                  </ShopPopconfirm>
                 </div>
               </div>
               );

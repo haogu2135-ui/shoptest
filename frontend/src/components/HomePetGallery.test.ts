@@ -11,7 +11,9 @@ describe('HomePetGallery storefront UGC contract', () => {
     expect(source).toContain('aria-label={likeActionLabel}');
     expect(source).toContain('aria-pressed={item.likedByMe}');
     expect(source).toContain('aria-label={deleteActionLabel}');
-    expect(source).toContain("classNames={{ root: 'shop-mobile-popup-layer shopee-home-popconfirm' }}");
+    expect(source).toContain("rootClassName='shop-mobile-popup-layer shopee-home-popconfirm'");
+    expect(source).toContain('ShopPopconfirm');
+    expect(source).not.toMatch(/(?<!Shop)Popconfirm/);
   });
 
   it('keeps gallery images optimized and modal previews safe on mobile', () => {
@@ -20,7 +22,9 @@ describe('HomePetGallery storefront UGC contract', () => {
     expect(source).toContain('loading="lazy"');
     expect(source).toContain('decoding="async"');
     expect(source).toContain('className="profile-mobile-safe-modal pet-ugc-preview"');
-    expect(source).toContain('destroyOnHidden');
+    expect(source).toContain('ShopModal');
+    expect(source).toContain('rootClassName="pet-ugc-preview-root"');
+    expect(source).not.toMatch(/<Modal\b/);
     expect(source).toContain('onError={applyPetGalleryImageFallback}');
   });
 });

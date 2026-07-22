@@ -173,16 +173,16 @@
   min-width: 94px;
 }
 
-.shop-nav__language .ant-select-selector,
-.shop-nav__currency .ant-select-selector {
+.shop-nav__language.shop-select,
+.shop-nav__currency.shop-select {
   border: 0 !important;
   background: rgba(255, 255, 255, 0.16) !important;
   color: #fff !important;
   box-shadow: none !important;
 }
 
-.shop-nav__language .ant-select-arrow,
-.shop-nav__currency .ant-select-arrow {
+.shop-nav__language .shop-select__arrow,
+.shop-nav__currency .shop-select__arrow {
   color: #fff;
 }
 
@@ -338,7 +338,7 @@
   min-width: 0;
 }
 
-.shop-nav__search .ant-input-group {
+.shop-nav__search .shop-search-field {
   height: 44px;
   padding: 3px;
   border-radius: 8px;
@@ -347,36 +347,36 @@
   transition: box-shadow var(--transition-fast), transform var(--transition-fast);
 }
 
-.shop-nav__search .ant-input-group:focus-within {
+.shop-nav__search .shop-search-field:focus-within {
   transform: translateY(-1px);
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.2), 0 0 0 3px rgba(238, 77, 45, 0.24);
 }
 
-.shop-nav__search .ant-input-affix-wrapper {
+.shop-nav__search .shop-search-field__control {
   height: 44px;
   border: 0;
   box-shadow: none;
 }
 
-.shop-nav__search .ant-input-group-addon,
-.shop-nav__search .ant-btn {
+.shop-nav__search .shop-search-field__submit,
+.shop-nav__search .shop-search-field__submit {
   border: 0;
 }
 
-.shop-nav__search .ant-input-group-addon {
+.shop-nav__search .shop-search-field__submit {
   width: 62px;
   min-width: 62px;
   padding: 0;
   background: transparent;
 }
 
-.shop-nav__search .ant-input-search-button {
+.shop-nav__search .shop-search-field__submit {
   display: inline-flex;
   align-items: center;
   justify-content: center;
 }
 
-.shop-nav__search .ant-btn {
+.shop-nav__search .shop-search-field__submit {
   width: 62px;
   min-height: 44px;
   height: auto;
@@ -388,19 +388,19 @@
   line-height: 1.1;
 }
 
-.shop-nav__search .ant-btn:hover,
-.shop-nav__search .ant-btn:focus {
+.shop-nav__search .shop-search-field__submit:hover,
+.shop-nav__search .shop-search-field__submit:focus {
   background: #f2673f !important;
   color: #ffffff !important;
   transform: translateY(-1px) scale(1.05);
   box-shadow: 0 8px 18px rgba(238, 77, 45, 0.28);
 }
 
-.shop-nav__search .ant-btn:active {
+.shop-nav__search .shop-search-field__submit:active {
   transform: scale(0.97);
 }
 
-.shop-nav__search .ant-input-affix-wrapper {
+.shop-nav__search .shop-search-field__control {
   border-radius: 6px 0 0 6px;
 }
 
@@ -679,7 +679,7 @@
   font-weight: 700;
 }
 
-.shop-nav__select-popup .ant-select-item-option-selected {
+.shop-nav__select-popup .shop-select__option--selected {
   background: #f8fcf9 !important;
   color: #173f2b !important;
   font-weight: 700;
@@ -690,7 +690,7 @@
   z-index: 2400 !important;
 }
 
-.shop-nav__dropdown-popup .ant-dropdown-menu {
+.shop-nav__dropdown-popup .shop-dropdown__menu {
   position: relative;
   z-index: 1;
 }
@@ -704,7 +704,7 @@
     max-width: calc(100vw - 16px);
   }
 
-  body .shop-nav__dropdown-popup .ant-dropdown-menu {
+  body .shop-nav__dropdown-popup .shop-dropdown__menu {
     max-height: calc(100vh - 24px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
     overflow-y: auto;
     overscroll-behavior: contain;
@@ -712,34 +712,34 @@
   }
 
   @supports (height: 100dvh) {
-    body .shop-nav__dropdown-popup .ant-dropdown-menu {
+    body .shop-nav__dropdown-popup .shop-dropdown__menu {
       max-height: calc(100dvh - 24px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
     }
   }
 }
 
 @media (max-width: 780px) and (max-height: 430px) {
-  body .shop-nav__dropdown-popup .ant-dropdown-menu {
+  body .shop-nav__dropdown-popup .shop-dropdown__menu {
     max-height: calc(100vh - var(--shop-mobile-bottom-nav-height, 72px) - 24px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) !important;
   }
 
   @supports (height: 100dvh) {
-    body .shop-nav__dropdown-popup .ant-dropdown-menu {
+    body .shop-nav__dropdown-popup .shop-dropdown__menu {
       max-height: calc(100dvh - var(--shop-mobile-bottom-nav-height, 72px) - 24px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) !important;
     }
   }
 }
 
 @media (max-width: 780px) {
-  .shop-nav__dropdown-popup .ant-dropdown-menu-item,
-  .shop-nav__dropdown-popup .ant-dropdown-menu-submenu-title {
+  .shop-nav__dropdown-popup .shop-dropdown__item,
+  .shop-nav__dropdown-popup .shop-dropdown__item--submenu {
     min-height: 44px;
     display: flex;
     align-items: center;
     padding-block: 10px;
   }
 
-  .shop-nav__dropdown-popup .ant-dropdown-menu-title-content {
+  .shop-nav__dropdown-popup .shop-dropdown__label {
     min-width: 0;
   }
 }
@@ -846,16 +846,16 @@
     min-width: 0;
   }
 
-  .shop-nav__search .ant-input-group {
+  .shop-nav__search .shop-search-field {
     height: 44px;
     padding: 2px;
   }
 
-  .shop-nav__search .ant-input-affix-wrapper {
+  .shop-nav__search .shop-search-field__control {
     height: 44px;
   }
 
-  .shop-nav__search .ant-btn {
+  .shop-nav__search .shop-search-field__submit {
     width: 48px;
     min-width: 46px;
     min-height: 44px;
@@ -863,7 +863,7 @@
     padding-inline: 7px;
   }
 
-  .shop-nav__search .ant-input-group-addon {
+  .shop-nav__search .shop-search-field__submit {
     width: 48px;
     min-width: 48px;
   }
@@ -1092,7 +1092,7 @@
   overflow-wrap: anywhere;
 }
 
-.shop-nav--es .shop-nav__search .ant-input::placeholder {
+.shop-nav--es .shop-nav__search .shop-search-field__input::placeholder {
   font-size: 13px;
 }
 
@@ -1120,7 +1120,7 @@
     white-space: normal;
   }
 
-  .shop-nav--es .shop-nav__search .ant-input::placeholder {
+  .shop-nav--es .shop-nav__search .shop-search-field__input::placeholder {
     font-size: 12px;
   }
 }
@@ -1151,7 +1151,7 @@
   white-space: nowrap;
 }
 
-.shop-nav--es .shop-nav__search .ant-input-affix-wrapper {
+.shop-nav--es .shop-nav__search .shop-search-field__control {
   min-width: 0;
 }
 
@@ -1223,7 +1223,7 @@
   letter-spacing: 0;
 }
 
-.shop-nav__search .ant-input-group {
+.shop-nav__search .shop-search-field {
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.98);
   box-shadow:
@@ -1231,12 +1231,12 @@
     inset 0 0 0 1px rgba(18, 71, 52, 0.06);
 }
 
-.shop-nav__search .ant-input-affix-wrapper {
+.shop-nav__search .shop-search-field__control {
   border-radius: 999px 0 0 999px;
   background: transparent;
 }
 
-.shop-nav__search .ant-btn {
+.shop-nav__search .shop-search-field__submit {
   border-radius: 999px !important;
   background: linear-gradient(135deg, #ff6d46, #ee4d2d);
   box-shadow: 0 8px 18px rgba(238, 77, 45, 0.22);
@@ -1278,15 +1278,15 @@
     border-radius: 12px;
   }
 
-  .shop-nav__search .ant-input-group {
+  .shop-nav__search .shop-search-field {
     border-radius: 16px;
   }
 
-  .shop-nav__search .ant-input-affix-wrapper {
+  .shop-nav__search .shop-search-field__control {
     border-radius: 14px 0 0 14px;
   }
 
-  .shop-nav__search .ant-btn {
+  .shop-nav__search .shop-search-field__submit {
     border-radius: 14px !important;
   }
 
@@ -1350,11 +1350,11 @@
   position: relative;
 }
 
-.shop-nav__search .ant-input-group {
+.shop-nav__search .shop-search-field {
   isolation: isolate;
 }
 
-.shop-nav__search .ant-input-group::before {
+.shop-nav__search .shop-search-field::before {
   content: '';
   position: absolute;
   inset: -2px;
@@ -1365,16 +1365,16 @@
   transition: opacity 0.18s ease;
 }
 
-.shop-nav__search .ant-input-group:focus-within::before {
+.shop-nav__search .shop-search-field:focus-within::before {
   opacity: 1;
 }
 
-.shop-nav__search .ant-input {
+.shop-nav__search .shop-search-field__input {
   min-width: 0;
   font-weight: 700;
 }
 
-.shop-nav__search .ant-input::placeholder {
+.shop-nav__search .shop-search-field__input::placeholder {
   color: rgba(36, 75, 55, 0.58);
   font-weight: 700;
 }
@@ -1455,9 +1455,9 @@
   align-items: center;
 }
 
-.shop-nav__mobile-tools .ant-select-selector,
-.shop-nav__language .ant-select-selector,
-.shop-nav__currency .ant-select-selector {
+.shop-nav__mobile-tools .shop-select,
+.shop-nav__language.shop-select,
+.shop-nav__currency.shop-select {
   border-radius: 999px !important;
 }
 
@@ -1500,7 +1500,7 @@
     grid-row: 1;
   }
 
-  .shop-nav__search .ant-input-group::before {
+  .shop-nav__search .shop-search-field::before {
     display: none;
   }
 
@@ -1545,7 +1545,7 @@
     display: none;
   }
 
-  .shop-nav__search .ant-input::placeholder {
+  .shop-nav__search .shop-search-field__input::placeholder {
     font-size: 12px;
   }
 }
@@ -1605,28 +1605,28 @@
     margin-top: 1px;
   }
 
-  .shop-nav__search .ant-input-group {
+  .shop-nav__search .shop-search-field {
     height: 44px;
     border-radius: 18px;
   }
 
-  .shop-nav__search .ant-input-affix-wrapper {
+  .shop-nav__search .shop-search-field__control {
     height: 44px;
     border-radius: 16px 0 0 16px;
   }
 
-  .shop-nav__search .ant-input {
+  .shop-nav__search .shop-search-field__input {
     font-size: 14px;
   }
 
-  .shop-nav__search .ant-btn {
+  .shop-nav__search .shop-search-field__submit {
     width: 52px;
     min-width: 52px;
     min-height: 44px;
     border-radius: 16px !important;
   }
 
-  .shop-nav__search .ant-input-group-addon {
+  .shop-nav__search .shop-search-field__submit {
     width: 52px;
     min-width: 52px;
   }
@@ -1887,7 +1887,7 @@
   }
 
   .shop-nav__search,
-  .shop-nav__search .ant-input-group {
+  .shop-nav__search .shop-search-field {
     min-width: 0;
   }
 }
@@ -2121,18 +2121,18 @@
 
 /* Final mobile nav search input target pass */
 @media (max-width: 780px) {
-  .shop-nav__search .ant-input-affix-wrapper {
+  .shop-nav__search .shop-search-field__control {
     align-items: center;
   }
 
-  .shop-nav__search .ant-input-affix-wrapper .ant-input {
+  .shop-nav__search .shop-search-field__input {
     height: 44px;
     line-height: 44px;
   }
 
-  .shop-nav__search .ant-input-prefix,
-  .shop-nav__search .ant-input-suffix,
-  .shop-nav__search .ant-input-clear-icon {
+  .shop-nav__search .shop-search-field__prefix,
+  .shop-nav__search .shop-search-field__clear,
+  .shop-nav__search .shop-search-field__clear {
     min-width: 34px;
     min-height: 44px;
     display: inline-flex;
@@ -2140,7 +2140,7 @@
     justify-content: center;
   }
 
-  .shop-nav__search .ant-input-clear-icon {
+  .shop-nav__search .shop-search-field__clear {
     margin-inline-end: -8px;
   }
 }
@@ -2200,24 +2200,24 @@
     gap: 5px;
   }
 
-  .shop-nav__search .ant-input-group {
+  .shop-nav__search .shop-search-field {
     height: 44px;
     padding: 2px;
     border-radius: 15px;
   }
 
-  .shop-nav__search .ant-input-affix-wrapper {
+  .shop-nav__search .shop-search-field__control {
     height: 44px;
     border-radius: 14px 0 0 14px;
   }
 
-  .shop-nav__search .ant-input-group-addon,
-  .shop-nav__search .ant-btn {
+  .shop-nav__search .shop-search-field__submit,
+  .shop-nav__search .shop-search-field__submit {
     width: 46px;
     min-width: 46px;
   }
 
-  .shop-nav__search .ant-btn {
+  .shop-nav__search .shop-search-field__submit {
     min-height: 44px;
     border-radius: 14px !important;
   }
@@ -2246,7 +2246,7 @@
     max-width: 104px;
   }
 
-  .shop-nav__search .ant-input::placeholder {
+  .shop-nav__search .shop-search-field__input::placeholder {
     font-size: 12px;
   }
 }
@@ -2284,29 +2284,29 @@
     min-height: 44px;
   }
 
-  .shop-nav__search .ant-input-group {
+  .shop-nav__search .shop-search-field {
     height: 44px;
     padding: 2px;
     border-radius: 14px;
   }
 
-  .shop-nav__search .ant-input-affix-wrapper {
+  .shop-nav__search .shop-search-field__control {
     height: 44px;
     border-radius: 12px 0 0 12px;
   }
 
-  .shop-nav__search .ant-input-affix-wrapper .ant-input {
+  .shop-nav__search .shop-search-field__input {
     height: 44px;
     line-height: 44px;
   }
 
-  .shop-nav__search .ant-input-group-addon,
-  .shop-nav__search .ant-btn {
+  .shop-nav__search .shop-search-field__submit,
+  .shop-nav__search .shop-search-field__submit {
     width: 44px;
     min-width: 44px;
   }
 
-  .shop-nav__search .ant-btn {
+  .shop-nav__search .shop-search-field__submit {
     min-height: 44px;
     border-radius: 12px !important;
   }
@@ -2338,7 +2338,7 @@
 
 /* Final mobile nav search field target pass */
 @media (max-width: 430px) {
-  .shop-nav__search .ant-input-affix-wrapper .ant-input {
+  .shop-nav__search .shop-search-field__input {
     height: 44px;
     min-height: 44px;
     line-height: 44px;
@@ -2380,12 +2380,12 @@
   }
 
   .shop-nav__searchBar,
-  .shop-nav__search .ant-input-group,
-  .shop-nav__search .ant-input-wrapper {
+  .shop-nav__search .shop-search-field,
+  .shop-nav__search .shop-search-field {
     max-width: 100%;
   }
 
-  .shop-nav__search .ant-input {
+  .shop-nav__search .shop-search-field__input {
     min-width: 0;
     font-size: 14px;
   }
@@ -2607,24 +2607,24 @@
     padding-inline: 0;
   }
 
-  .shop-nav .shop-nav__search .ant-input-group {
+  .shop-nav .shop-nav__search .shop-search-field {
     min-height: 44px;
     height: auto;
     padding: 0;
   }
 
-  .shop-nav .shop-nav__search .ant-input-affix-wrapper,
-  .shop-nav .shop-nav__search .ant-input-search-button,
-  .shop-nav .shop-nav__search .ant-btn {
+  .shop-nav .shop-nav__search .shop-search-field__control,
+  .shop-nav .shop-nav__search .shop-search-field__submit,
+  .shop-nav .shop-nav__search .shop-search-field__submit {
     min-height: 44px;
     height: 44px;
   }
 
-  .shop-nav .shop-nav__search .ant-input-affix-wrapper {
+  .shop-nav .shop-nav__search .shop-search-field__control {
     border-radius: 18px 0 0 18px;
   }
 
-  .shop-nav .shop-nav__search .ant-btn {
+  .shop-nav .shop-nav__search .shop-search-field__submit {
     min-width: 52px;
     border-radius: 18px !important;
     touch-action: manipulation;
@@ -2757,8 +2757,8 @@ body.shop-mobile-app .shop-nav .shop-nav__actions > .shop-nav__mobile-auth {
   display: none !important;
 }
 
-body.shop-mobile-app .shop-nav .shop-nav__search .ant-input-search-button,
-body.shop-mobile-app .shop-nav .shop-nav__search .ant-btn {
+body.shop-mobile-app .shop-nav .shop-nav__search .shop-search-field__submit,
+body.shop-mobile-app .shop-nav .shop-nav__search .shop-search-field__submit {
   min-width: 44px !important;
   width: 44px !important;
   height: 44px !important;
@@ -2847,20 +2847,20 @@ body.shop-mobile-app .shop-nav .shop-nav__actions > .shop-nav__actionSummary {
     min-width: 0;
   }
 
-  .shop-nav .shop-nav__search .ant-input-group {
+  .shop-nav .shop-nav__search .shop-search-field {
     min-height: 44px !important;
     height: 44px !important;
     padding: 0 !important;
   }
 
-  .shop-nav .shop-nav__search .ant-input-affix-wrapper,
-  .shop-nav .shop-nav__search .ant-input-search-button,
-  .shop-nav .shop-nav__search .ant-btn {
+  .shop-nav .shop-nav__search .shop-search-field__control,
+  .shop-nav .shop-nav__search .shop-search-field__submit,
+  .shop-nav .shop-nav__search .shop-search-field__submit {
     min-height: 44px !important;
     height: 44px !important;
   }
 
-  .shop-nav .shop-nav__search .ant-btn {
+  .shop-nav .shop-nav__search .shop-search-field__submit {
     min-width: 48px !important;
   }
 
@@ -2913,8 +2913,8 @@ body.shop-mobile-app .shop-nav .shop-nav__actions > .shop-nav__actionSummary {
   body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-nav .shop-nav__brand,
   body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-nav .shop-nav__actions > .shop-nav__more-trigger,
   body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-nav .shop-nav__actions > .shop-nav__cart-action,
-  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-nav .shop-nav__search .ant-input-search-button,
-  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-nav .shop-nav__search .ant-btn {
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-nav .shop-nav__search .shop-search-field__submit,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-nav .shop-nav__search .shop-search-field__submit {
     box-sizing: border-box !important;
     height: 44px !important;
     min-height: 44px !important;
@@ -2931,8 +2931,8 @@ body.shop-mobile-app .shop-nav .shop-nav__actions > .shop-nav__actionSummary {
     max-width: 44px !important;
   }
 
-  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-nav .shop-nav__search .ant-input-search-button,
-  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-nav .shop-nav__search .ant-btn {
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-nav .shop-nav__search .shop-search-field__submit,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-nav .shop-nav__search .shop-search-field__submit {
     width: 46px !important;
     min-width: 46px !important;
     max-width: 46px !important;
@@ -2948,8 +2948,8 @@ body.shop-mobile-app .shop-nav .shop-nav__actions > .shop-nav__actionSummary {
     transform: none !important;
   }
 
-  body.shop-mobile-app .shop-nav .shop-nav__search .ant-input-search-button,
-  body.shop-mobile-app .shop-nav .shop-nav__search .ant-btn,
+  body.shop-mobile-app .shop-nav .shop-nav__search .shop-search-field__submit,
+  body.shop-mobile-app .shop-nav .shop-nav__search .shop-search-field__submit,
   body.shop-mobile-app .shop-nav .shop-nav__actions > .shop-nav__more-trigger,
   body.shop-mobile-app .shop-nav .shop-nav__actions > .shop-nav__cart-action {
     width: 44px !important;
@@ -2962,7 +2962,7 @@ body.shop-mobile-app .shop-nav .shop-nav__actions > .shop-nav__actionSummary {
     scale: 1 !important;
   }
 
-  body.shop-mobile-app .shop-nav .shop-nav__search .ant-input-search-button {
+  body.shop-mobile-app .shop-nav .shop-nav__search .shop-search-field__submit {
     width: 46px !important;
     min-width: 46px !important;
     max-width: 46px !important;
@@ -3247,13 +3247,13 @@ body.shop-mobile-app .shop-nav__bottomItem--active .ant-badge + span {
 /* Absolute mobile menu target closure: sub-pixel layout can leave dropdown
    rows just under 44px, so reserve a stable 48px row. */
 @media (max-width: 780px) {
-  .shop-nav__dropdown-popup .ant-dropdown-menu-item,
-  .shop-nav__dropdown-popup .ant-dropdown-menu-submenu-title {
+  .shop-nav__dropdown-popup .shop-dropdown__item,
+  .shop-nav__dropdown-popup .shop-dropdown__item--submenu {
     min-height: 48px !important;
     padding-block: 12px !important;
   }
 
-  .shop-nav__dropdown-popup .ant-dropdown-menu-title-content,
+  .shop-nav__dropdown-popup .shop-dropdown__label,
   .shop-nav__dropdown-popup .shop-nav__menu-action {
     min-height: 44px;
     display: flex;
@@ -3291,24 +3291,24 @@ body.shop-mobile-app .shop-nav__bottomItem--active .ant-badge + span {
 
 /* Final native App navbar action hit-area guard. */
 @media (max-width: 780px) {
-  body.shop-mobile-app .shop-nav .shop-nav__search .ant-input-group {
+  body.shop-mobile-app .shop-nav .shop-nav__search .shop-search-field {
     min-height: 44px !important;
     height: auto !important;
     padding: 0 !important;
   }
 
-  body.shop-mobile-app .shop-nav .shop-nav__search .ant-input-affix-wrapper,
-  body.shop-mobile-app .shop-nav .shop-nav__search .ant-input-search-button,
-  body.shop-mobile-app .shop-nav .shop-nav__search .ant-btn {
+  body.shop-mobile-app .shop-nav .shop-nav__search .shop-search-field__control,
+  body.shop-mobile-app .shop-nav .shop-nav__search .shop-search-field__submit,
+  body.shop-mobile-app .shop-nav .shop-nav__search .shop-search-field__submit {
     min-height: 44px !important;
     height: 44px !important;
   }
 
-  body.shop-mobile-app .shop-nav .shop-nav__search .ant-input-affix-wrapper {
+  body.shop-mobile-app .shop-nav .shop-nav__search .shop-search-field__control {
     border-radius: 18px 0 0 18px !important;
   }
 
-  body.shop-mobile-app .shop-nav .shop-nav__search .ant-btn {
+  body.shop-mobile-app .shop-nav .shop-nav__search .shop-search-field__submit {
     min-width: 52px !important;
     border-radius: 18px !important;
     touch-action: manipulation;
@@ -3531,10 +3531,10 @@ body.shop-mobile-app .shop-nav .shop-nav__actions > .shop-nav__actionSummary {
     touch-action: manipulation;
   }
 
-  .shop-nav .shop-nav__search .ant-input-search-button,
-  .shop-nav .shop-nav__search .ant-btn,
-  body.shop-mobile-app .shop-nav .shop-nav__search .ant-input-search-button,
-  body.shop-mobile-app .shop-nav .shop-nav__search .ant-btn {
+  .shop-nav .shop-nav__search .shop-search-field__submit,
+  .shop-nav .shop-nav__search .shop-search-field__submit,
+  body.shop-mobile-app .shop-nav .shop-nav__search .shop-search-field__submit,
+  body.shop-mobile-app .shop-nav .shop-nav__search .shop-search-field__submit {
     min-width: 44px !important;
     min-height: 44px !important;
     height: 44px !important;
@@ -3669,4 +3669,66 @@ body.shop-mobile-app .shop-nav .shop-nav__actions > .shop-nav__actionSummary {
     font-size: 12px !important;
     line-height: 1.2 !important;
   }
+}
+
+
+/* Gate116: native ShopSelect nav popup */
+body .shop-nav__select-popup.shop-select__popup {
+  z-index: 2400 !important;
+}
+
+
+/* Gate123 shop dropdown densify */
+.shop-nav__dropdown-popup.shop-dropdown__popup,
+body .shop-nav__dropdown-popup.shop-dropdown__popup {
+  z-index: 2400;
+}
+.shop-nav__dropdown-popup .shop-dropdown__item {
+  min-height: 44px;
+}
+.shop-nav__dropdown-popup .shop-nav__menu-action {
+  width: 100%;
+  text-align: left;
+}
+.shop-nav__dropdown-popup .shop-nav__menu-current,
+.shop-nav__dropdown-popup .shop-nav__menu-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+
+/* Gate124 shop search densify */
+.shop-nav__search .shop-search-field {
+  height: 44px;
+  padding: 3px;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.14);
+}
+.shop-nav__search .shop-search-field:focus-within {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.2), 0 0 0 3px rgba(238, 77, 45, 0.24);
+}
+.shop-nav__search .shop-search-field__control {
+  height: auto;
+  min-height: 38px;
+  border: 0;
+  border-radius: 6px 0 0 6px;
+  box-shadow: none;
+  background: transparent;
+}
+.shop-nav__search .shop-search-field__submit {
+  width: 62px;
+  min-width: 62px;
+  min-height: 38px;
+  border-radius: 6px !important;
+  background: #ee4d2d;
+  color: #ffffff;
+  font-weight: 800;
+}
+.shop-nav__search .shop-search-field__submit:hover,
+.shop-nav__search .shop-search-field__submit:focus-visible {
+  background: #f2673f !important;
+  color: #ffffff !important;
 }

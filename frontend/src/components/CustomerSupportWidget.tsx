@@ -1,7 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { ShopIcon, SI } from './ShopIcon';
-import { Alert, Avatar, Badge, Button, Input, Modal, Select, Tag } from 'antd';
+import { Alert, Avatar, Badge, Button, Input, Tag } from 'antd';
+import ShopModal from './ShopModal';
+import ShopSelect from './ShopSelect';
 import { useNavigate } from 'react-router-dom';
 import { orderApi, supportApi, supportWebSocketProtocols, supportWebSocketUrl } from '../api';
 import type { OrderCustomer, OrderItemCustomer, SupportMessageCustomer, SupportSessionCustomer } from '../types';
@@ -43,8 +45,6 @@ const SUPPORT_FOCUSABLE_SELECTOR = [
 ].join(',');
 const supportOrderImageFallback = productImageFallback;
 const resolveSupportOrderImage = resolveProductImage;
-const supportOrderSelectPopupClassNames = { popup: { root: 'shop-mobile-popup-layer support-order-select-popup' } };
-const supportOrderSelectPopupStyles = { popup: { root: { zIndex: SUPPORT_ORDER_OVERLAY_Z_INDEX + 1 } } };
 const SUPPORT_ORDER_STATUS_KEYS = new Set([
   'PENDING_PAYMENT',
   'PENDING_SHIPMENT',
@@ -465,7 +465,7 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
   const decodeOrderMessage = decodeSupportOrderMessage;
 
   const orderOptions = useMemo(() => orders.map((order) => ({
-    value: order.id,
+    value: String(order.id),
     label: `${formatSafeDate(order.createdAt, dateLocale, '') ? `${formatSafeDate(order.createdAt, dateLocale)} - ` : ''}${supportOrderLabel(order)} - ${formatMoney(order.totalAmount)}`,
   })), [orders, formatMoney, dateLocale, supportOrderLabel]);
 
@@ -1017,7 +1017,7 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
   };
 
   const sessionOptions = sessionHistory.map((item) => ({
-    value: item.id,
+    value: String(item.id),
     label: supportSessionLabel(item),
   }));
   const supportPanelCloseLabel = `${t('common.close')}: ${t('pages.support.title')}`;
@@ -1142,19 +1142,19 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
           </div>
           {!activeGuestContext && sessionHistory.length > 1 ? (
             <div className="customer-support-widget__sessionPicker">
-              <Select
+              <ShopSelect
                 size="small"
                 className="customer-support-widget__sessionSelect"
-                value={session?.id}
-                aria-label={supportSessionSelectLabel}
+                value={session?.id != null ? String(session.id) : undefined}
+                ariaLabel={supportSessionSelectLabel}
                 title={supportSessionSelectLabel}
                 disabled={sessionSwitching}
-                loading={sessionSwitching}
-                onChange={(value) => switchSession(Number(value))}
+                onChange={(value) => {
+                  if (value) void switchSession(Number(value));
+                }}
                 options={sessionOptions}
-                optionFilterProp="label"
-                classNames={{ popup: { root: 'shop-mobile-popup-layer' } }}
-                getPopupContainer={() => document.body}
+                popupClassName="shop-mobile-popup-layer"
+                popupZIndex={SUPPORT_ORDER_OVERLAY_Z_INDEX + 1}
               />
             </div>
           ) : null}
@@ -1413,18 +1413,15 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
                   )}
                 />
               ) : null}
-              <Select
-                showSearch
-                optionFilterProp="label"
+              <ShopSelect
                 className="customer-support-widget__orderSelect"
                 placeholder={t('pages.support.pickOrder')}
-                aria-label={supportOrderSelectLabel}
+                ariaLabel={supportOrderSelectLabel}
                 title={supportOrderSelectLabel}
                 options={orderOptions}
-                listHeight={isMobileViewport ? 220 : 256}
-                popupMatchSelectWidth={!isMobileViewport}
                 open={orderSelectOpen}
-                onSelect={(value) => {
+                onChange={(value) => {
+                  if (!value) return;
                   setOrderSelectOpen(false);
                   sendOrder(Number(value));
                 }}
@@ -1434,11 +1431,12 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
                     fetchSupportOrders();
                   }
                 }}
-                classNames={supportOrderSelectPopupClassNames}
-                styles={supportOrderSelectPopupStyles}
-                getPopupContainer={() => document.body}
-                placement="topLeft"
-                notFoundContent={
+                popupClassName="shop-mobile-popup-layer support-order-select-popup"
+                popupZIndex={SUPPORT_ORDER_OVERLAY_Z_INDEX + 1}
+                popupMaxHeight={isMobileViewport ? 220 : 280}
+                loading={ordersLoading || sendingOrderId !== null}
+                disabled={conversationUnavailable || sendingOrderId !== null}
+                emptyContent={
                   ordersLoading ? (
                     <span
                       className="customer-support-widget__orderSelectLoading"
@@ -1472,8 +1470,6 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
                     </div>
                   )
                 }
-                loading={ordersLoading || sendingOrderId !== null}
-                disabled={conversationUnavailable || sendingOrderId !== null}
               />
             </div>
             <Input.TextArea
@@ -1501,15 +1497,16 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
           </div>
         </div>
       )}
-      <Modal
+      <ShopModal
         rootClassName="customer-support-widget__orderModalRoot"
         className="profile-mobile-safe-modal customer-support-widget__orderModal"
-        zIndex={SUPPORT_ORDER_OVERLAY_Z_INDEX}
         width={isMobileViewport ? 'calc(100vw - 20px)' : 520}
         title={supportOrderTitle(detailOrder)}
         open={!!detailOrder || detailLoading}
-        onCancel={closeOrderDetail}
+        onClose={closeOrderDetail}
         footer={null}
+        ariaLabel={supportOrderTitle(detailOrder) || t('pages.support.title')}
+        closeLabel={t('common.close', { defaultValue: 'Close' })}
       >
         {detailLoading ? (
           <div
@@ -1583,7 +1580,7 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
             )}
           </div>
         ) : null}
-      </Modal>
+      </ShopModal>
     </>
   );
 };

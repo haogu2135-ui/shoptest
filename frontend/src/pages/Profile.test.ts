@@ -64,18 +64,22 @@ describe('Profile mobile control visibility', () => {
     const css = readProfileCss();
     const f3539Css = css.slice(css.indexOf('/* F3539'));
 
-    expect(source).toContain("const profileModalPopupClassNames = { popup: { root: 'shop-mobile-popup-layer profile-modal-popup' } };");
-    expect(source).toContain('<Cascader');
-    expect(source).toContain('<DatePicker className="profile-pet-modal__field"');
-    expect(source.match(/classNames=\{profileModalPopupClassNames\}/g)?.length).toBeGreaterThanOrEqual(4);
-    expect(source.match(/placement="bottomLeft"/g)?.length).toBeGreaterThanOrEqual(4);
-    expect(source.match(/getPopupContainer=\{\(\) => document\.body\}/g)?.length).toBeGreaterThanOrEqual(4);
+    expect(source).toContain('ShopCascader');
+    expect(source).toContain('<ShopDatePicker className="profile-pet-modal__field"');
+    expect(source).toContain('ShopSelect');
+    expect(source).toContain("popupClassName=\"shop-mobile-popup-layer profile-modal-popup\"");
+    expect(source).toContain('popupZIndex={12050}');
+    expect(source).not.toMatch(/import \{[^}]*\bCascader\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/import \{[^}]*\bDatePicker\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<Cascader\b/);
+    expect(source).not.toMatch(/<DatePicker\b/);
+    expect(source).not.toContain('profileModalPopupClassNames');
+    expect((source.match(/popupClassName="shop-mobile-popup-layer profile-modal-popup"/g) || []).length).toBeGreaterThanOrEqual(3);
 
     expect(f3539Css).toMatch(/@media \(max-width:\s*900px\),\s*\(max-height:\s*640px\)\s*\{/);
     expect(f3539Css).toMatch(/body \.profile-modal-popup\.shop-mobile-popup-layer\s*\{[\s\S]*?z-index:\s*12050\s*!important;[\s\S]*?pointer-events:\s*auto\s*!important;/);
-    expect(f3539Css).toMatch(/body \.profile-modal-popup\.shop-mobile-popup-layer\.ant-select-dropdown,[\s\S]*?body \.profile-modal-popup\.shop-mobile-popup-layer\.ant-cascader-dropdown\s*\{[\s\S]*?left:\s*max\(8px,\s*env\(safe-area-inset-left,\s*0px\)\)\s*!important;[\s\S]*?right:\s*max\(8px,\s*env\(safe-area-inset-right,\s*0px\)\)\s*!important;[\s\S]*?max-height:\s*min\(320px,\s*calc\(100dvh - 24px - env\(safe-area-inset-top,\s*0px\) - env\(safe-area-inset-bottom,\s*0px\)\)\)\s*!important;/);
-    expect(f3539Css).toMatch(/body \.profile-modal-popup\.shop-mobile-popup-layer\.ant-picker-dropdown\s*\{[\s\S]*?position:\s*fixed\s*!important;[\s\S]*?top:\s*max\(12px,\s*env\(safe-area-inset-top,\s*0px\)\)\s*!important;[\s\S]*?bottom:\s*auto\s*!important;[\s\S]*?max-height:\s*calc\(100dvh - 24px - env\(safe-area-inset-top,\s*0px\) - env\(safe-area-inset-bottom,\s*0px\)\)\s*!important;/);
-    expect(f3539Css).toMatch(/body \.profile-modal-popup\.shop-mobile-popup-layer \.ant-select-item-option-content,[\s\S]*?body \.profile-modal-popup\.shop-mobile-popup-layer \.ant-cascader-menu-item-content\s*\{[\s\S]*?white-space:\s*normal\s*!important;[\s\S]*?overflow-wrap:\s*anywhere\s*!important;[\s\S]*?word-break:\s*break-word\s*!important;/);
+    expect(f3539Css).toMatch(/body \.profile-modal-popup\.shop-mobile-popup-layer\.shop-select__popup,[\s\S]*?body \.profile-modal-popup\.shop-mobile-popup-layer\.shop-cascader__popup\s*\{[\s\S]*?left:\s*max\(8px,\s*env\(safe-area-inset-left,\s*0px\)\)\s*!important;[\s\S]*?right:\s*max\(8px,\s*env\(safe-area-inset-right,\s*0px\)\)\s*!important;[\s\S]*?max-height:\s*min\(320px,\s*calc\(100dvh - 24px - env\(safe-area-inset-top,\s*0px\) - env\(safe-area-inset-bottom,\s*0px\)\)\)\s*!important;/);
+    expect(f3539Css).toMatch(/body \.profile-modal-popup\.shop-mobile-popup-layer \.shop-cascader__optionLabel,[\s\S]*?body \.profile-modal-popup\.shop-mobile-popup-layer \.shop-select__option\s*\{[\s\S]*?white-space:\s*normal\s*!important;[\s\S]*?overflow-wrap:\s*anywhere\s*!important;[\s\S]*?word-break:\s*break-word\s*!important;/);
   });
 
   it('keeps primary account actions, section tabs, and order filters out of hidden rails', () => {

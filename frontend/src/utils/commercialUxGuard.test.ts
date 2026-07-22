@@ -1253,7 +1253,7 @@ it('keeps home empty category and product rails on multipath commercial recovery
     expect(nav).toMatch(/\.shop-nav__actions button[\s\S]{0,80}?min-height:\s*44px/);
     expect(nav).toMatch(/\.shop-nav__menu-action[\s\S]{0,60}?min-height:\s*44px/);
     // search field must not regress below 44 on commercial mobile
-    expect(nav).not.toMatch(/\.shop-nav__search \.ant-input-group\s*\{[\s\S]{0,80}?height:\s*(?:3[0-9]|4[0-3])px/);
+    expect(nav).not.toMatch(/\.shop-nav__search \.shop-search-field\s*\{[\s\S]{0,80}?height:\s*(?:3[0-9]|4[0-3])px/);
   });
 
 
@@ -1264,7 +1264,7 @@ it('keeps home empty category and product rails on multipath commercial recovery
     expect(list).not.toMatch(/\.product-list__actionButton--compact\s*\{[\s\S]{0,80}?height:\s*34px/);
     expect(list).toMatch(/\.product-list__smartPick[\s\S]{0,120}?min-height:\s*44px/);
     expect(list).toMatch(/mobileNextStepActions \.ant-btn[\s\S]{0,80}?min-height:\s*44px/);
-    expect(detail).toMatch(/\.product-detail-tabs \.ant-tabs-tab-btn[\s\S]{0,40}?min-height:\s*44px/);
+    expect(detail).toMatch(/\.product-detail-tabs__tab[\s\S]{0,40}?min-height:\s*44px/);
   });
 
 
@@ -1282,8 +1282,8 @@ it('keeps home empty category and product rails on multipath commercial recovery
     expect(list).toMatch(/\.product-list__mobileDiscoveryButton[\s\S]{0,80}?min-height:\s*44px/);
     expect(list).toMatch(/\.product-list__categoryButton[\s\S]{0,60}?min-height:\s*44px/);
     expect(cart).toMatch(/\.cart-page__quantityStepper \.ant-btn[\s\S]{0,80}?height:\s*44px/);
-    expect(profile).toMatch(/\.profile-tabs \.ant-tabs-tab[\s\S]{0,60}?min-height:\s*44px/);
-    expect(profile).toMatch(/\.profile-payment-modal \.ant-select-selector[\s\S]{0,60}?min-height:\s*44px/);
+    expect(profile).toMatch(/\.profile-tabs__tab[\s\S]{0,60}?min-height:\s*44px/);
+    expect(profile).toMatch(/\.profile-payment-modal__methodSelect[\s\S]{0,80}?min-height:\s*44px/);
   });
 
   
@@ -1292,9 +1292,9 @@ it('keeps home empty category and product rails on multipath commercial recovery
   it('keeps native mobile-app shell conversion rails commercially tappable at >=44px', () => {
     const mobile = readFrontend('mobile-app.css');
     // Native WebView shell must not regress search/nav/catalog conversion under 44.
-    expect(mobile).toMatch(/body\.shop-mobile-app \.shop-nav__search \.ant-input-group[\s\S]{0,80}?height:\s*44px/);
-    expect(mobile).not.toMatch(/body\.shop-mobile-app \.shop-nav__search \.ant-input-group\s*\{[\s\S]{0,60}?height:\s*(?:3[0-9]|4[0-3])px/);
-    expect(mobile).toMatch(/body\.shop-mobile-app \.shop-nav__search \.ant-btn[\s\S]{0,80}?height:\s*44px/);
+    expect(mobile).toMatch(/body\.shop-mobile-app \.shop-nav__search \.shop-search-field[\s\S]{0,80}?height:\s*44px/);
+    expect(mobile).not.toMatch(/body\.shop-mobile-app \.shop-nav__search \.shop-search-field\s*\{[\s\S]{0,60}?height:\s*(?:3[0-9]|4[0-3])px/);
+    expect(mobile).toMatch(/body\.shop-mobile-app \.shop-nav__search \.shop-search-field__submit[\s\S]{0,80}?height:\s*44px/);
     expect(mobile).toMatch(/product-list__mobileConversionActions \.ant-btn[\s\S]{0,100}?min-height:\s*44px/);
     expect(mobile).not.toMatch(/product-list__mobileContextChip[\s\S]{0,80}?min-height:\s*34px/);
     expect(mobile).toMatch(/product-list__actionButton\.ant-btn[\s\S]{0,100}?min-height:\s*44px/);
@@ -1307,8 +1307,8 @@ it('keeps home empty category and product rails on multipath commercial recovery
     expect(login).toMatch(/\.shopee-login-codeButton[\s\S]{0,120}?height:\s*44px/);
     expect(login).toMatch(/\.shopee-login-quickLinks (?:a|button)[\s\S]{0,80}?min-height:\s*44px|\.shopee-login-quickLinks a,[\s\S]{0,80}?min-height:\s*44px/);
     expect(login).toMatch(/\.shopee-login-links a,[\s\S]{0,80}?min-height:\s*44px|\.shopee-login-links a,\s*\.shopee-login-links button[\s\S]{0,60}?min-height:\s*44px/);
-    expect(login).toMatch(/\.shopee-login-tabs \.ant-tabs-tab[\s\S]{0,80}?min-height:\s*44px/);
-    expect(login).toMatch(/\.shopee-login-tabs \.ant-tabs-tab-btn[\s\S]{0,60}?min-height:\s*44px/);
+    expect(login).toMatch(/\.shopee-login-tabs__tab[\s\S]{0,80}?min-height:\s*44px/);
+    expect(login).toMatch(/\.shopee-login-tabs__tab[\s\S]{0,60}?min-height:\s*44px/);
     expect(login).not.toMatch(/\.shopee-login-codeButton[\s\S]{0,80}?height:\s*(?:3[0-9]|4[0-3])px/);
   });
 
@@ -1343,9 +1343,9 @@ it('keeps home empty category and product rails on multipath commercial recovery
     expect(i18n).toContain("setLocalStorageItem(STORAGE_KEY, home)");
     expect(i18n).not.toMatch(/return timezone\.includes\('Mexico'\) \? 'es' : 'en'/);
     // payment modal must not shrink methods/confirm below 44 on mobile
-    expect(paymentCss).not.toMatch(/\.payment-modal__method\.ant-radio-button-wrapper[\s\S]{0,80}?min-height:\s*40px/);
+    expect(paymentCss).not.toMatch(/\.payment-modal__method[\s\S]{0,80}?min-height:\s*40px/);
     expect(paymentCss).not.toMatch(/\.payment-modal__confirm[\s\S]{0,60}?min-height:\s*40px/);
-    expect(paymentCss).toMatch(/\.payment-modal__method\.ant-radio-button-wrapper[\s\S]{0,80}?min-height:\s*44px/);
+    expect(paymentCss).toMatch(/\.payment-modal__method[\s\S]{0,80}?min-height:\s*44px/);
     expect(checkoutCss).toMatch(/\.checkout-page__sectionCard \.ant-input[\s\S]{0,200}?min-height:\s*44px/);
     expect(indexHtml).toContain('lang="es-MX"');
     expect(indexHtml).toContain('og:locale" content="es_MX"');

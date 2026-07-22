@@ -950,13 +950,13 @@
 
 .coupon-claim-section__search .ant-input-affix-wrapper,
 .coupon-claim-section__search.ant-input-affix-wrapper,
-.coupon-claim-section__sort .ant-select-selector {
+.coupon-claim-section__sort.shop-select {
   min-height: 44px;
   border-radius: 8px !important;
 }
 
 .coupon-claim-section__search .anticon,
-.coupon-claim-section__sort .anticon {
+.coupon-claim-section__sort .shop-select__arrow {
   color: #627064;
 }
 
@@ -2626,7 +2626,7 @@
 
   .coupon-claim-section__search .ant-input-affix-wrapper,
   .coupon-claim-section__search.ant-input-affix-wrapper,
-  .coupon-claim-section__sort .ant-select-selector {
+  .coupon-claim-section__sort.shop-select {
     min-height: 44px;
   }
 
@@ -2634,7 +2634,7 @@
     width: 100%;
   }
 
-  .coupon-claim-section__sort .ant-select-selection-item {
+  .coupon-claim-section__sort .shop-select__value {
     font-size: 12px;
     font-weight: 800;
   }
@@ -3179,7 +3179,7 @@
     grid-template-columns: 1fr;
   }
 
-  .coupon-claim-section__sort .ant-select-selector,
+  .coupon-claim-section__sort.shop-select,
   .coupon-claim-section__search.ant-input-affix-wrapper {
     width: 100%;
   }
@@ -3527,7 +3527,7 @@
 }
 
 .coupon-claim-section__search.ant-input-affix-wrapper,
-.coupon-claim-section__sort .ant-select-selector {
+.coupon-claim-section__sort.shop-select {
   border-radius: 999px !important;
 }
 
@@ -3657,7 +3657,7 @@
 
   .coupon-claim-section__search .ant-input-affix-wrapper,
   .coupon-claim-section__search.ant-input-affix-wrapper,
-  .coupon-claim-section__sort .ant-select-selector {
+  .coupon-claim-section__sort.shop-select {
     border-radius: 999px !important;
   }
 
@@ -4270,7 +4270,7 @@
   .coupon-claim-section__search,
   .coupon-claim-section__sort,
   .coupon-claim-section__search.ant-input-affix-wrapper,
-  .coupon-claim-section__sort .ant-select-selector {
+  .coupon-claim-section__sort.shop-select {
     width: 100% !important;
     min-width: 0;
   }
@@ -4437,11 +4437,11 @@
     justify-content: center;
   }
 
-  .coupon-claim-section__sort .ant-select-selection-search-input {
+  .coupon-claim-section__sort .shop-select__value {
     height: 44px !important;
   }
 
-  .coupon-claim-section__sort .ant-select-selection-item {
+  .coupon-claim-section__sort .shop-select__value {
     min-height: 44px;
     line-height: 44px !important;
   }
@@ -4661,9 +4661,10 @@
 
   .coupon-center-page__couponTags .ant-tag {
     max-width: min(44vw, 132px);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    overflow-wrap: anywhere;
   }
 
   .coupon-center-page .coupon-center-page__mobileActionBar .ant-btn.ant-btn {
@@ -5062,7 +5063,7 @@
   .coupon-claim-section__filterEmpty .ant-btn,
   .coupon-claim-section__search .ant-input-affix-wrapper,
   .coupon-claim-section__search.ant-input-affix-wrapper,
-  .coupon-claim-section__sort .ant-select-selector,
+  .coupon-claim-section__sort.shop-select,
   .coupon-center-page__couponAction.ant-btn,
   .coupon-wallet__filter,
   .coupon-wallet__action.ant-btn,
@@ -5074,8 +5075,8 @@
 
   .coupon-claim-section__search .ant-input,
   .coupon-claim-section__search.ant-input-affix-wrapper .ant-input,
-  .coupon-claim-section__sort .ant-select-selection-search-input,
-  .coupon-claim-section__sort .ant-select-selection-item {
+  .coupon-claim-section__sort .shop-select__value,
+  .coupon-claim-section__sort .shop-select__value {
     height: 44px !important;
     line-height: 44px !important;
   }
@@ -5993,4 +5994,16 @@ ul.coupon-wallet__list {
 @keyframes coupon-center-skeleton {
   0% { background-position: 100% 0; }
   100% { background-position: 0 0; }
+}
+
+
+/* Gate120: ShopSelect sort densify */
+.coupon-claim-section__sort.shop-select {
+  min-height: 44px;
+  min-width: 148px;
+}
+.coupon-claim-section__sort.shop-select .shop-select__value {
+  overflow: hidden;
+  text-overflow: clip;
+  white-space: nowrap;
 }

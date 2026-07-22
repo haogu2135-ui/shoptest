@@ -1,6 +1,5 @@
 .shop-search-bar,
-.shop-search-bar *,
-.shop-search-bar .ant-space-item {
+.shop-search-bar * {
   box-sizing: border-box;
   min-width: 0;
   max-width: 100%;
@@ -12,25 +11,21 @@
   margin-bottom: 16px;
 }
 
-.shop-search-bar .ant-space-item,
-.shop-search-bar__input,
-.shop-search-bar__input.ant-input-affix-wrapper {
+.shop-search-bar__field,
+.shop-search-bar__input {
   width: 100%;
 }
 
-.shop-search-bar__input.ant-input-affix-wrapper {
+.shop-search-bar .shop-search-field__control {
   min-height: 44px;
   border-radius: 999px;
+  border-color: rgba(18, 71, 52, 0.12);
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 8px 20px rgba(18, 71, 52, 0.08);
 }
 
-.shop-search-bar__input .ant-input {
-  min-width: 0;
+.shop-search-bar .shop-search-field__input {
   overflow-wrap: anywhere;
-}
-
-.shop-search-bar__input .ant-input-suffix,
-.shop-search-bar__input .ant-input-prefix {
-  flex: 0 0 auto;
 }
 
 @media (max-width: 430px) {
@@ -38,43 +33,25 @@
     margin-bottom: 10px !important;
   }
 
-  .shop-search-bar__input.ant-input-affix-wrapper {
+  .shop-search-bar .shop-search-field__control {
     min-height: 44px;
     padding-inline: 12px;
     -webkit-tap-highlight-color: transparent;
   }
 }
 
-/* Final mobile search stability pass */
 @media (max-width: 600px) {
   .shop-search-bar {
     position: relative;
     z-index: 3;
   }
 
-  .shop-search-bar__input.ant-input-affix-wrapper {
-    min-height: 44px;
-    border-color: rgba(18, 71, 52, 0.12);
-    background: rgba(255, 255, 255, 0.98);
-    box-shadow: 0 8px 20px rgba(18, 71, 52, 0.08);
-  }
-
-  .shop-search-bar__input .ant-input {
-    font-size: 14px;
-  }
-}
-
-/* Android UI fourth-round closure: search input remains tappable and avoids zoom. */
-@media (max-width: 600px) {
-  .shop-search-bar__input.ant-input-affix-wrapper {
+  .shop-search-bar .shop-search-field__control {
     min-height: 44px;
   }
 
-  .shop-search-bar__input .ant-input {
+  .shop-search-bar .shop-search-field__input {
     font-size: 16px;
     line-height: 1.35;
   }
 }
-
-
-.shop-search-bar { display: block; width: 100%; }

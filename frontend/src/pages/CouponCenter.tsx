@@ -1,7 +1,8 @@
 import React, { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { ShopIcon, SI } from '../components/ShopIcon';
-import { Alert, Button, Input, Select, Tag } from 'antd';
+import { Alert, Button, Input, Tag } from 'antd';
+import ShopSelect from '../components/ShopSelect';
 import { useNavigate } from 'react-router-dom';
 import { cartApi, couponApi } from '../api';
 import type { CartItem, CouponPublic, UserCoupon } from '../types';
@@ -1003,14 +1004,14 @@ const CouponCenter: React.FC = () => {
                 aria-label={couponUiText.searchPlaceholder}
                 onChange={(event) => setCouponSearch(event.target.value)}
               />
-              <Select
+              <ShopSelect
                 className="coupon-claim-section__sort"
                 value={couponSort}
-                suffixIcon={<ShopIcon path={SI.sort} />}
-                aria-label={couponUiText.sortRecommended}
-                onChange={(value) => setCouponSort(value)}
-                classNames={{ popup: { root: 'shop-mobile-popup-layer' } }}
-                getPopupContainer={() => document.body}
+                ariaLabel={couponUiText.sortRecommended}
+                title={couponUiText.sortRecommended}
+                onChange={(value) => setCouponSort((value as CouponSort) || 'recommended')}
+                popupClassName="shop-mobile-popup-layer"
+                popupZIndex={2400}
                 options={[
                   { value: 'recommended', label: couponUiText.sortRecommended },
                   { value: 'value', label: couponUiText.sortValue },

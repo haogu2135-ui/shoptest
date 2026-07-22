@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ShopIcon, SI } from '../components/ShopIcon';
-import { Alert, Button, Select, Slider, Tag } from 'antd';
+import { Alert, Button, Tag } from 'antd';
+import ShopSelect from '../components/ShopSelect';
+import ShopRangeSlider from '../components/ShopRangeSlider';
 import { useNavigate } from 'react-router-dom';
 import { productApi } from '../api';
 import { useLanguage } from '../i18n';
@@ -258,34 +260,34 @@ const PetFinder: React.FC = () => {
             <div className="pet-finder-page__finderControls">
               <div className="pet-finder-page__control pet-finder-page__budgetControl">
                 <span className="pet-finder-page__text pet-finder-page__text--strong">{t('pages.petFinder.petType')}</span>
-                <Select
+                <ShopSelect
                   value={petType}
-                  onChange={setPetType}
+                  onChange={(value) => setPetType(value as PetType)}
                   className="pet-finder-page__fieldControl"
-                  aria-label={t('pages.petFinder.petType')}
+                  ariaLabel={t('pages.petFinder.petType')}
                   title={t('pages.petFinder.petType')}
-                  classNames={{ popup: { root: 'shop-mobile-popup-layer' } }}
-                  getPopupContainer={() => document.body}
+                  popupClassName="shop-mobile-popup-layer"
+                  popupZIndex={1100}
                   options={(['all', 'dog', 'cat', 'small'] as PetType[]).map((value) => ({ value, label: t(`pages.petFinder.petTypes.${value}`) }))}
                 />
               </div>
               <div className="pet-finder-page__control">
                 <span className="pet-finder-page__text pet-finder-page__text--strong">{t('pages.petFinder.need')}</span>
-                <Select
+                <ShopSelect
                   value={need}
-                  onChange={setNeed}
+                  onChange={(value) => setNeed(value as NeedType)}
                   className="pet-finder-page__fieldControl"
-                  aria-label={t('pages.petFinder.need')}
+                  ariaLabel={t('pages.petFinder.need')}
                   title={t('pages.petFinder.need')}
-                  classNames={{ popup: { root: 'shop-mobile-popup-layer' } }}
-                  getPopupContainer={() => document.body}
+                  popupClassName="shop-mobile-popup-layer"
+                  popupZIndex={1100}
                   options={(['all', 'play', 'walk', 'sleep', 'smart', 'groom', 'food'] as NeedType[]).map((value) => ({ value, label: t(`pages.petFinder.needs.${value}`) }))}
                 />
               </div>
               <div className="pet-finder-page__control">
                 <span className="pet-finder-page__text pet-finder-page__text--strong">{t('pages.petFinder.budget')}</span>
-                <Slider
-                  range
+                <ShopRangeSlider
+                  className="pet-finder-page__budgetSlider"
                   min={0}
                   max={maxBudget}
                   step={maxBudget > 1000 ? 50 : 10}
@@ -300,14 +302,14 @@ const PetFinder: React.FC = () => {
               </div>
               <div className="pet-finder-page__control">
                 <span className="pet-finder-page__text pet-finder-page__text--strong">{t('pages.petFinder.priority')}</span>
-                <Select
+                <ShopSelect
                   value={priority}
-                  onChange={setPriority}
+                  onChange={(value) => setPriority(value as Priority)}
                   className="pet-finder-page__fieldControl"
-                  aria-label={t('pages.petFinder.priority')}
+                  ariaLabel={t('pages.petFinder.priority')}
                   title={t('pages.petFinder.priority')}
-                  classNames={{ popup: { root: 'shop-mobile-popup-layer' } }}
-                  getPopupContainer={() => document.body}
+                  popupClassName="shop-mobile-popup-layer"
+                  popupZIndex={1100}
                   options={(['best', 'rating', 'deal', 'budget'] as Priority[]).map((value) => ({ value, label: t(`pages.petFinder.priorities.${value}`) }))}
                 />
               </div>

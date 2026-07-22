@@ -36,20 +36,23 @@ describe('CustomerSupportWidget reconnect cleanup source contracts', () => {
     const f3540Css = css.slice(css.indexOf('/* F3540'));
 
     expect(source).toContain('const SUPPORT_ORDER_OVERLAY_Z_INDEX = 10020;');
-    expect(source).toContain("const supportOrderSelectPopupClassNames = { popup: { root: 'shop-mobile-popup-layer support-order-select-popup' } };");
-    expect(source).toContain('const supportOrderSelectPopupStyles = { popup: { root: { zIndex: SUPPORT_ORDER_OVERLAY_Z_INDEX + 1 } } };');
-    expect(source).toContain('classNames={supportOrderSelectPopupClassNames}');
-    expect(source).toContain('styles={supportOrderSelectPopupStyles}');
-    expect(source).toContain('placement="topLeft"');
+    expect(source).toContain('ShopSelect');
+    expect(source).toContain('popupClassName="shop-mobile-popup-layer support-order-select-popup"');
+    expect(source).toContain('popupZIndex={SUPPORT_ORDER_OVERLAY_Z_INDEX + 1}');
+    expect(source).toContain('className="customer-support-widget__orderSelect"');
     expect(source).toContain('className="customer-support-widget__orderSelectLoading"');
+    expect(source).toContain('emptyContent=');
     expect(source).toContain('rootClassName="customer-support-widget__orderModalRoot"');
-    expect(source).toContain('zIndex={SUPPORT_ORDER_OVERLAY_Z_INDEX}');
+    expect(source).toContain('ShopModal');
+    expect(source).not.toMatch(/<Modal\b/);
+    expect(source).not.toContain('zIndex={SUPPORT_ORDER_OVERLAY_Z_INDEX}');
 
-    expect(f3540Css).toMatch(/body \.support-order-select-popup\.shop-mobile-popup-layer,[\s\S]*?body \.support-order-select-popup\.ant-select-dropdown\s*\{[\s\S]*?z-index:\s*10021\s*!important;[\s\S]*?pointer-events:\s*auto\s*!important;/);
-    expect(f3540Css).toMatch(/body \.support-order-select-popup\.ant-select-dropdown\s*\{[\s\S]*?left:\s*max\(8px,\s*env\(safe-area-inset-left,\s*0px\)\)\s*!important;[\s\S]*?right:\s*max\(8px,\s*env\(safe-area-inset-right,\s*0px\)\)\s*!important;[\s\S]*?max-height:\s*min\(360px,\s*calc\(100dvh - 24px - env\(safe-area-inset-top,\s*0px\) - env\(safe-area-inset-bottom,\s*0px\)\)\)\s*!important;/);
-    expect(f3540Css).toMatch(/body \.customer-support-widget__orderModalRoot,[\s\S]*?body \.customer-support-widget__orderModalRoot \.ant-modal-mask\s*\{[\s\S]*?z-index:\s*10020\s*!important;/);
-    expect(f3540Css).toMatch(/body \.customer-support-widget__orderModalRoot \.ant-modal-wrap\s*\{[\s\S]*?z-index:\s*10021\s*!important;/);
-    expect(f3540Css).toMatch(/body \.customer-support-widget__orderModalRoot \.customer-support-widget__orderModal\.ant-modal\s*\{[\s\S]*?z-index:\s*10022\s*!important;/);
+    expect(f3540Css).toMatch(/body \.support-order-select-popup\.shop-mobile-popup-layer(?:\.shop-select__popup)?[\s\S]*?z-index:\s*10021\s*!important;[\s\S]*?pointer-events:\s*auto\s*!important;/);
+    expect(f3540Css).toMatch(/body \.support-order-select-popup(?:\.shop-select__popup)?[\s\S]*?left:\s*max\(8px,\s*env\(safe-area-inset-left,\s*0px\)\)\s*!important;[\s\S]*?right:\s*max\(8px,\s*env\(safe-area-inset-right,\s*0px\)\)\s*!important;/);
+    expect(f3540Css).toMatch(/body \.customer-support-widget__orderModalRoot\s*\{[\s\S]*?z-index:\s*10020\s*!important;/);
+    expect(f3540Css).toMatch(/body \.customer-support-widget__orderModalRoot \.shop-modal__mask\s*\{[\s\S]*?z-index:\s*10020\s*!important;/);
+    expect(f3540Css).toMatch(/body \.customer-support-widget__orderModalRoot \.shop-modal__wrap\s*\{[\s\S]*?z-index:\s*10021\s*!important;/);
+    expect(f3540Css).toMatch(/body \.customer-support-widget__orderModalRoot \.customer-support-widget__orderModal\.shop-modal__panel\s*\{[\s\S]*?z-index:\s*10022\s*!important;/);
   });
 
   it('keeps the mobile support dialog focus trapped without fighting nested overlays', () => {

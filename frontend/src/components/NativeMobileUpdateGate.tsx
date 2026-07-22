@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { ShopIcon, SI } from './ShopIcon';
-import { Button, Modal } from 'antd';
+import { Button } from 'antd';
+import ShopModal from './ShopModal';
 import { useLanguage } from '../i18n';
 import { getLocalStorageItem, setLocalStorageItem } from '../utils/safeStorage';
 import { reportNonBlockingError } from '../utils/nonBlockingError';
@@ -183,21 +184,15 @@ export const NativeMobileUpdateGate: React.FC = () => {
   const copyDownloadActionLabel = `${t('appUpdate.copyDownloadLink')}: ${latestVersionLabel}`;
 
   return (
-    <Modal
+    <ShopModal
       open
-      centered
       closable={!updateRequired}
       maskClosable={!updateRequired}
-      onCancel={handleDismiss}
+      onClose={handleDismiss}
       title={t(updateRequired ? 'appUpdate.requiredTitle' : 'appUpdate.title')}
       rootClassName="shop-mobile-update-modal-root"
       className="profile-mobile-safe-modal shop-mobile-update-modal"
-      maskStyle={{
-        background: 'rgba(15, 30, 22, 0.48)',
-        backdropFilter: 'none',
-        WebkitBackdropFilter: 'none',
-        filter: 'none',
-      }}
+      closeLabel={t('common.close', { defaultValue: 'Close' })}
       footer={(
         <div className="shop-mobile-update-modal__actions">
           {!updateRequired ? (
@@ -243,7 +238,7 @@ export const NativeMobileUpdateGate: React.FC = () => {
           </div>
         ) : null}
       </div>
-    </Modal>
+    </ShopModal>
   );
 };
 
