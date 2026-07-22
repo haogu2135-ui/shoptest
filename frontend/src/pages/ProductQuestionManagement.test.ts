@@ -8,7 +8,10 @@ describe('ProductQuestionManagement source guards', () => {
     expect(pageSource).toContain('const hasQuestionSnapshot = questions.length > 0 || summary !== null;');
     expect(pageSource).toContain('const actionsDisabledByStaleData = Boolean(loadError);');
     expect(pageSource).toContain("message={t('pages.adminQuestions.loadErrorTitle')}");
-    expect(pageSource).toContain("description={visibleQuestions.length ? t('pages.adminQuestions.staleDataWarning') : loadError}");
+    expect(pageSource).toContain('{loadError && visibleQuestions.length > 0 ? (');
+    expect(pageSource).toContain("description={t('pages.adminQuestions.staleDataWarning')}");
+    expect(pageSource).toContain('{loadError && visibleQuestions.length === 0 ? (');
+    expect(pageSource).toContain('description={loadError}');
     expect(pageSource).toContain('onClick={loadQuestions}');
     expect(pageSource).toContain('disabled={actionsDisabledByStaleData}');
   });
@@ -21,5 +24,12 @@ describe('ProductQuestionManagement source guards', () => {
     expect(pageSource).not.toMatch(/\bany\b/);
     expect(pageSource).not.toContain('catch (err: any)');
     expect(pageSource).not.toContain('catch (error: any)');
+  });
+
+  it('uses ShopSearchField/ShopTextArea instead of ant Input', () => {
+    expect(pageSource).toContain('ShopSearchField');
+    expect(pageSource).toContain('ShopTextArea');
+    expect(pageSource).not.toMatch(/import \{[^}]*\bInput\b[^}]*\} from 'antd'/);
+    expect(pageSource).not.toMatch(/<Input\b|Input\.Search|Input\.TextArea/);
   });
 });

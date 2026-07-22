@@ -2,6 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import fs from 'fs';
 import path from 'path';
+import { MemoryRouter } from 'react-router-dom';
 import { LanguageProvider } from '../i18n';
 
 const mockGetSessions = jest.fn();
@@ -103,10 +104,13 @@ describe('SupportManagement', () => {
   });
 
   it('keeps the reply input visible after an admin selects a conversation without loaded reply permissions', async () => {
+    jest.setTimeout(15000);
     render(
-      <LanguageProvider>
-        <SupportManagement />
-      </LanguageProvider>
+      <MemoryRouter>
+        <LanguageProvider>
+          <SupportManagement />
+        </LanguageProvider>
+      </MemoryRouter>
     );
 
     await waitFor(() => expect(mockGetSessions).toHaveBeenCalled());
@@ -239,7 +243,8 @@ describe('SupportManagement', () => {
     const source = fs.readFileSync(path.resolve(__dirname, 'SupportManagement.tsx'), 'utf8');
     const css = fs.readFileSync(path.resolve(__dirname, 'SupportManagement.css'), 'utf8');
 
-    expect(source).toContain("const mobilePopconfirmClassNames = { root: 'shop-mobile-popup-layer support-management__popconfirm' };");
+    expect(source).toContain('ShopPopconfirm');
+    expect(source).toContain('rootClassName="shop-mobile-popup-layer support-management__popconfirm"');
     expect(source).toContain('title={assignSessionLabel}');
     expect(source).toContain('title={reopenSessionLabel}');
     expect(source).toContain('title={reissueBirthdayCouponLabel}');

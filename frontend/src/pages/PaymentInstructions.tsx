@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { ShopIcon, SI } from '../components/ShopIcon';
-import { Alert, Button, Input, Tag } from 'antd';
+import { Alert, Button, Tag } from 'antd';
+import ShopInput from '../components/ShopInput';
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { orderApi, paymentApi } from '../api';
 import { useLanguage } from '../i18n';
@@ -494,7 +495,7 @@ const PaymentInstructions: React.FC = () => {
                       description={t('pages.paymentInstructions.guestEmailRequiredText')}
                     />
                     <div className="payment-instructions-page__guestEmailForm">
-                      <Input
+                      <ShopInput
                         prefix={<ShopIcon path={SI.mail} />}
                         type="email"
                         inputMode="email"
@@ -502,7 +503,12 @@ const PaymentInstructions: React.FC = () => {
                         maxLength={120}
                         value={guestEmailInput}
                         onChange={(event) => setGuestEmailInput(normalizeGuestEmailInput(event.target.value))}
-                        onPressEnter={applyGuestEmailForVerify}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter') {
+                            event.preventDefault();
+                            applyGuestEmailForVerify();
+                          }
+                        }}
                         placeholder={t('pages.checkout.guestEmailPlaceholder')}
                         aria-label={t('pages.paymentInstructions.guestEmailLabel')}
                         title={t('pages.paymentInstructions.guestEmailLabel')}

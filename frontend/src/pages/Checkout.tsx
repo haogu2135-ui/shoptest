@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { ShopIcon, SI } from '../components/ShopIcon';
-import { Alert, Button, Form, Input, Progress, Tag } from 'antd';
+import { Alert, Button, Form, Progress, Tag } from 'antd';
+import ShopInput, { ShopTextArea } from '../components/ShopInput';
 import ShopModal from '../components/ShopModal';
 import ShopConfirm from '../components/ShopConfirm';
 import ShopSelect from '../components/ShopSelect';
@@ -3258,7 +3259,7 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
               rules={[{ required: true, message: t('pages.checkout.emailRequired') }, { type: 'email', message: t('pages.checkout.emailInvalid') }]}
               extra={renderCheckoutFieldErrorExtra('guestEmail')}
             >
-              <Input placeholder={t('pages.checkout.guestEmailPlaceholder')} autoComplete="email" inputMode="email" maxLength={120} />
+              <ShopInput placeholder={t('pages.checkout.guestEmailPlaceholder')} autoComplete="email" inputMode="email" maxLength={120} />
             </Form.Item>
             <span className="checkout-page__text checkout-page__text--secondary">{t('pages.checkout.guestHint')}</span>
           </section>
@@ -3341,7 +3342,7 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
                 ]}
                 extra={renderCheckoutFieldErrorExtra('recipientName')}
               >
-                <Input placeholder={t('pages.checkout.recipientRequired')} maxLength={80} autoComplete="name" />
+                <ShopInput placeholder={t('pages.checkout.recipientRequired')} maxLength={80} autoComplete="name" />
               </Form.Item>
               <Form.Item
                 name="phone"
@@ -3352,7 +3353,7 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
                 ]}
                 extra={renderCheckoutFieldErrorExtra('phone')}
               >
-                <Input
+                <ShopInput
                   placeholder={t('pages.checkout.phoneRequired')}
                   maxLength={40}
                   autoComplete="tel"
@@ -3395,7 +3396,7 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
                 ]}
                 extra={renderCheckoutFieldErrorExtra('shippingAddress')}
               >
-                <Input.TextArea rows={3} placeholder={t('pages.checkout.detailPlaceholder')} maxLength={260} showCount autoComplete="street-address" />
+                <ShopTextArea rows={3} placeholder={t('pages.checkout.detailPlaceholder')} maxLength={260} showCount autoComplete="street-address" />
               </Form.Item>
               <Form.Item
                 name="postalCode"
@@ -3413,7 +3414,7 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
                 ]}
                 extra={renderCheckoutFieldErrorExtra('postalCode')}
               >
-                <Input
+                <ShopInput
                   placeholder={t('pages.checkout.postalCodePlaceholder')}
                   maxLength={20}
                   autoComplete="postal-code"
@@ -3539,7 +3540,7 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
             />
           ) : null}
           <Form.Item name="paymentMethod" rules={[{ required: true, message: t('pages.checkout.paymentRequired') }]} hidden>
-            <Input />
+            <ShopInput />
           </Form.Item>
           <div className="checkout-page__submitReview">
             <div className="checkout-page__submitMetric">

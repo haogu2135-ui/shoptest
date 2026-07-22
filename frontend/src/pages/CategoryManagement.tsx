@@ -1,24 +1,10 @@
 import { useNavigate } from 'react-router-dom';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  Alert,
-  Button,
-  Card,
-  Divider,
-  Form,
-  Image,
-  Input,
-  message,
-  Modal,
-  Popconfirm,
-  Progress,
-  Space,
-  Table,
-  Tag,
-  Tabs,
-  TreeSelect,
-  Typography,
-} from 'antd';
+import { Alert, Button, Card, Divider, Form, Image, message, Progress, Space, Table, Tag, Tabs, Typography } from 'antd';
+import ShopInput, { ShopTextArea } from '../components/ShopInput';
+import ShopPopconfirm from '../components/ShopPopconfirm';
+import ShopModal from '../components/ShopModal';
+import ShopTreeSelect from '../components/ShopTreeSelect';
 import { BranchesOutlined, DeleteOutlined, EditOutlined, GlobalOutlined, PictureOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons';
 import { adminApi } from '../api/admin';
 import type { Category } from '../types';
@@ -36,11 +22,9 @@ import { getApiErrorMessage } from '../utils/apiError';
 import { CATEGORIES_DELETE_PERMISSION, CATEGORIES_WRITE_PERMISSION, getEffectiveRole, hasAdminPermission } from '../utils/roles';
 import './CategoryManagement.css';
 
-const { TextArea } = Input;
 const { Title, Text } = Typography;
 const categoryImageFallback = imageFallbacks.category;
 const resolveCategoryImage = (imageUrl?: string) => resolveApiAssetUrl(imageUrl, categoryImageFallback);
-const mobilePopconfirmClassNames = { root: 'shop-mobile-popup-layer' };
 const isFormValidationError = (error: unknown): error is { errorFields: unknown[] } => (
   Boolean(error) && typeof error === 'object' && Array.isArray((error as { errorFields?: unknown }).errorFields)
 );
@@ -400,8 +384,7 @@ const CategoryManagement: React.FC = () => {
               {t('common.edit')}
             </Button> : null}
             {canDeleteCategories ? (
-              <Popconfirm
-                classNames={mobilePopconfirmClassNames}
+              <ShopPopconfirm rootClassName="shop-mobile-popup-layer"
                 title={t('pages.categoryAdmin.deleteConfirm')}
                 onConfirm={() => handleDelete(record.id)}
                 disabled={categoryActionDisabled}
@@ -413,7 +396,7 @@ const CategoryManagement: React.FC = () => {
                 <Button icon={<DeleteOutlined />} danger size="small" disabled={categoryActionDisabled} aria-label={deleteActionLabel} title={deleteActionLabel}>
                   {t('common.delete')}
                 </Button>
-              </Popconfirm>
+              </ShopPopconfirm>
             ) : null}
           </Space>
         );
@@ -483,7 +466,7 @@ const CategoryManagement: React.FC = () => {
       <Card className="category-management-page__toolbar">
         <Space wrap>
           <Text type="secondary">{t('pages.categoryAdmin.healthSubtitle')}</Text>
-          <Input
+          <ShopInput
             allowClear
             prefix={<SearchOutlined />}
             value={keyword}
@@ -554,14 +537,13 @@ const CategoryManagement: React.FC = () => {
         </>
       ) : null}
 
-      <Modal
+      <ShopModal
         className="profile-mobile-safe-modal category-management-page__editorModal"
         title={editingCategory ? t('pages.categoryAdmin.editTitle') : t('pages.categoryAdmin.addTitle')}
         open={modalVisible}
         onOk={handleSubmit}
-        onCancel={closeModal}
+        onClose={closeModal}
         confirmLoading={saving}
-        destroyOnHidden
         okText={t('common.save')}
         cancelText={t('common.cancel')}
         okButtonProps={{ disabled: categoryActionDisabled, 'aria-label': `${t('common.save')}: ${categoryEditorLabel}`, title: `${t('common.save')}: ${categoryEditorLabel}` }}
@@ -569,7 +551,7 @@ const CategoryManagement: React.FC = () => {
       >
         <Form form={form} layout="vertical">
           <Form.Item name="name" label={t('pages.categoryAdmin.name')} rules={[{ required: true, message: t('pages.categoryAdmin.nameRequired') }]}>
-            <Input placeholder={t('pages.categoryAdmin.namePlaceholder')} aria-label={`${categoryEditorLabel}: ${t('pages.categoryAdmin.name')}`} title={`${categoryEditorLabel}: ${t('pages.categoryAdmin.name')}`} />
+            <ShopInput placeholder={t('pages.categoryAdmin.namePlaceholder')} aria-label={`${categoryEditorLabel}: ${t('pages.categoryAdmin.name')}`} title={`${categoryEditorLabel}: ${t('pages.categoryAdmin.name')}`} />
           </Form.Item>
 
           <Divider>{t('pages.categoryAdmin.languageSettings')}</Divider>
@@ -581,10 +563,10 @@ const CategoryManagement: React.FC = () => {
                 children: (
                   <>
                     <Form.Item name={['localizedContent', 'en', 'name']} label={t('pages.categoryAdmin.englishName')}>
-                      <Input placeholder={t('pages.categoryAdmin.namePlaceholder')} aria-label={`${categoryEditorLabel}: ${t('pages.categoryAdmin.englishName')}`} title={`${categoryEditorLabel}: ${t('pages.categoryAdmin.englishName')}`} />
+                      <ShopInput placeholder={t('pages.categoryAdmin.namePlaceholder')} aria-label={`${categoryEditorLabel}: ${t('pages.categoryAdmin.englishName')}`} title={`${categoryEditorLabel}: ${t('pages.categoryAdmin.englishName')}`} />
                     </Form.Item>
                     <Form.Item name={['localizedContent', 'en', 'description']} label={t('pages.categoryAdmin.englishDescription')}>
-                      <TextArea rows={3} placeholder={t('pages.categoryAdmin.descriptionPlaceholder')} aria-label={`${categoryEditorLabel}: ${t('pages.categoryAdmin.englishDescription')}`} title={`${categoryEditorLabel}: ${t('pages.categoryAdmin.englishDescription')}`} />
+                      <ShopTextArea rows={3} placeholder={t('pages.categoryAdmin.descriptionPlaceholder')} aria-label={`${categoryEditorLabel}: ${t('pages.categoryAdmin.englishDescription')}`} title={`${categoryEditorLabel}: ${t('pages.categoryAdmin.englishDescription')}`} />
                     </Form.Item>
                   </>
                 ),
@@ -595,10 +577,10 @@ const CategoryManagement: React.FC = () => {
                 children: (
                   <>
                     <Form.Item name={['localizedContent', 'es', 'name']} label={t('pages.categoryAdmin.spanishName')}>
-                      <Input placeholder={t('pages.categoryAdmin.namePlaceholder')} aria-label={`${categoryEditorLabel}: ${t('pages.categoryAdmin.spanishName')}`} title={`${categoryEditorLabel}: ${t('pages.categoryAdmin.spanishName')}`} />
+                      <ShopInput placeholder={t('pages.categoryAdmin.namePlaceholder')} aria-label={`${categoryEditorLabel}: ${t('pages.categoryAdmin.spanishName')}`} title={`${categoryEditorLabel}: ${t('pages.categoryAdmin.spanishName')}`} />
                     </Form.Item>
                     <Form.Item name={['localizedContent', 'es', 'description']} label={t('pages.categoryAdmin.spanishDescription')}>
-                      <TextArea rows={3} placeholder={t('pages.categoryAdmin.descriptionPlaceholder')} aria-label={`${categoryEditorLabel}: ${t('pages.categoryAdmin.spanishDescription')}`} title={`${categoryEditorLabel}: ${t('pages.categoryAdmin.spanishDescription')}`} />
+                      <ShopTextArea rows={3} placeholder={t('pages.categoryAdmin.descriptionPlaceholder')} aria-label={`${categoryEditorLabel}: ${t('pages.categoryAdmin.spanishDescription')}`} title={`${categoryEditorLabel}: ${t('pages.categoryAdmin.spanishDescription')}`} />
                     </Form.Item>
                   </>
                 ),
@@ -609,10 +591,10 @@ const CategoryManagement: React.FC = () => {
                 children: (
                   <>
                     <Form.Item name={['localizedContent', 'zh', 'name']} label={t('pages.categoryAdmin.chineseName')}>
-                      <Input placeholder={t('pages.categoryAdmin.namePlaceholder')} aria-label={`${categoryEditorLabel}: ${t('pages.categoryAdmin.chineseName')}`} title={`${categoryEditorLabel}: ${t('pages.categoryAdmin.chineseName')}`} />
+                      <ShopInput placeholder={t('pages.categoryAdmin.namePlaceholder')} aria-label={`${categoryEditorLabel}: ${t('pages.categoryAdmin.chineseName')}`} title={`${categoryEditorLabel}: ${t('pages.categoryAdmin.chineseName')}`} />
                     </Form.Item>
                     <Form.Item name={['localizedContent', 'zh', 'description']} label={t('pages.categoryAdmin.chineseDescription')}>
-                      <TextArea rows={3} placeholder={t('pages.categoryAdmin.descriptionPlaceholder')} aria-label={`${categoryEditorLabel}: ${t('pages.categoryAdmin.chineseDescription')}`} title={`${categoryEditorLabel}: ${t('pages.categoryAdmin.chineseDescription')}`} />
+                      <ShopTextArea rows={3} placeholder={t('pages.categoryAdmin.descriptionPlaceholder')} aria-label={`${categoryEditorLabel}: ${t('pages.categoryAdmin.chineseDescription')}`} title={`${categoryEditorLabel}: ${t('pages.categoryAdmin.chineseDescription')}`} />
                     </Form.Item>
                   </>
                 ),
@@ -621,20 +603,19 @@ const CategoryManagement: React.FC = () => {
           />
 
           <Form.Item name="parentId" label={t('pages.categoryAdmin.parent')}>
-            <TreeSelect
+            <ShopTreeSelect
               allowClear
               treeDefaultExpandAll
               placeholder={t('pages.categoryAdmin.noParent')}
               treeData={parentOptions}
-              classNames={{ popup: { root: 'shop-mobile-popup-layer' } }}
-              getPopupContainer={() => document.body}
-              aria-label={`${categoryEditorLabel}: ${t('pages.categoryAdmin.parent')}`}
+              popupClassName="shop-mobile-popup-layer"
+              ariaLabel={`${categoryEditorLabel}: ${t('pages.categoryAdmin.parent')}`}
               title={`${categoryEditorLabel}: ${t('pages.categoryAdmin.parent')} ${editingCategory ? getCategoryPathLabel(editingCategory) : t('pages.categoryAdmin.root')}`}
             />
           </Form.Item>
 
           <Form.Item name="imageUrl" label={t('pages.categoryAdmin.imageUrl')}>
-            <Input placeholder="https://..." onChange={(event) => setImagePreviewUrl(event.target.value)} aria-label={`${categoryEditorLabel}: ${t('pages.categoryAdmin.imageUrl')}`} title={`${categoryEditorLabel}: ${t('pages.categoryAdmin.imageUrl')}`} />
+            <ShopInput placeholder="https://..." onChange={(event) => setImagePreviewUrl(event.target.value)} aria-label={`${categoryEditorLabel}: ${t('pages.categoryAdmin.imageUrl')}`} title={`${categoryEditorLabel}: ${t('pages.categoryAdmin.imageUrl')}`} />
           </Form.Item>
 
           {imagePreviewUrl ? (
@@ -652,10 +633,10 @@ const CategoryManagement: React.FC = () => {
           ) : null}
 
           <Form.Item name="description" label={t('pages.categoryAdmin.description')}>
-            <TextArea rows={3} placeholder={t('pages.categoryAdmin.descriptionPlaceholder')} aria-label={`${categoryEditorLabel}: ${t('pages.categoryAdmin.description')}`} title={`${categoryEditorLabel}: ${t('pages.categoryAdmin.description')}`} />
+            <ShopTextArea rows={3} placeholder={t('pages.categoryAdmin.descriptionPlaceholder')} aria-label={`${categoryEditorLabel}: ${t('pages.categoryAdmin.description')}`} title={`${categoryEditorLabel}: ${t('pages.categoryAdmin.description')}`} />
           </Form.Item>
         </Form>
-      </Modal>
+      </ShopModal>
     </div>
   );
 };

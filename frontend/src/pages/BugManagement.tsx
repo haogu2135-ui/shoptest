@@ -1,7 +1,10 @@
 import { useNavigate } from 'react-router-dom';
 import PageError from '../components/PageError';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Button, Form, Input, Modal, Select, Skeleton, Space, Spin, Statistic, Switch, Table, Tag, Tooltip, Typography, Upload, message } from 'antd';
+import { Alert, Button, Form, Skeleton, Space, Spin, Statistic, Switch, Table, Tag, Tooltip, Typography, Upload, message } from 'antd';
+import ShopInput, { ShopTextArea } from '../components/ShopInput';
+import ShopSelect from '../components/ShopSelect';
+import ShopModal from '../components/ShopModal';
 import type { ColumnsType } from 'antd/es/table';
 import { BugOutlined, CheckCircleOutlined, EditOutlined, PlusOutlined, ReloadOutlined, SearchOutlined, SyncOutlined, ToolOutlined, UploadOutlined } from '@ant-design/icons';
 import { useSearchParams } from 'react-router-dom';
@@ -23,7 +26,6 @@ import { buildPaginationItemRender } from '../utils/paginationLabels';
 import './BugManagement.css';
 
 const { Link: TextLink, Paragraph, Text, Title } = Typography;
-const { TextArea } = Input;
 const DEFAULT_PAGE_INDEX = 0;
 const DEFAULT_PAGE_SIZE = 20;
 const DEFAULT_SCAN_REFRESH_MS = 10 * 60 * 1000;
@@ -971,7 +973,7 @@ const BugManagement: React.FC = () => {
           {canRenderBugQueue ? (
             <>
               <div className="bug-management__toolbar">
-                <Input
+                <ShopInput
                   className="bug-management__search"
                   prefix={<SearchOutlined />}
                   value={keyword}
@@ -982,34 +984,31 @@ const BugManagement: React.FC = () => {
                   aria-label={bugSearchLabel}
                   title={bugSearchLabel}
                 />
-                <Select
+                <ShopSelect
                   className="bug-management__filter"
                   value={statusFilter}
-                  onChange={setStatusFilter}
-                  options={statusOptions.map((status) => ({ value: status, label: statusLabels[status] || status }))}
-                  classNames={mobilePopupClassNames}
+                  onChange={(value) => setStatusFilter(value || 'ALL')}
+                  options={statusOptions.map((status) => ({ value: status, label: statusLabels[status] || status }))} popupClassName="shop-mobile-popup-layer"
                   disabled={!canReadBugs}
-                  aria-label={bugStatusFilterLabel}
+                  ariaLabel={bugStatusFilterLabel}
                   title={bugStatusFilterLabel}
                 />
-                <Select
+                <ShopSelect
                   className="bug-management__filter"
                   value={severityFilter}
-                  onChange={setSeverityFilter}
-                  options={severityOptions.map((severity) => ({ value: severity, label: severityLabels[severity] || severity }))}
-                  classNames={mobilePopupClassNames}
+                  onChange={(value) => setSeverityFilter(value || 'ALL')}
+                  options={severityOptions.map((severity) => ({ value: severity, label: severityLabels[severity] || severity }))} popupClassName="shop-mobile-popup-layer"
                   disabled={!canReadBugs}
-                  aria-label={bugSeverityFilterLabel}
+                  ariaLabel={bugSeverityFilterLabel}
                   title={bugSeverityFilterLabel}
                 />
-                <Select
+                <ShopSelect
                   className="bug-management__filter"
                   value={moduleFilter}
-                  onChange={setModuleFilter}
-                  options={moduleOptions.map((module) => ({ value: module, label: moduleLabels[module] || module }))}
-                  classNames={mobilePopupClassNames}
+                  onChange={(value) => setModuleFilter(value || 'ALL')}
+                  options={moduleOptions.map((module) => ({ value: module, label: moduleLabels[module] || module }))} popupClassName="shop-mobile-popup-layer"
                   disabled={!canReadBugs}
-                  aria-label={bugModuleFilterLabel}
+                  ariaLabel={bugModuleFilterLabel}
                   title={bugModuleFilterLabel}
                 />
                 <Space className="bug-management__scanToggle">
@@ -1104,12 +1103,14 @@ const BugManagement: React.FC = () => {
         </>
       )}
 
-      <Modal
+      <ShopModal
         open={editorOpen}
         title={editingBug ? tx('editBug', 'Edit bug') : tx('createBug', 'Create bug')}
-        onCancel={() => setEditorOpen(false)}
+        onClose={() => setEditorOpen(false)}
         onOk={handleSave}
         confirmLoading={saving}
+        okText={t('common.save')}
+        cancelText={t('common.cancel')}
         okButtonProps={{ disabled: bugMutationDisabled, 'aria-label': saveBugActionLabel, title: saveBugActionLabel }}
         cancelButtonProps={{ 'aria-label': cancelBugActionLabel, title: cancelBugActionLabel }}
         width={860}
@@ -1117,46 +1118,46 @@ const BugManagement: React.FC = () => {
       >
         <Form form={form} layout="vertical">
           <Form.Item name="title" label={tx('titleField', 'Title')} rules={[{ required: true, message: tx('titleRequired', 'Title is required') }]}>
-            <Input maxLength={160} />
+            <ShopInput maxLength={160} />
           </Form.Item>
           <div className="bug-management__formGrid">
             <Form.Item name="module" label={tx('module', 'Module')}>
-              <Select options={moduleOptions.filter((item) => item !== 'ALL').map((module) => ({ value: module, label: moduleLabels[module] || module }))} classNames={mobilePopupClassNames} />
+              <ShopSelect options={moduleOptions.filter((item) => item !== 'ALL').map((module) => ({ value: module, label: moduleLabels[module] || module }))} popupClassName="shop-mobile-popup-layer" />
             </Form.Item>
             <Form.Item name="severity" label={tx('severity', 'Severity')}>
-              <Select options={severityOptions.filter((item) => item !== 'ALL').map((severity) => ({ value: severity, label: severityLabels[severity] || severity }))} classNames={mobilePopupClassNames} />
+              <ShopSelect options={severityOptions.filter((item) => item !== 'ALL').map((severity) => ({ value: severity, label: severityLabels[severity] || severity }))} popupClassName="shop-mobile-popup-layer" />
             </Form.Item>
             <Form.Item name="priority" label={tx('priority', 'Priority')}>
-              <Select options={priorityOptions.map((priority) => ({ value: priority, label: priorityLabels[priority] || priority }))} classNames={mobilePopupClassNames} />
+              <ShopSelect options={priorityOptions.map((priority) => ({ value: priority, label: priorityLabels[priority] || priority }))} popupClassName="shop-mobile-popup-layer" />
             </Form.Item>
             <Form.Item name="assignedTo" label={tx('assignedTo', 'Assigned to')}>
-              <Input maxLength={120} />
+              <ShopInput maxLength={120} />
             </Form.Item>
           </div>
           <Form.Item name="description" label={tx('description', 'Description')} rules={[{ required: true, message: tx('descriptionRequired', 'Description is required') }]}>
-            <TextArea rows={4} maxLength={4000} />
+            <ShopTextArea rows={4} maxLength={4000} />
           </Form.Item>
           <div className="bug-management__formGrid">
             <Form.Item name="pageUrl" label={tx('pageUrl', 'Page URL')} rules={[{ validator: validatePageUrl }]}>
-              <Input maxLength={500} />
+              <ShopInput maxLength={500} />
             </Form.Item>
             <Form.Item name="environment" label={tx('environment', 'Environment')}>
-              <Input maxLength={120} />
+              <ShopInput maxLength={120} />
             </Form.Item>
           </div>
           <Form.Item name="reproductionSteps" label={tx('reproductionSteps', 'Reproduction steps')}>
-            <TextArea rows={4} maxLength={4000} />
+            <ShopTextArea rows={4} maxLength={4000} />
           </Form.Item>
           <div className="bug-management__formGrid bug-management__formGrid--wide">
             <Form.Item name="expectedResult" label={tx('expectedResult', 'Expected result')}>
-              <TextArea rows={3} maxLength={4000} />
+              <ShopTextArea rows={3} maxLength={4000} />
             </Form.Item>
             <Form.Item name="actualResult" label={tx('actualResult', 'Actual result')}>
-              <TextArea rows={3} maxLength={4000} />
+              <ShopTextArea rows={3} maxLength={4000} />
             </Form.Item>
           </div>
           <Form.Item name="attachmentUrls" label={tx('attachmentUrls', 'Attachment URLs')} rules={[{ validator: validateAttachmentUrls }]}>
-            <TextArea rows={2} maxLength={2000} />
+            <ShopTextArea rows={2} maxLength={2000} />
           </Form.Item>
           <Upload
             accept="image/jpeg,image/png,image/gif"
@@ -1175,14 +1176,16 @@ const BugManagement: React.FC = () => {
             </Button>
           </Upload>
         </Form>
-      </Modal>
+      </ShopModal>
 
-      <Modal
+      <ShopModal
         open={statusOpen}
         title={statusMode === 'scan' ? tx('scanBug', 'Scan bug') : tx('updateStatus', 'Update status')}
-        onCancel={() => setStatusOpen(false)}
+        onClose={() => setStatusOpen(false)}
         onOk={handleStatusSave}
         confirmLoading={acting}
+        okText={t('common.save')}
+        cancelText={t('common.cancel')}
         okButtonProps={{ disabled: bugMutationDisabled, 'aria-label': saveBugStatusActionLabel, title: saveBugStatusActionLabel }}
         cancelButtonProps={{ 'aria-label': cancelBugStatusActionLabel, title: cancelBugStatusActionLabel }}
         width={720}
@@ -1191,23 +1194,23 @@ const BugManagement: React.FC = () => {
         <Form form={statusForm} layout="vertical">
           {statusMode === 'status' ? (
             <Form.Item name="status" label={tx('status', 'Status')} rules={[{ required: true, message: tx('statusRequired', 'Status is required') }]}>
-              <Select options={getStatusUpdateOptions(statusBug?.status).map((status) => ({ value: status, label: statusLabels[status] || status }))} classNames={mobilePopupClassNames} />
+              <ShopSelect options={getStatusUpdateOptions(statusBug?.status).map((status) => ({ value: status, label: statusLabels[status] || status }))} popupClassName="shop-mobile-popup-layer" />
             </Form.Item>
           ) : null}
           <Form.Item name="assignedTo" label={tx('assignedTo', 'Assigned to')}>
-            <Input maxLength={120} />
+            <ShopInput maxLength={120} />
           </Form.Item>
           <Form.Item name="scanNote" label={tx('scanNote', 'Scan note')}>
-            <TextArea rows={3} maxLength={2000} />
+            <ShopTextArea rows={3} maxLength={2000} />
           </Form.Item>
           <Form.Item name="fixSummary" label={tx('fixSummary', 'Fix summary')}>
-            <TextArea rows={3} maxLength={2000} />
+            <ShopTextArea rows={3} maxLength={2000} />
           </Form.Item>
           <Form.Item name="regressionNote" label={tx('regressionNote', 'Regression note')}>
-            <TextArea rows={3} maxLength={2000} />
+            <ShopTextArea rows={3} maxLength={2000} />
           </Form.Item>
         </Form>
-      </Modal>
+      </ShopModal>
     </div>
   );
 };

@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Card, Descriptions, Empty, Input, Space, Spin, Statistic, Table, Tag, Typography, message } from 'antd';
+import { Alert, Button, Card, Descriptions, Empty, Space, Spin, Statistic, Table, Tag, Typography, message } from 'antd';
+import ShopInput, { ShopTextArea } from '../components/ShopInput';
 import { ApiOutlined, CloudServerOutlined, LinkOutlined, ReloadOutlined, SafetyCertificateOutlined, SearchOutlined } from '@ant-design/icons';
 import { apiBaseUrl } from '../api';
 import { adminApi } from '../api/admin';
@@ -206,7 +207,7 @@ const RegistryManagement: React.FC = () => {
               title={t('pages.registryAdmin.discoveredServiceList')}
               className="registry-management__card"
               extra={(
-                <Input
+                <ShopInput
                   allowClear
                   prefix={<SearchOutlined />}
                   value={serviceKeyword}

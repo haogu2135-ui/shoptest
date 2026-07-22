@@ -7866,3 +7866,11 @@ body .shop-mobile-popup-layer.shop-select__popup {
   z-index: 1100 !important;
 }
 
+
+
+/* ShopSearchField densify: keep catalog toolbar search full-width without ant-input-search. */
+.product-list__search.shop-search-field,
+.product-list__toolbarSearch .shop-search-field {
+  width: 100%;
+  min-width: 0;
+}

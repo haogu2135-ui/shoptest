@@ -1489,3 +1489,53 @@
 .register-page__codeHint--warning {
   color: #d48806;
 }
+
+
+/* Gate125 shop input densify */
+.register-page .shop-input,
+.register-page .shop-input__shell,
+.register-page .shop-input__addon {
+  width: 100%;
+  min-height: 44px;
+}
+@media (max-width: 780px) {
+  .register-page .shop-input__control {
+    font-size: 16px;
+  }
+}
+
+
+/* Gate125b shop-input code-field layout (replaces ant-input-group grids) */
+.register-page .shop-input--withAddon,
+.register-page .ant-form-item-control-input-content > .shop-input {
+  width: 100%;
+}
+.register-page .shop-input {
+  min-width: 0;
+}
+.register-page .shop-input__shell {
+  min-width: 0;
+}
+.register-page .shop-input__addon {
+  padding: 0;
+  align-items: stretch;
+}
+.register-page .shop-input__addon .ant-btn {
+  min-height: 44px;
+  height: 100%;
+}
+@media (max-width: 640px) {
+  .register-page .shop-input--withAddon {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(74px, 92px);
+    align-items: stretch;
+    gap: 0;
+  }
+  .register-page .shop-input--withAddon .shop-input__addon {
+    width: auto;
+    min-width: 74px;
+  }
+  .register-page .shop-input--withAddon .shop-input__addon .ant-btn {
+    width: 100%;
+  }
+}

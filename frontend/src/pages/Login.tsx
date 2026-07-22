@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { ShopIcon, SI } from '../components/ShopIcon';
-import { Alert, Form, Input, Button } from 'antd';
-import type { InputRef } from 'antd/es/input';
+import { Alert, Form, Button } from 'antd';
+import ShopInput, { ShopPasswordInput } from '../components/ShopInput';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { cartApi, clearStoredAuthCredentials, persistAuthSession, userApi } from '../api';
 import { useAppConfig } from '../hooks/useAppConfig';
@@ -178,7 +178,7 @@ const Login: React.FC = () => {
   const [passwordForm] = Form.useForm();
   const [emailForm] = Form.useForm();
   const watchedEmailCode = Form.useWatch('code', emailForm);
-  const codeInputRef = useRef<InputRef | null>(null);
+  const codeInputRef = useRef<HTMLInputElement | null>(null);
   const passwordSubmittingRef = useRef(false);
   const emailSubmittingRef = useRef(false);
   const emailCodeSendingRef = useRef(false);
@@ -656,7 +656,7 @@ const Login: React.FC = () => {
                       { required: true, message: t('pages.auth.usernameRequired') },
                       { min: 3, message: t('pages.auth.usernameMinLength') },
                     ]}>
-                      <Input
+                      <ShopInput
                         prefix={<ShopIcon path={SI.user} />}
                         placeholder={t('pages.auth.username')}
                         size="large"
@@ -670,7 +670,7 @@ const Login: React.FC = () => {
                       { required: true, message: t('pages.auth.passwordRequired') },
                       { min: 8, message: t('pages.auth.passwordMinLength') },
                     ]}>
-                      <Input.Password
+                      <ShopPasswordInput
                         prefix={<ShopIcon path={SI.lock} />}
                         placeholder={t('pages.auth.password')}
                         size="large"
@@ -760,7 +760,7 @@ const Login: React.FC = () => {
                         { type: 'email', message: t('pages.auth.emailInvalid') },
                       ]}
                     >
-                      <Input
+                      <ShopInput
                         prefix={<ShopIcon path={SI.mail} />}
                         placeholder={t('pages.auth.email')}
                         size="large"
@@ -780,7 +780,7 @@ const Login: React.FC = () => {
                         { len: 6, message: t('pages.auth.emailCodeLength') },
                       ]}
                     >
-                      <Input
+                      <ShopInput
                         ref={codeInputRef}
                         className="shopee-login-codeInput"
                         prefix={<ShopIcon path={SI.safety} />}

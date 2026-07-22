@@ -17,4 +17,10 @@ describe('OrderTracking type-safety guards', () => {
     expect(source).not.toContain('catch (err: any)');
     expect(source).not.toContain('as any');
   });
+
+  it('keeps payment-return email focus ref on native HTMLInputElement', () => {
+    expect(source).toContain('const paymentReturnEmailInputRef = useRef<HTMLInputElement | null>(null);');
+    expect(source).not.toContain("import type { InputRef } from 'antd/es/input';");
+  });
+
 });

@@ -1,4 +1,5 @@
 import { act, render, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { message } from 'antd';
 import fs from 'fs';
 import path from 'path';
@@ -35,7 +36,7 @@ jest.mock('../i18n', () => {
 const CouponManagement = require('./CouponManagement').default as typeof import('./CouponManagement').default;
 const { adminApi: mockAdminApi } = require('../api/admin');
 const pageSource = fs.readFileSync(path.join(__dirname, 'CouponManagement.tsx'), 'utf8');
-const appCssSource = fs.readFileSync(path.join(__dirname, '../App.css'), 'utf8');
+const appCssSource = fs.readFileSync(path.join(__dirname, '../styles/antd-theme-overrides.css'), 'utf8');
 
 type Deferred<T> = {
   promise: Promise<T>;
@@ -83,7 +84,7 @@ describe('CouponManagement loader cleanup', () => {
     mockAdminApi.getUsersPage.mockReturnValue(usersRequest.promise);
     mockAdminApi.getPetBirthdayCouponConfig.mockReturnValue(birthdayConfigRequest.promise);
 
-    const { unmount } = render(<CouponManagement />);
+    const { unmount } = render(<MemoryRouter><CouponManagement /></MemoryRouter>);
 
     await waitFor(() => expect(mockAdminApi.getCoupons).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(mockAdminApi.getPetBirthdayCouponConfig).toHaveBeenCalledTimes(1));
@@ -120,10 +121,15 @@ describe('CouponManagement mobile popup stacking guards', () => {
     expect(pageSource).toContain('className="profile-mobile-safe-modal coupon-management-page__editorModal"');
     expect(pageSource).toContain('className="profile-mobile-safe-modal coupon-management-page__grantModal"');
     expect(pageSource).toContain('<DatePicker.RangePicker');
-    expect(pageSource.match(/classNames=\{mobilePopupClassNames\}/g)?.length).toBeGreaterThanOrEqual(6);
-    expect(pageSource.match(/getPopupContainer=\{\(\) => document\.body\}/g)?.length).toBeGreaterThanOrEqual(6);
+    expect(pageSource).toContain('ShopSelect');
+    expect(pageSource).toContain('ShopMultiSelect');
+    expect(pageSource.match(/popupClassName="shop-mobile-popup-layer"/g)?.length).toBeGreaterThanOrEqual(4);
+    expect(pageSource.match(/classNames=\{mobilePopupClassNames\}/g)?.length).toBeGreaterThanOrEqual(1);
+    expect(pageSource.match(/getPopupContainer=\{\(\) => document\.body\}/g)?.length).toBeGreaterThanOrEqual(1);
     expect(pageSource).toContain('mode="multiple"');
+    expect(pageSource).not.toMatch(/<Select\b/);
   });
+
 
   it('raises shared mobile popups above raised modal wrappers', () => {
     const popupGuardStart = appCssSource.indexOf('Body-mounted Ant Design popups');

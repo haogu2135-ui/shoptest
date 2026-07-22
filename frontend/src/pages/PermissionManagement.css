@@ -22,7 +22,9 @@
 .permission-management-page__modal,
 .permission-management-page__modal .ant-modal-content,
 .permission-management-page__modal .ant-modal-body,
-.permission-management-page__permissionGrid {
+.permission-management-page__permissionGrid,
+  .permission-management-page__modal .shop-modal__content,
+  .permission-management-page__modal .shop-modal__body {
   min-width: 0;
   max-width: 100%;
 }
@@ -95,7 +97,8 @@
   font-weight: 900;
 }
 
-.permission-management-page__modal .ant-modal-content {
+.permission-management-page__modal .ant-modal-content,
+  .permission-management-page__modal .shop-modal__content {
   border-radius: 18px;
   overflow: hidden;
 }
@@ -116,7 +119,8 @@
   padding-bottom: max(24px, env(safe-area-inset-bottom, 0px));
 }
 
-.permission-management-page__modal .ant-modal-content {
+.permission-management-page__modal .ant-modal-content,
+  .permission-management-page__modal .shop-modal__content {
   max-height: calc(100vh - 48px);
   max-height: calc(100dvh - 48px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
   display: flex;
@@ -124,18 +128,22 @@
 }
 
 .permission-management-page__modal .ant-modal-header,
-.permission-management-page__modal .ant-modal-footer {
+.permission-management-page__modal .ant-modal-footer,
+  .permission-management-page__modal .shop-modal__header,
+  .permission-management-page__modal .shop-modal__footer {
   flex: 0 0 auto;
 }
 
-.permission-management-page__modal .ant-modal-body {
+.permission-management-page__modal .ant-modal-body,
+  .permission-management-page__modal .shop-modal__body {
   flex: 1 1 auto;
   overflow-y: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
 }
 
-.permission-management-page__modal .ant-modal-footer {
+.permission-management-page__modal .ant-modal-footer,
+  .permission-management-page__modal .shop-modal__footer {
   position: sticky;
   bottom: 0;
   z-index: 1;
@@ -194,19 +202,22 @@
     padding-bottom: 8px;
   }
 
-  .permission-management-page__modal .ant-modal-body {
+  .permission-management-page__modal .ant-modal-body,
+  .permission-management-page__modal .shop-modal__body {
     max-height: calc(100dvh - 164px);
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
   }
 
-  .permission-management-page__modal .ant-modal-footer {
+  .permission-management-page__modal .ant-modal-footer,
+  .permission-management-page__modal .shop-modal__footer {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
   }
 
-  .permission-management-page__modal .ant-modal-footer .ant-btn {
+  .permission-management-page__modal .ant-modal-footer .ant-btn,
+  .permission-management-page__modal .shop-modal__footer .ant-btn {
     flex: 1 1 128px;
     margin-inline-start: 0;
   }
@@ -235,7 +246,8 @@
 }
 
 @media (max-width: 360px) {
-  .permission-management-page__modal .ant-modal-footer .ant-btn {
+  .permission-management-page__modal .ant-modal-footer .ant-btn,
+  .permission-management-page__modal .shop-modal__footer .ant-btn {
     flex-basis: 100%;
   }
 }
@@ -282,18 +294,23 @@
 
 /* Mobile permission modal and checkbox stability pass */
 @media (max-width: 720px) {
-  .permission-management-page__modal .ant-modal-content {
+  .permission-management-page__modal .ant-modal-content,
+  .permission-management-page__modal .shop-modal__content {
     max-height: calc(100svh - 16px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
     display: flex;
     flex-direction: column;
   }
 
-  .permission-management-page__modal .ant-modal-body {
+.permission-management-page__modal .ant-modal-body,
+
+  .permission-management-page__modal .shop-modal__body {
     flex: 1 1 auto;
     overscroll-behavior: contain;
   }
 
-  .permission-management-page__modal .ant-modal-footer {
+.permission-management-page__modal .ant-modal-footer,
+
+  .permission-management-page__modal .shop-modal__footer {
     position: sticky;
     bottom: 0;
     padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
@@ -337,7 +354,8 @@
   .permission-management-page__table .ant-table-cell .ant-btn,
   .permission-management-page__modal .ant-modal-footer .ant-btn,
   .permission-management-page__modal .ant-input,
-  .permission-management-page__permissionGrid .ant-checkbox-wrapper {
+  .permission-management-page__permissionGrid .ant-checkbox-wrapper,
+  .permission-management-page__modal .shop-modal__footer .ant-btn {
     min-height: 44px;
   }
 }

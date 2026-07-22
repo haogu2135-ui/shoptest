@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { ShopIcon, SI } from '../components/ShopIcon';
-import { Alert, Button, Input, Tag } from 'antd';
+import { Alert, Button, Tag } from 'antd';
+import ShopInput from '../components/ShopInput';
 import ShopPopconfirm from '../components/ShopPopconfirm';
 import { useNavigate } from 'react-router-dom';
 import { cartApi, productApi } from '../api';
@@ -325,13 +326,14 @@ const BrowsingHistory: React.FC = () => {
           <p className="browsing-history__text browsing-history__paragraph browsing-history__subtitle">{t('pages.browsingHistory.subtitle', { count: historyDisplayCount })}</p>
         </div>
         <div className="browsing-history__tools">
-          <Input
+          <ShopInput
             allowClear
             prefix={<ShopIcon path={SI.search} />}
             value={keyword}
             onChange={(event) => setKeyword(event.target.value)}
             placeholder={t('pages.browsingHistory.searchPlaceholder')}
             aria-label={t('pages.browsingHistory.searchPlaceholder')}
+            title={t('pages.browsingHistory.searchPlaceholder')}
           />
           <ShopPopconfirm
             rootClassName='shop-mobile-popup-layer browsing-history-clear-popconfirm'

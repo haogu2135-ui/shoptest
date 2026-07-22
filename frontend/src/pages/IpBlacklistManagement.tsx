@@ -1,6 +1,11 @@
 import { useNavigate } from 'react-router-dom';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Card, Empty, Form, Input, InputNumber, Modal, Popconfirm, Select, Space, Spin, Statistic, Table, Tag, Typography, message } from 'antd';
+import { Alert, Button, Card, Empty, Form, Space, Spin, Statistic, Table, Tag, Typography, message } from 'antd';
+import ShopInput, { ShopTextArea } from '../components/ShopInput';
+import ShopPopconfirm from '../components/ShopPopconfirm';
+import ShopSelect from '../components/ShopSelect';
+import ShopInputNumber from '../components/ShopInputNumber';
+import ShopModal from '../components/ShopModal';
 import type { ColumnsType } from 'antd/es/table';
 import { PlusOutlined, ReloadOutlined, SearchOutlined, StopOutlined, UnlockOutlined } from '@ant-design/icons';
 import { adminApi } from '../api/admin';
@@ -19,7 +24,6 @@ import {
 import './IpBlacklistManagement.css';
 
 const { Text, Title } = Typography;
-const mobilePopconfirmClassNames = { root: 'shop-mobile-popup-layer' };
 
 const statusColor = (status: string) => {
   const normalized = String(status || '').trim().toUpperCase();
@@ -431,8 +435,7 @@ const IpBlacklistManagement: React.FC = () => {
           const entryLabel = record.ipAddress || `#${record.id}`;
           const releaseActionLabel = `${t('pages.ipBlacklistAdmin.release')}: ${entryLabel}`;
           return (
-            <Popconfirm
-              classNames={mobilePopconfirmClassNames}
+            <ShopPopconfirm rootClassName="shop-mobile-popup-layer"
               title={t('pages.ipBlacklistAdmin.releaseConfirm', { ip: entryLabel })}
               description={t('pages.ipBlacklistAdmin.releaseDescription', { source: getSourceLabel(record.source) })}
               okText={t('common.confirm')}
@@ -445,7 +448,7 @@ const IpBlacklistManagement: React.FC = () => {
               <Button size="small" icon={<UnlockOutlined />} disabled={blacklistActionDisabled} aria-label={releaseActionLabel} title={releaseActionLabel} loading={acting === record.id}>
                 {t('pages.ipBlacklistAdmin.release')}
               </Button>
-            </Popconfirm>
+            </ShopPopconfirm>
           );
         },
       });
@@ -567,30 +570,26 @@ const IpBlacklistManagement: React.FC = () => {
           />
           <Space className="ip-blacklist__filters" wrap>
             <div role="group" aria-label={statusFilterLabel} title={statusFilterLabel}>
-              <Select
+              <ShopSelect
                 value={status}
-                onChange={applyStatusFilter}
-                disabled={blacklistActionDisabled}
-                classNames={{ popup: { root: 'shop-mobile-popup-layer' } }}
-                getPopupContainer={() => document.body}
+                onChange={(value) => { if (value) applyStatusFilter(value); }}
+                disabled={blacklistActionDisabled} popupClassName="shop-mobile-popup-layer"
                 options={STATUS_OPTIONS.map((value) => ({ value, label: getStatusLabel(value) }))}
               />
             </div>
             <div role="group" aria-label={sourceFilterLabel} title={sourceFilterLabel}>
-              <Select
+              <ShopSelect
                 value={source}
-                onChange={applySourceFilter}
-                disabled={blacklistActionDisabled}
-                classNames={{ popup: { root: 'shop-mobile-popup-layer' } }}
-                getPopupContainer={() => document.body}
+                onChange={(value) => { if (value) applySourceFilter(value); }}
+                disabled={blacklistActionDisabled} popupClassName="shop-mobile-popup-layer"
                 options={SOURCE_OPTIONS.map((value) => ({ value, label: getSourceLabel(value) }))}
               />
             </div>
-            <Input
+            <ShopInput
               allowClear
               value={ipAddress}
               onChange={(event) => setIpAddress(event.target.value)}
-              onPressEnter={refreshData}
+              onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); refreshData(); } }}
               disabled={blacklistActionDisabled}
               placeholder={t('pages.ipBlacklistAdmin.ipAddress')}
               aria-label={ipAddressFilterLabel}
@@ -605,8 +604,7 @@ const IpBlacklistManagement: React.FC = () => {
               <Text type="secondary">
                 {t('pages.ipBlacklistAdmin.selectedSummary', { selected: selectedEntryIds.length, releasable: selectedReleasableIds.length })}
               </Text>
-              <Popconfirm
-                classNames={mobilePopconfirmClassNames}
+              <ShopPopconfirm rootClassName="shop-mobile-popup-layer"
                 title={t('pages.ipBlacklistAdmin.batchReleaseConfirm')}
                 description={t('pages.ipBlacklistAdmin.batchReleaseDescription', { count: selectedReleasableIds.length })}
                 disabled={blacklistActionDisabled || !selectedReleasableIds.length}
@@ -625,7 +623,7 @@ const IpBlacklistManagement: React.FC = () => {
                 >
                   {t('pages.ipBlacklistAdmin.batchRelease')}
                 </Button>
-              </Popconfirm>
+              </ShopPopconfirm>
             </div>
           ) : null}
 
@@ -670,31 +668,30 @@ const IpBlacklistManagement: React.FC = () => {
         </div>
       ) : null}
 
-      <Modal
+      <ShopModal
         title={t('pages.ipBlacklistAdmin.manualBlockTitle')}
         open={modalOpen}
         onOk={blockIp}
-        onCancel={closeBlockModal}
+        onClose={closeBlockModal}
         okText={t('pages.ipBlacklistAdmin.block')}
         cancelText={t('common.cancel')}
         okButtonProps={{ disabled: blacklistActionDisabled, 'aria-label': manualBlockSubmitActionLabel, title: manualBlockSubmitActionLabel }}
         cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${manualBlockActionLabel}`, title: `${t('common.cancel')}: ${manualBlockActionLabel}` }}
         confirmLoading={blocking}
         className="profile-mobile-safe-modal ip-blacklist__manualBlockModal"
-        destroyOnHidden
       >
         <Form form={form} layout="vertical" initialValues={{ blockMinutes: statusInfo?.blockMinutes || 60 }}>
           <Form.Item name="ipAddress" label={t('pages.ipBlacklistAdmin.ipAddress')} rules={[{ required: true, message: t('pages.ipBlacklistAdmin.ipRequired') }]}>
-            <Input placeholder="203.0.113.10" />
+            <ShopInput placeholder="203.0.113.10" />
           </Form.Item>
           <Form.Item name="reason" label={t('pages.ipBlacklistAdmin.reason')}>
-            <Input.TextArea rows={3} placeholder={t('pages.ipBlacklistAdmin.optional')} />
+            <ShopTextArea rows={3} placeholder={t('pages.ipBlacklistAdmin.optional')} />
           </Form.Item>
           <Form.Item name="blockMinutes" label={t('pages.ipBlacklistAdmin.blockMinutes')}>
-            <InputNumber min={1} max={43200} style={{ width: '100%' }} />
+            <ShopInputNumber min={1} max={43200} style={{ width: '100%' }} />
           </Form.Item>
         </Form>
-      </Modal>
+      </ShopModal>
     </div>
   );
 };

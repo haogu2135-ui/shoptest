@@ -2,7 +2,8 @@ import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } fr
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { ShopIcon, SI } from '../components/ShopIcon';
 import { useParams, useSearchParams } from 'react-router-dom';
-import { Button, Tag, Input, Alert } from 'antd';
+import { Button, Tag, Alert } from 'antd';
+import ShopInput, { ShopTextArea } from '../components/ShopInput';
 import { productApi, cartApi, reviewApi, wishlistApi, questionApi } from '../api';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../i18n';
@@ -1972,14 +1973,14 @@ const ProductDetail: React.FC = () => {
                       </Button>
                     </div>
                     <div className="product-size-calculator__inputs">
-                      <Input
+                      <ShopInput
                         value={sizeCalculatorBreed}
                         onChange={(event) => setSizeCalculatorBreed(event.target.value)}
                         placeholder={t('pages.productDetail.sizeCalculatorBreed')}
                         aria-label={sizeBreedInputLabel}
                         title={sizeBreedInputLabel}
                       />
-                      <Input
+                      <ShopInput
                         value={sizeCalculatorWeight}
                         type="number"
                         min={0}
@@ -2428,7 +2429,7 @@ const ProductDetail: React.FC = () => {
         <section className="product-qa-card" id="product-qa-card" aria-label={t('pages.ask.title')}>
           <h4 className="product-detail-page__title" style={{ marginBottom: 16 }}>{t('pages.ask.title')}</h4>
           <div className="product-qa-space">
-            <Input.TextArea
+            <ShopTextArea
               rows={3}
               value={questionText}
               onChange={(e) => setQuestionText(e.target.value)}

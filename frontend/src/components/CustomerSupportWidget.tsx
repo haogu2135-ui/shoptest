@@ -1,7 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { ShopIcon, SI } from './ShopIcon';
-import { Alert, Avatar, Badge, Button, Input, Tag } from 'antd';
+import { Alert, Avatar, Button, Tag } from 'antd';
+import { ShopTextArea } from './ShopInput';
+import ShopBadge from './ShopBadge';
 import ShopModal from './ShopModal';
 import ShopSelect from './ShopSelect';
 import { useNavigate } from 'react-router-dom';
@@ -1098,9 +1100,9 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
           fontSize: isMobileViewport ? 22 : 24,
         }}
       >
-        <Badge count={unread} size="small">
+        <ShopBadge count={unread} size="small">
           <ShopIcon path={SI.support} style={{ color: '#fff' }} />
-        </Badge>
+        </ShopBadge>
       </button>
 
       {open ? (
@@ -1131,7 +1133,10 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
                   {assignedAgentText}
                 </span>
               </span>
-              <Badge status={supportOnline ? 'success' : 'default'} text={<span className="customer-support-widget__presenceText">{supportPresenceText}</span>} />
+              <span className={`customer-support-widget__presence customer-support-widget__presence--${supportOnline ? 'online' : 'offline'}`} role="status">
+                <span className="customer-support-widget__presenceDot" aria-hidden="true" />
+                <span className="customer-support-widget__presenceText">{supportPresenceText}</span>
+              </span>
             </div>
             <Button className="customer-support-widget__headerClose" type="text" size="small" icon={<ShopIcon path={SI.close} />} aria-label={supportPanelCloseLabel} title={supportPanelCloseLabel} onClick={() => setOpen(false)} />
           </div>
@@ -1472,7 +1477,7 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
                 }
               />
             </div>
-            <Input.TextArea
+            <ShopTextArea
               value={content}
               disabled={conversationUnavailable}
               maxLength={supportChatConfig.maxMessageChars}

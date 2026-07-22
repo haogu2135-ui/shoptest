@@ -611,7 +611,7 @@
     padding-block: 10px;
   }
 
-  .cart-drawer__item .ant-input-number,
+  .cart-drawer__item .ant-input-number, .cart-drawer__quantityInput,
   .cart-drawer__item .ant-btn {
     min-height: 44px;
   }
@@ -857,7 +857,7 @@
     padding-inline: 0;
   }
 
-  .cart-drawer__item .ant-input-number {
+  .cart-drawer__item .ant-input-number, .cart-drawer__quantityInput {
     width: 96px;
     min-height: 44px;
   }
@@ -946,7 +946,7 @@
     width: 100%;
   }
 
-  .cart-drawer__item .ant-input-number {
+  .cart-drawer__item .ant-input-number, .cart-drawer__quantityInput {
     width: 100%;
   }
 
@@ -1193,7 +1193,7 @@
     margin-inline-end: 8px;
   }
 
-  .cart-drawer__item .ant-input-number,
+  .cart-drawer__item .ant-input-number, .cart-drawer__quantityInput,
   .cart-drawer__item .ant-btn {
     min-height: 44px;
   }
@@ -1428,7 +1428,7 @@
     width: 100%;
   }
 
-  .cart-drawer__item .ant-input-number,
+  .cart-drawer__item .ant-input-number, .cart-drawer__quantityInput,
   .cart-drawer__itemAction.ant-btn,
   .cart-drawer__footer .ant-btn {
     min-width: 0;
@@ -1639,7 +1639,7 @@
     line-height: 1.25;
   }
 
-  .cart-drawer__item .ant-input-number,
+  .cart-drawer__item .ant-input-number, .cart-drawer__quantityInput,
   .cart-drawer__itemAction.ant-btn,
   .cart-drawer__express .ant-btn,
   .cart-drawer__footer .ant-btn {
@@ -1697,7 +1697,7 @@
     text-align: right;
   }
 
-  .cart-drawer__itemCommerce .ant-input-number {
+  .cart-drawer__itemCommerce .ant-input-number, .cart-drawer__quantityInput {
     justify-self: start;
     width: 104px;
   }
@@ -1976,7 +1976,7 @@
     grid-template-columns: minmax(0, 1fr) minmax(84px, 96px);
   }
 
-  .cart-drawer__item .ant-input-number {
+  .cart-drawer__item .ant-input-number, .cart-drawer__quantityInput {
     width: 100%;
   }
 
@@ -2044,7 +2044,7 @@
     text-overflow: ellipsis;
   }
 
-  .cart-drawer__item .ant-input-number {
+  .cart-drawer__item .ant-input-number, .cart-drawer__quantityInput {
     justify-self: end;
   }
 }
@@ -2067,7 +2067,7 @@
   max-width: 100%;
 }
 
-.cart-drawer .cart-drawer__itemCommerce > .ant-input-number {
+.cart-drawer .cart-drawer__itemCommerce > .ant-input-number, .cart-drawer__quantityInput {
   grid-column: 2 / 3;
   justify-self: end;
   width: 88px;
@@ -2130,7 +2130,7 @@
     grid-template-columns: minmax(0, 1fr) minmax(82px, 92px) !important;
   }
 
-  .cart-drawer .cart-drawer__itemCommerce > .ant-input-number {
+  .cart-drawer .cart-drawer__itemCommerce > .ant-input-number, .cart-drawer__quantityInput {
     width: min(92px, 28vw);
   }
 
@@ -2256,7 +2256,7 @@
   .cart-drawer .ant-empty .ant-btn,
   .cart-drawer__productLink,
   .cart-drawer__footer .ant-btn,
-  .cart-drawer__item .ant-input-number,
+  .cart-drawer__item .ant-input-number, .cart-drawer__quantityInput,
   .cart-drawer__item .ant-btn,
   .cart-drawer__itemAction.ant-btn,
   .cart-drawer-popconfirm.shop-popconfirm .shop-popconfirm__actions .ant-btn {
@@ -2617,4 +2617,19 @@
 /* Gate113: cart drawer confirm overlays sit above the open drawer shell. */
 body .cart-drawer-popconfirm.shop-popconfirm {
   z-index: 10050 !important;
+}
+
+
+/* Gate128 shop quantity densify */
+.cart-drawer__quantityInput {
+  width: 88px;
+  max-width: 100%;
+}
+.cart-drawer__quantityInput .shop-input__shell {
+  min-height: 36px;
+  padding: 0 8px;
+}
+.cart-drawer__quantityInput .shop-input__control {
+  min-height: 32px;
+  text-align: center;
 }

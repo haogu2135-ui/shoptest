@@ -1,6 +1,11 @@
 import { useNavigate } from 'react-router-dom';
 import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, Button, Divider, Input, message, Modal, Popconfirm, Select, Space, Table, Tag, Typography } from 'antd';
+import { Alert, Button, Divider, message, Space, Table, Tag, Typography } from 'antd';
+import ShopSearchField from '../components/ShopSearchField';
+import ShopPopconfirm from '../components/ShopPopconfirm';
+import ShopSelect from '../components/ShopSelect';
+import ShopModal from '../components/ShopModal';
+import { ShopTextArea } from '../components/ShopInput';
 import { CheckCircleOutlined, ClockCircleOutlined, DeleteOutlined, MessageOutlined, QuestionCircleOutlined, SearchOutlined, WarningOutlined } from '@ant-design/icons';
 import { adminApi } from '../api/admin';
 import type { ProductQuestion, ProductQuestionAdminSummary } from '../types';
@@ -16,7 +21,6 @@ import {
 import './ProductQuestionManagement.css';
 
 const { Title, Paragraph } = Typography;
-const mobilePopconfirmClassNames = { root: 'shop-mobile-popup-layer' };
 
 type QuestionStatus = 'UNANSWERED' | 'ANSWERED' | 'ALL';
 
@@ -200,8 +204,7 @@ const ProductQuestionManagement: React.FC = () => {
         </Button>
       ) : null,
       canDeleteQuestions ? (
-        <Popconfirm
-          classNames={mobilePopconfirmClassNames}
+        <ShopPopconfirm rootClassName="shop-mobile-popup-layer"
           key="delete"
           title={t('pages.adminQuestions.deleteConfirm')}
           description={t('pages.adminQuestions.deleteConfirmDescription')}
@@ -214,7 +217,7 @@ const ProductQuestionManagement: React.FC = () => {
           <Button size={buttonSize} danger icon={<DeleteOutlined />} aria-label={deleteActionLabel} title={deleteActionLabel} loading={deletingId === record.id} disabled={actionsDisabledByStaleData}>
             {t('common.delete')}
           </Button>
-        </Popconfirm>
+        </ShopPopconfirm>
       ) : null,
     ].filter(Boolean);
     return actions.length ? <Space wrap className={variant === 'card' ? 'product-question-card__actions' : undefined}>{actions}</Space> : '-';
@@ -310,12 +313,11 @@ const ProductQuestionManagement: React.FC = () => {
         </div>
       </section>
       <Space className="product-question-management-page__toolbar" wrap>
-        <Input.Search
+        <ShopSearchField
           allowClear
           prefix={<SearchOutlined />}
           value={keyword}
-          onChange={(event) => {
-            const nextKeyword = event.target.value;
+          onChange={(nextKeyword) => {
             setKeyword(nextKeyword);
             if (!nextKeyword.trim()) {
               setSearchText('');
@@ -324,17 +326,15 @@ const ProductQuestionManagement: React.FC = () => {
           onSearch={(value) => setSearchText(value.trim())}
           placeholder={t('common.search')}
           className="product-question-management-page__keywordInput"
-          aria-label={questionSearchInputLabel}
+          ariaLabel={questionSearchInputLabel}
           title={questionSearchInputLabel}
-          enterButton={<Button aria-label={questionSearchButtonLabel} title={questionSearchButtonLabel} icon={<SearchOutlined />} />}
+          submitLabel={questionSearchButtonLabel}
         />
-        <Select
+        <ShopSelect
           className="product-question-management-page__statusFilter"
           value={statusFilter}
-          onChange={setStatusFilter}
-          classNames={{ popup: { root: 'shop-mobile-popup-layer' } }}
-          getPopupContainer={() => document.body}
-          aria-label={questionStatusFilterLabel}
+          onChange={(value) => setStatusFilter((value as QuestionStatus) || 'UNANSWERED')} popupClassName="shop-mobile-popup-layer"
+          ariaLabel={questionStatusFilterLabel}
           title={questionStatusFilterLabel}
           options={[
             { value: 'UNANSWERED', label: t('pages.adminQuestions.statusUnanswered') },
@@ -448,10 +448,10 @@ const ProductQuestionManagement: React.FC = () => {
         size="middle"
         scroll={{ x: 1370 }}
       />
-      <Modal
+      <ShopModal
         className="profile-mobile-safe-modal product-question-management-page__answerModal"
         open={!!answerTarget}
-        onCancel={closeAnswerModal}
+        onClose={closeAnswerModal}
         onOk={handleAnswer}
         okText={t('pages.adminQuestions.answerAction')}
         cancelText={t('common.cancel')}
@@ -459,9 +459,8 @@ const ProductQuestionManagement: React.FC = () => {
         cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${answerSubmitActionLabel}`, title: `${t('common.cancel')}: ${answerSubmitActionLabel}` }}
         confirmLoading={answering}
         title={t('pages.adminQuestions.answerAction')}
-        destroyOnHidden
       >
-        <Input.TextArea
+        <ShopTextArea
           rows={6}
           value={answerText}
           onChange={(event) => setAnswerText(event.target.value)}
@@ -471,7 +470,7 @@ const ProductQuestionManagement: React.FC = () => {
           aria-label={answerInputLabel}
           title={answerInputLabel}
         />
-      </Modal>
+      </ShopModal>
     </div>
   );
 };

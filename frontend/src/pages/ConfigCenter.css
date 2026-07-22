@@ -85,6 +85,13 @@
 }
 
 .config-center__editor {
+  width: 100%;
+  min-width: 0;
+}
+
+.config-center__editor .shop-input__control--textarea,
+.config-center__editor.shop-input .shop-input__control--textarea,
+textarea.config-center__editor {
   min-height: 360px !important;
   font-family: Consolas, Monaco, "Courier New", monospace;
   font-size: 13px;
@@ -475,6 +482,8 @@
   .config-center__contentItem .ant-form-item-control-input,
   .config-center__contentItem .ant-form-item-control-input-content,
   .config-center__contentItem .ant-input,
+  .config-center__contentItem .config-center__editor,
+  .config-center__contentItem .config-center__editor .shop-input__control--textarea,
   .config-center__contentItem textarea.config-center__editor {
     width: 100% !important;
     min-width: 0 !important;
@@ -486,6 +495,7 @@
     overflow: visible;
   }
 
+  .config-center__contentItem .config-center__editor .shop-input__control--textarea,
   .config-center__contentItem textarea.config-center__editor {
     display: block;
     box-sizing: border-box;

@@ -1,5 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Card, Checkbox, Form, Input, Modal, Space, Table, Tag, Typography, message } from 'antd';
+import { Alert, Button, Card, Checkbox, Form, Space, Table, Tag, Typography, message } from 'antd';
+import ShopInput from '../components/ShopInput';
+import ShopModal from '../components/ShopModal';
 import { DownloadOutlined, PlusOutlined, SafetyCertificateOutlined, SearchOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { adminApi } from '../api/admin';
@@ -201,7 +203,7 @@ const PermissionManagement: React.FC = () => {
         <>
       <Card className="permission-management-page__toolbar" style={{ margin: '20px 0 16px' }}>
         <Space wrap className="permission-management-page__actions">
-          <Input
+          <ShopInput
             allowClear
             prefix={<SearchOutlined />}
             value={keyword}
@@ -270,27 +272,28 @@ const PermissionManagement: React.FC = () => {
         </>
       ) : null}
 
-      <Modal
+      <ShopModal
         title={editingRole ? t('pages.permissions.editRole') : t('pages.permissions.newRole')}
         open={modalOpen}
         onOk={saveRole}
-        onCancel={closeRoleModal}
+        onClose={closeRoleModal}
         confirmLoading={saving}
         width={720}
         className="profile-mobile-safe-modal permission-management-page__modal"
+        okText={t('common.save')}
+        cancelText={t('common.cancel')}
         okButtonProps={{ disabled: roleActionDisabled, 'aria-label': saveRoleActionLabel, title: saveRoleActionLabel }}
         cancelButtonProps={{ 'aria-label': cancelRoleActionLabel, title: cancelRoleActionLabel }}
-        destroyOnHidden
       >
         <Form form={form} layout="vertical">
           <Form.Item name="code" label={t('pages.permissions.roleCode')} rules={[{ required: true }]}>
-            <Input disabled={Boolean(editingRole)} placeholder="CUSTOMER_SERVICE" aria-label={`${roleEditorLabel}: ${t('pages.permissions.roleCode')}`} title={`${roleEditorLabel}: ${t('pages.permissions.roleCode')}`} />
+            <ShopInput disabled={Boolean(editingRole)} placeholder="CUSTOMER_SERVICE" aria-label={`${roleEditorLabel}: ${t('pages.permissions.roleCode')}`} title={`${roleEditorLabel}: ${t('pages.permissions.roleCode')}`} />
           </Form.Item>
           <Form.Item name="name" label={t('pages.permissions.roleName')} rules={[{ required: true }]}>
-            <Input aria-label={`${roleEditorLabel}: ${t('pages.permissions.roleName')}`} title={`${roleEditorLabel}: ${t('pages.permissions.roleName')}`} />
+            <ShopInput aria-label={`${roleEditorLabel}: ${t('pages.permissions.roleName')}`} title={`${roleEditorLabel}: ${t('pages.permissions.roleName')}`} />
           </Form.Item>
           <Form.Item name="description" label={t('pages.permissions.description')}>
-            <Input aria-label={`${roleEditorLabel}: ${t('pages.permissions.description')}`} title={`${roleEditorLabel}: ${t('pages.permissions.description')}`} />
+            <ShopInput aria-label={`${roleEditorLabel}: ${t('pages.permissions.description')}`} title={`${roleEditorLabel}: ${t('pages.permissions.description')}`} />
           </Form.Item>
           <Form.Item name="permissions" label={t('pages.permissions.permissionPages')} rules={[{ required: true }]}>
 	            <div role="group" aria-label={`${roleEditorLabel}: ${t('pages.permissions.permissionPages')}`} title={`${roleEditorLabel}: ${t('pages.permissions.permissionPages')}`}>
@@ -306,7 +309,7 @@ const PermissionManagement: React.FC = () => {
             </div>
           </Form.Item>
         </Form>
-      </Modal>
+      </ShopModal>
     </div>
   );
 };

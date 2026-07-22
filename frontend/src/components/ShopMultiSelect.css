@@ -1,0 +1,232 @@
+.shop-multi-select-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.shop-multi-select {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 auto;
+  min-height: 44px;
+  min-width: 0;
+  max-width: 100%;
+  margin: 0;
+  padding: 0 12px;
+  border: 1px solid #d5e2d9;
+  border-radius: 10px;
+  background: #fff;
+  color: #173f2b;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.2;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.shop-multi-select:hover {
+  border-color: #124734;
+}
+
+.shop-multi-select:focus-visible {
+  outline: 3px solid rgba(18, 71, 52, 0.28);
+  outline-offset: 1px;
+}
+
+.shop-multi-select:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.shop-multi-select__value {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shop-multi-select__value--placeholder {
+  color: #6b7c72;
+  font-weight: 600;
+}
+
+.shop-multi-select__arrow {
+  flex: 0 0 auto;
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 6px solid #3f5147;
+}
+
+.shop-multi-select[aria-expanded='true'] .shop-multi-select__arrow {
+  transform: rotate(180deg);
+}
+
+.shop-multi-select__clear {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #3f5147;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.shop-multi-select__clear:focus-visible {
+  outline: 3px solid rgba(18, 71, 52, 0.28);
+  outline-offset: 1px;
+}
+
+.shop-multi-select__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.shop-multi-select__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  margin: 0;
+  padding: 4px 10px;
+  border: 1px solid #d5e2d9;
+  border-radius: 999px;
+  background: #f4faf6;
+  color: #124734;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.shop-multi-select__chip:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.shop-multi-select__popup {
+  max-height: min(280px, calc(100dvh - 24px));
+  overflow: auto;
+  padding: 6px;
+  border: 1px solid #d8e6dc;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 14px 36px rgba(18, 71, 52, 0.18);
+}
+
+.shop-multi-select__popup--searchable {
+  display: flex;
+  flex-direction: column;
+  padding-top: 8px;
+}
+
+.shop-multi-select__search {
+  flex: 0 0 auto;
+  padding: 0 6px 8px;
+  border-bottom: 1px solid #e4ebe4;
+  margin-bottom: 4px;
+}
+
+.shop-multi-select__searchInput {
+  display: block;
+  width: 100%;
+  min-height: 40px;
+  margin: 0;
+  padding: 8px 10px;
+  border: 1px solid #d5e2d9;
+  border-radius: 8px;
+  background: #fbfdfb;
+  color: #173f2b;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.2;
+  box-sizing: border-box;
+}
+
+.shop-multi-select__searchInput:focus {
+  outline: 3px solid rgba(18, 71, 52, 0.22);
+  outline-offset: 1px;
+  border-color: #124734;
+  background: #fff;
+}
+
+.shop-multi-select__empty {
+  padding: 12px 10px;
+  color: #5b6c62;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.shop-multi-select__option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  margin: 0;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #173f2b;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+
+.shop-multi-select__option:hover:not(:disabled) {
+  background: #eef7f1;
+}
+
+.shop-multi-select__option--selected {
+  background: #e5f4eb;
+}
+
+.shop-multi-select__option:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.shop-multi-select__check {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  border: 2px solid #9db5a6;
+  border-radius: 4px;
+  background: #fff;
+  box-sizing: border-box;
+}
+
+.shop-multi-select__check--on {
+  border-color: #124734;
+  background: #124734;
+  box-shadow: inset 0 0 0 2px #fff;
+}
+
+.shop-multi-select__optionLabel {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

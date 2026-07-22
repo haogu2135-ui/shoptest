@@ -1,0 +1,57 @@
+.shop-badge {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  vertical-align: middle;
+}
+
+.shop-badge__body {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+}
+
+.shop-badge__count {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 1;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #ff4d4f;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+  white-space: nowrap;
+  transform: translate(50%, -50%);
+  transform-origin: 100% 0%;
+  box-shadow: 0 0 0 1px #fff;
+  pointer-events: none;
+  box-sizing: border-box;
+}
+
+.shop-badge--small .shop-badge__count {
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  font-size: 10px;
+  line-height: 16px;
+}
+
+.shop-badge--hasCount {
+  /* offset hooks when provided */
+}
+
+.shop-badge[style*="--shop-badge-offset-x"] .shop-badge__count {
+  transform: translate(
+    calc(50% + var(--shop-badge-offset-x, 0px)),
+    calc(-50% + var(--shop-badge-offset-y, 0px))
+  );
+}

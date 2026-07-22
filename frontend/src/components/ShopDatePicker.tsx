@@ -13,11 +13,13 @@ export type ShopDatePickerProps = {
   title?: string;
   placeholder?: string;
   allowClear?: boolean;
+  /** When true, uses datetime-local (YYYY-MM-DDTHH:mm). */
+  showTime?: boolean;
 };
 
-const toInputValue = (value?: Dayjs | null) => {
+const toInputValue = (value?: Dayjs | null, showTime = false) => {
   if (!value || !dayjs.isDayjs(value) || !value.isValid()) return '';
-  return value.format('YYYY-MM-DD');
+  return value.format(showTime ? 'YYYY-MM-DDTHH:mm' : 'YYYY-MM-DD');
 };
 
 const ShopDatePicker: React.FC<ShopDatePickerProps> = ({
@@ -30,15 +32,16 @@ const ShopDatePicker: React.FC<ShopDatePickerProps> = ({
   title,
   placeholder = '',
   allowClear = true,
+  showTime = false,
 }) => {
-  const inputValue = toInputValue(value);
-  const label = ariaLabel || placeholder || 'Date';
+  const inputValue = toInputValue(value, showTime);
+  const label = ariaLabel || placeholder || (showTime ? 'Date time' : 'Date');
 
   return (
     <div className={`shop-date-picker ${className}`.trim()}>
       <input
         id={id}
-        type="date"
+        type={showTime ? 'datetime-local' : 'date'}
         className="shop-date-picker__input"
         value={inputValue}
         disabled={disabled}

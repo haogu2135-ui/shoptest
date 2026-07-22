@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import ShopRate from './ShopRate';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { ShopIcon, SI } from './ShopIcon';
-import { Input, Button, Avatar, Upload } from 'antd';
+import { Button, Avatar, Upload } from 'antd';
+import { ShopTextArea } from './ShopInput';
 import ShopSelect from './ShopSelect';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../i18n';
@@ -16,7 +17,6 @@ import { productImageFallback, resolveProductImage } from '../utils/productMedia
 import './ProductReview.css';
 import '../styles/mobile-page-contrast.css';
 
-const { TextArea } = Input;
 const MAX_REVIEW_IMAGES = 4;
 const MAX_REVIEW_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
 const MAX_REVIEW_COMMENT_LENGTH = 1000;
@@ -165,7 +165,7 @@ export const ProductReview: React.FC<ProductReviewProps> = ({
                             <div role="group" aria-label={reviewRatingLabel} title={reviewRatingLabel}>
                                 <ShopRate className="product-review__rate" value={rating} onChange={setRating} ariaLabel="review-rating" />
                             </div>
-                            <TextArea
+                            <ShopTextArea
                                 className="product-review__textarea"
                                 rows={4}
                                 value={comment}

@@ -3732,3 +3732,9 @@ body .shop-nav__dropdown-popup.shop-dropdown__popup {
   background: #f2673f !important;
   color: #ffffff !important;
 }
+
+
+/* Gate126 shop-badge densify — ShopBadge keeps ant-badge* class hooks for layout parity */
+.shop-nav .shop-badge.ant-badge {
+  line-height: 1;
+}

@@ -1,8 +1,14 @@
 import React, { useCallback, useEffect, useState, useMemo } from 'react';
-import {
-  Table, Button, Modal, Form, Input, InputNumber, message, Space, Select, Tag, Switch, DatePicker,
-  Tooltip, Typography, Divider, Image, Popconfirm, TreeSelect, Upload, Tabs, Alert, Card,
-} from 'antd';
+import { Table, Button, Form, message, Space, Tag, Switch, Tooltip, Typography, Divider, Image, Upload, Tabs, Alert, Card } from 'antd';
+import ShopInput, { ShopTextArea } from '../components/ShopInput';
+import ShopPopconfirm from '../components/ShopPopconfirm';
+import ShopSelect from '../components/ShopSelect';
+import ShopMultiSelect from '../components/ShopMultiSelect';
+import ShopRangePicker from '../components/ShopRangePicker';
+import ShopTreeSelect from '../components/ShopTreeSelect';
+import ShopInputNumber from '../components/ShopInputNumber';
+import ShopModal from '../components/ShopModal';
+import ShopConfirm from '../components/ShopConfirm';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   PlusOutlined, EditOutlined, DeleteOutlined, StarOutlined, StarFilled,
@@ -46,12 +52,8 @@ import {
 import './ProductManagement.css';
 
 const { Title, Text } = Typography;
-const { TextArea } = Input;
 const productAdminImageFallback = productImageFallback;
 const resolveProductAdminImage = resolveProductImage;
-const mobilePopupClassNames = { popup: { root: 'shop-mobile-popup-layer' } };
-const productEditorPopupClassNames = { popup: { root: 'shop-mobile-popup-layer product-management-page__editorPopup' } };
-const mobilePopconfirmClassNames = { root: 'shop-mobile-popup-layer' };
 const productAdminTableCell = (label: string): React.TdHTMLAttributes<HTMLElement> & Record<'data-label', string> => ({
   'data-label': label,
 });
@@ -111,7 +113,7 @@ type ProductBundleItemFormRow = {
 // type ProductFormValues = Omit<Partial<Product>
 type ProductFormValues = Partial<Omit<
   Product,
-  'images' | 'specifications' | 'detailContent' | 'localizedContent' | 'optionGroups' | 'variants' | 'bundle' | 'limitedTimeStartAt' | 'limitedTimeEndAt'
+  'images' | 'specifications' | 'detailContent' | 'localizedContent' | 'optionGroups' | 'variants' | 'bundle' | 'limitedTimeStartAt' | 'limitedTimeEndAt' | 'tag'
 >> & {
   images?: unknown[];
   specifications?: ProductSpecificationFormRow[];
@@ -124,6 +126,7 @@ type ProductFormValues = Partial<Omit<
   bundlePrice?: unknown;
   bundleItems?: ProductBundleItemFormRow[];
   limitedTimeRange?: [Dayjs | null | undefined, Dayjs | null | undefined];
+  tag?: string | string[];
 };
 
 // Page-local mutation payload alias kept for source type-safety contracts; API uses the shared shape.
@@ -688,6 +691,16 @@ const ProductManagement: React.FC = () => {
   const [productSnapshotLoaded, setProductSnapshotLoaded] = useState(false);
   const [productSubmitting, setProductSubmitting] = useState(false);
   const [importSubmitting, setImportSubmitting] = useState(false);
+  const [importDialog, setImportDialog] = useState<{
+    kind: 'problem' | 'confirm' | 'success';
+    title: string;
+    content: React.ReactNode;
+    width?: number;
+    className: string;
+    okText?: string;
+    actionLabel?: string;
+    file?: File;
+  } | null>(null);
   const [urlImportVisible, setUrlImportVisible] = useState(false);
   const [urlImportSubmitting, setUrlImportSubmitting] = useState(false);
   const [urlImportPreview, setUrlImportPreview] = useState<ProductUrlImportPreview | null>(null);
@@ -1157,6 +1170,9 @@ const ProductManagement: React.FC = () => {
       : [{}];
     form.setFieldsValue({
       ...record,
+      tag: record.tag
+        ? String(record.tag).split(',').map((item) => item.trim()).filter(Boolean)
+        : [],
       images,
       specifications: specs,
       optionGroups: optionRows.length > 0 ? optionRows : [{ name: 'Size', values: '' }, { name: 'Color', values: '' }],
@@ -1416,8 +1432,13 @@ const ProductManagement: React.FC = () => {
         limitedTimeRange,
         ...rest
       } = values;
+      const rawTag = (rest as { tag?: string | string[] | null }).tag;
+      const normalizedTag = Array.isArray(rawTag)
+        ? rawTag.map((item) => String(item).trim()).filter(Boolean).join(',') || undefined
+        : (rawTag || undefined);
       const payload: ProductMutationPayload = {
         ...rest,
+        tag: normalizedTag,
         imageUrl: mainImage,
         stock: variants.length > 0 ? variantStockTotal : rest.stock,
         specifications: Object.keys(specs).length > 0 ? specs : null,
@@ -1707,12 +1728,68 @@ const ProductManagement: React.FC = () => {
     notice: string,
     duplicateImport?: ProductImportHistoryEntry,
   ) => {
-    Modal.warning({
+    setImportDialog({
+      kind: 'problem',
       title,
       content: renderImportProblemContent(result, notice, duplicateImport),
       width: 720,
       className: 'profile-mobile-safe-modal product-management-page__importProblemModal',
     });
+  };
+
+  const closeImportDialog = () => {
+    if (importSubmitting && importDialog?.kind === 'confirm') return;
+    setImportDialog(null);
+  };
+
+  const applyImportConfirm = async () => {
+    if (!importDialog || importDialog.kind !== 'confirm' || !importDialog.file) return;
+    const file = importDialog.file;
+    setImportSubmitting(true);
+    setLoading(true);
+    try {
+      const res = await adminApi.importProducts(file);
+      const result = res.data;
+      if (!result.applied) {
+        showImportProblemModal(
+          result,
+          t('pages.productAdmin.importRejectedTitle'),
+          t('pages.productAdmin.importRejectedNoWrite'),
+        );
+      } else {
+        setImportDialog({
+          kind: 'success',
+          title: t('pages.productAdmin.importSuccessTitle'),
+          content: (
+            <div className="product-import-result">
+              <Alert type="success" showIcon message={t('pages.productAdmin.importAppliedNotice')} />
+              <p>{t('pages.productAdmin.importSuccess', productImportTranslationParams(result))}</p>
+              {renderImportTrace(result)}
+            </div>
+          ),
+          width: 640,
+          className: 'profile-mobile-safe-modal product-management-page__importSuccessModal',
+        });
+        fetchImportHistory();
+      }
+      fetchProducts();
+    } catch (error: unknown) {
+      const result = productImportResultFromError(error);
+      if (result) {
+        showImportProblemModal(
+          result,
+          t('pages.productAdmin.importRejectedTitle'),
+          t('pages.productAdmin.importRejectedNoWrite'),
+        );
+      } else {
+        message.error(importErrorMessageFromError(error, t('pages.productAdmin.importFailed'), language));
+        setImportDialog(null);
+      }
+    } finally {
+      setImportSubmitting(false);
+      setLoading(false);
+      fetchImportHistory();
+    }
   };
 
   const handleImportProducts = async (file: File) => {
@@ -1738,6 +1815,7 @@ const ProductManagement: React.FC = () => {
       const preview = previewRes.data;
       const duplicateImport = findDuplicateSuccessfulImport(preview.fileSha256);
       setLoading(false);
+      setImportSubmitting(false);
       if (preview.failed > 0 || !preview.readyToImport) {
         showImportProblemModal(
           preview,
@@ -1749,7 +1827,8 @@ const ProductManagement: React.FC = () => {
         return false;
       }
       const importTargetLabel = `${t('pages.productAdmin.importConfirmApply')}: ${file.name}, ${t('pages.productAdmin.importPreviewMessage', resolveImportTranslationParams(preview))}`;
-      Modal.confirm({
+      setImportDialog({
+        kind: 'confirm',
         title: t('pages.productAdmin.importPreviewTitle'),
         content: (
           <div className="product-import-result">
@@ -1763,57 +1842,11 @@ const ProductManagement: React.FC = () => {
             {renderDuplicateImportWarning(duplicateImport)}
           </div>
         ),
-        okText: t('pages.productAdmin.importConfirmApply'),
-        cancelText: t('common.cancel'),
-        okButtonProps: { disabled: productActionDisabled, 'aria-label': importTargetLabel, title: importTargetLabel },
-        cancelButtonProps: { 'aria-label': `${t('common.cancel')}: ${importTargetLabel}`, title: `${t('common.cancel')}: ${importTargetLabel}` },
         width: 640,
         className: 'profile-mobile-safe-modal product-management-page__importConfirmModal',
-        onOk: async () => {
-          setImportSubmitting(true);
-          setLoading(true);
-          try {
-            const res = await adminApi.importProducts(file);
-            const result = res.data;
-            if (!result.applied) {
-              showImportProblemModal(
-                result,
-                t('pages.productAdmin.importRejectedTitle'),
-                t('pages.productAdmin.importRejectedNoWrite'),
-              );
-            } else {
-              Modal.success({
-                title: t('pages.productAdmin.importSuccessTitle'),
-                content: (
-                  <div className="product-import-result">
-                    <Alert type="success" showIcon message={t('pages.productAdmin.importAppliedNotice')} />
-                    <p>{t('pages.productAdmin.importSuccess', productImportTranslationParams(result))}</p>
-                    {renderImportTrace(result)}
-                  </div>
-                ),
-                width: 640,
-                className: 'profile-mobile-safe-modal product-management-page__importSuccessModal',
-              });
-              fetchImportHistory();
-            }
-            fetchProducts();
-          } catch (error: unknown) {
-            const result = productImportResultFromError(error);
-            if (result) {
-              showImportProblemModal(
-                result,
-                t('pages.productAdmin.importRejectedTitle'),
-                t('pages.productAdmin.importRejectedNoWrite'),
-              );
-            } else {
-              message.error(importErrorMessageFromError(error, t('pages.productAdmin.importFailed'), language));
-            }
-          } finally {
-            setImportSubmitting(false);
-            setLoading(false);
-            fetchImportHistory();
-          }
-        },
+        okText: t('pages.productAdmin.importConfirmApply'),
+        actionLabel: importTargetLabel,
+        file,
       });
     } catch (error: unknown) {
       const result = productImportResultFromError(error);
@@ -2030,8 +2063,7 @@ const ProductManagement: React.FC = () => {
           <Space size="small" wrap className="product-action-space">
 	            <Tooltip title={featureActionLabel}>
 	              {canWriteProducts ? (
-		                <Popconfirm
-		                  classNames={mobilePopconfirmClassNames}
+		                <ShopPopconfirm rootClassName="shop-mobile-popup-layer"
 		                  title={featureActionLabel}
 	                  description={productName}
 	                  onConfirm={() => handleToggleFeatured(record)}
@@ -2050,7 +2082,7 @@ const ProductManagement: React.FC = () => {
 	                    disabled={productActionDisabled}
 	                    size="small"
 	                  />
-	                </Popconfirm>
+	                </ShopPopconfirm>
 	              ) : <span />}
 	            </Tooltip>
             {canWriteProducts ? <Button type="primary" icon={<EditOutlined />} aria-label={editActionLabel} title={editActionLabel} disabled={productActionDisabled} onClick={() => handleEdit(record)} size="small">{t('common.edit')}</Button> : null}
@@ -2067,8 +2099,7 @@ const ProductManagement: React.FC = () => {
               </Tooltip>
             ) : null}
             {canChangeProductStatus && (record.status || 'ACTIVE') !== 'ACTIVE' && (
-	              <Popconfirm
-	                classNames={mobilePopconfirmClassNames}
+	              <ShopPopconfirm rootClassName="shop-mobile-popup-layer"
 	                title={t('pages.productAdmin.approveConfirm', { name: productName })}
                 onConfirm={() => handleProductStatus(record, 'ACTIVE')}
                 okText={t('common.confirm')}
@@ -2078,11 +2109,10 @@ const ProductManagement: React.FC = () => {
                 cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${approveActionLabel}`, title: `${t('common.cancel')}: ${approveActionLabel}` }}
               >
                 <Button size="small" disabled={productActionDisabled} aria-label={approveActionLabel} title={approveActionLabel}>{t('pages.productAdmin.approve')}</Button>
-              </Popconfirm>
+              </ShopPopconfirm>
             )}
             {canChangeProductStatus && (record.status || 'ACTIVE') !== 'REJECTED' && (
-	              <Popconfirm
-	                classNames={mobilePopconfirmClassNames}
+	              <ShopPopconfirm rootClassName="shop-mobile-popup-layer"
 	                title={t('pages.productAdmin.rejectConfirm', { name: productName })}
                 onConfirm={() => handleProductStatus(record, 'REJECTED')}
                 okText={t('common.confirm')}
@@ -2092,11 +2122,10 @@ const ProductManagement: React.FC = () => {
                 cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${rejectActionLabel}`, title: `${t('common.cancel')}: ${rejectActionLabel}` }}
               >
                 <Button size="small" danger disabled={productActionDisabled} aria-label={rejectActionLabel} title={rejectActionLabel}>{t('pages.productAdmin.reject')}</Button>
-              </Popconfirm>
+              </ShopPopconfirm>
             )}
             {canChangeProductStatus && (record.status || 'ACTIVE') !== 'PENDING_REVIEW' && (
-	              <Popconfirm
-	                classNames={mobilePopconfirmClassNames}
+	              <ShopPopconfirm rootClassName="shop-mobile-popup-layer"
 	                title={t('pages.productAdmin.reviewConfirm', { name: productName })}
                 onConfirm={() => handleProductStatus(record, 'PENDING_REVIEW')}
                 okText={t('common.confirm')}
@@ -2106,11 +2135,10 @@ const ProductManagement: React.FC = () => {
                 cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${reviewActionLabel}`, title: `${t('common.cancel')}: ${reviewActionLabel}` }}
               >
                 <Button size="small" disabled={productActionDisabled} aria-label={reviewActionLabel} title={reviewActionLabel}>{t('pages.productAdmin.review')}</Button>
-              </Popconfirm>
+              </ShopPopconfirm>
             )}
             {canDeleteProducts ? (
-	              <Popconfirm
-	                classNames={mobilePopconfirmClassNames}
+	              <ShopPopconfirm rootClassName="shop-mobile-popup-layer"
 	                title={`${t('pages.productAdmin.deleteConfirm')}: ${productName}`}
                 onConfirm={() => handleDelete(record.id)}
                 okText={t('common.confirm')}
@@ -2120,7 +2148,7 @@ const ProductManagement: React.FC = () => {
                 cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${deleteActionLabel}`, title: `${t('common.cancel')}: ${deleteActionLabel}` }}
               >
                 <Button danger icon={<DeleteOutlined />} size="small" disabled={productActionDisabled} aria-label={deleteActionLabel} title={deleteActionLabel}>{t('common.delete')}</Button>
-              </Popconfirm>
+              </ShopPopconfirm>
             ) : null}
           </Space>
         );
@@ -2253,7 +2281,7 @@ const ProductManagement: React.FC = () => {
         <>
       <div className="product-management-page__toolbar">
         <Space className="product-management-page__filters">
-          <Input
+          <ShopInput
             placeholder={t('pages.productAdmin.searchPlaceholder')}
             prefix={<SearchOutlined />}
             value={searchKeyword}
@@ -2264,37 +2292,34 @@ const ProductManagement: React.FC = () => {
             disabled={productActionDisabled}
             allowClear
           />
-          <TreeSelect
+          <ShopTreeSelect
             placeholder={t('pages.productAdmin.filterCategory')}
             allowClear
             treeDefaultExpandAll
             className="product-management-page__filterCategory"
-            aria-label={categoryFilterLabel}
+            ariaLabel={categoryFilterLabel}
             title={categoryFilterLabel}
             value={filterCategory}
             disabled={productActionDisabled}
             onChange={(v) => {
-              setFilterCategory(v);
+              setFilterCategory(typeof v === 'number' ? v : v ? Number(v) : undefined);
               setProductPage(1);
             }}
             treeData={categoryOptions}
-            classNames={mobilePopupClassNames}
-            getPopupContainer={() => document.body}
+            popupClassName="shop-mobile-popup-layer"
           />
-          <Select
+          <ShopSelect
             placeholder={t('pages.productAdmin.reviewStatus')}
             allowClear
             className="product-management-page__filterStatus"
-            aria-label={statusFilterLabel}
+            ariaLabel={statusFilterLabel}
             title={statusFilterLabel}
             value={filterStatus}
             disabled={productActionDisabled}
             onChange={(value) => {
               setFilterStatus(value);
               setProductPage(1);
-            }}
-            classNames={mobilePopupClassNames}
-            getPopupContainer={() => document.body}
+            }} popupClassName="shop-mobile-popup-layer"
             options={[
               { value: 'ACTIVE', label: t('pages.productAdmin.approved') },
               { value: 'PENDING_REVIEW', label: t('pages.productAdmin.pending') },
@@ -2305,8 +2330,7 @@ const ProductManagement: React.FC = () => {
         </Space>
         <Space wrap className="product-management-page__actions">
           {canChangeProductStatus ? (
-	            <Popconfirm
-	              classNames={mobilePopconfirmClassNames}
+	            <ShopPopconfirm rootClassName="shop-mobile-popup-layer"
 	              title={t('pages.productAdmin.batchApproveConfirm', { count: selectedVisibleProductIds.length })}
               onConfirm={() => handleBatchProductStatus('ACTIVE')}
               okText={t('common.confirm')}
@@ -2318,11 +2342,10 @@ const ProductManagement: React.FC = () => {
               <Button disabled={productActionDisabled || selectedVisibleProductIds.length === 0 || !!batchStatusUpdating} loading={batchStatusUpdating === 'ACTIVE'} aria-label={batchApproveActionLabel} title={batchApproveActionLabel}>
                 {t('pages.productAdmin.batchApprove')}
               </Button>
-            </Popconfirm>
+            </ShopPopconfirm>
           ) : null}
           {canChangeProductStatus ? (
-	            <Popconfirm
-	              classNames={mobilePopconfirmClassNames}
+	            <ShopPopconfirm rootClassName="shop-mobile-popup-layer"
 	              title={t('pages.productAdmin.batchRejectConfirm', { count: selectedVisibleProductIds.length })}
               onConfirm={() => handleBatchProductStatus('REJECTED')}
               okText={t('common.confirm')}
@@ -2334,7 +2357,7 @@ const ProductManagement: React.FC = () => {
               <Button disabled={productActionDisabled || selectedVisibleProductIds.length === 0 || !!batchStatusUpdating} loading={batchStatusUpdating === 'REJECTED'} danger aria-label={batchRejectActionLabel} title={batchRejectActionLabel}>
                 {t('pages.productAdmin.batchReject')}
               </Button>
-            </Popconfirm>
+            </ShopPopconfirm>
           ) : null}
           <Button icon={<DownloadOutlined />} onClick={downloadImportTemplate} aria-label={downloadTemplateActionLabel} title={downloadTemplateActionLabel}>
             {t('pages.productAdmin.downloadTemplate')}
@@ -2591,15 +2614,15 @@ const ProductManagement: React.FC = () => {
         </>
       ) : null}
 
-      <Modal
+      <ShopModal
         title={editingProduct ? t('pages.productAdmin.editTitle') : t('pages.productAdmin.addTitle')}
         open={modalVisible}
         onOk={handleSubmit}
-        onCancel={closeProductModal}
+        onClose={closeProductModal}
         width="min(1280px, 96vw)"
-        destroyOnHidden
         className="profile-mobile-safe-modal shopify-product-modal"
         okText={editingProduct ? t('pages.productAdmin.saveProduct') : t('pages.productAdmin.addProduct')}
+        cancelText={t('common.cancel')}
         confirmLoading={productSubmitting}
         okButtonProps={{ disabled: productActionDisabled, 'aria-label': saveProductActionLabel, title: saveProductActionLabel }}
         cancelButtonProps={{ 'aria-label': cancelProductActionLabel, title: cancelProductActionLabel }}
@@ -2616,7 +2639,7 @@ const ProductManagement: React.FC = () => {
                     { max: PRODUCT_NAME_MAX_LENGTH, message: t('pages.productAdmin.nameMaxLength', { count: PRODUCT_NAME_MAX_LENGTH }) },
                   ]}
                 >
-                  <Input className="shopify-input" maxLength={PRODUCT_NAME_MAX_LENGTH} showCount placeholder={t('pages.productAdmin.namePlaceholder')} />
+                  <ShopInput className="shopify-input" maxLength={PRODUCT_NAME_MAX_LENGTH} showCount placeholder={t('pages.productAdmin.namePlaceholder')} />
                 </Form.Item>
 
                 <Form.Item
@@ -2627,7 +2650,7 @@ const ProductManagement: React.FC = () => {
                     { max: PRODUCT_DESCRIPTION_MAX_LENGTH, message: t('pages.productAdmin.descriptionMaxLength', { count: PRODUCT_DESCRIPTION_MAX_LENGTH }) },
                   ]}
                 >
-                  <TextArea
+                  <ShopTextArea
                     className="shopify-rich-text"
                     rows={7}
                     maxLength={PRODUCT_DESCRIPTION_MAX_LENGTH}
@@ -2652,13 +2675,13 @@ const ProductManagement: React.FC = () => {
                             </Text>
                           ) : null}
                           <Form.Item name={['localizedContent', 'es', 'name']} label={t('pages.productAdmin.spanishTitle')}>
-                            <Input className="shopify-input" placeholder={t('pages.productAdmin.fallbackEnglishTitle')} />
+                            <ShopInput className="shopify-input" placeholder={t('pages.productAdmin.fallbackEnglishTitle')} />
                           </Form.Item>
                           <Form.Item name={['localizedContent', 'es', 'brand']} label={t('pages.productAdmin.spanishBrand')}>
-                            <Input className="shopify-input" placeholder={t('pages.productAdmin.optionalLocalizedBrand')} />
+                            <ShopInput className="shopify-input" placeholder={t('pages.productAdmin.optionalLocalizedBrand')} />
                           </Form.Item>
                           <Form.Item name={['localizedContent', 'es', 'description']} label={t('pages.productAdmin.spanishDescription')} style={{ gridColumn: '1 / -1' }}>
-                            <TextArea rows={4} placeholder={t('pages.productAdmin.fallbackEnglishDescription')} />
+                            <ShopTextArea rows={4} placeholder={t('pages.productAdmin.fallbackEnglishDescription')} />
                           </Form.Item>
                         </div>
                       ),
@@ -2674,13 +2697,13 @@ const ProductManagement: React.FC = () => {
                             </Text>
                           ) : null}
                           <Form.Item name={['localizedContent', 'zh', 'name']} label={t('pages.productAdmin.chineseTitle')}>
-                            <Input className="shopify-input" placeholder={t('pages.productAdmin.fallbackEnglishTitle')} />
+                            <ShopInput className="shopify-input" placeholder={t('pages.productAdmin.fallbackEnglishTitle')} />
                           </Form.Item>
                           <Form.Item name={['localizedContent', 'zh', 'brand']} label={t('pages.productAdmin.chineseBrand')}>
-                            <Input className="shopify-input" placeholder={t('pages.productAdmin.optionalLocalizedBrand')} />
+                            <ShopInput className="shopify-input" placeholder={t('pages.productAdmin.optionalLocalizedBrand')} />
                           </Form.Item>
                           <Form.Item name={['localizedContent', 'zh', 'description']} label={t('pages.productAdmin.chineseDescription')} style={{ gridColumn: '1 / -1' }}>
-                            <TextArea rows={4} placeholder={t('pages.productAdmin.fallbackEnglishDescription')} />
+                            <ShopTextArea rows={4} placeholder={t('pages.productAdmin.fallbackEnglishDescription')} />
                           </Form.Item>
                         </div>
                       ),
@@ -2690,7 +2713,7 @@ const ProductManagement: React.FC = () => {
 
                 <div className="shopify-section-title">{t('pages.productAdmin.media')}</div>
                 <Form.Item name="imageUrl" label={t('pages.productAdmin.mainImage')} rules={[{ required: true, message: t('pages.productAdmin.mainImageRequired') }]}>
-                  <Input
+                  <ShopInput
                     className="shopify-input"
                     placeholder={t('pages.productAdmin.mainImageRequired')}
                     onChange={(e) => setImagePreviewUrl(e.target.value)}
@@ -2710,7 +2733,7 @@ const ProductManagement: React.FC = () => {
                         {fields.map(({ key, name, ...restField }, index) => (
                           <div className="shopify-media-input" key={key}>
                             <Form.Item {...restField} name={name} style={{ marginBottom: 0 }}>
-                              <Input
+                              <ShopInput
                                 placeholder={t('pages.productAdmin.imageUrl', { index: index + 1 })}
                                 aria-label={productEditorFieldLabel(t('pages.productAdmin.media'), t('pages.productAdmin.imageUrl', { index: index + 1 }), index)}
                                 title={productEditorFieldLabel(t('pages.productAdmin.media'), t('pages.productAdmin.imageUrl', { index: index + 1 }), index)}
@@ -2735,16 +2758,14 @@ const ProductManagement: React.FC = () => {
                 </div>
 
                 <Form.Item name="categoryId" label={t('common.category')} rules={[{ required: true, message: t('pages.productAdmin.categoryRequired') }]}>
-                  <TreeSelect
+                  <ShopTreeSelect
                     className="shopify-input"
                     placeholder={t('pages.productAdmin.categoryPlaceholder')}
                     treeDefaultExpandAll
                     treeData={categoryOptions}
-                    aria-label={`${productEditorLabel}: ${t('common.category')}`}
+                    ariaLabel={`${productEditorLabel}: ${t('common.category')}`}
                     title={`${productEditorLabel}: ${t('common.category')}`}
-                    classNames={productEditorPopupClassNames}
-                    getPopupContainer={() => document.body}
-                    placement="bottomLeft"
+                    popupClassName="shop-mobile-popup-layer product-management-page__editorPopup"
                   />
                 </Form.Item>
                 <Text type="secondary">{t('pages.productAdmin.categoryHint')}</Text>
@@ -2755,14 +2776,14 @@ const ProductManagement: React.FC = () => {
                   <h3>{t('pages.productAdmin.price')}</h3>
                 </div>
                 <Form.Item name="price" label={t('pages.productAdmin.salePrice')} rules={[{ required: true, message: t('pages.productAdmin.priceRequired') }]}>
-                  <InputNumber className="shopify-money-input" min={0} precision={2} prefix={t('common.currencySymbol')} placeholder="0.00" />
+                  <ShopInputNumber className="shopify-money-input" min={0} precision={2} prefix={t('common.currencySymbol')} placeholder="0.00" />
                 </Form.Item>
 	                <div className="shopify-pill-row">
 	                  <Form.Item name="originalPrice" label={null}>
-	                    <InputNumber min={0} precision={2} prefix={t('pages.productAdmin.compareAt')} placeholder={t('pages.productAdmin.compareAtPrice')} aria-label={compareAtPriceInputLabel} title={compareAtPriceInputLabel} />
+	                    <ShopInputNumber min={0} precision={2} prefix={t('pages.productAdmin.compareAt')} placeholder={t('pages.productAdmin.compareAtPrice')} aria-label={compareAtPriceInputLabel} title={compareAtPriceInputLabel} />
 	                  </Form.Item>
 	                  <Form.Item name="discount" label={null}>
-	                    <InputNumber min={0} max={100} suffix="%" placeholder={t('pages.productAdmin.discount')} aria-label={discountInputLabel} title={discountInputLabel} />
+	                    <ShopInputNumber min={0} max={100} suffix="%" placeholder={t('pages.productAdmin.discount')} aria-label={discountInputLabel} title={discountInputLabel} />
 	                  </Form.Item>
 	                </div>
               </section>
@@ -2776,10 +2797,10 @@ const ProductManagement: React.FC = () => {
 	                </div>
 	                <div className="shopify-two-col">
 	                  <Form.Item name="bundleTitle" label={t('bundle.bundleTitle')}>
-	                    <Input placeholder={t('pages.productAdmin.bundleTitlePlaceholder')} aria-label={bundleTitleInputLabel} title={bundleTitleInputLabel} />
+	                    <ShopInput placeholder={t('pages.productAdmin.bundleTitlePlaceholder')} aria-label={bundleTitleInputLabel} title={bundleTitleInputLabel} />
 	                  </Form.Item>
 	                  <Form.Item name="bundlePrice" label={t('bundle.bundlePrice')}>
-	                    <InputNumber min={0} precision={2} prefix={t('common.currencySymbol')} placeholder="0.00" aria-label={bundlePriceInputLabel} title={bundlePriceInputLabel} />
+	                    <ShopInputNumber min={0} precision={2} prefix={t('common.currencySymbol')} placeholder="0.00" aria-label={bundlePriceInputLabel} title={bundlePriceInputLabel} />
 	                  </Form.Item>
                 </div>
                 <Form.List name="bundleItems">
@@ -2788,10 +2809,10 @@ const ProductManagement: React.FC = () => {
 		                      {fields.map(({ key, name, ...restField }, index) => (
 		                        <div key={key} className="shopify-option-row">
 		                          <Form.Item {...restField} name={[name, 'name']} style={{ marginBottom: 0 }}>
-		                            <Input placeholder={t('bundle.bundleItemName')} aria-label={productEditorFieldLabel(t('bundle.bundleDeal'), t('bundle.bundleItemName'), index)} title={productEditorFieldLabel(t('bundle.bundleDeal'), t('bundle.bundleItemName'), index)} />
+		                            <ShopInput placeholder={t('bundle.bundleItemName')} aria-label={productEditorFieldLabel(t('bundle.bundleDeal'), t('bundle.bundleItemName'), index)} title={productEditorFieldLabel(t('bundle.bundleDeal'), t('bundle.bundleItemName'), index)} />
 		                          </Form.Item>
 		                          <Form.Item {...restField} name={[name, 'quantity']} style={{ marginBottom: 0 }}>
-		                            <InputNumber min={1} placeholder={t('common.quantity')} aria-label={productEditorFieldLabel(t('bundle.bundleDeal'), t('common.quantity'), index)} title={productEditorFieldLabel(t('bundle.bundleDeal'), t('common.quantity'), index)} />
+		                            <ShopInputNumber min={1} placeholder={t('common.quantity')} aria-label={productEditorFieldLabel(t('bundle.bundleDeal'), t('common.quantity'), index)} title={productEditorFieldLabel(t('bundle.bundleDeal'), t('common.quantity'), index)} />
 		                          </Form.Item>
                           <Button
                             type="text"
@@ -2819,7 +2840,7 @@ const ProductManagement: React.FC = () => {
 	                <div className="shopify-inventory-box">
 	                  <span>{t('pages.productAdmin.shopLocation')}</span>
 	                  <Form.Item name="stock" rules={[{ required: true, message: t('pages.productAdmin.stockRequired') }]} style={{ marginBottom: 0 }}>
-	                    <InputNumber min={0} placeholder="0" aria-label={stockInputLabel} title={stockInputLabel} />
+	                    <ShopInputNumber min={0} placeholder="0" aria-label={stockInputLabel} title={stockInputLabel} />
 	                  </Form.Item>
                 </div>
                 <div className="shopify-pill-row">
@@ -2838,10 +2859,10 @@ const ProductManagement: React.FC = () => {
                 </div>
                 <div className="shopify-two-col">
                   <Form.Item name="shipping" label={t('pages.productAdmin.shipping')}>
-                    <Input placeholder={t('pages.productAdmin.shippingRulePlaceholder')} />
+                    <ShopInput placeholder={t('pages.productAdmin.shippingRulePlaceholder')} />
                   </Form.Item>
                   <Form.Item name="freeShippingThreshold" label={t('pages.productAdmin.freeShippingThreshold')}>
-                    <InputNumber min={0} precision={2} prefix={t('common.currencySymbol')} placeholder="50.00" />
+                    <ShopInputNumber min={0} precision={2} prefix={t('common.currencySymbol')} placeholder="50.00" />
                   </Form.Item>
                 </div>
                 <div className="shopify-pill-row">
@@ -2872,10 +2893,10 @@ const ProductManagement: React.FC = () => {
 	                      {fields.map(({ key, name, ...restField }, index) => (
 	                        <div key={key} className="shopify-option-row">
 	                          <Form.Item {...restField} name={[name, 'name']} style={{ marginBottom: 0 }}>
-	                            <Input placeholder={t('pages.productAdmin.optionName')} aria-label={productEditorFieldLabel(t('pages.productAdmin.variants'), t('pages.productAdmin.optionName'), index)} title={productEditorFieldLabel(t('pages.productAdmin.variants'), t('pages.productAdmin.optionName'), index)} />
+	                            <ShopInput placeholder={t('pages.productAdmin.optionName')} aria-label={productEditorFieldLabel(t('pages.productAdmin.variants'), t('pages.productAdmin.optionName'), index)} title={productEditorFieldLabel(t('pages.productAdmin.variants'), t('pages.productAdmin.optionName'), index)} />
 	                          </Form.Item>
 	                          <Form.Item {...restField} name={[name, 'values']} style={{ marginBottom: 0 }}>
-	                            <Input placeholder={t('pages.productAdmin.optionValues')} aria-label={productEditorFieldLabel(t('pages.productAdmin.variants'), t('pages.productAdmin.optionValues'), index)} title={productEditorFieldLabel(t('pages.productAdmin.variants'), t('pages.productAdmin.optionValues'), index)} />
+	                            <ShopInput placeholder={t('pages.productAdmin.optionValues')} aria-label={productEditorFieldLabel(t('pages.productAdmin.variants'), t('pages.productAdmin.optionValues'), index)} title={productEditorFieldLabel(t('pages.productAdmin.variants'), t('pages.productAdmin.optionValues'), index)} />
 	                          </Form.Item>
 	                          <Button
 	                            type="text"
@@ -2903,19 +2924,19 @@ const ProductManagement: React.FC = () => {
 	                      {fields.map(({ key, name, ...restField }, index) => (
 	                        <div key={key} className="shopify-variant-row">
 	                          <Form.Item {...restField} name={[name, 'sku']} style={{ marginBottom: 0 }}>
-	                            <Input placeholder={t('pages.productAdmin.variantSku')} aria-label={productEditorFieldLabel(t('pages.productAdmin.variantCombinations'), t('pages.productAdmin.variantSku'), index)} title={productEditorFieldLabel(t('pages.productAdmin.variantCombinations'), t('pages.productAdmin.variantSku'), index)} />
+	                            <ShopInput placeholder={t('pages.productAdmin.variantSku')} aria-label={productEditorFieldLabel(t('pages.productAdmin.variantCombinations'), t('pages.productAdmin.variantSku'), index)} title={productEditorFieldLabel(t('pages.productAdmin.variantCombinations'), t('pages.productAdmin.variantSku'), index)} />
 	                          </Form.Item>
 	                          <Form.Item {...restField} name={[name, 'optionText']} style={{ marginBottom: 0 }} rules={[{ required: true, message: t('pages.productAdmin.variantOptionsRequired') }]}>
-	                            <Input placeholder={t('pages.productAdmin.variantOptionText')} aria-label={productEditorFieldLabel(t('pages.productAdmin.variantCombinations'), t('pages.productAdmin.variantOptionText'), index)} title={productEditorFieldLabel(t('pages.productAdmin.variantCombinations'), t('pages.productAdmin.variantOptionText'), index)} />
+	                            <ShopInput placeholder={t('pages.productAdmin.variantOptionText')} aria-label={productEditorFieldLabel(t('pages.productAdmin.variantCombinations'), t('pages.productAdmin.variantOptionText'), index)} title={productEditorFieldLabel(t('pages.productAdmin.variantCombinations'), t('pages.productAdmin.variantOptionText'), index)} />
 	                          </Form.Item>
 	                          <Form.Item {...restField} name={[name, 'price']} style={{ marginBottom: 0 }} rules={[{ required: true, message: t('pages.productAdmin.priceRequired') }]}>
-	                            <InputNumber min={0} precision={2} prefix={t('common.currencySymbol')} placeholder={t('pages.productAdmin.salePrice')} aria-label={productEditorFieldLabel(t('pages.productAdmin.variantCombinations'), t('pages.productAdmin.salePrice'), index)} title={productEditorFieldLabel(t('pages.productAdmin.variantCombinations'), t('pages.productAdmin.salePrice'), index)} />
+	                            <ShopInputNumber min={0} precision={2} prefix={t('common.currencySymbol')} placeholder={t('pages.productAdmin.salePrice')} aria-label={productEditorFieldLabel(t('pages.productAdmin.variantCombinations'), t('pages.productAdmin.salePrice'), index)} title={productEditorFieldLabel(t('pages.productAdmin.variantCombinations'), t('pages.productAdmin.salePrice'), index)} />
 	                          </Form.Item>
 	                          <Form.Item {...restField} name={[name, 'stock']} style={{ marginBottom: 0 }}>
-	                            <InputNumber min={0} placeholder={t('pages.productAdmin.stock')} aria-label={productEditorFieldLabel(t('pages.productAdmin.variantCombinations'), t('pages.productAdmin.stock'), index)} title={productEditorFieldLabel(t('pages.productAdmin.variantCombinations'), t('pages.productAdmin.stock'), index)} />
+	                            <ShopInputNumber min={0} placeholder={t('pages.productAdmin.stock')} aria-label={productEditorFieldLabel(t('pages.productAdmin.variantCombinations'), t('pages.productAdmin.stock'), index)} title={productEditorFieldLabel(t('pages.productAdmin.variantCombinations'), t('pages.productAdmin.stock'), index)} />
 	                          </Form.Item>
 	                          <Form.Item {...restField} name={[name, 'imageUrl']} style={{ marginBottom: 0 }}>
-	                            <Input placeholder={t('pages.productAdmin.variantImage')} aria-label={productEditorFieldLabel(t('pages.productAdmin.variantCombinations'), t('pages.productAdmin.variantImage'), index)} title={productEditorFieldLabel(t('pages.productAdmin.variantCombinations'), t('pages.productAdmin.variantImage'), index)} />
+	                            <ShopInput placeholder={t('pages.productAdmin.variantImage')} aria-label={productEditorFieldLabel(t('pages.productAdmin.variantCombinations'), t('pages.productAdmin.variantImage'), index)} title={productEditorFieldLabel(t('pages.productAdmin.variantCombinations'), t('pages.productAdmin.variantImage'), index)} />
 	                          </Form.Item>
 	                          <Button
 	                            type="text"
@@ -2947,10 +2968,10 @@ const ProductManagement: React.FC = () => {
 	                        {fields.map(({ key, name, ...restField }, index) => (
 	                          <div key={key} className="shopify-metafield-row">
 	                            <Form.Item {...restField} name={[name, 'key']} style={{ marginBottom: 0 }}>
-	                              <Input placeholder={t('pages.productAdmin.specKey')} aria-label={productEditorFieldLabel(t('pages.productAdmin.specs'), t('pages.productAdmin.specKey'), index)} title={productEditorFieldLabel(t('pages.productAdmin.specs'), t('pages.productAdmin.specKey'), index)} />
+	                              <ShopInput placeholder={t('pages.productAdmin.specKey')} aria-label={productEditorFieldLabel(t('pages.productAdmin.specs'), t('pages.productAdmin.specKey'), index)} title={productEditorFieldLabel(t('pages.productAdmin.specs'), t('pages.productAdmin.specKey'), index)} />
 	                            </Form.Item>
 	                            <Form.Item {...restField} name={[name, 'value']} style={{ marginBottom: 0 }}>
-	                              <Input placeholder={t('pages.productAdmin.specValue')} aria-label={productEditorFieldLabel(t('pages.productAdmin.specs'), t('pages.productAdmin.specValue'), index)} title={productEditorFieldLabel(t('pages.productAdmin.specs'), t('pages.productAdmin.specValue'), index)} />
+	                              <ShopInput placeholder={t('pages.productAdmin.specValue')} aria-label={productEditorFieldLabel(t('pages.productAdmin.specs'), t('pages.productAdmin.specValue'), index)} title={productEditorFieldLabel(t('pages.productAdmin.specs'), t('pages.productAdmin.specValue'), index)} />
 	                            </Form.Item>
 	                            <Button
 	                              type="text"
@@ -2983,7 +3004,7 @@ const ProductManagement: React.FC = () => {
                   <Text type="secondary" className="commerce-money">{formatMoney(form.getFieldValue('price'))}</Text>
                 </div>
                 <Form.Item name="warranty" label={t('pages.productAdmin.warranty')}>
-                  <Input className="shopify-input" placeholder={t('pages.productAdmin.warrantyPlaceholder')} />
+                  <ShopInput className="shopify-input" placeholder={t('pages.productAdmin.warrantyPlaceholder')} />
                 </Form.Item>
                 <Divider>{t('pages.productAdmin.richContent')}</Divider>
                 <Form.Item name="detailContent" noStyle>
@@ -3012,13 +3033,10 @@ const ProductManagement: React.FC = () => {
               <section className="shopify-card">
                 <h3>{t('common.status')}</h3>
                 <Form.Item name="status" style={{ marginBottom: 0 }}>
-                  <Select
+                  <ShopSelect
                     className="shopify-input"
-                    aria-label={`${productEditorLabel}: ${t('common.status')}`}
-                    title={`${productEditorLabel}: ${t('common.status')}`}
-                    classNames={productEditorPopupClassNames}
-                    getPopupContainer={() => document.body}
-                    placement="bottomLeft"
+                    ariaLabel={`${productEditorLabel}: ${t('common.status')}`}
+                    title={`${productEditorLabel}: ${t('common.status')}`} popupClassName="shop-mobile-popup-layer"
                     options={[
                       { value: 'ACTIVE', label: t('status.ACTIVE') },
                       { value: 'PENDING_REVIEW', label: t('pages.productAdmin.draft') },
@@ -3041,31 +3059,28 @@ const ProductManagement: React.FC = () => {
               <section className="shopify-card">
                 <h3>{t('pages.productAdmin.productOrganization')}</h3>
                 <Form.Item name="brand" label={t('pages.productAdmin.vendor')}>
-                  <Select
+                  <ShopSelect
                     showSearch
                     allowClear
                     className="shopify-input"
                     placeholder={t('pages.productAdmin.brandPlaceholder')}
-                    optionFilterProp="label"
-                    aria-label={`${productEditorLabel}: ${t('pages.productAdmin.vendor')}`}
+                    ariaLabel={`${productEditorLabel}: ${t('pages.productAdmin.vendor')}`}
                     title={`${productEditorLabel}: ${t('pages.productAdmin.vendor')}`}
-                    classNames={productEditorPopupClassNames}
-                    getPopupContainer={() => document.body}
-                    placement="bottomLeft"
+                    popupClassName="shop-mobile-popup-layer product-management-page__editorPopup"
                     options={brands.map((brand) => ({ value: brand.name, label: brand.name }))}
                   />
                 </Form.Item>
                 <Form.Item name="tag" label={t('pages.productAdmin.tags')}>
-                  <Select
+                  <ShopMultiSelect
                     mode="tags"
                     className="shopify-input"
                     placeholder={t('pages.productAdmin.selectTag')}
-                    aria-label={`${productEditorLabel}: ${t('pages.productAdmin.tags')}`}
+                    ariaLabel={`${productEditorLabel}: ${t('pages.productAdmin.tags')}`}
                     title={`${productEditorLabel}: ${t('pages.productAdmin.tags')}`}
-                    classNames={productEditorPopupClassNames}
-                    getPopupContainer={() => document.body}
-                    placement="bottomLeft"
-                    options={tagOptions.map(option => ({ value: option.value, label: option.label }))}
+                    popupClassName="shop-mobile-popup-layer product-management-page__editorPopup"
+                    options={tagOptions.map((option) => ({ value: option.value, label: option.label }))}
+                    allowClear
+                    showSearch
                   />
                 </Form.Item>
 	                <Form.Item name="isFeatured" label={t('pages.productAdmin.bestSeller')} valuePropName="checked">
@@ -3075,15 +3090,12 @@ const ProductManagement: React.FC = () => {
 
               <section className="shopify-card">
                 <h3>{t('pages.productAdmin.themeTemplate')}</h3>
-                <Select
+                <ShopSelect
                   className="shopify-input"
                   value="default-product"
                   disabled
-                  aria-label={`${productEditorLabel}: ${t('pages.productAdmin.themeTemplate')}`}
-                  title={`${productEditorLabel}: ${t('pages.productAdmin.themeTemplate')}`}
-                  classNames={productEditorPopupClassNames}
-                  getPopupContainer={() => document.body}
-                  placement="bottomLeft"
+                  ariaLabel={`${productEditorLabel}: ${t('pages.productAdmin.themeTemplate')}`}
+                  title={`${productEditorLabel}: ${t('pages.productAdmin.themeTemplate')}`} popupClassName="shop-mobile-popup-layer"
                   options={[{ value: 'default-product', label: t('pages.productAdmin.defaultProduct') }]}
                 />
               </section>
@@ -3091,37 +3103,37 @@ const ProductManagement: React.FC = () => {
               <section className="shopify-card shopify-card--muted">
                 <h3>{t('pages.productAdmin.limitedTimeDiscount')}</h3>
                 <Form.Item name="limitedTimePrice" label={t('pages.productAdmin.limitedTimePrice')}>
-                  <InputNumber min={0} precision={2} prefix={t('common.currencySymbol')} placeholder={t('pages.productAdmin.limitedTimePricePlaceholder')} />
+                  <ShopInputNumber min={0} precision={2} prefix={t('common.currencySymbol')} placeholder={t('pages.productAdmin.limitedTimePricePlaceholder')} />
                 </Form.Item>
                 <Form.Item name="limitedTimeRange" label={t('pages.productAdmin.limitedTimeRange')}>
-                  <DatePicker.RangePicker
+                  <ShopRangePicker
                     showTime
                     className="shopify-range-picker"
-                    classNames={productEditorPopupClassNames}
-                    getPopupContainer={() => document.body}
-                    placement="bottomLeft"
-                    id={{ start: 'product-limited-time-start', end: 'product-limited-time-end' }}
+                    startId="product-limited-time-start"
+                    endId="product-limited-time-end"
                     placeholder={[t('common.start'), t('common.end')]}
-                    aria-label={`${productEditorLabel}: ${t('pages.productAdmin.limitedTimeRange')}`}
+                    ariaLabel={`${productEditorLabel}: ${t('pages.productAdmin.limitedTimeRange')}`}
                     title={`${productEditorLabel}: ${t('pages.productAdmin.limitedTimeRange')}`}
+                    startAriaLabel={`${productEditorLabel}: ${t('pages.productAdmin.limitedTimeRange')} - ${t('common.start')}`}
+                    endAriaLabel={`${productEditorLabel}: ${t('pages.productAdmin.limitedTimeRange')} - ${t('common.end')}`}
                   />
                 </Form.Item>
               </section>
             </aside>
           </div>
         </Form>
-      </Modal>
+      </ShopModal>
 
-      <Modal
+      <ShopModal
         title={t('pages.productAdmin.urlImportTitle')}
         open={urlImportVisible}
         onOk={handleImportProductFromUrl}
-        onCancel={closeUrlImportModal}
+        onClose={closeUrlImportModal}
         okText={urlImportPreview ? t('pages.productAdmin.urlImportApply') : t('pages.productAdmin.urlImportAction')}
+        cancelText={t('common.cancel')}
         confirmLoading={urlImportSubmitting}
         okButtonProps={{ disabled: productActionDisabled, 'aria-label': previewUrlImportLabel, title: previewUrlImportLabel }}
         cancelButtonProps={{ 'aria-label': cancelUrlImportLabel, title: cancelUrlImportLabel }}
-        destroyOnHidden
         width={720}
         className="profile-mobile-safe-modal product-management-page__urlImportModal"
       >
@@ -3134,7 +3146,7 @@ const ProductManagement: React.FC = () => {
               { type: 'url', message: t('pages.productAdmin.urlImportInvalid') },
             ]}
           >
-            <Input placeholder={t('pages.productAdmin.urlImportPlaceholder')} disabled={productActionDisabled} allowClear aria-label={`${t('pages.productAdmin.urlImportTitle')}: ${t('pages.productAdmin.urlImportField')}`} title={`${t('pages.productAdmin.urlImportTitle')}: ${t('pages.productAdmin.urlImportField')}`} />
+            <ShopInput placeholder={t('pages.productAdmin.urlImportPlaceholder')} disabled={productActionDisabled} allowClear aria-label={`${t('pages.productAdmin.urlImportTitle')}: ${t('pages.productAdmin.urlImportField')}`} title={`${t('pages.productAdmin.urlImportTitle')}: ${t('pages.productAdmin.urlImportField')}`} />
           </Form.Item>
           <Text type="secondary">{t('pages.productAdmin.urlImportHint')}</Text>
           <Alert
@@ -3202,7 +3214,44 @@ const ProductManagement: React.FC = () => {
             </div>
           </div>
         )}
-      </Modal>
+      </ShopModal>
+      <ShopConfirm
+        open={importDialog?.kind === 'confirm'}
+        title={importDialog?.title || ''}
+        description={importDialog?.kind === 'confirm' ? importDialog.content : undefined}
+        okText={importDialog?.okText || t('pages.productAdmin.importConfirmApply')}
+        cancelText={t('common.cancel')}
+        confirmLoading={importSubmitting}
+        width={importDialog?.width || 640}
+        okButtonProps={{
+          disabled: productActionDisabled,
+          'aria-label': importDialog?.actionLabel,
+          title: importDialog?.actionLabel,
+        }}
+        cancelButtonProps={{
+          'aria-label': importDialog?.actionLabel ? `${t('common.cancel')}: ${importDialog.actionLabel}` : t('common.cancel'),
+          title: importDialog?.actionLabel ? `${t('common.cancel')}: ${importDialog.actionLabel}` : t('common.cancel'),
+        }}
+        className={importDialog?.className || 'profile-mobile-safe-modal product-management-page__importConfirmModal'}
+        closeLabel={t('common.close', { defaultValue: 'Close' })}
+        onOk={applyImportConfirm}
+        onCancel={closeImportDialog}
+      />
+      <ShopModal
+        open={importDialog?.kind === 'problem' || importDialog?.kind === 'success'}
+        title={importDialog?.title || ''}
+        width={importDialog?.width || 720}
+        className={importDialog?.className || 'profile-mobile-safe-modal'}
+        onClose={closeImportDialog}
+        footer={(
+          <Button type="primary" onClick={closeImportDialog} aria-label={t('common.confirm')} title={t('common.confirm')}>
+            {t('common.confirm')}
+          </Button>
+        )}
+        closeLabel={t('common.close', { defaultValue: 'Close' })}
+      >
+        {importDialog && importDialog.kind !== 'confirm' ? importDialog.content : null}
+      </ShopModal>
     </div>
   );
 };

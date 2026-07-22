@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Card, Empty, Popconfirm, Space, Spin, Statistic, Table, Tag, Typography, message } from 'antd';
+import { Alert, Button, Card, Empty, Space, Spin, Statistic, Table, Tag, Typography, message } from 'antd';
+import ShopPopconfirm from '../components/ShopPopconfirm';
 import type { ColumnsType } from 'antd/es/table';
 import { ClearOutlined, DashboardOutlined, ReloadOutlined, ThunderboltOutlined, UndoOutlined } from '@ant-design/icons';
 import { adminApi } from '../api/admin';
@@ -17,7 +18,6 @@ import {
 import './TrafficControl.css';
 
 const { Text, Title } = Typography;
-const mobilePopconfirmClassNames = { root: 'shop-mobile-popup-layer' };
 
 type CircuitRow = AdminTrafficControlStatus['circuits'][number];
 
@@ -168,8 +168,7 @@ const TrafficControl: React.FC = () => {
         render: (_, row) => {
           const resetActionLabel = `${t('pages.trafficControl.reset')}: ${row.name}`;
           return (
-            <Popconfirm
-              classNames={mobilePopconfirmClassNames}
+            <ShopPopconfirm rootClassName="shop-mobile-popup-layer"
               title={`${t('pages.trafficControl.reset')} ${row.name}?`}
               description={t('pages.trafficControl.resetCircuitConfirmDescription')}
               okText={t('common.confirm')}
@@ -189,7 +188,7 @@ const TrafficControl: React.FC = () => {
               >
                 {t('pages.trafficControl.reset')}
               </Button>
-            </Popconfirm>
+            </ShopPopconfirm>
           );
         },
       });
@@ -217,8 +216,7 @@ const TrafficControl: React.FC = () => {
             {t('common.refresh')}
           </Button>
           {canClearRateLimit ? (
-            <Popconfirm
-              classNames={mobilePopconfirmClassNames}
+            <ShopPopconfirm rootClassName="shop-mobile-popup-layer"
               title={`${t('pages.trafficControl.clearRateLimit')}?`}
               description={t('pages.trafficControl.clearRateLimitConfirmDescription')}
               okText={t('common.confirm')}
@@ -231,11 +229,10 @@ const TrafficControl: React.FC = () => {
               <Button icon={<ClearOutlined />} loading={acting === 'rate-limit'} disabled={actionDisabled} aria-label={clearRateLimitActionLabel} title={clearRateLimitActionLabel}>
                 {t('pages.trafficControl.clearRateLimit')}
               </Button>
-            </Popconfirm>
+            </ShopPopconfirm>
           ) : null}
           {canResetCircuit ? (
-            <Popconfirm
-              classNames={mobilePopconfirmClassNames}
+            <ShopPopconfirm rootClassName="shop-mobile-popup-layer"
               title={`${t('pages.trafficControl.resetAllCircuits')}?`}
               description={t('pages.trafficControl.resetAllCircuitsConfirmDescription')}
               okText={t('common.confirm')}
@@ -248,7 +245,7 @@ const TrafficControl: React.FC = () => {
               <Button type="primary" icon={<UndoOutlined />} loading={acting === 'all'} disabled={actionDisabled} aria-label={resetAllCircuitsActionLabel} title={resetAllCircuitsActionLabel}>
                 {t('pages.trafficControl.resetAllCircuits')}
               </Button>
-            </Popconfirm>
+            </ShopPopconfirm>
           ) : null}
         </Space>
       </div>

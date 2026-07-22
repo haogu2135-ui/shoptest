@@ -280,8 +280,8 @@ describe('Navbar Android app download entry', () => {
     expect(source).toContain("const bottomBarClassName = `shop-nav__bottomBar shop-nav__bottomBar--${language}");
     expect(f3393Css).toMatch(/@media \(min-width:\s*341px\) and \(max-width:\s*380px\)\s*\{/);
     expect(f3393Css).toMatch(/\.shop-nav__bottomBar--es:not\(\.shop-nav__bottomBar--native\)\s*\{[\s\S]*?grid-template-columns:\s*0\.94fr 1\.1fr 1fr 0\.98fr 0\.88fr 1fr;[\s\S]*?column-gap:\s*3px;/);
-    expect(f3393Css).toMatch(/\.shop-nav__bottomBar--es \.shop-nav__bottomItem--products span:not\(\.anticon\):not\(\.ant-badge\):not\(\.ant-scroll-number\)\s*\{[\s\S]*?font-size:\s*9\.5px\s*!important;[\s\S]*?letter-spacing:\s*0;[\s\S]*?text-overflow:\s*clip;/);
-    expect(css).toMatch(/@media \(max-width:\s*340px\)\s*\{[\s\S]*?\.shop-nav__bottomItem span:not\(\.anticon\):not\(\.ant-badge\):not\(\.ant-scroll-number\)\s*\{[\s\S]*?width:\s*1px;/);
+    expect(f3393Css).toMatch(/\.shop-nav__bottomBar--es \.shop-nav__bottomItem--products span:not\(\.anticon\):not\(\.ant-badge\)(?::not\(\.shop-badge\))?:not\(\.ant-scroll-number\)\s*\{[\s\S]*?font-size:\s*9\.5px\s*!important;[\s\S]*?letter-spacing:\s*0;[\s\S]*?text-overflow:\s*clip;/);
+    expect(css).toMatch(/@media \(max-width:\s*340px\)\s*\{[\s\S]*?\.shop-nav__bottomItem span:not\(\.anticon\):not\(\.ant-badge\)(?::not\(\.shop-badge\))?:not\(\.ant-scroll-number\)\s*\{[\s\S]*?width:\s*1px;/);
   });
 
   it('keeps mobile bottom navigation keyboard focus visible', () => {
@@ -386,7 +386,7 @@ describe('Navbar Android app download entry', () => {
 
     expect(localizedLabelCss).toMatch(/@media \(min-width:\s*341px\) and \(max-width:\s*380px\)\s*\{/);
     expect(localizedLabelCss).toMatch(/\.shop-nav__bottomItem\s*\{[\s\S]*?min-width:\s*0\s*!important;/);
-    expect(localizedLabelCss).toMatch(/\.shop-nav__bottomItem > span:not\(\.anticon\):not\(\.ant-badge\):not\(\.ant-scroll-number\),[\s\S]*?\.shop-nav__bottomItem \.ant-badge \+ span\s*\{[\s\S]*?display:\s*-webkit-box\s*!important;[\s\S]*?max-height:\s*calc\(2 \* 12px \* 1\.08\)\s*!important;[\s\S]*?white-space:\s*normal\s*!important;[\s\S]*?overflow-wrap:\s*anywhere\s*!important;[\s\S]*?-webkit-line-clamp:\s*2\s*!important;/);
+    expect(localizedLabelCss).toMatch(/\.shop-nav__bottomItem > span:not\(\.anticon\):not\(\.ant-badge\)(?::not\(\.shop-badge\))?:not\(\.ant-scroll-number\),[\s\S]*?\.shop-nav__bottomItem \.ant-badge(?:, \.shop-badge)? \+ span\s*\{[\s\S]*?display:\s*-webkit-box\s*!important;[\s\S]*?max-height:\s*calc\(2 \* 12px \* 1\.08\)\s*!important;[\s\S]*?white-space:\s*normal\s*!important;[\s\S]*?overflow-wrap:\s*anywhere\s*!important;[\s\S]*?-webkit-line-clamp:\s*2\s*!important;/);
   });
 
   it('uses compact non-wrapping utility navigation in tablet landscape widths', () => {
@@ -578,10 +578,12 @@ describe('Navbar Android app download entry', () => {
     expect(badgeEnd).toBeGreaterThan(badgeStart);
     expect(source).toContain('const safeCartCount = normalizeBadgeCount(cartCount);');
     expect(source).toContain("const cartBadgeLabel = `${t('nav.ariaCart')}: ${safeCartCount}`;");
-    expect(badgeSource).toContain('<Badge count={safeCartCount} size="small" overflowCount={99}>');
+    expect(badgeSource).toContain('<ShopBadge count={safeCartCount} size="small" overflowCount={99}>');
     expect(badgeSource).toContain('<ShopIcon path={SI.cart} />');
     expect(source.match(/\{renderCartBadge\(\)\}/g) ?? []).toHaveLength(3);
     expect(source).not.toContain('<Badge count={cartCount}');
+    expect(source).not.toContain("import { Badge } from 'antd'");
+    expect(source).toContain('import ShopBadge from');
   });
 
   it('uses compact mobile navigation on task-focused storefront routes', () => {

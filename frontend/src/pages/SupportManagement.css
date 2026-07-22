@@ -1974,3 +1974,5 @@
     min-height: 62px;
   }
 }
+
+.support-management__queueSearch { width: 240px; max-width: 100%; }

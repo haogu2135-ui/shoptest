@@ -33,10 +33,13 @@ describe('PermissionManagement role editor layout guards', () => {
     expect(f3518Start).toBeGreaterThanOrEqual(0);
     expect(nextMobileMedia).toBeGreaterThan(f3518Start);
     expect(f3518Css).toMatch(/\.permission-management-page__modal\s*\{[\s\S]*?top:\s*max\(24px,\s*env\(safe-area-inset-top,\s*0px\)\);/);
-    expect(f3518Css).toMatch(/\.permission-management-page__modal\s+\.ant-modal-content\s*\{[\s\S]*?max-height:\s*calc\(100dvh - 48px - env\(safe-area-inset-top,\s*0px\) - env\(safe-area-inset-bottom,\s*0px\)\);/);
-    expect(f3518Css).toMatch(/\.permission-management-page__modal\s+\.ant-modal-content\s*\{[\s\S]*?display:\s*flex;[\s\S]*?flex-direction:\s*column;/);
-    expect(f3518Css).toMatch(/\.permission-management-page__modal\s+\.ant-modal-body\s*\{[\s\S]*?flex:\s*1 1 auto;[\s\S]*?overflow-y:\s*auto;/);
-    expect(f3518Css).toMatch(/\.permission-management-page__modal\s+\.ant-modal-footer\s*\{[\s\S]*?position:\s*sticky;[\s\S]*?bottom:\s*0;/);
+    expect(f3518Css).toMatch(/\.permission-management-page__modal\s+\.ant-modal-content(?:,[\s\S]*?)?\s*\{[\s\S]*?max-height:\s*calc\(100dvh - 48px - env\(safe-area-inset-top,\s*0px\) - env\(safe-area-inset-bottom,\s*0px\)\);/);
+    expect(f3518Css).toMatch(/\.permission-management-page__modal\s+\.ant-modal-content(?:,[\s\S]*?)?\s*\{[\s\S]*?display:\s*flex;[\s\S]*?flex-direction:\s*column;/);
+    expect(f3518Css).toMatch(/\.permission-management-page__modal\s+\.ant-modal-body(?:,[\s\S]*?)?\s*\{[\s\S]*?flex:\s*1 1 auto;[\s\S]*?overflow-y:\s*auto;/);
+    expect(f3518Css).toMatch(/\.permission-management-page__modal\s+\.ant-modal-footer(?:,[\s\S]*?)?\s*\{[\s\S]*?position:\s*sticky;[\s\S]*?bottom:\s*0;/);
+    expect(f3518Css).toContain('.shop-modal__content');
+    expect(f3518Css).toContain('.shop-modal__body');
+    expect(f3518Css).toContain('.shop-modal__footer');
     expect(f3518Css).not.toContain('@media');
   });
 });

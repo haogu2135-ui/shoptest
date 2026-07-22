@@ -1,6 +1,9 @@
 import { useNavigate } from 'react-router-dom';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Button, Card, Empty, Image, Input, Popconfirm, Select, Space, Statistic, Table, Tag, Typography, message } from 'antd';
+import { Alert, Button, Card, Empty, Image, Space, Statistic, Table, Tag, Typography, message } from 'antd';
+import ShopInput, { ShopTextArea } from '../components/ShopInput';
+import ShopPopconfirm from '../components/ShopPopconfirm';
+import ShopSelect from '../components/ShopSelect';
 import type { ColumnsType } from 'antd/es/table';
 import type { TablePaginationConfig } from 'antd/es/table';
 import { CameraOutlined, DeleteOutlined, HeartOutlined, ReloadOutlined, SearchOutlined, UserOutlined, WarningOutlined } from '@ant-design/icons';
@@ -296,7 +299,7 @@ const PetGalleryManagement: React.FC = () => {
           const photoLabel = record.originalFilename || record.username || `#${record.id}`;
           const removeActionLabel = `${t('pages.petGalleryAdmin.remove')}: ${photoLabel}`;
           return (
-            <Popconfirm
+            <ShopPopconfirm
               title={t('pages.petGalleryAdmin.deleteConfirmTarget', { photo: photoLabel })}
               description={t('pages.petGalleryAdmin.deleteDescriptionTarget', {
                 photo: photoLabel,
@@ -305,9 +308,7 @@ const PetGalleryManagement: React.FC = () => {
               })}
               okText={t('common.delete')}
               cancelText={t('common.cancel')}
-              classNames={{ root: 'shop-mobile-popup-layer pet-gallery-management-page__deletePopconfirm' }}
-              placement="left"
-              getPopupContainer={() => document.body}
+              rootClassName="shop-mobile-popup-layer pet-gallery-management-page__deletePopconfirm"
               cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${removeActionLabel}`, title: `${t('common.cancel')}: ${removeActionLabel}` }}
               disabled={galleryActionDisabled}
               okButtonProps={{ danger: true, disabled: galleryActionDisabled, 'aria-label': removeActionLabel, title: removeActionLabel }}
@@ -316,7 +317,7 @@ const PetGalleryManagement: React.FC = () => {
               <Button danger size="small" icon={<DeleteOutlined />} disabled={galleryActionDisabled} aria-label={removeActionLabel} title={removeActionLabel} loading={deletingId === record.id}>
                 {t('pages.petGalleryAdmin.remove')}
               </Button>
-            </Popconfirm>
+            </ShopPopconfirm>
           );
         },
       });
@@ -416,7 +417,7 @@ const PetGalleryManagement: React.FC = () => {
             : t('pages.petGalleryAdmin.featureNotice', { count: galleryStats.visiblePhotos })}
         />
         <Space className="pet-gallery-management-page__filters" wrap>
-          <Input
+          <ShopInput
             allowClear
             prefix={<SearchOutlined />}
             value={keyword}
@@ -426,25 +427,21 @@ const PetGalleryManagement: React.FC = () => {
             aria-label={keywordSearchLabel}
             title={keywordSearchLabel}
           />
-          <Select
+          <ShopSelect
             value={statusFilter}
-            onChange={setStatusFilter}
+            onChange={(value) => setStatusFilter(value || 'ALL')}
             disabled={galleryActionDisabled}
             options={STATUS_OPTIONS.map((value) => ({ value, label: getStatusLabel(value) }))}
-            aria-label={statusFilterLabel}
-            title={statusFilterLabel}
-            classNames={{ popup: { root: 'shop-mobile-popup-layer' } }}
-            getPopupContainer={() => document.body}
+            ariaLabel={statusFilterLabel}
+            title={statusFilterLabel} popupClassName="shop-mobile-popup-layer"
           />
-          <Select
+          <ShopSelect
             value={sourceFilter}
-            onChange={setSourceFilter}
+            onChange={(value) => setSourceFilter(value || 'ALL')}
             disabled={galleryActionDisabled}
             options={SOURCE_OPTIONS.map((value) => ({ value, label: getSourceLabel(value) }))}
-            aria-label={sourceFilterLabel}
-            title={sourceFilterLabel}
-            classNames={{ popup: { root: 'shop-mobile-popup-layer' } }}
-            getPopupContainer={() => document.body}
+            ariaLabel={sourceFilterLabel}
+            title={sourceFilterLabel} popupClassName="shop-mobile-popup-layer"
           />
           <Button disabled={galleryActionDisabled} aria-label={resetFiltersActionLabel} title={resetFiltersActionLabel} onClick={() => { setKeyword(''); setStatusFilter('ALL'); setSourceFilter('ALL'); }}>
             {t('common.reset')}

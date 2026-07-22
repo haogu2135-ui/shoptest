@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
-import { Button, Input, Tag, Checkbox } from 'antd';
+import { Button, Tag, Checkbox } from 'antd';
+import ShopSearchField from '../components/ShopSearchField';
 import ShopSelect from '../components/ShopSelect';
 import { ShopIcon, SI } from '../components/ShopIcon';
 import ShopRate from '../components/ShopRate';
@@ -2201,23 +2202,17 @@ const ProductList: React.FC = () => {
             <div className="product-list__panelBody product-list__toolbarBody">
             <div className="product-list__toolbarRow">
               <div className="product-list__toolbarSearch">
-                <Input.Search
+                <ShopSearchField
+                  className="product-list__search"
                   placeholder={t('pages.productList.searchPlaceholder')}
-                  aria-label={productSearchActionLabel}
+                  ariaLabel={productSearchActionLabel}
                   title={productSearchActionLabel}
+                  submitLabel={productSearchActionLabel}
                   value={keyword}
                   maxLength={MAX_SEARCH_LENGTH}
-                  onChange={e => setKeyword(e.target.value.slice(0, MAX_SEARCH_LENGTH))}
+                  onChange={(value) => setKeyword(value.slice(0, MAX_SEARCH_LENGTH))}
                   onSearch={handleSearch}
-                  className="product-list__search"
-                  enterButton={(
-                    <Button
-                      type="primary"
-                      aria-label={productSearchActionLabel}
-                      title={productSearchActionLabel}
-                      icon={<ShopIcon path={SI.search} />}
-                    />
-                  )}
+                  allowClear
                 />
               </div>
               <div className="product-list__toolbarSort">

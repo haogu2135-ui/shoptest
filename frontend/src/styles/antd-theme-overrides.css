@@ -2009,3 +2009,43 @@ body:has(.ant-modal-root .ant-modal-wrap:not([style*="display: none"])) .app-sup
 .shop-app-shell .ant-empty-description {
   color: rgba(16, 47, 34, 0.72);
 }
+
+
+/* ShopModal dual for profile-mobile-safe-modal (admin + storefront densify) */
+.profile-mobile-safe-modal.shop-modal__panel {
+  max-width: 100%;
+}
+.profile-mobile-safe-modal .shop-modal__content {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+}
+.profile-mobile-safe-modal .shop-modal__header,
+.profile-mobile-safe-modal .shop-modal__footer {
+  flex: 0 0 auto;
+}
+.profile-mobile-safe-modal .shop-modal__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}
+@media (max-width: 768px) {
+  .profile-mobile-safe-modal.shop-modal__panel {
+    width: min(100%, calc(100vw - 16px)) !important;
+    max-width: calc(100vw - 16px);
+  }
+  .profile-mobile-safe-modal .shop-modal__content {
+    max-height: calc(100dvh - var(--mobile-ui-safe-top, 0px) - var(--mobile-ui-safe-bottom, 0px) - 16px);
+  }
+  .profile-mobile-safe-modal .shop-modal__footer {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: flex-end;
+  }
+  .profile-mobile-safe-modal .shop-modal__footer .ant-btn {
+    min-height: 44px;
+  }
+}

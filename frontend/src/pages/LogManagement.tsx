@@ -1,6 +1,10 @@
 import { useNavigate } from 'react-router-dom';
 import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, Button, Card, DatePicker, Descriptions, Empty, Input, Popconfirm, Select, Space, Spin, Statistic, Switch, Tag, Typography, message } from 'antd';
+import { Alert, Button, Card, Descriptions, Empty, Space, Spin, Statistic, Switch, Tag, Typography, message } from 'antd';
+import ShopInput, { ShopTextArea } from '../components/ShopInput';
+import ShopPopconfirm from '../components/ShopPopconfirm';
+import ShopSelect from '../components/ShopSelect';
+import ShopRangePicker from '../components/ShopRangePicker';
 import { BugOutlined, ClockCircleOutlined, DownloadOutlined, FileTextOutlined, ReloadOutlined } from '@ant-design/icons';
 import dayjs, { Dayjs } from 'dayjs';
 import { adminApi } from '../api/admin';
@@ -11,11 +15,9 @@ import { getApiErrorMessage } from '../utils/apiError';
 import { LOGS_DEBUG_PERMISSION, LOGS_DOWNLOAD_PERMISSION, getEffectiveRole, hasAdminPermission } from '../utils/roles';
 import './LogManagement.css';
 
-const { RangePicker } = DatePicker;
 const { Text, Title } = Typography;
 
 const DEFAULT_LOGGER = 'com.example.shop';
-const logRangePickerClassNames = { popup: { root: 'shop-mobile-popup-layer log-management__rangePopup' } };
 
 const LogManagement: React.FC = () => {
   const navigate = useNavigate();
@@ -243,10 +245,10 @@ const LogManagement: React.FC = () => {
                 <div className="log-management__control">
                   <label>
                     <span>{t('pages.logAdmin.loggerName')}</span>
-                    <Input
+                    <ShopInput
                       value={loggerName}
                       onChange={(event) => setLoggerName(event.target.value)}
-                      onPressEnter={() => loadStatus(loggerName)}
+                      onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); loadStatus(loggerName); } }}
                       placeholder={DEFAULT_LOGGER}
                       aria-label={loggerNameInputLabel}
                       title={loggerNameInputLabel}
@@ -258,13 +260,12 @@ const LogManagement: React.FC = () => {
                         <Text strong>{t('pages.logAdmin.debugLogs')}</Text>
                         <Text type="secondary">{t('pages.logAdmin.runtimeOnly')}</Text>
                       </div>
-                      <Popconfirm
+                      <ShopPopconfirm
                         title={`${debugTargetStatusLabel}?`}
                         description={t('pages.logAdmin.debugHint')}
                         disabled={switching || logActionDisabled}
                         okText={t('common.confirm')}
-                        cancelText={t('common.cancel')}
-                        classNames={{ root: 'shop-mobile-popup-layer' }}
+                        cancelText={t('common.cancel')} rootClassName="shop-mobile-popup-layer"
                         okButtonProps={{ 'aria-label': debugConfirmActionLabel, title: debugConfirmActionLabel }}
                         cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${debugConfirmActionLabel}`, title: `${t('common.cancel')}: ${debugConfirmActionLabel}` }}
                         onConfirm={() => toggleDebug(nextDebugEnabled)}
@@ -278,7 +279,7 @@ const LogManagement: React.FC = () => {
                           checkedChildren={t('pages.logAdmin.on')}
                           unCheckedChildren={t('pages.logAdmin.off')}
                         />
-                      </Popconfirm>
+                      </ShopPopconfirm>
                     </div>
                   ) : null}
                   <Button onClick={() => loadStatus(loggerName)} icon={<ReloadOutlined />} aria-label={loadLoggerActionLabel} title={loadLoggerActionLabel}>
@@ -289,32 +290,28 @@ const LogManagement: React.FC = () => {
 
               <Card title={t('pages.logAdmin.rangeDownload')} className="log-management__card">
                 <div className="log-management__download">
-                  <div role="group" aria-label={logRangePickerLabel} title={logRangePickerLabel}>
-                    <RangePicker
-                      showTime
-                      allowClear={false}
-                      placement="bottomLeft"
-                      classNames={logRangePickerClassNames}
-                      getPopupContainer={() => document.body}
-                      value={range}
-                      onChange={(values) => {
-                        if (values?.[0] && values?.[1]) {
-                          setRange([values[0], values[1]]);
-                        }
-                      }}
-                    />
-                  </div>
+                  <ShopRangePicker
+                    showTime
+                    allowClear={false}
+                    value={range}
+                    onChange={(values) => {
+                      if (values?.[0] && values?.[1]) {
+                        setRange([values[0], values[1]]);
+                      }
+                    }}
+                    ariaLabel={logRangePickerLabel}
+                    title={logRangePickerLabel}
+                    startAriaLabel={`${logRangePickerLabel} - start`}
+                    endAriaLabel={`${logRangePickerLabel} - end`}
+                  />
                   <div role="group" aria-label={logLevelSelectLabel} title={logLevelSelectLabel}>
                     <Space.Compact block>
-                      <Select
+                      <ShopSelect
                         value={level}
-                        onChange={setLevel}
-                        classNames={{ popup: { root: 'shop-mobile-popup-layer' } }}
-                        getPopupContainer={() => document.body}
+                        onChange={(value) => setLevel(value || 'ALL')} popupClassName="shop-mobile-popup-layer"
                         options={['ALL', 'TRACE', 'DEBUG', 'INFO', 'WARN', 'ERROR'].map((value) => ({ value, label: value }))}
-                        style={{ width: 110 }}
                       />
-                      <Input
+                      <ShopInput
                         value={keyword}
                         onChange={(event) => setKeyword(event.target.value)}
                         placeholder={t('pages.logAdmin.keywordPlaceholder')}

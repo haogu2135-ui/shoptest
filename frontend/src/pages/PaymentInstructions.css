@@ -386,7 +386,8 @@
 }
 
 .payment-instructions-page__guestEmailForm .ant-input-affix-wrapper,
-.payment-instructions-page__guestEmailForm .ant-input {
+.payment-instructions-page__guestEmailForm .ant-input,
+.payment-instructions-page__guestEmailForm .shop-input {
   min-height: 44px;
 }
 
@@ -425,6 +426,7 @@
   }
 
   .payment-instructions-page__guestEmailForm .ant-input-affix-wrapper,
+  .payment-instructions-page__guestEmailForm .shop-input,
   .payment-instructions-page__guestEmailForm .ant-btn {
     width: 100%;
     border-radius: 10px !important;
@@ -529,7 +531,8 @@
   gap: 0;
   width: 100%;
 }
-.payment-instructions-page__guestEmailForm .ant-input {
+.payment-instructions-page__guestEmailForm .ant-input,
+.payment-instructions-page__guestEmailForm .shop-input {
   flex: 1 1 auto;
   min-width: 0;
   border-top-right-radius: 0;

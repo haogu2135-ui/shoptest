@@ -3,7 +3,7 @@ import path from 'path';
 
 const pageSource = fs.readFileSync(path.join(__dirname, 'CategoryManagement.tsx'), 'utf8');
 const cssSource = fs.readFileSync(path.join(__dirname, 'CategoryManagement.css'), 'utf8');
-const appCssSource = fs.readFileSync(path.join(__dirname, '../App.css'), 'utf8');
+const appCssSource = fs.readFileSync(path.join(__dirname, '../styles/antd-theme-overrides.css'), 'utf8');
 
 describe('CategoryManagement readiness panel guards', () => {
   it('keeps category admin API error handling typed without broad any usage', () => {

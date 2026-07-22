@@ -20,6 +20,7 @@ export type ShopSearchFieldProps = {
   id?: string;
   name?: string;
   autoComplete?: string;
+  maxLength?: number;
   prefix?: React.ReactNode;
 };
 
@@ -41,6 +42,7 @@ const ShopSearchField: React.FC<ShopSearchFieldProps> = ({
   id,
   name,
   autoComplete = 'off',
+  maxLength,
   prefix,
 }) => {
   const isControlled = typeof value === 'string';
@@ -75,8 +77,12 @@ const ShopSearchField: React.FC<ShopSearchFieldProps> = ({
           aria-label={label}
           title={title || label}
           autoComplete={autoComplete}
+          maxLength={maxLength}
           enterKeyHint="search"
-          onChange={(event) => setValue(event.target.value)}
+          onChange={(event) => {
+            const next = maxLength ? event.target.value.slice(0, maxLength) : event.target.value;
+            setValue(next);
+          }}
           onKeyDown={(event) => {
             if (event.key === 'Enter') {
               event.preventDefault();

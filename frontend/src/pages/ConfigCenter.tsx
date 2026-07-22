@@ -1,6 +1,8 @@
 import { useNavigate } from 'react-router-dom';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Card, Checkbox, Descriptions, Empty, Form, Input, Popconfirm, Space, Spin, Statistic, Table, Tag, Typography, message } from 'antd';
+import { Alert, Button, Card, Checkbox, Descriptions, Empty, Form, Space, Spin, Statistic, Table, Tag, Typography, message } from 'antd';
+import ShopInput, { ShopTextArea } from '../components/ShopInput';
+import ShopPopconfirm from '../components/ShopPopconfirm';
 import { CheckCircleOutlined, CloudSyncOutlined, CodeOutlined, ReloadOutlined, SendOutlined } from '@ant-design/icons';
 import { adminApi } from '../api/admin';
 import type { AdminConfigCenterSnapshot } from '../types';
@@ -16,7 +18,6 @@ import {
 import './ConfigCenter.css';
 
 const { Text, Title } = Typography;
-const { TextArea } = Input;
 
 type FormValues = {
   dataId: string;
@@ -199,12 +200,11 @@ const ConfigCenter: React.FC = () => {
         </div>
         <Space className="config-center__actions" wrap>
           {canApplyConfig ? (
-            <Popconfirm
+            <ShopPopconfirm
               title={`${t('pages.configCenter.applyOnly')}?`}
               description={renderConfigActionConfirmDescription(t('pages.configCenter.applyOnlyConfirmDescription'))}
               okText={t('common.confirm')}
-              cancelText={t('common.cancel')}
-              classNames={{ root: 'shop-mobile-popup-layer' }}
+              cancelText={t('common.cancel')} rootClassName="shop-mobile-popup-layer"
               okButtonProps={{ 'aria-label': applyRuntimeActionLabel, title: applyRuntimeActionLabel }}
               cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${applyRuntimeActionLabel}`, title: `${t('common.cancel')}: ${applyRuntimeActionLabel}` }}
               onConfirm={handleApplyRuntime}
@@ -213,18 +213,17 @@ const ConfigCenter: React.FC = () => {
               <Button icon={<CheckCircleOutlined />} loading={applying} disabled={actionDisabled} aria-label={applyRuntimeActionLabel} title={applyRuntimeActionLabel}>
                 {t('pages.configCenter.applyOnly')}
               </Button>
-            </Popconfirm>
+            </ShopPopconfirm>
           ) : null}
           <Button icon={<ReloadOutlined />} aria-label={refreshConfigActionLabel} title={refreshConfigActionLabel} onClick={() => loadSnapshot()} loading={loading}>
             {t('common.refresh')}
           </Button>
           {canPublishConfig ? (
-            <Popconfirm
+            <ShopPopconfirm
               title={`${t('pages.configCenter.publishSync')}?`}
               description={renderConfigActionConfirmDescription(t('pages.configCenter.publishSyncConfirmDescription'))}
               okText={t('common.confirm')}
-              cancelText={t('common.cancel')}
-              classNames={{ root: 'shop-mobile-popup-layer' }}
+              cancelText={t('common.cancel')} rootClassName="shop-mobile-popup-layer"
               okButtonProps={{ 'aria-label': publishConfigActionLabel, title: publishConfigActionLabel }}
               cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${publishConfigActionLabel}`, title: `${t('common.cancel')}: ${publishConfigActionLabel}` }}
               onConfirm={handlePublish}
@@ -233,7 +232,7 @@ const ConfigCenter: React.FC = () => {
               <Button type="primary" icon={<SendOutlined />} loading={publishing} disabled={actionDisabled} aria-label={publishConfigActionLabel} title={publishConfigActionLabel}>
                 {t('pages.configCenter.publishSync')}
               </Button>
-            </Popconfirm>
+            </ShopPopconfirm>
           ) : null}
         </Space>
       </div>
@@ -324,13 +323,13 @@ const ConfigCenter: React.FC = () => {
           <Card title={t('pages.configCenter.publishTarget')} className="config-center__card">
             <div className="config-center__form">
               <Form.Item name="dataId" label={t('pages.configCenter.dataId')} rules={[{ required: true, message: t('pages.configCenter.dataIdRequired') }]}>
-                <Input placeholder="shop-backend.properties" aria-label={dataIdInputLabel} title={dataIdInputLabel} />
+                <ShopInput placeholder="shop-backend.properties" aria-label={dataIdInputLabel} title={dataIdInputLabel} />
               </Form.Item>
               <Form.Item name="group" label={t('pages.configCenter.group')} rules={[{ required: true, message: t('pages.configCenter.groupRequired') }]}>
-                <Input placeholder="DEFAULT_GROUP" aria-label={groupInputLabel} title={groupInputLabel} />
+                <ShopInput placeholder="DEFAULT_GROUP" aria-label={groupInputLabel} title={groupInputLabel} />
               </Form.Item>
               <Form.Item name="namespace" label={t('pages.configCenter.namespace')}>
-                <Input placeholder={t('pages.configCenter.namespacePlaceholder')} aria-label={namespaceInputLabel} title={namespaceInputLabel} />
+                <ShopInput placeholder={t('pages.configCenter.namespacePlaceholder')} aria-label={namespaceInputLabel} title={namespaceInputLabel} />
               </Form.Item>
               {canApplyConfig ? (
                 <Form.Item name="applyRuntime" valuePropName="checked">
@@ -357,7 +356,7 @@ const ConfigCenter: React.FC = () => {
               rules={[{ required: true, message: t('pages.configCenter.contentRequired') }]}
               className="config-center__contentItem"
             >
-              <TextArea spellCheck={false} className="config-center__editor" aria-label={configContentEditorLabel} title={configContentEditorLabel} />
+              <ShopTextArea spellCheck={false} rows={18} className="config-center__editor" aria-label={configContentEditorLabel} title={configContentEditorLabel} />
             </Form.Item>
           </Card>
         </Form>}

@@ -1,24 +1,11 @@
 import { useNavigate } from 'react-router-dom';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  Alert,
-  Button,
-  Card,
-  Divider,
-  Form,
-  Image,
-  Input,
-  InputNumber,
-  message,
-  Modal,
-  Popconfirm,
-  Progress,
-  Select,
-  Space,
-  Table,
-  Tag,
-  Typography,
-} from 'antd';
+import { Alert, Button, Card, Divider, Form, Image, message, Progress, Space, Table, Tag, Typography } from 'antd';
+import ShopInput, { ShopTextArea } from '../components/ShopInput';
+import ShopPopconfirm from '../components/ShopPopconfirm';
+import ShopSelect from '../components/ShopSelect';
+import ShopInputNumber from '../components/ShopInputNumber';
+import ShopModal from '../components/ShopModal';
 import { CheckCircleOutlined, DeleteOutlined, EditOutlined, GlobalOutlined, PictureOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons';
 import { adminApi } from '../api/admin';
 import type { Brand } from '../types';
@@ -30,11 +17,9 @@ import { BRANDS_DELETE_PERMISSION, BRANDS_WRITE_PERMISSION, getEffectiveRole, ha
 import './BrandManagement.css';
 
 const { Title, Text } = Typography;
-const { TextArea } = Input;
 const brandImageFallback = imageFallbacks.brand;
 const resolveBrandImage = (imageUrl?: string) => resolveApiAssetUrl(imageUrl, brandImageFallback);
 const mobilePopupClassNames = { popup: { root: 'shop-mobile-popup-layer' } };
-const mobilePopconfirmClassNames = { root: 'shop-mobile-popup-layer' };
 const brandAdminTableCell = (label: string): React.TdHTMLAttributes<HTMLElement> & Record<'data-label', string> => ({
   'data-label': label,
 });
@@ -359,8 +344,7 @@ const BrandManagement: React.FC = () => {
               {t('common.edit')}
             </Button> : null}
             {canDeleteBrands ? (
-              <Popconfirm
-                classNames={mobilePopconfirmClassNames}
+              <ShopPopconfirm rootClassName="shop-mobile-popup-layer"
                 title={t('pages.brandAdmin.deleteConfirm')}
                 description={brandName}
                 onConfirm={() => handleDelete(record.id)}
@@ -373,7 +357,7 @@ const BrandManagement: React.FC = () => {
                 <Button icon={<DeleteOutlined />} danger size="small" disabled={brandActionDisabled} aria-label={deleteActionLabel} title={deleteActionLabel}>
                   {t('common.delete')}
                 </Button>
-              </Popconfirm>
+              </ShopPopconfirm>
             ) : null}
           </Space>
         );
@@ -441,7 +425,7 @@ const BrandManagement: React.FC = () => {
       <Card className="brand-management-page__toolbar">
         <Space wrap role="search" aria-label={brandSearchRegionLabel} title={brandSearchRegionLabel}>
           <Text type="secondary">{t('pages.brandAdmin.healthSubtitle')}</Text>
-          <Input
+          <ShopInput
             allowClear
             prefix={<SearchOutlined />}
             value={keyword}
@@ -452,17 +436,15 @@ const BrandManagement: React.FC = () => {
             title={brandSearchInputLabel}
             className="brand-management-page__keywordInput"
           />
-          <Select
+          <ShopSelect
             allowClear
             value={statusFilter}
-            onChange={setStatusFilter}
+            onChange={(value) => setStatusFilter(value || undefined)}
             disabled={brandActionDisabled}
             placeholder={t('common.status')}
-            aria-label={brandStatusFilterLabel}
+            ariaLabel={brandStatusFilterLabel}
             title={brandStatusFilterLabel}
-            className="brand-management-page__statusFilterSelect"
-            classNames={mobilePopupClassNames}
-            getPopupContainer={() => document.body}
+            className="brand-management-page__statusFilterSelect" popupClassName="shop-mobile-popup-layer"
             options={[
               { value: 'ACTIVE', label: t('status.ACTIVE') },
               { value: 'INACTIVE', label: t('status.INACTIVE') },
@@ -529,24 +511,25 @@ const BrandManagement: React.FC = () => {
         </>
       ) : null}
 
-      <Modal
+      <ShopModal
         className="profile-mobile-safe-modal brand-management-page__editorModal"
         title={editorTitle}
         open={modalVisible}
         onOk={handleSubmit}
-        onCancel={closeModal}
+        onClose={closeModal}
+        okText={t('common.save')}
+        cancelText={t('common.cancel')}
         okButtonProps={{ disabled: brandActionDisabled, 'aria-label': saveBrandActionLabel, title: saveBrandActionLabel }}
         cancelButtonProps={{ 'aria-label': cancelBrandActionLabel, title: cancelBrandActionLabel }}
         confirmLoading={saving}
-        destroyOnHidden
       >
         <Form form={form} layout="vertical">
           <Form.Item name="name" label={t('pages.brandAdmin.brandName')} rules={[{ required: true, message: t('pages.brandAdmin.nameRequired') }]}>
-            <Input placeholder="PawPilot" aria-label={brandNameFieldLabel} title={brandNameFieldLabel} />
+            <ShopInput placeholder="PawPilot" aria-label={brandNameFieldLabel} title={brandNameFieldLabel} />
           </Form.Item>
 
           <Form.Item name="logoUrl" label={t('pages.brandAdmin.logoUrl')}>
-            <Input placeholder="https://..." aria-label={logoUrlFieldLabel} title={logoUrlFieldLabel} onChange={(event) => setLogoPreviewUrl(event.target.value)} />
+            <ShopInput placeholder="https://..." aria-label={logoUrlFieldLabel} title={logoUrlFieldLabel} onChange={(event) => setLogoPreviewUrl(event.target.value)} />
           </Form.Item>
 
           {logoPreviewUrl ? (
@@ -556,20 +539,18 @@ const BrandManagement: React.FC = () => {
           ) : null}
 
           <Form.Item name="websiteUrl" label={t('pages.brandAdmin.websiteUrl')}>
-            <Input placeholder="https://..." aria-label={websiteUrlFieldLabel} title={websiteUrlFieldLabel} />
+            <ShopInput placeholder="https://..." aria-label={websiteUrlFieldLabel} title={websiteUrlFieldLabel} />
           </Form.Item>
 
           <Form.Item name="description" label={t('pages.brandAdmin.description')}>
-            <TextArea rows={3} placeholder={t('pages.brandAdmin.descriptionPlaceholder')} aria-label={descriptionFieldLabel} title={descriptionFieldLabel} />
+            <ShopTextArea rows={3} placeholder={t('pages.brandAdmin.descriptionPlaceholder')} aria-label={descriptionFieldLabel} title={descriptionFieldLabel} />
           </Form.Item>
 
           <Space className="brand-management-page__formRow" align="start">
             <Form.Item name="status" label={t('common.status')} className="brand-management-page__statusField">
-              <Select
-                aria-label={statusFieldLabel}
-                title={statusFieldLabel}
-                classNames={mobilePopupClassNames}
-                getPopupContainer={() => document.body}
+              <ShopSelect
+                ariaLabel={statusFieldLabel}
+                title={statusFieldLabel} popupClassName="shop-mobile-popup-layer"
                 options={[
                   { value: 'ACTIVE', label: t('status.ACTIVE') },
                   { value: 'INACTIVE', label: t('status.INACTIVE') },
@@ -577,11 +558,11 @@ const BrandManagement: React.FC = () => {
               />
             </Form.Item>
             <Form.Item name="sortOrder" label={t('pages.brandAdmin.sortOrder')}>
-              <InputNumber min={0} precision={0} aria-label={sortOrderFieldLabel} title={sortOrderFieldLabel} />
+              <ShopInputNumber min={0} precision={0} aria-label={sortOrderFieldLabel} title={sortOrderFieldLabel} />
             </Form.Item>
           </Space>
         </Form>
-      </Modal>
+      </ShopModal>
     </div>
   );
 };

@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { ShopIcon, SI } from '../components/ShopIcon';
-import { Alert, Form, Input, Button, Tag } from 'antd';
-import type { InputRef } from 'antd/es/input';
+import { Alert, Form, Button, Tag } from 'antd';
+import ShopInput, { ShopPasswordInput } from '../components/ShopInput';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { userApi } from '../api';
 import { useAppConfig } from '../hooks/useAppConfig';
@@ -131,7 +131,7 @@ const Register: React.FC = () => {
   const [codeTtlMinutes, setCodeTtlMinutes] = useState(0);
   const [sentEmailHint, setSentEmailHint] = useState('');
   const [emailCodeRequired, setEmailCodeRequired] = useState(false);
-  const codeInputRef = useRef<InputRef | null>(null);
+  const codeInputRef = useRef<HTMLInputElement | null>(null);
   const registeringRef = useRef(false);
   const registerCodeSendingRef = useRef(false);
   const emailCodeEnabled = appConfig.emailCodeEnabled === true;
@@ -435,7 +435,7 @@ const Register: React.FC = () => {
               { min: 3, message: t('pages.auth.usernameMin') }
             ]}
           >
-            <Input
+            <ShopInput
               prefix={<ShopIcon path={SI.user} />}
               placeholder={t('pages.auth.usernameShort')}
               autoComplete="username"
@@ -456,7 +456,7 @@ const Register: React.FC = () => {
               { validator: validateStrongPassword }
             ]}
           >
-            <Input.Password
+            <ShopPasswordInput
               prefix={<ShopIcon path={SI.lock} />}
               placeholder={t('pages.auth.password')}
               autoComplete="new-password"
@@ -493,7 +493,7 @@ const Register: React.FC = () => {
               }),
             ]}
           >
-            <Input.Password
+            <ShopPasswordInput
               prefix={<ShopIcon path={SI.lock} />}
               placeholder={t('pages.auth.confirmPassword')}
               autoComplete="new-password"
@@ -522,7 +522,7 @@ const Register: React.FC = () => {
               { type: 'email', message: t('pages.auth.emailInvalid') }
             ]}
           >
-            <Input
+            <ShopInput
               prefix={<ShopIcon path={SI.mail} />}
               placeholder={t('pages.auth.email')}
               autoComplete="email"
@@ -556,7 +556,7 @@ const Register: React.FC = () => {
                   { len: 6, message: t('pages.auth.emailCodeLength') },
                 ] : []}
               >
-                <Input
+                <ShopInput
                   ref={codeInputRef}
                   prefix={<ShopIcon path={SI.safety} />}
                   placeholder={t('pages.auth.emailCodeRequired')}
@@ -597,7 +597,7 @@ const Register: React.FC = () => {
               { pattern: phonePattern, message: t('pages.auth.phoneInvalid') }
             ]}
           >
-            <Input
+            <ShopInput
               prefix={<ShopIcon path={SI.phone} />}
               placeholder={t('pages.auth.phonePlaceholder')}
               autoComplete="tel"

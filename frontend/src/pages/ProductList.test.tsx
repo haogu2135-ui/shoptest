@@ -168,7 +168,7 @@ describe('ProductList quick-add mobile overlay contracts', () => {
     expect(source).toContain('product-list--quickAddOpen');
     expect(source).toContain('rootClassName="product-list__quickAddModalRoot"');
     expect(source).toContain('ShopModal');
-    expect(source).toContain("classNames={{ popup: { root: 'shop-mobile-popup-layer product-list__quickAddPopup' } }}");
+    expect(source).toContain('popupClassName="shop-mobile-popup-layer product-list__quickAddPopup"');
     expect(fixCss).toMatch(/product-list--quickAddOpen[\s\S]*?\.product-list__mobileConversionBar[\s\S]*?\{[\s\S]*?display:\s*none\s*!important;[\s\S]*?pointer-events:\s*none\s*!important;/);
     expect(fixCss).toMatch(/\.product-list__quickAddModalRoot \.shop-modal__mask\s*\{[^}]*z-index:\s*9500\s*!important;[^}]*background:/);
     expect(fixCss).toMatch(/body\.shop-mobile-app \.product-list__quickAddModalRoot \.shop-modal__mask\s*\{[^}]*z-index:\s*9900\s*!important;/);

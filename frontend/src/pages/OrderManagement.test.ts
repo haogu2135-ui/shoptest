@@ -27,12 +27,12 @@ describe('OrderManagement modal evidence guards', () => {
   });
 
   it('keeps fulfillment carrier dropdowns on a scoped modal-safe popup layer', () => {
-    expect(pageSource).toContain("const carrierSelectClassNames = { popup: { root: 'shop-mobile-popup-layer order-management-page__carrierPopup' } };");
+    expect(pageSource).toContain('ShopSelect');
+    expect(pageSource).toContain('showSearch');
     expect(pageSource).toContain('className="order-management-page__carrierSelect"');
     expect(pageSource).toContain('className="order-management-page__carrierSelect order-management-page__batchCarrierSelect"');
-    expect(pageSource.match(/classNames=\{carrierSelectClassNames\}/g)?.length).toBeGreaterThanOrEqual(2);
-    expect(pageSource.match(/placement="bottomLeft"/g)?.length).toBeGreaterThanOrEqual(2);
-    expect(pageSource.match(/getPopupContainer=\{\(\) => document\.body\}/g)?.length).toBeGreaterThanOrEqual(2);
+    expect(pageSource.match(/popupClassName="shop-mobile-popup-layer order-management-page__carrierPopup"/g)?.length).toBeGreaterThanOrEqual(2);
+    expect(pageSource).not.toMatch(/<Select\b/);
   });
 
   it('labels refund/detail modal table cells for compact evidence cards', () => {

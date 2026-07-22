@@ -9,7 +9,8 @@ describe('Login type-safety guard', () => {
     const source = readLoginSource();
 
     expect(source).not.toMatch(/\bany\b|as any\b|catch \([^)]*: any\)|useRef<any>|responseData: any|values: any|error: any/);
-    expect(source).toContain("import type { InputRef } from 'antd/es/input';");
+    expect(source).toContain('const codeInputRef = useRef<HTMLInputElement | null>(null);');
+    expect(source).not.toContain("import type { InputRef } from 'antd/es/input';");
     expect(source).toContain("import type { Language } from '../i18n';");
     expect(source).toContain('type PasswordLoginValues = {');
     expect(source).toContain('type EmailLoginValues = {');
@@ -19,7 +20,6 @@ describe('Login type-safety guard', () => {
     expect(source).toContain('const resolvePasswordLoginError = (');
     expect(source).toContain('error: unknown');
     expect(source).toContain('const shouldTryNextLoginCandidate = (error: unknown)');
-    expect(source).toContain('const codeInputRef = useRef<InputRef | null>(null);');
     expect(source).toContain('const completeLogin = async (responseData: LoginSessionResponse) =>');
     expect(source).toContain('const onFinish = async (values: PasswordLoginValues) =>');
     expect(source).toContain('const onEmailLogin = async (values: EmailLoginValues) =>');

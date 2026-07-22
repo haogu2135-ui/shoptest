@@ -1,0 +1,179 @@
+.shop-input {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  align-items: stretch;
+  gap: 0;
+}
+
+.shop-input__shell {
+  position: relative;
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid rgba(18, 71, 52, 0.16);
+  border-radius: 10px;
+  background: #fff;
+}
+
+.shop-input--large .shop-input__shell {
+  min-height: 48px;
+  padding: 0 14px;
+}
+
+.shop-input--withAddon .shop-input__shell {
+  border-radius: 10px 0 0 10px;
+}
+
+.shop-input--disabled .shop-input__shell {
+  opacity: 0.65;
+  background: #f6f8f6;
+}
+
+.shop-input--error .shop-input__shell {
+  border-color: #d4380d;
+}
+
+.shop-input__prefix,
+.shop-input__suffix {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  color: rgba(16, 47, 34, 0.55);
+}
+
+.shop-input__prefix {
+  margin-right: 8px;
+}
+
+.shop-input__suffix {
+  margin-left: 8px;
+}
+
+.shop-input__control {
+  flex: 1 1 auto;
+  min-width: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 40px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #173f2b;
+  font: inherit;
+  font-size: max(12px, 0.95em);
+  line-height: 1.35;
+}
+
+.shop-input__control:focus {
+  outline: none;
+}
+
+.shop-input__shell:focus-within {
+  border-color: rgba(18, 71, 52, 0.42);
+  box-shadow: 0 0 0 3px rgba(18, 71, 52, 0.12);
+}
+
+.shop-input__clear,
+.shop-input__visibility {
+  display: inline-flex;
+  flex: 0 0 auto;
+  width: 28px;
+  min-height: 28px;
+  align-items: center;
+  justify-content: center;
+  margin-left: 4px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: rgba(16, 47, 34, 0.62);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.shop-input__clear:hover,
+.shop-input__visibility:hover,
+.shop-input__clear:focus-visible,
+.shop-input__visibility:focus-visible {
+  background: rgba(16, 47, 34, 0.08);
+  outline: none;
+}
+
+.shop-input__visibilityWrap {
+  display: inline-flex;
+  align-items: center;
+}
+
+.shop-input__visibilityWrap > button {
+  display: inline-flex;
+  min-width: 28px;
+  min-height: 28px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  line-height: 0;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.shop-input__addon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 4px 0 0;
+  border: 1px solid rgba(18, 71, 52, 0.16);
+  border-left: 0;
+  border-radius: 0 10px 10px 0;
+  background: #fff;
+}
+
+.shop-input--large .shop-input__addon {
+  min-height: 48px;
+}
+
+@media (max-width: 780px) {
+  .shop-input__shell,
+  .shop-input__addon,
+  .shop-input__control {
+    min-height: 44px;
+  }
+
+  .shop-input__control {
+    font-size: 16px;
+  }
+}
+
+
+.shop-input--textarea {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+}
+
+.shop-input__shell--textarea {
+  align-items: stretch;
+  min-height: 88px;
+  padding: 10px 12px;
+}
+
+.shop-input__control--textarea {
+  min-height: 72px;
+  resize: vertical;
+  line-height: 1.45;
+}
+
+.shop-input__count {
+  align-self: flex-end;
+  color: rgba(16, 47, 34, 0.55);
+  font-size: 12px;
+  line-height: 1.2;
+}

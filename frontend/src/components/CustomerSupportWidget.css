@@ -3358,3 +3358,28 @@ body .customer-support-widget__orderModalRoot .customer-support-widget__orderMod
 .customer-support-widget__header .customer-support-widget__stack {
   width: 100%;
 }
+
+
+/* Gate129 support densify */
+.customer-support-widget__presence {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  line-height: 1.2;
+  color: rgba(16, 47, 34, 0.72);
+}
+.customer-support-widget__presenceDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(16, 47, 34, 0.28);
+  flex: 0 0 auto;
+}
+.customer-support-widget__presence--online .customer-support-widget__presenceDot {
+  background: #52c41a;
+  box-shadow: 0 0 0 2px rgba(82, 196, 26, 0.18);
+}
+.customer-support-widget__messageInput.shop-input--textarea {
+  width: 100%;
+}

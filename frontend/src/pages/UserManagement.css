@@ -315,7 +315,8 @@
   width: 140px;
 }
 
-.user-management-page__profileModal .ant-modal-body {
+.user-management-page__profileModal .ant-modal-body,
+  .user-management-page__profileModal .shop-modal__body {
   max-height: min(620px, calc(100vh - 220px));
   overflow-y: auto;
 }
@@ -460,7 +461,9 @@
     min-width: 0;
   }
 
-  .user-management-page__profileModal .ant-modal-body {
+.user-management-page__profileModal .ant-modal-body,
+
+  .user-management-page__profileModal .shop-modal__body {
     max-height: calc(100dvh - 180px);
     scroll-padding-top: 16px;
   }
@@ -586,7 +589,8 @@
   .user-management-page .ant-table-cell .ant-btn,
   .user-management-page__profileModal .ant-modal-footer .ant-btn,
   .user-management-page__profileModal .ant-input,
-  .user-management-page__profileModal textarea.ant-input {
+  .user-management-page__profileModal textarea.ant-input,
+  .user-management-page__profileModal .shop-modal__footer .ant-btn {
     min-height: 44px;
   }
 }
@@ -598,7 +602,8 @@
   .user-management-page__filters .ant-btn,
   .user-management-page .ant-table-cell .ant-select-selector,
   .user-management-page .ant-table-cell .ant-btn,
-  .user-management-page__profileModal .ant-modal-footer .ant-btn {
+  .user-management-page__profileModal .ant-modal-footer .ant-btn,
+  .user-management-page__profileModal .shop-modal__footer .ant-btn {
     min-height: 44px !important;
     height: auto !important;
     max-height: none !important;

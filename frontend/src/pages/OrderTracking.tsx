@@ -1,10 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { ShopIcon, SI } from '../components/ShopIcon';
-import { Alert, Button, Form, Input, Tag } from 'antd';
+import { Alert, Button, Form, Tag } from 'antd';
+import ShopInput, { ShopTextArea } from '../components/ShopInput';
 import ShopModal from '../components/ShopModal';
 import ShopConfirm from '../components/ShopConfirm';
-import type { InputRef } from 'antd/es/input';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import PageEmpty from '../components/PageEmpty';
 import PageError from '../components/PageError';
@@ -131,7 +131,7 @@ const OrderTracking: React.FC = () => {
   const [detailsRestricted, setDetailsRestricted] = useState(false);
   const [prefillNoticeVisible, setPrefillNoticeVisible] = useState(false);
   const [paymentReturnEmailGateVisible, setPaymentReturnEmailGateVisible] = useState(false);
-  const paymentReturnEmailInputRef = useRef<InputRef | null>(null);
+  const paymentReturnEmailInputRef = useRef<HTMLInputElement | null>(null);
   const paymentReturnAutoTrackKeyRef = useRef('');
   const mountedRef = useRef(true);
   const trackRequestSeqRef = useRef(0);
@@ -780,10 +780,10 @@ const OrderTracking: React.FC = () => {
           onValuesChange={() => setPrefillNoticeVisible(false)}
         >
           <Form.Item name="orderNo" label={t('pages.orderTracking.orderNo')} rules={[{ required: true, message: t('pages.orderTracking.orderNoRequired') }]}>
-            <Input placeholder={t('pages.orderTracking.orderNoPlaceholder')} autoComplete="off" inputMode="text" maxLength={80} />
+            <ShopInput placeholder={t('pages.orderTracking.orderNoPlaceholder')} autoComplete="off" inputMode="text" maxLength={80} />
           </Form.Item>
           <Form.Item name="email" label={t('pages.orderTracking.email')} rules={[{ required: true, message: t('pages.orderTracking.emailRequired') }, { type: 'email', message: t('pages.auth.emailInvalid') }]}>
-            <Input
+            <ShopInput
               ref={paymentReturnEmailInputRef}
               className={paymentReturnEmailGateVisible ? 'order-tracking-page__emailInput--gate' : undefined}
               placeholder={t('pages.orderTracking.emailPlaceholder')}
@@ -1306,10 +1306,10 @@ const OrderTracking: React.FC = () => {
               })}
             </div>
           </div>
-          <Input.TextArea
+          <ShopTextArea
             rows={4}
             value={returnReason}
-            status={returnReason && !isReturnReasonReady(returnReason) ? 'error' : undefined}
+            status={returnReason && !isReturnReasonReady(returnReason) ? 'error' : ''}
             onChange={(event) => setReturnReason(event.target.value)}
             maxLength={500}
             showCount
@@ -1356,13 +1356,13 @@ const OrderTracking: React.FC = () => {
             </div>
           </div>
           <span className="order-tracking-page__text order-tracking-page__text--secondary">{t('pages.profile.returnShipmentHint')}</span>
-          <Input
+          <ShopInput
             value={returnTrackingNumber}
             onChange={(event) => setReturnTrackingNumber(event.target.value)}
             autoComplete="off"
             inputMode="text"
             maxLength={120}
-            status={returnTrackingNumber && !isReturnTrackingReady(returnTrackingNumber) ? 'error' : undefined}
+            status={returnTrackingNumber && !isReturnTrackingReady(returnTrackingNumber) ? 'error' : ''}
             placeholder={t('pages.profile.returnTrackingPlaceholder')}
             aria-label={returnTrackingInputLabel}
             title={returnTrackingInputLabel}

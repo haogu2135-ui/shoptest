@@ -28,4 +28,13 @@ describe('ProductRichDetailEditor admin content contract', () => {
     expect(source).toContain('allow="fullscreen; picture-in-picture"');
     expect(source).toContain("t('pages.productAdmin.richInvalidUrl')");
   });
+
+
+  it('uses ShopInput/ShopTextArea instead of ant Input', () => {
+    expect(source).toContain('ShopInput');
+    expect(source).toContain('ShopTextArea');
+    expect(source).not.toMatch(/import \{[^}]*\bInput\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/const \{ TextArea \} = Input|<TextArea\b|<Input\b/);
+  });
+
 });

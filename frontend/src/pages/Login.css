@@ -2942,3 +2942,90 @@ h1.shopee-login-subtitle,
 .shopee-login-card__intro {
   margin: 0;
 }
+
+
+/* Gate125 shop input densify */
+.shopee-login-form .shop-input,
+.shopee-login-form .shop-input__shell,
+.shopee-login-form .shop-input__addon {
+  width: 100%;
+  min-height: 44px;
+}
+.shopee-login-form .shop-input--large .shop-input__shell,
+.shopee-login-form .shop-input--large .shop-input__addon {
+  min-height: 48px;
+}
+.shopee-login-form .shop-input__control {
+  font-size: max(12px, 0.95em);
+}
+@media (max-width: 780px) {
+  .shopee-login-form .shop-input__shell,
+  .shopee-login-form .shop-input__addon,
+  .shopee-login-form .shop-input__control {
+    min-height: 44px;
+  }
+  .shopee-login-form .shop-input__control {
+    font-size: 16px;
+  }
+}
+
+
+/* Gate125b shop-input code-field layout (replaces ant-input-group grids) */
+.shopee-login-form__field--code .shop-input {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  align-items: stretch;
+}
+.shopee-login-form__field--code .shop-input__shell {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.shopee-login-form__field--code .shop-input__addon {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: stretch;
+  padding: 0;
+}
+.shopee-login-form__field--code .shop-input__addon .shopee-login-codeButton,
+.shopee-login-form__field--code .shop-input__addon .ant-btn {
+  min-height: 44px;
+  height: 100%;
+}
+@media (max-width: 640px) {
+  .shopee-login-form__field--code .shop-input {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 76px;
+    align-items: stretch;
+  }
+  .shopee-login-form__field--code .shop-input__shell {
+    min-width: 0;
+  }
+  .shopee-login-form__field--code .shop-input__addon {
+    width: 76px;
+    min-width: 76px;
+  }
+  .shopee-login-form__field--code .shop-input__addon .shopee-login-codeButton,
+  .shopee-login-form__field--code .shop-input__addon .ant-btn {
+    width: 100%;
+    min-width: 0;
+  }
+}
+@media (max-width: 380px) {
+  .shopee-login-form__field--code .shop-input {
+    grid-template-columns: minmax(0, 1fr) 72px;
+  }
+  .shopee-login-form__field--code .shop-input__addon {
+    width: 72px;
+    min-width: 72px;
+  }
+}
+@media (max-width: 360px) {
+  .shopee-login-form__field--code .shop-input {
+    grid-template-columns: minmax(0, 1fr) 70px;
+  }
+  .shopee-login-form__field--code .shop-input__addon {
+    width: 70px;
+    min-width: 70px;
+  }
+}

@@ -60,7 +60,8 @@
   min-width: 0;
 }
 
-.browsing-history__tools .ant-input-affix-wrapper {
+.browsing-history__tools .ant-input-affix-wrapper,
+.browsing-history__tools .shop-input {
   flex: 1 1 240px;
   min-width: 0;
   max-width: 420px;
@@ -78,7 +79,8 @@
     justify-content: flex-start;
   }
 
-  .browsing-history__tools .ant-input-affix-wrapper {
+  .browsing-history__tools .ant-input-affix-wrapper,
+.browsing-history__tools .shop-input {
     flex-basis: min(100%, 360px);
   }
 }
@@ -753,6 +755,7 @@
   }
 
   .browsing-history__tools .ant-input-affix-wrapper,
+.browsing-history__tools .shop-input,
   .browsing-history__tools .ant-btn {
     width: 100%;
     min-height: 44px;
@@ -959,6 +962,7 @@
   }
 
   .browsing-history__tools .ant-input-affix-wrapper,
+.browsing-history__tools .shop-input,
   .browsing-history__tools .ant-btn {
     min-height: 44px;
   }
@@ -1178,7 +1182,8 @@
     min-width: 0;
   }
 
-  .browsing-history__tools .ant-input-affix-wrapper {
+  .browsing-history__tools .ant-input-affix-wrapper,
+.browsing-history__tools .shop-input {
     min-width: 0;
   }
 
@@ -1292,11 +1297,13 @@
 
 /* Final mobile history search input target pass */
 @media (max-width: 640px) {
-  .browsing-history__tools .ant-input-affix-wrapper {
+  .browsing-history__tools .ant-input-affix-wrapper,
+.browsing-history__tools .shop-input {
     align-items: center;
   }
 
-  .browsing-history__tools .ant-input-affix-wrapper .ant-input {
+  .browsing-history__tools .ant-input-affix-wrapper,
+.browsing-history__tools .shop-input .ant-input {
     height: 44px;
     line-height: 34px;
   }
@@ -1525,6 +1532,7 @@
   }
 
   .browsing-history__tools .ant-input-affix-wrapper,
+.browsing-history__tools .shop-input,
   .browsing-history__tools .ant-btn,
   .browsing-history__footer .ant-btn,
   .browsing-history__emptyActions .ant-btn {
@@ -1575,6 +1583,7 @@
   .browsing-history__tools .ant-space,
   .browsing-history__tools .ant-space-item,
   .browsing-history__tools .ant-input-affix-wrapper,
+.browsing-history__tools .shop-input,
   .browsing-history__item,
   .browsing-history__footer,
   .browsing-history__footer > div {
@@ -1727,6 +1736,7 @@
 /* Final mobile/App browsing history touch-target guard */
 @media (max-width: 640px) {
   .browsing-history__tools .ant-input-affix-wrapper,
+.browsing-history__tools .shop-input,
   .browsing-history__tools .ant-btn,
   .browsing-history__assistant-actions button,
   .browsing-history__recovery .ant-btn,
@@ -1741,7 +1751,8 @@
     touch-action: manipulation;
   }
 
-  .browsing-history__tools .ant-input-affix-wrapper .ant-input {
+  .browsing-history__tools .ant-input-affix-wrapper,
+.browsing-history__tools .shop-input .ant-input {
     min-height: 44px;
   }
 

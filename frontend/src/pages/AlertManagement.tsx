@@ -1,6 +1,10 @@
 import { useNavigate } from 'react-router-dom';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Card, Empty, Input, InputNumber, Popconfirm, Select, Space, Spin, Statistic, Table, Tag, Typography, message } from 'antd';
+import { Alert, Button, Card, Empty, Space, Spin, Statistic, Table, Tag, Typography, message } from 'antd';
+import ShopInput, { ShopTextArea } from '../components/ShopInput';
+import ShopPopconfirm from '../components/ShopPopconfirm';
+import ShopSelect from '../components/ShopSelect';
+import ShopInputNumber from '../components/ShopInputNumber';
 import type { ColumnsType } from 'antd/es/table';
 import { AlertOutlined, CheckCircleOutlined, DeleteOutlined, ReloadOutlined, SearchOutlined, ToolOutlined } from '@ant-design/icons';
 import { adminApi } from '../api/admin';
@@ -20,7 +24,6 @@ import {
 import './AlertManagement.css';
 
 const { Text, Title } = Typography;
-const mobilePopconfirmClassNames = { root: 'shop-mobile-popup-layer' };
 
 const severityColor = (severity: string) => {
   if (severity === 'CRITICAL') return 'magenta';
@@ -376,8 +379,7 @@ const AlertManagement: React.FC = () => {
         return (
           <Space wrap>
 	            {record.status === 'OPEN' && canAcknowledgeAlerts ? (
-              <Popconfirm
-                classNames={mobilePopconfirmClassNames}
+              <ShopPopconfirm rootClassName="shop-mobile-popup-layer"
                 title={`${t('pages.alertAdmin.ackConfirm')} ${alertLabel}`}
                 description={record.fingerprint && record.fingerprint !== alertLabel ? record.fingerprint : undefined}
                 onConfirm={() => acknowledge(record)}
@@ -390,11 +392,10 @@ const AlertManagement: React.FC = () => {
                 <Button size="small" aria-label={ackActionLabel} title={ackActionLabel} loading={acting === `ack-${record.id}`} disabled={alertActionDisabled}>
                   {t('pages.alertAdmin.ack')}
                 </Button>
-              </Popconfirm>
+              </ShopPopconfirm>
             ) : null}
 	            {record.status !== 'RESOLVED' && canResolveAlerts ? (
-              <Popconfirm
-                classNames={mobilePopconfirmClassNames}
+              <ShopPopconfirm rootClassName="shop-mobile-popup-layer"
                 title={`${t('pages.alertAdmin.resolveConfirm')} ${alertLabel}`}
                 description={record.fingerprint && record.fingerprint !== alertLabel ? record.fingerprint : undefined}
                 onConfirm={() => resolve(record)}
@@ -407,7 +408,7 @@ const AlertManagement: React.FC = () => {
                 <Button size="small" type="primary" aria-label={resolveActionLabel} title={resolveActionLabel} loading={acting === `resolve-${record.id}`} disabled={alertActionDisabled}>
                   {t('pages.alertAdmin.resolve')}
                 </Button>
-              </Popconfirm>
+              </ShopPopconfirm>
             ) : null}
           </Space>
         );
@@ -585,29 +586,25 @@ const AlertManagement: React.FC = () => {
         <Card className="alert-management__card">
           <Space className="alert-management__filters" wrap>
             <div role="group" aria-label={statusFilterGroupLabel} title={statusFilterGroupLabel}>
-              <Select
+              <ShopSelect
                 value={status}
-                onChange={applyStatusFilter}
-                classNames={{ popup: { root: 'shop-mobile-popup-layer' } }}
-                getPopupContainer={() => document.body}
+                onChange={(value) => { if (value) applyStatusFilter(value); }} popupClassName="shop-mobile-popup-layer"
                 options={statusOptions.map((value) => ({ value, label: alertStatusLabels[value as keyof typeof alertStatusLabels] || value }))}
               />
             </div>
             <div role="group" aria-label={severityFilterGroupLabel} title={severityFilterGroupLabel}>
-              <Select
+              <ShopSelect
                 value={severity}
-                onChange={setSeverity}
-                classNames={{ popup: { root: 'shop-mobile-popup-layer' } }}
-                getPopupContainer={() => document.body}
+                onChange={(value) => setSeverity(value || 'ALL')} popupClassName="shop-mobile-popup-layer"
                 options={['ALL', 'CRITICAL', 'ERROR', 'WARNING', 'INFO'].map((value) => ({ value, label: alertSeverityLabels[value as keyof typeof alertSeverityLabels] || value }))}
               />
             </div>
-            <Input
+            <ShopInput
               allowClear
               prefix={<SearchOutlined />}
               value={category}
               onChange={(event) => setCategory(event.target.value)}
-              onPressEnter={loadData}
+              onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); void loadData(); } }}
               placeholder={t('pages.alertAdmin.category')}
               aria-label={categoryFilterInputLabel}
               title={categoryFilterInputLabel}
@@ -621,8 +618,7 @@ const AlertManagement: React.FC = () => {
                 {selectedAlertSummaryLabel}
               </Text>
               {canAcknowledgeAlerts ? (
-                <Popconfirm
-                  classNames={mobilePopconfirmClassNames}
+                <ShopPopconfirm rootClassName="shop-mobile-popup-layer"
                   title={t('pages.alertAdmin.batchAckConfirm', { count: selectedOpenIds.length })}
                   onConfirm={batchAcknowledge}
                   disabled={!selectedOpenIds.length || alertActionDisabled}
@@ -639,11 +635,10 @@ const AlertManagement: React.FC = () => {
                   >
                     {t('pages.alertAdmin.batchAck')}
                   </Button>
-                </Popconfirm>
+                </ShopPopconfirm>
               ) : null}
               {canResolveAlerts ? (
-                <Popconfirm
-                  classNames={mobilePopconfirmClassNames}
+                <ShopPopconfirm rootClassName="shop-mobile-popup-layer"
                   title={t('pages.alertAdmin.batchResolveConfirm', { count: selectedUnresolvedIds.length })}
                   onConfirm={batchResolve}
                   disabled={!selectedUnresolvedIds.length || alertActionDisabled}
@@ -661,13 +656,13 @@ const AlertManagement: React.FC = () => {
                   >
                     {t('pages.alertAdmin.batchResolve')}
                   </Button>
-                </Popconfirm>
+                </ShopPopconfirm>
               ) : null}
             </Space>
             {canPurgeResolved ? (
               <Space wrap className="alert-management__purge">
                 <Text type="secondary">{t('pages.alertAdmin.purgeRetention')}</Text>
-                <InputNumber
+                <ShopInputNumber
                   min={1}
                   max={3650}
                   precision={0}
@@ -677,8 +672,7 @@ const AlertManagement: React.FC = () => {
                   aria-label={purgeRetentionInputLabel}
                   title={purgeRetentionInputLabel}
                 />
-                <Popconfirm
-                  classNames={mobilePopconfirmClassNames}
+                <ShopPopconfirm rootClassName="shop-mobile-popup-layer"
                   title={t('pages.alertAdmin.purgeConfirm')}
                   description={t('pages.alertAdmin.purgeDescription', { days: retentionDays })}
                   onConfirm={purgeResolved}
@@ -691,7 +685,7 @@ const AlertManagement: React.FC = () => {
                   <Button icon={<DeleteOutlined />} loading={acting === 'purge-resolved'} disabled={alertActionDisabled} aria-label={purgeResolvedActionLabel} title={purgeResolvedActionLabel}>
                     {t('pages.alertAdmin.purge')}
                   </Button>
-                </Popconfirm>
+                </ShopPopconfirm>
               </Space>
             ) : null}
           </div>

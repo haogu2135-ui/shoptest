@@ -6,12 +6,10 @@ const cssSource = fs.readFileSync(path.join(__dirname, 'PetGalleryManagement.css
 
 describe('PetGalleryManagement delete confirmation guards', () => {
   it('uses a page-scoped body-mounted Popconfirm for destructive deletes', () => {
-    expect(pageSource).toContain('<Popconfirm');
+    expect(pageSource).toContain('<ShopPopconfirm');
     expect(pageSource).toContain("t('pages.petGalleryAdmin.deleteConfirmTarget', { photo: photoLabel })");
     expect(pageSource).toContain("t('pages.petGalleryAdmin.deleteDescriptionTarget'");
-    expect(pageSource).toContain("classNames={{ root: 'shop-mobile-popup-layer pet-gallery-management-page__deletePopconfirm' }}");
-    expect(pageSource).toContain('placement="left"');
-    expect(pageSource).toContain('getPopupContainer={() => document.body}');
+    expect(pageSource).toContain('rootClassName="shop-mobile-popup-layer pet-gallery-management-page__deletePopconfirm"');
     expect(pageSource).toContain("okText={t('common.delete')}");
     expect(pageSource).toContain("cancelText={t('common.cancel')}");
   });

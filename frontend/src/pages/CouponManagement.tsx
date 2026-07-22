@@ -1,6 +1,14 @@
 import { useNavigate } from 'react-router-dom';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Button, Card, DatePicker, Form, Input, InputNumber, message, Modal, Popconfirm, Select, Space, Switch, Table, Tag, Typography } from 'antd';
+import { Alert, Button, Card, Form, message, Space, Switch, Table, Tag, Typography } from 'antd';
+import ShopInput, { ShopTextArea } from '../components/ShopInput';
+import ShopPopconfirm from '../components/ShopPopconfirm';
+import ShopSelect from '../components/ShopSelect';
+import ShopMultiSelect from '../components/ShopMultiSelect';
+import ShopInputNumber from '../components/ShopInputNumber';
+import ShopModal from '../components/ShopModal';
+import ShopRangePicker from '../components/ShopRangePicker';
+import ShopConfirm from '../components/ShopConfirm';
 import { ClockCircleOutlined, DeleteOutlined, EditOutlined, FireOutlined, GiftOutlined, PlusOutlined, SearchOutlined, SendOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { adminApi } from '../api/admin';
@@ -26,8 +34,6 @@ import './CouponManagement.css';
 
 const { Title } = Typography;
 const DEFAULT_COUPON_PAGE_SIZE = 10;
-const mobilePopupClassNames = { popup: { root: 'shop-mobile-popup-layer' } };
-const mobilePopconfirmClassNames = { root: 'shop-mobile-popup-layer' };
 const validRangeStartInputId = 'coupon-management-valid-range-start';
 const validRangeEndInputId = 'coupon-management-valid-range-end';
 type FormValidationError = { errorFields: unknown[] };
@@ -55,6 +61,8 @@ const CouponManagement: React.FC = () => {
   const [couponSummary, setCouponSummary] = useState<CouponAdminSummary | null>(null);
   const [couponSubmitting, setCouponSubmitting] = useState(false);
   const [grantSubmitting, setGrantSubmitting] = useState(false);
+  const [grantConfirmOpen, setGrantConfirmOpen] = useState(false);
+  const [grantConfirmMeta, setGrantConfirmMeta] = useState<{ title: string; actionLabel: string; cancelLabel: string; userIds: number[] } | null>(null);
   const [keyword, setKeyword] = useState('');
   const debouncedKeyword = useDebounce(keyword.trim(), 300);
   const [statusFilter, setStatusFilter] = useState<string | undefined>();
@@ -472,40 +480,45 @@ const CouponManagement: React.FC = () => {
     }
     try {
       const values = await grantForm.validateFields();
-      Modal.confirm({
-        title: t('pages.adminCoupons.grantConfirm', { name: getCouponLabel(grantCoupon), count: values.userIds.length }),
-        okText: t('pages.adminCoupons.grant'),
-        cancelText: t('common.cancel'),
-        okButtonProps: {
-          'aria-label': `${t('pages.adminCoupons.grant')}: ${getCouponLabel(grantCoupon)} - ${values.userIds.length}`,
-          title: `${t('pages.adminCoupons.grant')}: ${getCouponLabel(grantCoupon)} - ${values.userIds.length}`,
-        },
-        cancelButtonProps: {
-          'aria-label': `${t('common.cancel')}: ${getCouponLabel(grantCoupon)}`,
-          title: `${t('common.cancel')}: ${getCouponLabel(grantCoupon)}`,
-        },
-        className: 'profile-mobile-safe-modal coupon-management-page__grantConfirmModal',
-        onOk: async () => {
-          setGrantSubmitting(true);
-          try {
-            const res = await adminApi.grantCoupon(grantCoupon.id, values.userIds, grantMaxUsers);
-            message.success(t('pages.adminCoupons.granted', { count: res.data.granted }));
-            setGrantVisible(false);
-            setGrantCoupon(null);
-            grantForm.resetFields();
-            await Promise.all([loadCoupons(pageState.page, pageState.size), loadCouponSummary()]);
-          } catch (error: unknown) {
-            message.error(getApiErrorMessage(error, t('pages.adminCoupons.grantFailed'), language));
-            throw error;
-          } finally {
-            setGrantSubmitting(false);
-          }
-        },
+      const selectedUserIds = (values.userIds as Array<string | number>)
+        .map((item) => Number(item))
+        .filter((item) => Number.isFinite(item) && item > 0);
+      setGrantConfirmMeta({
+        title: t('pages.adminCoupons.grantConfirm', { name: getCouponLabel(grantCoupon), count: selectedUserIds.length }),
+        actionLabel: `${t('pages.adminCoupons.grant')}: ${getCouponLabel(grantCoupon)} - ${selectedUserIds.length}`,
+        cancelLabel: `${t('common.cancel')}: ${getCouponLabel(grantCoupon)}`,
+        userIds: selectedUserIds,
       });
+      setGrantConfirmOpen(true);
     } catch (error: unknown) {
       if (!isFormValidationError(error)) {
         message.error(getApiErrorMessage(error, t('pages.adminCoupons.grantFailed'), language));
       }
+    }
+  };
+
+  const closeGrantConfirm = () => {
+    if (grantSubmitting) return;
+    setGrantConfirmOpen(false);
+    setGrantConfirmMeta(null);
+  };
+
+  const confirmGrant = async () => {
+    if (!grantCoupon || !grantConfirmMeta) return;
+    setGrantSubmitting(true);
+    try {
+      const res = await adminApi.grantCoupon(grantCoupon.id, grantConfirmMeta.userIds, grantMaxUsers);
+      message.success(t('pages.adminCoupons.granted', { count: res.data.granted }));
+      setGrantConfirmOpen(false);
+      setGrantConfirmMeta(null);
+      setGrantVisible(false);
+      setGrantCoupon(null);
+      grantForm.resetFields();
+      await Promise.all([loadCoupons(pageState.page, pageState.size), loadCouponSummary()]);
+    } catch (error: unknown) {
+      message.error(getApiErrorMessage(error, t('pages.adminCoupons.grantFailed'), language));
+    } finally {
+      setGrantSubmitting(false);
     }
   };
 
@@ -632,8 +645,7 @@ const CouponManagement: React.FC = () => {
             {canGrantCoupons ? <Button size="small" icon={<SendOutlined />} disabled={couponMutationDisabled} aria-label={grantActionLabel} title={grantActionLabel} onClick={() => openGrant(record)}>{t('pages.adminCoupons.grant')}</Button> : null}
             {canWriteCoupons ? <Button size="small" icon={<EditOutlined />} disabled={couponMutationDisabled} aria-label={editActionLabel} title={editActionLabel} onClick={() => openEdit(record)}>{t('common.edit')}</Button> : null}
             {canDeleteCoupons ? (
-              <Popconfirm
-                classNames={mobilePopconfirmClassNames}
+              <ShopPopconfirm rootClassName="shop-mobile-popup-layer"
                 title={t('pages.adminCoupons.deleteConfirm')}
                 onConfirm={() => deleteCoupon(record.id)}
                 disabled={couponMutationDisabled}
@@ -641,7 +653,7 @@ const CouponManagement: React.FC = () => {
                 cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${couponName}`, title: `${t('common.cancel')}: ${couponName}` }}
               >
                 <Button size="small" danger icon={<DeleteOutlined />} disabled={couponMutationDisabled} aria-label={deleteActionLabel} title={deleteActionLabel}>{t('common.delete')}</Button>
-              </Popconfirm>
+              </ShopPopconfirm>
             ) : null}
           </Space>
         );
@@ -790,8 +802,7 @@ const CouponManagement: React.FC = () => {
         extra={
           <Space wrap>
             {canRunBirthdayCoupons ? (
-              <Popconfirm
-                classNames={mobilePopconfirmClassNames}
+              <ShopPopconfirm rootClassName="shop-mobile-popup-layer"
                 title={t('pages.adminCoupons.runPetBirthdayCouponsConfirm')}
                 onConfirm={runPetBirthdayCoupons}
                 disabled={birthdayConfigActionDisabled}
@@ -807,11 +818,10 @@ const CouponManagement: React.FC = () => {
                 >
                   {t('pages.adminCoupons.runPetBirthdayCoupons')}
                 </Button>
-              </Popconfirm>
+              </ShopPopconfirm>
             ) : null}
             {canConfigureBirthdayCoupons ? (
-              <Popconfirm
-                classNames={mobilePopconfirmClassNames}
+              <ShopPopconfirm rootClassName="shop-mobile-popup-layer"
                 title={saveBirthdayConfigLabel}
                 description={birthdayConfigConfirmDescription}
                 onConfirm={saveBirthdayConfig}
@@ -830,7 +840,7 @@ const CouponManagement: React.FC = () => {
                 >
                   {t('common.save')}
                 </Button>
-              </Popconfirm>
+              </ShopPopconfirm>
             ) : null}
           </Space>
         }
@@ -857,17 +867,15 @@ const CouponManagement: React.FC = () => {
               <Switch title={`${birthdayConfigLabel}: ${t('pages.adminCoupons.birthdayEnabledLabel')}`} />
             </Form.Item>
             <Form.Item name="namePrefix" label={t('pages.adminCoupons.birthdayNamePrefix')} rules={[{ required: true, message: t('pages.adminCoupons.birthdayNamePrefixRequired') }]}>
-              <Input aria-label={`${birthdayConfigLabel}: ${t('pages.adminCoupons.birthdayNamePrefix')}`} title={`${birthdayConfigLabel}: ${t('pages.adminCoupons.birthdayNamePrefix')}`} />
+              <ShopInput aria-label={`${birthdayConfigLabel}: ${t('pages.adminCoupons.birthdayNamePrefix')}`} title={`${birthdayConfigLabel}: ${t('pages.adminCoupons.birthdayNamePrefix')}`} />
             </Form.Item>
           </div>
           <div className="coupon-management-page__formRow">
             <Form.Item name="couponType" label={t('pages.adminCoupons.type')} rules={[{ required: true }]}>
-              <Select
-                aria-label={`${birthdayConfigLabel}: ${t('pages.adminCoupons.type')} ${birthdayCouponType ? formatCouponType(birthdayCouponType) : ''}`}
+              <ShopSelect
+                ariaLabel={`${birthdayConfigLabel}: ${t('pages.adminCoupons.type')} ${birthdayCouponType ? formatCouponType(birthdayCouponType) : ''}`}
                 title={`${birthdayConfigLabel}: ${t('pages.adminCoupons.type')}`}
-                onChange={() => birthdayConfigForm.validateFields(['reductionAmount', 'discountPercent', 'maxDiscountAmount']).catch(() => undefined)}
-                classNames={mobilePopupClassNames}
-                getPopupContainer={() => document.body}
+                onChange={() => birthdayConfigForm.validateFields(['reductionAmount', 'discountPercent', 'maxDiscountAmount']).catch(() => undefined)} popupClassName="shop-mobile-popup-layer"
                 options={[
                   { value: 'FULL_REDUCTION', label: t('pages.coupons.fullReduction') },
                   { value: 'DISCOUNT', label: t('pages.coupons.discount') },
@@ -875,30 +883,30 @@ const CouponManagement: React.FC = () => {
               />
             </Form.Item>
             <Form.Item name="thresholdAmount" label={t('pages.adminCoupons.minimumSpend')} rules={[{ required: true, message: t('pages.adminCoupons.minimumSpendRequired') }]}>
-              <InputNumber min={0} precision={2} prefix={t('common.currencySymbol')} aria-label={`${birthdayConfigLabel}: ${t('pages.adminCoupons.minimumSpend')}`} title={`${birthdayConfigLabel}: ${t('pages.adminCoupons.minimumSpend')}`} />
+              <ShopInputNumber min={0} precision={2} prefix={t('common.currencySymbol')} aria-label={`${birthdayConfigLabel}: ${t('pages.adminCoupons.minimumSpend')}`} title={`${birthdayConfigLabel}: ${t('pages.adminCoupons.minimumSpend')}`} />
             </Form.Item>
           </div>
           {birthdayCouponType === 'DISCOUNT' ? (
             <>
               <div className="coupon-management-page__formRow">
                 <Form.Item name="discountPercent" label={t('pages.adminCoupons.discountPayablePercent')} rules={[{ required: true, message: t('pages.adminCoupons.discountPercentRequired') }]}>
-                  <InputNumber min={1} max={99} suffix="%" placeholder={t('pages.adminCoupons.discountPlaceholder')} aria-label={`${birthdayConfigLabel}: ${t('pages.adminCoupons.discountPayablePercent')}`} title={`${birthdayConfigLabel}: ${t('pages.adminCoupons.discountPayablePercent')}`} />
+                  <ShopInputNumber min={1} max={99} suffix="%" placeholder={t('pages.adminCoupons.discountPlaceholder')} aria-label={`${birthdayConfigLabel}: ${t('pages.adminCoupons.discountPayablePercent')}`} title={`${birthdayConfigLabel}: ${t('pages.adminCoupons.discountPayablePercent')}`} />
                 </Form.Item>
                 <Form.Item name="maxDiscountAmount" label={t('pages.adminCoupons.maxDiscountLabel')}>
-                  <InputNumber min={0} precision={2} prefix={t('common.currencySymbol')} aria-label={`${birthdayConfigLabel}: ${t('pages.adminCoupons.maxDiscountLabel')}`} title={`${birthdayConfigLabel}: ${t('pages.adminCoupons.maxDiscountLabel')}`} />
+                  <ShopInputNumber min={0} precision={2} prefix={t('common.currencySymbol')} aria-label={`${birthdayConfigLabel}: ${t('pages.adminCoupons.maxDiscountLabel')}`} title={`${birthdayConfigLabel}: ${t('pages.adminCoupons.maxDiscountLabel')}`} />
                 </Form.Item>
               </div>
               <div className="coupon-management-page__formRow">
                 <Form.Item name="validDays" label={t('pages.adminCoupons.birthdayValidDays')} rules={[{ required: true, message: t('pages.adminCoupons.birthdayValidDaysRequired') }]}>
-                  <InputNumber min={1} max={365} aria-label={`${birthdayConfigLabel}: ${t('pages.adminCoupons.birthdayValidDays')}`} title={`${birthdayConfigLabel}: ${t('pages.adminCoupons.birthdayValidDays')}`} />
+                  <ShopInputNumber min={1} max={365} aria-label={`${birthdayConfigLabel}: ${t('pages.adminCoupons.birthdayValidDays')}`} title={`${birthdayConfigLabel}: ${t('pages.adminCoupons.birthdayValidDays')}`} />
                 </Form.Item>
                 <Form.Item name="maxBenefitsPerUser" label={t('pages.adminCoupons.birthdayMaxPerUser')} rules={[{ required: true, message: t('pages.adminCoupons.birthdayMaxPerUserRequired') }]}>
-                  <InputNumber min={0} aria-label={`${birthdayConfigLabel}: ${t('pages.adminCoupons.birthdayMaxPerUser')}`} title={`${birthdayConfigLabel}: ${t('pages.adminCoupons.birthdayMaxPerUser')}`} />
+                  <ShopInputNumber min={0} aria-label={`${birthdayConfigLabel}: ${t('pages.adminCoupons.birthdayMaxPerUser')}`} title={`${birthdayConfigLabel}: ${t('pages.adminCoupons.birthdayMaxPerUser')}`} />
                 </Form.Item>
               </div>
               <div className="coupon-management-page__formRow">
                 <Form.Item name="totalQuantityPerCoupon" label={t('pages.adminCoupons.birthdayQuantityPerCoupon')} rules={[{ type: 'number', max: totalQuantityMax, message: t('pages.adminCoupons.issueQuantityMax', { count: totalQuantityMax }) }]}>
-                  <InputNumber min={1} max={totalQuantityMax} aria-label={`${birthdayConfigLabel}: ${t('pages.adminCoupons.birthdayQuantityPerCoupon')}`} title={`${birthdayConfigLabel}: ${t('pages.adminCoupons.birthdayQuantityPerCoupon')}`} />
+                  <ShopInputNumber min={1} max={totalQuantityMax} aria-label={`${birthdayConfigLabel}: ${t('pages.adminCoupons.birthdayQuantityPerCoupon')}`} title={`${birthdayConfigLabel}: ${t('pages.adminCoupons.birthdayQuantityPerCoupon')}`} />
                 </Form.Item>
                 <div />
               </div>
@@ -907,24 +915,24 @@ const CouponManagement: React.FC = () => {
             <>
               <div className="coupon-management-page__formRow">
                 <Form.Item name="reductionAmount" label={t('pages.adminCoupons.reductionAmount')} rules={[{ required: true, message: t('pages.adminCoupons.reductionAmountRequired') }]}>
-                  <InputNumber min={0.01} precision={2} prefix={t('common.currencySymbol')} aria-label={`${birthdayConfigLabel}: ${t('pages.adminCoupons.reductionAmount')}`} title={`${birthdayConfigLabel}: ${t('pages.adminCoupons.reductionAmount')}`} />
+                  <ShopInputNumber min={0.01} precision={2} prefix={t('common.currencySymbol')} aria-label={`${birthdayConfigLabel}: ${t('pages.adminCoupons.reductionAmount')}`} title={`${birthdayConfigLabel}: ${t('pages.adminCoupons.reductionAmount')}`} />
                 </Form.Item>
                 <Form.Item name="validDays" label={t('pages.adminCoupons.birthdayValidDays')} rules={[{ required: true, message: t('pages.adminCoupons.birthdayValidDaysRequired') }]}>
-                  <InputNumber min={1} max={365} aria-label={`${birthdayConfigLabel}: ${t('pages.adminCoupons.birthdayValidDays')}`} title={`${birthdayConfigLabel}: ${t('pages.adminCoupons.birthdayValidDays')}`} />
+                  <ShopInputNumber min={1} max={365} aria-label={`${birthdayConfigLabel}: ${t('pages.adminCoupons.birthdayValidDays')}`} title={`${birthdayConfigLabel}: ${t('pages.adminCoupons.birthdayValidDays')}`} />
                 </Form.Item>
               </div>
               <div className="coupon-management-page__formRow">
                 <Form.Item name="maxBenefitsPerUser" label={t('pages.adminCoupons.birthdayMaxPerUser')} rules={[{ required: true, message: t('pages.adminCoupons.birthdayMaxPerUserRequired') }]}>
-                  <InputNumber min={0} aria-label={`${birthdayConfigLabel}: ${t('pages.adminCoupons.birthdayMaxPerUser')}`} title={`${birthdayConfigLabel}: ${t('pages.adminCoupons.birthdayMaxPerUser')}`} />
+                  <ShopInputNumber min={0} aria-label={`${birthdayConfigLabel}: ${t('pages.adminCoupons.birthdayMaxPerUser')}`} title={`${birthdayConfigLabel}: ${t('pages.adminCoupons.birthdayMaxPerUser')}`} />
                 </Form.Item>
                 <Form.Item name="totalQuantityPerCoupon" label={t('pages.adminCoupons.birthdayQuantityPerCoupon')} rules={[{ type: 'number', max: totalQuantityMax, message: t('pages.adminCoupons.issueQuantityMax', { count: totalQuantityMax }) }]}>
-                  <InputNumber min={1} max={totalQuantityMax} aria-label={`${birthdayConfigLabel}: ${t('pages.adminCoupons.birthdayQuantityPerCoupon')}`} title={`${birthdayConfigLabel}: ${t('pages.adminCoupons.birthdayQuantityPerCoupon')}`} />
+                  <ShopInputNumber min={1} max={totalQuantityMax} aria-label={`${birthdayConfigLabel}: ${t('pages.adminCoupons.birthdayQuantityPerCoupon')}`} title={`${birthdayConfigLabel}: ${t('pages.adminCoupons.birthdayQuantityPerCoupon')}`} />
                 </Form.Item>
               </div>
             </>
           )}
           <Form.Item name="description" label={t('pages.adminCoupons.description')} rules={[{ max: couponDescriptionMaxChars, message: t('pages.adminCoupons.descriptionMaxLength', { count: couponDescriptionMaxChars }) }]}>
-            <Input.TextArea rows={2} maxLength={couponDescriptionMaxChars} showCount aria-label={`${birthdayConfigLabel}: ${t('pages.adminCoupons.description')}`} title={`${birthdayConfigLabel}: ${t('pages.adminCoupons.description')}`} />
+            <ShopTextArea rows={2} maxLength={couponDescriptionMaxChars} showCount aria-label={`${birthdayConfigLabel}: ${t('pages.adminCoupons.description')}`} title={`${birthdayConfigLabel}: ${t('pages.adminCoupons.description')}`} />
           </Form.Item>
           <Typography.Text type="secondary">
             {t('pages.adminCoupons.birthdayConfigHint')}
@@ -934,7 +942,7 @@ const CouponManagement: React.FC = () => {
 
       {!showInitialCouponLoading && !couponSnapshotUnavailable ? <Card className="coupon-management-page__toolbar">
         <Space wrap>
-          <Input
+          <ShopInput
             allowClear
             prefix={<SearchOutlined />}
             value={keyword}
@@ -944,30 +952,26 @@ const CouponManagement: React.FC = () => {
             aria-label={couponSearchLabel}
             title={couponSearchLabel}
           />
-          <Select
+          <ShopSelect
             allowClear
             value={statusFilter}
-            onChange={setStatusFilter}
+            onChange={(value) => setStatusFilter(value || undefined)}
             placeholder={t('pages.adminCoupons.status')}
-            className="coupon-management-page__filterSelect"
-            classNames={mobilePopupClassNames}
-            getPopupContainer={() => document.body}
-            aria-label={couponStatusFilterLabel}
+            className="coupon-management-page__filterSelect" popupClassName="shop-mobile-popup-layer"
+            ariaLabel={couponStatusFilterLabel}
             title={couponStatusFilterLabel}
             options={[
               { value: 'ACTIVE', label: t('status.ACTIVE') },
               { value: 'INACTIVE', label: t('status.INACTIVE') },
             ]}
           />
-          <Select
+          <ShopSelect
             allowClear
             value={scopeFilter}
-            onChange={setScopeFilter}
+            onChange={(value) => setScopeFilter(value || undefined)}
             placeholder={t('pages.adminCoupons.scope')}
-            className="coupon-management-page__filterSelect"
-            classNames={mobilePopupClassNames}
-            getPopupContainer={() => document.body}
-            aria-label={couponScopeFilterLabel}
+            className="coupon-management-page__filterSelect" popupClassName="shop-mobile-popup-layer"
+            ariaLabel={couponScopeFilterLabel}
             title={couponScopeFilterLabel}
             options={[
               { value: 'PUBLIC', label: t('pages.adminCoupons.publicClaim') },
@@ -995,15 +999,14 @@ const CouponManagement: React.FC = () => {
         }}
       /> : null}
 
-      <Modal
+      <ShopModal
         className="profile-mobile-safe-modal coupon-management-page__editorModal"
         title={editingCoupon ? t('pages.adminCoupons.editCoupon') : t('pages.adminCoupons.createCoupon')}
         open={modalVisible}
         onOk={submitCoupon}
-        onCancel={closeCouponModal}
+        onClose={closeCouponModal}
         confirmLoading={couponSubmitting}
         width={720}
-        destroyOnHidden
         okText={t('common.save')}
         cancelText={t('common.cancel')}
         okButtonProps={{ disabled: couponMutationDisabled, 'aria-label': `${t('common.save')}: ${couponEditorLabel}`, title: `${t('common.save')}: ${couponEditorLabel}` }}
@@ -1011,15 +1014,13 @@ const CouponManagement: React.FC = () => {
       >
         <Form form={form} layout="vertical">
           <Form.Item name="name" label={t('pages.adminCoupons.name')} rules={[{ required: true, message: t('pages.adminCoupons.nameRequired') }, { max: couponNameMaxChars, message: t('pages.adminCoupons.nameMaxLength', { count: couponNameMaxChars }) }]}>
-            <Input maxLength={couponNameMaxChars} showCount aria-label={`${couponEditorLabel}: ${t('pages.adminCoupons.name')}`} title={`${couponEditorLabel}: ${t('pages.adminCoupons.name')}`} />
+            <ShopInput maxLength={couponNameMaxChars} showCount aria-label={`${couponEditorLabel}: ${t('pages.adminCoupons.name')}`} title={`${couponEditorLabel}: ${t('pages.adminCoupons.name')}`} />
           </Form.Item>
           <Form.Item name="couponType" label={t('pages.adminCoupons.type')} rules={[{ required: true }]}>
-            <Select
-              aria-label={`${couponEditorLabel}: ${t('pages.adminCoupons.type')} ${couponType ? formatCouponType(couponType) : ''}`}
+            <ShopSelect
+              ariaLabel={`${couponEditorLabel}: ${t('pages.adminCoupons.type')} ${couponType ? formatCouponType(couponType) : ''}`}
               title={`${couponEditorLabel}: ${t('pages.adminCoupons.type')}`}
-              onChange={() => form.validateFields(['reductionAmount', 'discountPercent', 'maxDiscountAmount']).catch(() => undefined)}
-              classNames={mobilePopupClassNames}
-              getPopupContainer={() => document.body}
+              onChange={() => form.validateFields(['reductionAmount', 'discountPercent', 'maxDiscountAmount']).catch(() => undefined)} popupClassName="shop-mobile-popup-layer"
               options={[
                 { value: 'FULL_REDUCTION', label: t('pages.coupons.fullReduction') },
                 { value: 'DISCOUNT', label: t('pages.coupons.discount') },
@@ -1028,15 +1029,15 @@ const CouponManagement: React.FC = () => {
           </Form.Item>
           <div className="coupon-management-page__formRow">
             <Form.Item name="thresholdAmount" label={t('pages.adminCoupons.minimumSpend')} rules={[{ required: true, message: t('pages.adminCoupons.minimumSpendRequired') }]}>
-              <InputNumber min={0} precision={2} prefix={t('common.currencySymbol')} aria-label={`${couponEditorLabel}: ${t('pages.adminCoupons.minimumSpend')}`} title={`${couponEditorLabel}: ${t('pages.adminCoupons.minimumSpend')}`} />
+              <ShopInputNumber min={0} precision={2} prefix={t('common.currencySymbol')} aria-label={`${couponEditorLabel}: ${t('pages.adminCoupons.minimumSpend')}`} title={`${couponEditorLabel}: ${t('pages.adminCoupons.minimumSpend')}`} />
             </Form.Item>
             {couponType === 'DISCOUNT' ? (
               <Form.Item name="discountPercent" label={t('pages.adminCoupons.discountPayablePercent')} rules={[{ required: true, message: t('pages.adminCoupons.discountPercentRequired') }]}>
-                <InputNumber min={1} max={99} suffix="%" placeholder={t('pages.adminCoupons.discountPlaceholder')} aria-label={`${couponEditorLabel}: ${t('pages.adminCoupons.discountPayablePercent')}`} title={`${couponEditorLabel}: ${t('pages.adminCoupons.discountPayablePercent')}`} />
+                <ShopInputNumber min={1} max={99} suffix="%" placeholder={t('pages.adminCoupons.discountPlaceholder')} aria-label={`${couponEditorLabel}: ${t('pages.adminCoupons.discountPayablePercent')}`} title={`${couponEditorLabel}: ${t('pages.adminCoupons.discountPayablePercent')}`} />
               </Form.Item>
             ) : (
               <Form.Item name="reductionAmount" label={t('pages.adminCoupons.reductionAmount')} rules={[{ required: true, message: t('pages.adminCoupons.reductionAmountRequired') }]}>
-                <InputNumber min={0.01} precision={2} prefix={t('common.currencySymbol')} aria-label={`${couponEditorLabel}: ${t('pages.adminCoupons.reductionAmount')}`} title={`${couponEditorLabel}: ${t('pages.adminCoupons.reductionAmount')}`} />
+                <ShopInputNumber min={0.01} precision={2} prefix={t('common.currencySymbol')} aria-label={`${couponEditorLabel}: ${t('pages.adminCoupons.reductionAmount')}`} title={`${couponEditorLabel}: ${t('pages.adminCoupons.reductionAmount')}`} />
               </Form.Item>
             )}
           </div>
@@ -1044,26 +1045,26 @@ const CouponManagement: React.FC = () => {
             {couponType === 'DISCOUNT' ? (
               <>
                 <Form.Item name="maxDiscountAmount" label={t('pages.adminCoupons.maxDiscountLabel')}>
-                  <InputNumber min={0} precision={2} prefix={t('common.currencySymbol')} aria-label={`${couponEditorLabel}: ${t('pages.adminCoupons.maxDiscountLabel')}`} title={`${couponEditorLabel}: ${t('pages.adminCoupons.maxDiscountLabel')}`} />
+                  <ShopInputNumber min={0} precision={2} prefix={t('common.currencySymbol')} aria-label={`${couponEditorLabel}: ${t('pages.adminCoupons.maxDiscountLabel')}`} title={`${couponEditorLabel}: ${t('pages.adminCoupons.maxDiscountLabel')}`} />
                 </Form.Item>
                 <Form.Item name="totalQuantity" label={t('pages.adminCoupons.issueQuantity')} rules={[{ type: 'number', max: totalQuantityMax, message: t('pages.adminCoupons.issueQuantityMax', { count: totalQuantityMax }) }]}>
-                  <InputNumber min={1} max={totalQuantityMax} aria-label={`${couponEditorLabel}: ${t('pages.adminCoupons.issueQuantity')}`} title={`${couponEditorLabel}: ${t('pages.adminCoupons.issueQuantity')}`} />
+                  <ShopInputNumber min={1} max={totalQuantityMax} aria-label={`${couponEditorLabel}: ${t('pages.adminCoupons.issueQuantity')}`} title={`${couponEditorLabel}: ${t('pages.adminCoupons.issueQuantity')}`} />
                 </Form.Item>
               </>
             ) : (
               <>
                 <Form.Item name="totalQuantity" label={t('pages.adminCoupons.issueQuantity')} rules={[{ type: 'number', max: totalQuantityMax, message: t('pages.adminCoupons.issueQuantityMax', { count: totalQuantityMax }) }]}>
-                  <InputNumber min={1} max={totalQuantityMax} aria-label={`${couponEditorLabel}: ${t('pages.adminCoupons.issueQuantity')}`} title={`${couponEditorLabel}: ${t('pages.adminCoupons.issueQuantity')}`} />
+                  <ShopInputNumber min={1} max={totalQuantityMax} aria-label={`${couponEditorLabel}: ${t('pages.adminCoupons.issueQuantity')}`} title={`${couponEditorLabel}: ${t('pages.adminCoupons.issueQuantity')}`} />
                 </Form.Item>
                 <div />
               </>
             )}
           </div>
           <Form.Item name="scope" label={t('pages.adminCoupons.scope')}>
-            <Select aria-label={`${couponEditorLabel}: ${t('pages.adminCoupons.scope')}`} title={`${couponEditorLabel}: ${t('pages.adminCoupons.scope')}`} classNames={mobilePopupClassNames} getPopupContainer={() => document.body} options={[{ value: 'PUBLIC', label: t('pages.adminCoupons.publicClaim') }, { value: 'ASSIGNED', label: t('pages.adminCoupons.adminAssigned') }]} />
+            <ShopSelect ariaLabel={`${couponEditorLabel}: ${t('pages.adminCoupons.scope')}`} title={`${couponEditorLabel}: ${t('pages.adminCoupons.scope')}`} popupClassName="shop-mobile-popup-layer" options={[{ value: 'PUBLIC', label: t('pages.adminCoupons.publicClaim') }, { value: 'ASSIGNED', label: t('pages.adminCoupons.adminAssigned') }]} />
           </Form.Item>
           <Form.Item name="status" label={t('pages.adminCoupons.status')}>
-            <Select aria-label={`${couponEditorLabel}: ${t('pages.adminCoupons.status')}`} title={`${couponEditorLabel}: ${t('pages.adminCoupons.status')}`} classNames={mobilePopupClassNames} getPopupContainer={() => document.body} options={[{ value: 'ACTIVE', label: t('status.ACTIVE') }, { value: 'INACTIVE', label: t('status.INACTIVE') }]} />
+            <ShopSelect ariaLabel={`${couponEditorLabel}: ${t('pages.adminCoupons.status')}`} title={`${couponEditorLabel}: ${t('pages.adminCoupons.status')}`} popupClassName="shop-mobile-popup-layer" options={[{ value: 'ACTIVE', label: t('status.ACTIVE') }, { value: 'INACTIVE', label: t('status.INACTIVE') }]} />
           </Form.Item>
           <Form.Item label={t('pages.adminCoupons.validTime')}>
             <div role="group" aria-label={`${couponEditorLabel}: ${t('pages.adminCoupons.validTime')}`} title={`${couponEditorLabel}: ${t('pages.adminCoupons.validTime')}`}>
@@ -1075,31 +1076,32 @@ const CouponManagement: React.FC = () => {
                   <label className="coupon-management-page__srOnly" htmlFor={validRangeEndInputId}>
                     {`${couponEditorLabel}: ${t('pages.adminCoupons.validTime')} - ${t('common.end')}`}
                   </label>
-                  <DatePicker.RangePicker
+                  <ShopRangePicker
                     showTime
-                    id={{ start: validRangeStartInputId, end: validRangeEndInputId }}
+                    startId={validRangeStartInputId}
+                    endId={validRangeEndInputId}
                     className="coupon-management-page__rangePicker"
-                    classNames={mobilePopupClassNames}
-                    getPopupContainer={() => document.body}
+                    ariaLabel={`${couponEditorLabel}: ${t('pages.adminCoupons.validTime')}`}
+                    startAriaLabel={`${couponEditorLabel}: ${t('pages.adminCoupons.validTime')} - ${t('common.start')}`}
+                    endAriaLabel={`${couponEditorLabel}: ${t('pages.adminCoupons.validTime')} - ${t('common.end')}`}
                   />
                 </>
               </Form.Item>
             </div>
           </Form.Item>
           <Form.Item name="description" label={t('pages.adminCoupons.description')} rules={[{ max: couponDescriptionMaxChars, message: t('pages.adminCoupons.descriptionMaxLength', { count: couponDescriptionMaxChars }) }]}>
-            <Input.TextArea rows={3} maxLength={couponDescriptionMaxChars} showCount aria-label={`${couponEditorLabel}: ${t('pages.adminCoupons.description')}`} title={`${couponEditorLabel}: ${t('pages.adminCoupons.description')}`} />
+            <ShopTextArea rows={3} maxLength={couponDescriptionMaxChars} showCount aria-label={`${couponEditorLabel}: ${t('pages.adminCoupons.description')}`} title={`${couponEditorLabel}: ${t('pages.adminCoupons.description')}`} />
           </Form.Item>
         </Form>
-      </Modal>
+      </ShopModal>
 
-      <Modal
+      <ShopModal
         className="profile-mobile-safe-modal coupon-management-page__grantModal"
         title={grantCoupon ? t('pages.adminCoupons.grantCouponWithName', { name: getCouponLabel(grantCoupon) }) : t('pages.adminCoupons.grantCoupon')}
         open={grantVisible}
         onOk={submitGrant}
-        onCancel={closeGrantModal}
+        onClose={closeGrantModal}
         confirmLoading={grantSubmitting}
-        destroyOnHidden
         okText={t('pages.adminCoupons.grant')}
         cancelText={t('common.cancel')}
         okButtonProps={{ disabled: couponMutationDisabled, 'aria-label': grantCouponLabel, title: grantCouponLabel }}
@@ -1124,19 +1126,19 @@ const CouponManagement: React.FC = () => {
             rules={[
               { required: true, message: t('pages.adminCoupons.selectUsers') },
               {
-                validator: (_, value: number[] = []) => {
+                validator: (_, value: string[] = []) => {
                   if (!value?.length || value.length <= grantMaxUsers) return Promise.resolve();
                   return Promise.reject(new Error(t('pages.adminCoupons.grantLimitExceeded', { count: grantMaxUsers })));
                 },
               },
             ]}
           >
-            <Select
+            <ShopMultiSelect
               mode="multiple"
-              maxTagCount="responsive"
               showSearch
               filterOption={false}
-              aria-label={`${grantCouponLabel}: ${t('pages.adminCoupons.users')}`}
+              maxCount={grantMaxUsers}
+              ariaLabel={`${grantCouponLabel}: ${t('pages.adminCoupons.users')}`}
               title={`${grantCouponLabel}: ${t('pages.adminCoupons.users')}`}
               onSearch={handleUserSearch}
               onOpenChange={(open) => {
@@ -1145,14 +1147,32 @@ const CouponManagement: React.FC = () => {
                 }
               }}
               loading={userLookupLoading}
-              classNames={mobilePopupClassNames}
-              getPopupContainer={() => document.body}
-              options={users.map((user) => ({ value: user.id, label: `${user.username} (#${user.id})` }))}
+              popupClassName="shop-mobile-popup-layer"
+              options={users.map((user) => ({ value: String(user.id), label: `${user.username} (#${user.id})` }))}
               placeholder={t('pages.adminCoupons.selectTargetUsers')}
             />
           </Form.Item>
         </Form>
-      </Modal>
+      </ShopModal>
+      <ShopConfirm
+        open={grantConfirmOpen}
+        title={grantConfirmMeta?.title || t('pages.adminCoupons.grant')}
+        okText={t('pages.adminCoupons.grant')}
+        cancelText={t('common.cancel')}
+        confirmLoading={grantSubmitting}
+        okButtonProps={{
+          'aria-label': grantConfirmMeta?.actionLabel,
+          title: grantConfirmMeta?.actionLabel,
+        }}
+        cancelButtonProps={{
+          'aria-label': grantConfirmMeta?.cancelLabel || t('common.cancel'),
+          title: grantConfirmMeta?.cancelLabel || t('common.cancel'),
+        }}
+        className="profile-mobile-safe-modal coupon-management-page__grantConfirmModal"
+        closeLabel={t('common.close', { defaultValue: 'Close' })}
+        onOk={confirmGrant}
+        onCancel={closeGrantConfirm}
+      />
     </div>
   );
 };

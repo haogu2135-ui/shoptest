@@ -10,7 +10,10 @@ describe('ReviewManagement health metric guards', () => {
     expect(pageSource).toContain('const [reviewSnapshotLoaded, setReviewSnapshotLoaded] = useState(false);');
     expect(pageSource).toContain('const actionsDisabledByStaleData = Boolean(loadError);');
     expect(pageSource).toContain("message={t('pages.adminReviews.loadErrorTitle')}");
-    expect(pageSource).toContain("description={reviewSnapshotLoaded ? t('pages.adminReviews.staleDataWarning') : loadError}");
+    expect(pageSource).toContain('{loadError && reviewSnapshotLoaded ? (');
+    expect(pageSource).toContain("description={t('pages.adminReviews.staleDataWarning')}");
+    expect(pageSource).toContain('{loadError && !reviewSnapshotLoaded ? (');
+    expect(pageSource).toContain('description={loadError}');
     expect(pageSource).toContain("onClick={() => fetchReviews(pageState.page || 1, pageState.size || pageSizeRef.current)}");
     expect(pageSource).toContain('disabled={actionsDisabledByStaleData}');
   });
@@ -48,5 +51,12 @@ describe('ReviewManagement health metric guards', () => {
     expect(f3524Css).not.toMatch(/overflow-x:\s*auto/);
     expect(f3524Css).not.toMatch(/scrollbar-width:\s*none/);
     expect(f3524Css).not.toMatch(/mask-image:\s*linear-gradient/);
+  });
+
+  it('uses ShopInput/ShopTextArea instead of ant Input', () => {
+    expect(pageSource).toContain('ShopInput');
+    expect(pageSource).toContain('ShopTextArea');
+    expect(pageSource).not.toMatch(/import \{[^}]*\bInput\b[^}]*\} from 'antd'/);
+    expect(pageSource).not.toMatch(/<Input\b|Input\.TextArea/);
   });
 });

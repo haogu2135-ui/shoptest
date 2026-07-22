@@ -1,6 +1,11 @@
 import { useNavigate } from 'react-router-dom';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Badge, Button, Card, Empty, Input, List, message, Modal, Popconfirm, Select, Space, Spin, Tag, Typography } from 'antd';
+import { Alert, Badge, Button, Card, Empty, List, message, Space, Spin, Tag, Typography } from 'antd';
+import ShopSearchField from '../components/ShopSearchField';
+import ShopPopconfirm from '../components/ShopPopconfirm';
+import ShopSelect from '../components/ShopSelect';
+import ShopModal from '../components/ShopModal';
+import { ShopTextArea } from '../components/ShopInput';
 import { AlertOutlined, CheckCircleOutlined, CustomerServiceOutlined, GiftOutlined, SearchOutlined, SendOutlined, ShoppingOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import { supportApi, supportWebSocketProtocols, supportWebSocketUrl, userApi } from '../api';
 import { adminApi, adminSupportApi } from '../api/admin';
@@ -30,7 +35,6 @@ import {
 import './SupportManagement.css';
 
 const { Text, Title } = Typography;
-const mobilePopconfirmClassNames = { root: 'shop-mobile-popup-layer support-management__popconfirm' };
 const SUPPORT_MESSAGE_WINDOW = 80;
 const SUPPORT_QUEUE_PAGE_SIZE = 20;
 const SUPPORT_POLL_INTERVAL_MS = 10 * 1000;
@@ -800,26 +804,23 @@ const SupportManagement: React.FC = () => {
           <Badge status={connected ? 'success' : 'default'} text={connected ? t('pages.support.online') : t('pages.support.offline')} />
         </Space>
         <Space className="support-management__headerControls" wrap>
-          <Input.Search
+          <ShopSearchField
             allowClear
             defaultValue={queueSearch}
             placeholder={t('pages.adminSupport.queueSearchPlaceholder')}
             onSearch={submitQueueSearch}
-            onChange={(event) => {
-              if (!event.target.value) submitQueueSearch('');
+            onChange={(value) => {
+              if (!value) submitQueueSearch('');
             }}
-            style={{ width: 240 }}
-            enterButton={<Button icon={<SearchOutlined />} aria-label={queueSearchInputLabel} title={queueSearchInputLabel} />}
-            aria-label={queueSearchInputLabel}
+            className="support-management__queueSearch"
+            ariaLabel={queueSearchInputLabel}
             title={queueSearchInputLabel}
+            submitLabel={queueSearchInputLabel}
           />
-          <Select
+          <ShopSelect
             value={filter || 'ALL'}
-            style={{ width: 150 }}
-            onChange={(value) => changeQueueFilter(value === 'ALL' ? undefined : value)}
-            classNames={{ popup: { root: 'shop-mobile-popup-layer' } }}
-            getPopupContainer={() => document.body}
-            aria-label={queueFilterSelectLabel}
+            onChange={(value) => changeQueueFilter(value === 'ALL' ? undefined : value)} popupClassName="shop-mobile-popup-layer"
+            ariaLabel={queueFilterSelectLabel}
             title={queueFilterSelectLabel}
             options={[
               { value: 'OPEN', label: t('status.OPEN') },
@@ -1067,8 +1068,7 @@ const SupportManagement: React.FC = () => {
                 </Space>
                 <Space>
 	                  {selectedSession.status === 'OPEN' && canAssignSupport ? (
-		                    <Popconfirm
-		                      classNames={mobilePopconfirmClassNames}
+		                    <ShopPopconfirm rootClassName="shop-mobile-popup-layer support-management__popconfirm"
 		                      title={assignSessionLabel}
 		                      description={selectedSessionLabel}
 	                      okText={t('common.confirm')}
@@ -1080,10 +1080,9 @@ const SupportManagement: React.FC = () => {
 	                      <Button loading={assigning} aria-label={assignSessionLabel} title={assignSessionLabel}>
 	                        {t('pages.adminSupport.assignToMe')}
 	                      </Button>
-	                    </Popconfirm>
+	                    </ShopPopconfirm>
 	                  ) : selectedSession.status !== 'OPEN' && canReopenSupport ? (
-		                    <Popconfirm
-		                      classNames={mobilePopconfirmClassNames}
+		                    <ShopPopconfirm rootClassName="shop-mobile-popup-layer support-management__popconfirm"
 		                      title={reopenSessionLabel}
 		                      description={selectedSessionLabel}
 	                      okText={t('common.confirm')}
@@ -1095,11 +1094,10 @@ const SupportManagement: React.FC = () => {
 	                      <Button loading={reopening} aria-label={reopenSessionLabel} title={reopenSessionLabel}>
 	                        {t('pages.adminSupport.reopenSession')}
 	                      </Button>
-	                    </Popconfirm>
+	                    </ShopPopconfirm>
 	                  ) : null}
 	                  {canReissueBirthdayCoupons ? (
-		                    <Popconfirm
-		                      classNames={mobilePopconfirmClassNames}
+		                    <ShopPopconfirm rootClassName="shop-mobile-popup-layer support-management__popconfirm"
 		                      title={reissueBirthdayCouponLabel}
 		                      description={selectedSessionLabel}
 	                      okText={t('common.confirm')}
@@ -1111,11 +1109,10 @@ const SupportManagement: React.FC = () => {
 	                      <Button icon={<GiftOutlined />} loading={reissueLoading} aria-label={reissueBirthdayCouponLabel} title={reissueBirthdayCouponLabel}>
 	                        {t('pages.adminSupport.reissueBirthdayCoupon')}
 	                      </Button>
-	                    </Popconfirm>
+	                    </ShopPopconfirm>
 	                  ) : null}
 	                  {canCloseSupport ? (
-		                    <Popconfirm
-		                      classNames={mobilePopconfirmClassNames}
+		                    <ShopPopconfirm rootClassName="shop-mobile-popup-layer support-management__popconfirm"
 		                      title={closeSessionLabel}
 		                      description={selectedSessionLabel}
 	                      okText={t('common.confirm')}
@@ -1126,7 +1123,7 @@ const SupportManagement: React.FC = () => {
 	                      onConfirm={closeSession}
 	                    >
 	                      <Button loading={closing} disabled={selectedSession.status !== 'OPEN'} aria-label={closeSessionLabel} title={closeSessionLabel}>{t('pages.adminSupport.closeSession')}</Button>
-	                    </Popconfirm>
+	                    </ShopPopconfirm>
 	                  ) : null}
                 </Space>
               </div>
@@ -1293,7 +1290,7 @@ const SupportManagement: React.FC = () => {
                     </span>
                   </div>
                 </div>
-                <Input.TextArea
+                <ShopTextArea
                   value={content}
                   disabled={!canReplySupport || selectedSession.status !== 'OPEN' || sending || conversationUnavailable}
                   maxLength={supportChatConfig.maxMessageChars}
@@ -1325,10 +1322,10 @@ const SupportManagement: React.FC = () => {
 
       </div>
 
-      <Modal
+      <ShopModal
         title={detailOrder ? `${t('pages.support.order')} ${detailOrder.orderNo || `#${detailOrder.id}`}` : t('pages.support.order')}
         open={!!detailOrder || detailLoading}
-        onCancel={() => {
+        onClose={() => {
 
           setDetailOrder(null);
 
@@ -1400,7 +1397,7 @@ const SupportManagement: React.FC = () => {
 
         ) : null}
 
-      </Modal>
+      </ShopModal>
 
     </div>
 

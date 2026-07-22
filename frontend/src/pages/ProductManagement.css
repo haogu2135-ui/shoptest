@@ -167,37 +167,43 @@
   font-weight: 700;
 }
 
-.shopify-product-modal .ant-modal-content {
+.shopify-product-modal .ant-modal-content,
+  .shopify-product-modal .shop-modal__content {
   background: #f6f8f6;
   padding: 0;
 }
 
-.shopify-product-modal .ant-modal-header {
+.shopify-product-modal .ant-modal-header,
+  .shopify-product-modal .shop-modal__header {
   margin: 0;
   padding: 22px 28px;
   background: #ffffff;
   border-bottom: 1px solid #e4ebe4;
 }
 
-.shopify-product-modal .ant-modal-title {
+.shopify-product-modal .ant-modal-title,
+  .shopify-product-modal .shop-modal__title {
   font-size: 24px;
   font-weight: 700;
 }
 
-.shopify-product-modal .ant-modal-body {
+.shopify-product-modal .ant-modal-body,
+  .shopify-product-modal .shop-modal__body {
   max-height: 78vh;
   overflow: auto;
   padding: 22px 28px;
 }
 
-.shopify-product-modal .ant-modal-footer {
+.shopify-product-modal .ant-modal-footer,
+  .shopify-product-modal .shop-modal__footer {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 8px;
 }
 
-.shopify-product-modal .ant-modal-footer {
+.shopify-product-modal .ant-modal-footer,
+  .shopify-product-modal .shop-modal__footer {
   margin: 0;
   padding: 16px 28px;
   background: #ffffff;
@@ -631,7 +637,8 @@
     grid-template-columns: 1fr;
   }
 
-  .shopify-product-modal .ant-modal-body {
+  .shopify-product-modal .ant-modal-body,
+  .shopify-product-modal .shop-modal__body {
     padding: 14px;
   }
 
@@ -640,11 +647,14 @@
   }
 
   .shopify-product-modal .ant-modal-header,
-  .shopify-product-modal .ant-modal-footer {
+  .shopify-product-modal .ant-modal-footer,
+  .shopify-product-modal .shop-modal__header,
+  .shopify-product-modal .shop-modal__footer {
     padding: 14px;
   }
 
-  .shopify-product-modal .ant-modal-footer .ant-btn {
+  .shopify-product-modal .ant-modal-footer .ant-btn,
+  .shopify-product-modal .shop-modal__footer .ant-btn {
     flex: 1 1 140px;
     min-height: 40px;
   }
@@ -764,7 +774,8 @@
   overflow-wrap: anywhere;
 }
 
-.shopify-product-modal .ant-modal-content {
+.shopify-product-modal .ant-modal-content,
+  .shopify-product-modal .shop-modal__content {
   border-radius: 24px;
   overflow: hidden;
 }
@@ -817,7 +828,9 @@
 .shopify-metafield-row,
 .shopify-variant-summary,
 .product-live-preview,
-.product-live-preview__card {
+.product-live-preview__card,
+  .shopify-product-modal .shop-modal__content,
+  .shopify-product-modal .shop-modal__body {
   min-width: 0;
   max-width: 100%;
 }
@@ -906,25 +919,29 @@
     padding-bottom: 8px;
   }
 
-  .shopify-product-modal .ant-modal-body {
+  .shopify-product-modal .ant-modal-body,
+  .shopify-product-modal .shop-modal__body {
     max-height: calc(100dvh - 158px);
     overflow-y: auto;
     padding: 12px;
     -webkit-overflow-scrolling: touch;
   }
 
-  .shopify-product-modal .ant-modal-title {
+  .shopify-product-modal .ant-modal-title,
+  .shopify-product-modal .shop-modal__title {
     min-width: 0;
     white-space: normal;
   }
 
-  .shopify-product-modal .ant-modal-footer {
+  .shopify-product-modal .ant-modal-footer,
+  .shopify-product-modal .shop-modal__footer {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
   }
 
-  .shopify-product-modal .ant-modal-footer .ant-btn {
+  .shopify-product-modal .ant-modal-footer .ant-btn,
+  .shopify-product-modal .shop-modal__footer .ant-btn {
     flex: 1 1 128px;
     margin-inline-start: 0;
     white-space: normal;
@@ -1120,7 +1137,9 @@
     scroll-snap-align: start;
   }
 
-  .shopify-product-modal .ant-modal-footer .ant-btn {
+.shopify-product-modal .ant-modal-footer .ant-btn,
+
+  .shopify-product-modal .shop-modal__footer .ant-btn {
     max-width: 100%;
   }
 }
@@ -1130,7 +1149,8 @@
     flex-basis: 128px;
   }
 
-  .shopify-product-modal .ant-modal-footer .ant-btn {
+  .shopify-product-modal .ant-modal-footer .ant-btn,
+  .shopify-product-modal .shop-modal__footer .ant-btn {
     flex-basis: 100%;
   }
 }
@@ -1189,7 +1209,8 @@
 /* Mobile product editor modal stability pass */
 @media (max-width: 720px) {
   .shopify-product-modal,
-  .product-management-page .ant-modal {
+  .product-management-page .ant-modal,
+  .product-management-page .shop-modal__panel {
     width: calc(100vw - 16px) !important;
     max-width: calc(100vw - 16px);
     margin: 8px auto;
@@ -1197,8 +1218,13 @@
     padding-bottom: 8px;
   }
 
-  .shopify-product-modal .ant-modal-content,
-  .product-management-page .ant-modal-content {
+.shopify-product-modal .ant-modal-content,
+
+  .product-management-page .ant-modal-content,
+
+  .shopify-product-modal .shop-modal__content,
+
+  .product-management-page .shop-modal__content {
     max-height: calc(100svh - 16px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
     display: flex;
     flex-direction: column;
@@ -1206,16 +1232,26 @@
     border-radius: 18px;
   }
 
-  .shopify-product-modal .ant-modal-body,
-  .product-management-page .ant-modal-body {
+.shopify-product-modal .ant-modal-body,
+
+  .product-management-page .ant-modal-body,
+
+  .shopify-product-modal .shop-modal__body,
+
+  .product-management-page .shop-modal__body {
     flex: 1 1 auto;
     overflow-y: auto;
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
   }
 
-  .shopify-product-modal .ant-modal-footer,
-  .product-management-page .ant-modal-footer {
+.shopify-product-modal .ant-modal-footer,
+
+  .product-management-page .ant-modal-footer,
+
+  .shopify-product-modal .shop-modal__footer,
+
+  .product-management-page .shop-modal__footer {
     position: sticky;
     bottom: 0;
     display: grid;
@@ -1227,8 +1263,13 @@
     backdrop-filter: blur(12px);
   }
 
-  .shopify-product-modal .ant-modal-footer .ant-btn,
-  .product-management-page .ant-modal-footer .ant-btn {
+.shopify-product-modal .ant-modal-footer .ant-btn,
+
+  .product-management-page .ant-modal-footer .ant-btn,
+
+  .shopify-product-modal .shop-modal__footer .ant-btn,
+
+  .product-management-page .shop-modal__footer .ant-btn {
     width: 100%;
     min-height: 42px;
     margin-inline-start: 0;
@@ -1247,13 +1288,16 @@
 
 @media (max-width: 360px) {
   .shopify-product-modal,
-  .product-management-page .ant-modal {
+  .product-management-page .ant-modal,
+  .product-management-page .shop-modal__panel {
     width: calc(100vw - 10px) !important;
     max-width: calc(100vw - 10px);
   }
 
   .shopify-product-modal .ant-modal-footer,
-  .product-management-page .ant-modal-footer {
+  .product-management-page .ant-modal-footer,
+  .shopify-product-modal .shop-modal__footer,
+  .product-management-page .shop-modal__footer {
     grid-template-columns: minmax(0, 1fr);
   }
 }
@@ -1360,7 +1404,8 @@
   scroll-margin-bottom: calc(112px + env(safe-area-inset-bottom, 0px));
 }
 
-.product-management-page__urlImportModal .ant-modal-footer .ant-btn {
+.product-management-page__urlImportModal .ant-modal-footer .ant-btn,
+  .product-management-page__urlImportModal .shop-modal__footer .ant-btn {
   white-space: normal;
 }
 
@@ -1482,7 +1527,8 @@
     align-items: start;
   }
 
-  .product-management-page__urlImportModal .ant-modal-body {
+  .product-management-page__urlImportModal .ant-modal-body,
+  .product-management-page__urlImportModal .shop-modal__body {
     scroll-padding-top: calc(20px + env(safe-area-inset-top, 0px));
     scroll-padding-bottom: calc(116px + env(safe-area-inset-bottom, 0px));
   }
@@ -1523,7 +1569,9 @@
   .shopify-product-modal .ant-select-selector,
   .shopify-product-modal .ant-tree-select-selector,
   .shopify-media-add,
-  .shopify-link-button {
+  .shopify-link-button,
+  .shopify-product-modal .shop-modal__footer .ant-btn,
+  .product-management-page__urlImportModal .shop-modal__footer .ant-btn {
     min-height: 44px;
   }
 }
@@ -1569,21 +1617,39 @@
     grid-template-columns: minmax(0, 1fr) !important;
   }
 
-  .product-management-page__toolbar .ant-btn,
+.product-management-page__toolbar .ant-btn,
+
   .product-management-page__filters .ant-input-affix-wrapper,
+
   .product-management-page__filters .ant-select-selector,
+
   .product-management-page__filters .ant-tree-select-selector,
+
   .product-management-page .ant-table-cell .ant-btn,
+
   .shopify-product-modal .ant-modal-footer .ant-btn,
+
   .product-management-page__urlImportModal .ant-modal-footer .ant-btn,
+
   .product-management-page__importConfirmModal .ant-modal-confirm-btns .ant-btn,
+
   .product-management-page__importSuccessModal .ant-modal-confirm-btns .ant-btn,
+
   .product-management-page__importProblemModal .ant-modal-confirm-btns .ant-btn,
+
   .shopify-product-modal .ant-input,
+
   .shopify-product-modal .ant-input-number,
+
   .shopify-product-modal .ant-picker,
+
   .shopify-product-modal .ant-select-selector,
-  .shopify-product-modal .ant-tree-select-selector {
+
+  .shopify-product-modal .ant-tree-select-selector,
+
+  .shopify-product-modal .shop-modal__footer .ant-btn,
+
+  .product-management-page__urlImportModal .shop-modal__footer .ant-btn {
     min-height: 44px !important;
     height: auto !important;
     max-height: none !important;
@@ -1608,26 +1674,33 @@
 
 /* APP/WebView priority fix: product editor controls must never sit under the modal action bar. */
 @media (max-width: 780px) {
-  body .ant-modal-root .shopify-product-modal.ant-modal:not(.ant-modal-confirm) {
+  body .ant-modal-root .shopify-product-modal.ant-modal:not(.ant-modal-confirm),
+  body .shop-modal .shopify-product-modal.shop-modal__panel:not(.ant-modal-confirm) {
     top: max(8px, calc(env(safe-area-inset-top, 0px) + 8px)) !important;
     width: min(520px, calc(100vw - 12px)) !important;
     max-width: calc(100vw - 12px) !important;
     padding-bottom: max(8px, env(safe-area-inset-bottom, 0px)) !important;
   }
 
-  body .ant-modal-root .shopify-product-modal.ant-modal:not(.ant-modal-confirm) .ant-modal-content {
+body .ant-modal-root .shopify-product-modal.ant-modal:not(.ant-modal-confirm) .ant-modal-content,
+
+  body .shop-modal .shopify-product-modal.shop-modal__panel:not(.ant-modal-confirm) .shop-modal__content {
     display: flex !important;
     flex-direction: column !important;
     max-height: calc(100dvh - 60px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) !important;
     overflow: hidden !important;
   }
 
-  body .ant-modal-root .shopify-product-modal.ant-modal:not(.ant-modal-confirm) .ant-modal-header {
+body .ant-modal-root .shopify-product-modal.ant-modal:not(.ant-modal-confirm) .ant-modal-header,
+
+  body .shop-modal .shopify-product-modal.shop-modal__panel:not(.ant-modal-confirm) .shop-modal__header {
     flex: 0 0 auto !important;
     padding: 14px 16px !important;
   }
 
-  body .ant-modal-root .shopify-product-modal.ant-modal:not(.ant-modal-confirm) .ant-modal-body {
+body .ant-modal-root .shopify-product-modal.ant-modal:not(.ant-modal-confirm) .ant-modal-body,
+
+  body .shop-modal .shopify-product-modal.shop-modal__panel:not(.ant-modal-confirm) .shop-modal__body {
     flex: 1 1 auto !important;
     min-height: 0 !important;
     max-height: none !important;
@@ -1638,7 +1711,9 @@
     -webkit-overflow-scrolling: touch;
   }
 
-  body .ant-modal-root .shopify-product-modal.ant-modal:not(.ant-modal-confirm) .ant-modal-footer {
+body .ant-modal-root .shopify-product-modal.ant-modal:not(.ant-modal-confirm) .ant-modal-footer,
+
+  body .shop-modal .shopify-product-modal.shop-modal__panel:not(.ant-modal-confirm) .shop-modal__footer {
     position: static !important;
     flex: 0 0 auto !important;
     display: grid !important;
@@ -1649,7 +1724,9 @@
     box-shadow: 0 -8px 20px rgba(18, 71, 52, 0.08) !important;
   }
 
-  body .ant-modal-root .shopify-product-modal.ant-modal:not(.ant-modal-confirm) .ant-modal-footer .ant-btn {
+body .ant-modal-root .shopify-product-modal.ant-modal:not(.ant-modal-confirm) .ant-modal-footer .ant-btn,
+
+  body .shop-modal .shopify-product-modal.shop-modal__panel:not(.ant-modal-confirm) .shop-modal__footer .ant-btn {
     width: 100% !important;
     min-width: 0 !important;
     min-height: 44px !important;
@@ -1807,21 +1884,24 @@
     text-align: center;
   }
 
-  .product-management-page__urlImportModal.ant-modal {
+  .product-management-page__urlImportModal.ant-modal,
+  .product-management-page__urlImportModal.shop-modal__panel {
     width: min(520px, calc(100vw - 12px)) !important;
     max-width: calc(100vw - 12px) !important;
     top: max(8px, calc(env(safe-area-inset-top, 0px) + 8px)) !important;
     padding-bottom: max(8px, env(safe-area-inset-bottom, 0px)) !important;
   }
 
-  .product-management-page__urlImportModal .ant-modal-content {
+  .product-management-page__urlImportModal .ant-modal-content,
+  .product-management-page__urlImportModal .shop-modal__content {
     display: flex !important;
     flex-direction: column !important;
     max-height: calc(100dvh - 48px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) !important;
     overflow: hidden !important;
   }
 
-  .product-management-page__urlImportModal .ant-modal-body {
+  .product-management-page__urlImportModal .ant-modal-body,
+  .product-management-page__urlImportModal .shop-modal__body {
     flex: 1 1 auto !important;
     min-height: 0 !important;
     max-height: none !important;
@@ -1840,7 +1920,8 @@
     -webkit-line-clamp: unset !important;
   }
 
-  .product-management-page__urlImportModal .ant-modal-footer {
+  .product-management-page__urlImportModal .ant-modal-footer,
+  .product-management-page__urlImportModal .shop-modal__footer {
     position: static !important;
     flex: 0 0 auto !important;
     display: grid !important;
@@ -1852,7 +1933,8 @@
     box-shadow: 0 -8px 20px rgba(18, 71, 52, 0.08) !important;
   }
 
-  .product-management-page__urlImportModal .ant-modal-footer .ant-btn {
+  .product-management-page__urlImportModal .ant-modal-footer .ant-btn,
+  .product-management-page__urlImportModal .shop-modal__footer .ant-btn {
     align-items: center !important;
     justify-content: center !important;
     width: 100% !important;
@@ -1864,7 +1946,8 @@
     white-space: normal !important;
   }
 
-  .product-management-page__urlImportModal .ant-modal-footer .ant-btn > span:not(.anticon):not(.ant-btn-icon) {
+  .product-management-page__urlImportModal .ant-modal-footer .ant-btn > span:not(.anticon):not(.ant-btn-icon),
+  .product-management-page__urlImportModal .shop-modal__footer .ant-btn > span:not(.anticon):not(.ant-btn-icon) {
     overflow: visible !important;
     text-overflow: clip !important;
     white-space: normal !important;
@@ -1872,19 +1955,22 @@
 }
 
 @media (max-width: 360px) {
-  .product-management-page__urlImportModal .ant-modal-footer {
+  .product-management-page__urlImportModal .ant-modal-footer,
+  .product-management-page__urlImportModal .shop-modal__footer {
     grid-template-columns: minmax(0, 1fr) !important;
   }
 }
 
 @media (max-width: 360px) {
-  body .ant-modal-root .shopify-product-modal.ant-modal:not(.ant-modal-confirm) .ant-modal-footer {
+  body .ant-modal-root .shopify-product-modal.ant-modal:not(.ant-modal-confirm) .ant-modal-footer,
+  body .shop-modal .shopify-product-modal.shop-modal__panel:not(.ant-modal-confirm) .shop-modal__footer {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
     gap: 6px !important;
     padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px)) !important;
   }
 
-  body .ant-modal-root .shopify-product-modal.ant-modal:not(.ant-modal-confirm) .ant-modal-footer .ant-btn {
+  body .ant-modal-root .shopify-product-modal.ant-modal:not(.ant-modal-confirm) .ant-modal-footer .ant-btn,
+  body .shop-modal .shopify-product-modal.shop-modal__panel:not(.ant-modal-confirm) .shop-modal__footer .ant-btn {
     height: 44px !important;
     max-height: 44px !important;
     padding-inline: 8px !important;

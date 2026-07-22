@@ -1,6 +1,12 @@
 import { useNavigate } from 'react-router-dom';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Button, Card, DatePicker, Form, Input, InputNumber, Modal, Popconfirm, Select, Space, Switch, Table, Tag, Typography, message } from 'antd';
+import { Alert, Button, Card, Form, Space, Switch, Table, Tag, Typography, message } from 'antd';
+import ShopInput, { ShopTextArea } from '../components/ShopInput';
+import ShopPopconfirm from '../components/ShopPopconfirm';
+import ShopSelect from '../components/ShopSelect';
+import ShopInputNumber from '../components/ShopInputNumber';
+import ShopModal from '../components/ShopModal';
+import ShopDatePicker from '../components/ShopDatePicker';
 import { ClockCircleOutlined, LinkOutlined, PlusOutlined, SearchOutlined, SoundOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { adminApi } from '../api/admin';
@@ -16,9 +22,7 @@ import { ANNOUNCEMENTS_DELETE_PERMISSION, ANNOUNCEMENTS_WRITE_PERMISSION, getEff
 import './AnnouncementManagement.css';
 
 const { Title, Text } = Typography;
-const { TextArea } = Input;
 const DEFAULT_PAGE_SIZE = 20;
-const mobilePopupClassNames = { popup: { root: 'shop-mobile-popup-layer' } };
 const validateCommercialAnnouncementFields = (title: unknown, content: unknown, status: unknown, t: (key: string) => string) => {
   if (String(status || '').toUpperCase() !== 'ACTIVE') {
     return Promise.resolve();
@@ -35,9 +39,6 @@ const validateCommercialAnnouncementFields = (title: unknown, content: unknown, 
   }
   return Promise.resolve();
 };
-
-const announcementDatePopupClassNames = { popup: { root: 'shop-mobile-popup-layer announcement-management-page__datePopup' } };
-const mobilePopconfirmClassNames = { root: 'shop-mobile-popup-layer' };
 
 type AnnouncementFormValues = Omit<SiteAnnouncement, 'id' | 'createdAt' | 'updatedAt' | 'startsAt' | 'endsAt'> & {
   startsAt?: string | dayjs.Dayjs | null;
@@ -445,7 +446,7 @@ const AnnouncementManagement: React.FC = () => {
       {canRenderAnnouncementSnapshot ? (
         <Card className="announcement-management__card">
         <Space className="announcement-management__toolbar" wrap role="search" aria-label={announcementSearchRegionLabel} title={announcementSearchRegionLabel}>
-          <Input
+          <ShopInput
             allowClear
             prefix={<SearchOutlined />}
             value={keyword}
@@ -456,17 +457,15 @@ const AnnouncementManagement: React.FC = () => {
             title={announcementSearchInputLabel}
             className="announcement-management__keywordInput"
           />
-          <Select
+          <ShopSelect
             allowClear
             value={statusFilter}
-            onChange={setStatusFilter}
+            onChange={(value) => setStatusFilter(value || undefined)}
             disabled={announcementActionDisabled}
             placeholder={t('common.status')}
-            aria-label={announcementStatusFilterLabel}
+            ariaLabel={announcementStatusFilterLabel}
             title={announcementStatusFilterLabel}
-            className="announcement-management__statusFilter"
-            classNames={mobilePopupClassNames}
-            getPopupContainer={() => document.body}
+            className="announcement-management__statusFilter" popupClassName="shop-mobile-popup-layer"
             options={[
               { value: 'ACTIVE', label: t('pages.announcementAdmin.enable') },
               { value: 'INACTIVE', label: t('pages.announcementAdmin.disable') },
@@ -507,8 +506,7 @@ const AnnouncementManagement: React.FC = () => {
                 const announcementTitle = getAnnouncementLabel(record);
                 const statusActionLabel = `${status === 'ACTIVE' ? t('pages.announcementAdmin.disable') : t('pages.announcementAdmin.enable')}: ${announcementTitle}`;
                 return (
-	                  <Popconfirm
-	                    classNames={mobilePopconfirmClassNames}
+	                  <ShopPopconfirm rootClassName="shop-mobile-popup-layer"
 	                    title={statusActionLabel}
                     description={announcementTitle}
                     onConfirm={() => toggleStatus(record, status !== 'ACTIVE')}
@@ -527,7 +525,7 @@ const AnnouncementManagement: React.FC = () => {
                       loading={statusUpdatingId === record.id}
                       disabled={!canWriteAnnouncements || announcementActionDisabled || statusUpdatingId === record.id}
                     />
-                  </Popconfirm>
+                  </ShopPopconfirm>
                 );
               },
             },
@@ -558,8 +556,7 @@ const AnnouncementManagement: React.FC = () => {
                   <Space>
                     {canWriteAnnouncements ? <Button size="small" disabled={announcementActionDisabled} aria-label={editActionLabel} title={editActionLabel} onClick={() => openEditor(record)}>{t('common.edit')}</Button> : null}
                     {canDeleteAnnouncements ? (
-	                      <Popconfirm
-	                        classNames={mobilePopconfirmClassNames}
+	                      <ShopPopconfirm rootClassName="shop-mobile-popup-layer"
 	                        title={t('pages.announcementAdmin.deleteConfirm')}
                         description={announcementTitle}
                         onConfirm={() => deleteAnnouncement(record.id)}
@@ -570,7 +567,7 @@ const AnnouncementManagement: React.FC = () => {
                         cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${deleteActionLabel}`, title: `${t('common.cancel')}: ${deleteActionLabel}` }}
                       >
                         <Button size="small" danger disabled={announcementActionDisabled} aria-label={deleteActionLabel} title={deleteActionLabel}>{t('common.delete')}</Button>
-                      </Popconfirm>
+                      </ShopPopconfirm>
                     ) : null}
                   </Space>
                 );
@@ -581,10 +578,10 @@ const AnnouncementManagement: React.FC = () => {
       </Card>
       ) : null}
 
-      <Modal
+      <ShopModal
         title={editorTitle}
         open={modalOpen}
-        onCancel={closeEditor}
+        onClose={closeEditor}
         onOk={handleSave}
         okText={t('common.save')}
         cancelText={t('common.cancel')}
@@ -593,7 +590,6 @@ const AnnouncementManagement: React.FC = () => {
         confirmLoading={saving}
         width={720}
         className="profile-mobile-safe-modal announcement-management-page__editorModal"
-        destroyOnHidden
       >
         <Form form={form} layout="vertical">
           <Form.Item
@@ -608,7 +604,7 @@ const AnnouncementManagement: React.FC = () => {
               },
             ]}
           >
-            <Input maxLength={titleMaxChars} showCount placeholder={t('pages.announcementAdmin.titlePlaceholder')} aria-label={titleFieldLabel} title={titleFieldLabel} />
+            <ShopInput maxLength={titleMaxChars} showCount placeholder={t('pages.announcementAdmin.titlePlaceholder')} aria-label={titleFieldLabel} title={titleFieldLabel} />
           </Form.Item>
           <Form.Item
             name="content"
@@ -622,7 +618,7 @@ const AnnouncementManagement: React.FC = () => {
               },
             ]}
           >
-            <TextArea rows={4} maxLength={contentMaxChars} showCount placeholder={t('pages.announcementAdmin.contentPlaceholder')} aria-label={contentFieldLabel} title={contentFieldLabel} />
+            <ShopTextArea rows={4} maxLength={contentMaxChars} showCount placeholder={t('pages.announcementAdmin.contentPlaceholder')} aria-label={contentFieldLabel} title={contentFieldLabel} />
           </Form.Item>
           <Form.Item
             name="linkUrl"
@@ -636,15 +632,13 @@ const AnnouncementManagement: React.FC = () => {
               },
             ]}
           >
-            <Input maxLength={linkUrlMaxChars} showCount placeholder={t('pages.announcementAdmin.linkPlaceholder')} aria-label={linkUrlFieldLabel} title={linkUrlFieldLabel} />
+            <ShopInput maxLength={linkUrlMaxChars} showCount placeholder={t('pages.announcementAdmin.linkPlaceholder')} aria-label={linkUrlFieldLabel} title={linkUrlFieldLabel} />
           </Form.Item>
           <Space size="large" wrap>
             <Form.Item name="status" label={t('common.status')} className="announcement-management__statusField">
-              <Select
-                aria-label={editorStatusFieldLabel}
-                title={editorStatusFieldLabel}
-                classNames={mobilePopupClassNames}
-                getPopupContainer={() => document.body}
+              <ShopSelect
+                ariaLabel={editorStatusFieldLabel}
+                title={editorStatusFieldLabel} popupClassName="shop-mobile-popup-layer"
                 options={[
                   { value: 'ACTIVE', label: t('pages.announcementAdmin.enable') },
                   { value: 'INACTIVE', label: t('pages.announcementAdmin.disable') },
@@ -652,23 +646,17 @@ const AnnouncementManagement: React.FC = () => {
               />
             </Form.Item>
             <Form.Item name="sortOrder" label={t('pages.announcementAdmin.sortOrder')} className="announcement-management__sortField">
-              <InputNumber min={0} max={9999} aria-label={sortOrderFieldLabel} title={sortOrderFieldLabel} />
+              <ShopInputNumber min={0} max={9999} aria-label={sortOrderFieldLabel} title={sortOrderFieldLabel} />
             </Form.Item>
           </Space>
           <Space size="large" wrap>
             <Form.Item name="startsAt" label={t('pages.announcementAdmin.startsAt')} extra={t('pages.announcementAdmin.startsAtExtra')}>
-              <div role="group" aria-label={startsAtFieldLabel} title={startsAtFieldLabel}>
-                <DatePicker
-	                  showTime
-	                  format="YYYY-MM-DD HH:mm:ss"
-	                  className="announcement-management__datePicker"
-	                  classNames={announcementDatePopupClassNames}
-	                  getPopupContainer={() => document.body}
-	                  placement="bottomLeft"
-	                  aria-label={startsAtFieldLabel}
-	                  title={startsAtFieldLabel}
-	                />
-              </div>
+              <ShopDatePicker
+                showTime
+                className="announcement-management__datePicker"
+                ariaLabel={startsAtFieldLabel}
+                title={startsAtFieldLabel}
+              />
             </Form.Item>
             <Form.Item
               name="endsAt"
@@ -689,22 +677,16 @@ const AnnouncementManagement: React.FC = () => {
                 },
               ]}
             >
-              <div role="group" aria-label={endsAtFieldLabel} title={endsAtFieldLabel}>
-                <DatePicker
-	                  showTime
-	                  format="YYYY-MM-DD HH:mm:ss"
-	                  className="announcement-management__datePicker"
-	                  classNames={announcementDatePopupClassNames}
-	                  getPopupContainer={() => document.body}
-	                  placement="bottomLeft"
-	                  aria-label={endsAtFieldLabel}
-	                  title={endsAtFieldLabel}
-	                />
-              </div>
+              <ShopDatePicker
+                showTime
+                className="announcement-management__datePicker"
+                ariaLabel={endsAtFieldLabel}
+                title={endsAtFieldLabel}
+              />
             </Form.Item>
           </Space>
         </Form>
-      </Modal>
+      </ShopModal>
     </div>
   );
 };

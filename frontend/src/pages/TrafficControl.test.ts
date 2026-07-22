@@ -17,10 +17,12 @@ describe('TrafficControl source guards', () => {
   it('keeps traffic-control first-load failures from masquerading as healthy zero data', () => {
     expect(pageSource).toContain('const [loadError, setLoadError] = useState<string | null>(null);');
     expect(pageSource).toContain('const actionDisabled = !status || loading || Boolean(loadError);');
-    expect(pageSource).toContain("description={status ? t('pages.trafficControl.staleDataWarning') : undefined}");
+    expect(pageSource).toContain("{loadError && status ? (");
+    expect(pageSource).toContain("description={t('pages.trafficControl.staleDataWarning')}");
+    expect(pageSource).toContain('data-admin-traffic-stale-recovery');
     expect(pageSource).toContain('{loadError && !status ? null : <div className="traffic-control__stats">');
     expect(pageSource).toContain('{loadError && !status ? null : <div className="traffic-control__grid">');
     expect(pageSource).toContain("{loadError && !status ? null : <Card title={<span><ThunderboltOutlined /> {t('pages.trafficControl.circuitBreakers')}</span>}");
-    expect(pageSource).toContain('<Button size="small" onClick={loadStatus} loading={loading}>');
+    expect(pageSource).toContain('<Button size="small" type="primary" onClick={loadStatus} loading={loading}>');
   });
 });

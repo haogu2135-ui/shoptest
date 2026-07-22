@@ -12,9 +12,10 @@ export type ShopSelectOption = {
 export type ShopSelectProps = {
   value?: string;
   options: ShopSelectOption[];
-  onChange?: (value: string | undefined) => void;
+  // Method syntax keeps callbacks bivariant under strictFunctionTypes (string setters OK).
+  onChange?(value: string | undefined): void;
   open?: boolean;
-  onOpenChange?: (open: boolean) => void;
+  onOpenChange?(open: boolean): void;
   className?: string;
   popupClassName?: string;
   popupZIndex?: number;
@@ -23,11 +24,20 @@ export type ShopSelectProps = {
   disabled?: boolean;
   loading?: boolean;
   allowClear?: boolean;
+  showSearch?: boolean;
+  searchPlaceholder?: string;
   id?: string;
   ariaLabel?: string;
   title?: string;
   placeholder?: string;
   emptyContent?: React.ReactNode;
+};
+
+const optionSearchText = (option: ShopSelectOption) => {
+  if (typeof option.label === 'string' || typeof option.label === 'number') {
+    return `${option.label} ${option.value}`.toLowerCase();
+  }
+  return String(option.value || '').toLowerCase();
 };
 
 const ShopSelect: React.FC<ShopSelectProps> = ({
@@ -44,6 +54,8 @@ const ShopSelect: React.FC<ShopSelectProps> = ({
   disabled = false,
   loading = false,
   allowClear = false,
+  showSearch = false,
+  searchPlaceholder = '',
   id,
   ariaLabel,
   title,
@@ -51,15 +63,18 @@ const ShopSelect: React.FC<ShopSelectProps> = ({
   emptyContent,
 }) => {
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const isControlled = typeof open === 'boolean';
   const resolvedOpen = isControlled ? Boolean(open) : uncontrolledOpen;
   const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const searchRef = useRef<HTMLInputElement | null>(null);
   const listId = useId();
   const [popupStyle, setPopupStyle] = useState<React.CSSProperties>({});
 
   const setOpen = (next: boolean) => {
     if (!isControlled) setUncontrolledOpen(next);
     onOpenChange?.(next);
+    if (!next) setSearchQuery('');
   };
 
   const selected = useMemo(
@@ -67,15 +82,23 @@ const ShopSelect: React.FC<ShopSelectProps> = ({
     [options, value],
   );
 
+  const filteredOptions = useMemo(() => {
+    if (!showSearch) return options;
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return options;
+    return options.filter((option) => optionSearchText(option).includes(query));
+  }, [options, searchQuery, showSearch]);
+
   useEffect(() => {
     if (!resolvedOpen || typeof window === 'undefined') return undefined;
     const updatePosition = () => {
       const rect = triggerRef.current?.getBoundingClientRect();
       if (!rect) return;
       const width = Math.max(rect.width, 140);
-      const estimatedHeight = options.length > 0
-        ? Math.min(popupMaxHeight, options.length * 44 + 16)
-        : Math.min(popupMaxHeight, 180);
+      const searchOffset = showSearch ? 52 : 0;
+      const estimatedHeight = (filteredOptions.length > 0
+        ? Math.min(popupMaxHeight, filteredOptions.length * 44 + 16)
+        : Math.min(popupMaxHeight, 180)) + searchOffset;
       let left = rect.left;
       let top = rect.bottom + 6;
       if (left + width > window.innerWidth - 8) {
@@ -89,7 +112,7 @@ const ShopSelect: React.FC<ShopSelectProps> = ({
         top,
         left,
         minWidth: width,
-        maxHeight: popupMaxHeight,
+        maxHeight: popupMaxHeight + searchOffset,
         zIndex: popupZIndex,
       });
     };
@@ -100,7 +123,7 @@ const ShopSelect: React.FC<ShopSelectProps> = ({
       window.removeEventListener('resize', updatePosition);
       window.removeEventListener('scroll', updatePosition, true);
     };
-  }, [options.length, popupMaxHeight, popupZIndex, resolvedOpen]);
+  }, [filteredOptions.length, popupMaxHeight, popupZIndex, resolvedOpen, showSearch]);
 
   useEffect(() => {
     if (!resolvedOpen || typeof document === 'undefined') return undefined;
@@ -123,27 +146,58 @@ const ShopSelect: React.FC<ShopSelectProps> = ({
     };
   }, [listId, resolvedOpen]);
 
+  useEffect(() => {
+    if (!resolvedOpen || !showSearch) return;
+    const timer = window.setTimeout(() => {
+      searchRef.current?.focus();
+      searchRef.current?.select();
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [resolvedOpen, showSearch]);
+
   const displayLabel = selected?.label ?? placeholder;
   const triggerLabel = typeof displayLabel === 'string' ? displayLabel : ariaLabel || placeholder || 'Select';
   const showClear = allowClear && Boolean(value) && !disabled && !loading;
   const isDisabled = disabled || loading;
+  const resolvedSearchPlaceholder = searchPlaceholder || placeholder || 'Search';
 
   const popup = resolvedOpen && typeof document !== 'undefined'
     ? createPortal(
         <div
           id={listId}
-          className={`shop-select__popup ${popupClassName}`.trim()}
+          className={`shop-select__popup ${showSearch ? 'shop-select__popup--searchable' : ''} ${popupClassName}`.trim()}
           role="listbox"
           aria-label={ariaLabel}
           aria-busy={loading || undefined}
           style={popupStyle}
         >
-          {options.length === 0 ? (
+          {showSearch ? (
+            <div className="shop-select__search" role="presentation">
+              <input
+                ref={searchRef}
+                type="search"
+                className="shop-select__searchInput"
+                value={searchQuery}
+                placeholder={resolvedSearchPlaceholder}
+                aria-label={resolvedSearchPlaceholder}
+                title={resolvedSearchPlaceholder}
+                autoComplete="off"
+                onChange={(event) => setSearchQuery(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Escape') {
+                    event.stopPropagation();
+                    setOpen(false);
+                  }
+                }}
+              />
+            </div>
+          ) : null}
+          {filteredOptions.length === 0 ? (
             <div className="shop-select__empty" role="presentation">
               {emptyContent ?? (loading ? 'Loading…' : 'No options')}
             </div>
           ) : (
-            options.map((option) => {
+            filteredOptions.map((option) => {
               const active = option.value === value;
               const optionLabel = typeof option.label === 'string' ? option.label : option.value;
               return (

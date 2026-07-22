@@ -293,3 +293,5 @@
 .seventeen-track-widget__recoveryActions .ant-btn {
   min-height: 44px;
 }
+
+.seventeen-track-widget__search .shop-input { flex: 1 1 auto; min-width: 0; }

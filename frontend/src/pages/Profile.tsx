@@ -3,7 +3,10 @@ import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { ShopIcon, SI } from '../components/ShopIcon';
 import ShopModal from '../components/ShopModal';
 import ShopConfirm from '../components/ShopConfirm';
-import { Alert, Button, Checkbox, Form, Input, InputNumber, Progress, Tag } from 'antd';
+import { Alert, Button, Checkbox, Form, Progress, Tag } from 'antd';
+import ShopInput, { ShopPasswordInput, ShopTextArea } from '../components/ShopInput';
+import ShopInputNumber from '../components/ShopInputNumber';
+import ShopSearchField from '../components/ShopSearchField';
 import ShopSelect from '../components/ShopSelect';
 import ShopCascader from '../components/ShopCascader';
 import ShopDatePicker from '../components/ShopDatePicker';
@@ -2219,13 +2222,14 @@ const Profile: React.FC = () => {
                   })}
                 </div>
                 <div className="profile-orders__toolbar">
-                  <Input.Search
+                  <ShopSearchField
                     className="profile-orders__searchInput"
                     allowClear
+                    showSubmit={false}
                     value={orderSearchText}
-                    onChange={(event) => setOrderSearchText(event.target.value)}
+                    onChange={(value) => setOrderSearchText(value)}
                     placeholder={t('pages.profile.orderSearchPlaceholder')}
-                    aria-label={orderSearchInputLabel}
+                    ariaLabel={orderSearchInputLabel}
                     title={orderSearchInputLabel}
                   />
                   <Button aria-label={refreshOrdersActionLabel} title={refreshOrdersActionLabel} onClick={() => fetchOrders()}>{t('common.refresh')}</Button>
@@ -2593,7 +2597,7 @@ const Profile: React.FC = () => {
               { type: 'email', message: t('pages.profile.emailInvalid') },
             ]}
           >
-            <Input prefix={<ShopIcon path={SI.mail} />} />
+            <ShopInput prefix={<ShopIcon path={SI.mail} />} />
           </Form.Item>
           {profileEmailChanged && !emailCodeEnabled && (
             <div className="profile-email-code-warning" role="status">
@@ -2623,7 +2627,7 @@ const Profile: React.FC = () => {
               }),
             ]}
           >
-            <Input
+            <ShopInput
               prefix={<ShopIcon path={SI.safety} />}
               maxLength={12}
               autoComplete="one-time-code"
@@ -2660,7 +2664,7 @@ const Profile: React.FC = () => {
               { validator: (_, value) => (!value || isLikelyProfilePhone(value) ? Promise.resolve() : Promise.reject(new Error(t('pages.auth.phoneInvalid')))) },
             ]}
           >
-            <Input
+            <ShopInput
               maxLength={40}
               placeholder={t('pages.auth.phonePlaceholder')}
               autoComplete="tel"
@@ -2687,7 +2691,7 @@ const Profile: React.FC = () => {
       >
         <Form form={passwordForm} layout="vertical" requiredMark validateTrigger={['onChange', 'onBlur']}>
           <Form.Item name="oldPassword" label={t('pages.profile.oldPassword')} rules={[{ required: true, message: t('pages.profile.oldPasswordRequired') }]}>
-            <Input.Password 
+            <ShopPasswordInput 
               iconRender={(visible) => (
               <button
                 type="button"
@@ -2705,7 +2709,7 @@ const Profile: React.FC = () => {
             { required: true, min: STRONG_PASSWORD_MIN_LENGTH, max: STRONG_PASSWORD_MAX_LENGTH, message: t('pages.profile.newPasswordMin') },
             { validator: validateStrongPassword }
           ]}>
-            <Input.Password maxLength={STRONG_PASSWORD_MAX_LENGTH} 
+            <ShopPasswordInput maxLength={STRONG_PASSWORD_MAX_LENGTH} 
               iconRender={(visible) => (
               <button
                 type="button"
@@ -2733,7 +2737,7 @@ const Profile: React.FC = () => {
               }),
             ]}
           >
-            <Input.Password 
+            <ShopPasswordInput 
               iconRender={(visible) => (
               <button
                 type="button"
@@ -2765,7 +2769,7 @@ const Profile: React.FC = () => {
       >
         <Form form={addressForm} layout="vertical" requiredMark validateTrigger={['onChange', 'onBlur']} onFocusCapture={(event) => scrollProfileAddressFieldIntoMobileView(event.target)}>
           <Form.Item name="recipientName" label={t('pages.profile.recipient')} rules={[{ required: true, message: t('pages.profile.recipientRequired') }]}>
-            <Input placeholder={t('pages.profile.recipientRequired')} autoComplete="name" maxLength={80} />
+            <ShopInput placeholder={t('pages.profile.recipientRequired')} autoComplete="name" maxLength={80} />
           </Form.Item>
           <Form.Item
             name="phone"
@@ -2775,7 +2779,7 @@ const Profile: React.FC = () => {
               { validator: (_, value) => (!value || isLikelyProfilePhone(value) ? Promise.resolve() : Promise.reject(new Error(t('pages.auth.phoneInvalid')))) },
             ]}
           >
-            <Input
+            <ShopInput
               placeholder={t('pages.auth.phonePlaceholder')}
               autoComplete="tel"
               inputMode="tel"
@@ -2813,7 +2817,7 @@ const Profile: React.FC = () => {
               }),
             ]}
           >
-            <Input
+            <ShopInput
               placeholder={t('pages.profile.postalCodePlaceholder')}
               autoComplete="postal-code"
               inputMode="text"
@@ -2822,7 +2826,7 @@ const Profile: React.FC = () => {
             />
           </Form.Item>
           <Form.Item name="detail" label={t('pages.profile.detailAddress')} rules={[{ required: true, message: t('pages.profile.detailRequired') }]}>
-            <Input.TextArea rows={3} placeholder={t('pages.profile.detailRequired')} autoComplete="street-address" maxLength={260} showCount />
+            <ShopTextArea rows={3} placeholder={t('pages.profile.detailRequired')} autoComplete="street-address" maxLength={260} showCount />
           </Form.Item>
           <Form.Item name="isDefault" valuePropName="checked">
             <Checkbox>{t('pages.profile.makeDefaultAddress')}</Checkbox>
@@ -2844,7 +2848,7 @@ const Profile: React.FC = () => {
       >
         <Form form={petForm} layout="vertical" requiredMark validateTrigger={['onChange', 'onBlur']}>
           <Form.Item name="name" label={t('pages.profile.petName')} rules={[{ required: true, message: t('pages.profile.petNameRequired') }]}>
-            <Input placeholder={t('pages.profile.petNamePlaceholder')} />
+            <ShopInput placeholder={t('pages.profile.petNamePlaceholder')} />
           </Form.Item>
           <Form.Item name="petType" label={t('pages.profile.petType')} rules={[{ required: true }]}>
             <ShopSelect
@@ -2859,13 +2863,13 @@ const Profile: React.FC = () => {
             />
           </Form.Item>
           <Form.Item name="breed" label={t('pages.profile.petBreed')}>
-            <Input placeholder={t('pages.profile.petBreedPlaceholder')} />
+            <ShopInput placeholder={t('pages.profile.petBreedPlaceholder')} />
           </Form.Item>
           <Form.Item name="birthday" label={t('pages.profile.petBirthday')}>
             <ShopDatePicker className="profile-pet-modal__field" ariaLabel={t('pages.profile.petBirthday')} />
           </Form.Item>
           <Form.Item name="weight" label={t('pages.profile.petWeightKg')}>
-            <InputNumber min={0} precision={2} className="profile-pet-modal__field" />
+            <ShopInputNumber min={0} precision={2} className="profile-pet-modal__field" />
           </Form.Item>
           <Form.Item name="size" label={t('pages.profile.petSize')}>
             <ShopSelect
@@ -3091,14 +3095,14 @@ const Profile: React.FC = () => {
             </div>
           </div>
           <span className="profile-page__text profile-page__text--secondary">{t('pages.profile.returnShipmentHint')}</span>
-          <Input
+          <ShopInput
             value={returnTrackingNumber}
             onChange={(e) => setReturnTrackingNumber(e.target.value)}
             placeholder={t('pages.profile.returnTrackingPlaceholder')}
             autoComplete="off"
             inputMode="text"
             maxLength={120}
-            status={returnTrackingNumber && !isReturnTrackingReady(returnTrackingNumber) ? 'error' : undefined}
+            status={returnTrackingNumber && !isReturnTrackingReady(returnTrackingNumber) ? 'error' : ''}
             aria-label={returnTrackingInputLabel}
             title={returnTrackingInputLabel}
             onBlur={() => setReturnTrackingNumber((value) => normalizeReturnTrackingNumber(value))}
@@ -3173,12 +3177,12 @@ const Profile: React.FC = () => {
               })}
             </div>
           </div>
-          <Input.TextArea
+          <ShopTextArea
             rows={4}
             maxLength={500}
             showCount
             value={returnReason}
-            status={returnReason && !isReturnReasonReady(returnReason) ? 'error' : undefined}
+            status={returnReason && !isReturnReasonReady(returnReason) ? 'error' : ''}
             onChange={(event) => setReturnReason(event.target.value)}
             placeholder={t('pages.profile.returnReasonPlaceholder')}
             aria-label={returnReasonInputLabel}

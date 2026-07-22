@@ -1,5 +1,6 @@
 import React from 'react';
-import { Button, Image, Input, Select } from 'antd';
+import { Button, Image, Select } from 'antd';
+import ShopInput, { ShopTextArea } from './ShopInput';
 import {
   ArrowDownOutlined,
   ArrowUpOutlined,
@@ -14,7 +15,6 @@ import { imageFallbacks } from '../utils/mediaAssets';
 import { canEmbedVideoUrl, isDirectVideo, isHttpMediaUrl, resolveRichMediaUrl, toEmbeddableVideoUrl } from './ProductRichDetail';
 import './ProductRichDetailEditor.css';
 
-const { TextArea } = Input;
 const richDetailTypePopupClassNames = { popup: { root: 'shop-mobile-popup-layer product-management-page__editorPopup' } };
 
 type ProductRichDetailEditorProps = {
@@ -179,7 +179,7 @@ const ProductRichDetailEditor: React.FC<ProductRichDetailEditorProps> = ({ value
                   </div>
                 }</div></div>
                 {block.type === 'text' ? (
-                  <TextArea
+                  <ShopTextArea
                     rows={5}
                     value={block.content}
                     placeholder={t('pages.productAdmin.richTextPlaceholder')}
@@ -190,7 +190,7 @@ const ProductRichDetailEditor: React.FC<ProductRichDetailEditorProps> = ({ value
                   />
                 ) : (
                   <div className="product-rich-detail-editor__mediaFields" aria-label={blockLabel}>
-                    <Input
+                    <ShopInput
                       value={block.url}
                       placeholder={block.type === 'image' ? t('pages.productAdmin.richImagePlaceholder') : t('pages.productAdmin.richVideoPlaceholder')}
                       aria-label={urlInputLabel}
@@ -198,7 +198,7 @@ const ProductRichDetailEditor: React.FC<ProductRichDetailEditorProps> = ({ value
                       onChange={(event) => updateBlock(index, { url: event.target.value })}
                       onBlur={normalizeBeforeBlur}
                     />
-                    <Input
+                    <ShopInput
                       value={block.caption}
                       placeholder={t('pages.productAdmin.richCaptionPlaceholder')}
                       aria-label={captionInputLabel}

@@ -115,7 +115,8 @@
   overflow-wrap: anywhere;
 }
 
-.announcement-management .ant-modal .ant-form-item-extra {
+.announcement-management .ant-modal .ant-form-item-extra,
+  .announcement-management .shop-modal__panel .ant-form-item-extra {
   color: #6f7f74;
 }
 
@@ -281,7 +282,9 @@
     max-width: calc(100vw - 12px);
   }
 
-  .announcement-management .ant-modal-footer {
+.announcement-management .ant-modal-footer,
+
+  .announcement-management .shop-modal__footer {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
@@ -323,11 +326,15 @@
     display: none;
   }
 
-  .announcement-management .ant-modal {
+.announcement-management .ant-modal,
+
+  .announcement-management .shop-modal__panel {
     max-width: calc(100vw - 16px);
   }
 
-  .announcement-management .ant-modal-footer .ant-btn {
+.announcement-management .ant-modal-footer .ant-btn,
+
+  .announcement-management .shop-modal__footer .ant-btn {
     flex: 1 1 128px;
     min-height: 40px;
     margin-inline-start: 0;
@@ -346,7 +353,8 @@
 
 /* Mobile announcement modal form stability pass */
 @media (max-width: 720px) {
-  .announcement-management .ant-modal-content {
+  .announcement-management .ant-modal-content,
+  .announcement-management .shop-modal__content {
     max-height: calc(100svh - 16px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
     display: flex;
     flex-direction: column;
@@ -354,7 +362,9 @@
     border-radius: 18px;
   }
 
-  .announcement-management .ant-modal-body {
+.announcement-management .ant-modal-body,
+
+  .announcement-management .shop-modal__body {
     flex: 1 1 auto;
     overflow-y: auto;
     scroll-padding-top: calc(20px + env(safe-area-inset-top, 0px));
@@ -379,7 +389,9 @@
     scroll-margin-bottom: calc(112px + env(safe-area-inset-bottom, 0px));
   }
 
-  .announcement-management .ant-modal-footer {
+.announcement-management .ant-modal-footer,
+
+  .announcement-management .shop-modal__footer {
     position: sticky;
     bottom: 0;
     padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
@@ -390,7 +402,8 @@
 }
 
 @media (max-width: 360px) {
-  .announcement-management .ant-modal {
+  .announcement-management .ant-modal,
+  .announcement-management .shop-modal__panel {
     max-width: calc(100vw - 10px);
   }
 
@@ -410,7 +423,12 @@
   .announcement-management .ant-modal .ant-input,
   .announcement-management .ant-modal .ant-input-number,
   .announcement-management .ant-modal .ant-picker,
-  .announcement-management .ant-modal .ant-select-selector {
+  .announcement-management .ant-modal .ant-select-selector,
+  .announcement-management .shop-modal__footer .ant-btn,
+  .announcement-management .shop-modal__panel .ant-input,
+  .announcement-management .shop-modal__panel .ant-input-number,
+  .announcement-management .shop-modal__panel .ant-picker,
+  .announcement-management .shop-modal__panel .ant-select-selector {
     min-height: 44px;
   }
 }
@@ -418,8 +436,12 @@
 /* Absolute final announcement editor modal guard. AntD renders Modal through a
    body portal, so page-scoped `.announcement-management .ant-modal` rules do
    not reach the editor dialog itself. */
+@media (max-width: 720px),
+  so page-scoped `.announcement-management .shop-modal__panel` rules do
+   not reach the editor dialog itself. */
 @media (max-width: 720px) {
-  body .ant-modal-root .profile-mobile-safe-modal.announcement-management-page__editorModal.ant-modal:not(.ant-modal-confirm) {
+  body .ant-modal-root .profile-mobile-safe-modal.announcement-management-page__editorModal.ant-modal:not(.ant-modal-confirm),
+  body .shop-modal .profile-mobile-safe-modal.announcement-management-page__editorModal.shop-modal__panel:not(.ant-modal-confirm) {
     top: calc(8px + env(safe-area-inset-top, 0px)) !important;
     width: calc(100vw - 16px) !important;
     max-width: calc(100vw - 16px) !important;
@@ -427,7 +449,9 @@
     padding-bottom: 0 !important;
   }
 
-  body .ant-modal-root .announcement-management-page__editorModal .ant-modal-content {
+body .ant-modal-root .announcement-management-page__editorModal .ant-modal-content,
+
+  body .shop-modal .announcement-management-page__editorModal .shop-modal__content {
     max-height: calc(100dvh - 64px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) !important;
     display: flex !important;
     flex-direction: column !important;
@@ -435,7 +459,9 @@
     border-radius: 8px !important;
   }
 
-  body .ant-modal-root .announcement-management-page__editorModal .ant-modal-body {
+body .ant-modal-root .announcement-management-page__editorModal .ant-modal-body,
+
+  body .shop-modal .announcement-management-page__editorModal .shop-modal__body {
     flex: 1 1 auto !important;
     padding: 12px 14px !important;
     overflow-y: auto !important;
@@ -443,11 +469,15 @@
     -webkit-overflow-scrolling: touch;
   }
 
-  body .ant-modal-root .announcement-management-page__editorModal .ant-form-item {
+body .ant-modal-root .announcement-management-page__editorModal .ant-form-item,
+
+  body .shop-modal .announcement-management-page__editorModal .ant-form-item {
     margin-bottom: 12px;
   }
 
-  body .ant-modal-root .announcement-management-page__editorModal .ant-modal-footer {
+body .ant-modal-root .announcement-management-page__editorModal .ant-modal-footer,
+
+  body .shop-modal .announcement-management-page__editorModal .shop-modal__footer {
     flex: 0 0 auto;
     padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px)) !important;
   }

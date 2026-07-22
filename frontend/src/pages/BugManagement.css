@@ -287,11 +287,17 @@
     display: none;
   }
 
-  .bug-management__modal .ant-input,
+.bug-management__modal .ant-input,
+
   .bug-management__modal .ant-input-affix-wrapper,
+
   .bug-management__modal .ant-select-selector,
+
   .bug-management__modal .ant-btn,
-  .bug-management__modal .ant-modal-footer .ant-btn {
+
+  .bug-management__modal .ant-modal-footer .ant-btn,
+
+  .bug-management__modal .shop-modal__footer .ant-btn {
     min-height: 44px;
     touch-action: manipulation;
   }
@@ -300,14 +306,18 @@
     min-height: 96px;
   }
 
-  .bug-management__modal .ant-modal-footer {
+.bug-management__modal .ant-modal-footer,
+
+  .bug-management__modal .shop-modal__footer {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
     padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
   }
 
-  .bug-management__modal .ant-modal-footer .ant-btn {
+.bug-management__modal .ant-modal-footer .ant-btn,
+
+  .bug-management__modal .shop-modal__footer .ant-btn {
     width: 100%;
     margin-inline-start: 0;
   }
@@ -315,14 +325,16 @@
 
 @media (max-width: 380px) {
   .bug-management__header > .ant-space,
-  .bug-management__modal .ant-modal-footer {
+  .bug-management__modal .ant-modal-footer,
+  .bug-management__modal .shop-modal__footer {
     grid-template-columns: minmax(0, 1fr);
   }
 }
 
 /* F3531: reserve sticky-footer clearance inside BUG create/edit/status modals */
 @media (max-width: 720px) {
-  .bug-management__modal.ant-modal {
+  .bug-management__modal.ant-modal,
+  .bug-management__modal.shop-modal__panel {
     width: calc(100vw - 16px) !important;
     max-width: calc(100vw - 16px) !important;
     margin: 8px auto !important;
@@ -330,14 +342,18 @@
     padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px)) !important;
   }
 
-  .bug-management__modal .ant-modal-content {
+.bug-management__modal .ant-modal-content,
+
+  .bug-management__modal .shop-modal__content {
     max-height: calc(100dvh - 18px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
     display: flex !important;
     flex-direction: column !important;
     overflow: hidden !important;
   }
 
-  .bug-management__modal .ant-modal-body {
+.bug-management__modal .ant-modal-body,
+
+  .bug-management__modal .shop-modal__body {
     min-width: 0;
     min-height: 0;
     flex: 1 1 auto !important;
@@ -357,7 +373,9 @@
     gap: 10px;
   }
 
-  .bug-management__modal .ant-modal-footer {
+.bug-management__modal .ant-modal-footer,
+
+  .bug-management__modal .shop-modal__footer {
     position: sticky !important;
     bottom: 0 !important;
     z-index: 5 !important;

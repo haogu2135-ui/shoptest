@@ -5,9 +5,9 @@ const pageSource = fs.readFileSync(path.join(__dirname, 'Register.tsx'), 'utf8')
 
 describe('Register type-safety guards', () => {
   it('keeps register-code and submit error handling typed without broad any usage', () => {
-    expect(pageSource).toContain("import type { InputRef } from 'antd/es/input';");
+    expect(pageSource).not.toContain("import type { InputRef } from 'antd/es/input';");
     expect(pageSource).toContain('type RegisterApiErrorData =');
-    expect(pageSource).toContain('const codeInputRef = useRef<InputRef | null>(null);');
+    expect(pageSource).toContain('const codeInputRef = useRef<HTMLInputElement | null>(null);');
     expect(pageSource).toContain('const getRetryAfterSeconds = (error: unknown');
     expect(pageSource).toContain('const registerApiErrorCode = (error: unknown)');
     expect(pageSource).toContain('const isRegisterEmailCodeRequired = (value: unknown)');

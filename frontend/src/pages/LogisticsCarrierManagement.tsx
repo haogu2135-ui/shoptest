@@ -1,6 +1,11 @@
 import { useNavigate } from 'react-router-dom';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Card, Form, Input, InputNumber, message, Modal, Popconfirm, Progress, Select, Space, Table, Tag, Typography } from 'antd';
+import { Alert, Button, Card, Form, message, Progress, Space, Table, Tag, Typography } from 'antd';
+import ShopInput from '../components/ShopInput';
+import ShopPopconfirm from '../components/ShopPopconfirm';
+import ShopSelect from '../components/ShopSelect';
+import ShopInputNumber from '../components/ShopInputNumber';
+import ShopModal from '../components/ShopModal';
 import { CheckCircleOutlined, PlusOutlined, SearchOutlined, WarningOutlined } from '@ant-design/icons';
 import { logisticsCarrierApi } from '../api';
 import { adminApi } from '../api/admin';
@@ -17,7 +22,6 @@ import {
 import './LogisticsCarrierManagement.css';
 
 const { Title, Text } = Typography;
-const mobilePopconfirmClassNames = { root: 'shop-mobile-popup-layer' };
 
 type LogisticsCarrierFormValues = Pick<LogisticsCarrier, 'name' | 'trackingCode' | 'status' | 'sortOrder'>;
 
@@ -280,7 +284,7 @@ const LogisticsCarrierManagement: React.FC = () => {
       <Card className="logistics-carrier-page__intro">
         <Space wrap>
           <Text type="secondary">{t('pages.logisticsCarriers.description')}</Text>
-          <Input
+          <ShopInput
             allowClear
             prefix={<SearchOutlined />}
             value={keyword}
@@ -291,16 +295,14 @@ const LogisticsCarrierManagement: React.FC = () => {
             aria-label={carrierSearchInputLabel}
             title={carrierSearchInputLabel}
           />
-          <Select
+          <ShopSelect
             allowClear
             value={statusFilter}
-            onChange={setStatusFilter}
+            onChange={(value) => setStatusFilter(value || undefined)}
             disabled={carrierActionDisabled}
             placeholder={t('common.status')}
-            className="logistics-carrier-page__statusFilter"
-            classNames={{ popup: { root: 'shop-mobile-popup-layer' } }}
-            getPopupContainer={() => document.body}
-            aria-label={carrierStatusFilterLabel}
+            className="logistics-carrier-page__statusFilter" popupClassName="shop-mobile-popup-layer"
+            ariaLabel={carrierStatusFilterLabel}
             title={carrierStatusFilterLabel}
             options={[
               { value: 'ACTIVE', label: t('pages.logisticsCarriers.active') },
@@ -399,8 +401,7 @@ const LogisticsCarrierManagement: React.FC = () => {
                 <Space>
                   {canWriteCarriers ? <Button size="small" disabled={carrierActionDisabled} aria-label={editActionLabel} title={editActionLabel} onClick={() => openModal(carrier)}>{t('common.edit')}</Button> : null}
                   {canDeleteCarriers ? (
-                    <Popconfirm
-                      classNames={mobilePopconfirmClassNames}
+                    <ShopPopconfirm rootClassName="shop-mobile-popup-layer"
                       title={t('pages.logisticsCarriers.deleteConfirm')}
                       description={carrierName}
                       onConfirm={() => handleDelete(carrier.id)}
@@ -411,7 +412,7 @@ const LogisticsCarrierManagement: React.FC = () => {
                       cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${deleteActionLabel}`, title: `${t('common.cancel')}: ${deleteActionLabel}` }}
                     >
                       <Button size="small" danger disabled={carrierActionDisabled} aria-label={deleteActionLabel} title={deleteActionLabel}>{t('common.delete')}</Button>
-                    </Popconfirm>
+                    </ShopPopconfirm>
                   ) : null}
                 </Space>
               );
@@ -422,31 +423,28 @@ const LogisticsCarrierManagement: React.FC = () => {
         </>
       ) : null}
 
-      <Modal
+      <ShopModal
         className="profile-mobile-safe-modal logistics-carrier-page__editorModal"
         title={editingCarrier ? t('pages.logisticsCarriers.editTitle') : t('pages.logisticsCarriers.addTitle')}
         open={modalOpen}
         onOk={handleSave}
         confirmLoading={saving}
-        onCancel={closeModal}
+        onClose={closeModal}
         okText={t('common.save')}
         cancelText={t('common.cancel')}
         okButtonProps={{ disabled: carrierActionDisabled, 'aria-label': saveCarrierActionLabel, title: saveCarrierActionLabel }}
         cancelButtonProps={{ 'aria-label': cancelCarrierActionLabel, title: cancelCarrierActionLabel }}
-        destroyOnHidden
       >
         <Form form={form} layout="vertical">
 	          <Form.Item name="name" label={t('pages.logisticsCarriers.name')} rules={[{ required: true, message: t('pages.logisticsCarriers.nameRequired') }]}>
-	            <Input placeholder="DHL Express" aria-label={carrierNameInputLabel} title={carrierNameInputLabel} />
+	            <ShopInput placeholder="DHL Express" aria-label={carrierNameInputLabel} title={carrierNameInputLabel} />
 	          </Form.Item>
 	          <Form.Item name="trackingCode" label={t('pages.logisticsCarriers.trackingCode')} rules={[{ required: true, message: t('pages.logisticsCarriers.codeRequired') }]}>
-	            <Input placeholder="100001" aria-label={carrierCodeInputLabel} title={carrierCodeInputLabel} />
+	            <ShopInput placeholder="100001" aria-label={carrierCodeInputLabel} title={carrierCodeInputLabel} />
 	          </Form.Item>
 	          <Form.Item name="status" label={t('common.status')} rules={[{ required: true }]}>
-	            <Select
-	              classNames={{ popup: { root: 'shop-mobile-popup-layer' } }}
-	              getPopupContainer={() => document.body}
-	              aria-label={carrierModalStatusLabel}
+	            <ShopSelect popupClassName="shop-mobile-popup-layer"
+	              ariaLabel={carrierModalStatusLabel}
 	              title={carrierModalStatusLabel}
 	              options={[
 	                { value: 'ACTIVE', label: t('pages.logisticsCarriers.active') },
@@ -455,10 +453,10 @@ const LogisticsCarrierManagement: React.FC = () => {
 	            />
 	          </Form.Item>
 	          <Form.Item name="sortOrder" label={t('pages.logisticsCarriers.sortOrder')}>
-	            <InputNumber min={0} precision={0} className="logistics-carrier-page__sortInput" aria-label={carrierSortInputLabel} title={carrierSortInputLabel} />
+	            <ShopInputNumber min={0} precision={0} className="logistics-carrier-page__sortInput" aria-label={carrierSortInputLabel} title={carrierSortInputLabel} />
 	          </Form.Item>
         </Form>
-      </Modal>
+      </ShopModal>
     </div>
   );
 };

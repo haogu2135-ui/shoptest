@@ -799,7 +799,7 @@ describe('commercial performance contracts', () => {
     const source = readFrontend('pages', 'Cart.tsx');
     expect(source).toContain('ShopPopconfirm');
     expect(source).toContain('cart-page-popconfirm');
-    expect(source).not.toMatch(/(?<!Shop)Popconfirm/);
+    expect(source).not.toMatch(/<Popconfirm\b/);
     expect(source).not.toMatch(/import \{[^}]*\bPopconfirm\b[^}]*\} from 'antd'/);
   });
 
@@ -807,14 +807,14 @@ describe('commercial performance contracts', () => {
   it('keeps HomePetGallery free of static ant Popconfirm tags', () => {
     const source = readFrontend('components', 'HomePetGallery.tsx');
     expect(source).toContain('ShopPopconfirm');
-    expect(source).not.toMatch(/(?<!Shop)Popconfirm/);
+    expect(source).not.toMatch(/<Popconfirm\b/);
   });
 
 
   it('keeps Profile free of static ant Popconfirm tags', () => {
     const source = readFrontend('pages', 'Profile.tsx');
     expect(source).toContain('ShopPopconfirm');
-    expect(source).not.toMatch(/(?<!Shop)Popconfirm/);
+    expect(source).not.toMatch(/<Popconfirm\b/);
     expect(source).not.toMatch(/import \{[^}]*\bPopconfirm\b[^}]*\} from 'antd'/);
   });
 
@@ -834,7 +834,7 @@ describe('commercial performance contracts', () => {
     pages.forEach((page) => {
       const source = readFrontend('pages', page);
       expect(source).toContain('ShopPopconfirm');
-      expect(source).not.toMatch(/(?<!Shop)Popconfirm/);
+      expect(source).not.toMatch(/<Popconfirm\b/);
       expect(source).not.toMatch(/import \{[^}]*\bPopconfirm\b[^}]*\} from 'antd'/);
     });
   });
@@ -1489,6 +1489,13 @@ describe('commercial performance contracts', () => {
   });
 
 
+  it('keeps Navbar free of static ant Badge', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, '../components/Navbar.tsx'), 'utf8');
+    expect(source).toContain('ShopBadge');
+    expect(source).not.toMatch(/import \{[^}]*\bBadge\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<Badge\b/);
+  });
+
   it('keeps Navbar free of static ant Input.Search', () => {
     const source = readFrontend('components', 'Navbar.tsx');
     expect(source).toContain('ShopSearchField');
@@ -1504,5 +1511,673 @@ describe('commercial performance contracts', () => {
     expect(source).not.toMatch(/import \{[^}]*\bInput\b[^}]*\} from 'antd'/);
     expect(source).not.toMatch(/<Input\b/);
   });
+
+
+  it('keeps ProductReview free of static ant Input', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, '../components/ProductReview.tsx'), 'utf8');
+    expect(source).toContain('ShopTextArea');
+    expect(source).not.toMatch(/import \{[^}]*\bInput\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/const \{ TextArea \} = Input|<TextArea\b|<Input\b/);
+  });
+
+  it('keeps ProductDetail free of static ant Input', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, '../pages/ProductDetail.tsx'), 'utf8');
+    expect(source).toContain('ShopInput');
+    expect(source).toContain('ShopTextArea');
+    expect(source).not.toMatch(/import \{[^}]*\bInput\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<Input\b|Input\.TextArea|Input\.Password/);
+  });
+
+  it('keeps CustomerSupportWidget free of static ant Input and Badge', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, '../components/CustomerSupportWidget.tsx'), 'utf8');
+    expect(source).toContain('ShopTextArea');
+    expect(source).toContain('ShopBadge');
+    expect(source).not.toMatch(/import \{[^}]*\bInput\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/import \{[^}]*\bBadge\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<Input\b|Input\.TextArea|<Badge\b/);
+  });
+
+  it('keeps CouponCenter free of static ant Input', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, '../pages/CouponCenter.tsx'), 'utf8');
+    expect(source).toContain('ShopInput');
+    expect(source).not.toMatch(/import \{[^}]*\bInput\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<Input\b/);
+  });
+
+  it('keeps PaymentInstructions free of static ant Input', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, '../pages/PaymentInstructions.tsx'), 'utf8');
+    expect(source).toContain('ShopInput');
+    expect(source).not.toMatch(/import \{[^}]*\bInput\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<Input\b/);
+  });
+
+  it('keeps BrowsingHistory free of static ant Input', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, '../pages/BrowsingHistory.tsx'), 'utf8');
+    expect(source).toContain('ShopInput');
+    expect(source).not.toMatch(/import \{[^}]*\bInput\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<Input\b/);
+  });
+
+  it('keeps SeventeenTrackWidget free of static ant Input', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, '../components/SeventeenTrackWidget.tsx'), 'utf8');
+    expect(source).toContain('ShopInput');
+    expect(source).not.toMatch(/import \{[^}]*\bInput\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<Input\b/);
+  });
+
+  it('keeps ProductList free of static ant Input.Search', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, '../pages/ProductList.tsx'), 'utf8');
+    expect(source).toContain('ShopSearchField');
+    expect(source).not.toMatch(/import \{[^}]*\bInput\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/Input\.Search|<Input\b/);
+  });
+
+  it('keeps ConfigCenter free of static ant Input', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, '../pages/ConfigCenter.tsx'), 'utf8');
+    expect(source).toContain('ShopInput');
+    expect(source).toContain('ShopTextArea');
+    expect(source).not.toMatch(/import \{[^}]*\bInput\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/const \{ TextArea \} = Input|<TextArea\b|<Input\b/);
+  });
+
+  it('keeps ProductRichDetailEditor free of static ant Input', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, '../components/ProductRichDetailEditor.tsx'), 'utf8');
+    expect(source).toContain('ShopInput');
+    expect(source).toContain('ShopTextArea');
+    expect(source).not.toMatch(/import \{[^}]*\bInput\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/const \{ TextArea \} = Input|<TextArea\b|<Input\b/);
+  });
+
+  it('keeps OrderManagement free of static ant Input', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, '../pages/OrderManagement.tsx'), 'utf8');
+    expect(source).toContain('ShopInput');
+    expect(source).toContain('ShopTextArea');
+    expect(source).toContain('ShopSearchField');
+    expect(source).not.toMatch(/import \{[^}]*\bInput\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<Input\b|Input\.Search|Input\.TextArea/);
+  });
+
+  it('keeps SupportManagement free of static ant Input', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, '../pages/SupportManagement.tsx'), 'utf8');
+    expect(source).toContain('ShopSearchField');
+    expect(source).toContain('ShopTextArea');
+    expect(source).not.toMatch(/import \{[^}]*\bInput\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<Input\b|Input\.Search|Input\.TextArea/);
+  });
+
+  it('keeps ProductQuestionManagement free of static ant Input', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, '../pages/ProductQuestionManagement.tsx'), 'utf8');
+    expect(source).toContain('ShopSearchField');
+    expect(source).toContain('ShopTextArea');
+    expect(source).not.toMatch(/import \{[^}]*\bInput\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<Input\b|Input\.Search|Input\.TextArea/);
+  });
+
+  it('keeps BrandManagement free of static ant Input', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, '../pages/BrandManagement.tsx'), 'utf8');
+    expect(source).toContain('ShopInput');
+    expect(source).toContain('ShopTextArea');
+    expect(source).toContain('ShopInputNumber');
+    expect(source).not.toMatch(/import \{[^}]*\bInput\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/const \{ TextArea \} = Input|<TextArea\b|<Input\b/);
+    expect(source).not.toMatch(/import \{[^}]*\bInputNumber\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<InputNumber\b/);
+  });
+
+  it('keeps NotificationManagement free of static ant Input', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, '../pages/NotificationManagement.tsx'), 'utf8');
+    expect(source).toContain('ShopInput');
+    expect(source).toContain('ShopTextArea');
+    expect(source).not.toMatch(/import \{[^}]*\bInput\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/const \{ TextArea \} = Input|<TextArea\b|<Input\b/);
+  });
+
+  it('keeps AnnouncementManagement free of static ant Input', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, '../pages/AnnouncementManagement.tsx'), 'utf8');
+    expect(source).toContain('ShopInput');
+    expect(source).toContain('ShopTextArea');
+    expect(source).toContain('ShopInputNumber');
+    expect(source).not.toMatch(/import \{[^}]*\bInput\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/const \{ TextArea \} = Input|<TextArea\b|<Input\b/);
+    expect(source).not.toMatch(/import \{[^}]*\bInputNumber\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<InputNumber\b/);
+  });
+
+  it('keeps UserManagement free of static ant Input', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, '../pages/UserManagement.tsx'), 'utf8');
+    expect(source).toContain('ShopInput');
+    expect(source).toContain('ShopTextArea');
+    expect(source).not.toMatch(/import \{[^}]*\bInput\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<Input\b|Input\.TextArea/);
+  });
+
+  it('keeps CouponManagement free of static ant Input', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, '../pages/CouponManagement.tsx'), 'utf8');
+    expect(source).toContain('ShopInput');
+    expect(source).toContain('ShopTextArea');
+    expect(source).toContain('ShopInputNumber');
+    expect(source).not.toMatch(/import \{[^}]*\bInput\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<Input\b|Input\.TextArea/);
+    expect(source).not.toMatch(/import \{[^}]*\bInputNumber\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<InputNumber\b/);
+  });
+
+  it('keeps ReviewManagement free of static ant Input', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, '../pages/ReviewManagement.tsx'), 'utf8');
+    expect(source).toContain('ShopInput');
+    expect(source).toContain('ShopTextArea');
+    expect(source).not.toMatch(/import \{[^}]*\bInput\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<Input\b|Input\.TextArea/);
+  });
+
+  it('keeps LogisticsCarrierManagement free of static ant Input', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, '../pages/LogisticsCarrierManagement.tsx'), 'utf8');
+    expect(source).toContain('ShopInput');
+    expect(source).toContain('ShopInputNumber');
+    expect(source).not.toMatch(/import \{[^}]*\bInput\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<Input\b/);
+    expect(source).not.toMatch(/import \{[^}]*\bInputNumber\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<InputNumber\b/);
+  });
+
+  it('keeps PermissionManagement free of static ant Input', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, '../pages/PermissionManagement.tsx'), 'utf8');
+    expect(source).toContain('ShopInput');
+    expect(source).not.toMatch(/import \{[^}]*\bInput\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<Input\b/);
+  });
+
+  it('keeps ProductManagement free of static ant Input', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, '../pages/ProductManagement.tsx'), 'utf8');
+    expect(source).toContain('ShopInput');
+    expect(source).toContain('ShopTextArea');
+    expect(source).toContain('ShopInputNumber');
+    expect(source).not.toMatch(/import \{[^}]*\bInput\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<Input\b|Input\.TextArea|const \{ TextArea \} = Input|<TextArea\b/);
+    expect(source).not.toMatch(/import \{[^}]*\bInputNumber\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<InputNumber\b/);
+  });
+
+  it('keeps CategoryManagement free of static ant Input', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, '../pages/CategoryManagement.tsx'), 'utf8');
+    expect(source).toContain('ShopInput');
+    expect(source).toContain('ShopTextArea');
+    expect(source).not.toMatch(/import \{[^}]*\bInput\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/const \{ TextArea \} = Input|<TextArea\b|<Input\b/);
+  });
+
+  it('keeps BugManagement free of static ant Input', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, '../pages/BugManagement.tsx'), 'utf8');
+    expect(source).toContain('ShopInput');
+    expect(source).toContain('ShopTextArea');
+    expect(source).not.toMatch(/import \{[^}]*\bInput\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/const \{ TextArea \} = Input|<TextArea\b|<Input\b/);
+  });
+
+  it('keeps AlertManagement free of static ant Input', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, '../pages/AlertManagement.tsx'), 'utf8');
+    expect(source).toContain('ShopInput');
+    expect(source).toContain('ShopInputNumber');
+    expect(source).not.toMatch(/import \{[^}]*\bInput\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<Input\b/);
+    expect(source).not.toMatch(/import \{[^}]*\bInputNumber\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<InputNumber\b/);
+  });
+
+  it('keeps LogManagement free of static ant Input', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, '../pages/LogManagement.tsx'), 'utf8');
+    expect(source).toContain('ShopInput');
+    expect(source).not.toMatch(/import \{[^}]*\bInput\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<Input\b/);
+  });
+
+  it('keeps SecurityAuditLogManagement free of static ant Input', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, '../pages/SecurityAuditLogManagement.tsx'), 'utf8');
+    expect(source).toContain('ShopInput');
+    expect(source).toContain('ShopInputNumber');
+    expect(source).not.toMatch(/import \{[^}]*\bInput\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<Input\b/);
+    expect(source).not.toMatch(/import \{[^}]*\bInputNumber\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<InputNumber\b/);
+  });
+
+  it('keeps IpBlacklistManagement free of static ant Input', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, '../pages/IpBlacklistManagement.tsx'), 'utf8');
+    expect(source).toContain('ShopInput');
+    expect(source).toContain('ShopTextArea');
+    expect(source).toContain('ShopInputNumber');
+    expect(source).not.toMatch(/import \{[^}]*\bInput\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<Input\b|Input\.TextArea/);
+    expect(source).not.toMatch(/import \{[^}]*\bInputNumber\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<InputNumber\b/);
+  });
+
+  it('keeps PetGalleryManagement free of static ant Input', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, '../pages/PetGalleryManagement.tsx'), 'utf8');
+    expect(source).toContain('ShopInput');
+    expect(source).not.toMatch(/import \{[^}]*\bInput\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<Input\b/);
+  });
+
+  it('keeps RegistryManagement free of static ant Input', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, '../pages/RegistryManagement.tsx'), 'utf8');
+    expect(source).toContain('ShopInput');
+    expect(source).not.toMatch(/import \{[^}]*\bInput\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<Input\b/);
+  });
+
+
+
+
+  it('keeps OrderTracking free of static ant Input', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, '../pages/OrderTracking.tsx'), 'utf8');
+    expect(source).toContain('ShopInput');
+    expect(source).toContain('ShopTextArea');
+    expect(source).not.toMatch(/import \{[^}]*\bInput\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/import type \{ InputRef \} from 'antd\/es\/input'/);
+    expect(source).not.toMatch(/<Input\b|Input\.TextArea|Input\.Password/);
+    expect(source).toContain('useRef<HTMLInputElement | null>(null)');
+  });
+
+  it('keeps CartDrawer free of static ant InputNumber', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, '../components/CartDrawer.tsx'), 'utf8');
+    expect(source).toContain('ShopInputNumber');
+    expect(source).not.toMatch(/import \{[^}]*\bInputNumber\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<InputNumber\b/);
+  });
+
+  it('keeps Profile free of static ant Input', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, '../pages/Profile.tsx'), 'utf8');
+    expect(source).toContain('ShopInput');
+    expect(source).toContain('ShopPasswordInput');
+    expect(source).toContain('ShopTextArea');
+    expect(source).toContain('ShopInputNumber');
+    expect(source).toContain('ShopSearchField');
+    expect(source).not.toMatch(/import \{[^}]*\bInput\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/import \{[^}]*\bInputNumber\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<Input\b|Input\.TextArea|Input\.Password|Input\.Search|<InputNumber\b/);
+  });
+
+  it('keeps Checkout free of static ant Input', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, '../pages/Checkout.tsx'), 'utf8');
+    expect(source).toContain('ShopInput');
+    expect(source).toContain('ShopTextArea');
+    expect(source).not.toMatch(/import \{[^}]*\bInput\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<Input\b|Input\.TextArea|Input\.Password/);
+  });
+
+  it('keeps Login free of static ant Input', () => {
+    const source = readFrontend('pages', 'Login.tsx');
+    expect(source).toContain('ShopInput');
+    expect(source).toContain('ShopPasswordInput');
+    expect(source).not.toMatch(/import \{[^}]*\bInput\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<Input\b|Input\.Password/);
+  });
+
+  it('keeps Register free of static ant Input', () => {
+    const source = readFrontend('pages', 'Register.tsx');
+    expect(source).toContain('ShopInput');
+    expect(source).toContain('ShopPasswordInput');
+    expect(source).not.toMatch(/import \{[^}]*\bInput\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<Input\b|Input\.Password/);
+  });
+
+  it('keeps ForgotPassword free of static ant Input', () => {
+    const source = readFrontend('pages', 'ForgotPassword.tsx');
+    expect(source).toContain('ShopInput');
+    expect(source).toContain('ShopPasswordInput');
+    expect(source).not.toMatch(/import \{[^}]*\bInput\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<Input\b|Input\.Password/);
+  });
+
+
+  it('keeps AlertManagement free of static ant Select', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, '../pages/AlertManagement.tsx'), 'utf8');
+    expect(source).toContain('ShopSelect');
+    expect(source).not.toMatch(/import \{[^}]*\bSelect\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<Select\b/);
+  });
+
+  it('keeps AnnouncementManagement free of static ant Select', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, '../pages/AnnouncementManagement.tsx'), 'utf8');
+    expect(source).toContain('ShopSelect');
+    expect(source).not.toMatch(/import \{[^}]*\bSelect\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<Select\b/);
+  });
+
+  it('keeps BrandManagement free of static ant Select', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, '../pages/BrandManagement.tsx'), 'utf8');
+    expect(source).toContain('ShopSelect');
+    expect(source).not.toMatch(/import \{[^}]*\bSelect\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<Select\b/);
+  });
+
+  it('keeps BugManagement free of static ant Select', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, '../pages/BugManagement.tsx'), 'utf8');
+    expect(source).toContain('ShopSelect');
+    expect(source).not.toMatch(/import \{[^}]*\bSelect\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<Select\b/);
+  });
+
+  it('keeps IpBlacklistManagement free of static ant Select', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, '../pages/IpBlacklistManagement.tsx'), 'utf8');
+    expect(source).toContain('ShopSelect');
+    expect(source).not.toMatch(/import \{[^}]*\bSelect\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<Select\b/);
+  });
+
+  it('keeps LogManagement free of static ant Select', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, '../pages/LogManagement.tsx'), 'utf8');
+    expect(source).toContain('ShopSelect');
+    expect(source).not.toMatch(/import \{[^}]*\bSelect\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<Select\b/);
+  });
+
+  it('keeps LogisticsCarrierManagement free of static ant Select', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, '../pages/LogisticsCarrierManagement.tsx'), 'utf8');
+    expect(source).toContain('ShopSelect');
+    expect(source).not.toMatch(/import \{[^}]*\bSelect\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<Select\b/);
+  });
+
+  it('keeps NotificationManagement free of static ant Select', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, '../pages/NotificationManagement.tsx'), 'utf8');
+    expect(source).toContain('ShopSelect');
+    expect(source).not.toMatch(/import \{[^}]*\bSelect\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<Select\b/);
+  });
+
+  it('keeps PetGalleryManagement free of static ant Select', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, '../pages/PetGalleryManagement.tsx'), 'utf8');
+    expect(source).toContain('ShopSelect');
+    expect(source).not.toMatch(/import \{[^}]*\bSelect\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<Select\b/);
+  });
+
+  it('keeps ProductQuestionManagement free of static ant Select', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, '../pages/ProductQuestionManagement.tsx'), 'utf8');
+    expect(source).toContain('ShopSelect');
+    expect(source).not.toMatch(/import \{[^}]*\bSelect\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<Select\b/);
+  });
+
+  it('keeps ReviewManagement free of static ant Select', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, '../pages/ReviewManagement.tsx'), 'utf8');
+    expect(source).toContain('ShopSelect');
+    expect(source).not.toMatch(/import \{[^}]*\bSelect\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<Select\b/);
+  });
+
+  it('keeps SecurityAuditLogManagement free of static ant Select', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, '../pages/SecurityAuditLogManagement.tsx'), 'utf8');
+    expect(source).toContain('ShopSelect');
+    expect(source).not.toMatch(/import \{[^}]*\bSelect\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<Select\b/);
+  });
+
+  it('keeps SupportManagement free of static ant Select', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, '../pages/SupportManagement.tsx'), 'utf8');
+    expect(source).toContain('ShopSelect');
+    expect(source).not.toMatch(/import \{[^}]*\bSelect\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<Select\b/);
+  });
+
+  it('keeps UserManagement free of static ant Select', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, '../pages/UserManagement.tsx'), 'utf8');
+    expect(source).toContain('ShopSelect');
+    expect(source).not.toMatch(/import \{[^}]*\bSelect\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<Select\b/);
+  });
+
+
+  it('keeps CouponManagement on ShopSelect for non-search filters', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, '../pages/CouponManagement.tsx'), 'utf8');
+    expect(source).toContain('ShopSelect');
+  });
+
+  it('keeps ProductManagement on ShopSelect for non-search filters', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, '../pages/ProductManagement.tsx'), 'utf8');
+    expect(source).toContain('ShopSelect');
+  });
+
+  it('keeps OrderManagement on ShopSelect for non-search filters', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, '../pages/OrderManagement.tsx'), 'utf8');
+    expect(source).toContain('ShopSelect');
+  });
+
+
+  it('keeps AlertManagement free of static ant Popconfirm', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, '../pages/AlertManagement.tsx'), 'utf8');
+    expect(source).toContain('ShopPopconfirm');
+    expect(source).not.toMatch(/<Popconfirm\b/);
+    expect(source).not.toMatch(/import \{[^}]*\bPopconfirm\b[^}]*\} from 'antd'/);
+  });
+
+
+  it('keeps AnnouncementManagement free of static ant Popconfirm', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, '../pages/AnnouncementManagement.tsx'), 'utf8');
+    expect(source).toContain('ShopPopconfirm');
+    expect(source).not.toMatch(/<Popconfirm\b/);
+    expect(source).not.toMatch(/import \{[^}]*\bPopconfirm\b[^}]*\} from 'antd'/);
+  });
+
+
+  it('keeps BrandManagement free of static ant Popconfirm', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, '../pages/BrandManagement.tsx'), 'utf8');
+    expect(source).toContain('ShopPopconfirm');
+    expect(source).not.toMatch(/<Popconfirm\b/);
+    expect(source).not.toMatch(/import \{[^}]*\bPopconfirm\b[^}]*\} from 'antd'/);
+  });
+
+
+  it('keeps CategoryManagement free of static ant Popconfirm', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, '../pages/CategoryManagement.tsx'), 'utf8');
+    expect(source).toContain('ShopPopconfirm');
+    expect(source).not.toMatch(/<Popconfirm\b/);
+    expect(source).not.toMatch(/import \{[^}]*\bPopconfirm\b[^}]*\} from 'antd'/);
+  });
+
+
+  it('keeps CouponManagement free of static ant Popconfirm', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, '../pages/CouponManagement.tsx'), 'utf8');
+    expect(source).toContain('ShopPopconfirm');
+    expect(source).not.toMatch(/<Popconfirm\b/);
+    expect(source).not.toMatch(/import \{[^}]*\bPopconfirm\b[^}]*\} from 'antd'/);
+  });
+
+
+  it('keeps IpBlacklistManagement free of static ant Popconfirm', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, '../pages/IpBlacklistManagement.tsx'), 'utf8');
+    expect(source).toContain('ShopPopconfirm');
+    expect(source).not.toMatch(/<Popconfirm\b/);
+    expect(source).not.toMatch(/import \{[^}]*\bPopconfirm\b[^}]*\} from 'antd'/);
+  });
+
+
+  it('keeps LogManagement free of static ant Popconfirm', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, '../pages/LogManagement.tsx'), 'utf8');
+    expect(source).toContain('ShopPopconfirm');
+    expect(source).not.toMatch(/<Popconfirm\b/);
+    expect(source).not.toMatch(/import \{[^}]*\bPopconfirm\b[^}]*\} from 'antd'/);
+  });
+
+
+  it('keeps LogisticsCarrierManagement free of static ant Popconfirm', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, '../pages/LogisticsCarrierManagement.tsx'), 'utf8');
+    expect(source).toContain('ShopPopconfirm');
+    expect(source).not.toMatch(/<Popconfirm\b/);
+    expect(source).not.toMatch(/import \{[^}]*\bPopconfirm\b[^}]*\} from 'antd'/);
+  });
+
+
+  it('keeps NotificationManagement free of static ant Popconfirm', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, '../pages/NotificationManagement.tsx'), 'utf8');
+    expect(source).toContain('ShopPopconfirm');
+    expect(source).not.toMatch(/<Popconfirm\b/);
+    expect(source).not.toMatch(/import \{[^}]*\bPopconfirm\b[^}]*\} from 'antd'/);
+  });
+
+
+  it('keeps OrderManagement free of static ant Popconfirm', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, '../pages/OrderManagement.tsx'), 'utf8');
+    expect(source).toContain('ShopPopconfirm');
+    expect(source).not.toMatch(/<Popconfirm\b/);
+    expect(source).not.toMatch(/import \{[^}]*\bPopconfirm\b[^}]*\} from 'antd'/);
+  });
+
+
+  it('keeps PetGalleryManagement free of static ant Popconfirm', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, '../pages/PetGalleryManagement.tsx'), 'utf8');
+    expect(source).toContain('ShopPopconfirm');
+    expect(source).not.toMatch(/<Popconfirm\b/);
+    expect(source).not.toMatch(/import \{[^}]*\bPopconfirm\b[^}]*\} from 'antd'/);
+  });
+
+
+  it('keeps ProductManagement free of static ant Popconfirm', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, '../pages/ProductManagement.tsx'), 'utf8');
+    expect(source).toContain('ShopPopconfirm');
+    expect(source).not.toMatch(/<Popconfirm\b/);
+    expect(source).not.toMatch(/import \{[^}]*\bPopconfirm\b[^}]*\} from 'antd'/);
+  });
+
+
+  it('keeps ProductQuestionManagement free of static ant Popconfirm', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, '../pages/ProductQuestionManagement.tsx'), 'utf8');
+    expect(source).toContain('ShopPopconfirm');
+    expect(source).not.toMatch(/<Popconfirm\b/);
+    expect(source).not.toMatch(/import \{[^}]*\bPopconfirm\b[^}]*\} from 'antd'/);
+  });
+
+
+  it('keeps ReviewManagement free of static ant Popconfirm', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, '../pages/ReviewManagement.tsx'), 'utf8');
+    expect(source).toContain('ShopPopconfirm');
+    expect(source).not.toMatch(/<Popconfirm\b/);
+    expect(source).not.toMatch(/import \{[^}]*\bPopconfirm\b[^}]*\} from 'antd'/);
+  });
+
+
+  it('keeps SecurityAuditLogManagement free of static ant Popconfirm', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, '../pages/SecurityAuditLogManagement.tsx'), 'utf8');
+    expect(source).toContain('ShopPopconfirm');
+    expect(source).not.toMatch(/<Popconfirm\b/);
+    expect(source).not.toMatch(/import \{[^}]*\bPopconfirm\b[^}]*\} from 'antd'/);
+  });
+
+
+  it('keeps SupportManagement free of static ant Popconfirm', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, '../pages/SupportManagement.tsx'), 'utf8');
+    expect(source).toContain('ShopPopconfirm');
+    expect(source).not.toMatch(/<Popconfirm\b/);
+    expect(source).not.toMatch(/import \{[^}]*\bPopconfirm\b[^}]*\} from 'antd'/);
+  });
+
+
+  it('keeps TrafficControl free of static ant Popconfirm', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, '../pages/TrafficControl.tsx'), 'utf8');
+    expect(source).toContain('ShopPopconfirm');
+    expect(source).not.toMatch(/<Popconfirm\b/);
+    expect(source).not.toMatch(/import \{[^}]*\bPopconfirm\b[^}]*\} from 'antd'/);
+  });
+
+
+  it('keeps UserManagement free of static ant Popconfirm', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, '../pages/UserManagement.tsx'), 'utf8');
+    expect(source).toContain('ShopPopconfirm');
+    expect(source).not.toMatch(/<Popconfirm\b/);
+    expect(source).not.toMatch(/import \{[^}]*\bPopconfirm\b[^}]*\} from 'antd'/);
+  });
+
+
+  it('keeps ConfigCenter free of static ant Popconfirm', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, '../pages/ConfigCenter.tsx'), 'utf8');
+    expect(source).toContain('ShopPopconfirm');
+    expect(source).not.toMatch(/<Popconfirm\b/);
+    expect(source).not.toMatch(/import \{[^}]*\bPopconfirm\b[^}]*\} from 'antd'/);
+  });
+
+
+  it('keeps admin management pages free of static ant Modal tags', () => {
+    const pages = [
+      'AnnouncementManagement',
+      'BrandManagement',
+      'BugManagement',
+      'CategoryManagement',
+      'CouponManagement',
+      'IpBlacklistManagement',
+      'LogisticsCarrierManagement',
+      'OrderManagement',
+      'PermissionManagement',
+      'ProductManagement',
+      'ProductQuestionManagement',
+      'ReviewManagement',
+      'SupportManagement',
+      'UserManagement',
+    ];
+    pages.forEach((page) => {
+      const source = fs.readFileSync(path.resolve(__dirname, `../pages/${page}.tsx`), 'utf8');
+      expect(source).toContain('ShopModal');
+      expect(source).not.toMatch(/<Modal\b/);
+      expect(source).not.toMatch(/<\/Modal>/);
+    });
+  });
+
+
+
+  it('keeps admin pages free of Modal.confirm and Modal static dialogs', () => {
+    const pages = [
+      'UserManagement',
+      'OrderManagement',
+      'CouponManagement',
+      'ProductManagement',
+    ];
+    pages.forEach((page) => {
+      const source = fs.readFileSync(path.resolve(__dirname, `../pages/${page}.tsx`), 'utf8');
+      expect(source).toContain('ShopConfirm');
+      expect(source).not.toContain('Modal.confirm');
+      expect(source).not.toContain('Modal.warning');
+      expect(source).not.toContain('Modal.success');
+      expect(source).not.toMatch(/import \{[^}]*\bModal\b[^}]*\} from 'antd'/);
+    });
+  });
+
+
+
+  it('keeps OrderManagement free of static ant Select for carriers', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, '../pages/OrderManagement.tsx'), 'utf8');
+    expect(source).toContain('ShopSelect');
+    expect(source).toContain('showSearch');
+    expect(source).toContain('order-management-page__carrierSelect');
+    expect(source).not.toMatch(/<Select\b/);
+    expect(source).not.toMatch(/import \{[^}]*\bSelect\b[^}]*\} from 'antd'/);
+  });
+
+  it('keeps ProductManagement brand field on searchable ShopSelect', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, '../pages/ProductManagement.tsx'), 'utf8');
+    expect(source).toContain('ShopSelect');
+    expect(source).toContain('showSearch');
+    expect(source).toContain("name=\"brand\"");
+    // residual tags Select may remain until multi densify
+    expect(source).toMatch(/name=\"brand\"[\s\S]*?ShopSelect/);
+  });
+
+
+
+  it('keeps admin multi-selects on ShopMultiSelect without residual ant Select', () => {
+    const pages = ['ProductManagement', 'CouponManagement', 'OrderManagement'];
+    pages.forEach((page) => {
+      const source = fs.readFileSync(path.resolve(__dirname, `../pages/${page}.tsx`), 'utf8');
+      expect(source).not.toMatch(/<Select\b/);
+      expect(source).not.toMatch(/import \{[^}]*\bSelect\b[^}]*\} from 'antd'/);
+    });
+    const product = fs.readFileSync(path.resolve(__dirname, '../pages/ProductManagement.tsx'), 'utf8');
+    expect(product).toContain('ShopMultiSelect');
+    expect(product).toContain('mode="tags"');
+    const coupon = fs.readFileSync(path.resolve(__dirname, '../pages/CouponManagement.tsx'), 'utf8');
+    expect(coupon).toContain('ShopMultiSelect');
+    expect(coupon).toContain('filterOption={false}');
+  });
+
 
 });

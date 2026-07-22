@@ -1,6 +1,10 @@
 import { useNavigate } from 'react-router-dom';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Table, Button, Popconfirm, Rate, message, Typography, Divider, Input, Modal, Select, Space, Tag } from 'antd';
+import { Alert, Table, Button, Rate, message, Typography, Divider, Space, Tag } from 'antd';
+import ShopInput, { ShopTextArea } from '../components/ShopInput';
+import ShopPopconfirm from '../components/ShopPopconfirm';
+import ShopSelect from '../components/ShopSelect';
+import ShopModal from '../components/ShopModal';
 import { DeleteOutlined, EyeInvisibleOutlined, CheckOutlined, MessageOutlined, SearchOutlined, StarOutlined, WarningOutlined } from '@ant-design/icons';
 import { adminApi } from '../api/admin';
 import type { Review } from '../types';
@@ -21,7 +25,6 @@ import './ReviewManagement.css';
 const { Title, Paragraph } = Typography;
 const DEFAULT_PAGE_SIZE = 20;
 const REVIEW_STATUS_KEYS = new Set(['PENDING', 'APPROVED', 'HIDDEN']);
-const mobilePopconfirmClassNames = { root: 'shop-mobile-popup-layer' };
 
 const ReviewManagement: React.FC = () => {
   const navigate = useNavigate();
@@ -361,8 +364,7 @@ const ReviewManagement: React.FC = () => {
         const deleteActionLabel = `${t('common.delete')}: ${reviewLabel}`;
         const actions = [
           canModerateReviews && (record.status || 'PENDING') !== 'APPROVED' ? (
-            <Popconfirm
-              classNames={mobilePopconfirmClassNames}
+            <ShopPopconfirm rootClassName="shop-mobile-popup-layer"
               key="approve"
               title={t('pages.adminReviews.approveConfirm', { review: reviewLabel })}
               onConfirm={() => handleStatus(record, 'APPROVED')}
@@ -374,11 +376,10 @@ const ReviewManagement: React.FC = () => {
               <Button size="small" icon={<CheckOutlined />} aria-label={approveActionLabel} title={approveActionLabel} disabled={actionsDisabledByStaleData}>
                 {t('pages.adminReviews.approve')}
               </Button>
-            </Popconfirm>
+            </ShopPopconfirm>
           ) : null,
           canModerateReviews && (record.status || 'PENDING') !== 'HIDDEN' ? (
-            <Popconfirm
-              classNames={mobilePopconfirmClassNames}
+            <ShopPopconfirm rootClassName="shop-mobile-popup-layer"
               key="hide"
               title={t('pages.adminReviews.hideConfirm', { review: reviewLabel })}
               onConfirm={() => handleStatus(record, 'HIDDEN')}
@@ -390,7 +391,7 @@ const ReviewManagement: React.FC = () => {
               <Button size="small" icon={<EyeInvisibleOutlined />} aria-label={hideActionLabel} title={hideActionLabel} disabled={actionsDisabledByStaleData}>
                 {t('pages.adminReviews.hide')}
               </Button>
-            </Popconfirm>
+            </ShopPopconfirm>
           ) : null,
           canReplyReviews ? (
             <Button key="reply" size="small" style={{ marginRight: 8 }} aria-label={replyActionLabel} title={replyActionLabel} onClick={() => openReply(record)} disabled={actionsDisabledByStaleData}>
@@ -398,8 +399,7 @@ const ReviewManagement: React.FC = () => {
             </Button>
           ) : null,
           canDeleteReviews ? (
-            <Popconfirm
-              classNames={mobilePopconfirmClassNames}
+            <ShopPopconfirm rootClassName="shop-mobile-popup-layer"
               key="delete"
               title={t('pages.adminReviews.deleteConfirm')}
               description={reviewLabel}
@@ -410,7 +410,7 @@ const ReviewManagement: React.FC = () => {
               cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${deleteActionLabel}`, title: `${t('common.cancel')}: ${deleteActionLabel}` }}
             >
               <Button size="small" danger icon={<DeleteOutlined />} aria-label={deleteActionLabel} title={deleteActionLabel} disabled={actionsDisabledByStaleData}>{t('common.delete')}</Button>
-            </Popconfirm>
+            </ShopPopconfirm>
           ) : null,
         ].filter(Boolean);
         return actions.length ? <Space size="small" wrap>{actions}</Space> : '-';
@@ -452,7 +452,7 @@ const ReviewManagement: React.FC = () => {
         </div>
       </section>
       <Space className="review-management-page__toolbar" wrap>
-        <Input
+        <ShopInput
           allowClear
           prefix={<SearchOutlined />}
           value={keyword}
@@ -462,15 +462,13 @@ const ReviewManagement: React.FC = () => {
           aria-label={reviewKeywordInputLabel}
           title={reviewKeywordInputLabel}
         />
-        <Select
+        <ShopSelect
           allowClear
           placeholder={t('pages.adminReviews.statusFilter')}
           className="review-management-page__statusFilter"
           value={statusFilter}
-          onChange={setStatusFilter}
-          classNames={{ popup: { root: 'shop-mobile-popup-layer' } }}
-          getPopupContainer={() => document.body}
-          aria-label={reviewStatusFilterLabel}
+          onChange={(value) => setStatusFilter(value || undefined)} popupClassName="shop-mobile-popup-layer"
+          ariaLabel={reviewStatusFilterLabel}
           title={reviewStatusFilterLabel}
           options={[
             { value: 'PENDING', label: t('pages.adminReviews.status.PENDING') },
@@ -535,10 +533,10 @@ const ReviewManagement: React.FC = () => {
         size="middle"
         scroll={{ x: 1730 }}
       />
-      <Modal
+      <ShopModal
         className="profile-mobile-safe-modal review-management-page__replyModal"
         open={!!replyTarget}
-        onCancel={closeReplyModal}
+        onClose={closeReplyModal}
         onOk={handleReply}
         okText={t('pages.adminReviews.replyAction')}
         cancelText={t('common.cancel')}
@@ -546,9 +544,8 @@ const ReviewManagement: React.FC = () => {
         cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${replySubmitActionLabel}`, title: `${t('common.cancel')}: ${replySubmitActionLabel}` }}
         confirmLoading={replying}
         title={t('pages.adminReviews.replyAction')}
-        destroyOnHidden
       >
-        <Input.TextArea
+        <ShopTextArea
           rows={5}
           value={replyText}
           onChange={(e) => setReplyText(e.target.value)}
@@ -556,7 +553,7 @@ const ReviewManagement: React.FC = () => {
           aria-label={replyInputLabel}
           title={replyInputLabel}
         />
-      </Modal>
+      </ShopModal>
     </div>
   );
 };

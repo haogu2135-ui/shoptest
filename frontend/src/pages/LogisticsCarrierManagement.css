@@ -340,7 +340,9 @@
     box-sizing: border-box;
   }
 
-  .logistics-carrier-page__editorModal .ant-modal-content {
+.logistics-carrier-page__editorModal .ant-modal-content,
+
+  .logistics-carrier-page__editorModal .shop-modal__content {
     max-height: calc(100dvh - 18px);
     display: flex;
     flex-direction: column;
@@ -348,13 +350,23 @@
     border-radius: 16px;
   }
 
-  .logistics-carrier-page__editorModal .ant-modal-header,
+.logistics-carrier-page__editorModal .ant-modal-header,
+
   .logistics-carrier-page__editorModal .ant-modal-body,
-  .logistics-carrier-page__editorModal .ant-modal-footer {
+
+  .logistics-carrier-page__editorModal .ant-modal-footer,
+
+  .logistics-carrier-page__editorModal .shop-modal__header,
+
+  .logistics-carrier-page__editorModal .shop-modal__body,
+
+  .logistics-carrier-page__editorModal .shop-modal__footer {
     padding-inline: 12px;
   }
 
-  .logistics-carrier-page__editorModal .ant-modal-body {
+.logistics-carrier-page__editorModal .ant-modal-body,
+
+  .logistics-carrier-page__editorModal .shop-modal__body {
     min-width: 0;
     overflow-y: auto;
     overscroll-behavior: contain;
@@ -371,7 +383,9 @@
     max-width: 100%;
   }
 
-  .logistics-carrier-page__editorModal .ant-modal-footer {
+.logistics-carrier-page__editorModal .ant-modal-footer,
+
+  .logistics-carrier-page__editorModal .shop-modal__footer {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
@@ -379,7 +393,9 @@
     padding-bottom: calc(12px + env(safe-area-inset-bottom));
   }
 
-  .logistics-carrier-page__editorModal .ant-modal-footer .ant-btn {
+.logistics-carrier-page__editorModal .ant-modal-footer .ant-btn,
+
+  .logistics-carrier-page__editorModal .shop-modal__footer .ant-btn {
     flex: 1 1 128px;
     min-height: 38px;
     margin-inline-start: 0;
@@ -474,7 +490,9 @@
     -webkit-overflow-scrolling: touch;
   }
 
-  .logistics-carrier-page__editorModal .ant-modal-footer {
+.logistics-carrier-page__editorModal .ant-modal-footer,
+
+  .logistics-carrier-page__editorModal .shop-modal__footer {
     position: sticky;
     bottom: 0;
     background: rgba(255, 255, 255, 0.98);
@@ -489,7 +507,8 @@
     max-width: calc(100vw - 10px);
   }
 
-  .logistics-carrier-page__editorModal .ant-modal-footer .ant-btn {
+  .logistics-carrier-page__editorModal .ant-modal-footer .ant-btn,
+  .logistics-carrier-page__editorModal .shop-modal__footer .ant-btn {
     flex-basis: 100%;
   }
 }
@@ -503,7 +522,8 @@
   .logistics-carrier-page__editorModal .ant-modal-footer .ant-btn,
   .logistics-carrier-page__editorModal .ant-input,
   .logistics-carrier-page__editorModal .ant-input-number,
-  .logistics-carrier-page__editorModal .ant-select-selector {
+  .logistics-carrier-page__editorModal .ant-select-selector,
+  .logistics-carrier-page__editorModal .shop-modal__footer .ant-btn {
     min-height: 44px;
   }
 }

@@ -238,7 +238,9 @@
     padding-inline: 8px;
   }
 
-  .ip-blacklist .ant-modal-body {
+.ip-blacklist .ant-modal-body,
+
+  .ip-blacklist .shop-modal__body {
     padding-bottom: 6px;
     scroll-padding-top: calc(20px + env(safe-area-inset-top, 0px));
     scroll-padding-bottom: calc(112px + env(safe-area-inset-bottom, 0px));
@@ -274,7 +276,8 @@
   .ip-blacklist__manualBlockModal .ant-modal-footer .ant-btn,
   .ip-blacklist__manualBlockModal .ant-input,
   .ip-blacklist__manualBlockModal textarea.ant-input,
-  .ip-blacklist__manualBlockModal .ant-input-number {
+  .ip-blacklist__manualBlockModal .ant-input-number,
+  .ip-blacklist__manualBlockModal .shop-modal__footer .ant-btn {
     min-height: 44px;
   }
 }

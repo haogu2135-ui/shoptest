@@ -1,6 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Card, DatePicker, Input, InputNumber, Popconfirm, Progress, Select, Space, Spin, Table, Tag, Typography, message } from 'antd';
-import type { RangePickerProps } from 'antd/es/date-picker';
+import { Alert, Button, Card, Progress, Space, Spin, Table, Tag, Typography, message } from 'antd';
+import ShopInput, { ShopTextArea } from '../components/ShopInput';
+import ShopPopconfirm from '../components/ShopPopconfirm';
+import ShopSelect from '../components/ShopSelect';
+import ShopRangePicker, { type ShopRangeValue } from '../components/ShopRangePicker';
+import ShopInputNumber from '../components/ShopInputNumber';
 import { AlertOutlined, DeleteOutlined, DownloadOutlined, KeyOutlined, MailOutlined, SafetyCertificateOutlined, SearchOutlined, UserOutlined } from '@ant-design/icons';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { adminApi } from '../api/admin';
@@ -14,9 +18,6 @@ import { AUDIT_LOGS_EXPORT_PERMISSION, AUDIT_LOGS_PURGE_PERMISSION, getEffective
 import './SecurityAuditLogManagement.css';
 
 const { Title, Text } = Typography;
-const { RangePicker } = DatePicker;
-const mobilePopconfirmClassNames = { root: 'shop-mobile-popup-layer' };
-const auditRangePickerClassNames = { popup: { root: 'shop-mobile-popup-layer audit-log-page__rangePopup' } };
 
 const actionColors: Record<string, string> = {
   LOGIN: 'blue',
@@ -310,7 +311,7 @@ const SecurityAuditLogManagement: React.FC = () => {
   const [result, setResult] = useState<string | undefined>(searchParams.get('result') || undefined);
   const [resourceType, setResourceType] = useState<string | undefined>(searchParams.get('resourceType') || undefined);
   const [actorUsername, setActorUsername] = useState('');
-  const [range, setRange] = useState<RangePickerProps['value']>(null);
+  const [range, setRange] = useState<ShopRangeValue>(null);
   const [retentionDays, setRetentionDays] = useState(180);
   const dateLocale = language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US';
   const canExportAuditLogs = hasAdminPermission(adminPermissions, currentRole, AUDIT_LOGS_EXPORT_PERMISSION);
@@ -775,7 +776,7 @@ const SecurityAuditLogManagement: React.FC = () => {
               <Text type="secondary">{adminText('retentionHint')}</Text>
             </div>
             <Space wrap>
-              <InputNumber
+              <ShopInputNumber
                 min={7}
                 max={3650}
                 precision={0}
@@ -785,8 +786,7 @@ const SecurityAuditLogManagement: React.FC = () => {
                 aria-label={`${adminText('retentionTitle')}: ${retentionDays} ${adminText('days')}`}
                 title={`${adminText('retentionTitle')}: ${retentionDays} ${adminText('days')}`}
               />
-              <Popconfirm
-                classNames={mobilePopconfirmClassNames}
+              <ShopPopconfirm rootClassName="shop-mobile-popup-layer"
                 title={adminText('purgeConfirm')}
                 onConfirm={purgeOldLogs}
                 disabled={auditActionDisabled}
@@ -798,7 +798,7 @@ const SecurityAuditLogManagement: React.FC = () => {
                 <Button danger icon={<DeleteOutlined />} aria-label={auditPurgeActionLabel} title={auditPurgeActionLabel} loading={purging} disabled={auditActionDisabled}>
                   {adminText('purge')}
                 </Button>
-              </Popconfirm>
+              </ShopPopconfirm>
             </Space>
           </div>
         ) : null}
@@ -938,46 +938,40 @@ const SecurityAuditLogManagement: React.FC = () => {
       </section>
       <Card className="audit-log-page__toolbar">
         <Space wrap>
-          <Select
+          <ShopSelect
             allowClear
             value={action}
             onChange={(value) => updateAuditFilters({ action: value, result, resourceType })}
             placeholder={t('pages.auditLogs.action')}
-            className="audit-log-page__actionFilter"
-            classNames={{ popup: { root: 'shop-mobile-popup-layer' } }}
-            getPopupContainer={() => document.body}
-            aria-label={auditActionFilterLabel}
+            className="audit-log-page__actionFilter" popupClassName="shop-mobile-popup-layer"
+            ariaLabel={auditActionFilterLabel}
             title={auditActionFilterLabel}
             options={auditActionOptions.map((value) => ({ value, label: actionLabel(value) }))}
           />
-          <Select
+          <ShopSelect
             allowClear
             value={result}
             onChange={(value) => updateAuditFilters({ action, result: value, resourceType })}
             placeholder={t('pages.auditLogs.result')}
-            className="audit-log-page__resultFilter"
-            classNames={{ popup: { root: 'shop-mobile-popup-layer' } }}
-            getPopupContainer={() => document.body}
-            aria-label={auditResultFilterLabel}
+            className="audit-log-page__resultFilter" popupClassName="shop-mobile-popup-layer"
+            ariaLabel={auditResultFilterLabel}
             title={auditResultFilterLabel}
             options={[
               { value: 'SUCCESS', label: t('pages.auditLogs.success') },
               { value: 'FAILURE', label: t('pages.auditLogs.failure') },
             ]}
           />
-          <Select
+          <ShopSelect
             allowClear
             value={resourceType}
             onChange={(value) => updateAuditFilters({ action, result, resourceType: value })}
             placeholder={t('pages.auditLogs.resource')}
-            className="audit-log-page__resourceFilter"
-            classNames={{ popup: { root: 'shop-mobile-popup-layer' } }}
-            getPopupContainer={() => document.body}
-            aria-label={auditResourceFilterLabel}
+            className="audit-log-page__resourceFilter" popupClassName="shop-mobile-popup-layer"
+            ariaLabel={auditResourceFilterLabel}
             title={auditResourceFilterLabel}
             options={auditResourceTypeOptions.map((value) => ({ value, label: resourceLabel(value) }))}
           />
-          <Input
+          <ShopInput
             allowClear
             value={actorUsername}
             onChange={(event) => setActorUsername(event.target.value)}
@@ -986,9 +980,15 @@ const SecurityAuditLogManagement: React.FC = () => {
             aria-label={auditActorFilterLabel}
             title={auditActorFilterLabel}
           />
-          <div role="group" aria-label={auditRangeFilterLabel} title={auditRangeFilterLabel}>
-            <RangePicker showTime value={range} onChange={setRange} classNames={auditRangePickerClassNames} getPopupContainer={() => document.body} />
-          </div>
+          <ShopRangePicker
+            showTime
+            value={range}
+            onChange={setRange}
+            ariaLabel={auditRangeFilterLabel}
+            title={auditRangeFilterLabel}
+            startAriaLabel={`${auditRangeFilterLabel} - start`}
+            endAriaLabel={`${auditRangeFilterLabel} - end`}
+          />
           <Button icon={<SearchOutlined />} type="primary" aria-label={auditToolbarSearchLabel} title={auditToolbarSearchLabel} onClick={fetchLogs}>
             {t('common.search')}
           </Button>

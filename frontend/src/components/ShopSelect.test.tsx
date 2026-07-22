@@ -80,4 +80,23 @@ describe('ShopSelect', () => {
     );
     expect(screen.getByText('No orders')).toBeInTheDocument();
   });
+  it('filters options when showSearch is enabled', () => {
+    render(
+      <ShopSelect
+        ariaLabel="Carrier"
+        showSearch
+        open
+        searchPlaceholder="Find carrier"
+        options={[
+          { value: 'DHL', label: 'DHL Express' },
+          { value: 'FEDEX', label: 'FedEx' },
+        ]}
+      />,
+    );
+    expect(screen.getByRole('option', { name: 'DHL Express' })).toBeInTheDocument();
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Find carrier' }), { target: { value: 'fed' } });
+    expect(screen.queryByRole('option', { name: 'DHL Express' })).not.toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'FedEx' })).toBeInTheDocument();
+  });
+
 });

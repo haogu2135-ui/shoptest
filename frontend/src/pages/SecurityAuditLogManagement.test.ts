@@ -24,7 +24,7 @@ const localeString = (locale: LocaleObject, pathParts: string[]): string => {
 };
 
 const enLocale = readLocale('en.json');
-const esLocale = readLocale('es.json');
+const esLocale = readLocale('es-admin-pages.json');
 const zhLocale = readLocale('zh.json');
 
 describe('SecurityAuditLogManagement i18n labels', () => {

@@ -1,0 +1,61 @@
+.shop-range-picker {
+  position: relative;
+  display: inline-flex;
+  width: 100%;
+  min-height: 44px;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 36px 4px 8px;
+  border: 1px solid rgba(18, 71, 52, 0.18);
+  border-radius: 10px;
+  background: #fff;
+  box-sizing: border-box;
+}
+
+.shop-range-picker__input {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 36px;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #173f2b;
+  font: inherit;
+  font-size: max(12px, 0.92em);
+  line-height: 1.35;
+  touch-action: manipulation;
+}
+
+.shop-range-picker__input:disabled {
+  opacity: 0.6;
+}
+
+.shop-range-picker__input:focus {
+  outline: 2px solid rgba(18, 71, 52, 0.28);
+  outline-offset: 0;
+  background: rgba(18, 71, 52, 0.04);
+}
+
+.shop-range-picker__separator {
+  flex: 0 0 auto;
+  color: rgba(16, 47, 34, 0.45);
+  font-weight: 700;
+  line-height: 1;
+}
+
+.shop-range-picker__clear {
+  position: absolute;
+  right: 6px;
+  display: inline-flex;
+  width: 28px;
+  min-height: 28px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(16, 47, 34, 0.08);
+  color: #173f2b;
+  cursor: pointer;
+  touch-action: manipulation;
+}

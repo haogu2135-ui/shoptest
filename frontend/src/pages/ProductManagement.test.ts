@@ -4,7 +4,10 @@ import path from 'path';
 const pageSource = fs.readFileSync(path.join(__dirname, 'ProductManagement.tsx'), 'utf8');
 const cssSource = fs.readFileSync(path.join(__dirname, 'ProductManagement.css'), 'utf8');
 const richEditorSource = fs.readFileSync(path.join(__dirname, '../components/ProductRichDetailEditor.tsx'), 'utf8');
-const apiSource = fs.readFileSync(path.join(__dirname, '../api/index.ts'), 'utf8');
+const apiSource = [
+  fs.readFileSync(path.join(__dirname, '../api/core.ts'), 'utf8'),
+  fs.readFileSync(path.join(__dirname, '../api/admin.ts'), 'utf8'),
+].join('\n');
 const typesSource = fs.readFileSync(path.join(__dirname, '../types.ts'), 'utf8');
 
 describe('ProductManagement editor popup guards', () => {
@@ -41,9 +44,14 @@ describe('ProductManagement editor popup guards', () => {
   });
 
   it('uses scoped product-editor popup layers for modal editor controls', () => {
+    expect(pageSource).toContain('ShopSelect');
     expect(pageSource).toContain("const productEditorPopupClassNames = { popup: { root: 'shop-mobile-popup-layer product-management-page__editorPopup' } };");
-    expect(pageSource.match(/classNames=\{productEditorPopupClassNames\}/g)?.length).toBeGreaterThanOrEqual(6);
-    expect(pageSource.match(/placement="bottomLeft"/g)?.length).toBeGreaterThanOrEqual(6);
+    expect(pageSource.match(/classNames=\{productEditorPopupClassNames\}/g)?.length).toBeGreaterThanOrEqual(2);
+    expect(pageSource).toContain('ShopMultiSelect');
+    expect(pageSource).toContain('mode="tags"');
+    expect(pageSource).toMatch(/name=\"brand\"[\s\S]*?ShopSelect/);
+    expect(pageSource).toContain('popupClassName=\"shop-mobile-popup-layer product-management-page__editorPopup\"');
+    expect(pageSource.match(/placement="bottomLeft"/g)?.length).toBeGreaterThanOrEqual(2);
     expect(pageSource).toContain('<DatePicker.RangePicker');
     expect(pageSource).toContain('className="shopify-range-picker"');
     expect(pageSource).toContain('getPopupContainer={() => document.body}');
@@ -120,15 +128,18 @@ describe('ProductManagement editor popup guards', () => {
     const modalCss = cssSource.slice(modalCssStart, modalCssEnd);
 
     expect(pageSource).toContain('className="profile-mobile-safe-modal product-management-page__urlImportModal"');
+    expect(modalCss).toContain('.shop-modal__content');
+    expect(modalCss).toContain('.shop-modal__body');
+    expect(modalCss).toContain('.shop-modal__footer');
     expect(modalCssStart).toBeGreaterThanOrEqual(0);
     expect(modalCssEnd).toBeGreaterThan(modalCssStart);
-    expect(modalCss).toMatch(/\.product-management-page__urlImportModal \.ant-modal-content\s*\{[\s\S]*?display:\s*flex\s*!important;[\s\S]*?flex-direction:\s*column\s*!important;[\s\S]*?overflow:\s*hidden\s*!important;/);
-    expect(modalCss).toMatch(/\.product-management-page__urlImportModal \.ant-modal-body\s*\{[\s\S]*?flex:\s*1 1 auto\s*!important;[\s\S]*?min-height:\s*0\s*!important;[\s\S]*?overflow-y:\s*auto\s*!important;[\s\S]*?-webkit-overflow-scrolling:\s*touch;/);
+    expect(modalCss).toMatch(/\.product-management-page__urlImportModal \.ant-modal-content(?:,[\s\S]*?)?\s*\{[\s\S]*?display:\s*flex\s*!important;[\s\S]*?flex-direction:\s*column\s*!important;[\s\S]*?overflow:\s*hidden\s*!important;/);
+    expect(modalCss).toMatch(/\.product-management-page__urlImportModal \.ant-modal-body(?:,[\s\S]*?)?\s*\{[\s\S]*?flex:\s*1 1 auto\s*!important;[\s\S]*?min-height:\s*0\s*!important;[\s\S]*?overflow-y:\s*auto\s*!important;[\s\S]*?-webkit-overflow-scrolling:\s*touch;/);
     expect(modalCss).toMatch(/\.product-management-page__urlImportModal \.product-url-import-preview__body p\s*\{[\s\S]*?display:\s*block\s*!important;[\s\S]*?overflow:\s*visible\s*!important;[\s\S]*?overflow-wrap:\s*anywhere;[\s\S]*?-webkit-line-clamp:\s*unset\s*!important;/);
-    expect(modalCss).toMatch(/\.product-management-page__urlImportModal \.ant-modal-footer\s*\{[\s\S]*?position:\s*static\s*!important;[\s\S]*?flex:\s*0 0 auto\s*!important;[\s\S]*?display:\s*grid\s*!important;[\s\S]*?grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)\s*!important;/);
-    expect(modalCss).toMatch(/\.product-management-page__urlImportModal \.ant-modal-footer \.ant-btn\s*\{[\s\S]*?justify-content:\s*center\s*!important;[\s\S]*?width:\s*100%\s*!important;[\s\S]*?min-height:\s*44px\s*!important;[\s\S]*?white-space:\s*normal\s*!important;/);
-    expect(modalCss).toMatch(/\.product-management-page__urlImportModal \.ant-modal-footer \.ant-btn > span:not\(\.anticon\):not\(\.ant-btn-icon\)\s*\{[\s\S]*?overflow:\s*visible\s*!important;[\s\S]*?text-overflow:\s*clip\s*!important;[\s\S]*?white-space:\s*normal\s*!important;/);
-    expect(cssSource).toMatch(/@media \(max-width:\s*360px\)\s*\{[\s\S]*?\.product-management-page__urlImportModal \.ant-modal-footer\s*\{[\s\S]*?grid-template-columns:\s*minmax\(0,\s*1fr\)\s*!important;/);
+    expect(modalCss).toMatch(/\.product-management-page__urlImportModal \.ant-modal-footer(?:,[\s\S]*?)?\s*\{[\s\S]*?position:\s*static\s*!important;[\s\S]*?flex:\s*0 0 auto\s*!important;[\s\S]*?display:\s*grid\s*!important;[\s\S]*?grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)\s*!important;/);
+    expect(modalCss).toMatch(/\.product-management-page__urlImportModal \.ant-modal-footer \.ant-btn(?:,[\s\S]*?)?\s*\{[\s\S]*?justify-content:\s*center\s*!important;[\s\S]*?width:\s*100%\s*!important;[\s\S]*?min-height:\s*44px\s*!important;[\s\S]*?white-space:\s*normal\s*!important;/);
+    expect(modalCss).toMatch(/\.product-management-page__urlImportModal \.ant-modal-footer \.ant-btn > span:not\(\.anticon\):not\(\.ant-btn-icon\)(?:,[\s\S]*?)?\s*\{[\s\S]*?overflow:\s*visible\s*!important;[\s\S]*?text-overflow:\s*clip\s*!important;[\s\S]*?white-space:\s*normal\s*!important;/);
+    expect(cssSource).toMatch(/@media \(max-width:\s*360px\)\s*\{[\s\S]*?\.product-management-page__urlImportModal \.ant-modal-footer(?:,[\s\S]*?)?\s*\{[\s\S]*?grid-template-columns:\s*minmax\(0,\s*1fr\)\s*!important;/);
   });
 
   it('pins product editor popups above modal chrome and keeps the range picker in view', () => {

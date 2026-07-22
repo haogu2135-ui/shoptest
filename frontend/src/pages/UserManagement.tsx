@@ -1,6 +1,11 @@
 import { useNavigate } from 'react-router-dom';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Table, Tag, Button, Popconfirm, Select, message, Typography, Divider, Space, Card, Progress, Input, Modal, Form } from 'antd';
+import { Alert, Table, Tag, Button, message, Typography, Divider, Space, Card, Progress, Form } from 'antd';
+import ShopInput, { ShopTextArea } from '../components/ShopInput';
+import ShopPopconfirm from '../components/ShopPopconfirm';
+import ShopSelect from '../components/ShopSelect';
+import ShopModal from '../components/ShopModal';
+import ShopConfirm from '../components/ShopConfirm';
 import { DeleteOutlined, StopOutlined, CheckCircleOutlined, SafetyCertificateOutlined, TeamOutlined, MailOutlined, PhoneOutlined, DownloadOutlined, SearchOutlined, EditOutlined } from '@ant-design/icons';
 import { userApi } from '../api';
 import { adminApi } from '../api/admin';
@@ -28,7 +33,6 @@ const { Title, Text } = Typography;
 type UserAccountStatus = 'ACTIVE' | 'BANNED' | 'GUEST';
 const DEFAULT_USER_PAGE_SIZE = 20;
 const mobilePopupClassNames = { popup: { root: 'shop-mobile-popup-layer' } };
-const mobilePopconfirmClassNames = { root: 'shop-mobile-popup-layer' };
 const userAdminTableCell = (label: string): React.TdHTMLAttributes<HTMLElement> & Record<'data-label', string> => ({
   'data-label': label,
 });
@@ -74,6 +78,14 @@ const UserManagement: React.FC = () => {
   const [adminPermissions, setAdminPermissions] = useState<string[]>([]);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [profileSubmitting, setProfileSubmitting] = useState(false);
+  const [roleConfirm, setRoleConfirm] = useState<{
+    userId: number;
+    nextRoleCode: string;
+    title: string;
+    description: string;
+    confirmLabel: string;
+  } | null>(null);
+  const [roleConfirmLoading, setRoleConfirmLoading] = useState(false);
   const [pageState, setPageState] = useState({ page: 1, size: DEFAULT_USER_PAGE_SIZE, total: 0 });
   const [profileForm] = Form.useForm<UserProfileFormValues>();
   const canManageRoles = isSuperAdminRole(currentRole);
@@ -238,16 +250,29 @@ const UserManagement: React.FC = () => {
     const matchedRole = roles.find((role) => String(role.code || '').trim().toUpperCase() === String(nextRoleCode || '').trim().toUpperCase());
     const nextRoleLabel = formatRoleLabel(nextRoleCode, matchedRole?.name);
     const confirmLabel = `${t('pages.adminUsers.roleCode')}: ${userLabel} -> ${nextRoleLabel}`;
-    Modal.confirm({
+    setRoleConfirm({
+      userId: user.id,
+      nextRoleCode,
       title: confirmLabel,
-      content: `${userLabel} -> ${nextRoleLabel}`,
-      okText: t('common.confirm'),
-      cancelText: t('common.cancel'),
-      okButtonProps: { 'aria-label': confirmLabel, title: confirmLabel },
-      cancelButtonProps: { 'aria-label': `${t('common.cancel')}: ${confirmLabel}`, title: `${t('common.cancel')}: ${confirmLabel}` },
-      className: 'profile-mobile-safe-modal user-management-page__roleConfirmModal',
-      onOk: () => handleRoleCodeChange(user.id, nextRoleCode),
+      description: `${userLabel} -> ${nextRoleLabel}`,
+      confirmLabel,
     });
+  };
+
+  const closeRoleConfirm = () => {
+    if (roleConfirmLoading) return;
+    setRoleConfirm(null);
+  };
+
+  const submitRoleConfirm = async () => {
+    if (!roleConfirm) return;
+    setRoleConfirmLoading(true);
+    try {
+      await handleRoleCodeChange(roleConfirm.userId, roleConfirm.nextRoleCode);
+      setRoleConfirm(null);
+    } finally {
+      setRoleConfirmLoading(false);
+    }
   };
 
   const handleExport = async () => {
@@ -388,16 +413,14 @@ const UserManagement: React.FC = () => {
           return <Tag color={roleColor(effectiveRole)}>{formatRoleLabel(effectiveRole, matchedRole?.name)}</Tag>;
         }
         return (
-          <Select
+          <ShopSelect
             size="small"
             value={effectiveRole}
             className="user-management-page__roleCodeSelect"
-            aria-label={roleSelectLabel}
+            ariaLabel={roleSelectLabel}
             title={roleSelectLabel}
-            disabled={userActionDisabled}
-            classNames={mobilePopupClassNames}
-            getPopupContainer={() => document.body}
-            onChange={(val) => confirmRoleCodeChange(record, val)}
+            disabled={userActionDisabled} popupClassName="shop-mobile-popup-layer"
+            onChange={(val) => { if (!val) return; confirmRoleCodeChange(record, val); }}
             options={[
               { value: 'USER', label: formatRoleLabel('USER') },
               ...roles.map((role) => ({ value: role.code, label: formatRoleLabel(role.code, role.name) })),
@@ -487,8 +510,7 @@ const UserManagement: React.FC = () => {
             <Button size="small" icon={<EditOutlined />} aria-label={editActionLabel} title={editActionLabel} disabled={profileEditDisabled} onClick={() => openProfileModal(record)}>
               {t('common.edit')}
             </Button>
-            <Popconfirm
-              classNames={mobilePopconfirmClassNames}
+            <ShopPopconfirm rootClassName="shop-mobile-popup-layer"
               title={statusConfirmTitle}
               onConfirm={() => handleToggleStatus(record)}
               disabled={statusActionDisabled}
@@ -508,9 +530,8 @@ const UserManagement: React.FC = () => {
               >
                 {statusActionLabel}
               </Button>
-            </Popconfirm>
-            <Popconfirm
-              classNames={mobilePopconfirmClassNames}
+            </ShopPopconfirm>
+            <ShopPopconfirm rootClassName="shop-mobile-popup-layer"
               title={`${t('pages.adminUsers.deleteConfirm')}: ${userLabel}`}
               onConfirm={() => handleDelete(record.id)}
               disabled={deleteDisabled}
@@ -522,7 +543,7 @@ const UserManagement: React.FC = () => {
               <Button size="small" danger icon={<DeleteOutlined />} aria-label={deleteActionLabel} title={deleteActionLabel} disabled={deleteDisabled}>
                 {t('common.delete')}
               </Button>
-            </Popconfirm>
+            </ShopPopconfirm>
           </Space>
         );
       },
@@ -628,7 +649,7 @@ const UserManagement: React.FC = () => {
         <>
       <Card className="user-management-page__toolbar">
         <Space wrap className="user-management-page__filters">
-          <Input
+          <ShopInput
             allowClear
             prefix={<SearchOutlined />}
             value={keyword}
@@ -639,33 +660,29 @@ const UserManagement: React.FC = () => {
             title={keywordSearchLabel}
             className="user-management-page__keywordInput"
           />
-          <Select
+          <ShopSelect
             allowClear
             value={roleFilter}
-            onChange={setRoleFilter}
+            onChange={(value) => setRoleFilter(value || undefined)}
             disabled={userActionDisabled}
             placeholder={t('pages.adminUsers.role')}
             className="user-management-page__roleFilter"
-            aria-label={roleFilterLabel}
-            title={roleFilterLabel}
-            classNames={mobilePopupClassNames}
-            getPopupContainer={() => document.body}
+            ariaLabel={roleFilterLabel}
+            title={roleFilterLabel} popupClassName="shop-mobile-popup-layer"
             options={[
               { value: 'USER', label: formatRoleLabel('USER') },
               ...roles.map((role) => ({ value: role.code, label: formatRoleLabel(role.code, role.name) })),
             ]}
           />
-          <Select
+          <ShopSelect
             allowClear
             value={statusFilter}
-            onChange={setStatusFilter}
+            onChange={(value) => setStatusFilter(value || undefined)}
             disabled={userActionDisabled}
             placeholder={t('common.status')}
             className="user-management-page__statusFilter"
-            aria-label={statusFilterLabel}
-            title={statusFilterLabel}
-            classNames={mobilePopupClassNames}
-            getPopupContainer={() => document.body}
+            ariaLabel={statusFilterLabel}
+            title={statusFilterLabel} popupClassName="shop-mobile-popup-layer"
             options={[
               { value: 'ACTIVE', label: t('status.ACTIVE') },
               { value: 'BANNED', label: t('status.BANNED') },
@@ -739,36 +756,57 @@ const UserManagement: React.FC = () => {
       />
         </>
       ) : null}
-      <Modal
+      <ShopModal
         className="profile-mobile-safe-modal user-management-page__profileModal"
         title={t('pages.adminUsers.editProfile')}
         open={Boolean(editingUser)}
         onOk={handleProfileSubmit}
-        onCancel={closeProfileModal}
+        onClose={closeProfileModal}
         confirmLoading={profileSubmitting}
+        okText={t('common.save')}
+        cancelText={t('common.cancel')}
         okButtonProps={{ disabled: userActionDisabled, 'aria-label': saveProfileActionLabel, title: saveProfileActionLabel }}
         cancelButtonProps={{ 'aria-label': cancelProfileActionLabel, title: cancelProfileActionLabel }}
-        destroyOnHidden
       >
         <Form form={profileForm} layout="vertical">
           <Form.Item label={t('pages.adminUsers.username')}>
-            <Input value={editingUser?.username || ''} disabled aria-label={`${editingUserLabel}: ${t('pages.adminUsers.username')}`} title={`${editingUserLabel}: ${t('pages.adminUsers.username')}`} />
+            <ShopInput value={editingUser?.username || ''} disabled aria-label={`${editingUserLabel}: ${t('pages.adminUsers.username')}`} title={`${editingUserLabel}: ${t('pages.adminUsers.username')}`} />
           </Form.Item>
           <Form.Item label={t('pages.adminUsers.email')}>
-            <Input value={editingUser?.email || ''} disabled autoComplete="email" aria-label={`${editingUserLabel}: ${t('pages.adminUsers.email')}`} title={`${editingUserLabel}: ${t('pages.adminUsers.email')}`} />
+            <ShopInput value={editingUser?.email || ''} disabled autoComplete="email" aria-label={`${editingUserLabel}: ${t('pages.adminUsers.email')}`} title={`${editingUserLabel}: ${t('pages.adminUsers.email')}`} />
           </Form.Item>
           <Form.Item label={t('pages.adminUsers.phone')}>
-            <Input value={editingUser?.phone || ''} disabled autoComplete="tel" inputMode="tel" aria-label={`${editingUserLabel}: ${t('pages.adminUsers.phone')}`} title={`${editingUserLabel}: ${t('pages.adminUsers.phone')}`} />
+            <ShopInput value={editingUser?.phone || ''} disabled autoComplete="tel" inputMode="tel" aria-label={`${editingUserLabel}: ${t('pages.adminUsers.phone')}`} title={`${editingUserLabel}: ${t('pages.adminUsers.phone')}`} />
           </Form.Item>
           <Form.Item
             name="address"
             label={t('pages.adminUsers.address')}
             rules={[{ max: 260, message: t('pages.adminUsers.addressTooLong') }]}
           >
-            <Input.TextArea rows={3} maxLength={260} showCount autoComplete="street-address" aria-label={`${editingUserLabel}: ${t('pages.adminUsers.address')}`} title={`${editingUserLabel}: ${t('pages.adminUsers.address')}`} />
+            <ShopTextArea rows={3} maxLength={260} showCount autoComplete="street-address" aria-label={`${editingUserLabel}: ${t('pages.adminUsers.address')}`} title={`${editingUserLabel}: ${t('pages.adminUsers.address')}`} />
           </Form.Item>
         </Form>
-      </Modal>
+      </ShopModal>
+      <ShopConfirm
+        open={Boolean(roleConfirm)}
+        title={roleConfirm?.title || ''}
+        description={roleConfirm?.description}
+        okText={t('common.confirm')}
+        cancelText={t('common.cancel')}
+        confirmLoading={roleConfirmLoading}
+        okButtonProps={{
+          'aria-label': roleConfirm?.confirmLabel,
+          title: roleConfirm?.confirmLabel,
+        }}
+        cancelButtonProps={{
+          'aria-label': roleConfirm ? `${t('common.cancel')}: ${roleConfirm.confirmLabel}` : t('common.cancel'),
+          title: roleConfirm ? `${t('common.cancel')}: ${roleConfirm.confirmLabel}` : t('common.cancel'),
+        }}
+        className="profile-mobile-safe-modal user-management-page__roleConfirmModal"
+        closeLabel={t('common.close', { defaultValue: 'Close' })}
+        onOk={submitRoleConfirm}
+        onCancel={closeRoleConfirm}
+      />
     </div>
   );
 };

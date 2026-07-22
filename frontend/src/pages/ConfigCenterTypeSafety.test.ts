@@ -20,11 +20,12 @@ describe('ConfigCenter type-safety guards', () => {
   it('keeps config center first-load failures from masquerading as neutral config data', () => {
     expect(pageSource).toContain('const [loadError, setLoadError] = useState<string | null>(null);');
     expect(pageSource).toContain('const actionDisabled = !snapshot || loading || Boolean(loadError);');
-    expect(pageSource).toContain("description={snapshot ? t('pages.configCenter.staleDataWarning') : undefined}");
+    expect(pageSource).toContain("{loadError && snapshot ? (");
+    expect(pageSource).toContain("description={t('pages.configCenter.staleDataWarning')}");
     expect(pageSource).toContain('{loadError && !snapshot ? null : <div className="config-center__stats">');
     expect(pageSource).toContain("{loadError && !snapshot ? null : <Form<FormValues>");
     expect(pageSource).toContain('{loadError && !snapshot ? null : <Card title={t(\'pages.configCenter.parseResult\')}');
     expect(pageSource).toContain('{loadError && !snapshot ? null : <Card title={t(\'pages.configCenter.effectiveRuntimeValues\')}');
-    expect(pageSource).toContain('<Button size="small" onClick={() => loadSnapshot()} loading={loading}>');
+    expect(pageSource).toContain('<Button size="small" type="primary" onClick={() => loadSnapshot()} loading={loading}>');
   });
 });

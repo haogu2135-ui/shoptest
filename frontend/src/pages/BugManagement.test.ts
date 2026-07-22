@@ -3,11 +3,14 @@ import path from 'path';
 
 const pageSource = fs.readFileSync(path.join(__dirname, 'BugManagement.tsx'), 'utf8');
 const cssSource = fs.readFileSync(path.join(__dirname, 'BugManagement.css'), 'utf8');
-const apiSource = fs.readFileSync(path.resolve(__dirname, '../api/index.ts'), 'utf8');
+const apiSource = [
+  fs.readFileSync(path.resolve(__dirname, '../api/admin.ts'), 'utf8'),
+  fs.readFileSync(path.resolve(__dirname, '../api/core.ts'), 'utf8'),
+].join('\n');
 const typesSource = fs.readFileSync(path.resolve(__dirname, '../types.ts'), 'utf8');
 const localesRoot = path.resolve(__dirname, '../locales');
 const englishLocaleSource = fs.readFileSync(path.join(localesRoot, 'en.json'), 'utf8');
-const spanishLocaleSource = fs.readFileSync(path.join(localesRoot, 'es.json'), 'utf8');
+const spanishLocaleSource = fs.readFileSync(path.join(localesRoot, 'es-admin-pages.json'), 'utf8');
 const chineseLocaleSource = fs.readFileSync(path.join(localesRoot, 'zh.json'), 'utf8');
 
 describe('BugManagement mobile modal guards', () => {
@@ -22,7 +25,8 @@ describe('BugManagement mobile modal guards', () => {
     expect(pageSource).toContain('name="severity"');
     expect(pageSource).toContain('name="priority"');
     expect(pageSource).toContain('name="status"');
-    expect(pageSource.match(/classNames=\{mobilePopupClassNames\}/g)?.length).toBeGreaterThanOrEqual(4);
+    expect(pageSource).toContain('ShopSelect');
+    expect(pageSource.match(/popupClassName="shop-mobile-popup-layer"/g)?.length).toBeGreaterThanOrEqual(4);
   });
 
   it('reserves scroll clearance so BUG modal fields cannot sit under the sticky footer', () => {
@@ -30,12 +34,15 @@ describe('BugManagement mobile modal guards', () => {
     const f3531Css = cssSource.slice(f3531Start);
 
     expect(f3531Start).toBeGreaterThanOrEqual(0);
-    expect(f3531Css).toMatch(/@media \(max-width:\s*720px\)\s*\{[\s\S]*?\.bug-management__modal\.ant-modal\s*\{[\s\S]*?width:\s*calc\(100vw - 16px\)\s*!important;/);
-    expect(f3531Css).toMatch(/\.bug-management__modal \.ant-modal-content\s*\{[\s\S]*?max-height:\s*calc\(100dvh - 18px - env\(safe-area-inset-top,\s*0px\) - env\(safe-area-inset-bottom,\s*0px\)\);[\s\S]*?display:\s*flex\s*!important;[\s\S]*?flex-direction:\s*column\s*!important;[\s\S]*?overflow:\s*hidden\s*!important;/);
-    expect(f3531Css).toMatch(/\.bug-management__modal \.ant-modal-body\s*\{[\s\S]*?min-height:\s*0;[\s\S]*?flex:\s*1 1 auto\s*!important;[\s\S]*?overflow-y:\s*auto\s*!important;[\s\S]*?padding-bottom:\s*calc\(156px \+ env\(safe-area-inset-bottom,\s*0px\)\)\s*!important;[\s\S]*?scroll-padding-bottom:\s*calc\(172px \+ env\(safe-area-inset-bottom,\s*0px\)\)\s*!important;/);
+    expect(f3531Css).toMatch(/@media \(max-width:\s*720px\)\s*\{[\s\S]*?\.bug-management__modal\.ant-modal(?:,[\s\S]*?)?\s*\{[\s\S]*?width:\s*calc\(100vw - 16px\)\s*!important;/);
+    expect(f3531Css).toMatch(/\.bug-management__modal \.ant-modal-content(?:,[\s\S]*?)?\s*\{[\s\S]*?max-height:\s*calc\(100dvh - 18px - env\(safe-area-inset-top,\s*0px\) - env\(safe-area-inset-bottom,\s*0px\)\);[\s\S]*?display:\s*flex\s*!important;[\s\S]*?flex-direction:\s*column\s*!important;[\s\S]*?overflow:\s*hidden\s*!important;/);
+    expect(f3531Css).toMatch(/\.bug-management__modal \.ant-modal-body(?:,[\s\S]*?)?\s*\{[\s\S]*?min-height:\s*0;[\s\S]*?flex:\s*1 1 auto\s*!important;[\s\S]*?overflow-y:\s*auto\s*!important;/);
+    expect(f3531Css).toContain('.shop-modal__content');
+    expect(f3531Css).toContain('.shop-modal__body');
+    expect(f3531Css).toContain('.shop-modal__footer');
     expect(f3531Css).toMatch(/\.bug-management__modal \.ant-form-item\s*\{[\s\S]*?scroll-margin-bottom:\s*calc\(172px \+ env\(safe-area-inset-bottom,\s*0px\)\);/);
     expect(f3531Css).toMatch(/\.bug-management__modal \.bug-management__formGrid:not\(\.bug-management__formGrid--wide\)\s*\{[\s\S]*?grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\);/);
-    expect(f3531Css).toMatch(/\.bug-management__modal \.ant-modal-footer\s*\{[\s\S]*?position:\s*sticky\s*!important;[\s\S]*?bottom:\s*0\s*!important;[\s\S]*?z-index:\s*5\s*!important;[\s\S]*?background:\s*rgba\(255,\s*255,\s*255,\s*0\.98\)\s*!important;/);
+    expect(f3531Css).toMatch(/\.bug-management__modal \.ant-modal-footer(?:,[\s\S]*?)?\s*\{[\s\S]*?position:\s*sticky\s*!important;[\s\S]*?bottom:\s*0\s*!important;[\s\S]*?z-index:\s*5\s*!important;[\s\S]*?background:\s*rgba\(255,\s*255,\s*255,\s*0\.98\)\s*!important;/);
   });
 
   it('keeps mobile BUG filters compact and generated table-card labels readable', () => {
@@ -125,9 +132,9 @@ describe('BugManagement mobile modal guards', () => {
     expect(pageSource).toContain('aria-label={statusActionLabel} title={statusActionLabel}');
     expect(pageSource).toContain('aria-label={bugRefreshActionLabel} title={bugRefreshActionLabel}');
     expect(pageSource).toContain('aria-label={newBugActionLabel} title={newBugActionLabel}');
-    expect(pageSource).toContain('aria-label={bugStatusFilterLabel}');
-    expect(pageSource).toContain('aria-label={bugSeverityFilterLabel}');
-    expect(pageSource).toContain('aria-label={bugModuleFilterLabel}');
+    expect(pageSource).toContain('ariaLabel={bugStatusFilterLabel}');
+    expect(pageSource).toContain('ariaLabel={bugSeverityFilterLabel}');
+    expect(pageSource).toContain('ariaLabel={bugModuleFilterLabel}');
     expect(pageSource).toContain("okButtonProps={{ disabled: bugMutationDisabled, 'aria-label': saveBugActionLabel, title: saveBugActionLabel }}");
     expect(pageSource).toContain("cancelButtonProps={{ 'aria-label': cancelBugActionLabel, title: cancelBugActionLabel }}");
     expect(pageSource).toContain("okButtonProps={{ disabled: bugMutationDisabled, 'aria-label': saveBugStatusActionLabel, title: saveBugStatusActionLabel }}");

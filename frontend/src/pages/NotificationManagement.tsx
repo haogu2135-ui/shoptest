@@ -1,5 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Card, Divider, Form, Input, message, Popconfirm, Radio, Select, Space, Tag, Typography } from 'antd';
+import { Alert, Button, Card, Divider, Form, message, Radio, Space, Tag, Typography } from 'antd';
+import ShopInput, { ShopTextArea } from '../components/ShopInput';
+import ShopPopconfirm from '../components/ShopPopconfirm';
+import ShopSelect from '../components/ShopSelect';
 import { CheckCircleOutlined, LinkOutlined, NotificationOutlined, ReloadOutlined, SendOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import { adminApi } from '../api/admin';
 import { useLanguage } from '../i18n';
@@ -11,8 +14,6 @@ import { NOTIFICATIONS_BROADCAST_PERMISSION, getEffectiveRole, hasAdminPermissio
 import './NotificationManagement.css';
 
 const { Title, Text } = Typography;
-const { TextArea } = Input;
-const mobilePopconfirmClassNames = { root: 'shop-mobile-popup-layer' };
 
 const conversionHookPattern = /(coupon|discount|offer|shipping|birthday|limited|bundle|save|\u4f18\u60e0|\u6298\u6263|\u5238|\u5305\u90ae|\u751f\u65e5|\u9650\u65f6|\u5957\u88c5|ahorro|oferta|cup[o\u00f3]n|env[i\u00ed]o)/i;
 const isFormValidationError = (error: unknown): error is { errorFields: unknown[] } => (
@@ -213,10 +214,8 @@ const NotificationManagement: React.FC = () => {
             initialValues={{ type: 'PROMOTION', contentFormat: 'HTML' }}
           >
             <Form.Item name="type" label={t('pages.notificationAdmin.type')} rules={[{ required: true }]}>
-              <Select
-                classNames={{ popup: { root: 'shop-mobile-popup-layer' } }}
-                getPopupContainer={() => document.body}
-                aria-label={notificationTypeLabel}
+              <ShopSelect popupClassName="shop-mobile-popup-layer"
+                ariaLabel={notificationTypeLabel}
                 title={notificationTypeLabel}
                 options={[
                   { value: 'PROMOTION', label: t('status.PROMOTION') },
@@ -234,7 +233,7 @@ const NotificationManagement: React.FC = () => {
                 { max: 100, message: t('pages.notificationAdmin.titleRequired') },
               ]}
             >
-              <Input maxLength={100} showCount placeholder={t('pages.notificationAdmin.titlePlaceholder')} aria-label={notificationTitleInputLabel} title={notificationTitleInputLabel} />
+              <ShopInput maxLength={100} showCount placeholder={t('pages.notificationAdmin.titlePlaceholder')} aria-label={notificationTitleInputLabel} title={notificationTitleInputLabel} />
             </Form.Item>
             <Form.Item name="contentFormat" label={t('pages.notificationAdmin.contentFormat')}>
               <div role="group" aria-label={notificationContentFormatLabel} title={notificationContentFormatLabel}>
@@ -252,7 +251,7 @@ const NotificationManagement: React.FC = () => {
                 { max: 5000, message: t('pages.notificationAdmin.contentRequired') },
               ]}
             >
-              <TextArea
+              <ShopTextArea
                 rows={10}
                 maxLength={5000}
                 showCount
@@ -264,8 +263,7 @@ const NotificationManagement: React.FC = () => {
             <Space wrap>
               <Button aria-label={templateActionLabel} title={templateActionLabel} onClick={insertPromotionTemplate} disabled={permissionGateActive || sending}>{t('pages.notificationAdmin.useTemplate')}</Button>
               {canBroadcastNotifications ? (
-                <Popconfirm
-                  classNames={mobilePopconfirmClassNames}
+                <ShopPopconfirm rootClassName="shop-mobile-popup-layer"
                   title={broadcastActionLabel}
                   description={(
                     <Space direction="vertical" size={2}>
@@ -282,7 +280,7 @@ const NotificationManagement: React.FC = () => {
                   <Button type="primary" icon={<SendOutlined />} aria-label={broadcastActionLabel} title={broadcastActionLabel} loading={sending}>
                     {t('pages.notificationAdmin.sendAll')}
                   </Button>
-                </Popconfirm>
+                </ShopPopconfirm>
               ) : (
                 <Button
                   type="primary"

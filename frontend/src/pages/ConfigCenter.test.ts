@@ -20,9 +20,16 @@ describe('ConfigCenter mobile editor containment guards', () => {
     expect(f3520Start).toBeGreaterThanOrEqual(0);
     expect(f3520Css).toMatch(/@media \(max-width:\s*720px\)\s*\{[\s\S]*?\.config-center__grid\s*\{[\s\S]*?grid-template-columns:\s*minmax\(0,\s*1fr\)\s*!important;/);
     expect(f3520Css).toMatch(/\.config-center__grid\s*\{[\s\S]*?width:\s*100%\s*!important;[\s\S]*?min-width:\s*0\s*!important;[\s\S]*?max-width:\s*100%\s*!important;/);
-    expect(f3520Css).toMatch(/\.config-center__editorCard,[\s\S]*?\.config-center__contentItem[\s\S]*?textarea\.config-center__editor\s*\{[\s\S]*?width:\s*100%\s*!important;[\s\S]*?min-width:\s*0\s*!important;[\s\S]*?max-width:\s*100%\s*!important;/);
-    expect(f3520Css).toMatch(/\.config-center__contentItem\s+textarea\.config-center__editor\s*\{[\s\S]*?overflow-x:\s*auto;[\s\S]*?white-space:\s*pre-wrap;[\s\S]*?overflow-wrap:\s*anywhere;/);
+    expect(f3520Css).toMatch(/\.config-center__editorCard,[\s\S]*?\.config-center__contentItem[\s\S]*?(?:textarea\.config-center__editor|\.config-center__editor)\s*\{[\s\S]*?width:\s*100%\s*!important;[\s\S]*?min-width:\s*0\s*!important;[\s\S]*?max-width:\s*100%\s*!important;/);
+    expect(f3520Css).toMatch(/\.config-center__contentItem[\s\S]*?(?:textarea\.config-center__editor|\.shop-input__control--textarea)\s*\{[\s\S]*?overflow-x:\s*auto;[\s\S]*?white-space:\s*pre-wrap;[\s\S]*?overflow-wrap:\s*anywhere;/);
     expect(f3520Css).not.toMatch(/minmax\(4\d{2}px/);
     expect(f3520Css).not.toMatch(/width:\s*4\d{2}px/);
+  });
+
+  it('uses ShopInput/ShopTextArea instead of ant Input', () => {
+    expect(pageSource).toContain('ShopInput');
+    expect(pageSource).toContain('ShopTextArea');
+    expect(pageSource).not.toMatch(/import \{[^}]*\bInput\b[^}]*\} from 'antd'/);
+    expect(pageSource).not.toMatch(/const \{ TextArea \} = Input|<TextArea\b|<Input\b/);
   });
 });

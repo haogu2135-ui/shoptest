@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { ShopIcon, SI } from './ShopIcon';
-import { Badge } from 'antd';
 import ShopSearchField from './ShopSearchField';
+import ShopBadge from './ShopBadge';
 import ShopDropdown from './ShopDropdown';
 import ShopSelect from './ShopSelect';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
@@ -209,9 +209,9 @@ const Navbar: React.FC = () => {
   const utilityMenuBadgeLabel = `${t('nav.more')}: ${utilityMenuCount}`;
   const cartBadgeLabel = `${t('nav.ariaCart')}: ${safeCartCount}`;
   const renderCartBadge = () => (
-    <Badge count={safeCartCount} size="small" overflowCount={99}>
+    <ShopBadge count={safeCartCount} size="small" overflowCount={99}>
       <ShopIcon path={SI.cart} />
-    </Badge>
+    </ShopBadge>
   );
   const androidApkUrl = useMemo(
     () => (mobileRelease ? resolveMobileReleaseDownloadUrl(mobileRelease) : ''),
@@ -971,14 +971,14 @@ const Navbar: React.FC = () => {
                   <Link to="/profile" className="shop-nav__mobile-auth" aria-label={t('nav.account')} title={t('nav.account')}><ShopIcon path={SI.user} /><span className="shop-nav__mobile-authText">{t('nav.account')}</span></Link>
                 ) : null}
                 <button type="button" className="shop-nav__secondary-action shop-nav__secondary-action--wishlist" onClick={() => navigate('/wishlist')} aria-label={wishlistBadgeLabel} title={wishlistBadgeLabel}>
-                    <Badge count={safeWishlistCount} size="small">
+                    <ShopBadge count={safeWishlistCount} size="small">
                     <ShopIcon path={SI.heart} />
-                  </Badge>
+                  </ShopBadge>
                 </button>
                 <button type="button" className="shop-nav__secondary-action shop-nav__secondary-action--notifications" onClick={() => navigate('/notifications')} aria-label={notificationsBadgeLabel} title={notificationsBadgeLabel}>
-                    <Badge count={safeUnreadCount} size="small">
+                    <ShopBadge count={safeUnreadCount} size="small">
                     <ShopIcon path={SI.bell} />
-                  </Badge>
+                  </ShopBadge>
                 </button>
                 <ShopDropdown
                   popupClassName="shop-nav__dropdown-popup"
@@ -1006,9 +1006,9 @@ const Navbar: React.FC = () => {
                   ]}
                 >
                   <button type="button" className="shop-nav__secondary-action shop-nav__more-trigger" aria-label={utilityMenuBadgeLabel} title={utilityMenuBadgeLabel} aria-haspopup="menu" aria-expanded={isDropdownOpen('account-more')}>
-                    <Badge count={utilityMenuCount} size="small" overflowCount={99}>
+                    <ShopBadge count={utilityMenuCount} size="small" overflowCount={99}>
                       <ShopIcon path={SI.ellipsis} />
-                    </Badge>
+                    </ShopBadge>
                   </button>
                 </ShopDropdown>
                 <button type="button" className="shop-nav__cart-action" data-nav-cart="true" onClick={() => dispatchDomEvent('shop:open-cart')} aria-label={cartBadgeLabel} title={cartBadgeLabel}>
@@ -1060,9 +1060,9 @@ const Navbar: React.FC = () => {
                   ]}
                 >
                   <button type="button" className="shop-nav__secondary-action shop-nav__more-trigger" aria-label={utilityMenuBadgeLabel} title={utilityMenuBadgeLabel} aria-haspopup="menu" aria-expanded={isDropdownOpen('guest-more')}>
-                    <Badge count={utilityMenuCount} size="small" overflowCount={99}>
+                    <ShopBadge count={utilityMenuCount} size="small" overflowCount={99}>
                       <ShopIcon path={SI.ellipsis} />
-                    </Badge>
+                    </ShopBadge>
                   </button>
                 </ShopDropdown>
                 <button type="button" className="shop-nav__cart-action" data-nav-cart="true" onClick={() => dispatchDomEvent('shop:open-cart')} aria-label={cartBadgeLabel} title={cartBadgeLabel}>

@@ -1,7 +1,8 @@
 import React, { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { ShopIcon, SI } from '../components/ShopIcon';
-import { Alert, Button, Input, Tag } from 'antd';
+import { Alert, Button, Tag } from 'antd';
+import ShopInput from '../components/ShopInput';
 import ShopSelect from '../components/ShopSelect';
 import { useNavigate } from 'react-router-dom';
 import { cartApi, couponApi } from '../api';
@@ -995,7 +996,7 @@ const CouponCenter: React.FC = () => {
               </div>
             ) : null}
             <div className="coupon-claim-section__controls">
-              <Input
+              <ShopInput
                 allowClear
                 className="coupon-claim-section__search"
                 prefix={<ShopIcon path={SI.search} />}

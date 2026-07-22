@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { ShopIcon, SI } from '../components/ShopIcon';
-import { Alert, Button, Form, Input } from 'antd';
-import type { InputRef } from 'antd/es/input';
+import { Alert, Button, Form } from 'antd';
+import ShopInput, { ShopPasswordInput } from '../components/ShopInput';
 import { Link, useNavigate } from 'react-router-dom';
 import { userApi } from '../api';
 import { useAppConfig } from '../hooks/useAppConfig';
@@ -85,7 +85,7 @@ const ForgotPassword: React.FC = () => {
   const [codeTtlMinutes, setCodeTtlMinutes] = useState(0);
   const [sentEmailHint, setSentEmailHint] = useState('');
   const [form] = Form.useForm<ForgotPasswordForm>();
-  const codeInputRef = useRef<InputRef | null>(null);
+  const codeInputRef = useRef<HTMLInputElement | null>(null);
   const resetCodeSendingRef = useRef(false);
   const resetSubmittingRef = useRef(false);
   const navigate = useNavigate();
@@ -335,7 +335,7 @@ const ForgotPassword: React.FC = () => {
         ) : (
           <Form form={form} name="forgotPassword" onFinish={onFinish} onFinishFailed={() => { window.requestAnimationFrame(() => window.requestAnimationFrame(scrollFirstForgotPasswordErrorIntoView)); }} layout="vertical" className="shopee-login-form" validateTrigger={["onChange", "onBlur"]} requiredMark>
           <Form.Item name="login" rules={[{ required: true, message: t('pages.auth.usernameRequired') }]}>
-            <Input
+            <ShopInput
               prefix={<ShopIcon path={SI.user} />}
               placeholder={t('pages.auth.username')}
               size="large"
@@ -352,7 +352,7 @@ const ForgotPassword: React.FC = () => {
               { type: 'email', message: t('pages.auth.emailInvalid') },
             ]}
           >
-            <Input prefix={<ShopIcon path={SI.mail} />} placeholder={t('pages.auth.email')} size="large" autoComplete="email" disabled={loading || !emailCodeEnabled} aria-label={resetEmailInputLabel} title={resetEmailInputLabel} />
+            <ShopInput prefix={<ShopIcon path={SI.mail} />} placeholder={t('pages.auth.email')} size="large" autoComplete="email" disabled={loading || !emailCodeEnabled} aria-label={resetEmailInputLabel} title={resetEmailInputLabel} />
           </Form.Item>
           {sentEmailHint && (
             <div className="shopee-login-emailSent" role="status">
@@ -373,7 +373,7 @@ const ForgotPassword: React.FC = () => {
               { len: 6, message: t('pages.auth.emailCodeLength') },
             ]}
           >
-            <Input
+            <ShopInput
               ref={codeInputRef}
               className="shopee-login-codeInput"
               prefix={<ShopIcon path={SI.safety} />}
@@ -416,7 +416,7 @@ const ForgotPassword: React.FC = () => {
               { validator: validateStrongPassword },
             ]}
           >
-            <Input.Password
+            <ShopPasswordInput
               prefix={<ShopIcon path={SI.lock} />}
               placeholder={t('pages.auth.newPassword')}
               size="large"
@@ -452,7 +452,7 @@ const ForgotPassword: React.FC = () => {
               }),
             ]}
           >
-            <Input.Password
+            <ShopPasswordInput
               prefix={<ShopIcon path={SI.lock} />}
               placeholder={t('pages.auth.confirmPassword')}
               size="large"

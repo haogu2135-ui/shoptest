@@ -1,7 +1,8 @@
 import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { ShopIcon, SI } from './ShopIcon';
-import { Alert, Button, InputNumber, Progress, Tag } from 'antd';
+import { Alert, Button, Progress, Tag } from 'antd';
+import ShopInputNumber from './ShopInputNumber';
 import ShopPopconfirm from './ShopPopconfirm';
 import { useNavigate } from 'react-router-dom';
 import { cartApi } from '../api';
@@ -795,13 +796,13 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
                           </span>
                           <span className="cart-drawer__text cart-drawer__text--strong cart-drawer__lineTotal commerce-money">{formatMoney(getCartLineAmount(item))}</span>
                         </div>
-                        <InputNumber
+                        <ShopInputNumber
                           min={1}
                           max={getCartQuantityLimit(item.stock)}
-                          size="small"
+                          className="cart-drawer__quantityInput"
                           value={item.quantity}
                           disabled={!isAvailable(item) || hasStaleCartData}
-                          status={updatingQuantityIds[item.id] ? 'warning' : undefined}
+                          status={updatingQuantityIds[item.id] ? 'warning' : ''}
                           aria-label={`${t('common.quantity')}: ${itemName}`}
                           title={`${t('common.quantity')}: ${itemName}`}
                           onChange={(value) => updateQuantity(item, value || 1)}

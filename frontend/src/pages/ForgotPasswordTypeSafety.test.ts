@@ -5,8 +5,8 @@ const pageSource = fs.readFileSync(path.join(__dirname, 'ForgotPassword.tsx'), '
 
 describe('ForgotPassword type-safety guards', () => {
   it('keeps reset-code and reset-submit error handling typed without broad any usage', () => {
-    expect(pageSource).toContain("import type { InputRef } from 'antd/es/input';");
-    expect(pageSource).toContain('const codeInputRef = useRef<InputRef | null>(null);');
+    expect(pageSource).not.toContain("import type { InputRef } from 'antd/es/input';");
+    expect(pageSource).toContain('const codeInputRef = useRef<HTMLInputElement | null>(null);');
     expect(pageSource).toContain('const getRetryAfterSeconds = (error: unknown');
     expect(pageSource).toContain('const authApiErrorCode = (error: unknown)');
     expect(pageSource).toContain('const isFormValidationError = (error: unknown)');

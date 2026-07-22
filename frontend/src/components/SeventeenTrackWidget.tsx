@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { ShopIcon, SI } from './ShopIcon';
-import { Alert, Button, Input, Tag } from 'antd';
+import { Alert, Button, Tag } from 'antd';
+import ShopInput from './ShopInput';
 import { useNavigate } from 'react-router-dom';
 import { logisticsApi } from '../api';
 import { useLanguage } from '../i18n';
@@ -213,10 +214,15 @@ const SeventeenTrackWidget: React.FC<SeventeenTrackWidgetProps> = ({
   return (
     <div className="seventeen-track-widget">
       <div className="seventeen-track-widget__search">
-        <Input
+        <ShopInput
           value={value}
           onChange={(event) => setValue(event.target.value)}
-          onPressEnter={runTrack}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') {
+              event.preventDefault();
+              runTrack();
+            }
+          }}
           placeholder={t('pages.orderTracking.trackingNumber')}
           aria-label={trackingInputLabel}
           title={trackingInputLabel}
