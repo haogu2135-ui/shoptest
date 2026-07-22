@@ -504,15 +504,16 @@ describe('commercial UX contracts', () => {
   it('keeps register and support surfaces on commercial mobile touch targets with readable secondary text', () => {
     const register = readFrontend('pages', 'Register.css');
     const support = readFrontend('components', 'CustomerSupportWidget.css');
-    const app = readFrontend('App.css');
+    const antdTheme = readFrontend('styles', 'antd-theme-overrides.css');
 
     expect(register).toContain('Commercial register mobile touch targets');
     expect(register).toContain('min-height: 44px !important');
     expect(support).toContain('Commercial support mobile touch targets');
     expect(support).toContain('customer-support-widget__headerClose.ant-btn');
     expect(support).toContain('min-height: 44px !important');
-    expect(app).toContain('Commercial secondary text contrast');
-    expect(app).toContain('rgba(16, 47, 34, 0.72)');
+    // Secondary AntD text contrast ships with deferred theme overrides (not shell App.css).
+    expect(antdTheme).toContain('Commercial secondary text contrast');
+    expect(antdTheme).toContain('rgba(16, 47, 34, 0.72)');
   });
 
 
@@ -920,7 +921,9 @@ it('keeps home empty category and product rails on multipath commercial recovery
   it('keeps conversion route Suspense shells on a commercial h1 primary title', () => {
     const app = readFrontend('App.tsx');
     expect(app).toContain('Keep conversion shells on a commercial h1 while lazy route chunks hydrate');
-    expect(app).toMatch(/Title level=\{1\} className="app-route-loading__title"/);
+    // Lightweight shell: semantic h1 (no antd Typography Title) for conversion route hydration titles.
+    expect(app).toMatch(/<h1 className="app-route-loading__title">\{routeTitle\}<\/h1>/);
+    expect(app).toContain('app-route-loading__spinner');
     expect(app).toMatch(/pages\.cart\.title/);
     expect(app).toMatch(/pages\.checkout\.title/);
     expect(app).toMatch(/pages\.orderTracking\.title/);
@@ -1311,10 +1314,11 @@ it('keeps home empty category and product rails on multipath commercial recovery
 
   it('keeps footer and coupon conversion rails commercially tappable at >=44px', () => {
     const appCss = readFrontend('App.css');
+    const antdTheme = readFrontend('styles', 'antd-theme-overrides.css');
     const couponCss = readFrontend('pages', 'CouponCenter.css');
     expect(appCss).toMatch(/\.shop-footer a,\s*\.shop-footer button[\s\S]{0,60}?min-height:\s*44px/);
     expect(appCss).toMatch(/\.shop-footer__columns a,\s*\.shop-footer__columns button[\s\S]{0,80}?min-height:\s*44px/);
-    expect(appCss).toMatch(/\.support-order-select-popup \.ant-select-item[\s\S]{0,60}?min-height:\s*44px/);
+    expect(antdTheme).toMatch(/\.support-order-select-popup \.ant-select-item[\s\S]{0,60}?min-height:\s*44px/);
     expect(couponCss).toMatch(/\.coupon-claim-section__search \.ant-input[\s\S]{0,120}?height:\s*44px/);
     expect(couponCss).toMatch(/\.coupon-center-page__quickNav button[\s\S]{0,100}?min-height:\s*44px/);
     expect(couponCss).not.toMatch(/\.coupon-center-page__quickNav button[\s\S]{0,80}?height:\s*(?:3[0-9]|4[0-3])px/);

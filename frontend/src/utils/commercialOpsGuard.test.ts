@@ -66,7 +66,7 @@ describe('commercial ops contracts', () => {
     expect(production).toContain('production host reachable');
     expect(production).toContain('production DNS A records');
     expect(production).toContain('production DNS AAAA records');
-    expect(production).toContain('Cloudflare origin connect failed');
+    expect(production).toContain('cloudflare origin gap diagnosis');
     expect(production).toContain('probeOriginEdgeDual');
     expect(production).toContain('origin edge CWV measurement');
     expect(production).toContain('SHOPTEST_PRODUCTION_HOST');
@@ -137,7 +137,10 @@ describe('commercial ops contracts', () => {
     expect(browserSmoke).toContain('__shopmxCwv');
     expect(browserSmoke).toContain('PerformanceObserver');
     expect(httpSmoke).toContain('robots.txt allows privacy');
+    expect(httpSmoke).toContain('robots.txt allows products detail');
+    expect(httpSmoke).toContain('security.txt');
     expect(httpSmoke).toContain('sitemap.xml includes terms');
+    expect(httpSmoke).toContain('sitemap.xml includes product detail');
     expect(browserSmoke).toContain('/forgot-password');
     expect(browserSmoke).toContain('/privacy');
     expect(browserSmoke).toContain('cookie consent banner');

@@ -22,11 +22,15 @@
       "purpose": "any maskable"
     }
   ],
-  "start_url": ".",
-  "scope": ".",
+  "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "categories": ["shopping", "lifestyle"],
+  "categories": [
+    "shopping",
+    "lifestyle"
+  ],
   "theme_color": "#124734",
-  "background_color": "#ffffff"
+  "background_color": "#ffffff",
+  "id": "/"
 }

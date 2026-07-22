@@ -1,9 +1,20 @@
 import en from './locales/en.json';
-import es from './locales/es.json';
+import esStorefront from './locales/es.json';
+import esAdminPages from './locales/es-admin-pages.json';
 import zh from './locales/zh.json';
 import { translateForLanguage } from './i18n';
 import fs from 'fs';
 import path from 'path';
+
+// Commercial shell ships storefront Spanish; admin namespaces are deferred and merged for parity checks.
+type LocaleTree = typeof en;
+const es = {
+  ...esStorefront,
+  pages: {
+    ...esStorefront.pages,
+    ...esAdminPages.pages,
+  },
+} as LocaleTree;
 
 const flattenKeys = (source: unknown, prefix = ''): string[] => {
   if (!source || typeof source !== 'object' || Array.isArray(source)) return [];

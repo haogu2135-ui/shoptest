@@ -8,6 +8,7 @@ import com.example.shop.service.IpBlacklistService;
 import com.example.shop.service.OrderService;
 import com.example.shop.service.PaymentChannelRecommendationService;
 import com.example.shop.service.PaymentService;
+import com.example.shop.service.PaymentWebhookEvidenceService;
 import com.example.shop.service.SecurityAuditLogService;
 import com.example.shop.service.SystemAlertService;
 import org.junit.jupiter.api.Test;
@@ -32,6 +33,7 @@ class PaymentControllerMercadoPagoWebhookTest {
     private final MockMvc mockMvc = MockMvcBuilders
             .standaloneSetup(new PaymentController(
                     paymentService,
+                    mock(PaymentWebhookEvidenceService.class),
                     mock(OrderService.class),
                     mock(SecurityAuditLogService.class),
                     new PaymentChannelConfig(),

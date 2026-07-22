@@ -284,7 +284,7 @@ describe('source quality contracts', () => {
     const frontendRoot = path.resolve(__dirname, '..');
     const homeSource = fs.readFileSync(path.join(frontendRoot, 'pages/Home.tsx'), 'utf8');
     const discoverySectionStart = homeSource.indexOf('<section className="shopee-section shopee-discovery shopee-for-you">');
-    const petGalleryComponentStart = homeSource.indexOf('<HomePetGallery', discoverySectionStart);
+    const petGalleryComponentStart = homeSource.indexOf('<LazyHomePetGallery', discoverySectionStart);
     const discoverySectionSource = homeSource.slice(discoverySectionStart, petGalleryComponentStart);
 
     expect(discoverySectionStart).toBeGreaterThanOrEqual(0);
@@ -324,8 +324,10 @@ describe('source quality contracts', () => {
     const homeSource = fs.readFileSync(path.join(frontendRoot, 'pages/Home.tsx'), 'utf8');
     const petGallerySource = fs.readFileSync(path.join(frontendRoot, 'components/HomePetGallery.tsx'), 'utf8');
 
-    expect(homeSource).toContain("import HomePetGallery, { type HomePetGalleryItem } from '../components/HomePetGallery';");
-    expect(homeSource).toContain('<HomePetGallery');
+    expect(homeSource).toContain("import type { HomePetGalleryItem } from '../components/HomePetGallery';");
+    expect(homeSource).toContain('webpackChunkName: "home-pet-gallery"');
+    expect(homeSource).toContain('LazyHomePetGallery');
+    expect(homeSource).toContain('<LazyHomePetGallery');
     expect(homeSource).not.toContain('<section className="shopee-section pet-ugc">');
     expect(homeSource).not.toContain('className="profile-mobile-safe-modal pet-ugc-preview"');
     expect(homeSource).not.toContain('const petGalleryImageSizes');

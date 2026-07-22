@@ -1,7 +1,6 @@
 import React, { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react';
 import { BrowserRouter as Router, Link, Navigate, Outlet, Route, Routes, useLocation, useNavigate, useNavigationType } from 'react-router-dom';
-import { Button, Layout, Modal, Space, Spin, Typography, message } from 'antd';
-import { CustomerServiceOutlined, GiftOutlined, UserAddOutlined, FileSearchOutlined, CopyOutlined } from '@ant-design/icons';
+
 import ErrorBoundary from './components/ErrorBoundary';
 import SkipToContentLink, { MAIN_CONTENT_ID } from './components/SkipToContentLink';
 import { AuthProvider } from './hooks/useAuth';
@@ -12,31 +11,33 @@ import { addAppScrollListener, getAppScrollMetrics, scrollAppToTop } from './uti
 import { consumeNativeBack, useNativeBackHandler } from './utils/nativeBack';
 import { getLocalStorageItem, hasStoredValue, removeLocalStorageItem, setLocalStorageItem } from './utils/safeStorage';
 import { clearGuestSupportContext, loadGuestSupportContext, normalizeGuestSupportContext, saveGuestSupportContext } from './utils/guestSupportContext';
-import { clearStoredAuthSession, userApi } from './api/core';
 import { buildLoginUrl, buildLoginUrlFromWindow, getCurrentRelativeUrl } from './utils/authRedirect';
-import CookieConsentBanner from './components/CookieConsentBanner';
 import { AUTH_SESSION_CHANGED_EVENT, AUTH_SESSION_STORAGE_KEYS } from './utils/authEvents';
 import { isAuthExpiredError } from './utils/apiError';
 import { getEffectiveRole } from './utils/roles';
 import { reportNonBlockingError } from './utils/nonBlockingError';
 import { subscribeAccessibleMessages, type AccessibleMessageAnnouncement } from './utils/accessibleMessage';
 import {
-  currentMobileVersionName,
-  currentMobileVersionCode,
   currentNativeMobilePlatform,
-  fetchLatestMobileRelease,
-  isMobileReleaseDownloadAllowed,
-  isNativeAndroidApp,
   isNativeMobileApp,
-  openMobileReleaseDownload,
-  resolveMobileReleaseDownloadUrl,
-  type MobileReleaseManifest,
 } from './utils/mobileUpdate';
 import './App.css';
 
-const { Content, Footer } = Layout;
-const { Text, Title } = Typography;
-const MOBILE_UPDATE_DISMISSED_KEY_PREFIX = 'shop-mobile-update-dismissed';
+
+/** Lightweight shell icons — keep ant-design icons package out of the App entry graph. */
+const ShellIcon: React.FC<{ path: string }> = ({ path }) => (
+  <svg className="shop-shell-icon" viewBox="0 0 24 24" width="1em" height="1em" aria-hidden="true" focusable="false">
+    <path fill="currentColor" d={path} />
+  </svg>
+);
+const SHELL_ICON_SUPPORT = 'M12 2C6.48 2 2 6.04 2 11c0 2.38 1.19 4.51 3.06 6.01L4 22l5.2-1.86C10.1 20.37 11.03 20.5 12 20.5 17.52 20.5 22 16.46 22 11.5S17.52 2 12 2zm1 14h-2v-2h2v2zm0-4h-2V7h2v5z';
+const SHELL_ICON_SEARCH = 'M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z';
+const SHELL_ICON_GIFT = 'M20 6h-2.18c.11-.31.18-.65.18-1a2.996 2.996 0 0 0-5.5-1.65l-.5.67-.5-.68C10.96 2.54 9.81 2 8.5 2 6.85 2 5.5 3.35 5.5 5c0 .35.07.69.18 1H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-5-2c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zM8.5 4c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zM12 12.68 15.93 17H8.07L12 12.68zM12 9.32 8.07 5h7.86L12 9.32z';
+const SHELL_ICON_USER_ADD = 'M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z';
+
+
+const loadAuthCore = () => import(/* webpackChunkName: "api-core" */ './api/core');
+
 
 declare global {
   interface Window {
@@ -62,6 +63,8 @@ declare global {
 
 const loadNavbar = () => import(/* webpackChunkName: "navbar" */ './components/Navbar');
 const LazyNavbar = lazy(loadNavbar);
+const LazyCookieConsentBanner = lazy(() => import(/* webpackChunkName: "cookie-consent" */ './components/CookieConsentBanner'));
+const LazyNativeMobileUpdateGate = lazy(() => import(/* webpackChunkName: "mobile-update-gate" */ './components/NativeMobileUpdateGate'));
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
 const AdminLayout = lazy(() => import('./components/AdminLayout'));
 const AlertManagement = lazy(() => import('./pages/AlertManagement'));
@@ -287,8 +290,8 @@ const LoadingFallback = () => {
 
   return (
     <div className="app-route-loading" role="status" aria-live="polite" aria-busy="true" aria-label={t('app.loading')}>
-      {routeTitle ? <Title level={1} className="app-route-loading__title">{routeTitle}</Title> : null}
-      <Spin size="large" />
+      {routeTitle ? <h1 className="app-route-loading__title">{routeTitle}</h1> : null}
+      <span className="app-route-loading__spinner" aria-hidden="true" />
       <span className="app-route-loading__text">
         {t('app.loading')}
       </span>
@@ -302,16 +305,45 @@ export const AccessibleMessageLiveRegion: React.FC = () => {
 
   useEffect(() => subscribeAccessibleMessages(setAnnouncement), []);
 
+  useEffect(() => {
+    if (!announcement) return undefined;
+    const timer = window.setTimeout(() => {
+      setAnnouncement((current) => (current && current.id === announcement.id ? null : current));
+    }, 4200);
+    return () => window.clearTimeout(timer);
+  }, [announcement]);
+
+  const tone = announcement?.type === 'error'
+    ? 'error'
+    : announcement?.type === 'warning'
+      ? 'warning'
+      : announcement?.type === 'success'
+        ? 'success'
+        : 'info';
+
   return (
-    <div
-      className="app-message-live-region"
-      role="status"
-      aria-live="polite"
-      aria-atomic="true"
-      aria-label={t('app.statusAnnouncementLabel')}
-    >
-      {announcement ? <span key={announcement.id}>{announcement.text}</span> : null}
-    </div>
+    <>
+      <div
+        className="app-message-live-region"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        aria-label={t('app.statusAnnouncementLabel')}
+      >
+        {announcement ? <span key={announcement.id}>{announcement.text}</span> : null}
+      </div>
+      {announcement?.shellToast ? (
+        <div
+          key={`toast-${announcement.id}`}
+          className={`app-shell-toast app-shell-toast--${tone}`}
+          role="status"
+          aria-live="polite"
+          data-shell-toast={tone}
+        >
+          {announcement.text}
+        </div>
+      ) : null}
+    </>
   );
 };
 
@@ -344,21 +376,30 @@ export const AuthStartupGate: React.FC<{ children: React.ReactNode }> = ({ child
 
     let disposed = false;
     setChecking(true);
-    userApi.getProfile({ skipAuthRedirect: true })
-      .then((response) => {
-        if (disposed) return;
-        applyStartupProfile(response.data);
+    void loadAuthCore()
+      .then(({ userApi, clearStoredAuthSession }) => {
+        if (disposed) return undefined;
+        return userApi.getProfile({ skipAuthRedirect: true })
+          .then((response) => {
+            if (disposed) return;
+            applyStartupProfile(response.data);
+          })
+          .catch((error) => {
+            if (disposed) return;
+            if (isAuthExpiredError(error)) {
+              clearStoredAuthSession();
+              if (isAuthRequiredRoutePath(window.location.pathname)) {
+                navigate(buildLoginUrlFromWindow(), { replace: true });
+              }
+              return;
+            }
+            reportNonBlockingError('AuthStartupGate.validateStoredSession', error);
+          });
       })
       .catch((error) => {
-        if (disposed) return;
-        if (isAuthExpiredError(error)) {
-          clearStoredAuthSession();
-          if (isAuthRequiredRoutePath(window.location.pathname)) {
-            navigate(buildLoginUrlFromWindow(), { replace: true });
-          }
-          return;
+        if (!disposed) {
+          reportNonBlockingError('AuthStartupGate.loadAuthCore', error);
         }
-        reportNonBlockingError('AuthStartupGate.validateStoredSession', error);
       })
       .finally(() => {
         if (!disposed) {
@@ -452,235 +493,6 @@ const NativeAppClassHost: React.FC = () => {
   }, []);
 
   return null;
-};
-
-const NativeMobileUpdateGate: React.FC = () => {
-  const { t } = useLanguage();
-  const [release, setRelease] = useState<MobileReleaseManifest | null>(null);
-  const [openingDownload, setOpeningDownload] = useState(false);
-  const [downloadFailed, setDownloadFailed] = useState(false);
-  const installedVersionCode = currentMobileVersionCode();
-  const latestVersionCode = release?.versionCode || 0;
-  const updateRequired = Boolean(release && (release.mandatory || (release.minSupportedVersionCode || 0) > installedVersionCode));
-  const downloadUrl = resolveMobileReleaseDownloadUrl(release);
-
-  useEffect(() => {
-    if (!isNativeAndroidApp()) return;
-
-    let disposed = false;
-    let checking = false;
-    let retryTimer: number | null = null;
-    const listenerRemovers: Array<() => Promise<void> | void> = [];
-
-    const clearRetryTimer = () => {
-      if (retryTimer !== null) {
-        window.clearTimeout(retryTimer);
-        retryTimer = null;
-      }
-    };
-
-    const checkLatestRelease = async () => {
-      if (disposed || checking) return;
-      checking = true;
-      try {
-        const latestRelease = await fetchLatestMobileRelease();
-        if (disposed) return;
-        const latestReleaseVersionCode = latestRelease?.versionCode || 0;
-        if (
-          !latestRelease
-          || latestReleaseVersionCode <= installedVersionCode
-          || !isMobileReleaseDownloadAllowed(latestRelease)
-        ) {
-          return;
-        }
-        const required = latestRelease.mandatory || (latestRelease.minSupportedVersionCode || 0) > installedVersionCode;
-        const dismissed = getLocalStorageItem(`${MOBILE_UPDATE_DISMISSED_KEY_PREFIX}:${latestReleaseVersionCode}`) === '1';
-        if (!required && dismissed) {
-          return;
-        }
-        setDownloadFailed(false);
-        setRelease(latestRelease);
-      } finally {
-        checking = false;
-      }
-    };
-
-    const scheduleReleaseCheck = () => {
-      if (disposed) return;
-      clearRetryTimer();
-      retryTimer = window.setTimeout(() => {
-        retryTimer = null;
-        void checkLatestRelease();
-      }, 300);
-    };
-
-    void checkLatestRelease();
-    window.addEventListener('online', scheduleReleaseCheck);
-    const handleVisibilityChange = () => {
-      if (!document.hidden) {
-        scheduleReleaseCheck();
-      }
-    };
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    const appPlugin = window.Capacitor?.Plugins?.App;
-    if (appPlugin && typeof appPlugin.addListener === 'function') {
-      const addNativeListener = (
-        eventName: 'appStateChange' | 'resume',
-        listener: (event?: { isActive?: boolean }) => void,
-      ) => {
-        try {
-          const registration = appPlugin.addListener?.(eventName, listener);
-          Promise.resolve(registration).then((handle) => {
-            if (!handle || typeof handle.remove !== 'function') return;
-            if (disposed) {
-              void handle.remove();
-              return;
-            }
-            listenerRemovers.push(() => handle.remove());
-          });
-        } catch (error) {
-          reportNonBlockingError('App.addNativeReleaseCheckListener', error);
-        }
-      };
-
-      addNativeListener('appStateChange', (event) => {
-        if (event?.isActive !== false) {
-          scheduleReleaseCheck();
-        }
-      });
-      addNativeListener('resume', scheduleReleaseCheck);
-    }
-
-    return () => {
-      disposed = true;
-      clearRetryTimer();
-      window.removeEventListener('online', scheduleReleaseCheck);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      listenerRemovers.forEach((remove) => {
-        void remove();
-      });
-    };
-  }, [installedVersionCode]);
-
-  const handleDismiss = useCallback(() => {
-    if (!release || updateRequired) return;
-    setLocalStorageItem(`${MOBILE_UPDATE_DISMISSED_KEY_PREFIX}:${release.versionCode}`, '1');
-    setDownloadFailed(false);
-    setRelease(null);
-  }, [release, updateRequired]);
-
-  const handleNativeBack = useCallback(() => {
-    if (updateRequired) {
-      return true;
-    }
-    handleDismiss();
-    return true;
-  }, [handleDismiss, updateRequired]);
-
-  useNativeBackHandler(Boolean(release), handleNativeBack);
-
-  const handleDownload = async () => {
-    if (!release) return;
-    setOpeningDownload(true);
-    setDownloadFailed(false);
-    try {
-      const opened = await openMobileReleaseDownload(release);
-      setDownloadFailed(!opened);
-    } catch (error) {
-      reportNonBlockingError('App.mobileUpdateDownload', error);
-      setDownloadFailed(true);
-    } finally {
-      setOpeningDownload(false);
-    }
-  };
-
-  const handleCopyDownloadLink = async () => {
-    if (!downloadUrl) return;
-    try {
-      await navigator.clipboard.writeText(downloadUrl);
-      message.success(t('appUpdate.copyDownloadLinkSuccess'));
-    } catch (error) {
-      reportNonBlockingError('App.copyDownloadLink', error);
-      message.error(t('appUpdate.copyDownloadLinkFailed'));
-    }
-  };
-
-  if (!release) return null;
-
-  const releaseNotes = release.releaseNotes || [];
-  const currentVersionLabel = currentMobileVersionName();
-  const latestVersionLabel = release.versionName || String(latestVersionCode);
-  const updateTargetLabel = `${latestVersionLabel} (${currentVersionLabel} -> ${latestVersionLabel})`;
-  const updateLaterActionLabel = `${t('appUpdate.later')}: ${updateTargetLabel}`;
-  const updateDownloadActionLabel = `${t('appUpdate.download')}: ${updateTargetLabel}`;
-  const copyDownloadActionLabel = `${t('appUpdate.copyDownloadLink')}: ${latestVersionLabel}`;
-
-  return (
-    <Modal
-      open
-      centered
-      closable={!updateRequired}
-      maskClosable={!updateRequired}
-      onCancel={handleDismiss}
-      title={t(updateRequired ? 'appUpdate.requiredTitle' : 'appUpdate.title')}
-      rootClassName="shop-mobile-update-modal-root"
-      className="profile-mobile-safe-modal shop-mobile-update-modal"
-      maskStyle={{
-        background: 'rgba(15, 30, 22, 0.48)',
-        backdropFilter: 'none',
-        WebkitBackdropFilter: 'none',
-        filter: 'none',
-      }}
-      footer={(
-        <Space wrap>
-          {!updateRequired ? (
-            <Button aria-label={updateLaterActionLabel} title={updateLaterActionLabel} onClick={handleDismiss}>{t('appUpdate.later')}</Button>
-          ) : null}
-          <Button type="primary" loading={openingDownload} aria-label={updateDownloadActionLabel} title={updateDownloadActionLabel} onClick={handleDownload}>
-            {t('appUpdate.download')}
-          </Button>
-        </Space>
-      )}
-    >
-      <Space direction="vertical" size={12} style={{ width: '100%' }}>
-        <Text>{t('appUpdate.description')}</Text>
-        <Text type="secondary">
-          {t('appUpdate.versionSummary', { current: currentVersionLabel, latest: latestVersionLabel })}
-        </Text>
-        {downloadFailed ? (
-          <Space direction="vertical" size={8} style={{ width: '100%' }}>
-            <Text type="danger">{t('appUpdate.downloadFailed')}</Text>
-            <Button
-              icon={<CopyOutlined />}
-              aria-label={copyDownloadActionLabel}
-              title={copyDownloadActionLabel}
-              onClick={handleCopyDownloadLink}
-              disabled={!downloadUrl}
-              block
-            >
-              {t('appUpdate.copyDownloadLink')}
-            </Button>
-            {downloadUrl ? (
-              <Text code copyable={{ text: downloadUrl }} style={{ maxWidth: '100%', whiteSpace: 'normal', overflowWrap: 'anywhere' }}>
-                {downloadUrl}
-              </Text>
-            ) : null}
-          </Space>
-        ) : null}
-        {releaseNotes.length ? (
-          <div>
-            <Text strong>{t('appUpdate.releaseNotes')}</Text>
-            <ul>
-              {releaseNotes.map((note) => (
-                <li key={note}>{note}</li>
-              ))}
-            </ul>
-          </div>
-        ) : null}
-      </Space>
-    </Modal>
-  );
 };
 
 const NativeMobileContrastGuard: React.FC = () => {
@@ -852,59 +664,63 @@ const ConnectivityBanner: React.FC = () => {
       </div>
       {!online ? (
         <div className="shop-connectivity-banner__actions" data-connectivity-offline-recovery="true">
-          <Button
-            size="small"
-            type="primary"
+          <button
+            type="button"
+            className="shop-shell-btn shop-shell-btn--primary shop-shell-btn--small"
             aria-label={t('messages.retry')}
             title={t('messages.retry')}
             onClick={() => window.location.reload()}
           >
             {t('messages.retry')}
-          </Button>
-          <Button
-            size="small"
+          </button>
+          <button
+            type="button"
+            className="shop-shell-btn shop-shell-btn--small"
             aria-label={t('pages.cart.title')}
             title={t('pages.cart.title')}
             onClick={() => navigate('/cart')}
           >
             {t('pages.cart.title')}
-          </Button>
-          <Button
-            size="small"
+          </button>
+          <button
+            type="button"
+            className="shop-shell-btn shop-shell-btn--small"
             aria-label={t('nav.history')}
             title={t('nav.history')}
             onClick={() => navigate('/history')}
           >
             {t('nav.history')}
-          </Button>
-          <Button
-            size="small"
+          </button>
+          <button
+            type="button"
+            className="shop-shell-btn shop-shell-btn--small"
             aria-label={t('pages.cart.browse')}
             title={t('pages.cart.browse')}
             onClick={() => navigate('/products')}
           >
             {t('pages.cart.browse')}
-          </Button>
+          </button>
         </div>
       ) : (
         <div className="shop-connectivity-banner__actions" data-connectivity-online-recovery="true">
-          <Button
-            size="small"
-            type="primary"
+          <button
+            type="button"
+            className="shop-shell-btn shop-shell-btn--primary shop-shell-btn--small"
             aria-label={t('pages.cart.browse')}
             title={t('pages.cart.browse')}
             onClick={() => navigate('/products')}
           >
             {t('pages.cart.browse')}
-          </Button>
-          <Button
-            size="small"
+          </button>
+          <button
+            type="button"
+            className="shop-shell-btn shop-shell-btn--small"
             aria-label={t('pages.cart.title')}
             title={t('pages.cart.title')}
             onClick={() => navigate('/cart')}
           >
             {t('pages.cart.title')}
-          </Button>
+          </button>
         </div>
       )}
     </div>
@@ -1105,7 +921,7 @@ const SupportLauncherButton: React.FC<{ loading?: boolean; onOpen: () => void; o
       aria-label={t('pages.support.title')}
       aria-busy={loading}
     >
-      <CustomerServiceOutlined />
+      <ShellIcon path={SHELL_ICON_SUPPORT} />
     </button>
   );
 };
@@ -1376,14 +1192,14 @@ const StorefrontLayout: React.FC = () => {
     {
       key: 'track',
       to: '/track-order',
-      icon: <FileSearchOutlined />,
+      icon: <ShellIcon path={SHELL_ICON_SEARCH} />,
       title: t('nav.trackOrder'),
       text: t('pages.auth.loginTrustTracking'),
     },
     {
       key: 'coupons',
       to: '/coupons',
-      icon: <GiftOutlined />,
+      icon: <ShellIcon path={SHELL_ICON_GIFT} />,
       title: t('home.couponsExtra'),
       text: t('nav.download'),
     },
@@ -1391,34 +1207,36 @@ const StorefrontLayout: React.FC = () => {
       ? {
         key: 'orders',
         to: '/profile?tab=orders',
-        icon: <FileSearchOutlined />,
+        icon: <ShellIcon path={SHELL_ICON_SEARCH} />,
         title: t('pages.profile.allOrders'),
         text: t('pages.auth.loginTrustSecure'),
       }
       : {
         key: 'register',
         to: '/register',
-        icon: <UserAddOutlined />,
+        icon: <ShellIcon path={SHELL_ICON_USER_ADD} />,
         title: t('nav.register'),
         text: t('pages.auth.registerTrustPerks'),
       },
   ];
 
   return (
-    <Layout className={shellClassName} style={{ minHeight: '100vh' }}>
+    <div className={shellClassName} style={{ minHeight: '100vh' }}>
       <SkipToContentLink />
       <ConnectivityBanner />
-      <CookieConsentBanner />
+      <Suspense fallback={null}>
+        <LazyCookieConsentBanner />
+      </Suspense>
       <ApiErrorBanner />
       <Suspense fallback={<header className="app-navbar-skeleton" aria-hidden="true" style={{ minHeight: 56 }} />}>
         <LazyNavbar />
       </Suspense>
-      <Content id={MAIN_CONTENT_ID} tabIndex={-1} style={{ marginTop: 0, padding: 0 }}>
+      <main id={MAIN_CONTENT_ID} tabIndex={-1} style={{ marginTop: 0, padding: 0 }}>
         <ErrorBoundary key={location.pathname}>
           <Outlet />
         </ErrorBoundary>
-      </Content>
-      <Footer className="shop-footer">
+      </main>
+      <footer className="shop-footer">
         <div className="shop-footer__inner">
           <div className="shop-footer__ctaStrip">
             {footerActionCards.map((card) => (
@@ -1455,10 +1273,10 @@ const StorefrontLayout: React.FC = () => {
           </div>
           <div className="shop-footer__copy">{t('footer.rights')}</div>
         </div>
-      </Footer>
+      </footer>
       <LazyCartDrawerHost />
       <LazySupportWidgetHost />
-    </Layout>
+    </div>
   );
 };
 
@@ -1467,7 +1285,9 @@ const App: React.FC = () => {
     <Router>
       <AccessibleMessageLiveRegion />
       <NativeAppClassHost />
-      <NativeMobileUpdateGate />
+      <Suspense fallback={null}>
+        <LazyNativeMobileUpdateGate />
+      </Suspense>
       <AndroidUiFinalGuard />
       <NativeMobileContrastGuard />
       <NativeBackNavigation />

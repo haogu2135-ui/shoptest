@@ -1,13 +1,14 @@
 import React from 'react';
-import { message } from 'antd';
+import message from 'antd/es/message';
 import {
   extractAccessibleMessageText,
+  installAccessibleMessageAnnouncer,
   runWithoutAccessibleMessageAnnouncement,
   subscribeAccessibleMessages,
   type AccessibleMessageAnnouncement,
 } from './accessibleMessage';
 
-jest.mock('antd', () => {
+jest.mock('antd/es/message', () => {
   const mockMessage: {
     open: jest.Mock;
     success?: jest.Mock;
@@ -21,7 +22,7 @@ jest.mock('antd', () => {
   mockMessage.error = jest.fn((content: unknown) => mockMessage.open({ type: 'error', content }));
   mockMessage.warning = jest.fn((content: unknown) => mockMessage.open({ type: 'warning', content }));
   mockMessage.info = jest.fn((content: unknown) => mockMessage.open({ type: 'info', content }));
-  return { message: mockMessage };
+  return { __esModule: true, default: mockMessage };
 });
 
 describe('accessible AntD message announcer', () => {
@@ -31,9 +32,10 @@ describe('accessible AntD message announcer', () => {
     expect(extractAccessibleMessageText(<span>Retry <em>payment</em></span>)).toBe('Retry payment');
   });
 
-  it('announces static message helpers once even when they delegate through message.open', () => {
+  it('announces static message helpers once even when they delegate through message.open', async () => {
     const announcements: AccessibleMessageAnnouncement[] = [];
     const unsubscribe = subscribeAccessibleMessages((announcement) => announcements.push(announcement));
+    await installAccessibleMessageAnnouncer();
 
     message.success('Saved changes');
 
@@ -43,9 +45,10 @@ describe('accessible AntD message announcer', () => {
     unsubscribe();
   });
 
-  it('announces message.open config content', () => {
+  it('announces message.open config content', async () => {
     const announcements: AccessibleMessageAnnouncement[] = [];
     const unsubscribe = subscribeAccessibleMessages((announcement) => announcements.push(announcement));
+    await installAccessibleMessageAnnouncer();
 
     message.open({ type: 'error', content: <span>Login required</span> });
 
@@ -55,9 +58,10 @@ describe('accessible AntD message announcer', () => {
     unsubscribe();
   });
 
-  it('allows local live regions to suppress the global announcement', () => {
+  it('allows local live regions to suppress the global announcement', async () => {
     const announcements: AccessibleMessageAnnouncement[] = [];
     const unsubscribe = subscribeAccessibleMessages((announcement) => announcements.push(announcement));
+    await installAccessibleMessageAnnouncer();
 
     runWithoutAccessibleMessageAnnouncement(() => message.warning('Checkout already announced this'));
 

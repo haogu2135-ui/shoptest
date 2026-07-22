@@ -18,6 +18,7 @@ services:
       CSP_EXTRA_CONNECT_SRC: ${CSP_EXTRA_CONNECT_SRC:-}
     volumes:
       - ${FRONTEND_STATIC_ROOT:-../frontend/build}:/usr/share/nginx/html:ro
+      - ${CERTBOT_WEBROOT:-./certbot/www}:/var/www/certbot:ro
       - ./nginx/shoptest-edge.conf.template:/etc/nginx/templates/default.conf.template:ro
       - ${SSL_CERTIFICATE_HOST_PATH:-/etc/nginx/ssl/pet.686888666.xyz.crt}:${SSL_CERTIFICATE:-/etc/nginx/ssl/pet.686888666.xyz.crt}:ro
       - ${SSL_CERTIFICATE_KEY_HOST_PATH:-/etc/nginx/ssl/pet.686888666.xyz.key}:${SSL_CERTIFICATE_KEY:-/etc/nginx/ssl/pet.686888666.xyz.key}:ro

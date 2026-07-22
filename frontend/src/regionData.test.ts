@@ -14,10 +14,23 @@ describe('regionData lazy loading contract', () => {
     expect(source).not.toContain('region-china-town');
     expect(source).not.toContain("province-city-china/dist/town");
     expect(source).not.toMatch(/webpackChunkName:\s*["']region-china-town["']/);
-    expect(source).toContain('cachedRegionData');
-    expect(source).toContain('regionDataPromise');
+    expect(source).toContain('cachedMexicoRegion');
+    expect(source).toContain('cachedChinaRegion');
+    expect(source).toContain('loadMexicoRegionOption');
+    expect(source).toContain('loadChinaRegionOption');
+    expect(source).toContain('warmChinaRegionInBackground');
+    expect(source).toContain("normalizedLanguage === 'zh'");
     expect(source).toContain('buildMexicoRegionData(mexicoMunicipalitiesModule.default)');
     expect(source).toContain('buildChinaRegionData(chinaLevelModule.default)');
+  });
+
+  it('loads Mexico first and defers China catalog for non-Chinese UI languages', () => {
+    const source = readRegionDataSource();
+    expect(source).toContain("normalizedLanguage === 'zh'");
+    expect(source).toContain('warmChinaRegionInBackground');
+    expect(source).toMatch(/const mexico = await loadMexicoRegionOption\(\);[\s\S]*if \(normalizedLanguage === 'zh'\)/);
+    // Non-zh path must not await China before returning MX options.
+    expect(source).toMatch(/regions = cachedChinaRegion \? \[mexico, cachedChinaRegion\] : \[mexico\]/);
   });
 
   it('matches an address path against supplied region options without loading datasets', () => {

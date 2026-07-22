@@ -1,6 +1,4 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
-import { Button, Result } from 'antd';
-import { CustomerServiceOutlined, GiftOutlined, HomeOutlined, ReloadOutlined, ShoppingOutlined } from '@ant-design/icons';
 import { useNavigate, type NavigateFunction } from 'react-router-dom';
 import { useLanguage } from '../i18n';
 import { reportNonBlockingError } from '../utils/nonBlockingError';
@@ -114,64 +112,38 @@ class ErrorBoundaryInner extends Component<InnerProps, State> {
   render() {
     if (this.state.hasError) {
       const { copy } = this.props;
+      const homeLabel = this.props.homeLabel || copy.backHome;
 
       return (
         <div className="shop-error-boundary" data-error-boundary-recovery="true" role="alert" aria-live="assertive">
-          <Result
-            status="error"
-            title={copy.title}
-            subTitle={(
-              <div className="shop-error-boundary__copy">
-                <div>{copy.subtitle}</div>
-                <div className="shop-error-boundary__hint">{copy.hint}</div>
-              </div>
-            )}
-            extra={[
-              <Button
-                key="retry"
-                type="primary"
-                icon={<ReloadOutlined />}
-                onClick={this.handleRetry}
-              >
+          <div className="shop-error-boundary__panel">
+            <p className="shop-error-boundary__eyebrow" aria-hidden="true">!</p>
+            <h1 className="shop-error-boundary__title">{copy.title}</h1>
+            <div className="shop-error-boundary__copy">
+              <div>{copy.subtitle}</div>
+              <div className="shop-error-boundary__hint">{copy.hint}</div>
+            </div>
+            <div className="shop-error-boundary__actions">
+              <button type="button" className="shop-error-boundary__btn shop-error-boundary__btn--primary" onClick={this.handleRetry}>
                 {copy.retry}
-              </Button>,
-              <Button
-                key="home"
-                icon={<HomeOutlined />}
-                onClick={this.handleGoHome}
-              >
-                {this.props.homeLabel || copy.backHome}
-              </Button>,
-              <Button
-                key="products"
-                icon={<ShoppingOutlined />}
-                onClick={this.handleBrowseProducts}
-              >
+              </button>
+              <button type="button" className="shop-error-boundary__btn" onClick={this.handleGoHome}>
+                {homeLabel}
+              </button>
+              <button type="button" className="shop-error-boundary__btn" onClick={this.handleBrowseProducts}>
                 {copy.browseProducts}
-              </Button>,
-              <Button
-                key="coupons"
-                icon={<GiftOutlined />}
-                onClick={this.handleBrowseCoupons}
-              >
+              </button>
+              <button type="button" className="shop-error-boundary__btn" onClick={this.handleBrowseCoupons}>
                 {copy.browseCoupons}
-              </Button>,
-              <Button
-                key="track"
-                icon={<ShoppingOutlined />}
-                onClick={this.handleTrackOrder}
-              >
+              </button>
+              <button type="button" className="shop-error-boundary__btn" onClick={this.handleTrackOrder}>
                 {copy.trackOrder}
-              </Button>,
-              <Button
-                key="support"
-                icon={<CustomerServiceOutlined />}
-                onClick={this.handleContactSupport}
-              >
+              </button>
+              <button type="button" className="shop-error-boundary__btn" onClick={this.handleContactSupport}>
                 {copy.contactSupport}
-              </Button>,
-            ]}
-          />
+              </button>
+            </div>
+          </div>
         </div>
       );
     }

@@ -11,7 +11,7 @@ import {
 import { Outlet, useNavigate, useLocation, Link } from 'react-router-dom';
 import { clearStoredAuthSession, userApi } from '../api';
 import { adminApi, adminSupportApi } from '../api/admin';
-import { useLanguage } from '../i18n';
+import { ensureAdminSpanishPack, useLanguage } from '../i18n';
 import { buildLoginUrlFromWindow } from '../utils/authRedirect';
 import {
   BUGS_ACCESS_PERMISSIONS,
@@ -59,6 +59,7 @@ const AdminLayout: React.FC = () => {
   const adminCheckAbortRef = useRef<AbortController | null>(null);
   const hasStartedAdminCheckRef = useRef(false);
   const { t } = useLanguage();
+
   const isSuperAdmin = isSuperAdminRole(currentRole);
 
   const canSee = useCallback(
@@ -127,6 +128,11 @@ const AdminLayout: React.FC = () => {
   }, []);
 
   const checkAdmin = useCallback(async (initial = false) => {
+    try {
+      await ensureAdminSpanishPack();
+    } catch (error) {
+      reportNonBlockingError('AdminLayout.ensureAdminSpanishPack', error);
+    }
     const requestId = adminCheckRequestRef.current + 1;
     adminCheckRequestRef.current = requestId;
     adminCheckAbortRef.current?.abort();

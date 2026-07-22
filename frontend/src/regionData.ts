@@ -84,9 +84,18 @@ const buildMexicoRegionData = (mexicoMunicipalitiesData: MexicoMunicipalities): 
   return option('\u58a8\u897f\u54e5', states);
 };
 
-let cachedRegionData: RegionOption[] | null = null;
-let regionDataPromise: Promise<RegionOption[]> | null = null;
+let cachedMexicoRegion: RegionOption | null = null;
+let cachedChinaRegion: RegionOption | null = null;
+let mexicoRegionPromise: Promise<RegionOption> | null = null;
+let chinaRegionPromise: Promise<RegionOption> | null = null;
 let cachedLocalizedRegionData: Partial<Record<RegionLanguage, RegionOption[]>> = {};
+
+const assembledRegionData = (): RegionOption[] => {
+  const regions: RegionOption[] = [];
+  if (cachedMexicoRegion) regions.push(cachedMexicoRegion);
+  if (cachedChinaRegion) regions.push(cachedChinaRegion);
+  return regions;
+};
 
 const localizeRegionData = (regions: RegionOption[], language?: string): RegionOption[] => {
   const normalizedLanguage = normalizeRegionLanguage(language);
@@ -96,43 +105,75 @@ const localizeRegionData = (regions: RegionOption[], language?: string): RegionO
   }));
 };
 
+const loadMexicoRegionOption = async (): Promise<RegionOption> => {
+  if (cachedMexicoRegion) return cachedMexicoRegion;
+  if (!mexicoRegionPromise) {
+    mexicoRegionPromise = (import(/* webpackChunkName: "region-mexico-municipalities" */ './mexicoMunicipalities.json') as Promise<{ default: MexicoMunicipalities }>)
+      .then((mexicoMunicipalitiesModule) => {
+        cachedMexicoRegion = buildMexicoRegionData(mexicoMunicipalitiesModule.default);
+        cachedLocalizedRegionData = {};
+        return cachedMexicoRegion;
+      })
+      .catch((error) => {
+        mexicoRegionPromise = null;
+        throw error;
+      });
+  }
+  return mexicoRegionPromise;
+};
+
+const loadChinaRegionOption = async (): Promise<RegionOption> => {
+  if (cachedChinaRegion) return cachedChinaRegion;
+  if (!chinaRegionPromise) {
+    // Compact China province/city/district level only — never the multi-MB town catalog.
+    chinaRegionPromise = (import(/* webpackChunkName: "region-china-level" */ 'province-city-china/dist/level.min.json') as Promise<{ default: ChinaLevelItem[] }>)
+      .then((chinaLevelModule) => {
+        cachedChinaRegion = buildChinaRegionData(chinaLevelModule.default);
+        cachedLocalizedRegionData = {};
+        return cachedChinaRegion;
+      })
+      .catch((error) => {
+        chinaRegionPromise = null;
+        throw error;
+      });
+  }
+  return chinaRegionPromise;
+};
+
+const warmChinaRegionInBackground = () => {
+  if (cachedChinaRegion || chinaRegionPromise) return;
+  void loadChinaRegionOption().catch(() => {
+    // Background warm is best-effort; next explicit zh load can retry.
+  });
+};
+
 export const loadRegionData = async (language?: string): Promise<RegionOption[]> => {
   const normalizedLanguage = normalizeRegionLanguage(language);
   const cachedLocalizedData = cachedLocalizedRegionData[normalizedLanguage];
   if (cachedLocalizedData) {
     return cachedLocalizedData;
   }
-  if (cachedRegionData) {
-    const localizedData = localizeRegionData(cachedRegionData, normalizedLanguage);
-    cachedLocalizedRegionData[normalizedLanguage] = localizedData;
-    return localizedData;
+
+  // Mexico-first commercial market: Spanish/English checkout waits only on MX municipalities (~44KB),
+  // not the China level catalog (~250KB). Chinese UI still loads both so CN addresses keep working.
+  const mexico = await loadMexicoRegionOption();
+  let regions: RegionOption[];
+  if (normalizedLanguage === 'zh') {
+    const china = await loadChinaRegionOption();
+    regions = [mexico, china];
+  } else {
+    regions = cachedChinaRegion ? [mexico, cachedChinaRegion] : [mexico];
+    // Warm China after first MX open so bilingual shoppers get it on a later address edit without
+    // blocking the primary Spanish/English conversion path.
+    warmChinaRegionInBackground();
   }
-  if (!regionDataPromise) {
-    // Mexico-first commercial market: load MX municipalities + compact CN level data only.
-    // Never import the multi-megabyte province-city-china street catalog into the client graph.
-    regionDataPromise = Promise.all([
-      import(/* webpackChunkName: "region-china-level" */ 'province-city-china/dist/level.min.json') as Promise<{ default: ChinaLevelItem[] }>,
-      import(/* webpackChunkName: "region-mexico-municipalities" */ './mexicoMunicipalities.json') as Promise<{ default: MexicoMunicipalities }>,
-    ]).then(([chinaLevelModule, mexicoMunicipalitiesModule]) => {
-      const data = [
-        buildMexicoRegionData(mexicoMunicipalitiesModule.default),
-        buildChinaRegionData(chinaLevelModule.default),
-      ];
-      cachedRegionData = data;
-      cachedLocalizedRegionData = {};
-      return data;
-    }).catch((error) => {
-      regionDataPromise = null;
-      throw error;
-    });
-  }
-  const data = await regionDataPromise;
-  const localizedData = localizeRegionData(data, normalizedLanguage);
+
+  const localizedData = localizeRegionData(regions, normalizedLanguage);
   cachedLocalizedRegionData[normalizedLanguage] = localizedData;
   return localizedData;
 };
 
-export const findRegionPath = (address: string, regions: RegionOption[] = cachedRegionData || []): { region: string[]; detail: string } => {
+export const findRegionPath = (address: string, regions: RegionOption[] = assembledRegionData()): { region: string[]; detail: string } => {
   const parts = address.split(' ').filter(Boolean);
 
   for (let end = Math.min(parts.length, 5); end >= 3; end -= 1) {

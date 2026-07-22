@@ -1,3 +1,7 @@
+# Host-network override for shoptest-frontend.
+# Use with base compose so volumes (static build, certbot www, nginx template, TLS) merge:
+#   docker compose -f docker-compose.frontend-edge.yml -f docker-compose.frontend-edge.host.yml --env-file frontend-edge.env up -d
+# Base file mounts CERTBOT_WEBROOT → /var/www/certbot for ACME HTTP-01.
 services:
   shoptest-frontend:
     network_mode: host

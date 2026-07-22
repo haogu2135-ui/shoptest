@@ -12,6 +12,7 @@ import com.example.shop.service.IpBlacklistService;
 import com.example.shop.service.OrderService;
 import com.example.shop.service.PaymentChannelRecommendationService;
 import com.example.shop.service.PaymentService;
+import com.example.shop.service.PaymentWebhookEvidenceService;
 import com.example.shop.service.SecurityAuditLogService;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.ResponseEntity;
@@ -50,6 +51,7 @@ class PaymentControllerSimulationAccessTest {
     private final AdminRoleService adminRoleService = mock(AdminRoleService.class);
     private final PaymentController controller = new PaymentController(
             paymentService,
+            mock(PaymentWebhookEvidenceService.class),
             orderService,
             mock(SecurityAuditLogService.class),
             new PaymentChannelConfig(),

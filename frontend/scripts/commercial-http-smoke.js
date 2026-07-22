@@ -675,11 +675,18 @@ async function main() {
   check('robots.txt', robots.status === 200 && /user-agent/i.test(robotsBody), robots.status);
   check('robots.txt allows privacy', robots.status === 200 && /Allow:\s*\/privacy/i.test(robotsBody), robotsBody.slice(0, 120));
   check('robots.txt allows terms', robots.status === 200 && /Allow:\s*\/terms/i.test(robotsBody), robotsBody.slice(0, 120));
+  check('robots.txt allows products detail', robots.status === 200 && /Allow:\s*\/products\//i.test(robotsBody), robotsBody.slice(0, 160));
+  const securityTxt = await get('/.well-known/security.txt');
+  const securityBody = securityTxt.body.toString('utf8');
+  check('security.txt', securityTxt.status === 200 && /Contact:/i.test(securityBody), securityTxt.status);
+  check('security.txt prefers Spanish', securityTxt.status === 200 && /Preferred-Languages:.*es/i.test(securityBody), securityBody.slice(0, 160));
+
   const sitemap = await get('/sitemap.xml');
   const sitemapBody = sitemap.body.toString('utf8');
   check('sitemap.xml', sitemap.status === 200 && sitemapBody.includes('<urlset'), sitemap.status);
   check('sitemap.xml includes privacy', sitemap.status === 200 && sitemapBody.includes('/privacy'), sitemapBody.slice(0, 120));
   check('sitemap.xml includes terms', sitemap.status === 200 && sitemapBody.includes('/terms'), sitemapBody.slice(0, 120));
+  check('sitemap.xml includes product detail', sitemap.status === 200 && /\/products\/\d+/.test(sitemapBody), sitemapBody.slice(0, 240));
 
   const passed = results.filter((r) => r.pass).length;
   // eslint-disable-next-line no-console

@@ -30,11 +30,14 @@ describe('commercial SEO contracts', () => {
     expect(couponCenter).toContain('useDocumentMeta');
 
     expect(indexHtml).toContain('property="og:image"');
+    expect(indexHtml).toContain('https://pet.686888666.xyz/logo512.png');
+    expect(indexHtml).toContain('https://pet.686888666.xyz/');
+    expect(indexHtml).toMatch(/rel="canonical"[^>]*https:\/\/pet\.686888666\.xyz\//);
     expect(indexHtml).toContain('name="twitter:image"');
     expect(indexHtml).toContain('images.unsplash.com');
     expect(indexHtml).toContain('rel="preconnect"');
-    expect(indexHtml).toContain('assets/home/hero-mobile-pet.jpg');
-    expect(indexHtml).toContain('assets/home/hero-dog.jpg');
+    expect(indexHtml).toContain('assets/home/hero-mobile-pet.webp');
+    expect(indexHtml).toContain('assets/home/hero-dog.webp');
   });
 
   it('keeps product offers Mexico-first with areaServed and Spanish language', () => {
@@ -115,6 +118,7 @@ describe('commercial SEO contracts', () => {
     expect(sitemap).toContain('/coupons');
     expect(sitemap).toContain('/privacy');
     expect(sitemap).toContain('/terms');
+    expect(robots).toContain('Allow: /products/');
     expect(robots).toContain('Allow: /privacy');
     expect(robots).toContain('Allow: /terms');
   });

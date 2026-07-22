@@ -1,10 +1,11 @@
 import React from 'react';
-import { message } from 'antd';
 
 export type AccessibleMessageAnnouncement = {
   id: number;
   text: string;
   type?: string;
+  /** When true, shell renders a lightweight visual toast (no antd message). */
+  shellToast?: boolean;
 };
 
 type AccessibleMessageListener = (announcement: AccessibleMessageAnnouncement) => void;
@@ -13,6 +14,7 @@ type MessageMethodName = 'success' | 'error' | 'warning' | 'info';
 const messageMethods: MessageMethodName[] = ['success', 'error', 'warning', 'info'];
 const listeners = new Set<AccessibleMessageListener>();
 let installed = false;
+let installPromise: Promise<void> | null = null;
 let announcementId = 0;
 let suppressDepth = 0;
 let nestedStaticMethodDepth = 0;
@@ -35,48 +37,69 @@ export const extractAccessibleMessageText = (value: unknown): string => {
   return '';
 };
 
-const notifyAccessibleMessage = (content: unknown, type?: string) => {
+const notifyAccessibleMessage = (content: unknown, type?: string, shellToast = false) => {
   if (suppressDepth > 0) return;
   const text = extractAccessibleMessageText(content);
   if (!text) return;
   announcementId += 1;
-  const announcement = { id: announcementId, text, type };
+  const announcement = { id: announcementId, text, type, shellToast };
   listeners.forEach((listener) => listener(announcement));
 };
 
-export const installAccessibleMessageAnnouncer = () => {
-  if (installed) return;
-  installed = true;
+/** Shell-safe toast/status announcement without pulling antd message into callers. */
+export const announceAccessibleMessage = (content: unknown, type?: string) => {
+  notifyAccessibleMessage(content, type, true);
+};
 
-  messageMethods.forEach((methodName) => {
-    const originalMethod = message[methodName];
-    if (typeof originalMethod !== 'function') return;
-    (message as unknown as Record<MessageMethodName, (...args: unknown[]) => unknown>)[methodName] = (...args: unknown[]) => {
-      notifyAccessibleMessage(args[0], methodName);
-      nestedStaticMethodDepth += 1;
-      try {
-        return (originalMethod as (...methodArgs: unknown[]) => unknown)(...args);
-      } finally {
-        nestedStaticMethodDepth -= 1;
-      }
-    };
-  });
+/**
+ * Lazy-patch antd static message helpers for a11y live regions.
+ * Deferred so the App shell / useAuth path does not statically import antd.
+ */
+export const installAccessibleMessageAnnouncer = (): Promise<void> => {
+  if (installed) return Promise.resolve();
+  if (installPromise) return installPromise;
 
-  const originalOpen = message.open;
-  if (typeof originalOpen === 'function') {
-    message.open = ((config: Parameters<typeof message.open>[0]) => {
-      if (nestedStaticMethodDepth === 0) {
-        const configRecord = config as { content?: unknown; type?: string };
-        notifyAccessibleMessage(configRecord?.content ?? config, configRecord?.type);
+  installPromise = import(/* webpackChunkName: "antd-message" */ 'antd/es/message')
+    .then((module) => {
+      if (installed) return;
+      const message = module.default;
+      messageMethods.forEach((methodName) => {
+        const originalMethod = message[methodName];
+        if (typeof originalMethod !== 'function') return;
+        (message as unknown as Record<MessageMethodName, (...args: unknown[]) => unknown>)[methodName] = (...args: unknown[]) => {
+          notifyAccessibleMessage(args[0], methodName);
+          nestedStaticMethodDepth += 1;
+          try {
+            return (originalMethod as (...methodArgs: unknown[]) => unknown)(...args);
+          } finally {
+            nestedStaticMethodDepth -= 1;
+          }
+        };
+      });
+
+      const originalOpen = message.open;
+      if (typeof originalOpen === 'function') {
+        message.open = ((config: Parameters<typeof originalOpen>[0]) => {
+          if (nestedStaticMethodDepth === 0) {
+            const configRecord = config as { content?: unknown; type?: string };
+            notifyAccessibleMessage(configRecord?.content ?? config, configRecord?.type);
+          }
+          return originalOpen(config);
+        }) as typeof message.open;
       }
-      return originalOpen(config);
-    }) as typeof message.open;
-  }
+      installed = true;
+    })
+    .catch(() => {
+      // Keep shell usable if antd chunk fails; page-level toasts may still work unpatched.
+      installPromise = null;
+    });
+
+  return installPromise;
 };
 
 export const subscribeAccessibleMessages = (listener: AccessibleMessageListener) => {
-  installAccessibleMessageAnnouncer();
   listeners.add(listener);
+  void installAccessibleMessageAnnouncer();
   return () => {
     listeners.delete(listener);
   };

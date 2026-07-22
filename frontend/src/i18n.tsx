@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import enLocale from './locales/en.json';
-// ShopMX Mexico-first: Spanish is the home pack and ships with the shell to avoid EN→ES flash.
+// ShopMX Mexico-first: Spanish storefront pack ships with the shell to avoid EN→ES flash.
+// Admin Spanish namespaces load with AdminLayout so anonymous LCP stays lighter.
+// English is the commercial fallback pack and loads on demand so the initial shell stays lighter.
 import esLocale from './locales/es.json';
 import { getLocalStorageItem, setLocalStorageItem } from './utils/safeStorage';
 import { reportNonBlockingError } from './utils/nonBlockingError';
@@ -35,25 +36,48 @@ const mergeTranslations = (base: TranslationMap, override: TranslationMap): Tran
   return result;
 };
 
-const enMap = enLocale as TranslationMap;
-const esMap = mergeTranslations(enMap, esLocale as TranslationMap);
+const esMap = esLocale as TranslationMap;
 
-// English remains the commercial fallback pack.
 // Spanish is the Mexico-first home pack and is bundled to avoid first-paint English flash.
-// Chinese still loads on demand.
+// English remains the commercial fallback pack but is code-split for shell budget.
+// Chinese still loads on demand (after English base is available).
 const translations: Record<Language, TranslationMap> = {
-  en: enMap,
   es: esMap,
-  zh: enMap,
+  en: esMap,
+  zh: esMap,
 };
 
 const packLoaded: Record<Language, boolean> = {
-  en: true,
   es: true,
+  en: false,
   zh: false,
 };
 
 const packPromises: Partial<Record<Language, Promise<TranslationMap>>> = {};
+
+let adminSpanishPackPromise: Promise<TranslationMap> | null = null;
+let adminSpanishPackLoaded = false;
+
+/** Merge deferred Spanish admin page namespaces (admin panel only). */
+export const ensureAdminSpanishPack = async (): Promise<TranslationMap> => {
+  if (adminSpanishPackLoaded) {
+    return translations.es;
+  }
+  if (!adminSpanishPackPromise) {
+    adminSpanishPackPromise = (async () => {
+      const module = await import(/* webpackChunkName: "i18n-es-admin" */ './locales/es-admin-pages.json');
+      const adminMap = module.default as TranslationMap;
+      translations.es = mergeTranslations(translations.es, adminMap);
+      // Keep zh/en bases unchanged; admin Spanish is only required for es admin operators.
+      adminSpanishPackLoaded = true;
+      return translations.es;
+    })().catch((error) => {
+      adminSpanishPackPromise = null;
+      throw error;
+    });
+  }
+  return adminSpanishPackPromise;
+};
 
 export const ensureLanguagePack = async (language: Language): Promise<TranslationMap> => {
   if (packLoaded[language]) {
@@ -62,18 +86,28 @@ export const ensureLanguagePack = async (language: Language): Promise<Translatio
   if (!packPromises[language]) {
     packPromises[language] = (async () => {
       if (language === 'es') {
-        // Bundled at module init; keep path for callers that always await ensureLanguagePack.
         packLoaded.es = true;
         return translations.es;
       }
+      if (language === 'en') {
+        const module = await import(/* webpackChunkName: "i18n-en" */ './locales/en.json');
+        const enMap = module.default as TranslationMap;
+        translations.en = enMap;
+        // Fill any missing Spanish keys from English without losing local overrides.
+        translations.es = mergeTranslations(enMap, esMap);
+        packLoaded.en = true;
+        return translations.en;
+      }
       if (language === 'zh') {
+        await ensureLanguagePack('en');
         const module = await import(/* webpackChunkName: "i18n-zh" */ './locales/zh.json');
-        translations.zh = mergeTranslations(enMap, module.default as TranslationMap);
+        translations.zh = mergeTranslations(translations.en, module.default as TranslationMap);
         packLoaded.zh = true;
         return translations.zh;
       }
-      packLoaded.en = true;
-      return translations.en;
+      // Exhaustive Language union — keep TypeScript honest if a new language is added.
+      const exhaustive: never = language;
+      throw new Error(`Unsupported language pack: ${String(exhaustive)}`);
     })().catch((error) => {
       delete packPromises[language];
       throw error;
@@ -128,11 +162,32 @@ const resolveInitialLanguage = (): Language => {
   return home;
 };
 
+const scheduleIdle = (work: () => void, timeoutMs: number) => {
+  if (typeof window === 'undefined') return;
+  const win = window as Window & {
+    requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
+  };
+  if (typeof win.requestIdleCallback === 'function') {
+    win.requestIdleCallback(work, { timeout: timeoutMs });
+    return;
+  }
+  window.setTimeout(work, Math.min(timeoutMs, 1500));
+};
+
 // Warm the active pack as soon as the language module boots.
 if (typeof window !== 'undefined') {
-  void ensureLanguagePack(resolveInitialLanguage()).catch((error) => {
+  const initialLanguage = resolveInitialLanguage();
+  void ensureLanguagePack(initialLanguage).catch((error) => {
     reportNonBlockingError('i18n.ensureLanguagePack.bootstrap', error);
   });
+  // Idle-warm English fallback so rare missing Spanish keys recover without blocking first paint.
+  if (initialLanguage === 'es') {
+    scheduleIdle(() => {
+      void ensureLanguagePack('en').catch((error) => {
+        reportNonBlockingError('i18n.ensureLanguagePack.idleWarmEn', error);
+      });
+    }, 4000);
+  }
 }
 
 const getNestedValue = (source: TranslationMap, key: string) =>
@@ -209,8 +264,10 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     () => ({
       language,
       setLanguage,
+      // packRevision intentionally remints `t` after a newly loaded language pack arrives.
       t: (key: string, params?: TranslationParams) => translateForLanguage(language, key, params),
     }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- packRevision forces translator refresh after lazy packs load
     [language, packRevision, setLanguage],
   );
 

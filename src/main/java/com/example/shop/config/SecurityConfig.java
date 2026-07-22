@@ -79,6 +79,8 @@ public class SecurityConfig {
             .antMatchers(HttpMethod.POST, "/errors").permitAll()
             .antMatchers(HttpMethod.GET, "/search").permitAll()
             .antMatchers(HttpMethod.GET, "/home/products", "/home/products/**").permitAll()
+            .antMatchers(HttpMethod.GET, "/sitemap.xml").permitAll()
+            .antMatchers(HttpMethod.HEAD, "/sitemap.xml").permitAll()
             .antMatchers(HttpMethod.GET, "/payment", "/payment/").permitAll()
             .antMatchers(HttpMethod.GET, "/payment/channels", "/payments/channels").permitAll()
             .antMatchers(HttpMethod.GET, "/payment/webhook-evidence", "/payments/webhook-evidence").permitAll()

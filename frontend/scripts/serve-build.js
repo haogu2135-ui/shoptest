@@ -26,6 +26,7 @@ const contentTypes = {
   '.webp': 'image/webp',
   '.woff': 'font/woff',
   '.woff2': 'font/woff2',
+  '.xml': 'application/xml; charset=utf-8',
 };
 
 /** Commercial baseline security headers for storefront static responses. */
@@ -63,7 +64,7 @@ function cacheControlFor(filePath) {
   if (['.woff', '.woff2', '.png', '.jpg', '.jpeg', '.gif', '.webp', '.avif', '.svg', '.ico'].includes(ext)) {
     return 'public, max-age=86400';
   }
-  if (rel === 'runtime-config.js' || rel === 'index.html' || ext === '.html' || rel === 'robots.txt' || rel === 'sitemap.xml' || rel === 'manifest.json') {
+  if (rel === 'runtime-config.js' || rel === 'home-hero-vars.css' || rel === 'index.html' || ext === '.html' || rel === 'robots.txt' || rel === 'sitemap.xml' || rel === 'manifest.json' || rel === '.well-known/security.txt') {
     return 'no-cache';
   }
   return 'no-store';
@@ -171,6 +172,48 @@ function writeUpgradeHeaders(clientSocket, proxyRes) {
   clientSocket.write(`${headers.join('\r\n')}\r\n\r\n`);
 }
 
+function proxySitemapWithStaticFallback(req, res) {
+  const requestUrl = new URL(req.url, `http://${host}:${port}`);
+  const proxyReq = proxyClient.request({
+    protocol: backendOrigin.protocol,
+    hostname: backendOrigin.hostname,
+    port: backendOrigin.port || (backendOrigin.protocol === 'https:' ? 443 : 80),
+    method: 'GET',
+    path: `/sitemap.xml${requestUrl.search || ''}`,
+    headers: {
+      host: backendOrigin.host,
+      accept: req.headers.accept || 'application/xml,text/xml,*/*',
+      'x-forwarded-host': req.headers.host || '',
+      'x-forwarded-proto': 'http',
+    },
+    timeout: 8000,
+  }, (proxyRes) => {
+    const status = proxyRes.statusCode || 502;
+    if (status >= 500) {
+      destroyQuietly(proxyRes);
+      handleStatic(req, res);
+      return;
+    }
+    const headers = {
+      ...commercialSecurityHeaders(),
+      'Cache-Control': 'public, max-age=300',
+      'Content-Type': proxyRes.headers['content-type'] || 'application/xml; charset=utf-8',
+    };
+    res.writeHead(status, headers);
+    proxyRes.on('error', () => destroyQuietly(res));
+    proxyRes.pipe(res);
+  });
+
+  proxyReq.on('timeout', () => {
+    proxyReq.destroy();
+  });
+  proxyReq.on('error', () => {
+    if (res.destroyed || res.writableEnded || res.headersSent) return;
+    handleStatic(req, res);
+  });
+  proxyReq.end();
+}
+
 const server = http.createServer((req, res) => {
   const requestUrl = new URL(req.url, `http://${host}:${port}`);
   if (requestUrl.pathname.startsWith('/api/')) {
@@ -179,6 +222,11 @@ const server = http.createServer((req, res) => {
   }
   if (requestUrl.pathname.startsWith('/uploads/') || requestUrl.pathname.startsWith('/ws/')) {
     proxyHttp(req, res, false);
+    return;
+  }
+  // Prefer live product-aware sitemap from backend; fall back to static marketing sitemap.
+  if (requestUrl.pathname === '/sitemap.xml' && (req.method === 'GET' || req.method === 'HEAD')) {
+    proxySitemapWithStaticFallback(req, res);
     return;
   }
   handleStatic(req, res);

@@ -7,10 +7,41 @@
   text-align: center;
 }
 
+.shop-error-boundary__panel {
+  width: min(100%, 420px);
+  display: grid;
+  gap: 14px;
+  justify-items: center;
+}
+
+.shop-error-boundary__eyebrow {
+  margin: 0;
+  width: 48px;
+  height: 48px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: rgba(180, 35, 24, 0.1);
+  color: #b42318;
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.shop-error-boundary__title {
+  margin: 0;
+  font-size: clamp(1.25rem, 2.4vw, 1.6rem);
+  line-height: 1.25;
+  color: #102f22;
+}
+
 .shop-error-boundary__copy {
   display: grid;
   gap: 6px;
   justify-items: center;
+  color: rgba(16, 47, 34, 0.88);
+  font-size: 14px;
+  line-height: 1.5;
 }
 
 .shop-error-boundary__hint {
@@ -20,16 +51,38 @@
   line-height: 1.45;
 }
 
-.shop-error-boundary .ant-result-extra {
+.shop-error-boundary__actions {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
   gap: 8px;
+  width: 100%;
 }
 
-.shop-error-boundary .ant-result-extra .ant-btn {
+.shop-error-boundary__btn {
   min-height: 44px;
+  min-width: 44px;
+  padding: 0 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(18, 71, 52, 0.18);
+  background: #fff;
+  color: #124734;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
   touch-action: manipulation;
+}
+
+.shop-error-boundary__btn--primary {
+  background: #124734;
+  border-color: #124734;
+  color: #fff;
+}
+
+.shop-error-boundary__btn:hover,
+.shop-error-boundary__btn:focus-visible {
+  outline: 2px solid rgba(18, 71, 52, 0.35);
+  outline-offset: 1px;
 }
 
 @media (max-width: 640px) {
@@ -37,14 +90,14 @@
     padding: 24px 12px calc(96px + env(safe-area-inset-bottom, 0px));
   }
 
-  .shop-error-boundary .ant-result-extra {
+  .shop-error-boundary__actions {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
     width: min(100%, 360px);
     margin-inline: auto;
   }
 
-  .shop-error-boundary .ant-result-extra .ant-btn {
+  .shop-error-boundary__btn {
     width: 100%;
   }
 }

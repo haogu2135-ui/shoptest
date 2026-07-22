@@ -165,6 +165,7 @@ async function probeProduction() {
     check('production robots.txt', robots.status === 200, `status=${robots.status}`);
     const sitemap = await request(`${productionBase}/sitemap.xml`, { timeout: 8000 });
     check('production sitemap.xml', sitemap.status === 200, `status=${sitemap.status}`);
+    soft('production sitemap product detail URLs', sitemap.status === 200 && /\/products\/\d+/.test(String(sitemap.body || '')), String(sitemap.body || '').slice(0, 160));
     const products = await request(`${productionBase}/api/products?page=0&size=5`, { timeout: 10000 });
     check(
       'production products api',
@@ -300,13 +301,13 @@ async function measureProductionCwv() {
       }
     });
     // Warm then measure for stable commercial soft budgets.
+    // Do not reset __shopmxCwv between navigations — that discards buffered LCP/CLS.
     await page.goto(`${cwvTargetBase}/`, { waitUntil: 'domcontentloaded', timeout: 45000 });
-    await page.waitForTimeout(600);
-    await page.evaluate(() => {
-      try { window.__shopmxCwv = { lcp: 0, cls: 0 }; } catch (err) { /* ignore */ }
+    await page.waitForTimeout(500);
+    await page.reload({ waitUntil: 'networkidle', timeout: 45000 }).catch(async () => {
+      await page.reload({ waitUntil: 'domcontentloaded', timeout: 45000 });
     });
-    await page.reload({ waitUntil: 'domcontentloaded', timeout: 45000 });
-    await page.waitForTimeout(1600);
+    await page.waitForTimeout(2200);
     const cwv = await page.evaluate(() => {
       let lcp = 0;
       let cls = 0;
@@ -327,12 +328,13 @@ async function measureProductionCwv() {
         cls: Math.max(Number(cls) || 0, Number(observed.cls) || 0),
       };
     });
-    const lcpOk = !cwv.lcp || cwv.lcp < 4000;
+    const lcpMeasured = Number(cwv.lcp) > 0;
+    const lcpOk = lcpMeasured && cwv.lcp < 4000;
     const clsOk = cwv.cls < 0.1;
     soft(
       'production CWV measurement',
       lcpOk && clsOk,
-      `lcp=${Math.round(cwv.lcp)}ms cls=${Number(cwv.cls).toFixed(3)} host=${productionHostHeader || new URL(productionBase).hostname}`,
+      `lcp=${Math.round(cwv.lcp)}ms cls=${Number(cwv.cls).toFixed(3)} measured=${lcpMeasured} host=${productionHostHeader || new URL(productionBase).hostname}`,
     );
     await context.close();
   } catch (error) {
@@ -548,9 +550,10 @@ async function probeOriginEdgeDual() {
     const target = `https://${originHost}/`;
     await page.goto(target, { waitUntil: 'domcontentloaded', timeout: 45000 });
     await page.waitForTimeout(500);
-    await page.evaluate(() => { try { window.__shopmxCwv = { lcp: 0, cls: 0 }; } catch (err) { /* ignore */ } });
-    await page.reload({ waitUntil: 'domcontentloaded', timeout: 45000 });
-    await page.waitForTimeout(1500);
+    await page.reload({ waitUntil: 'networkidle', timeout: 45000 }).catch(async () => {
+      await page.reload({ waitUntil: 'domcontentloaded', timeout: 45000 });
+    });
+    await page.waitForTimeout(2200);
     const cwv = await page.evaluate(() => {
       let lcp = 0;
       let cls = 0;
@@ -566,10 +569,11 @@ async function probeOriginEdgeDual() {
         cls: Math.max(Number(cls) || 0, Number(observed.cls) || 0),
       };
     });
+    const originLcpMeasured = Number(cwv.lcp) > 0;
     soft(
       'origin edge CWV measurement',
-      (!cwv.lcp || cwv.lcp < 4000) && cwv.cls < 0.1,
-      `lcp=${Math.round(cwv.lcp)}ms cls=${Number(cwv.cls).toFixed(3)} host=${originHost}`,
+      originLcpMeasured && cwv.lcp < 4000 && cwv.cls < 0.1,
+      `lcp=${Math.round(cwv.lcp)}ms cls=${Number(cwv.cls).toFixed(3)} measured=${originLcpMeasured} host=${originHost}`,
     );
     await context.close();
   } catch (error) {
@@ -578,6 +582,202 @@ async function probeOriginEdgeDual() {
     if (browser) {
       try { await browser.close(); } catch (err) { /* ignore */ }
     }
+  }
+}
+
+
+
+
+async function probeOriginEdgeHtmlSecurityHeaders() {
+  // Commercial security: SPA shell must keep CSP + clickjacking/MIME sniffing guards even when
+  // location-level Cache-Control headers are present (nginx does not inherit parent add_header).
+  const originIp = process.env.SHOPTEST_ORIGIN_PUBLIC_IP || '161.153.37.250';
+  const originHost = process.env.SHOPTEST_ORIGIN_EDGE_HOST || productionHostHeader || 'pet.686888666.xyz';
+  try {
+    const home = await request(`http://${originIp}/`, {
+      timeout: 8000,
+      headers: { Host: originHost },
+    });
+    const headers = home.headers || {};
+    const csp = String(headers['content-security-policy'] || headers['Content-Security-Policy'] || '');
+    const xfo = String(headers['x-frame-options'] || headers['X-Frame-Options'] || '');
+    const xcto = String(headers['x-content-type-options'] || headers['X-Content-Type-Options'] || '');
+    const perm = String(headers['permissions-policy'] || headers['Permissions-Policy'] || '');
+    const ok = home.status === 200
+      && /default-src/i.test(csp)
+      && /frame-ancestors/i.test(csp)
+      && /deny/i.test(xfo)
+      && /nosniff/i.test(xcto)
+      && /geolocation=\(\)/i.test(perm);
+    soft(
+      'origin edge html security headers',
+      ok,
+      `status=${home.status} csp=${csp ? 'present' : 'missing'} xfo=${xfo || 'missing'} xcto=${xcto || 'missing'} perm=${perm || 'missing'}`,
+    );
+  } catch (error) {
+    soft(
+      'origin edge html security headers',
+      false,
+      error && error.message ? error.message : String(error),
+    );
+  }
+}
+
+async function probeOriginEdgeHtmlNoCache() {
+  // Commercial deploy safety: SPA shell must not be immutable/long-cached on origin edge.
+  const originIp = process.env.SHOPTEST_ORIGIN_PUBLIC_IP || '161.153.37.250';
+  const originHost = process.env.SHOPTEST_ORIGIN_EDGE_HOST || productionHostHeader || 'pet.686888666.xyz';
+  try {
+    const home = await request(`http://${originIp}/`, {
+      timeout: 8000,
+      headers: { Host: originHost },
+    });
+    const cache = String((home.headers && (home.headers['cache-control'] || home.headers['Cache-Control'])) || '');
+    const ok = home.status === 200
+      && /no-cache|no-store|max-age=0/i.test(cache)
+      && !/immutable/i.test(cache);
+    soft(
+      'origin edge html no-cache',
+      ok,
+      `status=${home.status} cache=${cache || 'missing'}`,
+    );
+  } catch (error) {
+    soft(
+      'origin edge html no-cache',
+      false,
+      error && error.message ? error.message : String(error),
+    );
+  }
+}
+
+async function probeOriginEdgeStaticCache() {
+  // Commercial cache contract: CRA hashed /static/** must be 1y immutable on origin edge
+  // so Cloudflare and browsers keep repeat-visit payloads off the origin.
+  const originIp = process.env.SHOPTEST_ORIGIN_PUBLIC_IP || '161.153.37.250';
+  const originHost = process.env.SHOPTEST_ORIGIN_EDGE_HOST || productionHostHeader || 'pet.686888666.xyz';
+  const localBase = localUiBase || 'http://127.0.0.1:4187';
+  try {
+    const home = await request(`${localBase}/`, { timeout: 8000 });
+    const match = String(home.body || '').match(/static\/js\/(main\.[a-f0-9]+\.js)/i);
+    if (!match) {
+      soft('origin edge static long-cache immutable', false, 'main hashed js not found in local UI html');
+      return;
+    }
+    const assetPath = `/static/js/${match[1]}`;
+    const originHttp = await request(`http://${originIp}${assetPath}`, {
+      timeout: 8000,
+      headers: { Host: originHost },
+    });
+    const cache = String((originHttp.headers && (originHttp.headers['cache-control'] || originHttp.headers['Cache-Control'])) || '');
+    const ok = originHttp.status === 200
+      && /max-age=31536000/i.test(cache)
+      && /immutable/i.test(cache);
+    soft(
+      'origin edge static long-cache immutable',
+      ok,
+      `status=${originHttp.status} cache=${cache || 'missing'} path=${assetPath}`,
+    );
+  } catch (error) {
+    soft(
+      'origin edge static long-cache immutable',
+      false,
+      error && error.message ? error.message : String(error),
+    );
+  }
+}
+
+
+async function probeOriginEdgePublicAssetHeaders() {
+  // Non-hashed public assets (favicon, /assets/*) must not dual-set Cache-Control via expires+add_header,
+  // and must still emit commercial security headers after location-level Cache-Control overrides.
+  const originIp = process.env.SHOPTEST_ORIGIN_PUBLIC_IP || '161.153.37.250';
+  const originHost = process.env.SHOPTEST_ORIGIN_EDGE_HOST || productionHostHeader || 'pet.686888666.xyz';
+  try {
+    const asset = await request(`http://${originIp}/favicon.ico`, {
+      timeout: 8000,
+      headers: { Host: originHost },
+    });
+    const headers = asset.headers || {};
+    const cacheRaw = headers['cache-control'] || headers['Cache-Control'] || '';
+    const cacheValues = Array.isArray(cacheRaw) ? cacheRaw : [cacheRaw];
+    const cacheJoined = cacheValues.filter(Boolean).join(' | ');
+    const maxAgeHits = (cacheJoined.match(/max-age=2592000/gi) || []).length;
+    const dualCache = cacheValues.length > 1 || maxAgeHits > 1;
+    const cacheOk = asset.status === 200
+      && /max-age=2592000/i.test(cacheJoined)
+      && !/immutable/i.test(cacheJoined)
+      && !dualCache;
+    const csp = String(headers['content-security-policy'] || headers['Content-Security-Policy'] || '');
+    const xfo = String(headers['x-frame-options'] || headers['X-Frame-Options'] || '');
+    const xcto = String(headers['x-content-type-options'] || headers['X-Content-Type-Options'] || '');
+    const securityOk = asset.status === 200
+      && /default-src/i.test(csp)
+      && /deny/i.test(xfo)
+      && /nosniff/i.test(xcto);
+    soft(
+      'origin edge public asset single cache',
+      cacheOk,
+      `status=${asset.status} cache=${cacheJoined || 'missing'} dual=${dualCache}`,
+    );
+    soft(
+      'origin edge public asset security headers',
+      securityOk,
+      `status=${asset.status} csp=${csp ? 'present' : 'missing'} xfo=${xfo || 'missing'} xcto=${xcto || 'missing'}`,
+    );
+  } catch (error) {
+    soft(
+      'origin edge public asset single cache',
+      false,
+      error && error.message ? error.message : String(error),
+    );
+    soft(
+      'origin edge public asset security headers',
+      false,
+      error && error.message ? error.message : String(error),
+    );
+  }
+}
+
+
+async function probeOriginEdgeSecurityTxt() {
+  const originIp = process.env.SHOPTEST_ORIGIN_PUBLIC_IP || '161.153.37.250';
+  const originHost = process.env.SHOPTEST_ORIGIN_EDGE_HOST || productionHostHeader || 'pet.686888666.xyz';
+  try {
+    const res = await request(`http://${originIp}/.well-known/security.txt`, {
+      timeout: 8000,
+      headers: { Host: originHost },
+    });
+    const body = String(res.body || '');
+    const ok = res.status === 200 && /Contact:/i.test(body) && /Preferred-Languages:/i.test(body);
+    soft(
+      'origin edge security.txt',
+      ok,
+      `status=${res.status} bytes=${body.length}`,
+    );
+  } catch (error) {
+    soft('origin edge security.txt', false, error && error.message ? error.message : String(error));
+  }
+}
+
+async function probeOriginEdgeAbsoluteShellSeo() {
+  const originIp = process.env.SHOPTEST_ORIGIN_PUBLIC_IP || '161.153.37.250';
+  const originHost = process.env.SHOPTEST_ORIGIN_EDGE_HOST || productionHostHeader || 'pet.686888666.xyz';
+  try {
+    const home = await request(`http://${originIp}/`, {
+      timeout: 8000,
+      headers: { Host: originHost },
+    });
+    const body = String(home.body || '');
+    const ok = home.status === 200
+      && body.includes('https://pet.686888666.xyz/logo512.png')
+      && /rel=["']canonical["'][^>]*https:\/\/pet\.686888666\.xyz\//i.test(body);
+    soft(
+      'origin edge absolute shell SEO urls',
+      ok,
+      ok ? 'og:image+canonical absolute' : `status=${home.status} absoluteShell=${body.includes('https://pet.686888666.xyz/logo512.png')}`,
+    );
+  } catch (error) {
+    soft('origin edge absolute shell SEO urls', false, error && error.message ? error.message : String(error));
   }
 }
 
@@ -764,6 +964,12 @@ async function main() {
   await probeProduction();
   await probePublicCdnShipBar();
   await probeOriginEdgeDual();
+  await probeOriginEdgeStaticCache();
+  await probeOriginEdgeHtmlNoCache();
+  await probeOriginEdgeHtmlSecurityHeaders();
+  await probeOriginEdgePublicAssetHeaders();
+  await probeOriginEdgeSecurityTxt();
+  await probeOriginEdgeAbsoluteShellSeo();
   await probeLocalWebhookContracts();
   await probeLocalMobileReleaseArtifact();
 

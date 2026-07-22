@@ -1,4 +1,4 @@
-﻿.shopee-home {
+.shopee-home {
   min-height: 100vh;
   background: linear-gradient(180deg, #ffffff 0, #f8fcf9 360px, #f4f8f5 100%);
 }
@@ -5840,4 +5840,10 @@ body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .shopee-hom
     line-height: 1.2 !important;
     min-height: 22px;
   }
+}
+
+.shop-home-icon {
+  display: inline-block;
+  vertical-align: -0.125em;
+  flex-shrink: 0;
 }

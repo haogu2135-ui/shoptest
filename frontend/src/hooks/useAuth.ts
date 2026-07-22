@@ -1,13 +1,14 @@
 import React, { createContext, ReactNode, useCallback, useContext, useMemo, useState } from 'react';
-import { message } from 'antd';
-import { clearStoredAuthSession, persistAuthSession, userApi } from '../api/core';
 import type { UserProfile } from '../types';
 import { useLanguage } from '../i18n';
 import { AUTH_SESSION_CHANGED_EVENT, AUTH_SESSION_STORAGE_KEYS } from '../utils/authEvents';
 import { getEffectiveRole } from '../utils/roles';
 import { getLocalStorageItem, setLocalStorageItem } from '../utils/safeStorage';
 import { reportNonBlockingError } from '../utils/nonBlockingError';
+import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { isAuthExpiredError } from '../utils/apiError';
+const loadAuthCore = () => import(/* webpackChunkName: "api-core" */ '../api/core');
+
 
 interface AuthContextType {
     user: UserProfile | null;
@@ -68,19 +69,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }): JSX.Element
         if (setBusy && mountedRef.current) {
             setLoading(true);
         }
-        userApi.getProfile({ skipAuthRedirect: true })
-            .then(response => {
-                if (!mountedRef.current || profileRequestSeqRef.current !== requestSeq) return;
-                applyProfile(response.data);
+        void loadAuthCore()
+            .then(({ userApi, clearStoredAuthSession }) => {
+                if (!mountedRef.current || profileRequestSeqRef.current !== requestSeq) return undefined;
+                return userApi.getProfile({ skipAuthRedirect: true })
+                    .then(response => {
+                        if (!mountedRef.current || profileRequestSeqRef.current !== requestSeq) return;
+                        applyProfile(response.data);
+                    })
+                    .catch((error) => {
+                        if (!mountedRef.current || profileRequestSeqRef.current !== requestSeq) return;
+                        reportNonBlockingError('useAuth.hydrateStoredProfile', error);
+                        if (isAuthExpiredError(error)) {
+                            setToken('');
+                            setUser(null);
+                            clearStoredAuthSession();
+                        }
+                    });
             })
             .catch((error) => {
                 if (!mountedRef.current || profileRequestSeqRef.current !== requestSeq) return;
-                reportNonBlockingError('useAuth.hydrateStoredProfile', error);
-                if (isAuthExpiredError(error)) {
-                    setToken('');
-                    setUser(null);
-                    clearStoredAuthSession();
-                }
+                reportNonBlockingError('useAuth.loadAuthCore', error);
             })
             .finally(() => {
                 if (mountedRef.current && profileRequestSeqRef.current === requestSeq) {
@@ -103,6 +112,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }): JSX.Element
                 loginTimerRef.current = null;
                 void (async () => {
                     try {
+                        const { userApi, persistAuthSession } = await loadAuthCore();
                         const response = await userApi.login(username, password);
                         if (!mountedRef.current) {
                             resolve();
@@ -149,11 +159,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }): JSX.Element
                         setToken(persistedToken);
                         setLocalStorageItem('role', effectiveRole);
                         setUser({ id: id as number, username: displayName, role: effectiveRole, roleCode: roleCode || undefined, email: '' });
-                        message.success(tRef.current('pages.auth.loginSuccess'));
+                        announceAccessibleMessage(tRef.current('pages.auth.loginSuccess'), 'success');
                         resolve();
                     } catch (error) {
                         if (mountedRef.current) {
-                            message.error(tRef.current('pages.auth.loginFailed'));
+                            announceAccessibleMessage(tRef.current('pages.auth.loginFailed'), 'error');
                         }
                         reject(error);
                     } finally {
@@ -170,25 +180,38 @@ export const AuthProvider = ({ children }: { children: ReactNode }): JSX.Element
 
     const logout = useCallback(() => {
         const refreshToken = getLocalStorageItem('refreshToken');
-        void userApi.logout(refreshToken)
-            .then(() => {
-                if (mountedRef.current) {
-                    message.success(tRef.current('pages.auth.logoutSuccess'));
-                }
-            })
-            .catch((error) => {
-                reportNonBlockingError('useAuth.logoutRevoke', error);
-                // Navbar owns the primary logout entry points; keep both contexts for ops observability.
-                reportNonBlockingError('Navbar.logoutRevoke', error);
-                if (mountedRef.current) {
-                    message.warning(tRef.current('messages.logoutPartialFailure'));
-                }
-            });
         if (mountedRef.current) {
             setToken('');
             setUser(null);
         }
-        clearStoredAuthSession();
+        void loadAuthCore()
+            .then(({ userApi, clearStoredAuthSession }) => {
+                clearStoredAuthSession();
+                return userApi.logout(refreshToken)
+                    .then(() => {
+                        if (mountedRef.current) {
+                            announceAccessibleMessage(tRef.current('pages.auth.logoutSuccess'), 'success');
+                        }
+                    })
+                    .catch((error) => {
+                        reportNonBlockingError('useAuth.logoutRevoke', error);
+                        // Navbar owns the primary logout entry points; keep both contexts for ops observability.
+                        reportNonBlockingError('Navbar.logoutRevoke', error);
+                        if (mountedRef.current) {
+                            announceAccessibleMessage(tRef.current('messages.logoutPartialFailure'), 'warning');
+                        }
+                    });
+            })
+            .catch((error) => {
+                reportNonBlockingError('useAuth.loadAuthCore.logout', error);
+                AUTH_SESSION_STORAGE_KEYS.forEach((key) => {
+                    try {
+                        window.localStorage.removeItem(key);
+                    } catch {
+                        // ignore storage failures during best-effort logout cleanup
+                    }
+                });
+            });
     }, []);
 
     const hydrateStoredProfileRef = React.useRef(hydrateStoredProfile);
