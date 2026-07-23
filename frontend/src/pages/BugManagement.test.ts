@@ -101,7 +101,7 @@ describe('BugManagement mobile modal guards', () => {
       expect(loadingSource).toContain('aria-live="polite"');
       expect(loadingSource).toContain('aria-busy="true"');
       expect(loadingSource).toContain("aria-label={`${bugPageLabel}: ${t('common.loading')}`}");
-      expect(loadingSource).toContain('<Skeleton active paragraph={{ rows: 8 }} />');
+      expect(loadingSource).toContain('<ShopSkeleton active paragraph={{ rows: 8 }} />');
     });
     expect(pageSource).toContain('{!canReadBugs ? (');
     expect(pageSource.indexOf('{!permissionsLoaded ? (')).toBeLessThan(pageSource.indexOf('{!canReadBugs ? ('));
@@ -110,7 +110,9 @@ describe('BugManagement mobile modal guards', () => {
   it('keeps the scan queue switch accessible by name', () => {
     expect(pageSource).toContain("const bugSearchLabel = `${bugPageLabel}: ${tx('searchPlaceholder', 'Search title, URL, description or notes')}`;");
     expect(pageSource).toContain("aria-label={bugSearchLabel}");
-    expect(pageSource).toContain("<Switch checked={scanQueueOnly} onChange={setScanQueueOnly} aria-label={tx('scanQueueOnly', 'Scan queue')} disabled={!canReadBugs} />");
+        expect(pageSource).toContain("<ShopSwitch checked={scanQueueOnly} onChange={setScanQueueOnly} aria-label={tx('scanQueueOnly', 'Scan queue')} disabled={!canReadBugs} />");
+    expect(pageSource).not.toMatch(/<Switch\b/);
+    expect(pageSource).not.toMatch(/import \{[^}]*\bSwitch\b[^}]*\} from 'antd'/);
     expect(pageSource).toContain("<Text>{tx('scanQueueOnly', 'Scan queue')}</Text>");
 
     for (const localeSource of [englishLocaleSource, spanishLocaleSource, chineseLocaleSource]) {

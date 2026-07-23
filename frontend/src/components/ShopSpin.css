@@ -1,0 +1,112 @@
+.shop-spin {
+  position: relative;
+  display: block;
+  color: #124734;
+}
+
+.shop-spin--standalone {
+  display: inline-flex;
+  min-height: 44px;
+  min-width: 44px;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+}
+
+.shop-spin__indicator {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.shop-spin__dot {
+  position: relative;
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  transform: rotate(45deg);
+  animation: shop-spin-rotate 1.2s infinite linear;
+}
+
+.shop-spin--small .shop-spin__dot {
+  width: 14px;
+  height: 14px;
+}
+
+.shop-spin--large .shop-spin__dot {
+  width: 28px;
+  height: 28px;
+}
+
+.shop-spin__dot .ant-spin-dot-item,
+.shop-spin__dot i {
+  position: absolute;
+  display: block;
+  width: 9px;
+  height: 9px;
+  background: currentColor;
+  border-radius: 100%;
+  opacity: 0.35;
+  transform: scale(0.75);
+  transform-origin: 50% 50%;
+  animation: shop-spin-pulse 1s infinite linear alternate;
+}
+
+.shop-spin--small .shop-spin__dot .ant-spin-dot-item,
+.shop-spin--small .shop-spin__dot i {
+  width: 6px;
+  height: 6px;
+}
+
+.shop-spin--large .shop-spin__dot .ant-spin-dot-item,
+.shop-spin--large .shop-spin__dot i {
+  width: 12px;
+  height: 12px;
+}
+
+.shop-spin__dot .ant-spin-dot-item:nth-child(1),
+.shop-spin__dot i:nth-child(1) { top: 0; left: 0; animation-delay: 0s; }
+.shop-spin__dot .ant-spin-dot-item:nth-child(2),
+.shop-spin__dot i:nth-child(2) { top: 0; right: 0; animation-delay: 0.4s; }
+.shop-spin__dot .ant-spin-dot-item:nth-child(3),
+.shop-spin__dot i:nth-child(3) { right: 0; bottom: 0; animation-delay: 0.8s; }
+.shop-spin__dot .ant-spin-dot-item:nth-child(4),
+.shop-spin__dot i:nth-child(4) { bottom: 0; left: 0; animation-delay: 1.2s; }
+
+.shop-spin__tip {
+  color: #355244;
+  font-size: max(12px, 0.9em);
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.shop-spin--nested {
+  min-height: 44px;
+}
+
+.shop-spin__overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(248, 251, 249, 0.55);
+  pointer-events: none;
+}
+
+.shop-spin__content.ant-spin-blur {
+  opacity: 0.55;
+  pointer-events: none;
+  user-select: none;
+}
+
+@keyframes shop-spin-rotate {
+  to { transform: rotate(405deg); }
+}
+
+@keyframes shop-spin-pulse {
+  to { opacity: 1; }
+}

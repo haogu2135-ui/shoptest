@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Button } from 'antd';
+import ShopButton from './ShopButton';
 import { ShopIcon, SI } from './ShopIcon';
 import './ShopModal.css';
 
@@ -76,15 +76,15 @@ const ShopModal: React.FC<ShopModalProps> = ({
 
   const defaultFooter = (
     <>
-      <Button
+      <ShopButton
         onClick={onClose}
         disabled={cancelButtonProps?.disabled}
         aria-label={cancelButtonProps?.['aria-label'] || (typeof cancelText === 'string' ? cancelText : closeLabel)}
         title={cancelButtonProps?.title || (typeof cancelText === 'string' ? cancelText : closeLabel)}
       >
         {cancelText}
-      </Button>
-      <Button
+      </ShopButton>
+      <ShopButton
         type="primary"
         danger={okButtonProps?.danger}
         onClick={() => {
@@ -96,7 +96,7 @@ const ShopModal: React.FC<ShopModalProps> = ({
         title={okButtonProps?.title || (typeof okText === 'string' ? okText : undefined)}
       >
         {okText}
-      </Button>
+      </ShopButton>
     </>
   );
 

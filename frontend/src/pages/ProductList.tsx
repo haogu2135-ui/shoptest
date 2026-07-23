@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
-import { Button, Tag, Checkbox } from 'antd';
 import ShopSearchField from '../components/ShopSearchField';
 import ShopSelect from '../components/ShopSelect';
 import { ShopIcon, SI } from '../components/ShopIcon';
@@ -8,6 +7,7 @@ import ShopRate from '../components/ShopRate';
 import ShopDrawer from '../components/ShopDrawer';
 import ShopPagination from '../components/ShopPagination';
 import ShopRangeSlider from '../components/ShopRangeSlider';
+import ShopCheckbox, { ShopCheckboxGroup } from '../components/ShopCheckbox';
 import ShopModal from '../components/ShopModal';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { productApi, cartApi, categoryApi, wishlistApi, createApiAbortController } from '../api';
@@ -47,7 +47,9 @@ import PageEmpty from '../components/PageEmpty';
 import ShopBreadcrumb from '../components/ShopBreadcrumb';
 import './ProductList.css';
 import '../styles/mobile-page-contrast.css';
+import ShopButton from '../components/ShopButton';
 
+import ShopTag from '../components/ShopTag';
 const SEARCH_HISTORY_KEY = 'shop-product-search-history';
 const MAX_SEARCH_HISTORY = 6;
 const MAX_SEARCH_LENGTH = 80;
@@ -377,7 +379,7 @@ const ProductListCard = React.memo(({
                 }}
               />
               <span className="product-list__badges" aria-label={t('pages.productList.productBadges')}>
-                {buildProductListBadges(product, t).slice(0, 3).map((badge) => <Tag key={badge.label} color={badge.color}>{badge.label}</Tag>)}
+                {buildProductListBadges(product, t).slice(0, 3).map((badge) => <ShopTag key={badge.label} color={badge.color}>{badge.label}</ShopTag>)}
               </span>
               {soldOut && (
                 <span className="product-list__soldOut">
@@ -386,7 +388,7 @@ const ProductListCard = React.memo(({
               )}
             </Link>
             <div className="product-list__imageOverlay">
-              <Button
+              <ShopButton
                 size="small"
                 icon={<ShopIcon path={SI.search} />}
                 className="product-list__previewTrigger"
@@ -395,7 +397,7 @@ const ProductListCard = React.memo(({
                 onClick={(event) => onPreview(event, product)}
               >
                 {t('pages.productList.quickPreview')}
-              </Button>
+              </ShopButton>
             </div>
           </div>
         </div>
@@ -416,7 +418,7 @@ const ProductListCard = React.memo(({
               {product.originalPrice && product.originalPrice > getPrice(product) && (
                 <span className="product-list__text product-list__text--delete product-list__text--secondary product-list__originalPrice commerce-money">{formatMoney(product.originalPrice)}</span>
               )}
-              {product.activeLimitedTimeDiscount && <Tag color="red" className="product-list__priceTag">{t('pages.keywords.deal')}</Tag>}
+              {product.activeLimitedTimeDiscount && <ShopTag color="red" className="product-list__priceTag">{t('pages.keywords.deal')}</ShopTag>}
             </div>
             {isBestValueProduct(product) && getSavingsAmount(product) > 0 ? (
               <div className="product-list__valueLine">
@@ -441,7 +443,7 @@ const ProductListCard = React.memo(({
         <div className="product-list__actions" role="group" aria-label={productName}>
           <div className="product-list__actionItem product-list__actionItem--primary">
             {soldOut ? (
-              <Button
+              <ShopButton
                 icon={<ShopIcon path={SI.bell} />}
                 size="small"
                 className="product-list__actionButton product-list__alertButton"
@@ -453,9 +455,9 @@ const ProductListCard = React.memo(({
                 <span className="product-list__actionLabel">
                   {stockAlerted ? t('pages.stockAlerts.remove') : t('pages.stockAlerts.notifyMe')}
                 </span>
-              </Button>
+              </ShopButton>
             ) : (
-              <Button
+              <ShopButton
                 type="primary"
                 icon={<ShopIcon path={SI.cart} />}
                 size="small"
@@ -467,11 +469,11 @@ const ProductListCard = React.memo(({
                 <span className="product-list__actionLabel">
                   {quickAddLabel}
                 </span>
-              </Button>
+              </ShopButton>
             )}
           </div>
           <div className="product-list__actionItem">
-            <Button
+            <ShopButton
               icon={wishlisted ? <ShopIcon path={SI.heartFill} /> : <ShopIcon path={SI.heart} />}
               size="small"
               className={wishlisted
@@ -485,10 +487,10 @@ const ProductListCard = React.memo(({
               <span className="product-list__actionLabel">
                 {wishlisted ? t('pages.productDetail.favorited') : t('pages.productDetail.favorite')}
               </span>
-            </Button>
+            </ShopButton>
           </div>
           <div className="product-list__actionItem">
-            <Button
+            <ShopButton
               icon={<ShopIcon path={SI.barChart} />}
               size="small"
               className="product-list__actionButton product-list__actionButton--compact"
@@ -499,7 +501,7 @@ const ProductListCard = React.memo(({
               <span className="product-list__actionLabel">
                 {compared ? t('pages.productList.viewCompare') : t('pages.productList.compare')}
               </span>
-            </Button>
+            </ShopButton>
           </div>
         </div>
       </article>
@@ -1383,7 +1385,7 @@ const ProductList: React.FC = () => {
         })()
       ))}
       {Object.keys(quickAddOptions).length > 0 && (
-        <Button
+        <ShopButton
           type="link"
           onClick={() => setQuickAddOptions({})}
           className="product-list__quickAddReset"
@@ -1391,7 +1393,7 @@ const ProductList: React.FC = () => {
           title={quickAddResetActionLabel}
         >
           {t('common.reset')}
-        </Button>
+        </ShopButton>
       )}
     </>
   );
@@ -1956,7 +1958,7 @@ const ProductList: React.FC = () => {
 
   const renderCategoryPanel = () => (
     <div className="product-list__categoryStack">
-      <Button
+      <ShopButton
         type={!categoryId ? 'primary' : 'text'}
         block
         aria-pressed={!categoryId}
@@ -1966,12 +1968,12 @@ const ProductList: React.FC = () => {
         className="product-list__categoryButton"
       >
         {t('pages.productList.allCategories')}
-      </Button>
+      </ShopButton>
       {categoryRows.map((cat) => {
         const categoryTitle = normalizeCategoryTitle(cat);
         const selected = categoryId === cat.id;
         return (
-          <Button
+          <ShopButton
             key={cat.id}
             type={selected ? 'primary' : 'text'}
             block
@@ -1983,7 +1985,7 @@ const ProductList: React.FC = () => {
             style={{ paddingLeft: 12 + ((categoryDepthById.get(cat.id) || 1) - 1) * 14 }}
           >
             {categoryTitle}
-          </Button>
+          </ShopButton>
         );
       })}
     </div>
@@ -2014,7 +2016,7 @@ const ProductList: React.FC = () => {
       </div>
       <div>
         <span className="product-list__text product-list__text--strong product-list__filterLabel">{t('pages.productList.filterSize')}</span>
-        <Checkbox.Group
+        <ShopCheckboxGroup
           value={petSizes}
           aria-label={`${t('pages.productList.filterSize')}: ${t('pages.productList.filters')}`}
           onChange={(value) => updatePetSizes(value.map(String))}
@@ -2023,7 +2025,7 @@ const ProductList: React.FC = () => {
       </div>
       <div>
         <span className="product-list__text product-list__text--strong product-list__filterLabel">{t('pages.productList.filterMaterial')}</span>
-        <Checkbox.Group
+        <ShopCheckboxGroup
           value={materials}
           aria-label={`${t('pages.productList.filterMaterial')}: ${t('pages.productList.filters')}`}
           onChange={(value) => updateMaterials(value.map(String))}
@@ -2032,13 +2034,13 @@ const ProductList: React.FC = () => {
       </div>
       <div>
         <span className="product-list__text product-list__text--strong product-list__filterLabel">{t('pages.productList.filterColor')}</span>
-        <Checkbox.Group
+        <ShopCheckboxGroup
           value={colors}
           aria-label={`${t('pages.productList.filterColor')}: ${t('pages.productList.filters')}`}
           onChange={(value) => updateColors(value.map(String))}
         >
           {colorOptions.map((option) => (
-            <Checkbox key={option.value} value={option.value} aria-label={option.label}>
+            <ShopCheckbox key={option.value} value={option.value} aria-label={option.label}>
               <span className="product-list__colorOption">
                 <span
                   className="product-list__colorSwatch"
@@ -2048,9 +2050,9 @@ const ProductList: React.FC = () => {
                 />
                 <span className="product-list__colorName">{option.label}</span>
               </span>
-            </Checkbox>
+            </ShopCheckbox>
           ))}
-        </Checkbox.Group>
+        </ShopCheckboxGroup>
       </div>
     </div>
   );
@@ -2146,11 +2148,11 @@ const ProductList: React.FC = () => {
             <div className="product-list__panelHead">
               <div className="product-list__inlineRow">
                 <h2 className="product-list__panelTitle">{t('pages.productList.filters')}</h2>
-                {activeFilterCount > 0 ? <Tag color="blue">{t('pages.productList.activeFilters', { count: activeFilterCount })}</Tag> : null}
+                {activeFilterCount > 0 ? <ShopTag color="blue">{t('pages.productList.activeFilters', { count: activeFilterCount })}</ShopTag> : null}
               </div>
-              <Button type="link" size="small" disabled={activeFilterCount === 0} onClick={resetFilters}>
+              <ShopButton type="link" size="small" disabled={activeFilterCount === 0} onClick={resetFilters}>
                 {t('pages.productList.resetFilters')}
-              </Button>
+              </ShopButton>
             </div>
             <div className="product-list__panelBody">
               {renderFilterPanel()}
@@ -2230,12 +2232,12 @@ const ProductList: React.FC = () => {
               <div className="product-list__toolbarMetaWrap">
                 <div className="product-list__toolbarMeta">
                   <span className="product-list__text product-list__text--secondary">{productCountLabel}</span>
-                  <Button className="product-list__filterButton" icon={<ShopIcon path={SI.filter} />} aria-label={openFilterDrawerActionLabel} title={openFilterDrawerActionLabel} onClick={() => setFilterDrawerOpen(true)}>
+                  <ShopButton className="product-list__filterButton" icon={<ShopIcon path={SI.filter} />} aria-label={openFilterDrawerActionLabel} title={openFilterDrawerActionLabel} onClick={() => setFilterDrawerOpen(true)}>
                     <span>{t('pages.productList.filters')}</span>
                     {activeRefinementCount > 0 ? (
                       <span className="product-list__filterCount">{activeRefinementCount > 99 ? '99+' : activeRefinementCount}</span>
                     ) : null}
-                  </Button>
+                  </ShopButton>
                 </div>
               </div>
             </div>
@@ -2255,7 +2257,7 @@ const ProductList: React.FC = () => {
                     <ShopIcon path={SI.close} className="product-list__mobileContextClose" aria-hidden  />
                   </button>
                 ))}
-                <Button
+                <ShopButton
                   type="link"
                   size="small"
                   className="product-list__activeContextReset"
@@ -2264,14 +2266,14 @@ const ProductList: React.FC = () => {
                   onClick={resetCatalogView}
                 >
                   {t('pages.productList.resetFilters')}
-                </Button>
+                </ShopButton>
               </section>
             ) : null}
             {searchHistory.length > 0 && (
               <div className="product-list__recentSearches">
                 <span className="product-list__text product-list__text--secondary">{t('pages.productList.recentSearches')}</span>
                 {searchHistory.map((term) => (
-                  <Tag
+                  <ShopTag
                     key={term}
                     style={{ cursor: 'pointer' }}
                     role="button"
@@ -2282,11 +2284,11 @@ const ProductList: React.FC = () => {
                     onKeyDown={(event) => handleSearchTermKeyDown(event, term)}
                   >
                     {term}
-                  </Tag>
+                  </ShopTag>
                 ))}
-                <Button type="link" size="small" aria-label={`${t('pages.productList.clearSearches')}: ${t('pages.productList.recentSearches')}`} title={`${t('pages.productList.clearSearches')}: ${t('pages.productList.recentSearches')}`} onClick={clearSearchHistory}>
+                <ShopButton type="link" size="small" aria-label={`${t('pages.productList.clearSearches')}: ${t('pages.productList.recentSearches')}`} title={`${t('pages.productList.clearSearches')}: ${t('pages.productList.recentSearches')}`} onClick={clearSearchHistory}>
                   {t('pages.productList.clearSearches')}
-                </Button>
+                </ShopButton>
               </div>
             )}
           </div>
@@ -2319,7 +2321,7 @@ const ProductList: React.FC = () => {
               </div>
               <div className="product-list__mobileNextStepActions">
                 {mobileNextStepActions.map((action) => (
-                  <Button
+                  <ShopButton
                     key={action.key}
                     size="small"
                     type={action.primary ? 'primary' : 'default'}
@@ -2329,7 +2331,7 @@ const ProductList: React.FC = () => {
                     onClick={action.onClick}
                   >
                     {action.label}
-                  </Button>
+                  </ShopButton>
                 ))}
               </div>
             </section>
@@ -2349,17 +2351,17 @@ const ProductList: React.FC = () => {
                 </span>
               </div>
               <div className="product-list__mobileConversionActions">
-                <Button icon={<ShopIcon path={SI.filter} />} aria-label={openFilterDrawerActionLabel} title={openFilterDrawerActionLabel} onClick={() => setFilterDrawerOpen(true)}>
+                <ShopButton icon={<ShopIcon path={SI.filter} />} aria-label={openFilterDrawerActionLabel} title={openFilterDrawerActionLabel} onClick={() => setFilterDrawerOpen(true)}>
                   {t('pages.productList.filters')}
-                </Button>
-                <Button aria-label={mobileSecondaryActionLabel} title={mobileSecondaryActionLabel} onClick={filteredProducts.length > 0 ? () => applySort('discount-desc') : activeRefinementCount > 0 ? resetMobileRefinements : () => navigate('/products')}>
+                </ShopButton>
+                <ShopButton aria-label={mobileSecondaryActionLabel} title={mobileSecondaryActionLabel} onClick={filteredProducts.length > 0 ? () => applySort('discount-desc') : activeRefinementCount > 0 ? resetMobileRefinements : () => navigate('/products')}>
                   {filteredProducts.length > 0
                     ? t('pages.productList.shopBestDeals')
                     : activeRefinementCount > 0
                       ? t('pages.productList.resetFilters')
                       : t('pages.productList.allCategories')}
-                </Button>
-                <Button
+                </ShopButton>
+                <ShopButton
                   type="primary"
                   icon={heroProduct || filteredProducts.length > 0 ? <ShopIcon path={SI.cart} /> : <ShopIcon path={SI.gift} />}
                   aria-label={mobilePrimaryActionLabel}
@@ -2387,7 +2389,7 @@ const ProductList: React.FC = () => {
                     : filteredProducts.length > 0
                       ? t('pages.productList.shopQuickAdd')
                       : t('pages.productList.loadRecoveryCoupons')}
-                </Button>
+                </ShopButton>
               </div>
             </section>
           ) : null}
@@ -2399,7 +2401,7 @@ const ProductList: React.FC = () => {
                     <span className="product-list__text product-list__text--strong">{t('pages.productList.snapshotTitle')}</span>
                     <span className="product-list__text product-list__text--secondary">{t('pages.productList.snapshotText')}</span>
                   </div>
-                  <Button
+                  <ShopButton
                     size="small"
                     icon={<ShopIcon path={SI.reload} />}
                     aria-label={refreshCatalogActionLabel}
@@ -2407,7 +2409,7 @@ const ProductList: React.FC = () => {
                     onClick={() => fetchProducts(keyword, categoryId, discount, buildActiveFetchFilters(Math.max(0, currentPage - 1)))}
                   >
                     {t('common.refresh')}
-                  </Button>
+                  </ShopButton>
                 </section>
               ) : null}
               <section className="product-list__smartBar" aria-label={t('pages.productList.insightTitle')}>
@@ -2415,17 +2417,17 @@ const ProductList: React.FC = () => {
                   <ShopIcon path={SI.check} />
                   <span className="product-list__text product-list__text--strong">{t('pages.productList.insightTitle')}</span>
                   <div className="product-list__smartStats">
-                    <Tag className="product-list__smartStat product-list__smartStat--ready">
+                    <ShopTag className="product-list__smartStat product-list__smartStat--ready">
                       {t('pages.productList.quickAddReady', { count: productListInsights.quickAddReadyCount })}
-                    </Tag>
-                    <Tag className="product-list__smartStat product-list__smartStat--value">
+                    </ShopTag>
+                    <ShopTag className="product-list__smartStat product-list__smartStat--value">
                       {t('pages.productList.bestValueCount', { count: productListInsights.bestValueCount })}
-                    </Tag>
+                    </ShopTag>
                   </div>
                 </div>
                 <div className="product-list__smartActions">
                   {heroProduct ? (
-                    <Button
+                    <ShopButton
                       className="product-list__smartPick"
                       onMouseEnter={() => prefetchProduct(heroProduct.id)}
                       onFocus={() => prefetchProduct(heroProduct.id)}
@@ -2435,14 +2437,14 @@ const ProductList: React.FC = () => {
                     >
                       <span>{t('pages.productList.viewPick')}</span>
                       <strong>{heroProductName}</strong>
-                    </Button>
+                    </ShopButton>
                   ) : null}
-                  <Button className="product-list__smartAction" aria-label={shopBestDealsActionLabel} title={shopBestDealsActionLabel} onClick={() => applySort('discount-desc')}>
+                  <ShopButton className="product-list__smartAction" aria-label={shopBestDealsActionLabel} title={shopBestDealsActionLabel} onClick={() => applySort('discount-desc')}>
                     {t('pages.productList.shopBestDeals')}
-                  </Button>
-                  <Button className="product-list__smartPersonal" aria-label={shopQuickAddActionLabel} title={shopQuickAddActionLabel} onClick={() => applySort('quick-add-desc')}>
+                  </ShopButton>
+                  <ShopButton className="product-list__smartPersonal" aria-label={shopQuickAddActionLabel} title={shopQuickAddActionLabel} onClick={() => applySort('quick-add-desc')}>
                     {t('pages.productList.shopQuickAdd')}
-                  </Button>
+                  </ShopButton>
                 </div>
               </section>
               <section className="product-list__insightPanel" aria-label={t('pages.productList.guideTitle')}>
@@ -2455,9 +2457,9 @@ const ProductList: React.FC = () => {
                   <span>{renderProductAmountText(t('pages.productList.averageSavings', { amount: formatMoney(productListInsights.averageSavings) }), formatMoney(productListInsights.averageSavings))}</span>
                   <span>{t('pages.productList.lowStockCount', { count: productListInsights.lowStockCount })}</span>
                   {activeFilterCount > 0 ? (
-                    <Button type="link" aria-label={resetRefinementsActionLabel} title={resetRefinementsActionLabel} onClick={resetFilters}>{t('pages.productList.resetFilters')}</Button>
+                    <ShopButton type="link" aria-label={resetRefinementsActionLabel} title={resetRefinementsActionLabel} onClick={resetFilters}>{t('pages.productList.resetFilters')}</ShopButton>
                   ) : (
-                    <Button type="link" aria-label={`${t('pages.productList.shopTopRated')}: ${topCategoryName}`} title={`${t('pages.productList.shopTopRated')}: ${topCategoryName}`} onClick={() => applySort('positive-rate-desc')}>{t('pages.productList.shopTopRated')}</Button>
+                    <ShopButton type="link" aria-label={`${t('pages.productList.shopTopRated')}: ${topCategoryName}`} title={`${t('pages.productList.shopTopRated')}: ${topCategoryName}`} onClick={() => applySort('positive-rate-desc')}>{t('pages.productList.shopTopRated')}</ShopButton>
                   )}
                 </div>
               </section>
@@ -2518,7 +2520,7 @@ const ProductList: React.FC = () => {
                               {savings > 0 ? <span> - {renderSavingsText(savings)}</span> : null}
                             </small>
                           </span>
-                          <Tag color={tagColor}>{tagLabel}</Tag>
+                          <ShopTag color={tagColor}>{tagLabel}</ShopTag>
                         </button>
                       );
                     })}
@@ -2578,12 +2580,12 @@ const ProductList: React.FC = () => {
               />
               <div className="product-list__recovery product-list__recovery--secondary">
                 <div className="product-list__recoveryGrid">
-                  <Button icon={<ShopIcon path={SI.gift} />} aria-label={couponsRecoveryActionLabel} title={couponsRecoveryActionLabel} onClick={() => navigate('/coupons')}>
+                  <ShopButton icon={<ShopIcon path={SI.gift} />} aria-label={couponsRecoveryActionLabel} title={couponsRecoveryActionLabel} onClick={() => navigate('/coupons')}>
                     {t('pages.productList.loadRecoveryCoupons')}
-                  </Button>
-                  <Button icon={<ShopIcon path={SI.support} />} aria-label={supportRecoveryActionLabel} title={supportRecoveryActionLabel} onClick={openSupport}>
+                  </ShopButton>
+                  <ShopButton icon={<ShopIcon path={SI.support} />} aria-label={supportRecoveryActionLabel} title={supportRecoveryActionLabel} onClick={openSupport}>
                     {t('pages.productList.loadRecoverySupport')}
-                  </Button>
+                  </ShopButton>
                 </div>
                 {renderDiscoveryActions()}
               </div>
@@ -2686,13 +2688,13 @@ const ProductList: React.FC = () => {
           <div className="product-list__inlineRow">
             <ShopIcon path={SI.filter} />
             <span>{t('pages.productList.filters')}</span>
-            {activeRefinementCount > 0 ? <Tag color="blue">{t('pages.productList.activeFilters', { count: activeRefinementCount })}</Tag> : null}
+            {activeRefinementCount > 0 ? <ShopTag color="blue">{t('pages.productList.activeFilters', { count: activeRefinementCount })}</ShopTag> : null}
           </div>
         }
         extra={
-          <Button type="link" disabled={activeRefinementCount === 0} aria-label={resetRefinementsActionLabel} title={resetRefinementsActionLabel} onClick={resetMobileRefinements}>
+          <ShopButton type="link" disabled={activeRefinementCount === 0} aria-label={resetRefinementsActionLabel} title={resetRefinementsActionLabel} onClick={resetMobileRefinements}>
             {t('pages.productList.resetFilters')}
-          </Button>
+          </ShopButton>
         }
       >
         <div className="product-list__drawerContent">
@@ -2723,17 +2725,17 @@ const ProductList: React.FC = () => {
             </section>
           </div>
           <div className="product-list__drawerFooter">
-            <Button size="large" disabled={activeRefinementCount === 0} aria-label={resetRefinementsActionLabel} title={resetRefinementsActionLabel} onClick={resetMobileRefinements}>
+            <ShopButton size="large" disabled={activeRefinementCount === 0} aria-label={resetRefinementsActionLabel} title={resetRefinementsActionLabel} onClick={resetMobileRefinements}>
               {t('pages.productList.resetFilters')}
-            </Button>
-            <Button type="primary" size="large" aria-label={applyRefinementsActionLabel} title={applyRefinementsActionLabel} onClick={() => setFilterDrawerOpen(false)}>
+            </ShopButton>
+            <ShopButton type="primary" size="large" aria-label={applyRefinementsActionLabel} title={applyRefinementsActionLabel} onClick={() => setFilterDrawerOpen(false)}>
               {t('pages.productList.applyFilters')}
-            </Button>
+            </ShopButton>
           </div>
         </div>
       </ShopDrawer>
       {showBackToTop ? (
-        <Button
+        <ShopButton
           type="primary"
           shape="circle"
           size="large"
@@ -2768,7 +2770,7 @@ const ProductList: React.FC = () => {
               <span className="product-list__text product-list__text--secondary">{t('bundle.includes')}</span>
               <div className="product-list__chipRow">
                 {quickAddBundleInfo.items.map((item) => (
-                  <Tag key={item.name} className="commerce-atomic">{item.name} <span className="commerce-quantity">x{item.quantity || 1}</span></Tag>
+                  <ShopTag key={item.name} className="commerce-atomic">{item.name} <span className="commerce-quantity">x{item.quantity || 1}</span></ShopTag>
                 ))}
               </div>
                 <span className="product-list__text">{t('pages.productList.quickAddPrice')}: <span className="commerce-money">{formatMoney(quickAddBundleInfo.price)}</span></span>
@@ -2830,7 +2832,7 @@ const ProductList: React.FC = () => {
             <div className="product-list__previewBody">
               <div className="product-list__previewBadges">
                 {renderBadges(previewProduct).slice(0, 4).map((badge) => (
-                  <Tag key={badge.label} color={badge.color}>{badge.label}</Tag>
+                  <ShopTag key={badge.label} color={badge.color}>{badge.label}</ShopTag>
                 ))}
               </div>
               <span className="product-list__text product-list__text--secondary product-list__previewBrand">
@@ -2877,7 +2879,7 @@ const ProductList: React.FC = () => {
               </div>
               <div className="product-list__previewActions">
                 {isProductSoldOut(previewProduct) ? (
-                  <Button
+                  <ShopButton
                     icon={<ShopIcon path={SI.bell} />}
                     aria-pressed={previewProductStockAlerted}
                     aria-label={previewStockAlertActionLabel}
@@ -2885,9 +2887,9 @@ const ProductList: React.FC = () => {
                     onClick={(event) => handleStockAlert(event, previewProduct, previewProductStockAlerted)}
                   >
                     {previewProductStockAlerted ? t('pages.stockAlerts.remove') : t('pages.stockAlerts.notifyMe')}
-                  </Button>
+                  </ShopButton>
                 ) : (
-                  <Button
+                  <ShopButton
                     type="primary"
                     icon={<ShopIcon path={SI.cart} />}
                     aria-label={previewPrimaryActionLabel}
@@ -2898,12 +2900,12 @@ const ProductList: React.FC = () => {
                     }}
                   >
                     {previewPrimaryLabel}
-                  </Button>
+                  </ShopButton>
                 )}
-                <Button aria-label={previewViewActionLabel} title={previewViewActionLabel} onClick={() => openProductDetail(previewProduct.id)}>
+                <ShopButton aria-label={previewViewActionLabel} title={previewViewActionLabel} onClick={() => openProductDetail(previewProduct.id)}>
                   {t('pages.productList.viewDetails')}
-                </Button>
-                <Button
+                </ShopButton>
+                <ShopButton
                   icon={previewProductWishlisted ? <ShopIcon path={SI.heartFill} /> : <ShopIcon path={SI.heart} />}
                   aria-pressed={previewProductWishlisted}
                   aria-label={previewWishlistActionLabel}
@@ -2911,7 +2913,7 @@ const ProductList: React.FC = () => {
                   onClick={(event) => handleWishlistToggle(event, previewProduct)}
                 >
                   {previewProductWishlisted ? t('pages.productDetail.favorited') : t('pages.productDetail.favorite')}
-                </Button>
+                </ShopButton>
               </div>
             </div>
           </div>

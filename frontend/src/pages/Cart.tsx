@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import ShopCheckbox from '../components/ShopCheckbox';
+import ShopButton from '../components/ShopButton';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
-import { Alert, Button, Checkbox, Progress, Tag } from 'antd';
 import ShopPopconfirm from '../components/ShopPopconfirm';
 import { ShopIcon, SI } from '../components/ShopIcon';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
@@ -44,6 +45,9 @@ import {
 import { dispatchDomEvent } from '../utils/domEvents';
 import PageError from '../components/PageError';
 import ShopBreadcrumb from '../components/ShopBreadcrumb';
+import ShopProgress from '../components/ShopProgress';
+import ShopTag from '../components/ShopTag';
+import ShopAlert from '../components/ShopAlert';
 import { reportNonBlockingError } from '../utils/nonBlockingError';
 import { getLocalStorageItem, removeSessionStorageItem } from '../utils/safeStorage';
 import { allSettledWithConcurrency } from '../utils/asyncBatch';
@@ -509,7 +513,7 @@ const Cart: React.FC = () => {
 
     return (
       <div className="cart-page__quantityStepper" role="group" aria-label={quantityLabel} title={quantityLabel} aria-busy={syncing}>
-        <Button
+        <ShopButton
           size="small"
           icon={<ShopIcon path={SI.minus} />}
           aria-label={decreaseLabel}
@@ -547,7 +551,7 @@ const Cart: React.FC = () => {
             }
           }}
         />
-        <Button
+        <ShopButton
           size="small"
           icon={<ShopIcon path={SI.plus} />}
           aria-label={increaseLabel}
@@ -1106,7 +1110,7 @@ const Cart: React.FC = () => {
   const paymentCancelledCheckoutLabel = t('pages.cart.checkout');
 
   const paymentReturnBanner = paymentReturnIncomplete ? (
-        <Alert
+        <ShopAlert
           className="cart-page__paymentReturn"
           type={paymentReturnStatus === 'failed' ? 'error' : 'warning'}
           showIcon
@@ -1131,7 +1135,7 @@ const Cart: React.FC = () => {
             )}
           action={(
             <div className="cart-page__paymentReturnActions">
-              <Button
+              <ShopButton
                 type="primary"
                 size="small"
                 aria-label={paymentCancelledResumeLabel}
@@ -1144,9 +1148,9 @@ const Cart: React.FC = () => {
                 }}
               >
                 {t('pages.cart.paymentCancelledResume')}
-              </Button>
+              </ShopButton>
               {paymentReturnOrderNo ? (
-                <Button
+                <ShopButton
                   size="small"
                   aria-label={paymentCancelledTrackLabel}
                   title={paymentCancelledTrackLabel}
@@ -1156,10 +1160,10 @@ const Cart: React.FC = () => {
                   }}
                 >
                   {t('pages.cart.paymentCancelledTrack')}
-                </Button>
+                </ShopButton>
               ) : null}
               {cartItems.length > 0 ? (
-                <Button
+                <ShopButton
                   size="small"
                   aria-label={paymentCancelledCheckoutLabel}
                   title={paymentCancelledCheckoutLabel}
@@ -1169,9 +1173,9 @@ const Cart: React.FC = () => {
                   }}
                 >
                   {t('pages.cart.checkout')}
-                </Button>
+                </ShopButton>
               ) : (
-                <Button
+                <ShopButton
                   size="small"
                   aria-label={t('pages.cart.browse')}
                   title={t('pages.cart.browse')}
@@ -1181,7 +1185,7 @@ const Cart: React.FC = () => {
                   }}
                 >
                   {t('pages.cart.browse')}
-                </Button>
+                </ShopButton>
               )}
             </div>
           )}
@@ -1298,18 +1302,18 @@ const Cart: React.FC = () => {
             <span className="cart-page__text">{t('pages.cart.recentRecoverySubtitle')}</span>
           </div>
           <div className="cart-page__emptyActions" data-cart-empty-actions="true">
-            <Button type="primary" icon={<ShopIcon path={SI.shopping} />} aria-label={emptyBrowseActionLabel} title={emptyBrowseActionLabel} onClick={() => navigate('/products')}>
+            <ShopButton type="primary" icon={<ShopIcon path={SI.shopping} />} aria-label={emptyBrowseActionLabel} title={emptyBrowseActionLabel} onClick={() => navigate('/products')}>
               {t('pages.cart.browse')}
-            </Button>
-            <Button icon={<ShopIcon path={SI.shopping} />} aria-label={emptyCouponsActionLabel} title={emptyCouponsActionLabel} onClick={() => navigate('/coupons')}>
+            </ShopButton>
+            <ShopButton icon={<ShopIcon path={SI.shopping} />} aria-label={emptyCouponsActionLabel} title={emptyCouponsActionLabel} onClick={() => navigate('/coupons')}>
               {t('nav.coupons')}
-            </Button>
-            <Button icon={<ShopIcon path={SI.shopping} />} aria-label={emptyPetFinderActionLabel} title={emptyPetFinderActionLabel} onClick={() => navigate('/pet-finder')}>
+            </ShopButton>
+            <ShopButton icon={<ShopIcon path={SI.shopping} />} aria-label={emptyPetFinderActionLabel} title={emptyPetFinderActionLabel} onClick={() => navigate('/pet-finder')}>
               {t('nav.petFinder')}
-            </Button>
-            <Button icon={<ShopIcon path={SI.clock} />} aria-label={emptyHistoryActionLabel} title={emptyHistoryActionLabel} onClick={() => navigate('/history')}>
+            </ShopButton>
+            <ShopButton icon={<ShopIcon path={SI.clock} />} aria-label={emptyHistoryActionLabel} title={emptyHistoryActionLabel} onClick={() => navigate('/history')}>
               {t('nav.history')}
-            </Button>
+            </ShopButton>
           </div>
           <div className="cart-page__emptySignals">
             <span className="cart-page__emptySignal">
@@ -1361,12 +1365,12 @@ const Cart: React.FC = () => {
                 okButtonProps={{ danger: true, 'aria-label': cartNextActionLabel, title: cartNextActionLabel }}
                 cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${cartNextActionLabel}`, title: `${t('common.cancel')}: ${cartNextActionLabel}` }}
               >
-                <Button type="primary" aria-label={cartNextActionLabel} title={cartNextActionLabel}>
+                <ShopButton type="primary" aria-label={cartNextActionLabel} title={cartNextActionLabel}>
                   {cartNextAction.label}
-                </Button>
+                </ShopButton>
               </ShopPopconfirm>
             ) : (
-              <Button
+              <ShopButton
                 type={cartItems.length > 0 ? 'primary' : 'default'}
                 icon={cartNextAction.key === 'refresh' ? <ShopIcon path={SI.reload} /> : undefined}
                 aria-label={cartItems.length > 0 ? cartTopNextActionLabel : emptyBrowseActionLabel}
@@ -1374,33 +1378,33 @@ const Cart: React.FC = () => {
                 onClick={cartItems.length > 0 ? cartNextAction.action : () => navigate('/products')}
               >
                 {cartItems.length > 0 ? cartNextAction.label : t('pages.cart.browse')}
-              </Button>
+              </ShopButton>
             )}
-            <Button
+            <ShopButton
               aria-label={cartItems.length > 0 ? browseAllProductsActionLabel : emptyCouponsActionLabel}
               title={cartItems.length > 0 ? browseAllProductsActionLabel : emptyCouponsActionLabel}
               onClick={() => navigate(cartItems.length > 0 ? '/products' : '/coupons')}
             >
               {cartItems.length > 0 ? t('pages.cart.browse') : t('nav.coupons')}
-            </Button>
+            </ShopButton>
             {cartItems.length === 0 ? (
               <>
-                <Button
+                <ShopButton
                   icon={<ShopIcon path={SI.shopping} />}
                   aria-label={emptyPetFinderActionLabel}
                   title={emptyPetFinderActionLabel}
                   onClick={() => navigate('/pet-finder')}
                 >
                   {t('nav.petFinder')}
-                </Button>
-                <Button
+                </ShopButton>
+                <ShopButton
                   icon={<ShopIcon path={SI.clock} />}
                   aria-label={emptyHistoryActionLabel}
                   title={emptyHistoryActionLabel}
                   onClick={() => navigate('/history')}
                 >
                   {t('nav.history')}
-                </Button>
+                </ShopButton>
               </>
             ) : null}
           </div>
@@ -1423,7 +1427,7 @@ const Cart: React.FC = () => {
         ))}
       </section>
       {hasStaleCartData ? (
-        <Alert
+        <ShopAlert
           className="cart-page__loadErrorAlert"
           type="warning"
           showIcon
@@ -1432,9 +1436,9 @@ const Cart: React.FC = () => {
           message={t('pages.cart.staleDataTitle')}
           description={loadErrorMessage || t('pages.cart.staleDataWarning')}
           action={
-            <Button type="primary" icon={<ShopIcon path={SI.reload} />} aria-label={retryCartLoadActionLabel} title={retryCartLoadActionLabel} onClick={refreshCartItems}>
+            <ShopButton type="primary" icon={<ShopIcon path={SI.reload} />} aria-label={retryCartLoadActionLabel} title={retryCartLoadActionLabel} onClick={refreshCartItems}>
               {t('messages.retry')}
-            </Button>
+            </ShopButton>
           }
         />
       ) : null}
@@ -1445,7 +1449,7 @@ const Cart: React.FC = () => {
               <span className="cart-page__text cart-page__text--strong">{t('pages.cart.recentRecoveryTitle')}</span>
               <span className="cart-page__text cart-page__text--secondary">{t('pages.cart.recentRecoverySubtitle')}</span>
             </div>
-            <Button size="small" aria-label={recentRecoveryBrowseActionLabel} title={recentRecoveryBrowseActionLabel} onClick={() => navigate('/products')}>{t('pages.cart.browse')}</Button>
+            <ShopButton size="small" aria-label={recentRecoveryBrowseActionLabel} title={recentRecoveryBrowseActionLabel} onClick={() => navigate('/products')}>{t('pages.cart.browse')}</ShopButton>
           </div>
           <div className="cart-page__recentGrid">
             {recentProducts.map((product) => {
@@ -1475,7 +1479,7 @@ const Cart: React.FC = () => {
                       <span className="cart-page__text cart-page__text--secondary commerce-money">{formatMoney(product.effectivePrice ?? product.price)}</span>
                     </span>
                   </button>
-                  <Button
+                  <ShopButton
                     size="small"
                     type={needsOptionSelection(product) ? 'default' : 'primary'}
                     icon={<ShopIcon path={SI.cart} />}
@@ -1486,7 +1490,7 @@ const Cart: React.FC = () => {
                     onClick={() => addRecentProduct(product)}
                   >
                     {recentActionText}
-                  </Button>
+                  </ShopButton>
                 </article>
               );
             })}
@@ -1507,7 +1511,7 @@ const Cart: React.FC = () => {
                 okButtonProps={{ danger: true, 'aria-label': deleteSelectedActionLabel, title: deleteSelectedActionLabel }}
                 cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${deleteSelectedActionLabel}`, title: `${t('common.cancel')}: ${deleteSelectedActionLabel}` }}
               >
-                <Button
+                <ShopButton
                   danger
                   icon={<ShopIcon path={SI.delete} />}
                   disabled={hasStaleCartData || selectedIds.length === 0}
@@ -1516,7 +1520,7 @@ const Cart: React.FC = () => {
                   title={deleteSelectedActionLabel}
                 >
                   {t('pages.cart.deleteSelected')}
-                </Button>
+                </ShopButton>
               </ShopPopconfirm>
               <ShopPopconfirm
                 rootClassName='shop-mobile-popup-layer cart-page-popconfirm'
@@ -1528,14 +1532,14 @@ const Cart: React.FC = () => {
                 okButtonProps={{ danger: true, 'aria-label': clearUnavailableActionLabel, title: clearUnavailableActionLabel }}
                 cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${clearUnavailableActionLabel}`, title: `${t('common.cancel')}: ${clearUnavailableActionLabel}` }}
               >
-                <Button
+                <ShopButton
                   disabled={hasStaleCartData || unavailableItems.length === 0}
                   loading={unavailableItems.some((item) => removingItemIds.includes(item.id))}
                   aria-label={clearUnavailableActionLabel}
                   title={clearUnavailableActionLabel}
                 >
                   {t('pages.cart.clearUnavailable')}
-                </Button>
+                </ShopButton>
               </ShopPopconfirm>
               <span className="cart-page__text cart-page__text--secondary">{t('pages.cart.unavailableSummary', { count: unavailableItems.length })}</span>
             </div>
@@ -1554,17 +1558,17 @@ const Cart: React.FC = () => {
               </div>
             </div>
             <div className="cart-page__readinessStats">
-              <Tag color="green">{t('pages.cart.readyItems', { count: selectedPurchasableCount })}</Tag>
-              <Tag color={unavailableItems.length > 0 ? 'red' : 'default'}>{t('pages.cart.blockedItems', { count: unavailableItems.length })}</Tag>
-              <Tag color={freeShippingUnlocked ? 'green' : freeShippingRemaining > 0 ? 'orange' : 'default'}>
+              <ShopTag color="green">{t('pages.cart.readyItems', { count: selectedPurchasableCount })}</ShopTag>
+              <ShopTag color={unavailableItems.length > 0 ? 'red' : 'default'}>{t('pages.cart.blockedItems', { count: unavailableItems.length })}</ShopTag>
+              <ShopTag color={freeShippingUnlocked ? 'green' : freeShippingRemaining > 0 ? 'orange' : 'default'}>
                 {freeShippingGapTitle}
-              </Tag>
+              </ShopTag>
               {giftUnlocked ? (
-                <Tag color="green">{t('pages.cart.drawerGiftUnlocked')}</Tag>
+                <ShopTag color="green">{t('pages.cart.drawerGiftUnlocked')}</ShopTag>
               ) : null}
             </div>
             <div className="cart-page__readinessActions">
-              <Button
+              <ShopButton
                 size="small"
                 aria-label={selectReadyActionLabel}
                 title={selectReadyActionLabel}
@@ -1572,7 +1576,7 @@ const Cart: React.FC = () => {
                 disabled={hasStaleCartData || purchasableItems.length === 0 || allSelected}
               >
                 {t('pages.cart.selectCheckoutReady')}
-              </Button>
+              </ShopButton>
               {unavailableItems.length > 0 ? (
                 <ShopPopconfirm
                   rootClassName='shop-mobile-popup-layer cart-page-popconfirm'
@@ -1584,7 +1588,7 @@ const Cart: React.FC = () => {
                   okButtonProps={{ danger: true, 'aria-label': clearUnavailableActionLabel, title: clearUnavailableActionLabel }}
                   cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${clearUnavailableActionLabel}`, title: `${t('common.cancel')}: ${clearUnavailableActionLabel}` }}
                 >
-                  <Button
+                  <ShopButton
                     size="small"
                     disabled={hasStaleCartData}
                     loading={unavailableItems.some((item) => removingItemIds.includes(item.id))}
@@ -1592,7 +1596,7 @@ const Cart: React.FC = () => {
                     title={clearUnavailableActionLabel}
                   >
                     {t('pages.cart.clearUnavailable')}
-                  </Button>
+                  </ShopButton>
                 </ShopPopconfirm>
               ) : null}
             </div>
@@ -1614,12 +1618,12 @@ const Cart: React.FC = () => {
                   okButtonProps={{ danger: true, 'aria-label': cartNextActionLabel, title: cartNextActionLabel }}
                   cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${cartNextActionLabel}`, title: `${t('common.cancel')}: ${cartNextActionLabel}` }}
                 >
-                  <Button type="default" aria-label={cartNextActionLabel} title={cartNextActionLabel}>
+                  <ShopButton type="default" aria-label={cartNextActionLabel} title={cartNextActionLabel}>
                     {cartNextAction.label}
-                  </Button>
+                  </ShopButton>
                 </ShopPopconfirm>
               ) : (
-                <Button
+                <ShopButton
                   type="default"
                   icon={cartNextAction.key === 'refresh' ? <ShopIcon path={SI.reload} /> : undefined}
                   aria-label={cartNextActionLabel}
@@ -1628,7 +1632,7 @@ const Cart: React.FC = () => {
                   loading={cartNextAction.key === 'saved' && restoringSaved}
                 >
                   {cartNextAction.label}
-                </Button>
+                </ShopButton>
               )}
             </div>
           ) : null}
@@ -1640,7 +1644,7 @@ const Cart: React.FC = () => {
           >
             <div className="cart-page__tableHead" role="row">
               <div className="cart-page__tableHeadCell cart-page__tableCol--select" role="columnheader">
-                <Checkbox
+                <ShopCheckbox
                   checked={allSelected}
                   indeterminate={selectedPurchasableCount > 0 && !allSelected}
                   disabled={hasStaleCartData}
@@ -1649,7 +1653,7 @@ const Cart: React.FC = () => {
                   onChange={(e) => toggleAll(e.target.checked)}
                 >
                   {t('pages.cart.selectAll')}
-                </Checkbox>
+                </ShopCheckbox>
               </div>
               <div className="cart-page__tableHeadCell cart-page__tableCol--product" role="columnheader">
                 {t('pages.cart.product')}
@@ -1676,7 +1680,7 @@ const Cart: React.FC = () => {
                 return (
                   <div key={record.id} className="cart-page__tableRow" role="row">
                     <div className="cart-page__tableCell cart-page__tableCol--select" role="cell">
-                      <Checkbox
+                      <ShopCheckbox
                         disabled={hasStaleCartData || !canCheckout(record)}
                         checked={selectedIds.includes(record.id)}
                         aria-label={selectItemLabel}
@@ -1723,9 +1727,9 @@ const Cart: React.FC = () => {
                     </div>
                     <div className="cart-page__tableCell cart-page__tableCol--action" role="cell">
                       <div className="cart-page__tableActions">
-                        <Button type="text" icon={<ShopIcon path={SI.clock} />} size="small" aria-label={saveActionLabel} title={saveActionLabel} onClick={() => saveForLater(record)} disabled={hasStaleCartData || removingItemIds.includes(record.id)}>
+                        <ShopButton type="text" icon={<ShopIcon path={SI.clock} />} size="small" aria-label={saveActionLabel} title={saveActionLabel} onClick={() => saveForLater(record)} disabled={hasStaleCartData || removingItemIds.includes(record.id)}>
                           {t('pages.cart.saveForLater')}
-                        </Button>
+                        </ShopButton>
                         <ShopPopconfirm
                           rootClassName='shop-mobile-popup-layer cart-page-popconfirm'
                           title={t('pages.cart.deleteConfirm')}
@@ -1736,7 +1740,7 @@ const Cart: React.FC = () => {
                           okButtonProps={{ danger: true, 'aria-label': deleteActionLabel, title: deleteActionLabel }}
                           cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${deleteActionLabel}`, title: `${t('common.cancel')}: ${deleteActionLabel}` }}
                         >
-                          <Button type="text" danger icon={<ShopIcon path={SI.delete} />} size="small" loading={removingItemIds.includes(record.id)} disabled={hasStaleCartData} aria-label={deleteActionLabel} title={deleteActionLabel}>{t('common.delete')}</Button>
+                          <ShopButton type="text" danger icon={<ShopIcon path={SI.delete} />} size="small" loading={removingItemIds.includes(record.id)} disabled={hasStaleCartData} aria-label={deleteActionLabel} title={deleteActionLabel}>{t('common.delete')}</ShopButton>
                         </ShopPopconfirm>
                       </div>
                     </div>
@@ -1753,7 +1757,7 @@ const Cart: React.FC = () => {
               return (
               <article key={item.id} className="cart-page__mobileItem" role="listitem">
                 <div className="cart-page__mobileItemTop">
-                  <Checkbox
+                  <ShopCheckbox
                     disabled={hasStaleCartData || !canCheckout(item)}
                     checked={selectedIds.includes(item.id)}
                     aria-label={`${t('pages.cart.chooseItems')}: ${itemName}`}
@@ -1794,9 +1798,9 @@ const Cart: React.FC = () => {
                     {renderLineTotal(item)}
                   </div>
                   <div className="cart-page__mobileItemActions">
-                    <Button type="text" icon={<ShopIcon path={SI.clock} />} size="small" aria-label={saveActionLabel} title={saveActionLabel} onClick={() => saveForLater(item)} disabled={hasStaleCartData || removingItemIds.includes(item.id)}>
+                    <ShopButton type="text" icon={<ShopIcon path={SI.clock} />} size="small" aria-label={saveActionLabel} title={saveActionLabel} onClick={() => saveForLater(item)} disabled={hasStaleCartData || removingItemIds.includes(item.id)}>
                       {t('pages.cart.saveForLaterShort')}
-                    </Button>
+                    </ShopButton>
                     <ShopPopconfirm
                       rootClassName='shop-mobile-popup-layer cart-page-popconfirm'
                       title={t('pages.cart.deleteConfirm')}
@@ -1807,7 +1811,7 @@ const Cart: React.FC = () => {
                       okButtonProps={{ danger: true, 'aria-label': deleteActionLabel, title: deleteActionLabel }}
                       cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${deleteActionLabel}`, title: `${t('common.cancel')}: ${deleteActionLabel}` }}
                     >
-                      <Button
+                      <ShopButton
                         type="text"
                         danger
                         icon={<ShopIcon path={SI.delete} />}
@@ -1833,7 +1837,7 @@ const Cart: React.FC = () => {
               <span className="cart-page__text cart-page__text--strong" id="cart-free-shipping-status">
                 {freeShippingStatusTitle}
               </span>
-              <Progress
+              <ShopProgress
                 percent={freeShippingPercent}
                 showInfo={false}
                 strokeColor="#124734"
@@ -1853,9 +1857,9 @@ const Cart: React.FC = () => {
                   {t('common.total')}: <span className="cart-page__text cart-page__text--strong cart-page__totalAmount commerce-money">{formatMoney(selectedTotal)}</span>
                 </span>
               </div>
-              <Button type="primary" size="large" aria-label={checkoutActionLabel} title={checkoutActionLabel} onClick={goCheckout} disabled={hasStaleCartData || checkoutBlocked || checkoutSubmitting} loading={checkoutSubmitting}>
+              <ShopButton type="primary" size="large" aria-label={checkoutActionLabel} title={checkoutActionLabel} onClick={goCheckout} disabled={hasStaleCartData || checkoutBlocked || checkoutSubmitting} loading={checkoutSubmitting}>
                 {checkoutSubmitting ? t('pages.cart.checkoutSyncing') : t('pages.cart.checkout')}
-              </Button>
+              </ShopButton>
             </div>
             <div className="cart-page__trustBar" aria-label={t('pages.cart.trustTitle')}>
               <div className="cart-page__trustItem">
@@ -1902,18 +1906,18 @@ const Cart: React.FC = () => {
             </span>
             <div className="cart-page__emptyPanelDescription">{t('pages.cart.empty')}</div>
             <div className="cart-page__emptyPanelActions" data-cart-empty-panel-actions="true">
-              <Button type="primary" icon={<ShopIcon path={SI.shopping} />} aria-label={emptyBrowseActionLabel} title={emptyBrowseActionLabel} onClick={() => navigate('/products')}>
+              <ShopButton type="primary" icon={<ShopIcon path={SI.shopping} />} aria-label={emptyBrowseActionLabel} title={emptyBrowseActionLabel} onClick={() => navigate('/products')}>
                 {t('pages.cart.browse')}
-              </Button>
-              <Button icon={<ShopIcon path={SI.shopping} />} aria-label={emptyCouponsActionLabel} title={emptyCouponsActionLabel} onClick={() => navigate('/coupons')}>
+              </ShopButton>
+              <ShopButton icon={<ShopIcon path={SI.shopping} />} aria-label={emptyCouponsActionLabel} title={emptyCouponsActionLabel} onClick={() => navigate('/coupons')}>
                 {t('nav.coupons')}
-              </Button>
-              <Button icon={<ShopIcon path={SI.shopping} />} aria-label={emptyPetFinderActionLabel} title={emptyPetFinderActionLabel} onClick={() => navigate('/pet-finder')}>
+              </ShopButton>
+              <ShopButton icon={<ShopIcon path={SI.shopping} />} aria-label={emptyPetFinderActionLabel} title={emptyPetFinderActionLabel} onClick={() => navigate('/pet-finder')}>
                 {t('nav.petFinder')}
-              </Button>
-              <Button icon={<ShopIcon path={SI.clock} />} aria-label={emptyHistoryActionLabel} title={emptyHistoryActionLabel} onClick={() => navigate('/history')}>
+              </ShopButton>
+              <ShopButton icon={<ShopIcon path={SI.clock} />} aria-label={emptyHistoryActionLabel} title={emptyHistoryActionLabel} onClick={() => navigate('/history')}>
                 {t('nav.history')}
-              </Button>
+              </ShopButton>
             </div>
           </div>
         </section>
@@ -1925,7 +1929,7 @@ const Cart: React.FC = () => {
         <div className="cart-page__panelHead">
           <h2 className="cart-page__panelTitle">{`${t('pages.cart.saveForLaterTitle')} (${savedItems.length})`}</h2>
           {savedItems.length > 0 ? (
-            <Button
+            <ShopButton
               size="small"
               icon={<ShopIcon path={SI.cart} />}
               loading={restoringSaved}
@@ -1935,7 +1939,7 @@ const Cart: React.FC = () => {
               onClick={() => moveSavedItemsToCart(savedItems)}
             >
               {t('pages.cart.moveAllToCart')}
-            </Button>
+            </ShopButton>
           ) : null}
         </div>
         {savedItems.length > 0 ? (
@@ -1948,14 +1952,14 @@ const Cart: React.FC = () => {
           </div>
         ) : null}
         {conversionConfig.saveForLater.enabled && savedReminderItems.length > 0 ? (
-          <Alert
+          <ShopAlert
             type="info"
             showIcon
             className="cart-page__savedReminder"
             message={t('pages.cart.savedReminderTitle', { count: savedReminderItems.length })}
             description={t('pages.cart.savedReminderText')}
             action={(
-              <Button
+              <ShopButton
                 size="small"
                 type="primary"
                 loading={restoringSaved}
@@ -1965,7 +1969,7 @@ const Cart: React.FC = () => {
                 onClick={() => moveSavedItemsToCart(savedReminderItems)}
               >
                 {t('pages.cart.restoreReminder')}
-              </Button>
+              </ShopButton>
             )}
           />
         ) : null}
@@ -1977,7 +1981,7 @@ const Cart: React.FC = () => {
                 <div className="cart-page__savedEmptyHint">{t('pages.cart.saveForLaterEmptyHint')}</div>
               </div>
               <div className="cart-page__savedEmptyActions">
-                <Button
+                <ShopButton
                   type="primary"
                   icon={<ShopIcon path={SI.shopping} />}
                   aria-label={t('pages.cart.saveForLaterBrowse')}
@@ -1985,15 +1989,15 @@ const Cart: React.FC = () => {
                   onClick={() => navigate('/products')}
                 >
                   {t('pages.cart.saveForLaterBrowse')}
-                </Button>
-                <Button
+                </ShopButton>
+                <ShopButton
                   icon={<ShopIcon path={SI.shopping} />}
                   aria-label={t('pages.cart.saveForLaterWishlist')}
                   title={t('pages.cart.saveForLaterWishlist')}
                   onClick={() => navigate('/wishlist')}
                 >
                   {t('pages.cart.saveForLaterWishlist')}
-                </Button>
+                </ShopButton>
               </div>
             </div>
           </div>
@@ -2023,15 +2027,15 @@ const Cart: React.FC = () => {
                   <Link to={`/products/${item.productId}`}><span className="cart-page__text cart-page__text--strong">{itemName}</span></Link>
                   {item.selectedSpecs ? <span className="cart-page__text cart-page__text--secondary">{formatSelectedSpecs(item.selectedSpecs, t, language)}</span> : null}
                   <span className="cart-page__text cart-page__text--secondary cart-page__savedQuantity commerce-quantity">{t('common.quantity')}: {item.quantity}</span>
-                  <Tag className="cart-page__savedAge">
+                  <ShopTag className="cart-page__savedAge">
                     {t('pages.cart.savedDaysAgo', { count: getSavedAgeDays(item.savedAt) })}
-                  </Tag>
+                  </ShopTag>
                   <span className="cart-page__text cart-page__text--strong cart-page__savedPrice commerce-money">{formatMoney(item.price)}</span>
                 </div>
                 <div className="cart-page__savedActions">
-                  <Button icon={<ShopIcon path={SI.cart} />} loading={restoringSavedItem} disabled={hasStaleCartData || restoringSavedItem} aria-label={moveActionLabel} title={moveActionLabel} onClick={() => moveSavedItemToCart(item)}>
+                  <ShopButton icon={<ShopIcon path={SI.cart} />} loading={restoringSavedItem} disabled={hasStaleCartData || restoringSavedItem} aria-label={moveActionLabel} title={moveActionLabel} onClick={() => moveSavedItemToCart(item)}>
                     {t('pages.cart.moveToCart')}
-                  </Button>
+                  </ShopButton>
                   <ShopPopconfirm
                     rootClassName='shop-mobile-popup-layer cart-page-popconfirm'
                     title={t('pages.cart.deleteSavedConfirm')}
@@ -2041,7 +2045,7 @@ const Cart: React.FC = () => {
                     okButtonProps={{ danger: true, 'aria-label': deleteActionLabel, title: deleteActionLabel }}
                     cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${deleteActionLabel}`, title: `${t('common.cancel')}: ${deleteActionLabel}` }}
                   >
-                    <Button danger type="text" icon={<ShopIcon path={SI.delete} />} disabled={restoringSavedItem} aria-label={deleteActionLabel} title={deleteActionLabel} />
+                    <ShopButton danger type="text" icon={<ShopIcon path={SI.delete} />} disabled={restoringSavedItem} aria-label={deleteActionLabel} title={deleteActionLabel} />
                   </ShopPopconfirm>
                 </div>
               </div>

@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Card, Empty, Space, Spin, Statistic, Table, Tag, Typography, message } from 'antd';
+import { Table } from 'antd';
 import ShopPopconfirm from '../components/ShopPopconfirm';
 import type { ColumnsType } from 'antd/es/table';
 import { ClearOutlined, DashboardOutlined, ReloadOutlined, ThunderboltOutlined, UndoOutlined } from '@ant-design/icons';
@@ -16,8 +16,19 @@ import {
   hasAdminPermission,
 } from '../utils/roles';
 import './TrafficControl.css';
+import ShopButton from '../components/ShopButton';
+import ShopSpin from '../components/ShopSpin';
+import ShopEmpty from '../components/ShopEmpty';
+import ShopStatistic from '../components/ShopStatistic';
+import message from '../components/ShopMessage';
 
-const { Text, Title } = Typography;
+import ShopTag from '../components/ShopTag';
+import ShopAlert from '../components/ShopAlert';
+import ShopSpace from '../components/ShopSpace';
+import ShopTypography from '../components/ShopTypography';
+import ShopCard from '../components/ShopCard';
+const Text = ShopTypography.Text;
+const Title = ShopTypography.Title;
 
 type CircuitRow = AdminTrafficControlStatus['circuits'][number];
 
@@ -132,7 +143,7 @@ const TrafficControl: React.FC = () => {
         dataIndex: 'state',
         key: 'state',
         width: 120,
-        render: (value: string) => <Tag color={stateColor(value)}>{circuitStateLabels[value as keyof typeof circuitStateLabels] || value}</Tag>,
+        render: (value: string) => <ShopTag color={stateColor(value)}>{circuitStateLabels[value as keyof typeof circuitStateLabels] || value}</ShopTag>,
       },
       {
         title: t('pages.trafficControl.failures'),
@@ -178,7 +189,7 @@ const TrafficControl: React.FC = () => {
               onConfirm={() => resetCircuit(row.name)}
               disabled={actionDisabled}
             >
-              <Button
+              <ShopButton
                 size="small"
                 icon={<UndoOutlined />}
                 aria-label={resetActionLabel}
@@ -187,7 +198,7 @@ const TrafficControl: React.FC = () => {
                 disabled={actionDisabled}
               >
                 {t('pages.trafficControl.reset')}
-              </Button>
+              </ShopButton>
             </ShopPopconfirm>
           );
         },
@@ -211,10 +222,10 @@ const TrafficControl: React.FC = () => {
           <Title level={2}>{t('pages.trafficControl.title')}</Title>
           <Text type="secondary">{t('pages.trafficControl.description')}</Text>
         </div>
-        <Space className="traffic-control__actions" wrap>
-          <Button icon={<ReloadOutlined />} loading={loading} aria-label={refreshTrafficActionLabel} title={refreshTrafficActionLabel} onClick={loadStatus}>
+        <ShopSpace className="traffic-control__actions" wrap>
+          <ShopButton icon={<ReloadOutlined />} loading={loading} aria-label={refreshTrafficActionLabel} title={refreshTrafficActionLabel} onClick={loadStatus}>
             {t('common.refresh')}
-          </Button>
+          </ShopButton>
           {canClearRateLimit ? (
             <ShopPopconfirm rootClassName="shop-mobile-popup-layer"
               title={`${t('pages.trafficControl.clearRateLimit')}?`}
@@ -226,9 +237,9 @@ const TrafficControl: React.FC = () => {
               onConfirm={clearRateLimit}
               disabled={actionDisabled}
             >
-              <Button icon={<ClearOutlined />} loading={acting === 'rate-limit'} disabled={actionDisabled} aria-label={clearRateLimitActionLabel} title={clearRateLimitActionLabel}>
+              <ShopButton icon={<ClearOutlined />} loading={acting === 'rate-limit'} disabled={actionDisabled} aria-label={clearRateLimitActionLabel} title={clearRateLimitActionLabel}>
                 {t('pages.trafficControl.clearRateLimit')}
-              </Button>
+              </ShopButton>
             </ShopPopconfirm>
           ) : null}
           {canResetCircuit ? (
@@ -242,30 +253,30 @@ const TrafficControl: React.FC = () => {
               onConfirm={() => resetCircuit()}
               disabled={actionDisabled}
             >
-              <Button type="primary" icon={<UndoOutlined />} loading={acting === 'all'} disabled={actionDisabled} aria-label={resetAllCircuitsActionLabel} title={resetAllCircuitsActionLabel}>
+              <ShopButton type="primary" icon={<UndoOutlined />} loading={acting === 'all'} disabled={actionDisabled} aria-label={resetAllCircuitsActionLabel} title={resetAllCircuitsActionLabel}>
                 {t('pages.trafficControl.resetAllCircuits')}
-              </Button>
+              </ShopButton>
             </ShopPopconfirm>
           ) : null}
-        </Space>
+        </ShopSpace>
       </div>
 
       {loadError && status ? (
-        <Alert
+        <ShopAlert
           className="traffic-control__alert"
           type="warning"
           showIcon
           message={loadError}
           description={t('pages.trafficControl.staleDataWarning')}
           action={(
-            <Space wrap data-admin-traffic-stale-recovery="true">
-              <Button size="small" type="primary" onClick={loadStatus} loading={loading}>
+            <ShopSpace wrap data-admin-traffic-stale-recovery="true">
+              <ShopButton size="small" type="primary" onClick={loadStatus} loading={loading}>
                 {t('common.retry')}
-              </Button>
-              <Button size="small" onClick={() => navigate('/admin')}>{t('pages.adminDashboard.title')}</Button>
-              <Button size="small" onClick={() => navigate('/admin/system')}>{t('pages.adminDashboard.paymentReturnOps.providerReadinessAction')}</Button>
-              <Button size="small" onClick={() => navigate('/admin/orders')}>{t('pages.adminDashboard.orders')}</Button>
-            </Space>
+              </ShopButton>
+              <ShopButton size="small" onClick={() => navigate('/admin')}>{t('pages.adminDashboard.title')}</ShopButton>
+              <ShopButton size="small" onClick={() => navigate('/admin/system')}>{t('pages.adminDashboard.paymentReturnOps.providerReadinessAction')}</ShopButton>
+              <ShopButton size="small" onClick={() => navigate('/admin/orders')}>{t('pages.adminDashboard.orders')}</ShopButton>
+            </ShopSpace>
           )}
         />
       ) : null}
@@ -291,52 +302,52 @@ const TrafficControl: React.FC = () => {
         aria-busy={loading && !status}
         aria-label={t('common.loading')}
       >
-        <Spin
+        <ShopSpin
           spinning={loading && !status}
         >
         {loadError && !status ? null : <div className="traffic-control__stats">
-          <Card>
-            <Statistic title={t('pages.trafficControl.rateLimitStatus')} value={rateLimit?.enabled ? t('pages.trafficControl.enabled') : t('pages.trafficControl.disabled')} prefix={<DashboardOutlined />} />
-          </Card>
-          <Card>
-            <Statistic title={t('pages.trafficControl.accepted')} value={rateLimit?.acceptedRequests || 0} />
-          </Card>
-          <Card>
-            <Statistic title={t('pages.trafficControl.rejected')} value={rateLimit?.rejectedRequests || 0} valueStyle={{ color: (rateLimit?.rejectedRequests || 0) > 0 ? '#c2410c' : '#1f8a4c' }} />
-          </Card>
-          <Card>
-            <Statistic title={t('pages.trafficControl.activeBuckets')} value={rateLimit?.activeBuckets || 0} />
-          </Card>
+          <ShopCard>
+            <ShopStatistic title={t('pages.trafficControl.rateLimitStatus')} value={rateLimit?.enabled ? t('pages.trafficControl.enabled') : t('pages.trafficControl.disabled')} prefix={<DashboardOutlined />} />
+          </ShopCard>
+          <ShopCard>
+            <ShopStatistic title={t('pages.trafficControl.accepted')} value={rateLimit?.acceptedRequests || 0} />
+          </ShopCard>
+          <ShopCard>
+            <ShopStatistic title={t('pages.trafficControl.rejected')} value={rateLimit?.rejectedRequests || 0} valueStyle={{ color: (rateLimit?.rejectedRequests || 0) > 0 ? '#c2410c' : '#1f8a4c' }} />
+          </ShopCard>
+          <ShopCard>
+            <ShopStatistic title={t('pages.trafficControl.activeBuckets')} value={rateLimit?.activeBuckets || 0} />
+          </ShopCard>
         </div>}
 
         {loadError && !status ? null : <div className="traffic-control__grid">
-          <Card title={t('pages.trafficControl.rateLimitConfig')} className="traffic-control__card">
+          <ShopCard title={t('pages.trafficControl.rateLimitConfig')} className="traffic-control__card">
             <div className="traffic-control__configList">
               <span>{t('pages.trafficControl.publicPerMinute')} <strong>{rateLimit?.publicPerMinute ?? '-'}</strong></span>
               <span>{t('pages.trafficControl.authenticatedPerMinute')} <strong>{rateLimit?.authenticatedPerMinute ?? '-'}</strong></span>
               <span>{t('pages.trafficControl.adminPerMinute')} <strong>{rateLimit?.adminPerMinute ?? '-'}</strong></span>
               <span>{t('pages.trafficControl.windowSeconds')} <strong>{rateLimit?.windowSeconds ?? '-'}</strong></span>
             </div>
-          </Card>
+          </ShopCard>
 
-          <Card title={t('pages.trafficControl.circuitConfig')} className="traffic-control__card">
+          <ShopCard title={t('pages.trafficControl.circuitConfig')} className="traffic-control__card">
             <div className="traffic-control__configList">
-              <span>{t('pages.trafficControl.circuitStatus')} <Tag color={circuitConfig?.enabled ? 'green' : 'default'}>{circuitConfig?.enabled ? t('pages.trafficControl.enabled') : t('pages.trafficControl.disabled')}</Tag></span>
+              <span>{t('pages.trafficControl.circuitStatus')} <ShopTag color={circuitConfig?.enabled ? 'green' : 'default'}>{circuitConfig?.enabled ? t('pages.trafficControl.enabled') : t('pages.trafficControl.disabled')}</ShopTag></span>
               <span>{t('pages.trafficControl.failureThreshold')} <strong>{circuitConfig?.failureThreshold ?? '-'}</strong></span>
               <span>{t('pages.trafficControl.openSeconds')} <strong>{circuitConfig?.openSeconds ?? '-'}</strong></span>
               <span>{t('pages.trafficControl.halfOpenSuccessThreshold')} <strong>{circuitConfig?.halfOpenSuccessThreshold ?? '-'}</strong></span>
             </div>
-          </Card>
+          </ShopCard>
         </div>}
 
-        {loadError && !status ? null : <Alert
+        {loadError && !status ? null : <ShopAlert
           className="traffic-control__alert"
           type="info"
           showIcon
           message={t('pages.trafficControl.configHint')}
         />}
 
-        {loadError && !status ? null : <Card title={<span><ThunderboltOutlined /> {t('pages.trafficControl.circuitBreakers')}</span>} className="traffic-control__card">
+        {loadError && !status ? null : <ShopCard title={<span><ThunderboltOutlined /> {t('pages.trafficControl.circuitBreakers')}</span>} className="traffic-control__card">
           {status?.circuits?.length ? (
             <Table
               rowKey="name"
@@ -346,10 +357,10 @@ const TrafficControl: React.FC = () => {
               scroll={{ x: 860 }}
             />
           ) : (
-            <Empty description={t('pages.trafficControl.emptyCircuits')} />
+            <ShopEmpty description={t('pages.trafficControl.emptyCircuits')} />
           )}
-        </Card>}
-        </Spin>
+        </ShopCard>}
+        </ShopSpin>
       </div>
     </div>
   );

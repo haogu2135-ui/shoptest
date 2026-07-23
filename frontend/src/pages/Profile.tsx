@@ -3,13 +3,14 @@ import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { ShopIcon, SI } from '../components/ShopIcon';
 import ShopModal from '../components/ShopModal';
 import ShopConfirm from '../components/ShopConfirm';
-import { Alert, Button, Checkbox, Form, Progress, Tag } from 'antd';
+import { Form } from 'antd';
 import ShopInput, { ShopPasswordInput, ShopTextArea } from '../components/ShopInput';
 import ShopInputNumber from '../components/ShopInputNumber';
 import ShopSearchField from '../components/ShopSearchField';
 import ShopSelect from '../components/ShopSelect';
 import ShopCascader from '../components/ShopCascader';
 import ShopDatePicker from '../components/ShopDatePicker';
+import ShopCheckbox from '../components/ShopCheckbox';
 import ShopPopconfirm from '../components/ShopPopconfirm';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { addressApi, cartApi, orderApi, paymentApi, petProfileApi, userApi } from '../api';
@@ -55,7 +56,11 @@ import SeventeenTrackWidget from '../components/SeventeenTrackWidget';
 import '../styles/mobile-page-contrast.css';
 import { focusFirstFormError } from '../utils/formValidationFocus';
 import { navigateToCommercialPaymentUrl, formatPaymentUrlLabel, getPaymentRecoveryState } from '../utils/paymentRecovery';
+import ShopButton from '../components/ShopButton';
+import ShopProgress from '../components/ShopProgress';
 
+import ShopTag from '../components/ShopTag';
+import ShopAlert from '../components/ShopAlert';
 const orderImageFallback = productImageFallback;
 const resolveOrderImage = resolveProductImage;
 const PROFILE_ORDER_ITEM_PREVIEW_LIMIT = 30;
@@ -66,7 +71,6 @@ const isFormValidationError = (error: unknown): error is FormValidationError => 
   if (!error || typeof error !== 'object') return false;
   return Array.isArray((error as { errorFields?: unknown }).errorFields);
 };
-
 
 const focusProfileModalFormError = (rootSelector: string) => {
   window.requestAnimationFrame(() => {
@@ -79,7 +83,6 @@ const focusProfileModalFormError = (rootSelector: string) => {
     });
   });
 };
-
 
 const getProfileApiErrorData = (error: unknown): Record<string, unknown> => {
   if (!error || typeof error !== 'object') return {};
@@ -915,11 +918,9 @@ const Profile: React.FC = () => {
     }
   };
 
-
   const confirmReceiptOrder = (order: OrderCustomer) => {
     setReceiptConfirmOrder(order);
   };
-
 
   const openReturnModal = (order: OrderCustomer) => {
     setReturnRequestOrder(order);
@@ -1606,14 +1607,14 @@ const Profile: React.FC = () => {
             {defaultAddressReady ? petProfileFocusText : addressReadinessText}
           </span>
           <div className="profile-overview__actions">
-            <Button type="primary" onClick={() => openProfileTab('orders')}>
+            <ShopButton type="primary" onClick={() => openProfileTab('orders')}>
               {t('pages.profile.orders', { count: orders.length })}
-            </Button>
-            <Button onClick={() => (defaultAddressReady ? openProfileTab('pets') : openAddressSetup())}>
+            </ShopButton>
+            <ShopButton onClick={() => (defaultAddressReady ? openProfileTab('pets') : openAddressSetup())}>
               {defaultAddressReady
                 ? (petProfiles.length > 0 ? t('pages.profile.completePetProfile') : t('pages.profile.addPet'))
                 : t('pages.profile.addAddress')}
-            </Button>
+            </ShopButton>
           </div>
         </div>
         <div className="profile-overview__stats" aria-label={t('pages.profile.actionCenterTitle')}>
@@ -1793,12 +1794,12 @@ const Profile: React.FC = () => {
                     <span className="profile-page__text profile-page__text--strong">{t('pages.profile.accountHealthTitle')}</span>
                     <span className="profile-page__text profile-page__text--secondary">{t('pages.profile.accountHealthText')}</span>
                   </div>
-                  <Progress type="circle" percent={accountHealthScore} size={72} strokeColor="#124734" />
+                  <ShopProgress type="circle" percent={accountHealthScore} size={72} strokeColor="#124734" />
                   <div className="profile-health-panel__chips">
-                    <Tag color={user.email ? 'green' : 'gold'}>{t('pages.profile.accountHealthEmail')}</Tag>
-                    <Tag color={user.phone ? 'green' : 'gold'}>{t('pages.profile.accountHealthPhone')}</Tag>
-                    <Tag color={defaultAddressReady ? 'green' : 'gold'}>{t('pages.profile.accountHealthDefaultAddress')}</Tag>
-                    <Tag color={petProfiles.length > 0 ? 'green' : 'gold'}>{t('pages.profile.accountHealthPet')}</Tag>
+                    <ShopTag color={user.email ? 'green' : 'gold'}>{t('pages.profile.accountHealthEmail')}</ShopTag>
+                    <ShopTag color={user.phone ? 'green' : 'gold'}>{t('pages.profile.accountHealthPhone')}</ShopTag>
+                    <ShopTag color={defaultAddressReady ? 'green' : 'gold'}>{t('pages.profile.accountHealthDefaultAddress')}</ShopTag>
+                    <ShopTag color={petProfiles.length > 0 ? 'green' : 'gold'}>{t('pages.profile.accountHealthPet')}</ShopTag>
                   </div>
                 </div>
                 <dl className="profile-page__descList">
@@ -1820,8 +1821,8 @@ const Profile: React.FC = () => {
               </div>
                 </dl>
                 <div className="profile-info-actions">
-                  <Button icon={<ShopIcon path={SI.edit} />} onClick={openEditModal}>{t('pages.profile.editProfile')}</Button>
-                  <Button icon={<ShopIcon path={SI.lock} />} onClick={() => setPasswordModalVisible(true)}>{t('pages.profile.changePassword')}</Button>
+                  <ShopButton icon={<ShopIcon path={SI.edit} />} onClick={openEditModal}>{t('pages.profile.editProfile')}</ShopButton>
+                  <ShopButton icon={<ShopIcon path={SI.lock} />} onClick={() => setPasswordModalVisible(true)}>{t('pages.profile.changePassword')}</ShopButton>
                 </div>
               </section>
             )}
@@ -1839,7 +1840,7 @@ const Profile: React.FC = () => {
                   <div className="profile-address-readiness__copy">
                     <span className="profile-page__text profile-page__text--strong">{t('pages.profile.addressReadinessTitle')}</span>
                     <span className="profile-page__text profile-page__text--secondary">{addressReadinessText}</span>
-                    <Progress percent={addressReadinessProgress} size="small" strokeColor="#124734" />
+                    <ShopProgress percent={addressReadinessProgress} size="small" strokeColor="#124734" />
                   </div>
                   <div className="profile-address-readiness__stats">
                     <span>
@@ -1856,7 +1857,7 @@ const Profile: React.FC = () => {
                     </span>
                   </div>
                 </div>
-                <Button
+                <ShopButton
                   className="profile-block-button profile-section-action"
                   type="dashed"
                   icon={<ShopIcon path={SI.plus} />}
@@ -1866,14 +1867,14 @@ const Profile: React.FC = () => {
                   onClick={() => openAddressModal()}
                 >
                   {t('pages.profile.addAddress')}
-                </Button>
+                </ShopButton>
                 {addressesStale && (
-                  <Alert
+                  <ShopAlert
                     type="warning"
                     showIcon
                     message={t('pages.profile.addressesStaleTitle')}
                     description={t('pages.profile.addressesStaleWarning')}
-                    action={<Button size="small" onClick={() => fetchAddresses()}>{t('common.retry')}</Button>}
+                    action={<ShopButton size="small" onClick={() => fetchAddresses()}>{t('common.retry')}</ShopButton>}
                   />
                 )}
                 {addressesLoadFailed && addresses.length === 0 ? (
@@ -1961,17 +1962,17 @@ const Profile: React.FC = () => {
                             <div className="profile-page__inlineRow">
                               <span className="profile-page__text profile-page__text--strong">{address.recipientName}</span>
                               <span className="profile-page__text profile-page__text--secondary">{address.phone}</span>
-                              {address.isDefault && <Tag color="orange">{t('pages.checkout.defaultAddress')}</Tag>}
+                              {address.isDefault && <ShopTag color="orange">{t('pages.checkout.defaultAddress')}</ShopTag>}
                             </div>
                             <div className="profile-address-card__address"><span className="profile-page__text">{address.address}</span></div>
                           </div>
                             <div className="profile-page__chipRow">
                               {!address.isDefault ? (
-                              <Button size="small" icon={<ShopIcon path={SI.starOutline} />} aria-label={defaultActionLabel} title={defaultActionLabel} disabled={addressesStale} onClick={() => handleSetDefault(address.id)}>{t('pages.profile.setDefault')}</Button>
+                              <ShopButton size="small" icon={<ShopIcon path={SI.starOutline} />} aria-label={defaultActionLabel} title={defaultActionLabel} disabled={addressesStale} onClick={() => handleSetDefault(address.id)}>{t('pages.profile.setDefault')}</ShopButton>
                             ) : (
-                              <Button size="small" icon={<ShopIcon path={SI.star} />} disabled type="primary">{t('pages.profile.defaultAddressButton')}</Button>
+                              <ShopButton size="small" icon={<ShopIcon path={SI.star} />} disabled type="primary">{t('pages.profile.defaultAddressButton')}</ShopButton>
                             )}
-                            <Button size="small" icon={<ShopIcon path={SI.edit} />} aria-label={editActionLabel} title={editActionLabel} disabled={addressesStale} onClick={() => openAddressModal(address)}>{t('common.edit')}</Button>
+                            <ShopButton size="small" icon={<ShopIcon path={SI.edit} />} aria-label={editActionLabel} title={editActionLabel} disabled={addressesStale} onClick={() => openAddressModal(address)}>{t('common.edit')}</ShopButton>
                             <ShopPopconfirm
                               rootClassName='shop-mobile-popup-layer profile-popconfirm'
                               title={t('pages.profile.deleteAddressConfirm')}
@@ -1981,7 +1982,7 @@ const Profile: React.FC = () => {
                               okButtonProps={{ danger: true, 'aria-label': deleteActionLabel, title: deleteActionLabel }}
                               cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${deleteActionLabel}`, title: `${t('common.cancel')}: ${deleteActionLabel}` }}
                             >
-                              <Button size="small" danger icon={<ShopIcon path={SI.delete} />} aria-label={deleteActionLabel} title={deleteActionLabel} disabled={addressesStale}>{t('common.delete')}</Button>
+                              <ShopButton size="small" danger icon={<ShopIcon path={SI.delete} />} aria-label={deleteActionLabel} title={deleteActionLabel} disabled={addressesStale}>{t('common.delete')}</ShopButton>
                             </ShopPopconfirm>
                           </div>
                         </div>
@@ -2080,7 +2081,7 @@ const Profile: React.FC = () => {
             ) : (
               <div className="profile-orders">
                 {(isPaymentReturnSuccess || isPaymentReturnIncomplete) ? (
-                  <Alert
+                  <ShopAlert
                     className="profile-payment-return"
                     data-profile-payment-return={isPaymentReturnSuccess ? 'success' : paymentReturnStatus === 'failed' ? 'failed' : 'cancelled'}
                     type={isPaymentReturnSuccess ? 'success' : paymentReturnStatus === 'failed' ? 'error' : 'warning'}
@@ -2103,7 +2104,7 @@ const Profile: React.FC = () => {
                       <div className="profile-payment-return__actions" data-profile-payment-return-recovery="true">
                         {isPaymentReturnSuccess ? (
                           <>
-                            <Button
+                            <ShopButton
                               size="small"
                               type="primary"
                               onClick={() => navigate(paymentReturnOrderNo
@@ -2111,42 +2112,42 @@ const Profile: React.FC = () => {
                                 : '/track-order')}
                             >
                               {t('pages.paymentInstructions.stickyTrackOrder')}
-                            </Button>
-                            <Button size="small" onClick={() => navigate('/products')}>
+                            </ShopButton>
+                            <ShopButton size="small" onClick={() => navigate('/products')}>
                               {t('pages.profile.goShopping')}
-                            </Button>
-                            <Button size="small" onClick={() => navigate('/coupons')}>
+                            </ShopButton>
+                            <ShopButton size="small" onClick={() => navigate('/coupons')}>
                               {t('pages.profile.emptyOrdersCoupons')}
-                            </Button>
+                            </ShopButton>
                           </>
                         ) : (
                           <>
-                            <Button
+                            <ShopButton
                               size="small"
                               type="primary"
                               onClick={() => navigate('/products')}
                             >
                               {t('pages.orderTracking.shopAgain')}
-                            </Button>
-                            <Button size="small" onClick={() => navigate('/coupons')}>
+                            </ShopButton>
+                            <ShopButton size="small" onClick={() => navigate('/coupons')}>
                               {t('pages.profile.emptyOrdersCoupons')}
-                            </Button>
-                            <Button
+                            </ShopButton>
+                            <ShopButton
                               size="small"
                               onClick={() => navigate(paymentReturnOrderNo
                                 ? `/track-order?orderNo=${encodeURIComponent(paymentReturnOrderNo)}`
                                 : '/track-order')}
                             >
                               {t('pages.paymentInstructions.stickyTrackOrder')}
-                            </Button>
-                            <Button
+                            </ShopButton>
+                            <ShopButton
                               size="small"
                               onClick={() => dispatchDomEvent('shop:open-support', paymentReturnOrderNo
                                 ? { orderNo: paymentReturnOrderNo }
                                 : undefined)}
                             >
                               {t('pages.profile.contactSupport')}
-                            </Button>
+                            </ShopButton>
                           </>
                         )}
                       </div>
@@ -2192,13 +2193,13 @@ const Profile: React.FC = () => {
                   </div>
                 </div>
                 {ordersStale ? (
-                  <Alert
+                  <ShopAlert
                     type="warning"
                     showIcon
                     role="alert"
                     aria-live="assertive"
                     message={t('pages.profile.ordersStaleWarning')}
-                    action={<Button size="small" onClick={() => fetchOrders()}>{t('common.retry')}</Button>}
+                    action={<ShopButton size="small" onClick={() => fetchOrders()}>{t('common.retry')}</ShopButton>}
                   />
                 ) : null}
                 <div className="profile-orders__tabs">
@@ -2232,7 +2233,7 @@ const Profile: React.FC = () => {
                     ariaLabel={orderSearchInputLabel}
                     title={orderSearchInputLabel}
                   />
-                  <Button aria-label={refreshOrdersActionLabel} title={refreshOrdersActionLabel} onClick={() => fetchOrders()}>{t('common.refresh')}</Button>
+                  <ShopButton aria-label={refreshOrdersActionLabel} title={refreshOrdersActionLabel} onClick={() => fetchOrders()}>{t('common.refresh')}</ShopButton>
                 </div>
                 <div className="profile-orders__header">
                   <span>{t('pages.profile.orderInfo')}</span>
@@ -2304,7 +2305,7 @@ const Profile: React.FC = () => {
                           <div className="profile-page__chipRow">
                             <span className="profile-page__text">{order.createdAt ? new Date(order.createdAt).toLocaleDateString(dateLocale) : '-'}</span>
                             <span className="profile-page__text profile-page__text--strong">{t('pages.profile.orderNo')}{order.orderNo || order.id}</span>
-                            <Tag color={getOrderStatusColor(order.status)}>{formatOrderStatusLabel(order.status)}</Tag>
+                            <ShopTag color={getOrderStatusColor(order.status)}>{formatOrderStatusLabel(order.status)}</ShopTag>
                             <button type="button" className="profile-order-card__link" aria-label={detailActionLabel} title={detailActionLabel} onClick={() => handleViewOrder(order)}>
                               {t('pages.profile.detail')}
                             </button>
@@ -2351,7 +2352,7 @@ const Profile: React.FC = () => {
                             ) : itemPreviewFailed ? (
                               <div className="profile-order-item__previewError">
                                 <span className="profile-page__text profile-page__text--warning">{t('pages.profile.orderItemsPreviewFailed')}</span>
-                                <Button
+                                <ShopButton
                                   type="link"
                                   size="small"
                                   icon={<ShopIcon path={SI.reload} />}
@@ -2360,7 +2361,7 @@ const Profile: React.FC = () => {
                                   onClick={() => fetchOrders()}
                                 >
                                   {t('common.retry')}
-                                </Button>
+                                </ShopButton>
                               </div>
                             ) : (
                               <span className="profile-page__text profile-page__text--secondary">{t('pages.profile.noOrderItems')}</span>
@@ -2379,7 +2380,7 @@ const Profile: React.FC = () => {
                               <span>{t('pages.profile.includesShipping', { amount: '' }).trim()}</span>
                               <span className="commerce-money">{formatMoney(order.shippingFee || 0)}</span>
                             </span>
-                            <Tag>{t('pages.profile.onlineOrder')}</Tag>
+                            <ShopTag>{t('pages.profile.onlineOrder')}</ShopTag>
                           </div>
                           <div className="profile-order-card__actions">
                             <div className={`profile-order-card__next profile-order-card__next--${actionHint.tone}`}>
@@ -2387,32 +2388,32 @@ const Profile: React.FC = () => {
                               <span className="profile-page__text profile-page__text--secondary">{actionHint.text}</span>
                             </div>
                             {order.status === 'PENDING_PAYMENT' && (
-                              <Button type="primary" aria-label={continuePayActionLabel} title={continuePayActionLabel} loading={payingOrderId === order.id} disabled={ordersStale || payingOrderId !== null} onClick={() => handleContinuePayment(order)}>
+                              <ShopButton type="primary" aria-label={continuePayActionLabel} title={continuePayActionLabel} loading={payingOrderId === order.id} disabled={ordersStale || payingOrderId !== null} onClick={() => handleContinuePayment(order)}>
                                 {t('pages.profile.continuePay')}
-                              </Button>
+                              </ShopButton>
                             )}
                             {order.status === 'SHIPPED' && (
-                              <Button type="primary" aria-label={confirmReceiptActionLabel} title={confirmReceiptActionLabel} disabled={ordersStale} onClick={() => confirmReceiptOrder(order)}>{t('pages.profile.confirmReceipt')}</Button>
+                              <ShopButton type="primary" aria-label={confirmReceiptActionLabel} title={confirmReceiptActionLabel} disabled={ordersStale} onClick={() => confirmReceiptOrder(order)}>{t('pages.profile.confirmReceipt')}</ShopButton>
                             )}
                             {isReturnableOrder(order) && (
-                              <Button danger aria-label={returnActionLabel} title={returnActionLabel} disabled={ordersStale} onClick={() => openReturnModal(order)}>{t('pages.profile.returnOrder')}</Button>
+                              <ShopButton danger aria-label={returnActionLabel} title={returnActionLabel} disabled={ordersStale} onClick={() => openReturnModal(order)}>{t('pages.profile.returnOrder')}</ShopButton>
                             )}
                             {order.status === 'RETURN_REQUESTED' && (
-                              <Tag color="gold">{t('status.RETURN_REQUESTED')}</Tag>
+                              <ShopTag color="gold">{t('status.RETURN_REQUESTED')}</ShopTag>
                             )}
                             {order.status === 'RETURN_APPROVED' && (
-                              <Button type="link" aria-label={submitReturnShipmentActionLabel} title={submitReturnShipmentActionLabel} disabled={ordersStale} onClick={() => { setReturnShipmentOrder(order); setReturnTrackingNumber(order.returnTrackingNumber || ''); }}>
+                              <ShopButton type="link" aria-label={submitReturnShipmentActionLabel} title={submitReturnShipmentActionLabel} disabled={ordersStale} onClick={() => { setReturnShipmentOrder(order); setReturnTrackingNumber(order.returnTrackingNumber || ''); }}>
                                 {t('pages.profile.submitReturnShipment')}
-                              </Button>
+                              </ShopButton>
                             )}
                             {order.status === 'RETURN_SHIPPED' && (
-                              <Tag color="cyan">{t('status.RETURN_SHIPPED')}</Tag>
+                              <ShopTag color="cyan">{t('status.RETURN_SHIPPED')}</ShopTag>
                             )}
                             {(isReturnableOrder(order) || afterSaleStatuses.includes(order.status)) && (
-                              <Button type="link" aria-label={contactSupportActionLabel} title={contactSupportActionLabel} onClick={openSupport}>{t('pages.profile.contactSupport')}</Button>
+                              <ShopButton type="link" aria-label={contactSupportActionLabel} title={contactSupportActionLabel} onClick={openSupport}>{t('pages.profile.contactSupport')}</ShopButton>
                             )}
-                            <Button type="link" aria-label={detailActionLabel} title={detailActionLabel} onClick={() => handleViewOrder(order)}>{t('pages.profile.detail')}</Button>
-                            {order.trackingNumber ? <Button type="link" aria-label={trackShipmentActionLabel} title={trackShipmentActionLabel} onClick={() => handleTrackShipment(order.trackingNumber, order.trackingCarrierCode, order.id)}>{t('pages.orderTracking.trackShipment')}</Button> : null}
+                            <ShopButton type="link" aria-label={detailActionLabel} title={detailActionLabel} onClick={() => handleViewOrder(order)}>{t('pages.profile.detail')}</ShopButton>
+                            {order.trackingNumber ? <ShopButton type="link" aria-label={trackShipmentActionLabel} title={trackShipmentActionLabel} onClick={() => handleTrackShipment(order.trackingNumber, order.trackingCarrierCode, order.id)}>{t('pages.orderTracking.trackShipment')}</ShopButton> : null}
                             {order.status === 'PENDING_PAYMENT' && (
                               <ShopPopconfirm
                                 rootClassName='shop-mobile-popup-layer profile-popconfirm'
@@ -2424,7 +2425,7 @@ const Profile: React.FC = () => {
                                 okButtonProps={{ danger: true, 'aria-label': cancelOrderActionLabel, title: cancelOrderActionLabel }}
                                 cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${cancelOrderActionLabel}`, title: `${t('common.cancel')}: ${cancelOrderActionLabel}` }}
                               >
-                                <Button type="link" danger aria-label={cancelOrderActionLabel} title={cancelOrderActionLabel} disabled={ordersStale}>{t('pages.profile.cancelOrder')}</Button>
+                                <ShopButton type="link" danger aria-label={cancelOrderActionLabel} title={cancelOrderActionLabel} disabled={ordersStale}>{t('pages.profile.cancelOrder')}</ShopButton>
                               </ShopPopconfirm>
                             )}
                           </div>
@@ -2450,7 +2451,7 @@ const Profile: React.FC = () => {
                     <div className="profile-page__stack">
                       <span className="profile-page__text profile-page__text--strong">{t('pages.profile.petCompletenessTitle')}</span>
                       <span className="profile-page__text profile-page__text--secondary">{petCompletenessText}</span>
-                      <Progress percent={petProfileProgress} size="small" strokeColor="#ff4d00" />
+                      <ShopProgress percent={petProfileProgress} size="small" strokeColor="#ff4d00" />
                     </div>
                   </section>
                   <section className="profile-pet-insights__card">
@@ -2458,8 +2459,8 @@ const Profile: React.FC = () => {
                       <span className="profile-page__text profile-page__text--strong">{t('pages.profile.petBirthdayPerkTitle')}</span>
                       <span className="profile-page__text profile-page__text--secondary">{t('pages.profile.petBirthdayPerkText')}</span>
                       <div className="profile-page__chipRow">
-                        <Tag color={petsMissingBirthdayCount > 0 ? 'gold' : 'green'}>{t('pages.profile.petMissingBirthday', { count: petsMissingBirthdayCount })}</Tag>
-                        <Tag color={petsMissingFitCount > 0 ? 'orange' : 'green'}>{t('pages.profile.petMissingFit', { count: petsMissingFitCount })}</Tag>
+                        <ShopTag color={petsMissingBirthdayCount > 0 ? 'gold' : 'green'}>{t('pages.profile.petMissingBirthday', { count: petsMissingBirthdayCount })}</ShopTag>
+                        <ShopTag color={petsMissingFitCount > 0 ? 'orange' : 'green'}>{t('pages.profile.petMissingFit', { count: petsMissingFitCount })}</ShopTag>
                       </div>
                     </div>
                   </section>
@@ -2469,12 +2470,12 @@ const Profile: React.FC = () => {
                     <span className="profile-page__text profile-page__text--strong">{t('pages.profile.petProfileActionTitle')}</span>
                     <span className="profile-page__text profile-page__text--secondary">{petProfileFocusText}</span>
                   </div>
-                  <Button
+                  <ShopButton
                     type="primary"
                     onClick={() => petProfileFocus ? openPetModal(petProfileFocus) : openPetModal()}
                   >
                     {petProfileFocus ? t('pages.profile.completePetProfile') : t('pages.profile.addPet')}
-                  </Button>
+                  </ShopButton>
                 </div>
                 <div className="profile-pet-shop-path">
                   <div>
@@ -2495,21 +2496,21 @@ const Profile: React.FC = () => {
                   </div>
                   <div className="profile-pet-shop-path__actions">
                     {profilePetShoppingFocus ? (
-                      <Tag color="green">{t('pages.profile.petShopPathSignalReady')}</Tag>
+                      <ShopTag color="green">{t('pages.profile.petShopPathSignalReady')}</ShopTag>
                     ) : (
-                      <Tag color="gold">{t('pages.profile.petShopPathNeedsProfile')}</Tag>
+                      <ShopTag color="gold">{t('pages.profile.petShopPathNeedsProfile')}</ShopTag>
                     )}
-                    <Button
+                    <ShopButton
                       icon={<ShopIcon path={SI.cart} />}
                       onClick={() => profilePetShoppingFocus ? openPetShoppingPath(profilePetShoppingFocus) : openPetModal()}
                     >
                       {profilePetShoppingFocus ? t('pages.profile.shopForThisPet') : t('pages.profile.addPet')}
-                    </Button>
+                    </ShopButton>
                   </div>
                 </div>
-                <Button className="profile-block-button profile-section-action" type="dashed" icon={<ShopIcon path={SI.plus} />} block onClick={() => openPetModal()}>
+                <ShopButton className="profile-block-button profile-section-action" type="dashed" icon={<ShopIcon path={SI.plus} />} block onClick={() => openPetModal()}>
                   {t('pages.profile.addPet')}
-                </Button>
+                </ShopButton>
                 {petProfiles.length === 0 ? (
                   <PageEmpty
                     className="profile-pets-empty"
@@ -2548,16 +2549,16 @@ const Profile: React.FC = () => {
                       const shopActionLabel = `${t('pages.profile.shopForThisPet')}: ${petLabel}`;
                       return (
                       <li key={pet.id} className="profile-page__item profile-page__petGridItem">
-                        <section className="profile-section-card profile-pet-card"><div className="shop-panel__head"><div className="shop-panel__title">{pet.name}</div><div className="shop-panel__extra">{<Tag color="green">{petTypeLabel(pet.petType)}</Tag>}</div></div>
+                        <section className="profile-section-card profile-pet-card"><div className="shop-panel__head"><div className="shop-panel__title">{pet.name}</div><div className="shop-panel__extra">{<ShopTag color="green">{petTypeLabel(pet.petType)}</ShopTag>}</div></div>
                           <div className="profile-page__stack">
                             <span className="profile-page__text">{t('pages.profile.petBreed')}: {pet.breed || t('common.unset')}</span>
                             <span className="profile-page__text">{t('pages.profile.petBirthday')}: {pet.birthday || t('common.unset')}</span>
                             <span className="profile-page__text">{t('pages.profile.petWeight')}: {pet.weight ? t('pages.profile.petWeightValue', { weight: pet.weight }) : t('common.unset')}</span>
                             <span className="profile-page__text">{t('pages.profile.petSize')}: {petSizeLabel(pet.size)}</span>
-                            {pet.birthday ? <Tag color="gold">{t('pages.profile.birthdayCouponEnabled')}</Tag> : null}
-                            <Button size="small" icon={<ShopIcon path={SI.cart} />} aria-label={shopActionLabel} title={shopActionLabel} onClick={() => openPetShoppingPath(pet)}>
+                            {pet.birthday ? <ShopTag color="gold">{t('pages.profile.birthdayCouponEnabled')}</ShopTag> : null}
+                            <ShopButton size="small" icon={<ShopIcon path={SI.cart} />} aria-label={shopActionLabel} title={shopActionLabel} onClick={() => openPetShoppingPath(pet)}>
                               {t('pages.profile.shopForThisPet')}
-                            </Button>
+                            </ShopButton>
                           </div>
                         </section>
                       </li>
@@ -2641,7 +2642,7 @@ const Profile: React.FC = () => {
                 }
               }}
               addonAfter={
-                <Button
+                <ShopButton
                   type="link"
                   size="small"
                   loading={profileEmailCodeSending}
@@ -2653,7 +2654,7 @@ const Profile: React.FC = () => {
                     : profileEmailCodeCountdown > 0
                     ? t('pages.auth.resendIn', { seconds: profileEmailCodeCountdown })
                     : t('pages.auth.sendCode')}
-                </Button>
+                </ShopButton>
               }
             />
           </Form.Item>
@@ -2829,7 +2830,7 @@ const Profile: React.FC = () => {
             <ShopTextArea rows={3} placeholder={t('pages.profile.detailRequired')} autoComplete="street-address" maxLength={260} showCount />
           </Form.Item>
           <Form.Item name="isDefault" valuePropName="checked">
-            <Checkbox>{t('pages.profile.makeDefaultAddress')}</Checkbox>
+            <ShopCheckbox>{t('pages.profile.makeDefaultAddress')}</ShopCheckbox>
           </Form.Item>
         </Form>
       </ShopModal>
@@ -2903,7 +2904,7 @@ const Profile: React.FC = () => {
             <dl className="profile-page__descList profile-order-detail__descriptions">
               <div className="profile-page__descRow">
                 <dt className="profile-page__descLabel">{t('common.status')}</dt>
-                <dd className="profile-page__descValue"><Tag color={getOrderStatusColor(selectedOrder.status)}>{formatOrderStatusLabel(selectedOrder.status)}</Tag></dd>
+                <dd className="profile-page__descValue"><ShopTag color={getOrderStatusColor(selectedOrder.status)}>{formatOrderStatusLabel(selectedOrder.status)}</ShopTag></dd>
               </div>
               <div className="profile-page__descRow">
                 <dt className="profile-page__descLabel">{t('common.amount')}</dt>
@@ -2932,8 +2933,8 @@ const Profile: React.FC = () => {
                 <dd className="profile-page__descValue">{selectedOrder.trackingNumber ? (
                   <div className="profile-page__inlineRow">
                     <span>{selectedOrder.trackingNumber}</span>
-                    {selectedOrder.trackingCarrierName ? <Tag>{selectedOrder.trackingCarrierName}</Tag> : null}
-                    <Button size="small" aria-label={selectedOrderTrackActionLabel} title={selectedOrderTrackActionLabel} onClick={() => handleTrackShipment(selectedOrder.trackingNumber, selectedOrder.trackingCarrierCode, selectedOrder.id)}>{t('pages.adminOrders.track')}</Button>
+                    {selectedOrder.trackingCarrierName ? <ShopTag>{selectedOrder.trackingCarrierName}</ShopTag> : null}
+                    <ShopButton size="small" aria-label={selectedOrderTrackActionLabel} title={selectedOrderTrackActionLabel} onClick={() => handleTrackShipment(selectedOrder.trackingNumber, selectedOrder.trackingCarrierCode, selectedOrder.id)}>{t('pages.adminOrders.track')}</ShopButton>
                   </div>
                 ) : '-'}</dd>
               </div>
@@ -3000,9 +3001,9 @@ const Profile: React.FC = () => {
             </dl>
             <div className="profile-order-detail__itemsHeader">
               <h5 className="profile-page__title profile-order-detail__itemsTitle">{t('pages.profile.orderItems')}</h5>
-              <Button icon={<ShopIcon path={SI.cart} />} loading={reordering} disabled={orderItems.length === 0} aria-label={reorderSelectedOrderActionLabel} title={reorderSelectedOrderActionLabel} onClick={handleReorder}>
+              <ShopButton icon={<ShopIcon path={SI.cart} />} loading={reordering} disabled={orderItems.length === 0} aria-label={reorderSelectedOrderActionLabel} title={reorderSelectedOrderActionLabel} onClick={handleReorder}>
                 {t('pages.profile.reorder')}
-              </Button>
+              </ShopButton>
             </div>
             {orderItems.length > 0 ? (
               <ul className="profile-page__itemList profile-order-detail__itemList" role="list">
@@ -3161,7 +3162,7 @@ const Profile: React.FC = () => {
                 const label = t(returnReasonPresetI18nKey(preset));
                 const selected = normalizeReturnReason(returnReason).toLowerCase() === label.toLowerCase();
                 return (
-                  <Button
+                  <ShopButton
                     key={preset}
                     size="small"
                     type={selected ? 'primary' : 'default'}
@@ -3172,7 +3173,7 @@ const Profile: React.FC = () => {
                     onClick={() => setReturnReason(label)}
                   >
                     {label}
-                  </Button>
+                  </ShopButton>
                 );
               })}
             </div>
@@ -3209,7 +3210,7 @@ const Profile: React.FC = () => {
         className="profile-mobile-safe-modal profile-payment-modal"
         footer={[
           selectedPayment?.status === 'PENDING' && selectedPayment.paymentUrl && (
-            <Button
+            <ShopButton
               key="pay"
               type="primary"
               aria-label={openPaymentActionLabel}
@@ -3221,14 +3222,14 @@ const Profile: React.FC = () => {
               }}
             >
               {t('pages.checkout.openPayment')}
-            </Button>
+            </ShopButton>
           ),
           selectedPayment && !selectedPaymentPaid && !selectedPaymentReconcileRequired && (
-            <Button key="refresh" loading={refreshingPayment} disabled={paymentChannelsLoading || paymentOptions.length === 0} aria-label={refreshPaymentActionLabel} title={refreshPaymentActionLabel} onClick={handleRefreshPayment}>
+            <ShopButton key="refresh" loading={refreshingPayment} disabled={paymentChannelsLoading || paymentOptions.length === 0} aria-label={refreshPaymentActionLabel} title={refreshPaymentActionLabel} onClick={handleRefreshPayment}>
               {t('pages.profile.refreshPayment')}
-            </Button>
+            </ShopButton>
           ),
-          <Button key="close" aria-label={closePaymentActionLabel} title={closePaymentActionLabel} onClick={() => setPaymentModalVisible(false)}>{t('common.cancel')}</Button>,
+          <ShopButton key="close" aria-label={closePaymentActionLabel} title={closePaymentActionLabel} onClick={() => setPaymentModalVisible(false)}>{t('common.cancel')}</ShopButton>,
         ].filter(Boolean)}
       >
         {selectedOrder && selectedPayment && (
@@ -3236,7 +3237,7 @@ const Profile: React.FC = () => {
             <div className="profile-payment-recovery" role="status" aria-live="polite">
               <div>
                 <span className="profile-page__text profile-page__text--strong">{t('pages.checkout.paymentRecoveryStatus')}</span>
-                <Tag color={selectedPaymentReconcileRequired ? 'magenta' : selectedPaymentPaid ? 'green' : selectedPaymentExpiredOrFailed ? 'red' : selectedPaymentRecovery.isExpiringSoon ? 'orange' : 'blue'}>
+                <ShopTag color={selectedPaymentReconcileRequired ? 'magenta' : selectedPaymentPaid ? 'green' : selectedPaymentExpiredOrFailed ? 'red' : selectedPaymentRecovery.isExpiringSoon ? 'orange' : 'blue'}>
                   {selectedPaymentReconcileRequired
                     ? t('pages.checkout.paymentRecoveryReconcileRequired')
                     : normalizeStatusCode(selectedPayment.status) === 'REFUNDED'
@@ -3250,7 +3251,7 @@ const Profile: React.FC = () => {
                       : selectedPaymentRecovery.isExpired
                         ? t('pages.checkout.paymentRecoveryExpired')
                         : t('pages.checkout.paymentRecoveryPending')}
-                </Tag>
+                </ShopTag>
               </div>
               <div>
                 <span className="profile-page__text profile-page__text--strong">{t('pages.checkout.paymentRecoveryWindow')}</span>
@@ -3306,7 +3307,7 @@ const Profile: React.FC = () => {
                   title={paymentMethodSelectLabel}
                 />
                 {paymentOptions.length === 0 ? (
-                  <Alert
+                  <ShopAlert
                     type="warning"
                     showIcon
                     role="alert"
@@ -3314,7 +3315,7 @@ const Profile: React.FC = () => {
                     message={t('pages.checkout.paymentUnavailable')}
                     description={paymentChannelsError || t('pages.checkout.paymentUnavailableDescription')}
                     action={(
-                      <Button
+                      <ShopButton
                         size="small"
                         loading={paymentChannelsLoading}
                         aria-label={retryPaymentChannelsActionLabel}
@@ -3322,29 +3323,29 @@ const Profile: React.FC = () => {
                         onClick={() => void loadPaymentChannels()}
                       >
                         {t('common.retry')}
-                      </Button>
+                      </ShopButton>
                     )}
                   />
                 ) : null}
                 {selectedPaymentMethodDetail ? (
                   <div className="profile-payment-method-hint">
-                    <Tag color={selectedPaymentMethodDetail.value === 'OXXO' ? 'orange' : selectedPaymentMethodDetail.value === 'SPEI' ? 'blue' : 'green'}>
+                    <ShopTag color={selectedPaymentMethodDetail.value === 'OXXO' ? 'orange' : selectedPaymentMethodDetail.value === 'SPEI' ? 'blue' : 'green'}>
                       {t(selectedPaymentMethodDetail.badgeKey)}
-                    </Tag>
+                    </ShopTag>
                     <span className="profile-page__text profile-page__text--secondary">{t(selectedPaymentMethodDetail.descriptionKey)}</span>
                   </div>
                 ) : null}</dd>
               </div>
               <div className="profile-page__descRow">
                 <dt className="profile-page__descLabel">{t('common.status')}</dt>
-                <dd className="profile-page__descValue"><Tag color={getPaymentStatusColor(selectedPayment.status)}>
+                <dd className="profile-page__descValue"><ShopTag color={getPaymentStatusColor(selectedPayment.status)}>
                   {formatPaymentStatusLabel(selectedPayment.status)}
-                </Tag></dd>
+                </ShopTag></dd>
               </div>
               <div className="profile-page__descRow">
                 <dt className="profile-page__descLabel">{t('pages.checkout.paymentLink')}</dt>
                 <dd className="profile-page__descValue">{selectedPayment.paymentUrl && !selectedPaymentPaid && !selectedPaymentReconcileRequired && !selectedPaymentExpiredOrFailed ? (
-                  <Button
+                  <ShopButton
                     type="link"
                     className="profile-payment-link"
                     aria-label={paymentLinkActionLabel}
@@ -3356,7 +3357,7 @@ const Profile: React.FC = () => {
                     }}
                   >
                     {formatPaymentUrlLabel(selectedPayment.paymentUrl)}
-                  </Button>
+                  </ShopButton>
                 ) : selectedPaymentReconcileRequired ? (
                   <span className="profile-page__text profile-page__text--secondary">{t('pages.checkout.paymentRecoveryNextReconcileRequired')}</span>
                 ) : selectedPaymentFailed ? (
@@ -3389,7 +3390,7 @@ const Profile: React.FC = () => {
               )}
             </dl>
             {normalizeStatusCode(selectedPayment.status) === 'REFUNDED' || normalizeStatusCode(selectedPayment.status) === 'REFUNDING' ? (
-              <Alert
+              <ShopAlert
                 type={normalizeStatusCode(selectedPayment.status) === 'REFUNDED' ? 'success' : 'info'}
                 showIcon
                 className="profile-payment-refund-audit"
@@ -3414,35 +3415,35 @@ const Profile: React.FC = () => {
                         <div className="profile-payment-history__emptyHint">{t('pages.profile.noPaymentHistoryHint')}</div>
                       </div>
                       <div className="profile-payment-history__emptyActions" data-profile-payment-history-empty-actions="true">
-                        <Button
+                        <ShopButton
                           type="primary"
                           aria-label={t('pages.profile.authGateTrackOrder')}
                           title={t('pages.profile.authGateTrackOrder')}
                           onClick={() => navigate('/track-order')}
                         >
                           {t('pages.profile.authGateTrackOrder')}
-                        </Button>
-                        <Button
+                        </ShopButton>
+                        <ShopButton
                           aria-label={t('pages.profile.goShopping')}
                           title={t('pages.profile.goShopping')}
                           onClick={() => navigate('/products')}
                         >
                           {t('pages.profile.goShopping')}
-                        </Button>
-                        <Button
+                        </ShopButton>
+                        <ShopButton
                           aria-label={t('pages.profile.emptyOrdersCoupons')}
                           title={t('pages.profile.emptyOrdersCoupons')}
                           onClick={() => navigate('/coupons')}
                         >
                           {t('pages.profile.emptyOrdersCoupons')}
-                        </Button>
-                        <Button
+                        </ShopButton>
+                        <ShopButton
                           aria-label={t('pages.productList.loadRecoverySupport')}
                           title={t('pages.productList.loadRecoverySupport')}
                           onClick={() => dispatchDomEvent('shop:open-support')}
                         >
                           {t('pages.productList.loadRecoverySupport')}
-                        </Button>
+                        </ShopButton>
                       </div>
                     </div>
               ) : (
@@ -3451,9 +3452,9 @@ const Profile: React.FC = () => {
                   <li key={String(payment.id || `${payment.channel || 'pay'}-${index}`)} className="profile-page__item">
                     <div className="profile-payment-history__item">
                       <div className="profile-page__chipRow">
-                        <Tag color={getPaymentStatusColor(payment.status)}>
+                        <ShopTag color={getPaymentStatusColor(payment.status)}>
                           {formatPaymentStatusLabel(payment.status)}
-                        </Tag>
+                        </ShopTag>
                         <span className="profile-page__text">{paymentMethodLabel(payment.channel, t)}</span>
                         {payment.amount ? <span className="profile-page__text profile-page__text--secondary commerce-money">{formatMoney(payment.amount)}</span> : null}
                       </div>

@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { ShopIcon, SI } from '../components/ShopIcon';
-import { Alert, Button, Tag } from 'antd';
 import ShopInput from '../components/ShopInput';
 import ShopPopconfirm from '../components/ShopPopconfirm';
 import { useNavigate } from 'react-router-dom';
@@ -29,7 +28,10 @@ import {
 } from '../utils/productViewPreferences';
 import './BrowsingHistory.css';
 import '../styles/mobile-page-contrast.css';
+import ShopButton from '../components/ShopButton';
 
+import ShopTag from '../components/ShopTag';
+import ShopAlert from '../components/ShopAlert';
 const fallbackImage = productImageFallback;
 type HistoryQuickFilter = 'all' | 'recent' | 'deals' | 'lowStock';
 const resolveHistoryImage = resolveProductImage;
@@ -345,9 +347,9 @@ const BrowsingHistory: React.FC = () => {
             onConfirm={clearHistory}
             disabled={!hasHistory}
           >
-            <Button danger icon={<ShopIcon path={SI.delete} />} disabled={!hasHistory} aria-label={clearHistoryActionLabel} title={clearHistoryActionLabel}>
+            <ShopButton danger icon={<ShopIcon path={SI.delete} />} disabled={!hasHistory} aria-label={clearHistoryActionLabel} title={clearHistoryActionLabel}>
               {t('pages.browsingHistory.clear')}
-            </Button>
+            </ShopButton>
           </ShopPopconfirm>
         </div>
       </section>
@@ -438,13 +440,13 @@ const BrowsingHistory: React.FC = () => {
             </p>
           </div>
           <div className="browsing-history__recovery-tags">
-            {isDealProduct(historyInsights.bestRecovery) ? <Tag color="volcano">{t('pages.browsingHistory.recoveryDeal')}</Tag> : null}
-            {getLowStockCount(historyInsights.bestRecovery.stock, 1) !== null ? <Tag color="orange">{t('pages.browsingHistory.recoveryLowStock')}</Tag> : null}
-            <Tag color="blue">{formatViewedAt(viewedAtById.get(historyInsights.bestRecovery.id))}</Tag>
+            {isDealProduct(historyInsights.bestRecovery) ? <ShopTag color="volcano">{t('pages.browsingHistory.recoveryDeal')}</ShopTag> : null}
+            {getLowStockCount(historyInsights.bestRecovery.stock, 1) !== null ? <ShopTag color="orange">{t('pages.browsingHistory.recoveryLowStock')}</ShopTag> : null}
+            <ShopTag color="blue">{formatViewedAt(viewedAtById.get(historyInsights.bestRecovery.id))}</ShopTag>
           </div>
-          <Button type="primary" icon={<ShopIcon path={SI.shopping} />} aria-label={resumeActionLabel} title={resumeActionLabel} onClick={() => navigate(`/products/${historyInsights.bestRecovery!.id}`)}>
+          <ShopButton type="primary" icon={<ShopIcon path={SI.shopping} />} aria-label={resumeActionLabel} title={resumeActionLabel} onClick={() => navigate(`/products/${historyInsights.bestRecovery!.id}`)}>
             {t('pages.browsingHistory.resumeProduct')}
-          </Button>
+          </ShopButton>
         </section>
           );
         })()
@@ -458,15 +460,15 @@ const BrowsingHistory: React.FC = () => {
             <p className="browsing-history__text browsing-history__paragraph browsing-history__sectionText">{historyNextAction.text}</p>
           </div>
           <div className="browsing-history__nextActionStats">
-            <Tag color={hasStaleHistoryData ? 'warning' : 'green'}>
+            <ShopTag color={hasStaleHistoryData ? 'warning' : 'green'}>
               {hasStaleHistoryData
                 ? t('pages.browsingHistory.staleDataTag', { count: historyDisplayCount })
                 : t('pages.browsingHistory.readyToCart', { count: historyInsights.readyToCart })}
-            </Tag>
-            <Tag color={!hasStaleHistoryData && historyInsights.deals > 0 ? 'volcano' : 'default'}>{t('pages.browsingHistory.dealWatchCount', { count: hasStaleHistoryData ? 0 : historyInsights.deals })}</Tag>
-            <Tag color={!hasStaleHistoryData && historyInsights.lowStock > 0 ? 'orange' : 'default'}>{t('pages.browsingHistory.lowStockWatchCount', { count: hasStaleHistoryData ? 0 : historyInsights.lowStock })}</Tag>
+            </ShopTag>
+            <ShopTag color={!hasStaleHistoryData && historyInsights.deals > 0 ? 'volcano' : 'default'}>{t('pages.browsingHistory.dealWatchCount', { count: hasStaleHistoryData ? 0 : historyInsights.deals })}</ShopTag>
+            <ShopTag color={!hasStaleHistoryData && historyInsights.lowStock > 0 ? 'orange' : 'default'}>{t('pages.browsingHistory.lowStockWatchCount', { count: hasStaleHistoryData ? 0 : historyInsights.lowStock })}</ShopTag>
           </div>
-          <Button
+          <ShopButton
             type={historyNextAction.tone === 'ready' ? 'primary' : 'default'}
             icon={hasStaleHistoryData ? <ShopIcon path={SI.reload} /> : historyNextAction.tone === 'ready' ? <ShopIcon path={SI.cart} /> : <ShopIcon path={SI.shopping} />}
             aria-label={historyNextActionLabel}
@@ -474,32 +476,32 @@ const BrowsingHistory: React.FC = () => {
             onClick={historyNextAction.action}
           >
             {historyNextAction.label}
-          </Button>
+          </ShopButton>
         </section>
       ) : null}
 
       {loadError ? (
         <section className="browsing-history__loadError" aria-live="polite" data-history-load-recovery="true">
           {hasStaleHistoryData ? (
-            <Alert
+            <ShopAlert
               type="warning"
               showIcon
               message={t('messages.loadFailed')}
               description={hasStaleHistoryData ? t('pages.browsingHistory.staleDataWarning') : t('messages.loadFailedRetry')}
               action={(
                 <div className="browsing-history__emptyActions" data-history-stale-recovery="true">
-                  <Button size="small" type="primary" onClick={() => setReloadToken((current) => current + 1)}>
+                  <ShopButton size="small" type="primary" onClick={() => setReloadToken((current) => current + 1)}>
                     {t('messages.retry')}
-                  </Button>
-                  <Button size="small" onClick={() => navigate('/products')}>
+                  </ShopButton>
+                  <ShopButton size="small" onClick={() => navigate('/products')}>
                     {t('pages.browsingHistory.browse')}
-                  </Button>
-                  <Button size="small" onClick={() => navigate('/coupons')}>
+                  </ShopButton>
+                  <ShopButton size="small" onClick={() => navigate('/coupons')}>
                     {t('nav.coupons')}
-                  </Button>
-                  <Button size="small" onClick={() => navigate('/pet-finder')}>
+                  </ShopButton>
+                  <ShopButton size="small" onClick={() => navigate('/pet-finder')}>
                     {t('nav.petFinder')}
-                  </Button>
+                  </ShopButton>
                 </div>
               )}
             />
@@ -579,13 +581,13 @@ const BrowsingHistory: React.FC = () => {
                     </button>
                     <div className="browsing-history__meta">
                       <span>{formatViewedAt(viewedAt)}</span>
-                      {product.brand ? <Tag>{product.brand}</Tag> : null}
+                      {product.brand ? <ShopTag>{product.brand}</ShopTag> : null}
                     </div>
                     <div className="browsing-history__signals">
-                      {productDeal ? <Tag color="volcano">{t('pages.browsingHistory.recoveryDeal')}</Tag> : null}
-                      {productLowStock ? <Tag color="orange">{t('pages.browsingHistory.recoveryLowStock')}</Tag> : null}
-                      {productNeedsOptions ? <Tag color="blue">{t('pages.browsingHistory.resumeProduct')}</Tag> : null}
-                      {!isPurchasable(product) ? <Tag color="red">{t('pages.browsingHistory.unavailable')}</Tag> : null}
+                      {productDeal ? <ShopTag color="volcano">{t('pages.browsingHistory.recoveryDeal')}</ShopTag> : null}
+                      {productLowStock ? <ShopTag color="orange">{t('pages.browsingHistory.recoveryLowStock')}</ShopTag> : null}
+                      {productNeedsOptions ? <ShopTag color="blue">{t('pages.browsingHistory.resumeProduct')}</ShopTag> : null}
+                      {!isPurchasable(product) ? <ShopTag color="red">{t('pages.browsingHistory.unavailable')}</ShopTag> : null}
                     </div>
                   </div>
                   <div className="browsing-history__footer">
@@ -595,20 +597,20 @@ const BrowsingHistory: React.FC = () => {
                     </span>
                     <div>
                       {productReadyToCart ? (
-                        <Button type="primary" icon={<ShopIcon path={SI.cart} />} disabled={hasStaleHistoryData} aria-label={addActionLabel} title={addActionLabel} onClick={() => addHistoryProductToCart(product)}>
+                        <ShopButton type="primary" icon={<ShopIcon path={SI.cart} />} disabled={hasStaleHistoryData} aria-label={addActionLabel} title={addActionLabel} onClick={() => addHistoryProductToCart(product)}>
                           {t('pages.browsingHistory.addToCart')}
-                        </Button>
+                        </ShopButton>
                       ) : null}
-                      <Button type={productNeedsOptions ? 'primary' : 'default'} icon={<ShopIcon path={SI.shopping} />} aria-label={viewActionLabel} title={viewActionLabel} onClick={() => navigate(`/products/${product.id}`)}>
+                      <ShopButton type={productNeedsOptions ? 'primary' : 'default'} icon={<ShopIcon path={SI.shopping} />} aria-label={viewActionLabel} title={viewActionLabel} onClick={() => navigate(`/products/${product.id}`)}>
                         {productNeedsOptions ? t('pages.browsingHistory.resumeProduct') : t('pages.browsingHistory.viewProduct')}
-                      </Button>
+                      </ShopButton>
                       <ShopPopconfirm
                         title={t('pages.browsingHistory.removeConfirm')}
                         okText={t('common.delete')}
                         cancelText={t('common.cancel')}
                         onConfirm={() => removeItem(product.id)}
                       >
-                        <Button type="text" danger icon={<ShopIcon path={SI.delete} />} aria-label={deleteActionLabel} title={deleteActionLabel} />
+                        <ShopButton type="text" danger icon={<ShopIcon path={SI.delete} />} aria-label={deleteActionLabel} title={deleteActionLabel} />
                       </ShopPopconfirm>
                     </div>
                   </div>
@@ -629,44 +631,44 @@ const BrowsingHistory: React.FC = () => {
             </div>
             {loadError && hasHistory ? (
               <div className="browsing-history__emptyActions" data-history-empty-load-actions="true">
-                <Button type="primary" icon={<ShopIcon path={SI.reload} />} onClick={() => setReloadToken((current) => current + 1)}>
+                <ShopButton type="primary" icon={<ShopIcon path={SI.reload} />} onClick={() => setReloadToken((current) => current + 1)}>
                   {t('messages.retry')}
-                </Button>
-                <Button icon={<ShopIcon path={SI.shopping} />} aria-label={historyBrowseActionLabel} title={historyBrowseActionLabel} onClick={() => navigate('/products')}>
+                </ShopButton>
+                <ShopButton icon={<ShopIcon path={SI.shopping} />} aria-label={historyBrowseActionLabel} title={historyBrowseActionLabel} onClick={() => navigate('/products')}>
                   {t('pages.browsingHistory.browse')}
-                </Button>
-                <Button aria-label={t('nav.coupons')} title={t('nav.coupons')} onClick={() => navigate('/coupons')}>
+                </ShopButton>
+                <ShopButton aria-label={t('nav.coupons')} title={t('nav.coupons')} onClick={() => navigate('/coupons')}>
                   {t('nav.coupons')}
-                </Button>
-                <Button aria-label={t('nav.petFinder')} title={t('nav.petFinder')} onClick={() => navigate('/pet-finder')}>
+                </ShopButton>
+                <ShopButton aria-label={t('nav.petFinder')} title={t('nav.petFinder')} onClick={() => navigate('/pet-finder')}>
                   {t('nav.petFinder')}
-                </Button>
-                <Button aria-label={t('pages.productList.loadRecoverySupport')} title={t('pages.productList.loadRecoverySupport')} onClick={() => dispatchDomEvent('shop:open-support')}>
+                </ShopButton>
+                <ShopButton aria-label={t('pages.productList.loadRecoverySupport')} title={t('pages.productList.loadRecoverySupport')} onClick={() => dispatchDomEvent('shop:open-support')}>
                   {t('pages.productList.loadRecoverySupport')}
-                </Button>
+                </ShopButton>
               </div>
             ) : historyProducts.length ? (
               <div className="browsing-history__emptyActions" data-history-empty-filter-actions="true">
-                <Button type="primary" icon={<ShopIcon path={SI.shopping} />} aria-label={historyBrowseActionLabel} title={historyBrowseActionLabel} onClick={() => navigate('/products')}>
+                <ShopButton type="primary" icon={<ShopIcon path={SI.shopping} />} aria-label={historyBrowseActionLabel} title={historyBrowseActionLabel} onClick={() => navigate('/products')}>
                   {t('pages.browsingHistory.browse')}
-                </Button>
-                <Button aria-label={resetHistoryFiltersLabel} title={resetHistoryFiltersLabel} onClick={() => {
+                </ShopButton>
+                <ShopButton aria-label={resetHistoryFiltersLabel} title={resetHistoryFiltersLabel} onClick={() => {
                   setKeyword('');
                   setQuickFilter('all');
                 }}>
                   {t('pages.productList.resetFilters')}
-                </Button>
-                <Button aria-label={t('nav.coupons')} title={t('nav.coupons')} onClick={() => navigate('/coupons')}>
+                </ShopButton>
+                <ShopButton aria-label={t('nav.coupons')} title={t('nav.coupons')} onClick={() => navigate('/coupons')}>
                   {t('nav.coupons')}
-                </Button>
-                <Button aria-label={t('nav.petFinder')} title={t('nav.petFinder')} onClick={() => navigate('/pet-finder')}>
+                </ShopButton>
+                <ShopButton aria-label={t('nav.petFinder')} title={t('nav.petFinder')} onClick={() => navigate('/pet-finder')}>
                   {t('nav.petFinder')}
-                </Button>
+                </ShopButton>
               </div>
             ) : (
               <div className="browsing-history__emptyActions browsing-history__emptyActions--guide" data-history-empty-actions="true">
                 {emptyQuickActions.map((action) => (
-                  <Button
+                  <ShopButton
                     key={action.key}
                     type={action.type}
                     icon={action.icon}
@@ -675,7 +677,7 @@ const BrowsingHistory: React.FC = () => {
                     onClick={action.action}
                   >
                     {action.label}
-                  </Button>
+                  </ShopButton>
                 ))}
               </div>
             )}
@@ -692,7 +694,7 @@ const BrowsingHistory: React.FC = () => {
               : t('pages.browsingHistory.readyToCart', { count: historyInsights.readyToCart })}
           </small>
         </span>
-        <Button
+        <ShopButton
           type={historyNextAction.tone === 'ready' ? 'primary' : 'default'}
           icon={hasStaleHistoryData ? <ShopIcon path={SI.reload} /> : historyNextAction.tone === 'ready' ? <ShopIcon path={SI.cart} /> : <ShopIcon path={SI.shopping} />}
           aria-label={historyNextActionLabel}
@@ -700,7 +702,7 @@ const BrowsingHistory: React.FC = () => {
           onClick={historyNextAction.action}
         >
           {historyNextAction.label}
-        </Button>
+        </ShopButton>
       </div>
     </main>
   );

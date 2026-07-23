@@ -1,10 +1,11 @@
 import { useNavigate } from 'react-router-dom';
 import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, Button, Card, Descriptions, Empty, Space, Spin, Statistic, Switch, Tag, Typography, message } from 'antd';
+
 import ShopInput, { ShopTextArea } from '../components/ShopInput';
 import ShopPopconfirm from '../components/ShopPopconfirm';
 import ShopSelect from '../components/ShopSelect';
 import ShopRangePicker from '../components/ShopRangePicker';
+import ShopSwitch from '../components/ShopSwitch';
 import { BugOutlined, ClockCircleOutlined, DownloadOutlined, FileTextOutlined, ReloadOutlined } from '@ant-design/icons';
 import dayjs, { Dayjs } from 'dayjs';
 import { adminApi } from '../api/admin';
@@ -14,8 +15,20 @@ import PageError from '../components/PageError';
 import { getApiErrorMessage } from '../utils/apiError';
 import { LOGS_DEBUG_PERMISSION, LOGS_DOWNLOAD_PERMISSION, getEffectiveRole, hasAdminPermission } from '../utils/roles';
 import './LogManagement.css';
+import ShopButton from '../components/ShopButton';
+import ShopSpin from '../components/ShopSpin';
+import ShopEmpty from '../components/ShopEmpty';
+import ShopStatistic from '../components/ShopStatistic';
 
-const { Text, Title } = Typography;
+import ShopTag from '../components/ShopTag';
+import ShopAlert from '../components/ShopAlert';
+import ShopSpace from '../components/ShopSpace';
+import ShopTypography from '../components/ShopTypography';
+import ShopCard from '../components/ShopCard';
+import ShopDescriptions from '../components/ShopDescriptions';
+import message from '../components/ShopMessage';
+const Text = ShopTypography.Text;
+const Title = ShopTypography.Title;
 
 const DEFAULT_LOGGER = 'com.example.shop';
 
@@ -158,34 +171,34 @@ const LogManagement: React.FC = () => {
           <Title level={2}>{t('pages.logAdmin.title')}</Title>
           <Text type="secondary">{t('pages.logAdmin.description')}</Text>
         </div>
-        <Space className="log-management__actions" wrap>
-          <Button icon={<ReloadOutlined />} loading={loading} aria-label={refreshLogsActionLabel} title={refreshLogsActionLabel} onClick={() => loadStatus(loggerName)}>
+        <ShopSpace className="log-management__actions" wrap>
+          <ShopButton icon={<ReloadOutlined />} loading={loading} aria-label={refreshLogsActionLabel} title={refreshLogsActionLabel} onClick={() => loadStatus(loggerName)}>
             {t('common.refresh')}
-          </Button>
+          </ShopButton>
           {canDownloadLogs ? (
-            <Button type="primary" icon={<DownloadOutlined />} loading={downloading} disabled={logActionDisabled} aria-label={downloadLogsActionLabel} title={downloadLogsActionLabel} onClick={downloadLogs}>
+            <ShopButton type="primary" icon={<DownloadOutlined />} loading={downloading} disabled={logActionDisabled} aria-label={downloadLogsActionLabel} title={downloadLogsActionLabel} onClick={downloadLogs}>
               {t('pages.logAdmin.downloadLogs')}
-            </Button>
+            </ShopButton>
           ) : null}
-        </Space>
+        </ShopSpace>
       </div>
 
       {loadError && status ? (
-        <Alert
+        <ShopAlert
           className="log-management__alert"
           type="warning"
           showIcon
           message={loadError}
           description={t('pages.logAdmin.staleDataWarning')}
           action={(
-            <Space wrap data-admin-logs-stale-recovery="true">
-              <Button size="small" type="primary" onClick={() => loadStatus(loggerName)} loading={loading}>
+            <ShopSpace wrap data-admin-logs-stale-recovery="true">
+              <ShopButton size="small" type="primary" onClick={() => loadStatus(loggerName)} loading={loading}>
                 {t('common.retry')}
-              </Button>
-              <Button size="small" onClick={() => navigate('/admin')}>{t('pages.adminDashboard.title')}</Button>
-              <Button size="small" onClick={() => navigate('/admin/system')}>{t('pages.adminDashboard.paymentReturnOps.providerReadinessAction')}</Button>
-              <Button size="small" onClick={() => navigate('/admin/orders')}>{t('pages.adminDashboard.orders')}</Button>
-            </Space>
+              </ShopButton>
+              <ShopButton size="small" onClick={() => navigate('/admin')}>{t('pages.adminDashboard.title')}</ShopButton>
+              <ShopButton size="small" onClick={() => navigate('/admin/system')}>{t('pages.adminDashboard.paymentReturnOps.providerReadinessAction')}</ShopButton>
+              <ShopButton size="small" onClick={() => navigate('/admin/orders')}>{t('pages.adminDashboard.orders')}</ShopButton>
+            </ShopSpace>
           )}
         />
       ) : null}
@@ -211,29 +224,29 @@ const LogManagement: React.FC = () => {
         aria-busy={loading && !status}
         aria-label={t('common.loading')}
       >
-        <Spin
+        <ShopSpin
           spinning={loading && !status}
         >
         {loadError && !status ? null : (
           <>
             <div className="log-management__stats">
-              <Card>
-                <Statistic title={t('pages.logAdmin.loggerMetric')} value={status?.loggerName || loggerName} prefix={<FileTextOutlined />} />
-              </Card>
-              <Card>
-                <Statistic
+              <ShopCard>
+                <ShopStatistic title={t('pages.logAdmin.loggerMetric')} value={status?.loggerName || loggerName} prefix={<FileTextOutlined />} />
+              </ShopCard>
+              <ShopCard>
+                <ShopStatistic
                   title={t('pages.logAdmin.currentLevel')}
                   value={status?.effectiveLevel || '-'}
                   valueStyle={{ color: status?.debugEnabled ? '#c2410c' : '#1f8a4c' }}
                   prefix={<BugOutlined />}
                 />
-              </Card>
-              <Card>
-                <Statistic title={t('pages.logAdmin.logFileCount')} value={status?.availableFiles?.length || 0} prefix={<ClockCircleOutlined />} />
-              </Card>
+              </ShopCard>
+              <ShopCard>
+                <ShopStatistic title={t('pages.logAdmin.logFileCount')} value={status?.availableFiles?.length || 0} prefix={<ClockCircleOutlined />} />
+              </ShopCard>
             </div>
 
-            <Alert
+            <ShopAlert
               className="log-management__alert"
               type="info"
               showIcon
@@ -241,7 +254,7 @@ const LogManagement: React.FC = () => {
             />
 
             <div className="log-management__grid">
-              <Card title={t('pages.logAdmin.debugControl')} className="log-management__card">
+              <ShopCard title={t('pages.logAdmin.debugControl')} className="log-management__card">
                 <div className="log-management__control">
                   <label>
                     <span>{t('pages.logAdmin.loggerName')}</span>
@@ -270,7 +283,7 @@ const LogManagement: React.FC = () => {
                         cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${debugConfirmActionLabel}`, title: `${t('common.cancel')}: ${debugConfirmActionLabel}` }}
                         onConfirm={() => toggleDebug(nextDebugEnabled)}
                       >
-                        <Switch
+                        <ShopSwitch
                           checked={Boolean(status?.debugEnabled)}
                           loading={switching}
                           disabled={switching || logActionDisabled}
@@ -282,13 +295,13 @@ const LogManagement: React.FC = () => {
                       </ShopPopconfirm>
                     </div>
                   ) : null}
-                  <Button onClick={() => loadStatus(loggerName)} icon={<ReloadOutlined />} aria-label={loadLoggerActionLabel} title={loadLoggerActionLabel}>
+                  <ShopButton onClick={() => loadStatus(loggerName)} icon={<ReloadOutlined />} aria-label={loadLoggerActionLabel} title={loadLoggerActionLabel}>
                     {t('pages.logAdmin.loadLogger')}
-                  </Button>
+                  </ShopButton>
                 </div>
-              </Card>
+              </ShopCard>
 
-              <Card title={t('pages.logAdmin.rangeDownload')} className="log-management__card">
+              <ShopCard title={t('pages.logAdmin.rangeDownload')} className="log-management__card">
                 <div className="log-management__download">
                   <ShopRangePicker
                     showTime
@@ -305,7 +318,7 @@ const LogManagement: React.FC = () => {
                     endAriaLabel={`${logRangePickerLabel} - end`}
                   />
                   <div role="group" aria-label={logLevelSelectLabel} title={logLevelSelectLabel}>
-                    <Space.Compact block>
+                    <ShopSpace.Compact block>
                       <ShopSelect
                         value={level}
                         onChange={(value) => setLevel(value || 'ALL')} popupClassName="shop-mobile-popup-layer"
@@ -318,36 +331,36 @@ const LogManagement: React.FC = () => {
                         aria-label={logKeywordInputLabel}
                         title={logKeywordInputLabel}
                       />
-                    </Space.Compact>
+                    </ShopSpace.Compact>
                   </div>
                   {canDownloadLogs ? (
-                    <Button type="primary" icon={<DownloadOutlined />} loading={downloading} disabled={logActionDisabled} aria-label={downloadSelectedRangeActionLabel} title={downloadSelectedRangeActionLabel} onClick={downloadLogs}>
+                    <ShopButton type="primary" icon={<DownloadOutlined />} loading={downloading} disabled={logActionDisabled} aria-label={downloadSelectedRangeActionLabel} title={downloadSelectedRangeActionLabel} onClick={downloadLogs}>
                       {t('pages.logAdmin.downloadSelectedRange')}
-                    </Button>
+                    </ShopButton>
                   ) : null}
                 </div>
-                <Descriptions column={1} size="small" bordered className="log-management__meta">
-                  <Descriptions.Item label={t('pages.logAdmin.logDirectory')}>{status?.logDirectory || '-'}</Descriptions.Item>
-                  <Descriptions.Item label={t('pages.logAdmin.currentFile')}>{status?.logFileName || '-'}</Descriptions.Item>
-                  <Descriptions.Item label={t('pages.logAdmin.configuredLevel')}>
-                    <Tag color={status?.configuredLevel === 'INHERITED' ? 'default' : 'blue'}>{status?.configuredLevel || '-'}</Tag>
-                  </Descriptions.Item>
-                </Descriptions>
-              </Card>
+                <ShopDescriptions column={1} size="small" bordered className="log-management__meta">
+                  <ShopDescriptions.Item label={t('pages.logAdmin.logDirectory')}>{status?.logDirectory || '-'}</ShopDescriptions.Item>
+                  <ShopDescriptions.Item label={t('pages.logAdmin.currentFile')}>{status?.logFileName || '-'}</ShopDescriptions.Item>
+                  <ShopDescriptions.Item label={t('pages.logAdmin.configuredLevel')}>
+                    <ShopTag color={status?.configuredLevel === 'INHERITED' ? 'default' : 'blue'}>{status?.configuredLevel || '-'}</ShopTag>
+                  </ShopDescriptions.Item>
+                </ShopDescriptions>
+              </ShopCard>
             </div>
 
-            <Card title={t('pages.logAdmin.availableLogFiles')} className="log-management__card">
+            <ShopCard title={t('pages.logAdmin.availableLogFiles')} className="log-management__card">
               {(status?.availableFiles || []).length ? (
-                <Space wrap size={[8, 8]}>
-                  {status?.availableFiles.map((file) => <Tag key={file}>{file}</Tag>)}
-                </Space>
+                <ShopSpace wrap size={[8, 8]}>
+                  {status?.availableFiles.map((file) => <ShopTag key={file}>{file}</ShopTag>)}
+                </ShopSpace>
               ) : (
-                <Empty description={t('pages.logAdmin.noLogFiles')} />
+                <ShopEmpty description={t('pages.logAdmin.noLogFiles')} />
               )}
-            </Card>
+            </ShopCard>
           </>
         )}
-        </Spin>
+        </ShopSpin>
       </div>
     </div>
   );

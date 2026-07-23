@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Table, Button, Rate, message, Typography, Divider, Space, Tag } from 'antd';
+import { Table } from 'antd';
 import ShopInput, { ShopTextArea } from '../components/ShopInput';
 import ShopPopconfirm from '../components/ShopPopconfirm';
 import ShopSelect from '../components/ShopSelect';
@@ -21,8 +21,17 @@ import {
   REVIEWS_REPLY_PERMISSION,
 } from '../utils/roles';
 import './ReviewManagement.css';
+import ShopButton from '../components/ShopButton';
+import ShopRate from '../components/ShopRate';
+import message from '../components/ShopMessage';
 
-const { Title, Paragraph } = Typography;
+import ShopTag from '../components/ShopTag';
+import ShopAlert from '../components/ShopAlert';
+import ShopSpace from '../components/ShopSpace';
+import ShopTypography from '../components/ShopTypography';
+import ShopDivider from '../components/ShopDivider';
+const Title = ShopTypography.Title;
+const Paragraph = ShopTypography.Paragraph;
 const DEFAULT_PAGE_SIZE = 20;
 const REVIEW_STATUS_KEYS = new Set(['PENDING', 'APPROVED', 'HIDDEN']);
 
@@ -288,7 +297,7 @@ const ReviewManagement: React.FC = () => {
         const ratingLabel = `${t('pages.adminReviews.rating')}: ${reviewLabel}, ${rating || 0}`;
         return (
           <span role="group" aria-label={ratingLabel} title={ratingLabel}>
-            <Rate disabled value={rating || 0} />
+            <ShopRate disabled value={rating || 0} ariaLabel={ratingLabel} />
           </span>
         );
       },
@@ -301,7 +310,7 @@ const ReviewManagement: React.FC = () => {
       onCell: () => reviewCellLabel(reviewColumnLabels.status),
       render: (status: string) => {
         const value = String(status || 'PENDING').trim().toUpperCase();
-        return <Tag color={statusColors[value] || 'default'}>{formatReviewStatus(status)}</Tag>;
+        return <ShopTag color={statusColors[value] || 'default'}>{formatReviewStatus(status)}</ShopTag>;
       },
     },
     {
@@ -373,9 +382,9 @@ const ReviewManagement: React.FC = () => {
               okButtonProps={{ disabled: actionsDisabledByStaleData, 'aria-label': approveActionLabel, title: approveActionLabel }}
               cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${approveActionLabel}`, title: `${t('common.cancel')}: ${approveActionLabel}` }}
             >
-              <Button size="small" icon={<CheckOutlined />} aria-label={approveActionLabel} title={approveActionLabel} disabled={actionsDisabledByStaleData}>
+              <ShopButton size="small" icon={<CheckOutlined />} aria-label={approveActionLabel} title={approveActionLabel} disabled={actionsDisabledByStaleData}>
                 {t('pages.adminReviews.approve')}
-              </Button>
+              </ShopButton>
             </ShopPopconfirm>
           ) : null,
           canModerateReviews && (record.status || 'PENDING') !== 'HIDDEN' ? (
@@ -388,15 +397,15 @@ const ReviewManagement: React.FC = () => {
               okButtonProps={{ danger: true, disabled: actionsDisabledByStaleData, 'aria-label': hideActionLabel, title: hideActionLabel }}
               cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${hideActionLabel}`, title: `${t('common.cancel')}: ${hideActionLabel}` }}
             >
-              <Button size="small" icon={<EyeInvisibleOutlined />} aria-label={hideActionLabel} title={hideActionLabel} disabled={actionsDisabledByStaleData}>
+              <ShopButton size="small" icon={<EyeInvisibleOutlined />} aria-label={hideActionLabel} title={hideActionLabel} disabled={actionsDisabledByStaleData}>
                 {t('pages.adminReviews.hide')}
-              </Button>
+              </ShopButton>
             </ShopPopconfirm>
           ) : null,
           canReplyReviews ? (
-            <Button key="reply" size="small" style={{ marginRight: 8 }} aria-label={replyActionLabel} title={replyActionLabel} onClick={() => openReply(record)} disabled={actionsDisabledByStaleData}>
+            <ShopButton key="reply" size="small" style={{ marginRight: 8 }} aria-label={replyActionLabel} title={replyActionLabel} onClick={() => openReply(record)} disabled={actionsDisabledByStaleData}>
               {t('pages.adminReviews.replyAction')}
-            </Button>
+            </ShopButton>
           ) : null,
           canDeleteReviews ? (
             <ShopPopconfirm rootClassName="shop-mobile-popup-layer"
@@ -409,11 +418,11 @@ const ReviewManagement: React.FC = () => {
               okButtonProps={{ danger: true, disabled: actionsDisabledByStaleData, 'aria-label': deleteActionLabel, title: deleteActionLabel }}
               cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${deleteActionLabel}`, title: `${t('common.cancel')}: ${deleteActionLabel}` }}
             >
-              <Button size="small" danger icon={<DeleteOutlined />} aria-label={deleteActionLabel} title={deleteActionLabel} disabled={actionsDisabledByStaleData}>{t('common.delete')}</Button>
+              <ShopButton size="small" danger icon={<DeleteOutlined />} aria-label={deleteActionLabel} title={deleteActionLabel} disabled={actionsDisabledByStaleData}>{t('common.delete')}</ShopButton>
             </ShopPopconfirm>
           ) : null,
         ].filter(Boolean);
-        return actions.length ? <Space size="small" wrap>{actions}</Space> : '-';
+        return actions.length ? <ShopSpace size="small" wrap>{actions}</ShopSpace> : '-';
       },
     },
   ];
@@ -421,7 +430,7 @@ const ReviewManagement: React.FC = () => {
   return (
     <div className={`review-management-page review-management-page--${language}`}>
       <Title level={4}>{t('pages.adminReviews.title')}</Title>
-      <Divider />
+      <ShopDivider />
       <section className="review-ops-panel">
         <div className="review-ops-panel__copy">
           <span>{t('pages.adminReviews.opsEyebrow')}</span>
@@ -451,7 +460,7 @@ const ReviewManagement: React.FC = () => {
           </div>
         </div>
       </section>
-      <Space className="review-management-page__toolbar" wrap>
+      <ShopSpace className="review-management-page__toolbar" wrap>
         <ShopInput
           allowClear
           prefix={<SearchOutlined />}
@@ -476,26 +485,26 @@ const ReviewManagement: React.FC = () => {
             { value: 'HIDDEN', label: t('pages.adminReviews.status.HIDDEN') },
           ]}
         />
-        <Button icon={<SearchOutlined />} aria-label={reviewSearchActionLabel} title={reviewSearchActionLabel} onClick={() => fetchReviews(1, pageSizeRef.current)}>
+        <ShopButton icon={<SearchOutlined />} aria-label={reviewSearchActionLabel} title={reviewSearchActionLabel} onClick={() => fetchReviews(1, pageSizeRef.current)}>
           {t('common.search')}
-        </Button>
-      </Space>
+        </ShopButton>
+      </ShopSpace>
       {loadError && reviewSnapshotLoaded ? (
-        <Alert
+        <ShopAlert
           className="review-management-page__loadAlert"
           type="warning"
           showIcon
           message={t('pages.adminReviews.loadErrorTitle')}
           description={t('pages.adminReviews.staleDataWarning')}
           action={(
-            <Space wrap data-admin-reviews-stale-recovery="true">
-              <Button size="small" type="primary" onClick={() => fetchReviews(pageState.page || 1, pageState.size || pageSizeRef.current)} loading={loading}>
+            <ShopSpace wrap data-admin-reviews-stale-recovery="true">
+              <ShopButton size="small" type="primary" onClick={() => fetchReviews(pageState.page || 1, pageState.size || pageSizeRef.current)} loading={loading}>
                 {t('common.retry')}
-              </Button>
-              <Button size="small" onClick={() => navigate('/admin')}>{t('pages.adminDashboard.title')}</Button>
-              <Button size="small" onClick={() => navigate('/admin/products')}>{t('pages.adminDashboard.products')}</Button>
-              <Button size="small" onClick={() => navigate('/admin/orders')}>{t('pages.adminDashboard.orders')}</Button>
-            </Space>
+              </ShopButton>
+              <ShopButton size="small" onClick={() => navigate('/admin')}>{t('pages.adminDashboard.title')}</ShopButton>
+              <ShopButton size="small" onClick={() => navigate('/admin/products')}>{t('pages.adminDashboard.products')}</ShopButton>
+              <ShopButton size="small" onClick={() => navigate('/admin/orders')}>{t('pages.adminDashboard.orders')}</ShopButton>
+            </ShopSpace>
           )}
         />
       ) : null}

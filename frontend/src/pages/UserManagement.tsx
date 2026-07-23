@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Table, Tag, Button, message, Typography, Divider, Space, Card, Progress, Form } from 'antd';
+import { Table, Form } from 'antd';
 import ShopInput, { ShopTextArea } from '../components/ShopInput';
 import ShopPopconfirm from '../components/ShopPopconfirm';
 import ShopSelect from '../components/ShopSelect';
@@ -28,8 +28,18 @@ import PageError from '../components/PageError';
 import { getApiErrorMessage } from '../utils/apiError';
 import { buildPaginationItemRender } from '../utils/paginationLabels';
 import './UserManagement.css';
+import ShopButton from '../components/ShopButton';
+import ShopProgress from '../components/ShopProgress';
+import message from '../components/ShopMessage';
 
-const { Title, Text } = Typography;
+import ShopTag from '../components/ShopTag';
+import ShopAlert from '../components/ShopAlert';
+import ShopSpace from '../components/ShopSpace';
+import ShopTypography from '../components/ShopTypography';
+import ShopCard from '../components/ShopCard';
+import ShopDivider from '../components/ShopDivider';
+const Title = ShopTypography.Title;
+const Text = ShopTypography.Text;
 type UserAccountStatus = 'ACTIVE' | 'BANNED' | 'GUEST';
 const DEFAULT_USER_PAGE_SIZE = 20;
 const mobilePopupClassNames = { popup: { root: 'shop-mobile-popup-layer' } };
@@ -410,7 +420,7 @@ const UserManagement: React.FC = () => {
         const matchedRole = roles.find((role) => String(role.code || '').trim().toUpperCase() === effectiveRole);
         const roleSelectLabel = `${t('pages.adminUsers.roleCode')}: ${userLabel}`;
         if (isSelf || !canManageRoles) {
-          return <Tag color={roleColor(effectiveRole)}>{formatRoleLabel(effectiveRole, matchedRole?.name)}</Tag>;
+          return <ShopTag color={roleColor(effectiveRole)}>{formatRoleLabel(effectiveRole, matchedRole?.name)}</ShopTag>;
         }
         return (
           <ShopSelect
@@ -435,7 +445,7 @@ const UserManagement: React.FC = () => {
       key: 'role',
       width: 120,
       onCell: () => userAdminTableCell(t('pages.adminUsers.role')),
-      render: (role: string) => <Tag color={roleColor(role)}>{formatRoleLabel(role)}</Tag>,
+      render: (role: string) => <ShopTag color={roleColor(role)}>{formatRoleLabel(role)}</ShopTag>,
     },
     {
       title: t('common.status'),
@@ -451,9 +461,9 @@ const UserManagement: React.FC = () => {
             ? t('pages.adminUsers.bannedStatus')
             : t('status.GUEST');
         return (
-          <Tag color={userStatusColors[normalizedStatus]}>
+          <ShopTag color={userStatusColors[normalizedStatus]}>
             {statusLabel}
-          </Tag>
+          </ShopTag>
         );
       },
     },
@@ -465,9 +475,9 @@ const UserManagement: React.FC = () => {
       render: (_: unknown, record: User) => {
         const readySignals = getUserReadiness(record);
         return (
-          <Tag color={readySignals >= 4 ? 'green' : readySignals >= 3 ? 'orange' : 'red'}>
+          <ShopTag color={readySignals >= 4 ? 'green' : readySignals >= 3 ? 'orange' : 'red'}>
             {t('pages.adminUsers.readySignals', { count: readySignals })}
-          </Tag>
+          </ShopTag>
         );
       },
     },
@@ -506,10 +516,10 @@ const UserManagement: React.FC = () => {
           ? t('pages.adminUsers.banConfirm', { user: userLabel })
           : t('pages.adminUsers.unbanConfirm', { user: userLabel });
         return (
-          <Space size="small" wrap className="user-management-page__tableActions">
-            <Button size="small" icon={<EditOutlined />} aria-label={editActionLabel} title={editActionLabel} disabled={profileEditDisabled} onClick={() => openProfileModal(record)}>
+          <ShopSpace size="small" wrap className="user-management-page__tableActions">
+            <ShopButton size="small" icon={<EditOutlined />} aria-label={editActionLabel} title={editActionLabel} disabled={profileEditDisabled} onClick={() => openProfileModal(record)}>
               {t('common.edit')}
-            </Button>
+            </ShopButton>
             <ShopPopconfirm rootClassName="shop-mobile-popup-layer"
               title={statusConfirmTitle}
               onConfirm={() => handleToggleStatus(record)}
@@ -519,7 +529,7 @@ const UserManagement: React.FC = () => {
               okButtonProps={{ disabled: userActionDisabled, 'aria-label': accountStatusActionLabel, title: accountStatusActionLabel }}
               cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${accountStatusActionLabel}`, title: `${t('common.cancel')}: ${accountStatusActionLabel}` }}
             >
-              <Button
+              <ShopButton
                 size="small"
                 icon={normalizedStatus === 'ACTIVE' ? <StopOutlined /> : <CheckCircleOutlined />}
                 danger={normalizedStatus === 'ACTIVE'}
@@ -529,7 +539,7 @@ const UserManagement: React.FC = () => {
                 disabled={statusActionDisabled}
               >
                 {statusActionLabel}
-              </Button>
+              </ShopButton>
             </ShopPopconfirm>
             <ShopPopconfirm rootClassName="shop-mobile-popup-layer"
               title={`${t('pages.adminUsers.deleteConfirm')}: ${userLabel}`}
@@ -540,11 +550,11 @@ const UserManagement: React.FC = () => {
               okButtonProps={{ danger: true, disabled: userActionDisabled, 'aria-label': deleteActionLabel, title: deleteActionLabel }}
               cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${deleteActionLabel}`, title: `${t('common.cancel')}: ${deleteActionLabel}` }}
             >
-              <Button size="small" danger icon={<DeleteOutlined />} aria-label={deleteActionLabel} title={deleteActionLabel} disabled={deleteDisabled}>
+              <ShopButton size="small" danger icon={<DeleteOutlined />} aria-label={deleteActionLabel} title={deleteActionLabel} disabled={deleteDisabled}>
                 {t('common.delete')}
-              </Button>
+              </ShopButton>
             </ShopPopconfirm>
-          </Space>
+          </ShopSpace>
         );
       },
     },
@@ -572,29 +582,29 @@ const UserManagement: React.FC = () => {
   return (
     <div className="user-management-page">
       <Title level={4}>{t('pages.adminUsers.title')}</Title>
-      <Divider />
+      <ShopDivider />
       {userLoadError && userSnapshotLoaded ? (
-        <Alert
+        <ShopAlert
           className="user-management-page__alert"
           type="warning"
           showIcon
           message={userLoadError}
           description={t('pages.adminUsers.staleDataWarning')}
           action={(
-            <Space wrap data-admin-users-stale-recovery="true">
-              <Button size="small" type="primary" loading={loading} onClick={() => fetchUsers(pageState.page, pageState.size)}>
+            <ShopSpace wrap data-admin-users-stale-recovery="true">
+              <ShopButton size="small" type="primary" loading={loading} onClick={() => fetchUsers(pageState.page, pageState.size)}>
                 {t('common.retry')}
-              </Button>
-              <Button size="small" onClick={() => navigate('/admin')}>
+              </ShopButton>
+              <ShopButton size="small" onClick={() => navigate('/admin')}>
                 {t('pages.adminDashboard.title')}
-              </Button>
-              <Button size="small" onClick={() => navigate('/admin/orders')}>
+              </ShopButton>
+              <ShopButton size="small" onClick={() => navigate('/admin/orders')}>
                 {t('pages.adminDashboard.orders')}
-              </Button>
-              <Button size="small" onClick={() => navigate('/admin/support')}>
+              </ShopButton>
+              <ShopButton size="small" onClick={() => navigate('/admin/support')}>
                 {t('adminLayout.support')}
-              </Button>
-            </Space>
+              </ShopButton>
+            </ShopSpace>
           )}
         />
       ) : null}
@@ -635,7 +645,7 @@ const UserManagement: React.FC = () => {
       ) : null}
 
       {showInitialUserLoading ? (
-        <Card
+        <ShopCard
           className="user-management-page__loadingState"
           loading
           role="status"
@@ -647,8 +657,8 @@ const UserManagement: React.FC = () => {
 
       {canRenderUserSnapshot ? (
         <>
-      <Card className="user-management-page__toolbar">
-        <Space wrap className="user-management-page__filters">
+      <ShopCard className="user-management-page__toolbar">
+        <ShopSpace wrap className="user-management-page__filters">
           <ShopInput
             allowClear
             prefix={<SearchOutlined />}
@@ -689,12 +699,12 @@ const UserManagement: React.FC = () => {
               { value: 'GUEST', label: t('status.GUEST') },
             ]}
           />
-          <Button onClick={() => fetchUsers(1, pageState.size)} type="primary" icon={<SearchOutlined />} disabled={userActionDisabled} aria-label={searchActionLabel} title={searchActionLabel}>{t('common.search')}</Button>
+          <ShopButton onClick={() => fetchUsers(1, pageState.size)} type="primary" icon={<SearchOutlined />} disabled={userActionDisabled} aria-label={searchActionLabel} title={searchActionLabel}>{t('common.search')}</ShopButton>
           {canExportUsers ? (
-            <Button onClick={handleExport} icon={<DownloadOutlined />} loading={exporting} disabled={userActionDisabled} aria-label={exportActionLabel} title={exportActionLabel}>{t('pages.adminUsers.export')}</Button>
+            <ShopButton onClick={handleExport} icon={<DownloadOutlined />} loading={exporting} disabled={userActionDisabled} aria-label={exportActionLabel} title={exportActionLabel}>{t('pages.adminUsers.export')}</ShopButton>
           ) : null}
-        </Space>
-      </Card>
+        </ShopSpace>
+      </ShopCard>
       <section className="user-management-page__health" aria-label={t('pages.adminUsers.healthTitle')}>
         <div className="user-management-page__healthCopy">
           <Text className="user-management-page__eyebrow">{t('pages.adminUsers.healthEyebrow')}</Text>
@@ -702,7 +712,7 @@ const UserManagement: React.FC = () => {
           <Text type="secondary">{t('pages.adminUsers.healthSubtitle')}</Text>
         </div>
         <div className="user-management-page__score" role="group" aria-label={userHealthLabels.score} title={userHealthLabels.score}>
-          <Progress
+          <ShopProgress
             type="circle"
             percent={userHealth.score}
             size={86}

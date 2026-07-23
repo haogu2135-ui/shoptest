@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Card, Descriptions, Empty, Space, Spin, Statistic, Table, Tag, Typography, message } from 'antd';
+import { Table } from 'antd';
 import ShopInput, { ShopTextArea } from '../components/ShopInput';
 import { ApiOutlined, CloudServerOutlined, LinkOutlined, ReloadOutlined, SafetyCertificateOutlined, SearchOutlined } from '@ant-design/icons';
 import { apiBaseUrl } from '../api';
@@ -11,11 +11,23 @@ import { useLanguage } from '../i18n';
 import PageError from '../components/PageError';
 import { getApiErrorMessage } from '../utils/apiError';
 import './RegistryManagement.css';
+import ShopButton from '../components/ShopButton';
+import ShopSpin from '../components/ShopSpin';
+import ShopEmpty from '../components/ShopEmpty';
+import ShopStatistic from '../components/ShopStatistic';
 
-const { Title, Text } = Typography;
+import ShopTag from '../components/ShopTag';
+import ShopAlert from '../components/ShopAlert';
+import ShopSpace from '../components/ShopSpace';
+import ShopTypography from '../components/ShopTypography';
+import ShopCard from '../components/ShopCard';
+import ShopDescriptions from '../components/ShopDescriptions';
+import message from '../components/ShopMessage';
+const Title = ShopTypography.Title;
+const Text = ShopTypography.Text;
 
 const boolTag = (value: boolean | undefined, labels: { enabled: string; disabled: string }) => (
-  <Tag color={value ? 'green' : 'red'}>{value ? labels.enabled : labels.disabled}</Tag>
+  <ShopTag color={value ? 'green' : 'red'}>{value ? labels.enabled : labels.disabled}</ShopTag>
 );
 
 const RegistryManagement: React.FC = () => {
@@ -75,27 +87,27 @@ const RegistryManagement: React.FC = () => {
           <Title level={2}>{t('pages.registryAdmin.title')}</Title>
           <Text type="secondary">{t('pages.registryAdmin.description')}</Text>
         </div>
-        <Button icon={<ReloadOutlined />} aria-label={refreshRegistryStatusActionLabel} title={refreshRegistryStatusActionLabel} onClick={loadStatus} loading={loading}>
+        <ShopButton icon={<ReloadOutlined />} aria-label={refreshRegistryStatusActionLabel} title={refreshRegistryStatusActionLabel} onClick={loadStatus} loading={loading}>
           {t('common.refresh')}
-        </Button>
+        </ShopButton>
       </div>
 
       {loadError && status ? (
-        <Alert
+        <ShopAlert
           className="registry-management__alert"
           type="warning"
           showIcon
           message={loadError}
           description={t('pages.registryAdmin.staleDataWarning')}
           action={(
-            <Space wrap data-admin-registry-stale-recovery="true">
-              <Button size="small" type="primary" onClick={loadStatus} loading={loading}>
+            <ShopSpace wrap data-admin-registry-stale-recovery="true">
+              <ShopButton size="small" type="primary" onClick={loadStatus} loading={loading}>
                 {t('common.retry')}
-              </Button>
-              <Button size="small" onClick={() => navigate('/admin')}>{t('pages.adminDashboard.title')}</Button>
-              <Button size="small" onClick={() => navigate('/admin/system')}>{t('pages.adminDashboard.paymentReturnOps.providerReadinessAction')}</Button>
-              <Button size="small" onClick={() => navigate('/admin/orders')}>{t('pages.adminDashboard.orders')}</Button>
-            </Space>
+              </ShopButton>
+              <ShopButton size="small" onClick={() => navigate('/admin')}>{t('pages.adminDashboard.title')}</ShopButton>
+              <ShopButton size="small" onClick={() => navigate('/admin/system')}>{t('pages.adminDashboard.paymentReturnOps.providerReadinessAction')}</ShopButton>
+              <ShopButton size="small" onClick={() => navigate('/admin/orders')}>{t('pages.adminDashboard.orders')}</ShopButton>
+            </ShopSpace>
           )}
         />
       ) : null}
@@ -121,32 +133,32 @@ const RegistryManagement: React.FC = () => {
         aria-busy={loading && !status}
         aria-label={t('common.loading')}
       >
-        <Spin
+        <ShopSpin
           spinning={loading && !status}
         >
         {loadError && !status ? null : <div className="registry-management__stats">
-          <Card>
-            <Statistic title={t('pages.registryAdmin.serviceName')} value={status?.applicationName || '-'} prefix={<ApiOutlined />} />
-          </Card>
-          <Card>
-            <Statistic
+          <ShopCard>
+            <ShopStatistic title={t('pages.registryAdmin.serviceName')} value={status?.applicationName || '-'} prefix={<ApiOutlined />} />
+          </ShopCard>
+          <ShopCard>
+            <ShopStatistic
               title={t('pages.registryAdmin.registrationStatus')}
               value={registryReady ? t('pages.registryAdmin.registered') : t('pages.registryAdmin.notReady')}
               valueStyle={{ color: registryReady ? '#1f8a4c' : '#c46a14' }}
               prefix={<SafetyCertificateOutlined />}
             />
-          </Card>
-          <Card>
-            <Statistic title={t('pages.registryAdmin.discoveredServices')} value={knownServices.length} />
-          </Card>
-          <Card>
-            <Statistic title={t('pages.registryAdmin.currentInstances')} value={status?.instanceCount || status?.instances?.length || 0} prefix={<CloudServerOutlined />} />
-          </Card>
+          </ShopCard>
+          <ShopCard>
+            <ShopStatistic title={t('pages.registryAdmin.discoveredServices')} value={knownServices.length} />
+          </ShopCard>
+          <ShopCard>
+            <ShopStatistic title={t('pages.registryAdmin.currentInstances')} value={status?.instanceCount || status?.instances?.length || 0} prefix={<CloudServerOutlined />} />
+          </ShopCard>
         </div>}
 
         {status ? (
           <>
-            <Alert
+            <ShopAlert
               className="registry-management__alert"
               type={registryReady ? 'success' : 'warning'}
               showIcon
@@ -157,34 +169,34 @@ const RegistryManagement: React.FC = () => {
             />
 
             <div className="registry-management__grid">
-              <Card title={t('pages.registryAdmin.registryConfig')} className="registry-management__card">
-                <Descriptions column={1} bordered size="small">
-                  <Descriptions.Item label={t('pages.registryAdmin.nacosAddress')}>{status.nacosServerAddr || '-'}</Descriptions.Item>
-                  <Descriptions.Item label={t('pages.registryAdmin.namespace')}>{status.namespace || 'public'}</Descriptions.Item>
-                  <Descriptions.Item label={t('pages.registryAdmin.group')}>{status.group || 'DEFAULT_GROUP'}</Descriptions.Item>
-                  <Descriptions.Item label={t('pages.registryAdmin.discoveryEnabled')}>{boolTag(status.discoveryEnabled, boolLabels)}</Descriptions.Item>
-                  <Descriptions.Item label={t('pages.registryAdmin.registerEnabled')}>{boolTag(status.registerEnabled, boolLabels)}</Descriptions.Item>
-                  <Descriptions.Item label={t('pages.registryAdmin.ephemeral')}>{boolTag(status.ephemeral, boolLabels)}</Descriptions.Item>
-                  <Descriptions.Item label={t('pages.registryAdmin.weight')}>{status.weight || '1'}</Descriptions.Item>
-                </Descriptions>
-              </Card>
+              <ShopCard title={t('pages.registryAdmin.registryConfig')} className="registry-management__card">
+                <ShopDescriptions column={1} bordered size="small">
+                  <ShopDescriptions.Item label={t('pages.registryAdmin.nacosAddress')}>{status.nacosServerAddr || '-'}</ShopDescriptions.Item>
+                  <ShopDescriptions.Item label={t('pages.registryAdmin.namespace')}>{status.namespace || 'public'}</ShopDescriptions.Item>
+                  <ShopDescriptions.Item label={t('pages.registryAdmin.group')}>{status.group || 'DEFAULT_GROUP'}</ShopDescriptions.Item>
+                  <ShopDescriptions.Item label={t('pages.registryAdmin.discoveryEnabled')}>{boolTag(status.discoveryEnabled, boolLabels)}</ShopDescriptions.Item>
+                  <ShopDescriptions.Item label={t('pages.registryAdmin.registerEnabled')}>{boolTag(status.registerEnabled, boolLabels)}</ShopDescriptions.Item>
+                  <ShopDescriptions.Item label={t('pages.registryAdmin.ephemeral')}>{boolTag(status.ephemeral, boolLabels)}</ShopDescriptions.Item>
+                  <ShopDescriptions.Item label={t('pages.registryAdmin.weight')}>{status.weight || '1'}</ShopDescriptions.Item>
+                </ShopDescriptions>
+              </ShopCard>
 
-              <Card title={t('pages.registryAdmin.currentInstanceConfig')} className="registry-management__card">
-                <Descriptions column={1} bordered size="small">
-                  <Descriptions.Item label={t('pages.registryAdmin.applicationPort')}>{status.serverPort || '-'}</Descriptions.Item>
-                  <Descriptions.Item label={t('pages.registryAdmin.registryIp')}>{status.configuredIp || 'auto'}</Descriptions.Item>
-                  <Descriptions.Item label={t('pages.registryAdmin.registryPort')}>{status.configuredPort || status.serverPort || '-'}</Descriptions.Item>
-                  <Descriptions.Item label="DiscoveryClient">{status.discoveryClientDescription || '-'}</Descriptions.Item>
-                  <Descriptions.Item label={t('pages.registryAdmin.profiles')}>
+              <ShopCard title={t('pages.registryAdmin.currentInstanceConfig')} className="registry-management__card">
+                <ShopDescriptions column={1} bordered size="small">
+                  <ShopDescriptions.Item label={t('pages.registryAdmin.applicationPort')}>{status.serverPort || '-'}</ShopDescriptions.Item>
+                  <ShopDescriptions.Item label={t('pages.registryAdmin.registryIp')}>{status.configuredIp || 'auto'}</ShopDescriptions.Item>
+                  <ShopDescriptions.Item label={t('pages.registryAdmin.registryPort')}>{status.configuredPort || status.serverPort || '-'}</ShopDescriptions.Item>
+                  <ShopDescriptions.Item label="DiscoveryClient">{status.discoveryClientDescription || '-'}</ShopDescriptions.Item>
+                  <ShopDescriptions.Item label={t('pages.registryAdmin.profiles')}>
                     {(status.profiles || []).length
-                      ? status.profiles?.map((profile) => <Tag key={profile}>{profile}</Tag>)
-                      : <Tag>default</Tag>}
-                  </Descriptions.Item>
-                </Descriptions>
-              </Card>
+                      ? status.profiles?.map((profile) => <ShopTag key={profile}>{profile}</ShopTag>)
+                      : <ShopTag>default</ShopTag>}
+                  </ShopDescriptions.Item>
+                </ShopDescriptions>
+              </ShopCard>
             </div>
 
-            <Card title={t('pages.registryAdmin.frontendGateway')} className="registry-management__card">
+            <ShopCard title={t('pages.registryAdmin.frontendGateway')} className="registry-management__card">
               <div className="registry-management__gateway">
                 <div>
                   <Text type="secondary">{t('pages.registryAdmin.apiBaseUrl')}</Text>
@@ -194,16 +206,16 @@ const RegistryManagement: React.FC = () => {
                   <Text type="secondary">{t('pages.registryAdmin.gatewayPrefix')}</Text>
                   <Text copyable strong>{apiGatewayPrefix}</Text>
                 </div>
-                <Tag color={apiGatewayEnabled ? 'green' : 'red'}>
+                <ShopTag color={apiGatewayEnabled ? 'green' : 'red'}>
                   {apiGatewayEnabled ? t('pages.registryAdmin.gatewayDispatchEnabled') : t('pages.registryAdmin.gatewayDispatchDisabled')}
-                </Tag>
-                <Tag color={frontendGatewayReady ? 'green' : 'orange'}>
+                </ShopTag>
+                <ShopTag color={frontendGatewayReady ? 'green' : 'orange'}>
                   {frontendGatewayReady ? t('pages.registryAdmin.frontendProxyReady') : t('pages.registryAdmin.frontendProxyWarning')}
-                </Tag>
+                </ShopTag>
               </div>
-            </Card>
+            </ShopCard>
 
-            <Card
+            <ShopCard
               title={t('pages.registryAdmin.discoveredServiceList')}
               className="registry-management__card"
               extra={(
@@ -229,7 +241,7 @@ const RegistryManagement: React.FC = () => {
                       title: t('pages.registryAdmin.serviceId'),
                       dataIndex: 'serviceId',
                       render: (value: string) => (
-                        <Tag color={value === status.applicationName ? 'green' : 'blue'}>{value}</Tag>
+                        <ShopTag color={value === status.applicationName ? 'green' : 'blue'}>{value}</ShopTag>
                       ),
                     },
                     { title: t('pages.registryAdmin.instanceCount'), dataIndex: 'instanceCount', width: 100 },
@@ -237,23 +249,23 @@ const RegistryManagement: React.FC = () => {
                       title: t('pages.registryAdmin.instances'),
                       dataIndex: 'instances',
                       render: (instances: AdminRegistryInstance[]) => (
-                        <Space wrap size={[6, 6]}>
+                        <ShopSpace wrap size={[6, 6]}>
                           {instances.map((instance) => (
-                            <Tag key={`${instance.host}:${instance.port}`}>
+                            <ShopTag key={`${instance.host}:${instance.port}`}>
                               {instance.host}:{instance.port}
-                            </Tag>
+                            </ShopTag>
                           ))}
-                        </Space>
+                        </ShopSpace>
                       ),
                     },
                   ]}
                 />
               ) : (
-                <Empty description={t('pages.registryAdmin.noServices')} />
+                <ShopEmpty description={t('pages.registryAdmin.noServices')} />
               )}
-            </Card>
+            </ShopCard>
 
-            <Card title={t('pages.registryAdmin.currentInstanceDetails')} className="registry-management__card">
+            <ShopCard title={t('pages.registryAdmin.currentInstanceDetails')} className="registry-management__card">
               <Table<AdminRegistryInstance>
                 rowKey={(record) => `${record.host}:${record.port}`}
                 dataSource={status.instances || []}
@@ -272,21 +284,21 @@ const RegistryManagement: React.FC = () => {
                     title: t('pages.registryAdmin.metadata'),
                     dataIndex: 'metadata',
                     render: (metadata?: Record<string, string>) => (
-                      <Space wrap size={[4, 4]}>
+                      <ShopSpace wrap size={[4, 4]}>
                         {Object.entries(metadata || {}).map(([key, value]) => (
-                          <Tag key={key}>{key}: {value}</Tag>
+                          <ShopTag key={key}>{key}: {value}</ShopTag>
                         ))}
-                      </Space>
+                      </ShopSpace>
                     ),
                   },
                 ]}
               />
-            </Card>
+            </ShopCard>
           </>
         ) : loadError ? null : (
-          <Empty description={t('pages.registryAdmin.noStatus')} />
+          <ShopEmpty description={t('pages.registryAdmin.noStatus')} />
         )}
-        </Spin>
+        </ShopSpin>
       </div>
     </div>
   );

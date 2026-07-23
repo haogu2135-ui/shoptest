@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ShopIcon, SI } from '../components/ShopIcon';
-import { Alert, Button, Tag } from 'antd';
 import ShopSelect from '../components/ShopSelect';
 import ShopRangeSlider from '../components/ShopRangeSlider';
 import { useNavigate } from 'react-router-dom';
@@ -20,8 +19,10 @@ import PageEmpty from '../components/PageEmpty';
 import { dispatchDomEvent } from '../utils/domEvents';
 import './PetFinder.css';
 import '../styles/mobile-page-contrast.css';
+import ShopButton from '../components/ShopButton';
 
-
+import ShopTag from '../components/ShopTag';
+import ShopAlert from '../components/ShopAlert';
 type PetType = 'all' | 'dog' | 'cat' | 'small';
 type NeedType = 'all' | 'play' | 'walk' | 'sleep' | 'smart' | 'groom' | 'food';
 type Priority = 'best' | 'rating' | 'deal' | 'budget';
@@ -324,23 +325,23 @@ const PetFinder: React.FC = () => {
           <div className="shop-panel__head">
             <h2 className="shop-panel__title">{t('pages.petFinder.results', { count: matches.length })}</h2>
             <div className="shop-panel__extra">
-              <Button className="pet-finder-page__searchAllButton" icon={<ShopIcon path={SI.search} />} aria-label={t('pages.petFinder.searchAll')} title={t('pages.petFinder.searchAll')} onClick={applyAsSearch}>{t('pages.petFinder.searchAll')}</Button>
+              <ShopButton className="pet-finder-page__searchAllButton" icon={<ShopIcon path={SI.search} />} aria-label={t('pages.petFinder.searchAll')} title={t('pages.petFinder.searchAll')} onClick={applyAsSearch}>{t('pages.petFinder.searchAll')}</ShopButton>
             </div>
           </div>
           {(loadError || usingCatalogFallback) && !loading ? (
-            <Alert
+            <ShopAlert
               type={loadError ? 'warning' : 'info'}
               showIcon
               message={loadError ? t('pages.petFinder.loadFailed') : t('pages.petFinder.catalogFallback')}
               description={loadError ? t('pages.petFinder.loadFailedDescription') : t('pages.petFinder.catalogFallbackDescription')}
               action={(
                 <div className="pet-finder-page__chipRow">
-                  <Button size="small" icon={<ShopIcon path={SI.reload} />} onClick={retryFinderProducts}>
+                  <ShopButton size="small" icon={<ShopIcon path={SI.reload} />} onClick={retryFinderProducts}>
                     {t('messages.retry')}
-                  </Button>
-                  <Button size="small" type="link" icon={<ShopIcon path={SI.search} />} onClick={() => navigate('/products')}>
+                  </ShopButton>
+                  <ShopButton size="small" type="link" icon={<ShopIcon path={SI.search} />} onClick={() => navigate('/products')}>
                     {t('pages.petFinder.browseAll')}
-                  </Button>
+                  </ShopButton>
                 </div>
               )}
               className="pet-finder-page__loadAlert"
@@ -391,24 +392,24 @@ const PetFinder: React.FC = () => {
                 </span>
               </div>
               <div className="pet-finder-page__nextStepMeta">
-                <Tag color="blue">{t(`pages.petFinder.petTypes.${petType}`)}</Tag>
-                <Tag color="green">{t(`pages.petFinder.needs.${need}`)}</Tag>
-                <Tag color="orange"><span className="commerce-atomic"><span className="commerce-money">{formatMoney(budget[0])}</span> - <span className="commerce-money">{formatMoney(budget[1])}</span></span></Tag>
+                <ShopTag color="blue">{t(`pages.petFinder.petTypes.${petType}`)}</ShopTag>
+                <ShopTag color="green">{t(`pages.petFinder.needs.${need}`)}</ShopTag>
+                <ShopTag color="orange"><span className="commerce-atomic"><span className="commerce-money">{formatMoney(budget[0])}</span> - <span className="commerce-money">{formatMoney(budget[1])}</span></span></ShopTag>
               </div>
               <div className="pet-finder-page__nextStepActions">
                 {finderInsights.bestMatch && finderInsights.nextAction === 'view' ? (
-                  <Button
+                  <ShopButton
                     type="primary"
                     onClick={() => navigate(`/products/${finderInsights.bestMatch!.id}`)}
                     aria-label={`${t('pages.petFinder.viewBest')}: ${finderProductName(finderInsights.bestMatch)}`}
                     title={`${t('pages.petFinder.viewBest')}: ${finderProductName(finderInsights.bestMatch)}`}
                   >
                     {t('pages.petFinder.viewBest')}
-                  </Button>
+                  </ShopButton>
                 ) : null}
-                <Button className="pet-finder-page__searchAllButton" icon={<ShopIcon path={SI.search} />} aria-label={t('pages.petFinder.searchAll')} title={t('pages.petFinder.searchAll')} onClick={applyAsSearch}>
+                <ShopButton className="pet-finder-page__searchAllButton" icon={<ShopIcon path={SI.search} />} aria-label={t('pages.petFinder.searchAll')} title={t('pages.petFinder.searchAll')} onClick={applyAsSearch}>
                   {t('pages.petFinder.searchAll')}
-                </Button>
+                </ShopButton>
               </div>
             </section>
           ) : null}
@@ -522,15 +523,15 @@ const PetFinder: React.FC = () => {
                         <span className="pet-finder-page__text pet-finder-page__text--strong pet-finder-page__productName" title={productName}>{productName}</span>
                         <span className="pet-finder-page__text pet-finder-page__text--strong commerce-money pet-finder-page__productPrice">{formatMoney(productPrice(product))}</span>
                         <div className="pet-finder-page__productTags">
-                          {isInStock(product) ? <Tag color="green">{t('pages.productDetail.enough')}</Tag> : <Tag color="red">{t('pages.productList.soldOut')}</Tag>}
-                          {(product.effectiveDiscountPercent || product.discount || 0) > 0 ? <Tag color="volcano">{t('pages.productList.sale')}</Tag> : null}
-                          <Tag color="blue">{t('pages.petFinder.matchScore', { score: Math.max(0, Math.round(score)) })}</Tag>
+                          {isInStock(product) ? <ShopTag color="green">{t('pages.productDetail.enough')}</ShopTag> : <ShopTag color="red">{t('pages.productList.soldOut')}</ShopTag>}
+                          {(product.effectiveDiscountPercent || product.discount || 0) > 0 ? <ShopTag color="volcano">{t('pages.productList.sale')}</ShopTag> : null}
+                          <ShopTag color="blue">{t('pages.petFinder.matchScore', { score: Math.max(0, Math.round(score)) })}</ShopTag>
                         </div>
                       </div>
                       <div className="pet-finder-page__productActions">
-                        <Button type="link" onClick={() => navigate(`/products/${product.id}`)} aria-label={viewLabel} title={viewLabel}>
+                        <ShopButton type="link" onClick={() => navigate(`/products/${product.id}`)} aria-label={viewLabel} title={viewLabel}>
                           {t('pages.petFinder.view')}
-                        </Button>
+                        </ShopButton>
                       </div>
                     </article>
                   </div>

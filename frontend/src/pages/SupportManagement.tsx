@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Badge, Button, Card, Empty, List, message, Space, Spin, Tag, Typography } from 'antd';
+import message from '../components/ShopMessage';
+
 import ShopSearchField from '../components/ShopSearchField';
 import ShopPopconfirm from '../components/ShopPopconfirm';
 import ShopSelect from '../components/ShopSelect';
@@ -33,8 +34,19 @@ import {
   SUPPORT_REPLY_PERMISSION,
 } from '../utils/roles';
 import './SupportManagement.css';
+import ShopButton from '../components/ShopButton';
+import ShopSpin from '../components/ShopSpin';
+import ShopEmpty from '../components/ShopEmpty';
+import ShopBadge from '../components/ShopBadge';
+import ShopList from '../components/ShopList';
 
-const { Text, Title } = Typography;
+import ShopTag from '../components/ShopTag';
+import ShopAlert from '../components/ShopAlert';
+import ShopSpace from '../components/ShopSpace';
+import ShopTypography from '../components/ShopTypography';
+import ShopCard from '../components/ShopCard';
+const Text = ShopTypography.Text;
+const Title = ShopTypography.Title;
 const SUPPORT_MESSAGE_WINDOW = 80;
 const SUPPORT_QUEUE_PAGE_SIZE = 20;
 const SUPPORT_POLL_INTERVAL_MS = 10 * 1000;
@@ -195,7 +207,6 @@ const SupportManagement: React.FC = () => {
     };
   }, []);
 
-
   useEffect(() => {
     return () => {
       const context = audioContextRef.current;
@@ -250,10 +261,7 @@ const SupportManagement: React.FC = () => {
 
   };
 
-
-
   const decodeOrderMessage = useCallback(decodeSupportOrderMessage, []);
-
 
   const displayLastMessage = (content?: string) => {
 
@@ -301,7 +309,6 @@ const SupportManagement: React.FC = () => {
             ? t('pages.adminSupport.replyUseWorkflow')
             : t('pages.adminSupport.replyNeedsContext');
 
-
   const sortSupportSessions = (items: SupportSession[]) =>
 
     [...items].sort((left, right) => {
@@ -321,8 +328,6 @@ const SupportManagement: React.FC = () => {
       return rightTime - leftTime || right.id - left.id;
 
     });
-
-
 
   useEffect(() => {
     selectedSessionRef.current = selectedSession;
@@ -367,7 +372,6 @@ const SupportManagement: React.FC = () => {
       setQueueTotal(nextTotal);
     }
   }, []);
-
 
   const loadSessions = useCallback(async (options?: { status?: string; page?: number; pageSize?: number; search?: string; isActive?: () => boolean }) => {
     const shouldApply = () => options?.isActive?.() !== false;
@@ -459,14 +463,11 @@ const SupportManagement: React.FC = () => {
     }
   };
 
-
   useEffect(() => {
 
     loadSessions();
 
   }, [loadSessions]);
-
-
 
   const socketRef = useReconnectingWebSocket({
     enabled: Boolean(adminSupportToken) && process.env.NODE_ENV !== 'test',
@@ -514,7 +515,6 @@ const SupportManagement: React.FC = () => {
     },
   });
 
-
   useEffect(() => {
     if (process.env.NODE_ENV === 'test') return;
     let disposed = false;
@@ -552,13 +552,10 @@ const SupportManagement: React.FC = () => {
     };
   }, [canUpdateSupportReadState, loadSessions]);
 
-
   useEffect(() => {
 
     listRef.current?.scrollTo?.({ top: listRef.current.scrollHeight, behavior: 'smooth' });
   }, [messages, selectedSession]);
-
-
 
   const send = async () => {
     const text = content.trim();
@@ -643,7 +640,6 @@ const SupportManagement: React.FC = () => {
     }
   };
 
-
   const openOrderDetail = async (orderId: number) => {
     if (!canViewOrders) {
       message.error(t('adminLayout.noPermission'));
@@ -668,8 +664,6 @@ const SupportManagement: React.FC = () => {
     }
 
   };
-
-
 
   const dateLocale = language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US';
 
@@ -798,12 +792,12 @@ const SupportManagement: React.FC = () => {
   return (
     <div className={`support-management support-management--${language}`}>
       <div className="support-management__header">
-        <Space>
+        <ShopSpace>
           <CustomerServiceOutlined style={{ fontSize: 22, color: '#ee4d2d' }} />
           <Title level={4} style={{ margin: 0 }}>{t('pages.adminSupport.title')}</Title>
-          <Badge status={connected ? 'success' : 'default'} text={connected ? t('pages.support.online') : t('pages.support.offline')} />
-        </Space>
-        <Space className="support-management__headerControls" wrap>
+          <ShopBadge status={connected ? 'success' : 'default'} text={connected ? t('pages.support.online') : t('pages.support.offline')} />
+        </ShopSpace>
+        <ShopSpace className="support-management__headerControls" wrap>
           <ShopSearchField
             allowClear
             defaultValue={queueSearch}
@@ -829,10 +823,8 @@ const SupportManagement: React.FC = () => {
               { value: 'ALL', label: t('common.all') },
             ]}
           />
-        </Space>
+        </ShopSpace>
       </div>
-
-
 
       <div className="support-management__insightBar" aria-label={t('pages.adminSupport.queueTitle')}>
 
@@ -852,17 +844,17 @@ const SupportManagement: React.FC = () => {
 
         <div className="support-management__insightStats">
 
-          <Tag color={unreadMessageCount > 0 ? 'red' : 'default'}>{t('pages.adminSupport.unreadMessages', { count: unreadMessageCount })}</Tag>
-          <Tag color={openSessionCount > 0 ? 'green' : 'default'}>{t('pages.adminSupport.openSessions', { count: openSessionCount })}</Tag>
-          <Tag color={mySessionCount > 0 ? 'blue' : 'default'}>{t('pages.adminSupport.mySessions', { count: mySessionCount })}</Tag>
-          <Tag color={unassignedOpenSessionCount > 0 ? 'orange' : 'default'}>{t('pages.adminSupport.unassignedSessions', { count: unassignedOpenSessionCount })}</Tag>
-          <Tag color={staleOpenSessionCount > 0 ? 'red' : 'default'}>{t('pages.adminSupport.staleSessions', { count: staleOpenSessionCount, minutes: staleMinutes })}</Tag>
-          {responseScore !== null ? <Tag color={responseScore < 70 ? 'volcano' : 'green'}>{t('pages.adminSupport.responseScore', { score: responseScore })}</Tag> : null}
-          <Tag color="default">{t('pages.adminSupport.closedSessions', { count: closedSessionCount })}</Tag>
+          <ShopTag color={unreadMessageCount > 0 ? 'red' : 'default'}>{t('pages.adminSupport.unreadMessages', { count: unreadMessageCount })}</ShopTag>
+          <ShopTag color={openSessionCount > 0 ? 'green' : 'default'}>{t('pages.adminSupport.openSessions', { count: openSessionCount })}</ShopTag>
+          <ShopTag color={mySessionCount > 0 ? 'blue' : 'default'}>{t('pages.adminSupport.mySessions', { count: mySessionCount })}</ShopTag>
+          <ShopTag color={unassignedOpenSessionCount > 0 ? 'orange' : 'default'}>{t('pages.adminSupport.unassignedSessions', { count: unassignedOpenSessionCount })}</ShopTag>
+          <ShopTag color={staleOpenSessionCount > 0 ? 'red' : 'default'}>{t('pages.adminSupport.staleSessions', { count: staleOpenSessionCount, minutes: staleMinutes })}</ShopTag>
+          {responseScore !== null ? <ShopTag color={responseScore < 70 ? 'volcano' : 'green'}>{t('pages.adminSupport.responseScore', { score: responseScore })}</ShopTag> : null}
+          <ShopTag color="default">{t('pages.adminSupport.closedSessions', { count: closedSessionCount })}</ShopTag>
         </div>
 
         <div className="support-management__insightActions">
-          <Button
+          <ShopButton
             size="small"
             type={filter === 'NEEDS_REPLY' ? 'primary' : 'default'}
             icon={<AlertOutlined />}
@@ -873,8 +865,8 @@ const SupportManagement: React.FC = () => {
             disabled={unreadSessionCount === 0}
           >
             {t('pages.adminSupport.showNeedsReply')}
-          </Button>
-          <Button
+          </ShopButton>
+          <ShopButton
             size="small"
             type={filter === 'OPEN' ? 'primary' : 'default'}
             icon={<CheckCircleOutlined />}
@@ -884,8 +876,8 @@ const SupportManagement: React.FC = () => {
             onClick={() => changeQueueFilter('OPEN')}
           >
             {t('pages.adminSupport.showOpen')}
-          </Button>
-          <Button
+          </ShopButton>
+          <ShopButton
             size="small"
             type={filter === 'CLOSED' ? 'primary' : 'default'}
             aria-pressed={filter === 'CLOSED'}
@@ -895,8 +887,8 @@ const SupportManagement: React.FC = () => {
             disabled={closedSessionCount === 0}
           >
             {t('status.CLOSED')}
-          </Button>
-          <Button
+          </ShopButton>
+          <ShopButton
             size="small"
             type={!filter ? 'primary' : 'default'}
             aria-pressed={!filter}
@@ -905,34 +897,34 @@ const SupportManagement: React.FC = () => {
             onClick={() => changeQueueFilter(undefined)}
           >
             {t('common.all')}
-          </Button>
+          </ShopButton>
         </div>
       </div>
 
       <div className="support-management__layout">
         <div className="support-management__queuePane">
           {queueError ? (
-            <Alert
+            <ShopAlert
               className="support-management__queueAlert"
               type="warning"
               showIcon
               message={queueError}
               data-admin-support-queue-recovery="true"
               action={(
-                <Space wrap>
-                  <Button size="small" type="primary" onClick={() => loadSessions()}>
+                <ShopSpace wrap>
+                  <ShopButton size="small" type="primary" onClick={() => loadSessions()}>
                     {t('common.retry')}
-                  </Button>
-                  <Button size="small" onClick={() => navigate('/admin/orders')}>
+                  </ShopButton>
+                  <ShopButton size="small" onClick={() => navigate('/admin/orders')}>
                     {t('pages.adminDashboard.orders')}
-                  </Button>
-                  <Button size="small" onClick={() => navigate('/admin')}>
+                  </ShopButton>
+                  <ShopButton size="small" onClick={() => navigate('/admin')}>
                     {t('pages.adminDashboard.title')}
-                  </Button>
-                  <Button size="small" onClick={() => navigate('/admin/system')}>
+                  </ShopButton>
+                  <ShopButton size="small" onClick={() => navigate('/admin/system')}>
                     {t('pages.adminDashboard.paymentReturnOps.providerReadinessAction')}
-                  </Button>
-                </Space>
+                  </ShopButton>
+                </ShopSpace>
               )}
             />
           ) : null}
@@ -944,24 +936,24 @@ const SupportManagement: React.FC = () => {
               aria-busy="true"
               aria-label={t('common.loading')}
             >
-              <Spin size="small" />
+              <ShopSpin size="small" />
               <Text>{t('common.loading')}</Text>
             </div>
           ) : queueSessions.length === 0 ? (
-            <Empty style={{ marginTop: 80 }} description={t('pages.adminSupport.noSessions')}>
-              <Space wrap>
+            <ShopEmpty style={{ marginTop: 80 }} description={t('pages.adminSupport.noSessions')}>
+              <ShopSpace wrap>
                 {filter !== 'OPEN' ? (
-                  <Button
+                  <ShopButton
                     size="small"
                     aria-label={`${t('status.OPEN')}: ${openSessionCount}`}
                     title={`${t('status.OPEN')}: ${openSessionCount}`}
                     onClick={() => changeQueueFilter('OPEN')}
                   >
                     {t('status.OPEN')}
-                  </Button>
+                  </ShopButton>
                 ) : null}
                 {filter !== 'CLOSED' ? (
-                  <Button
+                  <ShopButton
                     size="small"
                     aria-label={`${t('status.CLOSED')}: ${closedSessionCount}`}
                     title={`${t('status.CLOSED')}: ${closedSessionCount}`}
@@ -969,22 +961,22 @@ const SupportManagement: React.FC = () => {
                     disabled={closedSessionCount === 0}
                   >
                     {t('status.CLOSED')}
-                  </Button>
+                  </ShopButton>
                 ) : null}
                 {filter ? (
-                  <Button
+                  <ShopButton
                     size="small"
                     aria-label={`${t('common.all')}: ${totalSessionCount}`}
                     title={`${t('common.all')}: ${totalSessionCount}`}
                     onClick={() => changeQueueFilter(undefined)}
                   >
                     {t('common.all')}
-                  </Button>
+                  </ShopButton>
                 ) : null}
-              </Space>
-            </Empty>
+              </ShopSpace>
+            </ShopEmpty>
           ) : (
-            <List
+            <ShopList
               loading={queueLoading}
               dataSource={queueSessions}
               pagination={{
@@ -1003,7 +995,7 @@ const SupportManagement: React.FC = () => {
                 const sessionLabel = item.username || `${t('pages.adminSupport.user')} #${item.userId}`;
                 const selected = selectedSession?.id === item.id;
                 return (
-                  <List.Item
+                  <ShopList.Item
                     onClick={() => loadMessages(item)}
                     onKeyDown={(event) => {
                       if (event.key === 'Enter' || event.key === ' ') {
@@ -1017,13 +1009,13 @@ const SupportManagement: React.FC = () => {
                     aria-label={`${sessionLabel}: ${formatStatusLabel(item.status)}`}
                     className={`support-management__queueItem ${selected ? 'is-active' : ''} ${Number(item.unreadByAdmin || 0) > 0 ? 'support-management__queueItem--high' : ''}`}
                   >
-                    <List.Item.Meta
+                    <ShopList.Item.Meta
                       title={
-                        <Space>
+                        <ShopSpace>
                           <Text strong>{sessionLabel}</Text>
-                          <Tag color={item.status === 'OPEN' ? 'green' : 'default'}>{formatStatusLabel(item.status)}</Tag>
-                          {!!item.unreadByAdmin && <Badge count={item.unreadByAdmin} size="small" />}
-                        </Space>
+                          <ShopTag color={item.status === 'OPEN' ? 'green' : 'default'}>{formatStatusLabel(item.status)}</ShopTag>
+                          {!!item.unreadByAdmin && <ShopBadge count={item.unreadByAdmin} size="small" />}
+                        </ShopSpace>
                       }
                       description={
                         <div>
@@ -1039,7 +1031,7 @@ const SupportManagement: React.FC = () => {
                         </div>
                       }
                     />
-                  </List.Item>
+                  </ShopList.Item>
                 );
               }}
             />
@@ -1047,26 +1039,24 @@ const SupportManagement: React.FC = () => {
 
         </div>
 
-
-
         <div ref={conversationPaneRef} className="support-management__conversationPane" tabIndex={-1}>
           {!selectedSession ? (
 
-            <Empty style={{ marginTop: 180 }} description={t('pages.adminSupport.selectSession')} />
+            <ShopEmpty style={{ marginTop: 180 }} description={t('pages.adminSupport.selectSession')} />
 
           ) : (
 
             <>
 
               <div className="support-management__conversationHeader">
-                <Space>
+                <ShopSpace>
                   <Text strong>{selectedSession.username || `${t('pages.adminSupport.user')} #${selectedSession.userId}`}</Text>
-                  <Tag color={selectedSession.status === 'OPEN' ? 'green' : 'default'}>{formatStatusLabel(selectedSession.status)}</Tag>
-                  <Tag color={selectedSession.assignedAdminId ? 'blue' : 'default'}>
+                  <ShopTag color={selectedSession.status === 'OPEN' ? 'green' : 'default'}>{formatStatusLabel(selectedSession.status)}</ShopTag>
+                  <ShopTag color={selectedSession.assignedAdminId ? 'blue' : 'default'}>
                     {selectedSession.assignedAdminName || t('pages.adminSupport.unassigned')}
-                  </Tag>
-                </Space>
-                <Space>
+                  </ShopTag>
+                </ShopSpace>
+                <ShopSpace>
 	                  {selectedSession.status === 'OPEN' && canAssignSupport ? (
 		                    <ShopPopconfirm rootClassName="shop-mobile-popup-layer support-management__popconfirm"
 		                      title={assignSessionLabel}
@@ -1077,9 +1067,9 @@ const SupportManagement: React.FC = () => {
 	                      cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${assignSessionLabel}`, title: `${t('common.cancel')}: ${assignSessionLabel}` }}
 	                      onConfirm={assignToMe}
 	                    >
-	                      <Button loading={assigning} aria-label={assignSessionLabel} title={assignSessionLabel}>
+	                      <ShopButton loading={assigning} aria-label={assignSessionLabel} title={assignSessionLabel}>
 	                        {t('pages.adminSupport.assignToMe')}
-	                      </Button>
+	                      </ShopButton>
 	                    </ShopPopconfirm>
 	                  ) : selectedSession.status !== 'OPEN' && canReopenSupport ? (
 		                    <ShopPopconfirm rootClassName="shop-mobile-popup-layer support-management__popconfirm"
@@ -1091,9 +1081,9 @@ const SupportManagement: React.FC = () => {
 	                      cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${reopenSessionLabel}`, title: `${t('common.cancel')}: ${reopenSessionLabel}` }}
 	                      onConfirm={reopenSession}
 	                    >
-	                      <Button loading={reopening} aria-label={reopenSessionLabel} title={reopenSessionLabel}>
+	                      <ShopButton loading={reopening} aria-label={reopenSessionLabel} title={reopenSessionLabel}>
 	                        {t('pages.adminSupport.reopenSession')}
-	                      </Button>
+	                      </ShopButton>
 	                    </ShopPopconfirm>
 	                  ) : null}
 	                  {canReissueBirthdayCoupons ? (
@@ -1106,9 +1096,9 @@ const SupportManagement: React.FC = () => {
 	                      cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${reissueBirthdayCouponLabel}`, title: `${t('common.cancel')}: ${reissueBirthdayCouponLabel}` }}
 	                      onConfirm={reissueBirthdayCoupons}
 	                    >
-	                      <Button icon={<GiftOutlined />} loading={reissueLoading} aria-label={reissueBirthdayCouponLabel} title={reissueBirthdayCouponLabel}>
+	                      <ShopButton icon={<GiftOutlined />} loading={reissueLoading} aria-label={reissueBirthdayCouponLabel} title={reissueBirthdayCouponLabel}>
 	                        {t('pages.adminSupport.reissueBirthdayCoupon')}
-	                      </Button>
+	                      </ShopButton>
 	                    </ShopPopconfirm>
 	                  ) : null}
 	                  {canCloseSupport ? (
@@ -1122,10 +1112,10 @@ const SupportManagement: React.FC = () => {
 	                      cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${closeSessionLabel}`, title: `${t('common.cancel')}: ${closeSessionLabel}` }}
 	                      onConfirm={closeSession}
 	                    >
-	                      <Button loading={closing} disabled={selectedSession.status !== 'OPEN'} aria-label={closeSessionLabel} title={closeSessionLabel}>{t('pages.adminSupport.closeSession')}</Button>
+	                      <ShopButton loading={closing} disabled={selectedSession.status !== 'OPEN'} aria-label={closeSessionLabel} title={closeSessionLabel}>{t('pages.adminSupport.closeSession')}</ShopButton>
 	                    </ShopPopconfirm>
 	                  ) : null}
-                </Space>
+                </ShopSpace>
               </div>
               <div ref={listRef} className="support-management__messagesPane">
                 {messageLoading ? (
@@ -1136,38 +1126,38 @@ const SupportManagement: React.FC = () => {
                     aria-busy="true"
                     aria-label={t('common.loading')}
                   >
-                    <Spin size="small" />
+                    <ShopSpin size="small" />
                     <Text>{t('common.loading')}</Text>
                   </div>
                 ) : messageError ? (
-                  <Alert
+                  <ShopAlert
                     className="support-management__messagesError"
                     type="warning"
                     showIcon
                     message={messageError}
                     data-admin-support-messages-recovery="true"
                     action={(
-                      <Space wrap>
-                        <Button size="small" type="primary" onClick={() => loadMessages(selectedSession)}>
+                      <ShopSpace wrap>
+                        <ShopButton size="small" type="primary" onClick={() => loadMessages(selectedSession)}>
                           {t('common.retry')}
-                        </Button>
-                        <Button size="small" onClick={() => loadSessions()}>
+                        </ShopButton>
+                        <ShopButton size="small" onClick={() => loadSessions()}>
                           {t('common.refresh')}
-                        </Button>
-                        <Button size="small" onClick={() => navigate('/admin/orders')}>
+                        </ShopButton>
+                        <ShopButton size="small" onClick={() => navigate('/admin/orders')}>
                           {t('pages.adminDashboard.orders')}
-                        </Button>
-                        <Button size="small" onClick={() => navigate('/admin')}>
+                        </ShopButton>
+                        <ShopButton size="small" onClick={() => navigate('/admin')}>
                           {t('pages.adminDashboard.title')}
-                        </Button>
-                      </Space>
+                        </ShopButton>
+                      </ShopSpace>
                     )}
                   />
                 ) : messages.length === 0 ? (
-                  <Empty description={t('pages.support.noMessages')} />
+                  <ShopEmpty description={t('pages.support.noMessages')} />
                 ) : (
 
-                  <List
+                  <ShopList
 
                     dataSource={messages}
 
@@ -1179,7 +1169,7 @@ const SupportManagement: React.FC = () => {
 
                       return (
 
-                        <List.Item className={`support-management__messageRow ${mine ? 'is-mine' : ''}`}>
+                        <ShopList.Item className={`support-management__messageRow ${mine ? 'is-mine' : ''}`}>
                           <div className="support-management__messageWrap">
                             <div className="support-management__messageMeta">
                               {mine ? t('pages.support.agent') : (item.senderName || t('pages.adminSupport.user'))}
@@ -1189,8 +1179,8 @@ const SupportManagement: React.FC = () => {
 
                             {order ? (
 
-                              <Card size="small" className={`support-management__orderCard ${mine ? 'is-mine' : ''}`}>
-                                <Space align="start">
+                              <ShopCard size="small" className={`support-management__orderCard ${mine ? 'is-mine' : ''}`}>
+                                <ShopSpace align="start">
 
                                   <ShoppingOutlined className="support-management__orderIcon" />
                                   <div>
@@ -1198,12 +1188,12 @@ const SupportManagement: React.FC = () => {
                                     <div className="support-management__orderTitle">{order.orderNo || `${t('pages.support.order')} #${order.id}`}</div>
                                     <div className="support-management__orderPrice commerce-money">{formatMoney(order.totalAmount)}</div>
                                     <div className="support-management__orderTags">
-                                      <Tag color="blue">{formatOrderStatus(order.status)}</Tag>
-                                      {order.paymentMethod ? <Tag>{order.paymentMethod}</Tag> : null}
+                                      <ShopTag color="blue">{formatOrderStatus(order.status)}</ShopTag>
+                                      {order.paymentMethod ? <ShopTag>{order.paymentMethod}</ShopTag> : null}
 
                                     </div>
                                     {canViewOrders ? (
-                                      <Button
+                                      <ShopButton
                                         type="link"
                                         size="small"
                                         className="support-management__orderLink"
@@ -1212,13 +1202,13 @@ const SupportManagement: React.FC = () => {
                                         onClick={() => openOrderDetail(order.id)}
                                       >
                                         {t('pages.support.viewOrder')}
-                                      </Button>
+                                      </ShopButton>
                                     ) : null}
                                   </div>
 
-                                </Space>
+                                </ShopSpace>
 
-                              </Card>
+                              </ShopCard>
 
                             ) : (
 
@@ -1231,7 +1221,7 @@ const SupportManagement: React.FC = () => {
 
                           </div>
 
-                        </List.Item>
+                        </ShopList.Item>
 
                       );
 
@@ -1311,7 +1301,7 @@ const SupportManagement: React.FC = () => {
                   <span className={`support-management__sendReadiness ${replyReady ? 'is-ready' : 'is-pending'}`}>
                     {replyReady ? t('pages.adminSupport.replyReady') : replyReadinessText}
                   </span>
-                  <Button type="primary" icon={<SendOutlined />} aria-label={sendReplyLabel} title={sendReplyLabel} onClick={send} loading={sending} disabled={!replyReady}>{t('common.send')}</Button>
+                  <ShopButton type="primary" icon={<SendOutlined />} aria-label={sendReplyLabel} title={sendReplyLabel} onClick={send} loading={sending} disabled={!replyReady}>{t('common.send')}</ShopButton>
                 </div>
               </div>
             </>
@@ -1344,30 +1334,30 @@ const SupportManagement: React.FC = () => {
             aria-busy="true"
             aria-label={t('common.loading')}
           >
-            <Spin />
+            <ShopSpin />
           </div>
         ) : detailOrder ? (
-          <Space direction="vertical" style={{ width: '100%' }} size="middle">
+          <ShopSpace direction="vertical" style={{ width: '100%' }} size="middle">
 
-            <Space wrap>
+            <ShopSpace wrap>
 
-              <Tag color="blue">{formatOrderStatus(detailOrder.status)}</Tag>
-              {detailOrder.paymentMethod ? <Tag>{detailOrder.paymentMethod}</Tag> : null}
+              <ShopTag color="blue">{formatOrderStatus(detailOrder.status)}</ShopTag>
+              {detailOrder.paymentMethod ? <ShopTag>{detailOrder.paymentMethod}</ShopTag> : null}
 
               <Text strong className="commerce-money" style={{ color: '#ee4d2d' }}>{formatMoney(detailOrder.totalAmount)}</Text>
-            </Space>
+            </ShopSpace>
 
             {detailOrder.shippingAddress ? <Text type="secondary">{detailOrder.shippingAddress}</Text> : null}
 
-            <List
+            <ShopList
 
               dataSource={detailItems}
               locale={{ emptyText: t('pages.support.noOrderItems') }}
               renderItem={(item) => {
                 const productName = supportOrderItemName(item);
                 return (
-                  <List.Item>
-                    <List.Item.Meta
+                  <ShopList.Item>
+                    <ShopList.Item.Meta
                       avatar={
                         <img
                           src={resolveSupportOrderImage(item.imageUrl)}
@@ -1389,11 +1379,11 @@ const SupportManagement: React.FC = () => {
                       )}
                     />
                     <Text strong className="support-management__orderItemTotal commerce-money">{formatMoney(item.price * item.quantity)}</Text>
-                  </List.Item>
+                  </ShopList.Item>
                 );
               }}
             />
-          </Space>
+          </ShopSpace>
 
         ) : null}
 
@@ -1405,9 +1395,5 @@ const SupportManagement: React.FC = () => {
 
 };
 
-
-
 export default SupportManagement;
-
-
 

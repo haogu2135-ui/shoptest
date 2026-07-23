@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { ShopIcon, SI } from '../components/ShopIcon';
-import { Alert, Tag, Button } from 'antd';
 import ShopPopconfirm from '../components/ShopPopconfirm';
 import { useNavigate } from 'react-router-dom';
 import { notificationApi } from '../api';
@@ -18,8 +17,10 @@ import PageEmpty from '../components/PageEmpty';
 import { hasStoredValue } from '../utils/safeStorage';
 import './Notifications.css';
 import '../styles/mobile-page-contrast.css';
+import ShopButton from '../components/ShopButton';
 
-
+import ShopTag from '../components/ShopTag';
+import ShopAlert from '../components/ShopAlert';
 const typeColors: Record<string, string> = {
   ORDER: 'blue',
   PROMOTION: 'orange',
@@ -58,7 +59,6 @@ const notificationLooksLikeReturnFlow = (item: Pick<AppNotification, 'title' | '
   const haystack = `${item.title || ''} ${item.message || ''}`;
   return /\breturn\b|refund|退货|退款|devoluci[oó]n|reembolso/i.test(haystack);
 };
-
 
 const notifyNavbarChanged = () => {
   dispatchDomEvent('shop:notifications-updated');
@@ -386,7 +386,7 @@ const Notifications: React.FC = () => {
           <h1 className="notifications-page__title">{t('pages.notifications.title')}</h1>
         </div>
         {notifications.some(n => !n.isRead) && (
-          <Button
+          <ShopButton
             icon={<ShopIcon path={SI.check} />}
             aria-label={markAllActionLabel}
             title={markAllActionLabel}
@@ -394,7 +394,7 @@ const Notifications: React.FC = () => {
             disabled={notificationActionsDisabled}
           >
             {t('pages.notifications.markAll')}
-          </Button>
+          </ShopButton>
         )}
       </div>
       {notifications.length > 0 ? (
@@ -455,7 +455,7 @@ const Notifications: React.FC = () => {
             </button>
           </div>
           {quickFilter !== 'ALL' ? (
-            <Button size="small" aria-label={clearFilterActionLabel} title={clearFilterActionLabel} onClick={() => setQuickFilter('ALL')}>{t('pages.notifications.clearFilter')}</Button>
+            <ShopButton size="small" aria-label={clearFilterActionLabel} title={clearFilterActionLabel} onClick={() => setQuickFilter('ALL')}>{t('pages.notifications.clearFilter')}</ShopButton>
           ) : null}
         </section>
       ) : null}
@@ -471,7 +471,7 @@ const Notifications: React.FC = () => {
             <span><ShopIcon path={SI.gift} /> {t('pages.notifications.actionSignalOffers', { count: notificationInsights.promotions })}</span>
             <span><ShopIcon path={SI.truck} /> {t('pages.notifications.actionSignalDelivery', { count: notificationInsights.deliveries })}</span>
           </div>
-          <Button type="primary" aria-label={notificationActionPlanLabel} title={notificationActionPlanLabel} onClick={actionPlan.onClick}>{actionPlan.label}</Button>
+          <ShopButton type="primary" aria-label={notificationActionPlanLabel} title={notificationActionPlanLabel} onClick={actionPlan.onClick}>{actionPlan.label}</ShopButton>
         </section>
       ) : null}
       {fetchError && notifications.length === 0 ? (
@@ -546,13 +546,13 @@ const Notifications: React.FC = () => {
       ) : (
         <>
           {fetchError ? (
-            <Alert
+            <ShopAlert
               className="notifications-page__staleAlert"
               type="warning"
               showIcon
               message={t('pages.notifications.fetchFailed')}
               description={t('pages.notifications.staleDataWarning')}
-              action={<Button size="small" onClick={() => fetchNotifications()}>{t('common.retry')}</Button>}
+              action={<ShopButton size="small" onClick={() => fetchNotifications()}>{t('common.retry')}</ShopButton>}
             />
           ) : null}
           {filteredNotifications.length === 0 ? (
@@ -562,38 +562,38 @@ const Notifications: React.FC = () => {
                     <div className="notifications-page__emptyHint">{t('pages.notifications.noFilterResultsHint')}</div>
                   </div>
                   <div className="notifications-page__filterEmptyActions" data-notifications-filter-empty-actions="true">
-                    <Button
+                    <ShopButton
                       type="primary"
                       aria-label={t('pages.notifications.clearFilter')}
                       title={t('pages.notifications.clearFilter')}
                       onClick={() => setQuickFilter('ALL')}
                     >
                       {t('pages.notifications.clearFilter')}
-                    </Button>
-                    <Button
+                    </ShopButton>
+                    <ShopButton
                       icon={<ShopIcon path={SI.shopping} />}
                       aria-label={t('pages.cart.browse')}
                       title={t('pages.cart.browse')}
                       onClick={() => navigate('/products')}
                     >
                       {t('pages.cart.browse')}
-                    </Button>
-                    <Button
+                    </ShopButton>
+                    <ShopButton
                       icon={<ShopIcon path={SI.gift} />}
                       aria-label={t('pages.notifications.emptyCoupons')}
                       title={t('pages.notifications.emptyCoupons')}
                       onClick={() => navigate('/coupons')}
                     >
                       {t('pages.notifications.emptyCoupons')}
-                    </Button>
-                    <Button
+                    </ShopButton>
+                    <ShopButton
                       icon={<ShopIcon path={SI.truck} />}
                       aria-label={t('pages.notifications.emptyTrackOrder')}
                       title={t('pages.notifications.emptyTrackOrder')}
                       onClick={() => navigate('/track-order')}
                     >
                       {t('pages.notifications.emptyTrackOrder')}
-                    </Button>
+                    </ShopButton>
                   </div>
                 </div>
           ) : (
@@ -623,9 +623,9 @@ const Notifications: React.FC = () => {
                 <div className="notifications-page__itemMeta">
                   <div className="notifications-page__itemBody">
                     <div className="notifications-page__itemActions">
-                      <Tag color={typeColors[String(item.type || '').trim().toUpperCase()] || 'default'}>
+                      <ShopTag color={typeColors[String(item.type || '').trim().toUpperCase()] || 'default'}>
                         {formatNotificationType(item.type)}
-                      </Tag>
+                      </ShopTag>
                       <button
                         type="button"
                         className="notifications-page__titleButton"
@@ -647,7 +647,7 @@ const Notifications: React.FC = () => {
                 </div>
                 <div className="notifications-page__itemSideActions">
                   {showOpenRelated ? (
-                    <Button
+                    <ShopButton
                       size="small"
                       type="link"
                       aria-label={openRelatedLabel}
@@ -658,10 +658,10 @@ const Notifications: React.FC = () => {
                       {relatedOrderNo
                         ? (relatedType === 'DELIVERY' ? t('pages.notifications.actionTrackOrder') : t('pages.notifications.actionOpenOrders'))
                         : openRelatedLabel}
-                    </Button>
+                    </ShopButton>
                   ) : null}
                   {!item.isRead ? (
-                    <Button
+                    <ShopButton
                       size="small"
                       type="link"
                       aria-label={markReadActionLabel}
@@ -670,7 +670,7 @@ const Notifications: React.FC = () => {
                       disabled={notificationActionsDisabled}
                     >
                       {t('pages.notifications.markRead')}
-                    </Button>
+                    </ShopButton>
                   ) : null}
                   <ShopPopconfirm
                     rootClassName='shop-mobile-popup-layer notifications-delete-popconfirm'
@@ -682,7 +682,7 @@ const Notifications: React.FC = () => {
                     cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${deleteActionLabel}`, title: `${t('common.cancel')}: ${deleteActionLabel}` }}
                     disabled={notificationActionsDisabled}
                   >
-                    <Button
+                    <ShopButton
                       className="notifications-page__deleteButton"
                       size="small"
                       type="link"
@@ -701,7 +701,7 @@ const Notifications: React.FC = () => {
             {hasMoreNotifications ? (
               <div className="notifications-page__loadMore">
                 <span className="notifications-page__text notifications-page__text--secondary">{t('pages.notifications.loadedCount', { count: notifications.length })}</span>
-                <Button
+                <ShopButton
                   onClick={() => fetchNotifications(notificationPage + 1, true)}
                   loading={loadingMore}
                   disabled={loadingMore}
@@ -709,7 +709,7 @@ const Notifications: React.FC = () => {
                   title={loadMoreActionLabel}
                 >
                   {loadingMore ? t('pages.notifications.loadingMore') : t('pages.notifications.loadMore')}
-                </Button>
+                </ShopButton>
               </div>
             ) : null}
             </>

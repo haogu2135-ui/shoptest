@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Button, Card, Form, message, Space, Switch, Table, Tag, Typography } from 'antd';
+import { Form, Table } from 'antd';
 import ShopInput, { ShopTextArea } from '../components/ShopInput';
 import ShopPopconfirm from '../components/ShopPopconfirm';
 import ShopSelect from '../components/ShopSelect';
@@ -8,6 +8,7 @@ import ShopMultiSelect from '../components/ShopMultiSelect';
 import ShopInputNumber from '../components/ShopInputNumber';
 import ShopModal from '../components/ShopModal';
 import ShopRangePicker from '../components/ShopRangePicker';
+import ShopSwitch from '../components/ShopSwitch';
 import ShopConfirm from '../components/ShopConfirm';
 import { ClockCircleOutlined, DeleteOutlined, EditOutlined, FireOutlined, GiftOutlined, PlusOutlined, SearchOutlined, SendOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
@@ -31,8 +32,15 @@ import {
 import { buildPaginationItemRender } from '../utils/paginationLabels';
 import { getCouponPayablePercent } from '../utils/couponCenter';
 import './CouponManagement.css';
+import ShopButton from '../components/ShopButton';
+import message from '../components/ShopMessage';
 
-const { Title } = Typography;
+import ShopTag from '../components/ShopTag';
+import ShopAlert from '../components/ShopAlert';
+import ShopSpace from '../components/ShopSpace';
+import ShopTypography from '../components/ShopTypography';
+import ShopCard from '../components/ShopCard';
+const Title = ShopTypography.Title;
 const DEFAULT_COUPON_PAGE_SIZE = 10;
 const validRangeStartInputId = 'coupon-management-valid-range-start';
 const validRangeEndInputId = 'coupon-management-valid-range-end';
@@ -603,7 +611,7 @@ const CouponManagement: React.FC = () => {
       key: 'couponType',
       render: (type: string) => {
         const normalizedType = String(type || '').trim().toUpperCase();
-        return <Tag color={normalizedType === 'FULL_REDUCTION' ? 'volcano' : normalizedType === 'DISCOUNT' ? 'blue' : 'default'}>{formatCouponType(type)}</Tag>;
+        return <ShopTag color={normalizedType === 'FULL_REDUCTION' ? 'volcano' : normalizedType === 'DISCOUNT' ? 'blue' : 'default'}>{formatCouponType(type)}</ShopTag>;
       },
     },
     {
@@ -617,14 +625,14 @@ const CouponManagement: React.FC = () => {
         </span>
       ),
     },
-    { title: t('pages.adminCoupons.scope'), dataIndex: 'scope', key: 'scope', render: (scope: string) => <Tag>{formatCouponScope(scope)}</Tag> },
+    { title: t('pages.adminCoupons.scope'), dataIndex: 'scope', key: 'scope', render: (scope: string) => <ShopTag>{formatCouponScope(scope)}</ShopTag> },
     {
       title: t('pages.adminCoupons.status'),
       dataIndex: 'status',
       key: 'status',
       render: (status: string) => {
         const normalizedStatus = String(status || 'ACTIVE').trim().toUpperCase();
-        return <Tag color={normalizedStatus === 'ACTIVE' ? 'green' : 'default'}>{formatCouponStatus(status)}</Tag>;
+        return <ShopTag color={normalizedStatus === 'ACTIVE' ? 'green' : 'default'}>{formatCouponStatus(status)}</ShopTag>;
       },
     },
     {
@@ -641,9 +649,9 @@ const CouponManagement: React.FC = () => {
         const editActionLabel = `${t('common.edit')}: ${couponName}`;
         const deleteActionLabel = `${t('common.delete')}: ${couponName}`;
         return (
-          <Space>
-            {canGrantCoupons ? <Button size="small" icon={<SendOutlined />} disabled={couponMutationDisabled} aria-label={grantActionLabel} title={grantActionLabel} onClick={() => openGrant(record)}>{t('pages.adminCoupons.grant')}</Button> : null}
-            {canWriteCoupons ? <Button size="small" icon={<EditOutlined />} disabled={couponMutationDisabled} aria-label={editActionLabel} title={editActionLabel} onClick={() => openEdit(record)}>{t('common.edit')}</Button> : null}
+          <ShopSpace>
+            {canGrantCoupons ? <ShopButton size="small" icon={<SendOutlined />} disabled={couponMutationDisabled} aria-label={grantActionLabel} title={grantActionLabel} onClick={() => openGrant(record)}>{t('pages.adminCoupons.grant')}</ShopButton> : null}
+            {canWriteCoupons ? <ShopButton size="small" icon={<EditOutlined />} disabled={couponMutationDisabled} aria-label={editActionLabel} title={editActionLabel} onClick={() => openEdit(record)}>{t('common.edit')}</ShopButton> : null}
             {canDeleteCoupons ? (
               <ShopPopconfirm rootClassName="shop-mobile-popup-layer"
                 title={t('pages.adminCoupons.deleteConfirm')}
@@ -652,10 +660,10 @@ const CouponManagement: React.FC = () => {
                 okButtonProps={{ 'aria-label': deleteActionLabel, title: deleteActionLabel }}
                 cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${couponName}`, title: `${t('common.cancel')}: ${couponName}` }}
               >
-                <Button size="small" danger icon={<DeleteOutlined />} disabled={couponMutationDisabled} aria-label={deleteActionLabel} title={deleteActionLabel}>{t('common.delete')}</Button>
+                <ShopButton size="small" danger icon={<DeleteOutlined />} disabled={couponMutationDisabled} aria-label={deleteActionLabel} title={deleteActionLabel}>{t('common.delete')}</ShopButton>
               </ShopPopconfirm>
             ) : null}
-          </Space>
+          </ShopSpace>
         );
       },
     },
@@ -674,33 +682,33 @@ const CouponManagement: React.FC = () => {
     <div className="coupon-management-page">
       <div className="coupon-management-page__header">
         <Title level={3} style={{ margin: 0 }}><GiftOutlined /> {t('pages.adminCoupons.title')}</Title>
-        <Space wrap className="coupon-management-page__actions">
-          {canWriteCoupons ? <Button type="primary" icon={<PlusOutlined />} disabled={couponMutationDisabled} aria-label={createCouponLabel} title={createCouponLabel} onClick={openCreate}>{t('pages.adminCoupons.createCoupon')}</Button> : null}
-        </Space>
+        <ShopSpace wrap className="coupon-management-page__actions">
+          {canWriteCoupons ? <ShopButton type="primary" icon={<PlusOutlined />} disabled={couponMutationDisabled} aria-label={createCouponLabel} title={createCouponLabel} onClick={openCreate}>{t('pages.adminCoupons.createCoupon')}</ShopButton> : null}
+        </ShopSpace>
       </div>
 
       {couponLoadError && couponSnapshotLoaded ? (
-        <Alert
+        <ShopAlert
           className="coupon-management-page__alert"
           type="warning"
           showIcon
           message={couponLoadError}
           description={t('pages.adminCoupons.staleDataWarning')}
           action={(
-            <Space wrap data-admin-coupons-stale-recovery="true">
-              <Button size="small" type="primary" onClick={() => loadCoupons(pageState.page, pageState.size)} loading={loading}>
+            <ShopSpace wrap data-admin-coupons-stale-recovery="true">
+              <ShopButton size="small" type="primary" onClick={() => loadCoupons(pageState.page, pageState.size)} loading={loading}>
                 {t('common.retry')}
-              </Button>
-              <Button size="small" onClick={() => navigate('/admin')}>
+              </ShopButton>
+              <ShopButton size="small" onClick={() => navigate('/admin')}>
                 {t('pages.adminDashboard.title')}
-              </Button>
-              <Button size="small" onClick={() => navigate('/admin/orders')}>
+              </ShopButton>
+              <ShopButton size="small" onClick={() => navigate('/admin/orders')}>
                 {t('pages.adminDashboard.orders')}
-              </Button>
-              <Button size="small" onClick={() => navigate('/admin/support')}>
+              </ShopButton>
+              <ShopButton size="small" onClick={() => navigate('/admin/support')}>
                 {t('adminLayout.support')}
-              </Button>
-            </Space>
+              </ShopButton>
+            </ShopSpace>
           )}
         />
       ) : null}
@@ -741,7 +749,7 @@ const CouponManagement: React.FC = () => {
       ) : null}
 
       {showInitialCouponLoading ? (
-        <Card
+        <ShopCard
           className="coupon-management-page__loadingState"
           loading
           role="status"
@@ -788,19 +796,19 @@ const CouponManagement: React.FC = () => {
         </section>
       ) : null}
 
-      <Card
+      <ShopCard
         className="coupon-management-birthday"
         title={
-          <Space>
+          <ShopSpace>
             <GiftOutlined />
             <span>{t('pages.adminCoupons.birthdayConfigTitle')}</span>
-            <Tag color={birthdayConfigLoaded && birthdayConfig?.enabled ? 'green' : 'default'}>
+            <ShopTag color={birthdayConfigLoaded && birthdayConfig?.enabled ? 'green' : 'default'}>
               {birthdayConfigStatusLabel}
-            </Tag>
-          </Space>
+            </ShopTag>
+          </ShopSpace>
         }
         extra={
-          <Space wrap>
+          <ShopSpace wrap>
             {canRunBirthdayCoupons ? (
               <ShopPopconfirm rootClassName="shop-mobile-popup-layer"
                 title={t('pages.adminCoupons.runPetBirthdayCouponsConfirm')}
@@ -809,7 +817,7 @@ const CouponManagement: React.FC = () => {
                 okButtonProps={{ 'aria-label': runBirthdayCouponsLabel, title: runBirthdayCouponsLabel }}
                 cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${birthdayConfigLabel}`, title: `${t('common.cancel')}: ${birthdayConfigLabel}` }}
               >
-                <Button
+                <ShopButton
                   icon={<GiftOutlined />}
                   loading={birthdayCouponLoading}
                   disabled={birthdayConfigActionDisabled}
@@ -817,7 +825,7 @@ const CouponManagement: React.FC = () => {
                   title={runBirthdayCouponsLabel}
                 >
                   {t('pages.adminCoupons.runPetBirthdayCoupons')}
-                </Button>
+                </ShopButton>
               </ShopPopconfirm>
             ) : null}
             {canConfigureBirthdayCoupons ? (
@@ -831,7 +839,7 @@ const CouponManagement: React.FC = () => {
                 okButtonProps={{ 'aria-label': saveBirthdayConfigLabel, title: saveBirthdayConfigLabel }}
                 cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${saveBirthdayConfigLabel}`, title: `${t('common.cancel')}: ${saveBirthdayConfigLabel}` }}
               >
-                <Button
+                <ShopButton
                   type="primary"
                   loading={birthdayConfigSaving}
                   disabled={birthdayConfigActionDisabled}
@@ -839,24 +847,24 @@ const CouponManagement: React.FC = () => {
                   title={saveBirthdayConfigLabel}
                 >
                   {t('common.save')}
-                </Button>
+                </ShopButton>
               </ShopPopconfirm>
             ) : null}
-          </Space>
+          </ShopSpace>
         }
         loading={showInitialBirthdayConfigLoading}
       >
         {birthdayConfigLoadError ? (
-          <Alert
+          <ShopAlert
             className="coupon-management-page__alert"
             type="warning"
             showIcon
             message={birthdayConfigLoadError}
             description={birthdayConfigLoaded ? t('pages.adminCoupons.birthdayConfigStaleWarning') : undefined}
             action={(
-              <Button size="small" onClick={() => loadBirthdayConfig()} loading={birthdayConfigLoading}>
+              <ShopButton size="small" onClick={() => loadBirthdayConfig()} loading={birthdayConfigLoading}>
                 {t('common.retry')}
-              </Button>
+              </ShopButton>
             )}
           />
         ) : null}
@@ -864,7 +872,7 @@ const CouponManagement: React.FC = () => {
         {birthdayConfigUnavailable ? null : <Form form={birthdayConfigForm} layout="vertical" className="coupon-management-birthday__form">
           <div className="coupon-management-page__formRow">
             <Form.Item name="enabled" label={t('pages.adminCoupons.birthdayEnabledLabel')} valuePropName="checked">
-              <Switch title={`${birthdayConfigLabel}: ${t('pages.adminCoupons.birthdayEnabledLabel')}`} />
+              <ShopSwitch title={`${birthdayConfigLabel}: ${t('pages.adminCoupons.birthdayEnabledLabel')}`} />
             </Form.Item>
             <Form.Item name="namePrefix" label={t('pages.adminCoupons.birthdayNamePrefix')} rules={[{ required: true, message: t('pages.adminCoupons.birthdayNamePrefixRequired') }]}>
               <ShopInput aria-label={`${birthdayConfigLabel}: ${t('pages.adminCoupons.birthdayNamePrefix')}`} title={`${birthdayConfigLabel}: ${t('pages.adminCoupons.birthdayNamePrefix')}`} />
@@ -934,14 +942,14 @@ const CouponManagement: React.FC = () => {
           <Form.Item name="description" label={t('pages.adminCoupons.description')} rules={[{ max: couponDescriptionMaxChars, message: t('pages.adminCoupons.descriptionMaxLength', { count: couponDescriptionMaxChars }) }]}>
             <ShopTextArea rows={2} maxLength={couponDescriptionMaxChars} showCount aria-label={`${birthdayConfigLabel}: ${t('pages.adminCoupons.description')}`} title={`${birthdayConfigLabel}: ${t('pages.adminCoupons.description')}`} />
           </Form.Item>
-          <Typography.Text type="secondary">
+          <ShopTypography.Text type="secondary">
             {t('pages.adminCoupons.birthdayConfigHint')}
-          </Typography.Text>
+          </ShopTypography.Text>
         </Form>}
-      </Card>
+      </ShopCard>
 
-      {!showInitialCouponLoading && !couponSnapshotUnavailable ? <Card className="coupon-management-page__toolbar">
-        <Space wrap>
+      {!showInitialCouponLoading && !couponSnapshotUnavailable ? <ShopCard className="coupon-management-page__toolbar">
+        <ShopSpace wrap>
           <ShopInput
             allowClear
             prefix={<SearchOutlined />}
@@ -978,8 +986,8 @@ const CouponManagement: React.FC = () => {
               { value: 'ASSIGNED', label: t('pages.adminCoupons.adminAssigned') },
             ]}
           />
-        </Space>
-      </Card> : null}
+        </ShopSpace>
+      </ShopCard> : null}
 
       {!showInitialCouponLoading && !couponSnapshotUnavailable ? <Table
         columns={columns}
@@ -1108,16 +1116,16 @@ const CouponManagement: React.FC = () => {
         cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${grantCouponLabel}`, title: `${t('common.cancel')}: ${grantCouponLabel}` }}
       >
         <Form form={grantForm} layout="vertical">
-          <Alert
+          <ShopAlert
             type="info"
             showIcon
             style={{ marginBottom: 16 }}
             message={t('pages.adminCoupons.grantHelpTitle')}
             description={(
-              <Space direction="vertical" size={6}>
+              <ShopSpace direction="vertical" size={6}>
                 <span>{t('pages.adminCoupons.grantHelpDescription')}</span>
-                <Tag color="blue">{t('pages.adminCoupons.grantLimit', { count: grantMaxUsers })}</Tag>
-              </Space>
+                <ShopTag color="blue">{t('pages.adminCoupons.grantLimit', { count: grantMaxUsers })}</ShopTag>
+              </ShopSpace>
             )}
           />
           <Form.Item

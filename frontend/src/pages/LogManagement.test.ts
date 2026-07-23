@@ -15,14 +15,13 @@ describe('LogManagement mobile RangePicker guards', () => {
     expect(pageSource).not.toContain('catch (err: any)');
   });
 
-  it('uses a scoped body-mounted popup layer for the log export RangePicker', () => {
-    expect(pageSource).toContain("const logRangePickerClassNames = { popup: { root: 'shop-mobile-popup-layer log-management__rangePopup' } };");
-    expect(pageSource).toContain('<RangePicker');
-    expect(pageSource).toContain('placement="bottomLeft"');
-    expect(pageSource).toContain('classNames={logRangePickerClassNames}');
-    expect(pageSource).toContain('getPopupContainer={() => document.body}');
+  it('uses ShopRangePicker for the log export range without ant DatePicker', () => {
+    expect(pageSource).toContain('<ShopRangePicker');
     expect(pageSource).toContain('showTime');
     expect(pageSource).toContain('allowClear={false}');
+    expect(pageSource).not.toMatch(/<RangePicker\b/);
+    expect(pageSource).not.toMatch(/<DatePicker\b/);
+    expect(pageSource).not.toMatch(/import \{[^}]*\bDatePicker\b[^}]*\} from 'antd'/);
   });
 
   it('pins the mobile/tablet log export calendar inside the visible viewport', () => {

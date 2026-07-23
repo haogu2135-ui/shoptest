@@ -44,7 +44,7 @@ describe('BrowsingHistory mobile action readability guards', () => {
     expect(pageSource).toContain("title: t('pages.browsingHistory.nextActionStaleTitle'),");
     expect(pageSource).toContain('disabled={hasStaleHistoryData}');
     expect(pageSource).toContain("icon={hasStaleHistoryData ? <ShopIcon path={SI.reload} /> : historyNextAction.tone === 'ready' ? <ShopIcon path={SI.cart} /> : <ShopIcon path={SI.shopping} />}");
-    expect(pageSource).toContain('<Button size="small" type="primary" onClick={() => setReloadToken((current) => current + 1)}>');
+    expect(pageSource).toContain('<ShopButton size="small" type="primary" onClick={() => setReloadToken((current) => current + 1)}>');
     expect(pageSource).toContain("navigate('/coupons')");
     expect(pageSource).toContain("shop:open-support");
     expect(pageSource).toContain('reloadToken]');

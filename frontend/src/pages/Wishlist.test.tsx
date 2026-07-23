@@ -170,7 +170,7 @@ describe('Wishlist async lifecycle', () => {
     expect(source).toContain('const actionsDisabledByStaleData = Boolean(loadError);');
     expect(source).toContain("message={t('pages.wishlist.loadErrorTitle')}");
     expect(source).toContain("description={t('pages.wishlist.staleDataWarning')}");
-    expect(source).toContain('<Button size="small" onClick={fetchWishlist} loading={loading}>');
+    expect(source).toContain('<ShopButton size="small" onClick={fetchWishlist} loading={loading}>');
     expect(source).toContain("announceAccessibleMessage(t('pages.wishlist.staleActionBlocked'), 'warning')");
     expect(addSource).toContain('if (actionsDisabledByStaleData) {');
     expect(addAllSource).toContain('if (actionsDisabledByStaleData) {');

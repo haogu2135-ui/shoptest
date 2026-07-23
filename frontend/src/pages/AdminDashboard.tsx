@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Avatar, Button, Card, Col, List, Progress, Row, Space, Spin, Statistic, Table, Tag, Typography } from 'antd';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Col, Row, Table } from 'antd';
 import {
   ShopOutlined, ShoppingOutlined, TeamOutlined, DollarOutlined, CheckCircleOutlined, ClockCircleOutlined, WarningOutlined, RiseOutlined, TruckOutlined,
 } from '@ant-design/icons';
@@ -17,8 +17,18 @@ import { resolveProductImage } from '../utils/productMedia';
 import { isAdminRole } from '../utils/roles';
 import { cancelIdleTask, scheduleIdleTask, type ScheduledIdleTask } from '../utils/idleScheduler';
 import './AdminDashboard.css';
+import ShopButton from '../components/ShopButton';
+import ShopSpin from '../components/ShopSpin';
+import ShopProgress from '../components/ShopProgress';
+import ShopStatistic from '../components/ShopStatistic';
+import ShopAvatar from '../components/ShopAvatar';
+import ShopList from '../components/ShopList';
 
-const { Title } = Typography;
+import ShopTag from '../components/ShopTag';
+import ShopSpace from '../components/ShopSpace';
+import ShopTypography from '../components/ShopTypography';
+import ShopCard from '../components/ShopCard';
+const Title = ShopTypography.Title;
 
 const statusColors: Record<string, string> = {
   PENDING_PAYMENT: 'orange',
@@ -195,10 +205,10 @@ const TrendChartComponent: React.FC<TrendChartProps> = ({ data, formatMoney, lab
           />
         ))}
       </svg>
-      <Space size="large" className="admin-dashboard__chartLegend">
-        <Space><span className="admin-dashboard__legendSwatch admin-dashboard__legendSwatch--orders" />{labels.orders}</Space>
-        <Space><span className="admin-dashboard__legendSwatch admin-dashboard__legendSwatch--revenue" />{labels.revenue}</Space>
-      </Space>
+      <ShopSpace size="large" className="admin-dashboard__chartLegend">
+        <ShopSpace><span className="admin-dashboard__legendSwatch admin-dashboard__legendSwatch--orders" />{labels.orders}</ShopSpace>
+        <ShopSpace><span className="admin-dashboard__legendSwatch admin-dashboard__legendSwatch--revenue" />{labels.revenue}</ShopSpace>
+      </ShopSpace>
     </div>
   );
 };
@@ -225,7 +235,7 @@ const DonutChartComponent: React.FC<DonutChartProps> = ({ data, labels }) => {
   let offset = 0;
 
   return (
-    <Space align="center" className="admin-dashboard__donutChart">
+    <ShopSpace align="center" className="admin-dashboard__donutChart">
       <svg width="128" height="128" viewBox="0 0 128 128" role="img" aria-label={labels.orderStatusChart}>
         <circle cx="64" cy="64" r={radius} fill="none" stroke="#f0f0f0" strokeWidth="18" />
         {data.filter((item) => item.value > 0).map((item) => {
@@ -251,16 +261,16 @@ const DonutChartComponent: React.FC<DonutChartProps> = ({ data, labels }) => {
         <text x="64" y="60" textAnchor="middle" fontSize="20" fontWeight="700" fill="#222">{total}</text>
         <text x="64" y="78" textAnchor="middle" fontSize="11" fill="#888">{labels.orderUnit}</text>
       </svg>
-      <Space direction="vertical" size={6}>
+      <ShopSpace direction="vertical" size={6}>
         {data.map((item) => (
-          <Space key={item.label}>
+          <ShopSpace key={item.label}>
             <span className="admin-dashboard__donutSwatch" style={{ background: item.color }} />
             <span>{item.label}</span>
             <strong>{item.value}</strong>
-          </Space>
+          </ShopSpace>
         ))}
-      </Space>
-    </Space>
+      </ShopSpace>
+    </ShopSpace>
   );
 };
 
@@ -354,17 +364,25 @@ const AdminDashboard: React.FC = () => {
     [stats?.salesTrend],
   );
 
+  const accessDeniedHandledRef = useRef(false);
+
   useEffect(() => {
     let disposed = false;
     const fetchStats = async () => {
       if (authLoading) return;
       if (!token || !isAdminRole(user?.role)) {
-        setStats(null);
-        setLoadError(t('adminLayout.noPermission'));
-        setLoading(false);
-        navigate('/', { replace: true });
+        // Bail out after one denial update so unstable translator identities
+        // (or repeated navigate calls) cannot max out the update depth.
+        if (!accessDeniedHandledRef.current) {
+          accessDeniedHandledRef.current = true;
+          setStats(null);
+          setLoadError(t('adminLayout.noPermission'));
+          setLoading(false);
+          navigate('/', { replace: true });
+        }
         return;
       }
+      accessDeniedHandledRef.current = false;
       try {
         const res = await adminApi.getDashboard();
         if (disposed) return;
@@ -412,7 +430,7 @@ const AdminDashboard: React.FC = () => {
         aria-busy="true"
         aria-label={`${t('pages.adminDashboard.title')}: ${t('common.loading')}`}
       >
-        <Spin size="large" />
+        <ShopSpin size="large" />
       </div>
     );
   }
@@ -467,7 +485,7 @@ const AdminDashboard: React.FC = () => {
       title: t('common.status'),
       dataIndex: 'status',
       key: 'status',
-      render: (s: string) => <Tag color={getOrderStatusColor(s)}>{formatOrderStatusLabel(s)}</Tag>,
+      render: (s: string) => <ShopTag color={getOrderStatusColor(s)}>{formatOrderStatusLabel(s)}</ShopTag>,
     },
     {
       title: t('common.time'),
@@ -677,7 +695,7 @@ const AdminDashboard: React.FC = () => {
       width: 72,
       render: (value: string, row: TopDashboardProduct) => {
         const productName = dashboardProductName(row);
-        return <Avatar shape="square" size={48} src={resolveProductImage(value)}>{productName.slice(0, 1)}</Avatar>;
+        return <ShopAvatar shape="square" size={48} src={resolveProductImage(value)}>{productName.slice(0, 1)}</ShopAvatar>;
       },
     },
     {
@@ -700,7 +718,7 @@ const AdminDashboard: React.FC = () => {
     <div className={`admin-dashboard admin-dashboard--${language}`}>
       <div className="admin-dashboard__hero">
         <div>
-          <Typography.Text className="admin-dashboard__eyebrow">{t('adminLayout.dashboard')}</Typography.Text>
+          <ShopTypography.Text className="admin-dashboard__eyebrow">{t('adminLayout.dashboard')}</ShopTypography.Text>
           <Title level={3}>{t('pages.adminDashboard.title')}</Title>
         </div>
         <div className="admin-dashboard__heroMeta">
@@ -719,19 +737,19 @@ const AdminDashboard: React.FC = () => {
         <div className="admin-dashboard__readinessScore">
           <span>{t('pages.adminDashboard.commercialReadiness.eyebrow')}</span>
           <strong>{commercialReadinessScore}</strong>
-          <Tag color={commercialReadinessTone === 'ready' ? 'green' : commercialReadinessTone === 'watch' ? 'orange' : 'red'}>
+          <ShopTag color={commercialReadinessTone === 'ready' ? 'green' : commercialReadinessTone === 'watch' ? 'orange' : 'red'}>
             {commercialReadinessLabel}
-          </Tag>
+          </ShopTag>
         </div>
         <div className="admin-dashboard__readinessCopy">
-          <Typography.Text strong>{t('pages.adminDashboard.commercialReadiness.title')}</Typography.Text>
-          <Typography.Text type="secondary">
+          <ShopTypography.Text strong>{t('pages.adminDashboard.commercialReadiness.title')}</ShopTypography.Text>
+          <ShopTypography.Text type="secondary">
             {t('pages.adminDashboard.commercialReadiness.subtitle', {
               actions: openActionCount,
               sla: operationsSlaRiskTotal,
             })}
-          </Typography.Text>
-          <Progress
+          </ShopTypography.Text>
+          <ShopProgress
             percent={commercialReadinessScore}
             showInfo={false}
             strokeColor={commercialReadinessTone === 'ready' ? '#52c41a' : commercialReadinessTone === 'watch' ? '#faad14' : '#ee4d2d'}
@@ -762,8 +780,8 @@ const AdminDashboard: React.FC = () => {
         <div className="admin-dashboard__actionIntro">
           <WarningOutlined />
           <div>
-            <Typography.Text strong>{t('pages.adminDashboard.actionCenterTitle')}</Typography.Text>
-            <Typography.Text type="secondary">{t('pages.adminDashboard.actionCenterSubtitle')}</Typography.Text>
+            <ShopTypography.Text strong>{t('pages.adminDashboard.actionCenterTitle')}</ShopTypography.Text>
+            <ShopTypography.Text type="secondary">{t('pages.adminDashboard.actionCenterSubtitle')}</ShopTypography.Text>
           </div>
         </div>
         <div className="admin-dashboard__actionGrid">
@@ -778,7 +796,7 @@ const AdminDashboard: React.FC = () => {
             >
               <strong>{item.value}</strong>
               <span>{item.title}</span>
-              <Typography.Text type="secondary">{item.text}</Typography.Text>
+              <ShopTypography.Text type="secondary">{item.text}</ShopTypography.Text>
             </button>
           ))}
         </div>
@@ -786,11 +804,11 @@ const AdminDashboard: React.FC = () => {
 
       <section className={`admin-dashboard__paymentOps admin-dashboard__paymentOps--${paymentReturnRiskScore === 0 ? 'ready' : paymentReturnRiskScore >= 6 ? 'risk' : 'watch'}`} aria-label={paymentRefundCopy.title}>
         <div className="admin-dashboard__paymentOpsIntro">
-          <Typography.Text strong>{paymentRefundCopy.title}</Typography.Text>
-          <Typography.Text type="secondary">{paymentRefundCopy.subtitle}</Typography.Text>
-          <Tag color={paymentReturnRiskScore === 0 ? 'green' : paymentReturnRiskScore >= 6 ? 'red' : 'orange'}>
+          <ShopTypography.Text strong>{paymentRefundCopy.title}</ShopTypography.Text>
+          <ShopTypography.Text type="secondary">{paymentRefundCopy.subtitle}</ShopTypography.Text>
+          <ShopTag color={paymentReturnRiskScore === 0 ? 'green' : paymentReturnRiskScore >= 6 ? 'red' : 'orange'}>
             {paymentReturnHealth}
-          </Tag>
+          </ShopTag>
         </div>
         <div className="admin-dashboard__paymentOpsGrid">
           {paymentReturnCards.map((item) => (
@@ -809,15 +827,15 @@ const AdminDashboard: React.FC = () => {
         </div>
         <div className="admin-dashboard__paymentOpsActions">
           <div>
-            <Typography.Text strong>{paymentRefundCopy.guideTitle}</Typography.Text>
-            <Typography.Text type="secondary">{paymentRefundCopy.guideText}</Typography.Text>
+            <ShopTypography.Text strong>{paymentRefundCopy.guideTitle}</ShopTypography.Text>
+            <ShopTypography.Text type="secondary">{paymentRefundCopy.guideText}</ShopTypography.Text>
           </div>
-          <Space wrap>
-            <Button size="small" aria-label={`${paymentRefundCopy.title}: ${paymentRefundCopy.paymentAction}`} title={`${paymentRefundCopy.title}: ${paymentRefundCopy.paymentAction}`} onClick={() => navigate('/admin/orders?status=PENDING_PAYMENT')}>{paymentRefundCopy.paymentAction}</Button>
-            <Button size="small" type="primary" aria-label={`${paymentRefundCopy.title}: ${paymentRefundCopy.returnAction}`} title={`${paymentRefundCopy.title}: ${paymentRefundCopy.returnAction}`} onClick={() => navigate('/admin/orders?quick=RETURN_SHIPPED')}>{paymentRefundCopy.returnAction}</Button>
-            <Button size="small" aria-label={`${paymentRefundCopy.title}: ${paymentRefundCopy.auditAction}`} title={`${paymentRefundCopy.title}: ${paymentRefundCopy.auditAction}`} onClick={() => navigate('/admin/audit-logs?view=payment-failures')}>{paymentRefundCopy.auditAction}</Button>
-            <Button size="small" data-admin-payment-provider-readiness="true" aria-label={`${paymentRefundCopy.title}: ${paymentRefundCopy.providerReadinessAction}`} title={`${paymentRefundCopy.title}: ${paymentRefundCopy.providerReadinessAction}`} onClick={() => navigate('/admin/system')}>{paymentRefundCopy.providerReadinessAction}</Button>
-          </Space>
+          <ShopSpace wrap>
+            <ShopButton size="small" aria-label={`${paymentRefundCopy.title}: ${paymentRefundCopy.paymentAction}`} title={`${paymentRefundCopy.title}: ${paymentRefundCopy.paymentAction}`} onClick={() => navigate('/admin/orders?status=PENDING_PAYMENT')}>{paymentRefundCopy.paymentAction}</ShopButton>
+            <ShopButton size="small" type="primary" aria-label={`${paymentRefundCopy.title}: ${paymentRefundCopy.returnAction}`} title={`${paymentRefundCopy.title}: ${paymentRefundCopy.returnAction}`} onClick={() => navigate('/admin/orders?quick=RETURN_SHIPPED')}>{paymentRefundCopy.returnAction}</ShopButton>
+            <ShopButton size="small" aria-label={`${paymentRefundCopy.title}: ${paymentRefundCopy.auditAction}`} title={`${paymentRefundCopy.title}: ${paymentRefundCopy.auditAction}`} onClick={() => navigate('/admin/audit-logs?view=payment-failures')}>{paymentRefundCopy.auditAction}</ShopButton>
+            <ShopButton size="small" data-admin-payment-provider-readiness="true" aria-label={`${paymentRefundCopy.title}: ${paymentRefundCopy.providerReadinessAction}`} title={`${paymentRefundCopy.title}: ${paymentRefundCopy.providerReadinessAction}`} onClick={() => navigate('/admin/system')}>{paymentRefundCopy.providerReadinessAction}</ShopButton>
+          </ShopSpace>
         </div>
       </section>
 
@@ -825,12 +843,12 @@ const AdminDashboard: React.FC = () => {
         <div className="admin-dashboard__slaIntro">
           <ClockCircleOutlined />
           <div>
-            <Typography.Text strong>{slaCopy.title}</Typography.Text>
-            <Typography.Text type="secondary">{slaCopy.subtitle}</Typography.Text>
+            <ShopTypography.Text strong>{slaCopy.title}</ShopTypography.Text>
+            <ShopTypography.Text type="secondary">{slaCopy.subtitle}</ShopTypography.Text>
           </div>
-          <Tag color={operationsSlaRiskTotal === 0 ? 'green' : operationsSlaRiskTotal >= 4 ? 'red' : 'orange'}>
+          <ShopTag color={operationsSlaRiskTotal === 0 ? 'green' : operationsSlaRiskTotal >= 4 ? 'red' : 'orange'}>
             {operationsSlaHealth}
-          </Tag>
+          </ShopTag>
         </div>
         <div className="admin-dashboard__slaGrid">
           {operationsSlaCards.map((item) => (
@@ -844,7 +862,7 @@ const AdminDashboard: React.FC = () => {
             >
               <strong>{item.value}</strong>
               <span>{item.title}</span>
-              <Typography.Text type="secondary">{item.text}</Typography.Text>
+              <ShopTypography.Text type="secondary">{item.text}</ShopTypography.Text>
             </button>
           ))}
         </div>
@@ -852,92 +870,92 @@ const AdminDashboard: React.FC = () => {
 
       <Row gutter={[16, 16]} className="admin-dashboard__statRow">
         <Col xs={24} sm={12} lg={6}>
-          <Card className="admin-dashboard__statCard admin-dashboard__statCard--catalog">
-            <Statistic title={t('pages.adminDashboard.products')} value={stats.totalProducts} prefix={<ShopOutlined />} />
-          </Card>
+          <ShopCard className="admin-dashboard__statCard admin-dashboard__statCard--catalog">
+            <ShopStatistic title={t('pages.adminDashboard.products')} value={stats.totalProducts} prefix={<ShopOutlined />} />
+          </ShopCard>
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <Card className="admin-dashboard__statCard admin-dashboard__statCard--orders">
-            <Statistic title={t('pages.adminDashboard.orders')} value={stats.totalOrders} prefix={<ShoppingOutlined />} />
-          </Card>
+          <ShopCard className="admin-dashboard__statCard admin-dashboard__statCard--orders">
+            <ShopStatistic title={t('pages.adminDashboard.orders')} value={stats.totalOrders} prefix={<ShoppingOutlined />} />
+          </ShopCard>
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <Card className="admin-dashboard__statCard admin-dashboard__statCard--users">
-            <Statistic title={t('pages.adminDashboard.users')} value={stats.totalUsers} prefix={<TeamOutlined />} />
-          </Card>
+          <ShopCard className="admin-dashboard__statCard admin-dashboard__statCard--users">
+            <ShopStatistic title={t('pages.adminDashboard.users')} value={stats.totalUsers} prefix={<TeamOutlined />} />
+          </ShopCard>
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <Card className="admin-dashboard__statCard admin-dashboard__statCard--money">
-            <Statistic title={t('pages.adminDashboard.revenue')} value={Number(stats.totalRevenue || 0)} prefix={<DollarOutlined />} formatter={(value) => formatMoney(Number(value || 0))} />
-          </Card>
-        </Col>
-      </Row>
-
-      <Row gutter={[16, 16]} className="admin-dashboard__statRow">
-        <Col xs={24} sm={12} lg={6}>
-          <Card className="admin-dashboard__statCard admin-dashboard__statCard--success">
-            <Statistic title={t('pages.adminDashboard.paidOrders')} value={stats.paidOrders || 0} prefix={<CheckCircleOutlined />} />
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} lg={6}>
-          <Card className={pendingPaymentOrders > 0 ? 'admin-dashboard__statCard admin-dashboard__statCard--warning' : 'admin-dashboard__statCard admin-dashboard__statCard--calm'}>
-            <Statistic title={t('pages.adminDashboard.pendingPayment')} value={stats.pendingPaymentOrders || 0} prefix={<ClockCircleOutlined />} />
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} lg={6}>
-          <Card className={lowStockProducts > 0 ? 'admin-dashboard__statCard admin-dashboard__statCard--danger' : 'admin-dashboard__statCard admin-dashboard__statCard--calm'}>
-            <Statistic title={t('pages.adminDashboard.lowStock')} value={stats.lowStockProducts || 0} prefix={<WarningOutlined />} />
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} lg={6}>
-          <Card className="admin-dashboard__statCard admin-dashboard__statCard--growth">
-            <Statistic title={t('pages.adminDashboard.conversionRate')} value={stats.conversionRate || 0} suffix="%" prefix={<RiseOutlined />} precision={2} />
-          </Card>
+          <ShopCard className="admin-dashboard__statCard admin-dashboard__statCard--money">
+            <ShopStatistic title={t('pages.adminDashboard.revenue')} value={Number(stats.totalRevenue || 0)} prefix={<DollarOutlined />} formatter={(value) => formatMoney(Number(value || 0))} />
+          </ShopCard>
         </Col>
       </Row>
 
       <Row gutter={[16, 16]} className="admin-dashboard__statRow">
         <Col xs={24} sm={12} lg={6}>
-          <Card className="admin-dashboard__statCard admin-dashboard__statCard--money">
-            <Statistic title={t('pages.adminDashboard.averageOrderValue')} value={stats.averageOrderValue || 0} prefix={<DollarOutlined />} formatter={(value) => formatMoney(Number(value || 0))} precision={2} />
-          </Card>
+          <ShopCard className="admin-dashboard__statCard admin-dashboard__statCard--success">
+            <ShopStatistic title={t('pages.adminDashboard.paidOrders')} value={stats.paidOrders || 0} prefix={<CheckCircleOutlined />} />
+          </ShopCard>
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <Card className="admin-dashboard__statCard admin-dashboard__statCard--money">
-            <Statistic title={t('pages.adminDashboard.netRevenue')} value={netRevenue} prefix={<DollarOutlined />} formatter={(value) => formatMoney(Number(value || 0))} />
-          </Card>
+          <ShopCard className={pendingPaymentOrders > 0 ? 'admin-dashboard__statCard admin-dashboard__statCard--warning' : 'admin-dashboard__statCard admin-dashboard__statCard--calm'}>
+            <ShopStatistic title={t('pages.adminDashboard.pendingPayment')} value={stats.pendingPaymentOrders || 0} prefix={<ClockCircleOutlined />} />
+          </ShopCard>
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <Card className={refundedAmount > 0 ? 'admin-dashboard__statCard admin-dashboard__statCard--warning' : 'admin-dashboard__statCard admin-dashboard__statCard--calm'}>
-            <Statistic title={t('pages.adminDashboard.refundedAmount')} value={refundedAmount} prefix={<DollarOutlined />} formatter={(value) => formatMoney(Number(value || 0))} />
-          </Card>
+          <ShopCard className={lowStockProducts > 0 ? 'admin-dashboard__statCard admin-dashboard__statCard--danger' : 'admin-dashboard__statCard admin-dashboard__statCard--calm'}>
+            <ShopStatistic title={t('pages.adminDashboard.lowStock')} value={stats.lowStockProducts || 0} prefix={<WarningOutlined />} />
+          </ShopCard>
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <Card className={refundedOrders > 0 ? 'admin-dashboard__statCard admin-dashboard__statCard--warning' : 'admin-dashboard__statCard admin-dashboard__statCard--calm'}>
-            <Statistic title={t('pages.adminDashboard.refundedOrders')} value={refundedOrders} prefix={<WarningOutlined />} />
-          </Card>
+          <ShopCard className="admin-dashboard__statCard admin-dashboard__statCard--growth">
+            <ShopStatistic title={t('pages.adminDashboard.conversionRate')} value={stats.conversionRate || 0} suffix="%" prefix={<RiseOutlined />} precision={2} />
+          </ShopCard>
+        </Col>
+      </Row>
+
+      <Row gutter={[16, 16]} className="admin-dashboard__statRow">
+        <Col xs={24} sm={12} lg={6}>
+          <ShopCard className="admin-dashboard__statCard admin-dashboard__statCard--money">
+            <ShopStatistic title={t('pages.adminDashboard.averageOrderValue')} value={stats.averageOrderValue || 0} prefix={<DollarOutlined />} formatter={(value) => formatMoney(Number(value || 0))} precision={2} />
+          </ShopCard>
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <Card className={refundRate > 0 ? 'admin-dashboard__statCard admin-dashboard__statCard--warning' : 'admin-dashboard__statCard admin-dashboard__statCard--calm'}>
-            <Statistic title={t('pages.adminDashboard.refundRate')} value={refundRate} suffix="%" prefix={<RiseOutlined />} precision={2} />
-          </Card>
+          <ShopCard className="admin-dashboard__statCard admin-dashboard__statCard--money">
+            <ShopStatistic title={t('pages.adminDashboard.netRevenue')} value={netRevenue} prefix={<DollarOutlined />} formatter={(value) => formatMoney(Number(value || 0))} />
+          </ShopCard>
+        </Col>
+        <Col xs={24} sm={12} lg={6}>
+          <ShopCard className={refundedAmount > 0 ? 'admin-dashboard__statCard admin-dashboard__statCard--warning' : 'admin-dashboard__statCard admin-dashboard__statCard--calm'}>
+            <ShopStatistic title={t('pages.adminDashboard.refundedAmount')} value={refundedAmount} prefix={<DollarOutlined />} formatter={(value) => formatMoney(Number(value || 0))} />
+          </ShopCard>
+        </Col>
+        <Col xs={24} sm={12} lg={6}>
+          <ShopCard className={refundedOrders > 0 ? 'admin-dashboard__statCard admin-dashboard__statCard--warning' : 'admin-dashboard__statCard admin-dashboard__statCard--calm'}>
+            <ShopStatistic title={t('pages.adminDashboard.refundedOrders')} value={refundedOrders} prefix={<WarningOutlined />} />
+          </ShopCard>
+        </Col>
+        <Col xs={24} sm={12} lg={6}>
+          <ShopCard className={refundRate > 0 ? 'admin-dashboard__statCard admin-dashboard__statCard--warning' : 'admin-dashboard__statCard admin-dashboard__statCard--calm'}>
+            <ShopStatistic title={t('pages.adminDashboard.refundRate')} value={refundRate} suffix="%" prefix={<RiseOutlined />} precision={2} />
+          </ShopCard>
         </Col>
       </Row>
 
       <Row gutter={[16, 16]} className="admin-dashboard__contentRow">
         <Col xs={24} lg={8}>
-          <Card className="admin-dashboard__panel" title={t('pages.adminDashboard.orderStatus')}>
+          <ShopCard className="admin-dashboard__panel" title={t('pages.adminDashboard.orderStatus')}>
             <DonutChart
               data={statusChartData}
               labels={donutChartLabels}
             />
-          </Card>
+          </ShopCard>
         </Col>
         <Col xs={24} lg={8}>
-          <Card className={trackingCoverage < 80 ? 'admin-dashboard__panel admin-dashboard__panel--watch' : 'admin-dashboard__panel admin-dashboard__panel--ready'} title={t('pages.adminDashboard.logisticsHealth')}>
-            <Statistic title={t('pages.adminDashboard.trackingCoverage')} value={trackingCoverage} suffix="%" prefix={<TruckOutlined />} />
-            <Progress percent={trackingCoverage} strokeColor={trackingCoverage < 80 ? '#faad14' : '#52c41a'} />
-            <Space direction="vertical" className="admin-dashboard__metricList">
+          <ShopCard className={trackingCoverage < 80 ? 'admin-dashboard__panel admin-dashboard__panel--watch' : 'admin-dashboard__panel admin-dashboard__panel--ready'} title={t('pages.adminDashboard.logisticsHealth')}>
+            <ShopStatistic title={t('pages.adminDashboard.trackingCoverage')} value={trackingCoverage} suffix="%" prefix={<TruckOutlined />} />
+            <ShopProgress percent={trackingCoverage} strokeColor={trackingCoverage < 80 ? '#faad14' : '#52c41a'} />
+            <ShopSpace direction="vertical" className="admin-dashboard__metricList">
               <div>
                 <span>{t('pages.adminDashboard.shippedOrders')}</span>
                 <strong>{shippedOrders}</strong>
@@ -950,23 +968,23 @@ const AdminDashboard: React.FC = () => {
                 <span>{t('pages.adminDashboard.missingTracking')}</span>
                 <strong>{stats.ordersWithoutTracking || 0}</strong>
               </div>
-            </Space>
-          </Card>
+            </ShopSpace>
+          </ShopCard>
         </Col>
         <Col xs={24} lg={8}>
-          <Card className="admin-dashboard__panel admin-dashboard__trackingPanel" title={t('pages.adminDashboard.trackShipment')}>
+          <ShopCard className="admin-dashboard__panel admin-dashboard__trackingPanel" title={t('pages.adminDashboard.trackShipment')}>
             {deferredPanelsReady ? (
               <SeventeenTrackWidget height={420} />
             ) : (
               <div className="admin-dashboard__deferredPanelPlaceholder" aria-hidden="true" />
             )}
-          </Card>
+          </ShopCard>
         </Col>
       </Row>
 
       <Row gutter={[16, 16]} className="admin-dashboard__contentRow">
         <Col xs={24} lg={16}>
-          <Card className="admin-dashboard__panel admin-dashboard__trendPanel" title={t('pages.adminDashboard.salesTrend')}>
+          <ShopCard className="admin-dashboard__panel admin-dashboard__trendPanel" title={t('pages.adminDashboard.salesTrend')}>
             {deferredPanelsReady ? (
               <TrendChart
                 data={salesTrendData}
@@ -976,31 +994,31 @@ const AdminDashboard: React.FC = () => {
             ) : (
               <div className="admin-dashboard__deferredPanelPlaceholder admin-dashboard__deferredPanelPlaceholder--trend" aria-hidden="true" />
             )}
-          </Card>
+          </ShopCard>
         </Col>
         <Col xs={24} lg={8}>
-          <Card className="admin-dashboard__panel" title={t('pages.adminDashboard.paymentMethods')}>
-            <Space direction="vertical" className="admin-dashboard__paymentMethods">
+          <ShopCard className="admin-dashboard__panel" title={t('pages.adminDashboard.paymentMethods')}>
+            <ShopSpace direction="vertical" className="admin-dashboard__paymentMethods">
               {Object.entries(stats.paymentMethodBreakdown || {}).map(([method, count]) => (
                 <div key={method} className="admin-dashboard__paymentMethod">
                   <div>
                     <span>{paymentMethodLabel(method, t)}</span>
                     <strong>{count}</strong>
                   </div>
-                  <Progress percent={Math.round((count / maxPaymentCount) * 100)} showInfo={false} strokeColor="#52c41a" />
+                  <ShopProgress percent={Math.round((count / maxPaymentCount) * 100)} showInfo={false} strokeColor="#52c41a" />
                 </div>
               ))}
               {Object.keys(stats.paymentMethodBreakdown || {}).length === 0 && (
                 <div className="admin-dashboard__emptyState">{t('pages.adminDashboard.noOrderData')}</div>
               )}
-            </Space>
-          </Card>
+            </ShopSpace>
+          </ShopCard>
         </Col>
       </Row>
 
       <Row gutter={[16, 16]} className="admin-dashboard__contentRow">
         <Col xs={24} lg={16}>
-          <Card className="admin-dashboard__panel" title={t('pages.adminDashboard.recentOrders')}>
+          <ShopCard className="admin-dashboard__panel" title={t('pages.adminDashboard.recentOrders')}>
             <Table
               columns={recentOrderColumns}
               dataSource={stats.recentOrders}
@@ -1009,26 +1027,26 @@ const AdminDashboard: React.FC = () => {
               size="small"
               scroll={{ x: 720 }}
             />
-          </Card>
+          </ShopCard>
         </Col>
         <Col xs={24} lg={8}>
-          <Card className="admin-dashboard__panel" title={t('pages.adminDashboard.statusBreakdown')}>
+          <ShopCard className="admin-dashboard__panel" title={t('pages.adminDashboard.statusBreakdown')}>
             {Object.entries(stats.orderStatusBreakdown || {}).map(([status, count]) => (
               <div key={status} className="admin-dashboard__statusRow">
-                <Tag color={getOrderStatusColor(status)}>{formatOrderStatusLabel(status)}</Tag>
+                <ShopTag color={getOrderStatusColor(status)}>{formatOrderStatusLabel(status)}</ShopTag>
                 <span>{count}</span>
               </div>
             ))}
             {Object.keys(stats.orderStatusBreakdown || {}).length === 0 && (
               <div className="admin-dashboard__emptyState">{t('pages.adminDashboard.noOrderData')}</div>
             )}
-          </Card>
+          </ShopCard>
         </Col>
       </Row>
 
       <Row gutter={[16, 16]} className="admin-dashboard__contentRow">
         <Col xs={24} lg={16}>
-          <Card className="admin-dashboard__panel" title={t('pages.adminDashboard.topProducts')}>
+          <ShopCard className="admin-dashboard__panel" title={t('pages.adminDashboard.topProducts')}>
             <Table
               columns={topProductColumns}
               dataSource={stats.topProducts || []}
@@ -1037,29 +1055,29 @@ const AdminDashboard: React.FC = () => {
               size="small"
               scroll={{ x: 620 }}
             />
-          </Card>
+          </ShopCard>
         </Col>
         <Col xs={24} lg={8}>
-          <Card className={lowStockProducts > 0 ? 'admin-dashboard__panel admin-dashboard__panel--watch' : 'admin-dashboard__panel admin-dashboard__panel--ready'} title={t('pages.adminDashboard.lowStockList')}>
-            <List
+          <ShopCard className={lowStockProducts > 0 ? 'admin-dashboard__panel admin-dashboard__panel--watch' : 'admin-dashboard__panel admin-dashboard__panel--ready'} title={t('pages.adminDashboard.lowStockList')}>
+            <ShopList
               className="admin-dashboard__lowStockList"
               dataSource={stats.lowStockList || []}
               locale={{ emptyText: t('pages.adminDashboard.noLowStock') }}
               renderItem={(item) => {
                 const productName = dashboardProductName(item);
                 return (
-                  <List.Item>
-                    <List.Item.Meta
-                      avatar={<Avatar shape="square" src={resolveProductImage(item.imageUrl)}>{productName.slice(0, 1)}</Avatar>}
+                  <ShopList.Item>
+                    <ShopList.Item.Meta
+                      avatar={<ShopAvatar shape="square" src={resolveProductImage(item.imageUrl)}>{productName.slice(0, 1)}</ShopAvatar>}
                       title={productName}
                       description={`${t('common.id')}: ${item.id}`}
                     />
-                    <Tag color={(item.stock || 0) <= 0 ? 'red' : 'orange'}>{item.stock}</Tag>
-                  </List.Item>
+                    <ShopTag color={(item.stock || 0) <= 0 ? 'red' : 'orange'}>{item.stock}</ShopTag>
+                  </ShopList.Item>
                 );
               }}
             />
-          </Card>
+          </ShopCard>
         </Col>
       </Row>
     </div>

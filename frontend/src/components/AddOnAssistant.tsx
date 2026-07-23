@@ -2,7 +2,6 @@ import React, { Component, useEffect, useMemo, useState } from 'react';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { ShopIcon, SI } from './ShopIcon';
 import type { ErrorInfo, ReactNode } from 'react';
-import { Alert, Button } from 'antd';
 import { productApi } from '../api';
 import type { ProductPublic as Product } from '../types';
 import { useLanguage } from '../i18n';
@@ -16,7 +15,8 @@ import { getApiErrorMessage } from '../utils/apiError';
 import { reportNonBlockingError } from '../utils/nonBlockingError';
 import './AddOnAssistant.css';
 import '../styles/mobile-page-contrast.css';
-
+import ShopButton from './ShopButton';
+import ShopAlert from './ShopAlert';
 
 const getAddOnPrice = (product: Product) => Number(product.effectivePrice ?? product.price ?? 0);
 const ADD_ON_CACHE_TTL_MS = 2 * 60 * 1000;
@@ -161,15 +161,15 @@ const AddOnAssistantContent: React.FC<AddOnAssistantProps> = ({ cartProductIds, 
   if (loadError) {
     return (
       <section className="add-on-assistant add-on-assistant--error">
-        <Alert
+        <ShopAlert
           type="warning"
           showIcon
           message={t('pages.addOnAssistant.loadErrorTitle')}
           description={loadError}
           action={(
-            <Button size="small" onClick={() => setReloadToken((current) => current + 1)}>
+            <ShopButton size="small" onClick={() => setReloadToken((current) => current + 1)}>
               {t('common.retry')}
-            </Button>
+            </ShopButton>
           )}
         />
       </section>
@@ -223,7 +223,7 @@ const AddOnAssistantContent: React.FC<AddOnAssistantProps> = ({ cartProductIds, 
                   ) : null}
                 </div>
               </div>
-              <Button
+              <ShopButton
                 size="small"
                 type="primary"
                 icon={<ShopIcon path={SI.plus} />}
@@ -233,7 +233,7 @@ const AddOnAssistantContent: React.FC<AddOnAssistantProps> = ({ cartProductIds, 
                 onClick={() => handleAdd(product)}
               >
                 {t('pages.addOnAssistant.add')}
-              </Button>
+              </ShopButton>
             </article>
           );
         })}

@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { message } from 'antd';
+
 import fs from 'fs';
 import path from 'path';
 import Cart, { deriveCartCheckoutMetrics } from './Cart';
@@ -54,7 +54,6 @@ const configureSafeStorageMock = () => {
     return true;
   });
 };
-
 
 jest.mock('../utils/accessibleMessage', () => ({
   announceAccessibleMessage: jest.fn(),
@@ -583,7 +582,6 @@ const advanceQuantityDebounce = async (ms = 350) => {
     await Promise.resolve();
   });
 };
-
 
 const waitForCondition = async (
   assertion: () => void,
@@ -1328,7 +1326,7 @@ describe('cart to checkout flows', () => {
     expect(savedRenderSource).toContain('const restoringSavedItem = restoringSaved || restoringSavedItemIds.includes(item.id);');
     expect(savedRenderSource).toContain('loading={restoringSavedItem}');
     expect(savedRenderSource).toContain('disabled={hasStaleCartData || restoringSavedItem}');
-    expect(savedRenderSource).toContain('<Button danger type="text" icon={<ShopIcon path={SI.delete} />} disabled={restoringSavedItem}');
+    expect(savedRenderSource).toContain('<ShopButton danger type="text" icon={<ShopIcon path={SI.delete} />} disabled={restoringSavedItem}');
   });
 
   it('keeps saved-for-later items exposed as a navigable list', () => {

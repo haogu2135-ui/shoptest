@@ -1,11 +1,12 @@
 import React from 'react';
 import { ShopIcon, SI } from '../components/ShopIcon';
-import { Button } from 'antd';
+
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../i18n';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useDocumentMeta } from '../hooks/useDocumentMeta';
 import './NotFound.css';
+import ShopButton from '../components/ShopButton';
 
 const NotFound: React.FC = () => {
   const { t } = useLanguage();
@@ -39,35 +40,35 @@ const NotFound: React.FC = () => {
           <span className="not-found-page__hint">{t('notFound.hint')}</span>
         </div>
         <div className="not-found-page__resultExtra">
-          <Button
+          <ShopButton
             key="home"
             type="primary"
             icon={<ShopIcon path={SI.home} />}
             onClick={() => navigate('/')}
           >
             {t('notFound.backHome')}
-          </Button>
-          <Button
+          </ShopButton>
+          <ShopButton
             key="search"
             icon={<ShopIcon path={SI.search} />}
             onClick={() => navigate('/products')}
           >
             {t('notFound.searchProducts')}
-          </Button>
-          <Button
+          </ShopButton>
+          <ShopButton
             key="coupons"
             icon={<ShopIcon path={SI.gift} />}
             onClick={() => navigate('/coupons')}
           >
             {t('notFound.browseCoupons')}
-          </Button>
-          <Button
+          </ShopButton>
+          <ShopButton
             key="track"
             icon={<ShopIcon path={SI.fileSearch} />}
             onClick={() => navigate('/track-order')}
           >
             {t('notFound.trackOrder')}
-          </Button>
+          </ShopButton>
         </div>
       </section>
     </main>

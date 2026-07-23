@@ -1,10 +1,11 @@
 import React, { useLayoutEffect, useRef, useState } from 'react';
 import { ShopIcon, SI } from './ShopIcon';
-import { Button } from 'antd';
+
 import { Link } from 'react-router-dom';
 import { useLanguage } from '../i18n';
 import { acceptCookieConsent, hasCookieConsent } from '../utils/cookieConsent';
 import './CookieConsentBanner.css';
+import ShopButton from './ShopButton';
 
 const COOKIE_CONSENT_BODY_CLASS = 'shop-cookie-consent-visible';
 const COOKIE_CONSENT_CLEARANCE_VAR = '--shop-cookie-consent-clearance';
@@ -103,7 +104,7 @@ const CookieConsentBanner: React.FC = () => {
           </p>
         </div>
         <div className="cookie-consent-banner__actions">
-          <Button
+          <ShopButton
             type="default"
             className="cookie-consent-banner__button"
             onClick={() => accept(true)}
@@ -111,8 +112,8 @@ const CookieConsentBanner: React.FC = () => {
             title={t('cookieConsent.acceptEssential')}
           >
             {t('cookieConsent.acceptEssential')}
-          </Button>
-          <Button
+          </ShopButton>
+          <ShopButton
             type="primary"
             className="cookie-consent-banner__button"
             onClick={() => accept(false)}
@@ -120,7 +121,7 @@ const CookieConsentBanner: React.FC = () => {
             title={t('cookieConsent.acceptAll')}
           >
             {t('cookieConsent.acceptAll')}
-          </Button>
+          </ShopButton>
         </div>
       </div>
     </div>

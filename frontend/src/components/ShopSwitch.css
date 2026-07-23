@@ -1,0 +1,115 @@
+.shop-switch {
+  position: relative;
+  display: inline-flex;
+  min-width: 52px;
+  min-height: 44px;
+  align-items: center;
+  justify-content: flex-start;
+  margin: 0;
+  padding: 0 4px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(16, 47, 34, 0.18);
+  color: #173f2b;
+  font: inherit;
+  font-size: max(12px, 0.8em);
+  font-weight: 700;
+  line-height: 1;
+  vertical-align: middle;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color 0.16s ease;
+}
+
+.shop-switch--small {
+  min-width: 44px;
+  min-height: 36px;
+}
+
+.shop-switch--checked {
+  background: #124734;
+  color: #fff;
+}
+
+.shop-switch--disabled,
+.shop-switch:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.shop-switch:focus-visible {
+  outline: 3px solid rgba(18, 71, 52, 0.28);
+  outline-offset: 2px;
+}
+
+.shop-switch__handle {
+  position: absolute;
+  top: 50%;
+  left: 4px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(15, 33, 25, 0.22);
+  transform: translateY(-50%);
+  transition: left 0.16s ease;
+  pointer-events: none;
+}
+
+.shop-switch--small .shop-switch__handle {
+  width: 22px;
+  height: 22px;
+}
+
+.shop-switch--checked .shop-switch__handle {
+  left: calc(100% - 32px);
+}
+
+.shop-switch--small.shop-switch--checked .shop-switch__handle {
+  left: calc(100% - 26px);
+}
+
+.shop-switch__inner {
+  display: inline-flex;
+  width: 100%;
+  min-height: 36px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 10px 0 34px;
+  box-sizing: border-box;
+  pointer-events: none;
+}
+
+.shop-switch--checked .shop-switch__inner {
+  padding: 0 34px 0 10px;
+}
+
+.shop-switch--small .shop-switch__inner {
+  min-height: 28px;
+  padding: 0 8px 0 28px;
+}
+
+.shop-switch--small.shop-switch--checked .shop-switch__inner {
+  padding: 0 28px 0 8px;
+}
+
+.shop-switch__innerText {
+  display: none;
+}
+
+.shop-switch__activeText {
+  display: inline-flex;
+  max-width: 9em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shop-switch--loading {
+  cursor: wait;
+}
+
+.shop-switch--loading .shop-switch__handle {
+  opacity: 0.72;
+}

@@ -30,4 +30,10 @@ describe('ShopBadge', () => {
     );
     expect(container.querySelector('.shop-badge__count')?.textContent).toBe('3');
   });
+  it('renders status mode with text', () => {
+    render(<ShopBadge status="success" text="Online" />);
+    expect(document.querySelector('.shop-badge--status-success')).toBeTruthy();
+    expect(screen.getByText('Online')).toBeInTheDocument();
+  });
+
 });

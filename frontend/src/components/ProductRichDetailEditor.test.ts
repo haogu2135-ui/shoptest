@@ -8,7 +8,7 @@ describe('ProductRichDetailEditor admin content contract', () => {
     expect(source).toContain('aria-label={addRichTextLabel}');
     expect(source).toContain('aria-label={addRichImageLabel}');
     expect(source).toContain('aria-label={addRichVideoLabel}');
-    expect(source).toContain('aria-label={typeSelectLabel}');
+    expect(source).toContain('ariaLabel={typeSelectLabel}');
     expect(source).toContain('aria-label={moveUpLabel}');
     expect(source).toContain('aria-label={moveDownLabel}');
     expect(source).toContain('aria-label={deleteLabel}');
@@ -18,8 +18,8 @@ describe('ProductRichDetailEditor admin content contract', () => {
   });
 
   it('keeps mobile-safe popups, compaction, and media preview restrictions', () => {
-    expect(source).toContain("root: 'shop-mobile-popup-layer product-management-page__editorPopup'");
-    expect(source).toContain('getPopupContainer={() => document.body}');
+    expect(source).toContain('ShopSelect');
+    expect(source).toContain('popupClassName="shop-mobile-popup-layer product-management-page__editorPopup"');
     expect(source).toContain('const compactBlocks = (blocks: ProductDetailBlock[])');
     expect(source).toContain('emit(compactBlocks(blocks));');
     expect(source).toContain('if (!canEmbedVideoUrl(mediaUrl))');

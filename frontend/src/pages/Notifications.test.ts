@@ -57,7 +57,7 @@ describe('Notifications mobile bottom-nav clearance contract', () => {
 
     expect(source).toContain('const notificationActionsDisabled = Boolean(fetchError);');
     expect(source).toContain("description={t('pages.notifications.staleDataWarning')}");
-    expect(source).toContain("action={<Button size=\"small\" onClick={() => fetchNotifications()}>{t('common.retry')}</Button>}");
+    expect(source).toContain("action={<ShopButton size=\"small\" onClick={() => fetchNotifications()}>{t('common.retry')}</ShopButton>}");
     expect(source).toContain('disabled={notificationActionsDisabled}');
   });
 
@@ -89,7 +89,6 @@ describe('Notifications mobile bottom-nav clearance contract', () => {
     expect(source).toContain('(SO\\d{6,})');
 
   });
-
 
   it('keeps a commercial multi-path guest auth gate instead of hard-redirect-only login', () => {
     const source = readNotificationsSource();

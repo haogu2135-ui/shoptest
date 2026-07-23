@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import ShopRate from './ShopRate';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { ShopIcon, SI } from './ShopIcon';
-import { Button, Avatar, Upload } from 'antd';
+
 import { ShopTextArea } from './ShopInput';
 import ShopSelect from './ShopSelect';
 import { useNavigate } from 'react-router-dom';
@@ -16,6 +16,9 @@ import { getApiErrorMessage } from '../utils/apiError';
 import { productImageFallback, resolveProductImage } from '../utils/productMedia';
 import './ProductReview.css';
 import '../styles/mobile-page-contrast.css';
+import ShopButton from './ShopButton';
+import ShopUpload from './ShopUpload';
+import ShopAvatar from './ShopAvatar';
 
 const MAX_REVIEW_IMAGES = 4;
 const MAX_REVIEW_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
@@ -65,15 +68,15 @@ export const ProductReview: React.FC<ProductReviewProps> = ({
     const handleImageUpload = async (file: File) => {
         if (!file.type || !['image/jpeg', 'image/png', 'image/gif'].includes(file.type.toLowerCase())) {
             announceAccessibleMessage(t('pages.review.imageInvalidType'), 'warning');
-            return Upload.LIST_IGNORE;
+            return ShopUpload.LIST_IGNORE;
         }
         if (file.size > MAX_REVIEW_IMAGE_SIZE_BYTES) {
             announceAccessibleMessage(t('pages.review.imageTooLarge'), 'warning');
-            return Upload.LIST_IGNORE;
+            return ShopUpload.LIST_IGNORE;
         }
         if (imageUrls.length >= MAX_REVIEW_IMAGES) {
             announceAccessibleMessage(t('pages.review.imageLimit', { count: MAX_REVIEW_IMAGES }), 'warning');
-            return Upload.LIST_IGNORE;
+            return ShopUpload.LIST_IGNORE;
         }
         setUploadingImage(true);
         try {
@@ -89,7 +92,7 @@ export const ProductReview: React.FC<ProductReviewProps> = ({
         } finally {
             setUploadingImage(false);
         }
-        return Upload.LIST_IGNORE;
+        return ShopUpload.LIST_IGNORE;
     };
 
     const removeImage = (imageUrl: string) => {
@@ -195,7 +198,7 @@ export const ProductReview: React.FC<ProductReviewProps> = ({
                                                         }
                                                     }}
                                                 />
-                                                <Button
+                                                <ShopButton
                                                     type="text"
                                                     danger
                                                     icon={<ShopIcon path={SI.delete} />}
@@ -208,24 +211,24 @@ export const ProductReview: React.FC<ProductReviewProps> = ({
                                     </div>
                                 ) : null}
                                 {imageUrls.length < MAX_REVIEW_IMAGES ? (
-                                    <Upload
+                                    <ShopUpload
                                         accept="image/jpeg,image/png,image/gif"
                                         showUploadList={false}
                                         beforeUpload={handleImageUpload}
                                         disabled={uploadingImage || submitting}
                                     >
-                                        <Button
+                                        <ShopButton
                                             icon={<ShopIcon path={SI.plus} />}
                                             loading={uploadingImage}
                                             aria-label={reviewImageUploadLabel}
                                             title={reviewImageUploadLabel}
                                         >
                                             {t('pages.review.imageAdd')}
-                                        </Button>
-                                    </Upload>
+                                        </ShopButton>
+                                    </ShopUpload>
                                 ) : null}
                             </div>
-                            <Button
+                            <ShopButton
                                 type="primary"
                                 className="product-review__submit"
                                 onClick={handleSubmit}
@@ -235,7 +238,7 @@ export const ProductReview: React.FC<ProductReviewProps> = ({
                                 title={reviewSubmitLabel}
                             >
                                 {t('pages.review.submit')}
-                            </Button>
+                            </ShopButton>
                         </div>
                     ) : (
                         <div className="product-review__composerEmpty" data-review-no-order-recovery="true">
@@ -245,35 +248,35 @@ export const ProductReview: React.FC<ProductReviewProps> = ({
                                     <div className="product-review__emptyHint">{t('pages.review.noReviewableOrderHint')}</div>
                                 </div>
                                 <div className="product-review__emptyActions">
-                                    <Button
+                                    <ShopButton
                                         type="primary"
                                         aria-label={t('pages.orderTracking.emptyProfileOrders')}
                                         title={t('pages.orderTracking.emptyProfileOrders')}
                                         onClick={() => navigate('/profile?tab=orders')}
                                     >
                                         {t('pages.orderTracking.emptyProfileOrders')}
-                                    </Button>
-                                    <Button
+                                    </ShopButton>
+                                    <ShopButton
                                         aria-label={t('pages.cart.browse')}
                                         title={t('pages.cart.browse')}
                                         onClick={() => navigate('/products')}
                                     >
                                         {t('pages.cart.browse')}
-                                    </Button>
-                                    <Button
+                                    </ShopButton>
+                                    <ShopButton
                                         aria-label={t('pages.review.emptyCoupons')}
                                         title={t('pages.review.emptyCoupons')}
                                         onClick={() => navigate('/coupons')}
                                     >
                                         {t('pages.review.emptyCoupons')}
-                                    </Button>
-                                    <Button
+                                    </ShopButton>
+                                    <ShopButton
                                         aria-label={t('nav.trackOrder')}
                                         title={t('nav.trackOrder')}
                                         onClick={() => navigate('/track-order')}
                                     >
                                         {t('nav.trackOrder')}
-                                    </Button>
+                                    </ShopButton>
                                 </div>
                             </div>
                         </div>
@@ -286,35 +289,35 @@ export const ProductReview: React.FC<ProductReviewProps> = ({
                 >
                     <span className="product-review__text product-review__text--secondary">{t('messages.loginRequired')}</span>
                     <div className="product-review__emptyActions">
-                        <Button
+                        <ShopButton
                             type="primary"
                             aria-label={t('nav.login')}
                             title={t('nav.login')}
                             onClick={() => navigate(buildLoginUrlFromWindow())}
                         >
                             {t('nav.login')}
-                        </Button>
-                        <Button
+                        </ShopButton>
+                        <ShopButton
                             aria-label={t('nav.register')}
                             title={t('nav.register')}
                             onClick={() => navigate(`/register?redirect=${encodeURIComponent(getCurrentRelativeUrl())}`)}
                         >
                             {t('nav.register')}
-                        </Button>
-                        <Button
+                        </ShopButton>
+                        <ShopButton
                             aria-label={t('pages.cart.browse')}
                             title={t('pages.cart.browse')}
                             onClick={() => navigate('/products')}
                         >
                             {t('pages.cart.browse')}
-                        </Button>
-                        <Button
+                        </ShopButton>
+                        <ShopButton
                             aria-label={t('pages.review.emptyCoupons')}
                             title={t('pages.review.emptyCoupons')}
                             onClick={() => navigate('/coupons')}
                         >
                             {t('pages.review.emptyCoupons')}
-                        </Button>
+                        </ShopButton>
                     </div>
                 </div>
             )}
@@ -329,7 +332,7 @@ export const ProductReview: React.FC<ProductReviewProps> = ({
                   {reviews.slice((Math.max(reviewPage, 1) - 1) * 8, Math.max(reviewPage, 1) * 8).map((review) => (
                         <li key={review.id} className="product-review__item">
                             <div className="product-review__itemMeta">
-                                <Avatar icon={<ShopIcon path={SI.user} />} />
+                                <ShopAvatar icon={<ShopIcon path={SI.user} />} />
                                 <div className="product-review__itemBody">
                                     <div className="product-review__meta">
                                         <span>{review.username}</span>
@@ -369,25 +372,25 @@ export const ProductReview: React.FC<ProductReviewProps> = ({
                 </ul>
                 {reviews.length > 8 ? (
                   <div className="product-review__pagination">
-                    <Button
+                    <ShopButton
                       size="small"
                       disabled={reviewPage <= 1}
                       aria-label={t('common.prev', { defaultValue: 'Previous' })}
                       onClick={() => setReviewPage((page) => Math.max(1, page - 1))}
                     >
                       {t('common.prev', { defaultValue: 'Previous' })}
-                    </Button>
+                    </ShopButton>
                     <span className="product-review__text product-review__text--secondary">
                       {reviewPage} / {Math.ceil(reviews.length / 8)}
                     </span>
-                    <Button
+                    <ShopButton
                       size="small"
                       disabled={reviewPage >= Math.ceil(reviews.length / 8)}
                       aria-label={t('common.next', { defaultValue: 'Next' })}
                       onClick={() => setReviewPage((page) => Math.min(Math.ceil(reviews.length / 8), page + 1))}
                     >
                       {t('common.next', { defaultValue: 'Next' })}
-                    </Button>
+                    </ShopButton>
                   </div>
                 ) : null}
                 </>

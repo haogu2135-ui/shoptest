@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Card, Empty, Form, Space, Spin, Statistic, Table, Tag, Typography, message } from 'antd';
+import { Form, Table } from 'antd';
 import ShopInput, { ShopTextArea } from '../components/ShopInput';
 import ShopPopconfirm from '../components/ShopPopconfirm';
 import ShopSelect from '../components/ShopSelect';
@@ -22,8 +22,19 @@ import {
   hasAdminPermission,
 } from '../utils/roles';
 import './IpBlacklistManagement.css';
+import ShopButton from '../components/ShopButton';
+import ShopSpin from '../components/ShopSpin';
+import ShopEmpty from '../components/ShopEmpty';
+import ShopStatistic from '../components/ShopStatistic';
+import message from '../components/ShopMessage';
 
-const { Text, Title } = Typography;
+import ShopTag from '../components/ShopTag';
+import ShopAlert from '../components/ShopAlert';
+import ShopSpace from '../components/ShopSpace';
+import ShopTypography from '../components/ShopTypography';
+import ShopCard from '../components/ShopCard';
+const Text = ShopTypography.Text;
+const Title = ShopTypography.Title;
 
 const statusColor = (status: string) => {
   const normalized = String(status || '').trim().toUpperCase();
@@ -373,7 +384,7 @@ const IpBlacklistManagement: React.FC = () => {
         key: 'status',
         width: 130,
         onCell: tableCellLabel(t('common.status')),
-        render: (value: string) => <Tag color={statusColor(value)}>{getStatusLabel(value)}</Tag>,
+        render: (value: string) => <ShopTag color={statusColor(value)}>{getStatusLabel(value)}</ShopTag>,
       },
       {
         title: t('pages.ipBlacklistAdmin.source'),
@@ -382,10 +393,10 @@ const IpBlacklistManagement: React.FC = () => {
         width: 110,
         onCell: tableCellLabel(t('pages.ipBlacklistAdmin.source')),
         render: (value: string, record) => (
-          <Space size={4} wrap>
-            <Tag color={sourceColor(value)}>{getSourceLabel(value)}</Tag>
-            {record.legacyOnly ? <Tag color="cyan">{t('pages.ipBlacklistAdmin.legacyLogin')}</Tag> : null}
-          </Space>
+          <ShopSpace size={4} wrap>
+            <ShopTag color={sourceColor(value)}>{getSourceLabel(value)}</ShopTag>
+            {record.legacyOnly ? <ShopTag color="cyan">{t('pages.ipBlacklistAdmin.legacyLogin')}</ShopTag> : null}
+          </ShopSpace>
         ),
       },
       {
@@ -445,9 +456,9 @@ const IpBlacklistManagement: React.FC = () => {
               cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${releaseActionLabel}`, title: `${t('common.cancel')}: ${releaseActionLabel}` }}
               onConfirm={() => releaseEntry(record)}
             >
-              <Button size="small" icon={<UnlockOutlined />} disabled={blacklistActionDisabled} aria-label={releaseActionLabel} title={releaseActionLabel} loading={acting === record.id}>
+              <ShopButton size="small" icon={<UnlockOutlined />} disabled={blacklistActionDisabled} aria-label={releaseActionLabel} title={releaseActionLabel} loading={acting === record.id}>
                 {t('pages.ipBlacklistAdmin.release')}
-              </Button>
+              </ShopButton>
             </ShopPopconfirm>
           );
         },
@@ -470,34 +481,34 @@ const IpBlacklistManagement: React.FC = () => {
           <Title level={2}>{t('pages.ipBlacklistAdmin.title')}</Title>
           <Text type="secondary">{t('pages.ipBlacklistAdmin.description')}</Text>
         </div>
-        <Space className="ip-blacklist__actions" wrap>
-          <Button icon={<ReloadOutlined />} loading={loading} aria-label={refreshBlacklistActionLabel} title={refreshBlacklistActionLabel} onClick={refreshData}>
+        <ShopSpace className="ip-blacklist__actions" wrap>
+          <ShopButton icon={<ReloadOutlined />} loading={loading} aria-label={refreshBlacklistActionLabel} title={refreshBlacklistActionLabel} onClick={refreshData}>
             {t('common.refresh')}
-          </Button>
+          </ShopButton>
           {canBlockIp ? (
-            <Button type="primary" icon={<PlusOutlined />} disabled={blacklistActionDisabled} aria-label={manualBlockActionLabel} title={manualBlockActionLabel} onClick={openBlockModal}>
+            <ShopButton type="primary" icon={<PlusOutlined />} disabled={blacklistActionDisabled} aria-label={manualBlockActionLabel} title={manualBlockActionLabel} onClick={openBlockModal}>
               {t('pages.ipBlacklistAdmin.manualBlock')}
-            </Button>
+            </ShopButton>
           ) : null}
-        </Space>
+        </ShopSpace>
       </div>
 
       {listLoadError && listSnapshotLoaded ? (
-        <Alert
+        <ShopAlert
           type="warning"
           showIcon
           className="ip-blacklist__notice"
           message={listLoadError}
           description={t('pages.ipBlacklistAdmin.staleDataWarning')}
           action={(
-            <Space wrap data-admin-ip-blacklist-stale-recovery="true">
-              <Button size="small" type="primary" loading={loading} onClick={refreshData}>
+            <ShopSpace wrap data-admin-ip-blacklist-stale-recovery="true">
+              <ShopButton size="small" type="primary" loading={loading} onClick={refreshData}>
                 {t('common.retry')}
-              </Button>
-              <Button size="small" onClick={() => navigate('/admin')}>{t('pages.adminDashboard.title')}</Button>
-              <Button size="small" onClick={() => navigate('/admin/system')}>{t('pages.adminDashboard.paymentReturnOps.providerReadinessAction')}</Button>
-              <Button size="small" onClick={() => navigate('/admin/orders')}>{t('pages.adminDashboard.orders')}</Button>
-            </Space>
+              </ShopButton>
+              <ShopButton size="small" onClick={() => navigate('/admin')}>{t('pages.adminDashboard.title')}</ShopButton>
+              <ShopButton size="small" onClick={() => navigate('/admin/system')}>{t('pages.adminDashboard.paymentReturnOps.providerReadinessAction')}</ShopButton>
+              <ShopButton size="small" onClick={() => navigate('/admin/orders')}>{t('pages.adminDashboard.orders')}</ShopButton>
+            </ShopSpace>
           )}
         />
       ) : null}
@@ -518,7 +529,7 @@ const IpBlacklistManagement: React.FC = () => {
       ) : null}
 
       {showInitialBlacklistLoading ? (
-        <Card
+        <ShopCard
           className="ip-blacklist__loadingState"
           loading
           role="status"
@@ -535,26 +546,26 @@ const IpBlacklistManagement: React.FC = () => {
           aria-busy={blacklistSnapshotLoading}
           aria-label={blacklistSnapshotLoading ? t('common.loading') : undefined}
         >
-          <Spin
+          <ShopSpin
             spinning={blacklistSnapshotLoading}
           >
         <div className="ip-blacklist__stats">
-          <Card>
-            <Statistic title={t('pages.ipBlacklistAdmin.featureStatus')} value={statusInfo ? (statusInfo.enabled ? t('pages.ipBlacklistAdmin.enabledStatus') : t('pages.ipBlacklistAdmin.disabledStatus')) : t('common.unknown')} prefix={<StopOutlined />} />
-          </Card>
-          <Card>
-            <Statistic title={t('pages.ipBlacklistAdmin.blockedStat')} value={blockedCount} valueStyle={{ color: blockedCount > 0 ? '#c2410c' : '#1f8a4c' }} />
-          </Card>
-          <Card>
-            <Statistic title={t('pages.ipBlacklistAdmin.monitoringStat')} value={monitoringCount} />
-          </Card>
-          <Card>
-            <Statistic title={t('pages.ipBlacklistAdmin.totalStat')} value={totalCount} />
-          </Card>
+          <ShopCard>
+            <ShopStatistic title={t('pages.ipBlacklistAdmin.featureStatus')} value={statusInfo ? (statusInfo.enabled ? t('pages.ipBlacklistAdmin.enabledStatus') : t('pages.ipBlacklistAdmin.disabledStatus')) : t('common.unknown')} prefix={<StopOutlined />} />
+          </ShopCard>
+          <ShopCard>
+            <ShopStatistic title={t('pages.ipBlacklistAdmin.blockedStat')} value={blockedCount} valueStyle={{ color: blockedCount > 0 ? '#c2410c' : '#1f8a4c' }} />
+          </ShopCard>
+          <ShopCard>
+            <ShopStatistic title={t('pages.ipBlacklistAdmin.monitoringStat')} value={monitoringCount} />
+          </ShopCard>
+          <ShopCard>
+            <ShopStatistic title={t('pages.ipBlacklistAdmin.totalStat')} value={totalCount} />
+          </ShopCard>
         </div>
 
-        <Card className="ip-blacklist__card">
-          <Alert
+        <ShopCard className="ip-blacklist__card">
+          <ShopAlert
             type={blockedCount > 0 ? 'warning' : 'info'}
             showIcon
             className="ip-blacklist__notice"
@@ -568,7 +579,7 @@ const IpBlacklistManagement: React.FC = () => {
                 })
                 : t('pages.ipBlacklistAdmin.emptyNotice')}
           />
-          <Space className="ip-blacklist__filters" wrap>
+          <ShopSpace className="ip-blacklist__filters" wrap>
             <div role="group" aria-label={statusFilterLabel} title={statusFilterLabel}>
               <ShopSelect
                 value={status}
@@ -595,9 +606,9 @@ const IpBlacklistManagement: React.FC = () => {
               aria-label={ipAddressFilterLabel}
               title={ipAddressFilterLabel}
             />
-            <Button icon={<SearchOutlined />} disabled={blacklistActionDisabled} aria-label={applyFilterActionLabel} title={applyFilterActionLabel} onClick={refreshData}>{t('pages.ipBlacklistAdmin.filter')}</Button>
-            <Button disabled={blacklistActionDisabled || !hasActiveFilters} aria-label={resetFilterActionLabel} title={resetFilterActionLabel} onClick={resetFilters}>{t('common.reset')}</Button>
-          </Space>
+            <ShopButton icon={<SearchOutlined />} disabled={blacklistActionDisabled} aria-label={applyFilterActionLabel} title={applyFilterActionLabel} onClick={refreshData}>{t('pages.ipBlacklistAdmin.filter')}</ShopButton>
+            <ShopButton disabled={blacklistActionDisabled || !hasActiveFilters} aria-label={resetFilterActionLabel} title={resetFilterActionLabel} onClick={resetFilters}>{t('common.reset')}</ShopButton>
+          </ShopSpace>
 
           {canReleaseIp ? (
             <div className="ip-blacklist__bulkBar">
@@ -614,7 +625,7 @@ const IpBlacklistManagement: React.FC = () => {
                 cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${batchReleaseActionLabel}`, title: `${t('common.cancel')}: ${batchReleaseActionLabel}` }}
                 onConfirm={releaseSelectedEntries}
               >
-                <Button
+                <ShopButton
                   icon={<UnlockOutlined />}
                   loading={batchActing}
                   disabled={blacklistActionDisabled || !selectedReleasableIds.length}
@@ -622,7 +633,7 @@ const IpBlacklistManagement: React.FC = () => {
                   title={batchReleaseActionLabel}
                 >
                   {t('pages.ipBlacklistAdmin.batchRelease')}
-                </Button>
+                </ShopButton>
               </ShopPopconfirm>
             </div>
           ) : null}
@@ -650,21 +661,21 @@ const IpBlacklistManagement: React.FC = () => {
             scroll={{ x: 'max-content' }}
             locale={{
               emptyText: (
-                <Empty description={hasActiveFilters ? t('pages.ipBlacklistAdmin.noFilteredRecords') : t('pages.ipBlacklistAdmin.noRecords')}>
-                  <Space wrap className="ip-blacklist__emptyActions">
+                <ShopEmpty description={hasActiveFilters ? t('pages.ipBlacklistAdmin.noFilteredRecords') : t('pages.ipBlacklistAdmin.noRecords')}>
+                  <ShopSpace wrap className="ip-blacklist__emptyActions">
                     {canBlockIp ? (
-                      <Button type="primary" icon={<PlusOutlined />} disabled={blacklistActionDisabled} aria-label={manualBlockActionLabel} title={manualBlockActionLabel} onClick={openBlockModal}>
+                      <ShopButton type="primary" icon={<PlusOutlined />} disabled={blacklistActionDisabled} aria-label={manualBlockActionLabel} title={manualBlockActionLabel} onClick={openBlockModal}>
                         {t('pages.ipBlacklistAdmin.manualBlock')}
-                      </Button>
+                      </ShopButton>
                     ) : null}
-                    {hasActiveFilters ? <Button aria-label={showAllRecordsActionLabel} title={showAllRecordsActionLabel} onClick={resetFilters}>{t('pages.ipBlacklistAdmin.showAllRecords')}</Button> : null}
-                  </Space>
-                </Empty>
+                    {hasActiveFilters ? <ShopButton aria-label={showAllRecordsActionLabel} title={showAllRecordsActionLabel} onClick={resetFilters}>{t('pages.ipBlacklistAdmin.showAllRecords')}</ShopButton> : null}
+                  </ShopSpace>
+                </ShopEmpty>
               ),
             }}
           />
-        </Card>
-          </Spin>
+        </ShopCard>
+          </ShopSpin>
         </div>
       ) : null}
 

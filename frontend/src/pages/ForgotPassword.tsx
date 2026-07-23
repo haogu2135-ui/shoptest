@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { ShopIcon, SI } from '../components/ShopIcon';
-import { Alert, Button, Form } from 'antd';
+import { Form } from 'antd';
 import ShopInput, { ShopPasswordInput } from '../components/ShopInput';
 import { Link, useNavigate } from 'react-router-dom';
 import { userApi } from '../api';
@@ -18,8 +18,9 @@ import {
   isCommonPassword,
 } from '../utils/passwordPolicy';
 import './Login.css';
+import ShopButton from '../components/ShopButton';
 
-
+import ShopAlert from '../components/ShopAlert';
 interface ForgotPasswordForm {
   login: string;
   email: string;
@@ -68,14 +69,12 @@ const isFormValidationError = (error: unknown): error is { errorFields: unknown[
   Boolean(error) && typeof error === 'object' && Array.isArray((error as { errorFields?: unknown }).errorFields)
 );
 
-
 const scrollFirstForgotPasswordErrorIntoView = () => {
   focusFirstFormError({
     rootSelector: '.shopee-login-card, .shopee-login-root, .forgot-password-page',
     scrollOffset: 120,
   });
 };
-
 
 const ForgotPassword: React.FC = () => {
   const [loading, setLoading] = useState(false);
@@ -265,7 +264,7 @@ const ForgotPassword: React.FC = () => {
         ) : null}
 
         {authBannerError ? (
-          <Alert
+          <ShopAlert
             className="shopee-login-errorBanner"
             type="error"
             showIcon
@@ -277,14 +276,14 @@ const ForgotPassword: React.FC = () => {
         ) : null}
         {resetUnavailable ? (
           <div className="shopee-login-resetUnavailable" data-forgot-password-unavailable="true" role="status">
-            <Alert
+            <ShopAlert
               type="warning"
               showIcon
               message={t('pages.auth.resetUnavailableTitle')}
               description={t('pages.auth.resetUnavailableText')}
             />
             <div className="shopee-login-resetUnavailable__actions" data-forgot-password-unavailable-actions="true">
-              <Button
+              <ShopButton
                 type="primary"
                 block
                 size="large"
@@ -293,8 +292,8 @@ const ForgotPassword: React.FC = () => {
                 title={t('pages.auth.backToPasswordLogin')}
               >
                 {t('pages.auth.backToPasswordLogin')}
-              </Button>
-              <Button
+              </ShopButton>
+              <ShopButton
                 block
                 size="large"
                 onClick={() => navigate('/track-order')}
@@ -302,8 +301,8 @@ const ForgotPassword: React.FC = () => {
                 title={t('nav.trackOrder')}
               >
                 {t('nav.trackOrder')}
-              </Button>
-              <Button
+              </ShopButton>
+              <ShopButton
                 block
                 size="large"
                 onClick={() => navigate('/products')}
@@ -311,8 +310,8 @@ const ForgotPassword: React.FC = () => {
                 title={t('pages.cart.browse')}
               >
                 {t('pages.cart.browse')}
-              </Button>
-              <Button
+              </ShopButton>
+              <ShopButton
                 block
                 size="large"
                 onClick={() => navigate('/coupons')}
@@ -320,8 +319,8 @@ const ForgotPassword: React.FC = () => {
                 title={t('nav.coupons')}
               >
                 {t('nav.coupons')}
-              </Button>
-              <Button
+              </ShopButton>
+              <ShopButton
                 block
                 size="large"
                 onClick={() => dispatchDomEvent('shop:open-support')}
@@ -329,7 +328,7 @@ const ForgotPassword: React.FC = () => {
                 title={t('nav.support')}
               >
                 {t('nav.support')}
-              </Button>
+              </ShopButton>
             </div>
           </div>
         ) : (
@@ -393,7 +392,7 @@ const ForgotPassword: React.FC = () => {
                 }
               }}
               addonAfter={
-                <Button
+                <ShopButton
                   type="link"
                   size="small"
                   className="shopee-login-codeButton"
@@ -404,7 +403,7 @@ const ForgotPassword: React.FC = () => {
                   onClick={sendResetCode}
                 >
                   {resetCodeActionText}
-                </Button>
+                </ShopButton>
               }
             />
           </Form.Item>
@@ -473,9 +472,9 @@ const ForgotPassword: React.FC = () => {
             />
           </Form.Item>
           <Form.Item>
-            <Button type="primary" htmlType="submit" block size="large" loading={loading} disabled={loading || codeSending || !emailCodeEnabled} aria-label={resetSubmitActionLabel} title={resetSubmitActionLabel}>
+            <ShopButton type="primary" htmlType="submit" block size="large" loading={loading} disabled={loading || codeSending || !emailCodeEnabled} aria-label={resetSubmitActionLabel} title={resetSubmitActionLabel}>
               {t('pages.auth.resetPassword')}
-            </Button>
+            </ShopButton>
           </Form.Item>
         </Form>
         )}

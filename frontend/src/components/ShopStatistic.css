@@ -1,0 +1,40 @@
+.shop-statistic {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  color: #355244;
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.shop-statistic__title {
+  margin-bottom: 4px;
+  color: #5d7467;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.shop-statistic__content {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px;
+  color: #124734;
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.shop-statistic__prefix,
+.shop-statistic__suffix {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.72em;
+  font-weight: 700;
+}
+
+.shop-statistic__value {
+  display: inline-block;
+  font-variant-numeric: tabular-nums;
+}

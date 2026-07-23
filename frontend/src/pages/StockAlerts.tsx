@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { ShopIcon, SI } from '../components/ShopIcon';
-import { Alert, Button, Tag } from 'antd';
 import ShopPopconfirm from '../components/ShopPopconfirm';
 import { Link, useNavigate } from 'react-router-dom';
 import { cartApi, productApi } from '../api';
@@ -23,7 +22,10 @@ import PageError from '../components/PageError';
 import PageEmpty from '../components/PageEmpty';
 import './StockAlerts.css';
 import '../styles/mobile-page-contrast.css';
+import ShopButton from '../components/ShopButton';
 
+import ShopTag from '../components/ShopTag';
+import ShopAlert from '../components/ShopAlert';
 const stockAlertImageFallback = productImageFallback;
 const resolveStockAlertImage = resolveProductImage;
 
@@ -263,7 +265,7 @@ const StockAlerts: React.FC = () => {
             </span>
           </div>
           <div className="stock-alerts__actionRow">
-            <Button aria-label={browseStockAlertsActionLabel} title={browseStockAlertsActionLabel} onClick={() => navigate('/products')}>{t('pages.stockAlerts.browse')}</Button>
+            <ShopButton aria-label={browseStockAlertsActionLabel} title={browseStockAlertsActionLabel} onClick={() => navigate('/products')}>{t('pages.stockAlerts.browse')}</ShopButton>
             <ShopPopconfirm
               rootClassName='shop-mobile-popup-layer stock-alerts-popconfirm'
               title={t('pages.stockAlerts.clearConfirm')}
@@ -273,7 +275,7 @@ const StockAlerts: React.FC = () => {
               okButtonProps={{ danger: true, 'aria-label': clearStockAlertsActionLabel, title: clearStockAlertsActionLabel }}
               cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${clearStockAlertsActionLabel}`, title: `${t('common.cancel')}: ${clearStockAlertsActionLabel}` }}
             >
-              <Button danger disabled={alerts.length === 0} aria-label={clearStockAlertsActionLabel} title={clearStockAlertsActionLabel}>{t('pages.stockAlerts.clear')}</Button>
+              <ShopButton danger disabled={alerts.length === 0} aria-label={clearStockAlertsActionLabel} title={clearStockAlertsActionLabel}>{t('pages.stockAlerts.clear')}</ShopButton>
             </ShopPopconfirm>
           </div>
         </div>
@@ -321,15 +323,15 @@ const StockAlerts: React.FC = () => {
             </div>
             <div className="stock-alerts__recoveryActions">
               {visibleStockAlertInsights.bestReadyItem?.product ? (
-                <Button
+                <ShopButton
                   onClick={() => navigate(`/products/${visibleStockAlertInsights.bestReadyItem!.productId}`)}
                   aria-label={`${t('pages.stockAlerts.viewBestReady')}: ${stockAlertProductName(visibleStockAlertInsights.bestReadyItem)}`}
                   title={`${t('pages.stockAlerts.viewBestReady')}: ${stockAlertProductName(visibleStockAlertInsights.bestReadyItem)}`}
                 >
                   {t('pages.stockAlerts.viewBestReady')}
-                </Button>
+                </ShopButton>
               ) : null}
-              <Button
+              <ShopButton
                 type="primary"
                 icon={<ShopIcon path={SI.cart} />}
                 aria-label={addReadyActionLabel}
@@ -337,7 +339,7 @@ const StockAlerts: React.FC = () => {
                 onClick={addReadyItemsToCart}
               >
                 {t('pages.stockAlerts.addReadyToCart')}
-              </Button>
+              </ShopButton>
             </div>
           </section>
         ) : null}
@@ -350,15 +352,15 @@ const StockAlerts: React.FC = () => {
               <span className="stock-alerts-page__text stock-alerts-page__text--secondary">{restockNextAction.text}</span>
             </div>
             <div className="stock-alerts__nextActionMeta">
-              <Tag color="green">{t('pages.stockAlerts.directReady', { count: visibleStockAlertInsights.directAddItems.length })}</Tag>
-              <Tag color={visibleStockAlertInsights.optionItems.length > 0 ? 'gold' : 'default'}>
+              <ShopTag color="green">{t('pages.stockAlerts.directReady', { count: visibleStockAlertInsights.directAddItems.length })}</ShopTag>
+              <ShopTag color={visibleStockAlertInsights.optionItems.length > 0 ? 'gold' : 'default'}>
                 {t('pages.stockAlerts.optionReady', { count: visibleStockAlertInsights.optionItems.length })}
-              </Tag>
-              <Tag color={visibleStockAlertInsights.waitingItems > 0 ? 'blue' : 'default'}>
+              </ShopTag>
+              <ShopTag color={visibleStockAlertInsights.waitingItems > 0 ? 'blue' : 'default'}>
                 {t('pages.stockAlerts.stillWatchingCount', { count: visibleStockAlertInsights.waitingItems })}
-              </Tag>
+              </ShopTag>
             </div>
-            <Button
+            <ShopButton
               type={restockNextAction.tone === 'ready' ? 'primary' : 'default'}
               icon={restockNextActionIcon}
               aria-label={restockNextActionLabel}
@@ -366,7 +368,7 @@ const StockAlerts: React.FC = () => {
               onClick={restockNextAction.action}
             >
               {restockNextAction.label}
-            </Button>
+            </ShopButton>
           </section>
         ) : null}
 
@@ -376,7 +378,7 @@ const StockAlerts: React.FC = () => {
               <span>{restockNextAction.title}</span>
               <strong>{mobileNextActionStatus}</strong>
             </div>
-            <Button
+            <ShopButton
               type={restockNextAction.tone === 'ready' ? 'primary' : 'default'}
               icon={restockNextActionIcon}
               aria-label={restockNextActionLabel}
@@ -384,17 +386,17 @@ const StockAlerts: React.FC = () => {
               onClick={restockNextAction.action}
             >
               {restockNextAction.label}
-            </Button>
+            </ShopButton>
           </div>
         ) : null}
 
         {loadError && hasStaleProductData ? (
-          <Alert
+          <ShopAlert
             type="warning"
             showIcon
             message={t('pages.stockAlerts.loadFailed')}
             description={hasStaleProductData ? t('pages.stockAlerts.staleDataWarning') : t('common.loadFailedRetry')}
-            action={<Button size="small" onClick={() => setReloadKey((value) => value + 1)}>{t('common.retry')}</Button>}
+            action={<ShopButton size="small" onClick={() => setReloadKey((value) => value + 1)}>{t('common.retry')}</ShopButton>}
           />
         ) : null}
 
@@ -532,18 +534,18 @@ const StockAlerts: React.FC = () => {
                         {product ? (
                           <div className="stock-alerts__itemSignalRow">
                             <span className="stock-alerts-page__text stock-alerts-page__text--strong stock-alerts__price commerce-money">{formatMoney(product.effectivePrice ?? product.price)}</span>
-                            <Tag color={ready ? 'green' : 'default'}>
+                            <ShopTag color={ready ? 'green' : 'default'}>
                               {ready ? t('pages.productDetail.enough') : t('pages.productList.soldOut')}
-                            </Tag>
-                            {lowStock ? <Tag color="volcano">{t('pages.stockAlerts.lowStockReady')}</Tag> : null}
-                            {ready && needsSelection ? <Tag color="gold">{t('pages.stockAlerts.selectOptions')}</Tag> : null}
+                            </ShopTag>
+                            {lowStock ? <ShopTag color="volcano">{t('pages.stockAlerts.lowStockReady')}</ShopTag> : null}
+                            {ready && needsSelection ? <ShopTag color="gold">{t('pages.stockAlerts.selectOptions')}</ShopTag> : null}
                           </div>
                         ) : null}
                       </div>
                     </div>
                   </div>
                   <div className="stock-alerts__itemActions">
-                    <Button
+                    <ShopButton
                       type="primary"
                       icon={<ShopIcon path={SI.cart} />}
                       className={ready ? undefined : 'stock-alerts__soldoutButton'}
@@ -553,7 +555,7 @@ const StockAlerts: React.FC = () => {
                       disabled={hasStaleProductData || !ready}
                     >
                       {addActionText}
-                    </Button>
+                    </ShopButton>
                     <ShopPopconfirm
                       rootClassName='shop-mobile-popup-layer stock-alerts-popconfirm'
                       title={t('pages.stockAlerts.removeConfirm')}
@@ -563,7 +565,7 @@ const StockAlerts: React.FC = () => {
                       okButtonProps={{ danger: true, 'aria-label': removeActionLabel, title: removeActionLabel }}
                       cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${removeActionLabel}`, title: `${t('common.cancel')}: ${removeActionLabel}` }}
                     >
-                      <Button icon={<ShopIcon path={SI.delete} />} aria-label={removeActionLabel} title={removeActionLabel}>{t('pages.stockAlerts.remove')}</Button>
+                      <ShopButton icon={<ShopIcon path={SI.delete} />} aria-label={removeActionLabel} title={removeActionLabel}>{t('pages.stockAlerts.remove')}</ShopButton>
                     </ShopPopconfirm>
                   </div>
                 </li>

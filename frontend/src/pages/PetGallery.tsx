@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { ShopIcon, SI } from '../components/ShopIcon';
-import { Alert, Button } from 'antd';
 import ShopModal from '../components/ShopModal';
 import ShopPopconfirm from '../components/ShopPopconfirm';
 import { useNavigate } from 'react-router-dom';
@@ -21,8 +20,9 @@ import { isSupportedPetGalleryImageFile } from '../utils/petGalleryUpload';
 import { getLocalStorageItem, hasStoredValue, setLocalStorageItem } from '../utils/safeStorage';
 import './PetGallery.css';
 import '../styles/mobile-page-contrast.css';
+import ShopButton from '../components/ShopButton';
 
-
+import ShopAlert from '../components/ShopAlert';
 const PET_GALLERY_MAX_FILE_SIZE = 5 * 1024 * 1024;
 const PET_GALLERY_LOCAL_LIKES_KEY = 'shop-pet-gallery-local-likes';
 const petGalleryImageFallback = imageFallbacks.media;
@@ -358,7 +358,7 @@ const PetGallery: React.FC = () => {
           <h1 className="pet-gallery-page__title">{t('pages.petGallery.title')}</h1>
           <p className="pet-gallery-page__text pet-gallery-page__paragraph">{t('pages.petGallery.subtitle')}</p>
           <div className="pet-gallery-page__actionRow">
-            <Button
+            <ShopButton
               type="primary"
               size="large"
               icon={heroUploadIcon}
@@ -372,10 +372,10 @@ const PetGallery: React.FC = () => {
                   ? t('home.petUgcUploadRemaining', { count: remainingUploads })
                   : t('common.retry')
                 : t('pages.petGallery.loginToUpload')}
-            </Button>
-            <Button size="large" icon={<ShopIcon path={SI.shop} />} aria-label={galleryShopFeedActionLabel} title={galleryShopFeedActionLabel} onClick={() => navigate('/products?keyword=pet')}>
+            </ShopButton>
+            <ShopButton size="large" icon={<ShopIcon path={SI.shop} />} aria-label={galleryShopFeedActionLabel} title={galleryShopFeedActionLabel} onClick={() => navigate('/products?keyword=pet')}>
               {t('home.petUgcShopFeed')}
-            </Button>
+            </ShopButton>
           </div>
           <input
             ref={uploadInputRef}
@@ -409,25 +409,25 @@ const PetGallery: React.FC = () => {
         </div>
         <div className="pet-gallery-page__actionRow">
           {!isAuthenticated ? (
-            <Button icon={<ShopIcon path={SI.userAdd} />} aria-label={galleryLoginActionLabel} title={galleryLoginActionLabel} onClick={() => navigate(buildLoginUrlFromWindow())}>
+            <ShopButton icon={<ShopIcon path={SI.userAdd} />} aria-label={galleryLoginActionLabel} title={galleryLoginActionLabel} onClick={() => navigate(buildLoginUrlFromWindow())}>
               {t('pages.petGallery.loginToUpload')}
-            </Button>
+            </ShopButton>
           ) : null}
-          <Button icon={<ShopIcon path={SI.reload} />} aria-label={galleryRefreshActionLabel} title={galleryRefreshActionLabel} onClick={() => refreshGallery(true)}>
+          <ShopButton icon={<ShopIcon path={SI.reload} />} aria-label={galleryRefreshActionLabel} title={galleryRefreshActionLabel} onClick={() => refreshGallery(true)}>
             {t('common.refresh')}
-          </Button>
+          </ShopButton>
         </div>
       </section>
 
       {loadError && !loading && items.length > 0 ? (
-        <Alert
+        <ShopAlert
           type="info"
           showIcon
           message={t('pages.petGallery.staleDataWarning')}
           action={(
-            <Button size="small" icon={<ShopIcon path={SI.reload} />} onClick={() => refreshGallery(true)}>
+            <ShopButton size="small" icon={<ShopIcon path={SI.reload} />} onClick={() => refreshGallery(true)}>
               {t('common.retry')}
-            </Button>
+            </ShopButton>
           )}
           className="pet-gallery-page__loadAlert"
         />
@@ -475,15 +475,15 @@ const PetGallery: React.FC = () => {
       ) : null}
 
       {isSampleOnlyGallery ? (
-        <Alert
+        <ShopAlert
           type="info"
           showIcon
           message={t('pages.petGallery.sampleFallback')}
           description={t('pages.petGallery.sampleFallbackDescription')}
           action={(
-            <Button size="small" icon={<ShopIcon path={SI.shop} />} onClick={() => navigate('/products?keyword=pet')}>
+            <ShopButton size="small" icon={<ShopIcon path={SI.shop} />} onClick={() => navigate('/products?keyword=pet')}>
               {t('pages.petGallery.browsePetProducts')}
-            </Button>
+            </ShopButton>
           )}
           className="pet-gallery-page__loadAlert"
         />
@@ -522,9 +522,9 @@ const PetGallery: React.FC = () => {
             <span className="pet-gallery-page__text pet-gallery-insights__eyebrow">{t('pages.petGallery.uploadPlanEyebrow')}</span>
             <h4 className="pet-gallery-page__title">{uploadReadiness.title}</h4>
             <span className="pet-gallery-page__text pet-gallery-page__text--secondary">{uploadReadiness.text}</span>
-            <Button type="primary" icon={uploadReadiness.icon} loading={uploading || (loadError && loading)} aria-label={uploadReadinessActionLabel} title={uploadReadinessActionLabel} onClick={uploadReadiness.onClick}>
+            <ShopButton type="primary" icon={uploadReadiness.icon} loading={uploading || (loadError && loading)} aria-label={uploadReadinessActionLabel} title={uploadReadinessActionLabel} onClick={uploadReadiness.onClick}>
               {uploadReadiness.action}
-            </Button>
+            </ShopButton>
           </div>
           <div className="pet-gallery-action-card pet-gallery-action-card--shop">
             <span className="pet-gallery-page__text pet-gallery-insights__eyebrow">{t('pages.petGallery.shopMomentEyebrow')}</span>
@@ -535,13 +535,13 @@ const PetGallery: React.FC = () => {
                 : t('pages.petGallery.shopMomentText', { count: galleryInsights.communityMoments })}
             </span>
             <div className="pet-gallery-page__actionRow">
-              <Button icon={<ShopIcon path={SI.shop} />} aria-label={galleryShopFeedActionLabel} title={galleryShopFeedActionLabel} onClick={() => navigate('/products?keyword=pet')}>
+              <ShopButton icon={<ShopIcon path={SI.shop} />} aria-label={galleryShopFeedActionLabel} title={galleryShopFeedActionLabel} onClick={() => navigate('/products?keyword=pet')}>
                 {t('home.petUgcShopFeed')}
-              </Button>
+              </ShopButton>
               {galleryInsights.topMoment ? (
-                <Button aria-label={galleryItemPreviewLabel(galleryInsights.topMoment)} title={galleryItemPreviewLabel(galleryInsights.topMoment)} onClick={() => setPreviewItem(galleryInsights.topMoment)}>
+                <ShopButton aria-label={galleryItemPreviewLabel(galleryInsights.topMoment)} title={galleryItemPreviewLabel(galleryInsights.topMoment)} onClick={() => setPreviewItem(galleryInsights.topMoment)}>
                   {t('pages.petGallery.previewTop')}
-                </Button>
+                </ShopButton>
               ) : null}
             </div>
           </div>
@@ -561,13 +561,13 @@ const PetGallery: React.FC = () => {
             <span><ShopIcon path={SI.rise} /> {t('pages.petGallery.conversionCommunity', { count: galleryInsights.communityMoments })}</span>
           </div>
           <div className="pet-gallery-conversion__actions">
-            <Button type="primary" icon={<ShopIcon path={SI.shop} />} aria-label={shopInspiredActionLabel} title={shopInspiredActionLabel} onClick={() => navigate('/products?keyword=pet')}>
+            <ShopButton type="primary" icon={<ShopIcon path={SI.shop} />} aria-label={shopInspiredActionLabel} title={shopInspiredActionLabel} onClick={() => navigate('/products?keyword=pet')}>
               {t('pages.petGallery.shopInspired')}
-            </Button>
+            </ShopButton>
             {galleryInsights.topMoment ? (
-              <Button aria-label={galleryItemPreviewLabel(galleryInsights.topMoment)} title={galleryItemPreviewLabel(galleryInsights.topMoment)} onClick={() => setPreviewItem(galleryInsights.topMoment)}>
+              <ShopButton aria-label={galleryItemPreviewLabel(galleryInsights.topMoment)} title={galleryItemPreviewLabel(galleryInsights.topMoment)} onClick={() => setPreviewItem(galleryInsights.topMoment)}>
                 {t('pages.petGallery.previewTop')}
-              </Button>
+              </ShopButton>
             ) : null}
           </div>
         </section>
@@ -702,11 +702,11 @@ const PetGallery: React.FC = () => {
             <figcaption>
               <span>{activePreviewItem.label}</span>
               <div className="pet-gallery-page__actionRow">
-                <Button icon={<ShopIcon path={SI.shop} />} aria-label={galleryItemShopLabel(activePreviewItem)} title={galleryItemShopLabel(activePreviewItem)} onClick={() => navigate('/products?keyword=pet')}>
+                <ShopButton icon={<ShopIcon path={SI.shop} />} aria-label={galleryItemShopLabel(activePreviewItem)} title={galleryItemShopLabel(activePreviewItem)} onClick={() => navigate('/products?keyword=pet')}>
                   {t('home.petUgcShopFeed')}
-                </Button>
+                </ShopButton>
                 {!activePreviewItem.isSample && canUseLiveInteractions ? (
-                  <Button
+                  <ShopButton
                     type="primary"
                     icon={activePreviewItem.likedByMe ? <ShopIcon path={SI.heartFill} /> : <ShopIcon path={SI.heart} />}
                     aria-pressed={activePreviewItem.likedByMe}
@@ -715,7 +715,7 @@ const PetGallery: React.FC = () => {
                     onClick={() => handleLike(activePreviewItem)}
                   >
                     {t('home.petUgcLikes', { count: activePreviewItem.likeCount })}
-                  </Button>
+                  </ShopButton>
                 ) : null}
               </div>
             </figcaption>

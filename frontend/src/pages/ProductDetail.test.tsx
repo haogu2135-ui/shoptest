@@ -328,7 +328,6 @@ describe('ProductDetail mobile buybar layout contract', () => {
     expect(warmupEffect).toContain('window.clearTimeout(fallbackTimer);');
   });
 
-
   it('distinguishes product load failures from not-found empty state', () => {
     const source = readProductDetailSource();
     expect(source).toContain("const [loadError, setLoadError] = useState<string | null>(null);");

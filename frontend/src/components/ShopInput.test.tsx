@@ -44,7 +44,6 @@ describe('ShopPasswordInput', () => {
   });
 });
 
-
 describe('ShopTextArea', () => {
   it('emits change events and tracks count', () => {
     const onChange = jest.fn();

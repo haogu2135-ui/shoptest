@@ -16,18 +16,17 @@ describe('AdminDashboard type-safety guards', () => {
   });
 
   it('announces the dashboard spinner loading state as a busy status region', () => {
-    const loadingStart = source.indexOf('if (loading) {');
-    const statsFallbackStart = source.indexOf('if (!stats) {');
-    const loadingSource = source.slice(loadingStart, statsFallbackStart);
+    const loadingMarkupStart = source.indexOf('className="admin-dashboard__loading"');
+    const loadingSource = source.slice(Math.max(0, loadingMarkupStart - 120), loadingMarkupStart + 420);
 
-    expect(loadingStart).toBeGreaterThan(-1);
-    expect(statsFallbackStart).toBeGreaterThan(loadingStart);
+    expect(loadingMarkupStart).toBeGreaterThan(-1);
+    expect(loadingSource).toContain('if (loading)');
     expect(loadingSource).toContain('className="admin-dashboard__loading"');
     expect(loadingSource).toContain('role="status"');
     expect(loadingSource).toContain('aria-live="polite"');
     expect(loadingSource).toContain('aria-busy="true"');
     expect(loadingSource).toContain("aria-label={`${t('pages.adminDashboard.title')}: ${t('common.loading')}`}");
-    expect(loadingSource).toContain('<Spin size="large" />');
+    expect(loadingSource).toContain('<ShopSpin size="large" />');
   });
 
   it('keeps dashboard charts exposed with accessible image labels', () => {

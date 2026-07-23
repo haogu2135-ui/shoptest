@@ -135,11 +135,13 @@
   display: none;
 }
 
-.admin-layout__mobileDrawer .ant-drawer-content {
+.admin-layout__mobileDrawer .ant-drawer-content,
+.admin-layout__mobileDrawer .shop-drawer__panel {
   background: #f8fbf9;
 }
 
-.admin-layout__mobileDrawer .ant-drawer-header {
+.admin-layout__mobileDrawer .ant-drawer-header,
+.admin-layout__mobileDrawer .shop-drawer__header {
   border-bottom-color: rgba(18, 71, 52, 0.1);
 }
 
@@ -911,7 +913,8 @@ body.shop-mobile-app .admin-layout__menu.ant-menu-dark {
 
   body.shop-mobile-app.shop-mobile-app.shop-mobile-app .admin-layout__mobileDrawer .ant-drawer-content-wrapper,
   body.shop-mobile-app.shop-mobile-app.shop-mobile-app .admin-layout__mobileDrawer.ant-drawer,
-  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .admin-layout__mobileDrawer .ant-drawer-content {
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .admin-layout__mobileDrawer .ant-drawer-content,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .admin-layout__mobileDrawer .shop-drawer__panel {
     width: min(86vw, 320px) !important;
     max-width: 86vw !important;
   }

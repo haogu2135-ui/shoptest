@@ -1,7 +1,8 @@
 import React from 'react';
 import { ShopIcon, SI } from './ShopIcon';
-import { Button } from 'antd';
+
 import './PageFeedback.css';
+import ShopButton from './ShopButton';
 
 export type PageErrorAction = {
   key: string;
@@ -35,7 +36,7 @@ const PageError: React.FC<PageErrorProps> = ({
 }) => {
   const defaultActions = [
     onRetry && retryLabel ? (
-      <Button
+      <ShopButton
         key="retry"
         type="primary"
         icon={<ShopIcon path={SI.reload} />}
@@ -44,10 +45,10 @@ const PageError: React.FC<PageErrorProps> = ({
         onClick={onRetry}
       >
         {retryLabel}
-      </Button>
+      </ShopButton>
     ) : null,
     onHome && homeLabel ? (
-      <Button
+      <ShopButton
         key="home"
         icon={<ShopIcon path={SI.home} />}
         aria-label={homeLabel}
@@ -55,13 +56,13 @@ const PageError: React.FC<PageErrorProps> = ({
         onClick={onHome}
       >
         {homeLabel}
-      </Button>
+      </ShopButton>
     ) : null,
   ].filter(Boolean);
 
   const multipathActions = Array.isArray(actions) && actions.length > 0
     ? actions.map((action, index) => (
-      <Button
+      <ShopButton
         key={action.key}
         type={action.type || (index === 0 ? 'primary' : 'default')}
         icon={action.icon || (index === 0 ? <ShopIcon path={SI.reload} /> : undefined)}
@@ -70,7 +71,7 @@ const PageError: React.FC<PageErrorProps> = ({
         onClick={action.onClick}
       >
         {action.label}
-      </Button>
+      </ShopButton>
     ))
     : null;
 

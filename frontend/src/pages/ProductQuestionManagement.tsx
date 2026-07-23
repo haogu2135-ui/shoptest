@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, Button, Divider, message, Space, Table, Tag, Typography } from 'antd';
+import { Table } from 'antd';
 import ShopSearchField from '../components/ShopSearchField';
 import ShopPopconfirm from '../components/ShopPopconfirm';
 import ShopSelect from '../components/ShopSelect';
@@ -19,8 +19,16 @@ import {
   QUESTIONS_DELETE_PERMISSION,
 } from '../utils/roles';
 import './ProductQuestionManagement.css';
+import ShopButton from '../components/ShopButton';
+import message from '../components/ShopMessage';
 
-const { Title, Paragraph } = Typography;
+import ShopTag from '../components/ShopTag';
+import ShopAlert from '../components/ShopAlert';
+import ShopSpace from '../components/ShopSpace';
+import ShopTypography from '../components/ShopTypography';
+import ShopDivider from '../components/ShopDivider';
+const Title = ShopTypography.Title;
+const Paragraph = ShopTypography.Paragraph;
 
 type QuestionStatus = 'UNANSWERED' | 'ANSWERED' | 'ALL';
 
@@ -199,9 +207,9 @@ const ProductQuestionManagement: React.FC = () => {
     const buttonSize = variant === 'card' ? 'middle' : 'small';
     const actions = [
       canAnswerQuestions ? (
-        <Button key="answer" size={buttonSize} icon={<MessageOutlined />} aria-label={answerActionLabel} title={answerActionLabel} onClick={() => openAnswer(record)} disabled={actionsDisabledByStaleData}>
+        <ShopButton key="answer" size={buttonSize} icon={<MessageOutlined />} aria-label={answerActionLabel} title={answerActionLabel} onClick={() => openAnswer(record)} disabled={actionsDisabledByStaleData}>
           {t('pages.adminQuestions.answerAction')}
-        </Button>
+        </ShopButton>
       ) : null,
       canDeleteQuestions ? (
         <ShopPopconfirm rootClassName="shop-mobile-popup-layer"
@@ -214,13 +222,13 @@ const ProductQuestionManagement: React.FC = () => {
           cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${deleteActionLabel}`, title: `${t('common.cancel')}: ${deleteActionLabel}` }}
           onConfirm={() => deleteQuestion(record)}
         >
-          <Button size={buttonSize} danger icon={<DeleteOutlined />} aria-label={deleteActionLabel} title={deleteActionLabel} loading={deletingId === record.id} disabled={actionsDisabledByStaleData}>
+          <ShopButton size={buttonSize} danger icon={<DeleteOutlined />} aria-label={deleteActionLabel} title={deleteActionLabel} loading={deletingId === record.id} disabled={actionsDisabledByStaleData}>
             {t('common.delete')}
-          </Button>
+          </ShopButton>
         </ShopPopconfirm>
       ) : null,
     ].filter(Boolean);
-    return actions.length ? <Space wrap className={variant === 'card' ? 'product-question-card__actions' : undefined}>{actions}</Space> : '-';
+    return actions.length ? <ShopSpace wrap className={variant === 'card' ? 'product-question-card__actions' : undefined}>{actions}</ShopSpace> : '-';
   };
 
   const columns = [
@@ -229,10 +237,10 @@ const ProductQuestionManagement: React.FC = () => {
       key: 'product',
       width: 180,
       render: (_: unknown, record: ProductQuestion) => (
-        <Space direction="vertical" size={0}>
+        <ShopSpace direction="vertical" size={0}>
           <strong>{adminQuestionProductName(record)}</strong>
           <span className="product-question-management-page__muted">#{record.productId || record.product?.id || '-'}</span>
-        </Space>
+        </ShopSpace>
       ),
     },
     {
@@ -255,7 +263,7 @@ const ProductQuestionManagement: React.FC = () => {
       width: 280,
       render: (text: string) => text
         ? <Paragraph ellipsis={{ rows: 3 }} style={{ margin: 0 }}>{text}</Paragraph>
-        : <Tag icon={<ClockCircleOutlined />} color="orange">{t('pages.adminQuestions.noAnswer')}</Tag>,
+        : <ShopTag icon={<ClockCircleOutlined />} color="orange">{t('pages.adminQuestions.noAnswer')}</ShopTag>,
     },
     {
       title: t('pages.adminQuestions.createdAt'),
@@ -282,7 +290,7 @@ const ProductQuestionManagement: React.FC = () => {
   return (
     <div className={`product-question-management-page product-question-management-page--${language}`}>
       <Title level={4}>{t('pages.adminQuestions.title')}</Title>
-      <Divider />
+      <ShopDivider />
       <section className="product-question-ops-panel">
         <div className="product-question-ops-panel__copy">
           <span>{t('pages.adminQuestions.opsEyebrow')}</span>
@@ -312,7 +320,7 @@ const ProductQuestionManagement: React.FC = () => {
           </div>
         </div>
       </section>
-      <Space className="product-question-management-page__toolbar" wrap>
+      <ShopSpace className="product-question-management-page__toolbar" wrap>
         <ShopSearchField
           allowClear
           prefix={<SearchOutlined />}
@@ -342,26 +350,26 @@ const ProductQuestionManagement: React.FC = () => {
             { value: 'ALL', label: t('pages.adminQuestions.statusAll') },
           ]}
         />
-        <Tag color={answeredCount > unansweredCount ? 'green' : 'orange'}>
+        <ShopTag color={answeredCount > unansweredCount ? 'green' : 'orange'}>
           {t('pages.adminQuestions.answeredQuestions', { count: hasQuestionSnapshot ? answeredCount : '-' })}
-        </Tag>
-      </Space>
+        </ShopTag>
+      </ShopSpace>
       {loadError && visibleQuestions.length > 0 ? (
-        <Alert
+        <ShopAlert
           className="product-question-management-page__loadAlert"
           type="warning"
           showIcon
           message={t('pages.adminQuestions.loadErrorTitle')}
           description={t('pages.adminQuestions.staleDataWarning')}
           action={(
-            <Space wrap data-admin-questions-stale-recovery="true">
-              <Button size="small" type="primary" onClick={loadQuestions} loading={loading}>
+            <ShopSpace wrap data-admin-questions-stale-recovery="true">
+              <ShopButton size="small" type="primary" onClick={loadQuestions} loading={loading}>
                 {t('common.retry')}
-              </Button>
-              <Button size="small" onClick={() => navigate('/admin')}>{t('pages.adminDashboard.title')}</Button>
-              <Button size="small" onClick={() => navigate('/admin/products')}>{t('pages.adminDashboard.products')}</Button>
-              <Button size="small" onClick={() => navigate('/admin/orders')}>{t('pages.adminDashboard.orders')}</Button>
-            </Space>
+              </ShopButton>
+              <ShopButton size="small" onClick={() => navigate('/admin')}>{t('pages.adminDashboard.title')}</ShopButton>
+              <ShopButton size="small" onClick={() => navigate('/admin/products')}>{t('pages.adminDashboard.products')}</ShopButton>
+              <ShopButton size="small" onClick={() => navigate('/admin/orders')}>{t('pages.adminDashboard.orders')}</ShopButton>
+            </ShopSpace>
           )}
         />
       ) : null}
@@ -392,9 +400,9 @@ const ProductQuestionManagement: React.FC = () => {
                   <strong>{adminQuestionProductName(question)}</strong>
                   <span>#{question.productId || question.product?.id || '-'}</span>
                 </div>
-                <Tag color={hasAnswer ? 'green' : 'orange'}>
+                <ShopTag color={hasAnswer ? 'green' : 'orange'}>
                   {hasAnswer ? t('pages.adminQuestions.statusAnswered') : t('pages.adminQuestions.statusUnanswered')}
-                </Tag>
+                </ShopTag>
               </div>
               <dl className="product-question-card__details">
                 <div>
@@ -429,9 +437,9 @@ const ProductQuestionManagement: React.FC = () => {
           <div className="product-question-mobile-list__state">
             <strong>{t('pages.adminQuestions.loadErrorTitle')}</strong>
             <span>{loadError}</span>
-            <Button size="small" onClick={loadQuestions} loading={loading}>
+            <ShopButton size="small" onClick={loadQuestions} loading={loading}>
               {t('common.retry')}
-            </Button>
+            </ShopButton>
           </div>
         ) : (
           <div className="product-question-mobile-list__state">{t('pages.adminQuestions.empty', { defaultValue: 'No questions' })}</div>

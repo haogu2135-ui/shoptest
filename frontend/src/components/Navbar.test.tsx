@@ -582,7 +582,7 @@ describe('Navbar Android app download entry', () => {
     expect(badgeSource).toContain('<ShopIcon path={SI.cart} />');
     expect(source.match(/\{renderCartBadge\(\)\}/g) ?? []).toHaveLength(3);
     expect(source).not.toContain('<Badge count={cartCount}');
-    expect(source).not.toContain("import { Badge } from 'antd'");
+    expect(source).not.toMatch(/import \{[^}]*\bBadge\b[^}]*\} from 'antd'/);
     expect(source).toContain('import ShopBadge from');
   });
 

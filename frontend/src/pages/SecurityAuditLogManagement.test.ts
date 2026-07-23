@@ -76,12 +76,12 @@ describe('SecurityAuditLogManagement mobile filter layout guards', () => {
     expect(f3517Css).not.toMatch(/top:\s*(?:58|64)px/);
   });
 
-  it('keeps the audit date range popup in a constrained mobile body layer', () => {
-    expect(pageSource).toContain("root: 'shop-mobile-popup-layer audit-log-page__rangePopup'");
-    expect(pageSource).toContain('classNames={auditRangePickerClassNames}');
-    expect(pageSource).toContain('getPopupContainer={() => document.body}');
-    expect(cssSource).toMatch(/body\s+\.audit-log-page__rangePopup\.shop-mobile-popup-layer\.ant-picker-dropdown\s*\{[\s\S]*?z-index:\s*1060\s*!important;/);
-    expect(cssSource).toMatch(/body\s+\.audit-log-page__rangePopup\.shop-mobile-popup-layer\s+\.ant-picker-panel-container\s*\{[\s\S]*?max-height:\s*calc\(100dvh - 24px\)\s*!important;/);
-    expect(cssSource).toMatch(/body\s+\.audit-log-page__rangePopup\.shop-mobile-popup-layer\s+\.ant-picker-panels\s*\{[\s\S]*?flex-direction:\s*column;/);
+  it('keeps the audit date range on ShopRangePicker without ant DatePicker', () => {
+    expect(pageSource).toContain('<ShopRangePicker');
+    expect(pageSource).toContain('showTime');
+    expect(pageSource).toContain('ShopRangeValue');
+    expect(pageSource).not.toMatch(/<RangePicker\b/);
+    expect(pageSource).not.toMatch(/import \{[^}]*\bDatePicker\b[^}]*\} from 'antd'/);
+    expect(pageSource).not.toContain('getPopupContainer={() => document.body}');
   });
 });

@@ -28,10 +28,8 @@ jest.mock('../hooks/useMarket', () => ({
 
 jest.mock('../components/SeventeenTrackWidget', () => () => <div data-testid="tracking-widget" />);
 
-jest.mock('../i18n', () => ({
-  useLanguage: () => ({
-    language: 'en',
-    t: (key: string, params?: Record<string, string | number>) => {
+jest.mock('../i18n', () => {
+  const t = (key: string, params?: Record<string, string | number>) => {
       const labels: Record<string, string> = {
         'adminLayout.dashboard': 'Dashboard',
         'common.actions': 'Actions',
@@ -140,9 +138,14 @@ jest.mock('../i18n', () => ({
         'status.SHIPPED': 'Shipped',
       };
       return labels[key] || key;
-    },
-  }),
-}));
+  };
+  return {
+    useLanguage: () => ({
+      language: 'en',
+      t,
+    }),
+  };
+});
 
 describe('AdminDashboard chart accessibility', () => {
   beforeEach(() => {

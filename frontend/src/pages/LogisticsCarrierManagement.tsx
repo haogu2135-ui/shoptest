@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Card, Form, message, Progress, Space, Table, Tag, Typography } from 'antd';
+import { Form, Table } from 'antd';
 import ShopInput from '../components/ShopInput';
 import ShopPopconfirm from '../components/ShopPopconfirm';
 import ShopSelect from '../components/ShopSelect';
@@ -20,8 +20,17 @@ import {
   hasAdminPermission,
 } from '../utils/roles';
 import './LogisticsCarrierManagement.css';
+import ShopButton from '../components/ShopButton';
+import ShopProgress from '../components/ShopProgress';
+import message from '../components/ShopMessage';
 
-const { Title, Text } = Typography;
+import ShopTag from '../components/ShopTag';
+import ShopAlert from '../components/ShopAlert';
+import ShopSpace from '../components/ShopSpace';
+import ShopTypography from '../components/ShopTypography';
+import ShopCard from '../components/ShopCard';
+const Title = ShopTypography.Title;
+const Text = ShopTypography.Text;
 
 type LogisticsCarrierFormValues = Pick<LogisticsCarrier, 'name' | 'trackingCode' | 'status' | 'sortOrder'>;
 
@@ -234,21 +243,21 @@ const LogisticsCarrierManagement: React.FC = () => {
     <div className="logistics-carrier-page">
       <Title level={4}>{t('pages.logisticsCarriers.title')}</Title>
       {carrierLoadError && carrierSnapshotLoaded ? (
-        <Alert
+        <ShopAlert
           className="logistics-carrier-page__alert"
           type="warning"
           showIcon
           message={carrierLoadError}
           description={t('pages.logisticsCarriers.staleDataWarning')}
           action={(
-            <Space wrap data-admin-carriers-stale-recovery="true">
-              <Button size="small" type="primary" loading={loading} onClick={fetchCarriers}>
+            <ShopSpace wrap data-admin-carriers-stale-recovery="true">
+              <ShopButton size="small" type="primary" loading={loading} onClick={fetchCarriers}>
                 {t('common.retry')}
-              </Button>
-              <Button size="small" onClick={() => navigate('/admin')}>{t('pages.adminDashboard.title')}</Button>
-              <Button size="small" onClick={() => navigate('/admin/orders')}>{t('pages.adminDashboard.orders')}</Button>
-              <Button size="small" onClick={() => navigate('/admin/system')}>{t('pages.adminDashboard.paymentReturnOps.providerReadinessAction')}</Button>
-            </Space>
+              </ShopButton>
+              <ShopButton size="small" onClick={() => navigate('/admin')}>{t('pages.adminDashboard.title')}</ShopButton>
+              <ShopButton size="small" onClick={() => navigate('/admin/orders')}>{t('pages.adminDashboard.orders')}</ShopButton>
+              <ShopButton size="small" onClick={() => navigate('/admin/system')}>{t('pages.adminDashboard.paymentReturnOps.providerReadinessAction')}</ShopButton>
+            </ShopSpace>
           )}
         />
       ) : null}
@@ -269,7 +278,7 @@ const LogisticsCarrierManagement: React.FC = () => {
       ) : null}
 
       {showInitialCarrierLoading ? (
-        <Card
+        <ShopCard
           className="logistics-carrier-page__loadingState"
           loading
           role="status"
@@ -281,8 +290,8 @@ const LogisticsCarrierManagement: React.FC = () => {
 
       {canRenderCarrierSnapshot ? (
         <>
-      <Card className="logistics-carrier-page__intro">
-        <Space wrap>
+      <ShopCard className="logistics-carrier-page__intro">
+        <ShopSpace wrap>
           <Text type="secondary">{t('pages.logisticsCarriers.description')}</Text>
           <ShopInput
             allowClear
@@ -310,12 +319,12 @@ const LogisticsCarrierManagement: React.FC = () => {
             ]}
           />
           {canWriteCarriers ? (
-            <Button type="primary" icon={<PlusOutlined />} disabled={carrierActionDisabled} aria-label={addCarrierActionLabel} title={addCarrierActionLabel} onClick={() => openModal()}>
+            <ShopButton type="primary" icon={<PlusOutlined />} disabled={carrierActionDisabled} aria-label={addCarrierActionLabel} title={addCarrierActionLabel} onClick={() => openModal()}>
               {t('pages.logisticsCarriers.addCarrier')}
-            </Button>
+            </ShopButton>
           ) : null}
-        </Space>
-      </Card>
+        </ShopSpace>
+      </ShopCard>
       <section className="logistics-carrier-page__health" aria-label={t('pages.logisticsCarriers.healthTitle')}>
         <div className="logistics-carrier-page__healthCopy">
           <Text className="logistics-carrier-page__eyebrow">{t('pages.logisticsCarriers.healthEyebrow')}</Text>
@@ -323,7 +332,7 @@ const LogisticsCarrierManagement: React.FC = () => {
           <Text type="secondary">{t('pages.logisticsCarriers.healthSubtitle')}</Text>
         </div>
         <div className="logistics-carrier-page__score">
-          <Progress
+          <ShopProgress
             type="circle"
             percent={carrierHealth.score}
             width={86}
@@ -370,9 +379,9 @@ const LogisticsCarrierManagement: React.FC = () => {
             key: 'status',
             width: 120,
             render: (status: string) => (
-              <Tag color={String(status || '').trim().toUpperCase() === 'ACTIVE' ? 'green' : 'default'}>
+              <ShopTag color={String(status || '').trim().toUpperCase() === 'ACTIVE' ? 'green' : 'default'}>
                 {formatCarrierStatus(status)}
-              </Tag>
+              </ShopTag>
             ),
           },
           {
@@ -382,9 +391,9 @@ const LogisticsCarrierManagement: React.FC = () => {
             render: (_: unknown, carrier: LogisticsCarrier) => {
               const readySignals = getCarrierReadiness(carrier);
               return (
-                <Tag color={readySignals >= 4 ? 'green' : readySignals >= 3 ? 'orange' : 'red'}>
+                <ShopTag color={readySignals >= 4 ? 'green' : readySignals >= 3 ? 'orange' : 'red'}>
                   {t('pages.logisticsCarriers.readySignals', { count: readySignals })}
-                </Tag>
+                </ShopTag>
               );
             },
           },
@@ -398,8 +407,8 @@ const LogisticsCarrierManagement: React.FC = () => {
               const editActionLabel = `${t('common.edit')}: ${carrierName}`;
               const deleteActionLabel = `${t('common.delete')}: ${carrierName}`;
               return (
-                <Space>
-                  {canWriteCarriers ? <Button size="small" disabled={carrierActionDisabled} aria-label={editActionLabel} title={editActionLabel} onClick={() => openModal(carrier)}>{t('common.edit')}</Button> : null}
+                <ShopSpace>
+                  {canWriteCarriers ? <ShopButton size="small" disabled={carrierActionDisabled} aria-label={editActionLabel} title={editActionLabel} onClick={() => openModal(carrier)}>{t('common.edit')}</ShopButton> : null}
                   {canDeleteCarriers ? (
                     <ShopPopconfirm rootClassName="shop-mobile-popup-layer"
                       title={t('pages.logisticsCarriers.deleteConfirm')}
@@ -411,10 +420,10 @@ const LogisticsCarrierManagement: React.FC = () => {
                       okButtonProps={{ danger: true, disabled: carrierActionDisabled, 'aria-label': deleteActionLabel, title: deleteActionLabel }}
                       cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${deleteActionLabel}`, title: `${t('common.cancel')}: ${deleteActionLabel}` }}
                     >
-                      <Button size="small" danger disabled={carrierActionDisabled} aria-label={deleteActionLabel} title={deleteActionLabel}>{t('common.delete')}</Button>
+                      <ShopButton size="small" danger disabled={carrierActionDisabled} aria-label={deleteActionLabel} title={deleteActionLabel}>{t('common.delete')}</ShopButton>
                     </ShopPopconfirm>
                   ) : null}
-                </Space>
+                </ShopSpace>
               );
             },
           },

@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Card, Checkbox, Form, Space, Table, Tag, Typography, message } from 'antd';
+import { Form, Table } from 'antd';
 import ShopInput from '../components/ShopInput';
 import ShopModal from '../components/ShopModal';
+import ShopCheckbox, { ShopCheckboxGroup } from '../components/ShopCheckbox';
 import { DownloadOutlined, PlusOutlined, SafetyCertificateOutlined, SearchOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { adminApi } from '../api/admin';
@@ -12,8 +13,16 @@ import { getLocalStorageItem } from '../utils/safeStorage';
 import PageError from '../components/PageError';
 import { getApiErrorMessage } from '../utils/apiError';
 import './PermissionManagement.css';
+import ShopButton from '../components/ShopButton';
 
-const { Title, Text } = Typography;
+import ShopTag from '../components/ShopTag';
+import ShopAlert from '../components/ShopAlert';
+import ShopSpace from '../components/ShopSpace';
+import ShopTypography from '../components/ShopTypography';
+import ShopCard from '../components/ShopCard';
+import message from '../components/ShopMessage';
+const Title = ShopTypography.Title;
+const Text = ShopTypography.Text;
 const RESERVED_ROLE_CODES = new Set(['USER', 'ADMIN', 'SUPER_ADMIN']);
 
 const isReservedRole = (role?: AdminRole | null) => RESERVED_ROLE_CODES.has(String(role?.code || '').trim().toUpperCase());
@@ -154,21 +163,21 @@ const PermissionManagement: React.FC = () => {
       <Text type="secondary">{t('pages.permissions.subtitle')}</Text>
 
       {roleLoadError && roleSnapshotLoaded ? (
-        <Alert
+        <ShopAlert
           className="permission-management-page__alert"
           type="warning"
           showIcon
           message={roleLoadError}
           description={t('pages.permissions.staleDataWarning')}
           action={(
-            <Space wrap data-admin-permissions-stale-recovery="true">
-              <Button size="small" type="primary" loading={loading} onClick={loadRoles}>
+            <ShopSpace wrap data-admin-permissions-stale-recovery="true">
+              <ShopButton size="small" type="primary" loading={loading} onClick={loadRoles}>
                 {t('common.retry')}
-              </Button>
-              <Button size="small" onClick={() => navigate('/admin')}>{t('pages.adminDashboard.title')}</Button>
-              <Button size="small" onClick={() => navigate('/admin/users')}>{t('adminLayout.users')}</Button>
-              <Button size="small" onClick={() => navigate('/admin/system')}>{t('pages.adminDashboard.paymentReturnOps.providerReadinessAction')}</Button>
-            </Space>
+              </ShopButton>
+              <ShopButton size="small" onClick={() => navigate('/admin')}>{t('pages.adminDashboard.title')}</ShopButton>
+              <ShopButton size="small" onClick={() => navigate('/admin/users')}>{t('adminLayout.users')}</ShopButton>
+              <ShopButton size="small" onClick={() => navigate('/admin/system')}>{t('pages.adminDashboard.paymentReturnOps.providerReadinessAction')}</ShopButton>
+            </ShopSpace>
           )}
         />
       ) : null}
@@ -189,7 +198,7 @@ const PermissionManagement: React.FC = () => {
       ) : null}
 
       {showInitialRoleLoading ? (
-        <Card
+        <ShopCard
           className="permission-management-page__loadingState"
           loading
           role="status"
@@ -201,8 +210,8 @@ const PermissionManagement: React.FC = () => {
 
       {canRenderRoleSnapshot ? (
         <>
-      <Card className="permission-management-page__toolbar" style={{ margin: '20px 0 16px' }}>
-        <Space wrap className="permission-management-page__actions">
+      <ShopCard className="permission-management-page__toolbar" style={{ margin: '20px 0 16px' }}>
+        <ShopSpace wrap className="permission-management-page__actions">
           <ShopInput
             allowClear
             prefix={<SearchOutlined />}
@@ -214,16 +223,16 @@ const PermissionManagement: React.FC = () => {
             title={searchLabel}
             className="permission-management-page__searchInput"
           />
-          <Button type="primary" icon={<PlusOutlined />} disabled={roleActionDisabled} onClick={() => openRoleModal()} aria-label={newRoleActionLabel} title={newRoleActionLabel}>
+          <ShopButton type="primary" icon={<PlusOutlined />} disabled={roleActionDisabled} onClick={() => openRoleModal()} aria-label={newRoleActionLabel} title={newRoleActionLabel}>
             {t('pages.permissions.newRole')}
-          </Button>
-          <Button icon={<DownloadOutlined />} disabled={roleActionDisabled} onClick={exportRoles} aria-label={exportActionLabel} title={exportActionLabel}>
+          </ShopButton>
+          <ShopButton icon={<DownloadOutlined />} disabled={roleActionDisabled} onClick={exportRoles} aria-label={exportActionLabel} title={exportActionLabel}>
             {t('pages.permissions.export')}
-          </Button>
-        </Space>
-      </Card>
+          </ShopButton>
+        </ShopSpace>
+      </ShopCard>
 
-      <Alert
+      <ShopAlert
         className="permission-management-page__guard"
         type="info"
         showIcon
@@ -241,29 +250,29 @@ const PermissionManagement: React.FC = () => {
         bordered
         scroll={{ x: 980 }}
         columns={[
-          { title: t('pages.permissions.roleCode'), dataIndex: 'code', width: 160, render: (value) => <Tag color="purple">{value}</Tag> },
+          { title: t('pages.permissions.roleCode'), dataIndex: 'code', width: 160, render: (value) => <ShopTag color="purple">{value}</ShopTag> },
           { title: t('pages.permissions.roleName'), dataIndex: 'name', width: 180 },
           { title: t('pages.permissions.description'), dataIndex: 'description', width: 240, render: (value) => value || '-' },
           {
             title: t('pages.permissions.permissionPages'),
             dataIndex: 'permissions',
             render: (permissions: string[]) => (
-              <Space wrap size={[4, 4]}>
-                {(permissions || []).map((permission) => <Tag key={permission}>{t(adminPermissionLabelKey(permission))}</Tag>)}
-              </Space>
+              <ShopSpace wrap size={[4, 4]}>
+                {(permissions || []).map((permission) => <ShopTag key={permission}>{t(adminPermissionLabelKey(permission))}</ShopTag>)}
+              </ShopSpace>
             ),
           },
           {
             title: t('common.actions'),
             width: 120,
             render: (_, role) => {
-              if (isReservedRole(role)) return <Tag>{t('pages.permissions.systemRole')}</Tag>;
+              if (isReservedRole(role)) return <ShopTag>{t('pages.permissions.systemRole')}</ShopTag>;
               const roleLabel = role.name || role.code;
               const editActionLabel = `${t('common.edit')}: ${roleLabel}`;
               return (
-                <Button size="small" icon={<SafetyCertificateOutlined />} disabled={roleActionDisabled} aria-label={editActionLabel} title={editActionLabel} onClick={() => openRoleModal(role)}>
+                <ShopButton size="small" icon={<SafetyCertificateOutlined />} disabled={roleActionDisabled} aria-label={editActionLabel} title={editActionLabel} onClick={() => openRoleModal(role)}>
                   {t('common.edit')}
-                </Button>
+                </ShopButton>
               );
             },
           },
@@ -296,17 +305,24 @@ const PermissionManagement: React.FC = () => {
             <ShopInput aria-label={`${roleEditorLabel}: ${t('pages.permissions.description')}`} title={`${roleEditorLabel}: ${t('pages.permissions.description')}`} />
           </Form.Item>
           <Form.Item name="permissions" label={t('pages.permissions.permissionPages')} rules={[{ required: true }]}>
-	            <div role="group" aria-label={`${roleEditorLabel}: ${t('pages.permissions.permissionPages')}`} title={`${roleEditorLabel}: ${t('pages.permissions.permissionPages')}`}>
-	              <Checkbox.Group className="permission-management-page__checkboxGroup" aria-label={`${roleEditorLabel}: ${t('pages.permissions.permissionPages')}`}>
-                <Space wrap className="permission-management-page__permissionGrid">
-                  {ADMIN_PAGE_PERMISSIONS.map((permission) => (
-                    <Checkbox key={permission} value={permission} title={`${roleEditorLabel}: ${t(adminPermissionLabelKey(permission))}`}>
-                      {t(adminPermissionLabelKey(permission))}
-                    </Checkbox>
-                  ))}
-                </Space>
-              </Checkbox.Group>
-            </div>
+            <ShopCheckboxGroup
+              className="permission-management-page__checkboxGroup"
+              ariaLabel={`${roleEditorLabel}: ${t('pages.permissions.permissionPages')}`}
+              title={`${roleEditorLabel}: ${t('pages.permissions.permissionPages')}`}
+            >
+              <div className="permission-management-page__permissionGrid">
+              {ADMIN_PAGE_PERMISSIONS.map((permission) => (
+                <ShopCheckbox
+                  key={permission}
+                  value={permission}
+                  title={`${roleEditorLabel}: ${t(adminPermissionLabelKey(permission))}`}
+                  ariaLabel={`${roleEditorLabel}: ${t(adminPermissionLabelKey(permission))}`}
+                >
+                  {t(adminPermissionLabelKey(permission))}
+                </ShopCheckbox>
+              ))}
+              </div>
+            </ShopCheckboxGroup>
           </Form.Item>
         </Form>
       </ShopModal>

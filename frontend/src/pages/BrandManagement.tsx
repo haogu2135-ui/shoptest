@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Card, Divider, Form, Image, message, Progress, Space, Table, Tag, Typography } from 'antd';
+import { Form, Table } from 'antd';
 import ShopInput, { ShopTextArea } from '../components/ShopInput';
 import ShopPopconfirm from '../components/ShopPopconfirm';
 import ShopSelect from '../components/ShopSelect';
@@ -15,8 +15,19 @@ import PageError from '../components/PageError';
 import { getApiErrorMessage } from '../utils/apiError';
 import { BRANDS_DELETE_PERMISSION, BRANDS_WRITE_PERMISSION, getEffectiveRole, hasAdminPermission } from '../utils/roles';
 import './BrandManagement.css';
+import ShopButton from '../components/ShopButton';
+import ShopProgress from '../components/ShopProgress';
 
-const { Title, Text } = Typography;
+import ShopTag from '../components/ShopTag';
+import ShopAlert from '../components/ShopAlert';
+import ShopSpace from '../components/ShopSpace';
+import ShopTypography from '../components/ShopTypography';
+import ShopCard from '../components/ShopCard';
+import ShopDivider from '../components/ShopDivider';
+import ShopImage from '../components/ShopImage';
+import message from '../components/ShopMessage';
+const Title = ShopTypography.Title;
+const Text = ShopTypography.Text;
 const brandImageFallback = imageFallbacks.brand;
 const resolveBrandImage = (imageUrl?: string) => resolveApiAssetUrl(imageUrl, brandImageFallback);
 const mobilePopupClassNames = { popup: { root: 'shop-mobile-popup-layer' } };
@@ -271,7 +282,7 @@ const BrandManagement: React.FC = () => {
         const logoLabel = `${t('pages.brandAdmin.logo')}: ${brandLabel}`;
         const missingLogoLabel = `${logoLabel} - ${t('pages.brandAdmin.missingLogo')}`;
         return url ? (
-          <Image src={resolveBrandImage(url)} alt={logoLabel} title={logoLabel} width={56} height={56} style={{ objectFit: 'cover', borderRadius: 6 }} fallback={brandImageFallback} />
+          <ShopImage src={resolveBrandImage(url)} alt={logoLabel} title={logoLabel} width={56} height={56} style={{ objectFit: 'cover', borderRadius: 6 }} fallback={brandImageFallback} />
         ) : (
           <div className="brand-management-page__imagePlaceholder" role="img" aria-label={missingLogoLabel} title={missingLogoLabel} />
         );
@@ -284,10 +295,10 @@ const BrandManagement: React.FC = () => {
       width: 220,
       onCell: () => brandAdminTableCell(t('pages.brandAdmin.brand')),
       render: (name: string, record: Brand) => (
-        <Space direction="vertical" size={0}>
+        <ShopSpace direction="vertical" size={0}>
           <Text strong>{name}</Text>
           {record.websiteUrl ? <Text type="secondary" style={{ fontSize: 12 }}>{record.websiteUrl}</Text> : null}
-        </Space>
+        </ShopSpace>
       ),
     },
     {
@@ -305,7 +316,7 @@ const BrandManagement: React.FC = () => {
       onCell: () => brandAdminTableCell(t('common.status')),
       render: (status = 'ACTIVE') => {
         const normalizedStatus = String(status || 'ACTIVE').trim().toUpperCase();
-        return <Tag color={statusColors[normalizedStatus] || 'default'}>{formatBrandStatus(status)}</Tag>;
+        return <ShopTag color={statusColors[normalizedStatus] || 'default'}>{formatBrandStatus(status)}</ShopTag>;
       },
     },
     {
@@ -316,9 +327,9 @@ const BrandManagement: React.FC = () => {
       render: (_: unknown, record: Brand) => {
         const readySignals = getBrandReadiness(record);
         return (
-          <Tag color={readySignals >= 5 ? 'green' : readySignals >= 3 ? 'orange' : 'red'}>
+          <ShopTag color={readySignals >= 5 ? 'green' : readySignals >= 3 ? 'orange' : 'red'}>
             {t('pages.brandAdmin.readySignals', { count: readySignals })}
-          </Tag>
+          </ShopTag>
         );
       },
     },
@@ -339,10 +350,10 @@ const BrandManagement: React.FC = () => {
         const editActionLabel = `${t('common.edit')}: ${brandName}`;
         const deleteActionLabel = `${t('common.delete')}: ${brandName}`;
         return (
-          <Space size="small" wrap className="brand-management-page__tableActions">
-            {canWriteBrands ? <Button icon={<EditOutlined />} size="small" disabled={brandActionDisabled} aria-label={editActionLabel} title={editActionLabel} onClick={() => openModal(record)}>
+          <ShopSpace size="small" wrap className="brand-management-page__tableActions">
+            {canWriteBrands ? <ShopButton icon={<EditOutlined />} size="small" disabled={brandActionDisabled} aria-label={editActionLabel} title={editActionLabel} onClick={() => openModal(record)}>
               {t('common.edit')}
-            </Button> : null}
+            </ShopButton> : null}
             {canDeleteBrands ? (
               <ShopPopconfirm rootClassName="shop-mobile-popup-layer"
                 title={t('pages.brandAdmin.deleteConfirm')}
@@ -354,12 +365,12 @@ const BrandManagement: React.FC = () => {
                 okButtonProps={{ danger: true, disabled: brandActionDisabled, 'aria-label': deleteActionLabel, title: deleteActionLabel }}
                 cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${deleteActionLabel}`, title: `${t('common.cancel')}: ${deleteActionLabel}` }}
               >
-                <Button icon={<DeleteOutlined />} danger size="small" disabled={brandActionDisabled} aria-label={deleteActionLabel} title={deleteActionLabel}>
+                <ShopButton icon={<DeleteOutlined />} danger size="small" disabled={brandActionDisabled} aria-label={deleteActionLabel} title={deleteActionLabel}>
                   {t('common.delete')}
-                </Button>
+                </ShopButton>
               </ShopPopconfirm>
             ) : null}
-          </Space>
+          </ShopSpace>
         );
       },
     },
@@ -372,24 +383,24 @@ const BrandManagement: React.FC = () => {
   return (
     <div className={`brand-management-page brand-management-page--${language}`}>
       <Title level={3} className="brand-management-page__title">{t('pages.brandAdmin.title')}</Title>
-      <Divider />
+      <ShopDivider />
 
       {brandLoadError && brandSnapshotLoaded ? (
-        <Alert
+        <ShopAlert
           className="brand-management-page__alert"
           type="warning"
           showIcon
           message={brandLoadError}
           description={t('pages.brandAdmin.staleDataWarning')}
           action={(
-            <Space wrap data-admin-brands-stale-recovery="true">
-              <Button size="small" type="primary" loading={loading} onClick={fetchBrands}>
+            <ShopSpace wrap data-admin-brands-stale-recovery="true">
+              <ShopButton size="small" type="primary" loading={loading} onClick={fetchBrands}>
                 {t('common.retry')}
-              </Button>
-              <Button size="small" onClick={() => navigate('/admin')}>{t('pages.adminDashboard.title')}</Button>
-              <Button size="small" onClick={() => navigate('/admin/products')}>{t('pages.adminDashboard.products')}</Button>
-              <Button size="small" onClick={() => navigate('/admin/orders')}>{t('pages.adminDashboard.orders')}</Button>
-            </Space>
+              </ShopButton>
+              <ShopButton size="small" onClick={() => navigate('/admin')}>{t('pages.adminDashboard.title')}</ShopButton>
+              <ShopButton size="small" onClick={() => navigate('/admin/products')}>{t('pages.adminDashboard.products')}</ShopButton>
+              <ShopButton size="small" onClick={() => navigate('/admin/orders')}>{t('pages.adminDashboard.orders')}</ShopButton>
+            </ShopSpace>
           )}
         />
       ) : null}
@@ -410,7 +421,7 @@ const BrandManagement: React.FC = () => {
       ) : null}
 
       {showInitialBrandLoading ? (
-        <Card
+        <ShopCard
           className="brand-management-page__loadingState"
           loading
           role="status"
@@ -422,8 +433,8 @@ const BrandManagement: React.FC = () => {
 
       {canRenderBrandSnapshot ? (
         <>
-      <Card className="brand-management-page__toolbar">
-        <Space wrap role="search" aria-label={brandSearchRegionLabel} title={brandSearchRegionLabel}>
+      <ShopCard className="brand-management-page__toolbar">
+        <ShopSpace wrap role="search" aria-label={brandSearchRegionLabel} title={brandSearchRegionLabel}>
           <Text type="secondary">{t('pages.brandAdmin.healthSubtitle')}</Text>
           <ShopInput
             allowClear
@@ -451,12 +462,12 @@ const BrandManagement: React.FC = () => {
             ]}
           />
           {canWriteBrands ? (
-            <Button type="primary" icon={<PlusOutlined />} disabled={brandActionDisabled} aria-label={addBrandActionLabel} title={addBrandActionLabel} onClick={() => openModal()}>
+            <ShopButton type="primary" icon={<PlusOutlined />} disabled={brandActionDisabled} aria-label={addBrandActionLabel} title={addBrandActionLabel} onClick={() => openModal()}>
               {t('pages.brandAdmin.addBrand')}
-            </Button>
+            </ShopButton>
           ) : null}
-        </Space>
-      </Card>
+        </ShopSpace>
+      </ShopCard>
 
       <section className="brand-management-page__health" aria-label={t('pages.brandAdmin.healthTitle')}>
         <div className="brand-management-page__healthCopy">
@@ -465,7 +476,7 @@ const BrandManagement: React.FC = () => {
           <Text type="secondary">{t('pages.brandAdmin.healthDescription')}</Text>
         </div>
         <div className="brand-management-page__score" aria-label={healthScoreLabel} title={healthScoreLabel}>
-          <Progress
+          <ShopProgress
             type="circle"
             percent={brandHealth.score}
             size={86}
@@ -534,7 +545,7 @@ const BrandManagement: React.FC = () => {
 
           {logoPreviewUrl ? (
             <div className="brand-management-page__preview">
-              <Image src={resolveBrandImage(logoPreviewUrl)} alt={`${t('pages.brandAdmin.logo')}: ${getBrandLabel(editingBrand)}`} title={`${t('pages.brandAdmin.logo')}: ${getBrandLabel(editingBrand)}`} width={180} height={120} style={{ objectFit: 'cover', borderRadius: 8 }} fallback={brandImageFallback} />
+              <ShopImage src={resolveBrandImage(logoPreviewUrl)} alt={`${t('pages.brandAdmin.logo')}: ${getBrandLabel(editingBrand)}`} title={`${t('pages.brandAdmin.logo')}: ${getBrandLabel(editingBrand)}`} width={180} height={120} style={{ objectFit: 'cover', borderRadius: 8 }} fallback={brandImageFallback} />
             </div>
           ) : null}
 
@@ -546,7 +557,7 @@ const BrandManagement: React.FC = () => {
             <ShopTextArea rows={3} placeholder={t('pages.brandAdmin.descriptionPlaceholder')} aria-label={descriptionFieldLabel} title={descriptionFieldLabel} />
           </Form.Item>
 
-          <Space className="brand-management-page__formRow" align="start">
+          <ShopSpace className="brand-management-page__formRow" align="start">
             <Form.Item name="status" label={t('common.status')} className="brand-management-page__statusField">
               <ShopSelect
                 ariaLabel={statusFieldLabel}
@@ -560,7 +571,7 @@ const BrandManagement: React.FC = () => {
             <Form.Item name="sortOrder" label={t('pages.brandAdmin.sortOrder')}>
               <ShopInputNumber min={0} precision={0} aria-label={sortOrderFieldLabel} title={sortOrderFieldLabel} />
             </Form.Item>
-          </Space>
+          </ShopSpace>
         </Form>
       </ShopModal>
     </div>

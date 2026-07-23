@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { ShopIcon, SI } from './ShopIcon';
-import { Button } from 'antd';
+
 import ShopModal from './ShopModal';
 import { useLanguage } from '../i18n';
 import { getLocalStorageItem, setLocalStorageItem } from '../utils/safeStorage';
@@ -18,6 +18,7 @@ import {
   type MobileReleaseManifest,
 } from '../utils/mobileUpdate';
 import './NativeMobileUpdateGate.css';
+import ShopButton from './ShopButton';
 
 const MOBILE_UPDATE_DISMISSED_KEY_PREFIX = 'shop-mobile-update-dismissed';
 
@@ -196,11 +197,11 @@ export const NativeMobileUpdateGate: React.FC = () => {
       footer={(
         <div className="shop-mobile-update-modal__actions">
           {!updateRequired ? (
-            <Button aria-label={updateLaterActionLabel} title={updateLaterActionLabel} onClick={handleDismiss}>{t('appUpdate.later')}</Button>
+            <ShopButton aria-label={updateLaterActionLabel} title={updateLaterActionLabel} onClick={handleDismiss}>{t('appUpdate.later')}</ShopButton>
           ) : null}
-          <Button type="primary" loading={openingDownload} aria-label={updateDownloadActionLabel} title={updateDownloadActionLabel} onClick={handleDownload}>
+          <ShopButton type="primary" loading={openingDownload} aria-label={updateDownloadActionLabel} title={updateDownloadActionLabel} onClick={handleDownload}>
             {t('appUpdate.download')}
-          </Button>
+          </ShopButton>
         </div>
       )}
     >
@@ -212,7 +213,7 @@ export const NativeMobileUpdateGate: React.FC = () => {
         {downloadFailed ? (
           <div className="shop-mobile-update-modal__stack shop-mobile-update-modal__stack--tight">
             <p className="shop-mobile-update-modal__text shop-mobile-update-modal__text--danger">{t('appUpdate.downloadFailed')}</p>
-            <Button
+            <ShopButton
               icon={<ShopIcon path={SI.copy} />}
               aria-label={copyDownloadActionLabel}
               title={copyDownloadActionLabel}
@@ -221,7 +222,7 @@ export const NativeMobileUpdateGate: React.FC = () => {
               block
             >
               {t('appUpdate.copyDownloadLink')}
-            </Button>
+            </ShopButton>
             {downloadUrl ? (
               <code className="shop-mobile-update-modal__code">{downloadUrl}</code>
             ) : null}

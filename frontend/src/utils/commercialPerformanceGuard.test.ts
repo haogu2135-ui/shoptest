@@ -2180,4 +2180,468 @@ describe('commercial performance contracts', () => {
   });
 
 
+
+  it('keeps admin date ranges and tree pickers densified without residual ant pickers', () => {
+    const pages = {
+      AnnouncementManagement: fs.readFileSync(path.resolve(__dirname, '../pages/AnnouncementManagement.tsx'), 'utf8'),
+      CouponManagement: fs.readFileSync(path.resolve(__dirname, '../pages/CouponManagement.tsx'), 'utf8'),
+      ProductManagement: fs.readFileSync(path.resolve(__dirname, '../pages/ProductManagement.tsx'), 'utf8'),
+      CategoryManagement: fs.readFileSync(path.resolve(__dirname, '../pages/CategoryManagement.tsx'), 'utf8'),
+      LogManagement: fs.readFileSync(path.resolve(__dirname, '../pages/LogManagement.tsx'), 'utf8'),
+      SecurityAuditLogManagement: fs.readFileSync(path.resolve(__dirname, '../pages/SecurityAuditLogManagement.tsx'), 'utf8'),
+    };
+    expect(pages.AnnouncementManagement).toContain('ShopDatePicker');
+    expect(pages.AnnouncementManagement).toContain('showTime');
+    expect(pages.AnnouncementManagement).not.toMatch(/import \{[^}]*\bDatePicker\b[^}]*\} from 'antd'/);
+    expect(pages.AnnouncementManagement).not.toMatch(/<DatePicker\b/);
+    expect(pages.CouponManagement).toContain('ShopRangePicker');
+    expect(pages.CouponManagement).not.toMatch(/import \{[^}]*\bDatePicker\b[^}]*\} from 'antd'/);
+    expect(pages.CouponManagement).not.toMatch(/<DatePicker\b/);
+    expect(pages.ProductManagement).toContain('ShopRangePicker');
+    expect(pages.ProductManagement).toContain('ShopTreeSelect');
+    expect(pages.ProductManagement).not.toMatch(/import \{[^}]*\bDatePicker\b[^}]*\} from 'antd'/);
+    expect(pages.ProductManagement).not.toMatch(/import \{[^}]*\bTreeSelect\b[^}]*\} from 'antd'/);
+    expect(pages.ProductManagement).not.toMatch(/<DatePicker\b/);
+    expect(pages.ProductManagement).not.toMatch(/<TreeSelect\b/);
+    expect(pages.CategoryManagement).toContain('ShopTreeSelect');
+    expect(pages.CategoryManagement).not.toMatch(/import \{[^}]*\bTreeSelect\b[^}]*\} from 'antd'/);
+    expect(pages.CategoryManagement).not.toMatch(/<TreeSelect\b/);
+    expect(pages.LogManagement).toContain('ShopRangePicker');
+    expect(pages.LogManagement).not.toMatch(/import \{[^}]*\bDatePicker\b[^}]*\} from 'antd'/);
+    expect(pages.LogManagement).not.toMatch(/<RangePicker\b/);
+    expect(pages.SecurityAuditLogManagement).toContain('ShopRangePicker');
+    expect(pages.SecurityAuditLogManagement).toContain('ShopRangeValue');
+    expect(pages.SecurityAuditLogManagement).not.toMatch(/import \{[^}]*\bDatePicker\b[^}]*\} from 'antd'/);
+    expect(pages.SecurityAuditLogManagement).not.toMatch(/<RangePicker\b/);
+  });
+
+
+  it('keeps residual admin/storefront switches on ShopSwitch', () => {
+    const pages = [
+      'ProductManagement',
+      'CouponManagement',
+      'BugManagement',
+      'AnnouncementManagement',
+      'LogManagement',
+      'ProductCompare',
+    ];
+    pages.forEach((page) => {
+      const source = fs.readFileSync(path.resolve(__dirname, `../pages/${page}.tsx`), 'utf8');
+      expect(source).toContain('ShopSwitch');
+      expect(source).not.toMatch(/<Switch\b/);
+      expect(source).not.toMatch(/import \{[^}]*\bSwitch\b[^}]*\} from 'antd'/);
+    });
+  });
+
+
+  it('keeps residual admin/storefront checkboxes densified without ant Checkbox/Radio', () => {
+    const checkboxPages = ['Cart', 'OrderManagement', 'Profile', 'ConfigCenter', 'ProductList', 'PermissionManagement'];
+    checkboxPages.forEach((page) => {
+      const source = fs.readFileSync(path.resolve(__dirname, `../pages/${page}.tsx`), 'utf8');
+      expect(source).toContain('ShopCheckbox');
+      expect(source).not.toMatch(/<Checkbox\b/);
+      expect(source).not.toMatch(/import \{[^}]*\bCheckbox\b[^}]*\} from 'antd'/);
+    });
+    const productList = fs.readFileSync(path.resolve(__dirname, '../pages/ProductList.tsx'), 'utf8');
+    expect(productList).toContain('ShopCheckboxGroup');
+    const permission = fs.readFileSync(path.resolve(__dirname, '../pages/PermissionManagement.tsx'), 'utf8');
+    expect(permission).toContain('ShopCheckboxGroup');
+    const notification = fs.readFileSync(path.resolve(__dirname, '../pages/NotificationManagement.tsx'), 'utf8');
+    expect(notification).toContain('ShopSegmented');
+    expect(notification).not.toMatch(/import \{[^}]*\bRadio\b[^}]*\} from 'antd'/);
+    expect(notification).not.toMatch(/<Radio\b/);
+  });
+
+
+  it('keeps conversion funnel free of residual ant Button', () => {
+    const pages = [
+      'Cart',
+      'Checkout',
+      'ProductDetail',
+      'Login',
+      'Register',
+      'Profile',
+      'ProductList',
+      'CouponCenter',
+      'Wishlist',
+      'OrderTracking',
+      'PaymentInstructions',
+      'BrowsingHistory',
+      'ProductCompare',
+      'ForgotPassword',
+    ];
+    pages.forEach((page) => {
+      const source = fs.readFileSync(path.resolve(__dirname, `../pages/${page}.tsx`), 'utf8');
+      expect(source).toContain('ShopButton');
+      expect(source).not.toMatch(/<Button\b/);
+      expect(source).not.toMatch(/import \{[^}]*\bButton\b[^}]*\} from 'antd'/);
+    });
+    const cartDrawer = fs.readFileSync(path.resolve(__dirname, '../components/CartDrawer.tsx'), 'utf8');
+    expect(cartDrawer).toContain('ShopButton');
+    expect(cartDrawer).not.toMatch(/<Button\b/);
+    const payment = fs.readFileSync(path.resolve(__dirname, '../components/Payment.tsx'), 'utf8');
+    expect(payment).toContain('ShopButton');
+    expect(payment).not.toMatch(/<Button\b/);
+    const modal = fs.readFileSync(path.resolve(__dirname, '../components/ShopModal.tsx'), 'utf8');
+    expect(modal).toContain('ShopButton');
+    expect(modal).not.toMatch(/from 'antd'/);
+    const popconfirm = fs.readFileSync(path.resolve(__dirname, '../components/ShopPopconfirm.tsx'), 'utf8');
+    expect(popconfirm).toContain('ShopButton');
+    expect(popconfirm).not.toMatch(/from 'antd'/);
+  });
+
+
+
+  it('keeps admin/storefront uploads on ShopUpload without residual ant Upload', () => {
+    const files = [
+      path.resolve(__dirname, '../pages/ProductManagement.tsx'),
+      path.resolve(__dirname, '../pages/BugManagement.tsx'),
+      path.resolve(__dirname, '../components/ProductReview.tsx'),
+    ];
+    files.forEach((filePath) => {
+      const source = fs.readFileSync(filePath, 'utf8');
+      expect(source).toContain('ShopUpload');
+      expect(source).not.toMatch(/import \{[^}]*\bUpload\b[^}]*\} from 'antd'/);
+      expect(source).not.toMatch(/<Upload\b/);
+    });
+    const rich = fs.readFileSync(path.resolve(__dirname, '../components/ProductRichDetailEditor.tsx'), 'utf8');
+    expect(rich).toContain('ShopSelect');
+    expect(rich).not.toMatch(/import \{[^}]*\bSelect\b[^}]*\} from 'antd'/);
+    expect(rich).not.toMatch(/<Select\b/);
+  });
+
+
+
+  it('keeps admin mobile navigation on ShopDrawer without residual ant Drawer', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, '../components/AdminLayout.tsx'), 'utf8');
+    expect(source).toContain('ShopDrawer');
+    expect(source).toContain('placement="left"');
+    expect(source).not.toMatch(/import \{[^}]*\bDrawer\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<Drawer\b/);
+  });
+
+
+
+  it('keeps admin review ratings on ShopRate without residual ant Rate', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, '../pages/ReviewManagement.tsx'), 'utf8');
+    expect(source).toContain('ShopRate');
+    expect(source).not.toMatch(/import \{[^}]*\bRate\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<Rate\b/);
+  });
+
+
+
+  it('keeps admin ops loading and empty states on ShopSpin/ShopEmpty without residual ant Spin/Empty', () => {
+    const files = [
+      'AdminLayout.tsx',
+      'SupportManagement.tsx',
+      'AlertManagement.tsx',
+      'TrafficControl.tsx',
+      'ConfigCenter.tsx',
+      'IpBlacklistManagement.tsx',
+      'LogManagement.tsx',
+      'RegistryManagement.tsx',
+      'SystemMonitor.tsx',
+      'AdminDashboard.tsx',
+      'SecurityAuditLogManagement.tsx',
+      'BugManagement.tsx',
+      'PetGalleryManagement.tsx',
+    ];
+    files.forEach((fileName) => {
+      const isComponent = fileName === 'AdminLayout.tsx';
+      const source = fs.readFileSync(
+        path.resolve(__dirname, isComponent ? `../components/${fileName}` : `../pages/${fileName}`),
+        'utf8',
+      );
+      if (fileName !== 'PetGalleryManagement.tsx') {
+        expect(source).toContain('ShopSpin');
+        expect(source).not.toMatch(/import \{[^}]*\bSpin\b[^}]*\} from 'antd'/);
+        expect(source).not.toMatch(/<Spin\b/);
+      }
+      if ([
+        'SupportManagement.tsx',
+        'AlertManagement.tsx',
+        'TrafficControl.tsx',
+        'ConfigCenter.tsx',
+        'IpBlacklistManagement.tsx',
+        'LogManagement.tsx',
+        'RegistryManagement.tsx',
+        'PetGalleryManagement.tsx',
+      ].includes(fileName)) {
+        expect(source).toContain('ShopEmpty');
+        expect(source).not.toMatch(/import \{[^}]*\bEmpty\b[^}]*\} from 'antd'/);
+        expect(source).not.toMatch(/<Empty\b/);
+      }
+    });
+    const support = fs.readFileSync(path.resolve(__dirname, '../pages/SupportManagement.tsx'), 'utf8');
+    expect(support).toContain('ShopBadge');
+    expect(support).not.toMatch(/import \{[^}]*\bBadge\b[^}]*\} from 'antd'/);
+    expect(support).not.toMatch(/<Badge\b/);
+    const adminLayout = fs.readFileSync(path.resolve(__dirname, '../components/AdminLayout.tsx'), 'utf8');
+    expect(adminLayout).toContain('ShopBadge');
+    expect(adminLayout).not.toMatch(/import \{[^}]*\bBadge\b[^}]*\} from 'antd'/);
+    expect(adminLayout).not.toMatch(/<Badge\b/);
+  });
+
+  it('keeps residual admin Tooltip/Skeleton densified onto ShopTooltip/ShopSkeleton', () => {
+    for (const [dir, name] of [
+      ['components', 'AdminLayout.tsx'],
+      ['pages', 'ProductManagement.tsx'],
+      ['pages', 'BugManagement.tsx'],
+    ] as const) {
+      const source = readFrontend(dir, name);
+      expect(source).not.toMatch(/import \{[^}]*\bTooltip\b[^}]*\} from 'antd'/);
+      expect(source).not.toMatch(/<Tooltip\b/);
+      expect(source).toContain('ShopTooltip');
+    }
+    const bugs = readFrontend('pages', 'BugManagement.tsx');
+    expect(bugs).toContain('ShopSkeleton');
+    expect(bugs).not.toMatch(/import \{[^}]*\bSkeleton\b[^}]*\} from 'antd'/);
+    expect(bugs).not.toMatch(/<Skeleton\b/);
+  });
+
+  it('keeps conversion and admin Progress densified onto ShopProgress without residual ant Progress', () => {
+    for (const [dir, name] of [
+      ['pages', 'Cart.tsx'],
+      ['pages', 'Checkout.tsx'],
+      ['pages', 'Profile.tsx'],
+      ['components', 'CartDrawer.tsx'],
+      ['pages', 'AdminDashboard.tsx'],
+      ['pages', 'SystemMonitor.tsx'],
+      ['pages', 'UserManagement.tsx'],
+      ['pages', 'BrandManagement.tsx'],
+      ['pages', 'CategoryManagement.tsx'],
+      ['pages', 'LogisticsCarrierManagement.tsx'],
+      ['pages', 'SecurityAuditLogManagement.tsx'],
+    ] as const) {
+      const source = readFrontend(dir, name);
+      expect(source).toContain('ShopProgress');
+      expect(source).not.toMatch(/import \{[^}]*\bProgress\b[^}]*\} from 'antd'/);
+      expect(source).not.toMatch(/<Progress\b/);
+    }
+  });
+
+  it('keeps admin Statistic densified onto ShopStatistic without residual ant Statistic', () => {
+    for (const [dir, name] of [
+      ['pages', 'AdminDashboard.tsx'],
+      ['pages', 'SystemMonitor.tsx'],
+      ['pages', 'BugManagement.tsx'],
+      ['pages', 'AlertManagement.tsx'],
+      ['pages', 'ConfigCenter.tsx'],
+      ['pages', 'TrafficControl.tsx'],
+      ['pages', 'LogManagement.tsx'],
+      ['pages', 'IpBlacklistManagement.tsx'],
+      ['pages', 'PetGalleryManagement.tsx'],
+      ['pages', 'RegistryManagement.tsx'],
+    ] as const) {
+      const source = readFrontend(dir, name);
+      expect(source).toContain('ShopStatistic');
+      expect(source).not.toMatch(/import \{[^}]*\bStatistic\b[^}]*\} from 'antd'/);
+      expect(source).not.toMatch(/<Statistic\b/);
+    }
+  });
+
+  it('keeps residual Avatar/List/Tabs densified onto ShopAvatar/ShopList/ShopTabs', () => {
+    for (const [dir, name] of [
+      ['pages', 'AdminDashboard.tsx'],
+      ['components', 'ProductReview.tsx'],
+      ['components', 'CustomerSupportWidget.tsx'],
+    ] as const) {
+      const source = readFrontend(dir, name);
+      expect(source).toContain('ShopAvatar');
+      expect(source).not.toMatch(/import \{[^}]*\bAvatar\b[^}]*\} from 'antd'/);
+      expect(source).not.toMatch(/<Avatar\b/);
+    }
+    for (const [dir, name] of [
+      ['pages', 'AdminDashboard.tsx'],
+      ['pages', 'SupportManagement.tsx'],
+    ] as const) {
+      const source = readFrontend(dir, name);
+      expect(source).toContain('ShopList');
+      expect(source).not.toMatch(/import \{[^}]*\bList\b[^}]*\} from 'antd'/);
+      expect(source).not.toMatch(/<List\b/);
+    }
+    for (const [dir, name] of [
+      ['pages', 'CategoryManagement.tsx'],
+      ['pages', 'ProductManagement.tsx'],
+    ] as const) {
+      const source = readFrontend(dir, name);
+      expect(source).toContain('ShopTabs');
+      expect(source).not.toMatch(/import \{[^}]*\bTabs\b[^}]*\} from 'antd'/);
+      expect(source).not.toMatch(/<Tabs\b/);
+    }
+  });
+
+
+
+
+
+
+
+  it('keeps conversion and residual Tag densified onto ShopTag without residual ant Tag', () => {
+    for (const [dir, name] of [
+      ['pages', 'Cart.tsx'],
+      ['pages', 'Checkout.tsx'],
+      ['pages', 'Profile.tsx'],
+      ['pages', 'ProductList.tsx'],
+      ['pages', 'ProductDetail.tsx'],
+      ['components', 'CartDrawer.tsx'],
+      ['components', 'Payment.tsx'],
+      ['pages', 'AdminDashboard.tsx'],
+      ['pages', 'OrderManagement.tsx'],
+      ['pages', 'SupportManagement.tsx'],
+      ['pages', 'ProductManagement.tsx'],
+      ['pages', 'SystemMonitor.tsx'],
+    ] as const) {
+      const source = readFrontend(dir, name);
+      expect(source).toContain('ShopTag');
+      expect(source).not.toMatch(/import \{[^}]*\bTag\b[^}]*\} from 'antd'/);
+      expect(source).not.toMatch(/<Tag\b/);
+    }
+  });
+
+  it('keeps conversion and residual Alert densified onto ShopAlert without residual ant Alert', () => {
+    for (const [dir, name] of [
+      ['pages', 'Cart.tsx'],
+      ['pages', 'Checkout.tsx'],
+      ['pages', 'Profile.tsx'],
+      ['pages', 'Login.tsx'],
+      ['pages', 'ForgotPassword.tsx'],
+      ['components', 'CartDrawer.tsx'],
+      ['components', 'Payment.tsx'],
+      ['components', 'AdminLayout.tsx'],
+      ['pages', 'OrderManagement.tsx'],
+      ['pages', 'OrderTracking.tsx'],
+      ['pages', 'ProductManagement.tsx'],
+      ['pages', 'SupportManagement.tsx'],
+    ] as const) {
+      const source = readFrontend(dir, name);
+      expect(source).toContain('ShopAlert');
+      expect(source).not.toMatch(/import \{[^}]*\bAlert\b[^}]*\} from 'antd'/);
+      expect(source).not.toMatch(/<Alert\b/);
+    }
+  });
+
+
+
+  it('keeps residual Space densified onto ShopSpace without residual ant Space', () => {
+    for (const [dir, name] of [
+      ['pages', 'OrderManagement.tsx'],
+      ['pages', 'AdminDashboard.tsx'],
+      ['pages', 'ProductManagement.tsx'],
+      ['pages', 'SupportManagement.tsx'],
+      ['pages', 'LogManagement.tsx'],
+      ['components', 'AdminLayout.tsx'],
+    ] as const) {
+      const source = readFrontend(dir, name);
+      expect(source).toContain('ShopSpace');
+      expect(source).not.toMatch(/import \{[^}]*\bSpace\b[^}]*\} from 'antd'/);
+      expect(source).not.toMatch(/<Space\b/);
+    }
+  });
+
+  it('keeps residual Typography densified onto ShopTypography without residual ant Typography', () => {
+    for (const [dir, name] of [
+      ['pages', 'OrderManagement.tsx'],
+      ['pages', 'AdminDashboard.tsx'],
+      ['pages', 'ProductManagement.tsx'],
+      ['pages', 'BugManagement.tsx'],
+      ['pages', 'LogManagement.tsx'],
+      ['components', 'AdminLayout.tsx'],
+    ] as const) {
+      const source = readFrontend(dir, name);
+      expect(source).toContain('ShopTypography');
+      expect(source).not.toMatch(/import \{[^}]*\bTypography\b[^}]*\} from 'antd'/);
+      expect(source).not.toMatch(/<Typography\b/);
+      expect(source).not.toMatch(/(?<!Shop)Typography\.(Text|Title|Paragraph|Link)/);
+    }
+  });
+
+
+
+  it('keeps residual Card densified onto ShopCard without residual ant Card', () => {
+    for (const [dir, name] of [
+      ['pages', 'AdminDashboard.tsx'],
+      ['pages', 'OrderManagement.tsx'],
+      ['pages', 'ProductManagement.tsx'],
+      ['pages', 'SystemMonitor.tsx'],
+      ['pages', 'SupportManagement.tsx'],
+      ['pages', 'AlertManagement.tsx'],
+    ] as const) {
+      const source = readFrontend(dir, name);
+      expect(source).toContain('ShopCard');
+      expect(source).not.toMatch(/import \{[^}]*\bCard\b[^}]*\} from 'antd'/);
+      expect(source).not.toMatch(/<Card\b/);
+    }
+  });
+
+  it('keeps residual Divider densified onto ShopDivider without residual ant Divider', () => {
+    for (const [dir, name] of [
+      ['pages', 'OrderManagement.tsx'],
+      ['pages', 'ProductManagement.tsx'],
+      ['pages', 'CategoryManagement.tsx'],
+      ['pages', 'UserManagement.tsx'],
+      ['pages', 'BrandManagement.tsx'],
+      ['pages', 'ReviewManagement.tsx'],
+    ] as const) {
+      const source = readFrontend(dir, name);
+      expect(source).toContain('ShopDivider');
+      expect(source).not.toMatch(/import \{[^}]*\bDivider\b[^}]*\} from 'antd'/);
+      expect(source).not.toMatch(/<Divider\b/);
+    }
+  });
+
+
+
+  it('keeps residual Image densified onto ShopImage without residual ant Image', () => {
+    for (const [dir, name] of [
+      ['pages', 'ProductManagement.tsx'],
+      ['pages', 'BrandManagement.tsx'],
+      ['pages', 'CategoryManagement.tsx'],
+      ['pages', 'PetGalleryManagement.tsx'],
+      ['components', 'ProductRichDetailEditor.tsx'],
+    ] as const) {
+      const source = readFrontend(dir, name);
+      expect(source).toContain('ShopImage');
+      expect(source).not.toMatch(/import \{[^}]*\bImage\b[^}]*\} from 'antd'/);
+      expect(source).not.toMatch(/<Image\b/);
+    }
+  });
+
+  it('keeps residual Descriptions densified onto ShopDescriptions without residual ant Descriptions', () => {
+    for (const [dir, name] of [
+      ['pages', 'SystemMonitor.tsx'],
+      ['pages', 'LogManagement.tsx'],
+      ['pages', 'ConfigCenter.tsx'],
+      ['pages', 'RegistryManagement.tsx'],
+    ] as const) {
+      const source = readFrontend(dir, name);
+      expect(source).toContain('ShopDescriptions');
+      expect(source).not.toMatch(/import \{[^}]*\bDescriptions\b[^}]*\} from 'antd'/);
+      expect(source).not.toMatch(/<Descriptions\b/);
+      expect(source).not.toMatch(/(?<!Shop)Descriptions\.Item/);
+    }
+  });
+
+
+
+  it('keeps residual admin message densified onto ShopMessage without residual antd message', () => {
+    for (const [dir, name] of [
+      ['pages', 'ProductManagement.tsx'],
+      ['pages', 'OrderManagement.tsx'],
+      ['pages', 'CouponManagement.tsx'],
+      ['pages', 'UserManagement.tsx'],
+      ['pages', 'SystemMonitor.tsx'],
+      ['pages', 'SupportManagement.tsx'],
+      ['pages', 'LogManagement.tsx'],
+      ['pages', 'ConfigCenter.tsx'],
+      ['components', 'AdminLayout.tsx'],
+    ] as const) {
+      const source = readFrontend(dir, name);
+      expect(source).toContain('ShopMessage');
+      expect(source).toMatch(/import message from ['"].*ShopMessage['"]/);
+      expect(source).not.toMatch(/import \{[^}]*\bmessage\b[^}]*\} from 'antd'/);
+    }
+  });
+
 });

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Card, Descriptions, Progress, Space, Spin, Statistic, Tag, Typography, message } from 'antd';
+
 import { CloudServerOutlined, DatabaseOutlined, HddOutlined, ReloadOutlined, SafetyCertificateOutlined, SettingOutlined } from '@ant-design/icons';
 import { apiBaseUrl } from '../api';
 import { adminApi } from '../api/admin';
@@ -9,8 +9,20 @@ import { useLanguage } from '../i18n';
 import PageError from '../components/PageError';
 import { getApiErrorMessage } from '../utils/apiError';
 import './SystemMonitor.css';
+import ShopButton from '../components/ShopButton';
+import ShopSpin from '../components/ShopSpin';
+import ShopProgress from '../components/ShopProgress';
+import ShopStatistic from '../components/ShopStatistic';
 
-const { Title, Text } = Typography;
+import ShopTag from '../components/ShopTag';
+import ShopAlert from '../components/ShopAlert';
+import ShopSpace from '../components/ShopSpace';
+import ShopTypography from '../components/ShopTypography';
+import ShopCard from '../components/ShopCard';
+import ShopDescriptions from '../components/ShopDescriptions';
+import message from '../components/ShopMessage';
+const Title = ShopTypography.Title;
+const Text = ShopTypography.Text;
 
 const formatBytes = (value?: number) => {
   const bytes = Number(value || 0);
@@ -45,15 +57,15 @@ const statusTag = (status: string | undefined, ready: boolean | undefined, label
     DISABLED: 'default',
     UNKNOWN: 'default',
   };
-  return <Tag color={colorMap[value] || 'default'}>{labels[value] || value}</Tag>;
+  return <ShopTag color={colorMap[value] || 'default'}>{labels[value] || value}</ShopTag>;
 };
 
 const readyTag = (ready: boolean | undefined, labels: { ready: string; blocked: string }) => (
-  <Tag color={ready ? 'green' : 'red'}>{ready ? labels.ready : labels.blocked}</Tag>
+  <ShopTag color={ready ? 'green' : 'red'}>{ready ? labels.ready : labels.blocked}</ShopTag>
 );
 
 const booleanTag = (enabled: boolean | undefined, labels: { on: string; off: string }) => (
-  <Tag color={enabled ? 'green' : 'default'}>{enabled ? labels.on : labels.off}</Tag>
+  <ShopTag color={enabled ? 'green' : 'default'}>{enabled ? labels.on : labels.off}</ShopTag>
 );
 
 const maskDatabaseUrl = (value?: string) => {
@@ -208,30 +220,30 @@ const SystemMonitor: React.FC = () => {
           <Title level={2}>{t('pages.systemMonitor.title')}</Title>
           <Text type="secondary">{t('pages.systemMonitor.description')}</Text>
         </div>
-        <Button icon={<ReloadOutlined />} aria-label={refreshSystemStatusActionLabel} title={refreshSystemStatusActionLabel} onClick={loadStatus} loading={loading}>
+        <ShopButton icon={<ReloadOutlined />} aria-label={refreshSystemStatusActionLabel} title={refreshSystemStatusActionLabel} onClick={loadStatus} loading={loading}>
           {t('common.refresh')}
-        </Button>
+        </ShopButton>
       </div>
 
       {loadError && status ? (
-        <Alert
+        <ShopAlert
           className="system-monitor__alert"
           type="warning"
           showIcon
           message={loadError}
           description={t('pages.systemMonitor.staleDataWarning')}
           action={(
-            <Space wrap data-system-monitor-stale-recovery="true">
-              <Button size="small" type="primary" onClick={loadStatus} loading={loading}>
+            <ShopSpace wrap data-system-monitor-stale-recovery="true">
+              <ShopButton size="small" type="primary" onClick={loadStatus} loading={loading}>
                 {t('common.retry')}
-              </Button>
-              <Button size="small" onClick={() => navigate('/admin')}>
+              </ShopButton>
+              <ShopButton size="small" onClick={() => navigate('/admin')}>
                 {t('pages.adminDashboard.title')}
-              </Button>
-              <Button size="small" onClick={() => navigate('/admin/orders')}>
+              </ShopButton>
+              <ShopButton size="small" onClick={() => navigate('/admin/orders')}>
                 {t('pages.adminDashboard.orders')}
-              </Button>
-            </Space>
+              </ShopButton>
+            </ShopSpace>
           )}
         />
       ) : null}
@@ -277,27 +289,27 @@ const SystemMonitor: React.FC = () => {
         aria-busy={loading && !status}
         aria-label={t('common.loading')}
       >
-        <Spin
+        <ShopSpin
           spinning={loading && !status}
         >
         {loadError && !status ? null : status ? (
           <>
             <div className="system-monitor__stats">
-              <Card>
-                <Statistic title={t('pages.systemMonitor.overallStatus')} value={healthText} valueStyle={{ color: dependencyRisk ? '#cf1322' : (memoryRisk || diskRisk || optionalHealthRisk ? '#c46a14' : '#1f8a4c') }} prefix={<SettingOutlined />} />
-              </Card>
-              <Card>
-                <Statistic title={t('pages.systemMonitor.applicationName')} value={applicationStatus.name} prefix={<CloudServerOutlined />} />
-              </Card>
-              <Card>
-                <Statistic title={t('pages.systemMonitor.uptime')} value={formatDuration(runtimeStatus.uptimeMs, durationLabels)} />
-              </Card>
-              <Card>
-                <Statistic title={t('pages.systemMonitor.cpuCores')} value={runtimeStatus.processors} />
-              </Card>
+              <ShopCard>
+                <ShopStatistic title={t('pages.systemMonitor.overallStatus')} value={healthText} valueStyle={{ color: dependencyRisk ? '#cf1322' : (memoryRisk || diskRisk || optionalHealthRisk ? '#c46a14' : '#1f8a4c') }} prefix={<SettingOutlined />} />
+              </ShopCard>
+              <ShopCard>
+                <ShopStatistic title={t('pages.systemMonitor.applicationName')} value={applicationStatus.name} prefix={<CloudServerOutlined />} />
+              </ShopCard>
+              <ShopCard>
+                <ShopStatistic title={t('pages.systemMonitor.uptime')} value={formatDuration(runtimeStatus.uptimeMs, durationLabels)} />
+              </ShopCard>
+              <ShopCard>
+                <ShopStatistic title={t('pages.systemMonitor.cpuCores')} value={runtimeStatus.processors} />
+              </ShopCard>
             </div>
 
-            <Alert
+            <ShopAlert
               className="system-monitor__alert"
               type={dependencyRisk ? 'error' : (memoryRisk || diskRisk || optionalHealthRisk ? 'warning' : 'success')}
               showIcon
@@ -310,79 +322,79 @@ const SystemMonitor: React.FC = () => {
             />
 
             <div className="system-monitor__resourceGrid">
-              <Card title={t('pages.systemMonitor.jvmMemory')} className="system-monitor__card">
-                <Progress
+              <ShopCard title={t('pages.systemMonitor.jvmMemory')} className="system-monitor__card">
+                <ShopProgress
                   type="dashboard"
                   percent={Math.round(Number(memoryStatus.usedPercent || 0))}
                   status={memoryRisk ? 'exception' : 'normal'}
                 />
-                <Descriptions column={1} size="small">
-                  <Descriptions.Item label={t('pages.systemMonitor.used')}>{formatBytes(memoryStatus.usedBytes)}</Descriptions.Item>
-                  <Descriptions.Item label={t('pages.systemMonitor.max')}>{formatBytes(memoryStatus.maxBytes)}</Descriptions.Item>
-                  <Descriptions.Item label={t('pages.systemMonitor.free')}>{formatBytes(memoryStatus.freeBytes)}</Descriptions.Item>
-                </Descriptions>
-              </Card>
+                <ShopDescriptions column={1} size="small">
+                  <ShopDescriptions.Item label={t('pages.systemMonitor.used')}>{formatBytes(memoryStatus.usedBytes)}</ShopDescriptions.Item>
+                  <ShopDescriptions.Item label={t('pages.systemMonitor.max')}>{formatBytes(memoryStatus.maxBytes)}</ShopDescriptions.Item>
+                  <ShopDescriptions.Item label={t('pages.systemMonitor.free')}>{formatBytes(memoryStatus.freeBytes)}</ShopDescriptions.Item>
+                </ShopDescriptions>
+              </ShopCard>
 
-              <Card title={t('pages.systemMonitor.diskSpace')} className="system-monitor__card">
-                <Progress
+              <ShopCard title={t('pages.systemMonitor.diskSpace')} className="system-monitor__card">
+                <ShopProgress
                   type="dashboard"
                   percent={Math.round(Number(diskStatus.usedPercent || 0))}
                   status={diskRisk ? 'exception' : 'normal'}
                 />
-                <Descriptions column={1} size="small">
-                  <Descriptions.Item label={t('pages.systemMonitor.path')}>{diskStatus.path}</Descriptions.Item>
-                  <Descriptions.Item label={t('pages.systemMonitor.used')}>{formatBytes(diskStatus.usedBytes)}</Descriptions.Item>
-                  <Descriptions.Item label={t('pages.systemMonitor.total')}>{formatBytes(diskStatus.totalBytes)}</Descriptions.Item>
-                </Descriptions>
-              </Card>
+                <ShopDescriptions column={1} size="small">
+                  <ShopDescriptions.Item label={t('pages.systemMonitor.path')}>{diskStatus.path}</ShopDescriptions.Item>
+                  <ShopDescriptions.Item label={t('pages.systemMonitor.used')}>{formatBytes(diskStatus.usedBytes)}</ShopDescriptions.Item>
+                  <ShopDescriptions.Item label={t('pages.systemMonitor.total')}>{formatBytes(diskStatus.totalBytes)}</ShopDescriptions.Item>
+                </ShopDescriptions>
+              </ShopCard>
             </div>
 
-            <Card title={t('pages.systemMonitor.runtimeEnvironment')} className="system-monitor__card">
-              <Descriptions column={{ xs: 1, sm: 2, lg: 3 }} bordered size="small">
-                <Descriptions.Item label={t('pages.systemMonitor.backendStatus')}>
-                  <Space size={6}>{statusTag(status.status, status.ready, statusLabels)}{readyTag(status.ready, readyLabels)}</Space>
-                </Descriptions.Item>
-                <Descriptions.Item label={t('pages.systemMonitor.apiAddress')}>{apiBaseUrl}</Descriptions.Item>
-                <Descriptions.Item label={t('pages.systemMonitor.port')}>{applicationStatus.serverPort}</Descriptions.Item>
-                <Descriptions.Item label={t('pages.systemMonitor.mode')}>{applicationStatus.runtimeMode}</Descriptions.Item>
-                <Descriptions.Item label={t('pages.systemMonitor.profile')}>
-                  {applicationStatus.profiles?.length ? applicationStatus.profiles.map((profile) => <Tag key={profile}>{profile}</Tag>) : <Tag>default</Tag>}
-                </Descriptions.Item>
-                <Descriptions.Item label="Java">{runtimeStatus.javaVersion}</Descriptions.Item>
-                <Descriptions.Item label={t('pages.systemMonitor.system')}>{runtimeStatus.osName} {runtimeStatus.osVersion}</Descriptions.Item>
-              </Descriptions>
-            </Card>
+            <ShopCard title={t('pages.systemMonitor.runtimeEnvironment')} className="system-monitor__card">
+              <ShopDescriptions column={{ xs: 1, sm: 2, lg: 3 }} bordered size="small">
+                <ShopDescriptions.Item label={t('pages.systemMonitor.backendStatus')}>
+                  <ShopSpace size={6}>{statusTag(status.status, status.ready, statusLabels)}{readyTag(status.ready, readyLabels)}</ShopSpace>
+                </ShopDescriptions.Item>
+                <ShopDescriptions.Item label={t('pages.systemMonitor.apiAddress')}>{apiBaseUrl}</ShopDescriptions.Item>
+                <ShopDescriptions.Item label={t('pages.systemMonitor.port')}>{applicationStatus.serverPort}</ShopDescriptions.Item>
+                <ShopDescriptions.Item label={t('pages.systemMonitor.mode')}>{applicationStatus.runtimeMode}</ShopDescriptions.Item>
+                <ShopDescriptions.Item label={t('pages.systemMonitor.profile')}>
+                  {applicationStatus.profiles?.length ? applicationStatus.profiles.map((profile) => <ShopTag key={profile}>{profile}</ShopTag>) : <ShopTag>default</ShopTag>}
+                </ShopDescriptions.Item>
+                <ShopDescriptions.Item label="Java">{runtimeStatus.javaVersion}</ShopDescriptions.Item>
+                <ShopDescriptions.Item label={t('pages.systemMonitor.system')}>{runtimeStatus.osName} {runtimeStatus.osVersion}</ShopDescriptions.Item>
+              </ShopDescriptions>
+            </ShopCard>
 
             {productionConfig ? (
-              <Card
-                title={<Space className="system-monitor__statusTitle">{t('pages.systemMonitor.productionConfig')} {statusTag(productionConfig.status, productionConfig.ready, statusLabels)}</Space>}
+              <ShopCard
+                title={<ShopSpace className="system-monitor__statusTitle">{t('pages.systemMonitor.productionConfig')} {statusTag(productionConfig.status, productionConfig.ready, statusLabels)}</ShopSpace>}
                 className="system-monitor__card"
               >
                 <div className="system-monitor__productionConfig">
                   <SafetyCertificateOutlined className="system-monitor__largeIcon" />
-                  <Descriptions column={{ xs: 1, sm: 2, lg: 3 }} size="small">
-                    <Descriptions.Item label={t('pages.systemMonitor.ready')}>{readyTag(productionConfig.ready, readyLabels)}</Descriptions.Item>
-                    <Descriptions.Item label={t('pages.systemMonitor.required')}>{booleanTag(productionConfig.required, booleanLabels)}</Descriptions.Item>
-                    <Descriptions.Item label={t('pages.systemMonitor.mode')}>{productionConfig.runtimeMode || applicationStatus.runtimeMode}</Descriptions.Item>
-                    <Descriptions.Item label={t('pages.systemMonitor.mailAccounts')}>
+                  <ShopDescriptions column={{ xs: 1, sm: 2, lg: 3 }} size="small">
+                    <ShopDescriptions.Item label={t('pages.systemMonitor.ready')}>{readyTag(productionConfig.ready, readyLabels)}</ShopDescriptions.Item>
+                    <ShopDescriptions.Item label={t('pages.systemMonitor.required')}>{booleanTag(productionConfig.required, booleanLabels)}</ShopDescriptions.Item>
+                    <ShopDescriptions.Item label={t('pages.systemMonitor.mode')}>{productionConfig.runtimeMode || applicationStatus.runtimeMode}</ShopDescriptions.Item>
+                    <ShopDescriptions.Item label={t('pages.systemMonitor.mailAccounts')}>
                       {productionConfig.checks?.mail?.configuredAccountCount ?? '-'}
-                    </Descriptions.Item>
-                    <Descriptions.Item label={t('pages.systemMonitor.paymentChannels')}>
+                    </ShopDescriptions.Item>
+                    <ShopDescriptions.Item label={t('pages.systemMonitor.paymentChannels')}>
                       {(productionConfig.checks?.paymentChannels?.availableCheckoutChannelCount ?? '-')}/{(productionConfig.checks?.paymentChannels?.enabledChannelCount ?? '-')}
-                    </Descriptions.Item>
-                    <Descriptions.Item label={t('pages.systemMonitor.paymentWebhooks')}>
+                    </ShopDescriptions.Item>
+                    <ShopDescriptions.Item label={t('pages.systemMonitor.paymentWebhooks')}>
                       {(productionConfig.checks?.paymentChannels?.webhookReadyChannelCount ?? '-')}/{(productionConfig.checks?.paymentChannels?.webhookRequiredChannelCount ?? '-')}
-                    </Descriptions.Item>
-                    <Descriptions.Item label={t('pages.systemMonitor.corsOrigins')}>
+                    </ShopDescriptions.Item>
+                    <ShopDescriptions.Item label={t('pages.systemMonitor.corsOrigins')}>
                       {productionConfig.checks?.cors?.corsOriginCount ?? '-'}
-                    </Descriptions.Item>
-                    <Descriptions.Item label={t('pages.systemMonitor.blockers')} span={3}>
+                    </ShopDescriptions.Item>
+                    <ShopDescriptions.Item label={t('pages.systemMonitor.blockers')} span={3}>
                       {renderMessages(productionConfigIssues, 'error')}
-                    </Descriptions.Item>
-                    <Descriptions.Item label={t('pages.systemMonitor.warnings')} span={3}>
+                    </ShopDescriptions.Item>
+                    <ShopDescriptions.Item label={t('pages.systemMonitor.warnings')} span={3}>
                       {renderMessages(productionConfigWarnings, 'warning')}
-                    </Descriptions.Item>
-                  </Descriptions>
+                    </ShopDescriptions.Item>
+                  </ShopDescriptions>
                   {Array.isArray(productionConfig.checks?.paymentChannels?.channels) && (productionConfig.checks?.paymentChannels?.channels?.length || 0) > 0 ? (
                     <div className="system-monitor__paymentChannelChecklist" aria-label={t('pages.systemMonitor.paymentChannelChecklist')}>
                       <Text strong>{t('pages.systemMonitor.paymentChannelChecklist')}</Text>
@@ -414,11 +426,11 @@ const SystemMonitor: React.FC = () => {
                               className={`system-monitor__paymentChannelItem system-monitor__paymentChannelItem--${available ? 'ready' : 'blocked'}`}
                               data-webhook-status={webhookStatus || (webhookRequired ? 'UNKNOWN' : 'NOT_APPLICABLE')}
                             >
-                              <Space wrap size={[8, 4]}>
-                                <Tag color={available ? 'green' : 'red'}>
+                              <ShopSpace wrap size={[8, 4]}>
+                                <ShopTag color={available ? 'green' : 'red'}>
                                   {available ? t('pages.systemMonitor.channelReady') : t('pages.systemMonitor.channelBlocked')}
-                                </Tag>
-                                <Tag color={webhookColor}>{webhookLabel}</Tag>
+                                </ShopTag>
+                                <ShopTag color={webhookColor}>{webhookLabel}</ShopTag>
                                 <Text strong>{code}</Text>
                                 {channel.provider ? <Text type="secondary">{channel.provider}</Text> : null}
                                 {channel.refundMode ? (
@@ -426,7 +438,7 @@ const SystemMonitor: React.FC = () => {
                                     {t('pages.systemMonitor.channelRefundMode')}: {channel.refundMode}
                                   </Text>
                                 ) : null}
-                              </Space>
+                              </ShopSpace>
                             </div>
                           );
                         })}
@@ -434,86 +446,86 @@ const SystemMonitor: React.FC = () => {
                     </div>
                   ) : null}
                 </div>
-              </Card>
+              </ShopCard>
             ) : null}
 
             <div className="system-monitor__resourceGrid">
-              <Card
-                title={<Space className="system-monitor__statusTitle">{t('pages.systemMonitor.database')} {statusTag(databaseStatus.status, databaseStatus.ready, statusLabels)}</Space>}
+              <ShopCard
+                title={<ShopSpace className="system-monitor__statusTitle">{t('pages.systemMonitor.database')} {statusTag(databaseStatus.status, databaseStatus.ready, statusLabels)}</ShopSpace>}
                 className="system-monitor__card"
               >
-                <Space direction="vertical" className="system-monitor__databaseInfo">
+                <ShopSpace direction="vertical" className="system-monitor__databaseInfo">
                   <DatabaseOutlined className="system-monitor__largeIcon" />
-                  <Descriptions column={1} size="small">
-                    <Descriptions.Item label={t('pages.systemMonitor.ready')}>{readyTag(databaseStatus.ready, readyLabels)}</Descriptions.Item>
-                    <Descriptions.Item label={t('pages.systemMonitor.latency')}>{formatLatency(databaseStatus.latencyMs)}</Descriptions.Item>
-                    <Descriptions.Item label="URL"><Text>{maskDatabaseUrl(databaseStatus.url)}</Text></Descriptions.Item>
-                    <Descriptions.Item label={t('pages.systemMonitor.driver')}>{databaseStatus.driver || '-'}</Descriptions.Item>
+                  <ShopDescriptions column={1} size="small">
+                    <ShopDescriptions.Item label={t('pages.systemMonitor.ready')}>{readyTag(databaseStatus.ready, readyLabels)}</ShopDescriptions.Item>
+                    <ShopDescriptions.Item label={t('pages.systemMonitor.latency')}>{formatLatency(databaseStatus.latencyMs)}</ShopDescriptions.Item>
+                    <ShopDescriptions.Item label="URL"><Text>{maskDatabaseUrl(databaseStatus.url)}</Text></ShopDescriptions.Item>
+                    <ShopDescriptions.Item label={t('pages.systemMonitor.driver')}>{databaseStatus.driver || '-'}</ShopDescriptions.Item>
                     {databaseStatus.error ? (
-                      <Descriptions.Item label={t('pages.systemMonitor.error')}>{databaseStatus.error}</Descriptions.Item>
+                      <ShopDescriptions.Item label={t('pages.systemMonitor.error')}>{databaseStatus.error}</ShopDescriptions.Item>
                     ) : null}
-                  </Descriptions>
-                </Space>
-              </Card>
+                  </ShopDescriptions>
+                </ShopSpace>
+              </ShopCard>
 
-              <Card
-                title={<Space className="system-monitor__statusTitle">Redis {statusTag(redisStatus.status, redisStatus.ready, statusLabels)}</Space>}
+              <ShopCard
+                title={<ShopSpace className="system-monitor__statusTitle">Redis {statusTag(redisStatus.status, redisStatus.ready, statusLabels)}</ShopSpace>}
                 className="system-monitor__card"
               >
-                <Descriptions column={1} size="small">
-                  <Descriptions.Item label={t('pages.systemMonitor.ready')}>{readyTag(redisStatus.ready, readyLabels)}</Descriptions.Item>
-                  <Descriptions.Item label={t('pages.systemMonitor.required')}>{booleanTag(redisStatus.required, booleanLabels)}</Descriptions.Item>
-                  <Descriptions.Item label={t('pages.systemMonitor.address')}>{redisStatus.host || '-'}:{redisStatus.port || '-'}</Descriptions.Item>
-                  <Descriptions.Item label="DB">{redisStatus.database || '0'}</Descriptions.Item>
-                  <Descriptions.Item label={t('pages.systemMonitor.latency')}>{formatLatency(redisStatus.latencyMs)}</Descriptions.Item>
-                  <Descriptions.Item label="PING">{redisStatus.ping || '-'}</Descriptions.Item>
+                <ShopDescriptions column={1} size="small">
+                  <ShopDescriptions.Item label={t('pages.systemMonitor.ready')}>{readyTag(redisStatus.ready, readyLabels)}</ShopDescriptions.Item>
+                  <ShopDescriptions.Item label={t('pages.systemMonitor.required')}>{booleanTag(redisStatus.required, booleanLabels)}</ShopDescriptions.Item>
+                  <ShopDescriptions.Item label={t('pages.systemMonitor.address')}>{redisStatus.host || '-'}:{redisStatus.port || '-'}</ShopDescriptions.Item>
+                  <ShopDescriptions.Item label="DB">{redisStatus.database || '0'}</ShopDescriptions.Item>
+                  <ShopDescriptions.Item label={t('pages.systemMonitor.latency')}>{formatLatency(redisStatus.latencyMs)}</ShopDescriptions.Item>
+                  <ShopDescriptions.Item label="PING">{redisStatus.ping || '-'}</ShopDescriptions.Item>
                   {redisStatus.error ? (
-                    <Descriptions.Item label={t('pages.systemMonitor.error')}>{redisStatus.error}</Descriptions.Item>
+                    <ShopDescriptions.Item label={t('pages.systemMonitor.error')}>{redisStatus.error}</ShopDescriptions.Item>
                   ) : null}
-                </Descriptions>
-              </Card>
+                </ShopDescriptions>
+              </ShopCard>
 
-              <Card
-                title={<Space className="system-monitor__statusTitle">{t('pages.systemMonitor.nacosDiscovery')} {statusTag(nacosStatus.status, nacosStatus.ready, statusLabels)}</Space>}
+              <ShopCard
+                title={<ShopSpace className="system-monitor__statusTitle">{t('pages.systemMonitor.nacosDiscovery')} {statusTag(nacosStatus.status, nacosStatus.ready, statusLabels)}</ShopSpace>}
                 className="system-monitor__card"
               >
-                <Descriptions column={1} size="small">
-                  <Descriptions.Item label={t('pages.systemMonitor.ready')}>{readyTag(nacosStatus.ready, readyLabels)}</Descriptions.Item>
-                  <Descriptions.Item label={t('pages.systemMonitor.address')}>{nacosStatus.serverAddr || '-'}</Descriptions.Item>
-                  <Descriptions.Item label={t('pages.systemMonitor.namespace')}>{nacosStatus.namespace || 'public'}</Descriptions.Item>
-                  <Descriptions.Item label={t('pages.systemMonitor.group')}>{nacosStatus.group || 'DEFAULT_GROUP'}</Descriptions.Item>
-                  <Descriptions.Item label={t('pages.systemMonitor.config')}>{booleanTag(nacosStatus.configEnabled, booleanLabels)}</Descriptions.Item>
-                  <Descriptions.Item label={t('pages.systemMonitor.discovery')}>
+                <ShopDescriptions column={1} size="small">
+                  <ShopDescriptions.Item label={t('pages.systemMonitor.ready')}>{readyTag(nacosStatus.ready, readyLabels)}</ShopDescriptions.Item>
+                  <ShopDescriptions.Item label={t('pages.systemMonitor.address')}>{nacosStatus.serverAddr || '-'}</ShopDescriptions.Item>
+                  <ShopDescriptions.Item label={t('pages.systemMonitor.namespace')}>{nacosStatus.namespace || 'public'}</ShopDescriptions.Item>
+                  <ShopDescriptions.Item label={t('pages.systemMonitor.group')}>{nacosStatus.group || 'DEFAULT_GROUP'}</ShopDescriptions.Item>
+                  <ShopDescriptions.Item label={t('pages.systemMonitor.config')}>{booleanTag(nacosStatus.configEnabled, booleanLabels)}</ShopDescriptions.Item>
+                  <ShopDescriptions.Item label={t('pages.systemMonitor.discovery')}>
                     {booleanTag(nacosStatus.discoveryEnabled, booleanLabels)}
-                  </Descriptions.Item>
-                  <Descriptions.Item label={t('pages.systemMonitor.register')}>
+                  </ShopDescriptions.Item>
+                  <ShopDescriptions.Item label={t('pages.systemMonitor.register')}>
                     {booleanTag(nacosStatus.registerEnabled, booleanLabels)}
-                  </Descriptions.Item>
-                  <Descriptions.Item label={t('pages.systemMonitor.serviceStatus')}>{nacosStatus.serverStatus || '-'}</Descriptions.Item>
-                  <Descriptions.Item label="Data ID">{nacosStatus.dataId || '-'}</Descriptions.Item>
-                  <Descriptions.Item label={t('pages.systemMonitor.latency')}>{formatLatency(nacosStatus.latencyMs)}</Descriptions.Item>
-                  <Descriptions.Item label={t('pages.systemMonitor.warnings')}>{renderMessages(nacosStatus.warnings, 'warning')}</Descriptions.Item>
-                  <Descriptions.Item label={t('pages.systemMonitor.error')}>
+                  </ShopDescriptions.Item>
+                  <ShopDescriptions.Item label={t('pages.systemMonitor.serviceStatus')}>{nacosStatus.serverStatus || '-'}</ShopDescriptions.Item>
+                  <ShopDescriptions.Item label="Data ID">{nacosStatus.dataId || '-'}</ShopDescriptions.Item>
+                  <ShopDescriptions.Item label={t('pages.systemMonitor.latency')}>{formatLatency(nacosStatus.latencyMs)}</ShopDescriptions.Item>
+                  <ShopDescriptions.Item label={t('pages.systemMonitor.warnings')}>{renderMessages(nacosStatus.warnings, 'warning')}</ShopDescriptions.Item>
+                  <ShopDescriptions.Item label={t('pages.systemMonitor.error')}>
                     {nacosStatus.error || renderMessages(nacosStatus.errors, 'error')}
-                  </Descriptions.Item>
-                </Descriptions>
-              </Card>
+                  </ShopDescriptions.Item>
+                </ShopDescriptions>
+              </ShopCard>
             </div>
 
-            <Card title={t('pages.systemMonitor.opsTips')} className="system-monitor__card">
-              <Space direction="vertical">
+            <ShopCard title={t('pages.systemMonitor.opsTips')} className="system-monitor__card">
+              <ShopSpace direction="vertical">
                 <Text><HddOutlined /> {t('pages.systemMonitor.diskTip')}</Text>
                 <Text><CloudServerOutlined /> {t('pages.systemMonitor.nacosTip')}</Text>
                 <Text><DatabaseOutlined /> {t('pages.systemMonitor.databaseTip')}</Text>
-              </Space>
-            </Card>
+              </ShopSpace>
+            </ShopCard>
           </>
         ) : (
-          <Card className="system-monitor__card">
+          <ShopCard className="system-monitor__card">
             <Text type="secondary">{t('pages.systemMonitor.noStatus')}</Text>
-          </Card>
+          </ShopCard>
         )}
-        </Spin>
+        </ShopSpin>
       </div>
     </div>
   );

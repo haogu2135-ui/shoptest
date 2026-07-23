@@ -6,7 +6,6 @@ import { reportNonBlockingError } from '../utils/nonBlockingError';
 import './ProductRichDetail.css';
 import '../styles/mobile-page-contrast.css';
 
-
 type ProductRichDetailProps = {
   detailContent?: ProductDetailBlock[] | string | null;
   fallback?: string;

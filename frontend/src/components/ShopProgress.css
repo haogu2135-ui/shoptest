@@ -1,0 +1,81 @@
+.shop-progress {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  color: #355244;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.shop-progress--line {
+  display: inline-flex;
+  align-items: center;
+  width: 100%;
+  gap: 8px;
+}
+
+.shop-progress__outer {
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+}
+
+.shop-progress__inner {
+  position: relative;
+  display: block;
+  width: 100%;
+  overflow: hidden;
+  vertical-align: middle;
+  background: #edf0ed;
+  border-radius: 100px;
+}
+
+.shop-progress__bg {
+  position: relative;
+  height: 8px;
+  border-radius: 100px;
+  background: #124734;
+  transition: width 0.25s ease;
+}
+
+.shop-progress--small .shop-progress__bg {
+  height: 6px;
+}
+
+.shop-progress__info {
+  flex: 0 0 auto;
+  min-width: 2.4em;
+  color: #4b6356;
+  font-weight: 700;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.shop-progress--circle {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+}
+
+.shop-progress__svg {
+  display: block;
+}
+
+.shop-progress__circleInfo {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #124734;
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.shop-progress--dashboard .shop-progress__circleInfo {
+  padding-top: 8%;
+}

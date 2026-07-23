@@ -1,7 +1,6 @@
 import React, { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { ShopIcon, SI } from '../components/ShopIcon';
-import { Alert, Button, Tag } from 'antd';
 import ShopInput from '../components/ShopInput';
 import ShopSelect from '../components/ShopSelect';
 import { useNavigate } from 'react-router-dom';
@@ -38,8 +37,10 @@ import {
 import type { CouponFilter, CouponSort } from '../utils/couponCenter';
 import './CouponCenter.css';
 import '../styles/mobile-page-contrast.css';
+import ShopButton from '../components/ShopButton';
 
-
+import ShopTag from '../components/ShopTag';
+import ShopAlert from '../components/ShopAlert';
 const couponStatusColor: Record<string, string> = {
   UNUSED: 'green',
   USED: 'default',
@@ -566,7 +567,7 @@ const CouponCenter: React.FC = () => {
         </div>
       ) : null}
       {usingFallbackCoupons ? (
-        <Alert
+        <ShopAlert
           type="info"
           showIcon
           message={t('pages.coupons.catalogFallback')}
@@ -575,18 +576,18 @@ const CouponCenter: React.FC = () => {
           data-coupon-fallback-recovery="true"
           action={(
             <div className="coupon-center-page__fallbackActions" data-coupon-fallback-actions="true">
-              <Button size="small" type="primary" onClick={() => window.location.reload()} aria-label={t('messages.retry')} title={t('messages.retry')}>
+              <ShopButton size="small" type="primary" onClick={() => window.location.reload()} aria-label={t('messages.retry')} title={t('messages.retry')}>
                 {t('messages.retry')}
-              </Button>
-              <Button size="small" onClick={() => navigate('/products')} aria-label={t('pages.coupons.goShopping')} title={t('pages.coupons.goShopping')}>
+              </ShopButton>
+              <ShopButton size="small" onClick={() => navigate('/products')} aria-label={t('pages.coupons.goShopping')} title={t('pages.coupons.goShopping')}>
                 {t('pages.coupons.goShopping')}
-              </Button>
-              <Button size="small" onClick={() => navigate('/cart')} aria-label={t('pages.cart.title')} title={t('pages.cart.title')}>
+              </ShopButton>
+              <ShopButton size="small" onClick={() => navigate('/cart')} aria-label={t('pages.cart.title')} title={t('pages.cart.title')}>
                 {t('pages.cart.title')}
-              </Button>
-              <Button size="small" onClick={() => navigate('/pet-finder')} aria-label={t('nav.petFinder')} title={t('nav.petFinder')}>
+              </ShopButton>
+              <ShopButton size="small" onClick={() => navigate('/pet-finder')} aria-label={t('nav.petFinder')} title={t('nav.petFinder')}>
                 {t('nav.petFinder')}
-              </Button>
+              </ShopButton>
             </div>
           )}
         />
@@ -601,7 +602,7 @@ const CouponCenter: React.FC = () => {
               : t('pages.coupons.opportunitySubtitle')}
           </span>
           <div className="coupon-center-page__heroActions">
-            <Button
+            <ShopButton
               type="primary"
               loading={showClaimCta && isAuthenticated ? claimingAll : false}
               disabled={showClaimCta ? (isAuthenticated ? claimAllActionDisabled : couponActionBusy) : couponActionBusy}
@@ -610,8 +611,8 @@ const CouponCenter: React.FC = () => {
               onClick={showClaimCta ? claimAllCoupons : couponNextAction.action}
             >
               {showClaimCta ? primaryClaimLabel : couponNextAction.label}
-            </Button>
-            <Button
+            </ShopButton>
+            <ShopButton
               icon={<ShopIcon path={SI.shopping} />}
               className={hideMobileSecondaryAction ? 'coupon-center-page__secondaryAction--hidden' : undefined}
               aria-label={goShoppingActionLabel}
@@ -619,7 +620,7 @@ const CouponCenter: React.FC = () => {
               onClick={() => navigate('/products')}
             >
               {t('pages.coupons.goShopping')}
-            </Button>
+            </ShopButton>
           </div>
           <div className="coupon-center-page__heroBadges" aria-label={t('pages.coupons.opportunitySummaryTitle')}>
             <span className={bestCouponValue > 0 ? 'coupon-center-page__heroBadge coupon-center-page__heroBadge--primary' : 'coupon-center-page__heroBadge coupon-center-page__heroBadge--primary coupon-center-page__heroBadge--muted'}>
@@ -658,7 +659,7 @@ const CouponCenter: React.FC = () => {
             <span className="coupon-center-page__text coupon-center-page__text--secondary">{t('pages.coupons.nextActionEyebrow')}</span>
             <strong>{couponNextAction.title}</strong>
             <span>{couponNextAction.text}</span>
-            <Button
+            <ShopButton
               size="small"
               type="primary"
               aria-label={couponNextActionLabel}
@@ -667,7 +668,7 @@ const CouponCenter: React.FC = () => {
               disabled={claimingAll || claimingId != null || (isAuthenticated && bestCouponIsPreview)}
             >
               {couponNextAction.label}
-            </Button>
+            </ShopButton>
           </div>
         </div>
       </section>
@@ -725,7 +726,7 @@ const CouponCenter: React.FC = () => {
         >
           <span />
         </div>
-        <Button
+        <ShopButton
           type="primary"
           loading={showClaimCta ? claimingAll : false}
           disabled={showClaimCta ? (isAuthenticated ? claimAllActionDisabled : couponActionBusy) : couponActionBusy}
@@ -734,8 +735,8 @@ const CouponCenter: React.FC = () => {
           onClick={showClaimCta ? claimAllCoupons : couponNextAction.action}
         >
           {showClaimCta ? primaryClaimLabel : couponNextAction.label}
-        </Button>
-        <Button
+        </ShopButton>
+        <ShopButton
           icon={<ShopIcon path={SI.shopping} />}
           className={hideMobileSecondaryAction ? 'coupon-center-page__secondaryAction--hidden' : undefined}
           aria-label={goShoppingActionLabel}
@@ -743,7 +744,7 @@ const CouponCenter: React.FC = () => {
           onClick={() => navigate('/products')}
         >
           {t('pages.coupons.goShopping')}
-        </Button>
+        </ShopButton>
       </div>
 
       <div className={hasAnyCouponAction ? 'coupon-section-header' : 'coupon-section-header coupon-section-header--quiet'}>
@@ -777,11 +778,11 @@ const CouponCenter: React.FC = () => {
             {(() => {
               const bestCouponExpiry = formatCouponDate(couponInsights.bestCoupon?.endAt);
               return bestCouponExpiry ? (
-                <Tag color="volcano">{t('pages.coupons.validUntil', { time: bestCouponExpiry })}</Tag>
+                <ShopTag color="volcano">{t('pages.coupons.validUntil', { time: bestCouponExpiry })}</ShopTag>
               ) : null;
             })()}
             {couponInsights.bestCoupon ? (
-              <Button
+              <ShopButton
                 type="primary"
                 loading={claimingId === couponInsights.bestCoupon.id}
                 disabled={claimingAll || claimingId != null || (isAuthenticated && bestCouponIsPreview)}
@@ -790,9 +791,9 @@ const CouponCenter: React.FC = () => {
                 onClick={() => claimCoupon(couponInsights.bestCoupon!.id)}
               >
                 {bestCouponIsPreview ? t('pages.coupons.preview') : t('pages.coupons.claimBest')}
-              </Button>
+              </ShopButton>
             ) : (
-              <Button aria-label={goShoppingActionLabel} title={goShoppingActionLabel} onClick={() => navigate('/products')}>{t('pages.coupons.goShopping')}</Button>
+              <ShopButton aria-label={goShoppingActionLabel} title={goShoppingActionLabel} onClick={() => navigate('/products')}>{t('pages.coupons.goShopping')}</ShopButton>
             )}
           </div>
         </div>
@@ -808,13 +809,13 @@ const CouponCenter: React.FC = () => {
           </p>
           <div className="coupon-center-page__actionRow">
             {couponInsights.nextToUse?.endAt ? (
-              <Tag color={(getDaysUntilEnd(couponInsights.nextToUse.endAt) ?? 99) <= 3 ? 'volcano' : 'blue'}>
+              <ShopTag color={(getDaysUntilEnd(couponInsights.nextToUse.endAt) ?? 99) <= 3 ? 'volcano' : 'blue'}>
                 {t('pages.coupons.daysLeft', { count: Math.max(0, getDaysUntilEnd(couponInsights.nextToUse.endAt) || 0) })}
-              </Tag>
+              </ShopTag>
             ) : null}
-            <Button icon={<ShopIcon path={SI.shopping} />} aria-label={nextUseActionLabel} title={nextUseActionLabel} onClick={() => navigate(couponInsights.nextToUse ? '/cart' : '/products')}>
+            <ShopButton icon={<ShopIcon path={SI.shopping} />} aria-label={nextUseActionLabel} title={nextUseActionLabel} onClick={() => navigate(couponInsights.nextToUse ? '/cart' : '/products')}>
               {couponInsights.nextToUse ? t('pages.coupons.useNext') : t('pages.coupons.goShopping')}
-            </Button>
+            </ShopButton>
           </div>
         </div>
       </section>
@@ -842,7 +843,7 @@ const CouponCenter: React.FC = () => {
             <span>{couponInsights.targetCoupon?.thresholdAmount ? t('pages.coupons.pathStepThreshold', { amount: formatMoney(couponInsights.targetCoupon.thresholdAmount) }) : t('pages.coupons.pathStepBrowse')}</span>
             <span>{couponInsights.nextToUse ? t('pages.coupons.pathStepUse') : hasCouponTarget ? t('pages.coupons.pathStepCheckout') : t('pages.coupons.pathStepBrowse')}</span>
           </div>
-          <Button
+          <ShopButton
             type="primary"
             icon={<ShopIcon path={SI.shopping} />}
             aria-label={nextUseActionLabel}
@@ -850,7 +851,7 @@ const CouponCenter: React.FC = () => {
             onClick={() => navigate(couponInsights.nextToUse ? '/cart' : '/products')}
           >
             {couponInsights.nextToUse ? t('pages.coupons.useNext') : t('pages.coupons.goShopping')}
-          </Button>
+          </ShopButton>
         </section>
 
         <section id="coupon-next-action" className={`coupon-next-action coupon-next-action--${couponNextAction.tone}`} aria-label={t('pages.coupons.nextActionEyebrow')}>
@@ -885,7 +886,7 @@ const CouponCenter: React.FC = () => {
             <span>{couponThresholdProgress}%</span>
             <span className="coupon-center-page__text coupon-center-page__text--secondary">{hasCouponTarget ? (couponCartGap > 0 ? t('pages.coupons.couponThresholdGap') : t('pages.coupons.useNext')) : t('pages.coupons.goShopping')}</span>
           </div>
-          <Button
+          <ShopButton
             type={couponNextAction.tone === 'ready' || couponNextAction.tone === 'claim' ? 'primary' : 'default'}
             icon={<ShopIcon path={SI.shopping} />}
             loading={couponInsights.bestCoupon ? claimingId === couponInsights.bestCoupon.id : false}
@@ -895,7 +896,7 @@ const CouponCenter: React.FC = () => {
             onClick={couponNextAction.action}
           >
             {couponNextAction.label}
-          </Button>
+          </ShopButton>
         </section>
       </div>
 
@@ -905,11 +906,11 @@ const CouponCenter: React.FC = () => {
               <strong>{t('pages.coupons.claimTitle')}</strong>
               <small>{t('pages.coupons.opportunitySummaryText')}</small>
             </span>
-            <Tag color={claimableCoupons.length > 0 ? 'green' : 'default'}>{claimableCoupons.length}</Tag>
+            <ShopTag color={claimableCoupons.length > 0 ? 'green' : 'default'}>{claimableCoupons.length}</ShopTag>
           </span>
         )}</div><div className="shop-panel__extra">{
           showClaimCta ? (
-            <Button
+            <ShopButton
               loading={claimingAll}
               disabled={claimAllActionDisabled}
               aria-label={primaryClaimActionLabel}
@@ -917,7 +918,7 @@ const CouponCenter: React.FC = () => {
               onClick={claimAllCoupons}
             >
               {primaryClaimLabel}
-            </Button>
+            </ShopButton>
           ) : null
         }</div></div>
         {publicCoupons.length === 0 || sortedClaimablePublicCoupons.length === 0 ? (
@@ -937,7 +938,7 @@ const CouponCenter: React.FC = () => {
                   ? t('pages.coupons.opportunitySubtitle')
                   : t('pages.coupons.noBestClaimHint')}
             </p>
-            <Button
+            <ShopButton
               type="primary"
               icon={isAuthenticated && myCoupons.length > 0 ? <ShopIcon path={SI.clock} /> : <ShopIcon path={SI.shopping} />}
               aria-label={isAuthenticated && myCoupons.length > 0 ? `${t('pages.coupons.myCoupons')}: ${myCoupons.length}` : goShoppingActionLabel}
@@ -945,7 +946,7 @@ const CouponCenter: React.FC = () => {
               onClick={() => isAuthenticated && myCoupons.length > 0 ? scrollToSection('coupon-wallet') : navigate('/products')}
             >
               {isAuthenticated && myCoupons.length > 0 ? t('pages.coupons.myCoupons') : t('pages.coupons.goShopping')}
-            </Button>
+            </ShopButton>
           </div>
         ) : (
           <>
@@ -966,7 +967,7 @@ const CouponCenter: React.FC = () => {
                 <strong>{couponInsights.limitedStock}</strong>
               </div>
               {showClaimCta ? (
-                <Button
+                <ShopButton
                   type="primary"
                   loading={claimingAll}
                   disabled={claimAllActionDisabled}
@@ -975,7 +976,7 @@ const CouponCenter: React.FC = () => {
                   onClick={claimAllCoupons}
                 >
                   {primaryClaimLabel}
-                </Button>
+                </ShopButton>
               ) : null}
             </div>
             {claimableCoupons.length === 0 ? (
@@ -1052,9 +1053,9 @@ const CouponCenter: React.FC = () => {
             {hasActiveCouponControls ? (
               <div className="coupon-claim-section__activeContext">
                 <span>{couponUiText.activeControls}</span>
-                {couponSearch.trim() ? <Tag>{couponSearch.trim()}</Tag> : null}
-                {couponSort !== 'recommended' ? <Tag>{couponSortLabels[couponSort]}</Tag> : null}
-                {couponFilter !== 'all' ? <Tag>{couponFilterOptions.find((option) => option.key === couponFilter)?.label}</Tag> : null}
+                {couponSearch.trim() ? <ShopTag>{couponSearch.trim()}</ShopTag> : null}
+                {couponSort !== 'recommended' ? <ShopTag>{couponSortLabels[couponSort]}</ShopTag> : null}
+                {couponFilter !== 'all' ? <ShopTag>{couponFilterOptions.find((option) => option.key === couponFilter)?.label}</ShopTag> : null}
                 <button
                   type="button"
                   aria-label={couponUiText.resetControls}
@@ -1091,21 +1092,21 @@ const CouponCenter: React.FC = () => {
                     <strong>{couponSearch.trim() ? couponUiText.noSearchResults : t('pages.coupons.noClaimable')}</strong>
                     <span>{t('pages.coupons.opportunitySubtitle')}</span>
                     <div className="coupon-center-page__actionRow">
-                      <Button
+                      <ShopButton
                         aria-label={`${t('pages.notifications.clearFilter')}: ${couponFilterOptions.find((option) => option.key === couponFilter)?.label || t('pages.productList.filters')}`}
                         title={`${t('pages.notifications.clearFilter')}: ${couponFilterOptions.find((option) => option.key === couponFilter)?.label || t('pages.productList.filters')}`}
                         onClick={() => setCouponFilter('all')}
                       >
                         {t('pages.notifications.clearFilter')}
-                      </Button>
+                      </ShopButton>
                       {couponSearch.trim() ? (
-                        <Button
+                        <ShopButton
                           aria-label={`${couponUiText.resetSearch}: ${couponSearch.trim()}`}
                           title={`${couponUiText.resetSearch}: ${couponSearch.trim()}`}
                           onClick={() => setCouponSearch('')}
                         >
                           {couponUiText.resetSearch}
-                        </Button>
+                        </ShopButton>
                       ) : null}
                     </div>
                   </div>
@@ -1152,17 +1153,17 @@ const CouponCenter: React.FC = () => {
                   <article className="coupon-center-page__couponTitle"><div className="shop-panel__head"><div className="shop-panel__title">{(
                       <span className="coupon-center-page__couponTitle">
                         <span>{coupon.name}</span>
-                        {isBestPublicCoupon ? <Tag color="volcano">{couponUiText.bestMatch}</Tag> : null}
-                        {previewCoupon ? <Tag color="blue">{t('pages.coupons.preview')}</Tag> : null}
-                        {claimed ? <Tag color="green">{t('pages.coupons.claimed')}</Tag> : null}
+                        {isBestPublicCoupon ? <ShopTag color="volcano">{couponUiText.bestMatch}</ShopTag> : null}
+                        {previewCoupon ? <ShopTag color="blue">{t('pages.coupons.preview')}</ShopTag> : null}
+                        {claimed ? <ShopTag color="green">{t('pages.coupons.claimed')}</ShopTag> : null}
                       </span>
                     )}</div><div className="shop-panel__extra">{(
                       <div className="coupon-center-page__couponTags">
-                        {endingSoon ? <Tag color="volcano">{t('pages.coupons.expiringSoon')}</Tag> : null}
-                        {limitedStock ? <Tag color="gold">{t('pages.coupons.limitedStock')}</Tag> : null}
-                        <Tag color={coupon.couponType === 'FULL_REDUCTION' ? 'volcano' : 'blue'}>
+                        {endingSoon ? <ShopTag color="volcano">{t('pages.coupons.expiringSoon')}</ShopTag> : null}
+                        {limitedStock ? <ShopTag color="gold">{t('pages.coupons.limitedStock')}</ShopTag> : null}
+                        <ShopTag color={coupon.couponType === 'FULL_REDUCTION' ? 'volcano' : 'blue'}>
                           {coupon.couponType === 'FULL_REDUCTION' ? t('pages.coupons.fullReduction') : t('pages.coupons.discount')}
-                        </Tag>
+                        </ShopTag>
                       </div>
                     )}</div></div>
                     <span className="coupon-center-page__couponRibbon">{couponStateLabel}</span>
@@ -1205,7 +1206,7 @@ const CouponCenter: React.FC = () => {
                       ) : null}
                       {coupon.description ? <span className="coupon-center-page__text coupon-center-page__text--secondary coupon-center-page__couponMeta">{coupon.description}</span> : null}
                       {validUntilText ? <span className="coupon-center-page__text coupon-center-page__text--secondary coupon-center-page__couponMeta">{t('pages.coupons.validUntil', { time: validUntilText })}</span> : null}
-                      <Button
+                      <ShopButton
                         type="primary"
                         block
                         className="coupon-center-page__couponAction"
@@ -1223,7 +1224,7 @@ const CouponCenter: React.FC = () => {
                             : claimed
                               ? t('pages.coupons.claimed')
                               : t('pages.coupons.claim')}
-                      </Button>
+                      </ShopButton>
                     </div>
                   </article>
                 </div>
@@ -1237,7 +1238,7 @@ const CouponCenter: React.FC = () => {
       <section className="coupon-wallet__heading" id="coupon-wallet"><div className="shop-panel__head"><div className="shop-panel__title">{(
           <span className="coupon-wallet__heading">
             <span>{t('pages.coupons.myCoupons')}</span>
-            <Tag color={myCoupons.length > 0 ? 'green' : 'default'}>{myCoupons.length}</Tag>
+            <ShopTag color={myCoupons.length > 0 ? 'green' : 'default'}>{myCoupons.length}</ShopTag>
           </span>
         )}</div></div>
         {myCoupons.length === 0 ? (
@@ -1246,7 +1247,7 @@ const CouponCenter: React.FC = () => {
             <h3>{t('pages.coupons.noMine')}</h3>
             <p>{t('pages.coupons.emptyWalletHint')}</p>
             <div className="coupon-wallet__emptyActions" data-coupon-wallet-empty-actions="true">
-              <Button
+              <ShopButton
                 type="primary"
                 icon={<ShopIcon path={SI.shopping} />}
                 aria-label={goShoppingActionLabel}
@@ -1254,23 +1255,23 @@ const CouponCenter: React.FC = () => {
                 onClick={() => navigate('/products')}
               >
                 {t('pages.coupons.goShopping')}
-              </Button>
-              <Button
+              </ShopButton>
+              <ShopButton
                 icon={<ShopIcon path={SI.shopping} />}
                 aria-label={t('pages.coupons.emptyWalletCart')}
                 title={t('pages.coupons.emptyWalletCart')}
                 onClick={() => navigate('/cart')}
               >
                 {t('pages.coupons.emptyWalletCart')}
-              </Button>
-              <Button
+              </ShopButton>
+              <ShopButton
                 icon={<ShopIcon path={SI.gift} />}
                 aria-label={t('pages.coupons.emptyWalletPetFinder')}
                 title={t('pages.coupons.emptyWalletPetFinder')}
                 onClick={() => navigate('/pet-finder')}
               >
                 {t('pages.coupons.emptyWalletPetFinder')}
-              </Button>
+              </ShopButton>
             </div>
           </div>
         ) : (
@@ -1343,38 +1344,38 @@ const CouponCenter: React.FC = () => {
                     <p>{t('pages.coupons.walletFilteredEmptyHint')}</p>
                   </div>
                   <div className="coupon-wallet__emptyActions" data-coupon-wallet-filter-empty-actions="true">
-                    <Button
+                    <ShopButton
                       type="primary"
                       aria-label={couponUiText.walletAll}
                       title={couponUiText.walletAll}
                       onClick={() => setWalletFilter('all')}
                     >
                       {couponUiText.walletAll}
-                    </Button>
-                    <Button
+                    </ShopButton>
+                    <ShopButton
                       icon={<ShopIcon path={SI.shopping} />}
                       aria-label={goShoppingActionLabel}
                       title={goShoppingActionLabel}
                       onClick={() => navigate('/products')}
                     >
                       {t('pages.coupons.goShopping')}
-                    </Button>
-                    <Button
+                    </ShopButton>
+                    <ShopButton
                       icon={<ShopIcon path={SI.shopping} />}
                       aria-label={t('pages.coupons.emptyWalletCart')}
                       title={t('pages.coupons.emptyWalletCart')}
                       onClick={() => navigate('/cart')}
                     >
                       {t('pages.coupons.emptyWalletCart')}
-                    </Button>
-                    <Button
+                    </ShopButton>
+                    <ShopButton
                       icon={<ShopIcon path={SI.gift} />}
                       aria-label={t('pages.coupons.emptyWalletPetFinder')}
                       title={t('pages.coupons.emptyWalletPetFinder')}
                       onClick={() => navigate('/pet-finder')}
                     >
                       {t('pages.coupons.emptyWalletPetFinder')}
-                    </Button>
+                    </ShopButton>
                   </div>
                 </div>
               
@@ -1402,10 +1403,10 @@ const CouponCenter: React.FC = () => {
                   <div className="coupon-wallet__main">
                     <div className="coupon-wallet__titleRow">
                       <span className="coupon-center-page__text coupon-center-page__text--strong coupon-wallet__name">{coupon.couponName}</span>
-                      {isNextWalletCoupon ? <Tag className="coupon-wallet__nextTag" color="volcano">{couponUiText.walletNext}</Tag> : null}
-                      <Tag className="coupon-wallet__status" color={couponStatusColor[coupon.status] || 'default'}>
+                      {isNextWalletCoupon ? <ShopTag className="coupon-wallet__nextTag" color="volcano">{couponUiText.walletNext}</ShopTag> : null}
+                      <ShopTag className="coupon-wallet__status" color={couponStatusColor[coupon.status] || 'default'}>
                         {statusLabel}
-                      </Tag>
+                      </ShopTag>
                     </div>
                     <div className={coupon.status === 'UNUSED' ? 'coupon-wallet__valueRow' : 'coupon-wallet__valueRow coupon-wallet__valueRow--closed'}>
                       <span className="coupon-center-page__text coupon-wallet__value">{describeCoupon(coupon)}</span>
@@ -1431,7 +1432,7 @@ const CouponCenter: React.FC = () => {
                   </div>
                   <div className="coupon-wallet__actions">
                     {coupon.status === 'UNUSED' ? (
-                      <Button
+                      <ShopButton
                         type="primary"
                         icon={<ShopIcon path={SI.shopping} />}
                         className="coupon-wallet__action"
@@ -1440,7 +1441,7 @@ const CouponCenter: React.FC = () => {
                         onClick={() => navigate('/cart')}
                       >
                         {t('pages.coupons.use')}
-                      </Button>
+                      </ShopButton>
                     ) : (
                       <span className={`coupon-wallet__closedAction coupon-wallet__closedAction--${(coupon.status || 'unknown').toLowerCase()}`}>{statusLabel}</span>
                     )}

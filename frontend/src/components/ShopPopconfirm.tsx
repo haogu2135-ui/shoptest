@@ -1,6 +1,6 @@
 import React, { cloneElement, isValidElement, useEffect, useId, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Button } from 'antd';
+import ShopButton from './ShopButton';
 import './ShopPopconfirm.css';
 
 export type ShopPopconfirmButtonProps = {
@@ -63,7 +63,7 @@ const ShopPopconfirm: React.FC<ShopPopconfirmProps> = ({
 
   const panel = open && typeof document !== 'undefined'
     ? createPortal(
-        <div className={`shop-popconfirm ${rootClassName}`.trim()} role="presentation">
+        <div className={`shop-popconfirm ant-popconfirm ${rootClassName}`.trim()} role="presentation">
           <button
             type="button"
             className="shop-popconfirm__mask"
@@ -72,23 +72,23 @@ const ShopPopconfirm: React.FC<ShopPopconfirmProps> = ({
             onClick={() => setOpen(false)}
           />
           <div
-            className={`shop-popconfirm__panel ${className}`.trim()}
+            className={`shop-popconfirm__panel ant-popconfirm-inner-content ${className}`.trim()}
             role="alertdialog"
             aria-modal="true"
             aria-labelledby={titleId}
           >
             <div className="shop-popconfirm__title" id={titleId}>{title}</div>
             {description ? <div className="shop-popconfirm__description">{description}</div> : null}
-            <div className="shop-popconfirm__actions">
-              <Button
+            <div className="shop-popconfirm__actions ant-popconfirm-buttons">
+              <ShopButton
                 onClick={() => setOpen(false)}
                 disabled={cancelButtonProps?.disabled}
                 aria-label={cancelButtonProps?.['aria-label'] || (typeof cancelText === 'string' ? cancelText : undefined)}
                 title={cancelButtonProps?.title || (typeof cancelText === 'string' ? cancelText : undefined)}
               >
                 {cancelText}
-              </Button>
-              <Button
+              </ShopButton>
+              <ShopButton
                 type="primary"
                 danger={okDanger || okButtonProps?.danger}
                 disabled={okButtonProps?.disabled}
@@ -100,7 +100,7 @@ const ShopPopconfirm: React.FC<ShopPopconfirmProps> = ({
                 }}
               >
                 {okText}
-              </Button>
+              </ShopButton>
             </div>
           </div>
         </div>,

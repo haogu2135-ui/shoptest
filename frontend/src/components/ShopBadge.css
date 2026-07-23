@@ -55,3 +55,52 @@
     calc(-50% + var(--shop-badge-offset-y, 0px))
   );
 }
+
+.shop-badge--status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 24px;
+  line-height: 1.2;
+  color: #355244;
+  font-size: max(12px, 0.92em);
+  font-weight: 650;
+}
+
+.shop-badge__statusDot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #8aa193;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.8);
+}
+
+.shop-badge--status-success .shop-badge__statusDot,
+.ant-badge-status-success {
+  background: #1f9d55;
+}
+
+.shop-badge--status-processing .shop-badge__statusDot,
+.ant-badge-status-processing {
+  background: #1677ff;
+}
+
+.shop-badge--status-error .shop-badge__statusDot,
+.ant-badge-status-error {
+  background: #d4380d;
+}
+
+.shop-badge--status-warning .shop-badge__statusDot,
+.ant-badge-status-warning {
+  background: #d48806;
+}
+
+.shop-badge--status-default .shop-badge__statusDot,
+.ant-badge-status-default {
+  background: #8aa193;
+}
+
+.shop-badge__statusText {
+  color: inherit;
+}

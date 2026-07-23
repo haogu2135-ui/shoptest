@@ -1,0 +1,115 @@
+.shop-card {
+  box-sizing: border-box;
+  position: relative;
+  width: 100%;
+  background: #fff;
+  border-radius: 12px;
+  color: #1f2a24;
+}
+
+.shop-card.ant-card-bordered,
+.shop-card:not(.shop-card--borderless) {
+  border: 1px solid rgba(18, 71, 52, 0.12);
+}
+
+.shop-card--borderless {
+  border: 0;
+}
+
+.shop-card--hoverable {
+  cursor: pointer;
+  transition: box-shadow 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+}
+
+.shop-card--hoverable:hover {
+  border-color: rgba(15, 107, 69, 0.28);
+  box-shadow: 0 8px 24px rgba(18, 47, 34, 0.08);
+}
+
+.shop-card__head {
+  display: flex;
+  align-items: center;
+  min-height: 48px;
+  padding: 0 16px;
+  border-bottom: 1px solid rgba(18, 71, 52, 0.08);
+}
+
+.shop-card__headWrapper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+}
+
+.shop-card__headTitle {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.35;
+  color: #122f22;
+}
+
+.shop-card__extra {
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
+.shop-card__body {
+  padding: 16px;
+}
+
+.shop-card--small .shop-card__body {
+  padding: 12px;
+}
+
+.shop-card--small .shop-card__head {
+  min-height: 40px;
+  padding: 0 12px;
+}
+
+.shop-card__cover {
+  overflow: hidden;
+  border-radius: 12px 12px 0 0;
+}
+
+.shop-card__actions {
+  display: flex;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid rgba(18, 71, 52, 0.08);
+}
+
+.shop-card__action {
+  flex: 1 1 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 8px;
+}
+
+.shop-card__skeleton {
+  display: grid;
+  gap: 10px;
+}
+
+.shop-card__skeletonBar {
+  display: block;
+  height: 12px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #eef3f0 0%, #f7faf8 50%, #eef3f0 100%);
+  background-size: 200% 100%;
+  animation: shop-card-shimmer 1.2s ease-in-out infinite;
+}
+
+.shop-card__skeletonBar--short {
+  width: 62%;
+}
+
+@keyframes shop-card-shimmer {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}

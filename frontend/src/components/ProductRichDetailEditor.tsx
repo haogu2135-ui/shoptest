@@ -1,5 +1,4 @@
 import React from 'react';
-import { Button, Image, Select } from 'antd';
 import ShopInput, { ShopTextArea } from './ShopInput';
 import {
   ArrowDownOutlined,
@@ -14,8 +13,9 @@ import { useLanguage } from '../i18n';
 import { imageFallbacks } from '../utils/mediaAssets';
 import { canEmbedVideoUrl, isDirectVideo, isHttpMediaUrl, resolveRichMediaUrl, toEmbeddableVideoUrl } from './ProductRichDetail';
 import './ProductRichDetailEditor.css';
-
-const richDetailTypePopupClassNames = { popup: { root: 'shop-mobile-popup-layer product-management-page__editorPopup' } };
+import ShopButton from './ShopButton';
+import ShopSelect from './ShopSelect';
+import ShopImage from './ShopImage';
 
 type ProductRichDetailEditorProps = {
   value?: ProductDetailBlock[];
@@ -106,9 +106,9 @@ const ProductRichDetailEditor: React.FC<ProductRichDetailEditorProps> = ({ value
   return (
     <div className="product-rich-detail-editor" aria-label={editorLabel}>
       <div className="product-rich-detail-editor__toolbar" aria-label={`${editorLabel}: ${blocks.length}`}>
-        <Button icon={<FontSizeOutlined />} aria-label={addRichTextLabel} title={addRichTextLabel} onClick={() => addBlock('text')}>{t('pages.productAdmin.addRichText')}</Button>
-        <Button icon={<FileImageOutlined />} aria-label={addRichImageLabel} title={addRichImageLabel} onClick={() => addBlock('image')}>{t('pages.productAdmin.addRichImage')}</Button>
-        <Button icon={<VideoCameraOutlined />} aria-label={addRichVideoLabel} title={addRichVideoLabel} onClick={() => addBlock('video')}>{t('pages.productAdmin.addRichVideo')}</Button>
+        <ShopButton icon={<FontSizeOutlined />} aria-label={addRichTextLabel} title={addRichTextLabel} onClick={() => addBlock('text')}>{t('pages.productAdmin.addRichText')}</ShopButton>
+        <ShopButton icon={<FileImageOutlined />} aria-label={addRichImageLabel} title={addRichImageLabel} onClick={() => addBlock('image')}>{t('pages.productAdmin.addRichImage')}</ShopButton>
+        <ShopButton icon={<VideoCameraOutlined />} aria-label={addRichVideoLabel} title={addRichVideoLabel} onClick={() => addBlock('video')}>{t('pages.productAdmin.addRichVideo')}</ShopButton>
       </div>
 
       {blocks.length === 0 ? (
@@ -136,40 +136,41 @@ const ProductRichDetailEditor: React.FC<ProductRichDetailEditorProps> = ({ value
             return (
               <article key={`${block.type}-${index}`} className="product-rich-detail-editor__block"><div className="shop-panel__head"><div className="shop-panel__title">{
                   <div className="product-rich-detail-editor__blockTitle" aria-label={blockLabel}>
-                    <Select
+                    <ShopSelect
                       className="product-rich-detail-editor__typeSelect"
                       value={block.type}
-                      aria-label={typeSelectLabel}
+                      ariaLabel={typeSelectLabel}
                       title={typeSelectLabel}
-                      classNames={richDetailTypePopupClassNames}
-                      getPopupContainer={() => document.body}
-                      placement="bottomLeft"
+                      popupClassName="shop-mobile-popup-layer product-management-page__editorPopup"
                       options={[
                         { value: 'text', label: t('pages.productAdmin.richText') },
                         { value: 'image', label: t('pages.productAdmin.richImage') },
                         { value: 'video', label: t('pages.productAdmin.richVideo') },
                       ]}
-                      onChange={(type) => updateBlock(index, createBlock(type))}
+                      onChange={(type) => {
+                        if (!type) return;
+                        updateBlock(index, createBlock(type as 'text' | 'image' | 'video'));
+                      }}
                     />
                     <span className="product-rich-detail-editor__blockIndex">#{blockNumber}</span>
                   </div>
                 }</div><div className="shop-panel__extra">{
                   <div className="product-rich-detail-editor__blockActions" aria-label={`${blockLabel}: ${t('common.actions')}`}>
-                    <Button
+                    <ShopButton
                       icon={<ArrowUpOutlined />}
                       disabled={index === 0}
                       aria-label={moveUpLabel}
                       title={moveUpLabel}
                       onClick={() => moveBlock(index, -1)}
                     />
-                    <Button
+                    <ShopButton
                       icon={<ArrowDownOutlined />}
                       disabled={index === blocks.length - 1}
                       aria-label={moveDownLabel}
                       title={moveDownLabel}
                       onClick={() => moveBlock(index, 1)}
                     />
-                    <Button
+                    <ShopButton
                       danger
                       icon={<DeleteOutlined />}
                       aria-label={deleteLabel}
@@ -209,7 +210,7 @@ const ProductRichDetailEditor: React.FC<ProductRichDetailEditorProps> = ({ value
                       <span className="product-rich-detail-editor__invalidUrl">{t('pages.productAdmin.richInvalidUrl')}</span>
                     ) : null}
                     {block.type === 'image' && block.url && isHttpMediaUrl(block.url) ? (
-                        <Image
+                        <ShopImage
                           className="product-rich-detail-editor__imagePreview"
                           src={resolveRichMediaUrl(block.url) || undefined}
                           alt={block.caption || `${t('pages.productAdmin.mediaPreview')} #${blockNumber}`}

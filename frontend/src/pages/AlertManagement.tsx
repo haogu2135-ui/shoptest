@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Card, Empty, Space, Spin, Statistic, Table, Tag, Typography, message } from 'antd';
+import { Table } from 'antd';
 import ShopInput, { ShopTextArea } from '../components/ShopInput';
 import ShopPopconfirm from '../components/ShopPopconfirm';
 import ShopSelect from '../components/ShopSelect';
@@ -22,8 +22,19 @@ import {
   hasAdminPermission,
 } from '../utils/roles';
 import './AlertManagement.css';
+import ShopButton from '../components/ShopButton';
+import ShopSpin from '../components/ShopSpin';
+import ShopEmpty from '../components/ShopEmpty';
+import ShopStatistic from '../components/ShopStatistic';
+import message from '../components/ShopMessage';
 
-const { Text, Title } = Typography;
+import ShopTag from '../components/ShopTag';
+import ShopAlert from '../components/ShopAlert';
+import ShopSpace from '../components/ShopSpace';
+import ShopTypography from '../components/ShopTypography';
+import ShopCard from '../components/ShopCard';
+const Text = ShopTypography.Text;
+const Title = ShopTypography.Title;
 
 const severityColor = (severity: string) => {
   if (severity === 'CRITICAL') return 'magenta';
@@ -339,21 +350,21 @@ const AlertManagement: React.FC = () => {
       dataIndex: 'severity',
       key: 'severity',
       width: 110,
-      render: (value: string) => <Tag color={severityColor(value)}>{alertSeverityLabels[value as keyof typeof alertSeverityLabels] || value}</Tag>,
+      render: (value: string) => <ShopTag color={severityColor(value)}>{alertSeverityLabels[value as keyof typeof alertSeverityLabels] || value}</ShopTag>,
     },
     {
       title: t('common.status'),
       dataIndex: 'status',
       key: 'status',
       width: 130,
-      render: (value: string) => <Tag color={statusColor(value)}>{alertStatusLabels[value as keyof typeof alertStatusLabels] || value}</Tag>,
+      render: (value: string) => <ShopTag color={statusColor(value)}>{alertStatusLabels[value as keyof typeof alertStatusLabels] || value}</ShopTag>,
     },
     {
       title: t('pages.alertAdmin.category'),
       dataIndex: 'category',
       key: 'category',
       width: 150,
-      render: (value: string) => <Tag>{alertCategoryLabels[value as keyof typeof alertCategoryLabels] || value}</Tag>,
+      render: (value: string) => <ShopTag>{alertCategoryLabels[value as keyof typeof alertCategoryLabels] || value}</ShopTag>,
     },
     {
       title: t('pages.alertAdmin.count'),
@@ -377,7 +388,7 @@ const AlertManagement: React.FC = () => {
         const ackActionLabel = `${t('pages.alertAdmin.ack')}: ${alertLabel}`;
         const resolveActionLabel = `${t('pages.alertAdmin.resolve')}: ${alertLabel}`;
         return (
-          <Space wrap>
+          <ShopSpace wrap>
 	            {record.status === 'OPEN' && canAcknowledgeAlerts ? (
               <ShopPopconfirm rootClassName="shop-mobile-popup-layer"
                 title={`${t('pages.alertAdmin.ackConfirm')} ${alertLabel}`}
@@ -389,9 +400,9 @@ const AlertManagement: React.FC = () => {
                 okButtonProps={{ 'aria-label': ackActionLabel, title: ackActionLabel }}
                 cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${ackActionLabel}`, title: `${t('common.cancel')}: ${ackActionLabel}` }}
               >
-                <Button size="small" aria-label={ackActionLabel} title={ackActionLabel} loading={acting === `ack-${record.id}`} disabled={alertActionDisabled}>
+                <ShopButton size="small" aria-label={ackActionLabel} title={ackActionLabel} loading={acting === `ack-${record.id}`} disabled={alertActionDisabled}>
                   {t('pages.alertAdmin.ack')}
-                </Button>
+                </ShopButton>
               </ShopPopconfirm>
             ) : null}
 	            {record.status !== 'RESOLVED' && canResolveAlerts ? (
@@ -405,12 +416,12 @@ const AlertManagement: React.FC = () => {
                 okButtonProps={{ 'aria-label': resolveActionLabel, title: resolveActionLabel }}
                 cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${resolveActionLabel}`, title: `${t('common.cancel')}: ${resolveActionLabel}` }}
               >
-                <Button size="small" type="primary" aria-label={resolveActionLabel} title={resolveActionLabel} loading={acting === `resolve-${record.id}`} disabled={alertActionDisabled}>
+                <ShopButton size="small" type="primary" aria-label={resolveActionLabel} title={resolveActionLabel} loading={acting === `resolve-${record.id}`} disabled={alertActionDisabled}>
                   {t('pages.alertAdmin.resolve')}
-                </Button>
+                </ShopButton>
               </ShopPopconfirm>
             ) : null}
-          </Space>
+          </ShopSpace>
         );
       },
     },
@@ -452,20 +463,20 @@ const AlertManagement: React.FC = () => {
           <Title level={2}>{t('pages.alertAdmin.title')}</Title>
           <Text type="secondary">{t('pages.alertAdmin.description')}</Text>
         </div>
-        <Space className="alert-management__actions" wrap>
-          <Button icon={<ReloadOutlined />} loading={loading} disabled={!permissionsLoaded || !canReadAlerts} aria-label={refreshAlertsActionLabel} title={refreshAlertsActionLabel} onClick={loadData}>
+        <ShopSpace className="alert-management__actions" wrap>
+          <ShopButton icon={<ReloadOutlined />} loading={loading} disabled={!permissionsLoaded || !canReadAlerts} aria-label={refreshAlertsActionLabel} title={refreshAlertsActionLabel} onClick={loadData}>
             {t('common.refresh')}
-          </Button>
+          </ShopButton>
           {canRunSelfCheck ? (
-            <Button type="primary" icon={<ToolOutlined />} loading={acting === 'self-check'} disabled={alertActionDisabled} aria-label={selfCheckActionLabel} title={selfCheckActionLabel} onClick={runSelfCheck}>
+            <ShopButton type="primary" icon={<ToolOutlined />} loading={acting === 'self-check'} disabled={alertActionDisabled} aria-label={selfCheckActionLabel} title={selfCheckActionLabel} onClick={runSelfCheck}>
               {t('pages.alertAdmin.selfCheck')}
-            </Button>
+            </ShopButton>
           ) : null}
-        </Space>
+        </ShopSpace>
       </div>
 
       {permissionsLoaded && !canReadAlerts ? (
-        <Alert
+        <ShopAlert
           type="warning"
           showIcon
           message={t('adminLayout.noPermission')}
@@ -479,25 +490,25 @@ const AlertManagement: React.FC = () => {
         aria-busy={(!permissionsLoaded || loading) && alerts.length === 0}
         aria-label={t('common.loading')}
       >
-        <Spin
+        <ShopSpin
           spinning={(!permissionsLoaded || loading) && alerts.length === 0}
         >
         {loadError && (summary || alerts.length > 0) ? (
-          <Alert
+          <ShopAlert
             className="alert-management__alert"
             type="warning"
             showIcon
             message={loadError}
             description={t('pages.alertAdmin.staleDataWarning')}
             action={(
-              <Space wrap data-admin-alerts-stale-recovery="true">
-                <Button size="small" type="primary" onClick={loadData} loading={loading}>
+              <ShopSpace wrap data-admin-alerts-stale-recovery="true">
+                <ShopButton size="small" type="primary" onClick={loadData} loading={loading}>
                   {t('common.retry')}
-                </Button>
-                <Button size="small" onClick={() => navigate('/admin')}>{t('pages.adminDashboard.title')}</Button>
-                <Button size="small" onClick={() => navigate('/admin/system')}>{t('pages.adminDashboard.paymentReturnOps.providerReadinessAction')}</Button>
-                <Button size="small" onClick={() => navigate('/admin/orders')}>{t('pages.adminDashboard.orders')}</Button>
-              </Space>
+                </ShopButton>
+                <ShopButton size="small" onClick={() => navigate('/admin')}>{t('pages.adminDashboard.title')}</ShopButton>
+                <ShopButton size="small" onClick={() => navigate('/admin/system')}>{t('pages.adminDashboard.paymentReturnOps.providerReadinessAction')}</ShopButton>
+                <ShopButton size="small" onClick={() => navigate('/admin/orders')}>{t('pages.adminDashboard.orders')}</ShopButton>
+              </ShopSpace>
             )}
           />
         ) : null}
@@ -520,7 +531,7 @@ const AlertManagement: React.FC = () => {
         {loadError && !summary && alerts.length === 0 ? null : (
           <>
         <div className="alert-management__stats">
-          <Card
+          <ShopCard
             className={`alert-management__statCard${status === 'OPEN' ? ' is-active' : ''}`}
             hoverable
             role="button"
@@ -535,9 +546,9 @@ const AlertManagement: React.FC = () => {
               }
             }}
           >
-            <Statistic title={t('pages.alertAdmin.open')} value={summary?.openCount || 0} prefix={<AlertOutlined />} valueStyle={{ color: (summary?.openCount || 0) > 0 ? '#c2410c' : '#1f8a4c' }} />
-          </Card>
-          <Card
+            <ShopStatistic title={t('pages.alertAdmin.open')} value={summary?.openCount || 0} prefix={<AlertOutlined />} valueStyle={{ color: (summary?.openCount || 0) > 0 ? '#c2410c' : '#1f8a4c' }} />
+          </ShopCard>
+          <ShopCard
             className={`alert-management__statCard${status === 'ACKNOWLEDGED' ? ' is-active' : ''}`}
             hoverable
             role="button"
@@ -552,9 +563,9 @@ const AlertManagement: React.FC = () => {
               }
             }}
           >
-            <Statistic title={t('pages.alertAdmin.acknowledgedStat')} value={summary?.acknowledgedCount || 0} />
-          </Card>
-          <Card
+            <ShopStatistic title={t('pages.alertAdmin.acknowledgedStat')} value={summary?.acknowledgedCount || 0} />
+          </ShopCard>
+          <ShopCard
             className={`alert-management__statCard${status === 'RESOLVED' ? ' is-active' : ''}`}
             hoverable
             role="button"
@@ -569,22 +580,22 @@ const AlertManagement: React.FC = () => {
               }
             }}
           >
-            <Statistic title={t('pages.alertAdmin.resolvedStat')} value={summary?.resolvedCount || 0} prefix={<CheckCircleOutlined />} />
-          </Card>
-          <Card>
-            <Statistic title={t('pages.alertAdmin.criticalErrors')} value={(summary?.openBySeverity?.CRITICAL || 0) + (summary?.openBySeverity?.ERROR || 0)} />
-          </Card>
+            <ShopStatistic title={t('pages.alertAdmin.resolvedStat')} value={summary?.resolvedCount || 0} prefix={<CheckCircleOutlined />} />
+          </ShopCard>
+          <ShopCard>
+            <ShopStatistic title={t('pages.alertAdmin.criticalErrors')} value={(summary?.openBySeverity?.CRITICAL || 0) + (summary?.openBySeverity?.ERROR || 0)} />
+          </ShopCard>
         </div>
 
-        <Alert
+        <ShopAlert
           className="alert-management__alert"
           type="info"
           showIcon
           message={t('pages.alertAdmin.info')}
         />
 
-        <Card className="alert-management__card">
-          <Space className="alert-management__filters" wrap>
+        <ShopCard className="alert-management__card">
+          <ShopSpace className="alert-management__filters" wrap>
             <div role="group" aria-label={statusFilterGroupLabel} title={statusFilterGroupLabel}>
               <ShopSelect
                 value={status}
@@ -609,11 +620,11 @@ const AlertManagement: React.FC = () => {
               aria-label={categoryFilterInputLabel}
               title={categoryFilterInputLabel}
             />
-            <Button onClick={loadData} aria-label={applyAlertFilterActionLabel} title={applyAlertFilterActionLabel}>{t('pages.alertAdmin.filter')}</Button>
-          </Space>
+            <ShopButton onClick={loadData} aria-label={applyAlertFilterActionLabel} title={applyAlertFilterActionLabel}>{t('pages.alertAdmin.filter')}</ShopButton>
+          </ShopSpace>
 
           <div className="alert-management__bulkBar">
-            <Space wrap>
+            <ShopSpace wrap>
               <Text type="secondary">
                 {selectedAlertSummaryLabel}
               </Text>
@@ -627,14 +638,14 @@ const AlertManagement: React.FC = () => {
                   okButtonProps={{ 'aria-label': batchAckActionLabel, title: batchAckActionLabel }}
                   cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${batchAckActionLabel}`, title: `${t('common.cancel')}: ${batchAckActionLabel}` }}
                 >
-                  <Button
+                  <ShopButton
                     disabled={!selectedOpenIds.length || alertActionDisabled}
                     loading={acting === 'batch-ack'}
                     aria-label={batchAckActionLabel}
                     title={batchAckActionLabel}
                   >
                     {t('pages.alertAdmin.batchAck')}
-                  </Button>
+                  </ShopButton>
                 </ShopPopconfirm>
               ) : null}
               {canResolveAlerts ? (
@@ -647,7 +658,7 @@ const AlertManagement: React.FC = () => {
                   okButtonProps={{ 'aria-label': batchResolveActionLabel, title: batchResolveActionLabel }}
                   cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${batchResolveActionLabel}`, title: `${t('common.cancel')}: ${batchResolveActionLabel}` }}
                 >
-                  <Button
+                  <ShopButton
                     type="primary"
                     disabled={!selectedUnresolvedIds.length || alertActionDisabled}
                     loading={acting === 'batch-resolve'}
@@ -655,12 +666,12 @@ const AlertManagement: React.FC = () => {
                     title={batchResolveActionLabel}
                   >
                     {t('pages.alertAdmin.batchResolve')}
-                  </Button>
+                  </ShopButton>
                 </ShopPopconfirm>
               ) : null}
-            </Space>
+            </ShopSpace>
             {canPurgeResolved ? (
-              <Space wrap className="alert-management__purge">
+              <ShopSpace wrap className="alert-management__purge">
                 <Text type="secondary">{t('pages.alertAdmin.purgeRetention')}</Text>
                 <ShopInputNumber
                   min={1}
@@ -682,11 +693,11 @@ const AlertManagement: React.FC = () => {
                   okButtonProps={{ danger: true, 'aria-label': purgeResolvedActionLabel, title: purgeResolvedActionLabel }}
                   cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${purgeResolvedActionLabel}`, title: `${t('common.cancel')}: ${purgeResolvedActionLabel}` }}
                 >
-                  <Button icon={<DeleteOutlined />} loading={acting === 'purge-resolved'} disabled={alertActionDisabled} aria-label={purgeResolvedActionLabel} title={purgeResolvedActionLabel}>
+                  <ShopButton icon={<DeleteOutlined />} loading={acting === 'purge-resolved'} disabled={alertActionDisabled} aria-label={purgeResolvedActionLabel} title={purgeResolvedActionLabel}>
                     {t('pages.alertAdmin.purge')}
-                  </Button>
+                  </ShopButton>
                 </ShopPopconfirm>
-              </Space>
+              </ShopSpace>
             ) : null}
           </div>
 
@@ -726,13 +737,13 @@ const AlertManagement: React.FC = () => {
               }}
             />
           ) : (
-            <Empty
+            <ShopEmpty
               description={(
-                <Space direction="vertical" size={8}>
+                <ShopSpace direction="vertical" size={8}>
                   <Text>{t('pages.alertAdmin.empty')}</Text>
                   <Text type="secondary">{t('pages.alertAdmin.emptyFiltered')}</Text>
-                  <Space wrap>
-                    <Button
+                  <ShopSpace wrap>
+                    <ShopButton
                       size="small"
                       type={status === 'ALL' ? 'primary' : 'default'}
                       aria-pressed={status === 'ALL'}
@@ -741,8 +752,8 @@ const AlertManagement: React.FC = () => {
                       onClick={() => applyStatusFilter('ALL')}
                     >
                       {t('pages.alertAdmin.showAll')}
-                    </Button>
-                    <Button
+                    </ShopButton>
+                    <ShopButton
                       size="small"
                       type={status === 'OPEN' ? 'primary' : 'default'}
                       aria-pressed={status === 'OPEN'}
@@ -751,8 +762,8 @@ const AlertManagement: React.FC = () => {
                       onClick={() => applyStatusFilter('OPEN')}
                     >
                       {t('pages.alertAdmin.showOpen')}
-                    </Button>
-                    <Button
+                    </ShopButton>
+                    <ShopButton
                       size="small"
                       type={status === 'ACKNOWLEDGED' ? 'primary' : 'default'}
                       aria-pressed={status === 'ACKNOWLEDGED'}
@@ -761,8 +772,8 @@ const AlertManagement: React.FC = () => {
                       onClick={() => applyStatusFilter('ACKNOWLEDGED')}
                     >
                       {t('pages.alertAdmin.showAcknowledged')}
-                    </Button>
-                    <Button
+                    </ShopButton>
+                    <ShopButton
                       size="small"
                       type={status === 'RESOLVED' ? 'primary' : 'default'}
                       aria-pressed={status === 'RESOLVED'}
@@ -771,16 +782,16 @@ const AlertManagement: React.FC = () => {
                       onClick={() => applyStatusFilter('RESOLVED')}
                     >
                       {t('pages.alertAdmin.showResolved')}
-                    </Button>
-                  </Space>
-                </Space>
+                    </ShopButton>
+                  </ShopSpace>
+                </ShopSpace>
               )}
             />
           )}
-        </Card>
+        </ShopCard>
           </>
         )}
-        </Spin>
+        </ShopSpin>
       </div>
       )}
     </div>

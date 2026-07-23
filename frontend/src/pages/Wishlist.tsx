@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { ShopIcon, SI } from '../components/ShopIcon';
-import { Alert, Button, Tag } from 'antd';
 import ShopPopconfirm from '../components/ShopPopconfirm';
 import { useNavigate } from 'react-router-dom';
 import { wishlistApi, cartApi } from '../api';
@@ -21,7 +20,10 @@ import PageError from '../components/PageError';
 import PageEmpty from '../components/PageEmpty';
 import './Wishlist.css';
 import '../styles/mobile-page-contrast.css';
+import ShopButton from '../components/ShopButton';
 
+import ShopTag from '../components/ShopTag';
+import ShopAlert from '../components/ShopAlert';
 const WISHLIST_LOGIN_REQUIRED_MESSAGE_KEY = 'wishlist-login-required';
 const wishlistImageFallback = productImageFallback;
 const resolveWishlistImage = resolveProductImage;
@@ -330,7 +332,7 @@ const Wishlist: React.FC = () => {
     if (item.requiresSelection) {
       const selectActionLabel = `${t('pages.wishlist.selectOptions')}: ${productName}`;
       return (
-        <Button
+        <ShopButton
           type="primary"
           icon={<ShopIcon path={SI.settings} />}
           className="wishlist-page__primaryAction"
@@ -341,12 +343,12 @@ const Wishlist: React.FC = () => {
           onClick={() => navigate(`/products/${item.productId}`)}
         >
           {t('pages.wishlist.selectOptions')}
-        </Button>
+        </ShopButton>
       );
     }
     const addActionLabel = `${t('pages.productList.addToCart')}: ${productName}`;
     return (
-      <Button
+      <ShopButton
         type="primary"
         icon={<ShopIcon path={SI.cart} />}
         className="wishlist-page__primaryAction"
@@ -357,7 +359,7 @@ const Wishlist: React.FC = () => {
         onClick={() => handleAddToCart(item.productId)}
       >
         {t('pages.productList.addToCart')}
-      </Button>
+      </ShopButton>
     );
   };
   const renderReadiness = (item: WishlistItem) => {
@@ -526,16 +528,16 @@ const Wishlist: React.FC = () => {
   return (
     <div className={`wishlist-page wishlist-page--${language} wishlist-page--withMobileAction`}>
       {loadError ? (
-        <Alert
+        <ShopAlert
           className="wishlist-page__loadAlert"
           type="warning"
           showIcon
           message={t('pages.wishlist.loadErrorTitle')}
           description={t('pages.wishlist.staleDataWarning')}
           action={(
-            <Button size="small" onClick={fetchWishlist} loading={loading}>
+            <ShopButton size="small" onClick={fetchWishlist} loading={loading}>
               {t('common.retry')}
-            </Button>
+            </ShopButton>
           )}
         />
       ) : null}
@@ -544,7 +546,7 @@ const Wishlist: React.FC = () => {
           <ShopIcon path={SI.heartFill} style={{ color: '#ee4d2d', fontSize: 24 }} />
           <h1 className="wishlist-page__title" style={{ margin: 0 }}>{t('pages.wishlist.title', { count: items.length })}</h1>
         </div>
-        <Button
+        <ShopButton
           type="primary"
           icon={<ShopIcon path={SI.cart} />}
           loading={addingAllToCart}
@@ -554,7 +556,7 @@ const Wishlist: React.FC = () => {
           onClick={handleAddAllToCart}
         >
           {t('pages.wishlist.addAllToCart')}
-        </Button>
+        </ShopButton>
         {wishlistStats.unavailableCount > 0 ? (
           <ShopPopconfirm
             rootClassName='shop-mobile-popup-layer wishlist-clear-unavailable-popconfirm'
@@ -565,9 +567,9 @@ const Wishlist: React.FC = () => {
             okButtonProps={{ danger: true, disabled: actionsDisabledByStaleData, 'aria-label': clearUnavailableActionLabel, title: clearUnavailableActionLabel }}
             cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${clearUnavailableActionLabel}`, title: `${t('common.cancel')}: ${clearUnavailableActionLabel}` }}
           >
-            <Button danger icon={<ShopIcon path={SI.delete} />} aria-label={clearUnavailableActionLabel} title={clearUnavailableActionLabel} disabled={actionsDisabledByStaleData}>
+            <ShopButton danger icon={<ShopIcon path={SI.delete} />} aria-label={clearUnavailableActionLabel} title={clearUnavailableActionLabel} disabled={actionsDisabledByStaleData}>
               {t('pages.cart.clearUnavailable')}
-            </Button>
+            </ShopButton>
           </ShopPopconfirm>
         ) : null}
       </div>
@@ -580,11 +582,11 @@ const Wishlist: React.FC = () => {
           </div>
         </div>
         <div className="wishlist-page__insightStats">
-          <Tag color="green">{t('pages.wishlist.readyToCart', { count: directAddItems.length })}</Tag>
-          <Tag color="blue">{t('pages.wishlist.needOptions', { count: wishlistStats.optionCount })}</Tag>
-          <Tag color="orange">{t('pages.wishlist.lowStockItems', { count: wishlistStats.lowStockCount })}</Tag>
+          <ShopTag color="green">{t('pages.wishlist.readyToCart', { count: directAddItems.length })}</ShopTag>
+          <ShopTag color="blue">{t('pages.wishlist.needOptions', { count: wishlistStats.optionCount })}</ShopTag>
+          <ShopTag color="orange">{t('pages.wishlist.lowStockItems', { count: wishlistStats.lowStockCount })}</ShopTag>
           {wishlistStats.unavailableCount > 0 ? (
-            <Tag color="red">{t('pages.wishlist.unavailableItems', { count: wishlistStats.unavailableCount })}</Tag>
+            <ShopTag color="red">{t('pages.wishlist.unavailableItems', { count: wishlistStats.unavailableCount })}</ShopTag>
           ) : null}
         </div>
       </div>
@@ -593,7 +595,7 @@ const Wishlist: React.FC = () => {
           <span className="wishlist-page__text wishlist-page__text--strong">{t('pages.wishlist.recoveryTitle')}</span>
           <span className="wishlist-page__text wishlist-page__text--secondary">{recoveryText}</span>
         </div>
-        <Button
+        <ShopButton
           type="primary"
           icon={<ShopIcon path={SI.cart} />}
           loading={addingAllToCart && directAddItems.length > 0}
@@ -603,7 +605,7 @@ const Wishlist: React.FC = () => {
           onClick={recoveryAction.action}
         >
           {recoveryAction.label}
-        </Button>
+        </ShopButton>
       </div>
       <div className={`wishlist-page__nextAction wishlist-page__nextAction--${wishlistNextAction.tone}`}>
         <div>
@@ -612,12 +614,12 @@ const Wishlist: React.FC = () => {
           <span className="wishlist-page__text wishlist-page__text--secondary">{wishlistNextAction.text}</span>
         </div>
         <div className="wishlist-page__nextActionMeta">
-          <Tag color="green"><span className="commerce-atomic">{t('pages.wishlist.readyValue', { amount: formatMoney(wishlistStats.readyValue) })}</span></Tag>
-          <Tag color={wishlistStats.lowStockCount > 0 ? 'orange' : 'default'}>
+          <ShopTag color="green"><span className="commerce-atomic">{t('pages.wishlist.readyValue', { amount: formatMoney(wishlistStats.readyValue) })}</span></ShopTag>
+          <ShopTag color={wishlistStats.lowStockCount > 0 ? 'orange' : 'default'}>
             {t('pages.wishlist.lowStockItems', { count: wishlistStats.lowStockCount })}
-          </Tag>
+          </ShopTag>
         </div>
-        <Button
+        <ShopButton
           type={wishlistNextAction.tone === 'ready' ? 'primary' : 'default'}
           icon={wishlistNextAction.tone === 'options' ? <ShopIcon path={SI.settings} /> : <ShopIcon path={SI.cart} />}
           loading={wishlistNextAction.tone === 'ready' && addingAllToCart}
@@ -627,7 +629,7 @@ const Wishlist: React.FC = () => {
           onClick={wishlistNextAction.action}
         >
           {wishlistNextAction.label}
-        </Button>
+        </ShopButton>
       </div>
       {featuredWishlistItem ? (
         (() => {
@@ -674,13 +676,13 @@ const Wishlist: React.FC = () => {
               <div className="wishlist-page__bestPickAction">
                 <span className="wishlist-page__text wishlist-page__price commerce-money">{formatMoney(featuredWishlistItem.productPrice)}</span>
                 {featuredWishlistItem.requiresSelection ? (
-                  <Button type="primary" icon={<ShopIcon path={SI.settings} />} aria-label={selectActionLabel} title={selectActionLabel} onClick={() => navigate(`/products/${featuredWishlistItem.productId}`)}>
+                  <ShopButton type="primary" icon={<ShopIcon path={SI.settings} />} aria-label={selectActionLabel} title={selectActionLabel} onClick={() => navigate(`/products/${featuredWishlistItem.productId}`)}>
                     {t('pages.wishlist.selectOptions')}
-                  </Button>
+                  </ShopButton>
                 ) : (
-                  <Button type="primary" icon={<ShopIcon path={SI.cart} />} aria-label={addActionLabel} title={addActionLabel} onClick={() => handleAddToCart(featuredWishlistItem.productId)} disabled={actionsDisabledByStaleData}>
+                  <ShopButton type="primary" icon={<ShopIcon path={SI.cart} />} aria-label={addActionLabel} title={addActionLabel} onClick={() => handleAddToCart(featuredWishlistItem.productId)} disabled={actionsDisabledByStaleData}>
                     {t('pages.productList.addToCart')}
-                  </Button>
+                  </ShopButton>
                 )}
               </div>
             </div>
@@ -731,9 +733,9 @@ const Wishlist: React.FC = () => {
                   <span className="wishlist-page__text wishlist-page__price commerce-money">{formatMoney(item.productPrice)}</span>
                   <div className="wishlist-page__metaTags">
                     {lowStockCount !== undefined ? (
-                      <Tag color="orange">{t('pages.wishlist.lowStockLeft', { count: lowStockCount })}</Tag>
+                      <ShopTag color="orange">{t('pages.wishlist.lowStockLeft', { count: lowStockCount })}</ShopTag>
                     ) : null}
-                    {!isPurchasable(item) && <Tag color="red">{t('pages.wishlist.outOfStock')}</Tag>}
+                    {!isPurchasable(item) && <ShopTag color="red">{t('pages.wishlist.outOfStock')}</ShopTag>}
                   </div>
                 </div>
                 {renderReadiness(item)}
@@ -748,7 +750,7 @@ const Wishlist: React.FC = () => {
                     okButtonProps={{ danger: true, disabled: actionsDisabledByStaleData, 'aria-label': removeActionLabel, title: removeActionLabel }}
                     cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${removeActionLabel}`, title: `${t('common.cancel')}: ${removeActionLabel}` }}
                   >
-                    <Button
+                    <ShopButton
                       danger
                       icon={<ShopIcon path={SI.delete} />}
                       className="wishlist-page__removeAction"
@@ -759,7 +761,7 @@ const Wishlist: React.FC = () => {
                       title={removeActionLabel}
                     >
                       {t('pages.wishlist.remove')}
-                    </Button>
+                    </ShopButton>
                   </ShopPopconfirm>
                 </div>
               </div>
@@ -774,7 +776,7 @@ const Wishlist: React.FC = () => {
           <span className="wishlist-page__text wishlist-page__text--strong">{wishlistNextAction.title}</span>
           <span className="wishlist-page__text wishlist-page__text--secondary">{t('pages.wishlist.readyValue', { amount: formatMoney(wishlistStats.readyValue) })}</span>
         </span>
-        <Button
+        <ShopButton
           type={wishlistNextAction.tone === 'ready' ? 'primary' : 'default'}
           icon={wishlistNextAction.tone === 'options' ? <ShopIcon path={SI.settings} /> : <ShopIcon path={SI.cart} />}
           loading={wishlistNextAction.tone === 'ready' && addingAllToCart}
@@ -784,7 +786,7 @@ const Wishlist: React.FC = () => {
           onClick={wishlistNextAction.action}
         >
           {wishlistNextAction.label}
-        </Button>
+        </ShopButton>
       </div>
     </div>
   );

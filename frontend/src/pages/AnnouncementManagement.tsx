@@ -1,12 +1,13 @@
 import { useNavigate } from 'react-router-dom';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Button, Card, Form, Space, Switch, Table, Tag, Typography, message } from 'antd';
+import { Form, Table } from 'antd';
 import ShopInput, { ShopTextArea } from '../components/ShopInput';
 import ShopPopconfirm from '../components/ShopPopconfirm';
 import ShopSelect from '../components/ShopSelect';
 import ShopInputNumber from '../components/ShopInputNumber';
 import ShopModal from '../components/ShopModal';
 import ShopDatePicker from '../components/ShopDatePicker';
+import ShopSwitch from '../components/ShopSwitch';
 import { ClockCircleOutlined, LinkOutlined, PlusOutlined, SearchOutlined, SoundOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { adminApi } from '../api/admin';
@@ -20,8 +21,16 @@ import { getApiErrorMessage } from '../utils/apiError';
 import { reportNonBlockingError } from '../utils/nonBlockingError';
 import { ANNOUNCEMENTS_DELETE_PERMISSION, ANNOUNCEMENTS_WRITE_PERMISSION, getEffectiveRole, hasAdminPermission } from '../utils/roles';
 import './AnnouncementManagement.css';
+import ShopButton from '../components/ShopButton';
 
-const { Title, Text } = Typography;
+import ShopTag from '../components/ShopTag';
+import ShopAlert from '../components/ShopAlert';
+import ShopSpace from '../components/ShopSpace';
+import ShopTypography from '../components/ShopTypography';
+import ShopCard from '../components/ShopCard';
+import message from '../components/ShopMessage';
+const Title = ShopTypography.Title;
+const Text = ShopTypography.Text;
 const DEFAULT_PAGE_SIZE = 20;
 const validateCommercialAnnouncementFields = (title: unknown, content: unknown, status: unknown, t: (key: string) => string) => {
   if (String(status || '').toUpperCase() !== 'ACTIVE') {
@@ -351,28 +360,28 @@ const AnnouncementManagement: React.FC = () => {
           ) : null}
         </div>
         {canWriteAnnouncements ? (
-          <Button type="primary" icon={<PlusOutlined />} disabled={announcementActionDisabled} aria-label={addAnnouncementActionLabel} title={addAnnouncementActionLabel} onClick={() => openEditor()}>
+          <ShopButton type="primary" icon={<PlusOutlined />} disabled={announcementActionDisabled} aria-label={addAnnouncementActionLabel} title={addAnnouncementActionLabel} onClick={() => openEditor()}>
             {t('pages.announcementAdmin.add')}
-          </Button>
+          </ShopButton>
         ) : null}
       </div>
 
       {announcementLoadError && announcementSnapshotLoaded ? (
-        <Alert
+        <ShopAlert
           className="announcement-management__alert"
           type="warning"
           showIcon
           message={announcementLoadError}
           description={t('pages.announcementAdmin.staleDataWarning')}
           action={(
-            <Space wrap data-admin-announcements-stale-recovery="true">
-              <Button size="small" type="primary" loading={loading} onClick={() => loadAnnouncements(pageState.page, pageState.size)}>
+            <ShopSpace wrap data-admin-announcements-stale-recovery="true">
+              <ShopButton size="small" type="primary" loading={loading} onClick={() => loadAnnouncements(pageState.page, pageState.size)}>
                 {t('common.retry')}
-              </Button>
-              <Button size="small" onClick={() => navigate('/admin')}>{t('pages.adminDashboard.title')}</Button>
-              <Button size="small" onClick={() => navigate('/admin/orders')}>{t('pages.adminDashboard.orders')}</Button>
-              <Button size="small" onClick={() => navigate('/admin/support')}>{t('adminLayout.support')}</Button>
-            </Space>
+              </ShopButton>
+              <ShopButton size="small" onClick={() => navigate('/admin')}>{t('pages.adminDashboard.title')}</ShopButton>
+              <ShopButton size="small" onClick={() => navigate('/admin/orders')}>{t('pages.adminDashboard.orders')}</ShopButton>
+              <ShopButton size="small" onClick={() => navigate('/admin/support')}>{t('adminLayout.support')}</ShopButton>
+            </ShopSpace>
           )}
         />
       ) : null}
@@ -393,22 +402,22 @@ const AnnouncementManagement: React.FC = () => {
       ) : null}
 
       {summaryLoadError ? (
-        <Alert
+        <ShopAlert
           className="announcement-management__alert"
           type="warning"
           showIcon
           message={summaryLoadError}
           description={summarySnapshotLoaded ? t('pages.announcementAdmin.summaryStaleDataWarning') : undefined}
           action={(
-            <Button size="small" onClick={() => loadSummary()}>
+            <ShopButton size="small" onClick={() => loadSummary()}>
               {t('common.retry')}
-            </Button>
+            </ShopButton>
           )}
         />
       ) : null}
 
       {showInitialAnnouncementLoading ? (
-        <Card
+        <ShopCard
           className="announcement-management__loadingState"
           loading
           role="status"
@@ -444,8 +453,8 @@ const AnnouncementManagement: React.FC = () => {
       ) : null}
 
       {canRenderAnnouncementSnapshot ? (
-        <Card className="announcement-management__card">
-        <Space className="announcement-management__toolbar" wrap role="search" aria-label={announcementSearchRegionLabel} title={announcementSearchRegionLabel}>
+        <ShopCard className="announcement-management__card">
+        <ShopSpace className="announcement-management__toolbar" wrap role="search" aria-label={announcementSearchRegionLabel} title={announcementSearchRegionLabel}>
           <ShopInput
             allowClear
             prefix={<SearchOutlined />}
@@ -471,7 +480,7 @@ const AnnouncementManagement: React.FC = () => {
               { value: 'INACTIVE', label: t('pages.announcementAdmin.disable') },
             ]}
           />
-        </Space>
+        </ShopSpace>
         <Table<SiteAnnouncement>
           rowKey={(record) => String(record.id)}
           dataSource={announcements}
@@ -491,11 +500,11 @@ const AnnouncementManagement: React.FC = () => {
               title: t('pages.announcementAdmin.announcement'),
               dataIndex: 'title',
               render: (_, record) => (
-                <Space direction="vertical" size={2}>
+                <ShopSpace direction="vertical" size={2}>
                   <Text strong>{record.title}</Text>
                   <Text type="secondary" ellipsis className="announcement-management__contentPreview">{record.content}</Text>
                   {record.linkUrl ? <Text copyable type="secondary">{record.linkUrl}</Text> : null}
-                </Space>
+                </ShopSpace>
               ),
             },
             {
@@ -516,7 +525,7 @@ const AnnouncementManagement: React.FC = () => {
                     okButtonProps={{ danger: status === 'ACTIVE', disabled: announcementActionDisabled, 'aria-label': statusActionLabel, title: statusActionLabel }}
                     cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${statusActionLabel}`, title: `${t('common.cancel')}: ${statusActionLabel}` }}
                   >
-                    <Switch
+                    <ShopSwitch
                       checked={status === 'ACTIVE'}
                       checkedChildren={t('pages.announcementAdmin.enable')}
                       unCheckedChildren={t('pages.announcementAdmin.disable')}
@@ -533,16 +542,16 @@ const AnnouncementManagement: React.FC = () => {
               title: t('pages.announcementAdmin.sortOrder'),
               dataIndex: 'sortOrder',
               width: 90,
-              render: (value?: number) => <Tag>{value ?? 0}</Tag>,
+              render: (value?: number) => <ShopTag>{value ?? 0}</ShopTag>,
             },
             {
               title: t('pages.announcementAdmin.activeWindow'),
               width: 240,
               render: (_, record) => (
-                <Space direction="vertical" size={0}>
+                <ShopSpace direction="vertical" size={0}>
                   <Text type="secondary">{t('pages.announcementAdmin.startsAt')}: {record.startsAt ? new Date(record.startsAt).toLocaleString(dateLocale) : t('pages.announcementAdmin.immediately')}</Text>
                   <Text type="secondary">{t('pages.announcementAdmin.endsAt')}: {record.endsAt ? new Date(record.endsAt).toLocaleString(dateLocale) : t('pages.announcementAdmin.longTerm')}</Text>
-                </Space>
+                </ShopSpace>
               ),
             },
             {
@@ -553,8 +562,8 @@ const AnnouncementManagement: React.FC = () => {
                 const editActionLabel = `${t('common.edit')}: ${announcementTitle}`;
                 const deleteActionLabel = `${t('common.delete')}: ${announcementTitle}`;
                 return (
-                  <Space>
-                    {canWriteAnnouncements ? <Button size="small" disabled={announcementActionDisabled} aria-label={editActionLabel} title={editActionLabel} onClick={() => openEditor(record)}>{t('common.edit')}</Button> : null}
+                  <ShopSpace>
+                    {canWriteAnnouncements ? <ShopButton size="small" disabled={announcementActionDisabled} aria-label={editActionLabel} title={editActionLabel} onClick={() => openEditor(record)}>{t('common.edit')}</ShopButton> : null}
                     {canDeleteAnnouncements ? (
 	                      <ShopPopconfirm rootClassName="shop-mobile-popup-layer"
 	                        title={t('pages.announcementAdmin.deleteConfirm')}
@@ -566,16 +575,16 @@ const AnnouncementManagement: React.FC = () => {
                         okButtonProps={{ danger: true, disabled: announcementActionDisabled, 'aria-label': deleteActionLabel, title: deleteActionLabel }}
                         cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${deleteActionLabel}`, title: `${t('common.cancel')}: ${deleteActionLabel}` }}
                       >
-                        <Button size="small" danger disabled={announcementActionDisabled} aria-label={deleteActionLabel} title={deleteActionLabel}>{t('common.delete')}</Button>
+                        <ShopButton size="small" danger disabled={announcementActionDisabled} aria-label={deleteActionLabel} title={deleteActionLabel}>{t('common.delete')}</ShopButton>
                       </ShopPopconfirm>
                     ) : null}
-                  </Space>
+                  </ShopSpace>
                 );
               },
             },
           ]}
         />
-      </Card>
+      </ShopCard>
       ) : null}
 
       <ShopModal
@@ -634,7 +643,7 @@ const AnnouncementManagement: React.FC = () => {
           >
             <ShopInput maxLength={linkUrlMaxChars} showCount placeholder={t('pages.announcementAdmin.linkPlaceholder')} aria-label={linkUrlFieldLabel} title={linkUrlFieldLabel} />
           </Form.Item>
-          <Space size="large" wrap>
+          <ShopSpace size="large" wrap>
             <Form.Item name="status" label={t('common.status')} className="announcement-management__statusField">
               <ShopSelect
                 ariaLabel={editorStatusFieldLabel}
@@ -648,8 +657,8 @@ const AnnouncementManagement: React.FC = () => {
             <Form.Item name="sortOrder" label={t('pages.announcementAdmin.sortOrder')} className="announcement-management__sortField">
               <ShopInputNumber min={0} max={9999} aria-label={sortOrderFieldLabel} title={sortOrderFieldLabel} />
             </Form.Item>
-          </Space>
-          <Space size="large" wrap>
+          </ShopSpace>
+          <ShopSpace size="large" wrap>
             <Form.Item name="startsAt" label={t('pages.announcementAdmin.startsAt')} extra={t('pages.announcementAdmin.startsAtExtra')}>
               <ShopDatePicker
                 showTime
@@ -684,7 +693,7 @@ const AnnouncementManagement: React.FC = () => {
                 title={endsAtFieldLabel}
               />
             </Form.Item>
-          </Space>
+          </ShopSpace>
         </Form>
       </ShopModal>
     </div>

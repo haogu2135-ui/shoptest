@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Button, Card, Empty, Image, Space, Statistic, Table, Tag, Typography, message } from 'antd';
+import { Table } from 'antd';
 import ShopInput, { ShopTextArea } from '../components/ShopInput';
 import ShopPopconfirm from '../components/ShopPopconfirm';
 import ShopSelect from '../components/ShopSelect';
@@ -17,8 +17,19 @@ import { imageFallbacks, resolveApiAssetUrl } from '../utils/mediaAssets';
 import { PET_GALLERY_DELETE_PERMISSION, getEffectiveRole, hasAdminPermission } from '../utils/roles';
 import { buildPaginationItemRender } from '../utils/paginationLabels';
 import './PetGalleryManagement.css';
+import ShopButton from '../components/ShopButton';
+import ShopEmpty from '../components/ShopEmpty';
+import ShopStatistic from '../components/ShopStatistic';
 
-const { Text, Title } = Typography;
+import ShopTag from '../components/ShopTag';
+import ShopAlert from '../components/ShopAlert';
+import ShopSpace from '../components/ShopSpace';
+import ShopTypography from '../components/ShopTypography';
+import ShopCard from '../components/ShopCard';
+import ShopImage from '../components/ShopImage';
+import message from '../components/ShopMessage';
+const Text = ShopTypography.Text;
+const Title = ShopTypography.Title;
 
 const STATUS_OPTIONS = ['ALL', 'ACTIVE', 'DELETED'];
 const SOURCE_OPTIONS = ['ALL', 'USER_UPLOAD', 'SEED'];
@@ -220,7 +231,7 @@ const PetGalleryManagement: React.FC = () => {
       key: 'imageUrl',
       width: 96,
       render: (imageUrl: string, record) => (
-        <Image
+        <ShopImage
           src={resolveApiAssetUrl(imageUrl, imageFallbacks.media)}
           alt={record.originalFilename || record.username || t('pages.petGalleryAdmin.photoAlt')}
           width={72}
@@ -235,10 +246,10 @@ const PetGalleryManagement: React.FC = () => {
       key: 'uploader',
       width: 190,
       render: (_, record) => (
-        <Space direction="vertical" size={0}>
+        <ShopSpace direction="vertical" size={0}>
           <Text strong>{record.username || t('common.unknown')}</Text>
           <Text type="secondary">{t('common.userId')}: {record.userId || '-'}</Text>
-        </Space>
+        </ShopSpace>
       ),
     },
     {
@@ -246,10 +257,10 @@ const PetGalleryManagement: React.FC = () => {
       key: 'file',
       width: 260,
       render: (_, record) => (
-        <Space direction="vertical" size={0} className="pet-gallery-management-page__fileCell">
+        <ShopSpace direction="vertical" size={0} className="pet-gallery-management-page__fileCell">
           <Text ellipsis title={record.originalFilename || ''}>{record.originalFilename || t('pages.petGalleryAdmin.unknownFile')}</Text>
           <Text type="secondary">{record.contentType || '-'} / {formatFileSize(record.fileSize)}</Text>
-        </Space>
+        </ShopSpace>
       ),
     },
     {
@@ -257,14 +268,14 @@ const PetGalleryManagement: React.FC = () => {
       dataIndex: 'status',
       key: 'status',
       width: 120,
-      render: (status?: string) => <Tag color={statusColor(status || 'ACTIVE')}>{getStatusLabel(status || 'ACTIVE')}</Tag>,
+      render: (status?: string) => <ShopTag color={statusColor(status || 'ACTIVE')}>{getStatusLabel(status || 'ACTIVE')}</ShopTag>,
     },
     {
       title: t('pages.petGalleryAdmin.source'),
       dataIndex: 'source',
       key: 'source',
       width: 130,
-      render: (source?: string) => <Tag color={sourceColor(source)}>{getSourceLabel(source || 'UNKNOWN')}</Tag>,
+      render: (source?: string) => <ShopTag color={sourceColor(source)}>{getSourceLabel(source || 'UNKNOWN')}</ShopTag>,
     },
     {
       title: t('pages.petGalleryAdmin.likes'),
@@ -314,9 +325,9 @@ const PetGalleryManagement: React.FC = () => {
               okButtonProps={{ danger: true, disabled: galleryActionDisabled, 'aria-label': removeActionLabel, title: removeActionLabel }}
               onConfirm={() => handleDelete(record)}
             >
-              <Button danger size="small" icon={<DeleteOutlined />} disabled={galleryActionDisabled} aria-label={removeActionLabel} title={removeActionLabel} loading={deletingId === record.id}>
+              <ShopButton danger size="small" icon={<DeleteOutlined />} disabled={galleryActionDisabled} aria-label={removeActionLabel} title={removeActionLabel} loading={deletingId === record.id}>
                 {t('pages.petGalleryAdmin.remove')}
-              </Button>
+              </ShopButton>
             </ShopPopconfirm>
           );
         },
@@ -338,27 +349,27 @@ const PetGalleryManagement: React.FC = () => {
           <Title level={4}>{t('pages.petGalleryAdmin.title')}</Title>
           <Text type="secondary">{t('pages.petGalleryAdmin.description')}</Text>
         </div>
-        <Button icon={<ReloadOutlined />} loading={loading} aria-label={refreshActionLabel} title={refreshActionLabel} onClick={() => fetchPhotos(pageState.page, pageState.size)}>
+        <ShopButton icon={<ReloadOutlined />} loading={loading} aria-label={refreshActionLabel} title={refreshActionLabel} onClick={() => fetchPhotos(pageState.page, pageState.size)}>
           {t('common.refresh')}
-        </Button>
+        </ShopButton>
       </div>
 
       {galleryLoadError && gallerySnapshotLoaded ? (
-        <Alert
+        <ShopAlert
           className="pet-gallery-management-page__alert"
           type="warning"
           showIcon
           message={galleryLoadError}
           description={t('pages.petGalleryAdmin.staleDataWarning')}
           action={(
-            <Space wrap data-admin-pet-gallery-stale-recovery="true">
-              <Button size="small" type="primary" loading={loading} onClick={() => fetchPhotos(pageState.page, pageState.size)}>
+            <ShopSpace wrap data-admin-pet-gallery-stale-recovery="true">
+              <ShopButton size="small" type="primary" loading={loading} onClick={() => fetchPhotos(pageState.page, pageState.size)}>
                 {t('common.retry')}
-              </Button>
-              <Button size="small" onClick={() => navigate('/admin')}>{t('pages.adminDashboard.title')}</Button>
-              <Button size="small" onClick={() => navigate('/admin/products')}>{t('pages.adminDashboard.products')}</Button>
-              <Button size="small" onClick={() => navigate('/admin/orders')}>{t('pages.adminDashboard.orders')}</Button>
-            </Space>
+              </ShopButton>
+              <ShopButton size="small" onClick={() => navigate('/admin')}>{t('pages.adminDashboard.title')}</ShopButton>
+              <ShopButton size="small" onClick={() => navigate('/admin/products')}>{t('pages.adminDashboard.products')}</ShopButton>
+              <ShopButton size="small" onClick={() => navigate('/admin/orders')}>{t('pages.adminDashboard.orders')}</ShopButton>
+            </ShopSpace>
           )}
         />
       ) : null}
@@ -379,7 +390,7 @@ const PetGalleryManagement: React.FC = () => {
       ) : null}
 
       {showInitialGalleryLoading ? (
-        <Card
+        <ShopCard
           className="pet-gallery-management-page__loadingState"
           loading
           role="status"
@@ -392,22 +403,22 @@ const PetGalleryManagement: React.FC = () => {
       {canRenderGallerySnapshot ? (
         <>
       <section className="pet-gallery-management-page__stats" aria-label={pageLabel}>
-        <Card>
-          <Statistic title={t('pages.petGalleryAdmin.visiblePhotos')} value={galleryStats.visiblePhotos} prefix={<CameraOutlined />} />
-        </Card>
-        <Card>
-          <Statistic title={t('pages.petGalleryAdmin.userUploads')} value={galleryStats.userUploads} prefix={<UserOutlined />} />
-        </Card>
-        <Card>
-          <Statistic title={t('pages.petGalleryAdmin.seedPhotos')} value={galleryStats.seedPhotos} />
-        </Card>
-        <Card>
-          <Statistic title={t('pages.petGalleryAdmin.recentUploads')} value={galleryStats.recentUploads} />
-        </Card>
+        <ShopCard>
+          <ShopStatistic title={t('pages.petGalleryAdmin.visiblePhotos')} value={galleryStats.visiblePhotos} prefix={<CameraOutlined />} />
+        </ShopCard>
+        <ShopCard>
+          <ShopStatistic title={t('pages.petGalleryAdmin.userUploads')} value={galleryStats.userUploads} prefix={<UserOutlined />} />
+        </ShopCard>
+        <ShopCard>
+          <ShopStatistic title={t('pages.petGalleryAdmin.seedPhotos')} value={galleryStats.seedPhotos} />
+        </ShopCard>
+        <ShopCard>
+          <ShopStatistic title={t('pages.petGalleryAdmin.recentUploads')} value={galleryStats.recentUploads} />
+        </ShopCard>
       </section>
 
-      <Card className="pet-gallery-management-page__card">
-        <Alert
+      <ShopCard className="pet-gallery-management-page__card">
+        <ShopAlert
           type={galleryStats.largeFiles > 0 ? 'warning' : 'info'}
           showIcon
           icon={galleryStats.largeFiles > 0 ? <WarningOutlined /> : undefined}
@@ -416,7 +427,7 @@ const PetGalleryManagement: React.FC = () => {
             ? t('pages.petGalleryAdmin.largeFileNotice', { count: galleryStats.largeFiles })
             : t('pages.petGalleryAdmin.featureNotice', { count: galleryStats.visiblePhotos })}
         />
-        <Space className="pet-gallery-management-page__filters" wrap>
+        <ShopSpace className="pet-gallery-management-page__filters" wrap>
           <ShopInput
             allowClear
             prefix={<SearchOutlined />}
@@ -443,11 +454,11 @@ const PetGalleryManagement: React.FC = () => {
             ariaLabel={sourceFilterLabel}
             title={sourceFilterLabel} popupClassName="shop-mobile-popup-layer"
           />
-          <Button disabled={galleryActionDisabled} aria-label={resetFiltersActionLabel} title={resetFiltersActionLabel} onClick={() => { setKeyword(''); setStatusFilter('ALL'); setSourceFilter('ALL'); }}>
+          <ShopButton disabled={galleryActionDisabled} aria-label={resetFiltersActionLabel} title={resetFiltersActionLabel} onClick={() => { setKeyword(''); setStatusFilter('ALL'); setSourceFilter('ALL'); }}>
             {t('common.reset')}
-          </Button>
+          </ShopButton>
           {lastLoadedAt ? <Text type="secondary">{t('pages.petGalleryAdmin.loadedAt', { time: lastLoadedAt.toLocaleTimeString(dateLocale, { hour: '2-digit', minute: '2-digit' }) })}</Text> : null}
-        </Space>
+        </ShopSpace>
 
         <Table<AdminPetGalleryPhoto>
           rowKey="id"
@@ -466,10 +477,10 @@ const PetGalleryManagement: React.FC = () => {
           onChange={handleTableChange}
           scroll={{ x: 1230 }}
           locale={{
-            emptyText: <Empty description={t('pages.petGalleryAdmin.empty')} />,
+            emptyText: <ShopEmpty description={t('pages.petGalleryAdmin.empty')} />,
           }}
         />
-      </Card>
+      </ShopCard>
         </>
       ) : null}
     </div>

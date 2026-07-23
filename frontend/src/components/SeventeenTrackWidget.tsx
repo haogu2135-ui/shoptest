@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { ShopIcon, SI } from './ShopIcon';
-import { Alert, Button, Tag } from 'antd';
 import ShopInput from './ShopInput';
 import { useNavigate } from 'react-router-dom';
 import { logisticsApi } from '../api';
@@ -11,6 +10,9 @@ import { dispatchDomEvent } from '../utils/domEvents';
 import { reportNonBlockingError } from '../utils/nonBlockingError';
 import type { LogisticsTrackResponse } from '../types';
 import './SeventeenTrackWidget.css';
+import ShopButton from './ShopButton';
+import ShopTag from './ShopTag';
+import ShopAlert from './ShopAlert';
 
 const localeByLanguage = {
   zh: 'zh-CN',
@@ -165,16 +167,16 @@ const SeventeenTrackWidget: React.FC<SeventeenTrackWidgetProps> = ({
   const recoveryActions = (
     <div className="seventeen-track-widget__recoveryActions" data-seventeen-track-recovery="true">
       {activeTrackingNumber ? (
-        <Button
+        <ShopButton
           icon={<ShopIcon path={SI.copy} />}
           onClick={() => { void copyTrackingNumber(); }}
           aria-label={`${t('pages.orderTracking.copyTrackingNumber')}: ${activeTrackingNumber}`}
           title={`${t('pages.orderTracking.copyTrackingNumber')}: ${activeTrackingNumber}`}
         >
           {t('pages.orderTracking.copyTrackingNumber')}
-        </Button>
+        </ShopButton>
       ) : null}
-      <Button
+      <ShopButton
         icon={<ShopIcon path={SI.reload} />}
         loading={loading}
         onClick={runTrack}
@@ -183,31 +185,31 @@ const SeventeenTrackWidget: React.FC<SeventeenTrackWidgetProps> = ({
         title={`${t('pages.orderTracking.retryTracking')}: ${trackingContext}`}
       >
         {t('pages.orderTracking.retryTracking')}
-      </Button>
-      <Button
+      </ShopButton>
+      <ShopButton
         icon={<ShopIcon path={SI.shopping} />}
         onClick={() => navigate('/products')}
         aria-label={t('pages.orderTracking.shopAgain')}
         title={t('pages.orderTracking.shopAgain')}
       >
         {t('pages.orderTracking.shopAgain')}
-      </Button>
-      <Button
+      </ShopButton>
+      <ShopButton
         icon={<ShopIcon path={SI.gift} />}
         onClick={() => navigate('/coupons')}
         aria-label={t('pages.orderTracking.emptyCoupons')}
         title={t('pages.orderTracking.emptyCoupons')}
       >
         {t('pages.orderTracking.emptyCoupons')}
-      </Button>
-      <Button
+      </ShopButton>
+      <ShopButton
         icon={<ShopIcon path={SI.support} />}
         onClick={openSupport}
         aria-label={t('pages.profile.contactSupport')}
         title={t('pages.profile.contactSupport')}
       >
         {t('pages.profile.contactSupport')}
-      </Button>
+      </ShopButton>
     </div>
   );
 
@@ -228,7 +230,7 @@ const SeventeenTrackWidget: React.FC<SeventeenTrackWidgetProps> = ({
           title={trackingInputLabel}
           autoComplete="off"
         />
-        <Button
+        <ShopButton
           type="primary"
           icon={<ShopIcon path={SI.search} />}
           loading={loading}
@@ -237,7 +239,7 @@ const SeventeenTrackWidget: React.FC<SeventeenTrackWidgetProps> = ({
           title={trackActionLabel}
         >
           {t('pages.adminOrders.track')}
-        </Button>
+        </ShopButton>
       </div>
 
       <div
@@ -250,7 +252,7 @@ const SeventeenTrackWidget: React.FC<SeventeenTrackWidgetProps> = ({
           <span className="seventeen-track-widget__muted">{t('common.loading')}</span>
         ) : error ? (
           <div className="seventeen-track-widget__recovery">
-            <Alert
+            <ShopAlert
               className="seventeen-track-widget__alert"
               type="error"
               showIcon
@@ -266,8 +268,8 @@ const SeventeenTrackWidget: React.FC<SeventeenTrackWidgetProps> = ({
           <div className="seventeen-track-widget__content">
             <div className="seventeen-track-widget__summary">
               <div className="seventeen-track-widget__summaryMeta">
-                <Tag color={statusColors[status] || 'default'}>{status || t('common.status')}</Tag>
-                {result.carrier ? <Tag>{result.carrier}</Tag> : null}
+                <ShopTag color={statusColors[status] || 'default'}>{status || t('common.status')}</ShopTag>
+                {result.carrier ? <ShopTag>{result.carrier}</ShopTag> : null}
                 <strong className="seventeen-track-widget__trackingNo">{result.trackingNumber}</strong>
               </div>
               {result.summary ? (
@@ -300,7 +302,7 @@ const SeventeenTrackWidget: React.FC<SeventeenTrackWidgetProps> = ({
               </div>
             ) : trackingUnavailable ? (
               <div className="seventeen-track-widget__recovery">
-                <Alert
+                <ShopAlert
                   className="seventeen-track-widget__alert seventeen-track-widget__inlineAlert"
                   type="info"
                   showIcon

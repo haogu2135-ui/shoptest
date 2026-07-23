@@ -1,0 +1,63 @@
+.shop-tooltip {
+  position: relative;
+  display: inline-flex;
+  max-width: 100%;
+  vertical-align: middle;
+}
+
+.shop-tooltip__trigger {
+  display: inline-flex;
+  max-width: 100%;
+  vertical-align: middle;
+}
+
+.shop-tooltip__overlay {
+  position: absolute;
+  z-index: 1070;
+  left: 50%;
+  bottom: calc(100% + 8px);
+  transform: translateX(-50%);
+  pointer-events: none;
+  white-space: normal;
+}
+
+.shop-tooltip__overlay.ant-tooltip-placement-bottom {
+  top: calc(100% + 8px);
+  bottom: auto;
+}
+
+.shop-tooltip__overlay.ant-tooltip-placement-left {
+  left: auto;
+  right: calc(100% + 8px);
+  bottom: auto;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.shop-tooltip__overlay.ant-tooltip-placement-right {
+  left: calc(100% + 8px);
+  bottom: auto;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.shop-tooltip__content {
+  display: block;
+}
+
+.shop-tooltip__inner {
+  display: block;
+  max-width: min(280px, 70vw);
+  padding: 6px 10px;
+  color: #fff;
+  font-size: 12px;
+  line-height: 1.45;
+  font-weight: 600;
+  background: rgba(18, 41, 31, 0.94);
+  border-radius: 8px;
+  box-shadow: 0 8px 20px rgba(12, 36, 26, 0.22);
+}
+
+.shop-tooltip__arrow {
+  display: none;
+}

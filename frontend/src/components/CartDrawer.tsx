@@ -1,8 +1,8 @@
 import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { ShopIcon, SI } from './ShopIcon';
-import { Alert, Button, Progress, Tag } from 'antd';
 import ShopInputNumber from './ShopInputNumber';
+import ShopButton from './ShopButton';
 import ShopPopconfirm from './ShopPopconfirm';
 import { useNavigate } from 'react-router-dom';
 import { cartApi } from '../api';
@@ -36,8 +36,11 @@ import { getLocalStorageItem, removeSessionStorageItem, setSessionStorageItem } 
 import { getApiErrorMessage, isAuthExpiredError } from '../utils/apiError';
 import { useNativeBackHandler } from '../utils/nativeBack';
 import ShopDrawer from './ShopDrawer';
+import ShopProgress from './ShopProgress';
 import './CartDrawer.css';
 import '../styles/mobile-page-contrast.css';
+import ShopTag from './ShopTag';
+import ShopAlert from './ShopAlert';
 
 const AddOnAssistant = React.lazy(() => import('./AddOnAssistant'));
 const PetPersonalizedAssistant = React.lazy(() => import('./PetPersonalizedAssistant'));
@@ -584,7 +587,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
               </span>
             </div>
           </div>
-          <Progress
+          <ShopProgress
             percent={progress}
             showInfo={false}
             strokeColor="#124734"
@@ -617,17 +620,17 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
                 okButtonProps={{ danger: true, 'aria-label': clearBlockedActionLabel, title: clearBlockedActionLabel }}
                 cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${clearBlockedActionLabel}`, title: `${t('common.cancel')}: ${clearBlockedActionLabel}` }}
               >
-                <Button
+                <ShopButton
                   size="small"
                   aria-label={clearBlockedActionLabel}
                   title={clearBlockedActionLabel}
                   disabled={checkoutSubmitting || hasStaleCartData}
                 >
                   {drawerNextAction.label}
-                </Button>
+                </ShopButton>
               </ShopPopconfirm>
             ) : (
-              <Button
+              <ShopButton
                 size="small"
                 type={drawerNextAction.tone === 'ready' ? 'primary' : 'default'}
                 aria-label={`${drawerNextAction.label}: ${drawerNextAction.title}`}
@@ -636,7 +639,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
                 disabled={checkoutSubmitting}
               >
                 {drawerNextAction.label}
-              </Button>
+              </ShopButton>
             )}
           </section>
         ) : null}
@@ -653,7 +656,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
               okButtonProps={{ danger: true, 'aria-label': clearBlockedActionLabel, title: clearBlockedActionLabel }}
               cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${clearBlockedActionLabel}`, title: `${t('common.cancel')}: ${clearBlockedActionLabel}` }}
             >
-              <Button size="small" aria-label={clearBlockedActionLabel} title={clearBlockedActionLabel} disabled={hasStaleCartData}>{t('pages.cart.drawerClearBlocked')}</Button>
+              <ShopButton size="small" aria-label={clearBlockedActionLabel} title={clearBlockedActionLabel} disabled={hasStaleCartData}>{t('pages.cart.drawerClearBlocked')}</ShopButton>
             </ShopPopconfirm>
           </div>
         ) : null}
@@ -676,7 +679,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
                 <span className="cart-drawer__text cart-drawer__text--strong">{t('pages.checkout.expressCheckout')}</span>
                 <span className="cart-drawer__text cart-drawer__text--secondary">{expressHint}</span>
               </span>
-              {benefitTarget ? <Tag color="orange">{t('pages.cart.nextActionFindAddOn')}</Tag> : null}
+              {benefitTarget ? <ShopTag color="orange">{t('pages.cart.nextActionFindAddOn')}</ShopTag> : null}
             </summary>
             <div className="cart-drawer__expressWrap">
               <div className="cart-drawer__express cart-drawer__expressCompact">
@@ -685,7 +688,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
                     const paymentLabel = paymentMethodLabel(code, t);
                     const expressPaymentActionLabel = `${t('pages.checkout.expressCheckout')}: ${paymentLabel}, ${formatMoney(subtotal)}`;
                     return (
-                      <Button
+                      <ShopButton
                         key={code}
                         disabled={!drawerReady || checkoutSubmitting}
                         loading={checkoutPaymentSubmitting === code}
@@ -695,7 +698,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
                         onClick={() => goCheckout(code)}
                       >
                         {paymentLabel}
-                      </Button>
+                      </ShopButton>
                     );
                   })()
                 ))}
@@ -705,22 +708,22 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
         ) : null}
 
         {loadError ? (
-          <Alert
+          <ShopAlert
             type="error"
             showIcon
             message={t('pages.cart.fetchFailed')}
             description={t('common.loadFailedRetry')}
             action={(
               <div className="cart-drawer__emptyActions" data-cart-drawer-load-recovery="true">
-                <Button size="small" type="primary" icon={<ShopIcon path={SI.reload} />} onClick={() => loadCart()} aria-label={t('common.retry')} title={t('common.retry')}>
+                <ShopButton size="small" type="primary" icon={<ShopIcon path={SI.reload} />} onClick={() => loadCart()} aria-label={t('common.retry')} title={t('common.retry')}>
                   {t('common.retry')}
-                </Button>
-                <Button size="small" icon={<ShopIcon path={SI.shopping} />} onClick={() => closeAndGo('/products')} aria-label={emptyDrawerBrowseActionLabel} title={emptyDrawerBrowseActionLabel}>
+                </ShopButton>
+                <ShopButton size="small" icon={<ShopIcon path={SI.shopping} />} onClick={() => closeAndGo('/products')} aria-label={emptyDrawerBrowseActionLabel} title={emptyDrawerBrowseActionLabel}>
                   {t('pages.cart.browse')}
-                </Button>
-                <Button size="small" icon={<ShopIcon path={SI.gift} />} onClick={() => closeAndGo('/coupons')} aria-label={emptyDrawerCouponsActionLabel} title={emptyDrawerCouponsActionLabel}>
+                </ShopButton>
+                <ShopButton size="small" icon={<ShopIcon path={SI.gift} />} onClick={() => closeAndGo('/coupons')} aria-label={emptyDrawerCouponsActionLabel} title={emptyDrawerCouponsActionLabel}>
                   {t('nav.coupons')}
-                </Button>
+                </ShopButton>
               </div>
             )}
           />
@@ -735,18 +738,18 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
                 <div className="cart-drawer__emptyHint">{t('pages.cart.emptyHint')}</div>
               </div>
               <div className="cart-drawer__emptyActions" data-cart-drawer-empty-actions="true">
-                <Button type="primary" icon={<ShopIcon path={SI.shopping} />} aria-label={emptyDrawerBrowseActionLabel} title={emptyDrawerBrowseActionLabel} onClick={() => closeAndGo('/products')}>
+                <ShopButton type="primary" icon={<ShopIcon path={SI.shopping} />} aria-label={emptyDrawerBrowseActionLabel} title={emptyDrawerBrowseActionLabel} onClick={() => closeAndGo('/products')}>
                   {t('pages.cart.browse')}
-                </Button>
-                <Button icon={<ShopIcon path={SI.gift} />} aria-label={emptyDrawerCouponsActionLabel} title={emptyDrawerCouponsActionLabel} onClick={() => closeAndGo('/coupons')}>
+                </ShopButton>
+                <ShopButton icon={<ShopIcon path={SI.gift} />} aria-label={emptyDrawerCouponsActionLabel} title={emptyDrawerCouponsActionLabel} onClick={() => closeAndGo('/coupons')}>
                   {t('nav.coupons')}
-                </Button>
-                <Button icon={<ShopIcon path={SI.shopping} />} aria-label={emptyDrawerPetFinderActionLabel} title={emptyDrawerPetFinderActionLabel} onClick={() => closeAndGo('/pet-finder')}>
+                </ShopButton>
+                <ShopButton icon={<ShopIcon path={SI.shopping} />} aria-label={emptyDrawerPetFinderActionLabel} title={emptyDrawerPetFinderActionLabel} onClick={() => closeAndGo('/pet-finder')}>
                   {t('nav.petFinder')}
-                </Button>
-                <Button icon={<ShopIcon path={SI.clock} />} aria-label={emptyDrawerHistoryActionLabel} title={emptyDrawerHistoryActionLabel} onClick={() => closeAndGo('/history')}>
+                </ShopButton>
+                <ShopButton icon={<ShopIcon path={SI.clock} />} aria-label={emptyDrawerHistoryActionLabel} title={emptyDrawerHistoryActionLabel} onClick={() => closeAndGo('/history')}>
                   {t('nav.history')}
-                </Button>
+                </ShopButton>
               </div>
             </div>
           </div>
@@ -781,12 +784,12 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
                   <div className="cart-drawer__itemBody">
                     <button type="button" className="cart-drawer__productLink" aria-label={productLinkLabel} title={productLinkLabel} onClick={() => { setOpen(false); navigate(`/products/${item.productId}`); }}>{itemName}</button>
                     <div className="cart-drawer__itemDetails">
-                      {!canCheckout(item) ? <Tag color="red">{t('pages.cart.unavailable')}</Tag> : null}
+                      {!canCheckout(item) ? <ShopTag color="red">{t('pages.cart.unavailable')}</ShopTag> : null}
                       {item.selectedSpecs ? <span className="cart-drawer__text cart-drawer__text--secondary">{formatSelectedSpecs(item.selectedSpecs, t, language)}</span> : null}
                       {canCheckout(item) && getCartItemLowStockCount(item) !== null ? (
-                        <Tag color="orange" className="cart-drawer__urgency">
+                        <ShopTag color="orange" className="cart-drawer__urgency">
                           {t('pages.cart.lowStockLeft', { count: getCartItemLowStockCount(item) ?? 0 })}
-                        </Tag>
+                        </ShopTag>
                       ) : null}
                       <div className="cart-drawer__itemCommerce">
                         <div className="cart-drawer__itemCommerceTop">
@@ -817,7 +820,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
                   </div>
                 </div>
                 <div className="cart-drawer__itemActions">
-                  <Button
+                  <ShopButton
                     type="link"
                     className="cart-drawer__itemAction cart-drawer__itemAction--save"
                     icon={<ShopIcon path={SI.clock} />}
@@ -828,7 +831,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
                     onClick={() => saveForLater(item)}
                   >
                     {t('pages.cart.saveForLaterShort')}
-                  </Button>
+                  </ShopButton>
                   <ShopPopconfirm
                     rootClassName='shop-mobile-popup-layer cart-drawer-popconfirm'
                     title={t('pages.cart.deleteConfirm')}
@@ -838,9 +841,9 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
                     okButtonProps={{ danger: true, 'aria-label': deleteActionLabel, title: deleteActionLabel }}
                     cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${deleteActionLabel}`, title: `${t('common.cancel')}: ${deleteActionLabel}` }}
                   >
-                    <Button type="link" danger className="cart-drawer__itemAction cart-drawer__itemAction--delete" icon={<ShopIcon path={SI.delete} />} aria-label={deleteActionLabel} title={deleteActionLabel} disabled={hasStaleCartData}>
+                    <ShopButton type="link" danger className="cart-drawer__itemAction cart-drawer__itemAction--delete" icon={<ShopIcon path={SI.delete} />} aria-label={deleteActionLabel} title={deleteActionLabel} disabled={hasStaleCartData}>
                       {t('common.delete')}
-                    </Button>
+                    </ShopButton>
                   </ShopPopconfirm>
                 </div>
               </li>
@@ -868,7 +871,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
             <span className="cart-drawer__text cart-drawer__text--strong commerce-money">{formatMoney(subtotal)}</span>
           </div>
           <div className="cart-drawer__footerActions">
-            <Button
+            <ShopButton
               type="primary"
               block
               size="large"
@@ -880,10 +883,10 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
               disabled={checkoutItems.length === 0 || checkoutSubmitting || hasStaleCartData}
             >
               {checkoutSubmitting && hasPendingQuantityUpdates ? t('pages.cart.checkoutSyncing') : t('pages.cart.checkout')}
-            </Button>
-            <Button block className="cart-drawer__fullCartButton" aria-label={fullCartActionLabel} title={fullCartActionLabel} onClick={() => { setOpen(false); navigate('/cart'); }}>
+            </ShopButton>
+            <ShopButton block className="cart-drawer__fullCartButton" aria-label={fullCartActionLabel} title={fullCartActionLabel} onClick={() => { setOpen(false); navigate('/cart'); }}>
               {t('pages.cart.viewFullCart')}
-            </Button>
+            </ShopButton>
           </div>
           <div className="cart-drawer__trustRow" aria-label={t('pages.checkout.trustSecureTitle')}>
             <span><ShopIcon path={SI.checkCircle} /> {t('pages.checkout.trustSecureTitle')}</span>

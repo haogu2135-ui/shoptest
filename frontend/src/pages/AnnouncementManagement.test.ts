@@ -10,14 +10,16 @@ describe('AnnouncementManagement scheduling popup guards', () => {
     expect(pageSource).not.toContain('checkedAt.toLocaleString()');
   });
 
-  it('uses a scoped body-mounted popup for both editor date pickers', () => {
-    expect(pageSource).toContain("root: 'shop-mobile-popup-layer announcement-management-page__datePopup'");
+  it('uses ShopDatePicker with showTime for both editor schedule fields', () => {
+    expect(pageSource).toContain('ShopDatePicker');
     expect(pageSource).toContain('className="profile-mobile-safe-modal announcement-management-page__editorModal"');
     expect(pageSource).toContain('name="startsAt"');
     expect(pageSource).toContain('name="endsAt"');
-    expect(pageSource.match(/classNames=\{announcementDatePopupClassNames\}/g)).toHaveLength(2);
-    expect(pageSource.match(/getPopupContainer=\{\(\) => document\.body\}/g)?.length).toBeGreaterThanOrEqual(2);
-    expect(pageSource.match(/placement="bottomLeft"/g)).toHaveLength(2);
+    expect(pageSource.match(/<ShopDatePicker/g)).toHaveLength(2);
+    expect(pageSource.match(/showTime/g)?.length).toBeGreaterThanOrEqual(2);
+    expect(pageSource).not.toMatch(/import \{[^}]*\bDatePicker\b[^}]*\} from 'antd'/);
+    expect(pageSource).not.toMatch(/<DatePicker\b/);
+    expect(pageSource).not.toContain('getPopupContainer={() => document.body}');
   });
 
   it('pins the mobile date picker popup inside the visible viewport', () => {

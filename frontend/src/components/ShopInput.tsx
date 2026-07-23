@@ -225,7 +225,6 @@ export const ShopPasswordInput = forwardRef<HTMLInputElement, ShopPasswordInputP
 
 ShopPasswordInput.displayName = 'ShopPasswordInput';
 
-
 export type ShopTextAreaProps = {
   value?: string;
   defaultValue?: string;

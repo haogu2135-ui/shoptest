@@ -65,7 +65,6 @@ const HI = {
   shop: 'M20 4H4v2h16V4zm1 10v-2l-1-5H4l-1 5v2h1v6h10v-6h4v6h2v-6h1zm-9 4H6v-4h6v4z',
 } as const;
 
-
 const DISCOVERY_BATCH_SIZE = 12;
 const HOME_FEATURED_LIMIT = 12;
 const HOME_PRODUCT_PAGE_SIZE = 48;
@@ -121,7 +120,6 @@ const applyHomeImageFallback = (event: React.SyntheticEvent<HTMLImageElement>, f
     event.currentTarget.src = fallback;
   }
 };
-
 
 type HomeCatalogBootstrap = {
   products: Product[];

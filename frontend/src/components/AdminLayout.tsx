@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Badge, Button, Drawer, Layout, Menu, Space, Spin, Tooltip, Typography, message } from 'antd';
+import { Layout, Menu } from 'antd';
 import {
   DashboardOutlined, ShopOutlined, AppstoreOutlined,
   ShoppingOutlined, TeamOutlined, StarOutlined, QuestionCircleOutlined,
@@ -27,9 +27,18 @@ import ErrorBoundary from './ErrorBoundary';
 import SkipToContentLink, { MAIN_CONTENT_ID } from './SkipToContentLink';
 import './AdminLayout.css';
 import '../styles/admin-table-selection.css';
+import ShopButton from './ShopButton';
+import ShopDrawer from './ShopDrawer';
+import ShopSpin from './ShopSpin';
+import ShopBadge from './ShopBadge';
+import ShopTooltip from './ShopTooltip';
+import ShopAlert from './ShopAlert';
+import ShopSpace from './ShopSpace';
+import ShopTypography from './ShopTypography';
+import message from './ShopMessage';
 
 const { Header, Sider, Content } = Layout;
-const { Title } = Typography;
+const Title = ShopTypography.Title;
 
 const isAdminMenuRouteMatch = (pathname: string, menuKey?: string) => (
   Boolean(menuKey) && (pathname === menuKey || pathname.startsWith(`${menuKey}/`))
@@ -102,7 +111,7 @@ const AdminLayout: React.FC = () => {
         label: (
           <span>
             {t('adminLayout.support')}
-            {supportUnread > 0 ? <Badge count={supportUnread} size="small" style={{ marginLeft: 8 }} /> : null}
+            {supportUnread > 0 ? <ShopBadge count={supportUnread} size="small" style={{ marginLeft: 8 }} /> : null}
           </span>
         ),
       } : null,
@@ -293,7 +302,7 @@ const AdminLayout: React.FC = () => {
         aria-busy="true"
         aria-label={t('adminLayout.checking')}
       >
-        <Spin size="large" tip={t('adminLayout.checking')} />
+        <ShopSpin size="large" tip={t('adminLayout.checking')} />
       </div>
     );
   }
@@ -301,13 +310,13 @@ const AdminLayout: React.FC = () => {
   if (verifyUnavailable) {
     return (
       <div className="admin-layout__loading admin-layout__loading--recoverable">
-        <Alert
+        <ShopAlert
           type="warning"
           showIcon
           message={t('adminLayout.verifyUnavailable')}
           description={t('adminLayout.verifyUnavailableDescription')}
           action={(
-            <Button
+            <ShopButton
               type="primary"
               onClick={() => {
                 setChecking(true);
@@ -316,7 +325,7 @@ const AdminLayout: React.FC = () => {
               }}
             >
               {t('common.retry')}
-            </Button>
+            </ShopButton>
           )}
         />
       </div>
@@ -332,7 +341,7 @@ const AdminLayout: React.FC = () => {
         aria-busy="true"
         aria-label={t('adminLayout.checking')}
       >
-        <Spin size="large" tip={t('adminLayout.checking')} />
+        <ShopSpin size="large" tip={t('adminLayout.checking')} />
       </div>
     );
   }
@@ -368,14 +377,16 @@ const AdminLayout: React.FC = () => {
           </nav>
         </ErrorBoundary>
       </Sider>
-      <Drawer
+      <ShopDrawer
         placement="left"
         open={mobileNavOpen}
         onClose={() => setMobileNavOpen(false)}
         width={288}
-        className="admin-layout__mobileDrawer"
-        classNames={{ body: 'admin-layout__mobileDrawerBody' }}
+        rootClassName="admin-layout__mobileDrawer"
+        bodyClassName="admin-layout__mobileDrawerBody"
         title={t('adminLayout.title')}
+        ariaLabel={t('adminLayout.navigation')}
+        closeLabel={t('common.close', { defaultValue: 'Close' })}
       >
         <ErrorBoundary homePath="/admin/dashboard" homeLabel={t('adminLayout.dashboard')}>
           <nav className="admin-layout__mobileNavigation" aria-label={t('adminLayout.navigation')}>
@@ -391,11 +402,11 @@ const AdminLayout: React.FC = () => {
             />
           </nav>
         </ErrorBoundary>
-      </Drawer>
+      </ShopDrawer>
       <Layout>
         <ErrorBoundary homePath="/admin/dashboard" homeLabel={t('adminLayout.dashboard')}>
           <Header className="admin-layout__header">
-            <Button
+            <ShopButton
               icon={<MenuOutlined />}
               onClick={() => setMobileNavOpen(true)}
               type="text"
@@ -407,11 +418,11 @@ const AdminLayout: React.FC = () => {
               <ArrowLeftOutlined />
               <span>{t('adminLayout.backStore')}</span>
             </Link>
-            <Space className="admin-layout__headerActions" size={8} wrap>
+            <ShopSpace className="admin-layout__headerActions" size={8} wrap>
               {canSeeBugs ? (
-                <Tooltip title={canSubmitBugs ? undefined : t('adminLayout.noPermission')}>
+                <ShopTooltip title={canSubmitBugs ? undefined : t('adminLayout.noPermission')}>
                   <span className="admin-layout__submitBugWrap">
-                    <Button
+                    <ShopButton
                       icon={<BugOutlined />}
                       onClick={() => navigate('/admin/bugs?new=1')}
                       type="primary"
@@ -419,14 +430,14 @@ const AdminLayout: React.FC = () => {
                       disabled={!canSubmitBugs}
                     >
                       {t('adminLayout.submitBug')}
-                    </Button>
+                    </ShopButton>
                   </span>
-                </Tooltip>
+                </ShopTooltip>
               ) : null}
-              <Button icon={<LogoutOutlined />} onClick={handleLogout} type="text" danger>
+              <ShopButton icon={<LogoutOutlined />} onClick={handleLogout} type="text" danger>
                 {t('adminLayout.logout')}
-              </Button>
-            </Space>
+              </ShopButton>
+            </ShopSpace>
           </Header>
         </ErrorBoundary>
         <Content id={MAIN_CONTENT_ID} tabIndex={-1} className="admin-layout__content">

@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Card, Divider, Form, message, Radio, Space, Tag, Typography } from 'antd';
+import { Form } from 'antd';
 import ShopInput, { ShopTextArea } from '../components/ShopInput';
+import ShopSegmented from '../components/ShopSegmented';
 import ShopPopconfirm from '../components/ShopPopconfirm';
 import ShopSelect from '../components/ShopSelect';
 import { CheckCircleOutlined, LinkOutlined, NotificationOutlined, ReloadOutlined, SendOutlined, ThunderboltOutlined } from '@ant-design/icons';
@@ -12,8 +13,17 @@ import { dispatchDomEvent } from '../utils/domEvents';
 import { getApiErrorMessage } from '../utils/apiError';
 import { NOTIFICATIONS_BROADCAST_PERMISSION, getEffectiveRole, hasAdminPermission } from '../utils/roles';
 import './NotificationManagement.css';
+import ShopButton from '../components/ShopButton';
 
-const { Title, Text } = Typography;
+import ShopTag from '../components/ShopTag';
+import ShopAlert from '../components/ShopAlert';
+import ShopSpace from '../components/ShopSpace';
+import ShopTypography from '../components/ShopTypography';
+import ShopCard from '../components/ShopCard';
+import ShopDivider from '../components/ShopDivider';
+import message from '../components/ShopMessage';
+const Title = ShopTypography.Title;
+const Text = ShopTypography.Text;
 
 const conversionHookPattern = /(coupon|discount|offer|shipping|birthday|limited|bundle|save|\u4f18\u60e0|\u6298\u6263|\u5238|\u5305\u90ae|\u751f\u65e5|\u9650\u65f6|\u5957\u88c5|ahorro|oferta|cup[o\u00f3]n|env[i\u00ed]o)/i;
 const isFormValidationError = (error: unknown): error is { errorFields: unknown[] } => (
@@ -138,11 +148,11 @@ const NotificationManagement: React.FC = () => {
 
   return (
     <div className={`notification-management-page notification-management-page--${language}`}>
-      <Space align="center">
+      <ShopSpace align="center">
         <NotificationOutlined style={{ fontSize: 24 }} />
         <Title level={3} style={{ margin: 0 }}>{t('pages.notificationAdmin.title')}</Title>
-      </Space>
-      <Divider />
+      </ShopSpace>
+      <ShopDivider />
 
       <section className="notification-readiness">
         <div className="notification-readiness__copy">
@@ -155,25 +165,25 @@ const NotificationManagement: React.FC = () => {
           <span>{t('pages.notificationAdmin.readySignals')}</span>
         </div>
         <div className="notification-readiness__checks">
-          <Tag color={readinessSignals.hasTitle ? 'green' : 'orange'} icon={<CheckCircleOutlined />}>
+          <ShopTag color={readinessSignals.hasTitle ? 'green' : 'orange'} icon={<CheckCircleOutlined />}>
             {t('pages.notificationAdmin.checkTitle')}
-          </Tag>
-          <Tag color={readinessSignals.hasContent ? 'green' : 'orange'} icon={<NotificationOutlined />}>
+          </ShopTag>
+          <ShopTag color={readinessSignals.hasContent ? 'green' : 'orange'} icon={<NotificationOutlined />}>
             {t('pages.notificationAdmin.checkContent')}
-          </Tag>
-          <Tag color={readinessSignals.hasLink ? 'green' : 'orange'} icon={<LinkOutlined />}>
+          </ShopTag>
+          <ShopTag color={readinessSignals.hasLink ? 'green' : 'orange'} icon={<LinkOutlined />}>
             {t('pages.notificationAdmin.checkLink')}
-          </Tag>
-          <Tag color={readinessSignals.hasConversionHook ? 'green' : 'orange'} icon={<ThunderboltOutlined />}>
+          </ShopTag>
+          <ShopTag color={readinessSignals.hasConversionHook ? 'green' : 'orange'} icon={<ThunderboltOutlined />}>
             {t('pages.notificationAdmin.checkHook')}
-          </Tag>
+          </ShopTag>
         </div>
       </section>
 
       <div className="notification-management-page__grid">
-        <Card title={t('pages.notificationAdmin.compose')}>
+        <ShopCard title={t('pages.notificationAdmin.compose')}>
           {permissionStatus === 'loading' ? (
-            <Alert
+            <ShopAlert
               type="info"
               showIcon
               style={{ marginBottom: 16 }}
@@ -181,27 +191,27 @@ const NotificationManagement: React.FC = () => {
             />
           ) : null}
           {permissionStatus === 'error' ? (
-            <Alert
+            <ShopAlert
               type="error"
               showIcon
               style={{ marginBottom: 16 }}
               message={t('pages.notificationAdmin.permissionLoadFailed')}
               action={(
-                <Button size="small" icon={<ReloadOutlined />} onClick={loadPermissions}>
+                <ShopButton size="small" icon={<ReloadOutlined />} onClick={loadPermissions}>
                   {t('pages.notificationAdmin.permissionRetry')}
-                </Button>
+                </ShopButton>
               )}
             />
           ) : null}
           {permissionStatus === 'ready' && !canBroadcastNotifications ? (
-            <Alert
+            <ShopAlert
               type="warning"
               showIcon
               style={{ marginBottom: 16 }}
               message={t('pages.notificationAdmin.noBroadcastPermission')}
             />
           ) : null}
-          <Alert
+          <ShopAlert
             type="info"
             showIcon
             style={{ marginBottom: 16 }}
@@ -236,12 +246,14 @@ const NotificationManagement: React.FC = () => {
               <ShopInput maxLength={100} showCount placeholder={t('pages.notificationAdmin.titlePlaceholder')} aria-label={notificationTitleInputLabel} title={notificationTitleInputLabel} />
             </Form.Item>
             <Form.Item name="contentFormat" label={t('pages.notificationAdmin.contentFormat')}>
-              <div role="group" aria-label={notificationContentFormatLabel} title={notificationContentFormatLabel}>
-                <Radio.Group aria-label={notificationContentFormatLabel}>
-                  <Radio.Button value="HTML">{t('pages.notificationAdmin.richText')}</Radio.Button>
-                  <Radio.Button value="TEXT">{t('pages.notificationAdmin.plainText')}</Radio.Button>
-                </Radio.Group>
-              </div>
+              <ShopSegmented
+                ariaLabel={notificationContentFormatLabel}
+                title={notificationContentFormatLabel}
+                options={[
+                  { value: 'HTML', label: t('pages.notificationAdmin.richText') },
+                  { value: 'TEXT', label: t('pages.notificationAdmin.plainText') },
+                ]}
+              />
             </Form.Item>
             <Form.Item
               name="message"
@@ -260,16 +272,16 @@ const NotificationManagement: React.FC = () => {
                 title={notificationContentInputLabel}
               />
             </Form.Item>
-            <Space wrap>
-              <Button aria-label={templateActionLabel} title={templateActionLabel} onClick={insertPromotionTemplate} disabled={permissionGateActive || sending}>{t('pages.notificationAdmin.useTemplate')}</Button>
+            <ShopSpace wrap>
+              <ShopButton aria-label={templateActionLabel} title={templateActionLabel} onClick={insertPromotionTemplate} disabled={permissionGateActive || sending}>{t('pages.notificationAdmin.useTemplate')}</ShopButton>
               {canBroadcastNotifications ? (
                 <ShopPopconfirm rootClassName="shop-mobile-popup-layer"
                   title={broadcastActionLabel}
                   description={(
-                    <Space direction="vertical" size={2}>
+                    <ShopSpace direction="vertical" size={2}>
                       <Text>{notificationBroadcastSummary}</Text>
                       <Text type="secondary">{t('pages.notificationAdmin.sendAllConfirmDescription')}</Text>
-                    </Space>
+                    </ShopSpace>
                   )}
                   okText={t('common.confirm')}
                   cancelText={t('common.cancel')}
@@ -277,12 +289,12 @@ const NotificationManagement: React.FC = () => {
                   cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${broadcastActionLabel}`, title: `${t('common.cancel')}: ${broadcastActionLabel}` }}
                   onConfirm={handleSend}
                 >
-                  <Button type="primary" icon={<SendOutlined />} aria-label={broadcastActionLabel} title={broadcastActionLabel} loading={sending}>
+                  <ShopButton type="primary" icon={<SendOutlined />} aria-label={broadcastActionLabel} title={broadcastActionLabel} loading={sending}>
                     {t('pages.notificationAdmin.sendAll')}
-                  </Button>
+                  </ShopButton>
                 </ShopPopconfirm>
               ) : (
-                <Button
+                <ShopButton
                   type="primary"
                   icon={<SendOutlined />}
                   aria-label={broadcastActionLabel}
@@ -290,13 +302,13 @@ const NotificationManagement: React.FC = () => {
                   disabled
                 >
                   {t('pages.notificationAdmin.sendAll')}
-                </Button>
+                </ShopButton>
               )}
-            </Space>
+            </ShopSpace>
           </Form>
-        </Card>
+        </ShopCard>
 
-        <Card title={t('pages.notificationAdmin.preview')}>
+        <ShopCard title={t('pages.notificationAdmin.preview')}>
           <Text strong>{notificationTitle || t('pages.notificationAdmin.previewTitle')}</Text>
           <div className="notification-management-page__preview">
             {contentFormat === 'HTML' ? (
@@ -305,7 +317,7 @@ const NotificationManagement: React.FC = () => {
               <Text style={{ whiteSpace: 'pre-wrap' }}>{messageContent || t('pages.notificationAdmin.textPreview')}</Text>
             )}
           </div>
-        </Card>
+        </ShopCard>
       </div>
     </div>
   );

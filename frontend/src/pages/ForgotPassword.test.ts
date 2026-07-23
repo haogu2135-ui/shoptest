@@ -68,7 +68,7 @@ describe('ForgotPassword responsive reset guide', () => {
     expect(source).toContain('if (resetSubmittingRef.current) return;');
     expect(source).toContain('resetSubmittingRef.current = true;');
     expect(source).toContain('resetSubmittingRef.current = false;');
-    expect(source).toMatch(/<Button type="primary" htmlType="submit"[\s\S]{0,160}loading={loading} disabled={loading \|\| codeSending \|\| !emailCodeEnabled}/);
+    expect(source).toMatch(/<ShopButton type="primary" htmlType="submit"[\s\S]{0,160}loading={loading} disabled={loading \|\| codeSending \|\| !emailCodeEnabled}/);
   });
 
   it('keeps reset-code action labels aligned with the visible countdown state', () => {

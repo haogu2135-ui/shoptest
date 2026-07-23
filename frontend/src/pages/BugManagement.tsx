@@ -1,10 +1,11 @@
 import { useNavigate } from 'react-router-dom';
 import PageError from '../components/PageError';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Button, Form, Skeleton, Space, Spin, Statistic, Switch, Table, Tag, Tooltip, Typography, Upload, message } from 'antd';
+import { Form, Table } from 'antd';
 import ShopInput, { ShopTextArea } from '../components/ShopInput';
 import ShopSelect from '../components/ShopSelect';
 import ShopModal from '../components/ShopModal';
+import ShopSwitch from '../components/ShopSwitch';
 import type { ColumnsType } from 'antd/es/table';
 import { BugOutlined, CheckCircleOutlined, EditOutlined, PlusOutlined, ReloadOutlined, SearchOutlined, SyncOutlined, ToolOutlined, UploadOutlined } from '@ant-design/icons';
 import { useSearchParams } from 'react-router-dom';
@@ -24,8 +25,22 @@ import {
 import { reportNonBlockingError } from '../utils/nonBlockingError';
 import { buildPaginationItemRender } from '../utils/paginationLabels';
 import './BugManagement.css';
+import ShopButton from '../components/ShopButton';
+import ShopTooltip from '../components/ShopTooltip';
+import ShopSkeleton from '../components/ShopSkeleton';
+import ShopUpload from '../components/ShopUpload';
+import ShopSpin from '../components/ShopSpin';
+import ShopStatistic from '../components/ShopStatistic';
+import message from '../components/ShopMessage';
 
-const { Link: TextLink, Paragraph, Text, Title } = Typography;
+import ShopTag from '../components/ShopTag';
+import ShopAlert from '../components/ShopAlert';
+import ShopSpace from '../components/ShopSpace';
+import ShopTypography from '../components/ShopTypography';
+const TextLink = ShopTypography.Link;
+const Paragraph = ShopTypography.Paragraph;
+const Text = ShopTypography.Text;
+const Title = ShopTypography.Title;
 const DEFAULT_PAGE_INDEX = 0;
 const DEFAULT_PAGE_SIZE = 20;
 const DEFAULT_SCAN_REFRESH_MS = 10 * 60 * 1000;
@@ -303,9 +318,9 @@ const BugManagement: React.FC = () => {
   ), [bugPageLabel, t]);
   const withPermissionTooltip = useCallback((control: React.ReactElement, allowed: boolean, reason?: string) => (
     allowed && !reason ? control : (
-      <Tooltip title={allowed ? reason : noPermissionLabel}>
+      <ShopTooltip title={allowed ? reason : noPermissionLabel}>
         <span className="bug-management__disabledAction">{control}</span>
-      </Tooltip>
+      </ShopTooltip>
     )
   ), [noPermissionLabel]);
 
@@ -606,20 +621,20 @@ const BugManagement: React.FC = () => {
   const handleAttachmentUpload = async (file: File) => {
     if (!canWriteBugs) {
       message.error(t('adminLayout.noPermission'));
-      return Upload.LIST_IGNORE;
+      return ShopUpload.LIST_IGNORE;
     }
     if (bugMutationDisabled) {
       message.warning(bugActionUnavailableMessage);
-      return Upload.LIST_IGNORE;
+      return ShopUpload.LIST_IGNORE;
     }
     const fileType = String(file.type || '').toLowerCase();
     if (!BUG_ATTACHMENT_IMAGE_TYPES.includes(fileType)) {
       message.warning(tx('attachmentInvalidType', 'Only JPG, PNG or GIF screenshots are supported'));
-      return Upload.LIST_IGNORE;
+      return ShopUpload.LIST_IGNORE;
     }
     if (file.size > MAX_BUG_ATTACHMENT_SIZE_BYTES) {
       message.warning(tx('attachmentTooLarge', 'Screenshot must be 8 MB or smaller'));
-      return Upload.LIST_IGNORE;
+      return ShopUpload.LIST_IGNORE;
     }
     setUploadingAttachment(true);
     try {
@@ -633,11 +648,11 @@ const BugManagement: React.FC = () => {
       const nextCount = nextValue.split('\n').map((item) => item.trim()).filter(Boolean).length;
       if (nextCount > MAX_BUG_ATTACHMENT_URL_COUNT) {
         message.warning(tx('attachmentUrlCountExceeded', 'Too many attachment URLs'));
-        return Upload.LIST_IGNORE;
+        return ShopUpload.LIST_IGNORE;
       }
       if (nextValue.length > 2000) {
         message.warning(tx('attachmentUrlsTooLong', 'Attachment URL list is full'));
-        return Upload.LIST_IGNORE;
+        return ShopUpload.LIST_IGNORE;
       }
       form.setFieldsValue({ attachmentUrls: nextValue });
       message.success(tx('attachmentUploaded', 'Screenshot uploaded'));
@@ -646,7 +661,7 @@ const BugManagement: React.FC = () => {
     } finally {
       setUploadingAttachment(false);
     }
-    return Upload.LIST_IGNORE;
+    return ShopUpload.LIST_IGNORE;
   };
 
   // Source contract alias for column memo guards: const openStatusEditor = useCallback((bug: AdminBugReport, mode: 'scan' | 'status', nextStatus?: string) => {
@@ -725,11 +740,11 @@ const BugManagement: React.FC = () => {
       render: (_, bug) => (
         <div className="bug-management__titleCell">
           <Text strong>{bug.title}</Text>
-          <Space size={6} wrap>
+          <ShopSpace size={6} wrap>
             <Text type="secondary">#{bug.id}</Text>
-            <Tag>{moduleLabels[bug.module] || bug.module}</Tag>
+            <ShopTag>{moduleLabels[bug.module] || bug.module}</ShopTag>
             {renderBugReferenceLink(bug.pageUrl, 'bug-management__pageUrl')}
-          </Space>
+          </ShopSpace>
         </div>
       ),
     },
@@ -740,10 +755,10 @@ const BugManagement: React.FC = () => {
       width: 130,
       onCell: () => ({ 'data-label': tx('severity', 'Severity') } as React.HTMLAttributes<HTMLElement>),
       render: (severity: string, bug) => (
-        <Space size={4} direction="vertical">
-          <Tag color={severityColor(severity)}>{severityLabels[severity] || severity}</Tag>
+        <ShopSpace size={4} direction="vertical">
+          <ShopTag color={severityColor(severity)}>{severityLabels[severity] || severity}</ShopTag>
           <Text type="secondary">{priorityLabels[bug.priority] || bug.priority}</Text>
-        </Space>
+        </ShopSpace>
       ),
     },
     {
@@ -752,7 +767,7 @@ const BugManagement: React.FC = () => {
       key: 'status',
       width: 190,
       onCell: () => ({ 'data-label': tx('status', 'Status') } as React.HTMLAttributes<HTMLElement>),
-      render: (status: string) => <Tag color={statusColor(status)}>{statusLabels[status] || status}</Tag>,
+      render: (status: string) => <ShopTag color={statusColor(status)}>{statusLabels[status] || status}</ShopTag>,
     },
     {
       title: tx('owner', 'Owner'),
@@ -761,10 +776,10 @@ const BugManagement: React.FC = () => {
       width: 150,
       onCell: () => ({ 'data-label': tx('owner', 'Owner') } as React.HTMLAttributes<HTMLElement>),
       render: (value: string, bug) => (
-        <Space size={2} direction="vertical">
+        <ShopSpace size={2} direction="vertical">
           <Text>{value || '-'}</Text>
           <Text type="secondary">{bug.reporterName || '-'}</Text>
-        </Space>
+        </ShopSpace>
       ),
     },
     {
@@ -773,10 +788,10 @@ const BugManagement: React.FC = () => {
       width: 210,
       onCell: () => ({ 'data-label': tx('scanAndUpdate', 'Scan / update') } as React.HTMLAttributes<HTMLElement>),
       render: (_, bug) => (
-        <Space size={2} direction="vertical">
+        <ShopSpace size={2} direction="vertical">
           <Text>{formatTime(bug.lastScannedAt)}</Text>
           <Text type="secondary">{formatTime(bug.updatedAt)}</Text>
-        </Space>
+        </ShopSpace>
       ),
     },
     {
@@ -791,29 +806,29 @@ const BugManagement: React.FC = () => {
         const scanActionLabel = `${tx('scan', 'Scan')}: ${bugLabel}`;
         const statusActionLabel = `${tx('statusAction', 'Status')}: ${bugLabel}`;
         return (
-          <Space wrap className="bug-management__rowActions">
+          <ShopSpace wrap className="bug-management__rowActions">
             {withPermissionTooltip(
-              <Button size="small" icon={<EditOutlined />} onClick={() => openEditor(bug)} disabled={!canWriteBugs || bugMutationDisabled} aria-label={editActionLabel} title={editActionLabel}>
+              <ShopButton size="small" icon={<EditOutlined />} onClick={() => openEditor(bug)} disabled={!canWriteBugs || bugMutationDisabled} aria-label={editActionLabel} title={editActionLabel}>
                 {tx('edit', 'Edit')}
-              </Button>,
+              </ShopButton>,
               canWriteBugs,
               bugMutationDisabled ? bugActionUnavailableMessage : undefined,
             )}
             {withPermissionTooltip(
-              <Button size="small" icon={<SyncOutlined />} onClick={() => openStatusEditor(bug, 'scan')} disabled={!canScanBugs || !canScanCurrentBug || bugMutationDisabled} aria-label={scanActionLabel} title={scanActionLabel}>
+              <ShopButton size="small" icon={<SyncOutlined />} onClick={() => openStatusEditor(bug, 'scan')} disabled={!canScanBugs || !canScanCurrentBug || bugMutationDisabled} aria-label={scanActionLabel} title={scanActionLabel}>
                 {tx('scan', 'Scan')}
-              </Button>,
+              </ShopButton>,
               canScanBugs,
               canScanCurrentBug ? (bugMutationDisabled ? bugActionUnavailableMessage : undefined) : tx('scanUnavailable', 'Scan is available only for open, fixing, or regression-failed bugs'),
             )}
             {withPermissionTooltip(
-              <Button size="small" icon={<CheckCircleOutlined />} onClick={() => openStatusEditor(bug, 'status')} disabled={!canUpdateBugStatus || bugMutationDisabled} aria-label={statusActionLabel} title={statusActionLabel}>
+              <ShopButton size="small" icon={<CheckCircleOutlined />} onClick={() => openStatusEditor(bug, 'status')} disabled={!canUpdateBugStatus || bugMutationDisabled} aria-label={statusActionLabel} title={statusActionLabel}>
                 {tx('statusAction', 'Status')}
-              </Button>,
+              </ShopButton>,
               canUpdateBugStatus,
               bugMutationDisabled ? bugActionUnavailableMessage : undefined,
             )}
-          </Space>
+          </ShopSpace>
         );
       },
     },
@@ -846,21 +861,21 @@ const BugManagement: React.FC = () => {
           <Title level={2}>{tx('title', 'Bug management')}</Title>
           <Text type="secondary">{tx('subtitle', 'Manual admin bug reports and regression status tracking')}</Text>
         </div>
-        <Space wrap>
+        <ShopSpace wrap>
           {withPermissionTooltip(
-            <Button icon={<ReloadOutlined />} onClick={() => reload(false)} loading={loading} disabled={!canReadBugs} aria-label={bugRefreshActionLabel} title={bugRefreshActionLabel}>
+            <ShopButton icon={<ReloadOutlined />} onClick={() => reload(false)} loading={loading} disabled={!canReadBugs} aria-label={bugRefreshActionLabel} title={bugRefreshActionLabel}>
               {tx('refresh', 'Refresh')}
-            </Button>,
+            </ShopButton>,
             canReadBugs,
           )}
           {withPermissionTooltip(
-            <Button type="primary" icon={<PlusOutlined />} onClick={() => openEditor()} disabled={!canWriteBugs || bugMutationDisabled} aria-label={newBugActionLabel} title={newBugActionLabel}>
+            <ShopButton type="primary" icon={<PlusOutlined />} onClick={() => openEditor()} disabled={!canWriteBugs || bugMutationDisabled} aria-label={newBugActionLabel} title={newBugActionLabel}>
               {tx('newBug', 'New bug')}
-            </Button>,
+            </ShopButton>,
             canWriteBugs,
             bugMutationDisabled ? bugActionUnavailableMessage : undefined,
           )}
-        </Space>
+        </ShopSpace>
       </div>
 
       {!permissionsLoaded ? (
@@ -871,30 +886,30 @@ const BugManagement: React.FC = () => {
           aria-busy="true"
           aria-label={`${bugPageLabel}: ${t('common.loading')}`}
         >
-          <Skeleton active paragraph={{ rows: 8 }} />
+          <ShopSkeleton active paragraph={{ rows: 8 }} />
         </div>
       ) : (
         <>
           {!canReadBugs ? (
-            <Alert type="warning" showIcon message={noPermissionLabel} description={tx('readPermissionHint', 'Ask an administrator to grant bug read permission before viewing the bug queue.')} />
+            <ShopAlert type="warning" showIcon message={noPermissionLabel} description={tx('readPermissionHint', 'Ask an administrator to grant bug read permission before viewing the bug queue.')} />
           ) : null}
 
           {canReadBugs && bugListLoadError && bugSnapshotLoaded ? (
-            <Alert
+            <ShopAlert
               className="bug-management__alert"
               type="warning"
               showIcon
               message={bugListLoadError}
               description={tx('staleDataWarning', 'Showing the last successful bug queue snapshot. Bug create, edit, scan, and status actions are disabled until refresh succeeds.')}
               action={(
-                <Space wrap data-admin-bugs-stale-recovery="true">
-                  <Button size="small" type="primary" onClick={() => reload(false)} loading={loading} aria-label={bugListRetryActionLabel} title={bugListRetryActionLabel}>
+                <ShopSpace wrap data-admin-bugs-stale-recovery="true">
+                  <ShopButton size="small" type="primary" onClick={() => reload(false)} loading={loading} aria-label={bugListRetryActionLabel} title={bugListRetryActionLabel}>
                     {t('common.retry')}
-                  </Button>
-                  <Button size="small" onClick={() => navigate('/admin')}>{t('pages.adminDashboard.title')}</Button>
-                  <Button size="small" onClick={() => navigate('/admin/system')}>{t('pages.adminDashboard.paymentReturnOps.providerReadinessAction')}</Button>
-                  <Button size="small" onClick={() => navigate('/admin/orders')}>{t('pages.adminDashboard.orders')}</Button>
-                </Space>
+                  </ShopButton>
+                  <ShopButton size="small" onClick={() => navigate('/admin')}>{t('pages.adminDashboard.title')}</ShopButton>
+                  <ShopButton size="small" onClick={() => navigate('/admin/system')}>{t('pages.adminDashboard.paymentReturnOps.providerReadinessAction')}</ShopButton>
+                  <ShopButton size="small" onClick={() => navigate('/admin/orders')}>{t('pages.adminDashboard.orders')}</ShopButton>
+                </ShopSpace>
               )}
             />
           ) : null}
@@ -914,21 +929,21 @@ const BugManagement: React.FC = () => {
           ) : null}
 
           {canReadBugs && summaryLoadError && summarySnapshotLoaded ? (
-            <Alert
+            <ShopAlert
               className="bug-management__alert"
               type="warning"
               showIcon
               message={summaryLoadError}
               description={tx('summaryStaleDataWarning', 'Showing the last successful bug summary. Summary counts may be stale until refresh succeeds.')}
               action={(
-                <Space wrap data-admin-bugs-summary-stale-recovery="true">
-                  <Button size="small" type="primary" onClick={() => loadSummary(false)} aria-label={bugSummaryRetryActionLabel} title={bugSummaryRetryActionLabel}>
+                <ShopSpace wrap data-admin-bugs-summary-stale-recovery="true">
+                  <ShopButton size="small" type="primary" onClick={() => loadSummary(false)} aria-label={bugSummaryRetryActionLabel} title={bugSummaryRetryActionLabel}>
                     {t('common.retry')}
-                  </Button>
-                  <Button size="small" onClick={() => navigate('/admin')}>{t('pages.adminDashboard.title')}</Button>
-                  <Button size="small" onClick={() => navigate('/admin/system')}>{t('pages.adminDashboard.paymentReturnOps.providerReadinessAction')}</Button>
-                  <Button size="small" onClick={() => navigate('/admin/orders')}>{t('pages.adminDashboard.orders')}</Button>
-                </Space>
+                  </ShopButton>
+                  <ShopButton size="small" onClick={() => navigate('/admin')}>{t('pages.adminDashboard.title')}</ShopButton>
+                  <ShopButton size="small" onClick={() => navigate('/admin/system')}>{t('pages.adminDashboard.paymentReturnOps.providerReadinessAction')}</ShopButton>
+                  <ShopButton size="small" onClick={() => navigate('/admin/orders')}>{t('pages.adminDashboard.orders')}</ShopButton>
+                </ShopSpace>
               )}
             />
           ) : null}
@@ -955,7 +970,7 @@ const BugManagement: React.FC = () => {
               aria-busy="true"
               aria-label={`${bugPageLabel}: ${t('common.loading')}`}
             >
-              <Skeleton active paragraph={{ rows: 8 }} />
+              <ShopSkeleton active paragraph={{ rows: 8 }} />
             </div>
           ) : null}
 
@@ -964,7 +979,7 @@ const BugManagement: React.FC = () => {
               {summaryCards.map((item) => (
                 <div className="bug-management__stat" key={item.key}>
                   <span className="bug-management__statIcon">{item.icon}</span>
-                  <Statistic title={item.title} value={item.value} />
+                  <ShopStatistic title={item.title} value={item.value} />
                 </div>
               ))}
             </div>
@@ -1011,10 +1026,10 @@ const BugManagement: React.FC = () => {
                   ariaLabel={bugModuleFilterLabel}
                   title={bugModuleFilterLabel}
                 />
-                <Space className="bug-management__scanToggle">
-                  <Switch checked={scanQueueOnly} onChange={setScanQueueOnly} aria-label={tx('scanQueueOnly', 'Scan queue')} disabled={!canReadBugs} />
+                <ShopSpace className="bug-management__scanToggle">
+                  <ShopSwitch checked={scanQueueOnly} onChange={setScanQueueOnly} aria-label={tx('scanQueueOnly', 'Scan queue')} disabled={!canReadBugs} />
                   <Text>{tx('scanQueueOnly', 'Scan queue')}</Text>
-                </Space>
+                </ShopSpace>
               </div>
 
               <Table
@@ -1038,7 +1053,7 @@ const BugManagement: React.FC = () => {
                           aria-busy={detailLoading}
                           aria-label={detailLoading ? detailLoadingLabel : undefined}
                         >
-                          <Spin
+                          <ShopSpin
                             spinning={detailLoading}
                           >
                           <div className="bug-management__details">
@@ -1065,19 +1080,19 @@ const BugManagement: React.FC = () => {
                               <Text strong>{tx('environment', 'Environment')}</Text>
                               <Paragraph>{detail.environment || '-'}</Paragraph>
                               {attachmentUrls.length > 0 ? (
-                                <Space size={2} direction="vertical">
+                                <ShopSpace size={2} direction="vertical">
                                   {attachmentUrls.map((url, index) => (
                                     <React.Fragment key={`${url}-${index}`}>
                                       {renderBugAttachmentLink(url, openBugAttachment)}
                                     </React.Fragment>
                                   ))}
-                                </Space>
+                                </ShopSpace>
                               ) : (
                                 <Paragraph>-</Paragraph>
                               )}
                             </div>
                           </div>
-                          </Spin>
+                          </ShopSpin>
                         </div>
                       );
                     })()
@@ -1159,13 +1174,13 @@ const BugManagement: React.FC = () => {
           <Form.Item name="attachmentUrls" label={tx('attachmentUrls', 'Attachment URLs')} rules={[{ validator: validateAttachmentUrls }]}>
             <ShopTextArea rows={2} maxLength={2000} />
           </Form.Item>
-          <Upload
+          <ShopUpload
             accept="image/jpeg,image/png,image/gif"
             showUploadList={false}
             beforeUpload={handleAttachmentUpload}
             disabled={!canWriteBugs || bugMutationDisabled || uploadingAttachment}
           >
-            <Button
+            <ShopButton
               icon={<UploadOutlined />}
               loading={uploadingAttachment}
               disabled={!canWriteBugs || bugMutationDisabled || uploadingAttachment}
@@ -1173,8 +1188,8 @@ const BugManagement: React.FC = () => {
               title={attachmentUploadActionLabel}
             >
               {tx('uploadAttachment', 'Upload screenshot')}
-            </Button>
-          </Upload>
+            </ShopButton>
+          </ShopUpload>
         </Form>
       </ShopModal>
 

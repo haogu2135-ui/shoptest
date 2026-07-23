@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { ShopIcon, SI } from '../components/ShopIcon';
-import { Alert, Button, Tag } from 'antd';
 import ShopInput from '../components/ShopInput';
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { orderApi, paymentApi } from '../api';
@@ -16,8 +15,10 @@ import { getLocalStorageItem } from '../utils/safeStorage';
 import ShopBreadcrumb from '../components/ShopBreadcrumb';
 import './PaymentInstructions.css';
 import { formatPaymentUrlLabel, getPaymentRecoveryState, navigateToCommercialPaymentUrl } from '../utils/paymentRecovery';
+import ShopButton from '../components/ShopButton';
 
-
+import ShopTag from '../components/ShopTag';
+import ShopAlert from '../components/ShopAlert';
 const PAYMENT_STATUS_POLL_MS = 12000;
 
 const cleanParam = (value: string | null, maxLength = 120) =>
@@ -434,7 +435,7 @@ const PaymentInstructions: React.FC = () => {
       </section>
 
       {!normalizedOrderNo ? (
-        <Alert
+        <ShopAlert
           className="payment-instructions-page__banner"
           type="warning"
           showIcon
@@ -443,9 +444,9 @@ const PaymentInstructions: React.FC = () => {
           message={t('pages.paymentInstructions.missingOrder')}
           description={t('pages.paymentInstructions.missingOrderText')}
           action={(
-            <Button size="small" type="primary" onClick={openTrackOrder}>
+            <ShopButton size="small" type="primary" onClick={openTrackOrder}>
               {t('nav.trackOrder')}
-            </Button>
+            </ShopButton>
           )}
         />
       ) : null}
@@ -466,14 +467,14 @@ const PaymentInstructions: React.FC = () => {
             ) : null}
             <div className="payment-instructions-page__stack">
                 {verifyError ? (
-                  <Alert
+                  <ShopAlert
                     type="error"
                     showIcon
                     role="alert"
                     aria-live="assertive"
                     message={verifyError}
                     action={(
-                      <Button
+                      <ShopButton
                         size="small"
                         type="primary"
                         icon={<ShopIcon path={SI.reload} />}
@@ -483,12 +484,12 @@ const PaymentInstructions: React.FC = () => {
                         onClick={() => setReloadToken((value) => value + 1)}
                       >
                         {t('pages.paymentInstructions.retryVerify')}
-                      </Button>
+                      </ShopButton>
                     )}
                   />
                 ) : !guestEmail && !isAuthenticated ? (
                   <div className="payment-instructions-page__guestEmailGate" data-payment-guest-email-gate="true">
-                    <Alert
+                    <ShopAlert
                       type="info"
                       showIcon
                       message={t('pages.paymentInstructions.guestEmailRequiredTitle')}
@@ -513,28 +514,28 @@ const PaymentInstructions: React.FC = () => {
                         aria-label={t('pages.paymentInstructions.guestEmailLabel')}
                         title={t('pages.paymentInstructions.guestEmailLabel')}
                       />
-                      <Button
+                      <ShopButton
                         type="primary"
                         onClick={applyGuestEmailForVerify}
                         aria-label={t('pages.paymentInstructions.guestEmailSubmit')}
                         title={t('pages.paymentInstructions.guestEmailSubmit')}
                       >
                         {t('pages.paymentInstructions.guestEmailSubmit')}
-                      </Button>
+                      </ShopButton>
                     </div>
                     <div className="payment-instructions-page__guestEmailRecovery" data-payment-guest-email-recovery="true">
-                      <Button type="link" onClick={openTrackOrder} aria-label={t('nav.trackOrder')} title={t('nav.trackOrder')}>
+                      <ShopButton type="link" onClick={openTrackOrder} aria-label={t('nav.trackOrder')} title={t('nav.trackOrder')}>
                         {t('pages.paymentInstructions.verifyWithTrackOrder')}
-                      </Button>
-                      <Button type="link" onClick={() => navigate('/products')} aria-label={t('pages.cart.browse')} title={t('pages.cart.browse')}>
+                      </ShopButton>
+                      <ShopButton type="link" onClick={() => navigate('/products')} aria-label={t('pages.cart.browse')} title={t('pages.cart.browse')}>
                         {t('pages.cart.browse')}
-                      </Button>
-                      <Button type="link" onClick={() => navigate('/coupons')} aria-label={t('nav.coupons')} title={t('nav.coupons')}>
+                      </ShopButton>
+                      <ShopButton type="link" onClick={() => navigate('/coupons')} aria-label={t('nav.coupons')} title={t('nav.coupons')}>
                         {t('nav.coupons')}
-                      </Button>
-                      <Button type="link" onClick={openSupport} aria-label={t('pages.profile.contactSupport')} title={t('pages.profile.contactSupport')}>
+                      </ShopButton>
+                      <ShopButton type="link" onClick={openSupport} aria-label={t('pages.profile.contactSupport')} title={t('pages.profile.contactSupport')}>
                         {t('pages.profile.contactSupport')}
-                      </Button>
+                      </ShopButton>
                     </div>
                   </div>
                 ) : null}
@@ -548,7 +549,7 @@ const PaymentInstructions: React.FC = () => {
                     <span className="payment-instructions-page__text payment-instructions-page__text--strong">{statusTitle}</span>
                     <span className="payment-instructions-page__text payment-instructions-page__text--secondary">{statusText}</span>
                   </span>
-                  <Tag color={statusTagColor}>{channel}</Tag>
+                  <ShopTag color={statusTagColor}>{channel}</ShopTag>
                 </div>
 
                 <dl className="payment-instructions-page__descList">
@@ -569,7 +570,7 @@ const PaymentInstructions: React.FC = () => {
                   <div className="payment-instructions-page__descRow">
                     <dt className="payment-instructions-page__descLabel">{t('pages.paymentInstructions.statusLabel')}</dt>
                     <dd className="payment-instructions-page__descValue">
-                      <Tag color={statusTagColor}>{paymentStatus || t('pages.paymentInstructions.pendingTitle')}</Tag>
+                      <ShopTag color={statusTagColor}>{paymentStatus || t('pages.paymentInstructions.pendingTitle')}</ShopTag>
                     </dd>
                   </div>
                   <div className="payment-instructions-page__descRow">
@@ -593,7 +594,7 @@ const PaymentInstructions: React.FC = () => {
 
                 <div className="payment-instructions-page__primaryActions">
                   {!isPaid && !isRefunded && !isRefunding && !isReconcileRequired && !isFailed && payment?.paymentUrl && !recovery.isExpired ? (
-                    <Button
+                    <ShopButton
                       type="primary"
                       size="large"
                       icon={<ShopIcon path={SI.creditCard} />}
@@ -602,10 +603,10 @@ const PaymentInstructions: React.FC = () => {
                       onClick={openPaymentUrl}
                     >
                       {t('pages.paymentInstructions.openPayment')}
-                    </Button>
+                    </ShopButton>
                   ) : null}
                   {canVerify ? (
-                    <Button
+                    <ShopButton
                       icon={<ShopIcon path={SI.reload} />}
                       loading={refreshing || verifying}
                       aria-label={refreshStatusActionLabel}
@@ -613,7 +614,7 @@ const PaymentInstructions: React.FC = () => {
                       onClick={() => { void refreshPaymentStatus(); }}
                     >
                       {t('pages.paymentInstructions.refreshStatus')}
-                    </Button>
+                    </ShopButton>
                   ) : null}
                 </div>
               </div>
@@ -635,15 +636,15 @@ const PaymentInstructions: React.FC = () => {
               ))}
             </div>
             <div className="payment-instructions-page__actions">
-              <Button type="primary" icon={<ShopIcon path={SI.fileSearch} />} aria-label={trackOrderActionLabel} title={trackOrderActionLabel} onClick={openTrackOrder}>
+              <ShopButton type="primary" icon={<ShopIcon path={SI.fileSearch} />} aria-label={trackOrderActionLabel} title={trackOrderActionLabel} onClick={openTrackOrder}>
                 {t('nav.trackOrder')}
-              </Button>
-              <Button aria-label={`${t('pages.paymentInstructions.backToOrders')}: ${paymentContextLabel}`} title={t('pages.paymentInstructions.backToOrders')} onClick={openOrders}>
+              </ShopButton>
+              <ShopButton aria-label={`${t('pages.paymentInstructions.backToOrders')}: ${paymentContextLabel}`} title={t('pages.paymentInstructions.backToOrders')} onClick={openOrders}>
                 {t('pages.paymentInstructions.backToOrders')}
-              </Button>
-              <Button icon={<ShopIcon path={SI.support} />} aria-label={supportActionLabel} title={supportActionLabel} onClick={openSupport}>
+              </ShopButton>
+              <ShopButton icon={<ShopIcon path={SI.support} />} aria-label={supportActionLabel} title={supportActionLabel} onClick={openSupport}>
                 {t('pages.profile.contactSupport')}
-              </Button>
+              </ShopButton>
             </div>
           </div>
         </section>
@@ -681,7 +682,7 @@ const PaymentInstructions: React.FC = () => {
           </div>
           <div className="payment-instructions-page__stickyActions">
             {canVerify ? (
-              <Button
+              <ShopButton
                 icon={<ShopIcon path={SI.reload} />}
                 loading={refreshing || verifying}
                 aria-label={refreshStatusActionLabel}
@@ -689,9 +690,9 @@ const PaymentInstructions: React.FC = () => {
                 onClick={() => { void refreshPaymentStatus(); }}
               >
                 {t('pages.paymentInstructions.stickyRefresh')}
-              </Button>
+              </ShopButton>
             ) : null}
-            <Button
+            <ShopButton
               type="primary"
               size="large"
               icon={<ShopIcon path={SI.creditCard} />}
@@ -700,7 +701,7 @@ const PaymentInstructions: React.FC = () => {
               onClick={openPaymentUrl}
             >
               {t('pages.paymentInstructions.stickyOpenPayment')}
-            </Button>
+            </ShopButton>
           </div>
         </div>
       ) : null}
@@ -717,31 +718,31 @@ const PaymentInstructions: React.FC = () => {
             <span className="payment-instructions-page__text payment-instructions-page__text--secondary">{paymentContextLabel}</span>
           </div>
           <div className="payment-instructions-page__stickyActions" data-payment-recovery-actions="true">
-            <Button
+            <ShopButton
               icon={<ShopIcon path={SI.shopping} />}
               aria-label={t('pages.paymentInstructions.stickyContinueShopping')}
               title={t('pages.paymentInstructions.stickyContinueShopping')}
               onClick={openContinueShopping}
             >
               {t('pages.paymentInstructions.stickyContinueShopping')}
-            </Button>
-            <Button
+            </ShopButton>
+            <ShopButton
               icon={<ShopIcon path={SI.gift} />}
               aria-label={t('nav.coupons')}
               title={t('nav.coupons')}
               onClick={() => navigate('/coupons')}
             >
               {t('nav.coupons')}
-            </Button>
-            <Button
+            </ShopButton>
+            <ShopButton
               icon={<ShopIcon path={SI.support} />}
               aria-label={supportActionLabel}
               title={supportActionLabel}
               onClick={openSupport}
             >
               {t('pages.profile.contactSupport')}
-            </Button>
-            <Button
+            </ShopButton>
+            <ShopButton
               type="primary"
               size="large"
               icon={<ShopIcon path={SI.fileSearch} />}
@@ -750,7 +751,7 @@ const PaymentInstructions: React.FC = () => {
               onClick={openTrackOrder}
             >
               {t('pages.paymentInstructions.stickyTrackOrder')}
-            </Button>
+            </ShopButton>
           </div>
         </div>
       ) : null}
@@ -767,31 +768,31 @@ const PaymentInstructions: React.FC = () => {
             <span className="payment-instructions-page__text payment-instructions-page__text--secondary">{paymentContextLabel}</span>
           </div>
           <div className="payment-instructions-page__stickyActions" data-payment-paid-actions="true">
-            <Button
+            <ShopButton
               icon={<ShopIcon path={SI.shopping} />}
               aria-label={t('pages.paymentInstructions.stickyContinueShopping')}
               title={t('pages.paymentInstructions.stickyContinueShopping')}
               onClick={openContinueShopping}
             >
               {t('pages.paymentInstructions.stickyContinueShopping')}
-            </Button>
-            <Button
+            </ShopButton>
+            <ShopButton
               icon={<ShopIcon path={SI.gift} />}
               aria-label={t('nav.coupons')}
               title={t('nav.coupons')}
               onClick={() => navigate('/coupons')}
             >
               {t('nav.coupons')}
-            </Button>
-            <Button
+            </ShopButton>
+            <ShopButton
               icon={<ShopIcon path={SI.fileSearch} />}
               aria-label={t('pages.orderTracking.emptyProfileOrders')}
               title={t('pages.orderTracking.emptyProfileOrders')}
               onClick={() => navigate('/profile?tab=orders')}
             >
               {t('pages.orderTracking.emptyProfileOrders')}
-            </Button>
-            <Button
+            </ShopButton>
+            <ShopButton
               type="primary"
               size="large"
               icon={<ShopIcon path={SI.fileSearch} />}
@@ -800,7 +801,7 @@ const PaymentInstructions: React.FC = () => {
               onClick={openTrackOrder}
             >
               {t('pages.paymentInstructions.stickyTrackOrder')}
-            </Button>
+            </ShopButton>
           </div>
         </div>
       ) : null}

@@ -97,7 +97,6 @@ jest.mock('../i18n', () => {
   };
 });
 
-
 const catalogProduct = {
   id: 101,
   name: 'Smart feeder bowl',

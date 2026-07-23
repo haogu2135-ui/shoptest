@@ -1,0 +1,180 @@
+.shop-button {
+  position: relative;
+  display: inline-flex;
+  min-height: 44px;
+  min-width: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 0;
+  padding: 0 16px;
+  border: 1px solid rgba(18, 71, 52, 0.18);
+  border-radius: 10px;
+  background: #fff;
+  color: #173f2b;
+  font: inherit;
+  font-size: max(12px, 0.95em);
+  font-weight: 700;
+  line-height: 1.2;
+  text-decoration: none;
+  vertical-align: middle;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color 0.12s ease, border-color 0.12s ease, color 0.12s ease, opacity 0.12s ease;
+}
+
+.shop-button--small {
+  min-height: 36px;
+  min-width: 36px;
+  padding: 0 12px;
+  border-radius: 8px;
+  font-size: max(12px, 0.88em);
+}
+
+.shop-button--large {
+  min-height: 48px;
+  padding: 0 18px;
+  font-size: max(12px, 1em);
+}
+
+.shop-button--primary {
+  border-color: #124734;
+  background: #124734;
+  color: #fff;
+}
+
+.shop-button--primary:hover:not(:disabled) {
+  border-color: #0f3b2b;
+  background: #0f3b2b;
+}
+
+.shop-button--default:hover:not(:disabled),
+.shop-button--dashed:hover:not(:disabled) {
+  border-color: #124734;
+  color: #124734;
+}
+
+.shop-button--dashed {
+  border-style: dashed;
+}
+
+.shop-button--link,
+.shop-button--text {
+  min-width: 0;
+  border-color: transparent;
+  background: transparent;
+  color: #124734;
+  box-shadow: none;
+}
+
+.shop-button--link {
+  padding-inline: 8px;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.shop-button--text {
+  padding-inline: 8px;
+}
+
+.shop-button--danger:not(.shop-button--primary):not(.shop-button--link):not(.shop-button--text) {
+  border-color: #c0392b;
+  color: #c0392b;
+}
+
+.shop-button--danger.shop-button--primary {
+  border-color: #c0392b;
+  background: #c0392b;
+  color: #fff;
+}
+
+.shop-button--danger.shop-button--link,
+.shop-button--danger.shop-button--text {
+  color: #c0392b;
+}
+
+.shop-button--block {
+  display: flex;
+  width: 100%;
+}
+
+.shop-button--iconOnly {
+  width: 44px;
+  padding-inline: 0;
+}
+
+.shop-button--small.shop-button--iconOnly {
+  width: 36px;
+}
+
+.shop-button:disabled,
+.shop-button--disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.shop-button:focus-visible {
+  outline: 3px solid rgba(18, 71, 52, 0.28);
+  outline-offset: 1px;
+}
+
+.shop-button__icon,
+.shop-button__label,
+.shop-button__spinner {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.shop-button__spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  opacity: 0.85;
+  animation: shop-button-spin 0.7s linear infinite;
+}
+
+@keyframes shop-button-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.shop-button--circle {
+  width: 44px;
+  min-width: 44px;
+  padding-inline: 0;
+  border-radius: 999px;
+}
+
+.shop-button--circle.shop-button--large {
+  width: 48px;
+  min-width: 48px;
+}
+
+.shop-button--circle.shop-button--small {
+  width: 36px;
+  min-width: 36px;
+}
+
+.shop-button--round {
+  border-radius: 999px;
+}
+
+.shop-button--ghost {
+  background: transparent;
+}
+
+.shop-button--ghost.shop-button--primary {
+  color: #124734;
+  border-color: #124734;
+  background: transparent;
+}
+
+.shop-button--ghost.shop-button--primary:hover:not(:disabled) {
+  color: #fff;
+  background: #124734;
+}

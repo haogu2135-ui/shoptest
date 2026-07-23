@@ -1,8 +1,9 @@
 import { act, render, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { message } from 'antd';
+
 import fs from 'fs';
 import path from 'path';
+import message from '../components/ShopMessage';
 
 jest.mock('../api/admin', () => ({
   adminApi: {
@@ -117,19 +118,19 @@ describe('CouponManagement mobile popup stacking guards', () => {
   });
 
   it('uses the shared body-mounted popup layer for editor and grant modal controls', () => {
-    expect(pageSource).toContain("const mobilePopupClassNames = { popup: { root: 'shop-mobile-popup-layer' } };");
     expect(pageSource).toContain('className="profile-mobile-safe-modal coupon-management-page__editorModal"');
     expect(pageSource).toContain('className="profile-mobile-safe-modal coupon-management-page__grantModal"');
-    expect(pageSource).toContain('<DatePicker.RangePicker');
+    expect(pageSource).toContain('<ShopRangePicker');
     expect(pageSource).toContain('ShopSelect');
     expect(pageSource).toContain('ShopMultiSelect');
     expect(pageSource.match(/popupClassName="shop-mobile-popup-layer"/g)?.length).toBeGreaterThanOrEqual(4);
-    expect(pageSource.match(/classNames=\{mobilePopupClassNames\}/g)?.length).toBeGreaterThanOrEqual(1);
-    expect(pageSource.match(/getPopupContainer=\{\(\) => document\.body\}/g)?.length).toBeGreaterThanOrEqual(1);
+    expect(pageSource).toContain('startId={validRangeStartInputId}');
+    expect(pageSource).toContain('endId={validRangeEndInputId}');
+    expect(pageSource).not.toMatch(/<DatePicker\b/);
+    expect(pageSource).not.toMatch(/import \{[^}]*\bDatePicker\b[^}]*\} from 'antd'/);
     expect(pageSource).toContain('mode="multiple"');
     expect(pageSource).not.toMatch(/<Select\b/);
   });
-
 
   it('raises shared mobile popups above raised modal wrappers', () => {
     const popupGuardStart = appCssSource.indexOf('Body-mounted Ant Design popups');

@@ -1,12 +1,13 @@
 import React, { useMemo } from 'react';
 import { ShopIcon, SI } from '../components/ShopIcon';
-import { Button } from 'antd';
+
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useLanguage } from '../i18n';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useDocumentMeta } from '../hooks/useDocumentMeta';
 import ShopBreadcrumb from '../components/ShopBreadcrumb';
 import './LegalPage.css';
+import ShopButton from '../components/ShopButton';
 
 type LegalDoc = 'privacy' | 'terms';
 
@@ -91,12 +92,12 @@ const LegalPage: React.FC = () => {
         ))}
       </section>
       <section className="legal-page__actions" aria-label={t('pages.legal.relatedTitle')}>
-        <Button type="primary" icon={<ShopIcon path={SI.shopping} />} onClick={() => navigate('/products')}>
+        <ShopButton type="primary" icon={<ShopIcon path={SI.shopping} />} onClick={() => navigate('/products')}>
           {t('pages.legal.browseProducts')}
-        </Button>
-        <Button icon={<ShopIcon path={SI.home} />} onClick={() => navigate('/')}>
+        </ShopButton>
+        <ShopButton icon={<ShopIcon path={SI.home} />} onClick={() => navigate('/')}>
           {t('pages.legal.backHome')}
-        </Button>
+        </ShopButton>
         <Link className="legal-page__crossLink" to={isTerms ? '/privacy' : '/terms'}>
           {isTerms ? t('footer.privacy') : t('footer.terms')}
         </Link>

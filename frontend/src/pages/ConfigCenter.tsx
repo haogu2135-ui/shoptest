@@ -1,7 +1,8 @@
 import { useNavigate } from 'react-router-dom';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Card, Checkbox, Descriptions, Empty, Form, Space, Spin, Statistic, Table, Tag, Typography, message } from 'antd';
+import { Form, Table } from 'antd';
 import ShopInput, { ShopTextArea } from '../components/ShopInput';
+import ShopCheckbox from '../components/ShopCheckbox';
 import ShopPopconfirm from '../components/ShopPopconfirm';
 import { CheckCircleOutlined, CloudSyncOutlined, CodeOutlined, ReloadOutlined, SendOutlined } from '@ant-design/icons';
 import { adminApi } from '../api/admin';
@@ -16,8 +17,20 @@ import {
   hasAdminPermission,
 } from '../utils/roles';
 import './ConfigCenter.css';
+import ShopButton from '../components/ShopButton';
+import ShopSpin from '../components/ShopSpin';
+import ShopEmpty from '../components/ShopEmpty';
+import ShopStatistic from '../components/ShopStatistic';
+import message from '../components/ShopMessage';
 
-const { Text, Title } = Typography;
+import ShopTag from '../components/ShopTag';
+import ShopAlert from '../components/ShopAlert';
+import ShopSpace from '../components/ShopSpace';
+import ShopTypography from '../components/ShopTypography';
+import ShopCard from '../components/ShopCard';
+import ShopDescriptions from '../components/ShopDescriptions';
+const Text = ShopTypography.Text;
+const Title = ShopTypography.Title;
 
 type FormValues = {
   dataId: string;
@@ -184,10 +197,10 @@ const ConfigCenter: React.FC = () => {
   const namespaceInputLabel = `${t('pages.configCenter.namespace')}: ${configTargetLabelWithNamespace}`;
   const applyRuntimeCheckboxLabel = `${t('pages.configCenter.applyAfterPublish')}: ${configTargetLabelWithNamespace}`;
   const renderConfigActionConfirmDescription = (description: string) => (
-    <Space direction="vertical" size={4}>
+    <ShopSpace direction="vertical" size={4}>
       <Text>{description}</Text>
       <Text type="secondary">{configTargetLabelWithNamespace}</Text>
-    </Space>
+    </ShopSpace>
   );
 
   return (
@@ -198,7 +211,7 @@ const ConfigCenter: React.FC = () => {
           <Title level={2}>{t('pages.configCenter.title')}</Title>
           <Text type="secondary">{t('pages.configCenter.description')}</Text>
         </div>
-        <Space className="config-center__actions" wrap>
+        <ShopSpace className="config-center__actions" wrap>
           {canApplyConfig ? (
             <ShopPopconfirm
               title={`${t('pages.configCenter.applyOnly')}?`}
@@ -210,14 +223,14 @@ const ConfigCenter: React.FC = () => {
               onConfirm={handleApplyRuntime}
               disabled={actionDisabled}
             >
-              <Button icon={<CheckCircleOutlined />} loading={applying} disabled={actionDisabled} aria-label={applyRuntimeActionLabel} title={applyRuntimeActionLabel}>
+              <ShopButton icon={<CheckCircleOutlined />} loading={applying} disabled={actionDisabled} aria-label={applyRuntimeActionLabel} title={applyRuntimeActionLabel}>
                 {t('pages.configCenter.applyOnly')}
-              </Button>
+              </ShopButton>
             </ShopPopconfirm>
           ) : null}
-          <Button icon={<ReloadOutlined />} aria-label={refreshConfigActionLabel} title={refreshConfigActionLabel} onClick={() => loadSnapshot()} loading={loading}>
+          <ShopButton icon={<ReloadOutlined />} aria-label={refreshConfigActionLabel} title={refreshConfigActionLabel} onClick={() => loadSnapshot()} loading={loading}>
             {t('common.refresh')}
-          </Button>
+          </ShopButton>
           {canPublishConfig ? (
             <ShopPopconfirm
               title={`${t('pages.configCenter.publishSync')}?`}
@@ -229,30 +242,30 @@ const ConfigCenter: React.FC = () => {
               onConfirm={handlePublish}
               disabled={actionDisabled}
             >
-              <Button type="primary" icon={<SendOutlined />} loading={publishing} disabled={actionDisabled} aria-label={publishConfigActionLabel} title={publishConfigActionLabel}>
+              <ShopButton type="primary" icon={<SendOutlined />} loading={publishing} disabled={actionDisabled} aria-label={publishConfigActionLabel} title={publishConfigActionLabel}>
                 {t('pages.configCenter.publishSync')}
-              </Button>
+              </ShopButton>
             </ShopPopconfirm>
           ) : null}
-        </Space>
+        </ShopSpace>
       </div>
 
       {loadError && snapshot ? (
-        <Alert
+        <ShopAlert
           className="config-center__alert"
           type="warning"
           showIcon
           message={loadError}
           description={t('pages.configCenter.staleDataWarning')}
           action={(
-            <Space wrap data-admin-config-stale-recovery="true">
-              <Button size="small" type="primary" onClick={() => loadSnapshot()} loading={loading}>
+            <ShopSpace wrap data-admin-config-stale-recovery="true">
+              <ShopButton size="small" type="primary" onClick={() => loadSnapshot()} loading={loading}>
                 {t('common.retry')}
-              </Button>
-              <Button size="small" onClick={() => navigate('/admin')}>{t('pages.adminDashboard.title')}</Button>
-              <Button size="small" onClick={() => navigate('/admin/system')}>{t('pages.adminDashboard.paymentReturnOps.providerReadinessAction')}</Button>
-              <Button size="small" onClick={() => navigate('/admin/orders')}>{t('pages.adminDashboard.orders')}</Button>
-            </Space>
+              </ShopButton>
+              <ShopButton size="small" onClick={() => navigate('/admin')}>{t('pages.adminDashboard.title')}</ShopButton>
+              <ShopButton size="small" onClick={() => navigate('/admin/system')}>{t('pages.adminDashboard.paymentReturnOps.providerReadinessAction')}</ShopButton>
+              <ShopButton size="small" onClick={() => navigate('/admin/orders')}>{t('pages.adminDashboard.orders')}</ShopButton>
+            </ShopSpace>
           )}
         />
       ) : null}
@@ -278,11 +291,11 @@ const ConfigCenter: React.FC = () => {
         aria-busy={loading && !snapshot}
         aria-label={t('common.loading')}
       >
-        <Spin
+        <ShopSpin
           spinning={loading && !snapshot}
         >
         {loadError && !snapshot ? null : (snapshot?.sensitiveKeys || []).length > 0 ? (
-          <Alert
+          <ShopAlert
             className="config-center__alert"
             type="info"
             showIcon
@@ -291,27 +304,27 @@ const ConfigCenter: React.FC = () => {
         ) : null}
 
         {loadError && !snapshot ? null : <div className="config-center__stats">
-          <Card>
-            <Statistic title={t('pages.configCenter.nacosAddress')} value={snapshot?.nacosServerAddr || '-'} prefix={<CloudSyncOutlined />} />
-          </Card>
-          <Card>
-            <Statistic title={t('pages.configCenter.properties')} value={snapshot?.propertyCount || 0} prefix={<CodeOutlined />} />
-          </Card>
-          <Card>
-            <Statistic
+          <ShopCard>
+            <ShopStatistic title={t('pages.configCenter.nacosAddress')} value={snapshot?.nacosServerAddr || '-'} prefix={<CloudSyncOutlined />} />
+          </ShopCard>
+          <ShopCard>
+            <ShopStatistic title={t('pages.configCenter.properties')} value={snapshot?.propertyCount || 0} prefix={<CodeOutlined />} />
+          </ShopCard>
+          <ShopCard>
+            <ShopStatistic
               title={t('pages.configCenter.runtimeApply')}
               value={snapshot?.runtimeApplied ? t('pages.configCenter.applied') : t('pages.configCenter.notApplied')}
               valueStyle={{ color: snapshot?.runtimeApplied ? '#1f8a4c' : '#8c6b20' }}
               prefix={<CheckCircleOutlined />}
             />
-          </Card>
+          </ShopCard>
         </div>}
 
         {(snapshot?.errors || []).map((error) => (
-          <Alert key={error} className="config-center__alert" type="error" showIcon message={error} />
+          <ShopAlert key={error} className="config-center__alert" type="error" showIcon message={error} />
         ))}
         {(snapshot?.warnings || []).map((warning) => (
-          <Alert key={warning} className="config-center__alert" type="warning" showIcon message={warning} />
+          <ShopAlert key={warning} className="config-center__alert" type="warning" showIcon message={warning} />
         ))}
 
         {loadError && !snapshot ? null : <Form<FormValues>
@@ -320,7 +333,7 @@ const ConfigCenter: React.FC = () => {
           initialValues={{ applyRuntime: true }}
           className="config-center__grid"
         >
-          <Card title={t('pages.configCenter.publishTarget')} className="config-center__card">
+          <ShopCard title={t('pages.configCenter.publishTarget')} className="config-center__card">
             <div className="config-center__form">
               <Form.Item name="dataId" label={t('pages.configCenter.dataId')} rules={[{ required: true, message: t('pages.configCenter.dataIdRequired') }]}>
                 <ShopInput placeholder="shop-backend.properties" aria-label={dataIdInputLabel} title={dataIdInputLabel} />
@@ -333,24 +346,24 @@ const ConfigCenter: React.FC = () => {
               </Form.Item>
               {canApplyConfig ? (
                 <Form.Item name="applyRuntime" valuePropName="checked">
-                  <Checkbox aria-label={applyRuntimeCheckboxLabel} title={applyRuntimeCheckboxLabel}>{t('pages.configCenter.applyAfterPublish')}</Checkbox>
+                  <ShopCheckbox aria-label={applyRuntimeCheckboxLabel} title={applyRuntimeCheckboxLabel}>{t('pages.configCenter.applyAfterPublish')}</ShopCheckbox>
                 </Form.Item>
               ) : null}
             </div>
-            <Descriptions column={1} size="small" bordered className="config-center__meta">
-              <Descriptions.Item label={t('pages.configCenter.lastSynced')}>{snapshot?.lastSyncedAt || '-'}</Descriptions.Item>
-              <Descriptions.Item label={t('pages.configCenter.publishStatus')}>
-                <Tag color={snapshot?.nacosPublished ? 'green' : 'default'}>
+            <ShopDescriptions column={1} size="small" bordered className="config-center__meta">
+              <ShopDescriptions.Item label={t('pages.configCenter.lastSynced')}>{snapshot?.lastSyncedAt || '-'}</ShopDescriptions.Item>
+              <ShopDescriptions.Item label={t('pages.configCenter.publishStatus')}>
+                <ShopTag color={snapshot?.nacosPublished ? 'green' : 'default'}>
                   {snapshot?.nacosPublished ? t('pages.configCenter.publishedStatus') : t('pages.configCenter.pendingReadOrPublish')}
-                </Tag>
-              </Descriptions.Item>
-              <Descriptions.Item label={t('pages.configCenter.appliedKeys')}>
+                </ShopTag>
+              </ShopDescriptions.Item>
+              <ShopDescriptions.Item label={t('pages.configCenter.appliedKeys')}>
                 {(snapshot?.appliedKeys || []).length ? t('pages.configCenter.keyCount', { count: snapshot?.appliedKeys.length || 0 }) : '-'}
-              </Descriptions.Item>
-            </Descriptions>
-          </Card>
+              </ShopDescriptions.Item>
+            </ShopDescriptions>
+          </ShopCard>
 
-          <Card title={t('pages.configCenter.propertiesContent')} className="config-center__card config-center__editorCard">
+          <ShopCard title={t('pages.configCenter.propertiesContent')} className="config-center__card config-center__editorCard">
             <Form.Item
               name="content"
               rules={[{ required: true, message: t('pages.configCenter.contentRequired') }]}
@@ -358,10 +371,10 @@ const ConfigCenter: React.FC = () => {
             >
               <ShopTextArea spellCheck={false} rows={18} className="config-center__editor" aria-label={configContentEditorLabel} title={configContentEditorLabel} />
             </Form.Item>
-          </Card>
+          </ShopCard>
         </Form>}
 
-        {loadError && !snapshot ? null : <Card title={t('pages.configCenter.parseResult')} className="config-center__card">
+        {loadError && !snapshot ? null : <ShopCard title={t('pages.configCenter.parseResult')} className="config-center__card">
           {propertyRows.length ? (
             <Table
               rowKey="key"
@@ -374,11 +387,11 @@ const ConfigCenter: React.FC = () => {
               ]}
             />
           ) : (
-            <Empty description={t('pages.configCenter.noParsedConfig')} />
+            <ShopEmpty description={t('pages.configCenter.noParsedConfig')} />
           )}
-        </Card>}
+        </ShopCard>}
 
-        {loadError && !snapshot ? null : <Card title={t('pages.configCenter.effectiveRuntimeValues')} className="config-center__card">
+        {loadError && !snapshot ? null : <ShopCard title={t('pages.configCenter.effectiveRuntimeValues')} className="config-center__card">
           {effectiveRows.length ? (
             <Table
               rowKey="key"
@@ -386,15 +399,15 @@ const ConfigCenter: React.FC = () => {
               pagination={false}
               scroll={{ x: 620 }}
               columns={[
-                { title: t('pages.configCenter.key'), dataIndex: 'name', width: 260, render: (value: string) => <Tag color="blue">{value}</Tag> },
+                { title: t('pages.configCenter.key'), dataIndex: 'name', width: 260, render: (value: string) => <ShopTag color="blue">{value}</ShopTag> },
                 { title: t('pages.configCenter.effectiveValue'), dataIndex: 'value', render: (value: string) => <Text>{value || '-'}</Text> },
               ]}
             />
           ) : (
-            <Empty description={t('pages.configCenter.noEffectiveValues')} />
+            <ShopEmpty description={t('pages.configCenter.noEffectiveValues')} />
           )}
-        </Card>}
-        </Spin>
+        </ShopCard>}
+        </ShopSpin>
       </div>
     </div>
   );

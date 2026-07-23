@@ -38,7 +38,6 @@ export const preservePaymentChannelOrder = <T extends { sortOrder?: number; code
     channels: T[],
 ): T[] => channels.slice();
 
-
 export const paymentMethodOrder: PaymentMethod[] = ['MERCADO_PAGO', 'SPEI', 'OXXO', 'CODI', 'MX_LOCAL_CARD', 'PAYPAL', 'APPLE_PAY', 'GOOGLE_PAY', 'VISA', 'SHOP_PAY', 'STRIPE', 'ALIPAY', 'WECHAT_PAY', 'UNIONPAY'];
 
 const iconForPaymentMethod = (method: string) => {

@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { ShopIcon, SI } from './ShopIcon';
-import { Alert, Button, Tag } from 'antd';
 import ShopModal from './ShopModal';
+import ShopButton from './ShopButton';
 import { paymentApi } from '../api';
 import { useLanguage } from '../i18n';
 import { createPaymentMethodOptions, filterPaymentChannelsForMarket, PaymentMethod, paymentMethodLabel } from '../utils/paymentMethods';
@@ -12,6 +12,8 @@ import type { PaymentChannel } from '../types';
 import './Payment.css';
 import '../styles/mobile-page-contrast.css';
 import { navigateToCommercialPaymentUrl } from '../utils/paymentRecovery';
+import ShopTag from './ShopTag';
+import ShopAlert from './ShopAlert';
 
 const getDefaultPaymentMethod = (channels: PaymentChannel[], currency: string) => {
     const marketChannels = filterPaymentChannelsForMarket(channels, { currency });
@@ -157,10 +159,10 @@ export const Payment: React.FC<PaymentProps> = ({
                     <h3 className="payment-modal__amount commerce-money">{t('pages.payment.amount', { amount: formattedAmount })}</h3>
                     <span className="payment-modal__text payment-modal__text--secondary">{t('pages.payment.secureSubtitle')}</span>
                     <div className="payment-modal__badges">
-                        <Tag icon={<ShopIcon path={SI.safety} />} color="green">{t('pages.payment.encrypted')}</Tag>
-                        <Tag icon={<ShopIcon path={SI.thunder} />} color="orange">{t('pages.payment.localMethods')}</Tag>
+                        <ShopTag icon={<ShopIcon path={SI.safety} />} color="green">{t('pages.payment.encrypted')}</ShopTag>
+                        <ShopTag icon={<ShopIcon path={SI.thunder} />} color="orange">{t('pages.payment.localMethods')}</ShopTag>
                         {activeMarkets.slice(0, 3).map((market) => (
-                            <Tag key={market}>{market}</Tag>
+                            <ShopTag key={market}>{market}</ShopTag>
                         ))}
                     </div>
                 </div>
@@ -171,19 +173,19 @@ export const Payment: React.FC<PaymentProps> = ({
                 >
                     <div className="payment-modal__methodList payment-modal__stack">
                         {paymentOptions.length === 0 ? (
-                            <Alert
+                            <ShopAlert
                                 type="warning"
                                 showIcon
                                 message={t('pages.checkout.paymentUnavailable')}
                                 description={paymentChannelsError || t('pages.checkout.paymentUnavailableDescription')}
                                 action={(
-                                    <Button
+                                    <ShopButton
                                         size="small"
                                         onClick={() => void loadPaymentChannels()}
                                         loading={paymentChannelsLoading}
                                     >
                                         {t('common.retry')}
-                                    </Button>
+                                    </ShopButton>
                                 )}
                             />
                         ) : null}
@@ -216,7 +218,7 @@ export const Payment: React.FC<PaymentProps> = ({
                         </span>
                     </div>
                 ) : null}
-                <Button
+                <ShopButton
                     type="primary"
                     block
                     onClick={handlePayment}
@@ -227,7 +229,7 @@ export const Payment: React.FC<PaymentProps> = ({
                     title={confirmPaymentLabel}
                 >
                     {t('pages.payment.confirm')}
-                </Button>
+                </ShopButton>
             </div>
         </ShopModal>
     );

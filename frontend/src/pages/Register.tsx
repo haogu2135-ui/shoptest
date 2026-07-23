@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { ShopIcon, SI } from '../components/ShopIcon';
-import { Alert, Form, Button, Tag } from 'antd';
+import { Form } from 'antd';
 import ShopInput, { ShopPasswordInput } from '../components/ShopInput';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { userApi } from '../api';
@@ -21,8 +21,10 @@ import {
   isCommonPassword,
 } from '../utils/passwordPolicy';
 import './Register.css';
+import ShopButton from '../components/ShopButton';
 
-
+import ShopTag from '../components/ShopTag';
+import ShopAlert from '../components/ShopAlert';
 interface RegisterForm {
   username: string;
   password: string;
@@ -320,9 +322,9 @@ const Register: React.FC = () => {
           <h1 className="register-page__heroTitle">{t('pages.auth.registerHeroTitle')}</h1>
           <p className="register-page__heroSubtitle">{t('pages.auth.registerHeroSubtitle')}</p>
           <div className="register-page__trustGrid">
-            <Tag icon={<ShopIcon path={SI.safety} />} color="green">{t('pages.auth.registerTrustSecure')}</Tag>
-            <Tag icon={<ShopIcon path={SI.gift} />} color="orange">{t('pages.auth.registerTrustPerks')}</Tag>
-            <Tag icon={<ShopIcon path={SI.truck} />} color="blue">{t('pages.auth.registerTrustTracking')}</Tag>
+            <ShopTag icon={<ShopIcon path={SI.safety} />} color="green">{t('pages.auth.registerTrustSecure')}</ShopTag>
+            <ShopTag icon={<ShopIcon path={SI.gift} />} color="orange">{t('pages.auth.registerTrustPerks')}</ShopTag>
+            <ShopTag icon={<ShopIcon path={SI.truck} />} color="blue">{t('pages.auth.registerTrustTracking')}</ShopTag>
           </div>
           <div className="register-page__featureCards">
             <div className="register-page__featureCard">
@@ -348,12 +350,12 @@ const Register: React.FC = () => {
             </div>
           </div>
           <div className="register-page__actions">
-            <Button type="primary" size="large" aria-label={registerLoginActionLabel} title={registerLoginActionLabel} onClick={() => navigate('/login')}>
+            <ShopButton type="primary" size="large" aria-label={registerLoginActionLabel} title={registerLoginActionLabel} onClick={() => navigate('/login')}>
               {t('pages.auth.loginNow')}
-            </Button>
-            <Button ghost size="large" aria-label={registerTrackOrderActionLabel} title={registerTrackOrderActionLabel} onClick={() => navigate('/track-order')}>
+            </ShopButton>
+            <ShopButton ghost size="large" aria-label={registerTrackOrderActionLabel} title={registerTrackOrderActionLabel} onClick={() => navigate('/track-order')}>
               {t('nav.trackOrder')}
-            </Button>
+            </ShopButton>
           </div>
         </div>
       </section>
@@ -371,7 +373,7 @@ const Register: React.FC = () => {
             data-register-error-recovery="true"
             data-register-error-kind={authRecoveryKind || 'generic'}
           >
-            <Alert
+            <ShopAlert
               className="register-page__errorBanner"
               type="error"
               showIcon
@@ -386,7 +388,7 @@ const Register: React.FC = () => {
             />
             {authRecoveryKind === 'rate_limited' ? (
               <div className="register-page__errorRecovery__actions" data-register-recovery-actions="true">
-                <Button
+                <ShopButton
                   type="primary"
                   block
                   size="large"
@@ -395,8 +397,8 @@ const Register: React.FC = () => {
                   title={t('pages.auth.loginNow')}
                 >
                   {t('pages.auth.loginNow')}
-                </Button>
-                <Button
+                </ShopButton>
+                <ShopButton
                   block
                   size="large"
                   onClick={() => navigate('/track-order')}
@@ -404,8 +406,8 @@ const Register: React.FC = () => {
                   title={t('nav.trackOrder')}
                 >
                   {t('nav.trackOrder')}
-                </Button>
-                <Button
+                </ShopButton>
+                <ShopButton
                   block
                   size="large"
                   onClick={() => dispatchDomEvent('shop:open-support')}
@@ -413,7 +415,7 @@ const Register: React.FC = () => {
                   title={t('nav.support')}
                 >
                   {t('nav.support')}
-                </Button>
+                </ShopButton>
               </div>
             ) : null}
           </div>
@@ -567,7 +569,7 @@ const Register: React.FC = () => {
                   aria-label={emailCodeInputLabel}
                   title={emailCodeInputLabel}
                   addonAfter={
-                    <Button
+                    <ShopButton
                       type="link"
                       size="small"
                       loading={codeSending}
@@ -581,7 +583,7 @@ const Register: React.FC = () => {
                         : sendCodeCountdown > 0
                         ? t('pages.auth.resendIn', { seconds: sendCodeCountdown })
                         : t('pages.auth.sendCode')}
-                    </Button>
+                    </ShopButton>
                   }
                   onChange={(event) => form.setFieldValue('emailCode', normalizeEmailCode(event.target.value))}
                 />
@@ -610,9 +612,9 @@ const Register: React.FC = () => {
           </Form.Item>
 
           <Form.Item>
-            <Button type="primary" htmlType="submit" block loading={registering} disabled={registering} aria-label={registerSubmitActionLabel} title={registerSubmitActionLabel}>
+            <ShopButton type="primary" htmlType="submit" block loading={registering} disabled={registering} aria-label={registerSubmitActionLabel} title={registerSubmitActionLabel}>
               {t('pages.auth.register')}
-            </Button>
+            </ShopButton>
           </Form.Item>
           <p className="register-page__legalNotice" role="note">
             {t('pages.auth.registerAgreementPrefix')}{' '}

@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, Button, Card, Checkbox, Divider, message, Space, Table, Tag, Typography } from 'antd';
+import { Table } from 'antd';
 import ShopInput, { ShopTextArea } from '../components/ShopInput';
 import ShopPopconfirm from '../components/ShopPopconfirm';
 import ShopSelect from '../components/ShopSelect';
+import ShopCheckbox from '../components/ShopCheckbox';
 import ShopSearchField from '../components/ShopSearchField';
 import ShopModal from '../components/ShopModal';
 import ShopConfirm from '../components/ShopConfirm';
@@ -42,8 +43,16 @@ import {
 } from '../utils/roles';
 import SeventeenTrackWidget from '../components/SeventeenTrackWidget';
 import './OrderManagement.css';
+import ShopButton from '../components/ShopButton';
+import message from '../components/ShopMessage';
 
-const { Title } = Typography;
+import ShopTag from '../components/ShopTag';
+import ShopAlert from '../components/ShopAlert';
+import ShopSpace from '../components/ShopSpace';
+import ShopTypography from '../components/ShopTypography';
+import ShopCard from '../components/ShopCard';
+import ShopDivider from '../components/ShopDivider';
+const Title = ShopTypography.Title;
 const evidenceCell = (label: string): React.TdHTMLAttributes<HTMLElement> & Record<'data-label', string> => ({
   'data-label': label,
 });
@@ -119,7 +128,6 @@ const REFUND_REASON_PRESET_KEYS = [
   'pricingError',
   'other',
 ] as const;
-
 
 const OrderManagement: React.FC = () => {
   const navigate = useNavigate();
@@ -1201,15 +1209,15 @@ const OrderManagement: React.FC = () => {
     const ctaLabel = `${primaryNextActionLabel(order)}: ${orderDisplayLabel(order)}`;
     return (
       <div className={`order-management-page__nextAction order-management-page__nextAction--${action.tone}`}>
-        <Typography.Text strong>{t(action.titleKey)}</Typography.Text>
-        <Typography.Text type="secondary">{t(action.textKey)}</Typography.Text>
+        <ShopTypography.Text strong>{t(action.titleKey)}</ShopTypography.Text>
+        <ShopTypography.Text type="secondary">{t(action.textKey)}</ShopTypography.Text>
         {sla ? (
-          <Tag color={sla.overdue ? 'red' : sla.dueSoon ? 'orange' : 'green'} className="order-management-page__slaTag">
+          <ShopTag color={sla.overdue ? 'red' : sla.dueSoon ? 'orange' : 'green'} className="order-management-page__slaTag">
             {sla.label}
-          </Tag>
+          </ShopTag>
         ) : null}
         {canRunPrimaryNextAction(order) ? (
-          <Button
+          <ShopButton
             size="small"
             type={action.tone === 'urgent' || action.tone === 'warning' ? 'primary' : 'default'}
             danger={normalizeStatusCode(order.status) === 'RETURN_SHIPPED'}
@@ -1219,7 +1227,7 @@ const OrderManagement: React.FC = () => {
             onClick={() => runPrimaryNextAction(order)}
           >
             {primaryNextActionLabel(order)}
-          </Button>
+          </ShopButton>
         ) : null}
       </div>
     );
@@ -1229,20 +1237,19 @@ const OrderManagement: React.FC = () => {
     const isGuest = order.customerType === 'GUEST' || order.guestOrder;
     const displayName = orderCustomerLabel(order);
     return (
-      <Space direction="vertical" size={2} className="order-management-page__compactStack order-management-page__customerStack">
-        <Space size={4} wrap>
-          <Typography.Text strong>{displayName}</Typography.Text>
-          <Tag color={isGuest ? 'purple' : 'blue'}>
+      <ShopSpace direction="vertical" size={2} className="order-management-page__compactStack order-management-page__customerStack">
+        <ShopSpace size={4} wrap>
+          <ShopTypography.Text strong>{displayName}</ShopTypography.Text>
+          <ShopTag color={isGuest ? 'purple' : 'blue'}>
             {isGuest ? t('pages.adminOrders.guestCustomer') : t('pages.adminOrders.registeredCustomer')}
-          </Tag>
-        </Space>
-        {order.customerEmail ? <Typography.Text type="secondary">{order.customerEmail}</Typography.Text> : null}
-        {order.customerPhone ? <Typography.Text type="secondary">{order.customerPhone}</Typography.Text> : null}
-        {order.userId ? <Typography.Text type="secondary">{t('common.id')} {order.userId}</Typography.Text> : null}
-      </Space>
+          </ShopTag>
+        </ShopSpace>
+        {order.customerEmail ? <ShopTypography.Text type="secondary">{order.customerEmail}</ShopTypography.Text> : null}
+        {order.customerPhone ? <ShopTypography.Text type="secondary">{order.customerPhone}</ShopTypography.Text> : null}
+        {order.userId ? <ShopTypography.Text type="secondary">{t('common.id')} {order.userId}</ShopTypography.Text> : null}
+      </ShopSpace>
     );
   };
-
 
   const columns = [
     { title: t('pages.adminOrders.orderId'), dataIndex: 'id', key: 'id', width: 76, onCell: () => evidenceCell(t('pages.adminOrders.orderId')) },
@@ -1267,7 +1274,7 @@ const OrderManagement: React.FC = () => {
       key: 'status',
       width: 112,
       onCell: () => evidenceCell(t('common.status')),
-      render: (s: string) => <Tag color={getOrderStatusColor(s)}>{formatOrderStatusLabel(s)}</Tag>,
+      render: (s: string) => <ShopTag color={getOrderStatusColor(s)}>{formatOrderStatusLabel(s)}</ShopTag>,
     },
     {
       title: t('pages.adminOrders.nextAction'),
@@ -1282,15 +1289,15 @@ const OrderManagement: React.FC = () => {
       width: 180,
       onCell: () => evidenceCell(t('pages.adminOrders.returnInfo')),
       render: (_: unknown, record: Order) => (
-        <Space direction="vertical" size={2} className="order-management-page__compactStack">
-          <Typography.Text>{record.returnReason || '-'}</Typography.Text>
+        <ShopSpace direction="vertical" size={2} className="order-management-page__compactStack">
+          <ShopTypography.Text>{record.returnReason || '-'}</ShopTypography.Text>
           {record.returnTrackingNumber ? (
-            <Typography.Text type="secondary">{record.returnTrackingNumber}</Typography.Text>
+            <ShopTypography.Text type="secondary">{record.returnTrackingNumber}</ShopTypography.Text>
           ) : null}
           {record.refundedAt ? (
-            <Typography.Text type="secondary">{new Date(record.refundedAt).toLocaleString(dateLocale)}</Typography.Text>
+            <ShopTypography.Text type="secondary">{new Date(record.refundedAt).toLocaleString(dateLocale)}</ShopTypography.Text>
           ) : null}
-        </Space>
+        </ShopSpace>
       ),
     },
     {
@@ -1300,11 +1307,11 @@ const OrderManagement: React.FC = () => {
       width: 220,
       onCell: () => evidenceCell(t('pages.adminOrders.address')),
       render: (_: string, record: Order) => (
-        <Space direction="vertical" size={0} className="order-management-page__compactStack">
-          {orderRecipientLine(record) ? <Typography.Text strong>{orderRecipientLine(record)}</Typography.Text> : null}
+        <ShopSpace direction="vertical" size={0} className="order-management-page__compactStack">
+          {orderRecipientLine(record) ? <ShopTypography.Text strong>{orderRecipientLine(record)}</ShopTypography.Text> : null}
           <span className="order-management-page__addressText">{record.shippingAddress || '-'}</span>
-          {record.contactEmail ? <Typography.Text type="secondary">{record.contactEmail}</Typography.Text> : null}
-        </Space>
+          {record.contactEmail ? <ShopTypography.Text type="secondary">{record.contactEmail}</ShopTypography.Text> : null}
+        </ShopSpace>
       ),
     },
     {
@@ -1327,14 +1334,14 @@ const OrderManagement: React.FC = () => {
         const trackActionLabel = `${t('pages.adminOrders.track')}: ${orderLabel} / ${v}`;
         const printActionLabel = `${t('pages.adminOrders.printLabel')}: ${orderLabel}`;
         return (
-          <Space direction="vertical" size={0} className="order-management-page__compactStack">
+          <ShopSpace direction="vertical" size={0} className="order-management-page__compactStack">
             <span className="order-management-page__trackingText">{v}</span>
-            {record.trackingCarrierName ? <Typography.Text type="secondary">{record.trackingCarrierName}</Typography.Text> : null}
-            <Space size={8}>
-              <Button size="small" type="link" className="order-management-page__linkButton" aria-label={trackActionLabel} title={trackActionLabel} onClick={() => handleTrackShipment(v, record.trackingCarrierCode, record.id)}>{t('pages.adminOrders.track')}</Button>
-              <Button size="small" type="link" className="order-management-page__linkButton" aria-label={printActionLabel} title={printActionLabel} onClick={() => printShippingLabel(record)}>{t('pages.adminOrders.printLabel')}</Button>
-            </Space>
-          </Space>
+            {record.trackingCarrierName ? <ShopTypography.Text type="secondary">{record.trackingCarrierName}</ShopTypography.Text> : null}
+            <ShopSpace size={8}>
+              <ShopButton size="small" type="link" className="order-management-page__linkButton" aria-label={trackActionLabel} title={trackActionLabel} onClick={() => handleTrackShipment(v, record.trackingCarrierCode, record.id)}>{t('pages.adminOrders.track')}</ShopButton>
+              <ShopButton size="small" type="link" className="order-management-page__linkButton" aria-label={printActionLabel} title={printActionLabel} onClick={() => printShippingLabel(record)}>{t('pages.adminOrders.printLabel')}</ShopButton>
+            </ShopSpace>
+          </ShopSpace>
         );
       },
     },
@@ -1360,10 +1367,10 @@ const OrderManagement: React.FC = () => {
         const changeStatusActionLabel = `${t('pages.adminOrders.changeStatus')}: ${orderLabel}`;
         const refundActionLabel = `${t('pages.adminOrders.refundNow')}: ${orderLabel}`;
         return (
-          <Space wrap size={[6, 6]} className="order-management-page__actions">
-            <Button size="small" aria-label={itemsActionLabel} title={itemsActionLabel} onClick={() => handleViewItems(record)}>
+          <ShopSpace wrap size={[6, 6]} className="order-management-page__actions">
+            <ShopButton size="small" aria-label={itemsActionLabel} title={itemsActionLabel} onClick={() => handleViewItems(record)}>
               {t('pages.adminOrders.items')}
-            </Button>
+            </ShopButton>
             {transitions.length === 0 ? (
               <span className="order-management-page__completed">{t('common.completed')}</span>
             ) : allowedTransitions.length > 0 ? (
@@ -1392,11 +1399,11 @@ const OrderManagement: React.FC = () => {
               />
             ) : null}
             {canRefundOrders && canRefundOrder(record) ? (
-              <Button size="small" danger disabled={orderActionDisabled} aria-label={refundActionLabel} title={refundActionLabel} onClick={() => openRefundModal(record)}>
+              <ShopButton size="small" danger disabled={orderActionDisabled} aria-label={refundActionLabel} title={refundActionLabel} onClick={() => openRefundModal(record)}>
                 {t('pages.adminOrders.refundNow')}
-              </Button>
+              </ShopButton>
             ) : null}
-          </Space>
+          </ShopSpace>
         );
       },
     },
@@ -1405,34 +1412,34 @@ const OrderManagement: React.FC = () => {
   return (
     <div className="order-management-page">
       <Title level={4}>{t('pages.adminOrders.title')}</Title>
-      <Divider />
+      <ShopDivider />
       {orderLoadError && orderSnapshotLoaded ? (
-        <Alert
+        <ShopAlert
           className="order-management-page__alert"
           type="warning"
           showIcon
           message={orderLoadError}
           description={t('pages.adminOrders.staleDataWarning')}
           action={(
-            <Space wrap data-admin-orders-stale-recovery="true">
-              <Button
+            <ShopSpace wrap data-admin-orders-stale-recovery="true">
+              <ShopButton
                 size="small"
                 type="primary"
                 onClick={() => fetchOrders({ status: filterStatus, quick: quickFilter, search: debouncedSearchText, page: orderPage.page, size: orderPage.size })}
                 loading={loading}
               >
                 {t('common.retry')}
-              </Button>
-              <Button size="small" onClick={() => navigate('/admin')}>
+              </ShopButton>
+              <ShopButton size="small" onClick={() => navigate('/admin')}>
                 {t('pages.adminDashboard.title')}
-              </Button>
-              <Button size="small" onClick={() => navigate('/admin/system')}>
+              </ShopButton>
+              <ShopButton size="small" onClick={() => navigate('/admin/system')}>
                 {t('pages.adminDashboard.paymentReturnOps.providerReadinessAction')}
-              </Button>
-              <Button size="small" onClick={() => navigate('/admin/support')}>
+              </ShopButton>
+              <ShopButton size="small" onClick={() => navigate('/admin/support')}>
                 {t('adminLayout.support')}
-              </Button>
-            </Space>
+              </ShopButton>
+            </ShopSpace>
           )}
         />
       ) : null}
@@ -1475,7 +1482,7 @@ const OrderManagement: React.FC = () => {
       ) : null}
 
       {showInitialOrderLoading ? (
-        <Card
+        <ShopCard
           className="order-management-page__loadingState"
           loading
           role="status"
@@ -1506,7 +1513,7 @@ const OrderManagement: React.FC = () => {
           </div>
           {showAfterSalesQueueHint ? (
             <div className="order-management-page__afterSalesPanel">
-              <Alert
+              <ShopAlert
                 className="order-management-page__alert order-management-page__afterSalesHint"
                 type="info"
                 showIcon
@@ -1538,8 +1545,8 @@ const OrderManagement: React.FC = () => {
               </div>
             </div>
           ) : null}
-          <Card className="order-management-page__toolbar">
-            <Space wrap>
+          <ShopCard className="order-management-page__toolbar">
+            <ShopSpace wrap>
               <span>{t('pages.adminOrders.filter')}</span>
               <div role="group" aria-label={orderStatusFilterLabel} title={orderStatusFilterLabel}>
                 <ShopSelect
@@ -1578,12 +1585,12 @@ const OrderManagement: React.FC = () => {
                 submitLabel={orderSearchInputLabel}
               />
               {canExportOrders ? (
-                <Button icon={<DownloadOutlined />} loading={exporting} disabled={orderActionDisabled} aria-label={exportOrdersActionLabel} title={exportOrdersActionLabel} onClick={handleExport}>
+                <ShopButton icon={<DownloadOutlined />} loading={exporting} disabled={orderActionDisabled} aria-label={exportOrdersActionLabel} title={exportOrdersActionLabel} onClick={handleExport}>
                   {quickFilter || normalizedSearchText ? t('pages.adminOrders.exportVisibleOrders') : t('pages.adminOrders.exportOrders')}
-                </Button>
+                </ShopButton>
               ) : null}
               {canFulfillOrders ? (
-                <Button
+                <ShopButton
                   type="primary"
                   disabled={orderActionDisabled || selectedVisibleShippableIds.length === 0}
                   aria-label={batchShipActionLabel}
@@ -1591,10 +1598,10 @@ const OrderManagement: React.FC = () => {
                   onClick={() => setBatchShipOpen(true)}
                 >
                   {t('pages.adminOrders.batchShip')}
-                </Button>
+                </ShopButton>
               ) : null}
               {activeQuickFilterLabel ? (
-                <Tag
+                <ShopTag
                   closable={!orderActionDisabled}
                   color="orange"
                   onClose={(event) => {
@@ -1605,13 +1612,13 @@ const OrderManagement: React.FC = () => {
                   }}
                 >
                   {t('pages.adminOrders.quickFilterActive', { filter: activeQuickFilterLabel })}
-                </Tag>
+                </ShopTag>
               ) : null}
-              <Tag color="blue">
+              <ShopTag color="blue">
                 {t('pages.adminOrders.total', { count: orderPage.total })} | {orderPage.totalPages ? `${orderPage.page}/${orderPage.totalPages}` : '0/0'}
-              </Tag>
-            </Space>
-          </Card>
+              </ShopTag>
+            </ShopSpace>
+          </ShopCard>
           <div className="order-management-page__table">
             <Table
               className="shop-admin-selection-table order-management-page__mobileCardTable"
@@ -1660,7 +1667,7 @@ const OrderManagement: React.FC = () => {
         onOk={handleShip}
         onClose={closeShippingModal}
       >
-        <Space direction="vertical" className="order-management-page__modalStack">
+        <ShopSpace direction="vertical" className="order-management-page__modalStack">
           <ShopSelect
             allowClear
             showSearch
@@ -1683,10 +1690,10 @@ const OrderManagement: React.FC = () => {
             aria-label={shippingTrackingInputLabel}
             title={shippingTrackingInputLabel}
           />
-          <Checkbox checked={autoPrintLabel} disabled={orderActionDisabled} aria-label={autoPrintLabelActionLabel} title={autoPrintLabelActionLabel} onChange={(e) => setAutoPrintLabel(e.target.checked)}>
+          <ShopCheckbox checked={autoPrintLabel} disabled={orderActionDisabled} aria-label={autoPrintLabelActionLabel} title={autoPrintLabelActionLabel} onChange={(e) => setAutoPrintLabel(e.target.checked)}>
             {t('pages.adminOrders.autoPrintLabel')}
-          </Checkbox>
-        </Space>
+          </ShopCheckbox>
+        </ShopSpace>
       </ShopModal>
       <ShopModal
         title={t('pages.adminOrders.refundNow')}
@@ -1705,13 +1712,13 @@ const OrderManagement: React.FC = () => {
         onOk={handleRefundOrder}
         onClose={closeRefundModal}
       >
-        <Space direction="vertical" className="order-management-page__modalStack">
-          <Typography.Text type="secondary">
+        <ShopSpace direction="vertical" className="order-management-page__modalStack">
+          <ShopTypography.Text type="secondary">
             {t('pages.adminOrders.refundConfirmHint', {
               orderNo: refundOrder?.orderNo || refundOrder?.id || '',
               amount: refundOrder ? formatMoney(refundOrder.totalAmount) : '',
             })}
-          </Typography.Text>
+          </ShopTypography.Text>
           <ShopTextArea
             value={refundReason}
             onChange={(event) => setRefundReason(event.target.value)}
@@ -1725,14 +1732,14 @@ const OrderManagement: React.FC = () => {
             title={refundReasonInputLabel}
           />
           <div className="order-management-page__refundReasonPresets" role="group" aria-label={t('pages.adminOrders.refundReasonPresetsLabel')}>
-            <Typography.Text type="secondary">{t('pages.adminOrders.refundReasonPresetsLabel')}</Typography.Text>
-            <Space wrap size={[8, 8]}>
+            <ShopTypography.Text type="secondary">{t('pages.adminOrders.refundReasonPresetsLabel')}</ShopTypography.Text>
+            <ShopSpace wrap size={[8, 8]}>
               {REFUND_REASON_PRESET_KEYS.map((presetKey) => {
                 const presetLabel = t(`pages.adminOrders.refundReasonPresets.${presetKey}`);
                 const selected = refundReason.trim() === presetLabel;
                 const presetActionLabel = `${t('pages.adminOrders.refundReasonPresetsLabel')}: ${presetLabel}`;
                 return (
-                  <Button
+                  <ShopButton
                     key={presetKey}
                     size="small"
                     type={selected ? 'primary' : 'default'}
@@ -1743,12 +1750,12 @@ const OrderManagement: React.FC = () => {
                     onClick={() => setRefundReason(presetLabel)}
                   >
                     {presetLabel}
-                  </Button>
+                  </ShopButton>
                 );
               })}
-            </Space>
+            </ShopSpace>
           </div>
-          <Checkbox
+          <ShopCheckbox
             checked={refundConfirmed}
             disabled={orderActionDisabled}
             aria-label={t('pages.adminOrders.refundConfirmAcknowledge', {
@@ -1761,7 +1768,7 @@ const OrderManagement: React.FC = () => {
               orderNo: refundOrder?.orderNo || refundOrder?.id || '',
               amount: refundOrder ? formatMoney(refundOrder.totalAmount) : '',
             })}
-          </Checkbox>
+          </ShopCheckbox>
           <ShopInput
             value={manualRefundReference}
             onChange={(event) => setManualRefundReference(event.target.value)}
@@ -1772,18 +1779,18 @@ const OrderManagement: React.FC = () => {
             aria-label={manualRefundReferenceInputLabel}
             title={manualRefundReferenceInputLabel}
           />
-          <Checkbox checked={refundRestockChecked} disabled={refundRestockRequired || orderActionDisabled} aria-label={refundRestockActionLabel} title={refundRestockActionLabel} onChange={(event) => setRefundRestock(event.target.checked)}>
+          <ShopCheckbox checked={refundRestockChecked} disabled={refundRestockRequired || orderActionDisabled} aria-label={refundRestockActionLabel} title={refundRestockActionLabel} onChange={(event) => setRefundRestock(event.target.checked)}>
             {t('pages.adminOrders.restockRefundItems')}
-          </Checkbox>
+          </ShopCheckbox>
           {refundRestockRequired ? (
-            <Alert
+            <ShopAlert
               type="info"
               showIcon
               message={`${refundRestockStatusLabel}: ${t('pages.adminOrders.restockRefundItems')}`}
             />
           ) : null}
           {hasLoadedRefundPayments && refundAlreadyProcessing ? (
-            <Alert
+            <ShopAlert
               type="warning"
               showIcon
               role="alert"
@@ -1792,7 +1799,7 @@ const OrderManagement: React.FC = () => {
             />
           ) : null}
           {hasLoadedRefundPayments && !refundAlreadyProcessing && hasReconcileRequiredRefundPayment ? (
-            <Alert
+            <ShopAlert
               type="warning"
               showIcon
               role="alert"
@@ -1801,7 +1808,7 @@ const OrderManagement: React.FC = () => {
             />
           ) : null}
           {hasLoadedRefundPayments && !refundAlreadyProcessing && !hasPaidRefundPayment && !hasReconcileRequiredRefundPayment ? (
-            <Alert
+            <ShopAlert
               type="error"
               showIcon
               role="alert"
@@ -1810,7 +1817,7 @@ const OrderManagement: React.FC = () => {
             />
           ) : null}
           {!canSyncOrderPayments ? (
-            <Alert
+            <ShopAlert
               type="warning"
               showIcon
               message={t('pages.adminOrders.refundPaymentPermissionHint')}
@@ -1818,7 +1825,7 @@ const OrderManagement: React.FC = () => {
           ) : null}
           {canSyncOrderPayments ? (
             <div className="order-management-page__modalEvidenceSection">
-              <Typography.Text strong>{t('pages.adminOrders.refundPaymentEvidence')}</Typography.Text>
+              <ShopTypography.Text strong>{t('pages.adminOrders.refundPaymentEvidence')}</ShopTypography.Text>
               <Table
                 className="order-management-page__modalEvidenceTable"
                 rowKey="id"
@@ -1840,7 +1847,7 @@ const OrderManagement: React.FC = () => {
                     key: 'status',
                     width: 104,
                     onCell: () => evidenceCell(t('common.status')),
-                    render: (status: string) => <Tag color={getPaymentStatusColor(status)}>{formatPaymentStatusLabel(status)}</Tag>,
+                    render: (status: string) => <ShopTag color={getPaymentStatusColor(status)}>{formatPaymentStatusLabel(status)}</ShopTag>,
                   },
                   {
                     title: t('common.amount'),
@@ -1874,7 +1881,7 @@ const OrderManagement: React.FC = () => {
                           cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${syncActionLabel}`, title: `${t('common.cancel')}: ${syncActionLabel}` }}
                           disabled={orderActionDisabled || payment.status !== 'PENDING' || syncingPaymentIds.includes(payment.id)}
                         >
-                          <Button
+                          <ShopButton
                             size="small"
                             type="link"
                             aria-label={syncActionLabel}
@@ -1883,7 +1890,7 @@ const OrderManagement: React.FC = () => {
                             disabled={orderActionDisabled || payment.status !== 'PENDING'}
                           >
                             {t('pages.adminOrders.syncPayment')}
-                          </Button>
+                          </ShopButton>
                         </ShopPopconfirm>
                       );
                     },
@@ -1892,7 +1899,7 @@ const OrderManagement: React.FC = () => {
               />
             </div>
           ) : null}
-        </Space>
+        </ShopSpace>
       </ShopModal>
       <ShopModal
         title={t('pages.adminOrders.batchShipOrders')}
@@ -1948,7 +1955,7 @@ const OrderManagement: React.FC = () => {
         width={720}
         className="profile-mobile-safe-modal order-management-page__detailModal"
       >
-        <Space direction="vertical" className="order-management-page__detailStack" size="middle">
+        <ShopSpace direction="vertical" className="order-management-page__detailStack" size="middle">
           <div className="order-management-page__modalEvidenceSection">
             <Table
               className="order-management-page__modalEvidenceTable"
@@ -1965,10 +1972,10 @@ const OrderManagement: React.FC = () => {
                   key: 'productName',
                   onCell: () => evidenceCell(t('pages.adminOrders.product')),
                   render: (v: string, item: OrderItem) => (
-                    <Space direction="vertical" size={0}>
+                    <ShopSpace direction="vertical" size={0}>
                       <span>{v || `#${item.productId}`}</span>
-                      {item.selectedSpecs ? <Typography.Text type="secondary">{formatSelectedSpecs(item.selectedSpecs, t, language)}</Typography.Text> : null}
-                    </Space>
+                      {item.selectedSpecs ? <ShopTypography.Text type="secondary">{formatSelectedSpecs(item.selectedSpecs, t, language)}</ShopTypography.Text> : null}
+                    </ShopSpace>
                   ),
                 },
                 { title: t('common.quantity'), dataIndex: 'quantity', key: 'quantity', width: 100, onCell: () => evidenceCell(t('common.quantity')) },
@@ -1992,7 +1999,7 @@ const OrderManagement: React.FC = () => {
           </div>
           {canSyncOrderPayments ? (
             <div className="order-management-page__modalEvidenceSection">
-              <Typography.Text strong>{t('pages.adminOrders.paymentHistory')}</Typography.Text>
+              <ShopTypography.Text strong>{t('pages.adminOrders.paymentHistory')}</ShopTypography.Text>
               <Table
                 className="order-management-page__modalEvidenceTable"
                 rowKey="id"
@@ -2008,7 +2015,7 @@ const OrderManagement: React.FC = () => {
                     key: 'status',
                     width: 110,
                     onCell: () => evidenceCell(t('common.status')),
-                    render: (status: string) => <Tag color={getPaymentStatusColor(status)}>{formatPaymentStatusLabel(status)}</Tag>,
+                    render: (status: string) => <ShopTag color={getPaymentStatusColor(status)}>{formatPaymentStatusLabel(status)}</ShopTag>,
                   },
                   {
                     title: t('common.amount'),
@@ -2050,7 +2057,7 @@ const OrderManagement: React.FC = () => {
                           cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${syncActionLabel}`, title: `${t('common.cancel')}: ${syncActionLabel}` }}
                           disabled={orderActionDisabled || payment.status !== 'PENDING' || syncingPaymentIds.includes(payment.id)}
                         >
-                          <Button
+                          <ShopButton
                             size="small"
                             type="link"
                             aria-label={syncActionLabel}
@@ -2059,7 +2066,7 @@ const OrderManagement: React.FC = () => {
                             disabled={orderActionDisabled || payment.status !== 'PENDING'}
                           >
                             {t('pages.adminOrders.syncPayment')}
-                          </Button>
+                          </ShopButton>
                         </ShopPopconfirm>
                       );
                     },
@@ -2068,7 +2075,7 @@ const OrderManagement: React.FC = () => {
               />
             </div>
           ) : null}
-        </Space>
+        </ShopSpace>
       </ShopModal>
       <ShopConfirm
         open={Boolean(statusConfirm)}

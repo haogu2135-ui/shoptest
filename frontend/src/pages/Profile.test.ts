@@ -162,7 +162,7 @@ describe('Profile mobile control visibility', () => {
     expect(source).toContain('title={addressesStale ? t(\'pages.profile.addressesStaleWarning\') : undefined}');
     expect(source).toContain('disabled={addressesStale} onClick={() => handleSetDefault(address.id)}');
     expect(source).toContain('disabled={addressesStale} onClick={() => openAddressModal(address)}');
-    expect(source).toContain('disabled={addressesStale}>{t(\'common.delete\')}</Button>');
+    expect(source).toContain('disabled={addressesStale}>{t(\'common.delete\')}</ShopButton>');
 
     for (const locale of ['en', 'zh', 'es']) {
       const messages = readLocale(locale);
@@ -317,7 +317,6 @@ describe('Profile mobile control visibility', () => {
     }
   });
 
-
   it('opens the orders tab when deep-linking from a notification order number', () => {
     const source = require('fs').readFileSync(require('path').resolve(__dirname, 'Profile.tsx'), 'utf8');
     expect(source).toContain("setProfileActiveTab('orders')");
@@ -338,7 +337,6 @@ describe('Profile mobile control visibility', () => {
     expect(source).toContain('void handleContinuePayment(targetOrder)');
     expect(source).toContain('setOrderSearchText(paymentReturnOrderNo)');
   });
-
 
   it('announces payment-return recovery as a persistent orders alert', () => {
     const source = readProfileSource();
@@ -382,7 +380,6 @@ describe('Profile mobile control visibility', () => {
     expect(source).not.toContain('selectedPayment.refundReference');
     expect(source).not.toContain('payment.refundReference');
   });
-
 
   it('keeps a commercial multi-path guest auth gate instead of hard-redirect-only login', () => {
     const source = readProfileSource();

@@ -35,26 +35,28 @@ describe('ProductManagement editor popup guards', () => {
     expect(pageSource).toContain("const deleteActionLabel = `${t('common.delete')}: ${productName}`;");
 
     expect(pageSource).toMatch(/icon=\{record\.isFeatured \? <StarFilled \/> : <StarOutlined \/>\}[\s\S]*?aria-pressed=\{Boolean\(record\.isFeatured\)\}[\s\S]*?aria-label=\{featureActionLabel\}[\s\S]*?title=\{featureActionLabel\}/);
-    expect(pageSource).toMatch(/<Button type="primary" icon=\{<EditOutlined \/>\} aria-label=\{editActionLabel\} title=\{editActionLabel\}[\s\S]*?>\{t\('common\.edit'\)\}<\/Button>/);
+    expect(pageSource).toMatch(/<ShopButton type="primary" icon=\{<EditOutlined \/>\} aria-label=\{editActionLabel\} title=\{editActionLabel\}[\s\S]*?>\{t\('common\.edit'\)\}<\/ShopButton>/);
     expect(pageSource).toMatch(/icon=\{<CopyOutlined \/>}[\s\S]*?aria-label=\{duplicateActionLabel\}[\s\S]*?title=\{duplicateActionLabel\}/);
-    expect(pageSource).toMatch(/<Button size="small"[\s\S]*?aria-label=\{approveActionLabel\}[\s\S]*?title=\{approveActionLabel\}[\s\S]*?>\{t\('pages\.productAdmin\.approve'\)\}<\/Button>/);
-    expect(pageSource).toMatch(/<Button size="small"[\s\S]*?danger[\s\S]*?aria-label=\{rejectActionLabel\}[\s\S]*?title=\{rejectActionLabel\}[\s\S]*?>\{t\('pages\.productAdmin\.reject'\)\}<\/Button>/);
-    expect(pageSource).toMatch(/<Button size="small"[\s\S]*?aria-label=\{reviewActionLabel\}[\s\S]*?title=\{reviewActionLabel\}[\s\S]*?>\{t\('pages\.productAdmin\.review'\)\}<\/Button>/);
-    expect(pageSource).toMatch(/<Button danger icon=\{<DeleteOutlined \/>} size="small"[\s\S]*?aria-label=\{deleteActionLabel\}[\s\S]*?title=\{deleteActionLabel\}[\s\S]*?>\{t\('common\.delete'\)\}<\/Button>/);
+    expect(pageSource).toMatch(/<ShopButton size="small"[\s\S]*?aria-label=\{approveActionLabel\}[\s\S]*?title=\{approveActionLabel\}[\s\S]*?>\{t\('pages\.productAdmin\.approve'\)\}<\/ShopButton>/);
+    expect(pageSource).toMatch(/<ShopButton size="small"[\s\S]*?danger[\s\S]*?aria-label=\{rejectActionLabel\}[\s\S]*?title=\{rejectActionLabel\}[\s\S]*?>\{t\('pages\.productAdmin\.reject'\)\}<\/ShopButton>/);
+    expect(pageSource).toMatch(/<ShopButton size="small"[\s\S]*?aria-label=\{reviewActionLabel\}[\s\S]*?title=\{reviewActionLabel\}[\s\S]*?>\{t\('pages\.productAdmin\.review'\)\}<\/ShopButton>/);
+    expect(pageSource).toMatch(/<ShopButton danger icon=\{<DeleteOutlined \/>} size="small"[\s\S]*?aria-label=\{deleteActionLabel\}[\s\S]*?title=\{deleteActionLabel\}[\s\S]*?>\{t\('common\.delete'\)\}<\/ShopButton>/);
   });
 
   it('uses scoped product-editor popup layers for modal editor controls', () => {
     expect(pageSource).toContain('ShopSelect');
-    expect(pageSource).toContain("const productEditorPopupClassNames = { popup: { root: 'shop-mobile-popup-layer product-management-page__editorPopup' } };");
-    expect(pageSource.match(/classNames=\{productEditorPopupClassNames\}/g)?.length).toBeGreaterThanOrEqual(2);
     expect(pageSource).toContain('ShopMultiSelect');
     expect(pageSource).toContain('mode="tags"');
     expect(pageSource).toMatch(/name=\"brand\"[\s\S]*?ShopSelect/);
     expect(pageSource).toContain('popupClassName=\"shop-mobile-popup-layer product-management-page__editorPopup\"');
-    expect(pageSource.match(/placement="bottomLeft"/g)?.length).toBeGreaterThanOrEqual(2);
-    expect(pageSource).toContain('<DatePicker.RangePicker');
+    expect(pageSource).toContain('<ShopRangePicker');
     expect(pageSource).toContain('className="shopify-range-picker"');
-    expect(pageSource).toContain('getPopupContainer={() => document.body}');
+    expect(pageSource).toContain('<ShopTreeSelect');
+    expect(pageSource).toContain('popupClassName="shop-mobile-popup-layer product-management-page__editorPopup"');
+    expect(pageSource).not.toMatch(/<DatePicker\b/);
+    expect(pageSource).not.toMatch(/<TreeSelect\b/);
+    expect(pageSource).not.toMatch(/import \{[^}]*\bDatePicker\b[^}]*\} from 'antd'/);
+    expect(pageSource).not.toMatch(/import \{[^}]*\bTreeSelect\b[^}]*\} from 'antd'/);
   });
 
   it('keeps product submit payloads typed without a broad any escape hatch', () => {
@@ -78,18 +80,18 @@ describe('ProductManagement editor popup guards', () => {
   });
 
   it('uses the same modal-safe popup layer for rich detail block type Selects', () => {
-    expect(richEditorSource).toContain("const richDetailTypePopupClassNames = { popup: { root: 'shop-mobile-popup-layer product-management-page__editorPopup' } };");
+    expect(richEditorSource).toContain('ShopSelect');
     expect(richEditorSource).toContain('className="product-rich-detail-editor__typeSelect"');
-    expect(richEditorSource).toContain('classNames={richDetailTypePopupClassNames}');
-    expect(richEditorSource).toContain('placement="bottomLeft"');
-    expect(richEditorSource).toContain('getPopupContainer={() => document.body}');
+    expect(richEditorSource).toContain('popupClassName="shop-mobile-popup-layer product-management-page__editorPopup"');
+    expect(richEditorSource).not.toMatch(/import \{[^}]*\bSelect\b[^}]*\} from 'antd'/);
+    expect(richEditorSource).not.toMatch(/<Select\b/);
   });
 
   it('keeps the mobile import upload action full-width inside the toolbar', () => {
     const uploadCssStart = cssSource.indexOf('.product-management-page__actions .ant-upload-wrapper.product-management-page__uploadAction');
     const uploadCss = cssSource.slice(uploadCssStart);
 
-    expect(pageSource).toContain('<Upload className="product-management-page__uploadAction"');
+    expect(pageSource).toContain('<ShopUpload className="product-management-page__uploadAction"');
     expect(uploadCssStart).toBeGreaterThanOrEqual(0);
     expect(uploadCss).toContain('.product-management-page__actions > .ant-space-item > .ant-upload-wrapper.product-management-page__uploadAction');
     expect(uploadCss).toMatch(/\.product-management-page__actions \.product-management-page__uploadAction\s*\{[\s\S]*?display:\s*block\s*!important;[\s\S]*?max-width:\s*100%\s*!important;/);

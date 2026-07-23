@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { ShopIcon, SI } from './ShopIcon';
-import { Alert, Button, Tag } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { petProfileApi, productApi } from '../api';
 import type { PetProfile, ProductPublic as Product } from '../types';
@@ -15,7 +14,9 @@ import { hasStoredValue } from '../utils/safeStorage';
 import { getApiErrorMessage } from '../utils/apiError';
 import './PetPersonalizedAssistant.css';
 import '../styles/mobile-page-contrast.css';
-
+import ShopButton from './ShopButton';
+import ShopTag from './ShopTag';
+import ShopAlert from './ShopAlert';
 
 const isDealProduct = (product: Product) =>
   Boolean(product.activeLimitedTimeDiscount) ||
@@ -156,18 +157,18 @@ const PetPersonalizedAssistant: React.FC<PetPersonalizedAssistantProps> = ({
             <span className="pet-personalized-assistant__text pet-personalized-assistant__text--secondary">{t('pages.productList.personalGuideEmpty')}</span>
           </div>
           <div className="pet-personalized-assistant__actions">
-            <Button
+            <ShopButton
               type="primary"
               aria-label={addPetProfileActionLabel}
               title={addPetProfileActionLabel}
               onClick={openPetProfiles}
             >
               {t('pages.profile.addPet')}
-            </Button>
+            </ShopButton>
             {variant === 'default' ? (
-              <Button aria-label={browsePersonalizedActionLabel} title={browsePersonalizedActionLabel} onClick={browseProducts}>
+              <ShopButton aria-label={browsePersonalizedActionLabel} title={browsePersonalizedActionLabel} onClick={browseProducts}>
                 {t('pages.cart.browse')}
-              </Button>
+              </ShopButton>
             ) : null}
           </div>
         </div>
@@ -192,21 +193,21 @@ const PetPersonalizedAssistant: React.FC<PetPersonalizedAssistantProps> = ({
           <span className="pet-personalized-assistant__text pet-personalized-assistant__text--secondary">{t('home.petRecommendationsHint')}</span>
         </div>
         <div className="pet-personalized-assistant__actions">
-          <Button aria-label={managePetProfileActionLabel} title={managePetProfileActionLabel} onClick={openPetProfiles}>
+          <ShopButton aria-label={managePetProfileActionLabel} title={managePetProfileActionLabel} onClick={openPetProfiles}>
             {t('pages.productList.managePetProfile')}
-          </Button>
+          </ShopButton>
           {variant === 'default' ? (
-            <Button type="primary" ghost aria-label={viewPetPicksActionLabel} title={viewPetPicksActionLabel} onClick={browseProducts}>
+            <ShopButton type="primary" ghost aria-label={viewPetPicksActionLabel} title={viewPetPicksActionLabel} onClick={browseProducts}>
               {t('pages.productList.viewPick')}
-            </Button>
+            </ShopButton>
           ) : null}
         </div>
       </div>
 
       <div className="pet-personalized-assistant__stats">
         <span>{t('home.petRecommendationInsightPetProfile')}</span>
-        <Tag>{t('home.petRecommendationReady', { count: quickAddReadyCount })}</Tag>
-        <Tag>{t('home.petRecommendationDeals', { count: dealCount })}</Tag>
+        <ShopTag>{t('home.petRecommendationReady', { count: quickAddReadyCount })}</ShopTag>
+        <ShopTag>{t('home.petRecommendationDeals', { count: dealCount })}</ShopTag>
       </div>
 
       <div className="pet-personalized-assistant__list">
@@ -260,18 +261,18 @@ const PetPersonalizedAssistant: React.FC<PetPersonalizedAssistantProps> = ({
                     <span className="pet-personalized-assistant__text pet-personalized-assistant__text--secondary">{rating.toFixed(1)}</span>
                   ) : null}
                   {showDeal ? (
-                    <Tag color="gold">{t('home.flashOffers')}</Tag>
+                    <ShopTag color="gold">{t('home.flashOffers')}</ShopTag>
                   ) : null}
                 </div>
                 <div className="pet-personalized-assistant__foot">
-                  <Alert
+                  <ShopAlert
                     className="pet-personalized-assistant__insight"
                     type="info"
                     showIcon={false}
                     message={t('home.petRecommendationInsightTitle')}
                     description={t('home.petRecommendationInsightPetProfile')}
                   />
-                  <Button
+                  <ShopButton
                     type="primary"
                     icon={hasOptions ? undefined : <ShopIcon path={SI.cart} />}
                     loading={addingId === product.id}
@@ -280,7 +281,7 @@ const PetPersonalizedAssistant: React.FC<PetPersonalizedAssistantProps> = ({
                     onClick={() => handlePrimaryAction(product)}
                   >
                     {hasOptions ? t('pages.wishlist.selectOptions') : t('pages.productList.quickAdd')}
-                  </Button>
+                  </ShopButton>
                 </div>
               </div>
             </article>

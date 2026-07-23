@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Card, Progress, Space, Spin, Table, Tag, Typography, message } from 'antd';
+import { Table } from 'antd';
 import ShopInput, { ShopTextArea } from '../components/ShopInput';
 import ShopPopconfirm from '../components/ShopPopconfirm';
 import ShopSelect from '../components/ShopSelect';
@@ -16,8 +16,18 @@ import { getApiErrorMessage } from '../utils/apiError';
 import { buildPaginationItemRender } from '../utils/paginationLabels';
 import { AUDIT_LOGS_EXPORT_PERMISSION, AUDIT_LOGS_PURGE_PERMISSION, getEffectiveRole, hasAdminPermission } from '../utils/roles';
 import './SecurityAuditLogManagement.css';
+import ShopButton from '../components/ShopButton';
+import ShopSpin from '../components/ShopSpin';
+import ShopProgress from '../components/ShopProgress';
 
-const { Title, Text } = Typography;
+import ShopTag from '../components/ShopTag';
+import ShopAlert from '../components/ShopAlert';
+import ShopSpace from '../components/ShopSpace';
+import ShopTypography from '../components/ShopTypography';
+import ShopCard from '../components/ShopCard';
+import message from '../components/ShopMessage';
+const Title = ShopTypography.Title;
+const Text = ShopTypography.Text;
 
 const actionColors: Record<string, string> = {
   LOGIN: 'blue',
@@ -641,21 +651,21 @@ const SecurityAuditLogManagement: React.FC = () => {
       <Title level={4}>{t('pages.auditLogs.title')}</Title>
 
       {loadError && auditSnapshotLoaded ? (
-        <Alert
+        <ShopAlert
           className="audit-log-page__alert"
           type="warning"
           showIcon
           message={loadError}
           description={t('pages.auditLogs.staleDataWarning')}
           action={(
-            <Space wrap data-admin-audit-stale-recovery="true">
-              <Button size="small" type="primary" onClick={fetchLogs} loading={loading}>
+            <ShopSpace wrap data-admin-audit-stale-recovery="true">
+              <ShopButton size="small" type="primary" onClick={fetchLogs} loading={loading}>
                 {t('common.retry')}
-              </Button>
-              <Button size="small" onClick={() => navigate('/admin')}>{t('pages.adminDashboard.title')}</Button>
-              <Button size="small" onClick={() => navigate('/admin/system')}>{t('pages.adminDashboard.paymentReturnOps.providerReadinessAction')}</Button>
-              <Button size="small" onClick={() => navigate('/admin/orders')}>{t('pages.adminDashboard.orders')}</Button>
-            </Space>
+              </ShopButton>
+              <ShopButton size="small" onClick={() => navigate('/admin')}>{t('pages.adminDashboard.title')}</ShopButton>
+              <ShopButton size="small" onClick={() => navigate('/admin/system')}>{t('pages.adminDashboard.paymentReturnOps.providerReadinessAction')}</ShopButton>
+              <ShopButton size="small" onClick={() => navigate('/admin/orders')}>{t('pages.adminDashboard.orders')}</ShopButton>
+            </ShopSpace>
           )}
         />
       ) : null}
@@ -676,17 +686,17 @@ const SecurityAuditLogManagement: React.FC = () => {
       ) : null}
 
       {showInitialAuditLoading ? (
-        <Card
+        <ShopCard
           className="audit-log-page__loadingState"
           role="status"
           aria-live="polite"
           aria-busy="true"
           aria-label={t('common.loading')}
         >
-          <Spin spinning>
+          <ShopSpin spinning>
             <Text type="secondary">{t('common.loading')}</Text>
-          </Spin>
-        </Card>
+          </ShopSpin>
+        </ShopCard>
       ) : null}
 
       {!showInitialAuditLoading && !auditSnapshotUnavailable ? (
@@ -701,7 +711,7 @@ const SecurityAuditLogManagement: React.FC = () => {
           </Text>
         </div>
         <div className="audit-log-page__score">
-          <Progress
+          <ShopProgress
             type="circle"
             percent={auditInsights.healthScore}
             width={92}
@@ -775,7 +785,7 @@ const SecurityAuditLogManagement: React.FC = () => {
               <Text strong>{adminText('retentionTitle')}</Text>
               <Text type="secondary">{adminText('retentionHint')}</Text>
             </div>
-            <Space wrap>
+            <ShopSpace wrap>
               <ShopInputNumber
                 min={7}
                 max={3650}
@@ -795,11 +805,11 @@ const SecurityAuditLogManagement: React.FC = () => {
                 okButtonProps={{ danger: true, 'aria-label': auditPurgeActionLabel, title: auditPurgeActionLabel }}
                 cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${auditPurgeActionLabel}`, title: `${t('common.cancel')}: ${auditPurgeActionLabel}` }}
               >
-                <Button danger icon={<DeleteOutlined />} aria-label={auditPurgeActionLabel} title={auditPurgeActionLabel} loading={purging} disabled={auditActionDisabled}>
+                <ShopButton danger icon={<DeleteOutlined />} aria-label={auditPurgeActionLabel} title={auditPurgeActionLabel} loading={purging} disabled={auditActionDisabled}>
                   {adminText('purge')}
-                </Button>
+                </ShopButton>
               </ShopPopconfirm>
-            </Space>
+            </ShopSpace>
           </div>
         ) : null}
       </section>
@@ -861,12 +871,12 @@ const SecurityAuditLogManagement: React.FC = () => {
             <Text strong>{opsText('guideTitle')}</Text>
             <Text type="secondary">{opsText('guideText')}</Text>
           </div>
-          <Space wrap>
-            <Button size="small" aria-label={showPaymentFailuresLabel} title={showPaymentFailuresLabel} onClick={applyPaymentFailureFilter}>{opsText('showPaymentFailures')}</Button>
-            <Button size="small" aria-label={showRefundsLabel} title={showRefundsLabel} onClick={applyRefundFilter}>{opsText('showRefunds')}</Button>
-            <Button size="small" aria-label={showCallbacksLabel} title={showCallbacksLabel} onClick={applyCallbackFilter}>{opsText('showCallbacks')}</Button>
-            <Button size="small" aria-label={opsText('clear')} title={opsText('clear')} onClick={clearOpsFilters}>{opsText('clear')}</Button>
-          </Space>
+          <ShopSpace wrap>
+            <ShopButton size="small" aria-label={showPaymentFailuresLabel} title={showPaymentFailuresLabel} onClick={applyPaymentFailureFilter}>{opsText('showPaymentFailures')}</ShopButton>
+            <ShopButton size="small" aria-label={showRefundsLabel} title={showRefundsLabel} onClick={applyRefundFilter}>{opsText('showRefunds')}</ShopButton>
+            <ShopButton size="small" aria-label={showCallbacksLabel} title={showCallbacksLabel} onClick={applyCallbackFilter}>{opsText('showCallbacks')}</ShopButton>
+            <ShopButton size="small" aria-label={opsText('clear')} title={opsText('clear')} onClick={clearOpsFilters}>{opsText('clear')}</ShopButton>
+          </ShopSpace>
         </div>
       </section>
       <section className="audit-log-page__opsPanel" aria-label={opsText('accountGuideTitle')}>
@@ -927,17 +937,17 @@ const SecurityAuditLogManagement: React.FC = () => {
             <Text strong>{opsText('accountGuideTitle')}</Text>
             <Text type="secondary">{opsText('accountGuideText')}</Text>
           </div>
-          <Space wrap>
-            <Button size="small" aria-label={showAccountFailuresLabel} title={showAccountFailuresLabel} onClick={applyAccountFailureFilter}>{opsText('showAccountFailures')}</Button>
-            <Button size="small" aria-label={showPasswordChangesLabel} title={showPasswordChangesLabel} onClick={applyPasswordChangeFilter}>{opsText('showPasswordChanges')}</Button>
-            <Button size="small" aria-label={showEmailCodesLabel} title={showEmailCodesLabel} onClick={applyEmailCodeFilter}>{opsText('showEmailCodes')}</Button>
-            <Button size="small" aria-label={showAccountEventsLabel} title={showAccountEventsLabel} onClick={applyAccountSecurityFilter}>{opsText('showAccountEvents')}</Button>
-            <Button size="small" aria-label={opsText('clear')} title={opsText('clear')} onClick={clearOpsFilters}>{opsText('clear')}</Button>
-          </Space>
+          <ShopSpace wrap>
+            <ShopButton size="small" aria-label={showAccountFailuresLabel} title={showAccountFailuresLabel} onClick={applyAccountFailureFilter}>{opsText('showAccountFailures')}</ShopButton>
+            <ShopButton size="small" aria-label={showPasswordChangesLabel} title={showPasswordChangesLabel} onClick={applyPasswordChangeFilter}>{opsText('showPasswordChanges')}</ShopButton>
+            <ShopButton size="small" aria-label={showEmailCodesLabel} title={showEmailCodesLabel} onClick={applyEmailCodeFilter}>{opsText('showEmailCodes')}</ShopButton>
+            <ShopButton size="small" aria-label={showAccountEventsLabel} title={showAccountEventsLabel} onClick={applyAccountSecurityFilter}>{opsText('showAccountEvents')}</ShopButton>
+            <ShopButton size="small" aria-label={opsText('clear')} title={opsText('clear')} onClick={clearOpsFilters}>{opsText('clear')}</ShopButton>
+          </ShopSpace>
         </div>
       </section>
-      <Card className="audit-log-page__toolbar">
-        <Space wrap>
+      <ShopCard className="audit-log-page__toolbar">
+        <ShopSpace wrap>
           <ShopSelect
             allowClear
             value={action}
@@ -989,17 +999,17 @@ const SecurityAuditLogManagement: React.FC = () => {
             startAriaLabel={`${auditRangeFilterLabel} - start`}
             endAriaLabel={`${auditRangeFilterLabel} - end`}
           />
-          <Button icon={<SearchOutlined />} type="primary" aria-label={auditToolbarSearchLabel} title={auditToolbarSearchLabel} onClick={fetchLogs}>
+          <ShopButton icon={<SearchOutlined />} type="primary" aria-label={auditToolbarSearchLabel} title={auditToolbarSearchLabel} onClick={fetchLogs}>
             {t('common.search')}
-          </Button>
+          </ShopButton>
           {canExportAuditLogs ? (
-            <Button icon={<DownloadOutlined />} loading={exporting} disabled={auditActionDisabled} aria-label={auditExportToolbarLabel} title={auditExportToolbarLabel} onClick={exportLogs}>
+            <ShopButton icon={<DownloadOutlined />} loading={exporting} disabled={auditActionDisabled} aria-label={auditExportToolbarLabel} title={auditExportToolbarLabel} onClick={exportLogs}>
               {t('pages.auditLogs.export')}
-            </Button>
+            </ShopButton>
           ) : null}
-        </Space>
-      </Card>
-      <Card>
+        </ShopSpace>
+      </ShopCard>
+      <ShopCard>
         <Table
           rowKey="id"
           loading={loading}
@@ -1022,16 +1032,16 @@ const SecurityAuditLogManagement: React.FC = () => {
               title: t('pages.auditLogs.action'),
               dataIndex: 'action',
               width: 190,
-              render: (value: string) => <Tag color={actionColors[value] || 'default'}>{actionLabel(value)}</Tag>,
+              render: (value: string) => <ShopTag color={actionColors[value] || 'default'}>{actionLabel(value)}</ShopTag>,
             },
             {
               title: t('pages.auditLogs.result'),
               dataIndex: 'result',
               width: 100,
               render: (value: string) => (
-                <Tag color={value === 'SUCCESS' ? 'green' : 'red'}>
+                <ShopTag color={value === 'SUCCESS' ? 'green' : 'red'}>
                   {value === 'SUCCESS' ? t('pages.auditLogs.success') : value === 'FAILURE' ? t('pages.auditLogs.failure') : value}
-                </Tag>
+                </ShopTag>
               ),
             },
             {
@@ -1052,15 +1062,15 @@ const SecurityAuditLogManagement: React.FC = () => {
               dataIndex: 'message',
               ellipsis: true,
               render: (value: string, log: SecurityAuditLog) => (
-                <Space direction="vertical" size={0}>
+                <ShopSpace direction="vertical" size={0}>
                   <span>{messageLabel(value)}</span>
                   {log.metadata ? <Text type="secondary">{log.metadata}</Text> : null}
-                </Space>
+                </ShopSpace>
               ),
             },
           ]}
         />
-      </Card>
+      </ShopCard>
         </>
       ) : null}
     </div>

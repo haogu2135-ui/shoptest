@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { ShopIcon, SI } from '../components/ShopIcon';
-import { Alert, Form, Button } from 'antd';
+import { Form } from 'antd';
 import ShopInput, { ShopPasswordInput } from '../components/ShopInput';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { cartApi, clearStoredAuthCredentials, persistAuthSession, userApi } from '../api';
@@ -19,8 +19,9 @@ import { dispatchDomEvent } from '../utils/domEvents';
 import { reportNonBlockingError } from '../utils/nonBlockingError';
 import type { CartItem } from '../types';
 import './Login.css';
+import ShopButton from '../components/ShopButton';
 
-
+import ShopAlert from '../components/ShopAlert';
 type TranslationFunction = (key: string, params?: Record<string, string | number>) => string;
 type PasswordLoginValues = {
   username?: unknown;
@@ -156,14 +157,12 @@ const shouldTryNextLoginCandidate = (error: unknown) => {
   return code.includes('INVALID') || code.includes('NOT_FOUND') || serverMessage.includes('invalid') || serverMessage.includes('not found');
 };
 
-
 const scrollFirstLoginErrorIntoView = () => {
   focusFirstFormError({
     rootSelector: '.shopee-login-card, .shopee-login-root',
     scrollOffset: 120,
   });
 };
-
 
 const Login: React.FC = () => {
   const [loading, setLoading] = useState(false);
@@ -478,12 +477,12 @@ const Login: React.FC = () => {
             </div>
           </div>
           <div className="shopee-login-panel__actions">
-            <Button type="primary" size="large" aria-label={loginRegisterActionLabel} title={loginRegisterActionLabel} onClick={() => navigate('/register')}>
+            <ShopButton type="primary" size="large" aria-label={loginRegisterActionLabel} title={loginRegisterActionLabel} onClick={() => navigate('/register')}>
               {t('pages.auth.register')}
-            </Button>
-            <Button ghost size="large" aria-label={loginTrackOrderActionLabel} title={loginTrackOrderActionLabel} onClick={() => navigate('/track-order')}>
+            </ShopButton>
+            <ShopButton ghost size="large" aria-label={loginTrackOrderActionLabel} title={loginTrackOrderActionLabel} onClick={() => navigate('/track-order')}>
               {t('nav.trackOrder')}
-            </Button>
+            </ShopButton>
           </div>
         </aside>
 
@@ -551,14 +550,13 @@ const Login: React.FC = () => {
             </div>
           </div>
 
-
           {authBannerError ? (
             <div
               className="shopee-login-errorRecovery"
               data-login-error-recovery="true"
               data-login-error-kind={authRecoveryKind || 'generic'}
             >
-              <Alert
+              <ShopAlert
                 className="shopee-login-errorBanner"
                 type="error"
                 showIcon
@@ -573,7 +571,7 @@ const Login: React.FC = () => {
               />
               {authRecoveryKind ? (
                 <div className="shopee-login-errorRecovery__actions" data-login-recovery-actions="true">
-                  <Button
+                  <ShopButton
                     type="primary"
                     block
                     size="large"
@@ -582,8 +580,8 @@ const Login: React.FC = () => {
                     title={t('pages.auth.forgotPassword')}
                   >
                     {t('pages.auth.forgotPassword')}
-                  </Button>
-                  <Button
+                  </ShopButton>
+                  <ShopButton
                     block
                     size="large"
                     onClick={() => navigate('/track-order')}
@@ -591,8 +589,8 @@ const Login: React.FC = () => {
                     title={t('nav.trackOrder')}
                   >
                     {t('nav.trackOrder')}
-                  </Button>
-                  <Button
+                  </ShopButton>
+                  <ShopButton
                     block
                     size="large"
                     onClick={() => dispatchDomEvent('shop:open-support')}
@@ -600,7 +598,7 @@ const Login: React.FC = () => {
                     title={t('nav.support')}
                   >
                     {t('nav.support')}
-                  </Button>
+                  </ShopButton>
                 </div>
               ) : null}
             </div>
@@ -691,9 +689,9 @@ const Login: React.FC = () => {
                       />
                     </Form.Item>
                     <Form.Item>
-                      <Button type="primary" htmlType="submit" block size="large" loading={loading} disabled={loading} aria-label={passwordLoginActionLabel} title={passwordLoginActionLabel}>
+                      <ShopButton type="primary" htmlType="submit" block size="large" loading={loading} disabled={loading} aria-label={passwordLoginActionLabel} title={passwordLoginActionLabel}>
                         {t('pages.auth.login')}
-                      </Button>
+                      </ShopButton>
                     </Form.Item>
                     <p className="shopee-login-legalNotice" role="note">
                       {t('pages.auth.loginAgreementPrefix')}{' '}
@@ -801,7 +799,7 @@ const Login: React.FC = () => {
                           }
                         }}
                         addonAfter={
-                          <Button
+                          <ShopButton
                             type="link"
                             size="small"
                             className="shopee-login-codeButton"
@@ -816,7 +814,7 @@ const Login: React.FC = () => {
                               : sendCodeCountdown > 0
                               ? t('pages.auth.resendIn', { seconds: sendCodeCountdown })
                               : t('pages.auth.sendCode')}
-                          </Button>
+                          </ShopButton>
                         }
                       />
                     </Form.Item>
@@ -836,11 +834,11 @@ const Login: React.FC = () => {
                       </span>
                     </div>
                     <Form.Item>
-                      <Button className="shopee-login-emailSubmit" type="primary" htmlType="submit" block size="large" loading={loading} disabled={loading || codeSending || !canSubmitEmailCode} aria-label={emailLoginActionLabel} title={emailLoginActionLabel}>
+                      <ShopButton className="shopee-login-emailSubmit" type="primary" htmlType="submit" block size="large" loading={loading} disabled={loading || codeSending || !canSubmitEmailCode} aria-label={emailLoginActionLabel} title={emailLoginActionLabel}>
                         {verifyRetryCountdown > 0
                           ? t('pages.auth.emailCodeRetryIn', { seconds: verifyRetryCountdown })
                           : t('pages.auth.emailLogin')}
-                      </Button>
+                      </ShopButton>
                     </Form.Item>
                     <p className="shopee-login-legalNotice" role="note">
                       {t('pages.auth.loginAgreementPrefix')}{' '}

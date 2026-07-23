@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Card, Divider, Form, Image, message, Progress, Space, Table, Tag, Tabs, Typography } from 'antd';
+import { Form, Table } from 'antd';
 import ShopInput, { ShopTextArea } from '../components/ShopInput';
 import ShopPopconfirm from '../components/ShopPopconfirm';
 import ShopModal from '../components/ShopModal';
@@ -21,8 +21,20 @@ import PageError from '../components/PageError';
 import { getApiErrorMessage } from '../utils/apiError';
 import { CATEGORIES_DELETE_PERMISSION, CATEGORIES_WRITE_PERMISSION, getEffectiveRole, hasAdminPermission } from '../utils/roles';
 import './CategoryManagement.css';
+import ShopButton from '../components/ShopButton';
+import ShopProgress from '../components/ShopProgress';
+import ShopTabs from '../components/ShopTabs';
+import message from '../components/ShopMessage';
 
-const { Title, Text } = Typography;
+import ShopTag from '../components/ShopTag';
+import ShopAlert from '../components/ShopAlert';
+import ShopSpace from '../components/ShopSpace';
+import ShopTypography from '../components/ShopTypography';
+import ShopCard from '../components/ShopCard';
+import ShopDivider from '../components/ShopDivider';
+import ShopImage from '../components/ShopImage';
+const Title = ShopTypography.Title;
+const Text = ShopTypography.Text;
 const categoryImageFallback = imageFallbacks.category;
 const resolveCategoryImage = (imageUrl?: string) => resolveApiAssetUrl(imageUrl, categoryImageFallback);
 const isFormValidationError = (error: unknown): error is { errorFields: unknown[] } => (
@@ -297,7 +309,7 @@ const CategoryManagement: React.FC = () => {
         const imageLabel = record ? `${t('common.image')}: ${getCategoryLabel(record)}` : t('common.image');
         return (
           url ? (
-            <Image
+            <ShopImage
               src={resolveCategoryImage(url)}
               alt={imageLabel}
               title={imageLabel}
@@ -318,12 +330,12 @@ const CategoryManagement: React.FC = () => {
       key: 'name',
       width: 220,
       render: (name: string, record: Category) => (
-        <Space direction="vertical" size={0}>
+        <ShopSpace direction="vertical" size={0}>
           <Text strong>{record.localizedContent?.[language]?.name || record.localizedContent?.en?.name || name}</Text>
           <Text type="secondary" style={{ fontSize: 12 }}>
             {getCategoryPath(flatCategories, record.id, language)}
           </Text>
-        </Space>
+        </ShopSpace>
       ),
     },
     {
@@ -331,7 +343,7 @@ const CategoryManagement: React.FC = () => {
       dataIndex: 'level',
       key: 'level',
       width: 100,
-      render: (level: number) => <Tag color={level === 1 ? 'orange' : level === 2 ? 'blue' : 'green'}>{t('pages.categoryAdmin.levelValue', { level: level || 1 })}</Tag>,
+      render: (level: number) => <ShopTag color={level === 1 ? 'orange' : level === 2 ? 'blue' : 'green'}>{t('pages.categoryAdmin.levelValue', { level: level || 1 })}</ShopTag>,
     },
     {
       title: t('pages.categoryAdmin.parent'),
@@ -358,9 +370,9 @@ const CategoryManagement: React.FC = () => {
         const readySignals = getCategoryReadiness(record);
         const readinessLabel = `${t('pages.categoryAdmin.readiness')}: ${getCategoryLabel(record)} ${t('pages.categoryAdmin.readySignals', { count: readySignals })}`;
         return (
-          <Tag color={readySignals >= 5 ? 'green' : readySignals >= 3 ? 'orange' : 'red'} aria-label={readinessLabel} title={readinessLabel}>
+          <ShopTag color={readySignals >= 5 ? 'green' : readySignals >= 3 ? 'orange' : 'red'} aria-label={readinessLabel} title={readinessLabel}>
             {t('pages.categoryAdmin.readySignals', { count: readySignals })}
-          </Tag>
+          </ShopTag>
         );
       },
     },
@@ -374,15 +386,15 @@ const CategoryManagement: React.FC = () => {
         const editActionLabel = `${t('common.edit')}: ${categoryName}`;
         const deleteActionLabel = `${t('common.delete')}: ${categoryName}`;
         return (
-          <Space size="small">
+          <ShopSpace size="small">
             {canWriteCategories && (record.level || 1) < 3 ? (
-              <Button icon={<PlusOutlined />} size="small" disabled={categoryActionDisabled} aria-label={childActionLabel} title={childActionLabel} onClick={() => openModal(null, record)}>
+              <ShopButton icon={<PlusOutlined />} size="small" disabled={categoryActionDisabled} aria-label={childActionLabel} title={childActionLabel} onClick={() => openModal(null, record)}>
                 {t('pages.categoryAdmin.child')}
-              </Button>
+              </ShopButton>
             ) : null}
-            {canWriteCategories ? <Button icon={<EditOutlined />} size="small" disabled={categoryActionDisabled} aria-label={editActionLabel} title={editActionLabel} onClick={() => openModal(record)}>
+            {canWriteCategories ? <ShopButton icon={<EditOutlined />} size="small" disabled={categoryActionDisabled} aria-label={editActionLabel} title={editActionLabel} onClick={() => openModal(record)}>
               {t('common.edit')}
-            </Button> : null}
+            </ShopButton> : null}
             {canDeleteCategories ? (
               <ShopPopconfirm rootClassName="shop-mobile-popup-layer"
                 title={t('pages.categoryAdmin.deleteConfirm')}
@@ -393,12 +405,12 @@ const CategoryManagement: React.FC = () => {
                 okButtonProps={{ disabled: categoryActionDisabled, 'aria-label': deleteActionLabel, title: deleteActionLabel }}
                 cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${categoryName}`, title: `${t('common.cancel')}: ${categoryName}` }}
               >
-                <Button icon={<DeleteOutlined />} danger size="small" disabled={categoryActionDisabled} aria-label={deleteActionLabel} title={deleteActionLabel}>
+                <ShopButton icon={<DeleteOutlined />} danger size="small" disabled={categoryActionDisabled} aria-label={deleteActionLabel} title={deleteActionLabel}>
                   {t('common.delete')}
-                </Button>
+                </ShopButton>
               </ShopPopconfirm>
             ) : null}
-          </Space>
+          </ShopSpace>
         );
       },
     },
@@ -413,24 +425,24 @@ const CategoryManagement: React.FC = () => {
       <Title level={3} className="category-management-page__title">
         {t('pages.categoryAdmin.title')}
       </Title>
-      <Divider />
+      <ShopDivider />
 
       {categoryLoadError && categorySnapshotLoaded ? (
-        <Alert
+        <ShopAlert
           className="category-management-page__alert"
           type="warning"
           showIcon
           message={categoryLoadError}
           description={t('pages.categoryAdmin.staleDataWarning')}
           action={(
-            <Space wrap data-admin-categories-stale-recovery="true">
-              <Button size="small" type="primary" loading={loading} onClick={fetchCategories}>
+            <ShopSpace wrap data-admin-categories-stale-recovery="true">
+              <ShopButton size="small" type="primary" loading={loading} onClick={fetchCategories}>
                 {t('common.retry')}
-              </Button>
-              <Button size="small" onClick={() => navigate('/admin')}>{t('pages.adminDashboard.title')}</Button>
-              <Button size="small" onClick={() => navigate('/admin/products')}>{t('pages.adminDashboard.products')}</Button>
-              <Button size="small" onClick={() => navigate('/admin/orders')}>{t('pages.adminDashboard.orders')}</Button>
-            </Space>
+              </ShopButton>
+              <ShopButton size="small" onClick={() => navigate('/admin')}>{t('pages.adminDashboard.title')}</ShopButton>
+              <ShopButton size="small" onClick={() => navigate('/admin/products')}>{t('pages.adminDashboard.products')}</ShopButton>
+              <ShopButton size="small" onClick={() => navigate('/admin/orders')}>{t('pages.adminDashboard.orders')}</ShopButton>
+            </ShopSpace>
           )}
         />
       ) : null}
@@ -451,7 +463,7 @@ const CategoryManagement: React.FC = () => {
       ) : null}
 
       {showInitialCategoryLoading ? (
-        <Card
+        <ShopCard
           className="category-management-page__loadingState"
           loading
           role="status"
@@ -463,8 +475,8 @@ const CategoryManagement: React.FC = () => {
 
       {canRenderCategorySnapshot ? (
         <>
-      <Card className="category-management-page__toolbar">
-        <Space wrap>
+      <ShopCard className="category-management-page__toolbar">
+        <ShopSpace wrap>
           <Text type="secondary">{t('pages.categoryAdmin.healthSubtitle')}</Text>
           <ShopInput
             allowClear
@@ -478,12 +490,12 @@ const CategoryManagement: React.FC = () => {
             title={categorySearchLabel}
           />
           {canWriteCategories ? (
-            <Button type="primary" icon={<PlusOutlined />} disabled={categoryActionDisabled} aria-label={addRootCategoryLabel} title={addRootCategoryLabel} onClick={() => openModal()}>
+            <ShopButton type="primary" icon={<PlusOutlined />} disabled={categoryActionDisabled} aria-label={addRootCategoryLabel} title={addRootCategoryLabel} onClick={() => openModal()}>
               {t('pages.categoryAdmin.addRoot')}
-            </Button>
+            </ShopButton>
           ) : null}
-        </Space>
-      </Card>
+        </ShopSpace>
+      </ShopCard>
 
       <section className="category-management-page__health" aria-label={t('pages.categoryAdmin.healthTitle')}>
         <div className="category-management-page__healthCopy">
@@ -492,7 +504,7 @@ const CategoryManagement: React.FC = () => {
           <Text type="secondary">{t('pages.categoryAdmin.healthDescription')}</Text>
         </div>
         <div className="category-management-page__score" role="group" aria-label={categoryHealthLabels.score} title={categoryHealthLabels.score}>
-          <Progress
+          <ShopProgress
             type="circle"
             percent={categoryHealth.score}
             width={86}
@@ -554,8 +566,8 @@ const CategoryManagement: React.FC = () => {
             <ShopInput placeholder={t('pages.categoryAdmin.namePlaceholder')} aria-label={`${categoryEditorLabel}: ${t('pages.categoryAdmin.name')}`} title={`${categoryEditorLabel}: ${t('pages.categoryAdmin.name')}`} />
           </Form.Item>
 
-          <Divider>{t('pages.categoryAdmin.languageSettings')}</Divider>
-          <Tabs
+          <ShopDivider>{t('pages.categoryAdmin.languageSettings')}</ShopDivider>
+          <ShopTabs
             items={[
               {
                 key: 'en',
@@ -620,7 +632,7 @@ const CategoryManagement: React.FC = () => {
 
           {imagePreviewUrl ? (
             <div className="category-management-page__preview">
-              <Image
+              <ShopImage
                 src={resolveCategoryImage(imagePreviewUrl)}
                 alt={`${t('common.image')}: ${editingCategory ? getCategoryLabel(editingCategory) : t('pages.categoryAdmin.addTitle')}`}
                 title={`${t('common.image')}: ${editingCategory ? getCategoryLabel(editingCategory) : t('pages.categoryAdmin.addTitle')}`}

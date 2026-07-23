@@ -41,7 +41,7 @@ describe('AdminLayout visibility-aware polling', () => {
       expect(loadingSource).toContain('aria-live="polite"');
       expect(loadingSource).toContain('aria-busy="true"');
       expect(loadingSource).toContain("aria-label={t('adminLayout.checking')}");
-      expect(loadingSource).toContain('<Spin size="large" tip={t(\'adminLayout.checking\')} />');
+      expect(loadingSource).toContain('<ShopSpin size="large" tip={t(\'adminLayout.checking\')} />');
     });
   });
 
@@ -161,4 +161,14 @@ describe('AdminLayout visibility-aware polling', () => {
     expect(unreadEffectSource).toContain('disposed = true;');
     expect(unreadEffectSource).toContain('window.clearInterval(timer);');
   });
+  it('uses ShopDrawer for mobile admin navigation without residual ant Drawer', () => {
+    const source = readAdminLayoutSource();
+    expect(source).toContain('ShopDrawer');
+    expect(source).toContain('placement="left"');
+    expect(source).toContain('rootClassName="admin-layout__mobileDrawer"');
+    expect(source).toContain('bodyClassName="admin-layout__mobileDrawerBody"');
+    expect(source).not.toMatch(/import \{[^}]*\bDrawer\b[^}]*\} from 'antd'/);
+    expect(source).not.toMatch(/<Drawer\b/);
+  });
+
 });

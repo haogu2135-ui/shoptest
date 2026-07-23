@@ -374,7 +374,7 @@ describe('Login accessibility labels', () => {
 
   it('keeps any future OAuth or social login buttons explicitly named', () => {
     const source = readLoginPageSource();
-    const buttonBlocks = source.match(/<(?:Button|button)\b[\s\S]*?<\/(?:Button|button)>/g) || [];
+    const buttonBlocks = source.match(/<(?:ShopButton|Button|button)\b[\s\S]*?<\/(?:ShopButton|Button|button)>/g) || [];
     const oauthButtonBlocks = buttonBlocks.filter((block) => /\b(?:OAuth|oauth|Google|google|GitHub|github|thirdParty|social)\b/.test(block));
 
     oauthButtonBlocks.forEach((block) => {
@@ -436,7 +436,7 @@ describe('Login accessibility labels', () => {
     expect(source).toContain('if (emailCodeSendingRef.current) return;');
     expect(source).toContain('emailCodeSendingRef.current = true;');
     expect(source).toContain('emailCodeSendingRef.current = false;');
-    expect(source).toMatch(/<Button type="primary" htmlType="submit"[\s\S]{0,180}loading={loading} disabled={loading}/);
+    expect(source).toMatch(/<ShopButton type="primary" htmlType="submit"[\s\S]{0,180}loading={loading} disabled={loading}/);
   });
 
   it('does not submit the password login form twice during the same pending request', async () => {

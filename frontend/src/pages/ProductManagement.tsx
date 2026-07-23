@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useState, useMemo } from 'react';
-import { Table, Button, Form, message, Space, Tag, Switch, Tooltip, Typography, Divider, Image, Upload, Tabs, Alert, Card } from 'antd';
+import { Table, Form } from 'antd';
 import ShopInput, { ShopTextArea } from '../components/ShopInput';
 import ShopPopconfirm from '../components/ShopPopconfirm';
 import ShopSelect from '../components/ShopSelect';
 import ShopMultiSelect from '../components/ShopMultiSelect';
 import ShopRangePicker from '../components/ShopRangePicker';
 import ShopTreeSelect from '../components/ShopTreeSelect';
+import ShopSwitch from '../components/ShopSwitch';
 import ShopInputNumber from '../components/ShopInputNumber';
 import ShopModal from '../components/ShopModal';
 import ShopConfirm from '../components/ShopConfirm';
@@ -50,8 +51,21 @@ import {
   hasAdminPermission,
 } from '../utils/roles';
 import './ProductManagement.css';
+import ShopButton from '../components/ShopButton';
+import ShopTooltip from '../components/ShopTooltip';
+import ShopUpload from '../components/ShopUpload';
+import ShopTabs from '../components/ShopTabs';
+import message from '../components/ShopMessage';
 
-const { Title, Text } = Typography;
+import ShopTag from '../components/ShopTag';
+import ShopAlert from '../components/ShopAlert';
+import ShopSpace from '../components/ShopSpace';
+import ShopTypography from '../components/ShopTypography';
+import ShopCard from '../components/ShopCard';
+import ShopDivider from '../components/ShopDivider';
+import ShopImage from '../components/ShopImage';
+const Title = ShopTypography.Title;
+const Text = ShopTypography.Text;
 const productAdminImageFallback = productImageFallback;
 const resolveProductAdminImage = resolveProductImage;
 const productAdminTableCell = (label: string): React.TdHTMLAttributes<HTMLElement> & Record<'data-label', string> => ({
@@ -135,7 +149,6 @@ type ProductMutationPayload = Omit<Partial<Product>, 'images' | 'specifications'
 type ProductVariantSource = Partial<ProductVariant> & {
   optionText?: unknown;
 };
-
 
 type FormValidationError = {
   errorFields?: unknown[];
@@ -481,8 +494,8 @@ const renderImportErrorTable = (
           width: 160,
           render: (_value: string, row: ImportErrorTableRow) => {
             if (!row.fieldLabel) return <Text type="secondary">-</Text>;
-            const tag = <Tag>{row.fieldLabel}</Tag>;
-            return row.fieldKey && row.fieldLabel !== row.fieldKey ? <Tooltip title={row.fieldKey}>{tag}</Tooltip> : tag;
+            const tag = <ShopTag>{row.fieldLabel}</ShopTag>;
+            return row.fieldKey && row.fieldLabel !== row.fieldKey ? <ShopTooltip title={row.fieldKey}>{tag}</ShopTooltip> : tag;
           },
         },
         {
@@ -598,7 +611,6 @@ const resolveImportTranslationParams = (result: ProductImportResult | Pick<Produ
 const toProductVariantFormRows = (value: unknown): ProductVariantFormRow[] => (
   Array.isArray(value) ? (value as ProductVariantFormRow[]) : []
 );
-
 
 const productCreateDefaults = () => ({
   images: [],
@@ -1616,19 +1628,19 @@ const ProductManagement: React.FC = () => {
     const filename = productImportFilename(result);
     const sizeBytes = productImportSizeBytes(result);
     return (
-      <Space wrap className="product-import-result__trace">
+      <ShopSpace wrap className="product-import-result__trace">
         {result.status ? (
-          <Tag color={productImportStatusColor(result.status)}>
+          <ShopTag color={productImportStatusColor(result.status)}>
             {t(`pages.productAdmin.importStatus.${result.status}`, { defaultValue: result.status })}
-          </Tag>
+          </ShopTag>
         ) : null}
         {typeof result.applied === 'boolean' ? (
-          <Tag color={result.applied ? 'green' : 'default'}>
+          <ShopTag color={result.applied ? 'green' : 'default'}>
             {result.applied ? t('pages.productAdmin.importApplied') : t('pages.productAdmin.importNotApplied')}
-          </Tag>
+          </ShopTag>
         ) : null}
         {result.importId ? (
-          <Tag
+          <ShopTag
             icon={<CopyOutlined />}
             role="button"
             tabIndex={0}
@@ -1638,19 +1650,19 @@ const ProductManagement: React.FC = () => {
             onKeyDown={(event) => handleImportTraceCopyKeyDown(event, result.importId)}
           >
             {t('pages.productAdmin.importId')}: {result.importId}
-          </Tag>
+          </ShopTag>
         ) : null}
         {filename ? (
-          <Tooltip title={filename}>
-            <Tag>{t('pages.productAdmin.importFilename')}: {filename}</Tag>
-          </Tooltip>
+          <ShopTooltip title={filename}>
+            <ShopTag>{t('pages.productAdmin.importFilename')}: {filename}</ShopTag>
+          </ShopTooltip>
         ) : null}
         {sizeBytes ? (
-          <Tag>{t('pages.productAdmin.importFileSize')}: {formatBytes(sizeBytes)}</Tag>
+          <ShopTag>{t('pages.productAdmin.importFileSize')}: {formatBytes(sizeBytes)}</ShopTag>
         ) : null}
         {result.fileSha256 ? (
-          <Tooltip title={result.fileSha256}>
-            <Tag
+          <ShopTooltip title={result.fileSha256}>
+            <ShopTag
               icon={<CopyOutlined />}
               role="button"
               tabIndex={0}
@@ -1660,15 +1672,15 @@ const ProductManagement: React.FC = () => {
               onKeyDown={(event) => handleImportTraceCopyKeyDown(event, result.fileSha256)}
             >
               {t('pages.productAdmin.importFileFingerprint')}: {result.fileSha256.slice(0, 12)}
-            </Tag>
-          </Tooltip>
+            </ShopTag>
+          </ShopTooltip>
         ) : null}
         {updateFields ? (
-          <Tooltip title={result.updateFields?.join(', ')}>
-            <Tag>{t('pages.productAdmin.importUpdateFields', { fields: updateFields })}</Tag>
-          </Tooltip>
+          <ShopTooltip title={result.updateFields?.join(', ')}>
+            <ShopTag>{t('pages.productAdmin.importUpdateFields', { fields: updateFields })}</ShopTag>
+          </ShopTooltip>
         ) : null}
-      </Space>
+      </ShopSpace>
     );
   };
 
@@ -1684,7 +1696,7 @@ const ProductManagement: React.FC = () => {
   const renderDuplicateImportWarning = (duplicateImport?: ProductImportHistoryEntry) => {
     if (!duplicateImport) return null;
     return (
-      <Alert
+      <ShopAlert
         type="warning"
         showIcon
         message={t('pages.productAdmin.importDuplicateWarningTitle')}
@@ -1702,22 +1714,22 @@ const ProductManagement: React.FC = () => {
     duplicateImport?: ProductImportHistoryEntry,
   ) => (
     <div className="product-import-result">
-      <Alert type="warning" showIcon message={notice} />
+      <ShopAlert type="warning" showIcon message={notice} />
       <p>{t('pages.productAdmin.importSummary', productImportTranslationParams(result))}</p>
       {(result.maxRows || result.maxFileSizeBytes) && (
-        <Space wrap className="product-import-result__limits">
-          {result.maxRows ? <Tag>{t('pages.productAdmin.importMaxRows', { count: result.maxRows })}</Tag> : null}
-          {result.maxFileSizeBytes ? <Tag>{t('pages.productAdmin.importMaxFileSize', { size: formatBytes(result.maxFileSizeBytes) })}</Tag> : null}
-        </Space>
+        <ShopSpace wrap className="product-import-result__limits">
+          {result.maxRows ? <ShopTag>{t('pages.productAdmin.importMaxRows', { count: result.maxRows })}</ShopTag> : null}
+          {result.maxFileSizeBytes ? <ShopTag>{t('pages.productAdmin.importMaxFileSize', { size: formatBytes(result.maxFileSizeBytes) })}</ShopTag> : null}
+        </ShopSpace>
       )}
       {renderImportTrace(result)}
       {renderDuplicateImportWarning(duplicateImport)}
       {renderImportErrorTable(result, importUpdateFieldLabels, importErrorCopy, importErrorReportCopy)}
       {result.truncatedErrors ? <Text type="secondary">{t('pages.productAdmin.importErrorsTruncated')}</Text> : null}
       {(result.errors?.length || result.rowErrors?.length) ? (
-        <Button icon={<DownloadOutlined />} onClick={() => downloadImportErrorReport(result, importUpdateFieldLabels, importErrorReportCopy)}>
+        <ShopButton icon={<DownloadOutlined />} onClick={() => downloadImportErrorReport(result, importUpdateFieldLabels, importErrorReportCopy)}>
           {t('pages.productAdmin.importDownloadErrors')}
-        </Button>
+        </ShopButton>
       ) : null}
     </div>
   );
@@ -1762,7 +1774,7 @@ const ProductManagement: React.FC = () => {
           title: t('pages.productAdmin.importSuccessTitle'),
           content: (
             <div className="product-import-result">
-              <Alert type="success" showIcon message={t('pages.productAdmin.importAppliedNotice')} />
+              <ShopAlert type="success" showIcon message={t('pages.productAdmin.importAppliedNotice')} />
               <p>{t('pages.productAdmin.importSuccess', productImportTranslationParams(result))}</p>
               {renderImportTrace(result)}
             </div>
@@ -1832,12 +1844,12 @@ const ProductManagement: React.FC = () => {
         title: t('pages.productAdmin.importPreviewTitle'),
         content: (
           <div className="product-import-result">
-            <Alert type="success" showIcon message={t('pages.productAdmin.importPreviewReadyNotice')} />
+            <ShopAlert type="success" showIcon message={t('pages.productAdmin.importPreviewReadyNotice')} />
             <p>{t('pages.productAdmin.importPreviewMessage', productImportTranslationParams(preview))}</p>
-            <Space wrap className="product-import-result__limits">
-              {preview.maxRows ? <Tag>{t('pages.productAdmin.importMaxRows', { count: preview.maxRows })}</Tag> : null}
-              {preview.maxFileSizeBytes ? <Tag>{t('pages.productAdmin.importMaxFileSize', { size: formatBytes(preview.maxFileSizeBytes) })}</Tag> : null}
-            </Space>
+            <ShopSpace wrap className="product-import-result__limits">
+              {preview.maxRows ? <ShopTag>{t('pages.productAdmin.importMaxRows', { count: preview.maxRows })}</ShopTag> : null}
+              {preview.maxFileSizeBytes ? <ShopTag>{t('pages.productAdmin.importMaxFileSize', { size: formatBytes(preview.maxFileSizeBytes) })}</ShopTag> : null}
+            </ShopSpace>
             {renderImportTrace(preview)}
             {renderDuplicateImportWarning(duplicateImport)}
           </div>
@@ -1875,12 +1887,12 @@ const ProductManagement: React.FC = () => {
     return (
       <div>
         <span className="commerce-money" style={{ color: '#ff5722', fontWeight: 600 }}>{formatMoney(displayPrice)}</span>
-        {record.activeLimitedTimeDiscount ? <Tag color="red" style={{ marginLeft: 4 }}>{t('pages.productAdmin.limitedTimeActive')}</Tag> : null}
+        {record.activeLimitedTimeDiscount ? <ShopTag color="red" style={{ marginLeft: 4 }}>{t('pages.productAdmin.limitedTimeActive')}</ShopTag> : null}
         {hasDiscount && (
           <>
             <br />
             <Text delete type="secondary" className="commerce-money" style={{ fontSize: 12 }}>{formatMoney(record.originalPrice!)}</Text>
-            <Tag color="volcano" style={{ marginLeft: 4, fontSize: 11 }}>-{discountPercent}%</Tag>
+            <ShopTag color="volcano" style={{ marginLeft: 4, fontSize: 11 }}>-{discountPercent}%</ShopTag>
           </>
         )}
       </div>
@@ -1900,7 +1912,7 @@ const ProductManagement: React.FC = () => {
       <section className="shopify-card product-live-preview">
         <div className="shopify-card__header">
           <h3>{t('pages.productAdmin.livePreview')}</h3>
-          {previewFeatured ? <Tag color="gold">{t('pages.productAdmin.bestSeller')}</Tag> : null}
+          {previewFeatured ? <ShopTag color="gold">{t('pages.productAdmin.bestSeller')}</ShopTag> : null}
         </div>
         <div className="product-live-preview__card">
           <div className="product-live-preview__image">
@@ -1909,7 +1921,7 @@ const ProductManagement: React.FC = () => {
             ) : (
               <span>{t('pages.productAdmin.mediaPreview')}</span>
             )}
-            {computedDiscount > 0 ? <Tag color="volcano" className="product-live-preview__badge">-{computedDiscount}%</Tag> : null}
+            {computedDiscount > 0 ? <ShopTag color="volcano" className="product-live-preview__badge">-{computedDiscount}%</ShopTag> : null}
           </div>
           <div className="product-live-preview__body">
             <div className="product-live-preview__title">
@@ -1921,12 +1933,12 @@ const ProductManagement: React.FC = () => {
               {hasOriginalPrice ? <Text delete type="secondary" className="commerce-money">{formatMoney(originalPrice)}</Text> : null}
             </div>
             <div className="product-live-preview__meta">
-              <Tag color={Number(previewStock || 0) > 0 ? 'green' : 'red'}>
+              <ShopTag color={Number(previewStock || 0) > 0 ? 'green' : 'red'}>
                 {Number(previewStock || 0) > 0 ? `${previewStock} ${t('pages.productAdmin.inStockLow')}` : t('pages.productAdmin.outOfStock')}
-              </Tag>
-              {previewFreeShipping ? <Tag color="green">{t('pages.productAdmin.freeShipping')}</Tag> : null}
+              </ShopTag>
+              {previewFreeShipping ? <ShopTag color="green">{t('pages.productAdmin.freeShipping')}</ShopTag> : null}
               {tagValues.map((tag) => (
-                <Tag key={tag} color={tagColorMap[tag] || 'default'}>{tagLabelMap[tag] || tag}</Tag>
+                <ShopTag key={tag} color={tagColorMap[tag] || 'default'}>{tagLabelMap[tag] || tag}</ShopTag>
               ))}
             </div>
             <Text type="secondary" className="product-live-preview__description">
@@ -1946,7 +1958,7 @@ const ProductManagement: React.FC = () => {
       width: 80,
       onCell: () => productAdminTableCell(t('common.image')),
       render: (url: string, record: Product) => (
-        <Image src={resolveProductAdminImage(url)} alt={record.name || t('pages.productAdmin.productTitlePreview')} width={50} height={50} style={{ objectFit: 'cover', borderRadius: 6 }} fallback={productAdminImageFallback} />
+        <ShopImage src={resolveProductAdminImage(url)} alt={record.name || t('pages.productAdmin.productTitlePreview')} width={50} height={50} style={{ objectFit: 'cover', borderRadius: 6 }} fallback={productAdminImageFallback} />
       ),
     },
     {
@@ -1983,7 +1995,7 @@ const ProductManagement: React.FC = () => {
       key: 'stock',
       width: 70,
       onCell: () => productAdminTableCell(t('pages.productAdmin.stock')),
-      render: (stock: number) => stock <= 0 ? <Tag color="red">{t('pages.productAdmin.outOfStock')}</Tag> : stock < 10 ? <Tag color="orange">{stock}</Tag> : stock,
+      render: (stock: number) => stock <= 0 ? <ShopTag color="red">{t('pages.productAdmin.outOfStock')}</ShopTag> : stock < 10 ? <ShopTag color="orange">{stock}</ShopTag> : stock,
     },
     {
       title: t('pages.productAdmin.shipping'),
@@ -1991,10 +2003,10 @@ const ProductManagement: React.FC = () => {
       width: 150,
       onCell: () => productAdminTableCell(t('pages.productAdmin.shipping')),
       render: (_: unknown, record: Product) => (
-        <Space direction="vertical" size={0}>
-          {record.freeShipping ? <Tag color="green">{t('pages.productAdmin.freeShipping')}</Tag> : <Tag>{t('pages.productAdmin.standardShipping')}</Tag>}
+        <ShopSpace direction="vertical" size={0}>
+          {record.freeShipping ? <ShopTag color="green">{t('pages.productAdmin.freeShipping')}</ShopTag> : <ShopTag>{t('pages.productAdmin.standardShipping')}</ShopTag>}
           {record.freeShippingThreshold ? <Text type="secondary" style={{ fontSize: 12 }}>{t('pages.productAdmin.freeOver', { amount: formatMoney(record.freeShippingThreshold) })}</Text> : null}
-        </Space>
+        </ShopSpace>
       ),
     },
     {
@@ -2003,7 +2015,7 @@ const ProductManagement: React.FC = () => {
       key: 'tag',
       width: 80,
       onCell: () => productAdminTableCell(t('pages.productAdmin.tag')),
-      render: (tag: string) => tag ? <Tag color={tagColorMap[tag]}>{tagLabelMap[tag] || tag}</Tag> : '-',
+      render: (tag: string) => tag ? <ShopTag color={tagColorMap[tag]}>{tagLabelMap[tag] || tag}</ShopTag> : '-',
     },
     {
       title: t('pages.productAdmin.reviewStatus'),
@@ -2013,7 +2025,7 @@ const ProductManagement: React.FC = () => {
       onCell: () => productAdminTableCell(t('pages.productAdmin.reviewStatus')),
       render: (status: string) => {
         const value = status || 'ACTIVE';
-        return <Tag color={productStatusColors[value]}>{productStatusLabels[value] ? t(productStatusLabels[value]) : value}</Tag>;
+        return <ShopTag color={productStatusColors[value]}>{productStatusLabels[value] ? t(productStatusLabels[value]) : value}</ShopTag>;
       },
     },
     {
@@ -2022,7 +2034,7 @@ const ProductManagement: React.FC = () => {
       key: 'isFeatured',
       width: 80,
       onCell: () => productAdminTableCell(t('pages.productAdmin.featuredColumn')),
-      render: (v: boolean) => v ? <Tag color="gold" icon={<StarFilled />}>{t('pages.productAdmin.featuredYes')}</Tag> : <Tag icon={<StarOutlined />}>{t('pages.productAdmin.featuredNo')}</Tag>,
+      render: (v: boolean) => v ? <ShopTag color="gold" icon={<StarFilled />}>{t('pages.productAdmin.featuredYes')}</ShopTag> : <ShopTag icon={<StarOutlined />}>{t('pages.productAdmin.featuredNo')}</ShopTag>,
     },
     {
       title: t('pages.productAdmin.listingQualityColumn'),
@@ -2032,15 +2044,15 @@ const ProductManagement: React.FC = () => {
       render: (_: unknown, record: Product) => {
         const issues = getListingQualityIssues(record);
         if (issues.length === 0) {
-          return <Tag color="green">{t('pages.productAdmin.listingReady')}</Tag>;
+          return <ShopTag color="green">{t('pages.productAdmin.listingReady')}</ShopTag>;
         }
         return (
-          <Space size={[0, 4]} wrap>
+          <ShopSpace size={[0, 4]} wrap>
             {issues.slice(0, 2).map((issue) => (
-              <Tag key={issue} color="orange">{formatListingIssue(issue)}</Tag>
+              <ShopTag key={issue} color="orange">{formatListingIssue(issue)}</ShopTag>
             ))}
-            {issues.length > 2 ? <Tag>{t('pages.productAdmin.moreIssues', { count: issues.length - 2 })}</Tag> : null}
-          </Space>
+            {issues.length > 2 ? <ShopTag>{t('pages.productAdmin.moreIssues', { count: issues.length - 2 })}</ShopTag> : null}
+          </ShopSpace>
         );
       },
     },
@@ -2060,8 +2072,8 @@ const ProductManagement: React.FC = () => {
         const reviewActionLabel = `${t('pages.productAdmin.review')}: ${productName}`;
         const deleteActionLabel = `${t('common.delete')}: ${productName}`;
         return (
-          <Space size="small" wrap className="product-action-space">
-	            <Tooltip title={featureActionLabel}>
+          <ShopSpace size="small" wrap className="product-action-space">
+	            <ShopTooltip title={featureActionLabel}>
 	              {canWriteProducts ? (
 		                <ShopPopconfirm rootClassName="shop-mobile-popup-layer"
 		                  title={featureActionLabel}
@@ -2073,7 +2085,7 @@ const ProductManagement: React.FC = () => {
 	                  okButtonProps={{ danger: Boolean(record.isFeatured), disabled: productActionDisabled, 'aria-label': featureActionLabel, title: featureActionLabel }}
 	                  cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${featureActionLabel}`, title: `${t('common.cancel')}: ${featureActionLabel}` }}
 	                >
-	                  <Button
+	                  <ShopButton
 	                    className={record.isFeatured ? 'product-feature-button product-feature-button--active' : 'product-feature-button'}
 	                    icon={record.isFeatured ? <StarFilled /> : <StarOutlined />}
 	                    aria-pressed={Boolean(record.isFeatured)}
@@ -2084,11 +2096,11 @@ const ProductManagement: React.FC = () => {
 	                  />
 	                </ShopPopconfirm>
 	              ) : <span />}
-	            </Tooltip>
-            {canWriteProducts ? <Button type="primary" icon={<EditOutlined />} aria-label={editActionLabel} title={editActionLabel} disabled={productActionDisabled} onClick={() => handleEdit(record)} size="small">{t('common.edit')}</Button> : null}
+	            </ShopTooltip>
+            {canWriteProducts ? <ShopButton type="primary" icon={<EditOutlined />} aria-label={editActionLabel} title={editActionLabel} disabled={productActionDisabled} onClick={() => handleEdit(record)} size="small">{t('common.edit')}</ShopButton> : null}
             {canWriteProducts ? (
-              <Tooltip title={duplicateActionLabel}>
-                <Button
+              <ShopTooltip title={duplicateActionLabel}>
+                <ShopButton
                   icon={<CopyOutlined />}
                   aria-label={duplicateActionLabel}
                   title={duplicateActionLabel}
@@ -2096,7 +2108,7 @@ const ProductManagement: React.FC = () => {
                   onClick={() => handleDuplicate(record)}
                   size="small"
                 />
-              </Tooltip>
+              </ShopTooltip>
             ) : null}
             {canChangeProductStatus && (record.status || 'ACTIVE') !== 'ACTIVE' && (
 	              <ShopPopconfirm rootClassName="shop-mobile-popup-layer"
@@ -2108,7 +2120,7 @@ const ProductManagement: React.FC = () => {
                 okButtonProps={{ disabled: productActionDisabled, 'aria-label': approveActionLabel, title: approveActionLabel }}
                 cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${approveActionLabel}`, title: `${t('common.cancel')}: ${approveActionLabel}` }}
               >
-                <Button size="small" disabled={productActionDisabled} aria-label={approveActionLabel} title={approveActionLabel}>{t('pages.productAdmin.approve')}</Button>
+                <ShopButton size="small" disabled={productActionDisabled} aria-label={approveActionLabel} title={approveActionLabel}>{t('pages.productAdmin.approve')}</ShopButton>
               </ShopPopconfirm>
             )}
             {canChangeProductStatus && (record.status || 'ACTIVE') !== 'REJECTED' && (
@@ -2121,7 +2133,7 @@ const ProductManagement: React.FC = () => {
                 okButtonProps={{ danger: true, disabled: productActionDisabled, 'aria-label': rejectActionLabel, title: rejectActionLabel }}
                 cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${rejectActionLabel}`, title: `${t('common.cancel')}: ${rejectActionLabel}` }}
               >
-                <Button size="small" danger disabled={productActionDisabled} aria-label={rejectActionLabel} title={rejectActionLabel}>{t('pages.productAdmin.reject')}</Button>
+                <ShopButton size="small" danger disabled={productActionDisabled} aria-label={rejectActionLabel} title={rejectActionLabel}>{t('pages.productAdmin.reject')}</ShopButton>
               </ShopPopconfirm>
             )}
             {canChangeProductStatus && (record.status || 'ACTIVE') !== 'PENDING_REVIEW' && (
@@ -2134,7 +2146,7 @@ const ProductManagement: React.FC = () => {
                 okButtonProps={{ disabled: productActionDisabled, 'aria-label': reviewActionLabel, title: reviewActionLabel }}
                 cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${reviewActionLabel}`, title: `${t('common.cancel')}: ${reviewActionLabel}` }}
               >
-                <Button size="small" disabled={productActionDisabled} aria-label={reviewActionLabel} title={reviewActionLabel}>{t('pages.productAdmin.review')}</Button>
+                <ShopButton size="small" disabled={productActionDisabled} aria-label={reviewActionLabel} title={reviewActionLabel}>{t('pages.productAdmin.review')}</ShopButton>
               </ShopPopconfirm>
             )}
             {canDeleteProducts ? (
@@ -2147,10 +2159,10 @@ const ProductManagement: React.FC = () => {
                 okButtonProps={{ danger: true, disabled: productActionDisabled, 'aria-label': deleteActionLabel, title: deleteActionLabel }}
                 cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${deleteActionLabel}`, title: `${t('common.cancel')}: ${deleteActionLabel}` }}
               >
-                <Button danger icon={<DeleteOutlined />} size="small" disabled={productActionDisabled} aria-label={deleteActionLabel} title={deleteActionLabel}>{t('common.delete')}</Button>
+                <ShopButton danger icon={<DeleteOutlined />} size="small" disabled={productActionDisabled} aria-label={deleteActionLabel} title={deleteActionLabel}>{t('common.delete')}</ShopButton>
               </ShopPopconfirm>
             ) : null}
-          </Space>
+          </ShopSpace>
         );
       },
     },
@@ -2201,32 +2213,32 @@ const ProductManagement: React.FC = () => {
     <div className="product-management-page">
       <Title level={3} style={{ marginBottom: 0 }}>{t('pages.productAdmin.title')}</Title>
       {(categoryOptionsTruncated || brandOptionsTruncated) ? (
-        <Alert type="warning" showIcon message={t('pages.productAdmin.optionListTruncated')} />
+        <ShopAlert type="warning" showIcon message={t('pages.productAdmin.optionListTruncated')} />
       ) : null}
-      <Divider />
+      <ShopDivider />
 
       {productLoadError && productSnapshotLoaded ? (
-        <Alert
+        <ShopAlert
           className="product-management-page__alert"
           type="warning"
           showIcon
           message={productLoadError}
           description={t('pages.productAdmin.staleDataWarning')}
           action={(
-            <Space wrap data-admin-products-stale-recovery="true">
-              <Button size="small" type="primary" loading={loading} onClick={fetchProducts}>
+            <ShopSpace wrap data-admin-products-stale-recovery="true">
+              <ShopButton size="small" type="primary" loading={loading} onClick={fetchProducts}>
                 {t('common.retry')}
-              </Button>
-              <Button size="small" onClick={() => navigate('/admin')}>
+              </ShopButton>
+              <ShopButton size="small" onClick={() => navigate('/admin')}>
                 {t('pages.adminDashboard.title')}
-              </Button>
-              <Button size="small" onClick={() => navigate('/admin/orders')}>
+              </ShopButton>
+              <ShopButton size="small" onClick={() => navigate('/admin/orders')}>
                 {t('pages.adminDashboard.orders')}
-              </Button>
-              <Button size="small" onClick={() => navigate('/admin/system')}>
+              </ShopButton>
+              <ShopButton size="small" onClick={() => navigate('/admin/system')}>
                 {t('pages.adminDashboard.paymentReturnOps.providerReadinessAction')}
-              </Button>
-            </Space>
+              </ShopButton>
+            </ShopSpace>
           )}
         />
       ) : null}
@@ -2267,7 +2279,7 @@ const ProductManagement: React.FC = () => {
       ) : null}
 
       {showInitialProductLoading ? (
-        <Card
+        <ShopCard
           className="product-management-page__loadingState"
           loading
           role="status"
@@ -2280,7 +2292,7 @@ const ProductManagement: React.FC = () => {
       {canRenderProductSnapshot ? (
         <>
       <div className="product-management-page__toolbar">
-        <Space className="product-management-page__filters">
+        <ShopSpace className="product-management-page__filters">
           <ShopInput
             placeholder={t('pages.productAdmin.searchPlaceholder')}
             prefix={<SearchOutlined />}
@@ -2327,8 +2339,8 @@ const ProductManagement: React.FC = () => {
               { value: 'INACTIVE', label: t('status.INACTIVE') },
             ]}
           />
-        </Space>
-        <Space wrap className="product-management-page__actions">
+        </ShopSpace>
+        <ShopSpace wrap className="product-management-page__actions">
           {canChangeProductStatus ? (
 	            <ShopPopconfirm rootClassName="shop-mobile-popup-layer"
 	              title={t('pages.productAdmin.batchApproveConfirm', { count: selectedVisibleProductIds.length })}
@@ -2339,9 +2351,9 @@ const ProductManagement: React.FC = () => {
               okButtonProps={{ disabled: productActionDisabled, 'aria-label': batchApproveActionLabel, title: batchApproveActionLabel }}
               cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${batchApproveActionLabel}`, title: `${t('common.cancel')}: ${batchApproveActionLabel}` }}
             >
-              <Button disabled={productActionDisabled || selectedVisibleProductIds.length === 0 || !!batchStatusUpdating} loading={batchStatusUpdating === 'ACTIVE'} aria-label={batchApproveActionLabel} title={batchApproveActionLabel}>
+              <ShopButton disabled={productActionDisabled || selectedVisibleProductIds.length === 0 || !!batchStatusUpdating} loading={batchStatusUpdating === 'ACTIVE'} aria-label={batchApproveActionLabel} title={batchApproveActionLabel}>
                 {t('pages.productAdmin.batchApprove')}
-              </Button>
+              </ShopButton>
             </ShopPopconfirm>
           ) : null}
           {canChangeProductStatus ? (
@@ -2354,16 +2366,16 @@ const ProductManagement: React.FC = () => {
               okButtonProps={{ danger: true, disabled: productActionDisabled, 'aria-label': batchRejectActionLabel, title: batchRejectActionLabel }}
               cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${batchRejectActionLabel}`, title: `${t('common.cancel')}: ${batchRejectActionLabel}` }}
             >
-              <Button disabled={productActionDisabled || selectedVisibleProductIds.length === 0 || !!batchStatusUpdating} loading={batchStatusUpdating === 'REJECTED'} danger aria-label={batchRejectActionLabel} title={batchRejectActionLabel}>
+              <ShopButton disabled={productActionDisabled || selectedVisibleProductIds.length === 0 || !!batchStatusUpdating} loading={batchStatusUpdating === 'REJECTED'} danger aria-label={batchRejectActionLabel} title={batchRejectActionLabel}>
                 {t('pages.productAdmin.batchReject')}
-              </Button>
+              </ShopButton>
             </ShopPopconfirm>
           ) : null}
-          <Button icon={<DownloadOutlined />} onClick={downloadImportTemplate} aria-label={downloadTemplateActionLabel} title={downloadTemplateActionLabel}>
+          <ShopButton icon={<DownloadOutlined />} onClick={downloadImportTemplate} aria-label={downloadTemplateActionLabel} title={downloadTemplateActionLabel}>
             {t('pages.productAdmin.downloadTemplate')}
-          </Button>
-          <Tooltip title={t('pages.productAdmin.importUpdateTemplateHint')} overlayClassName="product-management-page__importTooltip">
-            <Button
+          </ShopButton>
+          <ShopTooltip title={t('pages.productAdmin.importUpdateTemplateHint')} overlayClassName="product-management-page__importTooltip">
+            <ShopButton
               icon={<DownloadOutlined />}
               onClick={downloadPriceStockUpdateTemplate}
               disabled={productActionDisabled || (selectedVisibleProductIds.length === 0 && filteredProducts.length === 0)}
@@ -2371,29 +2383,29 @@ const ProductManagement: React.FC = () => {
               title={downloadUpdateTemplateActionLabel}
             >
               {t('pages.productAdmin.downloadUpdateTemplate')}
-            </Button>
-          </Tooltip>
-          <Button icon={<DownloadOutlined />} onClick={exportFilteredProducts} disabled={productActionDisabled || filteredProducts.length === 0} aria-label={exportProductsActionLabel} title={exportProductsActionLabel}>
+            </ShopButton>
+          </ShopTooltip>
+          <ShopButton icon={<DownloadOutlined />} onClick={exportFilteredProducts} disabled={productActionDisabled || filteredProducts.length === 0} aria-label={exportProductsActionLabel} title={exportProductsActionLabel}>
             {t('pages.productAdmin.exportProducts')}
-          </Button>
+          </ShopButton>
           {canImportProducts ? (
-            <Upload className="product-management-page__uploadAction" accept=".csv,text/csv" showUploadList={false} beforeUpload={handleImportProducts} disabled={productActionDisabled || importSubmitting}>
-              <Tooltip title={t('pages.productAdmin.importCsvHint')} overlayClassName="product-management-page__importTooltip">
-                <Button icon={<UploadOutlined />} loading={importSubmitting} disabled={productActionDisabled || importSubmitting} aria-label={importProductsActionLabel} title={importProductsActionLabel}>{t('pages.productAdmin.importProducts')}</Button>
-              </Tooltip>
-            </Upload>
+            <ShopUpload className="product-management-page__uploadAction" accept=".csv,text/csv" showUploadList={false} beforeUpload={handleImportProducts} disabled={productActionDisabled || importSubmitting}>
+              <ShopTooltip title={t('pages.productAdmin.importCsvHint')} overlayClassName="product-management-page__importTooltip">
+                <ShopButton icon={<UploadOutlined />} loading={importSubmitting} disabled={productActionDisabled || importSubmitting} aria-label={importProductsActionLabel} title={importProductsActionLabel}>{t('pages.productAdmin.importProducts')}</ShopButton>
+              </ShopTooltip>
+            </ShopUpload>
           ) : null}
           {canImportProducts ? (
-            <Button icon={<LinkOutlined />} disabled={productActionDisabled || urlImportSubmitting} aria-label={urlImportActionLabel} title={urlImportActionLabel} onClick={() => { urlImportForm.resetFields(); setUrlImportPreview(null); setUrlImportVisible(true); }}>
+            <ShopButton icon={<LinkOutlined />} disabled={productActionDisabled || urlImportSubmitting} aria-label={urlImportActionLabel} title={urlImportActionLabel} onClick={() => { urlImportForm.resetFields(); setUrlImportPreview(null); setUrlImportVisible(true); }}>
               {t('pages.productAdmin.importFromUrl')}
-            </Button>
+            </ShopButton>
           ) : null}
           {canWriteProducts ? (
-            <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd} disabled={productActionDisabled} aria-label={addProductActionLabel} title={addProductActionLabel}>
+            <ShopButton type="primary" icon={<PlusOutlined />} onClick={handleAdd} disabled={productActionDisabled} aria-label={addProductActionLabel} title={addProductActionLabel}>
               {t('pages.productAdmin.addProduct')}
-            </Button>
+            </ShopButton>
           ) : null}
-        </Space>
+        </ShopSpace>
       </div>
         </>
       ) : null}
@@ -2404,9 +2416,9 @@ const ProductManagement: React.FC = () => {
             <Text type="secondary">{t('pages.productAdmin.importHistoryEyebrow')}</Text>
             <h3>{t('pages.productAdmin.importHistoryTitle')}</h3>
           </div>
-          <Button size="small" icon={<SyncOutlined />} loading={importHistoryLoading} onClick={fetchImportHistory} aria-label={refreshImportHistoryLabel} title={refreshImportHistoryLabel}>
+          <ShopButton size="small" icon={<SyncOutlined />} loading={importHistoryLoading} onClick={fetchImportHistory} aria-label={refreshImportHistoryLabel} title={refreshImportHistoryLabel}>
             {t('common.refresh')}
-          </Button>
+          </ShopButton>
         </div>
         {importHistory.length > 0 ? (
           <div className="product-import-history__list">
@@ -2420,9 +2432,9 @@ const ProductManagement: React.FC = () => {
               return (
                 <div className="product-import-history__item" key={historyLog.auditLogId}>
                   <div className="product-import-history__main">
-                    <Tag color={productImportStatusColor(status)}>
+                    <ShopTag color={productImportStatusColor(status)}>
                       {t(`pages.productAdmin.importStatus.${status}`, { defaultValue: status })}
-                    </Tag>
+                    </ShopTag>
                     <strong>{t(`pages.productAdmin.importHistoryAction.${historyLog.action}`, { defaultValue: historyLog.action })}</strong>
                     <Text type="secondary">{dayjs(historyLog.createdAt).format('YYYY-MM-DD HH:mm')}</Text>
                     {historyLog.filename ? <Text type="secondary">{historyLog.filename}</Text> : null}
@@ -2563,9 +2575,9 @@ const ProductManagement: React.FC = () => {
           <span>{t('pages.productAdmin.activeListings', { count: listingQualityStats.active })}</span>
           <span>{t('pages.productAdmin.featuredListings', { count: listingQualityStats.featured })}</span>
           {listingQualityFilter ? (
-            <Button size="small" disabled={productActionDisabled} onClick={() => applyListingQualityFilter(undefined)}>
+            <ShopButton size="small" disabled={productActionDisabled} onClick={() => applyListingQualityFilter(undefined)}>
               {t('pages.productAdmin.clearQualityFilter')}
-            </Button>
+            </ShopButton>
           ) : null}
         </div>
       </section>
@@ -2659,8 +2671,8 @@ const ProductManagement: React.FC = () => {
                   />
                 </Form.Item>
 
-                <Divider>{t('pages.productAdmin.languageSettings')}</Divider>
-                <Tabs
+                <ShopDivider>{t('pages.productAdmin.languageSettings')}</ShopDivider>
+                <ShopTabs
                   className="shopify-localized-tabs"
                   tabBarGutter={8}
                   items={[
@@ -2722,7 +2734,7 @@ const ProductManagement: React.FC = () => {
                 <div className="shopify-media-grid">
                   <div className="shopify-media-tile">
                     {imagePreviewUrl ? (
-                      <Image src={resolveProductAdminImage(imagePreviewUrl)} alt={previewName || t('pages.productAdmin.mediaPreview')} width="100%" height="100%" style={{ objectFit: 'cover' }} fallback={productAdminImageFallback} />
+                      <ShopImage src={resolveProductAdminImage(imagePreviewUrl)} alt={previewName || t('pages.productAdmin.mediaPreview')} width="100%" height="100%" style={{ objectFit: 'cover' }} fallback={productAdminImageFallback} />
                     ) : (
                       <span>{t('pages.productAdmin.mediaPreview')}</span>
                     )}
@@ -2739,7 +2751,7 @@ const ProductManagement: React.FC = () => {
                                 title={productEditorFieldLabel(t('pages.productAdmin.media'), t('pages.productAdmin.imageUrl', { index: index + 1 }), index)}
                               />
                             </Form.Item>
-                            <Button
+                            <ShopButton
                               type="text"
                               danger
                               icon={<MinusCircleOutlined />}
@@ -2792,7 +2804,7 @@ const ProductManagement: React.FC = () => {
                 <div className="shopify-card__header">
 	                  <h3>{t('bundle.bundleDeal')}</h3>
 	                  <Form.Item name="bundleEnabled" valuePropName="checked" style={{ marginBottom: 0 }}>
-	                    <Switch checkedChildren={t('pages.productAdmin.on')} unCheckedChildren={t('pages.productAdmin.off')} aria-label={bundleEnabledSwitchLabel} title={bundleEnabledSwitchLabel} />
+	                    <ShopSwitch checkedChildren={t('pages.productAdmin.on')} unCheckedChildren={t('pages.productAdmin.off')} aria-label={bundleEnabledSwitchLabel} title={bundleEnabledSwitchLabel} />
 	                  </Form.Item>
 	                </div>
 	                <div className="shopify-two-col">
@@ -2814,7 +2826,7 @@ const ProductManagement: React.FC = () => {
 		                          <Form.Item {...restField} name={[name, 'quantity']} style={{ marginBottom: 0 }}>
 		                            <ShopInputNumber min={1} placeholder={t('common.quantity')} aria-label={productEditorFieldLabel(t('bundle.bundleDeal'), t('common.quantity'), index)} title={productEditorFieldLabel(t('bundle.bundleDeal'), t('common.quantity'), index)} />
 		                          </Form.Item>
-                          <Button
+                          <ShopButton
                             type="text"
                             danger
                             icon={<MinusCircleOutlined />}
@@ -2835,7 +2847,7 @@ const ProductManagement: React.FC = () => {
 	              <section className="shopify-card">
 	                <div className="shopify-card__header">
 	                  <h3>{t('pages.productAdmin.inventory')}</h3>
-		                  <Space><Text type="secondary">{t('pages.productAdmin.inventoryTracked')}</Text><Switch checked disabled aria-label={inventoryTrackedSwitchLabel} title={inventoryTrackedSwitchLabel} /></Space>
+		                  <ShopSpace><Text type="secondary">{t('pages.productAdmin.inventoryTracked')}</Text><ShopSwitch checked disabled aria-label={inventoryTrackedSwitchLabel} title={inventoryTrackedSwitchLabel} /></ShopSpace>
 	                </div>
 	                <div className="shopify-inventory-box">
 	                  <span>{t('pages.productAdmin.shopLocation')}</span>
@@ -2854,7 +2866,7 @@ const ProductManagement: React.FC = () => {
                 <div className="shopify-card__header">
 	                  <h3>{t('pages.productAdmin.shipping')}</h3>
 	                  <Form.Item name="freeShipping" valuePropName="checked" style={{ marginBottom: 0 }}>
-	                    <Switch checkedChildren={t('pages.productAdmin.free')} unCheckedChildren={t('pages.productAdmin.standardShipping')} aria-label={freeShippingSwitchLabel} title={freeShippingSwitchLabel} />
+	                    <ShopSwitch checkedChildren={t('pages.productAdmin.free')} unCheckedChildren={t('pages.productAdmin.standardShipping')} aria-label={freeShippingSwitchLabel} title={freeShippingSwitchLabel} />
 	                  </Form.Item>
                 </div>
                 <div className="shopify-two-col">
@@ -2882,9 +2894,9 @@ const ProductManagement: React.FC = () => {
                   <span>{t('pages.productAdmin.price')}: <b className="commerce-money">{variantSummary.minPrice && variantSummary.maxPrice ? `${formatMoney(variantSummary.minPrice)} - ${formatMoney(variantSummary.maxPrice)}` : formatMoney(0)}</b></span>
                 </div>
                 <div className="shopify-variant-actions">
-                  <Button icon={<SyncOutlined />} onClick={syncStockFromVariants} disabled={variantSummary.count === 0}>
+                  <ShopButton icon={<SyncOutlined />} onClick={syncStockFromVariants} disabled={variantSummary.count === 0}>
                     {t('pages.productAdmin.syncStockFromVariants')}
-                  </Button>
+                  </ShopButton>
                   <Text type="secondary">{t('pages.productAdmin.variantStockAutoSync')}</Text>
                 </div>
                 <Form.List name="optionGroups">
@@ -2898,7 +2910,7 @@ const ProductManagement: React.FC = () => {
 	                          <Form.Item {...restField} name={[name, 'values']} style={{ marginBottom: 0 }}>
 	                            <ShopInput placeholder={t('pages.productAdmin.optionValues')} aria-label={productEditorFieldLabel(t('pages.productAdmin.variants'), t('pages.productAdmin.optionValues'), index)} title={productEditorFieldLabel(t('pages.productAdmin.variants'), t('pages.productAdmin.optionValues'), index)} />
 	                          </Form.Item>
-	                          <Button
+	                          <ShopButton
 	                            type="text"
 	                            danger
 	                            icon={<MinusCircleOutlined />}
@@ -2914,10 +2926,10 @@ const ProductManagement: React.FC = () => {
                     </div>
                   )}
                 </Form.List>
-                <Divider>{t('pages.productAdmin.variantCombinations')}</Divider>
-                <Button type="dashed" onClick={generateVariantRows} style={{ marginBottom: 12 }}>
+                <ShopDivider>{t('pages.productAdmin.variantCombinations')}</ShopDivider>
+                <ShopButton type="dashed" onClick={generateVariantRows} style={{ marginBottom: 12 }}>
                   {t('pages.productAdmin.generateVariants')}
-                </Button>
+                </ShopButton>
                 <Form.List name="variants">
                   {(fields, { add, remove }) => (
                     <div className="shopify-variant-list">
@@ -2938,7 +2950,7 @@ const ProductManagement: React.FC = () => {
 	                          <Form.Item {...restField} name={[name, 'imageUrl']} style={{ marginBottom: 0 }}>
 	                            <ShopInput placeholder={t('pages.productAdmin.variantImage')} aria-label={productEditorFieldLabel(t('pages.productAdmin.variantCombinations'), t('pages.productAdmin.variantImage'), index)} title={productEditorFieldLabel(t('pages.productAdmin.variantCombinations'), t('pages.productAdmin.variantImage'), index)} />
 	                          </Form.Item>
-	                          <Button
+	                          <ShopButton
 	                            type="text"
 	                            danger
 	                            icon={<MinusCircleOutlined />}
@@ -2973,7 +2985,7 @@ const ProductManagement: React.FC = () => {
 	                            <Form.Item {...restField} name={[name, 'value']} style={{ marginBottom: 0 }}>
 	                              <ShopInput placeholder={t('pages.productAdmin.specValue')} aria-label={productEditorFieldLabel(t('pages.productAdmin.specs'), t('pages.productAdmin.specValue'), index)} title={productEditorFieldLabel(t('pages.productAdmin.specs'), t('pages.productAdmin.specValue'), index)} />
 	                            </Form.Item>
-	                            <Button
+	                            <ShopButton
 	                              type="text"
 	                              danger
 	                              icon={<MinusCircleOutlined />}
@@ -2983,9 +2995,9 @@ const ProductManagement: React.FC = () => {
 	                            />
 	                          </div>
 	                        ))}
-	                        <Button type="dashed" onClick={() => add()} icon={<PlusOutlined />} aria-label={`${productEditorLabel}: ${t('pages.productAdmin.addMetafield')}`} title={`${productEditorLabel}: ${t('pages.productAdmin.addMetafield')}`}>
+	                        <ShopButton type="dashed" onClick={() => add()} icon={<PlusOutlined />} aria-label={`${productEditorLabel}: ${t('pages.productAdmin.addMetafield')}`} title={`${productEditorLabel}: ${t('pages.productAdmin.addMetafield')}`}>
 	                          {t('pages.productAdmin.addMetafield')}
-	                        </Button>
+	                        </ShopButton>
                       </>
                     )}
                   </Form.List>
@@ -3006,11 +3018,11 @@ const ProductManagement: React.FC = () => {
                 <Form.Item name="warranty" label={t('pages.productAdmin.warranty')}>
                   <ShopInput className="shopify-input" placeholder={t('pages.productAdmin.warrantyPlaceholder')} />
                 </Form.Item>
-                <Divider>{t('pages.productAdmin.richContent')}</Divider>
+                <ShopDivider>{t('pages.productAdmin.richContent')}</ShopDivider>
                 <Form.Item name="detailContent" noStyle>
                   <ProductRichDetailEditor />
                 </Form.Item>
-                <Divider>{t('pages.productAdmin.richPreview')}</Divider>
+                <ShopDivider>{t('pages.productAdmin.richPreview')}</ShopDivider>
                 <div className="shopify-rich-preview">
                   <ProductRichDetail
                     detailContent={detailContentPreview}
@@ -3084,7 +3096,7 @@ const ProductManagement: React.FC = () => {
                   />
                 </Form.Item>
 	                <Form.Item name="isFeatured" label={t('pages.productAdmin.bestSeller')} valuePropName="checked">
-	                  <Switch checkedChildren={t('pages.productAdmin.on')} unCheckedChildren={t('pages.productAdmin.off')} aria-label={bestSellerSwitchLabel} title={bestSellerSwitchLabel} />
+	                  <ShopSwitch checkedChildren={t('pages.productAdmin.on')} unCheckedChildren={t('pages.productAdmin.off')} aria-label={bestSellerSwitchLabel} title={bestSellerSwitchLabel} />
 	                </Form.Item>
               </section>
 
@@ -3149,7 +3161,7 @@ const ProductManagement: React.FC = () => {
             <ShopInput placeholder={t('pages.productAdmin.urlImportPlaceholder')} disabled={productActionDisabled} allowClear aria-label={`${t('pages.productAdmin.urlImportTitle')}: ${t('pages.productAdmin.urlImportField')}`} title={`${t('pages.productAdmin.urlImportTitle')}: ${t('pages.productAdmin.urlImportField')}`} />
           </Form.Item>
           <Text type="secondary">{t('pages.productAdmin.urlImportHint')}</Text>
-          <Alert
+          <ShopAlert
             className="product-url-import-preview__alert"
             type="info"
             showIcon
@@ -3160,14 +3172,14 @@ const ProductManagement: React.FC = () => {
           <div className="product-url-import-preview">
             <div className="product-url-import-preview__media">
               {urlImportPreviewMainImage ? (
-                <Image src={resolveProductAdminImage(urlImportPreviewMainImage)} alt={urlImportPreview.name || t('pages.productAdmin.mediaPreview')} width={88} height={88} style={{ objectFit: 'cover', borderRadius: 6 }} fallback={productAdminImageFallback} />
+                <ShopImage src={resolveProductAdminImage(urlImportPreviewMainImage)} alt={urlImportPreview.name || t('pages.productAdmin.mediaPreview')} width={88} height={88} style={{ objectFit: 'cover', borderRadius: 6 }} fallback={productAdminImageFallback} />
               ) : (
                 <div className="product-url-import-preview__placeholder">{t('pages.productAdmin.urlImportNoImage')}</div>
               )}
               {urlImportPreviewImages.length > 1 && (
                 <div className="product-url-import-preview__thumbs" aria-label={t('pages.productAdmin.urlImportImageCount', { count: urlImportPreviewImages.length })}>
                   {urlImportPreviewImages.map((image, index) => (
-                    <Image
+                    <ShopImage
                       key={`${image}-${index}`}
                       src={resolveProductAdminImage(image)}
                       width={38}
@@ -3183,28 +3195,28 @@ const ProductManagement: React.FC = () => {
             </div>
             <div className="product-url-import-preview__body">
               <div className="product-url-import-preview__score">
-                <Tag color={(urlImportPreview.confidenceScore || 0) >= 75 ? 'green' : (urlImportPreview.confidenceScore || 0) >= 45 ? 'orange' : 'red'}>
+                <ShopTag color={(urlImportPreview.confidenceScore || 0) >= 75 ? 'green' : (urlImportPreview.confidenceScore || 0) >= 45 ? 'orange' : 'red'}>
                   {t('pages.productAdmin.urlImportConfidence', { score: urlImportPreview.confidenceScore || 0 })}
-                </Tag>
+                </ShopTag>
                 {urlImportPreview.sourceHost && <Text type="secondary">{urlImportPreview.sourceHost}</Text>}
               </div>
               <h4>{urlImportPreview.name || t('pages.productAdmin.urlImportMissingName')}</h4>
               <p>{urlImportPreview.description || t('pages.productAdmin.urlImportMissingDescription')}</p>
-              <Space wrap>
-                <Tag><span className="commerce-money">{urlImportPreview.price != null ? formatMoney(Number(urlImportPreview.price)) : t('pages.productAdmin.urlImportMissingPrice')}</span></Tag>
-                {urlImportPreview.originalPrice != null && <Tag color="volcano"><span className="commerce-money">{t('pages.productAdmin.urlImportOriginalPrice', { price: formatMoney(Number(urlImportPreview.originalPrice)) })}</span></Tag>}
-                {urlImportPreview.brand && <Tag>{urlImportPreview.brand}</Tag>}
-                <Tag>{t('pages.productAdmin.urlImportImageCount', { count: urlImportPreviewImages.length })}</Tag>
-              </Space>
+              <ShopSpace wrap>
+                <ShopTag><span className="commerce-money">{urlImportPreview.price != null ? formatMoney(Number(urlImportPreview.price)) : t('pages.productAdmin.urlImportMissingPrice')}</span></ShopTag>
+                {urlImportPreview.originalPrice != null && <ShopTag color="volcano"><span className="commerce-money">{t('pages.productAdmin.urlImportOriginalPrice', { price: formatMoney(Number(urlImportPreview.originalPrice)) })}</span></ShopTag>}
+                {urlImportPreview.brand && <ShopTag>{urlImportPreview.brand}</ShopTag>}
+                <ShopTag>{t('pages.productAdmin.urlImportImageCount', { count: urlImportPreviewImages.length })}</ShopTag>
+              </ShopSpace>
               {urlImportPreview.warnings && urlImportPreview.warnings.length > 0 && (
                 <div className="product-url-import-preview__warnings">
                   {urlImportPreview.warnings.map((warning) => (
-                    <Tag color="gold" key={warning}>{formatUrlImportWarning(warning)}</Tag>
+                    <ShopTag color="gold" key={warning}>{formatUrlImportWarning(warning)}</ShopTag>
                   ))}
                 </div>
               )}
               {urlImportPreview.blockedImages && urlImportPreview.blockedImages.length > 0 && (
-                <Alert
+                <ShopAlert
                   className="product-url-import-preview__alert"
                   type="warning"
                   showIcon
@@ -3244,9 +3256,9 @@ const ProductManagement: React.FC = () => {
         className={importDialog?.className || 'profile-mobile-safe-modal'}
         onClose={closeImportDialog}
         footer={(
-          <Button type="primary" onClick={closeImportDialog} aria-label={t('common.confirm')} title={t('common.confirm')}>
+          <ShopButton type="primary" onClick={closeImportDialog} aria-label={t('common.confirm')} title={t('common.confirm')}>
             {t('common.confirm')}
-          </Button>
+          </ShopButton>
         )}
         closeLabel={t('common.close', { defaultValue: 'Close' })}
       >

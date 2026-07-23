@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { ShopIcon, SI } from './ShopIcon';
-import { Alert, Avatar, Button, Tag } from 'antd';
 import { ShopTextArea } from './ShopInput';
 import ShopBadge from './ShopBadge';
 import ShopModal from './ShopModal';
@@ -25,6 +24,10 @@ import { useNativeBackHandler } from '../utils/nativeBack';
 import { reportNonBlockingError } from '../utils/nonBlockingError';
 import './CustomerSupportWidget.css';
 import '../styles/mobile-page-contrast.css';
+import ShopButton from './ShopButton';
+import ShopAvatar from './ShopAvatar';
+import ShopTag from './ShopTag';
+import ShopAlert from './ShopAlert';
 
 const SUPPORT_BUTTON_POSITION_KEY = 'shop-support-button-position';
 const SUPPORT_BUTTON_SIZE = 56;
@@ -1138,7 +1141,7 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
                 <span className="customer-support-widget__presenceText">{supportPresenceText}</span>
               </span>
             </div>
-            <Button className="customer-support-widget__headerClose" type="text" size="small" icon={<ShopIcon path={SI.close} />} aria-label={supportPanelCloseLabel} title={supportPanelCloseLabel} onClick={() => setOpen(false)} />
+            <ShopButton className="customer-support-widget__headerClose" type="text" size="small" icon={<ShopIcon path={SI.close} />} aria-label={supportPanelCloseLabel} title={supportPanelCloseLabel} onClick={() => setOpen(false)} />
           </div>
           <div className="customer-support-widget__mobileStatus" aria-label={t('pages.support.conversationBrief')}>
             <span className={supportOnline ? 'is-online' : ''}>{supportPresenceText}</span>
@@ -1172,7 +1175,7 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
               </span>
             </div>
             <div className="customer-support-widget__briefSide">
-              <Tag color={hasSharedOrder ? 'green' : 'default'}>{hasSharedOrder ? t('pages.support.orderContextReady') : t('pages.support.orderContextMissing')}</Tag>
+              <ShopTag color={hasSharedOrder ? 'green' : 'default'}>{hasSharedOrder ? t('pages.support.orderContextReady') : t('pages.support.orderContextMissing')}</ShopTag>
               {conversationUpdatedAt ? (
                 <span className="customer-support-widget__briefMeta customer-support-widget__text customer-support-widget__text--secondary">
                   {t('pages.support.lastUpdated')}: {formatSafeDateTime(conversationUpdatedAt, dateLocale, '-')}
@@ -1207,7 +1210,7 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
                 <span className="customer-support-widget__text">{t('common.loading')}</span>
               </div>
             ) : sessionSwitchError ? (
-              <Alert
+              <ShopAlert
                 className="customer-support-widget__sessionError"
                 data-support-session-recovery="true"
                 type="warning"
@@ -1215,18 +1218,18 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
                 message={sessionSwitchError}
                 action={(
                   <div className="customer-support-widget__recoveryActions" data-support-recovery-actions="true">
-                    <Button size="small" type="primary" onClick={() => session?.id && switchSession(session.id)} aria-label={t('common.retry')} title={t('common.retry')}>
+                    <ShopButton size="small" type="primary" onClick={() => session?.id && switchSession(session.id)} aria-label={t('common.retry')} title={t('common.retry')}>
                       {t('common.retry')}
-                    </Button>
-                    <Button size="small" icon={<ShopIcon path={SI.fileSearch} />} onClick={() => navigate('/track-order')} aria-label={t('nav.trackOrder')} title={t('nav.trackOrder')}>
+                    </ShopButton>
+                    <ShopButton size="small" icon={<ShopIcon path={SI.fileSearch} />} onClick={() => navigate('/track-order')} aria-label={t('nav.trackOrder')} title={t('nav.trackOrder')}>
                       {t('nav.trackOrder')}
-                    </Button>
-                    <Button size="small" icon={<ShopIcon path={SI.shopping} />} onClick={() => navigate('/products')} aria-label={t('pages.cart.browse')} title={t('pages.cart.browse')}>
+                    </ShopButton>
+                    <ShopButton size="small" icon={<ShopIcon path={SI.shopping} />} onClick={() => navigate('/products')} aria-label={t('pages.cart.browse')} title={t('pages.cart.browse')}>
                       {t('pages.cart.browse')}
-                    </Button>
-                    <Button size="small" icon={<ShopIcon path={SI.gift} />} onClick={() => navigate('/coupons')} aria-label={t('nav.coupons')} title={t('nav.coupons')}>
+                    </ShopButton>
+                    <ShopButton size="small" icon={<ShopIcon path={SI.gift} />} onClick={() => navigate('/coupons')} aria-label={t('nav.coupons')} title={t('nav.coupons')}>
                       {t('nav.coupons')}
-                    </Button>
+                    </ShopButton>
                   </div>
                 )}
               />
@@ -1252,15 +1255,15 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
                     ))}
                   </div>
                   <div className="customer-support-widget__emptyMultipath" data-support-empty-multipath="true">
-                    <Button size="small" icon={<ShopIcon path={SI.fileSearch} />} onClick={() => navigate('/track-order')} aria-label={t('nav.trackOrder')} title={t('nav.trackOrder')}>
+                    <ShopButton size="small" icon={<ShopIcon path={SI.fileSearch} />} onClick={() => navigate('/track-order')} aria-label={t('nav.trackOrder')} title={t('nav.trackOrder')}>
                       {t('nav.trackOrder')}
-                    </Button>
-                    <Button size="small" icon={<ShopIcon path={SI.shopping} />} onClick={() => navigate('/products')} aria-label={t('pages.cart.browse')} title={t('pages.cart.browse')}>
+                    </ShopButton>
+                    <ShopButton size="small" icon={<ShopIcon path={SI.shopping} />} onClick={() => navigate('/products')} aria-label={t('pages.cart.browse')} title={t('pages.cart.browse')}>
                       {t('pages.cart.browse')}
-                    </Button>
-                    <Button size="small" icon={<ShopIcon path={SI.gift} />} onClick={() => navigate('/coupons')} aria-label={t('nav.coupons')} title={t('nav.coupons')}>
+                    </ShopButton>
+                    <ShopButton size="small" icon={<ShopIcon path={SI.gift} />} onClick={() => navigate('/coupons')} aria-label={t('nav.coupons')} title={t('nav.coupons')}>
                       {t('nav.coupons')}
-                    </Button>
+                    </ShopButton>
                   </div>
                 </div>
               </div>
@@ -1273,7 +1276,7 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
                   return (
                     <li key={item.id} className={`customer-support-widget__messageRow ${mine ? 'customer-support-widget__messageRow--mine' : ''}`} role="listitem">
                       <div className={`customer-support-widget__messageShell ${mine ? 'customer-support-widget__messageShell--mine' : ''}`}>
-                        <Avatar
+                        <ShopAvatar
                           size={30}
                           className={`customer-support-widget__avatar ${mine ? 'customer-support-widget__avatar--mine' : ''}`}
                           icon={mine ? <ShopIcon path={SI.user} /> : <ShopIcon path={SI.support} />}
@@ -1291,12 +1294,12 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
                                   <div className="customer-support-widget__orderTitle">{supportOrderLabel(order)}</div>
                                   <div className="customer-support-widget__orderAmount commerce-money">{formatMoney(order.totalAmount)}</div>
                                   <div className="customer-support-widget__orderTags">
-                                    <Tag color="blue">{formatOrderStatusLabel(order.status)}</Tag>
-                                    {order.paymentMethod ? <Tag>{order.paymentMethod}</Tag> : null}
+                                    <ShopTag color="blue">{formatOrderStatusLabel(order.status)}</ShopTag>
+                                    {order.paymentMethod ? <ShopTag>{order.paymentMethod}</ShopTag> : null}
                                   </div>
-                                  <Button className="customer-support-widget__linkButton" type="link" size="small" aria-label={supportViewOrderLabel(order)} title={supportViewOrderLabel(order)} disabled={!orderId} onClick={() => openOrderDetail(orderId)}>
+                                  <ShopButton className="customer-support-widget__linkButton" type="link" size="small" aria-label={supportViewOrderLabel(order)} title={supportViewOrderLabel(order)} disabled={!orderId} onClick={() => openOrderDetail(orderId)}>
                                     {t('pages.support.viewOrder')}
-                                  </Button>
+                                  </ShopButton>
                                 </div>
                               </div>
                             </section>
@@ -1327,18 +1330,18 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
                   <span className="customer-support-widget__triageTitle customer-support-widget__text customer-support-widget__text--strong">{t('pages.support.triageTitle')}</span>
                   <span className="customer-support-widget__triageHelper customer-support-widget__text customer-support-widget__text--secondary">{supportIntent.helper}</span>
                 </div>
-                <Tag color={supportOnline ? 'green' : 'default'} style={{ marginInlineEnd: 0 }}>
+                <ShopTag color={supportOnline ? 'green' : 'default'} style={{ marginInlineEnd: 0 }}>
                   {supportConnectionHint}
-                </Tag>
+                </ShopTag>
               </div>
               <div className="customer-support-widget__triageMeta">
-                <Tag color="blue" style={{ marginInlineEnd: 0 }}>{supportIntent.label}</Tag>
+                <ShopTag color="blue" style={{ marginInlineEnd: 0 }}>{supportIntent.label}</ShopTag>
                 <span className={`customer-support-widget__messageQuality customer-support-widget__text ${messageTooLong ? 'customer-support-widget__text--danger' : 'customer-support-widget__text--secondary'}`}>
                   {messageQualityText}
                 </span>
               </div>
               {!hasSharedOrder && latestOrder ? (
-                <Button
+                <ShopButton
                   className="customer-support-widget__shareLatest"
                   size="small"
                   type="primary"
@@ -1351,7 +1354,7 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
                   onClick={() => sendOrder(latestOrder.id)}
                 >
                   {t('pages.support.shareLatestOrder')}
-                </Button>
+                </ShopButton>
               ) : null}
             </div>
             {workflowOrder && workflowActions.length > 0 ? (
@@ -1379,7 +1382,7 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
             ) : null}
             <div className="customer-support-widget__quickReplies">
               {quickReplies.map((reply) => (
-                <Button
+                <ShopButton
                   key={reply}
                   size="small"
                   aria-label={supportQuickReplyLabel(reply)}
@@ -1388,7 +1391,7 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
                   disabled={conversationUnavailable}
                 >
                   {reply}
-                </Button>
+                </ShopButton>
               ))}
             </div>
             <div className="customer-support-widget__orderPicker">
@@ -1397,7 +1400,7 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
                 <ShopIcon path={SI.sound} className="customer-support-widget__soundIcon" />
               </div>
               {ordersLoadFailed ? (
-                <Alert
+                <ShopAlert
                   className="customer-support-widget__orderAlert"
                   data-support-orders-recovery="true"
                   type="warning"
@@ -1405,15 +1408,15 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
                   message={t('messages.operationFailed')}
                   action={(
                     <div className="customer-support-widget__recoveryActions" data-support-recovery-actions="true">
-                      <Button size="small" type="primary" onClick={fetchSupportOrders} aria-label={t('common.retry')} title={t('common.retry')}>
+                      <ShopButton size="small" type="primary" onClick={fetchSupportOrders} aria-label={t('common.retry')} title={t('common.retry')}>
                         {t('common.retry')}
-                      </Button>
-                      <Button size="small" icon={<ShopIcon path={SI.fileSearch} />} onClick={() => navigate('/track-order')} aria-label={t('nav.trackOrder')} title={t('nav.trackOrder')}>
+                      </ShopButton>
+                      <ShopButton size="small" icon={<ShopIcon path={SI.fileSearch} />} onClick={() => navigate('/track-order')} aria-label={t('nav.trackOrder')} title={t('nav.trackOrder')}>
                         {t('nav.trackOrder')}
-                      </Button>
-                      <Button size="small" icon={<ShopIcon path={SI.shopping} />} onClick={() => navigate('/products')} aria-label={t('pages.cart.browse')} title={t('pages.cart.browse')}>
+                      </ShopButton>
+                      <ShopButton size="small" icon={<ShopIcon path={SI.shopping} />} onClick={() => navigate('/products')} aria-label={t('pages.cart.browse')} title={t('pages.cart.browse')}>
                         {t('pages.cart.browse')}
-                      </Button>
+                      </ShopButton>
                     </div>
                   )}
                 />
@@ -1462,15 +1465,15 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
                         {t('pages.support.noOrderItemsHint')}
                       </span>
                       <div className="customer-support-widget__recoveryActions" data-support-order-select-empty-actions="true">
-                        <Button size="small" type="primary" icon={<ShopIcon path={SI.fileSearch} />} onClick={() => navigate('/track-order')} aria-label={t('nav.trackOrder')} title={t('nav.trackOrder')}>
+                        <ShopButton size="small" type="primary" icon={<ShopIcon path={SI.fileSearch} />} onClick={() => navigate('/track-order')} aria-label={t('nav.trackOrder')} title={t('nav.trackOrder')}>
                           {t('nav.trackOrder')}
-                        </Button>
-                        <Button size="small" icon={<ShopIcon path={SI.shopping} />} onClick={() => navigate('/products')} aria-label={t('pages.cart.browse')} title={t('pages.cart.browse')}>
+                        </ShopButton>
+                        <ShopButton size="small" icon={<ShopIcon path={SI.shopping} />} onClick={() => navigate('/products')} aria-label={t('pages.cart.browse')} title={t('pages.cart.browse')}>
                           {t('pages.cart.browse')}
-                        </Button>
-                        <Button size="small" icon={<ShopIcon path={SI.gift} />} onClick={() => navigate('/coupons')} aria-label={t('nav.coupons')} title={t('nav.coupons')}>
+                        </ShopButton>
+                        <ShopButton size="small" icon={<ShopIcon path={SI.gift} />} onClick={() => navigate('/coupons')} aria-label={t('nav.coupons')} title={t('nav.coupons')}>
                           {t('nav.coupons')}
-                        </Button>
+                        </ShopButton>
                       </div>
                     </div>
                   )
@@ -1496,8 +1499,8 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
               autoSize={{ minRows: 2, maxRows: 4 }}
             />
             <div className="customer-support-widget__actions">
-              <Button className="customer-support-widget__secondaryAction" aria-label={supportCloseSessionLabel} title={supportCloseSessionLabel} disabled={conversationUnavailable || Boolean(activeGuestContext) || !session || session.status !== 'OPEN'} onClick={closeSession}>{t('pages.support.closeSession')}</Button>
-              <Button className="customer-support-widget__primaryAction" type="primary" icon={<ShopIcon path={SI.send} />} aria-label={supportSendLabel} title={supportSendLabel} loading={sending} disabled={conversationUnavailable || messageTooLong || messageLength === 0 || sending} onClick={send}>{canSendSupportMessage ? t('common.send') : t('pages.auth.login')}</Button>
+              <ShopButton className="customer-support-widget__secondaryAction" aria-label={supportCloseSessionLabel} title={supportCloseSessionLabel} disabled={conversationUnavailable || Boolean(activeGuestContext) || !session || session.status !== 'OPEN'} onClick={closeSession}>{t('pages.support.closeSession')}</ShopButton>
+              <ShopButton className="customer-support-widget__primaryAction" type="primary" icon={<ShopIcon path={SI.send} />} aria-label={supportSendLabel} title={supportSendLabel} loading={sending} disabled={conversationUnavailable || messageTooLong || messageLength === 0 || sending} onClick={send}>{canSendSupportMessage ? t('common.send') : t('pages.auth.login')}</ShopButton>
             </div>
           </div>
         </div>
@@ -1526,8 +1529,8 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
         ) : detailOrder ? (
           <div className="customer-support-widget__orderDetail customer-support-widget__stack customer-support-widget__stack--vertical">
             <div className="customer-support-widget__stack customer-support-widget__stack--wrap">
-              <Tag color="blue">{formatOrderStatusLabel(detailOrder.status)}</Tag>
-              {detailOrder.paymentMethod ? <Tag>{detailOrder.paymentMethod}</Tag> : null}
+              <ShopTag color="blue">{formatOrderStatusLabel(detailOrder.status)}</ShopTag>
+              {detailOrder.paymentMethod ? <ShopTag>{detailOrder.paymentMethod}</ShopTag> : null}
               <span className="customer-support-widget__money customer-support-widget__text customer-support-widget__text--strong commerce-money">{formatMoney(detailOrder.totalAmount)}</span>
             </div>
             {detailOrder.shippingAddress ? <span className="customer-support-widget__text customer-support-widget__text--secondary">{detailOrder.shippingAddress}</span> : null}
@@ -1538,15 +1541,15 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
                   {t('pages.support.noOrderItemsHint')}
                 </span>
                 <div className="customer-support-widget__recoveryActions" data-support-order-items-empty-actions="true">
-                  <Button size="small" type="primary" icon={<ShopIcon path={SI.fileSearch} />} onClick={() => navigate('/track-order')} aria-label={t('nav.trackOrder')} title={t('nav.trackOrder')}>
+                  <ShopButton size="small" type="primary" icon={<ShopIcon path={SI.fileSearch} />} onClick={() => navigate('/track-order')} aria-label={t('nav.trackOrder')} title={t('nav.trackOrder')}>
                     {t('nav.trackOrder')}
-                  </Button>
-                  <Button size="small" icon={<ShopIcon path={SI.shopping} />} onClick={() => navigate('/products')} aria-label={t('pages.cart.browse')} title={t('pages.cart.browse')}>
+                  </ShopButton>
+                  <ShopButton size="small" icon={<ShopIcon path={SI.shopping} />} onClick={() => navigate('/products')} aria-label={t('pages.cart.browse')} title={t('pages.cart.browse')}>
                     {t('pages.cart.browse')}
-                  </Button>
-                  <Button size="small" icon={<ShopIcon path={SI.gift} />} onClick={() => navigate('/coupons')} aria-label={t('nav.coupons')} title={t('nav.coupons')}>
+                  </ShopButton>
+                  <ShopButton size="small" icon={<ShopIcon path={SI.gift} />} onClick={() => navigate('/coupons')} aria-label={t('nav.coupons')} title={t('nav.coupons')}>
                     {t('nav.coupons')}
-                  </Button>
+                  </ShopButton>
                 </div>
               </div>
             ) : (

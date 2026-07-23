@@ -1,0 +1,90 @@
+.shop-typography,
+.shop-typography-text {
+  box-sizing: border-box;
+  color: #1f2a24;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.shop-typography-text--secondary,
+.ant-typography-secondary {
+  color: rgba(31, 42, 36, 0.62);
+}
+
+.shop-typography-text--success,
+.ant-typography-success {
+  color: #0f8a4b;
+}
+
+.shop-typography-text--warning,
+.ant-typography-warning {
+  color: #c47b00;
+}
+
+.shop-typography-text--danger,
+.ant-typography-danger {
+  color: #c0392b;
+}
+
+.shop-typography-text--strong {
+  font-weight: 700;
+}
+
+.shop-typography-text--ellipsis {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
+}
+
+.shop-typography-title {
+  margin: 0 0 0.5em;
+  color: #122f22;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.shop-typography-title--h1 { font-size: 30px; }
+.shop-typography-title--h2 { font-size: 24px; }
+.shop-typography-title--h3 { font-size: 20px; }
+.shop-typography-title--h4 { font-size: 16px; }
+.shop-typography-title--h5 { font-size: 14px; }
+
+.shop-typography-paragraph {
+  margin: 0 0 1em;
+}
+
+.shop-typography-link {
+  color: #0f6b45;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.shop-typography-link:hover {
+  text-decoration: underline;
+}
+
+.shop-typography-text--copyable {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+}
+
+.shop-typography-text__copy {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: #0f6b45;
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1;
+  padding: 0 2px;
+  opacity: 0.75;
+}
+
+.shop-typography-text__copy:hover {
+  opacity: 1;
+}

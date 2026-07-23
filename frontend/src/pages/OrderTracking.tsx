@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { ShopIcon, SI } from '../components/ShopIcon';
-import { Alert, Button, Form, Tag } from 'antd';
+import { Form } from 'antd';
 import ShopInput, { ShopTextArea } from '../components/ShopInput';
 import ShopModal from '../components/ShopModal';
 import ShopConfirm from '../components/ShopConfirm';
@@ -38,7 +38,10 @@ import './OrderTracking.css';
 import '../styles/mobile-page-contrast.css';
 import { focusFirstFormError } from '../utils/formValidationFocus';
 import { navigateToCommercialPaymentUrl, getPaymentRecoveryState } from '../utils/paymentRecovery';
+import ShopButton from '../components/ShopButton';
 
+import ShopTag from '../components/ShopTag';
+import ShopAlert from '../components/ShopAlert';
 const orderTrackingImageFallback = productImageFallback;
 const resolveOrderTrackingImage = resolveProductImage;
 
@@ -543,7 +546,6 @@ const OrderTracking: React.FC = () => {
     }
   };
 
-
   const confirmReceipt = async () => {
     if (!order || order.status !== 'SHIPPED' || !canOperateTrackedOrder) return;
     setConfirmingReceipt(true);
@@ -563,7 +565,6 @@ const OrderTracking: React.FC = () => {
     if (!order || order.status !== 'SHIPPED' || !canOperateTrackedOrder) return;
     setReceiptConfirmOpen(true);
   };
-
 
   const submitReturnRequest = async () => {
     if (!order?.returnable || !canOperateTrackedOrder) return;
@@ -611,7 +612,7 @@ const OrderTracking: React.FC = () => {
     <div className={`order-tracking-page order-tracking-page--${language}`}>
       <h1 className="order-tracking-page__title">{t('pages.orderTracking.title')}</h1>
       {paymentReturnStatus === 'success' ? (
-        <Alert
+        <ShopAlert
           className="order-tracking-page__paymentReturn"
           data-order-tracking-payment-return="success"
           type={order && order.status === 'PENDING_PAYMENT' ? 'info' : 'success'}
@@ -626,7 +627,7 @@ const OrderTracking: React.FC = () => {
             : t('pages.checkout.paymentRecoveryNextPaid')}
         />
       ) : paymentReturnStatus === 'cancelled' || paymentReturnStatus === 'canceled' ? (
-        <Alert
+        <ShopAlert
           className="order-tracking-page__paymentReturn"
           data-order-tracking-payment-return="cancelled"
           type="warning"
@@ -640,7 +641,7 @@ const OrderTracking: React.FC = () => {
           action={(
             <div className="order-tracking-page__paymentReturnActions" data-order-tracking-payment-return-recovery="true">
               {order && order.status === 'PENDING_PAYMENT' && canOperateTrackedOrder ? (
-                <Button
+                <ShopButton
                   size="small"
                   type="primary"
                   icon={<ShopIcon path={SI.creditCard} />}
@@ -650,9 +651,9 @@ const OrderTracking: React.FC = () => {
                   onClick={continuePayment}
                 >
                   {t('pages.profile.continuePay')}
-                </Button>
+                </ShopButton>
               ) : null}
-              <Button
+              <ShopButton
                 size="small"
                 icon={<ShopIcon path={SI.shopping} />}
                 aria-label={trackActionLabel(t('pages.orderTracking.shopAgain'))}
@@ -660,8 +661,8 @@ const OrderTracking: React.FC = () => {
                 onClick={() => navigate('/products')}
               >
                 {t('pages.orderTracking.shopAgain')}
-              </Button>
-              <Button
+              </ShopButton>
+              <ShopButton
                 size="small"
                 icon={<ShopIcon path={SI.gift} />}
                 aria-label={trackActionLabel(t('pages.orderTracking.emptyCoupons'))}
@@ -669,8 +670,8 @@ const OrderTracking: React.FC = () => {
                 onClick={() => navigate('/coupons')}
               >
                 {t('pages.orderTracking.emptyCoupons')}
-              </Button>
-              <Button
+              </ShopButton>
+              <ShopButton
                 size="small"
                 icon={<ShopIcon path={SI.support} />}
                 aria-label={trackActionLabel(t('pages.profile.contactSupport'))}
@@ -678,12 +679,12 @@ const OrderTracking: React.FC = () => {
                 onClick={supportOpen}
               >
                 {t('pages.profile.contactSupport')}
-              </Button>
+              </ShopButton>
             </div>
           )}
         />
       ) : paymentReturnStatus === 'failed' ? (
-        <Alert
+        <ShopAlert
           className="order-tracking-page__paymentReturn"
           data-order-tracking-payment-return="failed"
           type="error"
@@ -697,7 +698,7 @@ const OrderTracking: React.FC = () => {
           action={(
             <div className="order-tracking-page__paymentReturnActions" data-order-tracking-payment-return-recovery="true">
               {order && order.status === 'PENDING_PAYMENT' && canOperateTrackedOrder ? (
-                <Button
+                <ShopButton
                   size="small"
                   type="primary"
                   icon={<ShopIcon path={SI.creditCard} />}
@@ -707,9 +708,9 @@ const OrderTracking: React.FC = () => {
                   onClick={continuePayment}
                 >
                   {t('pages.profile.continuePay')}
-                </Button>
+                </ShopButton>
               ) : null}
-              <Button
+              <ShopButton
                 size="small"
                 icon={<ShopIcon path={SI.shopping} />}
                 aria-label={trackActionLabel(t('pages.orderTracking.shopAgain'))}
@@ -717,8 +718,8 @@ const OrderTracking: React.FC = () => {
                 onClick={() => navigate('/products')}
               >
                 {t('pages.orderTracking.shopAgain')}
-              </Button>
-              <Button
+              </ShopButton>
+              <ShopButton
                 size="small"
                 icon={<ShopIcon path={SI.gift} />}
                 aria-label={trackActionLabel(t('pages.orderTracking.emptyCoupons'))}
@@ -726,8 +727,8 @@ const OrderTracking: React.FC = () => {
                 onClick={() => navigate('/coupons')}
               >
                 {t('pages.orderTracking.emptyCoupons')}
-              </Button>
-              <Button
+              </ShopButton>
+              <ShopButton
                 size="small"
                 icon={<ShopIcon path={SI.support} />}
                 aria-label={trackActionLabel(t('pages.profile.contactSupport'))}
@@ -735,7 +736,7 @@ const OrderTracking: React.FC = () => {
                 onClick={supportOpen}
               >
                 {t('pages.profile.contactSupport')}
-              </Button>
+              </ShopButton>
             </div>
           )}
         />
@@ -749,7 +750,7 @@ const OrderTracking: React.FC = () => {
           </span>
         </div>
         {paymentReturnEmailGateVisible ? (
-          <Alert
+          <ShopAlert
             className="order-tracking-page__paymentReturnEmailGate"
             data-order-tracking-payment-return-email-gate="true"
             type="info"
@@ -760,7 +761,7 @@ const OrderTracking: React.FC = () => {
           />
         ) : null}
         {prefillNoticeVisible ? (
-          <Alert
+          <ShopAlert
             className="order-tracking-page__prefillNotice"
             type="info"
             showIcon
@@ -794,9 +795,9 @@ const OrderTracking: React.FC = () => {
               title={t('pages.orderTracking.email')}
             />
           </Form.Item>
-          <Button className="order-tracking-page__lookupButton" type="primary" htmlType="submit" loading={loading} icon={<ShopIcon path={SI.search} />} block>
+          <ShopButton className="order-tracking-page__lookupButton" type="primary" htmlType="submit" loading={loading} icon={<ShopIcon path={SI.search} />} block>
             {t('pages.orderTracking.search')}
-          </Button>
+          </ShopButton>
         </Form>
       </section>
 
@@ -938,19 +939,19 @@ const OrderTracking: React.FC = () => {
               </div>
               {!canOperateTrackedOrder ? (
                 <div className="order-tracking-page__nextActionButtons">
-                  <Button type="primary" aria-label={trackActionLabel(t('common.login'))} title={trackActionLabel(t('common.login'))} onClick={signInForOrder}>
+                  <ShopButton type="primary" aria-label={trackActionLabel(t('common.login'))} title={trackActionLabel(t('common.login'))} onClick={signInForOrder}>
                     {t('common.login')}
-                  </Button>
-                  <Button icon={<ShopIcon path={SI.support} />} aria-label={trackActionLabel(t('pages.profile.contactSupport'))} title={trackActionLabel(t('pages.profile.contactSupport'))} onClick={supportOpen}>
+                  </ShopButton>
+                  <ShopButton icon={<ShopIcon path={SI.support} />} aria-label={trackActionLabel(t('pages.profile.contactSupport'))} title={trackActionLabel(t('pages.profile.contactSupport'))} onClick={supportOpen}>
                     {t('pages.profile.contactSupport')}
-                  </Button>
+                  </ShopButton>
                 </div>
               ) : order.status === 'PENDING_PAYMENT' ? (
                 <div className="order-tracking-page__nextActionButtons">
-                  <Button type="primary" icon={<ShopIcon path={SI.creditCard} />} loading={paying} aria-label={trackActionLabel(t('pages.profile.continuePay'))} title={trackActionLabel(t('pages.profile.continuePay'))} onClick={continuePayment}>
+                  <ShopButton type="primary" icon={<ShopIcon path={SI.creditCard} />} loading={paying} aria-label={trackActionLabel(t('pages.profile.continuePay'))} title={trackActionLabel(t('pages.profile.continuePay'))} onClick={continuePayment}>
                     {t('pages.profile.continuePay')}
-                  </Button>
-                  <Button
+                  </ShopButton>
+                  <ShopButton
                     aria-label={trackActionLabel(t('pages.paymentInstructions.title'))}
                     title={trackActionLabel(t('pages.paymentInstructions.title'))}
                     onClick={() => {
@@ -959,49 +960,49 @@ const OrderTracking: React.FC = () => {
                     }}
                   >
                     {t('pages.paymentInstructions.title')}
-                  </Button>
-                  <Button danger icon={<ShopIcon path={SI.rollback} />} loading={canceling} aria-label={trackActionLabel(t('pages.profile.cancelOrder'))} title={trackActionLabel(t('pages.profile.cancelOrder'))} onClick={cancelPendingPayment}>
+                  </ShopButton>
+                  <ShopButton danger icon={<ShopIcon path={SI.rollback} />} loading={canceling} aria-label={trackActionLabel(t('pages.profile.cancelOrder'))} title={trackActionLabel(t('pages.profile.cancelOrder'))} onClick={cancelPendingPayment}>
                     {t('pages.profile.cancelOrder')}
-                  </Button>
-                  <Button icon={<ShopIcon path={SI.support} />} aria-label={trackActionLabel(t('pages.profile.contactSupport'))} title={trackActionLabel(t('pages.profile.contactSupport'))} onClick={supportOpen}>
+                  </ShopButton>
+                  <ShopButton icon={<ShopIcon path={SI.support} />} aria-label={trackActionLabel(t('pages.profile.contactSupport'))} title={trackActionLabel(t('pages.profile.contactSupport'))} onClick={supportOpen}>
                     {t('pages.profile.contactSupport')}
-                  </Button>
+                  </ShopButton>
                 </div>
               ) : (
                 <div className="order-tracking-page__nextActionButtons">
                   {order.status === 'SHIPPED' ? (
-                    <Button type="primary" icon={<ShopIcon path={SI.checkCircle} />} loading={confirmingReceipt} aria-label={trackActionLabel(t('pages.profile.confirmReceipt'))} title={trackActionLabel(t('pages.profile.confirmReceipt'))} onClick={confirmReceiptWithReview}>
+                    <ShopButton type="primary" icon={<ShopIcon path={SI.checkCircle} />} loading={confirmingReceipt} aria-label={trackActionLabel(t('pages.profile.confirmReceipt'))} title={trackActionLabel(t('pages.profile.confirmReceipt'))} onClick={confirmReceiptWithReview}>
                       {t('pages.profile.confirmReceipt')}
-                    </Button>
+                    </ShopButton>
                   ) : null}
                   {order.returnable ? (
-                    <Button icon={<ShopIcon path={SI.rollback} />} loading={returning} aria-label={returnRequestActionLabel} title={returnRequestActionLabel} onClick={() => setReturnRequestOpen(true)}>
+                    <ShopButton icon={<ShopIcon path={SI.rollback} />} loading={returning} aria-label={returnRequestActionLabel} title={returnRequestActionLabel} onClick={() => setReturnRequestOpen(true)}>
                       {t('pages.profile.returnOrder')}
-                    </Button>
+                    </ShopButton>
                   ) : null}
                   {order.status === 'RETURN_APPROVED' ? (
-                    <Button type="primary" icon={<ShopIcon path={SI.truck} />} loading={returnShipping} aria-label={returnShipmentActionLabel} title={returnShipmentActionLabel} onClick={() => setReturnShipmentOpen(true)}>
+                    <ShopButton type="primary" icon={<ShopIcon path={SI.truck} />} loading={returnShipping} aria-label={returnShipmentActionLabel} title={returnShipmentActionLabel} onClick={() => setReturnShipmentOpen(true)}>
                       {t('pages.orderTracking.submitReturnTracking')}
-                    </Button>
+                    </ShopButton>
                   ) : null}
-                  <Button icon={<ShopIcon path={SI.support} />} aria-label={trackActionLabel(t('pages.profile.contactSupport'))} title={trackActionLabel(t('pages.profile.contactSupport'))} onClick={supportOpen}>
+                  <ShopButton icon={<ShopIcon path={SI.support} />} aria-label={trackActionLabel(t('pages.profile.contactSupport'))} title={trackActionLabel(t('pages.profile.contactSupport'))} onClick={supportOpen}>
                     {t('pages.profile.contactSupport')}
-                  </Button>
+                  </ShopButton>
                 </div>
               )}
             </section>
           ) : null}
           {detailsRestricted ? (
-            <Alert
+            <ShopAlert
               type="info"
               showIcon
               className="order-tracking-page__restrictedNotice"
               message={t('pages.orderTracking.accountDetailsTitle')}
               description={t('pages.orderTracking.accountDetailsText')}
               action={(
-                <Button type="primary" size="small" aria-label={trackActionLabel(t('common.login'))} title={trackActionLabel(t('common.login'))} onClick={signInForOrder}>
+                <ShopButton type="primary" size="small" aria-label={trackActionLabel(t('common.login'))} title={trackActionLabel(t('common.login'))} onClick={signInForOrder}>
                   {t('common.login')}
-                </Button>
+                </ShopButton>
               )}
             />
           ) : null}
@@ -1020,13 +1021,13 @@ const OrderTracking: React.FC = () => {
                 </div>
               ) : null}
               <div className="order-tracking-page__assuranceActions">
-                <Button type="primary" aria-label={trackActionLabel(assurancePlan.primaryLabel)} title={trackActionLabel(assurancePlan.primaryLabel)} onClick={assurancePlan.primaryAction}>
+                <ShopButton type="primary" aria-label={trackActionLabel(assurancePlan.primaryLabel)} title={trackActionLabel(assurancePlan.primaryLabel)} onClick={assurancePlan.primaryAction}>
                   {assurancePlan.primaryLabel}
-                </Button>
+                </ShopButton>
                 {order.status === 'COMPLETED' ? (
-                  <Button aria-label={trackActionLabel(t('pages.profile.contactSupport'))} title={trackActionLabel(t('pages.profile.contactSupport'))} onClick={supportOpen} icon={<ShopIcon path={SI.support} />}>
+                  <ShopButton aria-label={trackActionLabel(t('pages.profile.contactSupport'))} title={trackActionLabel(t('pages.profile.contactSupport'))} onClick={supportOpen} icon={<ShopIcon path={SI.support} />}>
                     {t('pages.profile.contactSupport')}
-                  </Button>
+                  </ShopButton>
                 ) : null}
               </div>
             </section>
@@ -1042,7 +1043,7 @@ const OrderTracking: React.FC = () => {
                   <div className="order-tracking-page__descRow">
                     <dt className="order-tracking-page__descLabel">{t('common.status')}</dt>
                     <dd className="order-tracking-page__descValue">
-                      <Tag color={getOrderStatusColor(order.status)}>{formatOrderStatusLabel(order.status)}</Tag>
+                      <ShopTag color={getOrderStatusColor(order.status)}>{formatOrderStatusLabel(order.status)}</ShopTag>
                     </dd>
                   </div>
                   <div className="order-tracking-page__descRow">
@@ -1116,7 +1117,7 @@ const OrderTracking: React.FC = () => {
                           <div className="order-tracking-page__itemsEmptyHint">{t('pages.orderTracking.noOrderItemsHint')}</div>
                         </div>
                         <div className="order-tracking-page__itemsEmptyActions" data-order-tracking-items-empty-actions="true">
-                          <Button
+                          <ShopButton
                             type="primary"
                             icon={<ShopIcon path={SI.shopping} />}
                             aria-label={t('pages.orderTracking.shopAgain')}
@@ -1124,23 +1125,23 @@ const OrderTracking: React.FC = () => {
                             onClick={() => navigate('/products')}
                           >
                             {t('pages.orderTracking.shopAgain')}
-                          </Button>
-                          <Button
+                          </ShopButton>
+                          <ShopButton
                             icon={<ShopIcon path={SI.gift} />}
                             aria-label={t('pages.orderTracking.emptyCoupons')}
                             title={t('pages.orderTracking.emptyCoupons')}
                             onClick={() => navigate('/coupons')}
                           >
                             {t('pages.orderTracking.emptyCoupons')}
-                          </Button>
-                          <Button
+                          </ShopButton>
+                          <ShopButton
                             icon={<ShopIcon path={SI.support} />}
                             aria-label={t('pages.productList.loadRecoverySupport')}
                             title={t('pages.productList.loadRecoverySupport')}
                             onClick={() => dispatchDomEvent('shop:open-support')}
                           >
                             {t('pages.productList.loadRecoverySupport')}
-                          </Button>
+                          </ShopButton>
                         </div>
                       </div>
                 ) : (
@@ -1196,7 +1197,7 @@ const OrderTracking: React.FC = () => {
                         <div className="order-tracking-page__emptyHint">{t('pages.orderTracking.notShippedHint')}</div>
                       </div>
                       <div className="order-tracking-page__notShippedActions">
-                        <Button
+                        <ShopButton
                           type="primary"
                           icon={<ShopIcon path={SI.support} />}
                           aria-label={trackActionLabel(t('pages.profile.contactSupport'))}
@@ -1204,28 +1205,28 @@ const OrderTracking: React.FC = () => {
                           onClick={supportOpen}
                         >
                           {t('pages.profile.contactSupport')}
-                        </Button>
-                        <Button
+                        </ShopButton>
+                        <ShopButton
                           aria-label={trackActionLabel(t('pages.orderTracking.emptyProfileOrders'))}
                           title={trackActionLabel(t('pages.orderTracking.emptyProfileOrders'))}
                           onClick={() => navigate('/profile?tab=orders')}
                         >
                           {t('pages.orderTracking.emptyProfileOrders')}
-                        </Button>
-                        <Button
+                        </ShopButton>
+                        <ShopButton
                           aria-label={trackActionLabel(t('pages.orderTracking.shopAgain'))}
                           title={trackActionLabel(t('pages.orderTracking.shopAgain'))}
                           onClick={() => navigate('/products')}
                         >
                           {t('pages.orderTracking.shopAgain')}
-                        </Button>
-                        <Button
+                        </ShopButton>
+                        <ShopButton
                           aria-label={trackActionLabel(t('pages.orderTracking.emptyCoupons'))}
                           title={trackActionLabel(t('pages.orderTracking.emptyCoupons'))}
                           onClick={() => navigate('/coupons')}
                         >
                           {t('pages.orderTracking.emptyCoupons')}
-                        </Button>
+                        </ShopButton>
                       </div>
                     </div>
                   </div>
@@ -1290,7 +1291,7 @@ const OrderTracking: React.FC = () => {
                 const label = t(returnReasonPresetI18nKey(preset));
                 const selected = normalizeReturnReason(returnReason).toLowerCase() === label.toLowerCase();
                 return (
-                  <Button
+                  <ShopButton
                     key={preset}
                     size="small"
                     type={selected ? 'primary' : 'default'}
@@ -1301,7 +1302,7 @@ const OrderTracking: React.FC = () => {
                     onClick={() => setReturnReason(label)}
                   >
                     {label}
-                  </Button>
+                  </ShopButton>
                 );
               })}
             </div>

@@ -2,7 +2,6 @@ import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } fr
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { ShopIcon, SI } from '../components/ShopIcon';
 import { useParams, useSearchParams } from 'react-router-dom';
-import { Button, Tag, Alert } from 'antd';
 import ShopInput, { ShopTextArea } from '../components/ShopInput';
 import { productApi, cartApi, reviewApi, wishlistApi, questionApi } from '../api';
 import { useNavigate } from 'react-router-dom';
@@ -36,6 +35,9 @@ import ShopBreadcrumb from '../components/ShopBreadcrumb';
 import ShopSegmented from '../components/ShopSegmented';
 import ShopRate from '../components/ShopRate';
 import ShopModal from '../components/ShopModal';
+import ShopButton from '../components/ShopButton';
+import ShopTag from '../components/ShopTag';
+import ShopAlert from '../components/ShopAlert';
 import PageError from '../components/PageError';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useDocumentMeta } from '../hooks/useDocumentMeta';
@@ -1646,9 +1648,9 @@ const ProductDetail: React.FC = () => {
                   />
                 </button>
                 {discountPercent > 0 && (
-                  <Tag color="gold" className="product-gallery-discount">
+                  <ShopTag color="gold" className="product-gallery-discount">
                     -{discountPercent}%
-                  </Tag>
+                  </ShopTag>
                 )}
                 {galleryImages.length > 1 && (
                   <div className="product-gallery-controls">
@@ -1778,9 +1780,9 @@ const ProductDetail: React.FC = () => {
                       </span>
                     ) : null}
                     {priceSavingsPercent > 0 && (
-                      <Tag color="gold" className="product-price-line__discount">
+                      <ShopTag color="gold" className="product-price-line__discount">
                         {t('pages.productDetail.savePercent', { defaultValue: 'Save {percent}%', percent: priceSavingsPercent })}
-                      </Tag>
+                      </ShopTag>
                     )}
                   </div>
                   <div className="product-price-delivery">
@@ -1800,7 +1802,7 @@ const ProductDetail: React.FC = () => {
 	                  <div className="product-compact-signals">
 	                    <span className={isLowStock ? 'product-detail__stockMeta product-detail__stockMeta--low' : 'product-detail__stockMeta'}>
                       {t('pages.productDetail.stock')}: {stockLabel}
-                      {isLowStock ? <Tag color="orange">{lowStockUrgencyLabel}</Tag> : null}
+                      {isLowStock ? <ShopTag color="orange">{lowStockUrgencyLabel}</ShopTag> : null}
                     </span>
 	                    {priceSavingsAmount > 0 ? <span>{t('pages.productDetail.purchaseSavings')}: <span className="commerce-money">{formatMoney(priceSavingsAmount * quantity)}</span></span> : null}
 	                  </div>
@@ -1826,7 +1828,7 @@ const ProductDetail: React.FC = () => {
                     <ShopIcon path={SI.barChart} />
                     <span>{isCompared ? t('pages.productList.viewCompare') : t('pages.productList.compare')}</span>
                   </button>
-                  <Button
+                  <ShopButton
                     className="product-mobile-buybar__cart"
                     icon={isOutOfStock ? <ShopIcon path={SI.bell} /> : <ShopIcon path={SI.cart} />}
                     aria-label={isOutOfStock ? stockAlertActionLabel : mobileCartBlockedReason}
@@ -1836,10 +1838,10 @@ const ProductDetail: React.FC = () => {
                     disabled={mobileAddToCartBlocked}
                   >
                     {isOutOfStock ? (isAlerted ? t('pages.stockAlerts.remove') : t('pages.stockAlerts.notifyMe')) : t('pages.productDetail.addCart')}
-                  </Button>
-                  <Button className="product-mobile-buybar__buy" type="primary" icon={<ShopIcon path={SI.thunder} />} aria-label={buyNowBlockedReason} title={buyNowBlockedReason} onClick={handleBuyNow} loading={purchaseSubmitting === 'buy'} disabled={buyNowBlocked}>
+                  </ShopButton>
+                  <ShopButton className="product-mobile-buybar__buy" type="primary" icon={<ShopIcon path={SI.thunder} />} aria-label={buyNowBlockedReason} title={buyNowBlockedReason} onClick={handleBuyNow} loading={purchaseSubmitting === 'buy'} disabled={buyNowBlocked}>
                     {t('pages.productDetail.buyNow')}
-                  </Button>
+                  </ShopButton>
                 </div>
 
 	                <div className="product-purchase-readiness" role="list" aria-label={t('pages.productDetail.decisionTitle')}>
@@ -1869,7 +1871,7 @@ const ProductDetail: React.FC = () => {
                         <div className="product-option-header">
                           <span className="product-detail-page__text product-detail-page__text--strong">{getLocalizedOptionLabel(group.name, language)}</span>
                           {isSizeOptionName(group.name) ? (
-                            <Button
+                            <ShopButton
                               size="small"
                               type="link"
                               aria-label={sizeGuideActionLabel}
@@ -1877,7 +1879,7 @@ const ProductDetail: React.FC = () => {
                               onClick={() => setSizeGuideOpen(true)}
                             >
                               {t('pages.productDetail.sizeGuide')}
-                            </Button>
+                            </ShopButton>
                           ) : null}
                         </div>
                         <div
@@ -1927,7 +1929,7 @@ const ProductDetail: React.FC = () => {
                               : t('pages.productDetail.selectedOptionsEmpty')}
                         </span>
                         {selectedOptionTags.length > 0 ? (
-                          <Button
+                          <ShopButton
                             size="small"
                             type="link"
                             aria-label={resetSelectedOptionsActionLabel}
@@ -1935,19 +1937,19 @@ const ProductDetail: React.FC = () => {
                             onClick={() => setSelectedOptions({})}
                           >
                             {t('pages.productList.resetFilters')}
-                          </Button>
+                          </ShopButton>
                         ) : null}
                       </div>
                     </div>
                     <div className="product-detail__chipRow">
                       {selectedOptionTags.length > 0 ? selectedOptionTags.map((item) => (
-                        <Tag key={item.name}>{item.label}: {item.valueLabel}</Tag>
+                        <ShopTag key={item.name}>{item.label}: {item.valueLabel}</ShopTag>
                       )) : (
-                        <Tag>{t('pages.productDetail.selectedOptionsEmpty')}</Tag>
+                        <ShopTag>{t('pages.productDetail.selectedOptionsEmpty')}</ShopTag>
                       )}
-                      {selectedVariant?.sku ? <Tag>{t('pages.productDetail.selectedVariantSku', { sku: selectedVariant.sku })}</Tag> : null}
+                      {selectedVariant?.sku ? <ShopTag>{t('pages.productDetail.selectedVariantSku', { sku: selectedVariant.sku })}</ShopTag> : null}
                       {hasCompleteOptions && !hasUnavailableSelectedVariant ? (
-                        <Tag color="green">{renderProductDetailAmountText(t('pages.productDetail.selectedVariantPrice', { price: formatMoney(displayPrice) }), formatMoney(displayPrice))}</Tag>
+                        <ShopTag color="green">{renderProductDetailAmountText(t('pages.productDetail.selectedVariantPrice', { price: formatMoney(displayPrice) }), formatMoney(displayPrice))}</ShopTag>
                       ) : null}
                     </div>
                   </div>
@@ -1962,7 +1964,7 @@ const ProductDetail: React.FC = () => {
                     <div className="product-size-calculator">
                     <div className="product-size-calculator__header">
                       <span className="product-detail-page__text product-detail-page__text--strong">{t('pages.productDetail.sizeCalculatorTitle')}</span>
-                      <Button
+                      <ShopButton
                         size="small"
                         type="link"
                         aria-label={sizeGuideActionLabel}
@@ -1970,7 +1972,7 @@ const ProductDetail: React.FC = () => {
                         onClick={() => setSizeGuideOpen(true)}
                       >
                         {t('pages.productDetail.sizeGuide')}
-                      </Button>
+                      </ShopButton>
                     </div>
                     <div className="product-size-calculator__inputs">
                       <ShopInput
@@ -1992,7 +1994,7 @@ const ProductDetail: React.FC = () => {
                       />
                     </div>
                     {recommendedSize ? (
-                      <Alert
+                      <ShopAlert
                         type={recommendedSizeValue ? 'success' : 'info'}
                         showIcon
                         message={t('pages.productDetail.sizeCalculatorResult', { size: recommendedSizeLabel })}
@@ -2000,7 +2002,7 @@ const ProductDetail: React.FC = () => {
                           ? t('pages.productDetail.sizeCalculatorMatch')
                           : t('pages.productDetail.sizeCalculatorNoMatch')}
                         action={recommendedSizeValue ? (
-                          <Button
+                          <ShopButton
                             size="small"
                             type="primary"
                             aria-label={`${t('pages.productDetail.sizeCalculatorApply')}: ${recommendedSizeLabel}, ${productName}`}
@@ -2008,7 +2010,7 @@ const ProductDetail: React.FC = () => {
                             onClick={() => selectOptionValue(sizeOptionGroup.name, recommendedSizeValue)}
                           >
                             {t('pages.productDetail.sizeCalculatorApply')}
-                          </Button>
+                          </ShopButton>
                         ) : undefined}
                       />
                     ) : (
@@ -2026,7 +2028,7 @@ const ProductDetail: React.FC = () => {
                     <span className="product-detail-page__text product-detail-page__text--secondary">{recommendedPathText}</span>
                   </div>
                   {purchaseMode !== recommendedPurchaseMode ? (
-                    <Button
+                    <ShopButton
                       size="small"
                       type="primary"
                       aria-label={useRecommendedPathActionLabel}
@@ -2034,9 +2036,9 @@ const ProductDetail: React.FC = () => {
                       onClick={() => setPurchaseMode(recommendedPurchaseMode)}
                     >
                       {t('pages.productDetail.useRecommendedPath')}
-                    </Button>
+                    </ShopButton>
                   ) : (
-                    <Tag color="green">{t('pages.productDetail.decisionReady')}</Tag>
+                    <ShopTag color="green">{t('pages.productDetail.decisionReady')}</ShopTag>
                   )}
                 </div>
                 ) : null}
@@ -2060,7 +2062,7 @@ const ProductDetail: React.FC = () => {
                           <span className="product-detail-page__text product-detail-page__text--strong">{t('bundle.includes')}</span>
                           <div className="product-detail__chipRow">
                             {bundleInfo.items.map((item) => (
-                              <Tag key={item.name} className="commerce-atomic">{item.name} <span className="commerce-quantity">x{item.quantity || 1}</span></Tag>
+                              <ShopTag key={item.name} className="commerce-atomic">{item.name} <span className="commerce-quantity">x{item.quantity || 1}</span></ShopTag>
                             ))}
                           </div>
                           <span className="product-detail-page__text product-detail-page__text--secondary">
@@ -2077,7 +2079,7 @@ const ProductDetail: React.FC = () => {
                 <div>
                   <span className="product-detail-page__text product-detail-page__text--strong product-quantity-label">{t('pages.productDetail.quantity')}</span>
                   <div className="product-quantity-row" role="group" aria-label={t('pages.productDetail.quantity')}>
-                    <Button
+                    <ShopButton
                       icon={<ShopIcon path={SI.minus} />}
                       aria-label={decreaseQuantityLabel}
                       title={decreaseQuantityLabel}
@@ -2087,7 +2089,7 @@ const ProductDetail: React.FC = () => {
                     <span className="product-quantity__value" role="status" aria-live="polite" aria-label={quantityValueLabel}>
                       {quantity}
                     </span>
-                    <Button
+                    <ShopButton
                       icon={<ShopIcon path={SI.plus} />}
                       aria-label={increaseQuantityLabel}
                       title={increaseQuantityLabel}
@@ -2169,7 +2171,7 @@ const ProductDetail: React.FC = () => {
                               <strong>{itemName}</strong>
                               <span className="commerce-money">{formatMoney(item.effectivePrice ?? item.price)}</span>
                             </span>
-                            <Button
+                            <ShopButton
                               size="small"
                               type={needsOptions ? 'default' : 'primary'}
                               icon={<ShopIcon path={SI.cart} />}
@@ -2180,7 +2182,7 @@ const ProductDetail: React.FC = () => {
                               onKeyDown={(event) => event.stopPropagation()}
                             >
                               {needsOptions ? t('pages.wishlist.selectOptions') : t('pages.productDetail.completeSetAdd')}
-                            </Button>
+                            </ShopButton>
                           </div>
                         );
                       })}
@@ -2192,7 +2194,7 @@ const ProductDetail: React.FC = () => {
                   <details className="product-detail-disclosure">
                     <summary>
                       <span>{t('pages.productDetail.decisionTitle')}</span>
-                      <Tag color="orange">{t('pages.productDetail.decisionNeedsReview')}</Tag>
+                      <ShopTag color="orange">{t('pages.productDetail.decisionNeedsReview')}</ShopTag>
                     </summary>
                     <div className="product-conversion-nudges">
                       <div className="product-conversion-nudge">
@@ -2220,7 +2222,7 @@ const ProductDetail: React.FC = () => {
                 ) : null}
 
                 {isLowStock ? (
-                  <Alert
+                  <ShopAlert
                     className="product-detail__lowStockAlert"
                     type="warning"
                     showIcon
@@ -2230,14 +2232,14 @@ const ProductDetail: React.FC = () => {
                 ) : null}
                 {isOutOfStock && (
                   <div className="product-detail__chipRow">
-                    <Tag color="red" style={{ fontSize: 16, padding: '4px 12px' }}>{t('pages.productDetail.soldOut')}</Tag>
-                    <Button icon={<ShopIcon path={SI.bell} />} aria-label={stockAlertActionLabel} title={stockAlertActionLabel} onClick={handleStockAlert}>
+                    <ShopTag color="red" style={{ fontSize: 16, padding: '4px 12px' }}>{t('pages.productDetail.soldOut')}</ShopTag>
+                    <ShopButton icon={<ShopIcon path={SI.bell} />} aria-label={stockAlertActionLabel} title={stockAlertActionLabel} onClick={handleStockAlert}>
                       {isAlerted ? t('pages.stockAlerts.remove') : t('pages.stockAlerts.notifyMe')}
-                    </Button>
+                    </ShopButton>
                   </div>
                 )}
                 <div className="product-actions">
-                  <Button
+                  <ShopButton
                     type="primary"
                     size="large"
                     icon={<ShopIcon path={SI.cart} />}
@@ -2249,8 +2251,8 @@ const ProductDetail: React.FC = () => {
                     disabled={addToCartBlocked}
                   >
                     {isOutOfStock ? t('pages.productDetail.soldOut') : t('pages.productDetail.addCart')}
-                  </Button>
-                  <Button
+                  </ShopButton>
+                  <ShopButton
                     type="primary"
                     size="large"
                     icon={<ShopIcon path={SI.thunder} />}
@@ -2263,18 +2265,18 @@ const ProductDetail: React.FC = () => {
                     ghost
                   >
                     {t('pages.productDetail.buyNow')}
-                  </Button>
+                  </ShopButton>
                   {isOutOfStock ? (
-                    <Button size="large" icon={<ShopIcon path={SI.bell} />} aria-label={stockAlertActionLabel} title={stockAlertActionLabel} onClick={handleStockAlert}>
+                    <ShopButton size="large" icon={<ShopIcon path={SI.bell} />} aria-label={stockAlertActionLabel} title={stockAlertActionLabel} onClick={handleStockAlert}>
                       {isAlerted ? t('pages.stockAlerts.remove') : t('pages.stockAlerts.notifyMe')}
-                    </Button>
+                    </ShopButton>
                   ) : null}
-                  <Button size="large" icon={isWishlisted ? <ShopIcon path={SI.heartFill} style={{ color: '#ee4d2d' }} /> : <ShopIcon path={SI.heart} />} aria-label={favoriteActionLabel} title={favoriteActionLabel} onClick={handleFavorite}>
+                  <ShopButton size="large" icon={isWishlisted ? <ShopIcon path={SI.heartFill} style={{ color: '#ee4d2d' }} /> : <ShopIcon path={SI.heart} />} aria-label={favoriteActionLabel} title={favoriteActionLabel} onClick={handleFavorite}>
                     {isWishlisted ? t('pages.productDetail.favorited') : t('pages.productDetail.favorite')}
-                  </Button>
-                  <Button size="large" icon={<ShopIcon path={SI.barChart} />} aria-label={compareActionLabel} title={compareActionLabel} onClick={handleCompare}>
+                  </ShopButton>
+                  <ShopButton size="large" icon={<ShopIcon path={SI.barChart} />} aria-label={compareActionLabel} title={compareActionLabel} onClick={handleCompare}>
                     {isCompared ? t('pages.productList.viewCompare') : t('pages.productList.compare')}
-                  </Button>
+                  </ShopButton>
                 </div>
 
                 <details className="product-detail-disclosure product-detail-disclosure--service">
@@ -2439,13 +2441,13 @@ const ProductDetail: React.FC = () => {
               aria-label={questionInputLabel}
               title={questionInputLabel}
             />
-            <Button type="primary" aria-label={questionSubmitActionLabel} title={questionSubmitActionLabel} onClick={handleAskQuestion} loading={questionSubmitting}>
+            <ShopButton type="primary" aria-label={questionSubmitActionLabel} title={questionSubmitActionLabel} onClick={handleAskQuestion} loading={questionSubmitting}>
               {t('pages.ask.submit')}
-            </Button>
+            </ShopButton>
           </div>
           {pendingQuestions.length > 0 ? (
             <div className="product-qa-pending" role="status" aria-live="polite" aria-label={t('pages.ask.pendingTitle')}>
-              <Alert
+              <ShopAlert
                 type="success"
                 showIcon
                 message={t('pages.ask.pendingTitle')}
@@ -2576,7 +2578,7 @@ const ProductDetail: React.FC = () => {
                             </span>
                           )}
                         </div>
-                        <Button
+                        <ShopButton
                           block
                           size="small"
                           type={needsOptions ? 'default' : 'primary'}
@@ -2592,7 +2594,7 @@ const ProductDetail: React.FC = () => {
                             : needsOptions
                               ? t('pages.wishlist.selectOptions')
                               : t('pages.productDetail.addCart')}
-                        </Button>
+                        </ShopButton>
                       </div>
                       </div>
                     </article>
@@ -2615,7 +2617,7 @@ const ProductDetail: React.FC = () => {
             </div>
             <div className="product-recommendations__emptyActions" data-product-detail-recommendations-empty-actions="true">
               {recommendationsLoadFailed ? (
-                <Button
+                <ShopButton
                   type="primary"
                   aria-label={t('common.retry')}
                   title={t('common.retry')}
@@ -2627,9 +2629,9 @@ const ProductDetail: React.FC = () => {
                   }}
                 >
                   {t('common.retry')}
-                </Button>
+                </ShopButton>
               ) : null}
-              <Button
+              <ShopButton
                 type={recommendationsLoadFailed ? 'default' : 'primary'}
                 icon={<ShopIcon path={SI.cart} />}
                 aria-label={t('pages.cart.browse')}
@@ -2637,21 +2639,21 @@ const ProductDetail: React.FC = () => {
                 onClick={() => navigate('/products')}
               >
                 {t('pages.cart.browse')}
-              </Button>
-              <Button
+              </ShopButton>
+              <ShopButton
                 aria-label={t('nav.coupons')}
                 title={t('nav.coupons')}
                 onClick={() => navigate('/coupons')}
               >
                 {t('nav.coupons')}
-              </Button>
-              <Button
+              </ShopButton>
+              <ShopButton
                 aria-label={t('nav.petFinder')}
                 title={t('nav.petFinder')}
                 onClick={() => navigate('/pet-finder')}
               >
                 {t('nav.petFinder')}
-              </Button>
+              </ShopButton>
             </div>
           </div>
         )}
@@ -2687,7 +2689,7 @@ const ProductDetail: React.FC = () => {
         title={t('pages.productDetail.sizeGuideTitle')}
         open={sizeGuideOpen}
         onClose={() => setSizeGuideOpen(false)}
-        footer={<Button type="primary" aria-label={sizeGuideConfirmActionLabel} title={sizeGuideConfirmActionLabel} onClick={() => setSizeGuideOpen(false)}>{t('pages.productDetail.sizeGuideGotIt')}</Button>}
+        footer={<ShopButton type="primary" aria-label={sizeGuideConfirmActionLabel} title={sizeGuideConfirmActionLabel} onClick={() => setSizeGuideOpen(false)}>{t('pages.productDetail.sizeGuideGotIt')}</ShopButton>}
         className="profile-mobile-safe-modal product-detail__sizeGuideModal"
         rootClassName="product-detail__sizeGuideModalRoot"
         closeLabel={t('common.close', { defaultValue: 'Close' })}

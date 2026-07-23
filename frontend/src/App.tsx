@@ -23,7 +23,6 @@ import {
 } from './utils/mobileUpdate';
 import './App.css';
 
-
 /** Lightweight shell icons — keep ant-design icons package out of the App entry graph. */
 const ShellIcon: React.FC<{ path: string }> = ({ path }) => (
   <svg className="shop-shell-icon" viewBox="0 0 24 24" width="1em" height="1em" aria-hidden="true" focusable="false">
@@ -35,9 +34,7 @@ const SHELL_ICON_SEARCH = 'M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5 6.5 6.5
 const SHELL_ICON_GIFT = 'M20 6h-2.18c.11-.31.18-.65.18-1a2.996 2.996 0 0 0-5.5-1.65l-.5.67-.5-.68C10.96 2.54 9.81 2 8.5 2 6.85 2 5.5 3.35 5.5 5c0 .35.07.69.18 1H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-5-2c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zM8.5 4c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zM12 12.68 15.93 17H8.07L12 12.68zM12 9.32 8.07 5h7.86L12 9.32z';
 const SHELL_ICON_USER_ADD = 'M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z';
 
-
 const loadAuthCore = () => import(/* webpackChunkName: "api-core" */ './api/core');
-
 
 declare global {
   interface Window {
@@ -1013,7 +1010,6 @@ const LazySupportWidgetHost: React.FC = () => {
     </>
   );
 };
-
 
 type ShopApiErrorDetail = {
   status?: number;

@@ -33,4 +33,29 @@ describe('ShopDrawer', () => {
     );
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
+
+  it('supports left placement for admin mobile navigation', () => {
+    const onClose = jest.fn();
+    render(
+      <ShopDrawer
+        open
+        onClose={onClose}
+        placement="left"
+        width={288}
+        title="Admin"
+        rootClassName="admin-layout__mobileDrawer"
+        bodyClassName="admin-layout__mobileDrawerBody"
+        ariaLabel="Admin navigation"
+        closeLabel="Close admin menu"
+      >
+        <div>Menu body</div>
+      </ShopDrawer>,
+    );
+    const dialog = screen.getByRole('dialog', { name: 'Admin navigation' });
+    expect(dialog).toHaveClass('shop-drawer__panel');
+    expect(dialog).toHaveClass('ant-drawer-content');
+    expect(dialog.closest('.shop-drawer')).toHaveClass('shop-drawer--left');
+    expect(dialog.closest('.shop-drawer')).toHaveClass('admin-layout__mobileDrawer');
+    expect(screen.getByText('Menu body').parentElement).toHaveClass('admin-layout__mobileDrawerBody');
+  });
 });

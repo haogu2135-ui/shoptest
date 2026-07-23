@@ -7,9 +7,10 @@ export type ShopSegmentedOption = {
 };
 
 export type ShopSegmentedProps = {
-  value: string;
+  value?: string;
   options: ShopSegmentedOption[];
-  onChange: (value: string) => void;
+  // Method syntax keeps callbacks bivariant under strictFunctionTypes.
+  onChange?(value: string): void;
   block?: boolean;
   className?: string;
   ariaLabel?: string;
@@ -17,7 +18,7 @@ export type ShopSegmentedProps = {
 };
 
 const ShopSegmented: React.FC<ShopSegmentedProps> = ({
-  value,
+  value = '',
   options,
   onChange,
   block = false,
@@ -48,7 +49,7 @@ const ShopSegmented: React.FC<ShopSegmentedProps> = ({
               aria-label={optionLabel}
               title={optionLabel}
               onClick={() => {
-                if (!selected) onChange(option.value);
+                if (!selected) onChange?.(option.value);
               }}
             >
               <span className="shop-segmented__label">{option.label}</span>

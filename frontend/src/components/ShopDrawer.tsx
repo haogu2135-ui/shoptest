@@ -2,16 +2,19 @@ import React, { useEffect } from 'react';
 import { ShopIcon, SI } from './ShopIcon';
 import './ShopDrawer.css';
 
+export type ShopDrawerPlacement = 'bottom' | 'right' | 'left';
+
 export type ShopDrawerProps = {
   open: boolean;
   onClose: () => void;
   title?: React.ReactNode;
   extra?: React.ReactNode;
-  placement?: 'bottom' | 'right';
+  placement?: ShopDrawerPlacement;
   height?: string | number;
   width?: string | number;
   rootClassName?: string;
   className?: string;
+  bodyClassName?: string;
   children?: React.ReactNode;
   ariaLabel?: string;
   closeLabel?: string;
@@ -32,6 +35,7 @@ const ShopDrawer: React.FC<ShopDrawerProps> = ({
   width,
   rootClassName = '',
   className = '',
+  bodyClassName = '',
   children,
   ariaLabel,
   closeLabel = 'Close',
@@ -55,33 +59,50 @@ const ShopDrawer: React.FC<ShopDrawerProps> = ({
 
   const panelStyle: React.CSSProperties = {};
   if (placement === 'bottom' && height != null) panelStyle.height = toCssSize(height);
-  if (placement === 'right' && width != null) panelStyle.width = toCssSize(width);
+  if ((placement === 'right' || placement === 'left') && width != null) {
+    panelStyle.width = toCssSize(width);
+  }
+
+  const dialogLabel = ariaLabel || (typeof title === 'string' ? title : closeLabel);
 
   return (
     <div
-      className={`shop-drawer shop-drawer--${placement} shop-drawer--open ${rootClassName}`.trim()}
+      className={[
+        'shop-drawer',
+        `shop-drawer--${placement}`,
+        'shop-drawer--open',
+        'ant-drawer',
+        `ant-drawer-${placement}`,
+        'ant-drawer-open',
+        rootClassName,
+      ].filter(Boolean).join(' ')}
       role="presentation"
     >
       <button
         type="button"
-        className="shop-drawer__mask"
+        className="shop-drawer__mask ant-drawer-mask"
         aria-label={closeLabel}
         title={closeLabel}
         onClick={onClose}
       />
       <div
-        className={`shop-drawer__panel ${className}`.trim()}
+        className={[
+          'shop-drawer__panel',
+          'ant-drawer-content-wrapper',
+          'ant-drawer-content',
+          className,
+        ].filter(Boolean).join(' ')}
         role="dialog"
         aria-modal="true"
-        aria-label={ariaLabel || (typeof title === 'string' ? title : closeLabel)}
+        aria-label={dialogLabel}
         style={panelStyle}
       >
-        <div className="shop-drawer__header">
-          <div className="shop-drawer__title">{title}</div>
+        <div className="shop-drawer__header ant-drawer-header">
+          <div className="shop-drawer__title ant-drawer-title">{title}</div>
           {extra ? <div className="shop-drawer__extra">{extra}</div> : null}
           <button
             type="button"
-            className="shop-drawer__close"
+            className="shop-drawer__close ant-drawer-close"
             aria-label={closeLabel}
             title={closeLabel}
             onClick={onClose}
@@ -89,7 +110,9 @@ const ShopDrawer: React.FC<ShopDrawerProps> = ({
             <ShopIcon path={SI.close} />
           </button>
         </div>
-        <div className="shop-drawer__body">{children}</div>
+        <div className={['shop-drawer__body', 'ant-drawer-body', bodyClassName].filter(Boolean).join(' ')}>
+          {children}
+        </div>
       </div>
     </div>
   );

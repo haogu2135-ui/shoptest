@@ -47,15 +47,11 @@ describe('CategoryManagement readiness panel guards', () => {
     expect(f3526Css).not.toMatch(/scrollbar-width:\s*none/);
   });
 
-  it('keeps the parent TreeSelect popup above mobile editor modals', () => {
-    const popupGuardStart = appCssSource.indexOf('Body-mounted Ant Design popups');
-    const popupGuardCss = appCssSource.slice(popupGuardStart);
-
-    expect(pageSource).toContain('<TreeSelect');
-    expect(pageSource).toContain("classNames={{ popup: { root: 'shop-mobile-popup-layer' } }}");
-    expect(pageSource).toContain('getPopupContainer={() => document.body}');
-    expect(popupGuardStart).toBeGreaterThanOrEqual(0);
-    expect(popupGuardCss).toMatch(/@media \(max-width:\s*780px\)\s*\{[\s\S]*?\.shop-mobile-popup-layer,[\s\S]*?\.shop-mobile-popup-layer\.ant-select-dropdown[\s\S]*?\{[\s\S]*?z-index:\s*var\(--shop-z-floating-panel\)\s*!important;/);
-    expect(popupGuardCss).toMatch(/\.shop-mobile-popup-layer\.ant-select-dropdown,[\s\S]*?\.shop-mobile-popup-layer\.ant-cascader-dropdown,[\s\S]*?\.shop-mobile-popup-layer\.ant-picker-dropdown\s*\{[\s\S]*?left:\s*max\(8px,\s*env\(safe-area-inset-left,\s*0px\)\)\s*!important;[\s\S]*?right:\s*max\(8px,\s*env\(safe-area-inset-right,\s*0px\)\)\s*!important;[\s\S]*?width:\s*auto\s*!important;/);
+  it('keeps the parent category field on ShopTreeSelect with body-mounted popup layer', () => {
+    expect(pageSource).toContain('<ShopTreeSelect');
+    expect(pageSource).toContain('popupClassName="shop-mobile-popup-layer"');
+    expect(pageSource).toContain("name=\"parentId\"");
+    expect(pageSource).not.toMatch(/<TreeSelect\b/);
+    expect(pageSource).not.toMatch(/import \{[^}]*\bTreeSelect\b[^}]*\} from 'antd'/);
   });
 });

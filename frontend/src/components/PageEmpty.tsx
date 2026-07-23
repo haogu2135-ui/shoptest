@@ -1,7 +1,8 @@
 import React from 'react';
 import { ShopIcon, SI } from './ShopIcon';
-import { Button } from 'antd';
+
 import './PageFeedback.css';
+import ShopButton from './ShopButton';
 
 export type PageEmptyAction = {
   key: string;
@@ -47,7 +48,7 @@ const PageEmpty: React.FC<PageEmptyProps> = ({
         {resolvedActions.length > 0 ? (
           <div className="page-feedback__actions">
             {resolvedActions.map((action, index) => (
-              <Button
+              <ShopButton
                 key={action.key}
                 type={action.type || (index === 0 ? 'primary' : 'default')}
                 icon={action.icon || (index === 0 ? <ShopIcon path={SI.shopping} /> : <ShopIcon path={SI.home} />)}
@@ -56,7 +57,7 @@ const PageEmpty: React.FC<PageEmptyProps> = ({
                 onClick={action.onClick}
               >
                 {action.label}
-              </Button>
+              </ShopButton>
             ))}
           </div>
         ) : null}

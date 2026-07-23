@@ -1,0 +1,132 @@
+.shop-tag {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  margin: 0 8px 0 0;
+  padding: 0 8px;
+  min-height: 22px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 20px;
+  white-space: nowrap;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  vertical-align: middle;
+}
+
+.shop-tag__icon {
+  display: inline-flex;
+  align-items: center;
+  font-size: 12px;
+}
+
+.shop-tag__text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.shop-tag--default,
+.ant-tag-default {
+  color: #355244;
+  background: #eef3f0;
+  border-color: rgba(18, 71, 52, 0.12);
+}
+
+.shop-tag--success,
+.shop-tag--green,
+.ant-tag-success,
+.ant-tag-green {
+  color: #146c43;
+  background: #e8f7ef;
+  border-color: rgba(20, 108, 67, 0.18);
+}
+
+.shop-tag--processing,
+.shop-tag--blue,
+.ant-tag-processing,
+.ant-tag-blue {
+  color: #0b5cab;
+  background: #eaf3ff;
+  border-color: rgba(11, 92, 171, 0.18);
+}
+
+.shop-tag--error,
+.shop-tag--red,
+.ant-tag-error,
+.ant-tag-red {
+  color: #b42318;
+  background: #fef3f2;
+  border-color: rgba(180, 35, 24, 0.18);
+}
+
+.shop-tag--warning,
+.shop-tag--orange,
+.shop-tag--gold,
+.ant-tag-warning,
+.ant-tag-orange,
+.ant-tag-gold {
+  color: #9a6700;
+  background: #fff8e8;
+  border-color: rgba(154, 103, 0, 0.2);
+}
+
+.shop-tag--cyan,
+.ant-tag-cyan {
+  color: #0e7490;
+  background: #e7f8fb;
+  border-color: rgba(14, 116, 144, 0.18);
+}
+
+.shop-tag--purple,
+.shop-tag--geekblue,
+.shop-tag--magenta,
+.ant-tag-purple,
+.ant-tag-geekblue,
+.ant-tag-magenta {
+  color: #5b21b6;
+  background: #f3e8ff;
+  border-color: rgba(91, 33, 182, 0.16);
+}
+
+.shop-tag--volcano,
+.ant-tag-volcano {
+  color: #c2410c;
+  background: #fff1ea;
+  border-color: rgba(194, 65, 12, 0.18);
+}
+
+.shop-tag--lime,
+.ant-tag-lime {
+  color: #3f6212;
+  background: #f3fce8;
+  border-color: rgba(63, 98, 18, 0.18);
+}
+
+.shop-tag__close {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 2px;
+  padding: 0;
+  width: 14px;
+  height: 14px;
+  line-height: 1;
+  font-size: 12px;
+  opacity: 0.72;
+}
+
+.shop-tag__close:hover {
+  opacity: 1;
+}
+
+.shop-tag[role='button'] {
+  cursor: pointer;
+}
