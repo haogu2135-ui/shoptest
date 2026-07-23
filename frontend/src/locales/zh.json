@@ -1231,7 +1231,9 @@
       "snapshotTitle": "临时目录",
       "snapshotText": "实时目录恢复后，价格和库存可能会更新。",
       "seoDescription": "选购宠物食品、玩具、宠物床、外出装备与智能照护用品，支持墨西哥本地化结账体验。",
-      "searchSeoDescription": "“{keyword}” 的搜索结果 — 查看库存、优惠与一键加购的匹配商品。"
+      "searchSeoDescription": "“{keyword}” 的搜索结果 — 查看库存、优惠与一键加购的匹配商品。",
+      "mobileFilterHint": "点“筛选”可按尺码、材质、颜色或价格缩小结果。",
+      "mobileFilterHintDismiss": "知道了"
     },
     "compare": {
       "title": "商品对比",

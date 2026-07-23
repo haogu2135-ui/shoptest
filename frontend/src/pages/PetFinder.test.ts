@@ -59,9 +59,10 @@ describe('PetFinder responsive controls', () => {
     });
 
     expect(fs.existsSync(path.join(pagesDir, 'PetPage.tsx'))).toBe(false);
-    expect(source).toContain("aria-label={t('pages.petFinder.petType')}");
-    expect(source).toContain("aria-label={t('pages.petFinder.need')}");
-    expect(source).toContain("aria-label={t('pages.petFinder.priority')}");
+    expect(source).toContain("ariaLabel={t('pages.petFinder.petType')}");
+    expect(source).toContain("ariaLabel={t('pages.petFinder.need')}");
+    expect(source).toContain("ariaLabel={t('pages.petFinder.priority')}");
+    // ShopSelect maps ariaLabel -> aria-label on the trigger for commercial a11y.
     expect(unlabeledNativeSelects).toEqual([]);
     expect(unlabeledAntdSelects).toEqual([]);
   });

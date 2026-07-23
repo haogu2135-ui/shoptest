@@ -7009,3 +7009,30 @@ body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .product-de
   padding: 12px;
   min-width: 0;
 }
+
+.product-detail__imageModalImg {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 12px;
+}
+
+
+/* Commercial PDP: sold-out chip + wishlist active icon + QA title without inline styles. */
+.product-detail__soldOutTag {
+  font-size: 16px !important;
+  padding: 4px 12px !important;
+  line-height: 1.2 !important;
+}
+
+.product-detail__wishlistIcon {
+  color: inherit;
+}
+
+.product-detail__wishlistIcon--active {
+  color: #ee4d2d !important;
+}
+
+.product-detail-page__title--qa {
+  margin-bottom: 16px !important;
+}

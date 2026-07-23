@@ -967,6 +967,18 @@ it('keeps home empty category and product rails on multipath commercial recovery
     expect(home).not.toMatch(/usePageTitle\(\s*t\('common\.brand'\)/);
   });
 
+  it('keeps support launcher geometry on CSS vars for commercial rail closure', () => {
+    const support = readFrontend('components', 'CustomerSupportWidget.tsx');
+    const supportCss = readFrontend('components', 'CustomerSupportWidget.css');
+    expect(support).toContain('--support-launcher-left');
+    expect(support).toContain('--support-launcher-size');
+    expect(support).toContain('customer-support-widget__launcherIcon');
+    expect(supportCss).toContain('Support launcher CSS var geometry');
+    expect(supportCss).toMatch(
+      /--support-launcher-size[\s\S]*?width:\s*var\(--support-launcher-size/,
+    );
+  });
+
   it('keeps mobile web support launcher visible on browse shells', () => {
     const appCss = readFrontend('App.css');
     expect(appCss).toContain('Keep one-tap Live Support on browse/account surfaces');
@@ -1074,11 +1086,32 @@ it('keeps home empty category and product rails on multipath commercial recovery
     expect(app).toMatch(/path="orders"\s+element=\{<Navigate to="\/profile\?tab=orders" replace \/>\}/);
   });
 
+  it('keeps ShopBadge digits commercially legible at >=12px', () => {
+    const badgeCss = readFrontend('components', 'ShopBadge.css');
+    expect(badgeCss).toContain('Commercial residual: shop badge digits stay >=12px');
+    expect(badgeCss).toMatch(
+      /Commercial residual: shop badge digits stay >=12px[\s\S]*?\.shop-badge__count[\s\S]*?font-size:\s*12px\s*!important/,
+    );
+    expect(badgeCss).not.toMatch(/\.shop-badge--small \.shop-badge__count[\s\S]*?font-size:\s*10px/);
+  });
+
+  it('keeps social-proof toast copy commercially legible at >=12px', () => {
+    const toastCss = readFrontend('components', 'SocialProofToast.css');
+    expect(toastCss).toContain('Commercial residual: social proof toast copy stays >=12px');
+    expect(toastCss).toMatch(
+      /Commercial residual: social proof toast copy stays >=12px[\s\S]*?\.social-proof-toast strong[\s\S]*?font-size:\s*12px\s*!important/,
+    );
+    expect(toastCss).not.toMatch(/font-size:\s*10\.5px/);
+  });
+
   it('keeps nav badge digits commercially legible at >=12px on mobile', () => {
     const navCss = readFrontend('components', 'Navbar.css');
     expect(navCss).toContain('nav cart/wishlist/notification badge digits stay >=12px');
     expect(navCss).toMatch(
       /nav cart\/wishlist\/notification badge digits stay >=12px[\s\S]*?\.ant-scroll-number-only-unit[\s\S]*?font-size:\s*12px/
+    );
+    expect(navCss).toMatch(
+      /nav cart\/wishlist\/notification badge digits stay >=12px[\s\S]*?\.shop-badge__count[\s\S]*?font-size:\s*12px\s*!important/,
     );
   });
 
@@ -1142,6 +1175,55 @@ it('keeps home empty category and product rails on multipath commercial recovery
     );
   });
 
+  it('keeps residual pet-finder/history/notification/catalog labels commercially legible at >=12px', () => {
+    const listCss = readFrontend('pages', 'ProductList.css');
+    const petFinderCss = readFrontend('pages', 'PetFinder.css');
+    const historyCss = readFrontend('pages', 'BrowsingHistory.css');
+    const notificationsCss = readFrontend('pages', 'Notifications.css');
+    expect(listCss).toContain('Commercial Spanish action labels stay >=12px');
+    expect(listCss).toMatch(
+      /Commercial Spanish action labels stay >=12px[\s\S]*?\.product-list--es \.product-list__actionButton \.product-list__actionLabel[\s\S]*?font-size:\s*12px/,
+    );
+    expect(petFinderCss).toContain('Commercial mobile: pet finder labels stay >=12px');
+    expect(petFinderCss).toMatch(
+      /Commercial mobile: pet finder labels stay >=12px[\s\S]*?\.pet-finder-page__signal span[\s\S]*?font-size:\s*12px\s*!important/,
+    );
+    expect(historyCss).toContain('Commercial mobile: browsing history labels stay >=12px');
+    expect(historyCss).toMatch(
+      /Commercial mobile: browsing history labels stay >=12px[\s\S]*?\.browsing-history__assistant-actions span[\s\S]*?font-size:\s*12px\s*!important/,
+    );
+    expect(notificationsCss).toContain('Commercial residual: notification tags stay >=12px');
+    expect(notificationsCss).toMatch(
+      /Commercial residual: notification tags stay >=12px[\s\S]*?\.notifications-page__item \.ant-list-item-meta-title \.ant-tag[\s\S]*?font-size:\s*12px\s*!important/,
+    );
+  });
+
+  it('keeps PDP sold-out and wishlist affordances on CSS classes', () => {
+    const pdp = readFrontend('pages', 'ProductDetail.tsx');
+    const pdpCss = readFrontend('pages', 'ProductDetail.css');
+    expect(pdp).toContain('product-detail__soldOutTag');
+    expect(pdp).toContain('product-detail__wishlistIcon--active');
+    expect(pdp).toContain('product-detail-page__title--qa');
+    expect(pdp).not.toMatch(/product-detail__soldOutTag[\s\S]{0,40}style=\{\{/);
+    expect(pdpCss).toContain('Commercial PDP: sold-out chip');
+  });
+
+  it('keeps wishlist header icon on CSS without inline color/size', () => {
+    const wishlist = readFrontend('pages', 'Wishlist.tsx');
+    const wishlistCss = readFrontend('pages', 'Wishlist.css');
+    expect(wishlist).toContain('wishlist-page__headerIcon');
+    expect(wishlist).not.toMatch(/wishlist-page__headerIcon[\s\S]{0,40}style=\{\{/);
+    expect(wishlistCss).toContain('wishlist-page__headerIcon');
+  });
+
+  it('keeps home category skeleton title off inline geometry', () => {
+    const home = readFrontend('pages', 'Home.tsx');
+    const homeCss = readFrontend('pages', 'Home.css');
+    expect(home).toContain('shopee-categories-section__titleSkeleton');
+    expect(home).not.toMatch(/shopee-categories-section__titleSkeleton[\s\S]{0,40}style=\{\{/);
+    expect(homeCss).toContain('shopee-categories-section__titleSkeleton');
+  });
+
   it('keeps conversion microcopy commercially legible at >=12px on mobile', () => {
     const cartCss = readFrontend('pages', 'Cart.css');
     const listCss = readFrontend('pages', 'ProductList.css');
@@ -1185,9 +1267,9 @@ it('keeps home empty category and product rails on multipath commercial recovery
     const app = readFrontend('App.tsx');
     expect(notifications).toContain("<h1 className=\"notifications-page__title\">{t('pages.notifications.authGateTitle')}</h1>");
     expect(notifications).toContain("<h1 className=\"notifications-page__title\">{t('pages.notifications.title')}</h1>");
-    expect(petFinder).toContain('<h1 className="pet-finder-page__title" style={{ margin: 0 }}>');
-    expect(compare).toContain("<h1 className=\"product-compare-page__title\" style={{ margin: 0 }}>{t('pages.compare.title')}</h1>");
-    expect(stock).toContain('<h1 className="stock-alerts-page__title" style={{ margin: 0 }}>');
+    expect(petFinder).toContain('<h1 className="pet-finder-page__title">');
+    expect(compare).toContain("<h1 className=\"product-compare-page__title\">{t('pages.compare.title')}</h1>");
+    expect(stock).toContain('<h1 className="stock-alerts-page__title">');
     expect(notFound).toContain('not-found-page__title');
     expect(forgot).toContain('<h1 className="shopee-login-subtitle shopee-login-subtitle--h1">');
     expect(app).toMatch(/path === '\/notifications'/);
@@ -1364,6 +1446,67 @@ it('keeps home empty category and product rails on multipath commercial recovery
     for (const parts of files) {
       const css = readFrontend(...parts);
       expect(css).not.toMatch(/font-size:\s*(?:9|10|11)px/);
+    }
+  });
+
+
+  it('keeps storefront custom tablists keyboard-roving for commercial accessibility', () => {
+    const productDetail = readFrontend('pages', 'ProductDetail.tsx');
+    const profile = readFrontend('pages', 'Profile.tsx');
+    const shopTabs = readFrontend('components', 'ShopTabs.tsx');
+    const util = readFrontend('utils', 'tablistKeyboard.ts');
+
+    expect(util).toContain('resolveRovingTabIndex');
+    expect(util).toContain('handleRovingTablistKeyDown');
+    expect(util).toContain('ArrowLeft');
+    expect(util).toContain('ArrowRight');
+    expect(util).toContain('Home');
+    expect(util).toContain('End');
+
+    expect(productDetail).toContain('handleRovingTablistKeyDown');
+    expect(productDetail).toContain('aria-orientation="horizontal"');
+    expect(profile).toContain('handleRovingTablistKeyDown');
+    expect(profile).toContain('aria-orientation="horizontal"');
+    expect(shopTabs).toContain('handleRovingTablistKeyDown');
+  });
+
+
+  it('keeps ShopModal and ShopDrawer on commercial focus-trap semantics', () => {
+    const modal = readFrontend('components', 'ShopModal.tsx');
+    const drawer = readFrontend('components', 'ShopDrawer.tsx');
+    const trap = readFrontend('utils', 'focusTrap.ts');
+
+    expect(trap).toContain('activateFocusTrap');
+    expect(trap).toContain('getFocusableElements');
+    expect(trap).toContain("event.key !== 'Tab'");
+    expect(trap).toContain('previouslyFocused.focus');
+
+    expect(modal).toContain('aria-modal="true"');
+    expect(modal).toContain('data-shop-modal-initial-focus');
+    expect(modal).toContain('activateFocusTrap');
+
+    expect(drawer).toContain('aria-modal="true"');
+    expect(drawer).toContain('data-shop-drawer-initial-focus');
+    expect(drawer).toContain('activateFocusTrap');
+    expect(drawer).toContain("tabIndex={-1}");
+  });
+
+
+  it('keeps product list mobile filter first-use guidance commercial-ready', () => {
+    const productList = readFrontend('pages', 'ProductList.tsx');
+    const css = readFrontend('pages', 'ProductList.css');
+    const en = readFrontend('locales', 'en.json');
+    const es = readFrontend('locales', 'es.json');
+    const zh = readFrontend('locales', 'zh.json');
+
+    expect(productList).toContain('data-product-list-filter-hint');
+    expect(productList).toContain('openMobileFilterDrawer');
+    expect(productList).toContain('pages.productList.mobileFilterHint');
+    expect(css).toContain('product-list__filterHint');
+    expect(css).toMatch(/product-list__filterHintDismiss[\s\S]*?min-height:\s*32px/);
+    for (const locale of [en, es, zh]) {
+      expect(locale).toContain('"mobileFilterHint"');
+      expect(locale).toContain('"mobileFilterHintDismiss"');
     }
   });
 

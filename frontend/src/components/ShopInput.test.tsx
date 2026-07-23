@@ -1,5 +1,6 @@
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
+import { LanguageProvider } from '../i18n';
 import ShopInput, { ShopPasswordInput, ShopTextArea } from './ShopInput';
 
 describe('ShopInput', () => {
@@ -25,22 +26,38 @@ describe('ShopInput', () => {
 });
 
 describe('ShopPasswordInput', () => {
+  afterEach(() => {
+    window.localStorage.clear();
+  });
+
   it('toggles visibility with iconRender button', () => {
     render(
-      <ShopPasswordInput
-        aria-label="Password"
-        defaultValue="secret"
-        iconRender={(visible) => (
-          <button type="button" aria-label={visible ? 'Hide password' : 'Show password'}>
-            {visible ? 'hide' : 'show'}
-          </button>
-        )}
-      />,
+      <LanguageProvider>
+        <ShopPasswordInput
+          aria-label="Password"
+          defaultValue="secret"
+          iconRender={(visible) => (
+            <button type="button" aria-label={visible ? 'Hide password' : 'Show password'}>
+              {visible ? 'hide' : 'show'}
+            </button>
+          )}
+        />
+      </LanguageProvider>,
     );
     const input = screen.getByLabelText('Password');
     expect(input).toHaveAttribute('type', 'password');
     fireEvent.click(screen.getByRole('button', { name: 'Show password' }));
     expect(input).toHaveAttribute('type', 'text');
+  });
+
+  it('localizes default visibility toggle labels', () => {
+    window.localStorage.setItem('shop-language', 'es');
+    render(
+      <LanguageProvider>
+        <ShopPasswordInput aria-label="Password" defaultValue="secret" />
+      </LanguageProvider>,
+    );
+    expect(screen.getByRole('button', { name: 'Password: Mostrar contraseña' })).toBeInTheDocument();
   });
 });
 

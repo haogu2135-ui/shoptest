@@ -543,8 +543,8 @@ const Wishlist: React.FC = () => {
       ) : null}
       <div className="wishlist-page__header">
         <div className="wishlist-page__headerActions">
-          <ShopIcon path={SI.heartFill} style={{ color: '#ee4d2d', fontSize: 24 }} />
-          <h1 className="wishlist-page__title" style={{ margin: 0 }}>{t('pages.wishlist.title', { count: items.length })}</h1>
+          <ShopIcon path={SI.heartFill} className="wishlist-page__headerIcon" aria-hidden="true" />
+          <h1 className="wishlist-page__title">{t('pages.wishlist.title', { count: items.length })}</h1>
         </div>
         <ShopButton
           type="primary"

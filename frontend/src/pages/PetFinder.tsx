@@ -252,10 +252,10 @@ const PetFinder: React.FC = () => {
           <div className="pet-finder-page__finderShell">
             <div className="pet-finder-page__finderIntro">
               <div className="pet-finder-page__introStack">
-                <h1 className="pet-finder-page__title" style={{ margin: 0 }}>
+                <h1 className="pet-finder-page__title">
                   <ShopIcon path={SI.gift} /> {t('pages.petFinder.title')}
                 </h1>
-                <p className="pet-finder-page__text pet-finder-page__paragraph pet-finder-page__text--secondary" style={{ margin: 0 }}>{t('pages.petFinder.subtitle')}</p>
+                <p className="pet-finder-page__text pet-finder-page__paragraph pet-finder-page__text--secondary pet-finder-page__subtitle">{t('pages.petFinder.subtitle')}</p>
               </div>
             </div>
             <div className="pet-finder-page__finderControls">

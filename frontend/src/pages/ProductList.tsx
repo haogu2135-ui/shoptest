@@ -48,8 +48,9 @@ import ShopBreadcrumb from '../components/ShopBreadcrumb';
 import './ProductList.css';
 import '../styles/mobile-page-contrast.css';
 import ShopButton from '../components/ShopButton';
-
 import ShopTag from '../components/ShopTag';
+
+const PRODUCT_LIST_FILTER_HINT_KEY = 'shop-product-list-filter-hint-dismissed';
 const SEARCH_HISTORY_KEY = 'shop-product-search-history';
 const MAX_SEARCH_HISTORY = 6;
 const MAX_SEARCH_LENGTH = 80;
@@ -542,6 +543,10 @@ const ProductList: React.FC = () => {
   const [productTotal, setProductTotal] = useState(0);
   const [usingServerPagination, setUsingServerPagination] = useState(false);
   const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
+  const [showMobileFilterHint, setShowMobileFilterHint] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return !hasStoredValue(PRODUCT_LIST_FILTER_HINT_KEY);
+  });
   const [wishlistedProductIds, setWishlistedProductIds] = useState<Set<number>>(new Set());
   const [authSessionVersion, setAuthSessionVersion] = useState(0);
   const [alertedStockProductIds, setAlertedStockProductIds] = useState<Set<number>>(
@@ -552,6 +557,14 @@ const ProductList: React.FC = () => {
   const productFetchAbortRef = useRef<AbortController | null>(null);
   const previousProductsRef = useRef<Product[]>([]);
   const { t, language } = useLanguage();
+  const dismissMobileFilterHint = useCallback(() => {
+    setShowMobileFilterHint(false);
+    setLocalStorageItem(PRODUCT_LIST_FILTER_HINT_KEY, '1');
+  }, []);
+  const openMobileFilterDrawer = useCallback(() => {
+    dismissMobileFilterHint();
+    setFilterDrawerOpen(true);
+  }, [dismissMobileFilterHint]);
   usePageTitle(t('pages.productList.title'));
   const productListDescription = useMemo(() => {
     if (keyword.trim()) {
@@ -1825,7 +1838,7 @@ const ProductList: React.FC = () => {
         icon: activeRefinementCount > 0 ? <ShopIcon path={SI.reload} /> : <ShopIcon path={SI.filter} />,
         label: activeRefinementCount > 0 ? t('pages.productList.resetFilters') : t('pages.productList.filters'),
         primary: activeRefinementCount > 0,
-        onClick: activeRefinementCount > 0 ? resetMobileRefinements : () => setFilterDrawerOpen(true),
+        onClick: activeRefinementCount > 0 ? resetMobileRefinements : openMobileFilterDrawer,
       },
       {
         key: 'catalog',
@@ -1848,7 +1861,7 @@ const ProductList: React.FC = () => {
         icon: <ShopIcon path={SI.filter} />,
         label: t('pages.productList.filters'),
         primary: activeRefinementCount > 0,
-        onClick: () => setFilterDrawerOpen(true),
+        onClick: openMobileFilterDrawer,
       },
       {
         key: 'deals',
@@ -2232,12 +2245,28 @@ const ProductList: React.FC = () => {
               <div className="product-list__toolbarMetaWrap">
                 <div className="product-list__toolbarMeta">
                   <span className="product-list__text product-list__text--secondary">{productCountLabel}</span>
-                  <ShopButton className="product-list__filterButton" icon={<ShopIcon path={SI.filter} />} aria-label={openFilterDrawerActionLabel} title={openFilterDrawerActionLabel} onClick={() => setFilterDrawerOpen(true)}>
-                    <span>{t('pages.productList.filters')}</span>
-                    {activeRefinementCount > 0 ? (
-                      <span className="product-list__filterCount">{activeRefinementCount > 99 ? '99+' : activeRefinementCount}</span>
+                  <div className="product-list__filterControl">
+                    <ShopButton className="product-list__filterButton" icon={<ShopIcon path={SI.filter} />} aria-label={openFilterDrawerActionLabel} title={openFilterDrawerActionLabel} onClick={openMobileFilterDrawer}>
+                      <span>{t('pages.productList.filters')}</span>
+                      {activeRefinementCount > 0 ? (
+                        <span className="product-list__filterCount">{activeRefinementCount > 99 ? '99+' : activeRefinementCount}</span>
+                      ) : null}
+                    </ShopButton>
+                    {showMobileFilterHint && activeRefinementCount === 0 ? (
+                      <div className="product-list__filterHint" role="status" aria-live="polite" data-product-list-filter-hint="true">
+                        <span className="product-list__filterHintText">{t('pages.productList.mobileFilterHint')}</span>
+                        <button
+                          type="button"
+                          className="product-list__filterHintDismiss"
+                          onClick={dismissMobileFilterHint}
+                          aria-label={t('pages.productList.mobileFilterHintDismiss')}
+                          title={t('pages.productList.mobileFilterHintDismiss')}
+                        >
+                          {t('pages.productList.mobileFilterHintDismiss')}
+                        </button>
+                      </div>
                     ) : null}
-                  </ShopButton>
+                  </div>
                 </div>
               </div>
             </div>
@@ -2275,7 +2304,7 @@ const ProductList: React.FC = () => {
                 {searchHistory.map((term) => (
                   <ShopTag
                     key={term}
-                    style={{ cursor: 'pointer' }}
+                    className="product-list__recentSearchTag"
                     role="button"
                     tabIndex={0}
                     aria-label={`${t('common.search')}: ${term}`}
@@ -2351,7 +2380,7 @@ const ProductList: React.FC = () => {
                 </span>
               </div>
               <div className="product-list__mobileConversionActions">
-                <ShopButton icon={<ShopIcon path={SI.filter} />} aria-label={openFilterDrawerActionLabel} title={openFilterDrawerActionLabel} onClick={() => setFilterDrawerOpen(true)}>
+                <ShopButton icon={<ShopIcon path={SI.filter} />} aria-label={openFilterDrawerActionLabel} title={openFilterDrawerActionLabel} onClick={openMobileFilterDrawer}>
                   {t('pages.productList.filters')}
                 </ShopButton>
                 <ShopButton aria-label={mobileSecondaryActionLabel} title={mobileSecondaryActionLabel} onClick={filteredProducts.length > 0 ? () => applySort('discount-desc') : activeRefinementCount > 0 ? resetMobileRefinements : () => navigate('/products')}>

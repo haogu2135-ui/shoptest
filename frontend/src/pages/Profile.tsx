@@ -56,6 +56,7 @@ import SeventeenTrackWidget from '../components/SeventeenTrackWidget';
 import '../styles/mobile-page-contrast.css';
 import { focusFirstFormError } from '../utils/formValidationFocus';
 import { navigateToCommercialPaymentUrl, formatPaymentUrlLabel, getPaymentRecoveryState } from '../utils/paymentRecovery';
+import { handleRovingTablistKeyDown } from '../utils/tablistKeyboard';
 import ShopButton from '../components/ShopButton';
 import ShopProgress from '../components/ShopProgress';
 
@@ -171,6 +172,8 @@ const profileOrderLabel = (order: Pick<OrderCustomer, 'id' | 'orderNo'>) => orde
 const sortOrdersNewestFirst = (items: OrderCustomer[]) =>
   [...items].sort((left, right) => getOrderSortTime(right) - getOrderSortTime(left) || right.id - left.id);
 
+const PROFILE_TAB_KEYS = ['info', 'addresses', 'orders', 'pets'] as const;
+const PROFILE_MOBILE_ENTRY_TAB_KEYS = ['orders', 'addresses', 'info', 'pets'] as const;
 const normalizeProfileTab = (value: string | null) =>
   value === 'info' || value === 'addresses' || value === 'orders' || value === 'pets' ? value : null;
 
@@ -1677,14 +1680,23 @@ const Profile: React.FC = () => {
         </div>
       </div>
 
-      <div className="profile-mobile-entry" role="tablist" aria-label={t('pages.profile.title')}>
+      <div className="profile-mobile-entry" role="tablist" aria-orientation="horizontal" aria-label={t('pages.profile.title')}>
         <button
           type="button"
           role="tab"
+          id="profile-mobile-tab-orders"
           className={profileActiveTab === 'orders' ? 'profile-mobile-entry__item profile-mobile-entry__item--active' : 'profile-mobile-entry__item'}
           aria-selected={profileActiveTab === 'orders'}
           tabIndex={profileActiveTab === 'orders' ? 0 : -1}
           onClick={() => openProfileTab('orders')}
+          onKeyDown={(event) => {
+            handleRovingTablistKeyDown(event, {
+              tabKeys: PROFILE_MOBILE_ENTRY_TAB_KEYS as unknown as string[],
+              activeKey: profileActiveTab,
+              onActivate: openProfileTab,
+              getTabElementId: (key) => `profile-mobile-tab-${key}`,
+            });
+          }}
         >
           <ShopIcon path={SI.cart} />
           <span>{t('pages.profile.orders', { count: orders.length })}</span>
@@ -1692,10 +1704,19 @@ const Profile: React.FC = () => {
         <button
           type="button"
           role="tab"
+          id="profile-mobile-tab-addresses"
           className={profileActiveTab === 'addresses' ? 'profile-mobile-entry__item profile-mobile-entry__item--active' : 'profile-mobile-entry__item'}
           aria-selected={profileActiveTab === 'addresses'}
           tabIndex={profileActiveTab === 'addresses' ? 0 : -1}
           onClick={() => openProfileTab('addresses')}
+          onKeyDown={(event) => {
+            handleRovingTablistKeyDown(event, {
+              tabKeys: PROFILE_MOBILE_ENTRY_TAB_KEYS as unknown as string[],
+              activeKey: profileActiveTab,
+              onActivate: openProfileTab,
+              getTabElementId: (key) => `profile-mobile-tab-${key}`,
+            });
+          }}
         >
           <ShopIcon path={SI.environment} />
           <span>{t('pages.profile.addresses', { count: addresses.length })}</span>
@@ -1703,10 +1724,19 @@ const Profile: React.FC = () => {
         <button
           type="button"
           role="tab"
+          id="profile-mobile-tab-info"
           className={profileActiveTab === 'info' ? 'profile-mobile-entry__item profile-mobile-entry__item--active' : 'profile-mobile-entry__item'}
           aria-selected={profileActiveTab === 'info'}
           tabIndex={profileActiveTab === 'info' ? 0 : -1}
           onClick={() => openProfileTab('info')}
+          onKeyDown={(event) => {
+            handleRovingTablistKeyDown(event, {
+              tabKeys: PROFILE_MOBILE_ENTRY_TAB_KEYS as unknown as string[],
+              activeKey: profileActiveTab,
+              onActivate: openProfileTab,
+              getTabElementId: (key) => `profile-mobile-tab-${key}`,
+            });
+          }}
         >
           <ShopIcon path={SI.user} />
           <span>{t('pages.profile.info')}</span>
@@ -1714,10 +1744,19 @@ const Profile: React.FC = () => {
         <button
           type="button"
           role="tab"
+          id="profile-mobile-tab-pets"
           className={profileActiveTab === 'pets' ? 'profile-mobile-entry__item profile-mobile-entry__item--active' : 'profile-mobile-entry__item'}
           aria-selected={profileActiveTab === 'pets'}
           tabIndex={profileActiveTab === 'pets' ? 0 : -1}
           onClick={() => openProfileTab('pets')}
+          onKeyDown={(event) => {
+            handleRovingTablistKeyDown(event, {
+              tabKeys: PROFILE_MOBILE_ENTRY_TAB_KEYS as unknown as string[],
+              activeKey: profileActiveTab,
+              onActivate: openProfileTab,
+              getTabElementId: (key) => `profile-mobile-tab-${key}`,
+            });
+          }}
         >
           <ShopIcon path={SI.heart} />
           <span>{t('pages.profile.pets', { count: petProfiles.length })}</span>
@@ -1728,6 +1767,7 @@ const Profile: React.FC = () => {
         <div
           className="profile-tabs__nav"
           role="tablist"
+          aria-orientation="horizontal"
           aria-label={t('pages.profile.title')}
         >
           <button
@@ -1739,6 +1779,14 @@ const Profile: React.FC = () => {
             aria-controls="profile-panel-info"
             tabIndex={profileActiveTab === 'info' ? 0 : -1}
             onClick={() => openProfileTab('info')}
+            onKeyDown={(event) => {
+              handleRovingTablistKeyDown(event, {
+                tabKeys: PROFILE_TAB_KEYS as unknown as string[],
+                activeKey: profileActiveTab,
+                onActivate: openProfileTab,
+                getTabElementId: (key) => `profile-tab-${key}`,
+              });
+            }}
           >
             <span className="profile-tabs__tabLabel">{t('pages.profile.info')}</span>
           </button>
@@ -1751,6 +1799,14 @@ const Profile: React.FC = () => {
             aria-controls="profile-panel-addresses"
             tabIndex={profileActiveTab === 'addresses' ? 0 : -1}
             onClick={() => openProfileTab('addresses')}
+            onKeyDown={(event) => {
+              handleRovingTablistKeyDown(event, {
+                tabKeys: PROFILE_TAB_KEYS as unknown as string[],
+                activeKey: profileActiveTab,
+                onActivate: openProfileTab,
+                getTabElementId: (key) => `profile-tab-${key}`,
+              });
+            }}
           >
             <span className="profile-tabs__tabLabel">{t('pages.profile.addresses', { count: addresses.length })}</span>
           </button>
@@ -1763,6 +1819,14 @@ const Profile: React.FC = () => {
             aria-controls="profile-panel-orders"
             tabIndex={profileActiveTab === 'orders' ? 0 : -1}
             onClick={() => openProfileTab('orders')}
+            onKeyDown={(event) => {
+              handleRovingTablistKeyDown(event, {
+                tabKeys: PROFILE_TAB_KEYS as unknown as string[],
+                activeKey: profileActiveTab,
+                onActivate: openProfileTab,
+                getTabElementId: (key) => `profile-tab-${key}`,
+              });
+            }}
           >
             <span className="profile-tabs__tabLabel">{t('pages.profile.orders', { count: orders.length })}</span>
           </button>
@@ -1775,6 +1839,14 @@ const Profile: React.FC = () => {
             aria-controls="profile-panel-pets"
             tabIndex={profileActiveTab === 'pets' ? 0 : -1}
             onClick={() => openProfileTab('pets')}
+            onKeyDown={(event) => {
+              handleRovingTablistKeyDown(event, {
+                tabKeys: PROFILE_TAB_KEYS as unknown as string[],
+                activeKey: profileActiveTab,
+                onActivate: openProfileTab,
+                getTabElementId: (key) => `profile-tab-${key}`,
+              });
+            }}
           >
             <span className="profile-tabs__tabLabel">{t('pages.profile.pets', { count: petProfiles.length })}</span>
           </button>

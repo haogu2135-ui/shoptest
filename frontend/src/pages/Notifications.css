@@ -683,8 +683,9 @@
     line-height: 1.3;
   }
 
+  /* Commercial notification type tags stay >=12px */
   .notifications-page__item .ant-list-item-meta-title .ant-tag {
-    font-size: 10.5px;
+    font-size: 12px;
   }
 
   .notifications-page__plainText,
@@ -1345,5 +1346,15 @@
   .notifications-page__itemSideActions {
     width: 100%;
     justify-content: flex-start;
+  }
+}
+
+
+/* Commercial residual: notification tags stay >=12px */
+@media (max-width: 780px) {
+  .notifications-page__item .ant-list-item-meta-title .ant-tag,
+  .notifications-page__item .ant-list-item-meta-title .ant-tag > span {
+    font-size: 12px !important;
+    line-height: 1.2 !important;
   }
 }

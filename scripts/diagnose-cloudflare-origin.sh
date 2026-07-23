@@ -42,6 +42,26 @@ echo "origin_http=${http_code:-000}"
 echo "origin_https=${https_code:-000}"
 echo
 
+echo "-- external multiprobe note --"
+# Port openness from third-party checkers is optional; host-local curl to ORIGIN_IP is authoritative here.
+# When origin_http/https=200 but public CDN fails, CF origin IP/SSL/Auth Pulls is the ship-bar fix (not app code).
+if [[ "${http_code:-0}" == "200" || "${https_code:-0}" == "200" ]]; then
+  echo "origin_direct=healthy (ShopMX edge responds on ${ORIGIN_IP})"
+else
+  echo "origin_direct=unhealthy"
+fi
+# Detect wrong-product bodies if public somehow returns 200 to a foreign stack.
+if [[ "${public_code:-0}" == "200" && -s /tmp/shopmx-cf-home.body ]]; then
+  if ! rg -qi 'ShopMX|shop-frontend|main\.[a-f0-9]+\.js|pet essentials|lang="es-MX"' /tmp/shopmx-cf-home.body; then
+    body_hint="$(head -c 120 /tmp/shopmx-cf-home.body | tr '\n' ' ')"
+    echo "public_body_not_shopmx=1 preview=${body_hint}"
+    public_code="200-wrong-origin"
+  else
+    echo "public_body_shopmx=1"
+  fi
+fi
+echo
+
 echo "-- host listeners / iptables --"
 ss -ltn 2>/dev/null | awk 'NR==1 || /:80 |:443 /' || true
 if command -v iptables >/dev/null 2>&1; then
@@ -55,12 +75,13 @@ if [[ "${http_code:-0}" == "200" || "${https_code:-0}" == "200" ]]; then
       522)
         cat <<MSG
 RESULT: Origin is healthy on ${ORIGIN_IP}, but Cloudflare returns 522 (connection timed out to origin).
+NOTE: Host iptables accepts NEW 80/443 and origin serves ShopMX on bare IP. When public port checks also show 80/443 open, prefer CF dashboard origin misconfig over OCI Security List.
 ACTION:
-  1) Cloudflare DNS A for ${DOMAIN} must point to ${ORIGIN_IP} (proxied / orange cloud). Wrong origin IP is the most common 522 cause.
+  1) Cloudflare DNS A for ${DOMAIN} must point to ${ORIGIN_IP} (proxied / orange cloud). Wrong/stale origin IP is the most common 522 cause when origin direct is healthy.
   2) SSL/TLS mode: Full (self-signed origin cert present) — avoid Full Strict until a publicly trusted origin cert is installed; Flexible only if origin HTTP is intended.
   3) Disable Authenticated Origin Pulls unless origin mTLS is configured.
-  4) Confirm OCI Security List/NSG allows Cloudflare egress IPs to TCP 80/443 (host iptables already accepts NEW 80/443).
-  5) Confirm no Cloudflare Workers/Spectrum/Load Balancer pool points at a dead origin.
+  4) Confirm no Cloudflare Workers/Spectrum/Load Balancer pool points at a dead/foreign origin (e.g. rapid4cloud).
+  5) Optional: re-check OCI NSG only if external multiprobes show 80/443 closed to the public internet.
   6) After fix: SHOPTEST_REQUIRE_PRODUCTION=1 npm --prefix frontend run test:commercial-production-readiness
 MSG
         ;;

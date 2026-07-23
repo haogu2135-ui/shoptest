@@ -1394,3 +1394,9 @@
 
 /* Gate115: stock-alerts-popconfirm ShopPopconfirm z-index */
 body .stock-alerts-popconfirm.shop-popconfirm { z-index: 10050 !important; }
+
+
+/* Commercial stock alerts title margin (no inline styles). */
+.stock-alerts-page__title {
+  margin: 0;
+}

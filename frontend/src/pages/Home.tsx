@@ -945,7 +945,7 @@ const Home: React.FC = () => {
             <StatsStripSkeleton />
             <section className="shopee-section shopee-categories-section shopee-categories-section--skeleton" aria-hidden="true">
               <div className="shopee-section__header">
-                <span className="shimmer" style={{ width: 140, height: 22, display: 'inline-block', borderRadius: 6 }} />
+                <span className="shimmer shopee-categories-section__titleSkeleton" aria-hidden="true" />
               </div>
               <div className="shopee-categories shopee-categories--skeleton">
                 {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (

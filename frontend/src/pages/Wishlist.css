@@ -1649,3 +1649,11 @@
 .wishlist-page__text--delete {
   text-decoration: line-through;
 }
+
+
+/* Commercial wishlist header icon (no inline color/size). */
+.wishlist-page__headerIcon {
+  color: #ee4d2d;
+  font-size: 24px;
+  flex: 0 0 auto;
+}

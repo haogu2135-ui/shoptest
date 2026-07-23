@@ -130,14 +130,19 @@ describe('commercial SEO contracts', () => {
     expect(productDetail).toContain('useSearchParams');
     expect(productDetail).toContain('normalizeProductDetailTab');
     expect(productDetail).toContain('openProductDetailTab');
-    expect(productDetail).toContain("activeKey={detailActiveTab}");
+    expect(productDetail).toContain('detailActiveTab');
+    expect(productDetail).toContain('role="tablist"');
+    expect(productDetail).toContain('role="tab"');
+    expect(productDetail).toContain('handleRovingTablistKeyDown');
     expect(productDetail).toContain("key: 'details'");
     expect(productDetail).toContain("key: 'specs'");
     expect(productDetail).toContain("key: 'service'");
     expect(productDetail).not.toContain('defaultActiveKey="1"');
 
     expect(profile).toContain('syncProfileTabToUrl');
-    expect(profile).toContain('onChange={openProfileTab}');
+    expect(profile).toContain('openProfileTab');
+    expect(profile).toContain('role="tablist"');
+    expect(profile).toContain('handleRovingTablistKeyDown');
     expect(profile).not.toContain('onChange={setProfileActiveTab}');
   });
 });

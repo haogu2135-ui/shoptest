@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { handleRovingTablistKeyDown } from '../utils/tablistKeyboard';
 import './ShopTabs.css';
 
 export type ShopTabItem = {
@@ -48,6 +49,7 @@ const ShopTabs: React.FC<ShopTabsProps> = ({
           <div className="shop-tabs__navList ant-tabs-nav-list" style={{ gap: tabBarGutter }}>
             {items.map((item) => {
               const selected = activeItem?.key === item.key;
+              const enabledKeys = items.filter((entry) => !entry.disabled).map((entry) => entry.key);
               return (
                 <button
                   key={item.key}
@@ -65,6 +67,15 @@ const ShopTabs: React.FC<ShopTabsProps> = ({
                     item.disabled ? 'ant-tabs-tab-disabled' : '',
                   ].filter(Boolean).join(' ')}
                   onClick={() => select(item.key, item.disabled)}
+                  onKeyDown={(event) => {
+                    if (item.disabled) return;
+                    handleRovingTablistKeyDown(event, {
+                      tabKeys: enabledKeys,
+                      activeKey: String(currentKey || item.key),
+                      onActivate: (key) => select(key),
+                      getTabElementId: (key) => `shop-tab-${key}`,
+                    });
+                  }}
                 >
                   <span className="shop-tabs__tabBtn ant-tabs-tab-btn">{item.label}</span>
                 </button>

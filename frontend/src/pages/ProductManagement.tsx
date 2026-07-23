@@ -1886,7 +1886,7 @@ const ProductManagement: React.FC = () => {
     const discountPercent = record.effectiveDiscountPercent || record.discount || (hasDiscount ? Math.round((1 - displayPrice / record.originalPrice!) * 100) : 0);
     return (
       <div>
-        <span className="commerce-money" style={{ color: '#ff5722', fontWeight: 600 }}>{formatMoney(displayPrice)}</span>
+        <span className="commerce-money product-admin-price">{formatMoney(displayPrice)}</span>
         {record.activeLimitedTimeDiscount ? <ShopTag color="red" style={{ marginLeft: 4 }}>{t('pages.productAdmin.limitedTimeActive')}</ShopTag> : null}
         {hasDiscount && (
           <>

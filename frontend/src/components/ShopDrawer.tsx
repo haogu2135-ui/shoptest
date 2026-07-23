@@ -1,5 +1,6 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useId, useRef } from 'react';
 import { ShopIcon, SI } from './ShopIcon';
+import { activateFocusTrap } from '../utils/focusTrap';
 import './ShopDrawer.css';
 
 export type ShopDrawerPlacement = 'bottom' | 'right' | 'left';
@@ -40,19 +41,25 @@ const ShopDrawer: React.FC<ShopDrawerProps> = ({
   ariaLabel,
   closeLabel = 'Close',
 }) => {
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  const closeRef = useRef<HTMLButtonElement | null>(null);
+  const titleId = useId();
+  const hasTitle = Boolean(title);
+  const labelledBy = !ariaLabel && hasTitle ? titleId : undefined;
+  const resolvedAriaLabel = ariaLabel
+    || (!hasTitle ? closeLabel : (typeof title === 'string' ? title : undefined));
+
   useEffect(() => {
-    if (!open || typeof document === 'undefined') return undefined;
-    const { body } = document;
-    const previousOverflow = body.style.overflow;
-    body.style.overflow = 'hidden';
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => {
-      body.style.overflow = previousOverflow;
-      window.removeEventListener('keydown', onKeyDown);
-    };
+    if (!open) return undefined;
+    return activateFocusTrap({
+      getPanel: () => panelRef.current,
+      getInitialFocus: () => closeRef.current
+        || panelRef.current?.querySelector<HTMLElement>('[data-shop-drawer-initial-focus="true"]')
+        || null,
+      onEscape: onClose,
+      excludeClassNames: ['shop-drawer__mask', 'ant-drawer-mask'],
+      initialFocusDelayMs: 0,
+    });
   }, [open, onClose]);
 
   if (!open) return null;
@@ -62,8 +69,6 @@ const ShopDrawer: React.FC<ShopDrawerProps> = ({
   if ((placement === 'right' || placement === 'left') && width != null) {
     panelStyle.width = toCssSize(width);
   }
-
-  const dialogLabel = ariaLabel || (typeof title === 'string' ? title : closeLabel);
 
   return (
     <div
@@ -83,9 +88,11 @@ const ShopDrawer: React.FC<ShopDrawerProps> = ({
         className="shop-drawer__mask ant-drawer-mask"
         aria-label={closeLabel}
         title={closeLabel}
+        tabIndex={-1}
         onClick={onClose}
       />
       <div
+        ref={panelRef}
         className={[
           'shop-drawer__panel',
           'ant-drawer-content-wrapper',
@@ -94,17 +101,21 @@ const ShopDrawer: React.FC<ShopDrawerProps> = ({
         ].filter(Boolean).join(' ')}
         role="dialog"
         aria-modal="true"
-        aria-label={dialogLabel}
+        aria-label={labelledBy ? undefined : resolvedAriaLabel}
+        aria-labelledby={labelledBy}
+        tabIndex={-1}
         style={panelStyle}
       >
         <div className="shop-drawer__header ant-drawer-header">
-          <div className="shop-drawer__title ant-drawer-title">{title}</div>
+          <div className="shop-drawer__title ant-drawer-title" id={hasTitle ? titleId : undefined}>{title}</div>
           {extra ? <div className="shop-drawer__extra">{extra}</div> : null}
           <button
+            ref={closeRef}
             type="button"
             className="shop-drawer__close ant-drawer-close"
             aria-label={closeLabel}
             title={closeLabel}
+            data-shop-drawer-initial-focus="true"
             onClick={onClose}
           >
             <ShopIcon path={SI.close} />

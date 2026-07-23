@@ -219,7 +219,8 @@
   }
 
   .product-question-ops-panel__metrics span {
-    font-size: 11px;
+    /* Commercial admin labels stay >=12px */
+    font-size: 12px;
     line-height: 1.35;
   }
 
@@ -440,7 +441,8 @@
   .product-question-card__details dt {
     margin: 0 0 3px;
     color: #6b7a70;
-    font-size: 11px;
+    /* Commercial admin labels stay >=12px */
+    font-size: 12px;
     font-weight: 900;
     letter-spacing: 0;
     text-transform: uppercase;
@@ -492,3 +494,6 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+
+/* Commercial residual: ProductQuestionManagement ops labels stay >=12px */

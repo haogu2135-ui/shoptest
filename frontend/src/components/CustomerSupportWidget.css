@@ -1,6 +1,13 @@
 ﻿.customer-support-widget__button {
   position: fixed;
   z-index: 1900;
+  /* Commercial launcher geometry via CSS vars (set by TS for drag/mobile). */
+  left: var(--support-launcher-left, auto);
+  top: var(--support-launcher-top, auto);
+  right: var(--support-launcher-right, 24px);
+  bottom: var(--support-launcher-bottom, 24px);
+  width: var(--support-launcher-size, 56px);
+  height: var(--support-launcher-size, 56px);
   min-width: 48px;
   min-height: 48px;
   display: inline-grid;
@@ -9,11 +16,16 @@
   border-radius: 50%;
   background: #124734;
   color: #ffffff;
+  font-size: var(--support-launcher-font-size, 24px);
   box-shadow: 0 8px 22px rgba(18, 71, 52, 0.24);
   cursor: pointer;
   touch-action: none;
   user-select: none;
   transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+}
+
+.customer-support-widget__launcherIcon {
+  color: #fff;
 }
 
 .customer-support-widget__button .ant-badge {
@@ -3382,4 +3394,22 @@ body .customer-support-widget__orderModalRoot .customer-support-widget__orderMod
 }
 .customer-support-widget__messageInput.shop-input--textarea {
   width: 100%;
+}
+
+
+/* Support launcher CSS var geometry: keeps commercial entry above bottom rails without full inline style maps. */
+.customer-support-widget__button {
+  left: var(--support-launcher-left, auto);
+  top: var(--support-launcher-top, auto);
+  right: var(--support-launcher-right, 24px);
+  bottom: var(--support-launcher-bottom, 24px);
+  width: var(--support-launcher-size, 56px);
+  height: var(--support-launcher-size, 56px);
+  font-size: var(--support-launcher-font-size, 24px);
+}
+
+
+/* Commercial triage tags: no trailing margin that collides with dense meta rows. */
+.customer-support-widget__flushTag {
+  margin-inline-end: 0 !important;
 }

@@ -30,6 +30,7 @@ import { useNativeBackHandler } from '../utils/nativeBack';
 import { AUTH_SESSION_CHANGED_EVENT } from '../utils/authEvents';
 import { formatProductSpecLabel } from '../utils/productSpecLabels';
 import { reportNonBlockingError } from '../utils/nonBlockingError';
+import { handleRovingTablistKeyDown } from '../utils/tablistKeyboard';
 import PageEmpty from '../components/PageEmpty';
 import ShopBreadcrumb from '../components/ShopBreadcrumb';
 import ShopSegmented from '../components/ShopSegmented';
@@ -2232,7 +2233,7 @@ const ProductDetail: React.FC = () => {
                 ) : null}
                 {isOutOfStock && (
                   <div className="product-detail__chipRow">
-                    <ShopTag color="red" style={{ fontSize: 16, padding: '4px 12px' }}>{t('pages.productDetail.soldOut')}</ShopTag>
+                    <ShopTag color="red" className="product-detail__soldOutTag">{t('pages.productDetail.soldOut')}</ShopTag>
                     <ShopButton icon={<ShopIcon path={SI.bell} />} aria-label={stockAlertActionLabel} title={stockAlertActionLabel} onClick={handleStockAlert}>
                       {isAlerted ? t('pages.stockAlerts.remove') : t('pages.stockAlerts.notifyMe')}
                     </ShopButton>
@@ -2271,7 +2272,7 @@ const ProductDetail: React.FC = () => {
                       {isAlerted ? t('pages.stockAlerts.remove') : t('pages.stockAlerts.notifyMe')}
                     </ShopButton>
                   ) : null}
-                  <ShopButton size="large" icon={isWishlisted ? <ShopIcon path={SI.heartFill} style={{ color: '#ee4d2d' }} /> : <ShopIcon path={SI.heart} />} aria-label={favoriteActionLabel} title={favoriteActionLabel} onClick={handleFavorite}>
+                  <ShopButton size="large" icon={isWishlisted ? <ShopIcon path={SI.heartFill} className="product-detail__wishlistIcon product-detail__wishlistIcon--active" /> : <ShopIcon path={SI.heart} className="product-detail__wishlistIcon" />} aria-label={favoriteActionLabel} title={favoriteActionLabel} onClick={handleFavorite}>
                     {isWishlisted ? t('pages.productDetail.favorited') : t('pages.productDetail.favorite')}
                   </ShopButton>
                   <ShopButton size="large" icon={<ShopIcon path={SI.barChart} />} aria-label={compareActionLabel} title={compareActionLabel} onClick={handleCompare}>
@@ -2329,6 +2330,7 @@ const ProductDetail: React.FC = () => {
             <div
               className="product-detail-tabs__nav"
               role="tablist"
+              aria-orientation="horizontal"
               aria-label={t('pages.productDetail.details')}
             >
               {([
@@ -2348,6 +2350,14 @@ const ProductDetail: React.FC = () => {
                     aria-controls={`product-detail-panel-${tab.key}`}
                     tabIndex={selected ? 0 : -1}
                     onClick={() => openProductDetailTab(tab.key)}
+                    onKeyDown={(event) => {
+                      handleRovingTablistKeyDown(event, {
+                        tabKeys: PRODUCT_DETAIL_TAB_KEYS as unknown as string[],
+                        activeKey: detailActiveTab,
+                        onActivate: openProductDetailTab,
+                        getTabElementId: (key) => `product-detail-tab-${key}`,
+                      });
+                    }}
                   >
                     <span className="product-detail-tabs__tabLabel">{tab.label}</span>
                   </button>
@@ -2429,7 +2439,7 @@ const ProductDetail: React.FC = () => {
         </section>
 
         <section className="product-qa-card" id="product-qa-card" aria-label={t('pages.ask.title')}>
-          <h4 className="product-detail-page__title" style={{ marginBottom: 16 }}>{t('pages.ask.title')}</h4>
+          <h4 className="product-detail-page__title product-detail-page__title--qa">{t('pages.ask.title')}</h4>
           <div className="product-qa-space">
             <ShopTextArea
               rows={3}
@@ -2671,6 +2681,7 @@ const ProductDetail: React.FC = () => {
         ariaLabel={productName}
       >
         <img
+          className="product-detail__imageModalImg"
           src={getOptimizedImageUrl(selectedImage, 1200)}
           srcSet={buildResponsiveImageSrcSet(selectedImage, [480, 720, 960, 1200, 1600])}
           sizes="min(800px, calc(100vw - 24px))"
@@ -2678,7 +2689,6 @@ const ProductDetail: React.FC = () => {
           width={1200}
           height={1200}
           decoding="async"
-          style={{ width: '100%', height: 'auto' }}
           onError={(event) => {
             applyImageFallback(event, productImages[productImages.length - 1]);
           }}

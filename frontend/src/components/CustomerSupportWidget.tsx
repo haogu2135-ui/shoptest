@@ -1093,18 +1093,19 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
         aria-label={t('pages.support.title')}
         aria-expanded={open}
         style={{
-          position: 'fixed',
-          left: isMobileViewport ? 'auto' : buttonPosition?.left ?? 'auto',
-          top: isMobileViewport ? 'auto' : buttonPosition?.top ?? 'auto',
-          right: isMobileViewport ? 16 : buttonPosition ? 'auto' : 24,
-          bottom: isMobileViewport ? 'calc(92px + env(safe-area-inset-bottom))' : buttonPosition ? 'auto' : 24,
-          width: isMobileViewport ? 52 : SUPPORT_BUTTON_SIZE,
-          height: isMobileViewport ? 52 : SUPPORT_BUTTON_SIZE,
-          fontSize: isMobileViewport ? 22 : 24,
-        }}
+          // Commercial launcher position via CSS vars (desktop drag + mobile rail defaults in CSS).
+          ['--support-launcher-left' as string]: isMobileViewport ? 'auto' : (buttonPosition ? `${buttonPosition.left}px` : 'auto'),
+          ['--support-launcher-top' as string]: isMobileViewport ? 'auto' : (buttonPosition ? `${buttonPosition.top}px` : 'auto'),
+          ['--support-launcher-right' as string]: isMobileViewport ? '16px' : (buttonPosition ? 'auto' : '24px'),
+          ['--support-launcher-bottom' as string]: isMobileViewport
+            ? 'calc(92px + env(safe-area-inset-bottom))'
+            : (buttonPosition ? 'auto' : '24px'),
+          ['--support-launcher-size' as string]: isMobileViewport ? '52px' : `${SUPPORT_BUTTON_SIZE}px`,
+          ['--support-launcher-font-size' as string]: isMobileViewport ? '22px' : '24px',
+        } as React.CSSProperties}
       >
         <ShopBadge count={unread} size="small">
-          <ShopIcon path={SI.support} style={{ color: '#fff' }} />
+          <ShopIcon path={SI.support} className="customer-support-widget__launcherIcon" />
         </ShopBadge>
       </button>
 
@@ -1330,12 +1331,12 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
                   <span className="customer-support-widget__triageTitle customer-support-widget__text customer-support-widget__text--strong">{t('pages.support.triageTitle')}</span>
                   <span className="customer-support-widget__triageHelper customer-support-widget__text customer-support-widget__text--secondary">{supportIntent.helper}</span>
                 </div>
-                <ShopTag color={supportOnline ? 'green' : 'default'} style={{ marginInlineEnd: 0 }}>
+                <ShopTag color={supportOnline ? 'green' : 'default'} className="customer-support-widget__flushTag">
                   {supportConnectionHint}
                 </ShopTag>
               </div>
               <div className="customer-support-widget__triageMeta">
-                <ShopTag color="blue" style={{ marginInlineEnd: 0 }}>{supportIntent.label}</ShopTag>
+                <ShopTag color="blue" className="customer-support-widget__flushTag">{supportIntent.label}</ShopTag>
                 <span className={`customer-support-widget__messageQuality customer-support-widget__text ${messageTooLong ? 'customer-support-widget__text--danger' : 'customer-support-widget__text--secondary'}`}>
                   {messageQualityText}
                 </span>

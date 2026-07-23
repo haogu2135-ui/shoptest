@@ -2214,3 +2214,9 @@ body .product-management-page__editorPopup.shop-mobile-popup-layer .ant-picker-f
     gap: 4px;
   }
 }
+
+/* Commercial price emphasis (admin listing + live preview) */
+.product-admin-price {
+  color: #ee4d2d;
+  font-weight: 600;
+}

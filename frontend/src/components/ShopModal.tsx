@@ -1,6 +1,7 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useId, useRef } from 'react';
 import ShopButton from './ShopButton';
 import { ShopIcon, SI } from './ShopIcon';
+import { activateFocusTrap } from '../utils/focusTrap';
 import './ShopModal.css';
 
 export type ShopModalButtonProps = {
@@ -57,19 +58,28 @@ const ShopModal: React.FC<ShopModalProps> = ({
   closable = true,
   confirmLoading = false,
 }) => {
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  const closeRef = useRef<HTMLButtonElement | null>(null);
+  const titleId = useId();
+  const hasTitle = Boolean(title);
+  const labelledBy = !ariaLabel && hasTitle ? titleId : undefined;
+  const resolvedAriaLabel = ariaLabel
+    || (!hasTitle ? closeLabel : (typeof title === 'string' ? title : undefined));
+
   useEffect(() => {
-    if (!open || typeof document === 'undefined') return undefined;
-    const { body } = document;
-    const previousOverflow = body.style.overflow;
-    body.style.overflow = 'hidden';
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && (closable || maskClosable)) onClose();
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => {
-      body.style.overflow = previousOverflow;
-      window.removeEventListener('keydown', onKeyDown);
-    };
+    if (!open) return undefined;
+    return activateFocusTrap({
+      getPanel: () => panelRef.current,
+      getInitialFocus: () => (
+        closeRef.current
+        || panelRef.current?.querySelector<HTMLElement>('[data-shop-modal-initial-focus="true"]')
+        || null
+      ),
+      onEscape: (closable || maskClosable) ? onClose : undefined,
+      escapeEnabled: closable || maskClosable,
+      excludeClassNames: ['shop-modal__mask'],
+      initialFocusDelayMs: 0,
+    });
   }, [open, onClose, closable, maskClosable]);
 
   if (!open) return null;
@@ -112,6 +122,7 @@ const ShopModal: React.FC<ShopModalProps> = ({
           className="shop-modal__mask"
           aria-label={closeLabel}
           title={closeLabel}
+          tabIndex={-1}
           onClick={onClose}
         />
       ) : (
@@ -119,19 +130,24 @@ const ShopModal: React.FC<ShopModalProps> = ({
       )}
       <div className="shop-modal__wrap">
         <div
+          ref={panelRef}
           className={`shop-modal__panel ${className}`.trim()}
           role="dialog"
           aria-modal="true"
-          aria-label={ariaLabel || (typeof title === 'string' ? title : closeLabel)}
+          aria-label={labelledBy ? undefined : resolvedAriaLabel}
+          aria-labelledby={labelledBy}
+          tabIndex={-1}
           style={panelStyle}
         >
           <div className="shop-modal__content">
             {closable ? (
               <button
+                ref={closeRef}
                 type="button"
                 className="shop-modal__close"
                 aria-label={closeLabel}
                 title={closeLabel}
+                data-shop-modal-initial-focus="true"
                 onClick={onClose}
               >
                 <ShopIcon path={SI.close} />
@@ -139,7 +155,7 @@ const ShopModal: React.FC<ShopModalProps> = ({
             ) : null}
             {title ? (
               <div className="shop-modal__header">
-                <div className="shop-modal__title">{title}</div>
+                <div className="shop-modal__title" id={titleId}>{title}</div>
               </div>
             ) : null}
             <div className="shop-modal__body">{children}</div>

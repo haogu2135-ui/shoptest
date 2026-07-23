@@ -257,7 +257,7 @@ const StockAlerts: React.FC = () => {
       <section className="stock-alerts__shell" aria-label={t('pages.stockAlerts.title')}>
         <div className="stock-alerts__header">
           <div>
-            <h1 className="stock-alerts-page__title" style={{ margin: 0 }}>
+            <h1 className="stock-alerts-page__title">
               <ShopIcon path={SI.bell} /> {t('pages.stockAlerts.title')}
             </h1>
             <span className="stock-alerts-page__text stock-alerts-page__text--secondary">

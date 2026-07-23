@@ -73,7 +73,8 @@
   .social-proof-toast span span {
     display: -webkit-box;
     overflow: hidden;
-    font-size: 10.5px;
+    /* Commercial social-proof copy stays >=12px */
+    font-size: 12px;
     line-height: 1.25;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 2;
@@ -139,8 +140,9 @@
 }
 
 @media (max-width: 360px) {
+  /* Commercial social-proof strong stays >=12px */
   .social-proof-toast strong {
-    font-size: 10.5px;
+    font-size: 12px;
   }
 
   .social-proof-toast span span {
@@ -187,5 +189,15 @@
 
   .social-proof-toast span span {
     color: #40564a;
+  }
+}
+
+
+/* Commercial residual: social proof toast copy stays >=12px */
+@media (max-width: 780px) {
+  .social-proof-toast strong,
+  .social-proof-toast span span {
+    font-size: 12px !important;
+    line-height: 1.3 !important;
   }
 }

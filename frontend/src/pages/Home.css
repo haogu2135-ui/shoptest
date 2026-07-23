@@ -5977,3 +5977,12 @@ body.shop-mobile-app .shop-app-shell .shopee-hero__actions .home-btn {
 body .shopee-home-popconfirm.shop-popconfirm {
   z-index: 10050 !important;
 }
+
+
+/* Commercial skeleton title placeholder (no inline geometry styles). */
+.shopee-categories-section__titleSkeleton {
+  display: inline-block;
+  width: 140px;
+  height: 22px;
+  border-radius: 6px;
+}

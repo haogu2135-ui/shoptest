@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Atomic commercial frontend build for ShopMX.
 # Builds into a staging directory, then rsyncs into the live `build/` tree so
-# Docker bind mounts (which track inodes) keep serving without a container restart.
+# Docker bind mounts (which track inodes) and serve-build.js keep serving
+# without a mid-build 404 window.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
@@ -14,9 +15,13 @@ export GENERATE_SOURCEMAP="${GENERATE_SOURCEMAP:-false}"
 export DISABLE_ESLINT_PLUGIN="${DISABLE_ESLINT_PLUGIN:-true}"
 unset CI || true
 
+echo "[safe-commercial-build] prebuild mobile version metadata"
+node scripts/generate-mobile-version.js
+
 echo "[safe-commercial-build] building into ${STAGING}"
 rm -rf "$STAGING"
-BUILD_PATH="$STAGING" npm run build
+# Call react-scripts directly to avoid recursive package-script loops.
+BUILD_PATH="$STAGING" npx --no-install react-scripts build
 
 if [[ ! -f "$STAGING/index.html" || ! -d "$STAGING/static" ]]; then
   echo "[safe-commercial-build] staging build incomplete" >&2
@@ -38,6 +43,9 @@ else
   cp -a "${STAGING}/." "$LIVE/"
 fi
 rm -rf "$STAGING"
+
+echo "[safe-commercial-build] restore ownership if needed"
+node scripts/restore-build-ownership.js || true
 
 echo "[safe-commercial-build] ready: ${LIVE}"
 ls -la "$LIVE/static/js/main"* 2>/dev/null | head -3 || true

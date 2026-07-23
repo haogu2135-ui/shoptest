@@ -99,4 +99,46 @@ describe('ShopModal', () => {
     fireEvent.keyDown(window, { key: 'Escape' });
     expect(onClose).not.toHaveBeenCalled();
   });
+
+  it('traps keyboard focus inside the dialog and restores trigger focus on close', () => {
+    jest.useFakeTimers();
+    const onClose = jest.fn();
+    const trigger = document.createElement('button');
+    trigger.textContent = 'Open modal';
+    document.body.appendChild(trigger);
+    trigger.focus();
+
+    const { container, rerender } = render(
+      <ShopModal
+        open
+        onClose={onClose}
+        onOk={() => undefined}
+        title="Focus trap"
+        okText="Confirm"
+        cancelText="Cancel"
+        closeLabel="Close modal"
+      >
+        <button type="button">Body action</button>
+      </ShopModal>,
+    );
+
+    jest.runOnlyPendingTimers();
+    const closeControl = container.querySelector('.shop-modal__close') as HTMLButtonElement;
+    expect(closeControl).toHaveFocus();
+
+    fireEvent.keyDown(window, { key: 'Tab', shiftKey: true });
+    expect(screen.getByRole('button', { name: 'Confirm' })).toHaveFocus();
+
+    fireEvent.keyDown(window, { key: 'Tab' });
+    expect(closeControl).toHaveFocus();
+
+    rerender(
+      <ShopModal open={false} onClose={onClose} title="Focus trap">
+        hidden
+      </ShopModal>,
+    );
+    expect(trigger).toHaveFocus();
+    trigger.remove();
+    jest.useRealTimers();
+  });
 });

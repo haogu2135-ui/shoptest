@@ -2021,8 +2021,9 @@
     min-height: 88px;
   }
 
+  /* Commercial Spanish action labels stay >=12px (do not densify under floor). */
   .product-list--es .product-list__actionButton .product-list__actionLabel {
-    font-size: 10.5px;
+    font-size: 12px;
   }
 
   .product-list--es .product-list__badges {
@@ -7873,4 +7874,67 @@ body .shop-mobile-popup-layer.shop-select__popup {
 .product-list__toolbarSearch .shop-search-field {
   width: 100%;
   min-width: 0;
+}
+
+/* Commercial mobile first-use filter guidance */
+.product-list__filterControl {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  max-width: 100%;
+}
+
+.product-list__filterHint {
+  display: none;
+}
+
+@media (max-width: 860px) {
+  .product-list__filterHint {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    max-width: min(280px, 72vw);
+    padding: 8px 10px;
+    border: 1px solid rgba(18, 71, 52, 0.18);
+    border-radius: 12px;
+    background: #f4faf6;
+    box-shadow: 0 10px 24px rgba(18, 71, 52, 0.12);
+    color: #102f22;
+  }
+
+  .product-list__filterHintText {
+    flex: 1 1 auto;
+    font-size: 12px;
+    line-height: 1.35;
+    font-weight: 600;
+  }
+
+  .product-list__filterHintDismiss {
+    flex: 0 0 auto;
+    min-height: 32px;
+    padding: 4px 8px;
+    border: 0;
+    border-radius: 8px;
+    background: #124734;
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .product-list__filterHintDismiss:focus-visible {
+    outline: 3px solid #ee4d2d;
+    outline-offset: 2px;
+  }
+}
+
+.product-list__recentSearchTag {
+  cursor: pointer;
+}
+
+.product-list__recentSearchTag:focus-visible {
+  outline: 3px solid #ee4d2d;
+  outline-offset: 2px;
 }

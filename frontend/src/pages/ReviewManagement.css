@@ -241,7 +241,8 @@
   }
 
   .review-ops-panel__metrics span {
-    font-size: 11px;
+    /* Commercial admin labels stay >=12px */
+    font-size: 12px;
     line-height: 1.35;
   }
 
@@ -699,3 +700,6 @@
     scroll-snap-align: none;
   }
 }
+
+
+/* Commercial residual: ReviewManagement ops labels stay >=12px */

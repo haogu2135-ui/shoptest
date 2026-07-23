@@ -687,8 +687,9 @@
     padding-inline: 8px;
   }
 
+  /* Commercial signal labels stay >=12px */
   .pet-finder-page__signal span {
-    font-size: 10.5px;
+    font-size: 12px;
   }
 
   .pet-finder-page__productCard .ant-card-cover,
@@ -1097,8 +1098,9 @@
     padding-inline: 8px;
   }
 
+  /* Commercial signal labels stay >=12px */
   .pet-finder-page__signal span {
-    font-size: 10.5px;
+    font-size: 12px;
   }
 }
 
@@ -1486,7 +1488,8 @@
 @media (max-width: 780px) {
   .pet-finder-page .pet-finder-page__text--secondary,
   .pet-finder-page__insight,
-  .pet-finder-page .ant-tag {
+  .pet-finder-page .ant-tag,
+  .pet-finder-page__signal span {
     font-size: 12px !important;
     line-height: 1.3 !important;
   }
@@ -1694,3 +1697,12 @@ body .pet-finder-page .shop-select {
   width: 100%;
 }
 
+
+
+/* Commercial pet finder title margin (no inline styles). */
+.pet-finder-page__title {
+  margin: 0;
+}
+.pet-finder-page__subtitle {
+  margin: 0;
+}

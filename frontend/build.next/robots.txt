@@ -1,0 +1,28 @@
+# ShopMX commercial crawl policy
+User-agent: *
+Allow: /
+Allow: /products
+Allow: /products/
+Allow: /coupons
+Allow: /pet-finder
+Allow: /pet-gallery
+Allow: /track-order
+Allow: /privacy
+Allow: /terms
+
+# Private commerce and account surfaces stay out of the public index.
+Disallow: /admin
+Disallow: /cart
+Disallow: /checkout
+Disallow: /profile
+Disallow: /login
+Disallow: /register
+Disallow: /forgot-password
+Disallow: /wishlist
+Disallow: /notifications
+Disallow: /payment
+Disallow: /history
+Disallow: /stock-alerts
+Disallow: /compare
+
+Sitemap: https://pet.686888666.xyz/sitemap.xml

@@ -1013,7 +1013,9 @@
       "snapshotTitle": "Catálogo temporal",
       "snapshotText": "Precios e inventario pueden actualizarse cuando vuelva la conexión.",
       "seoDescription": "Compra alimento, juguetes, camas, accesorios de paseo y cuidado inteligente con checkout listo para México.",
-      "searchSeoDescription": "Resultados para \"{keyword}\" — encuentra productos para mascotas con stock, ofertas y compra rápida."
+      "searchSeoDescription": "Resultados para \"{keyword}\" — encuentra productos para mascotas con stock, ofertas y compra rápida.",
+      "mobileFilterHint": "Toca Filtros para acotar por talla, material, color o precio.",
+      "mobileFilterHintDismiss": "Entendido"
     },
     "compare": {
       "title": "Comparación de productos",

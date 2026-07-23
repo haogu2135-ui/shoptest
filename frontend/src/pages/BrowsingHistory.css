@@ -1017,8 +1017,9 @@
     font-size: 19px;
   }
 
+  /* Commercial assistant action labels stay >=12px */
   .browsing-history__assistant-actions span {
-    font-size: 10.5px;
+    font-size: 12px;
     line-height: 1.15;
   }
 
@@ -1905,7 +1906,8 @@
   }
   .browsing-history .browsing-history__text--secondary,
   .browsing-history__chip,
-  .browsing-history__meta {
+  .browsing-history__meta,
+  .browsing-history__assistant-actions span {
     font-size: 12px !important;
     line-height: 1.3 !important;
   }

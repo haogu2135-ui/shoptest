@@ -3674,7 +3674,9 @@
       "snapshotTitle": "Temporary catalog",
       "snapshotText": "Prices and stock may refresh when the live catalog is back.",
       "seoDescription": "Shop pet food, toys, beds, walking gear and smart care essentials with fast Mexico-ready checkout.",
-      "searchSeoDescription": "Results for \"{keyword}\" — shop matching pet supplies with stock, deals and quick add."
+      "searchSeoDescription": "Results for \"{keyword}\" — shop matching pet supplies with stock, deals and quick add.",
+      "mobileFilterHint": "Tap Filters to refine by size, material, color, or price.",
+      "mobileFilterHintDismiss": "Got it"
     },
     "compare": {
       "title": "Product comparison",

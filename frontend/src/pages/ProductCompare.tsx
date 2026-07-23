@@ -483,7 +483,7 @@ const ProductCompare: React.FC = () => {
       <section className="product-compare-page__shell" aria-label={t('pages.compare.title')}>
         <div className="product-compare__header">
           <div>
-            <h1 className="product-compare-page__title" style={{ margin: 0 }}>{t('pages.compare.title')}</h1>
+            <h1 className="product-compare-page__title">{t('pages.compare.title')}</h1>
             <span className="product-compare-page__text product-compare-page__text--secondary">{t('pages.compare.subtitle', { count: selectedCompareCount })}</span>
           </div>
           <div className="product-compare__headerActions">

@@ -1,4 +1,5 @@
 import React, { forwardRef, useId, useState } from 'react';
+import { useLanguage } from '../i18n';
 import './ShopInput.css';
 
 export type ShopInputProps = {
@@ -172,13 +173,19 @@ export const ShopPasswordInput = forwardRef<HTMLInputElement, ShopPasswordInputP
   ...rest
 }, ref) => {
   const [visible, setVisible] = React.useState(false);
+  const { t } = useLanguage();
+  const showPasswordLabel = t('pages.auth.showPassword', { defaultValue: 'Show password' });
+  const hidePasswordLabel = t('pages.auth.hidePassword', { defaultValue: 'Hide password' });
+  const visibilityActionLabel = typeof rest['aria-label'] === 'string'
+    ? `${rest['aria-label']}: ${visible ? hidePasswordLabel : showPasswordLabel}`
+    : (visible ? hidePasswordLabel : showPasswordLabel);
   const toggle = visibilityToggle ? (
     <button
       type="button"
       className="shop-input__visibility"
-      aria-label={typeof rest['aria-label'] === 'string' ? `${rest['aria-label']}: ${visible ? 'Hide' : 'Show'}` : (visible ? 'Hide password' : 'Show password')}
+      aria-label={visibilityActionLabel}
       aria-pressed={visible}
-      title={typeof rest['aria-label'] === 'string' ? `${rest['aria-label']}: ${visible ? 'Hide' : 'Show'}` : (visible ? 'Hide password' : 'Show password')}
+      title={visibilityActionLabel}
       onClick={(event) => {
         event.preventDefault();
         setVisible((current) => !current);

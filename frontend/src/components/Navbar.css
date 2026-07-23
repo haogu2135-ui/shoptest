@@ -3627,24 +3627,32 @@ body.shop-mobile-app .shop-nav .shop-nav__actions > .shop-nav__actionSummary {
   .shop-nav .ant-scroll-number-only,
   .shop-nav .ant-scroll-number-only-unit,
   .shop-nav .ant-scroll-number-only-unit.current,
+  .shop-nav .shop-badge__count,
   .shop-nav__bottomBar .ant-badge-count,
   .shop-nav__bottomBar .ant-badge-count bdi,
   .shop-nav__bottomBar .ant-scroll-number,
   .shop-nav__bottomBar .ant-scroll-number-only,
   .shop-nav__bottomBar .ant-scroll-number-only-unit,
+  .shop-nav__bottomBar .shop-badge__count,
   .shop-nav__actions .ant-badge-count,
   .shop-nav__actions .ant-scroll-number-only-unit,
+  .shop-nav__actions .shop-badge__count,
   body:not(.shop-mobile-app) .shop-nav .ant-badge-count,
   body:not(.shop-mobile-app) .shop-nav .ant-scroll-number-only-unit,
+  body:not(.shop-mobile-app) .shop-nav .shop-badge__count,
   body.shop-mobile-app .shop-nav .ant-badge-count,
-  body.shop-mobile-app .shop-nav .ant-scroll-number-only-unit {
+  body.shop-mobile-app .shop-nav .ant-scroll-number-only-unit,
+  body.shop-mobile-app .shop-nav .shop-badge__count {
     font-size: 12px !important;
     line-height: 1 !important;
   }
 
   .shop-nav .ant-badge-count,
+  .shop-nav .shop-badge__count,
   .shop-nav__bottomBar .ant-badge-count,
-  body:not(.shop-mobile-app) .shop-nav .ant-badge-count {
+  .shop-nav__bottomBar .shop-badge__count,
+  body:not(.shop-mobile-app) .shop-nav .ant-badge-count,
+  body:not(.shop-mobile-app) .shop-nav .shop-badge__count {
     min-width: 18px !important;
     height: 18px !important;
     line-height: 18px !important;

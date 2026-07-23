@@ -29,7 +29,7 @@
     "start": "react-scripts start",
     "serve:build": "node scripts/serve-build.js",
     "prebuild": "node scripts/generate-mobile-version.js",
-    "build": "GENERATE_SOURCEMAP=false react-scripts build",
+    "build": "bash scripts/safe-commercial-build.sh",
     "build:commercial": "bash scripts/safe-commercial-build.sh",
     "postbuild": "node scripts/restore-build-ownership.js",
     "analyze:bundle": "node scripts/analyze-bundle.js",
@@ -44,7 +44,8 @@
     "test:commercial-browser-smoke": "node scripts/commercial-browser-smoke.js",
     "test:commercial-mobile-device-smoke": "node scripts/commercial-mobile-device-smoke.js",
     "test:commercial-production-readiness": "node scripts/commercial-production-readiness.js",
-    "record:commercial-device-e2e": "node scripts/record-commercial-device-e2e.js"
+    "record:commercial-device-e2e": "node scripts/record-commercial-device-e2e.js",
+    "build:raw": "GENERATE_SOURCEMAP=false react-scripts build"
   },
   "overrides": {
     "@adobe/css-tools": "4.0.0"

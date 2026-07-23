@@ -58,4 +58,44 @@ describe('ShopDrawer', () => {
     expect(dialog.closest('.shop-drawer')).toHaveClass('admin-layout__mobileDrawer');
     expect(screen.getByText('Menu body').parentElement).toHaveClass('admin-layout__mobileDrawerBody');
   });
+
+  it('traps keyboard focus inside the drawer and restores trigger focus on close', () => {
+    jest.useFakeTimers();
+    const onClose = jest.fn();
+    const trigger = document.createElement('button');
+    trigger.textContent = 'Open drawer';
+    document.body.appendChild(trigger);
+    trigger.focus();
+
+    const { container, rerender } = render(
+      <ShopDrawer
+        open
+        onClose={onClose}
+        title="Cart"
+        ariaLabel="Your cart"
+        closeLabel="Close cart"
+      >
+        <button type="button">Checkout</button>
+      </ShopDrawer>,
+    );
+
+    jest.runOnlyPendingTimers();
+    const closeControl = container.querySelector('.shop-drawer__close') as HTMLButtonElement;
+    expect(closeControl).toHaveFocus();
+
+    fireEvent.keyDown(window, { key: 'Tab', shiftKey: true });
+    expect(screen.getByRole('button', { name: 'Checkout' })).toHaveFocus();
+
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(onClose).toHaveBeenCalled();
+
+    rerender(
+      <ShopDrawer open={false} onClose={onClose} title="Cart">
+        hidden
+      </ShopDrawer>,
+    );
+    expect(trigger).toHaveFocus();
+    trigger.remove();
+    jest.useRealTimers();
+  });
 });

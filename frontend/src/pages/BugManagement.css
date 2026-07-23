@@ -508,7 +508,8 @@
     top: 13px;
     width: 84px;
     color: #64748b;
-    font-size: 11px;
+    /* Commercial admin labels stay >=12px */
+    font-size: 12px;
     font-weight: 900;
     line-height: 1.15;
     text-transform: uppercase;
@@ -833,3 +834,6 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+
+/* Commercial residual: BugManagement ops labels stay >=12px */

@@ -81,6 +81,19 @@ describe('commercial ops contracts', () => {
     expect(production).toContain('probeLocalMobileReleaseArtifact');
   });
 
+  it('keeps cloudflare origin diagnose classifying wrong-origin and healthy-origin 522', () => {
+    const diagnose = fs.readFileSync(
+      path.join(__dirname, '..', '..', '..', 'scripts', 'diagnose-cloudflare-origin.sh'),
+      'utf8',
+    );
+    expect(diagnose).toContain('external multiprobe note');
+    expect(diagnose).toContain('200-wrong-origin');
+    expect(diagnose).toContain('public_body_not_shopmx');
+    expect(diagnose).toContain('Wrong/stale origin IP is the most common 522 cause');
+    expect(diagnose).toContain('rapid4cloud');
+    expect(diagnose).toContain('SHOPTEST_REQUIRE_PRODUCTION=1');
+  });
+
   it('keeps local UI server proxying API to the backend origin', () => {
     const serve = readFrontendRoot('scripts', 'serve-build.js');
     expect(serve).toContain('SHOPTEST_BACKEND_ORIGIN');
@@ -288,11 +301,17 @@ describe('commercial ops contracts', () => {
   it('keeps an atomic commercial frontend build entry that avoids mid-build UI outages', () => {
     const pkg = JSON.parse(readFrontendRoot('package.json'));
     const safeBuild = readFrontendRoot('scripts', 'safe-commercial-build.sh');
+    // Default `npm run build` must be atomic: staging build then swap into live build/.
+    expect(pkg.scripts.build).toContain('safe-commercial-build.sh');
     expect(pkg.scripts['build:commercial']).toContain('safe-commercial-build.sh');
+    expect(pkg.scripts['build:raw']).toContain('react-scripts build');
     expect(safeBuild).toContain('BUILD_PATH');
     expect(safeBuild).toContain('build.next');
     expect(safeBuild).toContain('inode-preserving');
     expect(safeBuild).toContain('DISABLE_ESLINT_PLUGIN');
+    // Direct react-scripts call avoids recursive npm run build loops.
+    expect(safeBuild).toContain('react-scripts build');
+    expect(safeBuild).not.toMatch(/(^|\n)\s*npm run build\b/);
   });
 
 });

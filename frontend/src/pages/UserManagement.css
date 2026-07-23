@@ -224,7 +224,8 @@
   }
 
   .user-management-page__healthItem span {
-    font-size: 11px;
+    /* Commercial admin labels stay >=12px */
+    font-size: 12px;
   }
 
   .user-management-page .ant-table-wrapper {
@@ -775,3 +776,6 @@
     gap: 4px;
   }
 }
+
+
+/* Commercial residual: UserManagement ops labels stay >=12px */

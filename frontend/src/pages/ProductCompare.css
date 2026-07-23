@@ -1914,3 +1914,9 @@
   border-radius: 12px;
   padding: 16px;
 }
+
+
+/* Commercial compare title margin (no inline styles). */
+.product-compare-page__title {
+  margin: 0;
+}
