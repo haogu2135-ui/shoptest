@@ -11,19 +11,16 @@ import { getDisplayCategoryRoots, getLocalizedCategoryValue } from '../utils/cat
 import { clearProductViewHistory, loadProductViewPreferences, PRODUCT_VIEW_PREFERENCES_KEY } from '../utils/productViewPreferences';
 import { addGuestCartItem } from '../utils/guestCart';
 import { needsOptionSelection } from '../utils/productOptions';
-import { buildResponsiveImageSrcSet, getOptimizedImageUrl, imageFallbacks, resolveApiAssetUrl } from '../utils/mediaAssets';
 import { getApiErrorMessage } from '../utils/apiError';
 import { buildLoginUrlFromWindow } from '../utils/authRedirect';
 import { dispatchDomEvent } from '../utils/domEvents';
 import { loadGuestSupportContext } from '../utils/guestSupportContext';
 import { addAppScrollListener, getAppScrollMetrics } from '../utils/nativeScroll';
-import { getLocalStorageItem, hasStoredValue, setLocalStorageItem } from '../utils/safeStorage';
+import { hasStoredValue } from '../utils/safeStorage';
 import { cancelIdleTask, scheduleIdleTask } from '../utils/idleScheduler';
 import { openCartDrawerWithSnapshot } from '../utils/cartDrawer';
-import PageError from '../components/PageError';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useDocumentMeta } from '../hooks/useDocumentMeta';
-import PageEmpty from '../components/PageEmpty';
 import { allSettledWithConcurrency } from '../utils/asyncBatch';
 import { buildProductCatalogFallbackCategories, loadFallbackProductCatalog, loadProductCatalogSnapshot, saveProductCatalogSnapshot } from '../utils/productCatalogSnapshot';
 import { reportNonBlockingError } from '../utils/nonBlockingError';
@@ -31,127 +28,50 @@ import { buildWebsiteStructuredData } from '../utils/structuredData';
 import { resolveDefaultSocialImageUrl } from '../utils/documentMeta';
 import { isSupportedPetGalleryImageFile } from '../utils/petGalleryUpload';
 import type { HomePetGalleryItem } from '../components/HomePetGallery';
-import HomeProductCard from '../components/HomeProductCard';
-import { HeroSkeleton, ProductCardSkeleton, StatsStripSkeleton } from '../components/SkeletonLoader';
 import './Home.css';
 import '../styles/mobile-page-contrast.css';
 
+import {
+  DISCOVERY_BATCH_SIZE,
+  HOME_FEATURED_LIMIT,
+  HOME_PRODUCT_PAGE_SIZE,
+  PET_GALLERY_MAX_FILE_SIZE,
+  petGalleryImageFallback,
+  publicAssetUrl,
+  mergeProductsById,
+  ugcImages,
+  readLocalPetGalleryLikes,
+  writeLocalPetGalleryLikes,
+  resolvePetGalleryImage,
+  resolveHomeCatalogBootstrap,
+  HomeIcon,
+  HI,
+  type HomeCatalogBootstrap,
+} from './homeHelpers';
+import {
+  HomeLoadingShell,
+  HomeLoadRecoveryShell,
+} from './homeShellStates';
+import {
+  HomeHeroSection,
+  HomeMobileQuickPanel,
+  HomeTrustStrip,
+  HomeConversionActionsSection,
+  HomeStoryGrid,
+  homeSectionActionLabel,
+} from './homeFirstFoldPanels';
+import {
+  HomeBestSellersSection,
+  HomeEditorialBand,
+  HomePersonalizedProductsSection,
+  HomeCategoriesSection,
+  HomeRecentlyViewedSection,
+  HomeFlashOffersSection,
+  HomeDiscoverySection,
+} from './homeProductPanels';
+
 const LazyHomePetGallery = React.lazy(() => import(/* webpackChunkName: "home-pet-gallery" */ '../components/HomePetGallery'));
 const LazySocialProofToast = React.lazy(() => import(/* webpackChunkName: "social-proof-toast" */ '../components/SocialProofToast'));
-
-/** Lightweight home icons — keep ant-design icons package out of the Home route graph. */
-const HomeIcon: React.FC<{ path: string; className?: string }> = ({ path, className }) => (
-  <svg className={className ? `shop-home-icon ${className}` : 'shop-home-icon'} viewBox="0 0 24 24" width="1em" height="1em" aria-hidden="true" focusable="false">
-    <path fill="currentColor" d={path} />
-  </svg>
-);
-const HI = {
-  heart: 'M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z',
-  check: 'M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z',
-  truck: 'M20 8h-3V4H3c-1.1 0-2 .9-2 2v11h2c0 1.66 1.34 3 3 3s3-1.34 3-3h6c0 1.66 1.34 3 3 3s3-1.34 3-3h2v-5l-3-4zM6 18.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm13.5-9 1.96 2.5H17V9.5h2.5zm-1.5 9c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z',
-  file: 'M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z',
-  cart: 'M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zM1 2v2h2l3.6 7.59-1.35 2.45c-.16.28-.25.61-.25.96 0 1.1.9 2 2 2h12v-2H7.42c-.14 0-.25-.11-.25-.25l.03-.12.9-1.63h7.45c.75 0 1.41-.41 1.75-1.03l3.58-6.49A1.003 1.003 0 0 0 20 4H5.21l-.94-2H1zm16 16c-1.1 0-1.99.9-1.99 2s.89 2 1.99 2 2-.9 2-2-.9-2-2-2z',
-  gift: 'M20 6h-2.18c.11-.31.18-.65.18-1a2.996 2.996 0 0 0-5.5-1.65l-.5.67-.5-.68C10.96 2.54 9.81 2 8.5 2 6.85 2 5.5 3.35 5.5 5c0 .35.07.69.18 1H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-5-2c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zM8.5 4c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1z',
-  support: 'M12 2C6.48 2 2 6.04 2 11c0 2.38 1.19 4.51 3.06 6.01L4 22l5.2-1.86C10.1 20.37 11.03 20.5 12 20.5 17.52 20.5 22 16.46 22 11.5S17.52 2 12 2zm1 14h-2v-2h2v2zm0-4h-2V7h2v5z',
-  compass: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-5.5-2.5 7.51-3.23L17.5 6.5 9.99 9.73 6.5 17.5zm5.5-6.6c.61 0 1.1.49 1.1 1.1s-.49 1.1-1.1 1.1-1.1-.49-1.1-1.1.49-1.1 1.1-1.1z',
-  history: 'M13 3a9 9 0 0 0-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42A8.954 8.954 0 0 0 13 21a9 9 0 0 0 0-18zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z',
-  fire: 'M13.5.67s.74 2.65.74 4.8c0 2.06-1.35 3.73-3.41 3.73-2.07 0-3.63-1.67-3.63-3.73l.03-.36C5.21 7.51 4 10.62 4 14c0 4.42 3.58 8 8 8s8-3.58 8-8C20 8.61 17.41 3.8 13.5.67zM11.71 19c-1.78 0-3.22-1.4-3.22-3.14 0-1.62 1.05-2.76 2.81-3.12 1.77-.36 3.6-1.21 4.62-2.58.39 1.29.59 2.65.59 4.04 0 2.65-2.15 4.8-4.8 4.8z',
-  appstore: 'M4 8h4V4H4v4zm6 12h4v-4h-4v4zm-6 0h4v-4H4v4zm0-6h4v-4H4v4zm6 0h4v-4h-4v4zm6-10v4h4V4h-4zm-6 4h4V4h-4v4zm6 6h4v-4h-4v4zm0 6h4v-4h-4v4z',
-  camera: 'M12 12m-3.2 0a3.2 3.2 0 1 0 6.4 0 3.2 3.2 0 1 0-6.4 0M9 2 7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2h-3.17L15 2H9zm3 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z',
-  shopping: 'M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zM1 2v2h2l3.6 7.59-1.35 2.45c-.16.28-.25.61-.25.96 0 1.1.9 2 2 2h12v-2H7.42c-.14 0-.25-.11-.25-.25l.03-.12.9-1.63h7.45c.75 0 1.41-.41 1.75-1.03l3.58-6.49A1.003 1.003 0 0 0 20 4H5.21l-.94-2H1zm16 16c-1.1 0-1.99.9-1.99 2s.89 2 1.99 2 2-.9 2-2-.9-2-2-2z',
-  safety: 'M12 1 3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z',
-  star: 'M12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z',
-  mobile: 'M16 1H8C6.34 1 5 2.34 5 4v16c0 1.66 1.34 3 3 3h8c1.66 0 3-1.34 3-3V4c0-1.66-1.34-3-3-3zm-2 20h-4v-1h4v1zm3.25-3H6.75V4h10.5v14z',
-  shop: 'M20 4H4v2h16V4zm1 10v-2l-1-5H4l-1 5v2h1v6h10v-6h4v6h2v-6h1zm-9 4H6v-4h6v4z',
-} as const;
-
-const DISCOVERY_BATCH_SIZE = 12;
-const HOME_FEATURED_LIMIT = 12;
-const HOME_PRODUCT_PAGE_SIZE = 48;
-const PET_GALLERY_MAX_FILE_SIZE = 5 * 1024 * 1024;
-const PET_GALLERY_LOCAL_LIKES_KEY = 'shop-pet-gallery-local-likes';
-
-const categoryImageFallback = imageFallbacks.category;
-const petGalleryImageFallback = imageFallbacks.media;
-const publicAssetUrl = (path: string) => `${process.env.PUBLIC_URL || ''}${path}`;
-const mergeProductsById = (...groups: Product[][]) => {
-  const productsById = new Map<number, Product>();
-  groups.flat().forEach((product) => {
-    if (Number.isSafeInteger(product.id) && !productsById.has(product.id)) {
-      productsById.set(product.id, product);
-    }
-  });
-  return Array.from(productsById.values());
-};
-
-const ugcImages = [
-  { key: 'happy_pet_1', image: publicAssetUrl('/assets/home/hero-dog.webp'), label: '@happy_pet_1', likeCount: 42 },
-  { key: 'cozy_paws', image: publicAssetUrl('/assets/home/hero-cat-dog.webp'), label: '@cozy_paws', likeCount: 36 },
-  { key: 'cat_window_club', image: publicAssetUrl('/assets/home/hero-mobile-pet.webp'), label: '@cat_window_club', likeCount: 31 },
-  { key: 'weekend_walks', image: publicAssetUrl('/assets/home/hero-dogs.webp'), label: '@weekend_walks', likeCount: 27 },
-  { key: 'tailwag_home', image: publicAssetUrl('/assets/home/hero-pet-care.webp'), label: '@tailwag_home', likeCount: 22 },
-  { key: 'softnap_cat', image: publicAssetUrl('/assets/home/hero-cat-dog.webp'), label: '@softnap_cat', likeCount: 19 },
-];
-
-const readLocalPetGalleryLikes = () => {
-  try {
-    const parsed = JSON.parse(getLocalStorageItem(PET_GALLERY_LOCAL_LIKES_KEY) || '[]');
-    return Array.isArray(parsed) ? parsed.map(String) : [];
-  } catch (error) {
-    reportNonBlockingError('Home.readLocalPetGalleryLikes', error);
-    return [];
-  }
-};
-
-const writeLocalPetGalleryLikes = (keys: string[]) => {
-  setLocalStorageItem(PET_GALLERY_LOCAL_LIKES_KEY, JSON.stringify(Array.from(new Set(keys))));
-};
-
-const resolveAssetImage = (imageUrl: string, fallback = '') => resolveApiAssetUrl(imageUrl, fallback);
-
-const resolvePetGalleryImage = (imageUrl: string) => {
-  if (!imageUrl) return petGalleryImageFallback;
-  return resolveAssetImage(imageUrl, petGalleryImageFallback) || petGalleryImageFallback;
-};
-
-const applyHomeImageFallback = (event: React.SyntheticEvent<HTMLImageElement>, fallback: string) => {
-  if (event.currentTarget.src !== fallback) {
-    event.currentTarget.removeAttribute('srcset');
-    event.currentTarget.src = fallback;
-  }
-};
-
-type HomeCatalogBootstrap = {
-  products: Product[];
-  featured: Product[];
-  categories: CategoryPublic[];
-  source: 'snapshot' | 'fallback';
-};
-
-/** Paint a commercial catalog immediately (snapshot or built-in fallback) to avoid skeleton→content CLS. */
-const resolveHomeCatalogBootstrap = (language: Language): HomeCatalogBootstrap | null => {
-  try {
-    const snapshot = loadProductCatalogSnapshot();
-    const sourceProducts = snapshot?.products?.length
-      ? snapshot.products
-      : loadFallbackProductCatalog();
-    if (!sourceProducts.length) return null;
-    const products = sourceProducts.map((product) => localizeProduct(product, language));
-    const featuredFromFlag = products.filter((product) => product.isFeatured).slice(0, HOME_FEATURED_LIMIT);
-    const featured = featuredFromFlag.length
-      ? featuredFromFlag
-      : products.slice(0, Math.min(HOME_FEATURED_LIMIT, products.length));
-    return {
-      products,
-      featured,
-      categories: buildProductCatalogFallbackCategories(sourceProducts),
-      source: snapshot?.products?.length ? 'snapshot' : 'fallback',
-    };
-  } catch (error) {
-    reportNonBlockingError('Home.resolveHomeCatalogBootstrap', error);
-    return null;
-  }
-};
 
 const Home: React.FC = () => {
   const navigate = useNavigate();
@@ -850,8 +770,6 @@ const Home: React.FC = () => {
   ];
   const heroFeaturedProduct = personalizedDisplayProducts[0] || bestSellers[0] || promoProducts[0] || featured[0] || products[0] || null;
   const heroFeaturedProductName = heroFeaturedProduct ? homeProductName(heroFeaturedProduct) : '';
-  const editorialFeatureProduct = bestSellers[0] || null;
-  const editorialFeatureName = editorialFeatureProduct ? homeProductName(editorialFeatureProduct) : '';
   const heroFeaturedTag = heroFeaturedProduct
     ? [
       heroFeaturedProduct.brand,
@@ -916,618 +834,123 @@ const Home: React.FC = () => {
   };
 
   if (loading) {
-    return (
-      <main className={`${homeLanguageClass} shopee-home--loading`} aria-busy="true" data-home-loading-shell="true">
-        <div role="status" aria-live="polite" aria-busy="true" aria-label={t('common.loading')}>
-          <section className="shopee-hero">
-            <div className="shopee-container shopee-hero__grid">
-              <HeroSkeleton />
-              <div className="shopee-hero__aside" aria-hidden="true">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="shopee-hero__asideSkeleton shimmer" />
-                ))}
-              </div>
-            </div>
-          </section>
-          <div className="shopee-container shopee-mobile-priority" aria-hidden="true">
-            <section className="shopee-mobile-quick-panel shopee-mobile-quick-panel--skeleton">
-              {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-                <span key={i} className="shopee-mobile-quick-panel__skeletonCell shimmer" />
-              ))}
-            </section>
-          </div>
-          <div className="shopee-container">
-            <section className="pet-trust-strip pet-trust-strip--skeleton" aria-hidden="true">
-              {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="shimmer" />
-              ))}
-            </section>
-            <StatsStripSkeleton />
-            <section className="shopee-section shopee-categories-section shopee-categories-section--skeleton" aria-hidden="true">
-              <div className="shopee-section__header">
-                <span className="shimmer shopee-categories-section__titleSkeleton" aria-hidden="true" />
-              </div>
-              <div className="shopee-categories shopee-categories--skeleton">
-                {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-                  <span key={i} className="shopee-categories__skeletonTile shimmer" />
-                ))}
-              </div>
-            </section>
-            <div className="shopee-loading-products">
-              <ProductCardSkeleton count={8} />
-            </div>
-          </div>
-        </div>
-      </main>
-    );
+    return <HomeLoadingShell homeLanguageClass={homeLanguageClass} t={t} />;
   }
 
   if (loadError) {
-    return (
-      <main className={homeLanguageClass} data-home-load-recovery="true">
-        <div className="shopee-container">
-          <PageError
-            className="home-load-recovery"
-            title={t('messages.loadFailed')}
-            description={t('messages.loadFailedRetry')}
-            actions={[
-              {
-                key: 'retry',
-                label: t('messages.retry'),
-                onClick: () => window.location.reload(),
-                type: 'primary',
-              },
-              {
-                key: 'products',
-                label: t('pages.productList.title'),
-                onClick: () => navigate('/products'),
-                type: 'default',
-              },
-              {
-                key: 'coupons',
-                label: t('pages.productList.loadRecoveryCoupons'),
-                onClick: () => navigate('/coupons'),
-                type: 'default',
-              },
-              {
-                key: 'track',
-                label: t('nav.trackOrder'),
-                onClick: () => navigate('/track-order'),
-                type: 'default',
-              },
-              {
-                key: 'support',
-                label: t('pages.productList.loadRecoverySupport'),
-                onClick: () => dispatchDomEvent('shop:open-support'),
-                type: 'default',
-              },
-            ]}
-          />
-        </div>
-      </main>
-    );
+    return <HomeLoadRecoveryShell homeLanguageClass={homeLanguageClass} navigate={navigate} t={t} />;
   }
 
-  const homeSectionActionLabel = (section: string, action: string, detail?: string | number) => (
-    detail !== undefined && String(detail).trim()
-      ? `${section}: ${action}, ${detail}`
-      : `${section}: ${action}`
-  );
-  const clearRecentlyViewedActionLabel = `${t('home.clearRecentlyViewed')}: ${recentlyViewedProducts.length}`;
-  const bestSellersShopAllLabel = homeSectionActionLabel(t('home.bestSellers'), t('home.shopAll'), bestSellers.length);
-  const recommendationsMoreProductsLabel = homeSectionActionLabel(t('home.petRecommendations'), t('home.moreProducts'), bestSellers.length);
-  const managePetProfilesActionLabel = homeSectionActionLabel(t('home.petRecommendations'), t('home.managePetProfiles'), t('home.petRecommendationReady', { count: personalizedReadyCount }));
-  const personalizedAddAllActionLabel = homeSectionActionLabel(t('home.petRecommendations'), t('pages.wishlist.addAllToCart'), t('home.petRecommendationReady', { count: personalizedReadyCount }));
-  const categoriesViewAllLabel = homeSectionActionLabel(t('home.categories'), t('home.viewAll'), categoryTiles.length);
-  const recentlyViewedMoreProductsLabel = homeSectionActionLabel(t('home.recentlyViewed'), t('home.moreProducts'), recentlyViewedProducts.length);
-  const flashOffersViewAllLabel = homeSectionActionLabel(t('home.flashOffers'), t('home.viewAll'), promoProducts.length);
-  const dailyDiscoveryMoreProductsLabel = homeSectionActionLabel(t('home.dailyDiscovery'), t('home.moreProducts'), discoveryProducts.length);
   const petGalleryActionLabel = homeSectionActionLabel(t('home.petUgcTitle'), t('nav.petGallery'), petGalleryItems.length);
 
   return (
     <main className={homeLanguageClass}>
-      <section className="shopee-hero">
-        <div className="shopee-container shopee-hero__grid">
-          <div className="shopee-hero__main">
-            <div>
-              <span className="shopee-hero__eyebrow">{t('home.heroEyebrow')}</span>
-              <h1>{t('home.heroTitle')}</h1>
-              <p>{t('home.heroText')}</p>
-              <div className="shopee-hero__actions">
-                <button type="button" className="home-btn home-btn--lg" onClick={() => navigate('/products')}>
-                  <HomeIcon path={HI.shopping} />
-                  {t('home.buyNow')}
-                </button>
-                <button type="button" className="home-btn home-btn--lg home-btn--ghost" onClick={() => navigate('/coupons')}>
-                  <HomeIcon path={HI.gift} />
-                  {t('home.claimCoupons')}
-                </button>
-              </div>
-              {!isAuthenticated ? (
-                <div className="shopee-hero__authActions" aria-label={t('nav.account')}>
-                  <button type="button" className="home-btn home-btn--lg home-btn--primary" onClick={() => navigate('/register')}>
-                    {t('nav.register')}
-                  </button>
-                  <button type="button" className="home-btn home-btn--lg home-btn--ghost" onClick={() => navigate(buildLoginUrlFromWindow())}>
-                    {t('nav.login')}
-                  </button>
-                </div>
-              ) : null}
-              {heroCategoryTiles.length ? (
-                <div className="shopee-hero__categoryRail" aria-label={t('home.categories')}>
-                  {heroCategoryTiles.map((category) => (
-                    <button
-                      key={category.id}
-                      type="button"
-                      onClick={() => navigate(`/products?categoryId=${category.id}`)}
-                    >
-                      {getLocalizedCategoryValue(category, language, 'name')}
-                    </button>
-                  ))}
-                </div>
-              ) : null}
-              <div className="shopee-hero__signalRow">
-                <span className="shopee-hero__signalMetric">
-                  <small>{t('home.bestSellers')}</small>
-                  <strong>{bestSellers.length}</strong>
-                </span>
-                <span className="shopee-hero__signalMetric">
-                  <small>{t('home.flashOffers')}</small>
-                  <strong>{promoProducts.length}</strong>
-                </span>
-                <span className="shopee-hero__signalMetric">
-                  <small>{t('home.categories')}</small>
-                  <strong>{displayCategoryRoots.length}</strong>
-                </span>
-              </div>
-              <div className="shopee-hero__trustPills" aria-label={t('home.trust.petSafe')}>
-                <span>{t('home.trust.freeShipping', { amount: formatPrice(market.freeShippingThreshold) })}</span>
-                <span>{t('home.trust.easyReturns')}</span>
-                <span>{t('home.trust.petSafe')}</span>
-              </div>
-            </div>
-          </div>
-          <aside className="shopee-hero__aside" aria-label={t('home.petRecommendations')}>
-            {heroFeaturedProduct ? (
-              <article className="shopee-hero__featuredCard">
-                <span className="shopee-hero__featuredEyebrow">{t('pages.productList.viewPick')}</span>
-                <strong>{heroFeaturedProductName}</strong>
-                <p>{heroFeaturedProduct.description || t('home.petRecommendationsHint')}</p>
-                <div className="shopee-hero__featuredMeta">
-                  <span className="commerce-money">{formatPrice(getPrice(heroFeaturedProduct))}</span>
-                  {heroFeaturedTag ? <small>{heroFeaturedTag}</small> : null}
-                </div>
-                <div className="shopee-hero__featuredActions">
-                <button
-                  type="button"
-                  className="home-btn home-btn--primary"
-                  onMouseEnter={() => prefetchProduct(heroFeaturedProduct.id)}
-                  onFocus={() => prefetchProduct(heroFeaturedProduct.id)}
-                  aria-label={`${t('home.buyNow')}: ${heroFeaturedProductName}`}
-                  title={`${t('home.buyNow')}: ${heroFeaturedProductName}`}
-                  onClick={() => openProduct(heroFeaturedProduct.id)}
-                >
-                    {t('home.buyNow')}
-                </button>
-                  <button type="button" className="home-btn" aria-label={`${t('pages.productList.addToCart')}: ${heroFeaturedProductName}`} title={`${t('pages.productList.addToCart')}: ${heroFeaturedProductName}`} onClick={() => handleQuickAddToCart(undefined, heroFeaturedProduct)}>
-                    {t('pages.productList.addToCart')}
-                  </button>
-                </div>
-              </article>
-            ) : null}
-            {heroSpotlights.map((card) => (
-              <article key={card.key} className={`shopee-hero__spotlight shopee-hero__spotlight--${card.key}`}>
-                <span className="shopee-hero__spotlightIcon">{card.icon}</span>
-                <div className="shopee-hero__spotlightBody">
-                  <strong>{card.title}</strong>
-                  <p>{card.summary}</p>
-                </div>
-                <button type="button" className="home-btn home-btn--default" aria-label={homeSectionActionLabel(card.title, card.actionLabel, card.summary)} title={homeSectionActionLabel(card.title, card.actionLabel, card.summary)} onClick={card.action} disabled={card.disabled}>
-                  {card.actionLabel}
-                </button>
-              </article>
-            ))}
-          </aside>
-        </div>
-      </section>
+      <HomeHeroSection
+        bestSellersCount={bestSellers.length}
+        displayCategoryRootsCount={displayCategoryRoots.length}
+        formatPrice={formatPrice}
+        freeShippingThreshold={market.freeShippingThreshold}
+        heroCategoryTiles={heroCategoryTiles}
+        heroFeaturedProduct={heroFeaturedProduct}
+        heroFeaturedProductName={heroFeaturedProductName}
+        heroFeaturedTag={heroFeaturedTag}
+        heroSpotlights={heroSpotlights}
+        isAuthenticated={isAuthenticated}
+        language={language}
+        navigate={navigate}
+        onQuickAdd={handleQuickAddToCart}
+        onOpenProduct={openProduct}
+        onPrefetchProduct={prefetchProduct}
+        promoProductsCount={promoProducts.length}
+        t={t}
+      />
 
-      <div className="shopee-container shopee-mobile-priority">
-        <section className="shopee-mobile-quick-panel" aria-label={t('home.categories')}>
-          {mobileQuickActions.map((action) => (
-            <button key={action.key} type="button" onClick={action.onClick}>
-              <span className="shopee-mobile-quick-panel__icon">{action.icon}</span>
-              <span className="shopee-mobile-quick-panel__label">{action.label}</span>
-            </button>
-          ))}
-        </section>
-      </div>
+      <HomeMobileQuickPanel actions={mobileQuickActions} t={t} />
 
       <div className="shopee-container">
-        <section className="pet-trust-strip">
-          <div><HomeIcon path={HI.truck} /><strong>{t('home.trust.freeShipping', { amount: formatPrice(market.freeShippingThreshold) })}</strong><span>{t('home.trust.fastDispatch')}</span></div>
-          <div><HomeIcon path={HI.safety} /><strong>{t('home.trust.petSafe')}</strong><span>{t('home.trust.nonToxic')}</span></div>
-          <div><HomeIcon path={HI.check} /><strong>{t('home.trust.easyReturns')}</strong><span>{t('home.trust.betterFit')}</span></div>
-          <div><HomeIcon path={HI.star} /><strong>{t('home.trust.loved')}</strong><span>{t('home.trust.happyTails')}</span></div>
-        </section>
+        <HomeTrustStrip
+          formatPrice={formatPrice}
+          freeShippingThreshold={market.freeShippingThreshold}
+          t={t}
+        />
 
-        <section className="shopee-home-actions" aria-label={t('home.couponsExtra')}>
-          {usingCatalogSnapshot ? (
-            <div className="shopee-home__snapshotNotice home-alert home-alert--warning" role="status">
-              <strong>{t('pages.productList.snapshotTitle')}</strong>
-              <p>{t('pages.productList.snapshotText')}</p>
-            </div>
-          ) : null}
-          {!isAuthenticated ? (
-            <div className="shopee-conversion-band" aria-label={t('nav.account')}>
-              {guestJourneyActions.map((item) => (
-                <button type="button" key={item.key} className="shopee-conversion-band__card" onClick={item.action}>
-                  <span className="shopee-conversion-band__icon">{item.icon}</span>
-                  <span className="shopee-conversion-band__body">
-                    <strong>{item.title}</strong>
-                    <span className="home-text">{item.text}</span>
-                  </span>
-                  <span className="shopee-conversion-band__action">{item.actionLabel}</span>
-                </button>
-              ))}
-            </div>
-          ) : null}
-          <div className="shopee-conversion-strip" aria-label={t('home.petRecommendations')}>
-            {conversionHighlights.map((item) => (
-              <article key={item.key} className={`shopee-conversion-strip__item shopee-conversion-strip__item--${item.key}`}>
-                <strong>{item.value}</strong>
-                <span>{item.label}</span>
-              </article>
-            ))}
-          </div>
-          <button type="button" className="shopee-coupon-entry" onClick={() => navigate('/coupons')}>
-            <span className="shopee-coupon-entry__icon"><HomeIcon path={HI.gift} /></span>
-            <span>
-              <strong>{t('home.couponsExtra')}</strong>
-              <span className="home-text">{t('nav.coupons')}</span>
-            </span>
-          </button>
-          <button type="button" className="shopee-coupon-entry shopee-coupon-entry--deal" onClick={openDiscountProducts}>
-            <span className="shopee-coupon-entry__icon"><HomeIcon path={HI.fire} /></span>
-            <span>
-              <strong>{t('home.flashOffers')}</strong>
-              <span className="home-text">{t('home.viewDeals')}</span>
-            </span>
-          </button>
-        </section>
+        <HomeConversionActionsSection
+          conversionHighlights={conversionHighlights}
+          guestJourneyActions={guestJourneyActions}
+          isAuthenticated={isAuthenticated}
+          navigate={navigate}
+          onOpenDiscountProducts={openDiscountProducts}
+          t={t}
+          usingCatalogSnapshot={usingCatalogSnapshot}
+        />
 
-        <section className="shopee-story-grid" aria-label={t('home.bestSellers')}>
-          {curatedStoryCards.map((card) => (
-            <article key={card.key} className={`shopee-story-card shopee-story-card--${card.key}`}>
-              <span className="shopee-story-card__icon">{card.icon}</span>
-              <div className="shopee-story-card__body">
-                <strong>{card.title}</strong>
-                <span className="home-text">{card.summary}</span>
-              </div>
-              <button type="button" className="home-btn home-btn--text" onClick={card.action}>
-                {card.actionLabel}
-              </button>
-            </article>
-          ))}
-        </section>
+        <HomeStoryGrid cards={curatedStoryCards} t={t} />
 
-        {bestSellers.length ? (
-          <section className="shopee-section shopee-promo-products shopee-best-sellers">
-            <div className="shopee-section__header">
-              <h2>
-                <HomeIcon path={HI.star} /> {t('home.bestSellers')}
-              </h2>
-	              <button type="button" aria-label={bestSellersShopAllLabel} title={bestSellersShopAllLabel} onClick={() => navigate('/products')}>{t('home.shopAll')}</button>
-            </div>
-            <div className="home-product-grid">
-              {bestSellers.map((product, index) => (
-                <div key={product.id} className="home-product-grid__item">
-                  <HomeProductCard {...productCardCommonProps} product={product} index={index} compact priority={index < 2} sectionLabel={t('home.bestSellers')} />
-                </div>
-              ))}
-            </div>
-          </section>
-        ) : null}
+        <HomeBestSellersSection
+          bestSellers={bestSellers}
+          navigate={navigate}
+          productCardCommonProps={productCardCommonProps}
+          t={t}
+        />
 
-        {bestSellers.length >= 3 ? (
-          <section className="shopee-section shopee-editorial-band">
-            <div className="shopee-section__header">
-              <h2>
-                <HomeIcon path={HI.heart} /> {t('home.petRecommendations')}
-              </h2>
-	              <button type="button" aria-label={recommendationsMoreProductsLabel} title={recommendationsMoreProductsLabel} onClick={() => navigate('/products')}>{t('home.moreProducts')}</button>
-            </div>
-            <div className="shopee-editorial-band__grid">
-              <article className="shopee-editorial-band__feature">
-                <span className="shopee-editorial-band__eyebrow">{t('home.heroEyebrow')}</span>
-                <strong>{editorialFeatureName}</strong>
-                <span className="home-text">{editorialFeatureProduct?.description || t('home.petRecommendationsHint')}</span>
-                <div className="shopee-editorial-band__actions">
-                  <button type="button" className="home-btn home-btn--primary" aria-label={`${t('home.buyNow')}: ${editorialFeatureName}`} title={`${t('home.buyNow')}: ${editorialFeatureName}`} onClick={() => openProduct(bestSellers[0].id)}>
-                    {t('home.buyNow')}
-                  </button>
-                  <button type="button" className="home-btn" aria-label={`${t('pages.productList.addToCart')}: ${editorialFeatureName}`} title={`${t('pages.productList.addToCart')}: ${editorialFeatureName}`} onClick={() => handleQuickAddToCart(undefined, bestSellers[0])}>
-                    {t('pages.productList.addToCart')}
-                  </button>
-                </div>
-              </article>
-              <div className="shopee-editorial-band__stack">
-                {bestSellers.slice(1, 3).map((product, index) => {
-                  const productName = homeProductName(product);
-                  return (
-                  <button
-                    key={product.id}
-                    type="button"
-                    className="shopee-editorial-band__miniCard"
-                    aria-label={`${t('pages.productList.viewDetails')}: ${productName}`}
-                    title={`${t('pages.productList.viewDetails')}: ${productName}`}
-                    onClick={() => openProduct(product.id)}
-                  >
-                    <span className="shopee-editorial-band__miniIndex">0{index + 2}</span>
-                    <span className="shopee-editorial-band__miniBody">
-                      <strong>{productName}</strong>
-                      <span className="commerce-money">{formatPrice(getPrice(product))}</span>
-                    </span>
-                  </button>
-                  );
-                })}
-              </div>
-            </div>
-          </section>
-        ) : null}
+        <HomeEditorialBand
+          bestSellers={bestSellers}
+          formatPrice={formatPrice}
+          navigate={navigate}
+          onOpenProduct={openProduct}
+          onQuickAdd={handleQuickAddToCart}
+          t={t}
+        />
 
-        {personalizedDisplayProducts.length ? (
-          <section className="shopee-section shopee-promo-products shopee-personalized-products">
-            <div className="shopee-section__header">
-              <h2>
-                <HomeIcon path={HI.compass} /> {t('home.petRecommendations')}
-              </h2>
-	              <button type="button" aria-label={managePetProfilesActionLabel} title={managePetProfilesActionLabel} onClick={() => navigate('/profile?tab=pets')}>{t('home.managePetProfiles')}</button>
-            </div>
-            <div className="shopee-personalized-insight">
-              <div>
-                <strong className="home-text">{t('home.petRecommendationInsightTitle')}</strong>
-                <span className="home-text home-text--secondary">
-                  {personalizedRecommendationSource === 'petProfile'
-                    ? t('home.petRecommendationInsightPetProfile')
-                    : personalizedPreferenceLabel
-                      ? t('home.petRecommendationInsightPreference', { value: personalizedPreferenceLabel })
-                      : t('home.petRecommendationsHint')}
-                </span>
-              </div>
-              <div className="shopee-personalized-insight__stats">
-                <span>{t('home.petRecommendationReady', { count: personalizedReadyCount })}</span>
-                <span>{t('home.petRecommendationDeals', { count: personalizedDealCount })}</span>
-              </div>
-	              <button
-	                type="button"
-	                className="home-btn home-btn--primary"
-	                disabled={personalizedReadyProducts.length === 0}
-	                aria-label={personalizedAddAllActionLabel}
-	                title={personalizedAddAllActionLabel}
-	                onClick={addPersonalizedReadyProducts}
-	              >
-                <HomeIcon path={HI.cart} />
-                {t('pages.wishlist.addAllToCart')}
-              </button>
-            </div>
-            <div className="home-product-grid">
-              {personalizedDisplayProducts.slice(0, 8).map((product, index) => (
-                <div key={product.id} className="home-product-grid__item">
-                  <HomeProductCard {...productCardCommonProps} product={product} index={index} compact sectionLabel={t('home.petRecommendations')} />
-                </div>
-              ))}
-            </div>
-          </section>
-        ) : null}
+        <HomePersonalizedProductsSection
+          navigate={navigate}
+          onAddPersonalizedReady={addPersonalizedReadyProducts}
+          personalizedDealCount={personalizedDealCount}
+          personalizedDisplayProducts={personalizedDisplayProducts}
+          personalizedPreferenceLabel={personalizedPreferenceLabel}
+          personalizedReadyCount={personalizedReadyCount}
+          personalizedReadyProducts={personalizedReadyProducts}
+          personalizedRecommendationSource={personalizedRecommendationSource}
+          productCardCommonProps={productCardCommonProps}
+          t={t}
+        />
 
-        <section className="shopee-section shopee-categories-section">
-          <div className="shopee-section__header">
-            <h2>{t('home.categories')}</h2>
-	            <button type="button" aria-label={categoriesViewAllLabel} title={categoriesViewAllLabel} onClick={() => navigate('/products')}>{t('home.viewAll')}</button>
-          </div>
-          {categoryTiles.length ? (
-            <div className="shopee-categories">
-              {categoryTiles.map((category, index) => {
-                const categoryName = getLocalizedCategoryValue(category, language, 'name');
-                const categoryImage = category.imageUrl ? resolveAssetImage(category.imageUrl, categoryImageFallback) : '';
-                return (
-                  <button type="button" key={category.id} onClick={() => navigate(`/products?categoryId=${category.id}`)}>
-                    <span>
-                      {categoryImage ? (
-                        <img
-                          src={getOptimizedImageUrl(categoryImage, 96) || categoryImageFallback}
-                          srcSet={buildResponsiveImageSrcSet(categoryImage, [64, 96, 144])}
-                          sizes="34px"
-                          alt={categoryName}
-                          loading="lazy"
-                          decoding="async"
-                          width={34}
-                          height={34}
-                          className="shopee-categories__image"
-                          onError={(event) => applyHomeImageFallback(event, categoryImageFallback)}
-                        />
-                      ) : (
-                        [<HomeIcon path={HI.appstore} />, <HomeIcon path={HI.mobile} />, <HomeIcon path={HI.shop} />, <HomeIcon path={HI.gift} />, <HomeIcon path={HI.star} />][index % 5]
-                      )}
-                    </span>
-                    <span className="shopee-categories__name">{categoryName}</span>
-                  </button>
-                );
-              })}
-            </div>
-          ) : (
-            <PageEmpty
-              className="home-empty-categories"
-              data-home-empty-categories="true"
-              description={(
-                <div>
-                  <div>{t('home.noCategories')}</div>
-                  <div>{t('home.emptyCategoriesHint')}</div>
-                </div>
-              )}
-              actions={[
-                {
-                  key: 'browse',
-                  label: t('home.browseCatalog'),
-                  onClick: () => navigate('/products'),
-                },
-                {
-                  key: 'coupons',
-                  label: t('nav.coupons'),
-                  onClick: () => navigate('/coupons'),
-                  type: 'default',
-                },
-                {
-                  key: 'pet-finder',
-                  label: t('nav.petFinder'),
-                  onClick: () => navigate('/pet-finder'),
-                  type: 'default',
-                },
-                {
-                  key: 'home-refresh',
-                  label: t('common.refresh'),
-                  onClick: () => window.location.reload(),
-                  type: 'default',
-                },
-              ]}
-            />
-          )}
-        </section>
+        <HomeCategoriesSection
+          categoryTiles={categoryTiles}
+          language={language}
+          navigate={navigate}
+          t={t}
+        />
 
-        {(recentlyViewedProducts.length || recentlyViewedPending) ? (
-          <section className="shopee-section shopee-promo-products shopee-recently-viewed-products">
-            <div className="shopee-section__header shopee-section__header--with-actions">
-              <h2>{t('home.recentlyViewed')}</h2>
-              <div className="shopee-section__actions">
-	                <button type="button" aria-label={recentlyViewedMoreProductsLabel} title={recentlyViewedMoreProductsLabel} onClick={() => navigate('/products')}>{t('home.moreProducts')}</button>
-                <button
-                  type="button"
-                  aria-label={clearRecentlyViewedActionLabel}
-                  title={clearRecentlyViewedActionLabel}
-                  onClick={() => {
-                    if (!window.confirm(t('home.clearRecentlyViewedConfirm'))) return;
-                    clearProductViewHistory();
-                    setViewPreferences(loadProductViewPreferences());
-                  }}
-                >
-                  {t('home.clearRecentlyViewed')}
-                </button>
-              </div>
-            </div>
-            {recentlyViewedPending ? (
-              <div className="shopee-recently-viewed-products__pending" data-home-recently-viewed-pending="true" aria-busy="true" aria-live="polite">
-                <ProductCardSkeleton count={4} />
-              </div>
-            ) : (
-            <div className="home-product-grid">
-              {recentlyViewedProducts.map(({ product, viewedAt }, index) => (
-                <div key={product.id} className="home-product-grid__item">
-                  <HomeProductCard {...productCardCommonProps} product={product} index={index} compact viewedAt={viewedAt} sectionLabel={t('home.recentlyViewed')} />
-                </div>
-              ))}
-            </div>
-            )}
-          </section>
-        ) : null}
+        <HomeRecentlyViewedSection
+          navigate={navigate}
+          onClearRecentlyViewed={() => {
+            if (!window.confirm(t('home.clearRecentlyViewedConfirm'))) return;
+            clearProductViewHistory();
+            setViewPreferences(loadProductViewPreferences());
+          }}
+          productCardCommonProps={productCardCommonProps}
+          recentlyViewedPending={recentlyViewedPending}
+          recentlyViewedProducts={recentlyViewedProducts}
+          t={t}
+        />
 
-        {promoProducts.length ? (
-          <section className="shopee-section shopee-promo-products shopee-flash-products">
-            <div className="shopee-section__header">
-              <h2>
-                <HomeIcon path={HI.fire} /> {t('home.flashOffers')}
-              </h2>
-	              <button type="button" aria-label={flashOffersViewAllLabel} title={flashOffersViewAllLabel} onClick={openDiscountProducts}>{t('home.viewAll')}</button>
-            </div>
-            <div className="home-product-grid">
-              {promoProducts.map((product, index) => (
-                <div key={product.id} className="home-product-grid__item">
-                  <HomeProductCard {...productCardCommonProps} product={product} index={index} compact sectionLabel={t('home.flashOffers')} />
-                </div>
-              ))}
-            </div>
-          </section>
-        ) : null}
+        <HomeFlashOffersSection
+          onOpenDiscountProducts={openDiscountProducts}
+          productCardCommonProps={productCardCommonProps}
+          promoProducts={promoProducts}
+          t={t}
+        />
 
-        <section className="shopee-section shopee-discovery shopee-for-you">
-          <div className="shopee-section__header shopee-section__header--accent">
-            <h2>{t('home.guessYouLike', { defaultValue: t('home.dailyDiscovery') })}</h2>
-	            <button type="button" aria-label={dailyDiscoveryMoreProductsLabel} title={dailyDiscoveryMoreProductsLabel} onClick={() => navigate('/products')}>{t('home.moreProducts')}</button>
-          </div>
-          {discoveryProducts.length ? (
-            <>
-            <div
-              className="shopee-discovery__status"
-              role="status"
-              aria-live="polite"
-              aria-atomic="true"
-            >
-              {hasMoreDiscoveryProducts
-                ? t('home.discoveryShowing', {
-                    shown: visibleDiscoveryProducts.length,
-                    total: discoveryProducts.length,
-                  })
-                : t('home.discoveryAllLoaded')}
-            </div>
-            <div className="home-product-grid" role="list" aria-label={t('home.dailyDiscovery')}>
-              {visibleDiscoveryProducts.map((product, index) => (
-                <div key={product.id} className="home-product-grid__item" role="listitem">
-                  <HomeProductCard {...productCardCommonProps} product={product} index={index} priority={index < 2} sectionLabel={t('home.dailyDiscovery')} />
-                </div>
-              ))}
-            </div>
-            {hasMoreDiscoveryProducts ? (
-              <div className="shopee-load-more" role="status" aria-live="polite" aria-busy="true" aria-label={t('home.discoveryLoadingMore')}>
-                <span className="home-spinner" aria-hidden="true" />
-                <button
-                  type="button"
-                  className="shopee-load-more__button"
-                  aria-label={t('home.discoveryLoadMore')}
-                  title={t('home.discoveryLoadMore')}
-                  onClick={() => setVisibleCount((count) => Math.min(count + DISCOVERY_BATCH_SIZE, discoveryProducts.length))}
-                >
-                  {t('home.discoveryLoadMore')}
-                </button>
-              </div>
-            ) : null}
-            </>
-          ) : (
-            <PageEmpty
-              className="home-empty-products"
-              data-home-empty-products="true"
-              description={(
-                <div>
-                  <div>{t('home.noProducts')}</div>
-                  <div>{t('home.emptyProductsHint')}</div>
-                </div>
-              )}
-              actions={[
-                {
-                  key: 'browse',
-                  label: t('home.browseCatalog'),
-                  onClick: () => navigate('/products'),
-                },
-                {
-                  key: 'coupons',
-                  label: t('nav.coupons'),
-                  onClick: () => navigate('/coupons'),
-                  type: 'default',
-                },
-                {
-                  key: 'pet-finder',
-                  label: t('nav.petFinder'),
-                  onClick: () => navigate('/pet-finder'),
-                  type: 'default',
-                },
-                {
-                  key: 'track',
-                  label: t('nav.trackOrder'),
-                  onClick: () => navigate('/track-order'),
-                  type: 'default',
-                },
-              ]}
-            />
-          )}
-        </section>
+        <HomeDiscoverySection
+          discoveryProducts={discoveryProducts}
+          hasMoreDiscoveryProducts={hasMoreDiscoveryProducts}
+          navigate={navigate}
+          onLoadMore={() => setVisibleCount((count) => Math.min(count + DISCOVERY_BATCH_SIZE, discoveryProducts.length))}
+          productCardCommonProps={productCardCommonProps}
+          t={t}
+          visibleDiscoveryProducts={visibleDiscoveryProducts}
+        />
 
         <React.Suspense fallback={null}>
           <LazyHomePetGallery

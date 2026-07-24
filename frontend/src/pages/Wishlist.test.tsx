@@ -7,7 +7,12 @@ import { cartApi, wishlistApi } from '../api';
 import { hasStoredValue } from '../utils/safeStorage';
 import Wishlist from './Wishlist';
 
-const readWishlistSource = () => fs.readFileSync(path.resolve(__dirname, 'Wishlist.tsx'), 'utf8');
+const readWishlistSource = () => [
+  fs.readFileSync(path.resolve(__dirname, 'Wishlist.tsx'), 'utf8'),
+  fs.readFileSync(path.resolve(__dirname, 'wishlistHelpers.ts'), 'utf8'),
+  fs.readFileSync(path.resolve(__dirname, 'wishlistPanels.tsx'), 'utf8'),
+].join('\n');
+const readWishlistPage = () => fs.readFileSync(path.resolve(__dirname, 'Wishlist.tsx'), 'utf8');
 const readWishlistCss = () => fs.readFileSync(path.resolve(__dirname, 'Wishlist.css'), 'utf8');
 
 jest.mock('../api', () => ({
@@ -71,6 +76,26 @@ const renderWishlist = () => render(
 );
 
 describe('Wishlist mobile action layout', () => {
+  it('keeps wishlist helpers and panels modularized outside the page shell', () => {
+    const page = readWishlistPage();
+    const helpers = fs.readFileSync(path.resolve(__dirname, 'wishlistHelpers.ts'), 'utf8');
+    const panels = fs.readFileSync(path.resolve(__dirname, 'wishlistPanels.tsx'), 'utf8');
+    expect(page).toContain("from './wishlistHelpers'");
+    expect(page).toContain("from './wishlistPanels'");
+    expect(page).toContain('<WishlistMainPanels');
+    expect(page).toContain('<WishlistAuthGate');
+    expect(page).toContain('<WishlistLoadingShell');
+    expect(page).not.toContain('wishlist-page__grid');
+    expect(page).not.toContain('wishlist-page__bestPick');
+    expect(helpers).toContain('export const isPurchasable');
+    expect(helpers).toContain('export const groupWishlistItems');
+    expect(helpers).toContain('export const pickFeaturedWishlistItem');
+    expect(panels).toContain('export const WishlistMainPanels');
+    expect(panels).toContain('export const WishlistAuthGate');
+    expect(panels).toContain('wishlist-page__grid');
+    expect(panels).toContain('wishlist-page__authGate');
+  });
+
   it('keeps single add-to-cart API error handling typed without broad any usage', () => {
     const source = readWishlistSource();
 

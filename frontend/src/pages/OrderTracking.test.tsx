@@ -5,9 +5,17 @@ import { MemoryRouter } from 'react-router-dom';
 import OrderTracking, { ORDER_TRACKING_AUTO_REFRESH_MS, shouldAutoRefreshTrackedOrder } from './OrderTracking';
 import { orderApi } from '../api';
 
-const readOrderTrackingSource = () => fs.readFileSync(path.resolve(__dirname, 'OrderTracking.tsx'), 'utf8');
+const readOrderTrackingPage = () => fs.readFileSync(path.resolve(__dirname, 'OrderTracking.tsx'), 'utf8');
+const readOrderTrackingSource = () => [
+  readOrderTrackingPage(),
+  fs.readFileSync(path.resolve(__dirname, 'orderTrackingHelpers.ts'), 'utf8'),
+  fs.readFileSync(path.resolve(__dirname, 'orderTrackingPanels.tsx'), 'utf8'),
+].join('\n');
 const readOrderTrackingCss = () => fs.readFileSync(path.resolve(__dirname, 'OrderTracking.css'), 'utf8');
-const readProfileSource = () => fs.readFileSync(path.resolve(__dirname, 'Profile.tsx'), 'utf8');
+const readProfileSource = () => [
+  fs.readFileSync(path.resolve(__dirname, 'Profile.tsx'), 'utf8'),
+  fs.readFileSync(path.resolve(__dirname, 'profileReturnModals.tsx'), 'utf8'),
+].join('\n');
 
 jest.mock('../api', () => ({
   cartApi: { addItem: jest.fn() },

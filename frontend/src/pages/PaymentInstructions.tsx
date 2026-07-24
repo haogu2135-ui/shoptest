@@ -424,6 +424,8 @@ const PaymentInstructions: React.FC = () => {
         openSupport={openSupport}
         openTrackOrder={openTrackOrder}
         payment={payment}
+        paymentContextLabel={paymentContextLabel}
+        paymentStatus={paymentStatus}
         paymentSteps={paymentSteps}
         recoveryIsExpired={Boolean(recovery.isExpired)}
         refreshStatusActionLabel={refreshStatusActionLabel}

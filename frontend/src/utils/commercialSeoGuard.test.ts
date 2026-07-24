@@ -4,6 +4,29 @@ import path from 'path';
 const readFrontend = (...segments: string[]) =>
   fs.readFileSync(path.join(__dirname, '..', ...segments), 'utf8');
 
+const readProductDetailSurface = () => [
+  readFrontend('pages', 'ProductDetail.tsx'),
+  readFrontend('pages', 'productDetailGallery.tsx'),
+  readFrontend('pages', 'productDetailSummary.tsx'),
+  readFrontend('pages', 'productDetailBuyBar.tsx'),
+  readFrontend('pages', 'productDetailContent.tsx'),
+  readFrontend('pages', 'productDetailRecommendations.tsx'),
+  readFrontend('pages', 'productDetailHelpers.tsx'),
+  readFrontend('pages', 'productDetailShell.tsx'),
+].join('\n');
+
+const readProfileSurface = () => [
+  readFrontend('pages', 'Profile.tsx'),
+  readFrontend('pages', 'profileOrdersPanel.tsx'),
+  readFrontend('pages', 'profileAddressesPanel.tsx'),
+  readFrontend('pages', 'profilePetsPanel.tsx'),
+  readFrontend('pages', 'profileOrderDetailModal.tsx'),
+  readFrontend('pages', 'profileReturnModals.tsx'),
+  readFrontend('pages', 'profilePaymentModal.tsx'),
+  readFrontend('pages', 'profileInfoPanel.tsx'),
+  readFrontend('pages', 'profileAccountModals.tsx'),
+].join('\n');
+
 describe('commercial SEO contracts', () => {
   it('keeps storefront pages on document meta + structured data utilities', () => {
     const home = readFrontend('pages', 'Home.tsx');
@@ -124,8 +147,8 @@ describe('commercial SEO contracts', () => {
   });
 
   it('keeps product detail and profile tabs URL-synced for shareable commercial deep links', () => {
-    const productDetail = readFrontend('pages', 'ProductDetail.tsx');
-    const profile = readFrontend('pages', 'Profile.tsx');
+    const productDetail = readProductDetailSurface();
+    const profile = readProfileSurface();
 
     expect(productDetail).toContain('useSearchParams');
     expect(productDetail).toContain('normalizeProductDetailTab');

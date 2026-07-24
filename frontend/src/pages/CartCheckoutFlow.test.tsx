@@ -644,6 +644,7 @@ const readCartPageSurface = () => [
   readCartSavedPanelSource(),
   fs.readFileSync(path.resolve(__dirname, 'cartConversionPanels.tsx'), 'utf8'),
   fs.readFileSync(path.resolve(__dirname, 'cartShellStates.tsx'), 'utf8'),
+  fs.readFileSync(path.resolve(__dirname, 'cartOverviewPanels.tsx'), 'utf8'),
 ].join('\n');
 const readCartQuantityActionsSource = () => fs.readFileSync(path.resolve(__dirname, '../hooks/useCartQuantityActions.ts'), 'utf8');
 const readCartRecoveryAddsSource = () => fs.readFileSync(path.resolve(__dirname, '../hooks/useCartRecoveryAdds.ts'), 'utf8');
@@ -946,12 +947,13 @@ describe('cart to checkout flows', () => {
   it('keeps the top checkout action label distinct from the summary checkout button', () => {
     const page = fs.readFileSync(path.resolve(__dirname, 'Cart.tsx'), 'utf8');
     const panels = fs.readFileSync(path.resolve(__dirname, 'cartConversionPanels.tsx'), 'utf8');
-    const source = [page, panels].join('\n');
+    const overview = fs.readFileSync(path.resolve(__dirname, 'cartOverviewPanels.tsx'), 'utf8');
+    const source = [page, panels, overview].join('\n');
 
     expect(page).toContain("const cartNextActionLabel = `${cartNextAction.label}: ${cartNextAction.title}`;");
     expect(page).toContain("const cartTopNextActionLabel = `${t('pages.cart.nextActionEyebrow')}: ${cartNextActionLabel}`;");
-    expect(page).toContain('aria-label={cartItems.length > 0 ? cartTopNextActionLabel : emptyBrowseActionLabel}');
-    expect(page).toContain('title={cartItems.length > 0 ? cartTopNextActionLabel : emptyBrowseActionLabel}');
+    expect(overview).toContain('aria-label={cartItemsCount > 0 ? cartTopNextActionLabel : emptyBrowseActionLabel}');
+    expect(overview).toContain('title={cartItemsCount > 0 ? cartTopNextActionLabel : emptyBrowseActionLabel}');
     expect(source).toContain('aria-label={checkoutActionLabel}');
     expect(source).not.toContain('`${cartNextActionLabel} (top action)`');
   });
@@ -1316,6 +1318,7 @@ ${recoveryAdds}`;
 
   it('keeps stale cart snapshots read-only until a refresh succeeds', () => {
     const source = fs.readFileSync(path.resolve(__dirname, 'Cart.tsx'), 'utf8');
+    const overview = fs.readFileSync(path.resolve(__dirname, 'cartOverviewPanels.tsx'), 'utf8');
     const staleMarker = 'const hasStaleCartData = loadError && cartItems.length > 0;';
     const nextActionStart = source.indexOf('const cartNextAction = (() => {');
     const nextActionEnd = source.indexOf('const cartHeroHighlights = [', nextActionStart);
@@ -1323,9 +1326,9 @@ ${recoveryAdds}`;
     const checkoutSubmit = readCartCheckoutSubmitSource();
     const checkoutStart = checkoutSubmit.indexOf('const goCheckout = useCallback(async () => {');
     const checkoutSource = checkoutSubmit.slice(checkoutStart);
-    const staleAlertStart = source.indexOf('{hasStaleCartData ? (');
-    const staleAlertEnd = source.indexOf('{showRecentlyViewedRecovery ? (', staleAlertStart);
-    const staleAlertSource = source.slice(staleAlertStart, staleAlertEnd);
+    const staleAlertStart = overview.indexOf('{hasStaleCartData ? (');
+    const staleAlertEnd = overview.indexOf('</>', staleAlertStart);
+    const staleAlertSource = overview.slice(staleAlertStart, staleAlertEnd);
 
     expect(source).toContain(staleMarker);
     expect(source).toContain('const refreshCartItems = useCallback(() => {');

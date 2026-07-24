@@ -1,7 +1,11 @@
 import fs from 'fs';
 import path from 'path';
 
-const source = fs.readFileSync(path.join(__dirname, 'OrderTracking.tsx'), 'utf8');
+const source = [
+  fs.readFileSync(path.join(__dirname, 'OrderTracking.tsx'), 'utf8'),
+  fs.readFileSync(path.join(__dirname, 'orderTrackingHelpers.ts'), 'utf8'),
+  fs.readFileSync(path.join(__dirname, 'orderTrackingPanels.tsx'), 'utf8'),
+].join('\n');
 
 describe('OrderTracking type-safety guards', () => {
   it('keeps order tracking API error handling typed without broad any usage', () => {

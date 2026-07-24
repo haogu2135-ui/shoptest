@@ -81,9 +81,19 @@ describe('source quality contracts', () => {
     const readSource = (relativePath: string) => fs.readFileSync(path.join(frontendRoot, relativePath), 'utf8');
     const skeletonSource = readSource('components/SkeletonLoader.tsx');
     const skeletonCssSource = readSource('components/SkeletonLoader.css');
-    const homeSource = readSource('pages/Home.tsx');
-    const productListSource = readSource('pages/ProductList.tsx');
-    const cartSource = readSource('pages/Cart.tsx');
+    const homeSource = [
+      readSource('pages/Home.tsx'),
+      readSource('pages/homeShellStates.tsx'),
+    ].join('\n');
+    const productListSource = [
+      readSource('pages/ProductList.tsx'),
+      readSource('pages/productListPanels.tsx'),
+    ].join('\n');
+    const cartSource = [
+      readSource('pages/Cart.tsx'),
+      readSource('pages/cartShellStates.tsx'),
+      readSource('pages/cartLineItems.tsx'),
+    ].join('\n');
 
     expect(skeletonSource).toMatch(/className=\{`skeleton skeleton--\$\{type\} \$\{className\}`\} aria-hidden="true"/);
     expect(skeletonSource).toMatch(/className=\{`hero-skeleton \$\{className\}`\} aria-hidden="true"/);
@@ -111,7 +121,7 @@ describe('source quality contracts', () => {
     const checkoutFormSectionsSource = readFrontend('components/checkout/CheckoutFormSections.tsx');
     const checkoutTestSource = readFrontend('pages/Checkout.test.tsx');
     const checkoutCssSource = readFrontend('pages/Checkout.css');
-    const cartSource = readFrontend('pages/Cart.tsx');
+    const cartSource = [readFrontend('pages/Cart.tsx'), readFrontend('pages/cartLineItems.tsx')].join('\n');
     const cartUiSource = readFrontend('utils/cartUi.ts');
     const cartSessionSource = readFrontend('utils/cartSession.ts');
     const skeletonCssSource = readFrontend('components/SkeletonLoader.css');
@@ -276,28 +286,35 @@ describe('source quality contracts', () => {
       .filter((file) => !/\.(test|spec)\.[tj]sx?$/.test(file))
       .map((file) => fs.readFileSync(file, 'utf8'))
       .join('\n');
-    const homeSource = fs.readFileSync(path.join(frontendRoot, 'pages/Home.tsx'), 'utf8');
+    const homeSource = [
+      fs.readFileSync(path.join(frontendRoot, 'pages/Home.tsx'), 'utf8'),
+      fs.readFileSync(path.join(frontendRoot, 'pages/homeHelpers.tsx'), 'utf8'),
+    ].join('\n');
 
     expect(packageJson).not.toContain('"zustand"');
     expect(scriptSource).not.toContain('StorefrontContext');
     expect(scriptSource).not.toMatch(/\bfrom ['"]zustand['"]/);
     expect(homeSource).toContain("import { clearProductViewHistory, loadProductViewPreferences, PRODUCT_VIEW_PREFERENCES_KEY } from '../utils/productViewPreferences';");
-    expect(homeSource).toContain("import { getLocalStorageItem, hasStoredValue, setLocalStorageItem } from '../utils/safeStorage';");
+    expect(homeSource).toContain("import { getLocalStorageItem, setLocalStorageItem } from '../utils/safeStorage';");
+    expect(homeSource).toContain("import { hasStoredValue } from '../utils/safeStorage';");
     expect(homeSource).toContain('const [viewPreferences, setViewPreferences] = useState(() => loadProductViewPreferences());');
     expect(homeSource).not.toContain('window.localStorage');
   });
 
   it('keeps Home daily discovery cards progressively rendered instead of mounting the full product page', () => {
     const frontendRoot = path.resolve(__dirname, '..');
-    const homeSource = fs.readFileSync(path.join(frontendRoot, 'pages/Home.tsx'), 'utf8');
-    const discoverySectionStart = homeSource.indexOf('<section className="shopee-section shopee-discovery shopee-for-you">');
-    const petGalleryComponentStart = homeSource.indexOf('<LazyHomePetGallery', discoverySectionStart);
-    const discoverySectionSource = homeSource.slice(discoverySectionStart, petGalleryComponentStart);
+    const homePageSource = fs.readFileSync(path.join(frontendRoot, 'pages/Home.tsx'), 'utf8');
+    const helpersSource = fs.readFileSync(path.join(frontendRoot, 'pages/homeHelpers.tsx'), 'utf8');
+    const productPanelsSource = fs.readFileSync(path.join(frontendRoot, 'pages/homeProductPanels.tsx'), 'utf8');
+    const homeSource = [homePageSource, helpersSource, productPanelsSource].join('\n');
+    const discoverySectionStart = productPanelsSource.indexOf('<section className="shopee-section shopee-discovery shopee-for-you">');
+    const discoverySectionSource = productPanelsSource.slice(discoverySectionStart);
 
     expect(discoverySectionStart).toBeGreaterThanOrEqual(0);
-    expect(petGalleryComponentStart).toBeGreaterThan(discoverySectionStart);
-    expect(homeSource).toContain('const DISCOVERY_BATCH_SIZE = 12;');
-    expect(homeSource).toContain('const HOME_PRODUCT_PAGE_SIZE = 48;');
+    expect(homePageSource).toContain('<HomeDiscoverySection');
+    expect(homePageSource).toContain('<LazyHomePetGallery');
+    expect(homeSource).toContain('export const DISCOVERY_BATCH_SIZE = 12;');
+    expect(homeSource).toContain('export const HOME_PRODUCT_PAGE_SIZE = 48;');
     expect(homeSource).toContain('const [visibleCount, setVisibleCount] = useState(DISCOVERY_BATCH_SIZE);');
     expect(homeSource).toContain('setVisibleCount(DISCOVERY_BATCH_SIZE);');
     expect(homeSource).toContain('const visibleDiscoveryProducts = useMemo(');
@@ -313,12 +330,16 @@ describe('source quality contracts', () => {
 
   it('keeps Home product card rendering extracted from the page shell', () => {
     const frontendRoot = path.resolve(__dirname, '..');
-    const homeSource = fs.readFileSync(path.join(frontendRoot, 'pages/Home.tsx'), 'utf8');
+    const homeSource = [
+      fs.readFileSync(path.join(frontendRoot, 'pages/Home.tsx'), 'utf8'),
+      fs.readFileSync(path.join(frontendRoot, 'pages/homeProductPanels.tsx'), 'utf8'),
+    ].join('\n');
     const cardSource = fs.readFileSync(path.join(frontendRoot, 'components/HomeProductCard.tsx'), 'utf8');
 
-    expect(homeSource).toContain("import HomeProductCard from '../components/HomeProductCard';");
+    expect(homeSource).toContain("import HomeProductCard, { type HomeProductCardProps } from '../components/HomeProductCard';");
+    expect(homeSource).toContain("from './homeProductPanels'");
     expect(homeSource).not.toContain('const HomeProductCard:');
-    expect(homeSource).not.toContain('type HomeProductCardProps');
+    expect(homeSource).not.toContain('type HomeProductCardProps = {');
     expect(homeSource).not.toContain('const buildHomeProductCardModel');
     expect(cardSource).toContain('export type HomeProductCardProps = {');
     expect(cardSource).toContain('const HomeProductCard: React.FC<HomeProductCardProps>');

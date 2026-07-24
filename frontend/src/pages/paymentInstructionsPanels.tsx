@@ -34,6 +34,8 @@ export type PaymentInstructionsPanelsProps = {
   openSupport: () => void;
   openTrackOrder: () => void;
   payment: PaymentCustomer | null;
+  paymentContextLabel: string;
+  paymentStatus: string;
   paymentSteps: string[];
   recoveryIsExpired: boolean;
   refreshStatusActionLabel: string;
@@ -79,6 +81,8 @@ export const PaymentInstructionsPanels: React.FC<PaymentInstructionsPanelsProps>
     openSupport,
     openTrackOrder,
     payment,
+    paymentContextLabel,
+    paymentStatus,
     paymentSteps,
     recoveryIsExpired,
     refreshStatusActionLabel,

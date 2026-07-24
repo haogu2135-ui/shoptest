@@ -3,6 +3,69 @@ import path from 'path';
 
 const readFrontend = (...segments: string[]) =>
   fs.readFileSync(path.join(__dirname, '..', ...segments), 'utf8');
+
+const readProductListSurface = () => (
+  [
+    readFrontend('pages', 'ProductList.tsx'),
+    readFrontend('pages', 'productListHelpers.ts'),
+    readFrontend('pages', 'productListCard.tsx'),
+    readFrontend('pages', 'productListPanels.tsx'),
+    readFrontend('pages', 'productListModals.tsx'),
+    readFrontend('pages', 'productListShellPanels.tsx'),
+  ].join('\n')
+);
+
+const readHomeSurface = () => (
+  [
+    readFrontend('pages', 'Home.tsx'),
+    readFrontend('pages', 'homeHelpers.tsx'),
+    readFrontend('pages', 'homeShellStates.tsx'),
+    readFrontend('pages', 'homeFirstFoldPanels.tsx'),
+    readFrontend('pages', 'homeProductPanels.tsx'),
+  ].join('\n')
+);
+
+const readCouponCenterSurface = () => (
+  [
+    readFrontend('pages', 'CouponCenter.tsx'),
+    readFrontend('pages', 'couponCenterPageHelpers.ts'),
+    readFrontend('pages', 'couponCenterShellStates.tsx'),
+    readFrontend('pages', 'couponCenterPanels.tsx'),
+  ].join('\n')
+);
+
+const readOrderTrackingSurface = () => (
+  [
+    readFrontend('pages', 'OrderTracking.tsx'),
+    readFrontend('pages', 'orderTrackingHelpers.ts'),
+    readFrontend('pages', 'orderTrackingPanels.tsx'),
+  ].join('\n')
+);
+
+const readWishlistSurface = () => (
+  [
+    readFrontend('pages', 'Wishlist.tsx'),
+    readFrontend('pages', 'wishlistHelpers.ts'),
+    readFrontend('pages', 'wishlistPanels.tsx'),
+  ].join('\n')
+);
+
+const readLoginSurface = () => (
+  [
+    readFrontend('pages', 'Login.tsx'),
+    readFrontend('pages', 'loginHelpers.ts'),
+    readFrontend('pages', 'loginPanels.tsx'),
+  ].join('\n')
+);
+
+const readProductCompareSurface = () => (
+  [
+    readFrontend('pages', 'ProductCompare.tsx'),
+    readFrontend('pages', 'productCompareHelpers.ts'),
+    readFrontend('pages', 'productComparePanels.tsx'),
+  ].join('\n')
+);
+
 const readCartSurface = () => (
   [
     readFrontend('pages', 'Cart.tsx'),
@@ -10,6 +73,7 @@ const readCartSurface = () => (
     readFrontend('pages', 'cartConversionPanels.tsx'),
     readFrontend('pages', 'cartLineItems.tsx'),
     readFrontend('pages', 'cartSavedPanel.tsx'),
+    readFrontend('pages', 'cartOverviewPanels.tsx'),
   ].join('\n')
 );
 const readPaymentInstructionsSurface = () => (
@@ -65,7 +129,7 @@ const readProductDetailSurface = () => (
 describe('commercial UX contracts', () => {
   it('keeps auth and checkout forms on realtime validation with required marks', () => {
     const register = readFrontend('pages', 'Register.tsx');
-    const login = readFrontend('pages', 'Login.tsx');
+    const login = readLoginSurface();
     const checkout = readFrontend('pages', 'Checkout.tsx');
 
     expect(register).toContain("validateTrigger={['onChange', 'onBlur']}");
@@ -90,7 +154,7 @@ describe('commercial UX contracts', () => {
   });
 
   it('keeps storefront discovery infinite scroll screen-reader friendly', () => {
-    const home = readFrontend('pages', 'Home.tsx');
+    const home = readHomeSurface();
     expect(home).toContain('home.discoveryShowing');
     expect(home).toContain('home.discoveryLoadMore');
     expect(home).toContain('aria-live="polite"');
@@ -128,7 +192,7 @@ describe('commercial UX contracts', () => {
   });
 
   it('keeps login rate-limit and lock failures on multipath commercial recovery exits', () => {
-    const login = readFrontend('pages', 'Login.tsx');
+    const login = readLoginSurface();
     const loginCss = readFrontend('pages', 'Login.css');
     const en = readFrontend('locales', 'en.json');
     const zh = readFrontend('locales', 'zh.json');
@@ -211,7 +275,7 @@ describe('commercial UX contracts', () => {
   });
 
   it('keeps coupon catalog fallback on multipath commercial recovery exits', () => {
-    const coupons = readFrontend('pages', 'CouponCenter.tsx');
+    const coupons = readCouponCenterSurface();
     const couponsCss = readFrontend('pages', 'CouponCenter.css');
     expect(coupons).toContain('data-coupon-fallback-recovery');
     expect(coupons).toContain('data-coupon-fallback-actions');
@@ -304,7 +368,7 @@ describe('commercial UX contracts', () => {
   it('keeps checkout and auth forms focusing the first validation error after failed submit', () => {
     const checkout = readFrontend('pages', 'Checkout.tsx');
     const checkoutDom = readFrontend('utils', 'checkoutDom.ts');
-    const login = readFrontend('pages', 'Login.tsx');
+    const login = readLoginSurface();
     const forgotPassword = readFrontend('pages', 'ForgotPassword.tsx');
     const focusUtil = readFrontend('utils', 'formValidationFocus.ts');
 
@@ -324,7 +388,7 @@ describe('commercial UX contracts', () => {
   });
 
   it('keeps wishlist empty state on multi-path commercial conversion CTAs', () => {
-    const wishlist = readFrontend('pages', 'Wishlist.tsx');
+    const wishlist = readWishlistSurface();
     expect(wishlist).toContain('pages.wishlist.emptyHint');
     expect(wishlist).toContain('pages.wishlist.emptyCoupons');
     expect(wishlist).toContain('pages.wishlist.emptyPetFinder');
@@ -344,8 +408,8 @@ describe('commercial UX contracts', () => {
   });
 
   it('keeps compare and order-tracking empty states on multi-path commercial CTAs', () => {
-    const compare = readFrontend('pages', 'ProductCompare.tsx');
-    const tracking = readFrontend('pages', 'OrderTracking.tsx');
+    const compare = readProductCompareSurface();
+    const tracking = readOrderTrackingSurface();
 
     expect(compare).toContain('pages.compare.emptyHint');
     expect(compare).toContain('data-compare-empty-actions');
@@ -368,7 +432,7 @@ describe('commercial UX contracts', () => {
 
 
   it('keeps order tracking empty line-items on multipath commercial recovery exits', () => {
-    const tracking = readFrontend('pages', 'OrderTracking.tsx');
+    const tracking = readOrderTrackingSurface();
     expect(tracking).toContain('data-order-tracking-items-empty');
     expect(tracking).toContain('data-order-tracking-items-empty-actions');
     expect(tracking).toContain('pages.orderTracking.noOrderItemsHint');
@@ -418,7 +482,7 @@ describe('commercial UX contracts', () => {
   });
 
   it('keeps coupon wallet filter empties on multipath commercial recovery exits', () => {
-    const coupons = readFrontend('pages', 'CouponCenter.tsx');
+    const coupons = readCouponCenterSurface();
     expect(coupons).toContain('data-coupon-wallet-filter-empty');
     expect(coupons).toContain('data-coupon-wallet-filter-empty-actions');
     expect(coupons).toContain('pages.coupons.walletFilteredEmptyHint');
@@ -468,7 +532,7 @@ describe('commercial UX contracts', () => {
 
   it('keeps logistics tracking and coupon wallet empties on multipath commercial recovery exits', () => {
     const seventeen = readFrontend('components', 'SeventeenTrackWidget.tsx');
-    const coupons = readFrontend('pages', 'CouponCenter.tsx');
+    const coupons = readCouponCenterSurface();
     expect(seventeen).toContain('data-seventeen-track-recovery');
     expect(seventeen).toContain("navigate('/products')");
     expect(seventeen).toContain("navigate('/coupons')");
@@ -515,7 +579,7 @@ describe('commercial UX contracts', () => {
   it('keeps checkout mobile pay rail on trust microcopy and coupon wallet multi-path recovery', () => {
     const checkout = readFrontend('pages', 'Checkout.tsx');
     const checkoutCss = readFrontend('pages', 'Checkout.css');
-    const coupons = readFrontend('pages', 'CouponCenter.tsx');
+    const coupons = readCouponCenterSurface();
     const register = readFrontend('pages', 'Register.tsx');
 
     const checkoutSurface = readCheckoutSurface();
@@ -587,7 +651,7 @@ describe('commercial UX contracts', () => {
 
 
   it('keeps auth password fields on accessible visibility toggles', () => {
-    const login = readFrontend('pages', 'Login.tsx');
+    const login = readLoginSurface();
     const register = readFrontend('pages', 'Register.tsx');
     const forgot = readFrontend('pages', 'ForgotPassword.tsx');
 
@@ -602,7 +666,7 @@ describe('commercial UX contracts', () => {
 
 
   it('keeps order tracking lookup on commercial validation and 44px touch targets', () => {
-    const tracking = readFrontend('pages', 'OrderTracking.tsx');
+    const tracking = readOrderTrackingSurface();
     const trackingCss = readFrontend('pages', 'OrderTracking.css');
 
     expect(tracking).toContain("validateTrigger={['onChange', 'onBlur']}");
@@ -658,7 +722,7 @@ describe('commercial UX contracts', () => {
     const bannerCss = readFrontend('components', 'CookieConsentBanner.css');
     const consent = readFrontend('utils', 'cookieConsent.ts');
     const register = readFrontend('pages', 'Register.tsx');
-    const login = readFrontend('pages', 'Login.tsx');
+    const login = readLoginSurface();
     const loginCss = readFrontend('pages', 'Login.css');
     const app = readFrontend('App.tsx');
 
@@ -706,7 +770,7 @@ describe('commercial UX contracts', () => {
 
 
   it('keeps guest wishlist multi-path auth gate conversion rails', () => {
-    const wishlist = readFrontend('pages', 'Wishlist.tsx');
+    const wishlist = readWishlistSurface();
     const wishlistCss = readFrontend('pages', 'Wishlist.css');
     const app = readFrontend('App.tsx');
     expect(app).toContain('<Route path="wishlist" element={<Wishlist />} />');
@@ -780,11 +844,11 @@ describe('commercial UX contracts', () => {
 
 
   it('keeps storefront load failures on multipath commercial recovery exits', () => {
-    const home = readFrontend('pages', 'Home.tsx');
+    const home = readHomeSurface();
     const history = readFrontend('pages', 'BrowsingHistory.tsx');
     const notifications = readFrontend('pages', 'Notifications.tsx');
     const petFinder = readFrontend('pages', 'PetFinder.tsx');
-    const compare = readFrontend('pages', 'ProductCompare.tsx');
+    const compare = readProductCompareSurface();
     expect(home).toContain('data-home-load-recovery');
     expect(home).toContain("navigate('/products')");
     expect(home).toContain("navigate('/coupons')");
@@ -812,12 +876,12 @@ describe('commercial UX contracts', () => {
   it('keeps conversion-critical load failures on multipath commercial recovery exits', () => {
     const cart = readCartSurface();
     const checkout = readFrontend('pages', 'Checkout.tsx');
-    const wishlist = readFrontend('pages', 'Wishlist.tsx');
+    const wishlist = readWishlistSurface();
     const profile = readProfileSurface();
-    const coupons = readFrontend('pages', 'CouponCenter.tsx');
+    const coupons = readCouponCenterSurface();
     const stockAlerts = readFrontend('pages', 'StockAlerts.tsx');
     const petGallery = readFrontend('pages', 'PetGallery.tsx');
-    const orderTracking = readFrontend('pages', 'OrderTracking.tsx');
+    const orderTracking = readOrderTrackingSurface();
     expect(cart).toContain('data-cart-load-recovery');
     expect(readCheckoutSurface()).toContain('data-checkout-load-recovery');
     expect(wishlist).toContain('data-wishlist-load-recovery');
@@ -852,7 +916,7 @@ describe('commercial UX contracts', () => {
   });
 
     it('keeps order tracking not-shipped logistics on multipath commercial recovery exits', () => {
-    const orderTracking = readFrontend('pages', 'OrderTracking.tsx');
+    const orderTracking = readOrderTrackingSurface();
     expect(orderTracking).toContain('data-order-tracking-not-shipped');
     expect(orderTracking).toContain('pages.orderTracking.notShippedHint');
     expect(orderTracking).toContain('order-tracking-page__notShippedActions');
@@ -900,7 +964,7 @@ describe('commercial UX contracts', () => {
   });
 
   it('bootstraps home catalog for stale-while-revalidate CLS-safe first paint', () => {
-    const home = readFrontend('pages', 'Home.tsx');
+    const home = readHomeSurface();
     const homeCss = readFrontend('pages', 'Home.css');
     expect(home).toContain('resolveHomeCatalogBootstrap');
     expect(home).toContain('catalogReadyRef');
@@ -914,7 +978,7 @@ describe('commercial UX contracts', () => {
 
   it('keeps home CLS reserves for product tiles, skeletons, and below-fold sections', () => {
     const homeCss = readFrontend('pages', 'Home.css');
-    const home = readFrontend('pages', 'Home.tsx');
+    const home = readHomeSurface();
     const card = readFrontend('components', 'HomeProductCard.tsx');
     const skeletonCss = readFrontend('components', 'SkeletonLoader.css');
     expect(homeCss).toMatch(/\.shopee-product__imageWrap[\s\S]*?aspect-ratio:\s*1 \/ 1/);
@@ -935,7 +999,7 @@ describe('commercial UX contracts', () => {
   });
 
 it('keeps home empty category and product rails on multipath commercial recovery exits', () => {
-    const home = readFrontend('pages', 'Home.tsx');
+    const home = readHomeSurface();
     expect(home).toContain('home-empty-categories');
     expect(home).toContain('home-empty-products');
     expect(home).toContain('data-home-empty-categories');
@@ -946,7 +1010,7 @@ it('keeps home empty category and product rails on multipath commercial recovery
   });
 
     it('keeps product list zero-results empty on multipath commercial recovery exits', () => {
-    const productList = readFrontend('pages', 'ProductList.tsx');
+    const productList = readProductListSurface();
     expect(productList).toContain('product-list__empty');
     expect(productList).toContain('data-product-list-empty-actions');
     expect(productList).toContain('const [loading, setLoading] = useState(true)');
@@ -963,7 +1027,7 @@ it('keeps home empty category and product rails on multipath commercial recovery
   });
 
     it('keeps product list catalog load failures on multipath commercial recovery exits', () => {
-    const productList = readFrontend('pages', 'ProductList.tsx');
+    const productList = readProductListSurface();
     expect(productList).toContain('data-product-list-load-recovery');
     expect(productList).toContain('pages.productList.loadRecoveryCoupons');
     expect(productList).toContain('pages.productList.loadRecoverySupport');
@@ -976,7 +1040,7 @@ it('keeps home empty category and product rails on multipath commercial recovery
     const checkout = readFrontend('pages', 'Checkout.tsx');
     const orderActions = readFrontend('hooks', 'useCheckoutOrderActions.ts');
     const paymentInstructions = readPaymentInstructionsSurface();
-    const orderTracking = readFrontend('pages', 'OrderTracking.tsx');
+    const orderTracking = readOrderTrackingSurface();
     const profile = readProfileSurface();
     expect(recovery).toContain('resolveCommercialPaymentNavigationUrl');
     expect(recovery).toContain('navigateToCommercialPaymentUrl');
@@ -1005,8 +1069,8 @@ it('keeps home empty category and product rails on multipath commercial recovery
     const cart = readCartSurface();
     const checkout = readFrontend('pages', 'Checkout.tsx');
     const productDetail = readProductDetailSurface();
-    const tracking = readFrontend('pages', 'OrderTracking.tsx');
-    const coupons = readFrontend('pages', 'CouponCenter.tsx');
+    const tracking = readOrderTrackingSurface();
+    const coupons = readCouponCenterSurface();
     const homeCss = readFrontend('pages', 'Home.css');
     const listCss = readFrontend('pages', 'ProductList.css');
     // Native h1 densification (no ant Typography Title runtime).
@@ -1165,7 +1229,7 @@ it('keeps home empty category and product rails on multipath commercial recovery
       /Commercial password toggle button reset[\s\S]*?\.shop-input__visibilityWrap > button[\s\S]*?border:\s*0/,
     );
     for (const page of ['Login.tsx', 'Register.tsx', 'ForgotPassword.tsx', 'Profile.tsx'] as const) {
-      const source = readFrontend('pages', page);
+      const source = page === 'Login.tsx' ? readLoginSurface() : readFrontend('pages', page);
       expect(source).not.toMatch(/border:\s*0,\s*padding:\s*0,\s*background:\s*'transparent'/);
     }
   });
@@ -1173,7 +1237,7 @@ it('keeps home empty category and product rails on multipath commercial recovery
   it('keeps cart drawer empty glyph and coupon claim list spacing on CSS classes', () => {
     const drawer = readFrontend('components', 'CartDrawer.tsx');
     const drawerCss = readFrontend('components', 'CartDrawer.css');
-    const coupons = readFrontend('pages', 'CouponCenter.tsx');
+    const coupons = readCouponCenterSurface();
     const couponCss = readFrontend('pages', 'CouponCenter.css');
     expect(drawer).toContain('cart-drawer__emptyIconGlyph');
     expect(drawer).not.toMatch(/cart-drawer__emptyIconGlyph[\s\S]{0,40}style=\{\{/);
@@ -1213,7 +1277,7 @@ it('keeps home empty category and product rails on multipath commercial recovery
   });
 
   it('keeps login shell on a commercial loginTitle h1', () => {
-    const login = readFrontend('pages', 'Login.tsx');
+    const login = readLoginSurface();
     expect(login).toContain("<h1 className=\"shopee-login-panel__title\">{t('pages.auth.loginTitle')}</h1>");
     expect(login).not.toContain("<h1 className=\"shopee-login-panel__title\">{t('pages.auth.loginTrustTitle')}</h1>");
   });
@@ -1306,7 +1370,7 @@ it('keeps home empty category and product rails on multipath commercial recovery
   });
 
   it('keeps wishlist header icon on CSS without inline color/size', () => {
-    const wishlist = readFrontend('pages', 'Wishlist.tsx');
+    const wishlist = readWishlistSurface();
     const wishlistCss = readFrontend('pages', 'Wishlist.css');
     expect(wishlist).toContain('wishlist-page__headerIcon');
     expect(wishlist).not.toMatch(/wishlist-page__headerIcon[\s\S]{0,40}style=\{\{/);
@@ -1314,7 +1378,7 @@ it('keeps home empty category and product rails on multipath commercial recovery
   });
 
   it('keeps home category skeleton title off inline geometry', () => {
-    const home = readFrontend('pages', 'Home.tsx');
+    const home = readHomeSurface();
     const homeCss = readFrontend('pages', 'Home.css');
     expect(home).toContain('shopee-categories-section__titleSkeleton');
     expect(home).not.toMatch(/shopee-categories-section__titleSkeleton[\s\S]{0,40}style=\{\{/);
@@ -1334,7 +1398,7 @@ it('keeps home empty category and product rails on multipath commercial recovery
 
 
   it('keeps wishlist and profile shells on a commercial h1 primary title', () => {
-    const wishlist = readFrontend('pages', 'Wishlist.tsx');
+    const wishlist = readWishlistSurface();
     const profile = readFrontend('pages', 'Profile.tsx');
     const app = readFrontend('App.tsx');
     expect(wishlist).toContain("<h1 className=\"wishlist-page__title\">{t('pages.wishlist.authGateTitle')}</h1>");
@@ -1357,7 +1421,7 @@ it('keeps home empty category and product rails on multipath commercial recovery
   it('keeps remaining storefront shells on a commercial h1 primary title', () => {
     const notifications = readFrontend('pages', 'Notifications.tsx');
     const petFinder = readFrontend('pages', 'PetFinder.tsx');
-    const compare = readFrontend('pages', 'ProductCompare.tsx');
+    const compare = readProductCompareSurface();
     const stock = readFrontend('pages', 'StockAlerts.tsx');
     const notFound = readFrontend('pages', 'NotFound.tsx');
     const forgot = readFrontend('pages', 'ForgotPassword.tsx');
@@ -1606,7 +1670,7 @@ ${orderActions}`;
 
 
   it('keeps product list mobile filter first-use guidance commercial-ready', () => {
-    const productList = readFrontend('pages', 'ProductList.tsx');
+    const productList = readProductListSurface();
     const css = readFrontend('pages', 'ProductList.css');
     const en = readFrontend('locales', 'en.json');
     const es = readFrontend('locales', 'es.json');

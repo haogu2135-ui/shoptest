@@ -1,7 +1,13 @@
 import fs from 'fs';
 import path from 'path';
 
-const homeSource = fs.readFileSync(path.join(__dirname, 'Home.tsx'), 'utf8');
+const homeSource = [
+  fs.readFileSync(path.join(__dirname, 'Home.tsx'), 'utf8'),
+  fs.readFileSync(path.join(__dirname, 'homeFirstFoldPanels.tsx'), 'utf8'),
+  fs.readFileSync(path.join(__dirname, 'homeShellStates.tsx'), 'utf8'),
+  fs.readFileSync(path.join(__dirname, 'homeHelpers.tsx'), 'utf8'),
+  fs.readFileSync(path.join(__dirname, 'homeProductPanels.tsx'), 'utf8'),
+].join('\n');
 const localesRoot = path.resolve(__dirname, '../locales');
 const localeFiles = ['en.json', 'es.json', 'zh.json'];
 const requiredTrustKeys = [

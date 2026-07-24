@@ -1,8 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import ShopButton from '../components/ShopButton';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
-import ShopPopconfirm from '../components/ShopPopconfirm';
-import { ShopIcon, SI } from '../components/ShopIcon';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { cartApi, productApi } from '../api';
 import type { CartItem, ProductPublic as Product } from '../types';
@@ -24,23 +21,18 @@ import {
 import { conversionConfig } from '../utils/conversionConfig';
 import { getNearestCartBenefitTarget, isGiftUnlocked } from '../utils/cartBenefits';
 import { loadProductViewPreferences } from '../utils/productViewPreferences';
-import { needsOptionSelection } from '../utils/productOptions';
 import { localizeProduct } from '../utils/localizedProduct';
 import { clearCheckoutCartItemIds, hasAuthenticatedCartSession } from '../utils/cartSession';
 import {
   canCartItemCheckout as canCheckout,
-  cartImageFallback,
   deriveCartShippingSummary,
   getCartLineAmount,
   getCartLineQuantity,
   isCartItemAvailable as isAvailable,
-  resolveCartImage,
   roundCartMoney,
 } from '../utils/cartUi';
 import { dispatchDomEvent } from '../utils/domEvents';
 import ShopBreadcrumb from '../components/ShopBreadcrumb';
-import ShopTag from '../components/ShopTag';
-import ShopAlert from '../components/ShopAlert';
 import { reportNonBlockingError } from '../utils/nonBlockingError';
 import { getLocalStorageItem, removeSessionStorageItem } from '../utils/safeStorage';
 import { getApiErrorMessage, isAuthExpiredError } from '../utils/apiError';
@@ -49,6 +41,7 @@ import { CartFullEmptyState, CartLoadErrorState, CartLoadingState } from './cart
 import { CartInlineEmptyPanel, CartOrderSummary, CartPaymentReturnBanner } from './cartConversionPanels';
 import { CartLineItems } from './cartLineItems';
 import { CartSavedPanel } from './cartSavedPanel';
+import { CartBulkReadinessPanel, CartHeroOverview, CartRecentRecoveryPanel } from './cartOverviewPanels';
 import './Cart.css';
 import '../styles/mobile-page-contrast.css';
 
@@ -826,293 +819,66 @@ const Cart: React.FC = () => {
         ]}
       />
       {paymentReturnBanner}
-      <section className="cart-page__hero">
-        <div className="cart-page__heroContent">
-          <span className="cart-page__heroEyebrow">{t('pages.cart.nextActionEyebrow')}</span>
-          <h1 className="cart-page__title">{t('pages.cart.title')}</h1>
-          <span className="cart-page__text">{cartItems.length > 0 ? cartNextAction.text : t('pages.cart.empty')}</span>
-          <div className="cart-page__heroActions">
-            {cartItems.length > 0 && cartNextAction.key === 'clear' ? (
-              <ShopPopconfirm
-                rootClassName='shop-mobile-popup-layer cart-page-popconfirm'
-                title={t('pages.cart.clearUnavailableConfirm', { count: unavailableItems.length })}
-                onConfirm={cartNextAction.action}
-                okText={cartNextAction.label}
-                cancelText={t('common.cancel')}
-                okButtonProps={{ danger: true, 'aria-label': cartNextActionLabel, title: cartNextActionLabel }}
-                cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${cartNextActionLabel}`, title: `${t('common.cancel')}: ${cartNextActionLabel}` }}
-              >
-                <ShopButton type="primary" aria-label={cartNextActionLabel} title={cartNextActionLabel}>
-                  {cartNextAction.label}
-                </ShopButton>
-              </ShopPopconfirm>
-            ) : (
-              <ShopButton
-                type={cartItems.length > 0 ? 'primary' : 'default'}
-                icon={cartNextAction.key === 'refresh' ? <ShopIcon path={SI.reload} /> : undefined}
-                aria-label={cartItems.length > 0 ? cartTopNextActionLabel : emptyBrowseActionLabel}
-                title={cartItems.length > 0 ? cartTopNextActionLabel : emptyBrowseActionLabel}
-                onClick={cartItems.length > 0 ? cartNextAction.action : () => navigate('/products')}
-              >
-                {cartItems.length > 0 ? cartNextAction.label : t('pages.cart.browse')}
-              </ShopButton>
-            )}
-            <ShopButton
-              aria-label={cartItems.length > 0 ? browseAllProductsActionLabel : emptyCouponsActionLabel}
-              title={cartItems.length > 0 ? browseAllProductsActionLabel : emptyCouponsActionLabel}
-              onClick={() => navigate(cartItems.length > 0 ? '/products' : '/coupons')}
-            >
-              {cartItems.length > 0 ? t('pages.cart.browse') : t('nav.coupons')}
-            </ShopButton>
-            {cartItems.length === 0 ? (
-              <>
-                <ShopButton
-                  icon={<ShopIcon path={SI.shopping} />}
-                  aria-label={emptyPetFinderActionLabel}
-                  title={emptyPetFinderActionLabel}
-                  onClick={() => navigate('/pet-finder')}
-                >
-                  {t('nav.petFinder')}
-                </ShopButton>
-                <ShopButton
-                  icon={<ShopIcon path={SI.clock} />}
-                  aria-label={emptyHistoryActionLabel}
-                  title={emptyHistoryActionLabel}
-                  onClick={() => navigate('/history')}
-                >
-                  {t('nav.history')}
-                </ShopButton>
-              </>
-            ) : null}
-          </div>
-        </div>
-        <div className="cart-page__heroStats">
-          {cartHeroHighlights.map((item) => (
-            <article key={item.key} className="cart-page__heroStat">
-              <strong>{item.title}</strong>
-              <span>{item.text}</span>
-            </article>
-          ))}
-        </div>
-      </section>
-      <section className="cart-page__summaryStrip">
-        {cartSummaryCards.map((item) => (
-          <article key={item.key} className="cart-page__summaryStripCard">
-            <strong>{item.title}</strong>
-            <span>{item.text}</span>
-          </article>
-        ))}
-      </section>
-      {hasStaleCartData ? (
-        <ShopAlert
-          className="cart-page__loadErrorAlert"
-          type="warning"
-          showIcon
-          role="alert"
-          aria-live="assertive"
-          message={t('pages.cart.staleDataTitle')}
-          description={loadErrorMessage || t('pages.cart.staleDataWarning')}
-          action={
-            <ShopButton type="primary" icon={<ShopIcon path={SI.reload} />} aria-label={retryCartLoadActionLabel} title={retryCartLoadActionLabel} onClick={refreshCartItems}>
-              {t('messages.retry')}
-            </ShopButton>
-          }
-        />
-      ) : null}
-      {showRecentlyViewedRecovery ? (
-        <section className="cart-page__recentRecovery" aria-label={t('pages.cart.recentRecoveryTitle')}>
-          <div className="cart-page__recentRecoveryHeader">
-            <div>
-              <span className="cart-page__text cart-page__text--strong">{t('pages.cart.recentRecoveryTitle')}</span>
-              <span className="cart-page__text cart-page__text--secondary">{t('pages.cart.recentRecoverySubtitle')}</span>
-            </div>
-            <ShopButton size="small" aria-label={recentRecoveryBrowseActionLabel} title={recentRecoveryBrowseActionLabel} onClick={() => navigate('/products')}>{t('pages.cart.browse')}</ShopButton>
-          </div>
-          <div className="cart-page__recentGrid">
-            {recentProducts.map((product) => {
-              const productName = getCartProductName(product);
-              const recentLinkLabel = `${t('pages.productList.viewPick')}: ${productName}`;
-              const recentActionText = needsOptionSelection(product) ? t('pages.wishlist.selectOptions') : t('pages.cart.recentAddToCart');
-              const recentActionLabel = `${recentActionText}: ${productName}`;
-              return (
-                <article
-                  key={product.id}
-                  className="cart-page__recentItem"
-                >
-                  <button type="button" className="cart-page__recentLink" aria-label={recentLinkLabel} title={recentLinkLabel} onClick={() => navigate(`/products/${product.id}`)}>
-                    <img
-                      src={resolveCartImage(product.imageUrl)}
-                      alt={productName}
-                      loading="lazy"
-                      decoding="async"
-                      onError={(event) => {
-                        if (event.currentTarget.src !== cartImageFallback) {
-                          event.currentTarget.src = cartImageFallback;
-                        }
-                      }}
-                    />
-                    <span>
-                      <span className="cart-page__text cart-page__text--strong">{productName}</span>
-                      <span className="cart-page__text cart-page__text--secondary commerce-money">{formatMoney(product.effectivePrice ?? product.price)}</span>
-                    </span>
-                  </button>
-                  <ShopButton
-                    size="small"
-                    type={needsOptionSelection(product) ? 'default' : 'primary'}
-                    icon={<ShopIcon path={SI.cart} />}
-                    loading={addingRecentId === product.id}
-                    disabled={hasStaleCartData}
-                    aria-label={recentActionLabel}
-                    title={recentActionLabel}
-                    onClick={() => addRecentProduct(product)}
-                  >
-                    {recentActionText}
-                  </ShopButton>
-                </article>
-              );
-            })}
-          </div>
-        </section>
-      ) : null}
+      <CartHeroOverview
+        browseAllProductsActionLabel={browseAllProductsActionLabel}
+        cartHeroHighlights={cartHeroHighlights}
+        cartItemsCount={cartItems.length}
+        cartNextAction={cartNextAction}
+        cartNextActionLabel={cartNextActionLabel}
+        cartSummaryCards={cartSummaryCards}
+        cartTopNextActionLabel={cartTopNextActionLabel}
+        emptyBrowseActionLabel={emptyBrowseActionLabel}
+        emptyCouponsActionLabel={emptyCouponsActionLabel}
+        emptyHistoryActionLabel={emptyHistoryActionLabel}
+        emptyPetFinderActionLabel={emptyPetFinderActionLabel}
+        hasStaleCartData={hasStaleCartData}
+        loadErrorMessage={loadErrorMessage}
+        navigate={navigate}
+        refreshCartItems={refreshCartItems}
+        retryCartLoadActionLabel={retryCartLoadActionLabel}
+        t={t}
+        unavailableCount={unavailableItems.length}
+      />
+      <CartRecentRecoveryPanel
+        addRecentProduct={addRecentProduct}
+        addingRecentId={addingRecentId}
+        formatMoney={formatMoney}
+        getCartProductName={getCartProductName}
+        hasStaleCartData={hasStaleCartData}
+        navigate={navigate}
+        recentProducts={recentProducts}
+        recentRecoveryBrowseActionLabel={recentRecoveryBrowseActionLabel}
+        showRecentlyViewedRecovery={showRecentlyViewedRecovery}
+        t={t}
+      />
       {cartItems.length > 0 ? (
         <>
-          <section className="cart-page__bulkActions" aria-label={t('pages.cart.chooseItems')}>
-            <div className="cart-page__bulkActionsRow">
-              <ShopPopconfirm
-                rootClassName='shop-mobile-popup-layer cart-page-popconfirm'
-                title={t('pages.cart.deleteSelectedConfirm', { count: selectedIds.length })}
-                disabled={hasStaleCartData || selectedIds.length === 0}
-                onConfirm={removeSelectedItems}
-                okText={t('common.confirm')}
-                cancelText={t('common.cancel')}
-                okButtonProps={{ danger: true, 'aria-label': deleteSelectedActionLabel, title: deleteSelectedActionLabel }}
-                cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${deleteSelectedActionLabel}`, title: `${t('common.cancel')}: ${deleteSelectedActionLabel}` }}
-              >
-                <ShopButton
-                  danger
-                  icon={<ShopIcon path={SI.delete} />}
-                  disabled={hasStaleCartData || selectedIds.length === 0}
-                  loading={selectedIds.some((id) => removingItemIds.includes(id))}
-                  aria-label={deleteSelectedActionLabel}
-                  title={deleteSelectedActionLabel}
-                >
-                  {t('pages.cart.deleteSelected')}
-                </ShopButton>
-              </ShopPopconfirm>
-              <ShopPopconfirm
-                rootClassName='shop-mobile-popup-layer cart-page-popconfirm'
-                title={t('pages.cart.clearUnavailableConfirm', { count: unavailableItems.length })}
-                disabled={hasStaleCartData || unavailableItems.length === 0}
-                onConfirm={clearUnavailableItems}
-                okText={t('common.confirm')}
-                cancelText={t('common.cancel')}
-                okButtonProps={{ danger: true, 'aria-label': clearUnavailableActionLabel, title: clearUnavailableActionLabel }}
-                cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${clearUnavailableActionLabel}`, title: `${t('common.cancel')}: ${clearUnavailableActionLabel}` }}
-              >
-                <ShopButton
-                  disabled={hasStaleCartData || unavailableItems.length === 0}
-                  loading={unavailableItems.some((item) => removingItemIds.includes(item.id))}
-                  aria-label={clearUnavailableActionLabel}
-                  title={clearUnavailableActionLabel}
-                >
-                  {t('pages.cart.clearUnavailable')}
-                </ShopButton>
-              </ShopPopconfirm>
-              <span className="cart-page__text cart-page__text--secondary">{t('pages.cart.unavailableSummary', { count: unavailableItems.length })}</span>
-            </div>
-          </section>
-          <div className={checkoutBlocked ? 'cart-page__readiness cart-page__readiness--warning' : 'cart-page__readiness'}>
-            <div className="cart-page__readinessIntro">
-              {checkoutBlocked ? <ShopIcon path={SI.exclamation} /> : <ShopIcon path={SI.check} />}
-              <div>
-                <span className="cart-page__text cart-page__text--strong">{checkoutBlocked ? t('pages.cart.readinessNeedsAction') : t('pages.cart.readinessReady')}</span>
-                <span className="cart-page__text cart-page__text--secondary">
-                  {t('pages.cart.readinessSubtitle', {
-                    selected: selectedUnitCount,
-                    available: purchasableUnitCount,
-                  })}
-                </span>
-              </div>
-            </div>
-            <div className="cart-page__readinessStats">
-              <ShopTag color="green">{t('pages.cart.readyItems', { count: selectedPurchasableCount })}</ShopTag>
-              <ShopTag color={unavailableItems.length > 0 ? 'red' : 'default'}>{t('pages.cart.blockedItems', { count: unavailableItems.length })}</ShopTag>
-              <ShopTag color={freeShippingUnlocked ? 'green' : freeShippingRemaining > 0 ? 'orange' : 'default'}>
-                {freeShippingGapTitle}
-              </ShopTag>
-              {giftUnlocked ? (
-                <ShopTag color="green">{t('pages.cart.drawerGiftUnlocked')}</ShopTag>
-              ) : null}
-            </div>
-            <div className="cart-page__readinessActions">
-              <ShopButton
-                size="small"
-                aria-label={selectReadyActionLabel}
-                title={selectReadyActionLabel}
-                onClick={() => toggleAll(true)}
-                disabled={hasStaleCartData || purchasableItems.length === 0 || allSelected}
-              >
-                {t('pages.cart.selectCheckoutReady')}
-              </ShopButton>
-              {unavailableItems.length > 0 ? (
-                <ShopPopconfirm
-                  rootClassName='shop-mobile-popup-layer cart-page-popconfirm'
-                  title={t('pages.cart.clearUnavailableConfirm', { count: unavailableItems.length })}
-                  disabled={hasStaleCartData}
-                  onConfirm={clearUnavailableItems}
-                  okText={t('common.confirm')}
-                  cancelText={t('common.cancel')}
-                  okButtonProps={{ danger: true, 'aria-label': clearUnavailableActionLabel, title: clearUnavailableActionLabel }}
-                  cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${clearUnavailableActionLabel}`, title: `${t('common.cancel')}: ${clearUnavailableActionLabel}` }}
-                >
-                  <ShopButton
-                    size="small"
-                    disabled={hasStaleCartData}
-                    loading={unavailableItems.some((item) => removingItemIds.includes(item.id))}
-                    aria-label={clearUnavailableActionLabel}
-                    title={clearUnavailableActionLabel}
-                  >
-                    {t('pages.cart.clearUnavailable')}
-                  </ShopButton>
-                </ShopPopconfirm>
-              ) : null}
-            </div>
-          </div>
-          {cartNextAction.tone !== 'ready' ? (
-            <div className={`cart-page__nextAction cart-page__nextAction--${cartNextAction.tone}`}>
-              <span>
-                <span className="cart-page__text cart-page__text--secondary">{t('pages.cart.nextActionEyebrow')}</span>
-                <span className="cart-page__text cart-page__text--strong">{cartNextAction.title}</span>
-                <span className="cart-page__text cart-page__text--secondary">{cartNextAction.text}</span>
-              </span>
-              {cartNextAction.key === 'clear' ? (
-                <ShopPopconfirm
-                  rootClassName='shop-mobile-popup-layer cart-page-popconfirm'
-                  title={t('pages.cart.clearUnavailableConfirm', { count: unavailableItems.length })}
-                  onConfirm={cartNextAction.action}
-                  okText={cartNextAction.label}
-                  cancelText={t('common.cancel')}
-                  okButtonProps={{ danger: true, 'aria-label': cartNextActionLabel, title: cartNextActionLabel }}
-                  cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${cartNextActionLabel}`, title: `${t('common.cancel')}: ${cartNextActionLabel}` }}
-                >
-                  <ShopButton type="default" aria-label={cartNextActionLabel} title={cartNextActionLabel}>
-                    {cartNextAction.label}
-                  </ShopButton>
-                </ShopPopconfirm>
-              ) : (
-                <ShopButton
-                  type="default"
-                  icon={cartNextAction.key === 'refresh' ? <ShopIcon path={SI.reload} /> : undefined}
-                  aria-label={cartNextActionLabel}
-                  title={cartNextActionLabel}
-                  onClick={cartNextAction.action}
-                  loading={cartNextAction.key === 'saved' && restoringSaved}
-                >
-                  {cartNextAction.label}
-                </ShopButton>
-              )}
-            </div>
-          ) : null}
+          <CartBulkReadinessPanel
+            allSelected={allSelected}
+            cartNextAction={cartNextAction}
+            cartNextActionLabel={cartNextActionLabel}
+            checkoutBlocked={checkoutBlocked}
+            clearUnavailableActionLabel={clearUnavailableActionLabel}
+            clearUnavailableItems={clearUnavailableItems}
+            deleteSelectedActionLabel={deleteSelectedActionLabel}
+            freeShippingGapTitle={freeShippingGapTitle}
+            freeShippingRemaining={freeShippingRemaining}
+            freeShippingUnlocked={freeShippingUnlocked}
+            giftUnlocked={giftUnlocked}
+            hasStaleCartData={hasStaleCartData}
+            purchasableItemsCount={purchasableItems.length}
+            purchasableUnitCount={purchasableUnitCount}
+            removeSelectedItems={removeSelectedItems}
+            removingItemIds={removingItemIds}
+            restoringSaved={restoringSaved}
+            selectReadyActionLabel={selectReadyActionLabel}
+            selectedIds={selectedIds}
+            selectedPurchasableCount={selectedPurchasableCount}
+            selectedUnitCount={selectedUnitCount}
+            t={t}
+            toggleAll={toggleAll}
+            unavailableItems={unavailableItems}
+          />
           <CartLineItems
             allSelected={allSelected}
             cartItems={cartItems}

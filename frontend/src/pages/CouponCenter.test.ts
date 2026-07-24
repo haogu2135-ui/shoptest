@@ -1,12 +1,18 @@
 import fs from 'fs';
 import path from 'path';
 
-const readCouponCenterSource = () => fs.readFileSync(path.resolve(__dirname, 'CouponCenter.tsx'), 'utf8');
+const readCouponCenterPage = () => fs.readFileSync(path.resolve(__dirname, 'CouponCenter.tsx'), 'utf8');
+const readCouponCenterSource = () => [
+  readCouponCenterPage(),
+  fs.readFileSync(path.resolve(__dirname, 'couponCenterPageHelpers.ts'), 'utf8'),
+  fs.readFileSync(path.resolve(__dirname, 'couponCenterShellStates.tsx'), 'utf8'),
+  fs.readFileSync(path.resolve(__dirname, 'couponCenterPanels.tsx'), 'utf8'),
+].join('\n');
 const readCouponCenterCss = () => fs.readFileSync(path.resolve(__dirname, 'CouponCenter.css'), 'utf8');
 
 describe('CouponCenter mobile coupon rail contract', () => {
   it('keeps coupon claim API error handling typed without broad any usage', () => {
-    const source = readCouponCenterSource();
+    const source = readCouponCenterPage();
 
     expect(source).toContain('} catch (error: unknown) {');
     expect(source).toContain("getApiErrorMessage(error, t('pages.coupons.claimFailed'), language)");
@@ -82,7 +88,7 @@ describe('CouponCenter mobile coupon rail contract', () => {
   });
 
   it('keeps guest coupon claim actions routed through login feedback', () => {
-    const source = readCouponCenterSource();
+    const source = readCouponCenterPage();
     const singleClaimStart = source.indexOf('const claimCoupon = async');
     const claimAllStart = source.indexOf('const claimAllCoupons = async');
     const claimAllEnd = source.indexOf('const targetThreshold =');

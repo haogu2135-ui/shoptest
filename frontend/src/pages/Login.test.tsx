@@ -6,7 +6,12 @@ import { getGuestCartItems, replaceGuestCartItems } from '../utils/guestCart';
 import Login from './Login';
 
 let mockLanguage = 'en';
-const readLoginPageSource = () => require('fs').readFileSync(require('path').resolve(__dirname, 'Login.tsx'), 'utf8') as string;
+const readLoginPageOnly = () => require('fs').readFileSync(require('path').resolve(__dirname, 'Login.tsx'), 'utf8') as string;
+const readLoginPageSource = () => [
+  readLoginPageOnly(),
+  require('fs').readFileSync(require('path').resolve(__dirname, 'loginHelpers.ts'), 'utf8') as string,
+  require('fs').readFileSync(require('path').resolve(__dirname, 'loginPanels.tsx'), 'utf8') as string,
+].join('\n');
 const readLoginCss = () => require('fs').readFileSync(require('path').resolve(__dirname, 'Login.css'), 'utf8') as string;
 const readMobileAppCss = () => require('fs').readFileSync(require('path').resolve(__dirname, '../mobile-app.css'), 'utf8') as string;
 const readMobilePageContrastCss = () => require('fs').readFileSync(require('path').resolve(__dirname, '../styles/mobile-page-contrast.css'), 'utf8') as string;
@@ -199,6 +204,24 @@ const makeGuestCartItem = (overrides: Partial<CartItem> = {}): CartItem => ({
 });
 
 describe('Login CSS contracts', () => {
+  it('keeps login helpers and panels modularized outside the page shell', () => {
+    const page = readLoginPageOnly();
+    const helpers = require('fs').readFileSync(require('path').resolve(__dirname, 'loginHelpers.ts'), 'utf8') as string;
+    const panels = require('fs').readFileSync(require('path').resolve(__dirname, 'loginPanels.tsx'), 'utf8') as string;
+    expect(page).toContain("from './loginHelpers'");
+    expect(page).toContain("from './loginPanels'");
+    expect(page).toContain('<LoginMainPanels');
+    expect(page).not.toContain('shopee-login-tabs__nav');
+    expect(page).not.toContain('data-login-recovery-actions');
+    expect(helpers).toContain('export const resolvePasswordLoginError');
+    expect(helpers).toContain('export const normalizePasswordLogin');
+    expect(helpers).toContain('export type LoginSessionResponse');
+    expect(panels).toContain('export const LoginMainPanels');
+    expect(panels).toContain('shopee-login-tabs__nav');
+    expect(panels).toContain('data-login-recovery-actions');
+    expect(panels).toContain('role="tablist"');
+  });
+
   it('keeps the login page responsive across desktop, tablet, and narrow mobile rails', () => {
     const css = readLoginCss();
 

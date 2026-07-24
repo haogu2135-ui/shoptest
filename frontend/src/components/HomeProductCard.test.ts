@@ -2,7 +2,10 @@ import fs from 'fs';
 import path from 'path';
 
 const source = fs.readFileSync(path.join(__dirname, 'HomeProductCard.tsx'), 'utf8');
-const homeSource = fs.readFileSync(path.join(__dirname, '../pages/Home.tsx'), 'utf8');
+const homeSource = [
+  fs.readFileSync(path.join(__dirname, '../pages/Home.tsx'), 'utf8'),
+  fs.readFileSync(path.join(__dirname, '../pages/homeProductPanels.tsx'), 'utf8'),
+].join('\n');
 
 describe('HomeProductCard commerce tile contract', () => {
   it('keeps homepage product cards accessible and image-resilient', () => {
@@ -35,7 +38,7 @@ describe('HomeProductCard commerce tile contract', () => {
   });
 
   it('keeps the home product tile as a memoized module-level component', () => {
-    expect(homeSource).toContain("import HomeProductCard from '../components/HomeProductCard';");
+    expect(homeSource).toContain("import HomeProductCard, { type HomeProductCardProps } from '../components/HomeProductCard';");
     expect(homeSource).not.toContain('const ProductTile');
     expect(homeSource).not.toContain('function ProductTile');
     expect(source).toContain('const HomeProductCard: React.FC<HomeProductCardProps> = ({');

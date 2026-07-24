@@ -48,6 +48,7 @@ const readCartSurface = () => [
   readFrontend('pages', 'cartConversionPanels.tsx'),
   readFrontend('pages', 'cartLineItems.tsx'),
   readFrontend('pages', 'cartSavedPanel.tsx'),
+  readFrontend('pages', 'cartOverviewPanels.tsx'),
 ].join('\n');
 
 const readPaymentInstructionsSurface = () => [
@@ -56,12 +57,68 @@ const readPaymentInstructionsSurface = () => [
   readFrontend('pages', 'paymentInstructionsStickyBars.tsx'),
 ].join('\n');
 
+const readProductListSurface = () => [
+  readFrontend('pages', 'ProductList.tsx'),
+  readFrontend('pages', 'productListHelpers.ts'),
+  readFrontend('pages', 'productListCard.tsx'),
+  readFrontend('pages', 'productListPanels.tsx'),
+  readFrontend('pages', 'productListModals.tsx'),
+  readFrontend('pages', 'productListShellPanels.tsx'),
+].join('\n');
+
+const readHomeSurface = () => [
+  readFrontend('pages', 'Home.tsx'),
+  readFrontend('pages', 'homeHelpers.tsx'),
+  readFrontend('pages', 'homeShellStates.tsx'),
+  readFrontend('pages', 'homeFirstFoldPanels.tsx'),
+  readFrontend('pages', 'homeProductPanels.tsx'),
+].join('\n');
+
+
+const readOrderTrackingSurface = () => [
+  readFrontend('pages', 'OrderTracking.tsx'),
+  readFrontend('pages', 'orderTrackingHelpers.ts'),
+  readFrontend('pages', 'orderTrackingPanels.tsx'),
+].join('\n');
+
+const readCouponCenterSurface = () => [
+  readFrontend('pages', 'CouponCenter.tsx'),
+  readFrontend('pages', 'couponCenterPageHelpers.ts'),
+  readFrontend('pages', 'couponCenterShellStates.tsx'),
+  readFrontend('pages', 'couponCenterPanels.tsx'),
+].join('\n');
+
+const readWishlistSurface = () => [
+  readFrontend('pages', 'Wishlist.tsx'),
+  readFrontend('pages', 'wishlistHelpers.ts'),
+  readFrontend('pages', 'wishlistPanels.tsx'),
+].join('\n');
+
+const readLoginSurface = () => [
+  readFrontend('pages', 'Login.tsx'),
+  readFrontend('pages', 'loginHelpers.ts'),
+  readFrontend('pages', 'loginPanels.tsx'),
+].join('\n');
+
+const readProductCompareSurface = () => [
+  readFrontend('pages', 'ProductCompare.tsx'),
+  readFrontend('pages', 'productCompareHelpers.ts'),
+  readFrontend('pages', 'productComparePanels.tsx'),
+].join('\n');
+
+
 const readPageSurface = (dir: string, name: string) => {
   if (name === 'Cart.tsx') return readCartSurface();
   if (name === 'Checkout.tsx') return readCheckoutSurface();
+  if (name === 'CouponCenter.tsx') return readCouponCenterSurface();
+  if (name === 'OrderTracking.tsx') return readOrderTrackingSurface();
   if (name === 'PaymentInstructions.tsx') return readPaymentInstructionsSurface();
   if (name === 'ProductDetail.tsx') return readProductDetailSurface();
+  if (name === 'ProductList.tsx') return readProductListSurface();
   if (name === 'Profile.tsx') return readProfileSurface();
+  if (name === 'Wishlist.tsx') return readWishlistSurface();
+  if (name === 'Login.tsx') return readLoginSurface();
+  if (name === 'ProductCompare.tsx') return readProductCompareSurface();
   return readFrontend(dir, name);
 };
 
@@ -180,7 +237,7 @@ describe('commercial performance contracts', () => {
 
   it('keeps first-fold home product tiles on eager LCP-friendly loading', () => {
     const card = readFrontend('components', 'HomeProductCard.tsx');
-    const home = readFrontend('pages', 'Home.tsx');
+    const home = readHomeSurface();
     expect(card).toContain('priority?: boolean');
     expect(card).toContain("loading={priority ? 'eager' : 'lazy'}");
     expect(card).toContain("fetchPriority={priority ? 'high' : 'auto'}");
@@ -189,7 +246,8 @@ describe('commercial performance contracts', () => {
 
 
   it('keeps home LCP hero art on WebP-first image-set with JPEG fallback', () => {
-    const home = readFrontend('pages', 'Home.tsx');
+    const homePage = readFrontend('pages', 'Home.tsx');
+    const home = readHomeSurface();
     const indexHtml = fs.readFileSync(path.join(__dirname, '..', '..', 'public', 'index.html'), 'utf8');
     const heroVars = fs.readFileSync(path.join(__dirname, '..', '..', 'public', 'home-hero-vars.css'), 'utf8');
     // Public static CSS vars (not webpack-bundled) so hero paint does not wait on React inline styles.
@@ -201,15 +259,15 @@ describe('commercial performance contracts', () => {
     expect(heroVars).toContain('/assets/home/hero-mobile-pet.jpg');
     expect(home).not.toContain('homeImageVariables');
     // Below-fold pet UGC gallery + social proof toast stay out of the initial Home JS graph.
-    expect(home).toContain('webpackChunkName: "home-pet-gallery"');
-    expect(home).toContain('LazyHomePetGallery');
-    expect(home).toContain('webpackChunkName: "social-proof-toast"');
-    expect(home).toContain('LazySocialProofToast');
-    expect(home).not.toContain("import SocialProofToast from '../components/SocialProofToast'");
+    expect(homePage).toContain('webpackChunkName: "home-pet-gallery"');
+    expect(homePage).toContain('LazyHomePetGallery');
+    expect(homePage).toContain('webpackChunkName: "social-proof-toast"');
+    expect(homePage).toContain('LazySocialProofToast');
+    expect(homePage).not.toContain("import SocialProofToast from '../components/SocialProofToast'");
     // Home route keeps ant-design icons package out of the conversion path.
     expect(home).not.toContain('@ant-design/icons');
     expect(home).toContain('HomeIcon');
-    expect(home).toContain('const HI');
+    expect(home).toContain('export const HI');
     expect(indexHtml).toContain('hero-mobile-pet.webp');
     expect(indexHtml).toContain('type="image/webp"');
   });
@@ -250,7 +308,7 @@ describe('commercial performance contracts', () => {
 
   it('keeps ProductList and Cart free of static ant-design icons', () => {
     const productList = readFrontend('pages', 'ProductList.tsx');
-    const cart = readFrontend('pages', 'Cart.tsx');
+    const cart = readCartSurface();
     const shopIcon = readFrontend('components', 'ShopIcon.tsx');
     expect(productList).not.toContain('@ant-design/icons');
     expect(cart).not.toContain('@ant-design/icons');
@@ -291,10 +349,11 @@ describe('commercial performance contracts', () => {
       ['pages', 'Register.tsx'],
     ];
     for (const [dir, name] of files) {
-      const source = readFrontend(dir, name);
+      const source = dir === 'pages' ? readPageSurface(dir, name) : readFrontend(dir, name);
       expect(source).not.toContain('@ant-design/icons');
       expect(source).toMatch(/from ['\"].*ShopIcon['\"]/);
     }
+
     const shopIcon = readFrontend('components', 'ShopIcon.tsx');
     expect(shopIcon).toMatch(/\bstar:\s*'/);
     expect(shopIcon).toMatch(/\bthunder:\s*'/);
@@ -374,17 +433,18 @@ describe('commercial performance contracts', () => {
 
 
   it('keeps Home free of static antd imports', () => {
-    const home = readFrontend('pages', 'Home.tsx');
-    expect(home).not.toMatch(/^import \{[^}]*\} from 'antd';/m);
+    const homePage = readFrontend('pages', 'Home.tsx');
+    const home = readHomeSurface();
+    expect(homePage).not.toMatch(/^import \{[^}]*\} from 'antd';/m);
     expect(home).not.toContain("@ant-design/icons");
     expect(home).toContain('home-btn');
     expect(home).toContain('home-product-grid');
-    expect(home).toContain('announceAccessibleMessage');
+    expect(homePage).toContain('announceAccessibleMessage');
   });
 
 
   it('keeps ProductList result grid free of ant Row/Col tiles', () => {
-    const productList = readFrontend('pages', 'ProductList.tsx');
+    const productList = readProductListSurface();
     expect(productList).toContain('product-list__grid');
     expect(productList).toContain('product-list__gridItem');
     expect(productList).toContain('product-list__layout');
@@ -407,8 +467,8 @@ describe('commercial performance contracts', () => {
   });
 
   it('keeps Wishlist and CouponCenter free of ant Row/Col grids', () => {
-    const wishlist = readFrontend('pages', 'Wishlist.tsx');
-    const coupons = readFrontend('pages', 'CouponCenter.tsx');
+    const wishlist = readWishlistSurface();
+    const coupons = readCouponCenterSurface();
     expect(wishlist).toContain('wishlist-page__grid');
     expect(wishlist).toContain('wishlist-page__gridItem');
     expect(wishlist).not.toMatch(/\b(Row|Col)\b/);
@@ -462,7 +522,7 @@ describe('commercial performance contracts', () => {
 
   it('keeps secondary storefront media free of ant Image', () => {
     for (const page of ['PetFinder.tsx', 'ProductCompare.tsx', 'StockAlerts.tsx']) {
-      const source = readFrontend('pages', page);
+      const source = page === 'ProductCompare.tsx' ? readProductCompareSurface() : readFrontend('pages', page);
       expect(source).not.toMatch(/import \{[^}]*\bImage\b[^}]*\} from 'antd'/);
       expect(source).toContain('loading="lazy"');
     }
@@ -492,8 +552,8 @@ describe('commercial performance contracts', () => {
   });
 
   it('keeps ProductList and Wishlist free of ant Space layout wrappers', () => {
-    const productList = readFrontend('pages', 'ProductList.tsx');
-    const wishlist = readFrontend('pages', 'Wishlist.tsx');
+    const productList = readProductListSurface();
+    const wishlist = readWishlistSurface();
     expect(productList).toContain('product-list__filterStack');
     expect(productList).toContain('product-list__smartActions');
     expect(productList).not.toMatch(/\bSpace\b/);
@@ -503,7 +563,7 @@ describe('commercial performance contracts', () => {
 
   it('keeps ProductDetail and CouponCenter free of ant Space layout wrappers', () => {
     const productDetail = readFrontend('pages', 'ProductDetail.tsx');
-    const coupons = readFrontend('pages', 'CouponCenter.tsx');
+    const coupons = readCouponCenterSurface();
     expect(productDetail).not.toMatch(/\bSpace\b/);
     expect(productDetail).not.toMatch(/import \{[^}]*\bSpace\b[^}]*\} from 'antd'/);
     expect(coupons).not.toMatch(/\bSpace\b/);
@@ -529,7 +589,7 @@ describe('commercial performance contracts', () => {
   });
 
   it('keeps auth pages free of static Typography imports', () => {
-    const login = readFrontend('pages', 'Login.tsx');
+    const login = readLoginSurface();
     const register = readFrontend('pages', 'Register.tsx');
     const forgot = readFrontend('pages', 'ForgotPassword.tsx');
     expect(login).not.toMatch(/\bTypography\b/);
@@ -550,7 +610,7 @@ describe('commercial performance contracts', () => {
   });
 
   it('keeps Cart free of static Typography imports', () => {
-    const cart = readFrontend('pages', 'Cart.tsx');
+    const cart = readCartSurface();
     expect(cart).not.toMatch(/\bTypography\b/);
     expect(cart).not.toMatch(/import \{[^}]*\bTypography\b[^}]*\} from 'antd'/);
     expect(cart).toContain('cart-page__title');
@@ -560,7 +620,7 @@ describe('commercial performance contracts', () => {
   });
 
   it('keeps ProductList free of static Typography imports', () => {
-    const productList = readFrontend('pages', 'ProductList.tsx');
+    const productList = readProductListSurface();
     expect(productList).not.toMatch(/\bTypography\b/);
     expect(productList).not.toMatch(/import \{[^}]*\bTypography\b[^}]*\} from 'antd'/);
     expect(productList).toContain('product-list__text');
@@ -579,14 +639,14 @@ describe('commercial performance contracts', () => {
   });
 
   it('keeps Wishlist free of ant Spin', () => {
-    const wishlist = readFrontend('pages', 'Wishlist.tsx');
+    const wishlist = readWishlistSurface();
     expect(wishlist).not.toMatch(/\bSpin\b/);
     expect(wishlist).not.toMatch(/import \{[^}]*\bSpin\b[^}]*\} from 'antd'/);
     expect(wishlist).toContain('wishlist-page__spinner');
   });
 
   it('keeps Wishlist free of static Typography imports', () => {
-    const wishlist = readFrontend('pages', 'Wishlist.tsx');
+    const wishlist = readWishlistSurface();
     expect(wishlist).not.toMatch(/\bTypography\b/);
     expect(wishlist).not.toMatch(/import \{[^}]*\bTypography\b[^}]*\} from 'antd'/);
     expect(wishlist).toContain('wishlist-page__title');
@@ -596,7 +656,7 @@ describe('commercial performance contracts', () => {
   });
 
   it('keeps CouponCenter free of static Typography imports', () => {
-    const coupons = readFrontend('pages', 'CouponCenter.tsx');
+    const coupons = readCouponCenterSurface();
     expect(coupons).not.toMatch(/\bTypography\b/);
     expect(coupons).not.toMatch(/import \{[^}]*\bTypography\b[^}]*\} from 'antd'/);
     expect(coupons).toContain('coupon-center-page__title');
@@ -616,7 +676,7 @@ describe('commercial performance contracts', () => {
   });
 
   it('keeps OrderTracking free of static Typography imports', () => {
-    const orderTracking = readFrontend('pages', 'OrderTracking.tsx');
+    const orderTracking = readOrderTrackingSurface();
     expect(orderTracking).not.toMatch(/\bTypography\b/);
     expect(orderTracking).not.toMatch(/import \{[^}]*\bTypography\b[^}]*\} from 'antd'/);
     expect(orderTracking).toContain('order-tracking-page__title');
@@ -701,7 +761,7 @@ describe('commercial performance contracts', () => {
   });
 
   it('keeps ProductCompare free of static Typography imports', () => {
-    const page = readFrontend('pages', 'ProductCompare.tsx');
+    const page = readProductCompareSurface();
     expect(page).not.toMatch(/\bTypography\b/);
     expect(page).not.toMatch(/import \{[^}]*\bTypography\b[^}]*\} from 'antd'/);
     expect(page).toContain('product-compare-page__title');
@@ -765,7 +825,11 @@ describe('commercial performance contracts', () => {
         ? readProductDetailSurface()
         : file === 'Profile.tsx'
           ? readProfileSurface()
-          : readFrontend('pages', file);
+          : file === 'CouponCenter.tsx'
+            ? readCouponCenterSurface()
+            : file === 'OrderTracking.tsx'
+              ? readOrderTrackingSurface()
+              : readFrontend('pages', file);
       expect(source).not.toMatch(/import \{[^}]*\bList\b[^}]*\} from 'antd'/);
       expect(source).not.toMatch(/<List\b/);
       expect(source).not.toMatch(/List\.Item/);
@@ -899,7 +963,15 @@ describe('commercial performance contracts', () => {
       'Profile.tsx',
     ];
     pages.forEach((page) => {
-      const source = page === 'Profile.tsx' ? readProfileSurface() : readFrontend('pages', page);
+      const source = page === 'Cart.tsx'
+        ? readCartSurface()
+        : page === 'Profile.tsx'
+          ? readProfileSurface()
+          : page === 'Wishlist.tsx'
+            ? readWishlistSurface()
+            : page === 'ProductCompare.tsx'
+              ? readProductCompareSurface()
+              : readFrontend('pages', page);
       expect(source).toContain('ShopPopconfirm');
       expect(source).not.toMatch(/<Popconfirm\b/);
       expect(source).not.toMatch(/import \{[^}]*\bPopconfirm\b[^}]*\} from 'antd'/);
@@ -920,7 +992,7 @@ describe('commercial performance contracts', () => {
 
 
   it('keeps ProductList free of static ant Select for sort/quick-add', () => {
-    const source = readFrontend('pages', 'ProductList.tsx');
+    const source = readProductListSurface();
     expect(source).toContain('ShopSelect');
     expect(source).toContain('product-list__sortSelect');
     expect(source).toContain('product-list__quickAddSelect');
@@ -956,7 +1028,7 @@ describe('commercial performance contracts', () => {
 
 
   it('keeps OrderTracking free of static ant Modal tags', () => {
-    const source = readFrontend('pages', 'OrderTracking.tsx');
+    const source = readOrderTrackingSurface();
     expect(source).toContain('ShopModal');
     expect(source).toContain('ShopConfirm');
     expect(source).toContain('order-tracking-page__returnModal');
@@ -965,7 +1037,7 @@ describe('commercial performance contracts', () => {
   });
 
   it('keeps CouponCenter free of static ant Select for sort', () => {
-    const source = readFrontend('pages', 'CouponCenter.tsx');
+    const source = readCouponCenterSurface();
     expect(source).toContain('ShopSelect');
     expect(source).toContain('coupon-claim-section__sort');
     expect(source).not.toMatch(/<Select\b/);
@@ -1015,7 +1087,7 @@ describe('commercial performance contracts', () => {
   });
 
   it('keeps OrderTracking free of Modal.confirm', () => {
-    const source = readFrontend('pages', 'OrderTracking.tsx');
+    const source = readOrderTrackingSurface();
     expect(source).toContain('ShopConfirm');
     expect(source).toContain('order-tracking-page__rollbackConfirmModal');
     expect(source).not.toContain('Modal.confirm');
@@ -1099,7 +1171,7 @@ describe('commercial performance contracts', () => {
 
 
   it('keeps OrderTracking free of ant Descriptions/Empty', () => {
-    const source = readFrontend('pages', 'OrderTracking.tsx');
+    const source = readOrderTrackingSurface();
     expect(source).not.toMatch(/import \{[^}]*\bDescriptions\b[^}]*\} from 'antd'/);
     expect(source).not.toMatch(/import \{[^}]*\bEmpty\b[^}]*\} from 'antd'/);
     expect(source).not.toMatch(/<Descriptions\b/);
@@ -1201,7 +1273,7 @@ describe('commercial performance contracts', () => {
   });
 
   it('keeps ProductList product cards free of ant Card shell', () => {
-    const source = readFrontend('pages', 'ProductList.tsx');
+    const source = readProductListSurface();
     expect(source).not.toContain('Card.Meta');
     expect(source).not.toMatch(/className="product-list__card"[\s\S]*?cover=/);
     expect(source).toContain('className="product-list__card"');
@@ -1214,7 +1286,7 @@ describe('commercial performance contracts', () => {
   });
 
   it('keeps Wishlist free of ant Card shell', () => {
-    const source = readFrontend('pages', 'Wishlist.tsx');
+    const source = readWishlistSurface();
     expect(source).not.toMatch(/import \{[^}]*\bCard\b[^}]*\} from 'antd'/);
     expect(source).not.toMatch(/<Card\b/);
     expect(source).toContain('wishlist-page__cover');
@@ -1223,7 +1295,7 @@ describe('commercial performance contracts', () => {
   });
 
   it('keeps ProductList free of ant Card shell', () => {
-    const source = readFrontend('pages', 'ProductList.tsx');
+    const source = readProductListSurface();
     expect(source).not.toMatch(/import \{[^}]*\bCard\b[^}]*\} from 'antd'/);
     expect(source).not.toMatch(/<Card\b/);
     expect(source).toContain('product-list__panel');
@@ -1319,7 +1391,7 @@ describe('commercial performance contracts', () => {
   });
 
   it('keeps ProductCompare free of static ant Rate', () => {
-    const source = readFrontend('pages', 'ProductCompare.tsx');
+    const source = readProductCompareSurface();
     expect(source).not.toMatch(/import \{[^}]*\bRate\b[^}]*\} from 'antd'/);
     expect(source).not.toMatch(/<Rate\b/);
     expect(source).toContain('ShopRate');
@@ -1333,7 +1405,7 @@ describe('commercial performance contracts', () => {
   });
 
   it('keeps ProductList free of static ant Rate', () => {
-    const source = readFrontend('pages', 'ProductList.tsx');
+    const source = readProductListSurface();
     expect(source).not.toMatch(/import \{[^}]*\bRate\b[^}]*\} from 'antd'/);
     expect(source).not.toMatch(/<Rate\b/);
     expect(source).toContain('ShopRate');
@@ -1345,7 +1417,7 @@ describe('commercial performance contracts', () => {
 
 
   it('keeps ProductCompare free of ant Table', () => {
-    const source = readFrontend('pages', 'ProductCompare.tsx');
+    const source = readProductCompareSurface();
     expect(source).not.toMatch(/import \{[^}]*\bTable\b[^}]*\} from 'antd'/);
     expect(source).not.toMatch(/<Table\b/);
     expect(source).toContain('product-compare__tableMatrix');
@@ -1358,7 +1430,7 @@ describe('commercial performance contracts', () => {
 
 
   it('keeps ProductCompare free of ant Spin', () => {
-    const source = readFrontend('pages', 'ProductCompare.tsx');
+    const source = readProductCompareSurface();
     expect(source).not.toMatch(/\bSpin\b/);
     expect(source).not.toMatch(/import \{[^}]*\bSpin\b[^}]*\} from 'antd'/);
     expect(source).toContain('product-compare__spinner');
@@ -1373,15 +1445,14 @@ describe('commercial performance contracts', () => {
   });
 
   it('keeps CouponCenter and PetGallery free of ant Skeleton', () => {
-    for (const [file, marker] of [
-      ['CouponCenter.tsx', 'coupon-center-page__skeleton'],
-      ['PetGallery.tsx', 'pet-gallery-skeleton'],
-    ] as const) {
-      const source = readFrontend('pages', file);
-      expect(source).not.toMatch(/\bSkeleton\b/);
-      expect(source).not.toMatch(/import \{[^}]*\bSkeleton\b[^}]*\} from 'antd'/);
-      expect(source).toContain(marker);
-    }
+    const couponSource = readCouponCenterSurface();
+    expect(couponSource).not.toMatch(/\bSkeleton\b/);
+    expect(couponSource).not.toMatch(/import \{[^}]*\bSkeleton\b[^}]*\} from 'antd'/);
+    expect(couponSource).toContain('coupon-center-page__skeleton');
+    const petSource = readFrontend('pages', 'PetGallery.tsx');
+    expect(petSource).not.toMatch(/\bSkeleton\b/);
+    expect(petSource).not.toMatch(/import \{[^}]*\bSkeleton\b[^}]*\} from 'antd'/);
+    expect(petSource).toContain('pet-gallery-skeleton');
   });
 
 
@@ -1435,7 +1506,7 @@ describe('commercial performance contracts', () => {
   });
 
   it('keeps Login free of static ant Tabs', () => {
-    const source = readFrontend('pages', 'Login.tsx');
+    const source = readLoginSurface();
     expect(source).not.toMatch(/import \{[^}]*\bTabs\b[^}]*\} from 'antd'/);
     expect(source).not.toMatch(/<Tabs\b/);
     expect(source).toContain('shopee-login-tabs__nav');
@@ -1510,7 +1581,7 @@ describe('commercial performance contracts', () => {
   });
 
   it('keeps ProductList free of static ant Slider', () => {
-    const source = readFrontend('pages', 'ProductList.tsx');
+    const source = readProductListSurface();
     expect(source).not.toMatch(/import \{[^}]*\bSlider\b[^}]*\} from 'antd'/);
     expect(source).not.toMatch(/<Slider\b/);
     expect(source).toContain('ShopRangeSlider');
@@ -1518,7 +1589,7 @@ describe('commercial performance contracts', () => {
   });
 
   it('keeps ProductList free of static ant Pagination', () => {
-    const source = readFrontend('pages', 'ProductList.tsx');
+    const source = readProductListSurface();
     expect(source).not.toMatch(/import \{[^}]*\bPagination\b[^}]*\} from 'antd'/);
     expect(source).not.toMatch(/<Pagination\b/);
     expect(source).toContain('ShopPagination');
@@ -1526,7 +1597,7 @@ describe('commercial performance contracts', () => {
   });
 
   it('keeps ProductList free of static ant Modal', () => {
-    const source = readFrontend('pages', 'ProductList.tsx');
+    const source = readProductListSurface();
     expect(source).not.toMatch(/import \{[^}]*\bModal\b[^}]*\} from 'antd'/);
     expect(source).not.toMatch(/<Modal\b/);
     expect(source).toContain('ShopModal');
@@ -1535,7 +1606,7 @@ describe('commercial performance contracts', () => {
   });
 
   it('keeps ProductList free of static ant Drawer', () => {
-    const source = readFrontend('pages', 'ProductList.tsx');
+    const source = readProductListSurface();
     expect(source).not.toMatch(/import \{[^}]*\bDrawer\b[^}]*\} from 'antd'/);
     expect(source).not.toMatch(/<Drawer\b/);
     expect(source).toContain('ShopDrawer');
@@ -1608,7 +1679,7 @@ describe('commercial performance contracts', () => {
   });
 
   it('keeps CouponCenter free of static ant Input', () => {
-    const source = fs.readFileSync(path.resolve(__dirname, '../pages/CouponCenter.tsx'), 'utf8');
+    const source = readCouponCenterSurface();
     expect(source).toContain('ShopInput');
     expect(source).not.toMatch(/import \{[^}]*\bInput\b[^}]*\} from 'antd'/);
     expect(source).not.toMatch(/<Input\b/);
@@ -1636,7 +1707,7 @@ describe('commercial performance contracts', () => {
   });
 
   it('keeps ProductList free of static ant Input.Search', () => {
-    const source = fs.readFileSync(path.resolve(__dirname, '../pages/ProductList.tsx'), 'utf8');
+    const source = readProductListSurface();
     expect(source).toContain('ShopSearchField');
     expect(source).not.toMatch(/import \{[^}]*\bInput\b[^}]*\} from 'antd'/);
     expect(source).not.toMatch(/Input\.Search|<Input\b/);
@@ -1840,7 +1911,7 @@ describe('commercial performance contracts', () => {
 
 
   it('keeps OrderTracking free of static ant Input', () => {
-    const source = fs.readFileSync(path.resolve(__dirname, '../pages/OrderTracking.tsx'), 'utf8');
+    const source = readOrderTrackingSurface();
     expect(source).toContain('ShopInput');
     expect(source).toContain('ShopTextArea');
     expect(source).not.toMatch(/import \{[^}]*\bInput\b[^}]*\} from 'antd'/);
@@ -1877,7 +1948,7 @@ describe('commercial performance contracts', () => {
   });
 
   it('keeps Login free of static ant Input', () => {
-    const source = readFrontend('pages', 'Login.tsx');
+    const source = readLoginSurface();
     expect(source).toContain('ShopInput');
     expect(source).toContain('ShopPasswordInput');
     expect(source).not.toMatch(/import \{[^}]*\bInput\b[^}]*\} from 'antd'/);
@@ -2296,7 +2367,9 @@ describe('commercial performance contracts', () => {
       'ProductCompare',
     ];
     pages.forEach((page) => {
-      const source = fs.readFileSync(path.resolve(__dirname, `../pages/${page}.tsx`), 'utf8');
+      const source = page === 'ProductCompare'
+        ? readProductCompareSurface()
+        : fs.readFileSync(path.resolve(__dirname, `../pages/${page}.tsx`), 'utf8');
       expect(source).toContain('ShopSwitch');
       expect(source).not.toMatch(/<Switch\b/);
       expect(source).not.toMatch(/import \{[^}]*\bSwitch\b[^}]*\} from 'antd'/);
@@ -2311,12 +2384,14 @@ describe('commercial performance contracts', () => {
         ? readProfileSurface()
         : page === 'Cart'
           ? readCartSurface()
+          : page === 'ProductList'
+            ? readProductListSurface()
           : fs.readFileSync(path.resolve(__dirname, `../pages/${page}.tsx`), 'utf8');
       expect(source).toContain('ShopCheckbox');
       expect(source).not.toMatch(/<Checkbox\b/);
       expect(source).not.toMatch(/import \{[^}]*\bCheckbox\b[^}]*\} from 'antd'/);
     });
-    const productList = fs.readFileSync(path.resolve(__dirname, '../pages/ProductList.tsx'), 'utf8');
+    const productList = readProductListSurface();
     expect(productList).toContain('ShopCheckboxGroup');
     const permission = fs.readFileSync(path.resolve(__dirname, '../pages/PermissionManagement.tsx'), 'utf8');
     expect(permission).toContain('ShopCheckboxGroup');
@@ -2355,7 +2430,19 @@ describe('commercial performance contracts', () => {
               ? readCartSurface()
               : page === 'PaymentInstructions'
                 ? readPaymentInstructionsSurface()
-                : fs.readFileSync(path.resolve(__dirname, `../pages/${page}.tsx`), 'utf8');
+                : page === 'CouponCenter'
+                  ? readCouponCenterSurface()
+                  : page === 'OrderTracking'
+                    ? readOrderTrackingSurface()
+                    : page === 'ProductList'
+                      ? readProductListSurface()
+                      : page === 'Wishlist'
+                        ? readWishlistSurface()
+                        : page === 'Login'
+                          ? readLoginSurface()
+                          : page === 'ProductCompare'
+                            ? readProductCompareSurface()
+                            : fs.readFileSync(path.resolve(__dirname, `../pages/${page}.tsx`), 'utf8');
       expect(source).toContain('ShopButton');
       expect(source).not.toMatch(/<Button\b/);
       expect(source).not.toMatch(/import \{[^}]*\bButton\b[^}]*\} from 'antd'/);

@@ -8,6 +8,7 @@ const readCartSurface = (): string => (
     require('fs').readFileSync(require('path').resolve(__dirname, 'cartConversionPanels.tsx'), 'utf8'),
     require('fs').readFileSync(require('path').resolve(__dirname, 'cartLineItems.tsx'), 'utf8'),
     require('fs').readFileSync(require('path').resolve(__dirname, 'cartSavedPanel.tsx'), 'utf8'),
+    require('fs').readFileSync(require('path').resolve(__dirname, 'cartOverviewPanels.tsx'), 'utf8'),
     require('fs').readFileSync(require('path').resolve(__dirname, '../hooks/useCartItemMutations.ts'), 'utf8'),
     require('fs').readFileSync(require('path').resolve(__dirname, '../hooks/useCartQuantityActions.ts'), 'utf8'),
     require('fs').readFileSync(require('path').resolve(__dirname, '../hooks/useCartRecoveryAdds.ts'), 'utf8'),
@@ -52,8 +53,8 @@ describe('Cart type-safety guard', () => {
 
 
   it('announces cart recovery and stale-data alerts accessibly', () => {
-    const source = require('fs').readFileSync(require('path').resolve(__dirname, 'Cart.tsx'), 'utf8');
-    expect(readCartSurface()).toContain('className="cart-page__paymentReturn"');
+    const source = readCartSurface();
+    expect(source).toContain('className="cart-page__paymentReturn"');
     expect(source).toContain('className="cart-page__loadErrorAlert"');
     expect(source).toContain('role="alert"');
     expect(source).toContain('aria-live="assertive"');

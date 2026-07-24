@@ -8,6 +8,14 @@ import { addAppScrollListener, getAppScrollMetrics, scrollAppToTop } from '../ut
 import ProductList from './ProductList';
 
 const readProductListSource = () => fs.readFileSync(path.resolve(__dirname, 'ProductList.tsx'), 'utf8');
+const readProductListSurface = () => [
+  readProductListSource(),
+  fs.readFileSync(path.resolve(__dirname, 'productListHelpers.ts'), 'utf8'),
+  fs.readFileSync(path.resolve(__dirname, 'productListCard.tsx'), 'utf8'),
+  fs.readFileSync(path.resolve(__dirname, 'productListPanels.tsx'), 'utf8'),
+  fs.readFileSync(path.resolve(__dirname, 'productListModals.tsx'), 'utf8'),
+  fs.readFileSync(path.resolve(__dirname, 'productListShellPanels.tsx'), 'utf8'),
+].join('\n');
 const readProductListCss = () => fs.readFileSync(path.resolve(__dirname, 'ProductList.css'), 'utf8');
 const readMobileAppCss = () => fs.readFileSync(path.resolve(__dirname, '../mobile-app.css'), 'utf8');
 const readMobilePageContrastCss = () => fs.readFileSync(path.resolve(__dirname, '../styles/mobile-page-contrast.css'), 'utf8');
@@ -160,7 +168,7 @@ describe('ProductList quick-add mobile overlay contracts', () => {
   });
 
   it('treats option selection as a blocking purchase modal above mobile rails', () => {
-    const source = readProductListSource();
+    const source = readProductListSurface();
     const css = readProductListCss();
     const fixCss = css.slice(css.indexOf('F3415:'));
 
@@ -175,7 +183,7 @@ describe('ProductList quick-add mobile overlay contracts', () => {
   });
 
   it('treats quick preview as a blocking modal above mobile rails', () => {
-    const source = readProductListSource();
+    const source = readProductListSurface();
     const css = readProductListCss();
     const fixCss = css.slice(css.indexOf('F2754:'));
 
@@ -189,7 +197,7 @@ describe('ProductList quick-add mobile overlay contracts', () => {
   });
 
   it('treats the mobile filter drawer as the active overlay above rails', () => {
-    const source = readProductListSource();
+    const source = readProductListSurface();
     const css = readProductListCss();
     const fixCss = css.slice(css.indexOf('F2755:'));
 
@@ -226,18 +234,30 @@ describe('ProductList quick-add mobile overlay contracts', () => {
 
 describe('ProductList card render performance contracts', () => {
   it('keeps product grid cards behind a memoized list item component', () => {
-    const source = readProductListSource();
+    const page = readProductListSource();
+    const source = readProductListSurface();
 
     expect(source).toContain('const ProductListCard = React.memo');
     expect(source).toContain("ProductListCard.displayName = 'ProductListCard';");
     expect(source).toContain('<ProductListCard');
-    expect(source).toContain('const productListProductName = useCallback');
-    expect(source).toContain('const renderSavingsText = useCallback');
-    expect(source).toContain('const handleWishlistToggle = useCallback');
-    expect(source).toContain('const openProductPreview = useCallback');
-    expect(source).toContain('const PRODUCT_LIST_PAGE_SIZE = 12;');
-    expect(source).toContain('const PRODUCT_LIST_FETCH_SIZE = PRODUCT_LIST_PAGE_SIZE * 8;');
-    expect(source).toContain('const pageSize = PRODUCT_LIST_PAGE_SIZE;');
+    expect(page).toContain("from './productListPanels'");
+    expect(page).toContain("from './productListShellPanels'");
+    expect(page).toContain('<ProductListMainShell');
+    expect(page).not.toContain("from './productListModals'");
+    expect(page).not.toContain('<ProductListModals');
+    expect(page).not.toContain('<ProductListResultsGrid');
+    expect(page).toContain("from './productListHelpers'");
+    expect(source).toContain('<ProductListResultsGrid');
+    expect(source).toContain('<ProductListModals');
+    expect(source).toContain("from './productListCard'");
+    expect(source).toContain('export const ProductListMainShell');
+    expect(page).toContain('const productListProductName = useCallback');
+    expect(page).toContain('const renderSavingsText = useCallback');
+    expect(page).toContain('const handleWishlistToggle = useCallback');
+    expect(page).toContain('const openProductPreview = useCallback');
+    expect(source).toContain('export const PRODUCT_LIST_PAGE_SIZE = 12;');
+    expect(source).toContain('export const PRODUCT_LIST_FETCH_SIZE = PRODUCT_LIST_PAGE_SIZE * 8;');
+    expect(page).toContain('const pageSize = PRODUCT_LIST_PAGE_SIZE;');
     expect(source).toContain('size: pageSize,');
     expect(source).toContain('const paginatedProducts = usingServerPagination');
     expect(source).toContain(': sortedProducts.slice((currentPage - 1) * pageSize, currentPage * pageSize);');

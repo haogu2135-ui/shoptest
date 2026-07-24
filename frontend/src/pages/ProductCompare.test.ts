@@ -2,7 +2,12 @@ import fs from 'fs';
 import path from 'path';
 
 const readProductCompareCss = () => fs.readFileSync(path.resolve(__dirname, 'ProductCompare.css'), 'utf8');
-const readProductCompareSource = () => fs.readFileSync(path.resolve(__dirname, 'ProductCompare.tsx'), 'utf8');
+const readProductComparePage = () => fs.readFileSync(path.resolve(__dirname, 'ProductCompare.tsx'), 'utf8');
+const readProductCompareSource = () => [
+  readProductComparePage(),
+  fs.readFileSync(path.resolve(__dirname, 'productCompareHelpers.ts'), 'utf8'),
+  fs.readFileSync(path.resolve(__dirname, 'productComparePanels.tsx'), 'utf8'),
+].join('\n');
 
 const extractCssRulesFor = (css: string, selectorPart: string) => (
   Array.from(css.matchAll(/([^{}]+)\{([^{}]*)\}/g))
@@ -41,6 +46,26 @@ describe('ProductCompare responsive CSS', () => {
     expect(f2714Css).toMatch(/@media \(max-width:\s*360px\)\s*\{[\s\S]*?\.product-compare__headerActions\s*\{[\s\S]*?grid-template-columns:\s*minmax\(0,\s*1fr\)\s*!important;/);
     expect(f2714Css).not.toMatch(/grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/);
     expect(f2714Css).not.toMatch(/text-overflow:\s*ellipsis/);
+  });
+});
+
+describe('ProductCompare modularization', () => {
+  it('keeps product compare helpers and panels modularized outside the page shell', () => {
+    const page = readProductComparePage();
+    const helpers = fs.readFileSync(path.resolve(__dirname, 'productCompareHelpers.ts'), 'utf8');
+    const panels = fs.readFileSync(path.resolve(__dirname, 'productComparePanels.tsx'), 'utf8');
+    expect(page).toContain("from './productCompareHelpers'");
+    expect(page).toContain("from './productComparePanels'");
+    expect(page).toContain('<ProductCompareMainPanels');
+    expect(page).not.toContain('product-compare__decisionGrid');
+    expect(page).not.toContain('data-compare-empty-actions');
+    expect(helpers).toContain('export const buildCompareDecision');
+    expect(helpers).toContain('export const getPrice');
+    expect(helpers).toContain('export const collectCompareSpecKeys');
+    expect(panels).toContain('export const ProductCompareMainPanels');
+    expect(panels).toContain('product-compare__decisionGrid');
+    expect(panels).toContain('data-compare-empty-actions');
+    expect(panels).toContain('data-compare-load-recovery');
   });
 });
 

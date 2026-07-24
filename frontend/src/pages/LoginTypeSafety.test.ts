@@ -1,6 +1,8 @@
-const readLoginSource = (): string => (
-  require('fs').readFileSync(require('path').resolve(__dirname, 'Login.tsx'), 'utf8')
-);
+const readLoginSource = (): string => [
+  require('fs').readFileSync(require('path').resolve(__dirname, 'Login.tsx'), 'utf8'),
+  require('fs').readFileSync(require('path').resolve(__dirname, 'loginHelpers.ts'), 'utf8'),
+  require('fs').readFileSync(require('path').resolve(__dirname, 'loginPanels.tsx'), 'utf8'),
+].join('\n');
 
 export {};
 
