@@ -1,3 +1,4 @@
+import { reportNonBlockingError } from '../utils/nonBlockingError';
 import React from 'react';
 import './ShopTypography.css';
 
@@ -112,8 +113,8 @@ const ShopTypographyText: React.FC<ShopTypographyTextProps> = ({
       copyConfig.onCopy?.();
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1500);
-    } catch {
-      // ignore clipboard failures in non-secure contexts
+    } catch (error) {
+      reportNonBlockingError('ShopTypography.copyText', error);
     }
   };
 

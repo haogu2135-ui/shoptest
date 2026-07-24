@@ -93,7 +93,9 @@ describe('source quality contracts', () => {
     expect(skeletonCssSource).toMatch(/@media \(prefers-reduced-motion: reduce\) \{[\s\S]*?\.shimmer \{[\s\S]*?animation: none;/);
     expect(skeletonCssSource).not.toContain('animation: pulse-fade 1.6s ease-in-out infinite;');
 
-    expect(homeSource).toContain('<main className={homeLanguageClass} aria-busy="true">');
+    expect(homeSource).toContain('shopee-home--loading');
+    expect(homeSource).toContain('aria-busy="true"');
+    expect(homeSource).toContain('data-home-loading-shell="true"');
     expect(homeSource).toContain('<div role="status" aria-live="polite" aria-busy="true" aria-label={t(\'common.loading\')}>');
     expect(productListSource).toContain('<div className="product-list__loading" role="status" aria-live="polite" aria-busy="true" aria-label={t(\'common.loading\')}>');
     expect(cartSource).toContain('<div className={`cart-page cart-page--${language}`} role="status" aria-live="polite" aria-busy="true" aria-label={t(\'common.loading\')}>');
@@ -105,6 +107,8 @@ describe('source quality contracts', () => {
     const readFrontend = (relativePath: string) => fs.readFileSync(path.join(frontendRoot, relativePath), 'utf8');
     const readRepo = (relativePath: string) => fs.readFileSync(path.join(repoRoot, relativePath), 'utf8');
     const checkoutSource = readFrontend('pages/Checkout.tsx');
+    const orderActionsSource = readFrontend('hooks/useCheckoutOrderActions.ts');
+    const checkoutFormSectionsSource = readFrontend('components/checkout/CheckoutFormSections.tsx');
     const checkoutTestSource = readFrontend('pages/Checkout.test.tsx');
     const checkoutCssSource = readFrontend('pages/Checkout.css');
     const cartSource = readFrontend('pages/Cart.tsx');
@@ -124,8 +128,8 @@ describe('source quality contracts', () => {
     const staleAdminAddToCart = ['admin', 'Add', 'To', 'Cart'].join('');
     const staleEmptyCartMessage = ['empty', 'cart', 'message'].join('-');
     const staleCheckoutUser = ['checkout', 'user'].join('_');
-    const submitStart = checkoutSource.indexOf('const handleSubmit = async (values: CheckoutFormValues) => {');
-    const submitSource = checkoutSource.slice(submitStart, checkoutSource.indexOf('const retryCreatePayment = async () => {', submitStart));
+    const submitStart = orderActionsSource.indexOf('const handleSubmit = async (values: CheckoutFormValues) => {');
+    const submitSource = orderActionsSource.slice(submitStart, orderActionsSource.indexOf('const retryCreatePayment = async () => {', submitStart));
 
     expect(backendSources).not.toContain('CouponValidationServiceTest.groovy');
     expect(backendSources).not.toContain('CouponValidationService');
@@ -141,8 +145,9 @@ describe('source quality contracts', () => {
     expect(checkoutSource).not.toMatch(/\bfetchCart\b/);
     expect(checkoutSource).not.toContain('window.scrollTo(0, 0)');
     expect(checkoutSource).not.toMatch(/\bconsole\.(warn|error)\b/);
-    expect(checkoutSource).toContain('scrollCheckoutElementIntoView');
-    expect(checkoutSource).toContain('rowKey={(item) => item.id}');
+    expect(`${checkoutSource}\n${fs.readFileSync(path.join(frontendRoot, 'hooks/useCheckoutConversionCoach.tsx'), 'utf8')}`).toContain('scrollCheckoutElementIntoView');
+    expect(checkoutFormSectionsSource).toContain('key={item.id}');
+    expect(checkoutSource).toContain('useCheckoutOrderActions({');
 
     expect(submitStart).toBeGreaterThan(-1);
     expect(submitSource).toContain('cartItems.some((item) => !isPurchasable(item))');
@@ -205,7 +210,9 @@ describe('source quality contracts', () => {
     expect(appCssSource).toContain('clip-path: inset(50%);');
     expect(accessibleMessageSource).toContain("const messageMethods: MessageMethodName[] = ['success', 'error', 'warning', 'info'];");
     expect(accessibleMessageSource).toContain('message.open');
-    expect(checkoutSource).toContain('runWithoutAccessibleMessageAnnouncement(() => message[type](messageText));');
+    expect(accessibleMessageSource).toContain('export const announceAccessibleMessage');
+    expect(checkoutSource).toContain('announceAccessibleMessage(messageText, type)');
+    expect(checkoutSource).toContain('const showCheckoutMessage = useCallback((type: CheckoutMessageType, messageText: string) => {');
   });
 
   it('keeps native mobile keyboard focus indicators visible across common controls', () => {
@@ -340,8 +347,11 @@ describe('source quality contracts', () => {
     const frontendRoot = path.resolve(__dirname, '..');
     const targets = [
       'App.tsx',
+      'components/NativeMobileUpdateGate.tsx',
       'pages/ProductCompare.tsx',
       'pages/Checkout.tsx',
+      'hooks/useCheckoutGuestDraft.ts',
+      'utils/checkoutHelpers.ts',
       'pages/Profile.tsx',
     ];
     const expectedContexts = [

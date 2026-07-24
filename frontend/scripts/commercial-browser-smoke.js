@@ -1,4 +1,11 @@
 #!/usr/bin/env node
+
+const logLine = (...parts) => {
+  process.stdout.write(`${parts.map((part) => String(part)).join(' ')}\n`);
+};
+const logError = (...parts) => {
+  process.stderr.write(`${parts.map((part) => String(part)).join(' ')}\n`);
+};
 /**
  * Commercial browser smoke (Playwright) for ShopMX storefront.
  * Requires local UI at SHOPTEST_UI_BASE (default http://127.0.0.1:4187).
@@ -15,8 +22,7 @@ const results = [];
 
 const check = (name, pass, detail = '') => {
   results.push({ name, pass: Boolean(pass), detail: String(detail || '').slice(0, 240) });
-  // eslint-disable-next-line no-console
-  console.log(`${pass ? 'PASS' : 'FAIL'} ${name}${detail ? ` — ${detail}` : ''}`);
+  logLine(`${pass ? 'PASS' : 'FAIL'} ${name}${detail ? ` — ${detail}` : ''}`);
 };
 
 async function readMainText(page) {
@@ -1462,19 +1468,16 @@ async function main() {
   }
 
   const passed = results.filter((item) => item.pass).length;
-  // eslint-disable-next-line no-console
-  console.log(`\nSUMMARY ${passed}/${results.length} passed @ ${base}`);
+  logLine(`\nSUMMARY ${passed}/${results.length} passed @ ${base}`);
   if (passed !== results.length) {
     results.filter((item) => !item.pass).forEach((item) => {
-      // eslint-disable-next-line no-console
-      console.error(` - ${item.name}: ${item.detail}`);
+      logError(` - ${item.name}: ${item.detail}`);
     });
     process.exitCode = 1;
   }
 }
 
 main().catch((error) => {
-  // eslint-disable-next-line no-console
-  console.error('BROWSER_SMOKE_CRASH', error);
+  logError('BROWSER_SMOKE_CRASH', error);
   process.exit(2);
 });

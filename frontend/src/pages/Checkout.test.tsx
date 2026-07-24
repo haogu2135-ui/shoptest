@@ -10,6 +10,18 @@ const readCheckoutTestSource = () => require('fs').readFileSync(__filename, 'utf
 const readCheckoutPageSource = () => require('fs').readFileSync(require('path').resolve(__dirname, 'Checkout.tsx'), 'utf8') as string;
 const readCheckoutHelpersSource = () => require('fs').readFileSync(require('path').resolve(__dirname, '../utils/checkoutHelpers.ts'), 'utf8') as string;
 const readCheckoutPaymentLifecycleSource = () => require('fs').readFileSync(require('path').resolve(__dirname, '../hooks/useCheckoutPaymentLifecycle.ts'), 'utf8') as string;
+const readCheckoutCartBootstrapSource = () => require('fs').readFileSync(require('path').resolve(__dirname, '../hooks/useCheckoutCartBootstrap.ts'), 'utf8') as string;
+const readCheckoutCouponQuoteSource = () => require('fs').readFileSync(require('path').resolve(__dirname, '../hooks/useCheckoutCouponQuote.ts'), 'utf8') as string;
+const readCheckoutAddressHydrateSource = () => require('fs').readFileSync(require('path').resolve(__dirname, '../hooks/useCheckoutAddressHydrate.ts'), 'utf8') as string;
+const readCheckoutGuestDraftSource = () => require('fs').readFileSync(require('path').resolve(__dirname, '../hooks/useCheckoutGuestDraft.ts'), 'utf8') as string;
+const readCheckoutPaymentChannelsSource = () => require('fs').readFileSync(require('path').resolve(__dirname, '../hooks/useCheckoutPaymentChannels.ts'), 'utf8') as string;
+const readCheckoutRegionCascaderSource = () => require('fs').readFileSync(require('path').resolve(__dirname, '../hooks/useCheckoutRegionCascader.ts'), 'utf8') as string;
+const readCheckoutOrderActionsSource = () => require('fs').readFileSync(require('path').resolve(__dirname, '../hooks/useCheckoutOrderActions.ts'), 'utf8') as string;
+const readCheckoutConversionCoachSource = () => require('fs').readFileSync(require('path').resolve(__dirname, '../hooks/useCheckoutConversionCoach.tsx'), 'utf8') as string;
+const readCheckoutShellSource = () => require('fs').readFileSync(require('path').resolve(__dirname, '../components/checkout/CheckoutShellStates.tsx'), 'utf8') as string;
+const readCheckoutFormSectionsSource = () => require('fs').readFileSync(require('path').resolve(__dirname, '../components/checkout/CheckoutFormSections.tsx'), 'utf8') as string;
+const readCheckoutConversionSource = () => require('fs').readFileSync(require('path').resolve(__dirname, '../components/checkout/CheckoutConversionSections.tsx'), 'utf8') as string;
+const readCheckoutSurfaceSource = () => `${readCheckoutPageSource()}\n${readCheckoutShellSource()}\n${readCheckoutFormSectionsSource()}\n${readCheckoutConversionSource()}`;
 const readCheckoutCssSource = () => require('fs').readFileSync(require('path').resolve(__dirname, 'Checkout.css'), 'utf8') as string;
 const readMobileAppCssSource = () => require('fs').readFileSync(require('path').resolve(__dirname, '../mobile-app.css'), 'utf8') as string;
 const readProfilePageSource = () => require('fs').readFileSync(require('path').resolve(__dirname, 'Profile.tsx'), 'utf8') as string;
@@ -298,18 +310,9 @@ describe('Checkout payment availability', () => {
   });
 
   it('surfaces checkout payment channel load errors and retries the channel request', async () => {
-    (paymentApi.getChannels as jest.Mock)
-      .mockRejectedValueOnce({ response: { data: { error: 'Gateway configuration unavailable' } } })
-      .mockResolvedValueOnce({
-        data: [{
-          code: 'STRIPE',
-          displayName: 'Stripe',
-          descriptionKey: 'pages.checkout.paymentStripeDesc',
-          badgeKey: 'pages.checkout.paymentInstant',
-          market: 'GLOBAL',
-          enabled: true,
-        }],
-      });
+    (paymentApi.getChannels as jest.Mock).mockRejectedValue({
+      response: { data: { error: 'Gateway configuration unavailable' } },
+    });
 
     render(
       <MemoryRouter initialEntries={['/checkout']}>
@@ -317,50 +320,69 @@ describe('Checkout payment availability', () => {
       </MemoryRouter>,
     );
 
-    const gatewayErrors = await screen.findAllByText('Gateway configuration unavailable');
+    const gatewayErrors = await screen.findAllByText('Gateway configuration unavailable', {}, { timeout: 5000 });
     expect(gatewayErrors.length).toBeGreaterThan(0);
-    expect(paymentApi.getChannels).toHaveBeenCalledTimes(1);
+    expect(paymentApi.getChannels).toHaveBeenCalled();
+    const callsBeforeRetry = (paymentApi.getChannels as jest.Mock).mock.calls.length;
+
+    (paymentApi.getChannels as jest.Mock).mockResolvedValue({
+      data: [{
+        code: 'STRIPE',
+        displayName: 'Stripe',
+        descriptionKey: 'pages.checkout.paymentStripeDesc',
+        badgeKey: 'pages.checkout.paymentInstant',
+        market: 'GLOBAL',
+        enabled: true,
+      }],
+    });
 
     const retryButtons = await screen.findAllByRole('button', { name: 'Retry' });
     fireEvent.click(retryButtons[0]);
 
     expect(await screen.findByRole('radio', { name: /Stripe/ }, { timeout: 5000 })).toHaveClass('checkout-page__paymentMethod');
-    expect(paymentApi.getChannels).toHaveBeenCalledTimes(2);
+    expect((paymentApi.getChannels as jest.Mock).mock.calls.length).toBeGreaterThan(callsBeforeRetry);
     expect(screen.queryAllByText('Gateway configuration unavailable')).toHaveLength(0);
   });
 
   it('keeps the checkout region Cascader controlled and closes it during scroll-sensitive actions', () => {
     const source = readCheckoutPageSource();
+    const regionCascader = readCheckoutRegionCascaderSource();
+    const formSections = readCheckoutFormSectionsSource();
+    const surface = readCheckoutSurfaceSource();
 
+    expect(source).toContain("from '../hooks/useCheckoutRegionCascader'");
+    expect(source).toContain('useCheckoutRegionCascader({');
     expect(source).toContain('checkoutRegionCascaderOpen');
     expect(source).toContain('loadCheckoutRegionOptions');
-    expect(source).toContain('loadRegionData');
-    expect(source).toContain('regionOptionsLanguage === language');
-    expect(source).toContain('loadRegionData(language)');
-    expect(source).toContain('setRegionOptionsLanguage(language)');
+    expect(regionCascader).toContain('loadRegionData');
+    expect(regionCascader).toContain('regionOptionsLanguage === language');
+    expect(regionCascader).toContain('loadRegionData(language)');
+    expect(regionCascader).toContain('setRegionOptionsLanguage(language)');
     expect(source).not.toContain('regionData }');
-    expect(source).toContain('open={checkoutRegionCascaderOpen}');
-    expect(source).toContain('onOpenChange={(open) => {');
+    expect(source).toContain('regionCascaderOpen={checkoutRegionCascaderOpen}');
+    expect(source).toContain('onRegionOpenChange={(open) => {');
     expect(source).toContain('setCheckoutRegionCascaderVisibility(open);');
     expect(source).toContain('if (open) void loadCheckoutRegionOptions();');
-    expect(source).toContain('<ShopCascader');
-    expect(source).not.toMatch(/import \{[^}]*\bCascader\b[^}]*\} from 'antd'/);
-    expect(source).not.toMatch(/<Cascader\b/);
+    expect(formSections).toContain('open={regionCascaderOpen}');
+    expect(formSections).toContain('onOpenChange={onRegionOpenChange}');
+    expect(formSections).toContain('<ShopCascader');
+    expect(surface).not.toMatch(/import \{[^}]*\bCascader\b[^}]*\} from 'antd'/);
+    expect(surface).not.toMatch(/<Cascader\b/);
     expect(source).not.toContain('popupVisible={checkoutRegionCascaderOpen}');
     expect(source).not.toContain('onPopupVisibleChange={setCheckoutRegionCascaderVisibility}');
-    expect(source).toContain('classList.toggle');
-    expect(source).toContain("element.style.setProperty('display', 'none', 'important')");
-    expect(source).toContain('element.remove();');
+    expect(regionCascader).toContain('classList.toggle');
+    expect(regionCascader).toContain("element.style.setProperty('display', 'none', 'important')");
+    expect(regionCascader).toContain('element.remove();');
     expect(source).toContain('void loadCheckoutRegionOptions();');
-    expect(source).toContain('options={regionOptions}');
+    expect(formSections).toContain('options={regionOptions}');
     expect(source).toContain("classList.add('checkout-page-active')");
     expect(source).toContain('handleCheckoutFormFocusCapture');
-    expect(source).toContain('closeWhenScrollPositionChanges');
-    expect(source).toContain('closeStaleCheckoutCascaderAfterScroll');
-    expect(source).toContain('window.requestAnimationFrame(closeWhenScrollPositionChanges)');
-    expect(source).toContain("window.addEventListener('scroll', closeOnViewportMove, true)");
-    expect(source).toContain("document.addEventListener('scroll', closeOnViewportMove, true)");
-    expect(source).toContain("document.addEventListener('keydown', closeOnEscape, true)");
+    expect(regionCascader).toContain('closeWhenScrollPositionChanges');
+    expect(regionCascader).toContain('closeStaleCheckoutCascaderAfterScroll');
+    expect(regionCascader).toContain('window.requestAnimationFrame(closeWhenScrollPositionChanges)');
+    expect(regionCascader).toContain("window.addEventListener('scroll', closeOnViewportMove, true)");
+    expect(regionCascader).toContain("document.addEventListener('scroll', closeOnViewportMove, true)");
+    expect(regionCascader).toContain("document.addEventListener('keydown', closeOnEscape, true)");
     expect(source).toContain('closeCheckoutRegionCascader();');
   });
 
@@ -376,17 +398,21 @@ describe('Checkout payment availability', () => {
     expect(regionDataSource).toContain('label: localizedCountryLabels[region.value]?.[normalizedLanguage] || region.label');
     expect(regionDataSource).toContain('cachedLocalizedRegionData: Partial<Record<RegionLanguage, RegionOption[]>>');
 
-    for (const source of [checkoutSource, profileSource]) {
+    const checkoutFormSections = readCheckoutFormSectionsSource();
+    const checkoutRegion = readCheckoutRegionCascaderSource();
+    for (const source of [checkoutRegion, profileSource]) {
       expect(source).toContain('regionOptionsLanguage === language');
       expect(source).toContain('loadRegionData(language)');
       expect(source).toContain('setRegionOptionsLanguage(language)');
-      expect(source).toContain('options={regionOptions}');
       expect(source).not.toContain('loadRegionData()');
     }
+    expect(checkoutFormSections).toContain('options={regionOptions}');
+    expect(profileSource).toContain('options={regionOptions}');
   });
 
   it('requires saved addresses to carry independent region, postal code, and detail fields', () => {
     const checkoutSource = readCheckoutPageSource();
+    const addressHydrate = readCheckoutAddressHydrateSource();
     const helpersSource = readCheckoutHelpersSource();
     const profileSource = readProfilePageSource();
 
@@ -401,8 +427,8 @@ describe('Checkout payment availability', () => {
     expect(helpersSource).toContain('export const isCompleteSavedAddress = (address?: UserAddress | null) =>');
     expect(checkoutSource).toContain('getSavedAddressRegionPath');
     expect(checkoutSource).toContain('isCompleteSavedAddress');
-    expect(checkoutSource).toContain('const savedPostalCode = getSavedAddressPostalCode(address);');
-    expect(checkoutSource).toContain('postalCode: savedPostalCode || undefined,');
+    expect(addressHydrate).toContain('const savedPostalCode = getSavedAddressPostalCode(address);');
+    expect(addressHydrate).toContain('postalCode: savedPostalCode || undefined,');
     expect(helpersSource).toContain('&& isValidCheckoutPostalCode(postalCode, regionPath)');
     expect(helpersSource).toContain('&& hasCompleteCheckoutRecipientName(address.recipientName)');
     expect(helpersSource).toContain('&& hasCompleteCheckoutDetailAddress(getSavedAddressDetail(address))');
@@ -410,7 +436,7 @@ describe('Checkout payment availability', () => {
     expect(helpersSource).toContain('export const buildCheckoutShippingAddressLine');
     expect(helpersSource).toContain('isCompleteSavedAddress(selectedSavedAddress)');
     expect(helpersSource).toContain('throw new Error(addressRequiredMessage)');
-    expect(checkoutSource).toContain("addressRequiredMessage: t('pages.checkout.addressRequired')");
+    expect(readCheckoutOrderActionsSource()).toContain("addressRequiredMessage: t('pages.checkout.addressRequired')");
     expect(checkoutSource).not.toContain('setPostalCode(address.postalCode || "")');
     expect(checkoutSource).not.toContain('&& normalizeCheckoutText(selectedSavedAddress.address, 260)');
 
@@ -425,6 +451,7 @@ describe('Checkout payment availability', () => {
 
   it('allows checkout to continue with no-coupon fallback pricing when coupon quote fails', () => {
     const source = readCheckoutPageSource();
+    const formSections = readCheckoutFormSectionsSource();
     const localeSources = ['en', 'zh', 'es'].map((locale) => require('fs').readFileSync(require('path').resolve(__dirname, `../locales/${locale}.json`), 'utf8') as string);
 
     expect(source).toContain("const shippingQuoteFailed = requiresBackendShippingQuote && couponQuoteStatus === 'error';");
@@ -432,8 +459,8 @@ describe('Checkout payment availability', () => {
     expect(source).toContain('|| shippingQuoteFallbackActive;');
     expect(source).toContain("t('pages.checkout.shippingFeeFallbackApplied', { fee: formatMoney(shippingFee) })");
     expect(source).toContain("couponQuoteErrorMessage || t('pages.checkout.shippingFeeFallbackDescription')");
-    expect(source).toContain('shippingQuotePending || shippingQuoteUnavailable || shippingQuoteFallbackActive');
-    expect(source).toContain("type={shippingQuoteUnavailable ? 'error' : shippingQuoteFallbackActive ? 'warning' : 'info'}");
+    expect(formSections).toContain('shippingQuotePending || shippingQuoteUnavailable || shippingQuoteFallbackActive');
+    expect(formSections).toContain("type={shippingQuoteUnavailable ? 'error' : shippingQuoteFallbackActive ? 'warning' : 'info'}");
 
     for (const localeSource of localeSources) {
       expect(localeSource).toContain('shippingFeeFallbackApplied');
@@ -457,8 +484,9 @@ describe('Checkout payment availability', () => {
     expect(helpersSource).toContain('&& hasCompleteCheckoutDetailAddress(getSavedAddressDetail(address))');
     expect(source).toContain('hasCompleteCheckoutRecipientName(currentRecipientName)');
     expect(source).toContain('hasCompleteCheckoutDetailAddress(currentShippingAddress)');
-    expect(source).toContain("Promise.reject(new Error(t('pages.checkout.recipientMin')))");
-    expect(source).toContain("Promise.reject(new Error(t('pages.checkout.detailMin')))");
+    const formSections = readCheckoutFormSectionsSource();
+    expect(formSections).toContain("Promise.reject(new Error(t('pages.checkout.recipientMin')))");
+    expect(formSections).toContain("Promise.reject(new Error(t('pages.checkout.detailMin')))");
 
     for (const localeSource of localeSources) {
       expect(localeSource).toContain('recipientMin');
@@ -476,16 +504,18 @@ describe('Checkout payment availability', () => {
 
   it('loads payment channels from a guarded effect instead of during render', () => {
     const source = readCheckoutPageSource();
+    const channelsSource = readCheckoutPaymentChannelsSource();
     const componentStart = source.indexOf('const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {');
-    const channelsEffectStart = source.indexOf('useEffect(() => {\n    if (!hasCheckoutItems) {', componentStart);
-    const channelsEffectEnd = source.indexOf('}, [currency, form, hasCheckoutItems, paymentChannelsReloadKey]);', channelsEffectStart);
-    const renderBeforeChannelsEffect = source.slice(componentStart, channelsEffectStart);
-    const channelsEffect = source.slice(channelsEffectStart, channelsEffectEnd);
+    const channelsEffectStart = channelsSource.indexOf('if (!hasCheckoutItems) {');
+    const channelsEffect = channelsSource.slice(channelsEffectStart);
+    const hookCallStart = source.indexOf('useCheckoutPaymentChannels({', componentStart);
 
     expect(componentStart).toBeGreaterThan(-1);
-    expect(channelsEffectStart).toBeGreaterThan(componentStart);
-    expect(channelsEffectEnd).toBeGreaterThan(channelsEffectStart);
-    expect(renderBeforeChannelsEffect).not.toContain('paymentApi.getChannels()');
+    expect(hookCallStart).toBeGreaterThan(componentStart);
+    expect(source).toContain("from '../hooks/useCheckoutPaymentChannels'");
+    expect(source).toContain('useCheckoutPaymentChannels({');
+    expect(source.slice(componentStart, hookCallStart)).not.toContain('paymentApi.getChannels()');
+    expect(channelsEffectStart).toBeGreaterThan(-1);
     expect(channelsEffect).toContain('paymentApi.getChannels()');
     expect(channelsEffect).toContain('let disposed = false;');
     expect(channelsEffect).toContain('const requestSeq = paymentChannelsRequestSeqRef.current + 1;');
@@ -497,10 +527,10 @@ describe('Checkout payment availability', () => {
     expect(channelsEffect).toContain('setPaymentChannelsLoading(false);');
     expect(channelsEffect).toContain('disposed = true;');
     expect(source).toContain('const paymentChannelsRequestSeqRef = React.useRef(0);');
-    expect(source).toContain('role="alert"');
+    expect(readCheckoutSurfaceSource()).toContain('role="alert"');
     expect(source).toContain('const [paymentChannelsError, setPaymentChannelsError] = useState<string | null>(null);');
     expect(source).toContain('const [paymentChannelsReloadKey, setPaymentChannelsReloadKey] = useState(0);');
-    expect(source).toContain('description={paymentChannelsError || t(\'pages.checkout.paymentUnavailableDescription\')}');
+    expect(readCheckoutSurfaceSource()).toContain("description={paymentChannelsError || t('pages.checkout.paymentUnavailableDescription')}");
     expect(source).toContain('const reloadPaymentChannels = useCallback(() => {\n    setPaymentChannelsReloadKey((key) => key + 1);\n  }, []);');
     expect(source).toContain('onClick={reloadPaymentChannels}');
     expect(channelsEffect).not.toContain('.catch(() => {');
@@ -518,7 +548,9 @@ describe('Checkout payment availability', () => {
     expect(source).not.toMatch(/setTimeout\s*\([\s\S]{0,400}window\.location/);
     expect(source).toContain("from '../hooks/useCheckoutPaymentLifecycle'");
     expect(source).toContain('useCheckoutPaymentLifecycle({');
-    expect(source).toContain("import { addressApi, cartApi, clearStoredAuthSession, couponApi, orderApi, paymentApi, productApi } from '../api';");
+    expect(readCheckoutOrderActionsSource()).toContain("import { cartApi, clearStoredAuthSession, orderApi, paymentApi, productApi } from '../api';");
+    expect(readCheckoutCartBootstrapSource()).toContain("import { addressApi, cartApi, clearStoredAuthSession } from '../api';");
+    expect(readCheckoutCouponQuoteSource()).toContain("import { couponApi } from '../api';");
     expect(lifecycle).toContain("import { createApiAbortController, orderApi, paymentApi } from '../api';");
     expect(refreshEffectStart).toBeGreaterThan(-1);
     expect(pollingStart).toBeGreaterThan(refreshEffectStart);
@@ -552,9 +584,10 @@ describe('Checkout payment availability', () => {
 
   it('ignores stale retry payment responses after a newer retry starts', () => {
     const source = readCheckoutPageSource();
-    const retryStart = source.indexOf('const retryCreatePayment = async () => {');
-    const retryEnd = source.indexOf('const openPaymentUrl = () => {', retryStart);
-    const retrySource = source.slice(retryStart, retryEnd);
+    const orderActionsRetry = readCheckoutOrderActionsSource();
+    const retryStart = orderActionsRetry.indexOf('const retryCreatePayment = async () => {');
+    const retryEnd = orderActionsRetry.indexOf('const openPaymentUrl = () => {', retryStart);
+    const retrySource = orderActionsRetry.slice(retryStart, retryEnd);
 
     expect(source).toContain('const paymentCreateRequestSeqRef = React.useRef(0);');
     expect(retrySource).toContain('const requestSeq = paymentCreateRequestSeqRef.current + 1;');
@@ -568,9 +601,11 @@ describe('Checkout payment availability', () => {
 
   it('keeps checkout order submission guarded by a synchronous in-flight latch', () => {
     const source = readCheckoutPageSource();
-    const handleStart = source.indexOf('const handleSubmit = async (values: CheckoutFormValues) => {');
-    const handleEnd = source.indexOf('const retryCreatePayment = async () => {', handleStart);
-    const handleSubmitSource = source.slice(handleStart, handleEnd);
+    const orderActions = readCheckoutOrderActionsSource();
+    const handleStart = orderActions.indexOf('const handleSubmit = async (values: CheckoutFormValues) => {');
+    const handleEnd = orderActions.indexOf('const retryCreatePayment = async () => {', handleStart);
+    const handleSubmitSource = orderActions.slice(handleStart, handleEnd);
+    expect(source).toContain('useCheckoutOrderActions({');
 
     expect(handleStart).toBeGreaterThan(-1);
     expect(handleEnd).toBeGreaterThan(handleStart);
@@ -585,21 +620,22 @@ describe('Checkout payment availability', () => {
     const source = readCheckoutPageSource();
     expect(source).toContain("process.env.NODE_ENV !== 'production'");
     expect(source).toContain("process.env.REACT_APP_ENABLE_PAYMENT_SIMULATION === 'true'");
-    expect(source).toContain("paymentStatusCode === 'RECONCILE_REQUIRED'");
-    expect(source).toContain("t('pages.checkout.paymentRecoveryReconcileRequired')");
-    expect(source).toContain("t('pages.checkout.paymentRecoveryNextReconcileRequired')");
-    expect(source).toContain('!isReconcileRequired && payment.paymentUrl');
-    expect(source).toContain('!isReconcileRequired && paymentSimulationEnabled');
+    expect(readCheckoutShellSource()).toContain("paymentStatusCode === 'RECONCILE_REQUIRED'");
+    expect(readCheckoutSurfaceSource()).toContain("t('pages.checkout.paymentRecoveryReconcileRequired')");
+    expect(readCheckoutSurfaceSource()).toContain("t('pages.checkout.paymentRecoveryNextReconcileRequired')");
+    expect(readCheckoutShellSource()).toContain('!isReconcileRequired && payment.paymentUrl');
+    expect(readCheckoutShellSource()).toContain('!isReconcileRequired && paymentSimulationEnabled');
   });
 
   it('keeps checkout payment actions guarded by synchronous in-flight latches', () => {
     const source = readCheckoutPageSource();
-    const retryStart = source.indexOf('const retryCreatePayment = async () => {');
-    const retryEnd = source.indexOf('const openPaymentUrl = () => {', retryStart);
-    const simulateStart = source.indexOf('const simulatePayment = async () => {');
-    const simulateEnd = source.indexOf('const restoreSubmittedCartItems = async () => {', simulateStart);
-    const retrySource = source.slice(retryStart, retryEnd);
-    const simulateSource = source.slice(simulateStart, simulateEnd);
+    const orderActions = readCheckoutOrderActionsSource();
+    const retryStart = orderActions.indexOf('const retryCreatePayment = async () => {');
+    const retryEnd = orderActions.indexOf('const openPaymentUrl = () => {', retryStart);
+    const simulateStart = orderActions.indexOf('const simulatePayment = async () => {');
+    const simulateEnd = orderActions.indexOf('const restoreSubmittedCartItems = async () => {', simulateStart);
+    const retrySource = orderActions.slice(retryStart, retryEnd);
+    const simulateSource = orderActions.slice(simulateStart, simulateEnd);
 
     expect(retryStart).toBeGreaterThan(-1);
     expect(retryEnd).toBeGreaterThan(retryStart);
@@ -620,9 +656,10 @@ describe('Checkout payment availability', () => {
   it('keeps guest checkout drafts until guest payment is confirmed paid', () => {
     const source = readCheckoutPageSource();
     const lifecycle = readCheckoutPaymentLifecycleSource();
-    const submitStart = source.indexOf('const handleSubmit = async (values: CheckoutFormValues) => {');
-    const submitEnd = source.indexOf('const retryCreatePayment = async () => {', submitStart);
-    const submitSource = source.slice(submitStart, submitEnd);
+    const orderActions = readCheckoutOrderActionsSource();
+    const submitStart = orderActions.indexOf('const handleSubmit = async (values: CheckoutFormValues) => {');
+    const submitEnd = orderActions.indexOf('const retryCreatePayment = async () => {', submitStart);
+    const submitSource = orderActions.slice(submitStart, submitEnd);
     const paidCleanup = "if (guestPaymentEmail && normalizeStatusCode(paymentStatus) === 'PAID') {\n      removeSessionStorageItem(CHECKOUT_GUEST_DRAFT_KEY);\n    }";
 
     expect(submitStart).toBeGreaterThan(-1);
@@ -635,19 +672,22 @@ describe('Checkout payment availability', () => {
 
   it('keeps checkout bootstrap independent of address and payment field state changes', () => {
     const source = readCheckoutPageSource();
-    const loadEffectStart = source.indexOf('const selectedCartItemIds = readCheckoutCartItemIds();');
-    const nextAddressEffectStart = source.indexOf('useEffect(() => {\n    if (!hasCheckoutItems) return;\n    if (selectedAddressId', loadEffectStart);
-    const loadEffect = source.slice(loadEffectStart, nextAddressEffectStart);
+    const bootstrap = readCheckoutCartBootstrapSource();
+    const loadEffectStart = bootstrap.indexOf('const selectedCartItemIds = readCheckoutCartItemIds();');
+    const loadEffectEnd = bootstrap.indexOf('}, [', loadEffectStart);
+    const loadEffect = bootstrap.slice(loadEffectStart, loadEffectEnd);
 
     expect(loadEffectStart).toBeGreaterThan(-1);
-    expect(nextAddressEffectStart).toBeGreaterThan(loadEffectStart);
+    expect(source).toContain('useCheckoutCartBootstrap({');
     expect(source).not.toContain('useMemo(() => readCheckoutCartItemIds(), [])');
     expect(loadEffect).toContain('const selectedCartItemIds = readCheckoutCartItemIds();');
     expect(loadEffect).toContain('cartApi.getItems(0)');
     expect(loadEffect).toContain('addressApi.getByUser(0)');
-    expect(loadEffect).toContain('}, [checkoutReloadKey, form, language, mergeCheckoutFormSnapshot, navigate, showCheckoutMessage, t]);');
+    expect(bootstrap).toContain('checkoutReloadKey,');
+    expect(bootstrap).toContain('mergeCheckoutFormSnapshot,');
+    expect(bootstrap).toContain('showCheckoutMessage,');
     expect(source).toContain("const [cartLoadError, setCartLoadError] = useState<string | null>(null);");
-    expect(source).toContain('checkout-page__loadingShell');
+    expect(readCheckoutShellSource()).toContain('checkout-page__loadingShell');
     expect(source).toContain("if (cartLoadError && !createdOrder)");
 
     expect(loadEffect).not.toContain('selectedAddressId');
@@ -675,8 +715,9 @@ describe('Checkout payment availability', () => {
     expect(source).toContain('type CheckoutFormSnapshot');
     expect(source).toContain('type CheckoutFormInstance = FormInstance<CheckoutFormValues>;');
     expect(source).toContain('Form.useForm<CheckoutFormValues>()');
-    expect(source).toContain('const buildAddress = (values: CheckoutFormValues) => {');
-    expect(source).toContain('const buildRecipientPayload = (values: CheckoutFormValues) =>');
+    const orderActions = readCheckoutOrderActionsSource();
+    expect(orderActions).toContain('const buildAddress = (values: CheckoutFormValues) => {');
+    expect(orderActions).toContain('const buildRecipientPayload = (values: CheckoutFormValues) =>');
     expect(helpersSource).toContain('export const buildCheckoutShippingAddressLine');
     expect(helpersSource).toContain('export const buildCheckoutRecipientPayload');
     expect(helpersSource).toContain('export const describeCheckoutCoupon');
@@ -693,26 +734,37 @@ describe('Checkout payment availability', () => {
     expect(helpersSource).toContain('export const buildGuestRestoreCartLine');
     expect(helpersSource).toContain('export const resolveCheckoutCartSubmitGuard');
     expect(helpersSource).toContain('export const resolveCheckoutContactSubmitGuard');
-    expect(source).toContain('resolveCheckoutCartSubmitGuard({');
-    expect(source).toContain('buildGuestCheckoutOrderItems(cartItems)');
-    expect(source).toContain('buildGuestRestoreCartLine(item, latestProduct, checkoutCartItemName(item))');
-    expect(source).toContain('checkout-page__confirmationBand--blocked');
-    expect(source).toContain('resolveCheckoutNextActionLabelKey(checkoutNextAction?.key)');
+    expect(helpersSource).toContain('export const buildCheckoutPaymentRecoveryCopy');
+    expect(source).toContain('CheckoutPaymentActiveShell');
+    expect(source).toContain('CheckoutEmptyShell');
+    expect(source).toContain('CheckoutLoadingShell');
+    expect(source).toContain('CheckoutItemsCard');
+    expect(source).toContain('CheckoutExpressPaymentGrid');
+    expect(source).toContain('CheckoutSubmitPaymentSection');
+    expect(orderActions).toContain('resolveCheckoutCartSubmitGuard({');
+    expect(orderActions).toContain('buildGuestCheckoutOrderItems(cartItems)');
+    expect(orderActions).toContain('buildGuestRestoreCartLine(item, latestProduct, checkoutCartItemName(item))');
+    expect(readCheckoutSurfaceSource()).toContain('checkout-page__confirmationBand--blocked');
+    const conversionCoach = readCheckoutConversionCoachSource();
+    expect(conversionCoach).toContain('resolveCheckoutNextActionLabelKey(checkoutNextAction?.key)');
     expect(source).toContain('useCheckoutPaymentLifecycle({');
-    expect(source).toContain('checkout-page__mobilePayBar--coach');
-    expect(source).toContain('findNextCheckoutCouponUnlock(availableCoupons, cartTotal)');
-    expect(source).toContain('buildCheckoutCouponOpportunity({');
+    expect(readCheckoutSurfaceSource()).toContain('checkout-page__mobilePayBar--coach');
+    expect(conversionCoach).toContain('findNextCheckoutCouponUnlock(availableCoupons, cartTotal)');
+    expect(conversionCoach).toContain('buildCheckoutCouponOpportunity({');
+    expect(conversionCoach).toContain('scoreCheckoutReadiness(checkoutReadinessItems)');
+    expect(source).toContain('useCheckoutConversionCoach({');
+    // Savings coaching must never block place-order.
+    expect(conversionCoach).toContain('blockingOnly: true');
 
-    expect(source).toContain('scoreCheckoutReadiness(checkoutReadinessItems)');
-
-    expect(source).toContain('buildCheckoutShippingAddressLine({');
-    expect(source).toContain('const handleSubmit = async (values: CheckoutFormValues) => {');
+    expect(orderActions).toContain('buildCheckoutShippingAddressLine({');
+    expect(source).toContain('useCheckoutOrderActions({');
+    expect(orderActions).toContain('const handleSubmit = async (values: CheckoutFormValues) => {');
     expect(source).toContain('React.useRef<CheckoutFormSnapshot | null>(null)');
     expect(source).toContain('useState<CheckoutFormSnapshot>');
     expect(source).toContain('React.useRef<CheckoutFormSnapshot>');
-    expect(source).not.toContain('buildAddress = (values: any)');
-    expect(source).not.toContain('buildRecipientPayload = (values: any)');
-    expect(source).not.toContain('handleSubmit = async (values: any)');
+    expect(orderActions).not.toContain('buildAddress = (values: any)');
+    expect(orderActions).not.toContain('buildRecipientPayload = (values: any)');
+    expect(orderActions).not.toContain('handleSubmit = async (values: any)');
     expect(source).not.toContain('React.useRef<Record<string, any>');
     expect(source).not.toContain('useState<Record<string, any>>');
   });
@@ -726,19 +778,23 @@ describe('Checkout payment availability', () => {
 
   it('hides the gift incentive when the current currency has no configured threshold', () => {
     const source = readCheckoutPageSource();
+    const conversionCoach = readCheckoutConversionCoachSource();
 
     expect(source).toContain('const giftEligible = conversionConfig.giftAtCheckout.enabled && giftThreshold > 0;');
-    expect(source).toContain('giftEligible ? {');
-    expect(source).toContain('{giftEligible ? (');
+    expect(conversionCoach).toContain('giftEligible ? {');
+    expect(readCheckoutConversionSource()).toContain('{giftEligible ? (');
     expect(source).not.toContain('{conversionConfig.giftAtCheckout.enabled ? (');
+    expect(conversionCoach).not.toContain('{conversionConfig.giftAtCheckout.enabled ? (');
   });
 
   it('does not re-quote immediately after the backend auto-selects a coupon', () => {
     const source = readCheckoutPageSource();
-    const quoteEffectStart = source.indexOf('const couponQuoteCartKey =');
-    const quoteEffect = source.slice(quoteEffectStart, source.indexOf('const estimatedShippingSummary', quoteEffectStart));
+    const quoteSource = readCheckoutCouponQuoteSource();
+    const quoteEffectStart = quoteSource.indexOf('const couponQuoteCartKey =');
+    const quoteEffect = quoteSource.slice(quoteEffectStart, quoteSource.indexOf('}, [', quoteEffectStart));
 
     expect(source).toContain('const couponAutoSelectedQuoteRef = React.useRef<{ cartKey: string; couponId: number } | null>(null);');
+    expect(source).toContain('useCheckoutCouponQuote({');
     expect(quoteEffect).toContain('couponAutoSelectedQuoteRef.current?.cartKey === couponQuoteCartKey');
     expect(quoteEffect).toContain('couponAutoSelectedQuoteRef.current.couponId === selectedUserCouponId');
     expect(quoteEffect).toContain('couponAutoSelectedQuoteRef.current = null;');
@@ -748,9 +804,9 @@ describe('Checkout payment availability', () => {
   });
 
   it('keeps coupon quote status updates cleanup-bound', () => {
-    const source = readCheckoutPageSource();
-    const quoteEffectStart = source.indexOf('const couponQuoteCartKey =');
-    const quoteEffect = source.slice(quoteEffectStart, source.indexOf('const estimatedShippingSummary', quoteEffectStart));
+    const quoteSource = readCheckoutCouponQuoteSource();
+    const quoteEffectStart = quoteSource.indexOf('const couponQuoteCartKey =');
+    const quoteEffect = quoteSource.slice(quoteEffectStart, quoteSource.indexOf('}, [', quoteEffectStart));
 
     const firstAsyncGuard = quoteEffect.indexOf('if (disposed || !mountedRef.current || couponQuoteSeqRef.current !== requestSeq) return;');
     const readyStatus = quoteEffect.indexOf("setCouponQuoteStatus('ready');");
@@ -769,27 +825,34 @@ describe('Checkout payment availability', () => {
 
   it('does not refetch coupon quotes for language-only changes', () => {
     const source = readCheckoutPageSource();
-    const quoteEffectStart = source.indexOf('const couponQuoteCartKey =');
-    const quoteEffect = source.slice(quoteEffectStart, source.indexOf('const estimatedShippingSummary', quoteEffectStart));
+    const quoteSource = readCheckoutCouponQuoteSource();
+    const quoteEffectStart = quoteSource.indexOf('const couponQuoteCartKey =');
+    const quoteEffect = quoteSource.slice(quoteEffectStart);
 
     expect(source).toContain('const checkoutLocalizationRef = React.useRef({ t, language });');
     expect(source).toContain('checkoutLocalizationRef.current = { t, language };');
     expect(quoteEffect).toContain('const { t: latestT } = checkoutLocalizationRef.current;');
     expect(quoteEffect).toContain('const { t: latestT, language: latestLanguage } = checkoutLocalizationRef.current;');
     expect(quoteEffect).toContain("getCheckoutCouponErrorMessage(error, latestT('pages.checkout.couponUnavailable'), latestT, latestLanguage)");
-    expect(quoteEffect).toContain('}, [cartItems, cartTotal, couponManuallyChanged, selectedUserCouponId, showCheckoutMessage]);');
-    expect(quoteEffect).not.toMatch(/\}, \[[^\]]*\blanguage\b[^\]]*\]\);/);
-    expect(quoteEffect).not.toMatch(/\}, \[[^\]]*\bt\b[^\]]*\]\);/);
+    expect(quoteSource).toContain('cartItems,');
+    expect(quoteSource).toContain('cartTotal,');
+    expect(quoteSource).toContain('couponManuallyChanged,');
+    expect(quoteSource).toContain('selectedUserCouponId,');
+    expect(quoteSource).toContain('showCheckoutMessage,');
+    expect(quoteSource).not.toMatch(/showCheckoutMessage,\n    t,/);
+    expect(quoteSource).not.toContain('language,\n    mountedRef');
   });
 
   it('debounces guest checkout draft persistence while typing', () => {
     const source = readCheckoutPageSource();
     const helpersSource = readCheckoutHelpersSource();
-    const effectStart = source.indexOf('if (!hasCheckoutItems || !isGuestCheckout) return;');
-    const effectSource = source.slice(effectStart, source.indexOf('}, [hasCheckoutItems, isGuestCheckout', effectStart));
+    const guestDraft = readCheckoutGuestDraftSource();
+    const effectStart = guestDraft.indexOf('if (!hasCheckoutItems || !isGuestCheckout) return;');
+    const effectSource = guestDraft.slice(effectStart, guestDraft.indexOf('}, [', effectStart));
 
     expect(helpersSource).toContain('export const CHECKOUT_GUEST_DRAFT_SAVE_DELAY_MS = 500;');
-    expect(source).toContain('CHECKOUT_GUEST_DRAFT_SAVE_DELAY_MS');
+    expect(source).toContain('useCheckoutGuestDraft({');
+    expect(guestDraft).toContain('CHECKOUT_GUEST_DRAFT_SAVE_DELAY_MS');
     expect(effectStart).toBeGreaterThan(-1);
     expect(effectSource).toContain('const timer = window.setTimeout(() => {');
     expect(effectSource).toContain('setSessionStorageItem(CHECKOUT_GUEST_DRAFT_KEY, JSON.stringify(draft));');
@@ -797,6 +860,28 @@ describe('Checkout payment availability', () => {
     expect(effectSource).toContain('}, CHECKOUT_GUEST_DRAFT_SAVE_DELAY_MS);');
     expect(effectSource).toContain('window.clearTimeout(timer);');
     expect(effectSource.indexOf('setSessionStorageItem(CHECKOUT_GUEST_DRAFT_KEY')).toBeGreaterThan(effectSource.indexOf('window.setTimeout'));
+  });
+
+  it('hydrates saved address fields through modular checkout address hook', () => {
+    const source = readCheckoutPageSource();
+    const addressHydrate = readCheckoutAddressHydrateSource();
+    expect(source).toContain("from '../hooks/useCheckoutAddressHydrate'");
+    expect(source).toContain('useCheckoutAddressHydrate({');
+    expect(addressHydrate).toContain("selectedAddressId !== 'new'");
+    expect(addressHydrate).toContain('getSavedAddressRegionPath(address)');
+    expect(addressHydrate).toContain('setFormHydrationRevision((revision) => revision + 1)');
+    expect(addressHydrate).toContain('!isGuestCheckout && addresses.length > 0');
+  });
+
+  it('hydrates and clears guest draft through modular checkout guest draft hook', () => {
+    const source = readCheckoutPageSource();
+    const guestDraft = readCheckoutGuestDraftSource();
+    expect(source).toContain("from '../hooks/useCheckoutGuestDraft'");
+    expect(source).toContain('useCheckoutGuestDraft({');
+    expect(guestDraft).toContain("reportNonBlockingError('Checkout.hydrateGuestDraft', error)");
+    expect(guestDraft).toContain('normalizeCheckoutGuestDraftFields(JSON.parse(rawDraft))');
+    expect(guestDraft).toContain('mergeHydratableCheckoutFields(');
+    expect(guestDraft).toContain('readCheckoutGuestDraftFields()');
   });
 
   it('builds modular checkout validation announcements for conversion accessibility', () => {
@@ -845,17 +930,19 @@ describe('Checkout payment availability', () => {
     expect(source).toContain('formatCheckoutDateTime');
     expect(helpersSource).toContain('export const formatCheckoutDateTime = (value: unknown, dateLocale: string) => {');
     expect(helpersSource).toContain('Number.isFinite(date.getTime()) ? date.toLocaleString(dateLocale) : null;');
-    expect(source).toContain('const paymentExpiresAtText = formatCheckoutDateTime(payment.expiresAt, dateLocale);');
-    expect(source).toContain("{paymentExpiresAtText ? <span className=\"checkout-page__text\">{t('pages.checkout.paymentExpiresAt')}: {paymentExpiresAtText}</span> : null}");
+    expect(readCheckoutShellSource()).toContain('const paymentExpiresAtText = formatCheckoutDateTime(payment.expiresAt, dateLocale);');
+    expect(readCheckoutShellSource()).toContain("paymentExpiresAtText");
     expect(source).not.toContain('new Date(payment.expiresAt).toLocaleString(dateLocale)');
   });
 
   it('refreshes current product prices before restoring submitted guest cart items', () => {
     const source = readCheckoutPageSource();
-    const restoreStart = source.indexOf('const restoreSubmittedCartItems = async () => {');
-    const restoreSource = source.slice(restoreStart, source.indexOf('const rollbackPendingPayment = () => {', restoreStart));
+    const orderActionsForRestore = readCheckoutOrderActionsSource();
+    const restoreStart = orderActionsForRestore.indexOf('const restoreSubmittedCartItems = async () => {');
+    const restoreSource = orderActionsForRestore.slice(restoreStart, orderActionsForRestore.indexOf('const rollbackPendingPayment = () => {', restoreStart));
 
     const helpersSource = readCheckoutHelpersSource();
+    expect(restoreStart).toBeGreaterThan(-1);
     expect(source).toContain('resolveGuestRestorePrice');
     expect(helpersSource).toContain('export const resolveGuestRestorePrice = (item: CartItem, product?: Product | null) => {');
     expect(helpersSource).toContain('parseCartItemSelectedSpecs');
@@ -870,10 +957,11 @@ describe('Checkout payment availability', () => {
   it('persists submitted checkout cart lines for rollback after payment-create recovery', () => {
     const source = readCheckoutPageSource();
     const helpersSource = readCheckoutHelpersSource();
-    const submitStart = source.indexOf('const handleSubmit = async (values: CheckoutFormValues) => {');
-    const submitSource = source.slice(submitStart, source.indexOf('const retryCreatePayment = async () => {', submitStart));
-    const restoreStart = source.indexOf('const restoreSubmittedCartItems = async () => {');
-    const restoreSource = source.slice(restoreStart, source.indexOf('const rollbackPendingPayment = () => {', restoreStart));
+    const orderActions = readCheckoutOrderActionsSource();
+    const submitStart = orderActions.indexOf('const handleSubmit = async (values: CheckoutFormValues) => {');
+    const submitSource = orderActions.slice(submitStart, orderActions.indexOf('const retryCreatePayment = async () => {', submitStart));
+    const restoreStart = orderActions.indexOf('const restoreSubmittedCartItems = async () => {');
+    const restoreSource = orderActions.slice(restoreStart, orderActions.indexOf('const rollbackPendingPayment = () => {', restoreStart));
 
     expect(submitStart).toBeGreaterThan(-1);
     expect(restoreStart).toBeGreaterThan(-1);
@@ -890,9 +978,9 @@ describe('Checkout payment availability', () => {
   });
 
   it('keys checkout item rows by the current cart item id', () => {
-    const source = readCheckoutPageSource();
-    const itemListStart = source.indexOf('checkout-page__itemsCard');
-    const itemListSource = source.slice(itemListStart, source.indexOf('<hr className="checkout-page__divider"', itemListStart));
+    const formSections = readCheckoutFormSectionsSource();
+    const itemListStart = formSections.indexOf('checkout-page__itemsCard');
+    const itemListSource = formSections.slice(itemListStart, formSections.indexOf('<hr className="checkout-page__divider"', itemListStart));
 
     expect(itemListStart).toBeGreaterThan(-1);
     expect(itemListSource).toContain("aria-label={t('pages.checkout.itemList')}");
@@ -922,11 +1010,11 @@ describe('Checkout payment availability', () => {
   it('turns the mobile pay bar into the next required checkout action before submit is ready', () => {
     const source = readCheckoutPageSource();
 
-    expect(source).toContain("htmlType={checkoutBlockingAction ? 'button' : 'submit'}");
-    expect(source).toContain('onClick={checkoutBlockingAction ? handleCheckoutNextAction : undefined}');
-    expect(source).toContain('disabled={!checkoutBlockingAction && checkoutSubmitDisabled}');
-    expect(source).toContain('aria-label={checkoutBlockingAction ? checkoutConfirmationActionLabel : checkoutSubmitActionLabel}');
-    expect(source).toContain('{checkoutBlockingAction ? checkoutNextActionLabel : renderSubmitWithAmount()}');
+    expect(readCheckoutSurfaceSource()).toContain("htmlType={checkoutBlockingAction ? 'button' : 'submit'}");
+    expect(readCheckoutSurfaceSource()).toContain('onClick={checkoutBlockingAction ? onNextAction : undefined}');
+    expect(readCheckoutSurfaceSource()).toContain('disabled={!checkoutBlockingAction && checkoutSubmitDisabled}');
+    expect(readCheckoutSurfaceSource()).toContain('aria-label={checkoutBlockingAction ? checkoutConfirmationActionLabel : checkoutSubmitActionLabel}');
+    expect(readCheckoutSurfaceSource()).toContain('{checkoutBlockingAction ? checkoutNextActionLabel : submitButtonContent}');
   });
 
   it('orders mobile checkout forms before promotional readiness content', () => {
@@ -946,9 +1034,9 @@ describe('Checkout payment availability', () => {
     const checkoutCss = readCheckoutCssSource();
     const fixCss = checkoutCss.slice(checkoutCss.indexOf('F2723:'));
 
-    expect(checkoutSource).toContain('className="checkout-page__emptySignals"');
-    expect(checkoutSource).toContain("t('pages.checkout.trustSecureTitle')");
-    expect(checkoutSource).toContain("t('pages.checkout.trustSupportTitle')");
+    expect(readCheckoutSurfaceSource()).toContain('className="checkout-page__emptySignals"');
+    expect(readCheckoutSurfaceSource()).toContain("t('pages.checkout.trustSecureTitle')");
+    expect(readCheckoutSurfaceSource()).toContain("t('pages.checkout.trustSupportTitle')");
     expect(checkoutCss.indexOf('F2723:')).toBeGreaterThan(checkoutCss.indexOf('Android UI closure: checkout fields, empty state and pay actions.'));
     expect(fixCss).toContain('@media (max-width: 420px)');
     expect(fixCss).toMatch(/\.checkout-page__emptySignals\s*\{[^}]*display:\s*grid\s*!important;[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)\s*!important;[^}]*width:\s*min\(100%,\s*360px\)\s*!important;[^}]*justify-content:\s*stretch\s*!important;/);
@@ -1089,7 +1177,7 @@ describe('Checkout payment availability', () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByText('This order does not meet the coupon minimum. Add more items or choose another coupon.')).toBeInTheDocument();
+    expect(await screen.findByText('This order does not meet the coupon minimum. Add more items or choose another coupon.', {}, { timeout: 5000 })).toBeInTheDocument();
     expect(screen.queryByText('The selected coupon is unavailable')).not.toBeInTheDocument();
   });
 

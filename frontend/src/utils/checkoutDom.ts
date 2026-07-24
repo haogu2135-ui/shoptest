@@ -47,7 +47,8 @@ export const focusFirstCheckoutValidationError = (errorFields?: CheckoutValidati
     if (paymentOption && typeof paymentOption.focus === 'function') {
       try {
         paymentOption.focus({ preventScroll: true });
-      } catch {
+      } catch (error) {
+        void error;
         paymentOption.focus();
       }
     }

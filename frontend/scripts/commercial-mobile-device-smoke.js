@@ -1,4 +1,11 @@
 #!/usr/bin/env node
+
+const logLine = (...parts) => {
+  process.stdout.write(`${parts.map((part) => String(part)).join(' ')}\n`);
+};
+const logError = (...parts) => {
+  process.stderr.write(`${parts.map((part) => String(part)).join(' ')}\n`);
+};
 /**
  * Commercial mobile-device viewport smoke (Playwright).
  * Advances storefront mobile commercial readiness without a physical handset:
@@ -42,8 +49,7 @@ const ROUTES = [
 
 const check = (name, pass, detail = '') => {
   results.push({ name, pass: Boolean(pass), detail: String(detail || '').slice(0, 240) });
-  // eslint-disable-next-line no-console
-  console.log(`${pass ? 'PASS' : 'FAIL'} ${name}${detail ? ` — ${detail}` : ''}`);
+  logLine(`${pass ? 'PASS' : 'FAIL'} ${name}${detail ? ` — ${detail}` : ''}`);
 };
 
 async function readMainText(page) {
@@ -334,21 +340,17 @@ async function main() {
   }
 
   const passed = results.filter((item) => item.pass).length;
-  // eslint-disable-next-line no-console
-  console.log(`\nSUMMARY ${passed}/${results.length} passed @ ${base}`);
-  // eslint-disable-next-line no-console
-  console.log('NOTE real-device APK/WebView install E2E remains required for commercial ship bar.');
+  logLine(`\nSUMMARY ${passed}/${results.length} passed @ ${base}`);
+  logLine('NOTE real-device APK/WebView install E2E remains required for commercial ship bar.');
   if (passed !== results.length) {
     results.filter((item) => !item.pass).forEach((item) => {
-      // eslint-disable-next-line no-console
-      console.error(` - ${item.name}: ${item.detail}`);
+      logError(` - ${item.name}: ${item.detail}`);
     });
     process.exitCode = 1;
   }
 }
 
 main().catch((error) => {
-  // eslint-disable-next-line no-console
-  console.error('MOBILE_DEVICE_SMOKE_CRASH', error);
+  logError('MOBILE_DEVICE_SMOKE_CRASH', error);
   process.exit(2);
 });

@@ -123,8 +123,9 @@
     grid-template-columns: 30px minmax(0, 1fr);
   }
 
+  /* Commercial Spanish buybar tool labels stay >=12px */
   .product-detail-page--es .product-mobile-buybar__tool span {
-    font-size: 9.5px;
+    font-size: 12px;
   }
 
   .product-detail-page--es .product-mobile-buybar__cart,

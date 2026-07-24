@@ -22,7 +22,8 @@ const CookieConsentBanner: React.FC = () => {
   const [visible, setVisible] = useState(() => {
     try {
       return !hasCookieConsent();
-    } catch {
+    } catch (error) {
+      void error;
       return true;
     }
   });

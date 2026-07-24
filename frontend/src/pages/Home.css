@@ -2452,8 +2452,10 @@ body.shop-mobile-app .shop-app-shell .shopee-home .shopee-product__quickActions 
     line-height: 12px;
   }
 
+  /* Commercial Spanish quick-panel labels stay >=12px */
   .shopee-home--es .shopee-mobile-quick-panel__label {
-    font-size: 9.5px;
+    font-size: 12px !important;
+    line-height: 1.15 !important;
   }
 
   .shopee-home--es .pet-trust-strip {
@@ -3771,10 +3773,11 @@ body.shop-mobile-app .shop-app-shell .shopee-home .shopee-product__quickActions 
     font-size: 13px;
   }
 
+  /* Commercial residual quick-panel labels stay >=12px and tappable */
   .shopee-mobile-quick-panel__label {
-    min-height: 22px;
-    font-size: 9.5px;
-    line-height: 11px;
+    min-height: 44px !important;
+    font-size: 12px !important;
+    line-height: 1.15 !important;
   }
 
   .pet-trust-strip {

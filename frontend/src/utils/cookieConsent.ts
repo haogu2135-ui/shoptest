@@ -22,7 +22,8 @@ export const readCookieConsent = (): CookieConsentRecord | null => {
       acceptedAt: String(parsed.acceptedAt),
       essentialOnly: Boolean(parsed.essentialOnly),
     };
-  } catch {
+  } catch (error) {
+    void error;
     return null;
   }
 };

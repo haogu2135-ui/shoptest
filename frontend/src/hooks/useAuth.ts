@@ -207,8 +207,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }): JSX.Element
                 AUTH_SESSION_STORAGE_KEYS.forEach((key) => {
                     try {
                         window.localStorage.removeItem(key);
-                    } catch {
-                        // ignore storage failures during best-effort logout cleanup
+                    } catch (error) {
+                        reportNonBlockingError('useAuth.logoutClearStorage', error);
                     }
                 });
             });

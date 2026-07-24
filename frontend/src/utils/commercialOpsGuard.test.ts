@@ -158,14 +158,52 @@ describe('commercial ops contracts', () => {
   it('keeps checkout submit and guest restore pure guards modularized', () => {
     const helpers = fs.readFileSync(path.join(__dirname, 'checkoutHelpers.ts'), 'utf8');
     const checkout = fs.readFileSync(path.join(__dirname, '..', 'pages', 'Checkout.tsx'), 'utf8');
+    const orderActions = fs.readFileSync(path.join(__dirname, '..', 'hooks', 'useCheckoutOrderActions.ts'), 'utf8');
+    const checkoutSurface = `${checkout}
+${orderActions}`;
     expect(helpers).toContain('export const buildGuestCheckoutOrderItems');
     expect(helpers).toContain('export const buildGuestRestoreCartLine');
     expect(helpers).toContain('export const resolveCheckoutCartSubmitGuard');
     expect(helpers).toContain('export const resolveCheckoutContactSubmitGuard');
-    expect(checkout).toContain('resolveCheckoutCartSubmitGuard({');
-    expect(checkout).toContain('resolveCheckoutContactSubmitGuard({');
-    expect(checkout).toContain('buildGuestCheckoutOrderItems(cartItems)');
-    expect(checkout).toMatch(/paymentMethodDetails\.some\(\s*\(method\)\s*=>\s*method\.value === normalizedPaymentMethod\s*\)/);
+    expect(orderActions).toContain('resolveCheckoutCartSubmitGuard({');
+    expect(orderActions).toContain('resolveCheckoutContactSubmitGuard({');
+    expect(orderActions).toContain('buildGuestCheckoutOrderItems(cartItems)');
+    expect(checkoutSurface).toMatch(/paymentMethodDetails\.some\(\s*\(method\)\s*=>\s*method\.value === normalizedPaymentMethod\s*\)/);
+  });
+
+
+
+  it('keeps checkout form sections modularized outside the page shell', () => {
+    const checkout = fs.readFileSync(path.join(__dirname, '..', 'pages', 'Checkout.tsx'), 'utf8');
+    const formSections = fs.readFileSync(path.join(__dirname, '..', 'components', 'checkout', 'CheckoutFormSections.tsx'), 'utf8');
+    expect(checkout).toContain("from '../components/checkout/CheckoutFormSections'");
+    expect(checkout).toContain('CheckoutItemsCard');
+    expect(checkout).toContain('CheckoutExpressPaymentGrid');
+    expect(checkout).toContain('CheckoutSubmitPaymentSection');
+    expect(formSections).toContain('export const CheckoutItemsCard');
+    expect(formSections).toContain('export const CheckoutExpressPaymentGrid');
+    expect(formSections).toContain('export const CheckoutSubmitPaymentSection');
+    expect(formSections).toContain('checkout-page__mobilePayBar');
+    expect(formSections).toContain('checkout-page__legalNotice');
+    expect(formSections).toContain('data-checkout-payment-unavailable-recovery');
+  });
+
+  it('keeps checkout shell states modularized outside the page form shell', () => {
+    const checkout = fs.readFileSync(path.join(__dirname, '..', 'pages', 'Checkout.tsx'), 'utf8');
+    const shells = fs.readFileSync(path.join(__dirname, '..', 'components', 'checkout', 'CheckoutShellStates.tsx'), 'utf8');
+    const helpers = fs.readFileSync(path.join(__dirname, 'checkoutHelpers.ts'), 'utf8');
+    expect(checkout).toContain("from '../components/checkout/CheckoutShellStates'");
+    expect(checkout).toContain('CheckoutLoadingShell');
+    expect(checkout).toContain('CheckoutEmptyShell');
+    expect(checkout).toContain('CheckoutPaymentActiveShell');
+    expect(checkout).toContain('CheckoutPaymentPendingShell');
+    expect(checkout).toContain('CheckoutCartLoadErrorShell');
+    expect(shells).toContain('export const CheckoutLoadingShell');
+    expect(shells).toContain('export const CheckoutEmptyShell');
+    expect(shells).toContain('data-checkout-empty-actions');
+    expect(shells).toContain('data-checkout-load-recovery');
+    expect(helpers).toContain('export const buildCheckoutPaymentRecoveryCopy');
+    expect(shells).toContain('buildCheckoutPaymentRecoveryCopy');
   });
 
   it('keeps checkout payment lifecycle modularized outside the page shell', () => {

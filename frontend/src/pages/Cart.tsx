@@ -12,6 +12,7 @@ import { usePageTitle } from '../hooks/usePageTitle';
 import { useDocumentMeta } from '../hooks/useDocumentMeta';
 import { useMarket } from '../hooks/useMarket';
 import { useCartQuantitySync } from '../hooks/useCartQuantitySync';
+import { useCartCheckoutSubmit } from '../hooks/useCartCheckoutSubmit';
 import { formatSelectedSpecs } from '../utils/selectedSpecs';
 import { addGuestCartItem, getGuestCartItems, removeGuestCartItem, removeGuestCartItems, updateGuestCartQuantity } from '../utils/guestCart';
 import {
@@ -28,7 +29,7 @@ import { getNearestCartBenefitTarget, isGiftUnlocked } from '../utils/cartBenefi
 import { loadProductViewPreferences } from '../utils/productViewPreferences';
 import { needsOptionSelection } from '../utils/productOptions';
 import { localizeProduct } from '../utils/localizedProduct';
-import { clearCheckoutCartItemIds, hasAuthenticatedCartSession, syncCheckoutCartItemIds } from '../utils/cartSession';
+import { clearCheckoutCartItemIds, hasAuthenticatedCartSession } from '../utils/cartSession';
 import {
   canCartItemCheckout as canCheckout,
   cartImageFallback,
@@ -838,33 +839,17 @@ const Cart: React.FC = () => {
     setSelectedIds((ids) => (checked ? Array.from(new Set([...ids, itemId])) : ids.filter((id) => id !== itemId)));
   };
 
-  const goCheckout = useCallback(async () => {
-    if (hasStaleCartData) {
-      announceAccessibleMessage(t('pages.cart.staleDataWarning'), 'warning');
-      return;
-    }
-    if (checkoutSubmittingRef.current) return;
-    const checkoutItems = selectedItems.filter(canCheckout);
-    if (checkoutItems.length === 0) {
-      announceAccessibleMessage(t('pages.cart.chooseItems'), 'warning');
-      return;
-    }
-    checkoutSubmittingRef.current = true;
-    setCheckoutSubmitting(true);
-    try {
-      await flushPendingQuantityUpdates(checkoutItems);
-      syncCheckoutCartItemIds(checkoutItems);
-      removeSessionStorageItem('checkoutPaymentMethod');
-      navigate('/checkout');
-    } catch (error) {
-      reportNonBlockingError('Cart.goCheckout', error);
-      announceAccessibleMessage(t('pages.cart.checkoutSyncFailed'), 'warning');
-      return;
-    } finally {
-      checkoutSubmittingRef.current = false;
-      if (mountedRef.current) setCheckoutSubmitting(false);
-    }
-  }, [flushPendingQuantityUpdates, hasStaleCartData, navigate, selectedItems, t]);
+  const { goCheckout } = useCartCheckoutSubmit({
+    canCheckout,
+    checkoutSubmittingRef,
+    flushPendingQuantityUpdates,
+    hasStaleCartData,
+    mountedRef,
+    navigate,
+    selectedItems,
+    setCheckoutSubmitting,
+    t,
+  });
 
   const removeSelectedItems = () => {
     if (hasStaleCartData) return;

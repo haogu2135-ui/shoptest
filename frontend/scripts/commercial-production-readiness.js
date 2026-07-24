@@ -1,4 +1,14 @@
 #!/usr/bin/env node
+
+const logLine = (...parts) => {
+  process.stdout.write(`${parts.map((part) => String(part)).join(' ')}\n`);
+};
+const logError = (...parts) => {
+  process.stderr.write(`${parts.map((part) => String(part)).join(' ')}\n`);
+};
+
+const { createRequire } = require('module');
+const requireDependency = createRequire(__filename);
 /**
  * Commercial production readiness probe for ShopMX.
  *
@@ -34,15 +44,13 @@ const results = [];
 
 const check = (name, pass, detail = '') => {
   results.push({ name, pass: Boolean(pass), detail: String(detail || '').slice(0, 280) });
-  // eslint-disable-next-line no-console
-  console.log(`${pass ? 'PASS' : 'FAIL'} ${name}${detail ? ` — ${detail}` : ''}`);
+  logLine(`${pass ? 'PASS' : 'FAIL'} ${name}${detail ? ` — ${detail}` : ''}`);
 };
 
 const soft = (name, pass, detail = '') => {
   // Soft checks never fail the process by themselves; still printed for ops.
   results.push({ name, pass: true, detail: `${pass ? 'ok' : 'soft-fail'}: ${String(detail || '').slice(0, 240)}` });
-  // eslint-disable-next-line no-console
-  console.log(`${pass ? 'PASS' : 'SOFT'} ${name}${detail ? ` — ${detail}` : ''}`);
+  logLine(`${pass ? 'PASS' : 'SOFT'} ${name}${detail ? ` — ${detail}` : ''}`);
 };
 
 function request(urlString, options = {}) {
@@ -251,8 +259,7 @@ async function diagnoseCloudflareOriginGap(publicHome) {
 async function measureProductionCwv() {
   let playwright;
   try {
-    // eslint-disable-next-line global-require, import/no-extraneous-dependencies
-    playwright = require('playwright');
+    playwright = requireDependency('playwright');
   } catch (error) {
     soft(
       'production CWV measurement',
@@ -438,8 +445,7 @@ async function probePublicCdnShipBar() {
     // Soft CWV on real public host when reachable (ship-bar evidence).
     let playwright;
     try {
-      // eslint-disable-next-line global-require, import/no-extraneous-dependencies
-      playwright = require('playwright');
+      playwright = requireDependency('playwright');
     } catch (error) {
       soft('public CDN CWV measurement', false, 'playwright unavailable');
       return;
@@ -509,8 +515,7 @@ async function probeOriginEdgeDual() {
   // Reuse Playwright CWV against origin edge by temporarily mapping host.
   let playwright;
   try {
-    // eslint-disable-next-line global-require, import/no-extraneous-dependencies
-    playwright = require('playwright');
+    playwright = requireDependency('playwright');
   } catch (error) {
     soft('origin edge CWV measurement', false, 'playwright unavailable');
     return;
@@ -952,14 +957,10 @@ async function probeLocalMobileReleaseArtifact() {
 }
 
 async function main() {
-  // eslint-disable-next-line no-console
-  console.log(`Production readiness probe @ ${productionBase}`);
-  // eslint-disable-next-line no-console
-  console.log(`Local UI contract base @ ${localUiBase}`);
-  // eslint-disable-next-line no-console
-  console.log(`requireProduction=${requireProduction}`);
-  // eslint-disable-next-line no-console
-  console.log(`productionHost=${productionHostHeader || '(url-host)'} tlsInsecure=${productionTlsInsecure}`);
+  logLine(`Production readiness probe @ ${productionBase}`);
+  logLine(`Local UI contract base @ ${localUiBase}`);
+  logLine(`requireProduction=${requireProduction}`);
+  logLine(`productionHost=${productionHostHeader || '(url-host)'} tlsInsecure=${productionTlsInsecure}`);
 
   await probeProduction();
   await probePublicCdnShipBar();
@@ -1006,12 +1007,10 @@ async function main() {
 
   const hardFails = results.filter((item) => !item.pass);
   const passed = results.filter((item) => item.pass).length;
-  // eslint-disable-next-line no-console
-  console.log(`\nSUMMARY ${passed}/${results.length} recorded @ production=${productionBase}`);
+  logLine(`\nSUMMARY ${passed}/${results.length} recorded @ production=${productionBase}`);
   if (hardFails.length) {
     hardFails.forEach((item) => {
-      // eslint-disable-next-line no-console
-      console.error(` - ${item.name}: ${item.detail}`);
+      logError(` - ${item.name}: ${item.detail}`);
     });
     process.exitCode = 1;
   } else if (!requireProduction) {
@@ -1023,17 +1022,14 @@ async function main() {
       'real provider webhook traffic',
       'real-device APK/WebView E2E',
     ];
-    // eslint-disable-next-line no-console
-    console.log(`NOTE commercial ship bar still blocked by: ${shipBar.join(' + ')}`);
+    logLine(`NOTE commercial ship bar still blocked by: ${shipBar.join(' + ')}`);
     if (softish.length) {
-      // eslint-disable-next-line no-console
-      console.log(`NOTE soft gaps: ${softish.join(', ')}`);
+      logLine(`NOTE soft gaps: ${softish.join(', ')}`);
     }
   }
 }
 
 main().catch((error) => {
-  // eslint-disable-next-line no-console
-  console.error('PRODUCTION_READINESS_CRASH', error);
+  logError('PRODUCTION_READINESS_CRASH', error);
   process.exit(2);
 });

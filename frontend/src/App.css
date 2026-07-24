@@ -27,6 +27,9 @@
   --shop-z-coupon-action: 8998;
   --shop-z-product-conversion: 8999;
   --shop-z-critical-mobile-nav: 9000;
+  --shop-z-connectivity-banner: 1100;
+  --shop-z-api-error-banner: 1090;
+  --shop-z-shell-toast: 9200;
   --shop-z-support-backdrop: 9798;
   --shop-z-support-panel: 9799;
   --shop-z-support-open-button: 9800;
@@ -1254,7 +1257,7 @@
 .shop-connectivity-banner {
   position: sticky;
   top: 0;
-  z-index: 1100;
+  z-index: var(--shop-z-connectivity-banner);
   display: flex;
   flex-wrap: wrap;
   gap: 6px 12px;
@@ -1309,7 +1312,7 @@ body.shop-mobile-app .shop-connectivity-banner {
 .shop-api-error-banner {
   position: sticky;
   top: 0;
-  z-index: 1090;
+  z-index: var(--shop-z-api-error-banner);
   display: flex;
   align-items: flex-start;
   justify-content: center;
@@ -1448,7 +1451,7 @@ body.shop-mobile-app .shop-api-error-banner {
   position: fixed;
   top: calc(12px + env(safe-area-inset-top, 0px));
   left: 50%;
-  z-index: 9200;
+  z-index: var(--shop-z-shell-toast);
   max-width: min(92vw, 420px);
   padding: 12px 16px;
   border-radius: 12px;

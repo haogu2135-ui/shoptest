@@ -279,11 +279,20 @@ export const mergeHydratableCheckoutFields = (current: CheckoutFormSnapshot, upd
   return next;
 };
 
-export const firstFilledCheckoutText = (...values: unknown[]) =>
-  values.find((value) => normalizeCheckoutText(value, 500)) ?? '';
+export const firstFilledCheckoutText = (...values: unknown[]): string => {
+  for (const value of values) {
+    const normalized = normalizeCheckoutText(value, 500);
+    if (normalized) {
+      return normalized;
+    }
+  }
+  return '';
+};
 
-export const firstCheckoutRegionPath = (...values: unknown[]) =>
-  values.find((value) => Array.isArray(value) && value.length > 0);
+export const firstCheckoutRegionPath = (...values: unknown[]): string[] | undefined => {
+  const matched = values.find((value): value is unknown[] => Array.isArray(value) && value.length > 0);
+  return matched ? matched.map((part) => String(part)) : undefined;
+};
 
 export const normalizeCheckoutIdempotencyKey = (value: unknown) =>
   normalizeCheckoutText(value, 120).replace(/[^a-z0-9._:-]/gi, '').slice(0, 120);

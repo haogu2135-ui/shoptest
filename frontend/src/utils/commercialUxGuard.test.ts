@@ -3,6 +3,14 @@ import path from 'path';
 
 const readFrontend = (...segments: string[]) =>
   fs.readFileSync(path.join(__dirname, '..', ...segments), 'utf8');
+const readCheckoutSurface = () => (
+  [
+    readFrontend('pages', 'Checkout.tsx'),
+    readFrontend('components', 'checkout', 'CheckoutShellStates.tsx'),
+    readFrontend('components', 'checkout', 'CheckoutFormSections.tsx'),
+    readFrontend('components', 'checkout', 'CheckoutConversionSections.tsx'),
+  ].join('\n')
+);
 
 describe('commercial UX contracts', () => {
   it('keeps auth and checkout forms on realtime validation with required marks', () => {
@@ -255,7 +263,7 @@ describe('commercial UX contracts', () => {
     expect(checkout).toContain('focusFirstCheckoutValidationError');
     expect(checkoutDom).toContain('export const focusFirstCheckoutValidationError');
     expect(checkoutDom).toContain("focusFirstFormError({");
-    expect(checkout).toContain("id=\"checkout-contact-card\"");
+    expect(readCheckoutSurface()).toContain("id=\"checkout-contact-card\"");
     expect(login).toContain('scrollFirstLoginErrorIntoView');
     expect(login).toContain('onFinishFailed');
     expect(forgotPassword).toContain('scrollFirstForgotPasswordErrorIntoView');
@@ -452,11 +460,12 @@ describe('commercial UX contracts', () => {
     const coupons = readFrontend('pages', 'CouponCenter.tsx');
     const register = readFrontend('pages', 'Register.tsx');
 
-    expect(checkout).toContain('checkout-page__mobilePayBar');
-    expect(checkout).toContain('role="region"');
-    expect(checkout).toContain('pages.checkout.mobilePayBarTrust');
-    expect(checkout).toContain('data-checkout-payment-unavailable-recovery');
-    expect(checkout).toContain('data-checkout-payment-unavailable');
+    const checkoutSurface = readCheckoutSurface();
+    expect(checkoutSurface).toContain('checkout-page__mobilePayBar');
+    expect(checkoutSurface).toContain('role="region"');
+    expect(checkoutSurface).toContain('pages.checkout.mobilePayBarTrust');
+    expect(checkoutSurface).toContain('data-checkout-payment-unavailable-recovery');
+    expect(checkoutSurface).toContain('data-checkout-payment-unavailable');
     expect(checkout).toContain('paymentUnavailableRecoveryActions');
     expect(checkout).toContain('pages.checkout.paymentUnavailable');
     expect(checkout).toContain("navigate('/products')");
@@ -573,10 +582,10 @@ describe('commercial UX contracts', () => {
     const legalCss = readFrontend('pages', 'LegalPage.css');
     const app = readFrontend('App.tsx');
 
-    expect(checkout).toContain('checkout-page__legalNotice');
-    expect(checkout).toContain('pages.checkout.orderAgreementPrefix');
-    expect(checkout).toContain("to=\"/terms\"");
-    expect(checkout).toContain("to=\"/privacy\"");
+    expect(readCheckoutSurface()).toContain('checkout-page__legalNotice');
+    expect(readCheckoutSurface()).toContain('pages.checkout.orderAgreementPrefix');
+    expect(readCheckoutSurface()).toContain("to=\"/terms\"");
+    expect(readCheckoutSurface()).toContain("to=\"/privacy\"");
     expect(legal).toContain('legal-page');
     expect(legalCss).toContain('Commercial legal page mobile touch targets');
     expect(app).toContain('path="privacy"');
@@ -752,7 +761,7 @@ describe('commercial UX contracts', () => {
     const petGallery = readFrontend('pages', 'PetGallery.tsx');
     const orderTracking = readFrontend('pages', 'OrderTracking.tsx');
     expect(cart).toContain('data-cart-load-recovery');
-    expect(checkout).toContain('data-checkout-load-recovery');
+    expect(readCheckoutSurface()).toContain('data-checkout-load-recovery');
     expect(wishlist).toContain('data-wishlist-load-recovery');
     expect(profile).toContain('data-profile-orders-load-recovery');
     expect(profile).toContain('data-profile-addresses-load-recovery');
@@ -760,7 +769,7 @@ describe('commercial UX contracts', () => {
     expect(stockAlerts).toContain('data-stock-alerts-load-recovery');
     expect(petGallery).toContain('data-pet-gallery-load-recovery');
     expect(orderTracking).toContain('data-order-tracking-lookup-recovery');
-    for (const source of [cart, checkout, wishlist, profile, coupons, stockAlerts, petGallery, orderTracking]) {
+    for (const source of [cart, readCheckoutSurface(), wishlist, profile, coupons, stockAlerts, petGallery, orderTracking]) {
       expect(source).toContain('actions={[');
       expect(source).toContain("shop:open-support");
     }
@@ -769,12 +778,13 @@ describe('commercial UX contracts', () => {
 
   it('keeps checkout empty and payment guest-email gates on multipath commercial recovery exits', () => {
     const checkout = readFrontend('pages', 'Checkout.tsx');
+    const checkoutSurface = readCheckoutSurface();
     const payment = readFrontend('pages', 'PaymentInstructions.tsx');
-    expect(checkout).toContain('data-checkout-empty-actions');
-    expect(checkout).toContain("navigate('/pet-finder')");
-    expect(checkout).toContain("navigate('/coupons')");
-    expect(checkout).toContain("navigate('/history')");
-    expect(checkout).toContain('data-checkout-load-recovery');
+    expect(checkoutSurface).toContain('data-checkout-empty-actions');
+    expect(checkoutSurface).toContain("navigate('/pet-finder')");
+    expect(checkoutSurface).toContain("navigate('/coupons')");
+    expect(checkoutSurface).toContain("navigate('/history')");
+    expect(checkoutSurface).toContain('data-checkout-load-recovery');
     expect(payment).toContain('data-payment-guest-email-gate');
     expect(payment).toContain('data-payment-guest-email-recovery');
     expect(payment).toContain("navigate('/products')");
@@ -906,6 +916,7 @@ it('keeps home empty category and product rails on multipath commercial recovery
   it('keeps storefront payment links on current shopping origin for multi-host conversion', () => {
     const recovery = readFrontend('utils', 'paymentRecovery.ts');
     const checkout = readFrontend('pages', 'Checkout.tsx');
+    const orderActions = readFrontend('hooks', 'useCheckoutOrderActions.ts');
     const paymentInstructions = readFrontend('pages', 'PaymentInstructions.tsx');
     const orderTracking = readFrontend('pages', 'OrderTracking.tsx');
     const profile = readFrontend('pages', 'Profile.tsx');
@@ -914,7 +925,8 @@ it('keeps home empty category and product rails on multipath commercial recovery
     expect(recovery).toContain('isStorefrontPaymentPath');
     expect(recovery).toContain('pet.686888666.xyz');
     expect(recovery).toContain('.trycloudflare.com');
-    expect(checkout).toContain('navigateToCommercialPaymentUrl');
+    expect(orderActions).toContain('navigateToCommercialPaymentUrl');
+    expect(checkout).toContain('useCheckoutOrderActions({');
     expect(paymentInstructions).toContain('navigateToCommercialPaymentUrl');
     expect(orderTracking).toContain('navigateToCommercialPaymentUrl');
     expect(profile).toContain('navigateToCommercialPaymentUrl');
@@ -944,9 +956,9 @@ it('keeps home empty category and product rails on multipath commercial recovery
     expect(cart).toContain("<h1 className=\"cart-page__title\">{t('pages.cart.empty')}</h1>");
     expect(cart).toMatch(/role="status"[\s\S]*?<h1 className="cart-page__title">\{t\('pages\.cart\.title'\)\}<\/h1>/);
     expect(cart).toMatch(/<h1 className="cart-page__title">\{t\('pages\.cart\.title'\)\}<\/h1>[\s\S]*?data-cart-load-recovery="true"/);
-    expect(checkout).toContain("<h1 className=\"checkout-page__title\">{t('pages.checkout.title')}</h1>");
-    expect(checkout).toMatch(/checkout-page--loading[\s\S]*?<h1 className="checkout-page__title">\{t\('pages\.checkout\.title'\)\}<\/h1>/);
-    expect(checkout).toMatch(/<h1 className="checkout-page__title">\{t\('pages\.checkout\.title'\)\}<\/h1>[\s\S]*?data-checkout-load-recovery="true"/);
+    expect(readCheckoutSurface()).toContain("<h1 className=\"checkout-page__title\">{t('pages.checkout.title')}</h1>");
+    expect(readCheckoutSurface()).toMatch(/checkout-page--loading[\s\S]*?<h1 className="checkout-page__title">\{t\('pages\.checkout\.title'\)\}<\/h1>/);
+    expect(readCheckoutSurface()).toMatch(/<h1 className="checkout-page__title">\{t\('pages\.checkout\.title'\)\}<\/h1>[\s\S]*?data-checkout-load-recovery="true"/);
     expect(productDetail).toMatch(/product-title-block[\s\S]*?<h1 className="product-detail-page__title">\{productName\}<\/h1>/);
     expect(tracking).toContain('<h1 className="order-tracking-page__title">');
     expect(coupons).toContain("<h1 className=\"coupon-center-page__title\"><ShopIcon path={SI.gift} /> {t('pages.coupons.opportunityTitle')}</h1>");
@@ -1320,11 +1332,14 @@ it('keeps home empty category and product rails on multipath commercial recovery
   it('hides CN payment rails for MXN checkout and keeps conversion-critical mobile floors', () => {
     const paymentMethods = readFrontend('utils', 'paymentMethods.tsx');
     const checkout = readFrontend('pages', 'Checkout.tsx');
+    const orderActions = readFrontend('hooks', 'useCheckoutOrderActions.ts');
     const checkoutHelpers = readFrontend('utils', 'checkoutHelpers.ts');
     const payment = readFrontend('components', 'Payment.tsx');
     const mobileApp = readFrontend('mobile-app.css');
     const searchBar = readFrontend('components', 'SearchBar.css');
     const pdp = readFrontend('pages', 'ProductDetail.css');
+    const checkoutSurface = `${checkout}
+${orderActions}`;
     expect(paymentMethods).toContain('filterPaymentChannelsForMarket');
     expect(paymentMethods).toContain("currency === 'MXN'");
     expect(paymentMethods).toMatch(/hideForeign && market === 'CN'/);
@@ -1336,7 +1351,7 @@ it('keeps home empty category and product rails on multipath commercial recovery
     expect(checkoutHelpers).toContain('export const resolveCheckoutPaymentMethod');
     expect(checkout).toContain('resolveCheckoutPaymentMethod');
     expect(checkout).toContain('getRecommendedPaymentMethod');
-    expect(checkout).toMatch(/paymentMethodDetails\.some\(\s*\(method\)\s*=>\s*method\.value === normalizedPaymentMethod\s*\)/);
+    expect(checkoutSurface).toMatch(/paymentMethodDetails\.some\(\s*\(method\)\s*=>\s*method\.value === normalizedPaymentMethod\s*\)/);
     expect(payment).toContain('filterPaymentChannelsForMarket');
     expect(payment).toMatch(/getDefaultPaymentMethod\(channels,\s*currency\)/);
     expect(mobileApp).toMatch(/shop-nav__bottomItem span[\s\S]*?font-size:\s*12px/);
@@ -1352,12 +1367,17 @@ it('keeps home empty category and product rails on multipath commercial recovery
     const cartCss = readFrontend('pages', 'Cart.css');
     const supportCss = readFrontend('components', 'CustomerSupportWidget.css');
     const paymentCss = readFrontend('components', 'Payment.css');
+    const homeCss = readFrontend('pages', 'Home.css');
+    const productDetailCss = readFrontend('pages', 'ProductDetail.css');
     expect(market).toContain("const home: CurrencyCode = 'MXN'");
     expect(market).toContain('writeStoredCurrency(home)');
     // residual 9-11px primary floors should be closed on conversion CSS
-    for (const css of [checkoutCss, cartCss, supportCss, paymentCss]) {
-      expect(css).not.toMatch(/font-size:\s*(?:9|10|11)px/);
+    for (const css of [checkoutCss, cartCss, supportCss, paymentCss, homeCss, productDetailCss]) {
+      expect(css).not.toMatch(/font-size:\s*(?:9|10|11)(?:\.\d+)?px/);
     }
+    expect(homeCss).toContain('Commercial residual quick-panel labels stay >=12px and tappable');
+    expect(homeCss).toContain('Commercial Spanish quick-panel labels stay >=12px');
+    expect(productDetailCss).toContain('Commercial Spanish buybar tool labels stay >=12px');
   });
 
 

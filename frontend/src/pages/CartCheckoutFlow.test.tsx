@@ -634,6 +634,7 @@ const clickOpenPopconfirmOk = async () => {
   await flushMicrotasks();
 };
 
+const readCartCheckoutSubmitSource = () => fs.readFileSync(path.resolve(__dirname, '../hooks/useCartCheckoutSubmit.ts'), 'utf8');
 describe('cart to checkout flows', () => {
   jest.setTimeout(60000);
   beforeEach(() => {
@@ -964,20 +965,21 @@ describe('cart to checkout flows', () => {
 
   it('keeps cart checkout submission tied to the latest selected item snapshot', () => {
     const source = fs.readFileSync(path.resolve(__dirname, 'Cart.tsx'), 'utf8');
-    const checkoutStart = source.indexOf('const goCheckout = useCallback(async () => {');
-    const checkoutEnd = source.indexOf('const removeSelectedItems = () => {', checkoutStart);
-    const checkoutSource = source.slice(checkoutStart, checkoutEnd);
+    const checkoutSubmit = readCartCheckoutSubmitSource();
+    const checkoutStart = checkoutSubmit.indexOf('const goCheckout = useCallback(async () => {');
+    const checkoutSource = checkoutSubmit.slice(checkoutStart);
 
     expect(source).toContain('const checkoutSubmittingRef = useRef(false);');
+    expect(source).toContain('useCartCheckoutSubmit({');
     expect(checkoutStart).toBeGreaterThan(-1);
-    expect(checkoutEnd).toBeGreaterThan(checkoutStart);
     expect(source).not.toContain('const goCheckout = async () => {');
     expect(checkoutSource).toContain('if (checkoutSubmittingRef.current) return;');
     expect(checkoutSource).toContain('const checkoutItems = selectedItems.filter(canCheckout);');
     expect(checkoutSource.indexOf('checkoutSubmittingRef.current = true;')).toBeLessThan(checkoutSource.indexOf('setCheckoutSubmitting(true);'));
     expect(checkoutSource.indexOf('setCheckoutSubmitting(true);')).toBeLessThan(checkoutSource.indexOf('await flushPendingQuantityUpdates(checkoutItems);'));
     expect(checkoutSource).toContain('checkoutSubmittingRef.current = false;');
-    expect(checkoutSource).toContain('}, [flushPendingQuantityUpdates, hasStaleCartData, navigate, selectedItems, t]);');
+    expect(checkoutSource).toContain('selectedItems,');
+    expect(checkoutSource).toContain("reportNonBlockingError('Cart.goCheckout', error)");
   });
 
   it('derives the cart hero shipping highlight from the shared shipping summary', () => {
@@ -1276,9 +1278,9 @@ describe('cart to checkout flows', () => {
     const nextActionStart = source.indexOf('const cartNextAction = (() => {');
     const nextActionEnd = source.indexOf('const cartHeroHighlights = [', nextActionStart);
     const nextActionSource = source.slice(nextActionStart, nextActionEnd);
-    const checkoutStart = source.indexOf('const goCheckout = useCallback(async () => {');
-    const checkoutEnd = source.indexOf('const removeSelectedItems = () => {', checkoutStart);
-    const checkoutSource = source.slice(checkoutStart, checkoutEnd);
+    const checkoutSubmit = readCartCheckoutSubmitSource();
+    const checkoutStart = checkoutSubmit.indexOf('const goCheckout = useCallback(async () => {');
+    const checkoutSource = checkoutSubmit.slice(checkoutStart);
     const staleAlertStart = source.indexOf('{hasStaleCartData ? (');
     const staleAlertEnd = source.indexOf('{showRecentlyViewedRecovery ? (', staleAlertStart);
     const staleAlertSource = source.slice(staleAlertStart, staleAlertEnd);
@@ -1292,7 +1294,6 @@ describe('cart to checkout flows', () => {
     expect(nextActionSource).toContain("label: t('messages.retry')");
     expect(nextActionSource).toContain('action: refreshCartItems');
     expect(checkoutStart).toBeGreaterThan(-1);
-    expect(checkoutEnd).toBeGreaterThan(checkoutStart);
     expect(checkoutSource).toContain('if (hasStaleCartData) {');
     expect(checkoutSource).toContain("announceAccessibleMessage(t('pages.cart.staleDataWarning'), 'warning');");
     expect(source).toContain('if (hasStaleCartData) return;\n    const normalizedQuantity = normalizeCartQuantity(item, quantity);');

@@ -1,5 +1,6 @@
 import React, { useId, useRef } from 'react';
 import './ShopUpload.css';
+import { reportNonBlockingError } from '../utils/nonBlockingError';
 
 /** Drop-in stand-in for ant Upload.LIST_IGNORE — skip file-list mutation. */
 export const SHOP_UPLOAD_LIST_IGNORE = false as const;
@@ -63,8 +64,8 @@ const ShopUpload: ShopUploadComponent = ({
       if (beforeUpload) {
         try {
           await beforeUpload(file);
-        } catch {
-          // Handlers report their own errors.
+        } catch (error) {
+          reportNonBlockingError('ShopUpload.beforeUpload', error);
         }
       }
       if (!multiple) break;

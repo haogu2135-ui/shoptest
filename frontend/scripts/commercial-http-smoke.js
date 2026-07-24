@@ -1,4 +1,11 @@
 #!/usr/bin/env node
+
+const logLine = (...parts) => {
+  process.stdout.write(`${parts.map((part) => String(part)).join(' ')}\n`);
+};
+const logError = (...parts) => {
+  process.stderr.write(`${parts.map((part) => String(part)).join(' ')}\n`);
+};
 /**
  * Commercial HTTP smoke for ShopMX storefront + API proxy.
  * Usage: SHOPTEST_UI_BASE=http://127.0.0.1:4187 node scripts/commercial-http-smoke.js
@@ -14,8 +21,7 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const check = (name, pass, detail = '') => {
   results.push({ name, pass: Boolean(pass), detail: String(detail || '').slice(0, 240) });
-  // eslint-disable-next-line no-console
-  console.log(`${pass ? 'PASS' : 'FAIL'} ${name}${detail ? ` — ${detail}` : ''}`);
+  logLine(`${pass ? 'PASS' : 'FAIL'} ${name}${detail ? ` — ${detail}` : ''}`);
 };
 
 async function head(path) {
@@ -689,15 +695,14 @@ async function main() {
   check('sitemap.xml includes product detail', sitemap.status === 200 && /\/products\/\d+/.test(sitemapBody), sitemapBody.slice(0, 240));
 
   const passed = results.filter((r) => r.pass).length;
-  // eslint-disable-next-line no-console
-  console.log(`\nSUMMARY ${passed}/${results.length} passed @ ${base}`);
+  logLine(`\nSUMMARY ${passed}/${results.length} passed @ ${base}`);
   if (passed !== results.length) {
-    results.filter((r) => !r.pass).forEach((r) => console.error(` - ${r.name}: ${r.detail}`));
+    results.filter((r) => !r.pass).forEach((r) => logError(` - ${r.name}: ${r.detail}`));
     process.exitCode = 1;
   }
 }
 
 main().catch((error) => {
-  console.error('SMOKE_CRASH', error);
+  logError('SMOKE_CRASH', error);
   process.exit(2);
 });

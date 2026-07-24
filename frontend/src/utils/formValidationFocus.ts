@@ -61,7 +61,8 @@ export const focusFirstFormError = ({
   if (firstControl && typeof firstControl.focus === 'function') {
     try {
       firstControl.focus({ preventScroll: true });
-    } catch {
+    } catch (error) {
+      void error;
       firstControl.focus();
     }
   }

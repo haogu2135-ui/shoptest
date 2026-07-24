@@ -267,7 +267,6 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       // packRevision intentionally remints `t` after a newly loaded language pack arrives.
       t: (key: string, params?: TranslationParams) => translateForLanguage(language, key, params),
     }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- packRevision forces translator refresh after lazy packs load
     [language, packRevision, setLanguage],
   );
 
