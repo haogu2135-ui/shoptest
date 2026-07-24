@@ -405,6 +405,19 @@
   box-shadow: 0 10px 24px rgba(18, 71, 52, 0.06);
 }
 
+
+.checkout-page__confirmationBand--blocked {
+  border-color: #ffb4a2;
+  background:
+    linear-gradient(90deg, rgba(238, 77, 45, 0.18) 0 4px, transparent 4px),
+    #fff5f0;
+  box-shadow: 0 10px 24px rgba(238, 77, 45, 0.10);
+}
+
+.checkout-page__confirmationBand--blocked .checkout-page__confirmationButton {
+  box-shadow: 0 8px 18px rgba(238, 77, 45, 0.22);
+}
+
 .checkout-page__confirmationBand--ready {
   border-color: #d5e8d8;
   background:
@@ -1299,6 +1312,20 @@
 .checkout-page__paymentConfidence .checkout-page__text {
   display: block;
   line-height: 1.35;
+}
+
+
+.checkout-page__mobilePayBar--coach {
+  border-top-color: #ffd8bf;
+  background: rgba(255, 249, 244, 0.98);
+  box-shadow: 0 -10px 26px rgba(238, 77, 45, 0.12);
+}
+
+.checkout-page__mobilePayBarCoach {
+  color: #c2410c !important;
+  font-weight: 700;
+  font-size: 12px;
+  line-height: 1.25;
 }
 
 .checkout-page__mobilePayBar {

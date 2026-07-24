@@ -497,3 +497,8 @@
 
 
 /* Commercial residual: ProductQuestionManagement ops labels stay >=12px */
+
+
+.product-question-management-page__cellText {
+  margin: 0;
+}

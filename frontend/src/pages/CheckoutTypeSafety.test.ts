@@ -2,13 +2,15 @@ import fs from 'fs';
 import path from 'path';
 
 const source = fs.readFileSync(path.join(__dirname, 'Checkout.tsx'), 'utf8');
+const helpers = fs.readFileSync(path.join(__dirname, '../utils/checkoutHelpers.ts'), 'utf8');
 
 describe('Checkout type-safety guards', () => {
   it('keeps checkout API error handling typed without broad any usage', () => {
-    expect(source).toContain('type CheckoutErrorResponseLike = {');
-    expect(source).toContain('type CheckoutFormValues = {');
-    expect(source).toContain('status?: unknown;');
-    expect(source).toContain('const getCheckoutErrorResponse = (error: unknown)');
+    expect(helpers).toContain('type CheckoutErrorResponseLike = {');
+    expect(helpers).toContain('export type CheckoutFormValues = {');
+    expect(helpers).toContain('status?: unknown;');
+    expect(helpers).toContain('export const getCheckoutErrorResponse = (error: unknown)');
+    expect(source).toContain('type CheckoutFormValues');
     expect(source).toContain("import { getApiErrorMessage, isAuthExpiredError } from '../utils/apiError';");
     expect(source).not.toContain('const isAuthExpiredError = (error: unknown)');
     expect(source).toContain('const [form] = Form.useForm<CheckoutFormValues>();');
@@ -40,4 +42,15 @@ describe('Checkout type-safety guards', () => {
     expect(source).not.toContain('as any');
     expect(source).not.toContain('error?.response');
   });
+
+  it('keeps payment lifecycle hook typed without page-level poll lock wiring', () => {
+    const lifecycle = fs.readFileSync(path.join(__dirname, '../hooks/useCheckoutPaymentLifecycle.ts'), 'utf8');
+    expect(source).toContain("from '../hooks/useCheckoutPaymentLifecycle'");
+    expect(source).toContain('useCheckoutPaymentLifecycle({');
+    expect(lifecycle).toContain('export const useCheckoutPaymentLifecycle');
+    expect(lifecycle).not.toContain('error: any');
+    expect(helpers).toContain('export const resolveCheckoutNextActionLabelKey');
+    expect(helpers).toContain('export const buildCheckoutOrderActionContext');
+  });
+
 });

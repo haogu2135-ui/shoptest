@@ -479,7 +479,7 @@ const AdminDashboard: React.FC = () => {
       title: t('common.amount'),
       dataIndex: 'totalAmount',
       key: 'totalAmount',
-      render: (v: number) => <span className="commerce-money" style={{ color: '#ff5722', fontWeight: 600 }}>{formatMoney(v)}</span>,
+      render: (v: number) => <span className="commerce-money commerce-money--emphasis">{formatMoney(v)}</span>,
     },
     {
       title: t('common.status'),
@@ -710,7 +710,7 @@ const AdminDashboard: React.FC = () => {
       dataIndex: 'revenue',
       key: 'revenue',
       width: 140,
-      render: (value: number) => <span className="commerce-money" style={{ color: '#ff5722', fontWeight: 600 }}>{formatMoney(value)}</span>,
+      render: (value: number) => <span className="commerce-money commerce-money--emphasis">{formatMoney(value)}</span>,
     },
   ];
 

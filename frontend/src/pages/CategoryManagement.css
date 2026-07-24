@@ -636,3 +636,20 @@
     scroll-snap-align: none;
   }
 }
+
+.category-management-metaText {
+  font-size: 12px;
+}
+
+
+.category-management-page__thumb .shop-image__img,
+.category-management-page__thumb .shop-image__placeholder {
+  object-fit: cover;
+  border-radius: 6px;
+}
+
+.category-management-page__preview .shop-image__img,
+.category-management-page__preview .shop-image__placeholder {
+  object-fit: cover;
+  border-radius: 8px;
+}

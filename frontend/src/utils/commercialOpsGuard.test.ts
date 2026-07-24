@@ -94,6 +94,96 @@ describe('commercial ops contracts', () => {
     expect(diagnose).toContain('SHOPTEST_REQUIRE_PRODUCTION=1');
   });
 
+  it('keeps checkout pure helpers modularized for commercial maintainability', () => {
+    const helpers = fs.readFileSync(
+      path.join(__dirname, 'checkoutHelpers.ts'),
+      'utf8',
+    );
+    const checkout = fs.readFileSync(
+      path.join(__dirname, '..', 'pages', 'Checkout.tsx'),
+      'utf8',
+    );
+    expect(helpers).toContain('export const formatCheckoutDateTime');
+    expect(helpers).toContain('export const getCheckoutCouponErrorMessage');
+    expect(helpers).toContain('export const isValidCheckoutPostalCode');
+    expect(helpers).toContain('export const normalizeCheckoutText');
+    expect(helpers).toContain('export const hasCompleteCheckoutRecipientName');
+    expect(helpers).toContain('export const estimateCouponDiscount');
+    expect(helpers).toContain('export const getRecommendedPaymentMethod');
+    expect(helpers).toContain('export const resolveCheckoutPaymentMethod');
+    expect(helpers).toContain('export const toSafeMoney');
+    expect(helpers).toContain('export const normalizeStatusCode');
+    expect(helpers).toContain('export const isCompleteSavedAddress');
+    expect(helpers).toContain('export const isPurchasable');
+    expect(helpers).toContain('export const isFinalCheckoutOrderError');
+    expect(helpers).toContain('export const mergeHydratableCheckoutFields');
+    expect(helpers).toContain('export const resolveGuestRestorePrice');
+    expect(helpers).toContain('export const parseCheckoutPendingOrderSnapshot');
+    expect(helpers).toContain('export const parseCheckoutPaymentPollResult');
+    expect(helpers).toContain('export const PAYMENT_STATUS_LABEL_KEYS');
+    expect(helpers).toContain('export const buildCheckoutValidationAnnouncement');
+    expect(helpers).toContain('export const createCheckoutIdempotencyKey');
+    expect(helpers).toContain('export const readCheckoutPendingOrder');
+    expect(helpers).toContain('export const persistCheckoutPendingOrder');
+    expect(helpers).toContain('export const readCheckoutGuestDraftFields');
+    expect(checkout).toContain('getOrCreateCheckoutIdempotencyKey');
+    expect(checkout).toContain('readCheckoutPendingOrder');
+    expect(checkout).not.toContain('const createCheckoutIdempotencyKey = () => {');
+    expect(checkout).not.toContain('const readCheckoutPendingOrder = () => {');
+    expect(helpers).toContain('export const buildCheckoutFieldErrorMap');
+    expect(helpers).toContain('export const normalizeCheckoutValidationMessage');
+    expect(checkout).toContain('buildCheckoutValidationAnnouncement');
+    expect(checkout).not.toContain('const buildCheckoutValidationAnnouncement = (');
+    expect(checkout).toContain('resolveGuestRestorePrice');
+    expect(checkout).toContain('parseCheckoutPendingOrderSnapshot');
+    expect(checkout).not.toContain('const resolveGuestRestorePrice = (item: CartItem, product');
+    expect(checkout).not.toContain('const parseCheckoutPendingOrderSnapshot = (raw: string | null)');
+    expect(checkout).toContain('isCompleteSavedAddress');
+    expect(checkout).toContain('isPurchasable');
+    expect(checkout).not.toContain('const isCompleteSavedAddress = (address?: UserAddress | null) =>');
+    expect(checkout).not.toContain('const isPurchasable = (item: CartItem) =>');
+    expect(checkout).toContain("from '../utils/checkoutHelpers'");
+    expect(checkout).toContain('formatCheckoutDateTime');
+    expect(checkout).toContain('getCheckoutCouponErrorMessage');
+    expect(checkout).toContain('normalizeCheckoutText');
+    expect(checkout).toContain('estimateCouponDiscount');
+    expect(checkout).toContain('resolveCheckoutPaymentMethod');
+    expect(checkout).not.toContain('const normalizeCheckoutText = (value: unknown, maxLength: number) =>');
+    expect(checkout).not.toContain('const estimateCouponDiscount = (coupon: UserCoupon, cartTotal: number) =>');
+    expect(checkout).not.toContain('const getRecommendedPaymentMethod = (channels: PaymentChannel[], currency: string) =>');
+  });
+
+
+
+  it('keeps checkout submit and guest restore pure guards modularized', () => {
+    const helpers = fs.readFileSync(path.join(__dirname, 'checkoutHelpers.ts'), 'utf8');
+    const checkout = fs.readFileSync(path.join(__dirname, '..', 'pages', 'Checkout.tsx'), 'utf8');
+    expect(helpers).toContain('export const buildGuestCheckoutOrderItems');
+    expect(helpers).toContain('export const buildGuestRestoreCartLine');
+    expect(helpers).toContain('export const resolveCheckoutCartSubmitGuard');
+    expect(helpers).toContain('export const resolveCheckoutContactSubmitGuard');
+    expect(checkout).toContain('resolveCheckoutCartSubmitGuard({');
+    expect(checkout).toContain('resolveCheckoutContactSubmitGuard({');
+    expect(checkout).toContain('buildGuestCheckoutOrderItems(cartItems)');
+    expect(checkout).toMatch(/paymentMethodDetails\.some\(\s*\(method\)\s*=>\s*method\.value === normalizedPaymentMethod\s*\)/);
+  });
+
+  it('keeps checkout payment lifecycle modularized outside the page shell', () => {
+    const checkout = fs.readFileSync(path.join(__dirname, '..', 'pages', 'Checkout.tsx'), 'utf8');
+    const lifecycle = fs.readFileSync(path.join(__dirname, '..', 'hooks', 'useCheckoutPaymentLifecycle.ts'), 'utf8');
+    expect(checkout).toContain("from '../hooks/useCheckoutPaymentLifecycle'");
+    expect(checkout).toContain('useCheckoutPaymentLifecycle({');
+    expect(checkout).not.toContain('const claimCheckoutPaymentPollLock');
+    expect(lifecycle).toContain('export const useCheckoutPaymentLifecycle');
+    expect(lifecycle).toContain('claimCheckoutPaymentPollLock');
+    expect(lifecycle).toContain('startCheckoutPaymentPollWebLockSession');
+    expect(lifecycle).toContain('writeCheckoutPaymentPollResult');
+    expect(lifecycle).toContain('Checkout.pollPendingPayment');
+    expect(lifecycle).toContain('Checkout.refreshSubmittedPayment');
+    expect(lifecycle).toContain('CHECKOUT_PAYMENT_POLL_MAX_MS');
+  });
+
+
   it('keeps local UI server proxying API to the backend origin', () => {
     const serve = readFrontendRoot('scripts', 'serve-build.js');
     expect(serve).toContain('SHOPTEST_BACKEND_ORIGIN');

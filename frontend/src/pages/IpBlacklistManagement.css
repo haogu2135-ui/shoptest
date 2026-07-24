@@ -614,3 +614,8 @@
     grid-template-columns: minmax(0, 1fr) !important;
   }
 }
+
+
+.ip-blacklist-management-page__durationInput {
+  width: 100%;
+}

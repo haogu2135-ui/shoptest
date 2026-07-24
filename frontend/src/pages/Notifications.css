@@ -1358,3 +1358,13 @@
     line-height: 1.2 !important;
   }
 }
+
+
+/* Commercial notification meta without inline styles. */
+.notifications-page__readIcon {
+  color: #52c41a;
+}
+
+.notifications-page__timestamp {
+  font-size: 12px;
+}

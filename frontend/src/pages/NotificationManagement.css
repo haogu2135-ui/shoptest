@@ -501,3 +501,17 @@
     scroll-snap-align: none;
   }
 }
+
+
+.notification-management-page__titleIcon {
+  font-size: 24px;
+}
+
+
+.notification-management-page__previewText {
+  white-space: pre-wrap;
+}
+
+.notification-management__formField {
+  margin-bottom: 16px;
+}

@@ -245,6 +245,7 @@ describe('commercial UX contracts', () => {
 
   it('keeps checkout and auth forms focusing the first validation error after failed submit', () => {
     const checkout = readFrontend('pages', 'Checkout.tsx');
+    const checkoutDom = readFrontend('utils', 'checkoutDom.ts');
     const login = readFrontend('pages', 'Login.tsx');
     const forgotPassword = readFrontend('pages', 'ForgotPassword.tsx');
     const focusUtil = readFrontend('utils', 'formValidationFocus.ts');
@@ -252,7 +253,8 @@ describe('commercial UX contracts', () => {
     expect(focusUtil).toContain('export const focusFirstFormError');
     expect(focusUtil).toContain('ant-form-item-has-error');
     expect(checkout).toContain('focusFirstCheckoutValidationError');
-    expect(checkout).toContain("focusFirstFormError({");
+    expect(checkoutDom).toContain('export const focusFirstCheckoutValidationError');
+    expect(checkoutDom).toContain("focusFirstFormError({");
     expect(checkout).toContain("id=\"checkout-contact-card\"");
     expect(login).toContain('scrollFirstLoginErrorIntoView');
     expect(login).toContain('onFinishFailed');
@@ -1086,6 +1088,31 @@ it('keeps home empty category and product rails on multipath commercial recovery
     expect(app).toMatch(/path="orders"\s+element=\{<Navigate to="\/profile\?tab=orders" replace \/>\}/);
   });
 
+  it('keeps password visibility toggles off redundant inline resets', () => {
+    const shopInputCss = readFrontend('components', 'ShopInput.css');
+    expect(shopInputCss).toContain('Commercial password toggle button reset');
+    expect(shopInputCss).toMatch(
+      /Commercial password toggle button reset[\s\S]*?\.shop-input__visibilityWrap > button[\s\S]*?border:\s*0/,
+    );
+    for (const page of ['Login.tsx', 'Register.tsx', 'ForgotPassword.tsx', 'Profile.tsx'] as const) {
+      const source = readFrontend('pages', page);
+      expect(source).not.toMatch(/border:\s*0,\s*padding:\s*0,\s*background:\s*'transparent'/);
+    }
+  });
+
+  it('keeps cart drawer empty glyph and coupon claim list spacing on CSS classes', () => {
+    const drawer = readFrontend('components', 'CartDrawer.tsx');
+    const drawerCss = readFrontend('components', 'CartDrawer.css');
+    const coupons = readFrontend('pages', 'CouponCenter.tsx');
+    const couponCss = readFrontend('pages', 'CouponCenter.css');
+    expect(drawer).toContain('cart-drawer__emptyIconGlyph');
+    expect(drawer).not.toMatch(/cart-drawer__emptyIconGlyph[\s\S]{0,40}style=\{\{/);
+    expect(drawerCss).toContain('cart-drawer__emptyIconGlyph');
+    expect(coupons).toContain('coupon-claim-section__title--list');
+    expect(coupons).not.toMatch(/coupon-claim-section__title--list[\s\S]{0,40}style=\{\{/);
+    expect(couponCss).toContain('coupon-claim-section__title--list');
+  });
+
   it('keeps ShopBadge digits commercially legible at >=12px', () => {
     const badgeCss = readFrontend('components', 'ShopBadge.css');
     expect(badgeCss).toContain('Commercial residual: shop badge digits stay >=12px');
@@ -1293,6 +1320,7 @@ it('keeps home empty category and product rails on multipath commercial recovery
   it('hides CN payment rails for MXN checkout and keeps conversion-critical mobile floors', () => {
     const paymentMethods = readFrontend('utils', 'paymentMethods.tsx');
     const checkout = readFrontend('pages', 'Checkout.tsx');
+    const checkoutHelpers = readFrontend('utils', 'checkoutHelpers.ts');
     const payment = readFrontend('components', 'Payment.tsx');
     const mobileApp = readFrontend('mobile-app.css');
     const searchBar = readFrontend('components', 'SearchBar.css');
@@ -1301,9 +1329,13 @@ it('keeps home empty category and product rails on multipath commercial recovery
     expect(paymentMethods).toContain("currency === 'MXN'");
     expect(paymentMethods).toMatch(/hideForeign && market === 'CN'/);
     expect(checkout).toMatch(/createPaymentMethodDetails\(paymentChannels,\s*\{\s*currency\s*\}\)/);
-    // Recommendation + bootstrap resolve must use market-filtered rails (not raw API list).
-    expect(checkout).toContain('filterPaymentChannelsForMarket');
-    expect(checkout).toMatch(/filterPaymentChannelsForMarket\(channels,\s*\{\s*currency\s*\}\)/);
+    // Recommendation + bootstrap resolve stay modularized but still market-filter rails.
+    expect(checkoutHelpers).toContain('filterPaymentChannelsForMarket');
+    expect(checkoutHelpers).toMatch(/filterPaymentChannelsForMarket\(channels,\s*\{\s*currency\s*\}\)/);
+    expect(checkoutHelpers).toContain('export const getRecommendedPaymentMethod');
+    expect(checkoutHelpers).toContain('export const resolveCheckoutPaymentMethod');
+    expect(checkout).toContain('resolveCheckoutPaymentMethod');
+    expect(checkout).toContain('getRecommendedPaymentMethod');
     expect(checkout).toMatch(/paymentMethodDetails\.some\(\s*\(method\)\s*=>\s*method\.value === normalizedPaymentMethod\s*\)/);
     expect(payment).toContain('filterPaymentChannelsForMarket');
     expect(payment).toMatch(/getDefaultPaymentMethod\(channels,\s*currency\)/);
@@ -1311,6 +1343,7 @@ it('keeps home empty category and product rails on multipath commercial recovery
     expect(searchBar).toMatch(/min-height:\s*44px/);
     expect(pdp).toMatch(/product-mobile-buybar__cart[\s\S]*?min-height:\s*44px/);
   });
+
 
 
   it('keeps conversion-path residual fonts >=12px and seeds MXN home currency', () => {

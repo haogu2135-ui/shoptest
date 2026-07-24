@@ -1920,3 +1920,9 @@
 .product-compare-page__title {
   margin: 0;
 }
+
+
+/* Commercial compare price accent without residual inline color */
+.product-compare-page .commerce-money--accent {
+  color: #ee4d2d;
+}

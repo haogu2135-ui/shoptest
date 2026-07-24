@@ -2771,7 +2771,7 @@ const Profile: React.FC = () => {
                 aria-label={visible ? t('pages.auth.hidePassword') : t('pages.auth.showPassword')}
                 aria-pressed={visible}
                 title={visible ? t('pages.auth.hidePassword') : t('pages.auth.showPassword')}
-                style={{ border: 0, padding: 0, background: 'transparent', color: 'inherit', lineHeight: 0, cursor: 'pointer' }}
+               
               >
                 {visible ? <ShopIcon path={SI.eye} /> : <ShopIcon path={SI.eyeOff} />}
               </button>
@@ -2789,7 +2789,7 @@ const Profile: React.FC = () => {
                 aria-label={visible ? t('pages.auth.hidePassword') : t('pages.auth.showPassword')}
                 aria-pressed={visible}
                 title={visible ? t('pages.auth.hidePassword') : t('pages.auth.showPassword')}
-                style={{ border: 0, padding: 0, background: 'transparent', color: 'inherit', lineHeight: 0, cursor: 'pointer' }}
+               
               >
                 {visible ? <ShopIcon path={SI.eye} /> : <ShopIcon path={SI.eyeOff} />}
               </button>
@@ -2817,7 +2817,7 @@ const Profile: React.FC = () => {
                 aria-label={visible ? t('pages.auth.hidePassword') : t('pages.auth.showPassword')}
                 aria-pressed={visible}
                 title={visible ? t('pages.auth.hidePassword') : t('pages.auth.showPassword')}
-                style={{ border: 0, padding: 0, background: 'transparent', color: 'inherit', lineHeight: 0, cursor: 'pointer' }}
+               
               >
                 {visible ? <ShopIcon path={SI.eye} /> : <ShopIcon path={SI.eyeOff} />}
               </button>

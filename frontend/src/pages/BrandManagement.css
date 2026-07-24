@@ -749,3 +749,20 @@
     gap: 4px;
   }
 }
+
+.brand-management-metaText {
+  font-size: 12px;
+}
+
+
+.brand-management-page__thumb .shop-image__img,
+.brand-management-page__thumb .shop-image__placeholder {
+  object-fit: cover;
+  border-radius: 6px;
+}
+
+.brand-management-page__preview .shop-image__img,
+.brand-management-page__preview .shop-image__placeholder {
+  object-fit: cover;
+  border-radius: 8px;
+}

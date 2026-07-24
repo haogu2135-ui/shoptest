@@ -732,7 +732,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
         {items.length === 0 && !loadError ? (
           <div className="cart-drawer__empty" data-cart-drawer-empty="true">
             <div className="cart-drawer__emptyPanel">
-              <span className="cart-drawer__emptyIcon" aria-hidden="true"><ShopIcon path={SI.shopping} style={{ fontSize: 54, color: '#ccc' }} /></span>
+              <span className="cart-drawer__emptyIcon" aria-hidden="true"><ShopIcon path={SI.shopping} className="cart-drawer__emptyIconGlyph" /></span>
               <div className="cart-drawer__emptyCopy">
                 <div>{t('pages.cart.empty')}</div>
                 <div className="cart-drawer__emptyHint">{t('pages.cart.emptyHint')}</div>

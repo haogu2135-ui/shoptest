@@ -2633,3 +2633,10 @@ body .cart-drawer-popconfirm.shop-popconfirm {
   min-height: 32px;
   text-align: center;
 }
+
+
+/* Commercial cart-drawer empty glyph (no inline icon styles). */
+.cart-drawer__emptyIconGlyph {
+  font-size: 54px;
+  color: #ccc;
+}

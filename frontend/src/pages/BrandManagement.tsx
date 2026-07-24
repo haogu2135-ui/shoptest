@@ -282,7 +282,7 @@ const BrandManagement: React.FC = () => {
         const logoLabel = `${t('pages.brandAdmin.logo')}: ${brandLabel}`;
         const missingLogoLabel = `${logoLabel} - ${t('pages.brandAdmin.missingLogo')}`;
         return url ? (
-          <ShopImage src={resolveBrandImage(url)} alt={logoLabel} title={logoLabel} width={56} height={56} style={{ objectFit: 'cover', borderRadius: 6 }} fallback={brandImageFallback} />
+          <ShopImage src={resolveBrandImage(url)} alt={logoLabel} title={logoLabel} width={56} height={56} className="brand-management-page__thumb" fallback={brandImageFallback} />
         ) : (
           <div className="brand-management-page__imagePlaceholder" role="img" aria-label={missingLogoLabel} title={missingLogoLabel} />
         );
@@ -297,7 +297,7 @@ const BrandManagement: React.FC = () => {
       render: (name: string, record: Brand) => (
         <ShopSpace direction="vertical" size={0}>
           <Text strong>{name}</Text>
-          {record.websiteUrl ? <Text type="secondary" style={{ fontSize: 12 }}>{record.websiteUrl}</Text> : null}
+          {record.websiteUrl ? <Text type="secondary" className="brand-management-metaText">{record.websiteUrl}</Text> : null}
         </ShopSpace>
       ),
     },
@@ -545,7 +545,7 @@ const BrandManagement: React.FC = () => {
 
           {logoPreviewUrl ? (
             <div className="brand-management-page__preview">
-              <ShopImage src={resolveBrandImage(logoPreviewUrl)} alt={`${t('pages.brandAdmin.logo')}: ${getBrandLabel(editingBrand)}`} title={`${t('pages.brandAdmin.logo')}: ${getBrandLabel(editingBrand)}`} width={180} height={120} style={{ objectFit: 'cover', borderRadius: 8 }} fallback={brandImageFallback} />
+              <ShopImage src={resolveBrandImage(logoPreviewUrl)} alt={`${t('pages.brandAdmin.logo')}: ${getBrandLabel(editingBrand)}`} title={`${t('pages.brandAdmin.logo')}: ${getBrandLabel(editingBrand)}`} width={180} height={120} className="brand-management-page__preview" fallback={brandImageFallback} />
             </div>
           ) : null}
 

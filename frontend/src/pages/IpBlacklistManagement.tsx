@@ -699,7 +699,7 @@ const IpBlacklistManagement: React.FC = () => {
             <ShopTextArea rows={3} placeholder={t('pages.ipBlacklistAdmin.optional')} />
           </Form.Item>
           <Form.Item name="blockMinutes" label={t('pages.ipBlacklistAdmin.blockMinutes')}>
-            <ShopInputNumber min={1} max={43200} style={{ width: '100%' }} />
+            <ShopInputNumber min={1} max={43200} className="ip-blacklist-management-page__durationInput" />
           </Form.Item>
         </Form>
       </ShopModal>

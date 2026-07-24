@@ -359,3 +359,12 @@
     min-height: 44px;
   }
 }
+
+
+.permission-management-page__toolbar {
+  margin: 20px 0 16px;
+}
+
+.permission-management__toolbarField {
+  margin-bottom: 16px;
+}

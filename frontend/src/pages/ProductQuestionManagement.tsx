@@ -254,7 +254,7 @@ const ProductQuestionManagement: React.FC = () => {
       dataIndex: 'question',
       key: 'question',
       width: 280,
-      render: (text: string) => <Paragraph ellipsis={{ rows: 3 }} style={{ margin: 0 }}>{text}</Paragraph>,
+      render: (text: string) => <Paragraph ellipsis={{ rows: 3 }} className="product-question-management-page__cellText">{text}</Paragraph>,
     },
     {
       title: t('pages.adminQuestions.answer'),
@@ -262,7 +262,7 @@ const ProductQuestionManagement: React.FC = () => {
       key: 'answer',
       width: 280,
       render: (text: string) => text
-        ? <Paragraph ellipsis={{ rows: 3 }} style={{ margin: 0 }}>{text}</Paragraph>
+        ? <Paragraph ellipsis={{ rows: 3 }} className="product-question-management-page__cellText">{text}</Paragraph>
         : <ShopTag icon={<ClockCircleOutlined />} color="orange">{t('pages.adminQuestions.noAnswer')}</ShopTag>,
     },
     {

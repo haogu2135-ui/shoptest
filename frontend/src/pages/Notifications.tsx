@@ -635,11 +635,11 @@ const Notifications: React.FC = () => {
                       >
                         <span className={`notifications-page__text${!item.isRead ? ' notifications-page__text--strong' : ''}`}>{item.title}</span>
                       </button>
-                      {item.isRead && <ShopIcon path={SI.checkCircle} style={{ color: '#52c41a' }} />}
+                      {item.isRead && <ShopIcon path={SI.checkCircle} className="notifications-page__readIcon" aria-hidden="true" />}
                     </div>
                     <div>
                       {renderMessage(item)}
-                      <span className="notifications-page__text notifications-page__text--secondary" style={{ fontSize: 12 }}>
+                      <span className="notifications-page__text notifications-page__text--secondary notifications-page__timestamp">
                         {item.createdAt ? new Date(item.createdAt).toLocaleString(language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US') : ''}
                       </span>
                     </div>

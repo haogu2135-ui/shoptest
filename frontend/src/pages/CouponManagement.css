@@ -736,3 +736,16 @@
     line-height: 1.4;
   }
 }
+
+
+.coupon-management-page__title {
+  margin: 0;
+}
+
+.coupon-management-page__titleIcon {
+  margin-right: 8px;
+}
+
+.coupon-management__toolbarField {
+  margin-bottom: 16px;
+}

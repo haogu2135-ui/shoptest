@@ -6007,3 +6007,9 @@ ul.coupon-wallet__list {
   text-overflow: clip;
   white-space: nowrap;
 }
+
+
+/* Commercial coupon claim list section spacing (no inline margin). */
+.coupon-claim-section__title--list {
+  margin-bottom: 24px;
+}

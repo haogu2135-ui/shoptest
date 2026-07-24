@@ -900,7 +900,7 @@ const CouponCenter: React.FC = () => {
         </section>
       </div>
 
-      <section className="coupon-claim-section__title" id="coupon-claim-list" style={{ marginBottom: 24 }}><div className="shop-panel__head"><div className="shop-panel__title">{(
+      <section className="coupon-claim-section__title coupon-claim-section__title--list" id="coupon-claim-list"><div className="shop-panel__head"><div className="shop-panel__title">{(
           <span className="coupon-claim-section__title">
             <span>
               <strong>{t('pages.coupons.claimTitle')}</strong>

@@ -441,15 +441,15 @@ const OrderManagement: React.FC = () => {
             .tracking-number { font-size: 24px; font-weight: 800; letter-spacing: 1px; word-break: break-all; }
             .barcode { margin-top: 8px; font-family: "Libre Barcode 39", "Courier New", monospace; font-size: 34px; letter-spacing: 2px; }
             .section { border-top: 1px solid #111; padding: 8px 0; }
-            .label-text { font-size: 11px; color: #555; text-transform: uppercase; margin-bottom: 3px; }
+            .label-text { font-size: 12px; color: #555; text-transform: uppercase; margin-bottom: 3px; }
             .address { font-size: 17px; font-weight: 700; line-height: 1.35; word-break: break-word; }
             .meta { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px; }
-            table { width: 100%; border-collapse: collapse; font-size: 11px; }
+            table { width: 100%; border-collapse: collapse; font-size: 12px; }
             th, td { border: 1px solid #bbb; padding: 4px; text-align: left; vertical-align: top; }
             th { background: #f2f2f2; }
             .qty { text-align: center; width: 42px; }
             .muted { color: #777; text-align: center; }
-            .footer { margin-top: 8px; font-size: 10px; color: #555; text-align: center; }
+            .footer { margin-top: 8px; font-size: 12px; color: #555; text-align: center; }
             @media print { .no-print { display: none; } }
           </style>
         </head>

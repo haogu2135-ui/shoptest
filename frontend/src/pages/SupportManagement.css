@@ -89,7 +89,8 @@
 }
 
 .support-management__queueLoading,
-.support-management__messagesLoading {
+.support-management__messagesLoading,
+.support-management__orderLoading {
   min-height: 160px;
   display: grid;
   place-items: center;
@@ -2000,4 +2001,47 @@
     font-size: 12px !important;
     line-height: 1.25 !important;
   }
+}
+
+
+/* Commercial support order total accent without residual inline color */
+.support-management-page .commerce-money--accent,
+.commerce-money.commerce-money--accent {
+  color: #ee4d2d;
+}
+
+
+.support-management-page__titleIcon {
+  font-size: 22px;
+  color: #ee4d2d;
+}
+
+
+.support-management-page__titleText {
+  margin: 0;
+}
+
+.support-management-page__empty--sessions {
+  margin-top: 80px;
+}
+
+.support-management-page__empty--select {
+  margin-top: 180px;
+}
+
+
+.support-management-page__centerPanel {
+  padding: 32px;
+  text-align: center;
+}
+
+.support-management-page__orderThumb {
+  width: 44px;
+  height: 44px;
+  object-fit: cover;
+  border-radius: 4px;
+}
+
+.support-management__orderDetailStack {
+  width: 100%;
 }

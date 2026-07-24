@@ -793,8 +793,8 @@ const SupportManagement: React.FC = () => {
     <div className={`support-management support-management--${language}`}>
       <div className="support-management__header">
         <ShopSpace>
-          <CustomerServiceOutlined style={{ fontSize: 22, color: '#ee4d2d' }} />
-          <Title level={4} style={{ margin: 0 }}>{t('pages.adminSupport.title')}</Title>
+          <CustomerServiceOutlined className="support-management-page__titleIcon" />
+          <Title level={4} className="support-management-page__titleText">{t('pages.adminSupport.title')}</Title>
           <ShopBadge status={connected ? 'success' : 'default'} text={connected ? t('pages.support.online') : t('pages.support.offline')} />
         </ShopSpace>
         <ShopSpace className="support-management__headerControls" wrap>
@@ -940,7 +940,7 @@ const SupportManagement: React.FC = () => {
               <Text>{t('common.loading')}</Text>
             </div>
           ) : queueSessions.length === 0 ? (
-            <ShopEmpty style={{ marginTop: 80 }} description={t('pages.adminSupport.noSessions')}>
+            <ShopEmpty className="support-management-page__empty support-management-page__empty--sessions" description={t('pages.adminSupport.noSessions')}>
               <ShopSpace wrap>
                 {filter !== 'OPEN' ? (
                   <ShopButton
@@ -1042,7 +1042,7 @@ const SupportManagement: React.FC = () => {
         <div ref={conversationPaneRef} className="support-management__conversationPane" tabIndex={-1}>
           {!selectedSession ? (
 
-            <ShopEmpty style={{ marginTop: 180 }} description={t('pages.adminSupport.selectSession')} />
+            <ShopEmpty className="support-management-page__empty support-management-page__empty--select" description={t('pages.adminSupport.selectSession')} />
 
           ) : (
 
@@ -1327,8 +1327,7 @@ const SupportManagement: React.FC = () => {
       >
         {detailLoading ? (
           <div
-            className="support-management__orderLoading"
-            style={{ padding: 32, textAlign: 'center' }}
+            className="support-management__orderLoading support-management-page__centerPanel"
             role="status"
             aria-live="polite"
             aria-busy="true"
@@ -1337,14 +1336,14 @@ const SupportManagement: React.FC = () => {
             <ShopSpin />
           </div>
         ) : detailOrder ? (
-          <ShopSpace direction="vertical" style={{ width: '100%' }} size="middle">
+          <ShopSpace direction="vertical" className="support-management__orderDetailStack" size="middle">
 
             <ShopSpace wrap>
 
               <ShopTag color="blue">{formatOrderStatus(detailOrder.status)}</ShopTag>
               {detailOrder.paymentMethod ? <ShopTag>{detailOrder.paymentMethod}</ShopTag> : null}
 
-              <Text strong className="commerce-money" style={{ color: '#ee4d2d' }}>{formatMoney(detailOrder.totalAmount)}</Text>
+              <Text strong className="commerce-money commerce-money--accent">{formatMoney(detailOrder.totalAmount)}</Text>
             </ShopSpace>
 
             {detailOrder.shippingAddress ? <Text type="secondary">{detailOrder.shippingAddress}</Text> : null}
@@ -1362,7 +1361,7 @@ const SupportManagement: React.FC = () => {
                         <img
                           src={resolveSupportOrderImage(item.imageUrl)}
                           alt={productName}
-                          style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 4 }}
+                          className="support-management-page__orderThumb"
                           onError={(event) => {
                             if (event.currentTarget.src !== supportOrderImageFallback) {
                               event.currentTarget.src = supportOrderImageFallback;

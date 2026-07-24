@@ -429,7 +429,7 @@ const ForgotPassword: React.FC = () => {
                   aria-label={passwordVisibilityActionLabel(visible)}
                   aria-pressed={visible}
                   title={passwordVisibilityActionLabel(visible)}
-                  style={{ border: 0, padding: 0, background: 'transparent', color: 'inherit', lineHeight: 0, cursor: 'pointer' }}
+                 
                 >
                   {visible ? <ShopIcon path={SI.eye} /> : <ShopIcon path={SI.eyeOff} />}
                 </button>
@@ -464,7 +464,7 @@ const ForgotPassword: React.FC = () => {
                   aria-label={confirmPasswordVisibilityActionLabel(visible)}
                   aria-pressed={visible}
                   title={confirmPasswordVisibilityActionLabel(visible)}
-                  style={{ border: 0, padding: 0, background: 'transparent', color: 'inherit', lineHeight: 0, cursor: 'pointer' }}
+                 
                 >
                   {visible ? <ShopIcon path={SI.eye} /> : <ShopIcon path={SI.eyeOff} />}
                 </button>

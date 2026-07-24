@@ -149,8 +149,8 @@ const NotificationManagement: React.FC = () => {
   return (
     <div className={`notification-management-page notification-management-page--${language}`}>
       <ShopSpace align="center">
-        <NotificationOutlined style={{ fontSize: 24 }} />
-        <Title level={3} style={{ margin: 0 }}>{t('pages.notificationAdmin.title')}</Title>
+        <NotificationOutlined className="notification-management-page__titleIcon" />
+        <Title level={3} className="notification-management-page__title">{t('pages.notificationAdmin.title')}</Title>
       </ShopSpace>
       <ShopDivider />
 
@@ -186,7 +186,7 @@ const NotificationManagement: React.FC = () => {
             <ShopAlert
               type="info"
               showIcon
-              style={{ marginBottom: 16 }}
+              className="notification-management__formField"
               message={t('pages.notificationAdmin.permissionLoading')}
             />
           ) : null}
@@ -194,7 +194,7 @@ const NotificationManagement: React.FC = () => {
             <ShopAlert
               type="error"
               showIcon
-              style={{ marginBottom: 16 }}
+              className="notification-management__formField"
               message={t('pages.notificationAdmin.permissionLoadFailed')}
               action={(
                 <ShopButton size="small" icon={<ReloadOutlined />} onClick={loadPermissions}>
@@ -207,14 +207,14 @@ const NotificationManagement: React.FC = () => {
             <ShopAlert
               type="warning"
               showIcon
-              style={{ marginBottom: 16 }}
+              className="notification-management__formField"
               message={t('pages.notificationAdmin.noBroadcastPermission')}
             />
           ) : null}
           <ShopAlert
             type="info"
             showIcon
-            style={{ marginBottom: 16 }}
+              className="notification-management__formField"
             message={t('pages.notificationAdmin.broadcastHint')}
           />
           <Form
@@ -314,7 +314,7 @@ const NotificationManagement: React.FC = () => {
             {contentFormat === 'HTML' ? (
               <div className="notification-rich-content" dangerouslySetInnerHTML={{ __html: safePreviewHtml }} />
             ) : (
-              <Text style={{ whiteSpace: 'pre-wrap' }}>{messageContent || t('pages.notificationAdmin.textPreview')}</Text>
+              <Text className="notification-management-page__previewText">{messageContent || t('pages.notificationAdmin.textPreview')}</Text>
             )}
           </div>
         </ShopCard>

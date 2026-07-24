@@ -1451,3 +1451,11 @@
   font-size: 12px !important;
   line-height: 1.25 !important;
 }
+
+
+/* Commercial dashboard money emphasis without residual inline color/weight */
+.admin-dashboard-page .commerce-money--emphasis,
+.commerce-money.commerce-money--emphasis {
+  color: #ff5722;
+  font-weight: 600;
+}

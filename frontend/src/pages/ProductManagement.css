@@ -2220,3 +2220,61 @@ body .product-management-page__editorPopup.shop-mobile-popup-layer .ant-picker-f
   color: #ee4d2d;
   font-weight: 600;
 }
+
+
+/* Commercial admin listing money/tags stay legible without inline styles. */
+.product-admin-priceTag,
+.product-admin-discountTag {
+  margin-left: 4px;
+}
+
+.product-admin-originalPrice {
+  font-size: 12px;
+}
+
+/* Commercial residual: discount tags stay >=12px */
+.product-admin-discountTag {
+  font-size: 12px !important;
+}
+
+
+/* Commercial admin meta / thumbs without residual inline styles */
+.product-admin-metaText {
+  font-size: 12px;
+}
+
+.product-admin-thumb .shop-image__img,
+.product-admin-thumb .shop-image__placeholder {
+  object-fit: cover;
+  border-radius: 6px;
+}
+
+.product-admin-thumb--lg .shop-image__img,
+.product-admin-thumb--lg .shop-image__placeholder {
+  border-radius: 6px;
+}
+
+.product-admin-previewImage,
+.product-admin-previewImage .shop-image__img,
+.product-admin-previewImage .shop-image__placeholder {
+  object-fit: cover;
+  width: 100%;
+  height: 100%;
+}
+
+.product-management__pageTitle {
+  margin-bottom: 0;
+}
+
+.product-management__formItem--compact {
+  margin-bottom: 0;
+}
+
+.product-management__formItem--full {
+  grid-column: 1 / -1;
+}
+
+.product-management__generateVariants {
+  margin-bottom: 12px;
+}
+

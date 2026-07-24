@@ -322,7 +322,7 @@ const ReviewManagement: React.FC = () => {
       onCell: () => reviewCellLabel(reviewColumnLabels.content),
       render: (text: string, record: Review) => (
         <div className="review-management-page__contentCell">
-          <Paragraph ellipsis={{ rows: 2 }} style={{ margin: 0 }}>{text}</Paragraph>
+          <Paragraph ellipsis={{ rows: 2 }} className="review-management-page__cellText">{text}</Paragraph>
           {Array.isArray(record.imageUrls) && record.imageUrls.length > 0 ? (
             <div className="review-management-page__reviewImages">
               {record.imageUrls.slice(0, 4).map((imageUrl, index) => (
@@ -350,7 +350,7 @@ const ReviewManagement: React.FC = () => {
       width: 300,
       ellipsis: true,
       onCell: () => reviewCellLabel(reviewColumnLabels.reply),
-      render: (text: string) => text ? <Paragraph ellipsis={{ rows: 2 }} style={{ margin: 0 }}>{text}</Paragraph> : '-',
+      render: (text: string) => text ? <Paragraph ellipsis={{ rows: 2 }} className="review-management-page__cellText">{text}</Paragraph> : '-',
     },
     {
       title: reviewColumnLabels.createdAt,
@@ -403,7 +403,7 @@ const ReviewManagement: React.FC = () => {
             </ShopPopconfirm>
           ) : null,
           canReplyReviews ? (
-            <ShopButton key="reply" size="small" style={{ marginRight: 8 }} aria-label={replyActionLabel} title={replyActionLabel} onClick={() => openReply(record)} disabled={actionsDisabledByStaleData}>
+            <ShopButton key="reply" size="small" className="review-management-page__replyBtn" aria-label={replyActionLabel} title={replyActionLabel} onClick={() => openReply(record)} disabled={actionsDisabledByStaleData}>
               {t('pages.adminReviews.replyAction')}
             </ShopButton>
           ) : null,

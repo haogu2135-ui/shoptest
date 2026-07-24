@@ -1887,12 +1887,12 @@ const ProductManagement: React.FC = () => {
     return (
       <div>
         <span className="commerce-money product-admin-price">{formatMoney(displayPrice)}</span>
-        {record.activeLimitedTimeDiscount ? <ShopTag color="red" style={{ marginLeft: 4 }}>{t('pages.productAdmin.limitedTimeActive')}</ShopTag> : null}
+        {record.activeLimitedTimeDiscount ? <ShopTag color="red" className="product-admin-priceTag">{t('pages.productAdmin.limitedTimeActive')}</ShopTag> : null}
         {hasDiscount && (
           <>
             <br />
-            <Text delete type="secondary" className="commerce-money" style={{ fontSize: 12 }}>{formatMoney(record.originalPrice!)}</Text>
-            <ShopTag color="volcano" style={{ marginLeft: 4, fontSize: 11 }}>-{discountPercent}%</ShopTag>
+            <Text delete type="secondary" className="commerce-money product-admin-originalPrice">{formatMoney(record.originalPrice!)}</Text>
+            <ShopTag color="volcano" className="product-admin-discountTag">-{discountPercent}%</ShopTag>
           </>
         )}
       </div>
@@ -1958,7 +1958,7 @@ const ProductManagement: React.FC = () => {
       width: 80,
       onCell: () => productAdminTableCell(t('common.image')),
       render: (url: string, record: Product) => (
-        <ShopImage src={resolveProductAdminImage(url)} alt={record.name || t('pages.productAdmin.productTitlePreview')} width={50} height={50} style={{ objectFit: 'cover', borderRadius: 6 }} fallback={productAdminImageFallback} />
+        <ShopImage src={resolveProductAdminImage(url)} alt={record.name || t('pages.productAdmin.productTitlePreview')} width={50} height={50} className="product-admin-thumb" fallback={productAdminImageFallback} />
       ),
     },
     {
@@ -1970,7 +1970,7 @@ const ProductManagement: React.FC = () => {
       render: (name: string, record: Product) => (
         <div>
           <b>{name}</b>
-          {record.brand && <div><Text type="secondary" style={{ fontSize: 12 }}>{record.brand}</Text></div>}
+          {record.brand && <div><Text type="secondary" className="product-admin-metaText">{record.brand}</Text></div>}
         </div>
       ),
     },
@@ -2005,7 +2005,7 @@ const ProductManagement: React.FC = () => {
       render: (_: unknown, record: Product) => (
         <ShopSpace direction="vertical" size={0}>
           {record.freeShipping ? <ShopTag color="green">{t('pages.productAdmin.freeShipping')}</ShopTag> : <ShopTag>{t('pages.productAdmin.standardShipping')}</ShopTag>}
-          {record.freeShippingThreshold ? <Text type="secondary" style={{ fontSize: 12 }}>{t('pages.productAdmin.freeOver', { amount: formatMoney(record.freeShippingThreshold) })}</Text> : null}
+          {record.freeShippingThreshold ? <Text type="secondary" className="product-admin-metaText">{t('pages.productAdmin.freeOver', { amount: formatMoney(record.freeShippingThreshold) })}</Text> : null}
         </ShopSpace>
       ),
     },
@@ -2211,7 +2211,7 @@ const ProductManagement: React.FC = () => {
 
   return (
     <div className="product-management-page">
-      <Title level={3} style={{ marginBottom: 0 }}>{t('pages.productAdmin.title')}</Title>
+      <Title level={3} className="product-management__pageTitle">{t('pages.productAdmin.title')}</Title>
       {(categoryOptionsTruncated || brandOptionsTruncated) ? (
         <ShopAlert type="warning" showIcon message={t('pages.productAdmin.optionListTruncated')} />
       ) : null}
@@ -2692,7 +2692,7 @@ const ProductManagement: React.FC = () => {
                           <Form.Item name={['localizedContent', 'es', 'brand']} label={t('pages.productAdmin.spanishBrand')}>
                             <ShopInput className="shopify-input" placeholder={t('pages.productAdmin.optionalLocalizedBrand')} />
                           </Form.Item>
-                          <Form.Item name={['localizedContent', 'es', 'description']} label={t('pages.productAdmin.spanishDescription')} style={{ gridColumn: '1 / -1' }}>
+                          <Form.Item name={['localizedContent', 'es', 'description']} label={t('pages.productAdmin.spanishDescription')} className="product-management__formItem--full">
                             <ShopTextArea rows={4} placeholder={t('pages.productAdmin.fallbackEnglishDescription')} />
                           </Form.Item>
                         </div>
@@ -2714,7 +2714,7 @@ const ProductManagement: React.FC = () => {
                           <Form.Item name={['localizedContent', 'zh', 'brand']} label={t('pages.productAdmin.chineseBrand')}>
                             <ShopInput className="shopify-input" placeholder={t('pages.productAdmin.optionalLocalizedBrand')} />
                           </Form.Item>
-                          <Form.Item name={['localizedContent', 'zh', 'description']} label={t('pages.productAdmin.chineseDescription')} style={{ gridColumn: '1 / -1' }}>
+                          <Form.Item name={['localizedContent', 'zh', 'description']} label={t('pages.productAdmin.chineseDescription')} className="product-management__formItem--full">
                             <ShopTextArea rows={4} placeholder={t('pages.productAdmin.fallbackEnglishDescription')} />
                           </Form.Item>
                         </div>
@@ -2734,7 +2734,7 @@ const ProductManagement: React.FC = () => {
                 <div className="shopify-media-grid">
                   <div className="shopify-media-tile">
                     {imagePreviewUrl ? (
-                      <ShopImage src={resolveProductAdminImage(imagePreviewUrl)} alt={previewName || t('pages.productAdmin.mediaPreview')} width="100%" height="100%" style={{ objectFit: 'cover' }} fallback={productAdminImageFallback} />
+                      <ShopImage src={resolveProductAdminImage(imagePreviewUrl)} alt={previewName || t('pages.productAdmin.mediaPreview')} width="100%" height="100%" className="product-admin-previewImage" fallback={productAdminImageFallback} />
                     ) : (
                       <span>{t('pages.productAdmin.mediaPreview')}</span>
                     )}
@@ -2744,7 +2744,7 @@ const ProductManagement: React.FC = () => {
                       <>
                         {fields.map(({ key, name, ...restField }, index) => (
                           <div className="shopify-media-input" key={key}>
-                            <Form.Item {...restField} name={name} style={{ marginBottom: 0 }}>
+                            <Form.Item {...restField} name={name} className="product-management__formItem--compact">
                               <ShopInput
                                 placeholder={t('pages.productAdmin.imageUrl', { index: index + 1 })}
                                 aria-label={productEditorFieldLabel(t('pages.productAdmin.media'), t('pages.productAdmin.imageUrl', { index: index + 1 }), index)}
@@ -2803,7 +2803,7 @@ const ProductManagement: React.FC = () => {
               <section className="shopify-card">
                 <div className="shopify-card__header">
 	                  <h3>{t('bundle.bundleDeal')}</h3>
-	                  <Form.Item name="bundleEnabled" valuePropName="checked" style={{ marginBottom: 0 }}>
+	                  <Form.Item name="bundleEnabled" valuePropName="checked" className="product-management__formItem--compact">
 	                    <ShopSwitch checkedChildren={t('pages.productAdmin.on')} unCheckedChildren={t('pages.productAdmin.off')} aria-label={bundleEnabledSwitchLabel} title={bundleEnabledSwitchLabel} />
 	                  </Form.Item>
 	                </div>
@@ -2820,10 +2820,10 @@ const ProductManagement: React.FC = () => {
                     <div className="shopify-option-list">
 		                      {fields.map(({ key, name, ...restField }, index) => (
 		                        <div key={key} className="shopify-option-row">
-		                          <Form.Item {...restField} name={[name, 'name']} style={{ marginBottom: 0 }}>
+		                          <Form.Item {...restField} name={[name, 'name']} className="product-management__formItem--compact">
 		                            <ShopInput placeholder={t('bundle.bundleItemName')} aria-label={productEditorFieldLabel(t('bundle.bundleDeal'), t('bundle.bundleItemName'), index)} title={productEditorFieldLabel(t('bundle.bundleDeal'), t('bundle.bundleItemName'), index)} />
 		                          </Form.Item>
-		                          <Form.Item {...restField} name={[name, 'quantity']} style={{ marginBottom: 0 }}>
+		                          <Form.Item {...restField} name={[name, 'quantity']} className="product-management__formItem--compact">
 		                            <ShopInputNumber min={1} placeholder={t('common.quantity')} aria-label={productEditorFieldLabel(t('bundle.bundleDeal'), t('common.quantity'), index)} title={productEditorFieldLabel(t('bundle.bundleDeal'), t('common.quantity'), index)} />
 		                          </Form.Item>
                           <ShopButton
@@ -2851,7 +2851,7 @@ const ProductManagement: React.FC = () => {
 	                </div>
 	                <div className="shopify-inventory-box">
 	                  <span>{t('pages.productAdmin.shopLocation')}</span>
-	                  <Form.Item name="stock" rules={[{ required: true, message: t('pages.productAdmin.stockRequired') }]} style={{ marginBottom: 0 }}>
+	                  <Form.Item name="stock" rules={[{ required: true, message: t('pages.productAdmin.stockRequired') }]} className="product-management__formItem--compact">
 	                    <ShopInputNumber min={0} placeholder="0" aria-label={stockInputLabel} title={stockInputLabel} />
 	                  </Form.Item>
                 </div>
@@ -2865,7 +2865,7 @@ const ProductManagement: React.FC = () => {
               <section className="shopify-card">
                 <div className="shopify-card__header">
 	                  <h3>{t('pages.productAdmin.shipping')}</h3>
-	                  <Form.Item name="freeShipping" valuePropName="checked" style={{ marginBottom: 0 }}>
+	                  <Form.Item name="freeShipping" valuePropName="checked" className="product-management__formItem--compact">
 	                    <ShopSwitch checkedChildren={t('pages.productAdmin.free')} unCheckedChildren={t('pages.productAdmin.standardShipping')} aria-label={freeShippingSwitchLabel} title={freeShippingSwitchLabel} />
 	                  </Form.Item>
                 </div>
@@ -2904,10 +2904,10 @@ const ProductManagement: React.FC = () => {
                     <div className="shopify-option-list">
 	                      {fields.map(({ key, name, ...restField }, index) => (
 	                        <div key={key} className="shopify-option-row">
-	                          <Form.Item {...restField} name={[name, 'name']} style={{ marginBottom: 0 }}>
+	                          <Form.Item {...restField} name={[name, 'name']} className="product-management__formItem--compact">
 	                            <ShopInput placeholder={t('pages.productAdmin.optionName')} aria-label={productEditorFieldLabel(t('pages.productAdmin.variants'), t('pages.productAdmin.optionName'), index)} title={productEditorFieldLabel(t('pages.productAdmin.variants'), t('pages.productAdmin.optionName'), index)} />
 	                          </Form.Item>
-	                          <Form.Item {...restField} name={[name, 'values']} style={{ marginBottom: 0 }}>
+	                          <Form.Item {...restField} name={[name, 'values']} className="product-management__formItem--compact">
 	                            <ShopInput placeholder={t('pages.productAdmin.optionValues')} aria-label={productEditorFieldLabel(t('pages.productAdmin.variants'), t('pages.productAdmin.optionValues'), index)} title={productEditorFieldLabel(t('pages.productAdmin.variants'), t('pages.productAdmin.optionValues'), index)} />
 	                          </Form.Item>
 	                          <ShopButton
@@ -2927,7 +2927,7 @@ const ProductManagement: React.FC = () => {
                   )}
                 </Form.List>
                 <ShopDivider>{t('pages.productAdmin.variantCombinations')}</ShopDivider>
-                <ShopButton type="dashed" onClick={generateVariantRows} style={{ marginBottom: 12 }}>
+                <ShopButton type="dashed" onClick={generateVariantRows} className="product-management__generateVariants">
                   {t('pages.productAdmin.generateVariants')}
                 </ShopButton>
                 <Form.List name="variants">
@@ -2935,19 +2935,19 @@ const ProductManagement: React.FC = () => {
                     <div className="shopify-variant-list">
 	                      {fields.map(({ key, name, ...restField }, index) => (
 	                        <div key={key} className="shopify-variant-row">
-	                          <Form.Item {...restField} name={[name, 'sku']} style={{ marginBottom: 0 }}>
+	                          <Form.Item {...restField} name={[name, 'sku']} className="product-management__formItem--compact">
 	                            <ShopInput placeholder={t('pages.productAdmin.variantSku')} aria-label={productEditorFieldLabel(t('pages.productAdmin.variantCombinations'), t('pages.productAdmin.variantSku'), index)} title={productEditorFieldLabel(t('pages.productAdmin.variantCombinations'), t('pages.productAdmin.variantSku'), index)} />
 	                          </Form.Item>
-	                          <Form.Item {...restField} name={[name, 'optionText']} style={{ marginBottom: 0 }} rules={[{ required: true, message: t('pages.productAdmin.variantOptionsRequired') }]}>
+	                          <Form.Item {...restField} name={[name, 'optionText']} className="product-management__formItem--compact" rules={[{ required: true, message: t('pages.productAdmin.variantOptionsRequired') }]}>
 	                            <ShopInput placeholder={t('pages.productAdmin.variantOptionText')} aria-label={productEditorFieldLabel(t('pages.productAdmin.variantCombinations'), t('pages.productAdmin.variantOptionText'), index)} title={productEditorFieldLabel(t('pages.productAdmin.variantCombinations'), t('pages.productAdmin.variantOptionText'), index)} />
 	                          </Form.Item>
-	                          <Form.Item {...restField} name={[name, 'price']} style={{ marginBottom: 0 }} rules={[{ required: true, message: t('pages.productAdmin.priceRequired') }]}>
+	                          <Form.Item {...restField} name={[name, 'price']} className="product-management__formItem--compact" rules={[{ required: true, message: t('pages.productAdmin.priceRequired') }]}>
 	                            <ShopInputNumber min={0} precision={2} prefix={t('common.currencySymbol')} placeholder={t('pages.productAdmin.salePrice')} aria-label={productEditorFieldLabel(t('pages.productAdmin.variantCombinations'), t('pages.productAdmin.salePrice'), index)} title={productEditorFieldLabel(t('pages.productAdmin.variantCombinations'), t('pages.productAdmin.salePrice'), index)} />
 	                          </Form.Item>
-	                          <Form.Item {...restField} name={[name, 'stock']} style={{ marginBottom: 0 }}>
+	                          <Form.Item {...restField} name={[name, 'stock']} className="product-management__formItem--compact">
 	                            <ShopInputNumber min={0} placeholder={t('pages.productAdmin.stock')} aria-label={productEditorFieldLabel(t('pages.productAdmin.variantCombinations'), t('pages.productAdmin.stock'), index)} title={productEditorFieldLabel(t('pages.productAdmin.variantCombinations'), t('pages.productAdmin.stock'), index)} />
 	                          </Form.Item>
-	                          <Form.Item {...restField} name={[name, 'imageUrl']} style={{ marginBottom: 0 }}>
+	                          <Form.Item {...restField} name={[name, 'imageUrl']} className="product-management__formItem--compact">
 	                            <ShopInput placeholder={t('pages.productAdmin.variantImage')} aria-label={productEditorFieldLabel(t('pages.productAdmin.variantCombinations'), t('pages.productAdmin.variantImage'), index)} title={productEditorFieldLabel(t('pages.productAdmin.variantCombinations'), t('pages.productAdmin.variantImage'), index)} />
 	                          </Form.Item>
 	                          <ShopButton
@@ -2979,10 +2979,10 @@ const ProductManagement: React.FC = () => {
                       <>
 	                        {fields.map(({ key, name, ...restField }, index) => (
 	                          <div key={key} className="shopify-metafield-row">
-	                            <Form.Item {...restField} name={[name, 'key']} style={{ marginBottom: 0 }}>
+	                            <Form.Item {...restField} name={[name, 'key']} className="product-management__formItem--compact">
 	                              <ShopInput placeholder={t('pages.productAdmin.specKey')} aria-label={productEditorFieldLabel(t('pages.productAdmin.specs'), t('pages.productAdmin.specKey'), index)} title={productEditorFieldLabel(t('pages.productAdmin.specs'), t('pages.productAdmin.specKey'), index)} />
 	                            </Form.Item>
-	                            <Form.Item {...restField} name={[name, 'value']} style={{ marginBottom: 0 }}>
+	                            <Form.Item {...restField} name={[name, 'value']} className="product-management__formItem--compact">
 	                              <ShopInput placeholder={t('pages.productAdmin.specValue')} aria-label={productEditorFieldLabel(t('pages.productAdmin.specs'), t('pages.productAdmin.specValue'), index)} title={productEditorFieldLabel(t('pages.productAdmin.specs'), t('pages.productAdmin.specValue'), index)} />
 	                            </Form.Item>
 	                            <ShopButton
@@ -3044,7 +3044,7 @@ const ProductManagement: React.FC = () => {
 
               <section className="shopify-card">
                 <h3>{t('common.status')}</h3>
-                <Form.Item name="status" style={{ marginBottom: 0 }}>
+                <Form.Item name="status" className="product-management__formItem--compact">
                   <ShopSelect
                     className="shopify-input"
                     ariaLabel={`${productEditorLabel}: ${t('common.status')}`}
@@ -3172,7 +3172,7 @@ const ProductManagement: React.FC = () => {
           <div className="product-url-import-preview">
             <div className="product-url-import-preview__media">
               {urlImportPreviewMainImage ? (
-                <ShopImage src={resolveProductAdminImage(urlImportPreviewMainImage)} alt={urlImportPreview.name || t('pages.productAdmin.mediaPreview')} width={88} height={88} style={{ objectFit: 'cover', borderRadius: 6 }} fallback={productAdminImageFallback} />
+                <ShopImage src={resolveProductAdminImage(urlImportPreviewMainImage)} alt={urlImportPreview.name || t('pages.productAdmin.mediaPreview')} width={88} height={88} className="product-admin-thumb product-admin-thumb--lg" fallback={productAdminImageFallback} />
               ) : (
                 <div className="product-url-import-preview__placeholder">{t('pages.productAdmin.urlImportNoImage')}</div>
               )}

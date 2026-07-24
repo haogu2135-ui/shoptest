@@ -681,7 +681,7 @@ const CouponManagement: React.FC = () => {
   return (
     <div className="coupon-management-page">
       <div className="coupon-management-page__header">
-        <Title level={3} style={{ margin: 0 }}><GiftOutlined /> {t('pages.adminCoupons.title')}</Title>
+        <Title level={3} className="coupon-management-page__title"><GiftOutlined className="coupon-management-page__titleIcon" /> {t('pages.adminCoupons.title')}</Title>
         <ShopSpace wrap className="coupon-management-page__actions">
           {canWriteCoupons ? <ShopButton type="primary" icon={<PlusOutlined />} disabled={couponMutationDisabled} aria-label={createCouponLabel} title={createCouponLabel} onClick={openCreate}>{t('pages.adminCoupons.createCoupon')}</ShopButton> : null}
         </ShopSpace>
@@ -1119,7 +1119,7 @@ const CouponManagement: React.FC = () => {
           <ShopAlert
             type="info"
             showIcon
-            style={{ marginBottom: 16 }}
+            className="coupon-management__toolbarField"
             message={t('pages.adminCoupons.grantHelpTitle')}
             description={(
               <ShopSpace direction="vertical" size={6}>

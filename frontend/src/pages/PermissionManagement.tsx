@@ -210,7 +210,7 @@ const PermissionManagement: React.FC = () => {
 
       {canRenderRoleSnapshot ? (
         <>
-      <ShopCard className="permission-management-page__toolbar" style={{ margin: '20px 0 16px' }}>
+      <ShopCard className="permission-management-page__toolbar">
         <ShopSpace wrap className="permission-management-page__actions">
           <ShopInput
             allowClear
@@ -233,10 +233,9 @@ const PermissionManagement: React.FC = () => {
       </ShopCard>
 
       <ShopAlert
-        className="permission-management-page__guard"
+        className="permission-management-page__guard permission-management__toolbarField"
         type="info"
         showIcon
-        style={{ marginBottom: 16 }}
         message={t('pages.permissions.guardTitle')}
         description={t('pages.permissions.guardText')}
       />

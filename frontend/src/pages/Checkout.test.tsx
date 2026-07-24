@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import Checkout, { formatCheckoutDateTime, getCheckoutCouponErrorMessage, isValidCheckoutPostalCode } from './Checkout';
+import Checkout, { buildCheckoutValidationAnnouncement, estimateCouponDiscount, formatCheckoutDateTime, getCheckoutCouponErrorMessage, isValidCheckoutPostalCode, normalizeCheckoutText, toSafeMoney } from './Checkout';
 import { addressApi, appConfigApi, cartApi, couponApi, orderApi, paymentApi } from '../api';
 import { getLocalStorageItem } from '../utils/safeStorage';
 import { hasAuthenticatedCartSession, readCheckoutCartItemIds } from '../utils/cartSession';
@@ -8,6 +8,8 @@ import { getGuestCartItems } from '../utils/guestCart';
 
 const readCheckoutTestSource = () => require('fs').readFileSync(__filename, 'utf8') as string;
 const readCheckoutPageSource = () => require('fs').readFileSync(require('path').resolve(__dirname, 'Checkout.tsx'), 'utf8') as string;
+const readCheckoutHelpersSource = () => require('fs').readFileSync(require('path').resolve(__dirname, '../utils/checkoutHelpers.ts'), 'utf8') as string;
+const readCheckoutPaymentLifecycleSource = () => require('fs').readFileSync(require('path').resolve(__dirname, '../hooks/useCheckoutPaymentLifecycle.ts'), 'utf8') as string;
 const readCheckoutCssSource = () => require('fs').readFileSync(require('path').resolve(__dirname, 'Checkout.css'), 'utf8') as string;
 const readMobileAppCssSource = () => require('fs').readFileSync(require('path').resolve(__dirname, '../mobile-app.css'), 'utf8') as string;
 const readProfilePageSource = () => require('fs').readFileSync(require('path').resolve(__dirname, 'Profile.tsx'), 'utf8') as string;
@@ -364,6 +366,7 @@ describe('Checkout payment availability', () => {
 
   it('keeps address region country labels localized for checkout and profile cascaders', () => {
     const checkoutSource = readCheckoutPageSource();
+    const helpersSource = readCheckoutHelpersSource();
     const profileSource = readProfilePageSource();
     const regionDataSource = readRegionDataSource();
 
@@ -384,18 +387,30 @@ describe('Checkout payment availability', () => {
 
   it('requires saved addresses to carry independent region, postal code, and detail fields', () => {
     const checkoutSource = readCheckoutPageSource();
+    const helpersSource = readCheckoutHelpersSource();
     const profileSource = readProfilePageSource();
 
-    expect(checkoutSource).toContain("import { isValidRegionalPostalCode, normalizeRegionalPostalCode } from '../utils/postalCode';");
-    expect(checkoutSource).toContain('const getSavedAddressRegionPath = (address?: UserAddress | null) =>');
-    expect(checkoutSource).toContain('const getSavedAddressPostalCode = (address?: UserAddress | null) =>');
-    expect(checkoutSource).toContain('const getSavedAddressDetail = (address?: UserAddress | null) =>');
-    expect(checkoutSource).toContain('const isCompleteSavedAddress = (address?: UserAddress | null) =>');
+    expect(checkoutSource).toContain("from '../utils/checkoutHelpers'");
+    expect(checkoutSource).toContain('isValidCheckoutPostalCode');
+    expect(checkoutSource).toContain('normalizeCheckoutPostalCode');
+    expect(helpersSource).toContain('export const normalizeCheckoutPostalCode = normalizeRegionalPostalCode');
+    expect(helpersSource).toContain("from './postalCode'");
+    expect(helpersSource).toContain('export const getSavedAddressRegionPath = (address?: UserAddress | null) =>');
+    expect(helpersSource).toContain('export const getSavedAddressPostalCode = (address?: UserAddress | null) =>');
+    expect(helpersSource).toContain('export const getSavedAddressDetail = (address?: UserAddress | null) =>');
+    expect(helpersSource).toContain('export const isCompleteSavedAddress = (address?: UserAddress | null) =>');
+    expect(checkoutSource).toContain('getSavedAddressRegionPath');
+    expect(checkoutSource).toContain('isCompleteSavedAddress');
     expect(checkoutSource).toContain('const savedPostalCode = getSavedAddressPostalCode(address);');
     expect(checkoutSource).toContain('postalCode: savedPostalCode || undefined,');
-    expect(checkoutSource).toContain('&& isValidCheckoutPostalCode(postalCode, regionPath)');
+    expect(helpersSource).toContain('&& isValidCheckoutPostalCode(postalCode, regionPath)');
+    expect(helpersSource).toContain('&& hasCompleteCheckoutRecipientName(address.recipientName)');
+    expect(helpersSource).toContain('&& hasCompleteCheckoutDetailAddress(getSavedAddressDetail(address))');
     expect(checkoutSource).toContain(': isCompleteSavedAddress(selectedSavedAddress)');
-    expect(checkoutSource).toContain("throw new Error(t('pages.checkout.addressRequired'));");
+    expect(helpersSource).toContain('export const buildCheckoutShippingAddressLine');
+    expect(helpersSource).toContain('isCompleteSavedAddress(selectedSavedAddress)');
+    expect(helpersSource).toContain('throw new Error(addressRequiredMessage)');
+    expect(checkoutSource).toContain("addressRequiredMessage: t('pages.checkout.addressRequired')");
     expect(checkoutSource).not.toContain('setPostalCode(address.postalCode || "")');
     expect(checkoutSource).not.toContain('&& normalizeCheckoutText(selectedSavedAddress.address, 260)');
 
@@ -428,14 +443,18 @@ describe('Checkout payment availability', () => {
 
   it('requires meaningful recipient and detailed address lengths before checkout can submit', () => {
     const source = readCheckoutPageSource();
+    const helpersSource = readCheckoutHelpersSource();
     const localeSources = ['en', 'zh', 'es'].map((locale) => require('fs').readFileSync(require('path').resolve(__dirname, `../locales/${locale}.json`), 'utf8') as string);
 
-    expect(source).toContain('const CHECKOUT_RECIPIENT_MIN_LENGTH = 2;');
-    expect(source).toContain('const CHECKOUT_DETAIL_ADDRESS_MIN_LENGTH = 5;');
-    expect(source).toContain('const hasCompleteCheckoutRecipientName = (value: unknown) =>');
-    expect(source).toContain('const hasCompleteCheckoutDetailAddress = (value: unknown) =>');
-    expect(source).toContain('&& hasCompleteCheckoutRecipientName(address.recipientName)');
-    expect(source).toContain('&& hasCompleteCheckoutDetailAddress(getSavedAddressDetail(address))');
+    expect(helpersSource).toContain('export const CHECKOUT_RECIPIENT_MIN_LENGTH = 2;');
+    expect(helpersSource).toContain('export const CHECKOUT_DETAIL_ADDRESS_MIN_LENGTH = 5;');
+    expect(helpersSource).toContain('export const hasCompleteCheckoutRecipientName = (value: unknown) =>');
+    expect(helpersSource).toContain('export const hasCompleteCheckoutDetailAddress = (value: unknown) =>');
+    expect(source).toContain("from '../utils/checkoutHelpers'");
+    expect(source).toContain('hasCompleteCheckoutRecipientName');
+    expect(source).toContain('hasCompleteCheckoutDetailAddress');
+    expect(helpersSource).toContain('&& hasCompleteCheckoutRecipientName(address.recipientName)');
+    expect(helpersSource).toContain('&& hasCompleteCheckoutDetailAddress(getSavedAddressDetail(address))');
     expect(source).toContain('hasCompleteCheckoutRecipientName(currentRecipientName)');
     expect(source).toContain('hasCompleteCheckoutDetailAddress(currentShippingAddress)');
     expect(source).toContain("Promise.reject(new Error(t('pages.checkout.recipientMin')))");
@@ -489,18 +508,20 @@ describe('Checkout payment availability', () => {
 
   it('keeps payment timers lifecycle-bound without delayed location redirects', () => {
     const source = readCheckoutPageSource();
-    const refreshEffectStart = source.indexOf('if (!createdOrderId || payment || !pendingPaymentMethod) return;');
-    const pollingEffectStart = source.indexOf("if (!createdOrderId || paymentStatus !== 'PENDING') return;");
-    const postCheckoutBranchStart = source.indexOf('if (loading) {');
-    const refreshEffect = source.slice(refreshEffectStart, pollingEffectStart);
-    const pollingEffect = source.slice(pollingEffectStart, postCheckoutBranchStart);
+    const lifecycle = readCheckoutPaymentLifecycleSource();
+    const refreshEffectStart = lifecycle.indexOf('if (!createdOrderId || payment || !pendingPaymentMethod) return;');
+    const pollingStart = lifecycle.indexOf("if (!createdOrderId || paymentStatus !== 'PENDING') return;", refreshEffectStart + 1);
+    const refreshEffect = lifecycle.slice(refreshEffectStart, pollingStart);
+    const pollingEffect = lifecycle.slice(pollingStart);
 
     expect(source).not.toContain('window.location.href');
     expect(source).not.toMatch(/setTimeout\s*\([\s\S]{0,400}window\.location/);
-    expect(source).toContain("import { addressApi, cartApi, clearStoredAuthSession, couponApi, createApiAbortController, orderApi, paymentApi, productApi } from '../api';");
+    expect(source).toContain("from '../hooks/useCheckoutPaymentLifecycle'");
+    expect(source).toContain('useCheckoutPaymentLifecycle({');
+    expect(source).toContain("import { addressApi, cartApi, clearStoredAuthSession, couponApi, orderApi, paymentApi, productApi } from '../api';");
+    expect(lifecycle).toContain("import { createApiAbortController, orderApi, paymentApi } from '../api';");
     expect(refreshEffectStart).toBeGreaterThan(-1);
-    expect(pollingEffectStart).toBeGreaterThan(refreshEffectStart);
-    expect(postCheckoutBranchStart).toBeGreaterThan(pollingEffectStart);
+    expect(pollingStart).toBeGreaterThan(refreshEffectStart);
     expect(refreshEffect).toContain('let disposed = false;');
     expect(refreshEffect).toContain('const abortController = createApiAbortController();');
     expect(refreshEffect).toContain('const timer = window.setTimeout(async () => {');
@@ -524,7 +545,8 @@ describe('Checkout payment availability', () => {
     expect(pollingEffect).toContain("window.removeEventListener('storage', handlePaymentPollStorage);");
     expect(pollingEffect).toContain('abortActivePollRequest();');
     expect(source).toContain('const paymentStatus = payment?.status;');
-    expect(source).toContain('}, [createdOrderId, createdOrderNo, guestPaymentEmail, paymentStatus, showCheckoutMessage, t]);');
+    expect(lifecycle).toContain('showCheckoutMessage,');
+    expect(lifecycle).toContain('paymentStatus,');
     expect(pollingEffect).not.toMatch(/}, \[[^\]]*\bpayment\b[^\]]*\]\);/);
   });
 
@@ -597,6 +619,7 @@ describe('Checkout payment availability', () => {
 
   it('keeps guest checkout drafts until guest payment is confirmed paid', () => {
     const source = readCheckoutPageSource();
+    const lifecycle = readCheckoutPaymentLifecycleSource();
     const submitStart = source.indexOf('const handleSubmit = async (values: CheckoutFormValues) => {');
     const submitEnd = source.indexOf('const retryCreatePayment = async () => {', submitStart);
     const submitSource = source.slice(submitStart, submitEnd);
@@ -605,8 +628,9 @@ describe('Checkout payment availability', () => {
     expect(submitStart).toBeGreaterThan(-1);
     expect(submitEnd).toBeGreaterThan(submitStart);
     expect(submitSource).not.toContain('removeSessionStorageItem(CHECKOUT_GUEST_DRAFT_KEY);');
-    expect(source).toContain(paidCleanup);
-    expect(source.indexOf(paidCleanup)).toBeGreaterThan(source.indexOf('const paymentStatus = payment?.status;'));
+    expect(lifecycle).toContain(paidCleanup);
+    expect(source).toContain('useCheckoutPaymentLifecycle({');
+    expect(source).toContain('const paymentStatus = payment?.status;');
   });
 
   it('keeps checkout bootstrap independent of address and payment field state changes', () => {
@@ -644,12 +668,44 @@ describe('Checkout payment availability', () => {
   it('keeps checkout form submit values typed without broad any escape hatches', () => {
     const source = readCheckoutPageSource();
 
-    expect(source).toContain('type CheckoutFormValues = {');
-    expect(source).toContain('type CheckoutFormSnapshot = Partial<CheckoutFormValues>;');
+    const helpersSource = readCheckoutHelpersSource();
+    expect(helpersSource).toContain('export type CheckoutFormValues = {');
+    expect(helpersSource).toContain('export type CheckoutFormSnapshot = Partial<CheckoutFormValues>;');
+    expect(source).toContain('type CheckoutFormValues');
+    expect(source).toContain('type CheckoutFormSnapshot');
     expect(source).toContain('type CheckoutFormInstance = FormInstance<CheckoutFormValues>;');
     expect(source).toContain('Form.useForm<CheckoutFormValues>()');
     expect(source).toContain('const buildAddress = (values: CheckoutFormValues) => {');
-    expect(source).toContain('const buildRecipientPayload = (values: CheckoutFormValues) => {');
+    expect(source).toContain('const buildRecipientPayload = (values: CheckoutFormValues) =>');
+    expect(helpersSource).toContain('export const buildCheckoutShippingAddressLine');
+    expect(helpersSource).toContain('export const buildCheckoutRecipientPayload');
+    expect(helpersSource).toContain('export const describeCheckoutCoupon');
+    expect(helpersSource).toContain('export const formatCheckoutPaymentStatusLabel');
+    expect(helpersSource).toContain('export const getCheckoutPaymentStatusColor');
+    expect(helpersSource).toContain('export const scoreCheckoutReadiness');
+    expect(helpersSource).toContain('export const pickCheckoutNextAction');
+    expect(helpersSource).toContain('export const findNextCheckoutCouponUnlock');
+    expect(helpersSource).toContain('export const buildCheckoutCouponOpportunity');
+    expect(helpersSource).toContain('export const resolveCheckoutNextActionLabelKey');
+    expect(helpersSource).toContain('export const buildCheckoutOrderActionContext');
+    expect(helpersSource).toContain('export const buildCheckoutActionAriaLabel');
+    expect(helpersSource).toContain('export const buildGuestCheckoutOrderItems');
+    expect(helpersSource).toContain('export const buildGuestRestoreCartLine');
+    expect(helpersSource).toContain('export const resolveCheckoutCartSubmitGuard');
+    expect(helpersSource).toContain('export const resolveCheckoutContactSubmitGuard');
+    expect(source).toContain('resolveCheckoutCartSubmitGuard({');
+    expect(source).toContain('buildGuestCheckoutOrderItems(cartItems)');
+    expect(source).toContain('buildGuestRestoreCartLine(item, latestProduct, checkoutCartItemName(item))');
+    expect(source).toContain('checkout-page__confirmationBand--blocked');
+    expect(source).toContain('resolveCheckoutNextActionLabelKey(checkoutNextAction?.key)');
+    expect(source).toContain('useCheckoutPaymentLifecycle({');
+    expect(source).toContain('checkout-page__mobilePayBar--coach');
+    expect(source).toContain('findNextCheckoutCouponUnlock(availableCoupons, cartTotal)');
+    expect(source).toContain('buildCheckoutCouponOpportunity({');
+
+    expect(source).toContain('scoreCheckoutReadiness(checkoutReadinessItems)');
+
+    expect(source).toContain('buildCheckoutShippingAddressLine({');
     expect(source).toContain('const handleSubmit = async (values: CheckoutFormValues) => {');
     expect(source).toContain('React.useRef<CheckoutFormSnapshot | null>(null)');
     expect(source).toContain('useState<CheckoutFormSnapshot>');
@@ -728,10 +784,12 @@ describe('Checkout payment availability', () => {
 
   it('debounces guest checkout draft persistence while typing', () => {
     const source = readCheckoutPageSource();
+    const helpersSource = readCheckoutHelpersSource();
     const effectStart = source.indexOf('if (!hasCheckoutItems || !isGuestCheckout) return;');
     const effectSource = source.slice(effectStart, source.indexOf('}, [hasCheckoutItems, isGuestCheckout', effectStart));
 
-    expect(source).toContain('const CHECKOUT_GUEST_DRAFT_SAVE_DELAY_MS = 500;');
+    expect(helpersSource).toContain('export const CHECKOUT_GUEST_DRAFT_SAVE_DELAY_MS = 500;');
+    expect(source).toContain('CHECKOUT_GUEST_DRAFT_SAVE_DELAY_MS');
     expect(effectStart).toBeGreaterThan(-1);
     expect(effectSource).toContain('const timer = window.setTimeout(() => {');
     expect(effectSource).toContain('setSessionStorageItem(CHECKOUT_GUEST_DRAFT_KEY, JSON.stringify(draft));');
@@ -741,14 +799,52 @@ describe('Checkout payment availability', () => {
     expect(effectSource.indexOf('setSessionStorageItem(CHECKOUT_GUEST_DRAFT_KEY')).toBeGreaterThan(effectSource.indexOf('window.setTimeout'));
   });
 
+  it('builds modular checkout validation announcements for conversion accessibility', () => {
+    const helpersSource = readCheckoutHelpersSource();
+    const announcement = buildCheckoutValidationAnnouncement([
+      { name: ['recipientName'], errors: ['Name too short'] },
+      { name: ['phone'], errors: ['Phone invalid', 'Name too short'] },
+    ], (key: string, params?: Record<string, string | number>) => (
+      key === 'pages.checkout.validationErrorSummary' ? `ERR:${params?.count}` : key
+    ));
+    expect(announcement).toContain('ERR:2');
+    expect(announcement).toContain('Name too short');
+    expect(announcement).toContain('Phone invalid');
+    expect(helpersSource).toContain('export const buildCheckoutValidationAnnouncement');
+    expect(helpersSource).toContain('export const buildCheckoutFieldErrorMap');
+  });
+
+  it('keeps modular money and text helpers commercially pure for checkout conversion', () => {
+    const helpersSource = readCheckoutHelpersSource();
+    expect(toSafeMoney(-1)).toBe(0);
+    expect(toSafeMoney('12.5')).toBe(12.5);
+    expect(normalizeCheckoutText('  Hola\nMundo\t  ', 20)).toBe('Hola Mundo');
+    expect(estimateCouponDiscount({
+      couponType: 'FULL_REDUCTION',
+      reductionAmount: 50,
+      thresholdAmount: 100,
+    } as any, 80)).toBe(0);
+    expect(estimateCouponDiscount({
+      couponType: 'FULL_REDUCTION',
+      reductionAmount: 50,
+      thresholdAmount: 100,
+    } as any, 150)).toBe(50);
+    expect(helpersSource).toContain('export const estimateCouponDiscount');
+    expect(helpersSource).toContain('export const normalizeCheckoutText');
+    expect(helpersSource).toContain('export const toSafeMoney');
+  });
+
   it('keeps malformed payment expiry timestamps out of the checkout result UI', () => {
     const source = readCheckoutPageSource();
+    const helpersSource = readCheckoutHelpersSource();
 
     expect(formatCheckoutDateTime('not-a-date', 'en-US')).toBeNull();
     expect(formatCheckoutDateTime('', 'en-US')).toBeNull();
     expect(formatCheckoutDateTime('2026-06-14T00:00:00Z', 'en-US')).not.toBeNull();
-    expect(source).toContain('export const formatCheckoutDateTime = (value: unknown, dateLocale: string) => {');
-    expect(source).toContain('Number.isFinite(date.getTime()) ? date.toLocaleString(dateLocale) : null;');
+    expect(source).toContain("from '../utils/checkoutHelpers'");
+    expect(source).toContain('formatCheckoutDateTime');
+    expect(helpersSource).toContain('export const formatCheckoutDateTime = (value: unknown, dateLocale: string) => {');
+    expect(helpersSource).toContain('Number.isFinite(date.getTime()) ? date.toLocaleString(dateLocale) : null;');
     expect(source).toContain('const paymentExpiresAtText = formatCheckoutDateTime(payment.expiresAt, dateLocale);');
     expect(source).toContain("{paymentExpiresAtText ? <span className=\"checkout-page__text\">{t('pages.checkout.paymentExpiresAt')}: {paymentExpiresAtText}</span> : null}");
     expect(source).not.toContain('new Date(payment.expiresAt).toLocaleString(dateLocale)');
@@ -759,18 +855,21 @@ describe('Checkout payment availability', () => {
     const restoreStart = source.indexOf('const restoreSubmittedCartItems = async () => {');
     const restoreSource = source.slice(restoreStart, source.indexOf('const rollbackPendingPayment = () => {', restoreStart));
 
-    expect(source).toContain('const resolveGuestRestorePrice = (item: CartItem, product');
-    expect(source).toContain('Product | null) => {');
+    const helpersSource = readCheckoutHelpersSource();
+    expect(source).toContain('resolveGuestRestorePrice');
+    expect(helpersSource).toContain('export const resolveGuestRestorePrice = (item: CartItem, product?: Product | null) => {');
+    expect(helpersSource).toContain('parseCartItemSelectedSpecs');
     expect(restoreSource).toContain('productApi.getByIds(productIds, { bypassCache: true })');
     expect(restoreSource).toContain('latestProducts = new Map');
-    expect(restoreSource).toContain('const restorePrice = resolveGuestRestorePrice(item, latestProduct);');
-    expect(restoreSource).toContain('addGuestCartItem({');
-    expect(restoreSource).toContain('price: restorePrice');
-    expect(restoreSource).toContain('}, item.quantity, item.selectedSpecs, restorePrice);');
+    expect(restoreSource).toContain('buildGuestRestoreCartLine(item, latestProduct, checkoutCartItemName(item))');
+    expect(restoreSource).toContain('addGuestCartItem(restoreLine.product, restoreLine.quantity, restoreLine.selectedSpecs, restoreLine.restorePrice)');
+    expect(helpersSource).toContain('export const buildGuestRestoreCartLine');
+    expect(helpersSource).toContain('resolveGuestRestorePrice(item, latestProduct || null)');
   });
 
   it('persists submitted checkout cart lines for rollback after payment-create recovery', () => {
     const source = readCheckoutPageSource();
+    const helpersSource = readCheckoutHelpersSource();
     const submitStart = source.indexOf('const handleSubmit = async (values: CheckoutFormValues) => {');
     const submitSource = source.slice(submitStart, source.indexOf('const retryCreatePayment = async () => {', submitStart));
     const restoreStart = source.indexOf('const restoreSubmittedCartItems = async () => {');
@@ -778,7 +877,8 @@ describe('Checkout payment availability', () => {
 
     expect(submitStart).toBeGreaterThan(-1);
     expect(restoreStart).toBeGreaterThan(-1);
-    expect(source).toContain('cartItems: CartItem[];');
+    expect(helpersSource).toContain('cartItems: CartItem[];');
+    expect(helpersSource).toContain('export type CheckoutPendingOrderSnapshot');
     expect(source).toContain("const submittedCartItemsRef = React.useRef<CartItem[]>(initialPendingOrder?.cartItems || []);");
     expect(submitSource).toContain('const submittedCartItems = cartItems.map((item) => ({ ...item }));');
     expect(submitSource).toContain('submittedCartItemsRef.current = submittedCartItems;');
@@ -887,6 +987,7 @@ describe('Checkout payment availability', () => {
     expect(cascaderCss).not.toMatch(/\b(?:56|66)dvh\b/);
   });
 
+
   it('labels coupon opportunity actions with checkout context', async () => {
     (paymentApi.getChannels as jest.Mock).mockResolvedValue({
       data: [{ code: 'STRIPE', displayName: 'Stripe', enabled: true }],
@@ -913,9 +1014,12 @@ describe('Checkout payment availability', () => {
       </MemoryRouter>,
     );
 
+    await waitFor(() => {
+      expect(couponApi.quote).toHaveBeenCalled();
+    });
     const reviewCouponsButton = await screen.findByRole('button', {
       name: 'Review coupons: Coupon within reach',
-    });
+    }, { timeout: 5000 });
     expect(reviewCouponsButton).toHaveAttribute('title', 'Review coupons: Coupon within reach');
   });
 

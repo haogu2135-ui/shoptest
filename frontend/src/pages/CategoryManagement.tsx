@@ -315,7 +315,7 @@ const CategoryManagement: React.FC = () => {
               title={imageLabel}
               width={56}
               height={56}
-              style={{ objectFit: 'cover', borderRadius: 6 }}
+              className="category-management-page__thumb"
               fallback={categoryImageFallback}
             />
           ) : (
@@ -332,7 +332,7 @@ const CategoryManagement: React.FC = () => {
       render: (name: string, record: Category) => (
         <ShopSpace direction="vertical" size={0}>
           <Text strong>{record.localizedContent?.[language]?.name || record.localizedContent?.en?.name || name}</Text>
-          <Text type="secondary" style={{ fontSize: 12 }}>
+          <Text type="secondary" className="category-management-metaText">
             {getCategoryPath(flatCategories, record.id, language)}
           </Text>
         </ShopSpace>
@@ -638,7 +638,7 @@ const CategoryManagement: React.FC = () => {
                 title={`${t('common.image')}: ${editingCategory ? getCategoryLabel(editingCategory) : t('pages.categoryAdmin.addTitle')}`}
                 width={180}
                 height={120}
-                style={{ objectFit: 'cover', borderRadius: 8 }}
+                className="category-management-page__preview"
                 fallback={categoryImageFallback}
               />
             </div>

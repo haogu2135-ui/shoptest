@@ -10,19 +10,19 @@ import ShopSelect from '../components/ShopSelect';
 import ShopCascader from '../components/ShopCascader';
 import type { FormInstance } from 'antd/es/form';
 import { Link, useNavigate } from 'react-router-dom';
-import { addressApi, cartApi, clearStoredAuthSession, couponApi, createApiAbortController, orderApi, paymentApi, productApi } from '../api';
+import { addressApi, cartApi, clearStoredAuthSession, couponApi, orderApi, paymentApi, productApi } from '../api';
 import type { CartItem, CouponQuote, OrderCustomer, PaymentCustomer, PaymentChannel, ProductPublic as Product, UserAddress, UserCoupon } from '../types';
 import { loadRegionData, type RegionOption } from '../regionData';
 import { useLanguage, type Language } from '../i18n';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { useCheckoutPaymentLifecycle } from '../hooks/useCheckoutPaymentLifecycle';
 import { useDocumentMeta } from '../hooks/useDocumentMeta';
-import { createPaymentMethodDetails, filterPaymentChannelsForMarket, paymentMethodLabel } from '../utils/paymentMethods';
+import { createPaymentMethodDetails, paymentMethodLabel } from '../utils/paymentMethods';
 import { useMarket } from '../hooks/useMarket';
 import { formatSelectedSpecs } from '../utils/selectedSpecs';
 import { addGuestCartItem, getGuestCartItems, removeGuestCartItems } from '../utils/guestCart';
-import { conversionConfig, getDeliveryPromise, getLowStockCount } from '../utils/conversionConfig';
+import { conversionConfig, getDeliveryPromise } from '../utils/conversionConfig';
 import { getGiftThreshold, getNearestCartBenefitTarget } from '../utils/cartBenefits';
-import { getBundleInfo } from '../utils/bundle';
 import { clearCheckoutCartItemIds, hasAuthenticatedCartSession, readCheckoutCartItemIds, syncCheckoutCartItemIds } from '../utils/cartSession';
 import { productImageFallback, resolveProductImage } from '../utils/productMedia';
 import { getApiErrorMessage, isAuthExpiredError } from '../utils/apiError';
@@ -30,22 +30,10 @@ import { deriveCartShippingSummary, getCartLineAmount, roundCartMoney } from '..
 import { dispatchDomEvent } from '../utils/domEvents';
 import { saveGuestSupportContext } from '../utils/guestSupportContext';
 import { allSettledWithConcurrency } from '../utils/asyncBatch';
-import { getLocalStorageItem, getSessionStorageItem, removeSessionStorageItem, setLocalStorageItem, setSessionStorageItem } from '../utils/safeStorage';
+import { getSessionStorageItem, setSessionStorageItem, removeSessionStorageItem } from '../utils/safeStorage';
 import { useNativeBackHandler } from '../utils/nativeBack';
 import { reportNonBlockingError } from '../utils/nonBlockingError';
-import { focusFirstFormError } from '../utils/formValidationFocus';
 import { buildLoginUrlFromWindow } from '../utils/authRedirect';
-import { isLikelyPhoneNumber, normalizeLikelyPhoneNumber, normalizePhoneNumber } from '../utils/phone';
-import { isValidRegionalPostalCode, normalizeRegionalPostalCode } from '../utils/postalCode';
-import { getCouponPayablePercent } from '../utils/couponCenter';
-import {
-  CHECKOUT_PAYMENT_POLL_LOCK_TTL_MS,
-  claimCheckoutPaymentPollLock,
-  createCheckoutPaymentPollOwnerId,
-  releaseCheckoutPaymentPollLock,
-  startCheckoutPaymentPollWebLockSession,
-  type CheckoutPaymentPollWebLockSession,
-} from '../utils/checkoutPaymentPollLock';
 import AddOnAssistant from '../components/AddOnAssistant';
 import PageError from '../components/PageError';
 import ShopBreadcrumb from '../components/ShopBreadcrumb';
@@ -55,623 +43,128 @@ import ShopAlert from '../components/ShopAlert';
 import './Checkout.css';
 import '../styles/mobile-page-contrast.css';
 import { navigateToCommercialPaymentUrl, formatPaymentUrlLabel, getPaymentRecoveryState } from '../utils/paymentRecovery';
+import {
+  areSameIds,
+  buildCheckoutFieldErrorMap,
+  buildCheckoutValidationAnnouncement,
+  CHECKOUT_GUEST_DRAFT_KEY,
+  CHECKOUT_VALIDATION_SCROLL_OFFSET,
+  CHECKOUT_GUEST_DRAFT_SAVE_DELAY_MS,
+  CHECKOUT_IDEMPOTENCY_KEY,
+  CHECKOUT_PENDING_ORDER_KEY,
+  checkoutGuestDraftFieldNames,
+  estimateCouponDiscount,
+  findBestCoupon,
+  firstCheckoutRegionPath,
+  firstFilledCheckoutText,
+  formatCheckoutDateTime,
+  getCheckoutCouponErrorMessage,
+  getCartItemLowStockCount,
+  getRecommendedPaymentMethod,
+  getSavedAddressDetail,
+  getSavedAddressPostalCode,
+  getSavedAddressRegionPath,
+  hasCompleteCheckoutDetailAddress,
+  hasCompleteCheckoutRecipientName,
+  hasHydratableCheckoutValue,
+  isCompleteSavedAddress,
+  isFinalCheckoutOrderError,
+  isLikelyPhone,
+  isPurchasable,
+  isValidCheckoutPostalCode,
+  mergeDefinedCheckoutFields,
+  mergeHydratableCheckoutFields,
+  normalizeCheckoutEmail,
+  normalizeCheckoutGuestDraftFields,
+  normalizeCheckoutPhone,
+  normalizeCheckoutPostalCode,
+  normalizeCheckoutText,
+  normalizeCheckoutValidationMessage,
+  normalizeCouponQuote,
+  normalizeLikelyCheckoutPhone,
+  normalizeStatusCode,
+  parseCartItemSelectedSpecs,
+  parseCheckoutPendingOrderSnapshot,
+  resolveCheckoutPaymentMethod,
+  resolveGuestRestorePrice,
+  SUPPORT_PANEL_DISMISS_SUPPRESS_MS,
+  toSafeMoney,
+  clearCheckoutIdempotencyKey,
+  clearCheckoutPendingOrder,
+  createCheckoutIdempotencyKey,
+  getOrCreateCheckoutIdempotencyKey,
+  persistCheckoutPendingOrder,
+  readCheckoutGuestDraftFields,
+  readCheckoutPendingOrder,
+  buildCheckoutRecipientPayload,
+  buildCheckoutShippingAddressLine,
+  describeCheckoutCoupon,
+  formatCheckoutPaymentStatusLabel,
+  getCheckoutPaymentStatusColor,
+  scoreCheckoutReadiness,
+  pickCheckoutNextAction,
+  findNextCheckoutCouponUnlock,
+  buildCheckoutCouponOpportunity,
+  resolveCheckoutNextActionLabelKey,
+  buildCheckoutOrderActionContext,
+  buildCheckoutActionAriaLabel,
+  resolveCheckoutContactSubmitGuard,
+  resolveCheckoutCartSubmitGuard,
+  buildGuestRestoreCartLine,
+  buildGuestCheckoutOrderItems,
+  type CheckoutFormFieldName,
+  type CheckoutValidationField,
+  type CheckoutFormSnapshot,
+  type CheckoutFormValues,
+  type CheckoutMessageType,
+  type CheckoutPendingOrderSnapshot,
+  type CheckoutTranslationFn,
+} from '../utils/checkoutHelpers';
+import {
+  focusFirstCheckoutValidationError,
+  scrollCheckoutElementIntoView,
+  scrollCheckoutFieldIntoMobileView,
+} from '../utils/checkoutDom';
+
+export {
+  buildCheckoutValidationAnnouncement,
+  buildCheckoutFieldErrorMap,
+  areSameIds,
+  CHECKOUT_GUEST_DRAFT_KEY,
+  CHECKOUT_IDEMPOTENCY_KEY,
+  CHECKOUT_PENDING_ORDER_KEY,
+  checkoutPaymentPollResultKey,
+  estimateCouponDiscount,
+  findBestCoupon,
+  formatCheckoutDateTime,
+  getCheckoutCouponErrorMessage,
+  getCartItemLowStockCount,
+  isCompleteSavedAddress,
+  isPurchasable,
+  isValidCheckoutPostalCode,
+  normalizeCheckoutText,
+  parseCartItemSelectedSpecs,
+  parseCheckoutPaymentPollResult,
+  parseCheckoutPendingOrderSnapshot,
+  resolveCheckoutPaymentMethod,
+  resolveGuestRestorePrice,
+  toSafeMoney,
+  createCheckoutIdempotencyKey,
+  readCheckoutPendingOrder,
+  persistCheckoutPendingOrder,
+  readCheckoutGuestDraftFields,
+  getOrCreateCheckoutIdempotencyKey,
+} from '../utils/checkoutHelpers';
 
 const checkoutImageFallback = productImageFallback;
 const resolveCheckoutImage = resolveProductImage;
-const mobileCheckoutQuery = '(max-width: 780px)';
-const CHECKOUT_IDEMPOTENCY_KEY = 'checkoutIdempotencyKey';
-const CHECKOUT_PENDING_ORDER_KEY = 'checkoutPendingOrder';
-const CHECKOUT_PAYMENT_POLL_MAX_MS = 30 * 60 * 1000;
-const CHECKOUT_PAYMENT_POLL_RESULT_MAX_MS = CHECKOUT_PAYMENT_POLL_MAX_MS + CHECKOUT_PAYMENT_POLL_LOCK_TTL_MS;
-const SUPPORT_PANEL_DISMISS_SUPPRESS_MS = 30 * 1000;
-const CHECKOUT_GUEST_DRAFT_SAVE_DELAY_MS = 500;
-
-type CheckoutPaymentPollResult = {
-  ownerId: string;
-  orderId: number;
-  orderNo?: string;
-  payment: PaymentCustomer;
-  order?: OrderCustomer | null;
-  updatedAt: number;
-};
-
-type CheckoutPendingOrderSnapshot = {
-  order: OrderCustomer;
-  paymentMethod: string;
-  guestPaymentEmail?: string;
-  cartItems: CartItem[];
-  savedAt: number;
-};
-
-const PAYMENT_STATUS_LABEL_KEYS = new Set(['PENDING', 'PAID', 'FAILED', 'EXPIRED', 'REFUNDING', 'REFUNDED', 'RECONCILE_REQUIRED']);
-const paymentStatusColors: Record<string, string> = {
-  PENDING: 'orange',
-  PAID: 'green',
-  FAILED: 'red',
-  EXPIRED: 'volcano',
-  REFUNDING: 'purple',
-  REFUNDED: 'purple',
-  RECONCILE_REQUIRED: 'magenta',
-};
-
-const normalizeStatusCode = (status?: string) => String(status || '').trim().toUpperCase();
-
-const isPurchasable = (item: CartItem) =>
-  (item.productStatus || 'ACTIVE') === 'ACTIVE' && (item.stock === undefined || item.stock >= item.quantity);
-const readGuestCartSnapshot = () => {
-  const items = getGuestCartItems();
-  return Array.isArray(items) ? items : [];
-};
-const getCartItemLowStockCount = (item: CartItem) => getLowStockCount(item.stock, item.quantity);
-const areSameIds = (left: number[], right: number[]) => {
-  const leftIds = new Set(left);
-  const rightIds = new Set(right);
-  return leftIds.size === rightIds.size && Array.from(leftIds).every((id) => rightIds.has(id));
-};
-const scrollCheckoutElementIntoView = (elementId: string, behavior: ScrollBehavior = 'smooth') => {
-  if (typeof document === 'undefined') return;
-  const element = document.getElementById(elementId);
-  if (!element || typeof element.scrollIntoView !== 'function') return;
-  const isMobile = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(max-width: 780px)').matches;
-  element.scrollIntoView({ behavior, block: isMobile ? 'center' : 'start' });
-};
-const scrollCheckoutElementIntoMobileView = (elementId: string, behavior: ScrollBehavior = 'smooth') => {
-  if (!window.matchMedia?.(mobileCheckoutQuery).matches) return;
-  scrollCheckoutElementIntoView(elementId, behavior);
-};
-const scrollCheckoutFieldIntoMobileView = (target: EventTarget | null, fallbackElementId: string, behavior: ScrollBehavior = 'smooth') => {
-  if (!window.matchMedia?.(mobileCheckoutQuery).matches) return;
-  if (target instanceof HTMLElement) {
-    const field = target.closest('.ant-form-item') || target.closest('.checkout-page__addressChoice') || target;
-    window.setTimeout(() => {
-      if (typeof field.scrollIntoView === 'function') {
-        field.scrollIntoView({ behavior, block: 'center', inline: 'nearest' });
-      }
-    }, 80);
-    return;
-  }
-  scrollCheckoutElementIntoMobileView(fallbackElementId, behavior);
-};
-const toSafeMoney = (value: unknown) => {
-  const numeric = Number(value);
-  return Number.isFinite(numeric) && numeric > 0 ? numeric : 0;
-};
-export const formatCheckoutDateTime = (value: unknown, dateLocale: string) => {
-  if (value === null || value === undefined || value === '') return null;
-  const date = value instanceof Date || typeof value === 'number' || typeof value === 'string'
-    ? new Date(value)
-    : null;
-  if (!date) return null;
-  return Number.isFinite(date.getTime()) ? date.toLocaleString(dateLocale) : null;
-};
-
-const parseCartItemSelectedSpecs = (value?: string | null): Record<string, string> => {
-  if (!value) return {};
-  try {
-    const parsed = JSON.parse(value);
-    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
-    return Object.entries(parsed).reduce<Record<string, string>>((result, [key, option]) => {
-      const normalizedKey = String(key || '').trim();
-      if (!normalizedKey || option === undefined || option === null || typeof option === 'object') return result;
-      const normalizedOption = String(option).trim();
-      if (normalizedOption) result[normalizedKey] = normalizedOption;
-      return result;
-    }, {});
-  } catch (error) {
-    reportNonBlockingError('Checkout.parseCartItemSelectedSpecs', error);
-    return {};
-  }
-};
-
-const resolveGuestRestorePrice = (item: CartItem, product?: Product | null) => {
-  const selectedSpecs = parseCartItemSelectedSpecs(item.selectedSpecs);
-  const bundlePrice = selectedSpecs._purchaseMode === 'bundle' ? toSafeMoney(getBundleInfo(product)?.price) : 0;
-  if (bundlePrice > 0) return bundlePrice;
-
-  const selectedOptions = Object.entries(selectedSpecs).filter(([name]) => !name.startsWith('_'));
-  const variants = product && Array.isArray(product.variants) ? product.variants : [];
-  const skuMatch = selectedSpecs._variantSku
-    ? variants.find((variant) => String(variant.sku || '').trim() === selectedSpecs._variantSku)
-    : undefined;
-  const optionMatch = selectedOptions.length > 0
-    ? variants.find((variant) => selectedOptions.every(([name, option]) => variant.options?.[name] === option))
-    : undefined;
-  const variantPrice = toSafeMoney((skuMatch || optionMatch)?.price);
-  if (variantPrice > 0) return variantPrice;
-
-  const productPrice = toSafeMoney(product?.effectivePrice ?? product?.price);
-  return productPrice > 0 ? productPrice : toSafeMoney(item.price);
-};
-
-const estimateCouponDiscount = (coupon: UserCoupon, cartTotal: number) => {
-  const safeCartTotal = toSafeMoney(cartTotal);
-  const threshold = toSafeMoney(coupon.thresholdAmount);
-  if (safeCartTotal <= 0 || safeCartTotal < threshold) {
-    return 0;
-  }
-  if (coupon.couponType === 'FULL_REDUCTION') {
-    return Math.min(toSafeMoney(coupon.reductionAmount), safeCartTotal);
-  }
-  const payablePercent = getCouponPayablePercent(coupon);
-  const discount = safeCartTotal * (100 - payablePercent) / 100;
-  const maxDiscount = toSafeMoney(coupon.maxDiscountAmount);
-  return Math.min(maxDiscount > 0 ? Math.min(discount, maxDiscount) : discount, safeCartTotal);
-};
-
-const findBestCoupon = (coupons: UserCoupon[], cartTotal: number) =>
-  coupons
-    .map((coupon) => ({ coupon, discount: estimateCouponDiscount(coupon, cartTotal) }))
-    .filter((item) => Number.isFinite(item.discount) && item.discount > 0)
-    .sort((left, right) => right.discount - left.discount || toSafeMoney(left.coupon.thresholdAmount) - toSafeMoney(right.coupon.thresholdAmount))[0] || null;
-
-const normalizeCouponQuote = (quote?: CouponQuote | null): CouponQuote | null => (
-  quote ? { ...quote, availableCoupons: Array.isArray(quote.availableCoupons) ? quote.availableCoupons : [] } : null
-);
-
-type CheckoutTranslationFn = (key: string, params?: Record<string, string | number>) => string;
-
-type CheckoutCouponErrorLike = {
-  code?: string;
-  message?: string;
-  response?: {
-    status?: number;
-    data?: {
-      code?: string;
-      error?: string;
-      message?: string;
-    };
-  };
-};
-
-type CheckoutValidationField = {
-  name?: Array<string | number>;
-  errors?: React.ReactNode[];
-};
-
-const normalizeCheckoutValidationMessage = (message: React.ReactNode): string => {
-  if (typeof message === 'string' || typeof message === 'number') {
-    return String(message).trim();
-  }
-  if (Array.isArray(message)) {
-    return message.map(normalizeCheckoutValidationMessage).filter(Boolean).join(' ').trim();
-  }
-  return '';
-};
-
-const buildCheckoutValidationAnnouncement = (
-  fields: CheckoutValidationField[],
-  t: CheckoutTranslationFn,
-) => {
-  const messages = Array.from(new Set(
-    fields.flatMap((field) => (field.errors || []).map(normalizeCheckoutValidationMessage).filter(Boolean)),
-  ));
-  if (messages.length === 0) {
-    return '';
-  }
-  return `${t('pages.checkout.validationErrorSummary', { count: messages.length })} ${messages.join(' ')}`;
-};
-
-const buildCheckoutFieldErrorMap = (fields: CheckoutValidationField[]): Record<string, string> => {
-  const next: Record<string, string> = {};
-  fields.forEach((field) => {
-    const namePath = field.name;
-    if (!namePath || namePath.length === 0) {
-      return;
-    }
-    const key = namePath.map(String).join('.');
-    const message = (field.errors || [])
-      .map(normalizeCheckoutValidationMessage)
-      .find(Boolean);
-    if (message) {
-      next[key] = message;
-    }
-  });
-  return next;
-};
-
-const CHECKOUT_VALIDATION_SCROLL_OFFSET = 96;
-const focusFirstCheckoutValidationError = (errorFields?: CheckoutValidationField[]) => {
-  const firstFieldName = String(errorFields?.[0]?.name?.[0] || '');
-  if (firstFieldName === 'paymentMethod') {
-    scrollCheckoutElementIntoView('checkout-payment-card');
-    const paymentOption = document.querySelector(
-      '#checkout-payment-card .checkout-page__paymentMethod, #checkout-payment-card button, #checkout-payment-card [role="radio"]',
-    ) as HTMLElement | null;
-    if (paymentOption && typeof paymentOption.focus === 'function') {
-      try {
-        paymentOption.focus({ preventScroll: true });
-      } catch {
-        paymentOption.focus();
-      }
-    }
-    return;
-  }
-  if (firstFieldName === 'guestEmail') {
-    scrollCheckoutElementIntoView('checkout-contact-card');
-  } else if (['recipientName', 'phone', 'region', 'shippingAddress', 'postalCode'].includes(firstFieldName)) {
-    scrollCheckoutElementIntoView('checkout-address-card');
-  }
-  window.requestAnimationFrame(() => {
-    focusFirstFormError({
-      rootSelector: '.checkout-page',
-      scrollOffset: CHECKOUT_VALIDATION_SCROLL_OFFSET,
-    });
-  });
-};
-
-const couponBusinessErrorStatuses = new Set([400, 404, 409, 422]);
-
-const couponErrorMatchers: Array<[RegExp, string]> = [
-  [/\b(expired|expire|expiration|outdated)\b/, 'pages.checkout.couponErrorExpired'],
-  [/\b(threshold|minimum|min\.?|order\s+amount|amount\s+does\s+not\s+meet|does\s+not\s+meet|not\s+meet|spend\s+more)\b/, 'pages.checkout.couponErrorMinimum'],
-  [/\b(already\s+used|has\s+been\s+used|redeemed|used\s+up|usage\s+limit|limit\s+reached)\b/, 'pages.checkout.couponErrorUsed'],
-  [/\b(inactive|not\s+active\s+yet|not\s+active|not\s+started|not\s+yet\s+valid)\b/, 'pages.checkout.couponErrorInactive'],
-  [/\b(not\s+found|missing|unknown)\b/, 'pages.checkout.couponErrorNotFound'],
-  [/\b(out\s+of\s+stock|sold\s+out|no\s+stock|run\s+out|exhausted)\b/, 'pages.checkout.couponErrorOutOfStock'],
-  [/\b(not\s+available|unavailable|disabled)\b/, 'pages.checkout.couponErrorUnavailable'],
-  [/\b(cannot\s+be\s+used|can't\s+be\s+used|not\s+eligible|ineligible|not\s+applicable|not\s+usable)\b/, 'pages.checkout.couponErrorNotEligible'],
-];
-
-export const getCheckoutCouponErrorMessage = (
-  error: unknown,
-  fallback: string,
-  t: CheckoutTranslationFn,
-  language: Language,
-) => {
-  const apiMessage = getApiErrorMessage(error, fallback, language);
-  const errorLike = error as CheckoutCouponErrorLike;
-  const status = Number(errorLike.response?.status);
-  const hasStatus = Number.isFinite(status);
-  const responseData = errorLike.response?.data;
-  const shouldMapBusinessError = Boolean(responseData) && (!hasStatus || couponBusinessErrorStatuses.has(status));
-  if (!shouldMapBusinessError) {
-    return apiMessage;
-  }
-
-  const signal = [
-    responseData?.code,
-    responseData?.error,
-    responseData?.message,
-    errorLike.code,
-    errorLike.message,
-  ].map((value) => String(value || '').trim().toLowerCase()).filter(Boolean).join(' ');
-
-  if (!signal) {
-    return apiMessage;
-  }
-
-  const matched = couponErrorMatchers.find(([matcher]) => matcher.test(signal));
-  return matched ? t(matched[1]) : apiMessage;
-};
-
-const sanitizeCheckoutControlChars = (value: string) =>
-  Array.from(value, (char) => {
-    const code = char.charCodeAt(0);
-    return code <= 31 || code === 127 ? ' ' : char;
-  }).join('');
-const normalizeCheckoutText = (value: unknown, maxLength: number) =>
-  sanitizeCheckoutControlChars(String(value || '')).trim().replace(/\s+/g, ' ').slice(0, maxLength);
-
-const CHECKOUT_RECIPIENT_MIN_LENGTH = 2;
-const CHECKOUT_DETAIL_ADDRESS_MIN_LENGTH = 5;
-const hasMinimumCheckoutTextLength = (value: unknown, maxLength: number, minLength: number) =>
-  normalizeCheckoutText(value, maxLength).length >= minLength;
-const hasCompleteCheckoutRecipientName = (value: unknown) =>
-  hasMinimumCheckoutTextLength(value, 80, CHECKOUT_RECIPIENT_MIN_LENGTH);
-const hasCompleteCheckoutDetailAddress = (value: unknown) =>
-  hasMinimumCheckoutTextLength(value, 260, CHECKOUT_DETAIL_ADDRESS_MIN_LENGTH);
-
-const normalizeCheckoutPostalCode = normalizeRegionalPostalCode;
-export const isValidCheckoutPostalCode = isValidRegionalPostalCode;
-
-const normalizeCheckoutEmail = (value: unknown) =>
-  normalizeCheckoutText(value, 120).replace(/\s+/g, '').toLowerCase();
-
-const checkoutEmailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const isLikelyCheckoutEmail = (value: unknown) => checkoutEmailPattern.test(normalizeCheckoutEmail(value));
-
-const checkoutPhoneOptions = { minDigits: 6, maxDigits: 20, maxInputLength: 40, collapseWhitespace: true };
-const isLikelyPhone = (value: unknown) => isLikelyPhoneNumber(value, checkoutPhoneOptions);
-const normalizeCheckoutPhone = (value: unknown) => normalizePhoneNumber(value, checkoutPhoneOptions);
-const normalizeLikelyCheckoutPhone = (value: unknown) =>
-  normalizeLikelyPhoneNumber(value, checkoutPhoneOptions);
-
-type CheckoutErrorResponseLike = {
-  response?: {
-    status?: unknown;
-  };
-};
-
-const getCheckoutErrorResponse = (error: unknown) => (
-  typeof error === 'object' && error !== null && 'response' in error
-    ? (error as CheckoutErrorResponseLike).response
-    : undefined
-);
-
-const checkoutOrderFinalErrorStatuses = new Set([400, 404, 409, 422]);
-const isFinalCheckoutOrderError = (error: unknown) => {
-  const status = getCheckoutErrorResponse(error)?.status;
-  return typeof status === 'number' && checkoutOrderFinalErrorStatuses.has(status);
-};
-
 const clearExpiredCheckoutSession = () => {
   clearStoredAuthSession();
 };
 
-const normalizeCheckoutIdempotencyKey = (value: unknown) =>
-  normalizeCheckoutText(value, 120).replace(/[^a-z0-9._:-]/gi, '').slice(0, 120);
-
-const createCheckoutIdempotencyKey = () => {
-  const cryptoApi = window.crypto as (Crypto & { randomUUID?: () => string }) | undefined;
-  if (cryptoApi?.randomUUID) {
-    return `checkout-${cryptoApi.randomUUID()}`;
-  }
-  const randomWords = cryptoApi?.getRandomValues
-    ? cryptoApi.getRandomValues(new Uint32Array(4))
-    : [];
-  const random = Array.from(randomWords)
-    .map((value) => value.toString(16).padStart(8, '0'))
-    .join('');
-  return `checkout-${Date.now().toString(36)}-${random || Math.random().toString(36).slice(2, 12)}`;
-};
-
-const getOrCreateCheckoutIdempotencyKey = () => {
-  const existing = normalizeCheckoutIdempotencyKey(getSessionStorageItem(CHECKOUT_IDEMPOTENCY_KEY));
-  if (existing) return existing;
-  const next = normalizeCheckoutIdempotencyKey(createCheckoutIdempotencyKey());
-  setSessionStorageItem(CHECKOUT_IDEMPOTENCY_KEY, next);
-  return next;
-};
-
-const clearCheckoutIdempotencyKey = () => {
-  removeSessionStorageItem(CHECKOUT_IDEMPOTENCY_KEY);
-};
-
-const parseCheckoutPendingOrderSnapshot = (raw: string | null): CheckoutPendingOrderSnapshot | null => {
-  if (!raw) return null;
-  try {
-    const parsed = JSON.parse(raw) as Record<string, unknown> | null;
-    const order = parsed?.order && typeof parsed.order === 'object' ? parsed.order as OrderCustomer : null;
-    const orderId = Number(order?.id);
-    const paymentMethod = normalizeCheckoutText(parsed?.paymentMethod, 40);
-    const guestPaymentEmail = normalizeCheckoutEmail(parsed?.guestPaymentEmail);
-    const cartItems = parsed && Array.isArray(parsed.cartItems)
-      ? (parsed.cartItems as CartItem[]).filter((item) => Number(item?.productId) > 0 && Number(item?.quantity) > 0)
-      : [];
-    const savedAt = Number(parsed?.savedAt);
-    if (!order || !Number.isSafeInteger(orderId) || orderId <= 0 || !paymentMethod || !Number.isFinite(savedAt)) {
-      return null;
-    }
-    if (Date.now() - savedAt > CHECKOUT_PAYMENT_POLL_MAX_MS) {
-      return null;
-    }
-    return {
-      order,
-      paymentMethod,
-      guestPaymentEmail: guestPaymentEmail || undefined,
-      cartItems,
-      savedAt,
-    };
-  } catch (error) {
-    reportNonBlockingError('Checkout.parsePendingOrder', error);
-    return null;
-  }
-};
-
-const readCheckoutPendingOrder = () => {
-  const snapshot = parseCheckoutPendingOrderSnapshot(getSessionStorageItem(CHECKOUT_PENDING_ORDER_KEY));
-  if (!snapshot) {
-    removeSessionStorageItem(CHECKOUT_PENDING_ORDER_KEY);
-  }
-  return snapshot;
-};
-
-const persistCheckoutPendingOrder = (order: OrderCustomer, paymentMethod: string, guestPaymentEmail: string | undefined, cartItems: CartItem[]) => {
-  setSessionStorageItem(CHECKOUT_PENDING_ORDER_KEY, JSON.stringify({
-    order,
-    paymentMethod,
-    guestPaymentEmail,
-    cartItems,
-    savedAt: Date.now(),
-  }));
-};
-
-const clearCheckoutPendingOrder = () => {
-  removeSessionStorageItem(CHECKOUT_PENDING_ORDER_KEY);
-};
-
-const checkoutPaymentPollResultKey = (orderId: number) => `checkoutPaymentPollResult:${orderId}`;
-
-const parseCheckoutPaymentPollResult = (raw: string | null): CheckoutPaymentPollResult | null => {
-  if (!raw) return null;
-  try {
-    const parsed = JSON.parse(raw) as Partial<CheckoutPaymentPollResult> | null;
-    const ownerId = normalizeCheckoutText(parsed?.ownerId, 120);
-    const orderId = Number(parsed?.orderId);
-    const updatedAt = Number(parsed?.updatedAt);
-    const payment = parsed?.payment && typeof parsed.payment === 'object'
-      ? parsed.payment as PaymentCustomer
-      : null;
-    if (!ownerId || !Number.isSafeInteger(orderId) || orderId <= 0 || !Number.isFinite(updatedAt) || !payment) {
-      return null;
-    }
-    return {
-      ownerId,
-      orderId,
-      orderNo: normalizeCheckoutText(parsed?.orderNo, 80) || undefined,
-      payment,
-      order: parsed?.order && typeof parsed.order === 'object' ? parsed.order as OrderCustomer : null,
-      updatedAt,
-    };
-  } catch (error) {
-    reportNonBlockingError('Checkout.parsePaymentPollResult', error);
-    return null;
-  }
-};
-
-const readCheckoutPaymentPollResult = (orderId: number) => {
-  const result = parseCheckoutPaymentPollResult(getLocalStorageItem(checkoutPaymentPollResultKey(orderId)));
-  if (!result || result.orderId !== orderId || Date.now() - result.updatedAt > CHECKOUT_PAYMENT_POLL_RESULT_MAX_MS) {
-    return null;
-  }
-  return result;
-};
-
-const writeCheckoutPaymentPollResult = (
-  orderId: number,
-  ownerId: string,
-  payment: PaymentCustomer,
-  order?: OrderCustomer | null,
-) => {
-  const result: CheckoutPaymentPollResult = {
-    ownerId,
-    orderId,
-    orderNo: order?.orderNo || payment.orderNo,
-    payment,
-    order: order || null,
-    updatedAt: Date.now(),
-  };
-  setLocalStorageItem(checkoutPaymentPollResultKey(orderId), JSON.stringify(result));
-};
-
-const isCheckoutPaymentPollTerminal = (payment?: PaymentCustomer | null) => {
-  const status = normalizeStatusCode(payment?.status);
-  return Boolean(status && status !== 'PENDING');
-};
-
-const CHECKOUT_GUEST_DRAFT_KEY = 'checkoutGuestDraft';
-
-const normalizeCheckoutGuestDraftFields = (draft: unknown) => {
-  if (!draft || typeof draft !== 'object') return null;
-  const draftRecord = draft as Record<string, unknown>;
-  return {
-    guestEmail: normalizeCheckoutText(draftRecord.guestEmail, 120),
-    recipientName: normalizeCheckoutText(draftRecord.recipientName, 80),
-    phone: normalizeLikelyCheckoutPhone(draftRecord.phone),
-    region: Array.isArray(draftRecord.region) ? draftRecord.region : undefined,
-    shippingAddress: normalizeCheckoutText(draftRecord.shippingAddress, 260),
-    postalCode: normalizeCheckoutPostalCode(draftRecord.postalCode),
-  };
-};
-
-type CheckoutFormValues = {
-  guestEmail?: unknown;
-  recipientName?: unknown;
-  phone?: unknown;
-  region?: unknown;
-  shippingAddress?: unknown;
-  postalCode?: unknown;
-  paymentMethod?: unknown;
-};
-
-type CheckoutFormSnapshot = Partial<CheckoutFormValues>;
-
-type CheckoutFormFieldName = keyof CheckoutFormValues;
-type CheckoutMessageType = 'error' | 'warning' | 'success' | 'info';
-
-const readCheckoutGuestDraftFields = () => {
-  const rawDraft = getSessionStorageItem(CHECKOUT_GUEST_DRAFT_KEY);
-  if (!rawDraft) return null;
-  try {
-    return normalizeCheckoutGuestDraftFields(JSON.parse(rawDraft));
-  } catch (error) {
-    reportNonBlockingError('Checkout.readGuestDraft', error);
-    removeSessionStorageItem(CHECKOUT_GUEST_DRAFT_KEY);
-    return null;
-  }
-};
-
-const checkoutGuestDraftFieldNames: CheckoutFormFieldName[] = [
-  'guestEmail',
-  'recipientName',
-  'phone',
-  'region',
-  'shippingAddress',
-  'postalCode',
-];
-
-const hasHydratableCheckoutValue = (value: unknown) => (
-  Array.isArray(value) ? value.length > 0 : Boolean(normalizeCheckoutText(value, 500))
-);
-
-const getSavedAddressRegionPath = (address?: UserAddress | null) => {
-  const region = address?.region;
-  return (Array.isArray(region) ? region : [])
-    .map((item) => normalizeCheckoutText(item, 120))
-    .filter(Boolean);
-};
-
-const getSavedAddressPostalCode = (address?: UserAddress | null) =>
-  normalizeCheckoutPostalCode(address?.postalCode);
-
-const getSavedAddressDetail = (address?: UserAddress | null) =>
-  normalizeCheckoutText(address?.detailAddress, 260);
-
-const isCompleteSavedAddress = (address?: UserAddress | null) => {
-  const regionPath = getSavedAddressRegionPath(address);
-  const postalCode = getSavedAddressPostalCode(address);
-  return Boolean(
-    address
-      && hasCompleteCheckoutRecipientName(address.recipientName)
-      && isLikelyPhone(address.phone)
-      && regionPath.length > 0
-      && isValidCheckoutPostalCode(postalCode, regionPath)
-      && hasCompleteCheckoutDetailAddress(getSavedAddressDetail(address)),
-  );
-};
-
-const mergeDefinedCheckoutFields = (current: CheckoutFormSnapshot, updates: CheckoutFormSnapshot) => {
-  const next = { ...current };
-  Object.entries(updates || {}).forEach(([key, value]) => {
-    if (value !== undefined) {
-      next[key as CheckoutFormFieldName] = value;
-    }
-  });
-  return next;
-};
-
-const mergeHydratableCheckoutFields = (current: CheckoutFormSnapshot, updates: CheckoutFormSnapshot) => {
-  const next = { ...current };
-  Object.entries(updates || {}).forEach(([key, value]) => {
-    if (hasHydratableCheckoutValue(value)) {
-      next[key as CheckoutFormFieldName] = value;
-    }
-  });
-  return next;
-};
-
-const firstFilledCheckoutText = (...values: unknown[]) =>
-  values.find((value) => normalizeCheckoutText(value, 500)) ?? '';
-
-const firstCheckoutRegionPath = (...values: unknown[]) =>
-  values.find((value) => Array.isArray(value) && value.length > 0);
-
-const getRecommendedPaymentMethod = (channels: PaymentChannel[], currency: string) => {
-  // Always recommend within market-filtered rails so MXN never lands on CN methods.
-  const marketChannels = filterPaymentChannelsForMarket(channels, { currency });
-  const backendRecommended = marketChannels.find((channel) => channel.recommended)?.code;
-  if (backendRecommended) {
-    return backendRecommended;
-  }
-  if (!conversionConfig.paymentRecommendation.enabled) return null;
-  const preferredCodes = conversionConfig.paymentRecommendation.byCurrency[
-    currency as keyof typeof conversionConfig.paymentRecommendation.byCurrency
-  ] || conversionConfig.paymentRecommendation.fallback;
-  return preferredCodes.find((code) => marketChannels.some((channel) => channel.code === code))
-    || marketChannels[0]?.code
-    || null;
-};
-
-const resolveCheckoutPaymentMethod = (
-  candidate: string | null | undefined,
-  channels: PaymentChannel[],
-  currency: string,
-) => {
-  const marketChannels = filterPaymentChannelsForMarket(channels, { currency });
-  if (candidate && marketChannels.some((channel) => channel.code === candidate)) {
-    return candidate;
-  }
-  return getRecommendedPaymentMethod(channels, currency) || marketChannels[0]?.code || '';
+const readGuestCartSnapshot = () => {
+  const items = getGuestCartItems();
+  return Array.isArray(items) ? items : [];
 };
 
 type CheckoutFormInstance = FormInstance<CheckoutFormValues>;
@@ -741,11 +234,6 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
   const submittingRef = React.useRef(false);
   const paymentRetryingRef = React.useRef(false);
   const paymentSimulatingRef = React.useRef(false);
-  const paymentPollStartedAtRef = React.useRef<number | null>(null);
-  const paymentPollOwnerIdRef = React.useRef<string | null>(null);
-  if (!paymentPollOwnerIdRef.current) {
-    paymentPollOwnerIdRef.current = createCheckoutPaymentPollOwnerId();
-  }
   const supportPanelDismissedKeyRef = React.useRef<string | null>(null);
   const supportPanelDismissedUntilRef = React.useRef(0);
   const couponQuoteSeqRef = React.useRef(0);
@@ -795,13 +283,9 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
   useEffect(() => {
     checkoutLocalizationRef.current = { t, language };
   }, [language, t]);
-  const formatPaymentStatusLabel = useCallback((status?: string) => {
-    const rawStatus = String(status || '').trim();
-    const normalizedStatus = normalizeStatusCode(rawStatus);
-    if (!normalizedStatus) return t('common.unknown');
-    if (PAYMENT_STATUS_LABEL_KEYS.has(normalizedStatus)) return t(`status.${normalizedStatus}`);
-    return rawStatus;
-  }, [t]);
+  const formatPaymentStatusLabel = useCallback((status?: string) => (
+    formatCheckoutPaymentStatusLabel(status, t)
+  ), [t]);
   const mergeCheckoutFormSnapshot = useCallback((updates: CheckoutFormSnapshot, preserveHydratedValues = false) => {
     setCheckoutFormSnapshot((current) => {
       const hydrated = preserveHydratedValues
@@ -824,11 +308,9 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
       return next;
     });
   }, []);
-  const getPaymentStatusColor = useCallback((status?: string) => {
-    const normalizedStatus = normalizeStatusCode(status);
-    if (!PAYMENT_STATUS_LABEL_KEYS.has(normalizedStatus)) return 'default';
-    return paymentStatusColors[normalizedStatus] || 'default';
-  }, []);
+  const getPaymentStatusColor = useCallback((status?: string) => (
+    getCheckoutPaymentStatusColor(status)
+  ), []);
   const watchedPaymentMethod = Form.useWatch('paymentMethod', form);
   const watchedGuestEmail = Form.useWatch('guestEmail', form);
   const watchedRecipientName = Form.useWatch('recipientName', form);
@@ -995,6 +477,8 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
     if (!target?.closest('.ant-cascader')) {
       closeCheckoutRegionCascader();
     }
+    // Commercial mobile: keep focused checkout controls visible above the soft keyboard.
+    scrollCheckoutFieldIntoMobileView(target, 'checkout-address-card');
   }, [closeCheckoutRegionCascader]);
   const handleCheckoutFormPointerDownCapture = useCallback((event: React.PointerEvent<HTMLElement>) => {
     const target = event.target as HTMLElement | null;
@@ -1507,51 +991,20 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
     () => getNearestCartBenefitTarget(cartTotal, freeShippingUnlocked ? 0 : market.freeShippingThreshold, currency),
     [cartTotal, currency, freeShippingUnlocked, market.freeShippingThreshold],
   );
-  const nextCouponUnlock = useMemo(() => {
-    if (!availableCoupons.length) return null;
-    return availableCoupons
-      .map((coupon) => {
-        const threshold = Number(coupon.thresholdAmount || 0);
-        const gap = Math.max(0, threshold - cartTotal);
-        const estimatedValue = coupon.couponType === 'FULL_REDUCTION'
-          ? Number(coupon.reductionAmount || 0)
-          : Math.min(
-            Number(coupon.maxDiscountAmount || 0) || threshold,
-            threshold * (100 - getCouponPayablePercent(coupon)) / 100,
-          );
-        return { coupon, gap, estimatedValue };
-      })
-      .filter((item) => item.gap > 0 && item.estimatedValue > 0)
-      .sort((left, right) => left.gap - right.gap || right.estimatedValue - left.estimatedValue)[0] || null;
-  }, [availableCoupons, cartTotal]);
-  const couponOpportunity = useMemo(() => {
-    if (isGuestCheckout || !availableCoupons.length) return null;
-    if (selectedCoupon && discountAmount > 0) {
-      return {
-        type: 'ready' as const,
-        title: selectedIsBestCoupon
-          ? t('pages.checkout.couponOpportunityBestTitle')
-          : t('pages.checkout.couponOpportunityAppliedTitle'),
-        text: t('pages.checkout.couponOpportunityAppliedText', {
-          name: selectedCoupon.couponName,
-          amount: formatMoney(discountAmount),
-        }),
-        action: t('pages.checkout.couponOpportunityReview'),
-      };
-    }
-    if (nextCouponUnlock) {
-      return {
-        type: 'build' as const,
-        title: t('pages.checkout.couponOpportunityBuildTitle'),
-        text: t('pages.checkout.couponOpportunityBuildText', {
-          amount: formatMoney(nextCouponUnlock.gap),
-          value: formatMoney(nextCouponUnlock.estimatedValue),
-        }),
-        action: t('pages.checkout.couponOpportunityReview'),
-      };
-    }
-    return null;
-  }, [availableCoupons.length, discountAmount, formatMoney, isGuestCheckout, nextCouponUnlock, selectedCoupon, selectedIsBestCoupon, t]);
+  const nextCouponUnlock = useMemo(
+    () => findNextCheckoutCouponUnlock(availableCoupons, cartTotal),
+    [availableCoupons, cartTotal],
+  );
+  const couponOpportunity = useMemo(() => buildCheckoutCouponOpportunity({
+    isGuestCheckout,
+    availableCoupons,
+    selectedCoupon,
+    selectedIsBestCoupon,
+    discountAmount,
+    nextCouponUnlock,
+    formatMoney,
+    t,
+  }), [availableCoupons, discountAmount, formatMoney, isGuestCheckout, nextCouponUnlock, selectedCoupon, selectedIsBestCoupon, t]);
   const savingsCoachItems = [
     {
       key: 'shipping',
@@ -1668,10 +1121,10 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
         : t('pages.checkout.readinessFreeShippingGap', { amount: formatMoney(freeShippingRemaining) }),
     },
   ];
-  const checkoutReadinessScore = Math.round((checkoutReadinessItems.filter((item) => item.ready).length / checkoutReadinessItems.length) * 100);
-  const checkoutNextAction = checkoutReadinessItems.find((item) => !item.ready) || null;
+  const checkoutReadinessScore = scoreCheckoutReadiness(checkoutReadinessItems);
+  const checkoutNextAction = pickCheckoutNextAction(checkoutReadinessItems);
   // Savings coaching must never block place-order. Only items/address/payment gate submit CTAs.
-  const checkoutBlockingAction = checkoutReadinessItems.find((item) => !item.ready && item.key !== 'savings') || null;
+  const checkoutBlockingAction = pickCheckoutNextAction(checkoutReadinessItems, { blockingOnly: true });
   const needsCheckoutSupport = Boolean(addOnTarget || couponOpportunity || checkoutNextAction);
   const supportPanelAutoOpenKey = useMemo(() => {
     if (!needsCheckoutSupport) return '';
@@ -1760,24 +1213,8 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
       couponCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   };
-  const checkoutCoachActionLabel = !checkoutNextAction
-    ? t('pages.checkout.nextActionSupport')
-    : checkoutNextAction.key === 'items'
-      ? t('pages.checkout.nextActionReviewCart')
-      : checkoutNextAction.key === 'address'
-        ? t('pages.checkout.nextActionAddress')
-        : checkoutNextAction.key === 'payment'
-          ? t('pages.checkout.nextActionPayment')
-          : t('pages.checkout.nextActionSavings');
-  const checkoutNextActionLabel = !checkoutBlockingAction
-    ? t('pages.checkout.nextActionSupport')
-    : checkoutBlockingAction.key === 'items'
-      ? t('pages.checkout.nextActionReviewCart')
-      : checkoutBlockingAction.key === 'address'
-        ? t('pages.checkout.nextActionAddress')
-        : checkoutBlockingAction.key === 'payment'
-          ? t('pages.checkout.nextActionPayment')
-          : t('pages.checkout.nextActionSavings');
+  const checkoutCoachActionLabel = t(resolveCheckoutNextActionLabelKey(checkoutNextAction?.key));
+  const checkoutNextActionLabel = t(resolveCheckoutNextActionLabelKey(checkoutBlockingAction?.key));
   const selectedPaymentMethodLabel = selectedPaymentDetail?.title || t('pages.checkout.paymentConfidenceDefault');
   const checkoutSubmitActionLabel = shippingQuoteReady
     ? `${t('pages.checkout.submitWithAmount', { amount: payableAmountText })}: ${t('pages.checkout.paymentMethod')} ${selectedPaymentMethodLabel}`
@@ -1890,56 +1327,35 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
     setGiftCelebrated(true);
   }, [giftCelebrated, giftUnlocked]);
 
-  const calculateCouponDiscount = (coupon: UserCoupon) => {
-    return estimateCouponDiscount(coupon, cartTotal);
-  };
+  const calculateCouponDiscount = (coupon: UserCoupon) => estimateCouponDiscount(coupon, cartTotal);
 
-  const describeCoupon = (coupon: UserCoupon) => {
-    const payablePercent = getCouponPayablePercent(coupon);
-    const discountPercent = Math.max(0, 100 - payablePercent);
-    const rule = coupon.couponType === 'FULL_REDUCTION'
-      ? `${formatMoney(coupon.thresholdAmount)} - ${formatMoney(coupon.reductionAmount)}`
-      : t('pages.checkout.discountPayable', { percent: discountPercent }) + (coupon.maxDiscountAmount ? `, ${t('pages.checkout.maxDiscount', { amount: formatMoney(coupon.maxDiscountAmount) })}` : '');
-    const threshold = Number(coupon.thresholdAmount || 0);
-    if (cartTotal < threshold) {
-      return `${coupon.couponName}: ${rule} (${t('pages.checkout.needMore', { amount: formatMoney(threshold - cartTotal) })})`;
-    }
-    return `${coupon.couponName}: ${rule}`;
-  };
+  const describeCoupon = (coupon: UserCoupon) => describeCheckoutCoupon(coupon, cartTotal, formatMoney, t);
 
   const buildAddress = (values: CheckoutFormValues) => {
-    if (selectedAddressId !== 'new') {
-      const address = addresses.find((item) => String(item.id) === String(selectedAddressId));
-      if (!address) throw new Error(t('pages.checkout.addressRequired'));
-      const region = selectedSavedAddressRegion.join(' ');
-      const addressParts = [region, selectedSavedAddressPostalCode, selectedSavedAddressDetail].filter(Boolean).join(' ');
-      if (!isCompleteSavedAddress(address) || !addressParts) {
-        throw new Error(t('pages.checkout.addressRequired'));
-      }
-      return normalizeCheckoutText(`${address.recipientName} / ${normalizeCheckoutPhone(address.phone)} / ${addressParts}`, 500);
-    }
-    const recipientName = normalizeCheckoutText(getCheckoutTextValue('recipientName', values), 80);
-    const phone = normalizeCheckoutPhone(getCheckoutTextValue('phone', values));
-    const regionPath = getCheckoutRegionValue(values);
-    const region = Array.isArray(regionPath) ? regionPath.join(' ') : '';
-    const postalCode = normalizeCheckoutPostalCode(getCheckoutTextValue('postalCode', values));
-    const detail = normalizeCheckoutText(getCheckoutTextValue('shippingAddress', values), 260);
-    const addressParts = [region, postalCode, detail].filter(Boolean).join(' ');
-    return normalizeCheckoutText(`${recipientName} / ${phone} / ${addressParts}`, 500);
+    const address = selectedAddressId !== 'new'
+      ? addresses.find((item) => String(item.id) === String(selectedAddressId)) || null
+      : null;
+    return buildCheckoutShippingAddressLine({
+      selectedAddressId,
+      selectedSavedAddress: address,
+      selectedSavedAddressRegion,
+      selectedSavedAddressPostalCode,
+      selectedSavedAddressDetail,
+      recipientName: getCheckoutTextValue('recipientName', values),
+      phone: getCheckoutTextValue('phone', values),
+      regionPath: getCheckoutRegionValue(values),
+      postalCode: getCheckoutTextValue('postalCode', values),
+      detailAddress: getCheckoutTextValue('shippingAddress', values),
+      addressRequiredMessage: t('pages.checkout.addressRequired'),
+    });
   };
 
-  const buildRecipientPayload = (values: CheckoutFormValues) => {
-    if (selectedAddressId !== 'new' && selectedSavedAddress) {
-      return {
-        recipientName: normalizeCheckoutText(selectedSavedAddress.recipientName, 80),
-        recipientPhone: normalizeCheckoutPhone(selectedSavedAddress.phone),
-      };
-    }
-    return {
-      recipientName: normalizeCheckoutText(getCheckoutTextValue('recipientName', values), 80),
-      recipientPhone: normalizeCheckoutPhone(getCheckoutTextValue('phone', values)),
-    };
-  };
+  const buildRecipientPayload = (values: CheckoutFormValues) => buildCheckoutRecipientPayload({
+    selectedAddressId,
+    selectedSavedAddress,
+    recipientName: getCheckoutTextValue('recipientName', values),
+    phone: getCheckoutTextValue('phone', values),
+  });
 
   const addSuggestedProduct = async (product: Product) => {
     const hasToken = hasAuthenticatedCartSession();
@@ -1973,34 +1389,51 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
     try {
       setCheckoutValidationAnnouncement('');
       const hasToken = hasAuthenticatedCartSession();
-      if (cartItems.length === 0) {
+      const cartSubmitGuard = resolveCheckoutCartSubmitGuard({
+        cartItemCount: cartItems.length,
+        hasUnavailableSelected: cartItems.some((item) => !isPurchasable(item)),
+        paymentMethodsAvailable,
+      });
+      if (cartSubmitGuard === 'empty_cart') {
         showCheckoutMessage('error', t('pages.checkout.emptyCart'));
         return;
       }
-      if (cartItems.some((item) => !isPurchasable(item))) {
+      if (cartSubmitGuard === 'unavailable_selected') {
         showCheckoutMessage('error', t('pages.checkout.unavailableSelected'));
         return;
       }
-      if (!paymentMethodsAvailable) {
+      if (cartSubmitGuard === 'payment_unavailable') {
         showCheckoutMessage('error', t('pages.checkout.paymentUnavailable'));
         return;
       }
       const normalizedPaymentMethod = normalizeCheckoutText(values.paymentMethod, 40);
       const normalizedGuestEmail = hasToken ? undefined : normalizeCheckoutEmail(values.guestEmail);
-      if (!normalizedPaymentMethod) {
-        showCheckoutMessage('error', t('pages.checkout.paymentRequired'));
-        return;
-      }
       if (!paymentMethodDetails.some((method) => method.value === normalizedPaymentMethod)) {
         showCheckoutMessage('error', t('pages.checkout.paymentRequired'));
         return;
       }
-      if (!hasToken && !isLikelyCheckoutEmail(normalizedGuestEmail)) {
+      const contactSubmitGuard = resolveCheckoutContactSubmitGuard({
+        hasToken,
+        paymentMethod: normalizedPaymentMethod,
+        guestEmail: normalizedGuestEmail,
+        requiresBackendShippingQuote,
+        shippingQuoteReady,
+        shippingQuoteUnavailable,
+      });
+      if (contactSubmitGuard === 'payment_required') {
+        showCheckoutMessage('error', t('pages.checkout.paymentRequired'));
+        return;
+      }
+      if (contactSubmitGuard === 'email_invalid') {
         showCheckoutMessage('error', t('pages.checkout.emailInvalid'));
         return;
       }
-      if (requiresBackendShippingQuote && !shippingQuoteReady) {
-        showCheckoutMessage('error', shippingQuoteUnavailable ? t('pages.checkout.shippingFeeUnavailable') : t('pages.checkout.shippingFeeCalculating'));
+      if (contactSubmitGuard === 'shipping_unavailable') {
+        showCheckoutMessage('error', t('pages.checkout.shippingFeeUnavailable'));
+        return;
+      }
+      if (contactSubmitGuard === 'shipping_calculating') {
+        showCheckoutMessage('error', t('pages.checkout.shippingFeeCalculating'));
         return;
       }
 
@@ -2024,11 +1457,7 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
               guestPhone: normalizeCheckoutPhone(values.phone),
               shippingAddress,
               paymentMethod: normalizedPaymentMethod,
-              items: cartItems.map((item) => ({
-                productId: item.productId,
-                quantity: item.quantity,
-                selectedSpecs: item.selectedSpecs,
-              })),
+              items: buildGuestCheckoutOrderItems(cartItems),
             }, { idempotencyKey: checkoutIdempotencyKey });
         const submittedCartItems = cartItems.map((item) => ({ ...item }));
         submittedCartItemsRef.current = submittedCartItems;
@@ -2195,18 +1624,8 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
     }
     submittedCartItems.forEach((item) => {
       const latestProduct = latestProducts.get(item.productId);
-      const restorePrice = resolveGuestRestorePrice(item, latestProduct);
-      addGuestCartItem({
-        id: item.productId,
-        name: latestProduct?.name || checkoutCartItemName(item),
-        imageUrl: latestProduct?.imageUrl || item.imageUrl,
-        price: restorePrice,
-        effectivePrice: restorePrice,
-        stock: latestProduct?.stock ?? item.stock,
-        status: latestProduct?.status || item.productStatus || 'ACTIVE',
-        freeShipping: latestProduct?.freeShipping ?? item.freeShipping,
-        freeShippingThreshold: latestProduct?.freeShippingThreshold ?? item.freeShippingThreshold,
-      }, item.quantity, item.selectedSpecs, restorePrice);
+      const restoreLine = buildGuestRestoreCartLine(item, latestProduct, checkoutCartItemName(item));
+      addGuestCartItem(restoreLine.product, restoreLine.quantity, restoreLine.selectedSpecs, restoreLine.restorePrice);
     });
   };
 
@@ -2240,216 +1659,20 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
   const createdOrderNo = createdOrder?.orderNo;
   const paymentStatus = payment?.status;
 
-  useEffect(() => {
-    if (!payment?.id) return;
-    clearCheckoutIdempotencyKey();
-    clearCheckoutPendingOrder();
-  }, [payment?.id]);
+  useCheckoutPaymentLifecycle({
+    createdOrderId,
+    createdOrderNo,
+    guestPaymentEmail,
+    payment,
+    paymentStatus,
+    pendingPaymentMethod,
+    setPayment,
+    setCreatedOrder,
+    setPaymentCreateError,
+    showCheckoutMessage,
+    t,
+  });
 
-  useEffect(() => {
-    if (guestPaymentEmail && normalizeStatusCode(paymentStatus) === 'PAID') {
-      removeSessionStorageItem(CHECKOUT_GUEST_DRAFT_KEY);
-    }
-  }, [guestPaymentEmail, paymentStatus]);
-
-  useEffect(() => {
-    if (!createdOrderId || paymentStatus !== 'PENDING') {
-      paymentPollStartedAtRef.current = null;
-    }
-  }, [createdOrderId, paymentStatus]);
-
-  useEffect(() => {
-    if (!createdOrderId || payment || !pendingPaymentMethod) return;
-    let disposed = false;
-    const abortController = createApiAbortController();
-    const timer = window.setTimeout(async () => {
-      if (disposed || abortController.signal.aborted) return;
-      try {
-        const hasToken = hasAuthenticatedCartSession();
-        const guestOrderNo = !hasToken && guestPaymentEmail ? createdOrderNo : undefined;
-        const paymentRes = await paymentApi.getLatestByOrder(
-          createdOrderId,
-          hasToken ? undefined : guestPaymentEmail,
-          guestOrderNo,
-          { signal: abortController.signal },
-        );
-        if (!disposed && !abortController.signal.aborted) {
-          setPayment(paymentRes.data);
-          setPaymentCreateError(null);
-        }
-      } catch (error) {
-        if (disposed || abortController.signal.aborted) return;
-        reportNonBlockingError('Checkout.refreshSubmittedPayment', error);
-      }
-    }, 1500);
-    return () => {
-      disposed = true;
-      window.clearTimeout(timer);
-      abortController.abort();
-    };
-  }, [createdOrderId, createdOrderNo, guestPaymentEmail, payment, pendingPaymentMethod]);
-
-  useEffect(() => {
-    if (!createdOrderId || paymentStatus !== 'PENDING') return;
-    if (process.env.NODE_ENV === 'test') return;
-    const ownerId = paymentPollOwnerIdRef.current || createCheckoutPaymentPollOwnerId();
-    paymentPollOwnerIdRef.current = ownerId;
-    const shouldRefreshOrder = hasAuthenticatedCartSession();
-    const guestOrderNo = !shouldRefreshOrder && guestPaymentEmail ? createdOrderNo : undefined;
-    const pollStartedAt = paymentPollStartedAtRef.current || Date.now();
-    paymentPollStartedAtRef.current = pollStartedAt;
-    let disposed = false;
-    let polling = false;
-    let pollAbortController: AbortController | null = null;
-    let ownsLock = false;
-    let webLockUnavailable = false;
-    let webLockSession: CheckoutPaymentPollWebLockSession | null = null;
-    let webLockAttempt: Promise<CheckoutPaymentPollWebLockSession | null> | null = null;
-    const releaseWebLockSession = () => {
-      webLockSession?.release();
-      webLockSession = null;
-    };
-    const abortActivePollRequest = () => {
-      pollAbortController?.abort();
-      pollAbortController = null;
-    };
-    const getWebLockSession = async () => {
-      if (webLockUnavailable) return null;
-      if (webLockSession?.acquired) return webLockSession;
-      if (!webLockAttempt) {
-        webLockAttempt = startCheckoutPaymentPollWebLockSession(createdOrderId)
-          .then((session) => {
-            if (session?.acquired) {
-              webLockSession = session;
-              session.done.catch((error) => {
-                reportNonBlockingError('Checkout.pollPendingPaymentWebLock', error);
-              });
-            }
-            return session;
-          })
-          .catch((error) => {
-            webLockUnavailable = true;
-            reportNonBlockingError('Checkout.pollPendingPaymentWebLock', error);
-            return null;
-          })
-          .finally(() => {
-            webLockAttempt = null;
-          });
-      }
-      return webLockAttempt;
-    };
-    const applySharedPollResult = (result: CheckoutPaymentPollResult | null) => {
-      if (disposed || !result || result.ownerId === ownerId || result.orderId !== createdOrderId) return false;
-      setPayment(result.payment);
-      if (result.order) {
-        setCreatedOrder(result.order);
-      }
-      return true;
-    };
-    applySharedPollResult(readCheckoutPaymentPollResult(createdOrderId));
-    const handlePaymentPollStorage = (event: StorageEvent) => {
-      if (event.key !== checkoutPaymentPollResultKey(createdOrderId) || !event.newValue || disposed) return;
-      applySharedPollResult(parseCheckoutPaymentPollResult(event.newValue));
-    };
-    window.addEventListener('storage', handlePaymentPollStorage);
-    const timer = window.setInterval(async () => {
-      if (disposed) return;
-      if (Date.now() - pollStartedAt >= CHECKOUT_PAYMENT_POLL_MAX_MS) {
-        disposed = true;
-        polling = false;
-        window.clearInterval(timer);
-        if (ownsLock) {
-          releaseCheckoutPaymentPollLock(createdOrderId, ownerId);
-          ownsLock = false;
-        }
-        releaseWebLockSession();
-        showCheckoutMessage('warning', t('pages.checkout.paymentPollingTimeout'));
-        return;
-      }
-      if (disposed || polling) return;
-      const sharedResult = readCheckoutPaymentPollResult(createdOrderId);
-      if (applySharedPollResult(sharedResult) && isCheckoutPaymentPollTerminal(sharedResult?.payment)) {
-        return;
-      }
-      polling = true;
-      let ownsThisPoll = false;
-      let ownsStorageLockForPoll = false;
-      try {
-        const activeWebLockSession = await getWebLockSession();
-        if (disposed) {
-          activeWebLockSession?.release();
-          return;
-        }
-        if (activeWebLockSession) {
-          if (!activeWebLockSession.acquired) return;
-          ownsThisPoll = true;
-        } else {
-          ownsStorageLockForPoll = true;
-          ownsThisPoll = await claimCheckoutPaymentPollLock(createdOrderId, createdOrderNo, ownerId);
-          ownsLock = ownsLock || ownsThisPoll;
-        }
-        if (disposed || !ownsThisPoll) return;
-        const abortController = createApiAbortController();
-        pollAbortController = abortController;
-        const paymentRes = await paymentApi.getLatestByOrder(
-          createdOrderId,
-          shouldRefreshOrder ? undefined : guestPaymentEmail,
-          guestOrderNo,
-          { signal: abortController.signal },
-        );
-        if (pollAbortController === abortController) {
-          pollAbortController = null;
-        }
-        if (disposed || abortController.signal.aborted) return;
-        const latestPayment = paymentRes.data;
-        setPayment(latestPayment);
-        writeCheckoutPaymentPollResult(createdOrderId, ownerId, latestPayment);
-        if (shouldRefreshOrder) {
-          const orderRes = await orderApi.getById(createdOrderId);
-          if (disposed) return;
-          setCreatedOrder(orderRes.data);
-          writeCheckoutPaymentPollResult(createdOrderId, ownerId, latestPayment, orderRes.data);
-        } else if (guestPaymentEmail && guestOrderNo) {
-          const orderRes = await orderApi.getById(createdOrderId, guestPaymentEmail, guestOrderNo);
-          if (disposed) return;
-          setCreatedOrder(orderRes.data);
-          writeCheckoutPaymentPollResult(createdOrderId, ownerId, latestPayment, orderRes.data);
-        }
-      } catch (error) {
-        if (disposed || pollAbortController?.signal.aborted) return;
-        reportNonBlockingError('Checkout.pollPendingPayment', error);
-      } finally {
-        pollAbortController = null;
-        polling = false;
-        if (disposed && ownsStorageLockForPoll && ownsThisPoll) {
-          releaseCheckoutPaymentPollLock(createdOrderId, ownerId);
-          ownsLock = false;
-        }
-        if (disposed) {
-          releaseWebLockSession();
-        }
-      }
-    }, 5000);
-    return () => {
-      const shouldReleaseLock = ownsLock && !polling;
-      const shouldReleaseWebLock = !polling;
-      disposed = true;
-      window.clearInterval(timer);
-      window.removeEventListener('storage', handlePaymentPollStorage);
-      abortActivePollRequest();
-      if (shouldReleaseLock) {
-        releaseCheckoutPaymentPollLock(createdOrderId, ownerId);
-      }
-      if (shouldReleaseWebLock) {
-        releaseWebLockSession();
-      }
-      webLockAttempt?.then((session) => {
-        if (!polling) {
-          session?.release();
-        }
-      }).catch(() => undefined);
-    };
-  }, [createdOrderId, createdOrderNo, guestPaymentEmail, paymentStatus, showCheckoutMessage, t]);
 
   const renderCheckoutStatusLiveRegion = () => (
     <div
@@ -2500,13 +1723,17 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
   }
 
   if (createdOrder && !payment) {
-    const orderDisplayNo = createdOrder.orderNo || String(createdOrder.id);
-    const orderPaymentContext = `${t('pages.paymentInstructions.orderNo')}: ${orderDisplayNo} · ${formatMoney(createdOrder.totalAmount)}`;
-    const retryPaymentActionLabel = `${t('pages.checkout.retryPayment')}: ${orderPaymentContext}`;
-    const rollbackPaymentActionLabel = `${t('pages.checkout.rollbackPaymentAction')}: ${orderPaymentContext}`;
-    const viewOrderActionLabel = `${t('pages.checkout.viewOrder')}: ${orderPaymentContext}`;
-    const trackOrderActionLabel = `${t('pages.orderTracking.title')}: ${orderPaymentContext}`;
-    const backHomeActionLabel = `${t('pages.checkout.backHome')}: ${orderPaymentContext}`;
+    const orderPaymentContext = buildCheckoutOrderActionContext({
+      orderNo: createdOrder.orderNo,
+      orderId: createdOrder.id,
+      amountText: formatMoney(createdOrder.totalAmount),
+      orderNoLabel: t('pages.paymentInstructions.orderNo'),
+    });
+    const retryPaymentActionLabel = buildCheckoutActionAriaLabel(t('pages.checkout.retryPayment'), orderPaymentContext);
+    const rollbackPaymentActionLabel = buildCheckoutActionAriaLabel(t('pages.checkout.rollbackPaymentAction'), orderPaymentContext);
+    const viewOrderActionLabel = buildCheckoutActionAriaLabel(t('pages.checkout.viewOrder'), orderPaymentContext);
+    const trackOrderActionLabel = buildCheckoutActionAriaLabel(t('pages.orderTracking.title'), orderPaymentContext);
+    const backHomeActionLabel = buildCheckoutActionAriaLabel(t('pages.checkout.backHome'), orderPaymentContext);
     return (
       <div className={`checkout-page checkout-page--result checkout-page--${language}`}>
         {renderCheckoutStatusLiveRegion()}
@@ -2542,16 +1769,20 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
 
   if (createdOrder && payment) {
     const paid = payment.status === 'PAID';
-    const orderDisplayNo = createdOrder.orderNo || String(createdOrder.id);
-    const orderPaymentContext = `${t('pages.paymentInstructions.orderNo')}: ${orderDisplayNo} · ${formatMoney(createdOrder.totalAmount)}`;
-    const openPaymentActionLabel = `${t('pages.checkout.openPayment')}: ${orderPaymentContext}`;
-    const retryPaymentActionLabel = `${t('pages.checkout.retryPayment')}: ${orderPaymentContext}`;
-    const rollbackPaymentActionLabel = `${t('pages.checkout.rollbackPaymentAction')}: ${orderPaymentContext}`;
-    const viewOrderActionLabel = `${t('pages.checkout.viewOrder')}: ${orderPaymentContext}`;
-    const trackOrderActionLabel = `${t('pages.orderTracking.title')}: ${orderPaymentContext}`;
-    const backHomeActionLabel = `${t('pages.checkout.backHome')}: ${orderPaymentContext}`;
-    const supportActionLabel = `${t('pages.checkout.nextActionSupport')}: ${orderPaymentContext}`;
-    const simulatePaymentActionLabel = `${t('pages.checkout.simulatePay')}: ${orderPaymentContext}`;
+    const orderPaymentContext = buildCheckoutOrderActionContext({
+      orderNo: createdOrder.orderNo,
+      orderId: createdOrder.id,
+      amountText: formatMoney(createdOrder.totalAmount),
+      orderNoLabel: t('pages.paymentInstructions.orderNo'),
+    });
+    const openPaymentActionLabel = buildCheckoutActionAriaLabel(t('pages.checkout.openPayment'), orderPaymentContext);
+    const retryPaymentActionLabel = buildCheckoutActionAriaLabel(t('pages.checkout.retryPayment'), orderPaymentContext);
+    const rollbackPaymentActionLabel = buildCheckoutActionAriaLabel(t('pages.checkout.rollbackPaymentAction'), orderPaymentContext);
+    const viewOrderActionLabel = buildCheckoutActionAriaLabel(t('pages.checkout.viewOrder'), orderPaymentContext);
+    const trackOrderActionLabel = buildCheckoutActionAriaLabel(t('pages.orderTracking.title'), orderPaymentContext);
+    const backHomeActionLabel = buildCheckoutActionAriaLabel(t('pages.checkout.backHome'), orderPaymentContext);
+    const supportActionLabel = buildCheckoutActionAriaLabel(t('pages.checkout.nextActionSupport'), orderPaymentContext);
+    const simulatePaymentActionLabel = buildCheckoutActionAriaLabel(t('pages.checkout.simulatePay'), orderPaymentContext);
     const paymentExpiresAtText = formatCheckoutDateTime(payment.expiresAt, dateLocale);
     const paymentRecovery = getPaymentRecoveryState(payment);
     const paymentStatusCode = normalizeStatusCode(payment.status);
@@ -2866,7 +2097,17 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
         ))}
       </section>
 
-      <section className={checkoutNextAction ? 'checkout-page__confirmationBand' : 'checkout-page__confirmationBand checkout-page__confirmationBand--ready'} aria-label={t('pages.checkout.readinessTitle')}>
+      <section
+        className={
+          checkoutBlockingAction
+            ? 'checkout-page__confirmationBand checkout-page__confirmationBand--blocked'
+            : checkoutNextAction
+              ? 'checkout-page__confirmationBand'
+              : 'checkout-page__confirmationBand checkout-page__confirmationBand--ready'
+        }
+        aria-label={t('pages.checkout.readinessTitle')}
+        data-checkout-confirmation-state={checkoutBlockingAction ? 'blocked' : checkoutNextAction ? 'coach' : 'ready'}
+      >
         <div className="checkout-page__confirmationScore">
           <ShopProgress type="circle" percent={checkoutReadinessScore} size={58} strokeColor="#124734" />
           <span>
@@ -3567,17 +2808,23 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
             </p>
           </div>
           <div
-            className="checkout-page__mobilePayBar"
+            className={checkoutBlockingAction ? 'checkout-page__mobilePayBar checkout-page__mobilePayBar--coach' : 'checkout-page__mobilePayBar'}
             role="region"
             aria-label={t('pages.checkout.paymentConfidenceTitle')}
+            data-checkout-mobile-coach={checkoutBlockingAction ? 'true' : 'false'}
           >
             <span className="checkout-page__mobilePayBarMeta">
               <span className="checkout-page__text checkout-page__text--secondary">{t('pages.checkout.payable')}</span>
               <span className={`checkout-page__text checkout-page__text--strong ${shippingQuoteReady ? 'commerce-money' : ''}`}>{payableAmountText}</span>
-              <span className="checkout-page__text checkout-page__text--secondary checkout-page__mobilePayBarTrust">
-                {selectedPaymentDetail?.title
-                  ? t('pages.checkout.mobilePayBarTrust', { method: selectedPaymentDetail.title })
-                  : t('pages.checkout.mobilePayBarTrustDefault')}
+              <span className={checkoutBlockingAction
+                ? 'checkout-page__text checkout-page__text--secondary checkout-page__mobilePayBarTrust checkout-page__mobilePayBarCoach'
+                : 'checkout-page__text checkout-page__text--secondary checkout-page__mobilePayBarTrust'}
+              >
+                {checkoutBlockingAction
+                  ? (checkoutNextAction?.text || checkoutCoachActionLabel)
+                  : selectedPaymentDetail?.title
+                    ? t('pages.checkout.mobilePayBarTrust', { method: selectedPaymentDetail.title })
+                    : t('pages.checkout.mobilePayBarTrustDefault')}
               </span>
             </span>
             {!paymentMethodsAvailable ? (

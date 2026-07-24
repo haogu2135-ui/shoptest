@@ -109,6 +109,7 @@
   align-items: center;
 }
 
+/* Commercial password toggle button reset (used by Login/Register/Forgot/Profile iconRender). */
 .shop-input__visibilityWrap > button {
   display: inline-flex;
   min-width: 28px;

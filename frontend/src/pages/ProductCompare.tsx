@@ -372,7 +372,7 @@ const ProductCompare: React.FC = () => {
       isDifferent: priceDifferent,
       render: (product: Product) => (
         <div className="product-compare__stackTight">
-          <span className="product-compare-page__text product-compare-page__text--strong commerce-money" style={{ color: '#ee4d2d' }}>{formatMoney(getPrice(product))}</span>
+          <span className="product-compare-page__text product-compare-page__text--strong commerce-money commerce-money--accent">{formatMoney(getPrice(product))}</span>
           {product.originalPrice && product.originalPrice > getPrice(product) ? (
             <span className="product-compare-page__text product-compare-page__text--delete product-compare-page__text--secondary commerce-money">{formatMoney(product.originalPrice)}</span>
           ) : null}

@@ -703,3 +703,12 @@
 
 
 /* Commercial residual: ReviewManagement ops labels stay >=12px */
+
+
+.review-management-page__cellText {
+  margin: 0;
+}
+
+.review-management-page__replyBtn {
+  margin-right: 8px;
+}
