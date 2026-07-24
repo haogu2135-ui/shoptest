@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 
 const readProductDetailSource = () => fs.readFileSync(path.resolve(__dirname, 'ProductDetail.tsx'), 'utf8');
+const readProductDetailHelpersSource = () => fs.readFileSync(path.resolve(__dirname, 'productDetailHelpers.tsx'), 'utf8');
 const readProductDetailCss = () => fs.readFileSync(path.resolve(__dirname, 'ProductDetail.css'), 'utf8');
 
 describe('ProductDetail size guide modal layout', () => {
@@ -23,11 +24,13 @@ describe('ProductDetail size guide modal layout', () => {
 
   it('bounds size calculator weight input and estimate value', () => {
     const source = readProductDetailSource();
+    const helpers = readProductDetailHelpersSource();
 
-    expect(source).toContain('const PRODUCT_SIZE_CALCULATOR_MAX_WEIGHT_KG = 200;');
-    expect(source).toContain('Math.min(PRODUCT_SIZE_CALCULATOR_MAX_WEIGHT_KG, Math.max(0, numeric))');
+    expect(helpers).toContain('export const PRODUCT_SIZE_CALCULATOR_MAX_WEIGHT_KG = 200;');
+    expect(helpers).toContain('Math.min(PRODUCT_SIZE_CALCULATOR_MAX_WEIGHT_KG, Math.max(0, numeric))');
     expect(source).toContain('const sizeCalculatorWeightKg = Math.min(\n    PRODUCT_SIZE_CALCULATOR_MAX_WEIGHT_KG,');
     expect(source).toContain('max={PRODUCT_SIZE_CALCULATOR_MAX_WEIGHT_KG}');
+    expect(source).toContain('PRODUCT_SIZE_CALCULATOR_MAX_WEIGHT_KG');
     expect(source).not.toContain('type="number"\n                        min={0}\n                        onChange=');
   });
 });

@@ -3,28 +3,25 @@ import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { ShopIcon, SI } from '../components/ShopIcon';
 import { useParams, useSearchParams } from 'react-router-dom';
 import ShopInput, { ShopTextArea } from '../components/ShopInput';
-import { productApi, cartApi, reviewApi, wishlistApi, questionApi } from '../api';
+import { productApi, wishlistApi } from '../api';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../i18n';
 import type { CartItem, ProductPublic as Product, PublicReview, ProductQuestionPublic, ReviewableOrder } from '../types';
 import { useMarket } from '../hooks/useMarket';
 import { localizeProduct } from '../utils/localizedProduct';
 import { getLocalizedOptionLabel, isSizeOptionName } from '../utils/localizedProductOptions';
-import { addGuestCartItem } from '../utils/guestCart';
 import { getBundleInfo } from '../utils/bundle';
 import { recordProductView } from '../utils/productViewPreferences';
-import { addStockAlert, hasStockAlert, removeStockAlert } from '../utils/stockAlerts';
+import { hasStockAlert } from '../utils/stockAlerts';
 import { conversionConfig, estimatePetSize, getDeliveryPromise, getLowStockCount } from '../utils/conversionConfig';
 import { getProductOptionGroups, getProductVariants, needsOptionSelection, optionValueIsCompatible, selectCompatibleProductOption, variantMatchesSelectedOptions } from '../utils/productOptions';
-import { clearCheckoutCartItemIds, syncCheckoutCartItemIds } from '../utils/cartSession';
 import { dispatchDomEvent } from '../utils/domEvents';
 import { buildResponsiveImageSrcSet, getOptimizedImageUrl } from '../utils/mediaAssets';
-import { buildLoginUrlFromWindow } from '../utils/authRedirect';
-import { getLocalStorageItem, hasStoredValue, removeSessionStorageItem } from '../utils/safeStorage';
+import { getLocalStorageItem, hasStoredValue } from '../utils/safeStorage';
 import { getLimitedTimeEndMs, getLimitedTimeRemainingMs, shouldRunLimitedTimeTicker } from '../utils/limitedTimeCountdown';
 import { getApiErrorMessage, getApiErrorStatus } from '../utils/apiError';
 import { buildBreadcrumbStructuredData, buildProductStructuredData } from '../utils/structuredData';
-import { addCompareProduct, isProductCompared, MAX_COMPARE_ITEMS } from '../utils/productCompare';
+import { isProductCompared } from '../utils/productCompare';
 import { addAppScrollListener } from '../utils/nativeScroll';
 import { useNativeBackHandler } from '../utils/nativeBack';
 import { AUTH_SESSION_CHANGED_EVENT } from '../utils/authEvents';
@@ -43,185 +40,42 @@ import PageError from '../components/PageError';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useDocumentMeta } from '../hooks/useDocumentMeta';
 import {
-  applyImageFallback,
-  cacheProductRecommendations,
-  clampZoom,
+  buildSelectedSpecsPayload,
   clearProductDetailSessionCaches,
   fallbackProductImage,
   findFallbackProductById,
-  getCachedProductRecommendations,
-  getTouchDistance,
-  getTouchPair,
-  handleGalleryZoomLeave,
-  handleGalleryZoomMove,
+  findSelectedProductVariant,
   normalizeProductImages,
+  normalizeProductDetailTab,
+  normalizeQuestionText,
+  normalizeSizeCalculatorWeight,
+  PRODUCT_DETAIL_TAB_KEYS,
+  PRODUCT_QUESTION_MAX_LENGTH,
+  PRODUCT_SIZE_CALCULATOR_MAX_WEIGHT_KG,
   renderTrustIcon,
   resolveProductPrimaryImage,
-  scoreRelatedRecommendation,
+  buildCompleteSetItems,
+  buildRelatedRecommendations,
 } from './productDetailHelpers';
-import type { GalleryTouchPoint, ProductRecommendationCandidate } from './productDetailHelpers';
+import type {
+  PendingProductQuestion,
+  ProductDetailTabKey,
+  ProductRecommendationCandidate,
+} from './productDetailHelpers';
+import { ProductDetailLazyFallback, ProductDetailSkeleton } from './productDetailShell';
+import { ProductDetailCompleteSet, ProductDetailRecommendations } from './productDetailRecommendations';
+import { ProductDetailGallery, ProductDetailImagePreviewModal } from './productDetailGallery';
+import { useProductDetailNonCriticalContent } from '../hooks/useProductDetailNonCriticalContent';
+import { useProductDetailGallery } from '../hooks/useProductDetailGallery';
+import { useProductDetailPurchaseActions } from '../hooks/useProductDetailPurchaseActions';
+import { useProductDetailEngagementActions } from '../hooks/useProductDetailEngagementActions';
+import { useProductDetailCommunityActions } from '../hooks/useProductDetailCommunityActions';
+import { useProductDetailRecommendationActions } from '../hooks/useProductDetailRecommendationActions';
 import './ProductDetail.css';
 import '../styles/mobile-page-contrast.css';
 
 const ProductRichDetail = React.lazy(() => import('../components/ProductRichDetail'));
 const ProductReview = React.lazy(() => import('../components/ProductReview').then((module) => ({ default: module.ProductReview })));
-
-interface PendingProductQuestion {
-  id: string;
-  question: string;
-  createdAt: string;
-}
-const eagerImagePriorityProps = { fetchpriority: 'high' } as unknown as React.ImgHTMLAttributes<HTMLImageElement>;
-const lazyImagePriorityProps = { fetchpriority: 'auto' } as unknown as React.ImgHTMLAttributes<HTMLImageElement>;
-
-const PRODUCT_QUESTION_MAX_LENGTH = 500;
-const PRODUCT_SIZE_CALCULATOR_MAX_WEIGHT_KG = 200;
-
-const stripQuestionControlChars = (value: string) =>
-  Array.from(value, (char) => {
-    const code = char.charCodeAt(0);
-    return code <= 31 || code === 127 ? ' ' : char;
-  }).join('');
-
-const normalizeQuestionText = (value: string) => (
-  stripQuestionControlChars(value).trim().replace(/\s+/g, ' ').slice(0, PRODUCT_QUESTION_MAX_LENGTH)
-);
-
-const normalizeSizeCalculatorWeight = (value: string) => {
-  if (!value.trim()) return '';
-  const numeric = Number(value);
-  if (!Number.isFinite(numeric)) return '';
-  return String(Math.min(PRODUCT_SIZE_CALCULATOR_MAX_WEIGHT_KG, Math.max(0, numeric)));
-};
-
-const ProductDetailSkeleton: React.FC<{ label: string }> = ({ label }) => (
-  <div className="product-detail-page product-detail-page--loading">
-    <div className="product-detail-shell">
-      <div
-        className="product-detail-skeleton"
-        role="status"
-        aria-live="polite"
-        aria-busy="true"
-        aria-label={label}
-        data-testid="product-detail-skeleton"
-      >
-        <span className="product-detail-skeleton__sr">{label}</span>
-        <div className="product-detail-skeleton__breadcrumb" aria-hidden="true">
-          <span className="product-detail-skeleton__block product-detail-skeleton__block--crumb" />
-          <span className="product-detail-skeleton__block product-detail-skeleton__block--crumb product-detail-skeleton__block--crumbLong" />
-          <span className="product-detail-skeleton__block product-detail-skeleton__block--crumb product-detail-skeleton__block--crumbShort" />
-        </div>
-
-        <div className="product-detail-skeleton__main">
-          <section className="product-detail-skeleton__media" aria-hidden="true" data-testid="product-detail-skeleton-gallery">
-            <div className="product-detail-skeleton__imageFrame">
-              <span className="product-detail-skeleton__block product-detail-skeleton__block--image" />
-            </div>
-            <div className="product-detail-skeleton__thumbs">
-              {Array.from({ length: 4 }).map((_, index) => (
-                <span key={index} className="product-detail-skeleton__block product-detail-skeleton__block--thumb" />
-              ))}
-            </div>
-          </section>
-
-          <section className="product-detail-skeleton__summary" aria-hidden="true" data-testid="product-detail-skeleton-summary">
-            <span className="product-detail-skeleton__block product-detail-skeleton__block--brand" />
-            <span className="product-detail-skeleton__block product-detail-skeleton__block--title" />
-            <span className="product-detail-skeleton__block product-detail-skeleton__block--subtitle" />
-            <span className="product-detail-skeleton__block product-detail-skeleton__block--price" />
-            <div className="product-detail-skeleton__signals">
-              {Array.from({ length: 3 }).map((_, index) => (
-                <span key={index} className="product-detail-skeleton__block product-detail-skeleton__block--signal" />
-              ))}
-            </div>
-            <div className="product-detail-skeleton__options">
-              {Array.from({ length: 2 }).map((_, index) => (
-                <div key={index} className="product-detail-skeleton__optionGroup">
-                  <span className="product-detail-skeleton__block product-detail-skeleton__block--optionLabel" />
-                  <div className="product-detail-skeleton__optionPills">
-                    {Array.from({ length: 3 }).map((__, pillIndex) => (
-                      <span key={pillIndex} className="product-detail-skeleton__block product-detail-skeleton__block--pill" />
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="product-detail-skeleton__actions">
-              <span className="product-detail-skeleton__block product-detail-skeleton__block--action" />
-              <span className="product-detail-skeleton__block product-detail-skeleton__block--action product-detail-skeleton__block--actionPrimary" />
-            </div>
-          </section>
-        </div>
-
-        <div className="product-detail-skeleton__afterfold" aria-hidden="true" data-testid="product-detail-skeleton-afterfold">
-          <div className="product-detail-skeleton__tabs">
-            <span className="product-detail-skeleton__block product-detail-skeleton__block--tab" />
-            <span className="product-detail-skeleton__block product-detail-skeleton__block--tab" />
-            <span className="product-detail-skeleton__block product-detail-skeleton__block--tab" />
-          </div>
-          <div className="product-detail-skeleton__detailRows">
-            <span className="product-detail-skeleton__block product-detail-skeleton__block--detail product-detail-skeleton__block--detailLong" />
-            <span className="product-detail-skeleton__block product-detail-skeleton__block--detail" />
-            <span className="product-detail-skeleton__block product-detail-skeleton__block--detail product-detail-skeleton__block--detailShort" />
-          </div>
-          <div className="product-detail-skeleton__recommendations">
-            {Array.from({ length: 3 }).map((_, index) => (
-              <span key={index} className="product-detail-skeleton__block product-detail-skeleton__block--recommendation" />
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-);
-
-const ProductDetailLazyFallback: React.FC<{ label: string; variant: 'rich' | 'review' }> = ({ label, variant }) => (
-  <div
-    className={`product-detail-lazy-skeleton product-detail-lazy-skeleton--${variant}`}
-    role="status"
-    aria-live="polite"
-    aria-busy="true"
-    aria-label={label}
-    data-testid={`product-detail-lazy-${variant}-fallback`}
-  >
-    <span className="product-detail-skeleton__sr">{label}</span>
-    {variant === 'rich' ? (
-      <>
-        <span className="product-detail-skeleton__block product-detail-lazy-skeleton__line product-detail-lazy-skeleton__line--wide" />
-        <span className="product-detail-skeleton__block product-detail-lazy-skeleton__line" />
-        <span className="product-detail-skeleton__block product-detail-lazy-skeleton__media" />
-      </>
-    ) : (
-      <>
-        <span className="product-detail-skeleton__block product-detail-lazy-skeleton__title" />
-        <div className="product-detail-lazy-skeleton__composer">
-          <span className="product-detail-skeleton__block product-detail-lazy-skeleton__select" />
-          <span className="product-detail-skeleton__block product-detail-lazy-skeleton__textarea" />
-          <span className="product-detail-skeleton__block product-detail-lazy-skeleton__button" />
-        </div>
-        <div className="product-detail-lazy-skeleton__reviewRows">
-          {Array.from({ length: 2 }).map((_, index) => (
-            <div className="product-detail-lazy-skeleton__reviewRow" key={index}>
-              <span className="product-detail-skeleton__block product-detail-lazy-skeleton__avatar" />
-              <span className="product-detail-skeleton__block product-detail-lazy-skeleton__line" />
-            </div>
-          ))}
-        </div>
-      </>
-    )}
-  </div>
-);
-
-const PRODUCT_DETAIL_TAB_KEYS = ['details', 'specs', 'service'] as const;
-type ProductDetailTabKey = (typeof PRODUCT_DETAIL_TAB_KEYS)[number];
-
-const normalizeProductDetailTab = (value: string | null | undefined): ProductDetailTabKey => {
-  const normalized = String(value || '').trim().toLowerCase();
-  if (normalized === 'specs' || normalized === '2') return 'specs';
-  if (normalized === 'service' || normalized === 'shipping' || normalized === '3') return 'service';
-  if (normalized === 'details' || normalized === '1' || normalized === 'detail') return 'details';
-  return 'details';
-};
 
 const ProductDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -245,14 +99,11 @@ const ProductDetail: React.FC = () => {
   const [recommendations, setRecommendations] = useState<Product[]>([]);
   const [recommendationsLoading, setRecommendationsLoading] = useState(false);
   const [recommendationsLoadFailed, setRecommendationsLoadFailed] = useState(false);
-  const [recommendationAddingId, setRecommendationAddingId] = useState<number | null>(null);
   const [questions, setQuestions] = useState<ProductQuestionPublic[]>([]);
   const [pendingQuestions, setPendingQuestions] = useState<PendingProductQuestion[]>([]);
   const [questionText, setQuestionText] = useState('');
   const [questionSubmitting, setQuestionSubmitting] = useState(false);
   const [now, setNow] = useState(() => Date.now());
-  const [documentHidden, setDocumentHidden] = useState(typeof document !== 'undefined' ? document.hidden : false);
-  const [imagePaused, setImagePaused] = useState(false);
   const [sizeGuideOpen, setSizeGuideOpen] = useState(false);
   useNativeBackHandler(isModalVisible, () => {
     setIsModalVisible(false);
@@ -266,23 +117,34 @@ const ProductDetail: React.FC = () => {
   const [sizeCalculatorWeight, setSizeCalculatorWeight] = useState('');
   const [purchaseMode, setPurchaseMode] = useState<'once' | 'bundle'>('once');
   const [purchaseSubmitting, setPurchaseSubmitting] = useState<'cart' | 'buy' | null>(null);
-  const [pinchZoom, setPinchZoom] = useState({ active: false, scale: 1, originX: 50, originY: 50 });
   const [isAlerted, setIsAlerted] = useState(false);
   const [isCompared, setIsCompared] = useState(false);
   const [authSessionVersion, setAuthSessionVersion] = useState(0);
-  const mobileGalleryRef = useRef<HTMLDivElement | null>(null);
   const detailContentRef = useRef<HTMLDivElement | null>(null);
   const optionsSectionRef = useRef<HTMLDivElement | null>(null);
-  const nonCriticalLoadedRef = useRef(false);
-  const nonCriticalRequestSeqRef = useRef(0);
-  const pinchStartRef = useRef<{ distance: number; scale: number } | null>(null);
-  const imageResumeTimerRef = useRef<number | null>(null);
-  const purchaseRequestKeyRef = useRef<string | null>(null);
-  const recommendationRequestIdsRef = useRef<Set<number>>(new Set());
-  const galleryScrollRafRef = useRef<number | null>(null);
   const { t, language } = useLanguage();
   const productDetailLocalizationRef = useRef({ t, language });
   productDetailLocalizationRef.current = { t, language };
+  const {
+    fetchQuestions,
+    fetchReviewableOrders,
+    fetchReviews,
+    isCurrentNonCriticalRequest,
+    nonCriticalLoadedRef,
+    nonCriticalRequestSeqRef,
+    warmNonCriticalContent,
+  } = useProductDetailNonCriticalContent({
+    id,
+    language,
+    setAverageRating,
+    setPendingQuestions,
+    setQuestions,
+    setRecommendations,
+    setRecommendationsLoadFailed,
+    setRecommendationsLoading,
+    setReviewableOrders,
+    setReviews,
+  });
   const pageTitle = product?.name?.trim() || (loadError ? t('pages.productDetail.loadFailed') : '');
   usePageTitle(pageTitle || t('pages.productDetail.product'));
   const { currency, market, formatMoney } = useMarket();
@@ -428,79 +290,44 @@ const ProductDetail: React.FC = () => {
     return () => window.clearInterval(timer);
   }, [limitedTimeTickerActive, limitedTimeEnd]);
 
-  const clearImageResumeTimer = useCallback(() => {
-    if (imageResumeTimerRef.current !== null) {
-      window.clearTimeout(imageResumeTimerRef.current);
-      imageResumeTimerRef.current = null;
-    }
-  }, []);
-
-  const pauseImageRotation = useCallback(() => {
-    clearImageResumeTimer();
-    setImagePaused(true);
-  }, [clearImageResumeTimer]);
-
-  const resumeImageRotation = useCallback(() => {
-    clearImageResumeTimer();
-    setImagePaused(false);
-  }, [clearImageResumeTimer]);
-
-  const scheduleImageRotationResume = useCallback((delay = 2600) => {
-    clearImageResumeTimer();
-    imageResumeTimerRef.current = window.setTimeout(() => {
-      setImagePaused(false);
-      imageResumeTimerRef.current = null;
-    }, delay);
-  }, [clearImageResumeTimer]);
-
-  useEffect(() => clearImageResumeTimer, [clearImageResumeTimer]);
-
-  useEffect(() => {
-    if (typeof document === 'undefined') {
-      return;
-    }
-    const handleVisibilityChange = () => {
-      setDocumentHidden(document.hidden);
-    };
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, []);
-
-  useEffect(() => () => {
-    if (galleryScrollRafRef.current !== null) {
-      window.cancelAnimationFrame(galleryScrollRafRef.current);
-      galleryScrollRafRef.current = null;
-    }
-  }, []);
-
   const productImages = useMemo(() => product ? normalizeProductImages(product) : [], [product]);
   const galleryImages = useMemo(() => productImages.slice(0, -1), [productImages]);
+  const {
+    handleGalleryKeyDown,
+    handleGalleryTouchStart,
+    handleMobileGalleryScroll,
+    imagePaused,
+    mobileGalleryRef,
+    pauseImageRotation,
+    pinchZoom,
+    resetGalleryPinch,
+    resumeImageRotation,
+    scheduleImageRotationResume,
+    selectAdjacentGalleryImage,
+    selectGalleryImage,
+    setImagePaused,
+  } = useProductDetailGallery({
+    activeMobileImageIndex,
+    galleryImages,
+    isModalVisible,
+    loading,
+    product,
+    selectedImage,
+    setActiveMobileImageIndex,
+    setSelectedImage,
+  });
   const optionGroups = useMemo(() => getProductOptionGroups(product), [product]);
   const variants = useMemo(() => getProductVariants(product), [product]);
   const bundleInfo = useMemo(() => getBundleInfo(product), [product]);
-  const selectedVariant = useMemo(() => {
-    if (!variants.length) return undefined;
-    return variants.find((variant) => {
-      const variantOptions = variant.options || {};
-      const variantKeys = Object.keys(variantOptions);
-      const selectedKeys = Object.keys(selectedOptions).filter((key) => selectedOptions[key]);
-      return variantKeys.length === selectedKeys.length
-        && variantKeys.every((key) => selectedOptions[key] === variantOptions[key])
-        && selectedKeys.every((key) => Object.prototype.hasOwnProperty.call(variantOptions, key));
-    });
-  }, [selectedOptions, variants]);
+  const selectedVariant = useMemo(
+    () => findSelectedProductVariant(variants, selectedOptions),
+    [selectedOptions, variants],
+  );
   const currentStock = selectedVariant?.stock ?? product?.stock;
-  const selectedSpecsPayload = useMemo(() => JSON.stringify({
-    ...selectedOptions,
-    ...(selectedVariant?.sku ? { _variantSku: selectedVariant.sku } : {}),
-    ...(purchaseMode === 'bundle' && bundleInfo ? {
-      _purchaseMode: 'bundle',
-      _bundleTitle: bundleInfo.title,
-      _bundleItems: bundleInfo.items.map((item) => `${item.name} x${item.quantity || 1}`).join(', '),
-    } : {}),
-  }), [bundleInfo, purchaseMode, selectedOptions, selectedVariant]);
+  const selectedSpecsPayload = useMemo(
+    () => buildSelectedSpecsPayload(selectedOptions, selectedVariant, purchaseMode, bundleInfo),
+    [bundleInfo, purchaseMode, selectedOptions, selectedVariant],
+  );
 
   const focusOptionsSection = () => {
     optionsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -521,26 +348,33 @@ const ProductDetail: React.FC = () => {
     return true;
   };
 
-  useEffect(() => {
-    if (loading || !product || imagePaused || galleryImages.length <= 1 || isModalVisible) return;
-    // Avoid background carousel timers in tests and when the tab is hidden.
-    if (process.env.NODE_ENV === 'test') return;
-    if (documentHidden) return;
-    const timer = window.setInterval(() => {
-      if (documentHidden) return;
-      setActiveMobileImageIndex((currentIndex) => {
-        const nextIndex = (currentIndex + 1) % galleryImages.length;
-        const nextImage = galleryImages[nextIndex] || galleryImages[0];
-        setSelectedImage(nextImage);
-        const gallery = mobileGalleryRef.current;
-        if (gallery) {
-          gallery.scrollTo({ left: nextIndex * gallery.clientWidth, behavior: 'smooth' });
-        }
-        return nextIndex;
-      });
-    }, 3200);
-    return () => window.clearInterval(timer);
-  }, [documentHidden, galleryImages, imagePaused, isModalVisible, loading, product]);
+  const { handleAddToCart, handleBuyNow } = useProductDetailPurchaseActions({
+    bundleInfo,
+    id,
+    language,
+    navigate,
+    optionGroupsLength: optionGroups.length,
+    product,
+    purchaseMode,
+    purchaseSubmitting,
+    quantity,
+    selectedSpecsPayload,
+    selectedStock: currentStock,
+    selectedVariant,
+    setPurchaseSubmitting,
+    t,
+    validateOptions,
+  });
+
+  const {
+    handleAddRecommendationToCart,
+    recommendationAddingId,
+    resetRecommendationCartState,
+  } = useProductDetailRecommendationActions({
+    language,
+    navigate,
+    t,
+  });
 
   useEffect(() => {
     if (currentStock === undefined || quantity <= currentStock) return;
@@ -560,102 +394,14 @@ const ProductDetail: React.FC = () => {
       setRecommendations([]);
       setRecommendationsLoading(false);
       setRecommendationsLoadFailed(false);
-      setRecommendationAddingId(null);
+      resetRecommendationCartState();
       setAuthSessionVersion((version) => version + 1);
     };
     window.addEventListener(AUTH_SESSION_CHANGED_EVENT, handleAuthSessionChanged);
     return () => {
       window.removeEventListener(AUTH_SESSION_CHANGED_EVENT, handleAuthSessionChanged);
     };
-  }, []);
-
-  const isCurrentNonCriticalRequest = useCallback((requestSeq: number) => (
-    nonCriticalRequestSeqRef.current === requestSeq
-  ), []);
-
-  const fetchReviews = useCallback(async (requestSeq: number) => {
-    try {
-      const res = await reviewApi.getAll(Number(id));
-      if (!isCurrentNonCriticalRequest(requestSeq)) return;
-      setReviews(res.data.reviews || []);
-      setAverageRating(Number(res.data.averageRating || 0));
-    } catch (error) {
-      if (!isCurrentNonCriticalRequest(requestSeq)) return;
-      reportNonBlockingError('ProductDetail.fetchReviews', error);
-    }
-  }, [id, isCurrentNonCriticalRequest]);
-
-  const fetchRecommendations = useCallback(async (requestSeq: number) => {
-    if (!isCurrentNonCriticalRequest(requestSeq)) return;
-    setRecommendationsLoading(true);
-    setRecommendationsLoadFailed(false);
-    try {
-      const cacheKey = `${language}|${id}`;
-      const cached = getCachedProductRecommendations(cacheKey);
-      if (cached) {
-        if (!isCurrentNonCriticalRequest(requestSeq)) return;
-        setRecommendations(cached);
-        setRecommendationsLoadFailed(false);
-        return;
-      }
-      const res = await productApi.getRecommendations(Number(id));
-      const items = res.data.map((item: Product) => localizeProduct(item, language));
-      if (!isCurrentNonCriticalRequest(requestSeq)) return;
-      cacheProductRecommendations(cacheKey, items);
-      setRecommendations(items);
-      setRecommendationsLoadFailed(false);
-    } catch (error) {
-      if (!isCurrentNonCriticalRequest(requestSeq)) return;
-      reportNonBlockingError('ProductDetail.fetchRecommendations', error);
-      setRecommendations([]);
-      setRecommendationsLoadFailed(true);
-    } finally {
-      if (isCurrentNonCriticalRequest(requestSeq)) {
-        setRecommendationsLoading(false);
-      }
-    }
-  }, [id, isCurrentNonCriticalRequest, language]);
-
-  const fetchQuestions = useCallback(async (requestSeq: number) => {
-    try {
-      const res = await questionApi.getByProduct(Number(id));
-      if (!isCurrentNonCriticalRequest(requestSeq)) return;
-      const answeredQuestions = res.data || [];
-      setQuestions(answeredQuestions);
-      setPendingQuestions((current) => current.filter((pendingQuestion) => (
-        !answeredQuestions.some((question) => normalizeQuestionText(question.question) === normalizeQuestionText(pendingQuestion.question))
-      )));
-    } catch (error) {
-      if (!isCurrentNonCriticalRequest(requestSeq)) return;
-      reportNonBlockingError('ProductDetail.fetchQuestions', error);
-      setQuestions([]);
-    }
-  }, [id, isCurrentNonCriticalRequest]);
-
-  const fetchReviewableOrders = useCallback(async (requestSeq: number) => {
-    try {
-      const ordersRes = await reviewApi.getReviewableOrders(Number(id));
-      if (!isCurrentNonCriticalRequest(requestSeq)) return;
-      setReviewableOrders(ordersRes.data || []);
-    } catch (error) {
-      if (!isCurrentNonCriticalRequest(requestSeq)) return;
-      reportNonBlockingError('ProductDetail.fetchReviewableOrders', error);
-      setReviewableOrders([]);
-    }
-  }, [id, isCurrentNonCriticalRequest]);
-
-  const warmNonCriticalContent = useCallback((requestSeq: number) => {
-    if (!isCurrentNonCriticalRequest(requestSeq)) return;
-    if (nonCriticalLoadedRef.current) return;
-    nonCriticalLoadedRef.current = true;
-    const token = getLocalStorageItem('token');
-    fetchReviews(requestSeq);
-    fetchQuestions(requestSeq);
-    fetchRecommendations(requestSeq);
-    if (token) {
-      fetchReviewableOrders(requestSeq);
-    }
-  }, [fetchQuestions, fetchRecommendations, fetchReviewableOrders, fetchReviews, isCurrentNonCriticalRequest]);
+  }, [resetRecommendationCartState]);
 
   useEffect(() => {
     let disposed = false;
@@ -794,228 +540,41 @@ const ProductDetail: React.FC = () => {
     };
   }, [id]);
 
-  const getPinchOrigin = useCallback((first: GalleryTouchPoint, second: GalleryTouchPoint) => {
-    const gallery = mobileGalleryRef.current;
-    if (!gallery) return { originX: 50, originY: 50 };
-    const rect = gallery.getBoundingClientRect();
-    const centerX = (first.clientX + second.clientX) / 2;
-    const centerY = (first.clientY + second.clientY) / 2;
-    return {
-      originX: Math.min(100, Math.max(0, ((centerX - rect.left) / rect.width) * 100)),
-      originY: Math.min(100, Math.max(0, ((centerY - rect.top) / rect.height) * 100)),
-    };
-  }, []);
+  const {
+    handleCompare,
+    handleFavorite,
+    handleStockAlert,
+  } = useProductDetailEngagementActions({
+    id,
+    isAlerted,
+    language,
+    navigate,
+    product,
+    setIsAlerted,
+    setIsCompared,
+    setIsWishlisted,
+    t,
+  });
 
-  const handleGalleryTouchStart = (event: React.TouchEvent<HTMLDivElement>) => {
-    if (event.touches.length !== 2) return;
-    const pair = getTouchPair(event.touches);
-    if (!pair) return;
-    setImagePaused(true);
-    pinchStartRef.current = { distance: getTouchDistance(pair.first, pair.second), scale: pinchZoom.scale };
-    setPinchZoom({ active: true, scale: 1, ...getPinchOrigin(pair.first, pair.second) });
-  };
+  const {
+    handleAddReview,
+    handleAskQuestion,
+  } = useProductDetailCommunityActions({
+    fetchQuestions,
+    fetchReviewableOrders,
+    fetchReviews,
+    id,
+    isCurrentNonCriticalRequest,
+    language,
+    navigate,
+    nonCriticalRequestSeqRef,
+    questionText,
+    setPendingQuestions,
+    setQuestionSubmitting,
+    setQuestionText,
+    t,
+  });
 
-  const handleGalleryTouchMove = useCallback((event: TouchEvent) => {
-    if (event.touches.length !== 2 || !pinchStartRef.current) return;
-    const pair = getTouchPair(event.touches);
-    if (!pair) return;
-    event.preventDefault();
-    const nextScale = clampZoom((getTouchDistance(pair.first, pair.second) / pinchStartRef.current.distance) * pinchStartRef.current.scale);
-    setPinchZoom({ active: true, scale: nextScale, ...getPinchOrigin(pair.first, pair.second) });
-  }, [getPinchOrigin]);
-
-  useEffect(() => {
-    const gallery = mobileGalleryRef.current;
-    if (!gallery) return;
-    gallery.addEventListener('touchmove', handleGalleryTouchMove, { passive: false });
-    return () => {
-      gallery.removeEventListener('touchmove', handleGalleryTouchMove);
-    };
-  }, [handleGalleryTouchMove, loading]);
-
-  const resetGalleryPinch = () => {
-    if (!pinchStartRef.current && !pinchZoom.active) return;
-    pinchStartRef.current = null;
-    setPinchZoom((current) => ({ ...current, active: false, scale: 1 }));
-    scheduleImageRotationResume();
-  };
-
-  const handleAddToCart = async () => {
-    if (purchaseSubmitting || purchaseRequestKeyRef.current) return;
-    const token = getLocalStorageItem('token');
-    try {
-      if (!validateOptions()) return;
-      if (selectedStock !== undefined && selectedStock < quantity) {
-        announceAccessibleMessage(t('pages.productDetail.insufficientStock'), 'error');
-        return;
-      }
-      const specs = optionGroups.length || purchaseMode !== 'once' ? selectedSpecsPayload : undefined;
-      purchaseRequestKeyRef.current = `cart:${id}:${quantity}:${specs || ''}`;
-      setPurchaseSubmitting('cart');
-      if (token) {
-        await cartApi.addItem(0, Number(id), quantity, specs);
-        dispatchDomEvent('shop:cart-updated');
-      } else {
-        const cartItem = addGuestCartItem(buildCartProductSnapshot(), quantity, specs, displayPrice);
-        if (!cartItem) {
-          announceAccessibleMessage(t('messages.addFailed'), 'error');
-          return;
-        }
-      }
-      announceAccessibleMessage(t('messages.addCartSuccess'), 'success');
-      dispatchDomEvent('shop:open-cart');
-    } catch (err: unknown) {
-      announceAccessibleMessage(getApiErrorMessage(err, t('messages.addFailed'), language), 'error');
-    } finally {
-      purchaseRequestKeyRef.current = null;
-      setPurchaseSubmitting(null);
-    }
-  };
-
-  const findCheckoutCartItem = (items: CartItem[], specs?: string) => {
-    const normalizedSpecs = specs || '';
-    return [...items]
-      .filter((item) => item.productId === Number(id) && (item.selectedSpecs || '') === normalizedSpecs)
-      .sort((left, right) => Number(right.id || 0) - Number(left.id || 0))[0];
-  };
-
-  const handleBuyNow = async () => {
-    if (purchaseSubmitting || purchaseRequestKeyRef.current) return;
-    const token = getLocalStorageItem('token');
-    try {
-      if (!validateOptions()) return;
-      if (selectedStock !== undefined && selectedStock < quantity) {
-        announceAccessibleMessage(t('pages.productDetail.insufficientStock'), 'error');
-        return;
-      }
-      const specs = optionGroups.length || purchaseMode !== 'once' ? selectedSpecsPayload : undefined;
-      purchaseRequestKeyRef.current = `buy:${id}:${quantity}:${specs || ''}`;
-      setPurchaseSubmitting('buy');
-      if (token) {
-        await cartApi.addItem(0, Number(id), quantity, specs);
-        dispatchDomEvent('shop:cart-updated');
-        const cartRes = await cartApi.getItems(0);
-        const cartItem = findCheckoutCartItem(cartRes.data, specs);
-        if (cartItem) {
-          syncCheckoutCartItemIds([cartItem]);
-        } else {
-          clearCheckoutCartItemIds();
-          announceAccessibleMessage(t('messages.operationFailed'), 'error');
-          return;
-        }
-      } else {
-        const cartItem = addGuestCartItem(buildCartProductSnapshot(), quantity, specs, displayPrice);
-        if (!cartItem) {
-          announceAccessibleMessage(t('messages.operationFailed'), 'error');
-          return;
-        }
-        syncCheckoutCartItemIds([cartItem]);
-      }
-      removeSessionStorageItem('checkoutPaymentMethod');
-      navigate('/checkout');
-    } catch (err: unknown) {
-      announceAccessibleMessage(getApiErrorMessage(err, t('messages.operationFailed'), language), 'error');
-    } finally {
-      purchaseRequestKeyRef.current = null;
-      setPurchaseSubmitting(null);
-    }
-  };
-
-  const handleFavorite = async () => {
-    const token = getLocalStorageItem('token');
-    if (!token) {
-      announceAccessibleMessage(t('messages.loginRequired'), 'warning');
-      navigate(buildLoginUrlFromWindow());
-      return;
-    }
-    try {
-      const res = await wishlistApi.toggle(0, Number(id));
-      setIsWishlisted(res.data.wishlisted);
-      dispatchDomEvent('shop:wishlist-updated');
-      announceAccessibleMessage(res.data.wishlisted ? t('pages.productDetail.favoritedMsg') : t('pages.productDetail.unfavoritedMsg'), 'success');
-    } catch (err: unknown) {
-      announceAccessibleMessage(getApiErrorMessage(err, t('messages.operationFailed'), language), 'error');
-    }
-  };
-
-  const handleStockAlert = () => {
-    const currentProduct = product;
-    if (!currentProduct) {
-      return;
-    }
-    if (isAlerted) {
-      removeStockAlert(Number(id));
-      setIsAlerted(false);
-      announceAccessibleMessage(t('pages.stockAlerts.removed'), 'success');
-      return;
-    }
-    const result = addStockAlert(currentProduct);
-    setIsAlerted(true);
-    announceAccessibleMessage(result.status === 'exists' ? t('pages.stockAlerts.exists') : t('pages.stockAlerts.added'), 'success');
-  };
-
-  const handleCompare = () => {
-    const currentProduct = product;
-    if (!currentProduct) {
-      return;
-    }
-    const result = addCompareProduct(currentProduct);
-    if (result.status === 'full') {
-      announceAccessibleMessage(t('pages.productList.compareFull', { count: MAX_COMPARE_ITEMS }), 'warning');
-      return;
-    }
-    setIsCompared(true);
-    announceAccessibleMessage(result.status === 'exists' ? t('pages.productList.compareExists') : t('pages.productList.compareAdded'), 'success');
-    navigate('/compare');
-  };
-
-  const handleAddReview = async (orderId: number, rating: number, comment: string, imageUrls: string[] = []) => {
-    const requestSeq = nonCriticalRequestSeqRef.current;
-    await reviewApi.create(Number(id), orderId, rating, comment, imageUrls);
-    if (!isCurrentNonCriticalRequest(requestSeq)) return;
-    await fetchReviews(requestSeq);
-    const token = getLocalStorageItem('token');
-    if (token) {
-      await fetchReviewableOrders(requestSeq);
-    }
-  };
-
-  const handleAskQuestion = async () => {
-    if (!hasStoredValue('token')) {
-      announceAccessibleMessage(t('messages.loginRequired'), 'warning');
-      navigate(buildLoginUrlFromWindow());
-      return;
-    }
-    if (!normalizeQuestionText(questionText)) {
-      announceAccessibleMessage(t('pages.ask.emptyQuestion'), 'warning');
-      return;
-    }
-    const requestSeq = nonCriticalRequestSeqRef.current;
-    try {
-      setQuestionSubmitting(true);
-      const submittedQuestion = normalizeQuestionText(questionText);
-      await questionApi.ask(Number(id), submittedQuestion);
-      if (!isCurrentNonCriticalRequest(requestSeq)) return;
-      setPendingQuestions((current) => [
-        {
-          id: `${Date.now()}`,
-          question: submittedQuestion,
-          createdAt: new Date().toISOString(),
-        },
-        ...current.filter((pendingQuestion) => normalizeQuestionText(pendingQuestion.question) !== submittedQuestion).slice(0, 4),
-      ]);
-      setQuestionText('');
-      await fetchQuestions(requestSeq);
-      announceAccessibleMessage(t('pages.ask.pendingTitle'), 'success');
-    } catch (err: unknown) {
-      if (!isCurrentNonCriticalRequest(requestSeq)) return;
-      announceAccessibleMessage(getApiErrorMessage(err, t('pages.ask.askFailed'), language), 'error');
-    } finally {
-      if (isCurrentNonCriticalRequest(requestSeq)) {
-        setQuestionSubmitting(false);
-      }
-    }
-  };
 
   if (loading) {
     return <ProductDetailSkeleton label={t('common.loading')} />;
@@ -1116,9 +675,6 @@ const ProductDetail: React.FC = () => {
   const favoriteActionLabel = `${isWishlisted ? t('pages.productDetail.favorited') : t('pages.productDetail.favorite')}: ${productName}`;
   const compareActionLabel = `${isCompared ? t('pages.productList.viewCompare') : t('pages.productList.compare')}: ${productName}`;
   const homeActionLabel = `${t('nav.ariaHome')}: ${productName}`;
-  const mainImagePreviewActionLabel = `${t('pages.productList.quickPreview')}: ${productName}`;
-  const galleryRegionLabel = `${productName}: ${t('pages.productDetail.product')} ${t('common.image')}`;
-  const getGalleryImageLabel = (index: number) => t('pages.productDetail.imageThumb', { index: index + 1, total: galleryImages.length, name: productName });
   const sizeGuideActionLabel = `${t('pages.productDetail.sizeGuide')}: ${productName}`;
   const resetSelectedOptionsActionLabel = `${t('pages.productList.resetFilters')}: ${productName}`;
   const sizeBreedInputLabel = `${t('pages.productDetail.sizeCalculatorBreed')}: ${productName}`;
@@ -1321,73 +877,15 @@ const ProductDetail: React.FC = () => {
     }
   };
 
-  const buildCartProductSnapshot = () => ({
-    ...product,
-    stock: selectedStock,
-    price: displayPrice,
-    effectivePrice: displayPrice,
-    imageUrl: selectedVariant?.imageUrl || resolveProductPrimaryImage(product),
-  });
 
-  const isRecommendationUnavailable = (item: ProductRecommendationCandidate) => {
-    const hasStockValue = item.stock !== undefined && item.stock !== null;
-    return Boolean(hasStockValue && Number(item.stock) <= 0);
+  const relatedRecommendations = buildRelatedRecommendations(product, recommendations);
+  const completeSetItems = buildCompleteSetItems(relatedRecommendations);
+  const retryRecommendations = () => {
+    const requestSeq = nonCriticalRequestSeqRef.current + 1;
+    nonCriticalRequestSeqRef.current = requestSeq;
+    nonCriticalLoadedRef.current = false;
+    warmNonCriticalContent(requestSeq);
   };
-
-  const handleAddRecommendationToCart = async (event: React.MouseEvent<HTMLElement>, item: Product) => {
-    event.stopPropagation();
-    const recommendationId = Number(item.id);
-    if (!Number.isFinite(recommendationId) || recommendationRequestIdsRef.current.has(recommendationId)) {
-      return;
-    }
-    if (isRecommendationUnavailable(item)) {
-      announceAccessibleMessage(t('pages.productDetail.soldOut'), 'warning');
-      return;
-    }
-    if (needsOptionSelection(item)) {
-      announceAccessibleMessage(t('pages.wishlist.selectOptions'), 'info');
-      navigate(`/products/${item.id}`);
-      return;
-    }
-
-    const token = getLocalStorageItem('token');
-    try {
-      recommendationRequestIdsRef.current.add(recommendationId);
-      setRecommendationAddingId(recommendationId);
-      if (token) {
-        await cartApi.addItem(0, recommendationId, 1);
-        dispatchDomEvent('shop:cart-updated');
-      } else {
-        addGuestCartItem(item, 1, undefined, item.effectivePrice ?? item.price);
-      }
-      announceAccessibleMessage(t('messages.addCartSuccess'), 'success');
-      dispatchDomEvent('shop:open-cart');
-    } catch (err: unknown) {
-      announceAccessibleMessage(getApiErrorMessage(err, t('messages.addFailed'), language), 'error');
-    } finally {
-      recommendationRequestIdsRef.current.delete(recommendationId);
-      setRecommendationAddingId(null);
-    }
-  };
-
-  const relatedRecommendations: Product[] = (Array.from(
-    recommendations
-      .filter((item) => Number(item.id) !== Number(product.id))
-      .reduce((itemsById, item) => {
-        const recommendationId = Number(item.id);
-        if (Number.isFinite(recommendationId) && !itemsById.has(recommendationId)) {
-          itemsById.set(recommendationId, item);
-        }
-        return itemsById;
-      }, new Map<number, Product>())
-      .values(),
-  ) as Product[])
-    .map((item, index) => ({ item, index, score: scoreRelatedRecommendation(product, item) }))
-    .sort((left, right) => right.score - left.score || left.index - right.index)
-    .map((entry) => entry.item);
-  const completeSetItems = relatedRecommendations
-    .filter((item) => !isRecommendationUnavailable(item))
-    .slice(0, 2);
   const mobilePurchaseStatus = isOutOfStock
     ? t('pages.productDetail.soldOut')
     : hasUnavailableSelectedVariant
@@ -1470,75 +968,6 @@ const ProductDetail: React.FC = () => {
     },
   ];
 
-  const selectGalleryImage = (image: string, index: number) => {
-    setSelectedImage(image);
-    setActiveMobileImageIndex(index);
-    const gallery = mobileGalleryRef.current;
-    if (gallery) {
-      gallery.scrollTo({ left: index * gallery.clientWidth, behavior: 'smooth' });
-    }
-  };
-
-  const getActiveGalleryImageIndex = () => {
-    const selectedIndex = galleryImages.findIndex((image) => image === selectedImage);
-    if (selectedIndex >= 0) return selectedIndex;
-    return Math.min(Math.max(activeMobileImageIndex, 0), Math.max(galleryImages.length - 1, 0));
-  };
-
-  const selectAdjacentGalleryImage = (direction: -1 | 1, fromIndex = getActiveGalleryImageIndex()) => {
-    if (galleryImages.length <= 1) return;
-    const nextIndex = (fromIndex + direction + galleryImages.length) % galleryImages.length;
-    const nextImage = galleryImages[nextIndex];
-    if (!nextImage) return;
-    selectGalleryImage(nextImage, nextIndex);
-    pauseImageRotation();
-    scheduleImageRotationResume(5000);
-  };
-
-  const handleGalleryKeyDown = (event: React.KeyboardEvent<HTMLElement>, fromIndex?: number) => {
-    if (galleryImages.length <= 1) return;
-    if (event.key === 'ArrowLeft') {
-      event.preventDefault();
-      selectAdjacentGalleryImage(-1, fromIndex);
-      return;
-    }
-    if (event.key === 'ArrowRight') {
-      event.preventDefault();
-      selectAdjacentGalleryImage(1, fromIndex);
-      return;
-    }
-    if (event.key === 'Home') {
-      event.preventDefault();
-      selectGalleryImage(galleryImages[0], 0);
-      pauseImageRotation();
-      scheduleImageRotationResume(5000);
-      return;
-    }
-    if (event.key === 'End') {
-      event.preventDefault();
-      const lastIndex = galleryImages.length - 1;
-      selectGalleryImage(galleryImages[lastIndex], lastIndex);
-      pauseImageRotation();
-      scheduleImageRotationResume(5000);
-    }
-  };
-
-  const handleMobileGalleryScroll = () => {
-    if (galleryScrollRafRef.current !== null) return;
-    galleryScrollRafRef.current = window.requestAnimationFrame(() => {
-      galleryScrollRafRef.current = null;
-      const gallery = mobileGalleryRef.current;
-      if (!gallery || galleryImages.length <= 1) return;
-      const index = Math.round(gallery.scrollLeft / gallery.clientWidth);
-      const safeIndex = Math.min(Math.max(index, 0), galleryImages.length - 1);
-      const image = galleryImages[safeIndex];
-      setActiveMobileImageIndex(safeIndex);
-      if (image) {
-        setSelectedImage((currentImage) => (image === currentImage ? currentImage : image));
-      }
-    });
-  };
-
   return (
     <div className={`product-detail-page product-detail-page--${language}`}>
       <div className="product-detail-shell">
@@ -1566,191 +995,32 @@ const ProductDetail: React.FC = () => {
 
         <div className="product-detail__layout">
           {/* Product media gallery */}
-          <div className="product-detail__gallery">
-            <section className="product-gallery-card" aria-label={galleryRegionLabel}>
-              <div
-                className="product-detail-main-image"
-                role="region"
-                aria-roledescription="carousel"
-                aria-label={galleryRegionLabel}
-                tabIndex={0}
-                onMouseEnter={pauseImageRotation}
-                onMouseLeave={resumeImageRotation}
-                onKeyDown={handleGalleryKeyDown}
-              >
-                <div
-                  ref={mobileGalleryRef}
-                  className="product-mobile-gallery"
-                  onScroll={handleMobileGalleryScroll}
-                  onPointerDown={pauseImageRotation}
-                  onPointerUp={() => scheduleImageRotationResume()}
-                  onPointerCancel={() => scheduleImageRotationResume()}
-                  onTouchStart={handleGalleryTouchStart}
-                  onTouchEnd={resetGalleryPinch}
-                  onTouchCancel={resetGalleryPinch}
-                >
-                  {galleryImages.map((image: string, index: number) => (
-                    <div
-                      key={`${image}-${index}`}
-                      className="product-mobile-gallery__slide"
-                      role="group"
-                      aria-roledescription="slide"
-                      aria-label={getGalleryImageLabel(index)}
-                      aria-hidden={index === activeMobileImageIndex ? undefined : true}
-                    >
-                      <img
-                        src={getOptimizedImageUrl(image, index === 0 ? 720 : 540)}
-                        srcSet={buildResponsiveImageSrcSet(image, [360, 540, 720, 900])}
-                        sizes="100vw"
-                        alt={getGalleryImageLabel(index)}
-                        className="product-mobile-gallery__img"
-                        width={900}
-                        height={900}
-                        loading={index === 0 ? 'eager' : 'lazy'}
-                        decoding="async"
-                        {...(index === 0 ? eagerImagePriorityProps : lazyImagePriorityProps)}
-                        style={pinchZoom.active && index === activeMobileImageIndex ? {
-                          transform: `scale(${pinchZoom.scale})`,
-                          transformOrigin: `${pinchZoom.originX}% ${pinchZoom.originY}%`,
-                          transition: 'none',
-                        } : undefined}
-                        onError={(event) => {
-                          applyImageFallback(event, productImages[productImages.length - 1]);
-                        }}
-                      />
-                    </div>
-                  ))}
-                </div>
-                <button
-                  type="button"
-                  className="product-detail-main-image__button"
-                  aria-label={mainImagePreviewActionLabel}
-                  title={mainImagePreviewActionLabel}
-                  onClick={() => setIsModalVisible(true)}
-                >
-                  <img
-                    src={heroImage}
-                    srcSet={heroImageSrcSet}
-                    sizes={heroImageSizes}
-                    alt={productName}
-                    className="product-detail-main-image__img"
-                    width={900}
-                    height={900}
-                    loading="eager"
-                    decoding="async"
-                    {...eagerImagePriorityProps}
-                    onMouseMove={handleGalleryZoomMove}
-                    onMouseLeave={handleGalleryZoomLeave}
-                    onError={(event) => {
-                      const fallback = productImages[productImages.length - 1];
-                      applyImageFallback(event, fallback);
-                      setSelectedImage(fallback);
-                    }}
-                  />
-                </button>
-                {discountPercent > 0 && (
-                  <ShopTag color="gold" className="product-gallery-discount">
-                    -{discountPercent}%
-                  </ShopTag>
-                )}
-                {galleryImages.length > 1 && (
-                  <div className="product-gallery-controls">
-                    <span className="product-mobile-gallery__count" aria-live="polite">
-                      {activeMobileImageIndex + 1}/{galleryImages.length}
-                    </span>
-                    <button
-                      type="button"
-                      className="product-gallery-controls__pause"
-                      aria-pressed={imagePaused}
-                      aria-label={imagePaused ? t('pages.productDetail.galleryPlay') : t('pages.productDetail.galleryPause')}
-                      title={imagePaused ? t('pages.productDetail.galleryPlay') : t('pages.productDetail.galleryPause')}
-                      onClick={() => setImagePaused((paused) => !paused)}
-                    >
-                      {imagePaused ? t('pages.productDetail.galleryPlay') : t('pages.productDetail.galleryPause')}
-                    </button>
-                    <span className="product-detail__srOnly" aria-live="polite">
-                      {imagePaused ? t('pages.productDetail.galleryPaused') : t('pages.productDetail.galleryPlaying')}
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              {galleryImages.length > 1 && (
-                <div
-                  className="product-detail-thumbs product-detail-thumbs--strip"
-                  role="list"
-                  aria-label={`${t('pages.productDetail.product')} ${t('common.image')}`}
-                >
-                  {galleryImages.map((image: string, index: number) => {
-                    const thumbLabel = getGalleryImageLabel(index);
-                    const selectThumb = () => {
-                      selectGalleryImage(image, index);
-                      pauseImageRotation();
-                      scheduleImageRotationResume(5000);
-                    };
-                    return (
-                      <div key={index} className="product-detail-thumbs__slide" role="listitem">
-                        <button
-                          type="button"
-                          className={`product-detail-thumbs__button${selectedImage === image ? ' product-detail-thumbs__button--active' : ''}`}
-                          aria-pressed={selectedImage === image}
-                          aria-label={thumbLabel}
-                          title={thumbLabel}
-                          onClick={selectThumb}
-                          onKeyDown={(event) => handleGalleryKeyDown(event, index)}
-                        >
-                          <img
-                            src={getOptimizedImageUrl(image, 144)}
-                            srcSet={buildResponsiveImageSrcSet(image, [96, 144, 192, 288])}
-                            sizes="120px"
-                            alt=""
-                            className="product-detail-thumbs__img"
-                            width={160}
-                            height={160}
-                            loading="lazy"
-                            decoding="async"
-                            onError={(event) => {
-                              applyImageFallback(event, productImages[productImages.length - 1]);
-                            }}
-                          />
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-              {galleryImages.length > 1 && (
-                <div className="product-mobile-thumbs" aria-label={`${t('pages.productDetail.product')} ${t('common.image')}`}>
-                  {galleryImages.map((image: string, index: number) => (
-                    <button
-                      key={`mobile-thumb-${image}-${index}`}
-                      type="button"
-                      className={`product-mobile-thumbs__button${activeMobileImageIndex === index ? ' product-mobile-thumbs__button--active' : ''}`}
-                      aria-pressed={activeMobileImageIndex === index}
-                      aria-label={getGalleryImageLabel(index)}
-                      title={getGalleryImageLabel(index)}
-                      onClick={() => selectGalleryImage(image, index)}
-                    >
-                      <img
-                        src={getOptimizedImageUrl(image, 96)}
-                        srcSet={buildResponsiveImageSrcSet(image, [96, 144, 192, 288])}
-                        sizes="56px"
-                        alt={getGalleryImageLabel(index)}
-                        className="product-mobile-thumbs__img"
-                        width={96}
-                        height={96}
-                        loading="lazy"
-                        decoding="async"
-                        onError={(event) => {
-                          applyImageFallback(event, productImages[productImages.length - 1]);
-                        }}
-                      />
-                    </button>
-                  ))}
-                </div>
-              )}
-            </section>
-          </div>
+          <ProductDetailGallery
+            activeMobileImageIndex={activeMobileImageIndex}
+            discountPercent={discountPercent}
+            galleryImages={galleryImages}
+            handleGalleryKeyDown={handleGalleryKeyDown}
+            handleGalleryTouchStart={handleGalleryTouchStart}
+            handleMobileGalleryScroll={handleMobileGalleryScroll}
+            heroImage={heroImage}
+            heroImageSizes={heroImageSizes}
+            heroImageSrcSet={heroImageSrcSet}
+            imagePaused={imagePaused}
+            mobileGalleryRef={mobileGalleryRef}
+            pauseImageRotation={pauseImageRotation}
+            pinchZoom={pinchZoom}
+            productImages={productImages}
+            productName={productName}
+            resetGalleryPinch={resetGalleryPinch}
+            resumeImageRotation={resumeImageRotation}
+            scheduleImageRotationResume={scheduleImageRotationResume}
+            selectGalleryImage={selectGalleryImage}
+            selectedImage={selectedImage}
+            setImagePaused={setImagePaused}
+            setIsModalVisible={setIsModalVisible}
+            setSelectedImage={setSelectedImage}
+            t={t}
+          />
 
           {/* Product purchase summary */}
           <div className="product-detail__summary">
@@ -2127,69 +1397,15 @@ const ProductDetail: React.FC = () => {
                   </div>
                 </div>
 
-                {completeSetItems.length > 0 ? (
-                  <div className="product-complete-set">
-                    <div className="product-complete-set__header">
-                      <span className="product-detail-page__text product-detail-page__text--strong">{t('pages.productDetail.completeSetTitle')}</span>
-                      <span className="product-detail-page__text product-detail-page__text--secondary">{t('pages.productDetail.completeSetText')}</span>
-                    </div>
-                    <div className="product-complete-set__items">
-                      {completeSetItems.map((item) => {
-                        const itemName = detailProductName(item);
-                        const needsOptions = needsOptionSelection(item);
-                        const addSetActionLabel = `${needsOptions ? t('pages.wishlist.selectOptions') : t('pages.productDetail.completeSetAdd')}: ${itemName}`;
-                        return (
-                          <div
-                            key={item.id}
-                            role="button"
-                            tabIndex={0}
-                            className="product-complete-set__item"
-                            onClick={() => navigate(`/products/${item.id}`)}
-                            onKeyDown={(event) => {
-                              if (event.target !== event.currentTarget) {
-                                return;
-                              }
-                              if (event.key === 'Enter' || event.key === ' ') {
-                                event.preventDefault();
-                                navigate(`/products/${item.id}`);
-                              }
-                            }}
-                          >
-                            <img
-                              src={getOptimizedImageUrl(resolveProductPrimaryImage(item), 144)}
-                              srcSet={buildResponsiveImageSrcSet(resolveProductPrimaryImage(item), [96, 144, 192, 288])}
-                              sizes="48px"
-                              alt={itemName}
-                              width={96}
-                              height={96}
-                              loading="lazy"
-                              decoding="async"
-                              onError={(event) => {
-                                applyImageFallback(event, fallbackProductImage);
-                              }}
-                            />
-                            <span className="product-complete-set__copy">
-                              <strong>{itemName}</strong>
-                              <span className="commerce-money">{formatMoney(item.effectivePrice ?? item.price)}</span>
-                            </span>
-                            <ShopButton
-                              size="small"
-                              type={needsOptions ? 'default' : 'primary'}
-                              icon={<ShopIcon path={SI.cart} />}
-                              loading={recommendationAddingId === item.id}
-                              aria-label={addSetActionLabel}
-                              title={addSetActionLabel}
-                              onClick={(event) => handleAddRecommendationToCart(event, item)}
-                              onKeyDown={(event) => event.stopPropagation()}
-                            >
-                              {needsOptions ? t('pages.wishlist.selectOptions') : t('pages.productDetail.completeSetAdd')}
-                            </ShopButton>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ) : null}
+                <ProductDetailCompleteSet
+                  completeSetItems={completeSetItems}
+                  detailProductName={detailProductName}
+                  formatMoney={formatMoney}
+                  handleAddRecommendationToCart={handleAddRecommendationToCart}
+                  navigate={navigate}
+                  recommendationAddingId={recommendationAddingId}
+                  t={t}
+                />
 
                 {shouldShowDecisionChecklist ? (
                   <details className="product-detail-disclosure">
@@ -2513,187 +1729,29 @@ const ProductDetail: React.FC = () => {
           )}
         </section>
 
-        {/* Related recommendations */}
-        {relatedRecommendations.length > 0 ? (
-          <div className="product-recommendations product-recommendations--strip">
-            <h3 className="product-detail-page__title">{t('pages.productDetail.boughtTogether', { defaultValue: t('pages.productDetail.recommendations') })}</h3>
-            <div
-              className="product-recommendations__track product-recommendations__track--strip"
-              role="list"
-              aria-label={t('pages.productDetail.recommendations')}
-            >
-              {relatedRecommendations.map((rec) => {
-                const recName = detailProductName(rec);
-                const needsOptions = needsOptionSelection(rec);
-                const isRecommendationSoldOut = isRecommendationUnavailable(rec);
-                const recommendationReviewCount = Number(rec.reviewCount || 0);
-                const recommendationActionLabel = `${isRecommendationSoldOut
-                  ? t('pages.productDetail.soldOut')
-                  : needsOptions
-                    ? t('pages.wishlist.selectOptions')
-                    : t('pages.productDetail.addCart')}: ${recName}`;
-                const recommendationViewLabel = `${t('pages.productList.viewDetails')}: ${recName}`;
-                return (
-                  <div key={rec.id} className="product-recommendations__slide">
-                    <article
-                      className="product-recommendations__card"
-                      role="button"
-                      tabIndex={0}
-                      aria-label={recommendationViewLabel}
-                      title={recommendationViewLabel}
-                      onClick={() => navigate(`/products/${rec.id}`)}
-                      onKeyDown={(event) => {
-                        if (event.target !== event.currentTarget) return;
-                        if (event.key === 'Enter' || event.key === ' ') {
-                          event.preventDefault();
-                          navigate(`/products/${rec.id}`);
-                        }
-                      }}
-                    >
-                      <div className="product-recommendations__cover">
-                        <button
-                          type="button"
-                          className="product-recommendations__imageButton"
-                          aria-label={recommendationViewLabel}
-                          title={recommendationViewLabel}
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            navigate(`/products/${rec.id}`);
-                          }}
-                        >
-                          <img
-                            alt={recName}
-                            src={getOptimizedImageUrl(resolveProductPrimaryImage(rec), 520)}
-                            srcSet={buildResponsiveImageSrcSet(resolveProductPrimaryImage(rec), [240, 360, 520, 720])}
-                            sizes="(max-width: 520px) 90vw, (max-width: 768px) 45vw, 260px"
-                            className="product-recommendations__image"
-                            width={520}
-                            height={360}
-                            loading="lazy"
-                            decoding="async"
-                            onError={(event) => {
-                              applyImageFallback(event, fallbackProductImage);
-                            }}
-                          />
-                        </button>
-                      </div>
-                      <div className="product-recommendations__body">
-                      <div className="product-recommendations__content">
-                        <span className="product-detail-page__text product-detail-page__text--strong product-recommendations__name">{recName}</span>
-                        <div className="product-recommendations__meta">
-                          <span className="product-recommendations__price commerce-money">{formatMoney(rec.effectivePrice ?? rec.price)}</span>
-                          {recommendationReviewCount > 0 && (
-                            <span className="product-recommendations__proof">
-                              {recommendationReviewCount} {t('adminLayout.reviews')}
-                            </span>
-                          )}
-                        </div>
-                        <ShopButton
-                          block
-                          size="small"
-                          type={needsOptions ? 'default' : 'primary'}
-                          icon={<ShopIcon path={SI.cart} />}
-                          loading={recommendationAddingId === rec.id}
-                          disabled={isRecommendationSoldOut}
-                          aria-label={recommendationActionLabel}
-                          title={recommendationActionLabel}
-                          onClick={(event) => handleAddRecommendationToCart(event, rec)}
-                        >
-                          {isRecommendationSoldOut
-                            ? t('pages.productDetail.soldOut')
-                            : needsOptions
-                              ? t('pages.wishlist.selectOptions')
-                              : t('pages.productDetail.addCart')}
-                        </ShopButton>
-                      </div>
-                      </div>
-                    </article>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        ) : recommendationsLoading ? (
-          <div className="product-recommendations product-recommendations--loading" data-product-detail-recommendations-loading="true" role="status" aria-live="polite" aria-busy="true" aria-label={t('common.loading')}>
-            <h3 className="product-detail-page__title">{t('pages.productDetail.recommendations')}</h3>
-            <div className="product-recommendations__loadingCopy">{t('common.loading')}</div>
-          </div>
-        ) : (
-          <div className="product-recommendations product-recommendations--empty" data-product-detail-recommendations-empty={recommendationsLoadFailed ? 'failed' : 'true'}>
-            <h3 className="product-detail-page__title">{t('pages.productDetail.recommendations')}</h3>
-            <div className="product-recommendations__emptyCopy">
-              <div>{recommendationsLoadFailed ? t('pages.productDetail.recommendationsLoadFailed') : t('pages.productDetail.recommendationsEmpty')}</div>
-              <div className="product-recommendations__emptyHint">{recommendationsLoadFailed ? t('pages.productDetail.recommendationsLoadFailedHint') : t('pages.productDetail.recommendationsEmptyHint')}</div>
-            </div>
-            <div className="product-recommendations__emptyActions" data-product-detail-recommendations-empty-actions="true">
-              {recommendationsLoadFailed ? (
-                <ShopButton
-                  type="primary"
-                  aria-label={t('common.retry')}
-                  title={t('common.retry')}
-                  onClick={() => {
-                    const requestSeq = nonCriticalRequestSeqRef.current + 1;
-                    nonCriticalRequestSeqRef.current = requestSeq;
-                    nonCriticalLoadedRef.current = false;
-                    warmNonCriticalContent(requestSeq);
-                  }}
-                >
-                  {t('common.retry')}
-                </ShopButton>
-              ) : null}
-              <ShopButton
-                type={recommendationsLoadFailed ? 'default' : 'primary'}
-                icon={<ShopIcon path={SI.cart} />}
-                aria-label={t('pages.cart.browse')}
-                title={t('pages.cart.browse')}
-                onClick={() => navigate('/products')}
-              >
-                {t('pages.cart.browse')}
-              </ShopButton>
-              <ShopButton
-                aria-label={t('nav.coupons')}
-                title={t('nav.coupons')}
-                onClick={() => navigate('/coupons')}
-              >
-                {t('nav.coupons')}
-              </ShopButton>
-              <ShopButton
-                aria-label={t('nav.petFinder')}
-                title={t('nav.petFinder')}
-                onClick={() => navigate('/pet-finder')}
-              >
-                {t('nav.petFinder')}
-              </ShopButton>
-            </div>
-          </div>
-        )}
+        <ProductDetailRecommendations
+          detailProductName={detailProductName}
+          formatMoney={formatMoney}
+          handleAddRecommendationToCart={handleAddRecommendationToCart}
+          navigate={navigate}
+          recommendationAddingId={recommendationAddingId}
+          recommendationsLoadFailed={recommendationsLoadFailed}
+          recommendationsLoading={recommendationsLoading}
+          relatedRecommendations={relatedRecommendations}
+          retryRecommendations={retryRecommendations}
+          t={t}
+        />
       </div>
 
       {/* Image preview modal */}
-      <ShopModal
-        open={isModalVisible}
-        footer={null}
-        onClose={() => setIsModalVisible(false)}
-        width="min(800px, calc(100vw - 24px))"
-        className="profile-mobile-safe-modal product-detail__imageModal"
-        rootClassName="product-detail__imageModalRoot"
-        closeLabel={t('common.close', { defaultValue: 'Close' })}
-        ariaLabel={productName}
-      >
-        <img
-          className="product-detail__imageModalImg"
-          src={getOptimizedImageUrl(selectedImage, 1200)}
-          srcSet={buildResponsiveImageSrcSet(selectedImage, [480, 720, 960, 1200, 1600])}
-          sizes="min(800px, calc(100vw - 24px))"
-          alt={productName}
-          width={1200}
-          height={1200}
-          decoding="async"
-          onError={(event) => {
-            applyImageFallback(event, productImages[productImages.length - 1]);
-          }}
-        />
-      </ShopModal>
+      <ProductDetailImagePreviewModal
+        isModalVisible={isModalVisible}
+        productImages={productImages}
+        productName={productName}
+        selectedImage={selectedImage}
+        setIsModalVisible={setIsModalVisible}
+        t={t}
+      />
 
       <ShopModal
         title={t('pages.productDetail.sizeGuideTitle')}

@@ -11,6 +11,13 @@ import {
 
 const readProductDetailSource = () => require('fs').readFileSync(require('path').resolve(__dirname, 'ProductDetail.tsx'), 'utf8') as string;
 const readProductDetailHelpersSource = () => require('fs').readFileSync(require('path').resolve(__dirname, 'productDetailHelpers.tsx'), 'utf8') as string;
+const readProductDetailNonCriticalSource = () => require('fs').readFileSync(require('path').resolve(__dirname, '../hooks/useProductDetailNonCriticalContent.ts'), 'utf8') as string;
+const readProductDetailEngagementSource = () => require('fs').readFileSync(require('path').resolve(__dirname, '../hooks/useProductDetailEngagementActions.ts'), 'utf8') as string;
+const readProductDetailCommunitySource = () => require('fs').readFileSync(require('path').resolve(__dirname, '../hooks/useProductDetailCommunityActions.ts'), 'utf8') as string;
+const readProductDetailRecommendationSource = () => require('fs').readFileSync(require('path').resolve(__dirname, '../hooks/useProductDetailRecommendationActions.ts'), 'utf8') as string;
+const readProductDetailRecommendationsPanelSource = () => require('fs').readFileSync(require('path').resolve(__dirname, 'productDetailRecommendations.tsx'), 'utf8') as string;
+const readProductDetailGallerySource = () => require('fs').readFileSync(require('path').resolve(__dirname, 'productDetailGallery.tsx'), 'utf8') as string;
+const readProductDetailShellSource = () => require('fs').readFileSync(require('path').resolve(__dirname, 'productDetailShell.tsx'), 'utf8') as string;
 const readProductDetailCss = () => require('fs').readFileSync(require('path').resolve(__dirname, 'ProductDetail.css'), 'utf8') as string;
 const readNativeScrollSource = () => require('fs').readFileSync(require('path').resolve(__dirname, '../utils/nativeScroll.ts'), 'utf8') as string;
 
@@ -361,20 +368,44 @@ it('keeps main product fetch cleanup-bound', () => {
     expect(effectSource).toContain('disposed = true;');
   });
 
+  it('keeps engagement and community actions modularized outside the page shell', () => {
+    const source = readProductDetailSource();
+    const helpers = readProductDetailHelpersSource();
+    const engagement = readProductDetailEngagementSource();
+    const community = readProductDetailCommunitySource();
+
+    expect(source).toContain('useProductDetailEngagementActions({');
+    expect(source).toContain('useProductDetailCommunityActions({');
+    expect(source).toContain('findSelectedProductVariant');
+    expect(source).toContain('buildSelectedSpecsPayload');
+    expect(source).not.toContain('const handleFavorite = async () => {');
+    expect(source).not.toContain('const handleAskQuestion = async () => {');
+    expect(helpers).toContain('export const findSelectedProductVariant');
+    expect(helpers).toContain('export const buildSelectedSpecsPayload');
+    expect(engagement).toContain('export const useProductDetailEngagementActions');
+    expect(engagement).toContain('const handleFavorite = async () => {');
+    expect(engagement).toContain('const handleCompare = () => {');
+    expect(community).toContain('export const useProductDetailCommunityActions');
+    expect(community).toContain('const handleAddReview = async (orderId: number, rating: number, comment: string, imageUrls: string[] = []) => {');
+    expect(community).toContain('const handleAskQuestion = async () => {');
+  });
+
   it('guards non-critical product detail requests against stale responses', () => {
     const source = readProductDetailSource();
-    const reviewsStart = source.indexOf('const fetchReviews = useCallback(async (requestSeq: number) => {');
-    const warmupStart = source.indexOf('const warmNonCriticalContent = useCallback((requestSeq: number) => {');
+    const hookSource = readProductDetailNonCriticalSource();
+    const reviewsStart = hookSource.indexOf('const fetchReviews = useCallback(async (requestSeq: number) => {');
+    const warmupStart = hookSource.indexOf('const warmNonCriticalContent = useCallback((requestSeq: number) => {');
     const effectStart = source.indexOf('const nonCriticalRequestSeq = nonCriticalRequestSeqRef.current + 1;');
-    const nonCriticalSource = source.slice(reviewsStart, warmupStart);
-    const warmupSource = source.slice(warmupStart, effectStart);
+    const nonCriticalSource = hookSource.slice(reviewsStart, warmupStart);
+    const warmupSource = hookSource.slice(warmupStart);
     const effectSource = source.slice(effectStart, source.indexOf('useEffect(() => {', effectStart + 1));
 
-    expect(source).toContain('const nonCriticalRequestSeqRef = useRef(0);');
-    expect(source).toContain('const isCurrentNonCriticalRequest = useCallback((requestSeq: number) => (');
+    expect(source).toContain('useProductDetailNonCriticalContent({');
+    expect(hookSource).toContain('const nonCriticalRequestSeqRef = useRef(0);');
+    expect(hookSource).toContain('const isCurrentNonCriticalRequest = useCallback((requestSeq: number) => (');
     expect(reviewsStart).toBeGreaterThan(-1);
     expect(warmupStart).toBeGreaterThan(reviewsStart);
-    expect(effectStart).toBeGreaterThan(warmupStart);
+    expect(effectStart).toBeGreaterThan(-1);
     expect(nonCriticalSource).toContain('if (!isCurrentNonCriticalRequest(requestSeq)) return;');
     expect(nonCriticalSource).toContain('setReviews(res.data.reviews || []);');
     expect(nonCriticalSource).toContain('setRecommendations(cached);');
@@ -482,14 +513,16 @@ describe('ProductDetail loading state', () => {
 
   it('keeps product image carousel labels tied to product name and slide position', () => {
     const source = readProductDetailSource();
+    const gallerySource = readProductDetailGallerySource();
 
-    expect(source).toContain("const galleryRegionLabel = `${productName}: ${t('pages.productDetail.product')} ${t('common.image')}`;");
-    expect(source).toContain("const getGalleryImageLabel = (index: number) => t('pages.productDetail.imageThumb', { index: index + 1, total: galleryImages.length, name: productName });");
-    expect(source).toContain('aria-label={galleryRegionLabel}');
-    expect(source).toContain('aria-roledescription="carousel"');
-    expect(source).toContain('role="group"');
-    expect(source).toContain('aria-roledescription="slide"');
-    expect(source).toContain('aria-label={getGalleryImageLabel(index)}');
+    expect(source).toContain('<ProductDetailGallery');
+    expect(gallerySource).toContain("const galleryRegionLabel = `${productName}: ${t('pages.productDetail.product')} ${t('common.image')}`;");
+    expect(gallerySource).toContain("const getGalleryImageLabel = (index: number) => t('pages.productDetail.imageThumb', {");
+    expect(gallerySource).toContain('aria-label={galleryRegionLabel}');
+    expect(gallerySource).toContain('aria-roledescription="carousel"');
+    expect(gallerySource).toContain('role="group"');
+    expect(gallerySource).toContain('aria-roledescription="slide"');
+    expect(gallerySource).toContain('aria-label={getGalleryImageLabel(index)}');
   });
 
   it('supports mobile pinch zoom with a non-passive touchmove listener', async () => {
@@ -658,7 +691,8 @@ describe('ProductDetail recommendation cache', () => {
     const helpersSource = readProductDetailHelpersSource();
 
     expect(productDetailSource).toContain('useState<Product[]>([])');
-    expect(productDetailSource).toContain('new Map<number, Product>()');
+    expect(helpersSource).toContain('new Map<number, T>()');
+    expect(helpersSource).toContain('new Map<string, { expiresAt: number; items: Product[] }>');
     expect(productDetailSource).not.toContain('useState<any[]>([])');
     expect(productDetailSource).not.toContain('Product | any');
     expect(productDetailSource).not.toContain('catch (err: any)');

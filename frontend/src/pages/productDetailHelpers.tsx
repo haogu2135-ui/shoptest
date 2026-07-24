@@ -180,6 +180,11 @@ const productRecommendationSearchText = (item: ProductRecommendationCandidate | 
   ...recommendationObjectValues(item?.specificationItems),
 ].filter(Boolean).join(' ').toLowerCase();
 
+export const isRecommendationUnavailable = (item: ProductRecommendationCandidate | null | undefined) => {
+  const hasStockValue = item?.stock !== undefined && item?.stock !== null;
+  return Boolean(hasStockValue && Number(item?.stock) <= 0);
+};
+
 export const scoreRelatedRecommendation = (
   currentProduct: ProductRecommendationCandidate | null | undefined,
   candidate: ProductRecommendationCandidate | null | undefined,
@@ -196,4 +201,117 @@ export const scoreRelatedRecommendation = (
   if (reviewCount > 0) score += Math.min(5, Math.floor(reviewCount / 10) + 1);
   if (averageRating > 0) score += Math.min(5, averageRating);
   return score;
+};
+
+
+export const buildRelatedRecommendations = <T extends ProductRecommendationCandidate & { id?: number | string }>(
+  currentProduct: ProductRecommendationCandidate | null | undefined,
+  recommendations: T[],
+): T[] => {
+  const currentId = Number(currentProduct?.id);
+  return (Array.from(
+    recommendations
+      .filter((item) => Number(item.id) !== currentId)
+      .reduce((itemsById, item) => {
+        const recommendationId = Number(item.id);
+        if (Number.isFinite(recommendationId) && !itemsById.has(recommendationId)) {
+          itemsById.set(recommendationId, item);
+        }
+        return itemsById;
+      }, new Map<number, T>())
+      .values(),
+  ) as T[])
+    .map((item, index) => ({ item, index, score: scoreRelatedRecommendation(currentProduct, item) }))
+    .sort((left, right) => right.score - left.score || left.index - right.index)
+    .map((entry) => entry.item);
+};
+
+export const buildCompleteSetItems = <T extends ProductRecommendationCandidate>(
+  relatedRecommendations: T[],
+  limit = 2,
+): T[] => relatedRecommendations
+  .filter((item) => !isRecommendationUnavailable(item))
+  .slice(0, limit);
+
+
+export interface PendingProductQuestion {
+  id: string;
+  question: string;
+  createdAt: string;
+}
+
+export const eagerImagePriorityProps = { fetchpriority: 'high' } as unknown as React.ImgHTMLAttributes<HTMLImageElement>;
+export const lazyImagePriorityProps = { fetchpriority: 'auto' } as unknown as React.ImgHTMLAttributes<HTMLImageElement>;
+
+export const PRODUCT_QUESTION_MAX_LENGTH = 500;
+export const PRODUCT_SIZE_CALCULATOR_MAX_WEIGHT_KG = 200;
+
+export type ProductVariantLike = {
+  options?: Record<string, string> | null;
+  sku?: string | null;
+} | null | undefined;
+
+export type BundleInfoLike = {
+  title?: string;
+  items?: Array<{ name?: string; quantity?: number }>;
+} | null | undefined;
+
+/** Exact selected-option match used by commercial purchase and stock resolution. */
+export const findSelectedProductVariant = <T extends ProductVariantLike>(
+  variants: T[],
+  selectedOptions: Record<string, string>,
+): T | undefined => {
+  if (!variants.length) return undefined;
+  return variants.find((variant) => {
+    const variantOptions = variant?.options || {};
+    const variantKeys = Object.keys(variantOptions);
+    const selectedKeys = Object.keys(selectedOptions).filter((key) => selectedOptions[key]);
+    return variantKeys.length === selectedKeys.length
+      && variantKeys.every((key) => selectedOptions[key] === variantOptions[key])
+      && selectedKeys.every((key) => Object.prototype.hasOwnProperty.call(variantOptions, key));
+  });
+};
+
+export const buildSelectedSpecsPayload = (
+  selectedOptions: Record<string, string>,
+  selectedVariant: ProductVariantLike,
+  purchaseMode: 'once' | 'bundle',
+  bundleInfo: BundleInfoLike,
+) => JSON.stringify({
+  ...selectedOptions,
+  ...(selectedVariant?.sku ? { _variantSku: selectedVariant.sku } : {}),
+  ...(purchaseMode === 'bundle' && bundleInfo ? {
+    _purchaseMode: 'bundle',
+    _bundleTitle: bundleInfo.title,
+    _bundleItems: (bundleInfo.items || []).map((item) => `${item.name} x${item.quantity || 1}`).join(', '),
+  } : {}),
+});
+
+
+export const stripQuestionControlChars = (value: string) =>
+  Array.from(value, (char) => {
+    const code = char.charCodeAt(0);
+    return code <= 31 || code === 127 ? ' ' : char;
+  }).join('');
+
+export const normalizeQuestionText = (value: string) => (
+  stripQuestionControlChars(value).trim().replace(/\s+/g, ' ').slice(0, PRODUCT_QUESTION_MAX_LENGTH)
+);
+
+export const normalizeSizeCalculatorWeight = (value: string) => {
+  if (!value.trim()) return '';
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return '';
+  return String(Math.min(PRODUCT_SIZE_CALCULATOR_MAX_WEIGHT_KG, Math.max(0, numeric)));
+};
+
+export const PRODUCT_DETAIL_TAB_KEYS = ['details', 'specs', 'service'] as const;
+export type ProductDetailTabKey = (typeof PRODUCT_DETAIL_TAB_KEYS)[number];
+
+export const normalizeProductDetailTab = (value: string | null | undefined): ProductDetailTabKey => {
+  const normalized = String(value || '').trim().toLowerCase();
+  if (normalized === 'specs' || normalized === '2') return 'specs';
+  if (normalized === 'service' || normalized === 'shipping' || normalized === '3') return 'service';
+  if (normalized === 'details' || normalized === '1' || normalized === 'detail') return 'details';
+  return 'details';
 };

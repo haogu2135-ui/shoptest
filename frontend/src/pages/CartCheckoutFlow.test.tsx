@@ -635,6 +635,9 @@ const clickOpenPopconfirmOk = async () => {
 };
 
 const readCartCheckoutSubmitSource = () => fs.readFileSync(path.resolve(__dirname, '../hooks/useCartCheckoutSubmit.ts'), 'utf8');
+const readCartItemMutationsSource = () => fs.readFileSync(path.resolve(__dirname, '../hooks/useCartItemMutations.ts'), 'utf8');
+const readCartQuantityActionsSource = () => fs.readFileSync(path.resolve(__dirname, '../hooks/useCartQuantityActions.ts'), 'utf8');
+const readCartRecoveryAddsSource = () => fs.readFileSync(path.resolve(__dirname, '../hooks/useCartRecoveryAdds.ts'), 'utf8');
 describe('cart to checkout flows', () => {
   jest.setTimeout(60000);
   beforeEach(() => {
@@ -1017,32 +1020,47 @@ describe('cart to checkout flows', () => {
 
   it('keeps cart error handling typed without broad any usage', () => {
     const source = fs.readFileSync(path.resolve(__dirname, 'Cart.tsx'), 'utf8');
+    const cartSurface = [
+      source,
+      readCartItemMutationsSource(),
+      readCartQuantityActionsSource(),
+      readCartRecoveryAddsSource(),
+      readCartCheckoutSubmitSource(),
+    ].join('\n');
 
     expect(source).toContain("import { getApiErrorMessage, isAuthExpiredError } from '../utils/apiError';");
     expect(source).toContain('} catch (error: unknown) {');
-    expect(source).toContain('} catch (err: unknown) {');
-    expect(source).not.toMatch(/\bany\b/);
-    expect(source).not.toContain('error?.response?.status');
-    expect(source).not.toContain('catch (error: any)');
-    expect(source).not.toContain('catch (err: any)');
+    expect(cartSurface).toContain('} catch (err: unknown) {');
+    expect(cartSurface).not.toMatch(/\bany\b/);
+    expect(cartSurface).not.toContain('error?.response?.status');
+    expect(cartSurface).not.toContain('catch (error: any)');
+    expect(cartSurface).not.toContain('catch (err: any)');
   });
 
   it('guards cart state against stale authenticated snapshot responses', () => {
     const source = fs.readFileSync(path.resolve(__dirname, 'Cart.tsx'), 'utf8');
+    const mutations = readCartItemMutationsSource();
+    const quantityActions = readCartQuantityActionsSource();
+    const recoveryAdds = readCartRecoveryAddsSource();
     const fetchStart = source.indexOf('const fetchCartItems = useCallback(async () => {');
     const fetchEnd = source.indexOf('const isCartMounted = useCallback', fetchStart);
     const fetchSource = source.slice(fetchStart, fetchEnd);
-    const mutationStart = source.indexOf('const updateQuantity = (item: CartItem, quantity: number) => {');
-    const mutationEnd = source.indexOf('const cartCheckoutMetrics = useMemo', mutationStart);
-    const mutationSource = source.slice(mutationStart, mutationEnd);
-    const suggestedStart = source.indexOf('const addSuggestedProduct = async (product: Product) => {');
-    const suggestedEnd = source.indexOf('const addRecentProduct = async (product: Product) => {', suggestedStart);
-    const suggestedSource = source.slice(suggestedStart, suggestedEnd);
+    const mutationStart = quantityActions.indexOf('const updateQuantity = (item: CartItem, quantity: number) => {');
+    const mutationEnd = quantityActions.indexOf('return { updateQuantity };', mutationStart);
+    const mutationSource = `${quantityActions.slice(mutationStart, mutationEnd)}
+${mutations}
+${recoveryAdds}`;
+    const suggestedStart = recoveryAdds.indexOf('const addSuggestedProduct = useCallback(async (product: Product) => {');
+    const suggestedEnd = recoveryAdds.indexOf('const addRecentProduct = useCallback(async (product: Product) => {', suggestedStart);
+    const suggestedSource = recoveryAdds.slice(suggestedStart, suggestedEnd);
 
     expect(source).toContain('const cartSnapshotRequestRef = useRef(0);');
     expect(source).toContain('const beginCartSnapshotRequest = useCallback(() => {');
     expect(source).toContain('const isCurrentCartSnapshotRequest = useCallback((requestId: number) => (');
     expect(source).toContain('const invalidateCartSnapshotRequests = useCallback(() => {');
+    expect(source).toContain('useCartItemMutations({');
+    expect(source).toContain('useCartQuantityActions({');
+    expect(source).toContain('useCartRecoveryAdds({');
     expect(fetchStart).toBeGreaterThan(-1);
     expect(fetchEnd).toBeGreaterThan(fetchStart);
     expect(fetchSource).toContain('const requestId = beginCartSnapshotRequest();');
@@ -1077,22 +1095,26 @@ describe('cart to checkout flows', () => {
 
   it('keeps remove and save-for-later cart mutations from rolling back stale cart rows', () => {
     const source = fs.readFileSync(path.resolve(__dirname, 'Cart.tsx'), 'utf8');
-    const removeStart = source.indexOf('const removeItem = async (itemId: number) => {');
-    const removeEnd = source.indexOf('const saveForLater = async (item: CartItem) => {', removeStart);
-    const removeSource = source.slice(removeStart, removeEnd);
+    const mutations = readCartItemMutationsSource();
+    const removeStart = mutations.indexOf('const removeItem = useCallback(async (itemId: number) => {');
+    const removeEnd = mutations.indexOf('const saveForLater = useCallback(async (item: CartItem) => {', removeStart);
+    const removeSource = mutations.slice(removeStart, removeEnd);
     const removeCatchStart = removeSource.indexOf('} catch (err: unknown) {');
     const removeCatchEnd = removeSource.indexOf('} finally {', removeCatchStart);
     const removeCatchSource = removeSource.slice(removeCatchStart, removeCatchEnd);
-    const saveStart = source.indexOf('const saveForLater = async (item: CartItem) => {');
-    const saveEnd = source.indexOf('const moveSavedItemToCart = async (item: SavedForLaterItem) => {', saveStart);
-    const saveSource = source.slice(saveStart, saveEnd);
+    const saveStart = mutations.indexOf('const saveForLater = useCallback(async (item: CartItem) => {');
+    const saveEnd = mutations.indexOf('const moveSavedItemToCart = useCallback(async (item: SavedForLaterItem) => {', saveStart);
+    const saveSource = mutations.slice(saveStart, saveEnd);
     const saveCatchStart = saveSource.indexOf('} catch (error: unknown) {');
     const saveCatchEnd = saveSource.indexOf('} finally {', saveCatchStart);
     const saveCatchSource = saveSource.slice(saveCatchStart, saveCatchEnd);
-    const removeItemsStart = source.indexOf('const removeItems = async (itemIds: number[], successMessage: string) => {');
-    const removeItemsEnd = source.indexOf('const cartCheckoutMetrics = useMemo', removeItemsStart);
-    const removeItemsSource = source.slice(removeItemsStart, removeItemsEnd);
+    const removeItemsStart = mutations.indexOf('const removeItems = useCallback(async (itemIds: number[], successMessage: string) => {');
+    const removeItemsEnd = mutations.indexOf('return {', removeItemsStart);
+    const removeItemsSource = mutations.slice(removeItemsStart, removeItemsEnd);
 
+    expect(source).toContain('useCartItemMutations({');
+    expect(source).not.toContain('const removeItem = async (itemId: number) => {');
+    expect(source).not.toContain('const saveForLater = async (item: CartItem) => {');
     expect(removeStart).toBeGreaterThan(-1);
     expect(removeEnd).toBeGreaterThan(removeStart);
     expect(removeSource).toContain('if (removingItemIds.includes(itemId)) return;');
@@ -1143,21 +1165,25 @@ describe('cart to checkout flows', () => {
 
   it('clears recently viewed recovery cache after cart mutations that change recovery context', () => {
     const source = fs.readFileSync(path.resolve(__dirname, 'Cart.tsx'), 'utf8');
+    const mutations = readCartItemMutationsSource();
     const resetStart = source.indexOf('const resetCheckoutStateAfterCartMutation = useCallback(() => {');
     const resetEnd = source.indexOf('const beginCartSnapshotRequest = useCallback', resetStart);
     const resetSource = source.slice(resetStart, resetEnd);
-    const restoreStart = source.indexOf('const moveSavedItemToCart = async (item: SavedForLaterItem) => {');
-    const restoreEnd = source.indexOf('const removeSavedItem = (itemId: number) => {', restoreStart);
-    const restoreSource = source.slice(restoreStart, restoreEnd);
-    const suggestedStart = source.indexOf('const addSuggestedProduct = async (product: Product) => {');
-    const suggestedEnd = source.indexOf('const addRecentProduct = async (product: Product) => {', suggestedStart);
-    const suggestedSource = source.slice(suggestedStart, suggestedEnd);
+    const restoreStart = mutations.indexOf('const moveSavedItemToCart = useCallback(async (item: SavedForLaterItem) => {');
+    const restoreEnd = mutations.indexOf('const removeSavedItem = useCallback((itemId: number) => {', restoreStart);
+    const restoreSource = mutations.slice(restoreStart, restoreEnd);
+    const recoveryAdds = readCartRecoveryAddsSource();
+    const suggestedStart = recoveryAdds.indexOf('const addSuggestedProduct = useCallback(async (product: Product) => {');
+    const suggestedEnd = recoveryAdds.indexOf('const addRecentProduct = useCallback(async (product: Product) => {', suggestedStart);
+    const suggestedSource = recoveryAdds.slice(suggestedStart, suggestedEnd);
 
     expect(source).toContain('const RECENT_PRODUCTS_CACHE_MS = 2 * 60 * 1000;');
     expect(source).toContain('const RECENT_PRODUCTS_CACHE_MAX_ENTRIES = 50;');
     expect(source).toContain('const recentProductsCache = new Map<string, RecentProductsCacheEntry>();');
     expect(source).toContain('const clearRecentProductsCache = () => {\n  recentProductsCache.clear();\n};');
     expect(source).not.toContain('recentProductsCache._timestamp');
+    expect(source).toContain('clearRecentProductsCache,');
+    expect(source).toContain('useCartRecoveryAdds({');
     expect(resetStart).toBeGreaterThan(-1);
     expect(resetEnd).toBeGreaterThan(resetStart);
     expect(resetSource).toContain('clearRecentProductsCache();');
@@ -1246,11 +1272,14 @@ describe('cart to checkout flows', () => {
 
   it('keeps cart quantity source free of stale callbacks and invalid empty syncs', () => {
     const source = fs.readFileSync(path.resolve(__dirname, 'Cart.tsx'), 'utf8');
+    const quantityActions = readCartQuantityActionsSource();
     const cartUiSource = fs.readFileSync(path.resolve(__dirname, '../utils/cartUi.ts'), 'utf8');
-    const updateStart = source.indexOf('const updateQuantity = (item: CartItem, quantity: number) => {');
-    const updateEnd = source.indexOf('const renderQuantityControl', updateStart);
-    const updateSource = source.slice(updateStart, updateEnd);
+    const updateStart = quantityActions.indexOf('const updateQuantity = (item: CartItem, quantity: number) => {');
+    const updateEnd = quantityActions.indexOf('return { updateQuantity };', updateStart);
+    const updateSource = quantityActions.slice(updateStart, updateEnd);
 
+    expect(source).toContain('useCartQuantityActions({');
+    expect(source).not.toContain('const updateQuantity = (item: CartItem, quantity: number) => {');
     expect(updateStart).toBeGreaterThan(-1);
     expect(updateEnd).toBeGreaterThan(updateStart);
     expect(updateSource).not.toContain('useCallback(');
@@ -1296,9 +1325,9 @@ describe('cart to checkout flows', () => {
     expect(checkoutStart).toBeGreaterThan(-1);
     expect(checkoutSource).toContain('if (hasStaleCartData) {');
     expect(checkoutSource).toContain("announceAccessibleMessage(t('pages.cart.staleDataWarning'), 'warning');");
-    expect(source).toContain('if (hasStaleCartData) return;\n    const normalizedQuantity = normalizeCartQuantity(item, quantity);');
-    expect(source).toContain('if (hasStaleCartData) return;\n    if (removingItemIds.includes(itemId)) return;');
-    expect(source).toContain('if (hasStaleCartData) return;\n    if (removingItemIds.includes(item.id)) return;');
+    expect(readCartQuantityActionsSource()).toContain('if (hasStaleCartData) return;\n    const normalizedQuantity = normalizeCartQuantity(item, quantity);');
+    expect(readCartItemMutationsSource()).toContain('if (hasStaleCartData) return;\n    if (removingItemIds.includes(itemId)) return;');
+    expect(readCartItemMutationsSource()).toContain('if (hasStaleCartData) return;\n    if (removingItemIds.includes(item.id)) return;');
     expect(source).toContain('if (hasStaleCartData) return;\n    setSelectedIds(checked ? purchasableItems.map((item) => item.id) : []);');
     expect(staleAlertStart).toBeGreaterThan(-1);
     expect(staleAlertEnd).toBeGreaterThan(staleAlertStart);
@@ -1309,14 +1338,16 @@ describe('cart to checkout flows', () => {
 
   it('keeps saved-item restore actions visibly pending while a restore is in flight', () => {
     const source = fs.readFileSync(path.resolve(__dirname, 'Cart.tsx'), 'utf8');
-    const restoreStart = source.indexOf('const moveSavedItemToCart = async (item: SavedForLaterItem) => {');
-    const restoreEnd = source.indexOf('const moveSavedItemsToCart', restoreStart);
-    const restoreSource = source.slice(restoreStart, restoreEnd);
+    const mutations = readCartItemMutationsSource();
+    const restoreStart = mutations.indexOf('const moveSavedItemToCart = useCallback(async (item: SavedForLaterItem) => {');
+    const restoreEnd = mutations.indexOf('const moveSavedItemsToCart', restoreStart);
+    const restoreSource = mutations.slice(restoreStart, restoreEnd);
     const savedRenderStart = source.indexOf('const restoringSavedItem = restoringSaved || restoringSavedItemIds.includes(item.id);');
     const savedRenderEnd = source.indexOf('icon={<ShopIcon path={SI.delete} />}', savedRenderStart) + 80;
     const savedRenderSource = source.slice(savedRenderStart, savedRenderEnd);
 
     expect(source).toContain('const [restoringSavedItemIds, setRestoringSavedItemIds] = useState<number[]>([]);');
+    expect(source).toContain('useCartItemMutations({');
     expect(restoreStart).toBeGreaterThan(-1);
     expect(restoreEnd).toBeGreaterThan(restoreStart);
     expect(restoreSource).toContain('if (restoringSaved || restoringSavedItemIds.includes(item.id)) return;');
@@ -1340,9 +1371,10 @@ describe('cart to checkout flows', () => {
 
   it('keeps authenticated bulk saved-item restore on the canonical cart snapshot', () => {
     const source = fs.readFileSync(path.resolve(__dirname, 'Cart.tsx'), 'utf8');
-    const restoreStart = source.indexOf('const moveSavedItemsToCart = async (items: SavedForLaterItem[]) => {');
-    const restoreEnd = source.indexOf('const removeSavedItem = (itemId: number) => {', restoreStart);
-    const restoreSource = source.slice(restoreStart, restoreEnd);
+    const mutations = readCartItemMutationsSource();
+    const restoreStart = mutations.indexOf('const moveSavedItemsToCart = useCallback(async (items: SavedForLaterItem[]) => {');
+    const restoreEnd = mutations.indexOf('const removeSavedItem = useCallback((itemId: number) => {', restoreStart);
+    const restoreSource = mutations.slice(restoreStart, restoreEnd);
     const authenticatedStart = restoreSource.indexOf('if (authenticated) {');
     const authenticatedEnd = restoreSource.indexOf('} else {', authenticatedStart);
     const authenticatedSource = restoreSource.slice(authenticatedStart, authenticatedEnd);

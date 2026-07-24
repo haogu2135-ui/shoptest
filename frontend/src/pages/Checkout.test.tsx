@@ -25,6 +25,9 @@ const readCheckoutSurfaceSource = () => `${readCheckoutPageSource()}\n${readChec
 const readCheckoutCssSource = () => require('fs').readFileSync(require('path').resolve(__dirname, 'Checkout.css'), 'utf8') as string;
 const readMobileAppCssSource = () => require('fs').readFileSync(require('path').resolve(__dirname, '../mobile-app.css'), 'utf8') as string;
 const readProfilePageSource = () => require('fs').readFileSync(require('path').resolve(__dirname, 'Profile.tsx'), 'utf8') as string;
+const readProfileAccountModalsSource = () => require('fs').readFileSync(require('path').resolve(__dirname, 'profileAccountModals.tsx'), 'utf8') as string;
+const readProfileAddressActionsSource = () => require('fs').readFileSync(require('path').resolve(__dirname, '../hooks/useProfileAddressActions.ts'), 'utf8') as string;
+const readProfileHelpersSource = () => require('fs').readFileSync(require('path').resolve(__dirname, '../utils/profileHelpers.ts'), 'utf8') as string;
 const readRegionDataSource = () => require('fs').readFileSync(require('path').resolve(__dirname, '../regionData.ts'), 'utf8') as string;
 
 const expectDescribedByText = (field: HTMLElement, expectedText: string) => {
@@ -400,14 +403,16 @@ describe('Checkout payment availability', () => {
 
     const checkoutFormSections = readCheckoutFormSectionsSource();
     const checkoutRegion = readCheckoutRegionCascaderSource();
-    for (const source of [checkoutRegion, profileSource]) {
+    const profileAddressActions = readProfileAddressActionsSource();
+    const profileAccountModals = readProfileAccountModalsSource();
+    for (const source of [checkoutRegion, profileAddressActions]) {
       expect(source).toContain('regionOptionsLanguage === language');
       expect(source).toContain('loadRegionData(language)');
       expect(source).toContain('setRegionOptionsLanguage(language)');
       expect(source).not.toContain('loadRegionData()');
     }
     expect(checkoutFormSections).toContain('options={regionOptions}');
-    expect(profileSource).toContain('options={regionOptions}');
+    expect(profileAccountModals).toContain('options={regionOptions}');
   });
 
   it('requires saved addresses to carry independent region, postal code, and detail fields', () => {
@@ -440,13 +445,14 @@ describe('Checkout payment availability', () => {
     expect(checkoutSource).not.toContain('setPostalCode(address.postalCode || "")');
     expect(checkoutSource).not.toContain('&& normalizeCheckoutText(selectedSavedAddress.address, 260)');
 
-    expect(profileSource).toContain("import { isValidRegionalPostalCode, normalizeRegionalPostalCode } from '../utils/postalCode';");
-    expect(profileSource).toContain('const isCompleteProfileAddress = (address?: UserAddress | null) =>');
-    expect(profileSource).toContain('region: regionPath,');
-    expect(profileSource).toContain('postalCode,');
-    expect(profileSource).toContain('detailAddress,');
-    expect(profileSource).toContain("name=\"postalCode\"");
-    expect(profileSource).toContain("addressForm.setFields([{ name: 'postalCode', errors: [t('pages.profile.postalCodeInvalid')] }]);");
+    expect(`${profileSource}\n${readProfileAccountModalsSource()}\n${readProfileAddressActionsSource()}`).toContain("import { isValidRegionalPostalCode, normalizeRegionalPostalCode } from '../utils/postalCode';");
+    expect(readProfileHelpersSource()).toContain('export const isCompleteProfileAddress = (address?: UserAddress | null) =>');
+    const profileAddressSurface = `${profileSource}\n${readProfileAccountModalsSource()}\n${readProfileAddressActionsSource()}`;
+    expect(profileAddressSurface).toContain('region: regionPath,');
+    expect(profileAddressSurface).toContain('postalCode,');
+    expect(profileAddressSurface).toContain('detailAddress,');
+    expect(profileAddressSurface).toContain("name=\"postalCode\"");
+    expect(profileAddressSurface).toContain("addressForm.setFields([{ name: 'postalCode', errors: [t('pages.profile.postalCodeInvalid')] }]);");
   });
 
   it('allows checkout to continue with no-coupon fallback pricing when coupon quote fails', () => {

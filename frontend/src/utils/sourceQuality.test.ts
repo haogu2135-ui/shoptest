@@ -169,7 +169,7 @@ describe('source quality contracts', () => {
 
     expect(cartSource).not.toContain('calculateChange');
     expect(cartSource).not.toMatch(/\bconsole\.(warn|error)\b/);
-    expect(cartSource).toContain('const normalizedQuantity = normalizeCartQuantity(item, quantity);');
+    expect(cartSource + fs.readFileSync(path.join(frontendRoot, 'hooks', 'useCartQuantityActions.ts'), 'utf8')).toContain('const normalizedQuantity = normalizeCartQuantity(item, quantity);');
     expect(cartSource).toContain('max={limit}');
     expect(cartSource).toContain('disabled={disabled || quantity >= limit}');
     expect(cartUiSource).toContain('Math.min(getCartLineQuantity(quantity), getCartQuantityLimit(item?.stock))');

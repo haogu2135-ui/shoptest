@@ -4,226 +4,64 @@ import { ShopIcon, SI } from '../components/ShopIcon';
 import ShopModal from '../components/ShopModal';
 import ShopConfirm from '../components/ShopConfirm';
 import { Form } from 'antd';
-import ShopInput, { ShopPasswordInput, ShopTextArea } from '../components/ShopInput';
-import ShopInputNumber from '../components/ShopInputNumber';
-import ShopSearchField from '../components/ShopSearchField';
 import ShopSelect from '../components/ShopSelect';
-import ShopCascader from '../components/ShopCascader';
-import ShopDatePicker from '../components/ShopDatePicker';
-import ShopCheckbox from '../components/ShopCheckbox';
-import ShopPopconfirm from '../components/ShopPopconfirm';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { addressApi, cartApi, orderApi, paymentApi, petProfileApi, userApi } from '../api';
+import { addressApi, orderApi, paymentApi, petProfileApi, userApi } from '../api';
 import type { OrderCustomer, OrderItemCustomer, PaymentCustomer, PaymentChannel, PetProfile, UserAddress, UserProfile } from '../types';
-import { findRegionPath, loadRegionData, type RegionOption } from '../regionData';
+import type { RegionOption } from '../regionData';
 import { useLanguage } from '../i18n';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useDocumentMeta } from '../hooks/useDocumentMeta';
 import { buildLoginUrl, buildLoginUrlFromWindow } from '../utils/authRedirect';
-import { createPaymentMethodDetails, createPaymentMethodOptions, filterPaymentChannelsForMarket, paymentMethodLabel } from '../utils/paymentMethods';
+import { createPaymentMethodDetails, createPaymentMethodOptions } from '../utils/paymentMethods';
 import { useAppConfig } from '../hooks/useAppConfig';
 import { useMarket } from '../hooks/useMarket';
-import { getCurrency } from '../utils/market';
 import './Profile.css';
-import dayjs from 'dayjs';
-import { formatSelectedSpecs } from '../utils/selectedSpecs';
-import { productImageFallback, resolveProductImage } from '../utils/productMedia';
 import { dispatchDomEvent } from '../utils/domEvents';
 import { allSettledWithConcurrency } from '../utils/asyncBatch';
 import { getLocalStorageItem } from '../utils/safeStorage';
-import { getApiErrorMessage } from '../utils/apiError';
-import {
-  isReturnReasonReady,
-  isReturnTrackingReady,
-  normalizeReturnReason,
-  normalizeReturnTrackingNumber,
-  RETURN_REASON_PRESET_KEYS,
-  returnReasonPresetI18nKey,
-  returnFlowStepI18nKeys,
-} from '../utils/returnFlow';
 import { reportNonBlockingError } from '../utils/nonBlockingError';
-import PageError from '../components/PageError';
 import PageEmpty from '../components/PageEmpty';
-import { isLikelyPhoneNumber, normalizeLikelyPhoneNumber, normalizePhoneNumber } from '../utils/phone';
-import { isValidRegionalPostalCode, normalizeRegionalPostalCode } from '../utils/postalCode';
-import {
-  STRONG_PASSWORD_MAX_LENGTH,
-  STRONG_PASSWORD_MIN_LENGTH,
-  hasRequiredPasswordClasses,
-  isCommonPassword,
-} from '../utils/passwordPolicy';
-import SeventeenTrackWidget from '../components/SeventeenTrackWidget';
 import '../styles/mobile-page-contrast.css';
-import { focusFirstFormError } from '../utils/formValidationFocus';
-import { navigateToCommercialPaymentUrl, formatPaymentUrlLabel, getPaymentRecoveryState } from '../utils/paymentRecovery';
+import { getPaymentRecoveryState } from '../utils/paymentRecovery';
 import { handleRovingTablistKeyDown } from '../utils/tablistKeyboard';
 import ShopButton from '../components/ShopButton';
-import ShopProgress from '../components/ShopProgress';
 
 import ShopTag from '../components/ShopTag';
 import ShopAlert from '../components/ShopAlert';
-const orderImageFallback = productImageFallback;
-const resolveOrderImage = resolveProductImage;
-const PROFILE_ORDER_ITEM_PREVIEW_LIMIT = 30;
-type FormValidationError = { errorFields: unknown[] };
-type OrderItemsPreviewResult = { orderId: number; items: OrderItemCustomer[]; failed: boolean };
-
-const isFormValidationError = (error: unknown): error is FormValidationError => {
-  if (!error || typeof error !== 'object') return false;
-  return Array.isArray((error as { errorFields?: unknown }).errorFields);
-};
-
-const focusProfileModalFormError = (rootSelector: string) => {
-  window.requestAnimationFrame(() => {
-    window.requestAnimationFrame(() => {
-      focusFirstFormError({
-        rootSelector,
-        scrollOffset: 80,
-        scrollContainerSelector: `${rootSelector} .shop-modal__body, ${rootSelector} .ant-modal-body`,
-      });
-    });
-  });
-};
-
-const getProfileApiErrorData = (error: unknown): Record<string, unknown> => {
-  if (!error || typeof error !== 'object') return {};
-  const response = (error as { response?: unknown }).response;
-  if (!response || typeof response !== 'object') return {};
-  const data = (response as { data?: unknown }).data;
-  return data && typeof data === 'object' ? data as Record<string, unknown> : {};
-};
-
-const getProfileApiErrorCode = (error: unknown) => {
-  const code = getProfileApiErrorData(error).code;
-  return typeof code === 'string' ? code : '';
-};
-
-const getPreferredPaymentChannel = (
-  channels: PaymentChannel[],
-  preferred?: string | null,
-  currency: string = getCurrency(),
-) => {
-  const normalizedPreferred = String(preferred || '').trim();
-  const marketChannels = filterPaymentChannelsForMarket(channels, { currency });
-  if (normalizedPreferred) {
-    if (marketChannels.some((channel) => channel.code === normalizedPreferred)) {
-      return normalizedPreferred;
-    }
-    // Preserve historical order channel so continue-pay can finish an existing charge.
-    if (channels.some((channel) => channel.code === normalizedPreferred)) {
-      return normalizedPreferred;
-    }
-  }
-  return marketChannels.find((channel) => channel.recommended)?.code || marketChannels[0]?.code || '';
-};
-
-const useImageFallback = (event: React.SyntheticEvent<HTMLImageElement>) => {
-  if (event.currentTarget.src !== orderImageFallback) {
-    event.currentTarget.src = orderImageFallback;
-  }
-};
-
-const statusColors: Record<string, string> = {
-  PENDING_PAYMENT: 'orange',
-  PENDING_SHIPMENT: 'blue',
-  SHIPPED: 'cyan',
-  COMPLETED: 'green',
-  CANCELLED: 'red',
-  RETURN_REQUESTED: 'gold',
-  RETURN_APPROVED: 'geekblue',
-  RETURN_SHIPPED: 'cyan',
-  RETURN_REFUNDING: 'magenta',
-  RETURNED: 'purple',
-  PENDING: 'orange',
-  PAID: 'blue',
-  REFUNDED: 'purple',
-  FAILED: 'red',
-  EXPIRED: 'volcano',
-  RECONCILE_REQUIRED: 'magenta',
-  DELIVERED: 'green',
-};
-
-const ORDER_STATUS_LABEL_KEYS = new Set([
-  'PENDING_PAYMENT',
-  'PENDING_SHIPMENT',
-  'SHIPPED',
-  'PENDING_RECEIPT',
-  'COMPLETED',
-  'CANCELLED',
-  'RETURN_REQUESTED',
-  'RETURN_APPROVED',
-  'RETURN_SHIPPED',
-  'RETURN_REFUNDING',
-  'RETURNED',
-  'REFUNDED',
-  'DELIVERED',
-]);
-const PAYMENT_STATUS_LABEL_KEYS = new Set(['PENDING', 'PAID', 'FAILED', 'EXPIRED', 'REFUNDING', 'REFUNDED', 'RECONCILE_REQUIRED']);
-
-const normalizeStatusCode = (status?: string) => String(status || '').trim().toUpperCase();
-
-const getOrderSortTime = (order: OrderCustomer) => {
-  const createdAt = order.createdAt ? new Date(order.createdAt).getTime() : 0;
-  return Number.isNaN(createdAt) ? 0 : createdAt;
-};
-
-const profileOrderLabel = (order: Pick<OrderCustomer, 'id' | 'orderNo'>) => order.orderNo || `#${order.id}`;
-
-const sortOrdersNewestFirst = (items: OrderCustomer[]) =>
-  [...items].sort((left, right) => getOrderSortTime(right) - getOrderSortTime(left) || right.id - left.id);
-
-const PROFILE_TAB_KEYS = ['info', 'addresses', 'orders', 'pets'] as const;
-const PROFILE_MOBILE_ENTRY_TAB_KEYS = ['orders', 'addresses', 'info', 'pets'] as const;
-const normalizeProfileTab = (value: string | null) =>
-  value === 'info' || value === 'addresses' || value === 'orders' || value === 'pets' ? value : null;
-
-const normalizeProfileOrderNo = (value: unknown) => String(value || '').trim().toUpperCase();
-const normalizeProfileEmail = (value: unknown) => String(value || '').trim().toLowerCase();
-const profilePhoneOptions = { minDigits: 6, maxDigits: 20, maxInputLength: 40 };
-const normalizeProfilePhone = (value: unknown) => normalizePhoneNumber(value, profilePhoneOptions);
-const isLikelyProfilePhone = (value: unknown) => isLikelyPhoneNumber(value, profilePhoneOptions);
-const normalizeLikelyProfilePhone = (value: unknown) =>
-  normalizeLikelyPhoneNumber(value, profilePhoneOptions);
-const normalizeProfileAddressText = (value: unknown, maxLength: number) =>
-  String(value || '').trim().replace(/\s+/g, ' ').slice(0, maxLength);
-const getProfileSavedAddressRegionPath = (address?: UserAddress | null) => {
-  const region = address?.region;
-  return (Array.isArray(region) ? region : [])
-    .map((item) => normalizeProfileAddressText(item, 120))
-    .filter(Boolean);
-};
-const getProfileSavedAddressPostalCode = (address?: UserAddress | null) =>
-  normalizeRegionalPostalCode(address?.postalCode);
-const getProfileSavedAddressDetail = (address?: UserAddress | null) =>
-  normalizeProfileAddressText(address?.detailAddress, 260);
-const isCompleteProfileAddress = (address?: UserAddress | null) => {
-  const regionPath = getProfileSavedAddressRegionPath(address);
-  const postalCode = getProfileSavedAddressPostalCode(address);
-  return Boolean(
-    address
-      && normalizeProfileAddressText(address.recipientName, 80)
-      && isLikelyProfilePhone(address.phone)
-      && regionPath.length > 0
-      && isValidRegionalPostalCode(postalCode, regionPath)
-      && getProfileSavedAddressDetail(address),
-  );
-};
-const normalizeEmailCode = (value: unknown) => String(value || '').replace(/\D+/g, '').slice(0, 6);
-const scrollProfileAddressFieldIntoMobileView = (target: EventTarget | null) => {
-  if (typeof window === 'undefined' || window.innerWidth > 780 || !(target instanceof HTMLElement)) return;
-  const field = target.closest('.ant-form-item') || target;
-  window.setTimeout(() => {
-    field.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'smooth' });
-  }, 80);
-};
-
-type OrderActionHintTone = 'pay' | 'wait' | 'ship' | 'return' | 'done' | 'neutral';
-
-type OrderActionHint = {
-  tone: OrderActionHintTone;
-  title: string;
-  text: string;
-};
+import {
+  ORDER_STATUS_LABEL_KEYS,
+  PAYMENT_STATUS_LABEL_KEYS,
+  PROFILE_MOBILE_ENTRY_TAB_KEYS,
+  PROFILE_ORDER_ITEM_PREVIEW_LIMIT,
+  PROFILE_TAB_KEYS,
+  getPreferredPaymentChannel,
+  isCompleteProfileAddress,
+  isLikelyProfilePhone,
+  normalizeLikelyProfilePhone,
+  normalizeProfileEmail,
+  normalizeProfileOrderNo,
+  normalizeProfileTab,
+  normalizeStatusCode,
+  profileOrderLabel,
+  sortOrdersNewestFirst,
+  statusColors,
+  type OrderActionHint,
+  type OrderItemsPreviewResult,
+} from '../utils/profileHelpers';
+import { useProfilePaymentActions } from '../hooks/useProfilePaymentActions';
+import { useProfileAddressActions } from '../hooks/useProfileAddressActions';
+import { useProfilePetActions } from '../hooks/useProfilePetActions';
+import { useProfileAccountActions } from '../hooks/useProfileAccountActions';
+import { useProfileOrderActions } from '../hooks/useProfileOrderActions';
+import { ProfileOrdersPanel } from './profileOrdersPanel';
+import { ProfileAddressesPanel } from './profileAddressesPanel';
+import { ProfilePetsPanel } from './profilePetsPanel';
+import { ProfileOrderDetailModal } from './profileOrderDetailModal';
+import { ProfileReturnModals } from './profileReturnModals';
+import { ProfilePaymentModal } from './profilePaymentModal';
+import { ProfileInfoPanel } from './profileInfoPanel';
+import { ProfileAccountModals } from './profileAccountModals';
 
 const Profile: React.FC = () => {
   const navigate = useNavigate();
@@ -581,228 +419,143 @@ const Profile: React.FC = () => {
     return () => window.clearInterval(timer);
   }, [profileEmailCodeCountdown]);
 
-  const refreshPaymentState = useCallback(async (orderId: number, isActive: () => boolean = () => true) => {
-    const [orderRes, paymentListRes] = await Promise.all([
-      orderApi.getById(orderId),
-      paymentApi.getByOrder(orderId),
-    ]);
-    if (!mountedRef.current || !isActive()) return;
-    const paymentList = paymentListRes.data || [];
-    const latestPayment = paymentList[0] || null;
-    setSelectedOrder(orderRes.data);
-    setOrderPayments(paymentList);
-    if (latestPayment) {
-      setSelectedPayment(latestPayment);
-      setSelectedPaymentMethod(getPreferredPaymentChannel(paymentChannels, latestPayment.channel));
-    }
-  }, [paymentChannels]);
+  const {
+    handleContinuePayment,
+    handleRefreshPayment,
+    loadPaymentChannels,
+    refreshPaymentState,
+  } = useProfilePaymentActions({
+    continuingPaymentRef,
+    fetchOrders,
+    language,
+    mountedRef,
+    paymentChannels,
+    profileLocalizationRef,
+    selectedOrder,
+    selectedPayment,
+    selectedPaymentMethod,
+    setOrderPayments,
+    setPayingOrderId,
+    setPaymentChannels,
+    setPaymentChannelsError,
+    setPaymentChannelsLoaded,
+    setPaymentChannelsLoading,
+    setPaymentModalVisible,
+    setRefreshingPayment,
+    setSelectedOrder,
+    setSelectedPayment,
+    setSelectedPaymentMethod,
+    t,
+  });
 
-  const handleEditProfile = async () => {
-    try {
-      const values = await editForm.validateFields();
-      const normalizedEmail = normalizeProfileEmail(values.email);
-      const emailChanged = normalizedEmail !== normalizeProfileEmail(user?.email);
-      if (emailChanged && !emailCodeEnabled) {
-        const msg = t('pages.auth.emailCodeUnavailable');
-        editForm.setFields([{ name: 'emailCode', errors: [msg] }]);
-        announceAccessibleMessage(msg, 'warning');
-        return;
-      }
-      if (emailChanged && normalizeEmailCode(values.emailCode).length !== 6) {
-        editForm.setFields([{ name: 'emailCode', errors: [t('pages.auth.emailCodeLength')] }]);
-        return;
-      }
-      setProfileSubmitting(true);
-      await userApi.updateProfile({
-        email: normalizedEmail,
-        phone: normalizeProfilePhone(values.phone),
-        emailCode: emailChanged ? values.emailCode : '',
-      });
-      announceAccessibleMessage(t('pages.profile.updated'), 'success');
-      setEditModalVisible(false);
-      editForm.resetFields(['emailCode']);
-      setProfileEmailCodeSentTo('');
-      setProfileEmailCodeCountdown(0);
-      fetchUserInfo();
-    } catch (err: unknown) {
-      if (isFormValidationError(err)) {
-        focusProfileModalFormError('.profile-mobile-safe-modal');
-        return;
-      }
-      const errorCode = getProfileApiErrorCode(err);
-      if (errorCode === 'INVALID_CODE' || errorCode === 'TOO_MANY_ATTEMPTS') {
-        const msg = errorCode === 'TOO_MANY_ATTEMPTS'
-          ? t('pages.auth.emailCodeTooManyAttempts')
-          : t('pages.auth.emailCodeInvalid');
-        editForm.setFields([{ name: 'emailCode', errors: [msg] }]);
-        announceAccessibleMessage(msg, 'error');
-      } else {
-        announceAccessibleMessage(getApiErrorMessage(err, t('messages.updateFailed'), language), 'error');
-      }
-    } finally {
-      setProfileSubmitting(false);
-    }
-  };
+  const {
+    closeAddressModal,
+    handleDeleteAddress,
+    handleSaveAddress,
+    handleSetDefault,
+    loadProfileRegionOptions,
+    openAddressModal,
+  } = useProfileAddressActions({
+    addressForm,
+    addressSubmitting,
+    addressesStale,
+    editingAddress,
+    fetchAddresses,
+    language,
+    mountedRef,
+    regionOptions,
+    regionOptionsLanguage,
+    setAddressModalVisible,
+    setAddressSubmitting,
+    setEditingAddress,
+    setRegionOptions,
+    setRegionOptionsLanguage,
+    setRegionOptionsLoading,
+    t,
+  });
 
-  const handleSendProfileEmailCode = async () => {
-    if (!emailCodeEnabled) {
-      announceAccessibleMessage(t('pages.auth.emailCodeUnavailable'), 'warning');
-      return;
-    }
-    try {
-      const { email } = await editForm.validateFields(['email']);
-      const normalizedEmail = normalizeProfileEmail(email);
-      editForm.setFieldValue('email', normalizedEmail);
-      if (normalizedEmail === normalizeProfileEmail(user?.email)) {
-        announceAccessibleMessage(t('pages.profile.emailCodeUnchanged'), 'info');
-        return;
-      }
-      setProfileEmailCodeSending(true);
-      const response = await userApi.sendProfileEmailCode(normalizedEmail);
-      const resendIntervalSeconds = Number(response.data?.resendIntervalSeconds);
-      const ttlMinutes = Number(response.data?.codeTtlMinutes);
-      setProfileEmailCodeCountdown(Number.isFinite(resendIntervalSeconds) && resendIntervalSeconds > 0 ? resendIntervalSeconds : 60);
-      setProfileEmailCodeTtlMinutes(Number.isFinite(ttlMinutes) && ttlMinutes > 0 ? ttlMinutes : 0);
-      setProfileEmailCodeSentTo(normalizedEmail);
-      editForm.setFieldValue('emailCode', '');
-      editForm.setFields([{ name: 'emailCode', errors: [] }]);
-      announceAccessibleMessage(t('pages.auth.emailCodeSentTo', { email: normalizedEmail }), 'success');
-    } catch (err: unknown) {
-      if (isFormValidationError(err)) {
-        focusProfileModalFormError('.profile-mobile-safe-modal');
-        return;
-      }
-      const retryAfterSeconds = Number(getProfileApiErrorData(err).retryAfterSeconds);
-      if (Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0) {
-        setProfileEmailCodeCountdown(Math.ceil(retryAfterSeconds));
-      }
-      announceAccessibleMessage(getApiErrorMessage(err, t('pages.auth.emailCodeSendFailed'), language), 'error');
-    } finally {
-      setProfileEmailCodeSending(false);
-    }
-  };
+  const {
+    closePetModal,
+    handleDeletePet,
+    handleSavePet,
+    openPetModal,
+  } = useProfilePetActions({
+    editingPet,
+    fetchPetProfiles,
+    language,
+    petForm,
+    petSubmitting,
+    setEditingPet,
+    setPetModalVisible,
+    setPetSubmitting,
+    t,
+  });
 
-  const handleChangePassword = async () => {
-    if (passwordSubmitting) return;
-    try {
-      const values = await passwordForm.validateFields();
-      setPasswordSubmitting(true);
-      await userApi.updatePassword(values.oldPassword, values.newPassword);
-      announceAccessibleMessage(t('pages.profile.passwordChanged'), 'success');
-      setPasswordModalVisible(false);
-      passwordForm.resetFields();
-    } catch (err: unknown) {
-      if (isFormValidationError(err)) {
-        focusProfileModalFormError('.profile-mobile-safe-modal');
-        return;
-      }
-      announceAccessibleMessage(getApiErrorMessage(err, t('pages.profile.passwordFailed'), language), 'error');
-    } finally {
-      setPasswordSubmitting(false);
-    }
-  };
+  const {
+    closePasswordModal,
+    handleChangePassword,
+    handleEditProfile,
+    handleSendProfileEmailCode,
+    openEditModal,
+  } = useProfileAccountActions({
+    editForm,
+    emailCodeEnabled,
+    fetchUserInfo,
+    language,
+    passwordForm,
+    passwordSubmitting,
+    setEditModalVisible,
+    setPasswordModalVisible,
+    setPasswordSubmitting,
+    setProfileEmailCodeCountdown,
+    setProfileEmailCodeSending,
+    setProfileEmailCodeSentTo,
+    setProfileEmailCodeTtlMinutes,
+    setProfileSubmitting,
+    t,
+    user,
+  });
 
-  const handleViewOrder = async (order: OrderCustomer) => {
-    const requestSeq = orderDetailRequestSeqRef.current + 1;
-    orderDetailRequestSeqRef.current = requestSeq;
-    setSelectedOrder(order);
-    setOrderDetailVisible(true);
-    setOrderItems([]);
-    try {
-      const res = await orderApi.getItems(order.id);
-      if (!mountedRef.current || orderDetailRequestSeqRef.current !== requestSeq) return;
-      setOrderItems(res.data);
-    } catch (error) {
-      if (!mountedRef.current || orderDetailRequestSeqRef.current !== requestSeq) return;
-      reportNonBlockingError('Profile.loadOrderItems', error);
-      setOrderItems([]);
-    }
-  };
-
-  const openProductDetail = (productId: number) => {
-    setOrderDetailVisible(false);
-    navigate(`/products/${productId}`);
-  };
-
-  const handleReorder = async () => {
-    if (!getLocalStorageItem('token') || orderItems.length === 0) return;
-    setReordering(true);
-    let added = 0;
-    const expectedQuantity = orderItems.reduce((sum, item) => sum + item.quantity, 0);
-    try {
-      for (const item of orderItems) {
-        if (!mountedRef.current) return;
-        try {
-          await cartApi.addItem(0, item.productId, item.quantity, item.selectedSpecs);
-          if (!mountedRef.current) return;
-          added += item.quantity;
-        } catch (error) {
-          if (!mountedRef.current) return;
-          reportNonBlockingError('Profile.reorderItem', error);
-        }
-      }
-      if (!mountedRef.current) return;
-      if (added === 0) {
-        announceAccessibleMessage(t('pages.profile.reorderFailed'), 'error');
-        return;
-      }
-      announceAccessibleMessage(
-        added === expectedQuantity
-          ? t('pages.profile.reordered', { count: added })
-          : t('pages.profile.reorderPartial', { count: added }), 'success');
-      dispatchDomEvent('shop:cart-updated');
-      dispatchDomEvent('shop:open-cart');
-    } finally {
-      if (mountedRef.current) {
-        setReordering(false);
-      }
-    }
-  };
-
-  const handleCancelOrder = async (orderId: number) => {
-    try {
-      await orderApi.cancel(orderId);
-      announceAccessibleMessage(t('pages.profile.orderCancelled'), 'success');
-    } catch (err: unknown) {
-      announceAccessibleMessage(getApiErrorMessage(err, t('pages.profile.cancelFailed'), language), 'error');
-    } finally {
-      fetchOrders();
-    }
-  };
-
-  const handleContinuePayment = useCallback(async (order: OrderCustomer) => {
-    if (continuingPaymentRef.current !== null) return;
-    continuingPaymentRef.current = order.id;
-    setPayingOrderId(order.id);
-    try {
-      const paymentListRes = await paymentApi.getByOrder(order.id);
-      const paymentList = paymentListRes.data;
-      const preferredMethod = getPreferredPaymentChannel(paymentChannels, order.paymentMethod || paymentList[0]?.channel);
-      const paidPayment = paymentList.find((item) => normalizeStatusCode(item.status) === 'PAID');
-      const reconcilePayment = paymentList.find((item) => normalizeStatusCode(item.status) === 'RECONCILE_REQUIRED');
-      const pendingPayment = paymentList.find((item) => normalizeStatusCode(item.status) === 'PENDING' && !getPaymentRecoveryState(item).isExpired);
-      // Reconcile payments must surface for review — never open/create a competing gateway charge.
-      const reusablePayment = paidPayment || reconcilePayment || pendingPayment;
-      if (!reusablePayment && !preferredMethod) {
-        throw new Error(profileLocalizationRef.current.t('pages.checkout.paymentUnavailable'));
-      }
-      const latestPayment = reusablePayment || (await paymentApi.create(order.id, preferredMethod)).data;
-      setSelectedOrder(order);
-      setOrderPayments(paymentList.some((item) => item.id === latestPayment.id) ? paymentList : [latestPayment, ...paymentList]);
-      setSelectedPayment(latestPayment);
-      setSelectedPaymentMethod(latestPayment.channel || preferredMethod);
-      setPaymentModalVisible(true);
-    } catch (err: unknown) {
-      const { t: latestT, language: latestLanguage } = profileLocalizationRef.current;
-      announceAccessibleMessage(getApiErrorMessage(err, latestT('pages.profile.continuePayFailed'), latestLanguage, { includeClientMessage: true }), 'error');
-      fetchOrders();
-    } finally {
-      if (continuingPaymentRef.current === order.id) {
-        continuingPaymentRef.current = null;
-      }
-      setPayingOrderId(null);
-    }
-  }, [fetchOrders, paymentChannels]);
+  const {
+    confirmReceiptOrder,
+    handleCancelOrder,
+    handleConfirmReceipt,
+    handleReorder,
+    handleReturnOrder,
+    handleSubmitReturnShipment,
+    handleTrackShipment,
+    handleViewOrder,
+    openProductDetail,
+    openReturnModal,
+  } = useProfileOrderActions({
+    fetchOrders,
+    language,
+    mountedRef,
+    navigate,
+    orderDetailRequestSeqRef,
+    orderItems,
+    returnReason,
+    returnRequestOrder,
+    returnShipmentOrder,
+    returnTrackingNumber,
+    setConfirmingReceipt,
+    setOrderDetailVisible,
+    setOrderItems,
+    setReceiptConfirmOrder,
+    setReordering,
+    setRequestingReturn,
+    setReturnReason,
+    setReturnRequestOrder,
+    setReturnShipmentOrder,
+    setReturnTrackingNumber,
+    setSelectedOrder,
+    setSelectedTrackingCarrierCode,
+    setSelectedTrackingNumber,
+    setSelectedTrackingOrderId,
+    setSubmittingReturnShipment,
+    setTrackingVisible,
+    t,
+  });
 
   // After cancelled/failed gateway return, open continue-payment for the matching pending order.
   useEffect(() => {
@@ -822,33 +575,6 @@ const Profile: React.FC = () => {
     autoResumePaymentReturnRef.current = resumeKey;
     void handleContinuePayment(targetOrder);
   }, [handleContinuePayment, ordersInitialLoadComplete, paymentChannelsLoaded, paymentReturnOrderId, paymentReturnOrderNo]);
-
-  const handleRefreshPayment = async () => {
-    if (!selectedOrder) return;
-    if (normalizeStatusCode(selectedPayment?.status) === 'RECONCILE_REQUIRED') {
-      announceAccessibleMessage(t('pages.profile.paymentReturnReconcileRequired'), 'warning');
-      return;
-    }
-    const method = getPreferredPaymentChannel(paymentChannels, selectedPaymentMethod || selectedPayment?.channel || selectedOrder.paymentMethod);
-    if (!method) {
-      announceAccessibleMessage(t('pages.checkout.paymentUnavailable'), 'error');
-      return;
-    }
-    setRefreshingPayment(true);
-    try {
-      const paymentRes = await paymentApi.create(selectedOrder.id, method);
-      setSelectedPayment(paymentRes.data);
-      setSelectedPaymentMethod(paymentRes.data.channel);
-      setOrderPayments((items) => [paymentRes.data, ...items.filter((item) => item.id !== paymentRes.data.id)]);
-      announceAccessibleMessage(t('pages.profile.paymentRefreshed'), 'success');
-      await fetchOrders();
-    } catch (err: unknown) {
-      announceAccessibleMessage(getApiErrorMessage(err, t('pages.profile.continuePayFailed'), language, { includeClientMessage: true }), 'error');
-      await fetchOrders();
-    } finally {
-      setRefreshingPayment(false);
-    }
-  };
 
   useEffect(() => {
     const orderId = selectedOrder?.id;
@@ -878,27 +604,6 @@ const Profile: React.FC = () => {
     };
   }, [paymentModalVisible, refreshPaymentState, selectedOrder?.id]);
 
-  const loadPaymentChannels = useCallback(async (isActive: () => boolean = () => mountedRef.current) => {
-    setPaymentChannelsLoading(true);
-    setPaymentChannelsError('');
-    try {
-      const res = await paymentApi.getChannels();
-      if (!isActive()) return;
-      setPaymentChannels(res.data || []);
-      setPaymentChannelsLoaded(true);
-    } catch (error: unknown) {
-      if (!isActive()) return;
-      setPaymentChannels([]);
-      setPaymentChannelsLoaded(true);
-      const { t: latestT, language: latestLanguage } = profileLocalizationRef.current;
-      setPaymentChannelsError(getApiErrorMessage(error, latestT('pages.checkout.paymentUnavailableDescription'), latestLanguage));
-    } finally {
-      if (isActive()) {
-        setPaymentChannelsLoading(false);
-      }
-    }
-  }, []);
-
   useEffect(() => {
     let disposed = false;
     void loadPaymentChannels(() => !disposed && mountedRef.current);
@@ -906,82 +611,6 @@ const Profile: React.FC = () => {
       disposed = true;
     };
   }, [loadPaymentChannels]);
-
-  const handleConfirmReceipt = async (orderId: number) => {
-    setConfirmingReceipt(true);
-    try {
-      await orderApi.confirm(orderId);
-      setReceiptConfirmOrder(null);
-      announceAccessibleMessage(t('pages.profile.receiptConfirmed'), 'success');
-      fetchOrders();
-    } catch (err: unknown) {
-      announceAccessibleMessage(getApiErrorMessage(err, t('pages.profile.confirmFailed'), language), 'error');
-    } finally {
-      setConfirmingReceipt(false);
-    }
-  };
-
-  const confirmReceiptOrder = (order: OrderCustomer) => {
-    setReceiptConfirmOrder(order);
-  };
-
-  const openReturnModal = (order: OrderCustomer) => {
-    setReturnRequestOrder(order);
-    setReturnReason(order.returnReason || '');
-  };
-
-  const handleReturnOrder = async () => {
-    if (!returnRequestOrder) return;
-    const cleanedReason = normalizeReturnReason(returnReason);
-    if (!isReturnReasonReady(cleanedReason)) {
-      announceAccessibleMessage(t('pages.profile.returnReasonRequired'), 'warning');
-      return;
-    }
-    try {
-      setRequestingReturn(true);
-      await orderApi.returnOrder(returnRequestOrder.id, cleanedReason);
-      announceAccessibleMessage(t('pages.profile.returnRequested'), 'success');
-      setReturnRequestOrder(null);
-      setReturnReason('');
-      fetchOrders();
-    } catch (err: unknown) {
-      announceAccessibleMessage(getApiErrorMessage(err, t('pages.profile.returnFailed'), language), 'error');
-    } finally {
-      setRequestingReturn(false);
-    }
-  };
-
-  const handleSubmitReturnShipment = async () => {
-    if (!returnShipmentOrder) return;
-    const cleanedTracking = normalizeReturnTrackingNumber(returnTrackingNumber);
-    if (!isReturnTrackingReady(cleanedTracking)) {
-      announceAccessibleMessage(t('pages.profile.returnTrackingInvalid'), 'error');
-      return;
-    }
-    try {
-      setSubmittingReturnShipment(true);
-      await orderApi.submitReturnShipment(returnShipmentOrder.id, cleanedTracking);
-      announceAccessibleMessage(t('pages.profile.returnShipmentSubmitted'), 'success');
-      setReturnShipmentOrder(null);
-      setReturnTrackingNumber('');
-      fetchOrders();
-    } catch (err: unknown) {
-      announceAccessibleMessage(getApiErrorMessage(err, t('pages.profile.returnShipmentFailed'), language), 'error');
-    } finally {
-      setSubmittingReturnShipment(false);
-    }
-  };
-
-  const handleTrackShipment = (trackingNumber?: string, carrierCode?: string, orderId?: number) => {
-    if (!trackingNumber) {
-      announceAccessibleMessage(t('pages.adminOrders.noTrackingNumber'), 'warning');
-      return;
-    }
-    setSelectedTrackingNumber(trackingNumber);
-    setSelectedTrackingCarrierCode(carrierCode);
-    setSelectedTrackingOrderId(orderId);
-    setTrackingVisible(true);
-  };
 
   const openSupport = useCallback(() => {
     if (!getLocalStorageItem('token')) {
@@ -991,227 +620,6 @@ const Profile: React.FC = () => {
     }
     dispatchDomEvent('shop:open-support');
   }, [navigate, t]);
-
-  const handleSaveAddress = async () => {
-    if (addressSubmitting) return;
-    try {
-      const values = await addressForm.validateFields();
-      setAddressSubmitting(true);
-      const regionPath = Array.isArray(values.region)
-        ? values.region.map((item: unknown) => normalizeProfileAddressText(item, 120)).filter(Boolean)
-        : [];
-      const postalCode = normalizeRegionalPostalCode(values.postalCode);
-      const detailAddress = normalizeProfileAddressText(values.detail, 260);
-      if (!isValidRegionalPostalCode(postalCode, regionPath)) {
-        addressForm.setFields([{ name: 'postalCode', errors: [t('pages.profile.postalCodeInvalid')] }]);
-        focusProfileModalFormError('.profile-address-modal');
-        return;
-      }
-      const regionStr = regionPath.join(' ');
-      const fullAddress = [regionStr, postalCode, detailAddress].filter(Boolean).join(' ');
-      const payload = {
-        recipientName: values.recipientName,
-        phone: normalizeProfilePhone(values.phone),
-        region: regionPath,
-        postalCode,
-        detailAddress,
-        address: fullAddress,
-        isDefault: Boolean(values.isDefault),
-      };
-      if (editingAddress) {
-        await addressApi.update(editingAddress.id, payload);
-        announceAccessibleMessage(t('pages.profile.addressUpdated'), 'success');
-      } else {
-        await addressApi.create(payload);
-        announceAccessibleMessage(t('pages.profile.addressAdded'), 'success');
-      }
-      setAddressModalVisible(false);
-      setEditingAddress(null);
-      addressForm.resetFields();
-      fetchAddresses();
-    } catch (err: unknown) {
-      if (isFormValidationError(err)) {
-        focusProfileModalFormError('.profile-address-modal');
-        return;
-      }
-      announceAccessibleMessage(getApiErrorMessage(err, t('pages.profile.addressSaveFailed'), language), 'error');
-    } finally {
-      setAddressSubmitting(false);
-    }
-  };
-
-  const handleDeleteAddress = async (id: number) => {
-    if (addressesStale) {
-      announceAccessibleMessage(t('pages.profile.addressesStaleWarning'), 'warning');
-      return;
-    }
-    try {
-      await addressApi.delete(id);
-      announceAccessibleMessage(t('pages.profile.addressDeleted'), 'success');
-      fetchAddresses();
-    } catch (err: unknown) {
-      announceAccessibleMessage(getApiErrorMessage(err, t('messages.deleteFailed'), language), 'error');
-    }
-  };
-
-  const handleSetDefault = async (id: number) => {
-    if (addressesStale) {
-      announceAccessibleMessage(t('pages.profile.addressesStaleWarning'), 'warning');
-      return;
-    }
-    try {
-      await addressApi.setDefault(id);
-      announceAccessibleMessage(t('pages.profile.defaultSet'), 'success');
-      fetchAddresses();
-    } catch (err: unknown) {
-      announceAccessibleMessage(getApiErrorMessage(err, t('pages.profile.setFailed'), language), 'error');
-    }
-  };
-
-  const loadProfileRegionOptions = useCallback(async () => {
-    if (regionOptions.length > 0 && regionOptionsLanguage === language) {
-      return regionOptions;
-    }
-    setRegionOptionsLoading(true);
-    try {
-      const options = await loadRegionData(language);
-      if (mountedRef.current) {
-        setRegionOptions(options);
-        setRegionOptionsLanguage(language);
-      }
-      return options;
-    } catch (error) {
-      reportNonBlockingError('Profile.loadRegionData', error);
-      if (mountedRef.current) {
-        announceAccessibleMessage(t('pages.profile.regionLoadFailed'), 'error');
-      }
-      return [];
-    } finally {
-      if (mountedRef.current) {
-        setRegionOptionsLoading(false);
-      }
-    }
-  }, [language, regionOptions, regionOptionsLanguage, t]);
-
-  const openAddressModal = (address?: UserAddress) => {
-    if (addressesStale) {
-      announceAccessibleMessage(t('pages.profile.addressesStaleWarning'), 'warning');
-      return;
-    }
-    addressForm.resetFields();
-    if (address) {
-      setEditingAddress(address);
-      const savedRegionPath = getProfileSavedAddressRegionPath(address);
-      const savedDetail = getProfileSavedAddressDetail(address);
-      const savedPostalCode = getProfileSavedAddressPostalCode(address);
-      addressForm.setFieldsValue({
-        recipientName: address.recipientName,
-        phone: address.phone,
-        region: savedRegionPath,
-        postalCode: savedPostalCode,
-        detail: savedDetail || address.address,
-        isDefault: Boolean(address.isDefault),
-      });
-      if (savedRegionPath.length === 0) {
-        void loadProfileRegionOptions().then((options) => {
-          if (!mountedRef.current) return;
-          const { region, detail } = findRegionPath(address.address, options);
-          addressForm.setFieldsValue({ region, detail });
-        });
-      } else {
-        void loadProfileRegionOptions();
-      }
-    } else {
-      setEditingAddress(null);
-      addressForm.resetFields();
-      void loadProfileRegionOptions();
-    }
-    setAddressModalVisible(true);
-  };
-
-  const closeAddressModal = () => {
-    if (addressSubmitting) return;
-    setAddressModalVisible(false);
-    addressForm.resetFields();
-    setEditingAddress(null);
-  };
-
-  const closePasswordModal = () => {
-    if (passwordSubmitting) return;
-    setPasswordModalVisible(false);
-    passwordForm.resetFields();
-  };
-
-  const openEditModal = () => {
-    editForm.setFieldsValue({ email: user?.email, phone: user?.phone, emailCode: '' });
-    setProfileEmailCodeSentTo('');
-    setProfileEmailCodeCountdown(0);
-    setProfileEmailCodeTtlMinutes(0);
-    setEditModalVisible(true);
-  };
-
-  const openPetModal = (pet?: PetProfile) => {
-    petForm.resetFields();
-    setEditingPet(pet || null);
-    if (pet) {
-      petForm.setFieldsValue({
-        ...pet,
-        birthday: pet.birthday ? dayjs(pet.birthday) : undefined,
-      });
-    } else {
-      petForm.resetFields();
-      petForm.setFieldsValue({ petType: 'DOG', size: 'MEDIUM' });
-    }
-    setPetModalVisible(true);
-  };
-
-  const handleSavePet = async () => {
-    if (petSubmitting) return;
-    try {
-      const values = await petForm.validateFields();
-      setPetSubmitting(true);
-      const payload = {
-        ...values,
-        birthday: values.birthday ? values.birthday.format('YYYY-MM-DD') : undefined,
-      };
-      if (editingPet) {
-        await petProfileApi.update(editingPet.id, payload);
-        announceAccessibleMessage(t('messages.updateSuccess'), 'success');
-      } else {
-        await petProfileApi.create(payload);
-        announceAccessibleMessage(t('pages.profile.petAdded'), 'success');
-      }
-      setPetModalVisible(false);
-      setEditingPet(null);
-      petForm.resetFields();
-      fetchPetProfiles();
-    } catch (err: unknown) {
-      if (isFormValidationError(err)) {
-        focusProfileModalFormError('.profile-mobile-safe-modal');
-        return;
-      }
-      announceAccessibleMessage(getApiErrorMessage(err, t('messages.operationFailed'), language), 'error');
-    } finally {
-      setPetSubmitting(false);
-    }
-  };
-
-  const closePetModal = () => {
-    if (petSubmitting) return;
-    setPetModalVisible(false);
-    setEditingPet(null);
-    petForm.resetFields();
-  };
-
-  const handleDeletePet = async (id: number) => {
-    try {
-      await petProfileApi.delete(id);
-      announceAccessibleMessage(t('messages.deleteSuccess'), 'success');
-      fetchPetProfiles();
-    } catch (err: unknown) {
-      announceAccessibleMessage(getApiErrorMessage(err, t('messages.deleteFailed'), language), 'error');
-    }
-  };
 
   const afterSaleStatuses = ['RETURN_REQUESTED', 'RETURN_APPROVED', 'RETURN_SHIPPED', 'RETURN_REFUNDING', 'RETURNED'];
   const orderFilterStatusMap: Record<string, string[]> = {
@@ -1556,16 +964,6 @@ const Profile: React.FC = () => {
   const profileTargetLabel = user.username || user.email || user.phone || t('pages.profile.title');
   const editProfileActionLabel = `${t('common.save')}: ${t('pages.profile.editProfileTitle')}, ${profileTargetLabel}`;
   const changePasswordActionLabel = `${t('pages.profile.changePassword')}: ${profileTargetLabel}`;
-  const validateStrongPassword = (_rule: unknown, value?: string) => {
-    if (!value) return Promise.resolve();
-    if (isCommonPassword(value)) {
-      return Promise.reject(new Error(t('pages.profile.newPasswordCommon')));
-    }
-    if (!hasRequiredPasswordClasses(value)) {
-      return Promise.reject(new Error(t('pages.profile.newPasswordPattern')));
-    }
-    return Promise.resolve();
-  };
   const addressEditorTargetLabel = editingAddress
     ? [editingAddress.recipientName, editingAddress.phone, editingAddress.address].filter(Boolean).join(' / ') || `#${editingAddress.id}`
     : t('pages.profile.addAddressTitle');
@@ -1593,7 +991,6 @@ const Profile: React.FC = () => {
   const currentOrderFilterLabel = orderStatusTabs.find((tab) => tab.key === orderStatusFilter)?.label || t('pages.profile.allOrders');
   const orderListContextLabel = `${t('pages.profile.orders', { count: orders.length })}: ${currentOrderFilterLabel}, ${filteredOrders.length}`;
   const orderSearchInputLabel = `${t('common.search')}: ${orderListContextLabel}`;
-  const refreshOrdersActionLabel = `${t('common.refresh')}: ${orderListContextLabel}`;
   const reorderSelectedOrderActionLabel = `${t('pages.profile.reorder')}: ${selectedOrderLabel}`;
   const returnTrackingInputLabel = `${t('pages.profile.returnTrackingPlaceholder')}: ${returnShipmentOrderLabel}`;
   const returnReasonInputLabel = `${t('pages.profile.returnReasonPlaceholder')}: ${returnRequestOrderLabel}`;
@@ -1859,45 +1256,16 @@ const Profile: React.FC = () => {
           aria-labelledby="profile-tab-info"
           hidden={profileActiveTab !== 'info'}
         >
-          {(
-              <section className="profile-section-card">
-                <div className="profile-health-panel">
-                  <div>
-                    <span className="profile-page__text profile-page__text--strong">{t('pages.profile.accountHealthTitle')}</span>
-                    <span className="profile-page__text profile-page__text--secondary">{t('pages.profile.accountHealthText')}</span>
-                  </div>
-                  <ShopProgress type="circle" percent={accountHealthScore} size={72} strokeColor="#124734" />
-                  <div className="profile-health-panel__chips">
-                    <ShopTag color={user.email ? 'green' : 'gold'}>{t('pages.profile.accountHealthEmail')}</ShopTag>
-                    <ShopTag color={user.phone ? 'green' : 'gold'}>{t('pages.profile.accountHealthPhone')}</ShopTag>
-                    <ShopTag color={defaultAddressReady ? 'green' : 'gold'}>{t('pages.profile.accountHealthDefaultAddress')}</ShopTag>
-                    <ShopTag color={petProfiles.length > 0 ? 'green' : 'gold'}>{t('pages.profile.accountHealthPet')}</ShopTag>
-                  </div>
-                </div>
-                <dl className="profile-page__descList">
-                  <div className="profile-page__descRow">
-                <dt className="profile-page__descLabel">{t('pages.profile.username')}</dt>
-                <dd className="profile-page__descValue">{user.username}</dd>
-              </div>
-                  <div className="profile-page__descRow">
-                <dt className="profile-page__descLabel">{t('pages.profile.email')}</dt>
-                <dd className="profile-page__descValue">{user.email || t('common.unset')}</dd>
-              </div>
-                  <div className="profile-page__descRow">
-                <dt className="profile-page__descLabel">{t('pages.profile.phone')}</dt>
-                <dd className="profile-page__descValue">{user.phone || t('common.unset')}</dd>
-              </div>
-                  <div className="profile-page__descRow">
-                <dt className="profile-page__descLabel">{t('pages.profile.defaultAddress')}</dt>
-                <dd className="profile-page__descValue">{addresses.find((item) => item.isDefault)?.address || t('common.unset')}</dd>
-              </div>
-                </dl>
-                <div className="profile-info-actions">
-                  <ShopButton icon={<ShopIcon path={SI.edit} />} onClick={openEditModal}>{t('pages.profile.editProfile')}</ShopButton>
-                  <ShopButton icon={<ShopIcon path={SI.lock} />} onClick={() => setPasswordModalVisible(true)}>{t('pages.profile.changePassword')}</ShopButton>
-                </div>
-              </section>
-            )}
+          <ProfileInfoPanel
+            accountHealthScore={accountHealthScore}
+            addresses={addresses}
+            defaultAddressReady={defaultAddressReady}
+            openEditModal={openEditModal}
+            petProfiles={petProfiles}
+            setPasswordModalVisible={setPasswordModalVisible}
+            t={t}
+            user={user}
+          />
         </div>
         <div
           className="profile-tabs__panel"
@@ -1906,166 +1274,22 @@ const Profile: React.FC = () => {
           aria-labelledby="profile-tab-addresses"
           hidden={profileActiveTab !== 'addresses'}
         >
-          {(
-              <div>
-                <div className="profile-address-readiness">
-                  <div className="profile-address-readiness__copy">
-                    <span className="profile-page__text profile-page__text--strong">{t('pages.profile.addressReadinessTitle')}</span>
-                    <span className="profile-page__text profile-page__text--secondary">{addressReadinessText}</span>
-                    <ShopProgress percent={addressReadinessProgress} size="small" strokeColor="#124734" />
-                  </div>
-                  <div className="profile-address-readiness__stats">
-                    <span>
-                      <strong>{defaultAddressReady ? 1 : 0}</strong>
-                      <span className="profile-page__text profile-page__text--secondary">{t('pages.profile.addressDefaultReady')}</span>
-                    </span>
-                    <span>
-                      <strong>{addressesMissingPhoneCount}</strong>
-                      <span className="profile-page__text profile-page__text--secondary">{t('pages.profile.addressMissingPhone')}</span>
-                    </span>
-                    <span>
-                      <strong>{addressesMissingDetailCount}</strong>
-                      <span className="profile-page__text profile-page__text--secondary">{t('pages.profile.addressMissingDetail')}</span>
-                    </span>
-                  </div>
-                </div>
-                <ShopButton
-                  className="profile-block-button profile-section-action"
-                  type="dashed"
-                  icon={<ShopIcon path={SI.plus} />}
-                  block
-                  disabled={addressesStale}
-                  title={addressesStale ? t('pages.profile.addressesStaleWarning') : undefined}
-                  onClick={() => openAddressModal()}
-                >
-                  {t('pages.profile.addAddress')}
-                </ShopButton>
-                {addressesStale && (
-                  <ShopAlert
-                    type="warning"
-                    showIcon
-                    message={t('pages.profile.addressesStaleTitle')}
-                    description={t('pages.profile.addressesStaleWarning')}
-                    action={<ShopButton size="small" onClick={() => fetchAddresses()}>{t('common.retry')}</ShopButton>}
-                  />
-                )}
-                {addressesLoadFailed && addresses.length === 0 ? (
-                  <div data-profile-addresses-load-recovery="true">
-                    <PageError
-                      className="profile-section-card profile-load-error"
-                      title={t('common.loadFailed')}
-                      description={t('common.loadFailedRetry')}
-                      actions={[
-                        {
-                          key: 'retry',
-                          label: t('common.retry'),
-                          onClick: () => fetchAddresses(),
-                          type: 'primary',
-                        },
-                        {
-                          key: 'checkout',
-                          label: t('pages.cart.checkout'),
-                          onClick: () => navigate('/checkout'),
-                          type: 'default',
-                        },
-                        {
-                          key: 'track',
-                          label: t('nav.trackOrder'),
-                          onClick: () => navigate('/track-order'),
-                          type: 'default',
-                        },
-                        {
-                          key: 'support',
-                          label: t('pages.productList.loadRecoverySupport'),
-                          onClick: () => dispatchDomEvent('shop:open-support'),
-                          type: 'default',
-                        },
-                      ]}
-                    />
-                  </div>
-                ) : addresses.length === 0 ? (
-                  <PageEmpty
-                    className="profile-empty-addresses"
-                    data-profile-addresses-empty-actions="true"
-                    description={(
-                      <div className="profile-empty-orders__copy">
-                        <div>{t('pages.profile.noAddresses')}</div>
-                        <div className="profile-empty-orders__hint">{t('pages.profile.addressReadinessEmpty')}</div>
-                      </div>
-                    )}
-                    actions={[
-                      {
-                        key: 'add-address',
-                        label: t('pages.profile.addAddress'),
-                        onClick: () => openAddressModal(),
-                      },
-                      {
-                        key: 'shop',
-                        label: t('pages.profile.goShopping'),
-                        onClick: () => navigate('/products'),
-                        type: 'default',
-                      },
-                      {
-                        key: 'coupons',
-                        label: t('pages.profile.emptyOrdersCoupons'),
-                        onClick: () => navigate('/coupons'),
-                        type: 'default',
-                      },
-                      {
-                        key: 'track',
-                        label: t('pages.profile.authGateTrackOrder'),
-                        onClick: () => navigate('/track-order'),
-                        type: 'default',
-                      },
-                    ]}
-                  />
-                ) : (
-                  <ul className="profile-page__itemList profile-page__addressList" role="list">
-                    {addresses.map((address) => {
-                      const addressLabel = [address.recipientName, address.phone, address.address].filter(Boolean).join(' / ') || `#${address.id}`;
-                      const defaultActionLabel = `${t('pages.profile.setDefault')}: ${addressLabel}`;
-                      const editActionLabel = `${t('common.edit')}: ${addressLabel}`;
-                      const deleteActionLabel = `${t('common.delete')}: ${addressLabel}`;
-                      return (
-                      <li key={address.id} className="profile-page__item">
-                      <section className="profile-section-card profile-address-card">
-                        <div className="profile-address-card__content">
-                          <div>
-                            <div className="profile-page__inlineRow">
-                              <span className="profile-page__text profile-page__text--strong">{address.recipientName}</span>
-                              <span className="profile-page__text profile-page__text--secondary">{address.phone}</span>
-                              {address.isDefault && <ShopTag color="orange">{t('pages.checkout.defaultAddress')}</ShopTag>}
-                            </div>
-                            <div className="profile-address-card__address"><span className="profile-page__text">{address.address}</span></div>
-                          </div>
-                            <div className="profile-page__chipRow">
-                              {!address.isDefault ? (
-                              <ShopButton size="small" icon={<ShopIcon path={SI.starOutline} />} aria-label={defaultActionLabel} title={defaultActionLabel} disabled={addressesStale} onClick={() => handleSetDefault(address.id)}>{t('pages.profile.setDefault')}</ShopButton>
-                            ) : (
-                              <ShopButton size="small" icon={<ShopIcon path={SI.star} />} disabled type="primary">{t('pages.profile.defaultAddressButton')}</ShopButton>
-                            )}
-                            <ShopButton size="small" icon={<ShopIcon path={SI.edit} />} aria-label={editActionLabel} title={editActionLabel} disabled={addressesStale} onClick={() => openAddressModal(address)}>{t('common.edit')}</ShopButton>
-                            <ShopPopconfirm
-                              rootClassName='shop-mobile-popup-layer profile-popconfirm'
-                              title={t('pages.profile.deleteAddressConfirm')}
-                              onConfirm={() => handleDeleteAddress(address.id)}
-                              okText={t('common.confirm')}
-                              cancelText={t('common.cancel')}
-                              okButtonProps={{ danger: true, 'aria-label': deleteActionLabel, title: deleteActionLabel }}
-                              cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${deleteActionLabel}`, title: `${t('common.cancel')}: ${deleteActionLabel}` }}
-                            >
-                              <ShopButton size="small" danger icon={<ShopIcon path={SI.delete} />} aria-label={deleteActionLabel} title={deleteActionLabel} disabled={addressesStale}>{t('common.delete')}</ShopButton>
-                            </ShopPopconfirm>
-                          </div>
-                        </div>
-                      </section>
-                      </li>
-                      );
-                    })}
-                  </ul>
-                )}
-              </div>
-            )}
+          <ProfileAddressesPanel
+            addressReadinessProgress={addressReadinessProgress}
+            addressReadinessText={addressReadinessText}
+            addresses={addresses}
+            addressesLoadFailed={addressesLoadFailed}
+            addressesMissingDetailCount={addressesMissingDetailCount}
+            addressesMissingPhoneCount={addressesMissingPhoneCount}
+            addressesStale={addressesStale}
+            defaultAddressReady={defaultAddressReady}
+            fetchAddresses={fetchAddresses}
+            handleDeleteAddress={handleDeleteAddress}
+            handleSetDefault={handleSetDefault}
+            navigate={navigate}
+            openAddressModal={openAddressModal}
+            t={t}
+          />
         </div>
         <div
           className="profile-tabs__panel"
@@ -2074,440 +1298,52 @@ const Profile: React.FC = () => {
           aria-labelledby="profile-tab-orders"
           hidden={profileActiveTab !== 'orders'}
         >
-          {ordersLoadFailed && orders.length === 0 ? (
-              <div data-profile-orders-load-recovery="true">
-                <PageError
-                  className="profile-section-card profile-load-error"
-                  title={t('pages.profile.fetchOrdersFailed')}
-                  description={t('common.loadFailedRetry')}
-                  actions={[
-                    {
-                      key: 'retry',
-                      label: t('common.retry'),
-                      onClick: () => fetchOrders(),
-                      type: 'primary',
-                    },
-                    {
-                      key: 'shop',
-                      label: t('pages.profile.goShopping'),
-                      onClick: () => navigate('/products'),
-                      type: 'default',
-                    },
-                    {
-                      key: 'track',
-                      label: t('nav.trackOrder'),
-                      onClick: () => navigate('/track-order'),
-                      type: 'default',
-                    },
-                    {
-                      key: 'coupons',
-                      label: t('pages.profile.emptyOrdersCoupons'),
-                      onClick: () => navigate('/coupons'),
-                      type: 'default',
-                    },
-                    {
-                      key: 'support',
-                      label: t('pages.productList.loadRecoverySupport'),
-                      onClick: () => dispatchDomEvent('shop:open-support'),
-                      type: 'default',
-                    },
-                  ]}
-                />
-              </div>
-            ) : orders.length === 0 ? (
-              <PageEmpty
-                className="profile-empty-orders"
-                data-profile-orders-empty-actions="true"
-                description={(
-                  <div className="profile-empty-orders__copy">
-                    <div>{t('pages.profile.noOrders')}</div>
-                    <div className="profile-empty-orders__hint">{t('pages.profile.noOrdersHint')}</div>
-                  </div>
-                )}
-                actions={[
-                  {
-                    key: 'shop',
-                    label: t('pages.profile.goShopping'),
-                    onClick: () => navigate('/products'),
-                  },
-                  {
-                    key: 'coupons',
-                    label: t('pages.profile.emptyOrdersCoupons'),
-                    onClick: () => navigate('/coupons'),
-                    type: 'default',
-                  },
-                  {
-                    key: 'pet-finder',
-                    label: t('pages.profile.emptyOrdersPetFinder'),
-                    onClick: () => navigate('/pet-finder'),
-                    type: 'default',
-                  },
-                  {
-                    key: 'track',
-                    label: t('pages.profile.authGateTrackOrder'),
-                    onClick: () => navigate('/track-order'),
-                    type: 'default',
-                  },
-                ]}
-              />
-            ) : (
-              <div className="profile-orders">
-                {(isPaymentReturnSuccess || isPaymentReturnIncomplete) ? (
-                  <ShopAlert
-                    className="profile-payment-return"
-                    data-profile-payment-return={isPaymentReturnSuccess ? 'success' : paymentReturnStatus === 'failed' ? 'failed' : 'cancelled'}
-                    type={isPaymentReturnSuccess ? 'success' : paymentReturnStatus === 'failed' ? 'error' : 'warning'}
-                    showIcon
-                    role="alert"
-                    aria-live="assertive"
-                    message={isPaymentReturnSuccess
-                      ? t('pages.profile.paymentReturnSynced')
-                      : paymentReturnStatus === 'failed'
-                        ? (paymentReturnOrderNo
-                          ? t('pages.profile.paymentReturnFailedOrder', { orderNo: paymentReturnOrderNo })
-                          : t('pages.profile.paymentReturnFailed'))
-                        : (paymentReturnOrderNo
-                          ? t('pages.profile.paymentReturnCancelledOrder', { orderNo: paymentReturnOrderNo })
-                          : t('pages.profile.paymentReturnCancelled'))}
-                    description={isPaymentReturnSuccess
-                      ? t('pages.checkout.paymentRecoveryNextPaid')
-                      : t('pages.checkout.paymentRecoveryNextRetry')}
-                    action={(
-                      <div className="profile-payment-return__actions" data-profile-payment-return-recovery="true">
-                        {isPaymentReturnSuccess ? (
-                          <>
-                            <ShopButton
-                              size="small"
-                              type="primary"
-                              onClick={() => navigate(paymentReturnOrderNo
-                                ? `/track-order?orderNo=${encodeURIComponent(paymentReturnOrderNo)}`
-                                : '/track-order')}
-                            >
-                              {t('pages.paymentInstructions.stickyTrackOrder')}
-                            </ShopButton>
-                            <ShopButton size="small" onClick={() => navigate('/products')}>
-                              {t('pages.profile.goShopping')}
-                            </ShopButton>
-                            <ShopButton size="small" onClick={() => navigate('/coupons')}>
-                              {t('pages.profile.emptyOrdersCoupons')}
-                            </ShopButton>
-                          </>
-                        ) : (
-                          <>
-                            <ShopButton
-                              size="small"
-                              type="primary"
-                              onClick={() => navigate('/products')}
-                            >
-                              {t('pages.orderTracking.shopAgain')}
-                            </ShopButton>
-                            <ShopButton size="small" onClick={() => navigate('/coupons')}>
-                              {t('pages.profile.emptyOrdersCoupons')}
-                            </ShopButton>
-                            <ShopButton
-                              size="small"
-                              onClick={() => navigate(paymentReturnOrderNo
-                                ? `/track-order?orderNo=${encodeURIComponent(paymentReturnOrderNo)}`
-                                : '/track-order')}
-                            >
-                              {t('pages.paymentInstructions.stickyTrackOrder')}
-                            </ShopButton>
-                            <ShopButton
-                              size="small"
-                              onClick={() => dispatchDomEvent('shop:open-support', paymentReturnOrderNo
-                                ? { orderNo: paymentReturnOrderNo }
-                                : undefined)}
-                            >
-                              {t('pages.profile.contactSupport')}
-                            </ShopButton>
-                          </>
-                        )}
-                      </div>
-                    )}
-                  />
-                ) : null}
-                <div className="profile-after-sale-panel">
-                  <div className="profile-after-sale-panel__main">
-                    <span className="profile-page__text profile-page__text--strong">{t('pages.profile.afterSaleAssistantTitle')}</span>
-                    <span className="profile-page__text profile-page__text--secondary">{afterSaleFocusText}</span>
-                  </div>
-                  <div className="profile-after-sale-panel__metrics">
-                    <button
-                      type="button"
-                      className={orderStatusFilter === 'RETURNABLE' ? 'is-active' : ''}
-                      aria-pressed={orderStatusFilter === 'RETURNABLE'}
-                      aria-label={`${t('pages.profile.afterSaleReturnable')}: ${returnableOrdersCount}`}
-                      onClick={() => setOrderStatusFilter('RETURNABLE')}
-                    >
-                      <strong>{returnableOrdersCount}</strong>
-                      <span>{t('pages.profile.afterSaleReturnable')}</span>
-                    </button>
-                    <button
-                      type="button"
-                      className={orderStatusFilter === 'AFTER_SALE' ? 'is-active' : ''}
-                      aria-pressed={orderStatusFilter === 'AFTER_SALE'}
-                      aria-label={`${t('pages.profile.afterSaleActiveCases')}: ${afterSaleCount}`}
-                      onClick={() => setOrderStatusFilter('AFTER_SALE')}
-                    >
-                      <strong>{afterSaleCount}</strong>
-                      <span>{t('pages.profile.afterSaleActiveCases')}</span>
-                    </button>
-                    <button
-                      type="button"
-                      className={orderStatusFilter === 'RETURN_APPROVED' ? 'is-active' : ''}
-                      aria-pressed={orderStatusFilter === 'RETURN_APPROVED'}
-                      aria-label={`${t('pages.profile.afterSaleNeedShipment')}: ${returnApprovedCount}`}
-                      onClick={() => setOrderStatusFilter('RETURN_APPROVED')}
-                    >
-                      <strong>{returnApprovedCount}</strong>
-                      <span>{t('pages.profile.afterSaleNeedShipment')}</span>
-                    </button>
-                  </div>
-                </div>
-                {ordersStale ? (
-                  <ShopAlert
-                    type="warning"
-                    showIcon
-                    role="alert"
-                    aria-live="assertive"
-                    message={t('pages.profile.ordersStaleWarning')}
-                    action={<ShopButton size="small" onClick={() => fetchOrders()}>{t('common.retry')}</ShopButton>}
-                  />
-                ) : null}
-                <div className="profile-orders__tabs">
-                  {orderStatusTabs.map((tab) => {
-                    const count = tab.key === 'all'
-                      ? orders.length
-                      : tab.key === 'RETURNABLE'
-                        ? returnableOrdersCount
-                        : orders.filter((order) => tab.statuses?.includes(order.status)).length;
-                    return (
-                      <button
-                        key={tab.key}
-                        type="button"
-                        className={orderStatusFilter === tab.key ? 'profile-orders__tab profile-orders__tab--active' : 'profile-orders__tab'}
-                        aria-pressed={orderStatusFilter === tab.key}
-                        onClick={() => setOrderStatusFilter(tab.key)}
-                      >
-                        {tab.label}{tab.key !== 'all' && count > 0 ? ` ${count}` : ''}
-                      </button>
-                    );
-                  })}
-                </div>
-                <div className="profile-orders__toolbar">
-                  <ShopSearchField
-                    className="profile-orders__searchInput"
-                    allowClear
-                    showSubmit={false}
-                    value={orderSearchText}
-                    onChange={(value) => setOrderSearchText(value)}
-                    placeholder={t('pages.profile.orderSearchPlaceholder')}
-                    ariaLabel={orderSearchInputLabel}
-                    title={orderSearchInputLabel}
-                  />
-                  <ShopButton aria-label={refreshOrdersActionLabel} title={refreshOrdersActionLabel} onClick={() => fetchOrders()}>{t('common.refresh')}</ShopButton>
-                </div>
-                <div className="profile-orders__header">
-                  <span>{t('pages.profile.orderInfo')}</span>
-                  <span>{t('pages.profile.goodsAmount')}</span>
-                  <span>{t('pages.profile.paidAmount')}</span>
-                  <span>{t('pages.profile.orderActions')}</span>
-                </div>
-                {filteredOrders.length === 0 ? (
-                  <div data-profile-orders-filter-empty="true">
-                    <PageEmpty
-                      className="profile-empty-orders profile-empty-orders--filtered"
-                      description={(
-                        <div className="profile-empty-orders__copy">
-                          <div>{t('pages.profile.noFilterOrders')}</div>
-                          <div className="profile-empty-orders__hint">{t('pages.profile.noFilterOrdersHint')}</div>
-                        </div>
-                      )}
-                      actions={[
-                        {
-                          key: 'clear-filter',
-                          label: t('pages.profile.clearOrderFilter'),
-                          onClick: () => setOrderStatusFilter('all'),
-                          type: 'primary',
-                        },
-                        {
-                          key: 'shop',
-                          label: t('pages.profile.goShopping'),
-                          onClick: () => navigate('/products'),
-                          type: 'default',
-                        },
-                        {
-                          key: 'coupons',
-                          label: t('pages.profile.emptyOrdersCoupons'),
-                          onClick: () => navigate('/coupons'),
-                          type: 'default',
-                        },
-                        {
-                          key: 'track',
-                          label: t('pages.profile.authGateTrackOrder'),
-                          onClick: () => navigate('/track-order'),
-                          type: 'default',
-                        },
-                      ]}
-                    />
-                  </div>
-                ) : (
-                  filteredOrders.map((order) => {
-                    const items = orderItemsByOrderId[order.id] || [];
-                    const itemPreviewFailed = Boolean(orderItemPreviewFailedByOrderId[order.id]);
-                    const primaryItem = items[0];
-                    const primaryItemName = primaryItem ? profileOrderItemName(primaryItem) : '';
-                    const primaryItemActionLabel = primaryItem ? `${t('pages.productList.viewDetails')}: ${primaryItemName}` : '';
-                    const actionHint = getOrderActionHint(order);
-                    const orderLabel = profileOrderLabel(order);
-                    const retryOrderItemsActionLabel = `${t('common.retry')}: ${t('pages.profile.orderItems')} ${orderLabel}`;
-                    const detailActionLabel = `${t('pages.profile.detail')}: ${orderLabel}`;
-                    const continuePayActionLabel = `${t('pages.profile.continuePay')}: ${orderLabel}`;
-                    const confirmReceiptActionLabel = `${t('pages.profile.confirmReceipt')}: ${orderLabel}`;
-                    const returnActionLabel = `${t('pages.profile.returnOrder')}: ${orderLabel}`;
-                    const submitReturnShipmentActionLabel = `${t('pages.profile.submitReturnShipment')}: ${orderLabel}`;
-                    const contactSupportActionLabel = `${t('pages.profile.contactSupport')}: ${orderLabel}`;
-                    const trackShipmentActionLabel = order.trackingNumber
-                      ? `${t('pages.orderTracking.trackShipment')}: ${orderLabel} / ${order.trackingNumber}`
-                      : `${t('pages.orderTracking.trackShipment')}: ${orderLabel}`;
-                    const cancelOrderActionLabel = `${t('pages.profile.cancelOrder')}: ${orderLabel}`;
-                    return (
-                      <div className="profile-order-card" key={order.id}>
-                        <div className="profile-order-card__top">
-                          <div className="profile-page__chipRow">
-                            <span className="profile-page__text">{order.createdAt ? new Date(order.createdAt).toLocaleDateString(dateLocale) : '-'}</span>
-                            <span className="profile-page__text profile-page__text--strong">{t('pages.profile.orderNo')}{order.orderNo || order.id}</span>
-                            <ShopTag color={getOrderStatusColor(order.status)}>{formatOrderStatusLabel(order.status)}</ShopTag>
-                            <button type="button" className="profile-order-card__link" aria-label={detailActionLabel} title={detailActionLabel} onClick={() => handleViewOrder(order)}>
-                              {t('pages.profile.detail')}
-                            </button>
-                          </div>
-                          <span className="profile-page__text profile-page__text--secondary">{order.trackingNumber ? t('pages.profile.trackingNo', { number: order.trackingNumber }) : ''}</span>
-                        </div>
-                        <div className="profile-order-card__body">
-                          <div className="profile-order-card__items">
-                            {primaryItem ? (
-                              <div className="profile-order-item">
-                                <button
-                                  type="button"
-                                  className="profile-order-item__imageButton"
-                                  aria-label={primaryItemActionLabel}
-                                  title={primaryItemActionLabel}
-                                  onClick={() => openProductDetail(primaryItem.productId)}
-                                >
-                                  <img
-                                    src={resolveOrderImage(primaryItem.imageUrl)}
-                                    alt={primaryItemName}
-                                    loading="lazy"
-                                    decoding="async"
-                                    onError={useImageFallback}
-                                  />
-                                </button>
-                                <div className="profile-order-item__main">
-                                  <button
-                                    type="button"
-                                    aria-label={primaryItemActionLabel}
-                                    title={primaryItemActionLabel}
-                                    onClick={() => openProductDetail(primaryItem.productId)}
-                                  >
-                                    {primaryItemName}
-                                  </button>
-                                  <span className="profile-page__text profile-page__text--secondary profile-order-item__unit commerce-atomic commerce-price-quantity">
-                                    <span className="commerce-money">{formatMoney(primaryItem.price)}</span>
-                                    <span className="commerce-quantity">x {primaryItem.quantity}</span>
-                                  </span>
-                                  {primaryItem.selectedSpecs ? <span className="profile-page__text profile-page__text--secondary">{formatSelectedSpecs(primaryItem.selectedSpecs, t, language)}</span> : null}
-                                  {items.length > 1 ? <span className="profile-page__text profile-page__text--secondary">{t('pages.profile.moreItems', { count: items.length - 1 })}</span> : null}
-                                  {order.shippingAddress ? <span className="profile-page__text profile-page__text--secondary">{order.shippingAddress}</span> : null}
-                                </div>
-                              </div>
-                            ) : itemPreviewFailed ? (
-                              <div className="profile-order-item__previewError">
-                                <span className="profile-page__text profile-page__text--warning">{t('pages.profile.orderItemsPreviewFailed')}</span>
-                                <ShopButton
-                                  type="link"
-                                  size="small"
-                                  icon={<ShopIcon path={SI.reload} />}
-                                  aria-label={retryOrderItemsActionLabel}
-                                  title={retryOrderItemsActionLabel}
-                                  onClick={() => fetchOrders()}
-                                >
-                                  {t('common.retry')}
-                                </ShopButton>
-                              </div>
-                            ) : (
-                              <span className="profile-page__text profile-page__text--secondary">{t('pages.profile.noOrderItems')}</span>
-                            )}
-                          </div>
-                          <div className="profile-order-card__amount">
-                            <span className="profile-page__text profile-page__text--secondary profile-order-card__mobileLabel">{t('pages.profile.goodsAmount')}</span>
-                            <span className="profile-page__text profile-page__text--strong profile-price-text commerce-money">{formatMoney(order.originalAmount || order.totalAmount)}</span>
-                            {order.discountAmount && order.discountAmount > 0 ? <span className="profile-page__text profile-page__text--secondary profile-price-text commerce-money">-{formatMoney(order.discountAmount)}</span> : null}
-                            <span className="profile-page__text profile-page__text--secondary profile-quantity-text commerce-quantity">x{items.reduce((sum, item) => sum + item.quantity, 0) || 1}</span>
-                          </div>
-                          <div className="profile-order-card__paid">
-                            <span className="profile-page__text profile-page__text--secondary profile-order-card__mobileLabel">{t('pages.profile.paidAmount')}</span>
-                            <span className="profile-page__text profile-page__text--strong profile-price-text commerce-money">{formatMoney(order.totalAmount)}</span>
-                            <span className="profile-page__text profile-page__text--secondary profile-order-card__shippingIncluded commerce-atomic">
-                              <span>{t('pages.profile.includesShipping', { amount: '' }).trim()}</span>
-                              <span className="commerce-money">{formatMoney(order.shippingFee || 0)}</span>
-                            </span>
-                            <ShopTag>{t('pages.profile.onlineOrder')}</ShopTag>
-                          </div>
-                          <div className="profile-order-card__actions">
-                            <div className={`profile-order-card__next profile-order-card__next--${actionHint.tone}`}>
-                              <span className="profile-page__text profile-page__text--strong">{actionHint.title}</span>
-                              <span className="profile-page__text profile-page__text--secondary">{actionHint.text}</span>
-                            </div>
-                            {order.status === 'PENDING_PAYMENT' && (
-                              <ShopButton type="primary" aria-label={continuePayActionLabel} title={continuePayActionLabel} loading={payingOrderId === order.id} disabled={ordersStale || payingOrderId !== null} onClick={() => handleContinuePayment(order)}>
-                                {t('pages.profile.continuePay')}
-                              </ShopButton>
-                            )}
-                            {order.status === 'SHIPPED' && (
-                              <ShopButton type="primary" aria-label={confirmReceiptActionLabel} title={confirmReceiptActionLabel} disabled={ordersStale} onClick={() => confirmReceiptOrder(order)}>{t('pages.profile.confirmReceipt')}</ShopButton>
-                            )}
-                            {isReturnableOrder(order) && (
-                              <ShopButton danger aria-label={returnActionLabel} title={returnActionLabel} disabled={ordersStale} onClick={() => openReturnModal(order)}>{t('pages.profile.returnOrder')}</ShopButton>
-                            )}
-                            {order.status === 'RETURN_REQUESTED' && (
-                              <ShopTag color="gold">{t('status.RETURN_REQUESTED')}</ShopTag>
-                            )}
-                            {order.status === 'RETURN_APPROVED' && (
-                              <ShopButton type="link" aria-label={submitReturnShipmentActionLabel} title={submitReturnShipmentActionLabel} disabled={ordersStale} onClick={() => { setReturnShipmentOrder(order); setReturnTrackingNumber(order.returnTrackingNumber || ''); }}>
-                                {t('pages.profile.submitReturnShipment')}
-                              </ShopButton>
-                            )}
-                            {order.status === 'RETURN_SHIPPED' && (
-                              <ShopTag color="cyan">{t('status.RETURN_SHIPPED')}</ShopTag>
-                            )}
-                            {(isReturnableOrder(order) || afterSaleStatuses.includes(order.status)) && (
-                              <ShopButton type="link" aria-label={contactSupportActionLabel} title={contactSupportActionLabel} onClick={openSupport}>{t('pages.profile.contactSupport')}</ShopButton>
-                            )}
-                            <ShopButton type="link" aria-label={detailActionLabel} title={detailActionLabel} onClick={() => handleViewOrder(order)}>{t('pages.profile.detail')}</ShopButton>
-                            {order.trackingNumber ? <ShopButton type="link" aria-label={trackShipmentActionLabel} title={trackShipmentActionLabel} onClick={() => handleTrackShipment(order.trackingNumber, order.trackingCarrierCode, order.id)}>{t('pages.orderTracking.trackShipment')}</ShopButton> : null}
-                            {order.status === 'PENDING_PAYMENT' && (
-                              <ShopPopconfirm
-                                rootClassName='shop-mobile-popup-layer profile-popconfirm'
-                                title={t('pages.profile.cancelOrderConfirm')}
-                                disabled={ordersStale}
-                                onConfirm={() => handleCancelOrder(order.id)}
-                                okText={t('common.confirm')}
-                                cancelText={t('common.cancel')}
-                                okButtonProps={{ danger: true, 'aria-label': cancelOrderActionLabel, title: cancelOrderActionLabel }}
-                                cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${cancelOrderActionLabel}`, title: `${t('common.cancel')}: ${cancelOrderActionLabel}` }}
-                              >
-                                <ShopButton type="link" danger aria-label={cancelOrderActionLabel} title={cancelOrderActionLabel} disabled={ordersStale}>{t('pages.profile.cancelOrder')}</ShopButton>
-                              </ShopPopconfirm>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-            )}
+          <ProfileOrdersPanel
+            afterSaleCount={afterSaleCount}
+            afterSaleFocusText={afterSaleFocusText}
+            afterSaleStatuses={afterSaleStatuses}
+            confirmReceiptOrder={confirmReceiptOrder}
+            dateLocale={dateLocale}
+            fetchOrders={fetchOrders}
+            filteredOrders={filteredOrders}
+            formatMoney={formatMoney}
+            formatOrderStatusLabel={formatOrderStatusLabel}
+            getOrderActionHint={getOrderActionHint}
+            getOrderStatusColor={getOrderStatusColor}
+            handleCancelOrder={handleCancelOrder}
+            handleContinuePayment={handleContinuePayment}
+            handleTrackShipment={handleTrackShipment}
+            handleViewOrder={handleViewOrder}
+            isPaymentReturnIncomplete={isPaymentReturnIncomplete}
+            isPaymentReturnSuccess={isPaymentReturnSuccess}
+            isReturnableOrder={isReturnableOrder}
+            language={language}
+            navigate={navigate}
+            openProductDetail={openProductDetail}
+            openReturnModal={openReturnModal}
+            openSupport={openSupport}
+            orderItemPreviewFailedByOrderId={orderItemPreviewFailedByOrderId}
+            orderItemsByOrderId={orderItemsByOrderId}
+            orderListContextLabel={orderListContextLabel}
+            orderSearchInputLabel={orderSearchInputLabel}
+            orderSearchText={orderSearchText}
+            orderStatusFilter={orderStatusFilter}
+            orderStatusTabs={orderStatusTabs}
+            orders={orders}
+            ordersLoadFailed={ordersLoadFailed}
+            ordersStale={ordersStale}
+            payingOrderId={payingOrderId}
+            paymentReturnOrderNo={paymentReturnOrderNo}
+            paymentReturnStatus={paymentReturnStatus}
+            profileOrderItemName={profileOrderItemName}
+            returnApprovedCount={returnApprovedCount}
+            returnableOrdersCount={returnableOrdersCount}
+            setOrderSearchText={setOrderSearchText}
+            setOrderStatusFilter={setOrderStatusFilter}
+            setReturnShipmentOrder={setReturnShipmentOrder}
+            setReturnTrackingNumber={setReturnTrackingNumber}
+            t={t}
+          />
         </div>
         <div
           className="profile-tabs__panel"
@@ -2516,1042 +1352,158 @@ const Profile: React.FC = () => {
           aria-labelledby="profile-tab-pets"
           hidden={profileActiveTab !== 'pets'}
         >
-          {(
-              <div>
-                <div className="profile-pet-insights">
-                  <section className="profile-pet-insights__card">
-                    <div className="profile-page__stack">
-                      <span className="profile-page__text profile-page__text--strong">{t('pages.profile.petCompletenessTitle')}</span>
-                      <span className="profile-page__text profile-page__text--secondary">{petCompletenessText}</span>
-                      <ShopProgress percent={petProfileProgress} size="small" strokeColor="#ff4d00" />
-                    </div>
-                  </section>
-                  <section className="profile-pet-insights__card">
-                    <div className="profile-page__stack">
-                      <span className="profile-page__text profile-page__text--strong">{t('pages.profile.petBirthdayPerkTitle')}</span>
-                      <span className="profile-page__text profile-page__text--secondary">{t('pages.profile.petBirthdayPerkText')}</span>
-                      <div className="profile-page__chipRow">
-                        <ShopTag color={petsMissingBirthdayCount > 0 ? 'gold' : 'green'}>{t('pages.profile.petMissingBirthday', { count: petsMissingBirthdayCount })}</ShopTag>
-                        <ShopTag color={petsMissingFitCount > 0 ? 'orange' : 'green'}>{t('pages.profile.petMissingFit', { count: petsMissingFitCount })}</ShopTag>
-                      </div>
-                    </div>
-                  </section>
-                </div>
-                <div className="profile-pet-next-step">
-                  <div>
-                    <span className="profile-page__text profile-page__text--strong">{t('pages.profile.petProfileActionTitle')}</span>
-                    <span className="profile-page__text profile-page__text--secondary">{petProfileFocusText}</span>
-                  </div>
-                  <ShopButton
-                    type="primary"
-                    onClick={() => petProfileFocus ? openPetModal(petProfileFocus) : openPetModal()}
-                  >
-                    {petProfileFocus ? t('pages.profile.completePetProfile') : t('pages.profile.addPet')}
-                  </ShopButton>
-                </div>
-                <div className="profile-pet-shop-path">
-                  <div>
-                    <span className="profile-page__text profile-page__text--secondary">{t('pages.profile.petShopPathEyebrow')}</span>
-                    <span className="profile-page__text profile-page__text--strong">
-                      {profilePetShoppingFocus
-                        ? t('pages.profile.petShopPathTitleWithName', { name: profilePetShoppingFocus.name })
-                        : t('pages.profile.petShopPathTitle')}
-                    </span>
-                    <span className="profile-page__text profile-page__text--secondary">
-                      {profilePetShoppingFocus
-                        ? t('pages.profile.petShopPathText', {
-                          type: petTypeLabel(profilePetShoppingFocus.petType),
-                          size: petSizeLabel(profilePetShoppingFocus.size),
-                        })
-                        : t('pages.profile.petShopPathEmpty')}
-                    </span>
-                  </div>
-                  <div className="profile-pet-shop-path__actions">
-                    {profilePetShoppingFocus ? (
-                      <ShopTag color="green">{t('pages.profile.petShopPathSignalReady')}</ShopTag>
-                    ) : (
-                      <ShopTag color="gold">{t('pages.profile.petShopPathNeedsProfile')}</ShopTag>
-                    )}
-                    <ShopButton
-                      icon={<ShopIcon path={SI.cart} />}
-                      onClick={() => profilePetShoppingFocus ? openPetShoppingPath(profilePetShoppingFocus) : openPetModal()}
-                    >
-                      {profilePetShoppingFocus ? t('pages.profile.shopForThisPet') : t('pages.profile.addPet')}
-                    </ShopButton>
-                  </div>
-                </div>
-                <ShopButton className="profile-block-button profile-section-action" type="dashed" icon={<ShopIcon path={SI.plus} />} block onClick={() => openPetModal()}>
-                  {t('pages.profile.addPet')}
-                </ShopButton>
-                {petProfiles.length === 0 ? (
-                  <PageEmpty
-                    className="profile-pets-empty"
-                    description={(
-                      <div className="profile-pets-empty__copy">
-                        <div>{t('pages.profile.noPets')}</div>
-                        <div className="profile-pets-empty__hint">{t('pages.profile.noPetsHint')}</div>
-                      </div>
-                    )}
-                    actions={[
-                      {
-                        key: 'add-pet',
-                        label: t('pages.profile.addPet'),
-                        onClick: () => openPetModal(),
-                      },
-                      {
-                        key: 'pet-finder',
-                        label: t('pages.profile.noPetsFindFit'),
-                        onClick: () => navigate('/pet-finder'),
-                        type: 'default',
-                      },
-                      {
-                        key: 'browse',
-                        label: t('pages.profile.noPetsBrowse'),
-                        onClick: () => navigate('/products'),
-                        type: 'default',
-                      },
-                    ]}
-                  />
-                ) : (
-                  <ul className="profile-page__itemList profile-page__petGrid" role="list">
-                    {petProfiles.map((pet) => {
-                      const petLabel = pet.name || `#${pet.id}`;
-                      const editActionLabel = `${t('common.edit')}: ${petLabel}`;
-                      const deleteActionLabel = `${t('common.delete')}: ${petLabel}`;
-                      const shopActionLabel = `${t('pages.profile.shopForThisPet')}: ${petLabel}`;
-                      return (
-                      <li key={pet.id} className="profile-page__item profile-page__petGridItem">
-                        <section className="profile-section-card profile-pet-card"><div className="shop-panel__head"><div className="shop-panel__title">{pet.name}</div><div className="shop-panel__extra">{<ShopTag color="green">{petTypeLabel(pet.petType)}</ShopTag>}</div></div>
-                          <div className="profile-page__stack">
-                            <span className="profile-page__text">{t('pages.profile.petBreed')}: {pet.breed || t('common.unset')}</span>
-                            <span className="profile-page__text">{t('pages.profile.petBirthday')}: {pet.birthday || t('common.unset')}</span>
-                            <span className="profile-page__text">{t('pages.profile.petWeight')}: {pet.weight ? t('pages.profile.petWeightValue', { weight: pet.weight }) : t('common.unset')}</span>
-                            <span className="profile-page__text">{t('pages.profile.petSize')}: {petSizeLabel(pet.size)}</span>
-                            {pet.birthday ? <ShopTag color="gold">{t('pages.profile.birthdayCouponEnabled')}</ShopTag> : null}
-                            <ShopButton size="small" icon={<ShopIcon path={SI.cart} />} aria-label={shopActionLabel} title={shopActionLabel} onClick={() => openPetShoppingPath(pet)}>
-                              {t('pages.profile.shopForThisPet')}
-                            </ShopButton>
-                          </div>
-                        </section>
-                      </li>
-                      );
-                    })}
-                  </ul>
-                )}
-              </div>
-            )}
+          <ProfilePetsPanel
+            handleDeletePet={handleDeletePet}
+            navigate={navigate}
+            openPetModal={openPetModal}
+            openPetShoppingPath={openPetShoppingPath}
+            petCompletenessText={petCompletenessText}
+            petProfileFocus={petProfileFocus}
+            petProfileFocusText={petProfileFocusText}
+            petProfileProgress={petProfileProgress}
+            petProfiles={petProfiles}
+            petSizeLabel={petSizeLabel}
+            petTypeLabel={petTypeLabel}
+            petsMissingBirthdayCount={petsMissingBirthdayCount}
+            petsMissingFitCount={petsMissingFitCount}
+            profilePetShoppingFocus={profilePetShoppingFocus}
+            t={t}
+          />
         </div>
         </div>
       </div>
 
-      <ShopModal
-        title={t('pages.profile.editProfileTitle')}
-        open={editModalVisible}
-        onOk={handleEditProfile}
-        onClose={() => {
-          setEditModalVisible(false);
-          editForm.resetFields(['emailCode']);
-          setProfileEmailCodeSentTo('');
-          setProfileEmailCodeCountdown(0);
-        }}
-        confirmLoading={profileSubmitting}
-        okText={t('common.save')}
-        cancelText={t('common.cancel')}
-        okButtonProps={{ 'aria-label': editProfileActionLabel, title: editProfileActionLabel }}
-        cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${editProfileActionLabel}`, title: `${t('common.cancel')}: ${editProfileActionLabel}` }}
-        className="profile-mobile-safe-modal"
-      >
-        <Form form={editForm} layout="vertical" requiredMark validateTrigger={['onChange', 'onBlur']}>
-          <Form.Item
-            name="email"
-            label={t('pages.profile.email')}
-            rules={[
-              { required: true, message: t('pages.auth.emailRequired') },
-              { type: 'email', message: t('pages.profile.emailInvalid') },
-            ]}
-          >
-            <ShopInput prefix={<ShopIcon path={SI.mail} />} />
-          </Form.Item>
-          {profileEmailChanged && !emailCodeEnabled && (
-            <div className="profile-email-code-warning" role="status">
-              <ShopIcon path={SI.safety} />
-              <span>{t('pages.auth.emailCodeUnavailable')}</span>
-            </div>
-          )}
-          {profileEmailCodeSentTo && (
-            <span className="profile-page__text profile-page__text--secondary">
-              {t('pages.profile.emailCodeSentHint', {
-                email: profileEmailCodeSentTo,
-                minutes: profileEmailCodeTtlMinutes || 0,
-              })}
-            </span>
-          )}
-          <Form.Item
-            name="emailCode"
-            label={t('pages.profile.emailVerificationCode')}
-            rules={[
-              ({ getFieldValue }) => ({
-                validator(_, value) {
-                  const normalizedEmail = normalizeProfileEmail(getFieldValue('email'));
-                  if (normalizedEmail === normalizeProfileEmail(user?.email)) return Promise.resolve();
-                  if (normalizeEmailCode(value).length === 6) return Promise.resolve();
-                  return Promise.reject(new Error(t('pages.auth.emailCodeLength')));
-                },
-              }),
-            ]}
-          >
-            <ShopInput
-              prefix={<ShopIcon path={SI.safety} />}
-              maxLength={12}
-              autoComplete="one-time-code"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              disabled={profileSubmitting || (profileEmailChanged && !emailCodeEnabled)}
-              onChange={(event) => {
-                const normalized = normalizeEmailCode(event.target.value);
-                if (normalized !== event.target.value) {
-                  editForm.setFieldValue('emailCode', normalized);
-                }
-              }}
-              addonAfter={
-                <ShopButton
-                  type="link"
-                  size="small"
-                  loading={profileEmailCodeSending}
-                  disabled={profileSubmitting || profileEmailCodeSending || profileEmailCodeCountdown > 0 || !emailCodeEnabled}
-                  onClick={handleSendProfileEmailCode}
-                >
-                  {profileEmailCodeSending
-                    ? t('pages.auth.emailCodeSending')
-                    : profileEmailCodeCountdown > 0
-                    ? t('pages.auth.resendIn', { seconds: profileEmailCodeCountdown })
-                    : t('pages.auth.sendCode')}
-                </ShopButton>
-              }
-            />
-          </Form.Item>
-          <Form.Item
-            name="phone"
-            label={t('pages.profile.phone')}
-            rules={[
-              { validator: (_, value) => (!value || isLikelyProfilePhone(value) ? Promise.resolve() : Promise.reject(new Error(t('pages.auth.phoneInvalid')))) },
-            ]}
-          >
-            <ShopInput
-              maxLength={40}
-              placeholder={t('pages.auth.phonePlaceholder')}
-              autoComplete="tel"
-              inputMode="tel"
-              aria-label={profilePhoneInputLabel}
-              title={profilePhoneInputLabel}
-              onBlur={(event) => editForm.setFieldValue('phone', normalizeLikelyProfilePhone(event.target.value))}
-            />
-          </Form.Item>
-        </Form>
-      </ShopModal>
+      <ProfileAccountModals
+        addressForm={addressForm}
+        addressModalVisible={addressModalVisible}
+        addressPhoneInputLabel={addressPhoneInputLabel}
+        addressRegionInputLabel={addressRegionInputLabel}
+        addressSubmitting={addressSubmitting}
+        changePasswordActionLabel={changePasswordActionLabel}
+        closeAddressModal={closeAddressModal}
+        closePasswordModal={closePasswordModal}
+        closePetModal={closePetModal}
+        editForm={editForm}
+        editModalVisible={editModalVisible}
+        editProfileActionLabel={editProfileActionLabel}
+        editingAddress={editingAddress}
+        editingPet={editingPet}
+        emailCodeEnabled={emailCodeEnabled}
+        handleChangePassword={handleChangePassword}
+        handleEditProfile={handleEditProfile}
+        handleSaveAddress={handleSaveAddress}
+        handleSavePet={handleSavePet}
+        handleSendProfileEmailCode={handleSendProfileEmailCode}
+        loadProfileRegionOptions={loadProfileRegionOptions}
+        passwordForm={passwordForm}
+        passwordModalVisible={passwordModalVisible}
+        passwordSubmitting={passwordSubmitting}
+        petForm={petForm}
+        petModalVisible={petModalVisible}
+        petSubmitting={petSubmitting}
+        profilePhoneInputLabel={profilePhoneInputLabel}
+        profileEmailChanged={profileEmailChanged}
+        profileEmailCodeCountdown={profileEmailCodeCountdown}
+        profileEmailCodeSending={profileEmailCodeSending}
+        profileEmailCodeSentTo={profileEmailCodeSentTo}
+        profileEmailCodeTtlMinutes={profileEmailCodeTtlMinutes}
+        profileSubmitting={profileSubmitting}
+        regionOptions={regionOptions}
+        regionOptionsLoading={regionOptionsLoading}
+        saveAddressActionLabel={saveAddressActionLabel}
+        savePetActionLabel={savePetActionLabel}
+        setAddressModalVisible={setAddressModalVisible}
+        setEditModalVisible={setEditModalVisible}
+        setEditingAddress={setEditingAddress}
+        setEditingPet={setEditingPet}
+        setPasswordModalVisible={setPasswordModalVisible}
+        setPetModalVisible={setPetModalVisible}
+        setProfileEmailCodeCountdown={setProfileEmailCodeCountdown}
+        setProfileEmailCodeSentTo={setProfileEmailCodeSentTo}
+        t={t}
+        user={user}
+      />
 
-      <ShopModal
-        title={t('pages.profile.changePassword')}
-        open={passwordModalVisible}
-        onOk={handleChangePassword}
-        onClose={closePasswordModal}
-        confirmLoading={passwordSubmitting}
-        okText={t('pages.profile.changePassword')}
-        cancelText={t('common.cancel')}
-        okButtonProps={{ 'aria-label': changePasswordActionLabel, title: changePasswordActionLabel }}
-        cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${changePasswordActionLabel}`, title: `${t('common.cancel')}: ${changePasswordActionLabel}` }}
-        className="profile-mobile-safe-modal"
-      >
-        <Form form={passwordForm} layout="vertical" requiredMark validateTrigger={['onChange', 'onBlur']}>
-          <Form.Item name="oldPassword" label={t('pages.profile.oldPassword')} rules={[{ required: true, message: t('pages.profile.oldPasswordRequired') }]}>
-            <ShopPasswordInput 
-              iconRender={(visible) => (
-              <button
-                type="button"
-                aria-label={visible ? t('pages.auth.hidePassword') : t('pages.auth.showPassword')}
-                aria-pressed={visible}
-                title={visible ? t('pages.auth.hidePassword') : t('pages.auth.showPassword')}
-               
-              >
-                {visible ? <ShopIcon path={SI.eye} /> : <ShopIcon path={SI.eyeOff} />}
-              </button>
-            )}
-            />
-          </Form.Item>
-          <Form.Item name="newPassword" label={t('pages.profile.newPassword')} rules={[
-            { required: true, min: STRONG_PASSWORD_MIN_LENGTH, max: STRONG_PASSWORD_MAX_LENGTH, message: t('pages.profile.newPasswordMin') },
-            { validator: validateStrongPassword }
-          ]}>
-            <ShopPasswordInput maxLength={STRONG_PASSWORD_MAX_LENGTH} 
-              iconRender={(visible) => (
-              <button
-                type="button"
-                aria-label={visible ? t('pages.auth.hidePassword') : t('pages.auth.showPassword')}
-                aria-pressed={visible}
-                title={visible ? t('pages.auth.hidePassword') : t('pages.auth.showPassword')}
-               
-              >
-                {visible ? <ShopIcon path={SI.eye} /> : <ShopIcon path={SI.eyeOff} />}
-              </button>
-            )}
-            />
-          </Form.Item>
-          <Form.Item
-            name="confirmPassword"
-            label={t('pages.profile.confirmNewPassword')}
-            dependencies={['newPassword']}
-            rules={[
-              { required: true, message: t('pages.profile.confirmNewRequired') },
-              ({ getFieldValue }) => ({
-                validator(_, value) {
-                  if (!value || getFieldValue('newPassword') === value) return Promise.resolve();
-                  return Promise.reject(new Error(t('pages.profile.passwordMismatch')));
-                },
-              }),
-            ]}
-          >
-            <ShopPasswordInput 
-              iconRender={(visible) => (
-              <button
-                type="button"
-                aria-label={visible ? t('pages.auth.hidePassword') : t('pages.auth.showPassword')}
-                aria-pressed={visible}
-                title={visible ? t('pages.auth.hidePassword') : t('pages.auth.showPassword')}
-               
-              >
-                {visible ? <ShopIcon path={SI.eye} /> : <ShopIcon path={SI.eyeOff} />}
-              </button>
-            )}
-            />
-          </Form.Item>
-        </Form>
-      </ShopModal>
+      <ProfileOrderDetailModal
+        dateLocale={dateLocale}
+        formatMoney={formatMoney}
+        formatOrderStatusLabel={formatOrderStatusLabel}
+        getOrderStatusColor={getOrderStatusColor}
+        handleReorder={handleReorder}
+        handleTrackShipment={handleTrackShipment}
+        language={language}
+        openProductDetail={openProductDetail}
+        orderDetailVisible={orderDetailVisible}
+        orderItems={orderItems}
+        profileOrderItemName={profileOrderItemName}
+        reorderSelectedOrderActionLabel={reorderSelectedOrderActionLabel}
+        reordering={reordering}
+        selectedOrder={selectedOrder}
+        selectedOrderTrackActionLabel={selectedOrderTrackActionLabel}
+        setOrderDetailVisible={setOrderDetailVisible}
+        t={t}
+      />
 
-      <ShopModal
-        title={editingAddress ? t('pages.profile.editAddressTitle') : t('pages.profile.addAddressTitle')}
-        open={addressModalVisible}
-        onOk={handleSaveAddress}
-        onClose={closeAddressModal}
-        confirmLoading={addressSubmitting}
-        okText={t('common.save')}
-        cancelText={t('common.cancel')}
-        okButtonProps={{ 'aria-label': saveAddressActionLabel, title: saveAddressActionLabel }}
-        cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${saveAddressActionLabel}`, title: `${t('common.cancel')}: ${saveAddressActionLabel}` }}
-        width={560}
-        className="profile-mobile-safe-modal profile-address-modal"
-      >
-        <Form form={addressForm} layout="vertical" requiredMark validateTrigger={['onChange', 'onBlur']} onFocusCapture={(event) => scrollProfileAddressFieldIntoMobileView(event.target)}>
-          <Form.Item name="recipientName" label={t('pages.profile.recipient')} rules={[{ required: true, message: t('pages.profile.recipientRequired') }]}>
-            <ShopInput placeholder={t('pages.profile.recipientRequired')} autoComplete="name" maxLength={80} />
-          </Form.Item>
-          <Form.Item
-            name="phone"
-            label={t('pages.profile.phone')}
-            rules={[
-              { required: true, message: t('pages.profile.phoneRequired') },
-              { validator: (_, value) => (!value || isLikelyProfilePhone(value) ? Promise.resolve() : Promise.reject(new Error(t('pages.auth.phoneInvalid')))) },
-            ]}
-          >
-            <ShopInput
-              placeholder={t('pages.auth.phonePlaceholder')}
-              autoComplete="tel"
-              inputMode="tel"
-              maxLength={40}
-              aria-label={addressPhoneInputLabel}
-              title={addressPhoneInputLabel}
-              onBlur={(event) => addressForm.setFieldValue('phone', normalizeLikelyProfilePhone(event.target.value))}
-            />
-          </Form.Item>
-          <Form.Item name="region" label={t('pages.profile.region')} rules={[{ required: true, message: t('pages.profile.regionRequired') }]}>
-            <ShopCascader
-              options={regionOptions}
-              placeholder={regionOptionsLoading ? t('common.loading') : t('pages.profile.regionPlaceholder')}
-              ariaLabel={addressRegionInputLabel}
-              title={addressRegionInputLabel}
-              popupClassName="shop-mobile-popup-layer profile-modal-popup"
-              popupZIndex={12050}
-              onOpenChange={(open) => {
-                if (open) void loadProfileRegionOptions();
-              }}
-            />
-          </Form.Item>
-          <Form.Item
-            name="postalCode"
-            label={t('pages.profile.postalCode')}
-            dependencies={['region']}
-            rules={[
-              { required: true, message: t('pages.profile.postalCodeRequired') },
-              ({ getFieldValue }) => ({
-                validator: (_, value) => (
-                  !value || isValidRegionalPostalCode(value, getFieldValue('region'))
-                    ? Promise.resolve()
-                    : Promise.reject(new Error(t('pages.profile.postalCodeInvalid')))
-                ),
-              }),
-            ]}
-          >
-            <ShopInput
-              placeholder={t('pages.profile.postalCodePlaceholder')}
-              autoComplete="postal-code"
-              inputMode="text"
-              maxLength={20}
-              onBlur={(event) => addressForm.setFieldValue('postalCode', normalizeRegionalPostalCode(event.target.value))}
-            />
-          </Form.Item>
-          <Form.Item name="detail" label={t('pages.profile.detailAddress')} rules={[{ required: true, message: t('pages.profile.detailRequired') }]}>
-            <ShopTextArea rows={3} placeholder={t('pages.profile.detailRequired')} autoComplete="street-address" maxLength={260} showCount />
-          </Form.Item>
-          <Form.Item name="isDefault" valuePropName="checked">
-            <ShopCheckbox>{t('pages.profile.makeDefaultAddress')}</ShopCheckbox>
-          </Form.Item>
-        </Form>
-      </ShopModal>
+      <ProfileReturnModals
+        dateLocale={dateLocale}
+        formatMoney={formatMoney}
+        handleReturnOrder={handleReturnOrder}
+        handleSubmitReturnShipment={handleSubmitReturnShipment}
+        requestingReturn={requestingReturn}
+        returnReason={returnReason}
+        returnReasonInputLabel={returnReasonInputLabel}
+        returnRequestOrder={returnRequestOrder}
+        returnShipmentOrder={returnShipmentOrder}
+        returnTrackingInputLabel={returnTrackingInputLabel}
+        returnTrackingNumber={returnTrackingNumber}
+        selectedTrackingCarrierCode={selectedTrackingCarrierCode}
+        selectedTrackingNumber={selectedTrackingNumber}
+        selectedTrackingOrderId={selectedTrackingOrderId}
+        setReturnReason={setReturnReason}
+        setReturnRequestOrder={setReturnRequestOrder}
+        setReturnShipmentOrder={setReturnShipmentOrder}
+        setReturnTrackingNumber={setReturnTrackingNumber}
+        setTrackingVisible={setTrackingVisible}
+        submitReturnRequestActionLabel={submitReturnRequestActionLabel}
+        submitReturnShipmentActionLabel={submitReturnShipmentActionLabel}
+        submittingReturnShipment={submittingReturnShipment}
+        t={t}
+        trackingVisible={trackingVisible}
+      />
 
-      <ShopModal
-        title={editingPet ? t('pages.profile.editPet') : t('pages.profile.addPet')}
-        open={petModalVisible}
-        onOk={handleSavePet}
-        onClose={closePetModal}
-        confirmLoading={petSubmitting}
-        okText={t('common.save')}
-        cancelText={t('common.cancel')}
-        okButtonProps={{ 'aria-label': savePetActionLabel, title: savePetActionLabel }}
-        cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${savePetActionLabel}`, title: `${t('common.cancel')}: ${savePetActionLabel}` }}
-        className="profile-mobile-safe-modal"
-      >
-        <Form form={petForm} layout="vertical" requiredMark validateTrigger={['onChange', 'onBlur']}>
-          <Form.Item name="name" label={t('pages.profile.petName')} rules={[{ required: true, message: t('pages.profile.petNameRequired') }]}>
-            <ShopInput placeholder={t('pages.profile.petNamePlaceholder')} />
-          </Form.Item>
-          <Form.Item name="petType" label={t('pages.profile.petType')} rules={[{ required: true }]}>
-            <ShopSelect
-              options={[
-                { value: 'DOG', label: t('pages.profile.petDog') },
-                { value: 'CAT', label: t('pages.profile.petCat') },
-                { value: 'SMALL_PET', label: t('pages.profile.petSmall') },
-              ]}
-              popupClassName="shop-mobile-popup-layer profile-modal-popup"
-              popupZIndex={12050}
-              ariaLabel={t('pages.profile.petType')}
-            />
-          </Form.Item>
-          <Form.Item name="breed" label={t('pages.profile.petBreed')}>
-            <ShopInput placeholder={t('pages.profile.petBreedPlaceholder')} />
-          </Form.Item>
-          <Form.Item name="birthday" label={t('pages.profile.petBirthday')}>
-            <ShopDatePicker className="profile-pet-modal__field" ariaLabel={t('pages.profile.petBirthday')} />
-          </Form.Item>
-          <Form.Item name="weight" label={t('pages.profile.petWeightKg')}>
-            <ShopInputNumber min={0} precision={2} className="profile-pet-modal__field" />
-          </Form.Item>
-          <Form.Item name="size" label={t('pages.profile.petSize')}>
-            <ShopSelect
-              allowClear
-              options={[
-                { value: 'SMALL', label: t('pages.profile.petSizeSmall') },
-                { value: 'MEDIUM', label: t('pages.profile.petSizeMedium') },
-                { value: 'LARGE', label: t('pages.profile.petSizeLarge') },
-              ]}
-              popupClassName="shop-mobile-popup-layer profile-modal-popup"
-              popupZIndex={12050}
-              ariaLabel={t('pages.profile.petSize')}
-            />
-          </Form.Item>
-        </Form>
-      </ShopModal>
-
-      <ShopModal
-        title={t('pages.profile.orderDetail', { id: selectedOrder?.orderNo || selectedOrder?.id || '' })}
-        open={orderDetailVisible}
-        onClose={() => setOrderDetailVisible(false)}
-        footer={null}
-        width={640}
-        className="profile-mobile-safe-modal profile-order-detail-modal"
-        rootClassName="profile-order-detail-modalRoot"
-        closeLabel={t('common.close', { defaultValue: 'Close' })}
-        ariaLabel={t('pages.profile.orderDetail', { id: selectedOrder?.orderNo || selectedOrder?.id || '' })}
-      >
-        {selectedOrder && (
-          <div>
-            <dl className="profile-page__descList profile-order-detail__descriptions">
-              <div className="profile-page__descRow">
-                <dt className="profile-page__descLabel">{t('common.status')}</dt>
-                <dd className="profile-page__descValue"><ShopTag color={getOrderStatusColor(selectedOrder.status)}>{formatOrderStatusLabel(selectedOrder.status)}</ShopTag></dd>
-              </div>
-              <div className="profile-page__descRow">
-                <dt className="profile-page__descLabel">{t('common.amount')}</dt>
-                <dd className="profile-page__descValue"><span className="profile-page__text profile-page__text--strong profile-price-text commerce-money">{formatMoney(selectedOrder.totalAmount)}</span></dd>
-              </div>
-              {selectedOrder.originalAmount ? <div className="profile-page__descRow">
-                <dt className="profile-page__descLabel">{t('common.subtotal')}</dt>
-                <dd className="profile-page__descValue"><span className="commerce-money">{formatMoney(selectedOrder.originalAmount)}</span></dd>
-              </div> : null}
-              {selectedOrder.discountAmount && selectedOrder.discountAmount > 0 ? (
-                <div className="profile-page__descRow">
-                <dt className="profile-page__descLabel">{t('pages.checkout.coupon')}</dt>
-                <dd className="profile-page__descValue">{selectedOrder.couponName || '-'} / <span className="commerce-money">-{formatMoney(selectedOrder.discountAmount)}</span></dd>
-              </div>
-              ) : null}
-              <div className="profile-page__descRow">
-                <dt className="profile-page__descLabel">{t('pages.checkout.address')}</dt>
-                <dd className="profile-page__descValue">{selectedOrder.shippingAddress || '-'}</dd>
-              </div>
-              <div className="profile-page__descRow">
-                <dt className="profile-page__descLabel">{t('pages.checkout.paymentMethod')}</dt>
-                <dd className="profile-page__descValue">{selectedOrder.paymentMethod ? paymentMethodLabel(selectedOrder.paymentMethod, t) : '-'}</dd>
-              </div>
-              <div className="profile-page__descRow">
-                <dt className="profile-page__descLabel">{t('pages.adminOrders.tracking')}</dt>
-                <dd className="profile-page__descValue">{selectedOrder.trackingNumber ? (
-                  <div className="profile-page__inlineRow">
-                    <span>{selectedOrder.trackingNumber}</span>
-                    {selectedOrder.trackingCarrierName ? <ShopTag>{selectedOrder.trackingCarrierName}</ShopTag> : null}
-                    <ShopButton size="small" aria-label={selectedOrderTrackActionLabel} title={selectedOrderTrackActionLabel} onClick={() => handleTrackShipment(selectedOrder.trackingNumber, selectedOrder.trackingCarrierCode, selectedOrder.id)}>{t('pages.adminOrders.track')}</ShopButton>
-                  </div>
-                ) : '-'}</dd>
-              </div>
-              <div className="profile-page__descRow">
-                <dt className="profile-page__descLabel">{t('pages.profile.returnTracking')}</dt>
-                <dd className="profile-page__descValue">{selectedOrder.returnTrackingNumber || '-'}</dd>
-              </div>
-              <div className="profile-page__descRow">
-                <dt className="profile-page__descLabel">{t('pages.profile.returnDeadline')}</dt>
-                <dd className="profile-page__descValue">{selectedOrder.returnDeadline ? new Date(selectedOrder.returnDeadline).toLocaleString(dateLocale) : '-'}</dd>
-              </div>
-              <div className="profile-page__descRow">
-                <dt className="profile-page__descLabel">{t('pages.profile.returnReason')}</dt>
-                <dd className="profile-page__descValue">{selectedOrder.returnReason || '-'}</dd>
-              </div>
-              {selectedOrder.returnRequestedAt ? (
-                <div className="profile-page__descRow">
-                <dt className="profile-page__descLabel">{t('pages.profile.returnRequestedAt')}</dt>
-                <dd className="profile-page__descValue">{new Date(selectedOrder.returnRequestedAt).toLocaleString(dateLocale)}</dd>
-              </div>
-              ) : null}
-              {selectedOrder.returnApprovedAt ? (
-                <div className="profile-page__descRow">
-                <dt className="profile-page__descLabel">{t('pages.profile.returnApprovedAt')}</dt>
-                <dd className="profile-page__descValue">{new Date(selectedOrder.returnApprovedAt).toLocaleString(dateLocale)}</dd>
-              </div>
-              ) : null}
-              {selectedOrder.returnRejectedAt ? (
-                <div className="profile-page__descRow">
-                <dt className="profile-page__descLabel">{t('pages.profile.returnRejectedAt')}</dt>
-                <dd className="profile-page__descValue">{new Date(selectedOrder.returnRejectedAt).toLocaleString(dateLocale)}</dd>
-              </div>
-              ) : null}
-              {selectedOrder.returnShippedAt ? (
-                <div className="profile-page__descRow">
-                <dt className="profile-page__descLabel">{t('pages.profile.returnShippedAt')}</dt>
-                <dd className="profile-page__descValue">{new Date(selectedOrder.returnShippedAt).toLocaleString(dateLocale)}</dd>
-              </div>
-              ) : null}
-              {selectedOrder.returnedAt ? (
-                <div className="profile-page__descRow">
-                <dt className="profile-page__descLabel">{t('pages.profile.returnedAt')}</dt>
-                <dd className="profile-page__descValue">{new Date(selectedOrder.returnedAt).toLocaleString(dateLocale)}</dd>
-              </div>
-              ) : null}
-              {selectedOrder.refundedAt ? (
-                <div className="profile-page__descRow">
-                <dt className="profile-page__descLabel">{t('pages.profile.refundedAt')}</dt>
-                <dd className="profile-page__descValue">{new Date(selectedOrder.refundedAt).toLocaleString(dateLocale)}</dd>
-              </div>
-              ) : null}
-              <div className="profile-page__descRow">
-                <dt className="profile-page__descLabel">{t('pages.profile.shippedAt')}</dt>
-                <dd className="profile-page__descValue">{selectedOrder.shippedAt ? new Date(selectedOrder.shippedAt).toLocaleString(dateLocale) : '-'}</dd>
-              </div>
-              <div className="profile-page__descRow">
-                <dt className="profile-page__descLabel">{t('pages.profile.completedAt')}</dt>
-                <dd className="profile-page__descValue">{selectedOrder.completedAt ? new Date(selectedOrder.completedAt).toLocaleString(dateLocale) : '-'}</dd>
-              </div>
-              <div className="profile-page__descRow">
-                <dt className="profile-page__descLabel">{t('pages.adminOrders.createdAt')}</dt>
-                <dd className="profile-page__descValue">{selectedOrder.createdAt ? new Date(selectedOrder.createdAt).toLocaleString(dateLocale) : '-'}</dd>
-              </div>
-            </dl>
-            <div className="profile-order-detail__itemsHeader">
-              <h5 className="profile-page__title profile-order-detail__itemsTitle">{t('pages.profile.orderItems')}</h5>
-              <ShopButton icon={<ShopIcon path={SI.cart} />} loading={reordering} disabled={orderItems.length === 0} aria-label={reorderSelectedOrderActionLabel} title={reorderSelectedOrderActionLabel} onClick={handleReorder}>
-                {t('pages.profile.reorder')}
-              </ShopButton>
-            </div>
-            {orderItems.length > 0 ? (
-              <ul className="profile-page__itemList profile-order-detail__itemList" role="list">
-                {orderItems.map((item, index) => {
-                  const itemName = profileOrderItemName(item);
-                  const itemActionLabel = `${t('pages.productList.viewDetails')}: ${itemName}`;
-                  return (
-                    <li key={String(item.id || `${item.productId || 'item'}-${index}`)} className="profile-page__item profile-order-detail__item">
-                      <div className="profile-page__itemMeta">
-                          <button
-                            type="button"
-                            aria-label={itemActionLabel}
-                            title={itemActionLabel}
-                            onClick={() => openProductDetail(item.productId)}
-                            className="profile-order-detail__imageButton"
-                          >
-                            <img
-                              src={resolveOrderImage(item.imageUrl)}
-                              alt={itemName}
-                              className="profile-order-detail__image"
-                              loading="lazy"
-                              decoding="async"
-                              onError={useImageFallback}
-                            />
-                          </button>
-                        <div className="profile-page__itemBody">
-                          <button
-                            type="button"
-                            aria-label={itemActionLabel}
-                            title={itemActionLabel}
-                            onClick={() => openProductDetail(item.productId)}
-                            className="profile-order-detail__productButton"
-                          >
-                            {itemName}
-                          </button>
-                          <div className="profile-page__stackTight">
-                            {item.selectedSpecs ? <span className="profile-page__text profile-page__text--secondary">{formatSelectedSpecs(item.selectedSpecs, t, language)}</span> : null}
-                            <span className="profile-page__text profile-page__text--secondary profile-order-detail__unit commerce-atomic commerce-price-quantity">
-                              <span className="commerce-money">{formatMoney(item.price)}</span>
-                              <span className="commerce-quantity">x {item.quantity}</span>
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                      <span className="profile-page__text profile-page__text--strong profile-price-text commerce-money">{formatMoney(item.price * item.quantity)}</span>
-                    </li>
-                  );
-                })}
-              </ul>
-            ) : (
-              <span className="profile-page__text profile-page__text--secondary">{t('pages.profile.noOrderItems')}</span>
-            )}
-          </div>
-        )}
-      </ShopModal>
-
-      <ShopModal
-        title={t('pages.profile.submitReturnShipment')}
-        open={!!returnShipmentOrder}
-        confirmLoading={submittingReturnShipment}
-        okText={t('pages.profile.submitReturnShipment')}
-        cancelText={t('common.cancel')}
-        okButtonProps={{
-          'aria-label': submitReturnShipmentActionLabel,
-          title: submitReturnShipmentActionLabel,
-          disabled: !isReturnTrackingReady(returnTrackingNumber),
-        }}
-        cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${submitReturnShipmentActionLabel}`, title: `${t('common.cancel')}: ${submitReturnShipmentActionLabel}` }}
-        onOk={handleSubmitReturnShipment}
-        onClose={() => { setReturnShipmentOrder(null); setReturnTrackingNumber(''); }}
-        className="profile-mobile-safe-modal profile-return-modal"
-      >
-        <div className="profile-return-modal__content">
-          {returnShipmentOrder ? (
-            <div className="profile-return-modal__summary">
-              <span className="profile-page__text profile-page__text--strong">
-                {t('pages.profile.returnOrderSummary', {
-                  orderNo: returnShipmentOrder.orderNo || returnShipmentOrder.id,
-                  amount: formatMoney(returnShipmentOrder.totalAmount),
-                })}
-              </span>
-            </div>
-          ) : null}
-          <div className="profile-return-modal__timeline" aria-label={t('pages.profile.returnShipmentStepsTitle')}>
-            <span className="profile-page__text profile-return-modal__timelineTitle">{t('pages.profile.returnShipmentStepsTitle')}</span>
-            <div className="profile-return-modal__steps" role="list">
-              {returnFlowStepI18nKeys.map((stepKey) => (
-                <span key={stepKey} className="profile-return-modal__step" role="listitem">{t(stepKey)}</span>
-              ))}
-            </div>
-          </div>
-          <span className="profile-page__text profile-page__text--secondary">{t('pages.profile.returnShipmentHint')}</span>
-          <ShopInput
-            value={returnTrackingNumber}
-            onChange={(e) => setReturnTrackingNumber(e.target.value)}
-            placeholder={t('pages.profile.returnTrackingPlaceholder')}
-            autoComplete="off"
-            inputMode="text"
-            maxLength={120}
-            status={returnTrackingNumber && !isReturnTrackingReady(returnTrackingNumber) ? 'error' : ''}
-            aria-label={returnTrackingInputLabel}
-            title={returnTrackingInputLabel}
-            onBlur={() => setReturnTrackingNumber((value) => normalizeReturnTrackingNumber(value))}
-          />
-        </div>
-      </ShopModal>
-
-      <ShopModal
-        title={t('pages.profile.returnOrder')}
-        open={!!returnRequestOrder}
-        confirmLoading={requestingReturn}
-        okText={t('pages.profile.returnOrder')}
-        cancelText={t('common.cancel')}
-        okButtonProps={{
-          'aria-label': submitReturnRequestActionLabel,
-          title: submitReturnRequestActionLabel,
-          disabled: !isReturnReasonReady(returnReason),
-        }}
-        cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${submitReturnRequestActionLabel}`, title: `${t('common.cancel')}: ${submitReturnRequestActionLabel}` }}
-        onOk={handleReturnOrder}
-        onClose={() => { setReturnRequestOrder(null); setReturnReason(''); }}
-        className="profile-mobile-safe-modal profile-return-modal"
-      >
-        <div className="profile-return-modal__content">
-          {returnRequestOrder ? (
-            <div className="profile-return-modal__summary" aria-label={t('pages.profile.returnOrderSummary', {
-              orderNo: returnRequestOrder.orderNo || returnRequestOrder.id,
-              amount: formatMoney(returnRequestOrder.totalAmount),
-            })}>
-              <span className="profile-page__text profile-page__text--strong">
-                {t('pages.profile.returnOrderSummary', {
-                  orderNo: returnRequestOrder.orderNo || returnRequestOrder.id,
-                  amount: formatMoney(returnRequestOrder.totalAmount),
-                })}
-              </span>
-            </div>
-          ) : null}
-          <div className="profile-return-modal__timeline" aria-label={t('pages.profile.returnTimelineTitle')}>
-            <span className="profile-page__text profile-return-modal__timelineTitle">{t('pages.profile.returnTimelineTitle')}</span>
-            <div className="profile-return-modal__steps" role="list">
-              {returnFlowStepI18nKeys.map((stepKey) => (
-                <span key={stepKey} className="profile-return-modal__step" role="listitem">{t(stepKey)}</span>
-              ))}
-            </div>
-          </div>
-          <span className="profile-page__text profile-page__text--secondary">{t('pages.profile.returnReviewHint')}</span>
-          {returnRequestOrder?.returnDeadline ? (
-            <span className="profile-page__text profile-page__text--secondary">
-              {t('pages.profile.returnAvailableUntil', { time: new Date(returnRequestOrder.returnDeadline).toLocaleString(dateLocale) })}
-            </span>
-          ) : null}
-          <div className="profile-return-modal__presets" role="group" aria-label={t('pages.profile.returnReasonPresetsLabel')}>
-            <span className="profile-page__text profile-return-modal__presetsLabel">{t('pages.profile.returnReasonPresetsLabel')}</span>
-            <div className="profile-return-modal__presetGrid">
-              {RETURN_REASON_PRESET_KEYS.map((preset) => {
-                const label = t(returnReasonPresetI18nKey(preset));
-                const selected = normalizeReturnReason(returnReason).toLowerCase() === label.toLowerCase();
-                return (
-                  <ShopButton
-                    key={preset}
-                    size="small"
-                    type={selected ? 'primary' : 'default'}
-                    className="profile-return-modal__preset"
-                    aria-label={label}
-                    title={label}
-                    aria-pressed={selected}
-                    onClick={() => setReturnReason(label)}
-                  >
-                    {label}
-                  </ShopButton>
-                );
-              })}
-            </div>
-          </div>
-          <ShopTextArea
-            rows={4}
-            maxLength={500}
-            showCount
-            value={returnReason}
-            status={returnReason && !isReturnReasonReady(returnReason) ? 'error' : ''}
-            onChange={(event) => setReturnReason(event.target.value)}
-            placeholder={t('pages.profile.returnReasonPlaceholder')}
-            aria-label={returnReasonInputLabel}
-            title={returnReasonInputLabel}
-          />
-        </div>
-      </ShopModal>
-
-      <ShopModal
-        title={t('pages.adminOrders.logisticsTracking')}
-        open={trackingVisible}
-        onClose={() => setTrackingVisible(false)}
-        footer={null}
-        width={720}
-        className="profile-mobile-safe-modal profile-tracking-modal"
-      >
-        <SeventeenTrackWidget trackingNumber={selectedTrackingNumber} carrierCode={selectedTrackingCarrierCode} orderId={selectedTrackingOrderId} />
-      </ShopModal>
-
-      <ShopModal
-        title={t('pages.profile.continuePay')}
-        open={paymentModalVisible}
-        onClose={() => setPaymentModalVisible(false)}
-        className="profile-mobile-safe-modal profile-payment-modal"
-        footer={[
-          selectedPayment?.status === 'PENDING' && selectedPayment.paymentUrl && (
-            <ShopButton
-              key="pay"
-              type="primary"
-              aria-label={openPaymentActionLabel}
-              title={openPaymentActionLabel}
-              onClick={() => {
-                if (!navigateToCommercialPaymentUrl(selectedPayment.paymentUrl)) {
-                  announceAccessibleMessage(t('pages.payment.failed'), 'error');
-                }
-              }}
-            >
-              {t('pages.checkout.openPayment')}
-            </ShopButton>
-          ),
-          selectedPayment && !selectedPaymentPaid && !selectedPaymentReconcileRequired && (
-            <ShopButton key="refresh" loading={refreshingPayment} disabled={paymentChannelsLoading || paymentOptions.length === 0} aria-label={refreshPaymentActionLabel} title={refreshPaymentActionLabel} onClick={handleRefreshPayment}>
-              {t('pages.profile.refreshPayment')}
-            </ShopButton>
-          ),
-          <ShopButton key="close" aria-label={closePaymentActionLabel} title={closePaymentActionLabel} onClick={() => setPaymentModalVisible(false)}>{t('common.cancel')}</ShopButton>,
-        ].filter(Boolean)}
-      >
-        {selectedOrder && selectedPayment && (
-          <div className="profile-payment-modal__content">
-            <div className="profile-payment-recovery" role="status" aria-live="polite">
-              <div>
-                <span className="profile-page__text profile-page__text--strong">{t('pages.checkout.paymentRecoveryStatus')}</span>
-                <ShopTag color={selectedPaymentReconcileRequired ? 'magenta' : selectedPaymentPaid ? 'green' : selectedPaymentExpiredOrFailed ? 'red' : selectedPaymentRecovery.isExpiringSoon ? 'orange' : 'blue'}>
-                  {selectedPaymentReconcileRequired
-                    ? t('pages.checkout.paymentRecoveryReconcileRequired')
-                    : normalizeStatusCode(selectedPayment.status) === 'REFUNDED'
-                    ? t('status.REFUNDED')
-                    : normalizeStatusCode(selectedPayment.status) === 'REFUNDING'
-                    ? t('status.REFUNDING')
-                    : selectedPaymentPaid
-                    ? t('pages.checkout.paymentRecoveryPaid')
-                    : selectedPaymentFailed
-                      ? t('pages.checkout.paymentRecoveryFailed')
-                      : selectedPaymentRecovery.isExpired
-                        ? t('pages.checkout.paymentRecoveryExpired')
-                        : t('pages.checkout.paymentRecoveryPending')}
-                </ShopTag>
-              </div>
-              <div>
-                <span className="profile-page__text profile-page__text--strong">{t('pages.checkout.paymentRecoveryWindow')}</span>
-                <span className={`profile-page__text ${selectedPaymentRecovery.isExpired ? 'danger' : selectedPaymentRecovery.isExpiringSoon ? 'profile-page__text--warning' : 'profile-page__text--secondary'}`}>
-                  {selectedPaymentRecovery.minutesLeft === null
-                    ? t('pages.checkout.paymentRecoveryWindowUnknown')
-                    : selectedPaymentRecovery.isExpired
-                      ? t('pages.checkout.paymentRecoveryWindowExpired')
-                      : t('pages.checkout.paymentRecoveryWindowMinutes', { count: selectedPaymentRecovery.minutesLeft })}
-                </span>
-              </div>
-              <div>
-                <span className="profile-page__text profile-page__text--strong">{t('pages.checkout.paymentRecoveryNext')}</span>
-                <span className="profile-page__text profile-page__text--secondary">
-                  {selectedPaymentReconcileRequired
-                    ? t('pages.checkout.paymentRecoveryNextReconcileRequired')
-                    : normalizeStatusCode(selectedPayment.status) === 'REFUNDED'
-                    ? t('pages.profile.paymentRefundedNext')
-                    : normalizeStatusCode(selectedPayment.status) === 'REFUNDING'
-                    ? t('pages.profile.paymentRefundingNext')
-                    : selectedPaymentPaid
-                    ? t('pages.checkout.paymentRecoveryNextPaid')
-                    : selectedPaymentFailed
-                      ? t('pages.checkout.paymentRecoveryNextFailed')
-                      : selectedPaymentRecovery.isExpired
-                        ? t('pages.checkout.paymentRecoveryNextRetry')
-                        : selectedPayment.paymentUrl
-                          ? t('pages.checkout.paymentRecoveryNextOpen')
-                          : t('pages.checkout.paymentRecoveryNextRetry')}
-                </span>
-              </div>
-            </div>
-            <dl className="profile-page__descList profile-payment-detail__descriptions">
-              <div className="profile-page__descRow">
-                <dt className="profile-page__descLabel">{t('pages.profile.orderNo')}</dt>
-                <dd className="profile-page__descValue">{selectedOrder.orderNo || selectedOrder.id}</dd>
-              </div>
-              <div className="profile-page__descRow">
-                <dt className="profile-page__descLabel">{t('common.amount')}</dt>
-                <dd className="profile-page__descValue"><span className="profile-page__text profile-page__text--strong profile-price-text commerce-money">{formatMoney(selectedOrder.totalAmount)}</span></dd>
-              </div>
-              <div className="profile-page__descRow">
-                <dt className="profile-page__descLabel">{t('pages.checkout.paymentMethod')}</dt>
-                <dd className="profile-page__descValue"><ShopSelect
-                  className="profile-payment-modal__methodSelect"
-                  value={selectedPaymentMethod}
-                  options={paymentOptions}
-                  onChange={(value) => setSelectedPaymentMethod(value || '')}
-                  popupClassName="shop-mobile-popup-layer"
-                  popupZIndex={12050}
-                  disabled={selectedPaymentPaid || selectedPaymentReconcileRequired || paymentChannelsLoading || paymentOptions.length === 0}
-                  ariaLabel={paymentMethodSelectLabel}
-                  title={paymentMethodSelectLabel}
-                />
-                {paymentOptions.length === 0 ? (
-                  <ShopAlert
-                    type="warning"
-                    showIcon
-                    role="alert"
-                    aria-live="assertive"
-                    message={t('pages.checkout.paymentUnavailable')}
-                    description={paymentChannelsError || t('pages.checkout.paymentUnavailableDescription')}
-                    action={(
-                      <ShopButton
-                        size="small"
-                        loading={paymentChannelsLoading}
-                        aria-label={retryPaymentChannelsActionLabel}
-                        title={retryPaymentChannelsActionLabel}
-                        onClick={() => void loadPaymentChannels()}
-                      >
-                        {t('common.retry')}
-                      </ShopButton>
-                    )}
-                  />
-                ) : null}
-                {selectedPaymentMethodDetail ? (
-                  <div className="profile-payment-method-hint">
-                    <ShopTag color={selectedPaymentMethodDetail.value === 'OXXO' ? 'orange' : selectedPaymentMethodDetail.value === 'SPEI' ? 'blue' : 'green'}>
-                      {t(selectedPaymentMethodDetail.badgeKey)}
-                    </ShopTag>
-                    <span className="profile-page__text profile-page__text--secondary">{t(selectedPaymentMethodDetail.descriptionKey)}</span>
-                  </div>
-                ) : null}</dd>
-              </div>
-              <div className="profile-page__descRow">
-                <dt className="profile-page__descLabel">{t('common.status')}</dt>
-                <dd className="profile-page__descValue"><ShopTag color={getPaymentStatusColor(selectedPayment.status)}>
-                  {formatPaymentStatusLabel(selectedPayment.status)}
-                </ShopTag></dd>
-              </div>
-              <div className="profile-page__descRow">
-                <dt className="profile-page__descLabel">{t('pages.checkout.paymentLink')}</dt>
-                <dd className="profile-page__descValue">{selectedPayment.paymentUrl && !selectedPaymentPaid && !selectedPaymentReconcileRequired && !selectedPaymentExpiredOrFailed ? (
-                  <ShopButton
-                    type="link"
-                    className="profile-payment-link"
-                    aria-label={paymentLinkActionLabel}
-                    title={paymentLinkActionLabel}
-                    onClick={() => {
-                      if (!navigateToCommercialPaymentUrl(selectedPayment.paymentUrl)) {
-                        announceAccessibleMessage(t('pages.payment.failed'), 'error');
-                      }
-                    }}
-                  >
-                    {formatPaymentUrlLabel(selectedPayment.paymentUrl)}
-                  </ShopButton>
-                ) : selectedPaymentReconcileRequired ? (
-                  <span className="profile-page__text profile-page__text--secondary">{t('pages.checkout.paymentRecoveryNextReconcileRequired')}</span>
-                ) : selectedPaymentFailed ? (
-                  <span className="profile-page__text profile-page__text--secondary">{t('pages.checkout.paymentRecoveryNextFailed')}</span>
-                ) : selectedPaymentRecovery.isExpired ? (
-                  <span className="profile-page__text profile-page__text--secondary">{t('pages.checkout.paymentRecoveryNextRetry')}</span>
-                ) : '-'}</dd>
-              </div>
-              <div className="profile-page__descRow">
-                <dt className="profile-page__descLabel">{t('pages.profile.paymentExpiresAt')}</dt>
-                <dd className="profile-page__descValue">{selectedPayment.expiresAt ? new Date(selectedPayment.expiresAt).toLocaleString(dateLocale) : '-'}</dd>
-              </div>
-              {selectedPayment.paidAt ? (
-                <div className="profile-page__descRow">
-                <dt className="profile-page__descLabel">{t('pages.profile.paidAt')}</dt>
-                <dd className="profile-page__descValue">{new Date(selectedPayment.paidAt).toLocaleString(dateLocale)}</dd>
-              </div>
-              ) : null}
-              {selectedPayment.refundedAt ? (
-                <div className="profile-page__descRow">
-                <dt className="profile-page__descLabel">{t('pages.profile.refundedAt')}</dt>
-                <dd className="profile-page__descValue">{new Date(selectedPayment.refundedAt).toLocaleString(dateLocale)}</dd>
-              </div>
-              ) : null}
-              {selectedPayment.transactionId && (
-                <div className="profile-page__descRow">
-                <dt className="profile-page__descLabel">{t('pages.checkout.transactionId')}</dt>
-                <dd className="profile-page__descValue">{selectedPayment.transactionId}</dd>
-              </div>
-              )}
-            </dl>
-            {normalizeStatusCode(selectedPayment.status) === 'REFUNDED' || normalizeStatusCode(selectedPayment.status) === 'REFUNDING' ? (
-              <ShopAlert
-                type={normalizeStatusCode(selectedPayment.status) === 'REFUNDED' ? 'success' : 'info'}
-                showIcon
-                className="profile-payment-refund-audit"
-                message={normalizeStatusCode(selectedPayment.status) === 'REFUNDED'
-                  ? t('pages.profile.paymentRefundedTitle')
-                  : t('pages.profile.paymentRefundingTitle')}
-                description={normalizeStatusCode(selectedPayment.status) === 'REFUNDED'
-                  ? t('pages.profile.paymentRefundedText', {
-                    date: selectedPayment.refundedAt
-                      ? new Date(selectedPayment.refundedAt).toLocaleString(dateLocale)
-                      : t('common.unknown'),
-                  })
-                  : t('pages.profile.paymentRefundingText')}
-              />
-            ) : null}
-            <div>
-              <span className="profile-page__text profile-page__text--strong">{t('pages.profile.paymentHistory')}</span>
-              {(!orderPayments || orderPayments.length === 0) ? (
-                    <div className="profile-payment-history__empty" data-profile-payment-history-empty="true">
-                      <div className="profile-payment-history__emptyCopy">
-                        <div>{t('pages.profile.noPaymentHistory')}</div>
-                        <div className="profile-payment-history__emptyHint">{t('pages.profile.noPaymentHistoryHint')}</div>
-                      </div>
-                      <div className="profile-payment-history__emptyActions" data-profile-payment-history-empty-actions="true">
-                        <ShopButton
-                          type="primary"
-                          aria-label={t('pages.profile.authGateTrackOrder')}
-                          title={t('pages.profile.authGateTrackOrder')}
-                          onClick={() => navigate('/track-order')}
-                        >
-                          {t('pages.profile.authGateTrackOrder')}
-                        </ShopButton>
-                        <ShopButton
-                          aria-label={t('pages.profile.goShopping')}
-                          title={t('pages.profile.goShopping')}
-                          onClick={() => navigate('/products')}
-                        >
-                          {t('pages.profile.goShopping')}
-                        </ShopButton>
-                        <ShopButton
-                          aria-label={t('pages.profile.emptyOrdersCoupons')}
-                          title={t('pages.profile.emptyOrdersCoupons')}
-                          onClick={() => navigate('/coupons')}
-                        >
-                          {t('pages.profile.emptyOrdersCoupons')}
-                        </ShopButton>
-                        <ShopButton
-                          aria-label={t('pages.productList.loadRecoverySupport')}
-                          title={t('pages.productList.loadRecoverySupport')}
-                          onClick={() => dispatchDomEvent('shop:open-support')}
-                        >
-                          {t('pages.productList.loadRecoverySupport')}
-                        </ShopButton>
-                      </div>
-                    </div>
-              ) : (
-              <ul className="profile-page__itemList profile-payment-history__itemList" role="list">
-                {orderPayments.map((payment, index) => (
-                  <li key={String(payment.id || `${payment.channel || 'pay'}-${index}`)} className="profile-page__item">
-                    <div className="profile-payment-history__item">
-                      <div className="profile-page__chipRow">
-                        <ShopTag color={getPaymentStatusColor(payment.status)}>
-                          {formatPaymentStatusLabel(payment.status)}
-                        </ShopTag>
-                        <span className="profile-page__text">{paymentMethodLabel(payment.channel, t)}</span>
-                        {payment.amount ? <span className="profile-page__text profile-page__text--secondary commerce-money">{formatMoney(payment.amount)}</span> : null}
-                      </div>
-                      <span className="profile-page__text profile-page__text--secondary profile-payment-history__time">
-                        {payment.createdAt ? new Date(payment.createdAt).toLocaleString(dateLocale) : ''}
-                      </span>
-                      {payment.paidAt ? (
-                        <span className="profile-page__text profile-page__text--secondary profile-payment-history__time">
-                          {t('pages.profile.paidAt')}: {new Date(payment.paidAt).toLocaleString(dateLocale)}
-                        </span>
-                      ) : null}
-                      {payment.refundedAt ? (
-                        <span className="profile-page__text profile-page__text--secondary profile-payment-history__time">
-                          {t('pages.profile.refundedAt')}: {new Date(payment.refundedAt).toLocaleString(dateLocale)}
-                        </span>
-                      ) : null}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-              )}
-            </div>
-          </div>
-        )}
-      </ShopModal>
+      <ProfilePaymentModal
+        closePaymentActionLabel={closePaymentActionLabel}
+        dateLocale={dateLocale}
+        formatMoney={formatMoney}
+        formatPaymentStatusLabel={formatPaymentStatusLabel}
+        getPaymentStatusColor={getPaymentStatusColor}
+        handleRefreshPayment={handleRefreshPayment}
+        loadPaymentChannels={loadPaymentChannels}
+        navigate={navigate}
+        openPaymentActionLabel={openPaymentActionLabel}
+        orderPayments={orderPayments}
+        paymentChannelsError={paymentChannelsError}
+        paymentChannelsLoading={paymentChannelsLoading}
+        paymentLinkActionLabel={paymentLinkActionLabel}
+        paymentMethodSelectLabel={paymentMethodSelectLabel}
+        paymentModalVisible={paymentModalVisible}
+        paymentOptions={paymentOptions}
+        refreshPaymentActionLabel={refreshPaymentActionLabel}
+        refreshingPayment={refreshingPayment}
+        retryPaymentChannelsActionLabel={retryPaymentChannelsActionLabel}
+        selectedOrder={selectedOrder}
+        selectedPayment={selectedPayment}
+        selectedPaymentExpiredOrFailed={selectedPaymentExpiredOrFailed}
+        selectedPaymentFailed={selectedPaymentFailed}
+        selectedPaymentMethod={selectedPaymentMethod}
+        selectedPaymentMethodDetail={selectedPaymentMethodDetail}
+        selectedPaymentPaid={selectedPaymentPaid}
+        selectedPaymentReconcileRequired={selectedPaymentReconcileRequired}
+        selectedPaymentRecovery={selectedPaymentRecovery}
+        setPaymentModalVisible={setPaymentModalVisible}
+        setSelectedPaymentMethod={setSelectedPaymentMethod}
+        t={t}
+      />
       <ShopConfirm
         open={Boolean(receiptConfirmOrder)}
         title={t('pages.profile.confirmReceiptTitle')}

@@ -1828,6 +1828,7 @@
 
 .product-complete-set__item .ant-btn {
   max-width: 100%;
+  min-height: 44px;
 }
 
 .product-complete-set__item .ant-btn > span:not(.anticon) {
@@ -4134,12 +4135,13 @@
   }
 
   .product-complete-set__item {
-    grid-template-columns: 46px minmax(0, 1fr) 40px;
+    grid-template-columns: 46px minmax(0, 1fr) 44px;
   }
 
   .product-complete-set__item .ant-btn {
-    width: 40px;
-    min-width: 40px;
+    width: 44px;
+    min-width: 44px;
+    min-height: 44px;
     padding-inline: 0;
   }
 

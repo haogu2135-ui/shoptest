@@ -1,24 +1,123 @@
 const readProfileSource = (): string => (
   require('fs').readFileSync(require('path').resolve(__dirname, 'Profile.tsx'), 'utf8')
 );
+const readProfileHelpersSource = (): string => (
+  require('fs').readFileSync(require('path').resolve(__dirname, '../utils/profileHelpers.ts'), 'utf8')
+);
+const readProfilePaymentActionsSource = (): string => (
+  require('fs').readFileSync(require('path').resolve(__dirname, '../hooks/useProfilePaymentActions.ts'), 'utf8')
+);
+
+const readProfileAddressActionsSource = (): string => (
+  require('fs').readFileSync(require('path').resolve(__dirname, '../hooks/useProfileAddressActions.ts'), 'utf8')
+);
+
+const readProfilePetActionsSource = (): string => (
+  require('fs').readFileSync(require('path').resolve(__dirname, '../hooks/useProfilePetActions.ts'), 'utf8')
+);
+
+const readProfileAccountActionsSource = (): string => (
+  require('fs').readFileSync(require('path').resolve(__dirname, '../hooks/useProfileAccountActions.ts'), 'utf8')
+);
+
+const readProfileOrderActionsSource = (): string => (
+  require('fs').readFileSync(require('path').resolve(__dirname, '../hooks/useProfileOrderActions.ts'), 'utf8')
+);
+
+const readProfileOrdersPanelSource = (): string => (
+  require('fs').readFileSync(require('path').resolve(__dirname, 'profileOrdersPanel.tsx'), 'utf8')
+);
+
+const readProfileAddressesPanelSource = (): string => (
+  require('fs').readFileSync(require('path').resolve(__dirname, 'profileAddressesPanel.tsx'), 'utf8')
+);
+
+const readProfilePetsPanelSource = (): string => (
+  require('fs').readFileSync(require('path').resolve(__dirname, 'profilePetsPanel.tsx'), 'utf8')
+);
+
+const readProfileOrderDetailModalSource = (): string => (
+  require('fs').readFileSync(require('path').resolve(__dirname, 'profileOrderDetailModal.tsx'), 'utf8')
+);
+
+const readProfileReturnModalsSource = (): string => (
+  require('fs').readFileSync(require('path').resolve(__dirname, 'profileReturnModals.tsx'), 'utf8')
+);
+
+const readProfilePaymentModalSource = (): string => (
+  require('fs').readFileSync(require('path').resolve(__dirname, 'profilePaymentModal.tsx'), 'utf8')
+);
+
+const readProfileInfoPanelSource = (): string => (
+  require('fs').readFileSync(require('path').resolve(__dirname, 'profileInfoPanel.tsx'), 'utf8')
+);
+
+const readProfileAccountModalsSource = (): string => (
+  require('fs').readFileSync(require('path').resolve(__dirname, 'profileAccountModals.tsx'), 'utf8')
+);
 
 export {};
 
 describe('Profile type-safety guard', () => {
   it('keeps profile recoverable failures typed without broad any escapes', () => {
     const source = readProfileSource();
+    const helpers = readProfileHelpersSource();
+    const paymentActions = readProfilePaymentActionsSource();
+    const addressActions = readProfileAddressActionsSource();
+    const petActions = readProfilePetActionsSource();
+    const accountActions = readProfileAccountActionsSource();
+    const orderActions = readProfileOrderActionsSource();
+    const ordersPanel = readProfileOrdersPanelSource();
+    const addressesPanel = readProfileAddressesPanelSource();
+    const petsPanel = readProfilePetsPanelSource();
+    const orderDetailModal = readProfileOrderDetailModalSource();
+    const returnModals = readProfileReturnModalsSource();
+    const paymentModal = readProfilePaymentModalSource();
+    const infoPanel = readProfileInfoPanelSource();
+    const accountModals = readProfileAccountModalsSource();
+    const surface = `${source}\n${helpers}\n${paymentActions}\n${addressActions}\n${petActions}\n${accountActions}\n${orderActions}\n${ordersPanel}\n${addressesPanel}\n${petsPanel}\n${orderDetailModal}\n${returnModals}\n${paymentModal}\n${infoPanel}\n${accountModals}`;
 
-    expect(source).not.toMatch(/catch \([^)]*: any\)|\.catch\(\([^)]*: any\)|\b[A-Za-z_$][\w$]*\??: any\b|as any\b|any\[\]/);
-    expect(source).not.toContain('err?.errorFields');
-    expect(source).not.toContain('err.response?.data');
-    expect(source).toContain('const isFormValidationError = (error: unknown): error is FormValidationError =>');
-    expect(source).toContain('const getProfileApiErrorData = (error: unknown): Record<string, unknown> =>');
-    expect(source).toContain('const getProfileApiErrorCode = (error: unknown) =>');
-    expect(source).toContain("import { getApiErrorMessage } from '../utils/apiError';");
-    expect(source).toContain('if (isFormValidationError(err)) {');
-    expect(source).toContain('focusProfileModalFormError');
-    expect(source).toMatch(/if \(isFormValidationError\(err\)\) \{[\s\S]*?return;/);
-    expect(source).toContain("announceAccessibleMessage(getApiErrorMessage(err, t('pages.profile.continuePayFailed'), language, { includeClientMessage: true }), 'error')");
+    expect(source).toContain('useProfileAddressActions({');
+    expect(source).toContain('useProfilePetActions({');
+    expect(source).toContain('useProfileAccountActions({');
+    expect(source).toContain('useProfileOrderActions({');
+    expect(addressActions).toContain('export const useProfileAddressActions');
+    expect(petActions).toContain('export const useProfilePetActions');
+    expect(accountActions).toContain('export const useProfileAccountActions');
+    expect(orderActions).toContain('export const useProfileOrderActions');
+    expect(ordersPanel).toContain('export const ProfileOrdersPanel');
+    expect(source).toContain('<ProfileOrdersPanel');
+    expect(addressesPanel).toContain('export const ProfileAddressesPanel');
+    expect(petsPanel).toContain('export const ProfilePetsPanel');
+    expect(source).toContain('<ProfileAddressesPanel');
+    expect(source).toContain('<ProfilePetsPanel');
+    expect(orderDetailModal).toContain('export const ProfileOrderDetailModal');
+    expect(returnModals).toContain('export const ProfileReturnModals');
+    expect(paymentModal).toContain('export const ProfilePaymentModal');
+    expect(source).toContain('<ProfileOrderDetailModal');
+    expect(source).toContain('<ProfileReturnModals');
+    expect(source).toContain('<ProfilePaymentModal');
+    expect(infoPanel).toContain('export const ProfileInfoPanel');
+    expect(accountModals).toContain('export const ProfileAccountModals');
+    expect(source).toContain('<ProfileInfoPanel');
+    expect(source).toContain('<ProfileAccountModals');
+    expect(addressActions).toContain('} catch (err: unknown) {');
+    expect(petActions).toContain('} catch (err: unknown) {');
+    expect(accountActions).toContain('} catch (err: unknown) {');
+    expect(orderActions).toContain('} catch (err: unknown) {');
+
+    expect(surface).not.toMatch(/catch \([^)]*: any\)|\.catch\(\([^)]*: any\)|\b[A-Za-z_$][\w$]*\??: any\b|as any\b|any\[\]/);
+    expect(surface).not.toContain('err?.errorFields');
+    expect(surface).not.toContain('err.response?.data');
+    expect(helpers).toContain('export const isFormValidationError = (error: unknown): error is FormValidationError =>');
+    expect(helpers).toContain('export const getProfileApiErrorData = (error: unknown): Record<string, unknown> =>');
+    expect(helpers).toContain('export const getProfileApiErrorCode = (error: unknown) =>');
+    expect(accountActions).toContain("import { getApiErrorMessage } from '../utils/apiError';");
+    expect(orderActions).toContain("import { getApiErrorMessage } from '../utils/apiError';");
+    expect(accountActions).toContain('if (isFormValidationError(err)) {');
+    expect(accountActions).toContain('focusProfileModalFormError');
+    expect(accountActions).toMatch(/if \(isFormValidationError\(err\)\) \{[\s\S]*?return;/);
+    expect(paymentActions).toContain("announceAccessibleMessage(getApiErrorMessage(err, latestT('pages.profile.continuePayFailed'), latestLanguage, { includeClientMessage: true }), 'error')");
   });
 
   it('keeps payment-return synchronization off the mutable orders dependency', () => {

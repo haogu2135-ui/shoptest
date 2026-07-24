@@ -13,14 +13,13 @@ import { useDocumentMeta } from '../hooks/useDocumentMeta';
 import { useMarket } from '../hooks/useMarket';
 import { useCartQuantitySync } from '../hooks/useCartQuantitySync';
 import { useCartCheckoutSubmit } from '../hooks/useCartCheckoutSubmit';
+import { useCartItemMutations } from '../hooks/useCartItemMutations';
+import { useCartQuantityActions } from '../hooks/useCartQuantityActions';
+import { useCartRecoveryAdds } from '../hooks/useCartRecoveryAdds';
 import { formatSelectedSpecs } from '../utils/selectedSpecs';
-import { addGuestCartItem, getGuestCartItems, removeGuestCartItem, removeGuestCartItems, updateGuestCartQuantity } from '../utils/guestCart';
+import { getGuestCartItems } from '../utils/guestCart';
 import {
   getSavedForLaterItems,
-  removeSavedForLaterProduct,
-  removeSavedForLaterItem,
-  replaceSavedForLaterItems,
-  saveCartItemForLater,
   SAVE_FOR_LATER_STORAGE_KEY,
   type SavedForLaterItem,
 } from '../utils/saveForLater';
@@ -39,7 +38,6 @@ import {
   getCartLineQuantity,
   getCartQuantityLimit,
   isCartItemAvailable as isAvailable,
-  normalizeCartQuantity,
   resolveCartImage,
   roundCartMoney,
 } from '../utils/cartUi';
@@ -51,7 +49,6 @@ import ShopTag from '../components/ShopTag';
 import ShopAlert from '../components/ShopAlert';
 import { reportNonBlockingError } from '../utils/nonBlockingError';
 import { getLocalStorageItem, removeSessionStorageItem } from '../utils/safeStorage';
-import { allSettledWithConcurrency } from '../utils/asyncBatch';
 import { getApiErrorMessage, isAuthExpiredError } from '../utils/apiError';
 import AddOnAssistant from '../components/AddOnAssistant';
 import { ProductCardSkeleton, StatsStripSkeleton } from '../components/SkeletonLoader';
@@ -466,26 +463,14 @@ const Cart: React.FC = () => {
     };
   }, [resetCheckoutStateAfterCartMutation]);
 
-  const updateQuantity = (item: CartItem, quantity: number) => {
-    if (hasStaleCartData) return;
-    const normalizedQuantity = normalizeCartQuantity(item, quantity);
-    const authenticated = hasAuthenticatedCartSession();
-    invalidateCartSnapshotRequests();
-    setQuantityDrafts((drafts) => {
-      if (!(item.id in drafts)) return drafts;
-      const nextDrafts = { ...drafts };
-      delete nextDrafts[item.id];
-      return nextDrafts;
-    });
-    if (getCartLineQuantity(item.quantity) === normalizedQuantity && !hasPendingQuantityTimer(item.id)) return;
-    if (!authenticated) {
-      setCartItems(normalizeCartItems(updateGuestCartQuantity(item.id, normalizedQuantity)));
-      return;
-    }
-
-    setCartItems((items) => normalizeCartItems(items).map((entry) => (entry.id === item.id ? { ...entry, quantity: normalizedQuantity } : entry)));
-    scheduleQuantitySync(item.id, normalizedQuantity);
-  };
+  const { updateQuantity } = useCartQuantityActions({
+    hasPendingQuantityTimer,
+    hasStaleCartData,
+    invalidateCartSnapshotRequests,
+    scheduleQuantitySync,
+    setCartItems,
+    setQuantityDrafts,
+  });
 
   const renderQuantityControl = (item: CartItem) => {
     const itemName = getCartItemName(item);
@@ -570,219 +555,35 @@ const Cart: React.FC = () => {
       : <span className="cart-page__text cart-page__text--danger cart-page__unavailableSubtotal">{t('pages.cart.quantityUnavailable')}</span>
   );
 
-  const removeItem = async (itemId: number) => {
-    if (hasStaleCartData) return;
-    if (removingItemIds.includes(itemId)) return;
-    invalidateCartSnapshotRequests();
-    cancelPendingQuantitySync([itemId]);
-    try {
-      setRemovingItemIds((ids) => Array.from(new Set([...ids, itemId])));
-      const authenticated = hasAuthenticatedCartSession();
-      if (authenticated) {
-        await cartApi.removeItem(itemId);
-        if (!mountedRef.current) return;
-        setCartItems((items) => normalizeCartItems(items).filter((item) => item.id !== itemId));
-      } else {
-        setCartItems(normalizeCartItems(removeGuestCartItem(itemId)));
-      }
-      announceAccessibleMessage(t('messages.deleteSuccess'), 'success');
-      setSelectedIds((ids) => ids.filter((id) => id !== itemId));
-      resetCheckoutStateAfterCartMutation();
-      dispatchDomEvent('shop:cart-updated');
-    } catch (err: unknown) {
-      if (!mountedRef.current) return;
-      announceAccessibleMessage(getApiErrorMessage(err, t('messages.deleteFailed'), language), 'error');
-    } finally {
-      if (mountedRef.current) {
-        setRemovingItemIds((ids) => ids.filter((id) => id !== itemId));
-      }
-    }
-  };
-
-  const saveForLater = async (item: CartItem) => {
-    if (hasStaleCartData) return;
-    if (removingItemIds.includes(item.id)) return;
-    invalidateCartSnapshotRequests();
-    cancelPendingQuantitySync([item.id]);
-    const previousSavedItems = getSavedForLaterItemsSnapshot();
-    const savedItem = saveCartItemForLater(item);
-    if (!savedItem) {
-      announceAccessibleMessage(t('messages.operationFailed'), 'error');
-      return;
-    }
-    setSavedItems(getSavedForLaterItemsSnapshot());
-    setRemovingItemIds((ids) => Array.from(new Set([...ids, item.id])));
-    try {
-      const authenticated = hasAuthenticatedCartSession();
-      if (authenticated) {
-        await cartApi.removeItem(item.id);
-        if (!mountedRef.current) return;
-        setCartItems((items) => normalizeCartItems(items).filter((cartItem) => cartItem.id !== item.id));
-      } else {
-        setCartItems(normalizeCartItems(removeGuestCartItem(item.id)));
-      }
-      setSelectedIds((ids) => ids.filter((id) => id !== item.id));
-      resetCheckoutStateAfterCartMutation();
-      announceAccessibleMessage(t('pages.cart.savedForLater'), 'success');
-      dispatchDomEvent('shop:cart-updated');
-    } catch (error: unknown) {
-      replaceSavedForLaterItems(previousSavedItems);
-      if (!mountedRef.current) return;
-      setSavedItems(previousSavedItems);
-      announceAccessibleMessage(getApiErrorMessage(error, t('messages.operationFailed'), language), 'error');
-    } finally {
-      if (mountedRef.current) {
-        setRemovingItemIds((ids) => ids.filter((id) => id !== item.id));
-      }
-    }
-  };
-
-  const moveSavedItemToCart = async (item: SavedForLaterItem) => {
-    if (hasStaleCartData) return;
-    if (restoringSaved || restoringSavedItemIds.includes(item.id)) return;
-    const cartSnapshotRequestId = invalidateCartSnapshotRequests();
-    setRestoringSavedItemIds((ids) => Array.from(new Set([...ids, item.id])));
-    try {
-      const authenticated = hasAuthenticatedCartSession();
-      if (authenticated) {
-        await cartApi.addItem(0, item.productId, item.quantity, item.selectedSpecs);
-        const response = await cartApi.getItems(0);
-        if (!mountedRef.current) return;
-        if (isCurrentCartSnapshotRequest(cartSnapshotRequestId)) {
-          const nextItems = normalizeCartItems(response.data);
-          setCartItems(nextItems);
-          clearRecentProductsCache();
-          setSelectedIds(nextItems.filter(canCheckout).map((cartItem) => cartItem.id));
-        }
-      } else {
-        addGuestCartItem(
-          {
-            ...item,
-            id: item.productId,
-            name: getCartItemName(item),
-            status: item.productStatus,
-          },
-          item.quantity,
-          item.selectedSpecs,
-          item.price,
-        );
-        const nextItems = normalizeCartItems(getGuestCartItems());
-        setCartItems(nextItems);
-        clearRecentProductsCache();
-        setSelectedIds(nextItems.filter(canCheckout).map((cartItem) => cartItem.id));
-      }
-      removeSavedForLaterProduct(item.productId, item.selectedSpecs);
-      setSavedItems(getSavedForLaterItemsSnapshot());
-      announceAccessibleMessage(t('pages.cart.movedToCart'), 'success');
-      if (authenticated) dispatchDomEvent('shop:cart-updated');
-    } catch (err: unknown) {
-      if (!mountedRef.current) return;
-      announceAccessibleMessage(getApiErrorMessage(err, t('messages.operationFailed'), language), 'error');
-    } finally {
-      if (mountedRef.current) {
-        setRestoringSavedItemIds((ids) => ids.filter((id) => id !== item.id));
-      }
-    }
-  };
-
-  const moveSavedItemsToCart = async (items: SavedForLaterItem[]) => {
-    if (hasStaleCartData) return;
-    if (items.length === 0) return;
-    const targetItems = items.slice(0, conversionConfig.saveForLater.maxBulkRestoreItems);
-    const cartSnapshotRequestId = invalidateCartSnapshotRequests();
-    setRestoringSaved(true);
-    try {
-      const authenticated = hasAuthenticatedCartSession();
-      let restoredItems = targetItems;
-      if (authenticated) {
-        const results = await allSettledWithConcurrency(
-          targetItems,
-          (item) => cartApi.addItem(0, item.productId, item.quantity, item.selectedSpecs),
-        );
-        if (!mountedRef.current) return;
-        restoredItems = targetItems.filter((_, index) => results[index].status === 'fulfilled');
-        if (restoredItems.length === 0) {
-          const failedResult = results.find((result) => result.status === 'rejected') as PromiseRejectedResult | undefined;
-          announceAccessibleMessage(getApiErrorMessage(failedResult?.reason, t('messages.operationFailed'), language), 'error');
-          return;
-        }
-        const response = await cartApi.getItems(0);
-        if (!mountedRef.current) return;
-        if (isCurrentCartSnapshotRequest(cartSnapshotRequestId)) {
-          const nextItems = normalizeCartItems(response.data);
-          setCartItems(nextItems);
-          clearRecentProductsCache();
-          setSelectedIds(nextItems.filter(canCheckout).map((cartItem) => cartItem.id));
-        }
-      } else {
-        targetItems.forEach((item) => {
-          addGuestCartItem(
-            {
-              ...item,
-              id: item.productId,
-              name: getCartItemName(item),
-              status: item.productStatus,
-            },
-            item.quantity,
-            item.selectedSpecs,
-            item.price,
-          );
-        });
-        const nextItems = normalizeCartItems(getGuestCartItems());
-        setCartItems(nextItems);
-        clearRecentProductsCache();
-        setSelectedIds(nextItems.filter(canCheckout).map((cartItem) => cartItem.id));
-      }
-      restoredItems.forEach((item) => removeSavedForLaterProduct(item.productId, item.selectedSpecs));
-      setSavedItems(getSavedForLaterItemsSnapshot());
-      if (restoredItems.length === targetItems.length) {
-        announceAccessibleMessage(t('pages.cart.movedSavedBatch', { count: restoredItems.length }), 'success');
-      } else {
-        announceAccessibleMessage(t('pages.cart.movedSavedBatchPartial', { count: restoredItems.length, failed: targetItems.length - restoredItems.length }), 'warning');
-      }
-      if (authenticated) dispatchDomEvent('shop:cart-updated');
-    } catch (err: unknown) {
-      if (!mountedRef.current) return;
-      announceAccessibleMessage(getApiErrorMessage(err, t('messages.operationFailed'), language), 'error');
-    } finally {
-      if (mountedRef.current) setRestoringSaved(false);
-    }
-  };
-
-  const removeSavedItem = (itemId: number) => {
-    setSavedItems(normalizeSavedForLaterItems(removeSavedForLaterItem(itemId)));
-    announceAccessibleMessage(t('messages.deleteSuccess'), 'success');
-  };
-
-  const removeItems = async (itemIds: number[], successMessage: string) => {
-    if (hasStaleCartData) return;
-    if (itemIds.length === 0) return;
-    const normalizedIds = Array.from(new Set(itemIds));
-    invalidateCartSnapshotRequests();
-    cancelPendingQuantitySync(normalizedIds);
-    try {
-      setRemovingItemIds((ids) => Array.from(new Set([...ids, ...normalizedIds])));
-      const authenticated = hasAuthenticatedCartSession();
-      if (authenticated) {
-        await cartApi.removeItems(normalizedIds);
-        if (!mountedRef.current) return;
-        setCartItems((items) => normalizeCartItems(items).filter((item) => !normalizedIds.includes(item.id)));
-      } else {
-        setCartItems(normalizeCartItems(removeGuestCartItems(normalizedIds)));
-      }
-      setSelectedIds((ids) => ids.filter((id) => !normalizedIds.includes(id)));
-      resetCheckoutStateAfterCartMutation();
-      announceAccessibleMessage(successMessage, 'success');
-      dispatchDomEvent('shop:cart-updated');
-    } catch (err: unknown) {
-      if (!mountedRef.current) return;
-      announceAccessibleMessage(getApiErrorMessage(err, t('messages.deleteFailed'), language), 'error');
-    } finally {
-      if (mountedRef.current) {
-        setRemovingItemIds((ids) => ids.filter((id) => !normalizedIds.includes(id)));
-      }
-    }
-  };
+  const {
+    moveSavedItemToCart,
+    moveSavedItemsToCart,
+    removeItem,
+    removeItems,
+    removeSavedItem,
+    saveForLater,
+  } = useCartItemMutations({
+    canCheckout,
+    cancelPendingQuantitySync,
+    clearRecentProductsCache,
+    getCartItemName,
+    hasStaleCartData,
+    invalidateCartSnapshotRequests,
+    isCurrentCartSnapshotRequest,
+    language,
+    mountedRef,
+    removingItemIds,
+    resetCheckoutStateAfterCartMutation,
+    restoringSaved,
+    restoringSavedItemIds,
+    setCartItems,
+    setRemovingItemIds,
+    setRestoringSaved,
+    setRestoringSavedItemIds,
+    setSavedItems,
+    setSelectedIds,
+    t,
+  });
 
   const cartCheckoutMetrics = useMemo(() => deriveCartCheckoutMetrics(cartItems, selectedIds), [cartItems, selectedIds]);
   const {
@@ -1029,62 +830,24 @@ const Cart: React.FC = () => {
   const moveAllSavedActionLabel = `${t('pages.cart.moveAllToCart')}: ${t('pages.cart.saveForLaterTitle')} (${savedItems.length})`;
   const restoreSavedReminderActionLabel = `${t('pages.cart.restoreReminder')}: ${t('pages.cart.savedReminderTitle', { count: savedReminderItems.length })}`;
 
-  const addSuggestedProduct = async (product: Product) => {
-    if (hasStaleCartData) {
-      throw new Error(t('pages.cart.staleDataWarning'));
-    }
-    const productId = normalizePositiveProductId(product.id);
-    if (productId === null) {
-      throw new Error(t('messages.addFailed'));
-    }
-    const cartSnapshotRequestId = invalidateCartSnapshotRequests();
-    const productWithSafeId = { ...product, id: productId };
-    const authenticated = hasAuthenticatedCartSession();
-    if (authenticated) {
-      await cartApi.addItem(0, productId, 1);
-      const response = await cartApi.getItems(0);
-      if (!mountedRef.current) return;
-      clearRecentProductsCache();
-      if (isCurrentCartSnapshotRequest(cartSnapshotRequestId)) {
-        const nextItems = normalizeCartItems(response.data);
-        setCartItems(nextItems);
-        const addedItemIds = nextItems
-          .filter((item) => item.productId === productId && canCheckout(item))
-          .map((item) => item.id);
-        setSelectedIds((ids) => Array.from(new Set([...ids, ...addedItemIds])));
-      }
-      dispatchDomEvent('shop:cart-updated');
-      return;
-    }
-    const addedItem = addGuestCartItem(productWithSafeId, 1);
-    if (!addedItem) {
-      throw new Error(t('messages.addFailed'));
-    }
-    const nextItems = normalizeCartItems(getGuestCartItems());
-    setCartItems(nextItems);
-    clearRecentProductsCache();
-    const addedItemIds = nextItems
-      .filter((item) => item.productId === productId && canCheckout(item))
-      .map((item) => item.id);
-    setSelectedIds((ids) => Array.from(new Set([...ids, ...addedItemIds])));
-    dispatchDomEvent('shop:cart-updated');
-  };
-
-  const addRecentProduct = async (product: Product) => {
-    if (needsOptionSelection(product)) {
-      navigate(`/products/${product.id}`);
-      return;
-    }
-    setAddingRecentId(product.id);
-    try {
-      await addSuggestedProduct(product);
-      announceAccessibleMessage(t('messages.addCartSuccess'), 'success');
-    } catch (err: unknown) {
-      announceAccessibleMessage(getApiErrorMessage(err, t('messages.addFailed'), language), 'error');
-    } finally {
-      setAddingRecentId(null);
-    }
-  };
+  const {
+    addRecentProduct,
+    addSuggestedProduct,
+  } = useCartRecoveryAdds({
+    canCheckout,
+    clearRecentProductsCache,
+    hasStaleCartData,
+    invalidateCartSnapshotRequests,
+    isCurrentCartSnapshotRequest,
+    language,
+    mountedRef,
+    navigate,
+    normalizePositiveProductId,
+    setAddingRecentId,
+    setCartItems,
+    setSelectedIds,
+    t,
+  });
 
   const paymentCancelledResumeLabel = paymentReturnOrderNo
     ? `${t('pages.cart.paymentCancelledResume')}: ${paymentReturnOrderNo}`

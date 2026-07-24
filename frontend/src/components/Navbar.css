@@ -3205,8 +3205,9 @@ body.shop-mobile-app .shop-nav__bottomItem--active .ant-badge + span {
   column-gap: 3px;
 }
 
+/* Commercial Spanish bottom-nav product labels stay >=12px */
 .shop-nav__bottomBar--es .shop-nav__bottomItem--products span:not(.anticon):not(.ant-badge):not(.ant-scroll-number) {
-  font-size: 9.5px !important;
+  font-size: 12px !important;
   letter-spacing: 0;
   text-overflow: clip;
 }

@@ -4,6 +4,15 @@ import path from 'path';
 const readFrontend = (...segments: string[]) =>
   fs.readFileSync(path.join(__dirname, '..', ...segments), 'utf8');
 
+const readCheckoutPage = () => readFrontend('pages', 'Checkout.tsx');
+
+const readCheckoutSurface = () => [
+  readCheckoutPage(),
+  readFrontend('components', 'checkout', 'CheckoutFormSections.tsx'),
+  readFrontend('components', 'checkout', 'CheckoutShellStates.tsx'),
+  readFrontend('components', 'checkout', 'CheckoutConversionSections.tsx'),
+].join('\n');
+
 describe('commercial performance contracts', () => {
   it('keeps multi-MB China town catalogs out of the client region loader', () => {
     const source = readFrontend('regionData.ts');
@@ -199,7 +208,7 @@ describe('commercial performance contracts', () => {
 
   it('keeps Navbar and Checkout free of static ant-design icons', () => {
     const navbar = readFrontend('components', 'Navbar.tsx');
-    const checkout = readFrontend('pages', 'Checkout.tsx');
+    const checkout = readCheckoutSurface();
     const shopIcon = readFrontend('components', 'ShopIcon.tsx');
     expect(navbar).not.toContain('@ant-design/icons');
     expect(checkout).not.toContain('@ant-design/icons');
@@ -279,7 +288,7 @@ describe('commercial performance contracts', () => {
       expect(source).not.toMatch(/\bmessage\.(success|error|warning|info)\s*\(/);
     }
     // Checkout uses shell-safe announceAccessibleMessage (no static antd message import).
-    const checkout = readFrontend('pages', 'Checkout.tsx');
+    const checkout = readCheckoutSurface();
     expect(checkout).toContain('announceAccessibleMessage');
     expect(checkout).toContain('showCheckoutMessage');
     expect(checkout).not.toMatch(/import \{[^}]*\bmessage\b[^}]*\} from 'antd'/);
@@ -416,7 +425,7 @@ describe('commercial performance contracts', () => {
   });
 
   it('keeps Checkout free of ant Space layout wrappers', () => {
-    const checkout = readFrontend('pages', 'Checkout.tsx');
+    const checkout = readCheckoutSurface();
     expect(checkout).toContain('checkout-page__paymentUnavailableActions');
     expect(checkout).toContain('checkout-page__paymentRecoveryActions');
     expect(checkout).toContain('checkout-page__stack');
@@ -479,7 +488,7 @@ describe('commercial performance contracts', () => {
   });
 
   it('keeps Checkout free of ant Spin and PetGallery free of ant Space', () => {
-    const checkout = readFrontend('pages', 'Checkout.tsx');
+    const checkout = readCheckoutSurface();
     const gallery = readFrontend('pages', 'PetGallery.tsx');
     expect(checkout).not.toMatch(/\bSpin\b/);
     expect(checkout).toContain('checkout-page__spinner');
@@ -506,7 +515,7 @@ describe('commercial performance contracts', () => {
   });
 
   it('keeps Checkout free of static Typography imports', () => {
-    const checkout = readFrontend('pages', 'Checkout.tsx');
+    const checkout = readCheckoutSurface();
     expect(checkout).not.toMatch(/\bTypography\b/);
     expect(checkout).not.toMatch(/import \{[^}]*\bTypography\b[^}]*\} from 'antd'/);
     expect(checkout).toContain('checkout-page__title');
@@ -660,7 +669,7 @@ describe('commercial performance contracts', () => {
   });
 
   it('keeps Checkout free of ant Result/List/Divider', () => {
-    const checkout = readFrontend('pages', 'Checkout.tsx');
+    const checkout = readCheckoutSurface();
     expect(checkout).not.toMatch(/import \{[^}]*\bResult\b[^}]*\} from 'antd'/);
     expect(checkout).not.toMatch(/import \{[^}]*\bList\b[^}]*\} from 'antd'/);
     expect(checkout).not.toMatch(/import \{[^}]*\bDivider\b[^}]*\} from 'antd'/);
@@ -906,7 +915,7 @@ describe('commercial performance contracts', () => {
   });
 
   it('keeps Checkout free of static ant Select for coupon', () => {
-    const source = readFrontend('pages', 'Checkout.tsx');
+    const source = readCheckoutSurface();
     expect(source).toContain('ShopSelect');
     expect(source).toContain('checkout-page__couponSelect');
     expect(source).not.toMatch(/<Select\b/);
@@ -940,7 +949,7 @@ describe('commercial performance contracts', () => {
   });
 
   it('keeps Checkout free of Modal.confirm', () => {
-    const source = readFrontend('pages', 'Checkout.tsx');
+    const source = readCheckoutSurface();
     expect(source).toContain('ShopConfirm');
     expect(source).toContain('checkout-page__rollbackConfirmModal');
     expect(source).not.toContain('Modal.confirm');
@@ -1184,7 +1193,6 @@ describe('commercial performance contracts', () => {
   it('keeps conversion path pages free of ant Card shell', () => {
     for (const [dir, name, marker] of [
       ['pages', 'Cart.tsx', 'cart-page__savedCard'],
-      ['pages', 'Checkout.tsx', 'checkout-page__sectionCard'],
       ['pages', 'CouponCenter.tsx', 'coupon-claim-section'],
       ['pages', 'OrderTracking.tsx', 'order-tracking-page__lookupCard'],
       ['pages', 'PaymentInstructions.tsx', 'payment-instructions-page__card'],
@@ -1196,6 +1204,10 @@ describe('commercial performance contracts', () => {
       expect(source).not.toMatch(/<Card\b/);
       expect(source).toContain(marker);
     }
+    const checkout = readCheckoutSurface();
+    expect(checkout).not.toMatch(/import \{[^}]*\bCard\b[^}]*\} from 'antd'/);
+    expect(checkout).not.toMatch(/<Card\b/);
+    expect(checkout).toContain('checkout-page__sectionCard');
   });
 
   it('keeps ShopBreadcrumb free of ant Breadcrumb', () => {
@@ -1295,7 +1307,7 @@ describe('commercial performance contracts', () => {
   });
 
   it('keeps Checkout free of static antd message import', () => {
-    const source = readFrontend('pages', 'Checkout.tsx');
+    const source = readCheckoutSurface();
     expect(source).not.toMatch(/import \{[^}]*\bmessage\b[^}]*\} from 'antd'/);
     expect(source).not.toMatch(/message\[type\]/);
     expect(source).toContain('announceAccessibleMessage');
@@ -1328,7 +1340,7 @@ describe('commercial performance contracts', () => {
   });
 
   it('keeps Checkout free of static ant Cascader', () => {
-    const source = readFrontend('pages', 'Checkout.tsx');
+    const source = readCheckoutSurface();
     expect(source).toContain('ShopCascader');
     expect(source).toContain('checkoutRegionCascaderOpen');
     expect(source).toContain('checkout-region-cascader-popup');
@@ -1390,7 +1402,7 @@ describe('commercial performance contracts', () => {
   });
 
   it('keeps Checkout free of static ant Radio', () => {
-    const source = readFrontend('pages', 'Checkout.tsx');
+    const source = readCheckoutSurface();
     expect(source).not.toMatch(/import \{[^}]*\bRadio\b[^}]*\} from 'antd'/);
     expect(source).not.toMatch(/<Radio\b/);
     expect(source).toContain('checkout-page__addressGroup');
@@ -1799,7 +1811,7 @@ describe('commercial performance contracts', () => {
   });
 
   it('keeps Checkout free of static ant Input', () => {
-    const source = fs.readFileSync(path.resolve(__dirname, '../pages/Checkout.tsx'), 'utf8');
+    const source = readCheckoutSurface();
     expect(source).toContain('ShopInput');
     expect(source).toContain('ShopTextArea');
     expect(source).not.toMatch(/import \{[^}]*\bInput\b[^}]*\} from 'antd'/);
@@ -2414,7 +2426,7 @@ describe('commercial performance contracts', () => {
       ['pages', 'LogisticsCarrierManagement.tsx'],
       ['pages', 'SecurityAuditLogManagement.tsx'],
     ] as const) {
-      const source = readFrontend(dir, name);
+      const source = name === 'Checkout.tsx' ? readCheckoutSurface() : readFrontend(dir, name);
       expect(source).toContain('ShopProgress');
       expect(source).not.toMatch(/import \{[^}]*\bProgress\b[^}]*\} from 'antd'/);
       expect(source).not.toMatch(/<Progress\b/);
@@ -2493,7 +2505,7 @@ describe('commercial performance contracts', () => {
       ['pages', 'ProductManagement.tsx'],
       ['pages', 'SystemMonitor.tsx'],
     ] as const) {
-      const source = readFrontend(dir, name);
+      const source = name === 'Checkout.tsx' ? readCheckoutSurface() : readFrontend(dir, name);
       expect(source).toContain('ShopTag');
       expect(source).not.toMatch(/import \{[^}]*\bTag\b[^}]*\} from 'antd'/);
       expect(source).not.toMatch(/<Tag\b/);
@@ -2515,7 +2527,7 @@ describe('commercial performance contracts', () => {
       ['pages', 'ProductManagement.tsx'],
       ['pages', 'SupportManagement.tsx'],
     ] as const) {
-      const source = readFrontend(dir, name);
+      const source = name === 'Checkout.tsx' ? readCheckoutSurface() : readFrontend(dir, name);
       expect(source).toContain('ShopAlert');
       expect(source).not.toMatch(/import \{[^}]*\bAlert\b[^}]*\} from 'antd'/);
       expect(source).not.toMatch(/<Alert\b/);
