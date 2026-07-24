@@ -2,15 +2,19 @@ import fs from 'fs';
 import path from 'path';
 
 const readProductDetailSource = () => fs.readFileSync(path.resolve(__dirname, 'ProductDetail.tsx'), 'utf8');
+const readProductDetailSummarySource = () => fs.readFileSync(path.resolve(__dirname, 'productDetailSummary.tsx'), 'utf8');
 const readProductDetailHelpersSource = () => fs.readFileSync(path.resolve(__dirname, 'productDetailHelpers.tsx'), 'utf8');
 const readProductDetailCss = () => fs.readFileSync(path.resolve(__dirname, 'ProductDetail.css'), 'utf8');
+const readProductDetailPurchaseSurface = () => `${readProductDetailSource()}\n${readProductDetailSummarySource()}`;
 
 describe('ProductDetail size guide modal layout', () => {
   it('keeps short landscape size-guide instructions visible above the footer', () => {
-    const source = readProductDetailSource();
+    const source = readProductDetailPurchaseSurface();
+    const page = readProductDetailSource();
     const css = readProductDetailCss();
     const fixCss = css.slice(css.indexOf('F3414:'));
 
+    expect(page).toContain('<ProductDetailSizeGuideModal');
     expect(source).toContain('product-detail__sizeGuideModal');
     expect(source).toContain('ShopModal');
     expect(source).toContain('product-detail__sizeGuideModalRoot');
@@ -23,7 +27,7 @@ describe('ProductDetail size guide modal layout', () => {
   });
 
   it('bounds size calculator weight input and estimate value', () => {
-    const source = readProductDetailSource();
+    const source = readProductDetailPurchaseSurface();
     const helpers = readProductDetailHelpersSource();
 
     expect(helpers).toContain('export const PRODUCT_SIZE_CALCULATOR_MAX_WEIGHT_KG = 200;');

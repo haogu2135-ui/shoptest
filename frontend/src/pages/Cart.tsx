@@ -1,10 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import ShopCheckbox from '../components/ShopCheckbox';
 import ShopButton from '../components/ShopButton';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import ShopPopconfirm from '../components/ShopPopconfirm';
 import { ShopIcon, SI } from '../components/ShopIcon';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { cartApi, productApi } from '../api';
 import type { CartItem, ProductPublic as Product } from '../types';
 import { useLanguage } from '../i18n';
@@ -16,7 +15,6 @@ import { useCartCheckoutSubmit } from '../hooks/useCartCheckoutSubmit';
 import { useCartItemMutations } from '../hooks/useCartItemMutations';
 import { useCartQuantityActions } from '../hooks/useCartQuantityActions';
 import { useCartRecoveryAdds } from '../hooks/useCartRecoveryAdds';
-import { formatSelectedSpecs } from '../utils/selectedSpecs';
 import { getGuestCartItems } from '../utils/guestCart';
 import {
   getSavedForLaterItems,
@@ -33,25 +31,24 @@ import {
   canCartItemCheckout as canCheckout,
   cartImageFallback,
   deriveCartShippingSummary,
-  getCartItemLowStockCount,
   getCartLineAmount,
   getCartLineQuantity,
-  getCartQuantityLimit,
   isCartItemAvailable as isAvailable,
   resolveCartImage,
   roundCartMoney,
 } from '../utils/cartUi';
 import { dispatchDomEvent } from '../utils/domEvents';
-import PageError from '../components/PageError';
 import ShopBreadcrumb from '../components/ShopBreadcrumb';
-import ShopProgress from '../components/ShopProgress';
 import ShopTag from '../components/ShopTag';
 import ShopAlert from '../components/ShopAlert';
 import { reportNonBlockingError } from '../utils/nonBlockingError';
 import { getLocalStorageItem, removeSessionStorageItem } from '../utils/safeStorage';
 import { getApiErrorMessage, isAuthExpiredError } from '../utils/apiError';
 import AddOnAssistant from '../components/AddOnAssistant';
-import { ProductCardSkeleton, StatsStripSkeleton } from '../components/SkeletonLoader';
+import { CartFullEmptyState, CartLoadErrorState, CartLoadingState } from './cartShellStates';
+import { CartInlineEmptyPanel, CartOrderSummary, CartPaymentReturnBanner } from './cartConversionPanels';
+import { CartLineItems } from './cartLineItems';
+import { CartSavedPanel } from './cartSavedPanel';
 import './Cart.css';
 import '../styles/mobile-page-contrast.css';
 
@@ -107,11 +104,6 @@ const getSavedAgeDays = (savedAt?: number) => {
   return Math.max(0, Math.floor((Date.now() - savedAt) / 86400000));
 };
 
-const isCartItemStockOut = (stock?: number | null) => {
-  if (stock === undefined || stock === null) return false;
-  const numeric = Number(stock);
-  return Number.isFinite(numeric) && numeric <= 0;
-};
 
 const getLineTotal = (item: Pick<CartItem, 'price' | 'quantity'> | Pick<SavedForLaterItem, 'price' | 'quantity'>) =>
   getCartLineAmount(item);
@@ -472,89 +464,6 @@ const Cart: React.FC = () => {
     setQuantityDrafts,
   });
 
-  const renderQuantityControl = (item: CartItem) => {
-    const itemName = getCartItemName(item);
-    const quantityLabel = `${t('common.quantity')}: ${itemName}`;
-    const decreaseLabel = `${t('pages.cart.decreaseQuantity')}: ${itemName}`;
-    const increaseLabel = `${t('pages.cart.increaseQuantity')}: ${itemName}`;
-    const limit = getCartQuantityLimit(item.stock);
-    const syncing = updatingItemIds.includes(item.id);
-    const disabled = hasStaleCartData || !isAvailable(item) || removingItemIds.includes(item.id) || checkoutSubmitting;
-    const quantity = getCartLineQuantity(item.quantity);
-    const quantityDraft = quantityDrafts[item.id];
-    const quantityValue = quantityDraft ?? quantity;
-    if (!isAvailable(item)) {
-      const unavailableLabel = isCartItemStockOut(item.stock) ? t('pages.cart.outOfStock') : t('pages.cart.quantityUnavailable');
-      return (
-        <div
-          className="cart-page__quantityStepper cart-page__quantityStepper--unavailable"
-          role="status"
-          aria-label={`${quantityLabel}: ${unavailableLabel}`}
-          title={unavailableLabel}
-        >
-          <span className="cart-page__quantityUnavailable">{unavailableLabel}</span>
-        </div>
-      );
-    }
-
-    return (
-      <div className="cart-page__quantityStepper" role="group" aria-label={quantityLabel} title={quantityLabel} aria-busy={syncing}>
-        <ShopButton
-          size="small"
-          icon={<ShopIcon path={SI.minus} />}
-          aria-label={decreaseLabel}
-          title={decreaseLabel}
-          disabled={disabled || quantity <= 1}
-          onClick={() => updateQuantity(item, quantity - 1)}
-        />
-        <input
-          className="cart-page__quantityInput"
-          type="number"
-          min={1}
-          max={limit}
-          step={1}
-          inputMode="numeric"
-          disabled={disabled}
-          aria-label={quantityLabel}
-          title={quantityLabel}
-          value={quantityValue}
-          onChange={(event) => {
-            const nextValue = event.currentTarget.value;
-            if (nextValue === '') {
-              setQuantityDrafts((drafts) => ({ ...drafts, [item.id]: '' }));
-              return;
-            }
-            updateQuantity(item, Math.floor(Number(nextValue) || 1));
-          }}
-          onBlur={() => {
-            if (quantityDraft === '') {
-              updateQuantity(item, 1);
-            }
-          }}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter' && quantityDraft === '') {
-              event.currentTarget.blur();
-            }
-          }}
-        />
-        <ShopButton
-          size="small"
-          icon={<ShopIcon path={SI.plus} />}
-          aria-label={increaseLabel}
-          title={increaseLabel}
-          disabled={disabled || quantity >= limit}
-          onClick={() => updateQuantity(item, quantity + 1)}
-        />
-      </div>
-    );
-  };
-
-  const renderLineTotal = (item: CartItem) => (
-    canCheckout(item)
-      ? <span className="cart-page__text cart-page__text--strong cart-page__priceText commerce-money">{formatMoney(getLineTotal(item))}</span>
-      : <span className="cart-page__text cart-page__text--danger cart-page__unavailableSubtotal">{t('pages.cart.quantityUnavailable')}</span>
-  );
-
   const {
     moveSavedItemToCart,
     moveSavedItemsToCart,
@@ -858,231 +767,51 @@ const Cart: React.FC = () => {
   const paymentCancelledCheckoutLabel = t('pages.cart.checkout');
 
   const paymentReturnBanner = paymentReturnIncomplete ? (
-        <ShopAlert
-          className="cart-page__paymentReturn"
-          type={paymentReturnStatus === 'failed' ? 'error' : 'warning'}
-          showIcon
-          closable
-          role="alert"
-          aria-live="assertive"
-          onClose={clearPaymentReturnParams}
-          message={paymentReturnStatus === 'failed'
-            ? t('pages.cart.paymentFailedTitle')
-            : t('pages.cart.paymentCancelledTitle')}
-          description={paymentReturnOrderNo
-            ? t(
-              paymentReturnStatus === 'failed'
-                ? 'pages.cart.paymentFailedOrderText'
-                : 'pages.cart.paymentCancelledOrderText',
-              { orderNo: paymentReturnOrderNo },
-            )
-            : t(
-              paymentReturnStatus === 'failed'
-                ? 'pages.cart.paymentFailedText'
-                : 'pages.cart.paymentCancelledText',
-            )}
-          action={(
-            <div className="cart-page__paymentReturnActions">
-              <ShopButton
-                type="primary"
-                size="small"
-                aria-label={paymentCancelledResumeLabel}
-                title={paymentCancelledResumeLabel}
-                onClick={() => {
-                  clearPaymentReturnParams();
-                  navigate(paymentReturnOrderNo
-                    ? `/profile?tab=orders&orderNo=${encodeURIComponent(paymentReturnOrderNo)}`
-                    : '/profile?tab=orders');
-                }}
-              >
-                {t('pages.cart.paymentCancelledResume')}
-              </ShopButton>
-              {paymentReturnOrderNo ? (
-                <ShopButton
-                  size="small"
-                  aria-label={paymentCancelledTrackLabel}
-                  title={paymentCancelledTrackLabel}
-                  onClick={() => {
-                    clearPaymentReturnParams();
-                    navigate(`/track-order?orderNo=${encodeURIComponent(paymentReturnOrderNo)}`);
-                  }}
-                >
-                  {t('pages.cart.paymentCancelledTrack')}
-                </ShopButton>
-              ) : null}
-              {cartItems.length > 0 ? (
-                <ShopButton
-                  size="small"
-                  aria-label={paymentCancelledCheckoutLabel}
-                  title={paymentCancelledCheckoutLabel}
-                  onClick={() => {
-                    clearPaymentReturnParams();
-                    navigate('/checkout');
-                  }}
-                >
-                  {t('pages.cart.checkout')}
-                </ShopButton>
-              ) : (
-                <ShopButton
-                  size="small"
-                  aria-label={t('pages.cart.browse')}
-                  title={t('pages.cart.browse')}
-                  onClick={() => {
-                    clearPaymentReturnParams();
-                    navigate('/products');
-                  }}
-                >
-                  {t('pages.cart.browse')}
-                </ShopButton>
-              )}
-            </div>
-          )}
-        />
-      ) : null;
+    <CartPaymentReturnBanner
+      cartItemCount={cartItems.length}
+      clearPaymentReturnParams={clearPaymentReturnParams}
+      navigate={navigate}
+      paymentCancelledCheckoutLabel={paymentCancelledCheckoutLabel}
+      paymentCancelledResumeLabel={paymentCancelledResumeLabel}
+      paymentCancelledTrackLabel={paymentCancelledTrackLabel}
+      paymentReturnOrderNo={paymentReturnOrderNo}
+      paymentReturnStatus={paymentReturnStatus}
+      t={t}
+    />
+  ) : null;
 
   if (loading) {
-    return (
-      <div className={`cart-page cart-page--${language}`} role="status" aria-live="polite" aria-busy="true" aria-label={t('common.loading')}>
-        <section className="cart-page__hero">
-          <div className="cart-page__heroContent">
-            <span className="cart-page__heroEyebrow">{t('pages.cart.nextActionEyebrow')}</span>
-            <h1 className="cart-page__title">{t('pages.cart.title')}</h1>
-            <div className="cart-page__loadingText shimmer" aria-hidden="true" />
-            <div className="cart-page__heroActions" aria-hidden="true">
-              <div className="cart-page__loadingAction shimmer" />
-              <div className="cart-page__loadingAction cart-page__loadingAction--secondary shimmer" />
-            </div>
-          </div>
-          <div className="cart-page__heroStats" aria-hidden="true">
-            {[1, 2, 3].map(i => <div key={i} className="cart-page__loadingStat shimmer" />)}
-          </div>
-        </section>
-        <section className="cart-page__summaryStrip" aria-hidden="true">
-          <StatsStripSkeleton cols={3} />
-        </section>
-        <div className="cart-page__loadingProducts" aria-hidden="true">
-          <ProductCardSkeleton count={6} />
-        </div>
-      </div>
-    );
+    return <CartLoadingState language={language} t={t} />;
   }
 
   if (!loading && loadError && cartItems.length === 0) {
     return (
-      <div className={`cart-page cart-page--empty cart-page--${language}`}>
-        <ShopBreadcrumb
-          ariaLabel={t('pages.cart.title')}
-          items={[
-            { key: 'home', label: t('nav.ariaHome'), path: '/' },
-            { key: 'products', label: t('pages.productList.title'), path: '/products' },
-            { key: 'cart', label: t('pages.cart.title') },
-          ]}
-        />
-        {paymentReturnBanner}
-        <section className="cart-page__hero cart-page__hero--recovery">
-          <div className="cart-page__heroContent">
-            <span className="cart-page__heroEyebrow">{t('pages.cart.nextActionEyebrow')}</span>
-            <h1 className="cart-page__title">{t('pages.cart.title')}</h1>
-          </div>
-        </section>
-        <div data-cart-load-recovery="true">
-          <PageError
-            className="cart-page__loadError"
-            title={t('messages.loadFailed')}
-            description={loadErrorMessage || t('pages.cart.fetchFailed')}
-            actions={[
-              {
-                key: 'retry',
-                label: retryCartLoadActionLabel,
-                onClick: () => { setLoading(true); fetchCartItems(); },
-                type: 'primary',
-              },
-              {
-                key: 'browse',
-                label: t('pages.cart.browse'),
-                onClick: () => navigate('/products'),
-                type: 'default',
-              },
-              {
-                key: 'coupons',
-                label: t('pages.productList.loadRecoveryCoupons'),
-                onClick: () => navigate('/coupons'),
-                type: 'default',
-              },
-              {
-                key: 'history',
-                label: t('nav.history'),
-                onClick: () => navigate('/history'),
-                type: 'default',
-              },
-              {
-                key: 'support',
-                label: t('pages.productList.loadRecoverySupport'),
-                onClick: () => dispatchDomEvent('shop:open-support'),
-                type: 'default',
-              },
-            ]}
-          />
-        </div>
-      </div>
+      <CartLoadErrorState
+        language={language}
+        loadErrorMessage={loadErrorMessage}
+        navigate={navigate}
+        onRetry={() => { setLoading(true); fetchCartItems(); }}
+        paymentReturnBanner={paymentReturnBanner}
+        retryCartLoadActionLabel={retryCartLoadActionLabel}
+        t={t}
+      />
     );
   }
 
   if (!loading && cartItems.length === 0 && savedItems.length === 0 && recentProducts.length === 0) {
     return (
-      <div className={`cart-page cart-page--empty cart-page--${language}`}>
-        <ShopBreadcrumb
-          ariaLabel={t('pages.cart.title')}
-          items={[
-            { key: 'home', label: t('nav.ariaHome'), path: '/' },
-            { key: 'products', label: t('pages.productList.title'), path: '/products' },
-            { key: 'cart', label: t('pages.cart.title') },
-          ]}
-        />
-        {paymentReturnBanner}
-        <section className="cart-page__emptyHero" aria-label={t('pages.cart.empty')}>
-          <span className="cart-page__emptyIcon">
-            <ShopIcon path={SI.cart} />
-          </span>
-          <div className="cart-page__emptyCopy">
-            <span className="cart-page__emptyEyebrow">{t('pages.cart.yourCart')}</span>
-            <h1 className="cart-page__title">{t('pages.cart.empty')}</h1>
-            <span className="cart-page__text">{t('pages.cart.recentRecoverySubtitle')}</span>
-          </div>
-          <div className="cart-page__emptyActions" data-cart-empty-actions="true">
-            <ShopButton type="primary" icon={<ShopIcon path={SI.shopping} />} aria-label={emptyBrowseActionLabel} title={emptyBrowseActionLabel} onClick={() => navigate('/products')}>
-              {t('pages.cart.browse')}
-            </ShopButton>
-            <ShopButton icon={<ShopIcon path={SI.shopping} />} aria-label={emptyCouponsActionLabel} title={emptyCouponsActionLabel} onClick={() => navigate('/coupons')}>
-              {t('nav.coupons')}
-            </ShopButton>
-            <ShopButton icon={<ShopIcon path={SI.shopping} />} aria-label={emptyPetFinderActionLabel} title={emptyPetFinderActionLabel} onClick={() => navigate('/pet-finder')}>
-              {t('nav.petFinder')}
-            </ShopButton>
-            <ShopButton icon={<ShopIcon path={SI.clock} />} aria-label={emptyHistoryActionLabel} title={emptyHistoryActionLabel} onClick={() => navigate('/history')}>
-              {t('nav.history')}
-            </ShopButton>
-          </div>
-          <div className="cart-page__emptySignals">
-            <span className="cart-page__emptySignal">
-              <ShopIcon path={SI.check} />
-              <span className="cart-page__emptySignalText">
-                {freeShippingThreshold > 0
-                  ? t('pages.cart.freeShippingRemaining', { amount: formatMoney(freeShippingThreshold) })
-                  : t('pages.cart.shippingCalculatedAtCheckout')}
-              </span>
-            </span>
-            <span className="cart-page__emptySignal">
-              <ShopIcon path={SI.clock} />
-              <span className="cart-page__emptySignalText">{t('pages.cart.saveForLaterTitle')}</span>
-            </span>
-            <span className="cart-page__emptySignal">
-              <ShopIcon path={SI.shopping} />
-              <span className="cart-page__emptySignalText">{t('pages.cart.recentRecoveryTitle')}</span>
-            </span>
-          </div>
-        </section>
-      </div>
+      <CartFullEmptyState
+        emptyBrowseActionLabel={emptyBrowseActionLabel}
+        emptyCouponsActionLabel={emptyCouponsActionLabel}
+        emptyHistoryActionLabel={emptyHistoryActionLabel}
+        emptyPetFinderActionLabel={emptyPetFinderActionLabel}
+        formatMoney={formatMoney}
+        freeShippingThreshold={freeShippingThreshold}
+        language={language}
+        navigate={navigate}
+        paymentReturnBanner={paymentReturnBanner}
+        t={t}
+      />
     );
   }
 
@@ -1384,255 +1113,42 @@ const Cart: React.FC = () => {
               )}
             </div>
           ) : null}
-          <div
-            className="cart-page__table"
-            role="table"
-            aria-label={t('pages.cart.title')}
-            aria-busy={loading}
-          >
-            <div className="cart-page__tableHead" role="row">
-              <div className="cart-page__tableHeadCell cart-page__tableCol--select" role="columnheader">
-                <ShopCheckbox
-                  checked={allSelected}
-                  indeterminate={selectedPurchasableCount > 0 && !allSelected}
-                  disabled={hasStaleCartData}
-                  aria-label={t('pages.cart.selectAll')}
-                  title={t('pages.cart.selectAll')}
-                  onChange={(e) => toggleAll(e.target.checked)}
-                >
-                  {t('pages.cart.selectAll')}
-                </ShopCheckbox>
-              </div>
-              <div className="cart-page__tableHeadCell cart-page__tableCol--product" role="columnheader">
-                {t('pages.cart.product')}
-              </div>
-              <div className="cart-page__tableHeadCell cart-page__tableCol--price" role="columnheader">
-                {t('pages.cart.unitPrice')}
-              </div>
-              <div className="cart-page__tableHeadCell cart-page__tableCol--qty" role="columnheader">
-                {t('common.quantity')}
-              </div>
-              <div className="cart-page__tableHeadCell cart-page__tableCol--subtotal" role="columnheader">
-                {t('common.subtotal')}
-              </div>
-              <div className="cart-page__tableHeadCell cart-page__tableCol--action" role="columnheader">
-                {t('common.actions')}
-              </div>
-            </div>
-            <div className="cart-page__tableBody" role="rowgroup">
-              {cartItems.map((record) => {
-                const itemName = getCartItemName(record);
-                const selectItemLabel = `${t('pages.cart.selectAll')}: ${itemName}`;
-                const saveActionLabel = `${t('pages.cart.saveForLater')}: ${itemName}`;
-                const deleteActionLabel = `${t('common.delete')}: ${itemName}`;
-                return (
-                  <div key={record.id} className="cart-page__tableRow" role="row">
-                    <div className="cart-page__tableCell cart-page__tableCol--select" role="cell">
-                      <ShopCheckbox
-                        disabled={hasStaleCartData || !canCheckout(record)}
-                        checked={selectedIds.includes(record.id)}
-                        aria-label={selectItemLabel}
-                        title={selectItemLabel}
-                        onChange={(e) => toggleOne(record.id, e.target.checked)}
-                      />
-                    </div>
-                    <div className="cart-page__tableCell cart-page__tableCol--product" role="cell">
-                      <div className="cart-page__productCell">
-                        <img
-                          src={resolveCartImage(record.imageUrl)}
-                          alt={itemName}
-                          className="cart-page__tableImage"
-                          loading="lazy"
-                          decoding="async"
-                          onError={(event) => {
-                            if (event.currentTarget.src !== cartImageFallback) {
-                              event.currentTarget.src = cartImageFallback;
-                            }
-                          }}
-                        />
-                        <div>
-                          <Link to={`/products/${record.productId}`}><span className="cart-page__text">{itemName}</span></Link>
-                          {record.selectedSpecs ? <div><span className="cart-page__text cart-page__text--secondary">{formatSelectedSpecs(record.selectedSpecs, t, language)}</span></div> : null}
-                          {!canCheckout(record) && <div><span className="cart-page__text cart-page__text--danger">{t('pages.cart.unavailable')}</span></div>}
-                          {canCheckout(record) && getCartItemLowStockCount(record) !== null ? (
-                            <div>
-                              <span className="cart-page__text cart-page__text--warning cart-page__urgency">
-                                {t('pages.cart.lowStockLeft', { count: getCartItemLowStockCount(record) ?? 0 })}
-                              </span>
-                            </div>
-                          ) : null}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="cart-page__tableCell cart-page__tableCol--price" role="cell">
-                      <span className="cart-page__text cart-page__priceText commerce-money">{formatMoney(record.price)}</span>
-                    </div>
-                    <div className="cart-page__tableCell cart-page__tableCol--qty" role="cell">
-                      {renderQuantityControl(record)}
-                    </div>
-                    <div className="cart-page__tableCell cart-page__tableCol--subtotal" role="cell">
-                      {renderLineTotal(record)}
-                    </div>
-                    <div className="cart-page__tableCell cart-page__tableCol--action" role="cell">
-                      <div className="cart-page__tableActions">
-                        <ShopButton type="text" icon={<ShopIcon path={SI.clock} />} size="small" aria-label={saveActionLabel} title={saveActionLabel} onClick={() => saveForLater(record)} disabled={hasStaleCartData || removingItemIds.includes(record.id)}>
-                          {t('pages.cart.saveForLater')}
-                        </ShopButton>
-                        <ShopPopconfirm
-                          rootClassName='shop-mobile-popup-layer cart-page-popconfirm'
-                          title={t('pages.cart.deleteConfirm')}
-                          disabled={hasStaleCartData}
-                          onConfirm={() => removeItem(record.id)}
-                          okText={t('common.confirm')}
-                          cancelText={t('common.cancel')}
-                          okButtonProps={{ danger: true, 'aria-label': deleteActionLabel, title: deleteActionLabel }}
-                          cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${deleteActionLabel}`, title: `${t('common.cancel')}: ${deleteActionLabel}` }}
-                        >
-                          <ShopButton type="text" danger icon={<ShopIcon path={SI.delete} />} size="small" loading={removingItemIds.includes(record.id)} disabled={hasStaleCartData} aria-label={deleteActionLabel} title={deleteActionLabel}>{t('common.delete')}</ShopButton>
-                        </ShopPopconfirm>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-          <div className="cart-page__mobileList" role="list" aria-label={t('pages.cart.title')}>
-            {cartItems.map((item) => {
-              const itemName = getCartItemName(item);
-              const saveActionLabel = `${t('pages.cart.saveForLaterShort')}: ${itemName}`;
-              const deleteActionLabel = `${t('common.delete')}: ${itemName}`;
-              return (
-              <article key={item.id} className="cart-page__mobileItem" role="listitem">
-                <div className="cart-page__mobileItemTop">
-                  <ShopCheckbox
-                    disabled={hasStaleCartData || !canCheckout(item)}
-                    checked={selectedIds.includes(item.id)}
-                    aria-label={`${t('pages.cart.chooseItems')}: ${itemName}`}
-                    onChange={(e) => toggleOne(item.id, e.target.checked)}
-                  />
-                  <img
-                    className="cart-page__mobileItemImage"
-                    src={resolveCartImage(item.imageUrl)}
-                    alt={itemName}
-                    loading="lazy"
-                    decoding="async"
-                    onError={(event) => {
-                      if (event.currentTarget.src !== cartImageFallback) {
-                        event.currentTarget.src = cartImageFallback;
-                      }
-                    }}
-                  />
-                  <div className="cart-page__mobileItemInfo">
-                    <Link className="cart-page__mobileItemTitle" to={`/products/${item.productId}`}><span className="cart-page__text cart-page__text--strong">{itemName}</span></Link>
-                    {item.selectedSpecs ? <div className="cart-page__mobileItemMeta"><span className="cart-page__text cart-page__text--secondary">{formatSelectedSpecs(item.selectedSpecs, t, language)}</span></div> : null}
-                    {!canCheckout(item) && <div><span className="cart-page__text cart-page__text--danger">{t('pages.cart.unavailable')}</span></div>}
-                    {canCheckout(item) && getCartItemLowStockCount(item) !== null ? (
-                      <div>
-                        <span className="cart-page__text cart-page__text--warning cart-page__urgency">
-                          {t('pages.cart.lowStockLeft', { count: getCartItemLowStockCount(item) ?? 0 })}
-                        </span>
-                      </div>
-                    ) : null}
-                    <span className="cart-page__text cart-page__text--secondary cart-page__mobileItemUnit commerce-atomic commerce-price-quantity">
-                      <span className="cart-page__mobileItemUnitPrice commerce-money">{formatMoney(item.price)}</span>
-                      <span className="commerce-quantity">x {item.quantity}</span>
-                    </span>
-                  </div>
-                </div>
-                <div className="cart-page__mobileItemBottom">
-                  <div className="cart-page__mobileItemCommerce">
-                    {renderQuantityControl(item)}
-                    {renderLineTotal(item)}
-                  </div>
-                  <div className="cart-page__mobileItemActions">
-                    <ShopButton type="text" icon={<ShopIcon path={SI.clock} />} size="small" aria-label={saveActionLabel} title={saveActionLabel} onClick={() => saveForLater(item)} disabled={hasStaleCartData || removingItemIds.includes(item.id)}>
-                      {t('pages.cart.saveForLaterShort')}
-                    </ShopButton>
-                    <ShopPopconfirm
-                      rootClassName='shop-mobile-popup-layer cart-page-popconfirm'
-                      title={t('pages.cart.deleteConfirm')}
-                      disabled={hasStaleCartData}
-                      onConfirm={() => removeItem(item.id)}
-                      okText={t('common.confirm')}
-                      cancelText={t('common.cancel')}
-                      okButtonProps={{ danger: true, 'aria-label': deleteActionLabel, title: deleteActionLabel }}
-                      cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${deleteActionLabel}`, title: `${t('common.cancel')}: ${deleteActionLabel}` }}
-                    >
-                      <ShopButton
-                        type="text"
-                        danger
-                        icon={<ShopIcon path={SI.delete} />}
-                        size="small"
-                        loading={removingItemIds.includes(item.id)}
-                        disabled={hasStaleCartData}
-                        aria-label={deleteActionLabel}
-                        title={deleteActionLabel}
-                      />
-                    </ShopPopconfirm>
-                  </div>
-                </div>
-              </article>
-              );
-            })}
-          </div>
-          <section className="cart-page__summary" aria-label={t('pages.cart.orderSummary')}>
-            <div
-              className="cart-page__summaryProgress"
-              role="group"
-              aria-label={t('pages.cart.freeShippingProgressLabel')}
-            >
-              <span className="cart-page__text cart-page__text--strong" id="cart-free-shipping-status">
-                {freeShippingStatusTitle}
-              </span>
-              <ShopProgress
-                percent={freeShippingPercent}
-                showInfo={false}
-                strokeColor="#124734"
-                aria-labelledby="cart-free-shipping-status"
-                format={() => t('pages.cart.freeShippingProgressValue', { percent: freeShippingPercent })}
-              />
-              <span className="cart-page__srOnly" aria-live="polite">
-                {freeShippingUnlocked
-                  ? t('pages.cart.freeShippingUnlocked')
-                  : t('pages.cart.freeShippingProgressValue', { percent: freeShippingPercent })}
-              </span>
-            </div>
-            <div className="cart-page__summaryFooter">
-              <div>
-                <span className="cart-page__text">{t('pages.cart.selectedSummary', { count: selectedUnitCount })}</span>
-                <span className="cart-page__text cart-page__total">
-                  {t('common.total')}: <span className="cart-page__text cart-page__text--strong cart-page__totalAmount commerce-money">{formatMoney(selectedTotal)}</span>
-                </span>
-              </div>
-              <ShopButton type="primary" size="large" aria-label={checkoutActionLabel} title={checkoutActionLabel} onClick={goCheckout} disabled={hasStaleCartData || checkoutBlocked || checkoutSubmitting} loading={checkoutSubmitting}>
-                {checkoutSubmitting ? t('pages.cart.checkoutSyncing') : t('pages.cart.checkout')}
-              </ShopButton>
-            </div>
-            <div className="cart-page__trustBar" aria-label={t('pages.cart.trustTitle')}>
-              <div className="cart-page__trustItem">
-                <ShopIcon path={SI.lock} aria-hidden="true"  />
-                <div>
-                  <span className="cart-page__text cart-page__text--strong">{t('pages.cart.trustSecureTitle')}</span>
-                  <span className="cart-page__text cart-page__text--secondary">{t('pages.cart.trustSecureText')}</span>
-                </div>
-              </div>
-              <div className="cart-page__trustItem">
-                <ShopIcon path={SI.safety} aria-hidden="true"  />
-                <div>
-                  <span className="cart-page__text cart-page__text--strong">{t('pages.cart.trustReturnsTitle')}</span>
-                  <span className="cart-page__text cart-page__text--secondary">{t('pages.cart.trustReturnsText')}</span>
-                </div>
-              </div>
-              <div className="cart-page__trustItem">
-                <ShopIcon path={SI.support} aria-hidden="true"  />
-                <div>
-                  <span className="cart-page__text cart-page__text--strong">{t('pages.cart.trustSupportTitle')}</span>
-                  <span className="cart-page__text cart-page__text--secondary">{t('pages.cart.trustSupportText')}</span>
-                </div>
-              </div>
-            </div>
-          </section>
+          <CartLineItems
+            allSelected={allSelected}
+            cartItems={cartItems}
+            checkoutSubmitting={checkoutSubmitting}
+            formatMoney={formatMoney}
+            getCartItemName={getCartItemName}
+            hasStaleCartData={hasStaleCartData}
+            language={language}
+            loading={loading}
+            quantityDrafts={quantityDrafts}
+            removeItem={removeItem}
+            removingItemIds={removingItemIds}
+            saveForLater={saveForLater}
+            selectedIds={selectedIds}
+            selectedPurchasableCount={selectedPurchasableCount}
+            setQuantityDrafts={setQuantityDrafts}
+            t={t}
+            toggleAll={toggleAll}
+            toggleOne={toggleOne}
+            updateQuantity={updateQuantity}
+            updatingItemIds={updatingItemIds}
+          />
+          <CartOrderSummary
+            checkoutActionLabel={checkoutActionLabel}
+            checkoutBlocked={checkoutBlocked}
+            checkoutSubmitting={checkoutSubmitting}
+            formatMoney={formatMoney}
+            freeShippingPercent={freeShippingPercent}
+            freeShippingStatusTitle={freeShippingStatusTitle}
+            freeShippingUnlocked={freeShippingUnlocked}
+            goCheckout={goCheckout}
+            hasStaleCartData={hasStaleCartData}
+            selectedTotal={selectedTotal}
+            selectedUnitCount={selectedUnitCount}
+            t={t}
+          />
           {selectedItems.length > 0 && !hasStaleCartData ? (
             <div className="cart-page__addOn" id="cart-add-on-assistant">
               {benefitTarget ? (
@@ -1647,161 +1163,34 @@ const Cart: React.FC = () => {
           ) : null}
         </>
       ) : (
-        <section className="cart-page__emptyPanel" role="status">
-          <div className="cart-page__emptyPanelInner" role="status" aria-live="polite">
-            <span className="cart-page__emptyPanelIconWrap" aria-hidden="true">
-              <ShopIcon path={SI.shopping} className="cart-page__emptyPanelIcon" />
-            </span>
-            <div className="cart-page__emptyPanelDescription">{t('pages.cart.empty')}</div>
-            <div className="cart-page__emptyPanelActions" data-cart-empty-panel-actions="true">
-              <ShopButton type="primary" icon={<ShopIcon path={SI.shopping} />} aria-label={emptyBrowseActionLabel} title={emptyBrowseActionLabel} onClick={() => navigate('/products')}>
-                {t('pages.cart.browse')}
-              </ShopButton>
-              <ShopButton icon={<ShopIcon path={SI.shopping} />} aria-label={emptyCouponsActionLabel} title={emptyCouponsActionLabel} onClick={() => navigate('/coupons')}>
-                {t('nav.coupons')}
-              </ShopButton>
-              <ShopButton icon={<ShopIcon path={SI.shopping} />} aria-label={emptyPetFinderActionLabel} title={emptyPetFinderActionLabel} onClick={() => navigate('/pet-finder')}>
-                {t('nav.petFinder')}
-              </ShopButton>
-              <ShopButton icon={<ShopIcon path={SI.clock} />} aria-label={emptyHistoryActionLabel} title={emptyHistoryActionLabel} onClick={() => navigate('/history')}>
-                {t('nav.history')}
-              </ShopButton>
-            </div>
-          </div>
-        </section>
+        <CartInlineEmptyPanel
+          emptyBrowseActionLabel={emptyBrowseActionLabel}
+          emptyCouponsActionLabel={emptyCouponsActionLabel}
+          emptyHistoryActionLabel={emptyHistoryActionLabel}
+          emptyPetFinderActionLabel={emptyPetFinderActionLabel}
+          navigate={navigate}
+          t={t}
+        />
       )}
-      <section
-        className="cart-page__savedCard"
-        aria-label={`${t('pages.cart.saveForLaterTitle')} (${savedItems.length})`}
-      >
-        <div className="cart-page__panelHead">
-          <h2 className="cart-page__panelTitle">{`${t('pages.cart.saveForLaterTitle')} (${savedItems.length})`}</h2>
-          {savedItems.length > 0 ? (
-            <ShopButton
-              size="small"
-              icon={<ShopIcon path={SI.cart} />}
-              loading={restoringSaved}
-              disabled={hasStaleCartData || restoringSavedItemIds.length > 0}
-              aria-label={moveAllSavedActionLabel}
-              title={moveAllSavedActionLabel}
-              onClick={() => moveSavedItemsToCart(savedItems)}
-            >
-              {t('pages.cart.moveAllToCart')}
-            </ShopButton>
-          ) : null}
-        </div>
-        {savedItems.length > 0 ? (
-          <div className="cart-page__savedValue">
-            <ShopIcon path={SI.clock} />
-            <span>
-              <span className="cart-page__text cart-page__text--strong">{t('pages.cart.savedValueTitle')}</span>
-              <span className="cart-page__text cart-page__text--secondary cart-page__amountPhrase">{savedValueText}</span>
-            </span>
-          </div>
-        ) : null}
-        {conversionConfig.saveForLater.enabled && savedReminderItems.length > 0 ? (
-          <ShopAlert
-            type="info"
-            showIcon
-            className="cart-page__savedReminder"
-            message={t('pages.cart.savedReminderTitle', { count: savedReminderItems.length })}
-            description={t('pages.cart.savedReminderText')}
-            action={(
-              <ShopButton
-                size="small"
-                type="primary"
-                loading={restoringSaved}
-                disabled={hasStaleCartData || restoringSavedItemIds.length > 0}
-                aria-label={restoreSavedReminderActionLabel}
-                title={restoreSavedReminderActionLabel}
-                onClick={() => moveSavedItemsToCart(savedReminderItems)}
-              >
-                {t('pages.cart.restoreReminder')}
-              </ShopButton>
-            )}
-          />
-        ) : null}
-        {savedItems.length === 0 ? (
-          <div className="cart-page__savedEmpty" role="status" aria-live="polite">
-            <div className="cart-page__savedEmptyInner">
-              <div className="cart-page__savedEmptyCopy">
-                <div>{t('pages.cart.saveForLaterEmpty')}</div>
-                <div className="cart-page__savedEmptyHint">{t('pages.cart.saveForLaterEmptyHint')}</div>
-              </div>
-              <div className="cart-page__savedEmptyActions">
-                <ShopButton
-                  type="primary"
-                  icon={<ShopIcon path={SI.shopping} />}
-                  aria-label={t('pages.cart.saveForLaterBrowse')}
-                  title={t('pages.cart.saveForLaterBrowse')}
-                  onClick={() => navigate('/products')}
-                >
-                  {t('pages.cart.saveForLaterBrowse')}
-                </ShopButton>
-                <ShopButton
-                  icon={<ShopIcon path={SI.shopping} />}
-                  aria-label={t('pages.cart.saveForLaterWishlist')}
-                  title={t('pages.cart.saveForLaterWishlist')}
-                  onClick={() => navigate('/wishlist')}
-                >
-                  {t('pages.cart.saveForLaterWishlist')}
-                </ShopButton>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="cart-page__savedGrid" role="list" aria-label={t('pages.cart.saveForLaterTitle')}>
-            {savedItems.map((item) => {
-              const itemName = getCartItemName(item);
-              const moveActionLabel = `${t('pages.cart.moveToCart')}: ${itemName}`;
-              const deleteActionLabel = `${t('common.delete')}: ${itemName}`;
-              const restoringSavedItem = restoringSaved || restoringSavedItemIds.includes(item.id);
-              return (
-              <div className="cart-page__savedItem" key={item.id} role="listitem">
-                <Link to={`/products/${item.productId}`}>
-                  <img
-                    src={resolveCartImage(item.imageUrl)}
-                    alt={itemName}
-                    loading="lazy"
-                    decoding="async"
-                    onError={(event) => {
-                      if (event.currentTarget.src !== cartImageFallback) {
-                        event.currentTarget.src = cartImageFallback;
-                      }
-                    }}
-                  />
-                </Link>
-                <div className="cart-page__savedInfo">
-                  <Link to={`/products/${item.productId}`}><span className="cart-page__text cart-page__text--strong">{itemName}</span></Link>
-                  {item.selectedSpecs ? <span className="cart-page__text cart-page__text--secondary">{formatSelectedSpecs(item.selectedSpecs, t, language)}</span> : null}
-                  <span className="cart-page__text cart-page__text--secondary cart-page__savedQuantity commerce-quantity">{t('common.quantity')}: {item.quantity}</span>
-                  <ShopTag className="cart-page__savedAge">
-                    {t('pages.cart.savedDaysAgo', { count: getSavedAgeDays(item.savedAt) })}
-                  </ShopTag>
-                  <span className="cart-page__text cart-page__text--strong cart-page__savedPrice commerce-money">{formatMoney(item.price)}</span>
-                </div>
-                <div className="cart-page__savedActions">
-                  <ShopButton icon={<ShopIcon path={SI.cart} />} loading={restoringSavedItem} disabled={hasStaleCartData || restoringSavedItem} aria-label={moveActionLabel} title={moveActionLabel} onClick={() => moveSavedItemToCart(item)}>
-                    {t('pages.cart.moveToCart')}
-                  </ShopButton>
-                  <ShopPopconfirm
-                    rootClassName='shop-mobile-popup-layer cart-page-popconfirm'
-                    title={t('pages.cart.deleteSavedConfirm')}
-                    onConfirm={() => removeSavedItem(item.id)}
-                    okText={t('common.confirm')}
-                    cancelText={t('common.cancel')}
-                    okButtonProps={{ danger: true, 'aria-label': deleteActionLabel, title: deleteActionLabel }}
-                    cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${deleteActionLabel}`, title: `${t('common.cancel')}: ${deleteActionLabel}` }}
-                  >
-                    <ShopButton danger type="text" icon={<ShopIcon path={SI.delete} />} disabled={restoringSavedItem} aria-label={deleteActionLabel} title={deleteActionLabel} />
-                  </ShopPopconfirm>
-                </div>
-              </div>
-              );
-            })}
-          </div>
-        )}
-      </section>
+      <CartSavedPanel
+        formatMoney={formatMoney}
+        getCartItemName={getCartItemName}
+        getSavedAgeDays={getSavedAgeDays}
+        hasStaleCartData={hasStaleCartData}
+        language={language}
+        moveAllSavedActionLabel={moveAllSavedActionLabel}
+        moveSavedItemToCart={moveSavedItemToCart}
+        moveSavedItemsToCart={moveSavedItemsToCart}
+        navigate={navigate}
+        removeSavedItem={removeSavedItem}
+        restoreSavedReminderActionLabel={restoreSavedReminderActionLabel}
+        restoringSaved={restoringSaved}
+        restoringSavedItemIds={restoringSavedItemIds}
+        savedItems={savedItems}
+        savedReminderItems={savedReminderItems}
+        savedValueText={savedValueText}
+        t={t}
+      />
     </div>
   );
 };

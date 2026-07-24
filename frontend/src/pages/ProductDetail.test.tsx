@@ -17,6 +17,10 @@ const readProductDetailCommunitySource = () => require('fs').readFileSync(requir
 const readProductDetailRecommendationSource = () => require('fs').readFileSync(require('path').resolve(__dirname, '../hooks/useProductDetailRecommendationActions.ts'), 'utf8') as string;
 const readProductDetailRecommendationsPanelSource = () => require('fs').readFileSync(require('path').resolve(__dirname, 'productDetailRecommendations.tsx'), 'utf8') as string;
 const readProductDetailGallerySource = () => require('fs').readFileSync(require('path').resolve(__dirname, 'productDetailGallery.tsx'), 'utf8') as string;
+const readProductDetailSummarySource = () => require('fs').readFileSync(require('path').resolve(__dirname, 'productDetailSummary.tsx'), 'utf8') as string;
+const readProductDetailBuyBarSource = () => require('fs').readFileSync(require('path').resolve(__dirname, 'productDetailBuyBar.tsx'), 'utf8') as string;
+const readProductDetailContentSource = () => require('fs').readFileSync(require('path').resolve(__dirname, 'productDetailContent.tsx'), 'utf8') as string;
+const readProductDetailPurchaseSurface = () => `${readProductDetailSource()}\n${readProductDetailSummarySource()}`;
 const readProductDetailShellSource = () => require('fs').readFileSync(require('path').resolve(__dirname, 'productDetailShell.tsx'), 'utf8') as string;
 const readProductDetailCss = () => require('fs').readFileSync(require('path').resolve(__dirname, 'ProductDetail.css'), 'utf8') as string;
 const readNativeScrollSource = () => require('fs').readFileSync(require('path').resolve(__dirname, '../utils/nativeScroll.ts'), 'utf8') as string;
@@ -188,13 +192,16 @@ const createNativeTouchMove = (points: Array<Pick<Touch, 'clientX' | 'clientY'>>
 
 describe('ProductDetail mobile buybar layout contract', () => {
   it('keeps the mobile purchase bar fixed and reachable in the first viewport', () => {
-    const source = readProductDetailSource();
+    const source = readProductDetailPurchaseSurface();
+    const page = readProductDetailSource();
     const css = readProductDetailCss();
     const fixStart = css.lastIndexOf('Mobile fixed purchase bar closure');
     const fixCss = css.slice(fixStart);
 
+    expect(page).toContain('<ProductDetailSummary');
     expect(source.indexOf('className="product-price-panel"')).toBeGreaterThan(-1);
-    expect(source.indexOf('className="product-mobile-buybar"')).toBeGreaterThan(source.indexOf('className="product-price-panel"'));
+    expect(source.indexOf('<ProductDetailMobileBuyBar')).toBeGreaterThan(source.indexOf('className="product-price-panel"'));
+    expect(source).toContain("from './productDetailBuyBar'");
     expect(fixStart).toBeGreaterThan(css.indexOf('APP/WebView product detail closure'));
     expect(fixCss).toContain('@media (max-width: 780px)');
     expect(fixCss).toMatch(/\.product-detail-page,[\s\S]*?padding-bottom:\s*calc\(128px \+ env\(safe-area-inset-bottom,\s*0px\)\)\s*!important;/);
@@ -215,14 +222,15 @@ describe('ProductDetail mobile buybar layout contract', () => {
   });
 
   it('announces active limited-time countdown changes without making static promo copy live', () => {
-    const source = readProductDetailSource();
+    const page = readProductDetailSource();
+    const summary = readProductDetailSummarySource();
 
-    expect(source).toContain('const limitedTimePromoActive = limitedTimeRemaining > 0;');
-    expect(source).toContain("t('pages.productDetail.limitedTimeDays', { count: days })");
-    expect(source).not.toContain('`${days}d ${time}`');
-    expect(source).toMatch(/className="product-mobile-promo"[\s\S]*?role=\{limitedTimePromoActive \? 'status' : undefined\}[\s\S]*?aria-live=\{limitedTimePromoActive \? 'polite' : undefined\}[\s\S]*?aria-atomic=\{limitedTimePromoActive \? 'true' : undefined\}/);
-    expect(source).toMatch(/<span>\{limitedTimePromoActive \? t\('pages\.productDetail\.limitedTimeCountdown'\) : productFreeShippingText\}<\/span>/);
-    expect(source).toMatch(/<strong>\{limitedTimePromoActive \? formatCountdown\(limitedTimeRemaining\) : t\('pages\.productDetail\.authentic'\)\}<\/strong>/);
+    expect(page).toContain('const limitedTimePromoActive = limitedTimeRemaining > 0;');
+    expect(page).toContain("t('pages.productDetail.limitedTimeDays', { count: days })");
+    expect(page).not.toContain('`${days}d ${time}`');
+    expect(summary).toMatch(/className="product-mobile-promo"[\s\S]*?role=\{limitedTimePromoActive \? 'status' : undefined\}[\s\S]*?aria-live=\{limitedTimePromoActive \? 'polite' : undefined\}[\s\S]*?aria-atomic=\{limitedTimePromoActive \? 'true' : undefined\}/);
+    expect(summary).toMatch(/<span>\{limitedTimePromoActive \? t\('pages\.productDetail\.limitedTimeCountdown'\) : productFreeShippingText\}<\/span>/);
+    expect(summary).toMatch(/<strong>\{limitedTimePromoActive \? formatCountdown\(limitedTimeRemaining\) : t\('pages\.productDetail\.authentic'\)\}<\/strong>/);
   });
 
   it('keeps the final mobile purchase rail focused on cart and buy actions', () => {
@@ -265,19 +273,23 @@ describe('ProductDetail mobile buybar layout contract', () => {
   });
 
   it('disables purchase actions while required options are missing or unavailable', () => {
-    const source = readProductDetailSource();
+    const page = readProductDetailSource();
+    const summary = readProductDetailSummarySource();
 
-    expect(source).toContain('const addToCartBlocked = isOutOfStock || purchaseSelectionBlocked || purchaseSubmitting !== null;');
-    expect(source).toContain('const mobileAddToCartBlocked = !isOutOfStock && (purchaseSelectionBlocked || purchaseSubmitting !== null);');
-    expect(source).toContain('const buyNowBlocked = isOutOfStock || purchaseSelectionBlocked || purchaseSubmitting !== null;');
-    expect(source).toMatch(/className="product-mobile-buybar__cart"[\s\S]*?onClick=\{isOutOfStock \? handleStockAlert : handleAddToCart\}[\s\S]*?disabled=\{mobileAddToCartBlocked\}/);
-    expect(source).toMatch(/className="product-mobile-buybar__buy"[\s\S]*?onClick={handleBuyNow}[\s\S]*?disabled={buyNowBlocked}/);
-    expect(source).toMatch(/onClick={handleAddToCart}[\s\S]*?disabled={addToCartBlocked}/);
-    expect(source).toMatch(/aria-label={buyNowBlockedReason}[\s\S]*?onClick={handleBuyNow}[\s\S]*?disabled={buyNowBlocked}[\s\S]*?ghost/);
+    expect(page).toContain('const addToCartBlocked = isOutOfStock || purchaseSelectionBlocked || purchaseSubmitting !== null;');
+    expect(page).toContain('const mobileAddToCartBlocked = !isOutOfStock && (purchaseSelectionBlocked || purchaseSubmitting !== null);');
+    expect(page).toContain('const buyNowBlocked = isOutOfStock || purchaseSelectionBlocked || purchaseSubmitting !== null;');
+    const buyBar = readProductDetailBuyBarSource();
+    expect(summary).toContain('<ProductDetailMobileBuyBar');
+    expect(summary).toContain("from './productDetailBuyBar'");
+    expect(buyBar).toMatch(/className="product-mobile-buybar__cart"[\s\S]*?onClick=\{isOutOfStock \? handleStockAlert : handleAddToCart\}[\s\S]*?disabled=\{mobileAddToCartBlocked\}/);
+    expect(buyBar).toMatch(/className="product-mobile-buybar__buy"[\s\S]*?onClick={handleBuyNow}[\s\S]*?disabled={buyNowBlocked}/);
+    expect(summary).toMatch(/onClick={handleAddToCart}[\s\S]*?disabled={addToCartBlocked}/);
+    expect(summary).toMatch(/aria-label={buyNowBlockedReason}[\s\S]*?onClick={handleBuyNow}[\s\S]*?disabled={buyNowBlocked}[\s\S]*?ghost/);
   });
 
   it('uses centralized size option semantics instead of hardcoded product-detail keywords', () => {
-    const source = readProductDetailSource();
+    const source = readProductDetailPurchaseSurface();
 
     expect(source).toContain('isSizeOptionName(group.name)');
     expect(source).not.toContain("group.name.toLowerCase().includes('size')");
@@ -288,7 +300,7 @@ describe('ProductDetail mobile buybar layout contract', () => {
   });
 
   it('keeps product detail tabs separated instead of rendering as one concatenated label string', () => {
-    const source = readProductDetailSource();
+    const source = `${readProductDetailSource()}\n${readProductDetailContentSource()}`;
     const css = readProductDetailCss();
     const fixStart = css.lastIndexOf('F2712: keep product detail tabs visually separated');
     const fixCss = css.slice(fixStart);
@@ -307,14 +319,15 @@ describe('ProductDetail mobile buybar layout contract', () => {
   
   it('keeps product detail conversion low-stock urgency wired', () => {
     const source = readProductDetailSource();
+    const surface = readProductDetailPurchaseSurface();
     expect(source).toContain("import { conversionConfig, estimatePetSize, getDeliveryPromise, getLowStockCount }");
     expect(source).toContain('const lowStockCount = getLowStockCount(selectedStock, quantity);');
     expect(source).toContain('const isLowStock = !isOutOfStock && lowStockCount !== null && lowStockCount > 0;');
     expect(source).toContain("t('pages.productDetail.lowStockUrgency'");
-    expect(source).toContain("t('pages.productDetail.lowStockUrgencyText'");
+    expect(surface).toContain("t('pages.productDetail.lowStockUrgencyText'");
     expect(source).toContain('isOutOfStock || isLowStock');
     expect(source).toContain("t('pages.productDetail.decisionStockLowTitle')");
-    expect(source).toContain('product-detail__lowStockAlert');
+    expect(surface).toContain('product-detail__lowStockAlert');
   });
 
   it('keeps non-critical content scroll warmup fallback cleanup-bound', () => {
@@ -523,6 +536,43 @@ describe('ProductDetail loading state', () => {
     expect(gallerySource).toContain('role="group"');
     expect(gallerySource).toContain('aria-roledescription="slide"');
     expect(gallerySource).toContain('aria-label={getGalleryImageLabel(index)}');
+  });
+
+  it('extracts purchase summary and mobile buybar into a modular panel', () => {
+    const source = readProductDetailSource();
+    const summarySource = readProductDetailSummarySource();
+
+    expect(source).toContain('<ProductDetailSummary');
+    expect(source).toContain("from './productDetailSummary'");
+    expect(source).not.toContain('className="product-detail__summary"');
+    expect(source).not.toContain('className="product-mobile-buybar"');
+    expect(summarySource).toContain('export const ProductDetailSummary');
+    expect(summarySource).toContain('product-detail__summary');
+    expect(summarySource).toContain('<ProductDetailMobileBuyBar');
+    expect(summarySource).toContain("from './productDetailBuyBar'");
+    expect(readProductDetailBuyBarSource()).toContain('product-mobile-buybar');
+    expect(summarySource).toContain('product-purchase-readiness');
+    expect(summarySource).toContain('product-options-anchor');
+    expect(summarySource).toContain('product-actions');
+    expect(summarySource).toContain('export const ProductDetailSizeGuideModal');
+    expect(summarySource).toContain('product-detail__sizeGuideModalRoot');
+    expect(source).toContain('<ProductDetailSizeGuideModal');
+    expect(source).not.toContain('product-detail__sizeGuideModalRoot');
+  });
+
+  it('extracts product detail content panels into a modular surface', () => {
+    const source = readProductDetailSource();
+    const contentSource = readProductDetailContentSource();
+
+    expect(source).toContain('<ProductDetailContent');
+    expect(source).toContain("from './productDetailContent'");
+    expect(source).not.toContain('className="product-tabs-card"');
+    expect(source).not.toContain('className="product-qa-card"');
+    expect(contentSource).toContain('export const ProductDetailContent');
+    expect(contentSource).toContain('product-tabs-card');
+    expect(contentSource).toContain('product-review-card');
+    expect(contentSource).toContain('product-qa-card');
+    expect(contentSource).toContain('product-detail-tabs__nav');
   });
 
   it('supports mobile pinch zoom with a non-passive touchmove listener', async () => {

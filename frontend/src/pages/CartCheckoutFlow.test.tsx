@@ -636,6 +636,15 @@ const clickOpenPopconfirmOk = async () => {
 
 const readCartCheckoutSubmitSource = () => fs.readFileSync(path.resolve(__dirname, '../hooks/useCartCheckoutSubmit.ts'), 'utf8');
 const readCartItemMutationsSource = () => fs.readFileSync(path.resolve(__dirname, '../hooks/useCartItemMutations.ts'), 'utf8');
+const readCartLineItemsSource = () => fs.readFileSync(path.resolve(__dirname, 'cartLineItems.tsx'), 'utf8');
+const readCartSavedPanelSource = () => fs.readFileSync(path.resolve(__dirname, 'cartSavedPanel.tsx'), 'utf8');
+const readCartPageSurface = () => [
+  fs.readFileSync(path.resolve(__dirname, 'Cart.tsx'), 'utf8'),
+  readCartLineItemsSource(),
+  readCartSavedPanelSource(),
+  fs.readFileSync(path.resolve(__dirname, 'cartConversionPanels.tsx'), 'utf8'),
+  fs.readFileSync(path.resolve(__dirname, 'cartShellStates.tsx'), 'utf8'),
+].join('\n');
 const readCartQuantityActionsSource = () => fs.readFileSync(path.resolve(__dirname, '../hooks/useCartQuantityActions.ts'), 'utf8');
 const readCartRecoveryAddsSource = () => fs.readFileSync(path.resolve(__dirname, '../hooks/useCartRecoveryAdds.ts'), 'utf8');
 describe('cart to checkout flows', () => {
@@ -935,12 +944,14 @@ describe('cart to checkout flows', () => {
   });
 
   it('keeps the top checkout action label distinct from the summary checkout button', () => {
-    const source = fs.readFileSync(path.resolve(__dirname, 'Cart.tsx'), 'utf8');
+    const page = fs.readFileSync(path.resolve(__dirname, 'Cart.tsx'), 'utf8');
+    const panels = fs.readFileSync(path.resolve(__dirname, 'cartConversionPanels.tsx'), 'utf8');
+    const source = [page, panels].join('\n');
 
-    expect(source).toContain("const cartNextActionLabel = `${cartNextAction.label}: ${cartNextAction.title}`;");
-    expect(source).toContain("const cartTopNextActionLabel = `${t('pages.cart.nextActionEyebrow')}: ${cartNextActionLabel}`;");
-    expect(source).toContain('aria-label={cartItems.length > 0 ? cartTopNextActionLabel : emptyBrowseActionLabel}');
-    expect(source).toContain('title={cartItems.length > 0 ? cartTopNextActionLabel : emptyBrowseActionLabel}');
+    expect(page).toContain("const cartNextActionLabel = `${cartNextAction.label}: ${cartNextAction.title}`;");
+    expect(page).toContain("const cartTopNextActionLabel = `${t('pages.cart.nextActionEyebrow')}: ${cartNextActionLabel}`;");
+    expect(page).toContain('aria-label={cartItems.length > 0 ? cartTopNextActionLabel : emptyBrowseActionLabel}');
+    expect(page).toContain('title={cartItems.length > 0 ? cartTopNextActionLabel : emptyBrowseActionLabel}');
     expect(source).toContain('aria-label={checkoutActionLabel}');
     expect(source).not.toContain('`${cartNextActionLabel} (top action)`');
   });
@@ -1271,15 +1282,17 @@ ${recoveryAdds}`;
   });
 
   it('keeps cart quantity source free of stale callbacks and invalid empty syncs', () => {
-    const source = fs.readFileSync(path.resolve(__dirname, 'Cart.tsx'), 'utf8');
+    const page = fs.readFileSync(path.resolve(__dirname, 'Cart.tsx'), 'utf8');
+    const lineItems = readCartLineItemsSource();
+    const source = [page, lineItems].join('\n');
     const quantityActions = readCartQuantityActionsSource();
     const cartUiSource = fs.readFileSync(path.resolve(__dirname, '../utils/cartUi.ts'), 'utf8');
     const updateStart = quantityActions.indexOf('const updateQuantity = (item: CartItem, quantity: number) => {');
     const updateEnd = quantityActions.indexOf('return { updateQuantity };', updateStart);
     const updateSource = quantityActions.slice(updateStart, updateEnd);
 
-    expect(source).toContain('useCartQuantityActions({');
-    expect(source).not.toContain('const updateQuantity = (item: CartItem, quantity: number) => {');
+    expect(page).toContain('useCartQuantityActions({');
+    expect(page).not.toContain('const updateQuantity = (item: CartItem, quantity: number) => {');
     expect(updateStart).toBeGreaterThan(-1);
     expect(updateEnd).toBeGreaterThan(updateStart);
     expect(updateSource).not.toContain('useCallback(');
@@ -1337,7 +1350,8 @@ ${recoveryAdds}`;
   });
 
   it('keeps saved-item restore actions visibly pending while a restore is in flight', () => {
-    const source = fs.readFileSync(path.resolve(__dirname, 'Cart.tsx'), 'utf8');
+    const page = fs.readFileSync(path.resolve(__dirname, 'Cart.tsx'), 'utf8');
+    const source = [page, readCartSavedPanelSource()].join('\n');
     const mutations = readCartItemMutationsSource();
     const restoreStart = mutations.indexOf('const moveSavedItemToCart = useCallback(async (item: SavedForLaterItem) => {');
     const restoreEnd = mutations.indexOf('const moveSavedItemsToCart', restoreStart);
@@ -1346,8 +1360,8 @@ ${recoveryAdds}`;
     const savedRenderEnd = source.indexOf('icon={<ShopIcon path={SI.delete} />}', savedRenderStart) + 80;
     const savedRenderSource = source.slice(savedRenderStart, savedRenderEnd);
 
-    expect(source).toContain('const [restoringSavedItemIds, setRestoringSavedItemIds] = useState<number[]>([]);');
-    expect(source).toContain('useCartItemMutations({');
+    expect(page).toContain('const [restoringSavedItemIds, setRestoringSavedItemIds] = useState<number[]>([]);');
+    expect(page).toContain('useCartItemMutations({');
     expect(restoreStart).toBeGreaterThan(-1);
     expect(restoreEnd).toBeGreaterThan(restoreStart);
     expect(restoreSource).toContain('if (restoringSaved || restoringSavedItemIds.includes(item.id)) return;');
@@ -1362,8 +1376,10 @@ ${recoveryAdds}`;
   });
 
   it('keeps saved-for-later items exposed as a navigable list', () => {
-    const source = fs.readFileSync(path.resolve(__dirname, 'Cart.tsx'), 'utf8');
+    const page = fs.readFileSync(path.resolve(__dirname, 'Cart.tsx'), 'utf8');
+    const source = [page, readCartSavedPanelSource()].join('\n');
 
+    expect(page).toContain('<CartSavedPanel');
     expect(source).toContain('<div className="cart-page__savedGrid" role="list" aria-label={t(\'pages.cart.saveForLaterTitle\')}>');
     expect(source).toContain('<div className="cart-page__savedItem" key={item.id} role="listitem">');
     expect(source).not.toContain('className="products-grid"');

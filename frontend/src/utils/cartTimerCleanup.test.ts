@@ -19,6 +19,7 @@ describe('cart timer cleanup source contracts', () => {
   it('uses shared cart quantity normalization instead of page-local copies', () => {
     const cartUiSource = readSourceFile('cartUi.ts');
     const cartSource = readSourceFile('../pages/Cart.tsx');
+    const cartQuantityActionsSource = readSourceFile('../hooks/useCartQuantityActions.ts');
     const cartDrawerSource = readSourceFile('../components/CartDrawer.tsx');
 
     expect(cartUiSource).toContain('export const normalizeCartQuantity =');
@@ -27,7 +28,8 @@ describe('cart timer cleanup source contracts', () => {
     expect(cartSource).not.toContain('const normalizeCartQuantity =');
     expect(cartSource).not.toContain('const getLineQuantity =');
     expect(cartDrawerSource).not.toContain('const normalizeCartQuantity =');
-    expect(cartSource).toContain('normalizeCartQuantity,');
+    expect(cartQuantityActionsSource).toContain("import { getCartLineQuantity, normalizeCartQuantity } from '../utils/cartUi';");
+    expect(cartQuantityActionsSource).toContain('normalizeCartQuantity(item, quantity)');
     expect(cartDrawerSource).toContain('normalizeCartQuantity,');
     expect(cartDrawerSource).toContain('max={getCartQuantityLimit(item.stock)}');
   });
@@ -74,15 +76,17 @@ describe('cart timer cleanup source contracts', () => {
 
   it('keeps cart async mutation continuations guarded after unmount', () => {
     const cartSource = readSourceFile('../pages/Cart.tsx');
+    const cartMutationsSource = readSourceFile('../hooks/useCartItemMutations.ts');
+    const cartSurface = `${cartSource}\n${cartMutationsSource}`;
     const cartDrawerSource = readSourceFile('../components/CartDrawer.tsx');
 
-    expect(cartSource).toContain('if (!mountedRef.current) return;');
+    expect(cartSurface).toContain('if (!mountedRef.current) return;');
     expect(cartSource).toContain('if (mountedRef.current) setLoading(false);');
-    expect(cartSource).toContain('if (mountedRef.current) setRestoringSaved(false);');
+    expect(cartMutationsSource).toContain('if (mountedRef.current) setRestoringSaved(false);');
     expect(cartSource).toMatch(/const fetchCartItems = useCallback\(async \(\) => \{\s+if \(!mountedRef\.current\) return;\s+const authenticated/);
-    expect(cartSource).toMatch(/await cartApi\.removeItem\(item\.id\);\s+if \(!mountedRef\.current\) return;\s+setCartItems/);
-    expect(cartSource).toMatch(/await cartApi\.removeItems\(normalizedIds\);\s+if \(!mountedRef\.current\) return;\s+setCartItems/);
-    expect(cartSource).toMatch(/await cartApi\.getItems\(0\);\s+if \(!mountedRef\.current\) return;\s+const nextItems/);
+    expect(cartMutationsSource).toMatch(/await cartApi\.removeItem\(item\.id\);\s+if \(!mountedRef\.current\) return;/);
+    expect(cartMutationsSource).toMatch(/await cartApi\.removeItems\(normalizedIds\);\s+if \(!mountedRef\.current\) return;/);
+    expect(cartMutationsSource).toMatch(/await cartApi\.getItems\(0\);\s+if \(!mountedRef\.current\) return;/);
     expect(cartDrawerSource).toMatch(/await cartApi\.removeItem\(item\.id\);\s+if \(!mountedRef\.current\) return;\s+setItems/);
     expect(cartDrawerSource).toMatch(/await allSettledWithConcurrency\([\s\S]*?\);\s+if \(!mountedRef\.current\) return;\s+const removedIds/);
     expect(cartDrawerSource).toMatch(/await cartApi\.getItems\(0\);\s+if \(!mountedRef\.current\) return;\s+setItems/);

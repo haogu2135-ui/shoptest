@@ -2,6 +2,9 @@ import fs from 'fs';
 import path from 'path';
 
 const cartSource = fs.readFileSync(path.join(__dirname, 'Cart.tsx'), 'utf8');
+const cartMutationsSource = fs.readFileSync(path.join(__dirname, '../hooks/useCartItemMutations.ts'), 'utf8');
+const cartRecoverySource = fs.readFileSync(path.join(__dirname, '../hooks/useCartRecoveryAdds.ts'), 'utf8');
+const cartSurface = [cartSource, cartMutationsSource, cartRecoverySource].join('\n');
 
 describe('Cart recent products cache source contract', () => {
   it('keeps recent product data bounded and short-lived', () => {
@@ -17,13 +20,13 @@ describe('Cart recent products cache source contract', () => {
   });
 
   it('clears cached recent products after cart and saved-item mutations', () => {
-    const clearCalls = cartSource.match(/clearRecentProductsCache\(\);/g) || [];
+    const clearCalls = cartSurface.match(/clearRecentProductsCache\(\);/g) || [];
 
     expect(cartSource).toContain('const clearRecentProductsCache = () => {');
     expect(clearCalls.length).toBeGreaterThanOrEqual(6);
-    expect(cartSource).toContain('removeGuestCartItems');
-    expect(cartSource).toContain('removeSavedForLaterProduct');
-    expect(cartSource).toContain('replaceSavedForLaterItems');
-    expect(cartSource).toContain('saveCartItemForLater');
+    expect(cartSurface).toContain('removeGuestCartItems');
+    expect(cartSurface).toContain('removeSavedForLaterProduct');
+    expect(cartSurface).toContain('replaceSavedForLaterItems');
+    expect(cartSurface).toContain('saveCartItemForLater');
   });
 });

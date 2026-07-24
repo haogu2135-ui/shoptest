@@ -787,8 +787,12 @@ async function probeOriginEdgeAbsoluteShellSeo() {
 }
 
 async function probeLocalWebhookContracts() {
-  const stripeSecret = process.env.STRIPE_WEBHOOK_SECRET || '';
-  const mercadoSecret = process.env.MERCADO_PAGO_WEBHOOK_SECRET || '';
+  const stripeSecret = String(
+    process.env.SHOPTEST_STRIPE_WEBHOOK_SECRET || process.env.STRIPE_WEBHOOK_SECRET || '',
+  ).trim();
+  const mercadoSecret = String(
+    process.env.SHOPTEST_MERCADO_PAGO_WEBHOOK_SECRET || process.env.MERCADO_PAGO_WEBHOOK_SECRET || '',
+  ).trim();
   const stripeBody = JSON.stringify({
     id: 'evt_local_readiness',
     object: 'event',

@@ -3,6 +3,22 @@ import path from 'path';
 
 const readFrontend = (...segments: string[]) =>
   fs.readFileSync(path.join(__dirname, '..', ...segments), 'utf8');
+const readCartSurface = () => (
+  [
+    readFrontend('pages', 'Cart.tsx'),
+    readFrontend('pages', 'cartShellStates.tsx'),
+    readFrontend('pages', 'cartConversionPanels.tsx'),
+    readFrontend('pages', 'cartLineItems.tsx'),
+    readFrontend('pages', 'cartSavedPanel.tsx'),
+  ].join('\n')
+);
+const readPaymentInstructionsSurface = () => (
+  [
+    readFrontend('pages', 'PaymentInstructions.tsx'),
+    readFrontend('pages', 'paymentInstructionsPanels.tsx'),
+    readFrontend('pages', 'paymentInstructionsStickyBars.tsx'),
+  ].join('\n')
+);
 const readCheckoutSurface = () => (
   [
     readFrontend('pages', 'Checkout.tsx'),
@@ -36,6 +52,9 @@ const readProductDetailSurface = () => (
     readFrontend('pages', 'productDetailHelpers.tsx'),
     readFrontend('pages', 'productDetailRecommendations.tsx'),
     readFrontend('pages', 'productDetailGallery.tsx'),
+    readFrontend('pages', 'productDetailSummary.tsx'),
+    readFrontend('pages', 'productDetailBuyBar.tsx'),
+    readFrontend('pages', 'productDetailContent.tsx'),
     readFrontend('pages', 'productDetailShell.tsx'),
     readFrontend('hooks', 'useProductDetailNonCriticalContent.ts'),
     readFrontend('hooks', 'useProductDetailRecommendationActions.ts'),
@@ -62,7 +81,7 @@ describe('commercial UX contracts', () => {
   });
 
   it('keeps product detail deep links for reviews/Q&A anchors', () => {
-    const productDetail = readFrontend('pages', 'ProductDetail.tsx');
+    const productDetail = readProductDetailSurface();
     expect(productDetail).toContain("id=\"product-reviews-card\"");
     expect(productDetail).toContain("id=\"product-qa-card\"");
     expect(productDetail).toContain("id=\"product-service-tabs\"");
@@ -80,7 +99,7 @@ describe('commercial UX contracts', () => {
   });
 
   it('keeps cart free-shipping progress and trust signals commercial-ready', () => {
-    const cart = readFrontend('pages', 'Cart.tsx');
+    const cart = readCartSurface();
     expect(cart).toContain('pages.cart.freeShippingProgressLabel');
     expect(cart).toContain('cart-page__trustBar');
     expect(cart).toContain('pages.cart.trustSecureTitle');
@@ -133,7 +152,7 @@ describe('commercial UX contracts', () => {
   });
 
   it('keeps empty cart multi-path CTAs when recently viewed recovery is present', () => {
-    const cart = readFrontend('pages', 'Cart.tsx');
+    const cart = readCartSurface();
     const cartDrawer = readFrontend('components', 'CartDrawer.tsx');
     const cartDrawerCss = readFrontend('components', 'CartDrawer.css');
     expect(cart).toContain('cart-page__emptyActions');
@@ -246,7 +265,7 @@ describe('commercial UX contracts', () => {
   });
 
   it('keeps payment instructions sticky CTA and trust strip for mobile conversion', () => {
-    const payment = readFrontend('pages', 'PaymentInstructions.tsx');
+    const payment = readPaymentInstructionsSurface();
     const paymentCss = readFrontend('pages', 'PaymentInstructions.css');
     expect(payment).toContain('payment-instructions-page__stickyBar');
     expect(payment).toContain('payment-instructions-page__trustBar');
@@ -465,7 +484,7 @@ describe('commercial UX contracts', () => {
     const productDetail = readProductDetailSurface();
     const notFound = readFrontend('pages', 'NotFound.tsx');
     const profile = readProfileSurface();
-    const cart = readFrontend('pages', 'Cart.tsx');
+    const cart = readCartSurface();
 
     expect(productDetail).toContain('pages.productDetail.notFoundHint');
     expect(productDetail).toContain("navigate('/wishlist')");
@@ -791,7 +810,7 @@ describe('commercial UX contracts', () => {
 
 
   it('keeps conversion-critical load failures on multipath commercial recovery exits', () => {
-    const cart = readFrontend('pages', 'Cart.tsx');
+    const cart = readCartSurface();
     const checkout = readFrontend('pages', 'Checkout.tsx');
     const wishlist = readFrontend('pages', 'Wishlist.tsx');
     const profile = readProfileSurface();
@@ -818,7 +837,7 @@ describe('commercial UX contracts', () => {
   it('keeps checkout empty and payment guest-email gates on multipath commercial recovery exits', () => {
     const checkout = readFrontend('pages', 'Checkout.tsx');
     const checkoutSurface = readCheckoutSurface();
-    const payment = readFrontend('pages', 'PaymentInstructions.tsx');
+    const payment = readPaymentInstructionsSurface();
     expect(checkoutSurface).toContain('data-checkout-empty-actions');
     expect(checkoutSurface).toContain("navigate('/pet-finder')");
     expect(checkoutSurface).toContain("navigate('/coupons')");
@@ -956,7 +975,7 @@ it('keeps home empty category and product rails on multipath commercial recovery
     const recovery = readFrontend('utils', 'paymentRecovery.ts');
     const checkout = readFrontend('pages', 'Checkout.tsx');
     const orderActions = readFrontend('hooks', 'useCheckoutOrderActions.ts');
-    const paymentInstructions = readFrontend('pages', 'PaymentInstructions.tsx');
+    const paymentInstructions = readPaymentInstructionsSurface();
     const orderTracking = readFrontend('pages', 'OrderTracking.tsx');
     const profile = readProfileSurface();
     expect(recovery).toContain('resolveCommercialPaymentNavigationUrl');
@@ -983,9 +1002,9 @@ it('keeps home empty category and product rails on multipath commercial recovery
   });
 
   it('keeps conversion pages on a single commercial h1 primary title', () => {
-    const cart = readFrontend('pages', 'Cart.tsx');
+    const cart = readCartSurface();
     const checkout = readFrontend('pages', 'Checkout.tsx');
-    const productDetail = readFrontend('pages', 'ProductDetail.tsx');
+    const productDetail = readProductDetailSurface();
     const tracking = readFrontend('pages', 'OrderTracking.tsx');
     const coupons = readFrontend('pages', 'CouponCenter.tsx');
     const homeCss = readFrontend('pages', 'Home.css');
@@ -1277,7 +1296,7 @@ it('keeps home empty category and product rails on multipath commercial recovery
   });
 
   it('keeps PDP sold-out and wishlist affordances on CSS classes', () => {
-    const pdp = readFrontend('pages', 'ProductDetail.tsx');
+    const pdp = readProductDetailSurface();
     const pdpCss = readFrontend('pages', 'ProductDetail.css');
     expect(pdp).toContain('product-detail__soldOutTag');
     expect(pdp).toContain('product-detail__wishlistIcon--active');
@@ -1545,8 +1564,8 @@ ${orderActions}`;
 
 
   it('keeps storefront custom tablists keyboard-roving for commercial accessibility', () => {
-    const productDetail = readFrontend('pages', 'ProductDetail.tsx');
-    const profile = readFrontend('pages', 'Profile.tsx');
+    const productDetail = readProductDetailSurface();
+    const profile = readProfileSurface();
     const shopTabs = readFrontend('components', 'ShopTabs.tsx');
     const util = readFrontend('utils', 'tablistKeyboard.ts');
 

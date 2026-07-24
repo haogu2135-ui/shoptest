@@ -1,7 +1,12 @@
 import fs from 'fs';
 import path from 'path';
 
-const pageSource = fs.readFileSync(path.join(__dirname, 'PaymentInstructions.tsx'), 'utf8');
+const pageSource = [
+  fs.readFileSync(path.join(__dirname, 'PaymentInstructions.tsx'), 'utf8'),
+  fs.readFileSync(path.join(__dirname, 'paymentInstructionsPanels.tsx'), 'utf8'),
+  fs.readFileSync(path.join(__dirname, 'paymentInstructionsStickyBars.tsx'), 'utf8'),
+].join('\n');
+const pageShellSource = fs.readFileSync(path.join(__dirname, 'PaymentInstructions.tsx'), 'utf8');
 const cssSource = fs.readFileSync(path.join(__dirname, 'PaymentInstructions.css'), 'utf8');
 const appSource = fs.readFileSync(path.join(__dirname, '../App.tsx'), 'utf8');
 const mobileAppCssSource = fs.readFileSync(path.join(__dirname, '../mobile-app.css'), 'utf8');

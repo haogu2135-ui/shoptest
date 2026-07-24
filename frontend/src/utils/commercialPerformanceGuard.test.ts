@@ -13,6 +13,60 @@ const readCheckoutSurface = () => [
   readFrontend('components', 'checkout', 'CheckoutConversionSections.tsx'),
 ].join('\n');
 
+const readProductDetailSurface = () => [
+  readFrontend('pages', 'ProductDetail.tsx'),
+  readFrontend('pages', 'productDetailGallery.tsx'),
+  readFrontend('pages', 'productDetailSummary.tsx'),
+  readFrontend('pages', 'productDetailBuyBar.tsx'),
+  readFrontend('pages', 'productDetailContent.tsx'),
+  readFrontend('pages', 'productDetailRecommendations.tsx'),
+  readFrontend('pages', 'productDetailHelpers.tsx'),
+  readFrontend('pages', 'productDetailShell.tsx'),
+].join('\n');
+
+const readProfileSurface = () => [
+  readFrontend('pages', 'Profile.tsx'),
+  readFrontend('pages', 'profileOrdersPanel.tsx'),
+  readFrontend('pages', 'profileAddressesPanel.tsx'),
+  readFrontend('pages', 'profilePetsPanel.tsx'),
+  readFrontend('pages', 'profileOrderDetailModal.tsx'),
+  readFrontend('pages', 'profileReturnModals.tsx'),
+  readFrontend('pages', 'profilePaymentModal.tsx'),
+  readFrontend('pages', 'profileInfoPanel.tsx'),
+  readFrontend('pages', 'profileAccountModals.tsx'),
+  readFrontend('utils', 'profileHelpers.ts'),
+  readFrontend('hooks', 'useProfilePaymentActions.ts'),
+  readFrontend('hooks', 'useProfileAddressActions.ts'),
+  readFrontend('hooks', 'useProfilePetActions.ts'),
+  readFrontend('hooks', 'useProfileAccountActions.ts'),
+  readFrontend('hooks', 'useProfileOrderActions.ts'),
+].join('\n');
+
+const readCartSurface = () => [
+  readFrontend('pages', 'Cart.tsx'),
+  readFrontend('pages', 'cartShellStates.tsx'),
+  readFrontend('pages', 'cartConversionPanels.tsx'),
+  readFrontend('pages', 'cartLineItems.tsx'),
+  readFrontend('pages', 'cartSavedPanel.tsx'),
+].join('\n');
+
+const readPaymentInstructionsSurface = () => [
+  readFrontend('pages', 'PaymentInstructions.tsx'),
+  readFrontend('pages', 'paymentInstructionsPanels.tsx'),
+  readFrontend('pages', 'paymentInstructionsStickyBars.tsx'),
+].join('\n');
+
+const readPageSurface = (dir: string, name: string) => {
+  if (name === 'Cart.tsx') return readCartSurface();
+  if (name === 'Checkout.tsx') return readCheckoutSurface();
+  if (name === 'PaymentInstructions.tsx') return readPaymentInstructionsSurface();
+  if (name === 'ProductDetail.tsx') return readProductDetailSurface();
+  if (name === 'Profile.tsx') return readProfileSurface();
+  return readFrontend(dir, name);
+};
+
+
+
 describe('commercial performance contracts', () => {
   it('keeps multi-MB China town catalogs out of the client region loader', () => {
     const source = readFrontend('regionData.ts');
@@ -263,7 +317,7 @@ describe('commercial performance contracts', () => {
       ['pages', 'PaymentInstructions.tsx'],
     ];
     for (const [dir, name] of storefrontFiles) {
-      const source = readFrontend(dir, name);
+      const source = dir === 'pages' ? readPageSurface(dir, name) : readFrontend(dir, name);
       expect(source).not.toContain('@ant-design/icons');
       expect(source).toMatch(/from ['"].*ShopIcon['"]/);
     }
@@ -344,7 +398,7 @@ describe('commercial performance contracts', () => {
   });
 
   it('keeps ProductDetail purchase shell free of ant Row/Col', () => {
-    const productDetail = readFrontend('pages', 'ProductDetail.tsx');
+    const productDetail = readProductDetailSurface();
     expect(productDetail).toContain('product-detail__layout');
     expect(productDetail).toContain('product-detail__gallery');
     expect(productDetail).toContain('product-detail__summary');
@@ -415,7 +469,7 @@ describe('commercial performance contracts', () => {
   });
 
   it('keeps Cart free of ant Space layout wrappers', () => {
-    const cart = readFrontend('pages', 'Cart.tsx');
+    const cart = readCartSurface();
     expect(cart).toContain('cart-page__productCell');
     expect(cart).toContain('cart-page__tableActions');
     expect(cart).toContain('cart-page__bulkActionsRow');
@@ -552,7 +606,7 @@ describe('commercial performance contracts', () => {
   });
 
   it('keeps ProductDetail free of static Typography imports', () => {
-    const productDetail = readFrontend('pages', 'ProductDetail.tsx');
+    const productDetail = readProductDetailSurface();
     expect(productDetail).not.toMatch(/\bTypography\b/);
     expect(productDetail).not.toMatch(/import \{[^}]*\bTypography\b[^}]*\} from 'antd'/);
     expect(productDetail).toContain('product-detail-page__title');
@@ -593,7 +647,7 @@ describe('commercial performance contracts', () => {
   });
 
   it('keeps Profile free of static Typography imports', () => {
-    const profile = readFrontend('pages', 'Profile.tsx');
+    const profile = readProfileSurface();
     expect(profile).not.toMatch(/\bTypography\b/);
     expect(profile).not.toMatch(/import \{[^}]*\bTypography\b[^}]*\} from 'antd'/);
     expect(profile).toContain('profile-page__title');
@@ -636,7 +690,7 @@ describe('commercial performance contracts', () => {
   });
 
   it('keeps PaymentInstructions free of static Typography imports', () => {
-    const page = readFrontend('pages', 'PaymentInstructions.tsx');
+    const page = readPaymentInstructionsSurface();
     expect(page).not.toMatch(/\bTypography\b/);
     expect(page).not.toMatch(/import \{[^}]*\bTypography\b[^}]*\} from 'antd'/);
     expect(page).toContain('payment-instructions-page__title');
@@ -691,7 +745,7 @@ describe('commercial performance contracts', () => {
       ['BrowsingHistory.tsx', 'browsing-history__spinner'],
       ['Profile.tsx', 'profile-page__spinner'],
     ] as const) {
-      const source = readFrontend('pages', file);
+      const source = readPageSurface('pages', file);
       expect(source).not.toMatch(/\bSpin\b/);
       expect(source).not.toMatch(/import \{[^}]*\bSpin\b[^}]*\} from 'antd'/);
       expect(source).toContain(spinner);
@@ -707,7 +761,11 @@ describe('commercial performance contracts', () => {
       ['Notifications.tsx', 'notifications-page__itemList'],
       ['StockAlerts.tsx', 'stock-alerts__itemList'],
     ] as const) {
-      const source = readFrontend('pages', file);
+      const source = file === 'ProductDetail.tsx'
+        ? readProductDetailSurface()
+        : file === 'Profile.tsx'
+          ? readProfileSurface()
+          : readFrontend('pages', file);
       expect(source).not.toMatch(/import \{[^}]*\bList\b[^}]*\} from 'antd'/);
       expect(source).not.toMatch(/<List\b/);
       expect(source).not.toMatch(/List\.Item/);
@@ -805,7 +863,7 @@ describe('commercial performance contracts', () => {
 
 
   it('keeps Cart page free of static ant Popconfirm tags', () => {
-    const source = readFrontend('pages', 'Cart.tsx');
+    const source = readCartSurface();
     expect(source).toContain('ShopPopconfirm');
     expect(source).toContain('cart-page-popconfirm');
     expect(source).not.toMatch(/<Popconfirm\b/);
@@ -821,7 +879,7 @@ describe('commercial performance contracts', () => {
 
 
   it('keeps Profile free of static ant Popconfirm tags', () => {
-    const source = readFrontend('pages', 'Profile.tsx');
+    const source = readProfileSurface();
     expect(source).toContain('ShopPopconfirm');
     expect(source).not.toMatch(/<Popconfirm\b/);
     expect(source).not.toMatch(/import \{[^}]*\bPopconfirm\b[^}]*\} from 'antd'/);
@@ -841,7 +899,7 @@ describe('commercial performance contracts', () => {
       'Profile.tsx',
     ];
     pages.forEach((page) => {
-      const source = readFrontend('pages', page);
+      const source = page === 'Profile.tsx' ? readProfileSurface() : readFrontend('pages', page);
       expect(source).toContain('ShopPopconfirm');
       expect(source).not.toMatch(/<Popconfirm\b/);
       expect(source).not.toMatch(/import \{[^}]*\bPopconfirm\b[^}]*\} from 'antd'/);
@@ -880,7 +938,7 @@ describe('commercial performance contracts', () => {
 
 
   it('keeps Profile free of static ant Select for pet/payment fields', () => {
-    const source = readFrontend('pages', 'Profile.tsx');
+    const source = readProfileSurface();
     expect(source).toContain('ShopSelect');
     expect(source).toContain('profile-payment-modal__methodSelect');
     expect(source).toContain('allowClear');
@@ -965,7 +1023,7 @@ describe('commercial performance contracts', () => {
   });
 
   it('keeps Profile free of Modal.confirm', () => {
-    const source = readFrontend('pages', 'Profile.tsx');
+    const source = readProfileSurface();
     expect(source).toContain('ShopConfirm');
     expect(source).toContain('profile-page__receiptConfirmModal');
     expect(source).not.toContain('Modal.confirm');
@@ -1004,7 +1062,7 @@ describe('commercial performance contracts', () => {
   });
 
   it('keeps Cart free of ant Table/Empty', () => {
-    const source = readFrontend('pages', 'Cart.tsx');
+    const source = readCartSurface();
     expect(source).not.toMatch(/import \{[^}]*\bTable\b[^}]*\} from 'antd'/);
     expect(source).not.toMatch(/import \{[^}]*\bEmpty\b[^}]*\} from 'antd'/);
     expect(source).not.toMatch(/<Table\b/);
@@ -1051,14 +1109,14 @@ describe('commercial performance contracts', () => {
   });
 
   it('keeps PaymentInstructions free of ant Descriptions', () => {
-    const source = readFrontend('pages', 'PaymentInstructions.tsx');
+    const source = readPaymentInstructionsSurface();
     expect(source).not.toMatch(/import \{[^}]*\bDescriptions\b[^}]*\} from 'antd'/);
     expect(source).not.toMatch(/<Descriptions\b/);
     expect(source).toContain('payment-instructions-page__descList');
   });
 
   it('keeps Profile free of ant Descriptions', () => {
-    const source = readFrontend('pages', 'Profile.tsx');
+    const source = readProfileSurface();
     expect(source).not.toMatch(/import \{[^}]*\bDescriptions\b[^}]*\} from 'antd'/);
     expect(source).not.toMatch(/<Descriptions\b/);
     expect(source).toContain('profile-page__descList');
@@ -1181,7 +1239,7 @@ describe('commercial performance contracts', () => {
   });
 
   it('keeps ProductDetail free of ant Card shell', () => {
-    const source = readFrontend('pages', 'ProductDetail.tsx');
+    const source = readProductDetailSurface();
     expect(source).not.toMatch(/import \{[^}]*\bCard\b[^}]*\} from 'antd'/);
     expect(source).not.toMatch(/<Card\b/);
     expect(source).toContain('product-gallery-card');
@@ -1199,7 +1257,7 @@ describe('commercial performance contracts', () => {
       ['pages', 'ProductCompare.tsx', 'product-compare-page__shell'],
       ['pages', 'PetFinder.tsx', 'pet-finder-page__finderCard'],
     ] as const) {
-      const source = readFrontend(dir, name);
+      const source = readPageSurface(dir, name);
       expect(source).not.toMatch(/import \{[^}]*\bCard\b[^}]*\} from 'antd'/);
       expect(source).not.toMatch(/<Card\b/);
       expect(source).toContain(marker);
@@ -1237,7 +1295,7 @@ describe('commercial performance contracts', () => {
   });
 
   it('keeps ProductDetail free of static ant Segmented', () => {
-    const source = readFrontend('pages', 'ProductDetail.tsx');
+    const source = readProductDetailSurface();
     expect(source).not.toMatch(/import \{[^}]*\bSegmented\b[^}]*\} from 'antd'/);
     expect(source).not.toMatch(/<Segmented\b/);
     expect(source).toContain('ShopSegmented');
@@ -1253,7 +1311,7 @@ describe('commercial performance contracts', () => {
   });
 
   it('keeps ProductDetail free of static ant Rate', () => {
-    const source = readFrontend('pages', 'ProductDetail.tsx');
+    const source = readProductDetailSurface();
     expect(source).not.toMatch(/import \{[^}]*\bRate\b[^}]*\} from 'antd'/);
     expect(source).not.toMatch(/<Rate\b/);
     expect(source).toContain('ShopRate');
@@ -1329,7 +1387,7 @@ describe('commercial performance contracts', () => {
 
 
   it('keeps Profile free of static ant Cascader/DatePicker', () => {
-    const source = readFrontend('pages', 'Profile.tsx');
+    const source = readProfileSurface();
     expect(source).toContain('ShopCascader');
     expect(source).toContain('ShopDatePicker');
     expect(source).toContain('profile-pet-modal__field');
@@ -1359,7 +1417,7 @@ describe('commercial performance contracts', () => {
   });
 
   it('keeps Profile free of static ant Modal tags', () => {
-    const source = readFrontend('pages', 'Profile.tsx');
+    const source = readProfileSurface();
     expect(source).not.toMatch(/<Modal\b/);
     expect(source).toContain('ShopModal');
     expect(source).toContain('ShopConfirm');
@@ -1368,7 +1426,7 @@ describe('commercial performance contracts', () => {
   });
 
   it('keeps Profile free of static ant Tabs', () => {
-    const source = readFrontend('pages', 'Profile.tsx');
+    const source = readProfileSurface();
     expect(source).not.toMatch(/import \{[^}]*\bTabs\b[^}]*\} from 'antd'/);
     expect(source).not.toMatch(/<Tabs\b/);
     expect(source).toContain('profile-tabs__nav');
@@ -1385,7 +1443,7 @@ describe('commercial performance contracts', () => {
   });
 
   it('keeps ProductDetail free of static ant Tabs', () => {
-    const source = readFrontend('pages', 'ProductDetail.tsx');
+    const source = readProductDetailSurface();
     expect(source).not.toMatch(/import \{[^}]*\bTabs\b[^}]*\} from 'antd'/);
     expect(source).not.toMatch(/<Tabs\b/);
     expect(source).toContain('product-detail-tabs__nav');
@@ -1411,7 +1469,7 @@ describe('commercial performance contracts', () => {
   });
 
   it('keeps ProductDetail free of static ant Carousel', () => {
-    const source = readFrontend('pages', 'ProductDetail.tsx');
+    const source = readProductDetailSurface();
     expect(source).not.toMatch(/import \{[^}]*\bCarousel\b[^}]*\} from 'antd'/);
     expect(source).not.toMatch(/<Carousel\b/);
     expect(source).toContain('product-recommendations__track--strip');
@@ -1419,14 +1477,14 @@ describe('commercial performance contracts', () => {
   });
 
   it('keeps ProductDetail gallery thumbs free of ant Carousel shell', () => {
-    const source = readFrontend('pages', 'ProductDetail.tsx');
+    const source = readProductDetailSurface();
     expect(source).toContain('product-detail-thumbs--strip');
     expect(source).toMatch(/className="product-detail-thumbs product-detail-thumbs--strip"/);
     expect(source).not.toMatch(/product-detail-thumbs">\s*<Carousel\b/);
   });
 
   it('keeps ProductDetail free of static ant Radio', () => {
-    const source = readFrontend('pages', 'ProductDetail.tsx');
+    const source = readProductDetailSurface();
     expect(source).not.toMatch(/import \{[^}]*\bRadio\b[^}]*\} from 'antd'/);
     expect(source).not.toMatch(/<Radio\b/);
     expect(source).toContain('product-option-radio');
@@ -1435,7 +1493,7 @@ describe('commercial performance contracts', () => {
   });
 
   it('keeps ProductDetail free of static ant Modal', () => {
-    const source = readFrontend('pages', 'ProductDetail.tsx');
+    const source = readProductDetailSurface();
     expect(source).not.toMatch(/import \{[^}]*\bModal\b[^}]*\} from 'antd'/);
     expect(source).not.toMatch(/<Modal\b/);
     expect(source).toContain('ShopModal');
@@ -1533,7 +1591,7 @@ describe('commercial performance contracts', () => {
   });
 
   it('keeps ProductDetail free of static ant Input', () => {
-    const source = fs.readFileSync(path.resolve(__dirname, '../pages/ProductDetail.tsx'), 'utf8');
+    const source = readProductDetailSurface();
     expect(source).toContain('ShopInput');
     expect(source).toContain('ShopTextArea');
     expect(source).not.toMatch(/import \{[^}]*\bInput\b[^}]*\} from 'antd'/);
@@ -1557,7 +1615,7 @@ describe('commercial performance contracts', () => {
   });
 
   it('keeps PaymentInstructions free of static ant Input', () => {
-    const source = fs.readFileSync(path.resolve(__dirname, '../pages/PaymentInstructions.tsx'), 'utf8');
+    const source = readPaymentInstructionsSurface();
     expect(source).toContain('ShopInput');
     expect(source).not.toMatch(/import \{[^}]*\bInput\b[^}]*\} from 'antd'/);
     expect(source).not.toMatch(/<Input\b/);
@@ -1799,7 +1857,7 @@ describe('commercial performance contracts', () => {
   });
 
   it('keeps Profile free of static ant Input', () => {
-    const source = fs.readFileSync(path.resolve(__dirname, '../pages/Profile.tsx'), 'utf8');
+    const source = readProfileSurface();
     expect(source).toContain('ShopInput');
     expect(source).toContain('ShopPasswordInput');
     expect(source).toContain('ShopTextArea');
@@ -2249,7 +2307,11 @@ describe('commercial performance contracts', () => {
   it('keeps residual admin/storefront checkboxes densified without ant Checkbox/Radio', () => {
     const checkboxPages = ['Cart', 'OrderManagement', 'Profile', 'ConfigCenter', 'ProductList', 'PermissionManagement'];
     checkboxPages.forEach((page) => {
-      const source = fs.readFileSync(path.resolve(__dirname, `../pages/${page}.tsx`), 'utf8');
+      const source = page === 'Profile'
+        ? readProfileSurface()
+        : page === 'Cart'
+          ? readCartSurface()
+          : fs.readFileSync(path.resolve(__dirname, `../pages/${page}.tsx`), 'utf8');
       expect(source).toContain('ShopCheckbox');
       expect(source).not.toMatch(/<Checkbox\b/);
       expect(source).not.toMatch(/import \{[^}]*\bCheckbox\b[^}]*\} from 'antd'/);
@@ -2283,7 +2345,17 @@ describe('commercial performance contracts', () => {
       'ForgotPassword',
     ];
     pages.forEach((page) => {
-      const source = fs.readFileSync(path.resolve(__dirname, `../pages/${page}.tsx`), 'utf8');
+      const source = page === 'ProductDetail'
+        ? readProductDetailSurface()
+        : page === 'Profile'
+          ? readProfileSurface()
+          : page === 'Checkout'
+            ? readCheckoutSurface()
+            : page === 'Cart'
+              ? readCartSurface()
+              : page === 'PaymentInstructions'
+                ? readPaymentInstructionsSurface()
+                : fs.readFileSync(path.resolve(__dirname, `../pages/${page}.tsx`), 'utf8');
       expect(source).toContain('ShopButton');
       expect(source).not.toMatch(/<Button\b/);
       expect(source).not.toMatch(/import \{[^}]*\bButton\b[^}]*\} from 'antd'/);
@@ -2426,7 +2498,7 @@ describe('commercial performance contracts', () => {
       ['pages', 'LogisticsCarrierManagement.tsx'],
       ['pages', 'SecurityAuditLogManagement.tsx'],
     ] as const) {
-      const source = name === 'Checkout.tsx' ? readCheckoutSurface() : readFrontend(dir, name);
+      const source = readPageSurface(dir, name);
       expect(source).toContain('ShopProgress');
       expect(source).not.toMatch(/import \{[^}]*\bProgress\b[^}]*\} from 'antd'/);
       expect(source).not.toMatch(/<Progress\b/);
@@ -2505,7 +2577,7 @@ describe('commercial performance contracts', () => {
       ['pages', 'ProductManagement.tsx'],
       ['pages', 'SystemMonitor.tsx'],
     ] as const) {
-      const source = name === 'Checkout.tsx' ? readCheckoutSurface() : readFrontend(dir, name);
+      const source = readPageSurface(dir, name);
       expect(source).toContain('ShopTag');
       expect(source).not.toMatch(/import \{[^}]*\bTag\b[^}]*\} from 'antd'/);
       expect(source).not.toMatch(/<Tag\b/);
@@ -2527,7 +2599,7 @@ describe('commercial performance contracts', () => {
       ['pages', 'ProductManagement.tsx'],
       ['pages', 'SupportManagement.tsx'],
     ] as const) {
-      const source = name === 'Checkout.tsx' ? readCheckoutSurface() : readFrontend(dir, name);
+      const source = readPageSurface(dir, name);
       expect(source).toContain('ShopAlert');
       expect(source).not.toMatch(/import \{[^}]*\bAlert\b[^}]*\} from 'antd'/);
       expect(source).not.toMatch(/<Alert\b/);

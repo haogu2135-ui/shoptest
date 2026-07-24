@@ -1,8 +1,7 @@
-import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { ShopIcon, SI } from '../components/ShopIcon';
 import { useParams, useSearchParams } from 'react-router-dom';
-import ShopInput, { ShopTextArea } from '../components/ShopInput';
 import { productApi, wishlistApi } from '../api';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../i18n';
@@ -14,7 +13,7 @@ import { getBundleInfo } from '../utils/bundle';
 import { recordProductView } from '../utils/productViewPreferences';
 import { hasStockAlert } from '../utils/stockAlerts';
 import { conversionConfig, estimatePetSize, getDeliveryPromise, getLowStockCount } from '../utils/conversionConfig';
-import { getProductOptionGroups, getProductVariants, needsOptionSelection, optionValueIsCompatible, selectCompatibleProductOption, variantMatchesSelectedOptions } from '../utils/productOptions';
+import { getProductOptionGroups, getProductVariants, needsOptionSelection, selectCompatibleProductOption, variantMatchesSelectedOptions } from '../utils/productOptions';
 import { dispatchDomEvent } from '../utils/domEvents';
 import { buildResponsiveImageSrcSet, getOptimizedImageUrl } from '../utils/mediaAssets';
 import { getLocalStorageItem, hasStoredValue } from '../utils/safeStorage';
@@ -25,17 +24,9 @@ import { isProductCompared } from '../utils/productCompare';
 import { addAppScrollListener } from '../utils/nativeScroll';
 import { useNativeBackHandler } from '../utils/nativeBack';
 import { AUTH_SESSION_CHANGED_EVENT } from '../utils/authEvents';
-import { formatProductSpecLabel } from '../utils/productSpecLabels';
 import { reportNonBlockingError } from '../utils/nonBlockingError';
-import { handleRovingTablistKeyDown } from '../utils/tablistKeyboard';
 import PageEmpty from '../components/PageEmpty';
 import ShopBreadcrumb from '../components/ShopBreadcrumb';
-import ShopSegmented from '../components/ShopSegmented';
-import ShopRate from '../components/ShopRate';
-import ShopModal from '../components/ShopModal';
-import ShopButton from '../components/ShopButton';
-import ShopTag from '../components/ShopTag';
-import ShopAlert from '../components/ShopAlert';
 import PageError from '../components/PageError';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useDocumentMeta } from '../hooks/useDocumentMeta';
@@ -47,12 +38,7 @@ import {
   findSelectedProductVariant,
   normalizeProductImages,
   normalizeProductDetailTab,
-  normalizeQuestionText,
-  normalizeSizeCalculatorWeight,
-  PRODUCT_DETAIL_TAB_KEYS,
-  PRODUCT_QUESTION_MAX_LENGTH,
   PRODUCT_SIZE_CALCULATOR_MAX_WEIGHT_KG,
-  renderTrustIcon,
   resolveProductPrimaryImage,
   buildCompleteSetItems,
   buildRelatedRecommendations,
@@ -62,9 +48,11 @@ import type {
   ProductDetailTabKey,
   ProductRecommendationCandidate,
 } from './productDetailHelpers';
-import { ProductDetailLazyFallback, ProductDetailSkeleton } from './productDetailShell';
-import { ProductDetailCompleteSet, ProductDetailRecommendations } from './productDetailRecommendations';
+import { ProductDetailSkeleton } from './productDetailShell';
+import { ProductDetailRecommendations } from './productDetailRecommendations';
 import { ProductDetailGallery, ProductDetailImagePreviewModal } from './productDetailGallery';
+import { ProductDetailSummary, ProductDetailSizeGuideModal } from './productDetailSummary';
+import { ProductDetailContent } from './productDetailContent';
 import { useProductDetailNonCriticalContent } from '../hooks/useProductDetailNonCriticalContent';
 import { useProductDetailGallery } from '../hooks/useProductDetailGallery';
 import { useProductDetailPurchaseActions } from '../hooks/useProductDetailPurchaseActions';
@@ -74,8 +62,6 @@ import { useProductDetailRecommendationActions } from '../hooks/useProductDetail
 import './ProductDetail.css';
 import '../styles/mobile-page-contrast.css';
 
-const ProductRichDetail = React.lazy(() => import('../components/ProductRichDetail'));
-const ProductReview = React.lazy(() => import('../components/ProductReview').then((module) => ({ default: module.ProductReview })));
 
 const ProductDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -1023,711 +1009,128 @@ const ProductDetail: React.FC = () => {
           />
 
           {/* Product purchase summary */}
-          <div className="product-detail__summary">
-            <section className="product-summary-card" aria-label={productName}>
-              <div className="product-summary-space">
-                <div className="product-title-block">
-                  <h1 className="product-detail-page__title">{productName}</h1>
-                  {product.brand && (
-                    <span className="product-detail-page__text product-detail-page__text--secondary product-brand-text">{t('pages.productDetail.brand')}: {product.brand}</span>
-                  )}
-                </div>
-
-                <div className="product-price-panel">
-                  <div className="product-rating-row">
-                    <ShopRate
-                      disabled
-                      allowHalf
-                      value={displayedRating}
-                      ariaLabel={`${displayedRating.toFixed(1)} ${t('pages.productDetail.rating')}`}
-                    />
-                    <span className="product-detail-page__text">{displayedRating.toFixed(1)} {t('pages.productDetail.rating')}</span>
-                  </div>
-                  <div className="product-price-line">
-                    <span className="product-price-line__current commerce-money">{formatMoney(displayPrice)}</span>
-                    {originalReferencePrice ? (
-                      <span className="product-detail-page__text product-detail-page__text--delete product-price-line__original commerce-money">
-                        {formatMoney(originalReferencePrice)}
-                      </span>
-                    ) : null}
-                    {priceSavingsPercent > 0 && (
-                      <ShopTag color="gold" className="product-price-line__discount">
-                        {t('pages.productDetail.savePercent', { defaultValue: 'Save {percent}%', percent: priceSavingsPercent })}
-                      </ShopTag>
-                    )}
-                  </div>
-                  <div className="product-price-delivery">
-                    <span><ShopIcon path={SI.truck} /> {deliveryPromise.enabled ? t('pages.productDetail.deliveryPromise', { window: deliveryPromise.windowText }) : productShippingText}</span>
-                    <span><ShopIcon path={SI.checkCircle} /> {productFreeShippingText}</span>
-                  </div>
-                  <div
-                    className="product-mobile-promo"
-                    role={limitedTimePromoActive ? 'status' : undefined}
-                    aria-live={limitedTimePromoActive ? 'polite' : undefined}
-                    aria-atomic={limitedTimePromoActive ? 'true' : undefined}
-                  >
-                    <span>{limitedTimePromoActive ? t('pages.productDetail.limitedTimeCountdown') : productFreeShippingText}</span>
-                    <strong>{limitedTimePromoActive ? formatCountdown(limitedTimeRemaining) : t('pages.productDetail.authentic')}</strong>
-                  </div>
-
-	                  <div className="product-compact-signals">
-	                    <span className={isLowStock ? 'product-detail__stockMeta product-detail__stockMeta--low' : 'product-detail__stockMeta'}>
-                      {t('pages.productDetail.stock')}: {stockLabel}
-                      {isLowStock ? <ShopTag color="orange">{lowStockUrgencyLabel}</ShopTag> : null}
-                    </span>
-	                    {priceSavingsAmount > 0 ? <span>{t('pages.productDetail.purchaseSavings')}: <span className="commerce-money">{formatMoney(priceSavingsAmount * quantity)}</span></span> : null}
-	                  </div>
-	                </div>
-
-                <div className="product-mobile-buybar">
-                  <div className="product-mobile-buybar__meta" title={`${mobileBuybarPrice} - ${mobileBuybarStatus}`}>
-                    <strong>{mobileBuybarPrice}</strong>
-                    <span className={`product-mobile-buybar__status${purchaseSelectionBlocked || isOutOfStock ? ' product-mobile-buybar__status--attention' : ''}`}>
-                      {purchaseSelectionBlocked || isOutOfStock ? <ShopIcon path={SI.bell} /> : <ShopIcon path={SI.checkCircle} />}
-                      {mobileBuybarStatus}
-                    </span>
-                  </div>
-                  <button type="button" className="product-mobile-buybar__tool product-mobile-buybar__tool--home" aria-label={homeActionLabel} title={homeActionLabel} onClick={() => navigate('/')}>
-                    <ShopIcon path={SI.home} />
-                    <span>{t('nav.ariaHome')}</span>
-                  </button>
-                  <button type="button" className="product-mobile-buybar__tool product-mobile-buybar__tool--favorite" aria-label={favoriteActionLabel} title={favoriteActionLabel} onClick={handleFavorite}>
-                    {isWishlisted ? <ShopIcon path={SI.heartFill} /> : <ShopIcon path={SI.heart} />}
-                    <span>{isWishlisted ? t('pages.productDetail.favorited') : t('pages.productDetail.favorite')}</span>
-                  </button>
-                  <button type="button" className="product-mobile-buybar__tool product-mobile-buybar__tool--compare" aria-label={compareActionLabel} title={compareActionLabel} onClick={handleCompare}>
-                    <ShopIcon path={SI.barChart} />
-                    <span>{isCompared ? t('pages.productList.viewCompare') : t('pages.productList.compare')}</span>
-                  </button>
-                  <ShopButton
-                    className="product-mobile-buybar__cart"
-                    icon={isOutOfStock ? <ShopIcon path={SI.bell} /> : <ShopIcon path={SI.cart} />}
-                    aria-label={isOutOfStock ? stockAlertActionLabel : mobileCartBlockedReason}
-                    title={isOutOfStock ? stockAlertActionLabel : mobileCartBlockedReason}
-                    onClick={isOutOfStock ? handleStockAlert : handleAddToCart}
-                    loading={purchaseSubmitting === 'cart'}
-                    disabled={mobileAddToCartBlocked}
-                  >
-                    {isOutOfStock ? (isAlerted ? t('pages.stockAlerts.remove') : t('pages.stockAlerts.notifyMe')) : t('pages.productDetail.addCart')}
-                  </ShopButton>
-                  <ShopButton className="product-mobile-buybar__buy" type="primary" icon={<ShopIcon path={SI.thunder} />} aria-label={buyNowBlockedReason} title={buyNowBlockedReason} onClick={handleBuyNow} loading={purchaseSubmitting === 'buy'} disabled={buyNowBlocked}>
-                    {t('pages.productDetail.buyNow')}
-                  </ShopButton>
-                </div>
-
-	                <div className="product-purchase-readiness" role="list" aria-label={t('pages.productDetail.decisionTitle')}>
-	                  {purchaseReadinessItems.map((item) => (
-                    <div
-                      key={item.key}
-                      role="listitem"
-                      className={`product-purchase-readiness__item${item.ready ? ' product-purchase-readiness__item--ready' : ' product-purchase-readiness__item--pending'}`}
-                    >
-                      <span className="product-purchase-readiness__icon">{item.icon}</span>
-                      <span className="product-purchase-readiness__copy">
-                        <span className="product-detail-page__text product-detail-page__text--strong">{item.title}</span>
-                        <span className="product-detail-page__text product-detail-page__text--secondary">{item.text}</span>
-                      </span>
-                    </div>
-                  ))}
-                </div>
-
-                <div
-                  ref={optionsSectionRef}
-                  className={purchaseSelectionBlocked ? 'product-options-anchor product-options-anchor--attention' : 'product-options-anchor'}
-                >
-                  {optionGroups.map((group) => {
-                    const optionGroupLabel = `${getLocalizedOptionLabel(group.name, language)}: ${productName}`;
-                    return (
-                      <div key={group.name} role="group" aria-label={optionGroupLabel} title={optionGroupLabel}>
-                        <div className="product-option-header">
-                          <span className="product-detail-page__text product-detail-page__text--strong">{getLocalizedOptionLabel(group.name, language)}</span>
-                          {isSizeOptionName(group.name) ? (
-                            <ShopButton
-                              size="small"
-                              type="link"
-                              aria-label={sizeGuideActionLabel}
-                              title={sizeGuideActionLabel}
-                              onClick={() => setSizeGuideOpen(true)}
-                            >
-                              {t('pages.productDetail.sizeGuide')}
-                            </ShopButton>
-                          ) : null}
-                        </div>
-                        <div
-                          className="product-option-radio"
-                          role="radiogroup"
-                          aria-label={optionGroupLabel}
-                        >
-                          {group.values.map((value) => {
-                            const disabled = !optionValueIsCompatible(variants, selectedOptions, group.name, value);
-                            const selected = selectedOptions[group.name] === value;
-                            const optionLabel = getLocalizedOptionLabel(value, language);
-                            return (
-                              <button
-                                key={value}
-                                type="button"
-                                role="radio"
-                                className={`product-option-radio__option${selected ? ' product-option-radio__option--selected' : ''}${disabled ? ' product-option-radio__option--disabled' : ''}`}
-                                aria-checked={selected}
-                                aria-label={optionLabel}
-                                title={optionLabel}
-                                disabled={disabled}
-                                onClick={() => {
-                                  if (!disabled) selectOptionValue(group.name, value);
-                                }}
-                              >
-                                {selected ? <ShopIcon path={SI.checkCircle} className="product-option-radio__check" /> : null}
-                                <span>{optionLabel}</span>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {optionGroups.length > 0 && (
-                  <div className={`product-selected-summary${hasUnavailableSelectedVariant ? ' product-selected-summary--warning' : ''}`}>
-                    <div className="product-selected-summary__header">
-                      <span className="product-detail-page__text product-detail-page__text--strong">{t('pages.productDetail.selectedOptionsTitle')}</span>
-                      <div className="product-detail__chipRow">
-                        <span className={`product-detail-page__text ${hasUnavailableSelectedVariant ? 'product-detail-page__text--danger' : 'product-detail-page__text--secondary'}`}>
-                          {hasUnavailableSelectedVariant
-                            ? t('pages.productDetail.selectedVariantUnavailable')
-                            : hasCompleteOptions
-                              ? t('pages.productDetail.selectedVariantStock', { stock: stockLabel })
-                              : t('pages.productDetail.selectedOptionsEmpty')}
-                        </span>
-                        {selectedOptionTags.length > 0 ? (
-                          <ShopButton
-                            size="small"
-                            type="link"
-                            aria-label={resetSelectedOptionsActionLabel}
-                            title={resetSelectedOptionsActionLabel}
-                            onClick={() => setSelectedOptions({})}
-                          >
-                            {t('pages.productList.resetFilters')}
-                          </ShopButton>
-                        ) : null}
-                      </div>
-                    </div>
-                    <div className="product-detail__chipRow">
-                      {selectedOptionTags.length > 0 ? selectedOptionTags.map((item) => (
-                        <ShopTag key={item.name}>{item.label}: {item.valueLabel}</ShopTag>
-                      )) : (
-                        <ShopTag>{t('pages.productDetail.selectedOptionsEmpty')}</ShopTag>
-                      )}
-                      {selectedVariant?.sku ? <ShopTag>{t('pages.productDetail.selectedVariantSku', { sku: selectedVariant.sku })}</ShopTag> : null}
-                      {hasCompleteOptions && !hasUnavailableSelectedVariant ? (
-                        <ShopTag color="green">{renderProductDetailAmountText(t('pages.productDetail.selectedVariantPrice', { price: formatMoney(displayPrice) }), formatMoney(displayPrice))}</ShopTag>
-                      ) : null}
-                    </div>
-                  </div>
-                )}
-
-                {sizeOptionGroup ? (
-                  <details className="product-detail-disclosure">
-                    <summary>
-                      <span>{t('pages.productDetail.sizeCalculatorTitle')}</span>
-                      <span className="product-detail-page__text product-detail-page__text--secondary">{fitConfidenceText}</span>
-                    </summary>
-                    <div className="product-size-calculator">
-                    <div className="product-size-calculator__header">
-                      <span className="product-detail-page__text product-detail-page__text--strong">{t('pages.productDetail.sizeCalculatorTitle')}</span>
-                      <ShopButton
-                        size="small"
-                        type="link"
-                        aria-label={sizeGuideActionLabel}
-                        title={sizeGuideActionLabel}
-                        onClick={() => setSizeGuideOpen(true)}
-                      >
-                        {t('pages.productDetail.sizeGuide')}
-                      </ShopButton>
-                    </div>
-                    <div className="product-size-calculator__inputs">
-                      <ShopInput
-                        value={sizeCalculatorBreed}
-                        onChange={(event) => setSizeCalculatorBreed(event.target.value)}
-                        placeholder={t('pages.productDetail.sizeCalculatorBreed')}
-                        aria-label={sizeBreedInputLabel}
-                        title={sizeBreedInputLabel}
-                      />
-                      <ShopInput
-                        value={sizeCalculatorWeight}
-                        type="number"
-                        min={0}
-                        max={PRODUCT_SIZE_CALCULATOR_MAX_WEIGHT_KG}
-                        onChange={(event) => setSizeCalculatorWeight(normalizeSizeCalculatorWeight(event.target.value))}
-                        placeholder={t('pages.productDetail.sizeCalculatorWeight')}
-                        aria-label={sizeWeightInputLabel}
-                        title={sizeWeightInputLabel}
-                      />
-                    </div>
-                    {recommendedSize ? (
-                      <ShopAlert
-                        type={recommendedSizeValue ? 'success' : 'info'}
-                        showIcon
-                        message={t('pages.productDetail.sizeCalculatorResult', { size: recommendedSizeLabel })}
-                        description={recommendedSizeValue
-                          ? t('pages.productDetail.sizeCalculatorMatch')
-                          : t('pages.productDetail.sizeCalculatorNoMatch')}
-                        action={recommendedSizeValue ? (
-                          <ShopButton
-                            size="small"
-                            type="primary"
-                            aria-label={`${t('pages.productDetail.sizeCalculatorApply')}: ${recommendedSizeLabel}, ${productName}`}
-                            title={`${t('pages.productDetail.sizeCalculatorApply')}: ${recommendedSizeLabel}, ${productName}`}
-                            onClick={() => selectOptionValue(sizeOptionGroup.name, recommendedSizeValue)}
-                          >
-                            {t('pages.productDetail.sizeCalculatorApply')}
-                          </ShopButton>
-                        ) : undefined}
-                      />
-                    ) : (
-                      <span className="product-detail-page__text product-detail-page__text--secondary">{t('pages.productDetail.sizeCalculatorHint')}</span>
-                    )}
-                    </div>
-                  </details>
-                ) : null}
-
-                {bundleInfo ? (
-                <div className="product-value-callout">
-                  <span className="product-value-callout__icon"><ShopIcon path={SI.thunder} /></span>
-                  <div className="product-value-callout__copy">
-                    <span className="product-detail-page__text product-detail-page__text--strong">{recommendedPathTitle}</span>
-                    <span className="product-detail-page__text product-detail-page__text--secondary">{recommendedPathText}</span>
-                  </div>
-                  {purchaseMode !== recommendedPurchaseMode ? (
-                    <ShopButton
-                      size="small"
-                      type="primary"
-                      aria-label={useRecommendedPathActionLabel}
-                      title={useRecommendedPathActionLabel}
-                      onClick={() => setPurchaseMode(recommendedPurchaseMode)}
-                    >
-                      {t('pages.productDetail.useRecommendedPath')}
-                    </ShopButton>
-                  ) : (
-                    <ShopTag color="green">{t('pages.productDetail.decisionReady')}</ShopTag>
-                  )}
-                </div>
-                ) : null}
-
-                {bundleInfo ? (
-                  <div className="product-purchase-mode">
-                    <ShopSegmented
-                      block
-                      value={purchaseMode}
-                      onChange={(value) => setPurchaseMode(value as 'once' | 'bundle')}
-                      ariaLabel={purchaseModeActionLabel}
-                      title={purchaseModeActionLabel}
-                      options={[
-                        { label: t('pages.productDetail.oneTimePurchase'), value: 'once' },
-                        { label: t('bundle.bundleDeal'), value: 'bundle' },
-                      ]}
-                    />
-                    {purchaseMode === 'bundle' ? (
-                      <div className="product-purchase-mode__details">
-                        <div className="product-purchase-mode__summary">
-                          <span className="product-detail-page__text product-detail-page__text--strong">{t('bundle.includes')}</span>
-                          <div className="product-detail__chipRow">
-                            {bundleInfo.items.map((item) => (
-                              <ShopTag key={item.name} className="commerce-atomic">{item.name} <span className="commerce-quantity">x{item.quantity || 1}</span></ShopTag>
-                            ))}
-                          </div>
-                          <span className="product-detail-page__text product-detail-page__text--secondary">
-                            {bundleSavings > 0
-                              ? t('bundle.saveWithBundle', { amount: formatMoney(bundleSavings) })
-                              : t('bundle.bundleHint')}
-                          </span>
-                        </div>
-                      </div>
-                    ) : null}
-                  </div>
-                ) : null}
-
-                <div>
-                  <span className="product-detail-page__text product-detail-page__text--strong product-quantity-label">{t('pages.productDetail.quantity')}</span>
-                  <div className="product-quantity-row" role="group" aria-label={t('pages.productDetail.quantity')}>
-                    <ShopButton
-                      icon={<ShopIcon path={SI.minus} />}
-                      aria-label={decreaseQuantityLabel}
-                      title={decreaseQuantityLabel}
-                      onClick={() => handleQuantityChange(quantity - 1)}
-                      disabled={quantity <= 1}
-                    />
-                    <span className="product-quantity__value" role="status" aria-live="polite" aria-label={quantityValueLabel}>
-                      {quantity}
-                    </span>
-                    <ShopButton
-                      icon={<ShopIcon path={SI.plus} />}
-                      aria-label={increaseQuantityLabel}
-                      title={increaseQuantityLabel}
-                      onClick={() => handleQuantityChange(quantity + 1)}
-                      disabled={selectedStock !== undefined && quantity >= selectedStock}
-                    />
-                  </div>
-                </div>
-
-                <div className="product-purchase-summary">
-                  {bundleInfo ? (
-                    <div className="product-purchase-summary__line">
-                      <span className="product-detail-page__text product-detail-page__text--secondary">{t('pages.productDetail.purchaseMode')}</span>
-                      <span className="product-detail-page__text product-detail-page__text--strong">{purchaseModeLabel}</span>
-                    </div>
-                  ) : null}
-                  <div className="product-purchase-summary__line">
-                    <span className="product-detail-page__text product-detail-page__text--secondary">{t('pages.productDetail.unitPrice')}</span>
-                      <span className="product-detail-page__text commerce-money">{formatMoney(displayPrice)}</span>
-                  </div>
-                  <div className="product-purchase-summary__line">
-                    <span className="product-detail-page__text product-detail-page__text--secondary">{t('pages.productDetail.purchaseQuantity')}</span>
-                      <span className="product-detail-page__text commerce-quantity">{quantity}</span>
-                  </div>
-                  {purchaseSavings > 0 ? (
-                    <div className="product-purchase-summary__line product-purchase-summary__line--saving">
-                      <span className="product-detail-page__text">{t('pages.productDetail.purchaseSavings')}</span>
-                      <span className="product-detail-page__text product-detail-page__text--strong commerce-money">{formatMoney(purchaseSavings)}</span>
-                    </div>
-                  ) : null}
-                  <div className="product-purchase-summary__total">
-                    <span className="product-detail-page__text product-detail-page__text--strong">{t('pages.productDetail.purchaseSubtotal')}</span>
-                    <span className="product-detail-page__text product-detail-page__text--strong commerce-money">{formatMoney(purchaseSubtotal)}</span>
-                  </div>
-                </div>
-
-                <ProductDetailCompleteSet
-                  completeSetItems={completeSetItems}
-                  detailProductName={detailProductName}
-                  formatMoney={formatMoney}
-                  handleAddRecommendationToCart={handleAddRecommendationToCart}
-                  navigate={navigate}
-                  recommendationAddingId={recommendationAddingId}
-                  t={t}
-                />
-
-                {shouldShowDecisionChecklist ? (
-                  <details className="product-detail-disclosure">
-                    <summary>
-                      <span>{t('pages.productDetail.decisionTitle')}</span>
-                      <ShopTag color="orange">{t('pages.productDetail.decisionNeedsReview')}</ShopTag>
-                    </summary>
-                    <div className="product-conversion-nudges">
-                      <div className="product-conversion-nudge">
-                        <span className="product-conversion-nudge__icon"><ShopIcon path={SI.safety} /></span>
-                        <span>
-                          <span className="product-detail-page__text product-detail-page__text--strong">{t('pages.productDetail.fitConfidenceTitle')}</span>
-                          <span className="product-detail-page__text product-detail-page__text--secondary">{fitConfidenceText}</span>
-                        </span>
-                      </div>
-                    </div>
-                    <div className="product-decision-card">
-                      <div className="product-decision-card__grid">
-                        {decisionChecklist.map((item) => (
-                          <div className={`product-decision-item${item.ready ? ' product-decision-item--ready' : ' product-decision-item--pending'}`} key={item.key}>
-                            <span className="product-decision-item__icon">{item.icon}</span>
-                            <span>
-                              <span className="product-detail-page__text product-detail-page__text--strong">{item.title}</span>
-                              <span className="product-detail-page__text product-detail-page__text--secondary">{item.text}</span>
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </details>
-                ) : null}
-
-                {isLowStock ? (
-                  <ShopAlert
-                    className="product-detail__lowStockAlert"
-                    type="warning"
-                    showIcon
-                    message={lowStockUrgencyLabel}
-                    description={t('pages.productDetail.lowStockUrgencyText', { count: lowStockCount })}
-                  />
-                ) : null}
-                {isOutOfStock && (
-                  <div className="product-detail__chipRow">
-                    <ShopTag color="red" className="product-detail__soldOutTag">{t('pages.productDetail.soldOut')}</ShopTag>
-                    <ShopButton icon={<ShopIcon path={SI.bell} />} aria-label={stockAlertActionLabel} title={stockAlertActionLabel} onClick={handleStockAlert}>
-                      {isAlerted ? t('pages.stockAlerts.remove') : t('pages.stockAlerts.notifyMe')}
-                    </ShopButton>
-                  </div>
-                )}
-                <div className="product-actions">
-                  <ShopButton
-                    type="primary"
-                    size="large"
-                    icon={<ShopIcon path={SI.cart} />}
-                    className={isOutOfStock ? 'product-detail__soldoutButton' : undefined}
-                    aria-label={isOutOfStock ? `${t('pages.productDetail.soldOut')}: ${productName}` : addToCartActionLabel}
-                    title={isOutOfStock ? `${t('pages.productDetail.soldOut')}: ${productName}` : addToCartActionLabel}
-                    onClick={handleAddToCart}
-                    loading={purchaseSubmitting === 'cart'}
-                    disabled={addToCartBlocked}
-                  >
-                    {isOutOfStock ? t('pages.productDetail.soldOut') : t('pages.productDetail.addCart')}
-                  </ShopButton>
-                  <ShopButton
-                    type="primary"
-                    size="large"
-                    icon={<ShopIcon path={SI.thunder} />}
-                    className={isOutOfStock ? 'product-detail__soldoutButton' : undefined}
-                    aria-label={buyNowBlockedReason}
-                    title={buyNowBlockedReason}
-                    onClick={handleBuyNow}
-                    loading={purchaseSubmitting === 'buy'}
-                    disabled={buyNowBlocked}
-                    ghost
-                  >
-                    {t('pages.productDetail.buyNow')}
-                  </ShopButton>
-                  {isOutOfStock ? (
-                    <ShopButton size="large" icon={<ShopIcon path={SI.bell} />} aria-label={stockAlertActionLabel} title={stockAlertActionLabel} onClick={handleStockAlert}>
-                      {isAlerted ? t('pages.stockAlerts.remove') : t('pages.stockAlerts.notifyMe')}
-                    </ShopButton>
-                  ) : null}
-                  <ShopButton size="large" icon={isWishlisted ? <ShopIcon path={SI.heartFill} className="product-detail__wishlistIcon product-detail__wishlistIcon--active" /> : <ShopIcon path={SI.heart} className="product-detail__wishlistIcon" />} aria-label={favoriteActionLabel} title={favoriteActionLabel} onClick={handleFavorite}>
-                    {isWishlisted ? t('pages.productDetail.favorited') : t('pages.productDetail.favorite')}
-                  </ShopButton>
-                  <ShopButton size="large" icon={<ShopIcon path={SI.barChart} />} aria-label={compareActionLabel} title={compareActionLabel} onClick={handleCompare}>
-                    {isCompared ? t('pages.productList.viewCompare') : t('pages.productList.compare')}
-                  </ShopButton>
-                </div>
-
-                <details className="product-detail-disclosure product-detail-disclosure--service">
-                  <summary>
-                    <span>{t('pages.productDetail.service')}</span>
-                    {deliveryPromise.enabled ? <span className="product-detail-page__text product-detail-page__text--secondary">{t('pages.productDetail.deliveryPromise', { window: deliveryPromise.windowText })}</span> : null}
-                  </summary>
-                  <div className="product-service-list">
-                  <div className="product-detail__stack">
-                    {deliveryPromise.enabled ? (
-                      <div className="product-delivery-promise">
-                        <ShopIcon path={SI.truck} className="product-delivery-promise__icon" />
-                        <div>
-                          <span className="product-detail-page__text product-detail-page__text--strong">
-                            {t('pages.productDetail.deliveryPromise', { window: deliveryPromise.windowText })}
-                          </span>
-                          <span className="product-detail-page__text product-detail-page__text--secondary">
-                            {deliveryPromise.shipsToday
-                              ? t('pages.productDetail.shipsToday', { cutoff: `${deliveryPromise.cutoffHour}:00` })
-                              : t('pages.productDetail.shipsNextBusinessDay')}
-                          </span>
-                        </div>
-                      </div>
-                    ) : null}
-                    {trustBadges.length > 0 ? (
-                      <div className="product-trust-grid">
-                        {trustBadges.map((badge) => (
-                          <div className="product-trust-card" key={badge.titleKey}>
-                            <span className="product-trust-card__icon">{renderTrustIcon(badge.icon)}</span>
-                            <span>
-                              <span className="product-detail-page__text product-detail-page__text--strong">{t(badge.titleKey)}</span>
-                              <span className="product-detail-page__text product-detail-page__text--secondary">{t(badge.textKey)}</span>
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    ) : null}
-                  </div>
-                  </div>
-                </details>
-              </div>
-            </section>
-          </div>
+          <ProductDetailSummary
+            addToCartActionLabel={addToCartActionLabel}
+            addToCartBlocked={addToCartBlocked}
+            bundleInfo={bundleInfo}
+            bundleSavings={bundleSavings}
+            buyNowBlocked={buyNowBlocked}
+            buyNowBlockedReason={buyNowBlockedReason}
+            compareActionLabel={compareActionLabel}
+            completeSetItems={completeSetItems}
+            decisionChecklist={decisionChecklist}
+            decreaseQuantityLabel={decreaseQuantityLabel}
+            deliveryPromise={deliveryPromise}
+            detailProductName={detailProductName}
+            displayPrice={displayPrice}
+            displayedRating={displayedRating}
+            favoriteActionLabel={favoriteActionLabel}
+            fitConfidenceText={fitConfidenceText}
+            formatCountdown={formatCountdown}
+            formatMoney={formatMoney}
+            handleAddRecommendationToCart={handleAddRecommendationToCart}
+            handleAddToCart={handleAddToCart}
+            handleBuyNow={handleBuyNow}
+            handleCompare={handleCompare}
+            handleFavorite={handleFavorite}
+            handleQuantityChange={handleQuantityChange}
+            handleStockAlert={handleStockAlert}
+            hasCompleteOptions={hasCompleteOptions}
+            hasUnavailableSelectedVariant={hasUnavailableSelectedVariant}
+            homeActionLabel={homeActionLabel}
+            increaseQuantityLabel={increaseQuantityLabel}
+            isAlerted={isAlerted}
+            isCompared={isCompared}
+            isLowStock={isLowStock}
+            isOutOfStock={isOutOfStock}
+            isWishlisted={isWishlisted}
+            language={language}
+            limitedTimePromoActive={limitedTimePromoActive}
+            limitedTimeRemaining={limitedTimeRemaining}
+            lowStockCount={lowStockCount}
+            lowStockUrgencyLabel={lowStockUrgencyLabel}
+            mobileAddToCartBlocked={mobileAddToCartBlocked}
+            mobileBuybarPrice={mobileBuybarPrice}
+            mobileBuybarStatus={mobileBuybarStatus}
+            mobileCartBlockedReason={mobileCartBlockedReason}
+            navigate={navigate}
+            optionGroups={optionGroups}
+            optionsSectionRef={optionsSectionRef}
+            originalReferencePrice={originalReferencePrice}
+            priceSavingsAmount={priceSavingsAmount}
+            priceSavingsPercent={priceSavingsPercent}
+            product={product}
+            productFreeShippingText={productFreeShippingText}
+            productName={productName}
+            productShippingText={productShippingText}
+            purchaseMode={purchaseMode}
+            purchaseModeActionLabel={purchaseModeActionLabel}
+            purchaseModeLabel={purchaseModeLabel}
+            purchaseReadinessItems={purchaseReadinessItems}
+            purchaseSavings={purchaseSavings}
+            purchaseSelectionBlocked={purchaseSelectionBlocked}
+            purchaseSubmitting={purchaseSubmitting}
+            purchaseSubtotal={purchaseSubtotal}
+            quantity={quantity}
+            quantityValueLabel={quantityValueLabel}
+            recommendationAddingId={recommendationAddingId}
+            recommendedPathText={recommendedPathText}
+            recommendedPathTitle={recommendedPathTitle}
+            recommendedPurchaseMode={recommendedPurchaseMode}
+            recommendedSize={recommendedSize}
+            recommendedSizeLabel={recommendedSizeLabel}
+            recommendedSizeValue={recommendedSizeValue}
+            renderProductDetailAmountText={renderProductDetailAmountText}
+            resetSelectedOptionsActionLabel={resetSelectedOptionsActionLabel}
+            selectOptionValue={selectOptionValue}
+            selectedOptionTags={selectedOptionTags}
+            selectedOptions={selectedOptions}
+            selectedStock={selectedStock}
+            selectedVariant={selectedVariant}
+            setPurchaseMode={setPurchaseMode}
+            setSelectedOptions={setSelectedOptions}
+            setSizeCalculatorBreed={setSizeCalculatorBreed}
+            setSizeCalculatorWeight={setSizeCalculatorWeight}
+            setSizeGuideOpen={setSizeGuideOpen}
+            shouldShowDecisionChecklist={shouldShowDecisionChecklist}
+            sizeBreedInputLabel={sizeBreedInputLabel}
+            sizeCalculatorBreed={sizeCalculatorBreed}
+            sizeCalculatorWeight={sizeCalculatorWeight}
+            sizeGuideActionLabel={sizeGuideActionLabel}
+            sizeOptionGroup={sizeOptionGroup}
+            sizeWeightInputLabel={sizeWeightInputLabel}
+            stockAlertActionLabel={stockAlertActionLabel}
+            stockLabel={stockLabel}
+            t={t}
+            trustBadges={trustBadges}
+            useRecommendedPathActionLabel={useRecommendedPathActionLabel}
+            variants={variants}
+          />
         </div>
 
         {/* Product details and specifications */}
-        <div ref={detailContentRef} className="product-detail-content-anchor" />
-        <section className="product-tabs-card" id="product-service-tabs" aria-label={t('pages.productDetail.details')}>
-          <div className="product-detail-tabs">
-            <div
-              className="product-detail-tabs__nav"
-              role="tablist"
-              aria-orientation="horizontal"
-              aria-label={t('pages.productDetail.details')}
-            >
-              {([
-                { key: 'details' as const, label: t('pages.productDetail.details') },
-                { key: 'specs' as const, label: t('pages.productDetail.specs') },
-                { key: 'service' as const, label: t('pages.productDetail.service') },
-              ]).map((tab) => {
-                const selected = detailActiveTab === tab.key;
-                return (
-                  <button
-                    key={tab.key}
-                    type="button"
-                    role="tab"
-                    id={`product-detail-tab-${tab.key}`}
-                    className={`product-detail-tabs__tab${selected ? ' product-detail-tabs__tab--active' : ''}`}
-                    aria-selected={selected}
-                    aria-controls={`product-detail-panel-${tab.key}`}
-                    tabIndex={selected ? 0 : -1}
-                    onClick={() => openProductDetailTab(tab.key)}
-                    onKeyDown={(event) => {
-                      handleRovingTablistKeyDown(event, {
-                        tabKeys: PRODUCT_DETAIL_TAB_KEYS as unknown as string[],
-                        activeKey: detailActiveTab,
-                        onActivate: openProductDetailTab,
-                        getTabElementId: (key) => `product-detail-tab-${key}`,
-                      });
-                    }}
-                  >
-                    <span className="product-detail-tabs__tabLabel">{tab.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-            <div
-              className="product-detail-tabs__panel"
-              role="tabpanel"
-              id="product-detail-panel-details"
-              aria-labelledby="product-detail-tab-details"
-              hidden={detailActiveTab !== 'details'}
-            >
-              <div className="product-tab-content">
-                <Suspense fallback={<ProductDetailLazyFallback label={t('common.loading')} variant="rich" />}>
-                  <ProductRichDetail
-                    detailContent={product.detailContent}
-                    fallback={product.description}
-                    emptyText={t('pages.productDetail.noDetails')}
-                    labels={{
-                      imageAlt: t('pages.productDetail.richImageAlt'),
-                      videoTitle: (index) => t('pages.productDetail.richVideoTitle', { index }),
-                      openVideo: t('pages.productDetail.openRichVideo'),
-                      unsupported: t('pages.productDetail.unsupportedRichContent'),
-                    }}
-                  />
-                </Suspense>
-              </div>
-            </div>
-            <div
-              className="product-detail-tabs__panel"
-              role="tabpanel"
-              id="product-detail-panel-specs"
-              aria-labelledby="product-detail-tab-specs"
-              hidden={detailActiveTab !== 'specs'}
-            >
-              <div className="product-tab-content">
-                    {product.specifications && Object.entries(product.specifications)
-                      .filter(([key]) => !key.startsWith('options.') && !key.startsWith('i18n.') && !key.startsWith('bundle.'))
-                      .map(([key, value]) => (
-                        <div key={key} className="product-spec-row">
-                          <span className="product-detail-page__text product-detail-page__text--strong">{formatProductSpecLabel(key, t)}: </span>
-                          <span className="product-detail-page__text">{value as string}</span>
-                        </div>
-                      ))}
-                  </div>
-            </div>
-            <div
-              className="product-detail-tabs__panel"
-              role="tabpanel"
-              id="product-detail-panel-service"
-              aria-labelledby="product-detail-tab-service"
-              hidden={detailActiveTab !== 'service'}
-            >
-              <div className="product-tab-content">
-                    <div className="product-warranty-row">
-                      <span className="product-detail-page__text product-detail-page__text--strong">{t('pages.productDetail.warranty')}</span>
-                      <span className="product-detail-page__text">{product.warranty || t('pages.productDetail.defaultWarranty')}</span>
-                    </div>
-                    <div>
-                      <span className="product-detail-page__text product-detail-page__text--strong">{t('pages.productDetail.shipping')}</span>
-                      <span className="product-detail-page__text">{productShippingText}</span>
-                    </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Product reviews */}
-        <section className="product-review-card" id="product-reviews-card" aria-label={t('pages.review.title')}>
-          <Suspense fallback={<ProductDetailLazyFallback label={t('common.loading')} variant="review" />}>
-            <ProductReview
-              productId={Number(id)}
-              reviews={reviews}
-              reviewableOrders={reviewableOrders}
-              onAddReview={handleAddReview}
-            />
-          </Suspense>
-        </section>
-
-        <section className="product-qa-card" id="product-qa-card" aria-label={t('pages.ask.title')}>
-          <h4 className="product-detail-page__title product-detail-page__title--qa">{t('pages.ask.title')}</h4>
-          <div className="product-qa-space">
-            <ShopTextArea
-              rows={3}
-              value={questionText}
-              onChange={(e) => setQuestionText(e.target.value)}
-              placeholder={t('pages.ask.placeholder')}
-              maxLength={PRODUCT_QUESTION_MAX_LENGTH}
-              showCount
-              aria-label={questionInputLabel}
-              title={questionInputLabel}
-            />
-            <ShopButton type="primary" aria-label={questionSubmitActionLabel} title={questionSubmitActionLabel} onClick={handleAskQuestion} loading={questionSubmitting}>
-              {t('pages.ask.submit')}
-            </ShopButton>
-          </div>
-          {pendingQuestions.length > 0 ? (
-            <div className="product-qa-pending" role="status" aria-live="polite" aria-label={t('pages.ask.pendingTitle')}>
-              <ShopAlert
-                type="success"
-                showIcon
-                message={t('pages.ask.pendingTitle')}
-                description={t('pages.ask.pendingDescription')}
-              />
-              <ul className="product-qa-pending-list product-detail-page__itemList" role="list">
-                {pendingQuestions.map((pendingQuestion) => (
-                  <li key={pendingQuestion.id} className="product-detail-page__item">
-                    <div className="product-question-item product-question-item--pending">
-                      <div className="product-question-text">{pendingQuestion.question}</div>
-                      <div className="product-question-meta">
-                        {new Date(pendingQuestion.createdAt).toLocaleString(language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US')}
-                      </div>
-                      <div className="product-answer-box product-answer-box--pending">
-                        <span className="product-detail-page__text product-detail-page__text--strong">{t('pages.ask.answerLabel')}: </span>
-                        <span className="product-detail-page__text">{t('pages.ask.pendingAnswer')}</span>
-                      </div>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
-          {questions.length === 0 ? (
-            <div className="product-qa-faq" aria-label={t('pages.ask.empty')}>
-              <span className="product-detail-page__text product-detail-page__text--strong">{t('pages.productDetail.faqTitle', { defaultValue: 'Frequently asked questions' })}</span>
-              <div className="product-qa-faq__list">
-                {productFaqItems.map((item) => (
-                  <div key={item.question} className="product-qa-faq__item">
-                    <strong>{item.question}</strong>
-                    <span>{item.answer}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : (
-            <ul className="product-detail-page__itemList product-qa-list" role="list">
-              {questions.map((q) => (
-                <li key={q.id} className="product-detail-page__item">
-                  <div className="product-question-item">
-                    <div className="product-question-text">{q.question}</div>
-                    <div className="product-question-meta">
-                      {new Date(q.createdAt).toLocaleString(language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US')}
-                    </div>
-                    <div className="product-answer-box">
-                      <span className="product-detail-page__text product-detail-page__text--strong">{t('pages.ask.answerLabel')}: </span>
-                      <span className="product-detail-page__text">{q.answer}</span>
-                    </div>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
+        <ProductDetailContent
+          detailActiveTab={detailActiveTab}
+          detailContentRef={detailContentRef}
+          handleAddReview={handleAddReview}
+          handleAskQuestion={handleAskQuestion}
+          id={id}
+          language={language}
+          openProductDetailTab={openProductDetailTab}
+          pendingQuestions={pendingQuestions}
+          product={product}
+          productFaqItems={productFaqItems}
+          productShippingText={productShippingText}
+          questionInputLabel={questionInputLabel}
+          questionSubmitActionLabel={questionSubmitActionLabel}
+          questionSubmitting={questionSubmitting}
+          questionText={questionText}
+          questions={questions}
+          reviewableOrders={reviewableOrders}
+          reviews={reviews}
+          setQuestionText={setQuestionText}
+          t={t}
+        />
 
         <ProductDetailRecommendations
           detailProductName={detailProductName}
@@ -1753,31 +1156,12 @@ const ProductDetail: React.FC = () => {
         t={t}
       />
 
-      <ShopModal
-        title={t('pages.productDetail.sizeGuideTitle')}
+      <ProductDetailSizeGuideModal
         open={sizeGuideOpen}
-        onClose={() => setSizeGuideOpen(false)}
-        footer={<ShopButton type="primary" aria-label={sizeGuideConfirmActionLabel} title={sizeGuideConfirmActionLabel} onClick={() => setSizeGuideOpen(false)}>{t('pages.productDetail.sizeGuideGotIt')}</ShopButton>}
-        className="profile-mobile-safe-modal product-detail__sizeGuideModal"
-        rootClassName="product-detail__sizeGuideModalRoot"
-        closeLabel={t('common.close', { defaultValue: 'Close' })}
-        ariaLabel={t('pages.productDetail.sizeGuideTitle')}
-      >
-        <div className="pet-size-guide">
-          <div>
-            <strong>{t('pages.productDetail.sizeGuideNeck')}</strong>
-            <span>{t('pages.productDetail.sizeGuideNeckText')}</span>
-          </div>
-          <div>
-            <strong>{t('pages.productDetail.sizeGuideChest')}</strong>
-            <span>{t('pages.productDetail.sizeGuideChestText')}</span>
-          </div>
-          <div>
-            <strong>{t('pages.productDetail.sizeGuideBack')}</strong>
-            <span>{t('pages.productDetail.sizeGuideBackText')}</span>
-          </div>
-        </div>
-      </ShopModal>
+        setOpen={setSizeGuideOpen}
+        sizeGuideConfirmActionLabel={sizeGuideConfirmActionLabel}
+        t={t}
+      />
     </div>
   );
 };
