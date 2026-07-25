@@ -280,7 +280,7 @@ describe('Navbar Android app download entry', () => {
     expect(source).toContain("const bottomBarClassName = `shop-nav__bottomBar shop-nav__bottomBar--${language}");
     expect(f3393Css).toMatch(/@media \(min-width:\s*341px\) and \(max-width:\s*380px\)\s*\{/);
     expect(f3393Css).toMatch(/\.shop-nav__bottomBar--es:not\(\.shop-nav__bottomBar--native\)\s*\{[\s\S]*?grid-template-columns:\s*0\.94fr 1\.1fr 1fr 0\.98fr 0\.88fr 1fr;[\s\S]*?column-gap:\s*3px;/);
-    expect(f3393Css).toMatch(/\.shop-nav__bottomBar--es \.shop-nav__bottomItem--products span:not\(\.anticon\):not\(\.ant-badge\)(?::not\(\.shop-badge\))?:not\(\.ant-scroll-number\)\s*\{[\s\S]*?font-size:\s*9\.5px\s*!important;[\s\S]*?letter-spacing:\s*0;[\s\S]*?text-overflow:\s*clip;/);
+    expect(f3393Css).toMatch(/\.shop-nav__bottomBar--es \.shop-nav__bottomItem--products span:not\(\.anticon\):not\(\.ant-badge\)(?::not\(\.shop-badge\))?:not\(\.ant-scroll-number\)\s*\{[\s\S]*?font-size:\s*12px\s*!important;[\s\S]*?letter-spacing:\s*0;[\s\S]*?text-overflow:\s*clip;/);
     expect(css).toMatch(/@media \(max-width:\s*340px\)\s*\{[\s\S]*?\.shop-nav__bottomItem span:not\(\.anticon\):not\(\.ant-badge\)(?::not\(\.shop-badge\))?:not\(\.ant-scroll-number\)\s*\{[\s\S]*?width:\s*1px;/);
   });
 
@@ -473,9 +473,9 @@ describe('Navbar Android app download entry', () => {
       fileName: 'shoptest-1.0.24.apk',
       sizeBytes: 123456,
       sha256: 'a'.repeat(64),
-      manifestUrl: 'https://pet.686888666.xyz/downloads/mobile-version.json',
+      manifestUrl: 'https://petsanything.com/downloads/mobile-version.json',
     });
-    (resolveMobileReleaseDownloadUrl as jest.Mock).mockReturnValue('https://pet.686888666.xyz/downloads/shoptest-1.0.24.apk');
+    (resolveMobileReleaseDownloadUrl as jest.Mock).mockReturnValue('https://petsanything.com/downloads/shoptest-1.0.24.apk');
 
     renderNavbar();
 
@@ -486,7 +486,7 @@ describe('Navbar Android app download entry', () => {
 
     await waitFor(() => {
       const downloadLinks = screen.getAllByRole('link', { name: 'Download Android app' })
-        .filter((link) => link.getAttribute('href') === 'https://pet.686888666.xyz/downloads/shoptest-1.0.24.apk');
+        .filter((link) => link.getAttribute('href') === 'https://petsanything.com/downloads/shoptest-1.0.24.apk');
       expect(downloadLinks.length).toBeGreaterThan(0);
     });
   });

@@ -53,9 +53,9 @@ describe('commercial SEO contracts', () => {
     expect(couponCenter).toContain('useDocumentMeta');
 
     expect(indexHtml).toContain('property="og:image"');
-    expect(indexHtml).toContain('https://pet.686888666.xyz/logo512.png');
-    expect(indexHtml).toContain('https://pet.686888666.xyz/');
-    expect(indexHtml).toMatch(/rel="canonical"[^>]*https:\/\/pet\.686888666\.xyz\//);
+    expect(indexHtml).toContain('https://petsanything.com/logo512.png');
+    expect(indexHtml).toContain('https://petsanything.com/');
+    expect(indexHtml).toMatch(/rel="canonical"[^>]*https:\/\/petsanything\.com\//);
     expect(indexHtml).toContain('name="twitter:image"');
     expect(indexHtml).toContain('images.unsplash.com');
     expect(indexHtml).toContain('rel="preconnect"');

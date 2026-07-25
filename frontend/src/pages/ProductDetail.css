@@ -2168,10 +2168,6 @@
     font-size: 28px;
   }
 
-  .product-detail-hero__aside {
-    padding: 14px;
-  }
-
   .product-detail-journey {
     grid-template-columns: 1fr;
     gap: 10px;
@@ -2234,10 +2230,6 @@
 
   .product-detail-main-image__img {
     display: none;
-  }
-
-  .product-detail-main-image__img:hover {
-    transform: none;
   }
 
   .product-mobile-gallery {
@@ -2531,10 +2523,6 @@
 
   .product-summary-card .ant-radio-button-wrapper {
     margin-bottom: 6px;
-  }
-
-  .product-actions {
-    display: none !important;
   }
 
   .product-service-list {
@@ -3473,14 +3461,6 @@
     scrollbar-width: none;
   }
 
-  .product-option-radio::-webkit-scrollbar {
-    display: none;
-  }
-
-  .product-option-radio__option {
-    flex: 0 0 auto;
-  }
-
   .product-purchase-summary__line,
   .product-purchase-summary__total {
     align-items: flex-start;
@@ -3489,10 +3469,6 @@
   .product-mobile-buybar {
     grid-template-columns: 42px 42px 42px minmax(0, 1fr) minmax(0, 1fr);
     gap: 6px;
-  }
-
-  .product-mobile-buybar__meta {
-    padding-inline: 2px;
   }
 }
 
@@ -3512,10 +3488,6 @@
     border-radius: 20px;
   }
 
-  .product-detail-hero__content {
-    gap: 8px;
-  }
-
   .product-detail-hero__content h1 {
     font-size: 25px;
     line-height: 1.12;
@@ -3524,12 +3496,6 @@
 
   .product-detail-hero__content .product-detail-page__text {
     line-height: 1.48;
-  }
-
-  .product-detail-hero__stats {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 6px;
   }
 
   .product-detail-hero__stats span {
@@ -3654,15 +3620,6 @@
   }
 
   .product-detail-tabs .product-detail-tabs__nav {
-    overflow-x: auto;
-    scrollbar-width: none;
-  }
-
-  .product-detail-tabs .product-detail-tabs__nav::-webkit-scrollbar {
-    display: none;
-  }
-
-  .product-detail-tabs .product-detail-tabs__nav {
     min-width: max-content;
   }
 
@@ -3718,13 +3675,6 @@
 }
 
 @media (max-width: 380px) {
-  .product-detail-page {
-    padding-inline: 6px;
-  }
-
-  .product-detail-hero__stats {
-    grid-template-columns: 1fr;
-  }
 
   .product-detail-hero__content h1 {
     font-size: 23px;
@@ -3770,10 +3720,6 @@
   .product-detail-tabs .product-detail-tabs__tab {
     flex: 0 0 auto;
     min-height: 44px;
-  }
-
-  .product-detail-tabs .product-detail-tabs__tabLabel {
-    white-space: nowrap;
   }
 }
 
@@ -3908,19 +3854,6 @@
     mask-image: linear-gradient(90deg, transparent 0, #000 12px, #000 calc(100% - 30px), transparent);
   }
 
-  .product-detail-tabs .product-detail-tabs__nav-wrap {
-    min-width: 0;
-    max-width: 100%;
-    overflow-x: auto;
-    overflow-y: hidden;
-    scrollbar-width: none;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .product-detail-tabs .product-detail-tabs__nav-wrap::-webkit-scrollbar {
-    display: none;
-  }
-
   .product-detail-tabs .product-detail-tabs__nav {
     gap: 6px;
     width: max-content;
@@ -4016,14 +3949,6 @@
 
 /* Final mobile product detail edge-fit pass */
 @media (max-width: 768px) {
-  .product-detail-page,
-  .product-detail-page * {
-    box-sizing: border-box;
-  }
-
-  .product-detail-page {
-    overflow-x: clip;
-  }
 
   .product-detail-shell,
   .product-detail-hero,
@@ -4364,9 +4289,6 @@
 
 /* Final mobile detail tab tap-target pass */
 @media (max-width: 768px) {
-  .product-detail-tabs .product-detail-tabs__nav {
-    overflow: hidden;
-  }
 
   .product-detail-tabs .product-detail-tabs__nav-wrap {
     max-width: 100%;
@@ -4375,14 +4297,6 @@
     overscroll-behavior-x: contain;
     scrollbar-width: none;
     -webkit-overflow-scrolling: touch;
-  }
-
-  .product-detail-tabs .product-detail-tabs__nav-wrap::-webkit-scrollbar {
-    display: none;
-  }
-
-  .product-detail-tabs .product-detail-tabs__nav {
-    min-width: 0;
   }
 
   .product-detail-tabs .product-detail-tabs__tab {
@@ -4410,9 +4324,6 @@
 
 /* Final mobile buybar tool tap-target pass */
 @media (max-width: 768px) {
-  .product-mobile-buybar {
-    grid-template-columns: 44px 44px minmax(0, 1fr) minmax(0, 1fr);
-  }
 
   .product-mobile-buybar__tool {
     width: 44px;
@@ -4691,10 +4602,6 @@
 @media (max-width: 380px) {
   .product-mobile-buybar {
     grid-template-columns: 34px 34px minmax(0, 1fr);
-  }
-
-  .product-mobile-buybar__buy {
-    grid-column: 1 / -1;
   }
 
   .product-mobile-buybar__cart {

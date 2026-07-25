@@ -972,6 +972,30 @@ expect(recommendationsPanel).toContain('export const ProductDetailRecommendation
     expect(panels).toContain('data-history-load-recovery');
     expect(panels).toContain('data-history-empty-actions');
   });
+  it('keeps stock alerts helpers and panels modularized outside the page shell', () => {
+    const page = fs.readFileSync(path.join(__dirname, '..', 'pages', 'StockAlerts.tsx'), 'utf8');
+    const helpers = fs.readFileSync(path.join(__dirname, '..', 'pages', 'stockAlertsHelpers.ts'), 'utf8');
+    const panels = fs.readFileSync(path.join(__dirname, '..', 'pages', 'stockAlertsPanels.tsx'), 'utf8');
+    expect(page).toContain("from './stockAlertsHelpers'");
+    expect(page).toContain("from './stockAlertsPanels'");
+    expect(page).toContain('<StockAlertsMainPanels');
+    expect(page).toContain('buildStockAlertsActionLabels({');
+    expect(page).toContain('buildStockAlertsPanelProps({');
+    expect(page).toContain('resolveStockAlertNextActionDescriptor({');
+    expect(page).not.toContain('stock-alerts__mobileAction');
+    expect(page).not.toContain('data-stock-alerts-load-recovery');
+    expect(helpers).toContain('export const resolveStockAlertNextActionDescriptor');
+    expect(helpers).toContain('export const deriveStockAlertInsights');
+    expect(helpers).toContain('export const maskStaleStockAlertInsights');
+    expect(helpers).toContain('export const buildStockAlertsActionLabels');
+    expect(helpers).toContain('export const buildStockAlertsPanelProps');
+    expect(helpers).toContain("title: t('pages.stockAlerts.nextActionStaleTitle')");
+    expect(panels).toContain('export const StockAlertsMainPanels');
+    expect(panels).toContain('stock-alerts__mobileAction');
+    expect(panels).toContain('data-stock-alerts-load-recovery');
+    expect(panels).toContain('data-stock-alerts-empty-actions');
+  });
+
 
 
 

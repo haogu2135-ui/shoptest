@@ -10,6 +10,7 @@ export type PaymentRecoveryState = {
 
 /** Hosts that serve the ShopMX SPA payment instructions page. */
 const KNOWN_STOREFRONT_PAYMENT_HOSTS = new Set([
+  'petsanything.com',
   'pet.686888666.xyz',
   'localhost',
   '127.0.0.1',
@@ -51,7 +52,7 @@ export const isStorefrontPaymentPath = (pathname?: string | null) => {
 
 /**
  * Commercial multi-host conversion: storefront payment instruction links
- * (e.g. https://pet.686888666.xyz/payment/SO...) must stay on the host the shopper
+ * (e.g. https://petsanything.com/payment/SO...) must stay on the host the shopper
  * is currently using (local UI, origin edge, or temporary public tunnel). External
  * provider checkout URLs (Mercado/Stripe/etc.) remain absolute.
  */

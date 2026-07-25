@@ -15,7 +15,7 @@ class PaymentReturnUrlContractTest {
     void guestCancelAndSuccessUrlsTargetTrackOrderWithGuestEmail() {
         PaymentService service = new PaymentService();
         RuntimeConfigService runtimeConfig = mock(RuntimeConfigService.class);
-        when(runtimeConfig.getString("app.storefront-base-url", "https://pet.686888666.xyz"))
+        when(runtimeConfig.getString("app.storefront-base-url", "https://petsanything.com"))
                 .thenReturn("https://shop.example.com/");
         ReflectionTestUtils.setField(service, "runtimeConfig", runtimeConfig);
 
@@ -53,7 +53,7 @@ class PaymentReturnUrlContractTest {
     void registeredCancelUrlTargetsProfileOrdersWithOrderContext() {
         PaymentService service = new PaymentService();
         RuntimeConfigService runtimeConfig = mock(RuntimeConfigService.class);
-        when(runtimeConfig.getString("app.storefront-base-url", "https://pet.686888666.xyz"))
+        when(runtimeConfig.getString("app.storefront-base-url", "https://petsanything.com"))
                 .thenReturn("https://shop.example.com");
         when(runtimeConfig.getString("payment.cancel-url", ""))
                 .thenReturn("");

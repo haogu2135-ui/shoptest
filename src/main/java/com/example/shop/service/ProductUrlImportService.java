@@ -1482,7 +1482,7 @@ public class ProductUrlImportService {
                 return null;
             }
             try {
-                return URI.create("https://pet.686888666.xyz/import-query" + value.substring(queryIndex).replace(" ", "%20"));
+                return URI.create("https://petsanything.com/import-query" + value.substring(queryIndex).replace(" ", "%20"));
             } catch (Exception fallbackEx) {
                 log.debug("Fallback image query URI parsing failed", fallbackEx);
                 return null;

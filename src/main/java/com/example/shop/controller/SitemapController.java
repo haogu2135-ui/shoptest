@@ -26,7 +26,7 @@ import java.util.Map;
  */
 @RestController
 public class SitemapController {
-    private static final String DEFAULT_STOREFRONT_BASE_URL = "https://pet.686888666.xyz";
+    private static final String DEFAULT_STOREFRONT_BASE_URL = "https://petsanything.com";
     private static final int PRODUCT_PAGE_SIZE = 100;
     private static final int MAX_PRODUCT_URLS = 5_000;
     private static final DateTimeFormatter LASTMOD_FORMAT = DateTimeFormatter.ISO_LOCAL_DATE;

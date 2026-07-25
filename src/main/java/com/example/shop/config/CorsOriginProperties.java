@@ -14,7 +14,7 @@ import java.util.stream.Collectors;
 public class CorsOriginProperties {
     private static final String LOCAL_DEVELOPMENT_ORIGINS =
             "http://localhost:*,http://127.0.0.1:*";
-    private static final String PRODUCTION_ORIGINS = "https://pet.686888666.xyz";
+    private static final String PRODUCTION_ORIGINS = "https://petsanything.com";
 
     private final RuntimeConfigService runtimeConfig;
 

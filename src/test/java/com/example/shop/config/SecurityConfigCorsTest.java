@@ -23,8 +23,8 @@ class SecurityConfigCorsTest {
     void setUp() {
         RuntimeConfigService runtimeConfig = mock(RuntimeConfigService.class);
         when(runtimeConfig.getString("app.runtime-mode", "production")).thenReturn("production");
-        when(runtimeConfig.getString("app.cors.allowed-origin-patterns", "https://pet.686888666.xyz"))
-                .thenReturn("https://pet.686888666.xyz");
+        when(runtimeConfig.getString("app.cors.allowed-origin-patterns", "https://petsanything.com"))
+                .thenReturn("https://petsanything.com");
 
         securityConfig = new SecurityConfig();
         ReflectionTestUtils.setField(securityConfig, "corsOriginProperties", new CorsOriginProperties(runtimeConfig));
@@ -65,12 +65,12 @@ class SecurityConfigCorsTest {
     void productionCorsFiltersUnsafeDefaultOrigins() {
         RuntimeConfigService runtimeConfig = mock(RuntimeConfigService.class);
         when(runtimeConfig.getString("app.runtime-mode", "production")).thenReturn("production");
-        when(runtimeConfig.getString("app.cors.allowed-origin-patterns", "https://pet.686888666.xyz"))
-                .thenReturn("https://pet.686888666.xyz,http://localhost:*,http://10.*:*,http://192.168.*:*,https://admin.example.com");
+        when(runtimeConfig.getString("app.cors.allowed-origin-patterns", "https://petsanything.com"))
+                .thenReturn("https://petsanything.com,http://localhost:*,http://10.*:*,http://192.168.*:*,https://admin.example.com");
 
         List<String> origins = new CorsOriginProperties(runtimeConfig).getCorsAllowedOriginPatterns();
 
-        assertEquals(List.of("https://pet.686888666.xyz", "https://admin.example.com"), origins);
+        assertEquals(List.of("https://petsanything.com", "https://admin.example.com"), origins);
     }
 
     @Test

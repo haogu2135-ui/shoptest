@@ -60,7 +60,7 @@ import java.util.concurrent.TimeUnit;
 @Service
 @Slf4j
 public class PaymentService {
-    private static final String DEFAULT_STOREFRONT_BASE_URL = "https://pet.686888666.xyz";
+    private static final String DEFAULT_STOREFRONT_BASE_URL = "https://petsanything.com";
     private static final String PENDING = "PENDING";
     private static final String PAID = "PAID";
     private static final String FAILED = "FAILED";

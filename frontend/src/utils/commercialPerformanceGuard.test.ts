@@ -144,6 +144,12 @@ const readBrowsingHistorySurface = () => [
   readFrontend('pages', 'browsingHistoryPanels.tsx'),
 ].join('\n');
 
+const readStockAlertsSurface = () => [
+  readFrontend('pages', 'StockAlerts.tsx'),
+  readFrontend('pages', 'stockAlertsHelpers.ts'),
+  readFrontend('pages', 'stockAlertsPanels.tsx'),
+].join('\n');
+
 const readProductCompareSurface = () => [
   readFrontend('pages', 'ProductCompare.tsx'),
   readFrontend('pages', 'productCompareHelpers.ts'),
@@ -167,6 +173,7 @@ const readPageSurface = (dir: string, name: string) => {
   if (name === 'ForgotPassword.tsx') return readForgotPasswordSurface();
   if (name === 'Notifications.tsx') return readNotificationsSurface();
   if (name === 'BrowsingHistory.tsx') return readBrowsingHistorySurface();
+  if (name === 'StockAlerts.tsx') return readStockAlertsSurface();
   if (name === 'ProductCompare.tsx') return readProductCompareSurface();
   return readFrontend(dir, name);
 };
@@ -187,10 +194,10 @@ describe('commercial performance contracts', () => {
     expect(source.indexOf('buildMexicoRegionData(mexicoMunicipalitiesModule.default)')).toBeLessThan(
       source.indexOf('buildChinaRegionData(chinaLevelModule.default)'),
     );
-    // Spanish/English conversion path awaits MX only; China warms in background.
-    expect(source).toContain('warmChinaRegionInBackground');
+    // Spanish/English conversion path never fetches the China catalog.
     expect(source).toContain("normalizedLanguage === 'zh'");
-    expect(source).toMatch(/regions = cachedChinaRegion \? \[mexico, cachedChinaRegion\] : \[mexico\]/);
+    expect(source).toContain('regions = [mexico];');
+    expect(source).not.toContain('warmChinaRegionInBackground');
   });
 
   it('keeps native mobile shell CSS out of the default App import graph', () => {
@@ -573,7 +580,11 @@ describe('commercial performance contracts', () => {
 
   it('keeps secondary storefront media free of ant Image', () => {
     for (const page of ['PetFinder.tsx', 'ProductCompare.tsx', 'StockAlerts.tsx']) {
-      const source = page === 'ProductCompare.tsx' ? readProductCompareSurface() : readFrontend('pages', page);
+      const source = page === 'ProductCompare.tsx'
+        ? readProductCompareSurface()
+        : page === 'StockAlerts.tsx'
+          ? readStockAlertsSurface()
+          : readFrontend('pages', page);
       expect(source).not.toMatch(/import \{[^}]*\bImage\b[^}]*\} from 'antd'/);
       expect(source).toContain('loading="lazy"');
     }
@@ -790,7 +801,7 @@ describe('commercial performance contracts', () => {
   });
 
   it('keeps StockAlerts free of static Typography imports', () => {
-    const page = readFrontend('pages', 'StockAlerts.tsx');
+    const page = readStockAlertsSurface();
     expect(page).not.toMatch(/\bTypography\b/);
     expect(page).not.toMatch(/import \{[^}]*\bTypography\b[^}]*\} from 'antd'/);
     expect(page).toContain('stock-alerts-page__title');
@@ -882,7 +893,9 @@ describe('commercial performance contracts', () => {
               ? readOrderTrackingSurface()
               : file === 'Notifications.tsx'
                 ? readNotificationsSurface()
-                : readFrontend('pages', file);
+                : file === 'StockAlerts.tsx'
+                  ? readStockAlertsSurface()
+                  : readFrontend('pages', file);
       expect(source).not.toMatch(/import \{[^}]*\bList\b[^}]*\} from 'antd'/);
       expect(source).not.toMatch(/<List\b/);
       expect(source).not.toMatch(/List\.Item/);
@@ -1026,9 +1039,11 @@ describe('commercial performance contracts', () => {
               ? readNotificationsSurface()
               : page === 'BrowsingHistory.tsx'
                 ? readBrowsingHistorySurface()
-                : page === 'ProductCompare.tsx'
-                  ? readProductCompareSurface()
-                  : readFrontend('pages', page);
+                : page === 'StockAlerts.tsx'
+                  ? readStockAlertsSurface()
+                  : page === 'ProductCompare.tsx'
+                    ? readProductCompareSurface()
+                    : readFrontend('pages', page);
       expect(source).toContain('ShopPopconfirm');
       expect(source).not.toMatch(/<Popconfirm\b/);
       expect(source).not.toMatch(/import \{[^}]*\bPopconfirm\b[^}]*\} from 'antd'/);
@@ -1361,7 +1376,7 @@ describe('commercial performance contracts', () => {
   });
 
   it('keeps StockAlerts free of ant Card shell', () => {
-    const source = readFrontend('pages', 'StockAlerts.tsx');
+    const source = readStockAlertsSurface();
     expect(source).not.toMatch(/import \{[^}]*\bCard\b[^}]*\} from 'antd'/);
     expect(source).not.toMatch(/<Card\b/);
     expect(source).toContain('stock-alerts__shell');
@@ -2505,9 +2520,11 @@ describe('commercial performance contracts', () => {
                                 ? readNotificationsSurface()
                                 : page === 'BrowsingHistory'
                                   ? readBrowsingHistorySurface()
-                                  : page === 'ProductCompare'
-                                    ? readProductCompareSurface()
-                                    : fs.readFileSync(path.resolve(__dirname, `../pages/${page}.tsx`), 'utf8');
+                                  : page === 'StockAlerts'
+                                    ? readStockAlertsSurface()
+                                    : page === 'ProductCompare'
+                                      ? readProductCompareSurface()
+                                      : fs.readFileSync(path.resolve(__dirname, `../pages/${page}.tsx`), 'utf8');
       expect(source).toContain('ShopButton');
       expect(source).not.toMatch(/<Button\b/);
       expect(source).not.toMatch(/import \{[^}]*\bButton\b[^}]*\} from 'antd'/);

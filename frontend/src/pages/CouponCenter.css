@@ -4895,15 +4895,6 @@
 
 /* Mobile audit fixes: keep coupon rails and meta pills compact on narrow Spanish copy. */
 @media (max-width: 560px) {
-  .coupon-center-page__quickNav button {
-    max-width: min(192px, 58vw);
-    height: 44px;
-    min-height: 44px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap !important;
-  }
-
   .coupon-center-page__quickNav button span,
   .coupon-next-action__metaItem,
   .coupon-next-action__metaItem strong,
@@ -5092,26 +5083,6 @@
 /* Final mobile Web coupon audit guard: avoid hidden horizontal rails and keep
    coupon calls to action at touch size. */
 @media (max-width: 560px) {
-  .coupon-center-page__quickNav {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
-    margin-inline: 0;
-    padding: 6px 0;
-    overflow: visible;
-    scroll-snap-type: none;
-    -webkit-mask-image: none;
-    mask-image: none;
-  }
-
-  .coupon-center-page__quickNav button {
-    width: 100%;
-    min-width: 0;
-    min-height: 44px;
-    justify-content: center;
-    white-space: normal;
-  }
-
   .coupon-priority-grid {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
@@ -5180,14 +5151,6 @@
   }
 }
 
-/* Final narrow mobile coupon guard: 360px devices have enough room for a
-   two-column quick nav, which keeps the bottom row clear of fixed navigation. */
-@media (min-width: 341px) and (max-width: 380px) {
-  .coupon-center-page__quickNav {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
 /* A-10 final App coupon-center legibility floor after compact toolbar rules. */
 @media (max-width: 780px) {
   body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--coupon-center .coupon-next-action__progressLabel > span,
@@ -5233,16 +5196,6 @@
     max-width: 100% !important;
     margin: 0 0 10px !important;
     transform: none !important;
-  }
-
-  .coupon-center-page__quickNav {
-    display: grid !important;
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-    padding: 0 !important;
-  }
-
-  .coupon-center-page__quickNav button {
-    min-height: 46px !important;
   }
 
   .coupon-center-page__mobileActionBar {
@@ -5318,54 +5271,6 @@
     white-space: normal;
   }
 
-  .coupon-center-page__coupon .ant-card-head-wrapper {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    gap: 6px;
-    align-items: start;
-  }
-
-  .coupon-center-page__coupon .ant-card-head-title,
-  .coupon-center-page__coupon .ant-card-extra {
-    width: 100%;
-    min-width: 0;
-    padding: 0;
-  }
-
-  .coupon-center-page__coupon .ant-card-extra {
-    margin-inline-start: 0;
-  }
-
-  .coupon-center-page__couponTitle {
-    width: 100%;
-    flex-wrap: wrap;
-    align-items: flex-start;
-    white-space: normal;
-  }
-
-  .coupon-center-page__couponTitle > span:first-child {
-    flex: 1 0 100%;
-    min-width: 0;
-    overflow: visible;
-    line-height: 1.2;
-    text-overflow: clip;
-    white-space: normal;
-  }
-
-  .coupon-center-page__couponTags {
-    width: 100%;
-    max-width: 100%;
-  }
-
-  .coupon-center-page__couponTags .ant-space-item,
-  .coupon-center-page__couponTags .ant-tag {
-    max-width: 100%;
-  }
-
-  .coupon-center-page__couponTags .ant-tag {
-    overflow-wrap: anywhere;
-    white-space: normal;
-  }
 }
 
 /* Final mobile coupon rail guard: hero badges and quick navigation should wrap

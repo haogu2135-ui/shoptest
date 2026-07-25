@@ -53,7 +53,7 @@ describe('paymentRecovery', () => {
 
   it('rewrites storefront payment instruction URLs onto the current shopping origin', () => {
     const rewritten = resolveCommercialPaymentNavigationUrl(
-      'https://pet.686888666.xyz/payment/SO123?channel=MERCADO_PAGO&amount=10',
+      'https://petsanything.com/payment/SO123?channel=MERCADO_PAGO&amount=10',
       'https://electrical-measure-duck-contributions.trycloudflare.com',
     );
     expect(rewritten).toBe(
@@ -64,7 +64,7 @@ describe('paymentRecovery', () => {
   it('keeps external provider checkout URLs absolute', () => {
     const external = resolveCommercialPaymentNavigationUrl(
       'https://www.mercadopago.com.mx/checkout/v1/redirect?pref_id=abc',
-      'https://pet.686888666.xyz',
+      'https://petsanything.com',
     );
     expect(external).toBe('https://www.mercadopago.com.mx/checkout/v1/redirect?pref_id=abc');
   });
@@ -72,7 +72,7 @@ describe('paymentRecovery', () => {
   it('navigates via the rewritten commercial payment URL', () => {
     const hits: string[] = [];
     const ok = navigateToCommercialPaymentUrl(
-      'https://pet.686888666.xyz/payment/SO999?channel=OXXO',
+      'https://petsanything.com/payment/SO999?channel=OXXO',
       (url) => { hits.push(url); },
       { currentOrigin: 'http://127.0.0.1:4187', allowInsecureHttp: true },
     );
@@ -82,12 +82,12 @@ describe('paymentRecovery', () => {
 
   it('displays storefront payment links on the current shopping origin', () => {
     const label = formatPaymentUrlLabel(
-      'https://pet.686888666.xyz/payment/SO123?channel=MERCADO_PAGO',
+      'https://petsanything.com/payment/SO123?channel=MERCADO_PAGO',
       'http://127.0.0.1:4187',
     );
     expect(label).toContain('127.0.0.1');
     expect(label).toContain('/payment/SO123');
-    expect(label).not.toContain('pet.686888666.xyz');
+    expect(label).not.toContain('petsanything.com');
   });
 
 });

@@ -14,7 +14,7 @@ import java.util.Locale;
 @RequiredArgsConstructor
 @Slf4j
 public class PaymentChannelAvailabilityService {
-    private static final String DEFAULT_STOREFRONT_BASE_URL = "https://pet.686888666.xyz";
+    private static final String DEFAULT_STOREFRONT_BASE_URL = "https://petsanything.com";
     private final PaymentChannelConfig paymentChannelConfig;
     private final RuntimeConfigService runtimeConfig;
 

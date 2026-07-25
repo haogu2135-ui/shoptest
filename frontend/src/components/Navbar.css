@@ -1086,6 +1086,29 @@
   min-width: 84px;
 }
 
+/* ShopSelect wrappers default to full width. In the utility row that makes both
+   locale controls flex-fill and forces the surrounding labels to truncate. */
+.shop-nav__top .shop-select-wrap {
+  flex: 0 0 104px;
+  width: 104px;
+}
+
+.shop-nav--es .shop-nav__links a.shop-nav__downloadLink,
+.shop-nav--es .shop-nav__links button.shop-nav__downloadLink {
+  max-width: none;
+}
+
+@media (min-width: 1025px) and (max-width: 1175px) {
+  .shop-nav--es .shop-nav__top .shop-nav__links {
+    gap: 4px;
+  }
+
+  .shop-nav--es .shop-nav__top .shop-nav__links:first-child > :nth-child(3),
+  .shop-nav--es .shop-nav__top .shop-nav__links:first-child > :nth-child(4) {
+    display: none;
+  }
+}
+
 .shop-nav--es .shop-nav__brandCopy small,
 .shop-nav--es .shop-nav__searchIntro strong,
 .shop-nav--es .shop-nav__searchSignals span {
@@ -3101,8 +3124,9 @@ body.shop-mobile-app .shop-nav__bottomItem--active .ant-badge + span {
   }
 }
 
-/* F3358: tablet landscape uses the compact utility surface instead of a dense two-line top row. */
-@media (min-width: 781px) and (max-width: 1024px) {
+/* F3358: tablet landscape uses the compact utility surface while the desktop
+   search and guest-action columns cannot coexist without overlap. */
+@media (min-width: 781px) and (max-width: 1060px) {
   .shop-nav__top {
     display: none;
   }

@@ -23,6 +23,19 @@ describe('ShopInput', () => {
     expect(screen.getByTestId('prefix')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Send' })).toBeInTheDocument();
   });
+
+  it('keeps a form-provided undefined value controlled', () => {
+    const onChange = jest.fn();
+    const consoleError = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    const { rerender } = render(<ShopInput aria-label="Email" value={undefined} onChange={onChange} />);
+
+    expect(screen.getByLabelText('Email')).toHaveValue('');
+    rerender(<ShopInput aria-label="Email" value="shopper@example.com" onChange={onChange} />);
+
+    expect(screen.getByLabelText('Email')).toHaveValue('shopper@example.com');
+    expect(consoleError.mock.calls.flat().join(' ')).not.toContain('changing an uncontrolled input to be controlled');
+    consoleError.mockRestore();
+  });
 });
 
 describe('ShopPasswordInput', () => {
@@ -70,5 +83,18 @@ describe('ShopTextArea', () => {
     expect(onChange).toHaveBeenCalled();
     expect(onChange.mock.calls[0][0].target.value).toBe('Calle 1');
     expect(screen.getByText('7/10')).toBeInTheDocument();
+  });
+
+  it('keeps a form-provided undefined value controlled', () => {
+    const onChange = jest.fn();
+    const consoleError = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    const { rerender } = render(<ShopTextArea aria-label="Notes" value={undefined} onChange={onChange} />);
+
+    expect(screen.getByLabelText('Notes')).toHaveValue('');
+    rerender(<ShopTextArea aria-label="Notes" value="Leave at reception" onChange={onChange} />);
+
+    expect(screen.getByLabelText('Notes')).toHaveValue('Leave at reception');
+    expect(consoleError.mock.calls.flat().join(' ')).not.toContain('changing an uncontrolled input to be controlled');
+    consoleError.mockRestore();
   });
 });

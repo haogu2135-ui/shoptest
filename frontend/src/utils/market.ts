@@ -35,7 +35,7 @@ const writeStoredCurrency = (currency: CurrencyCode) => {
 };
 
 export const detectDefaultCurrency = (): CurrencyCode => {
-  // ShopMX is a Mexico-first storefront (pet.686888666.xyz, MXN catalog/shipping).
+  // ShopMX is a Mexico-first storefront (petsanything.com, MXN catalog/shipping).
   // Default to MXN so conversion recommends Mercado/OXXO/SPEI instead of USD/PayPal.
   if (typeof window === 'undefined') return 'MXN';
   const stored = readStoredCurrency();

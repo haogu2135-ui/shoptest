@@ -140,13 +140,6 @@ const loadChinaRegionOption = async (): Promise<RegionOption> => {
   return chinaRegionPromise;
 };
 
-const warmChinaRegionInBackground = () => {
-  if (cachedChinaRegion || chinaRegionPromise) return;
-  void loadChinaRegionOption().catch(() => {
-    // Background warm is best-effort; next explicit zh load can retry.
-  });
-};
-
 export const loadRegionData = async (language?: string): Promise<RegionOption[]> => {
   const normalizedLanguage = normalizeRegionLanguage(language);
   const cachedLocalizedData = cachedLocalizedRegionData[normalizedLanguage];
@@ -154,18 +147,15 @@ export const loadRegionData = async (language?: string): Promise<RegionOption[]>
     return cachedLocalizedData;
   }
 
-  // Mexico-first commercial market: Spanish/English checkout waits only on MX municipalities (~44KB),
-  // not the China level catalog (~250KB). Chinese UI still loads both so CN addresses keep working.
+  // Mexico is the commercial home market. Keep the China hierarchy off the non-Chinese
+  // checkout path entirely: a region selector must not trigger a 250 KB background fetch.
   const mexico = await loadMexicoRegionOption();
   let regions: RegionOption[];
   if (normalizedLanguage === 'zh') {
     const china = await loadChinaRegionOption();
     regions = [mexico, china];
   } else {
-    regions = cachedChinaRegion ? [mexico, cachedChinaRegion] : [mexico];
-    // Warm China after first MX open so bilingual shoppers get it on a later address edit without
-    // blocking the primary Spanish/English conversion path.
-    warmChinaRegionInBackground();
+    regions = [mexico];
   }
 
   const localizedData = localizeRegionData(regions, normalizedLanguage);

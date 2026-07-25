@@ -30,7 +30,7 @@ import java.util.Set;
 @RequiredArgsConstructor
 @Slf4j
 public class AdminBugReportService {
-    private static final String DEFAULT_STOREFRONT_BASE_URL = "https://pet.686888666.xyz";
+    private static final String DEFAULT_STOREFRONT_BASE_URL = "https://petsanything.com";
     public static final String STATUS_OPEN = "OPEN";
     public static final String STATUS_FIXING = "FIXING";
     public static final String STATUS_FIXED_PENDING_REGRESSION = "FIXED_PENDING_REGRESSION";

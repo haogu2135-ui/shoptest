@@ -25,4 +25,4 @@ Disallow: /history
 Disallow: /stock-alerts
 Disallow: /compare
 
-Sitemap: https://pet.686888666.xyz/sitemap.xml
+Sitemap: https://petsanything.com/sitemap.xml

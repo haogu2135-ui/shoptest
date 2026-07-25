@@ -1,8 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
-import { ShopIcon, SI } from '../components/ShopIcon';
-import ShopPopconfirm from '../components/ShopPopconfirm';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { cartApi, productApi } from '../api';
 import { useLanguage } from '../i18n';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -13,23 +11,28 @@ import { addGuestCartItem } from '../utils/guestCart';
 import { clearStockAlerts, readStockAlerts, removeStockAlert, type StockAlertItem } from '../utils/stockAlerts';
 import { localizeProduct } from '../utils/localizedProduct';
 import { needsOptionSelection } from '../utils/productOptions';
-import { productImageFallback, resolveProductImage } from '../utils/productMedia';
 import { dispatchDomEvent } from '../utils/domEvents';
 import { getLocalStorageItem } from '../utils/safeStorage';
 import { allSettledWithConcurrency } from '../utils/asyncBatch';
 import { getApiErrorMessage } from '../utils/apiError';
-import PageError from '../components/PageError';
-import PageEmpty from '../components/PageEmpty';
 import './StockAlerts.css';
 import '../styles/mobile-page-contrast.css';
-import ShopButton from '../components/ShopButton';
-
-import ShopTag from '../components/ShopTag';
-import ShopAlert from '../components/ShopAlert';
-const stockAlertImageFallback = productImageFallback;
-const resolveStockAlertImage = resolveProductImage;
-
-const isBackInStock = (product?: Product) => Boolean(product && (product.stock === undefined || product.stock > 0));
+import {
+  buildStockAlertAssistantSubtitle,
+  buildStockAlertMobileNextActionStatus,
+  buildStockAlertsActionLabels,
+  buildStockAlertsPanelProps,
+  deriveStockAlertInsights,
+  maskStaleStockAlertInsights,
+  resolveStockAlertImage,
+  resolveStockAlertNextActionDescriptor,
+  stockAlertProductName as resolveStockAlertProductName,
+} from './stockAlertsHelpers';
+import {
+  StockAlertsMainPanels,
+  type StockAlertsNextAction,
+  type StockAlertsPanelsProps,
+} from './stockAlertsPanels';
 
 const StockAlerts: React.FC = () => {
   const navigate = useNavigate();
@@ -50,9 +53,13 @@ const StockAlerts: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState('');
   const [reloadKey, setReloadKey] = useState(0);
-  const stockAlertProductName = (item: { productId: number; productName?: string; product?: Pick<Product, 'id' | 'name'> }) => (
-    (item.product?.name || item.productName || '').trim() || t('pages.profile.productFallback', { id: item.product?.id || item.productId })
-  );
+  const [addingReady, setAddingReady] = useState(false);
+  const [addingProductIds, setAddingProductIds] = useState<Set<number>>(() => new Set());
+  const inFlightCartProductIds = useRef(new Set<number>());
+  const addingReadyRef = useRef(false);
+  const stockAlertProductName = (
+    item: { productId: number; productName?: string; product?: Pick<Product, 'id' | 'name'> },
+  ) => resolveStockAlertProductName(item, t);
 
   useEffect(() => {
     const refresh = () => setAlerts(readStockAlerts());
@@ -115,6 +122,10 @@ const StockAlerts: React.FC = () => {
       navigate(`/products/${product.id}`);
       return false;
     }
+    if (inFlightCartProductIds.current.has(product.id)) return false;
+
+    inFlightCartProductIds.current.add(product.id);
+    setAddingProductIds((current) => new Set(current).add(product.id));
     const token = getLocalStorageItem('token');
     try {
       if (token) {
@@ -131,452 +142,138 @@ const StockAlerts: React.FC = () => {
     } catch (error: unknown) {
       announceAccessibleMessage(getApiErrorMessage(error, t('messages.addFailed'), language), 'error');
       return false;
+    } finally {
+      inFlightCartProductIds.current.delete(product.id);
+      setAddingProductIds((current) => {
+        const next = new Set(current);
+        next.delete(product.id);
+        return next;
+      });
     }
   };
 
-  const stockAlertInsights = useMemo(() => {
-    const items = alerts.map((alert) => ({
-      ...alert,
-      product: products[alert.productId],
-    }));
-    const backInStockItems = items.filter((item) => isBackInStock(item.product));
-    const directAddItems = backInStockItems.filter((item) => item.product && !needsOptionSelection(item.product));
-    const optionItems = backInStockItems.filter((item) => item.product && needsOptionSelection(item.product));
-    const waitingItems = items.length - backInStockItems.length;
-    const urgentItems = backInStockItems.filter((item) => {
-      const stock = item.product?.stock;
-      return stock !== undefined && stock > 0 && stock <= 5;
-    });
-    const bestReadyItem = backInStockItems
-      .filter((item) => item.product)
-      .sort((a, b) => (a.product?.effectivePrice ?? a.product?.price ?? 0) - (b.product?.effectivePrice ?? b.product?.price ?? 0))[0];
-    return { items, backInStockItems, directAddItems, optionItems, waitingItems, urgentItems, bestReadyItem };
-  }, [alerts, products]);
+  const stockAlertInsights = useMemo(
+    () => deriveStockAlertInsights(alerts, products),
+    [alerts, products],
+  );
   const hasStaleProductData = Boolean(loadError && alerts.length > 0);
   const visibleStockAlertInsights = hasStaleProductData
-    ? {
-      ...stockAlertInsights,
-      backInStockItems: [],
-      directAddItems: [],
-      optionItems: [],
-      urgentItems: [],
-      waitingItems: stockAlertInsights.items.length,
-      bestReadyItem: undefined,
-    }
+    ? maskStaleStockAlertInsights(stockAlertInsights)
     : stockAlertInsights;
-  const assistantSubtitle = hasStaleProductData
-    ? t('pages.stockAlerts.staleDataWarning')
-    : visibleStockAlertInsights.bestReadyItem?.product
-      ? t('pages.stockAlerts.assistantSubtitleBest', { name: stockAlertProductName(visibleStockAlertInsights.bestReadyItem) })
-      : t('pages.stockAlerts.assistantSubtitle');
+  const assistantSubtitle = buildStockAlertAssistantSubtitle({
+    t,
+    hasStaleProductData,
+    bestReadyItem: visibleStockAlertInsights.bestReadyItem,
+    productName: stockAlertProductName,
+  });
 
   const addReadyItemsToCart = async () => {
     if (hasStaleProductData) {
       setReloadKey((value) => value + 1);
       return;
     }
+    if (addingReadyRef.current) return;
     const readyProducts = visibleStockAlertInsights.directAddItems
       .map((item) => item.product)
-      .filter(Boolean) as Product[];
+      .filter((product): product is Product => Boolean(product));
     if (readyProducts.length === 0) {
       announceAccessibleMessage(t('pages.stockAlerts.noReadyToCart'), 'info');
       return;
     }
-    const results = await allSettledWithConcurrency(
-      readyProducts,
-      (product) => addToCart(product, true),
-    );
-    const added = results.filter((result) => result.status === 'fulfilled' && result.value).length;
-    if (added > 0) {
-      announceAccessibleMessage(t('pages.stockAlerts.addedReadyCount', { count: added }), 'success');
-      dispatchDomEvent('shop:open-cart');
+
+    addingReadyRef.current = true;
+    setAddingReady(true);
+    try {
+      const results = await allSettledWithConcurrency(
+        readyProducts,
+        (product) => addToCart(product, true),
+      );
+      const added = results.filter((result) => result.status === 'fulfilled' && result.value).length;
+      if (added > 0) {
+        announceAccessibleMessage(t('pages.stockAlerts.addedReadyCount', { count: added }), 'success');
+        dispatchDomEvent('shop:open-cart');
+      }
+    } finally {
+      addingReadyRef.current = false;
+      setAddingReady(false);
     }
   };
 
-  const restockNextAction = (() => {
-    if (hasStaleProductData) {
-      return {
-        tone: 'stale',
-        title: t('pages.stockAlerts.nextActionStaleTitle'),
-        text: t('pages.stockAlerts.nextActionStaleText'),
-        label: t('common.retry'),
-        action: () => setReloadKey((value) => value + 1),
-      };
-    }
-    if (visibleStockAlertInsights.directAddItems.length > 0) {
-      return {
-        tone: 'ready',
-        title: t('pages.stockAlerts.nextActionReadyTitle'),
-        text: t('pages.stockAlerts.nextActionReadyText', { count: visibleStockAlertInsights.directAddItems.length }),
-        label: t('pages.stockAlerts.addReadyToCart'),
-        action: addReadyItemsToCart,
-      };
-    }
-    if (visibleStockAlertInsights.optionItems.length > 0) {
-      const nextItem = visibleStockAlertInsights.optionItems[0];
-      return {
-        tone: 'options',
-        title: t('pages.stockAlerts.nextActionOptionsTitle'),
-        text: t('pages.stockAlerts.nextActionOptionsText', { name: stockAlertProductName(nextItem) }),
-        label: t('pages.stockAlerts.selectOptions'),
-        action: () => navigate(`/products/${nextItem.productId}`),
-      };
-    }
-    if (visibleStockAlertInsights.waitingItems > 0) {
-      return {
-        tone: 'waiting',
-        title: t('pages.stockAlerts.nextActionWaitingTitle'),
-        text: t('pages.stockAlerts.nextActionWaitingText', { count: visibleStockAlertInsights.waitingItems }),
-        label: t('pages.stockAlerts.browsePersonalized'),
-        action: () => navigate('/products?sort=personalized-desc'),
-      };
-    }
-    return {
-      tone: 'browse',
-      title: t('pages.stockAlerts.nextActionBrowseTitle'),
-      text: t('pages.stockAlerts.nextActionBrowseText'),
-      label: t('pages.stockAlerts.browse'),
-      action: () => navigate('/products?sort=personalized-desc'),
-    };
-  })();
-  const addReadyActionLabel = `${t('pages.stockAlerts.addReadyToCart')}: ${t('pages.stockAlerts.directReady', { count: visibleStockAlertInsights.directAddItems.length })}`;
-  const restockNextActionLabel = `${restockNextAction.label}: ${restockNextAction.title}`;
-  const restockNextActionIcon = restockNextAction.tone === 'stale' ? <ShopIcon path={SI.reload} /> : <ShopIcon path={SI.cart} />;
-  const mobileNextActionStatus = restockNextAction.tone === 'ready'
-    ? t('pages.stockAlerts.directReady', { count: visibleStockAlertInsights.directAddItems.length })
-    : restockNextAction.tone === 'options'
-      ? t('pages.stockAlerts.optionReady', { count: visibleStockAlertInsights.optionItems.length })
-      : restockNextAction.tone === 'stale'
-        ? t('pages.stockAlerts.loadFailed')
-        : t('pages.stockAlerts.stillWatchingCount', { count: visibleStockAlertInsights.waitingItems });
-  const browseStockAlertsActionLabel = `${t('pages.stockAlerts.browse')}: ${t('pages.stockAlerts.title')}`;
-  const clearStockAlertsActionLabel = `${t('pages.stockAlerts.clear')}: ${alerts.length}`;
+  const nextActionDescriptor = resolveStockAlertNextActionDescriptor({
+    t,
+    hasStaleProductData,
+    insights: visibleStockAlertInsights,
+    productName: stockAlertProductName,
+  });
+  const restockNextAction: StockAlertsNextAction = {
+    tone: nextActionDescriptor.tone,
+    title: nextActionDescriptor.title,
+    text: nextActionDescriptor.text,
+    label: nextActionDescriptor.label,
+    action: () => {
+      const intent = nextActionDescriptor.intent;
+      if (intent.kind === 'retry') {
+        setReloadKey((value) => value + 1);
+        return;
+      }
+      if (intent.kind === 'add-ready') {
+        void addReadyItemsToCart();
+        return;
+      }
+      if (intent.kind === 'resume-options') {
+        navigate(`/products/${intent.productId}`);
+        return;
+      }
+      navigate('/products?sort=personalized-desc');
+    },
+  };
+  const mobileNextActionStatus = buildStockAlertMobileNextActionStatus({
+    t,
+    tone: restockNextAction.tone,
+    insights: visibleStockAlertInsights,
+  });
+  const {
+    addReadyActionLabel,
+    restockNextActionLabel,
+    browseStockAlertsActionLabel,
+    clearStockAlertsActionLabel,
+  } = buildStockAlertsActionLabels({
+    t,
+    directReadyCount: visibleStockAlertInsights.directAddItems.length,
+    nextActionLabel: restockNextAction.label,
+    nextActionTitle: restockNextAction.title,
+    alertCount: alerts.length,
+  });
 
-  return (
-    <div className={`stock-alerts stock-alerts-page stock-alerts--${language}`}>
-      <section className="stock-alerts__shell" aria-label={t('pages.stockAlerts.title')}>
-        <div className="stock-alerts__header">
-          <div>
-            <h1 className="stock-alerts-page__title">
-              <ShopIcon path={SI.bell} /> {t('pages.stockAlerts.title')}
-            </h1>
-            <span className="stock-alerts-page__text stock-alerts-page__text--secondary">
-              {t('pages.stockAlerts.subtitle', { count: loading || hasStaleProductData ? 0 : visibleStockAlertInsights.backInStockItems.length, saved: alerts.length })}
-            </span>
-          </div>
-          <div className="stock-alerts__actionRow">
-            <ShopButton aria-label={browseStockAlertsActionLabel} title={browseStockAlertsActionLabel} onClick={() => navigate('/products')}>{t('pages.stockAlerts.browse')}</ShopButton>
-            <ShopPopconfirm
-              rootClassName='shop-mobile-popup-layer stock-alerts-popconfirm'
-              title={t('pages.stockAlerts.clearConfirm')}
-              onConfirm={clearAll}
-              okText={t('common.confirm')}
-              cancelText={t('common.cancel')}
-              okButtonProps={{ danger: true, 'aria-label': clearStockAlertsActionLabel, title: clearStockAlertsActionLabel }}
-              cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${clearStockAlertsActionLabel}`, title: `${t('common.cancel')}: ${clearStockAlertsActionLabel}` }}
-            >
-              <ShopButton danger disabled={alerts.length === 0} aria-label={clearStockAlertsActionLabel} title={clearStockAlertsActionLabel}>{t('pages.stockAlerts.clear')}</ShopButton>
-            </ShopPopconfirm>
-          </div>
-        </div>
+  const panelProps: StockAlertsPanelsProps = buildStockAlertsPanelProps({
+    t,
+    language,
+    navigate,
+    formatMoney,
+    dateLocale,
+    alerts,
+    loading,
+    loadError,
+    hasStaleProductData,
+    visibleStockAlertInsights,
+    assistantSubtitle,
+    restockNextAction,
+    mobileNextActionStatus,
+    addReadyActionLabel,
+    restockNextActionLabel,
+    browseStockAlertsActionLabel,
+    clearStockAlertsActionLabel,
+    addingReady,
+    isAddingProduct: (productId: number) => addingProductIds.has(productId),
+    stockAlertProductName,
+    setReloadKey,
+    clearAll,
+    removeAlert,
+    addToCart,
+    addReadyItemsToCart,
+  });
 
-        {alerts.length > 0 ? (
-          <section className="stock-alerts__assistant" aria-label={t('pages.stockAlerts.assistantTitle')}>
-            <div className="stock-alerts__assistantCopy">
-              <span className="stock-alerts-page__text stock-alerts__eyebrow">{t('pages.stockAlerts.assistantEyebrow')}</span>
-              <h4 className="stock-alerts-page__title">{t('pages.stockAlerts.assistantTitle')}</h4>
-              <span className="stock-alerts-page__text stock-alerts-page__text--secondary">{assistantSubtitle}</span>
-            </div>
-            <div className="stock-alerts__signalGrid">
-              <div className="stock-alerts__signal is-ok">
-                <ShopIcon path={SI.checkCircle} />
-                <strong>{visibleStockAlertInsights.backInStockItems.length}</strong>
-                <span>{t('pages.stockAlerts.readyNow')}</span>
-              </div>
-              <div className={`stock-alerts__signal ${visibleStockAlertInsights.urgentItems.length ? 'is-risk' : 'is-ok'}`}>
-                <ShopIcon path={SI.fire} />
-                <strong>{visibleStockAlertInsights.urgentItems.length}</strong>
-                <span>{t('pages.stockAlerts.lowStockReady')}</span>
-              </div>
-              <div className={`stock-alerts__signal ${visibleStockAlertInsights.waitingItems ? '' : 'is-ok'}`}>
-                <ShopIcon path={SI.bell} />
-                <strong>{visibleStockAlertInsights.waitingItems}</strong>
-                <span>{t('pages.stockAlerts.stillWatching')}</span>
-              </div>
-            </div>
-          </section>
-        ) : null}
-
-        {visibleStockAlertInsights.backInStockItems.length > 0 ? (
-          <section className="stock-alerts__recovery" aria-label={t('pages.stockAlerts.recoveryTitle')}>
-            <div>
-              <span className="stock-alerts-page__text stock-alerts__eyebrow">{t('pages.stockAlerts.recoveryEyebrow')}</span>
-              <h4 className="stock-alerts-page__title">{t('pages.stockAlerts.recoveryTitle')}</h4>
-              <span className="stock-alerts-page__text stock-alerts-page__text--secondary">
-                {visibleStockAlertInsights.bestReadyItem?.product
-                  ? t('pages.stockAlerts.recoverySubtitleBest', {
-                    name: stockAlertProductName(visibleStockAlertInsights.bestReadyItem),
-                    price: formatMoney(visibleStockAlertInsights.bestReadyItem.product.effectivePrice ?? visibleStockAlertInsights.bestReadyItem.product.price),
-                  })
-                  : t('pages.stockAlerts.recoverySubtitle', { count: visibleStockAlertInsights.backInStockItems.length })}
-              </span>
-            </div>
-            <div className="stock-alerts__recoveryActions">
-              {visibleStockAlertInsights.bestReadyItem?.product ? (
-                <ShopButton
-                  onClick={() => navigate(`/products/${visibleStockAlertInsights.bestReadyItem!.productId}`)}
-                  aria-label={`${t('pages.stockAlerts.viewBestReady')}: ${stockAlertProductName(visibleStockAlertInsights.bestReadyItem)}`}
-                  title={`${t('pages.stockAlerts.viewBestReady')}: ${stockAlertProductName(visibleStockAlertInsights.bestReadyItem)}`}
-                >
-                  {t('pages.stockAlerts.viewBestReady')}
-                </ShopButton>
-              ) : null}
-              <ShopButton
-                type="primary"
-                icon={<ShopIcon path={SI.cart} />}
-                aria-label={addReadyActionLabel}
-                title={addReadyActionLabel}
-                onClick={addReadyItemsToCart}
-              >
-                {t('pages.stockAlerts.addReadyToCart')}
-              </ShopButton>
-            </div>
-          </section>
-        ) : null}
-
-        {alerts.length > 0 ? (
-          <section className={`stock-alerts__nextAction stock-alerts__nextAction--${restockNextAction.tone}`} aria-label={t('pages.stockAlerts.nextActionEyebrow')}>
-            <div>
-              <span className="stock-alerts-page__text stock-alerts__eyebrow">{t('pages.stockAlerts.nextActionEyebrow')}</span>
-              <h4 className="stock-alerts-page__title">{restockNextAction.title}</h4>
-              <span className="stock-alerts-page__text stock-alerts-page__text--secondary">{restockNextAction.text}</span>
-            </div>
-            <div className="stock-alerts__nextActionMeta">
-              <ShopTag color="green">{t('pages.stockAlerts.directReady', { count: visibleStockAlertInsights.directAddItems.length })}</ShopTag>
-              <ShopTag color={visibleStockAlertInsights.optionItems.length > 0 ? 'gold' : 'default'}>
-                {t('pages.stockAlerts.optionReady', { count: visibleStockAlertInsights.optionItems.length })}
-              </ShopTag>
-              <ShopTag color={visibleStockAlertInsights.waitingItems > 0 ? 'blue' : 'default'}>
-                {t('pages.stockAlerts.stillWatchingCount', { count: visibleStockAlertInsights.waitingItems })}
-              </ShopTag>
-            </div>
-            <ShopButton
-              type={restockNextAction.tone === 'ready' ? 'primary' : 'default'}
-              icon={restockNextActionIcon}
-              aria-label={restockNextActionLabel}
-              title={restockNextActionLabel}
-              onClick={restockNextAction.action}
-            >
-              {restockNextAction.label}
-            </ShopButton>
-          </section>
-        ) : null}
-
-        {alerts.length > 0 ? (
-          <div className={`stock-alerts__mobileAction stock-alerts__mobileAction--${restockNextAction.tone}`}>
-            <div className="stock-alerts__mobileActionCopy">
-              <span>{restockNextAction.title}</span>
-              <strong>{mobileNextActionStatus}</strong>
-            </div>
-            <ShopButton
-              type={restockNextAction.tone === 'ready' ? 'primary' : 'default'}
-              icon={restockNextActionIcon}
-              aria-label={restockNextActionLabel}
-              title={restockNextActionLabel}
-              onClick={restockNextAction.action}
-            >
-              {restockNextAction.label}
-            </ShopButton>
-          </div>
-        ) : null}
-
-        {loadError && hasStaleProductData ? (
-          <ShopAlert
-            type="warning"
-            showIcon
-            message={t('pages.stockAlerts.loadFailed')}
-            description={hasStaleProductData ? t('pages.stockAlerts.staleDataWarning') : t('common.loadFailedRetry')}
-            action={<ShopButton size="small" onClick={() => setReloadKey((value) => value + 1)}>{t('common.retry')}</ShopButton>}
-          />
-        ) : null}
-
-        {loadError && !hasStaleProductData ? (
-          <div data-stock-alerts-load-recovery="true">
-            <PageError
-              className="stock-alerts__loadError"
-              title={t('pages.stockAlerts.loadFailed')}
-              description={t('common.loadFailedRetry')}
-              actions={[
-                {
-                  key: 'retry',
-                  label: t('common.retry'),
-                  onClick: () => setReloadKey((value) => value + 1),
-                  type: 'primary',
-                },
-                {
-                  key: 'browse',
-                  label: browseStockAlertsActionLabel,
-                  onClick: () => navigate('/products'),
-                  type: 'default',
-                },
-                {
-                  key: 'wishlist',
-                  label: t('pages.compare.emptyWishlist'),
-                  onClick: () => navigate('/wishlist'),
-                  type: 'default',
-                },
-                {
-                  key: 'coupons',
-                  label: t('pages.productList.loadRecoveryCoupons'),
-                  onClick: () => navigate('/coupons'),
-                  type: 'default',
-                },
-                {
-                  key: 'support',
-                  label: t('pages.productList.loadRecoverySupport'),
-                  onClick: () => dispatchDomEvent('shop:open-support'),
-                  type: 'default',
-                },
-              ]}
-            />
-          </div>
-        ) : alerts.length === 0 ? (
-          <PageEmpty
-            className="stock-alerts__emptyPanel"
-            data-stock-alerts-empty-actions="true"
-            description={(
-              <div className="stock-alerts__emptyCopy">
-                <div>{t('pages.stockAlerts.empty')}</div>
-                <div className="stock-alerts__emptyHint">{t('pages.stockAlerts.emptyHint')}</div>
-              </div>
-            )}
-            actions={[
-              {
-                key: 'browse',
-                label: browseStockAlertsActionLabel,
-                onClick: () => navigate('/products'),
-              },
-              {
-                key: 'wishlist',
-                label: t('pages.stockAlerts.emptyWishlist'),
-                onClick: () => navigate('/wishlist'),
-                type: 'default',
-              },
-              {
-                key: 'coupons',
-                label: t('pages.stockAlerts.emptyCoupons'),
-                onClick: () => navigate('/coupons'),
-                type: 'default',
-              },
-              {
-                key: 'pet-finder',
-                label: t('pages.stockAlerts.emptyPetFinder'),
-                onClick: () => navigate('/pet-finder'),
-                type: 'default',
-              },
-            ]}
-          />
-        ) : (
-          <div className={`stock-alerts__listWrap${loading ? ' stock-alerts__listWrap--loading' : ''}`}>
-            {loading ? (
-              <div className="stock-alerts__spinnerOverlay" role="status" aria-live="polite" aria-label={t('common.loading')}>
-                <span className="stock-alerts__spinner" aria-hidden="true" />
-              </div>
-            ) : null}
-            <ul className="stock-alerts__itemList" role="list">
-              {visibleStockAlertInsights.items.map((item) => {
-              const product = item.product;
-              const productName = stockAlertProductName(item);
-              const productLinkLabel = `${t('pages.productList.viewDetails')}: ${productName}`;
-              const ready = isBackInStock(product);
-              const needsSelection = Boolean(product && needsOptionSelection(product));
-              const lowStock = Boolean(ready && product?.stock !== undefined && product.stock > 0 && product.stock <= 5);
-              const addActionText = ready
-                ? needsSelection
-                  ? t('pages.stockAlerts.selectOptions')
-                  : t('pages.stockAlerts.addToCart')
-                : t('pages.productList.soldOut');
-              const addActionLabel = `${addActionText}: ${productName}`;
-              const removeActionLabel = `${t('pages.stockAlerts.remove')}: ${productName}`;
-              return (
-                <li
-                  key={item.productId}
-                  className={[
-                    'stock-alerts__item',
-                    ready ? 'stock-alerts__item--ready' : 'stock-alerts__item--waiting',
-                    lowStock ? 'stock-alerts__item--lowStock' : '',
-                    needsSelection ? 'stock-alerts__item--options' : '',
-                  ].filter(Boolean).join(' ')}
-                >
-                  <div className="stock-alerts__itemMeta">
-                    <Link className="stock-alerts__imageLink stock-alerts__itemAvatar" to={`/products/${item.productId}`} aria-label={productLinkLabel} title={productLinkLabel}>
-                      <img
-                        className="stock-alerts__image"
-                        src={resolveStockAlertImage(product?.imageUrl || item.imageUrl)}
-                        alt={productName}
-                        width={72}
-                        height={72}
-                        loading="lazy"
-                        decoding="async"
-                        onError={(event) => {
-                          if (event.currentTarget.src !== stockAlertImageFallback) {
-                            event.currentTarget.src = stockAlertImageFallback;
-                          }
-                        }}
-                      />
-                    </Link>
-                    <div className="stock-alerts__itemBody">
-                      <Link className="stock-alerts__productLink" to={`/products/${item.productId}`} aria-label={productLinkLabel} title={productLinkLabel}>{productName}</Link>
-                      <div className="stock-alerts__itemDetails">
-                        <span className="stock-alerts-page__text stock-alerts-page__text--secondary stock-alerts__watchTime">
-                          {t('pages.stockAlerts.createdAt', { time: new Date(item.createdAt).toLocaleString(dateLocale) })}
-                        </span>
-                        {product ? (
-                          <div className="stock-alerts__itemSignalRow">
-                            <span className="stock-alerts-page__text stock-alerts-page__text--strong stock-alerts__price commerce-money">{formatMoney(product.effectivePrice ?? product.price)}</span>
-                            <ShopTag color={ready ? 'green' : 'default'}>
-                              {ready ? t('pages.productDetail.enough') : t('pages.productList.soldOut')}
-                            </ShopTag>
-                            {lowStock ? <ShopTag color="volcano">{t('pages.stockAlerts.lowStockReady')}</ShopTag> : null}
-                            {ready && needsSelection ? <ShopTag color="gold">{t('pages.stockAlerts.selectOptions')}</ShopTag> : null}
-                          </div>
-                        ) : null}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="stock-alerts__itemActions">
-                    <ShopButton
-                      type="primary"
-                      icon={<ShopIcon path={SI.cart} />}
-                      className={ready ? undefined : 'stock-alerts__soldoutButton'}
-                      aria-label={addActionLabel}
-                      title={addActionLabel}
-                      onClick={() => product && addToCart(product)}
-                      disabled={hasStaleProductData || !ready}
-                    >
-                      {addActionText}
-                    </ShopButton>
-                    <ShopPopconfirm
-                      rootClassName='shop-mobile-popup-layer stock-alerts-popconfirm'
-                      title={t('pages.stockAlerts.removeConfirm')}
-                      onConfirm={() => removeAlert(item.productId)}
-                      okText={t('common.confirm')}
-                      cancelText={t('common.cancel')}
-                      okButtonProps={{ danger: true, 'aria-label': removeActionLabel, title: removeActionLabel }}
-                      cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${removeActionLabel}`, title: `${t('common.cancel')}: ${removeActionLabel}` }}
-                    >
-                      <ShopButton icon={<ShopIcon path={SI.delete} />} aria-label={removeActionLabel} title={removeActionLabel}>{t('pages.stockAlerts.remove')}</ShopButton>
-                    </ShopPopconfirm>
-                  </div>
-                </li>
-              );
-            })}
-            </ul>
-          </div>
-        )}
-      </section>
-    </div>
-  );
+  return <StockAlertsMainPanels {...panelProps} />;
 };
 
 export default StockAlerts;

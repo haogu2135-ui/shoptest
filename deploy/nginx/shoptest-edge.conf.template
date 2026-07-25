@@ -109,6 +109,7 @@ server {
 
     location ^~ /.well-known/acme-challenge/ {
         default_type "text/plain";
+        add_header Cache-Control "no-store" always;
         # Writable certbot webroot (static build is mounted read-only).
         root /var/www/certbot;
         try_files $uri =404;
@@ -395,6 +396,7 @@ server {
 
     location ^~ /.well-known/acme-challenge/ {
         default_type "text/plain";
+        add_header Cache-Control "no-store" always;
         # Writable certbot webroot (static build is mounted read-only).
         root /var/www/certbot;
         try_files $uri =404;

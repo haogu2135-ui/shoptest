@@ -6,7 +6,7 @@
 #   - while Cloudflare returns 522, issuance will fail — fix CF origin first
 set -euo pipefail
 
-DOMAIN="${SHOPTEST_PRODUCTION_HOST:-pet.686888666.xyz}"
+DOMAIN="${SHOPTEST_PRODUCTION_HOST:-petsanything.com}"
 EMAIL="${LETSENCRYPT_EMAIL:-admin@${DOMAIN}}"
 WEBROOT="${CERTBOT_WEBROOT:-/home/guhao/shoptest/deploy/certbot/www}"
 LIVE_DIR="/etc/letsencrypt/live/${DOMAIN}"

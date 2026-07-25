@@ -30,8 +30,8 @@ public class OrderEmailNotificationService {
     private final MailAccountProperties mailAccountProperties;
     private final Map<String, JavaMailSenderImpl> mailSenderCache = new ConcurrentHashMap<>();
 
-    @Value("${app.storefront-base-url:https://pet.686888666.xyz}")
-    private String storefrontBaseUrlConfig = "https://pet.686888666.xyz";
+    @Value("${app.storefront-base-url:https://petsanything.com}")
+    private String storefrontBaseUrlConfig = "https://petsanything.com";
 
     @Transactional(rollbackFor = Exception.class, propagation = Propagation.NOT_SUPPORTED)
     public boolean trySendOrderStatusEmail(String email, String title, String message) {
@@ -172,7 +172,7 @@ public class OrderEmailNotificationService {
             configured = System.getenv("STOREFRONT_BASE_URL");
         }
         if (isBlank(configured)) {
-            configured = "https://pet.686888666.xyz";
+            configured = "https://petsanything.com";
         }
         return configured.trim().replaceAll("/+$", "");
     }

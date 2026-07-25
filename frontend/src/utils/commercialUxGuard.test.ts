@@ -97,6 +97,14 @@ const readBrowsingHistorySurface = () => (
   ].join('\n')
 );
 
+const readStockAlertsSurface = () => (
+  [
+    readFrontend('pages', 'StockAlerts.tsx'),
+    readFrontend('pages', 'stockAlertsHelpers.ts'),
+    readFrontend('pages', 'stockAlertsPanels.tsx'),
+  ].join('\n')
+);
+
 const readProductCompareSurface = () => (
   [
     readFrontend('pages', 'ProductCompare.tsx'),
@@ -554,7 +562,7 @@ describe('commercial UX contracts', () => {
   });
 
   it('keeps recovery empty states on multi-path commercial CTAs', () => {
-    const stock = readFrontend('pages', 'StockAlerts.tsx');
+    const stock = readStockAlertsSurface();
     const notifications = readNotificationsSurface();
     const petFinder = readFrontend('pages', 'PetFinder.tsx');
     const petGallery = readFrontend('pages', 'PetGallery.tsx');
@@ -931,7 +939,7 @@ describe('commercial UX contracts', () => {
     const wishlist = readWishlistSurface();
     const profile = readProfileSurface();
     const coupons = readCouponCenterSurface();
-    const stockAlerts = readFrontend('pages', 'StockAlerts.tsx');
+    const stockAlerts = readStockAlertsSurface();
     const petGallery = readFrontend('pages', 'PetGallery.tsx');
     const orderTracking = readOrderTrackingSurface();
     expect(cart).toContain('data-cart-load-recovery');
@@ -1097,7 +1105,7 @@ it('keeps home empty category and product rails on multipath commercial recovery
     expect(recovery).toContain('resolveCommercialPaymentNavigationUrl');
     expect(recovery).toContain('navigateToCommercialPaymentUrl');
     expect(recovery).toContain('isStorefrontPaymentPath');
-    expect(recovery).toContain('pet.686888666.xyz');
+    expect(recovery).toContain('petsanything.com');
     expect(recovery).toContain('.trycloudflare.com');
     expect(orderActions).toContain('navigateToCommercialPaymentUrl');
     expect(checkout).toContain('useCheckoutOrderActions({');
@@ -1474,7 +1482,7 @@ it('keeps home empty category and product rails on multipath commercial recovery
     const notifications = readNotificationsSurface();
     const petFinder = readFrontend('pages', 'PetFinder.tsx');
     const compare = readProductCompareSurface();
-    const stock = readFrontend('pages', 'StockAlerts.tsx');
+    const stock = readStockAlertsSurface();
     const notFound = readFrontend('pages', 'NotFound.tsx');
     const forgot = readForgotPasswordSurface();
     const app = readFrontend('App.tsx');

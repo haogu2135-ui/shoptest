@@ -38,7 +38,7 @@ describe('mobileUpdate release download gate', () => {
     fileName: 'shoptest-1.0.24.apk',
     sizeBytes: 123456,
     sha256: 'a'.repeat(64),
-    manifestUrl: 'https://pet.686888666.xyz/downloads/mobile-version.json',
+    manifestUrl: 'https://petsanything.com/downloads/mobile-version.json',
   };
 
   it('does not fall back to the stable public APK path for empty asset URLs', () => {
@@ -60,7 +60,7 @@ describe('mobileUpdate release download gate', () => {
   it('resolves release downloads only when signing and artifact metadata are explicit', () => {
     expect(isMobileReleaseDownloadAllowed(signedRelease)).toBe(true);
     expect(resolveMobileReleaseDownloadUrl(signedRelease)).toBe(
-      'https://pet.686888666.xyz/downloads/shoptest-1.0.24.apk',
+      'https://petsanything.com/downloads/shoptest-1.0.24.apk',
     );
   });
 
@@ -107,11 +107,11 @@ describe('mobileUpdate release download gate', () => {
       isNativePlatform: () => true,
     };
     window.__SHOP_RUNTIME_CONFIG__ = {
-      apiBaseUrl: 'https://pet.686888666.xyz/api',
+      apiBaseUrl: 'https://petsanything.com/api',
       mobileVersionManifestUrl: '/downloads/mobile-version.json',
     };
 
-    expect(resolveMobileManifestUrl()).toBe('https://pet.686888666.xyz/downloads/mobile-version.json');
+    expect(resolveMobileManifestUrl()).toBe('https://petsanything.com/downloads/mobile-version.json');
   });
 
   it('keeps Android APK update handling out of iOS native shells', () => {

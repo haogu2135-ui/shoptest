@@ -1032,7 +1032,7 @@ describe('cart to checkout flows', () => {
   it('keeps cart amount phrase fragment keys tied to rendered text content', () => {
     const source = fs.readFileSync(path.resolve(__dirname, 'Cart.tsx'), 'utf8');
     const amountTextStart = source.indexOf('const renderCartAmountText = (label: string, amount: string) => {');
-    const amountTextEnd = source.indexOf('const freeShippingRemainingText', amountTextStart);
+    const amountTextEnd = source.indexOf('const cartShippingPresentation', amountTextStart);
     const amountTextSource = source.slice(amountTextStart, amountTextEnd);
 
     expect(amountTextStart).toBeGreaterThan(-1);

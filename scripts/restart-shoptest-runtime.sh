@@ -123,9 +123,9 @@ systemd-run \
   --setenv="PATH=$(dirname "$NODE_BIN"):/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin" \
   "$NODE_BIN" scripts/serve-build.js >/dev/null
 
-wait_for_curl "public nginx healthz" -k -fsS -o /dev/null -H 'Host: pet.686888666.xyz' https://127.0.0.1/healthz
-wait_for_curl "public nginx SPA" -k -fsS -o /dev/null -H 'Host: pet.686888666.xyz' https://127.0.0.1/
-wait_for_curl "public nginx API app config" -k -fsS -o /dev/null -H 'Host: pet.686888666.xyz' https://127.0.0.1/api/app/config
+wait_for_curl "public nginx healthz" -k -fsS -o /dev/null -H 'Host: petsanything.com' https://127.0.0.1/healthz
+wait_for_curl "public nginx SPA" -k -fsS -o /dev/null -H 'Host: petsanything.com' https://127.0.0.1/
+wait_for_curl "public nginx API app config" -k -fsS -o /dev/null -H 'Host: petsanything.com' https://127.0.0.1/api/app/config
 wait_for_curl "backend app config" -fsS -o /dev/null http://127.0.0.1:8081/app/config
 wait_for_curl "local frontend server" -fsS -o /dev/null http://127.0.0.1:4187/
 

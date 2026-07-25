@@ -39,7 +39,8 @@ export type ShopInputProps = {
   status?: 'error' | 'warning' | '';
 };
 
-const ShopInput = forwardRef<HTMLInputElement, ShopInputProps>(({
+const ShopInput = forwardRef<HTMLInputElement, ShopInputProps>((props, ref) => {
+  const {
   value,
   defaultValue,
   onChange,
@@ -74,10 +75,12 @@ const ShopInput = forwardRef<HTMLInputElement, ShopInputProps>(({
   'aria-invalid': ariaInvalid,
   'aria-required': ariaRequired,
   title,
-}, ref) => {
+  } = props;
   const generatedId = useId();
   const inputId = id || generatedId;
-  const isControlled = value !== undefined;
+  // Form.Item initially supplies `value: undefined`; preserve that controlled
+  // contract so the native input never flips modes when form data arrives.
+  const isControlled = Object.prototype.hasOwnProperty.call(props, 'value');
   const [uncontrolled, setUncontrolled] = useState(defaultValue ?? '');
   const resolvedValue = isControlled ? String(value ?? '') : uncontrolled;
   const showClear = allowClear && !disabled && !readOnly && Boolean(resolvedValue);
@@ -104,7 +107,7 @@ const ShopInput = forwardRef<HTMLInputElement, ShopInputProps>(({
           name={name}
           className="shop-input__control"
           type={type}
-          value={isControlled ? value : undefined}
+          value={isControlled ? resolvedValue : undefined}
           defaultValue={isControlled ? undefined : defaultValue}
           placeholder={placeholder}
           disabled={disabled}
@@ -261,7 +264,8 @@ export type ShopTextAreaProps = {
   status?: 'error' | 'warning' | '';
 };
 
-export const ShopTextArea = forwardRef<HTMLTextAreaElement, ShopTextAreaProps>(({
+export const ShopTextArea = forwardRef<HTMLTextAreaElement, ShopTextAreaProps>((props, ref) => {
+  const {
   value,
   defaultValue,
   onChange,
@@ -288,10 +292,10 @@ export const ShopTextArea = forwardRef<HTMLTextAreaElement, ShopTextAreaProps>((
   'aria-invalid': ariaInvalid,
   'aria-required': ariaRequired,
   title,
-}, ref) => {
+  } = props;
   const generatedId = useId();
   const inputId = id || generatedId;
-  const isControlled = value !== undefined;
+  const isControlled = Object.prototype.hasOwnProperty.call(props, 'value');
   const minRows = typeof autoSize === 'object' && autoSize?.minRows ? autoSize.minRows : (typeof autoSize === 'boolean' && autoSize ? 2 : rows);
   const maxRows = typeof autoSize === 'object' && autoSize?.maxRows ? autoSize.maxRows : undefined;
   const resolvedRows = minRows || rows;
@@ -315,7 +319,7 @@ export const ShopTextArea = forwardRef<HTMLTextAreaElement, ShopTextAreaProps>((
           id={inputId}
           name={name}
           className="shop-input__control shop-input__control--textarea"
-          value={isControlled ? value : undefined}
+          value={isControlled ? resolved : undefined}
           defaultValue={isControlled ? undefined : defaultValue}
           placeholder={placeholder}
           disabled={disabled}
