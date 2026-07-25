@@ -20,8 +20,8 @@ const readProductDetailGallerySource = () => require('fs').readFileSync(require(
 const readProductDetailSummarySource = () => require('fs').readFileSync(require('path').resolve(__dirname, 'productDetailSummary.tsx'), 'utf8') as string;
 const readProductDetailBuyBarSource = () => require('fs').readFileSync(require('path').resolve(__dirname, 'productDetailBuyBar.tsx'), 'utf8') as string;
 const readProductDetailContentSource = () => require('fs').readFileSync(require('path').resolve(__dirname, 'productDetailContent.tsx'), 'utf8') as string;
-const readProductDetailPurchaseSurface = () => `${readProductDetailSource()}\n${readProductDetailSummarySource()}`;
 const readProductDetailShellSource = () => require('fs').readFileSync(require('path').resolve(__dirname, 'productDetailShell.tsx'), 'utf8') as string;
+const readProductDetailPurchaseSurface = () => `${readProductDetailSource()}\n${readProductDetailShellSource()}\n${readProductDetailSummarySource()}`;
 const readProductDetailCss = () => require('fs').readFileSync(require('path').resolve(__dirname, 'ProductDetail.css'), 'utf8') as string;
 const readNativeScrollSource = () => require('fs').readFileSync(require('path').resolve(__dirname, '../utils/nativeScroll.ts'), 'utf8') as string;
 
@@ -198,10 +198,10 @@ describe('ProductDetail mobile buybar layout contract', () => {
     const fixStart = css.lastIndexOf('Mobile fixed purchase bar closure');
     const fixCss = css.slice(fixStart);
 
-    expect(page).toContain('<ProductDetailSummary');
+    expect(readProductDetailShellSource()).toContain('<ProductDetailSummary');
     expect(source.indexOf('className="product-price-panel"')).toBeGreaterThan(-1);
     expect(source.indexOf('<ProductDetailMobileBuyBar')).toBeGreaterThan(source.indexOf('className="product-price-panel"'));
-    expect(source).toContain("from './productDetailBuyBar'");
+    expect(readProductDetailSummarySource()).toContain("from './productDetailBuyBar'");
     expect(fixStart).toBeGreaterThan(css.indexOf('APP/WebView product detail closure'));
     expect(fixCss).toContain('@media (max-width: 780px)');
     expect(fixCss).toMatch(/\.product-detail-page,[\s\S]*?padding-bottom:\s*calc\(128px \+ env\(safe-area-inset-bottom,\s*0px\)\)\s*!important;/);
@@ -226,8 +226,10 @@ describe('ProductDetail mobile buybar layout contract', () => {
     const summary = readProductDetailSummarySource();
 
     expect(page).toContain('const limitedTimePromoActive = limitedTimeRemaining > 0;');
-    expect(page).toContain("t('pages.productDetail.limitedTimeDays', { count: days })");
+    expect(page).toContain('formatLimitedTimeCountdown(milliseconds, t)');
+    expect(readProductDetailHelpersSource()).toContain("t('pages.productDetail.limitedTimeDays', { count: days })");
     expect(page).not.toContain('`${days}d ${time}`');
+    expect(readProductDetailHelpersSource()).not.toContain('`${days}d ${time}`');
     expect(summary).toMatch(/className="product-mobile-promo"[\s\S]*?role=\{limitedTimePromoActive \? 'status' : undefined\}[\s\S]*?aria-live=\{limitedTimePromoActive \? 'polite' : undefined\}[\s\S]*?aria-atomic=\{limitedTimePromoActive \? 'true' : undefined\}/);
     expect(summary).toMatch(/<span>\{limitedTimePromoActive \? t\('pages\.productDetail\.limitedTimeCountdown'\) : productFreeShippingText\}<\/span>/);
     expect(summary).toMatch(/<strong>\{limitedTimePromoActive \? formatCountdown\(limitedTimeRemaining\) : t\('pages\.productDetail\.authentic'\)\}<\/strong>/);
@@ -276,9 +278,15 @@ describe('ProductDetail mobile buybar layout contract', () => {
     const page = readProductDetailSource();
     const summary = readProductDetailSummarySource();
 
-    expect(page).toContain('const addToCartBlocked = isOutOfStock || purchaseSelectionBlocked || purchaseSubmitting !== null;');
-    expect(page).toContain('const mobileAddToCartBlocked = !isOutOfStock && (purchaseSelectionBlocked || purchaseSubmitting !== null);');
-    expect(page).toContain('const buyNowBlocked = isOutOfStock || purchaseSelectionBlocked || purchaseSubmitting !== null;');
+    expect(page).toContain('deriveProductDetailActionBlockState({');
+    expect(page).toContain('addToCartBlocked,');
+    expect(page).toContain('mobileAddToCartBlocked,');
+    expect(page).toContain('buyNowBlocked,');
+    const helpers = readProductDetailHelpersSource();
+    expect(helpers).toContain('export const deriveProductDetailActionBlockState');
+    expect(helpers).toContain('const addToCartBlocked = params.isOutOfStock');
+    expect(helpers).toContain('const mobileAddToCartBlocked = !params.isOutOfStock');
+    expect(helpers).toContain('const buyNowBlocked = params.isOutOfStock');
     const buyBar = readProductDetailBuyBarSource();
     expect(summary).toContain('<ProductDetailMobileBuyBar');
     expect(summary).toContain("from './productDetailBuyBar'");
@@ -320,13 +328,20 @@ describe('ProductDetail mobile buybar layout contract', () => {
   it('keeps product detail conversion low-stock urgency wired', () => {
     const source = readProductDetailSource();
     const surface = readProductDetailPurchaseSurface();
-    expect(source).toContain("import { conversionConfig, estimatePetSize, getDeliveryPromise, getLowStockCount }");
-    expect(source).toContain('const lowStockCount = getLowStockCount(selectedStock, quantity);');
-    expect(source).toContain('const isLowStock = !isOutOfStock && lowStockCount !== null && lowStockCount > 0;');
+    expect(source).toContain("import { conversionConfig, getDeliveryPromise } from '../utils/conversionConfig'");
+    expect(source).toContain('deriveProductDetailSelectionState({');
+    expect(source).toContain('lowStockCount,');
+    expect(source).toContain('isLowStock,');
     expect(source).toContain("t('pages.productDetail.lowStockUrgency'");
     expect(surface).toContain("t('pages.productDetail.lowStockUrgencyText'");
-    expect(source).toContain('isOutOfStock || isLowStock');
-    expect(source).toContain("t('pages.productDetail.decisionStockLowTitle')");
+    expect(source).toContain('shouldShowProductDetailDecisionChecklist({');
+    const helpers = readProductDetailHelpersSource();
+    expect(helpers).toContain('export const shouldShowProductDetailDecisionChecklist');
+    expect(helpers).toContain('params.isOutOfStock');
+    expect(helpers).toContain('params.isLowStock');
+    expect(helpers).toContain('getLowStockCount(params.selectedStock, params.quantity)');
+    expect(helpers).toContain('const isLowStock = !isOutOfStock && lowStockCount !== null && lowStockCount > 0;');
+    expect(helpers).toContain("params.t('pages.productDetail.decisionStockLowTitle')");
     expect(surface).toContain('product-detail__lowStockAlert');
   });
 
@@ -356,8 +371,8 @@ describe('ProductDetail mobile buybar layout contract', () => {
     expect(source).toContain("if (status === 404)");
     expect(source).toContain("productDetailLocalizationRef.current");
     expect(source).toContain("setLoadError(getApiErrorMessage(error, latestT('pages.productDetail.loadFailed'), latestLanguage));");
-    expect(source).toContain("title={t('pages.productDetail.loadFailed')}");
-    expect(source).toContain('data-product-detail-load-recovery');
+    expect(readProductDetailShellSource()).toContain("title={t('pages.productDetail.loadFailed')}");
+    expect(readProductDetailShellSource()).toContain('data-product-detail-load-recovery');
     expect(source).toContain("setReloadToken((value) => value + 1)");
     expect(source).toContain("navigate('/coupons')");
     expect(source).toContain("navigate('/pet-finder')");
@@ -528,7 +543,7 @@ describe('ProductDetail loading state', () => {
     const source = readProductDetailSource();
     const gallerySource = readProductDetailGallerySource();
 
-    expect(source).toContain('<ProductDetailGallery');
+    expect(readProductDetailShellSource()).toContain('<ProductDetailGallery');
     expect(gallerySource).toContain("const galleryRegionLabel = `${productName}: ${t('pages.productDetail.product')} ${t('common.image')}`;");
     expect(gallerySource).toContain("const getGalleryImageLabel = (index: number) => t('pages.productDetail.imageThumb', {");
     expect(gallerySource).toContain('aria-label={galleryRegionLabel}');
@@ -542,8 +557,8 @@ describe('ProductDetail loading state', () => {
     const source = readProductDetailSource();
     const summarySource = readProductDetailSummarySource();
 
-    expect(source).toContain('<ProductDetailSummary');
-    expect(source).toContain("from './productDetailSummary'");
+    expect(readProductDetailShellSource()).toContain('<ProductDetailSummary');
+    expect(readProductDetailShellSource()).toContain("from './productDetailSummary'");
     expect(source).not.toContain('className="product-detail__summary"');
     expect(source).not.toContain('className="product-mobile-buybar"');
     expect(summarySource).toContain('export const ProductDetailSummary');
@@ -556,7 +571,7 @@ describe('ProductDetail loading state', () => {
     expect(summarySource).toContain('product-actions');
     expect(summarySource).toContain('export const ProductDetailSizeGuideModal');
     expect(summarySource).toContain('product-detail__sizeGuideModalRoot');
-    expect(source).toContain('<ProductDetailSizeGuideModal');
+    expect(readProductDetailShellSource()).toContain('<ProductDetailSizeGuideModal');
     expect(source).not.toContain('product-detail__sizeGuideModalRoot');
   });
 
@@ -564,8 +579,8 @@ describe('ProductDetail loading state', () => {
     const source = readProductDetailSource();
     const contentSource = readProductDetailContentSource();
 
-    expect(source).toContain('<ProductDetailContent');
-    expect(source).toContain("from './productDetailContent'");
+    expect(readProductDetailShellSource()).toContain('<ProductDetailContent');
+    expect(readProductDetailShellSource()).toContain("from './productDetailContent'");
     expect(source).not.toContain('className="product-tabs-card"');
     expect(source).not.toContain('className="product-qa-card"');
     expect(contentSource).toContain('export const ProductDetailContent');

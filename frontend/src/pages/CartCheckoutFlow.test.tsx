@@ -648,6 +648,8 @@ const readCartPageSurface = () => [
 ].join('\n');
 const readCartQuantityActionsSource = () => fs.readFileSync(path.resolve(__dirname, '../hooks/useCartQuantityActions.ts'), 'utf8');
 const readCartRecoveryAddsSource = () => fs.readFileSync(path.resolve(__dirname, '../hooks/useCartRecoveryAdds.ts'), 'utf8');
+const readCartSessionDataSource = () => fs.readFileSync(path.resolve(__dirname, '../hooks/useCartSessionData.ts'), 'utf8');
+const readCartHelpersSource = () => fs.readFileSync(path.resolve(__dirname, 'cartHelpers.ts'), 'utf8');
 describe('cart to checkout flows', () => {
   jest.setTimeout(60000);
   beforeEach(() => {
@@ -1033,16 +1035,18 @@ describe('cart to checkout flows', () => {
 
   it('keeps cart error handling typed without broad any usage', () => {
     const source = fs.readFileSync(path.resolve(__dirname, 'Cart.tsx'), 'utf8');
+    const session = readCartSessionDataSource();
     const cartSurface = [
       source,
+      session,
       readCartItemMutationsSource(),
       readCartQuantityActionsSource(),
       readCartRecoveryAddsSource(),
       readCartCheckoutSubmitSource(),
     ].join('\n');
 
-    expect(source).toContain("import { getApiErrorMessage, isAuthExpiredError } from '../utils/apiError';");
-    expect(source).toContain('} catch (error: unknown) {');
+    expect(session).toContain("import { getApiErrorMessage, isAuthExpiredError } from '../utils/apiError';");
+    expect(session).toContain('} catch (error: unknown) {');
     expect(cartSurface).toContain('} catch (err: unknown) {');
     expect(cartSurface).not.toMatch(/\bany\b/);
     expect(cartSurface).not.toContain('error?.response?.status');
@@ -1052,12 +1056,13 @@ describe('cart to checkout flows', () => {
 
   it('guards cart state against stale authenticated snapshot responses', () => {
     const source = fs.readFileSync(path.resolve(__dirname, 'Cart.tsx'), 'utf8');
+    const session = readCartSessionDataSource();
     const mutations = readCartItemMutationsSource();
     const quantityActions = readCartQuantityActionsSource();
     const recoveryAdds = readCartRecoveryAddsSource();
-    const fetchStart = source.indexOf('const fetchCartItems = useCallback(async () => {');
-    const fetchEnd = source.indexOf('const isCartMounted = useCallback', fetchStart);
-    const fetchSource = source.slice(fetchStart, fetchEnd);
+    const fetchStart = session.indexOf('const fetchCartItems = useCallback(async () => {');
+    const fetchEnd = session.indexOf('const isCartMounted = useCallback', fetchStart);
+    const fetchSource = session.slice(fetchStart, fetchEnd);
     const mutationStart = quantityActions.indexOf('const updateQuantity = (item: CartItem, quantity: number) => {');
     const mutationEnd = quantityActions.indexOf('return { updateQuantity };', mutationStart);
     const mutationSource = `${quantityActions.slice(mutationStart, mutationEnd)}
@@ -1067,10 +1072,11 @@ ${recoveryAdds}`;
     const suggestedEnd = recoveryAdds.indexOf('const addRecentProduct = useCallback(async (product: Product) => {', suggestedStart);
     const suggestedSource = recoveryAdds.slice(suggestedStart, suggestedEnd);
 
-    expect(source).toContain('const cartSnapshotRequestRef = useRef(0);');
-    expect(source).toContain('const beginCartSnapshotRequest = useCallback(() => {');
-    expect(source).toContain('const isCurrentCartSnapshotRequest = useCallback((requestId: number) => (');
-    expect(source).toContain('const invalidateCartSnapshotRequests = useCallback(() => {');
+    expect(session).toContain('const cartSnapshotRequestRef = useRef(0);');
+    expect(session).toContain('const beginCartSnapshotRequest = useCallback(() => {');
+    expect(session).toContain('const isCurrentCartSnapshotRequest = useCallback((requestId: number) => (');
+    expect(session).toContain('const invalidateCartSnapshotRequests = useCallback(() => {');
+    expect(source).toContain('useCartSessionData({');
     expect(source).toContain('useCartItemMutations({');
     expect(source).toContain('useCartQuantityActions({');
     expect(source).toContain('useCartRecoveryAdds({');
@@ -1095,9 +1101,10 @@ ${recoveryAdds}`;
 
   it('contains cart refresh failures inside quantity sync error recovery', () => {
     const source = fs.readFileSync(path.resolve(__dirname, 'Cart.tsx'), 'utf8');
-    const handlerStart = source.indexOf('const handleQuantitySyncError = useCallback(async (err: unknown) => {');
-    const handlerEnd = source.indexOf('const {\n    cancelQuantitySync', handlerStart);
-    const handlerSource = source.slice(handlerStart, handlerEnd);
+    const session = readCartSessionDataSource();
+    const handlerStart = session.indexOf('const handleQuantitySyncError = useCallback(async (err: unknown) => {');
+    const handlerEnd = session.indexOf('useEffect(() => {\n    fetchCartItems();', handlerStart);
+    const handlerSource = session.slice(handlerStart, handlerEnd);
 
     expect(handlerStart).toBeGreaterThan(-1);
     expect(handlerEnd).toBeGreaterThan(handlerStart);
@@ -1151,16 +1158,17 @@ ${recoveryAdds}`;
   it('keeps saved-for-later and guest-cart storage changes synchronized across tabs', () => {
     const source = fs.readFileSync(path.resolve(__dirname, 'Cart.tsx'), 'utf8');
     const saveForLaterSource = fs.readFileSync(path.resolve(__dirname, '../utils/saveForLater.ts'), 'utf8');
-    const storageStart = source.indexOf('const refreshSavedItems = () => setSavedItems(getSavedForLaterItemsSnapshot());');
-    const storageEffectStart = source.lastIndexOf('useEffect(() => {', storageStart);
-    const storageEffectEnd = source.indexOf('}, [resetCheckoutStateAfterCartMutation]);', storageStart);
-    const storageSource = source.slice(storageEffectStart, storageEffectEnd);
+    const session = readCartSessionDataSource();
+    const storageStart = session.indexOf('const refreshSavedItems = () => setSavedItems(getSavedForLaterItemsSnapshot());');
+    const storageEffectStart = session.lastIndexOf('useEffect(() => {', storageStart);
+    const storageEffectEnd = session.indexOf('}, [resetCheckoutStateAfterCartMutation', storageStart);
+    const storageSource = session.slice(storageEffectStart, storageEffectEnd);
 
     expect(saveForLaterSource).toContain("export const SAVE_FOR_LATER_STORAGE_KEY = 'shop-save-for-later';");
     expect(saveForLaterSource).toContain('getLocalStorageItem(SAVE_FOR_LATER_STORAGE_KEY)');
     expect(saveForLaterSource).toContain('setLocalStorageItem(SAVE_FOR_LATER_STORAGE_KEY, JSON.stringify(normalizeSavedItems(items)))');
     expect(saveForLaterSource).toContain("dispatchDomEvent('shop:save-for-later-updated');");
-    expect(source).toContain('SAVE_FOR_LATER_STORAGE_KEY,');
+    expect(session).toContain('SAVE_FOR_LATER_STORAGE_KEY');
     expect(storageEffectStart).toBeGreaterThan(-1);
     expect(storageStart).toBeGreaterThan(-1);
     expect(storageEffectEnd).toBeGreaterThan(storageStart);
@@ -1178,10 +1186,12 @@ ${recoveryAdds}`;
 
   it('clears recently viewed recovery cache after cart mutations that change recovery context', () => {
     const source = fs.readFileSync(path.resolve(__dirname, 'Cart.tsx'), 'utf8');
+    const helpers = readCartHelpersSource();
+    const session = readCartSessionDataSource();
     const mutations = readCartItemMutationsSource();
-    const resetStart = source.indexOf('const resetCheckoutStateAfterCartMutation = useCallback(() => {');
-    const resetEnd = source.indexOf('const beginCartSnapshotRequest = useCallback', resetStart);
-    const resetSource = source.slice(resetStart, resetEnd);
+    const resetStart = session.indexOf('const resetCheckoutStateAfterCartMutation = useCallback(() => {');
+    const resetEnd = session.indexOf('const beginCartSnapshotRequest = useCallback', resetStart);
+    const resetSource = session.slice(resetStart, resetEnd);
     const restoreStart = mutations.indexOf('const moveSavedItemToCart = useCallback(async (item: SavedForLaterItem) => {');
     const restoreEnd = mutations.indexOf('const removeSavedItem = useCallback((itemId: number) => {', restoreStart);
     const restoreSource = mutations.slice(restoreStart, restoreEnd);
@@ -1190,12 +1200,13 @@ ${recoveryAdds}`;
     const suggestedEnd = recoveryAdds.indexOf('const addRecentProduct = useCallback(async (product: Product) => {', suggestedStart);
     const suggestedSource = recoveryAdds.slice(suggestedStart, suggestedEnd);
 
-    expect(source).toContain('const RECENT_PRODUCTS_CACHE_MS = 2 * 60 * 1000;');
-    expect(source).toContain('const RECENT_PRODUCTS_CACHE_MAX_ENTRIES = 50;');
-    expect(source).toContain('const recentProductsCache = new Map<string, RecentProductsCacheEntry>();');
-    expect(source).toContain('const clearRecentProductsCache = () => {\n  recentProductsCache.clear();\n};');
-    expect(source).not.toContain('recentProductsCache._timestamp');
+    expect(helpers).toContain('export const RECENT_PRODUCTS_CACHE_MS = 2 * 60 * 1000;');
+    expect(helpers).toContain('export const RECENT_PRODUCTS_CACHE_MAX_ENTRIES = 50;');
+    expect(helpers).toContain('const recentProductsCache = new Map<string, RecentProductsCacheEntry>();');
+    expect(helpers).toContain('export const clearRecentProductsCache = () => {\n  recentProductsCache.clear();\n};');
+    expect(helpers).not.toContain('recentProductsCache._timestamp');
     expect(source).toContain('clearRecentProductsCache,');
+    expect(source).toContain('useCartSessionData({');
     expect(source).toContain('useCartRecoveryAdds({');
     expect(resetStart).toBeGreaterThan(-1);
     expect(resetEnd).toBeGreaterThan(resetStart);
@@ -1209,7 +1220,7 @@ ${recoveryAdds}`;
   });
 
   it('prunes selected cart ids when the visible checkoutable cart items change', () => {
-    const source = fs.readFileSync(path.resolve(__dirname, 'Cart.tsx'), 'utf8');
+    const source = readCartSessionDataSource();
     const pruneMarker = 'const checkoutableItemIds = new Set(cartItems.filter(canCheckout).map((item) => item.id));';
     const pruneStart = source.indexOf(pruneMarker);
     const effectStart = source.lastIndexOf('useEffect(() => {', pruneStart);
@@ -1226,7 +1237,7 @@ ${recoveryAdds}`;
     expect(effectSource).toContain('if (nextIds.includes(id)) {');
     expect(effectSource).toContain('nextIds.push(id);');
     expect(effectSource).toContain('return changed ? nextIds : ids;');
-    expect(effectSource).toContain('}, [cartItems]);');
+    expect(effectSource).toContain('}, [cartItems, setSelectedIds]);');
   });
 
   it('persists only the final visible quantity after rapid authenticated input edits', async () => {

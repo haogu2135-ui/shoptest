@@ -4,11 +4,13 @@ import type { CartItem, OrderCustomer, PaymentChannel, PaymentCustomer, ProductP
 import { getApiErrorMessage } from './apiError';
 import { isValidRegionalPostalCode, normalizeRegionalPostalCode } from './postalCode';
 import { getCouponPayablePercent } from './couponCenter';
-import { conversionConfig } from './conversionConfig';
+import { conversionConfig, getDeliveryPromise } from './conversionConfig';
 import { filterPaymentChannelsForMarket } from './paymentMethods';
 import { isLikelyPhoneNumber, normalizeLikelyPhoneNumber, normalizePhoneNumber } from './phone';
 import { getBundleInfo } from './bundle';
 import { getLowStockCount } from './conversionConfig';
+import { getGiftThreshold, getNearestCartBenefitTarget } from './cartBenefits';
+import { deriveCartShippingSummary, getCartLineAmount, roundCartMoney } from './cartUi';
 import { reportNonBlockingError } from './nonBlockingError';
 import { getLocalStorageItem, getSessionStorageItem, removeSessionStorageItem, setLocalStorageItem, setSessionStorageItem } from './safeStorage';
 import { CHECKOUT_PAYMENT_POLL_LOCK_TTL_MS } from './checkoutPaymentPollLock';
@@ -989,4 +991,325 @@ export const buildCheckoutPaymentRecoveryCopy = (params: {
         : t('pages.checkout.paymentRecoveryNextRetry');
   return { tone, statusText, windowText, nextText };
 };
+
+export type CheckoutCouponQuoteStatus = 'idle' | 'loading' | 'ready' | 'error';
+
+export type CheckoutShippingQuoteState = {
+  guestShippingFee: number;
+  requiresBackendShippingQuote: boolean;
+  shippingQuoteFailed: boolean;
+  shippingQuoteFallbackActive: boolean;
+  shippingQuoteUnavailable: boolean;
+  shippingQuoteReady: boolean;
+  shippingQuotePending: boolean;
+  shippingFee: number;
+  freeShippingUnlocked: boolean;
+  payableAmount: number;
+  discountAmount: number;
+  freeShippingRemaining: number;
+  freeShippingPercent: number;
+};
+
+export type CheckoutGiftMetrics = {
+  giftThreshold: number;
+  giftEligible: boolean;
+  giftRemaining: number;
+  giftUnlocked: boolean;
+  giftProgress: number;
+};
+
+export type CheckoutShippingCopy = {
+  shippingPolicyText: string;
+  shippingQuoteAlertDescription: string;
+  shippingFeeText: string;
+  payableAmountText: string;
+};
+
+export type CheckoutPresentationCard = {
+  key: string;
+  title: string;
+  text: string;
+};
+
+export type CheckoutSubmitState = {
+  checkoutSubmitDisabled: boolean;
+  checkoutSubmitDisabledReason: string;
+};
+
+export type CheckoutCouponSelectOption = {
+  value: string;
+  label: string;
+  disabled: boolean;
+};
+
+export const deriveCheckoutCartTotal = (cartItems: CartItem[]) =>
+  roundCartMoney(cartItems.reduce((sum, item) => sum + getCartLineAmount(item), 0));
+
+export const deriveCheckoutItemCount = (cartItems: CartItem[]) =>
+  cartItems.reduce((sum, item) => sum + item.quantity, 0);
+
+export const deriveCheckoutShippingQuoteState = (params: {
+  cartTotal: number;
+  freeShippingThreshold: number;
+  defaultShippingFee: number;
+  isGuestCheckout: boolean;
+  cartItemCount: number;
+  couponQuote: CouponQuote | null;
+  couponQuoteStatus: CheckoutCouponQuoteStatus;
+  selectedUserCouponId: number | null;
+  estimatedFreeShippingUnlocked: boolean;
+  estimatedRemainingAmount: number;
+  estimatedProgressPercent: number;
+}): CheckoutShippingQuoteState => {
+  const guestShippingFee = params.estimatedFreeShippingUnlocked ? 0 : params.defaultShippingFee;
+  const requiresBackendShippingQuote = !params.isGuestCheckout && params.cartItemCount > 0;
+  const shippingQuoteFailed = requiresBackendShippingQuote && params.couponQuoteStatus === 'error';
+  const shippingQuoteFallbackActive = shippingQuoteFailed && !params.selectedUserCouponId;
+  const shippingQuoteUnavailable = shippingQuoteFailed && !shippingQuoteFallbackActive;
+  const shippingQuoteReady = !requiresBackendShippingQuote
+    || (params.couponQuoteStatus === 'ready' && Boolean(params.couponQuote))
+    || shippingQuoteFallbackActive;
+  const shippingQuotePending = requiresBackendShippingQuote && !shippingQuoteReady && !shippingQuoteUnavailable;
+  const shippingFee = shippingQuoteReady
+    ? toSafeMoney(params.couponQuote?.shippingFee ?? guestShippingFee)
+    : 0;
+  const freeShippingUnlocked = shippingQuoteReady
+    ? shippingFee <= 0
+    : params.estimatedFreeShippingUnlocked;
+  const payableAmount = shippingQuoteReady
+    ? Math.max(0, toSafeMoney(params.couponQuote?.payableAmount ?? (params.cartTotal + shippingFee)))
+    : params.cartTotal;
+  const discountAmount = Math.min(params.cartTotal, toSafeMoney(params.couponQuote?.discountAmount ?? 0));
+  const freeShippingRemaining = freeShippingUnlocked ? 0 : params.estimatedRemainingAmount;
+  const freeShippingPercent = freeShippingUnlocked ? 100 : params.estimatedProgressPercent;
+  return {
+    guestShippingFee,
+    requiresBackendShippingQuote,
+    shippingQuoteFailed,
+    shippingQuoteFallbackActive,
+    shippingQuoteUnavailable,
+    shippingQuoteReady,
+    shippingQuotePending,
+    shippingFee,
+    freeShippingUnlocked,
+    payableAmount,
+    discountAmount,
+    freeShippingRemaining,
+    freeShippingPercent,
+  };
+};
+
+export const deriveCheckoutGiftMetrics = (params: {
+  cartTotal: number;
+  currency: string;
+}): CheckoutGiftMetrics => {
+  const giftThreshold = getGiftThreshold(params.currency);
+  const giftEligible = conversionConfig.giftAtCheckout.enabled && giftThreshold > 0;
+  const giftRemaining = Math.max(0, giftThreshold - params.cartTotal);
+  const giftUnlocked = giftThreshold > 0 && giftRemaining <= 0;
+  const giftProgress = giftThreshold > 0
+    ? Math.min(100, Math.round((params.cartTotal / giftThreshold) * 100))
+    : 100;
+  return {
+    giftThreshold,
+    giftEligible,
+    giftRemaining,
+    giftUnlocked,
+    giftProgress,
+  };
+};
+
+export const buildCheckoutShippingCopy = (params: {
+  t: CheckoutTranslationFn;
+  formatMoney: CheckoutMoneyFormatter;
+  shippingQuotePending: boolean;
+  shippingQuoteFallbackActive: boolean;
+  shippingQuoteUnavailable: boolean;
+  shippingQuoteReady: boolean;
+  shippingFee: number;
+  payableAmount: number;
+  freeShippingThreshold: number;
+  defaultShippingFee: number;
+  couponQuoteErrorMessage: string | null;
+}): CheckoutShippingCopy => {
+  const shippingPolicyText = params.shippingQuotePending
+    ? params.t('pages.checkout.shippingFeeCalculating')
+    : params.shippingQuoteFallbackActive
+      ? params.t('pages.checkout.shippingFeeFallbackApplied', { fee: params.formatMoney(params.shippingFee) })
+      : params.shippingQuoteUnavailable
+        ? params.t('pages.checkout.shippingFeeUnavailable')
+        : params.shippingFee <= 0
+          ? params.t('pages.checkout.shippingPolicyFreeApplied')
+          : params.freeShippingThreshold > 0
+            ? params.t('pages.checkout.shippingPolicyStandardWithThreshold', {
+              fee: params.formatMoney(params.defaultShippingFee),
+              threshold: params.formatMoney(params.freeShippingThreshold),
+            })
+            : params.t('pages.checkout.shippingPolicyStandardOnly', {
+              fee: params.formatMoney(params.defaultShippingFee),
+            });
+  const shippingQuoteAlertDescription = params.shippingQuoteFallbackActive
+    ? (params.couponQuoteErrorMessage || params.t('pages.checkout.shippingFeeFallbackDescription'))
+    : params.shippingQuoteUnavailable
+      ? (params.couponQuoteErrorMessage || params.t('pages.checkout.shippingFeeUnavailableDescription'))
+      : params.t('pages.checkout.shippingFeeCalculatingDescription');
+  const shippingFeeText = params.shippingQuotePending
+    ? params.t('pages.checkout.shippingFeeCalculatingShort')
+    : params.shippingQuoteUnavailable
+      ? params.t('pages.checkout.shippingFeeUnavailableShort')
+      : params.formatMoney(params.shippingFee);
+  const payableAmountText = params.shippingQuoteReady
+    ? params.formatMoney(params.payableAmount)
+    : shippingFeeText;
+  return {
+    shippingPolicyText,
+    shippingQuoteAlertDescription,
+    shippingFeeText,
+    payableAmountText,
+  };
+};
+
+export const buildCheckoutHeroHighlights = (params: {
+  t: CheckoutTranslationFn;
+  formatMoney: CheckoutMoneyFormatter;
+  payableAmountText: string;
+  shippingQuoteReady: boolean;
+  shippingFeeText: string;
+  freeShippingRemaining: number;
+  selectedPaymentTitle?: string;
+}): CheckoutPresentationCard[] => ([
+  {
+    key: 'payable',
+    title: params.t('pages.checkout.payable'),
+    text: params.payableAmountText,
+  },
+  {
+    key: 'shipping',
+    title: params.t('pages.checkout.shippingFee'),
+    text: !params.shippingQuoteReady
+      ? params.shippingFeeText
+      : params.freeShippingRemaining > 0
+        ? params.t('pages.checkout.savingsFreeShippingText', { amount: params.formatMoney(params.freeShippingRemaining) })
+        : params.t('pages.checkout.savingsFreeShippingUnlocked'),
+  },
+  {
+    key: 'payment',
+    title: params.t('pages.checkout.paymentMethod'),
+    text: params.selectedPaymentTitle || params.t('pages.checkout.paymentConfidenceDefault'),
+  },
+]);
+
+export const buildCheckoutSummaryCards = (params: {
+  t: CheckoutTranslationFn;
+  formatMoney: CheckoutMoneyFormatter;
+  payableAmountText: string;
+  shippingQuoteReady: boolean;
+  shippingPolicyText: string;
+  freeShippingRemaining: number;
+  freeShippingPercent: number;
+  shippingFeeText: string;
+  selectedPaymentTitle?: string;
+}): CheckoutPresentationCard[] => ([
+  {
+    key: 'payable',
+    title: params.t('pages.checkout.payable'),
+    text: params.payableAmountText,
+  },
+  {
+    key: 'shipping',
+    title: !params.shippingQuoteReady
+      ? params.shippingPolicyText
+      : params.freeShippingRemaining > 0
+        ? params.t('pages.checkout.readinessFreeShippingGap', { amount: params.formatMoney(params.freeShippingRemaining) })
+        : params.t('pages.cart.freeShippingUnlocked'),
+    text: params.shippingQuoteReady ? `${params.freeShippingPercent}%` : params.shippingFeeText,
+  },
+  {
+    key: 'payment',
+    title: params.t('pages.checkout.paymentMethod'),
+    text: params.selectedPaymentTitle || params.t('pages.checkout.paymentConfidenceDefault'),
+  },
+]);
+
+export const resolveCheckoutSubmitState = (params: {
+  t: CheckoutTranslationFn;
+  submitting: boolean;
+  hasCheckoutItems: boolean;
+  cartItems: CartItem[];
+  selectedAddressReady: boolean;
+  shippingQuoteReady: boolean;
+  shippingQuoteUnavailable: boolean;
+  paymentMethodsAvailable: boolean;
+  watchedPaymentMethod?: string | null;
+}): CheckoutSubmitState => {
+  const hasUnavailableItems = params.cartItems.some((item) => !isPurchasable(item));
+  const checkoutSubmitDisabled = params.submitting
+    || !params.hasCheckoutItems
+    || hasUnavailableItems
+    || !params.selectedAddressReady
+    || !params.shippingQuoteReady
+    || !params.paymentMethodsAvailable
+    || !params.watchedPaymentMethod;
+  const checkoutSubmitDisabledReason = params.submitting
+    ? params.t('common.loading')
+    : !params.hasCheckoutItems
+      ? params.t('pages.checkout.emptyCart')
+      : hasUnavailableItems
+        ? params.t('pages.checkout.unavailableSelected')
+        : !params.selectedAddressReady
+          ? params.t('pages.checkout.addressRequired')
+          : !params.shippingQuoteReady
+            ? (params.shippingQuoteUnavailable
+              ? params.t('pages.checkout.shippingFeeUnavailableDescription')
+              : params.t('pages.checkout.shippingFeeCalculatingDescription'))
+            : !params.paymentMethodsAvailable
+              ? params.t('pages.checkout.paymentUnavailableDescription')
+              : !params.watchedPaymentMethod
+                ? params.t('pages.checkout.paymentRequired')
+                : '';
+  return { checkoutSubmitDisabled, checkoutSubmitDisabledReason };
+};
+
+export const buildCheckoutCouponSelectOptions = (params: {
+  availableCoupons: UserCoupon[];
+  cartTotal: number;
+  bestCouponId?: number;
+  formatMoney: CheckoutMoneyFormatter;
+  t: CheckoutTranslationFn;
+}): CheckoutCouponSelectOption[] => params.availableCoupons.map((coupon) => {
+  const couponDiscount = estimateCouponDiscount(coupon, params.cartTotal);
+  const description = describeCheckoutCoupon(coupon, params.cartTotal, params.formatMoney, params.t);
+  return {
+    value: String(coupon.id),
+    label: couponDiscount > 0
+      ? `${description} - ${params.t('pages.checkout.couponSaveAmount', { amount: params.formatMoney(couponDiscount) })}${params.bestCouponId === coupon.id ? ` - ${params.t('pages.checkout.bestCoupon')}` : ''}`
+      : description,
+    disabled: couponDiscount <= 0,
+  };
+});
+
+export const deriveCheckoutEstimatedShippingSummary = (
+  cartItems: CartItem[],
+  freeShippingThreshold: number,
+  cartTotal: number,
+) => deriveCartShippingSummary(cartItems, freeShippingThreshold, cartTotal);
+
+export const deriveCheckoutDeliveryPromise = (params: {
+  currency: string;
+  locale: string;
+}) => getDeliveryPromise({ currency: params.currency, locale: params.locale });
+
+export const deriveCheckoutAddOnTarget = (params: {
+  cartTotal: number;
+  freeShippingUnlocked: boolean;
+  freeShippingThreshold: number;
+  currency: string;
+}) => getNearestCartBenefitTarget(
+  params.cartTotal,
+  params.freeShippingUnlocked ? 0 : params.freeShippingThreshold,
+  params.currency,
+);
+
+export const resolveAvailableCheckoutCoupons = (couponQuote: CouponQuote | null) =>
+  (couponQuote && Array.isArray(couponQuote.availableCoupons) ? couponQuote.availableCoupons : []);
 

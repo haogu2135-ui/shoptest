@@ -24,6 +24,14 @@ const readProfileOrderActionsSource = (): string => (
   require('fs').readFileSync(require('path').resolve(__dirname, '../hooks/useProfileOrderActions.ts'), 'utf8')
 );
 
+const readProfileSessionDataSource = (): string => (
+  require('fs').readFileSync(require('path').resolve(__dirname, '../hooks/useProfileSessionData.ts'), 'utf8')
+);
+
+const readProfilePaymentReturnSource = (): string => (
+  require('fs').readFileSync(require('path').resolve(__dirname, '../hooks/useProfilePaymentReturn.ts'), 'utf8')
+);
+
 const readProfileOrdersPanelSource = (): string => (
   require('fs').readFileSync(require('path').resolve(__dirname, 'profileOrdersPanel.tsx'), 'utf8')
 );
@@ -55,6 +63,9 @@ const readProfileInfoPanelSource = (): string => (
 const readProfileAccountModalsSource = (): string => (
   require('fs').readFileSync(require('path').resolve(__dirname, 'profileAccountModals.tsx'), 'utf8')
 );
+const readProfileShellSource = (): string => (
+  require('fs').readFileSync(require('path').resolve(__dirname, 'profileShellPanels.tsx'), 'utf8')
+);
 
 export {};
 
@@ -67,6 +78,8 @@ describe('Profile type-safety guard', () => {
     const petActions = readProfilePetActionsSource();
     const accountActions = readProfileAccountActionsSource();
     const orderActions = readProfileOrderActionsSource();
+    const sessionData = readProfileSessionDataSource();
+    const paymentReturnData = readProfilePaymentReturnSource();
     const ordersPanel = readProfileOrdersPanelSource();
     const addressesPanel = readProfileAddressesPanelSource();
     const petsPanel = readProfilePetsPanelSource();
@@ -75,7 +88,8 @@ describe('Profile type-safety guard', () => {
     const paymentModal = readProfilePaymentModalSource();
     const infoPanel = readProfileInfoPanelSource();
     const accountModals = readProfileAccountModalsSource();
-    const surface = `${source}\n${helpers}\n${paymentActions}\n${addressActions}\n${petActions}\n${accountActions}\n${orderActions}\n${ordersPanel}\n${addressesPanel}\n${petsPanel}\n${orderDetailModal}\n${returnModals}\n${paymentModal}\n${infoPanel}\n${accountModals}`;
+    const shell = readProfileShellSource();
+    const surface = `${source}\n${shell}\n${helpers}\n${paymentActions}\n${addressActions}\n${petActions}\n${accountActions}\n${orderActions}\n${sessionData}\n${paymentReturnData}\n${ordersPanel}\n${addressesPanel}\n${petsPanel}\n${orderDetailModal}\n${returnModals}\n${paymentModal}\n${infoPanel}\n${accountModals}`;
 
     expect(source).toContain('useProfileAddressActions({');
     expect(source).toContain('useProfilePetActions({');
@@ -86,21 +100,21 @@ describe('Profile type-safety guard', () => {
     expect(accountActions).toContain('export const useProfileAccountActions');
     expect(orderActions).toContain('export const useProfileOrderActions');
     expect(ordersPanel).toContain('export const ProfileOrdersPanel');
-    expect(source).toContain('<ProfileOrdersPanel');
+    expect(shell).toContain('<ProfileOrdersPanel');
     expect(addressesPanel).toContain('export const ProfileAddressesPanel');
     expect(petsPanel).toContain('export const ProfilePetsPanel');
-    expect(source).toContain('<ProfileAddressesPanel');
-    expect(source).toContain('<ProfilePetsPanel');
+    expect(shell).toContain('<ProfileAddressesPanel');
+    expect(shell).toContain('<ProfilePetsPanel');
     expect(orderDetailModal).toContain('export const ProfileOrderDetailModal');
     expect(returnModals).toContain('export const ProfileReturnModals');
     expect(paymentModal).toContain('export const ProfilePaymentModal');
-    expect(source).toContain('<ProfileOrderDetailModal');
-    expect(source).toContain('<ProfileReturnModals');
-    expect(source).toContain('<ProfilePaymentModal');
+    expect(shell).toContain('<ProfileOrderDetailModal');
+    expect(shell).toContain('<ProfileReturnModals');
+    expect(shell).toContain('<ProfilePaymentModal');
     expect(infoPanel).toContain('export const ProfileInfoPanel');
     expect(accountModals).toContain('export const ProfileAccountModals');
-    expect(source).toContain('<ProfileInfoPanel');
-    expect(source).toContain('<ProfileAccountModals');
+    expect(shell).toContain('<ProfileInfoPanel');
+    expect(shell).toContain('<ProfileAccountModals');
     expect(addressActions).toContain('} catch (err: unknown) {');
     expect(petActions).toContain('} catch (err: unknown) {');
     expect(accountActions).toContain('} catch (err: unknown) {');
@@ -122,25 +136,28 @@ describe('Profile type-safety guard', () => {
 
   it('keeps payment-return synchronization off the mutable orders dependency', () => {
     const source = readProfileSource();
-    const syncStart = source.indexOf('const syncPaymentReturnState = useCallback(async (order: OrderCustomer) => {');
-    const addressesStart = source.indexOf('const fetchAddresses = useCallback(async () => {', syncStart);
-    const syncSource = source.slice(syncStart, addressesStart);
-    const paymentReturnEffectStart = source.indexOf("if (paymentReturnStatus !== 'success') return;");
-    const emailCodeEffectStart = source.indexOf('if (profileEmailCodeCountdown <= 0) return;', paymentReturnEffectStart);
-    const paymentReturnEffectSource = source.slice(paymentReturnEffectStart, emailCodeEffectStart);
+    const session = readProfileSessionDataSource();
+    const paymentReturn = readProfilePaymentReturnSource();
+    const surface = `${source}\n${session}\n${paymentReturn}`;
+    const syncStart = paymentReturn.indexOf('const syncPaymentReturnState = useCallback(async (order: OrderCustomer) => {');
+    const successEffectStart = paymentReturn.indexOf("if (paymentReturnStatus !== 'success') return;");
+    const syncSource = paymentReturn.slice(syncStart, successEffectStart);
+    const incompleteEffectStart = paymentReturn.indexOf('if (!isPaymentReturnIncomplete) return;', successEffectStart);
+    const paymentReturnEffectSource = paymentReturn.slice(successEffectStart, incompleteEffectStart);
 
     expect(source).toContain('const [ordersInitialLoadComplete, setOrdersInitialLoadComplete] = useState(false);');
-    expect(source).toContain('const ordersRef = useRef<OrderCustomer[]>([]);');
-    expect(source).toContain('const paymentReturnSyncSeqRef = useRef(0);');
-    expect(source).toContain('paymentReturnSyncSeqRef.current += 1;');
-    expect(source).toContain('ordersRef.current = sortedOrders;');
-    expect(source).toContain('setOrdersInitialLoadComplete(true);');
-    expect(source).toContain("if (!ordersInitialLoadComplete) return;");
-    expect(source).toContain('const targetOrder = ordersRef.current.find(');
+    expect(source).toContain('useProfileSessionData({');
+    expect(source).toContain('useProfilePaymentReturn({');
+    expect(session).toContain('const ordersRef = useRef<OrderCustomer[]>([]);');
+    expect(session).toContain('const paymentReturnSyncSeqRef = useRef(0);');
+    expect(session).toContain('paymentReturnSyncSeqRef.current += 1;');
+    expect(session).toContain('ordersRef.current = sortedOrders;');
+    expect(session).toContain('setOrdersInitialLoadComplete(true);');
+    expect(surface).toContain("if (!ordersInitialLoadComplete) return;");
+    expect(surface).toContain('const targetOrder = ordersRef.current.find(');
     expect(syncStart).toBeGreaterThan(-1);
-    expect(addressesStart).toBeGreaterThan(syncStart);
-    expect(paymentReturnEffectStart).toBeGreaterThan(-1);
-    expect(emailCodeEffectStart).toBeGreaterThan(paymentReturnEffectStart);
+    expect(successEffectStart).toBeGreaterThan(syncStart);
+    expect(incompleteEffectStart).toBeGreaterThan(successEffectStart);
     expect(syncSource).toContain('const syncSeq = paymentReturnSyncSeqRef.current + 1;');
     expect(syncSource).toContain('paymentReturnSyncSeqRef.current = syncSeq;');
     expect(syncSource).toContain('const isCurrentPaymentReturnSync = () => mountedRef.current && paymentReturnSyncSeqRef.current === syncSeq;');
@@ -155,7 +172,11 @@ describe('Profile type-safety guard', () => {
     expect(paymentReturnEffectSource).toContain('if (mountedRef.current && handledPaymentReturnRef.current === returnKey) {');
     expect(paymentReturnEffectSource).toContain("announceAccessibleMessage(profileLocalizationRef.current.t('pages.profile.paymentReturnSyncFailed'), 'error')");
     expect(paymentReturnEffectSource.indexOf('if (mountedRef.current && handledPaymentReturnRef.current === returnKey) {')).toBeLessThan(paymentReturnEffectSource.indexOf("announceAccessibleMessage(profileLocalizationRef.current.t('pages.profile.paymentReturnSyncFailed'), 'error')"));
-    expect(source).toMatch(/\}, \[fetchOrders, ordersInitialLoadComplete, [^\]]*paymentReturnOrderId[^\]]*\]\);/);
-    expect(source).not.toMatch(/\}, \[fetchOrders, orders, [^\]]*paymentReturnOrderId[^\]]*\]\);/);
+    expect(paymentReturn).toContain('ordersInitialLoadComplete');
+    expect(paymentReturn).toContain('ordersRef.current.find');
+    expect(paymentReturn).not.toMatch(/\}, \[fetchOrders, orders, [^\]]*paymentReturnOrderId[^\]]*\]\);/);
+    expect(syncSource).toContain('fetchOrders');
+    expect(syncSource).toContain('paymentChannels');
+    expect(syncSource).not.toContain('orders,');
   });
 });

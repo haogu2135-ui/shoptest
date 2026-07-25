@@ -2,27 +2,34 @@ import fs from 'fs';
 import path from 'path';
 
 const readHomeSource = () => fs.readFileSync(path.join(__dirname, 'Home.tsx'), 'utf8');
+const readHomeCatalogHook = () => fs.readFileSync(path.join(__dirname, '..', 'hooks', 'useHomeCatalog.ts'), 'utf8');
+const readHomeActionsHook = () => fs.readFileSync(path.join(__dirname, '..', 'hooks', 'useHomeProductActions.ts'), 'utf8');
 const readHomeSurface = () => [
   readHomeSource(),
   fs.readFileSync(path.join(__dirname, 'homeHelpers.tsx'), 'utf8'),
   fs.readFileSync(path.join(__dirname, 'homeShellStates.tsx'), 'utf8'),
   fs.readFileSync(path.join(__dirname, 'homeFirstFoldPanels.tsx'), 'utf8'),
   fs.readFileSync(path.join(__dirname, 'homeProductPanels.tsx'), 'utf8'),
+  readHomeCatalogHook(),
+  readHomeActionsHook(),
 ].join('\n');
 const homeSource = readHomeSurface();
 const homePageSource = readHomeSource();
+const homeCatalogSource = readHomeCatalogHook();
 
 describe('Home render memoization contracts', () => {
   it('filters storage updates to product-view preference changes only', () => {
-    const storageEffectStart = homePageSource.indexOf('const handlePreferencesUpdated = (event?: Event) => {');
-    const storageEffect = homePageSource.slice(storageEffectStart, homePageSource.indexOf('};', storageEffectStart));
+    const storageEffectStart = homeCatalogSource.indexOf('const handlePreferencesUpdated = (event?: Event) => {');
+    const storageEffect = homeCatalogSource.slice(storageEffectStart, homeCatalogSource.indexOf('};', storageEffectStart));
 
-    expect(homePageSource).toContain("import { clearProductViewHistory, loadProductViewPreferences, PRODUCT_VIEW_PREFERENCES_KEY } from '../utils/productViewPreferences';");
+    expect(homeCatalogSource).toContain("import { PRODUCT_VIEW_PREFERENCES_KEY, loadProductViewPreferences } from '../utils/productViewPreferences';");
+    expect(homePageSource).toContain("import { clearProductViewHistory, loadProductViewPreferences } from '../utils/productViewPreferences';");
+    expect(homePageSource).toContain("from '../hooks/useHomeCatalog'");
     expect(storageEffectStart).toBeGreaterThan(-1);
     expect(storageEffect).toContain('event instanceof StorageEvent && event.key && event.key !== PRODUCT_VIEW_PREFERENCES_KEY');
     expect(storageEffect).toContain('setViewPreferences(loadProductViewPreferences());');
-    expect(homePageSource).toContain("window.addEventListener('shop:product-view-preferences-updated', handlePreferencesUpdated);");
-    expect(homePageSource).toContain("window.addEventListener('storage', handlePreferencesUpdated);");
+    expect(homeCatalogSource).toContain("window.addEventListener('shop:product-view-preferences-updated', handlePreferencesUpdated);");
+    expect(homeCatalogSource).toContain("window.addEventListener('storage', handlePreferencesUpdated);");
   });
 
   it('keeps expensive and reusable Home derived collections memoized', () => {

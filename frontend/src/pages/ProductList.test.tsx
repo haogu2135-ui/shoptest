@@ -15,7 +15,14 @@ const readProductListSurface = () => [
   fs.readFileSync(path.resolve(__dirname, 'productListPanels.tsx'), 'utf8'),
   fs.readFileSync(path.resolve(__dirname, 'productListModals.tsx'), 'utf8'),
   fs.readFileSync(path.resolve(__dirname, 'productListShellPanels.tsx'), 'utf8'),
+  fs.readFileSync(path.resolve(__dirname, '../hooks/useProductListCatalog.ts'), 'utf8'),
+  fs.readFileSync(path.resolve(__dirname, '../hooks/useProductListProductActions.ts'), 'utf8'),
+  fs.readFileSync(path.resolve(__dirname, '../hooks/useProductListSessionData.ts'), 'utf8'),
+  fs.readFileSync(path.resolve(__dirname, '../hooks/useProductListNavigation.ts'), 'utf8'),
+  fs.readFileSync(path.resolve(__dirname, '../hooks/useProductListDerivedCatalog.ts'), 'utf8'),
 ].join('\n');
+const readProductListActionsSource = () => fs.readFileSync(path.resolve(__dirname, '../hooks/useProductListProductActions.ts'), 'utf8');
+const readProductListCatalogSource = () => fs.readFileSync(path.resolve(__dirname, '../hooks/useProductListCatalog.ts'), 'utf8');
 const readProductListCss = () => fs.readFileSync(path.resolve(__dirname, 'ProductList.css'), 'utf8');
 const readMobileAppCss = () => fs.readFileSync(path.resolve(__dirname, '../mobile-app.css'), 'utf8');
 const readMobilePageContrastCss = () => fs.readFileSync(path.resolve(__dirname, '../styles/mobile-page-contrast.css'), 'utf8');
@@ -253,14 +260,24 @@ describe('ProductList card render performance contracts', () => {
     expect(source).toContain('export const ProductListMainShell');
     expect(page).toContain('const productListProductName = useCallback');
     expect(page).toContain('const renderSavingsText = useCallback');
-    expect(page).toContain('const handleWishlistToggle = useCallback');
-    expect(page).toContain('const openProductPreview = useCallback');
+    expect(page).toContain("from '../hooks/useProductListProductActions'");
+    expect(page).toContain("from '../hooks/useProductListCatalog'");
+    expect(page).toContain("from '../hooks/useProductListSessionData'");
+    expect(page).toContain("from '../hooks/useProductListNavigation'");
+    expect(page).toContain("from '../hooks/useProductListDerivedCatalog'");
+    expect(page).toContain('useProductListSessionData({');
+    expect(page).toContain('useProductListNavigation({');
+    expect(page).toContain('useProductListDerivedCatalog({');
+    expect(readProductListActionsSource()).toContain('const handleWishlistToggle = useCallback');
+    expect(readProductListActionsSource()).toContain('const openProductPreview = useCallback');
+    expect(readProductListCatalogSource()).toContain('const fetchProducts = useCallback');
     expect(source).toContain('export const PRODUCT_LIST_PAGE_SIZE = 12;');
     expect(source).toContain('export const PRODUCT_LIST_FETCH_SIZE = PRODUCT_LIST_PAGE_SIZE * 8;');
     expect(page).toContain('const pageSize = PRODUCT_LIST_PAGE_SIZE;');
     expect(source).toContain('size: pageSize,');
-    expect(source).toContain('const paginatedProducts = usingServerPagination');
-    expect(source).toContain(': sortedProducts.slice((currentPage - 1) * pageSize, currentPage * pageSize);');
+    expect(source).toContain('const paginatedProducts = useMemo');
+    expect(source).toContain('resolvePaginatedProducts(sortedProducts,');
+    expect(source).toContain('sortedProducts.slice((options.currentPage - 1) * options.pageSize, options.currentPage * options.pageSize)');
     expect(source).toContain('<ShopPagination');
     expect(source).toContain('pageSize={pageSize}');
     expect(source).toContain('ShopPagination');

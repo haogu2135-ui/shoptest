@@ -12,6 +12,11 @@ const readProductListSurface = () => (
     readFrontend('pages', 'productListPanels.tsx'),
     readFrontend('pages', 'productListModals.tsx'),
     readFrontend('pages', 'productListShellPanels.tsx'),
+    readFrontend('hooks', 'useProductListCatalog.ts'),
+    readFrontend('hooks', 'useProductListProductActions.ts'),
+    readFrontend('hooks', 'useProductListSessionData.ts'),
+    readFrontend('hooks', 'useProductListNavigation.ts'),
+    readFrontend('hooks', 'useProductListDerivedCatalog.ts'),
   ].join('\n')
 );
 
@@ -22,6 +27,8 @@ const readHomeSurface = () => (
     readFrontend('pages', 'homeShellStates.tsx'),
     readFrontend('pages', 'homeFirstFoldPanels.tsx'),
     readFrontend('pages', 'homeProductPanels.tsx'),
+    readFrontend('hooks', 'useHomeCatalog.ts'),
+    readFrontend('hooks', 'useHomeProductActions.ts'),
   ].join('\n')
 );
 
@@ -69,11 +76,18 @@ const readProductCompareSurface = () => (
 const readCartSurface = () => (
   [
     readFrontend('pages', 'Cart.tsx'),
+    readFrontend('pages', 'cartHelpers.ts'),
     readFrontend('pages', 'cartShellStates.tsx'),
     readFrontend('pages', 'cartConversionPanels.tsx'),
     readFrontend('pages', 'cartLineItems.tsx'),
     readFrontend('pages', 'cartSavedPanel.tsx'),
     readFrontend('pages', 'cartOverviewPanels.tsx'),
+    readFrontend('hooks', 'useCartSessionData.ts'),
+    readFrontend('hooks', 'useCartQuantitySync.ts'),
+    readFrontend('hooks', 'useCartItemMutations.ts'),
+    readFrontend('hooks', 'useCartQuantityActions.ts'),
+    readFrontend('hooks', 'useCartRecoveryAdds.ts'),
+    readFrontend('hooks', 'useCartCheckoutSubmit.ts'),
   ].join('\n')
 );
 const readPaymentInstructionsSurface = () => (
@@ -86,6 +100,9 @@ const readPaymentInstructionsSurface = () => (
 const readCheckoutSurface = () => (
   [
     readFrontend('pages', 'Checkout.tsx'),
+    readFrontend('utils', 'checkoutHelpers.ts'),
+    readFrontend('hooks', 'useCheckoutDerivedTotals.ts'),
+    readFrontend('components', 'checkout', 'CheckoutMainShell.tsx'),
     readFrontend('components', 'checkout', 'CheckoutShellStates.tsx'),
     readFrontend('components', 'checkout', 'CheckoutFormSections.tsx'),
     readFrontend('components', 'checkout', 'CheckoutConversionSections.tsx'),
@@ -94,6 +111,7 @@ const readCheckoutSurface = () => (
 const readProfileSurface = () => (
   [
     readFrontend('pages', 'Profile.tsx'),
+    readFrontend('pages', 'profileShellPanels.tsx'),
     readFrontend('pages', 'profileOrdersPanel.tsx'),
     readFrontend('pages', 'profileAddressesPanel.tsx'),
     readFrontend('pages', 'profilePetsPanel.tsx'),
@@ -108,6 +126,8 @@ const readProfileSurface = () => (
     readFrontend('hooks', 'useProfilePetActions.ts'),
     readFrontend('hooks', 'useProfileAccountActions.ts'),
     readFrontend('hooks', 'useProfileOrderActions.ts'),
+    readFrontend('hooks', 'useProfileSessionData.ts'),
+    readFrontend('hooks', 'useProfilePaymentReturn.ts'),
   ].join('\n')
 );
 const readProductDetailSurface = () => (
@@ -589,7 +609,7 @@ describe('commercial UX contracts', () => {
     expect(checkoutSurface).toContain('data-checkout-payment-unavailable-recovery');
     expect(checkoutSurface).toContain('data-checkout-payment-unavailable');
     expect(checkout).toContain('paymentUnavailableRecoveryActions');
-    expect(checkout).toContain('pages.checkout.paymentUnavailable');
+    expect(checkoutSurface).toContain('pages.checkout.paymentUnavailable');
     expect(checkout).toContain("navigate('/products')");
     expect(checkout).toContain("navigate('/coupons')");
     expect(checkout).toContain("navigate('/cart')");
@@ -798,7 +818,7 @@ describe('commercial UX contracts', () => {
 
 
   it('keeps guest profile multi-path auth gate conversion rails', () => {
-    const profile = readFrontend('pages', 'Profile.tsx');
+    const profile = readProfileSurface();
     const profileCss = readFrontend('pages', 'Profile.css');
     const app = readFrontend('App.tsx');
     expect(app).toContain('<Route path="profile" element={<Profile />} />');
@@ -810,7 +830,7 @@ describe('commercial UX contracts', () => {
 
 
   it('keeps product detail load failures on multipath commercial recovery exits', () => {
-    const productDetail = readFrontend('pages', 'ProductDetail.tsx');
+    const productDetail = readProductDetailSurface();
     const pageError = readFrontend('components', 'PageError.tsx');
     expect(productDetail).toContain('data-product-detail-load-recovery');
     expect(productDetail).toContain("navigate('/coupons')");
@@ -1177,9 +1197,9 @@ it('keeps home empty category and product rails on multipath commercial recovery
   });
 
   it('keeps sold-out purchase readiness from claiming direct-add', () => {
-    const productDetail = readFrontend('pages', 'ProductDetail.tsx');
+    const productDetail = readProductDetailSurface();
     expect(productDetail).toContain('sold-out SKUs must never claim "ready to add"');
-    expect(productDetail).toMatch(/ready:\s*!isOutOfStock\s*&&\s*!purchaseSelectionBlocked/);
+    expect(productDetail).toMatch(/ready:\s*!params\.isOutOfStock\s*&&\s*!params\.purchaseSelectionBlocked/);
   });
 
   it('keeps catalog titles/actions commercially legible at >=12px on mobile', () => {
@@ -1323,9 +1343,9 @@ it('keeps home empty category and product rails on multipath commercial recovery
   });
 
   it('keeps sold-out PDP decision checklist from claiming addable options', () => {
-    const productDetail = readFrontend('pages', 'ProductDetail.tsx');
+    const productDetail = readProductDetailSurface();
     expect(productDetail).toContain('never mark options "ready to add" when the SKU is sold out');
-    expect(productDetail).toMatch(/ready:\s*!isOutOfStock\s*&&/);
+    expect(productDetail).toMatch(/ready:\s*!params\.isOutOfStock\s*&&/);
   });
 
   it('keeps pet gallery insight chips commercially legible at >=12px on mobile', () => {
@@ -1399,7 +1419,7 @@ it('keeps home empty category and product rails on multipath commercial recovery
 
   it('keeps wishlist and profile shells on a commercial h1 primary title', () => {
     const wishlist = readWishlistSurface();
-    const profile = readFrontend('pages', 'Profile.tsx');
+    const profile = readProfileSurface();
     const app = readFrontend('App.tsx');
     expect(wishlist).toContain("<h1 className=\"wishlist-page__title\">{t('pages.wishlist.authGateTitle')}</h1>");
     expect(wishlist).toContain("<h1 className=\"wishlist-page__title\">{t('pages.wishlist.pageTitle')}</h1>");

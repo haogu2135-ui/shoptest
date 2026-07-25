@@ -3,6 +3,7 @@ import path from 'path';
 
 const readProfileSource = () => fs.readFileSync(path.resolve(__dirname, 'Profile.tsx'), 'utf8');
 const readProfileOrdersPanelSource = () => fs.readFileSync(path.resolve(__dirname, 'profileOrdersPanel.tsx'), 'utf8');
+const readProfileShellSource = () => fs.readFileSync(path.resolve(__dirname, 'profileShellPanels.tsx'), 'utf8');
 const readProfileAddressesPanelSource = () => fs.readFileSync(path.resolve(__dirname, 'profileAddressesPanel.tsx'), 'utf8');
 const readProfilePetsPanelSource = () => fs.readFileSync(path.resolve(__dirname, 'profilePetsPanel.tsx'), 'utf8');
 const readProfileOrderDetailModalSource = () => fs.readFileSync(path.resolve(__dirname, 'profileOrderDetailModal.tsx'), 'utf8');
@@ -16,6 +17,8 @@ const readProfileAddressActionsSource = () => fs.readFileSync(path.resolve(__dir
 const readProfilePetActionsSource = () => fs.readFileSync(path.resolve(__dirname, '../hooks/useProfilePetActions.ts'), 'utf8');
 const readProfileAccountActionsSource = () => fs.readFileSync(path.resolve(__dirname, '../hooks/useProfileAccountActions.ts'), 'utf8');
 const readProfileOrderActionsSource = () => fs.readFileSync(path.resolve(__dirname, '../hooks/useProfileOrderActions.ts'), 'utf8');
+const readProfileSessionDataSource = () => fs.readFileSync(path.resolve(__dirname, '../hooks/useProfileSessionData.ts'), 'utf8');
+const readProfilePaymentReturnSource = () => fs.readFileSync(path.resolve(__dirname, '../hooks/useProfilePaymentReturn.ts'), 'utf8');
 const readProfileCss = () => fs.readFileSync(path.resolve(__dirname, 'Profile.css'), 'utf8');
 const readLocale = (locale: string) => JSON.parse(fs.readFileSync(path.resolve(__dirname, `../locales/${locale}.json`), 'utf8'));
 
@@ -30,14 +33,14 @@ describe('Profile mobile control visibility', () => {
     expect(accountModals).toContain('isCommonPassword(value)');
     expect(accountModals).toContain('hasRequiredPasswordClasses(value)');
     expect(accountModals).toContain("t('pages.profile.newPasswordCommon')");
-    expect(source).toContain('<ProfileAccountModals');
+    expect(readProfileShellSource()).toContain('<ProfileAccountModals');
   });
 
   it('keeps profile recoverable error handling typed without broad any usage', () => {
     const source = readProfileSource();
     const helpers = readProfileHelpersSource();
     const accountActions = readProfileAccountActionsSource();
-    const surface = `${source}\n${helpers}\n${readProfilePaymentActionsSource()}\n${readProfileAddressActionsSource()}\n${readProfilePetActionsSource()}\n${accountActions}\n${readProfileOrderActionsSource()}`;
+    const surface = `${source}\n${helpers}\n${readProfilePaymentActionsSource()}\n${readProfileAddressActionsSource()}\n${readProfilePetActionsSource()}\n${accountActions}\n${readProfileOrderActionsSource()}\n${readProfileSessionDataSource()}\n${readProfilePaymentReturnSource()}`;
 
     expect(helpers).toContain('export const isFormValidationError = (error: unknown): error is FormValidationError =>');
     expect(helpers).toContain('export const getProfileApiErrorData = (error: unknown): Record<string, unknown> =>');
@@ -115,11 +118,11 @@ describe('Profile mobile control visibility', () => {
     const css = readProfileCss();
     const fixCss = css.slice(css.indexOf('F3516:'));
 
-    expect(source).toContain('profile-action-center__cards');
-    expect(source).toContain('profile-mobile-entry');
+    expect(readProfileShellSource()).toContain('profile-action-center__cards');
+    expect(readProfileShellSource()).toContain('profile-mobile-entry');
     expect(readProfileOrdersPanelSource()).toContain('profile-orders__tabs');
-    expect(source).toContain("t('pages.profile.actionAfterSale')");
-    expect(source).toContain("t('pages.profile.pets'");
+    expect(readProfileShellSource()).toContain("t('pages.profile.actionAfterSale')");
+    expect(readProfileShellSource()).toContain("t('pages.profile.pets'");
     expect(source).toContain("key: 'RETURNABLE'");
     expect(source).toContain("key: 'AFTER_SALE'");
     expect(fixCss).toMatch(/\.profile-action-center__cards,\s*\.profile-mobile-entry,\s*\.profile-orders__tabs\s*\{[\s\S]*?overflow-x:\s*visible\s*!important;[\s\S]*?scroll-snap-type:\s*none\s*!important;[\s\S]*?mask-image:\s*none\s*!important;/);
@@ -132,9 +135,11 @@ describe('Profile mobile control visibility', () => {
 
   it('names the order item preview fetch limit instead of slicing with a raw page size', () => {
     const source = readProfileSource();
-    const fetchOrdersStart = source.indexOf('const fetchOrders = useCallback(async () => {');
-    const fetchOrdersSource = source.slice(fetchOrdersStart, source.indexOf('const syncPaymentReturnState', fetchOrdersStart));
+    const session = readProfileSessionDataSource();
+    const fetchOrdersStart = session.indexOf('const fetchOrders = useCallback(async () => {');
+    const fetchOrdersSource = session.slice(fetchOrdersStart, session.indexOf('const fetchAddresses = useCallback', fetchOrdersStart));
 
+    expect(source).toContain('useProfileSessionData({');
     expect(readProfileHelpersSource()).toContain('export const PROFILE_ORDER_ITEM_PREVIEW_LIMIT = 30;');
     expect(fetchOrdersSource).toContain('sortedOrders.slice(0, PROFILE_ORDER_ITEM_PREVIEW_LIMIT)');
     expect(fetchOrdersSource).not.toContain('sortedOrders.slice(0, 20)');
@@ -143,10 +148,11 @@ describe('Profile mobile control visibility', () => {
 
   it('shows retryable order item preview failures instead of empty order items', () => {
     const source = readProfileSource();
+    const session = readProfileSessionDataSource();
     const panel = readProfileOrdersPanelSource();
-    const surface = `${source}\n${panel}`;
-    const fetchOrdersStart = source.indexOf('const fetchOrders = useCallback(async () => {');
-    const fetchOrdersSource = source.slice(fetchOrdersStart, source.indexOf('const syncPaymentReturnState', fetchOrdersStart));
+    const surface = `${source}\n${panel}\n${session}`;
+    const fetchOrdersStart = session.indexOf('const fetchOrders = useCallback(async () => {');
+    const fetchOrdersSource = session.slice(fetchOrdersStart, session.indexOf('const fetchAddresses = useCallback', fetchOrdersStart));
 
     expect(source).toContain('const [orderItemPreviewFailedByOrderId, setOrderItemPreviewFailedByOrderId]');
     expect(fetchOrdersSource).toContain('failed: false');
@@ -255,14 +261,15 @@ ${addressActions}`;
 
   it('waits for payment channels before consuming payment-return sync state', () => {
     const source = readProfileSource();
+    const paymentReturn = readProfilePaymentReturnSource();
     const helpers = readProfileHelpersSource();
     const paymentActions = readProfilePaymentActionsSource();
     const preferredChannelStart = helpers.indexOf('export const getPreferredPaymentChannel = (');
-    const paymentReturnEffectStart = source.indexOf("if (paymentReturnStatus !== 'success') return;");
-    const paymentReturnEffectEnd = source.indexOf('}, [fetchOrders, ordersInitialLoadComplete, paymentChannelsLoaded', paymentReturnEffectStart);
-    const paymentReturnEffectSource = source.slice(
+    const paymentReturnEffectStart = paymentReturn.indexOf("if (paymentReturnStatus !== 'success') return;");
+    const paymentReturnEffectEnd = paymentReturn.indexOf('syncPaymentReturnState,', paymentReturnEffectStart);
+    const paymentReturnEffectSource = paymentReturn.slice(
       paymentReturnEffectStart,
-      paymentReturnEffectEnd > -1 ? paymentReturnEffectEnd + 280 : paymentReturnEffectStart + 1600,
+      paymentReturnEffectEnd > -1 ? paymentReturnEffectEnd + 80 : paymentReturnEffectStart + 2200,
     );
     const channelEffectStart = paymentActions.indexOf('const loadPaymentChannels = useCallback');
     const channelEffectSource = paymentActions.slice(channelEffectStart);
@@ -272,11 +279,13 @@ ${addressActions}`;
     expect(paymentReturnEffectStart).toBeGreaterThan(-1);
     expect(channelEffectStart).toBeGreaterThan(-1);
     expect(source).toContain('useProfilePaymentActions({');
+    expect(source).toContain('useProfilePaymentReturn({');
     expect(source).toContain('const [paymentChannelsLoaded, setPaymentChannelsLoaded] = useState(false);');
     expect(paymentReturnEffectSource).toContain('if (!paymentChannelsLoaded) return;');
     expect(paymentReturnEffectSource).toContain('handledPaymentReturnRef.current = returnKey;');
     expect(paymentReturnEffectSource.indexOf('if (!paymentChannelsLoaded) return;')).toBeLessThan(paymentReturnEffectSource.indexOf('handledPaymentReturnRef.current = returnKey;'));
-    expect(paymentReturnEffectSource).toMatch(/\}, \[[\s\S]*paymentChannelsLoaded[\s\S]*?\]\);/);
+    expect(paymentReturnEffectSource).toMatch(/\}, \[[\s\S]*paymentChannelsLoaded[\s\S]*syncPaymentReturnState/);
+    expect(paymentReturn).toContain('paymentChannelsLoaded');
     expect(channelEffectSource).toContain('const res = await paymentApi.getChannels();');
     expect(channelEffectSource.match(/setPaymentChannelsLoaded\(true\);/g)?.length).toBe(2);
     expect(channelEffectSource).toContain("const { t: latestT, language: latestLanguage } = profileLocalizationRef.current;");
@@ -317,9 +326,9 @@ ${addressActions}`;
   });
 
   it('announces the initial profile loading state as a busy status region', () => {
-    const source = readProfileSource();
-    const loadingStart = source.indexOf('<div className="profile-loading"');
-    const loadingSource = source.slice(loadingStart, source.indexOf('</div>', loadingStart));
+    const shell = readProfileShellSource();
+    const loadingStart = shell.indexOf('<div className="profile-loading"');
+    const loadingSource = shell.slice(loadingStart, shell.indexOf('</div>', loadingStart));
 
     expect(loadingStart).toBeGreaterThan(-1);
     expect(loadingSource).toContain('role="status"');
@@ -349,15 +358,17 @@ ${addressActions}`;
 
   it('shows a localized error when pet profiles fail to load', () => {
     const source = readProfileSource();
-    const fetchPetProfilesStart = source.indexOf('const fetchPetProfiles = useCallback(async () => {');
-    const profileBootstrapStart = source.indexOf('useEffect(() => {', fetchPetProfilesStart);
-    const fetchPetProfilesSource = source.slice(fetchPetProfilesStart, profileBootstrapStart);
+    const session = readProfileSessionDataSource();
+    const fetchPetProfilesStart = session.indexOf('const fetchPetProfiles = useCallback(async () => {');
+    const profileBootstrapStart = session.indexOf('useEffect(() => {', fetchPetProfilesStart);
+    const fetchPetProfilesSource = session.slice(fetchPetProfilesStart, profileBootstrapStart);
 
     expect(fetchPetProfilesStart).toBeGreaterThan(-1);
     expect(fetchPetProfilesSource).toContain("reportNonBlockingError('Profile.fetchPetProfiles', error);");
     expect(fetchPetProfilesSource).toContain('setPetProfiles([]);');
     expect(fetchPetProfilesSource).toContain("announceAccessibleMessage(profileLocalizationRef.current.t('pages.profile.fetchPetProfilesFailed'), 'error')");
-    expect(fetchPetProfilesSource).toContain('}, []);');
+    expect(fetchPetProfilesSource).toContain('profileLocalizationRef, setPetProfiles');
+    expect(source).toContain('useProfileSessionData({');
     expect(source).toContain('const profileLocalizationRef = useRef({ t, language });');
 
     for (const locale of ['en', 'zh', 'es']) {
@@ -373,18 +384,21 @@ ${addressActions}`;
   });
 
   it('routes cancelled and failed payment returns into pending-payment orders', () => {
-    const source = require('fs').readFileSync(require('path').resolve(__dirname, 'Profile.tsx'), 'utf8');
+    const source = readProfileSource();
+    const paymentReturn = readProfilePaymentReturnSource();
+    const surface = `${source}\n${paymentReturn}`;
     expect(source).toContain('const isPaymentReturnIncomplete = paymentReturnStatus === \'cancelled\'');
     expect(source).toContain("paymentReturnStatus === 'failed'");
-    expect(source).toContain("setOrderStatusFilter('PENDING_PAYMENT')");
-    expect(source).toContain("latestT('pages.profile.paymentReturnCancelled')");
-    expect(source).toContain("latestT('pages.profile.paymentReturnFailed')");
-    expect(source).toContain("latestT('pages.profile.paymentReturnCancelledOrder'");
-    expect(source).toContain("latestT('pages.profile.paymentReturnFailedOrder'");
-    expect(source).toContain('autoResumePaymentReturnRef');
-    expect(source).toContain("normalizeStatusCode(targetOrder.status) !== 'PENDING_PAYMENT'");
-    expect(source).toContain('void handleContinuePayment(targetOrder)');
-    expect(source).toContain('setOrderSearchText(paymentReturnOrderNo)');
+    expect(source).toContain('useProfilePaymentReturn({');
+    expect(surface).toContain("setOrderStatusFilter('PENDING_PAYMENT')");
+    expect(surface).toContain("latestT('pages.profile.paymentReturnCancelled')");
+    expect(surface).toContain("latestT('pages.profile.paymentReturnFailed')");
+    expect(surface).toContain("latestT('pages.profile.paymentReturnCancelledOrder'");
+    expect(surface).toContain("latestT('pages.profile.paymentReturnFailedOrder'");
+    expect(surface).toContain('autoResumePaymentReturnRef');
+    expect(surface).toContain("normalizeStatusCode(targetOrder.status) !== 'PENDING_PAYMENT'");
+    expect(surface).toContain('void handleContinuePayment(targetOrder)');
+    expect(surface).toContain('setOrderSearchText(paymentReturnOrderNo)');
   });
 
   it('announces payment-return recovery as a persistent orders alert', () => {
@@ -399,8 +413,8 @@ ${addressActions}`;
     expect(panel).toContain("t('pages.profile.paymentReturnCancelledOrder'");
     expect(panel).toContain("t('pages.checkout.paymentRecoveryNextPaid')");
     expect(panel).toContain("t('pages.checkout.paymentRecoveryNextRetry')");
-    expect(source).toContain('isPaymentReturnSuccess={isPaymentReturnSuccess}');
-    expect(source).toContain('isPaymentReturnIncomplete={isPaymentReturnIncomplete}');
+    expect(readProfileShellSource()).toContain('isPaymentReturnSuccess={isPaymentReturnSuccess}');
+    expect(readProfileShellSource()).toContain('isPaymentReturnIncomplete={isPaymentReturnIncomplete}');
   });
 
   it('keeps continue-pay reconcile-safe and hides gateway actions when review is required', () => {
@@ -436,7 +450,7 @@ ${paymentModal}`;
     expect(paymentModal).toContain('className="profile-payment-recovery" role="status" aria-live="polite"');
     expect(paymentModal).not.toContain('selectedPayment.refundReference');
     expect(paymentModal).not.toContain('payment.refundReference');
-    expect(source).toContain('<ProfilePaymentModal');
+    expect(readProfileShellSource()).toContain('<ProfilePaymentModal');
   });
 
   it('keeps profile address and pet actions modularized outside the page shell', () => {
@@ -500,10 +514,12 @@ ${paymentModal}`;
     const infoPanel = readProfileInfoPanelSource();
     const accountModals = readProfileAccountModalsSource();
 
-    expect(source).toContain("from './profileInfoPanel'");
-    expect(source).toContain("from './profileAccountModals'");
-    expect(source).toContain('<ProfileInfoPanel');
-    expect(source).toContain('<ProfileAccountModals');
+    const shell = readProfileShellSource();
+    expect(source).toContain("from './profileShellPanels'");
+    expect(source).toContain('<ProfileMainShell');
+    expect(shell).toContain("from './profileAccountModals'");
+    expect(shell).toContain('<ProfileInfoPanel');
+    expect(shell).toContain('<ProfileAccountModals');
     expect(source).not.toContain('profile-health-panel');
     expect(source).not.toContain("title={t('pages.profile.editProfileTitle')}");
     expect(infoPanel).toContain('export const ProfileInfoPanel');
@@ -519,12 +535,12 @@ ${paymentModal}`;
     const returnModals = readProfileReturnModalsSource();
     const paymentModal = readProfilePaymentModalSource();
 
-    expect(source).toContain("from './profileOrderDetailModal'");
-    expect(source).toContain("from './profileReturnModals'");
-    expect(source).toContain("from './profilePaymentModal'");
-    expect(source).toContain('<ProfileOrderDetailModal');
-    expect(source).toContain('<ProfileReturnModals');
-    expect(source).toContain('<ProfilePaymentModal');
+    expect(readProfileShellSource()).toContain("from './profileOrderDetailModal'");
+    expect(readProfileShellSource()).toContain("from './profileReturnModals'");
+    expect(readProfileShellSource()).toContain("from './profilePaymentModal'");
+    expect(readProfileShellSource()).toContain('<ProfileOrderDetailModal');
+    expect(readProfileShellSource()).toContain('<ProfileReturnModals');
+    expect(readProfileShellSource()).toContain('<ProfilePaymentModal');
     expect(source).not.toContain('className="profile-mobile-safe-modal profile-order-detail-modal"');
     expect(source).not.toContain('data-profile-payment-history-empty="true"');
     expect(source).not.toContain('className="profile-return-modal__preset"');
@@ -544,11 +560,11 @@ ${paymentModal}`;
     const addressesPanel = readProfileAddressesPanelSource();
     const petsPanel = readProfilePetsPanelSource();
 
-    expect(source).toContain("from './profileAddressesPanel'");
-    expect(source).toContain("from './profilePetsPanel'");
-    expect(source).toContain('<ProfileAddressesPanel');
-    expect(source).toContain('<ProfilePetsPanel');
-    expect(source).toContain('handleDeletePet={handleDeletePet}');
+    expect(readProfileShellSource()).toContain("from './profileAddressesPanel'");
+    expect(readProfileShellSource()).toContain("from './profilePetsPanel'");
+    expect(readProfileShellSource()).toContain('<ProfileAddressesPanel');
+    expect(readProfileShellSource()).toContain('<ProfilePetsPanel');
+    expect(readProfileShellSource()).toContain('handleDeletePet={handleDeletePet}');
     expect(source).not.toContain('data-profile-addresses-load-recovery="true"');
     expect(source).not.toContain('profile-address-card');
     expect(source).not.toContain('profile-pet-card');
@@ -567,9 +583,13 @@ ${paymentModal}`;
     const source = readProfileSource();
     const panel = readProfileOrdersPanelSource();
 
-    expect(source).toContain("from './profileOrdersPanel'");
-    expect(source).toContain('<ProfileOrdersPanel');
-    expect(source).toContain('getOrderActionHint={getOrderActionHint}');
+    const shell = readProfileShellSource();
+    expect(source).toContain("from './profileShellPanels'");
+    expect(source).toContain('<ProfileMainShell');
+    expect(shell).toContain("from './profileOrdersPanel'");
+    expect(shell).toContain('<ProfileOrdersPanel');
+    expect(readProfileOrdersPanelSource()).toContain('export const ProfileOrdersPanel');
+    expect(shell).toContain('getOrderActionHint={getOrderActionHint}');
     expect(source).not.toContain('data-profile-orders-load-recovery="true"');
     expect(source).not.toContain('className="profile-order-card"');
     expect(panel).toContain('export const ProfileOrdersPanel');
@@ -581,12 +601,13 @@ ${paymentModal}`;
 
   it('keeps a commercial multi-path guest auth gate instead of hard-redirect-only login', () => {
     const source = readProfileSource();
+    const shell = readProfileShellSource();
     const css = readProfileCss();
-    expect(source).toContain('profile-page__authGate');
-    expect(source).toContain('pages.profile.authGateTitle');
-    expect(source).toContain("buildLoginUrl('/profile')");
-    expect(source).toContain("navigate('/register?redirect=%2Fprofile')");
-    expect(source).toContain("navigate('/track-order')");
+    expect(shell).toContain('profile-page__authGate');
+    expect(shell).toContain('pages.profile.authGateTitle');
+    expect(shell).toContain("buildLoginUrl('/profile')");
+    expect(shell).toContain("navigate('/register?redirect=%2Fprofile')");
+    expect(shell).toContain("navigate('/track-order')");
     expect(source).not.toContain("message.warning(profileLocalizationRef.current.t('messages.loginRequired'))");
     expect(css).toContain('Commercial guest profile auth gate multi-path conversion');
     expect(css).toMatch(/\.profile-page__authGate \.page-feedback__actions \.ant-btn[\s\S]*?min-height:\s*44px/);

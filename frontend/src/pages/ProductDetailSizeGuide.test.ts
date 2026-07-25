@@ -2,10 +2,11 @@ import fs from 'fs';
 import path from 'path';
 
 const readProductDetailSource = () => fs.readFileSync(path.resolve(__dirname, 'ProductDetail.tsx'), 'utf8');
+const readProductDetailShellSource = () => fs.readFileSync(path.resolve(__dirname, 'productDetailShell.tsx'), 'utf8');
 const readProductDetailSummarySource = () => fs.readFileSync(path.resolve(__dirname, 'productDetailSummary.tsx'), 'utf8');
 const readProductDetailHelpersSource = () => fs.readFileSync(path.resolve(__dirname, 'productDetailHelpers.tsx'), 'utf8');
 const readProductDetailCss = () => fs.readFileSync(path.resolve(__dirname, 'ProductDetail.css'), 'utf8');
-const readProductDetailPurchaseSurface = () => `${readProductDetailSource()}\n${readProductDetailSummarySource()}`;
+const readProductDetailPurchaseSurface = () => `${readProductDetailSource()}\n${readProductDetailShellSource()}\n${readProductDetailSummarySource()}`;
 
 describe('ProductDetail size guide modal layout', () => {
   it('keeps short landscape size-guide instructions visible above the footer', () => {
@@ -14,7 +15,7 @@ describe('ProductDetail size guide modal layout', () => {
     const css = readProductDetailCss();
     const fixCss = css.slice(css.indexOf('F3414:'));
 
-    expect(page).toContain('<ProductDetailSizeGuideModal');
+    expect(readProductDetailShellSource()).toContain('<ProductDetailSizeGuideModal');
     expect(source).toContain('product-detail__sizeGuideModal');
     expect(source).toContain('ShopModal');
     expect(source).toContain('product-detail__sizeGuideModalRoot');

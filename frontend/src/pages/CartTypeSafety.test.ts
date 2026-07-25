@@ -1,9 +1,17 @@
 const readCartSource = (): string => (
   require('fs').readFileSync(require('path').resolve(__dirname, 'Cart.tsx'), 'utf8')
 );
+const readCartSessionDataSource = (): string => (
+  require('fs').readFileSync(require('path').resolve(__dirname, '../hooks/useCartSessionData.ts'), 'utf8')
+);
+const readCartHelpersSource = (): string => (
+  require('fs').readFileSync(require('path').resolve(__dirname, 'cartHelpers.ts'), 'utf8')
+);
 const readCartSurface = (): string => (
   [
     readCartSource(),
+    readCartHelpersSource(),
+    readCartSessionDataSource(),
     require('fs').readFileSync(require('path').resolve(__dirname, 'cartShellStates.tsx'), 'utf8'),
     require('fs').readFileSync(require('path').resolve(__dirname, 'cartConversionPanels.tsx'), 'utf8'),
     require('fs').readFileSync(require('path').resolve(__dirname, 'cartLineItems.tsx'), 'utf8'),
@@ -23,7 +31,7 @@ describe('Cart type-safety guard', () => {
     const source = readCartSurface();
 
     expect(source).not.toMatch(/catch \([^)]*: any\)|\.catch\(\([^)]*: any\)|\b[A-Za-z_$][\w$]*\??: any\b|as any\b|any\[\]/);
-    expect(page).toContain("import { getApiErrorMessage, isAuthExpiredError } from '../utils/apiError';");
+    expect(readCartSessionDataSource()).toContain("import { getApiErrorMessage, isAuthExpiredError } from '../utils/apiError';");
     expect(page).not.toContain('const getErrorResponseStatus = (error: unknown)');
     expect(page).not.toContain('const isAuthExpiredError = (error: unknown)');
     expect(source).toContain('} catch (err: unknown) {');

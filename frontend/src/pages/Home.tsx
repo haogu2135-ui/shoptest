@@ -1,47 +1,31 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { announceAccessibleMessage } from '../utils/accessibleMessage';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { cartApi, categoryApi, petGalleryApi, productApi, wishlistApi } from '../api';
 import { useLanguage } from '../i18n';
-import type { Language } from '../i18n';
 import type { CategoryPublic, PetGalleryPhotoPublic, PetGalleryQuota, ProductPublic as Product } from '../types';
 import { useMarket } from '../hooks/useMarket';
-import { localizeProduct } from '../utils/localizedProduct';
 import { getDisplayCategoryRoots, getLocalizedCategoryValue } from '../utils/categoryTree';
-import { clearProductViewHistory, loadProductViewPreferences, PRODUCT_VIEW_PREFERENCES_KEY } from '../utils/productViewPreferences';
-import { addGuestCartItem } from '../utils/guestCart';
+import { clearProductViewHistory, loadProductViewPreferences } from '../utils/productViewPreferences';
 import { needsOptionSelection } from '../utils/productOptions';
-import { getApiErrorMessage } from '../utils/apiError';
 import { buildLoginUrlFromWindow } from '../utils/authRedirect';
 import { dispatchDomEvent } from '../utils/domEvents';
 import { loadGuestSupportContext } from '../utils/guestSupportContext';
-import { addAppScrollListener, getAppScrollMetrics } from '../utils/nativeScroll';
 import { hasStoredValue } from '../utils/safeStorage';
-import { cancelIdleTask, scheduleIdleTask } from '../utils/idleScheduler';
 import { openCartDrawerWithSnapshot } from '../utils/cartDrawer';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useDocumentMeta } from '../hooks/useDocumentMeta';
-import { allSettledWithConcurrency } from '../utils/asyncBatch';
-import { buildProductCatalogFallbackCategories, loadFallbackProductCatalog, loadProductCatalogSnapshot, saveProductCatalogSnapshot } from '../utils/productCatalogSnapshot';
-import { reportNonBlockingError } from '../utils/nonBlockingError';
+import { useHomeCatalog } from '../hooks/useHomeCatalog';
+import { useHomeProductActions } from '../hooks/useHomeProductActions';
 import { buildWebsiteStructuredData } from '../utils/structuredData';
 import { resolveDefaultSocialImageUrl } from '../utils/documentMeta';
-import { isSupportedPetGalleryImageFile } from '../utils/petGalleryUpload';
 import type { HomePetGalleryItem } from '../components/HomePetGallery';
 import './Home.css';
 import '../styles/mobile-page-contrast.css';
 
 import {
   DISCOVERY_BATCH_SIZE,
-  HOME_FEATURED_LIMIT,
-  HOME_PRODUCT_PAGE_SIZE,
-  PET_GALLERY_MAX_FILE_SIZE,
-  petGalleryImageFallback,
   publicAssetUrl,
-  mergeProductsById,
   ugcImages,
   readLocalPetGalleryLikes,
-  writeLocalPetGalleryLikes,
   resolvePetGalleryImage,
   resolveHomeCatalogBootstrap,
   HomeIcon,
@@ -139,10 +123,6 @@ const Home: React.FC = () => {
     }
     dispatchDomEvent('shop:open-support');
   };
-  const prefetchProduct = useCallback((productId: number) => {
-    void productApi.prefetchById(productId);
-  }, []);
-  const openProduct = (productId: number) => navigate(`/products/${productId}`);
   const openCartWithSnapshot = useCallback(() => openCartDrawerWithSnapshot({ authenticated: isAuthenticated }), [isAuthenticated]);
   const guestJourneyActions = !isAuthenticated
     ? [
@@ -223,180 +203,6 @@ const Home: React.FC = () => {
     },
   ];
 
-  useEffect(() => {
-    if (!isAuthenticated) {
-      setWishlistedProductIds(new Set());
-      return;
-    }
-    let disposed = false;
-    wishlistApi.getByUser(0)
-      .then((response) => {
-        if (!disposed) setWishlistedProductIds(new Set(response.data.map((item) => item.productId)));
-      })
-      .catch(() => {
-        if (!disposed) setWishlistedProductIds(new Set());
-      });
-    return () => {
-      disposed = true;
-    };
-  }, [isAuthenticated]);
-
-  const refreshPetGallery = useCallback(async () => {
-    try {
-      const [photosRes, quotaRes] = await Promise.all([
-        petGalleryApi.getAll(),
-        isAuthenticated
-          ? petGalleryApi.getQuota().catch((error) => {
-            reportNonBlockingError('Home.refreshPetGalleryQuota', error);
-            return null;
-          })
-          : Promise.resolve(null),
-      ]);
-      setPetGalleryPhotos(photosRes.data);
-      setPetGalleryQuota(quotaRes?.data || null);
-    } catch (error) {
-      reportNonBlockingError('Home.refreshPetGallery', error);
-      setPetGalleryPhotos([]);
-      setPetGalleryQuota(null);
-    }
-  }, [isAuthenticated]);
-
-  const handlePetUploadClick = () => {
-    if (!isAuthenticated) {
-      announceAccessibleMessage(t('messages.loginRequired'), 'warning');
-      navigate(buildLoginUrlFromWindow());
-      return;
-    }
-    if (petGalleryQuota && !petGalleryQuota.canUpload) {
-      announceAccessibleMessage(t('home.petUgcLimitReached'), 'warning');
-      return;
-    }
-    petUploadInputRef.current?.click();
-  };
-
-  const handlePetPhotoSelected: React.ChangeEventHandler<HTMLInputElement> = async (event) => {
-    const file = event.target.files?.[0];
-    event.target.value = '';
-    if (!file) return;
-
-    const isSupportedImage = isSupportedPetGalleryImageFile(file);
-    if (!isSupportedImage) {
-      announceAccessibleMessage(t('home.petUgcInvalidType'), 'error');
-      return;
-    }
-    if (file.size > PET_GALLERY_MAX_FILE_SIZE) {
-      announceAccessibleMessage(t('home.petUgcTooLarge'), 'error');
-      return;
-    }
-
-    setUploadingPetPhoto(true);
-    try {
-      const response = await petGalleryApi.upload(file);
-      setPetGalleryPhotos((current) => [response.data, ...current.filter((photo) => photo.id !== response.data.id)].slice(0, 24));
-      announceAccessibleMessage(t('home.petUgcUploadSuccess'), 'success');
-      await refreshPetGallery();
-    } catch (error) {
-      announceAccessibleMessage(getApiErrorMessage(error, t('home.petUgcUploadFailed'), language), 'error');
-    } finally {
-      setUploadingPetPhoto(false);
-    }
-  };
-
-  const handlePetGalleryLike = async (item: HomePetGalleryItem) => {
-    if (!item.photo) {
-      if (localPetGalleryLikes.includes(item.key)) {
-        announceAccessibleMessage(t('home.petUgcAlreadyLiked'), 'info');
-        return;
-      }
-      const nextLikes = [...localPetGalleryLikes, item.key];
-      setLocalPetGalleryLikes(nextLikes);
-      writeLocalPetGalleryLikes(nextLikes);
-      announceAccessibleMessage(t('home.petUgcLiked'), 'success');
-      return;
-    }
-    if (item.photo.likedByMe) {
-      announceAccessibleMessage(t('home.petUgcAlreadyLiked'), 'info');
-      return;
-    }
-    try {
-      const response = await petGalleryApi.like(item.photo.id);
-      setPetGalleryPhotos((current) => current.map((photo) => photo.id === response.data.id ? response.data : photo));
-      announceAccessibleMessage(t('home.petUgcLiked'), 'success');
-    } catch (error) {
-      announceAccessibleMessage(getApiErrorMessage(error, t('home.petUgcLikeFailed'), language), 'error');
-    }
-  };
-
-  const handleDeletePetPhoto = async (photo: PetGalleryPhotoPublic) => {
-    try {
-      await petGalleryApi.delete(photo.id);
-      setPetGalleryPhotos((current) => current.filter((item) => item.id !== photo.id));
-      announceAccessibleMessage(t('home.petUgcDeleted'), 'success');
-      await refreshPetGallery();
-    } catch (error) {
-      announceAccessibleMessage(getApiErrorMessage(error, t('home.petUgcDeleteFailed'), language), 'error');
-    }
-  };
-
-  const handleQuickAddToCart = async (event: React.MouseEvent | undefined, product: Product) => {
-    event?.stopPropagation();
-    if (product.stock !== undefined && product.stock <= 0) {
-      announceAccessibleMessage(t('pages.productList.soldOut'), 'warning');
-      return;
-    }
-    if (needsOptionSelection(product)) {
-      announceAccessibleMessage(t('pages.wishlist.selectOptions'), 'info');
-      openProduct(product.id);
-      return;
-    }
-
-    try {
-      if (isAuthenticated) {
-        await cartApi.addItem(0, product.id, 1);
-        dispatchDomEvent('shop:cart-updated');
-      } else {
-        addGuestCartItem(product, 1);
-      }
-      await openCartWithSnapshot();
-      announceAccessibleMessage(t('messages.addCartSuccess'), 'success');
-    } catch (error) {
-      announceAccessibleMessage(getApiErrorMessage(error, t('messages.addFailed'), language), 'error');
-    }
-  };
-
-  const handleQuickWishlist = async (event: React.MouseEvent, product: Product) => {
-    event.stopPropagation();
-    if (!isAuthenticated) {
-      announceAccessibleMessage(t('messages.loginRequired'), 'warning');
-      navigate(buildLoginUrlFromWindow());
-      return;
-    }
-
-    try {
-      const response = await wishlistApi.toggle(0, product.id);
-      setWishlistedProductIds((current) => {
-        const next = new Set(current);
-        if (response.data.wishlisted) {
-          next.add(product.id);
-        } else {
-          next.delete(product.id);
-        }
-        return next;
-      });
-      dispatchDomEvent('shop:wishlist-updated');
-      announceAccessibleMessage(response.data.wishlisted ? t('pages.productDetail.favoritedMsg') : t('pages.productDetail.unfavoritedMsg'), 'success');
-    } catch (error) {
-      announceAccessibleMessage(getApiErrorMessage(error, t('messages.operationFailed'), language), 'error');
-    }
-  };
-
-  useEffect(() => {
-    const task = scheduleIdleTask(() => {
-      void refreshPetGallery();
-    }, 1600);
-    return () => cancelIdleTask(task);
-  }, [refreshPetGallery]);
-
   const formatViewedAt = (viewedAt?: number) => {
     if (!viewedAt) return '';
     return new Date(viewedAt).toLocaleString(language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US', {
@@ -406,139 +212,6 @@ const Home: React.FC = () => {
       minute: '2-digit',
     });
   };
-
-  useEffect(() => {
-    let disposed = false;
-    const fetchHome = async () => {
-      // Stale-while-revalidate: only blank to skeleton when nothing is paintable yet.
-      if (!catalogReadyRef.current) {
-        setLoading(true);
-      }
-      setLoadError(false);
-      try {
-        const [productsRes, featuredRes, categoriesRes] = await Promise.all([
-          productApi.getAll(undefined, undefined, undefined, { page: 0, size: HOME_PRODUCT_PAGE_SIZE }),
-          productApi.getFeatured(HOME_FEATURED_LIMIT),
-          categoryApi.getTopLevel(),
-        ]);
-        if (disposed) return;
-        const boundedCatalog = mergeProductsById(featuredRes.data, productsRes.data);
-        saveProductCatalogSnapshot(boundedCatalog);
-        const localizedProducts = boundedCatalog.map((product) => localizeProduct(product, language));
-        const featuredProducts = featuredRes.data.map((product) => localizeProduct(product, language)).slice(0, HOME_FEATURED_LIMIT);
-        setFeatured(featuredProducts.length ? featuredProducts : localizedProducts.slice(0, HOME_FEATURED_LIMIT));
-        setProducts(localizedProducts);
-        setCategories(categoriesRes.data);
-        setVisibleCount(DISCOVERY_BATCH_SIZE);
-        setUsingCatalogSnapshot(false);
-        setLoadError(false);
-        catalogReadyRef.current = true;
-      } catch (error) {
-        reportNonBlockingError('Home.fetchHome', error);
-        if (disposed) return;
-        const fallbackSourceProducts = loadProductCatalogSnapshot()?.products || loadFallbackProductCatalog();
-        const fallbackProducts = fallbackSourceProducts.map((product) => localizeProduct(product, language));
-        if (fallbackProducts.length > 0) {
-          // Keep already-painted bootstrap content when possible; only replace if empty or hard failure.
-          if (!catalogReadyRef.current) {
-            const featuredFallback = fallbackProducts.filter((product) => product.isFeatured).slice(0, HOME_FEATURED_LIMIT);
-            setFeatured(featuredFallback.length ? featuredFallback : fallbackProducts.slice(0, HOME_FEATURED_LIMIT));
-            setProducts(fallbackProducts);
-            setCategories(buildProductCatalogFallbackCategories(fallbackSourceProducts));
-            setVisibleCount(DISCOVERY_BATCH_SIZE);
-          }
-          setLoadError(false);
-          setUsingCatalogSnapshot(true);
-          catalogReadyRef.current = true;
-          return;
-        }
-        if (!catalogReadyRef.current) {
-          setLoadError(true);
-          setFeatured([]);
-          setProducts([]);
-          setCategories([]);
-        }
-      } finally {
-        if (!disposed) setLoading(false);
-      }
-    };
-
-    fetchHome();
-    return () => {
-      disposed = true;
-    };
-  }, [language, t]);
-
-  useEffect(() => {
-    let disposed = false;
-    const fetchPersonalizedProducts = async () => {
-      if (!isAuthenticated) {
-        setPersonalizedProducts([]);
-        return;
-      }
-      try {
-        const response = await productApi.getPersonalizedRecommendations();
-        if (!disposed) setPersonalizedProducts(response.data.map((product) => localizeProduct(product, language)));
-      } catch (error) {
-        reportNonBlockingError('Home.fetchPersonalizedProducts', error);
-        if (!disposed) setPersonalizedProducts([]);
-      }
-    };
-
-    if (!isAuthenticated) {
-      setPersonalizedProducts([]);
-      return;
-    }
-    const task = scheduleIdleTask(fetchPersonalizedProducts, 1500);
-    return () => {
-      disposed = true;
-      cancelIdleTask(task);
-    };
-  }, [isAuthenticated, language]);
-
-  useEffect(() => {
-    const handlePreferencesUpdated = (event?: Event) => {
-      if (event instanceof StorageEvent && event.key && event.key !== PRODUCT_VIEW_PREFERENCES_KEY) return;
-      setViewPreferences(loadProductViewPreferences());
-    };
-    window.addEventListener('shop:product-view-preferences-updated', handlePreferencesUpdated);
-    window.addEventListener('storage', handlePreferencesUpdated);
-    return () => {
-      window.removeEventListener('shop:product-view-preferences-updated', handlePreferencesUpdated);
-      window.removeEventListener('storage', handlePreferencesUpdated);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (viewPreferences.recent.length === 0) {
-      setRecentlyViewedDetails([]);
-      setRecentlyViewedHydrated(true);
-      return;
-    }
-    let disposed = false;
-    setRecentlyViewedHydrated(false);
-    const recentProductIds = viewPreferences.recent.slice(0, 8);
-    const task = scheduleIdleTask(() => {
-      productApi.getByIds(recentProductIds)
-        .then((response) => {
-          if (!disposed) {
-            setRecentlyViewedDetails(response.data.map((product) => localizeProduct(product, language)));
-            setRecentlyViewedHydrated(true);
-          }
-        })
-        .catch((error) => {
-          reportNonBlockingError('Home.fetchRecentlyViewedDetails', error);
-          if (!disposed) {
-            setRecentlyViewedDetails([]);
-            setRecentlyViewedHydrated(true);
-          }
-        });
-    }, 1900);
-    return () => {
-      disposed = true;
-      cancelIdleTask(task);
-    };
-  }, [language, viewPreferences.recent]);
 
   const promoProducts = useMemo(
     () =>
@@ -648,29 +321,54 @@ const Home: React.FC = () => {
   );
   const hasMoreDiscoveryProducts = visibleCount < discoveryProducts.length;
 
-  useEffect(() => {
-    let frameId: number | null = null;
-    const updateVisibleCount = () => {
-      frameId = null;
-      const { scrollHeight, viewportHeight, scrollTop } = getAppScrollMetrics();
-      const distanceToBottom = scrollHeight - viewportHeight - scrollTop;
-      if (distanceToBottom < 420) {
-        setVisibleCount((count) => Math.min(count + DISCOVERY_BATCH_SIZE, discoveryProducts.length));
-      }
-    };
-    const handleScroll = () => {
-      if (frameId !== null) return;
-      frameId = window.requestAnimationFrame(updateVisibleCount);
-    };
-    const removeScrollListener = addAppScrollListener(handleScroll, { passive: true });
-    updateVisibleCount();
-    return () => {
-      removeScrollListener();
-      if (frameId !== null) {
-        window.cancelAnimationFrame(frameId);
-      }
-    };
-  }, [discoveryProducts.length]);
+  useHomeCatalog({
+    language,
+    t,
+    isAuthenticated,
+    catalogReadyRef,
+    discoveryProductsLength: discoveryProducts.length,
+    viewPreferencesRecent: viewPreferences.recent,
+    setWishlistedProductIds,
+    setLoading,
+    setLoadError,
+    setFeatured,
+    setProducts,
+    setCategories,
+    setVisibleCount,
+    setUsingCatalogSnapshot,
+    setPersonalizedProducts,
+    setViewPreferences,
+    setRecentlyViewedDetails,
+    setRecentlyViewedHydrated,
+  });
+
+  const {
+    prefetchProduct,
+    openProduct,
+    handlePetUploadClick,
+    handlePetPhotoSelected,
+    handlePetGalleryLike,
+    handleDeletePetPhoto,
+    handleQuickAddToCart,
+    handleQuickWishlist,
+    addPersonalizedReadyProducts,
+  } = useHomeProductActions({
+    navigate,
+    t,
+    language,
+    isAuthenticated,
+    petGalleryQuota,
+    localPetGalleryLikes,
+    petUploadInputRef,
+    personalizedReadyProducts,
+    openCartWithSnapshot,
+    setPetGalleryPhotos,
+    setPetGalleryQuota,
+    setUploadingPetPhoto,
+    setLocalPetGalleryLikes,
+    setWishlistedProductIds,
+  });
+
 
   const displayCategoryRoots = useMemo(() => getDisplayCategoryRoots(categories), [categories]);
   const categoryTiles = useMemo(() => displayCategoryRoots.slice(0, 8), [displayCategoryRoots]);
@@ -707,34 +405,6 @@ const Home: React.FC = () => {
       .sort((left, right) => right.likeCount - left.likeCount || left.label.localeCompare(right.label))
       .slice(0, 24);
   }, [localPetGalleryLikes, petGalleryPhotos]);
-  const addPersonalizedReadyProducts = async () => {
-    if (personalizedReadyProducts.length === 0) {
-      announceAccessibleMessage(t('pages.compare.recommendationEmpty'), 'info');
-      return;
-    }
-    try {
-      if (isAuthenticated) {
-        const results = await allSettledWithConcurrency(
-          personalizedReadyProducts,
-          (product) => cartApi.addItem(0, product.id, 1),
-        );
-        const added = results.filter((result) => result.status === 'fulfilled').length;
-        if (added === 0) {
-          announceAccessibleMessage(t('messages.addFailed'), 'error');
-          return;
-        }
-        dispatchDomEvent('shop:cart-updated');
-        await openCartWithSnapshot();
-        announceAccessibleMessage(t('pages.wishlist.addedAllToCart', { count: added }), 'success');
-      } else {
-        personalizedReadyProducts.forEach((product) => addGuestCartItem(product, 1));
-        await openCartWithSnapshot();
-        announceAccessibleMessage(t('pages.wishlist.addedAllToCart', { count: personalizedReadyProducts.length }), 'success');
-      }
-    } catch (error) {
-      announceAccessibleMessage(getApiErrorMessage(error, t('messages.addFailed'), language), 'error');
-    }
-  };
   const heroSpotlights = [
     {
       key: 'recommendations',

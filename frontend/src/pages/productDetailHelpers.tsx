@@ -5,6 +5,9 @@ import { loadFallbackProductCatalog, loadProductCatalogSnapshot } from '../utils
 import { resolveApiAssetUrl } from '../utils/mediaAssets';
 import { productImageFallback } from '../utils/productMedia';
 import { reportNonBlockingError } from '../utils/nonBlockingError';
+import { estimatePetSize, getLowStockCount } from '../utils/conversionConfig';
+import type { ProductOptionGroup } from '../utils/productOptions';
+import { getLocalizedOptionLabel, isSizeOptionName } from '../utils/localizedProductOptions';
 
 export const fallbackProductImage = productImageFallback;
 export const resolveDetailImage = (imageUrl?: string | null) => resolveApiAssetUrl(imageUrl, fallbackProductImage);
@@ -252,8 +255,9 @@ export type ProductVariantLike = {
 } | null | undefined;
 
 export type BundleInfoLike = {
+  price: number;
   title?: string;
-  items?: Array<{ name?: string; quantity?: number }>;
+  items?: Array<{ name?: string; quantity?: number; productId?: number }>;
 } | null | undefined;
 
 /** Exact selected-option match used by commercial purchase and stock resolution. */
@@ -314,4 +318,559 @@ export const normalizeProductDetailTab = (value: string | null | undefined): Pro
   if (normalized === 'service' || normalized === 'shipping' || normalized === '3') return 'service';
   if (normalized === 'details' || normalized === '1' || normalized === 'detail') return 'details';
   return 'details';
+};
+
+export type ProductDetailTranslate = (key: string, params?: Record<string, string | number>) => string;
+
+export type ProductDetailPricingState = {
+  activePrice: number;
+  displayPrice: number;
+  bundleSavings: number;
+  purchaseSubtotal: number;
+  purchaseSavings: number;
+  discountPercent: number;
+  originalReferencePrice?: number;
+  priceSavingsAmount: number;
+  priceSavingsPercent: number;
+};
+
+export type ProductDetailSelectionState = {
+  selectedStock: number | undefined;
+  isOutOfStock: boolean;
+  stockLabel: string | number;
+  lowStockCount: number | null;
+  isLowStock: boolean;
+  hasCompleteOptions: boolean;
+  hasUnavailableSelectedVariant: boolean;
+  optionsMissing: boolean;
+  purchaseSelectionBlocked: boolean;
+};
+
+export type ProductDetailActionBlockState = {
+  addToCartBlocked: boolean;
+  mobileAddToCartBlocked: boolean;
+  buyNowBlocked: boolean;
+};
+
+export type ProductDetailRecommendedPath = {
+  recommendedPurchaseMode: 'once' | 'bundle';
+  recommendedPathTitle: string;
+  recommendedPathText: string;
+};
+
+export const deriveProductDetailPricing = (params: {
+  product: Product;
+  selectedVariant?: { price?: number } | null;
+  purchaseMode: 'once' | 'bundle';
+  bundleInfo?: BundleInfoLike | null;
+  quantity: number;
+}): ProductDetailPricingState => {
+  const activePrice = params.selectedVariant?.price
+    ?? params.product.effectivePrice
+    ?? params.product.price;
+  const displayPrice = params.purchaseMode === 'bundle' && params.bundleInfo
+    ? params.bundleInfo.price
+    : activePrice;
+  const bundleSavings = params.bundleInfo
+    ? Math.max(0, activePrice - params.bundleInfo.price)
+    : 0;
+  const purchaseSubtotal = displayPrice * params.quantity;
+  const purchaseSavings = params.purchaseMode === 'bundle'
+    ? bundleSavings * params.quantity
+    : 0;
+  const discountPercent = params.product.effectiveDiscountPercent || params.product.discount || 0;
+  const originalReferencePrice = params.product.originalPrice && params.product.originalPrice > displayPrice
+    ? params.product.originalPrice
+    : undefined;
+  const priceSavingsAmount = originalReferencePrice
+    ? Math.max(0, originalReferencePrice - displayPrice)
+    : 0;
+  const priceSavingsPercent = originalReferencePrice
+    ? Math.max(1, Math.round((priceSavingsAmount / originalReferencePrice) * 100))
+    : discountPercent;
+  return {
+    activePrice,
+    displayPrice,
+    bundleSavings,
+    purchaseSubtotal,
+    purchaseSavings,
+    discountPercent,
+    originalReferencePrice,
+    priceSavingsAmount,
+    priceSavingsPercent,
+  };
+};
+
+export const deriveProductDetailSelectionState = (params: {
+  selectedStock: number | undefined;
+  quantity: number;
+  optionGroups: ProductOptionGroup[];
+  variantsLength: number;
+  selectedVariant: unknown;
+  selectedOptions: Record<string, string>;
+  enoughStockLabel: string | number;
+}): ProductDetailSelectionState => {
+  const isOutOfStock = params.selectedStock !== undefined && params.selectedStock <= 0;
+  const stockLabel = params.selectedStock !== undefined ? params.selectedStock : params.enoughStockLabel;
+  const lowStockCount = getLowStockCount(params.selectedStock, params.quantity);
+  const isLowStock = !isOutOfStock && lowStockCount !== null && lowStockCount > 0;
+  const hasCompleteOptions = params.optionGroups.every((group) => params.selectedOptions[group.name]);
+  const hasUnavailableSelectedVariant = params.variantsLength > 0 && hasCompleteOptions && !params.selectedVariant;
+  const optionsMissing = params.optionGroups.length > 0 && !hasCompleteOptions;
+  const purchaseSelectionBlocked = optionsMissing || hasUnavailableSelectedVariant;
+  return {
+    selectedStock: params.selectedStock,
+    isOutOfStock,
+    stockLabel,
+    lowStockCount,
+    isLowStock,
+    hasCompleteOptions,
+    hasUnavailableSelectedVariant,
+    optionsMissing,
+    purchaseSelectionBlocked,
+  };
+};
+
+export const deriveProductDetailActionBlockState = (params: {
+  isOutOfStock: boolean;
+  purchaseSelectionBlocked: boolean;
+  purchaseSubmitting: string | null;
+}): ProductDetailActionBlockState => {
+  const addToCartBlocked = params.isOutOfStock
+    || params.purchaseSelectionBlocked
+    || params.purchaseSubmitting !== null;
+  const mobileAddToCartBlocked = !params.isOutOfStock
+    && (params.purchaseSelectionBlocked || params.purchaseSubmitting !== null);
+  const buyNowBlocked = params.isOutOfStock
+    || params.purchaseSelectionBlocked
+    || params.purchaseSubmitting !== null;
+  return {
+    addToCartBlocked,
+    mobileAddToCartBlocked,
+    buyNowBlocked,
+  };
+};
+
+export const formatLimitedTimeCountdown = (
+  milliseconds: number,
+  t: ProductDetailTranslate,
+) => {
+  const totalSeconds = Math.max(0, Math.floor(milliseconds / 1000));
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  const time = [hours, minutes, seconds].map((value) => String(value).padStart(2, '0')).join(':');
+  return days > 0 ? `${t('pages.productDetail.limitedTimeDays', { count: days })} ${time}` : time;
+};
+
+export const resolveRecommendedPurchaseMode = (params: {
+  bundleInfo?: BundleInfoLike | null;
+  bundleSavings: number;
+}): 'once' | 'bundle' => (
+  params.bundleInfo && params.bundleSavings > 0 ? 'bundle' : 'once'
+);
+
+export const buildRecommendedPurchasePath = (params: {
+  recommendedPurchaseMode: 'once' | 'bundle';
+  bundleInfo?: BundleInfoLike | null;
+  bundleSavings: number;
+  quantity: number;
+  t: ProductDetailTranslate;
+  formatMoney: (value: number) => string;
+  renderAmountText: (label: string, amount: string) => React.ReactNode;
+}): ProductDetailRecommendedPath & { recommendedPathTextNode: React.ReactNode } => {
+  const recommendedPathTitle = params.recommendedPurchaseMode === 'bundle'
+    ? params.t('pages.productDetail.pathBundleTitle')
+    : params.t('pages.productDetail.pathOnceTitle');
+  const recommendedPathText = params.recommendedPurchaseMode === 'bundle' && params.bundleInfo
+    ? params.t('pages.productDetail.pathBundleText', { amount: params.formatMoney(params.bundleSavings * params.quantity) })
+    : params.t('pages.productDetail.pathOnceText');
+  const recommendedPathTextNode = params.recommendedPurchaseMode === 'bundle' && params.bundleInfo
+    ? params.renderAmountText(
+      params.t('pages.productDetail.pathBundleText', { amount: params.formatMoney(params.bundleSavings * params.quantity) }),
+      params.formatMoney(params.bundleSavings * params.quantity),
+    )
+    : params.t('pages.productDetail.pathOnceText');
+  return {
+    recommendedPurchaseMode: params.recommendedPurchaseMode,
+    recommendedPathTitle,
+    recommendedPathText,
+    recommendedPathTextNode,
+  };
+};
+
+export const resolveSizeCalculatorWeightKg = (sizeCalculatorWeight: string) => Math.min(
+  PRODUCT_SIZE_CALCULATOR_MAX_WEIGHT_KG,
+  Math.max(0, Number(sizeCalculatorWeight || 0)),
+);
+
+export const resolveRecommendedSizeMatch = (params: {
+  sizeOptionGroup?: ProductOptionGroup | null;
+  sizeCalculatorBreed: string;
+  sizeCalculatorWeightKg: number;
+}) => {
+  const recommendedSize = estimatePetSize(params.sizeCalculatorBreed, params.sizeCalculatorWeightKg);
+  const recommendedSizeValue = params.sizeOptionGroup?.values.find(
+    (value) => value.toLowerCase() === String(recommendedSize || '').toLowerCase(),
+  );
+  return {
+    recommendedSize,
+    recommendedSizeValue,
+  };
+};
+
+export const buildProductDetailActionLabels = (params: {
+  t: ProductDetailTranslate;
+  productName: string;
+  isAlerted: boolean;
+  isWishlisted: boolean;
+  isCompared: boolean;
+}) => {
+  const { t, productName } = params;
+  return {
+    addCartActionLabel: `${t('pages.productDetail.addCart')}: ${productName}`,
+    buyNowActionLabel: `${t('pages.productDetail.buyNow')}: ${productName}`,
+    selectOptionsActionLabel: `${t('pages.wishlist.selectOptions')}: ${productName}`,
+    questionInputLabel: `${t('pages.ask.title')}: ${productName}`,
+    questionSubmitActionLabel: `${t('pages.ask.submit')}: ${productName}`,
+    stockAlertActionLabel: `${params.isAlerted ? t('pages.stockAlerts.remove') : t('pages.stockAlerts.notifyMe')}: ${productName}`,
+    favoriteActionLabel: `${params.isWishlisted ? t('pages.productDetail.favorited') : t('pages.productDetail.favorite')}: ${productName}`,
+    compareActionLabel: `${params.isCompared ? t('pages.productList.viewCompare') : t('pages.productList.compare')}: ${productName}`,
+    homeActionLabel: `${t('nav.ariaHome')}: ${productName}`,
+    sizeGuideActionLabel: `${t('pages.productDetail.sizeGuide')}: ${productName}`,
+    resetSelectedOptionsActionLabel: `${t('pages.productList.resetFilters')}: ${productName}`,
+    sizeBreedInputLabel: `${t('pages.productDetail.sizeCalculatorBreed')}: ${productName}`,
+    sizeWeightInputLabel: `${t('pages.productDetail.sizeCalculatorWeight')}: ${productName}`,
+    purchaseModeActionLabel: `${t('pages.productDetail.purchaseMode')}: ${productName}`,
+    useRecommendedPathActionLabel: `${t('pages.productDetail.useRecommendedPath')}: ${productName}`,
+    sizeGuideConfirmActionLabel: `${t('pages.productDetail.sizeGuideGotIt')}: ${t('pages.productDetail.sizeGuideTitle')}, ${productName}`,
+  };
+};
+
+export const resolveMobilePurchaseStatus = (params: {
+  t: ProductDetailTranslate;
+  isOutOfStock: boolean;
+  hasUnavailableSelectedVariant: boolean;
+  optionsMissing: boolean;
+  isLowStock: boolean;
+  lowStockUrgencyLabel: string;
+}) => {
+  if (params.isOutOfStock) return params.t('pages.productDetail.soldOut');
+  if (params.hasUnavailableSelectedVariant) return params.t('pages.productDetail.selectedVariantUnavailable');
+  if (params.optionsMissing) return params.t('pages.productDetail.decisionOptionsMissingText');
+  if (params.isLowStock) return params.lowStockUrgencyLabel;
+  return params.t('pages.productDetail.decisionReady');
+};
+
+export const resolveBuyNowBlockedReason = (params: {
+  t: ProductDetailTranslate;
+  productName: string;
+  isOutOfStock: boolean;
+  purchaseSelectionBlocked: boolean;
+  selectOptionsActionLabel: string;
+  buyNowActionLabel: string;
+}) => {
+  if (params.isOutOfStock) return `${params.t('pages.productDetail.soldOut')}: ${params.productName}`;
+  if (params.purchaseSelectionBlocked) return params.selectOptionsActionLabel;
+  return params.buyNowActionLabel;
+};
+
+export type ProductDetailChecklistItemData = {
+  key: string;
+  ready: boolean;
+  title: string;
+  text: React.ReactNode;
+};
+
+export const buildProductDetailDecisionChecklistData = (params: {
+  t: ProductDetailTranslate;
+  isOutOfStock: boolean;
+  isLowStock: boolean;
+  optionGroupsLength: number;
+  hasCompleteOptions: boolean;
+  hasUnavailableSelectedVariant: boolean;
+  lowStockCount: number | null;
+  stockLabel: string | number;
+  deliveryEnabled: boolean;
+  deliveryWindowText?: string;
+  productShippingText: React.ReactNode;
+}): ProductDetailChecklistItemData[] => ([
+  {
+    key: 'options',
+    // Commercial trust: never mark options "ready to add" when the SKU is sold out.
+    ready: !params.isOutOfStock && (params.optionGroupsLength === 0 || (params.hasCompleteOptions && !params.hasUnavailableSelectedVariant)),
+    title: params.isOutOfStock
+      ? params.t('pages.productDetail.decisionStockOutTitle')
+      : params.optionGroupsLength === 0
+        ? params.t('pages.productDetail.decisionNoOptionsTitle')
+        : params.hasCompleteOptions && !params.hasUnavailableSelectedVariant
+          ? params.t('pages.productDetail.decisionOptionsReadyTitle')
+          : params.t('pages.productDetail.decisionOptionsMissingTitle'),
+    text: params.isOutOfStock
+      ? params.t('pages.productDetail.decisionStockOutText')
+      : params.optionGroupsLength === 0
+        ? params.t('pages.productDetail.decisionNoOptionsText')
+        : params.hasCompleteOptions && !params.hasUnavailableSelectedVariant
+          ? params.t('pages.productDetail.decisionOptionsReadyText')
+          : params.t('pages.productDetail.decisionOptionsMissingText'),
+  },
+  {
+    key: 'stock',
+    ready: !params.isOutOfStock && !params.isLowStock,
+    title: params.isOutOfStock
+      ? params.t('pages.productDetail.decisionStockOutTitle')
+      : params.isLowStock
+        ? params.t('pages.productDetail.decisionStockLowTitle')
+        : params.t('pages.productDetail.decisionStockReadyTitle'),
+    text: params.isOutOfStock
+      ? params.t('pages.productDetail.decisionStockOutText')
+      : params.isLowStock
+        ? params.t('pages.productDetail.decisionStockLowText', { count: params.lowStockCount as number, stock: params.stockLabel })
+        : params.t('pages.productDetail.decisionStockReadyText', { stock: params.stockLabel }),
+  },
+  {
+    key: 'delivery',
+    ready: Boolean(params.deliveryEnabled),
+    title: params.t('pages.productDetail.trustShippingTitle'),
+    text: params.deliveryEnabled
+      ? params.t('pages.productDetail.deliveryPromise', { window: params.deliveryWindowText || '' })
+      : params.productShippingText,
+  },
+]);
+
+export const buildProductDetailPurchaseReadinessData = (params: {
+  t: ProductDetailTranslate;
+  isOutOfStock: boolean;
+  isLowStock: boolean;
+  purchaseSelectionBlocked: boolean;
+  optionGroupsLength: number;
+  hasUnavailableSelectedVariant: boolean;
+  hasCompleteOptions: boolean;
+  stockLabel: string | number;
+  lowStockCount: number | null;
+  deliveryEnabled: boolean;
+  deliveryWindowText?: string;
+  productShippingText: React.ReactNode;
+  purchaseSavings: number;
+  purchaseSubtotal: number;
+  formatMoney: (value: number) => string;
+}): ProductDetailChecklistItemData[] => ([
+  {
+    key: 'selection',
+    // Commercial trust: sold-out SKUs must never claim "ready to add" / direct-add copy.
+    ready: !params.isOutOfStock && !params.purchaseSelectionBlocked,
+    title: params.isOutOfStock
+      ? params.t('pages.productDetail.decisionStockOutTitle')
+      : params.optionGroupsLength === 0
+        ? params.t('pages.productDetail.decisionNoOptionsTitle')
+        : params.purchaseSelectionBlocked
+          ? params.t('pages.productDetail.decisionOptionsMissingTitle')
+          : params.t('pages.productDetail.decisionOptionsReadyTitle'),
+    text: params.isOutOfStock
+      ? params.t('pages.productDetail.decisionStockOutText')
+      : params.optionGroupsLength === 0
+        ? params.t('pages.productDetail.decisionNoOptionsText')
+        : params.hasUnavailableSelectedVariant
+          ? params.t('pages.productDetail.selectedVariantUnavailable')
+          : params.hasCompleteOptions
+            ? params.t('pages.productDetail.selectedVariantStock', { stock: params.stockLabel })
+            : params.t('pages.productDetail.selectedOptionsEmpty'),
+  },
+  {
+    key: 'stock',
+    ready: !params.isOutOfStock && !params.isLowStock,
+    title: params.isOutOfStock
+      ? params.t('pages.productDetail.decisionStockOutTitle')
+      : params.isLowStock
+        ? params.t('pages.productDetail.decisionStockLowTitle')
+        : params.t('pages.productDetail.decisionStockReadyTitle'),
+    text: params.isOutOfStock
+      ? params.t('pages.productDetail.decisionStockOutText')
+      : params.isLowStock
+        ? params.t('pages.productDetail.decisionStockLowText', { count: params.lowStockCount as number, stock: params.stockLabel })
+        : params.t('pages.productDetail.decisionStockReadyText', { stock: params.stockLabel }),
+  },
+  {
+    key: 'delivery',
+    ready: Boolean(params.deliveryEnabled),
+    title: params.t('pages.productDetail.trustShippingTitle'),
+    text: params.deliveryEnabled
+      ? params.t('pages.productDetail.deliveryPromise', { window: params.deliveryWindowText || '' })
+      : params.productShippingText,
+  },
+  {
+    key: 'value',
+    ready: true,
+    title: params.purchaseSavings > 0
+      ? params.t('pages.productDetail.purchaseSavings')
+      : params.t('pages.productDetail.purchaseSubtotal'),
+    text: params.purchaseSavings > 0
+      ? params.formatMoney(params.purchaseSavings)
+      : params.formatMoney(params.purchaseSubtotal),
+  },
+]);
+
+export const buildProductDetailFaqItems = (t: ProductDetailTranslate) => ([
+  {
+    question: t('pages.productDetail.faqQuietQuestion'),
+    answer: t('pages.productDetail.faqQuietAnswer'),
+  },
+  {
+    question: t('pages.productDetail.faqFilterQuestion'),
+    answer: t('pages.productDetail.faqFilterAnswer'),
+  },
+  {
+    question: t('pages.productDetail.faqReplaceQuestion'),
+    answer: t('pages.productDetail.faqReplaceAnswer'),
+  },
+]);
+
+
+export const renderProductDetailAmountText = (label: string, amount: string): React.ReactNode => {
+  const parts = label.split(amount);
+  if (parts.length <= 1) return label;
+  return (
+    <span className="product-detail__amountPhrase commerce-atomic">
+      {parts.map((part, index) => (
+        <React.Fragment key={`${part}-${index}`}>
+          {part}
+          {index < parts.length - 1 ? <span className="commerce-money">{amount}</span> : null}
+        </React.Fragment>
+      ))}
+    </span>
+  );
+};
+
+export const buildProductDetailShippingCopy = (params: {
+  t: ProductDetailTranslate;
+  freeShippingThreshold: number;
+  formatMoney: (value: number) => string;
+  productFreeShipping?: boolean | null;
+  productShipping?: string | null;
+}) => {
+  const freeShippingThresholdAmount = params.formatMoney(params.freeShippingThreshold);
+  const productFreeShippingText = params.freeShippingThreshold > 0
+    ? renderProductDetailAmountText(
+      params.t('pages.productDetail.freeShippingOver', { amount: freeShippingThresholdAmount }),
+      freeShippingThresholdAmount,
+    )
+    : params.t('pages.productDetail.freeShipping');
+  const productShippingText = params.productFreeShipping
+    ? params.t('pages.productDetail.freeShipping')
+    : params.productShipping || productFreeShippingText;
+  return {
+    freeShippingThresholdAmount,
+    productFreeShippingText,
+    productShippingText,
+  };
+};
+
+export const resolveProductDetailPurchaseModeLabel = (
+  purchaseMode: 'once' | 'bundle',
+  t: ProductDetailTranslate,
+) => (
+  purchaseMode === 'bundle'
+    ? t('bundle.bundleDeal')
+    : t('pages.productDetail.oneTimePurchase')
+);
+
+export const resolveProductDetailCartActionLabels = (params: {
+  purchaseSelectionBlocked: boolean;
+  selectOptionsActionLabel: string;
+  addCartActionLabel: string;
+}) => {
+  const addToCartActionLabel = params.purchaseSelectionBlocked
+    ? params.selectOptionsActionLabel
+    : params.addCartActionLabel;
+  const mobileCartBlockedReason = params.purchaseSelectionBlocked
+    ? params.selectOptionsActionLabel
+    : addToCartActionLabel;
+  return {
+    addToCartActionLabel,
+    mobileCartBlockedReason,
+  };
+};
+
+export type ProductDetailSelectedOptionTag = {
+  name: string;
+  label: string;
+  value: string;
+  valueLabel: string;
+};
+
+export const buildProductDetailSelectedOptionTags = (
+  optionGroups: ProductOptionGroup[],
+  selectedOptions: Record<string, string>,
+  language: string,
+): ProductDetailSelectedOptionTag[] => optionGroups
+  .map((group) => ({
+    name: group.name,
+    label: getLocalizedOptionLabel(group.name, language),
+    value: selectedOptions[group.name],
+    valueLabel: getLocalizedOptionLabel(selectedOptions[group.name] || '', language),
+  }))
+  .filter((item): item is ProductDetailSelectedOptionTag => Boolean(item.value));
+
+export const buildProductDetailFitGuidance = (params: {
+  t: ProductDetailTranslate;
+  language: string;
+  optionGroups: ProductOptionGroup[];
+  sizeCalculatorBreed: string;
+  sizeCalculatorWeight: string;
+  hasCompleteOptions: boolean;
+}) => {
+  const sizeOptionGroup = params.optionGroups.find((group) => isSizeOptionName(group.name));
+  const sizeCalculatorWeightKg = resolveSizeCalculatorWeightKg(params.sizeCalculatorWeight);
+  const { recommendedSize, recommendedSizeValue } = resolveRecommendedSizeMatch({
+    sizeOptionGroup,
+    sizeCalculatorBreed: params.sizeCalculatorBreed,
+    sizeCalculatorWeightKg,
+  });
+  const recommendedSizeLabel = recommendedSizeValue
+    ? getLocalizedOptionLabel(recommendedSizeValue, params.language)
+    : getLocalizedOptionLabel(String(recommendedSize || ''), params.language);
+  const fitConfidenceText = sizeOptionGroup
+    ? recommendedSizeValue
+      ? params.t('pages.productDetail.fitConfidenceMatched', { size: recommendedSizeLabel })
+      : params.hasCompleteOptions
+        ? params.t('pages.productDetail.fitConfidenceSelected')
+        : params.t('pages.productDetail.fitConfidenceNeedSize')
+    : params.t('pages.productDetail.fitConfidenceNoSize');
+  return {
+    sizeOptionGroup,
+    sizeCalculatorWeightKg,
+    recommendedSize,
+    recommendedSizeValue,
+    recommendedSizeLabel,
+    fitConfidenceText,
+  };
+};
+
+export const buildProductDetailQuantityLabels = (
+  t: ProductDetailTranslate,
+  quantity: number,
+) => ({
+  quantityValueLabel: t('pages.productDetail.quantityValue', { quantity }),
+  decreaseQuantityLabel: t('pages.productDetail.decreaseQuantity', { quantity }),
+  increaseQuantityLabel: t('pages.productDetail.increaseQuantity', { quantity }),
+});
+
+export const shouldShowProductDetailDecisionChecklist = (params: {
+  optionsMissing: boolean;
+  hasUnavailableSelectedVariant: boolean;
+  isOutOfStock: boolean;
+  isLowStock: boolean;
+}) => (
+  params.optionsMissing
+  || params.hasUnavailableSelectedVariant
+  || params.isOutOfStock
+  || params.isLowStock
+);
+
+export const resolveProductDetailChecklistIconPath = (key: string) => {
+  if (key === 'options' || key === 'selection') return SI.checkCircle;
+  if (key === 'stock') return SI.safety;
+  if (key === 'delivery') return SI.truck;
+  return SI.thunder;
 };

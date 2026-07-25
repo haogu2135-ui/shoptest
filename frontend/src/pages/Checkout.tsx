@@ -2,12 +2,10 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { ShopIcon, SI } from '../components/ShopIcon';
 import { Form } from 'antd';
-import ShopModal from '../components/ShopModal';
 import ShopButton from '../components/ShopButton';
-import ShopConfirm from '../components/ShopConfirm';
 import type { FormInstance } from 'antd/es/form';
 import { useNavigate } from 'react-router-dom';
-import type { CartItem, CouponQuote, OrderCustomer, PaymentCustomer, PaymentChannel, ProductPublic as Product, UserAddress, UserCoupon } from '../types';
+import type { CartItem, CouponQuote, OrderCustomer, PaymentCustomer, PaymentChannel, ProductPublic as Product, UserAddress } from '../types';
 import { useLanguage, type Language } from '../i18n';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useCheckoutPaymentLifecycle } from '../hooks/useCheckoutPaymentLifecycle';
@@ -20,21 +18,17 @@ import { useCheckoutRegionCascader } from '../hooks/useCheckoutRegionCascader';
 import { useCheckoutGiftCelebration } from '../hooks/useCheckoutGiftCelebration';
 import { useCheckoutOrderActions } from '../hooks/useCheckoutOrderActions';
 import { useCheckoutConversionCoach } from '../hooks/useCheckoutConversionCoach';
+import { useCheckoutCartTotals, useCheckoutDerivedTotals } from '../hooks/useCheckoutDerivedTotals';
 import { useDocumentMeta } from '../hooks/useDocumentMeta';
 import { createPaymentMethodDetails } from '../utils/paymentMethods';
 import { useMarket } from '../hooks/useMarket';
 import { formatSelectedSpecs } from '../utils/selectedSpecs';
 import { getGuestCartItems } from '../utils/guestCart';
-import { conversionConfig, getDeliveryPromise } from '../utils/conversionConfig';
-import { getGiftThreshold, getNearestCartBenefitTarget } from '../utils/cartBenefits';
 import { clearCheckoutCartItemIds, hasAuthenticatedCartSession, readCheckoutCartItemIds, syncCheckoutCartItemIds } from '../utils/cartSession';
-import { productImageFallback, resolveProductImage } from '../utils/productMedia';
 import { getApiErrorMessage } from '../utils/apiError';
-import { deriveCartShippingSummary, getCartLineAmount, roundCartMoney } from '../utils/cartUi';
 import { dispatchDomEvent } from '../utils/domEvents';
 import { saveGuestSupportContext } from '../utils/guestSupportContext';
 import { setSessionStorageItem, removeSessionStorageItem } from '../utils/safeStorage';
-import ShopBreadcrumb from '../components/ShopBreadcrumb';
 import {
   CheckoutCartLoadErrorShell,
   CheckoutEmptyShell,
@@ -42,28 +36,13 @@ import {
   CheckoutPaymentActiveShell,
   CheckoutPaymentPendingShell,
 } from '../components/checkout/CheckoutShellStates';
-import {
-  CheckoutAddressSection,
-  CheckoutCouponAndSummarySection,
-  CheckoutExpressPaymentGrid,
-  CheckoutGuestContactSection,
-  CheckoutItemsCard,
-  CheckoutSubmitPaymentSection,
-} from '../components/checkout/CheckoutFormSections';
-import {
-  CheckoutBenefitStrip,
-  CheckoutConfirmationBand,
-  CheckoutHeroSection,
-  CheckoutSummaryStrip,
-  CheckoutSupportCoachPanel,
-  CheckoutTrustBar,
-} from '../components/checkout/CheckoutConversionSections';
+import { CheckoutMainShell } from '../components/checkout/CheckoutMainShell';
 import {
   buildCheckoutFieldErrorMap,
+  buildCheckoutHeroHighlights,
+  buildCheckoutSummaryCards,
   buildCheckoutValidationAnnouncement,
   checkoutGuestDraftFieldNames,
-  estimateCouponDiscount,
-  findBestCoupon,
   firstCheckoutRegionPath,
   firstFilledCheckoutText,
   getRecommendedPaymentMethod,
@@ -82,10 +61,10 @@ import {
   normalizeCheckoutPostalCode,
   normalizeCheckoutText,
   normalizeLikelyCheckoutPhone,
+  resolveCheckoutSubmitState,
   toSafeMoney,
   readCheckoutGuestDraftFields,
   readCheckoutPendingOrder,
-  describeCheckoutCoupon,
   type CheckoutFormFieldName,
   type CheckoutValidationField,
   type CheckoutFormSnapshot,
@@ -130,8 +109,6 @@ export {
   getOrCreateCheckoutIdempotencyKey,
 } from '../utils/checkoutHelpers';
 
-const checkoutImageFallback = productImageFallback;
-const resolveCheckoutImage = resolveProductImage;
 const readGuestCartSnapshot = () => {
   const items = getGuestCartItems();
   return Array.isArray(items) ? items : [];
@@ -501,13 +478,7 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
   });
 
 
-  const cartTotal = useMemo(() => roundCartMoney(cartItems.reduce((sum, item) => {
-    return sum + getCartLineAmount(item);
-  }, 0)), [cartItems]);
-  const checkoutItemCount = useMemo(
-    () => cartItems.reduce((sum, item) => sum + item.quantity, 0),
-    [cartItems],
-  );
+  const { cartTotal, checkoutItemCount } = useCheckoutCartTotals(cartItems);
 
   useCheckoutCouponQuote({
     cartItems,
@@ -525,84 +496,47 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
     showCheckoutMessage,
   });
 
-  const estimatedShippingSummary = useMemo(
-    () => deriveCartShippingSummary(cartItems, market.freeShippingThreshold, cartTotal),
-    [cartItems, cartTotal, market.freeShippingThreshold],
-  );
-  const guestShippingFee = estimatedShippingSummary.freeShippingUnlocked ? 0 : market.defaultShippingFee;
-  const requiresBackendShippingQuote = !isGuestCheckout && cartItems.length > 0;
-  const shippingQuoteFailed = requiresBackendShippingQuote && couponQuoteStatus === 'error';
-  const shippingQuoteFallbackActive = shippingQuoteFailed && !selectedUserCouponId;
-  const shippingQuoteUnavailable = shippingQuoteFailed && !shippingQuoteFallbackActive;
-  const shippingQuoteReady = !requiresBackendShippingQuote
-    || (couponQuoteStatus === 'ready' && Boolean(couponQuote))
-    || shippingQuoteFallbackActive;
-  const shippingQuotePending = requiresBackendShippingQuote && !shippingQuoteReady && !shippingQuoteUnavailable;
-  const shippingFee = shippingQuoteReady ? toSafeMoney(couponQuote?.shippingFee ?? guestShippingFee) : 0;
-  const freeShippingUnlocked = shippingQuoteReady
-    ? shippingFee <= 0
-    : estimatedShippingSummary.freeShippingUnlocked;
-  const payableAmount = shippingQuoteReady
-    ? Math.max(0, toSafeMoney(couponQuote?.payableAmount ?? (cartTotal + shippingFee)))
-    : cartTotal;
-  const discountAmount = Math.min(cartTotal, toSafeMoney(couponQuote?.discountAmount ?? 0));
-  const availableCoupons = useMemo(
-    () => (couponQuote && Array.isArray(couponQuote.availableCoupons) ? couponQuote.availableCoupons : []),
-    [couponQuote],
-  );
-  const shippingPolicyText = shippingQuotePending
-    ? t('pages.checkout.shippingFeeCalculating')
-    : shippingQuoteFallbackActive
-      ? t('pages.checkout.shippingFeeFallbackApplied', { fee: formatMoney(shippingFee) })
-      : shippingQuoteUnavailable
-        ? t('pages.checkout.shippingFeeUnavailable')
-        : shippingFee <= 0
-          ? t('pages.checkout.shippingPolicyFreeApplied')
-          : market.freeShippingThreshold > 0
-            ? t('pages.checkout.shippingPolicyStandardWithThreshold', {
-              fee: formatMoney(market.defaultShippingFee),
-              threshold: formatMoney(market.freeShippingThreshold),
-            })
-            : t('pages.checkout.shippingPolicyStandardOnly', { fee: formatMoney(market.defaultShippingFee) });
-  const shippingQuoteAlertDescription = shippingQuoteFallbackActive
-    ? (couponQuoteErrorMessage || t('pages.checkout.shippingFeeFallbackDescription'))
-    : shippingQuoteUnavailable
-      ? (couponQuoteErrorMessage || t('pages.checkout.shippingFeeUnavailableDescription'))
-      : t('pages.checkout.shippingFeeCalculatingDescription');
-  const shippingFeeText = shippingQuotePending
-    ? t('pages.checkout.shippingFeeCalculatingShort')
-    : shippingQuoteUnavailable
-      ? t('pages.checkout.shippingFeeUnavailableShort')
-      : formatMoney(shippingFee);
-  const payableAmountText = shippingQuoteReady ? formatMoney(payableAmount) : shippingFeeText;
-  const selectedCoupon = useMemo(
-    () => availableCoupons.find((coupon) => coupon.id === selectedUserCouponId),
-    [availableCoupons, selectedUserCouponId],
-  );
-  const bestCouponCandidate = useMemo(
-    () => findBestCoupon(availableCoupons, cartTotal),
-    [availableCoupons, cartTotal],
-  );
-  const selectedIsBestCoupon = Boolean(
-    selectedUserCouponId && bestCouponCandidate?.coupon.id === selectedUserCouponId,
-  );
-  const freeShippingRemaining = freeShippingUnlocked ? 0 : estimatedShippingSummary.remainingAmount;
-  const freeShippingPercent = freeShippingUnlocked ? 100 : estimatedShippingSummary.progressPercent;
-  const deliveryPromise = useMemo(
-    () => getDeliveryPromise({ currency, locale: market.locale }),
-    [currency, market.locale],
-  );
-  const giftThreshold = getGiftThreshold(currency);
-  const giftEligible = conversionConfig.giftAtCheckout.enabled && giftThreshold > 0;
-  const giftRemaining = Math.max(0, giftThreshold - cartTotal);
-  const giftUnlocked = giftThreshold > 0 && giftRemaining <= 0;
-  const giftProgress = giftThreshold > 0 ? Math.min(100, Math.round((cartTotal / giftThreshold) * 100)) : 100;
-  const giftName = t(conversionConfig.giftAtCheckout.giftNameKey);
-  const giftConfirmActionLabel = `${t('common.confirm')}: ${t('pages.checkout.giftModalTitle')}, ${giftName}`;
-  const addOnTarget = useMemo(
-    () => getNearestCartBenefitTarget(cartTotal, freeShippingUnlocked ? 0 : market.freeShippingThreshold, currency),
-    [cartTotal, currency, freeShippingUnlocked, market.freeShippingThreshold],
-  );
+  const {
+    requiresBackendShippingQuote,
+    shippingQuoteFallbackActive,
+    shippingQuoteUnavailable,
+    shippingQuoteReady,
+    shippingQuotePending,
+    freeShippingUnlocked,
+    discountAmount,
+    freeShippingRemaining,
+    freeShippingPercent,
+    availableCoupons,
+    shippingPolicyText,
+    shippingQuoteAlertDescription,
+    shippingFeeText,
+    payableAmountText,
+    selectedCoupon,
+    selectedIsBestCoupon,
+    deliveryPromise,
+    giftEligible,
+    giftRemaining,
+    giftUnlocked,
+    giftProgress,
+    giftName,
+    giftConfirmActionLabel,
+    addOnTarget,
+    calculateCouponDiscount,
+    checkoutCouponSelectOptions,
+  } = useCheckoutDerivedTotals({
+    cartItems,
+    cartTotal,
+    market,
+    currency,
+    isGuestCheckout,
+    couponQuote,
+    couponQuoteStatus,
+    selectedUserCouponId,
+    couponQuoteErrorMessage,
+    formatMoney,
+    t,
+  });
+
   const selectedSavedAddress = selectedAddressId === 'new'
     ? null
     : addresses.find((address) => String(address.id) === String(selectedAddressId)) || null;
@@ -709,93 +643,40 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
     : `${t('pages.checkout.nextActionReadyTitle')}: ${checkoutSubmitActionLabel}`;
   const checkoutCouponSelectLabel = `${t('pages.checkout.coupon')}: ${t('pages.checkout.selectCoupon')}`;
 
-  const renderSubmitWithAmount = () => {
-    if (!shippingQuoteReady) {
-      return <span className="checkout-page__submitAmountPending">{shippingFeeText}</span>;
-    }
-    const amountText = payableAmountText;
-    const label = t('pages.checkout.submitWithAmount', { amount: amountText });
-    const parts = label.split(amountText);
-    if (parts.length <= 1) {
-      return label;
-    }
-    return (
-      <span className="checkout-page__submitAmountLabel">
-        {parts.map((part, index) => (
-          <React.Fragment key={`${part}-${index}`}>
-            {part}
-            {index < parts.length - 1 ? <span className="commerce-money">{amountText}</span> : null}
-          </React.Fragment>
-        ))}
-      </span>
-    );
-  };
-  const checkoutHeroHighlights = [
-    {
-      key: 'payable',
-      title: t('pages.checkout.payable'),
-      text: payableAmountText,
-    },
-    {
-      key: 'shipping',
-      title: t('pages.checkout.shippingFee'),
-      text: !shippingQuoteReady
-        ? shippingFeeText
-        : freeShippingRemaining > 0
-        ? t('pages.checkout.savingsFreeShippingText', { amount: formatMoney(freeShippingRemaining) })
-        : t('pages.checkout.savingsFreeShippingUnlocked'),
-    },
-    {
-      key: 'payment',
-      title: t('pages.checkout.paymentMethod'),
-      text: selectedPaymentDetail?.title || t('pages.checkout.paymentConfidenceDefault'),
-    },
-  ];
-  const checkoutSummaryCards = [
-    {
-      key: 'payable',
-      title: t('pages.checkout.payable'),
-      text: payableAmountText,
-    },
-    {
-      key: 'shipping',
-      title: !shippingQuoteReady
-        ? shippingPolicyText
-        : freeShippingRemaining > 0
-        ? t('pages.checkout.readinessFreeShippingGap', { amount: formatMoney(freeShippingRemaining) })
-        : t('pages.cart.freeShippingUnlocked'),
-      text: shippingQuoteReady ? `${freeShippingPercent}%` : shippingFeeText,
-    },
-    {
-      key: 'payment',
-      title: t('pages.checkout.paymentMethod'),
-      text: selectedPaymentDetail?.title || t('pages.checkout.paymentConfidenceDefault'),
-    },
-  ];
-  const checkoutSubmitDisabled = submitting
-    || !hasCheckoutItems
-    || cartItems.some((item) => !isPurchasable(item))
-    || !selectedAddressReady
-    || !shippingQuoteReady
-    || !paymentMethodsAvailable
-    || !watchedPaymentMethod;
-  const checkoutSubmitDisabledReason = submitting
-    ? t('common.loading')
-    : !hasCheckoutItems
-      ? t('pages.checkout.emptyCart')
-      : cartItems.some((item) => !isPurchasable(item))
-        ? t('pages.checkout.unavailableSelected')
-        : !selectedAddressReady
-          ? t('pages.checkout.addressRequired')
-          : !shippingQuoteReady
-            ? (shippingQuoteUnavailable
-              ? t('pages.checkout.shippingFeeUnavailableDescription')
-              : t('pages.checkout.shippingFeeCalculatingDescription'))
-            : !paymentMethodsAvailable
-              ? t('pages.checkout.paymentUnavailableDescription')
-              : !watchedPaymentMethod
-                ? t('pages.checkout.paymentRequired')
-                : '';
+  const checkoutHeroHighlights = buildCheckoutHeroHighlights({
+    t,
+    formatMoney,
+    payableAmountText,
+    shippingQuoteReady,
+    shippingFeeText,
+    freeShippingRemaining,
+    selectedPaymentTitle: selectedPaymentDetail?.title,
+  });
+  const checkoutSummaryCards = buildCheckoutSummaryCards({
+    t,
+    formatMoney,
+    payableAmountText,
+    shippingQuoteReady,
+    shippingPolicyText,
+    freeShippingRemaining,
+    freeShippingPercent,
+    shippingFeeText,
+    selectedPaymentTitle: selectedPaymentDetail?.title,
+  });
+  const {
+    checkoutSubmitDisabled,
+    checkoutSubmitDisabledReason,
+  } = resolveCheckoutSubmitState({
+    t,
+    submitting,
+    hasCheckoutItems,
+    cartItems,
+    selectedAddressReady,
+    shippingQuoteReady,
+    shippingQuoteUnavailable,
+    paymentMethodsAvailable,
+    watchedPaymentMethod,
+  });
   const checkoutSubmitTooltip = checkoutSubmitDisabled && checkoutSubmitDisabledReason
     ? checkoutSubmitDisabledReason
     : checkoutSubmitActionLabel;
@@ -806,25 +687,6 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
     setGiftCelebrated,
     setGiftCelebrationOpen,
   });
-
-  const calculateCouponDiscount = (coupon: UserCoupon) => estimateCouponDiscount(coupon, cartTotal);
-
-
-  const describeCoupon = (coupon: UserCoupon) => describeCheckoutCoupon(coupon, cartTotal, formatMoney, t);
-  const checkoutCouponSelectOptions = useMemo(
-    () => availableCoupons.map((coupon) => {
-      const couponDiscount = calculateCouponDiscount(coupon);
-      return {
-        value: String(coupon.id),
-        label: couponDiscount > 0
-          ? `${describeCoupon(coupon)} - ${t('pages.checkout.couponSaveAmount', { amount: formatMoney(couponDiscount) })}${bestCouponCandidate?.coupon.id === coupon.id ? ` - ${t('pages.checkout.bestCoupon')}` : ''}`
-          : describeCoupon(coupon),
-        disabled: couponDiscount <= 0,
-      };
-    }),
-    [availableCoupons, bestCouponCandidate?.coupon.id, cartTotal, formatMoney, t],
-  );
-
 
   const {
     addSuggestedProduct,
@@ -1012,257 +874,120 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
     );
   }
 
-  return (
-    <div className={`checkout-page checkout-page--${language}`}>
-      <ShopBreadcrumb
-        ariaLabel={t('pages.checkout.title')}
-        items={[
-          { key: 'home', label: t('nav.ariaHome'), path: '/' },
-          { key: 'cart', label: t('pages.cart.title'), path: '/cart' },
-          { key: 'checkout', label: t('pages.checkout.title') },
-        ]}
-      />
-      <CheckoutHeroSection t={t} highlights={checkoutHeroHighlights} />
-      <CheckoutSummaryStrip cards={checkoutSummaryCards} />
+  const shellProps = {
+    language,
+    t,
+    checkoutHeroHighlights,
+    checkoutSummaryCards,
+    checkoutBlockingAction,
+    checkoutNextAction,
+    checkoutReadinessScore,
+    checkoutItemCount,
+    payableAmountText,
+    shippingQuoteReady,
+    selectedPaymentDetail,
+    submitting,
+    checkoutSubmitDisabled,
+    checkoutConfirmationActionLabel,
+    checkoutSubmitActionLabel,
+    checkoutSubmitTooltip,
+    checkoutNextActionLabel,
+    shippingFeeText,
+    handleCheckoutNextAction,
+    form,
+    paymentMethodsAvailable,
+    paymentChannelsError,
+    paymentUnavailableRecoveryActions,
+    paymentMethodDetails,
+    watchedPaymentMethod,
+    recommendedPaymentMethod,
+    selectCheckoutPaymentMethod,
+    handlePaymentMethodKeyDown,
+    freeShippingRemaining,
+    freeShippingPercent,
+    formatMoney,
+    deliveryPromise,
+    giftEligible,
+    giftUnlocked,
+    giftRemaining,
+    giftProgress,
+    giftName,
+    giftCelebrationOpen,
+    setGiftCelebrationOpen,
+    giftConfirmActionLabel,
+    rollbackConfirmOpen,
+    cancelingPayment,
+    createdOrder,
+    handleRollbackConfirm,
+    setRollbackConfirmOpen,
+    supportPanelOpen,
+    handleSupportPanelToggle,
+    savingsCoachItems,
+    addOnTarget,
+    cartItems,
+    checkoutSavingsAddOnsActionLabel,
+    scrollToAddOns,
+    addSuggestedProduct,
+    couponOpportunity,
+    couponOpportunityActionLabel: checkoutCouponOpportunityActionLabel,
+    handleCouponOpportunityAction,
+    checkoutReadinessItems,
+    checkoutReadinessActionLabel,
+    checkoutCoachActionLabel,
+    checkoutCartItemName,
+    navigate,
+    checkoutFormSnapshot,
+    handleSubmit,
+    closeCheckoutRegionCascader,
+    updateCheckoutValidationAnnouncement,
+    focusFirstCheckoutValidationError,
+    mergeCheckoutFormSnapshot,
+    handleCheckoutFormFocusCapture,
+    handleCheckoutFormPointerDownCapture,
+    checkoutStatusAnnouncement,
+    checkoutValidationAnnouncement,
+    isGuestCheckout,
+    renderCheckoutFieldErrorExtra,
+    addresses,
+    addressLoadFailed,
+    selectedAddressId,
+    checkoutAddressGroupLabel,
+    regionOptions,
+    regionOptionsLoading,
+    checkoutRegionInputLabel,
+    checkoutRegionCascaderOpen,
+    setCheckoutReloadKey,
+    setSelectedAddressId,
+    loadCheckoutRegionOptions,
+    setCheckoutRegionCascaderVisibility,
+    handleCheckoutPhoneBlur,
+    cartTotal,
+    discountAmount,
+    checkoutCouponSelectLabel,
+    checkoutCouponSelectOptions,
+    selectedUserCouponId,
+    couponSelectionErrorMessage,
+    selectedCoupon,
+    selectedIsBestCoupon,
+    couponQuote,
+    availableCoupons,
+    calculateCouponDiscount,
+    shippingPolicyText,
+    shippingQuotePending,
+    shippingQuoteUnavailable,
+    shippingQuoteFallbackActive,
+    shippingQuoteAlertDescription,
+    couponAutoSelectedQuoteRef,
+    setCouponManuallyChanged,
+    setCouponQuoteErrorMessage,
+    setCouponSelectionErrorMessage,
+    setSelectedUserCouponId,
+    paymentChannelsLoading,
+    reloadPaymentChannels,
+    openSupport,
+  };
 
-      <CheckoutConfirmationBand
-        t={t}
-        checkoutBlockingAction={checkoutBlockingAction}
-        checkoutNextAction={checkoutNextAction}
-        checkoutReadinessScore={checkoutReadinessScore}
-        checkoutItemCount={checkoutItemCount}
-        payableAmountText={payableAmountText}
-        shippingQuoteReady={shippingQuoteReady}
-        selectedPaymentTitle={selectedPaymentDetail?.title}
-        submitting={submitting}
-        checkoutSubmitDisabled={checkoutSubmitDisabled}
-        checkoutConfirmationActionLabel={checkoutConfirmationActionLabel}
-        checkoutSubmitActionLabel={checkoutSubmitActionLabel}
-        checkoutSubmitTooltip={checkoutSubmitTooltip}
-        checkoutNextActionLabel={checkoutNextActionLabel}
-        shippingFeeText={shippingFeeText}
-        onNextAction={handleCheckoutNextAction}
-        onSubmit={() => form.submit()}
-      />
-
-      <CheckoutTrustBar t={t} />
-
-      <CheckoutExpressPaymentGrid
-        t={t}
-        paymentMethodsAvailable={paymentMethodsAvailable}
-        paymentChannelsError={paymentChannelsError}
-        paymentUnavailableRecoveryActions={paymentUnavailableRecoveryActions}
-        paymentMethodDetails={paymentMethodDetails}
-        watchedPaymentMethod={watchedPaymentMethod}
-        recommendedPaymentMethod={recommendedPaymentMethod}
-        onSelectMethod={selectCheckoutPaymentMethod}
-        onMethodKeyDown={handlePaymentMethodKeyDown}
-      />
-
-      <CheckoutBenefitStrip
-        t={t}
-        freeShippingRemaining={freeShippingRemaining}
-        freeShippingPercent={freeShippingPercent}
-        formatMoney={formatMoney}
-        deliveryPromise={deliveryPromise}
-        giftEligible={giftEligible}
-        giftUnlocked={giftUnlocked}
-        giftRemaining={giftRemaining}
-        giftProgress={giftProgress}
-        giftName={giftName}
-      />
-
-      <ShopModal
-        open={giftCelebrationOpen}
-        title={t('pages.checkout.giftModalTitle')}
-        onClose={() => setGiftCelebrationOpen(false)}
-        footer={<ShopButton type="primary" aria-label={giftConfirmActionLabel} title={giftConfirmActionLabel} onClick={() => setGiftCelebrationOpen(false)}>{t('common.confirm')}</ShopButton>}
-        className="profile-mobile-safe-modal checkout-page__giftCelebrationModal"
-        rootClassName="checkout-page__giftCelebrationModalRoot"
-        closeLabel={t('common.close', { defaultValue: 'Close' })}
-        ariaLabel={t('pages.checkout.giftModalTitle')}
-      >
-        <div className="checkout-page__giftModal">
-          <span className="checkout-page__giftIcon"><ShopIcon path={SI.gift} /></span>
-          <span className="checkout-page__text">{t('pages.checkout.giftModalText', { gift: t(conversionConfig.giftAtCheckout.giftNameKey) })}</span>
-        </div>
-      </ShopModal>
-      <ShopConfirm
-        open={rollbackConfirmOpen}
-        title={t('pages.checkout.rollbackPaymentTitle')}
-        description={t('pages.checkout.rollbackPaymentContent')}
-        okText={t('pages.checkout.rollbackPaymentAction')}
-        cancelText={t('common.cancel')}
-        confirmLoading={cancelingPayment}
-        okButtonProps={{
-          danger: true,
-          'aria-label': createdOrder
-            ? `${t('pages.checkout.rollbackPaymentAction')}: ${t('pages.paymentInstructions.orderNo')} ${createdOrder.orderNo || createdOrder.id}, ${formatMoney(createdOrder.totalAmount)}`
-            : t('pages.checkout.rollbackPaymentAction'),
-          title: createdOrder
-            ? `${t('pages.checkout.rollbackPaymentAction')}: ${t('pages.paymentInstructions.orderNo')} ${createdOrder.orderNo || createdOrder.id}, ${formatMoney(createdOrder.totalAmount)}`
-            : t('pages.checkout.rollbackPaymentAction'),
-        }}
-        cancelButtonProps={{
-          'aria-label': `${t('common.cancel')}: ${t('pages.checkout.rollbackPaymentAction')}`,
-          title: `${t('common.cancel')}: ${t('pages.checkout.rollbackPaymentAction')}`,
-        }}
-        className="profile-mobile-safe-modal checkout-page__rollbackConfirmModal"
-        closeLabel={t('common.close', { defaultValue: 'Close' })}
-        onOk={handleRollbackConfirm}
-        onCancel={() => { if (!cancelingPayment) setRollbackConfirmOpen(false); }}
-      />
-
-      <CheckoutSupportCoachPanel
-        t={t}
-        supportPanelOpen={supportPanelOpen}
-        onSupportPanelToggle={handleSupportPanelToggle}
-        checkoutNextAction={checkoutNextAction}
-        checkoutReadinessScore={checkoutReadinessScore}
-        savingsCoachItems={savingsCoachItems}
-        addOnTarget={addOnTarget}
-        cartProductIds={cartItems.map((item) => item.productId)}
-        savingsAddOnsActionLabel={checkoutSavingsAddOnsActionLabel}
-        onScrollToAddOns={scrollToAddOns}
-        onAddSuggestedProduct={addSuggestedProduct}
-        couponOpportunity={couponOpportunity}
-        couponOpportunityActionLabel={checkoutCouponOpportunityActionLabel}
-        onCouponOpportunityAction={handleCouponOpportunityAction}
-        checkoutReadinessItems={checkoutReadinessItems}
-        readinessActionLabel={checkoutReadinessActionLabel}
-        coachActionLabel={checkoutCoachActionLabel}
-        onNextAction={handleCheckoutNextAction}
-      />
-
-      <CheckoutItemsCard
-        t={t}
-        language={language}
-        cartItems={cartItems}
-        checkoutItemCount={checkoutItemCount}
-        cartTotal={cartTotal}
-        formatMoney={formatMoney}
-        resolveImage={(imageUrl) => resolveCheckoutImage(imageUrl || undefined)}
-        imageFallback={checkoutImageFallback}
-        itemName={checkoutCartItemName}
-        onOpenProduct={(productId) => navigate(`/products/${productId}`)}
-      />
-
-      <Form
-        form={form}
-        layout="vertical"
-        initialValues={checkoutFormSnapshot}
-        onFinish={handleSubmit}
-        onFinishFailed={(info) => {
-          closeCheckoutRegionCascader();
-          updateCheckoutValidationAnnouncement(info.errorFields);
-          focusFirstCheckoutValidationError(info.errorFields as CheckoutValidationField[]);
-        }}
-        onFieldsChange={(_, allFields) => updateCheckoutValidationAnnouncement(allFields)}
-        onValuesChange={(changedValues) => {
-          mergeCheckoutFormSnapshot(changedValues, true);
-        }}
-        onFocusCapture={handleCheckoutFormFocusCapture}
-        onPointerDownCapture={handleCheckoutFormPointerDownCapture}
-      >
-        {renderCheckoutStatusLiveRegion()}
-        <div
-          className="checkout-page__validationLiveRegion"
-          role="status"
-          aria-live="polite"
-          aria-atomic="true"
-          aria-label={t('pages.checkout.validationErrorAnnouncementLabel')}
-        >
-          {checkoutValidationAnnouncement}
-        </div>
-        {isGuestCheckout ? (
-          <CheckoutGuestContactSection
-            t={t}
-            fieldErrorExtra={renderCheckoutFieldErrorExtra}
-          />
-        ) : null}
-
-        <CheckoutAddressSection
-          t={t}
-          addresses={addresses}
-          addressLoadFailed={addressLoadFailed}
-          selectedAddressId={selectedAddressId}
-          addressGroupLabel={checkoutAddressGroupLabel}
-          regionOptions={regionOptions}
-          regionOptionsLoading={regionOptionsLoading}
-          regionInputLabel={checkoutRegionInputLabel}
-          regionCascaderOpen={checkoutRegionCascaderOpen}
-          fieldErrorExtra={renderCheckoutFieldErrorExtra}
-          onRetryAddressLoad={() => setCheckoutReloadKey((key) => key + 1)}
-          onSelectAddress={setSelectedAddressId}
-          onRegionOpenChange={(open) => {
-            if (open) void loadCheckoutRegionOptions();
-            setCheckoutRegionCascaderVisibility(open);
-          }}
-          onPhoneBlur={handleCheckoutPhoneBlur}
-          onPostalCodeBlur={(event) => form.setFieldValue('postalCode', normalizeCheckoutPostalCode(event.target.value))}
-        />
-
-        <CheckoutCouponAndSummarySection
-          t={t}
-          isGuestCheckout={isGuestCheckout}
-          formatMoney={formatMoney}
-          cartTotal={cartTotal}
-          discountAmount={discountAmount}
-          couponSelectLabel={checkoutCouponSelectLabel}
-          couponOptions={checkoutCouponSelectOptions}
-          selectedUserCouponId={selectedUserCouponId}
-          couponSelectionErrorMessage={couponSelectionErrorMessage}
-          selectedCouponName={selectedCoupon?.couponName}
-          selectedIsBestCoupon={selectedIsBestCoupon}
-          showCouponRulesNotMet={Boolean(couponQuote && availableCoupons.length > 0 && !availableCoupons.some((coupon) => calculateCouponDiscount(coupon) > 0))}
-          shippingQuoteReady={shippingQuoteReady}
-          shippingFeeText={shippingFeeText}
-          shippingPolicyText={shippingPolicyText}
-          shippingQuotePending={shippingQuotePending}
-          shippingQuoteUnavailable={shippingQuoteUnavailable}
-          shippingQuoteFallbackActive={shippingQuoteFallbackActive}
-          shippingQuoteAlertDescription={shippingQuoteAlertDescription}
-          payableAmountText={payableAmountText}
-          onSelectCoupon={(value) => {
-            couponAutoSelectedQuoteRef.current = null;
-            setCouponManuallyChanged(true);
-            setCouponQuoteErrorMessage(null);
-            setCouponSelectionErrorMessage(null);
-            setSelectedUserCouponId(value ? Number(value) : null);
-          }}
-        />
-
-
-        <CheckoutSubmitPaymentSection
-          t={t}
-          paymentMethodsAvailable={paymentMethodsAvailable}
-          paymentChannelsError={paymentChannelsError}
-          paymentUnavailableRecoveryActions={paymentUnavailableRecoveryActions}
-          selectedPaymentTitle={selectedPaymentDetail?.title}
-          checkoutItemCount={checkoutItemCount}
-          payableAmountText={payableAmountText}
-          shippingQuoteReady={shippingQuoteReady}
-          submitting={submitting}
-          checkoutSubmitDisabled={checkoutSubmitDisabled}
-          checkoutSubmitActionLabel={checkoutSubmitActionLabel}
-          checkoutSubmitTooltip={checkoutSubmitTooltip}
-          submitButtonContent={renderSubmitWithAmount()}
-          checkoutBlockingAction={checkoutBlockingAction}
-          checkoutNextAction={checkoutNextAction}
-          checkoutCoachActionLabel={checkoutCoachActionLabel}
-          checkoutNextActionLabel={checkoutNextActionLabel}
-          checkoutConfirmationActionLabel={checkoutConfirmationActionLabel}
-          paymentChannelsLoading={paymentChannelsLoading}
-          onReloadPaymentChannels={reloadPaymentChannels}
-          onOpenSupport={openSupport}
-          onCart={() => navigate('/cart')}
-          onBrowse={() => navigate('/products')}
-          onCoupons={() => navigate('/coupons')}
-          onNextAction={handleCheckoutNextAction}
-        />
-      </Form>
-    </div>
-  );
+  return <CheckoutMainShell {...shellProps} />;
 };
 
 const Checkout: React.FC = () => {

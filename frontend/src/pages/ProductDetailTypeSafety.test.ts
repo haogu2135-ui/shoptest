@@ -48,7 +48,8 @@ describe('ProductDetail type-safety guard', () => {
     const communitySource = readProductDetailCommunitySource();
     const recommendationSource = readProductDetailRecommendationSource();
     const recommendationsPanel = readProductDetailRecommendationsPanelSource();
-    const surface = `${source}\n${helpersSource}\n${engagementSource}\n${communitySource}\n${recommendationSource}\n${recommendationsPanel}\n${readProductDetailSummarySource()}\n${readProductDetailContentSource()}\n${readProductDetailGallerySource()}\n${readProductDetailNonCriticalSource()}`;
+    const shellSource = require('fs').readFileSync(require('path').resolve(__dirname, 'productDetailShell.tsx'), 'utf8');
+    const surface = `${source}\n${shellSource}\n${helpersSource}\n${engagementSource}\n${communitySource}\n${recommendationSource}\n${recommendationsPanel}\n${readProductDetailSummarySource()}\n${readProductDetailContentSource()}\n${readProductDetailGallerySource()}\n${readProductDetailNonCriticalSource()}`;
 
     expect(surface).not.toMatch(/normalizeProductImages = \(product: any\)|useState<any>|catch \([^)]*: any\)|Product \| any|rec: any|as any\b|window as any\b|any\[\]/);
     expect(source).toContain("from './productDetailHelpers'");
@@ -79,11 +80,11 @@ describe('ProductDetail type-safety guard', () => {
     expect(communitySource).toContain("getApiErrorMessage(err, t('pages.ask.askFailed'), language)");
     expect(readProductDetailRecommendationSource()).toContain("getApiErrorMessage(err, t('messages.addFailed'), language)");
     expect(source).toContain('buildRelatedRecommendations(product, recommendations)');
-    expect(source).toContain('<ProductDetailRecommendations');
-    expect(source).toContain('<ProductDetailSummary');
-    expect(source).toContain('<ProductDetailContent');
+    expect(surface).toContain('<ProductDetailRecommendations');
+    expect(surface).toContain('<ProductDetailSummary');
+    expect(surface).toContain('<ProductDetailContent');
     expect(readProductDetailContentSource()).toContain('export const ProductDetailContent');
-    expect(source).toContain('<ProductDetailGallery');
+    expect(surface).toContain('<ProductDetailGallery');
     expect(readProductDetailSummarySource()).toContain('export const ProductDetailSummary');
     expect(readProductDetailSummarySource()).toContain('export type ProductDetailSummaryProps');
     expect(readProductDetailRecommendationsPanelSource()).toContain('relatedRecommendations.map((rec) =>');

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ShopIcon } from '../components/ShopIcon';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
-import { ShopIcon, SI } from '../components/ShopIcon';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { productApi, wishlistApi } from '../api';
 import { useNavigate } from 'react-router-dom';
@@ -8,11 +8,10 @@ import { useLanguage } from '../i18n';
 import type { CartItem, ProductPublic as Product, PublicReview, ProductQuestionPublic, ReviewableOrder } from '../types';
 import { useMarket } from '../hooks/useMarket';
 import { localizeProduct } from '../utils/localizedProduct';
-import { getLocalizedOptionLabel, isSizeOptionName } from '../utils/localizedProductOptions';
 import { getBundleInfo } from '../utils/bundle';
 import { recordProductView } from '../utils/productViewPreferences';
 import { hasStockAlert } from '../utils/stockAlerts';
-import { conversionConfig, estimatePetSize, getDeliveryPromise, getLowStockCount } from '../utils/conversionConfig';
+import { conversionConfig, getDeliveryPromise } from '../utils/conversionConfig';
 import { getProductOptionGroups, getProductVariants, needsOptionSelection, selectCompatibleProductOption, variantMatchesSelectedOptions } from '../utils/productOptions';
 import { dispatchDomEvent } from '../utils/domEvents';
 import { buildResponsiveImageSrcSet, getOptimizedImageUrl } from '../utils/mediaAssets';
@@ -25,9 +24,6 @@ import { addAppScrollListener } from '../utils/nativeScroll';
 import { useNativeBackHandler } from '../utils/nativeBack';
 import { AUTH_SESSION_CHANGED_EVENT } from '../utils/authEvents';
 import { reportNonBlockingError } from '../utils/nonBlockingError';
-import PageEmpty from '../components/PageEmpty';
-import ShopBreadcrumb from '../components/ShopBreadcrumb';
-import PageError from '../components/PageError';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useDocumentMeta } from '../hooks/useDocumentMeta';
 import {
@@ -38,21 +34,42 @@ import {
   findSelectedProductVariant,
   normalizeProductImages,
   normalizeProductDetailTab,
-  PRODUCT_SIZE_CALCULATOR_MAX_WEIGHT_KG,
   resolveProductPrimaryImage,
   buildCompleteSetItems,
   buildRelatedRecommendations,
+  buildProductDetailActionLabels,
+  buildProductDetailDecisionChecklistData,
+  buildProductDetailFaqItems,
+  buildProductDetailFitGuidance,
+  buildProductDetailPurchaseReadinessData,
+  buildProductDetailQuantityLabels,
+  buildProductDetailSelectedOptionTags,
+  buildProductDetailShippingCopy,
+  buildRecommendedPurchasePath,
+  deriveProductDetailActionBlockState,
+  deriveProductDetailPricing,
+  deriveProductDetailSelectionState,
+  formatLimitedTimeCountdown,
+  renderProductDetailAmountText,
+  resolveBuyNowBlockedReason,
+  resolveMobilePurchaseStatus,
+  resolveProductDetailCartActionLabels,
+  resolveProductDetailChecklistIconPath,
+  resolveProductDetailPurchaseModeLabel,
+  resolveRecommendedPurchaseMode,
+  shouldShowProductDetailDecisionChecklist,
 } from './productDetailHelpers';
 import type {
   PendingProductQuestion,
   ProductDetailTabKey,
   ProductRecommendationCandidate,
 } from './productDetailHelpers';
-import { ProductDetailSkeleton } from './productDetailShell';
-import { ProductDetailRecommendations } from './productDetailRecommendations';
-import { ProductDetailGallery, ProductDetailImagePreviewModal } from './productDetailGallery';
-import { ProductDetailSummary, ProductDetailSizeGuideModal } from './productDetailSummary';
-import { ProductDetailContent } from './productDetailContent';
+import {
+  ProductDetailSkeleton,
+  ProductDetailLoadErrorShell,
+  ProductDetailNotFoundShell,
+  ProductDetailMainShell,
+} from './productDetailShell';
 import { useProductDetailNonCriticalContent } from '../hooks/useProductDetailNonCriticalContent';
 import { useProductDetailGallery } from '../hooks/useProductDetailGallery';
 import { useProductDetailPurchaseActions } from '../hooks/useProductDetailPurchaseActions';
@@ -569,197 +586,146 @@ const ProductDetail: React.FC = () => {
   if (!product) {
     if (loadError) {
       return (
-        <div className="product-detail-empty" data-product-detail-load-recovery="true">
-          <PageError
-            className="product-detail-empty__panel product-detail-empty__panel--error"
-            title={t('pages.productDetail.loadFailed')}
-            description={loadError || t('pages.productDetail.loadFailedDescription')}
-            actions={[
-              {
-                key: 'retry',
-                label: t('common.refresh'),
-                onClick: () => setReloadToken((value) => value + 1),
-                type: 'primary',
-              },
-              {
-                key: 'browse',
-                label: t('pages.productList.title'),
-                onClick: () => navigate('/products'),
-                type: 'default',
-              },
-              {
-                key: 'coupons',
-                label: t('pages.productDetail.notFoundCoupons'),
-                onClick: () => navigate('/coupons'),
-                type: 'default',
-              },
-              {
-                key: 'pet-finder',
-                label: t('pages.productDetail.notFoundPetFinder'),
-                onClick: () => navigate('/pet-finder'),
-                type: 'default',
-              },
-              {
-                key: 'support',
-                label: t('nav.support'),
-                onClick: () => dispatchDomEvent('shop:open-support'),
-                type: 'default',
-              },
-            ]}
-          />
-        </div>
+        <ProductDetailLoadErrorShell
+          t={t}
+          loadError={loadError}
+          onRetry={() => setReloadToken((value) => value + 1)}
+          onBrowse={() => navigate('/products')}
+          onCoupons={() => navigate('/coupons')}
+          onPetFinder={() => navigate('/pet-finder')}
+          onSupport={() => dispatchDomEvent('shop:open-support')}
+        />
       );
     }
     return (
-      <div className="product-detail-empty">
-        <PageEmpty
-          className="product-detail-empty__panel"
-          data-product-not-found-actions="true"
-          description={(
-            <div className="product-detail-empty__copy">
-              <div>{t('pages.productDetail.notFound')}</div>
-              <div className="product-detail-empty__hint">{t('pages.productDetail.notFoundHint')}</div>
-            </div>
-          )}
-          actions={[
-            {
-              key: 'browse',
-              label: t('pages.productList.title'),
-              onClick: () => navigate('/products'),
-            },
-            {
-              key: 'wishlist',
-              label: t('pages.productDetail.notFoundWishlist'),
-              onClick: () => navigate('/wishlist'),
-              type: 'default',
-            },
-            {
-              key: 'coupons',
-              label: t('pages.productDetail.notFoundCoupons'),
-              onClick: () => navigate('/coupons'),
-              type: 'default',
-            },
-            {
-              key: 'pet-finder',
-              label: t('pages.productDetail.notFoundPetFinder'),
-              onClick: () => navigate('/pet-finder'),
-              type: 'default',
-            },
-          ]}
-        />
-      </div>
+      <ProductDetailNotFoundShell
+        t={t}
+        onBrowse={() => navigate('/products')}
+        onWishlist={() => navigate('/wishlist')}
+        onCoupons={() => navigate('/coupons')}
+        onPetFinder={() => navigate('/pet-finder')}
+      />
     );
   }
 
   const productName = detailProductName(product);
-  const addCartActionLabel = `${t('pages.productDetail.addCart')}: ${productName}`;
-  const buyNowActionLabel = `${t('pages.productDetail.buyNow')}: ${productName}`;
-  const selectOptionsActionLabel = `${t('pages.wishlist.selectOptions')}: ${productName}`;
-  const questionInputLabel = `${t('pages.ask.title')}: ${productName}`;
-  const questionSubmitActionLabel = `${t('pages.ask.submit')}: ${productName}`;
-  const stockAlertActionLabel = `${isAlerted ? t('pages.stockAlerts.remove') : t('pages.stockAlerts.notifyMe')}: ${productName}`;
-  const favoriteActionLabel = `${isWishlisted ? t('pages.productDetail.favorited') : t('pages.productDetail.favorite')}: ${productName}`;
-  const compareActionLabel = `${isCompared ? t('pages.productList.viewCompare') : t('pages.productList.compare')}: ${productName}`;
-  const homeActionLabel = `${t('nav.ariaHome')}: ${productName}`;
-  const sizeGuideActionLabel = `${t('pages.productDetail.sizeGuide')}: ${productName}`;
-  const resetSelectedOptionsActionLabel = `${t('pages.productList.resetFilters')}: ${productName}`;
-  const sizeBreedInputLabel = `${t('pages.productDetail.sizeCalculatorBreed')}: ${productName}`;
-  const sizeWeightInputLabel = `${t('pages.productDetail.sizeCalculatorWeight')}: ${productName}`;
-  const purchaseModeActionLabel = `${t('pages.productDetail.purchaseMode')}: ${productName}`;
-  const useRecommendedPathActionLabel = `${t('pages.productDetail.useRecommendedPath')}: ${productName}`;
-  const sizeGuideConfirmActionLabel = `${t('pages.productDetail.sizeGuideGotIt')}: ${t('pages.productDetail.sizeGuideTitle')}, ${productName}`;
-  const selectedStock = currentStock;
-  const isOutOfStock = selectedStock !== undefined && selectedStock <= 0;
-  const stockLabel = selectedStock !== undefined ? selectedStock : t('pages.productDetail.enough');
-  const lowStockCount = getLowStockCount(selectedStock, quantity);
-  const isLowStock = !isOutOfStock && lowStockCount !== null && lowStockCount > 0;
+  const {
+    addCartActionLabel,
+    buyNowActionLabel,
+    selectOptionsActionLabel,
+    questionInputLabel,
+    questionSubmitActionLabel,
+    stockAlertActionLabel,
+    favoriteActionLabel,
+    compareActionLabel,
+    homeActionLabel,
+    sizeGuideActionLabel,
+    resetSelectedOptionsActionLabel,
+    sizeBreedInputLabel,
+    sizeWeightInputLabel,
+    purchaseModeActionLabel,
+    useRecommendedPathActionLabel,
+    sizeGuideConfirmActionLabel,
+  } = buildProductDetailActionLabels({
+    t,
+    productName,
+    isAlerted,
+    isWishlisted,
+    isCompared,
+  });
+  const {
+    selectedStock,
+    isOutOfStock,
+    stockLabel,
+    lowStockCount,
+    isLowStock,
+    hasCompleteOptions,
+    hasUnavailableSelectedVariant,
+    optionsMissing,
+    purchaseSelectionBlocked,
+  } = deriveProductDetailSelectionState({
+    selectedStock: currentStock,
+    quantity,
+    optionGroups,
+    variantsLength: variants.length,
+    selectedVariant,
+    selectedOptions,
+    enoughStockLabel: t('pages.productDetail.enough'),
+  });
   const lowStockUrgencyLabel = isLowStock
-    ? t('pages.productDetail.lowStockUrgency', { count: lowStockCount })
+    ? t('pages.productDetail.lowStockUrgency', { count: lowStockCount as number })
     : '';
   const displayedRating = Number(averageRating || product.averageRating || 0);
-  const activePrice = selectedVariant?.price ?? product.effectivePrice ?? product.price;
-  const displayPrice = purchaseMode === 'bundle' && bundleInfo ? bundleInfo.price : activePrice;
-  const bundleSavings = bundleInfo ? Math.max(0, activePrice - bundleInfo.price) : 0;
-  const purchaseSubtotal = displayPrice * quantity;
-  const purchaseSavings = purchaseMode === 'bundle'
-    ? bundleSavings * quantity
-    : 0;
-  const renderProductDetailAmountText = (label: string, amount: string) => {
-    const parts = label.split(amount);
-    if (parts.length <= 1) return label;
-    return (
-      <span className="product-detail__amountPhrase commerce-atomic">
-        {parts.map((part, index) => (
-          <React.Fragment key={`${part}-${index}`}>
-            {part}
-            {index < parts.length - 1 ? <span className="commerce-money">{amount}</span> : null}
-          </React.Fragment>
-        ))}
-      </span>
-    );
-  };
-  const freeShippingThresholdAmount = formatMoney(market.freeShippingThreshold);
-  const productFreeShippingText = market.freeShippingThreshold > 0
-    ? renderProductDetailAmountText(
-      t('pages.productDetail.freeShippingOver', { amount: freeShippingThresholdAmount }),
-      freeShippingThresholdAmount,
-    )
-    : t('pages.productDetail.freeShipping');
-  const productShippingText = product.freeShipping
-    ? t('pages.productDetail.freeShipping')
-    : product.shipping || productFreeShippingText;
-  const purchaseModeLabel = purchaseMode === 'bundle'
-      ? t('bundle.bundleDeal')
-      : t('pages.productDetail.oneTimePurchase');
-  const discountPercent = product.effectiveDiscountPercent || product.discount || 0;
-  const originalReferencePrice = product.originalPrice && product.originalPrice > displayPrice ? product.originalPrice : undefined;
-  const priceSavingsAmount = originalReferencePrice ? Math.max(0, originalReferencePrice - displayPrice) : 0;
-  const priceSavingsPercent = originalReferencePrice
-    ? Math.max(1, Math.round((priceSavingsAmount / originalReferencePrice) * 100))
-    : discountPercent;
+  const {
+    activePrice,
+    displayPrice,
+    bundleSavings,
+    purchaseSubtotal,
+    purchaseSavings,
+    discountPercent,
+    originalReferencePrice,
+    priceSavingsAmount,
+    priceSavingsPercent,
+  } = deriveProductDetailPricing({
+    product,
+    selectedVariant,
+    purchaseMode,
+    bundleInfo,
+    quantity,
+  });
+  const {
+    productFreeShippingText,
+    productShippingText,
+  } = buildProductDetailShippingCopy({
+    t,
+    freeShippingThreshold: market.freeShippingThreshold,
+    formatMoney,
+    productFreeShipping: product.freeShipping,
+    productShipping: product.shipping,
+  });
+  const purchaseModeLabel = resolveProductDetailPurchaseModeLabel(purchaseMode, t);
   const limitedTimeRemaining = getLimitedTimeRemainingMs(product, now);
   const limitedTimePromoActive = limitedTimeRemaining > 0;
-  const hasCompleteOptions = optionGroups.every((group) => selectedOptions[group.name]);
-  const hasUnavailableSelectedVariant = variants.length > 0 && hasCompleteOptions && !selectedVariant;
-  const optionsMissing = optionGroups.length > 0 && !hasCompleteOptions;
-  const purchaseSelectionBlocked = optionsMissing || hasUnavailableSelectedVariant;
-  const addToCartActionLabel = purchaseSelectionBlocked ? selectOptionsActionLabel : addCartActionLabel;
-  const addToCartBlocked = isOutOfStock || purchaseSelectionBlocked || purchaseSubmitting !== null;
-  const mobileAddToCartBlocked = !isOutOfStock && (purchaseSelectionBlocked || purchaseSubmitting !== null);
-  const buyNowBlocked = isOutOfStock || purchaseSelectionBlocked || purchaseSubmitting !== null;
-  const buyNowBlockedReason = isOutOfStock
-    ? `${t('pages.productDetail.soldOut')}: ${productName}`
-    : purchaseSelectionBlocked
-      ? selectOptionsActionLabel
-      : buyNowActionLabel;
-  const mobileCartBlockedReason = purchaseSelectionBlocked
-    ? selectOptionsActionLabel
-    : addToCartActionLabel;
-  const selectedOptionTags = optionGroups
-    .map((group) => ({
-      name: group.name,
-      label: getLocalizedOptionLabel(group.name, language),
-      value: selectedOptions[group.name],
-      valueLabel: getLocalizedOptionLabel(selectedOptions[group.name] || '', language),
-    }))
-    .filter((item) => item.value);
-  const sizeOptionGroup = optionGroups.find((group) => isSizeOptionName(group.name));
-  const sizeCalculatorWeightKg = Math.min(
-    PRODUCT_SIZE_CALCULATOR_MAX_WEIGHT_KG,
-    Math.max(0, Number(sizeCalculatorWeight || 0)),
-  );
-  const recommendedSize = estimatePetSize(sizeCalculatorBreed, sizeCalculatorWeightKg);
-  const recommendedSizeValue = sizeOptionGroup?.values.find((value) => value.toLowerCase() === String(recommendedSize || '').toLowerCase());
-  const recommendedSizeLabel = recommendedSizeValue
-    ? getLocalizedOptionLabel(recommendedSizeValue, language)
-    : getLocalizedOptionLabel(String(recommendedSize || ''), language);
-  const fitConfidenceText = sizeOptionGroup
-    ? recommendedSizeValue
-      ? t('pages.productDetail.fitConfidenceMatched', { size: recommendedSizeLabel })
-      : hasCompleteOptions
-        ? t('pages.productDetail.fitConfidenceSelected')
-        : t('pages.productDetail.fitConfidenceNeedSize')
-    : t('pages.productDetail.fitConfidenceNoSize');
+  const {
+    addToCartBlocked,
+    mobileAddToCartBlocked,
+    buyNowBlocked,
+  } = deriveProductDetailActionBlockState({
+    isOutOfStock,
+    purchaseSelectionBlocked,
+    purchaseSubmitting,
+  });
+  const {
+    addToCartActionLabel,
+    mobileCartBlockedReason,
+  } = resolveProductDetailCartActionLabels({
+    purchaseSelectionBlocked,
+    selectOptionsActionLabel,
+    addCartActionLabel,
+  });
+  const buyNowBlockedReason = resolveBuyNowBlockedReason({
+    t,
+    productName,
+    isOutOfStock,
+    purchaseSelectionBlocked,
+    selectOptionsActionLabel,
+    buyNowActionLabel,
+  });
+  const selectedOptionTags = buildProductDetailSelectedOptionTags(optionGroups, selectedOptions, language);
+  const {
+    sizeOptionGroup,
+    recommendedSize,
+    recommendedSizeValue,
+    recommendedSizeLabel,
+    fitConfidenceText,
+  } = buildProductDetailFitGuidance({
+    t,
+    language,
+    optionGroups,
+    sizeCalculatorBreed,
+    sizeCalculatorWeight,
+    hasCompleteOptions,
+  });
   const selectOptionValue = (groupName: string, value: string) => {
     const nextOptions = selectCompatibleProductOption(optionGroups, variants, selectedOptions, groupName, value);
     setSelectedOptions(nextOptions);
@@ -775,86 +741,41 @@ const ProductDetail: React.FC = () => {
       }
     }
   };
-  const formatCountdown = (milliseconds: number) => {
-    const totalSeconds = Math.max(0, Math.floor(milliseconds / 1000));
-    const days = Math.floor(totalSeconds / 86400);
-    const hours = Math.floor((totalSeconds % 86400) / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-    const seconds = totalSeconds % 60;
-    const time = [hours, minutes, seconds].map((value) => String(value).padStart(2, '0')).join(':');
-    return days > 0 ? `${t('pages.productDetail.limitedTimeDays', { count: days })} ${time}` : time;
-  };
-  const decisionChecklist = [
-    {
-      key: 'options',
-      icon: <ShopIcon path={SI.checkCircle} />,
-      // Commercial trust: never mark options "ready to add" when the SKU is sold out.
-      ready: !isOutOfStock && (optionGroups.length === 0 || (hasCompleteOptions && !hasUnavailableSelectedVariant)),
-      title: isOutOfStock
-        ? t('pages.productDetail.decisionStockOutTitle')
-        : optionGroups.length === 0
-          ? t('pages.productDetail.decisionNoOptionsTitle')
-          : hasCompleteOptions && !hasUnavailableSelectedVariant
-            ? t('pages.productDetail.decisionOptionsReadyTitle')
-            : t('pages.productDetail.decisionOptionsMissingTitle'),
-      text: isOutOfStock
-        ? t('pages.productDetail.decisionStockOutText')
-        : optionGroups.length === 0
-          ? t('pages.productDetail.decisionNoOptionsText')
-          : hasCompleteOptions && !hasUnavailableSelectedVariant
-            ? t('pages.productDetail.decisionOptionsReadyText')
-            : t('pages.productDetail.decisionOptionsMissingText'),
-    },
-    {
-      key: 'stock',
-      icon: <ShopIcon path={SI.safety} />,
-      ready: !isOutOfStock && !isLowStock,
-      title: isOutOfStock
-        ? t('pages.productDetail.decisionStockOutTitle')
-        : isLowStock
-          ? t('pages.productDetail.decisionStockLowTitle')
-          : t('pages.productDetail.decisionStockReadyTitle'),
-      text: isOutOfStock
-        ? t('pages.productDetail.decisionStockOutText')
-        : isLowStock
-          ? t('pages.productDetail.decisionStockLowText', { count: lowStockCount, stock: stockLabel })
-          : t('pages.productDetail.decisionStockReadyText', { stock: stockLabel }),
-    },
-    {
-      key: 'delivery',
-      icon: <ShopIcon path={SI.truck} />,
-      ready: Boolean(deliveryPromise.enabled),
-      title: t('pages.productDetail.decisionDeliveryTitle'),
-      text: deliveryPromise.enabled
-        ? t('pages.productDetail.decisionDeliveryText', { window: deliveryPromise.windowText })
-        : productShippingText,
-    },
-    {
-      key: 'value',
-      icon: purchaseSavings > 0 || discountPercent > 0 ? <ShopIcon path={SI.thunder} /> : <ShopIcon path={SI.checkCircle} />,
-      ready: true,
-      title: purchaseSavings > 0 || discountPercent > 0
-        ? t('pages.productDetail.decisionValueDealTitle')
-        : t('pages.productDetail.decisionValueStableTitle'),
-      text: purchaseSavings > 0
-        ? renderProductDetailAmountText(t('pages.productDetail.decisionValueSavingsText', { amount: formatMoney(purchaseSavings) }), formatMoney(purchaseSavings))
-        : discountPercent > 0
-          ? t('pages.productDetail.decisionValueDiscountText', { percent: discountPercent })
-          : t('pages.productDetail.decisionValueStableText'),
-    },
-  ];
-  const recommendedPurchaseMode: 'once' | 'bundle' = bundleInfo && bundleSavings > 0
-    ? 'bundle'
-    : 'once';
-  const recommendedPathTitle = recommendedPurchaseMode === 'bundle'
-    ? t('pages.productDetail.pathBundleTitle')
-    : t('pages.productDetail.pathOnceTitle');
-  const recommendedPathText = recommendedPurchaseMode === 'bundle' && bundleInfo
-    ? renderProductDetailAmountText(t('pages.productDetail.pathBundleText', { amount: formatMoney(bundleSavings * quantity) }), formatMoney(bundleSavings * quantity))
-    : t('pages.productDetail.pathOnceText');
-  const quantityValueLabel = t('pages.productDetail.quantityValue', { quantity });
-  const decreaseQuantityLabel = t('pages.productDetail.decreaseQuantity', { quantity });
-  const increaseQuantityLabel = t('pages.productDetail.increaseQuantity', { quantity });
+  const formatCountdown = (milliseconds: number) => formatLimitedTimeCountdown(milliseconds, t);
+  const decisionChecklist = buildProductDetailDecisionChecklistData({
+    t,
+    isOutOfStock,
+    isLowStock,
+    optionGroupsLength: optionGroups.length,
+    hasCompleteOptions,
+    hasUnavailableSelectedVariant,
+    lowStockCount,
+    stockLabel,
+    deliveryEnabled: Boolean(deliveryPromise.enabled),
+    deliveryWindowText: deliveryPromise.windowText,
+    productShippingText,
+  }).map((item) => ({
+    ...item,
+    icon: <ShopIcon path={resolveProductDetailChecklistIconPath(item.key)} />,
+  }));
+  const recommendedPurchaseMode = resolveRecommendedPurchaseMode({ bundleInfo, bundleSavings });
+  const {
+    recommendedPathTitle,
+    recommendedPathText,
+  } = buildRecommendedPurchasePath({
+    recommendedPurchaseMode,
+    bundleInfo,
+    bundleSavings,
+    quantity,
+    t,
+    formatMoney,
+    renderAmountText: renderProductDetailAmountText,
+  });
+  const {
+    quantityValueLabel,
+    decreaseQuantityLabel,
+    increaseQuantityLabel,
+  } = buildProductDetailQuantityLabels(t, quantity);
 
   const handleQuantityChange = (value: number) => {
     const maxQuantity = selectedStock !== undefined ? selectedStock : 999;
@@ -872,298 +793,189 @@ const ProductDetail: React.FC = () => {
     nonCriticalLoadedRef.current = false;
     warmNonCriticalContent(requestSeq);
   };
-  const mobilePurchaseStatus = isOutOfStock
-    ? t('pages.productDetail.soldOut')
-    : hasUnavailableSelectedVariant
-      ? t('pages.productDetail.selectedVariantUnavailable')
-      : optionsMissing
-        ? t('pages.productDetail.decisionOptionsMissingText')
-        : isLowStock
-          ? lowStockUrgencyLabel
-          : t('pages.productDetail.decisionReady');
+  const mobilePurchaseStatus = resolveMobilePurchaseStatus({
+    t,
+    isOutOfStock,
+    hasUnavailableSelectedVariant,
+    optionsMissing,
+    isLowStock,
+    lowStockUrgencyLabel,
+  });
   const mobileBuybarPrice = formatMoney(displayPrice);
   const mobileBuybarStatus = mobilePurchaseStatus;
-  const shouldShowDecisionChecklist = optionsMissing || hasUnavailableSelectedVariant || isOutOfStock || isLowStock;
-  const purchaseReadinessItems = [
-    {
-      key: 'selection',
-      icon: <ShopIcon path={SI.checkCircle} />,
-      // Commercial trust: sold-out SKUs must never claim "ready to add" / direct-add copy.
-      ready: !isOutOfStock && !purchaseSelectionBlocked,
-      title: isOutOfStock
-        ? t('pages.productDetail.decisionStockOutTitle')
-        : optionGroups.length === 0
-          ? t('pages.productDetail.decisionNoOptionsTitle')
-          : purchaseSelectionBlocked
-            ? t('pages.productDetail.decisionOptionsMissingTitle')
-            : t('pages.productDetail.decisionOptionsReadyTitle'),
-      text: isOutOfStock
-        ? t('pages.productDetail.decisionStockOutText')
-        : optionGroups.length === 0
-          ? t('pages.productDetail.decisionNoOptionsText')
-          : hasUnavailableSelectedVariant
-            ? t('pages.productDetail.selectedVariantUnavailable')
-            : hasCompleteOptions
-              ? t('pages.productDetail.selectedVariantStock', { stock: stockLabel })
-              : t('pages.productDetail.selectedOptionsEmpty'),
-    },
-    {
-      key: 'stock',
-      icon: <ShopIcon path={SI.safety} />,
-      ready: !isOutOfStock && !isLowStock,
-      title: isOutOfStock
-        ? t('pages.productDetail.decisionStockOutTitle')
-        : isLowStock
-          ? t('pages.productDetail.decisionStockLowTitle')
-          : t('pages.productDetail.decisionStockReadyTitle'),
-      text: isOutOfStock
-        ? t('pages.productDetail.decisionStockOutText')
-        : isLowStock
-          ? t('pages.productDetail.decisionStockLowText', { count: lowStockCount, stock: stockLabel })
-          : t('pages.productDetail.decisionStockReadyText', { stock: stockLabel }),
-    },
-    {
-      key: 'delivery',
-      icon: <ShopIcon path={SI.truck} />,
-      ready: Boolean(deliveryPromise.enabled),
-      title: t('pages.productDetail.trustShippingTitle'),
-      text: deliveryPromise.enabled
-        ? t('pages.productDetail.deliveryPromise', { window: deliveryPromise.windowText })
-        : productShippingText,
-    },
-    {
-      key: 'value',
-      icon: <ShopIcon path={SI.thunder} />,
-      ready: true,
-      title: purchaseSavings > 0 ? t('pages.productDetail.purchaseSavings') : t('pages.productDetail.purchaseSubtotal'),
-      text: purchaseSavings > 0 ? formatMoney(purchaseSavings) : formatMoney(purchaseSubtotal),
-    },
-  ];
-  const productFaqItems = [
-    {
-      question: t('pages.productDetail.faqQuietQuestion'),
-      answer: t('pages.productDetail.faqQuietAnswer'),
-    },
-    {
-      question: t('pages.productDetail.faqFilterQuestion'),
-      answer: t('pages.productDetail.faqFilterAnswer'),
-    },
-    {
-      question: t('pages.productDetail.faqReplaceQuestion'),
-      answer: t('pages.productDetail.faqReplaceAnswer'),
-    },
-  ];
+  const shouldShowDecisionChecklist = shouldShowProductDetailDecisionChecklist({
+    optionsMissing,
+    hasUnavailableSelectedVariant,
+    isOutOfStock,
+    isLowStock,
+  });
+  const purchaseReadinessItems = buildProductDetailPurchaseReadinessData({
+    t,
+    isOutOfStock,
+    isLowStock,
+    purchaseSelectionBlocked,
+    optionGroupsLength: optionGroups.length,
+    hasUnavailableSelectedVariant,
+    hasCompleteOptions,
+    stockLabel,
+    lowStockCount,
+    deliveryEnabled: Boolean(deliveryPromise.enabled),
+    deliveryWindowText: deliveryPromise.windowText,
+    productShippingText,
+    purchaseSavings,
+    purchaseSubtotal,
+    formatMoney,
+  }).map((item) => ({
+    ...item,
+    icon: <ShopIcon path={resolveProductDetailChecklistIconPath(item.key)} />,
+  }));
+  const productFaqItems = buildProductDetailFaqItems(t);
 
-  return (
-    <div className={`product-detail-page product-detail-page--${language}`}>
-      <div className="product-detail-shell">
-        <ShopBreadcrumb
-          className="product-detail-breadcrumb"
-          ariaLabel={productName}
-          items={[
-            {
-              key: 'home',
-              path: '/',
-              ariaLabel: t('nav.ariaHome'),
-              label: <ShopIcon path={SI.home} />,
-            },
-            {
-              key: 'products',
-              path: '/products',
-              label: t('pages.productList.title'),
-            },
-            {
-              key: 'product',
-              label: productName,
-            },
-          ]}
-        />
+  const shellProps = {
+    activeMobileImageIndex,
+    addToCartActionLabel,
+    addToCartBlocked,
+    bundleInfo,
+    bundleSavings,
+    buyNowBlocked,
+    buyNowBlockedReason,
+    compareActionLabel,
+    completeSetItems,
+    decisionChecklist,
+    decreaseQuantityLabel,
+    deliveryPromise,
+    detailActiveTab,
+    detailContentRef,
+    detailProductName,
+    discountPercent,
+    displayPrice,
+    displayedRating,
+    favoriteActionLabel,
+    fitConfidenceText,
+    formatCountdown,
+    formatMoney,
+    galleryImages,
+    handleAddRecommendationToCart,
+    handleAddReview,
+    handleAddToCart,
+    handleAskQuestion,
+    handleBuyNow,
+    handleCompare,
+    handleFavorite,
+    handleGalleryKeyDown,
+    handleGalleryTouchStart,
+    handleMobileGalleryScroll,
+    handleQuantityChange,
+    handleStockAlert,
+    hasCompleteOptions,
+    hasUnavailableSelectedVariant,
+    heroImage,
+    heroImageSizes,
+    heroImageSrcSet,
+    homeActionLabel,
+    id,
+    imagePaused,
+    increaseQuantityLabel,
+    isAlerted,
+    isCompared,
+    isLowStock,
+    isModalVisible,
+    isOutOfStock,
+    isWishlisted,
+    language,
+    limitedTimePromoActive,
+    limitedTimeRemaining,
+    lowStockCount,
+    lowStockUrgencyLabel,
+    mobileAddToCartBlocked,
+    mobileBuybarPrice,
+    mobileBuybarStatus,
+    mobileCartBlockedReason,
+    mobileGalleryRef,
+    navigate,
+    openProductDetailTab,
+    optionGroups,
+    optionsSectionRef,
+    originalReferencePrice,
+    pauseImageRotation,
+    pendingQuestions,
+    pinchZoom,
+    priceSavingsAmount,
+    priceSavingsPercent,
+    product,
+    productFaqItems,
+    productFreeShippingText,
+    productImages,
+    productName,
+    productShippingText,
+    purchaseMode,
+    purchaseModeActionLabel,
+    purchaseModeLabel,
+    purchaseReadinessItems,
+    purchaseSavings,
+    purchaseSelectionBlocked,
+    purchaseSubmitting,
+    purchaseSubtotal,
+    quantity,
+    quantityValueLabel,
+    questionInputLabel,
+    questionSubmitActionLabel,
+    questionSubmitting,
+    questionText,
+    questions,
+    recommendationAddingId,
+    recommendationsLoadFailed,
+    recommendationsLoading,
+    recommendedPathText,
+    recommendedPathTitle,
+    recommendedPurchaseMode,
+    recommendedSize,
+    recommendedSizeLabel,
+    recommendedSizeValue,
+    relatedRecommendations,
+    renderProductDetailAmountText,
+    resetGalleryPinch,
+    resetSelectedOptionsActionLabel,
+    resumeImageRotation,
+    retryRecommendations,
+    reviewableOrders,
+    reviews,
+    scheduleImageRotationResume,
+    selectGalleryImage,
+    selectOptionValue,
+    selectedImage,
+    selectedOptionTags,
+    selectedOptions,
+    selectedStock,
+    selectedVariant,
+    setImagePaused,
+    setIsModalVisible,
+    setPurchaseMode,
+    setQuestionText,
+    setSelectedImage,
+    setSelectedOptions,
+    setSizeCalculatorBreed,
+    setSizeCalculatorWeight,
+    setSizeGuideOpen,
+    shouldShowDecisionChecklist,
+    sizeBreedInputLabel,
+    sizeCalculatorBreed,
+    sizeCalculatorWeight,
+    sizeGuideActionLabel,
+    sizeGuideConfirmActionLabel,
+    sizeGuideOpen,
+    sizeOptionGroup,
+    sizeWeightInputLabel,
+    stockAlertActionLabel,
+    stockLabel,
+    t,
+    trustBadges,
+    useRecommendedPathActionLabel,
+    variants,
+  };
 
-        <div className="product-detail__layout">
-          {/* Product media gallery */}
-          <ProductDetailGallery
-            activeMobileImageIndex={activeMobileImageIndex}
-            discountPercent={discountPercent}
-            galleryImages={galleryImages}
-            handleGalleryKeyDown={handleGalleryKeyDown}
-            handleGalleryTouchStart={handleGalleryTouchStart}
-            handleMobileGalleryScroll={handleMobileGalleryScroll}
-            heroImage={heroImage}
-            heroImageSizes={heroImageSizes}
-            heroImageSrcSet={heroImageSrcSet}
-            imagePaused={imagePaused}
-            mobileGalleryRef={mobileGalleryRef}
-            pauseImageRotation={pauseImageRotation}
-            pinchZoom={pinchZoom}
-            productImages={productImages}
-            productName={productName}
-            resetGalleryPinch={resetGalleryPinch}
-            resumeImageRotation={resumeImageRotation}
-            scheduleImageRotationResume={scheduleImageRotationResume}
-            selectGalleryImage={selectGalleryImage}
-            selectedImage={selectedImage}
-            setImagePaused={setImagePaused}
-            setIsModalVisible={setIsModalVisible}
-            setSelectedImage={setSelectedImage}
-            t={t}
-          />
+  return <ProductDetailMainShell {...shellProps} />;
 
-          {/* Product purchase summary */}
-          <ProductDetailSummary
-            addToCartActionLabel={addToCartActionLabel}
-            addToCartBlocked={addToCartBlocked}
-            bundleInfo={bundleInfo}
-            bundleSavings={bundleSavings}
-            buyNowBlocked={buyNowBlocked}
-            buyNowBlockedReason={buyNowBlockedReason}
-            compareActionLabel={compareActionLabel}
-            completeSetItems={completeSetItems}
-            decisionChecklist={decisionChecklist}
-            decreaseQuantityLabel={decreaseQuantityLabel}
-            deliveryPromise={deliveryPromise}
-            detailProductName={detailProductName}
-            displayPrice={displayPrice}
-            displayedRating={displayedRating}
-            favoriteActionLabel={favoriteActionLabel}
-            fitConfidenceText={fitConfidenceText}
-            formatCountdown={formatCountdown}
-            formatMoney={formatMoney}
-            handleAddRecommendationToCart={handleAddRecommendationToCart}
-            handleAddToCart={handleAddToCart}
-            handleBuyNow={handleBuyNow}
-            handleCompare={handleCompare}
-            handleFavorite={handleFavorite}
-            handleQuantityChange={handleQuantityChange}
-            handleStockAlert={handleStockAlert}
-            hasCompleteOptions={hasCompleteOptions}
-            hasUnavailableSelectedVariant={hasUnavailableSelectedVariant}
-            homeActionLabel={homeActionLabel}
-            increaseQuantityLabel={increaseQuantityLabel}
-            isAlerted={isAlerted}
-            isCompared={isCompared}
-            isLowStock={isLowStock}
-            isOutOfStock={isOutOfStock}
-            isWishlisted={isWishlisted}
-            language={language}
-            limitedTimePromoActive={limitedTimePromoActive}
-            limitedTimeRemaining={limitedTimeRemaining}
-            lowStockCount={lowStockCount}
-            lowStockUrgencyLabel={lowStockUrgencyLabel}
-            mobileAddToCartBlocked={mobileAddToCartBlocked}
-            mobileBuybarPrice={mobileBuybarPrice}
-            mobileBuybarStatus={mobileBuybarStatus}
-            mobileCartBlockedReason={mobileCartBlockedReason}
-            navigate={navigate}
-            optionGroups={optionGroups}
-            optionsSectionRef={optionsSectionRef}
-            originalReferencePrice={originalReferencePrice}
-            priceSavingsAmount={priceSavingsAmount}
-            priceSavingsPercent={priceSavingsPercent}
-            product={product}
-            productFreeShippingText={productFreeShippingText}
-            productName={productName}
-            productShippingText={productShippingText}
-            purchaseMode={purchaseMode}
-            purchaseModeActionLabel={purchaseModeActionLabel}
-            purchaseModeLabel={purchaseModeLabel}
-            purchaseReadinessItems={purchaseReadinessItems}
-            purchaseSavings={purchaseSavings}
-            purchaseSelectionBlocked={purchaseSelectionBlocked}
-            purchaseSubmitting={purchaseSubmitting}
-            purchaseSubtotal={purchaseSubtotal}
-            quantity={quantity}
-            quantityValueLabel={quantityValueLabel}
-            recommendationAddingId={recommendationAddingId}
-            recommendedPathText={recommendedPathText}
-            recommendedPathTitle={recommendedPathTitle}
-            recommendedPurchaseMode={recommendedPurchaseMode}
-            recommendedSize={recommendedSize}
-            recommendedSizeLabel={recommendedSizeLabel}
-            recommendedSizeValue={recommendedSizeValue}
-            renderProductDetailAmountText={renderProductDetailAmountText}
-            resetSelectedOptionsActionLabel={resetSelectedOptionsActionLabel}
-            selectOptionValue={selectOptionValue}
-            selectedOptionTags={selectedOptionTags}
-            selectedOptions={selectedOptions}
-            selectedStock={selectedStock}
-            selectedVariant={selectedVariant}
-            setPurchaseMode={setPurchaseMode}
-            setSelectedOptions={setSelectedOptions}
-            setSizeCalculatorBreed={setSizeCalculatorBreed}
-            setSizeCalculatorWeight={setSizeCalculatorWeight}
-            setSizeGuideOpen={setSizeGuideOpen}
-            shouldShowDecisionChecklist={shouldShowDecisionChecklist}
-            sizeBreedInputLabel={sizeBreedInputLabel}
-            sizeCalculatorBreed={sizeCalculatorBreed}
-            sizeCalculatorWeight={sizeCalculatorWeight}
-            sizeGuideActionLabel={sizeGuideActionLabel}
-            sizeOptionGroup={sizeOptionGroup}
-            sizeWeightInputLabel={sizeWeightInputLabel}
-            stockAlertActionLabel={stockAlertActionLabel}
-            stockLabel={stockLabel}
-            t={t}
-            trustBadges={trustBadges}
-            useRecommendedPathActionLabel={useRecommendedPathActionLabel}
-            variants={variants}
-          />
-        </div>
-
-        {/* Product details and specifications */}
-        <ProductDetailContent
-          detailActiveTab={detailActiveTab}
-          detailContentRef={detailContentRef}
-          handleAddReview={handleAddReview}
-          handleAskQuestion={handleAskQuestion}
-          id={id}
-          language={language}
-          openProductDetailTab={openProductDetailTab}
-          pendingQuestions={pendingQuestions}
-          product={product}
-          productFaqItems={productFaqItems}
-          productShippingText={productShippingText}
-          questionInputLabel={questionInputLabel}
-          questionSubmitActionLabel={questionSubmitActionLabel}
-          questionSubmitting={questionSubmitting}
-          questionText={questionText}
-          questions={questions}
-          reviewableOrders={reviewableOrders}
-          reviews={reviews}
-          setQuestionText={setQuestionText}
-          t={t}
-        />
-
-        <ProductDetailRecommendations
-          detailProductName={detailProductName}
-          formatMoney={formatMoney}
-          handleAddRecommendationToCart={handleAddRecommendationToCart}
-          navigate={navigate}
-          recommendationAddingId={recommendationAddingId}
-          recommendationsLoadFailed={recommendationsLoadFailed}
-          recommendationsLoading={recommendationsLoading}
-          relatedRecommendations={relatedRecommendations}
-          retryRecommendations={retryRecommendations}
-          t={t}
-        />
-      </div>
-
-      {/* Image preview modal */}
-      <ProductDetailImagePreviewModal
-        isModalVisible={isModalVisible}
-        productImages={productImages}
-        productName={productName}
-        selectedImage={selectedImage}
-        setIsModalVisible={setIsModalVisible}
-        t={t}
-      />
-
-      <ProductDetailSizeGuideModal
-        open={sizeGuideOpen}
-        setOpen={setSizeGuideOpen}
-        sizeGuideConfirmActionLabel={sizeGuideConfirmActionLabel}
-        t={t}
-      />
-    </div>
-  );
 };
 
 export default ProductDetail;

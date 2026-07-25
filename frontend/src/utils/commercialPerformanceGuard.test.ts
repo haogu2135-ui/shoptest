@@ -8,6 +8,9 @@ const readCheckoutPage = () => readFrontend('pages', 'Checkout.tsx');
 
 const readCheckoutSurface = () => [
   readCheckoutPage(),
+  readFrontend('utils', 'checkoutHelpers.ts'),
+  readFrontend('hooks', 'useCheckoutDerivedTotals.ts'),
+  readFrontend('components', 'checkout', 'CheckoutMainShell.tsx'),
   readFrontend('components', 'checkout', 'CheckoutFormSections.tsx'),
   readFrontend('components', 'checkout', 'CheckoutShellStates.tsx'),
   readFrontend('components', 'checkout', 'CheckoutConversionSections.tsx'),
@@ -26,6 +29,7 @@ const readProductDetailSurface = () => [
 
 const readProfileSurface = () => [
   readFrontend('pages', 'Profile.tsx'),
+  readFrontend('pages', 'profileShellPanels.tsx'),
   readFrontend('pages', 'profileOrdersPanel.tsx'),
   readFrontend('pages', 'profileAddressesPanel.tsx'),
   readFrontend('pages', 'profilePetsPanel.tsx'),
@@ -40,15 +44,24 @@ const readProfileSurface = () => [
   readFrontend('hooks', 'useProfilePetActions.ts'),
   readFrontend('hooks', 'useProfileAccountActions.ts'),
   readFrontend('hooks', 'useProfileOrderActions.ts'),
+  readFrontend('hooks', 'useProfileSessionData.ts'),
+  readFrontend('hooks', 'useProfilePaymentReturn.ts'),
 ].join('\n');
 
 const readCartSurface = () => [
   readFrontend('pages', 'Cart.tsx'),
+  readFrontend('pages', 'cartHelpers.ts'),
   readFrontend('pages', 'cartShellStates.tsx'),
   readFrontend('pages', 'cartConversionPanels.tsx'),
   readFrontend('pages', 'cartLineItems.tsx'),
   readFrontend('pages', 'cartSavedPanel.tsx'),
   readFrontend('pages', 'cartOverviewPanels.tsx'),
+  readFrontend('hooks', 'useCartSessionData.ts'),
+  readFrontend('hooks', 'useCartQuantitySync.ts'),
+  readFrontend('hooks', 'useCartItemMutations.ts'),
+  readFrontend('hooks', 'useCartQuantityActions.ts'),
+  readFrontend('hooks', 'useCartRecoveryAdds.ts'),
+  readFrontend('hooks', 'useCartCheckoutSubmit.ts'),
 ].join('\n');
 
 const readPaymentInstructionsSurface = () => [
@@ -64,6 +77,11 @@ const readProductListSurface = () => [
   readFrontend('pages', 'productListPanels.tsx'),
   readFrontend('pages', 'productListModals.tsx'),
   readFrontend('pages', 'productListShellPanels.tsx'),
+  readFrontend('hooks', 'useProductListCatalog.ts'),
+  readFrontend('hooks', 'useProductListProductActions.ts'),
+  readFrontend('hooks', 'useProductListSessionData.ts'),
+  readFrontend('hooks', 'useProductListNavigation.ts'),
+  readFrontend('hooks', 'useProductListDerivedCatalog.ts'),
 ].join('\n');
 
 const readHomeSurface = () => [
@@ -72,6 +90,8 @@ const readHomeSurface = () => [
   readFrontend('pages', 'homeShellStates.tsx'),
   readFrontend('pages', 'homeFirstFoldPanels.tsx'),
   readFrontend('pages', 'homeProductPanels.tsx'),
+  readFrontend('hooks', 'useHomeCatalog.ts'),
+  readFrontend('hooks', 'useHomeProductActions.ts'),
 ].join('\n');
 
 
@@ -114,6 +134,7 @@ const readPageSurface = (dir: string, name: string) => {
   if (name === 'OrderTracking.tsx') return readOrderTrackingSurface();
   if (name === 'PaymentInstructions.tsx') return readPaymentInstructionsSurface();
   if (name === 'ProductDetail.tsx') return readProductDetailSurface();
+  if (name === 'Home.tsx') return readHomeSurface();
   if (name === 'ProductList.tsx') return readProductListSurface();
   if (name === 'Profile.tsx') return readProfileSurface();
   if (name === 'Wishlist.tsx') return readWishlistSurface();
@@ -395,7 +416,7 @@ describe('commercial performance contracts', () => {
       ['components', 'CartDrawer.tsx'],
     ];
     for (const [dir, name] of files) {
-      const source = readFrontend(dir, name);
+      const source = dir === 'pages' ? readPageSurface(dir, name) : readFrontend(dir, name);
       expect(source).not.toMatch(/^import \{[^}]*\bmessage\b[^}]*\} from 'antd';/m);
       expect(source).toContain('announceAccessibleMessage');
       expect(source).not.toMatch(/\bmessage\.(success|error|warning|info)\s*\(/);
@@ -424,7 +445,7 @@ describe('commercial performance contracts', () => {
       ['components', 'Payment.tsx'],
     ];
     for (const [dir, name] of files) {
-      const source = readFrontend(dir, name);
+      const source = dir === 'pages' ? readPageSurface(dir, name) : readFrontend(dir, name);
       expect(source).not.toMatch(/^import \{[^}]*\bmessage\b[^}]*\} from 'antd';/m);
       expect(source).toContain('announceAccessibleMessage');
       expect(source).not.toMatch(/\bmessage\.(success|error|warning|info)\s*\(/);
@@ -439,7 +460,9 @@ describe('commercial performance contracts', () => {
     expect(home).not.toContain("@ant-design/icons");
     expect(home).toContain('home-btn');
     expect(home).toContain('home-product-grid');
-    expect(homePage).toContain('announceAccessibleMessage');
+    expect(home).toContain('announceAccessibleMessage');
+    expect(homePage).toContain("from '../hooks/useHomeCatalog'");
+    expect(homePage).toContain("from '../hooks/useHomeProductActions'");
   });
 
 
@@ -1350,7 +1373,7 @@ describe('commercial performance contracts', () => {
   });
 
   it('keeps ProductDetail free of static ant Breadcrumb', () => {
-    const source = readFrontend('pages', 'ProductDetail.tsx');
+    const source = readProductDetailSurface();
     expect(source).not.toMatch(/import \{[^}]*\bBreadcrumb\b[^}]*\} from 'antd'/);
     expect(source).not.toMatch(/<Breadcrumb\b/);
     expect(source).toContain('ShopBreadcrumb');

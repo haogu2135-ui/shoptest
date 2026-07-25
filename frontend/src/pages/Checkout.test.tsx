@@ -19,9 +19,10 @@ const readCheckoutRegionCascaderSource = () => require('fs').readFileSync(requir
 const readCheckoutOrderActionsSource = () => require('fs').readFileSync(require('path').resolve(__dirname, '../hooks/useCheckoutOrderActions.ts'), 'utf8') as string;
 const readCheckoutConversionCoachSource = () => require('fs').readFileSync(require('path').resolve(__dirname, '../hooks/useCheckoutConversionCoach.tsx'), 'utf8') as string;
 const readCheckoutShellSource = () => require('fs').readFileSync(require('path').resolve(__dirname, '../components/checkout/CheckoutShellStates.tsx'), 'utf8') as string;
+const readCheckoutMainShellSource = () => require('fs').readFileSync(require('path').resolve(__dirname, '../components/checkout/CheckoutMainShell.tsx'), 'utf8') as string;
 const readCheckoutFormSectionsSource = () => require('fs').readFileSync(require('path').resolve(__dirname, '../components/checkout/CheckoutFormSections.tsx'), 'utf8') as string;
 const readCheckoutConversionSource = () => require('fs').readFileSync(require('path').resolve(__dirname, '../components/checkout/CheckoutConversionSections.tsx'), 'utf8') as string;
-const readCheckoutSurfaceSource = () => `${readCheckoutPageSource()}\n${readCheckoutShellSource()}\n${readCheckoutFormSectionsSource()}\n${readCheckoutConversionSource()}`;
+const readCheckoutSurfaceSource = () => `${readCheckoutPageSource()}\n${readCheckoutHelpersSource()}\n${readCheckoutMainShellSource()}\n${readCheckoutShellSource()}\n${readCheckoutFormSectionsSource()}\n${readCheckoutConversionSource()}\n${require('fs').readFileSync(require('path').resolve(__dirname, '../hooks/useCheckoutDerivedTotals.ts'), 'utf8')}`;
 const readCheckoutCssSource = () => require('fs').readFileSync(require('path').resolve(__dirname, 'Checkout.css'), 'utf8') as string;
 const readMobileAppCssSource = () => require('fs').readFileSync(require('path').resolve(__dirname, '../mobile-app.css'), 'utf8') as string;
 const readProfilePageSource = () => require('fs').readFileSync(require('path').resolve(__dirname, 'Profile.tsx'), 'utf8') as string;
@@ -362,10 +363,10 @@ describe('Checkout payment availability', () => {
     expect(regionCascader).toContain('loadRegionData(language)');
     expect(regionCascader).toContain('setRegionOptionsLanguage(language)');
     expect(source).not.toContain('regionData }');
-    expect(source).toContain('regionCascaderOpen={checkoutRegionCascaderOpen}');
-    expect(source).toContain('onRegionOpenChange={(open) => {');
-    expect(source).toContain('setCheckoutRegionCascaderVisibility(open);');
-    expect(source).toContain('if (open) void loadCheckoutRegionOptions();');
+    expect(surface).toContain('regionCascaderOpen={checkoutRegionCascaderOpen}');
+    expect(surface).toContain('onRegionOpenChange={(open: boolean) => {');
+    expect(surface).toContain('setCheckoutRegionCascaderVisibility(open);');
+    expect(surface).toContain('if (open) void loadCheckoutRegionOptions();');
     expect(formSections).toContain('open={regionCascaderOpen}');
     expect(formSections).toContain('onOpenChange={onRegionOpenChange}');
     expect(formSections).toContain('<ShopCascader');
@@ -376,7 +377,7 @@ describe('Checkout payment availability', () => {
     expect(regionCascader).toContain('classList.toggle');
     expect(regionCascader).toContain("element.style.setProperty('display', 'none', 'important')");
     expect(regionCascader).toContain('element.remove();');
-    expect(source).toContain('void loadCheckoutRegionOptions();');
+    expect(surface).toContain('void loadCheckoutRegionOptions();');
     expect(formSections).toContain('options={regionOptions}');
     expect(source).toContain("classList.add('checkout-page-active')");
     expect(source).toContain('handleCheckoutFormFocusCapture');
@@ -457,14 +458,18 @@ describe('Checkout payment availability', () => {
 
   it('allows checkout to continue with no-coupon fallback pricing when coupon quote fails', () => {
     const source = readCheckoutPageSource();
+    const helpersSource = readCheckoutHelpersSource();
     const formSections = readCheckoutFormSectionsSource();
     const localeSources = ['en', 'zh', 'es'].map((locale) => require('fs').readFileSync(require('path').resolve(__dirname, `../locales/${locale}.json`), 'utf8') as string);
 
-    expect(source).toContain("const shippingQuoteFailed = requiresBackendShippingQuote && couponQuoteStatus === 'error';");
-    expect(source).toContain('const shippingQuoteFallbackActive = shippingQuoteFailed && !selectedUserCouponId;');
-    expect(source).toContain('|| shippingQuoteFallbackActive;');
-    expect(source).toContain("t('pages.checkout.shippingFeeFallbackApplied', { fee: formatMoney(shippingFee) })");
-    expect(source).toContain("couponQuoteErrorMessage || t('pages.checkout.shippingFeeFallbackDescription')");
+    expect(source).toContain("from '../hooks/useCheckoutDerivedTotals'");
+    expect(source).toContain('useCheckoutDerivedTotals({');
+    expect(source).toContain('useCheckoutCartTotals(cartItems)');
+    expect(helpersSource).toContain("const shippingQuoteFailed = requiresBackendShippingQuote && params.couponQuoteStatus === 'error';");
+    expect(helpersSource).toContain('const shippingQuoteFallbackActive = shippingQuoteFailed && !params.selectedUserCouponId;');
+    expect(helpersSource).toContain('|| shippingQuoteFallbackActive;');
+    expect(helpersSource).toContain("params.t('pages.checkout.shippingFeeFallbackApplied', { fee: params.formatMoney(params.shippingFee) })");
+    expect(helpersSource).toContain("params.couponQuoteErrorMessage || params.t('pages.checkout.shippingFeeFallbackDescription')");
     expect(formSections).toContain('shippingQuotePending || shippingQuoteUnavailable || shippingQuoteFallbackActive');
     expect(formSections).toContain("type={shippingQuoteUnavailable ? 'error' : shippingQuoteFallbackActive ? 'warning' : 'info'}");
 
@@ -703,12 +708,18 @@ describe('Checkout payment availability', () => {
 
   it('memoizes cart total and item count from cart items', () => {
     const source = readCheckoutPageSource();
+    const helpersSource = readCheckoutHelpersSource();
+    const derivedSource = require('fs').readFileSync(require('path').resolve(__dirname, '../hooks/useCheckoutDerivedTotals.ts'), 'utf8');
 
-    expect(source).toContain('const cartTotal = useMemo(() => roundCartMoney(cartItems.reduce((sum, item) => {');
-    expect(source).toContain('}, 0)), [cartItems]);');
-    expect(source).toContain('const checkoutItemCount = useMemo(\n    () => cartItems.reduce((sum, item) => sum + item.quantity, 0),\n    [cartItems],\n  );');
-    expect(source).not.toContain('const cartTotal = roundCartMoney(cartItems.reduce');
-    expect(source).not.toContain('const checkoutItemCount = cartItems.reduce');
+    expect(source).toContain('useCheckoutCartTotals(cartItems)');
+    expect(source).toContain("from '../hooks/useCheckoutDerivedTotals'");
+    expect(helpersSource).toContain('export const deriveCheckoutCartTotal');
+    expect(helpersSource).toContain('export const deriveCheckoutItemCount');
+    expect(derivedSource).toContain('export const useCheckoutCartTotals');
+    expect(derivedSource).toContain('deriveCheckoutCartTotal(cartItems)');
+    expect(derivedSource).toContain('deriveCheckoutItemCount(cartItems)');
+    expect(source).not.toContain('const cartTotal = useMemo(() => roundCartMoney(cartItems.reduce');
+    expect(source).not.toContain('const checkoutItemCount = useMemo(');
   });
 
   it('keeps checkout form submit values typed without broad any escape hatches', () => {
@@ -744,9 +755,10 @@ describe('Checkout payment availability', () => {
     expect(source).toContain('CheckoutPaymentActiveShell');
     expect(source).toContain('CheckoutEmptyShell');
     expect(source).toContain('CheckoutLoadingShell');
-    expect(source).toContain('CheckoutItemsCard');
-    expect(source).toContain('CheckoutExpressPaymentGrid');
-    expect(source).toContain('CheckoutSubmitPaymentSection');
+    expect(source).toContain('CheckoutMainShell');
+    expect(readCheckoutSurfaceSource()).toContain('CheckoutItemsCard');
+    expect(readCheckoutSurfaceSource()).toContain('CheckoutExpressPaymentGrid');
+    expect(readCheckoutSurfaceSource()).toContain('CheckoutSubmitPaymentSection');
     expect(orderActions).toContain('resolveCheckoutCartSubmitGuard({');
     expect(orderActions).toContain('buildGuestCheckoutOrderItems(cartItems)');
     expect(orderActions).toContain('buildGuestRestoreCartLine(item, latestProduct, checkoutCartItemName(item))');
@@ -784,9 +796,12 @@ describe('Checkout payment availability', () => {
 
   it('hides the gift incentive when the current currency has no configured threshold', () => {
     const source = readCheckoutPageSource();
+    const helpersSource = readCheckoutHelpersSource();
     const conversionCoach = readCheckoutConversionCoachSource();
 
-    expect(source).toContain('const giftEligible = conversionConfig.giftAtCheckout.enabled && giftThreshold > 0;');
+    expect(helpersSource).toContain('const giftEligible = conversionConfig.giftAtCheckout.enabled && giftThreshold > 0;');
+    expect(source).toContain('giftEligible,');
+    expect(source).toContain('useCheckoutDerivedTotals({');
     expect(conversionCoach).toContain('giftEligible ? {');
     expect(readCheckoutConversionSource()).toContain('{giftEligible ? (');
     expect(source).not.toContain('{conversionConfig.giftAtCheckout.enabled ? (');

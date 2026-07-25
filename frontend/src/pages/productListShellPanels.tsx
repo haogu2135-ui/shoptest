@@ -79,8 +79,8 @@ export type ProductListMainShellProps = {
   renderBadges: ProductListModalsProps['renderBadges'];
   keyword: string;
   setKeyword: React.Dispatch<React.SetStateAction<string>>;
-  handleSearch: (value?: string) => void;
-  handleSearchTermKeyDown: (event: React.KeyboardEvent<HTMLInputElement>) => void;
+  handleSearch: (value: string) => void;
+  handleSearchTermKeyDown: (event: React.KeyboardEvent<HTMLElement>, term: string) => void;
   productSearchActionLabel: string;
   sortBy: string;
   applySort: (value: string) => void;
