@@ -5,7 +5,12 @@ import { MemoryRouter } from 'react-router-dom';
 import { userApi } from '../api';
 import Register from './Register';
 
-const readRegisterSource = () => fs.readFileSync(path.resolve(__dirname, 'Register.tsx'), 'utf8');
+const readRegisterSource = () => [
+  fs.readFileSync(path.resolve(__dirname, 'Register.tsx'), 'utf8'),
+  fs.readFileSync(path.resolve(__dirname, 'registerHelpers.ts'), 'utf8'),
+  fs.readFileSync(path.resolve(__dirname, 'registerPanels.tsx'), 'utf8'),
+].join('\n');
+const readRegisterPage = () => fs.readFileSync(path.resolve(__dirname, 'Register.tsx'), 'utf8');
 const readRegisterCss = () => fs.readFileSync(path.resolve(__dirname, 'Register.css'), 'utf8');
 const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -273,4 +278,27 @@ describe('Register submit guard', () => {
     expect(source).toContain('buildLoginUrl(postRegisterRedirect)');
   });
 
+});
+
+describe('Register modularization', () => {
+  it('keeps register helpers and panels modularized outside the page shell', () => {
+    const page = readRegisterPage();
+    const helpers = fs.readFileSync(path.resolve(__dirname, 'registerHelpers.ts'), 'utf8');
+    const panels = fs.readFileSync(path.resolve(__dirname, 'registerPanels.tsx'), 'utf8');
+    expect(page).toContain("from './registerHelpers'");
+    expect(page).toContain("from './registerPanels'");
+    expect(page).toContain('<RegisterMainPanels');
+    expect(page).toContain('buildRegisterActionLabels({');
+    expect(page).toContain('buildRegisterPanelProps({');
+    expect(page).not.toContain('const registerLoginActionLabel =');
+    expect(page).not.toContain('register-page__heroTitle');
+    expect(helpers).toContain('export const buildRegisterActionLabels');
+    expect(helpers).toContain('export const buildRegisterPanelProps');
+    expect(helpers).toContain('export const resolveRegisterRecoveryKind');
+    expect(helpers).toContain('export const scrollFirstRegisterErrorIntoView');
+    expect(panels).toContain('export const RegisterMainPanels');
+    expect(panels).toContain('register-page__heroTitle');
+    expect(panels).toContain('data-register-error-recovery');
+    expect(panels).toContain('data-register-recovery-actions');
+  });
 });

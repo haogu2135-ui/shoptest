@@ -819,6 +819,16 @@ expect(recommendationsPanel).toContain('export const ProductDetailRecommendation
     expect(helpers).toContain('export const groupWishlistItems');
     expect(helpers).toContain('export const pickFeaturedWishlistItem');
     expect(helpers).toContain('export const WISHLIST_LOGIN_REQUIRED_MESSAGE_KEY');
+    expect(helpers).toContain('export const buildWishlistActionLabels');
+    expect(helpers).toContain('export const buildWishlistPanelProps');
+    expect(helpers).toContain('export const buildWishlistRecoveryText');
+    expect(helpers).toContain('export const resolveWishlistRecoveryActionDescriptor');
+    expect(helpers).toContain('export const resolveWishlistNextActionDescriptor');
+    expect(page).toContain('buildWishlistActionLabels({');
+    expect(page).toContain('buildWishlistPanelProps({');
+    expect(page).toContain('resolveWishlistNextActionDescriptor({');
+    expect(page).not.toContain('const addAllToCartActionLabel =');
+    expect(page).not.toContain('const recoveryText = directAddItems.length > 0');
     expect(panels).toContain('export const WishlistMainPanels');
     expect(panels).toContain('export const WishlistAuthGate');
     expect(panels).toContain('export const WishlistLoadingShell');
@@ -844,11 +854,62 @@ expect(recommendationsPanel).toContain('export const ProductDetailRecommendation
     expect(helpers).toContain('export const normalizePasswordLogin');
     expect(helpers).toContain('export const shouldTryNextLoginCandidate');
     expect(helpers).toContain('export type LoginSessionResponse');
+    expect(helpers).toContain('export const buildLoginActionLabels');
+    expect(helpers).toContain('export const buildLoginPanelProps');
+    expect(page).toContain('buildLoginActionLabels({');
+    expect(page).toContain('buildLoginPanelProps({');
+    expect(page).not.toContain("const loginPageLabel = t('pages.auth.loginTitle')");
+    expect(page).not.toContain('const loginRegisterActionLabel =');
     expect(panels).toContain('export const LoginMainPanels');
     expect(panels).toContain('shopee-login-tabs__nav');
     expect(panels).toContain('data-login-recovery-actions');
     expect(panels).toContain('role="tablist"');
     expect(panels).toContain('shopee-login-panel__title');
+  });
+
+
+  it('keeps register helpers and panels modularized outside the page shell', () => {
+    const page = fs.readFileSync(path.join(__dirname, '..', 'pages', 'Register.tsx'), 'utf8');
+    const helpers = fs.readFileSync(path.join(__dirname, '..', 'pages', 'registerHelpers.ts'), 'utf8');
+    const panels = fs.readFileSync(path.join(__dirname, '..', 'pages', 'registerPanels.tsx'), 'utf8');
+    expect(page).toContain("from './registerHelpers'");
+    expect(page).toContain("from './registerPanels'");
+    expect(page).toContain('<RegisterMainPanels');
+    expect(page).toContain('buildRegisterActionLabels({');
+    expect(page).toContain('buildRegisterPanelProps({');
+    expect(page).not.toContain('const registerLoginActionLabel =');
+    expect(page).not.toContain('register-page__heroTitle');
+    expect(helpers).toContain('export const buildRegisterActionLabels');
+    expect(helpers).toContain('export const buildRegisterPanelProps');
+    expect(helpers).toContain('export const resolveRegisterRecoveryKind');
+    expect(helpers).toContain('export const scrollFirstRegisterErrorIntoView');
+    expect(helpers).toContain('export const normalizeUsername');
+    expect(panels).toContain('export const RegisterMainPanels');
+    expect(panels).toContain('register-page__heroTitle');
+    expect(panels).toContain('data-register-error-recovery');
+    expect(panels).toContain('data-register-recovery-actions');
+    expect(panels).toContain('register-page__legalNotice');
+  });
+
+  it('keeps forgot-password helpers and panels modularized outside the page shell', () => {
+    const page = fs.readFileSync(path.join(__dirname, '..', 'pages', 'ForgotPassword.tsx'), 'utf8');
+    const helpers = fs.readFileSync(path.join(__dirname, '..', 'pages', 'forgotPasswordHelpers.ts'), 'utf8');
+    const panels = fs.readFileSync(path.join(__dirname, '..', 'pages', 'forgotPasswordPanels.tsx'), 'utf8');
+    expect(page).toContain("from './forgotPasswordHelpers'");
+    expect(page).toContain("from './forgotPasswordPanels'");
+    expect(page).toContain('<ForgotPasswordMainPanels');
+    expect(page).toContain('buildForgotPasswordActionLabels({');
+    expect(page).toContain('buildForgotPasswordPanelProps({');
+    expect(page).not.toContain('const resetPageLabel =');
+    expect(page).not.toContain('shopee-login-subtitle--h1');
+    expect(helpers).toContain('export const buildForgotPasswordActionLabels');
+    expect(helpers).toContain('export const buildForgotPasswordPanelProps');
+    expect(helpers).toContain('export const scrollFirstForgotPasswordErrorIntoView');
+    expect(helpers).toContain('export const normalizePasswordLogin');
+    expect(panels).toContain('export const ForgotPasswordMainPanels');
+    expect(panels).toContain('shopee-login-subtitle--h1');
+    expect(panels).toContain('data-forgot-password-unavailable');
+    expect(panels).toContain('data-forgot-password-unavailable-actions');
   });
 
   it('keeps product compare helpers and panels modularized outside the page shell', () => {
@@ -985,6 +1046,12 @@ expect(recommendationsPanel).toContain('export const ProductDetailRecommendation
     expect(helpers).toContain('export const filterProfileOrders');
     expect(helpers).toContain('export const getOrderActionHint');
     expect(helpers).toContain('export const buildProfileAfterSaleFocusText');
+    expect(helpers).toContain('export const buildProfileActionLabels');
+    expect(helpers).toContain('export const buildProfileMainShellProps');
+    expect(page).toContain('buildProfileActionLabels({');
+    expect(page).toContain('buildProfileMainShellProps({');
+    expect(page).not.toContain('const editProfileActionLabel =');
+    expect(page).not.toContain('const selectedOrderTrackActionLabel = selectedOrder');
     expect(page).toContain('deriveProfileDashboardMetrics({');
     expect(page).toContain('filterProfileOrders({');
     expect(page).toContain('getOrderActionHintHelper({');

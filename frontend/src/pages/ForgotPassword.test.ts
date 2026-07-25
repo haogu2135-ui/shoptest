@@ -1,8 +1,17 @@
 import fs from 'fs';
 import path from 'path';
 
-const readPageSource = () => fs.readFileSync(path.resolve(__dirname, 'ForgotPassword.tsx'), 'utf8');
-const readLoginPageSource = () => fs.readFileSync(path.resolve(__dirname, 'Login.tsx'), 'utf8');
+const readPageSource = () => [
+  fs.readFileSync(path.resolve(__dirname, 'ForgotPassword.tsx'), 'utf8'),
+  fs.readFileSync(path.resolve(__dirname, 'forgotPasswordHelpers.ts'), 'utf8'),
+  fs.readFileSync(path.resolve(__dirname, 'forgotPasswordPanels.tsx'), 'utf8'),
+].join('\n');
+const readPageOnly = () => fs.readFileSync(path.resolve(__dirname, 'ForgotPassword.tsx'), 'utf8');
+const readLoginPageSource = () => [
+  fs.readFileSync(path.resolve(__dirname, 'Login.tsx'), 'utf8'),
+  fs.readFileSync(path.resolve(__dirname, 'loginHelpers.ts'), 'utf8'),
+  fs.readFileSync(path.resolve(__dirname, 'loginPanels.tsx'), 'utf8'),
+].join('\n');
 const readLoginCss = () => fs.readFileSync(path.resolve(__dirname, 'Login.css'), 'utf8');
 
 describe('ForgotPassword responsive reset guide', () => {
@@ -46,8 +55,8 @@ describe('ForgotPassword responsive reset guide', () => {
     const loginSource = readLoginPageSource();
     const forgotPasswordSource = readPageSource();
 
-    expect(loginSource).toContain("const normalizeEmailCode = (value: unknown) => String(value || '').replace(/\\D+/g, '').slice(0, 6);");
-    expect(forgotPasswordSource).toContain("const normalizeEmailCode = (value: unknown) => String(value || '').replace(/\\D+/g, '').slice(0, 6);");
+    expect(loginSource).toContain("export const normalizeEmailCode = (value: unknown) => String(value || '').replace(/\\D+/g, '').slice(0, 6);");
+    expect(forgotPasswordSource).toContain("export const normalizeEmailCode = (value: unknown) => String(value || '').replace(/\\D+/g, '').slice(0, 6);");
     expect(loginSource).toMatch(/t\('pages\.auth\.verificationCode'\)[\s\S]*?maxLength=\{6\}/);
     expect(forgotPasswordSource).toMatch(/name="code"[\s\S]*?placeholder=\{t\('pages\.auth\.verificationCode'\)\}[\s\S]*?maxLength=\{6\}/);
     expect(forgotPasswordSource).toContain('const normalizedLogin = normalizePasswordLogin(values.login);');
@@ -104,4 +113,27 @@ describe('ForgotPassword responsive reset guide', () => {
     expect(css).toMatch(/shopee-login-resetUnavailable__actions[\s\S]*?min-height:\s*44px/);
   });
 
+});
+
+describe('ForgotPassword modularization', () => {
+  it('keeps forgot-password helpers and panels modularized outside the page shell', () => {
+    const page = readPageOnly();
+    const helpers = fs.readFileSync(path.resolve(__dirname, 'forgotPasswordHelpers.ts'), 'utf8');
+    const panels = fs.readFileSync(path.resolve(__dirname, 'forgotPasswordPanels.tsx'), 'utf8');
+    expect(page).toContain("from './forgotPasswordHelpers'");
+    expect(page).toContain("from './forgotPasswordPanels'");
+    expect(page).toContain('<ForgotPasswordMainPanels');
+    expect(page).toContain('buildForgotPasswordActionLabels({');
+    expect(page).toContain('buildForgotPasswordPanelProps({');
+    expect(page).not.toContain('const resetPageLabel =');
+    expect(page).not.toContain('shopee-login-subtitle--h1');
+    expect(helpers).toContain('export const buildForgotPasswordActionLabels');
+    expect(helpers).toContain('export const buildForgotPasswordPanelProps');
+    expect(helpers).toContain('export const scrollFirstForgotPasswordErrorIntoView');
+    expect(helpers).toContain('export const normalizePasswordLogin');
+    expect(panels).toContain('export const ForgotPasswordMainPanels');
+    expect(panels).toContain('shopee-login-subtitle--h1');
+    expect(panels).toContain('data-forgot-password-unavailable');
+    expect(panels).toContain('data-forgot-password-unavailable-actions');
+  });
 });

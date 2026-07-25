@@ -15,9 +15,14 @@ import { getApiErrorMessage } from '../utils/apiError';
 import './Wishlist.css';
 import '../styles/mobile-page-contrast.css';
 import {
+  buildWishlistActionLabels,
+  buildWishlistPanelProps,
+  buildWishlistRecoveryText,
   groupWishlistItems,
   isPurchasable,
   pickFeaturedWishlistItem,
+  resolveWishlistNextActionDescriptor,
+  resolveWishlistRecoveryActionDescriptor,
   toWishlistStats,
 } from './wishlistHelpers';
 import {
@@ -68,13 +73,12 @@ const Wishlist: React.FC = () => {
   const directAddItems = wishlistGroups.directAddItems;
   const wishlistStats = toWishlistStats(wishlistGroups);
   const featuredWishlistItem = useMemo(() => pickFeaturedWishlistItem(items), [items]);
-  const recoveryText = directAddItems.length > 0
-    ? t('pages.wishlist.recoveryDirectText', { count: directAddItems.length })
-    : wishlistStats.optionCount > 0
-      ? t('pages.wishlist.recoveryOptionsText', { count: wishlistStats.optionCount })
-      : wishlistStats.unavailableCount > 0
-        ? t('pages.wishlist.recoveryUnavailableText')
-        : t('pages.wishlist.recoveryBrowseText');
+  const recoveryText = buildWishlistRecoveryText({
+    t,
+    directAddCount: directAddItems.length,
+    optionCount: wishlistStats.optionCount,
+    unavailableCount: wishlistStats.unavailableCount,
+  });
 
   const fetchWishlist = useCallback(async () => {
     const requestSeq = wishlistFetchSeqRef.current + 1;
@@ -222,64 +226,81 @@ const Wishlist: React.FC = () => {
     announceAccessibleMessage(t('messages.operationFailed'), 'error');
   };
 
-  const recoveryAction: WishlistAction = directAddItems.length > 0
-    ? { label: t('pages.wishlist.addAllToCart'), action: handleAddAllToCart, disabled: addingAllToCart || actionsDisabledByStaleData }
-    : wishlistStats.optionCount > 0
-      ? { label: t('pages.wishlist.resolveOptions'), action: () => {
-        const nextItem = items.find((item) => item.requiresSelection && isPurchasable(item));
-        if (nextItem) navigate(`/products/${nextItem.productId}`);
-      }, disabled: false }
-      : { label: t('pages.wishlist.browse'), action: () => navigate('/products'), disabled: false };
+  const recoveryDescriptor = resolveWishlistRecoveryActionDescriptor({
+    t,
+    directAddCount: directAddItems.length,
+    optionCount: wishlistStats.optionCount,
+  });
+  const openResolveOptions = () => {
+    const nextItem = items.find((item) => item.requiresSelection && isPurchasable(item));
+    if (nextItem) navigate(`/products/${nextItem.productId}`);
+  };
+  const recoveryAction: WishlistAction = {
+    label: recoveryDescriptor.label,
+    disabled: recoveryDescriptor.intent === 'add-all'
+      ? addingAllToCart || actionsDisabledByStaleData
+      : false,
+    action: () => {
+      if (recoveryDescriptor.intent === 'add-all') {
+        void handleAddAllToCart();
+        return;
+      }
+      if (recoveryDescriptor.intent === 'resolve-options') {
+        openResolveOptions();
+        return;
+      }
+      navigate('/products');
+    },
+  };
 
-  const wishlistNextAction: WishlistAction = (() => {
-    if (directAddItems.length > 0) {
-      return {
-        tone: 'ready',
-        title: t('pages.wishlist.nextActionReadyTitle'),
-        text: t('pages.wishlist.nextActionReadyText', {
-          count: directAddItems.length,
-          amount: formatMoney(wishlistStats.readyValue),
-        }),
-        label: t('pages.wishlist.addAllToCart'),
-        action: handleAddAllToCart,
-        disabled: addingAllToCart || actionsDisabledByStaleData,
-      };
-    }
-    if (wishlistStats.optionCount > 0) {
-      return {
-        tone: 'options',
-        title: t('pages.wishlist.nextActionOptionsTitle'),
-        text: t('pages.wishlist.nextActionOptionsText', { count: wishlistStats.optionCount }),
-        label: t('pages.wishlist.resolveOptions'),
-        action: recoveryAction.action,
-        disabled: false,
-      };
-    }
-    if (wishlistStats.lowStockCount > 0 && featuredWishlistItem) {
-      const featuredName = wishlistProductName(featuredWishlistItem);
-      return {
-        tone: 'urgent',
-        title: t('pages.wishlist.nextActionLowStockTitle'),
-        text: t('pages.wishlist.nextActionLowStockText', { name: featuredName }),
-        label: t('pages.wishlist.viewBestPick'),
-        action: () => navigate(`/products/${featuredWishlistItem.productId}`),
-        disabled: false,
-      };
-    }
-    return {
-      tone: 'browse',
-      title: t('pages.wishlist.nextActionBrowseTitle'),
-      text: t('pages.wishlist.nextActionBrowseText'),
-      label: t('pages.wishlist.browsePersonalized'),
-      action: () => navigate('/products?sort=personalized-desc'),
-      disabled: false,
-    };
-  })();
-  const addAllToCartActionLabel = `${t('pages.wishlist.addAllToCart')}: ${directAddItems.length}`;
-  const clearUnavailableActionLabel = `${t('pages.cart.clearUnavailable')}: ${wishlistStats.unavailableCount}`;
-  const recoveryActionLabel = `${recoveryAction.label}: ${recoveryText}`;
-  const wishlistNextActionLabel = `${wishlistNextAction.label}: ${wishlistNextAction.title}`;
-  const wishlistBrowseActionLabel = t('pages.wishlist.browse');
+  const nextActionDescriptor = resolveWishlistNextActionDescriptor({
+    t,
+    directAddCount: directAddItems.length,
+    readyValueLabel: formatMoney(wishlistStats.readyValue),
+    optionCount: wishlistStats.optionCount,
+    lowStockCount: wishlistStats.lowStockCount,
+    featuredName: featuredWishlistItem ? wishlistProductName(featuredWishlistItem) : undefined,
+    featuredProductId: featuredWishlistItem?.productId,
+  });
+  const wishlistNextAction: WishlistAction = {
+    tone: nextActionDescriptor.tone,
+    title: nextActionDescriptor.title,
+    text: nextActionDescriptor.text,
+    label: nextActionDescriptor.label,
+    disabled: nextActionDescriptor.intent === 'add-all'
+      ? addingAllToCart || actionsDisabledByStaleData
+      : false,
+    action: () => {
+      if (nextActionDescriptor.intent === 'add-all') {
+        void handleAddAllToCart();
+        return;
+      }
+      if (nextActionDescriptor.intent === 'resolve-options') {
+        openResolveOptions();
+        return;
+      }
+      if (nextActionDescriptor.intent === 'view-featured' && nextActionDescriptor.featuredProductId != null) {
+        navigate(`/products/${nextActionDescriptor.featuredProductId}`);
+        return;
+      }
+      navigate('/products?sort=personalized-desc');
+    },
+  };
+  const {
+    addAllToCartActionLabel,
+    clearUnavailableActionLabel,
+    recoveryActionLabel,
+    wishlistNextActionLabel,
+    wishlistBrowseActionLabel,
+  } = buildWishlistActionLabels({
+    t,
+    directAddCount: directAddItems.length,
+    unavailableCount: wishlistStats.unavailableCount,
+    recoveryActionLabelText: recoveryAction.label,
+    recoveryText,
+    nextActionLabel: wishlistNextAction.label,
+    nextActionTitle: wishlistNextAction.title || '',
+  });
 
   if (authRequired) {
     return (
@@ -320,7 +341,7 @@ const Wishlist: React.FC = () => {
     );
   }
 
-  const panelProps: WishlistPanelsProps = {
+  const panelProps: WishlistPanelsProps = buildWishlistPanelProps({
     t,
     language,
     navigate,
@@ -348,7 +369,7 @@ const Wishlist: React.FC = () => {
     handleAddToCart,
     handleRemove,
     clearUnavailableItems,
-  };
+  });
 
   return <WishlistMainPanels {...panelProps} />;
 };

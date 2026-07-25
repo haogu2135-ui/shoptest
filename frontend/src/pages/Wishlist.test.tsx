@@ -90,6 +90,10 @@ describe('Wishlist mobile action layout', () => {
     expect(helpers).toContain('export const isPurchasable');
     expect(helpers).toContain('export const groupWishlistItems');
     expect(helpers).toContain('export const pickFeaturedWishlistItem');
+    expect(helpers).toContain('export const buildWishlistActionLabels');
+    expect(helpers).toContain('export const resolveWishlistNextActionDescriptor');
+    expect(page).toContain('buildWishlistActionLabels({');
+    expect(page).toContain('buildWishlistPanelProps({');
     expect(panels).toContain('export const WishlistMainPanels');
     expect(panels).toContain('export const WishlistAuthGate');
     expect(panels).toContain('wishlist-page__grid');
@@ -190,7 +194,7 @@ describe('Wishlist async lifecycle', () => {
     const addAllStart = source.indexOf('const handleAddAllToCart = async () => {');
     const addAllSource = source.slice(addAllStart, source.indexOf('const clearUnavailableItems = async', addAllStart));
     const clearStart = source.indexOf('const clearUnavailableItems = async () => {');
-    const clearSource = source.slice(clearStart, source.indexOf('const wishlistNextActionLabel', clearStart));
+    const clearSource = source.slice(clearStart, source.indexOf('const recoveryDescriptor = resolveWishlistRecoveryActionDescriptor', clearStart));
 
     expect(source).toContain('const actionsDisabledByStaleData = Boolean(loadError);');
     expect(source).toContain("message={t('pages.wishlist.loadErrorTitle')}");

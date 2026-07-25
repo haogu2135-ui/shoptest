@@ -561,3 +561,130 @@ export const getOrderActionHint = (params: {
     text: t('pages.profile.nextOrderText'),
   };
 };
+
+
+export type ProfileActionLabelUser = Pick<UserProfile, 'username' | 'email' | 'phone'>;
+export type ProfileActionLabelOrder = Pick<OrderCustomer, 'id' | 'orderNo' | 'trackingNumber'>;
+export type ProfileActionLabelAddress = Pick<UserAddress, 'id' | 'recipientName' | 'phone' | 'address'>;
+export type ProfileActionLabelPet = Pick<PetProfile, 'id' | 'name'>;
+export type ProfileOrderStatusTab = { key: string; label: string };
+
+/** Build a11y / CTA labels for Profile main shell residual modularization. */
+export const buildProfileActionLabels = (params: {
+  t: ProfileTranslate;
+  user: ProfileActionLabelUser;
+  selectedOrder?: ProfileActionLabelOrder | null;
+  editingAddress?: ProfileActionLabelAddress | null;
+  editingPet?: ProfileActionLabelPet | null;
+  returnShipmentOrder?: ProfileActionLabelOrder | null;
+  returnRequestOrder?: ProfileActionLabelOrder | null;
+  pendingPaymentCount: number;
+  inTransitCount: number;
+  afterSaleCount: number;
+  defaultAddressReady: boolean;
+  petProfileProgress: number;
+  addressReadinessProgress: number;
+  orderStatusTabs: ProfileOrderStatusTab[];
+  orderStatusFilter: string;
+  orders: Array<unknown>;
+  filteredOrders: Array<unknown>;
+}) => {
+  const {
+    t,
+    user,
+    selectedOrder,
+    editingAddress,
+    editingPet,
+    returnShipmentOrder,
+    returnRequestOrder,
+    pendingPaymentCount,
+    inTransitCount,
+    afterSaleCount,
+    defaultAddressReady,
+    petProfileProgress,
+    addressReadinessProgress,
+    orderStatusTabs,
+    orderStatusFilter,
+    orders,
+    filteredOrders,
+  } = params;
+
+  const selectedOrderLabel = selectedOrder ? profileOrderLabel(selectedOrder) : '';
+  const selectedOrderTrackActionLabel = selectedOrder?.trackingNumber
+    ? `${t('pages.adminOrders.track')}: ${selectedOrderLabel} / ${selectedOrder.trackingNumber}`
+    : `${t('pages.adminOrders.track')}: ${selectedOrderLabel}`;
+  const profileTargetLabel = user.username || user.email || user.phone || t('pages.profile.title');
+  const editProfileActionLabel = `${t('common.save')}: ${t('pages.profile.editProfileTitle')}, ${profileTargetLabel}`;
+  const changePasswordActionLabel = `${t('pages.profile.changePassword')}: ${profileTargetLabel}`;
+  const addressEditorTargetLabel = editingAddress
+    ? [editingAddress.recipientName, editingAddress.phone, editingAddress.address].filter(Boolean).join(' / ') || `#${editingAddress.id}`
+    : t('pages.profile.addAddressTitle');
+  const saveAddressActionLabel = `${t('common.save')}: ${addressEditorTargetLabel}`;
+  const profilePhoneInputLabel = `${t('pages.profile.editProfileTitle')}: ${t('pages.profile.phone')}`;
+  const addressPhoneInputLabel = `${saveAddressActionLabel}: ${t('pages.profile.phone')}`;
+  const addressRegionInputLabel = `${saveAddressActionLabel}: ${t('pages.profile.regionRequired')}`;
+  const petEditorTargetLabel = editingPet?.name || (editingPet ? `#${editingPet.id}` : t('pages.profile.addPet'));
+  const savePetActionLabel = `${t('common.save')}: ${petEditorTargetLabel}`;
+  const returnShipmentOrderLabel = returnShipmentOrder ? profileOrderLabel(returnShipmentOrder) : t('pages.profile.submitReturnShipment');
+  const submitReturnShipmentActionLabel = `${t('pages.profile.submitReturnShipment')}: ${returnShipmentOrderLabel}`;
+  const returnRequestOrderLabel = returnRequestOrder ? profileOrderLabel(returnRequestOrder) : t('pages.profile.returnOrder');
+  const submitReturnRequestActionLabel = `${t('pages.profile.returnOrder')}: ${returnRequestOrderLabel}`;
+  const paymentOrderLabel = selectedOrder ? profileOrderLabel(selectedOrder) : t('pages.profile.continuePay');
+  const openPaymentActionLabel = `${t('pages.checkout.openPayment')}: ${paymentOrderLabel}`;
+  const refreshPaymentActionLabel = `${t('pages.profile.refreshPayment')}: ${paymentOrderLabel}`;
+  const retryPaymentChannelsActionLabel = `${t('common.retry')}: ${paymentOrderLabel} ${t('pages.checkout.paymentMethod')}`;
+  const closePaymentActionLabel = `${t('common.cancel')}: ${t('pages.profile.continuePay')}, ${paymentOrderLabel}`;
+  const profilePendingPayActionLabel = `${t('pages.profile.actionPendingPay')}: ${pendingPaymentCount}`;
+  const profileInTransitActionLabel = `${t('pages.profile.actionInTransit')}: ${inTransitCount}`;
+  const profileAfterSaleActionLabel = `${t('pages.profile.actionAfterSale')}: ${afterSaleCount}`;
+  const profileCompletionActionLabel = defaultAddressReady
+    ? `${t('pages.profile.actionPetProfile')}: ${petProfileProgress}%`
+    : `${t('pages.profile.actionDefaultAddress')}: ${addressReadinessProgress}%`;
+  const currentOrderFilterLabel = orderStatusTabs.find((tab) => tab.key === orderStatusFilter)?.label || t('pages.profile.allOrders');
+  const orderListContextLabel = `${t('pages.profile.orders', { count: orders.length })}: ${currentOrderFilterLabel}, ${filteredOrders.length}`;
+  const orderSearchInputLabel = `${t('common.search')}: ${orderListContextLabel}`;
+  const reorderSelectedOrderActionLabel = `${t('pages.profile.reorder')}: ${selectedOrderLabel}`;
+  const returnTrackingInputLabel = `${t('pages.profile.returnTrackingPlaceholder')}: ${returnShipmentOrderLabel}`;
+  const returnReasonInputLabel = `${t('pages.profile.returnReasonPlaceholder')}: ${returnRequestOrderLabel}`;
+  const paymentMethodSelectLabel = `${t('pages.checkout.paymentMethod')}: ${paymentOrderLabel}`;
+  const paymentLinkActionLabel = `${t('pages.checkout.paymentLink')}: ${paymentOrderLabel}`;
+
+  return {
+    selectedOrderLabel,
+    selectedOrderTrackActionLabel,
+    profileTargetLabel,
+    editProfileActionLabel,
+    changePasswordActionLabel,
+    addressEditorTargetLabel,
+    saveAddressActionLabel,
+    profilePhoneInputLabel,
+    addressPhoneInputLabel,
+    addressRegionInputLabel,
+    petEditorTargetLabel,
+    savePetActionLabel,
+    returnShipmentOrderLabel,
+    submitReturnShipmentActionLabel,
+    returnRequestOrderLabel,
+    submitReturnRequestActionLabel,
+    paymentOrderLabel,
+    openPaymentActionLabel,
+    refreshPaymentActionLabel,
+    retryPaymentChannelsActionLabel,
+    closePaymentActionLabel,
+    profilePendingPayActionLabel,
+    profileInTransitActionLabel,
+    profileAfterSaleActionLabel,
+    profileCompletionActionLabel,
+    currentOrderFilterLabel,
+    orderListContextLabel,
+    orderSearchInputLabel,
+    reorderSelectedOrderActionLabel,
+    returnTrackingInputLabel,
+    returnReasonInputLabel,
+    paymentMethodSelectLabel,
+    paymentLinkActionLabel,
+  };
+};
+
+/** Assemble Profile main shell prop bag in one pure surface for residual modularization. */
+export const buildProfileMainShellProps = <T extends Record<string, unknown>>(props: T): T => props;

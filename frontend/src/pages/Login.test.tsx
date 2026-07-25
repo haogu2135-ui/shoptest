@@ -216,6 +216,10 @@ describe('Login CSS contracts', () => {
     expect(helpers).toContain('export const resolvePasswordLoginError');
     expect(helpers).toContain('export const normalizePasswordLogin');
     expect(helpers).toContain('export type LoginSessionResponse');
+    expect(helpers).toContain('export const buildLoginActionLabels');
+    expect(helpers).toContain('export const buildLoginPanelProps');
+    expect(page).toContain('buildLoginActionLabels({');
+    expect(page).toContain('buildLoginPanelProps({');
     expect(panels).toContain('export const LoginMainPanels');
     expect(panels).toContain('shopee-login-tabs__nav');
     expect(panels).toContain('data-login-recovery-actions');

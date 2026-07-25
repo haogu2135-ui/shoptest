@@ -120,6 +120,18 @@ const readLoginSurface = () => [
   readFrontend('pages', 'loginPanels.tsx'),
 ].join('\n');
 
+const readRegisterSurface = () => [
+  readFrontend('pages', 'Register.tsx'),
+  readFrontend('pages', 'registerHelpers.ts'),
+  readFrontend('pages', 'registerPanels.tsx'),
+].join('\n');
+
+const readForgotPasswordSurface = () => [
+  readFrontend('pages', 'ForgotPassword.tsx'),
+  readFrontend('pages', 'forgotPasswordHelpers.ts'),
+  readFrontend('pages', 'forgotPasswordPanels.tsx'),
+].join('\n');
+
 const readProductCompareSurface = () => [
   readFrontend('pages', 'ProductCompare.tsx'),
   readFrontend('pages', 'productCompareHelpers.ts'),
@@ -139,6 +151,8 @@ const readPageSurface = (dir: string, name: string) => {
   if (name === 'Profile.tsx') return readProfileSurface();
   if (name === 'Wishlist.tsx') return readWishlistSurface();
   if (name === 'Login.tsx') return readLoginSurface();
+  if (name === 'Register.tsx') return readRegisterSurface();
+  if (name === 'ForgotPassword.tsx') return readForgotPasswordSurface();
   if (name === 'ProductCompare.tsx') return readProductCompareSurface();
   return readFrontend(dir, name);
 };
@@ -613,8 +627,8 @@ describe('commercial performance contracts', () => {
 
   it('keeps auth pages free of static Typography imports', () => {
     const login = readLoginSurface();
-    const register = readFrontend('pages', 'Register.tsx');
-    const forgot = readFrontend('pages', 'ForgotPassword.tsx');
+    const register = readRegisterSurface();
+    const forgot = readForgotPasswordSurface();
     expect(login).not.toMatch(/\bTypography\b/);
     expect(login).toContain('shopee-login-panel__title');
     expect(login).toContain('shopee-login-panel__subtitle');
@@ -1979,7 +1993,7 @@ describe('commercial performance contracts', () => {
   });
 
   it('keeps Register free of static ant Input', () => {
-    const source = readFrontend('pages', 'Register.tsx');
+    const source = readRegisterSurface();
     expect(source).toContain('ShopInput');
     expect(source).toContain('ShopPasswordInput');
     expect(source).not.toMatch(/import \{[^}]*\bInput\b[^}]*\} from 'antd'/);
@@ -1987,7 +2001,7 @@ describe('commercial performance contracts', () => {
   });
 
   it('keeps ForgotPassword free of static ant Input', () => {
-    const source = readFrontend('pages', 'ForgotPassword.tsx');
+    const source = readForgotPasswordSurface();
     expect(source).toContain('ShopInput');
     expect(source).toContain('ShopPasswordInput');
     expect(source).not.toMatch(/import \{[^}]*\bInput\b[^}]*\} from 'antd'/);
@@ -2463,9 +2477,13 @@ describe('commercial performance contracts', () => {
                         ? readWishlistSurface()
                         : page === 'Login'
                           ? readLoginSurface()
-                          : page === 'ProductCompare'
-                            ? readProductCompareSurface()
-                            : fs.readFileSync(path.resolve(__dirname, `../pages/${page}.tsx`), 'utf8');
+                          : page === 'Register'
+                            ? readRegisterSurface()
+                            : page === 'ForgotPassword'
+                              ? readForgotPasswordSurface()
+                              : page === 'ProductCompare'
+                                ? readProductCompareSurface()
+                                : fs.readFileSync(path.resolve(__dirname, `../pages/${page}.tsx`), 'utf8');
       expect(source).toContain('ShopButton');
       expect(source).not.toMatch(/<Button\b/);
       expect(source).not.toMatch(/import \{[^}]*\bButton\b[^}]*\} from 'antd'/);

@@ -18,6 +18,8 @@ import {
   apiErrorCode,
   apiErrorData,
   asApiError,
+  buildLoginActionLabels,
+  buildLoginPanelProps,
   maskEmail,
   normalizeEmail,
   normalizeEmailCode,
@@ -96,22 +98,23 @@ const Login: React.FC = () => {
   const emailCodeEnabled = appConfig.emailCodeEnabled === true;
   const canSubmitEmailCode = emailCodeEnabled && emailCodeLength === 6 && verifyRetryCountdown <= 0;
   const postLoginRedirectTarget = getPostLoginRedirectTarget(location.search);
-  const loginPageLabel = t('pages.auth.loginTitle');
-  const loginRegisterActionLabel = `${t('pages.auth.register')}: ${loginPageLabel}`;
-  const loginTrackOrderActionLabel = `${t('nav.trackOrder')}: ${loginPageLabel}`;
-  const loginSupportActionLabel = `${t('nav.help')}: ${t('pages.auth.mobileQuickActions')}`;
-  const passwordLoginActionLabel = `${t('pages.auth.passwordLogin')}: ${loginPageLabel}`;
-  const emailLoginActionLabel = `${t('pages.auth.emailLogin')}: ${loginPageLabel}`;
-  const passwordLoginUsernameInputLabel = `${passwordLoginActionLabel}: ${t('pages.auth.username')}`;
-  const passwordLoginPasswordInputLabel = `${passwordLoginActionLabel}: ${t('pages.auth.password')}`;
-  const passwordVisibilityActionLabel = (visible: boolean) => `${passwordLoginPasswordInputLabel}: ${visible ? t('pages.auth.hidePassword') : t('pages.auth.showPassword')}`;
-  const emailLoginEmailInputLabel = `${emailLoginActionLabel}: ${t('pages.auth.email')}`;
-  const emailLoginCodeInputLabel = `${emailLoginActionLabel}: ${t('pages.auth.verificationCode')}`;
-  const sendEmailCodeActionLabel = codeSending
-    ? `${emailLoginActionLabel}: ${t('pages.auth.emailCodeSending')}`
-    : sendCodeCountdown > 0
-    ? `${emailLoginActionLabel}: ${t('pages.auth.resendIn', { seconds: sendCodeCountdown })}`
-    : `${emailLoginActionLabel}: ${t('pages.auth.sendCode')}`;
+  const {
+    loginRegisterActionLabel,
+    loginTrackOrderActionLabel,
+    loginSupportActionLabel,
+    passwordLoginActionLabel,
+    emailLoginActionLabel,
+    passwordLoginUsernameInputLabel,
+    passwordLoginPasswordInputLabel,
+    passwordVisibilityActionLabel,
+    emailLoginEmailInputLabel,
+    emailLoginCodeInputLabel,
+    sendEmailCodeActionLabel,
+  } = buildLoginActionLabels({
+    t,
+    codeSending,
+    sendCodeCountdown,
+  });
 
   useEffect(() => {
     clearStoredAuthCredentials();
@@ -333,7 +336,7 @@ const Login: React.FC = () => {
     }
   };
 
-  const panelProps: LoginPanelsProps = {
+  const panelProps: LoginPanelsProps = buildLoginPanelProps({
     t,
     navigate,
     guestCartCount,
@@ -374,7 +377,7 @@ const Login: React.FC = () => {
     onFinish,
     onEmailLogin,
     sendEmailCode,
-  };
+  });
 
   return <LoginMainPanels {...panelProps} />;
 };

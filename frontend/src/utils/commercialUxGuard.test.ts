@@ -65,6 +65,22 @@ const readLoginSurface = () => (
   ].join('\n')
 );
 
+const readRegisterSurface = () => (
+  [
+    readFrontend('pages', 'Register.tsx'),
+    readFrontend('pages', 'registerHelpers.ts'),
+    readFrontend('pages', 'registerPanels.tsx'),
+  ].join('\n')
+);
+
+const readForgotPasswordSurface = () => (
+  [
+    readFrontend('pages', 'ForgotPassword.tsx'),
+    readFrontend('pages', 'forgotPasswordHelpers.ts'),
+    readFrontend('pages', 'forgotPasswordPanels.tsx'),
+  ].join('\n')
+);
+
 const readProductCompareSurface = () => (
   [
     readFrontend('pages', 'ProductCompare.tsx'),
@@ -148,7 +164,7 @@ const readProductDetailSurface = () => (
 
 describe('commercial UX contracts', () => {
   it('keeps auth and checkout forms on realtime validation with required marks', () => {
-    const register = readFrontend('pages', 'Register.tsx');
+    const register = readRegisterSurface();
     const login = readLoginSurface();
     const checkout = readFrontend('pages', 'Checkout.tsx');
 
@@ -159,7 +175,7 @@ describe('commercial UX contracts', () => {
     expect(checkout).toContain('validateTrigger={["onChange", "onBlur"]}');
     expect(checkout).toContain('requiredMark');
 
-    const forgotPassword = readFrontend('pages', 'ForgotPassword.tsx');
+    const forgotPassword = readForgotPasswordSurface();
     expect(forgotPassword).toContain('validateTrigger={["onChange", "onBlur"]}');
     expect(forgotPassword).toContain('requiredMark');
   });
@@ -389,7 +405,7 @@ describe('commercial UX contracts', () => {
     const checkout = readFrontend('pages', 'Checkout.tsx');
     const checkoutDom = readFrontend('utils', 'checkoutDom.ts');
     const login = readLoginSurface();
-    const forgotPassword = readFrontend('pages', 'ForgotPassword.tsx');
+    const forgotPassword = readForgotPasswordSurface();
     const focusUtil = readFrontend('utils', 'formValidationFocus.ts');
 
     expect(focusUtil).toContain('export const focusFirstFormError');
@@ -600,7 +616,7 @@ describe('commercial UX contracts', () => {
     const checkout = readFrontend('pages', 'Checkout.tsx');
     const checkoutCss = readFrontend('pages', 'Checkout.css');
     const coupons = readCouponCenterSurface();
-    const register = readFrontend('pages', 'Register.tsx');
+    const register = readRegisterSurface();
 
     const checkoutSurface = readCheckoutSurface();
     expect(checkoutSurface).toContain('checkout-page__mobilePayBar');
@@ -672,8 +688,8 @@ describe('commercial UX contracts', () => {
 
   it('keeps auth password fields on accessible visibility toggles', () => {
     const login = readLoginSurface();
-    const register = readFrontend('pages', 'Register.tsx');
-    const forgot = readFrontend('pages', 'ForgotPassword.tsx');
+    const register = readRegisterSurface();
+    const forgot = readForgotPasswordSurface();
 
     expect(login).toContain('iconRender={(visible) => (');
     expect(login).toContain('aria-pressed={visible}');
@@ -741,7 +757,7 @@ describe('commercial UX contracts', () => {
     const banner = readFrontend('components', 'CookieConsentBanner.tsx');
     const bannerCss = readFrontend('components', 'CookieConsentBanner.css');
     const consent = readFrontend('utils', 'cookieConsent.ts');
-    const register = readFrontend('pages', 'Register.tsx');
+    const register = readRegisterSurface();
     const login = readLoginSurface();
     const loginCss = readFrontend('pages', 'Login.css');
     const app = readFrontend('App.tsx');
@@ -805,7 +821,7 @@ describe('commercial UX contracts', () => {
   it('keeps guest notifications multi-path auth gate conversion rails', () => {
     const notifications = readFrontend('pages', 'Notifications.tsx');
     const notificationsCss = readFrontend('pages', 'Notifications.css');
-    const register = readFrontend('pages', 'Register.tsx');
+    const register = readRegisterSurface();
     const app = readFrontend('App.tsx');
     expect(app).toContain('<Route path="notifications" element={<Notifications />} />');
     expect(notifications).toContain('notifications-page__authGate');
@@ -842,7 +858,7 @@ describe('commercial UX contracts', () => {
   });
 
   it('keeps register rate-limit failures on multipath commercial recovery exits', () => {
-    const register = readFrontend('pages', 'Register.tsx');
+    const register = readRegisterSurface();
     const registerCss = readFrontend('pages', 'Register.css');
     const en = readFrontend('locales', 'en.json');
     const zh = readFrontend('locales', 'zh.json');
@@ -959,7 +975,7 @@ describe('commercial UX contracts', () => {
   });
 
     it('keeps forgot-password unavailable on multipath commercial recovery exits', () => {
-    const forgot = readFrontend('pages', 'ForgotPassword.tsx');
+    const forgot = readForgotPasswordSurface();
     expect(forgot).toContain('data-forgot-password-unavailable');
     expect(forgot).toContain('data-forgot-password-unavailable-actions');
     expect(forgot).toContain("navigate('/login')");
@@ -1249,7 +1265,7 @@ it('keeps home empty category and product rails on multipath commercial recovery
       /Commercial password toggle button reset[\s\S]*?\.shop-input__visibilityWrap > button[\s\S]*?border:\s*0/,
     );
     for (const page of ['Login.tsx', 'Register.tsx', 'ForgotPassword.tsx', 'Profile.tsx'] as const) {
-      const source = page === 'Login.tsx' ? readLoginSurface() : readFrontend('pages', page);
+      const source = page === 'Login.tsx' ? readLoginSurface() : page === 'Register.tsx' ? readRegisterSurface() : page === 'ForgotPassword.tsx' ? readForgotPasswordSurface() : readFrontend('pages', page);
       expect(source).not.toMatch(/border:\s*0,\s*padding:\s*0,\s*background:\s*'transparent'/);
     }
   });
@@ -1444,7 +1460,7 @@ it('keeps home empty category and product rails on multipath commercial recovery
     const compare = readProductCompareSurface();
     const stock = readFrontend('pages', 'StockAlerts.tsx');
     const notFound = readFrontend('pages', 'NotFound.tsx');
-    const forgot = readFrontend('pages', 'ForgotPassword.tsx');
+    const forgot = readForgotPasswordSurface();
     const app = readFrontend('App.tsx');
     expect(notifications).toContain("<h1 className=\"notifications-page__title\">{t('pages.notifications.authGateTitle')}</h1>");
     expect(notifications).toContain("<h1 className=\"notifications-page__title\">{t('pages.notifications.title')}</h1>");

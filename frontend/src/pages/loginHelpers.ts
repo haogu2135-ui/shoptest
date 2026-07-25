@@ -146,3 +146,48 @@ export const scrollFirstLoginErrorIntoView = () => {
     scrollOffset: 120,
   });
 };
+
+/** Build a11y / CTA labels for Login main panels residual modularization. */
+export const buildLoginActionLabels = (params: {
+  t: TranslationFunction;
+  codeSending: boolean;
+  sendCodeCountdown: number;
+}) => {
+  const { t, codeSending, sendCodeCountdown } = params;
+  const loginPageLabel = t('pages.auth.loginTitle');
+  const loginRegisterActionLabel = `${t('pages.auth.register')}: ${loginPageLabel}`;
+  const loginTrackOrderActionLabel = `${t('nav.trackOrder')}: ${loginPageLabel}`;
+  const loginSupportActionLabel = `${t('nav.help')}: ${t('pages.auth.mobileQuickActions')}`;
+  const passwordLoginActionLabel = `${t('pages.auth.passwordLogin')}: ${loginPageLabel}`;
+  const emailLoginActionLabel = `${t('pages.auth.emailLogin')}: ${loginPageLabel}`;
+  const passwordLoginUsernameInputLabel = `${passwordLoginActionLabel}: ${t('pages.auth.username')}`;
+  const passwordLoginPasswordInputLabel = `${passwordLoginActionLabel}: ${t('pages.auth.password')}`;
+  const passwordVisibilityActionLabel = (visible: boolean) => (
+    `${passwordLoginPasswordInputLabel}: ${visible ? t('pages.auth.hidePassword') : t('pages.auth.showPassword')}`
+  );
+  const emailLoginEmailInputLabel = `${emailLoginActionLabel}: ${t('pages.auth.email')}`;
+  const emailLoginCodeInputLabel = `${emailLoginActionLabel}: ${t('pages.auth.verificationCode')}`;
+  const sendEmailCodeActionLabel = codeSending
+    ? `${emailLoginActionLabel}: ${t('pages.auth.emailCodeSending')}`
+    : sendCodeCountdown > 0
+      ? `${emailLoginActionLabel}: ${t('pages.auth.resendIn', { seconds: sendCodeCountdown })}`
+      : `${emailLoginActionLabel}: ${t('pages.auth.sendCode')}`;
+
+  return {
+    loginPageLabel,
+    loginRegisterActionLabel,
+    loginTrackOrderActionLabel,
+    loginSupportActionLabel,
+    passwordLoginActionLabel,
+    emailLoginActionLabel,
+    passwordLoginUsernameInputLabel,
+    passwordLoginPasswordInputLabel,
+    passwordVisibilityActionLabel,
+    emailLoginEmailInputLabel,
+    emailLoginCodeInputLabel,
+    sendEmailCodeActionLabel,
+  };
+};
+
+/** Assemble Login panel prop bag in one pure surface for residual modularization. */
+export const buildLoginPanelProps = <T extends Record<string, unknown>>(props: T): T => props;

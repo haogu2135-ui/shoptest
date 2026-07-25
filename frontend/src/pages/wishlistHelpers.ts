@@ -72,3 +72,132 @@ export const toWishlistStats = (groups: WishlistGroups): WishlistStats => ({
   unavailableCount: groups.unavailableItems.length,
   readyValue: groups.readyValue,
 });
+
+export type WishlistRecoveryIntent = 'add-all' | 'resolve-options' | 'browse';
+export type WishlistNextActionIntent = 'add-all' | 'resolve-options' | 'view-featured' | 'browse-personalized';
+
+export type WishlistRecoveryActionDescriptor = {
+  label: string;
+  intent: WishlistRecoveryIntent;
+};
+
+export type WishlistNextActionDescriptor = {
+  tone: 'ready' | 'options' | 'urgent' | 'browse';
+  title: string;
+  text: string;
+  label: string;
+  intent: WishlistNextActionIntent;
+  featuredProductId?: number;
+};
+
+export const buildWishlistRecoveryText = (params: {
+  t: WishlistTranslate;
+  directAddCount: number;
+  optionCount: number;
+  unavailableCount: number;
+}) => {
+  if (params.directAddCount > 0) {
+    return params.t('pages.wishlist.recoveryDirectText', { count: params.directAddCount });
+  }
+  if (params.optionCount > 0) {
+    return params.t('pages.wishlist.recoveryOptionsText', { count: params.optionCount });
+  }
+  if (params.unavailableCount > 0) {
+    return params.t('pages.wishlist.recoveryUnavailableText');
+  }
+  return params.t('pages.wishlist.recoveryBrowseText');
+};
+
+export const resolveWishlistRecoveryActionDescriptor = (params: {
+  t: WishlistTranslate;
+  directAddCount: number;
+  optionCount: number;
+}): WishlistRecoveryActionDescriptor => {
+  if (params.directAddCount > 0) {
+    return { label: params.t('pages.wishlist.addAllToCart'), intent: 'add-all' };
+  }
+  if (params.optionCount > 0) {
+    return { label: params.t('pages.wishlist.resolveOptions'), intent: 'resolve-options' };
+  }
+  return { label: params.t('pages.wishlist.browse'), intent: 'browse' };
+};
+
+export const resolveWishlistNextActionDescriptor = (params: {
+  t: WishlistTranslate;
+  directAddCount: number;
+  readyValueLabel: string;
+  optionCount: number;
+  lowStockCount: number;
+  featuredName?: string;
+  featuredProductId?: number;
+}): WishlistNextActionDescriptor => {
+  if (params.directAddCount > 0) {
+    return {
+      tone: 'ready',
+      title: params.t('pages.wishlist.nextActionReadyTitle'),
+      text: params.t('pages.wishlist.nextActionReadyText', {
+        count: params.directAddCount,
+        amount: params.readyValueLabel,
+      }),
+      label: params.t('pages.wishlist.addAllToCart'),
+      intent: 'add-all',
+    };
+  }
+  if (params.optionCount > 0) {
+    return {
+      tone: 'options',
+      title: params.t('pages.wishlist.nextActionOptionsTitle'),
+      text: params.t('pages.wishlist.nextActionOptionsText', { count: params.optionCount }),
+      label: params.t('pages.wishlist.resolveOptions'),
+      intent: 'resolve-options',
+    };
+  }
+  if (params.lowStockCount > 0 && params.featuredProductId != null && params.featuredName) {
+    return {
+      tone: 'urgent',
+      title: params.t('pages.wishlist.nextActionLowStockTitle'),
+      text: params.t('pages.wishlist.nextActionLowStockText', { name: params.featuredName }),
+      label: params.t('pages.wishlist.viewBestPick'),
+      intent: 'view-featured',
+      featuredProductId: params.featuredProductId,
+    };
+  }
+  return {
+    tone: 'browse',
+    title: params.t('pages.wishlist.nextActionBrowseTitle'),
+    text: params.t('pages.wishlist.nextActionBrowseText'),
+    label: params.t('pages.wishlist.browsePersonalized'),
+    intent: 'browse-personalized',
+  };
+};
+
+/** Build a11y / CTA labels for Wishlist residual modularization. */
+export const buildWishlistActionLabels = (params: {
+  t: WishlistTranslate;
+  directAddCount: number;
+  unavailableCount: number;
+  recoveryActionLabelText: string;
+  recoveryText: string;
+  nextActionLabel: string;
+  nextActionTitle: string;
+}) => {
+  const {
+    t,
+    directAddCount,
+    unavailableCount,
+    recoveryActionLabelText,
+    recoveryText,
+    nextActionLabel,
+    nextActionTitle,
+  } = params;
+  return {
+    addAllToCartActionLabel: `${t('pages.wishlist.addAllToCart')}: ${directAddCount}`,
+    clearUnavailableActionLabel: `${t('pages.cart.clearUnavailable')}: ${unavailableCount}`,
+    recoveryActionLabel: `${recoveryActionLabelText}: ${recoveryText}`,
+    wishlistNextActionLabel: `${nextActionLabel}: ${nextActionTitle}`,
+    wishlistBrowseActionLabel: t('pages.wishlist.browse'),
+  };
+};
+
+/** Assemble Wishlist panel prop bag in one pure surface for residual modularization. */
+export const buildWishlistPanelProps = <T extends Record<string, unknown>>(props: T): T => props;
