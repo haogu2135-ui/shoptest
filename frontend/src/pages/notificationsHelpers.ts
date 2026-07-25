@@ -216,11 +216,18 @@ export const buildNotificationItemActionLabels = (params: {
   t: NotificationsTranslate;
   notificationName: string;
   relatedOrderNo: string;
+  relatedType: string;
 }) => {
-  const { t, notificationName, relatedOrderNo } = params;
+  const { t, notificationName, relatedOrderNo, relatedType } = params;
   const openRelatedLabel = relatedOrderNo
-    ? `${t('pages.notifications.openRelated')}: ${relatedOrderNo}`
-    : `${t('pages.notifications.openRelated')}: ${notificationName}`;
+    ? `${relatedType === 'DELIVERY' ? t('pages.notifications.actionTrackOrder') : t('pages.notifications.actionOpenOrders')}: ${relatedOrderNo}`
+    : relatedType === 'DELIVERY'
+      ? t('pages.notifications.actionTrackOrder')
+      : relatedType === 'PROMOTION'
+        ? t('pages.notifications.actionOpenCoupons')
+        : relatedType === 'ORDER'
+          ? t('pages.notifications.actionOpenOrders')
+          : t('pages.notifications.openRelated');
   return {
     openRelatedLabel,
     markReadActionLabel: `${t('pages.notifications.markRead')}: ${notificationName}`,

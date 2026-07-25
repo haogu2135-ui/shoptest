@@ -81,6 +81,22 @@ const readForgotPasswordSurface = () => (
   ].join('\n')
 );
 
+const readNotificationsSurface = () => (
+  [
+    readFrontend('pages', 'Notifications.tsx'),
+    readFrontend('pages', 'notificationsHelpers.ts'),
+    readFrontend('pages', 'notificationsPanels.tsx'),
+  ].join('\n')
+);
+
+const readBrowsingHistorySurface = () => (
+  [
+    readFrontend('pages', 'BrowsingHistory.tsx'),
+    readFrontend('pages', 'browsingHistoryHelpers.ts'),
+    readFrontend('pages', 'browsingHistoryPanels.tsx'),
+  ].join('\n')
+);
+
 const readProductCompareSurface = () => (
   [
     readFrontend('pages', 'ProductCompare.tsx'),
@@ -508,7 +524,7 @@ describe('commercial UX contracts', () => {
 
 
   it('keeps notification filter empties on multipath commercial recovery exits', () => {
-    const notifications = readFrontend('pages', 'Notifications.tsx');
+    const notifications = readNotificationsSurface();
     expect(notifications).toContain('data-notifications-filter-empty');
     expect(notifications).toContain('data-notifications-filter-empty-actions');
     expect(notifications).toContain('pages.notifications.noFilterResultsHint');
@@ -539,7 +555,7 @@ describe('commercial UX contracts', () => {
 
   it('keeps recovery empty states on multi-path commercial CTAs', () => {
     const stock = readFrontend('pages', 'StockAlerts.tsx');
-    const notifications = readFrontend('pages', 'Notifications.tsx');
+    const notifications = readNotificationsSurface();
     const petFinder = readFrontend('pages', 'PetFinder.tsx');
     const petGallery = readFrontend('pages', 'PetGallery.tsx');
 
@@ -819,7 +835,7 @@ describe('commercial UX contracts', () => {
 
 
   it('keeps guest notifications multi-path auth gate conversion rails', () => {
-    const notifications = readFrontend('pages', 'Notifications.tsx');
+    const notifications = readNotificationsSurface();
     const notificationsCss = readFrontend('pages', 'Notifications.css');
     const register = readRegisterSurface();
     const app = readFrontend('App.tsx');
@@ -881,8 +897,8 @@ describe('commercial UX contracts', () => {
 
   it('keeps storefront load failures on multipath commercial recovery exits', () => {
     const home = readHomeSurface();
-    const history = readFrontend('pages', 'BrowsingHistory.tsx');
-    const notifications = readFrontend('pages', 'Notifications.tsx');
+    const history = readBrowsingHistorySurface();
+    const notifications = readNotificationsSurface();
     const petFinder = readFrontend('pages', 'PetFinder.tsx');
     const compare = readProductCompareSurface();
     expect(home).toContain('data-home-load-recovery');
@@ -1455,7 +1471,7 @@ it('keeps home empty category and product rails on multipath commercial recovery
 
 
   it('keeps remaining storefront shells on a commercial h1 primary title', () => {
-    const notifications = readFrontend('pages', 'Notifications.tsx');
+    const notifications = readNotificationsSurface();
     const petFinder = readFrontend('pages', 'PetFinder.tsx');
     const compare = readProductCompareSurface();
     const stock = readFrontend('pages', 'StockAlerts.tsx');

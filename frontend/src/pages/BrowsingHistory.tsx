@@ -1,8 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
-import { ShopIcon, SI } from '../components/ShopIcon';
-import ShopInput from '../components/ShopInput';
-import ShopPopconfirm from '../components/ShopPopconfirm';
 import { useNavigate } from 'react-router-dom';
 import { cartApi, productApi } from '../api';
 import { useLanguage } from '../i18n';
@@ -11,15 +8,12 @@ import { useDocumentMeta } from '../hooks/useDocumentMeta';
 import { useMarket } from '../hooks/useMarket';
 import type { ProductPublic as Product } from '../types';
 import { localizeProduct } from '../utils/localizedProduct';
-import { getLowStockCount } from '../utils/conversionConfig';
 import { addGuestCartItem } from '../utils/guestCart';
 import { needsOptionSelection } from '../utils/productOptions';
-import { productImageFallback, resolveProductImage } from '../utils/productMedia';
 import { dispatchDomEvent } from '../utils/domEvents';
 import { reportNonBlockingError } from '../utils/nonBlockingError';
 import { getLocalStorageItem } from '../utils/safeStorage';
 import { getApiErrorMessage } from '../utils/apiError';
-import PageError from '../components/PageError';
 import {
   clearProductViewHistory,
   loadProductViewPreferences,
@@ -28,22 +22,24 @@ import {
 } from '../utils/productViewPreferences';
 import './BrowsingHistory.css';
 import '../styles/mobile-page-contrast.css';
-import ShopButton from '../components/ShopButton';
-
-import ShopTag from '../components/ShopTag';
-import ShopAlert from '../components/ShopAlert';
-const fallbackImage = productImageFallback;
-type HistoryQuickFilter = 'all' | 'recent' | 'deals' | 'lowStock';
-const resolveHistoryImage = resolveProductImage;
-
-const isDealProduct = (product: Product) => {
-  const activePrice = Number(product.effectivePrice ?? product.price ?? 0);
-  const originalPrice = Number(product.originalPrice ?? 0);
-  return Number(product.discount || product.effectiveDiscountPercent || 0) > 0 || (originalPrice > activePrice && activePrice > 0);
-};
-
-const isPurchasable = (product: Product) =>
-  product.stock === undefined || product.stock > 0;
+import {
+  buildBrowsingHistoryActionLabels,
+  buildBrowsingHistoryPanelProps,
+  buildViewedAtById,
+  deriveHistoryInsights,
+  filterHistoryProducts,
+  historyProductName as resolveHistoryProductName,
+  isPurchasable,
+  orderHistoryProducts,
+  resolveHistoryNextActionDescriptor,
+  type HistoryQuickFilter,
+} from './browsingHistoryHelpers';
+import {
+  BrowsingHistoryLoadingShell,
+  BrowsingHistoryMainPanels,
+  type BrowsingHistoryNextAction,
+  type BrowsingHistoryPanelsProps,
+} from './browsingHistoryPanels';
 
 const BrowsingHistory: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
@@ -67,7 +63,7 @@ const BrowsingHistory: React.FC = () => {
   const { formatMoney } = useMarket();
   const hasHistory = preferences.recent.length > 0;
   const historyProductName = (product: Pick<Product, 'id' | 'name'>) =>
-    (product.name || '').trim() || t('pages.profile.productFallback', { id: product.id });
+    resolveHistoryProductName(product, t);
 
   useEffect(() => {
     let disposed = false;
@@ -112,73 +108,31 @@ const BrowsingHistory: React.FC = () => {
   }, []);
 
   const viewedAtById = useMemo(
-    () => new Map(preferences.recentEntries.map((entry) => [entry.productId, entry.viewedAt])),
+    () => buildViewedAtById(preferences.recentEntries),
     [preferences.recentEntries],
   );
 
-  const historyProducts = useMemo(() => {
-    const productById = new Map(products.map((product) => [product.id, product]));
-    return preferences.recent
-      .map((productId) => productById.get(productId))
-      .filter(Boolean) as Product[];
-  }, [preferences.recent, products]);
+  const historyProducts = useMemo(
+    () => orderHistoryProducts(products, preferences.recent),
+    [preferences.recent, products],
+  );
   const hasStaleHistoryData = Boolean(loadError && hasHistory);
   const historyDisplayCount = loadError ? preferences.recent.length : historyProducts.length;
 
-  const historyInsights = useMemo(() => {
-    const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
-    const viewedToday = historyProducts.filter((product) => Number(viewedAtById.get(product.id) || 0) >= oneDayAgo).length;
-    const deals = historyProducts.filter(isDealProduct).length;
-    const lowStock = historyProducts.filter((product) => getLowStockCount(product.stock, 1) !== null).length;
-    const readyToCart = historyProducts.filter((product) => isPurchasable(product) && !needsOptionSelection(product)).length;
-    const brandCounts = historyProducts.reduce<Record<string, number>>((result, product) => {
-      if (product.brand) result[product.brand] = (result[product.brand] || 0) + 1;
-      return result;
-    }, {});
-    const topBrand = Object.entries(brandCounts).sort((a, b) => b[1] - a[1])[0]?.[0];
-    const bestRecovery = [...historyProducts]
-      .sort((a, b) => {
-        const score = (product: Product) => {
-          const viewedAt = Number(viewedAtById.get(product.id) || 0);
-          const recencyBoost = viewedAt >= oneDayAgo ? 28 : 0;
-          const dealBoost = isDealProduct(product) ? 24 : 0;
-          const stockBoost = getLowStockCount(product.stock, 1) !== null ? 18 : 0;
-          return recencyBoost + dealBoost + stockBoost + Math.min(Number(product.averageRating || 0), 5) * 5;
-        };
-        return score(b) - score(a);
-      })[0];
-    return { viewedToday, deals, lowStock, readyToCart, topBrand, bestRecovery };
-  }, [historyProducts, viewedAtById]);
+  const historyInsights = useMemo(
+    () => deriveHistoryInsights(historyProducts, viewedAtById),
+    [historyProducts, viewedAtById],
+  );
 
-  const filteredProducts = useMemo(() => {
-    const query = keyword.trim().toLowerCase();
-    const keywordMatched = !query ? historyProducts : historyProducts.filter((product) =>
-      [product.name, product.brand, product.description]
-        .filter(Boolean)
-        .some((value) => String(value).toLowerCase().includes(query)),
-    );
-    if (quickFilter === 'recent') {
-      const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
-      return keywordMatched.filter((product) => Number(viewedAtById.get(product.id) || 0) >= oneDayAgo);
-    }
-    if (quickFilter === 'deals') {
-      return keywordMatched.filter(isDealProduct);
-    }
-    if (quickFilter === 'lowStock') {
-      return keywordMatched.filter((product) => getLowStockCount(product.stock, 1) !== null);
-    }
-    return keywordMatched;
-  }, [historyProducts, keyword, quickFilter, viewedAtById]);
-
-  const formatViewedAt = (value?: number) => {
-    if (!value) return t('pages.browsingHistory.unknownTime');
-    return new Date(value).toLocaleString(language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US', {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
+  const filteredProducts = useMemo(
+    () => filterHistoryProducts({
+      historyProducts,
+      keyword,
+      quickFilter,
+      viewedAtById,
+    }),
+    [historyProducts, keyword, quickFilter, viewedAtById],
+  );
 
   const clearHistory = () => {
     clearProductViewHistory();
@@ -214,498 +168,90 @@ const BrowsingHistory: React.FC = () => {
     }
   };
 
-  const historyNextAction = (() => {
-    if (!hasHistory) {
-      return {
-        tone: 'browse',
-        title: t('pages.browsingHistory.nextActionBrowseTitle'),
-        text: t('pages.browsingHistory.nextActionBrowseText'),
-        label: t('pages.browsingHistory.browsePersonalized'),
-        action: () => navigate('/products?sort=personalized-desc'),
-      };
-    }
-    if (loadError) {
-      return {
-        tone: 'stale',
-        title: t('pages.browsingHistory.nextActionStaleTitle'),
-        text: t('pages.browsingHistory.nextActionStaleText'),
-        label: t('messages.retry'),
-        action: () => setReloadToken((current) => current + 1),
-      };
-    }
-    if (historyInsights.bestRecovery && isPurchasable(historyInsights.bestRecovery) && !needsOptionSelection(historyInsights.bestRecovery)) {
-      const productName = historyProductName(historyInsights.bestRecovery);
-      return {
-        tone: 'ready',
-        title: t('pages.browsingHistory.nextActionAddTitle'),
-        text: t('pages.browsingHistory.nextActionAddText', { name: productName }),
-        label: t('pages.browsingHistory.addBestToCart'),
-        action: () => addHistoryProductToCart(historyInsights.bestRecovery!),
-      };
-    }
-    if (historyInsights.bestRecovery && needsOptionSelection(historyInsights.bestRecovery)) {
-      const productName = historyProductName(historyInsights.bestRecovery);
-      return {
-        tone: 'options',
-        title: t('pages.browsingHistory.nextActionOptionsTitle'),
-        text: t('pages.browsingHistory.nextActionOptionsText', { name: productName }),
-        label: t('pages.browsingHistory.resumeProduct'),
-        action: () => navigate(`/products/${historyInsights.bestRecovery!.id}`),
-      };
-    }
-    if (historyInsights.lowStock > 0) {
-      return {
-        tone: 'urgent',
-        title: t('pages.browsingHistory.nextActionLowStockTitle'),
-        text: t('pages.browsingHistory.nextActionLowStockText', { count: historyInsights.lowStock }),
-        label: t('pages.browsingHistory.filterLowStock'),
-        action: () => setQuickFilter('lowStock'),
-      };
-    }
-    return {
-      tone: 'browse',
-      title: t('pages.browsingHistory.nextActionBrowseTitle'),
-      text: t('pages.browsingHistory.nextActionBrowseText'),
-      label: t('pages.browsingHistory.browsePersonalized'),
-      action: () => navigate('/products?sort=personalized-desc'),
-    };
-  })();
-  const clearHistoryActionLabel = `${t('pages.browsingHistory.clear')}: ${preferences.recent.length}`;
-  const historyBrowseActionLabel = t('pages.browsingHistory.browse');
-  const historyNextActionLabel = `${historyNextAction.label}: ${historyNextAction.title}`;
-  const resetHistoryFiltersLabel = `${t('pages.productList.resetFilters')}: ${filteredProducts.length} / ${historyProducts.length}`;
-
-  const emptyQuickActions = [
-    {
-      key: 'browse',
-      icon: <ShopIcon path={SI.shopping} />,
-      label: t('pages.browsingHistory.browse'),
-      action: () => navigate('/products'),
-      type: 'primary' as const,
+  const nextActionDescriptor = resolveHistoryNextActionDescriptor({
+    t,
+    hasHistory,
+    loadError,
+    historyInsights,
+    historyProductName,
+  });
+  const historyNextAction: BrowsingHistoryNextAction = {
+    tone: nextActionDescriptor.tone,
+    title: nextActionDescriptor.title,
+    text: nextActionDescriptor.text,
+    label: nextActionDescriptor.label,
+    action: () => {
+      const intent = nextActionDescriptor.intent;
+      if (intent.kind === 'retry') {
+        setReloadToken((current) => current + 1);
+        return;
+      }
+      if (intent.kind === 'add-best') {
+        const product = historyProducts.find((item) => item.id === intent.productId) || historyInsights.bestRecovery;
+        if (product) {
+          void addHistoryProductToCart(product);
+        }
+        return;
+      }
+      if (intent.kind === 'resume-product') {
+        navigate(`/products/${intent.productId}`);
+        return;
+      }
+      if (intent.kind === 'filter-low-stock') {
+        setQuickFilter('lowStock');
+        return;
+      }
+      navigate('/products?sort=personalized-desc');
     },
-    {
-      key: 'personalized',
-      icon: <ShopIcon path={SI.thunder} />,
-      label: t('pages.browsingHistory.browsePersonalized'),
-      action: () => navigate('/products?sort=personalized-desc'),
-    },
-    {
-      key: 'coupons',
-      icon: <ShopIcon path={SI.fire} />,
-      label: t('nav.coupons'),
-      action: () => navigate('/coupons'),
-    },
-    {
-      key: 'petFinder',
-      icon: <ShopIcon path={SI.search} />,
-      label: t('nav.petFinder'),
-      action: () => navigate('/pet-finder'),
-    },
-  ];
+  };
+  const {
+    clearHistoryActionLabel,
+    historyBrowseActionLabel,
+    historyNextActionLabel,
+    resetHistoryFiltersLabel,
+  } = buildBrowsingHistoryActionLabels({
+    t,
+    recentCount: preferences.recent.length,
+    nextActionLabel: historyNextAction.label,
+    nextActionTitle: historyNextAction.title,
+    filteredCount: filteredProducts.length,
+    historyCount: historyProducts.length,
+  });
 
   if (loading) {
-    return (
-      <main
-        className={`browsing-history browsing-history--${language} browsing-history--loading`}
-        role="status"
-        aria-live="polite"
-        aria-busy="true"
-        aria-label={t('common.loading')}
-      >
-        <span className="browsing-history__spinner" aria-hidden="true" />
-      </main>
-    );
+    return <BrowsingHistoryLoadingShell t={t} language={language} />;
   }
 
-  return (
-    <main className={`browsing-history browsing-history--${language}${!hasHistory ? ' browsing-history--empty' : ''}`}>
-      <section className="browsing-history__hero">
-        <div>
-          <span className="browsing-history__eyebrow">
-            <ShopIcon path={SI.history} /> {t('pages.browsingHistory.eyebrow')}
-          </span>
-          <h1 className="browsing-history__title">{t('pages.browsingHistory.title')}</h1>
-          <p className="browsing-history__text browsing-history__paragraph browsing-history__subtitle">{t('pages.browsingHistory.subtitle', { count: historyDisplayCount })}</p>
-        </div>
-        <div className="browsing-history__tools">
-          <ShopInput
-            allowClear
-            prefix={<ShopIcon path={SI.search} />}
-            value={keyword}
-            onChange={(event) => setKeyword(event.target.value)}
-            placeholder={t('pages.browsingHistory.searchPlaceholder')}
-            aria-label={t('pages.browsingHistory.searchPlaceholder')}
-            title={t('pages.browsingHistory.searchPlaceholder')}
-          />
-          <ShopPopconfirm
-            rootClassName='shop-mobile-popup-layer browsing-history-clear-popconfirm'
-            title={t('pages.browsingHistory.clearConfirm')}
-            okText={t('common.confirm')}
-            cancelText={t('common.cancel')}
-            okButtonProps={{ danger: true, 'aria-label': clearHistoryActionLabel, title: clearHistoryActionLabel }}
-            cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${clearHistoryActionLabel}`, title: `${t('common.cancel')}: ${clearHistoryActionLabel}` }}
-            onConfirm={clearHistory}
-            disabled={!hasHistory}
-          >
-            <ShopButton danger icon={<ShopIcon path={SI.delete} />} disabled={!hasHistory} aria-label={clearHistoryActionLabel} title={clearHistoryActionLabel}>
-              {t('pages.browsingHistory.clear')}
-            </ShopButton>
-          </ShopPopconfirm>
-        </div>
-      </section>
+  const panelProps: BrowsingHistoryPanelsProps = buildBrowsingHistoryPanelProps({
+    t,
+    language,
+    navigate,
+    formatMoney,
+    hasHistory,
+    hasStaleHistoryData,
+    historyDisplayCount,
+    historyInsights,
+    filteredProducts,
+    historyProducts,
+    viewedAtById,
+    keyword,
+    setKeyword,
+    quickFilter,
+    setQuickFilter,
+    loadError,
+    setReloadToken,
+    historyNextAction,
+    clearHistoryActionLabel,
+    historyBrowseActionLabel,
+    historyNextActionLabel,
+    resetHistoryFiltersLabel,
+    historyProductName,
+    clearHistory,
+    removeItem,
+    addHistoryProductToCart,
+  });
 
-      {hasHistory ? (
-        <section className="browsing-history__assistant">
-          <div className="browsing-history__assistant-copy">
-            <span>{t('pages.browsingHistory.assistantEyebrow')}</span>
-            <h2 className="browsing-history__title browsing-history__sectionTitle">{t('pages.browsingHistory.assistantTitle')}</h2>
-            <p className="browsing-history__text browsing-history__paragraph browsing-history__sectionText">
-              {hasStaleHistoryData
-                ? t('pages.browsingHistory.assistantSubtitleStale')
-                : historyInsights.topBrand
-                ? t('pages.browsingHistory.assistantSubtitleBrand', { brand: historyInsights.topBrand })
-                : t('pages.browsingHistory.assistantSubtitle')}
-            </p>
-          </div>
-          <div className="browsing-history__assistant-actions">
-            <button
-              type="button"
-              className={quickFilter === 'all' ? 'is-active' : ''}
-              aria-pressed={quickFilter === 'all'}
-              aria-label={`${t('pages.browsingHistory.allViewed')}: ${historyDisplayCount}`}
-              title={`${t('pages.browsingHistory.allViewed')}: ${historyDisplayCount}`}
-              onClick={() => setQuickFilter('all')}
-            >
-              <ShopIcon path={SI.history} />
-              <strong>{historyDisplayCount}</strong>
-              <span>{t('pages.browsingHistory.allViewed')}</span>
-            </button>
-            <button
-              type="button"
-              className={quickFilter === 'recent' ? 'is-active' : ''}
-              aria-pressed={quickFilter === 'recent'}
-              aria-label={`${t('pages.browsingHistory.viewedToday')}: ${hasStaleHistoryData ? 0 : historyInsights.viewedToday}`}
-              title={`${t('pages.browsingHistory.viewedToday')}: ${hasStaleHistoryData ? 0 : historyInsights.viewedToday}`}
-              onClick={() => setQuickFilter('recent')}
-              disabled={hasStaleHistoryData}
-            >
-              <ShopIcon path={SI.clock} />
-              <strong>{hasStaleHistoryData ? 0 : historyInsights.viewedToday}</strong>
-              <span>{t('pages.browsingHistory.viewedToday')}</span>
-            </button>
-            <button
-              type="button"
-              className={quickFilter === 'deals' ? 'is-active' : ''}
-              aria-pressed={quickFilter === 'deals'}
-              aria-label={`${t('pages.browsingHistory.dealWatch')}: ${hasStaleHistoryData ? 0 : historyInsights.deals}`}
-              title={`${t('pages.browsingHistory.dealWatch')}: ${hasStaleHistoryData ? 0 : historyInsights.deals}`}
-              onClick={() => setQuickFilter('deals')}
-              disabled={hasStaleHistoryData}
-            >
-              <ShopIcon path={SI.thunder} />
-              <strong>{hasStaleHistoryData ? 0 : historyInsights.deals}</strong>
-              <span>{t('pages.browsingHistory.dealWatch')}</span>
-            </button>
-            <button
-              type="button"
-              className={quickFilter === 'lowStock' ? 'is-active' : ''}
-              aria-pressed={quickFilter === 'lowStock'}
-              aria-label={`${t('pages.browsingHistory.lowStockWatch')}: ${hasStaleHistoryData ? 0 : historyInsights.lowStock}`}
-              title={`${t('pages.browsingHistory.lowStockWatch')}: ${hasStaleHistoryData ? 0 : historyInsights.lowStock}`}
-              onClick={() => setQuickFilter('lowStock')}
-              disabled={hasStaleHistoryData}
-            >
-              <ShopIcon path={SI.fire} />
-              <strong>{hasStaleHistoryData ? 0 : historyInsights.lowStock}</strong>
-              <span>{t('pages.browsingHistory.lowStockWatch')}</span>
-            </button>
-          </div>
-        </section>
-      ) : null}
-
-      {hasHistory && historyInsights.bestRecovery && !hasStaleHistoryData ? (
-        (() => {
-          const productName = historyProductName(historyInsights.bestRecovery!);
-          const resumeActionLabel = `${t('pages.browsingHistory.resumeProduct')}: ${productName}`;
-          return (
-        <section className="browsing-history__recovery" aria-label={t('pages.browsingHistory.recoveryTitle')}>
-          <div>
-            <span className="browsing-history__recovery-eyebrow">{t('pages.browsingHistory.recoveryEyebrow')}</span>
-            <h2 className="browsing-history__title browsing-history__sectionTitle">{t('pages.browsingHistory.recoveryTitle')}</h2>
-            <p className="browsing-history__text browsing-history__paragraph browsing-history__sectionText">
-              {t('pages.browsingHistory.recoverySubtitle', {
-                name: productName,
-                price: formatMoney(historyInsights.bestRecovery.effectivePrice ?? historyInsights.bestRecovery.price),
-              })}
-            </p>
-          </div>
-          <div className="browsing-history__recovery-tags">
-            {isDealProduct(historyInsights.bestRecovery) ? <ShopTag color="volcano">{t('pages.browsingHistory.recoveryDeal')}</ShopTag> : null}
-            {getLowStockCount(historyInsights.bestRecovery.stock, 1) !== null ? <ShopTag color="orange">{t('pages.browsingHistory.recoveryLowStock')}</ShopTag> : null}
-            <ShopTag color="blue">{formatViewedAt(viewedAtById.get(historyInsights.bestRecovery.id))}</ShopTag>
-          </div>
-          <ShopButton type="primary" icon={<ShopIcon path={SI.shopping} />} aria-label={resumeActionLabel} title={resumeActionLabel} onClick={() => navigate(`/products/${historyInsights.bestRecovery!.id}`)}>
-            {t('pages.browsingHistory.resumeProduct')}
-          </ShopButton>
-        </section>
-          );
-        })()
-      ) : null}
-
-      {hasHistory ? (
-        <section className={`browsing-history__nextAction browsing-history__nextAction--${historyNextAction.tone}`} aria-label={t('pages.browsingHistory.nextActionEyebrow')}>
-          <div>
-            <span>{t('pages.browsingHistory.nextActionEyebrow')}</span>
-            <h2 className="browsing-history__title browsing-history__sectionTitle">{historyNextAction.title}</h2>
-            <p className="browsing-history__text browsing-history__paragraph browsing-history__sectionText">{historyNextAction.text}</p>
-          </div>
-          <div className="browsing-history__nextActionStats">
-            <ShopTag color={hasStaleHistoryData ? 'warning' : 'green'}>
-              {hasStaleHistoryData
-                ? t('pages.browsingHistory.staleDataTag', { count: historyDisplayCount })
-                : t('pages.browsingHistory.readyToCart', { count: historyInsights.readyToCart })}
-            </ShopTag>
-            <ShopTag color={!hasStaleHistoryData && historyInsights.deals > 0 ? 'volcano' : 'default'}>{t('pages.browsingHistory.dealWatchCount', { count: hasStaleHistoryData ? 0 : historyInsights.deals })}</ShopTag>
-            <ShopTag color={!hasStaleHistoryData && historyInsights.lowStock > 0 ? 'orange' : 'default'}>{t('pages.browsingHistory.lowStockWatchCount', { count: hasStaleHistoryData ? 0 : historyInsights.lowStock })}</ShopTag>
-          </div>
-          <ShopButton
-            type={historyNextAction.tone === 'ready' ? 'primary' : 'default'}
-            icon={hasStaleHistoryData ? <ShopIcon path={SI.reload} /> : historyNextAction.tone === 'ready' ? <ShopIcon path={SI.cart} /> : <ShopIcon path={SI.shopping} />}
-            aria-label={historyNextActionLabel}
-            title={historyNextActionLabel}
-            onClick={historyNextAction.action}
-          >
-            {historyNextAction.label}
-          </ShopButton>
-        </section>
-      ) : null}
-
-      {loadError ? (
-        <section className="browsing-history__loadError" aria-live="polite" data-history-load-recovery="true">
-          {hasStaleHistoryData ? (
-            <ShopAlert
-              type="warning"
-              showIcon
-              message={t('messages.loadFailed')}
-              description={hasStaleHistoryData ? t('pages.browsingHistory.staleDataWarning') : t('messages.loadFailedRetry')}
-              action={(
-                <div className="browsing-history__emptyActions" data-history-stale-recovery="true">
-                  <ShopButton size="small" type="primary" onClick={() => setReloadToken((current) => current + 1)}>
-                    {t('messages.retry')}
-                  </ShopButton>
-                  <ShopButton size="small" onClick={() => navigate('/products')}>
-                    {t('pages.browsingHistory.browse')}
-                  </ShopButton>
-                  <ShopButton size="small" onClick={() => navigate('/coupons')}>
-                    {t('nav.coupons')}
-                  </ShopButton>
-                  <ShopButton size="small" onClick={() => navigate('/pet-finder')}>
-                    {t('nav.petFinder')}
-                  </ShopButton>
-                </div>
-              )}
-            />
-          ) : (
-            <PageError
-              className="browsing-history__loadErrorPanel"
-              title={t('messages.loadFailed')}
-              description={t('messages.loadFailedRetry')}
-              actions={[
-                {
-                  key: 'retry',
-                  label: t('messages.retry'),
-                  onClick: () => setReloadToken((current) => current + 1),
-                  type: 'primary',
-                },
-                {
-                  key: 'browse',
-                  label: t('pages.browsingHistory.browse'),
-                  onClick: () => navigate('/products'),
-                  type: 'default',
-                },
-                {
-                  key: 'coupons',
-                  label: t('pages.productList.loadRecoveryCoupons'),
-                  onClick: () => navigate('/coupons'),
-                  type: 'default',
-                },
-                {
-                  key: 'pet-finder',
-                  label: t('pages.productDetail.notFoundPetFinder'),
-                  onClick: () => navigate('/pet-finder'),
-                  type: 'default',
-                },
-                {
-                  key: 'support',
-                  label: t('pages.productList.loadRecoverySupport'),
-                  onClick: () => dispatchDomEvent('shop:open-support'),
-                  type: 'default',
-                },
-              ]}
-            />
-          )}
-        </section>
-      ) : null}
-
-      {filteredProducts.length ? (
-        <section className="browsing-history__grid">
-          {filteredProducts.map((product) => {
-            const productName = historyProductName(product);
-            const price = product.effectivePrice ?? product.price;
-            const viewedAt = viewedAtById.get(product.id);
-            const productReadyToCart = isPurchasable(product) && !needsOptionSelection(product);
-            const productNeedsOptions = isPurchasable(product) && needsOptionSelection(product);
-            const productLowStock = getLowStockCount(product.stock, 1) !== null;
-            const productDeal = isDealProduct(product);
-            const originalPrice = Number(product.originalPrice || 0);
-            const addActionLabel = `${t('pages.browsingHistory.addToCart')}: ${productName}`;
-            const viewActionLabel = `${productNeedsOptions ? t('pages.browsingHistory.resumeProduct') : t('pages.browsingHistory.viewProduct')}: ${productName}`;
-            const deleteActionLabel = `${t('common.delete')}: ${productName}`;
-            return (
-              <article className={`browsing-history__item${productReadyToCart ? ' browsing-history__item--ready' : ''}${productLowStock ? ' browsing-history__item--urgent' : ''}`} key={product.id}>
-                <button type="button" className="browsing-history__image" aria-label={viewActionLabel} title={viewActionLabel} onClick={() => navigate(`/products/${product.id}`)}>
-                  <img
-                    src={resolveHistoryImage(product.imageUrl)}
-                    alt={productName}
-                    onError={(event) => {
-                      if (event.currentTarget.src !== fallbackImage) {
-                        event.currentTarget.src = fallbackImage;
-                      }
-                    }}
-                  />
-                </button>
-                <div className="browsing-history__content">
-                  <div>
-                    <button type="button" className="browsing-history__name" aria-label={viewActionLabel} title={viewActionLabel} onClick={() => navigate(`/products/${product.id}`)}>
-                      {productName}
-                    </button>
-                    <div className="browsing-history__meta">
-                      <span>{formatViewedAt(viewedAt)}</span>
-                      {product.brand ? <ShopTag>{product.brand}</ShopTag> : null}
-                    </div>
-                    <div className="browsing-history__signals">
-                      {productDeal ? <ShopTag color="volcano">{t('pages.browsingHistory.recoveryDeal')}</ShopTag> : null}
-                      {productLowStock ? <ShopTag color="orange">{t('pages.browsingHistory.recoveryLowStock')}</ShopTag> : null}
-                      {productNeedsOptions ? <ShopTag color="blue">{t('pages.browsingHistory.resumeProduct')}</ShopTag> : null}
-                      {!isPurchasable(product) ? <ShopTag color="red">{t('pages.browsingHistory.unavailable')}</ShopTag> : null}
-                    </div>
-                  </div>
-                  <div className="browsing-history__footer">
-                    <span className="browsing-history__priceStack">
-                      <strong className="commerce-money">{formatMoney(price)}</strong>
-                      {originalPrice > Number(price || 0) ? <span className="commerce-money">{formatMoney(originalPrice)}</span> : null}
-                    </span>
-                    <div>
-                      {productReadyToCart ? (
-                        <ShopButton type="primary" icon={<ShopIcon path={SI.cart} />} disabled={hasStaleHistoryData} aria-label={addActionLabel} title={addActionLabel} onClick={() => addHistoryProductToCart(product)}>
-                          {t('pages.browsingHistory.addToCart')}
-                        </ShopButton>
-                      ) : null}
-                      <ShopButton type={productNeedsOptions ? 'primary' : 'default'} icon={<ShopIcon path={SI.shopping} />} aria-label={viewActionLabel} title={viewActionLabel} onClick={() => navigate(`/products/${product.id}`)}>
-                        {productNeedsOptions ? t('pages.browsingHistory.resumeProduct') : t('pages.browsingHistory.viewProduct')}
-                      </ShopButton>
-                      <ShopPopconfirm
-                        title={t('pages.browsingHistory.removeConfirm')}
-                        okText={t('common.delete')}
-                        cancelText={t('common.cancel')}
-                        onConfirm={() => removeItem(product.id)}
-                      >
-                        <ShopButton type="text" danger icon={<ShopIcon path={SI.delete} />} aria-label={deleteActionLabel} title={deleteActionLabel} />
-                      </ShopPopconfirm>
-                    </div>
-                  </div>
-                </div>
-              </article>
-            );
-          })}
-        </section>
-      ) : (
-        <section className="browsing-history__empty" role="status" aria-live="polite">
-          <div className="browsing-history__emptyPanel">
-            <div className="browsing-history__emptyDescription">
-              {loadError && hasHistory
-                ? t('pages.browsingHistory.emptyLoadFailed')
-                : historyProducts.length
-                  ? t('pages.browsingHistory.noSearchResults')
-                  : t('pages.browsingHistory.empty')}
-            </div>
-            {loadError && hasHistory ? (
-              <div className="browsing-history__emptyActions" data-history-empty-load-actions="true">
-                <ShopButton type="primary" icon={<ShopIcon path={SI.reload} />} onClick={() => setReloadToken((current) => current + 1)}>
-                  {t('messages.retry')}
-                </ShopButton>
-                <ShopButton icon={<ShopIcon path={SI.shopping} />} aria-label={historyBrowseActionLabel} title={historyBrowseActionLabel} onClick={() => navigate('/products')}>
-                  {t('pages.browsingHistory.browse')}
-                </ShopButton>
-                <ShopButton aria-label={t('nav.coupons')} title={t('nav.coupons')} onClick={() => navigate('/coupons')}>
-                  {t('nav.coupons')}
-                </ShopButton>
-                <ShopButton aria-label={t('nav.petFinder')} title={t('nav.petFinder')} onClick={() => navigate('/pet-finder')}>
-                  {t('nav.petFinder')}
-                </ShopButton>
-                <ShopButton aria-label={t('pages.productList.loadRecoverySupport')} title={t('pages.productList.loadRecoverySupport')} onClick={() => dispatchDomEvent('shop:open-support')}>
-                  {t('pages.productList.loadRecoverySupport')}
-                </ShopButton>
-              </div>
-            ) : historyProducts.length ? (
-              <div className="browsing-history__emptyActions" data-history-empty-filter-actions="true">
-                <ShopButton type="primary" icon={<ShopIcon path={SI.shopping} />} aria-label={historyBrowseActionLabel} title={historyBrowseActionLabel} onClick={() => navigate('/products')}>
-                  {t('pages.browsingHistory.browse')}
-                </ShopButton>
-                <ShopButton aria-label={resetHistoryFiltersLabel} title={resetHistoryFiltersLabel} onClick={() => {
-                  setKeyword('');
-                  setQuickFilter('all');
-                }}>
-                  {t('pages.productList.resetFilters')}
-                </ShopButton>
-                <ShopButton aria-label={t('nav.coupons')} title={t('nav.coupons')} onClick={() => navigate('/coupons')}>
-                  {t('nav.coupons')}
-                </ShopButton>
-                <ShopButton aria-label={t('nav.petFinder')} title={t('nav.petFinder')} onClick={() => navigate('/pet-finder')}>
-                  {t('nav.petFinder')}
-                </ShopButton>
-              </div>
-            ) : (
-              <div className="browsing-history__emptyActions browsing-history__emptyActions--guide" data-history-empty-actions="true">
-                {emptyQuickActions.map((action) => (
-                  <ShopButton
-                    key={action.key}
-                    type={action.type}
-                    icon={action.icon}
-                    aria-label={action.label}
-                    title={action.label}
-                    onClick={action.action}
-                  >
-                    {action.label}
-                  </ShopButton>
-                ))}
-              </div>
-            )}
-          </div>
-        </section>
-      )}
-      <div className={`browsing-history__mobileAction browsing-history__mobileAction--${historyNextAction.tone}`} aria-label={t('pages.browsingHistory.nextActionEyebrow')}>
-        <span>
-          <span>{t('pages.browsingHistory.nextActionEyebrow')}</span>
-          <strong>{historyNextAction.title}</strong>
-          <small>
-            {hasStaleHistoryData
-              ? t('pages.browsingHistory.staleDataTag', { count: historyDisplayCount })
-              : t('pages.browsingHistory.readyToCart', { count: historyInsights.readyToCart })}
-          </small>
-        </span>
-        <ShopButton
-          type={historyNextAction.tone === 'ready' ? 'primary' : 'default'}
-          icon={hasStaleHistoryData ? <ShopIcon path={SI.reload} /> : historyNextAction.tone === 'ready' ? <ShopIcon path={SI.cart} /> : <ShopIcon path={SI.shopping} />}
-          aria-label={historyNextActionLabel}
-          title={historyNextActionLabel}
-          onClick={historyNextAction.action}
-        >
-          {historyNextAction.label}
-        </ShopButton>
-      </div>
-    </main>
-  );
+  return <BrowsingHistoryMainPanels {...panelProps} />;
 };
 
 export default BrowsingHistory;

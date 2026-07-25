@@ -1,7 +1,12 @@
 import fs from 'fs';
 import path from 'path';
 
-const readNotificationsSource = () => fs.readFileSync(path.resolve(__dirname, 'Notifications.tsx'), 'utf8');
+const readNotificationsSource = () => [
+  fs.readFileSync(path.resolve(__dirname, 'Notifications.tsx'), 'utf8'),
+  fs.readFileSync(path.resolve(__dirname, 'notificationsHelpers.ts'), 'utf8'),
+  fs.readFileSync(path.resolve(__dirname, 'notificationsPanels.tsx'), 'utf8'),
+].join('\n');
+const readNotificationsPage = () => fs.readFileSync(path.resolve(__dirname, 'Notifications.tsx'), 'utf8');
 const readNotificationsCss = () => fs.readFileSync(path.resolve(__dirname, 'Notifications.css'), 'utf8');
 
 describe('Notifications mobile bottom-nav clearance contract', () => {
@@ -78,16 +83,15 @@ describe('Notifications mobile bottom-nav clearance contract', () => {
     const source = readNotificationsSource();
     expect(source).toContain('const extractOrderNoFromNotification');
     expect(source).toContain('const openRelatedNotification = useCallback');
-    expect(source).toContain('navigate(`/track-order?orderNo=${encodeURIComponent(orderNo)}`);');
-    expect(source).toContain('navigate(`/profile?tab=orders&orderNo=${encodeURIComponent(orderNo)}`);');
+    expect(source).toContain('resolveNotificationRelatedPath');
+    expect(source).toContain('`/track-order?orderNo=${encodeURIComponent(orderNo)}`');
+    expect(source).toContain('`/profile?tab=orders&orderNo=${encodeURIComponent(orderNo)}`');
     expect(source).toContain("t('pages.notifications.actionTrackOrder')");
     expect(source).toContain("t('pages.notifications.actionOpenOrders')");
     expect(source).toContain('notifications-page__titleButton');
     expect(source).toContain('notificationLooksLikeShipment');
     expect(source).toContain('notificationLooksLikeReturnFlow');
-    expect(source).toContain('navigate(`/track-order?orderNo=${encodeURIComponent(orderNo)}`);');
     expect(source).toContain('(SO\\d{6,})');
-
   });
 
   it('keeps a commercial multi-path guest auth gate instead of hard-redirect-only login', () => {
@@ -105,3 +109,42 @@ describe('Notifications mobile bottom-nav clearance contract', () => {
   });
 
 });
+
+describe('Notifications modularization', () => {
+  it('keeps notifications helpers and panels modularized outside the page shell', () => {
+    const page = readNotificationsPage();
+    const helpers = fs.readFileSync(path.resolve(__dirname, 'notificationsHelpers.ts'), 'utf8');
+    const panels = fs.readFileSync(path.resolve(__dirname, 'notificationsPanels.tsx'), 'utf8');
+    expect(page).toContain("from './notificationsHelpers'");
+    expect(page).toContain("from './notificationsPanels'");
+    expect(page).toContain('<NotificationsMainPanels');
+    expect(page).toContain('<NotificationsAuthGateShell');
+    expect(page).toContain('<NotificationsLoadingShell');
+    expect(page).toContain('buildNotificationsActionLabels({');
+    expect(page).toContain('buildNotificationsPanelProps({');
+    expect(page).toContain('resolveNotificationActionPlanDescriptor({');
+    expect(page).toContain('resolveNotificationRelatedPath(item)');
+    expect(page).toContain('const openRelatedNotification = useCallback');
+    expect(page).not.toContain('className="notifications-page__actionPlan"');
+    expect(page).not.toContain('notifications-page__itemList');
+    expect(helpers).toContain('export const NOTIFICATION_PAGE_SIZE = 50');
+    expect(helpers).toContain('export const extractOrderNoFromNotification');
+    expect(helpers).toContain('export const notificationLooksLikeShipment');
+    expect(helpers).toContain('export const notificationLooksLikeReturnFlow');
+    expect(helpers).toContain('export const deriveNotificationInsights');
+    expect(helpers).toContain('export const filterNotificationsByQuickFilter');
+    expect(helpers).toContain('export const resolveNotificationRelatedPath');
+    expect(helpers).toContain('export const resolveNotificationActionPlanDescriptor');
+    expect(helpers).toContain('export const buildNotificationsActionLabels');
+    expect(helpers).toContain('export const buildNotificationsPanelProps');
+    expect(helpers).toContain('`/track-order?orderNo=${encodeURIComponent(orderNo)}`');
+    expect(panels).toContain('export const NotificationsMainPanels');
+    expect(panels).toContain('export const NotificationsAuthGateShell');
+    expect(panels).toContain('export const NotificationsLoadingShell');
+    expect(panels).toContain('className="notifications-page__actionPlan"');
+    expect(panels).toContain('notifications-page__itemList');
+    expect(panels).toContain('data-notifications-load-recovery');
+    expect(panels).toContain('data-notifications-filter-empty');
+  });
+});
+

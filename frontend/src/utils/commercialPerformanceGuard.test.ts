@@ -132,6 +132,18 @@ const readForgotPasswordSurface = () => [
   readFrontend('pages', 'forgotPasswordPanels.tsx'),
 ].join('\n');
 
+const readNotificationsSurface = () => [
+  readFrontend('pages', 'Notifications.tsx'),
+  readFrontend('pages', 'notificationsHelpers.ts'),
+  readFrontend('pages', 'notificationsPanels.tsx'),
+].join('\n');
+
+const readBrowsingHistorySurface = () => [
+  readFrontend('pages', 'BrowsingHistory.tsx'),
+  readFrontend('pages', 'browsingHistoryHelpers.ts'),
+  readFrontend('pages', 'browsingHistoryPanels.tsx'),
+].join('\n');
+
 const readProductCompareSurface = () => [
   readFrontend('pages', 'ProductCompare.tsx'),
   readFrontend('pages', 'productCompareHelpers.ts'),
@@ -153,6 +165,8 @@ const readPageSurface = (dir: string, name: string) => {
   if (name === 'Login.tsx') return readLoginSurface();
   if (name === 'Register.tsx') return readRegisterSurface();
   if (name === 'ForgotPassword.tsx') return readForgotPasswordSurface();
+  if (name === 'Notifications.tsx') return readNotificationsSurface();
+  if (name === 'BrowsingHistory.tsx') return readBrowsingHistorySurface();
   if (name === 'ProductCompare.tsx') return readProductCompareSurface();
   return readFrontend(dir, name);
 };
@@ -723,7 +737,7 @@ describe('commercial performance contracts', () => {
   });
 
   it('keeps Notifications free of static Typography imports', () => {
-    const notifications = readFrontend('pages', 'Notifications.tsx');
+    const notifications = readNotificationsSurface();
     expect(notifications).not.toMatch(/\bTypography\b/);
     expect(notifications).not.toMatch(/import \{[^}]*\bTypography\b[^}]*\} from 'antd'/);
     expect(notifications).toContain('notifications-page__title');
@@ -754,7 +768,7 @@ describe('commercial performance contracts', () => {
   });
 
   it('keeps BrowsingHistory free of static Typography imports', () => {
-    const page = readFrontend('pages', 'BrowsingHistory.tsx');
+    const page = readBrowsingHistorySurface();
     expect(page).not.toMatch(/\bTypography\b/);
     expect(page).not.toMatch(/import \{[^}]*\bTypography\b[^}]*\} from 'antd'/);
     expect(page).toContain('browsing-history__title');
@@ -866,7 +880,9 @@ describe('commercial performance contracts', () => {
             ? readCouponCenterSurface()
             : file === 'OrderTracking.tsx'
               ? readOrderTrackingSurface()
-              : readFrontend('pages', file);
+              : file === 'Notifications.tsx'
+                ? readNotificationsSurface()
+                : readFrontend('pages', file);
       expect(source).not.toMatch(/import \{[^}]*\bList\b[^}]*\} from 'antd'/);
       expect(source).not.toMatch(/<List\b/);
       expect(source).not.toMatch(/List\.Item/);
@@ -1006,9 +1022,13 @@ describe('commercial performance contracts', () => {
           ? readProfileSurface()
           : page === 'Wishlist.tsx'
             ? readWishlistSurface()
-            : page === 'ProductCompare.tsx'
-              ? readProductCompareSurface()
-              : readFrontend('pages', page);
+            : page === 'Notifications.tsx'
+              ? readNotificationsSurface()
+              : page === 'BrowsingHistory.tsx'
+                ? readBrowsingHistorySurface()
+                : page === 'ProductCompare.tsx'
+                  ? readProductCompareSurface()
+                  : readFrontend('pages', page);
       expect(source).toContain('ShopPopconfirm');
       expect(source).not.toMatch(/<Popconfirm\b/);
       expect(source).not.toMatch(/import \{[^}]*\bPopconfirm\b[^}]*\} from 'antd'/);
@@ -1243,7 +1263,7 @@ describe('commercial performance contracts', () => {
   });
 
   it('keeps BrowsingHistory free of ant Empty', () => {
-    const source = readFrontend('pages', 'BrowsingHistory.tsx');
+    const source = readBrowsingHistorySurface();
     expect(source).not.toMatch(/import \{[^}]*\bEmpty\b[^}]*\} from 'antd'/);
     expect(source).not.toMatch(/<Empty\b/);
     expect(source).toContain('browsing-history__emptyPanel');
@@ -1730,7 +1750,7 @@ describe('commercial performance contracts', () => {
   });
 
   it('keeps BrowsingHistory free of static ant Input', () => {
-    const source = fs.readFileSync(path.resolve(__dirname, '../pages/BrowsingHistory.tsx'), 'utf8');
+    const source = readBrowsingHistorySurface();
     expect(source).toContain('ShopInput');
     expect(source).not.toMatch(/import \{[^}]*\bInput\b[^}]*\} from 'antd'/);
     expect(source).not.toMatch(/<Input\b/);
@@ -2481,9 +2501,13 @@ describe('commercial performance contracts', () => {
                             ? readRegisterSurface()
                             : page === 'ForgotPassword'
                               ? readForgotPasswordSurface()
-                              : page === 'ProductCompare'
-                                ? readProductCompareSurface()
-                                : fs.readFileSync(path.resolve(__dirname, `../pages/${page}.tsx`), 'utf8');
+                              : page === 'Notifications'
+                                ? readNotificationsSurface()
+                                : page === 'BrowsingHistory'
+                                  ? readBrowsingHistorySurface()
+                                  : page === 'ProductCompare'
+                                    ? readProductCompareSurface()
+                                    : fs.readFileSync(path.resolve(__dirname, `../pages/${page}.tsx`), 'utf8');
       expect(source).toContain('ShopButton');
       expect(source).not.toMatch(/<Button\b/);
       expect(source).not.toMatch(/import \{[^}]*\bButton\b[^}]*\} from 'antd'/);

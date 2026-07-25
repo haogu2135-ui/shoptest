@@ -87,7 +87,11 @@ describe('frontend page i18n hardcoded string guards', () => {
   });
 
   it('keeps browsing history empty, loading, and count copy in locale data', () => {
-    const source = readSource('BrowsingHistory.tsx');
+    const source = [
+      readSource('BrowsingHistory.tsx'),
+      readSource('browsingHistoryHelpers.ts'),
+      readSource('browsingHistoryPanels.tsx'),
+    ].join('\n');
     const locales = [
       readJson('../locales/en.json'),
       readJson('../locales/es.json'),
@@ -110,8 +114,16 @@ describe('frontend page i18n hardcoded string guards', () => {
   });
 
   it('keeps auth brand and trust statistics in locale data', () => {
-    const loginSource = readSource('Login.tsx');
-    const registerSource = readSource('Register.tsx');
+    const loginSource = [
+      readSource('Login.tsx'),
+      readSource('loginHelpers.ts'),
+      readSource('loginPanels.tsx'),
+    ].join('\n');
+    const registerSource = [
+      readSource('Register.tsx'),
+      readSource('registerHelpers.ts'),
+      readSource('registerPanels.tsx'),
+    ].join('\n');
     const locales = [
       readJson('../locales/en.json'),
       readJson('../locales/es.json'),

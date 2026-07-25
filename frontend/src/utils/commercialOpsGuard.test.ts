@@ -912,6 +912,69 @@ expect(recommendationsPanel).toContain('export const ProductDetailRecommendation
     expect(panels).toContain('data-forgot-password-unavailable-actions');
   });
 
+  it('keeps notifications helpers and panels modularized outside the page shell', () => {
+    const page = fs.readFileSync(path.join(__dirname, '..', 'pages', 'Notifications.tsx'), 'utf8');
+    const helpers = fs.readFileSync(path.join(__dirname, '..', 'pages', 'notificationsHelpers.ts'), 'utf8');
+    const panels = fs.readFileSync(path.join(__dirname, '..', 'pages', 'notificationsPanels.tsx'), 'utf8');
+    expect(page).toContain("from './notificationsHelpers'");
+    expect(page).toContain("from './notificationsPanels'");
+    expect(page).toContain('<NotificationsMainPanels');
+    expect(page).toContain('<NotificationsAuthGateShell');
+    expect(page).toContain('<NotificationsLoadingShell');
+    expect(page).toContain('buildNotificationsActionLabels({');
+    expect(page).toContain('buildNotificationsPanelProps({');
+    expect(page).toContain('resolveNotificationActionPlanDescriptor({');
+    expect(page).toContain('resolveNotificationRelatedPath(item)');
+    expect(page).toContain('const openRelatedNotification = useCallback');
+    expect(page).not.toContain('className="notifications-page__actionPlan"');
+    expect(page).not.toContain('notifications-page__itemList');
+    expect(helpers).toContain('export const NOTIFICATION_PAGE_SIZE = 50');
+    expect(helpers).toContain('export const extractOrderNoFromNotification');
+    expect(helpers).toContain('export const notificationLooksLikeShipment');
+    expect(helpers).toContain('export const notificationLooksLikeReturnFlow');
+    expect(helpers).toContain('export const deriveNotificationInsights');
+    expect(helpers).toContain('export const filterNotificationsByQuickFilter');
+    expect(helpers).toContain('export const resolveNotificationRelatedPath');
+    expect(helpers).toContain('export const resolveNotificationActionPlanDescriptor');
+    expect(helpers).toContain('export const buildNotificationsActionLabels');
+    expect(helpers).toContain('export const buildNotificationsPanelProps');
+    expect(helpers).toContain('`/track-order?orderNo=${encodeURIComponent(orderNo)}`');
+    expect(panels).toContain('export const NotificationsMainPanels');
+    expect(panels).toContain('export const NotificationsAuthGateShell');
+    expect(panels).toContain('export const NotificationsLoadingShell');
+    expect(panels).toContain('className="notifications-page__actionPlan"');
+    expect(panels).toContain('notifications-page__itemList');
+    expect(panels).toContain('data-notifications-load-recovery');
+    expect(panels).toContain('data-notifications-filter-empty');
+  });
+  it('keeps browsing history helpers and panels modularized outside the page shell', () => {
+    const page = fs.readFileSync(path.join(__dirname, '..', 'pages', 'BrowsingHistory.tsx'), 'utf8');
+    const helpers = fs.readFileSync(path.join(__dirname, '..', 'pages', 'browsingHistoryHelpers.ts'), 'utf8');
+    const panels = fs.readFileSync(path.join(__dirname, '..', 'pages', 'browsingHistoryPanels.tsx'), 'utf8');
+    expect(page).toContain("from './browsingHistoryHelpers'");
+    expect(page).toContain("from './browsingHistoryPanels'");
+    expect(page).toContain('<BrowsingHistoryMainPanels');
+    expect(page).toContain('<BrowsingHistoryLoadingShell');
+    expect(page).toContain('buildBrowsingHistoryActionLabels({');
+    expect(page).toContain('buildBrowsingHistoryPanelProps({');
+    expect(page).toContain('resolveHistoryNextActionDescriptor({');
+    expect(page).not.toContain('browsing-history__mobileAction');
+    expect(page).not.toContain('data-history-load-recovery');
+    expect(helpers).toContain('export const resolveHistoryNextActionDescriptor');
+    expect(helpers).toContain('export const deriveHistoryInsights');
+    expect(helpers).toContain('export const filterHistoryProducts');
+    expect(helpers).toContain('export const buildBrowsingHistoryActionLabels');
+    expect(helpers).toContain('export const buildBrowsingHistoryPanelProps');
+    expect(helpers).toContain("title: t('pages.browsingHistory.nextActionStaleTitle')");
+    expect(panels).toContain('export const BrowsingHistoryMainPanels');
+    expect(panels).toContain('export const BrowsingHistoryLoadingShell');
+    expect(panels).toContain('browsing-history__mobileAction');
+    expect(panels).toContain('data-history-load-recovery');
+    expect(panels).toContain('data-history-empty-actions');
+  });
+
+
+
   it('keeps product compare helpers and panels modularized outside the page shell', () => {
     const page = fs.readFileSync(path.join(__dirname, '..', 'pages', 'ProductCompare.tsx'), 'utf8');
     const helpers = fs.readFileSync(path.join(__dirname, '..', 'pages', 'productCompareHelpers.ts'), 'utf8');

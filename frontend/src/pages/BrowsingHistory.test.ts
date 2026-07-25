@@ -1,17 +1,24 @@
 import fs from 'fs';
 import path from 'path';
 
-const pageSource = fs.readFileSync(path.join(__dirname, 'BrowsingHistory.tsx'), 'utf8');
+const readBrowsingHistoryPage = () => fs.readFileSync(path.join(__dirname, 'BrowsingHistory.tsx'), 'utf8');
+const readBrowsingHistorySource = () => [
+  readBrowsingHistoryPage(),
+  fs.readFileSync(path.join(__dirname, 'browsingHistoryHelpers.ts'), 'utf8'),
+  fs.readFileSync(path.join(__dirname, 'browsingHistoryPanels.tsx'), 'utf8'),
+].join('\n');
+const pageSource = readBrowsingHistorySource();
+const pageOnlySource = readBrowsingHistoryPage();
 const cssSource = fs.readFileSync(path.join(__dirname, 'BrowsingHistory.css'), 'utf8');
 const preferencesSource = fs.readFileSync(path.join(__dirname, '../utils/productViewPreferences.ts'), 'utf8');
 
 describe('BrowsingHistory mobile action readability guards', () => {
   it('keeps add-to-cart API error handling typed without broad any usage', () => {
-    expect(pageSource).toContain('} catch (err: unknown) {');
-    expect(pageSource).toContain("getApiErrorMessage(err, t('messages.addFailed'), language)");
-    expect(pageSource).not.toMatch(/\bany\b/);
-    expect(pageSource).not.toContain('catch (err: any)');
-    expect(pageSource).not.toContain('catch (error: any)');
+    expect(pageOnlySource).toContain('} catch (err: unknown) {');
+    expect(pageOnlySource).toContain("getApiErrorMessage(err, t('messages.addFailed'), language)");
+    expect(pageOnlySource).not.toMatch(/\bany\b/);
+    expect(pageOnlySource).not.toContain('catch (err: any)');
+    expect(pageOnlySource).not.toContain('catch (error: any)');
   });
 
   it('uses native typography densification for page headings and body copy', () => {
@@ -96,3 +103,33 @@ describe('BrowsingHistory mobile action readability guards', () => {
     expect(f3518Css).toMatch(/font-size:\s*12px\s*!important;/);
   });
 });
+
+describe('BrowsingHistory modularization', () => {
+  it('keeps browsing history helpers and panels modularized outside the page shell', () => {
+    const page = readBrowsingHistoryPage();
+    const helpers = fs.readFileSync(path.join(__dirname, 'browsingHistoryHelpers.ts'), 'utf8');
+    const panels = fs.readFileSync(path.join(__dirname, 'browsingHistoryPanels.tsx'), 'utf8');
+    expect(page).toContain("from './browsingHistoryHelpers'");
+    expect(page).toContain("from './browsingHistoryPanels'");
+    expect(page).toContain('<BrowsingHistoryMainPanels');
+    expect(page).toContain('<BrowsingHistoryLoadingShell');
+    expect(page).toContain('buildBrowsingHistoryActionLabels({');
+    expect(page).toContain('buildBrowsingHistoryPanelProps({');
+    expect(page).toContain('resolveHistoryNextActionDescriptor({');
+    expect(page).not.toContain('browsing-history__mobileAction');
+    expect(page).not.toContain('data-history-load-recovery');
+    expect(helpers).toContain('export const resolveHistoryNextActionDescriptor');
+    expect(helpers).toContain('export const deriveHistoryInsights');
+    expect(helpers).toContain('export const filterHistoryProducts');
+    expect(helpers).toContain('export const buildBrowsingHistoryActionLabels');
+    expect(helpers).toContain('export const buildBrowsingHistoryPanelProps');
+    expect(helpers).toContain("title: t('pages.browsingHistory.nextActionStaleTitle')");
+    expect(panels).toContain('export const BrowsingHistoryMainPanels');
+    expect(panels).toContain('export const BrowsingHistoryLoadingShell');
+    expect(panels).toContain('browsing-history__mobileAction');
+    expect(panels).toContain('data-history-load-recovery');
+    expect(panels).toContain('data-history-empty-actions');
+    expect(panels).toContain('data-history-stale-recovery');
+  });
+});
+
