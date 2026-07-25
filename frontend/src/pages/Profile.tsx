@@ -19,17 +19,32 @@ import '../styles/mobile-page-contrast.css';
 import { getPaymentRecoveryState } from '../utils/paymentRecovery';
 
 import {
-  ORDER_STATUS_LABEL_KEYS,
-  PAYMENT_STATUS_LABEL_KEYS,
-  isCompleteProfileAddress,
-  isLikelyProfilePhone,
+  PROFILE_AFTER_SALE_STATUSES,
+  buildProfileAddressReadinessText,
+  buildProfileAfterSaleFocusText,
+  buildProfileOrderStatusTabs,
+  buildProfilePetCompletenessText,
+  buildProfilePetFocusText,
+  buildProfilePetShoppingPath,
+  deriveProfileDashboardMetrics,
+  filterProfileOrders,
+  formatOrderStatusLabel as formatOrderStatusLabelHelper,
+  formatPaymentStatusLabel as formatPaymentStatusLabelHelper,
+  getOrderActionHint as getOrderActionHintHelper,
+  getOrderStatusColor as getOrderStatusColorHelper,
+  getPaymentStatusColor as getPaymentStatusColorHelper,
+  isReturnableOrder,
   normalizeProfileEmail,
   normalizeProfileOrderNo,
   normalizeProfileTab,
   normalizeStatusCode,
   profileOrderLabel,
-  sortOrdersNewestFirst,
-  statusColors,
+  resolveNextReturnDeadlineLabel,
+  resolveProfileDateLocale,
+  resolveProfilePetFocus,
+  resolveProfilePetShoppingFocus,
+  resolveProfilePetSizeLabel,
+  resolveProfilePetTypeLabel,
   type OrderActionHint,
 } from '../utils/profileHelpers';
 import { useProfilePaymentActions } from '../hooks/useProfilePaymentActions';
@@ -149,33 +164,21 @@ const Profile: React.FC = () => {
   const watchedProfileEmail = Form.useWatch('email', editForm);
   const emailCodeEnabled = appConfig.emailCodeEnabled === true;
   const profileEmailChanged = normalizeProfileEmail(watchedProfileEmail) !== normalizeProfileEmail(user?.email);
-  const formatKnownStatusLabel = useCallback((status: string | undefined, knownStatuses: Set<string>) => {
-    const rawStatus = String(status || '').trim();
-    const normalizedStatus = normalizeStatusCode(rawStatus);
-    if (!normalizedStatus) return t('common.unknown');
-    if (knownStatuses.has(normalizedStatus)) return t(`status.${normalizedStatus}`);
-    return rawStatus;
-  }, [t]);
   const formatOrderStatusLabel = useCallback(
-    (status?: string) => formatKnownStatusLabel(status, ORDER_STATUS_LABEL_KEYS),
-    [formatKnownStatusLabel],
+    (status?: string) => formatOrderStatusLabelHelper(status, t),
+    [t],
   );
   const formatPaymentStatusLabel = useCallback(
-    (status?: string) => formatKnownStatusLabel(status, PAYMENT_STATUS_LABEL_KEYS),
-    [formatKnownStatusLabel],
+    (status?: string) => formatPaymentStatusLabelHelper(status, t),
+    [t],
   );
-  const getKnownStatusColor = useCallback((status: string | undefined, knownStatuses: Set<string>) => {
-    const normalizedStatus = normalizeStatusCode(status);
-    if (!knownStatuses.has(normalizedStatus)) return 'default';
-    return statusColors[normalizedStatus] || 'default';
-  }, []);
   const getOrderStatusColor = useCallback(
-    (status?: string) => getKnownStatusColor(status, ORDER_STATUS_LABEL_KEYS),
-    [getKnownStatusColor],
+    (status?: string) => getOrderStatusColorHelper(status),
+    [],
   );
   const getPaymentStatusColor = useCallback(
-    (status?: string) => getKnownStatusColor(status, PAYMENT_STATUS_LABEL_KEYS),
-    [getKnownStatusColor],
+    (status?: string) => getPaymentStatusColorHelper(status),
+    [],
   );
 
   const {
@@ -431,46 +434,16 @@ const Profile: React.FC = () => {
     dispatchDomEvent('shop:open-support');
   }, [navigate, t]);
 
-  const afterSaleStatuses = ['RETURN_REQUESTED', 'RETURN_APPROVED', 'RETURN_SHIPPED', 'RETURN_REFUNDING', 'RETURNED'];
-  const orderFilterStatusMap: Record<string, string[]> = {
-    PENDING_PAYMENT: ['PENDING_PAYMENT'],
-    PENDING_SHIPMENT: ['PENDING_SHIPMENT'],
-    SHIPPED: ['SHIPPED'],
-    COMPLETED: ['COMPLETED'],
-    RETURN_APPROVED: ['RETURN_APPROVED'],
-    AFTER_SALE: afterSaleStatuses,
-    CANCELLED: ['CANCELLED'],
-  };
-  const isReturnableOrder = (order: OrderCustomer) => order.status === 'COMPLETED' && Boolean(order.returnable);
-  const orderStatusTabs = [
-    { key: 'all', label: t('pages.profile.allOrders') },
-    { key: 'PENDING_PAYMENT', label: t('status.PENDING_PAYMENT'), statuses: orderFilterStatusMap.PENDING_PAYMENT },
-    { key: 'PENDING_SHIPMENT', label: t('status.PENDING_SHIPMENT'), statuses: orderFilterStatusMap.PENDING_SHIPMENT },
-    { key: 'SHIPPED', label: t('status.SHIPPED'), statuses: orderFilterStatusMap.SHIPPED },
-    { key: 'COMPLETED', label: t('status.COMPLETED'), statuses: orderFilterStatusMap.COMPLETED },
-    { key: 'RETURNABLE', label: t('pages.profile.afterSaleReturnable') },
-    { key: 'AFTER_SALE', label: t('pages.profile.afterSale'), statuses: orderFilterStatusMap.AFTER_SALE },
-    { key: 'CANCELLED', label: t('status.CANCELLED'), statuses: orderFilterStatusMap.CANCELLED },
-  ];
-  const matchesOrderFilter = (order: OrderCustomer) => {
-    if (orderStatusFilter === 'all') return true;
-    if (orderStatusFilter === 'RETURNABLE') return isReturnableOrder(order);
-    return orderFilterStatusMap[orderStatusFilter]?.includes(order.status) || false;
-  };
-  const normalizedSearchText = orderSearchText.trim().toLowerCase();
-  const filteredOrders = sortOrdersNewestFirst(orders.filter(matchesOrderFilter))
-    .filter((order) => {
-      if (!normalizedSearchText) return true;
-      const items = orderItemsByOrderId[order.id] || [];
-      return [
-        order.orderNo,
-        order.id,
-        order.trackingNumber,
-        order.shippingAddress,
-        ...items.map((item) => profileOrderItemName(item)),
-      ].some((value) => String(value || '').toLowerCase().includes(normalizedSearchText));
-    });
-  const dateLocale = language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US';
+  const afterSaleStatuses = [...PROFILE_AFTER_SALE_STATUSES];
+  const orderStatusTabs = buildProfileOrderStatusTabs(t);
+  const filteredOrders = filterProfileOrders({
+    orders,
+    orderStatusFilter,
+    orderSearchText,
+    orderItemsByOrderId,
+    resolveItemName: profileOrderItemName,
+  });
+  const dateLocale = resolveProfileDateLocale(language);
   const { formatMoney, currency } = useMarket();
   const paymentOptions = createPaymentMethodOptions(t, paymentChannels, { currency });
   const paymentMethodDetails = createPaymentMethodDetails(paymentChannels, { currency });
@@ -481,204 +454,71 @@ const Profile: React.FC = () => {
   const selectedPaymentReconcileRequired = selectedPaymentStatus === 'RECONCILE_REQUIRED';
   const selectedPaymentRecovery = getPaymentRecoveryState(selectedPayment);
   const selectedPaymentExpiredOrFailed = selectedPaymentFailed || selectedPaymentRecovery.isExpired;
-  const pendingPaymentCount = orders.filter((order) => order.status === 'PENDING_PAYMENT').length;
-  const inTransitCount = orders.filter((order) => order.status === 'SHIPPED').length;
-  const afterSaleCount = orders.filter((order) => afterSaleStatuses.includes(order.status)).length;
-  const returnableOrdersCount = orders.filter(isReturnableOrder).length;
-  const returnApprovedCount = orders.filter((order) => order.status === 'RETURN_APPROVED').length;
-  const returnShippedCount = orders.filter((order) => order.status === 'RETURN_SHIPPED').length;
-  const returnRefundingCount = orders.filter((order) => order.status === 'RETURN_REFUNDING').length;
-  const ordersStale = ordersLoadFailed && orders.length > 0;
-  const defaultAddressReady = addresses.some((address) => address.isDefault);
-  const completedPetProfiles = petProfiles.filter((pet) => pet.name && pet.petType && pet.size && pet.weight && pet.birthday).length;
-  const petProfileProgress = petProfiles.length > 0 ? Math.round((completedPetProfiles / petProfiles.length) * 100) : 0;
-  const petsMissingBirthdayCount = petProfiles.filter((pet) => !pet.birthday).length;
-  const petsMissingFitCount = petProfiles.filter((pet) => !pet.weight || !pet.size).length;
-  const completeAddressCount = addresses.filter(isCompleteProfileAddress).length;
-  const addressesMissingPhoneCount = addresses.filter((address) => !isLikelyProfilePhone(address.phone)).length;
-  const addressesMissingDetailCount = addresses.filter((address) => !isCompleteProfileAddress(address)).length;
-  const addressReadinessProgress = addresses.length > 0
-    ? Math.round(((completeAddressCount + (defaultAddressReady ? 1 : 0)) / (addresses.length + 1)) * 100)
-    : 0;
-  const accountHealthSignals = [
-    Boolean(user?.email),
-    Boolean(user?.phone),
+  const {
+    pendingPaymentCount,
+    inTransitCount,
+    afterSaleCount,
+    returnableOrdersCount,
+    returnApprovedCount,
+    returnShippedCount,
+    returnRefundingCount,
+    ordersStale,
     defaultAddressReady,
-    petProfiles.length > 0,
-  ];
-  const accountHealthScore = Math.round((accountHealthSignals.filter(Boolean).length / accountHealthSignals.length) * 100);
-  const nextReturnDeadline = useMemo(() => {
-    const deadlines = orders
-      .filter((order) => isReturnableOrder(order) && order.returnDeadline)
-      .map((order) => new Date(order.returnDeadline as string))
-      .filter((date) => !Number.isNaN(date.getTime()))
-      .sort((left, right) => left.getTime() - right.getTime());
-    return deadlines[0] ? deadlines[0].toLocaleDateString(dateLocale) : '';
-  }, [dateLocale, orders]);
-  const afterSaleFocusText = ordersStale
-    ? t('pages.profile.ordersStaleAfterSaleText')
-    : returnApprovedCount > 0
-      ? t('pages.profile.afterSaleFocusShipment', { count: returnApprovedCount })
-      : returnShippedCount > 0
-        ? t('pages.profile.afterSaleFocusRefund', { count: returnShippedCount })
-        : returnRefundingCount > 0
-          ? t('pages.profile.afterSaleFocusRefunding', { count: returnRefundingCount })
-          : returnableOrdersCount > 0
-            ? nextReturnDeadline
-              ? t('pages.profile.afterSaleFocusWindowWithDate', { count: returnableOrdersCount, date: nextReturnDeadline })
-              : t('pages.profile.afterSaleFocusWindow', { count: returnableOrdersCount })
-            : t('pages.profile.afterSaleFocusHealthy');
-  const petCompletenessText = petProfiles.length === 0
-    ? t('pages.profile.petCompletenessEmpty')
-    : petProfileProgress === 100
-      ? t('pages.profile.petCompletenessReady')
-      : t('pages.profile.petCompletenessImprove', { count: petProfiles.length - completedPetProfiles });
-  const petProfileFocus = petProfiles.find((pet) => !pet.birthday || !pet.weight || !pet.size || !pet.breed) || null;
-  const petProfileFocusText = petProfiles.length === 0
-    ? t('pages.profile.petProfileActionEmpty')
-    : petProfileFocus
-      ? t('pages.profile.petProfileActionImprove', {
-        name: petProfileFocus.name || t('pages.profile.petName'),
-        fields: [
-          !petProfileFocus.birthday ? t('pages.profile.petBirthday') : null,
-          !petProfileFocus.weight ? t('pages.profile.petWeight') : null,
-          !petProfileFocus.size ? t('pages.profile.petSize') : null,
-          !petProfileFocus.breed ? t('pages.profile.petBreed') : null,
-        ].filter(Boolean).join(', '),
-      })
-      : t('pages.profile.petProfileActionReady');
-  const addressReadinessText = addresses.length === 0
-    ? t('pages.profile.addressReadinessEmpty')
-    : addressReadinessProgress === 100
-      ? t('pages.profile.addressReadinessReady')
-      : t('pages.profile.addressReadinessImprove');
-  const petTypeLabel = (value?: string) => {
-    if (value === 'DOG') return t('pages.profile.petDog');
-    if (value === 'CAT') return t('pages.profile.petCat');
-    if (value === 'SMALL_PET') return t('pages.profile.petSmall');
-    return value || t('common.unset');
-  };
-  const petSizeLabel = (value?: string) => {
-    if (value === 'SMALL') return t('pages.profile.petSizeSmall');
-    if (value === 'MEDIUM') return t('pages.profile.petSizeMedium');
-    if (value === 'LARGE') return t('pages.profile.petSizeLarge');
-    return value || t('common.unset');
-  };
-  const profilePetShoppingFocus = petProfiles.find((pet) => pet.petType && (pet.size || pet.breed)) || petProfiles[0] || null;
-  const petShoppingSizeValue = (value?: string) => {
-    if (value === 'SMALL') return 'Small';
-    if (value === 'MEDIUM') return 'Medium';
-    if (value === 'LARGE') return 'Large';
-    return '';
-  };
-  const petShoppingKeyword = (pet?: PetProfile | null) => {
-    if (!pet) return '';
-    if (pet.breed) return pet.breed;
-    if (pet.petType === 'DOG') return 'dog';
-    if (pet.petType === 'CAT') return 'cat';
-    return 'small pet';
-  };
+    completedPetProfiles,
+    petProfileProgress,
+    petsMissingBirthdayCount,
+    petsMissingFitCount,
+    completeAddressCount,
+    addressesMissingPhoneCount,
+    addressesMissingDetailCount,
+    addressReadinessProgress,
+    accountHealthScore,
+  } = deriveProfileDashboardMetrics({
+    orders,
+    ordersLoadFailed,
+    addresses,
+    petProfiles,
+    user,
+  });
+  const nextReturnDeadline = useMemo(
+    () => resolveNextReturnDeadlineLabel(orders, dateLocale),
+    [dateLocale, orders],
+  );
+  const afterSaleFocusText = buildProfileAfterSaleFocusText({
+    t,
+    ordersStale,
+    returnApprovedCount,
+    returnShippedCount,
+    returnRefundingCount,
+    returnableOrdersCount,
+    nextReturnDeadline,
+  });
+  const petCompletenessText = buildProfilePetCompletenessText({
+    t,
+    petProfilesLength: petProfiles.length,
+    petProfileProgress,
+    completedPetProfiles,
+  });
+  const petProfileFocus = resolveProfilePetFocus(petProfiles);
+  const petProfileFocusText = buildProfilePetFocusText({ t, petProfiles });
+  const addressReadinessText = buildProfileAddressReadinessText({
+    t,
+    addressesLength: addresses.length,
+    addressReadinessProgress,
+  });
+  const petTypeLabel = (value?: string) => resolveProfilePetTypeLabel(value, t);
+  const petSizeLabel = (value?: string) => resolveProfilePetSizeLabel(value, t);
+  const profilePetShoppingFocus = resolveProfilePetShoppingFocus(petProfiles);
   const openPetShoppingPath = (pet?: PetProfile | null) => {
     const targetPet = pet || profilePetShoppingFocus;
-    const params = new URLSearchParams();
-    const keywordValue = petShoppingKeyword(targetPet);
-    const sizeValue = petShoppingSizeValue(targetPet?.size);
-    if (keywordValue) params.set('keyword', keywordValue);
-    if (sizeValue) params.set('petSize', sizeValue);
-    params.set('sort', 'personalized-desc');
-    navigate(`/products?${params.toString()}`);
+    navigate(buildProfilePetShoppingPath(targetPet));
   };
-  const getOrderActionHint = (order: OrderCustomer): OrderActionHint => {
-    const returnDeadline = order.returnDeadline ? new Date(order.returnDeadline).toLocaleDateString(dateLocale) : '';
-    if (ordersStale) {
-      return {
-        tone: 'neutral',
-        title: t('pages.profile.nextOrderStaleTitle'),
-        text: t('pages.profile.nextOrderStaleText'),
-      };
-    }
-    if (order.status === 'PENDING_PAYMENT') {
-      return {
-        tone: 'pay',
-        title: t('pages.profile.nextPayTitle'),
-        text: t('pages.profile.nextPayText'),
-      };
-    }
-    if (order.status === 'PENDING_SHIPMENT') {
-      return {
-        tone: 'wait',
-        title: t('pages.profile.nextShipTitle'),
-        text: t('pages.profile.nextShipText'),
-      };
-    }
-    if (order.status === 'SHIPPED') {
-      return {
-        tone: 'ship',
-        title: t('pages.profile.nextReceiveTitle'),
-        text: order.trackingNumber
-          ? t('pages.profile.nextReceiveWithTrackingText', { number: order.trackingNumber })
-          : t('pages.profile.nextReceiveText'),
-      };
-    }
-    if (isReturnableOrder(order)) {
-      return {
-        tone: 'return',
-        title: t('pages.profile.nextReturnWindowTitle'),
-        text: returnDeadline
-          ? t('pages.profile.nextReturnWindowText', { date: returnDeadline })
-          : t('pages.profile.nextReturnWindowNoDateText'),
-      };
-    }
-    if (order.status === 'RETURN_REQUESTED') {
-      return {
-        tone: 'return',
-        title: t('pages.profile.nextReturnReviewTitle'),
-        text: t('pages.profile.nextReturnReviewText'),
-      };
-    }
-    if (order.status === 'RETURN_APPROVED') {
-      return {
-        tone: 'return',
-        title: t('pages.profile.nextReturnShipTitle'),
-        text: t('pages.profile.nextReturnShipText'),
-      };
-    }
-    if (order.status === 'RETURN_SHIPPED' || order.status === 'RETURN_REFUNDING') {
-      return {
-        tone: 'return',
-        title: t('pages.profile.nextRefundTitle'),
-        text: t('pages.profile.nextRefundText'),
-      };
-    }
-    if (order.status === 'RETURNED') {
-      return {
-        tone: 'done',
-        title: t('pages.profile.nextReturnedTitle'),
-        text: order.refundedAt
-          ? t('pages.profile.nextReturnedWithRefundText', { date: new Date(order.refundedAt).toLocaleDateString(dateLocale) })
-          : t('pages.profile.nextReturnedText'),
-      };
-    }
-    if (order.status === 'COMPLETED') {
-      return {
-        tone: 'done',
-        title: t('pages.profile.nextCompletedTitle'),
-        text: t('pages.profile.nextCompletedText'),
-      };
-    }
-    if (order.status === 'CANCELLED') {
-      return {
-        tone: 'neutral',
-        title: t('pages.profile.nextCancelledTitle'),
-        text: t('pages.profile.nextCancelledText'),
-      };
-    }
-    return {
-      tone: 'neutral',
-      title: t('pages.profile.nextOrderTitle'),
-      text: t('pages.profile.nextOrderText'),
-    };
-  };
+  const getOrderActionHint = (order: OrderCustomer): OrderActionHint => getOrderActionHintHelper({
+    order,
+    ordersStale,
+    dateLocale,
+    t,
+  });
   const syncProfileTabToUrl = useCallback((tabKey: string) => {
     const nextTab = normalizeProfileTab(tabKey) || 'info';
     setProfileActiveTab(nextTab);

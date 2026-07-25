@@ -1,4 +1,4 @@
-import type React from 'react';
+import React from 'react';
 import type { ProductPublic as Product, CategoryPublic } from '../types';
 import { getProductOptionGroups, getProductVariants } from '../utils/productOptions';
 import { conversionConfig, getLowStockCount } from '../utils/conversionConfig';
@@ -513,3 +513,349 @@ export const resolvePaginatedProducts = (
   ? sortedProducts
   : sortedProducts.slice((options.currentPage - 1) * options.pageSize, options.currentPage * options.pageSize));
 
+
+export const resolveProductListCollectionLabel = (value: string, t: ProductListTranslate) => {
+  if (value === 'smart-devices') return t('nav.petNav.smartDevices');
+  return value.replace(/-/g, ' ');
+};
+
+export const buildProductListResultContextTags = (params: {
+  collection: string;
+  collectionLabel: string;
+  keyword: string;
+  selectedCategoryName: string;
+  discount: boolean;
+  t: ProductListTranslate;
+}) => ([
+  params.collection
+    ? { key: 'collection', color: 'geekblue', label: params.collectionLabel }
+    : null,
+  params.keyword.trim()
+    ? { key: 'keyword', color: 'purple', label: params.keyword.trim() }
+    : null,
+  params.selectedCategoryName
+    ? { key: 'category', color: 'green', label: params.selectedCategoryName }
+    : null,
+  params.discount
+    ? { key: 'discount', color: 'red', label: params.t('home.flashOffers') }
+    : null,
+].filter(Boolean) as Array<{ key: string; color: string; label: string }>);
+
+export type ProductListCatalogPresentation = {
+  selectedCategoryName: string;
+  leadingCategoryName: string;
+  topCategoryName: string;
+  collectionLabel: string;
+  catalogHeroTitle: string;
+  heroProductHighlights: string[];
+  mobileHeroSignal: string;
+  heroProductName: string;
+  quickAddProductName: string;
+  previewProductName: string;
+  previewProductWishlisted: boolean;
+  previewProductStockAlerted: boolean;
+};
+
+export const deriveProductListCatalogPresentation = (params: {
+  t: ProductListTranslate;
+  catalogTitleFallback: string;
+  keyword: string;
+  categoryId?: number;
+  collection: string;
+  discount: boolean;
+  selectedCategoryName: string;
+  leadingCategoryName: string;
+  heroProduct: Product | null;
+  quickAddProduct: Product | null;
+  previewProduct: Product | null;
+  productListProductName: (product: Product) => string;
+  formatMoney: (value: number) => string;
+  quickAddReadyCount: number;
+  wishlistedProductIds: Set<number>;
+  alertedStockProductIds: Set<number>;
+}): ProductListCatalogPresentation => {
+  const collectionLabel = normalizeCatalogTitle(
+    resolveProductListCollectionLabel(params.collection, params.t),
+    params.catalogTitleFallback,
+  );
+  const topCategoryName = params.selectedCategoryName
+    || params.leadingCategoryName
+    || normalizeCatalogTitle(params.t('pages.productList.allCategories'), params.catalogTitleFallback);
+  const catalogHeroTitle = normalizeCatalogTitle(params.keyword.trim()
+    || params.selectedCategoryName
+    || (params.categoryId ? params.leadingCategoryName : '')
+    || (params.collection ? collectionLabel : '')
+    || (params.discount ? params.t('pages.productList.shopBestDeals') : '')
+    || params.catalogTitleFallback, params.catalogTitleFallback);
+  const heroProductHighlights = params.heroProduct
+    ? [
+      params.heroProduct.brand,
+      getDiscountPercent(params.heroProduct) > 0 ? params.t('pages.productList.sale') : '',
+      isQuickAddReady(params.heroProduct) ? params.t('pages.productList.cardQuickReady') : params.t('pages.productList.cardOptionsNeeded'),
+    ].filter((item): item is string => Boolean(item))
+    : [];
+  const lowStockCount = params.heroProduct ? getLowStockCount(params.heroProduct.stock) : null;
+  const mobileHeroSignal = params.heroProduct
+    ? [
+      params.formatMoney(getPrice(params.heroProduct)),
+      isQuickAddReady(params.heroProduct) ? params.t('pages.productList.cardQuickReady') : params.t('pages.productList.cardOptionsNeeded'),
+      lowStockCount !== null
+        ? params.t('pages.productList.cardLowStock', { count: lowStockCount as number })
+        : '',
+    ].filter(Boolean).join(' / ')
+    : params.t('pages.productList.quickAddReady', { count: params.quickAddReadyCount });
+  return {
+    selectedCategoryName: params.selectedCategoryName,
+    leadingCategoryName: params.leadingCategoryName,
+    topCategoryName,
+    collectionLabel,
+    catalogHeroTitle,
+    heroProductHighlights,
+    mobileHeroSignal,
+    heroProductName: params.heroProduct ? params.productListProductName(params.heroProduct) : '',
+    quickAddProductName: params.quickAddProduct ? params.productListProductName(params.quickAddProduct) : '',
+    previewProductName: params.previewProduct ? params.productListProductName(params.previewProduct) : '',
+    previewProductWishlisted: params.previewProduct ? params.wishlistedProductIds.has(params.previewProduct.id) : false,
+    previewProductStockAlerted: params.previewProduct ? params.alertedStockProductIds.has(params.previewProduct.id) : false,
+  };
+};
+
+export const buildProductListGuideText = (params: {
+  t: ProductListTranslate;
+  activeFilterCount: number;
+  bestValueCount: number;
+  quickAddReadyCount: number;
+}) => {
+  if (params.activeFilterCount > 0) return params.t('pages.productList.guideRefineResults');
+  if (params.bestValueCount > 0) return params.t('pages.productList.guideBestValue', { count: params.bestValueCount });
+  if (params.quickAddReadyCount > 0) return params.t('pages.productList.guideQuickAdd', { count: params.quickAddReadyCount });
+  return params.t('pages.productList.guideStart');
+};
+
+export const buildProductListSortOptions = (t: ProductListTranslate) => ([
+  { value: 'default', label: t('pages.productList.defaultSort') },
+  { value: 'personalized-desc', label: t('pages.productList.personalizedSort') },
+  { value: 'quick-add-desc', label: t('pages.productList.quickAddSort') },
+  { value: 'best-value-desc', label: t('pages.productList.bestValueSort') },
+  { value: 'low-stock-desc', label: t('pages.productList.lowStockSort') },
+  { value: 'price-asc', label: t('pages.productList.priceAsc') },
+  { value: 'price-desc', label: t('pages.productList.priceDesc') },
+  { value: 'discount-desc', label: t('pages.productList.discountDesc') },
+  { value: 'positive-rate-desc', label: t('pages.productList.positiveRateDesc') },
+  { value: 'name', label: t('pages.productList.byName') },
+]);
+
+export type ProductListRefinementTagData = {
+  key: string;
+  label: string;
+  kind: 'category' | 'price' | 'size' | 'material' | 'color';
+  value?: string;
+};
+
+export const buildProductListActiveRefinementTagData = (params: {
+  t: ProductListTranslate;
+  selectedCategory?: { id: number; title: string } | null;
+  priceFilterActive: boolean;
+  displayedPriceRange: [number, number];
+  formatMoney: (value: number) => string;
+  petSizes: string[];
+  materials: string[];
+  colors: string[];
+  optionLabels: Map<string, string>;
+}): ProductListRefinementTagData[] => {
+  const tags: ProductListRefinementTagData[] = [];
+  if (params.selectedCategory) {
+    tags.push({
+      key: `category-${params.selectedCategory.id}`,
+      label: params.selectedCategory.title,
+      kind: 'category',
+    });
+  }
+  if (params.priceFilterActive) {
+    tags.push({
+      key: 'price',
+      label: `${params.t('pages.productList.price')}: ${params.formatMoney(params.displayedPriceRange[0])} - ${params.formatMoney(params.displayedPriceRange[1])}`,
+      kind: 'price',
+    });
+  }
+  params.petSizes.forEach((value) => tags.push({
+    key: `size-${value}`,
+    label: `${params.t('pages.productList.filterSize')}: ${params.optionLabels.get(value) || value}`,
+    kind: 'size',
+    value,
+  }));
+  params.materials.forEach((value) => tags.push({
+    key: `material-${value}`,
+    label: `${params.t('pages.productList.filterMaterial')}: ${params.optionLabels.get(value) || value}`,
+    kind: 'material',
+    value,
+  }));
+  params.colors.forEach((value) => tags.push({
+    key: `color-${value}`,
+    label: `${params.t('pages.productList.filterColor')}: ${params.optionLabels.get(value) || value}`,
+    kind: 'color',
+    value,
+  }));
+  return tags;
+};
+
+export const resolveProductListHasActiveCatalogContext = (params: {
+  keyword: string;
+  categoryId?: number;
+  collection: string;
+  discount: boolean;
+  activeRefinementCount: number;
+}) => Boolean(
+  params.keyword.trim()
+  || params.categoryId
+  || params.collection
+  || params.discount
+  || params.activeRefinementCount > 0,
+);
+
+export const resolveProductListMobileNextStepCopy = (params: {
+  t: ProductListTranslate;
+  filteredProductsLength: number;
+  hasActiveCatalogContext: boolean;
+  activeRefinementCount: number;
+  productListGuideText: string;
+  productCountLabel: string;
+}) => {
+  const mobileNextStepText = params.filteredProductsLength === 0
+    ? params.hasActiveCatalogContext
+      ? params.t('pages.productList.loadRecoveryTipFilters')
+      : params.t('pages.productList.guideStart')
+    : params.productListGuideText;
+  const mobileNextStepTitle = params.filteredProductsLength === 0 && params.activeRefinementCount > 0
+    ? params.t('pages.productList.activeFilters', { count: params.activeRefinementCount })
+    : params.productCountLabel;
+  return { mobileNextStepText, mobileNextStepTitle };
+};
+
+export const buildProductListActionLabels = (params: {
+  t: ProductListTranslate;
+  activeRefinementCount: number;
+  productCountLabel: string;
+  quickAddReadyCount: number;
+  heroProduct: Product | null;
+  heroProductName: string;
+  filteredProductsLength: number;
+  shopQuickAddActionLabel?: string;
+}) => {
+  const productListFilterContextLabel = `${params.t('pages.productList.filters')}: ${params.activeRefinementCount > 0 ? params.t('pages.productList.activeFilters', { count: params.activeRefinementCount }) : params.t('pages.productList.allCategories')}, ${params.productCountLabel}`;
+  const openFilterDrawerActionLabel = productListFilterContextLabel;
+  const resetRefinementsActionLabel = `${params.t('pages.productList.resetFilters')}: ${productListFilterContextLabel}`;
+  const applyRefinementsActionLabel = `${params.t('pages.productList.applyFilters')}: ${productListFilterContextLabel}`;
+  const shopBestDealsActionLabel = `${params.t('pages.productList.shopBestDeals')}: ${params.productCountLabel}`;
+  const shopQuickAddActionLabel = `${params.t('pages.productList.shopQuickAdd')}: ${params.t('pages.productList.quickAddReady', { count: params.quickAddReadyCount })}`;
+  const loadRecoveryContextLabel = `${params.t('pages.productList.fetchFailed')}: ${productListFilterContextLabel}`;
+  const refreshCatalogActionLabel = `${params.t('common.refresh')}: ${loadRecoveryContextLabel}`;
+  const allCategoriesRecoveryActionLabel = `${params.t('pages.productList.allCategories')}: ${loadRecoveryContextLabel}`;
+  const couponsRecoveryActionLabel = `${params.t('pages.productList.loadRecoveryCoupons')}: ${loadRecoveryContextLabel}`;
+  const supportRecoveryActionLabel = `${params.t('pages.productList.loadRecoverySupport')}: ${loadRecoveryContextLabel}`;
+  const emptyAllCategoriesActionLabel = `${params.t('pages.productList.allCategories')}: ${params.t('pages.productList.empty')}`;
+  const emptyResetFiltersActionLabel = `${params.t('pages.productList.resetFilters')}: ${params.t('pages.productList.empty')}, ${productListFilterContextLabel}`;
+  const emptyCouponsActionLabel = `${params.t('pages.productList.loadRecoveryCoupons')}: ${params.t('pages.productList.empty')}`;
+  const emptyPetFinderActionLabel = `${params.t('nav.petFinder')}: ${params.t('pages.productList.empty')}`;
+  const mobilePrimaryActionLabel = params.heroProduct
+    ? `${isQuickAddReady(params.heroProduct) ? params.t('pages.productList.addToCart') : params.t('pages.productList.chooseOptionsAction')}: ${params.heroProductName}`
+    : params.filteredProductsLength > 0
+      ? shopQuickAddActionLabel
+      : `${params.t('pages.productList.loadRecoveryCoupons')}: ${params.t('pages.productList.empty')}`;
+  const mobileSecondaryActionLabel = params.filteredProductsLength > 0
+    ? shopBestDealsActionLabel
+    : params.activeRefinementCount > 0
+      ? resetRefinementsActionLabel
+      : `${params.t('pages.productList.allCategories')}: ${params.t('pages.productList.empty')}`;
+  const backToTopActionLabel = params.t('common.backToTop');
+  const productSearchActionLabel = `${params.t('common.search')}: ${params.productCountLabel}`;
+  return {
+    productListFilterContextLabel,
+    openFilterDrawerActionLabel,
+    resetRefinementsActionLabel,
+    applyRefinementsActionLabel,
+    shopBestDealsActionLabel,
+    shopQuickAddActionLabel,
+    loadRecoveryContextLabel,
+    refreshCatalogActionLabel,
+    allCategoriesRecoveryActionLabel,
+    couponsRecoveryActionLabel,
+    supportRecoveryActionLabel,
+    emptyAllCategoriesActionLabel,
+    emptyResetFiltersActionLabel,
+    emptyCouponsActionLabel,
+    emptyPetFinderActionLabel,
+    mobilePrimaryActionLabel,
+    mobileSecondaryActionLabel,
+    backToTopActionLabel,
+    productSearchActionLabel,
+  };
+};
+
+export const renderProductListAmountText = (label: string, amount: string): React.ReactNode => {
+  const parts = label.split(amount);
+  if (parts.length <= 1) return label;
+  return (
+    <span className="product-list__amountPhrase commerce-atomic">
+      {parts.map((part, index) => (
+        <React.Fragment key={`${part}-${index}`}>
+          {part}
+          {index < parts.length - 1 ? <span className="commerce-money">{amount}</span> : null}
+        </React.Fragment>
+      ))}
+    </span>
+  );
+};
+
+export type ProductListMobileDiscoveryDescriptor = {
+  key: string;
+  label: string;
+  active: boolean;
+  intent: 'reset-catalog' | 'deals' | 'smart-devices' | 'top-rated' | 'quick-add' | 'support';
+};
+
+export const buildProductListMobileDiscoveryDescriptors = (params: {
+  t: ProductListTranslate;
+  collection: string;
+  keyword: string;
+  discount: boolean;
+  sortBy: string;
+  activeRefinementCount: number;
+}): ProductListMobileDiscoveryDescriptor[] => ([
+  {
+    key: 'all',
+    label: params.t('pages.productList.allCategories'),
+    active: !params.collection && !params.keyword.trim() && !params.discount && params.sortBy === 'default' && params.activeRefinementCount === 0,
+    intent: 'reset-catalog',
+  },
+  {
+    key: 'deals',
+    label: params.t('pages.productList.shopBestDeals'),
+    active: params.discount || params.sortBy === 'discount-desc',
+    intent: 'deals',
+  },
+  {
+    key: 'smart',
+    label: params.t('nav.petNav.smartDevices'),
+    active: params.collection === 'smart-devices',
+    intent: 'smart-devices',
+  },
+  {
+    key: 'rated',
+    label: params.t('pages.productList.shopTopRated'),
+    active: params.sortBy === 'positive-rate-desc',
+    intent: 'top-rated',
+  },
+  {
+    key: 'quick',
+    label: params.t('pages.productList.shopQuickAdd'),
+    active: params.sortBy === 'quick-add-desc',
+    intent: 'quick-add',
+  },
+  {
+    key: 'support',
+    label: params.t('footer.helpCenter'),
+    active: false,
+    intent: 'support',
+  },
+]);

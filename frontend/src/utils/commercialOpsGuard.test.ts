@@ -835,6 +835,13 @@ expect(recommendationsPanel).toContain('export const ProductDetailRecommendation
     expect(page).not.toContain('const syncPaymentReturnState = useCallback');
     expect(helpers).toContain('export const normalizeProfileTab');
     expect(helpers).toContain('export const isCompleteProfileAddress');
+    expect(helpers).toContain('export const deriveProfileDashboardMetrics');
+    expect(helpers).toContain('export const filterProfileOrders');
+    expect(helpers).toContain('export const getOrderActionHint');
+    expect(helpers).toContain('export const buildProfileAfterSaleFocusText');
+    expect(page).toContain('deriveProfileDashboardMetrics({');
+    expect(page).toContain('filterProfileOrders({');
+    expect(page).toContain('getOrderActionHintHelper({');
     expect(payment).toContain('export const useProfilePaymentActions');
     expect(address).toContain('export const useProfileAddressActions');
     expect(address).toContain('const handleSaveAddress = async () => {');

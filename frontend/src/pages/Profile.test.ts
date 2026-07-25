@@ -123,8 +123,10 @@ describe('Profile mobile control visibility', () => {
     expect(readProfileOrdersPanelSource()).toContain('profile-orders__tabs');
     expect(readProfileShellSource()).toContain("t('pages.profile.actionAfterSale')");
     expect(readProfileShellSource()).toContain("t('pages.profile.pets'");
-    expect(source).toContain("key: 'RETURNABLE'");
-    expect(source).toContain("key: 'AFTER_SALE'");
+    expect(source).toContain('buildProfileOrderStatusTabs(t)');
+    const helpers = readProfileHelpersSource();
+    expect(helpers).toContain("key: 'RETURNABLE'");
+    expect(helpers).toContain("key: 'AFTER_SALE'");
     expect(fixCss).toMatch(/\.profile-action-center__cards,\s*\.profile-mobile-entry,\s*\.profile-orders__tabs\s*\{[\s\S]*?overflow-x:\s*visible\s*!important;[\s\S]*?scroll-snap-type:\s*none\s*!important;[\s\S]*?mask-image:\s*none\s*!important;/);
     expect(fixCss).toMatch(/\.profile-action-center__cards\s*\{[\s\S]*?display:\s*grid\s*!important;[\s\S]*?grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)\s*!important;/);
     expect(fixCss).toMatch(/\.profile-mobile-entry\s*\{[\s\S]*?display:\s*grid\s*!important;[\s\S]*?grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)\s*!important;/);
@@ -170,10 +172,13 @@ describe('Profile mobile control visibility', () => {
     const panel = readProfileOrdersPanelSource();
     const surface = `${source}\n${panel}`;
 
-    expect(source).toContain('const ordersStale = ordersLoadFailed && orders.length > 0;');
-    expect(source).toContain("t('pages.profile.ordersStaleAfterSaleText')");
-    expect(source).toContain("t('pages.profile.nextOrderStaleTitle')");
-    expect(source).toContain("t('pages.profile.nextOrderStaleText')");
+    expect(source).toContain('deriveProfileDashboardMetrics({');
+    expect(source).toContain('ordersStale,');
+    const helpers = readProfileHelpersSource();
+    expect(helpers).toContain('const ordersStale = params.ordersLoadFailed && params.orders.length > 0;');
+    expect(helpers).toContain("params.t('pages.profile.ordersStaleAfterSaleText')");
+    expect(helpers).toContain("t('pages.profile.nextOrderStaleTitle')");
+    expect(helpers).toContain("t('pages.profile.nextOrderStaleText')");
     expect(surface).toContain("message={t('pages.profile.ordersStaleWarning')}");
     expect(surface).toContain('disabled={ordersStale || payingOrderId !== null}');
     expect(surface).toContain('disabled={ordersStale} onClick={() => confirmReceiptOrder(order)}');
@@ -320,9 +325,11 @@ ${addressActions}`;
 
   it('uses the shared date locale mapping for profile timestamps', () => {
     const source = readProfileSource();
+    const helpers = readProfileHelpersSource();
 
-    expect(source).toContain("const dateLocale = language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US';");
-    expect(source).not.toContain("const dateLocale = language === 'zh' ? 'zh-CN' : language === 'en' ? 'en-US' : 'es-MX';");
+    expect(source).toContain('const dateLocale = resolveProfileDateLocale(language);');
+    expect(helpers).toContain("language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US'");
+    expect(helpers).not.toContain("language === 'zh' ? 'zh-CN' : language === 'en' ? 'en-US' : 'es-MX'");
   });
 
   it('announces the initial profile loading state as a busy status region', () => {
