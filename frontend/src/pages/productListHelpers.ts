@@ -768,7 +768,6 @@ export const buildProductListActionLabels = (params: {
       ? resetRefinementsActionLabel
       : `${params.t('pages.productList.allCategories')}: ${params.t('pages.productList.empty')}`;
   const backToTopActionLabel = params.t('common.backToTop');
-  const productSearchActionLabel = `${params.t('common.search')}: ${params.productCountLabel}`;
   return {
     productListFilterContextLabel,
     openFilterDrawerActionLabel,
@@ -788,23 +787,20 @@ export const buildProductListActionLabels = (params: {
     mobilePrimaryActionLabel,
     mobileSecondaryActionLabel,
     backToTopActionLabel,
-    productSearchActionLabel,
   };
 };
 
 export const renderProductListAmountText = (label: string, amount: string): React.ReactNode => {
   const parts = label.split(amount);
   if (parts.length <= 1) return label;
-  return (
-    <span className="product-list__amountPhrase commerce-atomic">
-      {parts.map((part, index) => (
-        <React.Fragment key={`${part}-${index}`}>
-          {part}
-          {index < parts.length - 1 ? <span className="commerce-money">{amount}</span> : null}
-        </React.Fragment>
-      ))}
-    </span>
-  );
+  const children: React.ReactNode[] = [];
+  parts.forEach((part, index) => {
+    children.push(part);
+    if (index < parts.length - 1) {
+      children.push(React.createElement('span', { className: 'commerce-money', key: `amount-${index}` }, amount));
+    }
+  });
+  return React.createElement('span', { className: 'product-list__amountPhrase commerce-atomic' }, children);
 };
 
 export type ProductListMobileDiscoveryDescriptor = {
@@ -859,3 +855,273 @@ export const buildProductListMobileDiscoveryDescriptors = (params: {
     intent: 'support',
   },
 ]);
+
+
+export type ProductListEmptyDiscoveryDescriptor = {
+  key: string;
+  title: string;
+  text: string;
+  ariaLabel: string;
+  primary?: boolean;
+  iconKey: 'filter' | 'fire' | 'gift' | 'support';
+  intent: 'reset-refinements' | 'all-categories' | 'deals' | 'coupons' | 'support';
+};
+
+export const buildProductListEmptyDiscoveryDescriptors = (params: {
+  t: ProductListTranslate;
+  activeRefinementCount: number;
+  resetRefinementsActionLabel: string;
+  emptyAllCategoriesActionLabel: string;
+}): ProductListEmptyDiscoveryDescriptor[] => ([
+  {
+    key: 'catalog',
+    title: params.activeRefinementCount > 0
+      ? params.t('pages.productList.resetFilters')
+      : params.t('pages.productList.allCategories'),
+    text: params.t('pages.productList.loadRecoveryTipFilters'),
+    ariaLabel: params.activeRefinementCount > 0
+      ? params.resetRefinementsActionLabel
+      : params.emptyAllCategoriesActionLabel,
+    primary: true,
+    iconKey: 'filter',
+    intent: params.activeRefinementCount > 0 ? 'reset-refinements' : 'all-categories',
+  },
+  {
+    key: 'deals',
+    title: params.t('pages.productList.shopBestDeals'),
+    text: params.t('pages.productList.guideStart'),
+    ariaLabel: `${params.t('pages.productList.shopBestDeals')}: ${params.t('pages.productList.empty')}`,
+    iconKey: 'fire',
+    intent: 'deals',
+  },
+  {
+    key: 'coupons',
+    title: params.t('pages.productList.loadRecoveryCoupons'),
+    text: params.t('pages.productList.loadRecoveryText'),
+    ariaLabel: `${params.t('pages.productList.loadRecoveryCoupons')}: ${params.t('pages.productList.empty')}`,
+    iconKey: 'gift',
+    intent: 'coupons',
+  },
+  {
+    key: 'support',
+    title: params.t('pages.productList.loadRecoverySupport'),
+    text: params.t('pages.productList.loadRecoveryTipSupport'),
+    ariaLabel: `${params.t('pages.productList.loadRecoverySupport')}: ${params.t('pages.productList.empty')}`,
+    iconKey: 'support',
+    intent: 'support',
+  },
+]);
+
+export type ProductListMobileNextStepDescriptor = {
+  key: string;
+  label: string;
+  primary: boolean;
+  iconKey: 'reload' | 'filter' | 'search' | 'gift' | 'fire' | 'cart';
+  intent: 'reset-refinements' | 'open-filters' | 'reset-catalog' | 'coupons' | 'deals' | 'quick-add';
+};
+
+export const buildProductListMobileNextStepDescriptors = (params: {
+  t: ProductListTranslate;
+  filteredProductsLength: number;
+  activeRefinementCount: number;
+  hasActiveCatalogContext: boolean;
+  bestValueCount: number;
+  quickAddReadyCount: number;
+}): ProductListMobileNextStepDescriptor[] => {
+  if (params.filteredProductsLength === 0) {
+    return [
+      {
+        key: 'recover',
+        label: params.activeRefinementCount > 0
+          ? params.t('pages.productList.resetFilters')
+          : params.t('pages.productList.filters'),
+        primary: params.activeRefinementCount > 0,
+        iconKey: params.activeRefinementCount > 0 ? 'reload' : 'filter',
+        intent: params.activeRefinementCount > 0 ? 'reset-refinements' : 'open-filters',
+      },
+      {
+        key: 'catalog',
+        label: params.t('pages.productList.allCategories'),
+        primary: params.activeRefinementCount === 0 && params.hasActiveCatalogContext,
+        iconKey: 'search',
+        intent: 'reset-catalog',
+      },
+      {
+        key: 'coupons',
+        label: params.t('pages.productList.loadRecoveryCoupons'),
+        primary: !params.hasActiveCatalogContext,
+        iconKey: 'gift',
+        intent: 'coupons',
+      },
+    ];
+  }
+  return [
+    {
+      key: 'filter',
+      label: params.t('pages.productList.filters'),
+      primary: params.activeRefinementCount > 0,
+      iconKey: 'filter',
+      intent: 'open-filters',
+    },
+    {
+      key: 'deals',
+      label: params.t('pages.productList.shopBestDeals'),
+      primary: params.bestValueCount > 0,
+      iconKey: 'fire',
+      intent: 'deals',
+    },
+    {
+      key: 'quick',
+      label: params.t('pages.productList.shopQuickAdd'),
+      primary: params.quickAddReadyCount > 0,
+      iconKey: 'cart',
+      intent: 'quick-add',
+    },
+  ];
+};
+
+export type ProductListActiveResultContextIntent =
+  | 'keyword'
+  | 'collection'
+  | 'discount'
+  | 'refinement'
+  | 'sort';
+
+export type ProductListActiveResultContextDescriptor = {
+  key: string;
+  label: string;
+  iconKey: 'search' | 'gift' | 'fire' | 'filter' | 'barChart';
+  intent: ProductListActiveResultContextIntent;
+  refinementKey?: string;
+};
+
+export const buildProductListActiveResultContextDescriptors = (params: {
+  t: ProductListTranslate;
+  keyword: string;
+  collection?: string | null;
+  collectionLabel?: string | null;
+  discount: boolean;
+  activeRefinementTags: Array<{ key: string; label: string }>;
+  sortBy: string;
+  currentSortLabel: string;
+}): ProductListActiveResultContextDescriptor[] => {
+  const descriptors: ProductListActiveResultContextDescriptor[] = [];
+  const keyword = params.keyword.trim();
+  if (keyword) {
+    descriptors.push({
+      key: 'keyword',
+      label: `${params.t('common.search')}: ${keyword}`,
+      iconKey: 'search',
+      intent: 'keyword',
+    });
+  }
+  if (params.collection) {
+    descriptors.push({
+      key: 'collection',
+      label: String(params.collectionLabel || params.collection),
+      iconKey: 'gift',
+      intent: 'collection',
+    });
+  }
+  if (params.discount) {
+    descriptors.push({
+      key: 'discount',
+      label: params.t('pages.productList.shopBestDeals'),
+      iconKey: 'fire',
+      intent: 'discount',
+    });
+  }
+  params.activeRefinementTags.forEach((tag) => {
+    descriptors.push({
+      key: `refinement-${tag.key}`,
+      label: tag.label,
+      iconKey: 'filter',
+      intent: 'refinement',
+      refinementKey: tag.key,
+    });
+  });
+  if (params.sortBy !== 'default') {
+    descriptors.push({
+      key: 'sort',
+      label: `${params.t('pages.productList.sortLabel')}: ${params.currentSortLabel}`,
+      iconKey: 'barChart',
+      intent: 'sort',
+    });
+  }
+  return descriptors;
+};
+
+/** Assemble ProductListMainShell prop bag in one pure surface for residual modularization. */
+export const buildProductListMainShellProps = <T extends Record<string, unknown>>(props: T): T => props;
+
+
+export type ProductListFilterOption = {
+  label: string;
+  value: string;
+  swatch?: string;
+};
+
+export const buildProductListPetSizeOptions = (t: ProductListTranslate): ProductListFilterOption[] => [
+  { label: t('pages.profile.petSizeSmall'), value: 'Small' },
+  { label: t('pages.profile.petSizeMedium'), value: 'Medium' },
+  { label: t('pages.profile.petSizeLarge'), value: 'Large' },
+];
+
+export const buildProductListMaterialOptions = (t: ProductListTranslate): ProductListFilterOption[] => [
+  { label: t('pages.productList.materialCotton'), value: 'Cotton' },
+  { label: t('pages.productList.materialNylon'), value: 'Nylon' },
+  { label: t('pages.productList.materialSilicone'), value: 'Silicone' },
+  { label: t('pages.productList.materialWood'), value: 'Wood' },
+];
+
+export const buildProductListColorOptions = (t: ProductListTranslate): ProductListFilterOption[] => [
+  { label: t('pages.productList.colorBlack'), value: 'Black', swatch: '#1f2933' },
+  { label: t('pages.productList.colorBlue'), value: 'Blue', swatch: '#2563eb' },
+  { label: t('pages.productList.colorGreen'), value: 'Green', swatch: '#16a34a' },
+  { label: t('pages.productList.colorPink'), value: 'Pink', swatch: '#ec4899' },
+];
+
+export const buildProductListOptionLabelMap = (params: {
+  petSizeOptions: ProductListFilterOption[];
+  materialOptions: ProductListFilterOption[];
+  colorOptions: ProductListFilterOption[];
+}) => new Map([
+  ...params.petSizeOptions.map((option) => [option.value, option.label] as const),
+  ...params.materialOptions.map((option) => [option.value, option.label] as const),
+  ...params.colorOptions.map((option) => [option.value, option.label] as const),
+]);
+
+export const deriveProductListVisibleCategories = (params: {
+  categories: CategoryPublic[];
+  collectionProducts: Product[];
+  usingServerPagination: boolean;
+  collection?: string | null;
+  keyword: string;
+  categoryId?: number;
+}): CategoryPublic[] => {
+  if (params.usingServerPagination && !params.collection) {
+    return params.categories;
+  }
+  const hasActiveCatalogNarrowing = Boolean(params.collection || params.keyword.trim() || params.categoryId);
+  if (params.collectionProducts.length === 0) {
+    return hasActiveCatalogNarrowing ? [] : params.categories;
+  }
+  const sourceProducts = params.collectionProducts;
+  if (sourceProducts.length === 0) {
+    return params.categories;
+  }
+  const categoryById = new Map(params.categories.map((category) => [category.id, category]));
+  const visibleIds = new Set<number>();
+  sourceProducts.forEach((product) => {
+    let currentId: number | undefined | null = product.categoryId;
+    while (currentId) {
+      const category = categoryById.get(currentId);
+      if (!category || visibleIds.has(category.id)) {
+        break;
+      }
+      visibleIds.add(category.id);
+      currentId = category.parentId;
+    }
+  });
+  return params.categories.filter((category) => visibleIds.has(category.id));
+};

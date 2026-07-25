@@ -935,25 +935,32 @@ describe('cart to checkout flows', () => {
 
   it('keeps checkout as the primary next action once purchasable items are selected', () => {
     const source = fs.readFileSync(path.resolve(__dirname, 'Cart.tsx'), 'utf8');
-    const checkoutBranch = source.indexOf('if (selectedItems.some(canCheckout))');
-    const addOnBranch = source.indexOf('if (selectedItems.length > 0 && benefitTarget)');
+    const helpers = fs.readFileSync(path.resolve(__dirname, 'cartHelpers.ts'), 'utf8');
+    const checkoutBranch = helpers.indexOf('if (params.selectedCanCheckout)');
+    const addOnBranch = helpers.indexOf('if (params.selectedItemsCount > 0 && params.benefitTargetReason');
 
+    expect(source).toContain('selectedCanCheckout: selectedItems.some(canCheckout)');
     expect(checkoutBranch).toBeGreaterThan(-1);
     expect(addOnBranch).toBeGreaterThan(-1);
     expect(checkoutBranch).toBeLessThan(addOnBranch);
-    expect(source.slice(checkoutBranch, addOnBranch)).toContain("key: 'checkout'");
-    expect(source.slice(checkoutBranch, addOnBranch)).toContain("label: t('pages.cart.checkout')");
-    expect(source.slice(checkoutBranch, addOnBranch)).toContain('action: goCheckout');
+    expect(helpers.slice(checkoutBranch, addOnBranch)).toContain("key: 'checkout'");
+    expect(helpers.slice(checkoutBranch, addOnBranch)).toContain("label: params.t('pages.cart.checkout')");
+    expect(helpers.slice(checkoutBranch, addOnBranch)).toContain("intent: 'checkout'");
+    expect(source).toContain('goCheckout()');
   });
 
   it('keeps the top checkout action label distinct from the summary checkout button', () => {
     const page = fs.readFileSync(path.resolve(__dirname, 'Cart.tsx'), 'utf8');
+    const helpers = fs.readFileSync(path.resolve(__dirname, 'cartHelpers.ts'), 'utf8');
     const panels = fs.readFileSync(path.resolve(__dirname, 'cartConversionPanels.tsx'), 'utf8');
     const overview = fs.readFileSync(path.resolve(__dirname, 'cartOverviewPanels.tsx'), 'utf8');
     const source = [page, panels, overview].join('\n');
 
-    expect(page).toContain("const cartNextActionLabel = `${cartNextAction.label}: ${cartNextAction.title}`;");
-    expect(page).toContain("const cartTopNextActionLabel = `${t('pages.cart.nextActionEyebrow')}: ${cartNextActionLabel}`;");
+    expect(page).toContain('buildCartActionLabels({');
+    expect(page).toContain('cartNextActionTitle: cartNextAction.title');
+    expect(page).toContain('cartNextActionPrimaryLabel: cartNextAction.label');
+    expect(helpers).toContain('const cartNextActionLabel = `${params.cartNextActionPrimaryLabel}: ${params.cartNextActionTitle}`');
+    expect(helpers).toContain("const cartTopNextActionLabel = `${params.t('pages.cart.nextActionEyebrow')}: ${cartNextActionLabel}`");
     expect(overview).toContain('aria-label={cartItemsCount > 0 ? cartTopNextActionLabel : emptyBrowseActionLabel}');
     expect(overview).toContain('title={cartItemsCount > 0 ? cartTopNextActionLabel : emptyBrowseActionLabel}');
     expect(source).toContain('aria-label={checkoutActionLabel}');
@@ -1002,8 +1009,9 @@ describe('cart to checkout flows', () => {
 
   it('derives the cart hero shipping highlight from the shared shipping summary', () => {
     const source = fs.readFileSync(path.resolve(__dirname, 'Cart.tsx'), 'utf8');
-    const highlightStart = source.indexOf('const cartHeroHighlights = [');
-    const highlightEnd = source.indexOf('const cartSummaryCards = [');
+    const helpers = fs.readFileSync(path.resolve(__dirname, 'cartHelpers.ts'), 'utf8');
+    const highlightStart = source.indexOf('const cartHeroHighlights = buildCartHeroHighlightDescriptors({');
+    const highlightEnd = source.indexOf('const cartSummaryCards =', highlightStart);
     const highlightSource = source.slice(highlightStart, highlightEnd);
 
     expect(highlightStart).toBeGreaterThan(-1);
@@ -1013,10 +1021,12 @@ describe('cart to checkout flows', () => {
     expect(source).toContain('} = useMemo(() => {');
     expect(source).toContain('const savedItemsTotal = useMemo(');
     expect(source).not.toContain('const shippingSummary = deriveCartShippingSummary');
-    expect(highlightSource).toContain("key: 'shipping'");
+    expect(helpers).toContain("key: 'shipping'");
+    expect(helpers).toContain('title: params.freeShippingStatusTitle');
+    expect(helpers).toContain('text: params.freeShippingProgressText');
     expect(highlightSource).toContain('title: freeShippingStatusTitle');
-    expect(highlightSource).toContain('text: freeShippingProgressText');
-    expect(highlightSource).not.toMatch(/key:\s*'shipping'[\s\S]*?title:\s*t\('pages\.cart\.freeShippingUnlocked'\)/);
+    expect(highlightSource).toContain('freeShippingProgressText');
+    expect(helpers).not.toMatch(/key:\s*'shipping'[\s\S]*?title:\s*params\.t\('pages\.cart\.freeShippingUnlocked'\)/);
   });
 
   it('keeps cart amount phrase fragment keys tied to rendered text content', () => {
@@ -1329,10 +1339,11 @@ ${recoveryAdds}`;
 
   it('keeps stale cart snapshots read-only until a refresh succeeds', () => {
     const source = fs.readFileSync(path.resolve(__dirname, 'Cart.tsx'), 'utf8');
+    const helpers = fs.readFileSync(path.resolve(__dirname, 'cartHelpers.ts'), 'utf8');
     const overview = fs.readFileSync(path.resolve(__dirname, 'cartOverviewPanels.tsx'), 'utf8');
     const staleMarker = 'const hasStaleCartData = loadError && cartItems.length > 0;';
-    const nextActionStart = source.indexOf('const cartNextAction = (() => {');
-    const nextActionEnd = source.indexOf('const cartHeroHighlights = [', nextActionStart);
+    const nextActionStart = source.indexOf('const cartNextActionDescriptor = resolveCartNextActionDescriptor({');
+    const nextActionEnd = source.indexOf('const cartHeroHighlights =', nextActionStart);
     const nextActionSource = source.slice(nextActionStart, nextActionEnd);
     const checkoutSubmit = readCartCheckoutSubmitSource();
     const checkoutStart = checkoutSubmit.indexOf('const goCheckout = useCallback(async () => {');
@@ -1345,10 +1356,12 @@ ${recoveryAdds}`;
     expect(source).toContain('const refreshCartItems = useCallback(() => {');
     expect(nextActionStart).toBeGreaterThan(-1);
     expect(nextActionEnd).toBeGreaterThan(nextActionStart);
-    expect(nextActionSource).toContain('if (hasStaleCartData) {');
-    expect(nextActionSource).toContain("key: 'refresh'");
-    expect(nextActionSource).toContain("label: t('messages.retry')");
-    expect(nextActionSource).toContain('action: refreshCartItems');
+    expect(helpers).toContain('if (params.hasStaleCartData) {');
+    expect(helpers).toContain("key: 'refresh'");
+    expect(helpers).toContain("label: params.t('messages.retry')");
+    expect(helpers).toContain("intent: 'refresh'");
+    expect(nextActionSource).toContain("intent === 'refresh'");
+    expect(nextActionSource).toContain('refreshCartItems()');
     expect(checkoutStart).toBeGreaterThan(-1);
     expect(checkoutSource).toContain('if (hasStaleCartData) {');
     expect(checkoutSource).toContain("announceAccessibleMessage(t('pages.cart.staleDataWarning'), 'warning');");

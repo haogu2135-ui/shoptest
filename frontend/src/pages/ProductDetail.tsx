@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ShopIcon } from '../components/ShopIcon';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { productApi, wishlistApi } from '../api';
@@ -41,6 +40,15 @@ import {
   buildProductDetailDecisionChecklistData,
   buildProductDetailFaqItems,
   buildProductDetailFitGuidance,
+  buildProductDetailMainShellProps,
+  buildProductDetailLoadingShellProps,
+  buildProductDetailLoadErrorShellProps,
+  buildProductDetailNotFoundShellProps,
+  buildProductDetailMobileBuybarPresentation,
+  resolveProductDetailPageTitle,
+  resolveProductDetailSeoDescription,
+  resolveProductDetailSeoImage,
+  resolveProductDetailVariantGallerySelection,
   buildProductDetailPurchaseReadinessData,
   buildProductDetailQuantityLabels,
   buildProductDetailSelectedOptionTags,
@@ -54,10 +62,11 @@ import {
   resolveBuyNowBlockedReason,
   resolveMobilePurchaseStatus,
   resolveProductDetailCartActionLabels,
-  resolveProductDetailChecklistIconPath,
+  resolveProductDetailLowStockUrgencyLabel,
   resolveProductDetailPurchaseModeLabel,
   resolveRecommendedPurchaseMode,
   shouldShowProductDetailDecisionChecklist,
+  withProductDetailChecklistIcons,
 } from './productDetailHelpers';
 import type {
   PendingProductQuestion,
@@ -148,16 +157,26 @@ const ProductDetail: React.FC = () => {
     setReviewableOrders,
     setReviews,
   });
-  const pageTitle = product?.name?.trim() || (loadError ? t('pages.productDetail.loadFailed') : '');
+  const pageTitle = resolveProductDetailPageTitle({
+    t,
+    productName: product?.name,
+    loadError,
+  });
   usePageTitle(pageTitle || t('pages.productDetail.product'));
   const { currency, market, formatMoney } = useMarket();
-  const productSeoDescription = useMemo(() => {
-    const raw = String(product?.description || '').replace(/\s+/g, ' ').trim();
-    if (raw) return raw.slice(0, 300);
-    if (loadError) return t('pages.productDetail.loadFailedDescription');
-    return t('common.siteDescription');
-  }, [loadError, product?.description, t]);
-  const productSeoImage = selectedImage || product?.imageUrl || product?.images?.[0] || '';
+  const productSeoDescription = useMemo(
+    () => resolveProductDetailSeoDescription({
+      t,
+      productDescription: product?.description,
+      loadError,
+    }),
+    [loadError, product?.description, t],
+  );
+  const productSeoImage = resolveProductDetailSeoImage({
+    selectedImage,
+    productImageUrl: product?.imageUrl,
+    productImages: product?.images,
+  });
   const productJsonLd = useMemo(() => {
     if (!product) return null;
     const productData = buildProductStructuredData({
@@ -580,30 +599,40 @@ const ProductDetail: React.FC = () => {
 
 
   if (loading) {
-    return <ProductDetailSkeleton label={t('common.loading')} />;
+    return (
+      <ProductDetailSkeleton
+        {...buildProductDetailLoadingShellProps({
+          label: t('common.loading'),
+        })}
+      />
+    );
   }
 
   if (!product) {
     if (loadError) {
       return (
         <ProductDetailLoadErrorShell
-          t={t}
-          loadError={loadError}
-          onRetry={() => setReloadToken((value) => value + 1)}
-          onBrowse={() => navigate('/products')}
-          onCoupons={() => navigate('/coupons')}
-          onPetFinder={() => navigate('/pet-finder')}
-          onSupport={() => dispatchDomEvent('shop:open-support')}
+          {...buildProductDetailLoadErrorShellProps({
+            t,
+            loadError,
+            onRetry: () => setReloadToken((value) => value + 1),
+            onBrowse: () => navigate('/products'),
+            onCoupons: () => navigate('/coupons'),
+            onPetFinder: () => navigate('/pet-finder'),
+            onSupport: () => dispatchDomEvent('shop:open-support'),
+          })}
         />
       );
     }
     return (
       <ProductDetailNotFoundShell
-        t={t}
-        onBrowse={() => navigate('/products')}
-        onWishlist={() => navigate('/wishlist')}
-        onCoupons={() => navigate('/coupons')}
-        onPetFinder={() => navigate('/pet-finder')}
+        {...buildProductDetailNotFoundShellProps({
+          t,
+          onBrowse: () => navigate('/products'),
+          onWishlist: () => navigate('/wishlist'),
+          onCoupons: () => navigate('/coupons'),
+          onPetFinder: () => navigate('/pet-finder'),
+        })}
       />
     );
   }
@@ -652,9 +681,11 @@ const ProductDetail: React.FC = () => {
     selectedOptions,
     enoughStockLabel: t('pages.productDetail.enough'),
   });
-  const lowStockUrgencyLabel = isLowStock
-    ? t('pages.productDetail.lowStockUrgency', { count: lowStockCount as number })
-    : '';
+  const lowStockUrgencyLabel = resolveProductDetailLowStockUrgencyLabel({
+    t,
+    isLowStock,
+    lowStockCount: Number(lowStockCount || 0),
+  });
   const displayedRating = Number(averageRating || product.averageRating || 0);
   const {
     activePrice,
@@ -732,17 +763,19 @@ const ProductDetail: React.FC = () => {
     const variantImage = variants.find((variant) =>
       variantMatchesSelectedOptions([variant], nextOptions),
     )?.imageUrl;
-    if (variantImage) {
-      const imageIndex = galleryImages.indexOf(variantImage);
-      if (imageIndex >= 0) {
-        selectGalleryImage(variantImage, imageIndex);
-      } else {
-        setSelectedImage(variantImage);
-      }
+    const gallerySelection = resolveProductDetailVariantGallerySelection({
+      galleryImages,
+      variantImageUrl: variantImage,
+    });
+    if (!gallerySelection) return;
+    if (gallerySelection.galleryIndex >= 0) {
+      selectGalleryImage(gallerySelection.imageUrl, gallerySelection.galleryIndex);
+      return;
     }
+    setSelectedImage(gallerySelection.imageUrl);
   };
   const formatCountdown = (milliseconds: number) => formatLimitedTimeCountdown(milliseconds, t);
-  const decisionChecklist = buildProductDetailDecisionChecklistData({
+  const decisionChecklist = withProductDetailChecklistIcons(buildProductDetailDecisionChecklistData({
     t,
     isOutOfStock,
     isLowStock,
@@ -754,9 +787,6 @@ const ProductDetail: React.FC = () => {
     deliveryEnabled: Boolean(deliveryPromise.enabled),
     deliveryWindowText: deliveryPromise.windowText,
     productShippingText,
-  }).map((item) => ({
-    ...item,
-    icon: <ShopIcon path={resolveProductDetailChecklistIconPath(item.key)} />,
   }));
   const recommendedPurchaseMode = resolveRecommendedPurchaseMode({ bundleInfo, bundleSavings });
   const {
@@ -801,15 +831,21 @@ const ProductDetail: React.FC = () => {
     isLowStock,
     lowStockUrgencyLabel,
   });
-  const mobileBuybarPrice = formatMoney(displayPrice);
-  const mobileBuybarStatus = mobilePurchaseStatus;
+  const {
+    mobileBuybarPrice,
+    mobileBuybarStatus,
+  } = buildProductDetailMobileBuybarPresentation({
+    displayPrice,
+    formatMoney,
+    mobilePurchaseStatus,
+  });
   const shouldShowDecisionChecklist = shouldShowProductDetailDecisionChecklist({
     optionsMissing,
     hasUnavailableSelectedVariant,
     isOutOfStock,
     isLowStock,
   });
-  const purchaseReadinessItems = buildProductDetailPurchaseReadinessData({
+  const purchaseReadinessItems = withProductDetailChecklistIcons(buildProductDetailPurchaseReadinessData({
     t,
     isOutOfStock,
     isLowStock,
@@ -825,13 +861,10 @@ const ProductDetail: React.FC = () => {
     purchaseSavings,
     purchaseSubtotal,
     formatMoney,
-  }).map((item) => ({
-    ...item,
-    icon: <ShopIcon path={resolveProductDetailChecklistIconPath(item.key)} />,
   }));
   const productFaqItems = buildProductDetailFaqItems(t);
 
-  const shellProps = {
+  const shellProps = buildProductDetailMainShellProps({
     activeMobileImageIndex,
     addToCartActionLabel,
     addToCartBlocked,
@@ -972,7 +1005,7 @@ const ProductDetail: React.FC = () => {
     trustBadges,
     useRecommendedPathActionLabel,
     variants,
-  };
+  });
 
   return <ProductDetailMainShell {...shellProps} />;
 

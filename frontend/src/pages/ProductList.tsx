@@ -37,9 +37,27 @@ import {
   normalizeCatalogTitle,
   type ActiveResultContextAction,
   getPrice,
-  getDiscountPercent,
-  isQuickAddReady,
+  buildProductListActionLabels,
+  buildProductListActiveRefinementTagData,
+  buildProductListActiveResultContextDescriptors,
   buildProductListBadges,
+  buildProductListColorOptions,
+  buildProductListEmptyDiscoveryDescriptors,
+  buildProductListGuideText,
+  buildProductListMainShellProps,
+  buildProductListMaterialOptions,
+  buildProductListMobileDiscoveryDescriptors,
+  buildProductListMobileNextStepDescriptors,
+  buildProductListOptionLabelMap,
+  buildProductListPetSizeOptions,
+  buildProductListResultContextTags,
+  buildProductListSortOptions,
+  deriveProductListCatalogPresentation,
+  deriveProductListVisibleCategories,
+  renderProductListAmountText,
+  resolveProductListCollectionLabel,
+  resolveProductListHasActiveCatalogContext,
+  resolveProductListMobileNextStepCopy,
 } from './productListHelpers';
 import {
   ProductListCategoryPanel,
@@ -184,23 +202,9 @@ const ProductList: React.FC = () => {
     }
     dispatchDomEvent('shop:open-support');
   }, []);
-  const petSizeOptions = useMemo(() => [
-    { label: t('pages.profile.petSizeSmall'), value: 'Small' },
-    { label: t('pages.profile.petSizeMedium'), value: 'Medium' },
-    { label: t('pages.profile.petSizeLarge'), value: 'Large' },
-  ], [t]);
-  const materialOptions = useMemo(() => [
-    { label: t('pages.productList.materialCotton'), value: 'Cotton' },
-    { label: t('pages.productList.materialNylon'), value: 'Nylon' },
-    { label: t('pages.productList.materialSilicone'), value: 'Silicone' },
-    { label: t('pages.productList.materialWood'), value: 'Wood' },
-  ], [t]);
-  const colorOptions = useMemo(() => [
-    { label: t('pages.productList.colorBlack'), value: 'Black', swatch: '#1f2933' },
-    { label: t('pages.productList.colorBlue'), value: 'Blue', swatch: '#2563eb' },
-    { label: t('pages.productList.colorGreen'), value: 'Green', swatch: '#16a34a' },
-    { label: t('pages.productList.colorPink'), value: 'Pink', swatch: '#ec4899' },
-  ], [t]);
+  const petSizeOptions = useMemo(() => buildProductListPetSizeOptions(t), [t]);
+  const materialOptions = useMemo(() => buildProductListMaterialOptions(t), [t]);
+  const colorOptions = useMemo(() => buildProductListColorOptions(t), [t]);
 
   useProductListSessionData({
     language,
@@ -249,33 +253,17 @@ const ProductList: React.FC = () => {
     pageSize,
   });
 
-  const visibleCategories = useMemo(() => {
-    if (usingServerPagination && !collection) {
-      return categories;
-    }
-    const hasActiveCatalogNarrowing = Boolean(collection || keyword.trim() || categoryId);
-    if (collectionProducts.length === 0) {
-      return hasActiveCatalogNarrowing ? [] : categories;
-    }
-    const sourceProducts = collectionProducts;
-    if (sourceProducts.length === 0) {
-      return categories;
-    }
-    const categoryById = new Map(categories.map((category) => [category.id, category]));
-    const visibleIds = new Set<number>();
-    sourceProducts.forEach((product) => {
-      let currentId: number | undefined | null = product.categoryId;
-      while (currentId) {
-        const category = categoryById.get(currentId);
-        if (!category || visibleIds.has(category.id)) {
-          break;
-        }
-        visibleIds.add(category.id);
-        currentId = category.parentId;
-      }
-    });
-    return categories.filter((category) => visibleIds.has(category.id));
-  }, [categories, categoryId, collection, collectionProducts, keyword, usingServerPagination]);
+  const visibleCategories = useMemo(
+    () => deriveProductListVisibleCategories({
+      categories,
+      collectionProducts,
+      usingServerPagination,
+      collection,
+      keyword,
+      categoryId,
+    }),
+    [categories, categoryId, collection, collectionProducts, keyword, usingServerPagination],
+  );
   const categoryTree = useMemo(() => getDisplayCategoryRoots(visibleCategories), [visibleCategories]);
   const categoryRows = useMemo(() => flattenCategoryTree(categoryTree), [categoryTree]);
   const categoryDepthById = useMemo(() => {
@@ -293,16 +281,20 @@ const ProductList: React.FC = () => {
     () => categoryRows.find((category) => category.id === categoryId),
     [categoryId, categoryRows],
   );
-  const getCollectionLabel = useCallback((value: string) => {
-    if (value === 'smart-devices') return t('nav.petNav.smartDevices');
-    return value.replace(/-/g, ' ');
-  }, [t]);
-  const resultContextTags = [
-    collection ? { key: 'collection', color: 'geekblue', label: normalizeCatalogTitle(getCollectionLabel(collection), catalogTitleFallback) } : null,
-    keyword.trim() ? { key: 'keyword', color: 'purple', label: keyword.trim() } : null,
-    selectedCategory ? { key: 'category', color: 'green', label: normalizeCategoryTitle(selectedCategory) } : null,
-    discount ? { key: 'discount', color: 'red', label: t('home.flashOffers') } : null,
-  ].filter(Boolean) as Array<{ key: string; color: string; label: string }>;
+  const getCollectionLabel = useCallback(
+    (value: string) => resolveProductListCollectionLabel(value, t),
+    [t],
+  );
+  const selectedCategoryNameEarly = selectedCategory ? normalizeCategoryTitle(selectedCategory) : '';
+  const collectionLabelEarly = normalizeCatalogTitle(getCollectionLabel(collection), catalogTitleFallback);
+  const resultContextTags = buildProductListResultContextTags({
+    collection,
+    collectionLabel: collectionLabelEarly,
+    keyword,
+    selectedCategoryName: selectedCategoryNameEarly,
+    discount,
+    t,
+  });
   const quickAddOptionGroups = useMemo(() => getProductOptionGroups(quickAddProduct), [quickAddProduct]);
   const quickAddVariants = useMemo(() => getProductVariants(quickAddProduct), [quickAddProduct]);
   const quickAddBundleInfo = useMemo(() => getBundleInfo(quickAddProduct), [quickAddProduct]);
@@ -435,79 +427,69 @@ const ProductList: React.FC = () => {
     setSortBy,
   });
 
-  const activeRefinementTags = useMemo(() => {
-    const tags: Array<{ key: string; label: string; onClose: () => void }> = [];
-    if (selectedCategory) {
-      tags.push({
-        key: `category-${selectedCategory.id}`,
-        label: normalizeCategoryTitle(selectedCategory),
-        onClose: () => {
-          setCategoryId(undefined);
-          setCurrentPage(1);
-          navigate(buildProductsUrl({ categoryId: undefined }));
-          setFilterDrawerOpen(false);
-        },
-      });
-    }
-    if (priceFilterActive) {
-      tags.push({
-        key: 'price',
-        label: `${t('pages.productList.price')}: ${formatMoney(displayedPriceRange[0])} - ${formatMoney(displayedPriceRange[1])}`,
-        onClose: () => {
-          setPriceRange([0, maxCatalogPrice]);
-          setPriceFilterTouched(false);
-          setCurrentPage(1);
-          navigate(buildProductsUrl({ priceRange: [0, maxCatalogPrice], priceFilterTouched: false }));
-        },
-      });
-    }
-    const optionLabels = new Map([
-      ...petSizeOptions.map((option) => [option.value, option.label] as const),
-      ...materialOptions.map((option) => [option.value, option.label] as const),
-      ...colorOptions.map((option) => [option.value, option.label] as const),
-    ]);
-    petSizes.forEach((value) => tags.push({
-      key: `size-${value}`,
-      label: `${t('pages.productList.filterSize')}: ${optionLabels.get(value) || value}`,
-      onClose: () => {
-        updatePetSizes(petSizes.filter((item) => item !== value));
-      },
-    }));
-    materials.forEach((value) => tags.push({
-      key: `material-${value}`,
-      label: `${t('pages.productList.filterMaterial')}: ${optionLabels.get(value) || value}`,
-      onClose: () => {
-        updateMaterials(materials.filter((item) => item !== value));
-      },
-    }));
-    colors.forEach((value) => tags.push({
-      key: `color-${value}`,
-      label: `${t('pages.productList.filterColor')}: ${optionLabels.get(value) || value}`,
-      onClose: () => {
-        updateColors(colors.filter((item) => item !== value));
-      },
-    }));
-    return tags;
-  }, [
-    colorOptions,
-    colors,
-    buildProductsUrl,
+  const optionLabels = useMemo(
+    () => buildProductListOptionLabelMap({ petSizeOptions, materialOptions, colorOptions }),
+    [colorOptions, materialOptions, petSizeOptions],
+  );
+  const activeRefinementTagData = useMemo(() => buildProductListActiveRefinementTagData({
+    t,
+    selectedCategory: selectedCategory
+      ? { id: selectedCategory.id, title: normalizeCategoryTitle(selectedCategory) }
+      : null,
+    priceFilterActive,
     displayedPriceRange,
     formatMoney,
-    materialOptions,
+    petSizes,
     materials,
-    maxCatalogPrice,
-    navigate,
+    colors,
+    optionLabels,
+  }), [
+    colors,
+    displayedPriceRange,
+    formatMoney,
+    materials,
     normalizeCategoryTitle,
-    petSizeOptions,
+    optionLabels,
     petSizes,
     priceFilterActive,
     selectedCategory,
     t,
-    updateColors,
-    updateMaterials,
-    updatePetSizes,
   ]);
+  const clearActiveRefinementTag = useCallback((tag: { kind: string; value?: string }) => {
+    if (tag.kind === 'category') {
+      setCategoryId(undefined);
+      setCurrentPage(1);
+      navigate(buildProductsUrl({ categoryId: undefined }));
+      setFilterDrawerOpen(false);
+      return;
+    }
+    if (tag.kind === 'price') {
+      setPriceRange([0, maxCatalogPrice]);
+      setPriceFilterTouched(false);
+      setCurrentPage(1);
+      navigate(buildProductsUrl({ priceRange: [0, maxCatalogPrice], priceFilterTouched: false }));
+      return;
+    }
+    if (tag.kind === 'size' && tag.value) {
+      updatePetSizes(petSizes.filter((item) => item !== tag.value));
+      return;
+    }
+    if (tag.kind === 'material' && tag.value) {
+      updateMaterials(materials.filter((item) => item !== tag.value));
+      return;
+    }
+    if (tag.kind === 'color' && tag.value) {
+      updateColors(colors.filter((item) => item !== tag.value));
+    }
+  }, [buildProductsUrl, colors, materials, maxCatalogPrice, navigate, petSizes, updateColors, updateMaterials, updatePetSizes]);
+  const activeRefinementTags = useMemo(
+    () => activeRefinementTagData.map((tag) => ({
+      key: tag.key,
+      label: tag.label,
+      onClose: () => clearActiveRefinementTag(tag),
+    })),
+    [activeRefinementTagData, clearActiveRefinementTag],
+  );
 
   const selectedCategoryName = selectedCategory
     ? normalizeCategoryTitle(selectedCategory)
@@ -515,81 +497,72 @@ const ProductList: React.FC = () => {
   const leadingCategoryName = categoryRows[0]
     ? normalizeCategoryTitle(categoryRows[0])
     : '';
-  const topCategoryName = selectedCategoryName
-    || leadingCategoryName
-    || normalizeCatalogTitle(t('pages.productList.allCategories'), catalogTitleFallback);
-  const collectionLabel = normalizeCatalogTitle(getCollectionLabel(collection), catalogTitleFallback);
-  const catalogHeroTitle = normalizeCatalogTitle(keyword.trim()
-    || selectedCategoryName
-    || (categoryId ? leadingCategoryName : '')
-    || (collection ? collectionLabel : '')
-    || (discount ? t('pages.productList.shopBestDeals') : '')
-    || catalogTitleFallback, catalogTitleFallback);
-  const heroProductHighlights = heroProduct
-    ? [
-      heroProduct.brand,
-      getDiscountPercent(heroProduct) > 0 ? t('pages.productList.sale') : '',
-      isQuickAddReady(heroProduct) ? t('pages.productList.cardQuickReady') : t('pages.productList.cardOptionsNeeded'),
-    ].filter((item): item is string => Boolean(item))
-    : [];
-  const mobileHeroSignal = heroProduct
-    ? [
-      formatMoney(getPrice(heroProduct)),
-      isQuickAddReady(heroProduct) ? t('pages.productList.cardQuickReady') : t('pages.productList.cardOptionsNeeded'),
-      getLowStockCount(heroProduct.stock) !== null
-        ? t('pages.productList.cardLowStock', { count: getLowStockCount(heroProduct.stock) as number })
-        : '',
-    ].filter(Boolean).join(' / ')
-    : t('pages.productList.quickAddReady', { count: productListInsights.quickAddReadyCount });
-  const heroProductName = heroProduct ? productListProductName(heroProduct) : '';
-  const quickAddProductName = quickAddProduct ? productListProductName(quickAddProduct) : '';
-  const previewProductName = previewProduct ? productListProductName(previewProduct) : '';
-  const previewProductWishlisted = previewProduct ? wishlistedProductIds.has(previewProduct.id) : false;
-  const previewProductStockAlerted = previewProduct ? alertedStockProductIds.has(previewProduct.id) : false;
-  const renderProductAmountText = useCallback((label: string, amount: string) => {
-    const parts = label.split(amount);
-    if (parts.length <= 1) return label;
-    return (
-      <span className="product-list__amountPhrase commerce-atomic">
-        {parts.map((part, index) => (
-          <React.Fragment key={`${part}-${index}`}>
-            {part}
-            {index < parts.length - 1 ? <span className="commerce-money">{amount}</span> : null}
-          </React.Fragment>
-        ))}
-      </span>
-    );
-  }, []);
+  const {
+    topCategoryName,
+    collectionLabel,
+    catalogHeroTitle,
+    heroProductHighlights,
+    mobileHeroSignal,
+    heroProductName,
+    quickAddProductName,
+    previewProductName,
+    previewProductWishlisted,
+    previewProductStockAlerted,
+  } = deriveProductListCatalogPresentation({
+    t,
+    catalogTitleFallback,
+    keyword,
+    categoryId,
+    collection,
+    discount,
+    selectedCategoryName,
+    leadingCategoryName,
+    heroProduct,
+    quickAddProduct,
+    previewProduct,
+    productListProductName,
+    formatMoney,
+    quickAddReadyCount: productListInsights.quickAddReadyCount,
+    wishlistedProductIds,
+    alertedStockProductIds,
+  });
+  const renderProductAmountText = useCallback(
+    (label: string, amount: string) => renderProductListAmountText(label, amount),
+    [],
+  );
   const renderSavingsText = useCallback((amount: number) => renderProductAmountText(
     t('pages.productList.bestValueSavings', { amount: formatMoney(amount) }),
     formatMoney(amount),
   ), [formatMoney, renderProductAmountText, t]);
-  const productListGuideText = activeFilterCount > 0
-    ? t('pages.productList.guideRefineResults')
-    : productListInsights.bestValueCount > 0
-      ? t('pages.productList.guideBestValue', { count: productListInsights.bestValueCount })
-      : productListInsights.quickAddReadyCount > 0
-        ? t('pages.productList.guideQuickAdd', { count: productListInsights.quickAddReadyCount })
-        : t('pages.productList.guideStart');
-  const sortOptions = [
-    { value: 'default', label: t('pages.productList.defaultSort') },
-    { value: 'personalized-desc', label: t('pages.productList.personalizedSort') },
-    { value: 'quick-add-desc', label: t('pages.productList.quickAddSort') },
-    { value: 'best-value-desc', label: t('pages.productList.bestValueSort') },
-    { value: 'low-stock-desc', label: t('pages.productList.lowStockSort') },
-    { value: 'price-asc', label: t('pages.productList.priceAsc') },
-    { value: 'price-desc', label: t('pages.productList.priceDesc') },
-    { value: 'discount-desc', label: t('pages.productList.discountDesc') },
-    { value: 'positive-rate-desc', label: t('pages.productList.positiveRateDesc') },
-    { value: 'name', label: t('pages.productList.byName') },
-  ];
-  const mobileDiscoveryActions = [
-    {
-      key: 'all',
-      icon: <ShopIcon path={SI.search} />,
-      label: t('pages.productList.allCategories'),
-      active: !collection && !keyword.trim() && !discount && sortBy === 'default' && activeRefinementCount === 0,
-      onClick: () => {
+  const productListGuideText = buildProductListGuideText({
+    t,
+    activeFilterCount,
+    bestValueCount: productListInsights.bestValueCount,
+    quickAddReadyCount: productListInsights.quickAddReadyCount,
+  });
+  const sortOptions = buildProductListSortOptions(t);
+  const mobileDiscoveryDescriptors = buildProductListMobileDiscoveryDescriptors({
+    t,
+    collection,
+    keyword,
+    discount,
+    sortBy,
+    activeRefinementCount,
+  });
+  const mobileDiscoveryActions = mobileDiscoveryDescriptors.map((item) => {
+    const iconPath = item.key === 'all'
+      ? SI.search
+      : item.key === 'deals'
+        ? SI.fire
+        : item.key === 'smart'
+          ? SI.gift
+          : item.key === 'rated'
+            ? SI.barChart
+            : item.key === 'quick'
+              ? SI.cart
+              : SI.support;
+    const onClick = () => {
+      if (item.intent === 'reset-catalog') {
         setKeyword('');
         setCategoryId(undefined);
         setDiscount(false);
@@ -601,52 +574,38 @@ const ProductList: React.FC = () => {
         setPriceFilterTouched(false);
         setCurrentPage(1);
         navigate('/products');
-      },
-    },
-    {
-      key: 'deals',
-      icon: <ShopIcon path={SI.fire} />,
-      label: t('pages.productList.shopBestDeals'),
-      active: discount || sortBy === 'discount-desc',
-      onClick: () => {
+        return;
+      }
+      if (item.intent === 'deals') {
         setDiscount(true);
         setSortBy('discount-desc');
         setCurrentPage(1);
         navigate(buildProductsUrl({ discount: true, sortBy: 'discount-desc' }));
-      },
-    },
-    {
-      key: 'smart',
-      icon: <ShopIcon path={SI.gift} />,
-      label: t('nav.petNav.smartDevices'),
-      active: collection === 'smart-devices',
-      onClick: () => {
+        return;
+      }
+      if (item.intent === 'smart-devices') {
         setCurrentPage(1);
         navigate(buildProductsUrl({ collection: 'smart-devices' }));
-      },
-    },
-    {
-      key: 'rated',
-      icon: <ShopIcon path={SI.barChart} />,
-      label: t('pages.productList.shopTopRated'),
-      active: sortBy === 'positive-rate-desc',
-      onClick: () => applySort('positive-rate-desc'),
-    },
-    {
-      key: 'quick',
-      icon: <ShopIcon path={SI.cart} />,
-      label: t('pages.productList.shopQuickAdd'),
-      active: sortBy === 'quick-add-desc',
-      onClick: () => applySort('quick-add-desc'),
-    },
-    {
-      key: 'support',
-      icon: <ShopIcon path={SI.support} />,
-      label: t('footer.helpCenter'),
-      active: false,
-      onClick: openSupport,
-    },
-  ];
+        return;
+      }
+      if (item.intent === 'top-rated') {
+        applySort('positive-rate-desc');
+        return;
+      }
+      if (item.intent === 'quick-add') {
+        applySort('quick-add-desc');
+        return;
+      }
+      openSupport();
+    };
+    return {
+      key: item.key,
+      icon: <ShopIcon path={iconPath} />,
+      label: item.label,
+      active: item.active,
+      onClick,
+    };
+  });
   const resetCatalogView = () => {
     setKeyword('');
     setCategoryId(undefined);
@@ -672,140 +631,157 @@ const ProductList: React.FC = () => {
       priceFilterTouched: false,
     }));
   };
-  const hasActiveCatalogContext = Boolean(keyword.trim() || categoryId || collection || discount || activeRefinementCount > 0);
-  const mobileNextStepText = filteredProducts.length === 0
-    ? hasActiveCatalogContext
-      ? t('pages.productList.loadRecoveryTipFilters')
-      : t('pages.productList.guideStart')
-    : productListGuideText;
-  const mobileNextStepTitle = filteredProducts.length === 0 && activeRefinementCount > 0
-    ? t('pages.productList.activeFilters', { count: activeRefinementCount })
-    : productCountLabel;
-  const mobileNextStepActions = filteredProducts.length === 0
-    ? [
-      {
-        key: 'recover',
-        icon: activeRefinementCount > 0 ? <ShopIcon path={SI.reload} /> : <ShopIcon path={SI.filter} />,
-        label: activeRefinementCount > 0 ? t('pages.productList.resetFilters') : t('pages.productList.filters'),
-        primary: activeRefinementCount > 0,
-        onClick: activeRefinementCount > 0 ? resetMobileRefinements : openMobileFilterDrawer,
-      },
-      {
-        key: 'catalog',
-        icon: <ShopIcon path={SI.search} />,
-        label: t('pages.productList.allCategories'),
-        primary: activeRefinementCount === 0 && hasActiveCatalogContext,
-        onClick: resetCatalogView,
-      },
-      {
-        key: 'coupons',
-        icon: <ShopIcon path={SI.gift} />,
-        label: t('pages.productList.loadRecoveryCoupons'),
-        primary: !hasActiveCatalogContext,
-        onClick: () => navigate('/coupons'),
-      },
-    ]
-    : [
-      {
-        key: 'filter',
-        icon: <ShopIcon path={SI.filter} />,
-        label: t('pages.productList.filters'),
-        primary: activeRefinementCount > 0,
-        onClick: openMobileFilterDrawer,
-      },
-      {
-        key: 'deals',
-        icon: <ShopIcon path={SI.fire} />,
-        label: t('pages.productList.shopBestDeals'),
-        primary: productListInsights.bestValueCount > 0,
-        onClick: () => applySort('discount-desc'),
-      },
-      {
-        key: 'quick',
-        icon: <ShopIcon path={SI.cart} />,
-        label: t('pages.productList.shopQuickAdd'),
-        primary: productListInsights.quickAddReadyCount > 0,
-        onClick: () => applySort('quick-add-desc'),
-      },
-    ];
+  const hasActiveCatalogContext = resolveProductListHasActiveCatalogContext({
+    keyword,
+    categoryId,
+    collection,
+    discount,
+    activeRefinementCount,
+  });
+  const {
+    mobileNextStepText,
+    mobileNextStepTitle,
+  } = resolveProductListMobileNextStepCopy({
+    t,
+    filteredProductsLength: filteredProducts.length,
+    hasActiveCatalogContext,
+    activeRefinementCount,
+    productListGuideText,
+    productCountLabel,
+  });
+  const mobileNextStepDescriptors = buildProductListMobileNextStepDescriptors({
+    t,
+    filteredProductsLength: filteredProducts.length,
+    activeRefinementCount,
+    hasActiveCatalogContext,
+    bestValueCount: productListInsights.bestValueCount,
+    quickAddReadyCount: productListInsights.quickAddReadyCount,
+  });
+  const mobileNextStepActions = mobileNextStepDescriptors.map((item) => {
+    const iconPath = item.iconKey === 'reload'
+      ? SI.reload
+      : item.iconKey === 'search'
+        ? SI.search
+        : item.iconKey === 'gift'
+          ? SI.gift
+          : item.iconKey === 'fire'
+            ? SI.fire
+            : item.iconKey === 'cart'
+              ? SI.cart
+              : SI.filter;
+    const onClick = () => {
+      if (item.intent === 'reset-refinements') {
+        resetMobileRefinements();
+        return;
+      }
+      if (item.intent === 'open-filters') {
+        openMobileFilterDrawer();
+        return;
+      }
+      if (item.intent === 'reset-catalog') {
+        resetCatalogView();
+        return;
+      }
+      if (item.intent === 'coupons') {
+        navigate('/coupons');
+        return;
+      }
+      if (item.intent === 'deals') {
+        applySort('discount-desc');
+        return;
+      }
+      applySort('quick-add-desc');
+    };
+    return {
+      key: item.key,
+      icon: <ShopIcon path={iconPath} />,
+      label: item.label,
+      primary: item.primary,
+      onClick,
+    };
+  });
   const currentSortLabel = sortOptions.find((option) => option.value === sortBy)?.label || t('pages.productList.defaultSort');
-  const activeResultContextActions = [
-    keyword.trim()
-      ? {
-        key: 'keyword',
-        icon: <ShopIcon path={SI.search} />,
-        label: `${t('common.search')}: ${keyword.trim()}`,
-        onClear: () => {
-          setKeyword('');
-          setCurrentPage(1);
-          navigate(buildProductsUrl({ keyword: '' }));
-        },
-      }
+  const activeResultContextActions: ActiveResultContextAction[] = buildProductListActiveResultContextDescriptors({
+    t,
+    keyword,
+    collection,
+    collectionLabel: collection
+      ? normalizeCatalogTitle(getCollectionLabel(collection), catalogTitleFallback)
       : null,
-    collection
-      ? {
-        key: 'collection',
-        icon: <ShopIcon path={SI.gift} />,
-        label: normalizeCatalogTitle(getCollectionLabel(collection), catalogTitleFallback),
-        onClear: () => {
-          setCurrentPage(1);
-          navigate(buildProductsUrl({ collection: '' }));
-        },
+    discount,
+    activeRefinementTags: activeRefinementTags.map((tag) => ({ key: tag.key, label: tag.label })),
+    sortBy,
+    currentSortLabel,
+  }).map((item) => {
+    const iconPath = item.iconKey === 'search'
+      ? SI.search
+      : item.iconKey === 'gift'
+        ? SI.gift
+        : item.iconKey === 'fire'
+          ? SI.fire
+          : item.iconKey === 'barChart'
+            ? SI.barChart
+            : SI.filter;
+    const onClear = () => {
+      if (item.intent === 'keyword') {
+        setKeyword('');
+        setCurrentPage(1);
+        navigate(buildProductsUrl({ keyword: '' }));
+        return;
       }
-      : null,
-    discount
-      ? {
-        key: 'discount',
-        icon: <ShopIcon path={SI.fire} />,
-        label: t('pages.productList.shopBestDeals'),
-        onClear: () => {
-          setDiscount(false);
-          setCurrentPage(1);
-          navigate(buildProductsUrl({ discount: false }));
-        },
+      if (item.intent === 'collection') {
+        setCurrentPage(1);
+        navigate(buildProductsUrl({ collection: '' }));
+        return;
       }
-      : null,
-    ...activeRefinementTags.map((tag) => ({
-      key: `refinement-${tag.key}`,
-      icon: <ShopIcon path={SI.filter} />,
-      label: tag.label,
-      onClear: tag.onClose,
-    })),
-    sortBy !== 'default'
-      ? {
-        key: 'sort',
-        icon: <ShopIcon path={SI.barChart} />,
-        label: `${t('pages.productList.sortLabel')}: ${currentSortLabel}`,
-        onClear: () => applySort('default'),
+      if (item.intent === 'discount') {
+        setDiscount(false);
+        setCurrentPage(1);
+        navigate(buildProductsUrl({ discount: false }));
+        return;
       }
-      : null,
-  ].filter(Boolean) as ActiveResultContextAction[];
-  const productListFilterContextLabel = `${t('pages.productList.filters')}: ${activeRefinementCount > 0 ? t('pages.productList.activeFilters', { count: activeRefinementCount }) : t('pages.productList.allCategories')}, ${productCountLabel}`;
-  const openFilterDrawerActionLabel = productListFilterContextLabel;
-  const resetRefinementsActionLabel = `${t('pages.productList.resetFilters')}: ${productListFilterContextLabel}`;
-  const applyRefinementsActionLabel = `${t('pages.productList.applyFilters')}: ${productListFilterContextLabel}`;
-  const shopBestDealsActionLabel = `${t('pages.productList.shopBestDeals')}: ${productCountLabel}`;
-  const shopQuickAddActionLabel = `${t('pages.productList.shopQuickAdd')}: ${t('pages.productList.quickAddReady', { count: productListInsights.quickAddReadyCount })}`;
-  const loadRecoveryContextLabel = `${t('pages.productList.fetchFailed')}: ${productListFilterContextLabel}`;
-  const refreshCatalogActionLabel = `${t('common.refresh')}: ${loadRecoveryContextLabel}`;
-  const allCategoriesRecoveryActionLabel = `${t('pages.productList.allCategories')}: ${loadRecoveryContextLabel}`;
-  const couponsRecoveryActionLabel = `${t('pages.productList.loadRecoveryCoupons')}: ${loadRecoveryContextLabel}`;
-  const supportRecoveryActionLabel = `${t('pages.productList.loadRecoverySupport')}: ${loadRecoveryContextLabel}`;
-  const emptyAllCategoriesActionLabel = `${t('pages.productList.allCategories')}: ${t('pages.productList.empty')}`;
-  const emptyResetFiltersActionLabel = `${t('pages.productList.resetFilters')}: ${t('pages.productList.empty')}, ${productListFilterContextLabel}`;
-  const emptyCouponsActionLabel = `${t('pages.productList.loadRecoveryCoupons')}: ${t('pages.productList.empty')}`;
-  const emptyPetFinderActionLabel = `${t('nav.petFinder')}: ${t('pages.productList.empty')}`;
-  const mobilePrimaryActionLabel = heroProduct
-    ? `${isQuickAddReady(heroProduct) ? t('pages.productList.addToCart') : t('pages.productList.chooseOptionsAction')}: ${heroProductName}`
-    : filteredProducts.length > 0
-      ? shopQuickAddActionLabel
-      : `${t('pages.productList.loadRecoveryCoupons')}: ${t('pages.productList.empty')}`;
-  const mobileSecondaryActionLabel = filteredProducts.length > 0
-    ? shopBestDealsActionLabel
-    : activeRefinementCount > 0
-      ? resetRefinementsActionLabel
-      : `${t('pages.productList.allCategories')}: ${t('pages.productList.empty')}`;
-  const backToTopActionLabel = t('common.backToTop');
+      if (item.intent === 'sort') {
+        applySort('default');
+        return;
+      }
+      const refinement = activeRefinementTags.find((tag) => tag.key === item.refinementKey);
+      refinement?.onClose();
+    };
+    return {
+      key: item.key,
+      icon: <ShopIcon path={iconPath} />,
+      label: item.label,
+      onClear,
+    };
+  });
+  const {
+    productListFilterContextLabel,
+    openFilterDrawerActionLabel,
+    resetRefinementsActionLabel,
+    applyRefinementsActionLabel,
+    shopBestDealsActionLabel,
+    shopQuickAddActionLabel,
+    loadRecoveryContextLabel,
+    refreshCatalogActionLabel,
+    allCategoriesRecoveryActionLabel,
+    couponsRecoveryActionLabel,
+    supportRecoveryActionLabel,
+    emptyAllCategoriesActionLabel,
+    emptyResetFiltersActionLabel,
+    emptyCouponsActionLabel,
+    emptyPetFinderActionLabel,
+    mobilePrimaryActionLabel,
+    mobileSecondaryActionLabel,
+    backToTopActionLabel,
+  } = buildProductListActionLabels({
+    t,
+    activeRefinementCount,
+    productCountLabel,
+    quickAddReadyCount: productListInsights.quickAddReadyCount,
+    heroProduct,
+    heroProductName,
+    filteredProductsLength: filteredProducts.length,
+  });
   useEffect(() => {
     const totalPages = Math.max(1, Math.ceil(productCountForUi / pageSize));
     if (currentPage > totalPages) {
@@ -858,49 +834,51 @@ const ProductList: React.FC = () => {
     />
   );
 
-  const emptyDiscoveryActions: ProductListDiscoveryAction[] = [
-    {
-      key: 'catalog',
-      icon: <ShopIcon path={SI.filter} />,
-      title: activeRefinementCount > 0 ? t('pages.productList.resetFilters') : t('pages.productList.allCategories'),
-      text: t('pages.productList.loadRecoveryTipFilters'),
-      ariaLabel: activeRefinementCount > 0 ? resetRefinementsActionLabel : emptyAllCategoriesActionLabel,
-      primary: true,
-      onClick: () => {
-        if (activeRefinementCount > 0) {
-          resetMobileRefinements();
-          return;
-        }
+  const emptyDiscoveryDescriptors = buildProductListEmptyDiscoveryDescriptors({
+    t,
+    activeRefinementCount,
+    resetRefinementsActionLabel,
+    emptyAllCategoriesActionLabel,
+  });
+  const emptyDiscoveryActions: ProductListDiscoveryAction[] = emptyDiscoveryDescriptors.map((item) => {
+    const iconPath = item.iconKey === 'fire'
+      ? SI.fire
+      : item.iconKey === 'gift'
+        ? SI.gift
+        : item.iconKey === 'support'
+          ? SI.support
+          : SI.filter;
+    const onClick = () => {
+      if (item.intent === 'reset-refinements') {
+        resetMobileRefinements();
+        return;
+      }
+      if (item.intent === 'all-categories') {
         navigate('/products');
-      },
-    },
-    {
-      key: 'deals',
-      icon: <ShopIcon path={SI.fire} />,
-      title: t('pages.productList.shopBestDeals'),
-      text: t('pages.productList.guideStart'),
-      ariaLabel: `${t('pages.productList.shopBestDeals')}: ${t('pages.productList.empty')}`,
-      onClick: () => navigate('/products?discount=true'),
-    },
-    {
-      key: 'coupons',
-      icon: <ShopIcon path={SI.gift} />,
-      title: t('pages.productList.loadRecoveryCoupons'),
-      text: t('pages.productList.loadRecoveryText'),
-      ariaLabel: `${t('pages.productList.loadRecoveryCoupons')}: ${t('pages.productList.empty')}`,
-      onClick: () => navigate('/coupons'),
-    },
-    {
-      key: 'support',
-      icon: <ShopIcon path={SI.support} />,
-      title: t('pages.productList.loadRecoverySupport'),
-      text: t('pages.productList.loadRecoveryTipSupport'),
-      ariaLabel: `${t('pages.productList.loadRecoverySupport')}: ${t('pages.productList.empty')}`,
-      onClick: openSupport,
-    },
-  ];
+        return;
+      }
+      if (item.intent === 'deals') {
+        navigate('/products?discount=true');
+        return;
+      }
+      if (item.intent === 'coupons') {
+        navigate('/coupons');
+        return;
+      }
+      openSupport();
+    };
+    return {
+      key: item.key,
+      icon: <ShopIcon path={iconPath} />,
+      title: item.title,
+      text: item.text,
+      ariaLabel: item.ariaLabel,
+      primary: item.primary,
+      onClick,
+    };
+  });
 
-  const shellProps: ProductListMainShellProps = {
+  const shellProps: ProductListMainShellProps = buildProductListMainShellProps({
     language,
     loading,
     loadFailed,
@@ -1016,7 +994,7 @@ const ProductList: React.FC = () => {
     quickAddVariants,
     showMobileFilterHint,
     dismissMobileFilterHint,
-  };
+  });
 
   return <ProductListMainShell {...shellProps} />;
 };

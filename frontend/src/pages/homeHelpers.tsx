@@ -1,6 +1,8 @@
 import React from 'react';
 import type { Language } from '../i18n';
-import type { CategoryPublic, ProductPublic as Product } from '../types';
+import type { CategoryPublic, PetGalleryPhotoPublic, ProductPublic as Product } from '../types';
+import type { HomePetGalleryItem } from '../components/HomePetGallery';
+import { getLocalizedCategoryValue } from '../utils/categoryTree';
 import { localizeProduct } from '../utils/localizedProduct';
 import { imageFallbacks, resolveApiAssetUrl } from '../utils/mediaAssets';
 import {
@@ -9,6 +11,7 @@ import {
   loadProductCatalogSnapshot,
 } from '../utils/productCatalogSnapshot';
 import { reportNonBlockingError } from '../utils/nonBlockingError';
+import type { ProductViewPreferences } from '../utils/productViewPreferences';
 import { getLocalStorageItem, setLocalStorageItem } from '../utils/safeStorage';
 
 export const DISCOVERY_BATCH_SIZE = 12;
@@ -126,3 +129,408 @@ export const HI = {
   mobile: 'M16 1H8C6.34 1 5 2.34 5 4v16c0 1.66 1.34 3 3 3h8c1.66 0 3-1.34 3-3V4c0-1.66-1.34-3-3-3zm-2 20h-4v-1h4v1zm3.25-3H6.75V4h10.5v14z',
   shop: 'M20 4H4v2h16V4zm1 10v-2l-1-5H4l-1 5v2h1v6h10v-6h4v6h2v-6h1zm-9 4H6v-4h6v4z',
 } as const;
+
+export type HomeTranslate = (key: string, params?: Record<string, string | number>) => string;
+
+export type HomeIconKey = keyof typeof HI;
+
+export type HomeGuestJourneyIntent = 'register' | 'login' | 'track';
+
+export type HomeGuestJourneyDescriptor = {
+  key: string;
+  title: string;
+  text: string;
+  actionLabel: string;
+  iconKey: HomeIconKey;
+  intent: HomeGuestJourneyIntent;
+};
+
+export type HomeMobileQuickActionIntent =
+  | 'orders'
+  | 'cart'
+  | 'coupons'
+  | 'wishlist'
+  | 'track'
+  | 'support'
+  | 'finder'
+  | 'history';
+
+export type HomeMobileQuickActionDescriptor = {
+  key: string;
+  label: string;
+  iconKey: HomeIconKey;
+  intent: HomeMobileQuickActionIntent;
+};
+
+export const getHomeProductPrice = (product: Product) => product.effectivePrice ?? product.price;
+
+export const getHomeDiscountPercent = (product: Product) =>
+  product.effectiveDiscountPercent || product.discount || 0;
+
+export const buildHomeGuestJourneyDescriptors = (params: {
+  t: HomeTranslate;
+  isAuthenticated: boolean;
+}): HomeGuestJourneyDescriptor[] => {
+  if (params.isAuthenticated) return [];
+  return [
+    {
+      key: 'register',
+      title: params.t('nav.register'),
+      text: params.t('pages.auth.registerHeroSubtitle'),
+      actionLabel: params.t('nav.register'),
+      iconKey: 'heart',
+      intent: 'register',
+    },
+    {
+      key: 'login',
+      title: params.t('nav.login'),
+      text: params.t('pages.auth.loginTrustTitle'),
+      actionLabel: params.t('nav.login'),
+      iconKey: 'check',
+      intent: 'login',
+    },
+    {
+      key: 'track',
+      title: params.t('nav.trackOrder'),
+      text: params.t('home.viewDeals'),
+      actionLabel: params.t('nav.trackOrder'),
+      iconKey: 'truck',
+      intent: 'track',
+    },
+  ];
+};
+
+export const buildHomeMobileQuickActionDescriptors = (params: {
+  t: HomeTranslate;
+  isAuthenticated: boolean;
+}): HomeMobileQuickActionDescriptor[] => [
+  {
+    key: 'orders',
+    label: params.t('pages.profile.allOrders'),
+    iconKey: 'file',
+    intent: 'orders',
+  },
+  {
+    key: 'cart',
+    label: params.t('pages.cart.title'),
+    iconKey: 'cart',
+    intent: 'cart',
+  },
+  {
+    key: 'coupons',
+    label: params.t('nav.coupons'),
+    iconKey: 'gift',
+    intent: 'coupons',
+  },
+  {
+    key: 'wishlist',
+    label: params.t('nav.ariaFavorites'),
+    iconKey: 'heart',
+    intent: 'wishlist',
+  },
+  {
+    key: 'track',
+    label: params.t('nav.trackOrder'),
+    iconKey: 'truck',
+    intent: 'track',
+  },
+  {
+    key: 'support',
+    label: params.t('nav.help'),
+    iconKey: 'support',
+    intent: 'support',
+  },
+  {
+    key: 'finder',
+    label: params.t('nav.petFinder'),
+    iconKey: 'compass',
+    intent: 'finder',
+  },
+  {
+    key: 'history',
+    label: params.t('nav.history'),
+    iconKey: 'history',
+    intent: 'history',
+  },
+];
+
+export const deriveHomePromoProducts = (products: Product[]) =>
+  products
+    .filter((product) =>
+      product.activeLimitedTimeDiscount ||
+      getHomeDiscountPercent(product) > 0 ||
+      product.tag === 'discount' ||
+      (product.originalPrice !== undefined && product.originalPrice > getHomeProductPrice(product))
+    )
+    .slice(0, 6);
+
+export const deriveHomeBestSellers = (products: Product[]) =>
+  [...products]
+    .sort((left, right) =>
+      (right.reviewCount || 0) - (left.reviewCount || 0) ||
+      (right.positiveRate || 0) - (left.positiveRate || 0)
+    )
+    .slice(0, 8);
+
+export const deriveHomeDiscoveryProducts = (params: {
+  featured: Product[];
+  products: Product[];
+  viewPreferences: ProductViewPreferences;
+}) => {
+  const merged = [...params.featured, ...params.products];
+  const uniqueProducts = Array.from(new Map(merged.map((product) => [product.id, product])).values());
+  const recentSet = new Set(params.viewPreferences.recent);
+  return uniqueProducts
+    .map((product, index) => ({
+      product,
+      index,
+      score:
+        (params.viewPreferences.categories[String(product.categoryId)] || 0) * 8 +
+        (product.brand ? (params.viewPreferences.brands[String(product.brand)] || 0) * 4 : 0) +
+        (product.tag ? (params.viewPreferences.tags[String(product.tag)] || 0) * 3 : 0) +
+        (recentSet.has(product.id) ? 2 : 0) +
+        (product.isFeatured ? 1 : 0),
+    }))
+    .sort((left, right) => right.score - left.score || left.index - right.index)
+    .map((entry) => entry.product);
+};
+
+export const deriveHomeLocalPersonalizedProducts = (params: {
+  products: Product[];
+  viewPreferences: ProductViewPreferences;
+}) => {
+  const recentSet = new Set(params.viewPreferences.recent);
+  return params.products
+    .map((product, index) => ({
+      product,
+      index,
+      score:
+        (params.viewPreferences.categories[String(product.categoryId)] || 0) * 8 +
+        (product.brand ? (params.viewPreferences.brands[String(product.brand)] || 0) * 4 : 0) +
+        (product.tag ? (params.viewPreferences.tags[String(product.tag)] || 0) * 3 : 0) +
+        (getHomeDiscountPercent(product) > 0 ? 1 : 0),
+    }))
+    .filter((entry) => entry.score > 0 && !recentSet.has(entry.product.id))
+    .sort((left, right) => right.score - left.score || left.index - right.index)
+    .map((entry) => entry.product)
+    .slice(0, 8);
+};
+
+export const resolveHomePetUploadButtonLabel = (params: {
+  t: HomeTranslate;
+  uploadingPetPhoto: boolean;
+  isAuthenticated: boolean;
+  petUploadRemaining: number;
+}) => {
+  if (params.uploadingPetPhoto) return params.t('home.petUgcUploading');
+  if (!params.isAuthenticated) return params.t('home.petUgcLoginToUpload');
+  return params.t('home.petUgcUploadRemaining', { count: params.petUploadRemaining });
+};
+
+export const resolveHomePersonalizedPreferenceLabel = (params: {
+  categories: CategoryPublic[];
+  language: Language;
+  viewPreferences: ProductViewPreferences;
+}) => {
+  const topCategory = Object.entries(params.viewPreferences.categories).sort((left, right) => right[1] - left[1])[0];
+  if (topCategory) {
+    const category = params.categories.find((item) => String(item.id) === topCategory[0]);
+    if (category) return getLocalizedCategoryValue(category, params.language, 'name');
+  }
+  const topBrand = Object.entries(params.viewPreferences.brands).sort((left, right) => right[1] - left[1])[0];
+  if (topBrand) return topBrand[0];
+  const topTag = Object.entries(params.viewPreferences.tags).sort((left, right) => right[1] - left[1])[0];
+  return topTag?.[0] || '';
+};
+
+export const buildHomePetGalleryItems = (params: {
+  petGalleryPhotos: PetGalleryPhotoPublic[];
+  localPetGalleryLikes: string[];
+}): HomePetGalleryItem[] => {
+  const photoItems = params.petGalleryPhotos.map((photo) => ({
+    key: `photo-${photo.id}`,
+    image: resolvePetGalleryImage(photo.imageUrl),
+    label: `@${photo.username || 'pet_parent'}`,
+    likeCount: photo.likeCount || 0,
+    likedByMe: Boolean(photo.likedByMe),
+    canDelete: Boolean(photo.canDelete),
+    photo,
+  }));
+  const existingImages = new Set(photoItems.map((item) => item.image));
+  const existingLabels = new Set(photoItems.map((item) => item.label.toLowerCase()));
+  const fallbackItems = ugcImages
+    .filter((item) => !existingImages.has(item.image) && !existingLabels.has(item.label.toLowerCase()))
+    .map((item) => ({
+      ...item,
+      likeCount: item.likeCount + (params.localPetGalleryLikes.includes(item.key) ? 1 : 0),
+      likedByMe: params.localPetGalleryLikes.includes(item.key),
+      canDelete: false,
+    }));
+  return [...photoItems, ...fallbackItems]
+    .sort((left, right) => right.likeCount - left.likeCount || left.label.localeCompare(right.label))
+    .slice(0, 24);
+};
+
+
+export type HomeHeroSpotlightIntent = 'recommendations' | 'deals' | 'catalog';
+
+export type HomeHeroSpotlightDescriptor = {
+  key: string;
+  title: string;
+  summary: string;
+  actionLabel: string;
+  iconKey: HomeIconKey;
+  intent: HomeHeroSpotlightIntent;
+  disabled: boolean;
+};
+
+export type HomeStoryCardIntent = 'deals' | 'catalog' | 'pet-gallery';
+
+export type HomeStoryCardDescriptor = {
+  key: string;
+  title: string;
+  summary: string;
+  actionLabel: string;
+  iconKey: HomeIconKey;
+  intent: HomeStoryCardIntent;
+};
+
+export type HomeConversionHighlightDescriptor = {
+  key: string;
+  value: string;
+  label: string;
+};
+
+export const resolveHomeHeroFeaturedProduct = (params: {
+  personalizedDisplayProducts: Product[];
+  bestSellers: Product[];
+  promoProducts: Product[];
+  featured: Product[];
+  products: Product[];
+}): Product | null => (
+  params.personalizedDisplayProducts[0]
+  || params.bestSellers[0]
+  || params.promoProducts[0]
+  || params.featured[0]
+  || params.products[0]
+  || null
+);
+
+export const buildHomeHeroFeaturedTag = (params: {
+  t: HomeTranslate;
+  product: Product | null;
+}): string => {
+  if (!params.product) return '';
+  return [
+    params.product.brand,
+    getHomeDiscountPercent(params.product) > 0 ? params.t('home.flashOffers') : '',
+    params.product.stock !== undefined && params.product.stock > 0
+      ? params.t('home.stockAvailable', { count: params.product.stock })
+      : '',
+  ].filter(Boolean).join(' / ');
+};
+
+export const buildHomeHeroSpotlightDescriptors = (params: {
+  t: HomeTranslate;
+  personalizedRecommendationSource: 'petProfile' | 'recentViews' | string;
+  personalizedReadyCount: number;
+  personalizedPreferenceLabel: string;
+  personalizedDisplayCount: number;
+  personalizedReadyProductsCount: number;
+  personalizedDealCount: number;
+  promoProductsCount: number;
+  heroCategorySummary: string;
+}): HomeHeroSpotlightDescriptor[] => [
+  {
+    key: 'recommendations',
+    title: params.t('home.petRecommendations'),
+    summary: params.personalizedRecommendationSource === 'petProfile'
+      ? params.t('home.petRecommendationReady', { count: params.personalizedReadyCount })
+      : params.personalizedPreferenceLabel
+        ? params.t('home.petRecommendationInsightPreference', { value: params.personalizedPreferenceLabel })
+        : params.t('home.petRecommendationsHint'),
+    actionLabel: params.personalizedDisplayCount > 0
+      ? params.t('pages.wishlist.addAllToCart')
+      : params.t('home.managePetProfiles'),
+    iconKey: 'compass',
+    intent: 'recommendations',
+    disabled: params.personalizedDisplayCount > 0 && params.personalizedReadyProductsCount === 0,
+  },
+  {
+    key: 'deals',
+    title: params.t('home.flashOffers'),
+    summary: params.t('home.petRecommendationDeals', {
+      count: params.personalizedDealCount || params.promoProductsCount,
+    }),
+    actionLabel: params.t('home.viewDeals'),
+    iconKey: 'fire',
+    intent: 'deals',
+    disabled: false,
+  },
+  {
+    key: 'catalog',
+    title: params.t('home.categories'),
+    summary: params.heroCategorySummary,
+    actionLabel: params.t('home.viewAll'),
+    iconKey: 'appstore',
+    intent: 'catalog',
+    disabled: false,
+  },
+];
+
+export const buildHomeConversionHighlightDescriptors = (params: {
+  t: HomeTranslate;
+  promoProductsCount: number;
+  bestSellersCount: number;
+  personalizedReadyCount: number;
+  petGalleryItemsCount: number;
+}): HomeConversionHighlightDescriptor[] => [
+  {
+    key: 'deals',
+    value: `${params.promoProductsCount || params.bestSellersCount}+`,
+    label: params.t('home.flashOffers'),
+  },
+  {
+    key: 'personalized',
+    value: `${params.personalizedReadyCount}`,
+    label: params.t('home.petRecommendationReady', { count: params.personalizedReadyCount }),
+  },
+  {
+    key: 'community',
+    value: `${params.petGalleryItemsCount}+`,
+    label: params.t('home.petUgcTitle'),
+  },
+];
+
+export const buildHomeStoryCardDescriptors = (params: {
+  t: HomeTranslate;
+  promoProductsCount: number;
+  bestSellersCount: number;
+  freeShippingAmountText: string;
+  petGalleryItemsCount: number;
+}): HomeStoryCardDescriptor[] => [
+  {
+    key: 'starter',
+    title: params.t('home.couponsExtra'),
+    summary: `${params.promoProductsCount || params.bestSellersCount} ${params.t('home.flashOffers').toLowerCase()}`,
+    actionLabel: params.t('home.viewDeals'),
+    iconKey: 'gift',
+    intent: 'deals',
+  },
+  {
+    key: 'routine',
+    title: params.t('home.trust.freeShipping', { amount: params.freeShippingAmountText }),
+    summary: params.t('home.trust.fastDispatch'),
+    actionLabel: params.t('home.shopAll'),
+    iconKey: 'truck',
+    intent: 'catalog',
+  },
+  {
+    key: 'ugc',
+    title: params.t('home.petUgcTitle'),
+    summary: params.t('home.petUgcStoriesSummary', { count: params.petGalleryItemsCount }),
+    actionLabel: params.t('nav.petGallery'),
+    iconKey: 'camera',
+    intent: 'pet-gallery',
+  },
+];

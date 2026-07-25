@@ -11,6 +11,7 @@ import ShopAlert from '../ShopAlert';
 import type { CartItem, UserAddress } from '../../types';
 import type { CheckoutTranslationFn } from '../../utils/checkoutHelpers';
 import {
+  buildCheckoutPaymentUnavailableRecoveryDescriptors,
   getCartItemLowStockCount,
   hasCompleteCheckoutDetailAddress,
   hasCompleteCheckoutRecipientName,
@@ -359,52 +360,40 @@ export const CheckoutSubmitPaymentSection: React.FC<CheckoutSubmitPaymentSection
           className="checkout-page__paymentUnavailableActions checkout-page__paymentUnavailableActions--mobile"
           data-checkout-payment-unavailable-recovery="true"
         >
-          <ShopButton
-            type="primary"
-            size="large"
-            loading={paymentChannelsLoading}
-            aria-label={t('messages.retry')}
-            title={t('messages.retry')}
-            onClick={onReloadPaymentChannels}
-          >
-            {t('messages.retry')}
-          </ShopButton>
-          <ShopButton
-            size="large"
-            icon={<ShopIcon path={SI.support} />}
-            aria-label={t('pages.profile.contactSupport')}
-            title={t('pages.profile.contactSupport')}
-            onClick={onOpenSupport}
-          >
-            {t('pages.profile.contactSupport')}
-          </ShopButton>
-          <ShopButton
-            size="large"
-            icon={<ShopIcon path={SI.cart} />}
-            aria-label={t('pages.cart.title')}
-            title={t('pages.cart.title')}
-            onClick={onCart}
-          >
-            {t('pages.cart.title')}
-          </ShopButton>
-          <ShopButton
-            size="large"
-            icon={<ShopIcon path={SI.shopping} />}
-            aria-label={t('pages.cart.browse')}
-            title={t('pages.cart.browse')}
-            onClick={onBrowse}
-          >
-            {t('pages.cart.browse')}
-          </ShopButton>
-          <ShopButton
-            size="large"
-            icon={<ShopIcon path={SI.gift} />}
-            aria-label={t('nav.coupons')}
-            title={t('nav.coupons')}
-            onClick={onCoupons}
-          >
-            {t('nav.coupons')}
-          </ShopButton>
+          {buildCheckoutPaymentUnavailableRecoveryDescriptors({ t }).map((item) => {
+            const iconPath = item.iconKey === 'support'
+              ? SI.support
+              : item.iconKey === 'cart'
+                ? SI.cart
+                : item.iconKey === 'shopping'
+                  ? SI.shopping
+                  : item.iconKey === 'gift'
+                    ? SI.gift
+                    : undefined;
+            const onClick = item.intent === 'retry'
+              ? onReloadPaymentChannels
+              : item.intent === 'support'
+                ? onOpenSupport
+                : item.intent === 'cart'
+                  ? onCart
+                  : item.intent === 'browse'
+                    ? onBrowse
+                    : onCoupons;
+            return (
+              <ShopButton
+                key={item.key}
+                type={item.primary ? 'primary' : undefined}
+                size="large"
+                loading={item.intent === 'retry' ? paymentChannelsLoading : undefined}
+                icon={iconPath ? <ShopIcon path={iconPath} /> : undefined}
+                aria-label={item.label}
+                title={item.label}
+                onClick={onClick}
+              >
+                {item.label}
+              </ShopButton>
+            );
+          })}
         </div>
       ) : (
         <ShopButton

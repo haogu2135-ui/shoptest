@@ -24,12 +24,25 @@ import '../styles/mobile-page-contrast.css';
 import {
   DISCOVERY_BATCH_SIZE,
   publicAssetUrl,
-  ugcImages,
   readLocalPetGalleryLikes,
-  resolvePetGalleryImage,
   resolveHomeCatalogBootstrap,
   HomeIcon,
   HI,
+  buildHomeConversionHighlightDescriptors,
+  buildHomeGuestJourneyDescriptors,
+  buildHomeHeroFeaturedTag,
+  buildHomeHeroSpotlightDescriptors,
+  buildHomeMobileQuickActionDescriptors,
+  buildHomePetGalleryItems,
+  buildHomeStoryCardDescriptors,
+  deriveHomeBestSellers,
+  deriveHomeDiscoveryProducts,
+  deriveHomeLocalPersonalizedProducts,
+  deriveHomePromoProducts,
+  getHomeDiscountPercent,
+  resolveHomeHeroFeaturedProduct,
+  resolveHomePersonalizedPreferenceLabel,
+  resolveHomePetUploadButtonLabel,
   type HomeCatalogBootstrap,
 } from './homeHelpers';
 import {
@@ -103,8 +116,6 @@ const Home: React.FC = () => {
     jsonLdId: 'website-home',
     jsonLd: homeJsonLd,
   });
-  const getPrice = (product: Product) => product.effectivePrice ?? product.price;
-  const getDiscountPercent = (product: Product) => product.effectiveDiscountPercent || product.discount || 0;
   const homeProductName = (product: Pick<Product, 'id' | 'name'>) =>
     (product.name || '').trim() || t('pages.profile.productFallback', { id: product.id });
 
@@ -124,84 +135,66 @@ const Home: React.FC = () => {
     dispatchDomEvent('shop:open-support');
   };
   const openCartWithSnapshot = useCallback(() => openCartDrawerWithSnapshot({ authenticated: isAuthenticated }), [isAuthenticated]);
-  const guestJourneyActions = !isAuthenticated
-    ? [
-      {
-        key: 'register',
-        icon: <HomeIcon path={HI.heart} />,
-        title: t('nav.register'),
-        text: t('pages.auth.registerHeroSubtitle'),
-        actionLabel: t('nav.register'),
-        action: () => navigate('/register'),
-      },
-      {
-        key: 'login',
-        icon: <HomeIcon path={HI.check} />,
-        title: t('nav.login'),
-        text: t('pages.auth.loginTrustTitle'),
-        actionLabel: t('nav.login'),
-        action: () => navigate(buildLoginUrlFromWindow()),
-      },
-      {
-        key: 'track',
-        icon: <HomeIcon path={HI.truck} />,
-        title: t('nav.trackOrder'),
-        text: t('home.viewDeals'),
-        actionLabel: t('nav.trackOrder'),
-        action: () => navigate('/track-order'),
-      },
-    ]
-    : [];
-  const mobileQuickActions = [
-    {
-      key: 'orders',
-      icon: <HomeIcon path={HI.file} />,
-      label: t('pages.profile.allOrders'),
-      onClick: () => navigate(isAuthenticated ? '/profile?tab=orders' : buildLoginUrlFromWindow()),
-    },
-    {
-      key: 'cart',
-      icon: <HomeIcon path={HI.cart} />,
-      label: t('pages.cart.title'),
-      onClick: openCartWithSnapshot,
-    },
-    {
-      key: 'coupons',
-      icon: <HomeIcon path={HI.gift} />,
-      label: t('nav.coupons'),
-      onClick: () => navigate('/coupons'),
-    },
-    {
-      key: 'wishlist',
-      icon: <HomeIcon path={HI.heart} />,
-      label: t('nav.ariaFavorites'),
-      onClick: () => navigate(isAuthenticated ? '/wishlist' : buildLoginUrlFromWindow()),
-    },
-    {
-      key: 'track',
-      icon: <HomeIcon path={HI.truck} />,
-      label: t('nav.trackOrder'),
-      onClick: () => navigate('/track-order'),
-    },
-    {
-      key: 'support',
-      icon: <HomeIcon path={HI.support} />,
-      label: t('nav.help'),
-      onClick: openSupport,
-    },
-    {
-      key: 'finder',
-      icon: <HomeIcon path={HI.compass} />,
-      label: t('nav.petFinder'),
-      onClick: () => navigate('/pet-finder'),
-    },
-    {
-      key: 'history',
-      icon: <HomeIcon path={HI.history} />,
-      label: t('nav.history'),
-      onClick: () => navigate('/history'),
-    },
-  ];
+  const guestJourneyActions = buildHomeGuestJourneyDescriptors({ t, isAuthenticated }).map((item) => {
+    const action = () => {
+      if (item.intent === 'register') {
+        navigate('/register');
+        return;
+      }
+      if (item.intent === 'login') {
+        navigate(buildLoginUrlFromWindow());
+        return;
+      }
+      navigate('/track-order');
+    };
+    return {
+      key: item.key,
+      icon: <HomeIcon path={HI[item.iconKey]} />,
+      title: item.title,
+      text: item.text,
+      actionLabel: item.actionLabel,
+      action,
+    };
+  });
+  const mobileQuickActions = buildHomeMobileQuickActionDescriptors({ t, isAuthenticated }).map((item) => {
+    const onClick = () => {
+      if (item.intent === 'orders') {
+        navigate(isAuthenticated ? '/profile?tab=orders' : buildLoginUrlFromWindow());
+        return;
+      }
+      if (item.intent === 'cart') {
+        openCartWithSnapshot();
+        return;
+      }
+      if (item.intent === 'coupons') {
+        navigate('/coupons');
+        return;
+      }
+      if (item.intent === 'wishlist') {
+        navigate(isAuthenticated ? '/wishlist' : buildLoginUrlFromWindow());
+        return;
+      }
+      if (item.intent === 'track') {
+        navigate('/track-order');
+        return;
+      }
+      if (item.intent === 'support') {
+        openSupport();
+        return;
+      }
+      if (item.intent === 'finder') {
+        navigate('/pet-finder');
+        return;
+      }
+      navigate('/history');
+    };
+    return {
+      key: item.key,
+      icon: <HomeIcon path={HI[item.iconKey]} />,
+      label: item.label,
+      onClick,
+    };
+  });
 
   const formatViewedAt = (viewedAt?: number) => {
     if (!viewedAt) return '';
@@ -214,23 +207,12 @@ const Home: React.FC = () => {
   };
 
   const promoProducts = useMemo(
-    () =>
-      products
-        .filter((product) =>
-          product.activeLimitedTimeDiscount ||
-          getDiscountPercent(product) > 0 ||
-          product.tag === 'discount' ||
-          (product.originalPrice !== undefined && product.originalPrice > getPrice(product))
-        )
-        .slice(0, 6),
+    () => deriveHomePromoProducts(products),
     [products],
   );
 
   const bestSellers = useMemo(
-    () =>
-      [...products]
-        .sort((left, right) => (right.reviewCount || 0) - (left.reviewCount || 0) || (right.positiveRate || 0) - (left.positiveRate || 0))
-        .slice(0, 8),
+    () => deriveHomeBestSellers(products),
     [products],
   );
 
@@ -249,42 +231,15 @@ const Home: React.FC = () => {
   // Reserve rail space while history ids exist but product payloads are still hydrating (CLS).
   const recentlyViewedPending = !loading && viewPreferences.recent.length > 0 && !recentlyViewedHydrated;
 
-  const discoveryProducts = useMemo(() => {
-    const merged = [...featured, ...products];
-    const uniqueProducts = Array.from(new Map(merged.map((product) => [product.id, product])).values());
-    const recentSet = new Set(viewPreferences.recent);
-    return uniqueProducts
-      .map((product, index) => ({
-        product,
-        index,
-        score:
-          (viewPreferences.categories[String(product.categoryId)] || 0) * 8 +
-          (product.brand ? (viewPreferences.brands[String(product.brand)] || 0) * 4 : 0) +
-          (product.tag ? (viewPreferences.tags[String(product.tag)] || 0) * 3 : 0) +
-          (recentSet.has(product.id) ? 2 : 0) +
-          (product.isFeatured ? 1 : 0),
-      }))
-      .sort((left, right) => right.score - left.score || left.index - right.index)
-      .map((entry) => entry.product);
-  }, [featured, products, viewPreferences]);
+  const discoveryProducts = useMemo(
+    () => deriveHomeDiscoveryProducts({ featured, products, viewPreferences }),
+    [featured, products, viewPreferences],
+  );
 
-  const localPersonalizedProducts = useMemo(() => {
-    const recentSet = new Set(viewPreferences.recent);
-    return products
-      .map((product, index) => ({
-        product,
-        index,
-        score:
-          (viewPreferences.categories[String(product.categoryId)] || 0) * 8 +
-          (product.brand ? (viewPreferences.brands[String(product.brand)] || 0) * 4 : 0) +
-          (product.tag ? (viewPreferences.tags[String(product.tag)] || 0) * 3 : 0) +
-          (getDiscountPercent(product) > 0 ? 1 : 0),
-      }))
-      .filter((entry) => entry.score > 0 && !recentSet.has(entry.product.id))
-      .sort((left, right) => right.score - left.score || left.index - right.index)
-      .map((entry) => entry.product)
-      .slice(0, 8);
-  }, [products, viewPreferences]);
+  const localPersonalizedProducts = useMemo(
+    () => deriveHomeLocalPersonalizedProducts({ products, viewPreferences }),
+    [products, viewPreferences],
+  );
 
   const personalizedDisplayProducts = useMemo(
     () => (personalizedProducts.length > 0 ? personalizedProducts : localPersonalizedProducts),
@@ -300,20 +255,13 @@ const Home: React.FC = () => {
   );
   const personalizedReadyCount = personalizedReadyProducts.length;
   const personalizedDealCount = useMemo(
-    () => personalizedDisplayProducts.filter((product) => getDiscountPercent(product) > 0 || product.activeLimitedTimeDiscount).length,
+    () => personalizedDisplayProducts.filter((product) => getHomeDiscountPercent(product) > 0 || product.activeLimitedTimeDiscount).length,
     [personalizedDisplayProducts],
   );
-  const personalizedPreferenceLabel = useMemo(() => {
-    const topCategory = Object.entries(viewPreferences.categories).sort((left, right) => right[1] - left[1])[0];
-    if (topCategory) {
-      const category = categories.find((item) => String(item.id) === topCategory[0]);
-      if (category) return getLocalizedCategoryValue(category, language, 'name');
-    }
-    const topBrand = Object.entries(viewPreferences.brands).sort((left, right) => right[1] - left[1])[0];
-    if (topBrand) return topBrand[0];
-    const topTag = Object.entries(viewPreferences.tags).sort((left, right) => right[1] - left[1])[0];
-    return topTag?.[0] || '';
-  }, [categories, language, viewPreferences]);
+  const personalizedPreferenceLabel = useMemo(
+    () => resolveHomePersonalizedPreferenceLabel({ categories, language, viewPreferences }),
+    [categories, language, viewPreferences],
+  );
 
   const visibleDiscoveryProducts = useMemo(
     () => discoveryProducts.slice(0, visibleCount),
@@ -374,124 +322,95 @@ const Home: React.FC = () => {
   const categoryTiles = useMemo(() => displayCategoryRoots.slice(0, 8), [displayCategoryRoots]);
   const heroCategoryTiles = useMemo(() => categoryTiles.slice(0, 4), [categoryTiles]);
   const petUploadRemaining = petGalleryQuota ? Math.max(0, petGalleryQuota.remaining) : 3;
-  const petUploadButtonLabel = uploadingPetPhoto
-    ? t('home.petUgcUploading')
-    : !isAuthenticated
-      ? t('home.petUgcLoginToUpload')
-      : t('home.petUgcUploadRemaining', { count: petUploadRemaining });
-  const petGalleryItems = useMemo<HomePetGalleryItem[]>(() => {
-    const photoItems = petGalleryPhotos.map((photo) => {
-      return {
-        key: `photo-${photo.id}`,
-        image: resolvePetGalleryImage(photo.imageUrl),
-        label: `@${photo.username || 'pet_parent'}`,
-        likeCount: photo.likeCount || 0,
-        likedByMe: Boolean(photo.likedByMe),
-        canDelete: Boolean(photo.canDelete),
-        photo,
-      };
-    });
-    const existingImages = new Set(photoItems.map((item) => item.image));
-    const existingLabels = new Set(photoItems.map((item) => item.label.toLowerCase()));
-    const fallbackItems = ugcImages
-      .filter((item) => !existingImages.has(item.image) && !existingLabels.has(item.label.toLowerCase()))
-      .map((item) => ({
-        ...item,
-        likeCount: item.likeCount + (localPetGalleryLikes.includes(item.key) ? 1 : 0),
-        likedByMe: localPetGalleryLikes.includes(item.key),
-        canDelete: false,
-      }));
-    return [...photoItems, ...fallbackItems]
-      .sort((left, right) => right.likeCount - left.likeCount || left.label.localeCompare(right.label))
-      .slice(0, 24);
-  }, [localPetGalleryLikes, petGalleryPhotos]);
-  const heroSpotlights = [
-    {
-      key: 'recommendations',
-      icon: <HomeIcon path={HI.compass} />,
-      title: t('home.petRecommendations'),
-      summary: personalizedRecommendationSource === 'petProfile'
-        ? t('home.petRecommendationReady', { count: personalizedReadyCount })
-        : personalizedPreferenceLabel
-          ? t('home.petRecommendationInsightPreference', { value: personalizedPreferenceLabel })
-          : t('home.petRecommendationsHint'),
-      actionLabel: personalizedDisplayProducts.length > 0 ? t('pages.wishlist.addAllToCart') : t('home.managePetProfiles'),
-      action: personalizedDisplayProducts.length > 0 ? addPersonalizedReadyProducts : () => navigate('/profile?tab=pets'),
-      disabled: personalizedDisplayProducts.length > 0 && personalizedReadyProducts.length === 0,
-    },
-    {
-      key: 'deals',
-      icon: <HomeIcon path={HI.fire} />,
-      title: t('home.flashOffers'),
-      summary: t('home.petRecommendationDeals', { count: personalizedDealCount || promoProducts.length }),
-      actionLabel: t('home.viewDeals'),
-      action: openDiscountProducts,
-      disabled: false,
-    },
-    {
-      key: 'catalog',
-      icon: <HomeIcon path={HI.appstore} />,
-      title: t('home.categories'),
-      summary: heroCategoryTiles.map((category) => getLocalizedCategoryValue(category, language, 'name')).join(' / '),
-      actionLabel: t('home.viewAll'),
-      action: () => navigate('/products'),
-      disabled: false,
-    },
-  ];
-  const heroFeaturedProduct = personalizedDisplayProducts[0] || bestSellers[0] || promoProducts[0] || featured[0] || products[0] || null;
+  const petUploadButtonLabel = resolveHomePetUploadButtonLabel({
+    t,
+    uploadingPetPhoto,
+    isAuthenticated,
+    petUploadRemaining,
+  });
+  const petGalleryItems = useMemo<HomePetGalleryItem[]>(
+    () => buildHomePetGalleryItems({ petGalleryPhotos, localPetGalleryLikes }),
+    [localPetGalleryLikes, petGalleryPhotos],
+  );
+  const heroSpotlights = buildHomeHeroSpotlightDescriptors({
+    t,
+    personalizedRecommendationSource,
+    personalizedReadyCount,
+    personalizedPreferenceLabel,
+    personalizedDisplayCount: personalizedDisplayProducts.length,
+    personalizedReadyProductsCount: personalizedReadyProducts.length,
+    personalizedDealCount,
+    promoProductsCount: promoProducts.length,
+    heroCategorySummary: heroCategoryTiles.map((category) => getLocalizedCategoryValue(category, language, 'name')).join(' / '),
+  }).map((item) => {
+    const action = () => {
+      if (item.intent === 'recommendations') {
+        if (personalizedDisplayProducts.length > 0) {
+          addPersonalizedReadyProducts();
+          return;
+        }
+        navigate('/profile?tab=pets');
+        return;
+      }
+      if (item.intent === 'deals') {
+        openDiscountProducts();
+        return;
+      }
+      navigate('/products');
+    };
+    return {
+      key: item.key,
+      icon: <HomeIcon path={HI[item.iconKey]} />,
+      title: item.title,
+      summary: item.summary,
+      actionLabel: item.actionLabel,
+      action,
+      disabled: item.disabled,
+    };
+  });
+  const heroFeaturedProduct = resolveHomeHeroFeaturedProduct({
+    personalizedDisplayProducts,
+    bestSellers,
+    promoProducts,
+    featured,
+    products,
+  });
   const heroFeaturedProductName = heroFeaturedProduct ? homeProductName(heroFeaturedProduct) : '';
-  const heroFeaturedTag = heroFeaturedProduct
-    ? [
-      heroFeaturedProduct.brand,
-      getDiscountPercent(heroFeaturedProduct) > 0 ? t('home.flashOffers') : '',
-      heroFeaturedProduct.stock !== undefined && heroFeaturedProduct.stock > 0
-        ? t('home.stockAvailable', { count: heroFeaturedProduct.stock })
-        : '',
-    ].filter(Boolean).join(' / ')
-    : '';
-  const conversionHighlights = [
-    {
-      key: 'deals',
-      value: `${promoProducts.length || bestSellers.length}+`,
-      label: t('home.flashOffers'),
-    },
-    {
-      key: 'personalized',
-      value: `${personalizedReadyCount}`,
-      label: t('home.petRecommendationReady', { count: personalizedReadyCount }),
-    },
-    {
-      key: 'community',
-      value: `${petGalleryItems.length}+`,
-      label: t('home.petUgcTitle'),
-    },
-  ];
-  const curatedStoryCards = [
-    {
-      key: 'starter',
-      icon: <HomeIcon path={HI.gift} />,
-      title: t('home.couponsExtra'),
-      summary: `${promoProducts.length || bestSellers.length} ${t('home.flashOffers').toLowerCase()}`,
-      actionLabel: t('home.viewDeals'),
-      action: openDiscountProducts,
-    },
-    {
-      key: 'routine',
-      icon: <HomeIcon path={HI.truck} />,
-      title: t('home.trust.freeShipping', { amount: formatPrice(market.freeShippingThreshold) }),
-      summary: t('home.trust.fastDispatch'),
-      actionLabel: t('home.shopAll'),
-      action: () => navigate('/products'),
-    },
-    {
-      key: 'ugc',
-      icon: <HomeIcon path={HI.camera} />,
-      title: t('home.petUgcTitle'),
-      summary: t('home.petUgcStoriesSummary', { count: petGalleryItems.length }),
-      actionLabel: t('nav.petGallery'),
-      action: () => navigate('/pet-gallery'),
-    },
-  ];
+  const heroFeaturedTag = buildHomeHeroFeaturedTag({ t, product: heroFeaturedProduct });
+  const conversionHighlights = buildHomeConversionHighlightDescriptors({
+    t,
+    promoProductsCount: promoProducts.length,
+    bestSellersCount: bestSellers.length,
+    personalizedReadyCount,
+    petGalleryItemsCount: petGalleryItems.length,
+  });
+  const curatedStoryCards = buildHomeStoryCardDescriptors({
+    t,
+    promoProductsCount: promoProducts.length,
+    bestSellersCount: bestSellers.length,
+    freeShippingAmountText: formatPrice(market.freeShippingThreshold),
+    petGalleryItemsCount: petGalleryItems.length,
+  }).map((item) => {
+    const action = () => {
+      if (item.intent === 'deals') {
+        openDiscountProducts();
+        return;
+      }
+      if (item.intent === 'pet-gallery') {
+        navigate('/pet-gallery');
+        return;
+      }
+      navigate('/products');
+    };
+    return {
+      key: item.key,
+      icon: <HomeIcon path={HI[item.iconKey]} />,
+      title: item.title,
+      summary: item.summary,
+      actionLabel: item.actionLabel,
+      action,
+    };
+  });
   const productCardCommonProps = {
     t,
     formatPrice,

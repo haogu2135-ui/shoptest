@@ -289,12 +289,14 @@ describe('source quality contracts', () => {
     const homeSource = [
       fs.readFileSync(path.join(frontendRoot, 'pages/Home.tsx'), 'utf8'),
       fs.readFileSync(path.join(frontendRoot, 'pages/homeHelpers.tsx'), 'utf8'),
+      fs.readFileSync(path.join(frontendRoot, 'hooks/useHomeCatalog.ts'), 'utf8'),
     ].join('\n');
 
     expect(packageJson).not.toContain('"zustand"');
     expect(scriptSource).not.toContain('StorefrontContext');
     expect(scriptSource).not.toMatch(/\bfrom ['"]zustand['"]/);
-    expect(homeSource).toContain("import { clearProductViewHistory, loadProductViewPreferences, PRODUCT_VIEW_PREFERENCES_KEY } from '../utils/productViewPreferences';");
+    expect(homeSource).toContain("import { clearProductViewHistory, loadProductViewPreferences } from '../utils/productViewPreferences';");
+    expect(homeSource).toContain("import { PRODUCT_VIEW_PREFERENCES_KEY, loadProductViewPreferences } from '../utils/productViewPreferences';");
     expect(homeSource).toContain("import { getLocalStorageItem, setLocalStorageItem } from '../utils/safeStorage';");
     expect(homeSource).toContain("import { hasStoredValue } from '../utils/safeStorage';");
     expect(homeSource).toContain('const [viewPreferences, setViewPreferences] = useState(() => loadProductViewPreferences());');
@@ -306,7 +308,8 @@ describe('source quality contracts', () => {
     const homePageSource = fs.readFileSync(path.join(frontendRoot, 'pages/Home.tsx'), 'utf8');
     const helpersSource = fs.readFileSync(path.join(frontendRoot, 'pages/homeHelpers.tsx'), 'utf8');
     const productPanelsSource = fs.readFileSync(path.join(frontendRoot, 'pages/homeProductPanels.tsx'), 'utf8');
-    const homeSource = [homePageSource, helpersSource, productPanelsSource].join('\n');
+    const catalogHookSource = fs.readFileSync(path.join(frontendRoot, 'hooks/useHomeCatalog.ts'), 'utf8');
+    const homeSource = [homePageSource, helpersSource, productPanelsSource, catalogHookSource].join('\n');
     const discoverySectionStart = productPanelsSource.indexOf('<section className="shopee-section shopee-discovery shopee-for-you">');
     const discoverySectionSource = productPanelsSource.slice(discoverySectionStart);
 
@@ -322,7 +325,8 @@ describe('source quality contracts', () => {
     expect(homeSource).toContain('[discoveryProducts, visibleCount],');
     expect(homeSource).toContain('const hasMoreDiscoveryProducts = visibleCount < discoveryProducts.length;');
     expect(homeSource).toContain('const { scrollHeight, viewportHeight, scrollTop } = getAppScrollMetrics();');
-    expect(homeSource).toContain('setVisibleCount((count) => Math.min(count + DISCOVERY_BATCH_SIZE, discoveryProducts.length));');
+    expect(homeSource).toContain('setVisibleCount((count) => Math.min(count + DISCOVERY_BATCH_SIZE, discoveryProductsLength));');
+    expect(homeSource).toContain('setVisibleCount((count) => Math.min(count + DISCOVERY_BATCH_SIZE, discoveryProducts.length))');
     expect(homeSource).toContain('const removeScrollListener = addAppScrollListener(handleScroll, { passive: true });');
     expect(discoverySectionSource).toContain('visibleDiscoveryProducts.map((product, index) => (');
     expect(discoverySectionSource).not.toContain('discoveryProducts.map((product, index) => (');
@@ -374,6 +378,7 @@ describe('source quality contracts', () => {
       'hooks/useCheckoutGuestDraft.ts',
       'utils/checkoutHelpers.ts',
       'pages/Profile.tsx',
+      'hooks/useProfileSessionData.ts',
     ];
     const expectedContexts = [
       'App.mobileUpdateDownload',

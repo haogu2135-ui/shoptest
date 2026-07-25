@@ -33,7 +33,9 @@ describe('ProductDetail size guide modal layout', () => {
 
     expect(helpers).toContain('export const PRODUCT_SIZE_CALCULATOR_MAX_WEIGHT_KG = 200;');
     expect(helpers).toContain('Math.min(PRODUCT_SIZE_CALCULATOR_MAX_WEIGHT_KG, Math.max(0, numeric))');
-    expect(source).toContain('const sizeCalculatorWeightKg = Math.min(\n    PRODUCT_SIZE_CALCULATOR_MAX_WEIGHT_KG,');
+    expect(helpers).toContain('export const resolveSizeCalculatorWeightKg');
+    expect(helpers).toContain('Math.min(\n  PRODUCT_SIZE_CALCULATOR_MAX_WEIGHT_KG,');
+    expect(helpers).toContain('const sizeCalculatorWeightKg = resolveSizeCalculatorWeightKg(params.sizeCalculatorWeight);');
     expect(source).toContain('max={PRODUCT_SIZE_CALCULATOR_MAX_WEIGHT_KG}');
     expect(source).toContain('PRODUCT_SIZE_CALCULATOR_MAX_WEIGHT_KG');
     expect(source).not.toContain('type="number"\n                        min={0}\n                        onChange=');

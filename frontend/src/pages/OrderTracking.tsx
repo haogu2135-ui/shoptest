@@ -25,14 +25,20 @@ import './OrderTracking.css';
 import '../styles/mobile-page-contrast.css';
 import { navigateToCommercialPaymentUrl, getPaymentRecoveryState } from '../utils/paymentRecovery';
 import {
-  ORDER_STATUS_LABEL_KEYS,
   ORDER_TRACKING_AUTO_REFRESH_MS,
+  buildOrderTrackingActionLabels,
+  buildOrderTrackingPanelProps,
   cleanTrackingParam,
+  formatOrderTrackingStatusLabel,
   getTrackingStep,
   isGuestTrackedOrder,
-  normalizeStatusCode,
+  resolveOrderTrackingAccessFlags,
+  resolveOrderTrackingAssurancePlanDescriptor,
+  resolveOrderTrackingDateLocale,
+  resolveOrderTrackingNextActionDescriptor,
+  resolveOrderTrackingOrderLabel,
+  resolveOrderTrackingStatusColor,
   shouldAutoRefreshTrackedOrder,
-  statusColor,
 } from './orderTrackingHelpers';
 import {
   OrderTrackingDialogs,
@@ -82,40 +88,41 @@ const OrderTracking: React.FC = () => {
     siteName: t('common.siteTitle'),
   });
   const { formatMoney } = useMarket();
-  const dateLocale = language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US';
+  const dateLocale = resolveOrderTrackingDateLocale(language);
   const orderTrackingItemName = (item: Pick<OrderItemCustomer, 'productId' | 'productName'>) => (
     (item.productName || '').trim() || t('pages.profile.productFallback', { id: item.productId })
   );
-  const formatOrderStatusLabel = useCallback((status?: string) => {
-    const rawStatus = String(status || '').trim();
-    const normalizedStatus = normalizeStatusCode(rawStatus);
-    if (!normalizedStatus) return t('common.unknown');
-    if (ORDER_STATUS_LABEL_KEYS.has(normalizedStatus)) return t(`status.${normalizedStatus}`);
-    return rawStatus;
-  }, [t]);
-  const getOrderStatusColor = useCallback((status?: string) => {
-    const normalizedStatus = normalizeStatusCode(status);
-    if (!ORDER_STATUS_LABEL_KEYS.has(normalizedStatus)) return 'default';
-    return statusColor[normalizedStatus] || 'default';
-  }, []);
+  const formatOrderStatusLabel = useCallback(
+    (status?: string) => formatOrderTrackingStatusLabel({ t, status }),
+    [t],
+  );
+  const getOrderStatusColor = useCallback(
+    (status?: string) => resolveOrderTrackingStatusColor(status),
+    [],
+  );
   const trackingStep = getTrackingStep(order?.status);
   const paymentReturnStatus = cleanTrackingParam(searchParams.get('payment'), 40).toLowerCase();
   const isSignedIn = hasStoredValue('token');
-  const canUseGuestActions = Boolean(isGuestTrackedOrder(order) && trackedEmail && order?.orderNo);
-  const canUseSignedInActions = Boolean(
-    isSignedIn
-    && order
-    && !isGuestTrackedOrder(order)
-    && (isAdminRole(getLocalStorageItem('role')) || !detailsRestricted),
-  );
-  const canOperateTrackedOrder = !detailsRestricted && (canUseSignedInActions || canUseGuestActions);
-  const canShowFullTrackingDetails = Boolean(order && !detailsRestricted);
-  const trackedOrderLabel = order ? order.orderNo || `#${order.id}` : t('pages.orderTracking.title');
-  const trackActionLabel = (action: string) => `${action}: ${trackedOrderLabel}`;
-  const returnRequestActionLabel = `${t('pages.profile.returnOrder')}: ${trackedOrderLabel}`;
-  const returnShipmentActionLabel = `${t('pages.profile.submitReturnShipment')}: ${trackedOrderLabel}`;
-  const returnReasonInputLabel = `${t('pages.profile.returnReason')}: ${trackedOrderLabel}`;
-  const returnTrackingInputLabel = `${t('pages.profile.returnTracking')}: ${trackedOrderLabel}`;
+  const {
+    canUseGuestActions,
+    canUseSignedInActions,
+    canOperateTrackedOrder,
+    canShowFullTrackingDetails,
+  } = resolveOrderTrackingAccessFlags({
+    order,
+    trackedEmail,
+    isSignedIn,
+    detailsRestricted,
+    isAdmin: isAdminRole(getLocalStorageItem('role')),
+  });
+  const trackedOrderLabel = resolveOrderTrackingOrderLabel({ t, order });
+  const {
+    trackActionLabel,
+    returnRequestActionLabel,
+    returnShipmentActionLabel,
+    returnReasonInputLabel,
+    returnTrackingInputLabel,
+  } = buildOrderTrackingActionLabels({ t, trackedOrderLabel });
   const signInForOrder = useCallback(() => navigate(buildLoginUrlFromWindow()), [navigate]);
   const supportOpen = useCallback(() => {
     if (isGuestTrackedOrder(order) && order?.orderNo && trackedEmail) {
@@ -129,67 +136,35 @@ const OrderTracking: React.FC = () => {
     }
     dispatchDomEvent('shop:open-support', { clearGuestContext: true });
   }, [order, trackedEmail]);
-  const nextAction = useMemo(() => {
-    if (!order) return null;
-    if (!canOperateTrackedOrder) {
-      return {
-        title: t('pages.orderTracking.accountOrderTitle'),
-        text: t('pages.orderTracking.accountOrderText'),
-        tone: 'info',
-      };
-    }
-    if (order.status === 'PENDING_PAYMENT') {
-      return {
-        title: t('pages.orderTracking.nextPayTitle'),
-        text: t('pages.orderTracking.nextPayText'),
-        tone: 'warning',
-      };
-    }
-    if (order.status === 'PENDING_SHIPMENT') {
-      return {
-        title: t('pages.orderTracking.nextPrepareTitle'),
-        text: t('pages.orderTracking.nextPrepareText'),
-        tone: 'info',
-      };
-    }
-    if (order.status === 'COMPLETED') {
-      return {
-        title: t('pages.orderTracking.nextDeliveredTitle'),
-        text: t('pages.orderTracking.nextDeliveredText'),
-        tone: 'success',
-      };
-    }
-    if (order.trackingNumber) {
-      return {
-        title: t('pages.orderTracking.nextTrackTitle'),
-        text: t('pages.orderTracking.nextTrackText', { number: order.trackingNumber }),
-        tone: 'success',
-      };
-    }
-    return {
-      title: t('pages.orderTracking.nextSupportTitle'),
-      text: t('pages.orderTracking.nextSupportText'),
-      tone: 'info',
-    };
-  }, [canOperateTrackedOrder, order, t]);
+  const nextAction = useMemo(
+    () => resolveOrderTrackingNextActionDescriptor({
+      t,
+      order,
+      canOperateTrackedOrder,
+    }),
+    [canOperateTrackedOrder, order, t],
+  );
+  const assurancePlanDescriptor = useMemo(
+    () => resolveOrderTrackingAssurancePlanDescriptor({
+      t,
+      order,
+      detailsRestricted,
+      items,
+    }),
+    [detailsRestricted, items, order, t],
+  );
   const assurancePlan = useMemo(() => {
-    if (!order) return null;
-    if (detailsRestricted) return null;
-    const itemCount = items.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
-    const isDelivered = order.status === 'COMPLETED';
-    const isShipped = Boolean(order.trackingNumber);
+    if (!assurancePlanDescriptor) return null;
     return {
-      itemCount,
-      title: isDelivered ? t('pages.orderTracking.assuranceDeliveredTitle') : t('pages.orderTracking.assuranceActiveTitle'),
-      text: isDelivered
-        ? t('pages.orderTracking.assuranceDeliveredText', { count: itemCount })
-        : isShipped
-          ? t('pages.orderTracking.assuranceShippedText', { count: itemCount })
-          : t('pages.orderTracking.assurancePreparingText', { count: itemCount }),
-      primaryLabel: isDelivered ? t('pages.orderTracking.shopAgain') : t('pages.profile.contactSupport'),
-      primaryAction: isDelivered ? () => navigate('/products') : supportOpen,
+      itemCount: assurancePlanDescriptor.itemCount,
+      title: assurancePlanDescriptor.title,
+      text: assurancePlanDescriptor.text,
+      primaryLabel: assurancePlanDescriptor.primaryLabel,
+      primaryAction: assurancePlanDescriptor.intent === 'shop-again'
+        ? () => navigate('/products')
+        : supportOpen,
     };
-  }, [detailsRestricted, items, navigate, order, supportOpen, t]);
+  }, [assurancePlanDescriptor, navigate, supportOpen]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -542,7 +517,7 @@ const OrderTracking: React.FC = () => {
   return (
     <div className={`order-tracking-page order-tracking-page--${language}`}>
       {(() => {
-        const panelProps: OrderTrackingPanelsProps = {
+        const panelProps: OrderTrackingPanelsProps = buildOrderTrackingPanelProps({
           t,
           language,
           navigate,
@@ -604,7 +579,7 @@ const OrderTracking: React.FC = () => {
           restoreTrackedItemsToCart,
           signInForOrder,
           supportOpen,
-        };
+        });
         return (
           <>
             <OrderTrackingMainPanels {...panelProps} />

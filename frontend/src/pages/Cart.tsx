@@ -23,12 +23,17 @@ import { dispatchDomEvent } from '../utils/domEvents';
 import ShopBreadcrumb from '../components/ShopBreadcrumb';
 import AddOnAssistant from '../components/AddOnAssistant';
 import {
+  buildCartActionLabels,
+  buildCartHeroHighlightDescriptors,
+  buildCartShippingPresentation,
+  buildCartSummaryCardDescriptors,
   clearRecentProductsCache,
   deriveCartCheckoutMetrics,
   getLineTotal,
   getSavedAgeDays,
   getSavedForLaterItemsSnapshot,
   normalizePositiveProductId,
+  resolveCartNextActionDescriptor,
 } from './cartHelpers';
 import { CartFullEmptyState, CartLoadErrorState, CartLoadingState } from './cartShellStates';
 import { CartInlineEmptyPanel, CartOrderSummary, CartPaymentReturnBanner } from './cartConversionPanels';
@@ -277,153 +282,137 @@ const Cart: React.FC = () => {
     );
   };
 
-  const freeShippingRemainingText = (amount: number) => renderCartAmountText(
-    t('pages.cart.freeShippingRemaining', { amount: formatMoney(amount) }),
-    formatMoney(amount),
-  );
-  const savedValueText = renderCartAmountText(
-    t('pages.cart.savedValueText', { count: savedItems.length, amount: formatMoney(savedItemsTotal) }),
-    formatMoney(savedItemsTotal),
-  );
-  const freeShippingStatusTitle = freeShippingUnlocked
-    ? t('pages.cart.freeShippingUnlocked')
-    : freeShippingRemaining > 0
-      ? freeShippingRemainingText(freeShippingRemaining)
-      : t('pages.cart.shippingCalculatedAtCheckout');
-  const freeShippingGapTitle = freeShippingUnlocked
-    ? t('pages.cart.freeShippingUnlocked')
-    : freeShippingRemaining > 0
-      ? renderCartAmountText(t('pages.cart.readinessFreeShippingGap', { amount: formatMoney(freeShippingRemaining) }), formatMoney(freeShippingRemaining))
-      : t('pages.cart.shippingCalculatedAtCheckout');
-  const freeShippingProgressText = freeShippingUnlocked
-    ? t('pages.cart.freeShippingUnlocked')
-    : `${freeShippingPercent}%`;
+  const cartShippingPresentation = buildCartShippingPresentation({
+    t,
+    freeShippingUnlocked,
+    freeShippingRemaining,
+    freeShippingPercent,
+    freeShippingRemainingMoney: formatMoney(freeShippingRemaining),
+    savedItemsCount: savedItems.length,
+    savedItemsTotalMoney: formatMoney(savedItemsTotal),
+  });
+  const freeShippingStatusTitle = cartShippingPresentation.freeShippingStatusHighlightAmount
+    ? renderCartAmountText(
+      cartShippingPresentation.freeShippingStatusTitle,
+      cartShippingPresentation.freeShippingStatusHighlightAmount,
+    )
+    : cartShippingPresentation.freeShippingStatusTitle;
+  const freeShippingGapTitle = cartShippingPresentation.freeShippingGapHighlightAmount
+    ? renderCartAmountText(
+      cartShippingPresentation.freeShippingGapTitle,
+      cartShippingPresentation.freeShippingGapHighlightAmount,
+    )
+    : cartShippingPresentation.freeShippingGapTitle;
+  const freeShippingProgressText = cartShippingPresentation.freeShippingProgressText;
+  const savedValueText = cartShippingPresentation.savedValueHighlightAmount
+    ? renderCartAmountText(
+      cartShippingPresentation.savedValueText,
+      cartShippingPresentation.savedValueHighlightAmount,
+    )
+    : cartShippingPresentation.savedValueText;
 
-  const cartNextAction = (() => {
-    if (hasStaleCartData) {
-      return {
-        key: 'refresh',
-        tone: 'warning',
-        title: t('pages.cart.nextActionRefreshTitle'),
-        text: t('pages.cart.nextActionRefreshText'),
-        label: t('messages.retry'),
-        action: refreshCartItems,
-      };
-    }
-    if (unavailableItems.length > 0) {
-      return {
-        key: 'clear',
-        tone: 'warning',
-        title: t('pages.cart.nextActionClearTitle'),
-        text: t('pages.cart.nextActionClearText', { count: unavailableItems.length }),
-        label: t('pages.cart.clearUnavailable'),
-        action: clearUnavailableItems,
-      };
-    }
-    if (selectedItems.length === 0 && purchasableItems.length > 0) {
-      return {
-        key: 'select',
-        tone: 'warning',
-        title: t('pages.cart.nextActionSelectTitle'),
-        text: t('pages.cart.nextActionSelectText', { count: purchasableUnitCount }),
-        label: t('pages.cart.selectCheckoutReady'),
-        action: () => toggleAll(true),
-      };
-    }
-    if (selectedItems.some(canCheckout)) {
-      return {
-        key: 'checkout',
-        tone: 'ready',
-        title: t('pages.cart.nextActionCheckoutTitle'),
-        text: renderCartAmountText(t('pages.cart.nextActionCheckoutText', { amount: formatMoney(selectedTotal) }), formatMoney(selectedTotal)),
-        label: t('pages.cart.checkout'),
-        action: goCheckout,
-      };
-    }
-    if (selectedItems.length > 0 && benefitTarget) {
-      return {
-        key: benefitTarget.reason,
-        tone: 'warm',
-        title: benefitTarget.reason === 'gift'
-          ? t('pages.cart.nextActionGiftTitle')
-          : t('pages.cart.nextActionShippingTitle'),
-        text: benefitTarget.reason === 'gift'
-          ? renderCartAmountText(t('pages.cart.nextActionGiftText', { amount: formatMoney(benefitTarget.remainingAmount) }), formatMoney(benefitTarget.remainingAmount))
-          : renderCartAmountText(t('pages.cart.nextActionShippingText', { amount: formatMoney(benefitTarget.remainingAmount) }), formatMoney(benefitTarget.remainingAmount)),
-        label: t('pages.cart.nextActionFindAddOn'),
-        action: () => {
-          document.getElementById('cart-add-on-assistant')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        },
-      };
-    }
-    if (savedReminderItems.length > 0) {
-      return {
-        key: 'saved',
-        tone: 'warm',
-        title: t('pages.cart.nextActionSavedTitle'),
-        text: t('pages.cart.nextActionSavedText', { count: savedReminderItems.length }),
-        label: t('pages.cart.restoreReminder'),
-        action: () => moveSavedItemsToCart(savedReminderItems),
-      };
-    }
-    return {
-      key: 'checkout',
-      tone: 'ready',
-      title: t('pages.cart.nextActionCheckoutTitle'),
-      text: renderCartAmountText(t('pages.cart.nextActionCheckoutText', { amount: formatMoney(selectedTotal) }), formatMoney(selectedTotal)),
-      label: t('pages.cart.checkout'),
-      action: goCheckout,
-    };
-  })();
-  const cartHeroHighlights = [
-    {
-      key: 'total',
-      title: t('common.total'),
-      text: formatMoney(selectedTotal),
+  const cartNextActionDescriptor = resolveCartNextActionDescriptor({
+    t,
+    hasStaleCartData,
+    unavailableItemsCount: unavailableItems.length,
+    selectedItemsCount: selectedItems.length,
+    purchasableItemsCount: purchasableItems.length,
+    purchasableUnitCount,
+    selectedCanCheckout: selectedItems.some(canCheckout),
+    selectedTotalText: formatMoney(selectedTotal),
+    benefitTargetReason: benefitTarget?.reason,
+    benefitTargetRemainingText: benefitTarget ? formatMoney(benefitTarget.remainingAmount) : null,
+    savedReminderItemsCount: savedReminderItems.length,
+  });
+  const cartNextAction = {
+    key: cartNextActionDescriptor.key,
+    tone: cartNextActionDescriptor.tone,
+    title: cartNextActionDescriptor.title,
+    text: cartNextActionDescriptor.highlightAmount
+      ? renderCartAmountText(cartNextActionDescriptor.text, cartNextActionDescriptor.highlightAmount)
+      : cartNextActionDescriptor.text,
+    label: cartNextActionDescriptor.label,
+    action: () => {
+      if (cartNextActionDescriptor.intent === 'refresh') {
+        refreshCartItems();
+        return;
+      }
+      if (cartNextActionDescriptor.intent === 'clear-unavailable') {
+        clearUnavailableItems();
+        return;
+      }
+      if (cartNextActionDescriptor.intent === 'select-ready') {
+        toggleAll(true);
+        return;
+      }
+      if (cartNextActionDescriptor.intent === 'find-addon') {
+        document.getElementById('cart-add-on-assistant')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return;
+      }
+      if (cartNextActionDescriptor.intent === 'restore-saved') {
+        moveSavedItemsToCart(savedReminderItems);
+        return;
+      }
+      goCheckout();
     },
-    {
-      key: 'shipping',
-      title: freeShippingStatusTitle,
-      text: freeShippingProgressText,
-    },
-    {
-      key: 'saved',
-      title: t('pages.cart.saveForLaterTitle'),
-      text: savedValueText,
-    },
-  ];
-  const cartSummaryCards = [
-    {
-      key: 'selected',
-      title: t('pages.cart.selectedSummary', { count: selectedUnitCount }),
-      text: formatMoney(selectedTotal),
-    },
-    {
-      key: 'shipping',
-      title: freeShippingGapTitle,
-      text: freeShippingProgressText,
-    },
-    {
-      key: 'saved',
-      title: t('pages.cart.saveForLaterTitle'),
-      text: `${savedItems.length}`,
-    },
-  ];
-  const retryCartLoadActionLabel = `${t('messages.retry')}: ${t('pages.cart.fetchFailed')}`;
-  const emptyBrowseActionLabel = `${t('pages.cart.browse')}: ${t('pages.cart.empty')}`;
-  const emptyCouponsActionLabel = `${t('nav.coupons')}: ${t('pages.cart.empty')}`;
-  const emptyPetFinderActionLabel = `${t('nav.petFinder')}: ${t('pages.cart.empty')}`;
-  const emptyHistoryActionLabel = `${t('nav.history')}: ${t('pages.cart.recentRecoveryTitle')}`;
-  const cartNextActionLabel = `${cartNextAction.label}: ${cartNextAction.title}`;
-  const cartTopNextActionLabel = `${t('pages.cart.nextActionEyebrow')}: ${cartNextActionLabel}`;
-  const browseAllProductsActionLabel = `${t('pages.cart.browse')}: ${t('pages.productList.allCategories')}`;
-  const recentRecoveryBrowseActionLabel = `${t('pages.cart.browse')}: ${t('pages.cart.recentRecoveryTitle')}`;
-  const deleteSelectedActionLabel = `${t('pages.cart.deleteSelected')}: ${t('pages.cart.selectedSummary', { count: selectedIds.length })}`;
-  const clearUnavailableActionLabel = `${t('pages.cart.clearUnavailable')}: ${t('pages.cart.blockedItems', { count: unavailableItems.length })}`;
-  const selectReadyActionLabel = `${t('pages.cart.selectCheckoutReady')}: ${t('pages.cart.readyItems', { count: purchasableItems.length })}`;
-  const checkoutActionLabel = `${t('pages.cart.checkout')}: ${t('pages.cart.selectedSummary', { count: selectedUnitCount })}, ${formatMoney(selectedTotal)}`;
-  const moveAllSavedActionLabel = `${t('pages.cart.moveAllToCart')}: ${t('pages.cart.saveForLaterTitle')} (${savedItems.length})`;
-  const restoreSavedReminderActionLabel = `${t('pages.cart.restoreReminder')}: ${t('pages.cart.savedReminderTitle', { count: savedReminderItems.length })}`;
+  };
+  const cartHeroHighlights = buildCartHeroHighlightDescriptors({
+    t,
+    selectedTotalText: formatMoney(selectedTotal),
+    freeShippingStatusTitle: typeof freeShippingStatusTitle === 'string' ? freeShippingStatusTitle : freeShippingProgressText,
+    freeShippingProgressText,
+    savedValueText: typeof savedValueText === 'string' ? savedValueText : t('pages.cart.saveForLaterTitle'),
+  }).map((item) => (
+    item.key === 'shipping'
+      ? { ...item, title: freeShippingStatusTitle }
+      : item.key === 'saved'
+        ? { ...item, text: savedValueText }
+        : item
+  ));
+  const cartSummaryCards = buildCartSummaryCardDescriptors({
+    t,
+    selectedUnitCount,
+    selectedTotalText: formatMoney(selectedTotal),
+    freeShippingGapTitle: typeof freeShippingGapTitle === 'string' ? freeShippingGapTitle : freeShippingProgressText,
+    freeShippingProgressText,
+    savedItemsCount: savedItems.length,
+  }).map((item) => (
+    item.key === 'shipping'
+      ? { ...item, title: freeShippingGapTitle }
+      : item
+  ));
+  const {
+    retryCartLoadActionLabel,
+    emptyBrowseActionLabel,
+    emptyCouponsActionLabel,
+    emptyPetFinderActionLabel,
+    emptyHistoryActionLabel,
+    cartNextActionLabel,
+    cartTopNextActionLabel,
+    browseAllProductsActionLabel,
+    recentRecoveryBrowseActionLabel,
+    deleteSelectedActionLabel,
+    clearUnavailableActionLabel,
+    selectReadyActionLabel,
+    checkoutActionLabel,
+    moveAllSavedActionLabel,
+    restoreSavedReminderActionLabel,
+    paymentCancelledResumeLabel,
+    paymentCancelledTrackLabel,
+    paymentCancelledCheckoutLabel,
+  } = buildCartActionLabels({
+    t,
+    cartNextActionTitle: cartNextAction.title,
+    cartNextActionPrimaryLabel: cartNextAction.label,
+    selectedIdsCount: selectedIds.length,
+    unavailableItemsCount: unavailableItems.length,
+    purchasableItemsCount: purchasableItems.length,
+    selectedUnitCount,
+    selectedTotalText: formatMoney(selectedTotal),
+    savedItemsCount: savedItems.length,
+    savedReminderItemsCount: savedReminderItems.length,
+    paymentReturnOrderNo,
+  });
 
   const {
     addRecentProduct,
@@ -443,14 +432,6 @@ const Cart: React.FC = () => {
     setSelectedIds,
     t,
   });
-
-  const paymentCancelledResumeLabel = paymentReturnOrderNo
-    ? `${t('pages.cart.paymentCancelledResume')}: ${paymentReturnOrderNo}`
-    : t('pages.cart.paymentCancelledResume');
-  const paymentCancelledTrackLabel = paymentReturnOrderNo
-    ? `${t('pages.cart.paymentCancelledTrack')}: ${paymentReturnOrderNo}`
-    : t('pages.cart.paymentCancelledTrack');
-  const paymentCancelledCheckoutLabel = t('pages.cart.checkout');
 
   const paymentReturnBanner = paymentReturnIncomplete ? (
     <CartPaymentReturnBanner

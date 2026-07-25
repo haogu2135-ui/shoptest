@@ -432,13 +432,14 @@ describe('Checkout payment availability', () => {
     expect(helpersSource).toContain('export const getSavedAddressDetail = (address?: UserAddress | null) =>');
     expect(helpersSource).toContain('export const isCompleteSavedAddress = (address?: UserAddress | null) =>');
     expect(checkoutSource).toContain('getSavedAddressRegionPath');
-    expect(checkoutSource).toContain('isCompleteSavedAddress');
+    expect(checkoutSource).toContain('resolveCheckoutSelectedAddressReady');
     expect(addressHydrate).toContain('const savedPostalCode = getSavedAddressPostalCode(address);');
     expect(addressHydrate).toContain('postalCode: savedPostalCode || undefined,');
     expect(helpersSource).toContain('&& isValidCheckoutPostalCode(postalCode, regionPath)');
     expect(helpersSource).toContain('&& hasCompleteCheckoutRecipientName(address.recipientName)');
     expect(helpersSource).toContain('&& hasCompleteCheckoutDetailAddress(getSavedAddressDetail(address))');
-    expect(checkoutSource).toContain(': isCompleteSavedAddress(selectedSavedAddress)');
+    expect(helpersSource).toContain('export const resolveCheckoutSelectedAddressReady');
+    expect(helpersSource).toContain(': isCompleteSavedAddress(params.selectedSavedAddress)');
     expect(helpersSource).toContain('export const buildCheckoutShippingAddressLine');
     expect(helpersSource).toContain('isCompleteSavedAddress(selectedSavedAddress)');
     expect(helpersSource).toContain('throw new Error(addressRequiredMessage)');
@@ -489,12 +490,16 @@ describe('Checkout payment availability', () => {
     expect(helpersSource).toContain('export const hasCompleteCheckoutRecipientName = (value: unknown) =>');
     expect(helpersSource).toContain('export const hasCompleteCheckoutDetailAddress = (value: unknown) =>');
     expect(source).toContain("from '../utils/checkoutHelpers'");
-    expect(source).toContain('hasCompleteCheckoutRecipientName');
-    expect(source).toContain('hasCompleteCheckoutDetailAddress');
+    expect(helpersSource).toContain('hasCompleteCheckoutRecipientName');
+    expect(helpersSource).toContain('hasCompleteCheckoutDetailAddress');
     expect(helpersSource).toContain('&& hasCompleteCheckoutRecipientName(address.recipientName)');
     expect(helpersSource).toContain('&& hasCompleteCheckoutDetailAddress(getSavedAddressDetail(address))');
-    expect(source).toContain('hasCompleteCheckoutRecipientName(currentRecipientName)');
-    expect(source).toContain('hasCompleteCheckoutDetailAddress(currentShippingAddress)');
+    expect(helpersSource).toContain('export const resolveCheckoutNewAddressReady');
+    expect(helpersSource).toContain('hasCompleteCheckoutRecipientName(params.recipientName)');
+    expect(helpersSource).toContain('hasCompleteCheckoutDetailAddress(params.shippingAddress)');
+    expect(source).toContain('resolveCheckoutNewAddressReady');
+    expect(source).toContain('recipientName: currentRecipientName');
+    expect(source).toContain('shippingAddress: currentShippingAddress');
     const formSections = readCheckoutFormSectionsSource();
     expect(formSections).toContain("Promise.reject(new Error(t('pages.checkout.recipientMin')))");
     expect(formSections).toContain("Promise.reject(new Error(t('pages.checkout.detailMin')))");
@@ -543,7 +548,9 @@ describe('Checkout payment availability', () => {
     expect(source).toContain('const [paymentChannelsReloadKey, setPaymentChannelsReloadKey] = useState(0);');
     expect(readCheckoutSurfaceSource()).toContain("description={paymentChannelsError || t('pages.checkout.paymentUnavailableDescription')}");
     expect(source).toContain('const reloadPaymentChannels = useCallback(() => {\n    setPaymentChannelsReloadKey((key) => key + 1);\n  }, []);');
-    expect(source).toContain('onClick={reloadPaymentChannels}');
+    expect(source).toContain('buildCheckoutPaymentUnavailableRecoveryDescriptors({ t })');
+    expect(source).toContain("if (item.intent === 'retry')");
+    expect(source).toContain('reloadPaymentChannels();');
     expect(channelsEffect).not.toContain('.catch(() => {');
   });
 

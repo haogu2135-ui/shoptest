@@ -119,4 +119,12 @@
   body.shop-cookie-consent-visible .customer-support-widget__panel {
     bottom: calc(92px + env(safe-area-inset-bottom, 0px) + var(--shop-cookie-consent-clearance, 200px)) !important;
   }
+
+  /* Auth forms are in-flow (not sticky); reserve scroll room so password submit is not under the rail. */
+  body.shop-cookie-consent-visible .shopee-login-root,
+  body.shop-cookie-consent-visible .shopee-register-root,
+  body.shop-cookie-consent-visible .shopee-forgot-root {
+    padding-bottom: calc(var(--shop-cookie-consent-clearance, 200px) + 24px) !important;
+    scroll-padding-bottom: calc(var(--shop-cookie-consent-clearance, 200px) + 24px);
+  }
 }

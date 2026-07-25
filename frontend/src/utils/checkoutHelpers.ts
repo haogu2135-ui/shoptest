@@ -1313,3 +1313,147 @@ export const deriveCheckoutAddOnTarget = (params: {
 export const resolveAvailableCheckoutCoupons = (couponQuote: CouponQuote | null) =>
   (couponQuote && Array.isArray(couponQuote.availableCoupons) ? couponQuote.availableCoupons : []);
 
+export const buildCheckoutSelectedAddressLabel = (params: {
+  t: CheckoutTranslationFn;
+  selectedSavedAddress?: Pick<UserAddress, 'recipientName' | 'address'> | null;
+}): string => (
+  params.selectedSavedAddress
+    ? `${params.selectedSavedAddress.recipientName || params.t('pages.checkout.address')}: ${params.selectedSavedAddress.address}`
+    : params.t('pages.checkout.useNewAddress')
+);
+
+export const buildCheckoutAddressGroupLabel = (params: {
+  t: CheckoutTranslationFn;
+  selectedAddressLabel: string;
+}): string => `${params.t('pages.checkout.address')}: ${params.selectedAddressLabel}`;
+
+export const buildCheckoutRegionInputLabel = (t: CheckoutTranslationFn): string => (
+  `${t('pages.checkout.region')}: ${t('pages.checkout.regionRequired')}`
+);
+
+export const buildCheckoutCouponSelectLabel = (t: CheckoutTranslationFn): string => (
+  `${t('pages.checkout.coupon')}: ${t('pages.checkout.selectCoupon')}`
+);
+
+export const buildCheckoutSubmitActionLabel = (params: {
+  t: CheckoutTranslationFn;
+  shippingQuoteReady: boolean;
+  payableAmountText: string;
+  shippingPolicyText: string;
+  selectedPaymentMethodLabel: string;
+}): string => (
+  params.shippingQuoteReady
+    ? `${params.t('pages.checkout.submitWithAmount', { amount: params.payableAmountText })}: ${params.t('pages.checkout.paymentMethod')} ${params.selectedPaymentMethodLabel}`
+    : `${params.shippingPolicyText}: ${params.t('pages.checkout.paymentMethod')} ${params.selectedPaymentMethodLabel}`
+);
+
+export const buildCheckoutConfirmationActionLabel = (params: {
+  t: CheckoutTranslationFn;
+  checkoutBlockingAction: unknown;
+  checkoutNextActionLabel: string;
+  checkoutSubmitActionLabel: string;
+}): string => (
+  params.checkoutBlockingAction
+    ? `${params.t('pages.checkout.nextActionTitle')}: ${params.checkoutNextActionLabel}`
+    : `${params.t('pages.checkout.nextActionReadyTitle')}: ${params.checkoutSubmitActionLabel}`
+);
+
+export const buildCheckoutSubmitTooltip = (params: {
+  checkoutSubmitDisabled: boolean;
+  checkoutSubmitDisabledReason?: string | null;
+  checkoutSubmitActionLabel: string;
+}): string => (
+  params.checkoutSubmitDisabled && params.checkoutSubmitDisabledReason
+    ? params.checkoutSubmitDisabledReason
+    : params.checkoutSubmitActionLabel
+);
+
+export const resolveCheckoutNewAddressReady = (params: {
+  recipientName?: string | null;
+  phone?: string | null;
+  region?: string[] | null;
+  postalCode?: string | null;
+  shippingAddress?: string | null;
+}): boolean => Boolean(
+  hasCompleteCheckoutRecipientName(params.recipientName)
+    && isLikelyPhone(params.phone)
+    && Array.isArray(params.region)
+    && params.region.length > 0
+    && isValidCheckoutPostalCode(params.postalCode, params.region)
+    && hasCompleteCheckoutDetailAddress(params.shippingAddress),
+);
+
+export const resolveCheckoutSelectedAddressReady = (params: {
+  selectedAddressId: string | number | null | undefined;
+  newAddressReady: boolean;
+  selectedSavedAddress?: UserAddress | null;
+}): boolean => (
+  params.selectedAddressId === 'new'
+    ? params.newAddressReady
+    : isCompleteSavedAddress(params.selectedSavedAddress)
+);
+
+/** Assemble CheckoutMainShell prop bag in one pure surface for residual modularization. */
+export const buildCheckoutMainShellProps = <T extends Record<string, unknown>>(props: T): T => props;
+
+/** Early-return shell prop bags — keep Checkout page free of inline shell object literals. */
+export const buildCheckoutLoadingShellProps = <T extends Record<string, unknown>>(props: T): T => props;
+
+export const buildCheckoutPaymentPendingShellProps = <T extends Record<string, unknown>>(props: T): T => props;
+
+export const buildCheckoutPaymentActiveShellProps = <T extends Record<string, unknown>>(props: T): T => props;
+
+export const buildCheckoutCartLoadErrorShellProps = <T extends Record<string, unknown>>(props: T): T => props;
+
+export const buildCheckoutEmptyShellProps = <T extends Record<string, unknown>>(props: T): T => props;
+
+
+export type CheckoutPaymentUnavailableRecoveryIntent =
+  | 'retry'
+  | 'support'
+  | 'cart'
+  | 'browse'
+  | 'coupons';
+
+export type CheckoutPaymentUnavailableRecoveryDescriptor = {
+  key: string;
+  label: string;
+  iconKey?: 'support' | 'cart' | 'shopping' | 'gift';
+  intent: CheckoutPaymentUnavailableRecoveryIntent;
+  primary?: boolean;
+};
+
+export const buildCheckoutPaymentUnavailableRecoveryDescriptors = (params: {
+  t: CheckoutTranslationFn;
+}): CheckoutPaymentUnavailableRecoveryDescriptor[] => [
+  {
+    key: 'retry',
+    label: params.t('messages.retry'),
+    intent: 'retry',
+    primary: true,
+  },
+  {
+    key: 'support',
+    label: params.t('pages.profile.contactSupport'),
+    iconKey: 'support',
+    intent: 'support',
+  },
+  {
+    key: 'cart',
+    label: params.t('pages.cart.title'),
+    iconKey: 'cart',
+    intent: 'cart',
+  },
+  {
+    key: 'browse',
+    label: params.t('pages.cart.browse'),
+    iconKey: 'shopping',
+    intent: 'browse',
+  },
+  {
+    key: 'coupons',
+    label: params.t('nav.coupons'),
+    iconKey: 'gift',
+    intent: 'coupons',
+  },
+];

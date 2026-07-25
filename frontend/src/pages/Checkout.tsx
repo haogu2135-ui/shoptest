@@ -38,8 +38,22 @@ import {
 } from '../components/checkout/CheckoutShellStates';
 import { CheckoutMainShell } from '../components/checkout/CheckoutMainShell';
 import {
+  buildCheckoutAddressGroupLabel,
+  buildCheckoutMainShellProps,
+  buildCheckoutLoadingShellProps,
+  buildCheckoutPaymentPendingShellProps,
+  buildCheckoutPaymentActiveShellProps,
+  buildCheckoutCartLoadErrorShellProps,
+  buildCheckoutEmptyShellProps,
+  buildCheckoutPaymentUnavailableRecoveryDescriptors,
+  buildCheckoutConfirmationActionLabel,
+  buildCheckoutCouponSelectLabel,
   buildCheckoutFieldErrorMap,
   buildCheckoutHeroHighlights,
+  buildCheckoutRegionInputLabel,
+  buildCheckoutSelectedAddressLabel,
+  buildCheckoutSubmitActionLabel,
+  buildCheckoutSubmitTooltip,
   buildCheckoutSummaryCards,
   buildCheckoutValidationAnnouncement,
   checkoutGuestDraftFieldNames,
@@ -49,8 +63,6 @@ import {
   getSavedAddressDetail,
   getSavedAddressPostalCode,
   getSavedAddressRegionPath,
-  hasCompleteCheckoutDetailAddress,
-  hasCompleteCheckoutRecipientName,
   hasHydratableCheckoutValue,
   isCompleteSavedAddress,
   isLikelyPhone,
@@ -61,6 +73,8 @@ import {
   normalizeCheckoutPostalCode,
   normalizeCheckoutText,
   normalizeLikelyCheckoutPhone,
+  resolveCheckoutNewAddressReady,
+  resolveCheckoutSelectedAddressReady,
   resolveCheckoutSubmitState,
   toSafeMoney,
   readCheckoutGuestDraftFields,
@@ -279,52 +293,50 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
   }, []);
   const paymentUnavailableRecoveryActions = (
     <div className="checkout-page__paymentUnavailableActions" data-checkout-payment-unavailable-recovery="true">
-      <ShopButton
-        size="small"
-        type="primary"
-        loading={paymentChannelsLoading}
-        aria-label={t('messages.retry')}
-        title={t('messages.retry')}
-        onClick={reloadPaymentChannels}
-      >
-        {t('messages.retry')}
-      </ShopButton>
-      <ShopButton
-        size="small"
-        icon={<ShopIcon path={SI.support} />}
-        aria-label={t('pages.profile.contactSupport')}
-        title={t('pages.profile.contactSupport')}
-        onClick={openSupport}
-      >
-        {t('pages.profile.contactSupport')}
-      </ShopButton>
-      <ShopButton
-        size="small"
-        icon={<ShopIcon path={SI.cart} />}
-        aria-label={t('pages.cart.title')}
-        title={t('pages.cart.title')}
-        onClick={() => navigate('/cart')}
-      >
-        {t('pages.cart.title')}
-      </ShopButton>
-      <ShopButton
-        size="small"
-        icon={<ShopIcon path={SI.shopping} />}
-        aria-label={t('pages.cart.browse')}
-        title={t('pages.cart.browse')}
-        onClick={() => navigate('/products')}
-      >
-        {t('pages.cart.browse')}
-      </ShopButton>
-      <ShopButton
-        size="small"
-        icon={<ShopIcon path={SI.gift} />}
-        aria-label={t('nav.coupons')}
-        title={t('nav.coupons')}
-        onClick={() => navigate('/coupons')}
-      >
-        {t('nav.coupons')}
-      </ShopButton>
+      {buildCheckoutPaymentUnavailableRecoveryDescriptors({ t }).map((item) => {
+        const iconPath = item.iconKey === 'support'
+          ? SI.support
+          : item.iconKey === 'cart'
+            ? SI.cart
+            : item.iconKey === 'shopping'
+              ? SI.shopping
+              : item.iconKey === 'gift'
+                ? SI.gift
+                : undefined;
+        const onClick = () => {
+          if (item.intent === 'retry') {
+            reloadPaymentChannels();
+            return;
+          }
+          if (item.intent === 'support') {
+            openSupport();
+            return;
+          }
+          if (item.intent === 'cart') {
+            navigate('/cart');
+            return;
+          }
+          if (item.intent === 'browse') {
+            navigate('/products');
+            return;
+          }
+          navigate('/coupons');
+        };
+        return (
+          <ShopButton
+            key={item.key}
+            size="small"
+            type={item.primary ? 'primary' : undefined}
+            loading={item.intent === 'retry' ? paymentChannelsLoading : undefined}
+            icon={iconPath ? <ShopIcon path={iconPath} /> : undefined}
+            aria-label={item.label}
+            title={item.label}
+            onClick={onClick}
+          >
+            {item.label}
+          </ShopButton>
+        );
+      })}
     </div>
   );
   const recommendedPaymentMethod = useMemo(
@@ -543,11 +555,9 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
   const selectedSavedAddressRegion = getSavedAddressRegionPath(selectedSavedAddress);
   const selectedSavedAddressPostalCode = getSavedAddressPostalCode(selectedSavedAddress);
   const selectedSavedAddressDetail = getSavedAddressDetail(selectedSavedAddress);
-  const selectedAddressLabel = selectedSavedAddress
-    ? `${selectedSavedAddress.recipientName || t('pages.checkout.address')}: ${selectedSavedAddress.address}`
-    : t('pages.checkout.useNewAddress');
-  const checkoutAddressGroupLabel = `${t('pages.checkout.address')}: ${selectedAddressLabel}`;
-  const checkoutRegionInputLabel = `${t('pages.checkout.region')}: ${t('pages.checkout.regionRequired')}`;
+  const selectedAddressLabel = buildCheckoutSelectedAddressLabel({ t, selectedSavedAddress });
+  const checkoutAddressGroupLabel = buildCheckoutAddressGroupLabel({ t, selectedAddressLabel });
+  const checkoutRegionInputLabel = buildCheckoutRegionInputLabel(t);
   const getCheckoutTextValue = (fieldName: CheckoutFormFieldName, values?: CheckoutFormValues): string => firstFilledCheckoutText(
     values?.[fieldName],
     form.getFieldValue(fieldName),
@@ -573,17 +583,18 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
   const currentRegion = getCheckoutRegionValue();
   const currentShippingAddress = getCheckoutTextValue('shippingAddress');
   const currentPostalCode = normalizeCheckoutPostalCode(getCheckoutTextValue('postalCode'));
-  const newAddressReady = Boolean(
-    hasCompleteCheckoutRecipientName(currentRecipientName)
-      && isLikelyPhone(currentPhone)
-      && Array.isArray(currentRegion)
-      && currentRegion.length > 0
-      && isValidCheckoutPostalCode(currentPostalCode, currentRegion)
-      && hasCompleteCheckoutDetailAddress(currentShippingAddress),
-  );
-  const selectedAddressReady = selectedAddressId === 'new'
-    ? newAddressReady
-    : isCompleteSavedAddress(selectedSavedAddress);
+  const newAddressReady = resolveCheckoutNewAddressReady({
+    recipientName: currentRecipientName,
+    phone: currentPhone,
+    region: currentRegion,
+    postalCode: currentPostalCode,
+    shippingAddress: currentShippingAddress,
+  });
+  const selectedAddressReady = resolveCheckoutSelectedAddressReady({
+    selectedAddressId,
+    newAddressReady,
+    selectedSavedAddress,
+  });
 
   const {
     checkoutBlockingAction,
@@ -635,13 +646,20 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
   });
 
   const selectedPaymentMethodLabel = selectedPaymentDetail?.title || t('pages.checkout.paymentConfidenceDefault');
-  const checkoutSubmitActionLabel = shippingQuoteReady
-    ? `${t('pages.checkout.submitWithAmount', { amount: payableAmountText })}: ${t('pages.checkout.paymentMethod')} ${selectedPaymentMethodLabel}`
-    : `${shippingPolicyText}: ${t('pages.checkout.paymentMethod')} ${selectedPaymentMethodLabel}`;
-  const checkoutConfirmationActionLabel = checkoutBlockingAction
-    ? `${t('pages.checkout.nextActionTitle')}: ${checkoutNextActionLabel}`
-    : `${t('pages.checkout.nextActionReadyTitle')}: ${checkoutSubmitActionLabel}`;
-  const checkoutCouponSelectLabel = `${t('pages.checkout.coupon')}: ${t('pages.checkout.selectCoupon')}`;
+  const checkoutSubmitActionLabel = buildCheckoutSubmitActionLabel({
+    t,
+    shippingQuoteReady,
+    payableAmountText,
+    shippingPolicyText,
+    selectedPaymentMethodLabel,
+  });
+  const checkoutConfirmationActionLabel = buildCheckoutConfirmationActionLabel({
+    t,
+    checkoutBlockingAction,
+    checkoutNextActionLabel,
+    checkoutSubmitActionLabel,
+  });
+  const checkoutCouponSelectLabel = buildCheckoutCouponSelectLabel(t);
 
   const checkoutHeroHighlights = buildCheckoutHeroHighlights({
     t,
@@ -677,9 +695,11 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
     paymentMethodsAvailable,
     watchedPaymentMethod,
   });
-  const checkoutSubmitTooltip = checkoutSubmitDisabled && checkoutSubmitDisabledReason
-    ? checkoutSubmitDisabledReason
-    : checkoutSubmitActionLabel;
+  const checkoutSubmitTooltip = buildCheckoutSubmitTooltip({
+    checkoutSubmitDisabled,
+    checkoutSubmitDisabledReason,
+    checkoutSubmitActionLabel,
+  });
 
   useCheckoutGiftCelebration({
     giftCelebrated,
@@ -783,10 +803,12 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
   if (loading) {
     return (
       <CheckoutLoadingShell
-        form={form}
-        language={language}
-        t={t}
-        statusLiveRegion={renderCheckoutStatusLiveRegion()}
+        {...buildCheckoutLoadingShellProps({
+          form,
+          language,
+          t,
+          statusLiveRegion: renderCheckoutStatusLiveRegion(),
+        })}
       />
     );
   }
@@ -794,20 +816,22 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
   if (createdOrder && !payment) {
     return (
       <CheckoutPaymentPendingShell
-        language={language}
-        t={t}
-        statusLiveRegion={renderCheckoutStatusLiveRegion()}
-        createdOrder={createdOrder}
-        formatMoney={formatMoney}
-        paying={paying}
-        cancelingPayment={cancelingPayment}
-        paymentCreateError={paymentCreateError}
-        guestPaymentEmail={guestPaymentEmail}
-        onRetryPayment={retryCreatePayment}
-        onRollbackPayment={rollbackPendingPayment}
-        onViewOrder={() => navigate('/profile?tab=orders')}
-        onTrackOrder={openTrackedOrder}
-        onBackHome={() => navigate('/')}
+        {...buildCheckoutPaymentPendingShellProps({
+          language,
+          t,
+          statusLiveRegion: renderCheckoutStatusLiveRegion(),
+          createdOrder,
+          formatMoney,
+          paying,
+          cancelingPayment,
+          paymentCreateError,
+          guestPaymentEmail,
+          onRetryPayment: retryCreatePayment,
+          onRollbackPayment: rollbackPendingPayment,
+          onViewOrder: () => navigate('/profile?tab=orders'),
+          onTrackOrder: openTrackedOrder,
+          onBackHome: () => navigate('/'),
+        })}
       />
     );
   }
@@ -815,27 +839,29 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
   if (createdOrder && payment) {
     return (
       <CheckoutPaymentActiveShell
-        language={language}
-        t={t}
-        dateLocale={dateLocale}
-        statusLiveRegion={renderCheckoutStatusLiveRegion()}
-        createdOrder={createdOrder}
-        payment={payment}
-        formatMoney={formatMoney}
-        paying={paying}
-        cancelingPayment={cancelingPayment}
-        simulatingPayment={simulatingPayment}
-        paymentSimulationEnabled={paymentSimulationEnabled}
-        guestPaymentEmail={guestPaymentEmail}
-        onOpenPayment={openPaymentUrl}
-        onRetryPayment={retryCreatePayment}
-        onRollbackPayment={rollbackPendingPayment}
-        onViewOrder={() => navigate('/profile?tab=orders')}
-        onTrackOrder={openTrackedOrder}
-        onBackHome={() => navigate('/')}
-        onSimulatePayment={simulatePayment}
-        onOpenSupport={openSupport}
-        onOpenPaymentInstructions={() => navigate(`/payment/${encodeURIComponent(String(createdOrder.orderNo || createdOrder.id))}${guestPaymentEmail ? `?guestEmail=${encodeURIComponent(guestPaymentEmail)}` : ''}`)}
+        {...buildCheckoutPaymentActiveShellProps({
+          language,
+          t,
+          dateLocale,
+          statusLiveRegion: renderCheckoutStatusLiveRegion(),
+          createdOrder,
+          payment,
+          formatMoney,
+          paying,
+          cancelingPayment,
+          simulatingPayment,
+          paymentSimulationEnabled,
+          guestPaymentEmail,
+          onOpenPayment: openPaymentUrl,
+          onRetryPayment: retryCreatePayment,
+          onRollbackPayment: rollbackPendingPayment,
+          onViewOrder: () => navigate('/profile?tab=orders'),
+          onTrackOrder: openTrackedOrder,
+          onBackHome: () => navigate('/'),
+          onSimulatePayment: simulatePayment,
+          onOpenSupport: openSupport,
+          onOpenPaymentInstructions: () => navigate(`/payment/${encodeURIComponent(String(createdOrder.orderNo || createdOrder.id))}${guestPaymentEmail ? `?guestEmail=${encodeURIComponent(guestPaymentEmail)}` : ''}`),
+        })}
       />
     );
   }
@@ -843,15 +869,17 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
   if (cartLoadError && !createdOrder) {
     return (
       <CheckoutCartLoadErrorShell
-        form={form}
-        language={language}
-        t={t}
-        statusLiveRegion={renderCheckoutStatusLiveRegion()}
-        cartLoadError={cartLoadError}
-        onRetry={() => setCheckoutReloadKey((key) => key + 1)}
-        onCart={() => navigate('/cart')}
-        onBrowse={() => navigate('/products')}
-        onCoupons={() => navigate('/coupons')}
+        {...buildCheckoutCartLoadErrorShellProps({
+          form,
+          language,
+          t,
+          statusLiveRegion: renderCheckoutStatusLiveRegion(),
+          cartLoadError,
+          onRetry: () => setCheckoutReloadKey((key) => key + 1),
+          onCart: () => navigate('/cart'),
+          onBrowse: () => navigate('/products'),
+          onCoupons: () => navigate('/coupons'),
+        })}
       />
     );
   }
@@ -859,22 +887,24 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
   if (cartItems.length === 0) {
     return (
       <CheckoutEmptyShell
-        form={form}
-        language={language}
-        t={t}
-        statusLiveRegion={renderCheckoutStatusLiveRegion()}
-        freeShippingThreshold={market.freeShippingThreshold}
-        formatMoney={formatMoney}
-        onCart={() => navigate('/cart')}
-        onBrowse={() => navigate('/products')}
-        onCoupons={() => navigate('/coupons')}
-        onPetFinder={() => navigate('/pet-finder')}
-        onHistory={() => navigate('/history')}
+        {...buildCheckoutEmptyShellProps({
+          form,
+          language,
+          t,
+          statusLiveRegion: renderCheckoutStatusLiveRegion(),
+          freeShippingThreshold: market.freeShippingThreshold,
+          formatMoney,
+          onCart: () => navigate('/cart'),
+          onBrowse: () => navigate('/products'),
+          onCoupons: () => navigate('/coupons'),
+          onPetFinder: () => navigate('/pet-finder'),
+          onHistory: () => navigate('/history'),
+        })}
       />
     );
   }
 
-  const shellProps = {
+  const shellProps = buildCheckoutMainShellProps({
     language,
     t,
     checkoutHeroHighlights,
@@ -985,7 +1015,7 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
     paymentChannelsLoading,
     reloadPaymentChannels,
     openSupport,
-  };
+  });
 
   return <CheckoutMainShell {...shellProps} />;
 };

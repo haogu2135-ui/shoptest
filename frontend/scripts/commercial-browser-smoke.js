@@ -1416,25 +1416,49 @@ async function main() {
     if (canAttemptLogin) {
       await page.goto(`${base}/login`, { waitUntil: 'domcontentloaded', timeout: 45000 });
       await page.waitForSelector('#root', { timeout: 20000 });
-      // Ensure password tab is active (avoid email/code tab).
-      const passwordTab = page.locator('.shopee-login-tabs .ant-tabs-tab, .ant-tabs-tab').filter({ hasText: /password/i }).first();
-      if (await passwordTab.count()) {
-        await passwordTab.click().catch(() => undefined);
+      // Cookie rail can still cover the password submit on mobile if consent was skipped/regressed.
+      const loginCookie = page.locator('.cookie-consent-banner');
+      if (await loginCookie.count()) {
+        await page.getByRole('button', { name: /accept all|aceptar todo/i }).first().click({ timeout: 3000 }).catch(async () => {
+          await page.evaluate(() => {
+            const btn = Array.from(document.querySelectorAll('.cookie-consent-banner button'))
+              .find((node) => /accept all|aceptar todo/i.test(node.textContent || ''));
+            if (btn) btn.click();
+          });
+        });
+        await loginCookie.first().waitFor({ state: 'detached', timeout: 4000 }).catch(() => undefined);
       }
-      // Do not use bare "input, form" — language Select search inputs match first and stay hidden.
+      // Ensure password tab is active (avoid email/code tab). ES label: Contraseña.
+      const passwordTab = page.locator('.shopee-login-tabs__tab, .shopee-login-tabs .ant-tabs-tab, .ant-tabs-tab')
+        .filter({ hasText: /password|contraseña/i }).first();
+      if (await passwordTab.count()) {
+        await passwordTab.click({ timeout: 3000 }).catch(() => undefined);
+      }
+      // Prefer form[name="login"] so the email-code form (also .shopee-login-form) is never selected.
       const userInput = page.locator(
-        'form.shopee-login-form input[autocomplete="username"], form[name="login"] input[autocomplete="username"], form.shopee-login-form #login_username',
+        'form[name="login"] input[autocomplete="username"], form.shopee-login-form input[autocomplete="username"], form[name="login"] #login_username',
       ).first();
       const passInput = page.locator(
-        'form.shopee-login-form input[type="password"], form[name="login"] input[type="password"], form.shopee-login-form #login_password',
+        'form[name="login"] input[type="password"], form.shopee-login-form input[type="password"], form[name="login"] #login_password',
       ).first();
-      await userInput.waitFor({ state: 'visible', timeout: 20000 });
-      await passInput.waitFor({ state: 'visible', timeout: 20000 });
-      await userInput.fill(authUser);
-      await passInput.fill(authPassword);
-      const submit = page.locator('form.shopee-login-form button[type="submit"], form[name="login"] button[type="submit"]').first();
+      await userInput.waitFor({ state: 'visible', timeout: 15000 });
+      await passInput.waitFor({ state: 'visible', timeout: 15000 });
+      await userInput.fill(authUser, { timeout: 5000 });
+      await passInput.fill(authPassword, { timeout: 5000 });
+      const submit = page.locator('form[name="login"] button[type="submit"], form.shopee-login-form:not(.shopee-login-form--email) button[type="submit"]').first();
       await submit.waitFor({ state: 'visible', timeout: 10000 });
-      await submit.click();
+      await submit.scrollIntoViewIfNeeded({ timeout: 3000 }).catch(() => undefined);
+      // Prefer force/requestSubmit: Ant Design submit stability checks flake inside scroll roots.
+      await submit.click({ force: true, timeout: 5000 }).catch(async () => {
+        await page.evaluate(() => {
+          const form = document.querySelector('form[name="login"]');
+          if (form && typeof form.requestSubmit === 'function') {
+            form.requestSubmit();
+            return;
+          }
+          if (form) form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+        });
+      });
       // Wait for auth token persistence rather than fixed sleep alone.
       await page.waitForFunction(
         () => {
@@ -1444,12 +1468,8 @@ async function main() {
             return false;
           }
         },
-        { timeout: 15000 },
+        { timeout: 12000 },
       ).catch(() => undefined);
-      await page.waitForTimeout(500);
-      const afterLogin = (await page.locator('body').innerText()).replace(/\s+/g, ' ').trim();
-      const loggedIn = /profile|account|logout|sign out|orders|my orders|cart/i.test(afterLogin)
-        && !/invalid username or password|login failed/i.test(afterLogin);
       const tokenPresent = await page.evaluate(() => {
         try {
           return Boolean(localStorage.getItem('token') || sessionStorage.getItem('token'));
@@ -1457,6 +1477,15 @@ async function main() {
           return false;
         }
       });
+      let afterLogin = '';
+      if (!tokenPresent) {
+        afterLogin = await page.evaluate(() => (document.body && document.body.innerText ? document.body.innerText : '')).catch(() => '');
+        afterLogin = String(afterLogin || '').replace(/\s+/g, ' ').trim();
+      }
+      const loggedIn = tokenPresent || (
+        /profile|account|logout|sign out|orders|my orders|cart/i.test(afterLogin)
+        && !/invalid username or password|login failed/i.test(afterLogin)
+      );
       check('browser auth login success', loggedIn || tokenPresent, tokenPresent ? 'token-present' : afterLogin.slice(0, 140));
     }
 

@@ -332,10 +332,12 @@ describe('ProductDetail mobile buybar layout contract', () => {
     expect(source).toContain('deriveProductDetailSelectionState({');
     expect(source).toContain('lowStockCount,');
     expect(source).toContain('isLowStock,');
-    expect(source).toContain("t('pages.productDetail.lowStockUrgency'");
+    expect(source).toContain('resolveProductDetailLowStockUrgencyLabel({');
     expect(surface).toContain("t('pages.productDetail.lowStockUrgencyText'");
     expect(source).toContain('shouldShowProductDetailDecisionChecklist({');
     const helpers = readProductDetailHelpersSource();
+    expect(helpers).toContain("params.t('pages.productDetail.lowStockUrgency'");
+    expect(helpers).toContain('export const resolveProductDetailLowStockUrgencyLabel');
     expect(helpers).toContain('export const shouldShowProductDetailDecisionChecklist');
     expect(helpers).toContain('params.isOutOfStock');
     expect(helpers).toContain('params.isLowStock');

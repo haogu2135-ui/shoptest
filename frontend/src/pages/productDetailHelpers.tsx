@@ -874,3 +874,89 @@ export const resolveProductDetailChecklistIconPath = (key: string) => {
   if (key === 'delivery') return SI.truck;
   return SI.thunder;
 };
+
+
+export const resolveProductDetailLowStockUrgencyLabel = (params: {
+  t: ProductDetailTranslate;
+  isLowStock: boolean;
+  lowStockCount: number;
+}): string => (
+  params.isLowStock
+    ? params.t('pages.productDetail.lowStockUrgency', { count: params.lowStockCount })
+    : ''
+);
+
+export const buildProductDetailMobileBuybarPresentation = (params: {
+  displayPrice: number;
+  formatMoney: (value: number) => string;
+  mobilePurchaseStatus: string;
+}) => ({
+  mobileBuybarPrice: params.formatMoney(params.displayPrice),
+  mobileBuybarStatus: params.mobilePurchaseStatus,
+});
+
+export type ProductDetailChecklistItemWithIcon = ProductDetailChecklistItemData & {
+  icon: React.ReactNode;
+};
+
+export const withProductDetailChecklistIcons = (
+  items: ProductDetailChecklistItemData[],
+): ProductDetailChecklistItemWithIcon[] => items.map((item) => ({
+  ...item,
+  icon: <ShopIcon path={resolveProductDetailChecklistIconPath(item.key)} />,
+}));
+
+/** Assemble ProductDetailMainShell prop bag in one pure surface for residual modularization. */
+export const buildProductDetailMainShellProps = <T extends Record<string, unknown>>(props: T): T => props;
+
+/** Early-return shell prop bags — keep ProductDetail free of inline shell object literals. */
+export const buildProductDetailLoadingShellProps = <T extends Record<string, unknown>>(props: T): T => props;
+
+export const buildProductDetailLoadErrorShellProps = <T extends Record<string, unknown>>(props: T): T => props;
+
+export const buildProductDetailNotFoundShellProps = <T extends Record<string, unknown>>(props: T): T => props;
+
+
+export const resolveProductDetailPageTitle = (params: {
+  t: ProductDetailTranslate;
+  productName?: string | null;
+  loadError?: string | null;
+}): string => {
+  const name = String(params.productName || '').trim();
+  if (name) return name;
+  if (params.loadError) return params.t('pages.productDetail.loadFailed');
+  return '';
+};
+
+export const resolveProductDetailSeoDescription = (params: {
+  t: ProductDetailTranslate;
+  productDescription?: string | null;
+  loadError?: string | null;
+}): string => {
+  const raw = String(params.productDescription || '').replace(/\s+/g, ' ').trim();
+  if (raw) return raw.slice(0, 300);
+  if (params.loadError) return params.t('pages.productDetail.loadFailedDescription');
+  return params.t('common.siteDescription');
+};
+
+export const resolveProductDetailSeoImage = (params: {
+  selectedImage?: string | null;
+  productImageUrl?: string | null;
+  productImages?: string[] | null;
+}): string => (
+  params.selectedImage
+  || params.productImageUrl
+  || params.productImages?.[0]
+  || ''
+);
+
+export const resolveProductDetailVariantGallerySelection = (params: {
+  galleryImages: string[];
+  variantImageUrl?: string | null;
+}): { imageUrl: string; galleryIndex: number } | null => {
+  const imageUrl = String(params.variantImageUrl || '').trim();
+  if (!imageUrl) return null;
+  const galleryIndex = params.galleryImages.indexOf(imageUrl);
+  return { imageUrl, galleryIndex };
+};
+
