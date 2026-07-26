@@ -278,7 +278,8 @@ describe('Checkout payment availability', () => {
 
     const submitButton = document.querySelector('.checkout-page__submitButton') as HTMLButtonElement | null;
     expect(submitButton).toBeTruthy();
-    expect(submitButton).toBeDisabled();
+    expect(submitButton).toBeEnabled();
+    expect(submitButton).toHaveAttribute('type', 'button');
 
     const form = document.querySelector('form');
     expect(form).toBeTruthy();
@@ -1035,14 +1036,15 @@ describe('Checkout payment availability', () => {
     expect(fixCss).toMatch(/\.checkout-page__mobilePayBar \.ant-btn-primary:disabled,[\s\S]*?\.checkout-page__mobilePayBar \.ant-btn-primary:disabled :where\(span,\s*strong,\s*b,\s*\.checkout-page__text,\s*\.commerce-money\)\s*\{[\s\S]*?color:\s*rgba\(255,\s*255,\s*255,\s*0\.78\)\s*!important;[\s\S]*?-webkit-text-fill-color:\s*rgba\(255,\s*255,\s*255,\s*0\.78\)\s*!important;/);
   });
 
-  it('turns the mobile pay bar into the next required checkout action before submit is ready', () => {
+  it('turns checkout submit CTAs into the next required action before submit is ready', () => {
     const source = readCheckoutPageSource();
+    const surfaceSource = readCheckoutSurfaceSource();
 
-    expect(readCheckoutSurfaceSource()).toContain("htmlType={checkoutBlockingAction ? 'button' : 'submit'}");
-    expect(readCheckoutSurfaceSource()).toContain('onClick={checkoutBlockingAction ? onNextAction : undefined}');
-    expect(readCheckoutSurfaceSource()).toContain('disabled={!checkoutBlockingAction && checkoutSubmitDisabled}');
-    expect(readCheckoutSurfaceSource()).toContain('aria-label={checkoutBlockingAction ? checkoutConfirmationActionLabel : checkoutSubmitActionLabel}');
-    expect(readCheckoutSurfaceSource()).toContain('{checkoutBlockingAction ? checkoutNextActionLabel : submitButtonContent}');
+    expect(surfaceSource.match(/htmlType=\{checkoutBlockingAction \? 'button' : 'submit'\}/g)).toHaveLength(2);
+    expect(surfaceSource.match(/onClick=\{checkoutBlockingAction \? onNextAction : undefined\}/g)).toHaveLength(2);
+    expect(surfaceSource.match(/disabled=\{!checkoutBlockingAction && checkoutSubmitDisabled\}/g)).toHaveLength(3);
+    expect(surfaceSource.match(/aria-label=\{checkoutBlockingAction \? checkoutConfirmationActionLabel : checkoutSubmitActionLabel\}/g)).toHaveLength(3);
+    expect(surfaceSource.match(/\{checkoutBlockingAction \? checkoutNextActionLabel : submitButtonContent\}/g)).toHaveLength(2);
   });
 
   it('orders mobile checkout forms before promotional readiness content', () => {

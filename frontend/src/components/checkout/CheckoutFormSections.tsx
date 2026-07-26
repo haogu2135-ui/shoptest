@@ -313,15 +313,16 @@ export const CheckoutSubmitPaymentSection: React.FC<CheckoutSubmitPaymentSection
         <ShopButton
           className="checkout-page__submitButton"
           type="primary"
-          htmlType="submit"
+          htmlType={checkoutBlockingAction ? 'button' : 'submit'}
+          onClick={checkoutBlockingAction ? onNextAction : undefined}
           loading={submitting}
-          disabled={checkoutSubmitDisabled}
+          disabled={!checkoutBlockingAction && checkoutSubmitDisabled}
           block
           size="large"
-          aria-label={checkoutSubmitActionLabel}
-          title={checkoutSubmitTooltip}
+          aria-label={checkoutBlockingAction ? checkoutConfirmationActionLabel : checkoutSubmitActionLabel}
+          title={checkoutBlockingAction ? checkoutConfirmationActionLabel : checkoutSubmitTooltip}
         >
-          {submitButtonContent}
+          {checkoutBlockingAction ? checkoutNextActionLabel : submitButtonContent}
         </ShopButton>
       </Form.Item>
       <p className="checkout-page__legalNotice" role="note">

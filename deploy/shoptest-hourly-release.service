@@ -6,4 +6,11 @@ After=network-online.target
 [Service]
 Type=oneshot
 WorkingDirectory=/home/guhao/shoptest
+MemoryHigh=3G
+MemoryMax=4G
+MemorySwapMax=1G
+TasksMax=1024
+CPUQuota=150%
+OOMPolicy=stop
+TimeoutStartSec=45min
 ExecStart=/home/guhao/shoptest/scripts/shoptest-hourly-release.sh

@@ -15,4 +15,11 @@ Environment=SHOPTEST_BUG_AUTOFIX=true
 Environment=SHOPTEST_BUG_CODEX_TIMEOUT=25m
 Environment=SHOPTEST_CODEX_BIN=/root/.nvm/versions/node/v20.20.2/bin/codex
 Environment=PATH=/root/.nvm/versions/node/v20.20.2/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+MemoryHigh=3G
+MemoryMax=4G
+MemorySwapMax=1G
+TasksMax=1024
+CPUQuota=150%
+OOMPolicy=stop
+TimeoutStartSec=30min
 ExecStart=/home/guhao/shoptest/scripts/bug-maintenance-cycle.sh

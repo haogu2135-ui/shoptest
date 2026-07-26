@@ -3,6 +3,11 @@ services:
     image: nginx:1.27-alpine
     container_name: shoptest-frontend
     restart: unless-stopped
+    mem_limit: 128m
+    mem_reservation: 64m
+    memswap_limit: 128m
+    cpus: 0.50
+    pids_limit: 128
     ports:
       - "80:80"
       - "443:443"

@@ -3,6 +3,11 @@ services:
     image: nacos/nacos-server:v2.3.2
     container_name: shop-nacos
     restart: unless-stopped
+    mem_limit: 768m
+    mem_reservation: 384m
+    memswap_limit: 768m
+    cpus: 1.00
+    pids_limit: 256
     environment:
       MODE: standalone
       NACOS_AUTH_ENABLE: "true"
@@ -20,6 +25,11 @@ services:
     image: redis:7-alpine
     container_name: shop-redis
     restart: unless-stopped
+    mem_limit: 256m
+    mem_reservation: 96m
+    memswap_limit: 256m
+    cpus: 0.50
+    pids_limit: 128
     env_file:
       - ./backend.env
     command: sh -c 'redis-server --appendonly yes --requirepass "$${REDIS_PASSWORD}"'
@@ -35,6 +45,11 @@ services:
     image: shoptest-backend:latest
     container_name: shop-backend
     restart: unless-stopped
+    mem_limit: 1g
+    mem_reservation: 640m
+    memswap_limit: 1g
+    cpus: 1.50
+    pids_limit: 512
     env_file:
       - ./backend.env
     ports:
@@ -54,6 +69,11 @@ services:
     image: shop-gateway:latest
     container_name: shop-gateway
     restart: unless-stopped
+    mem_limit: 768m
+    mem_reservation: 384m
+    memswap_limit: 768m
+    cpus: 1.00
+    pids_limit: 384
     env_file:
       - ./gateway.env
     ports:

@@ -6,6 +6,11 @@ services:
     image: shoptest-backend:latest
     container_name: shoptest-backend
     restart: unless-stopped
+    mem_limit: 1g
+    mem_reservation: 640m
+    memswap_limit: 1g
+    cpus: 1.50
+    pids_limit: 512
     env_file:
       - ./backend.env
     ports:
