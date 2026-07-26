@@ -1,43 +1,646 @@
 {
-  "generatedAt": "2026-06-12T18:05:22.303Z",
-  "baseUrl": "http://127.0.0.1:4200",
+  "generatedAt": "2026-07-26T04:25:07.773Z",
+  "baseUrl": "http://127.0.0.1:3000",
   "viewportCount": 3,
-  "routeStateCount": 69,
-  "issueStateCount": 1,
+  "routeStateCount": 61,
+  "issueStateCount": 11,
   "issueCounts": {
-    "bottom-nav-obscures-control": 1
+    "bottom-nav-obscures-control": 11
   },
-  "consoleMessageCount": 730,
-  "networkFailureCount": 9,
-  "routeErrorCount": 0,
-  "routeErrors": [],
+  "consoleMessageCount": 735,
+  "networkFailureCount": 54,
+  "routeErrorCount": 4,
+  "routeErrors": [
+    {
+      "viewport": "phone-360-app",
+      "route": "notifications",
+      "message": "page.waitForSelector: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('.notifications-page')\u001b[22m\n",
+      "stack": "page.waitForSelector: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('.notifications-page')\u001b[22m\n\n    at waitForSettled ([stdin]:927:14)\n    at runRoute ([stdin]:962:11)\n    at async runViewport ([stdin]:1042:23)\n    at async [stdin]:1083:20",
+      "url": "http://127.0.0.1:3000/notifications"
+    },
+    {
+      "viewport": "phone-360-app",
+      "route": "profile",
+      "message": "page.goto: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/profile?tab=orders\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "stack": "page.goto: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/profile?tab=orders\", waiting until \"domcontentloaded\"\u001b[22m\n\n    at runRoute ([stdin]:961:16)\n    at runViewport ([stdin]:1042:29)\n    at async [stdin]:1083:20",
+      "url": "http://127.0.0.1:3000/notifications"
+    },
+    {
+      "viewport": "phone-360-app",
+      "route": "track-order",
+      "message": "page.goto: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/track-order\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "stack": "page.goto: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/track-order\", waiting until \"domcontentloaded\"\u001b[22m\n\n    at runRoute ([stdin]:961:16)\n    at runViewport ([stdin]:1042:29)\n    at async [stdin]:1083:20",
+      "url": "http://127.0.0.1:3000/notifications"
+    },
+    {
+      "viewport": "phone-360-app",
+      "route": "pet-finder",
+      "message": "page.goto: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/pet-finder\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "stack": "page.goto: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/pet-finder\", waiting until \"domcontentloaded\"\u001b[22m\n\n    at runRoute ([stdin]:961:16)\n    at runViewport ([stdin]:1042:29)\n    at async [stdin]:1083:20",
+      "url": "http://127.0.0.1:3000/notifications"
+    }
+  ],
   "topIssues": [
     {
-      "viewport": "390x844",
-      "routeName": "home",
+      "viewport": "320x568",
+      "routeName": "coupons",
       "stateName": "top",
-      "url": "http://127.0.0.1:4200/",
+      "url": "http://127.0.0.1:3000/coupons",
       "issues": [
         {
           "type": "bottom-nav-obscures-control",
           "severity": "high",
-          "count": 2,
+          "count": 6,
           "examples": [
             {
-              "selector": "a.shopee-product__imageButton",
-              "text": "-28%Mall",
-              "y": 766.75,
-              "height": 172,
-              "bottom": 938.75,
-              "overlapPx": 72
+              "selector": "a.cookie-consent-banner__link",
+              "text": "Aviso de privacidad",
+              "y": 327,
+              "height": 44,
+              "bottom": 371,
+              "overlapPx": 44
             },
             {
-              "selector": "a.shopee-product__imageButton",
-              "text": "-18%Mall",
-              "y": 766.75,
-              "height": 172,
-              "bottom": 938.75,
-              "overlapPx": 72
+              "selector": "a.cookie-consent-banner__link",
+              "text": "Términos del servicio",
+              "y": 371,
+              "height": 44,
+              "bottom": 415,
+              "overlapPx": 44
+            },
+            {
+              "selector": "button.shop-button.ant-btn.ant-btn-default.shop-button--default.cookie-consent-banner__button",
+              "text": "Solo esenciales",
+              "y": 427,
+              "height": 44,
+              "bottom": 471,
+              "overlapPx": 44
+            },
+            {
+              "selector": "button.shop-button.ant-btn.ant-btn-primary.shop-button--primary.cookie-consent-banner__button",
+              "text": "Aceptar todo",
+              "y": 427,
+              "height": 44,
+              "bottom": 471,
+              "overlapPx": 44
+            },
+            {
+              "selector": "button.shop-breadcrumb__link",
+              "text": "Inicio",
+              "y": 126,
+              "height": 44,
+              "bottom": 170,
+              "overlapPx": 44
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "viewport": "320x568",
+      "routeName": "notifications",
+      "stateName": "top",
+      "url": "http://127.0.0.1:3000/notifications",
+      "issues": [
+        {
+          "type": "bottom-nav-obscures-control",
+          "severity": "high",
+          "count": 9,
+          "examples": [
+            {
+              "selector": "a.cookie-consent-banner__link",
+              "text": "Aviso de privacidad",
+              "y": 327,
+              "height": 44,
+              "bottom": 371,
+              "overlapPx": 44
+            },
+            {
+              "selector": "a.cookie-consent-banner__link",
+              "text": "Términos del servicio",
+              "y": 371,
+              "height": 44,
+              "bottom": 415,
+              "overlapPx": 44
+            },
+            {
+              "selector": "button.shop-button.ant-btn.ant-btn-default.shop-button--default.cookie-consent-banner__button",
+              "text": "Solo esenciales",
+              "y": 427,
+              "height": 44,
+              "bottom": 471,
+              "overlapPx": 44
+            },
+            {
+              "selector": "button.shop-button.ant-btn.ant-btn-primary.shop-button--primary.cookie-consent-banner__button",
+              "text": "Aceptar todo",
+              "y": 427,
+              "height": 44,
+              "bottom": 471,
+              "overlapPx": 44
+            },
+            {
+              "selector": "button.shop-button.ant-btn.ant-btn-default.shop-button--default",
+              "text": "Marcar todo como leído",
+              "y": 175.796875,
+              "height": 44,
+              "bottom": 219.796875,
+              "overlapPx": 44
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "viewport": "320x568",
+      "routeName": "profile",
+      "stateName": "top",
+      "url": "http://127.0.0.1:3000/profile?tab=orders",
+      "issues": [
+        {
+          "type": "bottom-nav-obscures-control",
+          "severity": "high",
+          "count": 6,
+          "examples": [
+            {
+              "selector": "a.cookie-consent-banner__link",
+              "text": "Aviso de privacidad",
+              "y": 327,
+              "height": 44,
+              "bottom": 371,
+              "overlapPx": 44
+            },
+            {
+              "selector": "a.cookie-consent-banner__link",
+              "text": "Términos del servicio",
+              "y": 371,
+              "height": 44,
+              "bottom": 415,
+              "overlapPx": 44
+            },
+            {
+              "selector": "button.shop-button.ant-btn.ant-btn-default.shop-button--default.cookie-consent-banner__button",
+              "text": "Solo esenciales",
+              "y": 427,
+              "height": 44,
+              "bottom": 471,
+              "overlapPx": 44
+            },
+            {
+              "selector": "button.shop-button.ant-btn.ant-btn-primary.shop-button--primary.cookie-consent-banner__button",
+              "text": "Aceptar todo",
+              "y": 427,
+              "height": 44,
+              "bottom": 471,
+              "overlapPx": 44
+            },
+            {
+              "selector": "button.shop-button.ant-btn.ant-btn-primary.shop-button--primary",
+              "text": "Mis pedidos (2)",
+              "y": 283.78125,
+              "height": 44,
+              "bottom": 327.78125,
+              "overlapPx": 44
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "viewport": "360x740",
+      "routeName": "products",
+      "stateName": "mid",
+      "url": "http://127.0.0.1:3000/products?keyword=bed&discount=true",
+      "issues": [
+        {
+          "type": "bottom-nav-obscures-control",
+          "severity": "high",
+          "count": 11,
+          "examples": [
+            {
+              "selector": "a.cookie-consent-banner__link",
+              "text": "Aviso de privacidad",
+              "y": 499,
+              "height": 44,
+              "bottom": 543,
+              "overlapPx": 44
+            },
+            {
+              "selector": "a.cookie-consent-banner__link",
+              "text": "Términos del servicio",
+              "y": 543,
+              "height": 44,
+              "bottom": 587,
+              "overlapPx": 44
+            },
+            {
+              "selector": "button.shop-button.ant-btn.ant-btn-default.shop-button--default.cookie-consent-banner__button",
+              "text": "Solo esenciales",
+              "y": 599,
+              "height": 44,
+              "bottom": 643,
+              "overlapPx": 44
+            },
+            {
+              "selector": "button.shop-button.ant-btn.ant-btn-primary.shop-button--primary.cookie-consent-banner__button",
+              "text": "Aceptar todo",
+              "y": 599,
+              "height": 44,
+              "bottom": 643,
+              "overlapPx": 44
+            },
+            {
+              "selector": "a.product-list__imageButton",
+              "text": "OfertaMás elegido",
+              "y": 227.28125,
+              "height": 144.3125,
+              "bottom": 371.59375,
+              "overlapPx": 52.59375
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "viewport": "360x740",
+      "routeName": "coupons",
+      "stateName": "mid",
+      "url": "http://127.0.0.1:3000/coupons",
+      "issues": [
+        {
+          "type": "bottom-nav-obscures-control",
+          "severity": "high",
+          "count": 6,
+          "examples": [
+            {
+              "selector": "a.cookie-consent-banner__link",
+              "text": "Aviso de privacidad",
+              "y": 499,
+              "height": 44,
+              "bottom": 543,
+              "overlapPx": 44
+            },
+            {
+              "selector": "a.cookie-consent-banner__link",
+              "text": "Términos del servicio",
+              "y": 543,
+              "height": 44,
+              "bottom": 587,
+              "overlapPx": 44
+            },
+            {
+              "selector": "button.shop-button.ant-btn.ant-btn-default.shop-button--default.cookie-consent-banner__button",
+              "text": "Solo esenciales",
+              "y": 599,
+              "height": 44,
+              "bottom": 643,
+              "overlapPx": 44
+            },
+            {
+              "selector": "button.shop-button.ant-btn.ant-btn-primary.shop-button--primary.cookie-consent-banner__button",
+              "text": "Aceptar todo",
+              "y": 599,
+              "height": 44,
+              "bottom": 643,
+              "overlapPx": 44
+            },
+            {
+              "selector": "button.shop-button.ant-btn.ant-btn-primary.shop-button--primary",
+              "text": "Tomar este cupón",
+              "y": 287.890625,
+              "height": 44,
+              "bottom": 331.890625,
+              "overlapPx": 12.890625
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "viewport": "360x740",
+      "routeName": "wishlist",
+      "stateName": "mid",
+      "url": "http://127.0.0.1:3000/wishlist",
+      "issues": [
+        {
+          "type": "bottom-nav-obscures-control",
+          "severity": "high",
+          "count": 9,
+          "examples": [
+            {
+              "selector": "a.cookie-consent-banner__link",
+              "text": "Aviso de privacidad",
+              "y": 499,
+              "height": 44,
+              "bottom": 543,
+              "overlapPx": 44
+            },
+            {
+              "selector": "a.cookie-consent-banner__link",
+              "text": "Términos del servicio",
+              "y": 543,
+              "height": 44,
+              "bottom": 587,
+              "overlapPx": 44
+            },
+            {
+              "selector": "button.shop-button.ant-btn.ant-btn-default.shop-button--default.cookie-consent-banner__button",
+              "text": "Solo esenciales",
+              "y": 599,
+              "height": 44,
+              "bottom": 643,
+              "overlapPx": 44
+            },
+            {
+              "selector": "button.shop-button.ant-btn.ant-btn-primary.shop-button--primary.cookie-consent-banner__button",
+              "text": "Aceptar todo",
+              "y": 599,
+              "height": 44,
+              "bottom": 643,
+              "overlapPx": 44
+            },
+            {
+              "selector": "button.wishlist-page__coverButton",
+              "text": "Ver sugerencia: Automatic smart pet feeder with camera and low-food alerts",
+              "y": 214.765625,
+              "height": 231.59375,
+              "bottom": 446.359375,
+              "overlapPx": 127.359375
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "viewport": "390x844",
+      "routeName": "products",
+      "stateName": "mid",
+      "url": "http://127.0.0.1:3000/products?keyword=bed&discount=true",
+      "issues": [
+        {
+          "type": "bottom-nav-obscures-control",
+          "severity": "high",
+          "count": 9,
+          "examples": [
+            {
+              "selector": "a.cookie-consent-banner__link",
+              "text": "Aviso de privacidad",
+              "y": 603,
+              "height": 44,
+              "bottom": 647,
+              "overlapPx": 44
+            },
+            {
+              "selector": "a.cookie-consent-banner__link",
+              "text": "Términos del servicio",
+              "y": 647,
+              "height": 44,
+              "bottom": 691,
+              "overlapPx": 44
+            },
+            {
+              "selector": "button.shop-button.ant-btn.ant-btn-default.shop-button--default.cookie-consent-banner__button",
+              "text": "Solo esenciales",
+              "y": 703,
+              "height": 44,
+              "bottom": 747,
+              "overlapPx": 44
+            },
+            {
+              "selector": "button.shop-button.ant-btn.ant-btn-primary.shop-button--primary.cookie-consent-banner__button",
+              "text": "Aceptar todo",
+              "y": 703,
+              "height": 44,
+              "bottom": 747,
+              "overlapPx": 44
+            },
+            {
+              "selector": "a.product-list__titleLink",
+              "text": "Ultra-comfort orthopedic dog sofa bed with removable washable cover and reinforced bolsters",
+              "y": 404.96875,
+              "height": 44,
+              "bottom": 448.96875,
+              "overlapPx": 25.96875
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "viewport": "390x844",
+      "routeName": "coupons",
+      "stateName": "mid",
+      "url": "http://127.0.0.1:3000/coupons",
+      "issues": [
+        {
+          "type": "bottom-nav-obscures-control",
+          "severity": "high",
+          "count": 5,
+          "examples": [
+            {
+              "selector": "a.cookie-consent-banner__link",
+              "text": "Aviso de privacidad",
+              "y": 603,
+              "height": 44,
+              "bottom": 647,
+              "overlapPx": 44
+            },
+            {
+              "selector": "a.cookie-consent-banner__link",
+              "text": "Términos del servicio",
+              "y": 647,
+              "height": 44,
+              "bottom": 691,
+              "overlapPx": 44
+            },
+            {
+              "selector": "button.shop-button.ant-btn.ant-btn-default.shop-button--default.cookie-consent-banner__button",
+              "text": "Solo esenciales",
+              "y": 703,
+              "height": 44,
+              "bottom": 747,
+              "overlapPx": 44
+            },
+            {
+              "selector": "button.shop-button.ant-btn.ant-btn-primary.shop-button--primary.cookie-consent-banner__button",
+              "text": "Aceptar todo",
+              "y": 703,
+              "height": 44,
+              "bottom": 747,
+              "overlapPx": 44
+            },
+            {
+              "selector": "button.shop-button.ant-btn.ant-btn-default.shop-button--default",
+              "text": "Usar en carrito",
+              "y": 386.203125,
+              "height": 44,
+              "bottom": 430.203125,
+              "overlapPx": 7.203125
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "viewport": "390x844",
+      "routeName": "wishlist",
+      "stateName": "mid",
+      "url": "http://127.0.0.1:3000/wishlist",
+      "issues": [
+        {
+          "type": "bottom-nav-obscures-control",
+          "severity": "high",
+          "count": 9,
+          "examples": [
+            {
+              "selector": "a.cookie-consent-banner__link",
+              "text": "Aviso de privacidad",
+              "y": 603,
+              "height": 44,
+              "bottom": 647,
+              "overlapPx": 44
+            },
+            {
+              "selector": "a.cookie-consent-banner__link",
+              "text": "Términos del servicio",
+              "y": 647,
+              "height": 44,
+              "bottom": 691,
+              "overlapPx": 44
+            },
+            {
+              "selector": "button.shop-button.ant-btn.ant-btn-default.shop-button--default.cookie-consent-banner__button",
+              "text": "Solo esenciales",
+              "y": 703,
+              "height": 44,
+              "bottom": 747,
+              "overlapPx": 44
+            },
+            {
+              "selector": "button.shop-button.ant-btn.ant-btn-primary.shop-button--primary.cookie-consent-banner__button",
+              "text": "Aceptar todo",
+              "y": 703,
+              "height": 44,
+              "bottom": 747,
+              "overlapPx": 44
+            },
+            {
+              "selector": "button.wishlist-page__coverButton",
+              "text": "Ver sugerencia: Automatic smart pet feeder with camera and low-food alerts",
+              "y": 283.765625,
+              "height": 266.515625,
+              "bottom": 550.28125,
+              "overlapPx": 127.28125
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "viewport": "390x844",
+      "routeName": "notifications",
+      "stateName": "top",
+      "url": "http://127.0.0.1:3000/notifications",
+      "issues": [
+        {
+          "type": "bottom-nav-obscures-control",
+          "severity": "high",
+          "count": 9,
+          "examples": [
+            {
+              "selector": "a.cookie-consent-banner__link",
+              "text": "Aviso de privacidad",
+              "y": 603,
+              "height": 44,
+              "bottom": 647,
+              "overlapPx": 44
+            },
+            {
+              "selector": "a.cookie-consent-banner__link",
+              "text": "Términos del servicio",
+              "y": 647,
+              "height": 44,
+              "bottom": 691,
+              "overlapPx": 44
+            },
+            {
+              "selector": "button.shop-button.ant-btn.ant-btn-default.shop-button--default.cookie-consent-banner__button",
+              "text": "Solo esenciales",
+              "y": 703,
+              "height": 44,
+              "bottom": 747,
+              "overlapPx": 44
+            },
+            {
+              "selector": "button.shop-button.ant-btn.ant-btn-primary.shop-button--primary.cookie-consent-banner__button",
+              "text": "Aceptar todo",
+              "y": 703,
+              "height": 44,
+              "bottom": 747,
+              "overlapPx": 44
+            },
+            {
+              "selector": "button.notifications-page__signal",
+              "text": "2No leídas",
+              "y": 372.984375,
+              "height": 79,
+              "bottom": 451.984375,
+              "overlapPx": 28.984375
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "viewport": "390x844",
+      "routeName": "notifications",
+      "stateName": "mid",
+      "url": "http://127.0.0.1:3000/notifications",
+      "issues": [
+        {
+          "type": "bottom-nav-obscures-control",
+          "severity": "high",
+          "count": 11,
+          "examples": [
+            {
+              "selector": "a.cookie-consent-banner__link",
+              "text": "Aviso de privacidad",
+              "y": 603,
+              "height": 44,
+              "bottom": 647,
+              "overlapPx": 44
+            },
+            {
+              "selector": "a.cookie-consent-banner__link",
+              "text": "Términos del servicio",
+              "y": 647,
+              "height": 44,
+              "bottom": 691,
+              "overlapPx": 44
+            },
+            {
+              "selector": "button.shop-button.ant-btn.ant-btn-default.shop-button--default.cookie-consent-banner__button",
+              "text": "Solo esenciales",
+              "y": 703,
+              "height": 44,
+              "bottom": 747,
+              "overlapPx": 44
+            },
+            {
+              "selector": "button.shop-button.ant-btn.ant-btn-primary.shop-button--primary.cookie-consent-banner__button",
+              "text": "Aceptar todo",
+              "y": 703,
+              "height": 44,
+              "bottom": 747,
+              "overlapPx": 44
+            },
+            {
+              "selector": "button.shop-button.ant-btn.ant-btn-link.ant-btn-sm.shop-button--small.shop-button--link",
+              "text": "Abrir pedidos",
+              "y": 431.765625,
+              "height": 44,
+              "bottom": 475.765625,
+              "overlapPx": 44
             }
           ]
         }
