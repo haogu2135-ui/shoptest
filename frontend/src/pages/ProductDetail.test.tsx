@@ -573,8 +573,8 @@ describe('ProductDetail loading state', () => {
     expect(summarySource).toContain('product-actions');
     expect(summarySource).toContain('export const ProductDetailSizeGuideModal');
     expect(summarySource).toContain('product-detail__sizeGuideModalRoot');
-    expect(readProductDetailShellSource()).toContain('<ProductDetailSizeGuideModal');
-    expect(source).not.toContain('product-detail__sizeGuideModalRoot');
+    expect(source).toContain('<ProductDetailSizeGuideModal');
+    expect(readProductDetailShellSource()).not.toContain('<ProductDetailSizeGuideModal');
   });
 
   it('extracts product detail content panels into a modular surface', () => {

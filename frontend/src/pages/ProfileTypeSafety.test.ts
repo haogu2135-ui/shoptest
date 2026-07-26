@@ -115,6 +115,9 @@ describe('Profile type-safety guard', () => {
     expect(accountModals).toContain('export const ProfileAccountModals');
     expect(shell).toContain('<ProfileInfoPanel');
     expect(shell).toContain('<ProfileAccountModals');
+    expect(shell).toContain('React.ComponentProps<typeof ProfileInfoPanel>');
+    expect(shell).toContain('React.ComponentProps<typeof ProfilePaymentModal>');
+    expect(shell).not.toContain('ProfileMainShellProps = Record<string, any>');
     expect(addressActions).toContain('} catch (err: unknown) {');
     expect(petActions).toContain('} catch (err: unknown) {');
     expect(accountActions).toContain('} catch (err: unknown) {');

@@ -91,8 +91,38 @@ export const ProfileLoadingShell: React.FC<ProfileLoadingShellProps> = ({ t }) =
 
 );
 
-/** Authenticated profile chrome + tab panels + modals. Page owns data/handlers. */
-export type ProfileMainShellProps = Record<string, any>;
+/**
+ * Authenticated profile chrome, tab panels, and modals. The page owns data and
+ * handlers; panel contracts stay the source of truth for their shared inputs.
+ */
+type ProfileMainShellPanelProps =
+  React.ComponentProps<typeof ProfileInfoPanel>
+  & React.ComponentProps<typeof ProfileAddressesPanel>
+  & React.ComponentProps<typeof ProfileOrdersPanel>
+  & React.ComponentProps<typeof ProfilePetsPanel>
+  & React.ComponentProps<typeof ProfileAccountModals>
+  & React.ComponentProps<typeof ProfileOrderDetailModal>
+  & React.ComponentProps<typeof ProfileReturnModals>
+  & React.ComponentProps<typeof ProfilePaymentModal>;
+
+type ProfileMainShellChromeProps = {
+  confirmingReceipt: boolean;
+  handleConfirmReceipt: (orderId: number) => void | Promise<void>;
+  openAddressSetup: () => void;
+  openOrdersWithFilter: (status: string) => void;
+  openProfileTab: (tab: string) => void;
+  pendingPaymentCount: number;
+  profileActiveTab: string;
+  profileAfterSaleActionLabel: string;
+  profileCompletionActionLabel: string;
+  profileInTransitActionLabel: string;
+  profilePendingPayActionLabel: string;
+  receiptConfirmOrder: Parameters<React.ComponentProps<typeof ProfileOrdersPanel>['confirmReceiptOrder']>[0] | null;
+  setReceiptConfirmOrder: (order: Parameters<React.ComponentProps<typeof ProfileOrdersPanel>['confirmReceiptOrder']>[0] | null) => void;
+  inTransitCount: number;
+};
+
+export type ProfileMainShellProps = ProfileMainShellPanelProps & ProfileMainShellChromeProps;
 
 export const ProfileMainShell: React.FC<ProfileMainShellProps> = (props) => {
   const {

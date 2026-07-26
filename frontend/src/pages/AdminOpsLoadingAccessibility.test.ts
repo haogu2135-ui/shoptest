@@ -25,7 +25,7 @@ const getLoadingRegion = (source: string, marker: string) => {
 
   // Prefer the accessible wrapper region that owns ARIA announcements.
   const wrapperStart = source.lastIndexOf('<div', markerIndex);
-  const spinStart = source.lastIndexOf('<Spin', markerIndex);
+  const spinStart = source.lastIndexOf('<ShopSpin', markerIndex);
   const regionStart = wrapperStart >= 0 && wrapperStart > spinStart - 200 ? wrapperStart : spinStart;
   const regionEnd = source.indexOf('>', markerIndex);
 

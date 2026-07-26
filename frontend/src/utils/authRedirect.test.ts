@@ -7,6 +7,7 @@ import fs from 'fs';
 import path from 'path';
 
 const readPageSource = (fileName: string) => fs.readFileSync(path.resolve(__dirname, '../pages', fileName), 'utf8');
+const readHookSource = (fileName: string) => fs.readFileSync(path.resolve(__dirname, '../hooks', fileName), 'utf8');
 
 describe('authRedirect', () => {
   it('builds login urls only for safe relative redirects', () => {
@@ -35,15 +36,21 @@ describe('authRedirect', () => {
     expect(getPostLoginRedirectTarget('')).toBe('/');
   });
 
-  it('does not duplicate auth-expired predicates across checkout, profile, and tracking pages', () => {
+  it('keeps auth-expired handling out of pages and in the checkout workflow hooks', () => {
     const checkoutSource = readPageSource('Checkout.tsx');
     const profileSource = readPageSource('Profile.tsx');
     const orderTrackingSource = readPageSource('OrderTracking.tsx');
+    const checkoutBootstrapSource = readHookSource('useCheckoutCartBootstrap.ts');
+    const checkoutOrderActionsSource = readHookSource('useCheckoutOrderActions.ts');
     const pageSources = [checkoutSource, profileSource, orderTrackingSource].join('\n');
 
     expect(pageSources).not.toMatch(/const isAuthExpiredError\s*=/);
+    expect(checkoutSource).not.toContain('isAuthExpiredError');
     expect(profileSource).not.toContain('isAuthExpiredError');
     expect(orderTrackingSource).not.toContain('isAuthExpiredError');
-    expect(checkoutSource).toContain("isAuthExpiredError } from '../utils/apiError'");
+    expect(checkoutBootstrapSource).toContain("isAuthExpiredError } from '../utils/apiError'");
+    expect(checkoutBootstrapSource).toContain('navigate(buildLoginUrlFromWindow(), { replace: true })');
+    expect(checkoutOrderActionsSource).toContain("isAuthExpiredError } from '../utils/apiError'");
+    expect(checkoutOrderActionsSource).toContain('navigate(buildLoginUrlFromWindow(), { replace: true })');
   });
 });

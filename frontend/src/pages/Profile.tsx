@@ -61,6 +61,7 @@ import {
   ProfileAuthGateShell,
   ProfileLoadingShell,
   ProfileMainShell,
+  type ProfileMainShellProps,
 } from './profileShellPanels';
 
 const Profile: React.FC = () => {
@@ -603,7 +604,7 @@ const Profile: React.FC = () => {
     filteredOrders,
   });
 
-  const shellProps = buildProfileMainShellProps({
+  const shellProps: ProfileMainShellProps = buildProfileMainShellProps({
     language,
     t,
     user,

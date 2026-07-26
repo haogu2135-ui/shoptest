@@ -15,7 +15,10 @@ describe('ProductDetail size guide modal layout', () => {
     const css = readProductDetailCss();
     const fixCss = css.slice(css.indexOf('F3414:'));
 
-    expect(readProductDetailShellSource()).toContain('<ProductDetailSizeGuideModal');
+    // Keep the dialog outside the detail shell so its fixed overlay cannot be
+    // constrained by the page's layout stacking context.
+    expect(page).toContain('<ProductDetailSizeGuideModal');
+    expect(readProductDetailShellSource()).not.toContain('<ProductDetailSizeGuideModal');
     expect(source).toContain('product-detail__sizeGuideModal');
     expect(source).toContain('ShopModal');
     expect(source).toContain('product-detail__sizeGuideModalRoot');

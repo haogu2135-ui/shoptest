@@ -79,6 +79,7 @@ import {
   ProductDetailNotFoundShell,
   ProductDetailMainShell,
 } from './productDetailShell';
+import { ProductDetailSizeGuideModal } from './productDetailSummary';
 import { useProductDetailNonCriticalContent } from '../hooks/useProductDetailNonCriticalContent';
 import { useProductDetailGallery } from '../hooks/useProductDetailGallery';
 import { useProductDetailPurchaseActions } from '../hooks/useProductDetailPurchaseActions';
@@ -995,8 +996,6 @@ const ProductDetail: React.FC = () => {
     sizeCalculatorBreed,
     sizeCalculatorWeight,
     sizeGuideActionLabel,
-    sizeGuideConfirmActionLabel,
-    sizeGuideOpen,
     sizeOptionGroup,
     sizeWeightInputLabel,
     stockAlertActionLabel,
@@ -1007,7 +1006,17 @@ const ProductDetail: React.FC = () => {
     variants,
   });
 
-  return <ProductDetailMainShell {...shellProps} />;
+  return (
+    <>
+      <ProductDetailMainShell {...shellProps} />
+      <ProductDetailSizeGuideModal
+        open={sizeGuideOpen}
+        setOpen={setSizeGuideOpen}
+        sizeGuideConfirmActionLabel={sizeGuideConfirmActionLabel}
+        t={t}
+      />
+    </>
+  );
 
 };
 

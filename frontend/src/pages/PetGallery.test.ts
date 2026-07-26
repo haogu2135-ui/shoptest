@@ -16,7 +16,7 @@ describe('PetGallery mobile layout source contracts', () => {
     expect(f2858Css).toMatch(/@media \(max-width:\s*620px\)\s*\{/);
     expect(f2858Css).toMatch(/\.pet-gallery-page\s*\{[\s\S]*?padding-bottom:\s*calc\(var\(--shop-mobile-bottom-nav-height,\s*72px\) \+ 36px \+ env\(safe-area-inset-bottom,\s*0px\)\)\s*!important;[\s\S]*?scroll-padding-bottom:/);
     expect(f2858Css).toMatch(/\.pet-gallery-toolbar\s*\{[\s\S]*?position:\s*sticky\s*!important;[\s\S]*?top:\s*auto\s*!important;[\s\S]*?bottom:\s*calc\(var\(--shop-mobile-bottom-nav-height,\s*72px\) \+ 12px \+ env\(safe-area-inset-bottom,\s*0px\)\)\s*!important;[\s\S]*?z-index:\s*1240;/);
-    expect(f2858Css).toMatch(/\.pet-gallery-toolbar \.ant-space\s*\{[\s\S]*?display:\s*grid\s*!important;[\s\S]*?grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\);/);
+    expect(f2858Css).toMatch(/\.pet-gallery-toolbar \.pet-gallery-page__actionRow\s*\{[\s\S]*?display:\s*grid\s*!important;[\s\S]*?grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\);/);
     expect(f2858Css).toMatch(/\.pet-gallery-insights\s*\{[\s\S]*?scroll-margin-bottom:\s*calc\(var\(--shop-mobile-bottom-nav-height,\s*72px\) \+ 24px \+ env\(safe-area-inset-bottom,\s*0px\)\);/);
   });
 
@@ -35,7 +35,7 @@ describe('PetGallery mobile layout source contracts', () => {
     expect(f2757Css).toMatch(/\.pet-gallery-insights__copy,[\s\S]*?\.pet-gallery-action-card,[\s\S]*?\.pet-gallery-conversion > div:first-child\s*\{[\s\S]*?min-width:\s*min\(100%,\s*280px\);[\s\S]*?word-break:\s*normal;[\s\S]*?writing-mode:\s*horizontal-tb;/);
     expect(f2757Css).toMatch(/\.pet-gallery-insights__eyebrow,[\s\S]*?\.pet-gallery-conversion \.pet-gallery-page__text[\s\S]*?\{[\s\S]*?overflow-wrap:\s*break-word;[\s\S]*?white-space:\s*normal;[\s\S]*?writing-mode:\s*horizontal-tb;/);
     expect(f2757Css).toMatch(/\.pet-gallery-insights__grid,[\s\S]*?\.pet-gallery-conversion__signals\s*\{[\s\S]*?grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\);[\s\S]*?overflow:\s*visible\s*!important;[\s\S]*?mask-image:\s*none\s*!important;/);
-    expect(f2757Css).toMatch(/\.pet-gallery-action-card \.ant-space,[\s\S]*?\.pet-gallery-conversion__actions\s*\{[\s\S]*?display:\s*grid\s*!important;[\s\S]*?grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\);/);
+    expect(f2757Css).toMatch(/\.pet-gallery-action-card \.pet-gallery-page__actionRow,[\s\S]*?\.pet-gallery-conversion__actions\s*\{[\s\S]*?display:\s*grid\s*!important;[\s\S]*?grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\);/);
   });
 
   it('keeps mobile gallery card owner labels readable on image cards', () => {

@@ -1,4 +1,5 @@
 import React, { useEffect, useId, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import ShopButton from './ShopButton';
 import { ShopIcon, SI } from './ShopIcon';
 import { activateFocusTrap } from '../utils/focusTrap';
@@ -114,7 +115,7 @@ const ShopModal: React.FC<ShopModalProps> = ({
   const panelStyle: React.CSSProperties = {};
   if (width != null) panelStyle.width = toCssSize(width);
 
-  return (
+  const modal = (
     <div className={`shop-modal shop-modal--open ${rootClassName}`.trim()} role="presentation">
       {maskClosable ? (
         <button
@@ -165,6 +166,9 @@ const ShopModal: React.FC<ShopModalProps> = ({
       </div>
     </div>
   );
+
+  // Fixed overlays must not inherit a page shell's clipping or stacking context.
+  return typeof document === 'undefined' ? modal : createPortal(modal, document.body);
 };
 
 export default ShopModal;

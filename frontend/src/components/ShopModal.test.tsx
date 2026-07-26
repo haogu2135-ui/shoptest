@@ -57,6 +57,22 @@ describe('ShopModal', () => {
     expect(onClose).toHaveBeenCalled();
   });
 
+  it('mounts an open dialog directly in the document body', () => {
+    const onClose = jest.fn();
+    const { container } = render(
+      <div className="page-shell">
+        <ShopModal open onClose={onClose} title="Top-level dialog">
+          <div>Dialog body</div>
+        </ShopModal>
+      </div>,
+    );
+
+    const modalRoot = document.querySelector('.shop-modal');
+    expect(modalRoot).not.toBeNull();
+    expect(modalRoot?.parentElement).toBe(document.body);
+    expect(container.contains(modalRoot)).toBe(false);
+  });
+
   it('wires confirmLoading onto the primary action', () => {
     const onClose = jest.fn();
     const onOk = jest.fn();
@@ -108,7 +124,7 @@ describe('ShopModal', () => {
     document.body.appendChild(trigger);
     trigger.focus();
 
-    const { container, rerender } = render(
+    const { rerender } = render(
       <ShopModal
         open
         onClose={onClose}
@@ -123,7 +139,7 @@ describe('ShopModal', () => {
     );
 
     jest.runOnlyPendingTimers();
-    const closeControl = container.querySelector('.shop-modal__close') as HTMLButtonElement;
+    const closeControl = document.querySelector('.shop-modal__close') as HTMLButtonElement;
     expect(closeControl).toHaveFocus();
 
     fireEvent.keyDown(window, { key: 'Tab', shiftKey: true });

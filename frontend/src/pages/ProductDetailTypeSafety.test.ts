@@ -52,6 +52,8 @@ describe('ProductDetail type-safety guard', () => {
     const surface = `${source}\n${shellSource}\n${helpersSource}\n${engagementSource}\n${communitySource}\n${recommendationSource}\n${recommendationsPanel}\n${readProductDetailSummarySource()}\n${readProductDetailContentSource()}\n${readProductDetailGallerySource()}\n${readProductDetailNonCriticalSource()}`;
 
     expect(surface).not.toMatch(/normalizeProductImages = \(product: any\)|useState<any>|catch \([^)]*: any\)|Product \| any|rec: any|as any\b|window as any\b|any\[\]/);
+    expect(shellSource).not.toContain('ProductDetailMainShellProps = Record<string, any>');
+    expect(shellSource).toContain('React.ComponentProps<typeof ProductDetailSummary>');
     expect(source).toContain("from './productDetailHelpers'");
     expect(source).toContain("from '../hooks/useProductDetailNonCriticalContent'");
     expect(source).toContain("from '../hooks/useProductDetailEngagementActions'");

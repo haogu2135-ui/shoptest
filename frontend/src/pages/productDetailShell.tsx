@@ -5,7 +5,7 @@ import PageEmpty from '../components/PageEmpty';
 import PageError from '../components/PageError';
 import { ProductDetailRecommendations } from './productDetailRecommendations';
 import { ProductDetailGallery, ProductDetailImagePreviewModal } from './productDetailGallery';
-import { ProductDetailSummary, ProductDetailSizeGuideModal } from './productDetailSummary';
+import { ProductDetailSummary } from './productDetailSummary';
 import { ProductDetailContent } from './productDetailContent';
 
 export const ProductDetailSkeleton: React.FC<{ label: string }> = ({ label }) => (
@@ -243,7 +243,16 @@ export const ProductDetailNotFoundShell: React.FC<ProductDetailNotFoundShellProp
 );
 
 /** Ready product-detail composition: gallery, summary, content, recommendations, modals. */
-export type ProductDetailMainShellProps = Record<string, any>;
+/**
+ * The detail page only coordinates these independently typed sections. Keeping
+ * their contracts composed here makes caller drift a compile-time error.
+ */
+export type ProductDetailMainShellProps =
+  & React.ComponentProps<typeof ProductDetailGallery>
+  & React.ComponentProps<typeof ProductDetailSummary>
+  & React.ComponentProps<typeof ProductDetailContent>
+  & React.ComponentProps<typeof ProductDetailRecommendations>
+  & React.ComponentProps<typeof ProductDetailImagePreviewModal>;
 
 export const ProductDetailMainShell: React.FC<ProductDetailMainShellProps> = (props) => {
   const {
@@ -377,8 +386,6 @@ export const ProductDetailMainShell: React.FC<ProductDetailMainShellProps> = (pr
     sizeCalculatorBreed,
     sizeCalculatorWeight,
     sizeGuideActionLabel,
-    sizeGuideConfirmActionLabel,
-    sizeGuideOpen,
     sizeOptionGroup,
     sizeWeightInputLabel,
     stockAlertActionLabel,
@@ -591,13 +598,6 @@ export const ProductDetailMainShell: React.FC<ProductDetailMainShellProps> = (pr
         t={t}
       />
 
-      <ProductDetailSizeGuideModal
-        open={sizeGuideOpen}
-        setOpen={setSizeGuideOpen}
-        sizeGuideConfirmActionLabel={sizeGuideConfirmActionLabel}
-        t={t}
-      />
     </div>
   );
 };
-
