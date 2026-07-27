@@ -492,6 +492,16 @@ const NativeAppClassHost: React.FC = () => {
   return null;
 };
 
+const NativeMobileUpdateGateHost: React.FC = () => {
+  if (currentNativeMobilePlatform() !== 'android') return null;
+
+  return (
+    <Suspense fallback={null}>
+      <LazyNativeMobileUpdateGate />
+    </Suspense>
+  );
+};
+
 const NativeMobileContrastGuard: React.FC = () => {
   const location = useLocation();
 
@@ -1145,6 +1155,7 @@ const StorefrontLayout: React.FC = () => {
       const nextBottomRailConflict = Boolean(mainContent && Array.from(mainContent.querySelectorAll<HTMLElement>(interactiveSelector)).some((element) => {
         const style = window.getComputedStyle(element);
         if (style.display === 'none' || style.visibility === 'hidden' || Number(style.opacity || 1) === 0) return false;
+        if (style.position !== 'fixed' && style.position !== 'sticky') return false;
         const rect = element.getBoundingClientRect();
         if (rect.width <= 0 || rect.height <= 0 || rect.top >= window.innerHeight) return false;
         return Math.min(rect.bottom, window.innerHeight) - Math.max(rect.top, possibleBottomRailTop) > 0.5;
@@ -1281,9 +1292,7 @@ const App: React.FC = () => {
     <Router>
       <AccessibleMessageLiveRegion />
       <NativeAppClassHost />
-      <Suspense fallback={null}>
-        <LazyNativeMobileUpdateGate />
-      </Suspense>
+      <NativeMobileUpdateGateHost />
       <AndroidUiFinalGuard />
       <NativeMobileContrastGuard />
       <NativeBackNavigation />

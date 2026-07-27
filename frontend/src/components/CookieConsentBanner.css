@@ -3,7 +3,7 @@
   left: 12px;
   right: 12px;
   bottom: calc(12px + env(safe-area-inset-bottom, 0px));
-  z-index: 1150;
+  z-index: 1300;
   pointer-events: none;
 }
 
@@ -78,7 +78,7 @@
 }
 
 @media (max-width: 780px) {
-  body.shop-mobile-app .cookie-consent-banner {
+  .cookie-consent-banner {
     bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 10px + env(safe-area-inset-bottom, 0px));
   }
 
@@ -104,8 +104,7 @@
     bottom: var(--shop-cookie-consent-clearance, 200px) !important;
   }
 
-  /* Bottom nav and empty product-list conversion rail already sit above the safe area. */
-  body.shop-cookie-consent-visible .shop-nav__bottomBar,
+  /* Keep the navigation in its natural bottom rail; only conversion controls move. */
   body.shop-cookie-consent-visible .product-list__mobileConversionBar {
     bottom: calc(max(8px, env(safe-area-inset-bottom, 0px)) + var(--shop-cookie-consent-clearance, 200px)) !important;
   }

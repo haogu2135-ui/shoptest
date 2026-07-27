@@ -110,9 +110,10 @@ describe('AuthStartupGate', () => {
 
     expect(screen.queryByText('storefront shell')).not.toBeInTheDocument();
     const loadingStatus = screen.getByRole('status');
-    expect(loadingStatus).toHaveClass('app-route-loading__text');
+    expect(loadingStatus).toHaveClass('app-route-loading');
     expect(loadingStatus).toHaveTextContent('Loading app…');
-    expect(userApi.getProfile).toHaveBeenCalledWith({ skipAuthRedirect: true });
+    expect(screen.getByText('Loading app…')).toHaveClass('app-route-loading__text');
+    await waitFor(() => expect(userApi.getProfile).toHaveBeenCalledWith({ skipAuthRedirect: true }));
 
     profileRequest.resolve({
       data: {
@@ -257,6 +258,13 @@ describe('App chunking contracts', () => {
     expect(source).not.toMatch(/^import CustomerSupportWidget from '\.\/components\/CustomerSupportWidget';/m);
     expect(source).toContain('loadCustomerSupportWidget');
     expect(source).toContain('LazyCustomerSupportWidget');
+    const updateGateHostSource = source.slice(
+      source.indexOf('const NativeMobileUpdateGateHost'),
+      source.indexOf('const NativeMobileContrastGuard'),
+    );
+    expect(updateGateHostSource).toContain("if (currentNativeMobilePlatform() !== 'android') return null;");
+    expect(updateGateHostSource).toContain('<LazyNativeMobileUpdateGate />');
+    expect(source).toContain('<NativeMobileUpdateGateHost />');
 
   });
 
@@ -327,6 +335,19 @@ describe('App chunking contracts', () => {
 });
 
 describe('App route error boundary contracts', () => {
+  it('keeps the native browse rail from withdrawing for ordinary scroll content', () => {
+    const source = readAppSource();
+    const storefrontLayoutSource = source.slice(
+      source.indexOf('const StorefrontLayout'),
+      source.indexOf('const App: React.FC'),
+    );
+
+    expect(storefrontLayoutSource).toContain("if (style.position !== 'fixed' && style.position !== 'sticky') return false;");
+    expect(storefrontLayoutSource.indexOf("style.position !== 'fixed'")).toBeLessThan(
+      storefrontLayoutSource.indexOf('const rect = element.getBoundingClientRect();'),
+    );
+  });
+
   it('keeps storefront route content behind a pathname-keyed ErrorBoundary', () => {
     const source = readAppSource();
     const storefrontLayoutSource = source.slice(

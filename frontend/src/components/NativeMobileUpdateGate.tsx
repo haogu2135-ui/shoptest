@@ -5,6 +5,11 @@ import { ShopIcon, SI } from './ShopIcon';
 import ShopModal from './ShopModal';
 import { useLanguage } from '../i18n';
 import { getLocalStorageItem, setLocalStorageItem } from '../utils/safeStorage';
+import {
+  COOKIE_CONSENT_CHANGED_EVENT,
+  COOKIE_CONSENT_STORAGE_KEY,
+  hasCookieConsent,
+} from '../utils/cookieConsent';
 import { reportNonBlockingError } from '../utils/nonBlockingError';
 import { useNativeBackHandler } from '../utils/nativeBack';
 import {
@@ -27,10 +32,42 @@ export const NativeMobileUpdateGate: React.FC = () => {
   const [release, setRelease] = useState<MobileReleaseManifest | null>(null);
   const [openingDownload, setOpeningDownload] = useState(false);
   const [downloadFailed, setDownloadFailed] = useState(false);
+  const [cookieConsentAccepted, setCookieConsentAccepted] = useState(() => {
+    try {
+      return hasCookieConsent();
+    } catch (error) {
+      reportNonBlockingError('App.mobileUpdateCookieConsent', error);
+      return false;
+    }
+  });
   const installedVersionCode = currentMobileVersionCode();
   const latestVersionCode = release?.versionCode || 0;
   const updateRequired = Boolean(release && (release.mandatory || (release.minSupportedVersionCode || 0) > installedVersionCode));
   const downloadUrl = resolveMobileReleaseDownloadUrl(release);
+  const updateGateOpen = Boolean(release && (updateRequired || cookieConsentAccepted));
+
+  useEffect(() => {
+    const syncCookieConsent = () => {
+      try {
+        setCookieConsentAccepted(hasCookieConsent());
+      } catch (error) {
+        reportNonBlockingError('App.mobileUpdateCookieConsent', error);
+        setCookieConsentAccepted(false);
+      }
+    };
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === COOKIE_CONSENT_STORAGE_KEY) {
+        syncCookieConsent();
+      }
+    };
+
+    window.addEventListener(COOKIE_CONSENT_CHANGED_EVENT, syncCookieConsent);
+    window.addEventListener('storage', handleStorage);
+    return () => {
+      window.removeEventListener(COOKIE_CONSENT_CHANGED_EVENT, syncCookieConsent);
+      window.removeEventListener('storage', handleStorage);
+    };
+  }, []);
 
   useEffect(() => {
     if (!isNativeAndroidApp()) return;
@@ -146,7 +183,7 @@ export const NativeMobileUpdateGate: React.FC = () => {
     return true;
   }, [handleDismiss, updateRequired]);
 
-  useNativeBackHandler(Boolean(release), handleNativeBack);
+  useNativeBackHandler(updateGateOpen, handleNativeBack);
 
   const handleDownload = async () => {
     if (!release) return;
@@ -174,7 +211,7 @@ export const NativeMobileUpdateGate: React.FC = () => {
     }
   };
 
-  if (!release) return null;
+  if (!updateGateOpen || !release) return null;
 
   const releaseNotes = release.releaseNotes || [];
   const currentVersionLabel = currentMobileVersionName();

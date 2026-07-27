@@ -286,6 +286,8 @@ describe('commercial performance contracts', () => {
     expect(appSource).toContain('webpackChunkName: "api-core"');
     expect(appSource).toContain('webpackChunkName: "mobile-update-gate"');
     expect(appSource).toContain('LazyNativeMobileUpdateGate');
+    expect(appSource).toContain('NativeMobileUpdateGateHost');
+    expect(appSource).toContain("currentNativeMobilePlatform() !== 'android'");
     expect(apiIndexSource).toContain("export * from './storefront'");
     expect(apiIndexSource).toContain("export * from './core'");
   });

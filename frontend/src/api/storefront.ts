@@ -759,24 +759,29 @@ export const wishlistApi = {
 };
 
 export const notificationApi = {
-    getByUser: (_userId = 0, force = false, page = 1, size = 50) => {
+    getByUser: (_userId = 0, force = false, page = 1, size = 50, options?: ApiRequestOptions) => {
         const normalizedPage = Number.isSafeInteger(page) && page > 0 ? page : 1;
         const normalizedSize = Number.isSafeInteger(size) && size > 0 ? Math.min(size, 100) : 50;
         const cacheKey = `list:${currentUserCacheKey()}:${normalizedPage}:${normalizedSize}`;
-        if (!force) {
+        const useSharedRequest = !force && !options?.bypassCache && !options?.signal;
+        if (useSharedRequest) {
             const cached = notificationCache.get(cacheKey) as { expiresAt: number; response: AxiosResponse<AppNotification[]> } | undefined;
             if (cached && cached.expiresAt > Date.now()) return Promise.resolve(cached.response);
             const pending = notificationRequests.get(cacheKey) as Promise<AxiosResponse<AppNotification[]>> | undefined;
             if (pending) return pending;
         }
-        const request = api.get<AppNotification[]>('/notifications/me', { params: { page: normalizedPage, size: normalizedSize } })
+        const request = api.get<AppNotification[]>('/notifications/me', withRequestOptions({
+            params: { page: normalizedPage, size: normalizedSize },
+        }, options))
             .then((response) => {
                 const normalized = withArrayData(response);
                 setTimedCacheEntry(notificationCache, cacheKey, { response: normalized, expiresAt: Date.now() + NOTIFICATION_CACHE_MS });
                 return normalized;
             })
-            .finally(() => notificationRequests.delete(cacheKey));
-        setBoundedMapEntry(notificationRequests, cacheKey, request);
+            .finally(() => {
+                if (useSharedRequest) notificationRequests.delete(cacheKey);
+            });
+        if (useSharedRequest) setBoundedMapEntry(notificationRequests, cacheKey, request);
         return request;
     },
     getForUser: (userId: number, page = 1, size = 50) => api.get<AppNotification[]>('/notifications', {
@@ -985,4 +990,3 @@ export const supportApi = {
         guestEmail: normalizeEmailParam(email) || '',
     }, anonymousRequestConfig()),
 };
-

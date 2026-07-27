@@ -1,7 +1,9 @@
 import { getLocalStorageItem, setLocalStorageItem } from './safeStorage';
+import { dispatchDomEvent } from './domEvents';
 
 export const COOKIE_CONSENT_STORAGE_KEY = 'shopmx.cookie-consent.v1';
 export const COOKIE_CONSENT_VERSION = 1;
+export const COOKIE_CONSENT_CHANGED_EVENT = 'shop:cookie-consent-changed';
 
 export type CookieConsentRecord = {
   version: number;
@@ -36,5 +38,9 @@ export const acceptCookieConsent = (options?: { essentialOnly?: boolean }) => {
     acceptedAt: new Date().toISOString(),
     essentialOnly: Boolean(options?.essentialOnly),
   };
-  return setLocalStorageItem(COOKIE_CONSENT_STORAGE_KEY, JSON.stringify(record));
+  const saved = setLocalStorageItem(COOKIE_CONSENT_STORAGE_KEY, JSON.stringify(record));
+  if (saved) {
+    dispatchDomEvent(COOKIE_CONSENT_CHANGED_EVENT);
+  }
+  return saved;
 };

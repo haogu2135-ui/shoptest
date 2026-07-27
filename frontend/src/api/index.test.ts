@@ -2401,6 +2401,36 @@ const { adminApi } = require('./admin');
     ]);
   });
 
+  it('passes notification abort signals through isolated requests', async () => {
+    jest.resetModules();
+    const firstController = new AbortController();
+    const secondController = new AbortController();
+    mockGet
+      .mockResolvedValueOnce({ data: [] })
+      .mockResolvedValueOnce({ data: [] });
+
+    const { notificationApi } = require('./index');
+
+    await notificationApi.getByUser(0, false, 1, 50, { signal: firstController.signal });
+    await notificationApi.getByUser(0, false, 1, 50, { signal: secondController.signal });
+
+    expect(mockGet).toHaveBeenCalledTimes(2);
+    expect(mockGet.mock.calls[0]).toEqual([
+      '/notifications/me',
+      expect.objectContaining({
+        params: { page: 1, size: 50 },
+        signal: firstController.signal,
+      }),
+    ]);
+    expect(mockGet.mock.calls[1]).toEqual([
+      '/notifications/me',
+      expect.objectContaining({
+        params: { page: 1, size: 50 },
+        signal: secondController.signal,
+      }),
+    ]);
+  });
+
   it('normalizes notification, pet profile, pet gallery, and logistics params', async () => {
     const { notificationApi, petProfileApi, petGalleryApi, logisticsApi } = require('./index');
 

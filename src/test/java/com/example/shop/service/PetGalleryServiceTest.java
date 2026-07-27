@@ -1,7 +1,6 @@
 package com.example.shop.service;
 
 import com.example.shop.entity.PetGalleryPhoto;
-import com.example.shop.entity.PetGalleryPhotoLike;
 import com.example.shop.repository.PetGalleryPhotoLikeRepository;
 import com.example.shop.repository.PetGalleryPhotoRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -156,15 +155,14 @@ class PetGalleryServiceTest {
     }
 
     @Test
-    void likePersistsLikeAndCountInLockedUnitOfWork() throws Exception {
+    void likePersistsCountOnlyWhenAtomicLikeInsertSucceeds() throws Exception {
         PetGalleryPhoto photo = new PetGalleryPhoto();
         photo.setId(21L);
         photo.setStatus("ACTIVE");
         photo.setLikeCount(2);
         when(photoRepository.findByIdForLikeUpdate(21L)).thenReturn(Optional.of(photo));
-        when(likeRepository.existsByPhotoIdAndViewerKey(21L, "user:7")).thenReturn(false, true);
-        when(likeRepository.save(org.mockito.ArgumentMatchers.any(PetGalleryPhotoLike.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(likeRepository.insertIfAbsentByPhotoIdAndViewerKey(21L, 7L, "203.0.113.10", "user:7")).thenReturn(1);
+        when(likeRepository.existsByPhotoIdAndViewerKey(21L, "user:7")).thenReturn(true);
         when(photoRepository.saveAndFlush(photo)).thenReturn(photo);
 
         PetGalleryPhoto result = service.like(21L, 7L, "203.0.113.10");
@@ -172,16 +170,55 @@ class PetGalleryServiceTest {
         assertEquals(3, result.getLikeCount());
         assertTrue(result.getLikedByMe());
         verify(photoRepository).findByIdForLikeUpdate(21L);
-        verify(likeRepository).save(org.mockito.ArgumentMatchers.any(PetGalleryPhotoLike.class));
+        verify(likeRepository).insertIfAbsentByPhotoIdAndViewerKey(21L, 7L, "203.0.113.10", "user:7");
         verify(photoRepository).saveAndFlush(photo);
 
         String serviceSource = Files.readString(Path.of("src/main/java/com/example/shop/service/PetGalleryService.java"));
         String repositorySource = Files.readString(Path.of("src/main/java/com/example/shop/repository/PetGalleryPhotoRepository.java"));
+        String likeRepositorySource = Files.readString(Path.of("src/main/java/com/example/shop/repository/PetGalleryPhotoLikeRepository.java"));
         assertTrue(serviceSource.contains("findByIdForLikeUpdate(photoId)"));
-        assertFalse(serviceSource.contains("likeRepository.saveAndFlush(like)"));
+        assertTrue(serviceSource.contains("insertIfAbsentByPhotoIdAndViewerKey"));
+        assertFalse(serviceSource.contains("likeRepository.save(like)"));
         assertFalse(serviceSource.contains("incrementLikeCount"));
         assertTrue(repositorySource.contains("@Lock(LockModeType.PESSIMISTIC_WRITE)"));
         assertFalse(repositorySource.contains("incrementLikeCount"));
+        assertTrue(likeRepositorySource.contains("where not exists"));
+    }
+
+    @Test
+    void likeTreatsDuplicateAtomicInsertAsIdempotentWithoutChangingCount() {
+        PetGalleryPhoto photo = new PetGalleryPhoto();
+        photo.setId(21L);
+        photo.setStatus("ACTIVE");
+        photo.setLikeCount(2);
+        when(photoRepository.findByIdForLikeUpdate(21L)).thenReturn(Optional.of(photo));
+        when(likeRepository.insertIfAbsentByPhotoIdAndViewerKey(21L, 7L, "203.0.113.10", "user:7")).thenReturn(0);
+        when(likeRepository.existsByPhotoIdAndViewerKey(21L, "user:7")).thenReturn(true);
+
+        PetGalleryPhoto result = service.like(21L, 7L, "203.0.113.10");
+
+        assertEquals(2, result.getLikeCount());
+        assertTrue(result.getLikedByMe());
+        verify(photoRepository, never()).saveAndFlush(photo);
+    }
+
+    @Test
+    void likeBoundsAnonymousIpAddressToPersistedColumnLength() {
+        PetGalleryPhoto photo = new PetGalleryPhoto();
+        photo.setId(21L);
+        photo.setStatus("ACTIVE");
+        photo.setLikeCount(2);
+        String longIpLikeValue = "2001:db8:" + "a".repeat(80);
+        String normalizedIpAddress = longIpLikeValue.substring(0, 45);
+        String viewerKey = "ip:" + normalizedIpAddress;
+        when(photoRepository.findByIdForLikeUpdate(21L)).thenReturn(Optional.of(photo));
+        when(likeRepository.insertIfAbsentByPhotoIdAndViewerKey(21L, null, normalizedIpAddress, viewerKey)).thenReturn(0);
+        when(likeRepository.existsByPhotoIdAndViewerKey(21L, viewerKey)).thenReturn(true);
+
+        PetGalleryPhoto result = service.like(21L, null, longIpLikeValue);
+
+        assertTrue(result.getLikedByMe());
+        verify(likeRepository).insertIfAbsentByPhotoIdAndViewerKey(21L, null, normalizedIpAddress, viewerKey);
     }
 
     @Test

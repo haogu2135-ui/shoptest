@@ -802,7 +802,8 @@ describe('commercial UX contracts', () => {
     expect(bannerCss).toContain('cart-page__summary');
     expect(bannerCss).toContain('cart-drawer__footer');
     expect(bannerCss).toContain('checkout-page__submitReview');
-    expect(bannerCss).toContain('shop-nav__bottomBar');
+    expect(bannerCss).toMatch(/@media \(max-width: 780px\)[\s\S]*?\.cookie-consent-banner[\s\S]*?bottom:\s*calc\(var\(--shop-mobile-bottom-nav-height, 72px\) \+ 10px/);
+    expect(bannerCss).not.toContain('body.shop-cookie-consent-visible .shop-nav__bottomBar');
     expect(bannerCss).toContain('customer-support-widget__button');
     expect(bannerCss).toContain('customer-support-widget__panel');
     expect(bannerCss).toContain('product-list__mobileConversionBar');

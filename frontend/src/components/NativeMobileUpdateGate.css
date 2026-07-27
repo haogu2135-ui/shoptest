@@ -1,4 +1,9 @@
 /* Native mobile update gate densification (no ant Space/Typography runtime) */
+.shop-mobile-update-modal-root {
+  /* A mandatory update must stay actionable above consent, navigation, and support overlays. */
+  z-index: var(--shop-z-blocking-update) !important;
+}
+
 .shop-mobile-update-modal__stack {
   display: grid;
   gap: 12px;

@@ -2,12 +2,10 @@ package com.example.shop.service;
 
 import com.example.shop.dto.PetGalleryQuota;
 import com.example.shop.entity.PetGalleryPhoto;
-import com.example.shop.entity.PetGalleryPhotoLike;
 import com.example.shop.repository.PetGalleryPhotoLikeRepository;
 import com.example.shop.repository.PetGalleryPhotoRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -141,25 +139,12 @@ public class PetGalleryService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Photo not found");
         }
 
-        String viewerKey = viewerKey(userId, ipAddress);
-        boolean alreadyLiked = likeRepository.existsByPhotoIdAndViewerKey(photoId, viewerKey);
-        if (!alreadyLiked) {
+        String normalizedIpAddress = normalizeIpAddress(ipAddress);
+        String viewerKey = viewerKey(userId, normalizedIpAddress);
+        if (likeRepository.insertIfAbsentByPhotoIdAndViewerKey(photoId, userId, normalizedIpAddress, viewerKey) == 1) {
             int originalLikeCount = safeLikeCount(photo);
-            PetGalleryPhotoLike like = new PetGalleryPhotoLike();
-            like.setPhotoId(photoId);
-            like.setUserId(userId);
-            like.setIpAddress(normalizeIpAddress(ipAddress));
-            like.setViewerKey(viewerKey);
-            try {
-                likeRepository.save(like);
-                photo.setLikeCount(originalLikeCount + 1);
-                photo = photoRepository.saveAndFlush(photo);
-            } catch (DataIntegrityViolationException e) {
-                photo.setLikeCount(originalLikeCount);
-                log.debug("Treating duplicate pet gallery like as idempotent success for photo {} and viewer {}; reason={}",
-                        photoId, viewerKey, e.getMessage());
-                photo = photoRepository.findById(photoId).orElse(photo);
-            }
+            photo.setLikeCount(originalLikeCount + 1);
+            photo = photoRepository.saveAndFlush(photo);
         }
         return decorateViewerState(photo, userId, ipAddress);
     }
@@ -275,7 +260,7 @@ public class PetGalleryService {
         if (normalized.isBlank()) {
             return "unknown";
         }
-        return normalized.length() <= 96 ? normalized : normalized.substring(0, 96);
+        return normalized.length() <= 45 ? normalized : normalized.substring(0, 45);
     }
 
     private boolean isUserUpload(PetGalleryPhoto photo) {

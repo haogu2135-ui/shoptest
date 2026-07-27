@@ -33,6 +33,7 @@
   --shop-z-support-backdrop: 9798;
   --shop-z-support-panel: 9799;
   --shop-z-support-open-button: 9800;
+  --shop-z-blocking-update: 10000;
   --shop-mobile-overlay-z: var(--shop-z-support-open-button);
 }
 

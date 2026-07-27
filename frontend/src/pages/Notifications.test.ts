@@ -30,11 +30,17 @@ describe('Notifications mobile bottom-nav clearance contract', () => {
 
     expect(source).toContain('const mountedRef = useRef(true);');
     expect(source).toContain('const notificationFetchSeqRef = useRef(0);');
+    expect(source).toContain('const notificationAbortRef = useRef<AbortController | null>(null);');
     expect(source).toContain('notificationFetchSeqRef.current += 1;');
+    expect(source).toContain('notificationAbortRef.current?.abort();');
     expect(fetchSource).toContain('const requestSeq = notificationFetchSeqRef.current + 1;');
     expect(fetchSource).toContain('notificationFetchSeqRef.current = requestSeq;');
-    expect(fetchSource).toContain('const isCurrentRequest = () => mountedRef.current && notificationFetchSeqRef.current === requestSeq;');
+    expect(fetchSource).toContain('const abortController = createApiAbortController();');
+    expect(fetchSource).toContain('notificationAbortRef.current = abortController;');
+    expect(fetchSource).toContain('&& !abortController.signal.aborted;');
     expect(fetchSource).toContain('if (!isCurrentRequest()) return;');
+    expect(fetchSource).toContain('signal: abortController.signal,');
+    expect(fetchSource).toContain('if (notificationAbortRef.current === abortController) {');
     expect(fetchSource).toContain('setNotifications((current) => append ? mergeNotificationPages(current, nextNotifications) : nextNotifications);');
     expect(fetchSource).toContain('setLoadingMore(false);');
     expect(fetchSource).toContain('setLoading(false);');
@@ -46,7 +52,7 @@ describe('Notifications mobile bottom-nav clearance contract', () => {
     const fetchSource = source.slice(fetchStart, source.indexOf('useEffect(() => {', fetchStart));
 
     expect(source).toContain('const NOTIFICATION_PAGE_SIZE = 50;');
-    expect(fetchSource).toContain('notificationApi.getByUser(0, false, nextPage, NOTIFICATION_PAGE_SIZE)');
+    expect(fetchSource).toContain('notificationApi.getByUser(0, false, nextPage, NOTIFICATION_PAGE_SIZE, {');
     expect(fetchSource).toContain('setHasMoreNotifications(nextNotifications.length === NOTIFICATION_PAGE_SIZE);');
     expect(source).toContain('const [notificationPage, setNotificationPage] = useState(1);');
     expect(source).toContain('const [hasMoreNotifications, setHasMoreNotifications] = useState(false);');
@@ -147,4 +153,3 @@ describe('Notifications modularization', () => {
     expect(panels).toContain('data-notifications-filter-empty');
   });
 });
-

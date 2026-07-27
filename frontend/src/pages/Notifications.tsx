@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { useNavigate } from 'react-router-dom';
-import { notificationApi } from '../api';
+import { createApiAbortController, notificationApi } from '../api';
 import type { AppNotification } from '../types';
 import { useLanguage } from '../i18n';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -43,6 +43,7 @@ const Notifications: React.FC = () => {
   const [quickFilter, setQuickFilter] = useState<NotificationQuickFilter>('ALL');
   const mountedRef = useRef(true);
   const notificationFetchSeqRef = useRef(0);
+  const notificationAbortRef = useRef<AbortController | null>(null);
   const navigate = useNavigate();
   const { t, language } = useLanguage();
   usePageTitle(t('pages.notifications.title'));
@@ -56,9 +57,14 @@ const Notifications: React.FC = () => {
   });
 
   const fetchNotifications = useCallback(async (nextPage = 1, append = false) => {
+    notificationAbortRef.current?.abort();
     const requestSeq = notificationFetchSeqRef.current + 1;
     notificationFetchSeqRef.current = requestSeq;
-    const isCurrentRequest = () => mountedRef.current && notificationFetchSeqRef.current === requestSeq;
+    const abortController = createApiAbortController();
+    notificationAbortRef.current = abortController;
+    const isCurrentRequest = () => mountedRef.current
+      && notificationFetchSeqRef.current === requestSeq
+      && !abortController.signal.aborted;
     if (append) {
       setLoadingMore(true);
     } else {
@@ -66,7 +72,9 @@ const Notifications: React.FC = () => {
       setFetchError('');
     }
     try {
-      const res = await notificationApi.getByUser(0, false, nextPage, NOTIFICATION_PAGE_SIZE);
+      const res = await notificationApi.getByUser(0, false, nextPage, NOTIFICATION_PAGE_SIZE, {
+        signal: abortController.signal,
+      });
       if (!isCurrentRequest()) return;
       const nextNotifications = sortNotifications(res.data);
       setNotifications((current) => append ? mergeNotificationPages(current, nextNotifications) : nextNotifications);
@@ -82,6 +90,9 @@ const Notifications: React.FC = () => {
       }
       announceAccessibleMessage(t('pages.notifications.fetchFailed'), 'error');
     } finally {
+      if (notificationAbortRef.current === abortController) {
+        notificationAbortRef.current = null;
+      }
       if (!isCurrentRequest()) return;
       if (append) {
         setLoadingMore(false);
@@ -96,6 +107,8 @@ const Notifications: React.FC = () => {
     return () => {
       mountedRef.current = false;
       notificationFetchSeqRef.current += 1;
+      notificationAbortRef.current?.abort();
+      notificationAbortRef.current = null;
     };
   }, []);
 
