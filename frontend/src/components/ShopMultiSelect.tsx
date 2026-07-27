@@ -109,7 +109,7 @@ const ShopMultiSelect: React.FC<ShopMultiSelectProps> = ({
   });
 
   useEffect(() => {
-    if (!resolvedOpen || typeof window === 'undefined') return undefined;
+    if (!resolvedOpen || typeof window === 'undefined') return;
     const updatePosition = () => {
       const rect = triggerRef.current?.getBoundingClientRect();
       if (!rect) return;
@@ -145,7 +145,7 @@ const ShopMultiSelect: React.FC<ShopMultiSelectProps> = ({
   }, [filteredOptions.length, popupMaxHeight, popupZIndex, resolvedOpen, showSearch]);
 
   useEffect(() => {
-    if (!resolvedOpen || typeof document === 'undefined') return undefined;
+    if (!resolvedOpen || typeof document === 'undefined') return;
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') setOpen(false);
     };

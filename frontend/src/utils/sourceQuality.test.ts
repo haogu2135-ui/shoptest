@@ -270,6 +270,7 @@ describe('source quality contracts', () => {
     ));
 
     expect(appCss).toContain('--shop-z-critical-mobile-nav: 9000;');
+    expect(appCss).toContain('--shop-z-modal: 9400;');
     expect(appCss).toContain('--shop-z-support-open-button: 9800;');
     expect(appCss).toContain('--shop-z-blocking-update: 10000;');
     expect(combinedSource).toContain('z-index: var(--shop-z-skip-link);');

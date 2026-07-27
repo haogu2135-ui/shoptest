@@ -87,7 +87,7 @@ const ShopCascader: React.FC<ShopCascaderProps> = ({
   }, [activePath, options]);
 
   useEffect(() => {
-    if (!resolvedOpen || typeof window === 'undefined') return undefined;
+    if (!resolvedOpen || typeof window === 'undefined') return;
     const updatePosition = () => {
       const rect = triggerRef.current?.getBoundingClientRect();
       if (!rect) return;
@@ -121,7 +121,7 @@ const ShopCascader: React.FC<ShopCascaderProps> = ({
   }, [columns.length, popupZIndex, resolvedOpen]);
 
   useEffect(() => {
-    if (!resolvedOpen || typeof document === 'undefined') return undefined;
+    if (!resolvedOpen || typeof document === 'undefined') return;
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') setOpen(false);
     };

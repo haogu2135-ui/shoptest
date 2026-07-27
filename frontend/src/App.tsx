@@ -303,7 +303,7 @@ export const AccessibleMessageLiveRegion: React.FC = () => {
   useEffect(() => subscribeAccessibleMessages(setAnnouncement), []);
 
   useEffect(() => {
-    if (!announcement) return undefined;
+    if (!announcement) return;
     const timer = window.setTimeout(() => {
       setAnnouncement((current) => (current && current.id === announcement.id ? null : current));
     }, 4200);

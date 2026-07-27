@@ -42,7 +42,7 @@ const ShopPopconfirm: React.FC<ShopPopconfirmProps> = ({
   const titleId = useId();
 
   useEffect(() => {
-    if (!open || typeof document === 'undefined') return undefined;
+    if (!open || typeof document === 'undefined') return;
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') setOpen(false);
     };

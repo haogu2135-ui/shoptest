@@ -54,7 +54,7 @@ const ShopDropdown: React.FC<ShopDropdownProps> = ({
   }, [resolvedOpen]);
 
   useEffect(() => {
-    if (!resolvedOpen || typeof window === 'undefined') return undefined;
+    if (!resolvedOpen || typeof window === 'undefined') return;
     const updatePosition = () => {
       const rect = (triggerRef.current || wrapRef.current)?.getBoundingClientRect();
       if (!rect) return;
@@ -88,7 +88,7 @@ const ShopDropdown: React.FC<ShopDropdownProps> = ({
   }, [expandedKeys.length, items.length, popupZIndex, resolvedOpen]);
 
   useEffect(() => {
-    if (!resolvedOpen || typeof document === 'undefined') return undefined;
+    if (!resolvedOpen || typeof document === 'undefined') return;
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') setOpen(false);
     };

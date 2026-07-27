@@ -8,7 +8,7 @@ Nginx, the API, and the database.
   assets.
 - Run Godot, browser, APK, build, and other CPU- or I/O-intensive commands via
   `scripts/run-bounded-task.sh <command>`. Its defaults reserve host capacity,
-  impose a timeout, and remove all child processes when the scope ends.
+  impose a timeout, and remove all child processes when the task service ends.
 - Do not background heavy commands. Wait for completion and verify that they
   did not leave a listener or child process behind.
 - For a task that needs more than the runner's default budget, request explicit

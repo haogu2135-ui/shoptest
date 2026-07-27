@@ -24,7 +24,9 @@ task_cpu="${SHOPTEST_TASK_CPU:-75%}"
 task_memory="${SHOPTEST_TASK_MEMORY:-1G}"
 
 if command -v systemd-run >/dev/null 2>&1; then
-  exec systemd-run --scope --quiet --collect \
+  # A transient service keeps the command in its own cgroup and --wait preserves
+  # the caller's synchronous contract, so later heavy tasks cannot overlap it.
+  exec systemd-run --quiet --collect --wait --pipe --same-dir \
     --property="CPUQuota=${task_cpu}" \
     --property="MemoryHigh=768M" \
     --property="MemoryMax=${task_memory}" \

@@ -422,9 +422,9 @@ expect(recommendationsPanel).toContain('export const ProductDetailRecommendation
     expect(buyBarPanel).toContain('product-mobile-buybar');
     expect(buyBarPanel).toContain('product-mobile-buybar__cart');
     expect(buyBarPanel).toContain('product-mobile-buybar__buy');
-    expect(shell).toContain('<ProductDetailSizeGuideModal');
-    expect(page).not.toContain('product-detail__sizeGuideModalRoot');
-    expect(page).not.toContain("from './productDetailSummary'");
+    expect(page).toContain('<ProductDetailSizeGuideModal');
+    expect(page).toContain("from './productDetailSummary'");
+    expect(shell).not.toContain('<ProductDetailSizeGuideModal');
     expect(page).not.toContain('<ProductDetailSummary');
     expect(shell).toContain("from './productDetailSummary'");
     expect(shell).toContain('<ProductDetailSummary');
@@ -1255,7 +1255,8 @@ expect(recommendationsPanel).toContain('export const ProductDetailRecommendation
     expect(browserSmoke).toContain('cookie consent banner');
     expect(browserSmoke).toContain('cookie consent sticky rail selectors');
     expect(browserSmoke).toContain('customer-support-widget__button');
-    expect(browserSmoke).toContain('shop-nav__bottomBar');
+    expect(browserSmoke).toContain('product-list__mobileConversionBar');
+    expect(browserSmoke).toContain("!clearanceCss.includes('shop-nav__bottomBar')");
     expect(browserSmoke).toContain('/terms');
     expect(browserSmoke).toContain('/wishlist');
     expect(browserSmoke).toContain('/history');

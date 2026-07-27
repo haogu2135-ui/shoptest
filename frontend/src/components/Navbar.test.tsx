@@ -397,7 +397,7 @@ describe('Navbar Android app download entry', () => {
     expect(source).toContain("{ key: 'track-order', icon: <ShopIcon path={SI.shopping} />, label: t('nav.trackOrder'), onClick: () => navigate('/track-order') }");
     expect(source).toContain("{ key: 'pet-finder', icon: <ShopIcon path={SI.search} />, label: t('nav.petFinder'), onClick: () => navigate('/pet-finder') }");
     expect(source).toContain("{ key: 'deals', icon: <ShopIcon path={SI.gift} />, label: t('nav.followDeals'), onClick: () => navigate('/products?discount=true') }");
-    expect(f3358Css).toMatch(/@media \(min-width:\s*781px\) and \(max-width:\s*1024px\)\s*\{/);
+    expect(f3358Css).toMatch(/@media \(min-width:\s*781px\) and \(max-width:\s*1060px\)\s*\{/);
     expect(f3358Css).toMatch(/\.shop-nav__top\s*\{[\s\S]*?display:\s*none;/);
     expect(f3358Css).toMatch(/\.shop-nav__inner--main\s*\{[\s\S]*?grid-template-columns:\s*minmax\(150px,\s*auto\) minmax\(280px,\s*1fr\) auto;/);
     expect(f3358Css).toMatch(/\.shop-nav__actions\s*\{[\s\S]*?min-height:\s*44px;[\s\S]*?flex-wrap:\s*nowrap;/);

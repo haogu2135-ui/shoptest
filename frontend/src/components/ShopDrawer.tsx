@@ -50,7 +50,7 @@ const ShopDrawer: React.FC<ShopDrawerProps> = ({
     || (!hasTitle ? closeLabel : (typeof title === 'string' ? title : undefined));
 
   useEffect(() => {
-    if (!open) return undefined;
+    if (!open) return;
     return activateFocusTrap({
       getPanel: () => panelRef.current,
       getInitialFocus: () => closeRef.current

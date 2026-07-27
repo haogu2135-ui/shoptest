@@ -68,7 +68,7 @@ const ShopModal: React.FC<ShopModalProps> = ({
     || (!hasTitle ? closeLabel : (typeof title === 'string' ? title : undefined));
 
   useEffect(() => {
-    if (!open) return undefined;
+    if (!open) return;
     return activateFocusTrap({
       getPanel: () => panelRef.current,
       getInitialFocus: () => (

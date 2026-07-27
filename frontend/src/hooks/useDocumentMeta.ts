@@ -40,7 +40,7 @@ export const useDocumentMeta = (options: UseDocumentMetaOptions) => {
 
   useEffect(() => {
     if (!enabled || typeof document === 'undefined') {
-      return undefined;
+      return;
     }
 
     const snapshot = captureDocumentMeta();

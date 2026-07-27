@@ -1,7 +1,7 @@
 .shop-modal {
   position: fixed;
   inset: 0;
-  z-index: 1100;
+  z-index: var(--shop-z-modal);
   pointer-events: auto;
 }
 

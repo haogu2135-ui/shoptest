@@ -232,9 +232,9 @@ const ProductDetail: React.FC = () => {
   }, [searchParams, setSearchParams]);
 
   useEffect(() => {
-    if (typeof document === 'undefined' || loading) return undefined;
+    if (typeof document === 'undefined' || loading) return;
     const hash = String(window.location.hash || '').replace(/^#/, '').toLowerCase();
-    if (!hash) return undefined;
+    if (!hash) return;
     const targetId = hash === 'reviews' || hash === 'review'
       ? 'product-reviews-card'
       : hash === 'qa' || hash === 'questions' || hash === 'ask'
@@ -242,7 +242,7 @@ const ProductDetail: React.FC = () => {
         : hash === 'specs' || hash === 'service' || hash === 'details'
           ? 'product-service-tabs'
           : '';
-    if (!targetId) return undefined;
+    if (!targetId) return;
     if (hash === 'specs' || hash === 'service' || hash === 'details') {
       openProductDetailTab(hash);
     }

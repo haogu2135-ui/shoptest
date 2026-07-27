@@ -144,7 +144,7 @@ const ShopTreeSelect: React.FC<ShopTreeSelectProps> = ({
   }, [treeData, treeDefaultExpandAll, value]);
 
   useEffect(() => {
-    if (!resolvedOpen || typeof window === 'undefined') return undefined;
+    if (!resolvedOpen || typeof window === 'undefined') return;
     const updatePosition = () => {
       const rect = triggerRef.current?.getBoundingClientRect();
       if (!rect) return;
@@ -177,7 +177,7 @@ const ShopTreeSelect: React.FC<ShopTreeSelectProps> = ({
   }, [popupMaxHeight, popupZIndex, resolvedOpen]);
 
   useEffect(() => {
-    if (!resolvedOpen || typeof document === 'undefined') return undefined;
+    if (!resolvedOpen || typeof document === 'undefined') return;
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') setOpen(false);
     };

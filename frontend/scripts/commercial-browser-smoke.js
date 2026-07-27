@@ -177,7 +177,8 @@ async function main() {
         JSON.stringify(clearanceState),
       );
 
-      // Commercial: sticky rails and support launcher must be covered by clearance CSS wiring.
+      // Commercial: sticky conversion rails and the support launcher must clear consent.
+      // The bottom navigation stays in its natural rail and must not be shifted upward.
       const clearanceCss = await page.evaluate(() => {
         const sheets = Array.from(document.styleSheets || []);
         const hay = [];
@@ -203,7 +204,8 @@ async function main() {
         clearanceCss.includes('product-mobile-buybar')
           && clearanceCss.includes('cart-page__summary')
           && clearanceCss.includes('customer-support-widget__button')
-          && clearanceCss.includes('shop-nav__bottomBar')
+          && clearanceCss.includes('product-list__mobileConversionBar')
+          && !clearanceCss.includes('shop-nav__bottomBar')
           && clearanceCss.includes('payment-instructions-page__stickyBar'),
         clearanceCss.slice(0, 220),
       );

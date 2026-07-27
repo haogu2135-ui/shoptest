@@ -1,7 +1,7 @@
 ﻿@import './styles/shared-hero.css';
 
 :root {
-  /* Layer scale: local content <100, app chrome 800-1999, overlays 2000-8999, emergency layers 9000+. */
+  /* Layer scale: local content <100, app chrome 800-1999, overlays 2000-8999, mobile navigation and modal arbitration 9000+. */
   --shop-z-base: 1;
   --shop-z-raised: 2;
   --shop-z-local-alert: 3;
@@ -27,6 +27,7 @@
   --shop-z-coupon-action: 8998;
   --shop-z-product-conversion: 8999;
   --shop-z-critical-mobile-nav: 9000;
+  --shop-z-modal: 9400;
   --shop-z-connectivity-banner: 1100;
   --shop-z-api-error-banner: 1090;
   --shop-z-shell-toast: 9200;

@@ -1,6 +1,10 @@
 import React from 'react';
+import fs from 'fs';
+import path from 'path';
 import { fireEvent, render, screen } from '@testing-library/react';
 import ShopModal from './ShopModal';
+
+const readShopModalCss = () => fs.readFileSync(path.resolve(__dirname, 'ShopModal.css'), 'utf8');
 
 describe('ShopModal', () => {
   it('renders commercial modal chrome and closes from close control', () => {
@@ -71,6 +75,10 @@ describe('ShopModal', () => {
     expect(modalRoot).not.toBeNull();
     expect(modalRoot?.parentElement).toBe(document.body);
     expect(container.contains(modalRoot)).toBe(false);
+  });
+
+  it('keeps ordinary dialogs above the native bottom navigation layer', () => {
+    expect(readShopModalCss()).toMatch(/\.shop-modal\s*\{[\s\S]*?z-index:\s*var\(--shop-z-modal\);/);
   });
 
   it('wires confirmLoading onto the primary action', () => {
