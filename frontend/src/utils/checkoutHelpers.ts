@@ -1393,6 +1393,38 @@ export const resolveCheckoutSelectedAddressReady = (params: {
     : isCompleteSavedAddress(params.selectedSavedAddress)
 );
 
+export type CheckoutAddressChoiceId = number | 'new';
+
+/** Ordered values for the saved-address radiogroup, including its new-address exit. */
+export const getCheckoutAddressChoiceIds = (
+  addresses: Array<Pick<UserAddress, 'id'>>,
+): CheckoutAddressChoiceId[] => [
+  ...addresses.map((address) => address.id),
+  'new',
+];
+
+/** Native radio-style navigation for saved checkout addresses. */
+export const getNextCheckoutAddressChoiceId = (
+  choices: CheckoutAddressChoiceId[],
+  currentChoiceId: CheckoutAddressChoiceId,
+  key: string,
+): CheckoutAddressChoiceId | null => {
+  if (choices.length === 0) return null;
+
+  if (key === 'Home') return choices[0];
+  if (key === 'End') return choices[choices.length - 1];
+
+  const direction = key === 'ArrowRight' || key === 'ArrowDown'
+    ? 1
+    : key === 'ArrowLeft' || key === 'ArrowUp'
+      ? -1
+      : 0;
+  if (!direction) return null;
+
+  const currentIndex = Math.max(0, choices.findIndex((choiceId) => choiceId === currentChoiceId));
+  return choices[(currentIndex + direction + choices.length) % choices.length];
+};
+
 /** Assemble CheckoutMainShell prop bag in one pure surface for residual modularization. */
 export const buildCheckoutMainShellProps = <T extends Record<string, unknown>>(props: T): T => props;
 

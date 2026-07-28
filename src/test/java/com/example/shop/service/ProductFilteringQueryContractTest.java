@@ -22,10 +22,12 @@ class ProductFilteringQueryContractTest {
         assertTrue(pageQuery.contains("PageRequest.of(normalizedPage, normalizedSize, productPageSort(normalizedQuery.getSort()))"));
         assertTrue(pageQuery.contains("productRepository.findAll(publicProductSpecification("));
         assertTrue(pageQuery.contains(", pageRequest)"));
-        assertTrue(pageQuery.contains("page.getContent()"),
-                "Any defensive Java filtering must operate only on the current database page");
-        assertTrue(pageQuery.contains("new PageImpl<>(visibleProducts, page.getPageable(), visibleProducts.size())"),
-                "Post-query visibility filters must not reuse the unfiltered database total");
+        assertTrue(pageQuery.contains("resolveKeywordSearchScope(normalizedKeyword)"));
+        assertTrue(pageQuery.contains("new PageImpl<>(enrichReviewStats(page.getContent()), page.getPageable(), page.getTotalElements())"),
+                "Public pagination must preserve the database total after all filters are applied in the specification");
+        assertFalse(pageQuery.contains(".stream().filter("),
+                "Public filtering after database pagination creates empty pages and incorrect totals");
+        assertFalse(pageQuery.contains("visibleProducts"));
 
         assertTrue(specification.contains("Expression<BigDecimal> effectivePrice = effectivePriceExpression(criteriaBuilder, root)"));
         assertTrue(specification.contains("criteriaBuilder.greaterThanOrEqualTo(effectivePrice, minPrice)"));
@@ -33,9 +35,23 @@ class ProductFilteringQueryContractTest {
         assertTrue(specification.contains("addSpecificationRefinementPredicates(predicates, criteriaBuilder, root.get(\"specifications\"), query.getPetSizes())"));
         assertTrue(specification.contains("addSpecificationRefinementPredicates(predicates, criteriaBuilder, root.get(\"specifications\"), query.getMaterials())"));
         assertTrue(specification.contains("addColorPredicates(predicates, criteriaBuilder, root.get(\"name\"), root.get(\"specifications\"), query.getColors())"));
-        assertTrue(specification.contains("containsLike(criteriaBuilder, root.get(\"specifications\"), term)"));
+        assertTrue(specification.contains("publicKeywordPredicate(criteriaBuilder, root, keywordSearchScope)"));
         assertFalse(pageQuery.contains("productRepository.findAll()"),
                 "Public product filters must not start from an unbounded product load");
+    }
+
+    @Test
+    void publicKeywordScopeKeepsMultiTermAndCategoryMatchesInsideThePagedSpecification() throws IOException {
+        String source = read("src/main/java/com/example/shop/service/impl/ProductServiceImpl.java");
+        String scope = methodBlock(source, "private KeywordSearchScope resolveKeywordSearchScope(String normalizedKeyword)");
+        String predicate = methodBlock(source,
+                "private Predicate publicKeywordPredicate(CriteriaBuilder criteriaBuilder,");
+
+        assertTrue(scope.contains("filter(token -> !isPetContextToken(token))"));
+        assertTrue(scope.contains("findKeywordCategoryIdsForTerms(expandSearchToken(token))"));
+        assertTrue(predicate.contains("keywordSearchScope.requireAllTokens"));
+        assertTrue(predicate.contains("criteriaBuilder.and(tokenMatches.toArray(new Predicate[0]))"));
+        assertTrue(predicate.contains("criteriaBuilder.or(tokenMatches.toArray(new Predicate[0]))"));
     }
 
     @Test

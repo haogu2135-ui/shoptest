@@ -257,35 +257,26 @@ public class ProductServiceImpl implements ProductService {
             return new PageImpl<>(List.of(), PageRequest.of(normalizedPage, normalizedSize), 0);
         }
         Set<Long> categoryIds = selectedCategoryIds(normalizedQuery);
-        Set<Long> keywordCategoryIds = findKeywordCategoryIds(normalizedKeyword);
+        KeywordSearchScope keywordSearchScope = resolveKeywordSearchScope(normalizedKeyword);
         String normalizedStatus = normalizePublicStatusFilter(normalizedQuery.getStatus());
         String normalizedCollection = normalizePublicCollection(normalizedQuery.getCollection());
         Set<Long> collectionCategoryIds = smartDeviceCollectionCategoryIds(normalizedCollection);
         PageRequest pageRequest = PageRequest.of(normalizedPage, normalizedSize, productPageSort(normalizedQuery.getSort()));
         Page<Product> page = productRepository.findAll(publicProductSpecification(
                 normalizedQuery,
-                normalizedKeyword,
+                keywordSearchScope,
                 categoryIds,
-                keywordCategoryIds,
                 normalizedCollection,
                 collectionCategoryIds,
                 minPrice,
                 maxPrice,
                 normalizedStatus), pageRequest);
-        List<Product> pageItems = enrichReviewStats(page.getContent());
-        Map<Long, Category> categoryLookup = loadCategoryLookupForProducts(pageItems);
-        List<Product> visibleProducts = pageItems.stream()
-                .filter(product -> matchesPublicListQuery(product, normalizedQuery, normalizedKeyword, categoryLookup,
-                        categoryIds, normalizedCollection, collectionCategoryIds, minPrice, maxPrice, normalizedStatus))
-                .collect(Collectors.toList());
-        // Post-query visibility must not reuse the unfiltered database total.
-        return new PageImpl<>(visibleProducts, page.getPageable(), visibleProducts.size());
+        return new PageImpl<>(enrichReviewStats(page.getContent()), page.getPageable(), page.getTotalElements());
     }
 
     private Specification<Product> publicProductSpecification(ProductListQuery query,
-                                                              String normalizedKeyword,
+                                                              KeywordSearchScope keywordSearchScope,
                                                               Set<Long> categoryIds,
-                                                              Set<Long> keywordCategoryIds,
                                                               String normalizedCollection,
                                                               Set<Long> collectionCategoryIds,
                                                               BigDecimal minPrice,
@@ -325,20 +316,8 @@ public class ProductServiceImpl implements ProductService {
             addSpecificationRefinementPredicates(predicates, criteriaBuilder, root.get("specifications"), query.getPetSizes());
             addSpecificationRefinementPredicates(predicates, criteriaBuilder, root.get("specifications"), query.getMaterials());
             addColorPredicates(predicates, criteriaBuilder, root.get("name"), root.get("specifications"), query.getColors());
-            if (normalizedKeyword != null && !normalizedKeyword.isEmpty()) {
-                List<Predicate> keywordPredicates = new ArrayList<>();
-                recommendationSearchTerms(List.of(normalizedKeyword)).forEach(term -> keywordPredicates.add(criteriaBuilder.or(
-                        containsLike(criteriaBuilder, root.get("name"), term),
-                        containsLike(criteriaBuilder, root.get("description"), term),
-                        containsLike(criteriaBuilder, root.get("brand"), term),
-                        containsLike(criteriaBuilder, root.get("tag"), term),
-                        containsLike(criteriaBuilder, root.get("specifications"), term))));
-                if (keywordCategoryIds != null && !keywordCategoryIds.isEmpty()) {
-                    keywordPredicates.add(root.get("categoryId").in(keywordCategoryIds));
-                }
-                predicates.add(keywordPredicates.isEmpty()
-                        ? criteriaBuilder.disjunction()
-                        : criteriaBuilder.or(keywordPredicates.toArray(new Predicate[0])));
+            if (keywordSearchScope != null && !keywordSearchScope.isEmpty()) {
+                predicates.add(publicKeywordPredicate(criteriaBuilder, root, keywordSearchScope));
             }
             applyProductPageRanking(criteriaQuery, criteriaBuilder, root, query.getSort());
             return criteriaBuilder.and(predicates.toArray(new Predicate[0]));
@@ -545,9 +524,43 @@ public class ProductServiceImpl implements ProductService {
         if (normalizedKeyword == null || normalizedKeyword.isEmpty()) {
             return Set.of();
         }
-        Set<Long> ids = new LinkedHashSet<>();
-        recommendationSearchTerms(List.of(normalizedKeyword)).stream()
+        return findKeywordCategoryIdsForTerms(recommendationSearchTerms(List.of(normalizedKeyword)));
+    }
+
+    private KeywordSearchScope resolveKeywordSearchScope(String normalizedKeyword) {
+        if (normalizedKeyword == null || normalizedKeyword.isEmpty()) {
+            return KeywordSearchScope.empty();
+        }
+        List<String> tokens = Arrays.stream(normalizedKeyword.split("\\s+"))
+                .filter(token -> token.length() > 1)
+                .distinct()
                 .limit(8)
+                .collect(Collectors.toList());
+        List<String> intentTokens = tokens.stream()
+                .filter(token -> !isPetContextToken(token))
+                .collect(Collectors.toList());
+        List<String> requiredTokens = intentTokens.isEmpty() ? tokens : intentTokens;
+        Map<String, Set<Long>> categoryIdsByToken = new LinkedHashMap<>();
+        requiredTokens.forEach(token -> categoryIdsByToken.put(token,
+                findKeywordCategoryIdsForTerms(expandSearchToken(token))));
+        return new KeywordSearchScope(
+                normalizedKeyword,
+                !intentTokens.isEmpty(),
+                requiredTokens,
+                findKeywordCategoryIdsForTerms(List.of(normalizedKeyword)),
+                categoryIdsByToken);
+    }
+
+    private Set<Long> findKeywordCategoryIdsForTerms(List<String> searchTerms) {
+        Set<Long> ids = new LinkedHashSet<>();
+        if (searchTerms == null || searchTerms.isEmpty()) {
+            return ids;
+        }
+        searchTerms.stream()
+                .map(this::normalizeSearchText)
+                .filter(term -> !term.isEmpty())
+                .distinct()
+                .limit(12)
                 .forEach(term -> categoryRepository.findIdsByKeyword(escapeLikeTerm(term), PageRequest.of(0, 40))
                         .forEach(id -> {
                             if (id == null || id <= 0 || ids.size() >= 120) {
@@ -556,6 +569,60 @@ public class ProductServiceImpl implements ProductService {
                             ids.addAll(collectCategoryIds(id));
                         }));
         return ids;
+    }
+
+    private Predicate publicKeywordPredicate(CriteriaBuilder criteriaBuilder,
+                                             Root<Product> root,
+                                             KeywordSearchScope keywordSearchScope) {
+        List<Predicate> matches = new ArrayList<>();
+        matches.add(keywordTermPredicate(criteriaBuilder, root, keywordSearchScope.phrase,
+                keywordSearchScope.phraseCategoryIds));
+
+        if (!keywordSearchScope.requiredTokens.isEmpty()) {
+            List<Predicate> tokenMatches = keywordSearchScope.requiredTokens.stream()
+                    .map(token -> keywordTokenPredicate(criteriaBuilder, root, token,
+                            keywordSearchScope.categoryIdsByToken.getOrDefault(token, Set.of())))
+                    .collect(Collectors.toList());
+            matches.add(keywordSearchScope.requireAllTokens
+                    ? criteriaBuilder.and(tokenMatches.toArray(new Predicate[0]))
+                    : criteriaBuilder.or(tokenMatches.toArray(new Predicate[0])));
+        }
+        return criteriaBuilder.or(matches.toArray(new Predicate[0]));
+    }
+
+    private Predicate keywordTokenPredicate(CriteriaBuilder criteriaBuilder,
+                                            Root<Product> root,
+                                            String token,
+                                            Set<Long> categoryIds) {
+        List<Predicate> matches = expandSearchToken(token).stream()
+                .map(term -> keywordTermPredicate(criteriaBuilder, root, term, Set.of()))
+                .collect(Collectors.toCollection(ArrayList::new));
+        if (categoryIds != null && !categoryIds.isEmpty()) {
+            matches.add(root.get("categoryId").in(categoryIds));
+        }
+        return matches.isEmpty()
+                ? criteriaBuilder.disjunction()
+                : criteriaBuilder.or(matches.toArray(new Predicate[0]));
+    }
+
+    private Predicate keywordTermPredicate(CriteriaBuilder criteriaBuilder,
+                                           Root<Product> root,
+                                           String term,
+                                           Set<Long> categoryIds) {
+        List<Predicate> matches = new ArrayList<>();
+        if (term != null && !term.isEmpty()) {
+            matches.add(containsLike(criteriaBuilder, root.get("name"), term));
+            matches.add(containsLike(criteriaBuilder, root.get("description"), term));
+            matches.add(containsLike(criteriaBuilder, root.get("brand"), term));
+            matches.add(containsLike(criteriaBuilder, root.get("tag"), term));
+            matches.add(containsLike(criteriaBuilder, root.get("specifications"), term));
+        }
+        if (categoryIds != null && !categoryIds.isEmpty()) {
+            matches.add(root.get("categoryId").in(categoryIds));
+        }
+        return matches.isEmpty()
+                ? criteriaBuilder.disjunction()
+                : criteriaBuilder.or(matches.toArray(new Predicate[0]));
     }
 
     private Sort productPageSort(String sort) {
@@ -884,108 +951,11 @@ public class ProductServiceImpl implements ProductService {
         return getCachedProducts("discount:limit=" + limit, () -> findPublicProductPage(query).getContent());
     }
 
-    private boolean matchesPublicListQuery(Product product,
-                                           ProductListQuery query,
-                                           String normalizedKeyword,
-                                           Map<Long, Category> categoryLookup,
-                                           Set<Long> categoryIds,
-                                           String normalizedCollection,
-                                           Set<Long> collectionCategoryIds,
-                                           BigDecimal minPrice,
-                                           BigDecimal maxPrice,
-                                           String normalizedStatus) {
-        if (!isPublicCatalogProduct(product)) {
-            return false;
-        }
-        if (normalizedStatus != null && !ProductStatusUtils.isPublicProduct(product)) {
-            return false;
-        }
-        if (normalizedStatus != null && !"ACTIVE".equals(normalizedStatus)) {
-            return false;
-        }
-        if (!categoryIds.isEmpty() && !categoryIds.contains(product.getCategoryId())) {
-            return false;
-        }
-        if (!matchesPublicCollection(product, normalizedCollection, collectionCategoryIds)) {
-            return false;
-        }
-        if (query.getFeatured() != null && !query.getFeatured().equals(Boolean.TRUE.equals(product.getIsFeatured()))) {
-            return false;
-        }
-        if (Boolean.TRUE.equals(query.getDiscount()) && !hasActiveDiscount(product)) {
-            return false;
-        }
-        if (!matchesCatalogRefinements(product, query)) {
-            return false;
-        }
-        BigDecimal price = effectivePrice(product);
-        if (minPrice != null && (price == null || price.compareTo(minPrice) < 0)) {
-            return false;
-        }
-        if (maxPrice != null && (price == null || price.compareTo(maxPrice) > 0)) {
-            return false;
-        }
-        return normalizedKeyword == null || normalizedKeyword.isEmpty()
-                || matchesNormalizedKeyword(product, normalizedKeyword, categoryLookup);
-    }
-
-    private boolean matchesAdminListQuery(Product product,
-                                          ProductListQuery query,
-                                          String normalizedKeyword,
-                                          Map<Long, Category> categoryLookup,
-                                          Set<Long> categoryIds,
-                                          BigDecimal minPrice,
-                                          BigDecimal maxPrice,
-                                          String normalizedStatus) {
-        if (product == null) {
-            return false;
-        }
-        if (normalizedStatus != null) {
-            String productStatus = product.getStatus() == null ? "ACTIVE" : product.getStatus().trim().toUpperCase(Locale.ROOT);
-            if (!normalizedStatus.equals(productStatus)) {
-                return false;
-            }
-        }
-        if (!categoryIds.isEmpty() && !categoryIds.contains(product.getCategoryId())) {
-            return false;
-        }
-        if (query.getFeatured() != null && !query.getFeatured().equals(Boolean.TRUE.equals(product.getIsFeatured()))) {
-            return false;
-        }
-        if (Boolean.TRUE.equals(query.getDiscount()) && !hasActiveDiscount(product)) {
-            return false;
-        }
-        if (!matchesCatalogRefinements(product, query)) {
-            return false;
-        }
-        BigDecimal price = effectivePrice(product);
-        if (minPrice != null && (price == null || price.compareTo(minPrice) < 0)) {
-            return false;
-        }
-        if (maxPrice != null && (price == null || price.compareTo(maxPrice) > 0)) {
-            return false;
-        }
-        return normalizedKeyword == null || normalizedKeyword.isEmpty()
-                || matchesNormalizedKeyword(product, normalizedKeyword, categoryLookup);
-    }
-
     private boolean hasActiveDiscount(Product product) {
         Integer effectiveDiscount = product.getEffectiveDiscountPercent();
         return effectiveDiscount != null && effectiveDiscount > 0
                 || product.getDiscount() != null && product.getDiscount() > 0
                 || product.isActiveLimitedTimeDiscount();
-    }
-
-    private boolean matchesCatalogRefinements(Product product, ProductListQuery query) {
-        String specText = productSpecificationText(product);
-        if (!matchesAnyRefinement(specText, query.getPetSizes())) {
-            return false;
-        }
-        if (!matchesAnyRefinement(specText, query.getMaterials())) {
-            return false;
-        }
-        String colorText = (safeLower(product == null ? null : product.getName()) + " " + specText).trim();
-        return matchesAnyRefinement(colorText, query.getColors());
     }
 
     private String normalizePublicCollection(String collection) {
@@ -1002,34 +972,6 @@ public class ProductServiceImpl implements ProductService {
                 : Set.of();
     }
 
-    private boolean matchesPublicCollection(Product product, String normalizedCollection, Set<Long> collectionCategoryIds) {
-        if (!SMART_DEVICES_COLLECTION.equals(normalizedCollection)) {
-            return true;
-        }
-        if (product == null) {
-            return false;
-        }
-        if (collectionCategoryIds != null && collectionCategoryIds.contains(product.getCategoryId())) {
-            return true;
-        }
-        String text = String.join(" ",
-                stringValue(safeLower(product.getName())),
-                stringValue(safeLower(product.getDescription())),
-                stringValue(safeLower(product.getBrand())),
-                stringValue(safeLower(product.getTag())),
-                productSpecificationText(product)).trim();
-        return SMART_DEVICE_COLLECTION_TERMS.stream().anyMatch(text::contains);
-    }
-
-    private boolean matchesAnyRefinement(String haystack, List<String> values) {
-        List<String> normalizedValues = normalizeRefinementValues(values);
-        if (normalizedValues.isEmpty()) {
-            return true;
-        }
-        String normalizedHaystack = haystack == null ? "" : haystack;
-        return normalizedValues.stream().anyMatch(normalizedHaystack::contains);
-    }
-
     private List<String> normalizeRefinementValues(List<String> values) {
         if (values == null || values.isEmpty()) {
             return List.of();
@@ -1040,17 +982,6 @@ public class ProductServiceImpl implements ProductService {
                 .distinct()
                 .limit(12)
                 .collect(Collectors.toList());
-    }
-
-    private String productSpecificationText(Product product) {
-        if (product == null) {
-            return "";
-        }
-        return product.getPublicSpecificationsMap().entrySet().stream()
-                .flatMap(entry -> Arrays.asList(entry.getKey(), entry.getValue()).stream())
-                .map(this::safeLower)
-                .filter(value -> value != null && !value.isBlank())
-                .collect(Collectors.joining(" "));
     }
 
     private String safeLower(String value) {
@@ -3295,6 +3226,35 @@ public class ProductServiceImpl implements ProductService {
         private ProductAddOnCandidate(Product product, int score) {
             this.product = product;
             this.score = score;
+        }
+    }
+
+    /** Database-ready public keyword plan; every branch is applied before pagination. */
+    private static class KeywordSearchScope {
+        private final String phrase;
+        private final boolean requireAllTokens;
+        private final List<String> requiredTokens;
+        private final Set<Long> phraseCategoryIds;
+        private final Map<String, Set<Long>> categoryIdsByToken;
+
+        private KeywordSearchScope(String phrase,
+                                   boolean requireAllTokens,
+                                   List<String> requiredTokens,
+                                   Set<Long> phraseCategoryIds,
+                                   Map<String, Set<Long>> categoryIdsByToken) {
+            this.phrase = phrase;
+            this.requireAllTokens = requireAllTokens;
+            this.requiredTokens = requiredTokens;
+            this.phraseCategoryIds = phraseCategoryIds;
+            this.categoryIdsByToken = categoryIdsByToken;
+        }
+
+        private static KeywordSearchScope empty() {
+            return new KeywordSearchScope("", false, List.of(), Set.of(), Map.of());
+        }
+
+        private boolean isEmpty() {
+            return phrase == null || phrase.isEmpty();
         }
     }
 

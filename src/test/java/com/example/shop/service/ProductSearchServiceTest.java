@@ -106,6 +106,23 @@ class ProductSearchServiceTest {
     }
 
     @Test
+    void publicProductPagePreservesRepositoryTotalAfterApplyingFiltersBeforePagination() {
+        Product product = product(43L, "Paginated Bowl", 5L);
+        ProductListQuery query = new ProductListQuery();
+        query.setPage(2);
+        query.setSize(12);
+        Pageable pageable = PageRequest.of(2, 12);
+        when(productRepository.findAll(any(Specification.class), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(product), pageable, 47));
+
+        Page<Product> result = service.findPublicProductPage(query);
+
+        assertEquals(List.of(product), result.getContent());
+        assertEquals(47, result.getTotalElements());
+        assertEquals(4, result.getTotalPages());
+    }
+
+    @Test
     void legacySearchUsesCappedPagedQueryInsteadOfUnboundedRepositoryReads() {
         Product product = product(12L, "Legacy Search Bowl", 9L);
         when(runtimeConfig.getInt("product.search-legacy-max-results", 100)).thenReturn(500);
@@ -147,14 +164,13 @@ class ProductSearchServiceTest {
 
     @Test
     void categoryFilterCanOptOutOfChildCategoriesForExactCategoryMatching() {
-        Product childCategoryProduct = product(17L, "Puppy Feeding Kit", 11L);
         ProductListQuery query = new ProductListQuery();
         query.setCategoryId(10L);
         query.setIncludeChildren(false);
         query.setPage(0);
         query.setSize(24);
-        when(categoryRepository.findAllById(List.of(childCategoryProduct.getCategoryId()))).thenReturn(List.of());
-        stubPublicProductPage(List.of(childCategoryProduct));
+        // The JPA specification excludes child category rows before this page is fetched.
+        stubPublicProductPage(List.of());
 
         Page<Product> page = service.findPublicProductPage(query);
 
@@ -170,8 +186,8 @@ class ProductSearchServiceTest {
         zeroPriceProduct.setPrice(BigDecimal.ZERO);
         zeroPriceProduct.setStock(0);
         Product paidProduct = product(19L, "Paid Bowl", 6L);
-        stubPublicProductPage(List.of(zeroPriceProduct, paidProduct));
-        when(categoryRepository.findAllById(List.of(zeroPriceProduct.getCategoryId(), paidProduct.getCategoryId()))).thenReturn(List.of());
+        // The public JPA specification rejects zero-price rows before pagination.
+        stubPublicProductPage(List.of(paidProduct));
         when(productRepository.findById(zeroPriceProduct.getId())).thenReturn(java.util.Optional.of(zeroPriceProduct));
         when(productRepository.findAllById(List.of(zeroPriceProduct.getId(), paidProduct.getId()))).thenReturn(List.of(zeroPriceProduct, paidProduct));
 

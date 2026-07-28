@@ -60,6 +60,8 @@ import {
   firstCheckoutRegionPath,
   firstFilledCheckoutText,
   getRecommendedPaymentMethod,
+  getCheckoutAddressChoiceIds,
+  getNextCheckoutAddressChoiceId,
   getSavedAddressDetail,
   getSavedAddressPostalCode,
   getSavedAddressRegionPath,
@@ -106,6 +108,8 @@ export {
   formatCheckoutDateTime,
   getCheckoutCouponErrorMessage,
   getCartItemLowStockCount,
+  getCheckoutAddressChoiceIds,
+  getNextCheckoutAddressChoiceId,
   isCompleteSavedAddress,
   isPurchasable,
   isValidCheckoutPostalCode,
@@ -357,6 +361,31 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
       target?.focus();
     });
   }, []);
+  const focusCheckoutAddressChoice = useCallback((addressId: number | 'new') => {
+    window.requestAnimationFrame(() => {
+      const target = Array.from(document.querySelectorAll<HTMLButtonElement>('[data-checkout-address-choice]'))
+        .find((button) => button.dataset.checkoutAddressChoice === String(addressId));
+      target?.focus();
+    });
+  }, []);
+  const handleCheckoutAddressKeyDown = useCallback((event: React.KeyboardEvent<HTMLButtonElement>, addressId: number | 'new') => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      setSelectedAddressId(addressId);
+      return;
+    }
+
+    const nextAddressId = getNextCheckoutAddressChoiceId(
+      getCheckoutAddressChoiceIds(addresses),
+      addressId,
+      event.key,
+    );
+    if (nextAddressId === null) return;
+
+    event.preventDefault();
+    setSelectedAddressId(nextAddressId);
+    focusCheckoutAddressChoice(nextAddressId);
+  }, [addresses, focusCheckoutAddressChoice]);
   const handleCheckoutPhoneBlur = useCallback((event: React.FocusEvent<HTMLInputElement>) => {
     form.setFieldValue('phone', normalizeLikelyCheckoutPhone(event.target.value));
     window.setTimeout(() => {
@@ -988,6 +1017,7 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
     checkoutRegionCascaderOpen,
     setCheckoutReloadKey,
     setSelectedAddressId,
+    handleCheckoutAddressKeyDown,
     loadCheckoutRegionOptions,
     setCheckoutRegionCascaderVisibility,
     handleCheckoutPhoneBlur,

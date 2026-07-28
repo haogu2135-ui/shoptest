@@ -113,6 +113,7 @@ export const CheckoutMainShell: React.FC<CheckoutMainShellProps> = (props) => {
     checkoutRegionCascaderOpen,
     setCheckoutReloadKey,
     setSelectedAddressId,
+    handleCheckoutAddressKeyDown,
     loadCheckoutRegionOptions,
     setCheckoutRegionCascaderVisibility,
     handleCheckoutPhoneBlur,
@@ -359,6 +360,7 @@ export const CheckoutMainShell: React.FC<CheckoutMainShellProps> = (props) => {
           fieldErrorExtra={renderCheckoutFieldErrorExtra}
           onRetryAddressLoad={() => setCheckoutReloadKey((key: number) => key + 1)}
           onSelectAddress={setSelectedAddressId}
+          onAddressKeyDown={handleCheckoutAddressKeyDown}
           onRegionOpenChange={(open: boolean) => {
             if (open) void loadCheckoutRegionOptions();
             setCheckoutRegionCascaderVisibility(open);

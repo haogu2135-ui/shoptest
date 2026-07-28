@@ -460,6 +460,7 @@ export type CheckoutAddressSectionProps = {
   fieldErrorExtra: (fieldName: string) => React.ReactNode;
   onRetryAddressLoad: () => void;
   onSelectAddress: (id: number | 'new') => void;
+  onAddressKeyDown: (event: React.KeyboardEvent<HTMLButtonElement>, id: number | 'new') => void;
   onRegionOpenChange: (open: boolean) => void;
   onPhoneBlur: (event: React.FocusEvent<HTMLInputElement>) => void;
   onPostalCodeBlur: (event: React.FocusEvent<HTMLInputElement>) => void;
@@ -478,6 +479,7 @@ export const CheckoutAddressSection: React.FC<CheckoutAddressSectionProps> = ({
   fieldErrorExtra,
   onRetryAddressLoad,
   onSelectAddress,
+  onAddressKeyDown,
   onRegionOpenChange,
   onPhoneBlur,
   onPostalCodeBlur,
@@ -520,7 +522,10 @@ export const CheckoutAddressSection: React.FC<CheckoutAddressSectionProps> = ({
               aria-checked={selected}
               aria-label={addressChoiceLabel}
               title={addressChoiceLabel}
+              tabIndex={selected ? 0 : -1}
+              data-checkout-address-choice={String(address.id)}
               onClick={() => onSelectAddress(address.id)}
+              onKeyDown={(event) => onAddressKeyDown(event, address.id)}
             >
               <div className="checkout-page__addressHeader">
                 <span className="checkout-page__text checkout-page__text--strong">{address.recipientName}</span>
@@ -538,7 +543,10 @@ export const CheckoutAddressSection: React.FC<CheckoutAddressSectionProps> = ({
           aria-checked={selectedAddressId === 'new'}
           aria-label={t('pages.checkout.useNewAddress')}
           title={t('pages.checkout.useNewAddress')}
+          tabIndex={selectedAddressId === 'new' ? 0 : -1}
+          data-checkout-address-choice="new"
           onClick={() => onSelectAddress('new')}
+          onKeyDown={(event) => onAddressKeyDown(event, 'new')}
         >
           <span className="checkout-page__text checkout-page__text--strong">{t('pages.checkout.useNewAddress')}</span>
         </button>

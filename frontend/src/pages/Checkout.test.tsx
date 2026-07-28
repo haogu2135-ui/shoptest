@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import Checkout, { buildCheckoutValidationAnnouncement, estimateCouponDiscount, formatCheckoutDateTime, getCheckoutCouponErrorMessage, isValidCheckoutPostalCode, normalizeCheckoutText, toSafeMoney } from './Checkout';
+import Checkout, { buildCheckoutValidationAnnouncement, estimateCouponDiscount, formatCheckoutDateTime, getCheckoutCouponErrorMessage, getNextCheckoutAddressChoiceId, isValidCheckoutPostalCode, normalizeCheckoutText, toSafeMoney } from './Checkout';
 import { addressApi, appConfigApi, cartApi, couponApi, orderApi, paymentApi } from '../api';
 import { getLocalStorageItem } from '../utils/safeStorage';
 import { hasAuthenticatedCartSession, readCheckoutCartItemIds } from '../utils/cartSession';
@@ -312,6 +312,73 @@ describe('Checkout payment availability', () => {
 
     expect(await screen.findByRole('radio', { name: /Stripe/ }, { timeout: 5000 })).toHaveClass('checkout-page__paymentMethod');
     expect(screen.queryByText('Payment methods are temporarily unavailable')).not.toBeInTheDocument();
+  });
+
+  it('keeps saved checkout addresses on one keyboard tab stop and moves selection with radio keys', async () => {
+    (addressApi.getByUser as jest.Mock).mockResolvedValue({
+      data: [
+        {
+          id: 1,
+          userId: 7,
+          recipientName: 'Alex',
+          phone: '555-0100',
+          region: ['China', 'Beijing'],
+          postalCode: '100000',
+          detailAddress: '100 Pet Commerce St',
+          address: '100 Pet Commerce St',
+          isDefault: true,
+        },
+        {
+          id: 2,
+          userId: 7,
+          recipientName: 'Morgan',
+          phone: '555-0101',
+          region: ['China', 'Shanghai'],
+          postalCode: '200000',
+          detailAddress: '200 Pet Commerce St',
+          address: '200 Pet Commerce St',
+          isDefault: false,
+        },
+      ],
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/checkout']}>
+        <Checkout />
+      </MemoryRouter>,
+    );
+
+    const firstAddress = await screen.findByRole('radio', { name: /Alex/ });
+    const secondAddress = screen.getByRole('radio', { name: /Morgan/ });
+    const newAddress = document.querySelector<HTMLButtonElement>('[data-checkout-address-choice="new"]');
+    expect(newAddress).not.toBeNull();
+    await waitFor(() => expect(firstAddress).toHaveAttribute('aria-checked', 'true'));
+    expect(firstAddress).toHaveAttribute('tabindex', '0');
+    expect(secondAddress).toHaveAttribute('tabindex', '-1');
+    expect(newAddress).toHaveAttribute('tabindex', '-1');
+
+    fireEvent.keyDown(firstAddress, { key: 'ArrowDown' });
+    await waitFor(() => {
+      expect(secondAddress).toHaveAttribute('aria-checked', 'true');
+      expect(secondAddress).toHaveFocus();
+    });
+
+    fireEvent.keyDown(secondAddress, { key: 'End' });
+    await waitFor(() => {
+      expect(newAddress).toHaveAttribute('aria-checked', 'true');
+      expect(newAddress).toHaveFocus();
+    });
+  });
+
+  it('resolves saved-address radio navigation without leaving the group', () => {
+    const choices = [1, 2, 'new'] as const;
+
+    expect(getNextCheckoutAddressChoiceId([...choices], 1, 'ArrowDown')).toBe(2);
+    expect(getNextCheckoutAddressChoiceId([...choices], 2, 'ArrowDown')).toBe('new');
+    expect(getNextCheckoutAddressChoiceId([...choices], 'new', 'ArrowDown')).toBe(1);
+    expect(getNextCheckoutAddressChoiceId([...choices], 2, 'Home')).toBe(1);
+    expect(getNextCheckoutAddressChoiceId([...choices], 1, 'End')).toBe('new');
+    expect(getNextCheckoutAddressChoiceId([...choices], 1, 'Tab')).toBeNull();
   });
 
   it('surfaces checkout payment channel load errors and retries the channel request', async () => {
