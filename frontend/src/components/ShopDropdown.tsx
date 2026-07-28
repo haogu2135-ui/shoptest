@@ -24,6 +24,14 @@ export type ShopDropdownProps = {
   disabled?: boolean;
 };
 
+type ShopDropdownTriggerProps = {
+  ref?: React.Ref<HTMLElement>;
+  'aria-haspopup'?: React.AriaAttributes['aria-haspopup'];
+  'aria-expanded'?: React.AriaAttributes['aria-expanded'];
+  'aria-controls'?: React.AriaAttributes['aria-controls'];
+  onClick?: React.MouseEventHandler<HTMLElement>;
+};
+
 const ShopDropdown: React.FC<ShopDropdownProps> = ({
   items,
   children,
@@ -155,13 +163,13 @@ const ShopDropdown: React.FC<ShopDropdownProps> = ({
     })
   );
 
-  const child = React.Children.only(children) as React.ReactElement<any>;
+  const child = React.Children.only(children) as React.ReactElement<ShopDropdownTriggerProps>;
+  const childRef = child.props.ref;
   const trigger = React.cloneElement(child, {
     ref: (node: HTMLElement | null) => {
       triggerRef.current = node;
-      const { ref } = child as any;
-      if (typeof ref === 'function') ref(node);
-      else if (ref && typeof ref === 'object') (ref as React.MutableRefObject<HTMLElement | null>).current = node;
+      if (typeof childRef === 'function') childRef(node);
+      else if (childRef && typeof childRef === 'object') childRef.current = node;
     },
     'aria-haspopup': child.props['aria-haspopup'] || 'menu',
     'aria-expanded': typeof child.props['aria-expanded'] === 'boolean' ? child.props['aria-expanded'] : resolvedOpen,

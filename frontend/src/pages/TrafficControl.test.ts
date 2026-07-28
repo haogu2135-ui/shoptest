@@ -22,7 +22,7 @@ describe('TrafficControl source guards', () => {
     expect(pageSource).toContain('data-admin-traffic-stale-recovery');
     expect(pageSource).toContain('{loadError && !status ? null : <div className="traffic-control__stats">');
     expect(pageSource).toContain('{loadError && !status ? null : <div className="traffic-control__grid">');
-    expect(pageSource).toContain("{loadError && !status ? null : <Card title={<span><ThunderboltOutlined /> {t('pages.trafficControl.circuitBreakers')}</span>}");
+    expect(pageSource).toContain("{loadError && !status ? null : <ShopCard title={<span><ThunderboltOutlined /> {t('pages.trafficControl.circuitBreakers')}</span>}");
     expect(pageSource).toContain('<ShopButton size="small" type="primary" onClick={loadStatus} loading={loading}>');
   });
 });

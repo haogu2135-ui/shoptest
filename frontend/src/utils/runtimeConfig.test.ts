@@ -113,7 +113,7 @@ describe('runtimeConfig', () => {
     const fs = require('fs');
     const path = require('path');
     const sourceRoot = path.resolve(__dirname, '..');
-    const apiSource = fs.readFileSync(path.join(sourceRoot, 'api/index.ts'), 'utf8');
+    const apiSource = fs.readFileSync(path.join(sourceRoot, 'api/core.ts'), 'utf8');
     const apiDispatcherSource = fs.readFileSync(path.join(sourceRoot, 'utils/apiDispatcher.ts'), 'utf8');
     const mobileUpdateSource = fs.readFileSync(path.join(sourceRoot, 'utils/mobileUpdate.ts'), 'utf8');
 

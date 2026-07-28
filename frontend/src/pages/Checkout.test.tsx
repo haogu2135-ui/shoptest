@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import Checkout, { buildCheckoutValidationAnnouncement, estimateCouponDiscount, formatCheckoutDateTime, getCheckoutCouponErrorMessage, getNextCheckoutAddressChoiceId, isValidCheckoutPostalCode, normalizeCheckoutText, toSafeMoney } from './Checkout';
 import { addressApi, appConfigApi, cartApi, couponApi, orderApi, paymentApi } from '../api';
@@ -10,6 +11,7 @@ const readCheckoutTestSource = () => require('fs').readFileSync(__filename, 'utf
 const readCheckoutPageSource = () => require('fs').readFileSync(require('path').resolve(__dirname, 'Checkout.tsx'), 'utf8') as string;
 const readCheckoutHelpersSource = () => require('fs').readFileSync(require('path').resolve(__dirname, '../utils/checkoutHelpers.ts'), 'utf8') as string;
 const readCheckoutPaymentLifecycleSource = () => require('fs').readFileSync(require('path').resolve(__dirname, '../hooks/useCheckoutPaymentLifecycle.ts'), 'utf8') as string;
+const readSetupTestsSource = () => require('fs').readFileSync(require('path').resolve(__dirname, '../setupTests.ts'), 'utf8') as string;
 const readCheckoutCartBootstrapSource = () => require('fs').readFileSync(require('path').resolve(__dirname, '../hooks/useCheckoutCartBootstrap.ts'), 'utf8') as string;
 const readCheckoutCouponQuoteSource = () => require('fs').readFileSync(require('path').resolve(__dirname, '../hooks/useCheckoutCouponQuote.ts'), 'utf8') as string;
 const readCheckoutAddressHydrateSource = () => require('fs').readFileSync(require('path').resolve(__dirname, '../hooks/useCheckoutAddressHydrate.ts'), 'utf8') as string;
@@ -24,6 +26,22 @@ const readCheckoutFormSectionsSource = () => require('fs').readFileSync(require(
 const readCheckoutConversionSource = () => require('fs').readFileSync(require('path').resolve(__dirname, '../components/checkout/CheckoutConversionSections.tsx'), 'utf8') as string;
 const readCheckoutSurfaceSource = () => `${readCheckoutPageSource()}\n${readCheckoutHelpersSource()}\n${readCheckoutMainShellSource()}\n${readCheckoutShellSource()}\n${readCheckoutFormSectionsSource()}\n${readCheckoutConversionSource()}\n${require('fs').readFileSync(require('path').resolve(__dirname, '../hooks/useCheckoutDerivedTotals.ts'), 'utf8')}`;
 const readCheckoutCssSource = () => require('fs').readFileSync(require('path').resolve(__dirname, 'Checkout.css'), 'utf8') as string;
+
+const renderCheckout = () => render(
+  <MemoryRouter
+    future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+    initialEntries={['/checkout']}
+  >
+    <Checkout />
+  </MemoryRouter>,
+);
+
+const runCheckoutFormEvent = async (event: () => void) => {
+  await act(async () => {
+    event();
+    await Promise.resolve();
+  });
+};
 const readMobileAppCssSource = () => require('fs').readFileSync(require('path').resolve(__dirname, '../mobile-app.css'), 'utf8') as string;
 const readProfilePageSource = () => require('fs').readFileSync(require('path').resolve(__dirname, 'Profile.tsx'), 'utf8') as string;
 const readProfileAccountModalsSource = () => require('fs').readFileSync(require('path').resolve(__dirname, 'profileAccountModals.tsx'), 'utf8') as string;
@@ -267,11 +285,7 @@ describe('Checkout payment availability', () => {
   });
 
   it('shows payment unavailable state and does not submit checkout', async () => {
-    render(
-      <MemoryRouter initialEntries={['/checkout']}>
-        <Checkout />
-      </MemoryRouter>,
-    );
+    renderCheckout();
 
     const paymentUnavailableMessages = await screen.findAllByText('Payment methods are temporarily unavailable');
     expect(paymentUnavailableMessages.length).toBeGreaterThan(0);
@@ -283,7 +297,7 @@ describe('Checkout payment availability', () => {
 
     const form = document.querySelector('form');
     expect(form).toBeTruthy();
-    fireEvent.submit(form!);
+    await runCheckoutFormEvent(() => fireEvent.submit(form!));
 
     await waitFor(() => {
       expect(orderApi.checkout).not.toHaveBeenCalled();
@@ -304,11 +318,7 @@ describe('Checkout payment availability', () => {
       }],
     });
 
-    render(
-      <MemoryRouter initialEntries={['/checkout']}>
-        <Checkout />
-      </MemoryRouter>,
-    );
+    renderCheckout();
 
     expect(await screen.findByRole('radio', { name: /Stripe/ }, { timeout: 5000 })).toHaveClass('checkout-page__paymentMethod');
     expect(screen.queryByText('Payment methods are temporarily unavailable')).not.toBeInTheDocument();
@@ -342,11 +352,7 @@ describe('Checkout payment availability', () => {
       ],
     });
 
-    render(
-      <MemoryRouter initialEntries={['/checkout']}>
-        <Checkout />
-      </MemoryRouter>,
-    );
+    renderCheckout();
 
     const firstAddress = await screen.findByRole('radio', { name: /Alex/ });
     const secondAddress = screen.getByRole('radio', { name: /Morgan/ });
@@ -357,13 +363,13 @@ describe('Checkout payment availability', () => {
     expect(secondAddress).toHaveAttribute('tabindex', '-1');
     expect(newAddress).toHaveAttribute('tabindex', '-1');
 
-    fireEvent.keyDown(firstAddress, { key: 'ArrowDown' });
+    await runCheckoutFormEvent(() => fireEvent.keyDown(firstAddress, { key: 'ArrowDown' }));
     await waitFor(() => {
       expect(secondAddress).toHaveAttribute('aria-checked', 'true');
       expect(secondAddress).toHaveFocus();
     });
 
-    fireEvent.keyDown(secondAddress, { key: 'End' });
+    await runCheckoutFormEvent(() => fireEvent.keyDown(secondAddress, { key: 'End' }));
     await waitFor(() => {
       expect(newAddress).toHaveAttribute('aria-checked', 'true');
       expect(newAddress).toHaveFocus();
@@ -386,11 +392,7 @@ describe('Checkout payment availability', () => {
       response: { data: { error: 'Gateway configuration unavailable' } },
     });
 
-    render(
-      <MemoryRouter initialEntries={['/checkout']}>
-        <Checkout />
-      </MemoryRouter>,
-    );
+    renderCheckout();
 
     const gatewayErrors = await screen.findAllByText('Gateway configuration unavailable', {}, { timeout: 5000 });
     expect(gatewayErrors.length).toBeGreaterThan(0);
@@ -409,7 +411,7 @@ describe('Checkout payment availability', () => {
     });
 
     const retryButtons = await screen.findAllByRole('button', { name: 'Retry' });
-    fireEvent.click(retryButtons[0]);
+    await runCheckoutFormEvent(() => fireEvent.click(retryButtons[0]));
 
     expect(await screen.findByRole('radio', { name: /Stripe/ }, { timeout: 5000 })).toHaveClass('checkout-page__paymentMethod');
     expect((paymentApi.getChannels as jest.Mock).mock.calls.length).toBeGreaterThan(callsBeforeRetry);
@@ -607,8 +609,10 @@ describe('Checkout payment availability', () => {
     expect(channelsEffect).toContain('setPaymentChannelsLoading(true);');
     expect(channelsEffect).toContain('setPaymentChannelsError(null);');
     expect(channelsEffect).toContain('if (!isCurrentPaymentChannelsRequest()) return;');
+    expect(channelsEffect).toContain('const finishPaymentChannelsLoading = () => {');
     expect(channelsEffect).toContain('setPaymentChannelsError(getApiErrorMessage(');
     expect(channelsEffect).toContain('setPaymentChannelsLoading(false);');
+    expect(channelsEffect).not.toContain('.finally(() =>');
     expect(channelsEffect).toContain('disposed = true;');
     expect(source).toContain('const paymentChannelsRequestSeqRef = React.useRef(0);');
     expect(readCheckoutSurfaceSource()).toContain('role="alert"');
@@ -981,6 +985,7 @@ describe('Checkout payment availability', () => {
   });
 
   it('builds modular checkout validation announcements for conversion accessibility', () => {
+    const source = readCheckoutPageSource();
     const helpersSource = readCheckoutHelpersSource();
     const announcement = buildCheckoutValidationAnnouncement([
       { name: ['recipientName'], errors: ['Name too short'] },
@@ -993,6 +998,11 @@ describe('Checkout payment availability', () => {
     expect(announcement).toContain('Phone invalid');
     expect(helpersSource).toContain('export const buildCheckoutValidationAnnouncement');
     expect(helpersSource).toContain('export const buildCheckoutFieldErrorMap');
+    expect(source).toContain('const areCheckoutFieldErrorMapsEqual = (current: Record<string, string>, next: Record<string, string>) => {');
+    expect(source).toContain('if (checkoutValidationAnnouncementRef.current !== nextAnnouncement) {');
+    expect(source).toContain('setCheckoutValidationAnnouncementState(nextAnnouncement);');
+    expect(source).toContain('if (!areCheckoutFieldErrorMapsEqual(checkoutFieldErrorsRef.current, nextFieldErrors)) {');
+    expect(source).toContain('setCheckoutFieldErrorsState(nextFieldErrors);');
   });
 
   it('keeps modular money and text helpers commercially pure for checkout conversion', () => {
@@ -1103,6 +1113,21 @@ describe('Checkout payment availability', () => {
     expect(fixCss).toMatch(/\.checkout-page__mobilePayBar \.ant-btn-primary:disabled,[\s\S]*?\.checkout-page__mobilePayBar \.ant-btn-primary:disabled :where\(span,\s*strong,\s*b,\s*\.checkout-page__text,\s*\.commerce-money\)\s*\{[\s\S]*?color:\s*rgba\(255,\s*255,\s*255,\s*0\.78\)\s*!important;[\s\S]*?-webkit-text-fill-color:\s*rgba\(255,\s*255,\s*255,\s*0\.78\)\s*!important;/);
   });
 
+  it('keeps jsdom scroll helpers stubbed for mobile validation focus tests', () => {
+    const setupTestsSource = readSetupTestsSource();
+
+    expect(setupTestsSource).toContain("Object.defineProperty(window, 'scrollTo'");
+    expect(setupTestsSource).toContain('value: jest.fn()');
+  });
+
+  it('keeps checkout route tests opted into React Router v7 future flags', () => {
+    const source = readCheckoutTestSource();
+
+    expect(source).toContain('const renderCheckout = () => render(');
+    expect(source).toContain('future={{ v7_startTransition: true, v7_relativeSplatPath: true }}');
+    expect(source).not.toMatch(/<MemoryRouter\s+initialEntries=\{\['\/checkout'\]\}/);
+  });
+
   it('turns checkout submit CTAs into the next required action before submit is ready', () => {
     const source = readCheckoutPageSource();
     const surfaceSource = readCheckoutSurfaceSource();
@@ -1132,6 +1157,9 @@ describe('Checkout payment availability', () => {
     const fixCss = checkoutCss.slice(checkoutCss.indexOf('F2723:'));
 
     expect(readCheckoutSurfaceSource()).toContain('className="checkout-page__emptySignals"');
+    expect(readCheckoutSurfaceSource()).toContain('data-checkout-recovery-path="cart"');
+    expect(readCheckoutSurfaceSource()).toContain('data-checkout-recovery-path="products"');
+    expect(readCheckoutSurfaceSource()).toContain('data-checkout-recovery-path="coupons"');
     expect(readCheckoutSurfaceSource()).toContain("t('pages.checkout.trustSecureTitle')");
     expect(readCheckoutSurfaceSource()).toContain("t('pages.checkout.trustSupportTitle')");
     expect(checkoutCss.indexOf('F2723:')).toBeGreaterThan(checkoutCss.indexOf('Android UI closure: checkout fields, empty state and pay actions.'));
@@ -1193,11 +1221,7 @@ describe('Checkout payment availability', () => {
       },
     });
 
-    render(
-      <MemoryRouter initialEntries={['/checkout']}>
-        <Checkout />
-      </MemoryRouter>,
-    );
+    renderCheckout();
 
     await waitFor(() => {
       expect(couponApi.quote).toHaveBeenCalled();
@@ -1222,11 +1246,7 @@ describe('Checkout payment availability', () => {
       },
     });
 
-    render(
-      <MemoryRouter initialEntries={['/checkout']}>
-        <Checkout />
-      </MemoryRouter>,
-    );
+    renderCheckout();
 
     expect(await screen.findByRole('button', { name: 'Coupon: Select coupon' })).toBeInTheDocument();
     expect(screen.getByTitle('Coupon: Select coupon')).toBeInTheDocument();
@@ -1268,11 +1288,7 @@ describe('Checkout payment availability', () => {
       },
     });
 
-    render(
-      <MemoryRouter initialEntries={['/checkout']}>
-        <Checkout />
-      </MemoryRouter>,
-    );
+    renderCheckout();
 
     expect(await screen.findByText('This order does not meet the coupon minimum. Add more items or choose another coupon.', {}, { timeout: 5000 })).toBeInTheDocument();
     expect(screen.queryByText('The selected coupon is unavailable')).not.toBeInTheDocument();
@@ -1296,11 +1312,7 @@ describe('Checkout payment availability', () => {
       data: [{ code: 'STRIPE', displayName: 'Stripe', enabled: true }],
     });
 
-    render(
-      <MemoryRouter initialEntries={['/checkout']}>
-        <Checkout />
-      </MemoryRouter>,
-    );
+    renderCheckout();
 
     const liveRegion = await screen.findByRole('status', { name: 'Checkout validation errors' });
     expect(liveRegion).toHaveAttribute('aria-live', 'polite');
@@ -1308,7 +1320,7 @@ describe('Checkout payment availability', () => {
 
     const form = document.querySelector('form');
     expect(form).toBeTruthy();
-    fireEvent.submit(form!);
+    await runCheckoutFormEvent(() => fireEvent.submit(form!));
 
     await waitFor(() => {
       expect(liveRegion).toHaveTextContent('checkout field(s) need attention');
@@ -1326,11 +1338,7 @@ describe('Checkout payment availability', () => {
       response: { status: 500, data: {} },
     });
 
-    render(
-      <MemoryRouter initialEntries={['/checkout']}>
-        <Checkout />
-      </MemoryRouter>,
-    );
+    renderCheckout();
 
     const statusRegion = await screen.findByRole('status', { name: 'Checkout status updates' });
     expect(statusRegion).toHaveAttribute('aria-live', 'polite');
@@ -1343,7 +1351,7 @@ describe('Checkout payment availability', () => {
       expect(submitButton).not.toBeDisabled();
     });
 
-    fireEvent.click(document.querySelector('.checkout-page__submitButton') as HTMLButtonElement);
+    await runCheckoutFormEvent(() => fireEvent.click(document.querySelector('.checkout-page__submitButton') as HTMLButtonElement));
 
     await waitFor(() => {
       expect(orderApi.checkout).toHaveBeenCalled();
@@ -1369,15 +1377,11 @@ describe('Checkout payment availability', () => {
       data: [{ code: 'STRIPE', displayName: 'Stripe', enabled: true }],
     });
 
-    render(
-      <MemoryRouter initialEntries={['/checkout']}>
-        <Checkout />
-      </MemoryRouter>,
-    );
+    renderCheckout();
 
     const form = document.querySelector('form');
     expect(form).toBeTruthy();
-    fireEvent.submit(form!);
+    await runCheckoutFormEvent(() => fireEvent.submit(form!));
 
     await waitFor(() => {
       expectDescribedByText(screen.getByLabelText('Email'), 'Enter email');

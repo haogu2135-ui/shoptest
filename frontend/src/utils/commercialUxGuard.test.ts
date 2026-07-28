@@ -1741,11 +1741,15 @@ ${orderActions}`;
   
   it('keeps home and catalog residual conversion rails commercially tappable at >=44px', () => {
     const home = readFrontend('pages', 'Home.css');
+    const homeFirstFold = readFrontend('pages', 'homeFirstFoldPanels.tsx');
     const list = readFrontend('pages', 'ProductList.css');
     const cart = readFrontend('pages', 'Cart.css');
     const profile = readFrontend('pages', 'Profile.css');
     expect(home).toMatch(/\.shopee-hero__categoryRail button[\s\S]{0,80}?min-height:\s*44px/);
     expect(home).toMatch(/\.home-btn--text\s*\{[\s\S]*?min-width:\s*44px;[\s\S]*?min-height:\s*44px/);
+    expect(homeFirstFold).toContain('data-commercial-primary-cta="home-hero-products"');
+    expect(homeFirstFold).toContain('data-commercial-primary-cta="home-hero-coupons"');
+    expect(homeFirstFold).toContain('data-commercial-primary-cta={`home-mobile-${action.key}`}');
     expect(home).toMatch(/\.shopee-product__quickActions button[\s\S]{0,80}?height:\s*44px/);
     expect(home).toMatch(/\.shopee-section__header button[\s\S]{0,80}?min-height:\s*44px/);
     expect(list).toMatch(/\.product-list__actionButton\.ant-btn[\s\S]{0,120}?min-height:\s*44px/);

@@ -23,7 +23,7 @@ describe('admin loading accessibility guards', () => {
   it('keeps admin management loading cards announced as busy status regions', () => {
     loadingCards.forEach(({ file, className, cardLoading }) => {
       const source = readPageSource(file);
-      const match = source.match(new RegExp(`<Card\\s+[\\s\\S]*?className="${escapeRegExp(className)}"[\\s\\S]*?>`));
+      const match = source.match(new RegExp(`<ShopCard\\s+[\\s\\S]*?className="${escapeRegExp(className)}"[\\s\\S]*?>`));
 
       expect(match?.[0]).toBeTruthy();
       const loadingCardSource = match?.[0] || '';

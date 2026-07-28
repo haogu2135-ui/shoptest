@@ -131,6 +131,13 @@ const readGuestCartSnapshot = () => {
   return Array.isArray(items) ? items : [];
 };
 
+const areCheckoutFieldErrorMapsEqual = (current: Record<string, string>, next: Record<string, string>) => {
+  const currentKeys = Object.keys(current);
+  const nextKeys = Object.keys(next);
+  return currentKeys.length === nextKeys.length
+    && currentKeys.every((key) => current[key] === next[key]);
+};
+
 type CheckoutFormInstance = FormInstance<CheckoutFormValues>;
 
 type CheckoutContentProps = {
@@ -181,8 +188,10 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
   const [selectedUserCouponId, setSelectedUserCouponId] = useState<number | null>(null);
   const [couponManuallyChanged, setCouponManuallyChanged] = useState(false);
   const [supportPanelOpen, setSupportPanelOpen] = useState(false);
-  const [checkoutValidationAnnouncement, setCheckoutValidationAnnouncement] = useState('');
-  const [checkoutFieldErrors, setCheckoutFieldErrors] = useState<Record<string, string>>({});
+  const [checkoutValidationAnnouncement, setCheckoutValidationAnnouncementState] = useState('');
+  const [checkoutFieldErrors, setCheckoutFieldErrorsState] = useState<Record<string, string>>({});
+  const checkoutValidationAnnouncementRef = React.useRef('');
+  const checkoutFieldErrorsRef = React.useRef<Record<string, string>>({});
   const [checkoutStatusAnnouncement, setCheckoutStatusAnnouncement] = useState<{ id: number; text: string } | null>(null);
   const initialCheckoutDraftRef = React.useRef<CheckoutFormSnapshot | null>(null);
   if (initialCheckoutDraftRef.current === null) {
@@ -218,9 +227,25 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
     announceCheckoutStatus(messageText);
     announceAccessibleMessage(messageText, type);
   }, [announceCheckoutStatus]);
+  const setCheckoutValidationAnnouncement = useCallback((next: React.SetStateAction<string>) => {
+    const resolved = typeof next === 'function'
+      ? (next as (current: string) => string)(checkoutValidationAnnouncementRef.current)
+      : next;
+    if (checkoutValidationAnnouncementRef.current === resolved) return;
+    checkoutValidationAnnouncementRef.current = resolved;
+    setCheckoutValidationAnnouncementState(resolved);
+  }, []);
   const updateCheckoutValidationAnnouncement = useCallback((fields: CheckoutValidationField[]) => {
-    setCheckoutValidationAnnouncement(buildCheckoutValidationAnnouncement(fields, t));
-    setCheckoutFieldErrors(buildCheckoutFieldErrorMap(fields));
+    const nextAnnouncement = buildCheckoutValidationAnnouncement(fields, t);
+    const nextFieldErrors = buildCheckoutFieldErrorMap(fields);
+    if (checkoutValidationAnnouncementRef.current !== nextAnnouncement) {
+      checkoutValidationAnnouncementRef.current = nextAnnouncement;
+      setCheckoutValidationAnnouncementState(nextAnnouncement);
+    }
+    if (!areCheckoutFieldErrorMapsEqual(checkoutFieldErrorsRef.current, nextFieldErrors)) {
+      checkoutFieldErrorsRef.current = nextFieldErrors;
+      setCheckoutFieldErrorsState(nextFieldErrors);
+    }
   }, [t]);
   const renderCheckoutFieldErrorExtra = useCallback((fieldName: string) => {
     const message = checkoutFieldErrors[fieldName];

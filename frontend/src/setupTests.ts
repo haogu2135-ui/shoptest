@@ -14,6 +14,11 @@ Object.defineProperty(window, 'matchMedia', {
   }),
 });
 
+Object.defineProperty(window, 'scrollTo', {
+  writable: true,
+  value: jest.fn(),
+});
+
 if (typeof MessageChannel === 'undefined') {
   class TestMessagePort {
     onmessage: ((event: MessageEvent) => void) | null = null;

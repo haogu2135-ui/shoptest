@@ -64,6 +64,10 @@ export const useCheckoutPaymentChannels = ({
       && mountedRef.current
       && paymentChannelsRequestSeqRef.current === requestSeq
     );
+    const finishPaymentChannelsLoading = () => {
+      if (!isCurrentPaymentChannelsRequest()) return;
+      setPaymentChannelsLoading(false);
+    };
     setPaymentChannelsLoading(true);
     setPaymentChannelsError(null);
     paymentApi.getChannels()
@@ -85,6 +89,7 @@ export const useCheckoutPaymentChannels = ({
           form.setFieldsValue({ paymentMethod: undefined });
           removeSessionStorageItem('checkoutPaymentMethod');
         }
+        finishPaymentChannelsLoading();
       })
       .catch((error: unknown) => {
         if (!isCurrentPaymentChannelsRequest()) return;
@@ -97,10 +102,7 @@ export const useCheckoutPaymentChannels = ({
         ));
         setPaymentChannelsAvailable(false);
         form.setFieldsValue({ paymentMethod: undefined });
-      })
-      .finally(() => {
-        if (!isCurrentPaymentChannelsRequest()) return;
-        setPaymentChannelsLoading(false);
+        finishPaymentChannelsLoading();
       });
     return () => {
       disposed = true;

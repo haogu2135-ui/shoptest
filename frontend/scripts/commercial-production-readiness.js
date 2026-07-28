@@ -21,11 +21,13 @@ const requireDependency = createRequire(__filename);
  *   SHOPTEST_PRODUCTION_HOST   optional Host header (origin-edge probes)
  *   SHOPTEST_PRODUCTION_TLS_INSECURE=1  allow self-signed origin certs
  *   SHOPTEST_REQUIRE_PRODUCTION=1  exit non-zero when production is unreachable
+ *   SHOPTEST_REQUIRE_COMMERCIAL_SHIP=1  exit non-zero when any commercial ship-bar gate is soft-failed
  *   SHOPTEST_UI_BASE           optional local UI for webhook contract cross-check
  *   MERCADO_PAGO_WEBHOOK_SECRET / STRIPE_WEBHOOK_SECRET  local signed probes
  *   SHOPTEST_ORIGIN_PUBLIC_IP  default 161.153.37.250 (CF origin gap diagnosis)
  *   SHOPTEST_ORIGIN_EDGE_BASE / SHOPTEST_ORIGIN_EDGE_HOST  dual origin CWV path
  *   SHOPTEST_CANONICAL_BASE    default https://petsanything.com
+ *   SHOPTEST_DEVICE_E2E_MAX_AGE_DAYS  default 14 for physical-device evidence freshness
  *
  * Exit:
  *   0 when all required checks pass (production soft-skipped unless required)
@@ -41,9 +43,21 @@ const productionBase = (process.env.SHOPTEST_PRODUCTION_BASE || 'https://pet.686
 const canonicalBase = (process.env.SHOPTEST_CANONICAL_BASE || 'https://petsanything.com').replace(/\/$/, '');
 const productionHostHeader = String(process.env.SHOPTEST_PRODUCTION_HOST || '').trim();
 const productionTlsInsecure = String(process.env.SHOPTEST_PRODUCTION_TLS_INSECURE || '').trim() === '1';
-const localUiBase = (process.env.SHOPTEST_UI_BASE || 'http://127.0.0.1:4187').replace(/\/$/, '');
+const configuredLocalUiBase = String(process.env.SHOPTEST_UI_BASE || '').trim();
+const localUiBase = (configuredLocalUiBase || 'http://127.0.0.1:4187').replace(/\/$/, '');
 const requireProduction = String(process.env.SHOPTEST_REQUIRE_PRODUCTION || '').trim() === '1';
+const requireCommercialShip = String(process.env.SHOPTEST_REQUIRE_COMMERCIAL_SHIP || '').trim() === '1';
 const results = [];
+const COMMERCIAL_SHIP_SOFT_GATES = new Set([
+  'production host reachable',
+  'production products api',
+  'production payment channels',
+  'production CWV measurement',
+  'public CDN host reachable',
+  'public CDN CWV measurement',
+  'real provider webhook traffic evidence',
+  'real-device mobile E2E evidence',
+]);
 
 const check = (name, pass, detail = '') => {
   results.push({ name, pass: Boolean(pass), detail: String(detail || '').slice(0, 280) });
@@ -55,6 +69,16 @@ const soft = (name, pass, detail = '') => {
   results.push({ name, pass: true, detail: `${pass ? 'ok' : 'soft-fail'}: ${String(detail || '').slice(0, 240)}` });
   logLine(`${pass ? 'PASS' : 'SOFT'} ${name}${detail ? ` — ${detail}` : ''}`);
 };
+
+function getSoftGaps() {
+  return results
+    .filter((item) => String(item.detail || '').startsWith('soft-fail:'))
+    .map((item) => item.name);
+}
+
+function getCommercialShipGaps() {
+  return getSoftGaps().filter((name) => COMMERCIAL_SHIP_SOFT_GATES.has(name));
+}
 
 function getOriginEdgeBase() {
   return (process.env.SHOPTEST_ORIGIN_EDGE_BASE || 'https://127.0.0.1').replace(/\/$/, '');
@@ -809,6 +833,20 @@ async function probeOriginEdgeAbsoluteShellSeo() {
 }
 
 async function probeLocalWebhookContracts() {
+  if (!configuredLocalUiBase) {
+    const detail = 'SHOPTEST_UI_BASE not set; webhook contract probe skipped';
+    soft('local stripe webhook rejects bad signature', false, detail);
+    soft('local stripe webhook accepts signed payload contract', false, detail);
+    soft('local mercado webhook rejects bad signature', false, detail);
+    soft('local mercado webhook accepts signed payload contract', false, detail);
+    soft(
+      'real provider webhook traffic evidence',
+      false,
+      'SHOPTEST_UI_BASE not set; provide a reachable local storefront/API base to inspect webhook evidence',
+    );
+    return;
+  }
+
   const stripeSecret = String(
     process.env.SHOPTEST_STRIPE_WEBHOOK_SECRET || process.env.STRIPE_WEBHOOK_SECRET || '',
   ).trim();
@@ -932,7 +970,7 @@ async function probeLocalMobileReleaseArtifact() {
   if (!fs.existsSync(metaPath)) {
     check('local mobile-version.json present', false, metaPath);
     soft('local APK artifact integrity', false, 'mobile-version.json missing');
-    return;
+    return null;
   }
   let meta;
   try {
@@ -941,7 +979,7 @@ async function probeLocalMobileReleaseArtifact() {
   } catch (error) {
     check('local mobile-version.json present', false, error && error.message ? error.message : String(error));
     soft('local APK artifact integrity', false, 'mobile-version.json parse failed');
-    return;
+    return null;
   }
   const fileName = meta.fileName || 'shoptest.apk';
   const apkPath = path.join(downloadsDir, fileName);
@@ -955,7 +993,7 @@ async function probeLocalMobileReleaseArtifact() {
   );
   if (!apkExists) {
     soft('local APK artifact integrity', false, `${fileName} missing`);
-    return;
+    return { meta, apkPath, apkOk: false };
   }
   const stat = fs.statSync(apkPath);
   const sizeOk = !meta.sizeBytes || Number(meta.sizeBytes) === stat.size;
@@ -980,12 +1018,61 @@ async function probeLocalMobileReleaseArtifact() {
     meta.releaseSigned === true && Boolean(meta.certificateSha256),
     `releaseSigned=${meta.releaseSigned} cert=${meta.certificateSha256 ? 'present' : 'missing'}`,
   );
+  return { meta, apkPath, apkOk: sizeOk && shaOk };
+}
+
+function getDeviceEvidenceMaxAgeDays() {
+  const parsed = Number(process.env.SHOPTEST_DEVICE_E2E_MAX_AGE_DAYS || 14);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 14;
+}
+
+function validateDeviceE2eEvidence(raw, mobileArtifact) {
+  if (!raw || raw.passed !== true) {
+    return { ok: false, detail: 'evidence present but passed=true missing' };
+  }
+  const deviceId = raw.deviceId || raw.serial || raw.model;
+  if (!deviceId) {
+    return { ok: false, detail: 'evidence present but device identity missing' };
+  }
+  if (!mobileArtifact || !mobileArtifact.meta || !mobileArtifact.apkOk) {
+    return { ok: false, detail: 'release APK metadata/integrity must pass before device evidence can ship' };
+  }
+  const meta = mobileArtifact.meta;
+  if (meta.sha256 && String(raw.sha256 || '').toLowerCase() !== String(meta.sha256).toLowerCase()) {
+    return { ok: false, detail: 'device evidence sha256 mismatch with current mobile-version.json' };
+  }
+  if (meta.versionCode != null && raw.versionCode != null && String(raw.versionCode) !== String(meta.versionCode)) {
+    return { ok: false, detail: `device evidence versionCode ${raw.versionCode} does not match current ${meta.versionCode}` };
+  }
+  if (meta.versionName && raw.versionName && String(raw.versionName) !== String(meta.versionName)) {
+    return { ok: false, detail: `device evidence versionName ${raw.versionName} does not match current ${meta.versionName}` };
+  }
+  if (Number(raw.installExitCode) !== 0) {
+    return { ok: false, detail: `device installExitCode=${raw.installExitCode}` };
+  }
+  if (Number(raw.launchExitCode) !== 0) {
+    return { ok: false, detail: `device launchExitCode=${raw.launchExitCode}` };
+  }
+  const recordedAtMs = Date.parse(raw.recordedAt || '');
+  if (!Number.isFinite(recordedAtMs)) {
+    return { ok: false, detail: 'device evidence recordedAt missing or invalid' };
+  }
+  const maxAgeDays = getDeviceEvidenceMaxAgeDays();
+  const ageDays = (Date.now() - recordedAtMs) / 86400000;
+  if (ageDays > maxAgeDays) {
+    return { ok: false, detail: `device evidence stale ageDays=${ageDays.toFixed(1)} max=${maxAgeDays}` };
+  }
+  return {
+    ok: true,
+    detail: `evidence device=${deviceId} version=${raw.versionName || meta.versionName || '?'} code=${raw.versionCode || meta.versionCode || '?'} ageDays=${Math.max(ageDays, 0).toFixed(1)}`,
+  };
 }
 
 async function main() {
   logLine(`Production readiness probe @ ${productionBase}`);
   logLine(`Local UI contract base @ ${localUiBase}`);
   logLine(`requireProduction=${requireProduction}`);
+  logLine(`requireCommercialShip=${requireCommercialShip}`);
   logLine(`productionHost=${productionHostHeader || '(url-host)'} tlsInsecure=${productionTlsInsecure}`);
 
   await probeProduction();
@@ -998,7 +1085,7 @@ async function main() {
   await probeOriginEdgeSecurityTxt();
   await probeOriginEdgeAbsoluteShellSeo();
   await probeLocalWebhookContracts();
-  await probeLocalMobileReleaseArtifact();
+  const mobileArtifact = await probeLocalMobileReleaseArtifact();
 
   // Optional operator-recorded physical-device evidence file.
   try {
@@ -1008,13 +1095,11 @@ async function main() {
       || path.resolve(__dirname, '../public/downloads/device-e2e-evidence.json');
     if (fs.existsSync(evidencePath)) {
       const raw = JSON.parse(fs.readFileSync(evidencePath, 'utf8'));
-      const ok = raw && raw.passed === true && Boolean(raw.deviceId || raw.serial || raw.model);
+      const validation = validateDeviceE2eEvidence(raw, mobileArtifact);
       soft(
         'real-device mobile E2E evidence',
-        ok,
-        ok
-          ? `evidence=${evidencePath} device=${raw.deviceId || raw.serial || raw.model} at=${raw.recordedAt || '?'}`
-          : `evidence present but incomplete at ${evidencePath}`,
+        validation.ok,
+        `${validation.detail} path=${evidencePath}`,
       );
     } else {
       soft(
@@ -1039,18 +1124,25 @@ async function main() {
       logError(` - ${item.name}: ${item.detail}`);
     });
     process.exitCode = 1;
-  } else if (!requireProduction) {
-    const softish = results
-      .filter((item) => String(item.detail || '').startsWith('soft-fail:'))
-      .map((item) => item.name);
+  } else {
+    const softish = getSoftGaps();
+    const commercialShipGaps = getCommercialShipGaps();
     const shipBar = [
       'public production host CWV (pet domain via CDN)',
       'real provider webhook traffic',
       'real-device APK/WebView E2E',
     ];
-    logLine(`NOTE commercial ship bar still blocked by: ${shipBar.join(' + ')}`);
+    if (commercialShipGaps.length) {
+      logLine(`NOTE commercial ship bar still blocked by: ${shipBar.join(' + ')}`);
+    } else {
+      logLine('PASS commercial ship bar required soft gates recorded');
+    }
     if (softish.length) {
       logLine(`NOTE soft gaps: ${softish.join(', ')}`);
+    }
+    if (requireCommercialShip && commercialShipGaps.length) {
+      logError(`COMMERCIAL_SHIP_BLOCKED ${commercialShipGaps.join(', ')}`);
+      process.exitCode = 1;
     }
   }
 }

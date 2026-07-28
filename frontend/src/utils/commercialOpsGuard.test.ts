@@ -60,9 +60,13 @@ describe('commercial ops contracts', () => {
     expect(mobile).toContain('390x844');
     expect(mobile).toContain('ShopTestAndroidApp');
     expect(mobile).toContain('primary touch targets >=44px');
+    expect(mobile).toContain('[data-commercial-primary-cta]');
+    expect(mobile).toContain('.shopee-hero__actions .home-btn');
     expect(mobile).toContain('sticky rail clear of bottom nav');
     expect(mobile).toContain('real-device APK/WebView install E2E remains required');
     expect(production).toContain('SHOPTEST_REQUIRE_PRODUCTION');
+    expect(production).toContain('SHOPTEST_REQUIRE_COMMERCIAL_SHIP');
+    expect(production).toContain('COMMERCIAL_SHIP_SOFT_GATES');
     expect(production).toContain('production host reachable');
     expect(production).toContain('production DNS A records');
     expect(production).toContain('production DNS AAAA records');
@@ -72,13 +76,30 @@ describe('commercial ops contracts', () => {
     expect(production).toContain('SHOPTEST_PRODUCTION_HOST');
     expect(production).toContain('measureProductionCwv');
     expect(production).toContain('productionTlsInsecure');
+    expect(production).toContain("const configuredLocalUiBase = String(process.env.SHOPTEST_UI_BASE || '').trim();");
+    expect(production).toContain('SHOPTEST_UI_BASE not set; webhook contract probe skipped');
     expect(production).toContain('local stripe webhook rejects bad signature');
     expect(production).toContain('local mercado webhook rejects bad signature');
     expect(production).toContain('real provider webhook traffic evidence');
     expect(production).toContain('real-device mobile E2E evidence');
+    expect(production).toContain('validateDeviceE2eEvidence');
+    expect(production).toContain('device evidence sha256 mismatch with current mobile-version.json');
+    expect(production).toContain('device launchExitCode');
+    expect(production).toContain('SHOPTEST_DEVICE_E2E_MAX_AGE_DAYS');
+    expect(production).toContain('COMMERCIAL_SHIP_BLOCKED');
     expect(production).toContain('local APK artifact integrity');
     expect(production).toContain('local mobile-version.json present');
     expect(production).toContain('probeLocalMobileReleaseArtifact');
+  });
+
+  it('keeps physical-device evidence recorder requiring install and launch success', () => {
+    const recorder = readFrontendRoot('scripts', 'record-commercial-device-e2e.js');
+    expect(recorder).toContain("adb', ['version']");
+    expect(recorder).toContain("'install', '-r', apkPath");
+    expect(recorder).toContain("'android.intent.category.LAUNCHER'");
+    expect(recorder).toContain('const launchOk = launch.status === 0');
+    expect(recorder).toContain("fail('adb launch failed')");
+    expect(recorder).toContain('Commercial device install+launch recorded via adb for the current signed APK');
   });
 
   it('keeps cloudflare origin diagnose classifying wrong-origin and healthy-origin 522', () => {
@@ -253,6 +274,9 @@ ${orderActions}`;
     expect(shells).toContain('export const CheckoutLoadingShell');
     expect(shells).toContain('export const CheckoutEmptyShell');
     expect(shells).toContain('data-checkout-empty-actions');
+    expect(shells).toContain('data-checkout-recovery-path="cart"');
+    expect(shells).toContain('data-checkout-recovery-path="products"');
+    expect(shells).toContain('data-checkout-recovery-path="coupons"');
     expect(shells).toContain('data-checkout-load-recovery');
     expect(helpers).toContain('export const buildCheckoutPaymentRecoveryCopy');
     expect(shells).toContain('buildCheckoutPaymentRecoveryCopy');
@@ -1256,6 +1280,8 @@ expect(recommendationsPanel).toContain('export const ProductDetailRecommendation
     expect(browserSmoke).toContain('cookie consent sticky rail selectors');
     expect(browserSmoke).toContain('customer-support-widget__button');
     expect(browserSmoke).toContain('product-list__mobileConversionBar');
+    expect(browserSmoke).toContain('data-checkout-recovery-path');
+    expect(browserSmoke).toContain('checkoutRecoveryPaths.length >= 4');
     expect(browserSmoke).toContain("!clearanceCss.includes('shop-nav__bottomBar')");
     expect(browserSmoke).toContain('/terms');
     expect(browserSmoke).toContain('/wishlist');

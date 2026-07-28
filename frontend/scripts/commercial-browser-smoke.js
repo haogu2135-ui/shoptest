@@ -1371,12 +1371,17 @@ async function main() {
       const checkoutActions = await page.locator(
         '.checkout-page__emptyActions .ant-btn, .checkout-page__paymentUnavailableActions .ant-btn, .checkout-page button, .checkout-page .ant-btn, main button, main .ant-btn',
       ).count();
+      const checkoutRecoveryPaths = await page.locator('[data-checkout-recovery-path]').evaluateAll((nodes) => (
+        Array.from(new Set(nodes
+          .map((node) => node.getAttribute('data-checkout-recovery-path'))
+          .filter(Boolean)))
+      ));
       const checkoutPaths = [/browse/i, /cart/i, /support|coupon|product/i]
         .filter((re) => re.test(checkoutMain.text)).length;
       check(
         'mobile checkout conversion controls live',
-        checkoutShell >= 1 && (checkoutActions >= 1 || checkoutPaths >= 1),
-        `shell=${checkoutShell} actions=${checkoutActions} paths=${checkoutPaths}`,
+        checkoutShell >= 1 && checkoutActions >= 3 && checkoutRecoveryPaths.length >= 4,
+        `shell=${checkoutShell} actions=${checkoutActions} paths=${checkoutPaths} recovery=${checkoutRecoveryPaths.join(',')}`,
       );
 
       await page.goto(`${base}/payment/SMOKE-GUEST-EMAIL-ORDER`, { waitUntil: 'domcontentloaded', timeout: 45000 });

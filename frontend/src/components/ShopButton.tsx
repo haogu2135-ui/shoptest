@@ -44,6 +44,8 @@ export type ShopButtonProps = {
   autoFocus?: boolean;
   tabIndex?: number;
   'data-testid'?: string;
+} & {
+  [dataAttribute: `data-${string}`]: string | number | undefined;
 };
 
 const ShopButton: React.FC<ShopButtonProps> = ({
@@ -85,6 +87,7 @@ const ShopButton: React.FC<ShopButtonProps> = ({
   autoFocus,
   tabIndex,
   'data-testid': dataTestId,
+  ...dataAttributes
 }) => {
   const isDisabled = disabled || loading;
   const label = ariaLabel || ariaLabelAttr;
@@ -115,6 +118,7 @@ const ShopButton: React.FC<ShopButtonProps> = ({
       tabIndex={tabIndex}
       role={role}
       data-testid={dataTestId}
+      {...dataAttributes}
       style={style}
       className={[
         'shop-button',

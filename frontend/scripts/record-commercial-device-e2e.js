@@ -83,6 +83,12 @@ const launch = run('adb', [
   '-p', packageName,
   '-c', 'android.intent.category.LAUNCHER', '1',
 ], { timeout: 30000 });
+const launchOk = launch.status === 0;
+if (!launchOk) {
+  console.error(launch.stdout || '');
+  console.error(launch.stderr || '');
+  fail('adb launch failed');
+}
 
 const evidence = {
   passed: true,
@@ -97,7 +103,7 @@ const evidence = {
   sha256: meta.sha256 || null,
   installExitCode: install.status,
   launchExitCode: launch.status,
-  notes: 'Commercial device install+launch recorded via adb. Conversion flow may still need manual checkout verification.',
+  notes: 'Commercial device install+launch recorded via adb for the current signed APK.',
 };
 
 fs.writeFileSync(outPath, `${JSON.stringify(evidence, null, 2)}\n`, 'utf8');

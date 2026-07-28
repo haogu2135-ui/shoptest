@@ -101,21 +101,21 @@ export const HomeHeroSection: React.FC<{
           <h1>{t('home.heroTitle')}</h1>
           <p>{t('home.heroText')}</p>
           <div className="shopee-hero__actions">
-            <button type="button" className="home-btn home-btn--lg" onClick={() => navigate('/products')}>
+            <button type="button" className="home-btn home-btn--lg" data-commercial-primary-cta="home-hero-products" onClick={() => navigate('/products')}>
               <HomeIcon path={HI.shopping} />
               {t('home.buyNow')}
             </button>
-            <button type="button" className="home-btn home-btn--lg home-btn--ghost" onClick={() => navigate('/coupons')}>
+            <button type="button" className="home-btn home-btn--lg home-btn--ghost" data-commercial-primary-cta="home-hero-coupons" onClick={() => navigate('/coupons')}>
               <HomeIcon path={HI.gift} />
               {t('home.claimCoupons')}
             </button>
           </div>
           {!isAuthenticated ? (
             <div className="shopee-hero__authActions" aria-label={t('nav.account')}>
-              <button type="button" className="home-btn home-btn--lg home-btn--primary" onClick={() => navigate('/register')}>
+              <button type="button" className="home-btn home-btn--lg home-btn--primary" data-commercial-primary-cta="home-hero-register" onClick={() => navigate('/register')}>
                 {t('nav.register')}
               </button>
-              <button type="button" className="home-btn home-btn--lg home-btn--ghost" onClick={() => navigate(buildLoginUrlFromWindow())}>
+              <button type="button" className="home-btn home-btn--lg home-btn--ghost" data-commercial-primary-cta="home-hero-login" onClick={() => navigate(buildLoginUrlFromWindow())}>
                 {t('nav.login')}
               </button>
             </div>
@@ -168,6 +168,7 @@ export const HomeHeroSection: React.FC<{
               <button
                 type="button"
                 className="home-btn home-btn--primary"
+                data-commercial-primary-cta="home-featured-product"
                 onMouseEnter={() => onPrefetchProduct(heroFeaturedProduct.id)}
                 onFocus={() => onPrefetchProduct(heroFeaturedProduct.id)}
                 aria-label={`${t('home.buyNow')}: ${heroFeaturedProductName}`}
@@ -179,6 +180,7 @@ export const HomeHeroSection: React.FC<{
               <button
                 type="button"
                 className="home-btn"
+                data-commercial-primary-cta="home-featured-add-to-cart"
                 aria-label={`${t('pages.productList.addToCart')}: ${heroFeaturedProductName}`}
                 title={`${t('pages.productList.addToCart')}: ${heroFeaturedProductName}`}
                 onClick={() => onQuickAdd(undefined, heroFeaturedProduct)}
@@ -220,7 +222,7 @@ export const HomeMobileQuickPanel: React.FC<{
   <div className="shopee-container shopee-mobile-priority">
     <section className="shopee-mobile-quick-panel" aria-label={t('home.categories')}>
       {actions.map((action) => (
-        <button key={action.key} type="button" onClick={action.onClick}>
+        <button key={action.key} type="button" data-commercial-primary-cta={`home-mobile-${action.key}`} onClick={action.onClick}>
           <span className="shopee-mobile-quick-panel__icon">{action.icon}</span>
           <span className="shopee-mobile-quick-panel__label">{action.label}</span>
         </button>

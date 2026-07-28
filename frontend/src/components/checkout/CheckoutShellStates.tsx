@@ -515,6 +515,7 @@ export const CheckoutEmptyShell: React.FC<CheckoutEmptyShellProps> = ({
           <ShopButton
             type="primary"
             icon={<ShopIcon path={SI.cart} />}
+            data-checkout-recovery-path="cart"
             onClick={onCart}
             aria-label={t('pages.checkout.emptyBackCartAction')}
             title={t('pages.checkout.emptyBackCartAction')}
@@ -523,6 +524,7 @@ export const CheckoutEmptyShell: React.FC<CheckoutEmptyShellProps> = ({
           </ShopButton>
           <ShopButton
             icon={<ShopIcon path={SI.shopping} />}
+            data-checkout-recovery-path="products"
             onClick={onBrowse}
             aria-label={t('pages.checkout.emptyBrowseAction')}
             title={t('pages.checkout.emptyBrowseAction')}
@@ -531,6 +533,7 @@ export const CheckoutEmptyShell: React.FC<CheckoutEmptyShellProps> = ({
           </ShopButton>
           <ShopButton
             icon={<ShopIcon path={SI.gift} />}
+            data-checkout-recovery-path="coupons"
             onClick={onCoupons}
             aria-label={t('pages.checkout.emptyCouponsAction')}
             title={t('pages.checkout.emptyCouponsAction')}
@@ -539,6 +542,7 @@ export const CheckoutEmptyShell: React.FC<CheckoutEmptyShellProps> = ({
           </ShopButton>
           <ShopButton
             icon={<ShopIcon path={SI.shopping} />}
+            data-checkout-recovery-path="pet-finder"
             onClick={onPetFinder}
             aria-label={`${t('nav.petFinder')}: ${t('pages.checkout.emptySelected')}`}
             title={`${t('nav.petFinder')}: ${t('pages.checkout.emptySelected')}`}
@@ -547,6 +551,7 @@ export const CheckoutEmptyShell: React.FC<CheckoutEmptyShellProps> = ({
           </ShopButton>
           <ShopButton
             icon={<ShopIcon path={SI.history} />}
+            data-checkout-recovery-path="history"
             onClick={onHistory}
             aria-label={t('pages.checkout.emptyHistoryAction')}
             title={t('pages.checkout.emptyHistoryAction')}

@@ -87,6 +87,7 @@ async function dismissCookie(page) {
 async function measurePrimaryTouchTargets(page) {
   return page.evaluate(() => {
     const selectors = [
+      '[data-commercial-primary-cta]',
       '.cart-page__emptyActions .ant-btn',
       '.cart-page__emptyPanelActions .ant-btn',
       '.checkout-page__emptyActions .ant-btn',
@@ -97,7 +98,9 @@ async function measurePrimaryTouchTargets(page) {
       '.product-actions .ant-btn-primary',
       '.order-tracking-page__notShippedActions .ant-btn',
       '.page-feedback__actions .ant-btn',
-      '.shopee-hero__actions .ant-btn',
+      '.shopee-hero__actions .home-btn',
+      '.shopee-hero__authActions .home-btn',
+      '.shopee-hero__featuredActions .home-btn',
       '.shopee-conversion-band__card',
       '.cart-page__emptyActions .ant-btn',
       '.checkout-page__mobilePayBar .ant-btn',
@@ -107,7 +110,7 @@ async function measurePrimaryTouchTargets(page) {
     selectors.forEach((selector) => {
       document.querySelectorAll(selector).forEach((node) => nodes.push(node));
     });
-    const unique = Array.from(new Set(nodes)).slice(0, 24);
+    const unique = Array.from(new Set(nodes)).slice(0, 32);
     const samples = unique.map((node) => {
       const rect = node.getBoundingClientRect();
       const style = window.getComputedStyle(node);

@@ -11,12 +11,12 @@ export type ShopListPagination = {
   pageSizeOptions?: Array<string | number>;
   size?: 'default' | 'small';
   showTotal?: (total: number, range?: [number, number]) => React.ReactNode;
-  itemRender?: (...args: any[]) => React.ReactNode;
+  itemRender?: (page: number, type: 'page' | 'prev' | 'next' | 'jump-prev' | 'jump-next', element: React.ReactNode) => React.ReactNode;
   onChange?: (page: number, pageSize: number) => void;
   onShowSizeChange?: (current: number, size: number) => void;
 };
 
-export type ShopListProps<T = any> = {
+export type ShopListProps<T = unknown> = {
   dataSource?: T[];
   renderItem?: (item: T, index: number) => React.ReactNode;
   loading?: boolean;

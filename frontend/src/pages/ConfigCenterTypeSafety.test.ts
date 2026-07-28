@@ -24,8 +24,8 @@ describe('ConfigCenter type-safety guards', () => {
     expect(pageSource).toContain("description={t('pages.configCenter.staleDataWarning')}");
     expect(pageSource).toContain('{loadError && !snapshot ? null : <div className="config-center__stats">');
     expect(pageSource).toContain("{loadError && !snapshot ? null : <Form<FormValues>");
-    expect(pageSource).toContain('{loadError && !snapshot ? null : <Card title={t(\'pages.configCenter.parseResult\')}');
-    expect(pageSource).toContain('{loadError && !snapshot ? null : <Card title={t(\'pages.configCenter.effectiveRuntimeValues\')}');
+    expect(pageSource).toContain('{loadError && !snapshot ? null : <ShopCard title={t(\'pages.configCenter.parseResult\')}');
+    expect(pageSource).toContain('{loadError && !snapshot ? null : <ShopCard title={t(\'pages.configCenter.effectiveRuntimeValues\')}');
     expect(pageSource).toContain('<ShopButton size="small" type="primary" onClick={() => loadSnapshot()} loading={loading}>');
   });
 });

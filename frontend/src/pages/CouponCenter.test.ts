@@ -37,13 +37,17 @@ describe('CouponCenter mobile coupon rail contract', () => {
     const f2721Start = css.indexOf('F2721:');
     const priorBottomAwareRule = css.indexOf('UI issues pass: loosen mobile coupon density');
     const f2721Css = css.slice(f2721Start, css.indexOf('Android UI closure', f2721Start));
+    const finalRailGuardStart = css.indexOf('Final mobile coupon rail guard');
+    const finalRailGuard = css.slice(finalRailGuardStart);
 
     expect(f2721Start).toBeGreaterThan(priorBottomAwareRule);
     expect(f2721Css).toContain('@media (max-width: 560px)');
     expect(f2721Css).toMatch(/\.coupon-center-page\s*\{[^}]*padding-bottom:\s*calc\(var\(--shop-mobile-bottom-nav-height,\s*72px\)\s*\+\s*24px\s*\+\s*env\(safe-area-inset-bottom,\s*0px\)\)\s*!important;/);
     expect(f2721Css).toMatch(/\.coupon-center-page__quickNav,\s*\.coupon-center-page__mobileActionBar\s*\{[^}]*position:\s*static\s*!important;[^}]*inset:\s*auto\s*!important;[^}]*z-index:\s*auto\s*!important;[^}]*width:\s*100%\s*!important;[^}]*transform:\s*none\s*!important;/);
-    expect(f2721Css).toMatch(/\.coupon-center-page__quickNav\s*\{[^}]*display:\s*grid\s*!important;[^}]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)\s*!important;[^}]*padding:\s*0\s*!important;/);
     expect(f2721Css).toMatch(/\.coupon-center-page__mobileActionBar\s*\{[^}]*display:\s*grid\s*!important;[^}]*border-radius:\s*8px\s*!important;/);
+    expect(finalRailGuardStart).toBeGreaterThan(f2721Start);
+    expect(finalRailGuard).toMatch(/\.coupon-center-page__quickNav\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\);[^}]*overflow:\s*visible;/);
+    expect(finalRailGuard).toMatch(/\.coupon-center-page__quickNav button\s*\{[^}]*width:\s*100%;[^}]*min-width:\s*0;[^}]*min-height:\s*48px\s*!important;/);
   });
 
   it('does not reintroduce sticky or fixed coupon rails after the F2721 guard', () => {

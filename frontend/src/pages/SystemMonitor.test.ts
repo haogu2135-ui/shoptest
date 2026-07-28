@@ -34,13 +34,13 @@ describe('SystemMonitor mobile diagnostics guards', () => {
     }
   });
 
-  it('renders long operational diagnostics through Ant Design Descriptions', () => {
-    expect(pageSource).toContain("<Descriptions.Item label={t('pages.systemMonitor.path')}>{diskStatus.path}</Descriptions.Item>");
-    expect(pageSource).toContain("<Descriptions.Item label={t('pages.systemMonitor.blockers')} span={3}>");
-    expect(pageSource).toContain('<Descriptions.Item label="URL"><Text>{maskDatabaseUrl(databaseStatus.url)}</Text></Descriptions.Item>');
-    expect(pageSource).toContain("<Descriptions.Item label={t('pages.systemMonitor.address')}>{redisStatus.host || '-'}:{redisStatus.port || '-'}</Descriptions.Item>");
-    expect(pageSource).toContain("<Descriptions.Item label={t('pages.systemMonitor.namespace')}>{nacosStatus.namespace || 'public'}</Descriptions.Item>");
-    expect(pageSource).toContain("<Descriptions.Item label={t('pages.systemMonitor.error')}>");
+  it('renders long operational diagnostics through ShopDescriptions', () => {
+    expect(pageSource).toContain("<ShopDescriptions.Item label={t('pages.systemMonitor.path')}>{diskStatus.path}</ShopDescriptions.Item>");
+    expect(pageSource).toContain("<ShopDescriptions.Item label={t('pages.systemMonitor.blockers')} span={3}>");
+    expect(pageSource).toContain('<ShopDescriptions.Item label="URL"><Text>{maskDatabaseUrl(databaseStatus.url)}</Text></ShopDescriptions.Item>');
+    expect(pageSource).toContain("<ShopDescriptions.Item label={t('pages.systemMonitor.address')}>{redisStatus.host || '-'}:{redisStatus.port || '-'}</ShopDescriptions.Item>");
+    expect(pageSource).toContain("<ShopDescriptions.Item label={t('pages.systemMonitor.namespace')}>{nacosStatus.namespace || 'public'}</ShopDescriptions.Item>");
+    expect(pageSource).toContain("<ShopDescriptions.Item label={t('pages.systemMonitor.error')}>");
   });
 
   it('stacks diagnostic description labels and values as full-width mobile rows', () => {
@@ -62,10 +62,10 @@ describe('SystemMonitor mobile diagnostics guards', () => {
     const f2717Start = cssSource.indexOf('/* F2717');
     const f2717Css = cssSource.slice(f2717Start);
 
-    expect(pageSource).toContain("<Space size={6}>{statusTag(status.status, status.ready, statusLabels)}{readyTag(status.ready, readyLabels)}</Space>");
-    expect(pageSource).toContain("<Descriptions.Item label={t('pages.systemMonitor.ready')}>{readyTag(databaseStatus.ready, readyLabels)}</Descriptions.Item>");
-    expect(pageSource).toContain("<Descriptions.Item label={t('pages.systemMonitor.ready')}>{readyTag(redisStatus.ready, readyLabels)}</Descriptions.Item>");
-    expect(pageSource).toContain("<Descriptions.Item label={t('pages.systemMonitor.ready')}>{readyTag(nacosStatus.ready, readyLabels)}</Descriptions.Item>");
+    expect(pageSource).toContain("<ShopSpace size={6}>{statusTag(status.status, status.ready, statusLabels)}{readyTag(status.ready, readyLabels)}</ShopSpace>");
+    expect(pageSource).toContain("<ShopDescriptions.Item label={t('pages.systemMonitor.ready')}>{readyTag(databaseStatus.ready, readyLabels)}</ShopDescriptions.Item>");
+    expect(pageSource).toContain("<ShopDescriptions.Item label={t('pages.systemMonitor.ready')}>{readyTag(redisStatus.ready, readyLabels)}</ShopDescriptions.Item>");
+    expect(pageSource).toContain("<ShopDescriptions.Item label={t('pages.systemMonitor.ready')}>{readyTag(nacosStatus.ready, readyLabels)}</ShopDescriptions.Item>");
 
     expect(f3533Start).toBeGreaterThanOrEqual(0);
     expect(f2717Start).toBeGreaterThan(f3533Start);

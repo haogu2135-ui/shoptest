@@ -497,7 +497,7 @@ describe('api parameter normalization', () => {
     expect(config.headers?.Authorization).toBeUndefined();
   });
 
-  it('sends Accept-Language from shop-language for storefront locales', async () => {
+  it('updates Accept-Language from the current shop-language for storefront locales', async () => {
     const cases: Array<[string | null, string]> = [
       ['zh', 'zh-CN'],
       ['es', 'es-MX'],
@@ -505,16 +505,17 @@ describe('api parameter normalization', () => {
       [null, 'en-US'],
       ['fr', 'en-US'],
     ];
+    jest.resetModules();
+    mockRequestInterceptorFulfilled = undefined;
+    clearLocalStorage();
+    require('./index');
 
     for (const [language, expected] of cases) {
-      jest.resetModules();
-      mockRequestInterceptorFulfilled = undefined;
       clearLocalStorage();
       if (language) {
         window.localStorage.setItem('shop-language', language);
       }
-
-      require('./index');
+      expect(window.localStorage.getItem('shop-language')).toBe(language);
 
       const config = await mockRequestInterceptorFulfilled!({ url: '/orders', headers: { Accept: 'application/json' } });
       expect(config.headers).toEqual(expect.objectContaining({

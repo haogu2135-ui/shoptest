@@ -1,4 +1,4 @@
-const readApiSource = (): string => require('fs').readFileSync(require('path').resolve(__dirname, 'index.ts'), 'utf8');
+const readApiSource = (): string => require('fs').readFileSync(require('path').resolve(__dirname, 'core.ts'), 'utf8');
 
 export {};
 
